@@ -9,7 +9,7 @@ from jinja2 import Environment, FileSystemLoader, Template
 from markupsafe import Markup
 from pydantic import BaseModel, Field, field_validator
 
-logger = logging.getLogger("pyjinx")
+logger = logging.getLogger("pyjinhx")
 logger.setLevel(logging.WARNING)
 
 _registry_context: ContextVar[dict[str, "BaseComponent"]] = ContextVar(

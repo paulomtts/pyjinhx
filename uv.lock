@@ -189,7 +189,7 @@ wheels = [
 ]
 
 [[package]]
-name = "pyjinx"
+name = "pyjinhx"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [

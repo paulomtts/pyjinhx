@@ -1,4 +1,4 @@
-from pyjinx import BaseComponent
+from pyjinhx import BaseComponent
 from tests.ui.button import Button
 
 

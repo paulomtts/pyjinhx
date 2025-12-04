@@ -1,18 +1,18 @@
-# PyJinx
+# PyJinHx
 
-Declare reusable, type-safe UI components for template-based web apps in Python. PyJinx combines Pydantic models with Jinja2 templates to give you automatic template discovery, nested composition, and JavaScript integration—all without manual wiring.
+Declare reusable, type-safe UI components for template-based web apps in Python. PyJinHx combines Pydantic models with Jinja2 templates to give you automatic template discovery, nested composition, and JavaScript integration—all without manual wiring.
 
 ## Installation
 
 ```bash
-pip install pyjinx
+pip install pyjinhx
 ```
 
 ## Core Capabilities
 
 **Automatic Template Discovery**
 - Define a component class and place an HTML template in the same directory with a matching name
-- PyJinx automatically finds `components/ui/button.html` for a `Button` class in `components/ui/button.py`
+- PyJinHx automatically finds `components/ui/button.html` for a `Button` class in `components/ui/button.py`
 - No manual template path configuration needed
 
 **Global Component Registry**
@@ -50,7 +50,7 @@ pip install pyjinx
 
 ```python
 # components/ui/button.py
-from pyjinx import BaseComponent
+from pyjinhx import BaseComponent
 
 class Button(BaseComponent):
     id: str
@@ -70,7 +70,7 @@ console.log('Button {{ id }} initialized');
 
 ```python
 # components/ui/card.py
-from pyjinx import BaseComponent
+from pyjinhx import BaseComponent
 from components.ui.button import Button
 
 class Card(BaseComponent):
