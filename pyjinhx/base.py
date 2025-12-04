@@ -177,15 +177,23 @@ class BaseComponent(BaseModel):
         if isinstance(field_value, BaseComponent):
             context[field_name] = Object(html=field_value.render(base_context=context), props=field_value)
         elif isinstance(field_value, list):
+            processed_list = []
             for item in field_value:
                 if isinstance(item, BaseComponent):
-                    context[field_name] = Object(html=item.render(base_context=context), props=item)
-        elif isinstance(field_value, dict) and all(
-            isinstance(value, BaseComponent) for value in field_value.values()
-        ):
-            for item in field_value.values():
-                if isinstance(item, BaseComponent):
-                    context[field_name] = Object(html=item.render(base_context=context), props=item)
+                    processed_list.append(Object(html=item.render(base_context=context), props=item))
+                else:
+                    processed_list.append(item)
+            if processed_list:
+                context[field_name] = processed_list
+        elif isinstance(field_value, dict):
+            processed_dict = {}
+            for key, value in field_value.items():
+                if isinstance(value, BaseComponent):
+                    processed_dict[key] = Object(html=value.render(base_context=context), props=value)
+                else:
+                    processed_dict[key] = value
+            if processed_dict:
+                context[field_name] = processed_dict
         return context
 
     def _get_javascript_content(self) -> str | None:

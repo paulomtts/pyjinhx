@@ -1,0 +1,15 @@
+<div id="{{ id }}" class="panel">
+    <h2>{{ title }}</h2>
+    <div class="panel-sections">
+        {% for key, value in sections.items() %}
+        <div class="section-{{ key }}">
+            {% if value.html %}
+                {{ value.html }}
+            {% else %}
+                <p>{{ value }}</p>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+</div>
+

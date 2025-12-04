@@ -1,0 +1,9 @@
+<div id="{{ id }}" class="button-list">
+    <h3>{{ title }}</h3>
+    <ul>
+        {% for button in buttons %}
+        <li>{{ button.html }}</li>
+        {% endfor %}
+    </ul>
+</div>
+
