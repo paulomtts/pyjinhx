@@ -3,7 +3,7 @@ import logging
 import os
 import re
 from contextvars import ContextVar
-from typing import Any, ClassVar, Optional
+from typing import Any, ClassVar, Optional, List
 
 from jinja2 import Environment, FileSystemLoader, Template
 from markupsafe import Markup
@@ -92,8 +92,8 @@ class BaseComponent(BaseModel):
         return current_dir
 
     id: str = Field(..., description="The unique ID for this component.")
-    js: Optional[str] = Field(
-        default=None, description="The JavaScript file for this component."
+    js: List[str] = Field(
+        default_factory=list, description="List of paths to extra JavaScript files to include."
     )
     html: list[str] = Field(
         default_factory=list, description="Extra HTML files to add to the component."
@@ -194,8 +194,8 @@ class BaseComponent(BaseModel):
 
     def _get_javascript_file_name(self) -> str | None:
         raw_path = self._get_raw_path()
-        snake_case_name = self.js if self.js else self._get_snake_case_name()
-        js_file_name = snake_case_name.replace("_", "-") + ("" if self.js else ".js")
+        snake_case_name = self._get_snake_case_name()
+        js_file_name = snake_case_name.replace("_", "-") + ".js"
         if not os.path.exists(f"{raw_path}/{js_file_name}"):
             return None
         return js_file_name
@@ -228,6 +228,20 @@ class BaseComponent(BaseModel):
                     _scripts_context.set(scripts)
                     collected_files.add(js_path)
                     _collected_js_context.set(collected_files)
+
+    def _collect_extra_javascript_files_(self) -> None:
+        collected_files = _collected_js_context.get()
+        for js_path in self.js:
+            normalized_path = os.path.normpath(js_path).replace("\\", "/")
+            if normalized_path not in collected_files:
+                if os.path.exists(normalized_path):
+                    with open(normalized_path, "r") as f:
+                        js_content = f.read()
+                        scripts = _scripts_context.get()
+                        scripts.append(js_content)
+                        _scripts_context.set(scripts)
+                        collected_files.add(normalized_path)
+                        _collected_js_context.set(collected_files)
 
     def _process_extra_html_files_(self, context: dict[str, Any]) -> dict[str, Any]:
         for html_file in self.html:
@@ -276,7 +290,11 @@ class BaseComponent(BaseModel):
         if source is None:
             self._collect_javascript_if_needed_()
 
-        # 6. Append all collected scripts at root level
+        # 6. Collect extra JavaScript files at root level
+        if is_root:
+            self._collect_extra_javascript_files_()
+
+        # 7. Append all collected scripts at root level
         if is_root:
             scripts = _scripts_context.get()
             if scripts:
