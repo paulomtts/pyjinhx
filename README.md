@@ -11,6 +11,7 @@ pip install pyjinhx
 ## Core Capabilities
 
 - **Automatic Template Discovery**: Place an HTML template next to your component class with a matching name (e.g., `button.html` for `Button`)
+- **Generic Components**: Create components directly from `BaseComponent` with custom properties and HTML templates
 - **Global Component Registry**: All components register by `id` and are accessible in any template via `{{ component_id }}`
 - **Nested Components**: Pass components as fields—works with single components, lists, and dictionaries
 - **Property Access**: Access nested component properties via `.props` (e.g., `{{ nested.props.text }}`)
@@ -110,5 +111,50 @@ html = card.render()
 </div>
 ```
 
-# TODO
-- Add tests for generic components, i.e. BaseComponent declarations with extra properties
+## Generic Components
+
+You can create components directly from `BaseComponent` without defining a subclass. This is useful for one-off components or when you want to use existing HTML templates with dynamic properties.
+
+When you instantiate `BaseComponent` directly, it will use the HTML files specified in the `html` property as the template source (since there's no corresponding class file to discover a template from).
+
+```python
+from pyjinhx import BaseComponent
+
+# Create a generic component with custom properties
+component = BaseComponent(
+    id="generic-card",
+    title="Welcome",
+    description="This is a generic component",
+    html=["templates/card.html"]
+)
+
+html = component.render()
+```
+
+```html
+<!-- templates/card.html -->
+<div id="{{ id }}" class="card">
+    <h2>{{ title }}</h2>
+    <p>{{ description }}</p>
+</div>
+```
+
+```html
+<!-- Rendered output -->
+<div id="generic-card" class="card">
+    <h2>Welcome</h2>
+    <p>This is a generic component</p>
+</div>
+```
+
+You can also combine multiple HTML files:
+
+```python
+component = BaseComponent(
+    id="composite",
+    title="Composite Component",
+    html=["templates/header.html", "templates/content.html", "templates/footer.html"]
+)
+```
+
+The files will be concatenated in order and rendered as a single template. All extra properties you pass (like `title`, `description`, etc.) are automatically available in the template context thanks to Pydantic's `extra='allow'` configuration.
