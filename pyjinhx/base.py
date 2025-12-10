@@ -180,7 +180,6 @@ class BaseComponent(BaseModel):
 
     def _load_template(self, source: str | None = None) -> Template:
         engine = BaseComponent._ensure_engine_()
-        # check if this is direct instance of BaseComponent, and not a subclass of it
         if source is None and type(self) is not BaseComponent:
             relative_path = self._get_relative_path()
             return engine.get_template(relative_path)
