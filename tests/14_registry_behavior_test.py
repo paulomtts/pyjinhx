@@ -1,5 +1,6 @@
 from pyjinhx import Registry
 from tests.ui.unified_component import UnifiedComponent
+import logging
 
 
 def test_registry_clear():
@@ -54,4 +55,21 @@ def test_registry_with_multiple_components():
     for i in range(5):
         assert f"multi-{i}" in registry
         assert registry[f"multi-{i}"].text == f"Component {i}"
+
+
+def test_duplicate_component_id_warning(caplog):
+    logging.getLogger("pyjinhx").setLevel(logging.WARNING)
+
+    Registry.clear()
+
+    component1 = UnifiedComponent(id="duplicate-1", text="First")
+    assert Registry.get()["duplicate-1"] == component1
+
+    component2 = UnifiedComponent(id="duplicate-1", text="Second")
+
+    assert len(Registry.get()) == 1
+    assert Registry.get()["duplicate-1"] == component2
+
+    assert "While registering" in caplog.text
+    assert "duplicate-1" in caplog.text
 
