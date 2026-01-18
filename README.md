@@ -1,6 +1,6 @@
 # PyJinHx
 
-Declare reusable, type-safe UI components for template-based web apps in Python. PyJinHx combines Pydantic models with Jinja2 templates to give you automatic template discovery, nested composition, and JavaScript automatic collection—all without manual wiring.
+Build reusable, type-safe UI components for template-based web apps in Python. PyJinHx combines Pydantic models with Jinja2 templates to give you template discovery, component composition, and JavaScript bundling.
 
 ## Installation
 
@@ -8,17 +8,18 @@ Declare reusable, type-safe UI components for template-based web apps in Python.
 pip install pyjinhx
 ```
 
-## Core Capabilities
+## Core ideas
 
-- **Automatic Template Discovery**: Place an HTML template next to your component class with a matching name (e.g., `button.html` for `Button`)
-- **Generic Components**: Create components directly from `BaseComponent` with custom properties and HTML templates
-- **Global Component Registry**: All components register by `id` and are accessible in any template via `{{ component_id }}`
-- **Nested Components**: Pass components as fields—works with single components, lists, and dictionaries
-- **Property Access**: Access nested component properties via `.props` (e.g., `{{ nested.props.text }}`)
-- **JavaScript Automatic Collection**: Automatically collects `.js` files next to templates and bundles them into a single `<script>` tag
-- **Extra HTML Templates**: Include additional HTML files via the `html` field
+You can use PyJinHx in two ways, and mix them:
 
-## Example
+- Render a **typed Python component instance** (`BaseComponent.render()`).
+- Render **HTML-like source** with PascalCase custom tags (`Renderer(...).render(source)`).
+
+## Python-to-HTML Example
+
+Start here if you want a typed component library.
+
+### Step 1: Define Component Classes
 
 ```python
 # components/ui/button.py
@@ -27,11 +28,7 @@ from pyjinhx import BaseComponent
 class Button(BaseComponent):
     id: str
     text: str
-```
-
-```html
-<!-- components/ui/button.html -->
-<button id="{{ id }}">{{ text }}</button>
+    variant: str = "default"
 ```
 
 ```python
@@ -46,115 +43,108 @@ class Card(BaseComponent):
     menu_items: list[Button]
 ```
 
+### Step 2: Create Templates
+
 ```html
-<!-- components/ui/card.html -->
+<!-- components/ui/button.html (auto-discovered) -->
+<button id="{{ id }}" class="btn btn-{{ variant }}">{{ text }}</button>
+```
+
+```html
+<!-- components/ui/card.html (auto-discovered) -->
 <div id="{{ id }}" class="card">
     <h2>{{ title }}</h2>
     <div class="action">
-        <p>Action: {{ action_button.props.text }}</p>
-        {{ action_button.html }}
+        <p>Button: {{ action_button.props.text }}</p>
+        {{ action_button }}
     </div>
     <ul class="menu">
         {% for item in menu_items %}
-        <li>
-            <span>Item: {{ item.props.text }}</span>
-            {{ item.html }}
-        </li>
+        <li>{{ item }}</li>
         {% endfor %}
     </ul>
 </div>
 ```
 
+### Step 3: Use in Python
+
 ```python
-# Usage
 from components.ui.card import Card
 from components.ui.button import Button
-
-action_btn = Button(id="submit-btn", text="Submit")
-menu_buttons = [
-    Button(id="menu-1", text="Home"),
-    Button(id="menu-2", text="About"),
-    Button(id="menu-3", text="Contact")
-]
 
 card = Card(
     id="form-card",
     title="User Form",
-    action_button=action_btn,
-    menu_items=menu_buttons
+    action_button=Button(id="submit", text="Submit", variant="primary"),
+    menu_items=[
+        Button(id="home", text="Home"),
+        Button(id="about", text="About")
+    ]
 )
 html = card.render()
 ```
 
-```html
-<!-- Rendered output -->
-<div id="form-card" class="card">
-    <h2>User Form</h2>
-    <div class="action">
-        <p>Action: Submit</p>
-        <button id="submit-btn">Submit</button>
-    </div>
-    <ul class="menu">
-        <li>
-            <span>Item: Home</span>
-            <button id="menu-1">Home</button>
-        </li>
-        <li>
-            <span>Item: About</span>
-            <button id="menu-2">About</button>
-        </li>
-        <li>
-            <span>Item: Contact</span>
-            <button id="menu-3">Contact</button>
-        </li>
-    </ul>
-</div>
-```
+## HTML-like syntax (custom tags)
 
-## Generic Components
-
-You can create components directly from `BaseComponent` without defining a subclass. This is useful for one-off components or when you want to use existing HTML templates with dynamic properties.
-
-When you instantiate `BaseComponent` directly, it will use the HTML files specified in the `html` property as the template source (since there's no corresponding class file to discover a template from).
-
-```python
-from pyjinhx import BaseComponent
-
-# Create a generic component with custom properties
-component = BaseComponent(
-    id="generic-card",
-    title="Welcome",
-    description="This is a generic component",
-    html=["templates/card.html"]
-)
-
-html = component.render()
-```
+Start here if you prefer composing pages with an HTML-like string.
 
 ```html
 <!-- templates/card.html -->
 <div id="{{ id }}" class="card">
     <h2>{{ title }}</h2>
-    <p>{{ description }}</p>
+    {{ content }}
 </div>
 ```
 
 ```html
-<!-- Rendered output -->
-<div id="generic-card" class="card">
-    <h2>Welcome</h2>
-    <p>This is a generic component</p>
+<!-- templates/button.html -->
+<button id="{{ id }}" class="btn btn-{{ variant }}">{{ text }}</button>
+```
+
+```python
+from jinja2 import Environment, FileSystemLoader
+from pyjinhx import Renderer
+
+renderer = Renderer(Environment(loader=FileSystemLoader("./templates")), auto_id=True)
+html = renderer.render('''
+    <Card title="Welcome">
+        <Button text="Get Started" variant="primary"/>
+        <Button text="Learn More" variant="secondary"/>
+    </Card>
+''')
+```
+
+This mode supports:
+
+- Registered classes: if `Button(BaseComponent)` exists, its Pydantic fields are enforced when `<Button .../>` is instantiated.
+- Generic tags: if there is no registered class, a generic `BaseComponent` is used as long as the template file can be found.
+
+## Use custom tags inside component templates
+
+`BaseComponent.render()` expands `<PascalCase />` tags found inside a component template, so component templates can compose other components directly:
+
+```html
+<!-- components/ui/page.html -->
+<div id="{{ id }}">
+  <Button id="save" text="Save"/>
 </div>
 ```
 
-You can also combine multiple HTML files:
+## JavaScript & extra assets
 
-```python
-component = BaseComponent(
-    id="composite",
-    title="Composite Component",
-    html=["templates/header.html", "templates/content.html", "templates/footer.html"]
-)
-```
+- Component-local JS: if a component class `MyWidget` has a sibling file `my-widget.js`, it is auto-collected and injected once at the root render.
+- Extra JS: pass `js=[...]` with file paths; missing files are ignored.
+- Extra HTML files: pass `html=[...]` with file paths; they are rendered and exposed in the template context by filename stem (e.g. `extra_content.html` → `extra_content.html` wrapper). Missing files raise `FileNotFoundError`.
 
-The files will be concatenated in order and rendered as a single template. All extra properties you pass (like `title`, `description`, etc.) are automatically available in the template context thanks to Pydantic's `extra='allow'` configuration.
+## Configuration
+
+- Default environment: `Renderer.get_default_renderer()` auto-detects a project root and uses `FileSystemLoader(root)`.
+- Override: call `Renderer.set_default_environment(Environment(loader=FileSystemLoader(...)))` for explicit control (tests do this).
+
+## Key Benefits
+
+- **Type Safety**: Pydantic models provide validation and IDE support
+- **Composability**: Nest components easily—works with single components, lists, and dictionaries
+- **Automatic Template Discovery**: Place templates next to component files—no manual paths
+- **JavaScript Bundling**: Automatically collects and bundles `.js` files from component directories
+- **Flexible**: Use Python classes for reusable components, HTML syntax for quick page composition
