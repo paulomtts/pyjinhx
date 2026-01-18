@@ -3,7 +3,7 @@ import logging
 import os
 import re
 from contextvars import ContextVar
-from typing import Any, ClassVar, Optional, List
+from typing import Any, ClassVar, Optional, List, Type
 
 from jinja2 import Environment, FileSystemLoader, Template
 from markupsafe import Markup
@@ -29,6 +29,22 @@ class Registry:
     """
     Registry for all components.
     """
+    _class_registry: ClassVar[dict[str, Type["BaseComponent"]]] = {}
+
+    @classmethod
+    def register_class(cls, component_class: type["BaseComponent"]) -> None:
+        """Register a component class by its name."""
+        class_name = component_class.__name__
+        if class_name in cls._class_registry:
+            logger.warning(
+                f"Component class {class_name} is already registered. Overwriting..."
+            )
+        cls._class_registry[class_name] = component_class
+
+    @classmethod
+    def get_classes(cls) -> dict[str, type["BaseComponent"]]:
+        """Get all registered component classes."""
+        return cls._class_registry
 
     @classmethod
     def register(cls, component: "BaseComponent") -> None:
@@ -116,6 +132,11 @@ class BaseComponent(BaseModel):
         if not v:
             raise ValueError("ID is required")
         return str(v)
+
+    def __init_subclass__(cls, **kwargs):
+        """Automatically register the component class at definition time."""
+        super().__init_subclass__(**kwargs)
+        Registry.register_class(cls)   
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
