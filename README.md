@@ -12,8 +12,8 @@ pip install pyjinhx
 
 You can use PyJinHx in two ways, and mix them:
 
-- Render a **typed Python component instance** (`BaseComponent.render()`).
-- Render **HTML-like source** with PascalCase custom tags (`Renderer(...).render(source)`).
+- Python-side: render a **typed Python component instance** (`BaseComponent.render()`).
+- Template-side: render **HTML-like source** with PascalCase custom tags (`Renderer(...).render(source)`).
 
 ## Python-to-HTML Example
 
