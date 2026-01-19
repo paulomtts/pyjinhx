@@ -129,3 +129,56 @@ Template-side rendering supports:
 - Component-local JS: if a component class `MyWidget` has a sibling file `my-widget.js`, it is auto-collected and injected once at the root render level.
 - Extra JS: pass `js=[...]` with file paths; missing files are ignored.
 - Extra HTML files: pass `html=[...]` with file paths; they are rendered and exposed in the template context by filename stem (e.g. `extra_content.html` → `extra_content.html` wrapper). Missing files raise `FileNotFoundError`.
+
+## FastAPI + HTMX example
+
+### Component class
+
+```python
+# components/ui/button.py
+from pyjinhx import BaseComponent
+
+
+class Button(BaseComponent):
+    id: str
+    text: str
+```
+
+### Component template (with HTMX)
+
+```html
+<!-- components/ui/button.html -->
+<button
+  id="{{ id }}"
+  hx-post="/clicked"
+  hx-vals='{"button_id": "{{ id }}"}'
+  hx-target="#click-result"
+  hx-swap="innerHTML"
+>
+  {{ text }}
+</button>
+```
+
+### FastAPI app (two routes)
+
+```python
+from fastapi import FastAPI
+from fastapi.responses import HTMLResponse
+
+from components.ui.button import Button
+
+app = FastAPI()
+
+
+@app.get("/button", response_class=HTMLResponse)
+def button() -> str:
+    return (
+        Button(id="save-btn", text="Click me").render()
+        + '<div id="click-result"></div>'
+    )
+
+
+@app.post("/clicked", response_class=HTMLResponse)
+def clicked(button_id: str = "unknown") -> str:
+    return f"Clicked: {button_id}"
+```
