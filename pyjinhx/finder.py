@@ -50,6 +50,38 @@ class Finder:
             raise FileNotFoundError(f"Template not found: {filename} under {self.root}")
         return found_path
 
+    def collect_javascript_files(self, *, relative_to_root: bool = False) -> list[str]:
+        """
+        Collect all JavaScript files under `root`.
+
+        Args:
+            relative_to_root: If True, return paths relative to `root` (useful for building static file lists).
+                              If False, return absolute paths.
+
+        Returns:
+            A deterministic, sorted list of `.js` file paths (directories and file names are walked in sorted order).
+        """
+        javascript_files: list[str] = []
+
+        if not os.path.exists(self.root):
+            return javascript_files
+
+        for current_root, dir_names, file_names in os.walk(self.root):
+            dir_names.sort()
+            file_names.sort()
+            for file_name in file_names:
+                if not file_name.lower().endswith(".js"):
+                    continue
+                full_path = os.path.join(current_root, file_name)
+                if relative_to_root:
+                    javascript_files.append(
+                        normalize_path_separators(os.path.relpath(full_path, self.root))
+                    )
+                else:
+                    javascript_files.append(normalize_path_separators(full_path))
+
+        return javascript_files
+
     def find_template_for_tag(self, tag_name: str) -> str:
         """
         Resolve a PascalCase component tag name to the corresponding template path.
