@@ -12,9 +12,16 @@ def pascal_case_to_kebab_case(name: str) -> str:
     return pascal_case_to_snake_case(name).replace("_", "-")
 
 
-def tag_name_to_template_filename(tag_name: str) -> str:
-    """Convert a component tag name (e.g. ButtonGroup) into its template filename (button_group.html)."""
-    return f"{pascal_case_to_snake_case(tag_name)}.html"
+def tag_name_to_template_filenames(
+    tag_name: str, *, extensions: tuple[str, ...] = (".html", ".jinja")
+) -> list[str]:
+    """
+    Convert a component tag name (e.g. ButtonGroup) into candidate template filenames.
+
+    Order matters: earlier entries are preferred during auto-lookup.
+    """
+    snake_name = pascal_case_to_snake_case(tag_name)
+    return [f"{snake_name}{extension}" for extension in extensions]
 
 
 def normalize_path_separators(path: str) -> str:

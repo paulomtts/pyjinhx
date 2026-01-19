@@ -163,19 +163,25 @@ class Renderer:
             return self._environment.from_string(combined_template_source)
 
         loader_root = self._get_loader_root()
-        relative_template_path = Finder.get_relative_template_path(
+        relative_template_paths = Finder.get_relative_template_paths(
             component_dir=Finder.get_class_directory(type(component)),
             search_root=loader_root,
             component_name=type(component).__name__,
         )
 
-        try:
-            return self._environment.get_template(relative_template_path)
-        except Exception:
-            if component.html and len(component.html) == 1:
-                template_name = self._to_template_name(component.html[0])
-                return self._environment.get_template(template_name)
-            raise
+        for relative_template_path in relative_template_paths:
+            try:
+                return self._environment.get_template(relative_template_path)
+            except TemplateNotFound:
+                continue
+
+        if component.html and len(component.html) == 1:
+            template_name = self._to_template_name(component.html[0])
+            return self._environment.get_template(template_name)
+
+        raise TemplateNotFound(
+            ", ".join(relative_template_paths) if relative_template_paths else "unknown"
+        )
 
     def _collect_component_javascript(
         self, component: "BaseComponent", session: RenderSession

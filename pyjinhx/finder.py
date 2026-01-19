@@ -8,7 +8,7 @@ from .utils import (
     detect_root_directory,
     normalize_path_separators,
     pascal_case_to_snake_case,
-    tag_name_to_template_filename,
+    tag_name_to_template_filenames,
 )
 
 
@@ -104,6 +104,25 @@ class Finder:
         filename = f"{pascal_case_to_snake_case(component_name)}.html"
         return f"{relative_dir}/{filename}"
 
+    @staticmethod
+    def get_relative_template_paths(
+        component_dir: str,
+        search_root: str,
+        component_name: str,
+        *,
+        extensions: tuple[str, ...] = (".html", ".jinja"),
+    ) -> list[str]:
+        """
+        Compute candidate template paths relative to the Jinja loader root.
+
+        Order matters: earlier entries are preferred during auto-lookup.
+        """
+        relative_dir = normalize_path_separators(
+            os.path.relpath(component_dir, search_root)
+        )
+        snake_name = pascal_case_to_snake_case(component_name)
+        return [f"{relative_dir}/{snake_name}{extension}" for extension in extensions]
+
     # ------------------
     # Public instance API
     # ------------------
@@ -128,7 +147,17 @@ class Finder:
         Example:
             tag_name="ButtonGroup" -> find("button_group.html")
         """
-        return self.find(tag_name_to_template_filename(tag_name))
+        last_error: FileNotFoundError | None = None
+        for candidate_filename in tag_name_to_template_filenames(tag_name):
+            try:
+                return self.find(candidate_filename)
+            except FileNotFoundError as exc:
+                last_error = exc
+        if last_error is None:
+            raise FileNotFoundError(
+                f"Template not found for tag: {tag_name} under {self.root}"
+            )
+        raise last_error
 
     def collect_javascript_files(self, relative_to_root: bool = False) -> list[str]:
         """
