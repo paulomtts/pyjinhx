@@ -1,0 +1,24 @@
+<div id="{{ id }}" class="test-component">{% if title %}
+    <h2>{{ title }}</h2>{% endif %}{% if text %}
+    <div class="text">{{ text }}</div>{% endif %}{% if nested %}
+    <div class="nested">
+        {% if nested.props %}<p>Nested component ID: {{ nested.props.id }}</p>
+        <p>Nested component text: {{ nested.props.text }}</p>{% endif %}
+        {{ nested }}
+    </div>{% endif %}{% if items %}
+    <div class="items">
+        <ul>
+            {% for item in items %}
+            <li>{{ item }}</li>
+            {% endfor %}
+        </ul>
+    </div>{% endif %}{% if sections %}
+    <div class="sections">
+        {% for key, value in sections.items() %}
+        <div class="section-{{ key }}">
+            {{ value}}
+        </div>
+        {% endfor %}
+    </div>{% endif %}{% if extra_content %}{{ extra_content.html }}{% endif %}
+</div>
+
