@@ -1,8 +1,6 @@
 import os
 import tempfile
 
-from jinja2 import Environment, FileSystemLoader
-
 from pyjinhx import BaseComponent
 from pyjinhx.renderer import Renderer
 
@@ -29,7 +27,7 @@ def test_component_template_can_expand_custom_tags_when_enabled():
                 '<div id="{{ id }}"><Child id="child-1" text="{{ child_text }}"/></div>\n'
             )
 
-        Renderer.set_default_environment(Environment(loader=FileSystemLoader(temp_dir)))
+        Renderer.set_default_environment(temp_dir)
 
         parent = Parent(id="parent-1", child_text="Hello", html=[parent_template_path])
 

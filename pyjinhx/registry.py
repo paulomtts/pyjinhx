@@ -34,6 +34,10 @@ class Registry:
         return cls._class_registry.copy()
 
     @classmethod
+    def clear_classes(cls) -> None:
+        cls._class_registry.clear()
+
+    @classmethod
     def register_instance(cls, component: "BaseComponent") -> None:
         registry = _registry_context.get()
         if component.id in registry:
@@ -43,9 +47,9 @@ class Registry:
         registry[component.id] = component
 
     @classmethod
-    def clear(cls) -> None:
-        _registry_context.set({})
+    def get_instances(cls) -> dict[str, "BaseComponent"]:
+        return _registry_context.get()
 
     @classmethod
-    def get(cls) -> dict[str, "BaseComponent"]:
-        return _registry_context.get()
+    def clear_instances(cls) -> None:
+        _registry_context.set({})

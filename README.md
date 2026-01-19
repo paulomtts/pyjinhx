@@ -17,8 +17,6 @@ You can use PyJinHx in two ways, and mix them:
 
 ## Python-to-HTML Example
 
-Start here if you want a typed component library.
-
 ### Step 1: Define Component Classes
 
 ```python
@@ -105,7 +103,7 @@ Start here if you prefer composing pages with an HTML-like string.
 from jinja2 import Environment, FileSystemLoader
 from pyjinhx import Renderer
 
-renderer = Renderer(Environment(loader=FileSystemLoader("./templates")), auto_id=True)
+renderer = Renderer("./templates", auto_id=True)
 html = renderer.render('''
     <Card title="Welcome">
         <Button text="Get Started" variant="primary"/>
@@ -136,10 +134,6 @@ This mode supports:
 - Extra JS: pass `js=[...]` with file paths; missing files are ignored.
 - Extra HTML files: pass `html=[...]` with file paths; they are rendered and exposed in the template context by filename stem (e.g. `extra_content.html` → `extra_content.html` wrapper). Missing files raise `FileNotFoundError`.
 
-## Configuration
-
-- Default environment: `Renderer.get_default_renderer()` auto-detects a project root and uses `FileSystemLoader(root)`.
-- Override: call `Renderer.set_default_environment(Environment(loader=FileSystemLoader(...)))` for explicit control (tests do this).
 
 ## Key Benefits
 

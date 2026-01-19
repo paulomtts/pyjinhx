@@ -7,13 +7,14 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, ClassVar
 
 from jinja2 import Environment, FileSystemLoader, Template
+from jinja2.exceptions import TemplateNotFound
 from markupsafe import Markup
 
 from .dataclasses import Tag
 from .finder import Finder
 from .parser import Parser
 from .registry import Registry
-from .utils import pascal_case_to_kebab_case
+from .utils import detect_root_directory, pascal_case_to_kebab_case
 
 if TYPE_CHECKING:
     from .base import BaseComponent
@@ -52,20 +53,35 @@ class Renderer:
         return cls._default_environment
 
     @classmethod
-    def set_default_environment(cls, environment: Environment | None) -> None:
+    def set_default_environment(
+        cls, environment: Environment | str | os.PathLike[str] | None
+    ) -> None:
         """
         Set or clear the process-wide default Jinja environment used by `get_default_renderer()`.
 
         Passing None resets auto-detection behavior.
+
+        Args:
+            environment: The Jinja environment to use, or a path to a directory containing templates.
+                        If a path, a new `Environment(loader=FileSystemLoader(...))` is created.
+                        If None, the default environment is cleared.
+
+        Returns:
+            The created `Environment` instance, or None if the environment was cleared.
         """
-        cls._default_environment = environment
+        if environment is None or isinstance(environment, Environment):
+            cls._default_environment = environment
+        else:
+            cls._default_environment = Environment(
+                loader=FileSystemLoader(os.fspath(environment))
+            )
         cls._default_renderers.clear()
 
     @classmethod
     def get_default_environment(cls) -> Environment:
         """Return the default environment, initializing it via root auto-detection if needed."""
         if cls._default_environment is None:
-            root_dir = Finder.detect_root_directory()
+            root_dir = detect_root_directory()
             cls._default_environment = Environment(loader=FileSystemLoader(root_dir))
         return cls._default_environment
 
@@ -99,6 +115,23 @@ class Renderer:
             raise ValueError("Jinja2 loader must be a FileSystemLoader")
         return Finder.get_loader_root(loader)
 
+    def _to_template_name(self, path: str) -> str:
+        loader_root = self._get_loader_root()
+
+        if os.path.isabs(path):
+            normalized_loader_root = os.path.normpath(loader_root)
+            normalized_path = os.path.normpath(path)
+            if (
+                os.path.commonpath([normalized_loader_root, normalized_path])
+                != normalized_loader_root
+            ):
+                raise TemplateNotFound(path)
+            relative_path = os.path.relpath(normalized_path, normalized_loader_root)
+        else:
+            relative_path = path
+
+        return os.path.normpath(relative_path).replace("\\", "/")
+
     def _get_finder_for_root(self, search_root: str) -> Finder:
         finder = self._template_finder_cache.get(search_root)
         if finder is None:
@@ -121,13 +154,13 @@ class Renderer:
                     "No template files found. BaseComponent requires 'html' property to be set with template file paths."
                 )
 
-            loader_root = self._get_loader_root()
-            combined_html = ""
-            for html_file in component.html:
-                file_path = Finder.resolve_path(html_file, root=loader_root)
-                with open(file_path, "r") as file:
-                    combined_html += file.read() + "\n"
-            return self._environment.from_string(combined_html)
+            template_names = [self._to_template_name(path) for path in component.html]
+            includes: list[str] = []
+            for template_name in template_names[:-1]:
+                includes.append(f"{{% include {template_name!r} %}}\n")
+            includes.append(f"{{% include {template_names[-1]!r} %}}\n\n")
+            combined_template_source = "".join(includes)
+            return self._environment.from_string(combined_template_source)
 
         loader_root = self._get_loader_root()
         relative_template_path = Finder.get_relative_template_path(
@@ -140,10 +173,8 @@ class Renderer:
             return self._environment.get_template(relative_template_path)
         except Exception:
             if component.html and len(component.html) == 1:
-                template_path = component.html[0]
-                if os.path.isabs(template_path) or os.path.exists(template_path):
-                    with open(template_path, "r") as file:
-                        return self._environment.from_string(file.read())
+                template_name = self._to_template_name(component.html[0])
+                return self._environment.get_template(template_name)
             raise
 
     def _collect_component_javascript(
@@ -197,23 +228,18 @@ class Renderer:
         self,
         component: "BaseComponent",
         render_context: dict[str, Any],
-        *,
         session: RenderSession,
     ) -> dict[str, Any]:
-        loader_root = self._get_loader_root()
-
         for html_file in component.html:
-            file_path = Finder.resolve_path(html_file, root=loader_root)
-            with open(file_path, "r") as file:
-                html_template = file.read()
+            template_name = self._to_template_name(html_file)
+            try:
+                template = self._environment.get_template(template_name)
+            except TemplateNotFound as exc:
+                raise FileNotFoundError(str(exc)) from exc
 
-            extra_markup = self.render_component_with_context(
-                component,
-                context=render_context,
-                template_source=html_template,
-                session=session,
-                is_root=False,
-                collect_component_js=False,
+            extra_markup = template.render(render_context)
+            extra_markup = self._expand_custom_tags(
+                extra_markup, base_context=render_context, session=session
             )
 
             html_key = html_file.split("/")[-1].split(".")[0]
@@ -235,7 +261,6 @@ class Renderer:
     def _render_tag_node(
         self,
         node: Tag | str,
-        *,
         base_context: dict[str, Any],
         session: RenderSession,
     ) -> str:
@@ -291,7 +316,6 @@ class Renderer:
     def _expand_custom_tags(
         self,
         markup: str,
-        *,
         base_context: dict[str, Any],
         session: RenderSession,
     ) -> str:
@@ -319,7 +343,6 @@ class Renderer:
     def render_component_with_context(
         self,
         component: "BaseComponent",
-        *,
         context: dict[str, Any],
         template_source: str | None,
         session: RenderSession,
@@ -331,7 +354,7 @@ class Renderer:
         )
 
         render_context = dict(context)
-        render_context.update(Registry.get())
+        render_context.update(Registry.get_instances())
         if is_root:
             render_context = self._inject_extra_html_context(
                 component, render_context, session=session
