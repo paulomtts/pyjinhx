@@ -45,13 +45,26 @@ class Renderer:
     - Rendering of HTML-like source strings into component output
     """
 
-    def __init__(self, environment: Environment, *, auto_id: bool = True) -> None:
+    def __init__(
+        self, environment: Environment, *, auto_id: bool = True, inline_js: bool | None = None
+    ) -> None:
+        """
+        Initialize a Renderer with the given Jinja environment.
+
+        Args:
+            environment: The Jinja2 Environment to use for template rendering.
+            auto_id: If True (default), generate UUIDs for components without explicit IDs.
+            inline_js: If True, JavaScript is collected and injected as <script> tags.
+                If False, no scripts are injected. Defaults to the class-level setting.
+        """
         self._environment = environment
         self._auto_id = auto_id
+        self._inline_js = inline_js if inline_js is not None else Renderer._default_inline_js
         self._template_finder_cache: dict[str, Finder] = {}
 
     _default_environment: ClassVar[Environment | None] = None
-    _default_renderers: ClassVar[dict[tuple[int, bool], "Renderer"]] = {}
+    _default_inline_js: ClassVar[bool] = True
+    _default_renderers: ClassVar[dict[tuple[int, bool, bool], "Renderer"]] = {}
 
     @classmethod
     def peek_default_environment(cls) -> Environment | None:
@@ -83,6 +96,18 @@ class Renderer:
         cls._default_renderers.clear()
 
     @classmethod
+    def set_default_inline_js(cls, inline_js: bool) -> None:
+        """
+        Set the process-wide default for inline JavaScript injection.
+
+        Args:
+            inline_js: If True (default), JavaScript is collected and injected as <script> tags.
+                If False, no scripts are injected. Use Finder.collect_javascript_files() for static serving.
+        """
+        cls._default_inline_js = inline_js
+        cls._default_renderers.clear()
+
+    @classmethod
     def get_default_environment(cls) -> Environment:
         """
         Return the default Jinja environment, auto-initializing if needed.
@@ -98,21 +123,26 @@ class Renderer:
         return cls._default_environment
 
     @classmethod
-    def get_default_renderer(cls, *, auto_id: bool = True) -> "Renderer":
+    def get_default_renderer(
+        cls, *, auto_id: bool = True, inline_js: bool | None = None
+    ) -> "Renderer":
         """
         Return a cached default renderer instance.
 
         Args:
             auto_id: If True, generate UUIDs for components without explicit IDs.
+            inline_js: If True, JavaScript is collected and injected as <script> tags.
+                If False, no scripts are injected. Defaults to the class-level setting.
 
         Returns:
-            A Renderer instance cached by (environment identity, auto_id).
+            A Renderer instance cached by (environment identity, auto_id, inline_js).
         """
         environment = cls.get_default_environment()
-        cache_key = (id(environment), auto_id)
+        effective_inline_js = inline_js if inline_js is not None else cls._default_inline_js
+        cache_key = (id(environment), auto_id, effective_inline_js)
         renderer = cls._default_renderers.get(cache_key)
         if renderer is None:
-            renderer = Renderer(environment, auto_id=auto_id)
+            renderer = Renderer(environment, auto_id=auto_id, inline_js=effective_inline_js)
             cls._default_renderers[cache_key] = renderer
         return renderer
 
@@ -347,12 +377,13 @@ class Renderer:
             rendered_markup, base_context=render_context, session=session
         )
 
-        if collect_component_js:
+        if collect_component_js and self._inline_js:
             self._collect_component_javascript(component, session)
 
         if is_root:
-            self._collect_extra_javascript(component, session)
-            rendered_markup = self._inject_scripts(rendered_markup, session)
+            if self._inline_js:
+                self._collect_extra_javascript(component, session)
+                rendered_markup = self._inject_scripts(rendered_markup, session)
 
         return Markup(rendered_markup).unescape()
 
@@ -379,5 +410,6 @@ class Renderer:
             self._render_tag_node(node, base_context={}, session=session)
             for node in parser.root_nodes
         )
-        rendered_markup = self._inject_scripts(rendered_markup, session)
+        if self._inline_js:
+            rendered_markup = self._inject_scripts(rendered_markup, session)
         return rendered_markup.strip()

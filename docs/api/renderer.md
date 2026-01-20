@@ -25,6 +25,7 @@ html = renderer.render('<Button text="Click me"/>')
         - get_default_renderer
         - get_default_environment
         - set_default_environment
+        - set_default_inline_js
         - peek_default_environment
       show_root_heading: true
       heading_level: 3
@@ -72,6 +73,18 @@ renderer = Renderer.get_default_renderer(auto_id=False)
 
 # Must provide explicit IDs
 html = renderer.render('<Button id="my-btn" text="Click"/>')
+```
+
+### Disabling Inline JavaScript
+
+```python
+from pyjinhx import Renderer
+
+# Option 1: Global default (affects BaseComponent.render() too)
+Renderer.set_default_inline_js(False)
+
+# Option 2: Per-renderer
+renderer = Renderer.get_default_renderer(inline_js=False)
 ```
 
 ### Nested Components

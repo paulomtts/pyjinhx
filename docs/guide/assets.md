@@ -126,6 +126,29 @@ Scripts are injected at the beginning of the rendered output for root components
 
 Nested component scripts are aggregated and injected at the root level, not inline with each component.
 
+## Disabling Inline JavaScript
+
+To serve JavaScript files statically instead of inlining them, disable inline JS collection:
+
+```python
+from pyjinhx import Renderer
+
+# Disable globally - affects all components including BaseComponent.render()
+Renderer.set_default_inline_js(False)
+
+# Now renders without <script> tags
+widget = MyWidget(id="w1", title="Hello")
+html = widget.render()  # No inline scripts
+```
+
+When `inline_js=False`:
+
+- No `<script>` tags are injected into rendered output
+- The component's `js` field is ignored
+- Use `Finder.collect_javascript_files()` to discover JS files for static serving
+
+See [Static File Serving](#static-file-serving) for how to serve JS files.
+
 ## Example: Component with Assets
 
 ```
