@@ -68,7 +68,7 @@ def test_multiple_children():
         ).render(index_html)
 
         assert re.match(
-            r"^<ul id=list-[a-f0-9]{32}>\n  <li id=item-[a-f0-9]{32}>First</li>\n<li id=item-[a-f0-9]{32}>Second</li>\n<li id=item-[a-f0-9]{32}>Third</li>\n</ul>$",
+            r"^<ul id=list-[a-f0-9]{32}>\n  <li id=item-[a-f0-9]{32}>First</li><li id=item-[a-f0-9]{32}>Second</li><li id=item-[a-f0-9]{32}>Third</li>\n</ul>$",
             rendered,
         ), f"Output does not match expected pattern. Got: {rendered!r}"
 
@@ -89,7 +89,7 @@ def test_mixed_content_and_components():
         ).render(index_html)
 
         assert re.match(
-            r"^<div id=panel-[a-f0-9]{32} class=card>\n  Before <button id=actionbutton-[a-f0-9]{32}>Click Me</button>\n After\n</div>$",
+            r"^<div id=panel-[a-f0-9]{32} class=card>\n  Before <button id=actionbutton-[a-f0-9]{32}>Click Me</button> After\n</div>$",
             rendered,
         ), f"Output does not match expected pattern. Got: {rendered!r}"
 

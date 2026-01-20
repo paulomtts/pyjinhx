@@ -1,5 +1,3 @@
-import pytest
-
 from tests.ui.no_js_component import NoJsComponent
 from tests.ui.unified_component import UnifiedComponent
 
@@ -16,17 +14,6 @@ def test_missing_component_js_file_handles_gracefully():
     )
 
 
-def test_missing_extra_html_file_raises():
-    component = UnifiedComponent(
-        id="missing-html-1",
-        text="Test",
-        html=["tests/ui/nonexistent.html"],
-    )
-
-    with pytest.raises(FileNotFoundError):
-        component.render()
-
-
 def test_missing_extra_js_file_is_ignored():
     component = UnifiedComponent(
         id="missing-js-1",
@@ -40,4 +27,3 @@ def test_missing_extra_js_file_is_ignored():
     assert "missing-js-1" in str(rendered)
     assert "console.log('Button loaded');" in str(rendered)
     assert "nonexistent" not in str(rendered)
-

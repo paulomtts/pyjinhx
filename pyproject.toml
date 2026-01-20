@@ -29,3 +29,9 @@ dependencies = [
 
 [project.urls]
 Homepage = "https://github.com/paulomtts/pyjinhx"
+
+[dependency-groups]
+dev = [
+    "mkdocs-material>=9.7.1",
+    "mkdocstrings[python]>=1.0.1",
+]

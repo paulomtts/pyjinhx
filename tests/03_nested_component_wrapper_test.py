@@ -31,12 +31,3 @@ def test_object_with_component_props():
     assert obj.props.text == "Object Test"
 
 
-def test_object_from_extra_html():
-    component = UnifiedComponent(
-        id="extra-html-obj-1", text="Test", html=["tests/ui/extra_content.html"]
-    )
-
-    rendered = component.render()
-
-    assert "Extra HTML Content" in str(rendered)
-    assert "<span>Extra HTML Content</span>" in str(rendered)

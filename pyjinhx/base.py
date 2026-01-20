@@ -38,7 +38,6 @@ class BaseComponent(BaseModel):
     Attributes:
         id: Unique identifier for the component instance.
         js: Paths to additional JavaScript files to include when rendering.
-        html: Paths to additional HTML template files to include.
     """
 
     model_config = ConfigDict(extra="allow")
@@ -47,9 +46,6 @@ class BaseComponent(BaseModel):
     js: list[str] = Field(
         default_factory=list,
         description="List of paths to extra JavaScript files to include.",
-    )
-    html: list[str] = Field(
-        default_factory=list, description="Extra HTML files to add to the component."
     )
 
     @field_validator("id", mode="before")
@@ -142,6 +138,7 @@ class BaseComponent(BaseModel):
         *,
         _renderer: Renderer | None = None,
         _session: RenderSession | None = None,
+        _template_path: str | None = None,
     ) -> Markup:
         renderer = _renderer or Renderer.get_default_renderer()
 
@@ -167,6 +164,7 @@ class BaseComponent(BaseModel):
             self,
             context=context,
             template_source=source,
+            template_path=_template_path,
             session=session,
             is_root=is_root,
             collect_component_js=source is None,

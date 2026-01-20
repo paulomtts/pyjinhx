@@ -141,23 +141,6 @@ class Renderer:
             raise ValueError("Jinja2 loader must be a FileSystemLoader")
         return Finder.get_loader_root(loader)
 
-    def _to_template_name(self, path: str) -> str:
-        loader_root = self._get_loader_root()
-
-        if os.path.isabs(path):
-            normalized_loader_root = os.path.normpath(loader_root)
-            normalized_path = os.path.normpath(path)
-            if (
-                os.path.commonpath([normalized_loader_root, normalized_path])
-                != normalized_loader_root
-            ):
-                raise TemplateNotFound(path)
-            relative_path = os.path.relpath(normalized_path, normalized_loader_root)
-        else:
-            relative_path = path
-
-        return os.path.normpath(relative_path).replace("\\", "/")
-
     def _get_finder_for_root(self, search_root: str) -> Finder:
         finder = self._template_finder_cache.get(search_root)
         if finder is None:
@@ -170,23 +153,21 @@ class Renderer:
         component: "BaseComponent",
         *,
         template_source: str | None,
+        template_path: str | None,
     ) -> Template:
         if template_source is not None:
             return self._environment.from_string(template_source)
 
-        if type(component).__name__ == "BaseComponent":
-            if not component.html:
-                raise FileNotFoundError(
-                    "No template files found. BaseComponent requires 'html' property to be set with template file paths."
-                )
+        if template_path is not None:
+            loader_root = self._get_loader_root()
+            relative_path = os.path.relpath(template_path, loader_root)
+            return self._environment.get_template(relative_path)
 
-            template_names = [self._to_template_name(path) for path in component.html]
-            includes: list[str] = []
-            for template_name in template_names[:-1]:
-                includes.append(f"{{% include {template_name!r} %}}\n")
-            includes.append(f"{{% include {template_names[-1]!r} %}}\n\n")
-            combined_template_source = "".join(includes)
-            return self._environment.from_string(combined_template_source)
+        if type(component).__name__ == "BaseComponent":
+            raise FileNotFoundError(
+                "No template found. Use a BaseComponent subclass with an adjacent template file, "
+                "or use Renderer.render() with PascalCase tags."
+            )
 
         loader_root = self._get_loader_root()
         relative_template_paths = Finder.get_relative_template_paths(
@@ -200,10 +181,6 @@ class Renderer:
                 return self._environment.get_template(relative_template_path)
             except TemplateNotFound:
                 continue
-
-        if component.html and len(component.html) == 1:
-            template_name = self._to_template_name(component.html[0])
-            return self._environment.get_template(template_name)
 
         raise TemplateNotFound(
             ", ".join(relative_template_paths) if relative_template_paths else "unknown"
@@ -256,35 +233,6 @@ class Renderer:
         combined_script = "\n".join(session.scripts)
         return f"<script>{combined_script}</script>\n{markup}"
 
-    def _inject_extra_html_context(
-        self,
-        component: "BaseComponent",
-        render_context: dict[str, Any],
-        session: RenderSession,
-    ) -> dict[str, Any]:
-        for html_file in component.html:
-            template_name = self._to_template_name(html_file)
-            try:
-                template = self._environment.get_template(template_name)
-            except TemplateNotFound as exc:
-                raise FileNotFoundError(str(exc)) from exc
-
-            extra_markup = template.render(render_context)
-            extra_markup = self._expand_custom_tags(
-                extra_markup, base_context=render_context, session=session
-            )
-
-            html_key = html_file.split("/")[-1].split(".")[0]
-
-            from .base import NestedComponentWrapper
-
-            render_context[html_key] = NestedComponentWrapper(
-                html=str(extra_markup),
-                props=None,
-            )
-
-        return render_context
-
     def _find_template_for_tag(self, tag_name: str) -> str:
         loader_root = self._get_loader_root()
         finder = self._get_finder_for_root(loader_root)
@@ -314,25 +262,29 @@ class Renderer:
 
         attrs_without_id = {k: v for k, v in node.attrs.items() if k != "id"}
 
+        template_path: str | None = None
+        try:
+            template_path = self._find_template_for_tag(node.name)
+        except FileNotFoundError:
+            pass
+
         component_class = Registry.get_classes().get(node.name)
         if component_class is not None:
-            component_kwargs: dict[str, Any] = {
-                "id": component_id,
-                "content": rendered_children,
+            component = component_class(
+                id=component_id,
+                content=rendered_children,
                 **attrs_without_id,
-            }
-            try:
-                component_kwargs["html"] = [self._find_template_for_tag(node.name)]
-            except FileNotFoundError:
-                pass
-            component = component_class(**component_kwargs)
+            )
         else:
-            template_path = self._find_template_for_tag(node.name)
+            if template_path is None:
+                raise FileNotFoundError(
+                    f"No template found for <{node.name}>. "
+                    f"Expected {node.name.lower()}.html or {node.name.lower()}.jinja"
+                )
             from .base import BaseComponent  # local import to avoid cycles
 
             component = BaseComponent(
                 id=component_id,
-                html=[template_path],
                 content=rendered_children,
                 **attrs_without_id,
             )
@@ -342,6 +294,7 @@ class Renderer:
                 base_context=base_context,
                 _renderer=self,
                 _session=session,
+                _template_path=template_path,
             )
         )
 
@@ -377,20 +330,17 @@ class Renderer:
         component: "BaseComponent",
         context: dict[str, Any],
         template_source: str | None,
+        template_path: str | None,
         session: RenderSession,
         is_root: bool,
         collect_component_js: bool,
     ) -> Markup:
         template = self._load_template_for_component(
-            component, template_source=template_source
+            component, template_source=template_source, template_path=template_path
         )
 
         render_context = dict(context)
         render_context.update(Registry.get_instances())
-        if is_root:
-            render_context = self._inject_extra_html_context(
-                component, render_context, session=session
-            )
 
         rendered_markup = template.render(render_context)
         rendered_markup = self._expand_custom_tags(

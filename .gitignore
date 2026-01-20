@@ -12,3 +12,6 @@ wheels/
 # Custom
 .ruff_cache/
 .pytest_cache/
+
+# MkDocs
+site/

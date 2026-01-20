@@ -1,48 +1,28 @@
-import pytest
-
 from tests.ui.unified_component import UnifiedComponent
 
 
-@pytest.mark.parametrize(
-    ("html_files", "wrapper_id", "nested_id", "extra_html_suffix"),
-    [
-        ([], "wrapper-1", "action-btn-1", ""),
-        (
-            ["tests/ui/extra_content.html"],
-            "wrapper-2",
-            "action-btn-2",
-            "<span>Extra HTML Content</span>",
-        ),
-    ],
-)
-def test_simple_nesting(
-    html_files: list[str],
-    wrapper_id: str,
-    nested_id: str,
-    extra_html_suffix: str,
-):
-    nested = UnifiedComponent(id=nested_id, text="Click Me")
+def test_simple_nesting():
+    nested = UnifiedComponent(id="action-btn-1", text="Click Me")
     component = UnifiedComponent(
-        id=wrapper_id,
+        id="wrapper-1",
         title="My Wrapper",
         nested=nested,
-        html=html_files,
     )
 
     rendered = component._render()
 
     expected = (
         "<script>console.log('Button loaded');</script>\n"
-        f'<div id="{wrapper_id}" class="test-component">\n'
+        '<div id="wrapper-1" class="test-component">\n'
         "    <h2>My Wrapper</h2>\n"
         '    <div class="nested">\n'
-        f"        <p>Nested component ID: {nested_id}</p>\n"
+        "        <p>Nested component ID: action-btn-1</p>\n"
         "        <p>Nested component text: Click Me</p>\n"
-        f'        <div id="{nested_id}" class="test-component">\n'
+        '        <div id="action-btn-1" class="test-component">\n'
         '    <div class="text">Click Me</div>\n'
         "</div>\n"
         "\n"
-        f"    </div>{extra_html_suffix}\n</div>\n"
+        "    </div>\n</div>\n"
     )
 
     assert rendered == expected
