@@ -14,6 +14,10 @@ logger.setLevel(logging.WARNING)
 class NestedComponentWrapper(BaseModel):
     """
     A wrapper for nested components. Enables access to the component's properties and rendered HTML.
+
+    Attributes:
+        html: The rendered HTML string of the nested component.
+        props: The original component instance, or None for template-only components.
     """
 
     html: str
@@ -24,7 +28,18 @@ class NestedComponentWrapper(BaseModel):
 
 
 class BaseComponent(BaseModel):
-    "Provides functionality for declaring UI components in python."
+    """
+    Base class for defining reusable UI components with Pydantic validation and Jinja2 templating.
+
+    Subclasses are automatically registered and can be rendered using their corresponding
+    HTML/Jinja templates. Components support nested composition, automatic JavaScript collection,
+    and can be used directly in Jinja templates via the `__html__` protocol.
+
+    Attributes:
+        id: Unique identifier for the component instance.
+        js: Paths to additional JavaScript files to include when rendering.
+        html: Paths to additional HTML template files to include.
+    """
 
     model_config = ConfigDict(extra="allow")
 
@@ -54,8 +69,12 @@ class BaseComponent(BaseModel):
 
     def __html__(self) -> Markup:
         """
-        Automatically renders the component when accessed.
-        This allows for cleaner template syntax: {{ MyComponent }} instead of {{ MyComponent.render() }}
+        Render the component when used in a Jinja template context.
+
+        Enables cleaner template syntax: `{{ component }}` instead of `{{ component.render() }}`.
+
+        Returns:
+            The rendered HTML as a Markup object.
         """
         return self._render()
 
@@ -154,4 +173,14 @@ class BaseComponent(BaseModel):
         )
 
     def render(self) -> Markup:
+        """
+        Render this component to HTML using its associated Jinja template.
+
+        The template is auto-discovered based on the component class name (e.g., `MyButton` looks
+        for `my_button.html` or `my_button.jinja`). All component fields are available in the
+        template context, and nested components are rendered recursively.
+
+        Returns:
+            The rendered HTML as a Markup object (safe for direct use in templates).
+        """
         return self._render()

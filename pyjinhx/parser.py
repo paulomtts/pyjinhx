@@ -8,6 +8,17 @@ RE_PASCAL_CASE_TAG_NAME = re.compile(r"^[A-Z](?:[a-z]+(?:[A-Z][a-z]+)*)?$")
 
 
 class Parser(HTMLParser):
+    """
+    HTML parser that identifies PascalCase component tags and builds a tree of Tag nodes.
+
+    Standard HTML tags are passed through as raw strings, while PascalCase tags (e.g., `<MyButton>`)
+    are parsed into Tag objects for component rendering. After calling `feed(html)`, the parsed
+    structure is available in `root_nodes`.
+
+    Attributes:
+        root_nodes: List of top-level parsed nodes (Tag objects or raw HTML strings).
+    """
+
     def __init__(self) -> None:
         super().__init__()
         self._stack: list[Tag] = []

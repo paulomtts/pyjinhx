@@ -17,9 +17,10 @@ class Finder:
     """
     Find files under a root directory.
 
-    This centralizes the template discovery logic.
+    Centralizes template discovery logic with caching to avoid repeated directory walks.
 
-    Results are cached per instance to avoid repeated directory walks.
+    Attributes:
+        root: The root directory to search within.
     """
 
     root: str
@@ -45,9 +46,15 @@ class Finder:
     @staticmethod
     def get_loader_root(loader: FileSystemLoader) -> str:
         """
-        Return the first search root from a Jinja `FileSystemLoader`.
+        Return the first search root from a Jinja FileSystemLoader.
 
-        Jinja allows `searchpath` to be a string or a list of strings; PyJinHx uses the first entry.
+        Jinja allows searchpath to be a string or a list of strings; PyJinHx uses the first entry.
+
+        Args:
+            loader: The Jinja FileSystemLoader to extract the root from.
+
+        Returns:
+            The first search path directory.
         """
         search_path = loader.searchpath
         if isinstance(search_path, list):
@@ -59,6 +66,16 @@ class Finder:
         start_directory: str | None = None,
         project_markers: list[str] | None = None,
     ) -> str:
+        """
+        Find the project root by walking upward from a starting directory until a marker file is found.
+
+        Args:
+            start_directory: Directory to start searching from. Defaults to current working directory.
+            project_markers: Files/directories indicating project root (e.g., "pyproject.toml", ".git").
+
+        Returns:
+            The detected project root directory, or the start directory if no marker is found.
+        """
         return detect_root_directory(
             start_directory=start_directory,
             project_markers=project_markers,
@@ -67,10 +84,16 @@ class Finder:
     @staticmethod
     def find_in_directory(directory: str, filename: str) -> str | None:
         """
-        Return the path to `filename` inside `directory` if it exists; otherwise return None.
+        Check if a file exists directly in a directory (no recursive search).
 
-        This is meant for component-adjacent assets (e.g. auto-discovered JS files) where we do not
-        want to walk/search a root directory.
+        Useful for component-adjacent assets (e.g., auto-discovered JS files).
+
+        Args:
+            directory: The directory to check.
+            filename: The filename to look for.
+
+        Returns:
+            The full path to the file if it exists, or None otherwise.
         """
         candidate_path = os.path.join(directory, filename)
         if os.path.exists(candidate_path):
@@ -79,10 +102,18 @@ class Finder:
 
     @staticmethod
     def get_class_directory(component_class: type) -> str:
-        """Return the directory containing the given class' source file, with normalized separators.
+        """
+        Return the directory containing the given class's source file.
+
+        Args:
+            component_class: The class to locate.
+
+        Returns:
+            The directory path with normalized separators.
 
         Example:
-            component_class=Button -> /app/components/ui/button.py
+            >>> Finder.get_class_directory(Button)
+            '/app/components/ui'
         """
         return normalize_path_separators(
             os.path.dirname(inspect.getfile(component_class))
@@ -95,8 +126,17 @@ class Finder:
         """
         Compute the template path relative to the Jinja loader root.
 
-        Example: component_dir=/app/components/ui, search_root=/app, component_name=Button
-        -> components/ui/button.html
+        Args:
+            component_dir: Absolute path to the component's directory.
+            search_root: The Jinja loader's root directory.
+            component_name: The PascalCase component name.
+
+        Returns:
+            The relative template path (e.g., "components/ui/button.html").
+
+        Example:
+            >>> Finder.get_relative_template_path("/app/components/ui", "/app", "Button")
+            'components/ui/button.html'
         """
         relative_dir = normalize_path_separators(
             os.path.relpath(component_dir, search_root)
@@ -115,7 +155,14 @@ class Finder:
         """
         Compute candidate template paths relative to the Jinja loader root.
 
-        Order matters: earlier entries are preferred during auto-lookup.
+        Args:
+            component_dir: Absolute path to the component's directory.
+            search_root: The Jinja loader's root directory.
+            component_name: The PascalCase component name.
+            extensions: File extensions to try, in order of preference.
+
+        Returns:
+            List of relative template paths to try during auto-lookup.
         """
         relative_dir = normalize_path_separators(
             os.path.relpath(component_dir, search_root)
@@ -129,10 +176,16 @@ class Finder:
 
     def find(self, filename: str) -> str:
         """
-        Return the full path to the first file named `filename` found under `root`.
+        Find a file by name under the root directory.
+
+        Args:
+            filename: The filename to search for.
+
+        Returns:
+            The full path to the first matching file.
 
         Raises:
-            FileNotFoundError: if the file cannot be found under root.
+            FileNotFoundError: If the file cannot be found under root.
         """
         self._build_index()
         found_path = self._index.get(filename)
@@ -142,10 +195,22 @@ class Finder:
 
     def find_template_for_tag(self, tag_name: str) -> str:
         """
-        Resolve a PascalCase component tag name to the corresponding template path.
+        Resolve a PascalCase component tag name to its template path.
+
+        Tries multiple extensions (.html, .jinja) in order of preference.
+
+        Args:
+            tag_name: The PascalCase component tag name (e.g., "ButtonGroup").
+
+        Returns:
+            The full path to the template file.
+
+        Raises:
+            FileNotFoundError: If no matching template is found.
 
         Example:
-            tag_name="ButtonGroup" -> find("button_group.html")
+            >>> finder.find_template_for_tag("ButtonGroup")
+            '/app/components/button_group.html'
         """
         last_error: FileNotFoundError | None = None
         for candidate_filename in tag_name_to_template_filenames(tag_name):

@@ -22,7 +22,13 @@ if TYPE_CHECKING:
 
 @dataclass
 class RenderSession:
-    """Per-root-render state for script aggregation and deduplication."""
+    """
+    Per-render state for script aggregation and deduplication.
+
+    Attributes:
+        scripts: Collected JavaScript code snippets to inject.
+        collected_js_files: Set of JS file paths already processed (for deduplication).
+    """
 
     scripts: list[str] = field(default_factory=list)
     collected_js_files: set[str] = field(default_factory=set)
@@ -49,7 +55,12 @@ class Renderer:
 
     @classmethod
     def peek_default_environment(cls) -> Environment | None:
-        """Return the currently configured default environment, without auto-initializing it."""
+        """
+        Return the currently configured default environment without auto-initializing.
+
+        Returns:
+            The default Jinja Environment, or None if not yet configured.
+        """
         return cls._default_environment
 
     @classmethod
@@ -57,17 +68,11 @@ class Renderer:
         cls, environment: Environment | str | os.PathLike[str] | None
     ) -> None:
         """
-        Set or clear the process-wide default Jinja environment used by `get_default_renderer()`.
-
-        Passing None resets auto-detection behavior.
+        Set or clear the process-wide default Jinja environment.
 
         Args:
-            environment: The Jinja environment to use, or a path to a directory containing templates.
-                        If a path, a new `Environment(loader=FileSystemLoader(...))` is created.
-                        If None, the default environment is cleared.
-
-        Returns:
-            The created `Environment` instance, or None if the environment was cleared.
+            environment: A Jinja Environment instance, a path to a template directory,
+                or None to clear the default and reset to auto-detection.
         """
         if environment is None or isinstance(environment, Environment):
             cls._default_environment = environment
@@ -79,7 +84,14 @@ class Renderer:
 
     @classmethod
     def get_default_environment(cls) -> Environment:
-        """Return the default environment, initializing it via root auto-detection if needed."""
+        """
+        Return the default Jinja environment, auto-initializing if needed.
+
+        If no environment is configured, one is created using auto-detected project root.
+
+        Returns:
+            The default Jinja Environment instance.
+        """
         if cls._default_environment is None:
             root_dir = detect_root_directory()
             cls._default_environment = Environment(loader=FileSystemLoader(root_dir))
@@ -90,7 +102,11 @@ class Renderer:
         """
         Return a cached default renderer instance.
 
-        The renderer is cached by (environment identity, auto_id).
+        Args:
+            auto_id: If True, generate UUIDs for components without explicit IDs.
+
+        Returns:
+            A Renderer instance cached by (environment identity, auto_id).
         """
         environment = cls.get_default_environment()
         cache_key = (id(environment), auto_id)
@@ -102,11 +118,21 @@ class Renderer:
 
     @property
     def environment(self) -> Environment:
-        """Return the Jinja Environment used by this renderer."""
+        """
+        The Jinja Environment used by this renderer.
+
+        Returns:
+            The Jinja Environment instance.
+        """
         return self._environment
 
     def new_session(self) -> RenderSession:
-        """Create a new root render session."""
+        """
+        Create a new render session for tracking scripts during rendering.
+
+        Returns:
+            A fresh RenderSession instance.
+        """
         return RenderSession()
 
     def _get_loader_root(self) -> str:
@@ -382,7 +408,17 @@ class Renderer:
 
     def render(self, source: str) -> str:
         """
-        Render an HTML-like source string containing PascalCase component tags.
+        Render an HTML-like source string, expanding PascalCase component tags into HTML.
+
+        PascalCase tags (e.g., `<MyButton text="OK">`) are matched to registered component
+        classes or template files and rendered recursively. Standard HTML is passed through
+        unchanged. Associated JavaScript files are collected and injected as a `<script>` block.
+
+        Args:
+            source: HTML-like string containing component tags to render.
+
+        Returns:
+            The fully rendered HTML string with all components expanded.
         """
         parser = Parser()
         parser.feed(source)
