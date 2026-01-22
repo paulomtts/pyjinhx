@@ -85,4 +85,3 @@ Now that you've created your first component, learn more about:
 
 - [Creating Components](../guide/components.md) - Component fields, validation, and templates
 - [Nesting Components](../guide/nesting.md) - Compose components together
-- [Template Rendering](../guide/template-rendering.md) - Use HTML-like syntax

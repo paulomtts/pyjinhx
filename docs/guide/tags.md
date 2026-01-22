@@ -108,7 +108,7 @@ Because the tag is PascalCase:
 
 ## See next
 
-Next, see [Template Rendering](template-rendering.md) for:
+Next, see [Rendering](rendering.md) for:
 
 - Nested PascalCase components
 - The `content` variable

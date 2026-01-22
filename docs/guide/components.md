@@ -33,7 +33,7 @@ PyJinHX uses **Jinja2** templates for it's components:
 ```
 
 !!! tip "You can use PascalCase components inside templates"
-    You can even use [PascalCase components](pascalcase-components.md) as custom tags **inside your component templates**. This lets you compose components by nesting, like `<Button .../>` or `<UserCard>...</UserCard>`, directly within other templates. PyJinHx will automatically discover and render them as components.
+    You can even use PascalCase components as custom tags **inside your component templates**. This lets you compose components by nesting, like `<Button .../>` or `<UserCard>...</UserCard>`, directly within other templates. PyJinHx will automatically discover and render them as components.
 
 
 ## The `id` Field
