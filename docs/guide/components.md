@@ -20,6 +20,8 @@ class Card(BaseComponent):
 
 ### 2. HTML Template
 
+PyJinHX uses **Jinja2** templates for it's components:
+
 ```html
 <!-- card.html -->
 <div id="{{ id }}" class="card">
@@ -30,48 +32,38 @@ class Card(BaseComponent):
 </div>
 ```
 
-## Field Types
-
-Components support all Pydantic field types:
-
-```python
-from pyjinhx import BaseComponent
+!!! tip "You can use PascalCase components inside templates"
+    You can even use [PascalCase components](pascalcase-components.md) as custom tags **inside your component templates**. This lets you compose components by nesting, like `<Button .../>` or `<UserCard>...</UserCard>`, directly within other templates. PyJinHx will automatically discover and render them as components.
 
 
-class UserProfile(BaseComponent):
-    id: str
-    name: str
-    age: int
-    email: str | None = None
-    tags: list[str] = []
-    is_active: bool = True
-```
+## The `id` Field
 
-## Validation
-
-Pydantic validation works out of the box:
+Every component requires an `id`:
 
 ```python
-from pydantic import Field, field_validator
-from pyjinhx import BaseComponent
-
-
-class Rating(BaseComponent):
-    id: str
-    score: int = Field(ge=1, le=5)  # Must be 1-5
-
-    @field_validator("score")
-    @classmethod
-    def validate_score(cls, v):
-        if v < 1 or v > 5:
-            raise ValueError("Score must be between 1 and 5")
-        return v
+button = Button(id="submit", text="Submit")  # OK
+button = Button(text="Submit")  # Error: id is required
 ```
 
-```python
-rating = Rating(id="r1", score=3)  # OK
-rating = Rating(id="r2", score=10) # Raises ValidationError
-```
+!!! tip "Customizing the `id` Field"
+    You can override the `id` field in your component to automatically generate a value using Pydantic's `default_factory`. For example, to have a random UUID assigned if no `id` is passed:
+
+    ```python
+    import uuid
+    from pyjinhx import BaseComponent
+    from pydantic import Field
+
+    class MyComponent(BaseComponent):
+        id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+        # ... other fields ...
+    ```
+
+    This way, when you instantiate `MyComponent()` without providing an `id`, a unique value will be generated.
+
+
+!!! tip "Auto-generated IDs"
+    When using `Renderer` with `auto_id=True`, IDs are generated automatically for template-side rendering.
+
 
 ## Template Discovery
 
@@ -83,62 +75,28 @@ Templates are automatically discovered based on the class name:
 | `ActionButton` | `action_button.html` or `action_button.jinja` |
 | `UserCard` | `user_card.html` or `user_card.jinja` |
 
-Templates must be in the same directory as the Python class file.
-
-## Rendering
-
-### Using `.render()`
-
-```python
-card = Card(id="main", title="Welcome")
-html = card.render()
-```
-
-### Using in Jinja Templates
-
-Components implement `__html__`, so you can use them directly:
-
-```html
-<!-- In a parent template -->
-{{ card }}
-
-<!-- Equivalent to -->
-{{ card.render() }}
-```
+!!! warning "Template Location Requirement"
+    Templates must be in the same directory as the Python class file.
 
 ## Extra Fields
 
-Components allow extra fields via Pydantic's `extra="allow"`:
+Normally, if you pass extra fields to a class that inherits from Pydantic's `BaseModel`, it will raise an error:
 
 ```python
-button = Button(
-    id="btn1",
-    text="Click",
-    data_action="submit",  # Extra field
-    aria_label="Submit form"  # Extra field
-)
+from pydantic import BaseModel
+class Example(BaseModel):
+    foo: int
+
+Example(foo=1, bar=2)  # Raises ValidationError: extra fields not permitted
 ```
 
-These are available in the template context:
-
-```html
-<button
-    id="{{ id }}"
-    data-action="{{ data_action }}"
-    aria-label="{{ aria_label }}"
->
-    {{ text }}
-</button>
-```
-
-## The `id` Field
-
-Every component requires an `id`:
+With `BaseComponent`, **extra fields are simply ignored during rendering**. This allows you to pass dictionaries or data objects with additional fields—only those specified in the component's signature are used. This is particularly useful when passing data from dynamic sources.
 
 ```python
-button = Button(id="submit", text="Submit")  # OK
-button = Button(text="Submit")  # Error: id is required
-```
+from pyjinhx import BaseComponent
 
-!!! tip "Auto-generated IDs"
-    When using `Renderer` with `auto_id=True`, IDs are generated automatically for template-side rendering.
+class Example(BaseComponent):
+    foo: int
+
+ex = Example(foo=1, bar=2)  # No error! 'bar' is just ignored
+```

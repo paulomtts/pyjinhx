@@ -1,6 +1,6 @@
-# JavaScript & Assets
+# JavaScript Collection
 
-PyJinHx automatically handles JavaScript files and extra HTML assets for your components.
+PyJinHx automatically handles JavaScript file collection.
 
 ## Automatic JavaScript Collection
 
@@ -45,73 +45,7 @@ Output:
 
 JavaScript is collected once per render session. If the same component type is rendered multiple times, the script is only included once.
 
-## Extra JavaScript Files
-
-Add additional JavaScript files using the `js` field:
-
-```python
-widget = MyWidget(
-    id="w1",
-    title="Hello",
-    js=[
-        "path/to/helper.js",
-        "path/to/another.js"
-    ]
-)
-```
-
-!!! note
-    Missing files are silently ignored. This allows optional JavaScript dependencies.
-
-## Static File Serving
-
-For production deployments, you may want to serve JavaScript files statically rather than inlining them. Use `Finder.collect_javascript_files()` to get a list of all JavaScript files in your components directory:
-
-```python
-from pyjinhx import Finder
-
-finder = Finder(root="./components")
-
-# Get absolute paths
-js_files = finder.collect_javascript_files()
-# ['/app/components/ui/button.js', '/app/components/ui/dropdown.js', ...]
-
-# Get relative paths (useful for URL generation)
-js_files = finder.collect_javascript_files(relative_to_root=True)
-# ['ui/button.js', 'ui/dropdown.js', ...]
-```
-
-### Example: FastAPI Static Files
-
-```python
-from fastapi import FastAPI
-from fastapi.staticfiles import StaticFiles
-from pyjinhx import Finder
-
-app = FastAPI()
-
-# Mount components directory for static JS serving
-app.mount("/static/components", StaticFiles(directory="components"), name="components")
-
-# Get list of JS files for inclusion in HTML
-finder = Finder(root="./components")
-js_files = finder.collect_javascript_files(relative_to_root=True)
-
-@app.get("/")
-def index():
-    scripts = "\n".join(
-        f'<script src="/static/components/{js}"></script>'
-        for js in js_files
-    )
-    return f"""
-    <html>
-        <head>{scripts}</head>
-        <body>...</body>
-    </html>
-    """
-```
-
-## Script Injection Location
+### Script Injection Location
 
 Scripts are injected at the beginning of the rendered output for root components:
 
@@ -126,7 +60,7 @@ Scripts are injected at the beginning of the rendered output for root components
 
 Nested component scripts are aggregated and injected at the root level, not inline with each component.
 
-## Disabling Inline JavaScript
+### Disabling Inline JavaScript
 
 To serve JavaScript files statically instead of inlining them, disable inline JS collection:
 
@@ -149,7 +83,25 @@ When `inline_js=False`:
 
 See [Static File Serving](#static-file-serving) for how to serve JS files.
 
-## Example: Component with Assets
+### Extra JavaScript Files
+
+Add additional JavaScript files using the `js` field:
+
+```python
+widget = MyWidget(
+    id="w1",
+    title="Hello",
+    js=[
+        "path/to/helper.js",
+        "path/to/another.js"
+    ]
+)
+```
+
+!!! note
+    Missing files are silently ignored. This allows optional JavaScript dependencies.
+
+### Example: Component with Assets
 
 ```
 components/
@@ -214,4 +166,53 @@ document.querySelectorAll('.dropdown').forEach(el => {
     <option value="Canada" selected>Canada</option>
     <option value="Mexico">Mexico</option>
 </select>
+```
+
+
+## Static File Serving
+
+For production deployments, you may want to serve JavaScript files statically rather than inlining them. Use `Finder.collect_javascript_files()` to get a list of all JavaScript files in your components directory:
+
+```python
+from pyjinhx import Finder
+
+finder = Finder(root="./components")
+
+# Get absolute paths
+js_files = finder.collect_javascript_files()
+# ['/app/components/ui/button.js', '/app/components/ui/dropdown.js', ...]
+
+# Get relative paths (useful for URL generation)
+js_files = finder.collect_javascript_files(relative_to_root=True)
+# ['ui/button.js', 'ui/dropdown.js', ...]
+```
+
+### Example: FastAPI Static Files
+
+```python
+from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
+from pyjinhx import Finder
+
+app = FastAPI()
+
+# Mount components directory for static JS serving
+app.mount("/static/components", StaticFiles(directory="components"), name="components")
+
+# Get list of JS files for inclusion in HTML
+finder = Finder(root="./components")
+js_files = finder.collect_javascript_files(relative_to_root=True)
+
+@app.get("/")
+def index():
+    scripts = "\n".join(
+        f'<script src="/static/components/{js}"></script>'
+        for js in js_files
+    )
+    return f"""
+    <html>
+        <head>{scripts}</head>
+        <body>...</body>
+    </html>
+    """
 ```

@@ -1,128 +1,155 @@
 # Renderer
 
-The rendering engine for HTML-like component syntax.
+Shared rendering engine used by `BaseComponent` rendering and HTML-like custom-tag rendering.
 
-## Overview
+## Class
 
-`Renderer` parses HTML-like strings containing PascalCase component tags and renders them to HTML.
+### Renderer
+
+This renderer centralizes:
+- Jinja template loading (by component class or explicit file/source)
+- Expansion of PascalCase custom tags inside rendered markup
+- JavaScript collection/deduping and root-level script injection
+- Rendering of HTML-like source strings into component output
+
+#### Constructor
+
+##### __init__()
 
 ```python
-from pyjinhx import Renderer
-
-renderer = Renderer.get_default_renderer()
-html = renderer.render('<Button text="Click me"/>')
+def __init__(
+    environment: Environment,
+    *,
+    auto_id: bool = True,
+    inline_js: bool | None = None
+) -> None
 ```
 
-## API Reference
+Initialize a Renderer with the given Jinja environment.
 
-::: pyjinhx.Renderer
-    options:
-      members:
-        - __init__
-        - render
-        - environment
-        - new_session
-        - get_default_renderer
-        - get_default_environment
-        - set_default_environment
-        - set_default_inline_js
-        - peek_default_environment
-      show_root_heading: true
-      heading_level: 3
+**Parameters:**
+- `environment` (Environment): The Jinja2 Environment to use for template rendering
+- `auto_id` (bool): If True (default), generate UUIDs for components without explicit IDs
+- `inline_js` (bool | None): If True, JavaScript is collected and injected as `<script>` tags. If False, no scripts are injected. Defaults to the class-level setting
+
+#### Class Methods
+
+##### get_default_renderer()
+
+```python
+@classmethod
+def get_default_renderer(
+    *,
+    auto_id: bool = True,
+    inline_js: bool | None = None
+) -> Renderer
+```
+
+Return a cached default renderer instance.
+
+**Parameters:**
+- `auto_id` (bool): If True, generate UUIDs for components without explicit IDs
+- `inline_js` (bool | None): If True, JavaScript is collected and injected as `<script>` tags. If False, no scripts are injected. Defaults to the class-level setting
+
+**Returns:** A Renderer instance cached by (environment identity, auto_id, inline_js).
+
+##### get_default_environment()
+
+```python
+@classmethod
+def get_default_environment() -> Environment
+```
+
+Return the default Jinja environment, auto-initializing if needed.
+
+If no environment is configured, one is created using auto-detected project root.
+
+**Returns:** The default Jinja Environment instance.
+
+##### set_default_environment()
+
+```python
+@classmethod
+def set_default_environment(
+    environment: Environment | str | os.PathLike[str] | None
+) -> None
+```
+
+Set or clear the process-wide default Jinja environment.
+
+**Parameters:**
+- `environment` (Environment | str | os.PathLike[str] | None): A Jinja Environment instance, a path to a template directory, or None to clear the default and reset to auto-detection
+
+##### set_default_inline_js()
+
+```python
+@classmethod
+def set_default_inline_js(inline_js: bool) -> None
+```
+
+Set the process-wide default for inline JavaScript injection.
+
+**Parameters:**
+- `inline_js` (bool): If True (default), JavaScript is collected and injected as `<script>` tags. If False, no scripts are injected. Use Finder.collect_javascript_files() for static serving.
+
+##### peek_default_environment()
+
+```python
+@classmethod
+def peek_default_environment() -> Environment | None
+```
+
+Return the currently configured default environment without auto-initializing.
+
+**Returns:** The default Jinja Environment, or None if not yet configured.
+
+#### Properties
+
+##### environment
+
+```python
+@property
+def environment() -> Environment
+```
+
+The Jinja Environment used by this renderer.
+
+**Returns:** The Jinja Environment instance.
+
+#### Instance Methods
+
+##### render()
+
+```python
+def render(source: str) -> str
+```
+
+Render an HTML-like source string, expanding PascalCase component tags into HTML.
+
+PascalCase tags (e.g., `<MyButton text="OK">`) are matched to registered component classes or template files and rendered recursively. Standard HTML is passed through unchanged. Associated JavaScript files are collected and injected as a `<script>` block.
+
+**Parameters:**
+- `source` (str): HTML-like string containing component tags to render
+
+**Returns:** The fully rendered HTML string with all components expanded.
+
+##### new_session()
+
+```python
+def new_session() -> RenderSession
+```
+
+Create a new render session for tracking scripts during rendering.
+
+**Returns:** A fresh RenderSession instance.
 
 ## RenderSession
 
-::: pyjinhx.renderer.RenderSession
-    options:
-      show_root_heading: true
-      heading_level: 3
+Per-render state for script aggregation and deduplication.
 
-## Usage Examples
+### Fields
 
-### Default Renderer
-
-```python
-from pyjinhx import Renderer
-
-# Auto-detects project root
-renderer = Renderer.get_default_renderer()
-html = renderer.render('<Header title="My Site"/>')
-```
-
-### Custom Template Path
-
-```python
-Renderer.set_default_environment("./components")
-renderer = Renderer.get_default_renderer()
-```
-
-### With Jinja Environment
-
-```python
-from jinja2 import Environment, FileSystemLoader
-from pyjinhx import Renderer
-
-env = Environment(loader=FileSystemLoader("./templates"))
-renderer = Renderer(env, auto_id=True)
-```
-
-### Disabling Auto-ID
-
-```python
-renderer = Renderer.get_default_renderer(auto_id=False)
-
-# Must provide explicit IDs
-html = renderer.render('<Button id="my-btn" text="Click"/>')
-```
-
-### Disabling Inline JavaScript
-
-```python
-from pyjinhx import Renderer
-
-# Option 1: Global default (affects BaseComponent.render() too)
-Renderer.set_default_inline_js(False)
-
-# Option 2: Per-renderer
-renderer = Renderer.get_default_renderer(inline_js=False)
-```
-
-### Nested Components
-
-```python
-html = renderer.render("""
-    <Page title="Home">
-        <Card title="Welcome">
-            <Button text="Get Started"/>
-        </Card>
-    </Page>
-""")
-```
-
-### Mixed Content
-
-```python
-html = renderer.render("""
-    <Panel>
-        Some text before
-        <Button text="Action"/>
-        Some text after
-    </Panel>
-""")
-```
-
-## How It Works
-
-1. **Parsing**: The renderer uses an HTML parser to identify PascalCase tags
-2. **Class Lookup**: For each tag, it checks if a `BaseComponent` subclass is registered
-3. **Instantiation**: Creates component instances with attributes as fields
-4. **Rendering**: Calls `_render()` on each component recursively
-5. **Script Injection**: Collects JavaScript and injects it at the root level
-
-## Tag Resolution
-
-| Tag | Registered Class? | Result |
-|-----|-------------------|--------|
-| `<Button text="X"/>` | Yes (`Button`) | Uses `Button` class with validation |
-| `<Custom attr="Y"/>` | No | Uses generic `BaseComponent` with `custom.html` |
-| `<div class="x">` | N/A (lowercase) | Passed through unchanged |
+| Field | Type | Description |
+|-------|------|-------------|
+| `scripts` | `list[str]` | Collected JavaScript code snippets to inject |
+| `collected_js_files` | `set[str]` | Set of JS file paths already processed (for deduplication) |

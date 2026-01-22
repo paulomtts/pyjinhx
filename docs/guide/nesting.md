@@ -1,8 +1,8 @@
-# Nesting Components
+# Nesting
 
 PyJinHx makes it easy to compose components together. You can nest single components, lists of components, or dictionaries of components.
 
-## Single Component Nesting
+## Direct Nesting
 
 Pass a component as a field value:
 
@@ -100,6 +100,22 @@ group = ButtonGroup(
 </div>
 ```
 
+### Mixed Collections
+
+Combine different types in lists and dicts:
+
+```python
+class Container(BaseComponent):
+    id: str
+    items: list[Button | Card | Widget]
+```
+
+```html
+{% for item in items %}
+    <div class="item">{{ item }}</div>
+{% endfor %}
+```
+
 ## Dictionaries of Components
 
 Use dictionaries for named component collections:
@@ -128,6 +144,18 @@ dashboard = Dashboard(
         "footer": Widget(id="foot", content="Footer"),
     }
 )
+```
+
+## Wrappers
+
+The inner content of a tag becomes `{{ content }}` in the component template:
+
+```python
+html = renderer.render("""
+    <Card title="Note">
+        This text becomes the content variable.
+    </Card>
+""")
 ```
 
 ## Deep Nesting
@@ -167,34 +195,3 @@ html = page.render()
 ```
 
 The rendering happens recursively - nested components are rendered before their parents.
-
-## Component Reuse
-
-The same component instance can be used multiple times:
-
-```python
-shared_button = Button(id="shared", text="Click")
-
-group = ButtonGroup(
-    id="actions",
-    buttons=[shared_button, shared_button, shared_button]
-)
-```
-
-Each reference renders the same HTML.
-
-## Mixed Collections
-
-Combine different types in lists and dicts:
-
-```python
-class Container(BaseComponent):
-    id: str
-    items: list[Button | Card | Widget]
-```
-
-```html
-{% for item in items %}
-    <div class="item">{{ item }}</div>
-{% endfor %}
-```

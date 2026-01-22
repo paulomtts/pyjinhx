@@ -1,121 +1,65 @@
 # BaseComponent
 
-The base class for all PyJinHx components.
+Base class for defining reusable UI components with Pydantic validation and Jinja2 templating.
 
-## Overview
+## Class
 
-`BaseComponent` combines Pydantic's validation with Jinja2 templating to create reusable UI components.
+### BaseComponent
+
+Subclasses are automatically registered and can be rendered using their corresponding HTML/Jinja templates. Components support nested composition, automatic JavaScript collection, and can be used directly in Jinja templates via the `__html__` protocol.
+
+#### Fields
+
+| Field | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `id` | `str` | Yes | - | Unique identifier for the component instance |
+| `js` | `list[str]` | No | `[]` | Paths to additional JavaScript files to include when rendering |
+
+Components accept extra fields beyond those defined in the class. Extra fields are passed through to the template context.
+
+#### Methods
+
+##### render()
 
 ```python
-from pyjinhx import BaseComponent
-
-
-class Button(BaseComponent):
-    id: str
-    text: str
-    variant: str = "default"
+def render() -> Markup
 ```
 
-## API Reference
+Render this component to HTML using its associated Jinja template.
 
-::: pyjinhx.BaseComponent
-    options:
-      members:
-        - render
-        - __html__
-      show_root_heading: true
-      heading_level: 3
+The template is auto-discovered based on the component class name (e.g., `MyButton` looks for `my_button.html` or `my_button.jinja`). All component fields are available in the template context, and nested components are rendered recursively.
+
+**Returns:** The rendered HTML as a Markup object (safe for direct use in templates).
+
+##### __html__()
+
+```python
+def __html__() -> Markup
+```
+
+Render the component when used in a Jinja template context.
+
+Enables cleaner template syntax: `{{ component }}` instead of `{{ component.render() }}`.
+
+**Returns:** The rendered HTML as a Markup object.
 
 ## NestedComponentWrapper
 
-When components are nested, they're wrapped in `NestedComponentWrapper` to provide access to both rendered HTML and original props.
+A wrapper for nested components. Enables access to the component's properties and rendered HTML.
 
-::: pyjinhx.base.NestedComponentWrapper
-    options:
-      show_root_heading: true
-      heading_level: 3
-
-## Fields
-
-### Required Fields
+### Fields
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `id` | `str` | Unique identifier for the component instance |
+| `html` | `str` | The rendered HTML string of the nested component |
+| `props` | `BaseComponent \| None` | The original component instance, or None for template-only components |
 
-### Optional Fields
+### Methods
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `js` | `list[str]` | `[]` | Paths to extra JavaScript files |
-
-## Usage Examples
-
-### Basic Component
+##### __str__()
 
 ```python
-from pyjinhx import BaseComponent
-
-
-class Alert(BaseComponent):
-    id: str
-    message: str
-    level: str = "info"
-
-
-alert = Alert(id="warning", message="Please confirm", level="warning")
-html = alert.render()
+def __str__() -> Markup
 ```
 
-### With Nested Components
-
-```python
-class Card(BaseComponent):
-    id: str
-    title: str
-    action: Button
-
-
-card = Card(
-    id="hero",
-    title="Welcome",
-    action=Button(id="cta", text="Get Started")
-)
-```
-
-### With Extra Assets
-
-```python
-widget = Widget(
-    id="w1",
-    title="Dashboard",
-    js=["path/to/chart.js"],
-)
-```
-
-### Extra Fields
-
-Components accept extra fields:
-
-```python
-button = Button(
-    id="submit",
-    text="Submit",
-    data_loading="true",  # Extra field
-    aria_label="Submit form"  # Extra field
-)
-```
-
-## Template Context
-
-All component fields are available in the template:
-
-```html
-<button
-    id="{{ id }}"
-    class="btn btn-{{ variant }}"
-    {% if data_loading %}data-loading="{{ data_loading }}"{% endif %}
->
-    {{ text }}
-</button>
-```
+Returns the rendered HTML when the wrapper is used in a template context.

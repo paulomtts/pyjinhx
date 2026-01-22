@@ -4,16 +4,14 @@ This guide walks you through creating your first PyJinHx component.
 
 ## Project Structure
 
-A typical PyJinHx project looks like this:
+A typical PyJinHx components folder looks like this:
 
 ```
 my_project/
-├── components/
-│   └── ui/
-│       ├── button.py      # Component class
-│       └── button.html    # Component template
-├── main.py
-└── pyproject.toml
+└── components/
+    └── ui/
+        ├── button.py      # Component class
+        └── button.html    # Component template
 ```
 
 ## Step 1: Create a Component Class
@@ -60,7 +58,7 @@ from pyjinhx import Renderer
 # Set the template search path
 Renderer.set_default_environment("./components")
 
-from components.ui.button import Button
+from .components.ui.button import Button
 
 # Create and render
 button = Button(

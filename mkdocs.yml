@@ -62,18 +62,18 @@ nav:
       - Quick Start: getting-started/quickstart.md
   - Guide:
       - Creating Components: guide/components.md
-      - Nesting Components: guide/nesting.md
-      - Template Rendering: guide/template-rendering.md
-      - JavaScript & Assets: guide/assets.md
+      - PascalCase Tags: guide/tags.md
+      - Nesting: guide/nesting.md
+      - Rendering: guide/rendering.md
+      - JavaScript Collection: guide/assets.md
       - Configuration: guide/configuration.md
   - Integrations:
-      - FastAPI + HTMX: integrations/fastapi-htmx.md
+      - FastAPI: integrations/fastapi.md
+      - HTMX: integrations/htmx.md
+      - WebAwesome: integrations/webawesome.md
   - API Reference:
       - BaseComponent: api/base-component.md
       - Renderer: api/renderer.md
-      - Registry: api/registry.md
-      - Finder: api/finder.md
-      - Utilities: api/utilities.md
 
 extra:
   social:

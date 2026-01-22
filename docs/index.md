@@ -7,9 +7,8 @@ PyJinHx combines **Pydantic models** with **Jinja2 templates** to give you templ
 ## Features
 
 - **Automatic Template Discovery** - Place templates next to component files, no manual paths needed
-- **JavaScript Bundling** - Automatically collects and bundles `.js` files from component directories
 - **Composability** - Nest components easily with single components, lists, and dictionaries
-- **Flexible** - Use Python classes for reusable components, HTML syntax for quick page composition
+- **JavaScript Bundling** - Automatically collects and bundles `.js` files from component directories
 - **Type Safety** - Pydantic models provide validation and IDE support
 
 ## Two Ways to Render
