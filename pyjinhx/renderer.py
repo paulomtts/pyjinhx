@@ -302,7 +302,8 @@ class Renderer:
 
         attrs_without_id = {k: v for k, v in node.attrs.items() if k != "id"}
 
-        existing_instance = Registry.get_instances().get(component_id)
+        registry_key = Registry.make_key(node.name, component_id)
+        existing_instance = Registry.get_instances().get(registry_key)
         if existing_instance is not None:
             instance_class_name = type(existing_instance).__name__
             if instance_class_name != node.name:
@@ -359,7 +360,7 @@ class Renderer:
             )
             # Remove from registry - fallback instances should not persist
             # across renders to avoid TypeError on subsequent renders
-            Registry.get_instances().pop(component_id, None)
+            Registry.get_instances().pop(Registry.make_key("BaseComponent", component_id), None)
 
         return str(
             component._render(
@@ -412,7 +413,8 @@ class Renderer:
         )
 
         render_context = dict(context)
-        render_context.update(Registry.get_instances())
+        for component in Registry.get_instances().values():
+            render_context[component.id] = component
 
         rendered_markup = template.render(render_context)
         rendered_markup = self._expand_custom_tags(

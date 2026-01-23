@@ -233,6 +233,75 @@ def index():
 </html>
 ```
 
+## Request-Scoped Registry
+
+When handling multiple requests, component instances registered in one request can persist and cause "Overwriting..." warnings on subsequent requests that use the same component IDs. The `Registry.request_scope()` context manager solves this by providing isolated registries per request.
+
+### Basic Usage
+
+```python
+from fastapi import FastAPI
+from fastapi.responses import HTMLResponse
+
+from pyjinhx import Registry, Renderer
+from components.ui.button import Button
+
+Renderer.set_default_environment("./components")
+
+app = FastAPI()
+
+
+@app.get("/", response_class=HTMLResponse)
+def index() -> str:
+    with Registry.request_scope():
+        # Components registered here are isolated to this request
+        return f"""
+        <!DOCTYPE html>
+        <html>
+        <body>
+            {Button(id="submit-btn", text="Submit").render()}
+        </body>
+        </html>
+        """
+```
+
+### Using Middleware
+
+For application-wide coverage, use middleware to wrap all requests:
+
+```python
+from starlette.middleware.base import BaseHTTPMiddleware
+
+
+class RegistryScopeMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request, call_next):
+        with Registry.request_scope():
+            return await call_next(request)
+
+
+app.add_middleware(RegistryScopeMiddleware)
+
+
+# Now all routes automatically have isolated registries
+@app.get("/", response_class=HTMLResponse)
+def index() -> str:
+    return f"""
+    <!DOCTYPE html>
+    <html>
+    <body>
+        {Button(id="submit-btn", text="Submit").render()}
+    </body>
+    </html>
+    """
+```
+
+### How It Works
+
+- On entering the context, a fresh empty registry is created
+- Components instantiated inside the scope are registered in this isolated registry
+- On exiting the context (even if an exception occurs), the previous registry state is restored
+- Nested scopes are supported—each creates its own isolated registry
+
 ## Tips
 
 ### Component JavaScript

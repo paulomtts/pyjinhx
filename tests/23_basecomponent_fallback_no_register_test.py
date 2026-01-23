@@ -25,7 +25,8 @@ def test_fallback_basecomponent_not_registered():
         assert '<div id="reserved-panel" class="panel">Content 1</div>' == rendered1
 
         # The fallback BaseComponent should NOT be in the registry
-        assert "reserved-panel" not in Registry.get_instances()
+        key = Registry.make_key("BaseComponent", "reserved-panel")
+        assert key not in Registry.get_instances()
 
 
 def test_repeated_renders_with_same_id_no_error():
@@ -71,5 +72,6 @@ def test_registered_class_still_works():
         assert '<span id="my-widget">Hello</span>' == rendered
 
         # The Widget instance SHOULD be in the registry (it's a proper class, not fallback)
-        assert "my-widget" in Registry.get_instances()
-        assert type(Registry.get_instances()["my-widget"]).__name__ == "Widget"
+        key = Registry.make_key("Widget", "my-widget")
+        assert key in Registry.get_instances()
+        assert type(Registry.get_instances()[key]).__name__ == "Widget"

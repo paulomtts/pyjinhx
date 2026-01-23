@@ -1,4 +1,5 @@
 import logging
+from contextlib import contextmanager
 from contextvars import ContextVar
 from typing import TYPE_CHECKING, ClassVar
 
@@ -8,8 +9,8 @@ if TYPE_CHECKING:
     from .base import BaseComponent
 
 
-_registry_context: ContextVar[dict[str, "BaseComponent"]] = ContextVar(
-    "component_registry", default={}
+_registry_context: ContextVar[dict[str, "BaseComponent"] | None] = ContextVar(
+    "component_registry", default=None
 )
 
 
@@ -60,6 +61,11 @@ class Registry:
         cls._class_registry.clear()
 
     @classmethod
+    def make_key(cls, class_name: str, instance_id: str) -> str:
+        """Generate a registry key from component class name and instance ID."""
+        return f"{class_name}_{instance_id}"
+
+    @classmethod
     def register_instance(cls, component: "BaseComponent") -> None:
         """
         Register a component instance by its ID.
@@ -69,12 +75,14 @@ class Registry:
         Args:
             component: The component instance to register.
         """
-        registry = _registry_context.get()
-        if component.id in registry:
+        registry = cls.get_instances()
+        key = cls.make_key(type(component).__name__, component.id)
+        if key in registry:
             logger.warning(
-                f"While registering{component.__class__.__name__}(id={component.id}) found an existing component with the same id. Overwriting..."
+                f"While registering {type(component).__name__}(id={component.id}) "
+                f"found an existing component with key '{key}'. Overwriting..."
             )
-        registry[component.id] = component
+        registry[key] = component
 
     @classmethod
     def get_instances(cls) -> dict[str, "BaseComponent"]:
@@ -84,9 +92,32 @@ class Registry:
         Returns:
             Dictionary mapping component IDs to component instances.
         """
-        return _registry_context.get()
+        registry = _registry_context.get()
+        if registry is None:
+            registry = {}
+            _registry_context.set(registry)
+        return registry
 
     @classmethod
     def clear_instances(cls) -> None:
         """Remove all registered component instances from the current context."""
         _registry_context.set({})
+
+    @classmethod
+    @contextmanager
+    def request_scope(cls):
+        """
+        Context manager for request-scoped component instances.
+
+        Creates a fresh instance registry on entry and restores
+        the previous state on exit.
+
+        Usage:
+            with Registry.request_scope():
+                # components registered here won't persist
+        """
+        token = _registry_context.set({})
+        try:
+            yield
+        finally:
+            _registry_context.reset(token)

@@ -60,8 +60,10 @@ def test_class_registry_separate_from_instance_registry():
     assert "TestComponent" in classes_after
     assert classes_after["TestComponent"] is TestComponent
     assert len(instances_after) == 2
-    assert "inst-1" in instances_after
-    assert "inst-2" in instances_after
+    key1 = Registry.make_key("TestComponent", "inst-1")
+    key2 = Registry.make_key("TestComponent", "inst-2")
+    assert key1 in instances_after
+    assert key2 in instances_after
 
 
 def test_class_registry_persists_across_instantiations():
