@@ -116,31 +116,6 @@ class Finder:
         )
 
     @staticmethod
-    def get_relative_template_path(
-        component_dir: str, search_root: str, component_name: str
-    ) -> str:
-        """
-        Compute the template path relative to the Jinja loader root.
-
-        Args:
-            component_dir: Absolute path to the component's directory.
-            search_root: The Jinja loader's root directory.
-            component_name: The PascalCase component name.
-
-        Returns:
-            The relative template path (e.g., "components/ui/button.html").
-
-        Example:
-            >>> Finder.get_relative_template_path("/app/components/ui", "/app", "Button")
-            'components/ui/button.html'
-        """
-        relative_dir = normalize_path_separators(
-            os.path.relpath(component_dir, search_root)
-        )
-        filename = f"{pascal_case_to_snake_case(component_name)}.html"
-        return f"{relative_dir}/{filename}"
-
-    @staticmethod
     def get_relative_template_paths(
         component_dir: str,
         search_root: str,
