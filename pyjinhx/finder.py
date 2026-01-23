@@ -7,6 +7,7 @@ from jinja2 import FileSystemLoader
 from .utils import (
     detect_root_directory,
     normalize_path_separators,
+    pascal_case_to_kebab_case,
     pascal_case_to_snake_case,
     tag_name_to_template_filenames,
 )
@@ -139,7 +140,12 @@ class Finder:
             os.path.relpath(component_dir, search_root)
         )
         snake_name = pascal_case_to_snake_case(component_name)
-        return [f"{relative_dir}/{snake_name}{extension}" for extension in extensions]
+        kebab_name = pascal_case_to_kebab_case(component_name)
+        candidates = []
+        for extension in extensions:
+            candidates.append(f"{relative_dir}/{snake_name}{extension}")
+            candidates.append(f"{relative_dir}/{kebab_name}{extension}")
+        return candidates
 
     def find(self, filename: str) -> str:
         """
