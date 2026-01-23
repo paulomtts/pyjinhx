@@ -292,6 +292,39 @@ class Renderer:
 
         attrs_without_id = {k: v for k, v in node.attrs.items() if k != "id"}
 
+        # Check for existing registered instance by ID
+        existing_instance = Registry.get_instances().get(component_id)
+        if existing_instance is not None:
+            # Validate type matches tag name
+            instance_class_name = type(existing_instance).__name__
+            if instance_class_name != node.name:
+                raise TypeError(
+                    f"Tag <{node.name}> references instance '{component_id}' "
+                    f"which is of type {instance_class_name}"
+                )
+
+            # Update instance with tag's content and attributes
+            if rendered_children:
+                existing_instance.content = rendered_children
+            for key, value in attrs_without_id.items():
+                setattr(existing_instance, key, value)
+
+            # Find template and render
+            template_path = None
+            try:
+                template_path = self._find_template_for_tag(node.name)
+            except FileNotFoundError:
+                pass
+
+            return str(
+                existing_instance._render(
+                    base_context=base_context,
+                    _renderer=self,
+                    _session=session,
+                    _template_path=template_path,
+                )
+            )
+
         template_path: str | None = None
         try:
             template_path = self._find_template_for_tag(node.name)

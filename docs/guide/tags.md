@@ -31,19 +31,61 @@ Example:
 <UserCard/>  ->  user_card.html  ->  user_card.jinja
 ```
 
-## Registered vs. Generic Components
+## Component Resolution Priority
 
-When PyJinHx finds a PascalCase tag, it chooses how to build the component instance:
+When PyJinHx finds a PascalCase tag, it resolves the component in this order:
 
-### Registered model (preferred)
+1. **Registered instance** — If the tag's `id` matches an existing registered instance
+2. **Registered class** — If the tag name matches a registered `BaseComponent` subclass
+3. **Generic fallback** — Use `BaseComponent` with the auto-discovered template
 
-If there is a registered `BaseComponent` subclass whose class name matches the tag (e.g. `class Button(BaseComponent)` for `<Button/>`), PyJinHx instantiates that class.
+### Registered instance (highest priority)
+
+If a tag has an `id` attribute that matches a pre-registered component instance, PyJinHx uses that existing instance instead of creating a new one. The instance's properties are updated with any attributes from the tag.
+
+This is useful when you want to pre-configure a component in Python and then render it via a tag:
+
+```python
+from pyjinhx import BaseComponent, Renderer
+
+
+class Button(BaseComponent):
+    id: str
+    text: str = "default"
+    variant: str = "primary"
+
+
+# Create and register an instance
+btn = Button(id="my-btn", text="Original", variant="danger")
+
+# Render via tag - uses existing instance, updates 'text' attribute
+renderer = Renderer.get_default_renderer()
+html = renderer.render('<Button id="my-btn" text="Updated"/>')
+# Result uses variant="danger" (from instance) and text="Updated" (from tag)
+```
+
+!!! warning "Type validation"
+    The tag name must match the instance's class name. A `TypeError` is raised if they don't match:
+
+    ```python
+    class ButtonA(BaseComponent):
+        id: str
+
+    btn = ButtonA(id="shared-id")
+
+    # This raises TypeError: Tag <ButtonB> references instance 'shared-id' which is of type ButtonA
+    renderer.render('<ButtonB id="shared-id"/>')
+    ```
+
+### Registered class (preferred for new instances)
+
+If there is a registered `BaseComponent` subclass whose class name matches the tag (e.g. `class Button(BaseComponent)` for `<Button/>`), PyJinHx instantiates a new instance of that class.
 
 That means you get:
 
 - Pydantic validation
 - Defaults and field types
-- Your component’s rendering behavior
+- Your component's rendering behavior
 
 Example:
 
@@ -61,7 +103,7 @@ renderer = Renderer.get_default_renderer()
 html = renderer.render('<Button text="Save"/>') # Will be validated using Button before rendering
 ```
 
-### Generic model (fallback)
+### Generic fallback
 
 If **no class is registered** for the tag name, PyJinHx falls back to a **generic `BaseComponent`** instance and renders it using the auto-discovered template.
 

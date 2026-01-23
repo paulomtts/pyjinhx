@@ -27,10 +27,6 @@ class Finder:
     _index: dict[str, str] = field(default_factory=dict, init=False)
     _is_indexed: bool = field(default=False, init=False)
 
-    # ---------
-    # Helpers
-    # ---------
-
     def _build_index(self) -> None:
         if self._is_indexed:
             return
@@ -169,10 +165,6 @@ class Finder:
         )
         snake_name = pascal_case_to_snake_case(component_name)
         return [f"{relative_dir}/{snake_name}{extension}" for extension in extensions]
-
-    # ------------------
-    # Public instance API
-    # ------------------
 
     def find(self, filename: str) -> str:
         """

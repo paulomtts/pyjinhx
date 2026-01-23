@@ -5,7 +5,7 @@ PyJinHx has **two ways to render components**:
 - Call **`.render()` on a `BaseComponent` instance** you created in Python
 - Use a **`Renderer`** to render an HTML-like string containing **PascalCase component tags**
 
-## 1) Render a component instance with `.render()`
+## Render from a component instance
 
 Use this when you want **typed, validated** component instances in Python.
 
@@ -24,7 +24,7 @@ html = button.render()
 
 This renders the component using the **template adjacent to the component class file** (matched from the class name, e.g. `Button` → `button.html` / `button.jinja`).
 
-## 2) Render an HTML-like string with `Renderer`
+## Render from string
 
 Use this when you want to write **declarative markup** and let PyJinHx expand components.
 
@@ -64,3 +64,13 @@ html = renderer.render('''
     />
 ''')
 ```
+
+### Component resolution
+
+When rendering a PascalCase tag, the renderer resolves components in this order:
+
+1. **Registered instance** — If the tag's `id` matches an existing registered instance, that instance is used and updated with the tag's attributes
+2. **Registered class** — If the tag name matches a registered `BaseComponent` subclass, a new instance is created
+3. **Generic fallback** — Uses `BaseComponent` with the auto-discovered template
+
+See [PascalCase Components](tags.md#component-resolution-priority) for details on instance lookup and type validation.
