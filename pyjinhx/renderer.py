@@ -46,7 +46,11 @@ class Renderer:
     """
 
     def __init__(
-        self, environment: Environment, *, auto_id: bool = True, inline_js: bool | None = None
+        self,
+        environment: Environment,
+        *,
+        auto_id: bool = True,
+        inline_js: bool | None = None,
     ) -> None:
         """
         Initialize a Renderer with the given Jinja environment.
@@ -59,7 +63,9 @@ class Renderer:
         """
         self._environment = environment
         self._auto_id = auto_id
-        self._inline_js = inline_js if inline_js is not None else Renderer._default_inline_js
+        self._inline_js = (
+            inline_js if inline_js is not None else Renderer._default_inline_js
+        )
         self._template_finder_cache: dict[str, Finder] = {}
 
     _default_environment: ClassVar[Environment | None] = None
@@ -138,11 +144,15 @@ class Renderer:
             A Renderer instance cached by (environment identity, auto_id, inline_js).
         """
         environment = cls.get_default_environment()
-        effective_inline_js = inline_js if inline_js is not None else cls._default_inline_js
+        effective_inline_js = (
+            inline_js if inline_js is not None else cls._default_inline_js
+        )
         cache_key = (id(environment), auto_id, effective_inline_js)
         renderer = cls._default_renderers.get(cache_key)
         if renderer is None:
-            renderer = Renderer(environment, auto_id=auto_id, inline_js=effective_inline_js)
+            renderer = Renderer(
+                environment, auto_id=auto_id, inline_js=effective_inline_js
+            )
             cls._default_renderers[cache_key] = renderer
         return renderer
 
@@ -292,10 +302,8 @@ class Renderer:
 
         attrs_without_id = {k: v for k, v in node.attrs.items() if k != "id"}
 
-        # Check for existing registered instance by ID
         existing_instance = Registry.get_instances().get(component_id)
         if existing_instance is not None:
-            # Validate type matches tag name
             instance_class_name = type(existing_instance).__name__
             if instance_class_name != node.name:
                 raise TypeError(
@@ -303,13 +311,11 @@ class Renderer:
                     f"which is of type {instance_class_name}"
                 )
 
-            # Update instance with tag's content and attributes
             if rendered_children:
                 existing_instance.content = rendered_children
             for key, value in attrs_without_id.items():
                 setattr(existing_instance, key, value)
 
-            # Find template and render
             template_path = None
             try:
                 template_path = self._find_template_for_tag(node.name)
@@ -351,6 +357,9 @@ class Renderer:
                 content=rendered_children,
                 **attrs_without_id,
             )
+            # Remove from registry - fallback instances should not persist
+            # across renders to avoid TypeError on subsequent renders
+            Registry.get_instances().pop(component_id, None)
 
         return str(
             component._render(

@@ -34,15 +34,23 @@ def tag_name_to_template_filenames(
     """
     Convert a component tag name into candidate template filenames.
 
+    Generates candidates with both underscore and hyphen separators.
+
     Args:
         tag_name: The PascalCase component tag name (e.g., "ButtonGroup").
         extensions: File extensions to use, in order of preference.
 
     Returns:
-        List of candidate filenames (e.g., ["button_group.html", "button_group.jinja"]).
+        List of candidate filenames (e.g., ["button_group.html", "button-group.html",
+        "button_group.jinja", "button-group.jinja"]).
     """
     snake_name = pascal_case_to_snake_case(tag_name)
-    return [f"{snake_name}{extension}" for extension in extensions]
+    kebab_name = pascal_case_to_kebab_case(tag_name)
+    candidates = []
+    for extension in extensions:
+        candidates.append(f"{snake_name}{extension}")
+        candidates.append(f"{kebab_name}{extension}")
+    return candidates
 
 
 def normalize_path_separators(path: str) -> str:
