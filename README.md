@@ -101,14 +101,16 @@ page = Page(
 html = page.render()
 ```
 
-### Step 3B: Template-side rendering (`Renderer(...).render(source)`)
+### Step 3B: Template-side rendering (`Renderer.render(source)`)
 
 ```python
 from pyjinhx import Renderer
 
-renderer = Renderer("./components", auto_id=True)
+# Set template directory once
+Renderer.set_default_environment("./components")
 
-html = renderer.render(
+# Use the default renderer with auto_id enabled
+html = Renderer.get_default_renderer(auto_id=True).render(
     """
     <Page title="Welcome">
       <Card title="Get Started">

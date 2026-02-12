@@ -48,6 +48,8 @@ This is useful when you want to pre-configure a component in Python and then ren
 ```python
 from pyjinhx import BaseComponent, Renderer
 
+Renderer.set_default_environment("./components")
+
 
 class Button(BaseComponent):
     id: str
@@ -59,8 +61,7 @@ class Button(BaseComponent):
 btn = Button(id="my-btn", text="Original", variant="danger")
 
 # Render via tag - uses existing instance, updates 'text' attribute
-renderer = Renderer.get_default_renderer()
-html = renderer.render('<Button id="my-btn" text="Updated"/>')
+html = Renderer.get_default_renderer().render('<Button id="my-btn" text="Updated"/>')
 # Result uses variant="danger" (from instance) and text="Updated" (from tag)
 ```
 
@@ -74,7 +75,7 @@ html = renderer.render('<Button id="my-btn" text="Updated"/>')
     btn = ButtonA(id="shared-id")
 
     # This raises TypeError: Tag <ButtonB> references instance 'shared-id' which is of type ButtonA
-    renderer.render('<ButtonB id="shared-id"/>')
+    Renderer.get_default_renderer().render('<ButtonB id="shared-id"/>')
     ```
 
 ### Registered class (preferred for new instances)
@@ -92,6 +93,8 @@ Example:
 ```python
 from pyjinhx import BaseComponent, Renderer
 
+Renderer.set_default_environment("./components")
+
 
 class Button(BaseComponent):
     id: str
@@ -99,8 +102,7 @@ class Button(BaseComponent):
     variant: str = "default"
 
 
-renderer = Renderer.get_default_renderer()
-html = renderer.render('<Button text="Save"/>') # Will be validated using Button before rendering
+html = Renderer.get_default_renderer().render('<Button text="Save"/>') # Will be validated using Button before rendering
 ```
 
 ### Generic fallback
@@ -117,8 +119,8 @@ Example:
 ```python
 from pyjinhx import Renderer
 
-renderer = Renderer.get_default_renderer()
-html = renderer.render('<Alert kind="warning">Be careful</Alert>') # No validation
+Renderer.set_default_environment("./components")
+html = Renderer.get_default_renderer().render('<Alert kind="warning">Be careful</Alert>') # No validation
 ```
 
 ## Example
@@ -132,14 +134,15 @@ Assume you have a registered component class `Button` and a template named `butt
 ```python
 from pyjinhx import BaseComponent, Renderer
 
+Renderer.set_default_environment("./components")
+
 
 class Button(BaseComponent):
     id: str
     text: str
 
 
-renderer = Renderer.get_default_renderer()
-html = renderer.render('<Button text="Click me"/>')
+html = Renderer.get_default_renderer().render('<Button text="Click me"/>')
 ```
 
 Because the tag is PascalCase:

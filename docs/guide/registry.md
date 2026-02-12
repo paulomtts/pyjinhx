@@ -4,18 +4,31 @@ The registry is how PyJinHx tracks component instances, enabling cross-referenci
 
 ## How It Works
 
-When you instantiate a component, it's automatically registered:
+Components are automatically registered at **two points** in their lifecycle:
 
-```python
-from pyjinhx import BaseComponent, Registry
+### Registration Lifecycle
 
-class Button(BaseComponent):
-    id: str
-    text: str
+1. **Class Definition** (`__init_subclass__`)
+   ```python
+   from pyjinhx import BaseComponent
 
-# This component is now in the registry
-button = Button(id="submit-btn", text="Submit")
-```
+   # When you define the class, it's registered in the class registry
+   class Button(BaseComponent):
+       id: str
+       text: str
+   # Button is now in Registry.get_classes()
+   ```
+
+2. **Instance Creation** (`__init__`)
+   ```python
+   # When you instantiate, the instance is registered
+   button = Button(id="submit-btn", text="Submit")
+   # button is now in Registry.get_instances()
+   ```
+
+This happens transparently—you don't need to call any registration methods manually.
+
+### Composite Keys
 
 The registry stores components using a composite key of `ComponentName_id`. This means:
 

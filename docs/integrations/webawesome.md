@@ -97,7 +97,7 @@ from pyjinhx import BaseComponent
 
 
 class AddTaskForm(BaseComponent):
-    pass
+    id: str  # Required field
 ```
 
 ```html
@@ -146,7 +146,7 @@ task_card = TaskCard(
     completed=False
 ).render()
 
-form = AddTaskForm().render()
+form = AddTaskForm(id="add-task-form").render()
 ```
 
 ## WebAwesome Components in Templates

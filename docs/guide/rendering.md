@@ -31,8 +31,10 @@ Use this when you want to write **declarative markup** and let PyJinHx expand co
 ```python
 from pyjinhx import Renderer
 
-renderer = Renderer.get_default_renderer()
-html = renderer.render('<Button text="Click me"/>')
+# Set template directory if not already set
+Renderer.set_default_environment("./components")
+
+html = Renderer.get_default_renderer().render('<Button text="Click me"/>')
 ```
 
 !!! tip "Configuring the Renderer"
@@ -43,7 +45,7 @@ html = renderer.render('<Button text="Click me"/>')
 When rendering a string, the renderer treats **PascalCase tags** as components:
 
 ```python
-html = renderer.render("""
+html = Renderer.get_default_renderer().render("""
     <Header title="My Site"/>
     <Nav>Home | About | Contact</Nav>
     <Footer>Copyright 2024</Footer>
@@ -55,7 +57,7 @@ html = renderer.render("""
 Attributes work like HTML attributes and become template context variables:
 
 ```python
-html = renderer.render('''
+html = Renderer.get_default_renderer().render('''
     <Input
         type="email"
         name="user_email"

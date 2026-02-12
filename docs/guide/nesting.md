@@ -151,7 +151,11 @@ dashboard = Dashboard(
 The inner content of a tag becomes `{{ content }}` in the component template:
 
 ```python
-html = renderer.render("""
+from pyjinhx import Renderer
+
+Renderer.set_default_environment("./components")
+
+html = Renderer.get_default_renderer().render("""
     <Card title="Note">
         This text becomes the content variable.
     </Card>

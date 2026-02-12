@@ -147,6 +147,11 @@ Create a new render session for tracking scripts during rendering.
 
 Per-render state for script aggregation and deduplication.
 
+!!! note "Internal Use"
+    `RenderSession` is primarily for internal use by the rendering engine. You typically don't need to create or manage sessions directly—they're created automatically during rendering.
+
+    If you need a new session for custom rendering logic, use `Renderer.new_session()` instead of instantiating directly.
+
 ### Fields
 
 | Field | Type | Description |

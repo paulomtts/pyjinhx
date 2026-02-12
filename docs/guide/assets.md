@@ -35,11 +35,19 @@ Output:
 
 ### Naming Convention
 
-| Class Name | JavaScript File |
-|------------|-----------------|
-| `Button` | `button.js` |
-| `ActionButton` | `action-button.js` |
-| `MyWidget` | `my-widget.js` |
+JavaScript files must use **kebab-case** naming (converted from PascalCase):
+
+| Class Name | JavaScript File | Note |
+|------------|-----------------|------|
+| `Button` | `button.js` | ✅ Lowercase |
+| `ActionButton` | `action-button.js` | ✅ Kebab-case (hyphens) |
+| `MyWidget` | `my-widget.js` | ✅ Kebab-case (hyphens) |
+
+!!! note "Snake Case Not Supported"
+    Only kebab-case (hyphens) is used for auto-discovery, not snake_case (underscores).
+
+    - ✅ `my-widget.js` - Works
+    - ❌ `my_widget.js` - Won't be auto-discovered
 
 ### Deduplication
 
