@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import logging
 import os
 import re
 import uuid
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, ClassVar
+
+logger = logging.getLogger("pyjinhx")
 
 from jinja2 import Environment, FileSystemLoader, Template
 from jinja2.exceptions import TemplateNotFound
@@ -292,6 +295,12 @@ class Renderer:
         for javascript_path in component.js:
             normalized_path = os.path.normpath(javascript_path).replace("\\", "/")
             if not os.path.exists(normalized_path):
+                logger.warning(
+                    "Extra JS file not found: %s (component %s, id=%s)",
+                    normalized_path,
+                    type(component).__name__,
+                    component.id,
+                )
                 continue
             if normalized_path in session.collected_js_files:
                 continue
@@ -329,6 +338,12 @@ class Renderer:
         for css_path in component.css:
             normalized_path = os.path.normpath(css_path).replace("\\", "/")
             if not os.path.exists(normalized_path):
+                logger.warning(
+                    "Extra CSS file not found: %s (component %s, id=%s)",
+                    normalized_path,
+                    type(component).__name__,
+                    component.id,
+                )
                 continue
             if normalized_path in session.collected_css_files:
                 continue
