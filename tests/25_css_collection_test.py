@@ -57,17 +57,21 @@ def test_extra_css_deduplication():
     assert rendered.count(".extra { font-weight: bold; }") == 1
 
 
-def test_missing_extra_css_ignored():
+def test_missing_extra_css_warns(caplog):
+    import logging
+
     component = UnifiedComponent(
         id="css-missing-1",
         text="Missing",
         css=["tests/ui/nonexistent.css"],
     )
 
-    rendered = str(component.render())
+    with caplog.at_level(logging.WARNING, logger="pyjinhx"):
+        rendered = str(component.render())
 
     assert "<div" in rendered
     assert "nonexistent" not in rendered
+    assert any("nonexistent.css" in record.message for record in caplog.records)
 
 
 def test_inline_css_false_disables_injection():
