@@ -26,6 +26,7 @@ class Finder:
 
     root: str
     _index: dict[str, str] = field(default_factory=dict, init=False)
+    _all_files: list[tuple[str, str]] = field(default_factory=list, init=False)
     _is_indexed: bool = field(default=False, init=False)
 
     def _build_index(self) -> None:
@@ -36,7 +37,9 @@ class Finder:
             dir_names.sort()
             file_names.sort()
             for file_name in file_names:
-                self._index.setdefault(file_name, os.path.join(current_root, file_name))
+                full_path = os.path.join(current_root, file_name)
+                self._index.setdefault(file_name, full_path)
+                self._all_files.append((file_name, full_path))
 
         self._is_indexed = True
 
@@ -200,26 +203,23 @@ class Finder:
     def _collect_files_by_extension(
         self, extension: str, relative_to_root: bool = False
     ) -> list[str]:
-        collected: list[str] = []
-
         if not os.path.exists(self.root):
-            return collected
+            return []
 
-        for current_root, dir_names, file_names in os.walk(self.root):
-            dir_names.sort()
-            file_names.sort()
-            for file_name in file_names:
-                if not file_name.lower().endswith(extension):
-                    continue
-                full_path = os.path.join(current_root, file_name)
-                if relative_to_root:
-                    collected.append(
-                        normalize_path_separators(
-                            os.path.relpath(full_path, self.root)
-                        )
+        self._build_index()
+
+        collected: list[str] = []
+        for file_name, full_path in self._all_files:
+            if not file_name.lower().endswith(extension):
+                continue
+            if relative_to_root:
+                collected.append(
+                    normalize_path_separators(
+                        os.path.relpath(full_path, self.root)
                     )
-                else:
-                    collected.append(normalize_path_separators(full_path))
+                )
+            else:
+                collected.append(normalize_path_separators(full_path))
 
         return collected
 
