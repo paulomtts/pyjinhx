@@ -72,8 +72,8 @@ Templates are automatically discovered based on the class name:
 | Class Name | Template File |
 |------------|---------------|
 | `Button` | `button.html` or `button.jinja` |
-| `ActionButton` | `action_button.html` or `action_button.jinja` |
-| `UserCard` | `user_card.html` or `user_card.jinja` |
+| `ActionButton` | `action_button.html`, `action-button.html`, or `.jinja` variants |
+| `UserCard` | `user_card.html`, `user-card.html`, or `.jinja` variants |
 
 !!! warning "Template Location Requirement"
     Templates must be in the same directory as the Python class file.
@@ -90,7 +90,7 @@ class Example(BaseModel):
 Example(foo=1, bar=2)  # Raises ValidationError: extra fields not permitted
 ```
 
-With `BaseComponent`, **extra fields are simply ignored during rendering**. This allows you to pass dictionaries or data objects with additional fields—only those specified in the component's signature are used. This is particularly useful when passing data from dynamic sources.
+With `BaseComponent`, **extra fields are accepted and available in the template context**. This allows you to pass dictionaries or data objects with additional fields without raising validation errors.
 
 ```python
 from pyjinhx import BaseComponent

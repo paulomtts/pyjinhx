@@ -58,7 +58,7 @@ from pyjinhx import Renderer
 # Set the template search path
 Renderer.set_default_environment("./components")
 
-from .components.ui.button import Button
+from components.ui.button import Button
 
 # Create and render
 button = Button(

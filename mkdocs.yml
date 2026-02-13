@@ -65,15 +65,16 @@ nav:
       - Component Registry: guide/registry.md
       - PascalCase Tags: guide/tags.md
       - Nesting: guide/nesting.md
-      - Rendering: guide/rendering.md
       - JavaScript Collection: guide/assets.md
       - Configuration: guide/configuration.md
   - Integrations:
       - FastAPI: integrations/fastapi.md
       - HTMX: integrations/htmx.md
       - WebAwesome: integrations/webawesome.md
+      - Claude Code: integrations/claude-code.md
   - API Reference:
       - BaseComponent: api/base-component.md
+      - Finder: api/finder.md
       - Registry: api/registry.md
       - Renderer: api/renderer.md
 

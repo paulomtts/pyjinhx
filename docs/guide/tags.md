@@ -1,157 +1,117 @@
-# PascalCase Components
+# PascalCase Tags
 
-## What are PascalCase components?
+## What are PascalCase tags?
 
-In PyJinHx, **PascalCase components** are custom component tags used inside HTML to refer to a component template at render time.
+In PyJinHx, **PascalCase tags** are custom component tags used inside HTML strings or templates. They are identified by their tag name being PascalCase (e.g. `<Button/>`, `<UserCard/>`), and are rendered as components rather than plain HTML.
 
-They are identified purely by their tag name being **PascalCase** (e.g. `<Button/>`, `<UserCard/>`, `<NavBar>...</NavBar>`), and are treated as *components* rather than plain HTML.
+```python
+from pyjinhx import Renderer
 
-Example:
+renderer = Renderer.get_default_renderer()
+html = renderer.render('<UserCard name="Ada"/>')
+```
 
-```html
-<UserCard name="Ada"/>
+You can also use PascalCase tags **inside component templates** to compose components declaratively.
+
+## Attributes
+
+Tag attributes become template context variables:
+
+```python
+html = renderer.render('''
+    <Input
+        type="email"
+        name="user_email"
+        placeholder="Enter your email"
+        required="true"
+    />
+''')
+```
+
+## The `content` Variable
+
+Inner content of a tag becomes the `{{ content }}` template variable:
+
+```python
+html = renderer.render("""
+    <Card title="Note">
+        This text becomes the content variable.
+    </Card>
+""")
 ```
 
 ## Template Auto-Discovery
 
-Once a tag is considered a component, PyJinHx attempts **template auto-discovery**:
+PascalCase tag names are converted to candidate template filenames in this order:
 
-- The tag name is converted from PascalCase to `snake_case`
-- Candidate template filenames are tried in order: `snake_case_name.html` then `snake_case_name.jinja`
+1. `snake_case.html`
+2. `kebab-case.html`
+3. `snake_case.jinja`
+4. `kebab-case.jinja`
 
-For example:
+For example, `<ActionButton/>` searches for: `action_button.html`, `action-button.html`, `action_button.jinja`, `action-button.jinja`.
 
-- `<ActionButton/>` → `action_button.html` → `action_button.jinja`
+Templates are searched under the root directory of your Jinja `FileSystemLoader` (see [Configuration](configuration.md)).
 
-Templates are searched under the **root directory of your Jinja `FileSystemLoader`** (see [Configuration](configuration.md)).
+## Component Resolution
 
-Example:
+When PyJinHx encounters a PascalCase tag, it resolves the component in this order:
 
-```text
-<UserCard/>  ->  user_card.html  ->  user_card.jinja
-```
+### 1. Registered instance (highest priority)
 
-## Component Resolution Priority
-
-When PyJinHx finds a PascalCase tag, it resolves the component in this order:
-
-1. **Registered instance** — If the tag's `id` matches an existing registered instance
-2. **Registered class** — If the tag name matches a registered `BaseComponent` subclass
-3. **Generic fallback** — Use `BaseComponent` with the auto-discovered template
-
-### Registered instance (highest priority)
-
-If a tag has an `id` attribute that matches a pre-registered component instance, PyJinHx uses that existing instance instead of creating a new one. The instance's properties are updated with any attributes from the tag.
-
-This is useful when you want to pre-configure a component in Python and then render it via a tag:
+If the tag's `id` matches a pre-registered component instance, that instance is reused and its properties are updated with the tag's attributes.
 
 ```python
 from pyjinhx import BaseComponent, Renderer
-
 
 class Button(BaseComponent):
     id: str
     text: str = "default"
     variant: str = "primary"
 
-
 # Create and register an instance
 btn = Button(id="my-btn", text="Original", variant="danger")
 
-# Render via tag - uses existing instance, updates 'text' attribute
+# Render via tag — uses existing instance, updates 'text'
 renderer = Renderer.get_default_renderer()
 html = renderer.render('<Button id="my-btn" text="Updated"/>')
 # Result uses variant="danger" (from instance) and text="Updated" (from tag)
 ```
 
 !!! warning "Type validation"
-    The tag name must match the instance's class name. A `TypeError` is raised if they don't match:
+    The tag name must match the instance's class name. A `TypeError` is raised if they don't match.
 
-    ```python
-    class ButtonA(BaseComponent):
-        id: str
+### 2. Registered class
 
-    btn = ButtonA(id="shared-id")
-
-    # This raises TypeError: Tag <ButtonB> references instance 'shared-id' which is of type ButtonA
-    renderer.render('<ButtonB id="shared-id"/>')
-    ```
-
-### Registered class (preferred for new instances)
-
-If there is a registered `BaseComponent` subclass whose class name matches the tag (e.g. `class Button(BaseComponent)` for `<Button/>`), PyJinHx instantiates a new instance of that class.
-
-That means you get:
-
-- Pydantic validation
-- Defaults and field types
-- Your component's rendering behavior
-
-Example:
+If a `BaseComponent` subclass with a matching name exists, PyJinHx instantiates it — giving you Pydantic validation, defaults, and field types.
 
 ```python
-from pyjinhx import BaseComponent, Renderer
-
-
 class Button(BaseComponent):
     id: str
     text: str
     variant: str = "default"
 
-
 renderer = Renderer.get_default_renderer()
-html = renderer.render('<Button text="Save"/>') # Will be validated using Button before rendering
+html = renderer.render('<Button text="Save"/>')  # Validated using Button
 ```
 
-### Generic fallback
+### 3. Generic fallback
 
-If **no class is registered** for the tag name, PyJinHx falls back to a **generic `BaseComponent`** instance and renders it using the auto-discovered template.
-
-In this mode:
-
-- All tag attributes become template context variables
-- The inner HTML becomes `{{ content }}`
-
-Example:
+If no class is registered, PyJinHx falls back to a generic `BaseComponent` and renders using the auto-discovered template. All tag attributes become template context variables. No Pydantic validation is applied.
 
 ```python
-from pyjinhx import Renderer
-
-renderer = Renderer.get_default_renderer()
-html = renderer.render('<Alert kind="warning">Be careful</Alert>') # No validation
+html = renderer.render('<Alert kind="warning">Be careful</Alert>')
 ```
 
-## Example
+## Auto-Generated IDs
 
-Assume you have a registered component class `Button` and a template named `button.html`.
-
-```html
-<button id="{{ id }}">{{ text }}</button>
-```
+When `auto_id=True` (default), IDs are generated automatically if not provided in the tag. Disable this with:
 
 ```python
-from pyjinhx import BaseComponent, Renderer
-
-
-class Button(BaseComponent):
-    id: str
-    text: str
-
-
-renderer = Renderer.get_default_renderer()
-html = renderer.render('<Button text="Click me"/>')
+renderer = Renderer.get_default_renderer(auto_id=False)
 ```
-
-Because the tag is PascalCase:
-
-- `<Button .../>` is treated as a component tag
-- `button.html` / `button.jinja` is auto-discovered
-- If `auto_id=True` (default), an `id` is generated when not provided
 
 ## See next
 
-Next, see [Rendering](rendering.md) for:
-
-- Nested PascalCase components
-- The `content` variable
-- Auto-generated IDs
+- [Nesting](nesting.md) - Compose components together
+- [JavaScript Collection](assets.md) - Automatic JS handling

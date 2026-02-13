@@ -33,7 +33,8 @@ PyJinHx offers two complementary approaches:
     ```python
     from pyjinhx import Renderer
 
-    renderer = Renderer("./components")
+    Renderer.set_default_environment("./components")
+    renderer = Renderer.get_default_renderer()
     html = renderer.render('<Button text="Submit" variant="primary"/>')
     ```
 

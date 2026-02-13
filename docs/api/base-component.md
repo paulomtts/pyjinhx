@@ -15,7 +15,7 @@ Subclasses are automatically registered and can be rendered using their correspo
 | `id` | `str` | Yes | - | Unique identifier for the component instance |
 | `js` | `list[str]` | No | `[]` | Paths to additional JavaScript files to include when rendering |
 
-Components accept extra fields beyond those defined in the class. Extra fields are passed through to the template context.
+Components accept extra fields beyond those defined in the class (`extra="allow"`). Extra fields are included in the template context alongside declared fields.
 
 #### Methods
 

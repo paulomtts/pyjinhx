@@ -58,6 +58,9 @@ Nested components are wrapped in `NestedComponentWrapper`, giving you access to 
 </div>
 ```
 
+!!! info "How it works"
+    When a field value is a `BaseComponent`, PyJinHx wraps it in a `NestedComponentWrapper` before rendering. Use `{{ field }}` to output the HTML, and `{{ field.props.X }}` to access the original component's properties. This also applies to components inside lists and dicts.
+
 ## Lists of Components
 
 Use a list to render multiple components:
@@ -144,18 +147,6 @@ dashboard = Dashboard(
         "footer": Widget(id="foot", content="Footer"),
     }
 )
-```
-
-## Wrappers
-
-The inner content of a tag becomes `{{ content }}` in the component template:
-
-```python
-html = renderer.render("""
-    <Card title="Note">
-        This text becomes the content variable.
-    </Card>
-""")
 ```
 
 ## Deep Nesting
