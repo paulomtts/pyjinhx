@@ -342,14 +342,18 @@ class Renderer:
     def _inject_scripts(self, markup: str, session: RenderSession) -> str:
         if not session.scripts:
             return markup
-        combined_script = "\n".join(session.scripts)
-        return f"{markup}\n<script>{combined_script}</script>"
+        script_tags = "\n".join(
+            f"<script>{script}</script>" for script in session.scripts
+        )
+        return f"{markup}\n{script_tags}"
 
     def _inject_styles(self, markup: str, session: RenderSession) -> str:
         if not session.styles:
             return markup
-        combined_styles = "\n".join(session.styles)
-        return f"<style>{combined_styles}</style>\n{markup}"
+        style_tags = "\n".join(
+            f"<style>{style}</style>" for style in session.styles
+        )
+        return f"{style_tags}\n{markup}"
 
     def _find_template_for_tag(self, tag_name: str) -> str:
         loader_root = self._get_loader_root()

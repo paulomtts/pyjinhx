@@ -18,8 +18,8 @@ def test_multiple_extra_js_files():
         '    <div class="text">Multiple JS</div>\n'
         "</div>\n"
         "\n"
-        "<script>console.log('Button loaded');\n"
-        "console.log('Extra script loaded');\n"
+        "<script>console.log('Button loaded');</script>\n"
+        "<script>console.log('Extra script loaded');\n"
         "\n"
         "</script>"
     )
