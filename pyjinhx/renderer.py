@@ -271,7 +271,7 @@ class Renderer:
         if not session.scripts:
             return markup
         combined_script = "\n".join(session.scripts)
-        return f"<script>{combined_script}</script>\n{markup}"
+        return f"{markup}\n<script>{combined_script}</script>"
 
     def _find_template_for_tag(self, tag_name: str) -> str:
         loader_root = self._get_loader_root()

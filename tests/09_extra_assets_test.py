@@ -10,11 +10,15 @@ def test_multiple_extra_js_files():
 
     rendered = component.render()
 
-    assert rendered == """<script>console.log('Button loaded');
-console.log('Extra script loaded');
+    expected = (
+        '<div id="multi-js-1" class="test-component">\n'
+        '    <div class="text">Multiple JS</div>\n'
+        "</div>\n"
+        "\n"
+        "<script>console.log('Button loaded');\n"
+        "console.log('Extra script loaded');\n"
+        "\n"
+        "</script>"
+    )
 
-</script>
-<div id="multi-js-1" class="test-component">
-    <div class="text">Multiple JS</div>
-</div>
-"""
+    assert rendered == expected
