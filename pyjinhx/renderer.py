@@ -7,8 +7,6 @@ import uuid
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, ClassVar
 
-logger = logging.getLogger("pyjinhx")
-
 from jinja2 import Environment, FileSystemLoader, Template
 from jinja2.exceptions import TemplateNotFound
 from markupsafe import Markup
@@ -21,6 +19,8 @@ from .utils import detect_root_directory, pascal_case_to_kebab_case
 
 if TYPE_CHECKING:
     from .base import BaseComponent
+
+logger = logging.getLogger("pyjinhx")
 
 
 @dataclass
