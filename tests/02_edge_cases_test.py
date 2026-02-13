@@ -1,5 +1,8 @@
 from tests.ui.unified_component import UnifiedComponent
 
+CSS = "<style>.test-component { color: red; }\n</style>\n"
+JS = "\n<script>console.log('Button loaded');</script>"
+
 
 def test_empty_list():
     component = UnifiedComponent(
@@ -7,14 +10,18 @@ def test_empty_list():
         title="Empty List",
         items=[]
     )
-    
-    rendered = component.render()
-    
-    assert rendered == """<div id="empty-list-1" class="test-component">
-    <h2>Empty List</h2>
-</div>
 
-<script>console.log('Button loaded');</script>"""
+    rendered = component.render()
+
+    expected = (
+        CSS
+        + '<div id="empty-list-1" class="test-component">\n'
+        "    <h2>Empty List</h2>\n"
+        "</div>\n"
+        + JS
+    )
+
+    assert rendered == expected
 
 
 def test_empty_dict():
@@ -23,25 +30,33 @@ def test_empty_dict():
         title="Empty Dict",
         sections={}
     )
-    
-    rendered = component.render()
-    
-    assert rendered == """<div id="empty-dict-1" class="test-component">
-    <h2>Empty Dict</h2>
-</div>
 
-<script>console.log('Button loaded');</script>"""
+    rendered = component.render()
+
+    expected = (
+        CSS
+        + '<div id="empty-dict-1" class="test-component">\n'
+        "    <h2>Empty Dict</h2>\n"
+        "</div>\n"
+        + JS
+    )
+
+    assert rendered == expected
 
 
 def test_component_with_only_id():
     component = UnifiedComponent(id="minimal-1")
-    
-    rendered = component.render()
-    
-    assert rendered == """<div id="minimal-1" class="test-component">
-</div>
 
-<script>console.log('Button loaded');</script>"""
+    rendered = component.render()
+
+    expected = (
+        CSS
+        + '<div id="minimal-1" class="test-component">\n'
+        "</div>\n"
+        + JS
+    )
+
+    assert rendered == expected
 
 
 def test_none_values_in_nested():
@@ -52,12 +67,15 @@ def test_none_values_in_nested():
         items=None,
         sections=None
     )
-    
+
     rendered = component.render()
-    
-    assert rendered == """<div id="none-values-1" class="test-component">
-    <h2>None Values</h2>
-</div>
 
-<script>console.log('Button loaded');</script>"""
+    expected = (
+        CSS
+        + '<div id="none-values-1" class="test-component">\n'
+        "    <h2>None Values</h2>\n"
+        "</div>\n"
+        + JS
+    )
 
+    assert rendered == expected

@@ -197,6 +197,32 @@ class Finder:
             )
         raise last_error
 
+    def _collect_files_by_extension(
+        self, extension: str, relative_to_root: bool = False
+    ) -> list[str]:
+        collected: list[str] = []
+
+        if not os.path.exists(self.root):
+            return collected
+
+        for current_root, dir_names, file_names in os.walk(self.root):
+            dir_names.sort()
+            file_names.sort()
+            for file_name in file_names:
+                if not file_name.lower().endswith(extension):
+                    continue
+                full_path = os.path.join(current_root, file_name)
+                if relative_to_root:
+                    collected.append(
+                        normalize_path_separators(
+                            os.path.relpath(full_path, self.root)
+                        )
+                    )
+                else:
+                    collected.append(normalize_path_separators(full_path))
+
+        return collected
+
     def collect_javascript_files(self, relative_to_root: bool = False) -> list[str]:
         """
         Collect all JavaScript files under `root`.
@@ -208,23 +234,17 @@ class Finder:
         Returns:
             A deterministic, sorted list of `.js` file paths (directories and file names are walked in sorted order).
         """
-        javascript_files: list[str] = []
+        return self._collect_files_by_extension(".js", relative_to_root)
 
-        if not os.path.exists(self.root):
-            return javascript_files
+    def collect_css_files(self, relative_to_root: bool = False) -> list[str]:
+        """
+        Collect all CSS files under `root`.
 
-        for current_root, dir_names, file_names in os.walk(self.root):
-            dir_names.sort()
-            file_names.sort()
-            for file_name in file_names:
-                if not file_name.lower().endswith(".js"):
-                    continue
-                full_path = os.path.join(current_root, file_name)
-                if relative_to_root:
-                    javascript_files.append(
-                        normalize_path_separators(os.path.relpath(full_path, self.root))
-                    )
-                else:
-                    javascript_files.append(normalize_path_separators(full_path))
+        Args:
+            relative_to_root: If True, return paths relative to `root` (useful for building static file lists).
+                              If False, return absolute paths.
 
-        return javascript_files
+        Returns:
+            A deterministic, sorted list of `.css` file paths (directories and file names are walked in sorted order).
+        """
+        return self._collect_files_by_extension(".css", relative_to_root)

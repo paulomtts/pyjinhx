@@ -1,5 +1,8 @@
 from tests.ui.unified_component import UnifiedComponent
 
+CSS = "<style>.test-component { color: red; }\n</style>\n"
+JS = "\n<script>console.log('Button loaded');</script>"
+
 
 def test_dict_component():
     action_component = UnifiedComponent(id="action-btn", text="Click Me")
@@ -17,7 +20,8 @@ def test_dict_component():
     rendered = component._render()
 
     expected = (
-        '<div id="wrapper-1" class="test-component">\n'
+        CSS
+        + '<div id="wrapper-1" class="test-component">\n'
         "    <h2>My Wrapper</h2>\n"
         '    <div class="sections">\n'
         "        \n"
@@ -38,8 +42,7 @@ def test_dict_component():
         "        \n"
         "    </div>\n"
         "</div>\n"
-        "\n"
-        "<script>console.log('Button loaded');</script>"
+        + JS
     )
 
     assert rendered == expected

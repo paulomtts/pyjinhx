@@ -1,5 +1,7 @@
 from tests.ui.unified_component import UnifiedComponent
 
+CSS = "<style>.test-component { color: red; }\n</style>\n"
+
 
 def test_multiple_extra_js_files():
     component = UnifiedComponent(
@@ -11,7 +13,8 @@ def test_multiple_extra_js_files():
     rendered = component.render()
 
     expected = (
-        '<div id="multi-js-1" class="test-component">\n'
+        CSS
+        + '<div id="multi-js-1" class="test-component">\n'
         '    <div class="text">Multiple JS</div>\n'
         "</div>\n"
         "\n"

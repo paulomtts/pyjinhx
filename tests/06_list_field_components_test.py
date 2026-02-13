@@ -1,5 +1,8 @@
 from tests.ui.unified_component import UnifiedComponent
 
+CSS = "<style>.test-component { color: red; }\n</style>\n"
+JS = "\n<script>console.log('Button loaded');</script>"
+
 
 def test_nested_list_of_components():
     item1 = UnifiedComponent(id="btn-1", text="First Button")
@@ -15,7 +18,8 @@ def test_nested_list_of_components():
     rendered = component._render()
 
     expected = (
-        '<div id="list-1" class="test-component">\n'
+        CSS
+        + '<div id="list-1" class="test-component">\n'
         "    <h2>Action Buttons</h2>\n"
         '    <div class="items">\n'
         "        <ul>\n"
@@ -38,8 +42,7 @@ def test_nested_list_of_components():
         "        </ul>\n"
         "    </div>\n"
         "</div>\n"
-        "\n"
-        "<script>console.log('Button loaded');</script>"
+        + JS
     )
 
     assert rendered == expected
