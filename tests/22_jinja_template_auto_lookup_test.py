@@ -193,6 +193,6 @@ def test_nested_python_component_finds_hyphenated_template():
         rendered = str(parent.render())
 
         assert '<span id="child-1" class="child">I am the child</span>' in rendered
-        assert '<h1>Parent</h1>' in rendered
+        assert "<h1>Parent</h1>" in rendered
 
     Renderer.set_default_environment(original_environment)

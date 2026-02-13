@@ -15,17 +15,7 @@ Subclasses are automatically registered and can be rendered using their correspo
 | `id` | `str` | Yes | - | Unique identifier for the component instance |
 | `js` | `list[str]` | No | `[]` | Paths to additional JavaScript files to include when rendering |
 
-#### Special Fields
-
-These fields are automatically injected by PyJinHx in specific contexts:
-
-| Field | Type | When Available | Description |
-|-------|------|---------------|-------------|
-| `content` | `str` | Template-side rendering with children | Inner HTML of component tags. Example: `<Card>text</Card>` makes `content="text"` available in the template |
-
-#### Extra Fields
-
-Components accept extra fields beyond those defined in the class. Extra fields are stored by Pydantic and passed through to the template context, making them available for use in templates.
+Components accept extra fields beyond those defined in the class (`extra="allow"`). Extra fields are included in the template context alongside declared fields.
 
 #### Methods
 
@@ -56,20 +46,6 @@ Enables cleaner template syntax: `{{ component }}` instead of `{{ component.rend
 ## NestedComponentWrapper
 
 A wrapper for nested components. Enables access to the component's properties and rendered HTML.
-
-!!! note "Automatic Usage"
-    `NestedComponentWrapper` is created automatically during rendering. You don't import or instantiate it directly.
-
-    Access nested component properties in templates using `.props`:
-
-    ```html
-    <!-- Render the component's HTML -->
-    {{ nested_component }}
-
-    <!-- Access the component's properties -->
-    {{ nested_component.props.id }}
-    {{ nested_component.props.text }}
-    ```
 
 ### Fields
 
