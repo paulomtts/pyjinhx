@@ -12,7 +12,6 @@ def test_simple_nesting():
     rendered = component._render()
 
     expected = (
-        "<script>console.log('Button loaded');</script>\n"
         '<div id="wrapper-1" class="test-component">\n'
         "    <h2>My Wrapper</h2>\n"
         '    <div class="nested">\n'
@@ -23,6 +22,7 @@ def test_simple_nesting():
         "</div>\n"
         "\n"
         "    </div>\n</div>\n"
+        "\n<script>console.log('Button loaded');</script>"
     )
 
     assert rendered == expected

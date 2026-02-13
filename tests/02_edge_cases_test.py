@@ -10,11 +10,11 @@ def test_empty_list():
     
     rendered = component.render()
     
-    assert rendered == """<script>console.log('Button loaded');</script>
-<div id="empty-list-1" class="test-component">
+    assert rendered == """<div id="empty-list-1" class="test-component">
     <h2>Empty List</h2>
 </div>
-"""
+
+<script>console.log('Button loaded');</script>"""
 
 
 def test_empty_dict():
@@ -26,11 +26,11 @@ def test_empty_dict():
     
     rendered = component.render()
     
-    assert rendered == """<script>console.log('Button loaded');</script>
-<div id="empty-dict-1" class="test-component">
+    assert rendered == """<div id="empty-dict-1" class="test-component">
     <h2>Empty Dict</h2>
 </div>
-"""
+
+<script>console.log('Button loaded');</script>"""
 
 
 def test_component_with_only_id():
@@ -38,10 +38,10 @@ def test_component_with_only_id():
     
     rendered = component.render()
     
-    assert rendered == """<script>console.log('Button loaded');</script>
-<div id="minimal-1" class="test-component">
+    assert rendered == """<div id="minimal-1" class="test-component">
 </div>
-"""
+
+<script>console.log('Button loaded');</script>"""
 
 
 def test_none_values_in_nested():
@@ -55,9 +55,9 @@ def test_none_values_in_nested():
     
     rendered = component.render()
     
-    assert rendered == """<script>console.log('Button loaded');</script>
-<div id="none-values-1" class="test-component">
+    assert rendered == """<div id="none-values-1" class="test-component">
     <h2>None Values</h2>
 </div>
-"""
+
+<script>console.log('Button loaded');</script>"""
 
