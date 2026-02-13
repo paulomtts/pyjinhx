@@ -145,5 +145,5 @@ app.add_middleware(RegistryScopeMiddleware)
 
 ## Tips
 
-- **Component JavaScript**: Components with adjacent `.js` files have their scripts auto-injected. See [JavaScript Collection](../guide/assets.md).
+- **Component assets**: Components with adjacent `.js` and `.css` files have their assets auto-injected. See [Asset Collection](../guide/assets.md).
 - **Response types**: FastAPI's `HTMLResponse` works directly with `render()`, which returns `Markup` objects that convert to strings automatically.

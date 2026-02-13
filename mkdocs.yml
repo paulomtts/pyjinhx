@@ -65,7 +65,7 @@ nav:
       - Component Registry: guide/registry.md
       - PascalCase Tags: guide/tags.md
       - Nesting: guide/nesting.md
-      - JavaScript Collection: guide/assets.md
+      - Asset Collection: guide/assets.md
       - Configuration: guide/configuration.md
   - Integrations:
       - FastAPI: integrations/fastapi.md

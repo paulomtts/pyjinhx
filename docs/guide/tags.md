@@ -114,4 +114,4 @@ renderer = Renderer.get_default_renderer(auto_id=False)
 ## See next
 
 - [Nesting](nesting.md) - Compose components together
-- [JavaScript Collection](assets.md) - Automatic JS handling
+- [Asset Collection](assets.md) - Automatic JS and CSS handling

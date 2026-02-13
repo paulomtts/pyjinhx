@@ -9,7 +9,7 @@ Shared rendering engine used by `BaseComponent` rendering and HTML-like custom-t
 This renderer centralizes:
 - Jinja template loading (by component class or explicit file/source)
 - Expansion of PascalCase custom tags inside rendered markup
-- JavaScript collection/deduping and root-level script injection
+- JavaScript and CSS collection/deduping and root-level asset injection
 - Rendering of HTML-like source strings into component output
 
 #### Constructor
@@ -21,7 +21,8 @@ def __init__(
     environment: Environment,
     *,
     auto_id: bool = True,
-    inline_js: bool | None = None
+    inline_js: bool | None = None,
+    inline_css: bool | None = None,
 ) -> None
 ```
 
@@ -31,6 +32,7 @@ Initialize a Renderer with the given Jinja environment.
 - `environment` (Environment): The Jinja2 Environment to use for template rendering
 - `auto_id` (bool): If True (default), generate UUIDs for components without explicit IDs
 - `inline_js` (bool | None): If True, JavaScript is collected and injected as `<script>` tags. If False, no scripts are injected. Defaults to the class-level setting
+- `inline_css` (bool | None): If True, CSS is collected and injected as `<style>` tags. If False, no styles are injected. Defaults to the class-level setting
 
 #### Class Methods
 
@@ -41,7 +43,8 @@ Initialize a Renderer with the given Jinja environment.
 def get_default_renderer(
     *,
     auto_id: bool = True,
-    inline_js: bool | None = None
+    inline_js: bool | None = None,
+    inline_css: bool | None = None,
 ) -> Renderer
 ```
 
@@ -50,8 +53,9 @@ Return a cached default renderer instance.
 **Parameters:**
 - `auto_id` (bool): If True, generate UUIDs for components without explicit IDs
 - `inline_js` (bool | None): If True, JavaScript is collected and injected as `<script>` tags. If False, no scripts are injected. Defaults to the class-level setting
+- `inline_css` (bool | None): If True, CSS is collected and injected as `<style>` tags. If False, no styles are injected. Defaults to the class-level setting
 
-**Returns:** A Renderer instance cached by (environment identity, auto_id, inline_js).
+**Returns:** A Renderer instance cached by (environment identity, auto_id, inline_js, inline_css).
 
 ##### get_default_environment()
 
@@ -92,6 +96,18 @@ Set the process-wide default for inline JavaScript injection.
 **Parameters:**
 - `inline_js` (bool): If True (default), JavaScript is collected and injected as `<script>` tags. If False, no scripts are injected. Use Finder.collect_javascript_files() for static serving.
 
+##### set_default_inline_css()
+
+```python
+@classmethod
+def set_default_inline_css(inline_css: bool) -> None
+```
+
+Set the process-wide default for inline CSS injection.
+
+**Parameters:**
+- `inline_css` (bool): If True (default), CSS is collected and injected as `<style>` tags. If False, no styles are injected. Use Finder.collect_css_files() for static serving.
+
 ##### peek_default_environment()
 
 ```python
@@ -126,7 +142,7 @@ def render(source: str) -> str
 
 Render an HTML-like source string, expanding PascalCase component tags into HTML.
 
-PascalCase tags (e.g., `<MyButton text="OK">`) are matched to registered component classes or template files and rendered recursively. Standard HTML is passed through unchanged. Associated JavaScript files are collected and injected as a `<script>` block.
+PascalCase tags (e.g., `<MyButton text="OK">`) are matched to registered component classes or template files and rendered recursively. Standard HTML is passed through unchanged. Associated CSS and JavaScript files are collected and injected as `<style>` and `<script>` tags.
 
 **Parameters:**
 - `source` (str): HTML-like string containing component tags to render
@@ -139,13 +155,13 @@ PascalCase tags (e.g., `<MyButton text="OK">`) are matched to registered compone
 def new_session() -> RenderSession
 ```
 
-Create a new render session for tracking scripts during rendering.
+Create a new render session for tracking assets during rendering.
 
 **Returns:** A fresh RenderSession instance.
 
 ## RenderSession
 
-Per-render state for script aggregation and deduplication.
+Per-render state for asset aggregation and deduplication.
 
 ### Fields
 
@@ -153,3 +169,5 @@ Per-render state for script aggregation and deduplication.
 |-------|------|-------------|
 | `scripts` | `list[str]` | Collected JavaScript code snippets to inject |
 | `collected_js_files` | `set[str]` | Set of JS file paths already processed (for deduplication) |
+| `styles` | `list[str]` | Collected CSS code snippets to inject |
+| `collected_css_files` | `set[str]` | Set of CSS file paths already processed (for deduplication) |
