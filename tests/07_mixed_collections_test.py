@@ -1,5 +1,8 @@
 from tests.ui.unified_component import UnifiedComponent
 
+CSS = "<style>.test-component { color: red; }\n</style>\n"
+JS = "\n<script>console.log('Button loaded');</script>"
+
 
 def test_mixed_list_content():
     item1 = UnifiedComponent(id="btn-1", text="First Button")
@@ -14,7 +17,8 @@ def test_mixed_list_content():
     rendered = component.render()
 
     expected = (
-        '<div id="mixed-list-1" class="test-component">\n'
+        CSS
+        + '<div id="mixed-list-1" class="test-component">\n'
         "    <h2>Mixed List</h2>\n"
         '    <div class="items">\n'
         "        <ul>\n"
@@ -38,8 +42,7 @@ def test_mixed_list_content():
         "        </ul>\n"
         "    </div>\n"
         "</div>\n"
-        "\n"
-        "<script>console.log('Button loaded');</script>"
+        + JS
     )
 
     assert rendered == expected
@@ -64,7 +67,8 @@ def test_mixed_dict_content():
     rendered = component.render()
 
     expected = (
-        '<div id="mixed-dict-1" class="test-component">\n'
+        CSS
+        + '<div id="mixed-dict-1" class="test-component">\n'
         "    <h2>Mixed Dict</h2>\n"
         '    <div class="sections">\n'
         "        \n"
@@ -96,8 +100,7 @@ def test_mixed_dict_content():
         "        \n"
         "    </div>\n"
         "</div>\n"
-        "\n"
-        "<script>console.log('Button loaded');</script>"
+        + JS
     )
 
     assert rendered == expected

@@ -47,6 +47,10 @@ class BaseComponent(BaseModel):
         default_factory=list,
         description="List of paths to extra JavaScript files to include.",
     )
+    css: list[str] = Field(
+        default_factory=list,
+        description="List of paths to extra CSS files to include.",
+    )
 
     @field_validator("id", mode="before")
     def validate_id(cls, v):

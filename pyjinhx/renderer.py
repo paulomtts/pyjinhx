@@ -23,15 +23,19 @@ if TYPE_CHECKING:
 @dataclass
 class RenderSession:
     """
-    Per-render state for script aggregation and deduplication.
+    Per-render state for asset aggregation and deduplication.
 
     Attributes:
         scripts: Collected JavaScript code snippets to inject.
         collected_js_files: Set of JS file paths already processed (for deduplication).
+        styles: Collected CSS code snippets to inject.
+        collected_css_files: Set of CSS file paths already processed (for deduplication).
     """
 
     scripts: list[str] = field(default_factory=list)
     collected_js_files: set[str] = field(default_factory=set)
+    styles: list[str] = field(default_factory=list)
+    collected_css_files: set[str] = field(default_factory=set)
 
 
 class Renderer:
@@ -51,6 +55,7 @@ class Renderer:
         *,
         auto_id: bool = True,
         inline_js: bool | None = None,
+        inline_css: bool | None = None,
     ) -> None:
         """
         Initialize a Renderer with the given Jinja environment.
@@ -60,17 +65,23 @@ class Renderer:
             auto_id: If True (default), generate UUIDs for components without explicit IDs.
             inline_js: If True, JavaScript is collected and injected as <script> tags.
                 If False, no scripts are injected. Defaults to the class-level setting.
+            inline_css: If True, CSS is collected and injected as <style> tags.
+                If False, no styles are injected. Defaults to the class-level setting.
         """
         self._environment = environment
         self._auto_id = auto_id
         self._inline_js = (
             inline_js if inline_js is not None else Renderer._default_inline_js
         )
+        self._inline_css = (
+            inline_css if inline_css is not None else Renderer._default_inline_css
+        )
         self._template_finder_cache: dict[str, Finder] = {}
 
     _default_environment: ClassVar[Environment | None] = None
     _default_inline_js: ClassVar[bool] = True
-    _default_renderers: ClassVar[dict[tuple[int, bool, bool], "Renderer"]] = {}
+    _default_inline_css: ClassVar[bool] = True
+    _default_renderers: ClassVar[dict[tuple[int, bool, bool, bool], "Renderer"]] = {}
 
     @classmethod
     def peek_default_environment(cls) -> Environment | None:
@@ -114,6 +125,18 @@ class Renderer:
         cls._default_renderers.clear()
 
     @classmethod
+    def set_default_inline_css(cls, inline_css: bool) -> None:
+        """
+        Set the process-wide default for inline CSS injection.
+
+        Args:
+            inline_css: If True (default), CSS is collected and injected as <style> tags.
+                If False, no styles are injected. Use Finder.collect_css_files() for static serving.
+        """
+        cls._default_inline_css = inline_css
+        cls._default_renderers.clear()
+
+    @classmethod
     def get_default_environment(cls) -> Environment:
         """
         Return the default Jinja environment, auto-initializing if needed.
@@ -130,7 +153,11 @@ class Renderer:
 
     @classmethod
     def get_default_renderer(
-        cls, *, auto_id: bool = True, inline_js: bool | None = None
+        cls,
+        *,
+        auto_id: bool = True,
+        inline_js: bool | None = None,
+        inline_css: bool | None = None,
     ) -> "Renderer":
         """
         Return a cached default renderer instance.
@@ -139,19 +166,27 @@ class Renderer:
             auto_id: If True, generate UUIDs for components without explicit IDs.
             inline_js: If True, JavaScript is collected and injected as <script> tags.
                 If False, no scripts are injected. Defaults to the class-level setting.
+            inline_css: If True, CSS is collected and injected as <style> tags.
+                If False, no styles are injected. Defaults to the class-level setting.
 
         Returns:
-            A Renderer instance cached by (environment identity, auto_id, inline_js).
+            A Renderer instance cached by (environment identity, auto_id, inline_js, inline_css).
         """
         environment = cls.get_default_environment()
         effective_inline_js = (
             inline_js if inline_js is not None else cls._default_inline_js
         )
-        cache_key = (id(environment), auto_id, effective_inline_js)
+        effective_inline_css = (
+            inline_css if inline_css is not None else cls._default_inline_css
+        )
+        cache_key = (id(environment), auto_id, effective_inline_js, effective_inline_css)
         renderer = cls._default_renderers.get(cache_key)
         if renderer is None:
             renderer = Renderer(
-                environment, auto_id=auto_id, inline_js=effective_inline_js
+                environment,
+                auto_id=auto_id,
+                inline_js=effective_inline_js,
+                inline_css=effective_inline_css,
             )
             cls._default_renderers[cache_key] = renderer
         return renderer
@@ -267,11 +302,54 @@ class Renderer:
             session.scripts.append(javascript_content)
             session.collected_js_files.add(normalized_path)
 
+    def _collect_component_css(
+        self, component: "BaseComponent", session: RenderSession
+    ) -> None:
+        component_directory = Finder.get_class_directory(type(component))
+        css_filename = f"{pascal_case_to_kebab_case(type(component).__name__)}.css"
+        css_path = Finder.find_in_directory(component_directory, css_filename)
+        if not css_path:
+            return
+
+        if css_path in session.collected_css_files:
+            return
+
+        with open(css_path, "r") as file:
+            css_content = file.read()
+
+        if not css_content:
+            return
+
+        session.styles.append(css_content)
+        session.collected_css_files.add(css_path)
+
+    def _collect_extra_css(
+        self, component: "BaseComponent", session: RenderSession
+    ) -> None:
+        for css_path in component.css:
+            normalized_path = os.path.normpath(css_path).replace("\\", "/")
+            if not os.path.exists(normalized_path):
+                continue
+            if normalized_path in session.collected_css_files:
+                continue
+            with open(normalized_path, "r") as file:
+                css_content = file.read()
+            if not css_content:
+                continue
+            session.styles.append(css_content)
+            session.collected_css_files.add(normalized_path)
+
     def _inject_scripts(self, markup: str, session: RenderSession) -> str:
         if not session.scripts:
             return markup
         combined_script = "\n".join(session.scripts)
         return f"{markup}\n<script>{combined_script}</script>"
+
+    def _inject_styles(self, markup: str, session: RenderSession) -> str:
+        if not session.styles:
+            return markup
+        combined_styles = "\n".join(session.styles)
+        return f"<style>{combined_styles}</style>\n{markup}"
 
     def _find_template_for_tag(self, tag_name: str) -> str:
         loader_root = self._get_loader_root()
@@ -423,8 +501,13 @@ class Renderer:
 
         if collect_component_js and self._inline_js:
             self._collect_component_javascript(component, session)
+        if collect_component_js and self._inline_css:
+            self._collect_component_css(component, session)
 
         if is_root:
+            if self._inline_css:
+                self._collect_extra_css(component, session)
+                rendered_markup = self._inject_styles(rendered_markup, session)
             if self._inline_js:
                 self._collect_extra_javascript(component, session)
                 rendered_markup = self._inject_scripts(rendered_markup, session)
@@ -454,6 +537,8 @@ class Renderer:
             self._render_tag_node(node, base_context={}, session=session)
             for node in parser.root_nodes
         )
+        if self._inline_css:
+            rendered_markup = self._inject_styles(rendered_markup, session)
         if self._inline_js:
             rendered_markup = self._inject_scripts(rendered_markup, session)
         return rendered_markup.strip()
