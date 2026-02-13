@@ -1,6 +1,6 @@
 # Finder
 
-File discovery engine for templates and JavaScript assets.
+File discovery engine for templates, JavaScript, and CSS assets.
 
 ## Class
 
@@ -61,6 +61,19 @@ Collect all `.js` files under `root`.
 - `relative_to_root` (bool): If True, return paths relative to `root`. If False (default), return absolute paths.
 
 **Returns:** A sorted list of JavaScript file paths.
+
+##### collect_css_files()
+
+```python
+def collect_css_files(relative_to_root: bool = False) -> list[str]
+```
+
+Collect all `.css` files under `root`.
+
+**Parameters:**
+- `relative_to_root` (bool): If True, return paths relative to `root`. If False (default), return absolute paths.
+
+**Returns:** A sorted list of CSS file paths.
 
 #### Static Methods
 

@@ -6,7 +6,7 @@ Base class for defining reusable UI components with Pydantic validation and Jinj
 
 ### BaseComponent
 
-Subclasses are automatically registered and can be rendered using their corresponding HTML/Jinja templates. Components support nested composition, automatic JavaScript collection, and can be used directly in Jinja templates via the `__html__` protocol.
+Subclasses are automatically registered and can be rendered using their corresponding HTML/Jinja templates. Components support nested composition, automatic JavaScript and CSS collection, and can be used directly in Jinja templates via the `__html__` protocol.
 
 #### Fields
 
@@ -14,6 +14,7 @@ Subclasses are automatically registered and can be rendered using their correspo
 |-------|------|----------|---------|-------------|
 | `id` | `str` | Yes | - | Unique identifier for the component instance |
 | `js` | `list[str]` | No | `[]` | Paths to additional JavaScript files to include when rendering |
+| `css` | `list[str]` | No | `[]` | Paths to additional CSS files to include when rendering |
 
 Components accept extra fields beyond those defined in the class (`extra="allow"`). Extra fields are included in the template context alongside declared fields.
 

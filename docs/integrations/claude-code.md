@@ -98,22 +98,22 @@ class Card(BaseComponent):
 
 Lists and dicts can mix components with strings. Nesting depth is unlimited.
 
-## JavaScript
+## Assets (JS & CSS)
 
-Place a kebab-case `.js` file next to the component. It is auto-collected and injected as an inline `<script>` at the root render.
+Place kebab-case `.js` and/or `.css` files next to the component. They are auto-collected, deduplicated per render session, and injected at the root render — CSS as `<style>` before the HTML, JS as `<script>` after.
 
-| Class Name     | JS File             |
-|----------------|---------------------|
-| `Button`       | `button.js`         |
-| `ActionButton` | `action-button.js`  |
+| Class Name     | JS File             | CSS File             |
+|----------------|---------------------|----------------------|
+| `Button`       | `button.js`         | `button.css`         |
+| `ActionButton` | `action-button.js`  | `action-button.css`  |
 
-Scripts are deduplicated per render session. Add extra JS files via the `js` field:
+Each component gets its own `<script>`/`<style>` tag (errors in one don't break others). Add extra files via the `js` and `css` fields:
 
 ```python
-widget = MyWidget(id="w1", js=["path/to/extra.js"])
+widget = MyWidget(id="w1", js=["path/to/extra.js"], css=["path/to/theme.css"])
 ```
 
-Disable inline JS globally with `Renderer.set_default_inline_js(False)`. Use `Finder(root).collect_javascript_files(relative_to_root=True)` for static serving.
+Missing extra files emit a warning (check `pyjinhx` logger). Disable inline assets with `Renderer.set_default_inline_js(False)` / `Renderer.set_default_inline_css(False)`. Use `Finder(root).collect_javascript_files()` / `Finder(root).collect_css_files()` for static serving.
 
 ## Registry
 
@@ -162,6 +162,7 @@ my_app/
 │       ├── button.py
 │       ├── button.html
 │       ├── button.js          # Optional, auto-collected
+│       ├── button.css         # Optional, auto-collected
 │       ├── card.py
 │       └── card.html
 ├── main.py
@@ -177,7 +178,7 @@ from pyjinhx import BaseComponent, Renderer, Registry, Finder, Parser, Tag
 - `BaseComponent` — base class for all components
 - `Renderer` — renders strings with PascalCase tags or manages environments
 - `Registry` — query/clear instances and classes, `request_scope()` context manager
-- `Finder` — template/JS discovery, `collect_javascript_files()`, `detect_root_directory()`
+- `Finder` — template/asset discovery, `collect_javascript_files()`, `collect_css_files()`, `detect_root_directory()`
 - `Parser` / `Tag` — HTML parsing internals (rarely needed directly)
 ````
 

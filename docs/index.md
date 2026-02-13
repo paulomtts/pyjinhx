@@ -2,13 +2,13 @@
 
 Build reusable, type-safe UI components for template-based web apps in Python.
 
-PyJinHx combines **Pydantic models** with **Jinja2 templates** to give you template discovery, component composition, and JavaScript bundling.
+PyJinHx combines **Pydantic models** with **Jinja2 templates** to give you template discovery, component composition, and asset bundling.
 
 ## Features
 
 - **Automatic Template Discovery** - Place templates next to component files, no manual paths needed
 - **Composability** - Nest components easily with single components, lists, and dictionaries
-- **JavaScript Bundling** - Automatically collects and bundles `.js` files from component directories
+- **Asset Bundling** - Automatically collects and bundles `.js` and `.css` files from component directories
 - **Type Safety** - Pydantic models provide validation and IDE support
 
 ## Two Ways to Render
