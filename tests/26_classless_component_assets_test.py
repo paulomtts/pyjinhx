@@ -143,13 +143,13 @@ def test_classless_component_no_assets_no_injection():
     Registry.clear_instances()
 
     with tempfile.TemporaryDirectory() as temp_dir:
-        with open(os.path.join(temp_dir, "plain_text.html"), "w") as f:
+        with open(os.path.join(temp_dir, "bare_block.html"), "w") as f:
             f.write('<p id="{{ id }}">{{ content }}</p>\n')
 
         env = Environment(loader=FileSystemLoader(temp_dir))
         renderer = Renderer(env, auto_id=True)
 
-        rendered = renderer.render('<PlainText id="p1">Words</PlainText>')
+        rendered = renderer.render('<BareBlock id="p1">Words</BareBlock>')
 
         assert "<script>" not in rendered
         assert "<style>" not in rendered
