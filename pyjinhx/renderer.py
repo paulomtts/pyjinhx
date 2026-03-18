@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import importlib.util
 import logging
 import os
 import re
@@ -15,12 +16,56 @@ from .dataclasses import Tag
 from .finder import Finder
 from .parser import Parser
 from .registry import Registry
-from .utils import detect_root_directory, pascal_case_to_kebab_case
+from .utils import detect_root_directory, pascal_case_to_kebab_case, pascal_case_to_snake_case
 
 if TYPE_CHECKING:
     from .base import BaseComponent
 
 logger = logging.getLogger("pyjinhx")
+
+_autodiscovered_files: set[str] = set()
+
+
+def _import_module_from_file(filepath: str) -> None:
+    """Import a Python file by path to trigger BaseComponent __init_subclass__ registration."""
+    if filepath in _autodiscovered_files:
+        return
+    _autodiscovered_files.add(filepath)
+    try:
+        module_name = f"_pyjinhx_autodiscovered_{os.path.splitext(os.path.basename(filepath))[0]}"
+        spec = importlib.util.spec_from_file_location(module_name, filepath)
+        if spec is None or spec.loader is None:
+            return
+        import sys
+        module = importlib.util.module_from_spec(spec)
+        sys.modules[module_name] = module  # required for inspect.getfile to resolve the class
+        spec.loader.exec_module(module)
+    except Exception:
+        logger.debug("Failed to autodiscover module at %s", filepath, exc_info=True)
+
+
+def _try_autodiscover_for_tag(tag_name: str, template_path: str | None) -> None:
+    """
+    Look for a co-located Python module next to the template and import it so that
+    any BaseComponent subclasses defined there are registered without an explicit import.
+
+    Search order: <snake_name>.py → __init__.py → first alphabetical .py in the directory.
+    """
+    if template_path is None:
+        return
+    component_dir = os.path.dirname(template_path)
+    snake_name = pascal_case_to_snake_case(tag_name)
+    for filename in (f"{snake_name}.py", "__init__.py"):
+        candidate = os.path.join(component_dir, filename)
+        if os.path.exists(candidate):
+            _import_module_from_file(candidate)
+            return
+    try:
+        py_files = sorted(f for f in os.listdir(component_dir) if f.endswith(".py"))
+        if py_files:
+            _import_module_from_file(os.path.join(component_dir, py_files[0]))
+    except OSError:
+        pass
 
 
 @dataclass
@@ -265,12 +310,16 @@ class Renderer:
         )
 
     def _collect_component_javascript(
-        self, component: "BaseComponent", session: RenderSession
+        self,
+        component: "BaseComponent",
+        session: RenderSession,
+        *,
+        component_dir: str | None = None,
+        asset_name: str | None = None,
     ) -> None:
-        component_directory = Finder.get_class_directory(type(component))
-        javascript_filename = (
-            f"{pascal_case_to_kebab_case(type(component).__name__)}.js"
-        )
+        component_directory = component_dir or Finder.get_class_directory(type(component))
+        name = asset_name or pascal_case_to_kebab_case(type(component).__name__)
+        javascript_filename = f"{name}.js"
         javascript_path = Finder.find_in_directory(
             component_directory, javascript_filename
         )
@@ -312,10 +361,16 @@ class Renderer:
             session.collected_js_files.add(normalized_path)
 
     def _collect_component_css(
-        self, component: "BaseComponent", session: RenderSession
+        self,
+        component: "BaseComponent",
+        session: RenderSession,
+        *,
+        component_dir: str | None = None,
+        asset_name: str | None = None,
     ) -> None:
-        component_directory = Finder.get_class_directory(type(component))
-        css_filename = f"{pascal_case_to_kebab_case(type(component).__name__)}.css"
+        component_directory = component_dir or Finder.get_class_directory(type(component))
+        name = asset_name or pascal_case_to_kebab_case(type(component).__name__)
+        css_filename = f"{name}.css"
         css_path = Finder.find_in_directory(component_directory, css_filename)
         if not css_path:
             return
@@ -435,6 +490,9 @@ class Renderer:
         except FileNotFoundError:
             pass
 
+        if node.name not in Registry.get_classes():
+            _try_autodiscover_for_tag(node.name, template_path)
+
         component_class = Registry.get_classes().get(node.name)
         if component_class is not None:
             component = component_class(
@@ -518,10 +576,20 @@ class Renderer:
             rendered_markup, base_context=render_context, session=session
         )
 
+        # For bare BaseComponent fallbacks (no registered class), derive the asset
+        # directory and name from the template path rather than the class file location,
+        # which would otherwise resolve to the pyjinhx package directory.
+        if template_path is not None and type(component).__name__ == "BaseComponent":
+            _asset_dir: str | None = os.path.dirname(template_path)
+            _asset_name: str | None = os.path.splitext(os.path.basename(template_path))[0].replace("_", "-")
+        else:
+            _asset_dir = None
+            _asset_name = None
+
         if collect_component_js and self._inline_js:
-            self._collect_component_javascript(component, session)
+            self._collect_component_javascript(component, session, component_dir=_asset_dir, asset_name=_asset_name)
         if collect_component_js and self._inline_css:
-            self._collect_component_css(component, session)
+            self._collect_component_css(component, session, component_dir=_asset_dir, asset_name=_asset_name)
 
         if is_root:
             if self._inline_css:
