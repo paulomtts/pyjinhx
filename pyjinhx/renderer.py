@@ -568,8 +568,8 @@ class Renderer:
         )
 
         render_context = dict(context)
-        for component in Registry.get_instances().values():
-            render_context[component.id] = component
+        for _instance in Registry.get_instances().values():
+            render_context[_instance.id] = _instance
 
         rendered_markup = template.render(render_context)
         rendered_markup = self._expand_custom_tags(
