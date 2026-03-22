@@ -1,0 +1,15 @@
+<dialog class="px-drawer px-drawer--{{ side }}" id="{{ id }}">
+    <div class="px-drawer__box">
+        <header class="px-drawer__header">
+            <span class="px-drawer__title">{{ title }}</span>
+            <button type="button"
+                    class="px-drawer__close"
+                    onclick="closePxDrawer('{{ id }}')"
+                    aria-label="Close">&#x2715;</button>
+        </header>
+        <div class="px-drawer__body">{{ body }}</div>
+        {% if footer %}
+        <footer class="px-drawer__footer">{{ footer }}</footer>
+        {% endif %}
+    </div>
+</dialog>

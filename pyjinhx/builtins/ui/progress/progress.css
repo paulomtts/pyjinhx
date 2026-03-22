@@ -1,0 +1,60 @@
+:root {
+  --px-progress-height:     0.5rem;
+  --px-progress-radius:     var(--radius-full);
+  --px-progress-track:      var(--surface-alt);
+  --px-progress-fill:       var(--brand);
+  --px-progress-indeterminate-speed: 1.2s;
+}
+
+.px-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  width: 100%;
+  max-width: 24rem;
+}
+
+.px-progress__label {
+  font-size: var(--font-size-sm);
+  color: var(--text-muted);
+}
+
+.px-progress__bar {
+  width: 100%;
+  height: var(--px-progress-height);
+  border-radius: var(--px-progress-radius);
+  border: 1px solid var(--border);
+  background: var(--px-progress-track);
+  overflow: hidden;
+}
+
+.px-progress__bar::-webkit-progress-bar {
+  background: var(--px-progress-track);
+  border-radius: var(--px-progress-radius);
+}
+
+.px-progress__bar::-webkit-progress-value {
+  background: var(--px-progress-fill);
+  border-radius: var(--px-progress-radius);
+}
+
+.px-progress__bar::-moz-progress-bar {
+  background: var(--px-progress-fill);
+  border-radius: var(--px-progress-radius);
+}
+
+.px-progress__bar:indeterminate {
+  background: linear-gradient(
+    90deg,
+    var(--px-progress-track) 0%,
+    var(--px-progress-fill) 50%,
+    var(--px-progress-track) 100%
+  );
+  background-size: 200% 100%;
+  animation: px-progress-indeterminate var(--px-progress-indeterminate-speed) ease infinite;
+}
+
+@keyframes px-progress-indeterminate {
+  0% { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
+}

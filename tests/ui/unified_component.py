@@ -11,4 +11,3 @@ class UnifiedComponent(BaseComponent):
     nested: Optional[UnifiedComponent] = None
     items: Optional[list[Union[UnifiedComponent, str]]] = None
     sections: Optional[dict[str, Union[UnifiedComponent, str]]] = None
-

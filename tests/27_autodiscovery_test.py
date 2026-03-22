@@ -11,6 +11,7 @@ _try_autodiscover_for_tag scans the template's directory for a co-located Python
 module and imports it via importlib, triggering __init_subclass__ registration.
 Deduplication prevents re-importing on subsequent renders.
 """
+
 import os
 import tempfile
 
@@ -47,6 +48,7 @@ def _drop_from_registry(class_name: str) -> None:
 # ---------------------------------------------------------------------------
 # Discovery search-order tests
 # ---------------------------------------------------------------------------
+
 
 def test_autodiscovery_snake_name_py():
     """Class in <snake_name>.py is auto-imported and registered."""
@@ -115,6 +117,7 @@ def test_autodiscovery_any_py_last_resort():
 # Deduplication tests
 # ---------------------------------------------------------------------------
 
+
 def test_autodiscovery_file_imported_only_once():
     """A Python file is exec'd only once even when multiple tags trigger discovery."""
     Registry.clear_instances()
@@ -165,6 +168,7 @@ def test_autodiscovery_skipped_when_already_registered():
 # ---------------------------------------------------------------------------
 # Integration: autodiscovery + asset collection
 # ---------------------------------------------------------------------------
+
 
 def test_autodiscovered_class_collects_js():
     """After auto-import, the component's co-located JS is collected normally."""

@@ -132,6 +132,8 @@ Template-side rendering supports:
 - Extra JS: pass `js=[...]` with file paths; missing files are ignored.
 - Extra HTML files: pass `html=[...]` with file paths; they are rendered and exposed in the template context by filename stem (e.g. `extra_content.html` → `extra_content.html` wrapper). Missing files raise `FileNotFoundError`.
 
+Optional UI components ship in **`pyjinhx.builtins`**. Full reference (fields, `px-` CSS classes, `--px-*` tokens, template fallback): [docs/guide/builtins.md](docs/guide/builtins.md), or the published site under **Guide → Built-in UI components**.
+
 ## FastAPI + HTMX example
 
 ### Component class
@@ -184,3 +186,11 @@ def button() -> str:
 def clicked(button_id: str = "unknown") -> str:
     return f"Clicked: {button_id}"
 ```
+
+## Design decisions
+
+- Test suite imports are stabilized by adding the project root to `sys.path` in `tests/conftest.py`. This keeps absolute imports like `from pyjinhx import ...` and `from tests.ui...` working across different `pytest` import modes and Python runners.
+- Optional **builtins** (`pyjinhx.builtins`) ship twenty UI components with sibling templates, CSS, and JS where needed; documentation lives in [docs/guide/builtins.md](docs/guide/builtins.md). Importing `pyjinhx.builtins` registers those classes with the global registry like any other `BaseComponent` subclass.
+- Built-in components live under `site-packages`; Jinja’s `FileSystemLoader` does not load templates outside the configured root. The renderer therefore falls back to reading adjacent template files from disk for classes in the `pyjinhx.builtins` package when normal relative lookup fails, so your app’s loader can stay pointed at your own template directory.
+- **Co-located JS/CSS names:** Auto-collection looks for `pascal_case_to_kebab_case(ClassName) + ".js"` / `".css"` next to the class (e.g. `TabGroup` → `tab-group.js`, same idea as `LoadingOverlay` → `loading-overlay.js`). Using snake_case filenames such as `tab_group.js` will not be picked up; templates may still resolve via both snake and kebab candidates.
+- **Dev gallery:** [tests/builtins_gallery/](tests/builtins_gallery/) is a FastAPI page that renders every builtin for manual or automated smoke checks. **FastAPI**, **httpx**, and **uvicorn** are listed only under `[dependency-groups] dev` in `pyproject.toml`; they are not required to use the library at runtime. Run `uv sync --group dev` then `uv run pytest tests/test_builtins_gallery.py`. To browse locally, run **`uv run python -m tests.builtins_gallery`** (defaults to **http://127.0.0.1:9000**; `PYJINHX_GALLERY_PORT` overrides the port). **`uv run` takes a command**, not a path—`uv run tests/builtins_gallery/` will fail because a directory is not an executable.

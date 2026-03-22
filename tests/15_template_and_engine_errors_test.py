@@ -33,4 +33,3 @@ def test_non_filesystem_loader_error():
         component.render()
 
     Renderer.set_default_environment(original_environment)
-

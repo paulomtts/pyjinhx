@@ -1,0 +1,191 @@
+:root {
+  --px-drawer-width:        min(24rem, 100vw);
+  --px-drawer-height-bottom: min(50dvh, 28rem);
+  --px-drawer-bg:           var(--surface);
+  --px-drawer-border:       var(--border);
+  --px-drawer-shadow:       var(--shadow-md);
+  --px-drawer-backdrop:     rgb(0 0 0 / 0.45);
+  --px-drawer-header-bg:    var(--surface-alt);
+  --px-drawer-header-sep:   var(--border);
+  --px-drawer-footer-bg:    var(--surface-alt);
+  --px-drawer-footer-sep:   var(--border);
+  --px-drawer-padding:      1rem;
+  --px-drawer-z:            250;
+}
+
+.px-drawer::backdrop {
+  background: var(--px-drawer-backdrop);
+  backdrop-filter: blur(2px);
+  animation: px-drawer-backdrop-in 200ms ease forwards;
+}
+
+.px-drawer[open] {
+  display: flex;
+  margin: 0;
+  padding: 0;
+  border: none;
+  width: 100%;
+  max-width: 100vw;
+  height: 100%;
+  max-height: 100dvh;
+  background: transparent;
+  z-index: var(--px-drawer-z);
+  animation: px-drawer-root-in 200ms ease forwards;
+}
+
+.px-drawer.px-drawer--closing {
+  animation: px-drawer-root-out 150ms ease forwards;
+}
+
+.px-drawer.px-drawer--closing::backdrop {
+  animation: px-drawer-backdrop-out 150ms ease forwards;
+}
+
+.px-drawer--left[open],
+.px-drawer--right[open] {
+  flex-direction: row;
+  align-items: stretch;
+}
+
+.px-drawer--left[open] {
+  justify-content: flex-start;
+}
+
+.px-drawer--right[open] {
+  justify-content: flex-end;
+}
+
+.px-drawer--bottom[open] {
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: stretch;
+}
+
+.px-drawer__box {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--px-drawer-bg);
+  border: 1px solid var(--px-drawer-border);
+  box-shadow: var(--px-drawer-shadow);
+  overflow: hidden;
+}
+
+.px-drawer--left .px-drawer__box,
+.px-drawer--right .px-drawer__box {
+  width: var(--px-drawer-width);
+  max-width: 100%;
+  height: 100%;
+  animation: px-drawer-slide-side-in 200ms ease forwards;
+}
+
+.px-drawer--right .px-drawer__box {
+  border-radius: var(--radius-lg) 0 0 var(--radius-lg);
+}
+
+.px-drawer--left .px-drawer__box {
+  border-radius: 0 var(--radius-lg) var(--radius-lg) 0;
+}
+
+.px-drawer--bottom .px-drawer__box {
+  width: 100%;
+  max-height: var(--px-drawer-height-bottom);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  animation: px-drawer-slide-bottom-in 200ms ease forwards;
+}
+
+.px-drawer__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: var(--px-drawer-padding);
+  background: var(--px-drawer-header-bg);
+  border-bottom: 1px solid var(--px-drawer-header-sep);
+  flex-shrink: 0;
+}
+
+.px-drawer__title {
+  font-size: var(--font-size-md);
+  font-weight: 600;
+  color: var(--text);
+}
+
+.px-drawer__close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  padding: 0;
+  font-size: 1rem;
+  line-height: 1;
+  background: transparent;
+  color: var(--text-muted);
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.px-drawer__close:hover {
+  background: var(--surface-alt);
+  color: var(--text);
+}
+
+.px-drawer__body {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--px-drawer-padding);
+  color: var(--text);
+  font-size: var(--font-size-sm);
+  line-height: 1.5;
+}
+
+.px-drawer__footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  padding: 0.75rem var(--px-drawer-padding);
+  background: var(--px-drawer-footer-bg);
+  border-top: 1px solid var(--px-drawer-footer-sep);
+  flex-shrink: 0;
+}
+
+@keyframes px-drawer-backdrop-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes px-drawer-backdrop-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@keyframes px-drawer-root-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes px-drawer-root-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@keyframes px-drawer-slide-side-in {
+  from { transform: translateX(var(--px-drawer-slide-from, 100%)); }
+  to { transform: translateX(0); }
+}
+
+@keyframes px-drawer-slide-bottom-in {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+.px-drawer--left .px-drawer__box {
+  --px-drawer-slide-from: -100%;
+}
+
+.px-drawer--right .px-drawer__box {
+  --px-drawer-slide-from: 100%;
+}

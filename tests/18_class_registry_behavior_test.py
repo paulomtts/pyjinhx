@@ -16,25 +16,25 @@ def test_class_registered_at_definition_time():
 def test_multiple_classes_registered():
     """Test that multiple component classes can be registered."""
 
-    class Button(BaseComponent):
+    class RegistryButton(BaseComponent):
         id: str
         text: str
 
-    class Card(BaseComponent):
+    class RegistryCard(BaseComponent):
         id: str
         title: str
 
-    class Modal(BaseComponent):
+    class RegistryModal(BaseComponent):
         id: str
         content: str
 
     classes = Registry.get_classes()
-    assert "Button" in classes
-    assert "Card" in classes
-    assert "Modal" in classes
-    assert classes["Button"] is Button
-    assert classes["Card"] is Card
-    assert classes["Modal"] is Modal
+    assert "RegistryButton" in classes
+    assert "RegistryCard" in classes
+    assert "RegistryModal" in classes
+    assert classes["RegistryButton"] is RegistryButton
+    assert classes["RegistryCard"] is RegistryCard
+    assert classes["RegistryModal"] is RegistryModal
 
 
 def test_class_registry_separate_from_instance_registry():

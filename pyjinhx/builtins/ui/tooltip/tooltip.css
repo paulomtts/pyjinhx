@@ -1,0 +1,57 @@
+:root {
+  --px-tooltip-gap:         6px;
+  --px-tooltip-bg:          var(--surface-alt);
+  --px-tooltip-border:      var(--border);
+  --px-tooltip-radius:      var(--radius-sm);
+  --px-tooltip-shadow:      var(--shadow-md);
+  --px-tooltip-padding:     0.35rem 0.5rem;
+  --px-tooltip-max-width:   20ch;
+  --px-tooltip-fg:          var(--text);
+  --px-tooltip-font-size:   var(--font-size-xs);
+  --px-tooltip-z:           400;
+  --px-tooltip-gap:         6px;
+}
+
+.px-tooltip {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.px-tooltip__trigger {
+  outline: none;
+}
+
+.px-tooltip__trigger:focus-visible {
+  outline: 2px solid var(--brand, currentColor);
+  outline-offset: 2px;
+}
+
+.px-tooltip__tip {
+  position: fixed;
+  z-index: var(--px-tooltip-z);
+  max-width: min(var(--px-tooltip-max-width), calc(100vw - 1rem));
+  padding: var(--px-tooltip-padding);
+  font-size: var(--px-tooltip-font-size);
+  line-height: 1.4;
+  color: var(--px-tooltip-fg);
+  background: var(--px-tooltip-bg);
+  border: 1px solid var(--px-tooltip-border);
+  border-radius: var(--px-tooltip-radius);
+  box-shadow: var(--px-tooltip-shadow);
+  pointer-events: none;
+  visibility: hidden;
+  opacity: 0;
+  transform: scale(0.98);
+  transition: opacity 0.12s ease, transform 0.12s ease, visibility 0.12s;
+}
+
+.px-tooltip__tip.px-tooltip__tip--visible {
+  visibility: visible;
+  opacity: 1;
+  transform: scale(1);
+}
+
+.px-tooltip__tip[hidden] {
+  display: block;
+}

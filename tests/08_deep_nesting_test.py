@@ -12,8 +12,7 @@ def test_3_level_deep_nesting():
     rendered = level1._render()
 
     expected = (
-        CSS
-        + '<div id="level1-1" class="test-component">\n'
+        CSS + '<div id="level1-1" class="test-component">\n'
         "    <h2>Level 1</h2>\n"
         '    <div class="nested">\n'
         "        <p>Nested component ID: level2-1</p>\n"
@@ -31,8 +30,7 @@ def test_3_level_deep_nesting():
         "</div>\n"
         "\n"
         "    </div>\n"
-        "</div>\n"
-        + JS
+        "</div>\n" + JS
     )
 
     assert rendered == expected

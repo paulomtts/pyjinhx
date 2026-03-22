@@ -214,9 +214,7 @@ class Finder:
                 continue
             if relative_to_root:
                 collected.append(
-                    normalize_path_separators(
-                        os.path.relpath(full_path, self.root)
-                    )
+                    normalize_path_separators(os.path.relpath(full_path, self.root))
                 )
             else:
                 collected.append(normalize_path_separators(full_path))

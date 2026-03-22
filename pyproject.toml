@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "pyjinhx"
-version = "0.3.3"
+version = "0.4.0"
 description = "UI components for Python using Pydantic and Jinja2 templates"
 readme = "README.md"
 requires-python = ">=3.13"
@@ -34,4 +34,7 @@ Homepage = "https://github.com/paulomtts/pyjinhx"
 dev = [
     "mkdocs-material>=9.7.1",
     "mkdocstrings[python]>=1.0.1",
+    "fastapi>=0.115.0",
+    "httpx>=0.27.0",
+    "uvicorn>=0.32.0",
 ]

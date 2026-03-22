@@ -1,0 +1,55 @@
+:root {
+  --px-avatar-sm: 2rem;
+  --px-avatar-md: 2.5rem;
+  --px-avatar-lg: 3.25rem;
+  --px-avatar-bg: var(--surface-alt);
+  --px-avatar-fg: var(--text-muted);
+  --px-avatar-border: var(--border);
+  --px-avatar-font-size-sm: var(--font-size-xs);
+  --px-avatar-font-size-md: var(--font-size-sm);
+  --px-avatar-font-size-lg: var(--font-size-md);
+}
+
+.px-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border-radius: var(--radius-full, 9999px);
+  overflow: hidden;
+  background: var(--px-avatar-bg);
+  border: 1px solid var(--px-avatar-border);
+  font-weight: 600;
+  color: var(--px-avatar-fg);
+}
+
+.px-avatar--sm {
+  width: var(--px-avatar-sm);
+  height: var(--px-avatar-sm);
+  font-size: var(--px-avatar-font-size-sm);
+}
+
+.px-avatar--md {
+  width: var(--px-avatar-md);
+  height: var(--px-avatar-md);
+  font-size: var(--px-avatar-font-size-md);
+}
+
+.px-avatar--lg {
+  width: var(--px-avatar-lg);
+  height: var(--px-avatar-lg);
+  font-size: var(--px-avatar-font-size-lg);
+}
+
+.px-avatar__img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.px-avatar__initials {
+  line-height: 1;
+  text-transform: uppercase;
+  user-select: none;
+}

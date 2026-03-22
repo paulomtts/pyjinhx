@@ -1,0 +1,61 @@
+/* ── Badge tokens (override --px-badge-*; defaults use common design tokens) ─ */
+:root {
+  --px-badge-font-size:       var(--font-size-xs);
+  --px-badge-radius-sm:       var(--radius-sm);
+  --px-badge-radius-md:       var(--radius-md);
+  --px-badge-radius-full:     var(--radius-full);
+  --px-badge-brand-bg:        var(--brand-subtle);
+  --px-badge-brand-fg:        var(--brand-muted);
+  --px-badge-brand-accent:    var(--brand);
+  --px-badge-error-bg:        var(--error-bg);
+  --px-badge-error-fg:        var(--error);
+  --px-badge-error-border:    var(--error-border);
+  --px-badge-neutral-bg:      var(--surface-alt);
+  --px-badge-neutral-fg:      var(--text);
+  --px-badge-neutral-border:  var(--border);
+  --px-badge-muted-bg:        var(--surface);
+  --px-badge-muted-fg:        var(--text-muted);
+  --px-badge-muted-border:    var(--border);
+}
+
+.px-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.125rem 0.5rem;
+  font-size: var(--px-badge-font-size);
+  font-weight: 500;
+  line-height: 1.5;
+  white-space: nowrap;
+  border: 1px solid transparent;
+}
+
+/* Shapes */
+.px-badge--square { border-radius: 0; }
+.px-badge--sm     { border-radius: var(--px-badge-radius-sm); }
+.px-badge--md     { border-radius: var(--px-badge-radius-md); }
+.px-badge--full   { border-radius: var(--px-badge-radius-full); }
+
+/* Colors */
+.px-badge--brand {
+  background: var(--px-badge-brand-bg);
+  color: var(--px-badge-brand-fg);
+  border-color: color-mix(in srgb, var(--px-badge-brand-accent) 30%, transparent);
+}
+
+.px-badge--error {
+  background: var(--px-badge-error-bg);
+  color: var(--px-badge-error-fg);
+  border-color: var(--px-badge-error-border);
+}
+
+.px-badge--neutral {
+  background: var(--px-badge-neutral-bg);
+  color: var(--px-badge-neutral-fg);
+  border-color: var(--px-badge-neutral-border);
+}
+
+.px-badge--muted {
+  background: var(--px-badge-muted-bg);
+  color: var(--px-badge-muted-fg);
+  border-color: var(--px-badge-muted-border);
+}

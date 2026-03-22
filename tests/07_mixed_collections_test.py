@@ -11,14 +11,13 @@ def test_mixed_list_content():
     component = UnifiedComponent(
         id="mixed-list-1",
         title="Mixed List",
-        items=["String Item 1", item1, "String Item 2", item2, "String Item 3"]
+        items=["String Item 1", item1, "String Item 2", item2, "String Item 3"],
     )
 
     rendered = component.render()
 
     expected = (
-        CSS
-        + '<div id="mixed-list-1" class="test-component">\n'
+        CSS + '<div id="mixed-list-1" class="test-component">\n'
         "    <h2>Mixed List</h2>\n"
         '    <div class="items">\n'
         "        <ul>\n"
@@ -41,8 +40,7 @@ def test_mixed_list_content():
         "            \n"
         "        </ul>\n"
         "    </div>\n"
-        "</div>\n"
-        + JS
+        "</div>\n" + JS
     )
 
     assert rendered == expected
@@ -60,15 +58,14 @@ def test_mixed_dict_content():
             "action": action_component,
             "middle": "Middle Text",
             "footer": footer_component,
-            "end": "End Text"
-        }
+            "end": "End Text",
+        },
     )
 
     rendered = component.render()
 
     expected = (
-        CSS
-        + '<div id="mixed-dict-1" class="test-component">\n'
+        CSS + '<div id="mixed-dict-1" class="test-component">\n'
         "    <h2>Mixed Dict</h2>\n"
         '    <div class="sections">\n'
         "        \n"
@@ -99,8 +96,7 @@ def test_mixed_dict_content():
         "        </div>\n"
         "        \n"
         "    </div>\n"
-        "</div>\n"
-        + JS
+        "</div>\n" + JS
     )
 
     assert rendered == expected

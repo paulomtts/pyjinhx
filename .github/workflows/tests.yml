@@ -18,10 +18,11 @@ jobs:
       with:
         python-version: '3.13'
 
+    - name: Install uv
+      uses: astral-sh/setup-uv@v5
+
     - name: Install dependencies
-      run: |
-        pip install -e .
-        pip install pytest pytest-asyncio
+      run: uv sync --group dev
 
     - name: Run tests
-      run: pytest tests/ 
+      run: uv run pytest tests/ 

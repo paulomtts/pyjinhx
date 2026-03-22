@@ -1,0 +1,81 @@
+:root {
+  --px-tab-group-border: var(--border);
+  --px-tab-group-bg: var(--surface-alt);
+  --px-tab-group-tab-fg: var(--text-muted);
+  --px-tab-group-tab-active-fg: var(--text);
+  --px-tab-group-tab-active-bg: color-mix(in srgb, var(--surface) 55%, var(--surface-alt));
+  --px-tab-group-tab-active-border: var(--brand);
+  --px-tab-group-panel-bg: var(--surface);
+  --px-tab-group-radius: var(--radius-md);
+  --px-tab-group-padding: var(--space-4, 1rem);
+}
+
+.px-tab-group {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  border: 1px solid var(--px-tab-group-border);
+  border-radius: var(--px-tab-group-radius);
+  overflow: hidden;
+  background: var(--px-tab-group-panel-bg);
+}
+
+.px-tab-group__list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  background: var(--px-tab-group-bg);
+  border-bottom: 1px solid var(--px-tab-group-border);
+}
+
+.px-tab-group__tab {
+  margin: 0;
+  padding: 0.55rem 1.1rem;
+  font: inherit;
+  font-size: var(--font-size-sm);
+  font-family: inherit;
+  line-height: 1.4;
+  color: var(--px-tab-group-tab-fg);
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  transition:
+    color var(--transition, 0.15s ease),
+    border-color var(--transition, 0.15s ease),
+    background var(--transition, 0.15s ease);
+}
+
+.px-tab-group__tab:hover {
+  color: var(--px-tab-group-tab-active-fg);
+  background: color-mix(in srgb, var(--surface) 35%, var(--px-tab-group-bg));
+}
+
+.px-tab-group__tab:focus {
+  outline: none;
+}
+
+.px-tab-group__tab:focus-visible {
+  outline: 2px solid var(--px-tab-group-tab-active-border);
+  outline-offset: -2px;
+}
+
+.px-tab-group__tab[aria-selected="true"] {
+  color: var(--px-tab-group-tab-active-fg);
+  background: var(--px-tab-group-tab-active-bg);
+  border-bottom-color: var(--px-tab-group-tab-active-border);
+}
+
+.px-tab-group__panel {
+  padding: var(--px-tab-group-padding);
+  min-height: 0;
+}
+
+.px-tab-group__panel[hidden] {
+  display: none;
+}

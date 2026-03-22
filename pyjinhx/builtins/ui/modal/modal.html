@@ -1,0 +1,20 @@
+<dialog class="px-modal" id="{{ id }}">
+    <div class="px-modal__box">
+        <header class="px-modal__header">
+            {% if header %}
+            {{ header }}
+            {% else %}
+            <span class="px-modal__title">{{ title }}</span>
+            {% endif %}
+            <button class="px-modal__close"
+                    onclick="closeModal('{{ id }}')"
+                    aria-label="Close">&#x2715;</button>
+        </header>
+
+        <div class="px-modal__body" id="{{ id }}-body">{{ body }}</div>
+
+        {% if footer %}
+        <footer class="px-modal__footer">{{ footer }}</footer>
+        {% endif %}
+    </div>
+</dialog>

@@ -1,0 +1,11 @@
+<div class="px-skeleton px-skeleton--{{ variant }}{% if class_name %} {{ class_name }}{% endif %}" id="{{ id }}">
+    {% if variant == 'text' %}
+    {% for _ in range(lines) %}
+    <div class="px-skeleton__line"></div>
+    {% endfor %}
+    {% elif variant == 'circle' %}
+    <div class="px-skeleton__circle"></div>
+    {% else %}
+    <div class="px-skeleton__rect"></div>
+    {% endif %}
+</div>

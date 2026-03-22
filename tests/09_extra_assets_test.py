@@ -7,14 +7,13 @@ def test_multiple_extra_js_files():
     component = UnifiedComponent(
         id="multi-js-1",
         text="Multiple JS",
-        js=["tests/ui/extra_script.js", "tests/ui/extra_script.js"]
+        js=["tests/ui/extra_script.js", "tests/ui/extra_script.js"],
     )
 
     rendered = component.render()
 
     expected = (
-        CSS
-        + '<div id="multi-js-1" class="test-component">\n'
+        CSS + '<div id="multi-js-1" class="test-component">\n'
         '    <div class="text">Multiple JS</div>\n'
         "</div>\n"
         "\n"

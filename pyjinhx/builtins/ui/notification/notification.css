@@ -1,0 +1,112 @@
+/* ── Notification tokens ────────────────────────────────────── */
+:root {
+  --px-notification-width:       22rem;
+  --px-notification-gap:         1.25rem;
+  --px-notification-bg:          var(--surface-alt);
+  --px-notification-border:      var(--border);
+  --px-notification-radius:      var(--radius-md);
+  --px-notification-shadow:      var(--shadow-md);
+  --px-notification-padding:     1rem 1rem 1rem 1.25rem;
+  --px-notification-close-color: var(--text-muted);
+  --px-notification-z:           500;
+}
+
+/* ── Base ───────────────────────────────────────────────────── */
+.px-notification {
+  display: none;
+  position: fixed;
+  z-index: var(--px-notification-z);
+  width: min(var(--px-notification-width), calc(100vw - 2 * var(--px-notification-gap)));
+  background: var(--px-notification-bg);
+  border: 1px solid var(--px-notification-border);
+  border-radius: var(--px-notification-radius);
+  box-shadow: var(--px-notification-shadow);
+  padding: var(--px-notification-padding);
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+/* ── Corner placement ───────────────────────────────────────── */
+.px-notification--top-right    { top: var(--px-notification-gap); right: var(--px-notification-gap); }
+.px-notification--top-left     { top: var(--px-notification-gap); left:  var(--px-notification-gap); }
+.px-notification--bottom-right { bottom: var(--px-notification-gap); right: var(--px-notification-gap); }
+.px-notification--bottom-left  { bottom: var(--px-notification-gap); left:  var(--px-notification-gap); }
+
+/* ── Visibility states ──────────────────────────────────────── */
+.px-notification--visible {
+  display: flex;
+}
+
+.px-notification--top-right.px-notification--visible,
+.px-notification--bottom-right.px-notification--visible {
+  animation: notification-in-right 200ms ease forwards;
+}
+
+.px-notification--top-left.px-notification--visible,
+.px-notification--bottom-left.px-notification--visible {
+  animation: notification-in-left 200ms ease forwards;
+}
+
+.px-notification--top-right.px-notification--hiding,
+.px-notification--bottom-right.px-notification--hiding {
+  display: flex;
+  animation: notification-out-right 150ms ease forwards;
+}
+
+.px-notification--top-left.px-notification--hiding,
+.px-notification--bottom-left.px-notification--hiding {
+  display: flex;
+  animation: notification-out-left 150ms ease forwards;
+}
+
+/* ── Content ────────────────────────────────────────────────── */
+.px-notification__content {
+  flex: 1;
+  font-size: var(--font-size-sm);
+  color: var(--text);
+  line-height: 1.5;
+}
+
+/* ── Close button ───────────────────────────────────────────── */
+.px-notification__close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 1.5rem;
+  height: 1.5rem;
+  padding: 0;
+  font-size: 0.75rem;
+  line-height: 1;
+  background: transparent;
+  color: var(--px-notification-close-color);
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background var(--transition), color var(--transition);
+}
+.px-notification__close:hover {
+  background: var(--surface);
+  color: var(--text);
+}
+
+/* ── Animations ─────────────────────────────────────────────── */
+@keyframes notification-in-right {
+  from { opacity: 0; transform: translateX(calc(100% + var(--px-notification-gap))); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes notification-out-right {
+  from { opacity: 1; transform: translateX(0); }
+  to   { opacity: 0; transform: translateX(calc(100% + var(--px-notification-gap))); }
+}
+
+@keyframes notification-in-left {
+  from { opacity: 0; transform: translateX(calc(-100% - var(--px-notification-gap))); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes notification-out-left {
+  from { opacity: 1; transform: translateX(0); }
+  to   { opacity: 0; transform: translateX(calc(-100% - var(--px-notification-gap))); }
+}

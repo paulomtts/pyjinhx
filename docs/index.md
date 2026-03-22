@@ -67,3 +67,4 @@ print(button.render())
 - [Installation](getting-started/installation.md) - Install PyJinHx
 - [Quick Start](getting-started/quickstart.md) - Build your first component
 - [Guide](guide/components.md) - Learn all the features
+- [Built-in UI components](guide/builtins.md) - Optional `pyjinhx.builtins` package

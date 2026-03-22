@@ -21,7 +21,9 @@ def test_fallback_basecomponent_not_registered():
         renderer = Renderer(env, auto_id=True)
 
         # First render
-        rendered1 = renderer.render('<FallbackPanel id="reserved-panel">Content 1</FallbackPanel>')
+        rendered1 = renderer.render(
+            '<FallbackPanel id="reserved-panel">Content 1</FallbackPanel>'
+        )
         assert '<div id="reserved-panel" class="panel">Content 1</div>' == rendered1
 
         # The fallback BaseComponent should NOT be in the registry
