@@ -1,0 +1,46 @@
+:root {
+  --px-card-bg: var(--surface-alt);
+  --px-card-border: var(--border);
+  --px-card-radius: var(--radius-md);
+  --px-card-shadow: none;
+  --px-card-title-color: var(--text);
+  --px-card-padding: var(--space-4, 1rem);
+  --px-card-header-sep: var(--border);
+  --px-card-footer-sep: var(--border);
+  --px-card-footer-bg: color-mix(in srgb, var(--surface) 60%, var(--surface-alt));
+}
+
+.px-card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  background: var(--px-card-bg);
+  border: 1px solid var(--px-card-border);
+  border-radius: var(--px-card-radius);
+  box-shadow: var(--px-card-shadow);
+  overflow: hidden;
+}
+
+.px-card__header {
+  padding: var(--px-card-padding);
+  border-bottom: 1px solid var(--px-card-header-sep);
+}
+
+.px-card__title {
+  margin: 0;
+  font-size: var(--font-size-md);
+  font-weight: 600;
+  color: var(--px-card-title-color);
+}
+
+.px-card__body {
+  padding: var(--px-card-padding);
+  flex: 1;
+  min-height: 0;
+}
+
+.px-card__footer {
+  padding: var(--px-card-padding);
+  border-top: 1px solid var(--px-card-footer-sep);
+  background: var(--px-card-footer-bg);
+}

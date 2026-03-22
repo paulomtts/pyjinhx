@@ -228,31 +228,31 @@ def test_renderer_fallback_to_generic_when_class_not_found():
 def test_renderer_with_registered_class_and_nested_components():
     """Test that registered classes work with nested components."""
 
-    class Card(BaseComponent):
+    class AlbumCard(BaseComponent):
         id: str
         title: str
         content: str = ""
 
-    class Button(BaseComponent):
+    class AlbumButton(BaseComponent):
         id: str
         text: str
 
     with tempfile.TemporaryDirectory() as temp_dir:
-        with open(os.path.join(temp_dir, "card.html"), "w") as file:
+        with open(os.path.join(temp_dir, "album_card.html"), "w") as file:
             file.write(
                 '<div id="{{ id }}" class="card">\n  <h2>{{ title }}</h2>\n  {{ content }}\n</div>\n'
             )
-        with open(os.path.join(temp_dir, "button.html"), "w") as file:
+        with open(os.path.join(temp_dir, "album_button.html"), "w") as file:
             file.write('<button id="{{ id }}">{{ text }}</button>\n')
 
-        index_html = '<Card title="My Card"><Button text="Action"/></Card>'
+        index_html = '<AlbumCard title="My Card"><AlbumButton text="Action"/></AlbumCard>'
         rendered = Renderer(
             Environment(loader=FileSystemLoader(temp_dir)),
             auto_id=True,
         ).render(index_html)
 
         assert re.match(
-            r'^<div id="card-[a-f0-9]{32}" class="card">\n  <h2>My Card</h2>\n  <button id="button-[a-f0-9]{32}">Action</button>\n</div>$',
+            r'^<div id="albumcard-[a-f0-9]{32}" class="card">\n  <h2>My Card</h2>\n  <button id="albumbutton-[a-f0-9]{32}">Action</button>\n</div>$',
             rendered,
         ), f"Output does not match expected pattern. Got: {rendered!r}"
 

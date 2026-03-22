@@ -16,4 +16,3 @@ def test_set_default_environment():
     assert Renderer.get_default_environment().loader.searchpath[0] == custom_root
 
     Renderer.set_default_environment(original_environment)
-

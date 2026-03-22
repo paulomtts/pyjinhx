@@ -1,0 +1,42 @@
+:root {
+  --px-dropdown-menu-bg:       var(--surface-alt);
+  --px-dropdown-menu-border:   var(--border);
+  --px-dropdown-menu-radius:   var(--radius-md);
+  --px-dropdown-menu-shadow:   var(--shadow-md);
+  --px-dropdown-menu-padding:  0.35rem 0;
+  --px-dropdown-menu-min-w:    10rem;
+  --px-dropdown-menu-max-h:    min(70dvh, 24rem);
+  --px-dropdown-z:             350;
+}
+
+.px-dropdown {
+  position: relative;
+  display: inline-block;
+}
+
+.px-dropdown__trigger {
+  cursor: pointer;
+}
+
+.px-dropdown__menu {
+  position: absolute;
+  z-index: var(--px-dropdown-z);
+  top: calc(100% + 4px);
+  left: 0;
+  min-width: var(--px-dropdown-menu-min-w);
+  max-height: var(--px-dropdown-menu-max-h);
+  overflow-y: auto;
+  padding: var(--px-dropdown-menu-padding);
+  background: var(--px-dropdown-menu-bg);
+  border: 1px solid var(--px-dropdown-menu-border);
+  border-radius: var(--px-dropdown-menu-radius);
+  box-shadow: var(--px-dropdown-menu-shadow);
+}
+
+.px-dropdown__menu.px-dropdown__menu--open {
+  display: block;
+}
+
+.px-dropdown__menu[hidden] {
+  display: none !important;
+}

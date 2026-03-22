@@ -1,0 +1,15 @@
+<article id="{{ id }}" class="px-card">
+  {% if header or title %}
+  <header class="px-card__header">
+    {% if header %}
+    {{ header }}
+    {% else %}
+    <h3 class="px-card__title">{{ title }}</h3>
+    {% endif %}
+  </header>
+  {% endif %}
+  <div class="px-card__body">{{ body }}</div>
+  {% if footer %}
+  <footer class="px-card__footer">{{ footer }}</footer>
+  {% endif %}
+</article>

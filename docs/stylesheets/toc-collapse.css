@@ -1,0 +1,13 @@
+/*
+ * Material scroll-spy sets md-nav__link--active on the current heading.
+ * Collapse nested H3 lists under each H2 until that section is active.
+ * Applies to desktop sidebar and mobile drawer (both use nav.md-nav--secondary).
+ */
+nav.md-nav.md-nav--secondary > .md-nav__list > .md-nav__item > nav.md-nav {
+  display: none;
+}
+
+nav.md-nav.md-nav--secondary > .md-nav__list > .md-nav__item:has(> .md-nav__link--active) > nav.md-nav,
+nav.md-nav.md-nav--secondary > .md-nav__list > .md-nav__item:has(nav .md-nav__link--active) > nav.md-nav {
+  display: block;
+}

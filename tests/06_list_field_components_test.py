@@ -10,16 +10,13 @@ def test_nested_list_of_components():
     item3 = UnifiedComponent(id="btn-3", text="Third Button")
 
     component = UnifiedComponent(
-        id="list-1",
-        title="Action Buttons",
-        items=[item1, item2, item3]
+        id="list-1", title="Action Buttons", items=[item1, item2, item3]
     )
 
     rendered = component._render()
 
     expected = (
-        CSS
-        + '<div id="list-1" class="test-component">\n'
+        CSS + '<div id="list-1" class="test-component">\n'
         "    <h2>Action Buttons</h2>\n"
         '    <div class="items">\n'
         "        <ul>\n"
@@ -41,8 +38,7 @@ def test_nested_list_of_components():
         "            \n"
         "        </ul>\n"
         "    </div>\n"
-        "</div>\n"
-        + JS
+        "</div>\n" + JS
     )
 
     assert rendered == expected

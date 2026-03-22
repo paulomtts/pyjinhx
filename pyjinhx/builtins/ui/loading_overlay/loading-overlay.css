@@ -1,0 +1,60 @@
+/* ── LoadingOverlay tokens ──────────────────────────────────── */
+:root {
+  --px-loading-overlay-bg:            rgb(0 0 0 / 0.55);
+  --px-loading-overlay-backdrop:      blur(2px);
+  --px-loading-overlay-z:             100;
+  --px-loading-overlay-spinner-size:  2.5rem;
+  --px-loading-overlay-spinner-width: 3px;
+  --px-loading-overlay-spinner-color: var(--brand);
+  --px-loading-overlay-spinner-track: rgb(255 255 255 / 0.1);
+}
+
+/* ── Overlay ────────────────────────────────────────────────── */
+/* Parent must have position: relative (or any non-static position). */
+.px-loading-overlay {
+  display: none;
+  position: absolute;
+  inset: 0;
+  z-index: var(--px-loading-overlay-z);
+  align-items: center;
+  justify-content: center;
+  background: var(--px-loading-overlay-bg);
+  backdrop-filter: var(--px-loading-overlay-backdrop);
+  border-radius: inherit;
+}
+
+.px-loading-overlay--visible {
+  display: flex;
+  animation: loading-overlay-in 150ms ease forwards;
+}
+
+.px-loading-overlay--hiding {
+  display: flex;
+  animation: loading-overlay-out 150ms ease forwards;
+}
+
+/* ── Spinner ────────────────────────────────────────────────── */
+.px-loading-overlay__spinner {
+  width: var(--px-loading-overlay-spinner-size);
+  height: var(--px-loading-overlay-spinner-size);
+  border: var(--px-loading-overlay-spinner-width) solid var(--px-loading-overlay-spinner-track);
+  border-top-color: var(--px-loading-overlay-spinner-color);
+  border-radius: var(--radius-full);
+  animation: loading-overlay-spin 600ms linear infinite;
+  flex-shrink: 0;
+}
+
+/* ── Animations ────────────────────────────────────────────── */
+@keyframes loading-overlay-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes loading-overlay-out {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+
+@keyframes loading-overlay-spin {
+  to { transform: rotate(360deg); }
+}

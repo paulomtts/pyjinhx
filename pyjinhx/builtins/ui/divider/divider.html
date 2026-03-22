@@ -1,0 +1,18 @@
+{% if orientation == 'vertical' %}
+<div id="{{ id }}"
+     class="px-divider px-divider--vertical{% if class_name %} {{ class_name }}{% endif %}"
+     role="separator"
+     aria-orientation="vertical"
+     {% if label %}aria-label="{{ label }}"{% endif %}></div>
+{% elif label %}
+<div id="{{ id }}" class="px-divider px-divider--labeled{% if class_name %} {{ class_name }}{% endif %}" role="presentation">
+  <span class="px-divider__line" aria-hidden="true"></span>
+  <span class="px-divider__label">{{ label }}</span>
+  <span class="px-divider__line" aria-hidden="true"></span>
+</div>
+{% else %}
+<hr id="{{ id }}"
+    class="px-divider px-divider--horizontal{% if class_name %} {{ class_name }}{% endif %}"
+    role="separator"
+    aria-orientation="horizontal" />
+{% endif %}

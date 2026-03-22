@@ -29,5 +29,3 @@ def test_object_with_component_props():
     assert obj.props == component
     assert obj.props.id == "obj-test-1"
     assert obj.props.text == "Object Test"
-
-

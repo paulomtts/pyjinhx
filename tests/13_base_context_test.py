@@ -3,12 +3,9 @@ from tests.ui.unified_component import UnifiedComponent
 
 def test_base_context_parameter():
     base_context = {"global_var": "Global Value", "count": 42}
-    
-    component = UnifiedComponent(
-        id="context-1",
-        text="Context Test"
-    )
-    
+
+    component = UnifiedComponent(id="context-1", text="Context Test")
+
     template_source = """
     <div id="{{ id }}">
         <p>{{ text }}</p>
@@ -16,9 +13,9 @@ def test_base_context_parameter():
         <p>Count: {{ count }}</p>
     </div>
     """
-    
+
     rendered = component._render(source=template_source, base_context=base_context)
-    
+
     assert "Context Test" in str(rendered)
     assert "Global Value" in str(rendered)
     assert "42" in str(rendered)
@@ -26,15 +23,11 @@ def test_base_context_parameter():
 
 def test_context_merging_with_nested():
     base_context = {"shared": "Shared Value"}
-    
+
     nested = UnifiedComponent(id="nested-context-1", text="Nested")
-    
-    component = UnifiedComponent(
-        id="parent-context-1",
-        title="Parent",
-        nested=nested
-    )
-    
+
+    component = UnifiedComponent(id="parent-context-1", title="Parent", nested=nested)
+
     template_source = """
     <div id="{{ id }}">
         <h1>{{ title }}</h1>
@@ -42,9 +35,9 @@ def test_context_merging_with_nested():
         {{ nested }}
     </div>
     """
-    
+
     rendered = component._render(source=template_source, base_context=base_context)
-    
+
     assert "Parent" in str(rendered)
     assert "Shared Value" in str(rendered)
     assert "nested-context-1" in str(rendered)
@@ -52,14 +45,11 @@ def test_context_merging_with_nested():
 
 def test_context_with_registry_components():
     base_context = {"custom": "Custom Value"}
-    
+
     UnifiedComponent(id="global_context", text="Global")
-    
-    component = UnifiedComponent(
-        id="registry-context-1",
-        text="Test"
-    )
-    
+
+    component = UnifiedComponent(id="registry-context-1", text="Test")
+
     template_source = """
     <div id="{{ id }}">
         <p>{{ text }}</p>
@@ -69,10 +59,9 @@ def test_context_with_registry_components():
         {% endif %}
     </div>
     """
-    
+
     rendered = component._render(source=template_source, base_context=base_context)
-    
+
     assert "Test" in str(rendered)
     assert "Custom Value" in str(rendered)
     assert "Global" in str(rendered)
-

@@ -13,15 +13,14 @@ def test_dict_component():
         sections={
             "header": "Welcome",
             "action": action_component,
-            "footer": "Thank you"
-        }
+            "footer": "Thank you",
+        },
     )
 
     rendered = component._render()
 
     expected = (
-        CSS
-        + '<div id="wrapper-1" class="test-component">\n'
+        CSS + '<div id="wrapper-1" class="test-component">\n'
         "    <h2>My Wrapper</h2>\n"
         '    <div class="sections">\n'
         "        \n"
@@ -41,8 +40,7 @@ def test_dict_component():
         "        </div>\n"
         "        \n"
         "    </div>\n"
-        "</div>\n"
-        + JS
+        "</div>\n" + JS
     )
 
     assert rendered == expected

@@ -87,22 +87,22 @@ def test_different_component_types_same_id_no_collision():
 
     Registry.clear_instances()
 
-    class Card(BaseComponent):
+    class ShelfCard(BaseComponent):
         id: str
         label: str = ""
 
-    class Button(BaseComponent):
+    class ShelfButton(BaseComponent):
         id: str
         label: str = ""
 
-    Card(id="shared", label="Card Label")
-    Button(id="shared", label="Button Label")
+    ShelfCard(id="shared", label="Card Label")
+    ShelfButton(id="shared", label="Button Label")
 
     # Both should coexist in the registry
     assert len(Registry.get_instances()) == 2
 
-    card_key = Registry.make_key("Card", "shared")
-    button_key = Registry.make_key("Button", "shared")
+    card_key = Registry.make_key("ShelfCard", "shared")
+    button_key = Registry.make_key("ShelfButton", "shared")
 
     assert card_key in Registry.get_instances()
     assert button_key in Registry.get_instances()

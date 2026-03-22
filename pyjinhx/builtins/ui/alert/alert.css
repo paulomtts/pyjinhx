@@ -1,0 +1,86 @@
+:root {
+  --px-alert-radius:     var(--radius-md);
+  --px-alert-padding:    0.875rem 1rem;
+  --px-alert-border:     var(--border);
+  --px-alert-shadow:     var(--shadow-md);
+  --px-alert-title-size: var(--font-size-sm);
+  --px-alert-body-size:  var(--font-size-sm);
+  --px-alert-dismiss-color: var(--text-muted);
+}
+
+.px-alert {
+  border-radius: var(--px-alert-radius);
+  border: 1px solid var(--px-alert-border);
+  box-shadow: var(--px-alert-shadow);
+}
+
+.px-alert__inner {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: var(--px-alert-padding);
+}
+
+.px-alert__text {
+  flex: 1;
+  min-width: 0;
+}
+
+.px-alert__title {
+  font-size: var(--px-alert-title-size);
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+}
+
+.px-alert__body {
+  font-size: var(--px-alert-body-size);
+  line-height: 1.5;
+}
+
+.px-alert__dismiss {
+  flex-shrink: 0;
+  width: 1.5rem;
+  height: 1.5rem;
+  padding: 0;
+  font-size: 0.75rem;
+  line-height: 1;
+  background: transparent;
+  color: var(--px-alert-dismiss-color);
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background var(--transition), color var(--transition);
+}
+
+.px-alert__dismiss:hover {
+  background: var(--surface-alt);
+  color: var(--text);
+}
+
+.px-alert--info {
+  background: color-mix(in srgb, var(--brand, #3b82f6) 12%, var(--surface));
+  color: var(--text);
+  border-color: color-mix(in srgb, var(--brand, #3b82f6) 35%, var(--border));
+}
+
+.px-alert--success {
+  background: color-mix(in srgb, var(--success, #22c55e) 12%, var(--surface));
+  color: var(--text);
+  border-color: color-mix(in srgb, var(--success, #22c55e) 35%, var(--border));
+}
+
+.px-alert--warning {
+  background: color-mix(in srgb, var(--warning, #eab308) 14%, var(--surface));
+  color: var(--text);
+  border-color: color-mix(in srgb, var(--warning, #eab308) 40%, var(--border));
+}
+
+.px-alert--error {
+  background: var(--error-bg, color-mix(in srgb, var(--error) 12%, var(--surface)));
+  color: var(--text);
+  border-color: var(--error-border, var(--error));
+}
+
+.px-alert.px-alert--dismissed {
+  display: none;
+}

@@ -15,8 +15,7 @@ def test_simple_nesting():
     rendered = component._render()
 
     expected = (
-        CSS
-        + '<div id="wrapper-1" class="test-component">\n'
+        CSS + '<div id="wrapper-1" class="test-component">\n'
         "    <h2>My Wrapper</h2>\n"
         '    <div class="nested">\n'
         "        <p>Nested component ID: action-btn-1</p>\n"
@@ -25,8 +24,7 @@ def test_simple_nesting():
         '    <div class="text">Click Me</div>\n'
         "</div>\n"
         "\n"
-        "    </div>\n</div>\n"
-        + JS
+        "    </div>\n</div>\n" + JS
     )
 
     assert rendered == expected

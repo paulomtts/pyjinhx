@@ -1,0 +1,14 @@
+<div class="px-dropdown" id="{{ id }}">
+    <button type="button"
+            class="px-dropdown__trigger"
+            id="{{ id }}-trigger"
+            aria-expanded="false"
+            aria-haspopup="true"
+            aria-controls="{{ id }}-menu"
+            onclick="togglePxDropdown('{{ id }}')">{{ trigger }}</button>
+    <div class="px-dropdown__menu"
+         id="{{ id }}-menu"
+         role="region"
+         aria-label="Submenu"
+         hidden>{{ menu }}</div>
+</div>

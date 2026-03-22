@@ -1,0 +1,13 @@
+<nav id="{{ id }}" class="px-breadcrumb" aria-label="Breadcrumb">
+  <ol class="px-breadcrumb__list">
+    {% for label, href in items %}
+    <li class="px-breadcrumb__item">
+      {% if href %}
+      <a class="px-breadcrumb__link" href="{{ href }}">{{ label }}</a>
+      {% else %}
+      <span class="px-breadcrumb__current" aria-current="page">{{ label }}</span>
+      {% endif %}
+    </li>
+    {% endfor %}
+  </ol>
+</nav>

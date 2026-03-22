@@ -51,4 +51,7 @@ def test_nested_custom_tags_in_renderer():
             '<Outer id="outer-1"><Inner id="inner-1" text="Nested content"/></Outer>'
         )
 
-        assert rendered == '<section id="outer-1"><p id="inner-1">Nested content</p></section>'
+        assert (
+            rendered
+            == '<section id="outer-1"><p id="inner-1">Nested content</p></section>'
+        )

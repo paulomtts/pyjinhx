@@ -1,0 +1,38 @@
+:root {
+  --px-empty-state-padding:   2rem 1.5rem;
+  --px-empty-state-max-width: 28rem;
+  --px-empty-state-title-size: var(--font-size-md);
+  --px-empty-state-desc-size:  var(--font-size-sm);
+  --px-empty-state-title-color: var(--text);
+  --px-empty-state-desc-color:  var(--text-muted);
+  --px-empty-state-gap:       0.5rem;
+}
+
+.px-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: var(--px-empty-state-gap);
+  padding: var(--px-empty-state-padding);
+  max-width: var(--px-empty-state-max-width);
+  margin: 0 auto;
+}
+
+.px-empty-state__title {
+  margin: 0;
+  font-size: var(--px-empty-state-title-size);
+  font-weight: 600;
+  color: var(--px-empty-state-title-color);
+}
+
+.px-empty-state__desc {
+  margin: 0;
+  font-size: var(--px-empty-state-desc-size);
+  line-height: 1.5;
+  color: var(--px-empty-state-desc-color);
+}
+
+.px-empty-state__action {
+  margin-top: 0.75rem;
+}

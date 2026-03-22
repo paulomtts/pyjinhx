@@ -1,0 +1,10 @@
+<div class="px-notification px-notification--{{ corner }}"
+     id="{{ id }}"
+     data-timeout="{{ timeout }}"
+     role="status"
+     aria-live="polite">
+    <div class="px-notification__content">{{ content }}</div>
+    <button class="px-notification__close"
+            onclick="hideNotification('{{ id }}')"
+            aria-label="Dismiss">&#x2715;</button>
+</div>

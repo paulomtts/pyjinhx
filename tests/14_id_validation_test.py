@@ -11,4 +11,3 @@ def test_invalid_empty_id():
 def test_invalid_none_id():
     with pytest.raises(ValueError, match="ID is required"):
         UnifiedComponent(id=None, text="Test")
-

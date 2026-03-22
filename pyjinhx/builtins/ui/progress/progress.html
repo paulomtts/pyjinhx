@@ -1,0 +1,18 @@
+<div class="px-progress" id="{{ id }}">
+    {% if label %}
+    <span class="px-progress__label" id="{{ id }}-label">{{ label }}</span>
+    {% endif %}
+    {% if value is none %}
+    <progress class="px-progress__bar"
+              max="{{ max }}"
+              {% if label %}aria-labelledby="{{ id }}-label"{% else %}aria-label="Loading"{% endif %}></progress>
+    {% else %}
+    <progress class="px-progress__bar"
+              max="{{ max }}"
+              value="{{ value }}"
+              aria-valuenow="{{ value }}"
+              aria-valuemin="0"
+              aria-valuemax="{{ max }}"
+              {% if label %}aria-labelledby="{{ id }}-label"{% endif %}></progress>
+    {% endif %}
+</div>

@@ -16,7 +16,12 @@ from .dataclasses import Tag
 from .finder import Finder
 from .parser import Parser
 from .registry import Registry
-from .utils import detect_root_directory, pascal_case_to_kebab_case, pascal_case_to_snake_case
+from .utils import (
+    detect_root_directory,
+    pascal_case_to_kebab_case,
+    pascal_case_to_snake_case,
+    tag_name_to_template_filenames,
+)
 
 if TYPE_CHECKING:
     from .base import BaseComponent
@@ -32,13 +37,18 @@ def _import_module_from_file(filepath: str) -> None:
         return
     _autodiscovered_files.add(filepath)
     try:
-        module_name = f"_pyjinhx_autodiscovered_{os.path.splitext(os.path.basename(filepath))[0]}"
+        module_name = (
+            f"_pyjinhx_autodiscovered_{os.path.splitext(os.path.basename(filepath))[0]}"
+        )
         spec = importlib.util.spec_from_file_location(module_name, filepath)
         if spec is None or spec.loader is None:
             return
         import sys
+
         module = importlib.util.module_from_spec(spec)
-        sys.modules[module_name] = module  # required for inspect.getfile to resolve the class
+        sys.modules[module_name] = (
+            module  # required for inspect.getfile to resolve the class
+        )
         spec.loader.exec_module(module)
     except Exception:
         logger.debug("Failed to autodiscover module at %s", filepath, exc_info=True)
@@ -227,7 +237,12 @@ class Renderer:
         effective_inline_css = (
             inline_css if inline_css is not None else cls._default_inline_css
         )
-        cache_key = (id(environment), auto_id, effective_inline_js, effective_inline_css)
+        cache_key = (
+            id(environment),
+            auto_id,
+            effective_inline_js,
+            effective_inline_css,
+        )
         renderer = cls._default_renderers.get(cache_key)
         if renderer is None:
             renderer = Renderer(
@@ -305,6 +320,14 @@ class Renderer:
             except TemplateNotFound:
                 continue
 
+        if type(component).__module__.startswith("pyjinhx.builtins"):
+            component_dir = Finder.get_class_directory(type(component))
+            for filename in tag_name_to_template_filenames(type(component).__name__):
+                candidate_path = os.path.join(component_dir, filename)
+                if os.path.isfile(candidate_path):
+                    with open(candidate_path, encoding="utf-8") as template_file:
+                        return self._environment.from_string(template_file.read())
+
         raise TemplateNotFound(
             ", ".join(relative_template_paths) if relative_template_paths else "unknown"
         )
@@ -317,7 +340,9 @@ class Renderer:
         component_dir: str | None = None,
         asset_name: str | None = None,
     ) -> None:
-        component_directory = component_dir or Finder.get_class_directory(type(component))
+        component_directory = component_dir or Finder.get_class_directory(
+            type(component)
+        )
         name = asset_name or pascal_case_to_kebab_case(type(component).__name__)
         javascript_filename = f"{name}.js"
         javascript_path = Finder.find_in_directory(
@@ -368,7 +393,9 @@ class Renderer:
         component_dir: str | None = None,
         asset_name: str | None = None,
     ) -> None:
-        component_directory = component_dir or Finder.get_class_directory(type(component))
+        component_directory = component_dir or Finder.get_class_directory(
+            type(component)
+        )
         name = asset_name or pascal_case_to_kebab_case(type(component).__name__)
         css_filename = f"{name}.css"
         css_path = Finder.find_in_directory(component_directory, css_filename)
@@ -420,9 +447,7 @@ class Renderer:
     def _inject_styles(self, markup: str, session: RenderSession) -> str:
         if not session.styles:
             return markup
-        style_tags = "\n".join(
-            f"<style>{style}</style>" for style in session.styles
-        )
+        style_tags = "\n".join(f"<style>{style}</style>" for style in session.styles)
         return f"{style_tags}\n{markup}"
 
     def _find_template_for_tag(self, tag_name: str) -> str:
@@ -515,7 +540,9 @@ class Renderer:
             )
             # Remove from registry - fallback instances should not persist
             # across renders to avoid TypeError on subsequent renders
-            Registry.get_instances().pop(Registry.make_key("BaseComponent", component_id), None)
+            Registry.get_instances().pop(
+                Registry.make_key("BaseComponent", component_id), None
+            )
 
         return str(
             component._render(
@@ -581,15 +608,21 @@ class Renderer:
         # which would otherwise resolve to the pyjinhx package directory.
         if template_path is not None and type(component).__name__ == "BaseComponent":
             _asset_dir: str | None = os.path.dirname(template_path)
-            _asset_name: str | None = os.path.splitext(os.path.basename(template_path))[0].replace("_", "-")
+            _asset_name: str | None = os.path.splitext(os.path.basename(template_path))[
+                0
+            ].replace("_", "-")
         else:
             _asset_dir = None
             _asset_name = None
 
         if collect_component_js and self._inline_js:
-            self._collect_component_javascript(component, session, component_dir=_asset_dir, asset_name=_asset_name)
+            self._collect_component_javascript(
+                component, session, component_dir=_asset_dir, asset_name=_asset_name
+            )
         if collect_component_js and self._inline_css:
-            self._collect_component_css(component, session, component_dir=_asset_dir, asset_name=_asset_name)
+            self._collect_component_css(
+                component, session, component_dir=_asset_dir, asset_name=_asset_name
+            )
 
         if is_root:
             if self._inline_css:

@@ -1,0 +1,142 @@
+/* ── Modal tokens (defaults wire to common design tokens) ─── */
+:root {
+  --px-modal-width:        52rem;
+  --px-modal-min-height:   28rem;
+  --px-modal-bg:           var(--surface);
+  --px-modal-border:       var(--border);
+  --px-modal-radius:       var(--radius-lg);
+  --px-modal-shadow:       var(--shadow-md);
+  --px-modal-header-bg:    var(--surface-alt);
+  --px-modal-header-sep:   var(--border);
+  --px-modal-footer-bg:    var(--surface-alt);
+  --px-modal-footer-sep:   var(--border);
+  --px-modal-title-color:  var(--text);
+  --px-modal-close-color:  var(--text-muted);
+  --px-modal-backdrop:     rgb(0 0 0 / 0.6);
+  --px-modal-padding:      1.5rem;
+}
+
+/* ── Backdrop ──────────────────────────────────────────────── */
+.px-modal::backdrop {
+  background: var(--px-modal-backdrop);
+  backdrop-filter: blur(2px);
+  animation: modal-backdrop-in 200ms ease forwards;
+}
+
+/* ── Dialog element ────────────────────────────────────────── */
+.px-modal[open] {
+  display: flex;
+  flex-direction: column;
+  width: min(var(--px-modal-width), calc(100vw - 2rem));
+  min-height: var(--px-modal-min-height);
+  max-height: calc(100dvh - 4rem);
+  margin: auto;
+  padding: 0;
+  border: 1px solid var(--px-modal-border);
+  border-radius: var(--px-modal-radius);
+  background: transparent;
+  box-shadow: var(--px-modal-shadow);
+  overflow: hidden;
+  animation: modal-in 200ms ease forwards;
+}
+
+.px-modal.px-modal--closing {
+  animation: modal-out 150ms ease forwards;
+}
+
+.px-modal.px-modal--closing::backdrop {
+  animation: modal-backdrop-out 150ms ease forwards;
+}
+
+/* ── Inner box ─────────────────────────────────────────────── */
+.px-modal__box {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  background: var(--px-modal-bg);
+}
+
+/* ── Header ────────────────────────────────────────────────── */
+.px-modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem var(--px-modal-padding);
+  background: var(--px-modal-header-bg);
+  border-bottom: 1px solid var(--px-modal-header-sep);
+  flex-shrink: 0;
+}
+
+.px-modal__title {
+  font-size: var(--font-size-md);
+  font-weight: 600;
+  color: var(--px-modal-title-color);
+  letter-spacing: -0.01em;
+}
+
+.px-modal__close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  padding: 0;
+  font-size: 1rem;
+  line-height: 1;
+  background: transparent;
+  color: var(--px-modal-close-color);
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background var(--transition), color var(--transition);
+  flex-shrink: 0;
+}
+.px-modal__close:hover {
+  background: var(--surface);
+  color: var(--text);
+}
+
+/* ── Body ──────────────────────────────────────────────────── */
+.px-modal__body {
+  padding: var(--px-modal-padding);
+  overflow-y: auto;
+  flex: 1;
+  color: var(--text);
+  font-size: var(--font-size-md);
+  line-height: 1.6;
+}
+
+/* ── Footer ────────────────────────────────────────────────── */
+.px-modal__footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  padding: 0.875rem var(--px-modal-padding);
+  background: var(--px-modal-footer-bg);
+  border-top: 1px solid var(--px-modal-footer-sep);
+  flex-shrink: 0;
+}
+
+/* ── Animations ────────────────────────────────────────────── */
+@keyframes modal-in {
+  from { opacity: 0; transform: translateY(-0.5rem) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0)        scale(1);    }
+}
+
+@keyframes modal-out {
+  from { opacity: 1; transform: translateY(0)        scale(1);    }
+  to   { opacity: 0; transform: translateY(-0.5rem) scale(0.98); }
+}
+
+@keyframes modal-backdrop-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes modal-backdrop-out {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}

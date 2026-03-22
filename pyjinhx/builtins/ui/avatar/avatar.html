@@ -1,0 +1,8 @@
+<div id="{{ id }}"
+     class="px-avatar px-avatar--{{ size }}{% if class_name %} {{ class_name }}{% endif %}">
+  {% if src %}
+  <img class="px-avatar__img" src="{{ src }}" alt="{{ alt }}" loading="lazy" decoding="async" />
+  {% else %}
+  <span class="px-avatar__initials" {% if alt %}title="{{ alt }}"{% endif %}>{{ initials or "?" }}</span>
+  {% endif %}
+</div>

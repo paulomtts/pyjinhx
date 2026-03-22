@@ -1,0 +1,4 @@
+/* Unstyled host: panels use native `hidden`; reinforce for older browsers if needed */
+.px-region__panel[hidden] {
+  display: none !important;
+}

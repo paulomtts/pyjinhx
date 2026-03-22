@@ -3,9 +3,7 @@ from tests.ui.unified_component import UnifiedComponent
 
 def test_js_collection_order():
     component = UnifiedComponent(
-        id="js-order-1",
-        text="JS Order Test",
-        js=["tests/ui/extra_script.js"]
+        id="js-order-1", text="JS Order Test", js=["tests/ui/extra_script.js"]
     )
 
     rendered = str(component.render())
@@ -24,9 +22,7 @@ def test_js_collection_from_nested_components():
     nested2 = UnifiedComponent(id="nested-js-2", text="Nested 2")
 
     component = UnifiedComponent(
-        id="parent-js-1",
-        title="Parent",
-        items=[nested1, nested2]
+        id="parent-js-1", title="Parent", items=[nested1, nested2]
     )
 
     rendered = str(component.render())
@@ -39,14 +35,14 @@ def test_js_collection_with_extra_js_in_nested():
     nested = UnifiedComponent(
         id="nested-extra-js-1",
         text="Nested with Extra JS",
-        js=["tests/ui/extra_script.js"]
+        js=["tests/ui/extra_script.js"],
     )
 
     component = UnifiedComponent(
         id="parent-extra-js-1",
         title="Parent",
         nested=nested,
-        js=["tests/ui/extra_script.js"]
+        js=["tests/ui/extra_script.js"],
     )
 
     rendered = str(component.render())
@@ -57,9 +53,7 @@ def test_js_collection_with_extra_js_in_nested():
 
 def test_separate_script_tags():
     component = UnifiedComponent(
-        id="sep-tags-1",
-        text="Separate Tags",
-        js=["tests/ui/extra_script.js"]
+        id="sep-tags-1", text="Separate Tags", js=["tests/ui/extra_script.js"]
     )
 
     rendered = str(component.render())

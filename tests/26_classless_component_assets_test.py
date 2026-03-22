@@ -8,6 +8,7 @@ directory rather than the user's component directory.  Assets were never found.
 The fix: when the component is a bare BaseComponent fallback, derive the asset
 directory and filename stem from the template path instead.
 """
+
 import os
 import tempfile
 

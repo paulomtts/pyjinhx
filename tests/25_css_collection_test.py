@@ -23,9 +23,7 @@ def test_css_injected_before_html():
 
 def test_css_deduplication():
     nested = UnifiedComponent(id="css-nested-1", text="Nested")
-    component = UnifiedComponent(
-        id="css-parent-1", title="Parent", items=[nested]
-    )
+    component = UnifiedComponent(id="css-parent-1", title="Parent", items=[nested])
 
     rendered = str(component.render())
 
@@ -78,9 +76,7 @@ def test_inline_css_false_disables_injection():
     renderer = Renderer.get_default_renderer(inline_css=False)
     component = UnifiedComponent(id="css-off-1", text="No CSS")
 
-    rendered = str(
-        component._render(_renderer=renderer)
-    )
+    rendered = str(component._render(_renderer=renderer))
 
     assert "<style>" not in rendered
 

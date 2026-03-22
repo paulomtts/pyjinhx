@@ -34,4 +34,7 @@ Homepage = "https://github.com/paulomtts/pyjinhx"
 dev = [
     "mkdocs-material>=9.7.1",
     "mkdocstrings[python]>=1.0.1",
+    "fastapi>=0.115.0",
+    "httpx>=0.27.0",
+    "uvicorn>=0.32.0",
 ]

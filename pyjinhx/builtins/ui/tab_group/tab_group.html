@@ -1,0 +1,20 @@
+<div id="{{ id }}" class="px-tab-group">
+  <div class="px-tab-group__list" role="tablist" aria-label="Tabs">
+    {% for label, panel in tabs.items() %}
+    <button type="button"
+            class="px-tab-group__tab"
+            role="tab"
+            id="{{ id }}-tab-{{ loop.index0 }}"
+            aria-controls="{{ id }}-panel-{{ loop.index0 }}"
+            aria-selected="{% if loop.first %}true{% else %}false{% endif %}"
+            tabindex="{% if loop.first %}0{% else %}-1{% endif %}">{{ label }}</button>
+    {% endfor %}
+  </div>
+  {% for label, panel in tabs.items() %}
+  <div class="px-tab-group__panel"
+       role="tabpanel"
+       id="{{ id }}-panel-{{ loop.index0 }}"
+       aria-labelledby="{{ id }}-tab-{{ loop.index0 }}"
+       {% if not loop.first %}hidden{% endif %}>{{ panel }}</div>
+  {% endfor %}
+</div>

@@ -1,0 +1,47 @@
+:root {
+  --px-breadcrumb-gap: 0.35rem;
+  --px-breadcrumb-sep: "/";
+  --px-breadcrumb-sep-color: var(--text-muted);
+  --px-breadcrumb-link-color: var(--brand);
+  --px-breadcrumb-current-color: var(--text);
+  --px-breadcrumb-font-size: var(--font-size-sm);
+}
+
+.px-breadcrumb__list {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--px-breadcrumb-font-size);
+}
+
+.px-breadcrumb__item {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--px-breadcrumb-gap);
+}
+
+.px-breadcrumb__item:not(:last-child)::after {
+  content: var(--px-breadcrumb-sep);
+  color: var(--px-breadcrumb-sep-color);
+  margin-left: var(--px-breadcrumb-gap);
+  user-select: none;
+  pointer-events: none;
+}
+
+.px-breadcrumb__link {
+  color: var(--px-breadcrumb-link-color);
+  text-decoration: none;
+}
+
+.px-breadcrumb__link:hover {
+  text-decoration: underline;
+}
+
+.px-breadcrumb__current {
+  color: var(--px-breadcrumb-current-color);
+  font-weight: 500;
+}

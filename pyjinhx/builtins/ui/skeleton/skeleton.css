@@ -1,0 +1,60 @@
+:root {
+  --px-skeleton-bg:         var(--surface-alt);
+  --px-skeleton-shine:      color-mix(in srgb, var(--text) 8%, var(--surface-alt));
+  --px-skeleton-line-height: 0.65rem;
+  --px-skeleton-line-gap:   0.5rem;
+  --px-skeleton-circle-size: 2.5rem;
+  --px-skeleton-rect-height: 6rem;
+  --px-skeleton-rect-radius: var(--radius-md);
+  --px-skeleton-duration:   1.2s;
+}
+
+.px-skeleton {
+  width: 100%;
+}
+
+.px-skeleton__line,
+.px-skeleton__circle,
+.px-skeleton__rect {
+  background: linear-gradient(
+    90deg,
+    var(--px-skeleton-bg) 0%,
+    var(--px-skeleton-shine) 50%,
+    var(--px-skeleton-bg) 100%
+  );
+  background-size: 200% 100%;
+  animation: px-skeleton-shimmer var(--px-skeleton-duration) ease-in-out infinite;
+}
+
+.px-skeleton--text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--px-skeleton-line-gap);
+}
+
+.px-skeleton__line {
+  height: var(--px-skeleton-line-height);
+  border-radius: var(--radius-sm);
+  width: 100%;
+}
+
+.px-skeleton__line:last-child {
+  width: 65%;
+}
+
+.px-skeleton--circle .px-skeleton__circle {
+  width: var(--px-skeleton-circle-size);
+  height: var(--px-skeleton-circle-size);
+  border-radius: var(--radius-full);
+}
+
+.px-skeleton--rect .px-skeleton__rect {
+  width: 100%;
+  height: var(--px-skeleton-rect-height);
+  border-radius: var(--px-skeleton-rect-radius);
+}
+
+@keyframes px-skeleton-shimmer {
+  0% { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
+}

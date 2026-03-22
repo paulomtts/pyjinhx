@@ -1,0 +1,13 @@
+<div class="px-alert px-alert--{{ variant }}" id="{{ id }}" role="status">
+    <div class="px-alert__inner">
+        <div class="px-alert__text">
+            {% if title %}
+            <div class="px-alert__title">{{ title }}</div>
+            {% endif %}
+            <div class="px-alert__body">{{ body }}</div>
+        </div>
+        {% if dismissible %}
+        <button type="button" class="px-alert__dismiss" onclick="dismissPxAlert('{{ id }}')" aria-label="Dismiss">&#x2715;</button>
+        {% endif %}
+    </div>
+</div>
