@@ -235,8 +235,9 @@ Hover trigger + floating card. **Assets:** `popover.css`, `popover.js` (IIFE, no
 | `content` | `str \| BaseComponent` | `""` | Trigger label (`px-popover-trigger__body`). |
 | `card_content` | `str \| BaseComponent` | `""` | Panel body (`px-popover-card`). |
 | `position` | literal | `"anchor"` | `anchor` (below trigger) or `follow` (pointer). → `data-popover-position`. |
+| `backdrop` | `bool` | `False` | When `True`, emits `data-popover-backdrop` on the trigger (dim layer + lifted z-index). |
 
-**Runtime behavior:** Mouse over the trigger opens the card; leaving the trigger (and its descendants) starts a short delayed hide. Optional **`data-popover-backdrop`** on the trigger enables a full-screen dim layer and raises z-index; the script injects `#px-popover-backdrop` if needed. The stock template does not set that attribute—extend the template or pass extra context if you want it.
+**Runtime behavior:** Mouse over the trigger opens the card; leaving the trigger (and its descendants) starts a short delayed hide. With **`data-popover-backdrop`** on the trigger (set `backdrop=True` on `Popover`, or add the attribute in custom markup), the script shows a full-screen dim layer, lifts the trigger z-index, and injects `#px-popover-backdrop` if needed.
 
 
 ### HTML
@@ -244,7 +245,7 @@ Hover trigger + floating card. **Assets:** `popover.css`, `popover.js` (IIFE, no
 ??? abstract "HTML (Jinja template)"
 
     ```html
-    <span class="px-popover-trigger" id="{{ id }}" data-popover-position="{{ position }}">
+    <span class="px-popover-trigger" id="{{ id }}" data-popover-position="{{ position }}"{% if backdrop %} data-popover-backdrop{% endif %}>
         <span class="px-popover-trigger__body">{{ content }}</span>
         <div class="px-popover-card" role="tooltip" aria-hidden="true">
             {{ card_content }}
