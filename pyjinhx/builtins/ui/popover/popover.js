@@ -62,19 +62,19 @@
 
         if (mode === 'follow') {
             left = x - ox + gap;
-            top  = y - oy + gap;
+            top = y - oy + gap;
             if (left + cw > vw - ox - gap) left = x - ox - cw - gap;
-            if (top  + ch > vh - oy - gap) top  = y - oy - ch - gap;
+            if (top + ch > vh - oy - gap) top = y - oy - ch - gap;
         } else {
             const rect = trigger.getBoundingClientRect();
             left = rect.left - ox;
-            top  = rect.bottom - oy + 8;
+            top = rect.bottom - oy + 8;
             if (left + cw > vw - ox - gap) left = vw - ox - cw - gap;
-            if (top  + ch > vh - oy - gap) top  = rect.top - oy - ch - 8;
+            if (top + ch > vh - oy - gap) top = rect.top - oy - ch - 8;
         }
 
         card.style.left = left + 'px';
-        card.style.top  = top  + 'px';
+        card.style.top = top + 'px';
     }
 
     function showCard(trigger, x, y) {

@@ -1,4 +1,5 @@
-<span class="px-popover-trigger" id="{{ id }}" data-popover-position="{{ position }}"{% if backdrop %} data-popover-backdrop{% endif %}>
+<span class="px-popover-trigger" id="{{ id }}" data-popover-position="{{ position }}" {% if backdrop %}
+    data-popover-backdrop{% endif %}>
     <span class="px-popover-trigger__body">{{ content }}</span>
     <div class="px-popover-card" role="tooltip" aria-hidden="true">
         {{ card_content }}
