@@ -12,7 +12,7 @@ from pyjinhx.builtins.ui.modal import Modal
 from pyjinhx.builtins.ui.notification import Notification
 from pyjinhx.builtins.ui.popover import Popover
 from pyjinhx.builtins.ui.progress import Progress
-from pyjinhx.builtins.ui.region import Region, RegionTrigger
+from pyjinhx.builtins.ui.panel import Panel, PanelTrigger
 from pyjinhx.builtins.ui.skeleton import Skeleton
 from pyjinhx.builtins.ui.spinner import Spinner
 from pyjinhx.builtins.ui.tab_group import TabGroup
@@ -33,8 +33,8 @@ __all__ = [
     "Notification",
     "Popover",
     "Progress",
-    "Region",
-    "RegionTrigger",
+    "Panel",
+    "PanelTrigger",
     "Skeleton",
     "Spinner",
     "TabGroup",

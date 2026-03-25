@@ -196,11 +196,11 @@ Use Jinja conditionals to control HTMX behavior:
 </button>
 ```
 
-### `Region` outside the swap target
+### `Panel` outside the swap target
 
-[`Region`](../guide/builtins.md#region) holds multiple panels (e.g. chat vs. other tools) while [`RegionTrigger`](../guide/builtins.md#regiontrigger) controls can live in a navbar or sidebar. To **keep in-DOM state** (messages, inputs) when other UI updates, mount the **`Region` root outside** the element you pass to `hx-target` for those swaps. Only swap inner fragments that should reload; avoid replacing the entire `Region` wrapper unless you intend to reset that state.
+[`Panel`](../guide/builtins.md#panel) holds multiple slots (e.g. chat vs. other tools) while [`PanelTrigger`](../guide/builtins.md#paneltrigger) controls can live in a navbar or sidebar. To **keep in-DOM state** (messages, inputs) when other UI updates, mount the **`Panel` root outside** the element you pass to `hx-target` for those swaps. Only swap inner fragments that should reload; avoid replacing the entire `Panel` wrapper unless you intend to reset that state.
 
-Bundled **`region.js`** re-runs its init on `htmx:afterSwap` and `htmx:afterSettle`, so triggers and panels stay in sync after partial HTML updates.
+Bundled **`panel.js`** re-runs its init on `htmx:afterSwap` and `htmx:afterSettle`, so triggers and panels stay in sync after partial HTML updates.
 
 ### Loading States
 

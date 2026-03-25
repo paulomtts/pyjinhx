@@ -121,7 +121,7 @@ Missing extra files emit a warning (check `pyjinhx` logger). Disable inline asse
 
 Optional package: `import pyjinhx.builtins` then `from pyjinhx.builtins import Alert, Avatar, Badge, …` (twenty classes). Same `BaseComponent` rules; templates/CSS/JS live under `pyjinhx/builtins/ui/<component>/`. If the app Jinja loader does not see package templates, the **renderer falls back** to on-disk templates next to those classes.
 
-**Do not** register user subclasses with the same **class name** as a builtin (`Card`, `Modal`, `Region`, …) — global `Registry` is one class per name.
+**Do not** register user subclasses with the same **class name** as a builtin (`Card`, `Modal`, `Panel`, …) — global `Registry` is one class per name.
 
 **Host theme (set on `:root` or a wrapper):** Builtin CSS reads shared tokens. Define at least: `--surface`, `--surface-alt`, `--text`, `--text-muted`, `--border`, `--brand`, `--brand-subtle`, `--brand-muted`, `--error`, `--success`, `--warning`, `--font-size-xs`, `--font-size-sm`, `--font-size-md`, `--radius-sm`, `--radius-md`, `--radius-lg`, `--radius-full`, `--shadow-md`, `--transition`, `--space-3`, `--space-4`. Optional but used for error surfaces: `--error-bg`, `--error-border` (badge/alert error variants fall back with `color-mix` if these are missing).
 
@@ -129,7 +129,7 @@ Optional package: `import pyjinhx.builtins` then `from pyjinhx.builtins import A
 
 **Class naming:** BEM-style `px-<widget>`, `px-<widget>__element`, `px-<widget>--modifier`. **`class_name` field** (appended on the root node): `Avatar`, `Badge`, `Divider`, `Skeleton`.
 
-**PascalCase tag quirks:** `TabGroup.tabs`, `Region.panels`, `Breadcrumb.items` accept a **JSON string** attribute when rendered from tag strings (same idea as dict/list in Python). `Region` / `RegionTrigger` **panel keys** must match `[a-zA-Z0-9_-]+` (stable `id`s).
+**PascalCase tag quirks:** `TabGroup.tabs`, `Panel.panels`, `Breadcrumb.items` accept a **JSON string** attribute when rendered from tag strings (same idea as dict/list in Python). `Panel` / `PanelTrigger` **panel keys** must match `[a-zA-Z0-9_-]+` (stable `id`s).
 
 ### Alert
 
@@ -221,16 +221,16 @@ Optional package: `import pyjinhx.builtins` then `from pyjinhx.builtins import A
 - **Classes:** `px-progress`, `px-progress__label`, `px-progress__bar` (`<progress>`; `indeterminate` styling when no value).
 - **Tokens:** `--px-progress-height`, `--px-progress-radius`, `--px-progress-track`, `--px-progress-fill`, `--px-progress-indeterminate-speed`.
 
-### Region
+### Panel
 
 - **Props:** `panels` map panel-key → content (dict or JSON string in tags).
-- **Classes:** `px-region`, `px-region__panel` (`[hidden]` toggles visibility). Almost no layout tokens in package CSS—style the host layout around it.
-- **JS:** With `RegionTrigger`: delegated `click` on `.px-region-trigger`; `pxRegionInit()` on `DOMContentLoaded`, `htmx:afterSwap`, `htmx:afterSettle`; helpers `pxRegionShowPanel(regionRoot, panelKey)`, `pxRegionSyncTriggers(regionId, activePanel)`.
+- **Classes:** `px-panel`, `px-panel__panel` (`[hidden]` toggles visibility). Almost no layout tokens in package CSS—style the host layout around it.
+- **JS:** With `PanelTrigger`: delegated `click` on `.px-panel-trigger`; `pxPanelInit()` on `DOMContentLoaded`, `htmx:afterSwap`, `htmx:afterSettle`; helpers `pxPanelShowPanel(hostRoot, panelKey)`, `pxPanelSyncTriggers(hostId, activeKey)`.
 
-### RegionTrigger
+### PanelTrigger
 
-- **Props:** `region_id`, `panel` (key matching the parent `Region`), `label`.
-- **Classes:** `px-region-trigger` (behavior from `region.js` shipped with `Region`).
+- **Props:** `panel_id`, `panel` (key matching the parent `Panel.panels`), `content` (your visible markup inside the wrapper).
+- **Classes:** `px-panel-trigger` (`display: contents`; delegated `click` in `panel.js` from `Panel`).
 
 ### Skeleton
 
@@ -267,7 +267,7 @@ Optional package: `import pyjinhx.builtins` then `from pyjinhx.builtins import A
 | `Modal` | `openModal(id)`, `closeModal(id)` |
 | `Notification` | `showNotification(id)`, `hideNotification(id)` |
 | `Popover` | Delegated events + `#px-popover-backdrop` |
-| `Region` | `pxRegionInit()`, `pxRegionShowPanel`, `pxRegionSyncTriggers` (+ trigger clicks) |
+| `Panel` | `pxPanelInit()`, `pxPanelShowPanel`, `pxPanelSyncTriggers` (+ trigger clicks) |
 | `TabGroup` | Delegated tab clicks |
 | `Tooltip` | Delegated focus/hover + placement |
 
@@ -330,7 +330,7 @@ my_app/
 ```python
 from pyjinhx import BaseComponent, Renderer, Registry, Finder, Parser, Tag
 import pyjinhx.builtins  # optional: registers all builtin classes
-from pyjinhx.builtins import Alert, Modal, Region, RegionTrigger, TabGroup  # …
+from pyjinhx.builtins import Alert, Modal, Panel, PanelTrigger, TabGroup  # …
 ```
 
 - `BaseComponent` — base class for all components

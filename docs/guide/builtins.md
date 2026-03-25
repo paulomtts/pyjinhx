@@ -18,8 +18,8 @@ from pyjinhx.builtins import (
     Notification,
     Popover,
     Progress,
-    Region,
-    RegionTrigger,
+    Panel,
+    PanelTrigger,
     Skeleton,
     Spinner,
     TabGroup,
@@ -875,30 +875,30 @@ Tab buttons and panels. **Assets:** `tab-group.css`, **`tab-group.js`** (kebab-c
 
 ---
 
-## Region
+## Panel
 
-Panel host for **distributed** tab-like switching: all bodies render here; controls are separate [`RegionTrigger`](#regiontrigger) components. **Unstyled** aside from `hidden` panels. **Assets:** `region.css`, **`region.js`**.
+Host for **distributed** tab-like switching: all bodies render here; controls are separate [`PanelTrigger`](#paneltrigger) components. **Unstyled** aside from `hidden` panels. **Assets:** `panel.css`, **`panel.js`**.
 
 ### Python
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
-| `id` | `str` | (required) | Root id; must match `RegionTrigger.region_id`. Panel element ids are `{{ id }}-panel-{{ key }}`. |
-| `panels` | `dict[str, str \| BaseComponent]` | `{}` | **Insertion order** sets the initially visible panel (first is shown). Keys must match `[a-zA-Z0-9_-]+`. |
+| `id` | `str` | (required) | Root id; must match `PanelTrigger.panel_id`. Slot element ids are `{{ id }}-panel-{{ key }}`. |
+| `panels` | `dict[str, str \| BaseComponent]` | `{}` | **Insertion order** sets the initially visible slot (first is shown). Keys must match `[a-zA-Z0-9_-]+`. |
 
-`panels` may be a **JSON object** string from PascalCase tags. Keys are used in HTML `id` attributes and `data-px-region-panel`.
+`panels` may be a **JSON object** string from PascalCase tags. Keys are used in HTML `id` attributes and `data-px-panel-key`.
 
 ### HTML
 
 ??? abstract "HTML (Jinja template)"
 
     ```jinja
-    <div id="{{ id }}" class="px-region">
+    <div id="{{ id }}" class="px-panel">
       {% for panel_key, panel_body in panels.items() %}
-      <div class="px-region__panel"
+      <div class="px-panel__panel"
            role="tabpanel"
            id="{{ id }}-panel-{{ panel_key }}"
-           data-px-region-panel="{{ panel_key }}"
+           data-px-panel-key="{{ panel_key }}"
            {% if not loop.first %}hidden{% endif %}>{{ panel_body }}</div>
       {% endfor %}
     </div>
@@ -906,50 +906,49 @@ Panel host for **distributed** tab-like switching: all bodies render here; contr
 
 ### JavaScript
 
-**`region.js`:** `click` on `.px-region-trigger` shows the matching `.px-region__panel` inside the host `getElementById(region_id)`, hides others, syncs `aria-selected` / `tabIndex` on **all** triggers for that `region_id`. **`pxRegionInit`** runs on `DOMContentLoaded`, `htmx:afterSwap`, and `htmx:afterSettle` so swapped fragments pick up correct ARIA after partial updates.
+**`panel.js`:** `click` on `.px-panel-trigger` shows the matching `.px-panel__panel` inside the host `getElementById(panel_id)`, hides others, syncs `aria-selected` / `tabIndex` on **all** triggers for that host. **`pxPanelInit`** runs on `DOMContentLoaded`, `htmx:afterSwap`, and `htmx:afterSettle` so swapped fragments pick up correct ARIA after partial updates.
 
 ### Style
 
-**Classes:** `px-region`, `px-region__panel`. No theme tokens; minimal rules for `[hidden]` panels.
+**Classes:** `px-panel`, `px-panel__panel`. No theme tokens; minimal rules for `[hidden]` panels.
 
 ---
 
-## RegionTrigger
+## PanelTrigger
 
-Button that activates a panel inside a [`Region`](#region) (may be placed anywhere in the layout). **Assets:** none (uses `region.js` from `Region`). **Unstyled** (browser default button).
+Invisible wrapper that wires clicks to a [`Panel`](#panel) slot (place it anywhere; put your own links, buttons, or styled markup in `content`, same pattern as [`Popover`](#popover) / [`Notification`](#notification)). **Assets:** `panel-trigger.css`. Render a [`Panel`](#panel) on the same page so **`panel.js`** is included (`PanelTrigger` does not load `panel.js` by asset name).
 
 ### Python
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
-| `id` | `str` | (required) | Button id. |
-| `region_id` | `str` | (required) | Must equal the target `Region.id`. |
-| `panel` | `str` | (required) | Key matching a key in `Region.panels`; `[a-zA-Z0-9_-]+`. |
-| `label` | `str \| BaseComponent` | `""` | Button label. |
+| `id` | `str` | (required) | Wrapper element id. |
+| `panel_id` | `str` | (required) | Must equal the target `Panel.id`. |
+| `panel` | `str` | (required) | Key matching a key in `Panel.panels`; `[a-zA-Z0-9_-]+`. |
+| `content` | `str \| BaseComponent` | `""` | Inner HTML / nested components (your visible control). |
 
 ### HTML
 
 ??? abstract "HTML (Jinja template)"
 
     ```jinja
-    <button type="button"
-            id="{{ id }}"
-            class="px-region-trigger"
-            role="tab"
-            data-px-region="{{ region_id }}"
-            data-px-region-panel="{{ panel }}"
-            aria-controls="{{ region_id }}-panel-{{ panel }}"
-            aria-selected="false"
-            tabindex="-1">{{ label }}</button>
+    <div id="{{ id }}"
+         class="px-panel-trigger"
+         role="tab"
+         data-px-panel-id="{{ panel_id }}"
+         data-px-panel-key="{{ panel }}"
+         aria-controls="{{ panel_id }}-panel-{{ panel }}"
+         aria-selected="false"
+         tabindex="-1">{{ content }}</div>
     ```
 
 ### JavaScript
 
-Bundled with **`region.js`** (collected when either `Region` or `RegionTrigger` is rendered from the same package directory).
+**`panel.js`** is loaded when a [`Panel`](#panel) is rendered (same directory). `PanelTrigger` does not match `panel-trigger.js`, so include a `Panel` on the page or add the script yourself.
 
 ### Style
 
-No component CSS file; override `.px-region-trigger` in your app if needed.
+**`panel-trigger.css`:** `.px-panel-trigger { display: contents; }` so the wrapper does not create a layout box. Override in your app (e.g. `display: block`) if you need a real box.
 
 ---
 
@@ -963,8 +962,8 @@ from pyjinhx.builtins import (
     Drawer,
     Modal,
     Notification,
-    Region,
-    RegionTrigger,
+    Panel,
+    PanelTrigger,
     TabGroup,
     Tooltip,
 )
@@ -980,9 +979,11 @@ tabs = TabGroup(
     id="main-tabs",
     tabs={"A": "<p>First</p>", "B": "<p>Second</p>"},
 )
-main_region = Region(
-    id="app-region",
+main_panel = Panel(
+    id="app-panels",
     panels={"chat": "<p>Chat UI</p>", "other": "<p>Other</p>"},
 )
-open_chat = RegionTrigger(id="open-chat", region_id="app-region", panel="chat", label="Chat")
+open_chat = PanelTrigger(
+    id="open-chat", panel_id="app-panels", panel="chat", content="Chat"
+)
 ```

@@ -1,0 +1,3 @@
+.px-panel__panel[hidden] {
+  display: none !important;
+}

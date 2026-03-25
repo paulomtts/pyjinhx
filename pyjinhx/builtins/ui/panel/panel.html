@@ -1,9 +1,9 @@
-<div id="{{ id }}" class="px-region">
+<div id="{{ id }}" class="px-panel">
   {% for panel_key, panel_body in panels.items() %}
-  <div class="px-region__panel"
+  <div class="px-panel__panel"
        role="tabpanel"
        id="{{ id }}-panel-{{ panel_key }}"
-       data-px-region-panel="{{ panel_key }}"
+       data-px-panel-key="{{ panel_key }}"
        {% if not loop.first %}hidden{% endif %}>{{ panel_body }}</div>
   {% endfor %}
 </div>

@@ -75,13 +75,13 @@ def test_multiple_children():
 
 def test_mixed_content_and_components():
     with tempfile.TemporaryDirectory() as temp_dir:
-        with open(os.path.join(temp_dir, "panel.html"), "w") as file:
+        with open(os.path.join(temp_dir, "frame.html"), "w") as file:
             file.write("<div id={{ id }} class={{ class }}>\n  {{ content }}\n</div>\n")
         with open(os.path.join(temp_dir, "action_button.html"), "w") as file:
             file.write("<button id={{ id }}>{{ label }}</button>\n")
 
         index_html = (
-            '<Panel class="card">Before <ActionButton label="Click Me"/> After</Panel>'
+            '<Frame class="card">Before <ActionButton label="Click Me"/> After</Frame>'
         )
         rendered = Renderer(
             Environment(loader=FileSystemLoader(temp_dir)),
@@ -89,7 +89,7 @@ def test_mixed_content_and_components():
         ).render(index_html)
 
         assert re.match(
-            r"^<div id=panel-[a-f0-9]{32} class=card>\n  Before <button id=actionbutton-[a-f0-9]{32}>Click Me</button> After\n</div>$",
+            r"^<div id=frame-[a-f0-9]{32} class=card>\n  Before <button id=actionbutton-[a-f0-9]{32}>Click Me</button> After\n</div>$",
             rendered,
         ), f"Output does not match expected pattern. Got: {rendered!r}"
 

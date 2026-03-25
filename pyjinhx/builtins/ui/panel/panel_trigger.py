@@ -7,10 +7,10 @@ from pyjinhx import BaseComponent
 _PANEL_KEY_PATTERN = re.compile(r"^[a-zA-Z0-9_-]+$")
 
 
-class RegionTrigger(BaseComponent):
-    region_id: str
+class PanelTrigger(BaseComponent):
+    panel_id: str
     panel: str
-    label: str | BaseComponent = ""
+    content: str | BaseComponent = ""
 
     @field_validator("panel", mode="after")
     @classmethod

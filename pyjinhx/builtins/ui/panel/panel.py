@@ -19,7 +19,7 @@ def _coerce_panels(value: Any) -> dict[str, str | BaseComponent]:
 _PANEL_KEY_PATTERN = re.compile(r"^[a-zA-Z0-9_-]+$")
 
 
-class Region(BaseComponent):
+class Panel(BaseComponent):
     panels: Annotated[dict[str, str | BaseComponent], BeforeValidator(_coerce_panels)] = Field(
         default_factory=dict
     )

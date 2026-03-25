@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import os
 import tempfile
 from functools import lru_cache
@@ -7,7 +8,6 @@ from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader
 
-import pyjinhx.builtins  # noqa: F401 — register all builtin classes
 from pyjinhx import BaseComponent, Renderer
 from pyjinhx.builtins import (
     Alert,
@@ -16,16 +16,16 @@ from pyjinhx.builtins import (
     Breadcrumb,
     Card,
     Divider,
-    Dropdown,
     Drawer,
+    Dropdown,
     EmptyState,
     LoadingOverlay,
     Modal,
     Notification,
+    Panel,
+    PanelTrigger,
     Popover,
     Progress,
-    Region,
-    RegionTrigger,
     Skeleton,
     Spinner,
     TabGroup,
@@ -145,14 +145,14 @@ _SHOWCASE_TEMPLATE = """
 {{ tab_group }}
 </section>
 
-<h2>Region (distributed triggers)</h2>
+<h2>Panel (distributed triggers)</h2>
 <section class="demo-stack">
-<p style="margin:0;font-size:var(--font-size-sm);color:var(--text-muted);">Triggers are separate from the panel host.</p>
+<p style="margin:0;font-size:var(--font-size-sm);color:var(--text-muted);">Triggers are separate from the host. Beta uses HTMX SSE (~2.5s per tick): stay on Alpha, wait a few ticks, then open Beta — the hidden slot still receives events.</p>
 <div class="demo-row">
-{{ region_trigger_alpha }}
-{{ region_trigger_beta }}
+{{ panel_trigger_alpha }}
+{{ panel_trigger_beta }}
 </div>
-{{ region }}
+{{ panel_host }}
 </section>
 """
 
@@ -183,9 +183,9 @@ class BuiltinsGalleryPage(BaseComponent):
     card: Card
     breadcrumb: Breadcrumb
     tab_group: TabGroup
-    region_trigger_alpha: RegionTrigger
-    region_trigger_beta: RegionTrigger
-    region: Region
+    panel_trigger_alpha: PanelTrigger
+    panel_trigger_beta: PanelTrigger
+    panel_host: Panel
 
     def render(self) -> str:
         return str(self._render(source=_SHOWCASE_TEMPLATE.strip()))
@@ -289,23 +289,26 @@ def _gallery_inner_html() -> str:
                 "Details": "<p>Second panel content.</p>",
             },
         ),
-        region_trigger_alpha=RegionTrigger(
-            id="g-reg-tr-a",
-            region_id="g-region",
+        panel_trigger_alpha=PanelTrigger(
+            id="g-panel-tr-a",
+            panel_id="g-panel",
             panel="alpha",
-            label="Alpha",
+            content='<button type="button" class="demo-btn">Alpha</button>',
         ),
-        region_trigger_beta=RegionTrigger(
-            id="g-reg-tr-b",
-            region_id="g-region",
+        panel_trigger_beta=PanelTrigger(
+            id="g-panel-tr-b",
+            panel_id="g-panel",
             panel="beta",
-            label="Beta",
+            content='<button type="button" class="demo-btn">Beta</button>',
         ),
-        region=Region(
-            id="g-region",
+        panel_host=Panel(
+            id="g-panel",
             panels={
-                "alpha": "<p>Panel alpha</p>",
-                "beta": "<p>Panel beta</p>",
+                "alpha": "<p>Panel alpha (default). Beta is hidden but still connected to SSE.</p>",
+                "beta": (
+                    '<div id="g-panel-sse-live" hx-ext="sse" sse-connect="/sse/panel-demo" '
+                    'sse-swap="message" style="font-family:monospace;font-size:1.1rem;">waiting…</div>'
+                ),
             },
         ),
     )
@@ -320,15 +323,36 @@ def render_gallery_page() -> str:
 
 def create_app():
     from fastapi import FastAPI
-    from fastapi.responses import HTMLResponse
+    from fastapi.responses import HTMLResponse, StreamingResponse
     from fastapi.staticfiles import StaticFiles
 
     app = FastAPI()
     app.mount("/static", StaticFiles(directory=str(_GALLERY_DIR)), name="static")
 
+    _SSE_INTERVAL_SEC = 2.5
+
     @app.get("/", response_class=HTMLResponse)
     def gallery_index() -> str:
         return render_gallery_page()
+
+    @app.get("/sse/panel-demo")
+    async def panel_demo_sse() -> StreamingResponse:
+        async def event_stream():
+            tick_index = 0
+            while True:
+                tick_index += 1
+                yield f"data: SSE tick {tick_index} (~{_SSE_INTERVAL_SEC:g}s apart)\n\n"
+                await asyncio.sleep(_SSE_INTERVAL_SEC)
+
+        return StreamingResponse(
+            event_stream(),
+            media_type="text/event-stream",
+            headers={
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive",
+                "X-Accel-Buffering": "no",
+            },
+        )
 
     return app
 
@@ -340,11 +364,13 @@ def run_gallery_server(
 ) -> None:
     import uvicorn
 
-    resolved_port = port if port is not None else int(
-        os.environ.get("PYJINHX_GALLERY_PORT", str(DEFAULT_GALLERY_PORT))
+    resolved_port = (
+        port
+        if port is not None
+        else int(os.environ.get("PYJINHX_GALLERY_PORT", str(DEFAULT_GALLERY_PORT)))
     )
     uvicorn.run(
-        "tests.builtins_gallery.app:create_app",
+        create_app,
         factory=True,
         host=host,
         port=resolved_port,
