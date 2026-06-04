@@ -20,6 +20,7 @@ from .utils import (
     detect_root_directory,
     pascal_case_to_kebab_case,
     pascal_case_to_snake_case,
+    stamp_root_attributes,
     tag_name_to_template_filenames,
 )
 
@@ -602,6 +603,16 @@ class Renderer:
         rendered_markup = self._expand_custom_tags(
             rendered_markup, base_context=render_context, session=session
         )
+
+        if getattr(type(component), "_pjx_reactive", False):
+            rendered_markup = stamp_root_attributes(
+                rendered_markup,
+                {
+                    "data-pjx-id": component.id,
+                    "data-pjx-type": type(component).__name__,
+                    "data-pjx-hash": component.state_hash(),
+                },
+            )
 
         # For bare BaseComponent fallbacks (no registered class), derive the asset
         # directory and name from the template path rather than the class file location,
