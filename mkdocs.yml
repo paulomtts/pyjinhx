@@ -6,6 +6,7 @@ repo_name: paulomtts/pyjinhx
 
 exclude_docs: |
   __init__.py
+  superpowers/
 
 theme:
   name: material
