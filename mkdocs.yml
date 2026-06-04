@@ -71,6 +71,7 @@ nav:
       - Asset Collection: guide/assets.md
       - Built-in UI components: guide/builtins.md
       - Configuration: guide/configuration.md
+      - Reactivity: reactivity.md
   - Integrations:
       - FastAPI: integrations/fastapi.md
       - HTMX: integrations/htmx.md
