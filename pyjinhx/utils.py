@@ -189,9 +189,7 @@ def stamp_root_attributes(html: str, attributes: dict[str, str]) -> str:
             break
         cursor += 1
     else:
-        raise ValueError(
-            "Cannot stamp reactive attributes: unterminated start tag."
-        )
+        raise ValueError("Cannot stamp reactive attributes: unterminated start tag.")
 
     insert_at = cursor - 1 if html[cursor - 1] == "/" else cursor
     rendered_attrs = "".join(

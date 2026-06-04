@@ -6,6 +6,7 @@ from typing import Any
 
 from markupsafe import Markup
 
+from .base import BaseComponent
 from .registry import Registry
 from .renderer import Renderer
 from .utils import read_client_runtime, stamp_root_attributes
@@ -26,9 +27,6 @@ def client_script() -> Markup:
     need to call this.
     """
     return Markup(f"<script>{read_client_runtime()}</script>")
-
-
-from .base import BaseComponent
 
 
 class Layout(BaseComponent):
@@ -55,7 +53,9 @@ def _parse_mounted(mounted: str | list[dict[str, Any]] | None) -> list[dict[str,
         try:
             parsed = json.loads(mounted)
         except json.JSONDecodeError:
-            logger.warning("Could not parse %s manifest as JSON; ignoring.", PJX_MOUNTED_HEADER)
+            logger.warning(
+                "Could not parse %s manifest as JSON; ignoring.", PJX_MOUNTED_HEADER
+            )
             return []
         return parsed if isinstance(parsed, list) else []
     raise TypeError(

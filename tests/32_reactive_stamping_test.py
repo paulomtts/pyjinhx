@@ -16,7 +16,7 @@ class StampCounter(BaseComponent):
 def test_reactive_root_is_stamped():
     counter = StampCounter(id="c1", remaining=3)
     html = str(counter._render(source="<span class='c'>{{ remaining }} left</span>"))
-    assert html.startswith('<span class=\'c\' data-pjx-id="c1"')
+    assert html.startswith("<span class='c' data-pjx-id=\"c1\"")
     assert 'data-pjx-type="StampCounter"' in html
     assert f'data-pjx-hash="{counter.state_hash()}"' in html
     assert ">3 left</span>" in html

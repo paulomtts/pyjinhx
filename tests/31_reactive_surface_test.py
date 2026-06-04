@@ -66,7 +66,9 @@ def test_warns_when_load_without_depends_on(caplog):
             def load(cls):
                 return cls(id="i")
 
-    assert any("Inert" in r.message and "depends_on" in r.message for r in caplog.records)
+    assert any(
+        "Inert" in r.message and "depends_on" in r.message for r in caplog.records
+    )
 
 
 def test_warns_when_depends_on_without_load(caplog):

@@ -50,7 +50,9 @@ def test_non_reactive_type_is_ignored():
 
 def test_accepts_raw_json_string_manifest():
     store.state["remaining"] = 5
-    out = str(oob_swaps({"todos"}, '[{"id":"counter","type":"ReactiveCounter","hash":"x"}]'))
+    out = str(
+        oob_swaps({"todos"}, '[{"id":"counter","type":"ReactiveCounter","hash":"x"}]')
+    )
     assert "5 left" in out
     assert "outerHTML:[data-pjx-id='counter']" in out
 
