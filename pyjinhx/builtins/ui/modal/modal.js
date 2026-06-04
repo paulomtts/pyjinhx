@@ -6,7 +6,7 @@ function openModal(id) {
 
 function closeModal(id) {
     const modal = document.getElementById(id);
-    if (!modal) return;
+    if (!modal || !modal.open) return;
     modal.classList.add('px-modal--closing');
     modal.addEventListener('animationend', () => {
         modal.classList.remove('px-modal--closing');
