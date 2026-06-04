@@ -22,3 +22,21 @@ def client_script() -> Markup:
     need to call this.
     """
     return Markup(f"<script>{read_client_runtime()}</script>")
+
+
+from .base import BaseComponent
+
+
+class Layout(BaseComponent):
+    """
+    Base class for full-page shells.
+
+    Rendering a ``Layout`` subclass as the page root injects the pyjinhx client
+    runtime once, so mounted reactive regions report their manifest via the
+    ``X-PJX-Mounted`` header. Subclass it for your page shell and provide a
+    template as usual; fragment endpoints render ordinary components, so the
+    runtime is never injected into partial responses.
+    """
+
+
+Layout._pjx_layout = True

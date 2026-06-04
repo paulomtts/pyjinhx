@@ -20,6 +20,7 @@ from .utils import (
     detect_root_directory,
     pascal_case_to_kebab_case,
     pascal_case_to_snake_case,
+    read_client_runtime,
     stamp_root_attributes,
     tag_name_to_template_filenames,
 )
@@ -95,6 +96,7 @@ class RenderSession:
     collected_js_files: set[str] = field(default_factory=set)
     styles: list[str] = field(default_factory=list)
     collected_css_files: set[str] = field(default_factory=set)
+    runtime_injected: bool = False
 
 
 class Renderer:
@@ -639,6 +641,13 @@ class Renderer:
             if self._inline_css:
                 self._collect_extra_css(component, session)
                 rendered_markup = self._inject_styles(rendered_markup, session)
+            if (
+                self._inline_js
+                and getattr(type(component), "_pjx_layout", False)
+                and not session.runtime_injected
+            ):
+                session.scripts.insert(0, read_client_runtime())
+                session.runtime_injected = True
             if self._inline_js:
                 self._collect_extra_javascript(component, session)
                 rendered_markup = self._inject_scripts(rendered_markup, session)
