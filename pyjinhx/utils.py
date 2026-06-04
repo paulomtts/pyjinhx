@@ -199,3 +199,10 @@ def stamp_root_attributes(html: str, attributes: dict[str, str]) -> str:
         for name, value in attributes.items()
     )
     return html[:insert_at] + rendered_attrs + html[insert_at:]
+
+
+def read_client_runtime() -> str:
+    """Return the bundled pyjinhx client runtime JavaScript source."""
+    runtime_path = os.path.join(os.path.dirname(__file__), "runtime", "pjx.js")
+    with open(runtime_path, encoding="utf-8") as runtime_file:
+        return runtime_file.read()
