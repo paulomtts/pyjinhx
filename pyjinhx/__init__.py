@@ -5,7 +5,6 @@ from .finder import Finder
 from .parser import Parser
 from .reactive import (
     PJX_MOUNTED_HEADER,
-    Layout,
     ReactiveComponent,
     client_script,
     oob_swaps,
@@ -21,7 +20,6 @@ __all__ = [
     "Parser",
     "Registry",
     "Tag",
-    "Layout",
     "oob_swaps",
     "invalidate",
     "client_script",

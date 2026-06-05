@@ -58,10 +58,13 @@ class BaseComponent(BaseModel):
             raise ValueError("ID is required")
         return str(v)
 
-    def __init_subclass__(cls, **kwargs):
-        """Register the component class at definition time."""
+    def __init_subclass__(cls, *, base_layout: bool = False, **kwargs):
+        """Register the component class and record whether it is a page layout."""
         super().__init_subclass__(**kwargs)
         Registry.register_class(cls)
+        # Inherited: a subclass of a layout stays a layout. The renderer injects the
+        # client runtime once for the is_root layout of a full-page render.
+        cls._pjx_layout = bool(base_layout) or getattr(cls, "_pjx_layout", False)
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)

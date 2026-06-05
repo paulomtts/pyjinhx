@@ -3,8 +3,8 @@ import pyjinhx
 
 def test_reactive_api_is_exported():
     from pyjinhx import (
-        Layout,
         PJX_MOUNTED_HEADER,
+        ReactiveComponent,
         client_script,
         oob_swaps,
     )
@@ -12,9 +12,14 @@ def test_reactive_api_is_exported():
     assert PJX_MOUNTED_HEADER == "X-PJX-Mounted"
     assert callable(oob_swaps)
     assert callable(client_script)
-    assert issubclass(Layout, pyjinhx.BaseComponent)
+    assert issubclass(ReactiveComponent, pyjinhx.BaseComponent)
 
 
 def test_names_in_all():
-    for name in ("oob_swaps", "Layout", "client_script", "PJX_MOUNTED_HEADER"):
+    for name in (
+        "oob_swaps",
+        "ReactiveComponent",
+        "client_script",
+        "PJX_MOUNTED_HEADER",
+    ):
         assert name in pyjinhx.__all__
