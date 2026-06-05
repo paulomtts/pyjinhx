@@ -32,7 +32,7 @@ class Counter(ReactiveComponent):
 
     @classmethod
     def load(cls) -> "Counter":
-        return cls(id="counter", remaining=db.remaining())
+        return cls(remaining=db.remaining())   # id defaults to "counter"
 ```
 
 - `reacts_to` — the **state keys** this component derives from. These are arbitrary
@@ -41,6 +41,10 @@ class Counter(ReactiveComponent):
   a component's `reacts_to` with the route's `dirtied` keys (and uses them to evict the
   `load()` cache): it's cache invalidation, not signals.
 - `load()` — rebuilds the component from the current world, independent of any route.
+- `id` — defaults to the **kebab-cased class name** (`Counter` → `"counter"`,
+  `TodoCounter` → `"todo-counter"`), since a type-singleton's identity is its type, so
+  `load()` need not set one. Pass an explicit `id` only for instance-keyed regions —
+  multiple mounted instances of one type, e.g. `cls(id=f"todo-row-{user_id}", ...)`.
 - `state_hash()` is provided by `ReactiveComponent` (hash of `model_dump_json()`); override only for custom hashing.
 
 Reactive components are stamped with `data-pjx-id`, `data-pjx-type` (the class
