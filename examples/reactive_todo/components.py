@@ -11,8 +11,20 @@ class TodoItem(BaseComponent):
     done: bool = False
 
 
+class TodoItemRow(ReactiveComponent):
+    title: str = ""
+    done: bool = False
+    reacts_to: ClassVar[set[str]] = {"todo:{key}"}
+
+    @classmethod
+    def load(cls, key) -> "TodoItemRow":
+        # Keys arrive as strings (from the manifest); coerce for the typed lookup.
+        t = store.get(int(key))
+        return cls(title=t.text, done=t.done)
+
+
 class TodoList(BaseComponent):
-    items: list[TodoItem] = []
+    items: list[TodoItemRow] = []
 
 
 class TodoCounter(ReactiveComponent):

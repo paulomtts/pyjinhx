@@ -1,0 +1,5 @@
+<li class="todo{% if done %} done{% endif %}">
+  <button hx-post="/rows/{{ key }}/toggle" hx-target="closest [data-pjx-id]" hx-swap="outerHTML"
+          aria-label="toggle">{% if done %}✓{% else %}○{% endif %}</button>
+  <span>{{ title }}</span>
+</li>

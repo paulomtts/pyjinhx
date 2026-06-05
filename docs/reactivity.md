@@ -131,6 +131,55 @@ The dependency graph lives in exactly one place — the `reacts_to` declarations
 not smeared across endpoints. Adding a progress bar that declares
 `reacts_to = {"todos"}` makes it participate automatically; no endpoint changes.
 
+### Instance-keyed regions (rows)
+
+A reactive type can have **many independently-reactive instances** — table rows,
+cards, list items — each reloaded and swapped on its own. A component is
+**instance-keyed iff its `load()` takes a parameter after `cls`** (`load(cls, key)`);
+a zero-arg `load(cls)` stays a type-singleton. No identity field or extra flag is
+needed — the signature is the switch:
+
+```python
+class TodoItemRow(ReactiveComponent):
+    title: str = ""
+    done: bool = False
+    reacts_to: ClassVar[set[str]] = {"todo:{key}"}   # instance-tier dependency
+
+    @classmethod
+    def load(cls, key) -> "TodoItemRow":             # a param after cls ⇒ keyed
+        t = store.get(int(key))                       # keys are strings; coerce if typed
+        return cls(title=t.text, done=t.done)
+```
+
+- **`reacts_to` is templated** with the literal placeholder `{key}`. It is
+  interpolated with the instance key (`{"todo:{key}"}` → `{"todo:42"}` for row 42),
+  so each row depends on its *own* state key.
+- **The key flows from `load()` automatically**: it is captured, stashed, and used to
+  derive the keyed id `f"{kebab(class)}-{key}"` (e.g. `todo-item-row-42`). It is
+  exposed to the template as `{{ key }}` and stamped on the root as `data-pjx-key`,
+  so the client manifest carries it back up on every request.
+- **Keys are strings framework-side.** The id, `data-pjx-key`, cache key, and
+  interpolation all coerce to `str`, and `load()` always *receives* the key as a
+  `str` (the manifest is strings) — call `int(key)` in `load()` for a typed DB lookup.
+
+**Two-tier dirtying.** Templated entries are *instance-tier*; plain entries are
+*collection-tier* (opt-in, just add one). A mutation route names both as needed:
+
+```python
+@app.post("/rows/{todo_id}/toggle")
+def toggle_row(request, todo_id):
+    store.toggle(todo_id)
+    # "todo:42" swaps just this one row; "todos" updates collection regions
+    # (counter, total, …). The row's own region is the primary, never double-swapped.
+    return TodoItemRow.load(todo_id).render(
+        dirtied={f"todo:{todo_id}", "todos"}, mounted=request
+    )
+```
+
+`dirtied={"todo:42"}` reloads/swaps **only** row 42 (siblings are untouched);
+`dirtied={"todos"}` reloads **every** mounted row that declares the collection-tier
+key. The walk dedups by `(type, key)`, so each row reloads with its own key.
+
 ## 4. `load()` results are cached
 
 Every reactive component's `load()` is wrapped in a **process-global, dependency-keyed
@@ -154,9 +203,10 @@ def nightly_recalc():
     invalidate({"todos"})   # evict every cached load() that depends on "todos"
 ```
 
-The cache holds one result per reactive component type (v1 is type-singleton) and
-returns a fresh copy on every call, so callers can mutate what they get back without
-affecting the cache. **Scope is per-process**: under multiple workers each process has
+The cache holds one result per `(type, key)` — one per type for singletons, one per
+instance key for keyed components — and returns a fresh copy on every call, so callers
+can mutate what they get back without affecting the cache. **Scope is per-process**:
+under multiple workers each process has
 its own cache; cross-worker coherence is your application's responsibility (back it
 with a shared store if you need it).
 
@@ -165,11 +215,15 @@ with a shared store if you need it).
 - **Hash gating is a skip-hint, not correctness authority**: a matching client hash
   earns permission to skip; missing/unknown/mismatched always swaps. It saves
   bandwidth and DOM churn; database work is saved separately by the `load()` cache.
-- **Type-singleton**: one mounted instance per reactive type is reloaded; instance-keyed deps (`"user:42"`) are deferred.
+- **Type-singleton and instance-keyed**: a zero-arg `load(cls)` is a type-singleton
+  (one mounted instance per type is reloaded); a keyed `load(cls, key)` supports many
+  independently-reactive instances with instance-tier deps (`"todo:{key}"`). See
+  *Instance-keyed regions (rows)* above.
 - **`mounted` accepts** a request-like object (header duck-typed out, no framework import), the raw header string, a parsed list, or `None`.
 - **Reactivity is opt-in via `ReactiveComponent`**, which requires both `load()` and
-  `reacts_to`. `load()` is zero-arg in v1 (type-singleton); reactive `render()`
-  auto-`load()`s dependents, so you never call `load()` yourself for a reactive render.
+  `reacts_to`. A zero-arg `load(cls)` is a type-singleton; `load(cls, key)` is
+  instance-keyed. Reactive `render()` auto-`load()`s dependents, so you never call
+  `load()` yourself for a reactive render.
 - **`load()` cache is per-process**: it saves database work on cache hits; eviction is
   dirtied-key driven (automatically in the reactive flow, or via `invalidate(dirtied)`).
   Cross-worker coherence is the application's responsibility.
