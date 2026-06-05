@@ -116,6 +116,35 @@ The dependency graph lives in exactly one place — the `depends_on` declaration
 not smeared across endpoints. Adding a progress bar that declares
 `depends_on = {"todos"}` makes it participate automatically; no endpoint changes.
 
+## 4. `load()` results are cached
+
+Every reactive component's `load()` is wrapped in a **process-global, dependency-keyed
+cache**. Repeated reads — a page render, several components, successive requests —
+return the cached result and skip the database until the relevant keys are dirtied:
+
+```python
+Counter.load()   # first call hits the DB
+Counter.load()   # cached: no DB, returns an independent copy
+```
+
+A reactive `render(dirtied=...)` (and `oob_swaps`) evicts the dirtied keys before
+reloading dependents, so swaps always reflect post-mutation state. For mutations that
+happen outside a render — a background job, a webhook — call `invalidate` yourself:
+
+```python
+from pyjinhx import invalidate
+
+def nightly_recalc():
+    db.rebuild_todos()
+    invalidate({"todos"})   # evict every cached load() that depends on "todos"
+```
+
+The cache holds one result per reactive component type (v1 is type-singleton) and
+returns a fresh copy on every call, so callers can mutate what they get back without
+affecting the cache. **Scope is per-process**: under multiple workers each process has
+its own cache; cross-worker coherence is your application's responsibility (back it
+with a shared store if you need it).
+
 ## Boundaries
 
 - **Hash gating is a skip-hint, not correctness authority**: a matching client hash
@@ -125,3 +154,6 @@ not smeared across endpoints. Adding a progress bar that declares
 - **Type-singleton**: one mounted instance per reactive type is reloaded; instance-keyed deps (`"user:42"`) are deferred.
 - **`mounted` accepts** a request-like object (header duck-typed out, no framework import), the raw header string, a parsed list, or `None`.
 - **`load()` is zero-arg in v1** (type-singleton). Reactive `render()` auto-`load()`s dependents; you never call `load()` yourself for a reactive render.
+- **`load()` cache is per-process**: it saves database work on cache hits; eviction is
+  dirtied-key driven (automatically in the reactive flow, or via `invalidate(dirtied)`).
+  Cross-worker coherence is the application's responsibility.
