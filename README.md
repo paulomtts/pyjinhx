@@ -141,9 +141,9 @@ exactly the mounted regions that depend on what changed:
 
 ```python
 from typing import ClassVar
-from pyjinhx import BaseComponent, oob_swaps, PJX_MOUNTED_HEADER
+from pyjinhx import ReactiveComponent
 
-class Counter(BaseComponent):
+class Counter(ReactiveComponent):
     remaining: int
     depends_on: ClassVar[set[str]] = {"todos"}
 
@@ -154,10 +154,8 @@ class Counter(BaseComponent):
 @app.post("/todos/{id}/toggle")
 def toggle(id, request):
     db.toggle(id)
-    return TodoItem(id=id, ...).render() + oob_swaps(
-        dirtied={"todos"},
-        mounted=request.headers.get(PJX_MOUNTED_HEADER, ""),
-    )
+    # dirtied defaults to TodoItem's own depends_on; pass dirtied={...} to override.
+    return TodoItem(id=id, ...).render(mounted=request)
 ```
 
 See [the reactivity guide](docs/reactivity.md) for details.

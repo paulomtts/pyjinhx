@@ -1,8 +1,11 @@
 from pyjinhx import BaseComponent
-from pyjinhx.reactive import Layout
 
 
-class Page(Layout):
+class Page(BaseComponent, base_layout=True):
+    pass
+
+
+class AdminPage(Page):  # subclass of a layout — should stay a layout
     pass
 
 
@@ -22,5 +25,7 @@ def test_non_layout_root_does_not_inject_runtime():
     assert "htmx:configRequest" not in html
 
 
-def test_layout_marker_is_inherited():
+def test_base_layout_marker_is_set_and_inherited():
     assert getattr(Page, "_pjx_layout", False) is True
+    assert getattr(AdminPage, "_pjx_layout", False) is True
+    assert getattr(PlainShell, "_pjx_layout", False) is False

@@ -1,11 +1,11 @@
 from typing import ClassVar
 
-from pyjinhx import BaseComponent
+from pyjinhx import ReactiveComponent
 
 from .store import state
 
 
-class ReactiveCounter(BaseComponent):
+class ReactiveCounter(ReactiveComponent):
     remaining: int = 0
     depends_on: ClassVar[set[str]] = {"todos"}
 

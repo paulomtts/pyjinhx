@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
+from abc import abstractmethod
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, ClassVar
 
 from markupsafe import Markup
 
@@ -25,25 +27,55 @@ def client_script() -> Markup:
 
     Drop this into a page shell (e.g. a raw Jinja layout) to emit the
     ``X-PJX-Mounted`` manifest header on every htmx request. When the page shell
-    subclasses ``Layout`` the runtime is injected automatically and you do not
-    need to call this.
+    is marked ``base_layout=True`` the runtime is injected automatically and you
+    do not need to call this.
     """
     return Markup(f"<script>{read_client_runtime()}</script>")
 
 
-class Layout(BaseComponent):
+class ReactiveComponent(BaseComponent):
     """
-    Base class for full-page shells.
+    Base class for dependency-aware reactive components.
 
-    Rendering a ``Layout`` subclass as the page root injects the pyjinhx client
-    runtime once, so mounted reactive regions report their manifest via the
-    ``X-PJX-Mounted`` header. Subclass it for your page shell and provide a
-    template as usual; fragment endpoints render ordinary components, so the
-    runtime is never injected into partial responses.
+    A reactive component declares the state keys it derives from (``depends_on``)
+    and how to rebuild itself from the current world (``load()``). Both are
+    required — ``load()`` is enforced by ABC (you cannot instantiate a subclass
+    that does not implement it) and ``depends_on`` is enforced at class-definition
+    time. Reactive components are stamped with ``data-pjx-*`` on render and are the
+    units the dependency walk (``oob_swaps``) reloads and swaps.
     """
 
+    # State keys this component derives from; the dependency walk swaps a region
+    # when its depends_on intersects the route's dirtied keys.
+    depends_on: ClassVar[set[str]] = set()
 
-Layout._pjx_layout = True
+    @classmethod
+    @abstractmethod
+    def load(cls) -> "ReactiveComponent":
+        """Rebuild this component from the current world (zero-arg, type-singleton in v1)."""
+        ...
+
+    def state_hash(self) -> str:
+        """
+        Stable content hash of this component's state, used to gate OOB swaps so a
+        region whose value did not change is not re-sent. Defaults to a hash of
+        ``model_dump_json()``; override for custom hashing.
+        """
+        return hashlib.sha256(self.model_dump_json().encode("utf-8")).hexdigest()[:16]
+
+    def __init_subclass__(cls, **kwargs):
+        super().__init_subclass__(**kwargs)
+        cls._pjx_reactive = True
+        cls._pjx_depends_on = frozenset(getattr(cls, "depends_on", None) or ())
+        if "load" in cls.__dict__ and not cls._pjx_depends_on:
+            raise TypeError(
+                f"{cls.__name__} defines load() but declares no depends_on; a "
+                f"reactive component must declare both."
+            )
+        if "load" in cls.__dict__:
+            from .cache import install_cached_load
+
+            install_cached_load(cls)
 
 
 @dataclass

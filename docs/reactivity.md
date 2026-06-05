@@ -12,13 +12,15 @@ integration and a `load()` cache are planned follow-ups.)
 
 ## 1. Make a component reactive
 
-A component is reactive when it declares `depends_on` and a `load()` classmethod:
+Subclass `ReactiveComponent` and declare **both** `depends_on` and a `load()`
+classmethod — `ReactiveComponent` enforces both (a missing `load()` can't be
+instantiated; a missing `depends_on` is a definition-time error):
 
 ```python
 from typing import ClassVar
-from pyjinhx import BaseComponent
+from pyjinhx import ReactiveComponent
 
-class Counter(BaseComponent):
+class Counter(ReactiveComponent):
     remaining: int
     depends_on: ClassVar[set[str]] = {"todos"}
 
@@ -36,13 +38,13 @@ name), and `data-pjx-hash` on their root element automatically.
 
 ## 2. Ship the client runtime
 
-Subclass `Layout` for your page shell — the manifest runtime is injected once on
-full-page renders:
+Mark your page shell with `base_layout=True` — the manifest runtime is injected once
+on full-page renders (the marker is inherited, so subclasses of a shell stay layouts):
 
 ```python
-from pyjinhx import Layout
+from pyjinhx import BaseComponent
 
-class AppShell(Layout):
+class AppShell(BaseComponent, base_layout=True):
     ...  # app_shell.html is your full page template
 ```
 
@@ -74,10 +76,9 @@ out-of-band swaps:
 @app.post("/todos/{id}/toggle")
 def toggle(id, request):
     db.toggle(id)
-    return TodoItem(id=id, text=..., done=...).render(
-        dirtied={"todos"},
-        mounted=request,
-    )
+    # dirtied defaults to TodoItem's own depends_on, so when the toggled item
+    # depends on "todos" you can omit it; pass dirtied={...} to override.
+    return TodoItem(id=id, text=..., done=...).render(mounted=request)
 ```
 
 `render(dirtied=, mounted=)` renders the component itself as the primary response,
@@ -152,7 +153,9 @@ with a shared store if you need it).
   bandwidth and DOM churn; database work is saved separately by the `load()` cache.
 - **Type-singleton**: one mounted instance per reactive type is reloaded; instance-keyed deps (`"user:42"`) are deferred.
 - **`mounted` accepts** a request-like object (header duck-typed out, no framework import), the raw header string, a parsed list, or `None`.
-- **`load()` is zero-arg in v1** (type-singleton). Reactive `render()` auto-`load()`s dependents; you never call `load()` yourself for a reactive render.
+- **Reactivity is opt-in via `ReactiveComponent`**, which requires both `load()` and
+  `depends_on`. `load()` is zero-arg in v1 (type-singleton); reactive `render()`
+  auto-`load()`s dependents, so you never call `load()` yourself for a reactive render.
 - **`load()` cache is per-process**: it saves database work on cache hits; eviction is
   dirtied-key driven (automatically in the reactive flow, or via `invalidate(dirtied)`).
   Cross-worker coherence is the application's responsibility.
@@ -189,14 +192,14 @@ flowchart LR
 ### Initial render → the manifest
 
 On a full-page render, reactive roots are stamped with `data-pjx-*` and the client
-runtime is injected once (via `Layout`, or `client_script()` in a raw shell). The
+runtime is injected once (via `base_layout=True`, or `client_script()` in a raw shell). The
 runtime reads the already-stamped DOM at request time — it never watches for changes,
 because DOM mutation is the *effect* of a swap, not its cause.
 
 ```mermaid
 flowchart TD
-    A["Layout page render"] --> B["reactive roots stamped<br/>data-pjx-* via splice stamper"]
-    A --> C["client runtime injected once<br/>(Layout) or client_script()"]
+    A["full-page render<br/>(base_layout shell)"] --> B["reactive roots stamped<br/>data-pjx-* via splice stamper"]
+    A --> C["client runtime injected once<br/>(base_layout) or client_script()"]
     B --> D["DOM holds id + type + hash<br/>per mounted region"]
     C --> E["on htmx:configRequest,<br/>pjx.js scans [data-pjx-id]"]
     D --> E

@@ -1,11 +1,11 @@
 from typing import ClassVar, Optional
 
-from pyjinhx import BaseComponent
+from pyjinhx import ReactiveComponent
 
 from .reactive_counter import ReactiveCounter
 
 
-class ReactivePanel(BaseComponent):
+class ReactivePanel(ReactiveComponent):
     child: Optional[ReactiveCounter] = None
     depends_on: ClassVar[set[str]] = {"todos"}
 

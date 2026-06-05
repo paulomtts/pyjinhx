@@ -1,6 +1,6 @@
 from typing import ClassVar
 
-from pyjinhx import BaseComponent, invalidate
+from pyjinhx import ReactiveComponent, invalidate
 from pyjinhx.cache import clear
 from tests.ui.reactive.cached_widget import CachedWidget, load_calls
 
@@ -58,7 +58,7 @@ def test_invalidate_cleans_reverse_index_across_keys():
     clear()
     calls = {"n": 0}
 
-    class MultiDep(BaseComponent):
+    class MultiDep(ReactiveComponent):
         n: int = 0
         depends_on: ClassVar[set[str]] = {"alpha", "beta"}
 

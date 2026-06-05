@@ -1,6 +1,5 @@
-import hashlib
 import logging
-from typing import Any, ClassVar, Optional
+from typing import Any, Optional
 
 from markupsafe import Markup
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -53,67 +52,19 @@ class BaseComponent(BaseModel):
         description="List of paths to extra CSS files to include.",
     )
 
-    # State keys this component derives from. Declaring this plus a load()
-    # classmethod makes the component reactive (eligible for dependency-aware
-    # OOB swaps via oob_swaps()).
-    depends_on: ClassVar[set[str]] = set()
-
     @field_validator("id", mode="before")
     def validate_id(cls, v):
         if not v:
             raise ValueError("ID is required")
         return str(v)
 
-    def __init_subclass__(cls, **kwargs):
-        """Register the component class and configure its reactivity at definition time."""
+    def __init_subclass__(cls, *, base_layout: bool = False, **kwargs):
+        """Register the component class and record whether it is a page layout."""
         super().__init_subclass__(**kwargs)
         Registry.register_class(cls)
-        cls._configure_reactivity()
-        if cls._pjx_reactive and "load" in cls.__dict__:
-            from .cache import (
-                install_cached_load,
-            )  # local import to avoid an import cycle
-
-            install_cached_load(cls)
-
-    @classmethod
-    def _configure_reactivity(cls) -> None:
-        """
-        Detect whether this subclass is reactive and normalize its dependencies.
-
-        A component is reactive iff it defines a ``load()`` classmethod. The
-        derived flags are stored as plain class attributes (not Pydantic fields)
-        so they are inherited by further subclasses and never validated.
-        """
-        has_load = callable(getattr(cls, "load", None))
-        declared = set(getattr(cls, "depends_on", None) or ())
-        cls._pjx_reactive = has_load
-        cls._pjx_depends_on = frozenset(declared)
-
-        if has_load and not declared:
-            logger.warning(
-                "%s defines load() but no depends_on; it will never match a "
-                "dirtied key and is effectively inert.",
-                cls.__name__,
-            )
-        if declared and not has_load:
-            logger.warning(
-                "%s declares depends_on=%s but no load(); it cannot be reloaded "
-                "for reactive OOB swaps.",
-                cls.__name__,
-                declared,
-            )
-
-    def state_hash(self) -> str:
-        """
-        Return a stable content hash of this component's state.
-
-        Used to gate reactive OOB swaps so a region whose value did not change is
-        not re-sent. The default hashes ``model_dump_json()``; override for custom
-        hashing. In the always-swap baseline (step 1) this value is stamped onto
-        the root element and reported by the client, but not yet used for gating.
-        """
-        return hashlib.sha256(self.model_dump_json().encode("utf-8")).hexdigest()[:16]
+        # Inherited: a subclass of a layout stays a layout. The renderer injects the
+        # client runtime once for the is_root layout of a full-page render.
+        cls._pjx_layout = bool(base_layout) or getattr(cls, "_pjx_layout", False)
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -245,11 +196,15 @@ class BaseComponent(BaseModel):
         region whose ``depends_on`` intersects ``dirtied`` (each rebuilt via its own
         ``load()``). This component's own region is never additionally swapped.
 
+        When ``dirtied`` is omitted it defaults to this component's own ``depends_on``
+        (empty for a non-reactive primary); pass ``dirtied`` explicitly — including an
+        empty set — to override.
+
         Args:
-            dirtied: State keys the route mutated (e.g. ``{"todos"}``). Enables reactive mode.
-            mounted: The client manifest — a request-like object (the ``X-PJX-Mounted``
-                header is read off it without importing any web framework), the raw header
-                string, an already-parsed list, or ``None``. Enables reactive mode.
+            dirtied: State keys the route mutated (e.g. ``{"todos"}``). Defaults to the
+                primary's ``depends_on``. Enables reactive mode.
+            mounted: The client manifest — a request-like object, the raw header string,
+                a parsed list, or ``None``. Enables reactive mode.
 
         Returns:
             The rendered HTML as a Markup object (safe for direct use in templates).
@@ -260,5 +215,13 @@ class BaseComponent(BaseModel):
         from .reactive import oob_swaps  # local import to avoid an import cycle
 
         primary = self._render()
-        swaps = oob_swaps(dirtied or set(), mounted, exclude_ids={self.id})
-        return primary + swaps
+        effective_dirtied = (
+            dirtied
+            if dirtied is not None
+            else getattr(self, "_pjx_depends_on", frozenset())
+        )
+        swaps = oob_swaps(effective_dirtied or set(), mounted, exclude_ids={self.id})
+        # Wrap the primary as safe markup before concatenation: _render() returns a
+        # plain str (Markup.unescape()), and `str + Markup` would invoke Markup.__radd__
+        # and HTML-escape the primary. Markup(primary) + swaps keeps both raw.
+        return Markup(primary) + swaps
