@@ -119,3 +119,88 @@ def detect_root_directory(
         search_dir = os.path.dirname(search_dir)
 
     return current_dir
+
+
+def _find_first_start_tag(html: str) -> int:
+    """
+    Return the index of the '<' that opens the first element start tag, skipping
+    leading whitespace, HTML comments, doctype, and processing instructions.
+    Returns -1 if no start tag is found.
+    """
+    cursor = 0
+    while True:
+        cursor = html.find("<", cursor)
+        if cursor == -1:
+            return -1
+        following = html[cursor + 1 : cursor + 2]
+        if following in ("!", "?"):
+            end = html.find(">", cursor)
+            if end == -1:
+                return -1
+            cursor = end + 1
+            continue
+        if following.isalpha():
+            return cursor
+        cursor += 1
+
+
+def stamp_root_attributes(html: str, attributes: dict[str, str]) -> str:
+    """
+    Splice attributes into the first start tag of an HTML fragment.
+
+    Performs a minimal, quote-aware scan to find the end of the first element's
+    start tag and inserts the given attributes just before the closing '>' (or
+    before the '/' of a '/>' self-closing tag). The rest of the markup is left
+    byte-for-byte untouched — no parse/re-serialize round trip.
+
+    Args:
+        html: The rendered HTML fragment. Must contain at least one start tag.
+        attributes: Attribute name -> value pairs to insert. Values are
+            HTML-attribute escaped (double quotes become &quot;).
+
+    Returns:
+        The HTML with the attributes spliced into the root element's start tag.
+
+    Raises:
+        ValueError: If no start tag is found. Reactive components must render a
+            single root element.
+    """
+    if not attributes:
+        return html
+
+    tag_open = _find_first_start_tag(html)
+    if tag_open == -1:
+        raise ValueError(
+            "Cannot stamp reactive attributes: no root HTML element found. "
+            "Reactive components must render a single root element."
+        )
+
+    cursor = tag_open + 1
+    length = len(html)
+    quote: str | None = None
+    while cursor < length:
+        char = html[cursor]
+        if quote is not None:
+            if char == quote:
+                quote = None
+        elif char in ('"', "'"):
+            quote = char
+        elif char == ">":
+            break
+        cursor += 1
+    else:
+        raise ValueError("Cannot stamp reactive attributes: unterminated start tag.")
+
+    insert_at = cursor - 1 if html[cursor - 1] == "/" else cursor
+    rendered_attrs = "".join(
+        f' {name}="{str(value).replace(chr(34), "&quot;")}"'
+        for name, value in attributes.items()
+    )
+    return html[:insert_at] + rendered_attrs + html[insert_at:]
+
+
+def read_client_runtime() -> str:
+    """Return the bundled pyjinhx client runtime JavaScript source."""
+    runtime_path = os.path.join(os.path.dirname(__file__), "runtime", "pjx.js")
+    with open(runtime_path, encoding="utf-8") as runtime_file:
+        return runtime_file.read()

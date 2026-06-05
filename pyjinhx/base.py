@@ -1,5 +1,6 @@
+import hashlib
 import logging
-from typing import Any, Optional
+from typing import Any, ClassVar, Optional
 
 from markupsafe import Markup
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -52,6 +53,11 @@ class BaseComponent(BaseModel):
         description="List of paths to extra CSS files to include.",
     )
 
+    # State keys this component derives from. Declaring this plus a load()
+    # classmethod makes the component reactive (eligible for dependency-aware
+    # OOB swaps via oob_swaps()).
+    depends_on: ClassVar[set[str]] = set()
+
     @field_validator("id", mode="before")
     def validate_id(cls, v):
         if not v:
@@ -59,9 +65,49 @@ class BaseComponent(BaseModel):
         return str(v)
 
     def __init_subclass__(cls, **kwargs):
-        """Automatically register the component class at definition time."""
+        """Register the component class and configure its reactivity at definition time."""
         super().__init_subclass__(**kwargs)
         Registry.register_class(cls)
+        cls._configure_reactivity()
+
+    @classmethod
+    def _configure_reactivity(cls) -> None:
+        """
+        Detect whether this subclass is reactive and normalize its dependencies.
+
+        A component is reactive iff it defines a ``load()`` classmethod. The
+        derived flags are stored as plain class attributes (not Pydantic fields)
+        so they are inherited by further subclasses and never validated.
+        """
+        has_load = callable(getattr(cls, "load", None))
+        declared = set(getattr(cls, "depends_on", None) or ())
+        cls._pjx_reactive = has_load
+        cls._pjx_depends_on = frozenset(declared)
+
+        if has_load and not declared:
+            logger.warning(
+                "%s defines load() but no depends_on; it will never match a "
+                "dirtied key and is effectively inert.",
+                cls.__name__,
+            )
+        if declared and not has_load:
+            logger.warning(
+                "%s declares depends_on=%s but no load(); it cannot be reloaded "
+                "for reactive OOB swaps.",
+                cls.__name__,
+                declared,
+            )
+
+    def state_hash(self) -> str:
+        """
+        Return a stable content hash of this component's state.
+
+        Used to gate reactive OOB swaps so a region whose value did not change is
+        not re-sent. The default hashes ``model_dump_json()``; override for custom
+        hashing. In the always-swap baseline (step 1) this value is stamped onto
+        the root element and reported by the client, but not yet used for gating.
+        """
+        return hashlib.sha256(self.model_dump_json().encode("utf-8")).hexdigest()[:16]
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)

@@ -134,6 +134,34 @@ Template-side rendering supports:
 
 Optional UI components ship in **`pyjinhx.builtins`**. Full reference (fields, `px-` CSS classes, `--px-*` tokens, template fallback): [docs/guide/builtins.md](docs/guide/builtins.md), or the published site under **Guide → Built-in UI components**.
 
+## Reactivity (dependency-aware OOB swaps)
+
+Declare a component's state dependencies once and let mutation routes re-emit
+exactly the mounted regions that depend on what changed:
+
+```python
+from typing import ClassVar
+from pyjinhx import BaseComponent, oob_swaps, PJX_MOUNTED_HEADER
+
+class Counter(BaseComponent):
+    remaining: int
+    depends_on: ClassVar[set[str]] = {"todos"}
+
+    @classmethod
+    def load(cls) -> "Counter":
+        return cls(id="counter", remaining=db.remaining())
+
+@app.post("/todos/{id}/toggle")
+def toggle(id, request):
+    db.toggle(id)
+    return TodoItem(id=id, ...).render() + oob_swaps(
+        dirtied={"todos"},
+        mounted=request.headers.get(PJX_MOUNTED_HEADER, ""),
+    )
+```
+
+See [the reactivity guide](docs/reactivity.md) for details.
+
 ## FastAPI + HTMX example
 
 ### Component class
