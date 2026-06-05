@@ -63,3 +63,47 @@ def test_oob_swaps_exclude_ids_skips_region():
     out = str(oob_swaps({"todos"}, manifest, exclude_ids={"counter"}))
     assert "outerHTML:[data-pjx-id='counter']" not in out
     assert "outerHTML:[data-pjx-id='clear-btn']" in out
+
+
+def test_render_no_args_is_unchanged():
+    # Backward compatibility: render() with no args == _render().
+    counter = ReactiveCounter(id="counter", remaining=8)
+    assert str(counter.render()) == str(counter._render())
+
+
+def test_reactive_render_returns_primary_plus_dependents():
+    store.state["completed"] = 5
+    primary = ReactiveCounter(id="counter", remaining=2)
+    manifest = [
+        {"id": "counter", "type": "ReactiveCounter", "hash": "stale"},
+        {"id": "clear-btn", "type": "ReactiveClearButton", "hash": "stale"},
+    ]
+    out = str(primary.render(dirtied={"todos"}, mounted=manifest))
+    # Primary self is rendered into the main target...
+    assert "2 left" in out
+    # ...the dependent clear button is swapped out-of-band...
+    assert "outerHTML:[data-pjx-id='clear-btn']" in out
+    assert "Clear (5)" in out
+    # ...and self is NOT additionally OOB-swapped (no double swap of its region).
+    assert "outerHTML:[data-pjx-id='counter']" not in out
+
+
+def test_reactive_render_with_request_object():
+    store.state["completed"] = 6
+    primary = ReactiveCounter(id="counter", remaining=1)
+    request = _FakeRequest(
+        {
+            PJX_MOUNTED_HEADER: _manifest_json(
+                {"id": "clear-btn", "type": "ReactiveClearButton", "hash": "stale"}
+            )
+        }
+    )
+    out = str(primary.render(dirtied={"todos"}, mounted=request))
+    assert "1 left" in out
+    assert "outerHTML:[data-pjx-id='clear-btn']" in out
+
+
+def test_reactive_render_returns_markup():
+    primary = ReactiveCounter(id="counter", remaining=1)
+    result = primary.render(dirtied={"todos"}, mounted=[])
+    assert isinstance(result, Markup)

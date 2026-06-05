@@ -220,7 +220,12 @@ class BaseComponent(BaseModel):
             collect_component_js=source is None,
         )
 
-    def render(self) -> Markup:
+    def render(
+        self,
+        *,
+        dirtied: set[str] | None = None,
+        mounted: object | None = None,
+    ) -> Markup:
         """
         Render this component to HTML using its associated Jinja template.
 
@@ -228,7 +233,26 @@ class BaseComponent(BaseModel):
         for `my_button.html` or `my_button.jinja`). All component fields are available in the
         template context, and nested components are rendered recursively.
 
+        With no arguments this is a plain render. Passing ``dirtied`` and/or ``mounted``
+        opts into dependency-aware reactivity: this component is rendered as the primary
+        response, and an out-of-band swap is appended for every other mounted reactive
+        region whose ``depends_on`` intersects ``dirtied`` (each rebuilt via its own
+        ``load()``). This component's own region is never additionally swapped.
+
+        Args:
+            dirtied: State keys the route mutated (e.g. ``{"todos"}``). Enables reactive mode.
+            mounted: The client manifest — a request-like object (the ``X-PJX-Mounted``
+                header is read off it without importing any web framework), the raw header
+                string, an already-parsed list, or ``None``. Enables reactive mode.
+
         Returns:
             The rendered HTML as a Markup object (safe for direct use in templates).
         """
-        return self._render()
+        if dirtied is None and mounted is None:
+            return self._render()
+
+        from .reactive import oob_swaps  # local import to avoid an import cycle
+
+        primary = self._render()
+        swaps = oob_swaps(dirtied or set(), mounted, exclude_ids={self.id})
+        return primary + swaps
