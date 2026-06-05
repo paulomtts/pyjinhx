@@ -7,7 +7,7 @@ from .reactive_counter import ReactiveCounter
 
 class ReactivePanel(ReactiveComponent):
     child: Optional[ReactiveCounter] = None
-    depends_on: ClassVar[set[str]] = {"todos"}
+    reacts_to: ClassVar[set[str]] = {"todos"}
 
     @classmethod
     def load(cls) -> "ReactivePanel":

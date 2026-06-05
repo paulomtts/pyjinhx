@@ -37,7 +37,7 @@ def _load_through_cache(cls, raw_func):
 
     with _lock:
         _cache[cls] = result
-        for key in getattr(cls, "_pjx_depends_on", frozenset()):
+        for key in getattr(cls, "_pjx_reacts_to", frozenset()):
             _reverse.setdefault(key, set()).add(cls)
     return result.model_copy()
 
@@ -58,7 +58,7 @@ def invalidate(dirtied: set[str]) -> None:
             to_evict |= _reverse.get(key, set())
         for cls in to_evict:
             _cache.pop(cls, None)
-            for key in getattr(cls, "_pjx_depends_on", frozenset()):
+            for key in getattr(cls, "_pjx_reacts_to", frozenset()):
                 bucket = _reverse.get(key)
                 if bucket is not None:
                     bucket.discard(cls)

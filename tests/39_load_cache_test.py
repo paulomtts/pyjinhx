@@ -60,7 +60,7 @@ def test_invalidate_cleans_reverse_index_across_keys():
 
     class MultiDep(ReactiveComponent):
         n: int = 0
-        depends_on: ClassVar[set[str]] = {"alpha", "beta"}
+        reacts_to: ClassVar[set[str]] = {"alpha", "beta"}
 
         @classmethod
         def load(cls):

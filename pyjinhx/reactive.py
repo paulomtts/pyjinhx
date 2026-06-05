@@ -37,17 +37,17 @@ class ReactiveComponent(BaseComponent):
     """
     Base class for dependency-aware reactive components.
 
-    A reactive component declares the state keys it derives from (``depends_on``)
+    A reactive component declares the state keys it derives from (``reacts_to``)
     and how to rebuild itself from the current world (``load()``). Both are
     required — ``load()`` is enforced by ABC (you cannot instantiate a subclass
-    that does not implement it) and ``depends_on`` is enforced at class-definition
+    that does not implement it) and ``reacts_to`` is enforced at class-definition
     time. Reactive components are stamped with ``data-pjx-*`` on render and are the
     units the dependency walk (``oob_swaps``) reloads and swaps.
     """
 
     # State keys this component derives from; the dependency walk swaps a region
-    # when its depends_on intersects the route's dirtied keys.
-    depends_on: ClassVar[set[str]] = set()
+    # when its reacts_to intersects the route's dirtied keys.
+    reacts_to: ClassVar[set[str]] = set()
 
     @classmethod
     @abstractmethod
@@ -66,10 +66,10 @@ class ReactiveComponent(BaseComponent):
     def __init_subclass__(cls, **kwargs):
         super().__init_subclass__(**kwargs)
         cls._pjx_reactive = True
-        cls._pjx_depends_on = frozenset(getattr(cls, "depends_on", None) or ())
-        if "load" in cls.__dict__ and not cls._pjx_depends_on:
+        cls._pjx_reacts_to = frozenset(getattr(cls, "reacts_to", None) or ())
+        if "load" in cls.__dict__ and not cls._pjx_reacts_to:
             raise TypeError(
-                f"{cls.__name__} defines load() but declares no depends_on; a "
+                f"{cls.__name__} defines load() but declares no reacts_to; a "
                 f"reactive component must declare both."
             )
         if "load" in cls.__dict__:
@@ -199,7 +199,7 @@ def oob_swaps(
             continue
         if not getattr(component_class, "_pjx_reactive", False):
             continue
-        if not (getattr(component_class, "_pjx_depends_on", frozenset()) & dirtied):
+        if not (getattr(component_class, "_pjx_reacts_to", frozenset()) & dirtied):
             continue
 
         if component_type in seen_types:

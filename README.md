@@ -145,7 +145,7 @@ from pyjinhx import ReactiveComponent
 
 class Counter(ReactiveComponent):
     remaining: int
-    depends_on: ClassVar[set[str]] = {"todos"}
+    reacts_to: ClassVar[set[str]] = {"todos"}
 
     @classmethod
     def load(cls) -> "Counter":
@@ -154,7 +154,7 @@ class Counter(ReactiveComponent):
 @app.post("/todos/{id}/toggle")
 def toggle(id, request):
     db.toggle(id)
-    # dirtied defaults to TodoItem's own depends_on; pass dirtied={...} to override.
+    # dirtied defaults to TodoItem's own reacts_to; pass dirtied={...} to override.
     return TodoItem(id=id, ...).render(mounted=request)
 ```
 

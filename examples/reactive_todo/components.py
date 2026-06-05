@@ -17,7 +17,7 @@ class TodoList(BaseComponent):
 
 class TodoCounter(ReactiveComponent):
     remaining: int = 0
-    depends_on: ClassVar[set[str]] = {"todos"}
+    reacts_to: ClassVar[set[str]] = {"todos"}
 
     @classmethod
     def load(cls) -> "TodoCounter":
@@ -26,7 +26,7 @@ class TodoCounter(ReactiveComponent):
 
 class TodoTotal(ReactiveComponent):
     total: int = 0
-    depends_on: ClassVar[set[str]] = {"todos"}
+    reacts_to: ClassVar[set[str]] = {"todos"}
 
     @classmethod
     def load(cls) -> "TodoTotal":
@@ -35,7 +35,7 @@ class TodoTotal(ReactiveComponent):
 
 class TodoClearButton(ReactiveComponent):
     completed: int = 0
-    depends_on: ClassVar[set[str]] = {"todos"}
+    reacts_to: ClassVar[set[str]] = {"todos"}
 
     @classmethod
     def load(cls) -> "TodoClearButton":

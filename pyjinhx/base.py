@@ -193,16 +193,16 @@ class BaseComponent(BaseModel):
         With no arguments this is a plain render. Passing ``dirtied`` and/or ``mounted``
         opts into dependency-aware reactivity: this component is rendered as the primary
         response, and an out-of-band swap is appended for every other mounted reactive
-        region whose ``depends_on`` intersects ``dirtied`` (each rebuilt via its own
+        region whose ``reacts_to`` intersects ``dirtied`` (each rebuilt via its own
         ``load()``). This component's own region is never additionally swapped.
 
-        When ``dirtied`` is omitted it defaults to this component's own ``depends_on``
+        When ``dirtied`` is omitted it defaults to this component's own ``reacts_to``
         (empty for a non-reactive primary); pass ``dirtied`` explicitly — including an
         empty set — to override.
 
         Args:
             dirtied: State keys the route mutated (e.g. ``{"todos"}``). Defaults to the
-                primary's ``depends_on``. Enables reactive mode.
+                primary's ``reacts_to``. Enables reactive mode.
             mounted: The client manifest — a request-like object, the raw header string,
                 a parsed list, or ``None``. Enables reactive mode.
 
@@ -218,7 +218,7 @@ class BaseComponent(BaseModel):
         effective_dirtied = (
             dirtied
             if dirtied is not None
-            else getattr(self, "_pjx_depends_on", frozenset())
+            else getattr(self, "_pjx_reacts_to", frozenset())
         )
         swaps = oob_swaps(effective_dirtied or set(), mounted, exclude_ids={self.id})
         # Wrap the primary as safe markup before concatenation: _render() returns a
