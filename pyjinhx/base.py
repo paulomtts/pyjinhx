@@ -196,11 +196,15 @@ class BaseComponent(BaseModel):
         region whose ``depends_on`` intersects ``dirtied`` (each rebuilt via its own
         ``load()``). This component's own region is never additionally swapped.
 
+        When ``dirtied`` is omitted it defaults to this component's own ``depends_on``
+        (empty for a non-reactive primary); pass ``dirtied`` explicitly — including an
+        empty set — to override.
+
         Args:
-            dirtied: State keys the route mutated (e.g. ``{"todos"}``). Enables reactive mode.
-            mounted: The client manifest — a request-like object (the ``X-PJX-Mounted``
-                header is read off it without importing any web framework), the raw header
-                string, an already-parsed list, or ``None``. Enables reactive mode.
+            dirtied: State keys the route mutated (e.g. ``{"todos"}``). Defaults to the
+                primary's ``depends_on``. Enables reactive mode.
+            mounted: The client manifest — a request-like object, the raw header string,
+                a parsed list, or ``None``. Enables reactive mode.
 
         Returns:
             The rendered HTML as a Markup object (safe for direct use in templates).
@@ -211,5 +215,10 @@ class BaseComponent(BaseModel):
         from .reactive import oob_swaps  # local import to avoid an import cycle
 
         primary = self._render()
-        swaps = oob_swaps(dirtied or set(), mounted, exclude_ids={self.id})
+        effective_dirtied = (
+            dirtied
+            if dirtied is not None
+            else getattr(self, "_pjx_depends_on", frozenset())
+        )
+        swaps = oob_swaps(effective_dirtied or set(), mounted, exclude_ids={self.id})
         return primary + swaps
