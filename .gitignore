@@ -16,3 +16,6 @@ wheels/
 
 # MkDocs
 site/
+
+# Superpowers planning artifacts
+docs/superpowers/
