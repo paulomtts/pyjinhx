@@ -204,3 +204,14 @@ def read_client_runtime() -> str:
     runtime_path = os.path.join(os.path.dirname(__file__), "runtime", "pjx.js")
     with open(runtime_path, encoding="utf-8") as runtime_file:
         return runtime_file.read()
+
+
+def interpolate_reactive_keys(keys, key: str | None) -> set[str]:
+    """
+    Expand the ``{key}`` placeholder in reactive-dependency keys with a component's
+    instance key. Plain keys (no placeholder) pass through unchanged. For a singleton
+    (key is None) the keys are returned as-is.
+    """
+    if key is None:
+        return set(keys)
+    return {k.replace("{key}", key) for k in keys}

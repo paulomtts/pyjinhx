@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import inspect
 import json
 import logging
 from abc import abstractmethod
@@ -8,7 +9,7 @@ from dataclasses import dataclass
 from typing import Any, ClassVar
 
 from markupsafe import Markup
-from pydantic import model_validator
+from pydantic import PrivateAttr, model_validator
 
 from .base import BaseComponent
 from .cache import invalidate
@@ -59,6 +60,10 @@ class ReactiveComponent(BaseComponent):
     # when its reacts_to intersects the route's dirtied keys.
     reacts_to: ClassVar[set[str]] = set()
 
+    # The instance key for a keyed component (set by the cache wrapper from the
+    # load() argument). None for type-singletons.
+    _pjx_key: str | None = PrivateAttr(default=None)
+
     @model_validator(mode="before")
     @classmethod
     def _default_id_from_type(cls, data):
@@ -89,6 +94,11 @@ class ReactiveComponent(BaseComponent):
                 f"{cls.__name__} defines load() but declares no reacts_to; a "
                 f"reactive component must declare both."
             )
+        if "load" in cls.__dict__:
+            _load = cls.__dict__["load"]
+            _func = _load.__func__ if isinstance(_load, classmethod) else _load
+            # A parameter after `cls` means load(cls, key) → instance-keyed.
+            cls._pjx_keyed = len(inspect.signature(_func).parameters) > 1
         if "load" in cls.__dict__:
             from .cache import install_cached_load
 
