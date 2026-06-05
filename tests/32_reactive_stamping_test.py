@@ -1,10 +1,10 @@
 from typing import ClassVar
 
-from pyjinhx import BaseComponent
+from pyjinhx import ReactiveComponent
 from tests.ui.unified_component import UnifiedComponent
 
 
-class StampCounter(BaseComponent):
+class StampCounter(ReactiveComponent):
     remaining: int = 0
     depends_on: ClassVar[set[str]] = {"todos"}
 
