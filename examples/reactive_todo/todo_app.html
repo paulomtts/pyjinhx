@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>pyjinhx · reactive todos</title>
+    <script src="https://unpkg.com/htmx.org@2.0.3"></script>
+    <style>
+      body { font-family: system-ui, sans-serif; max-width: 32rem; margin: 2rem auto; }
+      ul { list-style: none; padding: 0; }
+      li { display: flex; gap: .5rem; align-items: center; padding: .25rem 0; }
+      li.done span { text-decoration: line-through; opacity: .55; }
+      .meta { margin-top: 1rem; display: flex; gap: 1rem; align-items: center; }
+      button { cursor: pointer; }
+    </style>
+  </head>
+  <body>
+    <h1>Todos</h1>
+    <form hx-post="/todos" hx-target="#todo-list" hx-swap="beforeend"
+          hx-on::after-request="this.reset()">
+      <input name="text" placeholder="Add a todo…" autocomplete="off" required />
+      <button type="submit">Add</button>
+    </form>
+    {{ todo_list }}
+    <div class="meta">
+      {{ counter }}
+      {{ total }}
+      {{ clear_button }}
+    </div>
+  </body>
+</html>
