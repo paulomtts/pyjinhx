@@ -53,10 +53,10 @@ class BaseComponent(BaseModel):
         description="List of paths to extra CSS files to include.",
     )
 
+    # State keys this component derives from. Declaring this plus a load()
+    # classmethod makes the component reactive (eligible for dependency-aware
+    # OOB swaps via oob_swaps()).
     depends_on: ClassVar[set[str]] = set()
-    """State keys this component derives from. Declaring this plus a load()
-    classmethod makes the component reactive (eligible for dependency-aware OOB
-    swaps via oob_swaps())."""
 
     @field_validator("id", mode="before")
     def validate_id(cls, v):
