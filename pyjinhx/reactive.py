@@ -8,6 +8,7 @@ from typing import Any
 from markupsafe import Markup
 
 from .base import BaseComponent
+from .cache import invalidate
 from .registry import Registry
 from .renderer import Renderer
 from .utils import read_client_runtime, stamp_root_attributes
@@ -126,7 +127,9 @@ def oob_swaps(
     or mismatched hash always swaps ("when in doubt, swap").
 
     Args:
-        dirtied: The state keys the route mutated (e.g. {"todos"}).
+        dirtied: The state keys the route mutated (e.g. {"todos"}). These keys are
+            also evicted from the process-global load() cache before dependents are
+            reloaded.
         mounted: The client manifest — a request-like object exposing
             ``.headers.get`` (the X-PJX-Mounted header is duck-typed out without
             importing any web framework), the raw header string, an already-parsed
@@ -138,6 +141,10 @@ def oob_swaps(
         A single Markup of concatenated OOB swap fragments, each carrying
         hx-swap-oob. Empty Markup if nothing needs swapping.
     """
+    # The route mutated `dirtied` before calling us, so any cached load() result
+    # for those keys is stale — evict before (re)loading dependents.
+    invalidate(dirtied)
+
     manifest = _parse_mounted(mounted)
     if not manifest:
         return Markup("")
