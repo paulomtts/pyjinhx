@@ -149,11 +149,140 @@ with a shared store if you need it).
 
 - **Hash gating is a skip-hint, not correctness authority**: a matching client hash
   earns permission to skip; missing/unknown/mismatched always swaps. It saves
-  bandwidth and DOM churn, not database work (a short-circuiting `load()` cache is a
-  later phase).
+  bandwidth and DOM churn; database work is saved separately by the `load()` cache.
 - **Type-singleton**: one mounted instance per reactive type is reloaded; instance-keyed deps (`"user:42"`) are deferred.
 - **`mounted` accepts** a request-like object (header duck-typed out, no framework import), the raw header string, a parsed list, or `None`.
 - **`load()` is zero-arg in v1** (type-singleton). Reactive `render()` auto-`load()`s dependents; you never call `load()` yourself for a reactive render.
 - **`load()` cache is per-process**: it saves database work on cache hits; eviction is
   dirtied-key driven (automatically in the reactive flow, or via `invalidate(dirtied)`).
   Cross-worker coherence is the application's responsibility.
+
+## How it works (under the hood)
+
+### The ownership split
+
+Neither pyjinhx nor htmx owned the **state→view dependency graph** before. The split
+is now explicit: the **server** owns the dependency graph and the data and decides what
+changed; the **client** owns what is currently mounted and rides that up on every
+request as a manifest. There is no per-session server state.
+
+```mermaid
+flowchart LR
+    subgraph Client["Client — browser + htmx"]
+      DOM["Mounted DOM<br/>reactive roots carry<br/>data-pjx-id / -type / -hash"]
+      RT["pjx.js runtime"]
+    end
+    subgraph Server["Server — pyjinhx"]
+      G["depends_on graph<br/>declared on components"]
+      W["oob_swaps walk"]
+      L["load() + result cache"]
+    end
+    DB[("Database")]
+
+    RT -->|"reads DOM, builds<br/>X-PJX-Mounted header"| DOM
+    DOM -->|"manifest on every request"| W
+    W --> G
+    W --> L --> DB
+    W -->|"hx-swap-oob fragments"| DOM
+```
+
+### Initial render → the manifest
+
+On a full-page render, reactive roots are stamped with `data-pjx-*` and the client
+runtime is injected once (via `Layout`, or `client_script()` in a raw shell). The
+runtime reads the already-stamped DOM at request time — it never watches for changes,
+because DOM mutation is the *effect* of a swap, not its cause.
+
+```mermaid
+flowchart TD
+    A["Layout page render"] --> B["reactive roots stamped<br/>data-pjx-* via splice stamper"]
+    A --> C["client runtime injected once<br/>(Layout) or client_script()"]
+    B --> D["DOM holds id + type + hash<br/>per mounted region"]
+    C --> E["on htmx:configRequest,<br/>pjx.js scans [data-pjx-id]"]
+    D --> E
+    E --> F["sets X-PJX-Mounted header<br/>= list of id, type, hash"]
+```
+
+### A mutation request, end to end
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant B as Browser (htmx + pjx.js)
+    participant R as Route handler
+    participant RD as render(dirtied, mounted)
+    participant C as load() cache
+    participant DB as Database
+
+    B->>R: POST /todos/1/toggle  (X-PJX-Mounted header)
+    R->>DB: db.toggle(1)
+    R->>RD: TodoItem(...).render(dirtied, mounted=request)
+    RD->>C: invalidate(dirtied)
+    Note over C: evict cached load() results<br/>whose depends_on hits a dirtied key
+    RD->>RD: render self → primary response
+    RD->>RD: oob_swaps walk (exclude_ids = self.id)
+    loop each mounted region depending on a dirtied key
+        RD->>C: cls.load()
+        alt cache miss
+            C->>DB: query
+            DB-->>C: data
+        else cache hit
+            C-->>RD: model_copy() — no DB
+        end
+        RD->>RD: render + compute fresh hash
+    end
+    RD-->>R: primary + OOB fragments
+    R-->>B: one HTML response
+    B->>B: htmx swaps main target + each hx-swap-oob region
+```
+
+### Inside `oob_swaps`: the decision pipeline
+
+Every mounted region runs this gauntlet. Ordering matters: **hash-gate before
+nesting-dedup**, so an unchanged parent never suppresses a changed child.
+
+```mermaid
+flowchart TD
+    M["manifest entry"] --> F{"reactive type AND<br/>depends_on intersects dirtied?"}
+    F -->|no| X1["ignore"]
+    F -->|yes| EX{"id in exclude_ids?<br/>(it is the primary)"}
+    EX -->|yes| X2["ignore"]
+    EX -->|no| LOAD["cls.load() cached →<br/>render → fresh hash"]
+    LOAD --> GATE{"fresh hash ==<br/>reported hash?"}
+    GATE -->|yes| X3["SKIP — value unchanged"]
+    GATE -->|no| DED{"nested inside another<br/>surviving region?"}
+    DED -->|yes| X4["DROP — parent already contains it"]
+    DED -->|no| EMIT["emit hx-swap-oob fragment"]
+```
+
+The four parent/child cases (regions nested in the rendered HTML):
+
+| Parent | Child | Result |
+| --- | --- | --- |
+| changed | changed | swap parent only (its fresh HTML already holds the child) |
+| changed | unchanged | swap parent only |
+| **unchanged** | **changed** | **swap child alone** — only correct because gating removes the parent *before* dedup |
+| unchanged | unchanged | swap nothing |
+
+Governing invariant throughout: **when in doubt, swap** — missing, unknown, or
+mismatched hashes always send.
+
+### The `load()` cache
+
+`load()` is auto-wrapped at class-definition time so it is cache-aware everywhere it is
+called. Reads short-circuit the database; writes evict by dependency through a reverse
+index. A `threading.Lock` guards the compound consult-then-mutate operations, while the
+real `load()` (the database hit) runs outside the lock.
+
+```mermaid
+flowchart TD
+    CALL["Cls.load()"] --> HIT{"in cache?"}
+    HIT -->|hit| COPY["return model_copy()<br/>no DB; copy keeps cache pristine"]
+    HIT -->|miss| RUN["run real load() → DB"]
+    RUN --> STORE["cache cls = result<br/>index under each depends_on key"]
+    STORE --> COPY
+
+    INV["invalidate(dirtied)<br/>auto in reactive flow, or public"] --> REV["consult reverse index<br/>key → classes"]
+    REV --> EVICT["evict every class whose<br/>depends_on intersects dirtied"]
+    EVICT -.->|"next load() misses"| CALL
+```
