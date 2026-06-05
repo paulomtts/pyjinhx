@@ -598,6 +598,9 @@ class Renderer:
         )
 
         render_context = dict(context)
+        _key = getattr(component, "_pjx_key", None)
+        if _key is not None:
+            render_context["key"] = _key
         for _instance in Registry.get_instances().values():
             render_context[_instance.id] = _instance
 
@@ -607,14 +610,15 @@ class Renderer:
         )
 
         if getattr(type(component), "_pjx_reactive", False):
-            rendered_markup = stamp_root_attributes(
-                rendered_markup,
-                {
-                    "data-pjx-id": component.id,
-                    "data-pjx-type": type(component).__name__,
-                    "data-pjx-hash": component.state_hash(),
-                },
-            )
+            _attrs = {
+                "data-pjx-id": component.id,
+                "data-pjx-type": type(component).__name__,
+                "data-pjx-hash": component.state_hash(),
+            }
+            _key = getattr(component, "_pjx_key", None)
+            if _key is not None:
+                _attrs["data-pjx-key"] = str(_key)
+            rendered_markup = stamp_root_attributes(rendered_markup, _attrs)
 
         # For bare BaseComponent fallbacks (no registered class), derive the asset
         # directory and name from the template path rather than the class file location,

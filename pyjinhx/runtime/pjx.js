@@ -7,6 +7,7 @@
           id: el.dataset.pjxId,
           type: el.dataset.pjxType,
           hash: el.dataset.pjxHash,
+          key: el.dataset.pjxKey ?? null,
         };
       }
     );
