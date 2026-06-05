@@ -16,6 +16,7 @@ from .cache import invalidate
 from .registry import Registry
 from .renderer import Renderer
 from .utils import (
+    interpolate_reactive_keys,
     pascal_case_to_kebab_case,
     read_client_runtime,
     stamp_root_attributes,
@@ -212,10 +213,12 @@ def oob_swaps(
     renderer = Renderer.get_default_renderer(inline_js=False, inline_css=False)
 
     candidates: list[_Candidate] = []
-    seen_types: set[str] = set()
+    seen: set[tuple[str, str | None]] = set()
     for entry in manifest:
         component_type = entry.get("type")
         component_id = entry.get("id")
+        key = entry.get("key")
+        skey = str(key) if key is not None else None
         if not component_type or not component_id:
             continue
         if exclude_ids and component_id in exclude_ids:
@@ -226,20 +229,25 @@ def oob_swaps(
             continue
         if not getattr(component_class, "_pjx_reactive", False):
             continue
-        if not (getattr(component_class, "_pjx_reacts_to", frozenset()) & dirtied):
+
+        keyed = getattr(component_class, "_pjx_keyed", False)
+        if keyed and skey is None:
+            continue  # keyed type with no key in the manifest — malformed, skip
+        if not keyed:
+            skey = None  # ignore any stray key on a singleton
+
+        effective = interpolate_reactive_keys(
+            getattr(component_class, "_pjx_reacts_to", frozenset()), skey
+        )
+        if not (effective & dirtied):
             continue
 
-        if component_type in seen_types:
-            logger.warning(
-                "Multiple mounted instances of reactive type %s; the v1 "
-                "type-singleton model reloads it once. Instance-keyed deps are "
-                "deferred.",
-                component_type,
-            )
+        dedup_key = (component_type, skey)
+        if dedup_key in seen:
             continue
-        seen_types.add(component_type)
+        seen.add(dedup_key)
 
-        instance = component_class.load()
+        instance = component_class.load(skey) if keyed else component_class.load()
         instance.id = component_id
         html = str(instance._render(_renderer=renderer))
         candidates.append(
