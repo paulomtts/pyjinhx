@@ -198,7 +198,7 @@ because DOM mutation is the *effect* of a swap, not its cause.
 
 ```mermaid
 flowchart TD
-    A["base_layout page render"] --> B["reactive roots stamped<br/>data-pjx-* via splice stamper"]
+    A["full-page render<br/>(base_layout shell)"] --> B["reactive roots stamped<br/>data-pjx-* via splice stamper"]
     A --> C["client runtime injected once<br/>(base_layout) or client_script()"]
     B --> D["DOM holds id + type + hash<br/>per mounted region"]
     C --> E["on htmx:configRequest,<br/>pjx.js scans [data-pjx-id]"]
