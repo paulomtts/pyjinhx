@@ -8,12 +8,17 @@ from dataclasses import dataclass
 from typing import Any, ClassVar
 
 from markupsafe import Markup
+from pydantic import model_validator
 
 from .base import BaseComponent
 from .cache import invalidate
 from .registry import Registry
 from .renderer import Renderer
-from .utils import read_client_runtime, stamp_root_attributes
+from .utils import (
+    pascal_case_to_kebab_case,
+    read_client_runtime,
+    stamp_root_attributes,
+)
 
 logger = logging.getLogger("pyjinhx")
 
@@ -43,11 +48,23 @@ class ReactiveComponent(BaseComponent):
     that does not implement it) and ``reacts_to`` is enforced at class-definition
     time. Reactive components are stamped with ``data-pjx-*`` on render and are the
     units the dependency walk (``oob_swaps``) reloads and swaps.
+
+    The ``id`` defaults to the kebab-cased class name (``TodoCounter`` ->
+    ``"todo-counter"``), since a type-singleton's identity is its type — so ``load()``
+    need not invent one. Pass an explicit ``id`` for instance-keyed regions (multiple
+    mounted instances of one type, e.g. ``f"todo-row-{user_id}"``).
     """
 
     # State keys this component derives from; the dependency walk swaps a region
     # when its reacts_to intersects the route's dirtied keys.
     reacts_to: ClassVar[set[str]] = set()
+
+    @model_validator(mode="before")
+    @classmethod
+    def _default_id_from_type(cls, data):
+        if isinstance(data, dict) and not data.get("id"):
+            return {**data, "id": pascal_case_to_kebab_case(cls.__name__)}
+        return data
 
     @classmethod
     @abstractmethod

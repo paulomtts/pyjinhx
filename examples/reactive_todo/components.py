@@ -21,7 +21,8 @@ class TodoCounter(ReactiveComponent):
 
     @classmethod
     def load(cls) -> "TodoCounter":
-        return cls(id="todo-counter", remaining=store.remaining())
+        # No id needed: it defaults to the kebab class name -> "todo-counter".
+        return cls(remaining=store.remaining())
 
 
 class TodoTotal(ReactiveComponent):
@@ -30,7 +31,8 @@ class TodoTotal(ReactiveComponent):
 
     @classmethod
     def load(cls) -> "TodoTotal":
-        return cls(id="todo-total", total=store.total())
+        # Defaults to "todo-total".
+        return cls(total=store.total())
 
 
 class TodoClearButton(ReactiveComponent):
@@ -39,6 +41,8 @@ class TodoClearButton(ReactiveComponent):
 
     @classmethod
     def load(cls) -> "TodoClearButton":
+        # Escape hatch: pin an explicit id (here a shorter one than the default
+        # "todo-clear-button"). Required when you mount multiple instances of a type.
         return cls(id="todo-clear", completed=store.completed())
 
 
