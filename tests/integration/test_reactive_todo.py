@@ -7,7 +7,7 @@ from fastapi.testclient import TestClient
 from examples.reactive_todo import store
 from examples.reactive_todo.app import app
 from examples.reactive_todo.components import TodoCounter, TodoTotal
-from pyjinhx import PJX_MOUNTED_HEADER, Registry, Renderer
+from pyjinhx import PJX_MOUNTED_HEADER, Renderer
 
 ROOT = Path(__file__).resolve().parents[2]
 client = TestClient(app)
@@ -15,17 +15,14 @@ client = TestClient(app)
 
 @pytest.fixture(autouse=True)
 def _isolated_env():
-    # The renderer injects every registered instance into the template context by id,
-    # and the instance registry persists across tests, so a leftover instance whose id
-    # collides with one of this app's component fields (e.g. "counter") would shadow it.
-    # Clear it for a clean render.
-    Registry.clear_instances()
+    # The shared conftest clears the load cache + instance registry around every test;
+    # here we additionally pin the default Jinja environment to the repo root (so the
+    # app's templates resolve regardless of CWD) and reset the demo's in-memory store.
     prev = Renderer.peek_default_environment()
     Renderer.set_default_environment(ROOT)
     store.reset()
     yield
     Renderer.set_default_environment(prev)
-    Registry.clear_instances()
 
 
 def _manifest(*entries):
