@@ -107,3 +107,18 @@ def test_reactive_render_returns_markup():
     primary = ReactiveCounter(id="counter", remaining=1)
     result = primary.render(dirtied={"todos"}, mounted=[])
     assert isinstance(result, Markup)
+
+
+def test_reactive_render_does_not_escape_primary_html():
+    # Regression: the primary is a plain str from _render(); concatenating it with the
+    # Markup from oob_swaps must not invoke Markup.__radd__ and HTML-escape the primary.
+    store.state["completed"] = 1
+    primary = ReactiveCounter(id="counter", remaining=2)
+    out = str(
+        primary.render(
+            dirtied={"todos"},
+            mounted=[{"id": "clear-btn", "type": "ReactiveClearButton", "hash": "stale"}],
+        )
+    )
+    assert "&lt;span" not in out and "&#34;" not in out
+    assert '<span class="counter" data-pjx-id="counter"' in out

@@ -221,4 +221,7 @@ class BaseComponent(BaseModel):
             else getattr(self, "_pjx_depends_on", frozenset())
         )
         swaps = oob_swaps(effective_dirtied or set(), mounted, exclude_ids={self.id})
-        return primary + swaps
+        # Wrap the primary as safe markup before concatenation: _render() returns a
+        # plain str (Markup.unescape()), and `str + Markup` would invoke Markup.__radd__
+        # and HTML-escape the primary. Markup(primary) + swaps keeps both raw.
+        return Markup(primary) + swaps
