@@ -55,7 +55,9 @@ class _Candidate:
     reported_hash: str | None
 
 
-def _parse_mounted(mounted: str | list[dict[str, Any]] | None) -> list[dict[str, Any]]:
+def _parse_mounted(
+    mounted: str | list[dict[str, Any]] | object | None,
+) -> list[dict[str, Any]]:
     if mounted is None or mounted == "":
         return []
     if isinstance(mounted, list):
@@ -69,10 +71,20 @@ def _parse_mounted(mounted: str | list[dict[str, Any]] | None) -> list[dict[str,
             )
             return []
         return parsed if isinstance(parsed, list) else []
-    raise TypeError(
-        "mounted must be the X-PJX-Mounted header string, a parsed list, or None. "
-        "Passing a request object is supported once render() parameterization lands (step 3)."
-    )
+    # Convenience: duck-type a request-like object (e.g. a FastAPI/Starlette
+    # Request) and pull the manifest header off it. We deliberately do NOT import
+    # FastAPI/Starlette — this stays an optional convenience, never a dependency.
+    # Anything without a .headers.get is not request-like and is ignored.
+    try:
+        header_value = mounted.headers.get(PJX_MOUNTED_HEADER)
+    except AttributeError:
+        logger.warning(
+            "mounted is not an %s header string, parsed list, request-like "
+            "object, or None; ignoring.",
+            PJX_MOUNTED_HEADER,
+        )
+        return []
+    return _parse_mounted(header_value)
 
 
 def _drop_nested(candidates: list[_Candidate]) -> list[_Candidate]:
@@ -99,7 +111,9 @@ def _drop_nested(candidates: list[_Candidate]) -> list[_Candidate]:
 
 def oob_swaps(
     dirtied: set[str],
-    mounted: str | list[dict[str, Any]] | None,
+    mounted: str | list[dict[str, Any]] | object | None,
+    *,
+    exclude_ids: set[str] | None = None,
 ) -> Markup:
     """
     Compute out-of-band swap fragments for every mounted reactive region whose
@@ -113,9 +127,12 @@ def oob_swaps(
 
     Args:
         dirtied: The state keys the route mutated (e.g. {"todos"}).
-        mounted: The client manifest from the X-PJX-Mounted header — the raw JSON
-            string, an already-parsed list of {"id", "type", "hash"} dicts, or
-            None/"".
+        mounted: The client manifest — a request-like object exposing
+            ``.headers.get`` (the X-PJX-Mounted header is duck-typed out without
+            importing any web framework), the raw header string, an already-parsed
+            list of {"id", "type", "hash"} dicts, or None/"".
+        exclude_ids: Mounted ids to skip (e.g. the id of the primary response,
+            which is swapped into the main target rather than out-of-band).
 
     Returns:
         A single Markup of concatenated OOB swap fragments, each carrying
@@ -134,6 +151,8 @@ def oob_swaps(
         component_type = entry.get("type")
         component_id = entry.get("id")
         if not component_type or not component_id:
+            continue
+        if exclude_ids and component_id in exclude_ids:
             continue
 
         component_class = classes.get(component_type)
