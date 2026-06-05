@@ -66,21 +66,41 @@ The runtime attaches a manifest of mounted regions to every htmx request via the
 
 ## 3. Emit OOB swaps from your route
 
-In a mutation route, render your primary response as usual, then append the OOB
-swaps for everything that depends on what you changed:
+Build the primary response from the mutation result and call `render()` with what
+you dirtied plus the incoming request — the dependent regions ride along as
+out-of-band swaps:
 
 ```python
-from pyjinhx import oob_swaps, PJX_MOUNTED_HEADER
-
 @app.post("/todos/{id}/toggle")
 def toggle(id, request):
     db.toggle(id)
-    primary = TodoItem(id=id, text=..., done=...).render()
-    swaps = oob_swaps(
+    return TodoItem(id=id, text=..., done=...).render(
         dirtied={"todos"},
-        mounted=request.headers.get(PJX_MOUNTED_HEADER, ""),
+        mounted=request,
     )
-    return primary + swaps
+```
+
+`render(dirtied=, mounted=)` renders the component itself as the primary response,
+then appends an OOB swap for every *other* mounted reactive region whose
+`depends_on` intersects `dirtied`, rebuilding each via its own `load()`. The
+component's own region is never double-swapped.
+
+`mounted` accepts a request-like object (the `X-PJX-Mounted` header is read off it
+without importing any web framework), the raw header string, an already-parsed
+list, or `None`. With neither `dirtied` nor `mounted`, `render()` is an ordinary
+plain render.
+
+### Lower-level: `oob_swaps()`
+
+If you need the swaps without a primary (or want to compose them yourself), call
+`oob_swaps(dirtied, mounted)` directly — it returns the concatenated `hx-swap-oob`
+fragments (this is exactly what `render()` delegates to, passing
+`exclude_ids={self.id}`):
+
+```python
+from pyjinhx import oob_swaps
+
+swaps = oob_swaps(dirtied={"todos"}, mounted=request)
 ```
 
 `oob_swaps`:
@@ -103,4 +123,5 @@ not smeared across endpoints. Adding a progress bar that declares
   bandwidth and DOM churn, not database work (a short-circuiting `load()` cache is a
   later phase).
 - **Type-singleton**: one mounted instance per reactive type is reloaded; instance-keyed deps (`"user:42"`) are deferred.
-- **`mounted` accepts** the raw header string, a parsed list, or `None`. Passing a request object directly arrives with `render()` integration.
+- **`mounted` accepts** a request-like object (header duck-typed out, no framework import), the raw header string, a parsed list, or `None`.
+- **`load()` is zero-arg in v1** (type-singleton). Reactive `render()` auto-`load()`s dependents; you never call `load()` yourself for a reactive render.
