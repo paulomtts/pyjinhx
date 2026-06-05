@@ -69,6 +69,12 @@ class BaseComponent(BaseModel):
         super().__init_subclass__(**kwargs)
         Registry.register_class(cls)
         cls._configure_reactivity()
+        if cls._pjx_reactive and "load" in cls.__dict__:
+            from .cache import (
+                install_cached_load,
+            )  # local import to avoid an import cycle
+
+            install_cached_load(cls)
 
     @classmethod
     def _configure_reactivity(cls) -> None:

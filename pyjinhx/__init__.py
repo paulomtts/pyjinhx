@@ -1,4 +1,5 @@
 from .base import BaseComponent
+from .cache import invalidate
 from .dataclasses import Tag
 from .finder import Finder
 from .parser import Parser
@@ -15,6 +16,7 @@ __all__ = [
     "Tag",
     "Layout",
     "oob_swaps",
+    "invalidate",
     "client_script",
     "PJX_MOUNTED_HEADER",
 ]
