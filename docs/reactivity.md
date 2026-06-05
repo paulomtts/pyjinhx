@@ -10,6 +10,12 @@ value actually changed** — its freshly computed `state_hash()` is compared aga
 the hash the client reported, and a matching hash is skipped. (`render()`
 integration and a `load()` cache are planned follow-ups.)
 
+> **Runnable example:** a full FastAPI + htmx todo app lives in
+> [`examples/reactive_todo/`](https://github.com/paulomtts/pyjinhx/tree/master/examples/reactive_todo) —
+> run `uv run uvicorn examples.reactive_todo.app:app --reload` and watch the counter,
+> total, and clear button update out-of-band (and get skipped by hash-gating when their
+> value doesn't change).
+
 ## 1. Make a component reactive
 
 Subclass `ReactiveComponent` and declare **both** `depends_on` and a `load()`
