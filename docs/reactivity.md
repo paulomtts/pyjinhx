@@ -5,9 +5,10 @@ the **state→view dependency graph** — which regions must change when a piece
 state changes. pyjinhx lets you declare that graph once, on the components, so a
 mutation route re-emits exactly the mounted regions that depend on what changed.
 
-This is the **always-swap baseline**: every region that depends on a dirtied key
-is reloaded and swapped. (Hash-gating to skip unchanged regions, `render()`
-integration, and a `load()` cache are planned follow-ups.)
+A region that depends on a dirtied key is reloaded and re-emitted **only when its
+value actually changed** — its freshly computed `state_hash()` is compared against
+the hash the client reported, and a matching hash is skipped. (`render()`
+integration and a `load()` cache are planned follow-ups.)
 
 ## 1. Make a component reactive
 
@@ -85,15 +86,21 @@ def toggle(id, request):
 `oob_swaps`:
 - keeps only mounted regions whose `depends_on` intersects `dirtied`,
 - calls each region's `load()` and re-renders it,
+- skips a region whose freshly computed `state_hash()` matches the hash the client
+  reported (its DOM value is already current); a missing or mismatched hash always
+  swaps — *when in doubt, swap*,
 - drops any region nested inside another swapped region (the parent already contains it),
-- returns concatenated `hx-swap-oob` fragments (empty if nothing matched).
+- returns concatenated `hx-swap-oob` fragments (empty if nothing changed).
 
 The dependency graph lives in exactly one place — the `depends_on` declarations —
 not smeared across endpoints. Adding a progress bar that declares
 `depends_on = {"todos"}` makes it participate automatically; no endpoint changes.
 
-## Boundaries (current baseline)
+## Boundaries
 
-- **Always-swap**: hash-gating is not applied yet — a matching region is always re-sent.
+- **Hash gating is a skip-hint, not correctness authority**: a matching client hash
+  earns permission to skip; missing/unknown/mismatched always swaps. It saves
+  bandwidth and DOM churn, not database work (a short-circuiting `load()` cache is a
+  later phase).
 - **Type-singleton**: one mounted instance per reactive type is reloaded; instance-keyed deps (`"user:42"`) are deferred.
 - **`mounted` accepts** the raw header string, a parsed list, or `None`. Passing a request object directly arrives with `render()` integration.

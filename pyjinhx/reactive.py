@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
+from dataclasses import dataclass
 from typing import Any
 
 from markupsafe import Markup
@@ -44,6 +45,16 @@ class Layout(BaseComponent):
 Layout._pjx_layout = True
 
 
+@dataclass
+class _Candidate:
+    """A dependency-matched region that has been reloaded and rendered."""
+
+    id: str
+    html: str
+    fresh_hash: str
+    reported_hash: str | None
+
+
 def _parse_mounted(mounted: str | list[dict[str, Any]] | None) -> list[dict[str, Any]]:
     if mounted is None or mounted == "":
         return []
@@ -64,22 +75,25 @@ def _parse_mounted(mounted: str | list[dict[str, Any]] | None) -> list[dict[str,
     )
 
 
-def _drop_nested(rendered: list[tuple[str, str]]) -> list[tuple[str, str]]:
+def _drop_nested(candidates: list[_Candidate]) -> list[_Candidate]:
     """
-    Drop any rendered region whose data-pjx-id marker appears inside another
-    region's HTML — the parent's fresh HTML already contains the child, so a
-    separate swap would be redundant (and would fight the parent's swap).
+    Drop any candidate whose data-pjx-id marker appears inside another candidate's
+    HTML — the parent's fresh HTML already contains the child, so a separate swap
+    would be redundant (and would fight the parent's swap).
+
+    Runs only over regions that are actually being swapped (post hash-gate), so an
+    unchanged parent never suppresses a changed child.
     """
-    surviving: list[tuple[str, str]] = []
-    for index, (component_id, html) in enumerate(rendered):
-        marker = f'data-pjx-id="{component_id}"'
+    surviving: list[_Candidate] = []
+    for index, candidate in enumerate(candidates):
+        marker = f'data-pjx-id="{candidate.id}"'
         nested_in_other = any(
-            marker in other_html
-            for other_index, (_, other_html) in enumerate(rendered)
+            marker in other.html
+            for other_index, other in enumerate(candidates)
             if other_index != index
         )
         if not nested_in_other:
-            surviving.append((component_id, html))
+            surviving.append(candidate)
     return surviving
 
 
@@ -91,9 +105,11 @@ def oob_swaps(
     Compute out-of-band swap fragments for every mounted reactive region whose
     declared dependencies intersect the dirtied state keys.
 
-    This is the always-swap baseline (issue #12, implementation order step 1):
-    every region depending on a dirtied key is reloaded and swapped. Hash-gating
-    (skipping regions whose value did not change) is layered on in step 2.
+    Dependency-filtered and hash-gated (issue #12, implementation order steps
+    1-2): a region depending on a dirtied key is reloaded, and an OOB swap is
+    emitted only if its freshly computed state hash differs from the hash the
+    client reported for it. A matching hash earns permission to skip; a missing
+    or mismatched hash always swaps ("when in doubt, swap").
 
     Args:
         dirtied: The state keys the route mutated (e.g. {"todos"}).
@@ -112,7 +128,7 @@ def oob_swaps(
     classes = Registry.get_classes()
     renderer = Renderer.get_default_renderer(inline_js=False, inline_css=False)
 
-    rendered: list[tuple[str, str]] = []
+    candidates: list[_Candidate] = []
     seen_types: set[str] = set()
     for entry in manifest:
         component_type = entry.get("type")
@@ -140,16 +156,30 @@ def oob_swaps(
 
         instance = component_class.load()
         instance.id = component_id
-        rendered.append((component_id, str(instance._render(_renderer=renderer))))
+        html = str(instance._render(_renderer=renderer))
+        candidates.append(
+            _Candidate(
+                id=component_id,
+                html=html,
+                fresh_hash=instance.state_hash(),
+                reported_hash=entry.get("hash"),
+            )
+        )
 
-    surviving = _drop_nested(rendered)
+    # Hash-gate first: skip only regions whose freshly computed state hash exactly
+    # matches the hash the client reported (its DOM value is already current).
+    # Missing/unknown/mismatched all fall through to a swap ("when in doubt, swap").
+    # Gating before dedup ensures an unchanged parent never suppresses a changed child.
+    changed = [c for c in candidates if c.fresh_hash != c.reported_hash]
+
+    surviving = _drop_nested(changed)
     if not surviving:
         return Markup("")
 
     fragments = [
         stamp_root_attributes(
-            html, {"hx-swap-oob": f"outerHTML:[data-pjx-id='{component_id}']"}
+            c.html, {"hx-swap-oob": f"outerHTML:[data-pjx-id='{c.id}']"}
         )
-        for component_id, html in surviving
+        for c in surviving
     ]
     return Markup("\n".join(fragments))
