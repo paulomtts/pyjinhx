@@ -6,7 +6,7 @@ from tests.ui.unified_component import UnifiedComponent
 
 class StampCounter(ReactiveComponent):
     remaining: int = 0
-    depends_on: ClassVar[set[str]] = {"todos"}
+    reacts_to: ClassVar[set[str]] = {"todos"}
 
     @classmethod
     def load(cls):

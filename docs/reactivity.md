@@ -18,9 +18,9 @@ integration and a `load()` cache are planned follow-ups.)
 
 ## 1. Make a component reactive
 
-Subclass `ReactiveComponent` and declare **both** `depends_on` and a `load()`
+Subclass `ReactiveComponent` and declare **both** `reacts_to` and a `load()`
 classmethod — `ReactiveComponent` enforces both (a missing `load()` can't be
-instantiated; a missing `depends_on` is a definition-time error):
+instantiated; a missing `reacts_to` is a definition-time error):
 
 ```python
 from typing import ClassVar
@@ -28,16 +28,20 @@ from pyjinhx import ReactiveComponent
 
 class Counter(ReactiveComponent):
     remaining: int
-    depends_on: ClassVar[set[str]] = {"todos"}
+    reacts_to: ClassVar[set[str]] = {"todos"}
 
     @classmethod
     def load(cls) -> "Counter":
         return cls(id="counter", remaining=db.remaining())
 ```
 
-- `depends_on` — the named state keys this component derives from.
+- `reacts_to` — the **state keys** this component derives from. These are arbitrary
+  strings *you* choose to name pieces of state (`"todos"`, `"user:42"`) — **not**
+  component ids or types, and not client-side watchers. The server simply intersects
+  a component's `reacts_to` with the route's `dirtied` keys (and uses them to evict the
+  `load()` cache): it's cache invalidation, not signals.
 - `load()` — rebuilds the component from the current world, independent of any route.
-- `state_hash()` is provided by `BaseComponent` (hash of `model_dump_json()`); override only for custom hashing.
+- `state_hash()` is provided by `ReactiveComponent` (hash of `model_dump_json()`); override only for custom hashing.
 
 Reactive components are stamped with `data-pjx-id`, `data-pjx-type` (the class
 name), and `data-pjx-hash` on their root element automatically.
@@ -82,14 +86,14 @@ out-of-band swaps:
 @app.post("/todos/{id}/toggle")
 def toggle(id, request):
     db.toggle(id)
-    # dirtied defaults to TodoItem's own depends_on, so when the toggled item
+    # dirtied defaults to TodoItem's own reacts_to, so when the toggled item
     # depends on "todos" you can omit it; pass dirtied={...} to override.
     return TodoItem(id=id, text=..., done=...).render(mounted=request)
 ```
 
 `render(dirtied=, mounted=)` renders the component itself as the primary response,
 then appends an OOB swap for every *other* mounted reactive region whose
-`depends_on` intersects `dirtied`, rebuilding each via its own `load()`. The
+`reacts_to` intersects `dirtied`, rebuilding each via its own `load()`. The
 component's own region is never double-swapped.
 
 `mounted` accepts a request-like object (the `X-PJX-Mounted` header is read off it
@@ -111,7 +115,7 @@ swaps = oob_swaps(dirtied={"todos"}, mounted=request)
 ```
 
 `oob_swaps`:
-- keeps only mounted regions whose `depends_on` intersects `dirtied`,
+- keeps only mounted regions whose `reacts_to` intersects `dirtied`,
 - calls each region's `load()` and re-renders it,
 - skips a region whose freshly computed `state_hash()` matches the hash the client
   reported (its DOM value is already current); a missing or mismatched hash always
@@ -119,9 +123,9 @@ swaps = oob_swaps(dirtied={"todos"}, mounted=request)
 - drops any region nested inside another swapped region (the parent already contains it),
 - returns concatenated `hx-swap-oob` fragments (empty if nothing changed).
 
-The dependency graph lives in exactly one place — the `depends_on` declarations —
+The dependency graph lives in exactly one place — the `reacts_to` declarations —
 not smeared across endpoints. Adding a progress bar that declares
-`depends_on = {"todos"}` makes it participate automatically; no endpoint changes.
+`reacts_to = {"todos"}` makes it participate automatically; no endpoint changes.
 
 ## 4. `load()` results are cached
 
@@ -160,7 +164,7 @@ with a shared store if you need it).
 - **Type-singleton**: one mounted instance per reactive type is reloaded; instance-keyed deps (`"user:42"`) are deferred.
 - **`mounted` accepts** a request-like object (header duck-typed out, no framework import), the raw header string, a parsed list, or `None`.
 - **Reactivity is opt-in via `ReactiveComponent`**, which requires both `load()` and
-  `depends_on`. `load()` is zero-arg in v1 (type-singleton); reactive `render()`
+  `reacts_to`. `load()` is zero-arg in v1 (type-singleton); reactive `render()`
   auto-`load()`s dependents, so you never call `load()` yourself for a reactive render.
 - **`load()` cache is per-process**: it saves database work on cache hits; eviction is
   dirtied-key driven (automatically in the reactive flow, or via `invalidate(dirtied)`).
@@ -182,7 +186,7 @@ flowchart LR
       RT["pjx.js runtime"]
     end
     subgraph Server["Server — pyjinhx"]
-      G["depends_on graph<br/>declared on components"]
+      G["reacts_to graph<br/>declared on components"]
       W["oob_swaps walk"]
       L["load() + result cache"]
     end
@@ -227,7 +231,7 @@ sequenceDiagram
     R->>DB: db.toggle(1)
     R->>RD: TodoItem(...).render(dirtied, mounted=request)
     RD->>C: invalidate(dirtied)
-    Note over C: evict cached load() results<br/>whose depends_on hits a dirtied key
+    Note over C: evict cached load() results<br/>whose reacts_to hits a dirtied key
     RD->>RD: render self → primary response
     RD->>RD: oob_swaps walk (exclude_ids = self.id)
     loop each mounted region depending on a dirtied key
@@ -252,7 +256,7 @@ nesting-dedup**, so an unchanged parent never suppresses a changed child.
 
 ```mermaid
 flowchart TD
-    M["manifest entry"] --> F{"reactive type AND<br/>depends_on intersects dirtied?"}
+    M["manifest entry"] --> F{"reactive type AND<br/>reacts_to intersects dirtied?"}
     F -->|no| X1["ignore"]
     F -->|yes| EX{"id in exclude_ids?<br/>(it is the primary)"}
     EX -->|yes| X2["ignore"]
@@ -288,10 +292,10 @@ flowchart TD
     CALL["Cls.load()"] --> HIT{"in cache?"}
     HIT -->|hit| COPY["return model_copy()<br/>no DB; copy keeps cache pristine"]
     HIT -->|miss| RUN["run real load() → DB"]
-    RUN --> STORE["cache cls = result<br/>index under each depends_on key"]
+    RUN --> STORE["cache cls = result<br/>index under each reacts_to key"]
     STORE --> COPY
 
     INV["invalidate(dirtied)<br/>auto in reactive flow, or public"] --> REV["consult reverse index<br/>key → classes"]
-    REV --> EVICT["evict every class whose<br/>depends_on intersects dirtied"]
+    REV --> EVICT["evict every class whose<br/>reacts_to intersects dirtied"]
     EVICT -.->|"next load() misses"| CALL
 ```

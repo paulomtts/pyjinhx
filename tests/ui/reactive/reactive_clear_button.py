@@ -7,7 +7,7 @@ from .store import state
 
 class ReactiveClearButton(ReactiveComponent):
     completed: int = 0
-    depends_on: ClassVar[set[str]] = {"todos"}
+    reacts_to: ClassVar[set[str]] = {"todos"}
 
     @classmethod
     def load(cls) -> "ReactiveClearButton":

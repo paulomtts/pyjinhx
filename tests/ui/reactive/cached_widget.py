@@ -8,7 +8,7 @@ load_calls = {"count": 0}
 
 class CachedWidget(ReactiveComponent):
     value: int = 0
-    depends_on: ClassVar[set[str]] = {"widgets"}
+    reacts_to: ClassVar[set[str]] = {"widgets"}
 
     @classmethod
     def load(cls) -> "CachedWidget":

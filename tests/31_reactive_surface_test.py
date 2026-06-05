@@ -7,7 +7,7 @@ from pyjinhx import BaseComponent, ReactiveComponent
 
 class GoodCounter(ReactiveComponent):
     remaining: int = 0
-    depends_on: ClassVar[set[str]] = {"todos"}
+    reacts_to: ClassVar[set[str]] = {"todos"}
 
     @classmethod
     def load(cls) -> "GoodCounter":
@@ -24,24 +24,24 @@ def test_state_hash_is_stable_and_value_sensitive():
 
 def test_reactive_component_is_detected():
     assert GoodCounter._pjx_reactive is True
-    assert GoodCounter._pjx_depends_on == frozenset({"todos"})
+    assert GoodCounter._pjx_reacts_to == frozenset({"todos"})
 
 
-def test_depends_on_is_not_a_model_field():
-    assert "depends_on" not in GoodCounter.model_fields
+def test_reacts_to_is_not_a_model_field():
+    assert "reacts_to" not in GoodCounter.model_fields
     assert GoodCounter(id="c", remaining=3).remaining == 3
 
 
-def test_unannotated_depends_on_assignment_works():
+def test_unannotated_reacts_to_assignment_works():
     class Plain(ReactiveComponent):
-        depends_on = {"todos"}
+        reacts_to = {"todos"}
 
         @classmethod
         def load(cls):
             return cls(id="p")
 
-    assert "depends_on" not in Plain.model_fields
-    assert Plain._pjx_depends_on == frozenset({"todos"})
+    assert "reacts_to" not in Plain.model_fields
+    assert Plain._pjx_reacts_to == frozenset({"todos"})
 
 
 def test_plain_basecomponent_is_not_reactive():
@@ -49,7 +49,7 @@ def test_plain_basecomponent_is_not_reactive():
         pass
 
     assert getattr(Static, "_pjx_reactive", False) is False
-    assert getattr(Static, "_pjx_depends_on", frozenset()) == frozenset()
+    assert getattr(Static, "_pjx_reacts_to", frozenset()) == frozenset()
 
 
 def test_stray_load_on_basecomponent_is_not_reactive():
@@ -62,8 +62,8 @@ def test_stray_load_on_basecomponent_is_not_reactive():
     assert getattr(HasLoad, "_pjx_reactive", False) is False
 
 
-def test_load_without_depends_on_raises_at_definition():
-    with pytest.raises(TypeError, match="depends_on"):
+def test_load_without_reacts_to_raises_at_definition():
+    with pytest.raises(TypeError, match="reacts_to"):
 
         class Inert(ReactiveComponent):
             @classmethod
@@ -71,9 +71,9 @@ def test_load_without_depends_on_raises_at_definition():
                 return cls(id="i")
 
 
-def test_depends_on_without_load_cannot_be_instantiated():
+def test_reacts_to_without_load_cannot_be_instantiated():
     class NoLoad(ReactiveComponent):
-        depends_on: ClassVar[set[str]] = {"todos"}
+        reacts_to: ClassVar[set[str]] = {"todos"}
 
     with pytest.raises(TypeError, match="abstract"):
         NoLoad(id="n")

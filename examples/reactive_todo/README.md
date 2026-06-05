@@ -18,5 +18,5 @@ What to watch (open the network tab):
   (remaining is unchanged).
 
 The routes never mention the counter/total/clear button — they just declare
-`dirtied={"todos"}`. The dependency graph lives on the components (`depends_on`), and
+`dirtied={"todos"}`. The dependency graph lives on the components (`reacts_to`), and
 `pjx.js` reports what's mounted via the `X-PJX-Mounted` header.
