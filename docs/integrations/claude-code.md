@@ -117,6 +117,115 @@ Missing extra files emit a warning (check `pyjinhx` logger). Disable inline asse
 
 **Kebab vs snake for co-located assets:** `pascal_case_to_kebab_case(ClassName) + ".js"|".css"` (e.g. `TabGroup` → `tab-group.js`, `LoadingOverlay` → `loading-overlay.js`). Wrong stem (e.g. `tab_group.js`) is **not** collected.
 
+## Reactivity (dependency-aware OOB swaps)
+
+Declare each component's state dependencies once; a mutation route re-emits exactly the
+mounted regions that depend on what changed (HTMX out-of-band swaps). "Reactivity" here
+is **cache invalidation, not signals** — server-side, no client watchers.
+
+Subclass `ReactiveComponent` and declare **both** `reacts_to` and a `load()` classmethod
+(both enforced — missing `load()` can't instantiate; missing `reacts_to` is a
+definition-time error):
+
+```python
+from typing import ClassVar
+from pyjinhx import ReactiveComponent
+
+class Counter(ReactiveComponent):
+    remaining: int
+    reacts_to: ClassVar[set[str]] = {"todos"}   # state keys you name (not ids/types)
+
+    @classmethod
+    def load(cls) -> "Counter":
+        return cls(remaining=db.remaining())     # id defaults to "counter"
+```
+
+- **`reacts_to`** — arbitrary state-key strings *you* choose (`"todos"`, `"user:42"`). The
+  server intersects a component's `reacts_to` with a route's `dirtied` keys to decide what
+  to swap (and what to evict from the `load()` cache).
+- **`load()`** — rebuilds the component from the current world, independent of any route.
+- **`id`** auto-defaults to the **kebab-cased class name** (`TodoCounter` → `"todo-counter"`);
+  a singleton's identity is its type, so `load()` need not set one.
+- `state_hash()` (hash of `model_dump_json()`) gates swaps: a region is re-sent only if its
+  fresh hash differs from the one the client reported. Override only for custom hashing.
+- Roots are auto-stamped with `data-pjx-id` / `data-pjx-type` / `data-pjx-hash` (+ `data-pjx-key`
+  when keyed). A reactive component **must render a single root element**.
+
+### Mutation routes return `render()` — nothing else
+
+A mutation route does exactly one thing: **`return <component>.render(...)`**. You never
+call `load()` and never assemble swaps yourself.
+
+```python
+@app.post("/todos/toggle")
+def toggle(request):
+    db.toggle_all()
+    return Counter.render(dirtied={"todos"}, mounted=request)
+```
+
+`render` has two forms (one name):
+
+- **Class form (reactive primary)** — `Cls.render(key=None, *, dirtied=None, mounted=None)`:
+  auto-`load()`s the primary (by `key` if instance-keyed, zero-arg for a singleton), renders
+  it as the main-target response, then appends an OOB swap for every *other* mounted reactive
+  region whose `reacts_to` intersects `dirtied` (each rebuilt via its own `load()`). The
+  primary's own region is never double-swapped. `dirtied` defaults to the primary's
+  (interpolated) `reacts_to`.
+- **Instance form (plain/constructed primary)** — `instance.render(*, dirtied=None, mounted=None)`:
+  a non-reactive primary has no `load()`, so build it and render the instance.
+
+`mounted` accepts a request-like object (the `X-PJX-Mounted` header is duck-typed off it — no
+web-framework import), the raw header string, a parsed list, or `None`. With neither `dirtied`
+nor `mounted`, `render()` is an ordinary plain render.
+
+`oob_swaps(dirtied, mounted)` is what `render()` delegates to (`exclude_ids={primary.id}`);
+it's exported for tests/advanced use but is **not** how you write a route.
+
+### Instance-keyed regions (rows)
+
+A reactive type can have **many independently-reactive instances** (table rows, cards). A
+component is **instance-keyed iff its `load()` takes a parameter after `cls`** —
+`load(cls, key)`; zero-arg `load(cls)` stays a type-singleton. No extra field or flag.
+
+```python
+class TodoItemRow(ReactiveComponent):
+    title: str = ""
+    reacts_to: ClassVar[set[str]] = {"todo:{key}"}   # {key} is interpolated per instance
+
+    @classmethod
+    def load(cls, key) -> "TodoItemRow":              # param after cls ⇒ keyed
+        t = store.get(int(key))                        # keys arrive as str; coerce if typed
+        return cls(title=t.text)
+
+@app.post("/rows/{todo_id}/toggle")
+def toggle_row(request, todo_id):
+    store.toggle(todo_id)
+    return TodoItemRow.render(todo_id, dirtied={f"todo:{todo_id}", "todos"}, mounted=request)
+```
+
+- **The key flows `render(key, …)` → `load(key)` automatically.** It derives the keyed id
+  `f"{kebab(class)}-{key}"` (e.g. `todo-item-row-42`), is exposed to the template as `{{ key }}`,
+  and is stamped as `data-pjx-key` so the manifest carries it back. Keys are coerced to `str`.
+- **`reacts_to` is templated** with the literal `{key}` placeholder (`{"todo:{key}"}` →
+  `{"todo:42"}`), so each row depends on its own state key.
+- **Two-tier dirtying:** templated entries are *instance-tier* (`"todo:42"` swaps just that row);
+  plain entries are *collection-tier* (`"todos"` swaps every mounted row that declares it, plus
+  counters/totals). Name both as needed.
+
+### Client runtime & cache
+
+- A page shell marked **`base_layout=True`** auto-injects the client runtime (`pjx.js`), which
+  emits the `X-PJX-Mounted` manifest on every htmx request:
+  `class Page(BaseComponent, base_layout=True): ...`. For a raw Jinja shell, drop
+  `{{ client_script() }}` in the `<head>` instead.
+- Every `load()` is wrapped in a **process-global, dependency-keyed cache** (one entry per
+  `(type, key)`), returning an independent copy each call. `render()`/`oob_swaps` evict the
+  `dirtied` keys before reloading dependents, so swaps reflect post-mutation state. For
+  mutations outside a render (jobs, webhooks) call `invalidate({"todos"})` yourself. Scope is
+  per-process — back it with a shared store for multi-worker coherence.
+
+Full guide: [docs/reactivity.md](../reactivity.md).
+
 ## Builtins (`pyjinhx.builtins`)
 
 Optional package: `import pyjinhx.builtins` then `from pyjinhx.builtins import Alert, Avatar, Badge, …` (twenty classes). Same `BaseComponent` rules; templates/CSS/JS live under `pyjinhx/builtins/ui/<component>/`. If the app Jinja loader does not see package templates, the **renderer falls back** to on-disk templates next to those classes.
@@ -328,16 +437,22 @@ my_app/
 ## Public API
 
 ```python
-from pyjinhx import BaseComponent, Renderer, Registry, Finder, Parser, Tag
+from pyjinhx import (
+    BaseComponent, ReactiveComponent, Renderer, Registry, Finder, Parser, Tag,
+    oob_swaps, invalidate, client_script, PJX_MOUNTED_HEADER,
+)
 import pyjinhx.builtins  # optional: registers all builtin classes
 from pyjinhx.builtins import Alert, Modal, Panel, PanelTrigger, TabGroup  # …
 ```
 
 - `BaseComponent` — base class for all components
+- `ReactiveComponent` — base class for dependency-aware reactive components (`reacts_to` + `load()`); `Cls.render(key=None, *, dirtied=, mounted=)` is the auto-loading route entry point
 - `Renderer` — renders strings with PascalCase tags or manages environments
 - `Registry` — query/clear instances and classes, `request_scope()` context manager
 - `Finder` — template/asset discovery, `collect_javascript_files()`, `collect_css_files()`, `detect_root_directory()`
 - `Parser` / `Tag` — HTML parsing internals (rarely needed directly)
+- `oob_swaps` / `invalidate` — reactivity internals: the dependency walk and manual `load()`-cache eviction
+- `client_script` / `PJX_MOUNTED_HEADER` — client-runtime `<script>` for raw shells; the mounted-manifest header name
 - `pyjinhx.builtins` — twenty optional UI components (see Builtins table above)
 ````
 
