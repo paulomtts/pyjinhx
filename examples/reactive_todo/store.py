@@ -40,6 +40,10 @@ def clear_completed() -> None:
         del _todos[todo_id]
 
 
+def get(todo_id: int) -> Todo:
+    return _todos[todo_id]
+
+
 def all_todos() -> list[Todo]:
     return list(_todos.values())
 

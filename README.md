@@ -151,11 +151,12 @@ class Counter(ReactiveComponent):
     def load(cls) -> "Counter":
         return cls(id="counter", remaining=db.remaining())
 
-@app.post("/todos/{id}/toggle")
-def toggle(id, request):
-    db.toggle(id)
-    # dirtied defaults to TodoItem's own reacts_to; pass dirtied={...} to override.
-    return TodoItem(id=id, ...).render(mounted=request)
+@app.post("/todos/toggle")
+def toggle(request):
+    db.toggle_all()
+    # render() loads the Counter itself — you never call load(). dirtied defaults
+    # to the primary's own reacts_to; pass dirtied={...} to dirty more.
+    return Counter.render(dirtied={"todos"}, mounted=request)
 ```
 
 See [the reactivity guide](docs/reactivity.md) for details.

@@ -13,6 +13,7 @@ from .components import (
     TodoClearButton,
     TodoCounter,
     TodoItem,
+    TodoItemRow,
     TodoList,
     TodoTotal,
 )
@@ -30,7 +31,12 @@ def _item(todo: store.Todo) -> TodoItem:
 
 
 def _list() -> TodoList:
-    return TodoList(id="todo-list", items=[_item(t) for t in store.all_todos()])
+    # Each row is an instance-keyed reactive region (id "todo-item-row-<id>"), so a
+    # single-todo mutation can swap just that row out-of-band.
+    return TodoList(
+        id="todo-list",
+        items=[TodoItemRow.load(t.id) for t in store.all_todos()],
+    )
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -49,8 +55,21 @@ def index() -> str:
 @app.post("/todos", response_class=HTMLResponse)
 def add(request: Request, text: str = Form(...)) -> str:
     todo = store.add(text)
-    # The primary (the new row) isn't itself reactive, so we name what we dirtied.
-    return str(_item(todo).render(dirtied={"todos"}, mounted=request))
+    # render() auto-loads the new row by its key (no manual load()); the new row is the
+    # primary, and dirtying the collection-tier "todos" updates counter/total/clear OOB.
+    return str(TodoItemRow.render(todo.id, dirtied={"todos"}, mounted=request))
+
+
+@app.post("/rows/{todo_id}/toggle", response_class=HTMLResponse)
+def toggle_row(request: Request, todo_id: int) -> str:
+    store.toggle(todo_id)
+    # render(key, ...) loads this row itself. Two-tier dirtied: "todo:<id>" swaps just
+    # this row; "todos" updates the collection-tier regions (counter, total, clear).
+    return str(
+        TodoItemRow.render(
+            todo_id, dirtied={f"todo:{todo_id}", "todos"}, mounted=request
+        )
+    )
 
 
 @app.post("/todos/{todo_id}/toggle", response_class=HTMLResponse)

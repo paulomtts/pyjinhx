@@ -1,20 +1,23 @@
 from __future__ import annotations
 
 import hashlib
+import inspect
 import json
 import logging
 from abc import abstractmethod
 from dataclasses import dataclass
+from functools import partial
 from typing import Any, ClassVar
 
 from markupsafe import Markup
-from pydantic import model_validator
+from pydantic import ConfigDict, PrivateAttr, model_validator
 
 from .base import BaseComponent
 from .cache import invalidate
 from .registry import Registry
 from .renderer import Renderer
 from .utils import (
+    interpolate_reactive_keys,
     pascal_case_to_kebab_case,
     read_client_runtime,
     stamp_root_attributes,
@@ -38,6 +41,67 @@ def client_script() -> Markup:
     return Markup(f"<script>{read_client_runtime()}</script>")
 
 
+def _render_reactive_class(
+    cls: type,
+    key: object | None = None,
+    *,
+    dirtied: set[str] | None = None,
+    mounted: object | None = None,
+) -> Markup:
+    """
+    Route entry point for a reactive primary: auto-``load()`` it, render it, and
+    append OOB swaps for its dependents. The developer never calls ``load()`` —
+    the key (identity) is forwarded to ``load()`` here. Non-identity context is
+    sourced by ``load()`` itself (it is ambient: the dependency walk reloads
+    dependents from the manifest knowing only their key, so nothing else can be
+    forwarded).
+    """
+    keyed = getattr(cls, "_pjx_keyed", False)
+    if keyed and key is None:
+        raise TypeError(
+            f"{cls.__name__} is instance-keyed; render() requires a key, e.g. "
+            f"{cls.__name__}.render(<id>, dirtied=..., mounted=request)."
+        )
+    if not keyed and key is not None:
+        raise TypeError(f"{cls.__name__} is a type-singleton; render() takes no key.")
+
+    skey = str(key) if key is not None else None
+    instance = cls.load(skey) if keyed else cls.load()
+    primary = instance._render()
+    effective_dirtied = (
+        dirtied
+        if dirtied is not None
+        else interpolate_reactive_keys(
+            getattr(cls, "_pjx_reacts_to", frozenset()), skey
+        )
+    )
+    swaps = oob_swaps(effective_dirtied or set(), mounted, exclude_ids={instance.id})
+    # Markup(primary) keeps the raw HTML from escaping when concatenated with the
+    # Markup returned by oob_swaps (see BaseComponent.render for the same guard).
+    return Markup(primary) + swaps
+
+
+class _ReactiveRender:
+    """
+    Expose ``render`` in two forms under one name on reactive components.
+
+    - ``Cls.render(key=None, *, dirtied=None, mounted=None)`` — the route entry
+      point: auto-``load()``s the primary (by key for keyed types) and appends OOB
+      swaps for dependents. The developer never names ``load()`` or ``oob_swaps()``.
+    - ``instance.render(*, dirtied=None, mounted=None)`` — render an already-built
+      instance as the primary; same contract as ``BaseComponent.render``.
+
+    A plain ``classmethod`` would shadow the instance method and make
+    ``instance.render()`` re-load from the world, dropping the instance's own state;
+    the descriptor dispatches on access so both forms coexist.
+    """
+
+    def __get__(self, instance, owner):
+        if instance is None:
+            return partial(_render_reactive_class, owner)
+        return partial(BaseComponent.render, instance)
+
+
 class ReactiveComponent(BaseComponent):
     """
     Base class for dependency-aware reactive components.
@@ -55,9 +119,21 @@ class ReactiveComponent(BaseComponent):
     mounted instances of one type, e.g. ``f"todo-row-{user_id}"``).
     """
 
+    # _ReactiveRender is a descriptor, not a model field; tell Pydantic to leave it
+    # (and the inherited extra="allow") alone.
+    model_config = ConfigDict(extra="allow", ignored_types=(_ReactiveRender,))
+
     # State keys this component derives from; the dependency walk swaps a region
     # when its reacts_to intersects the route's dirtied keys.
     reacts_to: ClassVar[set[str]] = set()
+
+    # The instance key for a keyed component (set by the cache wrapper from the
+    # load() argument). None for type-singletons.
+    _pjx_key: str | None = PrivateAttr(default=None)
+
+    # render() is the auto-loading route entry point on the class
+    # (Cls.render(key, ...)) and the instance-render contract on an instance.
+    render = _ReactiveRender()
 
     @model_validator(mode="before")
     @classmethod
@@ -89,6 +165,11 @@ class ReactiveComponent(BaseComponent):
                 f"{cls.__name__} defines load() but declares no reacts_to; a "
                 f"reactive component must declare both."
             )
+        if "load" in cls.__dict__:
+            _load = cls.__dict__["load"]
+            _func = _load.__func__ if isinstance(_load, classmethod) else _load
+            # A parameter after `cls` means load(cls, key) → instance-keyed.
+            cls._pjx_keyed = len(inspect.signature(_func).parameters) > 1
         if "load" in cls.__dict__:
             from .cache import install_cached_load
 
@@ -202,10 +283,12 @@ def oob_swaps(
     renderer = Renderer.get_default_renderer(inline_js=False, inline_css=False)
 
     candidates: list[_Candidate] = []
-    seen_types: set[str] = set()
+    seen: set[tuple[str, str | None]] = set()
     for entry in manifest:
         component_type = entry.get("type")
         component_id = entry.get("id")
+        key = entry.get("key")
+        skey = str(key) if key is not None else None
         if not component_type or not component_id:
             continue
         if exclude_ids and component_id in exclude_ids:
@@ -216,20 +299,25 @@ def oob_swaps(
             continue
         if not getattr(component_class, "_pjx_reactive", False):
             continue
-        if not (getattr(component_class, "_pjx_reacts_to", frozenset()) & dirtied):
+
+        keyed = getattr(component_class, "_pjx_keyed", False)
+        if keyed and skey is None:
+            continue  # keyed type with no key in the manifest — malformed, skip
+        if not keyed:
+            skey = None  # ignore any stray key on a singleton
+
+        effective = interpolate_reactive_keys(
+            getattr(component_class, "_pjx_reacts_to", frozenset()), skey
+        )
+        if not (effective & dirtied):
             continue
 
-        if component_type in seen_types:
-            logger.warning(
-                "Multiple mounted instances of reactive type %s; the v1 "
-                "type-singleton model reloads it once. Instance-keyed deps are "
-                "deferred.",
-                component_type,
-            )
+        dedup_key = (component_type, skey)
+        if dedup_key in seen:
             continue
-        seen_types.add(component_type)
+        seen.add(dedup_key)
 
-        instance = component_class.load()
+        instance = component_class.load(skey) if keyed else component_class.load()
         instance.id = component_id
         html = str(instance._render(_renderer=renderer))
         candidates.append(
