@@ -66,7 +66,6 @@ def test_oob_swaps_exclude_ids_skips_region():
 
 
 def test_render_no_args_is_unchanged():
-    # Backward compatibility: render() with no args == _render().
     counter = ReactiveCounter(id="counter", remaining=8)
     assert str(counter.render()) == str(counter._render())
 
@@ -79,12 +78,9 @@ def test_reactive_render_returns_primary_plus_dependents():
         {"id": "clear-btn", "type": "ReactiveClearButton", "hash": "stale"},
     ]
     out = str(primary.render(dirtied={"todos"}, mounted=manifest))
-    # Primary self is rendered into the main target...
     assert "2 left" in out
-    # ...the dependent clear button is swapped out-of-band...
     assert "outerHTML:[data-pjx-id='clear-btn']" in out
     assert "Clear (5)" in out
-    # ...and self is NOT additionally OOB-swapped (no double swap of its region).
     assert "outerHTML:[data-pjx-id='counter']" not in out
 
 
@@ -110,8 +106,6 @@ def test_reactive_render_returns_markup():
 
 
 def test_reactive_render_does_not_escape_primary_html():
-    # Regression: the primary is a plain str from _render(); concatenating it with the
-    # Markup from oob_swaps must not invoke Markup.__radd__ and HTML-escape the primary.
     store.state["completed"] = 1
     primary = ReactiveCounter(id="counter", remaining=2)
     out = str(

@@ -6,10 +6,10 @@ from pyjinhx.utils import read_client_runtime
 
 class KeyedCard(ReactiveComponent):
     title: str = ""
-    reacts_to: ClassVar[set[str]] = {"card:{key}"}
+    reacts_to: ClassVar[set[str]] = {"card"}
 
     @classmethod
-    def load(cls, key) -> "KeyedCard":
+    def load(cls, key: str | int) -> "KeyedCard":
         return cls(title=f"card {key}")
 
 

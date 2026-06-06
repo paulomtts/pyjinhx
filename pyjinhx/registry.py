@@ -1,4 +1,5 @@
 import logging
+from collections.abc import Generator
 from contextlib import contextmanager
 from contextvars import ContextVar
 from typing import TYPE_CHECKING, ClassVar
@@ -105,7 +106,7 @@ class Registry:
 
     @classmethod
     @contextmanager
-    def request_scope(cls):
+    def request_scope(cls) -> Generator[None, None, None]:
         """
         Context manager for request-scoped component instances.
 

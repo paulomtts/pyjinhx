@@ -22,7 +22,6 @@ import pyjinhx.renderer as renderer_module
 from pyjinhx import Registry
 from pyjinhx.renderer import Renderer
 
-# Python source written to temp files to define discoverable components.
 _COMPONENT_SRC = """\
 from pyjinhx import BaseComponent
 
@@ -158,7 +157,6 @@ def test_autodiscovery_skipped_when_already_registered():
             f.write("raise RuntimeError('should not be imported')\n")
 
         env = Environment(loader=FileSystemLoader(temp_dir))
-        # Must not raise — the RuntimeError file must never be exec'd
         rendered = Renderer(env).render('<AlreadyRegistered id="r1" label="Safe"/>')
 
         assert '<div id="r1">Safe</div>' in rendered

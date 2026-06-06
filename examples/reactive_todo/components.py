@@ -14,11 +14,10 @@ class TodoItem(BaseComponent):
 class TodoItemRow(ReactiveComponent):
     title: str = ""
     done: bool = False
-    reacts_to: ClassVar[set[str]] = {"todo:{key}"}
+    reacts_to: ClassVar[set[str]] = {"todo"}
 
     @classmethod
-    def load(cls, key) -> "TodoItemRow":
-        # Keys arrive as strings (from the manifest); coerce for the typed lookup.
+    def load(cls, key: str | int) -> "TodoItemRow":
         t = store.get(int(key))
         return cls(title=t.text, done=t.done)
 
@@ -33,7 +32,6 @@ class TodoCounter(ReactiveComponent):
 
     @classmethod
     def load(cls) -> "TodoCounter":
-        # No id needed: it defaults to the kebab class name -> "todo-counter".
         return cls(remaining=store.remaining())
 
 
@@ -43,7 +41,6 @@ class TodoTotal(ReactiveComponent):
 
     @classmethod
     def load(cls) -> "TodoTotal":
-        # Defaults to "todo-total".
         return cls(total=store.total())
 
 
@@ -53,8 +50,6 @@ class TodoClearButton(ReactiveComponent):
 
     @classmethod
     def load(cls) -> "TodoClearButton":
-        # Escape hatch: pin an explicit id (here a shorter one than the default
-        # "todo-clear-button"). Required when you mount multiple instances of a type.
         return cls(id="todo-clear", completed=store.completed())
 
 

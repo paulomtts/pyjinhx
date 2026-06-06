@@ -8,7 +8,6 @@ from tests.ui.reactive.reactive_panel import ReactivePanel
 
 
 def _fresh_counter_hash() -> str:
-    # Mirrors what oob_swaps computes: load() then id forced to the mounted id.
     instance = ReactiveCounter.load()
     instance.id = "counter"
     return instance.state_hash()
@@ -40,7 +39,7 @@ def test_mismatched_hash_is_swapped():
 
 def test_missing_hash_is_swapped():
     store.state["remaining"] = 4
-    manifest = [{"id": "counter", "type": "ReactiveCounter"}]  # no "hash" key
+    manifest = [{"id": "counter", "type": "ReactiveCounter"}]
     out = str(oob_swaps({"todos"}, manifest))
     assert "outerHTML:[data-pjx-id='counter']" in out
 
@@ -58,9 +57,6 @@ def test_all_matching_returns_empty_markup():
 
 
 def test_unchanged_parent_does_not_suppress_changed_child():
-    # Gate-before-dedup: the panel's hash matches (skip), but the nested counter's
-    # reported hash is stale (changed) -> the counter must be swapped on its own,
-    # and the panel must NOT be swapped.
     store.state["remaining"] = 9
     manifest = [
         {"id": "panel", "type": "ReactivePanel", "hash": _fresh_panel_hash()},
@@ -73,7 +69,6 @@ def test_unchanged_parent_does_not_suppress_changed_child():
 
 
 def test_changed_parent_still_dedups_changed_child():
-    # Both stale -> both "changed"; nesting dedup keeps only the parent swap.
     store.state["remaining"] = 3
     manifest = [
         {"id": "panel", "type": "ReactivePanel", "hash": "stale-a"},

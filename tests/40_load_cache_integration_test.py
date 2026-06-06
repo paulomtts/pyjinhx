@@ -6,10 +6,9 @@ from tests.ui.reactive.reactive_clear_button import ReactiveClearButton  # noqa:
 
 def test_oob_swaps_invalidates_dirtied_before_loading():
     store.state["remaining"] = 1
-    warm = ReactiveCounter.load()  # warm the cache with the old value
+    warm = ReactiveCounter.load()
     assert warm.remaining == 1
-    store.state["remaining"] = 5  # mutate the world
-    # oob_swaps must evict {"todos"} and serve the fresh value, not the cached 1.
+    store.state["remaining"] = 5
     out = str(
         oob_swaps(
             {"todos"},
@@ -22,7 +21,7 @@ def test_oob_swaps_invalidates_dirtied_before_loading():
 
 def test_reactive_render_invalidates_dirtied():
     store.state["completed"] = 2
-    warm = ReactiveClearButton.load()  # warm the cache
+    warm = ReactiveClearButton.load()
     assert warm.completed == 2
     store.state["completed"] = 9
     primary = ReactiveCounter(id="counter", remaining=0)

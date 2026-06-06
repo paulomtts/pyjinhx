@@ -53,20 +53,18 @@ class BaseComponent(BaseModel):
     )
 
     @field_validator("id", mode="before")
-    def validate_id(cls, v):
+    def validate_id(cls, v: object) -> str:
         if not v:
             raise ValueError("ID is required")
         return str(v)
 
-    def __init_subclass__(cls, *, base_layout: bool = False, **kwargs):
+    def __init_subclass__(cls, *, base_layout: bool = False, **kwargs: Any) -> None:
         """Register the component class and record whether it is a page layout."""
         super().__init_subclass__(**kwargs)
         Registry.register_class(cls)
-        # Inherited: a subclass of a layout stays a layout. The renderer injects the
-        # client runtime once for the is_root layout of a full-page render.
         cls._pjx_layout = bool(base_layout) or getattr(cls, "_pjx_layout", False)
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
         Registry.register_instance(self)
 

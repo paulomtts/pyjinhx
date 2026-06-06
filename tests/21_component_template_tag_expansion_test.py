@@ -15,11 +15,9 @@ def test_component_template_can_expand_custom_tags():
         text: str
 
     with tempfile.TemporaryDirectory() as temp_dir:
-        # Create child template
         with open(os.path.join(temp_dir, "child.html"), "w") as file:
             file.write('<span id="{{ id }}">{{ text }}</span>\n')
 
-        # Create parent template with embedded Child tag
         with open(os.path.join(temp_dir, "parent.html"), "w") as file:
             file.write(
                 '<div id="{{ id }}"><Child id="child-1" text="{{ child_text }}"/></div>\n'
@@ -28,7 +26,6 @@ def test_component_template_can_expand_custom_tags():
         env = Environment(loader=FileSystemLoader(temp_dir))
         renderer = Renderer(env, auto_id=True)
 
-        # Render using Renderer.render() with PascalCase tags
         rendered = renderer.render('<Parent id="parent-1" child_text="Hello"/>')
 
         assert rendered == '<div id="parent-1"><span id="child-1">Hello</span></div>'

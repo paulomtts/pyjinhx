@@ -1,5 +1,7 @@
 import os
 import re
+from collections.abc import Iterable
+from typing import Any
 
 
 def pascal_case_to_snake_case(name: str) -> str:
@@ -206,12 +208,57 @@ def read_client_runtime() -> str:
         return runtime_file.read()
 
 
-def interpolate_reactive_keys(keys, key: str | None) -> set[str]:
+def coerce_load_key(key: object) -> Any:
+    """Return an enum's ``.value``; pass all other keys through unchanged."""
+    from enum import Enum
+
+    if isinstance(key, Enum):
+        return key.value
+    return key
+
+
+def coerce_load_key_str(key: object) -> str | None:
+    """Like ``coerce_load_key``, then coerce to ``str`` for cache/manifest use."""
+    if key is None:
+        return None
+    return str(coerce_load_key(key))
+
+
+def interpolate_reactive_keys(
+    keys: Iterable[str],
+    key: str | None,
+    *,
+    keyed: bool = False,
+) -> set[str]:
     """
-    Expand the ``{key}`` placeholder in reactive-dependency keys with a component's
-    instance key. Plain keys (no placeholder) pass through unchanged. For a singleton
-    (key is None) the keys are returned as-is.
+    Expand declared reactive keys for a component instance.
+
+    For singletons (``key is None``), declared keys are returned as-is.
+
+    For instance-keyed components, bare stems (e.g. ``"todo"``) expand to
+    ``"todo:<key>"``. When a plural sibling is present (e.g. ``"user"`` with
+    ``"users"``), the singular is the instance stem and the plural stays global.
+    Legacy ``"{key}"`` placeholders are still expanded for backward compatibility.
     """
     if key is None:
         return set(keys)
-    return {k.replace("{key}", key) for k in keys}
+
+    declared = set(keys)
+    if not keyed:
+        return declared
+
+    result: set[str] = set()
+    for declared_key in declared:
+        if "{key}" in declared_key:
+            result.add(declared_key.replace("{key}", key))
+        elif ":" in declared_key:
+            result.add(declared_key)
+        elif f"{declared_key}s" in declared:
+            result.add(f"{declared_key}:{key}")
+        elif any(
+            declared_key == f"{other}s" for other in declared if other != declared_key
+        ):
+            result.add(declared_key)
+        else:
+            result.add(f"{declared_key}:{key}")
+    return result

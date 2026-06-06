@@ -68,9 +68,6 @@ def test_nested_child_is_deduplicated():
         {"id": "counter", "type": "ReactiveCounter", "hash": "x"},
     ]
     out = str(oob_swaps({"todos"}, manifest))
-    # The panel is swapped (its fresh HTML already contains the counter)...
     assert "outerHTML:[data-pjx-id='panel']" in out
-    # ...and the counter is NOT swapped on its own.
     assert "outerHTML:[data-pjx-id='counter']" not in out
-    # The counter's content rides inside the panel swap.
     assert "3 left" in out

@@ -8,10 +8,10 @@ load_calls = {"n": 0}
 
 class Row(ReactiveComponent):
     title: str = ""
-    reacts_to: ClassVar[set[str]] = {"row:{key}", "rows"}
+    reacts_to: ClassVar[set[str]] = {"row", "rows"}
 
     @classmethod
-    def load(cls, key) -> "Row":
+    def load(cls, key: str | int) -> "Row":
         load_calls["n"] += 1
         return cls(title=f"row {key}")
 

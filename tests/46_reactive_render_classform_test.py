@@ -34,17 +34,14 @@ def test_singleton_class_form_loads_primary_and_swaps_dependents():
             ],
         )
     )
-    # Primary is auto-loaded from the world (remaining=2), rendered into the target...
     assert "2 left" in out
     assert 'data-pjx-id="counter"' in out
-    # ...and the dependent clear button comes back out-of-band.
     assert "outerHTML:[data-pjx-id='clear-btn']" in out
     assert "Clear (5)" in out
 
 
 def test_singleton_class_form_excludes_primary_from_oob():
     store.state["remaining"] = 1
-    # The counter is itself mounted; it must not be OOB-swapped on top of being primary.
     out = str(
         ReactiveCounter.render(
             dirtied={"todos"},
@@ -67,8 +64,6 @@ def test_keyed_class_form_renders_keyed_primary():
 
 
 def test_keyed_class_form_swaps_only_dirtied_siblings():
-    # Dirty just row 1's key; rows 2 and 3 are mounted but must not be touched, and
-    # row 1 is the primary (excluded), not an OOB swap.
     out = str(
         UserRow.render(
             "1",
@@ -76,15 +71,13 @@ def test_keyed_class_form_swaps_only_dirtied_siblings():
             mounted=[_row(1), _row(2), _row(3)],
         )
     )
-    assert 'data-pjx-id="user-row-1"' in out  # primary
+    assert 'data-pjx-id="user-row-1"' in out
     assert "outerHTML:[data-pjx-id='user-row-1']" not in out
     assert "outerHTML:[data-pjx-id='user-row-2']" not in out
     assert "outerHTML:[data-pjx-id='user-row-3']" not in out
 
 
 def test_keyed_collection_tier_swaps_siblings_out_of_band():
-    # The collection key "users" is shared by every row, so dirtying it swaps the
-    # other mounted rows out-of-band (row 1 stays the primary).
     out = str(
         UserRow.render(
             "1",
@@ -92,14 +85,12 @@ def test_keyed_collection_tier_swaps_siblings_out_of_band():
             mounted=[_row(1), _row(2), _row(3)],
         )
     )
-    assert "outerHTML:[data-pjx-id='user-row-1']" not in out  # primary, excluded
+    assert "outerHTML:[data-pjx-id='user-row-1']" not in out
     assert "outerHTML:[data-pjx-id='user-row-2']" in out and "Bob" in out
     assert "outerHTML:[data-pjx-id='user-row-3']" in out and "Carol" in out
 
 
 def test_keyed_dirtied_defaults_to_interpolated_reacts_to():
-    # No dirtied -> defaults to the primary's interpolated reacts_to
-    # ({"user:1", "users"}); siblings (sharing "users") are swapped.
     out = str(UserRow.render("1", mounted=[_row(1), _row(2)]))
     assert "outerHTML:[data-pjx-id='user-row-2']" in out
 
@@ -137,7 +128,5 @@ def test_class_form_returns_markup_and_does_not_escape():
 
 
 def test_instance_form_still_renders_self():
-    # Backward compatibility: a constructed instance renders its own state, not a
-    # freshly loaded one.
     counter = ReactiveCounter(id="counter", remaining=99)
     assert "99 left" in str(counter.render())

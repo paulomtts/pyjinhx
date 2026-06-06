@@ -53,7 +53,6 @@ def test_plain_basecomponent_is_not_reactive():
 
 
 def test_stray_load_on_basecomponent_is_not_reactive():
-    # Duck-typing is gone: a load() on a plain BaseComponent does NOT make it reactive.
     class HasLoad(BaseComponent):
         @classmethod
         def load(cls):
