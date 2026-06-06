@@ -7,8 +7,7 @@ mutation route re-emits exactly the mounted regions that depend on what changed.
 
 A region that depends on a dirtied key is reloaded and re-emitted **only when its
 value actually changed** — its freshly computed `state_hash()` is compared against
-the hash the client reported, and a matching hash is skipped. (`render()`
-integration and a `load()` cache are planned follow-ups.)
+the hash the client reported, and a matching hash is skipped.
 
 > **Runnable example:** a full FastAPI + htmx todo app lives in
 > [`examples/reactive_todo/`](https://github.com/paulomtts/pyjinhx/tree/master/examples/reactive_todo) —
@@ -82,43 +81,41 @@ The runtime attaches a manifest of mounted regions to every htmx request via the
 
 ## 3. Emit OOB swaps from your route
 
-Build the primary response from the mutation result and call `render()` with what
-you dirtied plus the incoming request — the dependent regions ride along as
+A mutation route does exactly one thing: **`return <component>.render(...)`**. You
+never call `load()` and never assemble swaps yourself. For a **reactive** primary,
+call `render()` on the *class* — it auto-`load()`s the component for you — and pass
+what you dirtied plus the incoming request. The dependent regions ride along as
 out-of-band swaps:
 
 ```python
-@app.post("/todos/{id}/toggle")
-def toggle(id, request):
-    db.toggle(id)
-    # dirtied defaults to TodoItem's own reacts_to, so when the toggled item
-    # depends on "todos" you can omit it; pass dirtied={...} to override.
-    return TodoItem(id=id, text=..., done=...).render(mounted=request)
+@app.post("/todos/toggle")
+def toggle(request):
+    db.toggle_all()
+    # render() loads the Counter itself — you don't. dirtied defaults to the
+    # primary's own reacts_to; pass dirtied={...} to dirty more.
+    return Counter.render(dirtied={"todos"}, mounted=request)
 ```
 
-`render(dirtied=, mounted=)` renders the component itself as the primary response,
-then appends an OOB swap for every *other* mounted reactive region whose
-`reacts_to` intersects `dirtied`, rebuilding each via its own `load()`. The
-component's own region is never double-swapped.
+`Cls.render(key=None, *, dirtied=, mounted=)` loads the primary (by `key` for an
+instance-keyed type, zero-arg for a singleton), renders it as the main-target
+response, then appends an OOB swap for every *other* mounted reactive region whose
+`reacts_to` intersects `dirtied`, rebuilding each via its own `load()`. The primary's
+own region is never double-swapped. (Keyed example: [Instance-keyed regions](#instance-keyed-regions-rows) below.)
+
+A **plain, non-reactive** primary has no `load()` to call, so you build it and render
+the instance instead: `MyFragment(id=..., ...).render(dirtied=, mounted=request)`.
 
 `mounted` accepts a request-like object (the `X-PJX-Mounted` header is read off it
 without importing any web framework), the raw header string, an already-parsed
 list, or `None`. With neither `dirtied` nor `mounted`, `render()` is an ordinary
 plain render.
 
-### Lower-level: `oob_swaps()`
+### Under the hood: `oob_swaps()`
 
-If you need the swaps without a primary (or want to compose them yourself), call
-`oob_swaps(dirtied, mounted)` directly — it returns the concatenated `hx-swap-oob`
-fragments (this is exactly what `render()` delegates to, passing
-`exclude_ids={self.id}`):
-
-```python
-from pyjinhx import oob_swaps
-
-swaps = oob_swaps(dirtied={"todos"}, mounted=request)
-```
-
-`oob_swaps`:
+`render()` delegates its dependency walk to `oob_swaps(dirtied, mounted)` (passing
+`exclude_ids={primary.id}`), which returns the concatenated `hx-swap-oob` fragments.
+It's exported for tests and advanced composition, but it is **not** how you write a
+route — a route returns `render()`, not bare swaps. `oob_swaps`:
 - keeps only mounted regions whose `reacts_to` intersects `dirtied`,
 - calls each region's `load()` and re-renders it,
 - skips a region whose freshly computed `state_hash()` matches the hash the client
@@ -154,8 +151,9 @@ class TodoItemRow(ReactiveComponent):
 - **`reacts_to` is templated** with the literal placeholder `{key}`. It is
   interpolated with the instance key (`{"todo:{key}"}` → `{"todo:42"}` for row 42),
   so each row depends on its *own* state key.
-- **The key flows from `load()` automatically**: it is captured, stashed, and used to
-  derive the keyed id `f"{kebab(class)}-{key}"` (e.g. `todo-item-row-42`). It is
+- **The key flows from `render()` into `load()` automatically**: you pass it to
+  `render(key, ...)`, which forwards it to `load()`; it is captured, stashed, and used
+  to derive the keyed id `f"{kebab(class)}-{key}"` (e.g. `todo-item-row-42`). It is
   exposed to the template as `{{ key }}` and stamped on the root as `data-pjx-key`,
   so the client manifest carries it back up on every request.
 - **Keys are strings framework-side.** The id, `data-pjx-key`, cache key, and
@@ -169,10 +167,11 @@ class TodoItemRow(ReactiveComponent):
 @app.post("/rows/{todo_id}/toggle")
 def toggle_row(request, todo_id):
     store.toggle(todo_id)
+    # render(key, ...) loads this row itself — no manual load().
     # "todo:42" swaps just this one row; "todos" updates collection regions
     # (counter, total, …). The row's own region is the primary, never double-swapped.
-    return TodoItemRow.load(todo_id).render(
-        dirtied={f"todo:{todo_id}", "todos"}, mounted=request
+    return TodoItemRow.render(
+        todo_id, dirtied={f"todo:{todo_id}", "todos"}, mounted=request
     )
 ```
 
@@ -287,10 +286,10 @@ sequenceDiagram
 
     B->>R: POST /todos/1/toggle  (X-PJX-Mounted header)
     R->>DB: db.toggle(1)
-    R->>RD: TodoItem(...).render(dirtied, mounted=request)
+    R->>RD: Counter.render(dirtied, mounted=request)
     RD->>C: invalidate(dirtied)
     Note over C: evict cached load() results<br/>whose reacts_to hits a dirtied key
-    RD->>RD: render self → primary response
+    RD->>RD: load() + render primary → response
     RD->>RD: oob_swaps walk (exclude_ids = self.id)
     loop each mounted region depending on a dirtied key
         RD->>C: cls.load()

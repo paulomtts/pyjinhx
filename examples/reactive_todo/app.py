@@ -55,21 +55,19 @@ def index() -> str:
 @app.post("/todos", response_class=HTMLResponse)
 def add(request: Request, text: str = Form(...)) -> str:
     todo = store.add(text)
-    # The new row is itself a reactive instance-keyed region; appending it dirties the
-    # collection-tier "todos" so the counter/total/clear regions update out-of-band.
-    return str(
-        TodoItemRow.load(todo.id).render(dirtied={"todos"}, mounted=request)
-    )
+    # render() auto-loads the new row by its key (no manual load()); the new row is the
+    # primary, and dirtying the collection-tier "todos" updates counter/total/clear OOB.
+    return str(TodoItemRow.render(todo.id, dirtied={"todos"}, mounted=request))
 
 
 @app.post("/rows/{todo_id}/toggle", response_class=HTMLResponse)
 def toggle_row(request: Request, todo_id: int) -> str:
     store.toggle(todo_id)
-    # Two-tier dirtied: "todo:<id>" swaps just this row; "todos" updates the
-    # collection-tier regions (counter, total, clear button).
+    # render(key, ...) loads this row itself. Two-tier dirtied: "todo:<id>" swaps just
+    # this row; "todos" updates the collection-tier regions (counter, total, clear).
     return str(
-        TodoItemRow.load(todo_id).render(
-            dirtied={f"todo:{todo_id}", "todos"}, mounted=request
+        TodoItemRow.render(
+            todo_id, dirtied={f"todo:{todo_id}", "todos"}, mounted=request
         )
     )
 
