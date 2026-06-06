@@ -81,6 +81,19 @@ def test_clear_completed_hash_gates_unchanged_counter():
     assert "outerHTML:[data-pjx-id='todo-total']" in body  # total changed -> swapped
 
 
+def test_toggle_row_primary_reflects_mutation_despite_warm_cache():
+    # Regression: GET / warms the load cache with each row in its pre-toggle state.
+    # The keyed render() entry point must evict the dirtied keys before loading the
+    # primary, so the returned row reflects the toggle rather than the cached state.
+    client.get("/")  # warm the per-process load cache (done=False rows)
+    body = client.post("/rows/1/toggle").text
+    primary = body.split("hx-swap-oob")[0]  # the primary row precedes any OOB swap
+    assert 'class="todo done"' in primary and "✓" in primary
+    # Toggling back off must likewise reflect the new state, not a stale cache hit.
+    primary_off = client.post("/rows/1/toggle").text.split("hx-swap-oob")[0]
+    assert 'class="todo done"' not in primary_off and "○" in primary_off
+
+
 def test_unknown_mounted_region_is_ignored():
     body = client.post(
         "/todos/1/toggle",

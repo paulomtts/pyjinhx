@@ -42,7 +42,7 @@ def client_script() -> Markup:
 
 
 def _render_reactive_class(
-    cls: type,
+    cls: type[ReactiveComponent],
     key: object | None = None,
     *,
     dirtied: set[str] | None = None,
@@ -66,15 +66,17 @@ def _render_reactive_class(
         raise TypeError(f"{cls.__name__} is a type-singleton; render() takes no key.")
 
     skey = str(key) if key is not None else None
+    own_keys = interpolate_reactive_keys(
+        getattr(cls, "_pjx_reacts_to", frozenset()), skey
+    )
+    effective_dirtied = dirtied if dirtied is not None else own_keys
+    # The primary is the authoritative response for this route, so it must reflect the
+    # mutation that just happened — never a stale cache hit warmed by an earlier render.
+    # Evict the dirtied keys (and the primary's own reactive keys) BEFORE loading it.
+    # oob_swaps invalidates the dirtied keys again for dependents; invalidate() is idempotent.
+    invalidate((effective_dirtied or set()) | own_keys)
     instance = cls.load(skey) if keyed else cls.load()
     primary = instance._render()
-    effective_dirtied = (
-        dirtied
-        if dirtied is not None
-        else interpolate_reactive_keys(
-            getattr(cls, "_pjx_reacts_to", frozenset()), skey
-        )
-    )
     swaps = oob_swaps(effective_dirtied or set(), mounted, exclude_ids={instance.id})
     # Markup(primary) keeps the raw HTML from escaping when concatenated with the
     # Markup returned by oob_swaps (see BaseComponent.render for the same guard).
