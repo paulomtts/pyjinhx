@@ -98,7 +98,6 @@ def test_different_component_types_same_id_no_collision():
     ShelfCard(id="shared", label="Card Label")
     ShelfButton(id="shared", label="Button Label")
 
-    # Both should coexist in the registry
     assert len(Registry.get_instances()) == 2
 
     card_key = Registry.make_key("ShelfCard", "shared")

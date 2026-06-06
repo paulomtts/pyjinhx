@@ -7,8 +7,8 @@ names = {"1": "Alice", "2": "Bob", "3": "Carol"}
 
 class UserRow(ReactiveComponent):
     name: str = ""
-    reacts_to: ClassVar[set[str]] = {"user:{key}", "users"}
+    reacts_to: ClassVar[set[str]] = {"user", "users"}
 
     @classmethod
-    def load(cls, key) -> "UserRow":
+    def load(cls, key: str) -> "UserRow":
         return cls(name=names[key])

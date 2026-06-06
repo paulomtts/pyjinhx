@@ -190,7 +190,7 @@ component is **instance-keyed iff its `load()` takes a parameter after `cls`** �
 ```python
 class TodoItemRow(ReactiveComponent):
     title: str = ""
-    reacts_to: ClassVar[set[str]] = {"todo:{key}"}   # {key} is interpolated per instance
+    reacts_to: ClassVar[set[str]] = {"todo"}          # instance-tier stem
 
     @classmethod
     def load(cls, key) -> "TodoItemRow":              # param after cls ⇒ keyed
@@ -205,11 +205,12 @@ def toggle_row(request, todo_id):
 
 - **The key flows `render(key, …)` → `load(key)` automatically.** It derives the keyed id
   `f"{kebab(class)}-{key}"` (e.g. `todo-item-row-42`), is exposed to the template as `{{ key }}`,
-  and is stamped as `data-pjx-key` so the manifest carries it back. Keys are coerced to `str`.
-- **`reacts_to` is templated** with the literal `{key}` placeholder (`{"todo:{key}"}` →
-  `{"todo:42"}`), so each row depends on its own state key.
-- **Two-tier dirtying:** templated entries are *instance-tier* (`"todo:42"` swaps just that row);
-  plain entries are *collection-tier* (`"todos"` swaps every mounted row that declares it, plus
+  and is stamped as `data-pjx-key` so the manifest carries it back. Enums are unwrapped to
+  `.value` before `load()`; cache/manifest keys are always `str`.
+- **Instance-tier stems** on keyed components are bare strings (`{"todo"}` → `"todo:42"` per row).
+  Collection-tier keys stay literal (`{"user", "users"}` — `"users"` is not suffixed).
+- **Two-tier dirtying:** instance stems are *instance-tier* (`"todo:42"` swaps just that row);
+  collection keys are *collection-tier* (`"todos"` swaps every mounted row that declares it, plus
   counters/totals). Name both as needed.
 
 ### Client runtime & cache

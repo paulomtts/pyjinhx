@@ -2,7 +2,6 @@ from typing import ClassVar
 
 from pyjinhx import ReactiveComponent
 
-# Module-level counter so tests can observe how many times the *real* load() ran.
 load_calls = {"count": 0}
 
 

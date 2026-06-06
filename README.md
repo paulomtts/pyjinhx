@@ -159,6 +159,9 @@ def toggle(request):
     return Counter.render(dirtied={"todos"}, mounted=request)
 ```
 
+Instance-keyed components declare instance-tier stems as bare strings (`{"todo"}` expands
+to `"todo:<key>"`); `load()` unwraps enum keys to `.value` before your code runs.
+
 See [the reactivity guide](docs/reactivity.md) for details.
 
 ## FastAPI + HTMX example

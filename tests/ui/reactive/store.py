@@ -1,3 +1,3 @@
 """Mutable in-memory state for reactive fixture components."""
 
-state = {"remaining": 0, "completed": 0}
+state: dict[str, int] = {"remaining": 0, "completed": 0}

@@ -1,24 +1,28 @@
 from __future__ import annotations
 
 import threading
-from typing import TYPE_CHECKING
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any
 
-from .utils import interpolate_reactive_keys
+from .utils import coerce_load_key, coerce_load_key_str, interpolate_reactive_keys
 
 if TYPE_CHECKING:
     from .base import BaseComponent
 
 _lock = threading.Lock()
-# Cache + reverse index are keyed by (class, instance-key-or-None).
 _cache: dict[tuple[type, str | None], "BaseComponent"] = {}
 _reverse: dict[str, set[tuple[type, str | None]]] = {}
 
 
-def _effective_keys(cls: type, key: str | None) -> set[str]:
-    return interpolate_reactive_keys(getattr(cls, "_pjx_reacts_to", frozenset()), key)
+def _effective_keys(cls: type[Any], key: str | None) -> set[str]:
+    return interpolate_reactive_keys(
+        getattr(cls, "_pjx_reacts_to", frozenset()),
+        key,
+        keyed=getattr(cls, "_pjx_keyed", False),
+    )
 
 
-def install_cached_load(cls: type) -> None:
+def install_cached_load(cls: type[Any]) -> None:
     """
     Replace a reactive component's own ``load()`` classmethod with a cache-aware
     wrapper. Singletons call ``load(cls)``; instance-keyed components call
@@ -28,19 +32,25 @@ def install_cached_load(cls: type) -> None:
     original = cls.__dict__["load"]
     raw_func = original.__func__ if isinstance(original, classmethod) else original
 
-    def _cached_load(inner_cls, *args):
+    def _cached_load(inner_cls: type[Any], *args: Any) -> "BaseComponent":
         return _load_through_cache(inner_cls, raw_func, args)
 
     cls.load = classmethod(_cached_load)
 
 
-def _with_key(instance, key: str | None):
+def _with_key(instance: "BaseComponent", key: str | None) -> "BaseComponent":
     instance._pjx_key = key
     return instance
 
 
-def _load_through_cache(cls, raw_func, args):
-    key = str(args[0]) if args else None
+def _load_through_cache(
+    cls: type[Any],
+    raw_func: Callable[..., "BaseComponent"],
+    args: tuple[Any, ...],
+) -> "BaseComponent":
+    raw_key = args[0] if args else None
+    coerced_key = coerce_load_key(raw_key) if raw_key is not None else None
+    key = coerce_load_key_str(raw_key) if raw_key is not None else None
     cache_key = (cls, key)
 
     with _lock:
@@ -48,11 +58,9 @@ def _load_through_cache(cls, raw_func, args):
     if cached is not None:
         return _with_key(cached.model_copy(), key)
 
-    # Run the real load() (the DB hit) OUTSIDE the lock. Keys are always strings.
-    result = raw_func(cls, key) if key is not None else raw_func(cls)
+    result = raw_func(cls, coerced_key) if coerced_key is not None else raw_func(cls)
     result = _with_key(result, key)
 
-    # Finalize the keyed id (only if load() left the type-default id in place).
     if key is not None:
         from .utils import pascal_case_to_kebab_case
 

@@ -1,3 +1,5 @@
+from collections.abc import Generator
+
 import pytest
 
 from pyjinhx import Registry
@@ -5,7 +7,7 @@ from pyjinhx.cache import clear as clear_load_cache
 
 
 @pytest.fixture(autouse=True)
-def _isolate_reactive_state():
+def _isolate_reactive_state() -> Generator[None, None, None]:
     """
     Reset pyjinhx's process-global state around every test.
 

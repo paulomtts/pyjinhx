@@ -9,7 +9,7 @@ class StampCounter(ReactiveComponent):
     reacts_to: ClassVar[set[str]] = {"todos"}
 
     @classmethod
-    def load(cls):
+    def load(cls) -> "StampCounter":
         return cls(id="stamp-counter", remaining=0)
 
 

@@ -66,7 +66,6 @@ def test_tag_template_lookup_supports_hyphen_separator():
     original_environment = Renderer.peek_default_environment()
 
     with tempfile.TemporaryDirectory() as temp_dir:
-        # Create template with hyphen separator instead of underscore
         template_path = os.path.join(temp_dir, "button-group.html")
         with open(template_path, "w") as file:
             file.write('<div id="{{ id }}" class="btn-group">{{ content }}</div>\n')
@@ -85,7 +84,6 @@ def test_underscore_preferred_over_hyphen():
     original_environment = Renderer.peek_default_environment()
 
     with tempfile.TemporaryDirectory() as temp_dir:
-        # Create both underscore and hyphen versions
         with open(os.path.join(temp_dir, "nav_bar.html"), "w") as file:
             file.write('<nav id="{{ id }}">underscore</nav>\n')
         with open(os.path.join(temp_dir, "nav-bar.html"), "w") as file:
@@ -95,7 +93,6 @@ def test_underscore_preferred_over_hyphen():
 
         renderer = Renderer.get_default_renderer()
         rendered = renderer.render('<NavBar id="nav-1"/>')
-        # underscore version should be preferred
         assert rendered == '<nav id="nav-1">underscore</nav>'
 
     Renderer.set_default_environment(original_environment)
@@ -109,7 +106,6 @@ def test_python_instantiated_component_finds_hyphenated_template():
         component_dir = os.path.join(temp_dir, "components")
         os.makedirs(component_dir, exist_ok=True)
 
-        # Create component class
         module_path = os.path.join(component_dir, "hyphen_component.py")
         with open(module_path, "w") as file:
             file.write(
@@ -119,7 +115,6 @@ def test_python_instantiated_component_finds_hyphenated_template():
                 "    text: str\n"
             )
 
-        # Create template with hyphen separator (kebab-case)
         template_path = os.path.join(component_dir, "hyphen-template-component.html")
         with open(template_path, "w") as file:
             file.write('<div id="{{ id }}">{{ text }}</div>\n')
@@ -150,7 +145,6 @@ def test_nested_python_component_finds_hyphenated_template():
         component_dir = os.path.join(temp_dir, "components")
         os.makedirs(component_dir, exist_ok=True)
 
-        # Create parent component class that accepts a nested child
         module_path = os.path.join(component_dir, "nested_hyphen.py")
         with open(module_path, "w") as file:
             file.write(
@@ -165,12 +159,10 @@ def test_nested_python_component_finds_hyphenated_template():
                 "    child: Any = None\n"
             )
 
-        # Create child template with hyphen separator
         child_template = os.path.join(component_dir, "nested-hyphen-child.html")
         with open(child_template, "w") as file:
             file.write('<span id="{{ id }}" class="child">{{ label }}</span>\n')
 
-        # Create parent template with underscore (to test mixed naming)
         parent_template = os.path.join(component_dir, "nested_hyphen_parent.html")
         with open(parent_template, "w") as file:
             file.write('<div id="{{ id }}"><h1>{{ title }}</h1>{{ child }}</div>\n')

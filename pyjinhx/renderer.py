@@ -541,8 +541,6 @@ class Renderer:
                 content=rendered_children,
                 **attrs_without_id,
             )
-            # Remove from registry - fallback instances should not persist
-            # across renders to avoid TypeError on subsequent renders
             Registry.get_instances().pop(
                 Registry.make_key("BaseComponent", component_id), None
             )
@@ -620,9 +618,6 @@ class Renderer:
                 _attrs["data-pjx-key"] = str(_key)
             rendered_markup = stamp_root_attributes(rendered_markup, _attrs)
 
-        # For bare BaseComponent fallbacks (no registered class), derive the asset
-        # directory and name from the template path rather than the class file location,
-        # which would otherwise resolve to the pyjinhx package directory.
         if template_path is not None and type(component).__name__ == "BaseComponent":
             _asset_dir: str | None = os.path.dirname(template_path)
             _asset_name: str | None = os.path.splitext(os.path.basename(template_path))[

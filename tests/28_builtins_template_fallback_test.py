@@ -16,7 +16,4 @@ def test_builtins_modal_loads_adjacent_template_outside_loader_root():
             assert "Hi" in rendered
             assert "There" in rendered
     finally:
-        # Restore default-environment auto-detection so this test does not leave
-        # the process-wide default pointing at the now-deleted temp directory,
-        # which would break later tests that render via the default environment.
         Renderer.set_default_environment(None)

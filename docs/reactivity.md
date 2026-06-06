@@ -140,7 +140,7 @@ needed — the signature is the switch:
 class TodoItemRow(ReactiveComponent):
     title: str = ""
     done: bool = False
-    reacts_to: ClassVar[set[str]] = {"todo:{key}"}   # instance-tier dependency
+    reacts_to: ClassVar[set[str]] = {"todo"}         # instance-tier stem
 
     @classmethod
     def load(cls, key) -> "TodoItemRow":             # a param after cls ⇒ keyed
@@ -148,19 +148,20 @@ class TodoItemRow(ReactiveComponent):
         return cls(title=t.text, done=t.done)
 ```
 
-- **`reacts_to` is templated** with the literal placeholder `{key}`. It is
-  interpolated with the instance key (`{"todo:{key}"}` → `{"todo:42"}` for row 42),
-  so each row depends on its *own* state key.
+- **Instance-tier stems** on keyed components are declared as bare strings (e.g.
+  `{"todo"}`) and expanded automatically (`"todo"` → `"todo:42"` for row 42), so each
+  row depends on its *own* state key. Collection-tier keys stay literal (e.g.
+  `{"user", "users"}` — `"users"` is not suffixed).
 - **The key flows from `render()` into `load()` automatically**: you pass it to
   `render(key, ...)`, which forwards it to `load()`; it is captured, stashed, and used
   to derive the keyed id `f"{kebab(class)}-{key}"` (e.g. `todo-item-row-42`). It is
   exposed to the template as `{{ key }}` and stamped on the root as `data-pjx-key`,
   so the client manifest carries it back up on every request.
-- **Keys are strings framework-side.** The id, `data-pjx-key`, cache key, and
-  interpolation all coerce to `str`, and `load()` always *receives* the key as a
-  `str` (the manifest is strings) — call `int(key)` in `load()` for a typed DB lookup.
+- **Keys are strings framework-side** for cache, manifest, and stamping. `load()`
+  receives the coerced key (enums are unwrapped to `.value` first). Call
+  `int(key)` in `load()` for a typed DB lookup when the value is numeric.
 
-**Two-tier dirtying.** Templated entries are *instance-tier*; plain entries are
+**Two-tier dirtying.** Instance stems are *instance-tier*; collection keys are
 *collection-tier* (opt-in, just add one). A mutation route names both as needed:
 
 ```python
@@ -216,7 +217,7 @@ with a shared store if you need it).
   bandwidth and DOM churn; database work is saved separately by the `load()` cache.
 - **Type-singleton and instance-keyed**: a zero-arg `load(cls)` is a type-singleton
   (one mounted instance per type is reloaded); a keyed `load(cls, key)` supports many
-  independently-reactive instances with instance-tier deps (`"todo:{key}"`). See
+  independently-reactive instances with instance-tier stems (`"todo"`). See
   *Instance-keyed regions (rows)* above.
 - **`mounted` accepts** a request-like object (header duck-typed out, no framework import), the raw header string, a parsed list, or `None`.
 - **Reactivity is opt-in via `ReactiveComponent`**, which requires both `load()` and
