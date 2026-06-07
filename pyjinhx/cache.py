@@ -1,10 +1,14 @@
 from __future__ import annotations
 
 import threading
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from typing import TYPE_CHECKING, Any
 
-from .utils import coerce_load_key, coerce_load_key_str, interpolate_reactive_keys
+from .utils import (
+    coerce_load_key_str,
+    coerce_reactive_keys,
+    interpolate_reactive_keys,
+)
 
 if TYPE_CHECKING:
     from .base import BaseComponent
@@ -49,7 +53,6 @@ def _load_through_cache(
     args: tuple[Any, ...],
 ) -> "BaseComponent":
     raw_key = args[0] if args else None
-    coerced_key = coerce_load_key(raw_key) if raw_key is not None else None
     key = coerce_load_key_str(raw_key) if raw_key is not None else None
     cache_key = (cls, key)
 
@@ -58,7 +61,7 @@ def _load_through_cache(
     if cached is not None:
         return _with_key(cached.model_copy(), key)
 
-    result = raw_func(cls, coerced_key) if coerced_key is not None else raw_func(cls)
+    result = raw_func(cls, key) if key is not None else raw_func(cls)
     result = _with_key(result, key)
 
     if key is not None:
@@ -75,17 +78,18 @@ def _load_through_cache(
     return _with_key(result.model_copy(), key)
 
 
-def invalidate(dirtied: set[str]) -> None:
+def invalidate(dirtied: Iterable[object]) -> None:
     """
     Evict every cached ``load()`` result whose (interpolated) reactive keys intersect
     the dirtied keys. ``invalidate({"todo:42"})`` evicts one row; ``invalidate({"todos"})``
     evicts the collection-tier entries. Per-process only.
     """
-    if not dirtied:
+    keys = coerce_reactive_keys(dirtied)
+    if not keys:
         return
     with _lock:
         to_evict: set[tuple[type, str | None]] = set()
-        for k in dirtied:
+        for k in keys:
             to_evict |= _reverse.get(k, set())
         for cache_key in to_evict:
             _cache.pop(cache_key, None)

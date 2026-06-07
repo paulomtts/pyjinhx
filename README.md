@@ -160,7 +160,8 @@ def toggle(request):
 ```
 
 Instance-keyed components declare instance-tier stems as bare strings (`{"todo"}` expands
-to `"todo:<key>"`); `load()` unwraps enum keys to `.value` before your code runs.
+to `"todo:<key>"`). All framework keys (`reacts_to`, `dirtied`, and instance keys passed to
+`load()` / `render()`) accept strings or enums and normalize to `str` (enums via `.value`).
 
 See [the reactivity guide](docs/reactivity.md) for details.
 

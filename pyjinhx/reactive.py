@@ -18,8 +18,9 @@ from .cache import invalidate
 from .registry import Registry
 from .renderer import Renderer
 from .utils import (
-    coerce_load_key,
+    ReactiveKey,
     coerce_load_key_str,
+    coerce_reactive_keys,
     interpolate_reactive_keys,
     pascal_case_to_kebab_case,
     read_client_runtime,
@@ -64,7 +65,7 @@ class _ReactiveRender:
         cls: type[ReactiveComponent],
         key: object | None = None,
         *,
-        dirtied: set[str] | None = None,
+        dirtied: set[ReactiveKey] | None = None,
         mounted: object | None = None,
     ) -> Markup:
         """
@@ -84,16 +85,17 @@ class _ReactiveRender:
         if not keyed and key is not None:
             raise TypeError(f"{cls.__name__} is a type-singleton; render() takes no key.")
 
-        coerced_key = coerce_load_key(key) if key is not None else None
         skey = coerce_load_key_str(key) if key is not None else None
         own_keys = interpolate_reactive_keys(
             getattr(cls, "_pjx_reacts_to", frozenset()), skey, keyed=keyed
         )
-        effective_dirtied = dirtied if dirtied is not None else own_keys
-        invalidate((effective_dirtied or set()) | own_keys)
-        instance = cls.load(coerced_key) if keyed else cls.load()
+        effective_dirtied = (
+            coerce_reactive_keys(dirtied) if dirtied is not None else own_keys
+        )
+        invalidate(effective_dirtied | own_keys)
+        instance = cls.load(skey) if keyed else cls.load()
         primary = instance._render()
-        swaps = oob_swaps(effective_dirtied or set(), mounted, exclude_ids={instance.id})
+        swaps = oob_swaps(effective_dirtied, mounted, exclude_ids={instance.id})
         return Markup(primary) + swaps
 
     def __get__(
@@ -125,7 +127,7 @@ class ReactiveComponent(BaseComponent):
 
     model_config = ConfigDict(extra="allow", ignored_types=(_ReactiveRender,))
 
-    reacts_to: ClassVar[set[str]] = set()
+    reacts_to: ClassVar[set[ReactiveKey]] = set()
 
     _pjx_key: str | None = PrivateAttr(default=None)
 
@@ -155,7 +157,9 @@ class ReactiveComponent(BaseComponent):
     def __init_subclass__(cls, **kwargs: Any) -> None:
         super().__init_subclass__(**kwargs)
         cls._pjx_reactive = True
-        cls._pjx_reacts_to = frozenset(getattr(cls, "reacts_to", None) or ())
+        cls._pjx_reacts_to = frozenset(
+            coerce_reactive_keys(getattr(cls, "reacts_to", None) or ())
+        )
         if "load" in cls.__dict__ and not cls._pjx_reacts_to:
             raise TypeError(
                 f"{cls.__name__} defines load() but declares no reacts_to; a "
@@ -232,7 +236,7 @@ def _drop_nested(candidates: list[_Candidate]) -> list[_Candidate]:
 
 
 def oob_swaps(
-    dirtied: set[str],
+    dirtied: set[ReactiveKey],
     mounted: str | list[dict[str, Any]] | object | None,
     *,
     exclude_ids: set[str] | None = None,
@@ -262,7 +266,8 @@ def oob_swaps(
         A single Markup of concatenated OOB swap fragments, each carrying
         hx-swap-oob. Empty Markup if nothing needs swapping.
     """
-    invalidate(dirtied)
+    dirtied_keys = coerce_reactive_keys(dirtied)
+    invalidate(dirtied_keys)
 
     manifest = _parse_mounted(mounted)
     if not manifest:
@@ -300,7 +305,7 @@ def oob_swaps(
             skey,
             keyed=keyed,
         )
-        if not (effective & dirtied):
+        if not (effective & dirtied_keys):
             continue
 
         dedup_key = (component_type, skey)

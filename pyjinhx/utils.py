@@ -1,7 +1,27 @@
 import os
 import re
 from collections.abc import Iterable
-from typing import Any
+from enum import Enum
+from typing import TypeAlias
+
+ReactiveKey: TypeAlias = str | Enum
+
+
+def coerce_reactive_key(key: object) -> str:
+    """Normalize a reactive key: unwrap enums to ``.value``, then ``str``."""
+    if isinstance(key, Enum):
+        key = key.value
+    return str(key)
+
+
+coerce_load_key = coerce_reactive_key
+
+
+def coerce_reactive_keys(keys: Iterable[object] | None) -> set[str]:
+    """Normalize a collection of reactive dependency keys."""
+    if not keys:
+        return set()
+    return {coerce_reactive_key(key) for key in keys}
 
 
 def pascal_case_to_snake_case(name: str) -> str:
@@ -208,20 +228,11 @@ def read_client_runtime() -> str:
         return runtime_file.read()
 
 
-def coerce_load_key(key: object) -> Any:
-    """Return an enum's ``.value``; pass all other keys through unchanged."""
-    from enum import Enum
-
-    if isinstance(key, Enum):
-        return key.value
-    return key
-
-
 def coerce_load_key_str(key: object) -> str | None:
-    """Like ``coerce_load_key``, then coerce to ``str`` for cache/manifest use."""
+    """Like ``coerce_load_key``, but returns ``None`` for a ``None`` input."""
     if key is None:
         return None
-    return str(coerce_load_key(key))
+    return coerce_load_key(key)
 
 
 def interpolate_reactive_keys(

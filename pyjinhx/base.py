@@ -6,6 +6,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from .registry import Registry
 from .renderer import Renderer, RenderSession
+from .utils import ReactiveKey, coerce_reactive_keys
 
 logger = logging.getLogger("pyjinhx")
 logger.setLevel(logging.WARNING)
@@ -178,7 +179,7 @@ class BaseComponent(BaseModel):
     def render(
         self,
         *,
-        dirtied: set[str] | None = None,
+        dirtied: set[ReactiveKey] | None = None,
         mounted: object | None = None,
     ) -> Markup:
         """
@@ -214,11 +215,11 @@ class BaseComponent(BaseModel):
 
         primary = self._render()
         effective_dirtied = (
-            dirtied
+            coerce_reactive_keys(dirtied)
             if dirtied is not None
             else getattr(self, "_pjx_reacts_to", frozenset())
         )
-        swaps = oob_swaps(effective_dirtied or set(), mounted, exclude_ids={self.id})
+        swaps = oob_swaps(effective_dirtied, mounted, exclude_ids={self.id})
         # Wrap the primary as safe markup before concatenation: _render() returns a
         # plain str (Markup.unescape()), and `str + Markup` would invoke Markup.__radd__
         # and HTML-escape the primary. Markup(primary) + swaps keeps both raw.

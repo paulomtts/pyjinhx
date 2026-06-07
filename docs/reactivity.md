@@ -157,9 +157,9 @@ class TodoItemRow(ReactiveComponent):
   to derive the keyed id `f"{kebab(class)}-{key}"` (e.g. `todo-item-row-42`). It is
   exposed to the template as `{{ key }}` and stamped on the root as `data-pjx-key`,
   so the client manifest carries it back up on every request.
-- **Keys are strings framework-side** for cache, manifest, and stamping. `load()`
-  receives the coerced key (enums are unwrapped to `.value` first). Call
-  `int(key)` in `load()` for a typed DB lookup when the value is numeric.
+- **Keys** (`reacts_to`, `dirtied`, and instance keys for `load()` / `render()`) accept
+  strings or enums and normalize to `str` (enums via `.value`). Call `int(key)` in
+  `load()` for a typed DB lookup when the value is numeric.
 
 **Two-tier dirtying.** Instance stems are *instance-tier*; collection keys are
 *collection-tier* (opt-in, just add one). A mutation route names both as needed:
