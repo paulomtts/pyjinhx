@@ -8,7 +8,6 @@ from abc import abstractmethod
 from dataclasses import dataclass
 from functools import partial
 from collections.abc import Callable
-from enum import Enum
 from typing import Any, ClassVar
 
 from markupsafe import Markup
