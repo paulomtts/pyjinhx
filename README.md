@@ -1,12 +1,12 @@
 # PyJinHx
 
-Build reusable, type-safe UI components for template-based web apps in Python. PyJinHx combines Pydantic models with Jinja2 templates to give you template discovery, component composition, and JavaScript bundling.
+Build reusable, type-safe UI components for template-based web apps in Python. PyJinHx combines Pydantic models with co-located Jinja templates — compose in Python, with PascalCase tags in templates, or in HTML strings.
 
-- **Automatic Template Discovery**: Place templates next to component files—no manual paths
-- **JavaScript Bundling**: Automatically collects and bundles `.js` files from component directories
-- **Composability**: Nest components easily—works with single components, lists, and dictionaries
-- **Flexible**: Use Python classes for reusable components, HTML syntax for quick page composition
-- **Type Safety**: Pydantic models provide validation and IDE support
+- **Template discovery** — templates live next to component classes
+- **Composability** — nest via Pydantic fields or PascalCase tags in templates
+- **Assets** — co-located JS/CSS collected at the root render
+- **Reactivity** — dependency-aware out-of-band swaps for HTMX apps
+- **Type safety** — Pydantic validates component fields
 
 ## Installation
 
@@ -16,12 +16,9 @@ pip install pyjinhx
 
 ## Example
 
-This single example shows the full setup (Python classes + templates) and both ways to render:
+Two levels: **Card → Button**. Card is built in Python; Button is declared as a PascalCase tag in `card.html`.
 
-- Python-side: instantiate a component class and call `.render()`.
-- Template-side: render an HTML-like string with custom tags via `Renderer`.
-
-### Step 1: Define component classes
+### Components
 
 ```python
 # components/ui/button.py
@@ -37,28 +34,15 @@ class Button(BaseComponent):
 ```python
 # components/ui/card.py
 from pyjinhx import BaseComponent
-from components.ui.button import Button
 
 
 class Card(BaseComponent):
     id: str
     title: str
-    action_button: Button
+    button_text: str = "Sign up"
 ```
 
-```python
-# components/ui/page.py
-from pyjinhx import BaseComponent
-from components.ui.card import Card
-
-
-class Page(BaseComponent):
-    id: str
-    title: str
-    main_card: Card
-```
-
-### Step 2: Create templates (auto-discovered next to the class files)
+### Templates
 
 ```html
 <!-- components/ui/button.html -->
@@ -69,79 +53,73 @@ class Page(BaseComponent):
 <!-- components/ui/card.html -->
 <div id="{{ id }}" class="card">
   <h2>{{ title }}</h2>
-  <div class="action">{{ action_button }}</div>
+  <Button id="cta" text="{{ button_text }}" variant="primary"/>
 </div>
 ```
 
-```html
-<!-- components/ui/page.html -->
-<main id="{{ id }}">
-  <h1>{{ title }}</h1>
-  {{ main_card }}
-</main>
-```
-
-### Step 3A: Python-side rendering (`BaseComponent.render()`)
-
-```python
-from components.ui.button import Button
-from components.ui.card import Card
-from components.ui.page import Page
-
-page = Page(
-    id="home",
-    title="Welcome",
-    main_card=Card(
-        id="hero",
-        title="Get Started",
-        action_button=Button(id="cta", text="Sign up", variant="primary"),
-    ),
-)
-
-html = page.render()
-```
-
-### Step 3B: Template-side rendering (`Renderer.render(source)`)
+### Render
 
 ```python
 from pyjinhx import Renderer
+from components.ui.card import Card
 
-# Set template directory once
 Renderer.set_default_environment("./components")
 
-# Use the default renderer with auto_id enabled
-html = Renderer.get_default_renderer(auto_id=True).render(
-    """
-    <Page title="Welcome">
-      <Card title="Get Started">
-        <Button text="Sign up" variant="primary"/>
-      </Card>
-    </Page>
-    """
-)
+html = Card(id="hero", title="Get Started", button_text="Sign up").render()
 ```
 
-Template-side rendering supports:
+## Render order & tag resolution
 
-- Type safety for registered classes: if `Button(BaseComponent)` exists, its fields are validated when `<Button .../>` is instantiated.
-- Generic tags: if there is no registered class, a generic `BaseComponent` is used as long as the template file can be found.
+When `Card.render()` runs:
 
-## JavaScript & extra assets
+1. **Card template** — Jinja runs first; it outputs a `<Button .../>` tag (not final HTML yet).
+2. **Tag expansion** — PascalCase tags in template output are resolved and rendered next.
+3. **Button** — tag attrs become `Button` fields (Pydantic validation); `button.html` runs.
+4. **Assets** — co-located JS/CSS are collected once at the root render and injected last (CSS before HTML, JS after).
 
-- Component-local JS: if a component class `MyWidget` has a sibling file `my-widget.js`, it is auto-collected and injected once at the root render level.
-- Extra JS: pass `js=[...]` with file paths; missing files are ignored.
-- Extra HTML files: pass `html=[...]` with file paths; they are rendered and exposed in the template context by filename stem (e.g. `extra_content.html` → `extra_content.html` wrapper). Missing files raise `FileNotFoundError`.
+When `<Button id="cta" text="..." variant="primary"/>` is expanded:
 
-Optional UI components ship in **`pyjinhx.builtins`**. Full reference (fields, `px-` CSS classes, `--px-*` tokens, template fallback): [docs/guide/builtins.md](docs/guide/builtins.md), or the published site under **Guide → Built-in UI components**.
+| Priority | Rule | In this example |
+|----------|------|-----------------|
+| 1 | Existing instance with same class + `id` | — (none yet) |
+| 2 | Registered class matching the tag name | `Button` instantiated from attrs |
+| 3 | Template only (no class) | — |
 
-## Reactivity (dependency-aware OOB swaps)
+Inner tag content becomes the `content` field. See [PascalCase tags](docs/guide/tags.md) for details.
 
-Declare a component's state dependencies once and let mutation routes re-emit
-exactly the mounted regions that depend on what changed:
+```mermaid
+flowchart TB
+    subgraph order["Render order (inside-out)"]
+        C["1. Card template runs<br/>emits &lt;Button/&gt; tag"]
+        T["2. Tag expansion"]
+        B["3. Button template runs"]
+        A["4. Root CSS / JS injected"]
+    end
+
+    subgraph resolve["Tag resolution for Button"]
+        R1["Existing instance?"]
+        R2["Registered Button class"]
+        R3["Generic + template"]
+    end
+
+    C --> T
+    T --> R1
+    R1 -->|no| R2
+    R2 --> B
+    R1 -->|yes| B
+    B --> A
+```
+
+You can also start from an HTML string — `Renderer.render("<Card ...><Button .../></Card>")` — same order and tag rules.
+
+## Reactivity
+
+Declare what state each component depends on. After a mutation, render the **primary** response with `dirtied` and `mounted`; PyJinHx appends out-of-band swaps for other mounted regions whose dependencies overlap.
 
 ```python
 from typing import ClassVar
 from pyjinhx import ReactiveComponent
+
 
 class Counter(ReactiveComponent):
     remaining: int
@@ -151,78 +129,145 @@ class Counter(ReactiveComponent):
     def load(cls) -> "Counter":
         return cls(id="counter", remaining=db.remaining())
 
+
 @app.post("/todos/toggle")
 def toggle(request):
     db.toggle_all()
-    # render() loads the Counter itself — you never call load(). dirtied defaults
-    # to the primary's own reacts_to; pass dirtied={...} to dirty more.
     return Counter.render(dirtied={"todos"}, mounted=request)
 ```
 
-Instance-keyed components declare instance-tier stems as bare strings (`{"todo"}` expands
-to `"todo:<key>"`). All framework keys (`reacts_to`, `dirtied`, and instance keys passed to
-`load()` / `render()`) accept strings or enums and normalize to `str` (enums via `.value`).
+The client reports mounted regions via the `X-PJX-Mounted` header; `pjx.js` is injected automatically on layout components. Instance-keyed components use bare stems in `reacts_to` (e.g. `{"todo"}` → `"todo:<key>"`).
 
-See [the reactivity guide](docs/reactivity.md) for details.
+Details: [reactivity guide](docs/reactivity.md). Runnable demo: [examples/reactive_todo/](examples/reactive_todo/).
 
-## FastAPI + HTMX example
+## JS & CSS collection
 
-### Component class
+Place kebab-case asset files next to the component class (auto-collected at the root render):
 
-```python
-# components/ui/button.py
-from pyjinhx import BaseComponent
-
-
-class Button(BaseComponent):
-    id: str
-    text: str
+```
+components/ui/
+├── card.py
+├── card.html
+├── card.css      # Card → card.css
+└── button.js     # Button → button.js
 ```
 
-### Component template (with HTMX)
+| Class | JS / CSS file |
+|-------|----------------|
+| `Button` | `button.js`, `button.css` |
+| `ActionButton` | `action-button.js`, `action-button.css` |
+
+Each asset is included once per render session. Output order: `<style>` tags, HTML, then `<script>` tags. Pass extra paths via `js=[...]` and `css=[...]` on the component. Disable inlining with `Renderer.set_default_inline_js(False)` / `set_default_inline_css(False)`.
+
+Details: [asset collection guide](docs/guide/assets.md). Optional UI kit: [pyjinhx.builtins](docs/guide/builtins.md).
+
+## FastAPI + HTMX (reactive)
+
+Mark the page shell with `base_layout=True` so the client runtime (`pjx.js`) is injected once. A toggle route returns the row as the primary swap; the counter updates out-of-band because both declare `reacts_to={"todos"}`.
+
+```python
+# components/todo_row.py
+from typing import ClassVar
+
+from pyjinhx import BaseComponent, ReactiveComponent
+
+
+class TodoRow(ReactiveComponent):
+    title: str
+    done: bool = False
+    reacts_to: ClassVar[set[str]] = {"todos"}
+
+    @classmethod
+    def load(cls, key: int) -> "TodoRow":
+        todo = db.get(key)
+        return cls(id=f"row-{key}", title=todo.text, done=todo.done)
+
+
+class TodoCounter(ReactiveComponent):
+    remaining: int
+    reacts_to: ClassVar[set[str]] = {"todos"}
+
+    @classmethod
+    def load(cls) -> "TodoCounter":
+        return cls(id="counter", remaining=db.remaining())
+
+
+class TodoList(BaseComponent):
+    items: list[TodoRow] = []
+
+
+class TodoApp(BaseComponent, base_layout=True):
+    todo_list: TodoList | None = None
+    counter: TodoCounter | None = None
+```
 
 ```html
-<!-- components/ui/button.html -->
-<button
-  id="{{ id }}"
-  hx-post="/clicked"
-  hx-vals='{"button_id": "{{ id }}"}'
-  hx-target="#click-result"
-  hx-swap="innerHTML"
->
-  {{ text }}
-</button>
+<!-- todo_list.html -->
+<ul id="{{ id }}">
+  {% for item in items %}{{ item }}{% endfor %}
+</ul>
 ```
 
-### FastAPI app (two routes)
+```html
+<!-- todo_row.html -->
+<li>
+  <button hx-post="/rows/{{ key }}/toggle"
+          hx-target="closest [data-pjx-id]" hx-swap="outerHTML">toggle</button>
+  <span>{{ title }}</span>
+</li>
+```
+
+```html
+<!-- todo_counter.html -->
+<span>{{ remaining }} left</span>
+```
+
+```html
+<!-- todo_app.html -->
+<!doctype html>
+<html lang="en">
+  <head>
+    <script src="https://unpkg.com/htmx.org@2.0.3"></script>
+  </head>
+  <body>
+    <h1>Todos</h1>
+    {{ todo_list }}
+    {{ counter }}
+  </body>
+</html>
+```
 
 ```python
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
+from pyjinhx import Registry, Renderer
 
-from components.ui.button import Button
-
+Renderer.set_default_environment("./components")
 app = FastAPI()
 
 
-@app.get("/button", response_class=HTMLResponse)
-def button() -> str:
-    return (
-        Button(id="save-btn", text="Click me").render()
-        + '<div id="click-result"></div>'
-    )
+@app.get("/", response_class=HTMLResponse)
+def index():
+    with Registry.request_scope():
+        return str(
+            TodoApp(
+                id="todo-app",
+                todo_list=TodoList(
+                    id="todo-list",
+                    items=[TodoRow.load(t.id) for t in db.all()],
+                ),
+                counter=TodoCounter.load(),
+            ).render()
+        )
 
 
-@app.post("/clicked", response_class=HTMLResponse)
-def clicked(button_id: str = "unknown") -> str:
-    return f"Clicked: {button_id}"
+@app.post("/rows/{todo_id}/toggle", response_class=HTMLResponse)
+def toggle_row(request: Request, todo_id: int):
+    with Registry.request_scope():
+        db.toggle(todo_id)
+        return TodoRow.render(todo_id, dirtied={"todos"}, mounted=request)
 ```
 
-## Design decisions
+Run the full app: `uv run uvicorn examples.reactive_todo.app:app --reload` — see [examples/reactive_todo/README.md](examples/reactive_todo/README.md).
 
-- The builtins gallery (`tests/integration/app.py`) exposes **`GET /sse/panel-demo`**: a slow HTMX SSE stream wired to the **Beta** slot of the demo `Panel`, so you can confirm hidden slots stay mounted and keep receiving events. Coverage lives in `tests/integration/test_panel_sse.py` (runs a short-lived uvicorn bound to localhost).
-- Test suite imports are stabilized by adding the project root to `sys.path` in `tests/conftest.py`. This keeps absolute imports like `from pyjinhx import ...` and `from tests.ui...` working across different `pytest` import modes and Python runners.
-- Optional **builtins** (`pyjinhx.builtins`) ship twenty UI components with sibling templates, CSS, and JS where needed; documentation lives in [docs/guide/builtins.md](docs/guide/builtins.md). Importing `pyjinhx.builtins` registers those classes with the global registry like any other `BaseComponent` subclass.
-- Built-in components live under `site-packages`; Jinja’s `FileSystemLoader` does not load templates outside the configured root. The renderer therefore falls back to reading adjacent template files from disk for classes in the `pyjinhx.builtins` package when normal relative lookup fails, so your app’s loader can stay pointed at your own template directory.
-- **Co-located JS/CSS names:** Auto-collection looks for `pascal_case_to_kebab_case(ClassName) + ".js"` / `".css"` next to the class (e.g. `TabGroup` → `tab-group.js`, `PanelTrigger` → `panel-trigger.css`, `Panel` → `panel.js` / `panel.css`). Using snake_case filenames such as `tab_group.js` will not be picked up; templates may still resolve via both snake and kebab candidates.
-- **Built-in template slots:** Wrappers that accept arbitrary inner markup use the field and Jinja name **`content`** (`{{ content }}`) — e.g. `Notification`, `Popover`, `PanelTrigger`. Shell-style blocks use **`body`** (`Modal`, `Card`, `Alert`, `Drawer`). Short static chrome uses **`label`** (`Badge`, `Breadcrumb`, `TabGroup` tab titles).
+More: [components](docs/guide/components.md) · [nesting](docs/guide/nesting.md) · [FastAPI integration](docs/integrations/fastapi.md) · [HTMX integration](docs/integrations/htmx.md)
