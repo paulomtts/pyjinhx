@@ -1,8 +1,26 @@
+from dataclasses import dataclass
 from typing import ClassVar, Optional
 
 from pyjinhx import BaseComponent, ReactiveComponent
+from pyjinhx.load_context import get_load_context
 
-from . import store
+from .keys import Keys
+
+
+@dataclass(frozen=True)
+class TodoLoadContext:
+    """Request-scoped access to the demo store module."""
+
+    store: object
+
+
+def _store():
+    ctx = get_load_context()
+    if isinstance(ctx, TodoLoadContext):
+        return ctx.store
+    from . import store
+
+    return store
 
 
 class TodoItem(BaseComponent):
@@ -14,12 +32,14 @@ class TodoItem(BaseComponent):
 class TodoItemRow(ReactiveComponent):
     title: str = ""
     done: bool = False
-    reacts_to: ClassVar[set[str]] = {"todo"}
+    reacts_to: ClassVar[set[str]] = {Keys.TODO}
+    load_reads: ClassVar[set[str]] = {Keys.TODO}
 
     @classmethod
     def load(cls, key: str | int) -> "TodoItemRow":
-        t = store.get(int(key))
-        return cls(title=t.text, done=t.done)
+        store = _store()
+        todo = store.get(int(key))
+        return cls(title=todo.text, done=todo.done)
 
 
 class TodoList(BaseComponent):
@@ -28,29 +48,32 @@ class TodoList(BaseComponent):
 
 class TodoCounter(ReactiveComponent):
     remaining: int = 0
-    reacts_to: ClassVar[set[str]] = {"todos"}
+    reacts_to: ClassVar[set[str]] = {Keys.TODOS}
+    load_reads: ClassVar[set[str]] = {Keys.TODOS}
 
     @classmethod
     def load(cls) -> "TodoCounter":
-        return cls(remaining=store.remaining())
+        return cls(remaining=_store().remaining())
 
 
 class TodoTotal(ReactiveComponent):
     total: int = 0
-    reacts_to: ClassVar[set[str]] = {"todos"}
+    reacts_to: ClassVar[set[str]] = {Keys.TODOS}
+    load_reads: ClassVar[set[str]] = {Keys.TODOS}
 
     @classmethod
     def load(cls) -> "TodoTotal":
-        return cls(total=store.total())
+        return cls(total=_store().total())
 
 
 class TodoClearButton(ReactiveComponent):
     completed: int = 0
-    reacts_to: ClassVar[set[str]] = {"todos"}
+    reacts_to: ClassVar[set[str]] = {Keys.TODOS}
+    load_reads: ClassVar[set[str]] = {Keys.TODOS}
 
     @classmethod
     def load(cls) -> "TodoClearButton":
-        return cls(id="todo-clear", completed=store.completed())
+        return cls(id="todo-clear", completed=_store().completed())
 
 
 class TodoApp(BaseComponent, base_layout=True):

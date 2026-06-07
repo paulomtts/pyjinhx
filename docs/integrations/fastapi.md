@@ -131,17 +131,33 @@ def index() -> str:
 ### Middleware (recommended)
 
 ```python
+from dataclasses import dataclass
+
+from pyjinhx import LoadContext, Registry, enable_reactive_dev
 from starlette.middleware.base import BaseHTTPMiddleware
+
+
+@dataclass(frozen=True)
+class AppLoadContext(LoadContext):
+    db: object  # your database/session handle
 
 
 class RegistryScopeMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request, call_next):
-        with Registry.request_scope():
+        with Registry.request_scope(
+            load_context=AppLoadContext(db=get_db(request)),
+        ):
             return await call_next(request)
 
 
 app.add_middleware(RegistryScopeMiddleware)
+
+# optional: dev guardrails (warnings for missing mounted, unconsumed @mutates, etc.)
+enable_reactive_dev()
 ```
+
+Pair with `@mutates` on store methods so mutation routes can omit explicit `dirtied` —
+see [Reactivity](../reactivity.md#mutation-tracking-mutates).
 
 ## Tips
 

@@ -17,9 +17,10 @@ from examples.reactive_todo.components import (
     TodoItem,
     TodoItemRow,
     TodoList,
+    TodoLoadContext,
     TodoTotal,
 )
-from pyjinhx import Renderer
+from pyjinhx import Registry, Renderer
 
 Renderer.set_default_environment(Path(__file__).resolve().parents[2])
 
@@ -41,41 +42,44 @@ def _list() -> TodoList:
 
 @app.get("/", response_class=HTMLResponse)
 def index() -> str:
-    return str(
-        TodoApp(
-            id="todo-app",
-            todo_list=_list(),
-            counter=TodoCounter.load(),
-            total=TodoTotal.load(),
-            clear_button=TodoClearButton.load(),
-        ).render()
-    )
+    with Registry.request_scope(load_context=TodoLoadContext(store=store)):
+        return str(
+            TodoApp(
+                id="todo-app",
+                todo_list=_list(),
+                counter=TodoCounter.load(),
+                total=TodoTotal.load(),
+                clear_button=TodoClearButton.load(),
+            ).render()
+        )
 
 
 @app.post("/todos", response_class=HTMLResponse)
 def add(request: Request, text: str = Form(...)) -> str:
-    todo = store.add(text)
-    return TodoItemRow.render(todo.id, dirtied={"todos"}, mounted=request)
+    with Registry.request_scope(load_context=TodoLoadContext(store=store)):
+        store.add(text)
+        return str(TodoItemRow.render(store.all_todos()[-1].id, mounted=request))
 
 
 @app.post("/rows/{todo_id}/toggle", response_class=HTMLResponse)
 def toggle_row(request: Request, todo_id: int) -> str:
-    store.toggle(todo_id)
-    return TodoItemRow.render(
-        todo_id, dirtied={f"todo:{todo_id}", "todos"}, mounted=request
-    )
+    with Registry.request_scope(load_context=TodoLoadContext(store=store)):
+        store.toggle(todo_id)
+        return str(TodoItemRow.render(todo_id, mounted=request))
 
 
 @app.post("/todos/{todo_id}/toggle", response_class=HTMLResponse)
 def toggle(request: Request, todo_id: int) -> str:
-    todo = store.toggle(todo_id)
-    return _item(todo).render(dirtied={"todos"}, mounted=request)
+    with Registry.request_scope(load_context=TodoLoadContext(store=store)):
+        todo = store.toggle(todo_id)
+        return str(_item(todo).render(mounted=request))
 
 
 @app.post("/todos/clear-completed", response_class=HTMLResponse)
 def clear_completed(request: Request) -> str:
-    store.clear_completed()
-    return _list().render(dirtied={"todos"}, mounted=request)
+    with Registry.request_scope(load_context=TodoLoadContext(store=store)):
+        store.clear_completed()
+        return str(_list().render(mounted=request))
 
 
 if __name__ == "__main__":

@@ -5,6 +5,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 from itertools import count
 
+from pyjinhx import mutates
+
+from .keys import Keys
+
 _ids = count(1)
 _todos: dict[int, "Todo"] = {}
 
@@ -24,17 +28,20 @@ def reset() -> None:
         add(text)
 
 
+@mutates(Keys.TODOS)
 def add(text: str) -> Todo:
     todo = Todo(id=next(_ids), text=text)
     _todos[todo.id] = todo
     return todo
 
 
+@mutates(Keys.TODO, Keys.TODOS)
 def toggle(todo_id: int) -> Todo:
     _todos[todo_id].done = not _todos[todo_id].done
     return _todos[todo_id]
 
 
+@mutates(Keys.TODOS)
 def clear_completed() -> None:
     for todo_id in [tid for tid, t in _todos.items() if t.done]:
         del _todos[todo_id]

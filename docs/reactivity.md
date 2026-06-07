@@ -180,6 +180,108 @@ def toggle_row(request, todo_id):
 `dirtied={"todos"}` reloads **every** mounted row that declares the collection-tier
 key. The walk dedups by `(type, key)`, so each row reloads with its own key.
 
+Use `dirty_keys()` when you prefer an explicit set over string formatting:
+
+```python
+from pyjinhx import dirty_keys
+
+dirty_keys("todo", todo_id, "todos")  # {"todo:42", "todos"}
+```
+
+## State keys
+
+Centralize reactive key strings in a `StateKey` enum so `reacts_to`, `dirtied`, and
+`@mutates` share one vocabulary:
+
+```python
+from pyjinhx import StateKey
+
+class Keys(StateKey):
+    TODOS = "todos"
+    TODO = "todo"
+
+class TodoCounter(ReactiveComponent):
+    reacts_to: ClassVar[set[str | Keys]] = {Keys.TODOS}
+```
+
+Enums normalize to their `.value` everywhere keys are coerced.
+
+## Mutation tracking (`@mutates`)
+
+Decorate store mutation methods to invalidate the `load()` cache and accumulate
+dirtied keys for the current request. When a reactive `render()` omits `dirtied`,
+pending keys from `@mutates` are merged with the primary's own `reacts_to`:
+
+```python
+from pyjinhx import mutates
+
+@mutates(Keys.TODO, Keys.TODOS)
+def toggle(todo_id: int) -> Todo:
+    ...
+
+@app.post("/rows/{todo_id}/toggle")
+def toggle_row(request, todo_id):
+    store.toggle(todo_id)
+    return TodoItemRow.render(todo_id, mounted=request)  # dirtied auto
+```
+
+Use `Registry.request_scope()` on every request when relying on auto-dirtied — it
+resets mutation tracking per request. Explicit `dirtied={...}` (including an empty
+set) always overrides pending mutations.
+
+## Load context
+
+Pass request-scoped dependencies into `load()` without global imports:
+
+```python
+from dataclasses import dataclass
+from pyjinhx import LoadContext, get_load_context
+
+@dataclass(frozen=True)
+class AppContext(LoadContext):
+    db: Database
+
+class Counter(ReactiveComponent):
+    @classmethod
+    def load(cls, *, ctx: AppContext | None = None) -> "Counter":
+        ctx = ctx or get_load_context()
+        return cls(remaining=ctx.db.remaining())
+```
+
+Set context per request via `Registry.request_scope(load_context=AppContext(db=...))`
+or `load_scope(ctx)` in middleware. `load()` may also read `get_load_context()` when
+no `ctx` parameter is declared. Cache keys remain `(class, key)` — context is not
+part of the cache identity.
+
+Optionally declare `load_reads` on a component; in dev mode pyjinhx verifies every
+declared read key is covered by `reacts_to`.
+
+## Development mode
+
+Enable guardrails during local development:
+
+```python
+from pyjinhx import enable_reactive_dev
+
+enable_reactive_dev()          # warnings
+enable_reactive_dev(strict=True)  # raise instead
+```
+
+Checks include:
+
+- mutations recorded via `@mutates` but no reactive `render()` in the same request scope
+- reactive dirtied keys set but `mounted` omitted (OOB swaps skipped)
+- `load_reads` not covered by `reacts_to` (when `load_reads` is declared)
+
+Inspect the dependency graph at startup:
+
+```python
+from pyjinhx import dependency_graph, format_dependency_graph
+
+print(format_dependency_graph())
+# or format_dependency_graph(as_mermaid=True) for a flowchart
+```
+
 ## 4. `load()` results are cached
 
 Every reactive component's `load()` is wrapped in a **process-global, dependency-keyed

@@ -211,14 +211,25 @@ class BaseComponent(BaseModel):
         if dirtied is None and mounted is None:
             return self._render()
 
+        from .mutations import (
+            mark_reactive_render_consumed,
+            resolve_effective_dirtied,
+        )
         from .reactive import oob_swaps  # local import to avoid an import cycle
+        from .reactive_dev import warn_reactive_render_without_mounted
+
+        own_keys = coerce_reactive_keys(getattr(self, "_pjx_reacts_to", frozenset()))
+        warn_reactive_render_without_mounted(
+            dirtied=dirtied, mounted=mounted, own_keys=own_keys
+        )
 
         primary = self._render()
-        effective_dirtied = (
-            coerce_reactive_keys(dirtied)
-            if dirtied is not None
-            else getattr(self, "_pjx_reacts_to", frozenset())
+        effective_dirtied = resolve_effective_dirtied(
+            dirtied=dirtied,
+            mounted=mounted,
+            own_keys=own_keys,
         )
+        mark_reactive_render_consumed()
         swaps = oob_swaps(effective_dirtied, mounted, exclude_ids={self.id})
         # Wrap the primary as safe markup before concatenation: _render() returns a
         # plain str (Markup.unescape()), and `str + Markup` would invoke Markup.__radd__
