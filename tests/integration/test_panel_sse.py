@@ -20,7 +20,9 @@ def _find_free_port() -> int:
 @pytest.fixture
 def gallery_server_url() -> str:
     port = _find_free_port()
-    config = uvicorn.Config(create_app(), host="127.0.0.1", port=port, log_level="warning")
+    config = uvicorn.Config(
+        create_app(), host="127.0.0.1", port=port, log_level="warning"
+    )
     server = uvicorn.Server(config)
     thread = threading.Thread(target=server.run, daemon=True)
     thread.start()
@@ -51,7 +53,9 @@ def test_gallery_page_includes_panel_sse_demo_markup(gallery_server_url: str) ->
 
 def test_panel_sse_stream_emits_first_tick(gallery_server_url: str) -> None:
     with httpx.Client(timeout=httpx.Timeout(5.0, read=5.0)) as http_client:
-        with http_client.stream("GET", f"{gallery_server_url}/sse/panel-demo") as response:
+        with http_client.stream(
+            "GET", f"{gallery_server_url}/sse/panel-demo"
+        ) as response:
             response.raise_for_status()
             received = b""
             for chunk in response.iter_bytes():

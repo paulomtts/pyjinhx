@@ -2,9 +2,12 @@ from pathlib import Path
 
 from pyjinhx import Registry, Renderer, mutates
 from pyjinhx.cache import clear
-from pyjinhx.mutations import clear_mutations, pending_dirtied, resolve_effective_dirtied
+from pyjinhx.mutations import (
+    clear_mutations,
+    pending_dirtied,
+    resolve_effective_dirtied,
+)
 from tests.ui.reactive.reactive_clear_button import ReactiveClearButton
-from tests.ui.reactive.reactive_counter import ReactiveCounter
 from tests.ui.reactive.store import state
 
 UI_ROOT = Path(__file__).parent / "ui" / "reactive"

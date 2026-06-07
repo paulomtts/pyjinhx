@@ -98,7 +98,9 @@ class _ReactiveRender:
                 f"{cls.__name__}.render(<id>, dirtied=..., mounted=request)."
             )
         if not keyed and key is not None:
-            raise TypeError(f"{cls.__name__} is a type-singleton; render() takes no key.")
+            raise TypeError(
+                f"{cls.__name__} is a type-singleton; render() takes no key."
+            )
 
         skey = coerce_load_key_str(key) if key is not None else None
         from .mutations import mark_reactive_render_consumed, resolve_effective_dirtied

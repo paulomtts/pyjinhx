@@ -111,7 +111,9 @@ def test_reactive_render_does_not_escape_primary_html():
     out = str(
         primary.render(
             dirtied={"todos"},
-            mounted=[{"id": "clear-btn", "type": "ReactiveClearButton", "hash": "stale"}],
+            mounted=[
+                {"id": "clear-btn", "type": "ReactiveClearButton", "hash": "stale"}
+            ],
         )
     )
     assert "&lt;span" not in out and "&#34;" not in out

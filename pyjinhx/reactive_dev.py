@@ -5,7 +5,7 @@ from dataclasses import dataclass
 
 from .mutations import pending_dirtied, reactive_render_was_consumed
 from .registry import Registry
-from .utils import ReactiveKey, coerce_reactive_keys
+from .utils import ReactiveKey
 
 logger = logging.getLogger("pyjinhx")
 
