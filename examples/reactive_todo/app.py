@@ -43,43 +43,41 @@ def _list() -> TodoList:
 @app.get("/", response_class=HTMLResponse)
 def index() -> str:
     with Registry.request_scope(load_context=TodoLoadContext(store=store)):
-        return str(
-            TodoApp(
-                id="todo-app",
-                todo_list=_list(),
-                counter=TodoCounter.load(),
-                total=TodoTotal.load(),
-                clear_button=TodoClearButton.load(),
-            ).render()
-        )
+        return TodoApp(
+            id="todo-app",
+            todo_list=_list(),
+            counter=TodoCounter.load(),
+            total=TodoTotal.load(),
+            clear_button=TodoClearButton.load(),
+        ).render()
 
 
 @app.post("/todos", response_class=HTMLResponse)
 def add(request: Request, text: str = Form(...)) -> str:
     with Registry.request_scope(load_context=TodoLoadContext(store=store)):
         store.add(text)
-        return str(TodoItemRow.render(store.all_todos()[-1].id, mounted=request))
+        return TodoItemRow.render(store.all_todos()[-1].id, mounted=request)
 
 
 @app.post("/rows/{todo_id}/toggle", response_class=HTMLResponse)
 def toggle_row(request: Request, todo_id: int) -> str:
     with Registry.request_scope(load_context=TodoLoadContext(store=store)):
         store.toggle(todo_id)
-        return str(TodoItemRow.render(todo_id, mounted=request))
+        return TodoItemRow.render(todo_id, mounted=request)
 
 
 @app.post("/todos/{todo_id}/toggle", response_class=HTMLResponse)
 def toggle(request: Request, todo_id: int) -> str:
     with Registry.request_scope(load_context=TodoLoadContext(store=store)):
         todo = store.toggle(todo_id)
-        return str(_item(todo).render(mounted=request))
+        return _item(todo).render(mounted=request)
 
 
 @app.post("/todos/clear-completed", response_class=HTMLResponse)
 def clear_completed(request: Request) -> str:
     with Registry.request_scope(load_context=TodoLoadContext(store=store)):
         store.clear_completed()
-        return str(_list().render(mounted=request))
+        return _list().render(mounted=request)
 
 
 if __name__ == "__main__":
