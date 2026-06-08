@@ -53,7 +53,13 @@ class Counter(ReactiveComponent):
   `TodoCounter` → `"todo-counter"`), since a type-singleton's identity is its type, so
   `load()` need not set one. Pass an explicit `id` only for instance-keyed regions —
   multiple mounted instances of one type, e.g. `cls(id=f"todo-row-{user_id}", ...)`.
-- `state_hash()` is provided by `ReactiveComponent` (hash of `model_dump_json()`); override only for custom hashing.
+- `state_hash()` — canonical SHA-256 of sorted JSON from `model_dump(mode="json")`
+  with `state_hash_exclude` applied (`id` is excluded by default). Override for custom
+  hashing or add fields to `state_hash_exclude` for ephemeral UI-only state.
+- `effective_reacts_to()` — optional runtime narrowing of `reacts_to` after `load()`.
+  Static `reacts_to` must remain a **superset** of every key `effective_reacts_to()`
+  may return (dev mode enforces this). `oob_swaps` pre-filters on the superset, calls
+  `load()`, then intersects `effective_reacts_to()` with `dirtied`.
 
 Reactive components are stamped with `data-pjx-id`, `data-pjx-type` (the class
 name), and `data-pjx-hash` on their root element automatically.
@@ -225,6 +231,35 @@ class TodoCounter(ReactiveComponent):
 
 Enums normalize to their `.value` everywhere keys are coerced.
 
+## Runtime dependencies (`effective_reacts_to`)
+
+When a component's dependencies depend on loaded state, declare a static **superset**
+on `reacts_to` and override `effective_reacts_to()` to narrow at runtime:
+
+```python
+class AdminPanel(ReactiveComponent):
+    is_admin: bool = False
+    reacts_to: ClassVar[set[str]] = {"user", "settings"}
+
+    @classmethod
+    def load(cls) -> "AdminPanel":
+        user = get_current_user()
+        return cls(is_admin=user.is_admin)
+
+    def effective_reacts_to(self) -> set[str]:
+        if self.is_admin:
+            return {"user", "settings"}
+        return {"settings"}
+```
+
+`oob_swaps` intersects the static superset with `dirtied` first (fast pre-filter),
+then `load()`s, then intersects `effective_reacts_to()` with `dirtied`. A dirtied
+`"user"` key reloads the component but skips the OOB swap for non-admin instances.
+
+`dependency_graph()` and `load_reads` validation use the static superset only. In dev
+mode, `enable_reactive_dev()` warns (or raises) when `effective_reacts_to()` returns
+keys outside the superset.
+
 ## Mutation tracking (`@mutates`)
 
 Decorate store mutation methods to invalidate the `load()` cache and accumulate
@@ -247,6 +282,12 @@ def toggle_row(todo_id):
 Use `Registry.request_scope()` on every request when relying on auto-dirtied — it
 resets mutation tracking per request. Explicit `dirtied={...}` (including an empty
 set) always overrides pending mutations.
+
+`mutation_scope()` uses the same semantics as `@mutates`: invalidate and accumulate
+dirtied keys on **successful exit** only. If the block raises, nothing is recorded.
+`load()` called inside the block before the mutation completes may still see
+pre-mutation cache — call `LoadCache.invalidate(...)` explicitly when mid-scope
+freshness is required.
 
 ## Load context
 
@@ -375,6 +416,8 @@ Requires `pip install pyjinhx[redis]`. See [Redis integration](api/integrations-
 - **Hash gating is a skip-hint, not correctness authority**: a matching client hash
   earns permission to skip; missing/unknown/mismatched always swaps. It saves
   bandwidth and DOM churn; database work is saved separately by the `load()` cache.
+  Default `state_hash()` uses canonical sorted JSON with `id` excluded; set
+  `state_hash_exclude` or override `state_hash()` for custom fields.
 - **Type-singleton and instance-keyed**: a zero-arg `load(cls)` is a type-singleton
   (one mounted instance per type is reloaded); a keyed `load(cls, key)` supports many
   independently-reactive instances with instance-tier stems (`"todo"`). See

@@ -1,8 +1,11 @@
+import logging
 import re
 from html.parser import HTMLParser
 
 from .tag import Tag
 from ..utils import extract_tag_name_from_raw
+
+logger = logging.getLogger("pyjinhx")
 
 RE_PASCAL_CASE_TAG_NAME = re.compile(r"^[A-Z](?:[a-z]+(?:[A-Z][a-z]+)*)?$")
 
@@ -64,7 +67,20 @@ class Parser(HTMLParser):
             self._append_child(tag_node)
             return
 
+        logger.warning("Mismatched closing tag </%s>; emitting as raw HTML", tag)
         self._append_child(f"</{tag}>")
 
     def handle_data(self, data: str) -> None:
         self._append_child(data)
+
+    def handle_comment(self, data: str) -> None:
+        self._append_child(f"<!--{data}-->")
+
+    def handle_decl(self, decl: str) -> None:
+        self._append_child(f"<!{decl}>")
+
+    def close(self) -> None:
+        if self._stack:
+            unclosed = ", ".join(tag.name for tag in self._stack)
+            raise ValueError(f"Unclosed PascalCase component tags: {unclosed}")
+        super().close()

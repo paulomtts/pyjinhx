@@ -4,12 +4,9 @@ import logging
 import threading
 from abc import ABC, abstractmethod
 from collections.abc import Callable
+from typing import ClassVar
 
 logger = logging.getLogger("pyjinhx")
-
-_listener_lock = threading.Lock()
-_backend: InvalidationBackend | None = None
-_listener_started = False
 
 
 class InvalidationBackend(ABC):
@@ -25,56 +22,64 @@ class InvalidationBackend(ABC):
     def stop(self) -> None: ...
 
 
-def set_invalidation_backend(backend: InvalidationBackend | None) -> None:
-    global _backend
-    with _listener_lock:
-        if _listener_started and _backend is not None:
-            _backend.stop()
-        _backend = backend
+class InvalidationHub:
+    """Runtime coordinator for cross-process load-cache invalidation."""
 
+    _lock: ClassVar[threading.Lock] = threading.Lock()
+    _backend: ClassVar[InvalidationBackend | None] = None
+    _listener_started: ClassVar[bool] = False
 
-def publish_invalidation(keys: frozenset[str]) -> None:
-    if not keys or _backend is None:
-        return
-    try:
-        _backend.publish(keys)
-    except Exception:
-        logger.exception("Failed to publish load-cache invalidation for keys %r", keys)
+    @classmethod
+    def set_backend(cls, backend: InvalidationBackend | None) -> None:
+        with cls._lock:
+            if cls._listener_started and cls._backend is not None:
+                cls._backend.stop()
+                cls._listener_started = False
+            cls._backend = backend
 
-
-def _on_remote_invalidation(keys: frozenset[str]) -> None:
-    from .cache import invalidate
-
-    invalidate(keys, propagate=False)
-
-
-def start_invalidation_listener() -> None:
-    global _listener_started
-    with _listener_lock:
-        if _backend is None:
-            raise RuntimeError(
-                "No InvalidationBackend configured; call set_invalidation_backend() first."
+    @classmethod
+    def publish(cls, keys: frozenset[str]) -> None:
+        if not keys or cls._backend is None:
+            return
+        try:
+            cls._backend.publish(keys)
+        except Exception:
+            logger.exception(
+                "Failed to publish load-cache invalidation for keys %r", keys
             )
-        if _listener_started:
-            return
-        _backend.start(_on_remote_invalidation)
-        _listener_started = True
 
+    @classmethod
+    def start_listener(cls) -> None:
+        with cls._lock:
+            if cls._backend is None:
+                raise RuntimeError(
+                    "No InvalidationBackend configured; call "
+                    "InvalidationHub.set_backend() first."
+                )
+            if cls._listener_started:
+                return
+            cls._backend.start(cls._on_remote_invalidation)
+            cls._listener_started = True
 
-def stop_invalidation_listener() -> None:
-    global _listener_started
-    with _listener_lock:
-        if _backend is None or not _listener_started:
-            return
-        _backend.stop()
-        _listener_started = False
+    @classmethod
+    def stop_listener(cls) -> None:
+        with cls._lock:
+            if cls._backend is None or not cls._listener_started:
+                return
+            cls._backend.stop()
+            cls._listener_started = False
 
+    @classmethod
+    def reset(cls) -> None:
+        """Reset backend listener state. Mainly for tests."""
+        with cls._lock:
+            if cls._listener_started and cls._backend is not None:
+                cls._backend.stop()
+            cls._listener_started = False
+            cls._backend = None
 
-def reset_invalidation_state() -> None:
-    """Reset backend listener state. Mainly for tests."""
-    global _listener_started, _backend
-    with _listener_lock:
-        if _listener_started and _backend is not None:
-            _backend.stop()
-        _listener_started = False
-        _backend = None
+    @staticmethod
+    def _on_remote_invalidation(keys: frozenset[str]) -> None:
+        from .load_cache import LoadCache
+
+        LoadCache.invalidate(keys, propagate=False)

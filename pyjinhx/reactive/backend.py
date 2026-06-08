@@ -50,31 +50,8 @@ class ClientBackend(ABC):
     ) -> object | None:
         if explicit is not None:
             return explicit
-        from .mutations import pending_dirtied
+        from .mutations import MutationTracker
 
-        if dirtied is None and not pending_dirtied():
+        if dirtied is None and not MutationTracker.pending():
             return None
         return cls.current()
-
-
-class FastAPIClientBackend(ClientBackend):
-    """
-    Default client backend for FastAPI and Starlette.
-
-    Wraps a request object's ``.headers`` mapping. The backend instance is also
-    duck-typed for ``render()`` (``.headers.get``) without a separate proxy.
-    """
-
-    def __init__(self, request: object) -> None:
-        headers = getattr(request, "headers", None)
-        if headers is None:
-            raise TypeError("FastAPIClientBackend requires request.headers")
-        self.headers = headers
-
-    def get_header(self, name: str) -> str | None:
-        return self.headers.get(name)
-
-
-def fastapi_client_backend(request: object) -> FastAPIClientBackend:
-    """Build the default client backend from a FastAPI/Starlette request."""
-    return FastAPIClientBackend(request)

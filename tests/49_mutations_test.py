@@ -1,12 +1,9 @@
 from pathlib import Path
 
-from pyjinhx import Registry, Renderer, mutates
-from pyjinhx.reactive.cache import clear
-from pyjinhx.reactive.mutations import (
-    clear_mutations,
-    pending_dirtied,
-    resolve_effective_dirtied,
-)
+import pytest
+
+from pyjinhx import LoadCache, Registry, Renderer, mutates, mutation_scope
+from pyjinhx.reactive.mutations import MutationTracker
 from tests.ui.reactive.reactive_clear_button import ReactiveClearButton
 from tests.ui.reactive.reactive_counter import ReactiveCounter  # noqa: F401
 from tests.ui.reactive.store import state
@@ -20,15 +17,15 @@ def _mutate_todos() -> None:
 
 
 def test_mutates_accumulates_pending_dirtied():
-    clear_mutations()
+    MutationTracker.clear()
     _mutate_todos()
-    assert pending_dirtied() == {"todos"}
+    assert MutationTracker.pending() == {"todos"}
 
 
 def test_resolve_effective_dirtied_merges_pending():
-    clear_mutations()
+    MutationTracker.clear()
     _mutate_todos()
-    effective = resolve_effective_dirtied(
+    effective = MutationTracker.resolve_effective_dirtied(
         dirtied=None,
         mounted=[],
         own_keys={"todos"},
@@ -37,8 +34,8 @@ def test_resolve_effective_dirtied_merges_pending():
 
 
 def test_render_merges_pending_dirtied_when_omitted():
-    clear()
-    clear_mutations()
+    LoadCache.clear()
+    MutationTracker.clear()
     prev = Renderer.peek_default_environment()
     Renderer.set_default_environment(UI_ROOT)
     try:
@@ -47,14 +44,14 @@ def test_render_merges_pending_dirtied_when_omitted():
         with Registry.request_scope():
             out = str(ReactiveClearButton.render(mounted=manifest))
         assert "outerHTML:[data-pjx-id='counter']" in out
-        assert pending_dirtied() == set()
+        assert MutationTracker.pending() == set()
     finally:
         Renderer.set_default_environment(prev)
 
 
 def test_explicit_dirtied_overrides_pending():
-    clear()
-    clear_mutations()
+    LoadCache.clear()
+    MutationTracker.clear()
     prev = Renderer.peek_default_environment()
     Renderer.set_default_environment(UI_ROOT)
     try:
@@ -68,8 +65,40 @@ def test_explicit_dirtied_overrides_pending():
 
 
 def test_request_scope_isolates_mutations():
-    clear_mutations()
+    MutationTracker.clear()
     with Registry.request_scope():
         _mutate_todos()
-        assert pending_dirtied() == {"todos"}
-    assert pending_dirtied() == set()
+        assert MutationTracker.pending() == {"todos"}
+    assert MutationTracker.pending() == set()
+
+
+def test_mutation_scope_records_on_success():
+    LoadCache.clear()
+    MutationTracker.clear()
+    with mutation_scope("todos"):
+        state["remaining"] -= 1
+    assert MutationTracker.pending() == {"todos"}
+
+
+def test_mutation_scope_does_not_record_on_exception():
+    LoadCache.clear()
+    MutationTracker.clear()
+    with pytest.raises(ValueError):
+        with mutation_scope("todos"):
+            raise ValueError("mutation failed")
+    assert MutationTracker.pending() == set()
+
+
+def test_mutation_scope_and_mutates_parity_on_success():
+    LoadCache.clear()
+    MutationTracker.clear()
+    with mutation_scope("todos"):
+        pass
+    scope_pending = MutationTracker.pending()
+
+    LoadCache.clear()
+    MutationTracker.clear()
+    _mutate_todos()
+    mutates_pending = MutationTracker.pending()
+
+    assert scope_pending == mutates_pending == {"todos"}

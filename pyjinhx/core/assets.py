@@ -46,7 +46,18 @@ class RenderSession:
     runtime_injected: bool = False
 
     def manifest(self, *, resolver: AssetUrlResolver) -> AssetManifest:
-        return asset_manifest(self, resolver=resolver)
+        stylesheets: list[str] = []
+        scripts: list[str] = []
+        for asset in self.assets:
+            url = resolver(asset.path)
+            if asset.kind == "css":
+                stylesheets.append(url)
+            else:
+                scripts.append(url)
+        return AssetManifest(
+            stylesheets=tuple(stylesheets),
+            scripts=tuple(scripts),
+        )
 
 
 @dataclass(frozen=True)
@@ -66,7 +77,7 @@ def asset_mode_from_inline(inline: bool) -> AssetMode:
     return AssetMode.INLINE if inline else AssetMode.NONE
 
 
-def default_asset_url(path: str, *, kind: AssetKind, root: str) -> str:
+def default_asset_url(path: str, *, root: str) -> str:
     normalized_path = os.path.normpath(path)
     if normalized_path == os.path.normpath(runtime_asset_path()):
         return DEFAULT_RUNTIME_URL
@@ -76,18 +87,28 @@ def default_asset_url(path: str, *, kind: AssetKind, root: str) -> str:
 
 def make_default_asset_url_resolver(root: str) -> AssetUrlResolver:
     def resolve(path: str) -> str:
-        kind: AssetKind = "css" if path.lower().endswith(".css") else "js"
-        return default_asset_url(path, kind=kind, root=root)
+        return default_asset_url(path, root=root)
 
     return resolve
 
 
+_hash_filename_cache: dict[tuple[str, float], str] = {}
+
+
 def hashed_filename(path: str, *, hash_len: int = 8) -> str:
     """Return a cache-busted filename such as ``button.a1b2c3d4.js``."""
-    with open(path, "rb") as asset_file:
+    normalized_path = os.path.normpath(path)
+    mtime = os.path.getmtime(normalized_path)
+    cache_key = (normalized_path, mtime, hash_len)
+    cached = _hash_filename_cache.get(cache_key)
+    if cached is not None:
+        return cached
+    with open(normalized_path, "rb") as asset_file:
         digest = hashlib.sha256(asset_file.read()).hexdigest()[:hash_len]
-    base_name, extension = os.path.splitext(os.path.basename(path))
-    return f"{base_name}.{digest}{extension}"
+    base_name, extension = os.path.splitext(os.path.basename(normalized_path))
+    result = f"{base_name}.{digest}{extension}"
+    _hash_filename_cache[cache_key] = result
+    return result
 
 
 def resolver_with_hash(base_url: str, root: str) -> AssetUrlResolver:

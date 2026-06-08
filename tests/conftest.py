@@ -3,19 +3,15 @@ from typing import Any
 
 import pytest
 
-from pyjinhx import CacheScope, Registry, get_load_cache_scope, set_load_cache_scope
+from pyjinhx import CacheScope, ClientBackend, LoadCache, MutationTracker, Registry, shutdown_pyjinhx
 from pyjinhx.core.assets import RenderSession
-from pyjinhx.reactive.cache import clear as clear_load_cache
-from pyjinhx import ClientBackend
-from pyjinhx.reactive.invalidation import reset_invalidation_state
-from pyjinhx.reactive.mutations import clear_mutations
+from pyjinhx.reactive.invalidation import InvalidationHub
 
 
 def _noop_inject_runtime(
-    self: Any,
     session: RenderSession,
-    component: Any,
     *,
+    js_mode: Any,
     client: object | None = None,
 ) -> None:
     return
@@ -26,9 +22,18 @@ def _suppress_pjx_runtime_injection(request: pytest.FixtureRequest, monkeypatch:
     if request.node.get_closest_marker("pjx_runtime"):
         return
     monkeypatch.setattr(
-        "pyjinhx.core.renderer.Renderer._inject_runtime",
+        "pyjinhx.core.renderer.inject_runtime",
         _noop_inject_runtime,
     )
+
+
+@pytest.fixture(autouse=True)
+def _clean_config_state() -> Generator[None, None, None]:
+    shutdown_pyjinhx()
+    InvalidationHub.reset()
+    yield
+    shutdown_pyjinhx()
+    InvalidationHub.reset()
 
 
 @pytest.fixture(autouse=True)
@@ -39,18 +44,18 @@ def _isolate_reactive_state() -> Generator[None, None, None]:
     Mirrors production: load() cache (REQUEST scope), instance registry, and
     mutation tracking are all request-scoped.
     """
-    original_scope = get_load_cache_scope()
-    clear_load_cache()
-    clear_mutations()
-    reset_invalidation_state()
+    original_scope = LoadCache.scope()
+    LoadCache.clear()
+    MutationTracker.clear()
+    InvalidationHub.reset()
     ClientBackend.reset()
     Registry.clear_instances()
-    set_load_cache_scope(CacheScope.PROCESS)
+    LoadCache.set_scope(CacheScope.REQUEST)
     with Registry.request_scope():
         yield
-    clear_load_cache()
-    clear_mutations()
-    reset_invalidation_state()
+    LoadCache.clear()
+    MutationTracker.clear()
+    InvalidationHub.reset()
     ClientBackend.reset()
     Registry.clear_instances()
-    set_load_cache_scope(original_scope)
+    LoadCache.set_scope(original_scope)

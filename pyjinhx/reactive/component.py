@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import inspect
+import json
 from abc import abstractmethod
 from collections.abc import Callable
 from functools import partial
@@ -11,31 +12,13 @@ from markupsafe import Markup
 from pydantic import ConfigDict, PrivateAttr, model_validator
 
 from pyjinhx.core.base import BaseComponent
-from pyjinhx.utils import (
+from pyjinhx.reactive.keys import (
     ReactiveKey,
     coerce_load_key_str,
     coerce_reactive_keys,
     interpolate_reactive_keys,
-    pascal_case_to_kebab_case,
 )
-
-from .cache import invalidate
-from .client import oob_swaps
-
-
-def _load_param_count(func: Any) -> int:
-    """Count ``load()`` parameters excluding ``cls``, ``ctx``, and variadics."""
-    params = inspect.signature(func).parameters
-    return sum(
-        1
-        for name, param in params.items()
-        if name not in ("cls", "ctx")
-        and param.kind
-        not in (
-            inspect.Parameter.VAR_KEYWORD,
-            inspect.Parameter.VAR_POSITIONAL,
-        )
-    )
+from pyjinhx.utils import pascal_case_to_kebab_case
 
 
 class _ReactiveRender:
@@ -74,29 +57,27 @@ class _ReactiveRender:
 
         skey = coerce_load_key_str(key) if key is not None else None
         from .backend import ClientBackend
-        from .dev import warn_reactive_render_without_mounted
-        from .mutations import mark_reactive_render_consumed, resolve_effective_dirtied
+        from .render import reactive_render_bundle
 
         resolved_mounted = ClientBackend.resolve_mounted(mounted, dirtied=dirtied)
         own_keys = interpolate_reactive_keys(
             getattr(cls, "_pjx_reacts_to", frozenset()), skey, keyed=keyed
         )
-        warn_reactive_render_without_mounted(
-            dirtied=dirtied, mounted=resolved_mounted, own_keys=own_keys
-        )
-        effective_dirtied = resolve_effective_dirtied(
+        loaded: list[ReactiveComponent] = []
+
+        def build_primary() -> str:
+            instance = cls.load(skey) if keyed else cls.load()
+            loaded.append(instance)
+            return instance._render(emit_assets=False)
+
+        return reactive_render_bundle(
+            primary_html=build_primary,
+            own_keys=own_keys,
             dirtied=dirtied,
             mounted=resolved_mounted,
-            own_keys=own_keys,
+            exclude_ids=lambda: {loaded[0].id},
+            invalidate_before_primary=True,
         )
-        invalidate(effective_dirtied | own_keys)
-        instance = cls.load(skey) if keyed else cls.load()
-        primary = instance._render(emit_assets=False)
-        mark_reactive_render_consumed()
-        swaps = oob_swaps(
-            effective_dirtied, resolved_mounted, exclude_ids={instance.id}
-        )
-        return Markup(primary) + swaps
 
     def __get__(
         self,
@@ -129,6 +110,7 @@ class ReactiveComponent(BaseComponent):
 
     reacts_to: ClassVar[set[ReactiveKey]] = set()
     load_reads: ClassVar[set[ReactiveKey]] = set()
+    state_hash_exclude: ClassVar[frozenset[str]] = frozenset({"id"})
 
     _pjx_key: str | None = PrivateAttr(default=None)
 
@@ -147,13 +129,48 @@ class ReactiveComponent(BaseComponent):
         """Rebuild this component from the current world (zero-arg, type-singleton in v1)."""
         ...
 
+    @staticmethod
+    def _load_param_count(func: Any) -> int:
+        """Count ``load()`` parameters excluding ``cls``, ``ctx``, and variadics."""
+        params = inspect.signature(func).parameters
+        return sum(
+            1
+            for name, param in params.items()
+            if name not in ("cls", "ctx")
+            and param.kind
+            not in (
+                inspect.Parameter.VAR_KEYWORD,
+                inspect.Parameter.VAR_POSITIONAL,
+            )
+        )
+
+    def effective_reacts_to(self) -> set[str]:
+        """
+        Runtime reactive keys this instance depends on.
+
+        Defaults to the interpolated static ``reacts_to`` declaration. Override to
+        narrow (or expand, with dev warnings) based on loaded instance state. The
+        static ``reacts_to`` must remain a superset for cache-safety.
+        """
+        component_class = type(self)
+        return interpolate_reactive_keys(
+            getattr(component_class, "_pjx_reacts_to", frozenset()),
+            self._pjx_key,
+            keyed=getattr(component_class, "_pjx_keyed", False),
+        )
+
     def state_hash(self) -> str:
         """
         Stable content hash of this component's state, used to gate OOB swaps so a
-        region whose value did not change is not re-sent. Defaults to a hash of
-        ``model_dump_json()``; override for custom hashing.
+        region whose value did not change is not re-sent. Defaults to a SHA-256 hex
+        digest of canonical JSON from ``model_dump(mode="json")`` with
+        ``state_hash_exclude`` applied (``id`` is excluded by default). Override for
+        custom hashing.
         """
-        return hashlib.sha256(self.model_dump_json().encode("utf-8")).hexdigest()[:16]
+        exclude = getattr(type(self), "state_hash_exclude", frozenset({"id"}))
+        payload = self.model_dump(mode="json", exclude=exclude)
+        canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"))
+        return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
     def __init_subclass__(cls, **kwargs: Any) -> None:
         super().__init_subclass__(**kwargs)
@@ -172,8 +189,14 @@ class ReactiveComponent(BaseComponent):
         if "load" in cls.__dict__:
             _load = cls.__dict__["load"]
             _func = _load.__func__ if isinstance(_load, classmethod) else _load
-            cls._pjx_keyed = _load_param_count(_func) == 1
+            param_count = ReactiveComponent._load_param_count(_func)
+            if param_count > 1:
+                raise TypeError(
+                    f"{cls.__name__}.load() has {param_count} key parameters; "
+                    f"at most one instance key is supported."
+                )
+            cls._pjx_keyed = param_count == 1
         if "load" in cls.__dict__:
-            from .cache import install_cached_load
+            from .load_cache import LoadCache
 
-            install_cached_load(cls)
+            LoadCache.install_cached_load(cls)

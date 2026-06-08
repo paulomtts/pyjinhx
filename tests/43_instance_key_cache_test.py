@@ -1,7 +1,6 @@
 from typing import ClassVar
 
-from pyjinhx import ReactiveComponent, invalidate
-from pyjinhx.reactive.cache import clear
+from pyjinhx import LoadCache, ReactiveComponent
 
 load_calls = {"n": 0}
 
@@ -17,7 +16,7 @@ class Row(ReactiveComponent):
 
 
 def _reset():
-    clear()
+    LoadCache.clear()
     load_calls["n"] = 0
 
 
@@ -51,7 +50,7 @@ def test_instance_invalidation_evicts_one_row():
     _reset()
     Row.load("1")
     Row.load("2")
-    invalidate({"row:1"})
+    LoadCache.invalidate({"row:1"})
     Row.load("1")  # miss -> reload
     Row.load("2")  # still cached
     assert load_calls["n"] == 3
@@ -61,7 +60,7 @@ def test_stem_invalidation_evicts_matching_instance_keys():
     _reset()
     Row.load("1")
     Row.load("2")
-    invalidate({"row"})
+    LoadCache.invalidate({"row"})
     Row.load("1")
     Row.load("2")
     assert load_calls["n"] == 4
@@ -71,7 +70,7 @@ def test_collection_invalidation_evicts_all_rows():
     _reset()
     Row.load("1")
     Row.load("2")
-    invalidate({"rows"})  # both rows declare "rows"
+    LoadCache.invalidate({"rows"})  # both rows declare "rows"
     Row.load("1")
     Row.load("2")
     assert load_calls["n"] == 4

@@ -1,10 +1,8 @@
 from enum import Enum
 from typing import ClassVar
 
-from pyjinhx import ReactiveComponent, oob_swaps
-from pyjinhx.reactive.cache import clear
-from pyjinhx.utils import (
-    coerce_load_key,
+from pyjinhx import ReactiveComponent, LoadCache, oob_swaps
+from pyjinhx.reactive.keys import (
     coerce_load_key_str,
     coerce_reactive_key,
     coerce_reactive_keys,
@@ -69,7 +67,7 @@ class TodoCounter(ReactiveComponent):
 
 
 def test_reacts_to_enum_matches_string_dirtied_in_oob_swaps():
-    clear()
+    LoadCache.clear()
     out = str(
         oob_swaps(
             {"todos"},
@@ -80,7 +78,7 @@ def test_reacts_to_enum_matches_string_dirtied_in_oob_swaps():
 
 
 def test_dirtied_enum_matches_enum_reacts_to_in_oob_swaps():
-    clear()
+    LoadCache.clear()
     out = str(
         oob_swaps(
             {StateKey.TODOS},
@@ -90,15 +88,15 @@ def test_dirtied_enum_matches_enum_reacts_to_in_oob_swaps():
     assert "outerHTML:[data-pjx-id='counter']" in out
 
 
-def test_coerce_load_key_unwraps_enum():
-    assert coerce_load_key(TodoId.FIRST) == "1"
+def test_coerce_reactive_key_unwraps_todo_id_enum():
+    assert coerce_reactive_key(TodoId.FIRST) == "1"
     assert coerce_load_key_str(TodoId.SECOND) == "2"
-    assert coerce_load_key("plain") == "plain"
-    assert coerce_load_key(42) == "42"
+    assert coerce_reactive_key("plain") == "plain"
+    assert coerce_reactive_key(42) == "42"
 
 
 def test_load_coerces_enum_to_str_for_load():
-    clear()
+    LoadCache.clear()
     row = EnumRow.load(TodoId.FIRST)
     assert row.label == "row 1"
     assert row._pjx_key == "1"

@@ -4,7 +4,7 @@ from typing import ClassVar
 import pytest
 
 from pyjinhx import ReactiveComponent, Registry, mutates
-from pyjinhx.reactive.cache import clear
+from pyjinhx import LoadCache
 from pyjinhx.reactive.dev import (
     dependency_graph,
     disable_reactive_dev,
@@ -39,7 +39,7 @@ class BadReads(ReactiveComponent):
 
 def setup_function():
     disable_reactive_dev()
-    clear()
+    LoadCache.clear()
 
 
 def teardown_function():

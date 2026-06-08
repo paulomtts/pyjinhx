@@ -10,7 +10,6 @@ from pyjinhx import (
     asset_manifest,
     client_script,
     hashed_filename,
-    layout_asset_tags,
     make_default_asset_url_resolver,
     oob_swaps,
     resolver_with_hash,
@@ -157,7 +156,7 @@ def test_layout_asset_tags_lists_all_files():
     def resolver(path: str) -> str:
         return f"/static/{os.path.basename(path)}"
 
-    tags = str(layout_asset_tags(finder, resolver=resolver))
+    tags = str(finder.layout_asset_tags(resolver=resolver))
 
     assert "unified-component.css" in tags
     assert "unified-component.js" in tags

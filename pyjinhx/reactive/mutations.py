@@ -4,74 +4,70 @@ import functools
 from collections.abc import Callable, Generator, Iterable
 from contextlib import contextmanager
 from contextvars import ContextVar
-from typing import Any, TypeVar
+from typing import Any, ClassVar, TypeVar
 
-from .cache import invalidate
-from ..utils import ReactiveKey, coerce_reactive_keys
-
-_mutation_dirtied: ContextVar[set[str] | None] = ContextVar(
-    "mutation_dirtied", default=None
-)
-_reactive_render_consumed: ContextVar[bool] = ContextVar(
-    "reactive_render_consumed", default=False
-)
+from .keys import ReactiveKey, coerce_reactive_keys
+from .load_cache import LoadCache
 
 F = TypeVar("F", bound=Callable[..., Any])
 
 
-def pending_dirtied() -> set[str]:
-    """Return accumulated dirtied keys for the current request scope."""
-    registry = _mutation_dirtied.get()
-    if registry is None:
-        return set()
-    return set(registry)
+class MutationTracker:
+    """Request-scoped accumulation of dirtied reactive keys from mutations."""
 
+    _dirtied: ClassVar[ContextVar[set[str] | None]] = ContextVar(
+        "mutation_dirtied", default=None
+    )
+    _render_consumed: ClassVar[ContextVar[bool]] = ContextVar(
+        "reactive_render_consumed", default=False
+    )
 
-def clear_mutations() -> None:
-    """Reset accumulated dirtied keys and render-consumed flag."""
-    _mutation_dirtied.set(set())
-    _reactive_render_consumed.set(False)
+    @classmethod
+    def pending(cls) -> set[str]:
+        registry = cls._dirtied.get()
+        if registry is None:
+            return set()
+        return set(registry)
 
+    @classmethod
+    def clear(cls) -> None:
+        cls._dirtied.set(set())
+        cls._render_consumed.set(False)
 
-def _accumulate_dirtied(keys: Iterable[ReactiveKey]) -> None:
-    normalized = coerce_reactive_keys(keys)
-    if not normalized:
-        return
-    current = _mutation_dirtied.get()
-    if current is None:
-        current = set()
-        _mutation_dirtied.set(current)
-    current.update(normalized)
+    @classmethod
+    def record(cls, keys: Iterable[ReactiveKey]) -> None:
+        normalized = coerce_reactive_keys(keys)
+        if not normalized:
+            return
+        LoadCache.invalidate(normalized)
+        current = cls._dirtied.get()
+        if current is None:
+            current = set()
+            cls._dirtied.set(current)
+        current.update(normalized)
 
+    @classmethod
+    def mark_render_consumed(cls) -> None:
+        cls._render_consumed.set(True)
+        cls._dirtied.set(set())
 
-def mark_reactive_render_consumed() -> None:
-    """Record that a reactive render consumed pending mutations."""
-    _reactive_render_consumed.set(True)
-    _mutation_dirtied.set(set())
+    @classmethod
+    def render_was_consumed(cls) -> bool:
+        return cls._render_consumed.get()
 
-
-def reactive_render_was_consumed() -> bool:
-    return _reactive_render_consumed.get()
-
-
-def resolve_effective_dirtied(
-    *,
-    dirtied: set[ReactiveKey] | None,
-    mounted: object | None,
-    own_keys: set[str],
-) -> set[str]:
-    """
-    Resolve dirtied keys for a reactive render.
-
-    When ``dirtied`` is omitted and reactive mode is active (``mounted`` set),
-    merge the primary's own keys with pending mutations from ``@mutates``.
-    Explicit ``dirtied`` (including an empty set) always wins.
-    """
-    if dirtied is not None:
-        return coerce_reactive_keys(dirtied)
-    if mounted is None:
-        return own_keys
-    return own_keys | pending_dirtied()
+    @classmethod
+    def resolve_effective_dirtied(
+        cls,
+        *,
+        dirtied: set[ReactiveKey] | None,
+        mounted: object | None,
+        own_keys: set[str],
+    ) -> set[str]:
+        if dirtied is not None:
+            return coerce_reactive_keys(dirtied)
+        if mounted is None:
+            return own_keys
+        return own_keys | cls.pending()
 
 
 def mutates(*keys: ReactiveKey) -> Callable[[F], F]:
@@ -86,10 +82,7 @@ def mutates(*keys: ReactiveKey) -> Callable[[F], F]:
         @functools.wraps(func)
         def wrapper(*args: Any, **kwargs: Any) -> Any:
             result = func(*args, **kwargs)
-            normalized = coerce_reactive_keys(keys)
-            if normalized:
-                invalidate(normalized)
-                _accumulate_dirtied(normalized)
+            MutationTracker.record(keys)
             return result
 
         return wrapper  # type: ignore[return-value]
@@ -100,14 +93,15 @@ def mutates(*keys: ReactiveKey) -> Callable[[F], F]:
 @contextmanager
 def mutation_scope(*keys: ReactiveKey) -> Generator[None, None, None]:
     """
-    Context manager that accumulates dirtied keys for a block.
+    Context manager that invalidates and accumulates dirtied keys.
 
-    Keys passed to the scope are added on entry (and invalidate the cache).
+    Keys are recorded on successful exit (same semantics as ``@mutates``).
+    If the block raises, the cache is not invalidated and no dirtied keys
+    are accumulated.
     """
-    normalized = coerce_reactive_keys(keys)
     try:
         yield
-    finally:
-        if normalized:
-            invalidate(normalized)
-            _accumulate_dirtied(normalized)
+    except BaseException:
+        raise
+    else:
+        MutationTracker.record(keys)

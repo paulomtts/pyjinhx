@@ -7,25 +7,14 @@ from fastapi.testclient import TestClient
 from pyjinhx import (
     CacheScope,
     ClientBackend,
-    get_load_cache_scope,
+    LoadCache,
     setup,
-    shutdown_pyjinhx,
 )
-from pyjinhx.reactive.invalidation import reset_invalidation_state
-
-
-@pytest.fixture(autouse=True)
-def _clean_config_state():
-    shutdown_pyjinhx()
-    reset_invalidation_state()
-    yield
-    shutdown_pyjinhx()
-    reset_invalidation_state()
 
 
 def test_setup_without_app_configures_process():
     setup(cache_scope=CacheScope.REQUEST)
-    assert get_load_cache_scope() == CacheScope.REQUEST
+    assert LoadCache.scope() == CacheScope.REQUEST
 
 
 def test_setup_chains_existing_lifespan():
@@ -42,7 +31,7 @@ def test_setup_chains_existing_lifespan():
 
     with TestClient(app) as _client:
         assert events == ["user_start"]
-        assert get_load_cache_scope() == CacheScope.REQUEST
+        assert LoadCache.scope() == CacheScope.REQUEST
     assert events == ["user_start", "user_stop"]
 
 
@@ -68,7 +57,7 @@ def test_setup_is_idempotent():
 
     with TestClient(app) as client:
         client.get("/")
-    assert get_load_cache_scope() == CacheScope.REQUEST
+    assert LoadCache.scope() == CacheScope.REQUEST
 
 
 def test_setup_rejects_non_asgi_app():

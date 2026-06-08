@@ -2,7 +2,7 @@ import json
 
 import pytest
 
-from pyjinhx import BaseComponent, PJX_MOUNTED_HEADER, Renderer, client_has_mounted_manifest
+from pyjinhx import BaseComponent, MountedManifest, PJX_MOUNTED_HEADER, Renderer
 
 pytestmark = pytest.mark.pjx_runtime
 
@@ -28,17 +28,17 @@ class _Request:
         self.headers = _Headers(headers)
 
 
-def test_client_has_mounted_manifest():
-    assert client_has_mounted_manifest(None) is False
-    assert client_has_mounted_manifest("") is False
-    assert client_has_mounted_manifest("[]") is True
-    assert client_has_mounted_manifest("not-json") is False
-    assert client_has_mounted_manifest([]) is True
-    assert client_has_mounted_manifest(
+def test_mounted_manifest_is_present():
+    assert MountedManifest.is_present(None) is False
+    assert MountedManifest.is_present("") is False
+    assert MountedManifest.is_present("[]") is True
+    assert MountedManifest.is_present("not-json") is False
+    assert MountedManifest.is_present([]) is True
+    assert MountedManifest.is_present(
         [{"id": "counter", "type": "Counter", "hash": "abc"}]
     ) is True
-    assert client_has_mounted_manifest(_Request({})) is False
-    assert client_has_mounted_manifest(
+    assert MountedManifest.is_present(_Request({})) is False
+    assert MountedManifest.is_present(
         _Request({PJX_MOUNTED_HEADER: "[]"})
     ) is True
 

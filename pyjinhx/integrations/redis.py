@@ -77,6 +77,8 @@ class RedisInvalidationBackend(InvalidationBackend):
         pub_client.publish(self._channel, payload)
 
     def start(self, handler: Callable[[frozenset[str]], None]) -> None:
+        if self._thread is not None:
+            return
         self._handler = handler
         self._stop_event.clear()
         self._thread = threading.Thread(

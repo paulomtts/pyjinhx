@@ -6,8 +6,8 @@ startup for __init_subclass__ to fire and register the class.  Any tag whose
 class was never imported fell back to a bare BaseComponent, losing type info
 and co-located assets.
 
-The fix: in _render_tag_node, when a tag name is not yet in the class registry,
-_try_autodiscover_for_tag scans the template's directory for a co-located Python
+The fix: in render_tag_node, when a tag name is not yet in the class registry,
+ComponentAutodiscover.try_for_tag scans the template's directory for a co-located Python
 module and imports it via importlib, triggering __init_subclass__ registration.
 Deduplication prevents re-importing on subsequent renders.
 """
@@ -18,8 +18,8 @@ import tempfile
 import pytest
 from jinja2 import Environment, FileSystemLoader
 
-import pyjinhx.core.renderer as renderer_module
 from pyjinhx import Registry
+from pyjinhx.core.autodiscover import ComponentAutodiscover
 from pyjinhx.core.renderer import Renderer
 
 _COMPONENT_SRC = """\
@@ -34,9 +34,9 @@ class {class_name}(BaseComponent):
 @pytest.fixture(autouse=True)
 def reset_autodiscovery():
     """Clear the file-level dedup set before every test for isolation."""
-    renderer_module._autodiscovered_files.clear()
+    ComponentAutodiscover.clear()
     yield
-    renderer_module._autodiscovered_files.clear()
+    ComponentAutodiscover.clear()
 
 
 def _drop_from_registry(class_name: str) -> None:
@@ -136,7 +136,7 @@ def test_autodiscovery_file_imported_only_once():
         renderer.render(f'<{class_name} id="d1" label="First"/>')
         renderer.render(f'<{class_name} id="d2" label="Second"/>')
 
-        assert list(renderer_module._autodiscovered_files).count(py_path) == 1
+        assert list(ComponentAutodiscover._imported_files).count(py_path) == 1
 
 
 def test_autodiscovery_skipped_when_already_registered():
@@ -160,7 +160,7 @@ def test_autodiscovery_skipped_when_already_registered():
         rendered = Renderer(env).render('<AlreadyRegistered id="r1" label="Safe"/>')
 
         assert '<div id="r1">Safe</div>' in rendered
-        assert py_path not in renderer_module._autodiscovered_files
+        assert py_path not in ComponentAutodiscover._imported_files
 
 
 # ---------------------------------------------------------------------------
