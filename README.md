@@ -148,7 +148,7 @@ The client reports mounted regions via the `X-PJX-Mounted` header; `pjx.js` is i
 
 **Load cache scope** (default `CacheScope.PROCESS`): `load()` results are cached per worker for cross-request hits. Use `Registry.request_scope()` on every request for instance registry isolation. For multiple workers, subclass `InvalidationBackend` (Redis reference: [examples/reactive_todo/redis_invalidation.py](examples/reactive_todo/redis_invalidation.py)) or opt into `CacheScope.REQUEST`.
 
-Details: [reactivity guide](docs/reactivity.md). Runnable demo: [examples/reactive_todo/](examples/reactive_todo/).
+Details: [reactivity guide](docs/reactivity.md). Step-by-step app tutorial: [Build an App](docs/getting-started/build-an-app.md). Runnable demo: [examples/reactive_todo/](examples/reactive_todo/).
 
 ## JS & CSS collection
 

@@ -81,7 +81,7 @@ Output:
 
 ## What's Next?
 
-Now that you've created your first component, learn more about:
-
-- [Creating Components](../guide/components.md) - Component fields, validation, and templates
+- **[Build an App](build-an-app.md)** — full step-by-step tutorial with **Why?** panels (start here for a real app)
+- [Creating Components](../guide/components.md) - Fields, validation, and templates
 - [Nesting Components](../guide/nesting.md) - Compose components together
+- [Reactivity](../reactivity.md) - Dependency-aware HTMX updates
