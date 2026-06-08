@@ -110,6 +110,7 @@ class Registry:
         cls,
         *,
         load_context: object | None = None,
+        client_backend: object | None = None,
     ) -> Generator[None, None, None]:
         """
         Context manager for request-scoped component instances.
@@ -125,6 +126,7 @@ class Registry:
         from contextlib import ExitStack
 
         from .cache import init_request_cache, reset_request_cache
+        from .client_backend import client_scope
         from .load_context import load_scope
         from .mutations import clear_mutations
         from .reactive_dev import warn_mutations_without_render
@@ -136,6 +138,8 @@ class Registry:
             with ExitStack() as stack:
                 if load_context is not None:
                     stack.enter_context(load_scope(load_context))
+                if client_backend is not None:
+                    stack.enter_context(client_scope(client_backend))
                 yield
         finally:
             warn_mutations_without_render()

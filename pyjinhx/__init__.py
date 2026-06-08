@@ -11,6 +11,16 @@ from .assets import (
 )
 from .base import BaseComponent
 from .cache import CacheScope, get_load_cache_scope, invalidate, set_load_cache_scope
+from .client_backend import (
+    ClientBackend,
+    ClientBackendMiddleware,
+    HeadersClientBackend,
+    RequestClientBackend,
+    client_backend_from_request,
+    client_for_render,
+    client_scope,
+    get_client_backend,
+)
 from .invalidation import (
     InvalidationBackend,
     set_invalidation_backend,
@@ -61,6 +71,14 @@ __all__ = [
     "set_invalidation_backend",
     "start_invalidation_listener",
     "stop_invalidation_listener",
+    "ClientBackend",
+    "ClientBackendMiddleware",
+    "HeadersClientBackend",
+    "RequestClientBackend",
+    "client_backend_from_request",
+    "client_for_render",
+    "client_scope",
+    "get_client_backend",
     "client_script",
     "client_has_mounted_manifest",
     "PJX_MOUNTED_HEADER",

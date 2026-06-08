@@ -8,8 +8,14 @@ def test_reactive_api_is_exported():
         PJX_ASSETS_HEADER,
         PJX_MOUNTED_HEADER,
         CacheScope,
+        ClientBackend,
         InvalidationBackend,
         ReactiveComponent,
+        RequestClientBackend,
+        client_backend_from_request,
+        client_for_render,
+        client_scope,
+        get_client_backend,
         client_has_mounted_manifest,
         client_script,
         dependency_graph,
@@ -46,7 +52,13 @@ def test_reactive_api_is_exported():
     assert callable(start_invalidation_listener)
     assert callable(stop_invalidation_listener)
     assert CacheScope.REQUEST == "request"
+    assert issubclass(ClientBackend, ABC)
     assert issubclass(InvalidationBackend, ABC)
+    assert issubclass(RequestClientBackend, ClientBackend)
+    assert callable(client_backend_from_request)
+    assert callable(client_for_render)
+    assert callable(client_scope)
+    assert callable(get_client_backend)
     assert issubclass(ReactiveComponent, pyjinhx.BaseComponent)
     assert issubclass(StateKey, str)
 
@@ -79,5 +91,13 @@ def test_names_in_all():
         "set_invalidation_backend",
         "start_invalidation_listener",
         "stop_invalidation_listener",
+        "ClientBackend",
+        "ClientBackendMiddleware",
+        "HeadersClientBackend",
+        "RequestClientBackend",
+        "client_backend_from_request",
+        "client_for_render",
+        "client_scope",
+        "get_client_backend",
     ):
         assert name in pyjinhx.__all__

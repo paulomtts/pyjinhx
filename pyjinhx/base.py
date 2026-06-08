@@ -168,11 +168,13 @@ class BaseComponent(BaseModel):
                 session=session,
             )
 
+        from .client_backend import resolve_render_client
         from .reactive import parse_loaded_assets
 
+        resolved_client = resolve_render_client(client)
         loaded_assets = (
-            parse_loaded_assets(client)
-            if client is not None and emit_assets
+            parse_loaded_assets(resolved_client)
+            if resolved_client is not None and emit_assets
             else frozenset()
         )
 
@@ -186,7 +188,7 @@ class BaseComponent(BaseModel):
             collect_component_js=source is None,
             emit_assets=emit_assets,
             loaded_assets=loaded_assets,
-            client=client,
+            client=resolved_client,
         )
 
     def render(
@@ -217,15 +219,22 @@ class BaseComponent(BaseModel):
             dirtied: State keys the route mutated (e.g. ``{"todos"}``). Defaults to the
                 primary's ``reacts_to``. Enables reactive mode.
             mounted: The client manifest — a request-like object, the raw header string,
-                a parsed list, or ``None``. Enables reactive mode.
+                a parsed list, or ``None``. When omitted, uses the request-scoped
+                ``ClientBackend`` after mutations (see ``Registry.request_scope``).
             client: Request-like object (or raw ``X-PJX-Assets`` JSON) for REFERENCE-mode
-                asset dedup on root renders. Pass ``request`` on boosted full-page routes.
+                asset dedup on root renders. When omitted, uses the request-scoped
+                ``ClientBackend``.
 
         Returns:
             The rendered HTML as a Markup object (safe for direct use in templates).
         """
-        if dirtied is None and mounted is None:
-            return self._render(client=client)
+        from .client_backend import resolve_render_client, resolve_render_mounted
+
+        resolved_client = resolve_render_client(client)
+        resolved_mounted = resolve_render_mounted(mounted, dirtied=dirtied)
+
+        if dirtied is None and resolved_mounted is None:
+            return self._render(client=resolved_client)
 
         from .mutations import (
             mark_reactive_render_consumed,
@@ -236,17 +245,17 @@ class BaseComponent(BaseModel):
 
         own_keys = coerce_reactive_keys(getattr(self, "_pjx_reacts_to", frozenset()))
         warn_reactive_render_without_mounted(
-            dirtied=dirtied, mounted=mounted, own_keys=own_keys
+            dirtied=dirtied, mounted=resolved_mounted, own_keys=own_keys
         )
 
         primary = self._render(emit_assets=False)
         effective_dirtied = resolve_effective_dirtied(
             dirtied=dirtied,
-            mounted=mounted,
+            mounted=resolved_mounted,
             own_keys=own_keys,
         )
         mark_reactive_render_consumed()
-        swaps = oob_swaps(effective_dirtied, mounted, exclude_ids={self.id})
+        swaps = oob_swaps(effective_dirtied, resolved_mounted, exclude_ids={self.id})
         # Wrap the primary as safe markup before concatenation: _render() returns a
         # plain str (Markup.unescape()), and `str + Markup` would invoke Markup.__radd__
         # and HTML-escape the primary. Markup(primary) + swaps keeps both raw.

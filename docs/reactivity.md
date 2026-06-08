@@ -87,10 +87,11 @@ The runtime attaches two client manifests to every htmx request:
 | `X-PJX-Mounted` | Reactive regions currently in the DOM (`id`, `type`, `hash`, optional `key`) |
 | `X-PJX-Assets` | URLs of `<script src>` and `<link rel="stylesheet">` already loaded |
 
-Use `mounted=request` for reactive partials. For boosted full-page routes, pass
-`client=request` so the server can skip re-injecting `pjx.js` and (in REFERENCE
-mode with `Renderer.set_default_asset_dedup(True)`) skip asset URLs the browser
-already has.
+Wire `client_backend_from_request(request)` once in middleware (see
+[Client Backend](api/client-backend.md)). Mutation routes then call
+`Cls.render(key)` with no `mounted=` — headers are read from the backend after
+`@mutates`. Full-page routes call `.render()` with no `client=`; boosted
+navigations skip re-injecting `pjx.js` when `X-PJX-Mounted` is present.
 
 ## 3. Emit OOB swaps from your route
 

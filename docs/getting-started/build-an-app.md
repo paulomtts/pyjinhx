@@ -8,7 +8,7 @@ When you're done you will have used:
 - Template discovery, nesting, and PascalCase tags
 - Co-located JS/CSS and asset delivery modes
 - `Registry.request_scope`, `@mutates`, and `LoadContext`
-- Reactive `render()` with `mounted=request`
+- Reactive `render()` with `ClientBackend` wired in middleware
 - Load-cache scopes and optional invalidation fan-out
 
 Runnable reference: [`examples/reactive_todo/`](https://github.com/paulomtts/pyjinhx/tree/master/examples/reactive_todo).
@@ -27,7 +27,7 @@ A small todo app:
 flowchart LR
     Browser -->|HTMX POST| Route
     Route -->|mutate store| Store
-    Route -->|Cls.render mounted=request| PyJinHx
+    Route -->|Cls.render| PyJinHx
     PyJinHx -->|primary HTML| Browser
     PyJinHx -->|OOB fragments| Browser
 ```
@@ -237,9 +237,14 @@ Better: middleware so every route is covered:
 from starlette.middleware.base import BaseHTTPMiddleware
 
 
+from pyjinhx import client_backend_from_request
+
+
 class RegistryScopeMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request, call_next):
-        with Registry.request_scope():
+        with Registry.request_scope(
+            client_backend=client_backend_from_request(request),
+        ):
             return await call_next(request)
 
 
@@ -357,16 +362,15 @@ Route:
 
 ```python
 @app.post("/rows/{todo_id}/toggle", response_class=HTMLResponse)
-def toggle_row(request: Request, todo_id: int):
-    with Registry.request_scope():
-        store.toggle(todo_id)
-        return TodoItemRow.render(todo_id, mounted=request)
+def toggle_row(todo_id: int):
+    store.toggle(todo_id)
+    return TodoItemRow.render(todo_id)
 ```
 
-???+ question "Why @mutates, dirty_keys, and mounted=request?"
+???+ question "Why @mutates, dirty_keys, and ClientBackend?"
     - **`@mutates` / `mutation_scope`** — after a store change, invalidate the `load()` cache and accumulate `dirtied` keys for the next reactive render.
     - **`dirty_keys("todo", id, "todos")`** — instance-keyed rows need **both** the row key (`todo:42`) and collection keys (`todos`). Invalidating only `"todo"` is not enough for cache entries stored under `todo:42`.
-    - **`mounted=request`** — passes the client's mounted-region manifest (`X-PJX-Mounted`). Without it, PyJinHx renders the primary fragment but **skips OOB swaps** for the counter and other dependents.
+    - **`ClientBackend`** (wired in middleware) — supplies `X-PJX-Mounted` automatically after mutations so OOB swaps run without `mounted=request` on every route.
 
     `render()` on the **class** auto-calls `load()` — routes never call `load()` manually.
 
@@ -479,7 +483,7 @@ Renderer.set_default_asset_dedup(True)  # hx-boost: skip already-loaded URLs
 Full-page route with boosted navigation:
 
 ```python
-TodoApp(...).render(client=request)
+TodoApp(...).render()  # client headers from middleware ClientBackend
 ```
 
 ???+ question "Why REFERENCE mode?"
@@ -525,7 +529,7 @@ from pyjinhx.builtins import Alert, Button, Card
 | HTMX in layout | Yes |
 | `ReactiveComponent` + `reacts_to` + `load()` | Yes |
 | `@mutates` / `mutation_scope` + `dirty_keys` for rows | Yes |
-| `Cls.render(..., mounted=request)` on mutation routes | Yes |
+| `ClientBackend` in middleware (`client_backend_from_request`) | Yes |
 | `LoadContext` | Recommended |
 | Assets / REFERENCE mode | Production |
 | Invalidation backend | Multi-worker + PROCESS cache |

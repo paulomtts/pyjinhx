@@ -133,7 +133,7 @@ def index() -> str:
 ```python
 from dataclasses import dataclass
 
-from pyjinhx import LoadContext, Registry, enable_reactive_dev
+from pyjinhx import LoadContext, Registry, client_backend_from_request, enable_reactive_dev
 from starlette.middleware.base import BaseHTTPMiddleware
 
 
@@ -146,6 +146,7 @@ class RegistryScopeMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request, call_next):
         with Registry.request_scope(
             load_context=AppLoadContext(db=get_db(request)),
+            client_backend=client_backend_from_request(request),
         ):
             return await call_next(request)
 
@@ -156,8 +157,18 @@ app.add_middleware(RegistryScopeMiddleware)
 enable_reactive_dev()
 ```
 
-Pair with `@mutates` on store methods so mutation routes can omit explicit `dirtied` —
-see [Reactivity](../reactivity.md#mutation-tracking-mutates).
+Pair with `@mutates` on store methods so mutation routes can omit explicit `dirtied`
+and `mounted=request` — see [Reactivity](../reactivity.md#mutation-tracking-mutates)
+and [Client Backend](../api/client-backend.md).
+
+Reactive mutation routes:
+
+```python
+@app.post("/rows/{todo_id}/toggle", response_class=HTMLResponse)
+def toggle_row(todo_id: int) -> str:
+    store.toggle(todo_id)
+    return TodoItemRow.render(todo_id)  # headers from ClientBackend
+```
 
 ## Tips
 

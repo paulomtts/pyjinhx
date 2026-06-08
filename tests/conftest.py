@@ -6,6 +6,7 @@ import pytest
 from pyjinhx import CacheScope, Registry, get_load_cache_scope, set_load_cache_scope
 from pyjinhx.assets import RenderSession
 from pyjinhx.cache import clear as clear_load_cache
+from pyjinhx.client_backend import reset_client_backend_state
 from pyjinhx.invalidation import reset_invalidation_state
 from pyjinhx.mutations import clear_mutations
 
@@ -42,6 +43,7 @@ def _isolate_reactive_state() -> Generator[None, None, None]:
     clear_load_cache()
     clear_mutations()
     reset_invalidation_state()
+    reset_client_backend_state()
     Registry.clear_instances()
     set_load_cache_scope(CacheScope.PROCESS)
     with Registry.request_scope():
@@ -49,5 +51,6 @@ def _isolate_reactive_state() -> Generator[None, None, None]:
     clear_load_cache()
     clear_mutations()
     reset_invalidation_state()
+    reset_client_backend_state()
     Registry.clear_instances()
     set_load_cache_scope(original_scope)
