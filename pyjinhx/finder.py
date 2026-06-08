@@ -3,6 +3,9 @@ import os
 from dataclasses import dataclass, field
 
 from jinja2 import FileSystemLoader
+from markupsafe import Markup
+
+from .assets import AssetUrlResolver
 
 from .utils import (
     detect_root_directory,
@@ -246,3 +249,17 @@ class Finder:
             A deterministic, sorted list of `.css` file paths (directories and file names are walked in sorted order).
         """
         return self._collect_files_by_extension(".css", relative_to_root)
+
+
+def layout_asset_tags(
+    finder: Finder,
+    *,
+    resolver: AssetUrlResolver,
+) -> Markup:
+    """Return link/script tags for every component asset under ``finder.root``."""
+    lines: list[str] = []
+    for css_path in finder.collect_css_files():
+        lines.append(f'<link rel="stylesheet" href="{resolver(css_path)}">')
+    for js_path in finder.collect_javascript_files():
+        lines.append(f'<script src="{resolver(js_path)}"></script>')
+    return Markup("\n".join(lines))

@@ -5,13 +5,23 @@ import logging
 import os
 import re
 import uuid
-from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, ClassVar
 
 from jinja2 import Environment, FileSystemLoader, Template
 from jinja2.exceptions import TemplateNotFound
 from markupsafe import Markup
 
+from .assets import (
+    DEFAULT_RUNTIME_URL as _DEFAULT_RUNTIME_URL,
+    AssetKind,
+    AssetMode,
+    AssetUrlResolver,
+    CollectedAsset,
+    RenderSession,
+    asset_mode_from_inline,
+    make_default_asset_url_resolver,
+    runtime_asset_path,
+)
 from .dataclasses import Tag
 from .finder import Finder
 from .parser import Parser
@@ -80,23 +90,8 @@ def _try_autodiscover_for_tag(tag_name: str, template_path: str | None) -> None:
         pass
 
 
-@dataclass
-class RenderSession:
-    """
-    Per-render state for asset aggregation and deduplication.
-
-    Attributes:
-        scripts: Collected JavaScript code snippets to inject.
-        collected_js_files: Set of JS file paths already processed (for deduplication).
-        styles: Collected CSS code snippets to inject.
-        collected_css_files: Set of CSS file paths already processed (for deduplication).
-    """
-
-    scripts: list[str] = field(default_factory=list)
-    collected_js_files: set[str] = field(default_factory=set)
-    styles: list[str] = field(default_factory=list)
-    collected_css_files: set[str] = field(default_factory=set)
-    runtime_injected: bool = False
+def _normalize_asset_path(path: str) -> str:
+    return os.path.normpath(path).replace("\\", "/")
 
 
 class Renderer:
@@ -117,6 +112,8 @@ class Renderer:
         auto_id: bool = True,
         inline_js: bool | None = None,
         inline_css: bool | None = None,
+        js_mode: AssetMode | None = None,
+        css_mode: AssetMode | None = None,
     ) -> None:
         """
         Initialize a Renderer with the given Jinja environment.
@@ -124,25 +121,36 @@ class Renderer:
         Args:
             environment: The Jinja2 Environment to use for template rendering.
             auto_id: If True (default), generate UUIDs for components without explicit IDs.
-            inline_js: If True, JavaScript is collected and injected as <script> tags.
-                If False, no scripts are injected. Defaults to the class-level setting.
-            inline_css: If True, CSS is collected and injected as <style> tags.
-                If False, no styles are injected. Defaults to the class-level setting.
+            inline_js: Deprecated bool shim; maps to INLINE or NONE for JavaScript.
+            inline_css: Deprecated bool shim; maps to INLINE or NONE for CSS.
+            js_mode: How JavaScript assets are delivered. Defaults to the class-level setting.
+            css_mode: How CSS assets are delivered. Defaults to the class-level setting.
         """
         self._environment = environment
         self._auto_id = auto_id
-        self._inline_js = (
-            inline_js if inline_js is not None else Renderer._default_inline_js
-        )
-        self._inline_css = (
-            inline_css if inline_css is not None else Renderer._default_inline_css
-        )
+        if js_mode is not None:
+            self._js_mode = js_mode
+        elif inline_js is not None:
+            self._js_mode = asset_mode_from_inline(inline_js)
+        else:
+            self._js_mode = Renderer._default_js_mode
+        if css_mode is not None:
+            self._css_mode = css_mode
+        elif inline_css is not None:
+            self._css_mode = asset_mode_from_inline(inline_css)
+        else:
+            self._css_mode = Renderer._default_css_mode
         self._template_finder_cache: dict[str, Finder] = {}
 
     _default_environment: ClassVar[Environment | None] = None
-    _default_inline_js: ClassVar[bool] = True
-    _default_inline_css: ClassVar[bool] = True
-    _default_renderers: ClassVar[dict[tuple[int, bool, bool, bool], "Renderer"]] = {}
+    _default_js_mode: ClassVar[AssetMode] = AssetMode.INLINE
+    _default_css_mode: ClassVar[AssetMode] = AssetMode.INLINE
+    _default_runtime_url: ClassVar[str] = _DEFAULT_RUNTIME_URL
+    _asset_url_resolver: ClassVar[AssetUrlResolver | None] = None
+    _default_asset_dedup: ClassVar[bool] = False
+    _default_renderers: ClassVar[
+        dict[tuple[int, bool, AssetMode, AssetMode, int], "Renderer"]
+    ] = {}
 
     @classmethod
     def peek_default_environment(cls) -> Environment | None:
@@ -174,16 +182,27 @@ class Renderer:
         cls._default_renderers.clear()
 
     @classmethod
+    def set_default_js_mode(cls, mode: AssetMode) -> None:
+        """Set the process-wide default JavaScript asset delivery mode."""
+        cls._default_js_mode = mode
+        cls._default_renderers.clear()
+
+    @classmethod
+    def set_default_css_mode(cls, mode: AssetMode) -> None:
+        """Set the process-wide default CSS asset delivery mode."""
+        cls._default_css_mode = mode
+        cls._default_renderers.clear()
+
+    @classmethod
     def set_default_inline_js(cls, inline_js: bool) -> None:
         """
         Set the process-wide default for inline JavaScript injection.
 
         Args:
             inline_js: If True (default), JavaScript is collected and injected as <script> tags.
-                If False, no scripts are injected. Use Finder.collect_javascript_files() for static serving.
+                If False, no scripts are injected. Use AssetMode.REFERENCE for URL tags.
         """
-        cls._default_inline_js = inline_js
-        cls._default_renderers.clear()
+        cls.set_default_js_mode(asset_mode_from_inline(inline_js))
 
     @classmethod
     def set_default_inline_css(cls, inline_css: bool) -> None:
@@ -192,10 +211,26 @@ class Renderer:
 
         Args:
             inline_css: If True (default), CSS is collected and injected as <style> tags.
-                If False, no styles are injected. Use Finder.collect_css_files() for static serving.
+                If False, no styles are injected. Use AssetMode.REFERENCE for URL tags.
         """
-        cls._default_inline_css = inline_css
+        cls.set_default_css_mode(asset_mode_from_inline(inline_css))
+
+    @classmethod
+    def set_default_runtime_url(cls, url: str) -> None:
+        """Set the public URL used for the pyjinhx client runtime in REFERENCE mode."""
+        cls._default_runtime_url = url
         cls._default_renderers.clear()
+
+    @classmethod
+    def set_asset_url_resolver(cls, resolver: AssetUrlResolver | None) -> None:
+        """Set the callable that maps absolute asset paths to public URLs."""
+        cls._asset_url_resolver = resolver
+        cls._default_renderers.clear()
+
+    @classmethod
+    def set_default_asset_dedup(cls, enabled: bool) -> None:
+        """Enable filtering of REFERENCE assets already reported by the client."""
+        cls._default_asset_dedup = enabled
 
     @classmethod
     def get_default_environment(cls) -> Environment:
@@ -219,40 +254,56 @@ class Renderer:
         auto_id: bool = True,
         inline_js: bool | None = None,
         inline_css: bool | None = None,
+        js_mode: AssetMode | None = None,
+        css_mode: AssetMode | None = None,
     ) -> "Renderer":
         """
         Return a cached default renderer instance.
 
         Args:
             auto_id: If True, generate UUIDs for components without explicit IDs.
-            inline_js: If True, JavaScript is collected and injected as <script> tags.
-                If False, no scripts are injected. Defaults to the class-level setting.
-            inline_css: If True, CSS is collected and injected as <style> tags.
-                If False, no styles are injected. Defaults to the class-level setting.
+            inline_js: Deprecated bool shim for JavaScript delivery mode.
+            inline_css: Deprecated bool shim for CSS delivery mode.
+            js_mode: JavaScript asset delivery mode. Defaults to the class-level setting.
+            css_mode: CSS asset delivery mode. Defaults to the class-level setting.
 
         Returns:
-            A Renderer instance cached by (environment identity, auto_id, inline_js, inline_css).
+            A Renderer instance cached by environment identity and asset settings.
         """
         environment = cls.get_default_environment()
-        effective_inline_js = (
-            inline_js if inline_js is not None else cls._default_inline_js
+        effective_js_mode = (
+            js_mode
+            if js_mode is not None
+            else (
+                asset_mode_from_inline(inline_js)
+                if inline_js is not None
+                else cls._default_js_mode
+            )
         )
-        effective_inline_css = (
-            inline_css if inline_css is not None else cls._default_inline_css
+        effective_css_mode = (
+            css_mode
+            if css_mode is not None
+            else (
+                asset_mode_from_inline(inline_css)
+                if inline_css is not None
+                else cls._default_css_mode
+            )
         )
+        resolver_id = id(cls._asset_url_resolver)
         cache_key = (
             id(environment),
             auto_id,
-            effective_inline_js,
-            effective_inline_css,
+            effective_js_mode,
+            effective_css_mode,
+            resolver_id,
         )
         renderer = cls._default_renderers.get(cache_key)
         if renderer is None:
             renderer = Renderer(
                 environment,
                 auto_id=auto_id,
-                inline_js=effective_inline_js,
-                inline_css=effective_inline_css,
+                js_mode=effective_js_mode,
+                css_mode=effective_css_mode,
             )
             cls._default_renderers[cache_key] = renderer
         return renderer
@@ -266,6 +317,16 @@ class Renderer:
             The Jinja Environment instance.
         """
         return self._environment
+
+    def _resolve_asset_url(self, path: str) -> str:
+        normalized_path = _normalize_asset_path(path)
+        if normalized_path == _normalize_asset_path(runtime_asset_path()):
+            return Renderer._default_runtime_url
+        resolver = Renderer._asset_url_resolver
+        if resolver is not None:
+            return resolver(normalized_path)
+        root = self._get_loader_root()
+        return make_default_asset_url_resolver(root)(normalized_path)
 
     def new_session(self) -> RenderSession:
         """
@@ -335,6 +396,38 @@ class Renderer:
             ", ".join(relative_template_paths) if relative_template_paths else "unknown"
         )
 
+    def _register_asset(
+        self,
+        session: RenderSession,
+        path: str,
+        kind: AssetKind,
+        mode: AssetMode,
+    ) -> None:
+        normalized_path = _normalize_asset_path(path)
+        if normalized_path in session.collected_paths:
+            return
+
+        if mode == AssetMode.INLINE:
+            with open(normalized_path, encoding="utf-8") as asset_file:
+                content = asset_file.read()
+            if not content:
+                return
+            if kind == "js":
+                session.scripts.append(content)
+            else:
+                session.styles.append(content)
+        elif mode == AssetMode.REFERENCE:
+            if not os.path.isfile(normalized_path):
+                return
+            with open(normalized_path, encoding="utf-8") as asset_file:
+                if not asset_file.read():
+                    return
+        else:
+            return
+
+        session.collected_paths.add(normalized_path)
+        session.assets.append(CollectedAsset(path=normalized_path, kind=kind))
+
     def _collect_component_javascript(
         self,
         component: "BaseComponent",
@@ -343,6 +436,9 @@ class Renderer:
         component_dir: str | None = None,
         asset_name: str | None = None,
     ) -> None:
+        if self._js_mode == AssetMode.NONE:
+            return
+
         component_directory = component_dir or Finder.get_class_directory(
             type(component)
         )
@@ -354,23 +450,16 @@ class Renderer:
         if not javascript_path:
             return
 
-        if javascript_path in session.collected_js_files:
-            return
-
-        with open(javascript_path, "r") as file:
-            javascript_content = file.read()
-
-        if not javascript_content:
-            return
-
-        session.scripts.append(javascript_content)
-        session.collected_js_files.add(javascript_path)
+        self._register_asset(session, javascript_path, "js", self._js_mode)
 
     def _collect_extra_javascript(
         self, component: "BaseComponent", session: RenderSession
     ) -> None:
+        if self._js_mode == AssetMode.NONE:
+            return
+
         for javascript_path in component.js:
-            normalized_path = os.path.normpath(javascript_path).replace("\\", "/")
+            normalized_path = _normalize_asset_path(javascript_path)
             if not os.path.exists(normalized_path):
                 logger.warning(
                     "Extra JS file not found: %s (component %s, id=%s)",
@@ -379,14 +468,7 @@ class Renderer:
                     component.id,
                 )
                 continue
-            if normalized_path in session.collected_js_files:
-                continue
-            with open(normalized_path, "r") as file:
-                javascript_content = file.read()
-            if not javascript_content:
-                continue
-            session.scripts.append(javascript_content)
-            session.collected_js_files.add(normalized_path)
+            self._register_asset(session, normalized_path, "js", self._js_mode)
 
     def _collect_component_css(
         self,
@@ -396,6 +478,9 @@ class Renderer:
         component_dir: str | None = None,
         asset_name: str | None = None,
     ) -> None:
+        if self._css_mode == AssetMode.NONE:
+            return
+
         component_directory = component_dir or Finder.get_class_directory(
             type(component)
         )
@@ -405,23 +490,16 @@ class Renderer:
         if not css_path:
             return
 
-        if css_path in session.collected_css_files:
-            return
-
-        with open(css_path, "r") as file:
-            css_content = file.read()
-
-        if not css_content:
-            return
-
-        session.styles.append(css_content)
-        session.collected_css_files.add(css_path)
+        self._register_asset(session, css_path, "css", self._css_mode)
 
     def _collect_extra_css(
         self, component: "BaseComponent", session: RenderSession
     ) -> None:
+        if self._css_mode == AssetMode.NONE:
+            return
+
         for css_path in component.css:
-            normalized_path = os.path.normpath(css_path).replace("\\", "/")
+            normalized_path = _normalize_asset_path(css_path)
             if not os.path.exists(normalized_path):
                 logger.warning(
                     "Extra CSS file not found: %s (component %s, id=%s)",
@@ -430,28 +508,93 @@ class Renderer:
                     component.id,
                 )
                 continue
-            if normalized_path in session.collected_css_files:
-                continue
-            with open(normalized_path, "r") as file:
-                css_content = file.read()
-            if not css_content:
-                continue
-            session.styles.append(css_content)
-            session.collected_css_files.add(normalized_path)
+            self._register_asset(session, normalized_path, "css", self._css_mode)
 
-    def _inject_scripts(self, markup: str, session: RenderSession) -> str:
-        if not session.scripts:
-            return markup
-        script_tags = "\n".join(
-            f"<script>{script}</script>" for script in session.scripts
-        )
-        return f"{markup}\n{script_tags}"
+    def _inject_runtime(self, session: RenderSession, component: "BaseComponent") -> None:
+        if session.runtime_injected:
+            return
+        if not getattr(type(component), "_pjx_layout", False):
+            return
+        if self._js_mode == AssetMode.INLINE:
+            session.scripts.insert(0, read_client_runtime())
+        elif self._js_mode == AssetMode.REFERENCE:
+            runtime_path = _normalize_asset_path(runtime_asset_path())
+            if runtime_path not in session.collected_paths:
+                session.collected_paths.add(runtime_path)
+                session.assets.insert(
+                    0, CollectedAsset(path=runtime_path, kind="js")
+                )
+        session.runtime_injected = True
 
-    def _inject_styles(self, markup: str, session: RenderSession) -> str:
-        if not session.styles:
-            return markup
-        style_tags = "\n".join(f"<style>{style}</style>" for style in session.styles)
-        return f"{style_tags}\n{markup}"
+    def _should_emit_reference_url(
+        self, url: str, loaded_assets: frozenset[str]
+    ) -> bool:
+        if not Renderer._default_asset_dedup:
+            return True
+        if not loaded_assets:
+            return True
+        return url not in loaded_assets
+
+    def _inject_assets(
+        self,
+        markup: str,
+        session: RenderSession,
+        *,
+        loaded_assets: frozenset[str] = frozenset(),
+    ) -> str:
+        css_markup = self._render_css_assets(session, loaded_assets=loaded_assets)
+        js_markup = self._render_js_assets(session, loaded_assets=loaded_assets)
+        if css_markup:
+            markup = f"{css_markup}\n{markup}"
+        if js_markup:
+            markup = f"{markup}\n{js_markup}"
+        return markup
+
+    def _render_css_assets(
+        self,
+        session: RenderSession,
+        *,
+        loaded_assets: frozenset[str] = frozenset(),
+    ) -> str:
+        if self._css_mode == AssetMode.INLINE:
+            if not session.styles:
+                return ""
+            return "\n".join(f"<style>{style}</style>" for style in session.styles)
+        if self._css_mode == AssetMode.REFERENCE:
+            css_assets = [asset for asset in session.assets if asset.kind == "css"]
+            if not css_assets:
+                return ""
+            tags: list[str] = []
+            for asset in css_assets:
+                url = self._resolve_asset_url(asset.path)
+                if self._should_emit_reference_url(url, loaded_assets):
+                    tags.append(f'<link rel="stylesheet" href="{url}">')
+            return "\n".join(tags)
+        return ""
+
+    def _render_js_assets(
+        self,
+        session: RenderSession,
+        *,
+        loaded_assets: frozenset[str] = frozenset(),
+    ) -> str:
+        if self._js_mode == AssetMode.INLINE:
+            if not session.scripts:
+                return ""
+            return "\n".join(
+                f"<script>{script}</script>" for script in session.scripts
+            )
+        if self._js_mode == AssetMode.REFERENCE:
+            js_assets = [asset for asset in session.assets if asset.kind == "js"]
+            if not js_assets:
+                return ""
+            tags: list[str] = []
+            for asset in js_assets:
+                url = self._resolve_asset_url(asset.path)
+                if self._should_emit_reference_url(url, loaded_assets):
+                    tags.append(f'<script src="{url}"></script>')
+            return "\n".join(tags)
+        return ""
 
     def _find_template_for_tag(self, tag_name: str) -> str:
         loader_root = self._get_loader_root()
@@ -463,12 +606,16 @@ class Renderer:
         node: Tag | str,
         base_context: dict[str, Any],
         session: RenderSession,
+        *,
+        emit_assets: bool,
     ) -> str:
         if isinstance(node, str):
             return node
 
         rendered_children = "".join(
-            self._render_tag_node(child, base_context=base_context, session=session)
+            self._render_tag_node(
+                child, base_context=base_context, session=session, emit_assets=emit_assets
+            )
             for child in node.children
         ).strip()
 
@@ -509,6 +656,7 @@ class Renderer:
                     _renderer=self,
                     _session=session,
                     _template_path=template_path,
+                    emit_assets=emit_assets,
                 )
             )
 
@@ -551,6 +699,7 @@ class Renderer:
                 _renderer=self,
                 _session=session,
                 _template_path=template_path,
+                emit_assets=emit_assets,
             )
         )
 
@@ -559,6 +708,8 @@ class Renderer:
         markup: str,
         base_context: dict[str, Any],
         session: RenderSession,
+        *,
+        emit_assets: bool,
     ) -> str:
         """
         Expand PascalCase custom tags found inside `markup` by parsing and rendering them into HTML.
@@ -577,7 +728,12 @@ class Renderer:
 
         parser.feed(markup)
         return "".join(
-            self._render_tag_node(node, base_context=base_context, session=session)
+            self._render_tag_node(
+                node,
+                base_context=base_context,
+                session=session,
+                emit_assets=emit_assets,
+            )
             for node in parser.root_nodes
         )
 
@@ -590,6 +746,9 @@ class Renderer:
         session: RenderSession,
         is_root: bool,
         collect_component_js: bool,
+        *,
+        emit_assets: bool = True,
+        loaded_assets: frozenset[str] = frozenset(),
     ) -> Markup:
         template = self._load_template_for_component(
             component, template_source=template_source, template_path=template_path
@@ -604,7 +763,10 @@ class Renderer:
 
         rendered_markup = template.render(render_context)
         rendered_markup = self._expand_custom_tags(
-            rendered_markup, base_context=render_context, session=session
+            rendered_markup,
+            base_context=render_context,
+            session=session,
+            emit_assets=emit_assets,
         )
 
         if getattr(type(component), "_pjx_reactive", False):
@@ -618,6 +780,9 @@ class Renderer:
                 _attrs["data-pjx-key"] = str(_key)
             rendered_markup = stamp_root_attributes(rendered_markup, _attrs)
 
+        if not emit_assets:
+            return Markup(rendered_markup).unescape()
+
         if template_path is not None and type(component).__name__ == "BaseComponent":
             _asset_dir: str | None = os.path.dirname(template_path)
             _asset_name: str | None = os.path.splitext(os.path.basename(template_path))[
@@ -627,29 +792,24 @@ class Renderer:
             _asset_dir = None
             _asset_name = None
 
-        if collect_component_js and self._inline_js:
+        if collect_component_js:
             self._collect_component_javascript(
                 component, session, component_dir=_asset_dir, asset_name=_asset_name
             )
-        if collect_component_js and self._inline_css:
             self._collect_component_css(
                 component, session, component_dir=_asset_dir, asset_name=_asset_name
             )
 
         if is_root:
-            if self._inline_css:
+            if self._css_mode != AssetMode.NONE:
                 self._collect_extra_css(component, session)
-                rendered_markup = self._inject_styles(rendered_markup, session)
-            if (
-                self._inline_js
-                and getattr(type(component), "_pjx_layout", False)
-                and not session.runtime_injected
-            ):
-                session.scripts.insert(0, read_client_runtime())
-                session.runtime_injected = True
-            if self._inline_js:
+            if self._js_mode != AssetMode.NONE:
+                self._inject_runtime(session, component)
                 self._collect_extra_javascript(component, session)
-                rendered_markup = self._inject_scripts(rendered_markup, session)
+            if self._css_mode != AssetMode.NONE or self._js_mode != AssetMode.NONE:
+                rendered_markup = self._inject_assets(
+                    rendered_markup, session, loaded_assets=loaded_assets
+                )
 
         return Markup(rendered_markup).unescape()
 
@@ -673,11 +833,11 @@ class Renderer:
         session = self.new_session()
 
         rendered_markup = "".join(
-            self._render_tag_node(node, base_context={}, session=session)
+            self._render_tag_node(
+                node, base_context={}, session=session, emit_assets=True
+            )
             for node in parser.root_nodes
         )
-        if self._inline_css:
-            rendered_markup = self._inject_styles(rendered_markup, session)
-        if self._inline_js:
-            rendered_markup = self._inject_scripts(rendered_markup, session)
+        if self._css_mode != AssetMode.NONE or self._js_mode != AssetMode.NONE:
+            rendered_markup = self._inject_assets(rendered_markup, session)
         return rendered_markup.strip()

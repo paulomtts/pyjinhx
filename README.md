@@ -165,7 +165,24 @@ components/ui/
 | `Button` | `button.js`, `button.css` |
 | `ActionButton` | `action-button.js`, `action-button.css` |
 
-Each asset is included once per render session. Output order: `<style>` tags, HTML, then `<script>` tags. Pass extra paths via `js=[...]` and `css=[...]` on the component. Disable inlining with `Renderer.set_default_inline_js(False)` / `set_default_inline_css(False)`.
+Each asset is included once per render session. Output order: `<style>` tags, HTML, then `<script>` tags (inline mode). Pass extra paths via `js=[...]` and `css=[...]` on the component.
+
+**Asset delivery modes** (`AssetMode.INLINE`, `REFERENCE`, `NONE`):
+
+- **INLINE** (default): zero-config demos — assets are inlined as `<style>` / `<script>` blocks.
+- **REFERENCE**: production — emits `<link href="...">` / `<script src="...">` from a per-render manifest; configure `Renderer.set_asset_url_resolver()`.
+- **NONE**: no asset tags (legacy `set_default_inline_js(False)` behavior).
+
+Reactive partial responses (when `mounted` is set) and OOB swaps never emit assets. Full-page layout renders emit them once. For boosted navigation in REFERENCE mode, enable client asset dedup so root renders skip URLs the browser already has (`X-PJX-Assets` header + `render(client=request)`).
+
+```python
+from pyjinhx import AssetMode, Renderer
+
+Renderer.set_default_js_mode(AssetMode.REFERENCE)
+Renderer.set_default_css_mode(AssetMode.REFERENCE)
+Renderer.set_asset_url_resolver(lambda path: f"/static/{path.split('/')[-1]}")
+Renderer.set_default_asset_dedup(True)
+```
 
 Details: [asset collection guide](docs/guide/assets.md). Optional UI kit: [pyjinhx.builtins](docs/guide/builtins.md).
 
