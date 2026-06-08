@@ -18,6 +18,13 @@ from .invalidation import (
     start_invalidation_listener,
     stop_invalidation_listener,
 )
+from .config import (
+    PyJinhxSettings,
+    configure_pyjinhx,
+    pyjinhx_lifespan,
+    setup,
+    shutdown_pyjinhx,
+)
 from .dataclasses import Tag
 from .finder import Finder, layout_asset_tags
 from .keys import StateKey, dirty_keys, instance_key
@@ -62,6 +69,11 @@ __all__ = [
     "set_invalidation_backend",
     "start_invalidation_listener",
     "stop_invalidation_listener",
+    "PyJinhxSettings",
+    "configure_pyjinhx",
+    "shutdown_pyjinhx",
+    "pyjinhx_lifespan",
+    "setup",
     "ClientBackend",
     "FastAPIClientBackend",
     "fastapi_client_backend",

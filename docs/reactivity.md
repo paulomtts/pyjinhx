@@ -316,16 +316,16 @@ Counter.load()   # cached: no DB, returns an independent copy
 
 | Scope | Default | Storage | Cross-request | Multi-worker safe |
 |-------|---------|---------|---------------|-------------------|
-| `PROCESS` | yes | module-level dict per worker | yes | needs invalidation fan-out |
-| `REQUEST` | opt-in | `ContextVar` inside `Registry.request_scope()` | no | yes |
+| `REQUEST` | yes | `ContextVar` inside `Registry.request_scope()` | no | yes |
+| `PROCESS` | opt-in | module-level dict per worker | yes | needs invalidation fan-out |
 | `NONE` | opt-in | disabled | — | yes |
 
 ```python
-from pyjinhx import CacheScope, set_load_cache_scope
+from pyjinhx import CacheScope, setup
 
-set_load_cache_scope(CacheScope.PROCESS)   # default — cross-request cache per worker
-set_load_cache_scope(CacheScope.REQUEST)   # per-request only (multi-worker safe)
-set_load_cache_scope(CacheScope.NONE)      # always hit the database
+setup(app)  # default CacheScope.REQUEST
+setup(app, cache_scope=CacheScope.PROCESS, invalidation_backend=...)  # cross-request per worker
+setup(app, cache_scope=CacheScope.NONE)
 ```
 
 Use `Registry.request_scope()` on every HTTP request (middleware) for instance registry
@@ -356,22 +356,19 @@ When using `CacheScope.PROCESS` with multiple workers, configure an
 `InvalidationBackend` so `invalidate()` fans out to every process:
 
 ```python
-from pyjinhx import (
-    CacheScope,
-    set_invalidation_backend,
-    set_load_cache_scope,
-    start_invalidation_listener,
-    stop_invalidation_listener,
-)
-from examples.reactive_todo.redis_invalidation import RedisInvalidationBackend
+from pyjinhx import CacheScope, PyJinhxSettings, setup
+from pyjinhx.integrations.redis import RedisInvalidationBackend
 
-set_load_cache_scope(CacheScope.PROCESS)
-set_invalidation_backend(RedisInvalidationBackend("redis://localhost:6379/0"))
-start_invalidation_listener()   # app lifespan startup
-# stop_invalidation_listener() on shutdown
+setup(
+    app,
+    settings=PyJinhxSettings(
+        cache_scope=CacheScope.PROCESS,
+        invalidation_backend=RedisInvalidationBackend("redis://localhost:6379/0"),
+    ),
+)
 ```
 
-Requires `pip install redis`. Copy [examples/reactive_todo/redis_invalidation.py](https://github.com/paulomtts/pyjinhx/tree/master/examples/reactive_todo/redis_invalidation.py) into your app (or wire via [invalidation.py](https://github.com/paulomtts/pyjinhx/tree/master/examples/reactive_todo/invalidation.py)).
+Requires `pip install pyjinhx[redis]`. See [Redis integration](api/integrations-redis.md).
 
 ## Boundaries
 
@@ -387,10 +384,9 @@ Requires `pip install redis`. Copy [examples/reactive_todo/redis_invalidation.py
   `reacts_to`. A zero-arg `load(cls)` is a type-singleton; `load(cls, key)` is
   instance-keyed. Reactive `render()` auto-`load()`s dependents, so you never call
   `load()` yourself for a reactive render.
-- **`load()` cache scope**: default `PROCESS` (cross-request per worker). Use `REQUEST`
-  for multi-worker without an invalidation backend. Eviction is dirtied-key driven
-  (automatically in the reactive flow, or via `invalidate(dirtied)`). Multi-worker
-  `PROCESS` setups need an `InvalidationBackend`.
+- **`load()` cache scope**: default `REQUEST` (per-request, multi-worker safe). Use `PROCESS`
+  for cross-request caching per worker; multi-worker `PROCESS` needs an `InvalidationBackend`.
+  Eviction is dirtied-key driven (automatically in the reactive flow, or via `invalidate(dirtied)`).
 
 ## How it works (under the hood)
 

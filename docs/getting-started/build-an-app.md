@@ -231,32 +231,16 @@ def index():
         return TodoPanel(id="panel", remaining=3).render()
 ```
 
-For a real app, use **middleware** so every route is covered (the rest of this guide assumes middleware from here on):
+For a real app, use **`setup(app, ...)`** so lifespan and middleware are wired automatically:
 
 ```python
-from starlette.middleware.base import BaseHTTPMiddleware
+from pyjinhx import setup
 
-
-from pyjinhx import fastapi_client_backend
-
-
-class RegistryScopeMiddleware(BaseHTTPMiddleware):
-    async def dispatch(self, request, call_next):
-        with Registry.request_scope(
-            client_backend=fastapi_client_backend(request),
-        ):
-            return await call_next(request)
-
-
-app.add_middleware(RegistryScopeMiddleware)
+app = FastAPI()
+setup(app, load_context_factory=lambda req: AppLoadContext(db=get_db(req)))
 ```
 
-???+ question "Why Registry.request_scope?"
-    Every component instance registers itself on construction. Without a per-request scope, instances from request A can **leak into request B** and shadow template variables. The scope also initializes the request-tier load cache layer and resets mutation tracking. `load_context` and `client_backend` are optional kwargs — bare `request_scope()` is valid.
-
-    Default load cache is **`CacheScope.PROCESS`** (cross-request per worker) — see Step 12.
-
-    PyJinHx does not ship middleware — you define `RegistryScopeMiddleware` in your app. See: [Component registry](../guide/registry.md), [FastAPI integration](../integrations/fastapi.md#middleware-recommended).
+See [Configuration API](../api/config.md) and [FastAPI integration](../integrations/fastapi.md).
 
 ---
 
@@ -443,28 +427,27 @@ with Registry.request_scope(
 
 ## Step 12 — Load cache scope and invalidation
 
-Default: **`CacheScope.PROCESS`** — `load()` results cache across requests within one worker (fewer store hits).
+Default: **`CacheScope.REQUEST`** — `load()` results cache within each HTTP request (multi-worker safe).
 
 | Scope | When to use |
 |-------|-------------|
+| `REQUEST` | Default — multi-worker without Redis |
 | `PROCESS` | Single worker, or multi-worker **with** invalidation fan-out |
-| `REQUEST` | Multi-worker **without** Redis; cache dies every request |
 | `NONE` | Debugging; always hit the store |
 
 Multi-worker fan-out (optional):
 
 ```python
-from pyjinhx import (
-    CacheScope,
-    set_invalidation_backend,
-    set_load_cache_scope,
-    start_invalidation_listener,
-)
-# copy examples/reactive_todo/redis_invalidation.py into your project
+from pyjinhx import CacheScope, PyJinhxSettings, setup
+from pyjinhx.integrations.redis import RedisInvalidationBackend
 
-set_load_cache_scope(CacheScope.PROCESS)
-set_invalidation_backend(RedisInvalidationBackend(os.environ["REDIS_URL"]))
-start_invalidation_listener()  # app lifespan
+setup(
+    app,
+    settings=PyJinhxSettings(
+        cache_scope=CacheScope.PROCESS,
+        invalidation_backend=RedisInvalidationBackend(os.environ["REDIS_URL"]),
+    ),
+)
 ```
 
 ???+ question "Why cache at all?"

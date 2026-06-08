@@ -25,7 +25,7 @@ class CacheScope(str, Enum):
     NONE = "none"
 
 
-_scope: CacheScope = CacheScope.PROCESS
+_scope: CacheScope = CacheScope.REQUEST
 _request_cache: ContextVar[CacheState | None] = ContextVar(
     "load_cache_request", default=None
 )

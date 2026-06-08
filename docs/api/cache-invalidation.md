@@ -17,8 +17,8 @@ Controls where cached `load()` results are stored.
 
 | Scope | Behavior |
 |-------|----------|
-| `PROCESS` (default) | Shared per worker process; survives across HTTP requests |
-| `REQUEST` | Isolated per `Registry.request_scope()`; cleared when the scope exits |
+| `REQUEST` (default) | Isolated per `Registry.request_scope()`; cleared when the scope exits |
+| `PROCESS` | Shared per worker process; survives across HTTP requests |
 | `NONE` | No caching; every `load()` runs fresh |
 
 `Registry.request_scope()` always creates a request-scoped cache store. With `PROCESS` scope, reads fall through to the process store; with `REQUEST` scope, only the request store is used.
@@ -37,16 +37,18 @@ Return the active process-wide cache scope.
 def set_load_cache_scope(scope: CacheScope) -> None
 ```
 
-Set the process-wide cache scope. Typically configured at application startup:
+Set the process-wide cache scope. Prefer [`setup()`](config.md) at app startup:
 
 ```python
-from pyjinhx import CacheScope, set_load_cache_scope
+from pyjinhx import CacheScope, setup
 
-set_load_cache_scope(CacheScope.REQUEST)  # multi-worker without Redis
-set_load_cache_scope(CacheScope.PROCESS)  # default; pair with invalidation fan-out
+setup(app, cache_scope=CacheScope.REQUEST)   # default — multi-worker safe
+setup(app, cache_scope=CacheScope.PROCESS)   # cross-request per worker; pair with invalidation
 ```
 
-Environment variable `PJX_LOAD_CACHE_SCOPE` is read by the reactive todo example helper; set the scope explicitly in your own app.
+Or set explicitly: `set_load_cache_scope(CacheScope.REQUEST)`.
+
+Environment variable `PJX_LOAD_CACHE_SCOPE` is read by `PyJinhxSettings.from_env()` (default `request`).
 
 ## invalidate
 
@@ -73,7 +75,7 @@ class InvalidationBackend(ABC):
 
 Abstract base class for cross-process invalidation. Implement `publish()` to broadcast dirtied keys and `start()`/`stop()` to manage a subscriber that invokes the handler on incoming messages.
 
-A reference Redis implementation lives in `examples/reactive_todo/redis_invalidation.py` (not shipped in the core package).
+A reference Redis implementation lives in [`pyjinhx.integrations.redis`](integrations-redis.md).
 
 ## set_invalidation_backend
 
@@ -101,21 +103,19 @@ def stop_invalidation_listener() -> None
 
 Stop the invalidation listener. Call during application shutdown.
 
-**Typical FastAPI lifespan:**
+**Typical FastAPI setup:**
 
 ```python
-from pyjinhx import (
-    InvalidationBackend,
-    set_invalidation_backend,
-    start_invalidation_listener,
-    stop_invalidation_listener,
-)
+from pyjinhx import setup, PyJinhxSettings, CacheScope
+from pyjinhx.integrations.redis import RedisInvalidationBackend
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    set_invalidation_backend(my_backend)
-    start_invalidation_listener()
-    yield
-    stop_invalidation_listener()
-    set_invalidation_backend(None)
+setup(
+    app,
+    settings=PyJinhxSettings(
+        cache_scope=CacheScope.PROCESS,
+        invalidation_backend=RedisInvalidationBackend("redis://localhost:6379/0"),
+    ),
+)
 ```
+
+See [Configuration](config.md).

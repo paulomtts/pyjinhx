@@ -108,9 +108,19 @@ def index():
 
 ## Request-Scoped Registry
 
-In web apps, component instances from one request can leak into the next. Use `Registry.request_scope()` to isolate per request. The default **cross-request `load()` cache** is `CacheScope.PROCESS`; set `CacheScope.REQUEST` when running multiple workers without an invalidation backend. See the [Registry guide](../guide/registry.md) and [Reactivity §4](../reactivity.md#4-load-results-are-cached).
+In web apps, component instances from one request can leak into the next. The recommended setup is a single call:
 
-### Per-Route
+```python
+from fastapi import FastAPI
+from pyjinhx import setup
+
+app = FastAPI(lifespan=my_existing_lifespan)  # optional — chained, not replaced
+setup(app, load_context_factory=lambda req: AppLoadContext(db=get_db(req)))
+```
+
+`setup(app, ...)` chains your lifespan (if any), configures cache scope and optional invalidation, and registers registry middleware with `ClientBackend` for header auto-resolution. Default load cache is **`CacheScope.REQUEST`** (multi-worker safe). See [Configuration](../api/config.md) and [Reactivity §4](../reactivity.md#4-load-results-are-cached).
+
+### Per-Route (manual)
 
 ```python
 from pyjinhx import Registry
@@ -128,36 +138,9 @@ def index() -> str:
         """
 ```
 
-### Middleware (recommended) {#middleware-recommended}
+### Advanced: manual middleware
 
-PyJinHx does **not** ship middleware — define a thin wrapper in your app. This is the **canonical snippet** referenced from [Client Backend](../api/client-backend.md), [Registry guide](../guide/registry.md), and [Build an App](../getting-started/build-an-app.md).
-
-```python
-from dataclasses import dataclass
-
-from pyjinhx import LoadContext, Registry, enable_reactive_dev, fastapi_client_backend
-from starlette.middleware.base import BaseHTTPMiddleware
-
-
-@dataclass(frozen=True)
-class AppLoadContext(LoadContext):
-    db: object  # your database/session handle
-
-
-class RegistryScopeMiddleware(BaseHTTPMiddleware):
-    async def dispatch(self, request, call_next):
-        with Registry.request_scope(
-            load_context=AppLoadContext(db=get_db(request)),
-            client_backend=fastapi_client_backend(request),
-        ):
-            return await call_next(request)
-
-
-app.add_middleware(RegistryScopeMiddleware)
-
-# optional: dev guardrails (warnings for missing mounted, unconsumed @mutates, etc.)
-enable_reactive_dev()
-```
+If you cannot use `setup(app)`, define middleware yourself — see [Client Backend](../api/client-backend.md) and [Registry guide](../guide/registry.md).
 
 Pair with `@mutates` on store methods so mutation routes can omit explicit `dirtied`
 and `mounted=request` — see [Reactivity](../reactivity.md#mutation-tracking-mutates)

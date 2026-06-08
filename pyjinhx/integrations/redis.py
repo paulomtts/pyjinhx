@@ -1,10 +1,8 @@
 """
 Reference Redis invalidation backend for multi-worker CacheScope.PROCESS setups.
 
-Copy or adapt for your app.
-
-- ``memory://`` — in-process FakeRedis (``pip install fakeredis``), for demos/tests
-- ``redis://...`` — real Redis (``pip install redis``)
+- ``memory://`` — in-process FakeRedis (``pip install pyjinhx[redis]``), for demos/tests
+- ``redis://...`` — real Redis (``pip install pyjinhx[redis]``)
 """
 
 from __future__ import annotations
@@ -15,7 +13,7 @@ import threading
 from collections.abc import Callable
 from typing import Any
 
-from pyjinhx import InvalidationBackend
+from pyjinhx.invalidation import InvalidationBackend
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +28,7 @@ def _redis_clients(redis_url: str) -> tuple[Any, Any]:
             import fakeredis
         except ImportError as exc:
             raise ImportError(
-                "memory:// requires the fakeredis package: pip install fakeredis"
+                "memory:// requires fakeredis: pip install pyjinhx[redis]"
             ) from exc
         server = fakeredis.FakeServer()
         return (
@@ -41,7 +39,7 @@ def _redis_clients(redis_url: str) -> tuple[Any, Any]:
         import redis
     except ImportError as exc:
         raise ImportError(
-            "Redis URLs require the redis package: pip install redis"
+            "Redis URLs require the redis package: pip install pyjinhx[redis]"
         ) from exc
     publish_client = redis.from_url(redis_url, decode_responses=True)
     subscribe_client = redis.from_url(redis_url, decode_responses=True)

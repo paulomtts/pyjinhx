@@ -35,6 +35,9 @@ markers = [
     "pjx_runtime: enable pjx.js auto-injection in tests (disabled by default via conftest)",
 ]
 
+[project.optional-dependencies]
+redis = ["redis>=5.0.0", "fakeredis>=2.26.0"]
+
 [dependency-groups]
 dev = [
     "mkdocs-material>=9.7.1",
