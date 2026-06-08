@@ -2,7 +2,7 @@
 Reactive subsystem for pyjinhx.
 
 Modules:
-- ``component`` — ``ReactiveComponent``, ``effective_reacts_to()``, render descriptor
+- ``component`` — ``ReactiveComponent``, ``depends_on()``, render descriptor
 - ``render`` — shared reactive render orchestration
 - ``load_cache`` — ``LoadCache`` memoization for ``load()``
 - ``mutations`` — ``MutationTracker``, ``@mutates``, ``mutation_scope``

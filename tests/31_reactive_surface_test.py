@@ -66,9 +66,9 @@ def test_state_hash_exclude_omits_fields():
     assert a.state_hash() == b.state_hash()
 
 
-def test_effective_reacts_to_defaults_to_static_interpolation():
+def test_depends_on_defaults_to_static_interpolation():
     counter = GoodCounter(id="counter", remaining=0)
-    assert counter.effective_reacts_to() == {"todos"}
+    assert counter.depends_on() == {"todos"}
 
 
 def test_reactive_component_is_detected():

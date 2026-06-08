@@ -166,7 +166,7 @@ Wire `setup(app, ...)` once — lifespan and registry middleware handle cache sc
 **Reactive ergonomics:** use `StateKey` enums and `StateKey.dirty_keys()` for typed keys; `@mutates` on store methods to auto-supply `dirtied`; `LoadContext.bind()` / `LoadContext.current()` to inject dependencies into `load()`; `enable_reactive_dev()` and `dependency_graph()` for guardrails and debugging.
 
 **Reactive design decisions:**
-- **Two-tier dependencies:** static `reacts_to` is the cache-safety superset; override `effective_reacts_to()` on the loaded instance to narrow runtime deps (e.g. admin-only panels). `oob_swaps` pre-filters on the superset, then `load()`s, then matches on `effective_reacts_to()`.
+- **Two-tier dependencies:** static `reacts_to` is the cache-safety superset; override `depends_on()` on the loaded instance to narrow runtime deps (e.g. admin-only panels). `oob_swaps` pre-filters on the superset, then `load()`s, then matches on `depends_on()`.
 - **`mutation_scope`:** records dirtied keys and invalidates the load cache on **successful exit** only (same as `@mutates` after the wrapped function returns). Failed blocks do not invalidate or accumulate dirtied keys.
 - **`state_hash()`:** canonical sorted JSON from `model_dump(mode="json")` with `id` excluded by default (`state_hash_exclude` to omit more fields). Override `state_hash()` for custom hashing.
 

@@ -56,10 +56,10 @@ class Counter(ReactiveComponent):
 - `state_hash()` — canonical SHA-256 of sorted JSON from `model_dump(mode="json")`
   with `state_hash_exclude` applied (`id` is excluded by default). Override for custom
   hashing or add fields to `state_hash_exclude` for ephemeral UI-only state.
-- `effective_reacts_to()` — optional runtime narrowing of `reacts_to` after `load()`.
-  Static `reacts_to` must remain a **superset** of every key `effective_reacts_to()`
+- `depends_on()` — optional runtime narrowing of `reacts_to` after `load()`.
+  Static `reacts_to` must remain a **superset** of every key `depends_on()`
   may return (dev mode enforces this). `oob_swaps` pre-filters on the superset, calls
-  `load()`, then intersects `effective_reacts_to()` with `dirtied`.
+  `load()`, then intersects `depends_on()` with `dirtied`.
 
 Reactive components are stamped with `data-pjx-id`, `data-pjx-type` (the class
 name), and `data-pjx-hash` on their root element automatically.
@@ -231,10 +231,10 @@ class TodoCounter(ReactiveComponent):
 
 Enums normalize to their `.value` everywhere keys are coerced.
 
-## Runtime dependencies (`effective_reacts_to`)
+## Runtime dependencies (`depends_on`)
 
 When a component's dependencies depend on loaded state, declare a static **superset**
-on `reacts_to` and override `effective_reacts_to()` to narrow at runtime:
+on `reacts_to` and override `depends_on()` to narrow at runtime:
 
 ```python
 class AdminPanel(ReactiveComponent):
@@ -246,18 +246,18 @@ class AdminPanel(ReactiveComponent):
         user = get_current_user()
         return cls(is_admin=user.is_admin)
 
-    def effective_reacts_to(self) -> set[str]:
+    def depends_on(self) -> set[str]:
         if self.is_admin:
             return {"user", "settings"}
         return {"settings"}
 ```
 
 `oob_swaps` intersects the static superset with `dirtied` first (fast pre-filter),
-then `load()`s, then intersects `effective_reacts_to()` with `dirtied`. A dirtied
+then `load()`s, then intersects `depends_on()` with `dirtied`. A dirtied
 `"user"` key reloads the component but skips the OOB swap for non-admin instances.
 
 `dependency_graph()` and `load_reads` validation use the static superset only. In dev
-mode, `enable_reactive_dev()` warns (or raises) when `effective_reacts_to()` returns
+mode, `enable_reactive_dev()` warns (or raises) when `depends_on()` returns
 keys outside the superset.
 
 ## Mutation tracking (`@mutates`)

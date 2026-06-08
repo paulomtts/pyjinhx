@@ -80,25 +80,25 @@ def validate_load_reads(
         )
 
 
-def validate_effective_reacts_to(instance: object) -> None:
-    """Ensure runtime deps are a subset of the static ``reacts_to`` superset."""
+def validate_depends_on(instance: object) -> None:
+    """Ensure ``depends_on()`` is a subset of the static ``reacts_to`` superset."""
     if not _dev_config.enabled:
         return
     component_class = type(instance)
     if not getattr(component_class, "_pjx_reactive", False):
         return
-    if not hasattr(instance, "effective_reacts_to"):
+    if not hasattr(instance, "depends_on"):
         return
     superset = interpolate_reactive_keys(
         getattr(component_class, "_pjx_reacts_to", frozenset()),
         getattr(instance, "_pjx_key", None),
         keyed=getattr(component_class, "_pjx_keyed", False),
     )
-    runtime = instance.effective_reacts_to()
+    runtime = instance.depends_on()
     extra = runtime - superset
     if extra:
         _report(
-            f"{component_class.__name__}.effective_reacts_to() {extra!r} exceeds "
+            f"{component_class.__name__}.depends_on() {extra!r} exceeds "
             f"the static reacts_to superset {superset!r}."
         )
 
@@ -108,7 +108,7 @@ def dependency_graph() -> dict[str, list[str]]:
     Map each declared reactive key to component class names that depend on it.
 
     Shows the static ``reacts_to`` superset only — not per-instance narrowing
-    from ``effective_reacts_to()``. Instance-tier stems appear as declared
+    from ``depends_on()``. Instance-tier stems appear as declared
     (e.g. ``"todo"``), not expanded per key.
     """
     graph: dict[str, set[str]] = {}

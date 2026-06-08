@@ -116,7 +116,7 @@ def oob_swaps(
         seen.add(dedup_key)
 
         instance = component_class.load(skey) if keyed else component_class.load()
-        if not (instance.effective_reacts_to() & dirtied_keys):
+        if not (instance.depends_on() & dirtied_keys):
             continue
         instance.id = component_id
         fresh_hash = instance.state_hash()

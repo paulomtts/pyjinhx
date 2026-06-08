@@ -144,13 +144,13 @@ class ReactiveComponent(BaseComponent):
             )
         )
 
-    def effective_reacts_to(self) -> set[str]:
+    def depends_on(self) -> set[str]:
         """
-        Runtime reactive keys this instance depends on.
+        Reactive keys this loaded instance currently depends on.
 
         Defaults to the interpolated static ``reacts_to`` declaration. Override to
-        narrow (or expand, with dev warnings) based on loaded instance state. The
-        static ``reacts_to`` must remain a superset for cache-safety.
+        narrow (or expand, with dev warnings) based on instance state. The static
+        ``reacts_to`` must remain a superset for cache-safety.
         """
         component_class = type(self)
         return interpolate_reactive_keys(

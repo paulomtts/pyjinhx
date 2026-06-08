@@ -139,7 +139,7 @@ Enable guardrails. When enabled:
 - Warns if `@mutates` recorded dirtied keys but no reactive `render()` consumed them in the request scope.
 - Warns if dirtied keys are set but `mounted` was not passed (OOB swaps skipped).
 - Validates that `load_reads` keys are covered by `reacts_to` on each `load()`.
-- Validates that `effective_reacts_to()` is a subset of the static `reacts_to` superset on each `load()`.
+- Validates that `depends_on()` is a subset of the static `reacts_to` superset on each `load()`.
 
 Set `strict=True` to raise `RuntimeError` instead of logging warnings.
 

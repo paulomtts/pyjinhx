@@ -137,9 +137,9 @@ class LoadCache:
             declared_reads=set(getattr(component_class, "_pjx_load_reads", frozenset())),
             reacts_to=set(getattr(component_class, "_pjx_reacts_to", frozenset())),
         )
-        from .dev import validate_effective_reacts_to
+        from .dev import validate_depends_on
 
-        validate_effective_reacts_to(result)
+        validate_depends_on(result)
 
         if key is not None:
             from ..utils import pascal_case_to_kebab_case
@@ -185,8 +185,8 @@ class LoadCache:
 
     @classmethod
     def _indexed_keys(cls, instance: BaseComponent) -> set[str]:
-        if hasattr(instance, "effective_reacts_to"):
-            return instance.effective_reacts_to()
+        if hasattr(instance, "depends_on"):
+            return instance.depends_on()
         return cls._static_effective_keys(
             instance.__class__,
             getattr(instance, "_pjx_key", None),

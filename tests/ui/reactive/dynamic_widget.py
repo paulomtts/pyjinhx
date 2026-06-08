@@ -13,7 +13,7 @@ class DynamicWidget(ReactiveComponent):
     def load(cls) -> "DynamicWidget":
         return cls(flag="on" if state.get("dynamic_narrow", True) else "off")
 
-    def effective_reacts_to(self) -> set[str]:
+    def depends_on(self) -> set[str]:
         if self.flag == "on":
             return {"alpha"}
         return {"alpha", "beta"}

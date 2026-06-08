@@ -49,16 +49,16 @@ Render an already-built instance as the primary without re-loading from the worl
 !!! note "Without ClientBackend"
     Pass `mounted=request` (and `client=request` for asset dedup) when not using a request-scoped backend. See [Client Backend](client-backend.md).
 
-### effective_reacts_to()
+### depends_on()
 
 ```python
-def effective_reacts_to(self) -> set[str]
+def depends_on(self) -> set[str]
 ```
 
-Runtime reactive keys this loaded instance depends on. Defaults to the interpolated
-static `reacts_to` declaration. Override to narrow based on instance state (static
-`reacts_to` must remain a superset). Used by `oob_swaps` after `load()` and by
-`LoadCache` reverse indexing.
+Reactive keys this loaded instance currently depends on. Defaults to the
+interpolated static `reacts_to` declaration. Override to narrow based on instance
+state (static `reacts_to` must remain a superset). Used by `oob_swaps` after
+`load()` and by `LoadCache` reverse indexing.
 
 ### state_hash()
 

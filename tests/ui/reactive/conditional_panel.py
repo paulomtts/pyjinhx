@@ -12,7 +12,7 @@ class ConditionalPanel(ReactiveComponent):
     def load(cls) -> "ConditionalPanel":
         return cls(is_admin=False, label="guest")
 
-    def effective_reacts_to(self) -> set[str]:
+    def depends_on(self) -> set[str]:
         if self.is_admin:
             return {"user", "settings"}
         return {"settings"}

@@ -19,7 +19,7 @@ class OverBroad(ReactiveComponent):
     def load(cls) -> "OverBroad":
         return cls(id="over")
 
-    def effective_reacts_to(self) -> set[str]:
+    def depends_on(self) -> set[str]:
         return {"alpha", "extra"}
 
 
@@ -76,7 +76,7 @@ def test_cache_reindex_tracks_runtime_keys():
     assert reloaded.flag == "off"
 
 
-def test_effective_reacts_to_exceeding_superset_raises_in_strict_dev():
+def test_depends_on_exceeding_superset_raises_in_strict_dev():
     enable_reactive_dev(strict=True)
-    with pytest.raises(RuntimeError, match="effective_reacts_to"):
+    with pytest.raises(RuntimeError, match="depends_on"):
         OverBroad.load()
