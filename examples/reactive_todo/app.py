@@ -1,18 +1,15 @@
 from __future__ import annotations
 
 import sys
-from contextlib import asynccontextmanager
 from pathlib import Path
 
 sys.path.append(str(Path(__file__).resolve().parents[2]))
 
 import uvicorn
-from fastapi import FastAPI, Form, Request
+from fastapi import FastAPI, Form
 from fastapi.responses import HTMLResponse
-from starlette.middleware.base import BaseHTTPMiddleware
 
 from examples.reactive_todo import store
-from examples.reactive_todo.invalidation import configure_load_cache, shutdown_load_cache
 from examples.reactive_todo.components import (
     TodoApp,
     TodoClearButton,
@@ -23,31 +20,16 @@ from examples.reactive_todo.components import (
     TodoLoadContext,
     TodoTotal,
 )
-from pyjinhx import Registry, Renderer, fastapi_client_backend
+from pyjinhx import PyJinhxSettings, Renderer, setup
 
 Renderer.set_default_environment(Path(__file__).resolve().parents[2])
 
-
-@asynccontextmanager
-async def lifespan(_application: FastAPI):
-    configure_load_cache()
-    yield
-    shutdown_load_cache()
-
-
-app = FastAPI(title="pyjinhx reactive todo demo", lifespan=lifespan)
-
-
-class RegistryScopeMiddleware(BaseHTTPMiddleware):
-    async def dispatch(self, request: Request, call_next):
-        with Registry.request_scope(
-            load_context=TodoLoadContext(store=store),
-            client_backend=fastapi_client_backend(request),
-        ):
-            return await call_next(request)
-
-
-app.add_middleware(RegistryScopeMiddleware)
+app = FastAPI(title="pyjinhx reactive todo demo")
+setup(
+    app,
+    settings=PyJinhxSettings.from_env(),
+    load_context_factory=lambda _request: TodoLoadContext(store=store),
+)
 
 
 def _item(todo: store.Todo) -> TodoItem:

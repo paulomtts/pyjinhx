@@ -79,16 +79,27 @@ Logged events include:
 - Component class registration warnings (duplicates)
 - Component instance registration warnings (ID conflicts)
 
-## Load cache scope
+## Application setup
 
-Control where reactive `load()` results are cached:
+For web apps, use a single call:
 
 ```python
-from pyjinhx import CacheScope, set_load_cache_scope
+from pyjinhx import setup
 
-set_load_cache_scope(CacheScope.PROCESS)  # default — shared per worker
-set_load_cache_scope(CacheScope.REQUEST)  # isolated per request scope
-set_load_cache_scope(CacheScope.NONE)     # no caching
+setup(app, load_context_factory=lambda req: AppLoadContext(db=get_db(req)))
+```
+
+See [Configuration API](../api/config.md) for `PyJinhxSettings`, lifespan chaining, and cache defaults.
+
+## Load cache scope
+
+Default is **`CacheScope.REQUEST`** (multi-worker safe). Opt into cross-request caching:
+
+```python
+from pyjinhx import CacheScope, setup
+
+setup(app, cache_scope=CacheScope.PROCESS, invalidation_backend=...)  # see integrations.redis
+setup(app, cache_scope=CacheScope.NONE)
 ```
 
 `Registry.request_scope()` initializes a request-scoped cache on entry and clears it on exit. With `PROCESS` scope, reads also use the process-wide store; with `REQUEST` scope, only the request store is used.
@@ -97,22 +108,22 @@ See [Cache & Invalidation](../api/cache-invalidation.md) and [Reactivity](../rea
 
 ## Invalidation fan-out
 
-When using `CacheScope.PROCESS` with multiple workers, configure an `InvalidationBackend` so cache evictions propagate across processes:
+When using `CacheScope.PROCESS` with multiple workers, configure an `InvalidationBackend`:
 
 ```python
-from pyjinhx import (
-    set_invalidation_backend,
-    start_invalidation_listener,
-    stop_invalidation_listener,
-)
+from pyjinhx import CacheScope, PyJinhxSettings, setup
+from pyjinhx.integrations.redis import RedisInvalidationBackend
 
-set_invalidation_backend(my_backend)
-start_invalidation_listener()
-# ... on shutdown:
-stop_invalidation_listener()
+setup(
+    app,
+    settings=PyJinhxSettings(
+        cache_scope=CacheScope.PROCESS,
+        invalidation_backend=RedisInvalidationBackend("redis://..."),
+    ),
+)
 ```
 
-See [Cache & Invalidation](../api/cache-invalidation.md) and the [FastAPI integration](../integrations/fastapi.md) lifespan example.
+See [Cache & Invalidation](../api/cache-invalidation.md) and [Redis integration](../api/integrations-redis.md).
 
 ## Reactive dev mode
 

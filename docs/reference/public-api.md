@@ -46,6 +46,16 @@ Every symbol exported from `pyjinhx` (`__all__`) is listed below with a one-line
 | `dependency_graph()` | Map reactive keys to dependent component class names | [Mutations, Keys & LoadContext](../api/mutations-keys-context.md#dependency_graph) |
 | `format_dependency_graph()` | Format the dependency graph as text or Mermaid | [Mutations, Keys & LoadContext](../api/mutations-keys-context.md#format_dependency_graph) |
 
+## Configuration
+
+| Symbol | Description | Documentation |
+|--------|-------------|---------------|
+| `setup()` | Single-call process + optional FastAPI wiring | [Configuration](../api/config.md#setup) |
+| `PyJinhxSettings` | Cache scope, invalidation backend, reactive dev flags | [Configuration](../api/config.md#pyjinhxsettings) |
+| `configure_pyjinhx()` | Process-wide startup | [Configuration](../api/config.md#configure_pyjinhx--shutdown_pyjinhx) |
+| `shutdown_pyjinhx()` | Process-wide shutdown | [Configuration](../api/config.md#configure_pyjinhx--shutdown_pyjinhx) |
+| `pyjinhx_lifespan()` | Sync context manager for tests/scripts | [Configuration](../api/config.md#pyjinhx_lifespan) |
+
 ## Load cache & invalidation
 
 | Symbol | Description | Documentation |

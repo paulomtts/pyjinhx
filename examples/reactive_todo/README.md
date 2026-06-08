@@ -21,23 +21,23 @@ The routes never mention the counter/total/clear button — they just declare
 `dirtied={"todos"}`. The dependency graph lives on the components (`reacts_to`), and
 `pjx.js` reports what's mounted via the `X-PJX-Mounted` header.
 
-## Load cache + invalidation
+## Setup
 
-On startup the app calls `configure_load_cache()` (FastAPI lifespan). Default is
-**`CacheScope.PROCESS`** — cross-request `load()` caching per worker. Correctness
-depends on proper invalidation (`@mutates`, `dirty_keys`, reactive `render()`).
+The app calls `setup(app, ...)` once — lifespan (cache + optional invalidation) and
+registry middleware are wired automatically. Default load cache is
+**`CacheScope.REQUEST`** (multi-worker safe without Redis).
 
-Per-request cache only (multi-worker safe without Redis):
+Cross-request cache per worker (opt-in performance):
 
 ```bash
-PJX_LOAD_CACHE_SCOPE=request uv run uvicorn examples.reactive_todo.app:app --reload
+PJX_LOAD_CACHE_SCOPE=process uv run uvicorn examples.reactive_todo.app:app --reload
 ```
 
-Multi-worker with Redis fan-out:
+Multi-worker with Redis invalidation fan-out:
 
 ```bash
 PJX_LOAD_CACHE_SCOPE=process REDIS_URL=redis://localhost:6379/0 \
   uv run uvicorn examples.reactive_todo.app:app --reload
 ```
 
-Copy `redis_invalidation.py` into your own project to adapt the backend. Dev deps: `fakeredis`, `redis`.
+Redis backend: `pyjinhx.integrations.redis.RedisInvalidationBackend` (`pip install pyjinhx[redis]`).

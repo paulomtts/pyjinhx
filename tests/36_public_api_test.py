@@ -29,6 +29,11 @@ def test_reactive_api_is_exported():
         start_invalidation_listener,
         StateKey,
         stop_invalidation_listener,
+        PyJinhxSettings,
+        configure_pyjinhx,
+        shutdown_pyjinhx,
+        pyjinhx_lifespan,
+        setup,
     )
 
     assert PJX_MOUNTED_HEADER == "X-PJX-Mounted"
@@ -48,6 +53,10 @@ def test_reactive_api_is_exported():
     assert callable(set_invalidation_backend)
     assert callable(start_invalidation_listener)
     assert callable(stop_invalidation_listener)
+    assert callable(setup)
+    assert callable(configure_pyjinhx)
+    assert callable(shutdown_pyjinhx)
+    assert callable(pyjinhx_lifespan)
     assert CacheScope.REQUEST == "request"
     assert issubclass(ClientBackend, ABC)
     assert issubclass(InvalidationBackend, ABC)
@@ -87,6 +96,11 @@ def test_names_in_all():
         "set_invalidation_backend",
         "start_invalidation_listener",
         "stop_invalidation_listener",
+        "PyJinhxSettings",
+        "configure_pyjinhx",
+        "shutdown_pyjinhx",
+        "pyjinhx_lifespan",
+        "setup",
         "ClientBackend",
         "FastAPIClientBackend",
         "fastapi_client_backend",

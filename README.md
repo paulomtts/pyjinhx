@@ -142,11 +142,11 @@ def toggle():
     return Counter.render(dirtied={StateKey.TODOS})
 ```
 
-Wire `fastapi_client_backend(request)` in your app's middleware via `Registry.request_scope(client_backend=...)` so mutation routes omit `mounted=` — the client manifest (`X-PJX-Mounted`) is read automatically after `@mutates`. `pjx.js` is injected on root full-page renders unless that header is already present.
+Wire `setup(app, ...)` once — lifespan and registry middleware handle cache scope, optional invalidation, `LoadContext`, and `ClientBackend` for header auto-resolution. Mutation routes omit `mounted=`; `pjx.js` is injected on root full-page renders unless `X-PJX-Mounted` is already present.
 
 **Reactive ergonomics:** use `StateKey` enums and `dirty_keys()` for typed keys; `@mutates` on store methods to auto-supply `dirtied`; `load_scope()` / `get_load_context()` to inject dependencies into `load()`; `enable_reactive_dev()` and `dependency_graph()` for guardrails and debugging.
 
-**Load cache scope** (default `CacheScope.PROCESS`): `load()` results are cached per worker for cross-request hits. Use `Registry.request_scope()` on every request for instance registry isolation. For multiple workers, subclass `InvalidationBackend` (Redis reference: [examples/reactive_todo/redis_invalidation.py](examples/reactive_todo/redis_invalidation.py)) or opt into `CacheScope.REQUEST`.
+**Load cache scope** (default `CacheScope.REQUEST`): `load()` results are cached within each HTTP request. Use `Registry.request_scope()` on every request for instance registry isolation (included in `setup(app, ...)`). For cross-request caching per worker, pass `cache_scope=CacheScope.PROCESS` to `setup()` and pair with an `InvalidationBackend` ([Redis reference](pyjinhx/integrations/redis.py), `pip install pyjinhx[redis]`).
 
 Details: [usage tiers](docs/guide/usage-tiers.md) · [reactivity guide](docs/reactivity.md) · [Build an App](docs/getting-started/build-an-app.md) · [examples/reactive_todo/](examples/reactive_todo/).
 
