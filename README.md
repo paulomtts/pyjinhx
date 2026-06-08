@@ -146,6 +146,8 @@ The client reports mounted regions via the `X-PJX-Mounted` header; `pjx.js` is i
 
 **Reactive ergonomics:** use `StateKey` enums and `dirty_keys()` for typed keys; `@mutates` on store methods to auto-supply `dirtied`; `load_scope()` / `get_load_context()` to inject dependencies into `load()`; `enable_reactive_dev()` and `dependency_graph()` for guardrails and debugging.
 
+**Load cache scope** (default `CacheScope.PROCESS`): `load()` results are cached per worker for cross-request hits. Use `Registry.request_scope()` on every request for instance registry isolation. For multiple workers, subclass `InvalidationBackend` (Redis reference: [examples/reactive_todo/redis_invalidation.py](examples/reactive_todo/redis_invalidation.py)) or opt into `CacheScope.REQUEST`.
+
 Details: [reactivity guide](docs/reactivity.md). Runnable demo: [examples/reactive_todo/](examples/reactive_todo/).
 
 ## JS & CSS collection

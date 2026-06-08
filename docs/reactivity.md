@@ -290,14 +290,37 @@ print(format_dependency_graph())
 
 ## 4. `load()` results are cached
 
-Every reactive component's `load()` is wrapped in a **process-global, dependency-keyed
-cache**. Repeated reads — a page render, several components, successive requests —
-return the cached result and skip the database until the relevant keys are dirtied:
+Every reactive component's `load()` is wrapped in a **dependency-keyed cache**.
+Repeated reads within the same request return the cached result and skip the database
+until the relevant keys are dirtied:
 
 ```python
 Counter.load()   # first call hits the DB
 Counter.load()   # cached: no DB, returns an independent copy
 ```
+
+### Cache scope
+
+| Scope | Default | Storage | Cross-request | Multi-worker safe |
+|-------|---------|---------|---------------|-------------------|
+| `PROCESS` | yes | module-level dict per worker | yes | needs invalidation fan-out |
+| `REQUEST` | opt-in | `ContextVar` inside `Registry.request_scope()` | no | yes |
+| `NONE` | opt-in | disabled | — | yes |
+
+```python
+from pyjinhx import CacheScope, set_load_cache_scope
+
+set_load_cache_scope(CacheScope.PROCESS)   # default — cross-request cache per worker
+set_load_cache_scope(CacheScope.REQUEST)   # per-request only (multi-worker safe)
+set_load_cache_scope(CacheScope.NONE)      # always hit the database
+```
+
+Use `Registry.request_scope()` on every HTTP request (middleware) for instance registry
+isolation and optional request-tier cache when scope is `REQUEST`.
+
+**Cache identity:** entries are keyed by `(component class, load key)` only. Encode
+tenant or user scope in reactive keys (e.g. `"user:7:todos"`) or ensure `LoadContext`
+data is stable for all requests sharing a cache entry.
 
 A reactive `render(dirtied=...)` (and `oob_swaps`) evicts the dirtied keys before
 reloading dependents, so swaps always reflect post-mutation state. For mutations that
@@ -311,12 +334,31 @@ def nightly_recalc():
     invalidate({"todos"})   # evict every cached load() that depends on "todos"
 ```
 
-The cache holds one result per `(type, key)` — one per type for singletons, one per
-instance key for keyed components — and returns a fresh copy on every call, so callers
-can mutate what they get back without affecting the cache. **Scope is per-process**:
-under multiple workers each process has
-its own cache; cross-worker coherence is your application's responsibility (back it
-with a shared store if you need it).
+The cache holds one result per `(type, key)` and returns a fresh copy on every call, so
+callers can mutate what they get back without affecting the cache.
+
+### Multi-worker invalidation (`PROCESS` scope)
+
+When using `CacheScope.PROCESS` with multiple workers, configure an
+`InvalidationBackend` so `invalidate()` fans out to every process:
+
+```python
+from pyjinhx import (
+    CacheScope,
+    set_invalidation_backend,
+    set_load_cache_scope,
+    start_invalidation_listener,
+    stop_invalidation_listener,
+)
+from examples.reactive_todo.redis_invalidation import RedisInvalidationBackend
+
+set_load_cache_scope(CacheScope.PROCESS)
+set_invalidation_backend(RedisInvalidationBackend("redis://localhost:6379/0"))
+start_invalidation_listener()   # app lifespan startup
+# stop_invalidation_listener() on shutdown
+```
+
+Requires `pip install redis`. Copy [examples/reactive_todo/redis_invalidation.py](https://github.com/paulomtts/pyjinhx/tree/master/examples/reactive_todo/redis_invalidation.py) into your app (or wire via [invalidation.py](https://github.com/paulomtts/pyjinhx/tree/master/examples/reactive_todo/invalidation.py)).
 
 ## Boundaries
 
@@ -332,9 +374,10 @@ with a shared store if you need it).
   `reacts_to`. A zero-arg `load(cls)` is a type-singleton; `load(cls, key)` is
   instance-keyed. Reactive `render()` auto-`load()`s dependents, so you never call
   `load()` yourself for a reactive render.
-- **`load()` cache is per-process**: it saves database work on cache hits; eviction is
-  dirtied-key driven (automatically in the reactive flow, or via `invalidate(dirtied)`).
-  Cross-worker coherence is the application's responsibility.
+- **`load()` cache scope**: default `PROCESS` (cross-request per worker). Use `REQUEST`
+  for multi-worker without an invalidation backend. Eviction is dirtied-key driven
+  (automatically in the reactive flow, or via `invalidate(dirtied)`). Multi-worker
+  `PROCESS` setups need an `InvalidationBackend`.
 
 ## How it works (under the hood)
 

@@ -49,9 +49,7 @@ def test_reference_mode_emits_link_and_script_tags():
         css_mode=AssetMode.REFERENCE,
     )
 
-    rendered = str(
-        UnifiedComponent(id="ref-1", text="Ref")._render(_renderer=renderer)
-    )
+    rendered = str(UnifiedComponent(id="ref-1", text="Ref")._render(_renderer=renderer))
 
     assert '<link rel="stylesheet" href="/assets/unified-component.css">' in rendered
     assert '<script src="/assets/unified-component.js"></script>' in rendered
@@ -209,7 +207,11 @@ def test_layout_reference_mode_emits_runtime_src():
     Renderer.set_default_runtime_url("/static/pyjinhx/pjx.js")
     renderer = Renderer.get_default_renderer(js_mode=AssetMode.REFERENCE)
 
-    rendered = str(Page(id="page")._render(source="<html><body>hi</body></html>", _renderer=renderer))
+    rendered = str(
+        Page(id="page")._render(
+            source="<html><body>hi</body></html>", _renderer=renderer
+        )
+    )
 
     assert '<script src="/static/pyjinhx/pjx.js"></script>' in rendered
     assert read_client_runtime() not in rendered

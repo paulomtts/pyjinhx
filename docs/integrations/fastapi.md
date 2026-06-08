@@ -108,7 +108,7 @@ def index():
 
 ## Request-Scoped Registry
 
-In web apps, component instances from one request can leak into the next. Use `Registry.request_scope()` to isolate per request. See the [Registry guide](../guide/registry.md) for details.
+In web apps, component instances from one request can leak into the next. Use `Registry.request_scope()` to isolate per request. The default **cross-request `load()` cache** is `CacheScope.PROCESS`; set `CacheScope.REQUEST` when running multiple workers without an invalidation backend. See the [Registry guide](../guide/registry.md) and [Reactivity §4](../reactivity.md#4-load-results-are-cached).
 
 ### Per-Route
 

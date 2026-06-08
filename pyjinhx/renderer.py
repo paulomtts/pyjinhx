@@ -510,7 +510,9 @@ class Renderer:
                 continue
             self._register_asset(session, normalized_path, "css", self._css_mode)
 
-    def _inject_runtime(self, session: RenderSession, component: "BaseComponent") -> None:
+    def _inject_runtime(
+        self, session: RenderSession, component: "BaseComponent"
+    ) -> None:
         if session.runtime_injected:
             return
         if not getattr(type(component), "_pjx_layout", False):
@@ -521,9 +523,7 @@ class Renderer:
             runtime_path = _normalize_asset_path(runtime_asset_path())
             if runtime_path not in session.collected_paths:
                 session.collected_paths.add(runtime_path)
-                session.assets.insert(
-                    0, CollectedAsset(path=runtime_path, kind="js")
-                )
+                session.assets.insert(0, CollectedAsset(path=runtime_path, kind="js"))
         session.runtime_injected = True
 
     def _should_emit_reference_url(
@@ -581,9 +581,7 @@ class Renderer:
         if self._js_mode == AssetMode.INLINE:
             if not session.scripts:
                 return ""
-            return "\n".join(
-                f"<script>{script}</script>" for script in session.scripts
-            )
+            return "\n".join(f"<script>{script}</script>" for script in session.scripts)
         if self._js_mode == AssetMode.REFERENCE:
             js_assets = [asset for asset in session.assets if asset.kind == "js"]
             if not js_assets:
@@ -614,7 +612,10 @@ class Renderer:
 
         rendered_children = "".join(
             self._render_tag_node(
-                child, base_context=base_context, session=session, emit_assets=emit_assets
+                child,
+                base_context=base_context,
+                session=session,
+                emit_assets=emit_assets,
             )
             for child in node.children
         ).strip()

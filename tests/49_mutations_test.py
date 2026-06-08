@@ -8,6 +8,7 @@ from pyjinhx.mutations import (
     resolve_effective_dirtied,
 )
 from tests.ui.reactive.reactive_clear_button import ReactiveClearButton
+from tests.ui.reactive.reactive_counter import ReactiveCounter  # noqa: F401
 from tests.ui.reactive.store import state
 
 UI_ROOT = Path(__file__).parent / "ui" / "reactive"

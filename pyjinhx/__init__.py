@@ -10,7 +10,13 @@ from .assets import (
     runtime_asset_path,
 )
 from .base import BaseComponent
-from .cache import invalidate
+from .cache import CacheScope, get_load_cache_scope, invalidate, set_load_cache_scope
+from .invalidation import (
+    InvalidationBackend,
+    set_invalidation_backend,
+    start_invalidation_listener,
+    stop_invalidation_listener,
+)
 from .dataclasses import Tag
 from .finder import Finder, layout_asset_tags
 from .keys import StateKey, dirty_keys, instance_key
@@ -47,6 +53,13 @@ __all__ = [
     "Tag",
     "oob_swaps",
     "invalidate",
+    "CacheScope",
+    "get_load_cache_scope",
+    "set_load_cache_scope",
+    "InvalidationBackend",
+    "set_invalidation_backend",
+    "start_invalidation_listener",
+    "stop_invalidation_listener",
     "client_script",
     "PJX_MOUNTED_HEADER",
     "PJX_ASSETS_HEADER",

@@ -2,14 +2,11 @@ import json
 from pathlib import Path
 
 import pytest
-from fastapi.testclient import TestClient
 
 from examples.reactive_todo import store
-from examples.reactive_todo.app import app
 from pyjinhx import PJX_MOUNTED_HEADER, Renderer
 
 ROOT = Path(__file__).resolve().parents[2]
-client = TestClient(app)
 
 
 @pytest.fixture(autouse=True)
@@ -28,7 +25,7 @@ def _manifest(*entries):
 def _rows(*ids):
     return [
         {
-            "id": f"todo-item-row-{i}",
+            "id": f"todo-row-{i}",
             "type": "TodoItemRow",
             "key": str(i),
             "hash": "stale",
@@ -37,31 +34,31 @@ def _rows(*ids):
     ]
 
 
-def test_index_renders_instance_keyed_rows():
+def test_index_renders_instance_keyed_rows(client):
     body = client.get("/").text
     for i in (1, 2, 3):
-        assert f'data-pjx-id="todo-item-row-{i}"' in body
+        assert f'data-pjx-id="todo-row-{i}"' in body
         assert f'data-pjx-key="{i}"' in body
     assert 'data-pjx-type="TodoItemRow"' in body
 
 
-def test_toggle_row_swaps_only_that_row():
+def test_toggle_row_swaps_only_that_row(client):
     headers = _manifest(*_rows(1, 2, 3))
     body = client.post("/rows/1/toggle", headers=headers).text
 
-    assert 'data-pjx-id="todo-item-row-1"' in body
+    assert 'data-pjx-id="todo-row-1"' in body
     assert 'data-pjx-key="1"' in body
 
-    assert "outerHTML:[data-pjx-id='todo-item-row-1']" not in body
-    assert "outerHTML:[data-pjx-id='todo-item-row-2']" not in body
-    assert "outerHTML:[data-pjx-id='todo-item-row-3']" not in body
+    assert "outerHTML:[data-pjx-id='todo-row-1']" not in body
+    assert "outerHTML:[data-pjx-id='todo-row-2']" not in body
+    assert "outerHTML:[data-pjx-id='todo-row-3']" not in body
 
 
-def test_toggle_row_does_not_resurrect_other_rows_as_oob():
+def test_toggle_row_does_not_resurrect_other_rows_as_oob(client):
     headers = _manifest(*_rows(1, 2, 3))
     body = client.post("/rows/2/toggle", headers=headers).text
 
-    assert 'data-pjx-id="todo-item-row-2"' in body
+    assert 'data-pjx-id="todo-row-2"' in body
     assert 'data-pjx-key="2"' in body
-    assert "outerHTML:[data-pjx-id='todo-item-row-1']" not in body
-    assert "outerHTML:[data-pjx-id='todo-item-row-3']" not in body
+    assert "outerHTML:[data-pjx-id='todo-row-1']" not in body
+    assert "outerHTML:[data-pjx-id='todo-row-3']" not in body

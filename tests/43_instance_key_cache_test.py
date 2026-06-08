@@ -57,6 +57,16 @@ def test_instance_invalidation_evicts_one_row():
     assert load_calls["n"] == 3
 
 
+def test_stem_invalidation_evicts_matching_instance_keys():
+    _reset()
+    Row.load("1")
+    Row.load("2")
+    invalidate({"row"})
+    Row.load("1")
+    Row.load("2")
+    assert load_calls["n"] == 4
+
+
 def test_collection_invalidation_evicts_all_rows():
     _reset()
     Row.load("1")
