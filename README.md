@@ -117,13 +117,19 @@ You can also start from an HTML string — `Renderer.render("<Card ...><Button .
 Declare what state each component depends on. After a mutation, render the **primary** response with `dirtied` and `mounted`; PyJinHx appends out-of-band swaps for other mounted regions whose dependencies overlap.
 
 ```python
+from enum import Enum
 from typing import ClassVar
+
 from pyjinhx import ReactiveComponent
+
+
+class StateKey(str, Enum):
+    TODOS = "todos"
 
 
 class Counter(ReactiveComponent):
     remaining: int
-    reacts_to: ClassVar[set[str]] = {"todos"}
+    reacts_to: ClassVar[set[StateKey]] = {StateKey.TODOS}
 
     @classmethod
     def load(cls) -> "Counter":
@@ -133,10 +139,12 @@ class Counter(ReactiveComponent):
 @app.post("/todos/toggle")
 def toggle(request):
     db.toggle_all()
-    return Counter.render(dirtied={"todos"}, mounted=request)
+    return Counter.render(dirtied={StateKey.TODOS}, mounted=request)
 ```
 
-The client reports mounted regions via the `X-PJX-Mounted` header; `pjx.js` is injected automatically on layout components. Instance-keyed components use bare stems in `reacts_to` (e.g. `{"todo"}` → `"todo:<key>"`).
+The client reports mounted regions via the `X-PJX-Mounted` header; `pjx.js` is injected automatically on layout components. `reacts_to`, `dirtied`, and instance keys accept strings or enums (normalized via `.value`). Instance-keyed components use bare stems in `reacts_to` (e.g. `"todo"` or `StateKey.TODO` → `"todo:<key>"`).
+
+**Reactive ergonomics:** use `StateKey` enums and `dirty_keys()` for typed keys; `@mutates` on store methods to auto-supply `dirtied`; `load_scope()` / `get_load_context()` to inject dependencies into `load()`; `enable_reactive_dev()` and `dependency_graph()` for guardrails and debugging.
 
 Details: [reactivity guide](docs/reactivity.md). Runnable demo: [examples/reactive_todo/](examples/reactive_todo/).
 
@@ -163,19 +171,24 @@ Details: [asset collection guide](docs/guide/assets.md). Optional UI kit: [pyjin
 
 ## FastAPI + HTMX (reactive)
 
-Mark the page shell with `base_layout=True` so the client runtime (`pjx.js`) is injected once. A toggle route returns the row as the primary swap; the counter updates out-of-band because both declare `reacts_to={"todos"}`.
+Mark the page shell with `base_layout=True` so the client runtime (`pjx.js`) is injected once. A toggle route returns the row as the primary swap; the counter updates out-of-band because both declare `reacts_to={StateKey.TODOS}`.
 
 ```python
 # components/todo_row.py
+from enum import Enum
 from typing import ClassVar
 
 from pyjinhx import BaseComponent, ReactiveComponent
 
 
+class StateKey(str, Enum):
+    TODOS = "todos"
+
+
 class TodoRow(ReactiveComponent):
     title: str
     done: bool = False
-    reacts_to: ClassVar[set[str]] = {"todos"}
+    reacts_to: ClassVar[set[StateKey]] = {StateKey.TODOS}
 
     @classmethod
     def load(cls, key: int) -> "TodoRow":
@@ -185,7 +198,7 @@ class TodoRow(ReactiveComponent):
 
 class TodoCounter(ReactiveComponent):
     remaining: int
-    reacts_to: ClassVar[set[str]] = {"todos"}
+    reacts_to: ClassVar[set[StateKey]] = {StateKey.TODOS}
 
     @classmethod
     def load(cls) -> "TodoCounter":
@@ -265,7 +278,7 @@ def index():
 def toggle_row(request: Request, todo_id: int):
     with Registry.request_scope():
         db.toggle(todo_id)
-        return TodoRow.render(todo_id, dirtied={"todos"}, mounted=request)
+        return TodoRow.render(todo_id, dirtied={StateKey.TODOS}, mounted=request)
 ```
 
 Run the full app: `uv run uvicorn examples.reactive_todo.app:app --reload` — see [examples/reactive_todo/README.md](examples/reactive_todo/README.md).

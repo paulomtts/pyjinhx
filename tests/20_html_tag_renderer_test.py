@@ -245,7 +245,9 @@ def test_renderer_with_registered_class_and_nested_components():
         with open(os.path.join(temp_dir, "album_button.html"), "w") as file:
             file.write('<button id="{{ id }}">{{ text }}</button>\n')
 
-        index_html = '<AlbumCard title="My Card"><AlbumButton text="Action"/></AlbumCard>'
+        index_html = (
+            '<AlbumCard title="My Card"><AlbumButton text="Action"/></AlbumCard>'
+        )
         rendered = Renderer(
             Environment(loader=FileSystemLoader(temp_dir)),
             auto_id=True,

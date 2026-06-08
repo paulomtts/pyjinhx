@@ -4,6 +4,7 @@ import pytest
 
 from pyjinhx import Registry
 from pyjinhx.cache import clear as clear_load_cache
+from pyjinhx.mutations import clear_mutations
 
 
 @pytest.fixture(autouse=True)
@@ -18,7 +19,9 @@ def _isolate_reactive_state() -> Generator[None, None, None]:
       or template variable would shadow it. Clear both for isolation.
     """
     clear_load_cache()
+    clear_mutations()
     Registry.clear_instances()
     yield
     clear_load_cache()
+    clear_mutations()
     Registry.clear_instances()

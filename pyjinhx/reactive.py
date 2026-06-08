@@ -33,6 +33,21 @@ PJX_MOUNTED_HEADER = "X-PJX-Mounted"
 """Name of the HTTP header carrying the client's mounted-region manifest."""
 
 
+def _load_param_count(func: Any) -> int:
+    """Count ``load()`` parameters excluding ``cls``, ``ctx``, and variadics."""
+    params = inspect.signature(func).parameters
+    return sum(
+        1
+        for name, param in params.items()
+        if name not in ("cls", "ctx")
+        and param.kind
+        not in (
+            inspect.Parameter.VAR_KEYWORD,
+            inspect.Parameter.VAR_POSITIONAL,
+        )
+    )
+
+
 def client_script() -> Markup:
     """
     Return the pyjinhx client runtime wrapped in a ``<script>`` tag.
@@ -83,18 +98,29 @@ class _ReactiveRender:
                 f"{cls.__name__}.render(<id>, dirtied=..., mounted=request)."
             )
         if not keyed and key is not None:
-            raise TypeError(f"{cls.__name__} is a type-singleton; render() takes no key.")
+            raise TypeError(
+                f"{cls.__name__} is a type-singleton; render() takes no key."
+            )
 
         skey = coerce_load_key_str(key) if key is not None else None
+        from .mutations import mark_reactive_render_consumed, resolve_effective_dirtied
+        from .reactive_dev import warn_reactive_render_without_mounted
+
         own_keys = interpolate_reactive_keys(
             getattr(cls, "_pjx_reacts_to", frozenset()), skey, keyed=keyed
         )
-        effective_dirtied = (
-            coerce_reactive_keys(dirtied) if dirtied is not None else own_keys
+        warn_reactive_render_without_mounted(
+            dirtied=dirtied, mounted=mounted, own_keys=own_keys
+        )
+        effective_dirtied = resolve_effective_dirtied(
+            dirtied=dirtied,
+            mounted=mounted,
+            own_keys=own_keys,
         )
         invalidate(effective_dirtied | own_keys)
         instance = cls.load(skey) if keyed else cls.load()
         primary = instance._render()
+        mark_reactive_render_consumed()
         swaps = oob_swaps(effective_dirtied, mounted, exclude_ids={instance.id})
         return Markup(primary) + swaps
 
@@ -128,6 +154,7 @@ class ReactiveComponent(BaseComponent):
     model_config = ConfigDict(extra="allow", ignored_types=(_ReactiveRender,))
 
     reacts_to: ClassVar[set[ReactiveKey]] = set()
+    load_reads: ClassVar[set[ReactiveKey]] = set()
 
     _pjx_key: str | None = PrivateAttr(default=None)
 
@@ -160,6 +187,9 @@ class ReactiveComponent(BaseComponent):
         cls._pjx_reacts_to = frozenset(
             coerce_reactive_keys(getattr(cls, "reacts_to", None) or ())
         )
+        cls._pjx_load_reads = frozenset(
+            coerce_reactive_keys(getattr(cls, "load_reads", None) or ())
+        )
         if "load" in cls.__dict__ and not cls._pjx_reacts_to:
             raise TypeError(
                 f"{cls.__name__} defines load() but declares no reacts_to; a "
@@ -168,7 +198,7 @@ class ReactiveComponent(BaseComponent):
         if "load" in cls.__dict__:
             _load = cls.__dict__["load"]
             _func = _load.__func__ if isinstance(_load, classmethod) else _load
-            cls._pjx_keyed = len(inspect.signature(_func).parameters) > 1
+            cls._pjx_keyed = _load_param_count(_func) == 1
         if "load" in cls.__dict__:
             from .cache import install_cached_load
 

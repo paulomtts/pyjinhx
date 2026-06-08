@@ -16,6 +16,6 @@ def _coerce_tabs(value: Any) -> dict[str, str | BaseComponent]:
 
 
 class TabGroup(BaseComponent):
-    tabs: Annotated[dict[str, str | BaseComponent], BeforeValidator(_coerce_tabs)] = Field(
-        default_factory=dict
+    tabs: Annotated[dict[str, str | BaseComponent], BeforeValidator(_coerce_tabs)] = (
+        Field(default_factory=dict)
     )

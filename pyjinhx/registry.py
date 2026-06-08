@@ -106,19 +106,36 @@ class Registry:
 
     @classmethod
     @contextmanager
-    def request_scope(cls) -> Generator[None, None, None]:
+    def request_scope(
+        cls,
+        *,
+        load_context: object | None = None,
+    ) -> Generator[None, None, None]:
         """
         Context manager for request-scoped component instances.
 
         Creates a fresh instance registry on entry and restores
-        the previous state on exit.
+        the previous state on exit. Also resets mutation tracking and
+        optionally sets a load context for reactive ``load()`` calls.
 
         Usage:
             with Registry.request_scope():
                 # components registered here won't persist
         """
+        from contextlib import ExitStack
+
+        from .load_context import load_scope
+        from .mutations import clear_mutations
+        from .reactive_dev import warn_mutations_without_render
+
+        clear_mutations()
         token = _registry_context.set({})
         try:
-            yield
+            with ExitStack() as stack:
+                if load_context is not None:
+                    stack.enter_context(load_scope(load_context))
+                yield
         finally:
+            warn_mutations_without_render()
+            clear_mutations()
             _registry_context.reset(token)

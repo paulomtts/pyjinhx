@@ -61,8 +61,26 @@ def _load_through_cache(
     if cached is not None:
         return _with_key(cached.model_copy(), key)
 
-    result = raw_func(cls, key) if key is not None else raw_func(cls)
+    from .load_context import get_load_context, load_accepts_ctx
+    from .reactive_dev import validate_load_reads
+
+    ctx = get_load_context()
+    if key is not None:
+        if load_accepts_ctx(raw_func):
+            result = raw_func(cls, key, ctx=ctx)
+        else:
+            result = raw_func(cls, key)
+    elif load_accepts_ctx(raw_func):
+        result = raw_func(cls, ctx=ctx)
+    else:
+        result = raw_func(cls)
     result = _with_key(result, key)
+
+    validate_load_reads(
+        cls,
+        declared_reads=set(getattr(cls, "_pjx_load_reads", frozenset())),
+        reacts_to=set(getattr(cls, "_pjx_reacts_to", frozenset())),
+    )
 
     if key is not None:
         from .utils import pascal_case_to_kebab_case
