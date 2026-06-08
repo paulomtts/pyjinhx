@@ -15,6 +15,8 @@ the hash the client reported, and a matching hash is skipped.
 > total, and clear button update out-of-band (and get skipped by hash-gating when their
 > value doesn't change).
 
+See the [Public API Index](reference/public-api.md) for every exported reactive symbol.
+
 ## 1. Make a component reactive
 
 Subclass `ReactiveComponent` and declare **both** `reacts_to` and a `load()`

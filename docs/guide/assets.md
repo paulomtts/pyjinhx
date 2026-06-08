@@ -208,3 +208,18 @@ Renderer.set_asset_url_resolver(lambda path: static(path_relative_to_static_root
 ```
 
 Map each absolute asset path to your `{% static %}` URL in the resolver callback.
+
+## Asset helpers reference
+
+| Symbol | Purpose |
+|--------|---------|
+| `DEFAULT_RUNTIME_URL` | Default `/static/pyjinhx/pjx.js` URL constant |
+| `runtime_asset_path()` | Filesystem path to bundled `pjx.js` |
+| `default_asset_url()` | Map absolute path → default public URL |
+| `make_default_asset_url_resolver()` | Build a resolver from a component root |
+| `hashed_filename()` | Content-hash a filename for cache-busting |
+| `resolver_with_hash()` | Resolver that embeds hashes in URLs |
+| `asset_manifest()` | Build `AssetManifest` from a `RenderSession` |
+| `layout_asset_tags()` | Preload all component assets in a layout shell |
+
+See [Assets API](../api/assets-api.md) for signatures and examples.

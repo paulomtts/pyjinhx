@@ -125,23 +125,23 @@ Remove all registered component instances from the current context.
 ```python
 @classmethod
 @contextmanager
-def request_scope(cls)
+def request_scope(cls, *, load_context: Any | None = None)
 ```
 
-Context manager for request-scoped component instances.
+Context manager for request-scoped component instances, load cache, mutation tracking, and optional load context.
 
-Creates a fresh instance registry on entry and restores the previous state on exit. This is useful in web applications where each request should have an isolated registry to prevent components from one request leaking into another.
+On entry: clears pending mutations, initializes the request-scoped load cache, and optionally sets a `LoadContext` for reactive `load()` methods. On exit: warns about unconsumed mutations (when reactive dev is enabled), clears mutations, and resets the request cache.
 
 **Usage:**
 
 ```python
 from pyjinhx import Registry
 
-with Registry.request_scope():
+with Registry.request_scope(load_context=AppLoadContext(db=session)):
     # Components registered here are isolated to this scope
     button = Button(id="submit-btn", text="Submit")
     # ... render template
-# Registry automatically restored to previous state
+# Registry, cache, and mutations automatically restored
 ```
 
 **Features:**

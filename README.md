@@ -302,4 +302,4 @@ def toggle_row(request: Request, todo_id: int):
 
 Run the full app: `uv run uvicorn examples.reactive_todo.app:app --reload` — see [examples/reactive_todo/README.md](examples/reactive_todo/README.md).
 
-More: [components](docs/guide/components.md) · [nesting](docs/guide/nesting.md) · [FastAPI integration](docs/integrations/fastapi.md) · [HTMX integration](docs/integrations/htmx.md)
+More: [components](docs/guide/components.md) · [nesting](docs/guide/nesting.md) · [public API index](docs/reference/public-api.md) · [FastAPI integration](docs/integrations/fastapi.md) · [HTMX integration](docs/integrations/htmx.md)

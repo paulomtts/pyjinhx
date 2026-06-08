@@ -111,7 +111,12 @@ When `auto_id=True` (default), IDs are generated automatically if not provided i
 renderer = Renderer.get_default_renderer(auto_id=False)
 ```
 
+## Parser API
+
+For programmatic access to the parse tree (without rendering), use `Parser` and `Tag` directly. See [Parser & Tag](../api/parser.md).
+
 ## See next
 
 - [Nesting](nesting.md) - Compose components together
 - [Asset Collection](assets.md) - Automatic JS and CSS handling
+- [Public API Index](../reference/public-api.md) - Full export reference
