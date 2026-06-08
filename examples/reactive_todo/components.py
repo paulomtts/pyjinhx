@@ -76,7 +76,7 @@ class TodoClearButton(ReactiveComponent):
         return cls(id="todo-clear", completed=_store().completed())
 
 
-class TodoApp(BaseComponent, base_layout=True):
+class TodoApp(BaseComponent):
     todo_list: Optional[TodoList] = None
     counter: Optional[TodoCounter] = None
     total: Optional[TodoTotal] = None

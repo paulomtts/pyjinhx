@@ -53,17 +53,19 @@ name), and `data-pjx-hash` on their root element automatically.
 
 ## 2. Ship the client runtime
 
-Mark your page shell with `base_layout=True` — the manifest runtime is injected once
-on full-page renders (the marker is inherited, so subclasses of a shell stay layouts):
+On root full-page renders, `pjx.js` is injected automatically unless the request
+already carries a valid `X-PJX-Mounted` header (meaning the runtime is active in
+the browser). First visits and requests without the header get the runtime; HTMX
+requests from a page that already loaded it do not.
 
 ```python
 from pyjinhx import BaseComponent
 
-class AppShell(BaseComponent, base_layout=True):
+class AppShell(BaseComponent):
     ...  # app_shell.html is your full page template
 ```
 
-Or, in a raw Jinja layout, drop in `client_script()`:
+For a raw Jinja layout (outside the component render path), drop in `client_script()`:
 
 ```python
 from pyjinhx import client_script
@@ -85,7 +87,10 @@ The runtime attaches two client manifests to every htmx request:
 | `X-PJX-Mounted` | Reactive regions currently in the DOM (`id`, `type`, `hash`, optional `key`) |
 | `X-PJX-Assets` | URLs of `<script src>` and `<link rel="stylesheet">` already loaded |
 
-Use `mounted=request` for reactive partials. For boosted full-page routes in REFERENCE mode, pass `client=request` and enable `Renderer.set_default_asset_dedup(True)` so root renders skip assets the browser already has.
+Use `mounted=request` for reactive partials. For boosted full-page routes, pass
+`client=request` so the server can skip re-injecting `pjx.js` and (in REFERENCE
+mode with `Renderer.set_default_asset_dedup(True)`) skip asset URLs the browser
+already has.
 
 ## 3. Emit OOB swaps from your route
 
@@ -413,14 +418,14 @@ flowchart LR
 ### Initial render → the manifest
 
 On a full-page render, reactive roots are stamped with `data-pjx-*` and the client
-runtime is injected once (via `base_layout=True`, or `client_script()` in a raw shell). The
-runtime reads the already-stamped DOM at request time — it never watches for changes,
-because DOM mutation is the *effect* of a swap, not its cause.
+runtime is injected when `X-PJX-Mounted` is absent (or via `client_script()` in
+a raw Jinja shell). The runtime reads the already-stamped DOM at request time — it
+never watches for changes, because DOM mutation is the *effect* of a swap, not its cause.
 
 ```mermaid
 flowchart TD
-    A["full-page render<br/>(base_layout shell)"] --> B["reactive roots stamped<br/>data-pjx-* via splice stamper"]
-    A --> C["client runtime injected once<br/>(base_layout) or client_script()"]
+    A["full-page render"] --> B["reactive roots stamped<br/>data-pjx-* via splice stamper"]
+    A --> C["client runtime injected<br/>unless X-PJX-Mounted present"]
     B --> D["DOM holds id + type + hash<br/>per mounted region"]
     C --> E["on htmx:configRequest,<br/>pjx.js scans [data-pjx-id]"]
     D --> E

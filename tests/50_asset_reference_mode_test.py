@@ -198,10 +198,11 @@ def test_oob_swaps_emit_no_assets():
     assert "<link" not in rendered
 
 
-class Page(BaseComponent, base_layout=True):
+class Page(BaseComponent):
     pass
 
 
+@pytest.mark.pjx_runtime
 def test_layout_reference_mode_emits_runtime_src():
     renderer = Renderer.get_default_renderer(js_mode=AssetMode.REFERENCE)
     Renderer.set_default_runtime_url("/static/pyjinhx/pjx.js")

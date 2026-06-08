@@ -23,6 +23,7 @@ def _manifest(*entries):
     return {PJX_MOUNTED_HEADER: json.dumps(list(entries))}
 
 
+@pytest.mark.pjx_runtime
 def test_index_injects_runtime_and_stamps_regions(client):
     body = client.get("/").text
     assert "htmx.org" in body

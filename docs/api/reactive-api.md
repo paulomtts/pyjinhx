@@ -58,14 +58,24 @@ Hash of `model_dump_json()`. Used by OOB swap gating — override only for custo
 def client_script(*, mode: AssetMode | None = None, src: str | None = None) -> Markup
 ```
 
-Return the pyjinhx client runtime as a `<script>` tag. Drop into a raw Jinja page shell when the layout is not marked `base_layout=True`.
+Return the pyjinhx client runtime as a `<script>` tag. Use in raw Jinja shells outside
+the component render path. Root `BaseComponent.render()` calls inject the runtime
+automatically unless `X-PJX-Mounted` is already present on the request.
 
 | Parameter | Default | Description |
 |-----------|---------|-------------|
 | `mode` | `AssetMode.INLINE` | `INLINE` inlines source; `REFERENCE` emits `<script src="...">` |
 | `src` | Renderer runtime URL | Public URL when mode is `REFERENCE` |
 
-Layout components with `base_layout=True` inject the runtime automatically.
+## client_has_mounted_manifest
+
+```python
+def client_has_mounted_manifest(client: str | list[dict[str, Any]] | object | None) -> bool
+```
+
+Return whether the client already sent a valid `X-PJX-Mounted` header. A JSON array
+(including `[]`) means `pjx.js` is active; missing or malformed values mean the
+runtime should be injected on root full-page renders.
 
 ## PJX headers
 

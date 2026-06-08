@@ -30,6 +30,11 @@ dependencies = [
 [project.urls]
 Homepage = "https://github.com/paulomtts/pyjinhx"
 
+[tool.pytest.ini_options]
+markers = [
+    "pjx_runtime: enable pjx.js auto-injection in tests (disabled by default via conftest)",
+]
+
 [dependency-groups]
 dev = [
     "mkdocs-material>=9.7.1",

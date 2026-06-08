@@ -215,10 +215,9 @@ def toggle_row(request, todo_id):
 
 ### Client runtime & cache
 
-- A page shell marked **`base_layout=True`** auto-injects the client runtime (`pjx.js`), which
-  emits the `X-PJX-Mounted` manifest on every htmx request:
-  `class Page(BaseComponent, base_layout=True): ...`. For a raw Jinja shell, drop
-  `{{ client_script() }}` in the `<head>` instead.
+- Root full-page renders auto-inject the client runtime (`pjx.js`) unless the request
+  already carries `X-PJX-Mounted`. For a raw Jinja shell, drop `{{ client_script() }}`
+  in the `<head>` instead.
 - Every `load()` is wrapped in a **dependency-keyed cache** (one entry per `(type, key)`),
   returning an independent copy each call. Default scope is `PROCESS` (cross-request
   per worker). Use `REQUEST` for multi-worker without an invalidation backend, or

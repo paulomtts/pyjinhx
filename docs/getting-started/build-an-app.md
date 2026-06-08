@@ -305,17 +305,17 @@ class TodoCounter(ReactiveComponent):
         return cls(id="counter", remaining=store.remaining())
 ```
 
-Mark the page shell:
+Define the page shell as a normal `BaseComponent` — no special marker required:
 
 ```python
-class TodoApp(BaseComponent, base_layout=True):
+class TodoApp(BaseComponent):
     ...
 ```
 
 ???+ question "Why ReactiveComponent?"
     Reactive components declare **what state they derive from** (`reacts_to`) and **how to rebuild** (`load()`). After a mutation, you return one primary fragment; PyJinHx appends OOB swaps for other mounted regions whose dependencies overlap — you don't list every widget in every route.
 
-    `base_layout=True` injects `pjx.js` once on full-page renders. That runtime sends `X-PJX-Mounted` on every HTMX request so the server knows what's on screen.
+    Root full-page renders inject `pjx.js` automatically unless the request already carries `X-PJX-Mounted`. That runtime sends the manifest on every HTMX request so the server knows what's on screen.
 
     See: [Reactivity](../reactivity.md).
 
@@ -521,7 +521,7 @@ from pyjinhx.builtins import Alert, Button, Card
 |-------|--------------------------------|
 | `Renderer.set_default_environment(...)` | Yes |
 | `Registry.request_scope()` middleware | Yes |
-| Layout with `base_layout=True` | Yes (auto `pjx.js`) |
+| Root full-page render (auto `pjx.js` unless `X-PJX-Mounted` present) | Yes |
 | HTMX in layout | Yes |
 | `ReactiveComponent` + `reacts_to` + `load()` | Yes |
 | `@mutates` / `mutation_scope` + `dirty_keys` for rows | Yes |
