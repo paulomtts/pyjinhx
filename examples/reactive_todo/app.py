@@ -11,13 +11,13 @@ from fastapi.responses import HTMLResponse
 
 from examples.reactive_todo import store
 from examples.reactive_todo.components import (
-    TodoApp,
-    TodoClearButton,
-    TodoCounter,
-    TodoItemRow,
-    TodoList,
-    TodoLoadContext,
-    TodoTotal,
+    App,
+    AppLoadContext,
+    ClearButton,
+    Counter,
+    ItemList,
+    ItemRow,
+    Total,
 )
 from pyjinhx import PyJinhxSettings, Renderer, setup
 
@@ -27,37 +27,37 @@ app = FastAPI(title="pyjinhx reactive todo demo")
 setup(
     app,
     settings=PyJinhxSettings.from_env(),
-    load_context_factory=lambda _request: TodoLoadContext(store=store),
+    load_context_factory=lambda _request: AppLoadContext(store=store),
 )
 
 
 @app.get("/", response_class=HTMLResponse)
 def index() -> str:
-    return TodoApp(
-        id="todo-app",
-        todo_list=TodoList.load(),
-        counter=TodoCounter.load(),
-        total=TodoTotal.load(),
-        clear_button=TodoClearButton.load(),
+    return App(
+        id="app",
+        item_list=ItemList.load(),
+        remaining=Counter.load(),
+        total_count=Total.load(),
+        clear_button=ClearButton.load(),
     ).render()
 
 
 @app.post("/todos", response_class=HTMLResponse)
 def add(text: str = Form(...)) -> str:
     store.add(text)
-    return TodoItemRow.render(store.all_todos()[-1].id)
+    return ItemRow.render(store.all_todos()[-1].id)
 
 
 @app.post("/rows/{todo_id}/toggle", response_class=HTMLResponse)
 def toggle_row(todo_id: int) -> str:
     store.toggle(todo_id)
-    return TodoItemRow.render(todo_id)
+    return ItemRow.render(todo_id)
 
 
 @app.post("/todos/clear-completed", response_class=HTMLResponse)
 def clear_completed() -> str:
     store.clear_completed()
-    return TodoList.render()
+    return ItemList.render()
 
 
 if __name__ == "__main__":

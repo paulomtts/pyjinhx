@@ -109,7 +109,6 @@ class ReactiveComponent(BaseComponent):
     model_config = ConfigDict(extra="allow", ignored_types=(_ReactiveRender,))
 
     reacts_to: ClassVar[set[ReactiveKey]] = set()
-    load_reads: ClassVar[set[ReactiveKey]] = set()
     state_hash_exclude: ClassVar[frozenset[str]] = frozenset({"id"})
 
     _pjx_key: str | None = PrivateAttr(default=None)
@@ -177,9 +176,6 @@ class ReactiveComponent(BaseComponent):
         cls._pjx_reactive = True
         cls._pjx_reacts_to = frozenset(
             coerce_reactive_keys(getattr(cls, "reacts_to", None) or ())
-        )
-        cls._pjx_load_reads = frozenset(
-            coerce_reactive_keys(getattr(cls, "load_reads", None) or ())
         )
         if "load" in cls.__dict__ and not cls._pjx_reacts_to:
             raise TypeError(

@@ -489,7 +489,7 @@ print(format_dependency_graph())
 ```
 
 ???+ question "Why enable_reactive_dev?"
-    Reactivity bugs are often silent (missing `mounted=`, wrong keys, `load_reads` not covered by `reacts_to`). Dev mode turns those into log warnings or strict exceptions during development.
+    Reactivity bugs are often silent (missing `mounted=`, wrong keys, `depends_on()` outside `reacts_to`). Dev mode turns those into log warnings or strict exceptions during development.
 
 ---
 

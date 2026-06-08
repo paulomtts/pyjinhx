@@ -64,22 +64,6 @@ def warn_reactive_render_without_mounted(
         )
 
 
-def validate_load_reads(
-    component_class: type,
-    *,
-    declared_reads: set[str],
-    reacts_to: set[str],
-) -> None:
-    if not _dev_config.enabled or not declared_reads:
-        return
-    extra = declared_reads - reacts_to
-    if extra:
-        _report(
-            f"{component_class.__name__}.load_reads {extra!r} is not covered by "
-            f"reacts_to {reacts_to!r}."
-        )
-
-
 def validate_depends_on(instance: object) -> None:
     """Ensure ``depends_on()`` is a subset of the static ``reacts_to`` superset."""
     if not _dev_config.enabled:

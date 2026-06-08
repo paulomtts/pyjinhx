@@ -256,9 +256,9 @@ class AdminPanel(ReactiveComponent):
 then `load()`s, then intersects `depends_on()` with `dirtied`. A dirtied
 `"user"` key reloads the component but skips the OOB swap for non-admin instances.
 
-`dependency_graph()` and `load_reads` validation use the static superset only. In dev
-mode, `enable_reactive_dev()` warns (or raises) when `depends_on()` returns
-keys outside the superset.
+`dependency_graph()` uses the static superset only. In dev mode,
+`enable_reactive_dev()` warns (or raises) when `depends_on()` returns keys outside
+the superset.
 
 ## Mutation tracking (`@mutates`)
 
@@ -313,9 +313,6 @@ or `load_scope(ctx)` in middleware. `load()` may also read `get_load_context()` 
 no `ctx` parameter is declared. Cache keys remain `(class, key)` — context is not
 part of the cache identity.
 
-Optionally declare `load_reads` on a component; in dev mode pyjinhx verifies every
-declared read key is covered by `reacts_to`.
-
 ## Development mode
 
 Enable guardrails during local development:
@@ -331,7 +328,7 @@ Checks include:
 
 - mutations recorded via `@mutates` but no reactive `render()` in the same request scope
 - reactive dirtied keys set but `mounted` omitted (OOB swaps skipped)
-- `load_reads` not covered by `reacts_to` (when `load_reads` is declared)
+- `depends_on()` keys outside the static `reacts_to` superset
 
 Inspect the dependency graph at startup:
 

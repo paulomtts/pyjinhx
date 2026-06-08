@@ -27,16 +27,6 @@ class DevCounter(ReactiveComponent):
         return cls(id="counter", remaining=0)
 
 
-class BadReads(ReactiveComponent):
-    value: int = 0
-    reacts_to: ClassVar[set[str]] = {"alpha"}
-    load_reads: ClassVar[set[str]] = {"alpha", "beta"}
-
-    @classmethod
-    def load(cls) -> "BadReads":
-        return cls(value=1)
-
-
 def setup_function():
     disable_reactive_dev()
     LoadCache.clear()
@@ -72,12 +62,6 @@ def test_warn_render_without_mounted(caplog):
             own_keys={"todos"},
         )
     assert "mounted was not passed" in caplog.text.lower()
-
-
-def test_load_reads_validation_strict():
-    enable_reactive_dev(strict=True)
-    with pytest.raises(RuntimeError, match="load_reads"):
-        BadReads.load()
 
 
 def test_dependency_graph_includes_reactive_components():

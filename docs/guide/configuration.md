@@ -137,6 +137,6 @@ enable_reactive_dev(strict=True)  # raise RuntimeError instead
 disable_reactive_dev()
 ```
 
-Guardrails cover: mutations without a consuming `render()`, dirtied keys without `mounted`, and `load_reads` not covered by `reacts_to`.
+Guardrails cover: mutations without a consuming `render()`, dirtied keys without `mounted`, and `depends_on()` outside the static `reacts_to` superset.
 
 Inspect the dependency graph with `dependency_graph()` or `format_dependency_graph()`. See [Mutations, Keys & LoadContext](../api/mutations-keys-context.md#reactive-dev).

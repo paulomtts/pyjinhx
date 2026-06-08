@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 
 from examples.reactive_todo import store
-from examples.reactive_todo.components import TodoCounter, TodoTotal
+from examples.reactive_todo.components import Counter, Total
 from pyjinhx import PJX_MOUNTED_HEADER, Renderer
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -28,50 +28,50 @@ def test_index_injects_runtime_and_stamps_regions(client):
     body = client.get("/").text
     assert "htmx.org" in body
     assert "htmx:configRequest" in body
-    for region in ("todo-counter", "todo-total", "todo-clear"):
+    for region in ("counter", "total", "clear"):
         assert f'data-pjx-id="{region}"' in body
-    assert 'data-pjx-type="TodoCounter"' in body
+    assert 'data-pjx-type="Counter"' in body
     assert "3 left" in body and "3 total" in body
 
 
 def test_toggle_swaps_changed_dependents(client):
     headers = _manifest(
-        {"id": "todo-counter", "type": "TodoCounter", "hash": "stale"},
-        {"id": "todo-clear", "type": "TodoClearButton", "hash": "stale"},
+        {"id": "counter", "type": "Counter", "hash": "stale"},
+        {"id": "clear", "type": "ClearButton", "hash": "stale"},
     )
     body = client.post("/rows/1/toggle", headers=headers).text
-    assert 'data-pjx-id="todo-row-1"' in body and "done" in body
-    assert "outerHTML:[data-pjx-id='todo-counter']" in body and "2 left" in body
+    assert 'data-pjx-id="row-1"' in body and "done" in body
+    assert "outerHTML:[data-pjx-id='counter']" in body and "2 left" in body
     assert (
-        "outerHTML:[data-pjx-id='todo-clear']" in body and "Clear completed (1)" in body
+        "outerHTML:[data-pjx-id='clear']" in body and "Clear completed (1)" in body
     )
 
 
 def test_toggle_hash_gates_unchanged_total(client):
-    fresh_total = TodoTotal.load()
+    fresh_total = Total.load()
     headers = _manifest(
-        {"id": "todo-counter", "type": "TodoCounter", "hash": "stale"},
-        {"id": "todo-total", "type": "TodoTotal", "hash": fresh_total.state_hash()},
+        {"id": "counter", "type": "Counter", "hash": "stale"},
+        {"id": "total", "type": "Total", "hash": fresh_total.state_hash()},
     )
     body = client.post("/rows/1/toggle", headers=headers).text
-    assert "outerHTML:[data-pjx-id='todo-counter']" in body
-    assert "outerHTML:[data-pjx-id='todo-total']" not in body
+    assert "outerHTML:[data-pjx-id='counter']" in body
+    assert "outerHTML:[data-pjx-id='total']" not in body
 
 
 def test_clear_completed_hash_gates_unchanged_counter(client):
     client.post("/rows/1/toggle", headers=_manifest())
-    fresh_counter = TodoCounter.load()
+    fresh_counter = Counter.load()
     headers = _manifest(
         {
-            "id": "todo-counter",
-            "type": "TodoCounter",
+            "id": "counter",
+            "type": "Counter",
             "hash": fresh_counter.state_hash(),
         },
-        {"id": "todo-total", "type": "TodoTotal", "hash": "stale"},
+        {"id": "total", "type": "Total", "hash": "stale"},
     )
     body = client.post("/todos/clear-completed", headers=headers).text
-    assert "outerHTML:[data-pjx-id='todo-counter']" not in body
-    assert "outerHTML:[data-pjx-id='todo-total']" in body
+    assert "outerHTML:[data-pjx-id='counter']" not in body
+    assert "outerHTML:[data-pjx-id='total']" in body
 
 
 def test_toggle_row_primary_reflects_mutation_despite_warm_cache(client):

@@ -15,15 +15,15 @@
   </head>
   <body>
     <h1>Todos</h1>
-    <form hx-post="/todos" hx-target="#todo-list" hx-swap="beforeend"
+    <form hx-post="/todos" hx-target="#list" hx-swap="beforeend"
           hx-on::after-request="this.reset()">
       <input name="text" placeholder="Add a todo…" autocomplete="off" required />
       <button type="submit">Add</button>
     </form>
-    {{ todo_list }}
+    {{ item_list }}
     <div class="meta">
-      {{ counter }}
-      {{ total }}
+      {{ remaining }}
+      {{ total_count }}
       {{ clear_button }}
     </div>
   </body>

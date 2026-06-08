@@ -68,7 +68,7 @@ def test_keyed_load_with_ctx_kwarg_stays_keyed():
     assert row.id == "ctx-keyed-a"
 
 
-def test_load_reads_contextvar_when_no_ctx_param():
+def test_load_contextvar_when_no_ctx_param():
     LoadCache.clear()
     ctx = AppLoadContext(value=5)
     with LoadContext.bind(ctx):

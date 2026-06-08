@@ -9,7 +9,6 @@ See [Reactivity](../reactivity.md) for conceptual documentation and usage patter
 ```python
 class ReactiveComponent(BaseComponent):
     reacts_to: ClassVar[frozenset[str]]
-    load_reads: ClassVar[frozenset[str]] = frozenset()
 ```
 
 Base class for components that reload from application state via a `load()` classmethod and participate in out-of-band HTMX swaps.
@@ -18,7 +17,6 @@ Base class for components that reload from application state via a `load()` clas
 
 - Declare `reacts_to` — the reactive keys this component depends on (collection-tier stems like `"todos"` or instance-tier stems like `"todo"`).
 - Implement `load()` as a `@classmethod` that returns a fresh component instance.
-- Optionally declare `load_reads` for dev-mode validation (keys read inside `load()` must be covered by `reacts_to`).
 
 ### Keyed vs singleton
 

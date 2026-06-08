@@ -118,7 +118,6 @@ class LoadCache:
                 return cls._with_key(cached.model_copy(), key)
 
         from .context import LoadContext
-        from .dev import validate_load_reads
 
         ctx = LoadContext.current()
         if key is not None:
@@ -132,11 +131,6 @@ class LoadCache:
             result = raw_func(component_class)
         result = cls._with_key(result, key)
 
-        validate_load_reads(
-            component_class,
-            declared_reads=set(getattr(component_class, "_pjx_load_reads", frozenset())),
-            reacts_to=set(getattr(component_class, "_pjx_reacts_to", frozenset())),
-        )
         from .dev import validate_depends_on
 
         validate_depends_on(result)
