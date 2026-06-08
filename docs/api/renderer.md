@@ -108,7 +108,7 @@ Set the public URL for the pyjinhx client runtime in `AssetMode.REFERENCE` (defa
 def set_default_asset_dedup(enabled: bool) -> None
 ```
 
-When `True`, root REFERENCE renders skip `<link>` / `<script src>` tags for URLs the client reported via `X-PJX-Assets`. Defaults to `False`. Pass `client=request` to `render()` on boosted full-page routes.
+When `True`, root REFERENCE renders skip `<link>` / `<script src>` tags for URLs the client reported via `X-PJX-Assets`. Defaults to `False`. With [ClientBackend](../api/client-backend.md) wired in middleware, root renders pick up the header automatically; otherwise pass `client=request` on boosted full-page routes.
 
 ##### get_default_environment()
 

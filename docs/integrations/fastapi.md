@@ -128,12 +128,14 @@ def index() -> str:
         """
 ```
 
-### Middleware (recommended)
+### Middleware (recommended) {#middleware-recommended}
+
+PyJinHx does **not** ship middleware — define a thin wrapper in your app. This is the **canonical snippet** referenced from [Client Backend](../api/client-backend.md), [Registry guide](../guide/registry.md), and [Build an App](../getting-started/build-an-app.md).
 
 ```python
 from dataclasses import dataclass
 
-from pyjinhx import LoadContext, Registry, enable_reactive_dev
+from pyjinhx import LoadContext, Registry, enable_reactive_dev, fastapi_client_backend
 from starlette.middleware.base import BaseHTTPMiddleware
 
 
@@ -146,6 +148,7 @@ class RegistryScopeMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request, call_next):
         with Registry.request_scope(
             load_context=AppLoadContext(db=get_db(request)),
+            client_backend=fastapi_client_backend(request),
         ):
             return await call_next(request)
 
@@ -156,8 +159,18 @@ app.add_middleware(RegistryScopeMiddleware)
 enable_reactive_dev()
 ```
 
-Pair with `@mutates` on store methods so mutation routes can omit explicit `dirtied` —
-see [Reactivity](../reactivity.md#mutation-tracking-mutates).
+Pair with `@mutates` on store methods so mutation routes can omit explicit `dirtied`
+and `mounted=request` — see [Reactivity](../reactivity.md#mutation-tracking-mutates)
+and [Client Backend](../api/client-backend.md).
+
+Reactive mutation routes:
+
+```python
+@app.post("/rows/{todo_id}/toggle", response_class=HTMLResponse)
+def toggle_row(todo_id: int) -> str:
+    store.toggle(todo_id)
+    return TodoItemRow.render(todo_id)  # headers from ClientBackend
+```
 
 ## Tips
 

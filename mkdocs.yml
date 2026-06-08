@@ -70,6 +70,7 @@ nav:
       - Quick Start: getting-started/quickstart.md
       - Build an App: getting-started/build-an-app.md
   - Guide:
+      - Usage tiers: guide/usage-tiers.md
       - Creating Components: guide/components.md
       - Component Registry: guide/registry.md
       - PascalCase Tags: guide/tags.md
@@ -87,6 +88,7 @@ nav:
       - Public API Index: reference/public-api.md
       - BaseComponent: api/base-component.md
       - Reactive API: api/reactive-api.md
+      - Client Backend: api/client-backend.md
       - Cache & Invalidation: api/cache-invalidation.md
       - Mutations, Keys & LoadContext: api/mutations-keys-context.md
       - Parser & Tag: api/parser.md

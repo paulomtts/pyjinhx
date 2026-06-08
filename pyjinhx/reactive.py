@@ -120,25 +120,29 @@ class _ReactiveRender:
             )
 
         skey = coerce_load_key_str(key) if key is not None else None
+        from .client_backend import ClientBackend
         from .mutations import mark_reactive_render_consumed, resolve_effective_dirtied
         from .reactive_dev import warn_reactive_render_without_mounted
 
+        resolved_mounted = ClientBackend.resolve_mounted(mounted, dirtied=dirtied)
         own_keys = interpolate_reactive_keys(
             getattr(cls, "_pjx_reacts_to", frozenset()), skey, keyed=keyed
         )
         warn_reactive_render_without_mounted(
-            dirtied=dirtied, mounted=mounted, own_keys=own_keys
+            dirtied=dirtied, mounted=resolved_mounted, own_keys=own_keys
         )
         effective_dirtied = resolve_effective_dirtied(
             dirtied=dirtied,
-            mounted=mounted,
+            mounted=resolved_mounted,
             own_keys=own_keys,
         )
         invalidate(effective_dirtied | own_keys)
         instance = cls.load(skey) if keyed else cls.load()
         primary = instance._render(emit_assets=False)
         mark_reactive_render_consumed()
-        swaps = oob_swaps(effective_dirtied, mounted, exclude_ids={instance.id})
+        swaps = oob_swaps(
+            effective_dirtied, resolved_mounted, exclude_ids={instance.id}
+        )
         return Markup(primary) + swaps
 
     def __get__(

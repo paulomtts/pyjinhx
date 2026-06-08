@@ -1,5 +1,12 @@
 # Reactivity (Dependency-Aware OOB Swaps)
 
+Reactivity is **opt-in**. You can use PyJinHx with `BaseComponent` only — see [Usage tiers](guide/usage-tiers.md). This guide covers Tier 3+: dependency-aware out-of-band HTMX swaps.
+
+!!! info "Prerequisites"
+    - HTMX for transport and swap
+    - `Registry.request_scope()` on every HTTP request
+    - [ClientBackend](api/client-backend.md) in middleware (recommended) so mutation routes omit `mounted=` / `client=`
+
 pyjinhx owns **composition**; HTMX owns **transport and swap**. Between them sits
 the **state→view dependency graph** — which regions must change when a piece of
 state changes. pyjinhx lets you declare that graph once, on the components, so a
@@ -87,41 +94,42 @@ The runtime attaches two client manifests to every htmx request:
 | `X-PJX-Mounted` | Reactive regions currently in the DOM (`id`, `type`, `hash`, optional `key`) |
 | `X-PJX-Assets` | URLs of `<script src>` and `<link rel="stylesheet">` already loaded |
 
-Use `mounted=request` for reactive partials. For boosted full-page routes, pass
-`client=request` so the server can skip re-injecting `pjx.js` and (in REFERENCE
-mode with `Renderer.set_default_asset_dedup(True)`) skip asset URLs the browser
-already has.
+Wire `fastapi_client_backend(request)` once in your app's middleware — see the
+[canonical snippet](integrations/fastapi.md#middleware-recommended) and
+[Client Backend](api/client-backend.md). Mutation routes then call
+`Cls.render(key)` with no `mounted=` — headers are read from the backend after
+`@mutates`. Full-page routes call `.render()` with no `client=`; boosted
+navigations skip re-injecting `pjx.js` when `X-PJX-Mounted` is present.
 
 ## 3. Emit OOB swaps from your route
 
 A mutation route does exactly one thing: **`return <component>.render(...)`**. You
 never call `load()` and never assemble swaps yourself. For a **reactive** primary,
-call `render()` on the *class* — it auto-`load()`s the component for you — and pass
-what you dirtied plus the incoming request. The dependent regions ride along as
-out-of-band swaps:
+call `render()` on the *class* — it auto-`load()`s the component for you. The
+dependent regions ride along as out-of-band swaps:
 
 ```python
 @app.post("/todos/toggle")
-def toggle(request):
+def toggle():
     db.toggle_all()
     # render() loads the Counter itself — you don't. dirtied defaults to the
     # primary's own reacts_to; pass dirtied={...} to dirty more.
-    return Counter.render(dirtied={"todos"}, mounted=request)
+    return Counter.render(dirtied={"todos"})
 ```
 
-`Cls.render(key=None, *, dirtied=, mounted=)` loads the primary (by `key` for an
+With `@mutates` on the store method, you can omit `dirtied` too: `return Counter.render()`.
+
+`Cls.render(key=None, *, dirtied=, mounted=, client=)` loads the primary (by `key` for an
 instance-keyed type, zero-arg for a singleton), renders it as the main-target
 response, then appends an OOB swap for every *other* mounted reactive region whose
 `reacts_to` intersects `dirtied`, rebuilding each via its own `load()`. The primary's
 own region is never double-swapped. (Keyed example: [Instance-keyed regions](#instance-keyed-regions-rows) below.)
 
 A **plain, non-reactive** primary has no `load()` to call, so you build it and render
-the instance instead: `MyFragment(id=..., ...).render(dirtied=, mounted=request)`.
+the instance instead: `MyFragment(id=..., ...).render(dirtied=...)`.
 
-`mounted` accepts a request-like object (the `X-PJX-Mounted` header is read off it
-without importing any web framework), the raw header string, an already-parsed
-list, or `None`. With neither `dirtied` nor `mounted`, `render()` is an ordinary
-plain render.
+!!! note "Without ClientBackend"
+    Pass `mounted=request` (and `client=request` for asset dedup) when not using a request-scoped backend. `mounted` accepts a request-like object, the raw header string, an already-parsed list, or `None`. With neither `dirtied` nor `mounted`, `render()` is an ordinary plain render.
 
 ### Under the hood: `oob_swaps()`
 
@@ -179,14 +187,12 @@ class TodoItemRow(ReactiveComponent):
 
 ```python
 @app.post("/rows/{todo_id}/toggle")
-def toggle_row(request, todo_id):
+def toggle_row(todo_id):
     store.toggle(todo_id)
     # render(key, ...) loads this row itself — no manual load().
     # "todo:42" swaps just this one row; "todos" updates collection regions
     # (counter, total, …). The row's own region is the primary, never double-swapped.
-    return TodoItemRow.render(
-        todo_id, dirtied={f"todo:{todo_id}", "todos"}, mounted=request
-    )
+    return TodoItemRow.render(todo_id, dirtied={f"todo:{todo_id}", "todos"})
 ```
 
 `dirtied={"todo:42"}` reloads/swaps **only** row 42 (siblings are untouched);
@@ -233,9 +239,9 @@ def toggle(todo_id: int) -> Todo:
     ...
 
 @app.post("/rows/{todo_id}/toggle")
-def toggle_row(request, todo_id):
+def toggle_row(todo_id):
     store.toggle(todo_id)
-    return TodoItemRow.render(todo_id, mounted=request)  # dirtied auto
+    return TodoItemRow.render(todo_id)  # dirtied + mounted from @mutates + ClientBackend
 ```
 
 Use `Registry.request_scope()` on every request when relying on auto-dirtied — it
@@ -445,7 +451,7 @@ sequenceDiagram
 
     B->>R: POST /todos/1/toggle  (X-PJX-Mounted header)
     R->>DB: db.toggle(1)
-    R->>RD: Counter.render(dirtied, mounted=request)
+    R->>RD: Counter.render()  # dirtied from @mutates; mounted from ClientBackend
     RD->>C: invalidate(dirtied)
     Note over C: evict cached load() results<br/>whose reacts_to hits a dirtied key
     RD->>RD: load() + render primary → response

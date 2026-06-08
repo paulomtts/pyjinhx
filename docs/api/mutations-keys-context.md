@@ -109,15 +109,20 @@ def load_scope(ctx: Any) -> Generator[None, None, None]
 Set the load context for the current scope. Prefer `Registry.request_scope(load_context=ctx)` in web apps — it combines registry isolation, request cache, mutation tracking, and load context in one call.
 
 ```python
-from pyjinhx import LoadContext, Registry
+from pyjinhx import LoadContext, Registry, fastapi_client_backend
 
 @dataclass(frozen=True)
 class AppLoadContext(LoadContext):
     db: Session
 
-with Registry.request_scope(load_context=AppLoadContext(db=session)):
-    html = TodoList.render(mounted=request)
+with Registry.request_scope(
+    load_context=AppLoadContext(db=session),
+    client_backend=fastapi_client_backend(request),
+):
+    html = TodoList.render()  # mounted from ClientBackend after @mutates
 ```
+
+Without `ClientBackend`, pass `mounted=request` on reactive `render()` calls.
 
 ## Reactive dev
 

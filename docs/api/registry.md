@@ -125,19 +125,22 @@ Remove all registered component instances from the current context.
 ```python
 @classmethod
 @contextmanager
-def request_scope(cls, *, load_context: Any | None = None)
+def request_scope(cls, *, load_context: Any | None = None, client_backend: ClientBackend | None = None)
 ```
 
-Context manager for request-scoped component instances, load cache, mutation tracking, and optional load context.
+Context manager for request-scoped component instances, load cache, mutation tracking, optional load context, and optional client backend for HTTP headers.
 
-On entry: clears pending mutations, initializes the request-scoped load cache, and optionally sets a `LoadContext` for reactive `load()` methods. On exit: warns about unconsumed mutations (when reactive dev is enabled), clears mutations, and resets the request cache.
+On entry: clears pending mutations, initializes the request-scoped load cache, and optionally sets a `LoadContext` for reactive `load()` methods and a `ClientBackend` for `render()` header auto-resolution. On exit: warns about unconsumed mutations (when reactive dev is enabled), clears mutations, and resets the request cache.
 
 **Usage:**
 
 ```python
 from pyjinhx import Registry
 
-with Registry.request_scope(load_context=AppLoadContext(db=session)):
+with Registry.request_scope(
+    load_context=AppLoadContext(db=session),
+    client_backend=fastapi_client_backend(request),
+):
     # Components registered here are isolated to this scope
     button = Button(id="submit-btn", text="Submit")
     # ... render template

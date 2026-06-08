@@ -23,7 +23,7 @@ from examples.reactive_todo.components import (
     TodoLoadContext,
     TodoTotal,
 )
-from pyjinhx import Registry, Renderer
+from pyjinhx import Registry, Renderer, fastapi_client_backend
 
 Renderer.set_default_environment(Path(__file__).resolve().parents[2])
 
@@ -42,6 +42,7 @@ class RegistryScopeMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         with Registry.request_scope(
             load_context=TodoLoadContext(store=store),
+            client_backend=fastapi_client_backend(request),
         ):
             return await call_next(request)
 
@@ -74,27 +75,27 @@ def index() -> str:
 
 
 @app.post("/todos", response_class=HTMLResponse)
-def add(request: Request, text: str = Form(...)) -> str:
+def add(text: str = Form(...)) -> str:
     store.add(text)
-    return TodoItemRow.render(store.all_todos()[-1].id, mounted=request)
+    return TodoItemRow.render(store.all_todos()[-1].id)
 
 
 @app.post("/rows/{todo_id}/toggle", response_class=HTMLResponse)
-def toggle_row(request: Request, todo_id: int) -> str:
+def toggle_row(todo_id: int) -> str:
     store.toggle(todo_id)
-    return TodoItemRow.render(todo_id, mounted=request)
+    return TodoItemRow.render(todo_id)
 
 
 @app.post("/todos/{todo_id}/toggle", response_class=HTMLResponse)
-def toggle(request: Request, todo_id: int) -> str:
+def toggle(todo_id: int) -> str:
     todo = store.toggle(todo_id)
-    return _item(todo).render(mounted=request)
+    return _item(todo).render()
 
 
 @app.post("/todos/clear-completed", response_class=HTMLResponse)
-def clear_completed(request: Request) -> str:
+def clear_completed() -> str:
     store.clear_completed()
-    return _list().render(mounted=request)
+    return _list().render()
 
 
 if __name__ == "__main__":

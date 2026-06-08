@@ -11,9 +11,22 @@ PyJinHx combines **Pydantic models** with **Jinja2 templates** to give you templ
 - **Asset Bundling** - Automatically collects and bundles `.js` and `.css` files from component directories
 - **Type Safety** - Pydantic models provide validation and IDE support
 
+## Choose your depth
+
+PyJinHx layers optional features on top of a small core. You can stop at any tier:
+
+| Tier | You get | Start here |
+|------|---------|------------|
+| **1 — Components** | `BaseComponent`, templates, assets | [Quick Start](getting-started/quickstart.md) |
+| **2 — Web app** | Per-request `Registry.request_scope()` | [Registry guide](guide/registry.md) |
+| **3 — Reactive** | HTMX OOB swaps, `@mutates`, `load()` | [Reactivity](reactivity.md) |
+| **4 — Full wiring** | `LoadContext`, `ClientBackend`, cache, invalidation | [Build an App](getting-started/build-an-app.md) |
+
+Details: [Usage tiers](guide/usage-tiers.md).
+
 ## Two Ways to Render
 
-PyJinHx offers two complementary approaches:
+Within Tier 1, PyJinHx offers two complementary approaches:
 
 === "Python-side"
 

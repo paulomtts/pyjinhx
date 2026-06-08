@@ -23,12 +23,25 @@ Components accept extra fields beyond those defined in the class (`extra="allow"
 ##### render()
 
 ```python
-def render() -> Markup
+def render(
+    *,
+    dirtied: set[ReactiveKey] | None = None,
+    mounted: object | None = None,
+    client: object | None = None,
+) -> Markup
 ```
 
 Render this component to HTML using its associated Jinja template.
 
 The template is auto-discovered based on the component class name (e.g., `MyButton` looks for `my_button.html` or `my_button.jinja`). All component fields are available in the template context, and nested components are rendered recursively.
+
+With no arguments this is a plain render. Passing `dirtied` and/or `mounted` opts into dependency-aware reactivity: this component is the primary response, and OOB swaps are appended for other mounted reactive regions whose `reacts_to` intersects `dirtied`. See [Reactivity](../reactivity.md).
+
+| Parameter | Description |
+|-----------|-------------|
+| `dirtied` | State keys the route mutated (e.g. `{"todos"}`). Defaults to the primary's `reacts_to`. |
+| `mounted` | Client manifest — request-like object, raw `X-PJX-Mounted` string, or parsed list. When omitted, uses the request-scoped `ClientBackend` after mutations. |
+| `client` | Request-like object or raw `X-PJX-Assets` JSON for REFERENCE-mode asset dedup on root renders. When omitted, uses the request-scoped `ClientBackend`. |
 
 **Returns:** The rendered HTML as a Markup object (safe for direct use in templates).
 

@@ -114,7 +114,7 @@ You can also start from an HTML string — `Renderer.render("<Card ...><Button .
 
 ## Reactivity
 
-Declare what state each component depends on. After a mutation, render the **primary** response with `dirtied` and `mounted`; PyJinHx appends out-of-band swaps for other mounted regions whose dependencies overlap.
+Declare what state each component depends on. After a mutation, return `Cls.render()`; PyJinHx appends out-of-band swaps for other mounted regions whose dependencies overlap.
 
 ```python
 from enum import Enum
@@ -133,22 +133,22 @@ class Counter(ReactiveComponent):
 
     @classmethod
     def load(cls) -> "Counter":
-        return cls(id="counter", remaining=db.remaining())
+        return cls(remaining=db.remaining())  # id defaults to "counter"
 
 
 @app.post("/todos/toggle")
-def toggle(request):
+def toggle():
     db.toggle_all()
-    return Counter.render(dirtied={StateKey.TODOS}, mounted=request)
+    return Counter.render(dirtied={StateKey.TODOS})
 ```
 
-The client reports mounted regions via the `X-PJX-Mounted` header; `pjx.js` is injected automatically on layout components. `reacts_to`, `dirtied`, and instance keys accept strings or enums (normalized via `.value`). Instance-keyed components use bare stems in `reacts_to` (e.g. `"todo"` or `StateKey.TODO` → `"todo:<key>"`).
+Wire `fastapi_client_backend(request)` in your app's middleware via `Registry.request_scope(client_backend=...)` so mutation routes omit `mounted=` — the client manifest (`X-PJX-Mounted`) is read automatically after `@mutates`. `pjx.js` is injected on root full-page renders unless that header is already present.
 
 **Reactive ergonomics:** use `StateKey` enums and `dirty_keys()` for typed keys; `@mutates` on store methods to auto-supply `dirtied`; `load_scope()` / `get_load_context()` to inject dependencies into `load()`; `enable_reactive_dev()` and `dependency_graph()` for guardrails and debugging.
 
 **Load cache scope** (default `CacheScope.PROCESS`): `load()` results are cached per worker for cross-request hits. Use `Registry.request_scope()` on every request for instance registry isolation. For multiple workers, subclass `InvalidationBackend` (Redis reference: [examples/reactive_todo/redis_invalidation.py](examples/reactive_todo/redis_invalidation.py)) or opt into `CacheScope.REQUEST`.
 
-Details: [reactivity guide](docs/reactivity.md). Step-by-step app tutorial: [Build an App](docs/getting-started/build-an-app.md). Runnable demo: [examples/reactive_todo/](examples/reactive_todo/).
+Details: [usage tiers](docs/guide/usage-tiers.md) · [reactivity guide](docs/reactivity.md) · [Build an App](docs/getting-started/build-an-app.md) · [examples/reactive_todo/](examples/reactive_todo/).
 
 ## JS & CSS collection
 
@@ -175,7 +175,7 @@ Each asset is included once per render session. Output order: `<style>` tags, HT
 - **REFERENCE**: production — emits `<link href="...">` / `<script src="...">` from a per-render manifest; configure `Renderer.set_asset_url_resolver()`.
 - **NONE**: no asset tags (legacy `set_default_inline_js(False)` behavior).
 
-Reactive partial responses (when `mounted` is set) and OOB swaps never emit assets. Full-page layout renders emit them once. For boosted navigation in REFERENCE mode, enable client asset dedup so root renders skip URLs the browser already has (`X-PJX-Assets` header + `render(client=request)`).
+Reactive partial responses (when `mounted` is set) and OOB swaps never emit assets. Full-page layout renders emit them once. For boosted navigation in REFERENCE mode, enable client asset dedup so root renders skip URLs the browser already has (`X-PJX-Assets` via `ClientBackend` in middleware, or `render(client=request)`).
 
 ```python
 from pyjinhx import AssetMode, Renderer
@@ -270,34 +270,42 @@ class TodoApp(BaseComponent):
 ```
 
 ```python
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
-from pyjinhx import Registry, Renderer
+from pyjinhx import Registry, Renderer, fastapi_client_backend
+from starlette.middleware.base import BaseHTTPMiddleware
 
 Renderer.set_default_environment("./components")
 app = FastAPI()
 
 
+class RegistryScopeMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request, call_next):
+        with Registry.request_scope(client_backend=fastapi_client_backend(request)):
+            return await call_next(request)
+
+
+app.add_middleware(RegistryScopeMiddleware)
+
+
 @app.get("/", response_class=HTMLResponse)
 def index():
-    with Registry.request_scope():
-        return str(
-            TodoApp(
-                id="todo-app",
-                todo_list=TodoList(
-                    id="todo-list",
-                    items=[TodoRow.load(t.id) for t in db.all()],
-                ),
-                counter=TodoCounter.load(),
-            ).render()
-        )
+    return str(
+        TodoApp(
+            id="todo-app",
+            todo_list=TodoList(
+                id="todo-list",
+                items=[TodoRow.load(t.id) for t in db.all()],
+            ),
+            counter=TodoCounter.load(),
+        ).render()
+    )
 
 
 @app.post("/rows/{todo_id}/toggle", response_class=HTMLResponse)
-def toggle_row(request: Request, todo_id: int):
-    with Registry.request_scope():
-        db.toggle(todo_id)
-        return TodoRow.render(todo_id, dirtied={StateKey.TODOS}, mounted=request)
+def toggle_row(todo_id: int):
+    db.toggle(todo_id)
+    return TodoRow.render(todo_id)
 ```
 
 Run the full app: `uv run uvicorn examples.reactive_todo.app:app --reload` — see [examples/reactive_todo/README.md](examples/reactive_todo/README.md).

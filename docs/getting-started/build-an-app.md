@@ -8,7 +8,7 @@ When you're done you will have used:
 - Template discovery, nesting, and PascalCase tags
 - Co-located JS/CSS and asset delivery modes
 - `Registry.request_scope`, `@mutates`, and `LoadContext`
-- Reactive `render()` with `mounted=request`
+- Reactive `render()` with `ClientBackend` wired in middleware
 - Load-cache scopes and optional invalidation fan-out
 
 Runnable reference: [`examples/reactive_todo/`](https://github.com/paulomtts/pyjinhx/tree/master/examples/reactive_todo).
@@ -27,7 +27,7 @@ A small todo app:
 flowchart LR
     Browser -->|HTMX POST| Route
     Route -->|mutate store| Store
-    Route -->|Cls.render mounted=request| PyJinHx
+    Route -->|Cls.render| PyJinHx
     PyJinHx -->|primary HTML| Browser
     PyJinHx -->|OOB fragments| Browser
 ```
@@ -219,7 +219,7 @@ Run: `uvicorn app:app --reload`
 
 ## Step 6 — Request scope (registry + cache hygiene)
 
-Wrap each request:
+Per-route wrapping works for demos:
 
 ```python
 from pyjinhx import Registry
@@ -231,15 +231,20 @@ def index():
         return TodoPanel(id="panel", remaining=3).render()
 ```
 
-Better: middleware so every route is covered:
+For a real app, use **middleware** so every route is covered (the rest of this guide assumes middleware from here on):
 
 ```python
 from starlette.middleware.base import BaseHTTPMiddleware
 
 
+from pyjinhx import fastapi_client_backend
+
+
 class RegistryScopeMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request, call_next):
-        with Registry.request_scope():
+        with Registry.request_scope(
+            client_backend=fastapi_client_backend(request),
+        ):
             return await call_next(request)
 
 
@@ -247,11 +252,11 @@ app.add_middleware(RegistryScopeMiddleware)
 ```
 
 ???+ question "Why Registry.request_scope?"
-    Every component instance registers itself on construction. Without a per-request scope, instances from request A can **leak into request B** and shadow template variables. The same scope also initializes the optional **request-tier** load cache when you use `CacheScope.REQUEST`.
+    Every component instance registers itself on construction. Without a per-request scope, instances from request A can **leak into request B** and shadow template variables. The scope also initializes the request-tier load cache layer and resets mutation tracking. `load_context` and `client_backend` are optional kwargs — bare `request_scope()` is valid.
 
     Default load cache is **`CacheScope.PROCESS`** (cross-request per worker) — see Step 12.
 
-    See: [Component registry](../guide/registry.md).
+    PyJinHx does not ship middleware — you define `RegistryScopeMiddleware` in your app. See: [Component registry](../guide/registry.md), [FastAPI integration](../integrations/fastapi.md#middleware-recommended).
 
 ---
 
@@ -268,9 +273,11 @@ Return a **fragment** from a mutation route:
 ```python
 @app.post("/counter/bump", response_class=HTMLResponse)
 def bump():
-    with Registry.request_scope():
-        return TodoCounter(id="counter", remaining=2).render()
+    return TodoCounter(id="counter", remaining=2).render()
 ```
+
+!!! note
+    Middleware from Step 6 already wraps each request — no per-route `request_scope()` needed.
 
 Template button:
 
@@ -357,16 +364,15 @@ Route:
 
 ```python
 @app.post("/rows/{todo_id}/toggle", response_class=HTMLResponse)
-def toggle_row(request: Request, todo_id: int):
-    with Registry.request_scope():
-        store.toggle(todo_id)
-        return TodoItemRow.render(todo_id, mounted=request)
+def toggle_row(todo_id: int):
+    store.toggle(todo_id)
+    return TodoItemRow.render(todo_id)
 ```
 
-???+ question "Why @mutates, dirty_keys, and mounted=request?"
+???+ question "Why @mutates, dirty_keys, and ClientBackend?"
     - **`@mutates` / `mutation_scope`** — after a store change, invalidate the `load()` cache and accumulate `dirtied` keys for the next reactive render.
     - **`dirty_keys("todo", id, "todos")`** — instance-keyed rows need **both** the row key (`todo:42`) and collection keys (`todos`). Invalidating only `"todo"` is not enough for cache entries stored under `todo:42`.
-    - **`mounted=request`** — passes the client's mounted-region manifest (`X-PJX-Mounted`). Without it, PyJinHx renders the primary fragment but **skips OOB swaps** for the counter and other dependents.
+    - **`ClientBackend`** (wired in middleware) — supplies `X-PJX-Mounted` automatically after mutations so OOB swaps run without `mounted=request` on every route.
 
     `render()` on the **class** auto-calls `load()` — routes never call `load()` manually.
 
@@ -420,11 +426,14 @@ def _store():
     return ctx.store if isinstance(ctx, AppLoadContext) else store
 ```
 
-Middleware:
+Extend the Step 6 middleware:
 
 ```python
-with Registry.request_scope(load_context=AppLoadContext(store=store)):
-    ...
+with Registry.request_scope(
+    load_context=AppLoadContext(store=store),
+    client_backend=fastapi_client_backend(request),
+):
+    return await call_next(request)
 ```
 
 ???+ question "Why LoadContext?"
@@ -479,7 +488,7 @@ Renderer.set_default_asset_dedup(True)  # hx-boost: skip already-loaded URLs
 Full-page route with boosted navigation:
 
 ```python
-TodoApp(...).render(client=request)
+TodoApp(...).render()  # client headers from middleware ClientBackend
 ```
 
 ???+ question "Why REFERENCE mode?"
@@ -525,7 +534,7 @@ from pyjinhx.builtins import Alert, Button, Card
 | HTMX in layout | Yes |
 | `ReactiveComponent` + `reacts_to` + `load()` | Yes |
 | `@mutates` / `mutation_scope` + `dirty_keys` for rows | Yes |
-| `Cls.render(..., mounted=request)` on mutation routes | Yes |
+| `fastapi_client_backend` in middleware | Yes |
 | `LoadContext` | Recommended |
 | Assets / REFERENCE mode | Production |
 | Invalidation backend | Multi-worker + PROCESS cache |
