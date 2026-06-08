@@ -168,10 +168,10 @@ class BaseComponent(BaseModel):
                 session=session,
             )
 
-        from .client_backend import resolve_render_client
+        from .client_backend import ClientBackend
         from .reactive import parse_loaded_assets
 
-        resolved_client = resolve_render_client(client)
+        resolved_client = ClientBackend.resolve_client(client)
         loaded_assets = (
             parse_loaded_assets(resolved_client)
             if resolved_client is not None and emit_assets
@@ -228,10 +228,10 @@ class BaseComponent(BaseModel):
         Returns:
             The rendered HTML as a Markup object (safe for direct use in templates).
         """
-        from .client_backend import resolve_render_client, resolve_render_mounted
+        from .client_backend import ClientBackend
 
-        resolved_client = resolve_render_client(client)
-        resolved_mounted = resolve_render_mounted(mounted, dirtied=dirtied)
+        resolved_client = ClientBackend.resolve_client(client)
+        resolved_mounted = ClientBackend.resolve_mounted(mounted, dirtied=dirtied)
 
         if dirtied is None and resolved_mounted is None:
             return self._render(client=resolved_client)

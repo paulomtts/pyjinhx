@@ -263,3 +263,13 @@ HTMX also supports WebSockets:
     <!-- Messages will be appended here -->
 </div>
 ```
+
+## Dependency-aware updates (reactive OOB)
+
+The patterns above use manual `hx-target` / `hx-swap` for each interaction. For apps where **one mutation updates multiple regions** (counter, list, totals) without wiring every swap by hand, use PyJinHx reactivity:
+
+- Declare `reacts_to` + `load()` on `ReactiveComponent` subclasses
+- Return `Cls.render()` from mutation routes — dependent regions ride along as `hx-swap-oob` fragments
+- Wire [ClientBackend](../api/client-backend.md) in middleware so routes omit `mounted=` on every handler
+
+See [Reactivity](../reactivity.md), [Usage tiers](../guide/usage-tiers.md), and the [reactive todo example](https://github.com/paulomtts/pyjinhx/tree/master/examples/reactive_todo).

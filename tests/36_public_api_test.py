@@ -12,9 +12,7 @@ def test_reactive_api_is_exported():
         FastAPIClientBackend,
         InvalidationBackend,
         ReactiveComponent,
-        client_scope,
         fastapi_client_backend,
-        get_client_backend,
         client_has_mounted_manifest,
         client_script,
         dependency_graph,
@@ -55,8 +53,8 @@ def test_reactive_api_is_exported():
     assert issubclass(InvalidationBackend, ABC)
     assert issubclass(FastAPIClientBackend, ClientBackend)
     assert callable(fastapi_client_backend)
-    assert callable(client_scope)
-    assert callable(get_client_backend)
+    assert callable(ClientBackend.scope)
+    assert callable(ClientBackend.current)
     assert issubclass(ReactiveComponent, pyjinhx.BaseComponent)
     assert issubclass(StateKey, str)
 
@@ -92,7 +90,5 @@ def test_names_in_all():
         "ClientBackend",
         "FastAPIClientBackend",
         "fastapi_client_backend",
-        "client_scope",
-        "get_client_backend",
     ):
         assert name in pyjinhx.__all__

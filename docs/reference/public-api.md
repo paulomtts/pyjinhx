@@ -24,8 +24,11 @@ Every symbol exported from `pyjinhx` (`__all__`) is listed below with a one-line
 | `ClientBackend` | ABC for per-request HTTP header access | [Client Backend](../api/client-backend.md#clientbackend) |
 | `FastAPIClientBackend` | Default backend for FastAPI/Starlette requests | [Client Backend](../api/client-backend.md) |
 | `fastapi_client_backend()` | Build `FastAPIClientBackend` from a request | [Client Backend](../api/client-backend.md#fastapi_client_backend) |
-| `client_scope()` | Set the request-scoped client backend | [Client Backend](../api/client-backend.md#request-scope-wiring) |
-| `get_client_backend()` | Return the active client backend | [Client Backend](../api/client-backend.md) |
+| `ClientBackend.scope()` | Set the request-scoped client backend | [Client Backend](../api/client-backend.md#clientbackend) |
+| `ClientBackend.current()` | Return the active client backend | [Client Backend](../api/client-backend.md#clientbackend) |
+| `ClientBackend.reset()` | Clear the request-scoped backend (tests) | [Client Backend](../api/client-backend.md#clientbackend) |
+| `ClientBackend.resolve_client()` | Resolve explicit `client=` or fall back to backend | [Client Backend](../api/client-backend.md#auto-resolution-in-render) |
+| `ClientBackend.resolve_mounted()` | Resolve explicit `mounted=` or backend when reactive | [Client Backend](../api/client-backend.md#auto-resolution-in-render) |
 | `oob_swaps()` | Compute HTMX out-of-band swap fragments for dirtied keys | [Reactive API](../api/reactive-api.md#oob_swaps) |
 | `PJX_MOUNTED_HEADER` | HTTP header name for the client mounted-region manifest | [Reactive API](../api/reactive-api.md#pjx-headers) |
 | `PJX_ASSETS_HEADER` | HTTP header name for asset URLs already loaded in the browser | [Reactive API](../api/reactive-api.md#pjx-headers) |
@@ -75,7 +78,9 @@ Every symbol exported from `pyjinhx` (`__all__`) is listed below with a one-line
 
 For usage patterns and tutorials, see:
 
+- [Usage tiers](../guide/usage-tiers.md) — bare components through full reactive wiring
 - [Reactivity](../reactivity.md) — reactive components, OOB swaps, cache scopes
+- [Client Backend](../api/client-backend.md) — per-request header access for `render()`
 - [Asset Collection](../guide/assets.md) — delivery modes, dedup, static serving
 - [Build an App](../getting-started/build-an-app.md) — end-to-end tutorial
 - [FastAPI integration](../integrations/fastapi.md) — request scope, lifespan, headers

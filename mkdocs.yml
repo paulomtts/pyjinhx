@@ -70,6 +70,7 @@ nav:
       - Quick Start: getting-started/quickstart.md
       - Build an App: getting-started/build-an-app.md
   - Guide:
+      - Usage tiers: guide/usage-tiers.md
       - Creating Components: guide/components.md
       - Component Registry: guide/registry.md
       - PascalCase Tags: guide/tags.md

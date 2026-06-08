@@ -120,11 +120,11 @@ class _ReactiveRender:
             )
 
         skey = coerce_load_key_str(key) if key is not None else None
-        from .client_backend import resolve_render_mounted
+        from .client_backend import ClientBackend
         from .mutations import mark_reactive_render_consumed, resolve_effective_dirtied
         from .reactive_dev import warn_reactive_render_without_mounted
 
-        resolved_mounted = resolve_render_mounted(mounted, dirtied=dirtied)
+        resolved_mounted = ClientBackend.resolve_mounted(mounted, dirtied=dirtied)
         own_keys = interpolate_reactive_keys(
             getattr(cls, "_pjx_reacts_to", frozenset()), skey, keyed=keyed
         )

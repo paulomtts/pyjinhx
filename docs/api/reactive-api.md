@@ -24,6 +24,8 @@ Base class for components that reload from application state via a `load()` clas
 
 Set `_pjx_keyed = True` on instance-keyed components (e.g. one row per todo). Singleton components omit the key.
 
+Singleton reactive components default `id` to the kebab-cased class name (`TodoCounter` → `"todo-counter"`); `load()` need not set one unless you want a custom id.
+
 ### render()
 
 Two forms coexist via a descriptor:
@@ -31,18 +33,21 @@ Two forms coexist via a descriptor:
 **Class method (route entry point):**
 
 ```python
-Cls.render(key=None, *, dirtied=None, mounted=None) -> Markup
+Cls.render(key=None, *, dirtied=None, mounted=None, client=None) -> Markup
 ```
 
-Auto-`load()`s the primary component, renders it, and appends OOB swaps for dependents. Pass `mounted=request` on HTMX requests so the client manifest drives swap decisions.
+Auto-`load()`s the primary component, renders it, and appends OOB swaps for dependents. With `ClientBackend` wired in middleware, omit `mounted` and `client` on mutation routes — headers are read from the backend after `@mutates`.
 
 **Instance method:**
 
 ```python
-instance.render(*, dirtied=None, mounted=None) -> Markup
+instance.render(*, dirtied=None, mounted=None, client=None) -> Markup
 ```
 
 Render an already-built instance as the primary without re-loading from the world.
+
+!!! note "Without ClientBackend"
+    Pass `mounted=request` (and `client=request` for asset dedup) when not using a request-scoped backend. See [Client Backend](client-backend.md).
 
 ### state_hash()
 
@@ -84,7 +89,7 @@ runtime should be injected on root full-page renders.
 | `PJX_MOUNTED_HEADER` | `"X-PJX-Mounted"` | JSON manifest of mounted reactive regions (`id`, `type`, `hash`) |
 | `PJX_ASSETS_HEADER` | `"X-PJX-Assets"` | JSON list of asset URLs already loaded in the browser |
 
-The client runtime (`pjx.js`) sets both headers on HTMX requests. Pass the request object as `mounted=` and `client=` to reactive `render()` calls.
+The client runtime (`pjx.js`) sets both headers on HTMX requests. With [ClientBackend](client-backend.md) wired in middleware, `render()` reads them automatically; otherwise pass the request as `mounted=` and `client=`.
 
 ## parse_loaded_assets
 
@@ -101,7 +106,7 @@ Accepts:
 - A parsed list/tuple/set of URL strings
 - `None` or `""` (nothing loaded)
 
-Used internally when `client=request` is passed to `render()` with asset dedup enabled. Call directly for custom integrations.
+Used internally when a client source is resolved for `render()` with asset dedup enabled (explicit `client=` or `ClientBackend`). Call directly for custom integrations.
 
 ## oob_swaps
 

@@ -65,14 +65,21 @@ def index():
     # Registry automatically cleaned up
 ```
 
-For application-wide coverage, use middleware:
+On entry, `request_scope()` also clears pending mutations, initializes the request-tier load cache, and optionally sets `load_context` and `client_backend`. On exit, it warns about unconsumed mutations (when reactive dev is enabled), clears mutations, and resets the request cache.
+
+`load_context` and `client_backend` are **optional** — bare `Registry.request_scope()` is enough for instance isolation.
+
+For application-wide coverage, use middleware in your app (pyjinhx does not ship middleware). See the [canonical FastAPI snippet](../integrations/fastapi.md#middleware-recommended).
 
 ```python
 from starlette.middleware.base import BaseHTTPMiddleware
+from pyjinhx import Registry, fastapi_client_backend
 
 class RegistryScopeMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request, call_next):
-        with Registry.request_scope():
+        with Registry.request_scope(
+            client_backend=fastapi_client_backend(request),
+        ):
             return await call_next(request)
 
 app.add_middleware(RegistryScopeMiddleware)

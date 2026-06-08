@@ -128,7 +128,9 @@ def index() -> str:
         """
 ```
 
-### Middleware (recommended)
+### Middleware (recommended) {#middleware-recommended}
+
+PyJinHx does **not** ship middleware — define a thin wrapper in your app. This is the **canonical snippet** referenced from [Client Backend](../api/client-backend.md), [Registry guide](../guide/registry.md), and [Build an App](../getting-started/build-an-app.md).
 
 ```python
 from dataclasses import dataclass

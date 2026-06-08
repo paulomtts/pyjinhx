@@ -158,9 +158,9 @@ call `load()` and never assemble swaps yourself.
 
 ```python
 @app.post("/todos/toggle")
-def toggle(request):
+def toggle():
     db.toggle_all()
-    return Counter.render(dirtied={"todos"}, mounted=request)
+    return Counter.render(dirtied={"todos"})
 ```
 
 `render` has two forms (one name):
@@ -174,9 +174,7 @@ def toggle(request):
 - **Instance form (plain/constructed primary)** — `instance.render(*, dirtied=None, mounted=None)`:
   a non-reactive primary has no `load()`, so build it and render the instance.
 
-`mounted` accepts a request-like object (the `X-PJX-Mounted` header is duck-typed off it — no
-web-framework import), the raw header string, a parsed list, or `None`. With neither `dirtied`
-nor `mounted`, `render()` is an ordinary plain render.
+With [ClientBackend](../api/client-backend.md) in middleware, omit `mounted` and `client` on mutation routes. Without it, pass `mounted=request` (request-like object, raw header string, or parsed list). With neither `dirtied` nor `mounted`, `render()` is an ordinary plain render.
 
 `oob_swaps(dirtied, mounted)` is what `render()` delegates to (`exclude_ids={primary.id}`);
 it's exported for tests/advanced use but is **not** how you write a route.
@@ -198,9 +196,9 @@ class TodoItemRow(ReactiveComponent):
         return cls(title=t.text)
 
 @app.post("/rows/{todo_id}/toggle")
-def toggle_row(request, todo_id):
+def toggle_row(todo_id):
     store.toggle(todo_id)
-    return TodoItemRow.render(todo_id, dirtied={f"todo:{todo_id}", "todos"}, mounted=request)
+    return TodoItemRow.render(todo_id, dirtied={f"todo:{todo_id}", "todos"})
 ```
 
 - **The key flows `render(key, …)` → `load(key)` automatically.** It derives the keyed id

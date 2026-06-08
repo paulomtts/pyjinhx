@@ -219,7 +219,7 @@ Run: `uvicorn app:app --reload`
 
 ## Step 6 — Request scope (registry + cache hygiene)
 
-Wrap each request:
+Per-route wrapping works for demos:
 
 ```python
 from pyjinhx import Registry
@@ -231,7 +231,7 @@ def index():
         return TodoPanel(id="panel", remaining=3).render()
 ```
 
-Better: middleware so every route is covered:
+For a real app, use **middleware** so every route is covered (the rest of this guide assumes middleware from here on):
 
 ```python
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -252,11 +252,11 @@ app.add_middleware(RegistryScopeMiddleware)
 ```
 
 ???+ question "Why Registry.request_scope?"
-    Every component instance registers itself on construction. Without a per-request scope, instances from request A can **leak into request B** and shadow template variables. The same scope also initializes the optional **request-tier** load cache when you use `CacheScope.REQUEST`.
+    Every component instance registers itself on construction. Without a per-request scope, instances from request A can **leak into request B** and shadow template variables. The scope also initializes the request-tier load cache layer and resets mutation tracking. `load_context` and `client_backend` are optional kwargs — bare `request_scope()` is valid.
 
     Default load cache is **`CacheScope.PROCESS`** (cross-request per worker) — see Step 12.
 
-    See: [Component registry](../guide/registry.md).
+    PyJinHx does not ship middleware — you define `RegistryScopeMiddleware` in your app. See: [Component registry](../guide/registry.md), [FastAPI integration](../integrations/fastapi.md#middleware-recommended).
 
 ---
 
@@ -273,9 +273,11 @@ Return a **fragment** from a mutation route:
 ```python
 @app.post("/counter/bump", response_class=HTMLResponse)
 def bump():
-    with Registry.request_scope():
-        return TodoCounter(id="counter", remaining=2).render()
+    return TodoCounter(id="counter", remaining=2).render()
 ```
+
+!!! note
+    Middleware from Step 6 already wraps each request — no per-route `request_scope()` needed.
 
 Template button:
 
@@ -424,11 +426,14 @@ def _store():
     return ctx.store if isinstance(ctx, AppLoadContext) else store
 ```
 
-Middleware:
+Extend the Step 6 middleware:
 
 ```python
-with Registry.request_scope(load_context=AppLoadContext(store=store)):
-    ...
+with Registry.request_scope(
+    load_context=AppLoadContext(store=store),
+    client_backend=fastapi_client_backend(request),
+):
+    return await call_next(request)
 ```
 
 ???+ question "Why LoadContext?"

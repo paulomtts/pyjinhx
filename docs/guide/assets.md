@@ -76,9 +76,11 @@ On HTMX requests, `pjx.js` reports asset URLs already in the DOM via the `X-PJX-
 Renderer.set_default_asset_dedup(True)
 
 @app.get("/page-b")
-def page_b(request: Request):
-    return str(PageB(id="app").render(client=request))
+def page_b():
+    return str(PageB(id="app").render())  # X-PJX-Assets from ClientBackend in middleware
 ```
+
+With [ClientBackend](../api/client-backend.md) wired in middleware, root renders pick up `X-PJX-Assets` automatically. Without it, pass `client=request` explicitly.
 
 Partial renders ignore the asset header (no assets emitted). Dedup defaults to **off** for backward compatibility.
 

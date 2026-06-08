@@ -1,11 +1,10 @@
 from pyjinhx import (
     PJX_MOUNTED_HEADER,
+    ClientBackend,
     FastAPIClientBackend,
     Registry,
-    client_scope,
     fastapi_client_backend,
 )
-from pyjinhx.client_backend import resolve_render_client, resolve_render_mounted
 from pyjinhx.mutations import mutation_scope
 
 
@@ -35,24 +34,24 @@ def test_fastapi_client_backend_factory():
 
 
 def test_resolve_render_client_uses_backend():
-    with client_scope(FastAPIClientBackend(_Request({}))):
-        assert resolve_render_client(None) is not None
-    assert resolve_render_client(None) is None
+    with ClientBackend.scope(FastAPIClientBackend(_Request({}))):
+        assert ClientBackend.resolve_client(None) is not None
+    assert ClientBackend.resolve_client(None) is None
 
 
 def test_resolve_render_mounted_mutation_only():
     manifest = "[]"
-    with client_scope(FastAPIClientBackend(_Request({PJX_MOUNTED_HEADER: manifest}))):
-        assert resolve_render_mounted(None, dirtied=None) is None
-        assert resolve_render_mounted(None, dirtied={"todos"}) is not None
+    with ClientBackend.scope(FastAPIClientBackend(_Request({PJX_MOUNTED_HEADER: manifest}))):
+        assert ClientBackend.resolve_mounted(None, dirtied=None) is None
+        assert ClientBackend.resolve_mounted(None, dirtied={"todos"}) is not None
         with mutation_scope("todos"):
             pass
-        assert resolve_render_mounted(None, dirtied=None) is not None
+        assert ClientBackend.resolve_mounted(None, dirtied=None) is not None
 
 
 def test_request_scope_wires_client_backend():
     request = _Request({PJX_MOUNTED_HEADER: "[]"})
     with Registry.request_scope(client_backend=fastapi_client_backend(request)):
-        client = resolve_render_client(None)
+        client = ClientBackend.resolve_client(None)
         assert client is not None
         assert client.headers.get(PJX_MOUNTED_HEADER) == "[]"

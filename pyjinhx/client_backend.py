@@ -4,17 +4,57 @@ from abc import ABC, abstractmethod
 from collections.abc import Generator
 from contextlib import contextmanager
 from contextvars import ContextVar
-
-_client_backend: ContextVar[ClientBackend | None] = ContextVar(
-    "client_backend", default=None
-)
+from typing import ClassVar
 
 
 class ClientBackend(ABC):
     """Framework-agnostic source for HTTP headers on the current request."""
 
+    _context: ClassVar[ContextVar[ClientBackend | None]] = ContextVar(
+        "client_backend", default=None
+    )
+
     @abstractmethod
     def get_header(self, name: str) -> str | None: ...
+
+    @classmethod
+    def current(cls) -> ClientBackend | None:
+        return cls._context.get()
+
+    @classmethod
+    def reset(cls) -> None:
+        """Clear the request-scoped client backend. Mainly for tests."""
+        cls._context.set(None)
+
+    @classmethod
+    @contextmanager
+    def scope(cls, backend: ClientBackend | None) -> Generator[None, None, None]:
+        token = cls._context.set(backend)
+        try:
+            yield
+        finally:
+            cls._context.reset(token)
+
+    @classmethod
+    def resolve_client(cls, explicit: object | None) -> object | None:
+        if explicit is not None:
+            return explicit
+        return cls.current()
+
+    @classmethod
+    def resolve_mounted(
+        cls,
+        explicit: object | None,
+        *,
+        dirtied: object | None,
+    ) -> object | None:
+        if explicit is not None:
+            return explicit
+        from .mutations import pending_dirtied
+
+        if dirtied is None and not pending_dirtied():
+            return None
+        return cls.current()
 
 
 class FastAPIClientBackend(ClientBackend):
@@ -38,41 +78,3 @@ class FastAPIClientBackend(ClientBackend):
 def fastapi_client_backend(request: object) -> FastAPIClientBackend:
     """Build the default client backend from a FastAPI/Starlette request."""
     return FastAPIClientBackend(request)
-
-
-def get_client_backend() -> ClientBackend | None:
-    return _client_backend.get()
-
-
-def reset_client_backend_state() -> None:
-    """Clear the request-scoped client backend. Mainly for tests."""
-    _client_backend.set(None)
-
-
-def resolve_render_client(explicit: object | None) -> object | None:
-    if explicit is not None:
-        return explicit
-    return get_client_backend()
-
-
-def resolve_render_mounted(
-    explicit: object | None,
-    *,
-    dirtied: object | None,
-) -> object | None:
-    if explicit is not None:
-        return explicit
-    from .mutations import pending_dirtied
-
-    if dirtied is None and not pending_dirtied():
-        return None
-    return get_client_backend()
-
-
-@contextmanager
-def client_scope(backend: ClientBackend | None) -> Generator[None, None, None]:
-    token = _client_backend.set(backend)
-    try:
-        yield
-    finally:
-        _client_backend.reset(token)
