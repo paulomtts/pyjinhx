@@ -6,11 +6,11 @@ import pytest
 from pyjinhx import (
     AssetMode,
     BaseComponent,
+    LoadedAssets,
     PJX_ASSETS_HEADER,
     Renderer,
-    parse_loaded_assets,
 )
-from pyjinhx.reactive import oob_swaps
+from pyjinhx.reactive.oob import oob_swaps
 from pyjinhx.utils import read_client_runtime
 from tests.ui.reactive.reactive_counter import ReactiveCounter
 from tests.ui.unified_component import UnifiedComponent
@@ -52,7 +52,7 @@ def test_runtime_source_reports_assets_header():
     assert 'link[rel="stylesheet"][href]' in source
 
 
-def test_parse_loaded_assets_from_request():
+def test_loaded_assets_parse_from_request():
     client = _Client(
         {
             PJX_ASSETS_HEADER: json.dumps(
@@ -60,14 +60,14 @@ def test_parse_loaded_assets_from_request():
             )
         }
     )
-    loaded = parse_loaded_assets(client)
+    loaded = LoadedAssets.parse(client)
     assert loaded == frozenset(
         {"/static/components/greeting.js", "/static/components/greeting.css"}
     )
 
 
-def test_parse_loaded_assets_invalid_json_returns_empty():
-    loaded = parse_loaded_assets('["not-json"')
+def test_loaded_assets_parse_invalid_json_returns_empty():
+    loaded = LoadedAssets.parse('["not-json"')
     assert loaded == frozenset()
 
 

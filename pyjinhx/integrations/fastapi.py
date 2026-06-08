@@ -5,11 +5,29 @@ from collections.abc import Callable
 from contextlib import asynccontextmanager
 from typing import Any
 
-from pyjinhx.client_backend import fastapi_client_backend
+from pyjinhx.core.registry import Registry
 from pyjinhx.config import PyJinhxSettings, configure_pyjinhx, shutdown_pyjinhx
-from pyjinhx.registry import Registry
+from pyjinhx.reactive.backend import ClientBackend
 
 logger = logging.getLogger("pyjinhx")
+
+
+class FastAPIClientBackend(ClientBackend):
+    """
+    Default client backend for FastAPI and Starlette.
+
+    Wraps a request object's ``.headers`` mapping. The backend instance is also
+    duck-typed for ``render()`` (``.headers.get``) without a separate proxy.
+    """
+
+    def __init__(self, request: object) -> None:
+        headers = getattr(request, "headers", None)
+        if headers is None:
+            raise TypeError("FastAPIClientBackend requires request.headers")
+        self.headers = headers
+
+    def get_header(self, name: str) -> str | None:
+        return self.headers.get(name)
 
 
 def apply_setup(
@@ -19,7 +37,9 @@ def apply_setup(
     load_context_factory: Callable[[Any], object | None] | None = None,
 ) -> None:
     if getattr(app.state, "pyjinhx_setup", False):
-        logger.debug("pyjinhx setup already applied; skipping")
+        logger.warning(
+            "pyjinhx setup already applied to this app; skipping reconfiguration"
+        )
         return
     _chain_lifespan(app, settings)
     app.add_middleware(_registry_middleware_class(load_context_factory))
@@ -56,7 +76,7 @@ def _registry_middleware_class(
             load_context = factory(request) if factory is not None else None
             with Registry.request_scope(
                 load_context=load_context,
-                client_backend=fastapi_client_backend(request),
+                client_backend=FastAPIClientBackend(request),
             ):
                 return await call_next(request)
 

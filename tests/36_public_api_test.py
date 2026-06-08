@@ -11,24 +11,19 @@ def test_reactive_api_is_exported():
         ClientBackend,
         FastAPIClientBackend,
         InvalidationBackend,
+        InvalidationHub,
+        LoadCache,
+        LoadContext,
+        LoadedAssets,
+        MountedManifest,
+        MutationTracker,
         ReactiveComponent,
-        fastapi_client_backend,
-        client_has_mounted_manifest,
         client_script,
         dependency_graph,
-        dirty_keys,
         enable_reactive_dev,
-        get_load_cache_scope,
-        get_load_context,
-        instance_key,
         mutates,
         oob_swaps,
-        parse_loaded_assets,
-        set_invalidation_backend,
-        set_load_cache_scope,
-        start_invalidation_listener,
         StateKey,
-        stop_invalidation_listener,
         PyJinhxSettings,
         configure_pyjinhx,
         shutdown_pyjinhx,
@@ -43,17 +38,16 @@ def test_reactive_api_is_exported():
     assert callable(mutates)
     assert callable(dependency_graph)
     assert callable(enable_reactive_dev)
-    assert callable(get_load_context)
-    assert callable(dirty_keys)
-    assert callable(instance_key)
-    assert callable(parse_loaded_assets)
-    assert callable(client_has_mounted_manifest)
-    assert callable(set_load_cache_scope)
-    assert callable(get_load_cache_scope)
-    assert callable(set_invalidation_backend)
-    assert callable(start_invalidation_listener)
-    assert callable(stop_invalidation_listener)
+    assert callable(LoadedAssets.parse)
+    assert callable(MountedManifest.parse)
+    assert callable(MountedManifest.is_present)
+    assert callable(LoadCache.set_scope)
+    assert callable(LoadCache.scope)
+    assert callable(InvalidationHub.set_backend)
+    assert callable(InvalidationHub.start_listener)
+    assert callable(InvalidationHub.stop_listener)
     assert callable(setup)
+    assert callable(PyJinhxSettings.from_env)
     assert callable(configure_pyjinhx)
     assert callable(shutdown_pyjinhx)
     assert callable(pyjinhx_lifespan)
@@ -61,9 +55,13 @@ def test_reactive_api_is_exported():
     assert issubclass(ClientBackend, ABC)
     assert issubclass(InvalidationBackend, ABC)
     assert issubclass(FastAPIClientBackend, ClientBackend)
-    assert callable(fastapi_client_backend)
     assert callable(ClientBackend.scope)
     assert callable(ClientBackend.current)
+    assert callable(LoadContext.current)
+    assert callable(LoadContext.bind)
+    assert callable(StateKey.instance_key)
+    assert callable(StateKey.dirty_keys)
+    assert callable(MutationTracker.record)
     assert issubclass(ReactiveComponent, pyjinhx.BaseComponent)
     assert issubclass(StateKey, str)
 
@@ -73,29 +71,23 @@ def test_names_in_all():
         "oob_swaps",
         "ReactiveComponent",
         "client_script",
-        "client_has_mounted_manifest",
+        "LoadedAssets",
+        "MountedManifest",
         "PJX_MOUNTED_HEADER",
         "PJX_ASSETS_HEADER",
-        "parse_loaded_assets",
         "StateKey",
-        "instance_key",
-        "dirty_keys",
         "mutates",
         "mutation_scope",
         "LoadContext",
-        "get_load_context",
-        "load_scope",
         "enable_reactive_dev",
         "disable_reactive_dev",
         "dependency_graph",
         "format_dependency_graph",
         "CacheScope",
-        "get_load_cache_scope",
-        "set_load_cache_scope",
+        "LoadCache",
+        "MutationTracker",
         "InvalidationBackend",
-        "set_invalidation_backend",
-        "start_invalidation_listener",
-        "stop_invalidation_listener",
+        "InvalidationHub",
         "PyJinhxSettings",
         "configure_pyjinhx",
         "shutdown_pyjinhx",
@@ -103,6 +95,5 @@ def test_names_in_all():
         "setup",
         "ClientBackend",
         "FastAPIClientBackend",
-        "fastapi_client_backend",
     ):
         assert name in pyjinhx.__all__

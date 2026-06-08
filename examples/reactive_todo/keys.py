@@ -1,4 +1,4 @@
-from pyjinhx.keys import StateKey
+from pyjinhx.reactive.keys import StateKey
 
 
 class Keys(StateKey):

@@ -1,9 +1,8 @@
 from dataclasses import dataclass
 from typing import ClassVar
 
-from pyjinhx import ReactiveComponent, Registry
-from pyjinhx.cache import clear
-from pyjinhx.load_context import LoadContext, get_load_context, load_scope
+from pyjinhx import LoadCache, ReactiveComponent, Registry
+from pyjinhx.reactive.context import LoadContext
 
 
 @dataclass(frozen=True)
@@ -35,51 +34,62 @@ class CtxPlain(ReactiveComponent):
 
     @classmethod
     def load(cls) -> "CtxPlain":
-        ctx = get_load_context()
+        ctx = LoadContext.current()
         value = ctx.value if isinstance(ctx, AppLoadContext) else -1
         return cls(id="ctx-plain", value=value)
 
 
-def test_get_load_context_outside_scope_is_none():
-    assert get_load_context() is None
+def test_load_context_current_outside_scope_is_none():
+    assert LoadContext.current() is None
 
 
-def test_load_scope_sets_context():
+def test_load_context_bind_sets_context():
     ctx = AppLoadContext(value=7)
-    with load_scope(ctx):
-        assert get_load_context() is ctx
-    assert get_load_context() is None
+    with LoadContext.bind(ctx):
+        assert LoadContext.current() is ctx
+    assert LoadContext.current() is None
 
 
 def test_load_receives_ctx_kwarg():
-    clear()
+    LoadCache.clear()
     ctx = AppLoadContext(value=42)
-    with load_scope(ctx):
+    with LoadContext.bind(ctx):
         instance = CtxSingleton.load()
     assert instance.value == 42
 
 
 def test_keyed_load_with_ctx_kwarg_stays_keyed():
     assert CtxKeyed._pjx_keyed is True
-    clear()
+    LoadCache.clear()
     ctx = AppLoadContext(value=9)
-    with load_scope(ctx):
+    with LoadContext.bind(ctx):
         row = CtxKeyed.load("a")
     assert row.label == "a:9"
     assert row.id == "ctx-keyed-a"
 
 
 def test_load_reads_contextvar_when_no_ctx_param():
-    clear()
+    LoadCache.clear()
     ctx = AppLoadContext(value=5)
-    with load_scope(ctx):
+    with LoadContext.bind(ctx):
         instance = CtxPlain.load()
     assert instance.value == 5
 
 
 def test_request_scope_accepts_load_context():
-    clear()
+    LoadCache.clear()
     ctx = AppLoadContext(value=11)
     with Registry.request_scope(load_context=ctx):
         instance = CtxPlain.load()
     assert instance.value == 11
+
+
+def test_load_context_accepts_ctx_detects_keyword_only():
+    def with_ctx(cls, *, ctx=None):
+        pass
+
+    def without_ctx(cls):
+        pass
+
+    assert LoadContext.accepts_ctx(with_ctx) is True
+    assert LoadContext.accepts_ctx(without_ctx) is False

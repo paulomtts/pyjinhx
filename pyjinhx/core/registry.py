@@ -57,6 +57,16 @@ class Registry:
         return cls._class_registry.copy()
 
     @classmethod
+    def get_class(cls, name: str) -> type["BaseComponent"] | None:
+        """Return a registered component class by name without copying the registry."""
+        return cls._class_registry.get(name)
+
+    @classmethod
+    def has_class(cls, name: str) -> bool:
+        """Return whether a component class is registered under ``name``."""
+        return name in cls._class_registry
+
+    @classmethod
     def clear_classes(cls) -> None:
         """Remove all registered component classes. Useful for testing."""
         cls._class_registry.clear()
@@ -76,7 +86,15 @@ class Registry:
         Args:
             component: The component instance to register.
         """
-        registry = cls.get_instances()
+        registry = _registry_context.get()
+        if registry is None:
+            logger.warning(
+                "Component %s(id=%s) registered outside Registry.request_scope(); "
+                "instance will not be available for cross-reference in templates.",
+                type(component).__name__,
+                component.id,
+            )
+            return
         key = cls.make_key(type(component).__name__, component.id)
         if key in registry:
             logger.warning(
@@ -95,8 +113,7 @@ class Registry:
         """
         registry = _registry_context.get()
         if registry is None:
-            registry = {}
-            _registry_context.set(registry)
+            return {}
         return registry
 
     @classmethod
@@ -125,24 +142,24 @@ class Registry:
         """
         from contextlib import ExitStack
 
-        from .cache import init_request_cache, reset_request_cache
-        from .client_backend import ClientBackend
-        from .load_context import load_scope
-        from .mutations import clear_mutations
-        from .reactive_dev import warn_mutations_without_render
+        from pyjinhx.reactive.backend import ClientBackend
+        from pyjinhx.reactive.load_cache import LoadCache
+        from pyjinhx.reactive.context import LoadContext
+        from pyjinhx.reactive.dev import warn_mutations_without_render
+        from pyjinhx.reactive.mutations import MutationTracker
 
-        clear_mutations()
-        init_request_cache()
+        MutationTracker.clear()
+        LoadCache.init_request()
         token = _registry_context.set({})
         try:
             with ExitStack() as stack:
                 if load_context is not None:
-                    stack.enter_context(load_scope(load_context))
+                    stack.enter_context(LoadContext.bind(load_context))
                 if client_backend is not None:
                     stack.enter_context(ClientBackend.scope(client_backend))
                 yield
         finally:
             warn_mutations_without_render()
-            clear_mutations()
-            reset_request_cache()
+            MutationTracker.clear()
+            LoadCache.reset_request()
             _registry_context.reset(token)

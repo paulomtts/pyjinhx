@@ -1,27 +1,6 @@
 import os
 import re
-from collections.abc import Iterable
-from enum import Enum
-from typing import TypeAlias
-
-ReactiveKey: TypeAlias = str | Enum
-
-
-def coerce_reactive_key(key: object) -> str:
-    """Normalize a reactive key: unwrap enums to ``.value``, then ``str``."""
-    if isinstance(key, Enum):
-        key = key.value
-    return str(key)
-
-
-coerce_load_key = coerce_reactive_key
-
-
-def coerce_reactive_keys(keys: Iterable[object] | None) -> set[str]:
-    """Normalize a collection of reactive dependency keys."""
-    if not keys:
-        return set()
-    return {coerce_reactive_key(key) for key in keys}
+from functools import lru_cache
 
 
 def pascal_case_to_snake_case(name: str) -> str:
@@ -67,7 +46,7 @@ def tag_name_to_template_filenames(
         "button_group.jinja", "button-group.jinja"]).
     """
     snake_name = pascal_case_to_snake_case(tag_name)
-    kebab_name = pascal_case_to_kebab_case(tag_name)
+    kebab_name = snake_name.replace("_", "-")
     candidates = []
     for extension in extensions:
         candidates.append(f"{snake_name}{extension}")
@@ -125,12 +104,10 @@ def detect_root_directory(
     markers = project_markers or [
         "pyproject.toml",
         "main.py",
-        "README.md",
         ".git",
         ".gitignore",
         "package.json",
         "uv.lock",
-        ".venv",
     ]
 
     search_dir = current_dir
@@ -166,6 +143,10 @@ def _find_first_start_tag(html: str) -> int:
         cursor += 1
 
 
+def _escape_attr_value(value: str) -> str:
+    return str(value).replace(chr(34), "&quot;")
+
+
 def stamp_root_attributes(html: str, attributes: dict[str, str]) -> str:
     """
     Splice attributes into the first start tag of an HTML fragment.
@@ -178,7 +159,7 @@ def stamp_root_attributes(html: str, attributes: dict[str, str]) -> str:
     Args:
         html: The rendered HTML fragment. Must contain at least one start tag.
         attributes: Attribute name -> value pairs to insert. Values are
-            HTML-attribute escaped (double quotes become &quot;).
+            HTML-attribute escaped.
 
     Returns:
         The HTML with the attributes spliced into the root element's start tag.
@@ -215,61 +196,20 @@ def stamp_root_attributes(html: str, attributes: dict[str, str]) -> str:
 
     insert_at = cursor - 1 if html[cursor - 1] == "/" else cursor
     rendered_attrs = "".join(
-        f' {name}="{str(value).replace(chr(34), "&quot;")}"'
+        f' {name}="{_escape_attr_value(value)}"'
         for name, value in attributes.items()
     )
     return html[:insert_at] + rendered_attrs + html[insert_at:]
 
 
+def css_attribute_selector_attr_value(value: str) -> str:
+    """Escape a value for use inside a CSS attribute selector quoted with single quotes."""
+    return str(value).replace("\\", "\\\\").replace("'", "\\'")
+
+
+@lru_cache(maxsize=1)
 def read_client_runtime() -> str:
     """Return the bundled pyjinhx client runtime JavaScript source."""
     runtime_path = os.path.join(os.path.dirname(__file__), "runtime", "pjx.js")
     with open(runtime_path, encoding="utf-8") as runtime_file:
         return runtime_file.read()
-
-
-def coerce_load_key_str(key: object) -> str | None:
-    """Like ``coerce_load_key``, but returns ``None`` for a ``None`` input."""
-    if key is None:
-        return None
-    return coerce_load_key(key)
-
-
-def interpolate_reactive_keys(
-    keys: Iterable[str],
-    key: str | None,
-    *,
-    keyed: bool = False,
-) -> set[str]:
-    """
-    Expand declared reactive keys for a component instance.
-
-    For singletons (``key is None``), declared keys are returned as-is.
-
-    For instance-keyed components, bare stems (e.g. ``"todo"``) expand to
-    ``"todo:<key>"``. When a plural sibling is present (e.g. ``"user"`` with
-    ``"users"``), the singular is the instance stem and the plural stays global.
-    Legacy ``"{key}"`` placeholders are still expanded for backward compatibility.
-    """
-    if key is None:
-        return set(keys)
-
-    declared = set(keys)
-    if not keyed:
-        return declared
-
-    result: set[str] = set()
-    for declared_key in declared:
-        if "{key}" in declared_key:
-            result.add(declared_key.replace("{key}", key))
-        elif ":" in declared_key:
-            result.add(declared_key)
-        elif f"{declared_key}s" in declared:
-            result.add(f"{declared_key}:{key}")
-        elif any(
-            declared_key == f"{other}s" for other in declared if other != declared_key
-        ):
-            result.add(declared_key)
-        else:
-            result.add(f"{declared_key}:{key}")
-    return result

@@ -3,7 +3,7 @@ import os
 import sys
 import tempfile
 
-from pyjinhx.renderer import Renderer
+from pyjinhx.core.renderer import Renderer
 
 
 def test_tag_template_auto_lookup_supports_jinja_extension():

@@ -1,6 +1,7 @@
 from markupsafe import Markup
 
-from pyjinhx.reactive import PJX_MOUNTED_HEADER, client_script
+from pyjinhx.reactive.payload import PJX_MOUNTED_HEADER
+from pyjinhx.reactive.runtime import client_script
 from pyjinhx.utils import read_client_runtime
 
 

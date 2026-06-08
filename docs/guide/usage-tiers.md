@@ -2,6 +2,8 @@
 
 PyJinHx is one library with optional layers. Adopt each tier only when you need it.
 
+**Source layout:** tiers 1–2 live under `pyjinhx/core/`; tier 3+ under `pyjinhx/reactive/`; process setup under `pyjinhx/config/`. Public imports stay on `from pyjinhx import ...`.
+
 ## Tier 1 — Components
 
 **What:** `BaseComponent` + co-located Jinja templates + `Renderer`.

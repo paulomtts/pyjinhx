@@ -1,4 +1,4 @@
-from pyjinhx.reactive_dev import dependency_graph, format_dependency_graph
+from pyjinhx.reactive.dev import dependency_graph, format_dependency_graph
 
 
 def test_dependency_graph_values_are_sorted():

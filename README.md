@@ -14,6 +14,25 @@ Build reusable, type-safe UI components for template-based web apps in Python. P
 pip install pyjinhx
 ```
 
+## Package layout
+
+Import from the top level only — `from pyjinhx import BaseComponent, ReactiveComponent, setup, ...`. Internal module paths are not a stable API.
+
+| Folder | Role |
+|--------|------|
+| `pyjinhx/core/` | Components, render pipeline, registry, assets (usage tiers 1–2). Flat modules: `renderer` (orchestration), `render_assets`, `tag_expand`, `autodiscover`, `base`, `registry`, `finder`, `parser`, `assets` |
+| `pyjinhx/reactive/` | Cache, invalidation, mutations, OOB client helpers, `ReactiveComponent` (tier 3+) |
+| `pyjinhx/config/` | `setup()`, `PyJinhxSettings`, lifespan helpers |
+| `pyjinhx/integrations/` | FastAPI wiring, Redis invalidation backend |
+| `pyjinhx/builtins/` | Optional UI kit |
+| `pyjinhx/runtime/` | Client runtime (`pjx.js`) |
+
+See [usage tiers](docs/guide/usage-tiers.md) for which layers to adopt when.
+
+## Development
+
+Structural audits: invoke the **`code-audit-sweep`** skill (`.cursor/skills/code-audit-sweep/`) to run read-only architecture reviews before large PRs. Individual lenses (`indirection-audit`, `module-placement-audit`, etc.) can be run alone. Dry-run baselines: [VALIDATION.md](.cursor/skills/code-audit-sweep/VALIDATION.md).
+
 ## Example
 
 Two levels: **Card → Button**. Card is built in Python; Button is declared as a PascalCase tag in `card.html`.
@@ -144,9 +163,16 @@ def toggle():
 
 Wire `setup(app, ...)` once — lifespan and registry middleware handle cache scope, optional invalidation, `LoadContext`, and `ClientBackend` for header auto-resolution. Mutation routes omit `mounted=`; `pjx.js` is injected on root full-page renders unless `X-PJX-Mounted` is already present.
 
-**Reactive ergonomics:** use `StateKey` enums and `dirty_keys()` for typed keys; `@mutates` on store methods to auto-supply `dirtied`; `load_scope()` / `get_load_context()` to inject dependencies into `load()`; `enable_reactive_dev()` and `dependency_graph()` for guardrails and debugging.
+**Reactive ergonomics:** use `StateKey` enums and `StateKey.dirty_keys()` for typed keys; `@mutates` on store methods to auto-supply `dirtied`; `LoadContext.bind()` / `LoadContext.current()` to inject dependencies into `load()`; `enable_reactive_dev()` and `dependency_graph()` for guardrails and debugging.
 
-**Load cache scope** (default `CacheScope.REQUEST`): `load()` results are cached within each HTTP request. Use `Registry.request_scope()` on every request for instance registry isolation (included in `setup(app, ...)`). For cross-request caching per worker, pass `cache_scope=CacheScope.PROCESS` to `setup()` and pair with an `InvalidationBackend` ([Redis reference](pyjinhx/integrations/redis.py), `pip install pyjinhx[redis]`).
+**Reactive design decisions:**
+- **Two-tier dependencies:** static `reacts_to` is the cache-safety superset; override `effective_reacts_to()` on the loaded instance to narrow runtime deps (e.g. admin-only panels). `oob_swaps` pre-filters on the superset, then `load()`s, then matches on `effective_reacts_to()`.
+- **`mutation_scope`:** records dirtied keys and invalidates the load cache on **successful exit** only (same as `@mutates` after the wrapped function returns). Failed blocks do not invalidate or accumulate dirtied keys.
+- **`state_hash()`:** canonical sorted JSON from `model_dump(mode="json")` with `id` excluded by default (`state_hash_exclude` to omit more fields). Override `state_hash()` for custom hashing.
+
+**Load cache scope** (default `CacheScope.REQUEST`): `load()` results are cached within each HTTP request via `LoadCache`. Use `LoadCache.invalidate()` to evict entries; `MutationTracker` accumulates dirtied keys from `@mutates` for the next reactive render. Use `Registry.request_scope()` on every request for instance registry isolation (included in `setup(app, ...)`). For cross-request caching per worker, pass `cache_scope=CacheScope.PROCESS` to `setup()` and pair with an `InvalidationBackend` + `InvalidationHub` ([Redis reference](pyjinhx/integrations/redis.py), `pip install pyjinhx[redis]`).
+
+**API shape:** reactive internals expose class methods directly (`LoadCache`, `MutationTracker`, `InvalidationHub`, `MountedManifest`, `LoadedAssets`) — no thin module-level wrapper functions.
 
 Details: [usage tiers](docs/guide/usage-tiers.md) · [reactivity guide](docs/reactivity.md) · [Build an App](docs/getting-started/build-an-app.md) · [examples/reactive_todo/](examples/reactive_todo/).
 
@@ -272,7 +298,7 @@ class TodoApp(BaseComponent):
 ```python
 from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
-from pyjinhx import Registry, Renderer, fastapi_client_backend
+from pyjinhx import FastAPIClientBackend, Registry, Renderer
 from starlette.middleware.base import BaseHTTPMiddleware
 
 Renderer.set_default_environment("./components")
@@ -281,7 +307,7 @@ app = FastAPI()
 
 class RegistryScopeMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request, call_next):
-        with Registry.request_scope(client_backend=fastapi_client_backend(request)):
+        with Registry.request_scope(client_backend=FastAPIClientBackend(request)):
             return await call_next(request)
 
 

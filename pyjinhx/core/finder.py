@@ -7,8 +7,7 @@ from markupsafe import Markup
 
 from .assets import AssetUrlResolver
 
-from .utils import (
-    detect_root_directory,
+from ..utils import (
     normalize_path_separators,
     pascal_case_to_kebab_case,
     pascal_case_to_snake_case,
@@ -28,7 +27,8 @@ class Finder:
     """
 
     root: str
-    _index: dict[str, str] = field(default_factory=dict, init=False)
+    _index: dict[str, list[str]] = field(default_factory=dict, init=False)
+    _relative_index: dict[str, str] = field(default_factory=dict, init=False)
     _all_files: list[tuple[str, str]] = field(default_factory=list, init=False)
     _is_indexed: bool = field(default=False, init=False)
 
@@ -41,8 +41,15 @@ class Finder:
             file_names.sort()
             for file_name in file_names:
                 full_path = os.path.join(current_root, file_name)
-                self._index.setdefault(file_name, full_path)
+                self._index.setdefault(file_name, []).append(full_path)
+                relative_path = normalize_path_separators(
+                    os.path.relpath(full_path, self.root)
+                )
+                self._relative_index[relative_path] = full_path
                 self._all_files.append((file_name, full_path))
+
+        for file_name, paths in self._index.items():
+            paths.sort()
 
         self._is_indexed = True
 
@@ -63,26 +70,6 @@ class Finder:
         if isinstance(search_path, list):
             return search_path[0]
         return search_path
-
-    @staticmethod
-    def detect_root_directory(
-        start_directory: str | None = None,
-        project_markers: list[str] | None = None,
-    ) -> str:
-        """
-        Find the project root by walking upward from a starting directory until a marker file is found.
-
-        Args:
-            start_directory: Directory to start searching from. Defaults to current working directory.
-            project_markers: Files/directories indicating project root (e.g., "pyproject.toml", ".git").
-
-        Returns:
-            The detected project root directory, or the start directory if no marker is found.
-        """
-        return detect_root_directory(
-            start_directory=start_directory,
-            project_markers=project_markers,
-        )
 
     @staticmethod
     def find_in_directory(directory: str, filename: str) -> str | None:
@@ -167,10 +154,18 @@ class Finder:
             FileNotFoundError: If the file cannot be found under root.
         """
         self._build_index()
-        found_path = self._index.get(filename)
-        if found_path is None:
+        found_paths = self._index.get(filename)
+        if not found_paths:
             raise FileNotFoundError(f"Template not found: {filename} under {self.root}")
-        return found_path
+        if len(found_paths) > 1:
+            candidates = ", ".join(
+                normalize_path_separators(os.path.relpath(path, self.root))
+                for path in found_paths
+            )
+            raise FileNotFoundError(
+                f"Ambiguous template name {filename!r} under {self.root}: {candidates}"
+            )
+        return found_paths[0]
 
     def find_template_for_tag(self, tag_name: str) -> str:
         """
@@ -250,16 +245,15 @@ class Finder:
         """
         return self._collect_files_by_extension(".css", relative_to_root)
 
-
-def layout_asset_tags(
-    finder: Finder,
-    *,
-    resolver: AssetUrlResolver,
-) -> Markup:
-    """Return link/script tags for every component asset under ``finder.root``."""
-    lines: list[str] = []
-    for css_path in finder.collect_css_files():
-        lines.append(f'<link rel="stylesheet" href="{resolver(css_path)}">')
-    for js_path in finder.collect_javascript_files():
-        lines.append(f'<script src="{resolver(js_path)}"></script>')
-    return Markup("\n".join(lines))
+    def layout_asset_tags(
+        self,
+        *,
+        resolver: AssetUrlResolver,
+    ) -> Markup:
+        """Return link/script tags for every component asset under ``self.root``."""
+        lines: list[str] = []
+        for css_path in self.collect_css_files():
+            lines.append(f'<link rel="stylesheet" href="{resolver(css_path)}">')
+        for js_path in self.collect_javascript_files():
+            lines.append(f'<script src="{resolver(js_path)}"></script>')
+        return Markup("\n".join(lines))

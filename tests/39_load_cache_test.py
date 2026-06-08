@@ -1,12 +1,11 @@
 from typing import ClassVar
 
-from pyjinhx import ReactiveComponent, invalidate
-from pyjinhx.cache import clear
+from pyjinhx import ReactiveComponent, LoadCache
 from tests.ui.reactive.cached_widget import CachedWidget, load_calls
 
 
 def _reset():
-    clear()
+    LoadCache.clear()
     load_calls["count"] = 0
 
 
@@ -32,7 +31,7 @@ def test_load_returns_independent_copies():
 def test_invalidate_evicts_matching_dependency():
     _reset()
     first = CachedWidget.load()
-    invalidate({"widgets"})
+    LoadCache.invalidate({"widgets"})
     second = CachedWidget.load()
     assert load_calls["count"] == 2
     assert first.value == 1 and second.value == 2
@@ -41,7 +40,7 @@ def test_invalidate_evicts_matching_dependency():
 def test_invalidate_unrelated_key_keeps_cache():
     _reset()
     CachedWidget.load()
-    invalidate({"users"})
+    LoadCache.invalidate({"users"})
     CachedWidget.load()
     assert load_calls["count"] == 1
 
@@ -49,13 +48,13 @@ def test_invalidate_unrelated_key_keeps_cache():
 def test_invalidate_empty_set_is_noop():
     _reset()
     CachedWidget.load()
-    invalidate(set())
+    LoadCache.invalidate(set())
     CachedWidget.load()
     assert load_calls["count"] == 1
 
 
 def test_invalidate_cleans_reverse_index_across_keys():
-    clear()
+    LoadCache.clear()
     calls = {"n": 0}
 
     class MultiDep(ReactiveComponent):
@@ -68,8 +67,8 @@ def test_invalidate_cleans_reverse_index_across_keys():
             return cls(id="multi", n=calls["n"])
 
     MultiDep.load()  # n=1, indexed under alpha & beta
-    invalidate({"alpha"})  # evict; must also drop it from the beta bucket
-    invalidate({"beta"})  # must not raise on the now-clean bucket
+    LoadCache.invalidate({"alpha"})  # evict; must also drop it from the beta bucket
+    LoadCache.invalidate({"beta"})  # must not raise on the now-clean bucket
     a = MultiDep.load()  # miss -> n=2
     b = MultiDep.load()  # hit -> still n=2
     assert calls["n"] == 2
@@ -77,6 +76,6 @@ def test_invalidate_cleans_reverse_index_across_keys():
 
 
 def test_invalidate_is_exported():
-    from pyjinhx import invalidate as exported
+    from pyjinhx import LoadCache as exported
 
     assert callable(exported)

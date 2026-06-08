@@ -2,7 +2,7 @@
 
 Per-request HTTP header access for reactive rendering. Wire once in your app's middleware; `render()` reads `X-PJX-Mounted` and `X-PJX-Assets` automatically.
 
-PyJinHx does **not** ship middleware — you define a thin wrapper (see [FastAPI integration](../integrations/fastapi.md#middleware-recommended)) that calls `Registry.request_scope(client_backend=fastapi_client_backend(request))`.
+PyJinHx does **not** ship middleware — you define a thin wrapper (see [FastAPI integration](../integrations/fastapi.md#middleware-recommended)) that calls `Registry.request_scope(client_backend=FastAPIClientBackend(request))`.
 
 ## ClientBackend
 
@@ -40,20 +40,14 @@ Abstract base — implement for non-FastAPI frameworks if needed.
 
 ## FastAPIClientBackend
 
+Defined in `pyjinhx.integrations.fastapi` (re-exported from `pyjinhx`):
+
 ```python
 class FastAPIClientBackend(ClientBackend):
     def __init__(self, request: object) -> None: ...
 ```
 
-Default implementation for FastAPI and Starlette. Wraps `request.headers`. The instance exposes `.headers.get()` for `render()` duck typing.
-
-## fastapi_client_backend
-
-```python
-def fastapi_client_backend(request: object) -> FastAPIClientBackend
-```
-
-Factory for use in your app's middleware. PyJinHx does not ship middleware — see the [canonical snippet](../integrations/fastapi.md#middleware-recommended).
+Default implementation for FastAPI and Starlette. Wraps `request.headers`. The instance exposes `.headers.get()` for `render()` duck typing. `setup(app, ...)` wires this automatically in middleware.
 
 ## Auto-resolution in render()
 

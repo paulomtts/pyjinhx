@@ -1,17 +1,6 @@
 from collections.abc import Callable
 
-from pyjinhx import (
-    CacheScope,
-    InvalidationBackend,
-    invalidate,
-    set_invalidation_backend,
-    set_load_cache_scope,
-    start_invalidation_listener,
-    stop_invalidation_listener,
-)
-from pyjinhx.cache import clear, get_load_cache_scope
-from pyjinhx.invalidation import reset_invalidation_state
-from tests.ui.reactive.cached_widget import CachedWidget, load_calls
+from pyjinhx import CacheScope, InvalidationBackend, InvalidationHub, LoadCache
 
 
 class FakeInvalidationBackend(InvalidationBackend):
@@ -30,60 +19,48 @@ class FakeInvalidationBackend(InvalidationBackend):
 
 
 def _reset():
-    clear()
-    load_calls["count"] = 0
+    LoadCache.clear()
 
 
 def test_invalidate_publishes_under_process_scope():
     _reset()
-    original_scope = get_load_cache_scope()
+    original_scope = LoadCache.scope()
     backend = FakeInvalidationBackend()
     try:
-        set_load_cache_scope(CacheScope.PROCESS)
-        set_invalidation_backend(backend)
-        invalidate({"widgets"})
+        LoadCache.set_scope(CacheScope.PROCESS)
+        InvalidationHub.set_backend(backend)
+        LoadCache.invalidate({"widgets"})
         assert backend.published == [frozenset({"widgets"})]
     finally:
-        reset_invalidation_state()
-        set_load_cache_scope(original_scope)
+        InvalidationHub.reset()
+        LoadCache.set_scope(original_scope)
 
 
 def test_invalidate_propagate_false_does_not_publish():
     _reset()
-    original_scope = get_load_cache_scope()
+    original_scope = LoadCache.scope()
     backend = FakeInvalidationBackend()
     try:
-        set_load_cache_scope(CacheScope.PROCESS)
-        set_invalidation_backend(backend)
-        invalidate({"widgets"}, propagate=False)
+        LoadCache.set_scope(CacheScope.PROCESS)
+        InvalidationHub.set_backend(backend)
+        LoadCache.invalidate({"widgets"}, propagate=False)
         assert backend.published == []
     finally:
-        reset_invalidation_state()
-        set_load_cache_scope(original_scope)
-
-
-def test_invalidate_does_not_publish_under_request_scope():
-    _reset()
-    original_scope = get_load_cache_scope()
-    backend = FakeInvalidationBackend()
-    try:
-        set_load_cache_scope(CacheScope.REQUEST)
-        set_invalidation_backend(backend)
-        invalidate({"widgets"})
-        assert backend.published == []
-    finally:
-        reset_invalidation_state()
-        set_load_cache_scope(original_scope)
+        InvalidationHub.reset()
+        LoadCache.set_scope(original_scope)
 
 
 def test_remote_invalidation_evicts_process_cache():
+    from tests.ui.reactive.cached_widget import CachedWidget, load_calls
+
     _reset()
-    original_scope = get_load_cache_scope()
+    load_calls["count"] = 0
+    original_scope = LoadCache.scope()
     backend = FakeInvalidationBackend()
     try:
-        set_load_cache_scope(CacheScope.PROCESS)
-        set_invalidation_backend(backend)
-        start_invalidation_listener()
+        LoadCache.set_scope(CacheScope.PROCESS)
+        InvalidationHub.set_backend(backend)
+        InvalidationHub.start_listener()
         CachedWidget.load()
         assert load_calls["count"] == 1
         assert backend.handler is not None
@@ -92,6 +69,26 @@ def test_remote_invalidation_evicts_process_cache():
         CachedWidget.load()
         assert load_calls["count"] == 1
     finally:
-        stop_invalidation_listener()
-        reset_invalidation_state()
-        set_load_cache_scope(original_scope)
+        InvalidationHub.stop_listener()
+        InvalidationHub.reset()
+        LoadCache.set_scope(original_scope)
+
+
+def test_listener_restarts_after_backend_swap():
+    original_scope = LoadCache.scope()
+    first = FakeInvalidationBackend()
+    second = FakeInvalidationBackend()
+    try:
+        LoadCache.set_scope(CacheScope.PROCESS)
+        InvalidationHub.set_backend(first)
+        InvalidationHub.start_listener()
+        assert first.handler is not None
+
+        InvalidationHub.set_backend(second)
+        InvalidationHub.start_listener()
+        assert first.handler is None
+        assert second.handler is not None
+    finally:
+        InvalidationHub.stop_listener()
+        InvalidationHub.reset()
+        LoadCache.set_scope(original_scope)

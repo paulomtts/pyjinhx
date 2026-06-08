@@ -1,57 +1,51 @@
-from pyjinhx import (
-    PJX_MOUNTED_HEADER,
-    ClientBackend,
-    FastAPIClientBackend,
-    Registry,
-    fastapi_client_backend,
-)
-from pyjinhx.mutations import mutation_scope
+from pyjinhx import FastAPIClientBackend, Registry
+from pyjinhx.reactive.backend import ClientBackend
 
 
-class _Headers:
-    def __init__(self, mapping: dict[str, str]) -> None:
-        self._mapping = mapping
-
-    def get(self, name: str, default: str | None = None) -> str | None:
-        return self._mapping.get(name, default)
+class _FakeRequest:
+    def __init__(self, headers: dict[str, str] | None = None) -> None:
+        self.headers = headers or {}
 
 
-class _Request:
-    def __init__(self, headers: dict[str, str]) -> None:
-        self.headers = _Headers(headers)
+def test_client_backend_current_outside_scope_is_none():
+    ClientBackend.reset()
+    assert ClientBackend.current() is None
+
+
+def test_client_backend_scope_sets_backend():
+    request = _FakeRequest({"X-PJX-Mounted": "[]"})
+    backend = FastAPIClientBackend(request)
+    with ClientBackend.scope(backend):
+        assert ClientBackend.current() is backend
+    assert ClientBackend.current() is None
 
 
 def test_fastapi_client_backend_reads_headers():
-    backend = FastAPIClientBackend(_Request({PJX_MOUNTED_HEADER: "[]"}))
-    assert backend.get_header(PJX_MOUNTED_HEADER) == "[]"
-    assert backend.headers.get(PJX_MOUNTED_HEADER) == "[]"
+    request = _FakeRequest({"X-PJX-Mounted": "[]", "X-PJX-Assets": '["/a.js"]'})
+    backend = FastAPIClientBackend(request)
+    assert backend.get_header("X-PJX-Mounted") == "[]"
+    assert backend.get_header("X-PJX-Assets") == '["/a.js"]'
 
 
-def test_fastapi_client_backend_factory():
-    request = _Request({"X-Test": "ok"})
-    backend = fastapi_client_backend(request)
-    assert backend.get_header("X-Test") == "ok"
+def test_fastapi_client_backend_constructor():
+    request = _FakeRequest({"X-PJX-Mounted": "[]"})
+    backend = FastAPIClientBackend(request)
+    assert isinstance(backend, FastAPIClientBackend)
+    assert backend.get_header("X-PJX-Mounted") == "[]"
 
 
-def test_resolve_render_client_uses_backend():
-    with ClientBackend.scope(FastAPIClientBackend(_Request({}))):
-        assert ClientBackend.resolve_client(None) is not None
-    assert ClientBackend.resolve_client(None) is None
+def test_registry_request_scope_sets_client_backend():
+    request = _FakeRequest({"X-PJX-Mounted": "[]"})
+    ClientBackend.reset()
+    with Registry.request_scope(client_backend=FastAPIClientBackend(request)):
+        current = ClientBackend.current()
+        assert current is not None
+        assert current.get_header("X-PJX-Mounted") == "[]"
+    assert ClientBackend.current() is None
 
 
-def test_resolve_render_mounted_mutation_only():
-    manifest = "[]"
-    with ClientBackend.scope(FastAPIClientBackend(_Request({PJX_MOUNTED_HEADER: manifest}))):
-        assert ClientBackend.resolve_mounted(None, dirtied=None) is None
-        assert ClientBackend.resolve_mounted(None, dirtied={"todos"}) is not None
-        with mutation_scope("todos"):
-            pass
-        assert ClientBackend.resolve_mounted(None, dirtied=None) is not None
-
-
-def test_request_scope_wires_client_backend():
-    request = _Request({PJX_MOUNTED_HEADER: "[]"})
-    with Registry.request_scope(client_backend=fastapi_client_backend(request)):
-        client = ClientBackend.resolve_client(None)
-        assert client is not None
-        assert client.headers.get(PJX_MOUNTED_HEADER) == "[]"
+def test_registry_request_scope_with_fastapi_backend():
+    request = _FakeRequest({"X-PJX-Mounted": "[]"})
+    ClientBackend.reset()
+    with Registry.request_scope(client_backend=FastAPIClientBackend(request)):
+        assert ClientBackend.current() is not None

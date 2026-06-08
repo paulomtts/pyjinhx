@@ -7,7 +7,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 from .registry import Registry
 from .renderer import Renderer
 from .assets import RenderSession
-from .utils import ReactiveKey, coerce_reactive_keys
+from ..reactive.keys import ReactiveKey, coerce_reactive_keys
 
 logger = logging.getLogger("pyjinhx")
 logger.setLevel(logging.WARNING)
@@ -80,6 +80,53 @@ class BaseComponent(BaseModel):
         """
         return self._render()
 
+    def _wrap_component_value(
+        self,
+        field_value: Any,
+        *,
+        context: dict[str, Any],
+        renderer: Renderer,
+        session: RenderSession,
+    ) -> Any:
+        if isinstance(field_value, BaseComponent):
+            return NestedComponentWrapper(
+                html=field_value._render(
+                    base_context=context,
+                    _renderer=renderer,
+                    _session=session,
+                ),
+                props=field_value,
+            )
+        if isinstance(field_value, list):
+            processed_list = []
+            for item in field_value:
+                if isinstance(item, BaseComponent):
+                    processed_list.append(
+                        self._wrap_component_value(
+                            item,
+                            context=context,
+                            renderer=renderer,
+                            session=session,
+                        )
+                    )
+                else:
+                    processed_list.append(item)
+            return processed_list if processed_list else field_value
+        if isinstance(field_value, dict):
+            processed_dict = {}
+            for key, value in field_value.items():
+                if isinstance(value, BaseComponent):
+                    processed_dict[key] = self._wrap_component_value(
+                        value,
+                        context=context,
+                        renderer=renderer,
+                        session=session,
+                    )
+                else:
+                    processed_dict[key] = value
+            return processed_dict if processed_dict else field_value
+        return field_value
+
     def _update_context_(
         self,
         context: dict[str, Any],
@@ -89,52 +136,15 @@ class BaseComponent(BaseModel):
         renderer: Renderer,
         session: RenderSession,
     ) -> dict[str, Any]:
-        """
-        Updates the context with rendered components by their ID.
-        """
-        if isinstance(field_value, BaseComponent):
-            context[field_name] = NestedComponentWrapper(
-                html=field_value._render(
-                    base_context=context,
-                    _renderer=renderer,
-                    _session=session,
-                ),
-                props=field_value,
-            )
-        elif isinstance(field_value, list):
-            processed_list = []
-            for item in field_value:
-                if isinstance(item, BaseComponent):
-                    processed_list.append(
-                        NestedComponentWrapper(
-                            html=item._render(
-                                base_context=context,
-                                _renderer=renderer,
-                                _session=session,
-                            ),
-                            props=item,
-                        )
-                    )
-                else:
-                    processed_list.append(item)
-            if processed_list:
-                context[field_name] = processed_list
-        elif isinstance(field_value, dict):
-            processed_dict = {}
-            for key, value in field_value.items():
-                if isinstance(value, BaseComponent):
-                    processed_dict[key] = NestedComponentWrapper(
-                        html=value._render(
-                            base_context=context,
-                            _renderer=renderer,
-                            _session=session,
-                        ),
-                        props=value,
-                    )
-                else:
-                    processed_dict[key] = value
-            if processed_dict:
-                context[field_name] = processed_dict
+        """Updates the context with rendered components by their ID."""
+        wrapped = self._wrap_component_value(
+            field_value,
+            context=context,
+            renderer=renderer,
+            session=session,
+        )
+        if wrapped is not field_value:
+            context[field_name] = wrapped
         return context
 
     def _render(
@@ -168,12 +178,24 @@ class BaseComponent(BaseModel):
                 session=session,
             )
 
-        from .client_backend import ClientBackend
-        from .reactive import parse_loaded_assets
+        declared_fields = set(type(self).model_fields.keys())
+        for field_name, field_value in context.items():
+            if field_name in declared_fields:
+                continue
+            context = self._update_context_(
+                context,
+                field_name,
+                field_value,
+                renderer=renderer,
+                session=session,
+            )
+
+        from pyjinhx.reactive.backend import ClientBackend
+        from pyjinhx.reactive.payload import LoadedAssets
 
         resolved_client = ClientBackend.resolve_client(client)
         loaded_assets = (
-            parse_loaded_assets(resolved_client)
+            LoadedAssets.parse(resolved_client)
             if resolved_client is not None and emit_assets
             else frozenset()
         )
@@ -228,7 +250,7 @@ class BaseComponent(BaseModel):
         Returns:
             The rendered HTML as a Markup object (safe for direct use in templates).
         """
-        from .client_backend import ClientBackend
+        from pyjinhx.reactive.backend import ClientBackend
 
         resolved_client = ClientBackend.resolve_client(client)
         resolved_mounted = ClientBackend.resolve_mounted(mounted, dirtied=dirtied)
@@ -236,27 +258,14 @@ class BaseComponent(BaseModel):
         if dirtied is None and resolved_mounted is None:
             return self._render(client=resolved_client)
 
-        from .mutations import (
-            mark_reactive_render_consumed,
-            resolve_effective_dirtied,
-        )
-        from .reactive import oob_swaps  # local import to avoid an import cycle
-        from .reactive_dev import warn_reactive_render_without_mounted
+        from pyjinhx.reactive.render import reactive_render_bundle
 
         own_keys = coerce_reactive_keys(getattr(self, "_pjx_reacts_to", frozenset()))
-        warn_reactive_render_without_mounted(
-            dirtied=dirtied, mounted=resolved_mounted, own_keys=own_keys
-        )
-
-        primary = self._render(emit_assets=False)
-        effective_dirtied = resolve_effective_dirtied(
+        return reactive_render_bundle(
+            primary_html=lambda: self._render(emit_assets=False),
+            own_keys=own_keys,
             dirtied=dirtied,
             mounted=resolved_mounted,
-            own_keys=own_keys,
+            exclude_ids={self.id},
+            invalidate_before_primary=False,
         )
-        mark_reactive_render_consumed()
-        swaps = oob_swaps(effective_dirtied, resolved_mounted, exclude_ids={self.id})
-        # Wrap the primary as safe markup before concatenation: _render() returns a
-        # plain str (Markup.unescape()), and `str + Markup` would invoke Markup.__radd__
-        # and HTML-escape the primary. Markup(primary) + swaps keeps both raw.
-        return Markup(primary) + swaps

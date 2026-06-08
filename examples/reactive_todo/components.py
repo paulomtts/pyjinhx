@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from typing import ClassVar, Optional
 
 from pyjinhx import BaseComponent, ReactiveComponent
-from pyjinhx.load_context import get_load_context
+from pyjinhx.reactive.context import LoadContext
 
 from .keys import Keys
 
@@ -15,7 +15,7 @@ class TodoLoadContext:
 
 
 def _store():
-    ctx = get_load_context()
+    ctx = LoadContext.current()
     if isinstance(ctx, TodoLoadContext):
         return ctx.store
     from . import store

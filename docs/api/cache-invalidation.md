@@ -23,21 +23,23 @@ Controls where cached `load()` results are stored.
 
 `Registry.request_scope()` always creates a request-scoped cache store. With `PROCESS` scope, reads fall through to the process store; with `REQUEST` scope, only the request store is used.
 
-## get_load_cache_scope
+## LoadCache
 
 ```python
-def get_load_cache_scope() -> CacheScope
+class LoadCache:
+    @classmethod
+    def scope(cls) -> CacheScope: ...
+    @classmethod
+    def set_scope(cls, scope: CacheScope) -> None: ...
+    @classmethod
+    def invalidate(cls, dirtied: Iterable[object], *, propagate: bool = True) -> None: ...
+    @classmethod
+    def clear(cls) -> None: ...
 ```
 
-Return the active process-wide cache scope.
+Memoizes reactive `load()` results keyed by `(class, instance_key)`.
 
-## set_load_cache_scope
-
-```python
-def set_load_cache_scope(scope: CacheScope) -> None
-```
-
-Set the process-wide cache scope. Prefer [`setup()`](config.md) at app startup:
+Prefer [`setup()`](config.md) at app startup:
 
 ```python
 from pyjinhx import CacheScope, setup
@@ -46,21 +48,13 @@ setup(app, cache_scope=CacheScope.REQUEST)   # default — multi-worker safe
 setup(app, cache_scope=CacheScope.PROCESS)   # cross-request per worker; pair with invalidation
 ```
 
-Or set explicitly: `set_load_cache_scope(CacheScope.REQUEST)`.
+Or set explicitly: `LoadCache.set_scope(CacheScope.REQUEST)`.
 
 Environment variable `PJX_LOAD_CACHE_SCOPE` is read by `PyJinhxSettings.from_env()` (default `request`).
 
-## invalidate
+**Stem expansion:** `LoadCache.invalidate({"todo"})` evicts all instance-tier entries whose keys start with `"todo:"` (e.g. `"todo:42"`).
 
-```python
-def invalidate(dirtied: Iterable[object], *, propagate: bool = True) -> None
-```
-
-Evict every cached `load()` result whose interpolated reactive keys intersect the dirtied keys.
-
-**Stem expansion:** invalidating `"todo"` evicts all instance-tier entries whose keys start with `"todo:"` (e.g. `"todo:42"`).
-
-**Propagation:** when `CacheScope.PROCESS` is active, an `InvalidationBackend` is configured, and `propagate=True` (default), dirtied keys are published to other workers after local eviction. Remote handlers call `invalidate(..., propagate=False)` to avoid publish loops.
+**Propagation:** when `CacheScope.PROCESS` is active, an `InvalidationBackend` is configured, and `propagate=True` (default), dirtied keys are published to other workers after local eviction. Remote handlers call `LoadCache.invalidate(..., propagate=False)` to avoid publish loops.
 
 Called automatically by `@mutates` and `mutation_scope` after mutations complete.
 
@@ -77,31 +71,21 @@ Abstract base class for cross-process invalidation. Implement `publish()` to bro
 
 A reference Redis implementation lives in [`pyjinhx.integrations.redis`](integrations-redis.md).
 
-## set_invalidation_backend
+## InvalidationHub
 
 ```python
-def set_invalidation_backend(backend: InvalidationBackend | None) -> None
+class InvalidationHub:
+    @classmethod
+    def set_backend(cls, backend: InvalidationBackend | None) -> None: ...
+    @classmethod
+    def start_listener(cls) -> None: ...
+    @classmethod
+    def stop_listener(cls) -> None: ...
 ```
 
-Configure the invalidation backend. Passing a new backend stops the previous one if a listener was running.
+Runtime coordinator for cross-process invalidation. Passing a new backend stops the previous one if a listener was running.
 
-## Listener lifecycle
-
-### start_invalidation_listener
-
-```python
-def start_invalidation_listener() -> None
-```
-
-Start listening for remote invalidations. Raises `RuntimeError` if no backend is configured. Idempotent — safe to call multiple times.
-
-### stop_invalidation_listener
-
-```python
-def stop_invalidation_listener() -> None
-```
-
-Stop the invalidation listener. Call during application shutdown.
+`start_listener()` raises `RuntimeError` if no backend is configured. Idempotent — safe to call multiple times.
 
 **Typical FastAPI setup:**
 

@@ -1,10 +1,7 @@
 from __future__ import annotations
 
-import importlib.util
 import logging
 import os
-import re
-import uuid
 from typing import TYPE_CHECKING, Any, ClassVar
 
 from jinja2 import Environment, FileSystemLoader, Template
@@ -13,24 +10,26 @@ from markupsafe import Markup
 
 from .assets import (
     DEFAULT_RUNTIME_URL as _DEFAULT_RUNTIME_URL,
-    AssetKind,
     AssetMode,
     AssetUrlResolver,
-    CollectedAsset,
     RenderSession,
     asset_mode_from_inline,
     make_default_asset_url_resolver,
     runtime_asset_path,
 )
-from .dataclasses import Tag
 from .finder import Finder
 from .parser import Parser
 from .registry import Registry
-from .utils import (
+from .render_assets import (
+    collect_component_asset,
+    collect_extra_assets,
+    inject_assets,
+    inject_runtime,
+    normalize_asset_path,
+)
+from .tag_expand import expand_custom_tags, render_tag_node
+from ..utils import (
     detect_root_directory,
-    pascal_case_to_kebab_case,
-    pascal_case_to_snake_case,
-    read_client_runtime,
     stamp_root_attributes,
     tag_name_to_template_filenames,
 )
@@ -39,59 +38,6 @@ if TYPE_CHECKING:
     from .base import BaseComponent
 
 logger = logging.getLogger("pyjinhx")
-
-_autodiscovered_files: set[str] = set()
-
-
-def _import_module_from_file(filepath: str) -> None:
-    """Import a Python file by path to trigger BaseComponent __init_subclass__ registration."""
-    if filepath in _autodiscovered_files:
-        return
-    _autodiscovered_files.add(filepath)
-    try:
-        module_name = (
-            f"_pyjinhx_autodiscovered_{os.path.splitext(os.path.basename(filepath))[0]}"
-        )
-        spec = importlib.util.spec_from_file_location(module_name, filepath)
-        if spec is None or spec.loader is None:
-            return
-        import sys
-
-        module = importlib.util.module_from_spec(spec)
-        sys.modules[module_name] = (
-            module  # required for inspect.getfile to resolve the class
-        )
-        spec.loader.exec_module(module)
-    except Exception:
-        logger.debug("Failed to autodiscover module at %s", filepath, exc_info=True)
-
-
-def _try_autodiscover_for_tag(tag_name: str, template_path: str | None) -> None:
-    """
-    Look for a co-located Python module next to the template and import it so that
-    any BaseComponent subclasses defined there are registered without an explicit import.
-
-    Search order: <snake_name>.py → __init__.py → first alphabetical .py in the directory.
-    """
-    if template_path is None:
-        return
-    component_dir = os.path.dirname(template_path)
-    snake_name = pascal_case_to_snake_case(tag_name)
-    for filename in (f"{snake_name}.py", "__init__.py"):
-        candidate = os.path.join(component_dir, filename)
-        if os.path.exists(candidate):
-            _import_module_from_file(candidate)
-            return
-    try:
-        py_files = sorted(f for f in os.listdir(component_dir) if f.endswith(".py"))
-        if py_files:
-            _import_module_from_file(os.path.join(component_dir, py_files[0]))
-    except OSError:
-        pass
-
-
-def _normalize_asset_path(path: str) -> str:
-    return os.path.normpath(path).replace("\\", "/")
 
 
 class Renderer:
@@ -319,8 +265,8 @@ class Renderer:
         return self._environment
 
     def _resolve_asset_url(self, path: str) -> str:
-        normalized_path = _normalize_asset_path(path)
-        if normalized_path == _normalize_asset_path(runtime_asset_path()):
+        normalized_path = normalize_asset_path(path)
+        if normalized_path == normalize_asset_path(runtime_asset_path()):
             return Renderer._default_runtime_url
         resolver = Renderer._asset_url_resolver
         if resolver is not None:
@@ -396,353 +342,10 @@ class Renderer:
             ", ".join(relative_template_paths) if relative_template_paths else "unknown"
         )
 
-    def _register_asset(
-        self,
-        session: RenderSession,
-        path: str,
-        kind: AssetKind,
-        mode: AssetMode,
-    ) -> None:
-        normalized_path = _normalize_asset_path(path)
-        if normalized_path in session.collected_paths:
-            return
-
-        if mode == AssetMode.INLINE:
-            with open(normalized_path, encoding="utf-8") as asset_file:
-                content = asset_file.read()
-            if not content:
-                return
-            if kind == "js":
-                session.scripts.append(content)
-            else:
-                session.styles.append(content)
-        elif mode == AssetMode.REFERENCE:
-            if not os.path.isfile(normalized_path):
-                return
-            with open(normalized_path, encoding="utf-8") as asset_file:
-                if not asset_file.read():
-                    return
-        else:
-            return
-
-        session.collected_paths.add(normalized_path)
-        session.assets.append(CollectedAsset(path=normalized_path, kind=kind))
-
-    def _collect_component_javascript(
-        self,
-        component: "BaseComponent",
-        session: RenderSession,
-        *,
-        component_dir: str | None = None,
-        asset_name: str | None = None,
-    ) -> None:
-        if self._js_mode == AssetMode.NONE:
-            return
-
-        component_directory = component_dir or Finder.get_class_directory(
-            type(component)
-        )
-        name = asset_name or pascal_case_to_kebab_case(type(component).__name__)
-        javascript_filename = f"{name}.js"
-        javascript_path = Finder.find_in_directory(
-            component_directory, javascript_filename
-        )
-        if not javascript_path:
-            return
-
-        self._register_asset(session, javascript_path, "js", self._js_mode)
-
-    def _collect_extra_javascript(
-        self, component: "BaseComponent", session: RenderSession
-    ) -> None:
-        if self._js_mode == AssetMode.NONE:
-            return
-
-        for javascript_path in component.js:
-            normalized_path = _normalize_asset_path(javascript_path)
-            if not os.path.exists(normalized_path):
-                logger.warning(
-                    "Extra JS file not found: %s (component %s, id=%s)",
-                    normalized_path,
-                    type(component).__name__,
-                    component.id,
-                )
-                continue
-            self._register_asset(session, normalized_path, "js", self._js_mode)
-
-    def _collect_component_css(
-        self,
-        component: "BaseComponent",
-        session: RenderSession,
-        *,
-        component_dir: str | None = None,
-        asset_name: str | None = None,
-    ) -> None:
-        if self._css_mode == AssetMode.NONE:
-            return
-
-        component_directory = component_dir or Finder.get_class_directory(
-            type(component)
-        )
-        name = asset_name or pascal_case_to_kebab_case(type(component).__name__)
-        css_filename = f"{name}.css"
-        css_path = Finder.find_in_directory(component_directory, css_filename)
-        if not css_path:
-            return
-
-        self._register_asset(session, css_path, "css", self._css_mode)
-
-    def _collect_extra_css(
-        self, component: "BaseComponent", session: RenderSession
-    ) -> None:
-        if self._css_mode == AssetMode.NONE:
-            return
-
-        for css_path in component.css:
-            normalized_path = _normalize_asset_path(css_path)
-            if not os.path.exists(normalized_path):
-                logger.warning(
-                    "Extra CSS file not found: %s (component %s, id=%s)",
-                    normalized_path,
-                    type(component).__name__,
-                    component.id,
-                )
-                continue
-            self._register_asset(session, normalized_path, "css", self._css_mode)
-
-    def _inject_runtime(
-        self,
-        session: RenderSession,
-        component: "BaseComponent",
-        *,
-        client: object | None = None,
-    ) -> None:
-        from .reactive import client_has_mounted_manifest
-
-        if session.runtime_injected:
-            return
-        if client_has_mounted_manifest(client):
-            return
-        if self._js_mode == AssetMode.INLINE:
-            session.scripts.insert(0, read_client_runtime())
-        elif self._js_mode == AssetMode.REFERENCE:
-            runtime_path = _normalize_asset_path(runtime_asset_path())
-            if runtime_path not in session.collected_paths:
-                session.collected_paths.add(runtime_path)
-                session.assets.insert(0, CollectedAsset(path=runtime_path, kind="js"))
-        session.runtime_injected = True
-
-    def _should_emit_reference_url(
-        self, url: str, loaded_assets: frozenset[str]
-    ) -> bool:
-        if not Renderer._default_asset_dedup:
-            return True
-        if not loaded_assets:
-            return True
-        return url not in loaded_assets
-
-    def _inject_assets(
-        self,
-        markup: str,
-        session: RenderSession,
-        *,
-        loaded_assets: frozenset[str] = frozenset(),
-    ) -> str:
-        css_markup = self._render_css_assets(session, loaded_assets=loaded_assets)
-        js_markup = self._render_js_assets(session, loaded_assets=loaded_assets)
-        if css_markup:
-            markup = f"{css_markup}\n{markup}"
-        if js_markup:
-            markup = f"{markup}\n{js_markup}"
-        return markup
-
-    def _render_css_assets(
-        self,
-        session: RenderSession,
-        *,
-        loaded_assets: frozenset[str] = frozenset(),
-    ) -> str:
-        if self._css_mode == AssetMode.INLINE:
-            if not session.styles:
-                return ""
-            return "\n".join(f"<style>{style}</style>" for style in session.styles)
-        if self._css_mode == AssetMode.REFERENCE:
-            css_assets = [asset for asset in session.assets if asset.kind == "css"]
-            if not css_assets:
-                return ""
-            tags: list[str] = []
-            for asset in css_assets:
-                url = self._resolve_asset_url(asset.path)
-                if self._should_emit_reference_url(url, loaded_assets):
-                    tags.append(f'<link rel="stylesheet" href="{url}">')
-            return "\n".join(tags)
-        return ""
-
-    def _render_js_assets(
-        self,
-        session: RenderSession,
-        *,
-        loaded_assets: frozenset[str] = frozenset(),
-    ) -> str:
-        if self._js_mode == AssetMode.INLINE:
-            if not session.scripts:
-                return ""
-            return "\n".join(f"<script>{script}</script>" for script in session.scripts)
-        if self._js_mode == AssetMode.REFERENCE:
-            js_assets = [asset for asset in session.assets if asset.kind == "js"]
-            if not js_assets:
-                return ""
-            tags: list[str] = []
-            for asset in js_assets:
-                url = self._resolve_asset_url(asset.path)
-                if self._should_emit_reference_url(url, loaded_assets):
-                    tags.append(f'<script src="{url}"></script>')
-            return "\n".join(tags)
-        return ""
-
     def _find_template_for_tag(self, tag_name: str) -> str:
         loader_root = self._get_loader_root()
         finder = self._get_finder_for_root(loader_root)
         return finder.find_template_for_tag(tag_name)
-
-    def _render_tag_node(
-        self,
-        node: Tag | str,
-        base_context: dict[str, Any],
-        session: RenderSession,
-        *,
-        emit_assets: bool,
-    ) -> str:
-        if isinstance(node, str):
-            return node
-
-        rendered_children = "".join(
-            self._render_tag_node(
-                child,
-                base_context=base_context,
-                session=session,
-                emit_assets=emit_assets,
-            )
-            for child in node.children
-        ).strip()
-
-        component_id = node.attrs.get("id")
-        if not component_id:
-            if not self._auto_id:
-                raise ValueError(
-                    f'Missing required "id" for <{node.name}> and auto_id=False'
-                )
-            component_id = f"{node.name.lower()}-{uuid.uuid4().hex}"
-
-        attrs_without_id = {k: v for k, v in node.attrs.items() if k != "id"}
-
-        registry_key = Registry.make_key(node.name, component_id)
-        existing_instance = Registry.get_instances().get(registry_key)
-        if existing_instance is not None:
-            instance_class_name = type(existing_instance).__name__
-            if instance_class_name != node.name:
-                raise TypeError(
-                    f"Tag <{node.name}> references instance '{component_id}' "
-                    f"which is of type {instance_class_name}"
-                )
-
-            if rendered_children:
-                existing_instance.content = rendered_children
-            for key, value in attrs_without_id.items():
-                setattr(existing_instance, key, value)
-
-            template_path = None
-            try:
-                template_path = self._find_template_for_tag(node.name)
-            except FileNotFoundError:
-                pass
-
-            return str(
-                existing_instance._render(
-                    base_context=base_context,
-                    _renderer=self,
-                    _session=session,
-                    _template_path=template_path,
-                    emit_assets=emit_assets,
-                )
-            )
-
-        template_path: str | None = None
-        try:
-            template_path = self._find_template_for_tag(node.name)
-        except FileNotFoundError:
-            pass
-
-        if node.name not in Registry.get_classes():
-            _try_autodiscover_for_tag(node.name, template_path)
-
-        component_class = Registry.get_classes().get(node.name)
-        if component_class is not None:
-            component = component_class(
-                id=component_id,
-                content=rendered_children,
-                **attrs_without_id,
-            )
-        else:
-            if template_path is None:
-                raise FileNotFoundError(
-                    f"No template found for <{node.name}>. "
-                    f"Expected {node.name.lower()}.html or {node.name.lower()}.jinja"
-                )
-            from .base import BaseComponent  # local import to avoid cycles
-
-            component = BaseComponent(
-                id=component_id,
-                content=rendered_children,
-                **attrs_without_id,
-            )
-            Registry.get_instances().pop(
-                Registry.make_key("BaseComponent", component_id), None
-            )
-
-        return str(
-            component._render(
-                base_context=base_context,
-                _renderer=self,
-                _session=session,
-                _template_path=template_path,
-                emit_assets=emit_assets,
-            )
-        )
-
-    def _expand_custom_tags(
-        self,
-        markup: str,
-        base_context: dict[str, Any],
-        session: RenderSession,
-        *,
-        emit_assets: bool,
-    ) -> str:
-        """
-        Expand PascalCase custom tags found inside `markup` by parsing and rendering them into HTML.
-        """
-        if "<" not in markup:
-            return markup
-
-        parser = Parser()
-        has_custom_tags = False
-        for match in re.finditer(r"<\s*([A-Za-z][A-Za-z0-9]*)", markup):
-            if parser._is_custom_component(match.group(1)):
-                has_custom_tags = True
-                break
-        if not has_custom_tags:
-            return markup
-
-        parser.feed(markup)
-        return "".join(
-            self._render_tag_node(
-                node,
-                base_context=base_context,
-                session=session,
-                emit_assets=emit_assets,
-            )
-            for node in parser.root_nodes
-        )
 
     def render_component_with_context(
         self,
@@ -770,7 +373,8 @@ class Renderer:
             render_context[_instance.id] = _instance
 
         rendered_markup = template.render(render_context)
-        rendered_markup = self._expand_custom_tags(
+        rendered_markup = expand_custom_tags(
+            self,
             rendered_markup,
             base_context=render_context,
             session=session,
@@ -801,22 +405,52 @@ class Renderer:
             _asset_name = None
 
         if collect_component_js:
-            self._collect_component_javascript(
-                component, session, component_dir=_asset_dir, asset_name=_asset_name
+            collect_component_asset(
+                component,
+                session,
+                "js",
+                js_mode=self._js_mode,
+                css_mode=self._css_mode,
+                component_dir=_asset_dir,
+                asset_name=_asset_name,
             )
-            self._collect_component_css(
-                component, session, component_dir=_asset_dir, asset_name=_asset_name
+            collect_component_asset(
+                component,
+                session,
+                "css",
+                js_mode=self._js_mode,
+                css_mode=self._css_mode,
+                component_dir=_asset_dir,
+                asset_name=_asset_name,
             )
 
         if is_root:
             if self._css_mode != AssetMode.NONE:
-                self._collect_extra_css(component, session)
+                collect_extra_assets(
+                    component,
+                    session,
+                    "css",
+                    js_mode=self._js_mode,
+                    css_mode=self._css_mode,
+                )
             if self._js_mode != AssetMode.NONE:
-                self._inject_runtime(session, component, client=client)
-                self._collect_extra_javascript(component, session)
+                inject_runtime(session, js_mode=self._js_mode, client=client)
+                collect_extra_assets(
+                    component,
+                    session,
+                    "js",
+                    js_mode=self._js_mode,
+                    css_mode=self._css_mode,
+                )
             if self._css_mode != AssetMode.NONE or self._js_mode != AssetMode.NONE:
-                rendered_markup = self._inject_assets(
-                    rendered_markup, session, loaded_assets=loaded_assets
+                rendered_markup = inject_assets(
+                    rendered_markup,
+                    session,
+                    js_mode=self._js_mode,
+                    css_mode=self._css_mode,
+                    resolve_url=self._resolve_asset_url,
+                    loaded_assets=loaded_assets,
+                    dedup_enabled=Renderer._default_asset_dedup,
                 )
 
         return Markup(rendered_markup).unescape()
@@ -837,15 +471,27 @@ class Renderer:
         """
         parser = Parser()
         parser.feed(source)
+        parser.close()
 
         session = self.new_session()
 
         rendered_markup = "".join(
-            self._render_tag_node(
-                node, base_context={}, session=session, emit_assets=True
+            render_tag_node(
+                self,
+                node,
+                base_context={},
+                session=session,
+                emit_assets=True,
             )
             for node in parser.root_nodes
         )
         if self._css_mode != AssetMode.NONE or self._js_mode != AssetMode.NONE:
-            rendered_markup = self._inject_assets(rendered_markup, session)
+            rendered_markup = inject_assets(
+                rendered_markup,
+                session,
+                js_mode=self._js_mode,
+                css_mode=self._css_mode,
+                resolve_url=self._resolve_asset_url,
+                dedup_enabled=Renderer._default_asset_dedup,
+            )
         return rendered_markup.strip()

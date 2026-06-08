@@ -3,36 +3,33 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass
 
-from .mutations import pending_dirtied, reactive_render_was_consumed
-from .registry import Registry
-from .utils import ReactiveKey
+from pyjinhx.core.registry import Registry
+from .keys import ReactiveKey, interpolate_reactive_keys
+
+from .mutations import MutationTracker
 
 logger = logging.getLogger("pyjinhx")
 
 
 @dataclass
-class ReactiveDev:
+class _DevConfig:
     enabled: bool = False
     strict: bool = False
 
 
-_dev_config: ReactiveDev = ReactiveDev()
+_dev_config = _DevConfig()
 
 
 def enable_reactive_dev(*, strict: bool = False) -> None:
     """Enable development-time reactive guardrails (warnings or strict exceptions)."""
     global _dev_config
-    _dev_config = ReactiveDev(enabled=True, strict=strict)
+    _dev_config = _DevConfig(enabled=True, strict=strict)
 
 
 def disable_reactive_dev() -> None:
     """Disable development-time reactive guardrails."""
     global _dev_config
-    _dev_config = ReactiveDev()
-
-
-def reactive_dev_enabled() -> bool:
-    return _dev_config.enabled
+    _dev_config = _DevConfig()
 
 
 def _report(message: str) -> None:
@@ -44,7 +41,7 @@ def _report(message: str) -> None:
 def warn_mutations_without_render() -> None:
     if not _dev_config.enabled:
         return
-    if pending_dirtied() and not reactive_render_was_consumed():
+    if MutationTracker.pending() and not MutationTracker.render_was_consumed():
         _report(
             "Mutations were recorded via @mutates but no reactive render() "
             "consumed them in this request scope."
@@ -59,7 +56,7 @@ def warn_reactive_render_without_mounted(
 ) -> None:
     if not _dev_config.enabled or mounted is not None:
         return
-    has_dirtied = dirtied is not None or bool(pending_dirtied())
+    has_dirtied = dirtied is not None or bool(MutationTracker.pending())
     if has_dirtied or own_keys:
         _report(
             "Reactive dirtied keys are set but mounted was not passed; "
@@ -83,11 +80,36 @@ def validate_load_reads(
         )
 
 
+def validate_effective_reacts_to(instance: object) -> None:
+    """Ensure runtime deps are a subset of the static ``reacts_to`` superset."""
+    if not _dev_config.enabled:
+        return
+    component_class = type(instance)
+    if not getattr(component_class, "_pjx_reactive", False):
+        return
+    if not hasattr(instance, "effective_reacts_to"):
+        return
+    superset = interpolate_reactive_keys(
+        getattr(component_class, "_pjx_reacts_to", frozenset()),
+        getattr(instance, "_pjx_key", None),
+        keyed=getattr(component_class, "_pjx_keyed", False),
+    )
+    runtime = instance.effective_reacts_to()
+    extra = runtime - superset
+    if extra:
+        _report(
+            f"{component_class.__name__}.effective_reacts_to() {extra!r} exceeds "
+            f"the static reacts_to superset {superset!r}."
+        )
+
+
 def dependency_graph() -> dict[str, list[str]]:
     """
     Map each declared reactive key to component class names that depend on it.
 
-    Instance-tier stems appear as declared (e.g. ``"todo"``), not expanded per key.
+    Shows the static ``reacts_to`` superset only — not per-instance narrowing
+    from ``effective_reacts_to()``. Instance-tier stems appear as declared
+    (e.g. ``"todo"``), not expanded per key.
     """
     graph: dict[str, set[str]] = {}
     for class_name, component_class in Registry.get_classes().items():

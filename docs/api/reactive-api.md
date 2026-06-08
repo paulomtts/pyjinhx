@@ -49,13 +49,30 @@ Render an already-built instance as the primary without re-loading from the worl
 !!! note "Without ClientBackend"
     Pass `mounted=request` (and `client=request` for asset dedup) when not using a request-scoped backend. See [Client Backend](client-backend.md).
 
+### effective_reacts_to()
+
+```python
+def effective_reacts_to(self) -> set[str]
+```
+
+Runtime reactive keys this loaded instance depends on. Defaults to the interpolated
+static `reacts_to` declaration. Override to narrow based on instance state (static
+`reacts_to` must remain a superset). Used by `oob_swaps` after `load()` and by
+`LoadCache` reverse indexing.
+
 ### state_hash()
 
 ```python
 def state_hash(self) -> str
 ```
 
-Hash of `model_dump_json()`. Used by OOB swap gating — override only for custom hashing.
+SHA-256 of canonical sorted JSON from `model_dump(mode="json")` with
+`state_hash_exclude` applied (`id` excluded by default on `ReactiveComponent`).
+Used by OOB swap gating — override for custom hashing.
+
+```python
+state_hash_exclude: ClassVar[frozenset[str]] = frozenset({"id"})
+```
 
 ## client_script
 
@@ -72,15 +89,20 @@ automatically unless `X-PJX-Mounted` is already present on the request.
 | `mode` | `AssetMode.INLINE` | `INLINE` inlines source; `REFERENCE` emits `<script src="...">` |
 | `src` | Renderer runtime URL | Public URL when mode is `REFERENCE` |
 
-## client_has_mounted_manifest
+## MountedManifest
 
 ```python
-def client_has_mounted_manifest(client: str | list[dict[str, Any]] | object | None) -> bool
+class MountedManifest:
+    @staticmethod
+    def parse(mounted: str | list[dict[str, Any]] | object | None) -> list[dict[str, Any]]: ...
+
+    @staticmethod
+    def is_present(client: str | list[dict[str, Any]] | object | None) -> bool: ...
 ```
 
-Return whether the client already sent a valid `X-PJX-Mounted` header. A JSON array
-(including `[]`) means `pjx.js` is active; missing or malformed values mean the
-runtime should be injected on root full-page renders.
+`parse()` returns the mounted-region manifest from a request-like object, raw JSON string, or parsed list.
+
+`is_present()` returns whether the client already sent a valid `X-PJX-Mounted` header. A JSON array (including `[]`) means `pjx.js` is active; missing or malformed values mean the runtime should be injected on root full-page renders.
 
 ## PJX headers
 
@@ -91,22 +113,19 @@ runtime should be injected on root full-page renders.
 
 The client runtime (`pjx.js`) sets both headers on HTMX requests. With [ClientBackend](client-backend.md) wired in middleware, `render()` reads them automatically; otherwise pass the request as `mounted=` and `client=`.
 
-## parse_loaded_assets
+## LoadedAssets
 
 ```python
-def parse_loaded_assets(client: str | list[str] | object | None) -> frozenset[str]
+class LoadedAssets:
+    @staticmethod
+    def parse(client: str | list[str] | object | None) -> frozenset[str]: ...
 ```
 
 Parse the client-reported list of asset URLs for REFERENCE-mode asset dedup.
 
-Accepts:
+Accepts a request-like object (`.headers.get(PJX_ASSETS_HEADER)`), a raw JSON string, a parsed list/tuple/set of URL strings, or `None`/`""` (nothing loaded).
 
-- A request-like object with `.headers.get(PJX_ASSETS_HEADER)`
-- A raw JSON string (the header value)
-- A parsed list/tuple/set of URL strings
-- `None` or `""` (nothing loaded)
-
-Used internally when a client source is resolved for `render()` with asset dedup enabled (explicit `client=` or `ClientBackend`). Call directly for custom integrations.
+Used internally when a client source is resolved for `render()` with asset dedup enabled (explicit `client=` or `ClientBackend`).
 
 ## oob_swaps
 
