@@ -45,7 +45,6 @@ class RenderSession:
     styles: list[str] = field(default_factory=list)
     runtime_injected: bool = False
 
-
     def manifest(self, *, resolver: AssetUrlResolver) -> AssetManifest:
         return asset_manifest(self, resolver=resolver)
 
@@ -99,9 +98,9 @@ def resolver_with_hash(base_url: str, root: str) -> AssetUrlResolver:
         if normalized_path == os.path.normpath(runtime_asset_path()):
             hashed = hashed_filename(normalized_path)
             return f"{base_url.rstrip('/')}/pyjinhx/{hashed}"
-        relative_dir = os.path.relpath(
-            os.path.dirname(normalized_path), root
-        ).replace("\\", "/")
+        relative_dir = os.path.relpath(os.path.dirname(normalized_path), root).replace(
+            "\\", "/"
+        )
         hashed = hashed_filename(normalized_path)
         if relative_dir == ".":
             return f"{base_url.rstrip('/')}/{hashed}"

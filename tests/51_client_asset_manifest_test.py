@@ -3,7 +3,13 @@ import os
 
 import pytest
 
-from pyjinhx import AssetMode, BaseComponent, PJX_ASSETS_HEADER, Renderer, parse_loaded_assets
+from pyjinhx import (
+    AssetMode,
+    BaseComponent,
+    PJX_ASSETS_HEADER,
+    Renderer,
+    parse_loaded_assets,
+)
 from pyjinhx.reactive import oob_swaps
 from pyjinhx.utils import read_client_runtime
 from tests.ui.reactive.reactive_counter import ReactiveCounter
@@ -105,9 +111,7 @@ def test_root_reference_render_emits_all_when_nothing_loaded():
         css_mode=AssetMode.REFERENCE,
     )
 
-    rendered = str(
-        UnifiedComponent(id="all-1", text="All")._render(_renderer=renderer)
-    )
+    rendered = str(UnifiedComponent(id="all-1", text="All")._render(_renderer=renderer))
 
     assert 'rel="stylesheet"' in rendered
     assert "<script src=" in rendered

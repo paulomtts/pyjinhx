@@ -85,11 +85,12 @@ def mutates(*keys: ReactiveKey) -> Callable[[F], F]:
     def decorator(func: F) -> F:
         @functools.wraps(func)
         def wrapper(*args: Any, **kwargs: Any) -> Any:
+            result = func(*args, **kwargs)
             normalized = coerce_reactive_keys(keys)
             if normalized:
                 invalidate(normalized)
                 _accumulate_dirtied(normalized)
-            return func(*args, **kwargs)
+            return result
 
         return wrapper  # type: ignore[return-value]
 
@@ -104,10 +105,9 @@ def mutation_scope(*keys: ReactiveKey) -> Generator[None, None, None]:
     Keys passed to the scope are added on entry (and invalidate the cache).
     """
     normalized = coerce_reactive_keys(keys)
-    if normalized:
-        invalidate(normalized)
-        _accumulate_dirtied(normalized)
     try:
         yield
     finally:
-        pass
+        if normalized:
+            invalidate(normalized)
+            _accumulate_dirtied(normalized)

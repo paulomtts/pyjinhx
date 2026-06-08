@@ -219,11 +219,11 @@ def toggle_row(request, todo_id):
   emits the `X-PJX-Mounted` manifest on every htmx request:
   `class Page(BaseComponent, base_layout=True): ...`. For a raw Jinja shell, drop
   `{{ client_script() }}` in the `<head>` instead.
-- Every `load()` is wrapped in a **process-global, dependency-keyed cache** (one entry per
-  `(type, key)`), returning an independent copy each call. `render()`/`oob_swaps` evict the
-  `dirtied` keys before reloading dependents, so swaps reflect post-mutation state. For
-  mutations outside a render (jobs, webhooks) call `invalidate({"todos"})` yourself. Scope is
-  per-process — back it with a shared store for multi-worker coherence.
+- Every `load()` is wrapped in a **dependency-keyed cache** (one entry per `(type, key)`),
+  returning an independent copy each call. Default scope is `PROCESS` (cross-request
+  per worker). Use `REQUEST` for multi-worker without an invalidation backend, or
+  `invalidate({"todos"})` after background mutations. Multi-worker `PROCESS` needs an
+  `InvalidationBackend`.
 
 Full guide: [docs/reactivity.md](../reactivity.md).
 

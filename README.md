@@ -146,7 +146,9 @@ The client reports mounted regions via the `X-PJX-Mounted` header; `pjx.js` is i
 
 **Reactive ergonomics:** use `StateKey` enums and `dirty_keys()` for typed keys; `@mutates` on store methods to auto-supply `dirtied`; `load_scope()` / `get_load_context()` to inject dependencies into `load()`; `enable_reactive_dev()` and `dependency_graph()` for guardrails and debugging.
 
-Details: [reactivity guide](docs/reactivity.md). Runnable demo: [examples/reactive_todo/](examples/reactive_todo/).
+**Load cache scope** (default `CacheScope.PROCESS`): `load()` results are cached per worker for cross-request hits. Use `Registry.request_scope()` on every request for instance registry isolation. For multiple workers, subclass `InvalidationBackend` (Redis reference: [examples/reactive_todo/redis_invalidation.py](examples/reactive_todo/redis_invalidation.py)) or opt into `CacheScope.REQUEST`.
+
+Details: [reactivity guide](docs/reactivity.md). Step-by-step app tutorial: [Build an App](docs/getting-started/build-an-app.md). Runnable demo: [examples/reactive_todo/](examples/reactive_todo/).
 
 ## JS & CSS collection
 
@@ -300,4 +302,4 @@ def toggle_row(request: Request, todo_id: int):
 
 Run the full app: `uv run uvicorn examples.reactive_todo.app:app --reload` — see [examples/reactive_todo/README.md](examples/reactive_todo/README.md).
 
-More: [components](docs/guide/components.md) · [nesting](docs/guide/nesting.md) · [FastAPI integration](docs/integrations/fastapi.md) · [HTMX integration](docs/integrations/htmx.md)
+More: [components](docs/guide/components.md) · [nesting](docs/guide/nesting.md) · [public API index](docs/reference/public-api.md) · [FastAPI integration](docs/integrations/fastapi.md) · [HTMX integration](docs/integrations/htmx.md)

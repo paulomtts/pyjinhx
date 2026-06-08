@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sys
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 sys.path.append(str(Path(__file__).resolve().parents[2]))
@@ -11,6 +12,7 @@ from fastapi.responses import HTMLResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from examples.reactive_todo import store
+from examples.reactive_todo.invalidation import configure_load_cache, shutdown_load_cache
 from examples.reactive_todo.components import (
     TodoApp,
     TodoClearButton,
@@ -25,7 +27,15 @@ from pyjinhx import Registry, Renderer
 
 Renderer.set_default_environment(Path(__file__).resolve().parents[2])
 
-app = FastAPI(title="pyjinhx reactive todo demo")
+
+@asynccontextmanager
+async def lifespan(_application: FastAPI):
+    configure_load_cache()
+    yield
+    shutdown_load_cache()
+
+
+app = FastAPI(title="pyjinhx reactive todo demo", lifespan=lifespan)
 
 
 class RegistryScopeMiddleware(BaseHTTPMiddleware):

@@ -2,15 +2,12 @@ import json
 from pathlib import Path
 
 import pytest
-from fastapi.testclient import TestClient
 
 from examples.reactive_todo import store
-from examples.reactive_todo.app import app
 from examples.reactive_todo.components import TodoCounter, TodoTotal
 from pyjinhx import PJX_MOUNTED_HEADER, Renderer
 
 ROOT = Path(__file__).resolve().parents[2]
-client = TestClient(app)
 
 
 @pytest.fixture(autouse=True)
@@ -26,7 +23,7 @@ def _manifest(*entries):
     return {PJX_MOUNTED_HEADER: json.dumps(list(entries))}
 
 
-def test_index_injects_runtime_and_stamps_regions():
+def test_index_injects_runtime_and_stamps_regions(client):
     body = client.get("/").text
     assert "htmx.org" in body
     assert "htmx:configRequest" in body
@@ -36,7 +33,7 @@ def test_index_injects_runtime_and_stamps_regions():
     assert "3 left" in body and "3 total" in body
 
 
-def test_toggle_swaps_changed_dependents():
+def test_toggle_swaps_changed_dependents(client):
     headers = _manifest(
         {"id": "todo-counter", "type": "TodoCounter", "hash": "stale"},
         {"id": "todo-clear", "type": "TodoClearButton", "hash": "stale"},
@@ -49,7 +46,7 @@ def test_toggle_swaps_changed_dependents():
     )
 
 
-def test_toggle_hash_gates_unchanged_total():
+def test_toggle_hash_gates_unchanged_total(client):
     fresh_total = TodoTotal.load()
     headers = _manifest(
         {"id": "todo-counter", "type": "TodoCounter", "hash": "stale"},
@@ -60,7 +57,7 @@ def test_toggle_hash_gates_unchanged_total():
     assert "outerHTML:[data-pjx-id='todo-total']" not in body
 
 
-def test_clear_completed_hash_gates_unchanged_counter():
+def test_clear_completed_hash_gates_unchanged_counter(client):
     client.post("/todos/1/toggle", headers=_manifest())
     fresh_counter = TodoCounter.load()
     headers = _manifest(
@@ -76,7 +73,7 @@ def test_clear_completed_hash_gates_unchanged_counter():
     assert "outerHTML:[data-pjx-id='todo-total']" in body
 
 
-def test_toggle_row_primary_reflects_mutation_despite_warm_cache():
+def test_toggle_row_primary_reflects_mutation_despite_warm_cache(client):
     client.get("/")
     body = client.post("/rows/1/toggle").text
     primary = body.split("hx-swap-oob")[0]
@@ -85,7 +82,7 @@ def test_toggle_row_primary_reflects_mutation_despite_warm_cache():
     assert 'class="todo done"' not in primary_off and "○" in primary_off
 
 
-def test_unknown_mounted_region_is_ignored():
+def test_unknown_mounted_region_is_ignored(client):
     body = client.post(
         "/todos/1/toggle",
         headers=_manifest({"id": "ghost", "type": "DoesNotExist", "hash": "x"}),

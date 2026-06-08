@@ -39,7 +39,7 @@ class TodoItemRow(ReactiveComponent):
     def load(cls, key: str | int) -> "TodoItemRow":
         store = _store()
         todo = store.get(int(key))
-        return cls(title=todo.text, done=todo.done)
+        return cls(id=f"todo-row-{key}", title=todo.text, done=todo.done)
 
 
 class TodoList(BaseComponent):

@@ -278,9 +278,7 @@ def parse_loaded_assets(
         try:
             parsed = json.loads(client)
         except json.JSONDecodeError:
-            logger.warning(
-                "Could not parse %s as JSON; ignoring.", PJX_ASSETS_HEADER
-            )
+            logger.warning("Could not parse %s as JSON; ignoring.", PJX_ASSETS_HEADER)
             return frozenset()
         if isinstance(parsed, list):
             return frozenset(str(url) for url in parsed)
@@ -332,7 +330,7 @@ def oob_swaps(
 
     Args:
         dirtied: The state keys the route mutated (e.g. {"todos"}). These keys are
-            also evicted from the process-global load() cache before dependents are
+            also evicted from the load() cache before dependents are
             reloaded.
         mounted: The client manifest — a request-like object exposing
             ``.headers.get`` (the X-PJX-Mounted header is duck-typed out without
