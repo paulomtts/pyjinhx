@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from typing import ClassVar, Optional
 
 from pyjinhx import BaseComponent, ReactiveComponent
-from pyjinhx.load_context import get_load_context
+from pyjinhx.reactive.context import get_load_context
 
 from .keys import Keys
 

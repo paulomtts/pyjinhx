@@ -54,6 +54,7 @@ def test_reactive_api_is_exported():
     assert callable(start_invalidation_listener)
     assert callable(stop_invalidation_listener)
     assert callable(setup)
+    assert callable(PyJinhxSettings.from_env)
     assert callable(configure_pyjinhx)
     assert callable(shutdown_pyjinhx)
     assert callable(pyjinhx_lifespan)

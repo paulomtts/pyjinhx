@@ -1,8 +1,8 @@
 from pathlib import Path
 
 from pyjinhx import Registry, Renderer, mutates
-from pyjinhx.cache import clear
-from pyjinhx.mutations import (
+from pyjinhx.reactive.cache import clear
+from pyjinhx.reactive.mutations import (
     clear_mutations,
     pending_dirtied,
     resolve_effective_dirtied,

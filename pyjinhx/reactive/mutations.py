@@ -7,7 +7,7 @@ from contextvars import ContextVar
 from typing import Any, TypeVar
 
 from .cache import invalidate
-from .utils import ReactiveKey, coerce_reactive_keys
+from ..utils import ReactiveKey, coerce_reactive_keys
 
 _mutation_dirtied: ContextVar[set[str] | None] = ContextVar(
     "mutation_dirtied", default=None

@@ -11,7 +11,7 @@ from pyjinhx import (
     pyjinhx_lifespan,
     shutdown_pyjinhx,
 )
-from pyjinhx.invalidation import reset_invalidation_state
+from pyjinhx.reactive.invalidation import reset_invalidation_state
 
 
 @pytest.fixture(autouse=True)

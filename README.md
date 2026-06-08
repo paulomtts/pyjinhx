@@ -14,6 +14,21 @@ Build reusable, type-safe UI components for template-based web apps in Python. P
 pip install pyjinhx
 ```
 
+## Package layout
+
+Import from the top level only — `from pyjinhx import BaseComponent, ReactiveComponent, setup, ...`. Internal module paths are not a stable API.
+
+| Folder | Role |
+|--------|------|
+| `pyjinhx/core/` | Components, render pipeline, registry, assets (usage tiers 1–2) |
+| `pyjinhx/reactive/` | Cache, invalidation, mutations, OOB client helpers, `ReactiveComponent` (tier 3+) |
+| `pyjinhx/config/` | `setup()`, `PyJinhxSettings`, lifespan helpers |
+| `pyjinhx/integrations/` | FastAPI wiring, Redis invalidation backend |
+| `pyjinhx/builtins/` | Optional UI kit |
+| `pyjinhx/runtime/` | Client runtime (`pjx.js`) |
+
+See [usage tiers](docs/guide/usage-tiers.md) for which layers to adopt when.
+
 ## Example
 
 Two levels: **Card → Button**. Card is built in Python; Button is declared as a PascalCase tag in `card.html`.

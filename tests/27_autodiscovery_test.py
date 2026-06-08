@@ -18,9 +18,9 @@ import tempfile
 import pytest
 from jinja2 import Environment, FileSystemLoader
 
-import pyjinhx.renderer as renderer_module
+import pyjinhx.core.renderer as renderer_module
 from pyjinhx import Registry
-from pyjinhx.renderer import Renderer
+from pyjinhx.core.renderer import Renderer
 
 _COMPONENT_SRC = """\
 from pyjinhx import BaseComponent

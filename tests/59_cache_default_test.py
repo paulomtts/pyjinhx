@@ -1,5 +1,5 @@
 from pyjinhx import CacheScope, configure_pyjinhx, get_load_cache_scope, shutdown_pyjinhx
-from pyjinhx.invalidation import reset_invalidation_state
+from pyjinhx.reactive.invalidation import reset_invalidation_state
 
 
 def test_configure_pyjinhx_defaults_to_request_scope():

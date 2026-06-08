@@ -7,7 +7,7 @@ from markupsafe import Markup
 
 from .assets import AssetUrlResolver
 
-from .utils import (
+from ..utils import (
     detect_root_directory,
     normalize_path_separators,
     pascal_case_to_kebab_case,

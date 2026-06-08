@@ -125,11 +125,11 @@ class Registry:
         """
         from contextlib import ExitStack
 
-        from .cache import init_request_cache, reset_request_cache
-        from .client_backend import ClientBackend
-        from .load_context import load_scope
-        from .mutations import clear_mutations
-        from .reactive_dev import warn_mutations_without_render
+        from pyjinhx.reactive.backend import ClientBackend
+        from pyjinhx.reactive.cache import init_request_cache, reset_request_cache
+        from pyjinhx.reactive.context import load_scope
+        from pyjinhx.reactive.dev import warn_mutations_without_render
+        from pyjinhx.reactive.mutations import clear_mutations
 
         clear_mutations()
         init_request_cache()

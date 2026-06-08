@@ -1,8 +1,8 @@
 import re
 from html.parser import HTMLParser
 
-from .dataclasses import Tag
-from .utils import extract_tag_name_from_raw
+from .tag import Tag
+from ..utils import extract_tag_name_from_raw
 
 RE_PASCAL_CASE_TAG_NAME = re.compile(r"^[A-Z](?:[a-z]+(?:[A-Z][a-z]+)*)?$")
 

@@ -7,7 +7,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 from .registry import Registry
 from .renderer import Renderer
 from .assets import RenderSession
-from .utils import ReactiveKey, coerce_reactive_keys
+from ..utils import ReactiveKey, coerce_reactive_keys
 
 logger = logging.getLogger("pyjinhx")
 logger.setLevel(logging.WARNING)
@@ -168,8 +168,8 @@ class BaseComponent(BaseModel):
                 session=session,
             )
 
-        from .client_backend import ClientBackend
-        from .reactive import parse_loaded_assets
+        from pyjinhx.reactive.backend import ClientBackend
+        from pyjinhx.reactive.client import parse_loaded_assets
 
         resolved_client = ClientBackend.resolve_client(client)
         loaded_assets = (
@@ -228,7 +228,7 @@ class BaseComponent(BaseModel):
         Returns:
             The rendered HTML as a Markup object (safe for direct use in templates).
         """
-        from .client_backend import ClientBackend
+        from pyjinhx.reactive.backend import ClientBackend
 
         resolved_client = ClientBackend.resolve_client(client)
         resolved_mounted = ClientBackend.resolve_mounted(mounted, dirtied=dirtied)
@@ -236,12 +236,12 @@ class BaseComponent(BaseModel):
         if dirtied is None and resolved_mounted is None:
             return self._render(client=resolved_client)
 
-        from .mutations import (
+        from pyjinhx.reactive.client import oob_swaps
+        from pyjinhx.reactive.dev import warn_reactive_render_without_mounted
+        from pyjinhx.reactive.mutations import (
             mark_reactive_render_consumed,
             resolve_effective_dirtied,
         )
-        from .reactive import oob_swaps  # local import to avoid an import cycle
-        from .reactive_dev import warn_reactive_render_without_mounted
 
         own_keys = coerce_reactive_keys(getattr(self, "_pjx_reacts_to", frozenset()))
         warn_reactive_render_without_mounted(

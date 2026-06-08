@@ -1,4 +1,4 @@
-from pyjinhx.keys import StateKey, dirty_keys, instance_key
+from pyjinhx.reactive.keys import StateKey, dirty_keys, instance_key
 
 
 class TodoKeys(StateKey):

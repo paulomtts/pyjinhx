@@ -3,9 +3,10 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass
 
+from pyjinhx.core.registry import Registry
+from pyjinhx.utils import ReactiveKey
+
 from .mutations import pending_dirtied, reactive_render_was_consumed
-from .registry import Registry
-from .utils import ReactiveKey
 
 logger = logging.getLogger("pyjinhx")
 

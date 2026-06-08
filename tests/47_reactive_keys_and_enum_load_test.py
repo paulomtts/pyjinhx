@@ -2,7 +2,7 @@ from enum import Enum
 from typing import ClassVar
 
 from pyjinhx import ReactiveComponent, oob_swaps
-from pyjinhx.cache import clear
+from pyjinhx.reactive.cache import clear
 from pyjinhx.utils import (
     coerce_load_key,
     coerce_load_key_str,

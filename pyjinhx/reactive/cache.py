@@ -7,14 +7,14 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import TYPE_CHECKING, Any
 
-from .utils import (
+from ..utils import (
     coerce_load_key_str,
     coerce_reactive_keys,
     interpolate_reactive_keys,
 )
 
 if TYPE_CHECKING:
-    from .base import BaseComponent
+    from pyjinhx.core.base import BaseComponent
 
 _lock = threading.Lock()
 
@@ -179,8 +179,8 @@ def _load_through_cache(
         if cached is not None:
             return _with_key(cached.model_copy(), key)
 
-    from .load_context import get_load_context, load_accepts_ctx
-    from .reactive_dev import validate_load_reads
+    from .context import get_load_context, load_accepts_ctx
+    from .dev import validate_load_reads
 
     ctx = get_load_context()
     if key is not None:
@@ -201,7 +201,7 @@ def _load_through_cache(
     )
 
     if key is not None:
-        from .utils import pascal_case_to_kebab_case
+        from ..utils import pascal_case_to_kebab_case
 
         default_id = pascal_case_to_kebab_case(cls.__name__)
         if result.id == default_id:

@@ -1,7 +1,7 @@
 from typing import ClassVar
 
 from pyjinhx import ReactiveComponent, invalidate
-from pyjinhx.cache import clear
+from pyjinhx.reactive.cache import clear
 from tests.ui.reactive.cached_widget import CachedWidget, load_calls
 
 

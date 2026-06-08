@@ -1,7 +1,7 @@
 from typing import ClassVar
 
 from pyjinhx import ReactiveComponent, invalidate
-from pyjinhx.cache import clear
+from pyjinhx.reactive.cache import clear
 
 load_calls = {"n": 0}
 

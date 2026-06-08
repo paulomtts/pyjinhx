@@ -5,7 +5,7 @@ from pyjinhx import (
     Registry,
     fastapi_client_backend,
 )
-from pyjinhx.mutations import mutation_scope
+from pyjinhx.reactive.mutations import mutation_scope
 
 
 class _Headers:

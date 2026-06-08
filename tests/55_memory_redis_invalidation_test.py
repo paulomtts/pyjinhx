@@ -1,6 +1,6 @@
 from pyjinhx import CacheScope, invalidate, set_invalidation_backend, set_load_cache_scope
-from pyjinhx.cache import clear, get_load_cache_scope
-from pyjinhx.invalidation import reset_invalidation_state, start_invalidation_listener, stop_invalidation_listener
+from pyjinhx.reactive.cache import clear, get_load_cache_scope
+from pyjinhx.reactive.invalidation import reset_invalidation_state, start_invalidation_listener, stop_invalidation_listener
 from pyjinhx.integrations.redis import MEMORY_REDIS_URL, RedisInvalidationBackend
 from tests.ui.reactive.cached_widget import CachedWidget, load_calls
 

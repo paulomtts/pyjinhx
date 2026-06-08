@@ -4,7 +4,7 @@ import tempfile
 from jinja2 import Environment, FileSystemLoader
 
 from pyjinhx import BaseComponent
-from pyjinhx.renderer import Renderer
+from pyjinhx.core.renderer import Renderer
 
 
 def test_component_template_can_expand_custom_tags():

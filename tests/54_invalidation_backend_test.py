@@ -9,8 +9,8 @@ from pyjinhx import (
     start_invalidation_listener,
     stop_invalidation_listener,
 )
-from pyjinhx.cache import clear, get_load_cache_scope
-from pyjinhx.invalidation import reset_invalidation_state
+from pyjinhx.reactive.cache import clear, get_load_cache_scope
+from pyjinhx.reactive.invalidation import reset_invalidation_state
 from tests.ui.reactive.cached_widget import CachedWidget, load_calls
 
 

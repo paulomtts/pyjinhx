@@ -4,8 +4,8 @@ from typing import ClassVar
 import pytest
 
 from pyjinhx import ReactiveComponent, Registry, mutates
-from pyjinhx.cache import clear
-from pyjinhx.reactive_dev import (
+from pyjinhx.reactive.cache import clear
+from pyjinhx.reactive.dev import (
     dependency_graph,
     disable_reactive_dev,
     enable_reactive_dev,
@@ -62,7 +62,7 @@ def test_strict_mutations_without_render_raises():
 
 
 def test_warn_render_without_mounted(caplog):
-    from pyjinhx.reactive_dev import warn_reactive_render_without_mounted
+    from pyjinhx.reactive.dev import warn_reactive_render_without_mounted
 
     enable_reactive_dev()
     with caplog.at_level(logging.WARNING, logger="pyjinhx"):

@@ -5,7 +5,7 @@ from pyjinhx import (
     invalidate,
     set_load_cache_scope,
 )
-from pyjinhx.cache import clear
+from pyjinhx.reactive.cache import clear
 from tests.ui.reactive.cached_widget import CachedWidget, load_calls
 
 

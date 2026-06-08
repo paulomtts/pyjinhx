@@ -5,9 +5,9 @@ from collections.abc import Callable
 from contextlib import asynccontextmanager
 from typing import Any
 
-from pyjinhx.client_backend import fastapi_client_backend
+from pyjinhx.core.registry import Registry
 from pyjinhx.config import PyJinhxSettings, configure_pyjinhx, shutdown_pyjinhx
-from pyjinhx.registry import Registry
+from pyjinhx.reactive.backend import fastapi_client_backend
 
 logger = logging.getLogger("pyjinhx")
 

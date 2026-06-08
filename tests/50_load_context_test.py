@@ -2,8 +2,8 @@ from dataclasses import dataclass
 from typing import ClassVar
 
 from pyjinhx import ReactiveComponent, Registry
-from pyjinhx.cache import clear
-from pyjinhx.load_context import LoadContext, get_load_context, load_scope
+from pyjinhx.reactive.cache import clear
+from pyjinhx.reactive.context import LoadContext, get_load_context, load_scope
 
 
 @dataclass(frozen=True)

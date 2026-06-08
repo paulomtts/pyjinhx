@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from itertools import count
 
 from pyjinhx import mutates, mutation_scope
-from pyjinhx.keys import dirty_keys
+from pyjinhx.reactive.keys import dirty_keys
 
 from .keys import Keys
 

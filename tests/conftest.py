@@ -4,11 +4,11 @@ from typing import Any
 import pytest
 
 from pyjinhx import CacheScope, Registry, get_load_cache_scope, set_load_cache_scope
-from pyjinhx.assets import RenderSession
-from pyjinhx.cache import clear as clear_load_cache
+from pyjinhx.core.assets import RenderSession
+from pyjinhx.reactive.cache import clear as clear_load_cache
 from pyjinhx import ClientBackend
-from pyjinhx.invalidation import reset_invalidation_state
-from pyjinhx.mutations import clear_mutations
+from pyjinhx.reactive.invalidation import reset_invalidation_state
+from pyjinhx.reactive.mutations import clear_mutations
 
 
 def _noop_inject_runtime(
@@ -26,7 +26,7 @@ def _suppress_pjx_runtime_injection(request: pytest.FixtureRequest, monkeypatch:
     if request.node.get_closest_marker("pjx_runtime"):
         return
     monkeypatch.setattr(
-        "pyjinhx.renderer.Renderer._inject_runtime",
+        "pyjinhx.core.renderer.Renderer._inject_runtime",
         _noop_inject_runtime,
     )
 

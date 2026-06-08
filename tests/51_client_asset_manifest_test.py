@@ -10,7 +10,7 @@ from pyjinhx import (
     Renderer,
     parse_loaded_assets,
 )
-from pyjinhx.reactive import oob_swaps
+from pyjinhx.reactive.client import oob_swaps
 from pyjinhx.utils import read_client_runtime
 from tests.ui.reactive.reactive_counter import ReactiveCounter
 from tests.ui.unified_component import UnifiedComponent

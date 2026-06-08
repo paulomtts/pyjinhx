@@ -22,11 +22,11 @@ from .assets import (
     make_default_asset_url_resolver,
     runtime_asset_path,
 )
-from .dataclasses import Tag
+from .tag import Tag
 from .finder import Finder
 from .parser import Parser
 from .registry import Registry
-from .utils import (
+from ..utils import (
     detect_root_directory,
     pascal_case_to_kebab_case,
     pascal_case_to_snake_case,
@@ -517,7 +517,7 @@ class Renderer:
         *,
         client: object | None = None,
     ) -> None:
-        from .reactive import client_has_mounted_manifest
+        from pyjinhx.reactive.client import client_has_mounted_manifest
 
         if session.runtime_injected:
             return

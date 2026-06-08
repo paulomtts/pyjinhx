@@ -6,14 +6,14 @@ from contextlib import contextmanager
 from dataclasses import dataclass, fields, replace
 from typing import Any
 
-from .cache import CacheScope, set_load_cache_scope
-from .invalidation import (
+from pyjinhx.reactive.cache import CacheScope, set_load_cache_scope
+from pyjinhx.reactive.dev import disable_reactive_dev, enable_reactive_dev
+from pyjinhx.reactive.invalidation import (
     InvalidationBackend,
     set_invalidation_backend,
     start_invalidation_listener,
     stop_invalidation_listener,
 )
-from .reactive_dev import disable_reactive_dev, enable_reactive_dev
 
 
 @dataclass(frozen=True)
@@ -34,7 +34,7 @@ class PyJinhxSettings:
         invalidation_backend: InvalidationBackend | None = None
         redis_url = os.environ.get("REDIS_URL")
         if cache_scope == CacheScope.PROCESS and redis_url:
-            from .integrations.redis import RedisInvalidationBackend
+            from pyjinhx.integrations.redis import RedisInvalidationBackend
 
             invalidation_backend = RedisInvalidationBackend(redis_url)
         return cls(
@@ -154,7 +154,7 @@ def setup(
             "setup(app=...) requires a Starlette/FastAPI-like app "
             "with add_middleware and router"
         )
-    from .integrations.fastapi import apply_setup
+    from pyjinhx.integrations.fastapi import apply_setup
 
     apply_setup(app, resolved, load_context_factory=load_context_factory)
     return resolved
