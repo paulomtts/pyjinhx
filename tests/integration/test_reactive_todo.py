@@ -39,8 +39,8 @@ def test_toggle_swaps_changed_dependents(client):
         {"id": "todo-counter", "type": "TodoCounter", "hash": "stale"},
         {"id": "todo-clear", "type": "TodoClearButton", "hash": "stale"},
     )
-    body = client.post("/todos/1/toggle", headers=headers).text
-    assert 'id="todo-1"' in body and "done" in body
+    body = client.post("/rows/1/toggle", headers=headers).text
+    assert 'data-pjx-id="todo-row-1"' in body and "done" in body
     assert "outerHTML:[data-pjx-id='todo-counter']" in body and "2 left" in body
     assert (
         "outerHTML:[data-pjx-id='todo-clear']" in body and "Clear completed (1)" in body
@@ -53,13 +53,13 @@ def test_toggle_hash_gates_unchanged_total(client):
         {"id": "todo-counter", "type": "TodoCounter", "hash": "stale"},
         {"id": "todo-total", "type": "TodoTotal", "hash": fresh_total.state_hash()},
     )
-    body = client.post("/todos/1/toggle", headers=headers).text
+    body = client.post("/rows/1/toggle", headers=headers).text
     assert "outerHTML:[data-pjx-id='todo-counter']" in body
     assert "outerHTML:[data-pjx-id='todo-total']" not in body
 
 
 def test_clear_completed_hash_gates_unchanged_counter(client):
-    client.post("/todos/1/toggle", headers=_manifest())
+    client.post("/rows/1/toggle", headers=_manifest())
     fresh_counter = TodoCounter.load()
     headers = _manifest(
         {
@@ -85,7 +85,7 @@ def test_toggle_row_primary_reflects_mutation_despite_warm_cache(client):
 
 def test_unknown_mounted_region_is_ignored(client):
     body = client.post(
-        "/todos/1/toggle",
+        "/rows/1/toggle",
         headers=_manifest({"id": "ghost", "type": "DoesNotExist", "hash": "x"}),
     ).text
     assert "ghost" not in body

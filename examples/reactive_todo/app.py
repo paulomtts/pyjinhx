@@ -14,7 +14,6 @@ from examples.reactive_todo.components import (
     TodoApp,
     TodoClearButton,
     TodoCounter,
-    TodoItem,
     TodoItemRow,
     TodoList,
     TodoLoadContext,
@@ -32,24 +31,11 @@ setup(
 )
 
 
-def _item(todo: store.Todo) -> TodoItem:
-    return TodoItem(
-        id=f"todo-{todo.id}", todo_id=todo.id, text=todo.text, done=todo.done
-    )
-
-
-def _list() -> TodoList:
-    return TodoList(
-        id="todo-list",
-        items=[TodoItemRow.load(t.id) for t in store.all_todos()],
-    )
-
-
 @app.get("/", response_class=HTMLResponse)
 def index() -> str:
     return TodoApp(
         id="todo-app",
-        todo_list=_list(),
+        todo_list=TodoList.load(),
         counter=TodoCounter.load(),
         total=TodoTotal.load(),
         clear_button=TodoClearButton.load(),
@@ -68,17 +54,11 @@ def toggle_row(todo_id: int) -> str:
     return TodoItemRow.render(todo_id)
 
 
-@app.post("/todos/{todo_id}/toggle", response_class=HTMLResponse)
-def toggle(todo_id: int) -> str:
-    todo = store.toggle(todo_id)
-    return _item(todo).render()
-
-
 @app.post("/todos/clear-completed", response_class=HTMLResponse)
 def clear_completed() -> str:
     store.clear_completed()
-    return _list().render()
+    return TodoList.render()
 
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8001)
+    uvicorn.run(app, host="0.0.0.0", port=8000)

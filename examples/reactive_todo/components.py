@@ -1,8 +1,7 @@
 from dataclasses import dataclass
 from typing import ClassVar, Optional
 
-from pyjinhx import BaseComponent, ReactiveComponent
-from pyjinhx.reactive.context import LoadContext
+from pyjinhx import BaseComponent, LoadContext, ReactiveComponent
 
 from .keys import Keys
 
@@ -23,12 +22,6 @@ def _store():
     return store
 
 
-class TodoItem(BaseComponent):
-    todo_id: int
-    text: str
-    done: bool = False
-
-
 class TodoItemRow(ReactiveComponent):
     title: str = ""
     done: bool = False
@@ -42,8 +35,18 @@ class TodoItemRow(ReactiveComponent):
         return cls(id=f"todo-row-{key}", title=todo.text, done=todo.done)
 
 
-class TodoList(BaseComponent):
+class TodoList(ReactiveComponent):
     items: list[TodoItemRow] = []
+    reacts_to: ClassVar[set[str]] = {Keys.TODOS}
+    load_reads: ClassVar[set[str]] = {Keys.TODOS}
+
+    @classmethod
+    def load(cls) -> "TodoList":
+        store = _store()
+        return cls(
+            id="todo-list",
+            items=[TodoItemRow.load(t.id) for t in store.all_todos()],
+        )
 
 
 class TodoCounter(ReactiveComponent):

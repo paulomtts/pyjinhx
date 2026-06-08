@@ -17,9 +17,11 @@ What to watch (open the network tab):
 - **Clear completed** → the list and total update; the **"N left"** counter is skipped
   (remaining is unchanged).
 
-The routes never mention the counter/total/clear button — they just declare
-`dirtied={"todos"}`. The dependency graph lives on the components (`reacts_to`), and
-`pjx.js` reports what's mounted via the `X-PJX-Mounted` header.
+The routes never mention the counter/total/clear button — `@mutates` and
+`mutation_scope` accumulate dirtied keys automatically, and `setup()` wires
+`ClientBackend` so `render()` reads `X-PJX-Mounted` without `mounted=request`.
+The dependency graph lives on the components (`reacts_to`), and `pjx.js` reports
+what's mounted on every HTMX request.
 
 ## Setup
 

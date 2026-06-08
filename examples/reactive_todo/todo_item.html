@@ -1,5 +1,0 @@
-<li id="{{ id }}" class="todo{% if done %} done{% endif %}">
-  <button hx-post="/todos/{{ todo_id }}/toggle" hx-target="#{{ id }}" hx-swap="outerHTML"
-          aria-label="toggle">{% if done %}✓{% else %}○{% endif %}</button>
-  <span>{{ text }}</span>
-</li>

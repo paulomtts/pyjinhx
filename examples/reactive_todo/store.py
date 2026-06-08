@@ -5,8 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from itertools import count
 
-from pyjinhx import mutates, mutation_scope
-from pyjinhx.reactive.keys import StateKey
+from pyjinhx import StateKey, mutates, mutation_scope
 
 from .keys import Keys
 
