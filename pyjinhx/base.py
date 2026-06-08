@@ -64,7 +64,8 @@ class BaseComponent(BaseModel):
         """Register the component class and record whether it is a page layout."""
         super().__init_subclass__(**kwargs)
         Registry.register_class(cls)
-        cls._pjx_layout = bool(base_layout) or getattr(cls, "_pjx_layout", False)
+        cls._pjx_layout_declared = bool(base_layout)
+        cls._pjx_layout = cls._pjx_layout_declared or getattr(cls, "_pjx_layout", False)
 
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)

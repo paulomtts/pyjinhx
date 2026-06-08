@@ -14,6 +14,14 @@ from .cache import invalidate
 from .dataclasses import Tag
 from .finder import Finder, layout_asset_tags
 from .keys import StateKey, dirty_keys, instance_key
+from .layout_validation import (
+    LayoutConfigurationError,
+    disable_layout_validation,
+    enable_layout_validation,
+    layout_validation_enabled,
+    validate_layout_registry,
+    validate_root_is_layout,
+)
 from .load_context import LoadContext, get_load_context, load_scope
 from .mutations import mutates, mutation_scope
 from .parser import Parser
@@ -71,4 +79,10 @@ __all__ = [
     "make_default_asset_url_resolver",
     "resolver_with_hash",
     "runtime_asset_path",
+    "LayoutConfigurationError",
+    "validate_layout_registry",
+    "validate_root_is_layout",
+    "enable_layout_validation",
+    "disable_layout_validation",
+    "layout_validation_enabled",
 ]

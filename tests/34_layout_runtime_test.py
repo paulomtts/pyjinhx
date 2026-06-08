@@ -26,6 +26,8 @@ def test_non_layout_root_does_not_inject_runtime():
 
 
 def test_base_layout_marker_is_set_and_inherited():
+    assert getattr(Page, "_pjx_layout_declared", False) is True
     assert getattr(Page, "_pjx_layout", False) is True
+    assert getattr(AdminPage, "_pjx_layout_declared", False) is False
     assert getattr(AdminPage, "_pjx_layout", False) is True
     assert getattr(PlainShell, "_pjx_layout", False) is False

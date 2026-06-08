@@ -52,7 +52,18 @@ name), and `data-pjx-hash` on their root element automatically.
 ## 2. Ship the client runtime
 
 Mark your page shell with `base_layout=True` — the manifest runtime is injected once
-on full-page renders (the marker is inherited, so subclasses of a shell stay layouts):
+on full-page renders (the marker is inherited, so subclasses of a shell stay layouts).
+Declare exactly **one** layout class per app and validate at startup:
+
+```python
+from pyjinhx import enable_layout_validation, validate_layout_registry
+
+validate_layout_registry()  # after imports, e.g. FastAPI startup
+enable_layout_validation()  # optional: error if a root full-page render is not the shell
+```
+
+Apps using raw Jinja + `client_script()` with no `base_layout` class should skip
+`validate_layout_registry()`.
 
 ```python
 from pyjinhx import BaseComponent

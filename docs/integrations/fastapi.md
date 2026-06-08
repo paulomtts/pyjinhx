@@ -133,7 +133,13 @@ def index() -> str:
 ```python
 from dataclasses import dataclass
 
-from pyjinhx import LoadContext, Registry, enable_reactive_dev
+from pyjinhx import (
+    LoadContext,
+    Registry,
+    enable_layout_validation,
+    enable_reactive_dev,
+    validate_layout_registry,
+)
 from starlette.middleware.base import BaseHTTPMiddleware
 
 
@@ -151,6 +157,14 @@ class RegistryScopeMiddleware(BaseHTTPMiddleware):
 
 
 app.add_middleware(RegistryScopeMiddleware)
+
+
+@app.on_event("startup")
+def _validate_pyjinhx_layout() -> None:
+    validate_layout_registry()
+
+
+enable_layout_validation()
 
 # optional: dev guardrails (warnings for missing mounted, unconsumed @mutates, etc.)
 enable_reactive_dev()

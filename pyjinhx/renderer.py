@@ -783,6 +783,15 @@ class Renderer:
         if not emit_assets:
             return Markup(rendered_markup).unescape()
 
+        if is_root and self._js_mode != AssetMode.NONE:
+            from .layout_validation import (
+                layout_validation_enabled,
+                validate_root_is_layout,
+            )
+
+            if layout_validation_enabled():
+                validate_root_is_layout(component)
+
         if template_path is not None and type(component).__name__ == "BaseComponent":
             _asset_dir: str | None = os.path.dirname(template_path)
             _asset_name: str | None = os.path.splitext(os.path.basename(template_path))[

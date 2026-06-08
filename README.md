@@ -188,7 +188,7 @@ Details: [asset collection guide](docs/guide/assets.md). Optional UI kit: [pyjin
 
 ## FastAPI + HTMX (reactive)
 
-Mark the page shell with `base_layout=True` so the client runtime (`pjx.js`) is injected once. A toggle route returns the row as the primary swap; the counter updates out-of-band because both declare `reacts_to={StateKey.TODOS}`.
+Mark the page shell with `base_layout=True` so the client runtime (`pjx.js`) is injected once. Declare exactly one layout class per app and call `validate_layout_registry()` at startup; use `enable_layout_validation()` to error when a full-page root render is not that shell. A toggle route returns the row as the primary swap; the counter updates out-of-band because both declare `reacts_to={StateKey.TODOS}`.
 
 ```python
 # components/todo_row.py
