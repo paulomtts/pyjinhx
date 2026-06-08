@@ -12,6 +12,7 @@ def test_runtime_source_reports_manifest_header():
     source = read_client_runtime()
     assert "htmx:configRequest" in source
     assert "X-PJX-Mounted" in source
+    assert "X-PJX-Assets" in source
     assert "data-pjx-id" in source
 
 

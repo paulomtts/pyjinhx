@@ -23,6 +23,8 @@ def __init__(
     auto_id: bool = True,
     inline_js: bool | None = None,
     inline_css: bool | None = None,
+    js_mode: AssetMode | None = None,
+    css_mode: AssetMode | None = None,
 ) -> None
 ```
 
@@ -31,8 +33,10 @@ Initialize a Renderer with the given Jinja environment.
 **Parameters:**
 - `environment` (Environment): The Jinja2 Environment to use for template rendering
 - `auto_id` (bool): If True (default), generate UUIDs for components without explicit IDs
-- `inline_js` (bool | None): If True, JavaScript is collected and injected as `<script>` tags. If False, no scripts are injected. Defaults to the class-level setting
-- `inline_css` (bool | None): If True, CSS is collected and injected as `<style>` tags. If False, no styles are injected. Defaults to the class-level setting
+- `inline_js` (bool | None): Deprecated bool shim; maps to `AssetMode.INLINE` or `AssetMode.NONE`
+- `inline_css` (bool | None): Deprecated bool shim; maps to `AssetMode.INLINE` or `AssetMode.NONE`
+- `js_mode` (AssetMode | None): JavaScript delivery mode. Defaults to the class-level setting
+- `css_mode` (AssetMode | None): CSS delivery mode. Defaults to the class-level setting
 
 #### Class Methods
 
@@ -45,6 +49,8 @@ def get_default_renderer(
     auto_id: bool = True,
     inline_js: bool | None = None,
     inline_css: bool | None = None,
+    js_mode: AssetMode | None = None,
+    css_mode: AssetMode | None = None,
 ) -> Renderer
 ```
 
@@ -52,10 +58,57 @@ Return a cached default renderer instance.
 
 **Parameters:**
 - `auto_id` (bool): If True, generate UUIDs for components without explicit IDs
-- `inline_js` (bool | None): If True, JavaScript is collected and injected as `<script>` tags. If False, no scripts are injected. Defaults to the class-level setting
-- `inline_css` (bool | None): If True, CSS is collected and injected as `<style>` tags. If False, no styles are injected. Defaults to the class-level setting
+- `inline_js` (bool | None): Deprecated bool shim for JavaScript delivery
+- `inline_css` (bool | None): Deprecated bool shim for CSS delivery
+- `js_mode` (AssetMode | None): JavaScript delivery mode
+- `css_mode` (AssetMode | None): CSS delivery mode
 
-**Returns:** A Renderer instance cached by (environment identity, auto_id, inline_js, inline_css).
+**Returns:** A Renderer instance cached by environment identity, asset modes, and resolver identity.
+
+##### set_default_js_mode()
+
+```python
+@classmethod
+def set_default_js_mode(mode: AssetMode) -> None
+```
+
+Set the process-wide default JavaScript asset delivery mode.
+
+##### set_default_css_mode()
+
+```python
+@classmethod
+def set_default_css_mode(mode: AssetMode) -> None
+```
+
+Set the process-wide default CSS asset delivery mode.
+
+##### set_asset_url_resolver()
+
+```python
+@classmethod
+def set_asset_url_resolver(resolver: AssetUrlResolver | None) -> None
+```
+
+Set the callable that maps absolute asset paths to public URLs for `AssetMode.REFERENCE`.
+
+##### set_default_runtime_url()
+
+```python
+@classmethod
+def set_default_runtime_url(url: str) -> None
+```
+
+Set the public URL for the pyjinhx client runtime in `AssetMode.REFERENCE` (default: `/static/pyjinhx/pjx.js`).
+
+##### set_default_asset_dedup()
+
+```python
+@classmethod
+def set_default_asset_dedup(enabled: bool) -> None
+```
+
+When `True`, root REFERENCE renders skip `<link>` / `<script src>` tags for URLs the client reported via `X-PJX-Assets`. Defaults to `False`. Pass `client=request` to `render()` on boosted full-page routes.
 
 ##### get_default_environment()
 
@@ -91,10 +144,7 @@ Set or clear the process-wide default Jinja environment.
 def set_default_inline_js(inline_js: bool) -> None
 ```
 
-Set the process-wide default for inline JavaScript injection.
-
-**Parameters:**
-- `inline_js` (bool): If True (default), JavaScript is collected and injected as `<script>` tags. If False, no scripts are injected. Use Finder.collect_javascript_files() for static serving.
+Deprecated bool shim. Maps to `AssetMode.INLINE` (True) or `AssetMode.NONE` (False).
 
 ##### set_default_inline_css()
 
@@ -103,10 +153,7 @@ Set the process-wide default for inline JavaScript injection.
 def set_default_inline_css(inline_css: bool) -> None
 ```
 
-Set the process-wide default for inline CSS injection.
-
-**Parameters:**
-- `inline_css` (bool): If True (default), CSS is collected and injected as `<style>` tags. If False, no styles are injected. Use Finder.collect_css_files() for static serving.
+Deprecated bool shim. Maps to `AssetMode.INLINE` (True) or `AssetMode.NONE` (False).
 
 ##### peek_default_environment()
 
@@ -142,8 +189,6 @@ def render(source: str) -> str
 
 Render an HTML-like source string, expanding PascalCase component tags into HTML.
 
-PascalCase tags (e.g., `<MyButton text="OK">`) are matched to registered component classes or template files and rendered recursively. Standard HTML is passed through unchanged. Associated CSS and JavaScript files are collected and injected as `<style>` and `<script>` tags.
-
 **Parameters:**
 - `source` (str): HTML-like string containing component tags to render
 
@@ -159,20 +204,35 @@ Create a new render session for tracking assets during rendering.
 
 **Returns:** A fresh RenderSession instance.
 
+## AssetMode
+
+```python
+class AssetMode(str, Enum):
+    INLINE = "inline"
+    REFERENCE = "reference"
+    NONE = "none"
+```
+
 ## RenderSession
 
 Per-render state for asset aggregation and deduplication.
-
-!!! note "Internal Use"
-    `RenderSession` is primarily for internal use by the rendering engine. You typically don't need to create or manage sessions directly—they're created automatically during rendering.
-
-    If you need a new session for custom rendering logic, use `Renderer.new_session()` instead of instantiating directly.
 
 ### Fields
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `scripts` | `list[str]` | Collected JavaScript code snippets to inject |
-| `collected_js_files` | `set[str]` | Set of JS file paths already processed (for deduplication) |
-| `styles` | `list[str]` | Collected CSS code snippets to inject |
-| `collected_css_files` | `set[str]` | Set of CSS file paths already processed (for deduplication) |
+| `assets` | `list[CollectedAsset]` | Ordered, deduplicated asset paths collected during rendering |
+| `collected_paths` | `set[str]` | Normalized paths already processed |
+| `scripts` | `list[str]` | Inline JavaScript payloads (`AssetMode.INLINE` only) |
+| `styles` | `list[str]` | Inline CSS payloads (`AssetMode.INLINE` only) |
+| `runtime_injected` | `bool` | Whether the pyjinhx client runtime was scheduled |
+
+### Methods
+
+##### manifest()
+
+```python
+def manifest(*, resolver: AssetUrlResolver) -> AssetManifest
+```
+
+Return resolved stylesheet and script URLs for assets collected in this session.

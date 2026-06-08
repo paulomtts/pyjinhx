@@ -3,6 +3,7 @@ import pyjinhx
 
 def test_reactive_api_is_exported():
     from pyjinhx import (
+        PJX_ASSETS_HEADER,
         PJX_MOUNTED_HEADER,
         ReactiveComponent,
         client_script,
@@ -13,10 +14,12 @@ def test_reactive_api_is_exported():
         instance_key,
         mutates,
         oob_swaps,
+        parse_loaded_assets,
         StateKey,
     )
 
     assert PJX_MOUNTED_HEADER == "X-PJX-Mounted"
+    assert PJX_ASSETS_HEADER == "X-PJX-Assets"
     assert callable(oob_swaps)
     assert callable(client_script)
     assert callable(mutates)
@@ -25,6 +28,7 @@ def test_reactive_api_is_exported():
     assert callable(get_load_context)
     assert callable(dirty_keys)
     assert callable(instance_key)
+    assert callable(parse_loaded_assets)
     assert issubclass(ReactiveComponent, pyjinhx.BaseComponent)
     assert issubclass(StateKey, str)
 
@@ -35,6 +39,8 @@ def test_names_in_all():
         "ReactiveComponent",
         "client_script",
         "PJX_MOUNTED_HEADER",
+        "PJX_ASSETS_HEADER",
+        "parse_loaded_assets",
         "StateKey",
         "instance_key",
         "dirty_keys",

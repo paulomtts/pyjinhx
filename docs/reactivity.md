@@ -76,8 +76,14 @@ from pyjinhx import client_script
 </body>
 ```
 
-The runtime attaches a manifest of mounted regions to every htmx request via the
-`X-PJX-Mounted` header.
+The runtime attaches two client manifests to every htmx request:
+
+| Header | Purpose |
+|--------|---------|
+| `X-PJX-Mounted` | Reactive regions currently in the DOM (`id`, `type`, `hash`, optional `key`) |
+| `X-PJX-Assets` | URLs of `<script src>` and `<link rel="stylesheet">` already loaded |
+
+Use `mounted=request` for reactive partials. For boosted full-page routes in REFERENCE mode, pass `client=request` and enable `Renderer.set_default_asset_dedup(True)` so root renders skip assets the browser already has.
 
 ## 3. Emit OOB swaps from your route
 

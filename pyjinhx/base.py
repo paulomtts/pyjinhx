@@ -5,7 +5,8 @@ from markupsafe import Markup
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from .registry import Registry
-from .renderer import Renderer, RenderSession
+from .renderer import Renderer
+from .assets import RenderSession
 from .utils import ReactiveKey, coerce_reactive_keys
 
 logger = logging.getLogger("pyjinhx")
@@ -145,6 +146,8 @@ class BaseComponent(BaseModel):
         _renderer: Renderer | None = None,
         _session: RenderSession | None = None,
         _template_path: str | None = None,
+        emit_assets: bool = True,
+        client: object | None = None,
     ) -> Markup:
         renderer = _renderer or Renderer.get_default_renderer()
 
@@ -166,6 +169,14 @@ class BaseComponent(BaseModel):
                 session=session,
             )
 
+        from .reactive import parse_loaded_assets
+
+        loaded_assets = (
+            parse_loaded_assets(client)
+            if client is not None and emit_assets
+            else frozenset()
+        )
+
         return renderer.render_component_with_context(
             self,
             context=context,
@@ -174,6 +185,8 @@ class BaseComponent(BaseModel):
             session=session,
             is_root=is_root,
             collect_component_js=source is None,
+            emit_assets=emit_assets,
+            loaded_assets=loaded_assets,
         )
 
     def render(
@@ -181,6 +194,7 @@ class BaseComponent(BaseModel):
         *,
         dirtied: set[ReactiveKey] | None = None,
         mounted: object | None = None,
+        client: object | None = None,
     ) -> Markup:
         """
         Render this component to HTML using its associated Jinja template.
@@ -204,12 +218,14 @@ class BaseComponent(BaseModel):
                 primary's ``reacts_to``. Enables reactive mode.
             mounted: The client manifest — a request-like object, the raw header string,
                 a parsed list, or ``None``. Enables reactive mode.
+            client: Request-like object (or raw ``X-PJX-Assets`` JSON) for REFERENCE-mode
+                asset dedup on root renders. Pass ``request`` on boosted full-page routes.
 
         Returns:
             The rendered HTML as a Markup object (safe for direct use in templates).
         """
         if dirtied is None and mounted is None:
-            return self._render()
+            return self._render(client=client)
 
         from .mutations import (
             mark_reactive_render_consumed,
@@ -223,7 +239,7 @@ class BaseComponent(BaseModel):
             dirtied=dirtied, mounted=mounted, own_keys=own_keys
         )
 
-        primary = self._render()
+        primary = self._render(emit_assets=False)
         effective_dirtied = resolve_effective_dirtied(
             dirtied=dirtied,
             mounted=mounted,

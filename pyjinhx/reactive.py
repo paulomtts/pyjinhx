@@ -16,6 +16,7 @@ from pydantic import ConfigDict, PrivateAttr, model_validator
 from .base import BaseComponent
 from .cache import invalidate
 from .registry import Registry
+from .assets import AssetMode, DEFAULT_RUNTIME_URL
 from .renderer import Renderer
 from .utils import (
     ReactiveKey,
@@ -31,6 +32,9 @@ logger = logging.getLogger("pyjinhx")
 
 PJX_MOUNTED_HEADER = "X-PJX-Mounted"
 """Name of the HTTP header carrying the client's mounted-region manifest."""
+
+PJX_ASSETS_HEADER = "X-PJX-Assets"
+"""Name of the HTTP header carrying asset URLs already loaded in the browser."""
 
 
 def _load_param_count(func: Any) -> int:
@@ -48,15 +52,29 @@ def _load_param_count(func: Any) -> int:
     )
 
 
-def client_script() -> Markup:
+def client_script(
+    *,
+    mode: AssetMode | None = None,
+    src: str | None = None,
+) -> Markup:
     """
-    Return the pyjinhx client runtime wrapped in a ``<script>`` tag.
+    Return the pyjinhx client runtime as a ``<script>`` tag.
 
     Drop this into a page shell (e.g. a raw Jinja layout) to emit the
     ``X-PJX-Mounted`` manifest header on every htmx request. When the page shell
     is marked ``base_layout=True`` the runtime is injected automatically and you
     do not need to call this.
+
+    Args:
+        mode: ``AssetMode.INLINE`` (default) inlines the runtime source.
+            ``AssetMode.REFERENCE`` emits ``<script src="...">``.
+        src: Public URL for the runtime when ``mode`` is ``AssetMode.REFERENCE``.
+            Defaults to ``Renderer``'s configured runtime URL.
     """
+    effective_mode = mode or AssetMode.INLINE
+    if effective_mode == AssetMode.REFERENCE:
+        runtime_url = src or Renderer._default_runtime_url or DEFAULT_RUNTIME_URL
+        return Markup(f'<script src="{runtime_url}"></script>')
     return Markup(f"<script>{read_client_runtime()}</script>")
 
 
@@ -119,7 +137,7 @@ class _ReactiveRender:
         )
         invalidate(effective_dirtied | own_keys)
         instance = cls.load(skey) if keyed else cls.load()
-        primary = instance._render()
+        primary = instance._render(emit_assets=False)
         mark_reactive_render_consumed()
         swaps = oob_swaps(effective_dirtied, mounted, exclude_ids={instance.id})
         return Markup(primary) + swaps
@@ -243,6 +261,37 @@ def _parse_mounted(
     return _parse_mounted(header_value)
 
 
+def parse_loaded_assets(
+    client: str | list[str] | object | None,
+) -> frozenset[str]:
+    """
+    Parse the client-reported list of asset URLs already loaded in the browser.
+
+    Accepts a request-like object (``headers.get``), a raw JSON string, a parsed
+    list of URLs, or ``None``/``""`` (treated as nothing loaded for dedup purposes).
+    """
+    if client is None or client == "":
+        return frozenset()
+    if isinstance(client, (list, tuple, set, frozenset)):
+        return frozenset(str(url) for url in client)
+    if isinstance(client, str):
+        try:
+            parsed = json.loads(client)
+        except json.JSONDecodeError:
+            logger.warning(
+                "Could not parse %s as JSON; ignoring.", PJX_ASSETS_HEADER
+            )
+            return frozenset()
+        if isinstance(parsed, list):
+            return frozenset(str(url) for url in parsed)
+        return frozenset()
+    try:
+        header_value = client.headers.get(PJX_ASSETS_HEADER)
+    except AttributeError:
+        return frozenset()
+    return parse_loaded_assets(header_value)
+
+
 def _drop_nested(candidates: list[_Candidate]) -> list[_Candidate]:
     """
     Drop any candidate whose data-pjx-id marker appears inside another candidate's
@@ -304,7 +353,7 @@ def oob_swaps(
         return Markup("")
 
     classes = Registry.get_classes()
-    renderer = Renderer.get_default_renderer(inline_js=False, inline_css=False)
+    renderer = Renderer.get_default_renderer()
 
     candidates: list[_Candidate] = []
     seen: set[tuple[str, str | None]] = set()
@@ -345,7 +394,7 @@ def oob_swaps(
 
         instance = component_class.load(skey) if keyed else component_class.load()
         instance.id = component_id
-        html = str(instance._render(_renderer=renderer))
+        html = str(instance._render(_renderer=renderer, emit_assets=False))
         candidates.append(
             _Candidate(
                 id=component_id,
