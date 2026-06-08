@@ -23,7 +23,7 @@ from examples.reactive_todo.components import (
     TodoLoadContext,
     TodoTotal,
 )
-from pyjinhx import Registry, Renderer, client_backend_from_request
+from pyjinhx import Registry, Renderer, fastapi_client_backend
 
 Renderer.set_default_environment(Path(__file__).resolve().parents[2])
 
@@ -42,7 +42,7 @@ class RegistryScopeMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         with Registry.request_scope(
             load_context=TodoLoadContext(store=store),
-            client_backend=client_backend_from_request(request),
+            client_backend=fastapi_client_backend(request),
         ):
             return await call_next(request)
 

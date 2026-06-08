@@ -237,13 +237,13 @@ Better: middleware so every route is covered:
 from starlette.middleware.base import BaseHTTPMiddleware
 
 
-from pyjinhx import client_backend_from_request
+from pyjinhx import fastapi_client_backend
 
 
 class RegistryScopeMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request, call_next):
         with Registry.request_scope(
-            client_backend=client_backend_from_request(request),
+            client_backend=fastapi_client_backend(request),
         ):
             return await call_next(request)
 
@@ -529,7 +529,7 @@ from pyjinhx.builtins import Alert, Button, Card
 | HTMX in layout | Yes |
 | `ReactiveComponent` + `reacts_to` + `load()` | Yes |
 | `@mutates` / `mutation_scope` + `dirty_keys` for rows | Yes |
-| `ClientBackend` in middleware (`client_backend_from_request`) | Yes |
+| `fastapi_client_backend` in middleware | Yes |
 | `LoadContext` | Recommended |
 | Assets / REFERENCE mode | Production |
 | Invalidation backend | Multi-worker + PROCESS cache |

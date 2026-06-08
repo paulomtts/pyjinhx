@@ -13,12 +13,9 @@ from .base import BaseComponent
 from .cache import CacheScope, get_load_cache_scope, invalidate, set_load_cache_scope
 from .client_backend import (
     ClientBackend,
-    ClientBackendMiddleware,
-    HeadersClientBackend,
-    RequestClientBackend,
-    client_backend_from_request,
-    client_for_render,
+    FastAPIClientBackend,
     client_scope,
+    fastapi_client_backend,
     get_client_backend,
 )
 from .invalidation import (
@@ -72,11 +69,8 @@ __all__ = [
     "start_invalidation_listener",
     "stop_invalidation_listener",
     "ClientBackend",
-    "ClientBackendMiddleware",
-    "HeadersClientBackend",
-    "RequestClientBackend",
-    "client_backend_from_request",
-    "client_for_render",
+    "FastAPIClientBackend",
+    "fastapi_client_backend",
     "client_scope",
     "get_client_backend",
     "client_script",

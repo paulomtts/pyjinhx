@@ -139,7 +139,7 @@ from pyjinhx import Registry
 
 with Registry.request_scope(
     load_context=AppLoadContext(db=session),
-    client_backend=client_backend_from_request(request),
+    client_backend=fastapi_client_backend(request),
 ):
     # Components registered here are isolated to this scope
     button = Button(id="submit-btn", text="Submit")

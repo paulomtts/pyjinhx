@@ -22,8 +22,8 @@ Every symbol exported from `pyjinhx` (`__all__`) is listed below with a one-line
 | `client_script()` | Emit the pyjinhx client runtime as a `<script>` tag | [Reactive API](../api/reactive-api.md#client_script) |
 | `client_has_mounted_manifest()` | Return whether `X-PJX-Mounted` is present on the request | [Reactive API](../api/reactive-api.md#client_has_mounted_manifest) |
 | `ClientBackend` | ABC for per-request HTTP header access | [Client Backend](../api/client-backend.md#clientbackend) |
-| `RequestClientBackend` | Default backend for FastAPI/Starlette requests | [Client Backend](../api/client-backend.md) |
-| `client_backend_from_request()` | Build `RequestClientBackend` from a request | [Client Backend](../api/client-backend.md#client_backend_from_request) |
+| `FastAPIClientBackend` | Default backend for FastAPI/Starlette requests | [Client Backend](../api/client-backend.md) |
+| `fastapi_client_backend()` | Build `FastAPIClientBackend` from a request | [Client Backend](../api/client-backend.md#fastapi_client_backend) |
 | `client_scope()` | Set the request-scoped client backend | [Client Backend](../api/client-backend.md#request-scope-wiring) |
 | `get_client_backend()` | Return the active client backend | [Client Backend](../api/client-backend.md) |
 | `oob_swaps()` | Compute HTMX out-of-band swap fragments for dirtied keys | [Reactive API](../api/reactive-api.md#oob_swaps) |

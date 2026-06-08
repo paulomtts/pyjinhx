@@ -133,7 +133,7 @@ def index() -> str:
 ```python
 from dataclasses import dataclass
 
-from pyjinhx import LoadContext, Registry, client_backend_from_request, enable_reactive_dev
+from pyjinhx import LoadContext, Registry, enable_reactive_dev, fastapi_client_backend
 from starlette.middleware.base import BaseHTTPMiddleware
 
 
@@ -146,7 +146,7 @@ class RegistryScopeMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request, call_next):
         with Registry.request_scope(
             load_context=AppLoadContext(db=get_db(request)),
-            client_backend=client_backend_from_request(request),
+            client_backend=fastapi_client_backend(request),
         ):
             return await call_next(request)
 

@@ -1,6 +1,6 @@
 # Client Backend
 
-Framework-agnostic access to HTTP request headers for reactive rendering. Wire once per request in middleware; `render()` reads `X-PJX-Mounted` and `X-PJX-Assets` automatically.
+Per-request HTTP header access for reactive rendering. Wire once in middleware; `render()` reads `X-PJX-Mounted` and `X-PJX-Assets` automatically.
 
 ## ClientBackend
 
@@ -9,38 +9,33 @@ class ClientBackend(ABC):
     def get_header(self, name: str) -> str | None: ...
 ```
 
-Abstract base for reading headers on the current request.
+Abstract base — implement for non-FastAPI frameworks if needed.
 
-## RequestClientBackend (default for FastAPI / Starlette)
+## FastAPIClientBackend
 
 ```python
-class RequestClientBackend(HeadersClientBackend):
+class FastAPIClientBackend(ClientBackend):
     def __init__(self, request: object) -> None: ...
 ```
 
-Wraps any request object with `.headers.get(name)`. No `fastapi` import in core.
+Default implementation for FastAPI and Starlette. Wraps `request.headers`. The instance exposes `.headers.get()` for `render()` duck typing.
 
-## client_backend_from_request
+## fastapi_client_backend
 
 ```python
-def client_backend_from_request(request: object) -> RequestClientBackend
+def fastapi_client_backend(request: object) -> FastAPIClientBackend
 ```
 
-Factory for the default ASGI request backend.
-
-## Request scope wiring
+Factory — use this in middleware:
 
 ```python
-from pyjinhx import Registry, client_backend_from_request
+from pyjinhx import Registry, fastapi_client_backend
 
 with Registry.request_scope(
-    load_context=...,
-    client_backend=client_backend_from_request(request),
+    client_backend=fastapi_client_backend(request),
 ):
     ...
 ```
-
-Or use `ClientBackendMiddleware.bind_client_backend` inside a Starlette/FastAPI `BaseHTTPMiddleware`.
 
 ## Auto-resolution in render()
 
@@ -52,12 +47,3 @@ When `client=` and `mounted=` are omitted:
 | `mounted` | Backend is set **and** (`dirtied` passed or `@mutates` left pending dirtied) |
 
 Explicit `client=` / `mounted=` always override the backend.
-
-## HeadersClientBackend
-
-```python
-class HeadersClientBackend(ClientBackend):
-    def __init__(self, headers: Mapping[str, str]) -> None: ...
-```
-
-For tests or non-ASGI contexts with a plain header mapping.
