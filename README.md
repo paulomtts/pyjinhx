@@ -190,7 +190,7 @@ Details: [asset collection guide](docs/guide/assets.md). Optional UI kit: [pyjin
 
 ## FastAPI + HTMX (reactive)
 
-Mark the page shell with `base_layout=True` so the client runtime (`pjx.js`) is injected once. A toggle route returns the row as the primary swap; the counter updates out-of-band because both declare `reacts_to={StateKey.TODOS}`.
+Root full-page renders inject the client runtime (`pjx.js`) automatically unless the request already sent `X-PJX-Mounted`. A toggle route returns the row as the primary swap; the counter updates out-of-band because both declare `reacts_to={StateKey.TODOS}`.
 
 ```python
 # components/todo_row.py
@@ -228,7 +228,7 @@ class TodoList(BaseComponent):
     items: list[TodoRow] = []
 
 
-class TodoApp(BaseComponent, base_layout=True):
+class TodoApp(BaseComponent):
     todo_list: TodoList | None = None
     counter: TodoCounter | None = None
 ```

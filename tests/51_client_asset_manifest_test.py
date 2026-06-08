@@ -196,7 +196,7 @@ def test_oob_swaps_emit_no_assets():
     assert "<script" not in rendered
 
 
-class Page(BaseComponent, base_layout=True):
+class Page(BaseComponent):
     pass
 
 
@@ -217,6 +217,7 @@ def test_runtime_url_skipped_when_already_loaded():
     assert "/static/pyjinhx/pjx.js" not in rendered
 
 
+@pytest.mark.pjx_runtime
 def test_runtime_url_emitted_when_not_loaded():
     Renderer.set_default_js_mode(AssetMode.REFERENCE)
     Renderer.set_default_asset_dedup(True)

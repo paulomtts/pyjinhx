@@ -511,11 +511,17 @@ class Renderer:
             self._register_asset(session, normalized_path, "css", self._css_mode)
 
     def _inject_runtime(
-        self, session: RenderSession, component: "BaseComponent"
+        self,
+        session: RenderSession,
+        component: "BaseComponent",
+        *,
+        client: object | None = None,
     ) -> None:
+        from .reactive import client_has_mounted_manifest
+
         if session.runtime_injected:
             return
-        if not getattr(type(component), "_pjx_layout", False):
+        if client_has_mounted_manifest(client):
             return
         if self._js_mode == AssetMode.INLINE:
             session.scripts.insert(0, read_client_runtime())
@@ -750,6 +756,7 @@ class Renderer:
         *,
         emit_assets: bool = True,
         loaded_assets: frozenset[str] = frozenset(),
+        client: object | None = None,
     ) -> Markup:
         template = self._load_template_for_component(
             component, template_source=template_source, template_path=template_path
@@ -805,7 +812,7 @@ class Renderer:
             if self._css_mode != AssetMode.NONE:
                 self._collect_extra_css(component, session)
             if self._js_mode != AssetMode.NONE:
-                self._inject_runtime(session, component)
+                self._inject_runtime(session, component, client=client)
                 self._collect_extra_javascript(component, session)
             if self._css_mode != AssetMode.NONE or self._js_mode != AssetMode.NONE:
                 rendered_markup = self._inject_assets(

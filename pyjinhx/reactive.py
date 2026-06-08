@@ -60,10 +60,9 @@ def client_script(
     """
     Return the pyjinhx client runtime as a ``<script>`` tag.
 
-    Drop this into a page shell (e.g. a raw Jinja layout) to emit the
-    ``X-PJX-Mounted`` manifest header on every htmx request. When the page shell
-    is marked ``base_layout=True`` the runtime is injected automatically and you
-    do not need to call this.
+    Drop this into a raw Jinja page shell when you are not rendering through a
+    root ``BaseComponent.render()`` call. Root full-page renders inject the
+    runtime automatically unless the request already carries ``X-PJX-Mounted``.
 
     Args:
         mode: ``AssetMode.INLINE`` (default) inlines the runtime source.
@@ -288,6 +287,35 @@ def parse_loaded_assets(
     except AttributeError:
         return frozenset()
     return parse_loaded_assets(header_value)
+
+
+def client_has_mounted_manifest(
+    client: str | list[dict[str, Any]] | object | None,
+) -> bool:
+    """
+    Return whether the client already sent a valid ``X-PJX-Mounted`` manifest.
+
+    A present header whose value parses to a JSON array (including ``[]``)
+    means ``pjx.js`` is active in the browser. Missing, empty, or malformed
+    values mean the runtime should be injected on root full-page renders.
+    """
+    if client is None:
+        return False
+    if isinstance(client, list):
+        return True
+    if isinstance(client, str):
+        if client == "":
+            return False
+        try:
+            parsed = json.loads(client)
+        except json.JSONDecodeError:
+            return False
+        return isinstance(parsed, list)
+    try:
+        header_value = client.headers.get(PJX_MOUNTED_HEADER)
+    except AttributeError:
+        return False
+    return client_has_mounted_manifest(header_value)
 
 
 def _drop_nested(candidates: list[_Candidate]) -> list[_Candidate]:

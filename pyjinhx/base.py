@@ -60,11 +60,10 @@ class BaseComponent(BaseModel):
             raise ValueError("ID is required")
         return str(v)
 
-    def __init_subclass__(cls, *, base_layout: bool = False, **kwargs: Any) -> None:
-        """Register the component class and record whether it is a page layout."""
+    def __init_subclass__(cls, **kwargs: Any) -> None:
+        """Register the component class on subclass definition."""
         super().__init_subclass__(**kwargs)
         Registry.register_class(cls)
-        cls._pjx_layout = bool(base_layout) or getattr(cls, "_pjx_layout", False)
 
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
@@ -187,6 +186,7 @@ class BaseComponent(BaseModel):
             collect_component_js=source is None,
             emit_assets=emit_assets,
             loaded_assets=loaded_assets,
+            client=client,
         )
 
     def render(

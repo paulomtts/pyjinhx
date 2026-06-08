@@ -10,6 +10,7 @@ def test_reactive_api_is_exported():
         CacheScope,
         InvalidationBackend,
         ReactiveComponent,
+        client_has_mounted_manifest,
         client_script,
         dependency_graph,
         dirty_keys,
@@ -38,6 +39,7 @@ def test_reactive_api_is_exported():
     assert callable(dirty_keys)
     assert callable(instance_key)
     assert callable(parse_loaded_assets)
+    assert callable(client_has_mounted_manifest)
     assert callable(set_load_cache_scope)
     assert callable(get_load_cache_scope)
     assert callable(set_invalidation_backend)
@@ -54,6 +56,7 @@ def test_names_in_all():
         "oob_swaps",
         "ReactiveComponent",
         "client_script",
+        "client_has_mounted_manifest",
         "PJX_MOUNTED_HEADER",
         "PJX_ASSETS_HEADER",
         "parse_loaded_assets",
