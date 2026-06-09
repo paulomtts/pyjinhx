@@ -66,7 +66,8 @@
       ".pjx-loading--skeleton *{visibility:hidden}" +
       ".pjx-loading--spinner{position:relative}" +
       ".pjx-loading--spinner::before{content:'';position:absolute;inset:0;" +
-      "background:rgba(0,0,0,.45);border-radius:inherit}" +
+      "background:rgba(0,0,0,.45);backdrop-filter:blur(2px);" +
+      "-webkit-backdrop-filter:blur(2px);border-radius:inherit}" +
       ".pjx-loading--spinner::after{content:'';position:absolute;top:50%;left:50%;" +
       "width:1.1em;height:1.1em;margin:-.55em 0 0 -.55em;box-sizing:border-box;" +
       "border:2px solid rgba(255,255,255,.4);border-top-color:rgba(255,255,255,.95);" +
