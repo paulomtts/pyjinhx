@@ -7,7 +7,7 @@ from typing import Any
 
 from pyjinhx.registry import Registry
 from pyjinhx.config import PyJinhxSettings, configure_pyjinhx, shutdown_pyjinhx
-from pyjinhx.reactive.client import ClientBackend
+from pyjinhx.client import ClientBackend
 
 logger = logging.getLogger("pyjinhx")
 

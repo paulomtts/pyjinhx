@@ -1,4 +1,4 @@
-from pyjinhx.reactive.keys import StateKey, coerce_reactive_key, coerce_reactive_keys
+from pyjinhx.keys import StateKey, coerce_reactive_key, coerce_reactive_keys
 
 
 class TodoKeys(StateKey):

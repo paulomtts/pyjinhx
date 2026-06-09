@@ -9,7 +9,7 @@ Every symbol exported from `pyjinhx` (`__all__`) is listed below with a one-line
 | `BaseComponent` | Pydantic base class for UI components with Jinja templates | [BaseComponent](../api/base-component.md) |
 | `ReactiveComponent` | Base class for dependency-aware reactive components (`reacts_to` + `load()` + `depends_on()`) | [Reactive API](../api/reactive-api.md) |
 | `Renderer` | Renders PascalCase tag strings and manages default Jinja environment | [Renderer](../api/renderer.md) |
-| `RenderSession` | Per-render asset aggregation state (defined in `pyjinhx.core.assets`) | [Assets API](../api/assets-api.md) · [Renderer](../api/renderer.md#rendersession) |
+| `RenderSession` | Per-render asset aggregation state (defined in `pyjinhx.assets`) | [Assets API](../api/assets-api.md) · [Renderer](../api/renderer.md#rendersession) |
 | `Parser` | Parses HTML strings into a tree of `Tag` nodes and raw HTML | [Parser & Tag](../api/parser.md) |
 | `Tag` | Parsed PascalCase component tag (name, attrs, children) | [Parser & Tag](../api/parser.md#tag) |
 | `Finder` | Discovers component templates and asset files on disk | [Finder](../api/finder.md) |

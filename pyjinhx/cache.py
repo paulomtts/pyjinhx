@@ -130,7 +130,7 @@ class LoadCache:
         validate_depends_on(result)
 
         if key is not None:
-            from ..utils import pascal_case_to_kebab_case
+            from .utils import pascal_case_to_kebab_case
 
             default_id = pascal_case_to_kebab_case(component_class.__name__)
             if result.id == default_id:

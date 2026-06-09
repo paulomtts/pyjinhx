@@ -7,8 +7,8 @@ from contextlib import contextmanager
 from dataclasses import dataclass, fields, replace
 from typing import Any
 
-from pyjinhx.reactive.cache import CacheScope, LoadCache, InvalidationBackend, InvalidationHub
-from pyjinhx.reactive.dev import disable_reactive_dev, enable_reactive_dev
+from pyjinhx.cache import CacheScope, LoadCache, InvalidationBackend, InvalidationHub
+from pyjinhx.dev import disable_reactive_dev, enable_reactive_dev
 
 
 logger = logging.getLogger("pyjinhx")

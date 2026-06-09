@@ -142,11 +142,11 @@ class Registry:
         """
         from contextlib import ExitStack
 
-        from pyjinhx.reactive.client import ClientBackend
-        from pyjinhx.reactive.cache import LoadCache
-        from pyjinhx.reactive.context import LoadContext
-        from pyjinhx.reactive.dev import warn_mutations_without_render
-        from pyjinhx.reactive.mutations import MutationTracker
+        from pyjinhx.client import ClientBackend
+        from pyjinhx.cache import LoadCache
+        from pyjinhx.context import LoadContext
+        from pyjinhx.dev import warn_mutations_without_render
+        from pyjinhx.mutations import MutationTracker
 
         MutationTracker.clear()
         LoadCache.init_request()

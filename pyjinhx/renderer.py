@@ -119,7 +119,7 @@ def stamp_reactive_markup(markup: str, component: BaseComponent) -> str:
     if not getattr(type(component), "_pjx_reactive", False):
         return markup
 
-    from pyjinhx.reactive.reactive import pjx_load_value
+    from pyjinhx.reactive import pjx_load_value
 
     attrs = {
         "data-pjx-id": component.id,

@@ -244,7 +244,7 @@ def inject_runtime(
     js_mode: AssetMode,
     client: object | None = None,
 ) -> None:
-    from pyjinhx.reactive.client import MountedManifest
+    from pyjinhx.client import MountedManifest
 
     if session.runtime_injected:
         return

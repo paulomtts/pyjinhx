@@ -1,7 +1,7 @@
 from pathlib import Path
 
 from pyjinhx import LoadCache, Registry, Renderer, mutates
-from pyjinhx.reactive.mutations import MutationTracker
+from pyjinhx.mutations import MutationTracker
 from tests.reactive_test_support import reactive_client
 from tests.ui.reactive.reactive_clear_button import ReactiveClearButton
 from tests.ui.reactive.reactive_counter import ReactiveCounter  # noqa: F401

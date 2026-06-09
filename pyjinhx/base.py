@@ -189,7 +189,7 @@ class BaseComponent(BaseModel):
                 session=session,
             )
 
-        from pyjinhx.reactive.client import ClientBackend, LoadedAssets
+        from pyjinhx.client import ClientBackend, LoadedAssets
 
         resolved_client = ClientBackend.resolve_client(client)
         loaded_assets = (
