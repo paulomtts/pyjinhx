@@ -17,12 +17,12 @@ What to watch (open the network tab):
 - **Clear completed** → the list and total update; the **"N left"** counter is skipped
   (remaining is unchanged).
 
-**Loading indicators:** components opt in with `loading`. `ItemList`, `Counter`, and
-`Total` use `loading = "skeleton"` (a silhouette shimmer in place of their content);
-`ClearButton` uses `loading = "spinner"` (a dim overlay + circular progress, content kept
-visible). When you toggle/add/clear a todo, the affected regions show their indicator until
-the server's fresh HTML swaps in. (`Counter`/`Total` `load()` have a small artificial
-`time.sleep` so the effect is visible on a fast local server — remove it in real apps.)
+**Loading indicators:** components opt in with `loading`. `ItemRow` uses
+`loading = "skeleton"` (a silhouette shimmer while a row reloads); `ClearButton` uses
+`loading = "spinner"` (a dim overlay + circular progress, content kept visible). Toggling
+a row or clearing shows the indicator until the fresh HTML swaps in. The toggle/clear
+routes `time.sleep` briefly so this is visible on a fast local server — adding a todo stays
+instant (it shows no indicator). Set `PJX_DEMO_LATENCY=0` to disable.
 
 The routes never mention the counter/total/clear button — `@mutates` and
 `@mutates` accumulates dirtied keys automatically, and `setup()` wires

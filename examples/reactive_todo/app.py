@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import os
 import sys
+import time
 from pathlib import Path
 
 sys.path.append(str(Path(__file__).resolve().parents[2]))
@@ -48,15 +50,23 @@ def add(text: str = Form(...)) -> str:
     return ItemRow.render(store.all_todos()[-1].id)
 
 
+def _demo_latency() -> float:
+    # demo-only pause on the actions that show a loading state, so the skeleton/
+    # spinner are visible on a fast local server; set PJX_DEMO_LATENCY=0 to disable.
+    return float(os.environ.get("PJX_DEMO_LATENCY", "0.5"))
+
+
 @app.post("/rows/{todo_id}/toggle", response_class=HTMLResponse)
 def toggle_row(todo_id: int) -> str:
     store.toggle(todo_id)
+    time.sleep(_demo_latency())
     return ItemRow.render(todo_id)
 
 
 @app.post("/todos/clear-completed", response_class=HTMLResponse)
 def clear_completed() -> str:
     store.clear_completed()
+    time.sleep(_demo_latency())
     return ItemList.render()
 
 

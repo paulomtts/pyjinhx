@@ -1,4 +1,3 @@
-import time
 from dataclasses import dataclass
 from typing import Annotated, ClassVar, Optional
 
@@ -62,9 +61,6 @@ class Counter(ReactiveComponent):
 
     @classmethod
     def load(cls) -> "Counter":
-        time.sleep(
-            0.4
-        )  # demo only: artificial latency so the loading shimmer is visible
         return cls(remaining=_store().remaining())
 
 
@@ -74,9 +70,6 @@ class Total(ReactiveComponent):
 
     @classmethod
     def load(cls) -> "Total":
-        time.sleep(
-            0.4
-        )  # demo only: artificial latency so the loading shimmer is visible
         return cls(count=_store().total())
 
 
