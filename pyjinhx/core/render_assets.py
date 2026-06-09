@@ -183,6 +183,84 @@ def render_assets(
     return ""
 
 
+def apply_component_render_assets(
+    component: BaseComponent,
+    rendered_markup: str,
+    session: RenderSession,
+    *,
+    template_path: str | None,
+    is_root: bool,
+    collect_component_js: bool,
+    js_mode: AssetMode,
+    css_mode: AssetMode,
+    resolve_url: Callable[[str], str],
+    loaded_assets: frozenset[str],
+    dedup_enabled: bool,
+    client: object | None,
+) -> str:
+    if template_path is not None and type(component).__name__ == "BaseComponent":
+        asset_dir: str | None = os.path.dirname(template_path)
+        asset_name: str | None = os.path.splitext(os.path.basename(template_path))[
+            0
+        ].replace("_", "-")
+    else:
+        asset_dir = None
+        asset_name = None
+
+    if collect_component_js:
+        collect_component_asset(
+            component,
+            session,
+            "js",
+            js_mode=js_mode,
+            css_mode=css_mode,
+            component_dir=asset_dir,
+            asset_name=asset_name,
+        )
+        collect_component_asset(
+            component,
+            session,
+            "css",
+            js_mode=js_mode,
+            css_mode=css_mode,
+            component_dir=asset_dir,
+            asset_name=asset_name,
+        )
+
+    if not is_root:
+        return rendered_markup
+
+    if css_mode != AssetMode.NONE:
+        collect_extra_assets(
+            component,
+            session,
+            "css",
+            js_mode=js_mode,
+            css_mode=css_mode,
+        )
+    if js_mode != AssetMode.NONE:
+        inject_runtime(session, js_mode=js_mode, client=client)
+        collect_extra_assets(
+            component,
+            session,
+            "js",
+            js_mode=js_mode,
+            css_mode=css_mode,
+        )
+    if css_mode == AssetMode.NONE and js_mode == AssetMode.NONE:
+        return rendered_markup
+
+    return inject_assets(
+        rendered_markup,
+        session,
+        js_mode=js_mode,
+        css_mode=css_mode,
+        resolve_url=resolve_url,
+        loaded_assets=loaded_assets,
+        dedup_enabled=dedup_enabled,
+    )
+
+
 def inject_assets(
     markup: str,
     session: RenderSession,
