@@ -126,7 +126,9 @@ With `@mutates` on the store method, pending dirtied keys drive OOB swaps automa
 `Cls.render(*args)` loads the primary (`load(*args)` for keyed types, `load()` for
 singletons), renders it as the main-target response, then appends OOB swaps for every
 *other* mounted reactive region whose `reacts_to` intersects pending mutations from
-`@mutates`. The trigger region (`X-PJX-Trigger`) and primary id are excluded.
+`@mutates`. Only the primary id is excluded (htmx swaps it as the main-target response);
+the region that *initiated* the request still updates out-of-band if it depends on the
+dirtied keys — e.g. a "Clear completed (N)" button updates its own count.
 
 A **plain, non-reactive** primary has no `load()` to call, so you build it and render
 the instance: `MyFragment(id=..., ...).render()`.

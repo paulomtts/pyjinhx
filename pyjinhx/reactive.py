@@ -25,7 +25,7 @@ from pyjinhx.utils import (
 )
 
 from .cache import LoadCache
-from .client import ClientBackend, MountedManifest, TriggerManifest
+from .client import ClientBackend, MountedManifest
 from .dev import warn_reactive_render_without_client
 from .keys import ReactiveKey, coerce_load_key_str, coerce_reactive_keys
 from .mutations import MutationTracker
@@ -296,10 +296,10 @@ def reactive_render_bundle(
     primary = primary_html() if callable(primary_html) else primary_html
     MutationTracker.mark_render_consumed()
 
+    # Exclude only the primary (htmx swaps it as the main response). The trigger is
+    # NOT excluded: a clicked region that depends on the dirtied keys must update
+    # out-of-band like any other dependent (e.g. a "Clear (N)" button updating itself).
     resolved_exclude = set(exclude_ids() if callable(exclude_ids) else exclude_ids)
-    trigger = TriggerManifest.parse(backend) if backend is not None else None
-    if trigger and trigger.get("id"):
-        resolved_exclude.add(str(trigger["id"]))
 
     swaps = oob_swaps(
         effective_dirtied,
