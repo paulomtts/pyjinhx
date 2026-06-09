@@ -128,8 +128,8 @@ Subclass `ReactiveComponent` and declare **both** `reacts_to` and a `load()` cla
 definition-time error):
 
 ```python
-from typing import ClassVar
-from pyjinhx import ReactiveComponent
+from typing import Annotated, ClassVar
+from pyjinhx import PjxLoad, ReactiveComponent, mutates
 
 class Counter(ReactiveComponent):
     remaining: int
@@ -140,87 +140,90 @@ class Counter(ReactiveComponent):
         return cls(remaining=db.remaining())     # id defaults to "counter"
 ```
 
-- **`reacts_to`** — arbitrary state-key strings *you* choose (`"todos"`, `"user:42"`). The
-  server intersects a component's `reacts_to` with a route's `dirtied` keys to decide what
-  to swap (and what to evict from the `load()` cache).
+- **`reacts_to`** — arbitrary state-key strings *you* choose (`"todos"`). The server
+  intersects a component's `reacts_to` with pending `@mutates` keys to decide what to
+  swap (and what to evict from the `load()` cache).
 - **`load()`** — rebuilds the component from the current world, independent of any route.
-- **`id`** auto-defaults to the **kebab-cased class name** (`TodoCounter` → `"todo-counter"`);
-  a singleton's identity is its type, so `load()` need not set one.
-- `state_hash()` (hash of `model_dump_json()`) gates swaps: a region is re-sent only if its
-  fresh hash differs from the one the client reported. Override only for custom hashing.
-- Roots are auto-stamped with `data-pjx-id` / `data-pjx-type` / `data-pjx-hash` (+ `data-pjx-key`
-  when keyed). A reactive component **must render a single root element**.
+- **`id`** auto-defaults to the **kebab-cased class name** (`Counter` → `"counter"`);
+  pass an explicit `id` for instance-keyed regions (e.g. `id=f"row-{todo_id}"`).
+- `state_hash()` gates swaps: a region is re-sent only if its fresh hash differs from
+  the one the client reported.
+- Roots are auto-stamped with `data-pjx-id` / `data-pjx-type` / `data-pjx-hash` (+
+  `data-pjx-load` when keyed via `PjxLoad`). A reactive component **must render a single
+  root element**.
 
 ### Mutation routes return `render()` — nothing else
 
 A mutation route does exactly one thing: **`return <component>.render(...)`**. You never
-call `load()` and never assemble swaps yourself.
+call `load()` and never assemble swaps yourself. Decorate store methods with `@mutates`
+on **state keys only**:
 
 ```python
+@mutates("todos")
+def toggle_all():
+    ...
+
 @app.post("/todos/toggle")
 def toggle():
-    db.toggle_all()
-    return Counter.render(dirtied={"todos"})
+    store.toggle_all()
+    return Counter.render()
 ```
 
 `render` has two forms (one name):
 
-- **Class form (reactive primary)** — `Cls.render(key=None, *, dirtied=None, mounted=None)`:
-  auto-`load()`s the primary (by `key` if instance-keyed, zero-arg for a singleton), renders
-  it as the main-target response, then appends an OOB swap for every *other* mounted reactive
-  region whose `reacts_to` intersects `dirtied` (each rebuilt via its own `load()`). The
-  primary's own region is never double-swapped. `dirtied` defaults to the primary's
-  (interpolated) `reacts_to`.
-- **Instance form (plain/constructed primary)** — `instance.render(*, dirtied=None, mounted=None)`:
-  a non-reactive primary has no `load()`, so build it and render the instance.
+- **Class form (route entry)** — `Cls.render(*args, **kwargs)` for keyed types,
+  `Cls.render()` for singletons: auto-`load()`s the primary, renders it as the HTMX
+  main-target response, then appends OOB swaps for every *other* mounted reactive region
+  whose `reacts_to` intersects pending `@mutates` keys. The trigger region (`X-PJX-Trigger`)
+  and primary region are excluded from OOB.
+- **Instance form** — `instance.render()`: plain render of an already-built instance
+  (no re-`load()`).
 
-With [ClientBackend](../api/client-backend.md) in middleware, omit `mounted` and `client` on mutation routes. Without it, pass `mounted=request` (request-like object, raw header string, or parsed list). With neither `dirtied` nor `mounted`, `render()` is an ordinary plain render.
+Wire `setup(app, ...)` so `ClientBackend` is active — mutation routes need no `mounted`
+or `client` kwargs. `pjx.js` sends `X-PJX-Mounted`, `X-PJX-Assets`, and `X-PJX-Trigger`
+on every HTMX request.
 
-`oob_swaps(dirtied, mounted)` is what `render()` delegates to (`exclude_ids={primary.id}`);
-it's exported for tests/advanced use but is **not** how you write a route.
+`oob_swaps(dirtied, mounted)` is exported for tests/advanced use; routes use `render()`.
 
 ### Instance-keyed regions (rows)
 
-A reactive type can have **many independently-reactive instances** (table rows, cards). A
-component is **instance-keyed iff its `load()` takes a parameter after `cls`** —
-`load(cls, key)`; zero-arg `load(cls)` stays a type-singleton. No extra field or flag.
+A component is **instance-keyed iff `load()` takes one argument after `cls`**. Declare
+exactly one `Annotated[..., PjxLoad()]` field — its value is stamped as `data-pjx-load`
+and returned in the manifest as `load` for OOB reloads.
 
 ```python
 class TodoItemRow(ReactiveComponent):
+    todo_id: Annotated[int, PjxLoad()]
     title: str = ""
-    reacts_to: ClassVar[set[str]] = {"todo"}          # instance-tier stem
+    reacts_to: ClassVar[set[str]] = {"todos"}
 
     @classmethod
-    def load(cls, key) -> "TodoItemRow":              # param after cls ⇒ keyed
-        t = store.get(int(key))                        # keys arrive as str; coerce if typed
-        return cls(title=t.text)
+    def load(cls, todo_id: int | str) -> "TodoItemRow":
+        tid = int(todo_id)
+        t = store.get(tid)
+        return cls(id=f"row-{tid}", todo_id=tid, title=t.text)
 
 @app.post("/rows/{todo_id}/toggle")
-def toggle_row(todo_id):
+def toggle_row(todo_id: int):
     store.toggle(todo_id)
-    return TodoItemRow.render(todo_id, dirtied={f"todo:{todo_id}", "todos"})
+    return TodoItemRow.render(todo_id)
 ```
 
-- **The key flows `render(key, …)` → `load(key)` automatically.** It derives the keyed id
-  `f"{kebab(class)}-{key}"` (e.g. `todo-item-row-42`), is exposed to the template as `{{ key }}`,
-  and is stamped as `data-pjx-key` so the manifest carries it back. Enums are unwrapped to
-  `.value` before `load()`; cache/manifest keys are always `str`.
-- **Instance-tier stems** on keyed components are bare strings (`{"todo"}` → `"todo:42"` per row).
-  Collection-tier keys stay literal (`{"user", "users"}` — `"users"` is not suffixed).
-- **Two-tier dirtying:** instance stems are *instance-tier* (`"todo:42"` swaps just that row);
-  collection keys are *collection-tier* (`"todos"` swaps every mounted row that declares it, plus
-  counters/totals). Name both as needed.
+- **`render(todo_id)` → `load(todo_id)`** automatically. Set explicit `id` in `load()` for
+  stable DOM targets (e.g. `row-42`). Templates use the `PjxLoad` field:
+  `hx-post="/rows/{{ todo_id }}/toggle"`.
+- **`@mutates("todos")`** on store methods dirties collection-tier state; OOB pub-sub reloads
+  every mounted region whose `reacts_to` intersects, with hash-gating skipping unchanged regions.
+- **Removed entities:** if a keyed `load(manifest.load)` raises `LookupError`, OOB emits a
+  `delete:[data-pjx-id='…']` swap (e.g. after clear-completed removes rows still in the manifest).
 
 ### Client runtime & cache
 
-- Root full-page renders auto-inject the client runtime (`pjx.js`) unless the request
-  already carries `X-PJX-Mounted`. For a raw Jinja shell, drop `{{ client_script() }}`
-  in the `<head>` instead.
-- Every `load()` is wrapped in a **dependency-keyed cache** (one entry per `(type, key)`),
-  returning an independent copy each call. Default scope is `PROCESS` (cross-request
-  per worker). Use `REQUEST` for multi-worker without an invalidation backend, or
-  `invalidate({"todos"})` after background mutations. Multi-worker `PROCESS` needs an
-  `InvalidationBackend`.
+- Root full-page renders auto-inject `pjx.js` unless the request already carries
+  `X-PJX-Mounted`. For a raw Jinja shell, use `{{ client_script() }}` in `<head>`.
+- Every `load()` is memoized in `LoadCache` (one entry per `(type, key)`). Default scope is
+  `PROCESS`. Use `LoadCache.set_scope(CacheScope.REQUEST)` per worker without Redis, or
+  `InvalidationBackend` for multi-worker `PROCESS` scope.
 
 Full guide: [docs/reactivity.md](../reactivity.md).
 
@@ -437,20 +440,24 @@ my_app/
 ```python
 from pyjinhx import (
     BaseComponent, ReactiveComponent, Renderer, Registry, Finder, Parser, Tag,
-    oob_swaps, invalidate, client_script, PJX_MOUNTED_HEADER,
+    PjxLoad, mutates, LoadCache, oob_swaps, client_script,
+    PJX_MOUNTED_HEADER, PJX_TRIGGER_HEADER, setup,
 )
 import pyjinhx.builtins  # optional: registers all builtin classes
 from pyjinhx.builtins import Alert, Modal, Panel, PanelTrigger, TabGroup  # …
 ```
 
 - `BaseComponent` — base class for all components
-- `ReactiveComponent` — base class for dependency-aware reactive components (`reacts_to` + `load()`); `Cls.render(key=None, *, dirtied=, mounted=)` is the auto-loading route entry point
+- `ReactiveComponent` — dependency-aware components (`reacts_to` + `load()`); `Cls.render(*args)` is the route entry point
+- `PjxLoad` — `Annotated[..., PjxLoad()]` marker for keyed `data-pjx-load` / manifest `load`
+- `mutates` — decorator on store methods; state keys only (`@mutates("todos")`)
+- `setup` — wires FastAPI middleware (`Registry.request_scope`, `ClientBackend`, `LoadContext`)
 - `Renderer` — renders strings with PascalCase tags or manages environments
 - `Registry` — query/clear instances and classes, `request_scope()` context manager
 - `Finder` — template/asset discovery, `collect_javascript_files()`, `collect_css_files()`, `detect_root_directory()`
 - `Parser` / `Tag` — HTML parsing internals (rarely needed directly)
-- `oob_swaps` / `invalidate` — reactivity internals: the dependency walk and manual `load()`-cache eviction
-- `client_script` / `PJX_MOUNTED_HEADER` — client-runtime `<script>` for raw shells; the mounted-manifest header name
+- `LoadCache.invalidate` / `oob_swaps` — advanced: manual cache eviction and OOB walk
+- `client_script` / `PJX_*_HEADER` — client runtime and wire-format header names
 - `pyjinhx.builtins` — twenty optional UI components (see Builtins table above)
 ````
 

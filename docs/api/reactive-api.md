@@ -143,4 +143,6 @@ def oob_swaps(
 
 Compute out-of-band swap fragments for every mounted reactive region whose `reacts_to` intersects `dirtied`.
 
+When a keyed `load(manifest.load)` raises `LookupError` (entity removed), emits a delete OOB swap (`delete:[data-pjx-id='…']`) instead of failing.
+
 `ReactiveComponent.render()` calls this automatically when reactive mode is active. Use directly only for tests and advanced composition.

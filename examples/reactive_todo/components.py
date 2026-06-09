@@ -64,12 +64,12 @@ class Counter(ReactiveComponent):
 
 
 class Total(ReactiveComponent):
-    total: int = 0
+    count: int = 0
     reacts_to: ClassVar[set[str]] = {Keys.TODOS}
 
     @classmethod
     def load(cls) -> "Total":
-        return cls(total=_store().total())
+        return cls(count=_store().total())
 
 
 class ClearButton(ReactiveComponent):

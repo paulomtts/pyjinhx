@@ -157,6 +157,10 @@ PyJinHx maintains two separate registries:
 
 The class registry enables the `Renderer` to instantiate components from PascalCase tags. The instance registry enables cross-referencing in templates.
 
+### Template context precedence
+
+During render, registered instances are injected into the Jinja context by `id` so templates can reference them by registry key. **Component field values from `model_dump()` take precedence** when a field name collides with an instance `id` (registry injection uses `setdefault`). Avoid naming a reactive field the same as its default `id` (e.g. a `Total` component with a `total` field defaults `id` to `"total"`).
+
 ```python
 # Class registry (automatic when you define a class)
 class MyButton(BaseComponent):

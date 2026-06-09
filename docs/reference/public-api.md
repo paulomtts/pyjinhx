@@ -26,10 +26,9 @@ Every symbol exported from `pyjinhx` (`__all__`) is listed below with a one-line
 | `ClientBackend` | ABC for per-request HTTP header access | [Client Backend](../api/client-backend.md#clientbackend) |
 | `FastAPIClientBackend` | Default backend for FastAPI/Starlette requests | [Client Backend](../api/client-backend.md) |
 | `ClientBackend.scope()` | Set the request-scoped client backend | [Client Backend](../api/client-backend.md#clientbackend) |
-| `ClientBackend.current()` | Return the active client backend | [Client Backend](../api/client-backend.md#clientbackend) |
+| `ClientBackend.current()` | Return the active client backend (manifest, assets, trigger headers) | [Client Backend](../api/client-backend.md#clientbackend) |
 | `ClientBackend.reset()` | Clear the request-scoped backend (tests) | [Client Backend](../api/client-backend.md#clientbackend) |
 | `ClientBackend.resolve_client()` | Resolve explicit `client=` or fall back to backend | [Client Backend](../api/client-backend.md#auto-resolution-in-render) |
-| `ClientBackend.current()` | Request-scoped backend for manifest, assets, and trigger headers | [Client Backend](../api/client-backend.md#auto-resolution-in-render) |
 | `oob_swaps()` | Compute HTMX out-of-band swap fragments for dirtied keys | [Reactive API](../api/reactive-api.md#oob_swaps) |
 | `PJX_MOUNTED_HEADER` | HTTP header name for the client mounted-region manifest | [Reactive API](../api/reactive-api.md#pjx-headers) |
 | `PJX_ASSETS_HEADER` | HTTP header name for asset URLs already loaded in the browser | [Reactive API](../api/reactive-api.md#pjx-headers) |

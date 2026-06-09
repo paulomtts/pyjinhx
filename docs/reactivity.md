@@ -197,6 +197,11 @@ def toggle_row(todo_id: int):
     return TodoItemRow.render(todo_id)
 ```
 
+When a keyed entity is removed but still listed in the client's mounted manifest (e.g.
+after **clear completed**), `oob_swaps` catches `LookupError` from `load(manifest.load)`
+and emits a delete OOB swap (`delete:[data-pjx-id='…']`) so stale row regions are removed
+from the DOM without a server error.
+
 ## State keys
 
 Centralize reactive key strings in a `StateKey` enum so `reacts_to`, `dirtied`, and
