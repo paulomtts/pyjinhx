@@ -97,6 +97,11 @@
     });
     var triggerLoad = root.getAttribute("data-pjx-load");
     var marked = [];
+    function mark(el) {
+      var cls = "pjx-loading--" + (el.getAttribute("data-pjx-loading") || "skeleton");
+      el.classList.add(cls);
+      marked.push([el, cls]);
+    }
     Array.prototype.forEach.call(
       document.querySelectorAll("[data-pjx-loading][data-pjx-reacts]"),
       function (el) {
@@ -105,14 +110,16 @@
         }
         // keyed regions: flag only the instance matching the trigger's load key
         var elLoad = el.getAttribute("data-pjx-load");
-        if (elLoad !== null && elLoad !== triggerLoad) {
-          return;
+        if (elLoad === null || elLoad === triggerLoad) {
+          mark(el);
         }
-        var cls = "pjx-loading--" + (el.getAttribute("data-pjx-loading") || "skeleton");
-        el.classList.add(cls);
-        marked.push([el, cls]);
       }
     );
+    // a trigger may name extra regions to flag (e.g. rows a bulk action removes)
+    var extra = root.getAttribute("data-pjx-loading-extra");
+    if (extra) {
+      Array.prototype.forEach.call(document.querySelectorAll(extra), mark);
+    }
     if (marked.length) {
       pjxLoadingByXhr.set(xhr, marked);
     }

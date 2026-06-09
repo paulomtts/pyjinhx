@@ -418,6 +418,11 @@ swap target *and* its out-of-band dependents. The class is removed when the resp
 cleared). It is purely a client affordance: no server reactive semantics change, and it is
 off unless you opt in.
 
+A trigger can also carry `data-pjx-loading-extra="<css-selector>"` to flag regions the
+dependency walk can't predict on its own — e.g. the specific rows a bulk action like
+"clear completed" is about to remove. Matched elements use their own `data-pjx-loading`
+style and are cleared on response like any other.
+
 ## Boundaries
 
 - **Hash gating is a skip-hint, not correctness authority**: a matching client hash
