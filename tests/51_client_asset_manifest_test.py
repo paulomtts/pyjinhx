@@ -6,10 +6,9 @@ import pytest
 from pyjinhx import (
     AssetMode,
     BaseComponent,
-    LoadedAssets,
-    PJX_ASSETS_HEADER,
     Renderer,
 )
+from pyjinhx.client import PJX_ASSETS_HEADER, LoadedAssets
 from pyjinhx.reactive import oob_swaps
 from pyjinhx.utils import read_client_runtime
 from tests.ui.reactive.reactive_counter import ReactiveCounter

@@ -3,7 +3,8 @@ from typing import Annotated, ClassVar
 
 import pytest
 
-from pyjinhx import LoadCache, PjxLoad, ReactiveComponent, Registry
+from pyjinhx import PjxLoad, ReactiveComponent, Registry
+from pyjinhx.cache import LoadCache
 from pyjinhx.context import (
     LoadContext,
     resolve_load_context_param,

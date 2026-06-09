@@ -4,12 +4,9 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from pyjinhx import (
-    CacheScope,
-    ClientBackend,
-    LoadCache,
-    setup,
-)
+from pyjinhx import CacheScope, setup
+from pyjinhx.cache import LoadCache
+from pyjinhx.client import ClientBackend
 
 
 def test_setup_without_app_configures_process():

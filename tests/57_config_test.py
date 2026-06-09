@@ -1,15 +1,9 @@
 import os
 from unittest.mock import patch
 
-from pyjinhx import (
-    CacheScope,
-    InvalidationBackend,
-    LoadCache,
-    PyJinhxSettings,
-    configure_pyjinhx,
-    pyjinhx_lifespan,
-    shutdown_pyjinhx,
-)
+from pyjinhx import CacheScope, PyJinhxSettings
+from pyjinhx.cache import InvalidationBackend, LoadCache
+from pyjinhx.config import configure_pyjinhx, pyjinhx_lifespan, shutdown_pyjinhx
 
 
 def test_pyjinhx_settings_default_is_request():

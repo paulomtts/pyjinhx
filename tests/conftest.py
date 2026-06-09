@@ -3,9 +3,12 @@ from typing import Any
 
 import pytest
 
-from pyjinhx import CacheScope, ClientBackend, LoadCache, MutationTracker, Registry, shutdown_pyjinhx
+from pyjinhx import CacheScope, Registry
 from pyjinhx.assets import RenderSession
-from pyjinhx.cache import InvalidationHub
+from pyjinhx.cache import InvalidationHub, LoadCache
+from pyjinhx.client import ClientBackend
+from pyjinhx.config import shutdown_pyjinhx
+from pyjinhx.mutations import MutationTracker
 
 
 def _noop_inject_runtime(

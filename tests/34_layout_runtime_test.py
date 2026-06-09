@@ -2,7 +2,8 @@ import json
 
 import pytest
 
-from pyjinhx import BaseComponent, MountedManifest, PJX_MOUNTED_HEADER, Renderer
+from pyjinhx import BaseComponent, Renderer
+from pyjinhx.client import PJX_MOUNTED_HEADER, MountedManifest
 
 pytestmark = pytest.mark.pjx_runtime
 

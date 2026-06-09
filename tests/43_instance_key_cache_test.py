@@ -1,6 +1,7 @@
 from typing import Annotated, ClassVar
 
-from pyjinhx import LoadCache, PjxLoad, ReactiveComponent
+from pyjinhx import PjxLoad, ReactiveComponent
+from pyjinhx.cache import LoadCache
 
 load_calls = {"n": 0}
 

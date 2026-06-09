@@ -1,4 +1,5 @@
-from pyjinhx import CacheScope, LoadCache, Registry
+from pyjinhx import CacheScope, Registry
+from pyjinhx.cache import LoadCache
 from tests.ui.reactive.cached_widget import CachedWidget, load_calls
 
 

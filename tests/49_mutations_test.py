@@ -1,6 +1,7 @@
 from pathlib import Path
 
-from pyjinhx import LoadCache, Registry, Renderer, mutates
+from pyjinhx import Registry, Renderer, mutates
+from pyjinhx.cache import LoadCache
 from pyjinhx.mutations import MutationTracker
 from tests.reactive_test_support import reactive_client
 from tests.ui.reactive.reactive_clear_button import ReactiveClearButton
