@@ -387,6 +387,26 @@ setup(
 
 Requires `pip install pyjinhx[redis]`. See [Redis integration](api/integrations-redis.md).
 
+## Loading shimmer (in-flight)
+
+A reactive region can shimmer over its current content while a reactive update is in
+flight, then swap in the fresh HTML when the response arrives. Opt in per component:
+
+```python
+class TodoCounter(ReactiveComponent):
+    remaining: int
+    reacts_to: ClassVar[set[str]] = {"todos"}
+    loading_skeleton: ClassVar[bool] = True   # shimmer while reloading
+```
+
+How it works: every reactive root is stamped with `data-pjx-reacts` (its state keys), and
+opted-in roots also get `data-pjx-skeleton`. When an htmx request starts, `pjx.js` reads
+the target region's `data-pjx-reacts` as the predicted dirtied set and adds a `.pjx-loading`
+shimmer class to every mounted opted-in region whose keys intersect it — the swap target
+*and* its out-of-band dependents. The class is removed when the response arrives (swapped
+regions replace themselves; hash-gated/unchanged regions are cleared). It is purely a
+client affordance: no server reactive semantics change, and it is off unless you opt in.
+
 ## Boundaries
 
 - **Hash gating is a skip-hint, not correctness authority**: a matching client hash
