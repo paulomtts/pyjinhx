@@ -32,8 +32,7 @@ These 13 symbols are the entire top-level public API; advanced/internal building
 
 | Symbol | Description | Documentation |
 |--------|-------------|---------------|
-| `PjxSettings` | Cache scope, invalidation backend, reactive dev flags | [Configuration](../api/config.md#pjxsettings) |
-| `CacheScope` | Enum: `PROCESS`, `REQUEST`, or `NONE` | [Cache & Invalidation](../api/cache-invalidation.md#cachescope) |
+| `PjxSettings` | Invalidation backend and reactive dev flags | [Configuration](../api/config.md#pjxsettings) |
 | `AssetMode` | Enum: `INLINE`, `REFERENCE`, or `NONE` | [Renderer](../api/renderer.md#assetmode) |
 
 ## Conceptual guides

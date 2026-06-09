@@ -87,11 +87,12 @@ from pyjinhx import setup
 setup(app, load_context_factory=lambda req: AppLoadContext(db=get_db(req)))
 ```
 
-`PjxSettings` has three fields:
+`PjxSettings` has two fields:
 
-- `cache_scope` — load cache scope (default `CacheScope.REQUEST`)
-- `invalidation_backend` — cross-process invalidation backend (default `None`)
+- `invalidation_backend` — cross-worker invalidation backend (default `None`)
 - `reactive_dev` — enable reactive dev guardrails (default `False`)
+
+The load-cache scope is **derived** from `invalidation_backend`: a backend (e.g. Redis) makes cross-request caching safe across workers, so `load()` results are cached per worker process; without one, they are cached per request only — the only multi-worker-safe default.
 
 Pass a settings object via `settings=`, or override individual fields with explicit `setup()` keyword arguments. Explicit `setup()` kwargs take precedence over values from `settings=`.
 
@@ -99,9 +100,8 @@ Pass a settings object via `settings=`, or override individual fields with expli
 
 `PjxSettings.from_env()` builds settings from the environment:
 
-- `PJX_LOAD_CACHE_SCOPE` — cache scope name (default `request`)
+- `REDIS_URL` — wires a `RedisInvalidationBackend` (which derives cross-request caching)
 - `PJX_REACTIVE_DEV` — enables reactive dev mode when set to `1`, `true`, or `yes`
-- `REDIS_URL` — wires a `RedisInvalidationBackend`, but only when the cache scope is `process`
 
 ```python
 from pyjinhx import PjxSettings, setup
@@ -113,31 +113,30 @@ See [Configuration API](../api/config.md) for `PjxSettings`, lifespan chaining, 
 
 ## Load cache scope
 
-Default is **`CacheScope.REQUEST`** (multi-worker safe). Opt into cross-request caching:
+You don't pick a scope — it follows the backend. By default (no `invalidation_backend`), `load()` results are cached **per request only**, the only multi-worker-safe behavior. Configure a cross-worker backend to opt into cross-request caching per worker process:
 
 ```python
-from pyjinhx import CacheScope, setup
+from pyjinhx import setup
 
-setup(app, cache_scope=CacheScope.PROCESS, invalidation_backend=...)  # see integrations.redis
-setup(app, cache_scope=CacheScope.NONE)
+setup(app)  # per-request caching (default, multi-worker safe)
+setup(app, invalidation_backend=...)  # cross-request per worker; see integrations.redis
 ```
 
-`Registry.request_scope()` initializes a request-scoped cache on entry and clears it on exit. With `PROCESS` scope, reads also use the process-wide store; with `REQUEST` scope, only the request store is used.
+`Registry.request_scope()` initializes a request-scoped cache on entry and clears it on exit. With a backend configured, reads also use the process-wide store; otherwise only the request store is used. Within-request caching always happens — it dedups the repeated `load()` calls of the reactive OOB walk.
 
 See [Cache & Invalidation](../api/cache-invalidation.md) and [Reactivity](../reactivity.md).
 
 ## Invalidation fan-out
 
-When using `CacheScope.PROCESS` with multiple workers, configure an `InvalidationBackend`:
+For multi-worker production, set a cross-worker `invalidation_backend` so `invalidate()` fans out to every process (and enables cross-request caching):
 
 ```python
-from pyjinhx import CacheScope, PjxSettings, setup
+from pyjinhx import PjxSettings, setup
 from pyjinhx.integrations.redis import RedisInvalidationBackend
 
 setup(
     app,
     settings=PjxSettings(
-        cache_scope=CacheScope.PROCESS,
         invalidation_backend=RedisInvalidationBackend("redis://..."),
     ),
 )

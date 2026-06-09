@@ -465,24 +465,23 @@ setup(app, load_context_factory=lambda request: AppLoadContext(store=store))
 
 ## Step 13 — Load cache scope and invalidation
 
-Default: **`CacheScope.REQUEST`** — `load()` results cache within each HTTP request (multi-worker safe).
+You don't pick a cache scope — it follows the backend. By default (no `invalidation_backend`),
+`load()` results cache within each HTTP request, which is multi-worker safe.
 
-| Scope | When to use |
-|-------|-------------|
-| `REQUEST` | Default — multi-worker without Redis |
-| `PROCESS` | Single worker, or multi-worker **with** invalidation fan-out |
-| `NONE` | Debugging; always hit the store |
+| Setup | Behavior |
+|-------|----------|
+| no backend (default) | Per-request caching — multi-worker safe without Redis |
+| `invalidation_backend` set | Cross-request caching per worker, with evictions fanned out across workers |
 
-Multi-worker fan-out (optional):
+Multi-worker fan-out (also enables cross-request caching):
 
 ```python
-from pyjinhx import CacheScope, PjxSettings, setup
+from pyjinhx import PjxSettings, setup
 from pyjinhx.integrations.redis import RedisInvalidationBackend
 
 setup(
     app,
     settings=PjxSettings(
-        cache_scope=CacheScope.PROCESS,
         invalidation_backend=RedisInvalidationBackend(os.environ["REDIS_URL"]),
     ),
 )

@@ -232,10 +232,10 @@ def toggle_row(todo_id: int):
   the swap lands. A trigger may add `data-pjx-loading-extra="<css-selector>"` to also flag
   regions a bulk action will touch (e.g. rows a clear-completed removes). Style via `--pjx-*`
   CSS vars (`--pjx-skeleton-color`, `--pjx-spinner-color`, …).
-- Every `load()` is memoized in `LoadCache` (one entry per `(type, key)`). Default scope is
-  `CacheScope.REQUEST` (per-request, no cross-worker concern). Use
-  `LoadCache.set_scope(CacheScope.PROCESS)` (or `setup(cache_scope=...)`) for process-wide
-  caching, plus an `InvalidationBackend` (e.g. Redis) to fan out evictions across workers.
+- Every `load()` is memoized in `LoadCache` (one entry per `(type, key)`). The scope follows
+  the backend: with no `invalidation_backend` it's per-request (no cross-worker concern); pass
+  `setup(invalidation_backend=...)` (e.g. Redis) for process-wide caching plus eviction
+  fan-out across workers.
 
 Full guide: [docs/reactivity.md](../reactivity.md).
 

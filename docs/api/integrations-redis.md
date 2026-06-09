@@ -1,6 +1,6 @@
 # Redis invalidation integration
 
-Reference `InvalidationBackend` for multi-worker `CacheScope.PROCESS` setups.
+Reference `InvalidationBackend` for multi-worker setups. Configuring it also derives cross-request (per worker) caching of `load()` results.
 
 Not exported from top-level `pyjinhx` — import from the integrations submodule:
 
@@ -31,13 +31,12 @@ Publishes dirtied keys over Redis pub/sub so every worker evicts its local `load
 ## With setup
 
 ```python
-from pyjinhx import CacheScope, PjxSettings, setup
+from pyjinhx import PjxSettings, setup
 from pyjinhx.integrations.redis import RedisInvalidationBackend
 
 setup(
     app,
     settings=PjxSettings(
-        cache_scope=CacheScope.PROCESS,
         invalidation_backend=RedisInvalidationBackend("redis://localhost:6379/0"),
     ),
     load_context_factory=...,
@@ -47,7 +46,7 @@ setup(
 Or via environment (`PjxSettings.from_env()`):
 
 ```bash
-PJX_LOAD_CACHE_SCOPE=process REDIS_URL=redis://localhost:6379/0 uvicorn main:app
+REDIS_URL=redis://localhost:6379/0 uvicorn main:app
 ```
 
 See [Configuration](config.md) and [Cache & Invalidation](cache-invalidation.md).

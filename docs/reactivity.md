@@ -337,22 +337,24 @@ Counter.load()   # cached: no DB, returns an independent copy
 
 ### Cache scope
 
-| Scope | Default | Storage | Cross-request | Multi-worker safe |
-|-------|---------|---------|---------------|-------------------|
-| `REQUEST` | yes | `ContextVar` inside `Registry.request_scope()` | no | yes |
-| `PROCESS` | opt-in | module-level dict per worker | yes | needs invalidation fan-out |
-| `NONE` | opt-in | disabled | — | yes |
+You don't choose a scope — it follows the backend. By default (no `invalidation_backend`),
+caching is per request; configuring a cross-worker backend extends it to cross-request per
+worker process.
+
+| Backend | Storage | Cross-request | Multi-worker safe |
+|---------|---------|---------------|-------------------|
+| none (default) | `ContextVar` inside `Registry.request_scope()` | no | yes |
+| configured | module-level dict per worker, fanned out on mutation | yes | yes (backend keeps workers consistent) |
 
 ```python
-from pyjinhx import CacheScope, setup
+from pyjinhx import setup
 
-setup(app)  # default CacheScope.REQUEST
-setup(app, cache_scope=CacheScope.PROCESS, invalidation_backend=...)  # cross-request per worker
-setup(app, cache_scope=CacheScope.NONE)
+setup(app)  # per-request caching (default, multi-worker safe)
+setup(app, invalidation_backend=...)  # cross-request per worker
 ```
 
 Use `Registry.request_scope()` on every HTTP request (middleware) for instance registry
-isolation and optional request-tier cache when scope is `REQUEST`.
+isolation and the request-tier cache (which dedups the OOB walk regardless of backend).
 
 **Cache identity:** entries are keyed by `(component class, load key)` only. Encode
 tenant or user scope in reactive keys (e.g. `"user:7:todos"`) or ensure `PjxContext`
@@ -373,19 +375,18 @@ def nightly_recalc():
 The cache holds one result per `(type, key)` and returns a fresh copy on every call, so
 callers can mutate what they get back without affecting the cache.
 
-### Multi-worker invalidation (`PROCESS` scope)
+### Multi-worker invalidation
 
-When using `CacheScope.PROCESS` with multiple workers, configure an
-`InvalidationBackend` so `invalidate()` fans out to every process:
+For multi-worker production, configure an `InvalidationBackend` so `invalidate()` fans out
+to every process. This is also what enables cross-request caching per worker:
 
 ```python
-from pyjinhx import CacheScope, PjxSettings, setup
+from pyjinhx import PjxSettings, setup
 from pyjinhx.integrations.redis import RedisInvalidationBackend
 
 setup(
     app,
     settings=PjxSettings(
-        cache_scope=CacheScope.PROCESS,
         invalidation_backend=RedisInvalidationBackend("redis://localhost:6379/0"),
     ),
 )

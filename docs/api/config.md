@@ -9,7 +9,6 @@ def setup(
     app: object | None = None,
     *,
     settings: PjxSettings | None = None,
-    cache_scope: CacheScope = CacheScope.REQUEST,
     invalidation_backend: InvalidationBackend | None = None,
     reactive_dev: bool = False,
     load_context_factory: Callable[[Any], object | None] | None = None,
@@ -38,7 +37,7 @@ Idempotent: a second `setup(app, ...)` on the same app is a no-op.
 
 When `app` is provided, pyjinhx wraps `app.router.lifespan_context`:
 
-1. `configure_pyjinhx(settings)` — cache scope, optional invalidation listener, reactive dev
+1. `configure_pyjinhx(settings)` — derive cache scope from the backend, optional invalidation listener, reactive dev
 2. Your existing lifespan startup (if any)
 3. Serve traffic
 4. Your existing lifespan shutdown
@@ -51,10 +50,11 @@ Does **not** compose deprecated `@app.on_event("startup")` handlers — use the 
 ```python
 @dataclass(frozen=True)
 class PjxSettings:
-    cache_scope: CacheScope = CacheScope.REQUEST
     invalidation_backend: InvalidationBackend | None = None
     reactive_dev: bool = False
 ```
+
+The load-cache scope is not a field — it is derived from `invalidation_backend`. A backend (kept consistent across workers) enables cross-request caching per worker process; without one, `load()` results are cached per request only.
 
 ### from_env
 
@@ -65,9 +65,8 @@ def from_env(cls) -> PjxSettings
 
 | Variable | Default | Effect |
 |----------|---------|--------|
-| `PJX_LOAD_CACHE_SCOPE` | `request` | `CacheScope` for `load()` cache |
+| `REDIS_URL` | unset | Auto-wire `RedisInvalidationBackend` (derives cross-request caching) |
 | `PJX_REACTIVE_DEV` | off | Enable dev guardrails when `1`/`true`/`yes` |
-| `REDIS_URL` | unset | When scope is `process`, auto-wire `RedisInvalidationBackend` |
 
 ## configure_pyjinhx / shutdown_pyjinhx
 
@@ -78,23 +77,23 @@ configure_pyjinhx(settings)   # startup
 shutdown_pyjinhx()            # shutdown
 ```
 
-Invalidation backend starts only when `cache_scope == PROCESS` and a backend is configured.
+When an `invalidation_backend` is configured, its listener starts and cross-request (process-wide) caching is enabled; otherwise caching is per-request.
 
 ## pyjinhx_lifespan
 
 Sync context manager for non-ASGI tests and scripts:
 
 ```python
-with pyjinhx_lifespan(cache_scope=CacheScope.REQUEST):
+with pyjinhx_lifespan():
     ...
 ```
 
-## Environment defaults
+## Cache defaults
 
-Default **`CacheScope.REQUEST`** — multi-worker safe without Redis. Opt into cross-request caching:
+By default (no backend), `load()` caching is **per request** — multi-worker safe without Redis. Pass an `invalidation_backend` to opt into cross-request caching per worker process:
 
 ```python
-setup(app, cache_scope=CacheScope.PROCESS, invalidation_backend=...)
+setup(app, invalidation_backend=...)
 ```
 
 See [Cache & Invalidation](cache-invalidation.md) and [Redis integration](integrations-redis.md).
