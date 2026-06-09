@@ -75,6 +75,21 @@ Collect all `.css` files under `root`.
 
 **Returns:** A sorted list of CSS file paths.
 
+##### layout_asset_tags()
+
+```python
+def layout_asset_tags(*, resolver: Callable[[str], str]) -> Markup
+```
+
+Emit `<link>` and `<script src>` tags for every component asset discovered under `root`. Use in layout shells to preload all component assets instead of per-page discovery.
+
+**Parameters:**
+- `resolver` (Callable[[str], str]): Maps an absolute asset path to its public URL (e.g. from `make_default_asset_url_resolver`).
+
+**Returns:** A `Markup` string of `<link>` and `<script>` tags.
+
+See also [Assets API](assets-api.md#finderlayout_asset_tags).
+
 #### Static Methods
 
 ##### get_class_directory()
@@ -143,15 +158,16 @@ Return the first search path from a Jinja `FileSystemLoader`.
 
 **Returns:** The first search path directory.
 
-##### detect_root_directory()
+## detect_root_directory
 
 ```python
-@staticmethod
 def detect_root_directory(
     start_directory: str | None = None,
     project_markers: list[str] | None = None,
 ) -> str
 ```
+
+Free function in `pyjinhx.utils` (not a `Finder` method): `from pyjinhx.utils import detect_root_directory`. Used internally to locate the project root.
 
 Find the project root by walking upward until a marker file is found.
 

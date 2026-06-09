@@ -8,7 +8,7 @@ See [Reactivity](../reactivity.md) for conceptual documentation and usage patter
 
 ```python
 class ReactiveComponent(BaseComponent):
-    reacts_to: ClassVar[frozenset[str]]
+    reacts_to: ClassVar[set[str]]
 ```
 
 Base class for components that reload from application state via a `load()` classmethod and participate in out-of-band HTMX swaps.
@@ -36,6 +36,8 @@ Cls.render(*args, **kwargs) -> Markup
 ```
 
 Auto-`load()`s the primary, renders it, and appends OOB swaps when a `ClientBackend` is active and `@mutates` left pending keys.
+
+Raises `TypeError` if called with arguments on a type-singleton, or without the key argument on an instance-keyed type.
 
 **Instance method:**
 
