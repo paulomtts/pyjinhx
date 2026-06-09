@@ -183,9 +183,7 @@ class ReactiveComponent(BaseComponent):
 
     reacts_to: ClassVar[set[str]] = set()
     state_hash_exclude: ClassVar[frozenset[str]] = frozenset({"id"})
-    # In-flight loading indicator while this region reloads: "skeleton" (silhouette
-    # shimmer) or "spinner" (dim overlay + circular progress). None = no indicator.
-    loading: ClassVar[str | None] = None
+    loading: ClassVar[str | None] = None  # "skeleton" | "spinner"
 
     _pjx_key: str | None = PrivateAttr(default=None)
 

@@ -103,10 +103,7 @@
         if (!pjxReacts(el).some(function (key) { return dirty[key]; })) {
           return;
         }
-        // Instance-keyed regions (data-pjx-load) share reacts_to across every instance,
-        // so reacts-matching alone can't tell which one will change. Flag only the keyed
-        // instance whose load key matches the trigger's; singletons (no data-pjx-load)
-        // are flagged by reacts_to as usual.
+        // keyed regions: flag only the instance matching the trigger's load key
         var elLoad = el.getAttribute("data-pjx-load");
         if (elLoad !== null && elLoad !== triggerLoad) {
           return;

@@ -59,5 +59,4 @@ def test_runtime_has_loading_indicator_logic():
     assert "pjx-loading--spinner" in source
     assert "pjx-spin" in source
     assert "data-pjx-reacts" in source
-    # instance-keyed regions are scoped by load key, not flagged indiscriminately
     assert "triggerLoad" in source
