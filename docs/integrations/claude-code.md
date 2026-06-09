@@ -129,7 +129,7 @@ definition-time error):
 
 ```python
 from typing import Annotated, ClassVar
-from pyjinhx import PjxLoad, ReactiveComponent, mutates
+from pyjinhx import PjxKey, ReactiveComponent, mutates
 
 class Counter(ReactiveComponent):
     remaining: int
@@ -150,7 +150,7 @@ class Counter(ReactiveComponent):
   the one the client reported.
 - Roots are auto-stamped with `data-pjx-id` / `data-pjx-type` / `data-pjx-hash` /
   `data-pjx-reacts` (the space-joined `reacts_to` keys, which `pjx.js` reads to scope
-  loading indicators) — plus `data-pjx-load` when keyed via `PjxLoad`. A reactive component
+  loading indicators) — plus `data-pjx-load` when keyed via `PjxKey`. A reactive component
   **must render a single root element**.
 
 ### Mutation routes return `render()` — nothing else
@@ -193,12 +193,12 @@ on every HTMX request.
 ### Instance-keyed regions (rows)
 
 A component is **instance-keyed iff `load()` takes one argument after `cls`**. Declare
-exactly one `Annotated[..., PjxLoad()]` field — its value is stamped as `data-pjx-load`
+exactly one `Annotated[..., PjxKey()]` field — its value is stamped as `data-pjx-load`
 and returned in the manifest as `load` for OOB reloads.
 
 ```python
 class TodoItemRow(ReactiveComponent):
-    todo_id: Annotated[int, PjxLoad()]
+    todo_id: Annotated[int, PjxKey()]
     title: str = ""
     reacts_to: ClassVar[set[str]] = {"todos"}
 
@@ -215,7 +215,7 @@ def toggle_row(todo_id: int):
 ```
 
 - **`render(todo_id)` → `load(todo_id)`** automatically. Set explicit `id` in `load()` for
-  stable DOM targets (e.g. `row-42`). Templates use the `PjxLoad` field:
+  stable DOM targets (e.g. `row-42`). Templates use the `PjxKey` field:
   `hx-post="/rows/{{ todo_id }}/toggle"`.
 - **`@mutates("todos")`** on store methods dirties collection-tier state; OOB pub-sub reloads
   every mounted region whose `reacts_to` intersects, with hash-gating skipping unchanged regions.
@@ -337,7 +337,7 @@ my_app/
 ```python
 from pyjinhx import (
     BaseComponent, ReactiveComponent, Renderer, Registry,
-    PjxLoad, mutates, client_script, setup,
+    PjxKey, mutates, client_script, setup,
 )
 # advanced/internal building blocks live in submodules:
 from pyjinhx.finder import Finder
@@ -351,7 +351,7 @@ from pyjinhx.builtins import Alert, Modal, Panel, PanelTrigger, TabGroup  # …
 
 - `BaseComponent` — base class for all components
 - `ReactiveComponent` — dependency-aware components (`reacts_to` + `load()`); `Cls.render(*args)` is the route entry point
-- `PjxLoad` — `Annotated[..., PjxLoad()]` marker for keyed `data-pjx-load` / manifest `load`
+- `PjxKey` — `Annotated[..., PjxKey()]` marker for keyed `data-pjx-load` / manifest `load`
 - `mutates` — decorator on store methods; state keys only (`@mutates("todos")`)
 - `setup` — wires FastAPI middleware (`Registry.request_scope`, `ClientBackend`, `LoadContext`)
 - `Renderer` — renders strings with PascalCase tags or manages environments

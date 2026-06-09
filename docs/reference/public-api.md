@@ -25,7 +25,7 @@ These 13 symbols are the entire top-level public API; advanced/internal building
 |--------|-------------|---------------|
 | `mutates()` | Decorator: invalidate cache and accumulate dirtied keys after mutation | [Mutations, Keys & LoadContext](../api/mutations-keys-context.md#mutates) |
 | `StateKey` | Base `StrEnum` for app-level reactive key constants | [Mutations, Keys & LoadContext](../api/mutations-keys-context.md#statekey) |
-| `PjxLoad` | Marker for `Annotated[..., PjxLoad()]` fields stamped as `data-pjx-load` | [Mutations, Keys & LoadContext](../api/mutations-keys-context.md#pjxload) |
+| `PjxKey` | Marker for `Annotated[..., PjxKey()]` fields stamped as `data-pjx-load` | [Mutations, Keys & LoadContext](../api/mutations-keys-context.md#pjxload) |
 | `LoadContext` | Opaque base dataclass for request-scoped `load()` data | [Mutations, Keys & LoadContext](../api/mutations-keys-context.md#loadcontext) |
 
 ## Configuration

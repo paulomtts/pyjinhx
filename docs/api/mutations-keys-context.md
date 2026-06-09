@@ -20,21 +20,21 @@ class Keys(StateKey):
     TODOS = "todos"
 ```
 
-## PjxLoad
+## PjxKey
 
 ```python
-class PjxLoad:
+class PjxKey:
     ...
 ```
 
-Marker for `Annotated[..., PjxLoad()]`. Keyed components declare exactly one `PjxLoad` field; its value is stamped as `data-pjx-load` on render and returned in the client manifest as `load` for OOB `load()` round-trip.
+Marker for `Annotated[..., PjxKey()]`. Keyed components declare exactly one `PjxKey` field; its value is stamped as `data-pjx-load` on render and returned in the client manifest as `load` for OOB `load()` round-trip.
 
 ```python
 from typing import Annotated
-from pyjinhx import PjxLoad, ReactiveComponent
+from pyjinhx import PjxKey, ReactiveComponent
 
 class ItemRow(ReactiveComponent):
-    todo_id: Annotated[int, PjxLoad()]
+    todo_id: Annotated[int, PjxKey()]
     reacts_to: ClassVar[set[str]] = {"todos"}
 
     @classmethod

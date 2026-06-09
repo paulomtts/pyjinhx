@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Annotated, ClassVar, Optional
 
-from pyjinhx import BaseComponent, LoadContext, PjxLoad, ReactiveComponent
+from pyjinhx import BaseComponent, LoadContext, PjxKey, ReactiveComponent
 
 from .keys import Keys
 
@@ -23,7 +23,7 @@ def _store():
 
 
 class ItemRow(ReactiveComponent):
-    todo_id: Annotated[int, PjxLoad()]
+    todo_id: Annotated[int, PjxKey()]
     title: str = ""
     done: bool = False
     reacts_to: ClassVar[set[str]] = {Keys.TODOS}

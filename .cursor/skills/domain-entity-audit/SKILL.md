@@ -30,7 +30,7 @@ Read: [CONVENTIONS.md](../code-audit-sweep/CONVENTIONS.md).
 | Cross-worker fan-out | `InvalidationBackend` + `InvalidationHub` | Redis in `reactive/` |
 | Client manifest | `MountedManifest` | loose dict parsing only |
 | Trigger region | `TriggerManifest` | ad-hoc trigger header parsing |
-| Load round-trip marker | `PjxLoad` | magic `{{ key }}` template injection |
+| Load round-trip marker | `PjxKey` | magic `{{ key }}` template injection |
 | Loaded asset URLs | `LoadedAssets` | `parse_loaded_assets()` |
 | OOB swap walk | functions in `oob.py` | `OobSwaps` class (algorithm, not entity) |
 | Dev guardrails | module functions + `_DevConfig` | public class |

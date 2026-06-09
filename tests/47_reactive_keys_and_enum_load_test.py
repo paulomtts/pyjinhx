@@ -1,7 +1,7 @@
 from enum import Enum
 from typing import Annotated, ClassVar
 
-from pyjinhx import PjxLoad, ReactiveComponent
+from pyjinhx import PjxKey, ReactiveComponent
 from pyjinhx.cache import LoadCache
 from pyjinhx.reactive import oob_swaps
 from pyjinhx.keys import (
@@ -27,7 +27,7 @@ class TodoId(Enum):
 
 
 class EnumRow(ReactiveComponent):
-    row_key: Annotated[str, PjxLoad()]
+    row_key: Annotated[str, PjxKey()]
     label: str = ""
     reacts_to: ClassVar[set[str | StateKey]] = {StateKey.ROW}
 

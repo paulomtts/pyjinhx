@@ -162,14 +162,14 @@ not smeared across endpoints. Adding a progress bar that declares
 
 A reactive type can have **many mounted instances** — table rows, cards, list items.
 A component is **instance-keyed iff its `load()` takes one resource parameter after
-`cls`**; declare exactly one `PjxLoad` field on the model:
+`cls`**; declare exactly one `PjxKey` field on the model:
 
 ```python
 from typing import Annotated
-from pyjinhx import PjxLoad, ReactiveComponent
+from pyjinhx import PjxKey, ReactiveComponent
 
 class TodoItemRow(ReactiveComponent):
-    todo_id: Annotated[int, PjxLoad()]
+    todo_id: Annotated[int, PjxKey()]
     title: str = ""
     done: bool = False
     reacts_to: ClassVar[set[str]] = {"todos"}
@@ -185,7 +185,7 @@ class TodoItemRow(ReactiveComponent):
         )
 ```
 
-- **`data-pjx-load`** is stamped from the `PjxLoad` field and returned in the manifest
+- **`data-pjx-load`** is stamped from the `PjxKey` field and returned in the manifest
   so OOB reloads call `load(manifest.load)`.
 - **Templates** use the field directly: `hx-post="/rows/{{ todo_id }}/toggle"`.
 - **`reacts_to`** lists **state keys only** (e.g. `{"todos"}`). Pub-sub OOB reloads

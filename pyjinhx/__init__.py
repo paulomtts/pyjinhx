@@ -14,7 +14,7 @@ from pyjinhx.config import PyJinhxSettings, setup
 from pyjinhx.context import LoadContext
 from pyjinhx.keys import StateKey
 from pyjinhx.mutations import mutates
-from pyjinhx.reactive import PjxLoad, ReactiveComponent
+from pyjinhx.reactive import PjxKey, ReactiveComponent
 from pyjinhx.registry import Registry
 from pyjinhx.renderer import Renderer
 
@@ -29,7 +29,7 @@ __all__ = [
     # Reactive authoring
     "mutates",
     "StateKey",
-    "PjxLoad",
+    "PjxKey",
     "LoadContext",
     # Configuration
     "PyJinhxSettings",

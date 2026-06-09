@@ -23,7 +23,7 @@ Read: [CONVENTIONS.md](../code-audit-sweep/CONVENTIONS.md).
 |-----------|-------|-----------------|
 | ContextVar + locks + process/request state | Class with `@classmethod` | `LoadCache`, `MutationTracker`, `InvalidationHub`, `ClientBackend` |
 | Request-scoped opaque DI bag | Static methods on frozen dataclass base | `LoadContext` |
-| Pure input → output | Module functions | `coerce_reactive_key`, `pjx_load_field_names`, `PjxLoad` validation |
+| Pure input → output | Module functions | `coerce_reactive_key`, `pjx_load_field_names`, `PjxKey` validation |
 | Decorator ergonomics | Module decorator → class method | `@mutates` → `MutationTracker.record` |
 | Plugin extension point | ABC, no hub state | `InvalidationBackend` |
 | Runtime coordinator | Hub class | `InvalidationHub` |

@@ -3,7 +3,7 @@ from typing import Annotated, ClassVar
 
 import pytest
 
-from pyjinhx import PjxLoad, ReactiveComponent, Registry
+from pyjinhx import PjxKey, ReactiveComponent, Registry
 from pyjinhx.cache import LoadCache
 from pyjinhx.context import (
     LoadContext,
@@ -26,7 +26,7 @@ class CtxSingleton(ReactiveComponent):
 
 
 class CtxKeyed(ReactiveComponent):
-    row_key: Annotated[str, PjxLoad()]
+    row_key: Annotated[str, PjxKey()]
     label: str = ""
     reacts_to: ClassVar[set[str]] = {"row"}
 

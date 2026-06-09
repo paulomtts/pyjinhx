@@ -369,10 +369,10 @@ def toggle_row(todo_id: int):
 
 ```python
 from typing import Annotated
-from pyjinhx import PjxLoad
+from pyjinhx import PjxKey
 
 class TodoItemRow(ReactiveComponent):
-    todo_id: Annotated[int, PjxLoad()]
+    todo_id: Annotated[int, PjxKey()]
     title: str = ""
     done: bool = False
     reacts_to: ClassVar[set[str]] = {Keys.TODOS}
@@ -398,8 +398,8 @@ Template (note `data-pjx-loading` — covered in Step 11):
 </li>
 ```
 
-???+ question "Why PjxLoad and load(cls, todo_id)?"
-    A parameter after `cls` makes the type **instance-keyed**. `PjxLoad` stamps `data-pjx-load` for OOB round-trip. Use the same field in templates (`{{ todo_id }}`). `reacts_to = {Keys.TODOS}` is pub-sub — all mounted rows with matching state keys may OOB-reload when todos change.
+???+ question "Why PjxKey and load(cls, todo_id)?"
+    A parameter after `cls` makes the type **instance-keyed**. `PjxKey` stamps `data-pjx-load` for OOB round-trip. Use the same field in templates (`{{ todo_id }}`). `reacts_to = {Keys.TODOS}` is pub-sub — all mounted rows with matching state keys may OOB-reload when todos change.
 
 ---
 
@@ -555,7 +555,7 @@ The per-step **Why?** panels above cover the *why*; this is the at-a-glance *wha
 
 | Tier | Pieces |
 |------|--------|
-| **Required** | `set_default_environment` · `Registry.request_scope()` middleware · root full-page render · HTMX in layout · `ReactiveComponent` (`reacts_to` + `load()`) · `@mutates(Keys.…)` on mutations · `setup()` (wires `FastAPIClientBackend`) · `PjxLoad` on keyed rows |
+| **Required** | `set_default_environment` · `Registry.request_scope()` middleware · root full-page render · HTMX in layout · `ReactiveComponent` (`reacts_to` + `load()`) · `@mutates(Keys.…)` on mutations · `setup()` (wires `FastAPIClientBackend`) · `PjxKey` on keyed rows |
 | **Recommended** | `LoadContext` · `data-pjx-loading` indicators · `enable_reactive_dev()` in dev |
 | **Production** | `AssetMode.REFERENCE` + URL resolver · `InvalidationBackend` for multi-worker `PROCESS` cache |
 
