@@ -4,7 +4,7 @@ import tempfile
 from jinja2 import Environment, FileSystemLoader
 
 from pyjinhx import Registry
-from pyjinhx.core.renderer import Renderer
+from pyjinhx.renderer import Renderer
 
 
 def test_fallback_basecomponent_not_registered():

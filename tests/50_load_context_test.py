@@ -4,7 +4,7 @@ from typing import Annotated, ClassVar
 import pytest
 
 from pyjinhx import LoadCache, PjxLoad, ReactiveComponent, Registry
-from pyjinhx.reactive.context import (
+from pyjinhx.context import (
     LoadContext,
     resolve_load_context_param,
 )

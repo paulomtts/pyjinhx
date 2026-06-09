@@ -4,7 +4,7 @@ from typing import ClassVar
 import pytest
 
 from pyjinhx import LoadCache, ReactiveComponent, Registry, Renderer, enable_reactive_dev, oob_swaps
-from pyjinhx.reactive.dev import disable_reactive_dev
+from pyjinhx.dev import disable_reactive_dev
 from tests.ui.reactive.conditional_panel import ConditionalPanel  # noqa: F401
 from tests.ui.reactive.dynamic_widget import DynamicWidget
 from tests.ui.reactive.store import state

@@ -6,7 +6,7 @@ from contextvars import ContextVar
 from typing import Any, ClassVar, TypeVar
 
 from .keys import ReactiveKey, coerce_reactive_keys
-from .load_cache import LoadCache
+from .cache import LoadCache
 
 F = TypeVar("F", bound=Callable[..., Any])
 

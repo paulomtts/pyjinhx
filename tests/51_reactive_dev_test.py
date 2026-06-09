@@ -5,7 +5,7 @@ import pytest
 
 from pyjinhx import ReactiveComponent, Registry, mutates
 from pyjinhx import LoadCache
-from pyjinhx.reactive.dev import (
+from pyjinhx.dev import (
     dependency_graph,
     disable_reactive_dev,
     enable_reactive_dev,
@@ -52,8 +52,8 @@ def test_strict_mutations_without_render_raises():
 
 
 def test_warn_render_without_client(caplog):
-    from pyjinhx.reactive.dev import warn_reactive_render_without_client
-    from pyjinhx.reactive.mutations import MutationTracker
+    from pyjinhx.dev import warn_reactive_render_without_client
+    from pyjinhx.mutations import MutationTracker
 
     enable_reactive_dev()
     MutationTracker.clear()

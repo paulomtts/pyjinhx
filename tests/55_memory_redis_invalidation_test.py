@@ -1,6 +1,6 @@
 from pyjinhx import CacheScope, LoadCache
 from pyjinhx.integrations.redis import MEMORY_REDIS_URL, RedisInvalidationBackend
-from pyjinhx.reactive.invalidation import InvalidationHub
+from pyjinhx.cache import InvalidationHub
 from tests.ui.reactive.cached_widget import CachedWidget, load_calls
 
 

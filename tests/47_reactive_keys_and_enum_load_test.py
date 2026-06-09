@@ -2,7 +2,7 @@ from enum import Enum
 from typing import Annotated, ClassVar
 
 from pyjinhx import LoadCache, PjxLoad, ReactiveComponent, oob_swaps
-from pyjinhx.reactive.keys import (
+from pyjinhx.keys import (
     coerce_load_key_str,
     coerce_reactive_key,
     coerce_reactive_keys,

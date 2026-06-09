@@ -1,13 +1,12 @@
 import inspect
 import os
+from collections.abc import Callable
 from dataclasses import dataclass, field
 
 from jinja2 import FileSystemLoader
 from markupsafe import Markup
 
-from .assets import AssetUrlResolver
-
-from ..utils import (
+from .utils import (
     normalize_path_separators,
     pascal_case_to_kebab_case,
     pascal_case_to_snake_case,
@@ -248,7 +247,7 @@ class Finder:
     def layout_asset_tags(
         self,
         *,
-        resolver: AssetUrlResolver,
+        resolver: Callable[[str], str],
     ) -> Markup:
         """Return link/script tags for every component asset under ``self.root``."""
         lines: list[str] = []

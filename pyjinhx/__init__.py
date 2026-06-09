@@ -1,4 +1,4 @@
-from pyjinhx.core.assets import (
+from pyjinhx.assets import (
     AssetManifest,
     AssetMode,
     DEFAULT_RUNTIME_URL,
@@ -10,12 +10,12 @@ from pyjinhx.core.assets import (
     resolver_with_hash,
     runtime_asset_path,
 )
-from pyjinhx.core.base import BaseComponent
-from pyjinhx.core.finder import Finder
-from pyjinhx.core.parser import Parser
-from pyjinhx.core.registry import Registry
-from pyjinhx.core.renderer import Renderer
-from pyjinhx.core.tag import Tag
+from pyjinhx.base import BaseComponent
+from pyjinhx.finder import Finder
+from pyjinhx.tags import Parser
+from pyjinhx.registry import Registry
+from pyjinhx.renderer import Renderer
+from pyjinhx.tags import Tag
 from pyjinhx.config import (
     PyJinhxSettings,
     configure_pyjinhx,
@@ -24,30 +24,29 @@ from pyjinhx.config import (
     shutdown_pyjinhx,
 )
 from pyjinhx.integrations.fastapi import FastAPIClientBackend
-from pyjinhx.reactive.backend import ClientBackend
-from pyjinhx.reactive.component import ReactiveComponent
-from pyjinhx.reactive.context import LoadContext
-from pyjinhx.reactive.dev import (
-    dependency_graph,
-    disable_reactive_dev,
-    enable_reactive_dev,
-    format_dependency_graph,
-)
-from pyjinhx.reactive.invalidation import InvalidationBackend, InvalidationHub
-from pyjinhx.reactive.keys import StateKey
-from pyjinhx.reactive.load_cache import CacheScope, LoadCache
-from pyjinhx.reactive.mutations import MutationTracker, mutates
-from pyjinhx.reactive.oob import oob_swaps
-from pyjinhx.reactive.payload import (
+from pyjinhx.client import (
+    ClientBackend,
     LoadedAssets,
     MountedManifest,
     PJX_ASSETS_HEADER,
     PJX_MOUNTED_HEADER,
     PJX_TRIGGER_HEADER,
     TriggerManifest,
+    client_script,
 )
-from pyjinhx.reactive.pjx_load import PjxLoad
-from pyjinhx.reactive.runtime import client_script
+from pyjinhx.reactive import ReactiveComponent
+from pyjinhx.context import LoadContext
+from pyjinhx.dev import (
+    dependency_graph,
+    disable_reactive_dev,
+    enable_reactive_dev,
+    format_dependency_graph,
+)
+from pyjinhx.cache import CacheScope, InvalidationBackend, InvalidationHub, LoadCache
+from pyjinhx.keys import StateKey
+from pyjinhx.mutations import MutationTracker, mutates
+from pyjinhx.reactive import oob_swaps
+from pyjinhx.reactive import PjxLoad
 
 __all__ = [
     "AssetManifest",

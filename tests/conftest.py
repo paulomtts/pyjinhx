@@ -4,8 +4,8 @@ from typing import Any
 import pytest
 
 from pyjinhx import CacheScope, ClientBackend, LoadCache, MutationTracker, Registry, shutdown_pyjinhx
-from pyjinhx.core.assets import RenderSession
-from pyjinhx.reactive.invalidation import InvalidationHub
+from pyjinhx.assets import RenderSession
+from pyjinhx.cache import InvalidationHub
 
 
 def _noop_inject_runtime(
@@ -22,7 +22,7 @@ def _suppress_pjx_runtime_injection(request: pytest.FixtureRequest, monkeypatch:
     if request.node.get_closest_marker("pjx_runtime"):
         return
     monkeypatch.setattr(
-        "pyjinhx.core.render_assets.inject_runtime",
+        "pyjinhx.assets.inject_runtime",
         _noop_inject_runtime,
     )
 

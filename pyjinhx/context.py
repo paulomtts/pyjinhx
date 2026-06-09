@@ -28,38 +28,26 @@ def _resolved_hints(func: Callable[..., Any], owner: type[Any] | None = None) ->
         return {}
 
 
-def _is_load_context_type(annotation: Any) -> bool:
+def _is_load_context(annotation: Any) -> bool:
+    """True if ``annotation`` is ``LoadContext`` or a subclass, including ``X | None``."""
     if annotation is inspect.Parameter.empty or annotation is None:
         return False
-
     origin = get_origin(annotation)
+    if origin in (Union, UnionType):
+        return any(
+            _is_load_context(arg)
+            for arg in get_args(annotation)
+            if arg is not NoneType
+        )
     if origin is not None:
-        if origin in (Union, UnionType):
-            return any(
-                _is_load_context_type(arg) for arg in get_args(annotation) if arg is not NoneType
-            )
         return False
-
-    if annotation is LoadContext:
-        return True
-
-    if not isinstance(annotation, type):
-        return False
-
-    try:
-        return issubclass(annotation, LoadContext)
-    except TypeError:
-        return False
+    return isinstance(annotation, type) and issubclass(annotation, LoadContext)
 
 
-def _is_load_context_param(
-    param: inspect.Parameter,
-    hints: dict[str, Any],
-) -> bool:
+def _is_load_context_param(param: inspect.Parameter, hints: dict[str, Any]) -> bool:
     if param.name == "cls":
         return False
-    annotation = hints.get(param.name, param.annotation)
-    return _is_load_context_type(annotation)
+    return _is_load_context(hints.get(param.name, param.annotation))
 
 
 def resolve_load_context_param(

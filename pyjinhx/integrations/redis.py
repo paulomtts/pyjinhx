@@ -13,7 +13,7 @@ import threading
 from collections.abc import Callable
 from typing import Any
 
-from pyjinhx.reactive.invalidation import InvalidationBackend
+from pyjinhx.cache import InvalidationBackend
 
 logger = logging.getLogger(__name__)
 
