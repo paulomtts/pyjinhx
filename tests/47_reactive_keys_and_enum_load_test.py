@@ -1,37 +1,17 @@
 from enum import Enum
-from typing import ClassVar
+from typing import Annotated, ClassVar
 
-from pyjinhx import ReactiveComponent, LoadCache, oob_swaps
+from pyjinhx import LoadCache, PjxLoad, ReactiveComponent, oob_swaps
 from pyjinhx.reactive.keys import (
     coerce_load_key_str,
     coerce_reactive_key,
     coerce_reactive_keys,
-    interpolate_reactive_keys,
 )
 
 
 class StateKey(str, Enum):
     TODOS = "todos"
     ROW = "row"
-
-
-def test_singleton_keys_pass_through():
-    assert interpolate_reactive_keys({"todos"}, None) == {"todos"}
-
-
-def test_keyed_single_stem_expands():
-    assert interpolate_reactive_keys({"todo"}, "42", keyed=True) == {"todo:42"}
-
-
-def test_keyed_plural_sibling_splits_instance_and_collection():
-    assert interpolate_reactive_keys({"user", "users"}, "2", keyed=True) == {
-        "user:2",
-        "users",
-    }
-
-
-def test_legacy_key_placeholder_still_works():
-    assert interpolate_reactive_keys({"todo:{key}"}, "7", keyed=True) == {"todo:7"}
 
 
 def test_coerce_reactive_key_unwraps_enum():
@@ -45,12 +25,13 @@ class TodoId(Enum):
 
 
 class EnumRow(ReactiveComponent):
+    row_key: Annotated[str, PjxLoad()]
     label: str = ""
     reacts_to: ClassVar[set[str | StateKey]] = {StateKey.ROW}
 
     @classmethod
     def load(cls, key: str) -> "EnumRow":
-        return cls(label=f"row {key}")
+        return cls(row_key=str(key), label=f"row {key}")
 
 
 def test_reacts_to_coerces_enums_at_class_definition():

@@ -317,19 +317,17 @@ class TodoApp(BaseComponent):
 `keys.py`:
 
 ```python
-from pyjinhx.keys import StateKey
+from pyjinhx import StateKey
 
 
 class Keys(StateKey):
     TODOS = "todos"
-    TODO = "todo"
 ```
 
 `store.py`:
 
 ```python
-from pyjinhx import mutates, mutation_scope
-from pyjinhx.keys import dirty_keys
+from pyjinhx import mutates
 
 from .keys import Keys
 
@@ -339,9 +337,9 @@ def add(text: str) -> None:
     ...
 
 
+@mutates(Keys.TODOS)
 def toggle(todo_id: int) -> None:
-    with mutation_scope(*dirty_keys(Keys.TODO, todo_id, Keys.TODOS)):
-        ...
+    ...
 ```
 
 Route:
@@ -353,10 +351,9 @@ def toggle_row(todo_id: int):
     return TodoItemRow.render(todo_id)
 ```
 
-???+ question "Why @mutates, dirty_keys, and ClientBackend?"
-    - **`@mutates` / `mutation_scope`** — after a store change, invalidate the `load()` cache and accumulate `dirtied` keys for the next reactive render.
-    - **`dirty_keys("todo", id, "todos")`** — instance-keyed rows need **both** the row key (`todo:42`) and collection keys (`todos`). Invalidating only `"todo"` is not enough for cache entries stored under `todo:42`.
-    - **`ClientBackend`** (wired in middleware) — supplies `X-PJX-Mounted` automatically after mutations so OOB swaps run without `mounted=request` on every route.
+???+ question "Why @mutates and ClientBackend?"
+    - **`@mutates`** — after a store change, invalidate the `load()` cache and accumulate pending state keys for the next reactive `render()`.
+    - **`ClientBackend`** (wired via `setup()`) — supplies `X-PJX-Mounted`, `X-PJX-Trigger`, and `X-PJX-Assets` so OOB swaps run without framework kwargs on `render()`.
 
     `render()` on the **class** auto-calls `load()` — routes never call `load()` manually.
 
@@ -365,31 +362,38 @@ def toggle_row(todo_id: int):
 ## Step 10 — Instance-keyed rows
 
 ```python
+from typing import Annotated
+from pyjinhx import PjxLoad
+
 class TodoItemRow(ReactiveComponent):
+    todo_id: Annotated[int, PjxLoad()]
     title: str = ""
     done: bool = False
-    reacts_to: ClassVar[set[str]] = {Keys.TODO}
+    reacts_to: ClassVar[set[str]] = {Keys.TODOS}
 
     @classmethod
-    def load(cls, key: int) -> "TodoItemRow":
-        todo = store.get(key)
-        return cls(id=f"todo-row-{key}", title=todo.text, done=todo.done)
+    def load(cls, todo_id: int) -> "TodoItemRow":
+        todo = store.get(todo_id)
+        return cls(
+            id=f"row-{todo_id}",
+            todo_id=todo_id,
+            title=todo.text,
+            done=todo.done,
+        )
 ```
 
 Template:
 
 ```html
 <li>
-  <button hx-post="/rows/{{ key }}/toggle"
+  <button hx-post="/rows/{{ todo_id }}/toggle"
           hx-target="closest [data-pjx-id]" hx-swap="outerHTML">toggle</button>
   <span>{{ title }}</span>
 </li>
 ```
 
-???+ question "Why load(cls, key) and id=f\"todo-row-{key}\"?"
-    A parameter after `cls` makes the type **instance-keyed** — many rows, each with its own reactive identity. Give each row a **unique `id`** so the instance registry and DOM stamps don't collide (otherwise every row would register as the same key).
-
-    `reacts_to = {Keys.TODO}` uses the instance stem; the library expands it to `todo:<key>` for cache and dependency matching.
+???+ question "Why PjxLoad and load(cls, todo_id)?"
+    A parameter after `cls` makes the type **instance-keyed**. `PjxLoad` stamps `data-pjx-load` for OOB round-trip. Use the same field in templates (`{{ todo_id }}`). `reacts_to = {Keys.TODOS}` is pub-sub — all mounted rows with matching state keys may OOB-reload when todos change.
 
 ---
 
@@ -397,27 +401,23 @@ Template:
 
 ```python
 from dataclasses import dataclass
-from pyjinhx.load_context import get_load_context
+from pyjinhx import LoadContext
 
 
 @dataclass(frozen=True)
-class AppLoadContext:
+class AppLoadContext(LoadContext):
     store: object
 
 
 def _store():
-    ctx = get_load_context()
+    ctx = LoadContext.current()
     return ctx.store if isinstance(ctx, AppLoadContext) else store
 ```
 
-Extend the Step 6 middleware:
+Pass a factory to `setup()` (Step 6):
 
 ```python
-with Registry.request_scope(
-    load_context=AppLoadContext(store=store),
-    client_backend=fastapi_client_backend(request),
-):
-    return await call_next(request)
+setup(app, load_context_factory=lambda request: AppLoadContext(store=store))
 ```
 
 ???+ question "Why LoadContext?"
@@ -451,7 +451,7 @@ setup(
 ```
 
 ???+ question "Why cache at all?"
-    A single page may call `TodoCounter.load()` many times during composition and OOB walks. Caching `(class, key) → component snapshot` avoids repeated store/DB work. **Invalidation** (`@mutates`, `render(dirtied=...)`, or manual `invalidate()`) evicts entries when state changes — cache is a performance layer, not the source of truth.
+    A single page may call `TodoCounter.load()` many times during composition and OOB walks. Caching `(class, load_arg) → component snapshot` avoids repeated store/DB work. **Invalidation** (`@mutates` or `LoadCache.invalidate`) evicts entries when state changes — cache is a performance layer, not the source of truth.
 
     If toggles feel stale, check that mutations dirtied the **instance key** (`todo:42`), not just the stem (`todo`).
 
@@ -489,7 +489,7 @@ print(format_dependency_graph())
 ```
 
 ???+ question "Why enable_reactive_dev?"
-    Reactivity bugs are often silent (missing `mounted=`, wrong keys, `depends_on()` outside `reacts_to`). Dev mode turns those into log warnings or strict exceptions during development.
+    Reactivity bugs are often silent (missing `ClientBackend`, wrong `reacts_to` keys, `depends_on()` outside `reacts_to`). Dev mode turns those into log warnings or strict exceptions during development.
 
 ---
 
@@ -516,8 +516,9 @@ from pyjinhx.builtins import Alert, Button, Card
 | Root full-page render (auto `pjx.js` unless `X-PJX-Mounted` present) | Yes |
 | HTMX in layout | Yes |
 | `ReactiveComponent` + `reacts_to` + `load()` | Yes |
-| `@mutates` / `mutation_scope` + `dirty_keys` for rows | Yes |
-| `fastapi_client_backend` in middleware | Yes |
+| `@mutates(Keys.TODOS)` on store mutations | Yes |
+| `setup()` wires `FastAPIClientBackend` | Yes |
+| `PjxLoad` on keyed row components | Yes |
 | `LoadContext` | Recommended |
 | Assets / REFERENCE mode | Production |
 | Invalidation backend | Multi-worker + PROCESS cache |

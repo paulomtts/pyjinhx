@@ -66,7 +66,7 @@ When `REFERENCE` mode is active, co-located assets and `js`/`css` fields are col
 
 ### Reactive partial suppression
 
-Full-page renders emit assets once at the layout root. Reactive partial responses (`render(..., mounted=...)`) and OOB swaps **never** re-ship assets — matching production expectations where the layout shell loads static files once.
+Full-page renders emit assets once at the layout root. Reactive partial responses and OOB swaps **never** re-ship assets — matching production expectations where the layout shell loads static files once.
 
 ### Client asset dedup (REFERENCE mode, opt-in)
 

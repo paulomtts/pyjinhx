@@ -135,11 +135,11 @@ On entry: clears pending mutations, initializes the request-scoped load cache, a
 **Usage:**
 
 ```python
-from pyjinhx import Registry
+from pyjinhx import FastAPIClientBackend, Registry
 
 with Registry.request_scope(
     load_context=AppLoadContext(db=session),
-    client_backend=fastapi_client_backend(request),
+    client_backend=FastAPIClientBackend(request),
 ):
     # Components registered here are isolated to this scope
     button = Button(id="submit-btn", text="Submit")

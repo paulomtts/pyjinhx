@@ -178,11 +178,16 @@ def test_reactive_partial_still_emits_no_assets_with_client_header():
             PJX_ASSETS_HEADER: json.dumps(["/static/components/counter.js"]),
         }
     )
-    rendered = str(
-        ReactiveCounter.load().render(
-            dirtied={"todos"}, mounted=manifest, client=client
-        )
-    )
+    from tests.reactive_test_support import reactive_client, record_mutation
+
+    with reactive_client(
+        manifest,
+        extra_headers={
+            PJX_ASSETS_HEADER: json.dumps(["/static/components/counter.js"]),
+        },
+    ):
+        record_mutation("todos")
+        rendered = str(ReactiveCounter.load().render())
 
     assert "<link" not in rendered
     assert "<script" not in rendered

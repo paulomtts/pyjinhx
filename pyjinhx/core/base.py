@@ -7,7 +7,6 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 from .registry import Registry
 from .renderer import Renderer
 from .assets import RenderSession
-from ..reactive.keys import ReactiveKey, coerce_reactive_keys
 
 logger = logging.getLogger("pyjinhx")
 logger.setLevel(logging.WARNING)
@@ -213,13 +212,7 @@ class BaseComponent(BaseModel):
             client=resolved_client,
         )
 
-    def render(
-        self,
-        *,
-        dirtied: set[ReactiveKey] | None = None,
-        mounted: object | None = None,
-        client: object | None = None,
-    ) -> Markup:
+    def render(self) -> Markup:
         """
         Render this component to HTML using its associated Jinja template.
 
@@ -227,45 +220,7 @@ class BaseComponent(BaseModel):
         for `my_button.html` or `my_button.jinja`). All component fields are available in the
         template context, and nested components are rendered recursively.
 
-        With no arguments this is a plain render. Passing ``dirtied`` and/or ``mounted``
-        opts into dependency-aware reactivity: this component is rendered as the primary
-        response, and an out-of-band swap is appended for every other mounted reactive
-        region whose ``reacts_to`` intersects ``dirtied`` (each rebuilt via its own
-        ``load()``). This component's own region is never additionally swapped.
-
-        When ``dirtied`` is omitted it defaults to this component's own ``reacts_to``
-        (empty for a non-reactive primary); pass ``dirtied`` explicitly — including an
-        empty set — to override.
-
-        Args:
-            dirtied: State keys the route mutated (e.g. ``{"todos"}``). Defaults to the
-                primary's ``reacts_to``. Enables reactive mode.
-            mounted: The client manifest — a request-like object, the raw header string,
-                a parsed list, or ``None``. When omitted, uses the request-scoped
-                ``ClientBackend`` after mutations (see ``Registry.request_scope``).
-            client: Request-like object (or raw ``X-PJX-Assets`` JSON) for REFERENCE-mode
-                asset dedup on root renders. When omitted, uses the request-scoped
-                ``ClientBackend``.
-
         Returns:
             The rendered HTML as a Markup object (safe for direct use in templates).
         """
-        from pyjinhx.reactive.backend import ClientBackend
-
-        resolved_client = ClientBackend.resolve_client(client)
-        resolved_mounted = ClientBackend.resolve_mounted(mounted, dirtied=dirtied)
-
-        if dirtied is None and resolved_mounted is None:
-            return self._render(client=resolved_client)
-
-        from pyjinhx.reactive.render import reactive_render_bundle
-
-        own_keys = coerce_reactive_keys(getattr(self, "_pjx_reacts_to", frozenset()))
-        return reactive_render_bundle(
-            primary_html=lambda: self._render(emit_assets=False),
-            own_keys=own_keys,
-            dirtied=dirtied,
-            mounted=resolved_mounted,
-            exclude_ids={self.id},
-            invalidate_before_primary=False,
-        )
+        return self._render()

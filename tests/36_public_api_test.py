@@ -7,6 +7,7 @@ def test_reactive_api_is_exported():
     from pyjinhx import (
         PJX_ASSETS_HEADER,
         PJX_MOUNTED_HEADER,
+        PJX_TRIGGER_HEADER,
         CacheScope,
         ClientBackend,
         FastAPIClientBackend,
@@ -17,7 +18,9 @@ def test_reactive_api_is_exported():
         LoadedAssets,
         MountedManifest,
         MutationTracker,
+        PjxLoad,
         ReactiveComponent,
+        TriggerManifest,
         client_script,
         dependency_graph,
         enable_reactive_dev,
@@ -33,6 +36,7 @@ def test_reactive_api_is_exported():
 
     assert PJX_MOUNTED_HEADER == "X-PJX-Mounted"
     assert PJX_ASSETS_HEADER == "X-PJX-Assets"
+    assert PJX_TRIGGER_HEADER == "X-PJX-Trigger"
     assert callable(oob_swaps)
     assert callable(client_script)
     assert callable(mutates)
@@ -41,6 +45,7 @@ def test_reactive_api_is_exported():
     assert callable(LoadedAssets.parse)
     assert callable(MountedManifest.parse)
     assert callable(MountedManifest.is_present)
+    assert callable(TriggerManifest.parse)
     assert callable(LoadCache.set_scope)
     assert callable(LoadCache.scope)
     assert callable(InvalidationHub.set_backend)
@@ -59,8 +64,6 @@ def test_reactive_api_is_exported():
     assert callable(ClientBackend.current)
     assert callable(LoadContext.current)
     assert callable(LoadContext.bind)
-    assert callable(StateKey.instance_key)
-    assert callable(StateKey.dirty_keys)
     assert callable(MutationTracker.record)
     assert issubclass(ReactiveComponent, pyjinhx.BaseComponent)
     assert issubclass(StateKey, str)
@@ -73,11 +76,13 @@ def test_names_in_all():
         "client_script",
         "LoadedAssets",
         "MountedManifest",
+        "TriggerManifest",
+        "PjxLoad",
         "PJX_MOUNTED_HEADER",
         "PJX_ASSETS_HEADER",
+        "PJX_TRIGGER_HEADER",
         "StateKey",
         "mutates",
-        "mutation_scope",
         "LoadContext",
         "enable_reactive_dev",
         "disable_reactive_dev",

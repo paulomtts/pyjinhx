@@ -1,6 +1,6 @@
 # Client Backend
 
-Per-request HTTP header access for reactive rendering. Wire once in your app's middleware; `render()` reads `X-PJX-Mounted` and `X-PJX-Assets` automatically.
+Per-request HTTP header access for reactive rendering. Wire once in your app's middleware; `render()` reads `X-PJX-Mounted`, `X-PJX-Assets`, and `X-PJX-Trigger` from the active backend.
 
 PyJinHx does **not** ship middleware — you define a thin wrapper (see [FastAPI integration](../integrations/fastapi.md#middleware-recommended)) that calls `Registry.request_scope(client_backend=FastAPIClientBackend(request))`.
 
@@ -21,11 +21,6 @@ class ClientBackend(ABC):
 
     @classmethod
     def resolve_client(cls, explicit: object | None) -> object | None: ...
-
-    @classmethod
-    def resolve_mounted(
-        cls, explicit: object | None, *, dirtied: object | None
-    ) -> object | None: ...
 ```
 
 Abstract base — implement for non-FastAPI frameworks if needed.
@@ -35,8 +30,7 @@ Abstract base — implement for non-FastAPI frameworks if needed.
 | `current()` | Return the active backend for this request, or `None`. |
 | `scope(backend)` | Set the request-scoped backend (usually via `Registry.request_scope`). |
 | `reset()` | Clear the backend. Mainly for tests. |
-| `resolve_client(explicit)` | Return `explicit` if set, else `current()`. Used by `render()`. |
-| `resolve_mounted(explicit, dirtied=...)` | Return `explicit` if set; else `current()` only when reactive mode applies (see below). |
+| `resolve_client(explicit)` | Return `explicit` if set, else `current()`. Used by `_render()` for asset dedup. |
 
 ## FastAPIClientBackend
 
@@ -47,23 +41,17 @@ class FastAPIClientBackend(ClientBackend):
     def __init__(self, request: object) -> None: ...
 ```
 
-Default implementation for FastAPI and Starlette. Wraps `request.headers`. The instance exposes `.headers.get()` for `render()` duck typing. `setup(app, ...)` wires this automatically in middleware.
+Default implementation for FastAPI and Starlette. Wraps `request.headers`. `setup(app, ...)` wires this automatically in middleware.
 
 ## Auto-resolution in render()
 
-When `client=` and `mounted=` are omitted:
+When a `ClientBackend` is active (via `setup()` middleware or `ClientBackend.scope()`):
 
-| Parameter | Resolved from backend when |
-|-----------|---------------------------|
-| `client` | Backend is set (runtime skip, asset dedup) |
-| `mounted` | Backend is set **and** (`dirtied` passed or `@mutates` left pending dirtied) |
+- Root renders use it for asset dedup (`X-PJX-Assets`) and runtime injection gating (`X-PJX-Mounted`).
+- Reactive class/instance `render()` reads the manifest and trigger headers for OOB swaps.
 
-Explicit `client=` / `mounted=` always override the backend.
-
-### Mutation-only `mounted` rule
-
-`mounted` is **not** auto-resolved on every request. It applies only when the render is reactive — i.e. `dirtied` is passed (including via pending `@mutates` keys) — so hx-boost full-page GETs do not accidentally enter the OOB swap path.
+Mutation routes call `Cls.render(*args)` with no framework kwargs — pending keys from `@mutates` drive the OOB walk.
 
 ## Non-FastAPI frameworks
 
-Subclass `ClientBackend` and implement `get_header()`. Pass the instance to `Registry.request_scope(client_backend=...)`. The backend instance should expose `.headers.get()` for duck typing, or pass `mounted=` / `client=` explicitly on each `render()` call.
+Subclass `ClientBackend` and implement `get_header()`. Pass the instance to `Registry.request_scope(client_backend=...)`.

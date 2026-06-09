@@ -143,7 +143,7 @@ def index() -> str:
 If you cannot use `setup(app)`, define middleware yourself — see [Client Backend](../api/client-backend.md) and [Registry guide](../guide/registry.md).
 
 Pair with `@mutates` on store methods so mutation routes can omit explicit `dirtied`
-and `mounted=request` — see [Reactivity](../reactivity.md#mutation-tracking-mutates)
+via `setup()` — see [Reactivity](../reactivity.md#mutation-tracking-mutates)
 and [Client Backend](../api/client-backend.md).
 
 Reactive mutation routes:

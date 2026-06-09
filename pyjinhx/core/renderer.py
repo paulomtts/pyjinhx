@@ -366,11 +366,8 @@ class Renderer:
         )
 
         render_context = dict(context)
-        _key = getattr(component, "_pjx_key", None)
-        if _key is not None:
-            render_context["key"] = _key
         for _instance in Registry.get_instances().values():
-            render_context[_instance.id] = _instance
+            render_context.setdefault(_instance.id, _instance)
 
         rendered_markup = template.render(render_context)
         rendered_markup = expand_custom_tags(
@@ -382,14 +379,16 @@ class Renderer:
         )
 
         if getattr(type(component), "_pjx_reactive", False):
+            from pyjinhx.reactive.pjx_load import pjx_load_value
+
             _attrs = {
                 "data-pjx-id": component.id,
                 "data-pjx-type": type(component).__name__,
                 "data-pjx-hash": component.state_hash(),
             }
-            _key = getattr(component, "_pjx_key", None)
-            if _key is not None:
-                _attrs["data-pjx-key"] = str(_key)
+            _load = pjx_load_value(component)
+            if _load is not None:
+                _attrs["data-pjx-load"] = _load
             rendered_markup = stamp_root_attributes(rendered_markup, _attrs)
 
         if not emit_assets:

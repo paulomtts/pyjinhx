@@ -13,6 +13,9 @@ PJX_MOUNTED_HEADER = "X-PJX-Mounted"
 PJX_ASSETS_HEADER = "X-PJX-Assets"
 """Name of the HTTP header carrying asset URLs already loaded in the browser."""
 
+PJX_TRIGGER_HEADER = "X-PJX-Trigger"
+"""Name of the HTTP header carrying the data-pjx-id of the element that started the request."""
+
 T = TypeVar("T")
 
 
@@ -98,6 +101,21 @@ class MountedManifest:
         except AttributeError:
             return False
         return MountedManifest.is_present(header_value)
+
+
+class TriggerManifest:
+    @staticmethod
+    def parse(client: str | dict[str, Any] | object | None) -> dict[str, Any] | None:
+        def _coerce(parsed: Any) -> dict[str, Any] | None:
+            if isinstance(parsed, dict) and parsed.get("id"):
+                return parsed
+            return None
+
+        return _parse_client_payload(
+            client,
+            header_name=PJX_TRIGGER_HEADER,
+            parse_value=_coerce,
+        )
 
 
 class LoadedAssets:

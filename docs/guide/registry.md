@@ -71,18 +71,18 @@ On entry, `request_scope()` also clears pending mutations, initializes the reque
 
 For application-wide coverage, use middleware in your app (pyjinhx does not ship middleware). See the [canonical FastAPI snippet](../integrations/fastapi.md#middleware-recommended).
 
+Prefer `setup(app, ...)` — it registers middleware that calls
+`Registry.request_scope(client_backend=FastAPIClientBackend(request))` automatically.
+
+For manual wiring:
+
 ```python
-from starlette.middleware.base import BaseHTTPMiddleware
-from pyjinhx import Registry, fastapi_client_backend
+from pyjinhx import FastAPIClientBackend, Registry, setup
 
-class RegistryScopeMiddleware(BaseHTTPMiddleware):
-    async def dispatch(self, request, call_next):
-        with Registry.request_scope(
-            client_backend=fastapi_client_backend(request),
-        ):
-            return await call_next(request)
-
-app.add_middleware(RegistryScopeMiddleware)
+setup(app)  # recommended
+# or:
+with Registry.request_scope(client_backend=FastAPIClientBackend(request)):
+    ...
 ```
 
 ### Nested Scopes

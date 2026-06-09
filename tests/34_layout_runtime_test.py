@@ -74,7 +74,7 @@ def test_root_render_skips_runtime_when_manifest_header_present():
 
 def test_root_render_skips_runtime_for_valid_manifest():
     manifest = json.dumps(
-        [{"id": "page", "type": "Page", "hash": "abc123", "key": None}]
+        [{"id": "page", "type": "Page", "hash": "abc123"}]
     )
     request = _Request({PJX_MOUNTED_HEADER: manifest})
     html = str(

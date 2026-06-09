@@ -36,10 +36,11 @@ Optional P3 (not reported): `load_cache.py` slightly above 250 LOC soft ceiling 
 
 ## Cross-cutting (docs, not code scope)
 
-`public-api-audit` on `docs/` finds stale symbols (`get_load_context`, `fastapi_client_backend`) — **P1 doc drift** when auditing full package + docs. Child skill correctly flags these; reactive code scope alone stays clean.
+`public-api-audit` on `docs/` should flag stale symbols (`mutation_scope`, `dirty_keys`, `get_load_context`, `fastapi_client_backend`, `dirtied=`/`mounted=` on `render()`) — **P1 doc drift** when auditing full package + docs. `docs/integrations/claude-code.md` may still lag after reactive simplification; reactive `pyjinhx/` scope stays clean.
 
 ## Rubric tuning applied
 
 - Cohesive single-class files 240–260 LOC → no finding unless mixed concerns.
 - Module-level ContextVar + class static methods (`LoadContext`, `Registry`) → OK, not P2.
 - Expected baseline in orchestrator SKILL.md matches reactive dry-run.
+- **dead-code-audit** runs last in full sweep; complements `public-api-audit` with code-path and orphan-test analysis.

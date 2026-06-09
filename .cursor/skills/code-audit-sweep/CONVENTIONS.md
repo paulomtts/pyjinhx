@@ -33,9 +33,9 @@ After fixes: `uv run ruff check .` and `uv run pytest`.
 
 | Level | Meaning |
 |-------|---------|
-| P1 | Wrong layer, duplicate orchestration that will drift, misleading public API |
-| P2 | Indirection, misplaced integration code, module globals for mutable state |
-| P3 | Naming, minor duplication, doc drift |
+| P1 | Wrong layer, duplicate orchestration that will drift, misleading public API, removed API still live in code/docs |
+| P2 | Indirection, misplaced integration code, module globals for mutable state, dead symbols/branches/tests |
+| P3 | Naming, minor duplication, doc drift, unused parameters |
 
 ## pyjinhx design rules
 
@@ -44,8 +44,8 @@ Cite these in findings when relevant:
 1. **One implementation layer** — no internal module function that only delegates to a classmethod (or the reverse).
 2. **ABC + hub in core/reactive; impl in integrations** — e.g. `ClientBackend` in `pyjinhx/reactive/backend.py`, `FastAPIClientBackend` in `pyjinhx/integrations/fastapi.py`; `InvalidationBackend` + `InvalidationHub` vs `RedisInvalidationBackend` in `pyjinhx/integrations/redis.py`.
 3. **Stateful subsystems → class + classmethods + ContextVar** — `LoadCache`, `MutationTracker`, `InvalidationHub`, `ClientBackend`, `LoadContext`.
-4. **Pure transforms stay functions** — `pyjinhx/reactive/keys.py` coercion/interpolation.
-5. **Ergonomic decorators stay module-level** — `@mutates` / `mutation_scope` call `MutationTracker.record`.
+4. **Pure transforms stay functions** — `pyjinhx/reactive/keys.py` coercion; `pjx_load.py` field discovery.
+5. **Ergonomic decorators stay module-level** — `@mutates` calls `MutationTracker.record`.
 6. **Package `__init__.py` re-exports OK; internal wrappers not OK.**
 7. **Domain code not in `pyjinhx/utils.py`** — HTML/path/runtime helpers only.
 
@@ -70,5 +70,6 @@ When running a full sweep, child audits run in this order:
 5. duplication-audit
 6. indirection-audit
 7. public-api-audit
+8. dead-code-audit
 
 Merge duplicate findings at the same location; keep the highest severity.

@@ -29,6 +29,8 @@ Read: [CONVENTIONS.md](../code-audit-sweep/CONVENTIONS.md).
 | Dirtied keys | `MutationTracker` | scattered ContextVar helpers |
 | Cross-worker fan-out | `InvalidationBackend` + `InvalidationHub` | Redis in `reactive/` |
 | Client manifest | `MountedManifest` | loose dict parsing only |
+| Trigger region | `TriggerManifest` | ad-hoc trigger header parsing |
+| Load round-trip marker | `PjxLoad` | magic `{{ key }}` template injection |
 | Loaded asset URLs | `LoadedAssets` | `parse_loaded_assets()` |
 | OOB swap walk | functions in `oob.py` | `OobSwaps` class (algorithm, not entity) |
 | Dev guardrails | module functions + `_DevConfig` | public class |
@@ -38,7 +40,7 @@ Read: [CONVENTIONS.md](../code-audit-sweep/CONVENTIONS.md).
 - **Entity / aggregate** — identity, lifecycle (`ReactiveComponent`, `LoadCache`)
 - **Value object** — parse result, no mutable identity (`MountedManifest.parse` output)
 - **Service / hub** — coordinates subsystem (`InvalidationHub`, `MutationTracker`)
-- **Algorithm** — stateless transform over inputs (`oob_swaps`, `interpolate_reactive_keys`)
+- **Algorithm** — stateless transform over inputs (`oob_swaps`, `pjx_load_value`, key coercion in `keys.py`)
 - **Port / ABC** — extension point (`ClientBackend`, `InvalidationBackend`)
 
 ## Flag

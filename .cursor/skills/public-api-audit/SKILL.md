@@ -13,7 +13,7 @@ disable-model-invocation: true
 
 **I own:** `pyjinhx/__init__.py` `__all__`, docs index vs exports, public-api test alignment.
 
-**I don't own:** internal wrapper removal (→ `indirection-audit`), where impl files live (→ `module-placement-audit`).
+**I don't own:** internal wrapper removal (→ `indirection-audit`), where impl files live (→ `module-placement-audit`), zero-caller symbols (→ `dead-code-audit`).
 
 Read: [CONVENTIONS.md](../code-audit-sweep/CONVENTIONS.md).
 
@@ -33,7 +33,8 @@ Read: [CONVENTIONS.md](../code-audit-sweep/CONVENTIONS.md).
 ## Checklist
 
 - [ ] `import pyjinhx; set(pyjinhx.__all__) == set(dir intended)`
-- [ ] No removed symbols in docs (`get_load_context`, `fastapi_client_backend`, `invalidate`, etc.)
+- [ ] No removed symbols in docs (`mutation_scope`, `dirty_keys`, `get_load_context`, `fastapi_client_backend`, top-level `invalidate`, etc.)
+- [ ] New exports documented (`PjxLoad`, `TriggerManifest`, `PJX_TRIGGER_HEADER`)
 - [ ] `tests/36_public_api_test.py` imports match `__all__`
 - [ ] Examples use canonical names (`LoadContext.current`, not `get_load_context`)
 - [ ] Breaking renames noted in README if user-facing
@@ -42,7 +43,7 @@ Read: [CONVENTIONS.md](../code-audit-sweep/CONVENTIONS.md).
 
 ```bash
 python -c "import pyjinhx; print(sorted(pyjinhx.__all__))"
-rg 'get_load_context|load_scope|fastapi_client_backend|parse_loaded_assets|client_has_mounted_manifest|set_invalidation_backend|get_load_cache_scope' docs/ README.md
+rg 'mutation_scope|dirty_keys|get_load_context|load_scope|fastapi_client_backend|data-pjx-key|dirtied=|mounted=|parse_loaded_assets|client_has_mounted_manifest|set_invalidation_backend|get_load_cache_scope' docs/ README.md
 ```
 
 Compare `docs/reference/public-api.md` table to `pyjinhx.__all__`.

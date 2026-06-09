@@ -20,18 +20,16 @@ def test_oob_swaps_invalidates_dirtied_before_loading():
 
 
 def test_reactive_render_invalidates_dirtied():
+    from tests.reactive_test_support import reactive_client, record_mutation
+
     store.state["completed"] = 2
     warm = ReactiveClearButton.load()
     assert warm.completed == 2
     store.state["completed"] = 9
     primary = ReactiveCounter(id="counter", remaining=0)
-    out = str(
-        primary.render(
-            dirtied={"todos"},
-            mounted=[
-                {"id": "clear-btn", "type": "ReactiveClearButton", "hash": "stale"}
-            ],
-        )
-    )
+    manifest = [{"id": "clear-btn", "type": "ReactiveClearButton", "hash": "stale"}]
+    with reactive_client(manifest):
+        record_mutation("todos")
+        out = str(primary.render())
     assert "Clear (9)" in out
     assert "Clear (2)" not in out

@@ -33,7 +33,7 @@ def teardown_function():
     disable_reactive_dev()
 
 
-def test_oob_skips_when_runtime_deps_do_not_intersect_dirtied():
+def test_oob_skips_when_static_reacts_to_does_not_intersect_dirtied():
     manifest = [
         {
             "id": "panel",
@@ -41,11 +41,11 @@ def test_oob_skips_when_runtime_deps_do_not_intersect_dirtied():
             "hash": "stale",
         }
     ]
-    out = str(oob_swaps({"user"}, manifest))
+    out = str(oob_swaps({"todos"}, manifest))
     assert "outerHTML:[data-pjx-id='panel']" not in out
 
 
-def test_oob_swaps_when_runtime_deps_intersect_dirtied():
+def test_oob_swaps_when_static_reacts_to_intersects_dirtied():
     prev = Renderer.peek_default_environment()
     Renderer.set_default_environment(UI_ROOT)
     try:
