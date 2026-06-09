@@ -31,12 +31,12 @@ Publishes dirtied keys over Redis pub/sub so every worker evicts its local `load
 ## With setup
 
 ```python
-from pyjinhx import CacheScope, PyJinhxSettings, setup
+from pyjinhx import CacheScope, PjxSettings, setup
 from pyjinhx.integrations.redis import RedisInvalidationBackend
 
 setup(
     app,
-    settings=PyJinhxSettings(
+    settings=PjxSettings(
         cache_scope=CacheScope.PROCESS,
         invalidation_backend=RedisInvalidationBackend("redis://localhost:6379/0"),
     ),
@@ -44,7 +44,7 @@ setup(
 )
 ```
 
-Or via environment (`PyJinhxSettings.from_env()`):
+Or via environment (`PjxSettings.from_env()`):
 
 ```bash
 PJX_LOAD_CACHE_SCOPE=process REDIS_URL=redis://localhost:6379/0 uvicorn main:app

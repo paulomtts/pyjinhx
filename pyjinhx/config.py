@@ -18,13 +18,13 @@ _UNSET: Any = object()  # sentinel: distinguishes "argument omitted" from None /
 
 
 @dataclass(frozen=True)
-class PyJinhxSettings:
+class PjxSettings:
     cache_scope: CacheScope = CacheScope.REQUEST
     invalidation_backend: InvalidationBackend | None = None
     reactive_dev: bool = False
 
     @classmethod
-    def from_env(cls) -> PyJinhxSettings:
+    def from_env(cls) -> PjxSettings:
         scope_name = os.environ.get("PJX_LOAD_CACHE_SCOPE", "request").lower()
         cache_scope = CacheScope(scope_name)
         reactive_dev = os.environ.get("PJX_REACTIVE_DEV", "").lower() in {
@@ -44,7 +44,7 @@ class PyJinhxSettings:
             reactive_dev=reactive_dev,
         )
 
-    def merge(self, **overrides: Any) -> PyJinhxSettings:
+    def merge(self, **overrides: Any) -> PjxSettings:
         # only fields explicitly provided (not the _UNSET sentinel) override self, so an
         # explicit `settings=` is never clobbered by setup()'s default keyword arguments
         valid = {field.name for field in fields(self)}
@@ -57,14 +57,14 @@ class PyJinhxSettings:
 
 
 def _merge_settings(
-    settings: PyJinhxSettings | None,
+    settings: PjxSettings | None,
     *,
     cache_scope: Any,
     invalidation_backend: Any,
     reactive_dev: Any,
     extra: dict[str, Any],
-) -> PyJinhxSettings:
-    return (settings or PyJinhxSettings()).merge(
+) -> PjxSettings:
+    return (settings or PjxSettings()).merge(
         cache_scope=cache_scope,
         invalidation_backend=invalidation_backend,
         reactive_dev=reactive_dev,
@@ -73,10 +73,10 @@ def _merge_settings(
 
 
 def configure_pyjinhx(
-    settings: PyJinhxSettings | None = None,
+    settings: PjxSettings | None = None,
     /,
     **kwargs: Any,
-) -> PyJinhxSettings:
+) -> PjxSettings:
     if kwargs or settings is None:
         resolved = _merge_settings(
             settings,
@@ -123,7 +123,7 @@ def shutdown_pyjinhx() -> None:
 
 @contextmanager
 def pyjinhx_lifespan(
-    settings: PyJinhxSettings | None = None,
+    settings: PjxSettings | None = None,
     /,
     **kwargs: Any,
 ) -> Generator[None, None, None]:
@@ -141,13 +141,13 @@ def _is_asgi_app(app: object) -> bool:
 def setup(
     app: object | None = None,
     *,
-    settings: PyJinhxSettings | None = None,
+    settings: PjxSettings | None = None,
     cache_scope: CacheScope = _UNSET,
     invalidation_backend: InvalidationBackend | None = _UNSET,
     reactive_dev: bool = _UNSET,
     load_context_factory: Callable[[Any], object | None] | None = None,
     **kwargs: Any,
-) -> PyJinhxSettings:
+) -> PjxSettings:
     """
     Wire pyjinhx for this process (and optionally a web app).
 

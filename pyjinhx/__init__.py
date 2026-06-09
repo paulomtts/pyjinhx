@@ -10,7 +10,7 @@ from pyjinhx.assets import AssetMode
 from pyjinhx.base import BaseComponent
 from pyjinhx.cache import CacheScope
 from pyjinhx.client import client_script
-from pyjinhx.config import PyJinhxSettings, setup
+from pyjinhx.config import PjxSettings, setup
 from pyjinhx.context import PjxContext
 from pyjinhx.keys import StateKey
 from pyjinhx.mutations import mutates
@@ -32,7 +32,7 @@ __all__ = [
     "PjxKey",
     "PjxContext",
     # Configuration
-    "PyJinhxSettings",
+    "PjxSettings",
     "CacheScope",
     "AssetMode",
     # Runtime

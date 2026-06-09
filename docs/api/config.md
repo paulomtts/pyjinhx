@@ -8,13 +8,13 @@ Process-wide setup and optional FastAPI/Starlette wiring via a single entry poin
 def setup(
     app: object | None = None,
     *,
-    settings: PyJinhxSettings | None = None,
+    settings: PjxSettings | None = None,
     cache_scope: CacheScope = CacheScope.REQUEST,
     invalidation_backend: InvalidationBackend | None = None,
     reactive_dev: bool = False,
     load_context_factory: Callable[[Any], object | None] | None = None,
     **kwargs: Any,
-) -> PyJinhxSettings
+) -> PjxSettings
 ```
 
 **Single call** for typical web apps:
@@ -46,11 +46,11 @@ When `app` is provided, pyjinhx wraps `app.router.lifespan_context`:
 
 Does **not** compose deprecated `@app.on_event("startup")` handlers — use the lifespan API.
 
-## PyJinhxSettings
+## PjxSettings
 
 ```python
 @dataclass(frozen=True)
-class PyJinhxSettings:
+class PjxSettings:
     cache_scope: CacheScope = CacheScope.REQUEST
     invalidation_backend: InvalidationBackend | None = None
     reactive_dev: bool = False
@@ -60,7 +60,7 @@ class PyJinhxSettings:
 
 ```python
 @classmethod
-def from_env(cls) -> PyJinhxSettings
+def from_env(cls) -> PjxSettings
 ```
 
 | Variable | Default | Effect |

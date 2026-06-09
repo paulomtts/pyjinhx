@@ -476,12 +476,12 @@ Default: **`CacheScope.REQUEST`** — `load()` results cache within each HTTP re
 Multi-worker fan-out (optional):
 
 ```python
-from pyjinhx import CacheScope, PyJinhxSettings, setup
+from pyjinhx import CacheScope, PjxSettings, setup
 from pyjinhx.integrations.redis import RedisInvalidationBackend
 
 setup(
     app,
-    settings=PyJinhxSettings(
+    settings=PjxSettings(
         cache_scope=CacheScope.PROCESS,
         invalidation_backend=RedisInvalidationBackend(os.environ["REDIS_URL"]),
     ),

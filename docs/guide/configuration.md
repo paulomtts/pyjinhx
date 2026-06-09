@@ -87,7 +87,7 @@ from pyjinhx import setup
 setup(app, load_context_factory=lambda req: AppLoadContext(db=get_db(req)))
 ```
 
-`PyJinhxSettings` has three fields:
+`PjxSettings` has three fields:
 
 - `cache_scope` — load cache scope (default `CacheScope.REQUEST`)
 - `invalidation_backend` — cross-process invalidation backend (default `None`)
@@ -97,19 +97,19 @@ Pass a settings object via `settings=`, or override individual fields with expli
 
 ### Environment variables
 
-`PyJinhxSettings.from_env()` builds settings from the environment:
+`PjxSettings.from_env()` builds settings from the environment:
 
 - `PJX_LOAD_CACHE_SCOPE` — cache scope name (default `request`)
 - `PJX_REACTIVE_DEV` — enables reactive dev mode when set to `1`, `true`, or `yes`
 - `REDIS_URL` — wires a `RedisInvalidationBackend`, but only when the cache scope is `process`
 
 ```python
-from pyjinhx import PyJinhxSettings, setup
+from pyjinhx import PjxSettings, setup
 
-setup(app, settings=PyJinhxSettings.from_env())
+setup(app, settings=PjxSettings.from_env())
 ```
 
-See [Configuration API](../api/config.md) for `PyJinhxSettings`, lifespan chaining, and cache defaults.
+See [Configuration API](../api/config.md) for `PjxSettings`, lifespan chaining, and cache defaults.
 
 ## Load cache scope
 
@@ -131,12 +131,12 @@ See [Cache & Invalidation](../api/cache-invalidation.md) and [Reactivity](../rea
 When using `CacheScope.PROCESS` with multiple workers, configure an `InvalidationBackend`:
 
 ```python
-from pyjinhx import CacheScope, PyJinhxSettings, setup
+from pyjinhx import CacheScope, PjxSettings, setup
 from pyjinhx.integrations.redis import RedisInvalidationBackend
 
 setup(
     app,
-    settings=PyJinhxSettings(
+    settings=PjxSettings(
         cache_scope=CacheScope.PROCESS,
         invalidation_backend=RedisInvalidationBackend("redis://..."),
     ),

@@ -5,7 +5,7 @@ from pyjinhx import (
     CacheScope,
     PjxContext,
     PjxKey,
-    PyJinhxSettings,
+    PjxSettings,
     ReactiveComponent,
     Registry,
     Renderer,
@@ -25,7 +25,7 @@ PUBLIC_API = {
     "StateKey",
     "PjxKey",
     "PjxContext",
-    "PyJinhxSettings",
+    "PjxSettings",
     "CacheScope",
     "AssetMode",
     "client_script",
@@ -43,7 +43,7 @@ def test_public_symbols_are_correct():
     assert CacheScope.REQUEST == "request"
     assert AssetMode.INLINE is not None
     assert PjxKey.__name__ == "PjxKey"
-    for fn in (setup, mutates, client_script, PyJinhxSettings.from_env,
+    for fn in (setup, mutates, client_script, PjxSettings.from_env,
                Renderer.set_default_environment, Registry.request_scope,
                PjxContext.current):
         assert callable(fn)

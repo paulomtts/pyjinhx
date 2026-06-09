@@ -22,7 +22,7 @@ Import from the top level only — `from pyjinhx import BaseComponent, ReactiveC
 |--------|------|
 | Render engine (tiers 1–2) | `base`, `renderer`, `assets`, `tags`, `finder`, `registry` |
 | Reactivity (tier 3+) | `reactive`, `client`, `cache`, `mutations`, `keys`, `context`, `dev` |
-| Setup | `config` — `setup()`, `PyJinhxSettings`, lifespan helpers |
+| Setup | `config` — `setup()`, `PjxSettings`, lifespan helpers |
 | `pyjinhx/integrations/` | FastAPI wiring, Redis invalidation backend |
 | `pyjinhx/builtins/` | Optional UI kit |
 | `pyjinhx/runtime/` | Client runtime (`pjx.js`) |

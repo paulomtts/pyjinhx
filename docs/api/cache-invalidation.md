@@ -50,7 +50,7 @@ setup(app, cache_scope=CacheScope.PROCESS)   # cross-request per worker; pair wi
 
 Or set explicitly: `LoadCache.set_scope(CacheScope.REQUEST)`.
 
-Environment variable `PJX_LOAD_CACHE_SCOPE` is read by `PyJinhxSettings.from_env()` (default `request`).
+Environment variable `PJX_LOAD_CACHE_SCOPE` is read by `PjxSettings.from_env()` (default `request`).
 
 **Propagation:** when `CacheScope.PROCESS` is active, an `InvalidationBackend` is configured, and `propagate=True` (default), dirtied keys are published to other workers after local eviction. Remote handlers call `LoadCache.invalidate(..., propagate=False)` to avoid publish loops.
 
@@ -88,12 +88,12 @@ Runtime coordinator for cross-process invalidation. Passing a new backend stops 
 **Typical FastAPI setup:**
 
 ```python
-from pyjinhx import setup, PyJinhxSettings, CacheScope
+from pyjinhx import setup, PjxSettings, CacheScope
 from pyjinhx.integrations.redis import RedisInvalidationBackend
 
 setup(
     app,
-    settings=PyJinhxSettings(
+    settings=PjxSettings(
         cache_scope=CacheScope.PROCESS,
         invalidation_backend=RedisInvalidationBackend("redis://localhost:6379/0"),
     ),

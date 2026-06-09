@@ -379,12 +379,12 @@ When using `CacheScope.PROCESS` with multiple workers, configure an
 `InvalidationBackend` so `invalidate()` fans out to every process:
 
 ```python
-from pyjinhx import CacheScope, PyJinhxSettings, setup
+from pyjinhx import CacheScope, PjxSettings, setup
 from pyjinhx.integrations.redis import RedisInvalidationBackend
 
 setup(
     app,
-    settings=PyJinhxSettings(
+    settings=PjxSettings(
         cache_scope=CacheScope.PROCESS,
         invalidation_backend=RedisInvalidationBackend("redis://localhost:6379/0"),
     ),
