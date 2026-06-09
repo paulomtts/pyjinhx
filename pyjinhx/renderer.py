@@ -12,28 +12,21 @@ from .assets import (
     AssetMode,
     AssetUrlResolver,
     RenderSession,
-    asset_mode_from_inline,
-    make_default_asset_url_resolver,
-    runtime_asset_path,
-)
-from .assets import (
     apply_component_render_assets,
+    asset_mode_from_inline,
     inject_assets,
+    make_default_asset_url_resolver,
     normalize_asset_path,
+    runtime_asset_path,
 )
 from .finder import Finder
 from .registry import Registry
-from .tags import Parser
-from .tags import expand_custom_tags, render_tag_node
+from .tags import Parser, expand_custom_tags, render_tag_node
 from .utils import detect_root_directory, stamp_root_attributes, tag_name_to_template_filenames
 
 if TYPE_CHECKING:
     from .base import BaseComponent
 
-
-# ---------------------------------------------------------------------------
-# Template loading helpers (formerly template_load.py)
-# ---------------------------------------------------------------------------
 
 def get_loader_root(environment: Environment) -> str:
     loader = environment.loader
@@ -104,10 +97,6 @@ def find_template_for_tag(renderer: Renderer, tag_name: str) -> str:
     return finder.find_template_for_tag(tag_name)
 
 
-# ---------------------------------------------------------------------------
-# Render context helpers (formerly render_context.py)
-# ---------------------------------------------------------------------------
-
 def build_render_context(context: dict[str, Any]) -> dict[str, Any]:
     render_context = dict(context)
     for instance in Registry.get_instances().values():
@@ -132,16 +121,12 @@ def stamp_reactive_markup(markup: str, component: BaseComponent) -> str:
     return stamp_root_attributes(markup, attrs)
 
 
-# ---------------------------------------------------------------------------
-# Renderer (formerly inheriting RendererSettings)
-# ---------------------------------------------------------------------------
-
 class Renderer:
     """
     Shared rendering engine used by `BaseComponent` rendering and HTML-like custom-tag rendering.
 
     This renderer centralizes:
-    - Process-wide defaults and cached default-renderer factory (formerly renderer_settings.py)
+    - Process-wide defaults and cached default-renderer factory
     - Jinja template loading (by component class or explicit file/source)
     - Expansion of PascalCase custom tags inside rendered markup
     - JavaScript collection/deduping and root-level script injection
