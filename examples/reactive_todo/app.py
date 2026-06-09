@@ -33,6 +33,10 @@ setup(
 )
 
 
+def _demo_latency() -> float:
+    return float(os.environ.get("PJX_DEMO_LATENCY", "0.5"))
+
+
 @app.get("/", response_class=HTMLResponse)
 def index() -> str:
     return App(
@@ -48,12 +52,6 @@ def index() -> str:
 def add(text: str = Form(...)) -> str:
     store.add(text)
     return ItemRow.render(store.all_todos()[-1].id)
-
-
-def _demo_latency() -> float:
-    # demo-only pause on the actions that show a loading state, so the skeleton/
-    # spinner are visible on a fast local server; set PJX_DEMO_LATENCY=0 to disable.
-    return float(os.environ.get("PJX_DEMO_LATENCY", "0.5"))
 
 
 @app.post("/rows/{todo_id}/toggle", response_class=HTMLResponse)
