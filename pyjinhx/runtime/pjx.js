@@ -66,10 +66,10 @@
       ".pjx-loading--skeleton *{visibility:hidden}" +
       ".pjx-loading--spinner{position:relative}" +
       ".pjx-loading--spinner::before{content:'';position:absolute;inset:0;" +
-      "background:rgba(127,127,127,.35);border-radius:inherit}" +
+      "background:rgba(0,0,0,.45);border-radius:inherit}" +
       ".pjx-loading--spinner::after{content:'';position:absolute;top:50%;left:50%;" +
       "width:1.1em;height:1.1em;margin:-.55em 0 0 -.55em;box-sizing:border-box;" +
-      "border:2px solid rgba(0,0,0,.2);border-top-color:rgba(0,0,0,.65);" +
+      "border:2px solid rgba(255,255,255,.4);border-top-color:rgba(255,255,255,.95);" +
       "border-radius:50%;animation:pjx-spin .6s linear infinite}" +
       "@keyframes pjx-shimmer{from{background-position:100% 0}to{background-position:-100% 0}}" +
       "@keyframes pjx-spin{to{transform:rotate(360deg)}}";
