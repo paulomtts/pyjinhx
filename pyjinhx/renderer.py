@@ -13,7 +13,6 @@ from .assets import (
     AssetUrlResolver,
     RenderSession,
     apply_component_render_assets,
-    asset_mode_from_inline,
     inject_assets,
     make_default_asset_url_resolver,
     normalize_asset_path,
@@ -168,14 +167,6 @@ class Renderer:
         cls._default_renderers.clear()
 
     @classmethod
-    def set_default_inline_js(cls, inline_js: bool) -> None:
-        cls.set_default_js_mode(asset_mode_from_inline(inline_js))
-
-    @classmethod
-    def set_default_inline_css(cls, inline_css: bool) -> None:
-        cls.set_default_css_mode(asset_mode_from_inline(inline_css))
-
-    @classmethod
     def set_default_runtime_url(cls, url: str) -> None:
         cls._default_runtime_url = url
         cls._default_renderers.clear()
@@ -201,30 +192,12 @@ class Renderer:
         cls,
         *,
         auto_id: bool = True,
-        inline_js: bool | None = None,
-        inline_css: bool | None = None,
         js_mode: AssetMode | None = None,
         css_mode: AssetMode | None = None,
     ):
         environment = cls.get_default_environment()
-        effective_js_mode = (
-            js_mode
-            if js_mode is not None
-            else (
-                asset_mode_from_inline(inline_js)
-                if inline_js is not None
-                else cls._default_js_mode
-            )
-        )
-        effective_css_mode = (
-            css_mode
-            if css_mode is not None
-            else (
-                asset_mode_from_inline(inline_css)
-                if inline_css is not None
-                else cls._default_css_mode
-            )
-        )
+        effective_js_mode = js_mode if js_mode is not None else cls._default_js_mode
+        effective_css_mode = css_mode if css_mode is not None else cls._default_css_mode
         resolver_id = id(cls._asset_url_resolver)
         cache_key = (
             id(environment),
@@ -249,25 +222,13 @@ class Renderer:
         environment: Environment,
         *,
         auto_id: bool = True,
-        inline_js: bool | None = None,
-        inline_css: bool | None = None,
         js_mode: AssetMode | None = None,
         css_mode: AssetMode | None = None,
     ) -> None:
         self._environment = environment
         self._auto_id = auto_id
-        if js_mode is not None:
-            self._js_mode = js_mode
-        elif inline_js is not None:
-            self._js_mode = asset_mode_from_inline(inline_js)
-        else:
-            self._js_mode = Renderer._default_js_mode
-        if css_mode is not None:
-            self._css_mode = css_mode
-        elif inline_css is not None:
-            self._css_mode = asset_mode_from_inline(inline_css)
-        else:
-            self._css_mode = Renderer._default_css_mode
+        self._js_mode = js_mode if js_mode is not None else Renderer._default_js_mode
+        self._css_mode = css_mode if css_mode is not None else Renderer._default_css_mode
         self._template_finder_cache: dict[str, object] = {}
 
     @property

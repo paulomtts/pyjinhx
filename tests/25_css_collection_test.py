@@ -1,4 +1,4 @@
-from pyjinhx import Renderer
+from pyjinhx import AssetMode, Renderer
 from tests.ui.unified_component import UnifiedComponent
 
 
@@ -72,8 +72,8 @@ def test_missing_extra_css_warns(caplog):
     assert any("nonexistent.css" in record.message for record in caplog.records)
 
 
-def test_inline_css_false_disables_injection():
-    renderer = Renderer.get_default_renderer(inline_css=False)
+def test_css_mode_none_disables_injection():
+    renderer = Renderer.get_default_renderer(css_mode=AssetMode.NONE)
     component = UnifiedComponent(id="css-off-1", text="No CSS")
 
     rendered = str(component._render(_renderer=renderer))

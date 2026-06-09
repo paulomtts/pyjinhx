@@ -82,10 +82,6 @@ def runtime_asset_path() -> str:
     )
 
 
-def asset_mode_from_inline(inline: bool) -> AssetMode:
-    return AssetMode.INLINE if inline else AssetMode.NONE
-
-
 def default_asset_url(path: str, *, root: str) -> str:
     normalized_path = os.path.normpath(path)
     if normalized_path == os.path.normpath(runtime_asset_path()):
