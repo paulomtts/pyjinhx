@@ -58,6 +58,8 @@ def pjx_load_field_names(model_cls: type[Any]) -> list[str]:
             names.append(name)
     if names:
         return names
+    # During __init_subclass__ pydantic has not yet populated model_fields, so
+    # fall back to the raw annotations to detect the PjxLoad marker at definition.
     for name, annotation in getattr(model_cls, "__annotations__", {}).items():
         if _annotation_has_pjx_load(annotation):
             names.append(name)
