@@ -41,7 +41,7 @@ def toggle(todo_id: int) -> Todo:
     return _todos[todo_id]
 
 
-@mutates(Keys.TODOS)
+@mutates(Keys.TODOS, Keys.TODO_LIST)
 def clear_completed() -> None:
     for todo_id in [tid for tid, t in _todos.items() if t.done]:
         del _todos[todo_id]

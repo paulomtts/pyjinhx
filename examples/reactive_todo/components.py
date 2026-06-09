@@ -28,6 +28,7 @@ class ItemRow(ReactiveComponent):
     title: str = ""
     done: bool = False
     reacts_to: ClassVar[set[str]] = {Keys.TODOS}
+    loading: ClassVar[str] = "skeleton"
 
     @classmethod
     def load(cls, todo_id: int | str) -> "ItemRow":
@@ -44,8 +45,7 @@ class ItemRow(ReactiveComponent):
 
 class ItemList(ReactiveComponent):
     items: list[ItemRow] = []
-    reacts_to: ClassVar[set[str]] = {Keys.TODOS}
-    loading: ClassVar[str] = "skeleton"
+    reacts_to: ClassVar[set[str]] = {Keys.TODO_LIST}
 
     @classmethod
     def load(cls) -> "ItemList":
@@ -59,7 +59,6 @@ class ItemList(ReactiveComponent):
 class Counter(ReactiveComponent):
     remaining: int = 0
     reacts_to: ClassVar[set[str]] = {Keys.TODOS}
-    loading: ClassVar[str] = "skeleton"
 
     @classmethod
     def load(cls) -> "Counter":
@@ -72,7 +71,6 @@ class Counter(ReactiveComponent):
 class Total(ReactiveComponent):
     count: int = 0
     reacts_to: ClassVar[set[str]] = {Keys.TODOS}
-    loading: ClassVar[str] = "skeleton"
 
     @classmethod
     def load(cls) -> "Total":
