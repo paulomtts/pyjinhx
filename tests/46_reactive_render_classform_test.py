@@ -87,3 +87,16 @@ def test_class_form_returns_markup_and_does_not_escape():
 def test_instance_form_still_renders_self():
     counter = ReactiveCounter(id="counter", remaining=99)
     assert "99 left" in str(counter.render())
+
+
+def test_dependent_trigger_still_swaps_oob():
+    # Regression: the clicked element (X-PJX-Trigger) is a dependent distinct from
+    # the primary, so it must still OOB-update -- it was wrongly excluded before.
+    store.state["remaining"] = 2
+    store.state["completed"] = 5
+    manifest = [{"id": "clear-btn", "type": "ReactiveClearButton", "hash": "stale"}]
+    with reactive_client(manifest, trigger_id="clear-btn"):
+        record_mutation("todos")
+        out = str(ReactiveCounter.render())
+    assert "outerHTML:[data-pjx-id='clear-btn']" in out
+    assert "Clear (5)" in out
