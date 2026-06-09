@@ -81,7 +81,8 @@ Return or set the load context for the current scope. Reactive `load()` methods 
 Prefer `Registry.request_scope(load_context=ctx)` in web apps — it combines registry isolation, request cache, mutation tracking, and load context in one call.
 
 ```python
-from pyjinhx import LoadContext, Registry, FastAPIClientBackend
+from pyjinhx import LoadContext, Registry
+from pyjinhx.integrations.fastapi import FastAPIClientBackend
 
 @dataclass(frozen=True)
 class AppLoadContext(LoadContext):
@@ -137,7 +138,7 @@ def format_dependency_graph(*, as_mermaid: bool = False) -> str
 Format the dependency graph as a text table or Mermaid flowchart. Useful for debugging and documentation.
 
 ```python
-from pyjinhx import format_dependency_graph
+from pyjinhx.dev import format_dependency_graph
 
 print(format_dependency_graph())
 print(format_dependency_graph(as_mermaid=True))

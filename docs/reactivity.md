@@ -303,7 +303,7 @@ Set context per request via `setup(app, load_context_factory=...)` or
 Enable guardrails during local development:
 
 ```python
-from pyjinhx import enable_reactive_dev
+from pyjinhx.dev import enable_reactive_dev
 
 enable_reactive_dev()          # warnings
 enable_reactive_dev(strict=True)  # raise instead
@@ -318,7 +318,7 @@ Checks include:
 Inspect the dependency graph at startup:
 
 ```python
-from pyjinhx import dependency_graph, format_dependency_graph
+from pyjinhx.dev import dependency_graph, format_dependency_graph
 
 print(format_dependency_graph())
 # or format_dependency_graph(as_mermaid=True) for a flowchart
@@ -363,7 +363,7 @@ dependents. For mutations outside a render — a background job, a webhook — c
 `LoadCache.invalidate` yourself:
 
 ```python
-from pyjinhx import LoadCache
+from pyjinhx.cache import LoadCache
 
 def nightly_recalc():
     db.rebuild_todos()

@@ -169,7 +169,8 @@ On entry: clears pending mutations, initializes the request-scoped load cache, a
 **Usage:**
 
 ```python
-from pyjinhx import FastAPIClientBackend, Registry
+from pyjinhx import Registry
+from pyjinhx.integrations.fastapi import FastAPIClientBackend
 
 with Registry.request_scope(
     load_context=AppLoadContext(db=session),

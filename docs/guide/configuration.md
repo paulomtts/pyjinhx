@@ -150,7 +150,7 @@ See [Cache & Invalidation](../api/cache-invalidation.md) and [Redis integration]
 Enable development guardrails to catch common reactive mistakes:
 
 ```python
-from pyjinhx import enable_reactive_dev, disable_reactive_dev
+from pyjinhx.dev import enable_reactive_dev, disable_reactive_dev
 
 enable_reactive_dev()           # log warnings
 enable_reactive_dev(strict=True)  # raise RuntimeError instead

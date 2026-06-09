@@ -115,7 +115,7 @@ widget = MyWidget(
 Inspect which assets a render used:
 
 ```python
-from pyjinhx import asset_manifest, make_default_asset_url_resolver
+from pyjinhx.assets import asset_manifest, make_default_asset_url_resolver
 
 resolver = make_default_asset_url_resolver("./components")
 manifest = asset_manifest(session, resolver=resolver)
@@ -127,7 +127,8 @@ manifest = asset_manifest(session, resolver=resolver)
 Ship every component asset from the layout shell instead of per-page discovery:
 
 ```python
-from pyjinhx import Finder, make_default_asset_url_resolver
+from pyjinhx.assets import make_default_asset_url_resolver
+from pyjinhx.finder import Finder
 
 finder = Finder(root="./components")
 resolver = make_default_asset_url_resolver("./components")
@@ -141,7 +142,7 @@ Combine with `AssetMode.REFERENCE` and reactive partial suppression so HTMX swap
 Embed content hashes in filenames:
 
 ```python
-from pyjinhx import hashed_filename, resolver_with_hash
+from pyjinhx.assets import hashed_filename, resolver_with_hash
 
 hashed_filename("components/ui/button.js")  # button.a1b2c3d4.js
 resolver = resolver_with_hash("/static/components", root="./components")
@@ -163,7 +164,7 @@ When disabled, no asset tags are emitted. Use `Finder.collect_javascript_files()
 Use `Finder` to get lists of asset files for static serving:
 
 ```python
-from pyjinhx import Finder
+from pyjinhx.finder import Finder
 
 finder = Finder(root="./components")
 
@@ -179,7 +180,9 @@ css_files = finder.collect_css_files(relative_to_root=True)
 ```python
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
-from pyjinhx import AssetMode, Finder, Renderer, make_default_asset_url_resolver
+from pyjinhx import AssetMode, Renderer
+from pyjinhx.assets import make_default_asset_url_resolver
+from pyjinhx.finder import Finder
 
 app = FastAPI()
 app.mount("/static/components", StaticFiles(directory="components"), name="components")

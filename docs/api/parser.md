@@ -16,7 +16,7 @@ HTML parser that identifies PascalCase component tags and builds a tree of `Tag`
 ### Usage
 
 ```python
-from pyjinhx import Parser
+from pyjinhx.tags import Parser, Tag
 
 parser = Parser()
 parser.feed('<Button text="OK"/><p>plain html</p>')

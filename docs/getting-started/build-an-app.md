@@ -524,7 +524,7 @@ TodoApp(...).render()  # client headers from middleware ClientBackend
 ## Step 15 — Dev guardrails (optional)
 
 ```python
-from pyjinhx import enable_reactive_dev, dependency_graph, format_dependency_graph
+from pyjinhx.dev import enable_reactive_dev, dependency_graph, format_dependency_graph
 
 enable_reactive_dev()  # warnings: missing mounted, unconsumed @mutates, etc.
 print(format_dependency_graph())

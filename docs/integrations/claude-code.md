@@ -336,10 +336,15 @@ my_app/
 
 ```python
 from pyjinhx import (
-    BaseComponent, ReactiveComponent, Renderer, Registry, Finder, Parser, Tag,
-    PjxLoad, mutates, LoadCache, oob_swaps, client_script,
-    PJX_MOUNTED_HEADER, PJX_TRIGGER_HEADER, setup,
+    BaseComponent, ReactiveComponent, Renderer, Registry,
+    PjxLoad, mutates, client_script, setup,
 )
+# advanced/internal building blocks live in submodules:
+from pyjinhx.finder import Finder
+from pyjinhx.tags import Parser, Tag
+from pyjinhx.cache import LoadCache
+from pyjinhx.reactive import oob_swaps
+from pyjinhx.client import PJX_MOUNTED_HEADER, PJX_TRIGGER_HEADER
 import pyjinhx.builtins  # optional: registers all builtin classes
 from pyjinhx.builtins import Alert, Modal, Panel, PanelTrigger, TabGroup  # …
 ```

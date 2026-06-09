@@ -72,7 +72,8 @@ On entry, `request_scope()` also clears pending mutations, initializes the reque
 For application-wide coverage, pyjinhx ships no middleware of its own. Prefer `setup(app, ...)`, which registers middleware that calls `Registry.request_scope(client_backend=FastAPIClientBackend(request))` for you (see the [canonical FastAPI snippet](../integrations/fastapi.md#middleware-recommended)). To wire it by hand instead, open the scope yourself:
 
 ```python
-from pyjinhx import FastAPIClientBackend, Registry, setup
+from pyjinhx import Registry, setup
+from pyjinhx.integrations.fastapi import FastAPIClientBackend
 
 setup(app)  # recommended
 # or:
