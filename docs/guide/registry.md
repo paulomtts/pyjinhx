@@ -69,12 +69,7 @@ On entry, `request_scope()` also clears pending mutations, initializes the reque
 
 `load_context` and `client_backend` are **optional** — bare `Registry.request_scope()` is enough for instance isolation.
 
-For application-wide coverage, use middleware in your app (pyjinhx does not ship middleware). See the [canonical FastAPI snippet](../integrations/fastapi.md#middleware-recommended).
-
-Prefer `setup(app, ...)` — it registers middleware that calls
-`Registry.request_scope(client_backend=FastAPIClientBackend(request))` automatically.
-
-For manual wiring:
+For application-wide coverage, pyjinhx ships no middleware of its own. Prefer `setup(app, ...)`, which registers middleware that calls `Registry.request_scope(client_backend=FastAPIClientBackend(request))` for you (see the [canonical FastAPI snippet](../integrations/fastapi.md#middleware-recommended)). To wire it by hand instead, open the scope yourself:
 
 ```python
 from pyjinhx import FastAPIClientBackend, Registry, setup
@@ -159,7 +154,7 @@ The class registry enables the `Renderer` to instantiate components from PascalC
 
 ### Template context precedence
 
-During render, registered instances are injected into the Jinja context by `id` so templates can reference them by registry key. **Component field values from `model_dump()` take precedence** when a field name collides with an instance `id` (registry injection uses `setdefault`). Avoid naming a reactive field the same as its default `id` (e.g. a `Total` component with a `total` field defaults `id` to `"total"`).
+During render, registered instances are injected into the Jinja context by `id` so templates can reference them by registry key. **Component field values from `model_dump()` take precedence** when a field name collides with an instance `id` (registry injection uses `setdefault`). Watch for this with `ReactiveComponent`, whose `id` defaults to the kebab-cased class name: a `Total` reactive component with a `total` field defaults its `id` to `"total"`, so the field would shadow the instance. (A plain `BaseComponent` has no such default — it always requires an explicit `id`.)
 
 ```python
 # Class registry (automatic when you define a class)

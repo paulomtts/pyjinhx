@@ -13,6 +13,9 @@ html = renderer.render('<UserCard name="Ada"/>')
 
 You can also use PascalCase tags **inside component templates** to compose components declaratively.
 
+!!! warning "Recognized tag names are strict PascalCase"
+    A tag is treated as a component only if its name matches `^[A-Z](?:[a-z]+(?:[A-Z][a-z]+)*)?$` — a capital letter followed by alternating lowercase/Capitalized words. This **rejects acronyms and trailing digits**: `UI`, `APIKey`, `HTMLBlock`, `Button2`, and `H2` are NOT recognized and pass through as raw HTML. Name components like `Api`, `ApiKey`, or `HtmlBlock` instead.
+
 ## Attributes
 
 Tag attributes become template context variables:
@@ -39,6 +42,8 @@ html = renderer.render("""
     </Card>
 """)
 ```
+
+`content` is **always** passed to a tag-instantiated component, defaulting to `""` when the tag has no inner content. (A `BaseComponent` accepts it as an extra field; declare `content: str` on your class if you want validation.)
 
 ## Template Auto-Discovery
 
@@ -102,6 +107,8 @@ If no class is registered, PyJinHx falls back to a generic `BaseComponent` and r
 ```python
 html = renderer.render('<Alert kind="warning">Be careful</Alert>')
 ```
+
+The generic-fallback instance is **removed from the registry** after rendering, so it cannot be cross-referenced by other templates (unlike a registered-class instance).
 
 ## Auto-Generated IDs
 

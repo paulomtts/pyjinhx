@@ -52,7 +52,7 @@ Configure how assets are delivered with `AssetMode`:
 |------|-----|----|----------|
 | `INLINE` (default) | `<style>` | inline `<script>` | Zero-config demos |
 | `REFERENCE` | `<link href>` | `<script src>` | Production monoliths with static file serving |
-| `NONE` | silence | silence | Manual static wiring (legacy `inline=False`) |
+| `NONE` | silence | silence | Manual static wiring |
 
 ```python
 from pyjinhx import AssetMode, Renderer
@@ -88,7 +88,7 @@ Partial renders ignore the asset header (no assets emitted). Dedup defaults to *
 
 In `REFERENCE` mode, root full-page renders emit `<script src="/static/pyjinhx/pjx.js">` when the request lacks `X-PJX-Mounted`. Mount the packaged file from `pyjinhx/runtime/pjx.js` or override with `Renderer.set_default_runtime_url()`.
 
-For raw Jinja shells, use `client_script(mode=AssetMode.REFERENCE)`.
+For raw Jinja shells, use `client_script(mode=AssetMode.REFERENCE)`. Pass `client_script(src=...)` to override the runtime URL (otherwise it falls back to `Renderer`'s configured URL, then `DEFAULT_RUNTIME_URL`).
 
 ### CSP
 
@@ -127,11 +127,11 @@ manifest = asset_manifest(session, resolver=resolver)
 Ship every component asset from the layout shell instead of per-page discovery:
 
 ```python
-from pyjinhx import Finder, layout_asset_tags, make_default_asset_url_resolver
+from pyjinhx import Finder, make_default_asset_url_resolver
 
 finder = Finder(root="./components")
 resolver = make_default_asset_url_resolver("./components")
-head_tags = layout_asset_tags(finder, resolver=resolver)
+head_tags = finder.layout_asset_tags(resolver=resolver)
 ```
 
 Combine with `AssetMode.REFERENCE` and reactive partial suppression so HTMX swaps never re-ship assets.
@@ -220,6 +220,6 @@ Map each absolute asset path to your `{% static %}` URL in the resolver callback
 | `hashed_filename()` | Content-hash a filename for cache-busting |
 | `resolver_with_hash()` | Resolver that embeds hashes in URLs |
 | `asset_manifest()` | Build `AssetManifest` from a `RenderSession` |
-| `layout_asset_tags()` | Preload all component assets in a layout shell |
+| `Finder.layout_asset_tags()` | Preload all component assets in a layout shell (instance method) |
 
 See [Assets API](../api/assets-api.md) for signatures and examples.

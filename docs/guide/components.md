@@ -18,9 +18,11 @@ class Card(BaseComponent):
     subtitle: str = ""   # Optional with default
 ```
 
+`BaseComponent` also provides `js` and `css` fields (lists of extra asset paths) — see [Asset Collection](assets.md).
+
 ### 2. HTML Template
 
-PyJinHX uses **Jinja2** templates for it's components:
+PyJinHX uses **Jinja2** templates for its components:
 
 ```html
 <!-- card.html -->
@@ -61,8 +63,8 @@ button = Button(text="Submit")  # Error: id is required
     This way, when you instantiate `MyComponent()` without providing an `id`, a unique value will be generated.
 
 
-!!! tip "Auto-generated IDs"
-    When using `Renderer` with `auto_id=True`, IDs are generated automatically for template-side rendering.
+!!! tip "Auto-generated IDs apply to PascalCase tags only"
+    `auto_id` does **not** affect plain Python instances — `BaseComponent(...)` always requires a truthy `id`. The `Renderer`'s `auto_id=True` only generates an `id` when a PascalCase `<Tag/>` is expanded in a template without one (see [PascalCase Tags](tags.md)). Separately, `ReactiveComponent` (not `BaseComponent`) defaults its `id` to the kebab-cased class name (e.g. `TodoCounter` → `"todo-counter"`).
 
 
 ## Template Discovery
@@ -80,17 +82,7 @@ Templates are automatically discovered based on the class name:
 
 ## Extra Fields
 
-Normally, if you pass extra fields to a class that inherits from Pydantic's `BaseModel`, it will raise an error:
-
-```python
-from pydantic import BaseModel
-class Example(BaseModel):
-    foo: int
-
-Example(foo=1, bar=2)  # Raises ValidationError: extra fields not permitted
-```
-
-With `BaseComponent`, **extra fields are accepted and available in the template context**. This allows you to pass dictionaries or data objects with additional fields without raising validation errors.
+A plain Pydantic `BaseModel` rejects unknown fields with a `ValidationError`. With `BaseComponent`, **extra fields are accepted and available in the template context**. This allows you to pass dictionaries or data objects with additional fields without raising validation errors.
 
 ```python
 from pyjinhx import BaseComponent
