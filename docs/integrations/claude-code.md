@@ -113,7 +113,7 @@ Each component gets its own `<script>`/`<style>` tag (errors in one don't break 
 widget = MyWidget(id="w1", js=["path/to/extra.js"], css=["path/to/theme.css"])
 ```
 
-Missing extra files emit a warning (check `pyjinhx` logger). For production, use `AssetMode.REFERENCE` with `Renderer.set_asset_url_resolver()`. Disable assets with `AssetMode.NONE` or legacy `Renderer.set_default_inline_js(False)` / `Renderer.set_default_inline_css(False)`. Use `Finder(root).collect_javascript_files()` / `Finder(root).collect_css_files()` or `layout_asset_tags()` for layout preload.
+Missing extra files emit a warning (check `pyjinhx` logger). For production, use `AssetMode.REFERENCE` with `Renderer.set_asset_url_resolver()`. Disable assets with `AssetMode.NONE`. Use `Finder(root).collect_javascript_files()` / `Finder(root).collect_css_files()` or `layout_asset_tags()` for layout preload.
 
 **Kebab vs snake for co-located assets:** `pascal_case_to_kebab_case(ClassName) + ".js"|".css"` (e.g. `TabGroup` → `tab-group.js`, `LoadingOverlay` → `loading-overlay.js`). Wrong stem (e.g. `tab_group.js`) is **not** collected.
 

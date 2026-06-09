@@ -156,8 +156,6 @@ Renderer.set_default_js_mode(AssetMode.NONE)
 Renderer.set_default_css_mode(AssetMode.NONE)
 ```
 
-Legacy bool shims still work: `Renderer.set_default_inline_js(False)`.
-
 When disabled, no asset tags are emitted. Use `Finder.collect_javascript_files()` and `Finder.collect_css_files()` to discover files for fully manual static serving.
 
 ## Static File Serving

@@ -117,8 +117,8 @@ def test_none_mode_stays_silent():
     assert "<link" not in rendered
 
 
-def test_set_default_inline_js_false_maps_to_none():
-    Renderer.set_default_inline_js(False)
+def test_set_default_js_mode_none():
+    Renderer.set_default_js_mode(AssetMode.NONE)
     renderer = Renderer.get_default_renderer()
     assert renderer._js_mode == AssetMode.NONE
 

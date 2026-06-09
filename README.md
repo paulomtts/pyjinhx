@@ -18,11 +18,11 @@ pip install pyjinhx
 
 Import from the top level only — `from pyjinhx import BaseComponent, ReactiveComponent, setup, ...`. Internal module paths are not a stable API.
 
-| Folder | Role |
+| Area | Modules |
 |--------|------|
-| `pyjinhx/core/` | Components, render pipeline, registry, assets (usage tiers 1–2). Flat modules: `renderer` (orchestration), `render_assets`, `tag_expand`, `autodiscover`, `base`, `registry`, `finder`, `parser`, `assets` |
-| `pyjinhx/reactive/` | Cache, invalidation, mutations, OOB client helpers, `ReactiveComponent` (tier 3+) |
-| `pyjinhx/config/` | `setup()`, `PyJinhxSettings`, lifespan helpers |
+| Render engine (tiers 1–2) | `base`, `renderer`, `assets`, `tags`, `finder`, `registry` |
+| Reactivity (tier 3+) | `reactive`, `client`, `cache`, `mutations`, `keys`, `context`, `dev` |
+| Setup | `config` — `setup()`, `PyJinhxSettings`, lifespan helpers |
 | `pyjinhx/integrations/` | FastAPI wiring, Redis invalidation backend |
 | `pyjinhx/builtins/` | Optional UI kit |
 | `pyjinhx/runtime/` | Client runtime (`pjx.js`) |
@@ -200,7 +200,7 @@ Each asset is included once per render session. Output order: `<style>` tags, HT
 
 - **INLINE** (default): zero-config demos — assets are inlined as `<style>` / `<script>` blocks.
 - **REFERENCE**: production — emits `<link href="...">` / `<script src="...">` from a per-render manifest; configure `Renderer.set_asset_url_resolver()`.
-- **NONE**: no asset tags (legacy `set_default_inline_js(False)` behavior).
+- **NONE**: no asset tags.
 
 Reactive partial responses (when `mounted` is set) and OOB swaps never emit assets. Full-page layout renders emit them once. For boosted navigation in REFERENCE mode, enable client asset dedup so root renders skip URLs the browser already has (`X-PJX-Assets` via `ClientBackend` in middleware, or `render(client=request)`).
 

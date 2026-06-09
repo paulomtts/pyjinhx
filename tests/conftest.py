@@ -11,7 +11,7 @@ from pyjinhx.cache import InvalidationHub
 def _noop_inject_runtime(
     session: RenderSession,
     *,
-    js_mode: Any,
+    policy: Any,
     client: object | None = None,
 ) -> None:
     return

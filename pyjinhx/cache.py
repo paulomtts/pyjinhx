@@ -170,18 +170,26 @@ class LoadCache:
         return set(getattr(instance.__class__, "_pjx_reacts_to", frozenset()))
 
     @classmethod
-    def _unindex_cache_key(
-        cls, state: _CacheState, cache_key: tuple[type, str | None]
+    def _drop_reverse(
+        cls,
+        state: _CacheState,
+        cache_key: tuple[type, str | None],
+        instance: BaseComponent,
     ) -> None:
-        existing = state._cache.get(cache_key)
-        if existing is None:
-            return
-        for reactive_key in cls._indexed_keys(existing):
+        for reactive_key in cls._indexed_keys(instance):
             bucket = state._reverse.get(reactive_key)
             if bucket is not None:
                 bucket.discard(cache_key)
                 if not bucket:
                     state._reverse.pop(reactive_key, None)
+
+    @classmethod
+    def _unindex_cache_key(
+        cls, state: _CacheState, cache_key: tuple[type, str | None]
+    ) -> None:
+        existing = state._cache.get(cache_key)
+        if existing is not None:
+            cls._drop_reverse(state, cache_key, existing)
 
     @classmethod
     def _evict_from_state(cls, state: _CacheState, keys: set[str]) -> None:
@@ -192,14 +200,8 @@ class LoadCache:
             to_evict |= state._reverse.get(key, set())
         for cache_key in to_evict:
             cached = state._cache.pop(cache_key, None)
-            if cached is None:
-                continue
-            for reactive_key in cls._indexed_keys(cached):
-                bucket = state._reverse.get(reactive_key)
-                if bucket is not None:
-                    bucket.discard(cache_key)
-                    if not bucket:
-                        state._reverse.pop(reactive_key, None)
+            if cached is not None:
+                cls._drop_reverse(state, cache_key, cached)
 
     @classmethod
     def _evict_local(cls, keys: set[str]) -> None:

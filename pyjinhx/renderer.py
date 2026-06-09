@@ -10,10 +10,10 @@ from markupsafe import Markup
 from .assets import (
     DEFAULT_RUNTIME_URL as _DEFAULT_RUNTIME_URL,
     AssetMode,
+    AssetPolicy,
     AssetUrlResolver,
     RenderSession,
     apply_component_render_assets,
-    asset_mode_from_inline,
     inject_assets,
     make_default_asset_url_resolver,
     normalize_asset_path,
@@ -91,12 +91,6 @@ def load_template_for_component(
     )
 
 
-def find_template_for_tag(renderer: Renderer, tag_name: str) -> str:
-    loader_root = get_loader_root(renderer.environment)
-    finder = get_finder_for_root(renderer, loader_root)
-    return finder.find_template_for_tag(tag_name)
-
-
 def build_render_context(context: dict[str, Any]) -> dict[str, Any]:
     render_context = dict(context)
     for instance in Registry.get_instances().values():
@@ -168,14 +162,6 @@ class Renderer:
         cls._default_renderers.clear()
 
     @classmethod
-    def set_default_inline_js(cls, inline_js: bool) -> None:
-        cls.set_default_js_mode(asset_mode_from_inline(inline_js))
-
-    @classmethod
-    def set_default_inline_css(cls, inline_css: bool) -> None:
-        cls.set_default_css_mode(asset_mode_from_inline(inline_css))
-
-    @classmethod
     def set_default_runtime_url(cls, url: str) -> None:
         cls._default_runtime_url = url
         cls._default_renderers.clear()
@@ -201,30 +187,12 @@ class Renderer:
         cls,
         *,
         auto_id: bool = True,
-        inline_js: bool | None = None,
-        inline_css: bool | None = None,
         js_mode: AssetMode | None = None,
         css_mode: AssetMode | None = None,
     ):
         environment = cls.get_default_environment()
-        effective_js_mode = (
-            js_mode
-            if js_mode is not None
-            else (
-                asset_mode_from_inline(inline_js)
-                if inline_js is not None
-                else cls._default_js_mode
-            )
-        )
-        effective_css_mode = (
-            css_mode
-            if css_mode is not None
-            else (
-                asset_mode_from_inline(inline_css)
-                if inline_css is not None
-                else cls._default_css_mode
-            )
-        )
+        effective_js_mode = js_mode if js_mode is not None else cls._default_js_mode
+        effective_css_mode = css_mode if css_mode is not None else cls._default_css_mode
         resolver_id = id(cls._asset_url_resolver)
         cache_key = (
             id(environment),
@@ -249,25 +217,13 @@ class Renderer:
         environment: Environment,
         *,
         auto_id: bool = True,
-        inline_js: bool | None = None,
-        inline_css: bool | None = None,
         js_mode: AssetMode | None = None,
         css_mode: AssetMode | None = None,
     ) -> None:
         self._environment = environment
         self._auto_id = auto_id
-        if js_mode is not None:
-            self._js_mode = js_mode
-        elif inline_js is not None:
-            self._js_mode = asset_mode_from_inline(inline_js)
-        else:
-            self._js_mode = Renderer._default_js_mode
-        if css_mode is not None:
-            self._css_mode = css_mode
-        elif inline_css is not None:
-            self._css_mode = asset_mode_from_inline(inline_css)
-        else:
-            self._css_mode = Renderer._default_css_mode
+        self._js_mode = js_mode if js_mode is not None else Renderer._default_js_mode
+        self._css_mode = css_mode if css_mode is not None else Renderer._default_css_mode
         self._template_finder_cache: dict[str, object] = {}
 
     @property
@@ -287,22 +243,10 @@ class Renderer:
     def new_session(self) -> RenderSession:
         return RenderSession()
 
-    def _load_template_for_component(
-        self,
-        component: BaseComponent,
-        *,
-        template_source: str | None,
-        template_path: str | None,
-    ):
-        return load_template_for_component(
-            self,
-            component,
-            template_source=template_source,
-            template_path=template_path,
-        )
-
     def _find_template_for_tag(self, tag_name: str) -> str:
-        return find_template_for_tag(self, tag_name)
+        loader_root = get_loader_root(self._environment)
+        finder = get_finder_for_root(self, loader_root)
+        return finder.find_template_for_tag(tag_name)
 
     def render_component_with_context(
         self,
@@ -318,8 +262,8 @@ class Renderer:
         loaded_assets: frozenset[str] = frozenset(),
         client: object | None = None,
     ) -> Markup:
-        template = self._load_template_for_component(
-            component, template_source=template_source, template_path=template_path
+        template = load_template_for_component(
+            self, component, template_source=template_source, template_path=template_path
         )
 
         render_context = build_render_context(context)
@@ -336,6 +280,13 @@ class Renderer:
         if not emit_assets:
             return Markup(rendered_markup).unescape()
 
+        policy = AssetPolicy(
+            js_mode=self._js_mode,
+            css_mode=self._css_mode,
+            resolve_url=self._resolve_asset_url,
+            loaded_assets=loaded_assets,
+            dedup_enabled=Renderer._default_asset_dedup,
+        )
         rendered_markup = apply_component_render_assets(
             component,
             rendered_markup,
@@ -343,11 +294,7 @@ class Renderer:
             template_path=template_path,
             is_root=is_root,
             collect_component_js=collect_component_js,
-            js_mode=self._js_mode,
-            css_mode=self._css_mode,
-            resolve_url=self._resolve_asset_url,
-            loaded_assets=loaded_assets,
-            dedup_enabled=Renderer._default_asset_dedup,
+            policy=policy,
             client=client,
         )
         return Markup(rendered_markup).unescape()
@@ -369,12 +316,11 @@ class Renderer:
             for node in parser.root_nodes
         )
         if self._css_mode != AssetMode.NONE or self._js_mode != AssetMode.NONE:
-            rendered_markup = inject_assets(
-                rendered_markup,
-                session,
+            policy = AssetPolicy(
                 js_mode=self._js_mode,
                 css_mode=self._css_mode,
                 resolve_url=self._resolve_asset_url,
                 dedup_enabled=Renderer._default_asset_dedup,
             )
+            rendered_markup = inject_assets(rendered_markup, session, policy=policy)
         return rendered_markup.strip()

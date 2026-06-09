@@ -75,15 +75,25 @@ class AssetManifest:
     scripts: tuple[str, ...]
 
 
+@dataclass(frozen=True)
+class AssetPolicy:
+    """How a render emits assets: per-kind mode, URL resolution, and dedup."""
+
+    js_mode: AssetMode
+    css_mode: AssetMode
+    resolve_url: AssetUrlResolver
+    loaded_assets: frozenset[str] = frozenset()
+    dedup_enabled: bool = False
+
+    def mode(self, kind: AssetKind) -> AssetMode:
+        return self.js_mode if kind == "js" else self.css_mode
+
+
 def runtime_asset_path() -> str:
     """Return the absolute path to the bundled pyjinhx client runtime."""
     return os.path.normpath(
         os.path.join(os.path.dirname(__file__), "runtime", "pjx.js")
     )
-
-
-def asset_mode_from_inline(inline: bool) -> AssetMode:
-    return AssetMode.INLINE if inline else AssetMode.NONE
 
 
 def default_asset_url(path: str, *, root: str) -> str:
@@ -151,10 +161,6 @@ def normalize_asset_path(path: str) -> str:
     return os.path.normpath(path).replace("\\", "/")
 
 
-def asset_mode(js_mode: AssetMode, css_mode: AssetMode, kind: AssetKind) -> AssetMode:
-    return js_mode if kind == "js" else css_mode
-
-
 def register_asset(
     session: RenderSession,
     path: str,
@@ -191,12 +197,11 @@ def collect_component_asset(
     session: RenderSession,
     kind: AssetKind,
     *,
-    js_mode: AssetMode,
-    css_mode: AssetMode,
+    policy: AssetPolicy,
     component_dir: str | None = None,
     asset_name: str | None = None,
 ) -> None:
-    mode = asset_mode(js_mode, css_mode, kind)
+    mode = policy.mode(kind)
     if mode == AssetMode.NONE:
         return
 
@@ -215,10 +220,9 @@ def collect_extra_assets(
     session: RenderSession,
     kind: AssetKind,
     *,
-    js_mode: AssetMode,
-    css_mode: AssetMode,
+    policy: AssetPolicy,
 ) -> None:
-    mode = asset_mode(js_mode, css_mode, kind)
+    mode = policy.mode(kind)
     if mode == AssetMode.NONE:
         return
 
@@ -241,7 +245,7 @@ def collect_extra_assets(
 def inject_runtime(
     session: RenderSession,
     *,
-    js_mode: AssetMode,
+    policy: AssetPolicy,
     client: object | None = None,
 ) -> None:
     from pyjinhx.client import MountedManifest
@@ -250,9 +254,9 @@ def inject_runtime(
         return
     if MountedManifest.is_present(client):
         return
-    if js_mode == AssetMode.INLINE:
+    if policy.js_mode == AssetMode.INLINE:
         session.scripts.insert(0, read_client_runtime())
-    elif js_mode == AssetMode.REFERENCE:
+    elif policy.js_mode == AssetMode.REFERENCE:
         runtime_path = normalize_asset_path(runtime_asset_path())
         if runtime_path not in session.collected_paths:
             session.collected_paths.add(runtime_path)
@@ -273,17 +277,8 @@ def should_emit_reference_url(
     return url not in loaded_assets
 
 
-def render_assets(
-    session: RenderSession,
-    kind: AssetKind,
-    *,
-    js_mode: AssetMode,
-    css_mode: AssetMode,
-    resolve_url: Callable[[str], str],
-    loaded_assets: frozenset[str] = frozenset(),
-    dedup_enabled: bool = False,
-) -> str:
-    mode = asset_mode(js_mode, css_mode, kind)
+def render_assets(session: RenderSession, kind: AssetKind, *, policy: AssetPolicy) -> str:
+    mode = policy.mode(kind)
     if mode == AssetMode.INLINE:
         items = session.scripts if kind == "js" else session.styles
         if not items:
@@ -297,9 +292,9 @@ def render_assets(
             return ""
         tags: list[str] = []
         for asset in kind_assets:
-            url = resolve_url(asset.path)
+            url = policy.resolve_url(asset.path)
             if should_emit_reference_url(
-                url, loaded_assets, dedup_enabled=dedup_enabled
+                url, policy.loaded_assets, dedup_enabled=policy.dedup_enabled
             ):
                 if kind == "js":
                     tags.append(f'<script src="{url}"></script>')
@@ -317,11 +312,7 @@ def apply_component_render_assets(
     template_path: str | None,
     is_root: bool,
     collect_component_js: bool,
-    js_mode: AssetMode,
-    css_mode: AssetMode,
-    resolve_url: Callable[[str], str],
-    loaded_assets: frozenset[str],
-    dedup_enabled: bool,
+    policy: AssetPolicy,
     client: object | None,
 ) -> str:
     if template_path is not None and type(component).__name__ == "BaseComponent":
@@ -335,86 +326,31 @@ def apply_component_render_assets(
 
     if collect_component_js:
         collect_component_asset(
-            component,
-            session,
-            "js",
-            js_mode=js_mode,
-            css_mode=css_mode,
-            component_dir=asset_dir,
-            asset_name=asset_name,
+            component, session, "js",
+            policy=policy, component_dir=asset_dir, asset_name=asset_name,
         )
         collect_component_asset(
-            component,
-            session,
-            "css",
-            js_mode=js_mode,
-            css_mode=css_mode,
-            component_dir=asset_dir,
-            asset_name=asset_name,
+            component, session, "css",
+            policy=policy, component_dir=asset_dir, asset_name=asset_name,
         )
 
     if not is_root:
         return rendered_markup
 
-    if css_mode != AssetMode.NONE:
-        collect_extra_assets(
-            component,
-            session,
-            "css",
-            js_mode=js_mode,
-            css_mode=css_mode,
-        )
-    if js_mode != AssetMode.NONE:
-        inject_runtime(session, js_mode=js_mode, client=client)
-        collect_extra_assets(
-            component,
-            session,
-            "js",
-            js_mode=js_mode,
-            css_mode=css_mode,
-        )
-    if css_mode == AssetMode.NONE and js_mode == AssetMode.NONE:
+    if policy.css_mode != AssetMode.NONE:
+        collect_extra_assets(component, session, "css", policy=policy)
+    if policy.js_mode != AssetMode.NONE:
+        inject_runtime(session, policy=policy, client=client)
+        collect_extra_assets(component, session, "js", policy=policy)
+    if policy.css_mode == AssetMode.NONE and policy.js_mode == AssetMode.NONE:
         return rendered_markup
 
-    return inject_assets(
-        rendered_markup,
-        session,
-        js_mode=js_mode,
-        css_mode=css_mode,
-        resolve_url=resolve_url,
-        loaded_assets=loaded_assets,
-        dedup_enabled=dedup_enabled,
-    )
+    return inject_assets(rendered_markup, session, policy=policy)
 
 
-def inject_assets(
-    markup: str,
-    session: RenderSession,
-    *,
-    js_mode: AssetMode,
-    css_mode: AssetMode,
-    resolve_url: Callable[[str], str],
-    loaded_assets: frozenset[str] = frozenset(),
-    dedup_enabled: bool = False,
-) -> str:
-    css_markup = render_assets(
-        session,
-        "css",
-        js_mode=js_mode,
-        css_mode=css_mode,
-        resolve_url=resolve_url,
-        loaded_assets=loaded_assets,
-        dedup_enabled=dedup_enabled,
-    )
-    js_markup = render_assets(
-        session,
-        "js",
-        js_mode=js_mode,
-        css_mode=css_mode,
-        resolve_url=resolve_url,
-        loaded_assets=loaded_assets,
-        dedup_enabled=dedup_enabled,
-    )
+def inject_assets(markup: str, session: RenderSession, *, policy: AssetPolicy) -> str:
+    css_markup = render_assets(session, "css", policy=policy)
+    js_markup = render_assets(session, "js", policy=policy)
     if css_markup:
         markup = f"{css_markup}\n{markup}"
     if js_markup:
