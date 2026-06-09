@@ -1,4 +1,4 @@
-from pyjinhx import oob_swaps  # noqa: F401
+from pyjinhx.reactive import oob_swaps  # noqa: F401
 from tests.reactive_test_support import reactive_client, record_mutation
 from tests.ui.reactive import store
 from tests.ui.reactive.reactive_counter import ReactiveCounter

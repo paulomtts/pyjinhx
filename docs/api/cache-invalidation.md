@@ -4,55 +4,37 @@ Public API for the reactive `load()` cache and cross-process invalidation fan-ou
 
 See [Reactivity](../reactivity.md) and [FastAPI integration](../integrations/fastapi.md) for usage patterns.
 
-## CacheScope
+## Cache scope
 
-```python
-class CacheScope(str, Enum):
-    REQUEST = "request"
-    PROCESS = "process"
-    NONE = "none"
-```
+You don't choose where cached `load()` results are stored — it is **derived** from whether an `invalidation_backend` is configured:
 
-Controls where cached `load()` results are stored.
+| Backend | Behavior |
+|---------|----------|
+| none (default) | Per-request: isolated per `Registry.request_scope()`, cleared when the scope exits — the only multi-worker-safe default |
+| configured (e.g. Redis) | Per worker process: results survive across HTTP requests, with the backend keeping every worker's cache consistent on mutation |
 
-| Scope | Behavior |
-|-------|----------|
-| `REQUEST` (default) | Isolated per `Registry.request_scope()`; cleared when the scope exits |
-| `PROCESS` | Shared per worker process; survives across HTTP requests |
-| `NONE` | No caching; every `load()` runs fresh |
-
-`Registry.request_scope()` always creates a request-scoped cache store. With `PROCESS` scope, reads fall through to the process store; with `REQUEST` scope, only the request store is used.
+`Registry.request_scope()` always creates a request-scoped cache store, so the within-request dedup that the reactive OOB walk relies on always happens. With a backend configured, reads also fall through to the process store; otherwise only the request store is used.
 
 ## LoadCache
 
 ```python
 class LoadCache:
     @classmethod
-    def scope(cls) -> CacheScope: ...
-    @classmethod
-    def set_scope(cls, scope: CacheScope) -> None: ...
-    @classmethod
     def invalidate(cls, dirtied: Iterable[object], *, propagate: bool = True) -> None: ...
     @classmethod
     def clear(cls) -> None: ...
 ```
 
-Memoizes reactive `load()` results keyed by `(class, load_arg)`.
-
-Prefer [`setup()`](config.md) at app startup:
+Memoizes reactive `load()` results keyed by `(class, load_arg)`. The scope is set for you from the configured backend (see above) — use [`setup()`](config.md) at app startup:
 
 ```python
-from pyjinhx import CacheScope, setup
+from pyjinhx import setup
 
-setup(app, cache_scope=CacheScope.REQUEST)   # default — multi-worker safe
-setup(app, cache_scope=CacheScope.PROCESS)   # cross-request per worker; pair with invalidation
+setup(app)                      # default — per-request, multi-worker safe
+setup(app, invalidation_backend=...)  # cross-request per worker; fans out evictions
 ```
 
-Or set explicitly: `LoadCache.set_scope(CacheScope.REQUEST)`.
-
-Environment variable `PJX_LOAD_CACHE_SCOPE` is read by `PyJinhxSettings.from_env()` (default `request`).
-
-**Propagation:** when `CacheScope.PROCESS` is active, an `InvalidationBackend` is configured, and `propagate=True` (default), dirtied keys are published to other workers after local eviction. Remote handlers call `LoadCache.invalidate(..., propagate=False)` to avoid publish loops.
+**Propagation:** when an `InvalidationBackend` is configured (cross-request caching active) and `propagate=True` (default), dirtied keys are published to other workers after local eviction. Remote handlers call `LoadCache.invalidate(..., propagate=False)` to avoid publish loops.
 
 Called automatically by `@mutates` after mutations complete.
 
@@ -88,13 +70,12 @@ Runtime coordinator for cross-process invalidation. Passing a new backend stops 
 **Typical FastAPI setup:**
 
 ```python
-from pyjinhx import setup, PyJinhxSettings, CacheScope
+from pyjinhx import setup, PjxSettings
 from pyjinhx.integrations.redis import RedisInvalidationBackend
 
 setup(
     app,
-    settings=PyJinhxSettings(
-        cache_scope=CacheScope.PROCESS,
+    settings=PjxSettings(
         invalidation_backend=RedisInvalidationBackend("redis://localhost:6379/0"),
     ),
 )

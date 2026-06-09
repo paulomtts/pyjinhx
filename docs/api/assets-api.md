@@ -33,7 +33,7 @@ Return the absolute filesystem path to the bundled `pjx.js` client runtime. Moun
 
 ```python
 from fastapi.staticfiles import StaticFiles
-from pyjinhx import runtime_asset_path
+from pyjinhx.assets import runtime_asset_path
 import os
 
 app.mount(
@@ -60,7 +60,8 @@ def make_default_asset_url_resolver(root: str) -> AssetUrlResolver
 Build a callable resolver using `default_asset_url()`. Pass to `Renderer.set_asset_url_resolver()` or `asset_manifest()`.
 
 ```python
-from pyjinhx import Renderer, make_default_asset_url_resolver
+from pyjinhx import Renderer
+from pyjinhx.assets import make_default_asset_url_resolver
 
 Renderer.set_asset_url_resolver(make_default_asset_url_resolver("./components"))
 ```
@@ -82,7 +83,8 @@ def resolver_with_hash(base_url: str, root: str) -> AssetUrlResolver
 Build an asset URL resolver that embeds a content hash in each filename. The runtime file is placed under `{base_url}/pyjinhx/{hashed}`.
 
 ```python
-from pyjinhx import Renderer, resolver_with_hash
+from pyjinhx import Renderer
+from pyjinhx.assets import resolver_with_hash
 
 Renderer.set_asset_url_resolver(resolver_with_hash("/static/components", root="./components"))
 ```
@@ -104,7 +106,8 @@ def layout_asset_tags(self, *, resolver: AssetUrlResolver) -> Markup
 Instance method on [`Finder`](finder.md). Emit `<link>` and `<script src>` tags for every component asset discovered under the finder's root. Use in layout shells to preload all component assets instead of per-page discovery.
 
 ```python
-from pyjinhx import Finder, make_default_asset_url_resolver
+from pyjinhx.assets import make_default_asset_url_resolver
+from pyjinhx.finder import Finder
 
 finder = Finder(root="./components")
 resolver = make_default_asset_url_resolver("./components")

@@ -2,7 +2,8 @@ import json
 
 from markupsafe import Markup
 
-from pyjinhx import PJX_MOUNTED_HEADER, oob_swaps
+from pyjinhx.client import PJX_MOUNTED_HEADER
+from pyjinhx.reactive import oob_swaps
 from tests.reactive_test_support import reactive_client, record_mutation
 from tests.ui.reactive import store
 from tests.ui.reactive.reactive_counter import ReactiveCounter  # noqa: F401

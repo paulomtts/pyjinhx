@@ -1,40 +1,40 @@
-# Mutations, Keys & LoadContext
+# Mutations, Keys & PjxContext
 
 Public API for reactive state keys, mutation tracking, request-scoped load context, and development guardrails.
 
 See [Reactivity](../reactivity.md) for conceptual documentation.
 
-## StateKey
+## MutationKey
 
 ```python
-class StateKey(StrEnum):
+class MutationKey(StrEnum):
     ...
 ```
 
 Base class for app-level reactive key constants. Subclass and declare members; use the enum in `reacts_to` and `@mutates` — all normalize to their string values.
 
 ```python
-from pyjinhx import StateKey
+from pyjinhx import MutationKey
 
-class Keys(StateKey):
+class Keys(MutationKey):
     TODOS = "todos"
 ```
 
-## PjxLoad
+## PjxKey
 
 ```python
-class PjxLoad:
+class PjxKey:
     ...
 ```
 
-Marker for `Annotated[..., PjxLoad()]`. Keyed components declare exactly one `PjxLoad` field; its value is stamped as `data-pjx-load` on render and returned in the client manifest as `load` for OOB `load()` round-trip.
+Marker for `Annotated[..., PjxKey()]`. Keyed components declare exactly one `PjxKey` field; its value is stamped as `data-pjx-load` on render and returned in the client manifest as `load` for OOB `load()` round-trip.
 
 ```python
 from typing import Annotated
-from pyjinhx import PjxLoad, ReactiveComponent
+from pyjinhx import PjxKey, ReactiveComponent
 
 class ItemRow(ReactiveComponent):
-    todo_id: Annotated[int, PjxLoad()]
+    todo_id: Annotated[int, PjxKey()]
     reacts_to: ClassVar[set[str]] = {"todos"}
 
     @classmethod
@@ -48,7 +48,7 @@ class ItemRow(ReactiveComponent):
 def mutates(*keys: ReactiveKey) -> Callable[[F], F]
 ```
 
-Decorator for store mutation methods. Each arg is a **state key** (string or `StateKey` enum). After the wrapped function returns, invalidates the load cache and accumulates pending dirtied keys for the next reactive `render()`.
+Decorator for store mutation methods. Each arg is a **state key** (string or `MutationKey` enum). After the wrapped function returns, invalidates the load cache and accumulates pending dirtied keys for the next reactive `render()`.
 
 ```python
 from pyjinhx import mutates
@@ -59,32 +59,33 @@ class Store:
         ...
 ```
 
-## LoadContext
+## PjxContext
 
 ```python
 @dataclass(frozen=True)
-class LoadContext:
+class PjxContext:
     ...
 ```
 
 Opaque base for request-scoped data available inside reactive `load()`. Subclass with your own frozen dataclass fields (database session, user id, feature flags).
 
-## LoadContext.current / LoadContext.bind
+## PjxContext.current / PjxContext.bind
 
 ```python
-LoadContext.current() -> Any | None
-LoadContext.bind(ctx) -> ContextManager[None]
+PjxContext.current() -> Any | None
+PjxContext.bind(ctx) -> ContextManager[None]
 ```
 
-Return or set the load context for the current scope. Reactive `load()` methods receive a parameter annotated with `LoadContext` (or a subclass) when the context is set.
+Return or set the load context for the current scope. Reactive `load()` methods receive a parameter annotated with `PjxContext` (or a subclass) when the context is set.
 
 Prefer `Registry.request_scope(load_context=ctx)` in web apps — it combines registry isolation, request cache, mutation tracking, and load context in one call.
 
 ```python
-from pyjinhx import LoadContext, Registry, FastAPIClientBackend
+from pyjinhx import PjxContext, Registry
+from pyjinhx.integrations.fastapi import FastAPIClientBackend
 
 @dataclass(frozen=True)
-class AppLoadContext(LoadContext):
+class AppLoadContext(PjxContext):
     db: Session
 
 with Registry.request_scope(
@@ -137,7 +138,7 @@ def format_dependency_graph(*, as_mermaid: bool = False) -> str
 Format the dependency graph as a text table or Mermaid flowchart. Useful for debugging and documentation.
 
 ```python
-from pyjinhx import format_dependency_graph
+from pyjinhx.dev import format_dependency_graph
 
 print(format_dependency_graph())
 print(format_dependency_graph(as_mermaid=True))

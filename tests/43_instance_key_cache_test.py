@@ -1,12 +1,13 @@
 from typing import Annotated, ClassVar
 
-from pyjinhx import LoadCache, PjxLoad, ReactiveComponent
+from pyjinhx import PjxKey, ReactiveComponent
+from pyjinhx.cache import LoadCache
 
 load_calls = {"n": 0}
 
 
 class Row(ReactiveComponent):
-    row_key: Annotated[str, PjxLoad()]
+    row_key: Annotated[str, PjxKey()]
     title: str = ""
     reacts_to: ClassVar[set[str]] = {"row", "rows"}
 

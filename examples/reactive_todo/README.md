@@ -35,19 +35,15 @@ what's mounted on every HTMX request.
 ## Setup
 
 The app calls `setup(app, ...)` once — lifespan (cache + optional invalidation) and
-registry middleware are wired automatically. Default load cache is
-**`CacheScope.REQUEST`** (multi-worker safe without Redis).
+registry middleware are wired automatically. You don't choose a cache scope; it's derived
+from the backend. With no backend (the default) `load()` results are cached per request,
+which is multi-worker safe without Redis.
 
-Cross-request cache per worker (opt-in performance):
-
-```bash
-PJX_LOAD_CACHE_SCOPE=process uv run uvicorn examples.reactive_todo.app:app --reload
-```
-
-Multi-worker with Redis invalidation fan-out:
+Cross-request cache per worker with Redis invalidation fan-out (opt-in performance, and the
+multi-worker-safe way to cache across requests):
 
 ```bash
-PJX_LOAD_CACHE_SCOPE=process REDIS_URL=redis://localhost:6379/0 \
+REDIS_URL=redis://localhost:6379/0 \
   uv run uvicorn examples.reactive_todo.app:app --reload
 ```
 

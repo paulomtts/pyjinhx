@@ -4,17 +4,30 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from pyjinhx import (
-    CacheScope,
-    ClientBackend,
-    LoadCache,
-    setup,
-)
+from pyjinhx import setup
+from pyjinhx.cache import CacheScope, InvalidationBackend, LoadCache
+from pyjinhx.client import ClientBackend
 
 
-def test_setup_without_app_configures_process():
-    setup(cache_scope=CacheScope.REQUEST)
+class _StubBackend(InvalidationBackend):
+    def publish(self, keys: frozenset[str]) -> None:
+        pass
+
+    def start(self, handler) -> None:
+        pass
+
+    def stop(self) -> None:
+        pass
+
+
+def test_setup_without_app_no_backend_is_request():
+    setup()
     assert LoadCache.scope() == CacheScope.REQUEST
+
+
+def test_setup_without_app_with_backend_is_process():
+    setup(invalidation_backend=_StubBackend())
+    assert LoadCache.scope() == CacheScope.PROCESS
 
 
 def test_setup_chains_existing_lifespan():
@@ -27,7 +40,7 @@ def test_setup_chains_existing_lifespan():
         events.append("user_stop")
 
     app = FastAPI(lifespan=user_lifespan)
-    setup(app, cache_scope=CacheScope.REQUEST)
+    setup(app)
 
     with TestClient(app) as _client:
         assert events == ["user_start"]
@@ -37,7 +50,7 @@ def test_setup_chains_existing_lifespan():
 
 def test_setup_middleware_wires_client_backend():
     app = FastAPI()
-    setup(app, cache_scope=CacheScope.REQUEST)
+    setup(app)
 
     @app.get("/")
     def index():
@@ -51,8 +64,9 @@ def test_setup_middleware_wires_client_backend():
 
 def test_setup_is_idempotent():
     app = FastAPI()
-    setup(app, cache_scope=CacheScope.REQUEST)
-    setup(app, cache_scope=CacheScope.PROCESS)
+    setup(app)
+    # A second setup() (which would derive PROCESS from a backend) is a no-op.
+    setup(app, invalidation_backend=_StubBackend())
     assert app.state.pyjinhx_setup is True
 
     with TestClient(app) as client:
@@ -62,4 +76,4 @@ def test_setup_is_idempotent():
 
 def test_setup_rejects_non_asgi_app():
     with pytest.raises(TypeError, match="Starlette/FastAPI-like app"):
-        setup(object(), cache_scope=CacheScope.REQUEST)
+        setup(object())

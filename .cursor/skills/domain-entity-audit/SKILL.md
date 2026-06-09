@@ -23,14 +23,14 @@ Read: [CONVENTIONS.md](../code-audit-sweep/CONVENTIONS.md).
 | Concept | Representation | Not |
 |---------|----------------|-----|
 | Reactive UI unit | `ReactiveComponent` | functions in `component.py` only |
-| Load DI | `LoadContext` | `get_load_context()` wrapper |
+| Load DI | `PjxContext` | `get_load_context()` wrapper |
 | HTTP header source | `ClientBackend` ABC | FastAPI type in `reactive/` |
 | Load memoization | `LoadCache` | procedural `cache.py` |
 | Dirtied keys | `MutationTracker` | scattered ContextVar helpers |
 | Cross-worker fan-out | `InvalidationBackend` + `InvalidationHub` | Redis in `reactive/` |
 | Client manifest | `MountedManifest` | loose dict parsing only |
 | Trigger region | `TriggerManifest` | ad-hoc trigger header parsing |
-| Load round-trip marker | `PjxLoad` | magic `{{ key }}` template injection |
+| Load round-trip marker | `PjxKey` | magic `{{ key }}` template injection |
 | Loaded asset URLs | `LoadedAssets` | `parse_loaded_assets()` |
 | OOB swap walk | functions in `oob.py` | `OobSwaps` class (algorithm, not entity) |
 | Dev guardrails | module functions + `_DevConfig` | public class |

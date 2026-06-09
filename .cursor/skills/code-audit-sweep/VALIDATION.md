@@ -8,7 +8,7 @@ Orchestrator dry-run after reactive refactor. Used to calibrate severity and con
 |----|----|----|
 | 0  | 0  | 0–1 |
 
-**Summary:** Post-refactor reactive package passes all lenses. No layer violations, no thin wrappers, ContextVars owned by hub classes (`LoadCache`, `MutationTracker`, `ClientBackend`) or `LoadContext` static API. Largest file `load_cache.py` (243 LOC) is cohesive single-class; below hard split threshold.
+**Summary:** Post-refactor reactive package passes all lenses. No layer violations, no thin wrappers, ContextVars owned by hub classes (`LoadCache`, `MutationTracker`, `ClientBackend`) or `PjxContext` static API. Largest file `load_cache.py` (243 LOC) is cohesive single-class; below hard split threshold.
 
 Optional P3 (not reported): `load_cache.py` slightly above 250 LOC soft ceiling — defer split until second concern appears.
 
@@ -31,7 +31,7 @@ Optional P3 (not reported): `load_cache.py` slightly above 250 LOC soft ceiling 
 ### P3 — `registry.py` module-level `_registry_context`
 
 - **Lens:** state-shape-audit
-- **Issue:** ContextVar at module level vs `ClassVar` on `Registry` (matches `LoadContext` pattern).
+- **Issue:** ContextVar at module level vs `ClassVar` on `Registry` (matches `PjxContext` pattern).
 - **Fix shape:** Optional consolidation onto `Registry` when editing; not inconsistent enough to prioritize.
 
 ## Cross-cutting (docs, not code scope)
@@ -41,6 +41,6 @@ Optional P3 (not reported): `load_cache.py` slightly above 250 LOC soft ceiling 
 ## Rubric tuning applied
 
 - Cohesive single-class files 240–260 LOC → no finding unless mixed concerns.
-- Module-level ContextVar + class static methods (`LoadContext`, `Registry`) → OK, not P2.
+- Module-level ContextVar + class static methods (`PjxContext`, `Registry`) → OK, not P2.
 - Expected baseline in orchestrator SKILL.md matches reactive dry-run.
 - **dead-code-audit** runs last in full sweep; complements `public-api-audit` with code-path and orphan-test analysis.

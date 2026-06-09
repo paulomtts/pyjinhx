@@ -4,7 +4,7 @@ from typing import ClassVar
 import pytest
 
 from pyjinhx import ReactiveComponent, Registry, mutates
-from pyjinhx import LoadCache
+from pyjinhx.cache import LoadCache
 from pyjinhx.dev import (
     dependency_graph,
     disable_reactive_dev,

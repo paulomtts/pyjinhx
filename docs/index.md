@@ -20,7 +20,7 @@ PyJinHx layers optional features on top of a small core. You can stop at any tie
 | **1 — Components** | `BaseComponent`, templates, assets | [Quick Start](getting-started/quickstart.md) |
 | **2 — Web app** | Per-request `Registry.request_scope()` | [Registry guide](guide/registry.md) |
 | **3 — Reactive** | HTMX OOB swaps, `@mutates`, `load()` | [Reactivity](reactivity.md) |
-| **4 — Full wiring** | `LoadContext`, `ClientBackend`, cache, invalidation | [Build an App](getting-started/build-an-app.md) |
+| **4 — Full wiring** | `PjxContext`, `ClientBackend`, cache, invalidation | [Build an App](getting-started/build-an-app.md) |
 
 Details: [Usage tiers](guide/usage-tiers.md).
 

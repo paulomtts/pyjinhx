@@ -80,7 +80,7 @@ class AppShell(BaseComponent):
 For a raw Jinja layout (outside the component render path), drop in `client_script()`:
 
 ```python
-from pyjinhx import client_script
+from pyjinhx.client import client_script
 
 # in your template context
 {"pjx_runtime": client_script()}
@@ -162,14 +162,14 @@ not smeared across endpoints. Adding a progress bar that declares
 
 A reactive type can have **many mounted instances** — table rows, cards, list items.
 A component is **instance-keyed iff its `load()` takes one resource parameter after
-`cls`**; declare exactly one `PjxLoad` field on the model:
+`cls`**; declare exactly one `PjxKey` field on the model:
 
 ```python
 from typing import Annotated
-from pyjinhx import PjxLoad, ReactiveComponent
+from pyjinhx import PjxKey, ReactiveComponent
 
 class TodoItemRow(ReactiveComponent):
-    todo_id: Annotated[int, PjxLoad()]
+    todo_id: Annotated[int, PjxKey()]
     title: str = ""
     done: bool = False
     reacts_to: ClassVar[set[str]] = {"todos"}
@@ -185,7 +185,7 @@ class TodoItemRow(ReactiveComponent):
         )
 ```
 
-- **`data-pjx-load`** is stamped from the `PjxLoad` field and returned in the manifest
+- **`data-pjx-load`** is stamped from the `PjxKey` field and returned in the manifest
   so OOB reloads call `load(manifest.load)`.
 - **Templates** use the field directly: `hx-post="/rows/{{ todo_id }}/toggle"`.
 - **`reacts_to`** lists **state keys only** (e.g. `{"todos"}`). Pub-sub OOB reloads
@@ -210,13 +210,13 @@ from the DOM without a server error.
 
 ## State keys
 
-Centralize reactive key strings in a `StateKey` enum so `reacts_to`, `dirtied`, and
+Centralize reactive key strings in a `MutationKey` enum so `reacts_to`, `dirtied`, and
 `@mutates` share one vocabulary:
 
 ```python
-from pyjinhx import StateKey
+from pyjinhx import MutationKey
 
-class Keys(StateKey):
+class Keys(MutationKey):
     TODOS = "todos"
 
 class TodoCounter(ReactiveComponent):
@@ -281,16 +281,16 @@ Pass request-scoped dependencies into `load()` without global imports:
 
 ```python
 from dataclasses import dataclass
-from pyjinhx import LoadContext
+from pyjinhx import PjxContext
 
 @dataclass(frozen=True)
-class AppContext(LoadContext):
+class AppContext(PjxContext):
     db: Database
 
 class Counter(ReactiveComponent):
     @classmethod
     def load(cls, *, ctx: AppContext | None = None) -> "Counter":
-        ctx = ctx or LoadContext.current()
+        ctx = ctx or PjxContext.current()
         return cls(remaining=ctx.db.remaining())
 ```
 
@@ -303,7 +303,7 @@ Set context per request via `setup(app, load_context_factory=...)` or
 Enable guardrails during local development:
 
 ```python
-from pyjinhx import enable_reactive_dev
+from pyjinhx.dev import enable_reactive_dev
 
 enable_reactive_dev()          # warnings
 enable_reactive_dev(strict=True)  # raise instead
@@ -318,7 +318,7 @@ Checks include:
 Inspect the dependency graph at startup:
 
 ```python
-from pyjinhx import dependency_graph, format_dependency_graph
+from pyjinhx.dev import dependency_graph, format_dependency_graph
 
 print(format_dependency_graph())
 # or format_dependency_graph(as_mermaid=True) for a flowchart
@@ -337,25 +337,27 @@ Counter.load()   # cached: no DB, returns an independent copy
 
 ### Cache scope
 
-| Scope | Default | Storage | Cross-request | Multi-worker safe |
-|-------|---------|---------|---------------|-------------------|
-| `REQUEST` | yes | `ContextVar` inside `Registry.request_scope()` | no | yes |
-| `PROCESS` | opt-in | module-level dict per worker | yes | needs invalidation fan-out |
-| `NONE` | opt-in | disabled | — | yes |
+You don't choose a scope — it follows the backend. By default (no `invalidation_backend`),
+caching is per request; configuring a cross-worker backend extends it to cross-request per
+worker process.
+
+| Backend | Storage | Cross-request | Multi-worker safe |
+|---------|---------|---------------|-------------------|
+| none (default) | `ContextVar` inside `Registry.request_scope()` | no | yes |
+| configured | module-level dict per worker, fanned out on mutation | yes | yes (backend keeps workers consistent) |
 
 ```python
-from pyjinhx import CacheScope, setup
+from pyjinhx import setup
 
-setup(app)  # default CacheScope.REQUEST
-setup(app, cache_scope=CacheScope.PROCESS, invalidation_backend=...)  # cross-request per worker
-setup(app, cache_scope=CacheScope.NONE)
+setup(app)  # per-request caching (default, multi-worker safe)
+setup(app, invalidation_backend=...)  # cross-request per worker
 ```
 
 Use `Registry.request_scope()` on every HTTP request (middleware) for instance registry
-isolation and optional request-tier cache when scope is `REQUEST`.
+isolation and the request-tier cache (which dedups the OOB walk regardless of backend).
 
 **Cache identity:** entries are keyed by `(component class, load key)` only. Encode
-tenant or user scope in reactive keys (e.g. `"user:7:todos"`) or ensure `LoadContext`
+tenant or user scope in reactive keys (e.g. `"user:7:todos"`) or ensure `PjxContext`
 data is stable for all requests sharing a cache entry.
 
 Reactive `render()` (and `oob_swaps`) evicts pending dirtied keys before reloading
@@ -363,7 +365,7 @@ dependents. For mutations outside a render — a background job, a webhook — c
 `LoadCache.invalidate` yourself:
 
 ```python
-from pyjinhx import LoadCache
+from pyjinhx.cache import LoadCache
 
 def nightly_recalc():
     db.rebuild_todos()
@@ -373,19 +375,18 @@ def nightly_recalc():
 The cache holds one result per `(type, key)` and returns a fresh copy on every call, so
 callers can mutate what they get back without affecting the cache.
 
-### Multi-worker invalidation (`PROCESS` scope)
+### Multi-worker invalidation
 
-When using `CacheScope.PROCESS` with multiple workers, configure an
-`InvalidationBackend` so `invalidate()` fans out to every process:
+For multi-worker production, configure an `InvalidationBackend` so `invalidate()` fans out
+to every process. This is also what enables cross-request caching per worker:
 
 ```python
-from pyjinhx import CacheScope, PyJinhxSettings, setup
+from pyjinhx import PjxSettings, setup
 from pyjinhx.integrations.redis import RedisInvalidationBackend
 
 setup(
     app,
-    settings=PyJinhxSettings(
-        cache_scope=CacheScope.PROCESS,
+    settings=PjxSettings(
         invalidation_backend=RedisInvalidationBackend("redis://localhost:6379/0"),
     ),
 )

@@ -118,7 +118,7 @@ app = FastAPI(lifespan=my_existing_lifespan)  # optional — chained, not replac
 setup(app, load_context_factory=lambda req: AppLoadContext(db=get_db(req)))
 ```
 
-`setup(app, ...)` chains your lifespan (if any), configures cache scope and optional invalidation, and registers registry middleware with `ClientBackend` for header auto-resolution. Default load cache is **`CacheScope.REQUEST`** (multi-worker safe). See [Configuration](../api/config.md) and [Reactivity §4](../reactivity.md#4-load-results-are-cached).
+`setup(app, ...)` chains your lifespan (if any), wires optional invalidation, and registers registry middleware with `ClientBackend` for header auto-resolution. By default (no `invalidation_backend`) the load cache is per-request — multi-worker safe; pass a backend to opt into cross-request caching. See [Configuration](../api/config.md) and [Reactivity §4](../reactivity.md#4-load-results-are-cached).
 
 ### Per-Route (manual)
 

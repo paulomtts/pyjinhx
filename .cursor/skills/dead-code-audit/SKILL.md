@@ -44,8 +44,8 @@ Re-grep after each breaking reactive/API change. Absence in `pyjinhx/` but prese
 mutation_scope
 coerce_dirty_args
 interpolate_reactive_keys
-StateKey.instance_key
-StateKey.dirty_keys
+MutationKey.instance_key
+MutationKey.dirty_keys
 dirty_keys
 resolve_mounted
 resolve_effective_dirtied
@@ -124,7 +124,7 @@ uv run ruff check .
 
 - [ ] No removed symbols in `pyjinhx/` (except CHANGELOG/historical notes if any)
 - [ ] No removed symbols in `tests/` imports or assertions
-- [ ] `docs/` and `examples/` use current API (`PjxLoad`, `Cls.render(*args)`, `@mutates` state keys only)
+- [ ] `docs/` and `examples/` use current API (`PjxKey`, `Cls.render(*args)`, `@mutates` state keys only)
 - [ ] No orphan compat branches (manifest `key` alias, stem invalidation index, etc.) without tests or callers
 - [ ] No tests asserting deleted behavior unless explicitly marked legacy
 - [ ] Audit skills grep current symbols (`warn_reactive_render_without_client`, not `..._mounted`)

@@ -31,12 +31,12 @@ from .keys import ReactiveKey, coerce_load_key_str, coerce_reactive_keys
 from .mutations import MutationTracker
 
 
-class PjxLoad:
-    """Marker for ``Annotated[..., PjxLoad()]`` fields stamped as ``data-pjx-load``."""
+class PjxKey:
+    """Marker for ``Annotated[..., PjxKey()]`` fields stamped as ``data-pjx-load``."""
 
 
 def _metadata_has_pjx_load(metadata: tuple[Any, ...]) -> bool:
-    return any(isinstance(meta, PjxLoad) for meta in metadata)
+    return any(isinstance(meta, PjxKey) for meta in metadata)
 
 
 def _annotation_has_pjx_load(annotation: Any) -> bool:
@@ -59,7 +59,7 @@ def pjx_load_field_names(model_cls: type[Any]) -> list[str]:
     if names:
         return names
     # During __init_subclass__ pydantic has not yet populated model_fields, so
-    # fall back to the raw annotations to detect the PjxLoad marker at definition.
+    # fall back to the raw annotations to detect the PjxKey marker at definition.
     for name, annotation in getattr(model_cls, "__annotations__", {}).items():
         if _annotation_has_pjx_load(annotation):
             names.append(name)
@@ -72,7 +72,7 @@ def resolve_pjx_load_field(model_cls: type[Any]) -> str | None:
         return None
     if len(names) > 1:
         raise TypeError(
-            f"{model_cls.__name__} declares multiple PjxLoad fields {names!r}; "
+            f"{model_cls.__name__} declares multiple PjxKey fields {names!r}; "
             f"at most one is allowed."
         )
     return names[0]
@@ -87,11 +87,11 @@ def validate_pjx_load_subclass(
     if keyed and len(names) != 1:
         raise TypeError(
             f"{cls.__name__}.load() takes a resource argument; declare exactly "
-            f"one field as Annotated[..., PjxLoad()]."
+            f"one field as Annotated[..., PjxKey()]."
         )
     if not keyed and names:
         raise TypeError(
-            f"{cls.__name__}.load() takes no resource argument; PjxLoad fields "
+            f"{cls.__name__}.load() takes no resource argument; PjxKey fields "
             f"are not allowed ({names!r})."
         )
 
@@ -203,7 +203,7 @@ class ReactiveComponent(BaseComponent):
 
     @staticmethod
     def _load_param_count(func: Any, owner: type[Any] | None = None) -> int:
-        """Count ``load()`` parameters excluding ``cls``, LoadContext params, and variadics."""
+        """Count ``load()`` parameters excluding ``cls``, PjxContext params, and variadics."""
         from .context import _is_load_context_param, _resolved_hints
 
         signature = inspect.signature(func)

@@ -21,14 +21,14 @@ from examples.reactive_todo.components import (
     ItemRow,
     Total,
 )
-from pyjinhx import PyJinhxSettings, Renderer, setup
+from pyjinhx import PjxSettings, Renderer, setup
 
 Renderer.set_default_environment(Path(__file__).resolve().parents[2])
 
 app = FastAPI(title="pyjinhx reactive todo demo")
 setup(
     app,
-    settings=PyJinhxSettings.from_env(),
+    settings=PjxSettings.from_env(),
     load_context_factory=lambda _request: AppLoadContext(store=store),
 )
 

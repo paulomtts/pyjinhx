@@ -5,7 +5,8 @@ import pytest
 
 from examples.reactive_todo import store
 from examples.reactive_todo.components import Counter, Total
-from pyjinhx import PJX_MOUNTED_HEADER, Renderer
+from pyjinhx import Renderer
+from pyjinhx.client import PJX_MOUNTED_HEADER
 
 ROOT = Path(__file__).resolve().parents[2]
 

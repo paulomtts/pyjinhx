@@ -1,6 +1,7 @@
 from typing import ClassVar
 
-from pyjinhx import ReactiveComponent, LoadCache
+from pyjinhx import ReactiveComponent
+from pyjinhx.cache import LoadCache
 from tests.ui.reactive.cached_widget import CachedWidget, load_calls
 
 
@@ -76,6 +77,6 @@ def test_invalidate_cleans_reverse_index_across_keys():
 
 
 def test_invalidate_is_exported():
-    from pyjinhx import LoadCache as exported
+    from pyjinhx.cache import LoadCache as exported
 
     assert callable(exported)

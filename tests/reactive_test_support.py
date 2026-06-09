@@ -6,8 +6,8 @@ import json
 from collections.abc import Iterator
 from contextlib import contextmanager
 
-from pyjinhx import FastAPIClientBackend
 from pyjinhx.client import ClientBackend
+from pyjinhx.integrations.fastapi import FastAPIClientBackend
 from pyjinhx.mutations import MutationTracker
 
 

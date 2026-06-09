@@ -6,7 +6,7 @@ from contextlib import asynccontextmanager
 from typing import Any
 
 from pyjinhx.registry import Registry
-from pyjinhx.config import PyJinhxSettings, configure_pyjinhx, shutdown_pyjinhx
+from pyjinhx.config import PjxSettings, configure_pyjinhx, shutdown_pyjinhx
 from pyjinhx.client import ClientBackend
 
 logger = logging.getLogger("pyjinhx")
@@ -32,7 +32,7 @@ class FastAPIClientBackend(ClientBackend):
 
 def apply_setup(
     app: object,
-    settings: PyJinhxSettings,
+    settings: PjxSettings,
     *,
     load_context_factory: Callable[[Any], object | None] | None = None,
 ) -> None:
@@ -46,7 +46,7 @@ def apply_setup(
     app.state.pyjinhx_setup = True
 
 
-def _chain_lifespan(app: object, settings: PyJinhxSettings) -> None:
+def _chain_lifespan(app: object, settings: PjxSettings) -> None:
     original = app.router.lifespan_context
 
     @asynccontextmanager

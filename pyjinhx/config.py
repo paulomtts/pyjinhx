@@ -1,32 +1,24 @@
 from __future__ import annotations
 
-import logging
 import os
 from collections.abc import Callable, Generator
 from contextlib import contextmanager
 from dataclasses import dataclass, fields, replace
 from typing import Any
 
-from pyjinhx.cache import CacheScope, LoadCache, InvalidationBackend, InvalidationHub
+from pyjinhx.cache import CacheScope, InvalidationBackend, InvalidationHub, LoadCache
 from pyjinhx.dev import disable_reactive_dev, enable_reactive_dev
-
-
-logger = logging.getLogger("pyjinhx")
-
 
 _UNSET: Any = object()  # sentinel: distinguishes "argument omitted" from None / a real value
 
 
 @dataclass(frozen=True)
-class PyJinhxSettings:
-    cache_scope: CacheScope = CacheScope.REQUEST
+class PjxSettings:
     invalidation_backend: InvalidationBackend | None = None
     reactive_dev: bool = False
 
     @classmethod
-    def from_env(cls) -> PyJinhxSettings:
-        scope_name = os.environ.get("PJX_LOAD_CACHE_SCOPE", "request").lower()
-        cache_scope = CacheScope(scope_name)
+    def from_env(cls) -> PjxSettings:
         reactive_dev = os.environ.get("PJX_REACTIVE_DEV", "").lower() in {
             "1",
             "true",
@@ -34,17 +26,16 @@ class PyJinhxSettings:
         }
         invalidation_backend: InvalidationBackend | None = None
         redis_url = os.environ.get("REDIS_URL")
-        if cache_scope == CacheScope.PROCESS and redis_url:
+        if redis_url:
             from pyjinhx.integrations.redis import RedisInvalidationBackend
 
             invalidation_backend = RedisInvalidationBackend(redis_url)
         return cls(
-            cache_scope=cache_scope,
             invalidation_backend=invalidation_backend,
             reactive_dev=reactive_dev,
         )
 
-    def merge(self, **overrides: Any) -> PyJinhxSettings:
+    def merge(self, **overrides: Any) -> PjxSettings:
         # only fields explicitly provided (not the _UNSET sentinel) override self, so an
         # explicit `settings=` is never clobbered by setup()'s default keyword arguments
         valid = {field.name for field in fields(self)}
@@ -57,15 +48,13 @@ class PyJinhxSettings:
 
 
 def _merge_settings(
-    settings: PyJinhxSettings | None,
+    settings: PjxSettings | None,
     *,
-    cache_scope: Any,
     invalidation_backend: Any,
     reactive_dev: Any,
     extra: dict[str, Any],
-) -> PyJinhxSettings:
-    return (settings or PyJinhxSettings()).merge(
-        cache_scope=cache_scope,
+) -> PjxSettings:
+    return (settings or PjxSettings()).merge(
         invalidation_backend=invalidation_backend,
         reactive_dev=reactive_dev,
         **extra,
@@ -73,14 +62,13 @@ def _merge_settings(
 
 
 def configure_pyjinhx(
-    settings: PyJinhxSettings | None = None,
+    settings: PjxSettings | None = None,
     /,
     **kwargs: Any,
-) -> PyJinhxSettings:
+) -> PjxSettings:
     if kwargs or settings is None:
         resolved = _merge_settings(
             settings,
-            cache_scope=kwargs.pop("cache_scope", _UNSET),
             invalidation_backend=kwargs.pop("invalidation_backend", _UNSET),
             reactive_dev=kwargs.pop("reactive_dev", _UNSET),
             extra=kwargs,
@@ -88,21 +76,14 @@ def configure_pyjinhx(
     else:
         resolved = settings
 
-    LoadCache.set_scope(resolved.cache_scope)
+    # The cache scope follows the backend: a cross-worker invalidation backend
+    # (e.g. Redis) makes cross-request PROCESS caching safe across workers; without
+    # one, the only multi-worker-safe behavior is per-request (REQUEST) caching.
+    backend = resolved.invalidation_backend
+    LoadCache.set_scope(CacheScope.PROCESS if backend is not None else CacheScope.REQUEST)
 
-    if (
-        resolved.invalidation_backend is not None
-        and resolved.cache_scope != CacheScope.PROCESS
-    ):
-        logger.warning(
-            "invalidation_backend is configured but cache_scope is %s; "
-            "cross-process invalidation requires CacheScope.PROCESS — ignoring backend",
-            resolved.cache_scope.value,
-        )
-        resolved = replace(resolved, invalidation_backend=None)
-
-    if resolved.invalidation_backend is not None and resolved.cache_scope == CacheScope.PROCESS:
-        InvalidationHub.set_backend(resolved.invalidation_backend)
+    if backend is not None:
+        InvalidationHub.set_backend(backend)
         InvalidationHub.start_listener()
     else:
         InvalidationHub.set_backend(None)
@@ -123,7 +104,7 @@ def shutdown_pyjinhx() -> None:
 
 @contextmanager
 def pyjinhx_lifespan(
-    settings: PyJinhxSettings | None = None,
+    settings: PjxSettings | None = None,
     /,
     **kwargs: Any,
 ) -> Generator[None, None, None]:
@@ -141,23 +122,25 @@ def _is_asgi_app(app: object) -> bool:
 def setup(
     app: object | None = None,
     *,
-    settings: PyJinhxSettings | None = None,
-    cache_scope: CacheScope = _UNSET,
+    settings: PjxSettings | None = None,
     invalidation_backend: InvalidationBackend | None = _UNSET,
     reactive_dev: bool = _UNSET,
     load_context_factory: Callable[[Any], object | None] | None = None,
     **kwargs: Any,
-) -> PyJinhxSettings:
+) -> PjxSettings:
     """
     Wire pyjinhx for this process (and optionally a web app).
 
     With ``app=None``, only process-wide configuration runs (tests, scripts).
     With a FastAPI/Starlette app, lifespan is chained and registry middleware
     is registered.
+
+    The load-cache scope is derived from ``invalidation_backend``: cross-request
+    ``PROCESS`` caching when a backend is set (kept consistent across workers by
+    the backend), per-request ``REQUEST`` caching otherwise.
     """
     resolved = _merge_settings(
         settings,
-        cache_scope=cache_scope,
         invalidation_backend=invalidation_backend,
         reactive_dev=reactive_dev,
         extra=kwargs,

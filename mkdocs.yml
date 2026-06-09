@@ -92,7 +92,7 @@ nav:
       - Client Backend: api/client-backend.md
       - Cache & Invalidation: api/cache-invalidation.md
       - Redis integration: api/integrations-redis.md
-      - Mutations, Keys & LoadContext: api/mutations-keys-context.md
+      - Mutations, Keys & PjxContext: api/mutations-keys-context.md
       - Parser & Tag: api/parser.md
       - Assets API: api/assets-api.md
       - Finder: api/finder.md

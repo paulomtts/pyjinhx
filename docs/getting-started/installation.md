@@ -18,7 +18,7 @@ uv add pyjinhx
 
 ## Optional extras
 
-The `redis` extra pulls in the dependencies for the Redis invalidation backend (used with `CacheScope.PROCESS` across multiple workers):
+The `redis` extra pulls in the dependencies for the Redis invalidation backend (used across multiple workers; configuring it also enables cross-request caching):
 
 ```bash
 pip install pyjinhx[redis]

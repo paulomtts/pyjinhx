@@ -43,7 +43,7 @@ Cite these in findings when relevant:
 
 1. **One implementation layer** — no internal module function that only delegates to a classmethod (or the reverse).
 2. **ABC + hub in core/reactive; impl in integrations** — e.g. `ClientBackend` in `pyjinhx/reactive/backend.py`, `FastAPIClientBackend` in `pyjinhx/integrations/fastapi.py`; `InvalidationBackend` + `InvalidationHub` vs `RedisInvalidationBackend` in `pyjinhx/integrations/redis.py`.
-3. **Stateful subsystems → class + classmethods + ContextVar** — `LoadCache`, `MutationTracker`, `InvalidationHub`, `ClientBackend`, `LoadContext`.
+3. **Stateful subsystems → class + classmethods + ContextVar** — `LoadCache`, `MutationTracker`, `InvalidationHub`, `ClientBackend`, `PjxContext`.
 4. **Pure transforms stay functions** — `pyjinhx/reactive/keys.py` coercion; `pjx_load.py` field discovery.
 5. **Ergonomic decorators stay module-level** — `@mutates` calls `MutationTracker.record`.
 6. **Package `__init__.py` re-exports OK; internal wrappers not OK.**

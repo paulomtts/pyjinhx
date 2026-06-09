@@ -129,7 +129,7 @@ definition-time error):
 
 ```python
 from typing import Annotated, ClassVar
-from pyjinhx import PjxLoad, ReactiveComponent, mutates
+from pyjinhx import PjxKey, ReactiveComponent, mutates
 
 class Counter(ReactiveComponent):
     remaining: int
@@ -150,7 +150,7 @@ class Counter(ReactiveComponent):
   the one the client reported.
 - Roots are auto-stamped with `data-pjx-id` / `data-pjx-type` / `data-pjx-hash` /
   `data-pjx-reacts` (the space-joined `reacts_to` keys, which `pjx.js` reads to scope
-  loading indicators) — plus `data-pjx-load` when keyed via `PjxLoad`. A reactive component
+  loading indicators) — plus `data-pjx-load` when keyed via `PjxKey`. A reactive component
   **must render a single root element**.
 
 ### Mutation routes return `render()` — nothing else
@@ -193,12 +193,12 @@ on every HTMX request.
 ### Instance-keyed regions (rows)
 
 A component is **instance-keyed iff `load()` takes one argument after `cls`**. Declare
-exactly one `Annotated[..., PjxLoad()]` field — its value is stamped as `data-pjx-load`
+exactly one `Annotated[..., PjxKey()]` field — its value is stamped as `data-pjx-load`
 and returned in the manifest as `load` for OOB reloads.
 
 ```python
 class TodoItemRow(ReactiveComponent):
-    todo_id: Annotated[int, PjxLoad()]
+    todo_id: Annotated[int, PjxKey()]
     title: str = ""
     reacts_to: ClassVar[set[str]] = {"todos"}
 
@@ -215,7 +215,7 @@ def toggle_row(todo_id: int):
 ```
 
 - **`render(todo_id)` → `load(todo_id)`** automatically. Set explicit `id` in `load()` for
-  stable DOM targets (e.g. `row-42`). Templates use the `PjxLoad` field:
+  stable DOM targets (e.g. `row-42`). Templates use the `PjxKey` field:
   `hx-post="/rows/{{ todo_id }}/toggle"`.
 - **`@mutates("todos")`** on store methods dirties collection-tier state; OOB pub-sub reloads
   every mounted region whose `reacts_to` intersects, with hash-gating skipping unchanged regions.
@@ -232,10 +232,10 @@ def toggle_row(todo_id: int):
   the swap lands. A trigger may add `data-pjx-loading-extra="<css-selector>"` to also flag
   regions a bulk action will touch (e.g. rows a clear-completed removes). Style via `--pjx-*`
   CSS vars (`--pjx-skeleton-color`, `--pjx-spinner-color`, …).
-- Every `load()` is memoized in `LoadCache` (one entry per `(type, key)`). Default scope is
-  `CacheScope.REQUEST` (per-request, no cross-worker concern). Use
-  `LoadCache.set_scope(CacheScope.PROCESS)` (or `setup(cache_scope=...)`) for process-wide
-  caching, plus an `InvalidationBackend` (e.g. Redis) to fan out evictions across workers.
+- Every `load()` is memoized in `LoadCache` (one entry per `(type, key)`). The scope follows
+  the backend: with no `invalidation_backend` it's per-request (no cross-worker concern); pass
+  `setup(invalidation_backend=...)` (e.g. Redis) for process-wide caching plus eviction
+  fan-out across workers.
 
 Full guide: [docs/reactivity.md](../reactivity.md).
 
@@ -336,19 +336,24 @@ my_app/
 
 ```python
 from pyjinhx import (
-    BaseComponent, ReactiveComponent, Renderer, Registry, Finder, Parser, Tag,
-    PjxLoad, mutates, LoadCache, oob_swaps, client_script,
-    PJX_MOUNTED_HEADER, PJX_TRIGGER_HEADER, setup,
+    BaseComponent, ReactiveComponent, Renderer, Registry,
+    PjxKey, mutates, setup,
 )
+# advanced/internal building blocks live in submodules:
+from pyjinhx.finder import Finder
+from pyjinhx.tags import Parser, Tag
+from pyjinhx.cache import LoadCache
+from pyjinhx.reactive import oob_swaps
+from pyjinhx.client import PJX_MOUNTED_HEADER, PJX_TRIGGER_HEADER, client_script
 import pyjinhx.builtins  # optional: registers all builtin classes
 from pyjinhx.builtins import Alert, Modal, Panel, PanelTrigger, TabGroup  # …
 ```
 
 - `BaseComponent` — base class for all components
 - `ReactiveComponent` — dependency-aware components (`reacts_to` + `load()`); `Cls.render(*args)` is the route entry point
-- `PjxLoad` — `Annotated[..., PjxLoad()]` marker for keyed `data-pjx-load` / manifest `load`
+- `PjxKey` — `Annotated[..., PjxKey()]` marker for keyed `data-pjx-load` / manifest `load`
 - `mutates` — decorator on store methods; state keys only (`@mutates("todos")`)
-- `setup` — wires FastAPI middleware (`Registry.request_scope`, `ClientBackend`, `LoadContext`)
+- `setup` — wires FastAPI middleware (`Registry.request_scope`, `ClientBackend`, `PjxContext`)
 - `Renderer` — renders strings with PascalCase tags or manages environments
 - `Registry` — query/clear instances and classes, `request_scope()` context manager
 - `Finder` — template/asset discovery, `collect_javascript_files()`, `collect_css_files()`, `detect_root_directory()`

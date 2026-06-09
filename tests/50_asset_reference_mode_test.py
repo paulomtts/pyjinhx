@@ -5,15 +5,17 @@ import pytest
 from pyjinhx import (
     AssetMode,
     BaseComponent,
-    Finder,
     Renderer,
+)
+from pyjinhx.client import client_script
+from pyjinhx.assets import (
     asset_manifest,
-    client_script,
     hashed_filename,
     make_default_asset_url_resolver,
-    oob_swaps,
     resolver_with_hash,
 )
+from pyjinhx.finder import Finder
+from pyjinhx.reactive import oob_swaps
 from pyjinhx.utils import read_client_runtime
 from tests.ui.reactive.reactive_counter import ReactiveCounter
 from tests.ui.unified_component import UnifiedComponent

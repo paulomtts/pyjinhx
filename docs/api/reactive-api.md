@@ -17,11 +17,11 @@ Base class for components that reload from application state via a `load()` clas
 
 - Declare `reacts_to` — **state keys** this component subscribes to (e.g. `"todos"`).
 - Implement `load()` as a `@classmethod` that returns a fresh component instance.
-- For keyed `load(cls, resource)` types, declare exactly one `Annotated[..., PjxLoad()]` field.
+- For keyed `load(cls, resource)` types, declare exactly one `Annotated[..., PjxKey()]` field.
 
 ### Keyed vs singleton
 
-A parameter after `cls` in `load()` makes the type **instance-keyed** (e.g. one row per todo). Declare `PjxLoad` on the resource field. Zero-arg `load(cls)` is a type-singleton.
+A parameter after `cls` in `load()` makes the type **instance-keyed** (e.g. one row per todo). Declare `PjxKey` on the resource field. Zero-arg `load(cls)` is a type-singleton.
 
 Singleton reactive components default `id` to the kebab-cased class name (`TodoCounter` → `"todo-counter"`).
 
@@ -69,14 +69,14 @@ Used by OOB swap gating — override for custom hashing.
 state_hash_exclude: ClassVar[frozenset[str]] = frozenset({"id"})
 ```
 
-## PjxLoad
+## PjxKey
 
 ```python
-class PjxLoad:
+class PjxKey:
     ...
 ```
 
-Marker for `Annotated[..., PjxLoad()]`. The field value is stamped as `data-pjx-load` and returned in the client manifest as `load`.
+Marker for `Annotated[..., PjxKey()]`. The field value is stamped as `data-pjx-load` and returned in the client manifest as `load`.
 
 ## client_script
 
@@ -84,7 +84,7 @@ Marker for `Annotated[..., PjxLoad()]`. The field value is stamped as `data-pjx-
 def client_script(*, mode: AssetMode | None = None, src: str | None = None) -> Markup
 ```
 
-Return the pyjinhx client runtime as a `<script>` tag. Root `BaseComponent.render()` injects the runtime automatically unless `X-PJX-Mounted` is already present on the request.
+Return the pyjinhx client runtime as a `<script>` tag (`from pyjinhx.client import client_script`). It is not part of the top-level public API — root `BaseComponent.render()` injects the runtime automatically unless `X-PJX-Mounted` is already present on the request.
 
 ## MountedManifest
 

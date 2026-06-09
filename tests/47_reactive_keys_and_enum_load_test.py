@@ -1,7 +1,9 @@
 from enum import Enum
 from typing import Annotated, ClassVar
 
-from pyjinhx import LoadCache, PjxLoad, ReactiveComponent, oob_swaps
+from pyjinhx import PjxKey, ReactiveComponent
+from pyjinhx.cache import LoadCache
+from pyjinhx.reactive import oob_swaps
 from pyjinhx.keys import (
     coerce_load_key_str,
     coerce_reactive_key,
@@ -9,14 +11,14 @@ from pyjinhx.keys import (
 )
 
 
-class StateKey(str, Enum):
+class MutationKey(str, Enum):
     TODOS = "todos"
     ROW = "row"
 
 
 def test_coerce_reactive_key_unwraps_enum():
-    assert coerce_reactive_key(StateKey.TODOS) == "todos"
-    assert coerce_reactive_keys({StateKey.TODOS, "users"}) == {"todos", "users"}
+    assert coerce_reactive_key(MutationKey.TODOS) == "todos"
+    assert coerce_reactive_keys({MutationKey.TODOS, "users"}) == {"todos", "users"}
 
 
 class TodoId(Enum):
@@ -25,9 +27,9 @@ class TodoId(Enum):
 
 
 class EnumRow(ReactiveComponent):
-    row_key: Annotated[str, PjxLoad()]
+    row_key: Annotated[str, PjxKey()]
     label: str = ""
-    reacts_to: ClassVar[set[str | StateKey]] = {StateKey.ROW}
+    reacts_to: ClassVar[set[str | MutationKey]] = {MutationKey.ROW}
 
     @classmethod
     def load(cls, key: str) -> "EnumRow":
@@ -40,7 +42,7 @@ def test_reacts_to_coerces_enums_at_class_definition():
 
 class TodoCounter(ReactiveComponent):
     remaining: int = 0
-    reacts_to: ClassVar[set[str | StateKey]] = {StateKey.TODOS}
+    reacts_to: ClassVar[set[str | MutationKey]] = {MutationKey.TODOS}
 
     @classmethod
     def load(cls) -> "TodoCounter":
@@ -62,7 +64,7 @@ def test_dirtied_enum_matches_enum_reacts_to_in_oob_swaps():
     LoadCache.clear()
     out = str(
         oob_swaps(
-            {StateKey.TODOS},
+            {MutationKey.TODOS},
             [{"id": "counter", "type": "TodoCounter", "hash": "stale"}],
         )
     )

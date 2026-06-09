@@ -7,7 +7,7 @@ When you're done you will have used:
 - `BaseComponent` and `ReactiveComponent`
 - Template discovery, nesting, and PascalCase tags
 - Co-located JS/CSS and asset delivery modes
-- `Registry.request_scope`, `@mutates`, and `LoadContext`
+- `Registry.request_scope`, `@mutates`, and `PjxContext`
 - Reactive `render()` with `ClientBackend` wired in middleware
 - Load-cache scopes and optional invalidation fan-out
 
@@ -319,14 +319,14 @@ class TodoApp(BaseComponent):
 
 ## Step 9 — Keys, mutations, and render()
 
-Centralize reactive key strings in a `StateKey` enum so `reacts_to`, `@mutates`, and
+Centralize reactive key strings in a `MutationKey` enum so `reacts_to`, `@mutates`, and
 `dirtied` all share one vocabulary (no stray raw strings to typo). `keys.py`:
 
 ```python
-from pyjinhx import StateKey
+from pyjinhx import MutationKey
 
 
-class Keys(StateKey):
+class Keys(MutationKey):
     TODOS = "todos"
 ```
 
@@ -369,10 +369,10 @@ def toggle_row(todo_id: int):
 
 ```python
 from typing import Annotated
-from pyjinhx import PjxLoad
+from pyjinhx import PjxKey
 
 class TodoItemRow(ReactiveComponent):
-    todo_id: Annotated[int, PjxLoad()]
+    todo_id: Annotated[int, PjxKey()]
     title: str = ""
     done: bool = False
     reacts_to: ClassVar[set[str]] = {Keys.TODOS}
@@ -398,8 +398,8 @@ Template (note `data-pjx-loading` — covered in Step 11):
 </li>
 ```
 
-???+ question "Why PjxLoad and load(cls, todo_id)?"
-    A parameter after `cls` makes the type **instance-keyed**. `PjxLoad` stamps `data-pjx-load` for OOB round-trip. Use the same field in templates (`{{ todo_id }}`). `reacts_to = {Keys.TODOS}` is pub-sub — all mounted rows with matching state keys may OOB-reload when todos change.
+???+ question "Why PjxKey and load(cls, todo_id)?"
+    A parameter after `cls` makes the type **instance-keyed**. `PjxKey` stamps `data-pjx-load` for OOB round-trip. Use the same field in templates (`{{ todo_id }}`). `reacts_to = {Keys.TODOS}` is pub-sub — all mounted rows with matching state keys may OOB-reload when todos change.
 
 ---
 
@@ -433,13 +433,13 @@ mutation touches — the swap target *and* its OOB dependents.
 
 ---
 
-## Step 12 — LoadContext (avoid globals in load())
+## Step 12 — PjxContext (avoid globals in load())
 
-The context is just a **plain frozen dataclass** — `LoadContext.current()` is duck-typed, so you don't need to subclass anything:
+The context is just a **plain frozen dataclass** — `PjxContext.current()` is duck-typed, so you don't need to subclass anything:
 
 ```python
 from dataclasses import dataclass
-from pyjinhx import LoadContext
+from pyjinhx import PjxContext
 
 
 @dataclass(frozen=True)
@@ -448,7 +448,7 @@ class AppLoadContext:
 
 
 def _store():
-    ctx = LoadContext.current()
+    ctx = PjxContext.current()
     return ctx.store if isinstance(ctx, AppLoadContext) else store
 ```
 
@@ -458,31 +458,30 @@ Pass a factory to `setup()` (Step 6):
 setup(app, load_context_factory=lambda request: AppLoadContext(store=store))
 ```
 
-???+ question "Why LoadContext?"
+???+ question "Why PjxContext?"
     `load()` must rebuild components from the current world. Passing a database handle or store through a **request-scoped context** avoids hidden globals and makes tests inject a fake store. Optional `load(cls, *, ctx=...)` is supported if you prefer explicit parameters.
 
 ---
 
 ## Step 13 — Load cache scope and invalidation
 
-Default: **`CacheScope.REQUEST`** — `load()` results cache within each HTTP request (multi-worker safe).
+You don't pick a cache scope — it follows the backend. By default (no `invalidation_backend`),
+`load()` results cache within each HTTP request, which is multi-worker safe.
 
-| Scope | When to use |
-|-------|-------------|
-| `REQUEST` | Default — multi-worker without Redis |
-| `PROCESS` | Single worker, or multi-worker **with** invalidation fan-out |
-| `NONE` | Debugging; always hit the store |
+| Setup | Behavior |
+|-------|----------|
+| no backend (default) | Per-request caching — multi-worker safe without Redis |
+| `invalidation_backend` set | Cross-request caching per worker, with evictions fanned out across workers |
 
-Multi-worker fan-out (optional):
+Multi-worker fan-out (also enables cross-request caching):
 
 ```python
-from pyjinhx import CacheScope, PyJinhxSettings, setup
+from pyjinhx import PjxSettings, setup
 from pyjinhx.integrations.redis import RedisInvalidationBackend
 
 setup(
     app,
-    settings=PyJinhxSettings(
-        cache_scope=CacheScope.PROCESS,
+    settings=PjxSettings(
         invalidation_backend=RedisInvalidationBackend(os.environ["REDIS_URL"]),
     ),
 )
@@ -524,7 +523,7 @@ TodoApp(...).render()  # client headers from middleware ClientBackend
 ## Step 15 — Dev guardrails (optional)
 
 ```python
-from pyjinhx import enable_reactive_dev, dependency_graph, format_dependency_graph
+from pyjinhx.dev import enable_reactive_dev, dependency_graph, format_dependency_graph
 
 enable_reactive_dev()  # warnings: missing mounted, unconsumed @mutates, etc.
 print(format_dependency_graph())
@@ -555,8 +554,8 @@ The per-step **Why?** panels above cover the *why*; this is the at-a-glance *wha
 
 | Tier | Pieces |
 |------|--------|
-| **Required** | `set_default_environment` · `Registry.request_scope()` middleware · root full-page render · HTMX in layout · `ReactiveComponent` (`reacts_to` + `load()`) · `@mutates(Keys.…)` on mutations · `setup()` (wires `FastAPIClientBackend`) · `PjxLoad` on keyed rows |
-| **Recommended** | `LoadContext` · `data-pjx-loading` indicators · `enable_reactive_dev()` in dev |
+| **Required** | `set_default_environment` · `Registry.request_scope()` middleware · root full-page render · HTMX in layout · `ReactiveComponent` (`reacts_to` + `load()`) · `@mutates(Keys.…)` on mutations · `setup()` (wires `FastAPIClientBackend`) · `PjxKey` on keyed rows |
+| **Recommended** | `PjxContext` · `data-pjx-loading` indicators · `enable_reactive_dev()` in dev |
 | **Production** | `AssetMode.REFERENCE` + URL resolver · `InvalidationBackend` for multi-worker `PROCESS` cache |
 
 ---
