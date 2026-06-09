@@ -2,29 +2,271 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>pyjinhx · reactive todos</title>
     <script src="https://unpkg.com/htmx.org@2.0.3"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
     <style>
-      body { font-family: system-ui, sans-serif; max-width: 32rem; margin: 2rem auto; }
-      ul { list-style: none; padding: 0; }
-      li { display: flex; gap: .5rem; align-items: center; padding: .25rem 0; }
-      li.done span { text-decoration: line-through; opacity: .55; }
-      .meta { margin-top: 1rem; display: flex; gap: 1rem; align-items: center; }
-      button { cursor: pointer; }
+      /* design tokens */
+      :root {
+        --bg: #0b0c0f;
+        --panel: #111318;
+        --panel-2: #0e1014;
+        --edge: #1e212a;
+        --row: #15171d;
+        --row-hover: #1a1d25;
+        --line: rgba(255, 255, 255, 0.07);
+        --line-2: rgba(255, 255, 255, 0.13);
+        --text: #e8eaef;
+        --muted: #828897;
+        --faint: #555c6b;
+        --accent: #b8ff4d;
+        --accent-ink: #0b0c0f;
+        --danger: #ff7d7d;
+        --radius: 12px;
+        --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+      }
+
+      * { box-sizing: border-box; }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 7vh 1.25rem 4rem;
+        font-family: var(--mono);
+        font-size: 15px;
+        line-height: 1.5;
+        letter-spacing: 0.01em;
+        color: var(--text);
+        background: radial-gradient(130% 90% at 50% -20%, #181b23 0%, var(--bg) 60%) fixed;
+        -webkit-font-smoothing: antialiased;
+      }
+      body::before {
+        content: "";
+        position: fixed;
+        inset: 0;
+        z-index: 0;
+        pointer-events: none;
+        background-image: radial-gradient(rgba(255, 255, 255, 0.022) 1px, transparent 1px);
+        background-size: 22px 22px;
+      }
+
+      /* panel */
+      .panel {
+        position: relative;
+        z-index: 1;
+        width: 100%;
+        max-width: 33rem;
+        overflow: hidden;
+        background: linear-gradient(180deg, var(--panel) 0%, var(--panel-2) 100%);
+        border: 1px solid var(--edge);
+        border-radius: var(--radius);
+        box-shadow:
+          inset 0 1px 0 rgba(255, 255, 255, 0.05),
+          0 30px 70px -28px rgba(0, 0, 0, 0.8);
+        animation: panel-in 0.55s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+      }
+
+      .bar {
+        display: flex;
+        align-items: center;
+        padding: 0.85rem 1.15rem;
+        border-bottom: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.015);
+      }
+      .bar__title { font-weight: 600; letter-spacing: 0.05em; }
+      .bar__title::before { content: "› "; color: var(--accent); }
+      .bar__dot {
+        margin-left: auto;
+        width: 0.5rem;
+        height: 0.5rem;
+        border-radius: 50%;
+        background: var(--accent);
+        animation: pulse 2.8s ease-out infinite;
+      }
+
+      /* add form */
+      .composer {
+        display: flex;
+        align-items: center;
+        gap: 0.55rem;
+        padding: 0.65rem 1.15rem;
+        border-bottom: 1px solid var(--line);
+        transition: background 0.2s ease;
+      }
+      .composer:focus-within { background: rgba(184, 255, 77, 0.035); }
+      .composer__prompt { color: var(--accent); font-weight: 600; }
+      .composer__input {
+        flex: 1;
+        min-width: 0;
+        padding: 0.4rem 0;
+        font: inherit;
+        color: var(--text);
+        background: transparent;
+        border: 0;
+        outline: none;
+        caret-color: var(--accent);
+      }
+      .composer__input::placeholder { color: var(--faint); }
+      .composer__add {
+        flex: none;
+        display: grid;
+        place-items: center;
+        width: 2.1rem;
+        height: 2.1rem;
+        font: inherit;
+        font-size: 1.25rem;
+        line-height: 1;
+        color: var(--accent-ink);
+        background: var(--accent);
+        border: 0;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: box-shadow 0.2s ease, transform 0.1s ease;
+      }
+      .composer__add:hover { box-shadow: 0 0 20px -2px var(--accent); }
+      .composer__add:active { transform: scale(0.94); }
+
+      /* list + rows (#list is ItemList, li.todo is ItemRow) */
+      #list {
+        list-style: none;
+        margin: 0;
+        padding: 0.55rem 0.7rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.3rem;
+        min-height: 3.5rem;
+      }
+      #list:empty::after {
+        content: "no todos — add one above ↑";
+        display: block;
+        padding: 1.1rem 0.5rem;
+        text-align: center;
+        font-size: 0.85rem;
+        color: var(--faint);
+      }
+      .todo {
+        display: flex;
+        align-items: center;
+        gap: 0.7rem;
+        padding: 0.55rem 0.65rem;
+        border-radius: 9px;
+        background: var(--row);
+        border: 1px solid transparent;
+        transition: background 0.15s ease, border-color 0.15s ease;
+        animation: row-in 0.3s ease both;
+      }
+      .todo:hover { background: var(--row-hover); border-color: var(--line); }
+      .todo > button {
+        flex: none;
+        display: grid;
+        place-items: center;
+        width: 1.55rem;
+        height: 1.55rem;
+        font: inherit;
+        font-size: 0.95rem;
+        line-height: 1;
+        color: var(--muted);
+        background: transparent;
+        border: 1px solid var(--line-2);
+        border-radius: 7px;
+        cursor: pointer;
+        transition: color 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+      }
+      .todo > button:hover { color: var(--accent); border-color: var(--accent); }
+      .todo.done > button {
+        color: var(--accent-ink);
+        background: var(--accent);
+        border-color: var(--accent);
+      }
+      .todo > span { flex: 1; min-width: 0; }
+      .todo.done > span {
+        color: var(--muted);
+        text-decoration: line-through;
+        text-decoration-color: var(--faint);
+      }
+
+      /* status bar (counter / total / clear) */
+      .meta {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        padding: 0.7rem 1.15rem;
+        border-top: 1px solid var(--line);
+        background: rgba(0, 0, 0, 0.22);
+        font-size: 0.85rem;
+        color: var(--muted);
+      }
+      .meta .counter { color: var(--text); }
+      .meta__sep { color: var(--faint); }
+      .clear {
+        margin-left: auto;
+        padding: 0.32rem 0.7rem;
+        font: inherit;
+        font-size: 0.82rem;
+        color: var(--muted);
+        background: transparent;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        cursor: pointer;
+        transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+      }
+      .clear:hover {
+        color: var(--danger);
+        border-color: var(--danger);
+        background: rgba(255, 125, 125, 0.08);
+      }
+
+      .credit {
+        position: relative;
+        z-index: 1;
+        margin: 1.1rem 0 0;
+        font-size: 0.75rem;
+        letter-spacing: 0.04em;
+        color: var(--faint);
+      }
+      .credit b { color: var(--muted); font-weight: 600; }
+
+      /* focus + motion */
+      :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
+      @keyframes panel-in { from { opacity: 0; transform: translateY(12px) scale(0.99); } to { opacity: 1; transform: none; } }
+      @keyframes row-in { from { opacity: 0; } to { opacity: 1; } }
+      @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(184, 255, 77, 0.5); } 70%, 100% { box-shadow: 0 0 0 7px rgba(184, 255, 77, 0); } }
+      @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
     </style>
   </head>
   <body>
-    <h1>Todos</h1>
-    <form hx-post="/todos" hx-target="#list" hx-swap="beforeend"
-          hx-on::after-request="this.reset()">
-      <input name="text" placeholder="Add a todo…" autocomplete="off" required />
-      <button type="submit">Add</button>
-    </form>
-    {{ item_list }}
-    <div class="meta">
-      {{ remaining }}
-      {{ total_count }}
-      {{ clear_button }}
-    </div>
+    <main class="panel">
+      <header class="bar">
+        <span class="bar__title">todos</span>
+        <span class="bar__dot" aria-hidden="true"></span>
+      </header>
+
+      <form class="composer" hx-post="/todos" hx-target="#list" hx-swap="beforeend"
+            hx-on::after-request="this.reset()">
+        <span class="composer__prompt" aria-hidden="true">›</span>
+        <input class="composer__input" name="text" placeholder="add a todo…" autocomplete="off" required />
+        <button class="composer__add" type="submit" aria-label="add todo">+</button>
+      </form>
+
+      {{ item_list }}
+
+      <footer class="meta">
+        {{ remaining }}
+        <span class="meta__sep" aria-hidden="true">·</span>
+        {{ total_count }}
+        {{ clear_button }}
+      </footer>
+    </main>
+
+    <p class="credit"><b>pyjinhx</b> · reactive components over htmx</p>
   </body>
 </html>
