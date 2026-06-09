@@ -26,19 +26,17 @@ Every symbol exported from `pyjinhx` (`__all__`) is listed below with a one-line
 | `ClientBackend` | ABC for per-request HTTP header access | [Client Backend](../api/client-backend.md#clientbackend) |
 | `FastAPIClientBackend` | Default backend for FastAPI/Starlette requests | [Client Backend](../api/client-backend.md) |
 | `ClientBackend.scope()` | Set the request-scoped client backend | [Client Backend](../api/client-backend.md#clientbackend) |
-| `ClientBackend.current()` | Return the active client backend | [Client Backend](../api/client-backend.md#clientbackend) |
+| `ClientBackend.current()` | Return the active client backend (manifest, assets, trigger headers) | [Client Backend](../api/client-backend.md#clientbackend) |
 | `ClientBackend.reset()` | Clear the request-scoped backend (tests) | [Client Backend](../api/client-backend.md#clientbackend) |
 | `ClientBackend.resolve_client()` | Resolve explicit `client=` or fall back to backend | [Client Backend](../api/client-backend.md#auto-resolution-in-render) |
-| `ClientBackend.resolve_mounted()` | Resolve explicit `mounted=` or backend when reactive | [Client Backend](../api/client-backend.md#auto-resolution-in-render) |
 | `oob_swaps()` | Compute HTMX out-of-band swap fragments for dirtied keys | [Reactive API](../api/reactive-api.md#oob_swaps) |
 | `PJX_MOUNTED_HEADER` | HTTP header name for the client mounted-region manifest | [Reactive API](../api/reactive-api.md#pjx-headers) |
 | `PJX_ASSETS_HEADER` | HTTP header name for asset URLs already loaded in the browser | [Reactive API](../api/reactive-api.md#pjx-headers) |
 | `StateKey` | Base `StrEnum` for app-level reactive key constants | [Mutations, Keys & LoadContext](../api/mutations-keys-context.md#statekey) |
-| `StateKey.instance_key()` | Build an instance-tier key (`"todo:42"`) | [Mutations, Keys & LoadContext](../api/mutations-keys-context.md#instance_key) |
-| `StateKey.dirty_keys()` | Build a two-tier dirty set for instance-keyed mutations | [Mutations, Keys & LoadContext](../api/mutations-keys-context.md#dirty_keys) |
+| `PjxLoad` | Marker for `Annotated[..., PjxLoad()]` fields stamped as `data-pjx-load` | [Mutations, Keys & LoadContext](../api/mutations-keys-context.md#pjxload) |
 | `MutationTracker` | Request-scoped dirtied-key accumulation | [Mutations, Keys & LoadContext](../api/mutations-keys-context.md#mutationtracker) |
 | `mutates()` | Decorator: invalidate cache and accumulate dirtied keys after mutation | [Mutations, Keys & LoadContext](../api/mutations-keys-context.md#mutates) |
-| `mutation_scope()` | Context manager: invalidate and accumulate dirtied keys on exit | [Mutations, Keys & LoadContext](../api/mutations-keys-context.md#mutation_scope) |
+| `TriggerManifest` | Parse `X-PJX-Trigger` (swap-origin region id) | [Reactive API](../api/reactive-api.md) |
 | `LoadContext` | Opaque base dataclass for request-scoped `load()` data | [Mutations, Keys & LoadContext](../api/mutations-keys-context.md#loadcontext) |
 | `LoadContext.current()` | Return the current load context, or `None` | [Mutations, Keys & LoadContext](../api/mutations-keys-context.md#loadcontext) |
 | `LoadContext.bind()` | Context manager to set the load context | [Mutations, Keys & LoadContext](../api/mutations-keys-context.md#loadcontext) |

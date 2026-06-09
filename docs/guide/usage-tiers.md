@@ -80,11 +80,9 @@ Requires `Registry.request_scope()` on every request when using auto-dirtied fro
 **Canonical middleware** (app-defined — pyjinhx does not ship middleware):
 
 ```python
-with Registry.request_scope(
-    load_context=AppLoadContext(db=get_db(request)),
-    client_backend=fastapi_client_backend(request),
-):
-    return await call_next(request)
+from pyjinhx import setup
+
+setup(app, load_context_factory=lambda request: AppLoadContext(db=get_db(request)))
 ```
 
 See [FastAPI integration § Middleware](../integrations/fastapi.md#middleware-recommended).

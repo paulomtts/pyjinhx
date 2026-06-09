@@ -7,11 +7,7 @@ from markupsafe import Markup
 
 from pyjinhx.core.registry import Registry
 from pyjinhx.core.renderer import Renderer
-from pyjinhx.reactive.keys import (
-    ReactiveKey,
-    coerce_reactive_keys,
-    interpolate_reactive_keys,
-)
+from pyjinhx.reactive.keys import ReactiveKey, coerce_reactive_keys
 from pyjinhx.utils import css_attribute_selector_attr_value, stamp_root_attributes
 
 from .load_cache import LoadCache
@@ -24,8 +20,9 @@ class _Candidate:
 
     id: str
     html: str
-    fresh_hash: str
+    fresh_hash: str | None
     reported_hash: str | None
+    delete: bool = False
 
 
 def _drop_nested(candidates: list[_Candidate]) -> list[_Candidate]:
@@ -56,6 +53,18 @@ def _oob_swap_selector(component_id: str) -> str:
     return f"outerHTML:[data-pjx-id='{escaped_id}']"
 
 
+def _oob_delete_selector(component_id: str) -> str:
+    escaped_id = css_attribute_selector_attr_value(component_id)
+    return f"delete:[data-pjx-id='{escaped_id}']"
+
+
+def _manifest_load_arg(entry: dict[str, Any]) -> str | None:
+    load = entry.get("load")
+    if load is None:
+        return None
+    return str(load)
+
+
 def oob_swaps(
     dirtied: set[ReactiveKey],
     mounted: str | list[dict[str, Any]] | object | None,
@@ -83,8 +92,7 @@ def oob_swaps(
     for entry in manifest:
         component_type = entry.get("type")
         component_id = entry.get("id")
-        key = entry.get("key")
-        skey = str(key) if key is not None else None
+        load_arg = _manifest_load_arg(entry)
         if not component_type or not component_id:
             continue
         if exclude_ids and component_id in exclude_ids:
@@ -97,30 +105,40 @@ def oob_swaps(
             continue
 
         keyed = getattr(component_class, "_pjx_keyed", False)
-        if keyed and skey is None:
+        if keyed and load_arg is None:
             continue
         if not keyed:
-            skey = None
+            load_arg = None
 
-        static_keys = interpolate_reactive_keys(
-            getattr(component_class, "_pjx_reacts_to", frozenset()),
-            skey,
-            keyed=keyed,
-        )
+        static_keys = set(getattr(component_class, "_pjx_reacts_to", frozenset()))
         if not (static_keys & dirtied_keys):
             continue
 
-        dedup_key = (component_type, skey)
+        dedup_key = (component_type, load_arg)
         if dedup_key in seen:
             continue
         seen.add(dedup_key)
 
-        instance = component_class.load(skey) if keyed else component_class.load()
-        if not (instance.depends_on() & dirtied_keys):
+        reported_hash = entry.get("hash")
+        try:
+            if keyed and load_arg is not None:
+                instance = component_class.load(load_arg)
+            else:
+                instance = component_class.load()
+        except LookupError:
+            candidates.append(
+                _Candidate(
+                    id=component_id,
+                    html="",
+                    fresh_hash=None,
+                    reported_hash=reported_hash,
+                    delete=True,
+                )
+            )
             continue
+
         instance.id = component_id
         fresh_hash = instance.state_hash()
-        reported_hash = entry.get("hash")
         if fresh_hash == reported_hash:
             continue
         html = str(instance._render(_renderer=renderer, emit_assets=False))
@@ -137,10 +155,16 @@ def oob_swaps(
     if not surviving:
         return Markup("")
 
-    fragments = [
-        stamp_root_attributes(
-            c.html, {"hx-swap-oob": _oob_swap_selector(c.id)}
-        )
-        for c in surviving
-    ]
+    fragments: list[str] = []
+    for candidate in surviving:
+        if candidate.delete:
+            fragments.append(
+                f'<div hx-swap-oob="{_oob_delete_selector(candidate.id)}"></div>'
+            )
+        else:
+            fragments.append(
+                stamp_root_attributes(
+                    candidate.html, {"hx-swap-oob": _oob_swap_selector(candidate.id)}
+                )
+            )
     return Markup("\n".join(fragments))

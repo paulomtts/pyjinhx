@@ -36,22 +36,7 @@ class ClientBackend(ABC):
             cls._context.reset(token)
 
     @classmethod
-    def resolve_client(cls, explicit: object | None) -> object | None:
+    def resolve_client(cls, explicit: object | None = None) -> object | None:
         if explicit is not None:
             return explicit
-        return cls.current()
-
-    @classmethod
-    def resolve_mounted(
-        cls,
-        explicit: object | None,
-        *,
-        dirtied: object | None,
-    ) -> object | None:
-        if explicit is not None:
-            return explicit
-        from .mutations import MutationTracker
-
-        if dirtied is None and not MutationTracker.pending():
-            return None
         return cls.current()

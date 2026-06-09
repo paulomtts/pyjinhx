@@ -7,11 +7,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import TYPE_CHECKING, Any, ClassVar
 
-from .keys import (
-    coerce_load_key_str,
-    coerce_reactive_keys,
-    interpolate_reactive_keys,
-)
+from .keys import coerce_load_key_str, coerce_reactive_keys
 
 if TYPE_CHECKING:
     from pyjinhx.core.base import BaseComponent
@@ -27,7 +23,6 @@ class CacheScope(str, Enum):
 class _CacheState:
     _cache: dict[tuple[type, str | None], BaseComponent] = field(default_factory=dict)
     _reverse: dict[str, set[tuple[type, str | None]]] = field(default_factory=dict)
-    _stems: dict[str, set[str]] = field(default_factory=dict)
 
 
 class LoadCache:
@@ -64,12 +59,10 @@ class LoadCache:
         with cls._lock:
             cls._process_state._cache.clear()
             cls._process_state._reverse.clear()
-            cls._process_state._stems.clear()
             request_store = cls._request_store()
             if request_store is not None:
                 request_store._cache.clear()
                 request_store._reverse.clear()
-                request_store._stems.clear()
 
     @classmethod
     def invalidate(cls, dirtied: Iterable[object], *, propagate: bool = True) -> None:
@@ -92,7 +85,7 @@ class LoadCache:
     def install_cached_load(cls, component_class: type[Any]) -> None:
         """
         Replace a reactive component's ``load()`` with a cache-aware wrapper keyed by
-        ``(class, instance_key)``.
+        ``(class, load_arg)``.
         """
         original = component_class.__dict__["load"]
         component_class._pjx_raw_load = (
@@ -117,18 +110,15 @@ class LoadCache:
             if cached is not None:
                 return cls._with_key(cached.model_copy(), key)
 
-        from .context import LoadContext
+        from .context import LoadContext, invoke_raw_load
 
-        ctx = LoadContext.current()
-        if key is not None:
-            if LoadContext.accepts_ctx(raw_func):
-                result = raw_func(component_class, key, ctx=ctx)
-            else:
-                result = raw_func(component_class, key)
-        elif LoadContext.accepts_ctx(raw_func):
-            result = raw_func(component_class, ctx=ctx)
-        else:
-            result = raw_func(component_class)
+        result = invoke_raw_load(
+            raw_func,
+            component_class,
+            key=key,
+            ctx=LoadContext.current(),
+            owner=component_class,
+        )
         result = cls._with_key(result, key)
 
         from .dev import validate_depends_on
@@ -144,7 +134,7 @@ class LoadCache:
 
         if cls.scope() != CacheScope.NONE:
             with cls._lock:
-                cls._cache_put(cache_key, result, component_class, key)
+                cls._cache_put(cache_key, result)
         return cls._with_key(result.model_copy(), key)
 
     @classmethod
@@ -169,22 +159,11 @@ class LoadCache:
         store = cls._request_store()
         return [store] if store is not None else []
 
-    @staticmethod
-    def _static_effective_keys(component_class: type[Any], key: str | None) -> set[str]:
-        return interpolate_reactive_keys(
-            getattr(component_class, "_pjx_reacts_to", frozenset()),
-            key,
-            keyed=getattr(component_class, "_pjx_keyed", False),
-        )
-
     @classmethod
     def _indexed_keys(cls, instance: BaseComponent) -> set[str]:
         if hasattr(instance, "depends_on"):
             return instance.depends_on()
-        return cls._static_effective_keys(
-            instance.__class__,
-            getattr(instance, "_pjx_key", None),
-        )
+        return set(getattr(instance.__class__, "_pjx_reacts_to", frozenset()))
 
     @classmethod
     def _unindex_cache_key(
@@ -199,13 +178,6 @@ class LoadCache:
                 bucket.discard(cache_key)
                 if not bucket:
                     state._reverse.pop(reactive_key, None)
-            if ":" in reactive_key:
-                stem = reactive_key.split(":", 1)[0]
-                stem_bucket = state._stems.get(stem)
-                if stem_bucket is not None:
-                    stem_bucket.discard(reactive_key)
-                    if not stem_bucket:
-                        state._stems.pop(stem, None)
 
     @classmethod
     def _evict_from_state(cls, state: _CacheState, keys: set[str]) -> None:
@@ -214,9 +186,6 @@ class LoadCache:
         to_evict: set[tuple[type, str | None]] = set()
         for key in keys:
             to_evict |= state._reverse.get(key, set())
-            if ":" not in key:
-                for reverse_key in state._stems.get(key, set()):
-                    to_evict |= state._reverse.get(reverse_key, set())
         for cache_key in to_evict:
             cached = state._cache.pop(cache_key, None)
             if cached is None:
@@ -227,13 +196,6 @@ class LoadCache:
                     bucket.discard(cache_key)
                     if not bucket:
                         state._reverse.pop(reactive_key, None)
-                if ":" in reactive_key:
-                    stem = reactive_key.split(":", 1)[0]
-                    stem_bucket = state._stems.get(stem)
-                    if stem_bucket is not None:
-                        stem_bucket.discard(reactive_key)
-                        if not stem_bucket:
-                            state._stems.pop(stem, None)
 
     @classmethod
     def _evict_local(cls, keys: set[str]) -> None:
@@ -259,14 +221,9 @@ class LoadCache:
         cls,
         cache_key: tuple[type, str | None],
         result: BaseComponent,
-        component_class: type[Any],
-        key: str | None,
     ) -> None:
         for state in cls._active_stores(for_invalidate=False):
             cls._unindex_cache_key(state, cache_key)
             state._cache[cache_key] = result
             for reactive_key in cls._indexed_keys(result):
                 state._reverse.setdefault(reactive_key, set()).add(cache_key)
-                if ":" in reactive_key:
-                    stem = reactive_key.split(":", 1)[0]
-                    state._stems.setdefault(stem, set()).add(reactive_key)

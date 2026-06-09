@@ -1,7 +1,7 @@
 from dataclasses import dataclass
-from typing import ClassVar, Optional
+from typing import Annotated, ClassVar, Optional
 
-from pyjinhx import BaseComponent, LoadContext, ReactiveComponent
+from pyjinhx import BaseComponent, LoadContext, PjxLoad, ReactiveComponent
 
 from .keys import Keys
 
@@ -23,15 +23,22 @@ def _store():
 
 
 class ItemRow(ReactiveComponent):
+    todo_id: Annotated[int, PjxLoad()]
     title: str = ""
     done: bool = False
-    reacts_to: ClassVar[set[str]] = {Keys.TODO}
+    reacts_to: ClassVar[set[str]] = {Keys.TODOS}
 
     @classmethod
-    def load(cls, key: str | int) -> "ItemRow":
+    def load(cls, todo_id: int | str) -> "ItemRow":
         store = _store()
-        todo = store.get(int(key))
-        return cls(id=f"row-{key}", title=todo.text, done=todo.done)
+        resolved_id = int(todo_id)
+        todo = store.get(resolved_id)
+        return cls(
+            id=f"row-{resolved_id}",
+            todo_id=resolved_id,
+            title=todo.text,
+            done=todo.done,
+        )
 
 
 class ItemList(ReactiveComponent):
@@ -43,7 +50,7 @@ class ItemList(ReactiveComponent):
         store = _store()
         return cls(
             id="list",
-            items=[ItemRow.load(t.id) for t in store.all_todos()],
+            items=[ItemRow.load(todo.id) for todo in store.all_todos()],
         )
 
 
@@ -57,12 +64,12 @@ class Counter(ReactiveComponent):
 
 
 class Total(ReactiveComponent):
-    total: int = 0
+    count: int = 0
     reacts_to: ClassVar[set[str]] = {Keys.TODOS}
 
     @classmethod
     def load(cls) -> "Total":
-        return cls(total=_store().total())
+        return cls(count=_store().total())
 
 
 class ClearButton(ReactiveComponent):

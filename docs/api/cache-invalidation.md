@@ -37,7 +37,7 @@ class LoadCache:
     def clear(cls) -> None: ...
 ```
 
-Memoizes reactive `load()` results keyed by `(class, instance_key)`.
+Memoizes reactive `load()` results keyed by `(class, load_arg)`.
 
 Prefer [`setup()`](config.md) at app startup:
 
@@ -52,11 +52,9 @@ Or set explicitly: `LoadCache.set_scope(CacheScope.REQUEST)`.
 
 Environment variable `PJX_LOAD_CACHE_SCOPE` is read by `PyJinhxSettings.from_env()` (default `request`).
 
-**Stem expansion:** `LoadCache.invalidate({"todo"})` evicts all instance-tier entries whose keys start with `"todo:"` (e.g. `"todo:42"`).
-
 **Propagation:** when `CacheScope.PROCESS` is active, an `InvalidationBackend` is configured, and `propagate=True` (default), dirtied keys are published to other workers after local eviction. Remote handlers call `LoadCache.invalidate(..., propagate=False)` to avoid publish loops.
 
-Called automatically by `@mutates` and `mutation_scope` after mutations complete.
+Called automatically by `@mutates` after mutations complete.
 
 ## InvalidationBackend
 

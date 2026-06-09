@@ -24,8 +24,8 @@ Read: [CONVENTIONS.md](../code-audit-sweep/CONVENTIONS.md).
    - Fixed: `component.py` + `base.py` render → `reactive/render.py` `reactive_render_bundle`.
 2. **Duplicate parsing/validation** — two ways to answer the same question.
    - Fixed: `client_has_mounted_manifest` vs manifest parse → `MountedManifest.is_present`.
-3. **Decorator + context manager** — identical bodies.
-   - Fixed: `@mutates` and `mutation_scope` → `MutationTracker.record`.
+3. **Decorator ergonomics** — mutation recording must stay one code path.
+   - Canonical: `@mutates` → `MutationTracker.record` only (no parallel context manager).
 
 ## Intentional asymmetry (document, don't merge blindly)
 
@@ -43,7 +43,7 @@ Flag as **documented divergence** if asymmetry is required; **merge candidate** 
 3. Grep repeated 5+ line blocks:
 
 ```bash
-rg -n 'warn_reactive_render_without_mounted|resolve_effective_dirtied|mark_reactive_render_consumed' pyjinhx/
+rg -n 'warn_reactive_render_without_client|mark_render_consumed|reactive_render_bundle' pyjinhx/
 ```
 
 4. Classify: merge candidate | documented divergence | unrelated.

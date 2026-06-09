@@ -11,42 +11,36 @@ class StateKey(StrEnum):
     ...
 ```
 
-Base class for app-level reactive key constants. Subclass and declare members; use the enum in `reacts_to`, `dirtied`, and `@mutates` — all normalize to their string values.
+Base class for app-level reactive key constants. Subclass and declare members; use the enum in `reacts_to` and `@mutates` — all normalize to their string values.
 
 ```python
 from pyjinhx import StateKey
 
 class Keys(StateKey):
     TODOS = "todos"
-    TODO = "todo"
 ```
 
-## instance_key
+## PjxLoad
 
 ```python
-def instance_key(stem: str, key: str | int) -> str
+class PjxLoad:
+    ...
 ```
 
-Build an instance-tier dirty key.
+Marker for `Annotated[..., PjxLoad()]`. Keyed components declare exactly one `PjxLoad` field; its value is stamped as `data-pjx-load` on render and returned in the client manifest as `load` for OOB `load()` round-trip.
 
 ```python
-instance_key("todo", 42)  # "todo:42"
+from typing import Annotated
+from pyjinhx import PjxLoad, ReactiveComponent
+
+class ItemRow(ReactiveComponent):
+    todo_id: Annotated[int, PjxLoad()]
+    reacts_to: ClassVar[set[str]] = {"todos"}
+
+    @classmethod
+    def load(cls, todo_id: int) -> "ItemRow":
+        ...
 ```
-
-## dirty_keys
-
-```python
-def dirty_keys(instance_stem: str, key: str | int, *collection: ReactiveKey) -> set[str]
-```
-
-Build a two-tier dirty set for instance-keyed mutations. Returns the expanded instance key plus any collection-tier keys.
-
-```python
-dirty_keys("todo", 42, "todos")
-# {"todo:42", "todos"}
-```
-
-Use with `mutation_scope()` when a mutation affects both a single row and a collection summary.
 
 ## mutates
 
@@ -54,7 +48,7 @@ Use with `mutation_scope()` when a mutation affects both a single row and a coll
 def mutates(*keys: ReactiveKey) -> Callable[[F], F]
 ```
 
-Decorator for store mutation methods. After the wrapped function returns, invalidates the load cache for `keys` and accumulates them as pending dirtied for the next reactive `render()` when `dirtied` is omitted.
+Decorator for store mutation methods. Each arg is a **state key** (string or `StateKey` enum). After the wrapped function returns, invalidates the load cache and accumulates pending dirtied keys for the next reactive `render()`.
 
 ```python
 from pyjinhx import mutates
@@ -63,22 +57,6 @@ class Store:
     @mutates("todos")
     def add(self, text: str) -> None:
         ...
-```
-
-## mutation_scope
-
-```python
-@contextmanager
-def mutation_scope(*keys: ReactiveKey) -> Generator[None, None, None]
-```
-
-Context manager that invalidates and accumulates dirtied keys when the block exits (not on entry). Use for mutations that don't map cleanly to a single decorated method.
-
-```python
-from pyjinhx import dirty_keys, mutation_scope
-
-with mutation_scope(*dirty_keys(Keys.TODO, todo_id, Keys.TODOS)):
-    self._toggle(todo_id)
 ```
 
 ## LoadContext
@@ -91,25 +69,19 @@ class LoadContext:
 
 Opaque base for request-scoped data available inside reactive `load()`. Subclass with your own frozen dataclass fields (database session, user id, feature flags).
 
-## get_load_context
+## LoadContext.current / LoadContext.bind
 
 ```python
-def get_load_context() -> Any | None
+LoadContext.current() -> Any | None
+LoadContext.bind(ctx) -> ContextManager[None]
 ```
 
-Return the current load context, or `None` outside a scope. Reactive `load()` methods accept an optional keyword-only `ctx=` argument when the context is set.
+Return or set the load context for the current scope. Reactive `load()` methods receive a parameter annotated with `LoadContext` (or a subclass) when the context is set.
 
-## load_scope
-
-```python
-@contextmanager
-def load_scope(ctx: Any) -> Generator[None, None, None]
-```
-
-Set the load context for the current scope. Prefer `Registry.request_scope(load_context=ctx)` in web apps — it combines registry isolation, request cache, mutation tracking, and load context in one call.
+Prefer `Registry.request_scope(load_context=ctx)` in web apps — it combines registry isolation, request cache, mutation tracking, and load context in one call.
 
 ```python
-from pyjinhx import LoadContext, Registry, fastapi_client_backend
+from pyjinhx import LoadContext, Registry, FastAPIClientBackend
 
 @dataclass(frozen=True)
 class AppLoadContext(LoadContext):
@@ -117,12 +89,10 @@ class AppLoadContext(LoadContext):
 
 with Registry.request_scope(
     load_context=AppLoadContext(db=session),
-    client_backend=fastapi_client_backend(request),
+    client_backend=FastAPIClientBackend(request),
 ):
-    html = TodoList.render()  # mounted from ClientBackend after @mutates
+    html = TodoList.render()
 ```
-
-Without `ClientBackend`, pass `mounted=request` on reactive `render()` calls.
 
 ## Reactive dev
 
@@ -137,7 +107,7 @@ def enable_reactive_dev(*, strict: bool = False) -> None
 Enable guardrails. When enabled:
 
 - Warns if `@mutates` recorded dirtied keys but no reactive `render()` consumed them in the request scope.
-- Warns if dirtied keys are set but `mounted` was not passed (OOB swaps skipped).
+- Warns if mutations are pending but no `ClientBackend` is active (OOB swaps skipped).
 - Validates that `depends_on()` is a subset of the static `reacts_to` superset on each `load()`.
 
 Set `strict=True` to raise `RuntimeError` instead of logging warnings.
@@ -156,7 +126,7 @@ Disable all dev guardrails.
 def dependency_graph() -> dict[str, list[str]]
 ```
 
-Map each declared reactive key to the component class names that depend on it. Instance-tier stems appear as declared (e.g. `"todo"`), not expanded per instance.
+Map each declared reactive key to the component class names that depend on it.
 
 ### format_dependency_graph
 

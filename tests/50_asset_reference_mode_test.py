@@ -180,8 +180,12 @@ def test_resolver_with_hash_embeds_digest():
 
 
 def test_reactive_partial_render_suppresses_assets():
+    from tests.reactive_test_support import reactive_client, record_mutation
+
     manifest = [{"id": "counter", "type": "ReactiveCounter", "hash": "stale"}]
-    rendered = str(ReactiveCounter.render(dirtied={"todos"}, mounted=manifest))
+    with reactive_client(manifest):
+        record_mutation("todos")
+        rendered = str(ReactiveCounter.render())
 
     assert "<style>" not in rendered
     assert "<script" not in rendered

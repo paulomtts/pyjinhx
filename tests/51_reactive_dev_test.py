@@ -51,17 +51,16 @@ def test_strict_mutations_without_render_raises():
             _orphan_mutation()
 
 
-def test_warn_render_without_mounted(caplog):
-    from pyjinhx.reactive.dev import warn_reactive_render_without_mounted
+def test_warn_render_without_client(caplog):
+    from pyjinhx.reactive.dev import warn_reactive_render_without_client
+    from pyjinhx.reactive.mutations import MutationTracker
 
     enable_reactive_dev()
+    MutationTracker.clear()
+    MutationTracker.record({"todos"})
     with caplog.at_level(logging.WARNING, logger="pyjinhx"):
-        warn_reactive_render_without_mounted(
-            dirtied={"todos"},
-            mounted=None,
-            own_keys={"todos"},
-        )
-    assert "mounted was not passed" in caplog.text.lower()
+        warn_reactive_render_without_client(backend=None)
+    assert "clientbackend" in caplog.text.lower()
 
 
 def test_dependency_graph_includes_reactive_components():

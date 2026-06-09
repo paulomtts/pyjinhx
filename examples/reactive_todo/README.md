@@ -18,8 +18,8 @@ What to watch (open the network tab):
   (remaining is unchanged).
 
 The routes never mention the counter/total/clear button — `@mutates` and
-`mutation_scope` accumulate dirtied keys automatically, and `setup()` wires
-`ClientBackend` so `render()` reads `X-PJX-Mounted` without `mounted=request`.
+`@mutates` accumulates dirtied keys automatically, and `setup()` wires
+`ClientBackend` so `render()` reads `X-PJX-Mounted` from the request.
 The dependency graph lives on the components (`reacts_to`), and `pjx.js` reports
 what's mounted on every HTMX request.
 

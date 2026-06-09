@@ -1,18 +1,19 @@
-from typing import ClassVar
+from typing import Annotated, ClassVar
 
-from pyjinhx import LoadCache, ReactiveComponent
+from pyjinhx import LoadCache, PjxLoad, ReactiveComponent
 
 load_calls = {"n": 0}
 
 
 class Row(ReactiveComponent):
+    row_key: Annotated[str, PjxLoad()]
     title: str = ""
     reacts_to: ClassVar[set[str]] = {"row", "rows"}
 
     @classmethod
     def load(cls, key: str | int) -> "Row":
         load_calls["n"] += 1
-        return cls(title=f"row {key}")
+        return cls(row_key=str(key), title=f"row {key}")
 
 
 def _reset():
@@ -34,7 +35,7 @@ def test_keyed_id_and_key_stashed():
 
 def test_key_is_coerced_to_string():
     _reset()
-    r = Row.load(42)  # int in
+    r = Row.load(42)
     assert r.id == "row-42" and r._pjx_key == "42"
 
 
@@ -42,21 +43,11 @@ def test_cache_is_per_key():
     _reset()
     Row.load("1")
     Row.load("2")
-    Row.load("1")  # hit
+    Row.load("1")
     assert load_calls["n"] == 2
 
 
-def test_instance_invalidation_evicts_one_row():
-    _reset()
-    Row.load("1")
-    Row.load("2")
-    LoadCache.invalidate({"row:1"})
-    Row.load("1")  # miss -> reload
-    Row.load("2")  # still cached
-    assert load_calls["n"] == 3
-
-
-def test_stem_invalidation_evicts_matching_instance_keys():
+def test_row_stem_invalidation_evicts_all_rows():
     _reset()
     Row.load("1")
     Row.load("2")
@@ -70,7 +61,15 @@ def test_collection_invalidation_evicts_all_rows():
     _reset()
     Row.load("1")
     Row.load("2")
-    LoadCache.invalidate({"rows"})  # both rows declare "rows"
+    LoadCache.invalidate({"rows"})
     Row.load("1")
     Row.load("2")
     assert load_calls["n"] == 4
+
+
+def test_unrelated_key_does_not_evict():
+    _reset()
+    Row.load("1")
+    LoadCache.invalidate({"other"})
+    Row.load("1")
+    assert load_calls["n"] == 1

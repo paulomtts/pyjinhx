@@ -4,8 +4,8 @@ import logging
 from dataclasses import dataclass
 
 from pyjinhx.core.registry import Registry
-from .keys import ReactiveKey, interpolate_reactive_keys
 
+from .backend import ClientBackend
 from .mutations import MutationTracker
 
 logger = logging.getLogger("pyjinhx")
@@ -48,18 +48,12 @@ def warn_mutations_without_render() -> None:
         )
 
 
-def warn_reactive_render_without_mounted(
-    *,
-    dirtied: set[ReactiveKey] | None,
-    mounted: object | None,
-    own_keys: set[str],
-) -> None:
-    if not _dev_config.enabled or mounted is not None:
+def warn_reactive_render_without_client(*, backend: ClientBackend | None) -> None:
+    if not _dev_config.enabled or backend is not None:
         return
-    has_dirtied = dirtied is not None or bool(MutationTracker.pending())
-    if has_dirtied or own_keys:
+    if MutationTracker.pending():
         _report(
-            "Reactive dirtied keys are set but mounted was not passed; "
+            "Mutations were recorded but no ClientBackend is active; "
             "out-of-band swaps will be skipped."
         )
 
@@ -73,11 +67,7 @@ def validate_depends_on(instance: object) -> None:
         return
     if not hasattr(instance, "depends_on"):
         return
-    superset = interpolate_reactive_keys(
-        getattr(component_class, "_pjx_reacts_to", frozenset()),
-        getattr(instance, "_pjx_key", None),
-        keyed=getattr(component_class, "_pjx_keyed", False),
-    )
+    superset = set(getattr(component_class, "_pjx_reacts_to", frozenset()))
     runtime = instance.depends_on()
     extra = runtime - superset
     if extra:
@@ -92,8 +82,7 @@ def dependency_graph() -> dict[str, list[str]]:
     Map each declared reactive key to component class names that depend on it.
 
     Shows the static ``reacts_to`` superset only — not per-instance narrowing
-    from ``depends_on()``. Instance-tier stems appear as declared
-    (e.g. ``"todo"``), not expanded per key.
+    from ``depends_on()``.
     """
     graph: dict[str, set[str]] = {}
     for class_name, component_class in Registry.get_classes().items():

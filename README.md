@@ -158,16 +158,17 @@ class Counter(ReactiveComponent):
 @app.post("/todos/toggle")
 def toggle():
     db.toggle_all()
-    return Counter.render(dirtied={StateKey.TODOS})
+    return Counter.render()
 ```
 
-Wire `setup(app, ...)` once — lifespan and registry middleware handle cache scope, optional invalidation, `LoadContext`, and `ClientBackend` for header auto-resolution. Mutation routes omit `mounted=`; `pjx.js` is injected on root full-page renders unless `X-PJX-Mounted` is already present.
+Wire `setup(app, ...)` once — lifespan and registry middleware handle cache scope, optional invalidation, `LoadContext`, and `ClientBackend` for header auto-resolution. Mutation routes call `Cls.render(*args)` with no framework kwargs; `pjx.js` is injected on root full-page renders unless `X-PJX-Mounted` is already present.
 
-**Reactive ergonomics:** use `StateKey` enums and `StateKey.dirty_keys()` for typed keys; `@mutates` on store methods to auto-supply `dirtied`; `LoadContext.bind()` / `LoadContext.current()` to inject dependencies into `load()`; `enable_reactive_dev()` and `dependency_graph()` for guardrails and debugging.
+**Reactive ergonomics:** use `StateKey` enums for typed keys; `@mutates` on store methods to accumulate pending dirtied keys for the next reactive `render()`; `PjxLoad` on one model field per keyed component for `data-pjx-load` round-trip; `LoadContext.bind()` / `LoadContext.current()` to inject dependencies into `load()`; `enable_reactive_dev()` and `dependency_graph()` for guardrails and debugging.
 
 **Reactive design decisions:**
-- **Two-tier dependencies:** static `reacts_to` is the cache-safety superset; override `depends_on()` on the loaded instance to narrow runtime deps (e.g. admin-only panels). `oob_swaps` pre-filters on the superset, then `load()`s, then matches on `depends_on()`.
-- **`mutation_scope`:** records dirtied keys and invalidates the load cache on **successful exit** only (same as `@mutates` after the wrapped function returns). Failed blocks do not invalidate or accumulate dirtied keys.
+- **Three identities:** `data-pjx-id` (HTMX swap target), `data-pjx-load` (round-trip `load()` arg from a `PjxLoad` field), and state keys in `reacts_to` / `@mutates` (pub-sub only).
+- **Pub-sub OOB:** every mounted region whose `reacts_to` intersects pending mutations may OOB-reload via `load(manifest.load)`; the trigger region and primary are excluded via `X-PJX-Trigger` + primary id.
+- **`depends_on()`:** optional runtime narrowing for load-cache indexing; `oob_swaps` matches on static `reacts_to` only.
 - **`state_hash()`:** canonical sorted JSON from `model_dump(mode="json")` with `id` excluded by default (`state_hash_exclude` to omit more fields). Override `state_hash()` for custom hashing.
 
 **Load cache scope** (default `CacheScope.REQUEST`): `load()` results are cached within each HTTP request via `LoadCache`. Use `LoadCache.invalidate()` to evict entries; `MutationTracker` accumulates dirtied keys from `@mutates` for the next reactive render. Use `Registry.request_scope()` on every request for instance registry isolation (included in `setup(app, ...)`). For cross-request caching per worker, pass `cache_scope=CacheScope.PROCESS` to `setup()` and pair with an `InvalidationBackend` + `InvalidationHub` ([Redis reference](pyjinhx/integrations/redis.py), `pip install pyjinhx[redis]`).

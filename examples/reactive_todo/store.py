@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from itertools import count
 
-from pyjinhx import StateKey, mutates, mutation_scope
+from pyjinhx import mutates
 
 from .keys import Keys
 
@@ -35,9 +35,9 @@ def add(text: str) -> Todo:
     return todo
 
 
+@mutates(Keys.TODOS)
 def toggle(todo_id: int) -> Todo:
-    with mutation_scope(*StateKey.dirty_keys(Keys.TODO, todo_id, Keys.TODOS)):
-        _todos[todo_id].done = not _todos[todo_id].done
+    _todos[todo_id].done = not _todos[todo_id].done
     return _todos[todo_id]
 
 

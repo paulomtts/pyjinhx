@@ -1,8 +1,13 @@
 from dataclasses import dataclass
-from typing import ClassVar
+from typing import Annotated, ClassVar
 
-from pyjinhx import LoadCache, ReactiveComponent, Registry
-from pyjinhx.reactive.context import LoadContext
+import pytest
+
+from pyjinhx import LoadCache, PjxLoad, ReactiveComponent, Registry
+from pyjinhx.reactive.context import (
+    LoadContext,
+    resolve_load_context_param,
+)
 
 
 @dataclass(frozen=True)
@@ -15,17 +20,18 @@ class CtxSingleton(ReactiveComponent):
     reacts_to: ClassVar[set[str]] = {"widgets"}
 
     @classmethod
-    def load(cls, *, ctx: AppLoadContext | None = None) -> "CtxSingleton":
-        return cls(id="ctx-singleton", value=ctx.value if ctx else -1)
+    def load(cls, *, app: AppLoadContext | None = None) -> "CtxSingleton":
+        return cls(id="ctx-singleton", value=app.value if app else -1)
 
 
 class CtxKeyed(ReactiveComponent):
+    row_key: Annotated[str, PjxLoad()]
     label: str = ""
     reacts_to: ClassVar[set[str]] = {"row"}
 
     @classmethod
-    def load(cls, key: str, *, ctx: AppLoadContext | None = None) -> "CtxKeyed":
-        return cls(label=f"{key}:{ctx.value if ctx else 'none'}")
+    def load(cls, key: str, app_ctx: AppLoadContext) -> "CtxKeyed":
+        return cls(row_key=key, label=f"{key}:{app_ctx.value}")
 
 
 class CtxPlain(ReactiveComponent):
@@ -50,7 +56,7 @@ def test_load_context_bind_sets_context():
     assert LoadContext.current() is None
 
 
-def test_load_receives_ctx_kwarg():
+def test_load_receives_context_by_type_not_name():
     LoadCache.clear()
     ctx = AppLoadContext(value=42)
     with LoadContext.bind(ctx):
@@ -58,7 +64,7 @@ def test_load_receives_ctx_kwarg():
     assert instance.value == 42
 
 
-def test_keyed_load_with_ctx_kwarg_stays_keyed():
+def test_keyed_load_injects_context_positionally():
     assert CtxKeyed._pjx_keyed is True
     LoadCache.clear()
     ctx = AppLoadContext(value=9)
@@ -68,7 +74,7 @@ def test_keyed_load_with_ctx_kwarg_stays_keyed():
     assert row.id == "ctx-keyed-a"
 
 
-def test_load_contextvar_when_no_ctx_param():
+def test_load_contextvar_when_no_context_param():
     LoadCache.clear()
     ctx = AppLoadContext(value=5)
     with LoadContext.bind(ctx):
@@ -84,12 +90,27 @@ def test_request_scope_accepts_load_context():
     assert instance.value == 11
 
 
-def test_load_context_accepts_ctx_detects_keyword_only():
-    def with_ctx(cls, *, ctx=None):
+def test_resolve_load_context_param_detects_subclass_annotation():
+    def with_context(cls, *, app: AppLoadContext | None = None):
         pass
 
-    def without_ctx(cls):
+    def without_context(cls):
         pass
 
-    assert LoadContext.accepts_ctx(with_ctx) is True
-    assert LoadContext.accepts_ctx(without_ctx) is False
+    assert resolve_load_context_param(with_context).name == "app"
+    assert resolve_load_context_param(without_context) is None
+
+
+def test_duplicate_load_context_params_raise_at_class_definition():
+    with pytest.raises(TypeError, match="multiple LoadContext parameters"):
+
+        class DuplicateCtxLoad(ReactiveComponent):
+            reacts_to: ClassVar[set[str]] = {"dup"}
+
+            @classmethod
+            def load(
+                cls,
+                first: AppLoadContext,
+                second: LoadContext,
+            ) -> "DuplicateCtxLoad":
+                return cls(id="dup")

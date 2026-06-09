@@ -58,6 +58,18 @@ def test_toggle_hash_gates_unchanged_total(client):
     assert "outerHTML:[data-pjx-id='total']" not in body
 
 
+def test_clear_completed_with_stale_row_manifest(client):
+    client.post("/rows/1/toggle", headers=_manifest())
+    headers = _manifest(
+        {"id": "row-1", "type": "ItemRow", "load": "1", "hash": "stale"},
+        {"id": "list", "type": "ItemList", "hash": "stale"},
+    )
+    body = client.post("/todos/clear-completed", headers=headers).text
+    assert 'id="list"' in body
+    assert "row-1" not in body.split("hx-swap-oob")[0]
+    assert "delete:[data-pjx-id='row-1']" in body
+
+
 def test_clear_completed_hash_gates_unchanged_counter(client):
     client.post("/rows/1/toggle", headers=_manifest())
     fresh_counter = Counter.load()

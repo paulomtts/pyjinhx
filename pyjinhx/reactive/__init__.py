@@ -5,9 +5,10 @@ Modules:
 - ``component`` — ``ReactiveComponent``, ``depends_on()``, render descriptor
 - ``render`` — shared reactive render orchestration
 - ``load_cache`` — ``LoadCache`` memoization for ``load()``
-- ``mutations`` — ``MutationTracker``, ``@mutates``, ``mutation_scope``
+- ``mutations`` — ``MutationTracker``, ``@mutates``
+- ``pjx_load`` — ``PjxLoad`` field marker for ``data-pjx-load`` stamping
 - ``invalidation`` — ``InvalidationBackend`` ABC and ``InvalidationHub``
-- ``payload`` — client header parsing (``MountedManifest``, ``LoadedAssets``)
+- ``payload`` — client header parsing (``MountedManifest``, ``TriggerManifest``, ``LoadedAssets``)
 - ``oob`` — out-of-band HTMX swap computation
 - ``runtime`` — ``client_script`` injection
 - ``keys`` — reactive key coercion and ``StateKey``

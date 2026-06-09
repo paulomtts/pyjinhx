@@ -71,18 +71,18 @@ On entry, `request_scope()` also clears pending mutations, initializes the reque
 
 For application-wide coverage, use middleware in your app (pyjinhx does not ship middleware). See the [canonical FastAPI snippet](../integrations/fastapi.md#middleware-recommended).
 
+Prefer `setup(app, ...)` — it registers middleware that calls
+`Registry.request_scope(client_backend=FastAPIClientBackend(request))` automatically.
+
+For manual wiring:
+
 ```python
-from starlette.middleware.base import BaseHTTPMiddleware
-from pyjinhx import Registry, fastapi_client_backend
+from pyjinhx import FastAPIClientBackend, Registry, setup
 
-class RegistryScopeMiddleware(BaseHTTPMiddleware):
-    async def dispatch(self, request, call_next):
-        with Registry.request_scope(
-            client_backend=fastapi_client_backend(request),
-        ):
-            return await call_next(request)
-
-app.add_middleware(RegistryScopeMiddleware)
+setup(app)  # recommended
+# or:
+with Registry.request_scope(client_backend=FastAPIClientBackend(request)):
+    ...
 ```
 
 ### Nested Scopes
@@ -156,6 +156,10 @@ PyJinHx maintains two separate registries:
 | **Instance registry** | Context-local | Maps composite keys to instances (e.g., `"Button_submit"` → instance) |
 
 The class registry enables the `Renderer` to instantiate components from PascalCase tags. The instance registry enables cross-referencing in templates.
+
+### Template context precedence
+
+During render, registered instances are injected into the Jinja context by `id` so templates can reference them by registry key. **Component field values from `model_dump()` take precedence** when a field name collides with an instance `id` (registry injection uses `setdefault`). Avoid naming a reactive field the same as its default `id` (e.g. a `Total` component with a `total` field defaults `id` to `"total"`).
 
 ```python
 # Class registry (automatic when you define a class)

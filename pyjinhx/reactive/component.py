@@ -12,12 +12,7 @@ from markupsafe import Markup
 from pydantic import ConfigDict, PrivateAttr, model_validator
 
 from pyjinhx.core.base import BaseComponent
-from pyjinhx.reactive.keys import (
-    ReactiveKey,
-    coerce_load_key_str,
-    coerce_reactive_keys,
-    interpolate_reactive_keys,
-)
+from pyjinhx.reactive.keys import coerce_reactive_keys
 from pyjinhx.utils import pascal_case_to_kebab_case
 
 
@@ -25,57 +20,40 @@ class _ReactiveRender:
     """
     Expose ``render`` in two forms under one name on reactive components.
 
-    - ``Cls.render(key=None, *, dirtied=None, mounted=None)`` — the route entry
-      point: auto-``load()``s the primary (by key for keyed types) and appends OOB
-      swaps for dependents. The developer never names ``load()`` or ``oob_swaps()``.
-    - ``instance.render(*, dirtied=None, mounted=None)`` — render an already-built
-      instance as the primary; same contract as ``BaseComponent.render``.
-
-    A plain ``classmethod`` would shadow the instance method and make
-    ``instance.render()`` re-load from the world, dropping the instance's own state;
-    the descriptor dispatches on access so both forms coexist.
+    - ``Cls.render(*args, **kwargs)`` — route entry: ``load(*args, **kwargs)`` then
+      reactive bundle when a ``ClientBackend`` is active.
+    - ``instance.render()`` — plain ``_render()`` only.
     """
 
     @staticmethod
-    def _render_class(
-        cls: type[ReactiveComponent],
-        key: object | None = None,
-        *,
-        dirtied: set[ReactiveKey] | None = None,
-        mounted: object | None = None,
-    ) -> Markup:
+    def _render_class(cls: type[ReactiveComponent], *args: Any, **kwargs: Any) -> Markup:
         keyed = getattr(cls, "_pjx_keyed", False)
-        if keyed and key is None:
+        if keyed and not args:
             raise TypeError(
-                f"{cls.__name__} is instance-keyed; render() requires a key, e.g. "
-                f"{cls.__name__}.render(<id>, dirtied=..., mounted=request)."
+                f"{cls.__name__} is instance-keyed; render() requires the load() "
+                f"resource argument, e.g. {cls.__name__}.render(<id>)."
             )
-        if not keyed and key is not None:
+        if not keyed and args:
             raise TypeError(
-                f"{cls.__name__} is a type-singleton; render() takes no key."
+                f"{cls.__name__} is a type-singleton; render() takes no arguments."
             )
 
-        skey = coerce_load_key_str(key) if key is not None else None
-        from .backend import ClientBackend
-        from .render import reactive_render_bundle
+        from .render import _reactive_context_active, reactive_render_bundle
 
-        resolved_mounted = ClientBackend.resolve_mounted(mounted, dirtied=dirtied)
-        own_keys = interpolate_reactive_keys(
-            getattr(cls, "_pjx_reacts_to", frozenset()), skey, keyed=keyed
-        )
+        if not _reactive_context_active():
+            instance = cls.load(*args, **kwargs) if keyed else cls.load(**kwargs)
+            return Markup(instance._render(emit_assets=False))
+
         loaded: list[ReactiveComponent] = []
 
-        def build_primary() -> str:
-            instance = cls.load(skey) if keyed else cls.load()
+        def build_primary_tracked() -> str:
+            instance = cls.load(*args, **kwargs) if keyed else cls.load(**kwargs)
             loaded.append(instance)
             return instance._render(emit_assets=False)
 
         return reactive_render_bundle(
-            primary_html=build_primary,
-            own_keys=own_keys,
-            dirtied=dirtied,
-            mounted=resolved_mounted,
-            exclude_ids=lambda: {loaded[0].id},
+            primary_html=build_primary_tracked,
+            exclude_ids=lambda: {loaded[0].id} if loaded else set(),
             invalidate_before_primary=True,
         )
 
@@ -86,7 +64,19 @@ class _ReactiveRender:
     ) -> Callable[..., Markup]:
         if instance is None:
             return partial(_ReactiveRender._render_class, owner)
-        return partial(BaseComponent.render, instance)
+
+        def render() -> Markup:
+            from .render import _reactive_context_active, reactive_render_bundle
+
+            if not _reactive_context_active():
+                return instance._render()
+            return reactive_render_bundle(
+                primary_html=lambda: instance._render(emit_assets=False),
+                exclude_ids={instance.id},
+                invalidate_before_primary=False,
+            )
+
+        return render
 
 
 class ReactiveComponent(BaseComponent):
@@ -108,7 +98,7 @@ class ReactiveComponent(BaseComponent):
 
     model_config = ConfigDict(extra="allow", ignored_types=(_ReactiveRender,))
 
-    reacts_to: ClassVar[set[ReactiveKey]] = set()
+    reacts_to: ClassVar[set[str]] = set()
     state_hash_exclude: ClassVar[frozenset[str]] = frozenset({"id"})
 
     _pjx_key: str | None = PrivateAttr(default=None)
@@ -129,13 +119,17 @@ class ReactiveComponent(BaseComponent):
         ...
 
     @staticmethod
-    def _load_param_count(func: Any) -> int:
-        """Count ``load()`` parameters excluding ``cls``, ``ctx``, and variadics."""
-        params = inspect.signature(func).parameters
+    def _load_param_count(func: Any, owner: type[Any] | None = None) -> int:
+        """Count ``load()`` parameters excluding ``cls``, LoadContext params, and variadics."""
+        from .context import _is_load_context_param, _resolved_hints
+
+        signature = inspect.signature(func)
+        hints = _resolved_hints(func, owner)
         return sum(
             1
-            for name, param in params.items()
-            if name not in ("cls", "ctx")
+            for param in signature.parameters.values()
+            if param.name != "cls"
+            and not _is_load_context_param(param, hints)
             and param.kind
             not in (
                 inspect.Parameter.VAR_KEYWORD,
@@ -144,19 +138,8 @@ class ReactiveComponent(BaseComponent):
         )
 
     def depends_on(self) -> set[str]:
-        """
-        Reactive keys this loaded instance currently depends on.
-
-        Defaults to the interpolated static ``reacts_to`` declaration. Override to
-        narrow (or expand, with dev warnings) based on instance state. The static
-        ``reacts_to`` must remain a superset for cache-safety.
-        """
-        component_class = type(self)
-        return interpolate_reactive_keys(
-            getattr(component_class, "_pjx_reacts_to", frozenset()),
-            self._pjx_key,
-            keyed=getattr(component_class, "_pjx_keyed", False),
-        )
+        """Reactive state keys this loaded instance currently depends on."""
+        return set(getattr(type(self), "_pjx_reacts_to", frozenset()))
 
     def state_hash(self) -> str:
         """
@@ -183,15 +166,21 @@ class ReactiveComponent(BaseComponent):
                 f"reactive component must declare both."
             )
         if "load" in cls.__dict__:
+            from .context import resolve_load_context_param
+            from .pjx_load import resolve_pjx_load_field, validate_pjx_load_subclass
+
             _load = cls.__dict__["load"]
             _func = _load.__func__ if isinstance(_load, classmethod) else _load
-            param_count = ReactiveComponent._load_param_count(_func)
+            resolve_load_context_param(_func, cls)
+            param_count = ReactiveComponent._load_param_count(_func, cls)
             if param_count > 1:
                 raise TypeError(
                     f"{cls.__name__}.load() has {param_count} key parameters; "
                     f"at most one instance key is supported."
                 )
             cls._pjx_keyed = param_count == 1
+            validate_pjx_load_subclass(cls, keyed=cls._pjx_keyed)
+            cls._pjx_load_field = resolve_pjx_load_field(cls)
         if "load" in cls.__dict__:
             from .load_cache import LoadCache
 

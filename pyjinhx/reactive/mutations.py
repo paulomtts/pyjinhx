@@ -1,8 +1,7 @@
 from __future__ import annotations
 
 import functools
-from collections.abc import Callable, Generator, Iterable
-from contextlib import contextmanager
+from collections.abc import Callable, Iterable
 from contextvars import ContextVar
 from typing import Any, ClassVar, TypeVar
 
@@ -55,27 +54,13 @@ class MutationTracker:
     def render_was_consumed(cls) -> bool:
         return cls._render_consumed.get()
 
-    @classmethod
-    def resolve_effective_dirtied(
-        cls,
-        *,
-        dirtied: set[ReactiveKey] | None,
-        mounted: object | None,
-        own_keys: set[str],
-    ) -> set[str]:
-        if dirtied is not None:
-            return coerce_reactive_keys(dirtied)
-        if mounted is None:
-            return own_keys
-        return own_keys | cls.pending()
-
 
 def mutates(*keys: ReactiveKey) -> Callable[[F], F]:
     """
     Decorator for store mutation methods.
 
-    Invalidates the load() cache for ``keys`` and accumulates them as pending
-    dirtied for the next reactive ``render()`` when ``dirtied`` is omitted.
+    Invalidates the load cache for ``keys`` and accumulates them as pending
+    dirtied for the next reactive ``render()``.
     """
 
     def decorator(func: F) -> F:
@@ -88,20 +73,3 @@ def mutates(*keys: ReactiveKey) -> Callable[[F], F]:
         return wrapper  # type: ignore[return-value]
 
     return decorator
-
-
-@contextmanager
-def mutation_scope(*keys: ReactiveKey) -> Generator[None, None, None]:
-    """
-    Context manager that invalidates and accumulates dirtied keys.
-
-    Keys are recorded on successful exit (same semantics as ``@mutates``).
-    If the block raises, the cache is not invalidated and no dirtied keys
-    are accumulated.
-    """
-    try:
-        yield
-    except BaseException:
-        raise
-    else:
-        MutationTracker.record(keys)

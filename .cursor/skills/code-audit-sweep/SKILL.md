@@ -1,9 +1,9 @@
 ---
 name: code-audit-sweep
 description: >-
-  Orchestrate a full structural code audit of pyjinhx using seven focused lenses
+  Orchestrate a full structural code audit of pyjinhx using eight focused lenses
   (file responsibility, module placement, domain entities, state shape, duplication,
-  indirection, public API). Use when the user asks to "audit the codebase", "sweep
+  indirection, public API, dead code). Use when the user asks to "audit the codebase", "sweep
   for quality", "review architecture", "audit reactive/", or before a large PR merge.
   Produces a merged read-only report; remediation is a separate pass unless requested.
 disable-model-invocation: true
@@ -32,6 +32,7 @@ Read shared rules: [CONVENTIONS.md](CONVENTIONS.md).
    - [duplication-audit](../duplication-audit/SKILL.md)
    - [indirection-audit](../indirection-audit/SKILL.md)
    - [public-api-audit](../public-api-audit/SKILL.md)
+   - [dead-code-audit](../dead-code-audit/SKILL.md)
 3. **Merge** — same file:line → one finding, highest severity, note all lenses.
 4. **Output** combined report using CONVENTIONS template + executive summary table:
 
