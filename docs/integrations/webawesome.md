@@ -1,6 +1,17 @@
 # WebAwesome
 
-PyJinHx integrates seamlessly with [WebAwesome](https://webawesome.com/) - a comprehensive web components library that provides 50+ customizable UI components built on web standards.
+[WebAwesome](https://webawesome.com/) is a web-components library (50+ custom elements
+built on web standards). It pairs well with PyJinHx, but there is no special integration:
+**WebAwesome tags are just markup PyJinHx renders.** PyJinHx has no awareness of WebAwesome
+— no asset auto-collection (the WA CDN/bundle `<script>` is the page author's
+responsibility), and no reactive coupling. Loading the WA runtime, theming, and upgrading
+the custom elements all happen client-side, exactly as in any HTML page.
+
+!!! warning "Custom-element boolean/enum attributes need a Jinja guard"
+    Custom elements treat an attribute as "on" by its **presence**, so `open="False"` or
+    `open=""` still opens a dialog. Render boolean attrs with
+    `{% if flag %}attr{% endif %}` (emit the attribute only when true), not
+    `attr="{{ flag }}"`. The same applies to enum attrs you might leave blank.
 
 ## Setup
 
@@ -149,164 +160,49 @@ task_card = TaskCard(
 form = AddTaskForm(id="add-task-form").render()
 ```
 
-## WebAwesome Components in Templates
+## How templates map to WebAwesome
 
-### Using Icons
+There is nothing WebAwesome-specific in PyJinHx — you write the custom elements directly
+in a component's `.html`, and three plain-HTML conventions carry everything you need:
 
-WebAwesome icons can be used with the `wa-icon` component:
+- **Tags** — use the element name as-is (`<wa-button>`, `<wa-card>`, `<wa-icon>`). PyJinHx
+  only expands *PascalCase* tags into its own components; lowercase custom-element tags pass
+  through untouched.
+- **Attributes** — interpolate string/enum attrs with `{{ }}` (`variant="{{ variant }}"`),
+  but emit **boolean** attrs with a guard (`{% if disabled %}disabled{% endif %}`) so a
+  falsy value omits the attribute instead of setting it to `"False"`.
+- **Slots** — place children into named slots with the standard `slot="..."` attribute
+  (`<wa-icon slot="start" …>`); default-slot content just goes between the tags.
 
-```html
-<!-- components/ui/button.html -->
-<wa-button variant="brand">
-    <wa-icon slot="start" name="check"></wa-icon>
-    Submit
-</wa-button>
+For the full element catalogue (variants, sizes, every attribute and slot), see the
+[WebAwesome docs](https://webawesome.com/) — they are the source of truth; PyJinHx
+neither adds nor constrains anything.
+
+### One representative example
+
+A dialog driven by a Python component shows all three conventions at once — interpolated
+attrs, a guarded boolean (`open`), and `slot="header"` / `slot="footer"`:
+
+```python
+# components/ui/dialog.py
+class Dialog(BaseComponent):
+    id: str
+    title: str
+    content: str
+    open: bool = False
 ```
-
-### Card Variants
-
-WebAwesome cards support different appearances:
-
-```html
-<!-- components/ui/card.html -->
-<wa-card appearance="outlined">
-    <div slot="header">Outlined Card</div>
-    <p>Content here</p>
-</wa-card>
-
-<wa-card appearance="filled">
-    <div slot="header">Filled Card</div>
-    <p>Content here</p>
-</wa-card>
-
-<wa-card appearance="elevated">
-    <div slot="header">Elevated Card</div>
-    <p>Content here</p>
-</wa-card>
-```
-
-### Input Components
-
-WebAwesome provides styled input components:
-
-```html
-<!-- components/ui/form.html -->
-<wa-input
-    name="email"
-    label="Email Address"
-    type="email"
-    required
-    placeholder="Enter your email"
-></wa-input>
-
-<wa-textarea
-    name="message"
-    label="Message"
-    rows="4"
-    placeholder="Enter your message"
-></wa-textarea>
-```
-
-### Button Variants
-
-WebAwesome buttons support multiple variants:
-
-```html
-<!-- components/ui/button.html -->
-<wa-button variant="brand">Brand</wa-button>
-<wa-button variant="success">Success</wa-button>
-<wa-button variant="danger">Danger</wa-button>
-<wa-button variant="neutral">Neutral</wa-button>
-<wa-button variant="warning">Warning</wa-button>
-```
-
-### Conditional Rendering
-
-Use Jinja conditionals to control WebAwesome component attributes:
-
-```html
-<!-- components/ui/alert.html -->
-<wa-alert
-    variant="{% if level == 'error' %}danger{% elif level == 'warning' %}warning{% else %}info{% endif %}"
-    open
->
-    {{ message }}
-</wa-alert>
-```
-
-## Tips
-
-### Component Slots
-
-WebAwesome components use slots for flexible content placement:
-
-```html
-<!-- components/ui/button.html -->
-<wa-button>
-    <wa-icon slot="start" name="save"></wa-icon>
-    Save
-    <wa-icon slot="end" name="arrow-right"></wa-icon>
-</wa-button>
-```
-
-### Styling
-
-WebAwesome components can be styled with CSS custom properties:
-
-```html
-<!-- components/ui/card.html -->
-<wa-card
-    style="--wa-card-padding: 2rem; --wa-card-border-radius: 12px;"
->
-    <div slot="header">Custom Styled Card</div>
-    <p>Content</p>
-</wa-card>
-```
-
-### Component Composition
-
-Combine multiple WebAwesome components in your PyJinHx templates:
 
 ```html
 <!-- components/ui/dialog.html -->
-<wa-dialog id="{{ id }}" open="{{ open }}">
-    <div slot="header">
-        <h2>{{ title }}</h2>
-    </div>
+<wa-dialog id="{{ id }}" {% if open %}open{% endif %}>
+    <div slot="header"><h2>{{ title }}</h2></div>
     <p>{{ content }}</p>
     <div slot="footer">
-        <wa-button variant="neutral" onclick="this.closest('wa-dialog').close()">
-            Cancel
-        </wa-button>
+        <wa-button variant="neutral" onclick="this.closest('wa-dialog').close()">Cancel</wa-button>
         <wa-button variant="brand" onclick="this.closest('wa-dialog').close()">
+            <wa-icon slot="start" name="check"></wa-icon>
             Confirm
         </wa-button>
     </div>
 </wa-dialog>
-```
-
-### Dynamic Attributes
-
-Pass WebAwesome component attributes from your Python component:
-
-```python
-# components/ui/button.py
-class Button(BaseComponent):
-    id: str
-    text: str
-    variant: str = "brand"
-    size: str = "medium"
-    disabled: bool = False
-```
-
-```html
-<!-- components/ui/button.html -->
-<wa-button
-    id="{{ id }}"
-    variant="{{ variant }}"
-    size="{{ size }}"
-    {% if disabled %}disabled{% endif %}
->
-    {{ text }}
-</wa-button>
 ```

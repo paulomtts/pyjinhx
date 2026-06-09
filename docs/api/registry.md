@@ -43,6 +43,40 @@ Return a copy of all registered component classes.
 
 **Returns:** Dictionary mapping class names to component class types.
 
+### get_class()
+
+```python
+@classmethod
+def get_class(cls, name: str) -> type[BaseComponent] | None
+```
+
+Return a registered component class by name without copying the registry, or `None` if not registered.
+
+**Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `name` | `str` | The component class name (e.g., `"Button"`) |
+
+**Returns:** The component class, or `None`.
+
+### has_class()
+
+```python
+@classmethod
+def has_class(cls, name: str) -> bool
+```
+
+Return whether a component class is registered under `name`.
+
+**Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `name` | `str` | The component class name to check |
+
+**Returns:** `True` if registered, otherwise `False`.
+
 ### clear_classes()
 
 ```python
@@ -125,7 +159,7 @@ Remove all registered component instances from the current context.
 ```python
 @classmethod
 @contextmanager
-def request_scope(cls, *, load_context: Any | None = None, client_backend: ClientBackend | None = None)
+def request_scope(cls, *, load_context: object | None = None, client_backend: object | None = None)
 ```
 
 Context manager for request-scoped component instances, load cache, mutation tracking, optional load context, and optional client backend for HTTP headers.
@@ -154,4 +188,4 @@ with Registry.request_scope(
 - Supports nesting—each scope is independent
 - Prevents "Overwriting..." warnings when reusing component IDs across requests
 
-See the [FastAPI integration guide](../integrations/fastapi.md#request-scoped-registry) for practical examples.
+See the [FastAPI integration guide](../integrations/fastapi.md#middleware-recommended) for practical examples.

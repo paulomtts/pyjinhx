@@ -21,12 +21,10 @@ Project root is detected by looking for common markers:
 
 - `pyproject.toml`
 - `main.py`
-- `README.md`
 - `.git`
 - `.gitignore`
 - `package.json`
 - `uv.lock`
-- `.venv`
 
 ### Setting a Custom Path
 
@@ -87,6 +85,28 @@ For web apps, use a single call:
 from pyjinhx import setup
 
 setup(app, load_context_factory=lambda req: AppLoadContext(db=get_db(req)))
+```
+
+`PyJinhxSettings` has three fields:
+
+- `cache_scope` — load cache scope (default `CacheScope.REQUEST`)
+- `invalidation_backend` — cross-process invalidation backend (default `None`)
+- `reactive_dev` — enable reactive dev guardrails (default `False`)
+
+Pass a settings object via `settings=`, or override individual fields with explicit `setup()` keyword arguments. Explicit `setup()` kwargs take precedence over values from `settings=`.
+
+### Environment variables
+
+`PyJinhxSettings.from_env()` builds settings from the environment:
+
+- `PJX_LOAD_CACHE_SCOPE` — cache scope name (default `request`)
+- `PJX_REACTIVE_DEV` — enables reactive dev mode when set to `1`, `true`, or `yes`
+- `REDIS_URL` — wires a `RedisInvalidationBackend`, but only when the cache scope is `process`
+
+```python
+from pyjinhx import PyJinhxSettings, setup
+
+setup(app, settings=PyJinhxSettings.from_env())
 ```
 
 See [Configuration API](../api/config.md) for `PyJinhxSettings`, lifespan chaining, and cache defaults.

@@ -1,6 +1,6 @@
 # Client Backend
 
-Per-request HTTP header access for reactive rendering. Wire once in your app's middleware; `render()` reads `X-PJX-Mounted`, `X-PJX-Assets`, and `X-PJX-Trigger` from the active backend.
+Per-request HTTP header access for reactive rendering. Wire once in your app's middleware; `render()` reads `X-PJX-Mounted` and `X-PJX-Assets` from the active backend. `X-PJX-Trigger` is client-only — consumed by pjx.js for loading indicators, not by the server render walk.
 
 PyJinHx does **not** ship middleware — you define a thin wrapper (see [FastAPI integration](../integrations/fastapi.md#middleware-recommended)) that calls `Registry.request_scope(client_backend=FastAPIClientBackend(request))`.
 
@@ -48,9 +48,11 @@ Default implementation for FastAPI and Starlette. Wraps `request.headers`. `setu
 When a `ClientBackend` is active (via `setup()` middleware or `ClientBackend.scope()`):
 
 - Root renders use it for asset dedup (`X-PJX-Assets`) and runtime injection gating (`X-PJX-Mounted`).
-- Reactive class/instance `render()` reads the manifest and trigger headers for OOB swaps.
+- Reactive class/instance `render()` reads the `X-PJX-Mounted` manifest for OOB swaps.
 
 Mutation routes call `Cls.render(*args)` with no framework kwargs — pending keys from `@mutates` drive the OOB walk.
+
+Without a `ClientBackend`, reactive OOB is skipped even when mutations are pending — only the primary is rendered.
 
 ## Non-FastAPI frameworks
 

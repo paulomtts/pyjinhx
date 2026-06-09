@@ -106,7 +106,7 @@ def index():
 {% endblock %}
 ```
 
-## Request-Scoped Registry
+## Request-Scoped Registry { #middleware-recommended }
 
 In web apps, component instances from one request can leak into the next. The recommended setup is a single call:
 

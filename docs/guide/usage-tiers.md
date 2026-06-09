@@ -58,7 +58,11 @@ def toggle(todo_id: int):
     return TodoItemRow.render(todo_id)  # OOB for dependents
 ```
 
-Requires `Registry.request_scope()` on every request when using auto-dirtied from `@mutates`.
+Every `ReactiveComponent` must declare `reacts_to` (the state keys it derives from) — it is enforced at class-definition time alongside `load()`.
+
+OOB swaps require an **active `ClientBackend`** so the renderer can read the client's mounted-region manifest. Wire one via `setup(app)` or `Registry.request_scope(client_backend=...)`. A bare `Registry.request_scope()` has no backend, so `render()` falls through to a plain single-region render with no OOB swaps.
+
+"Auto-dirtied" means a `@mutates`-decorated store method records the dirtied state keys it touched; the next reactive `render()` consumes them to decide which mounted regions to reload and swap.
 
 **Docs:** [Reactivity](../reactivity.md), [HTMX integration](../integrations/htmx.md)
 

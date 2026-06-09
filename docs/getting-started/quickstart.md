@@ -58,6 +58,8 @@ from pyjinhx import Renderer
 # Set the template search path
 Renderer.set_default_environment("./components")
 
+# Import components after setting the default environment so template
+# discovery is rooted at the path above.
 from components.ui.button import Button
 
 # Create and render

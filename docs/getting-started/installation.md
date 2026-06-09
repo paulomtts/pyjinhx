@@ -16,13 +16,27 @@ pip install pyjinhx
 uv add pyjinhx
 ```
 
+## Optional extras
+
+The `redis` extra pulls in the dependencies for the Redis invalidation backend (used with `CacheScope.PROCESS` across multiple workers):
+
+```bash
+pip install pyjinhx[redis]
+```
+
 ## Dependencies
 
-PyJinHx automatically installs these dependencies:
+PyJinHx automatically installs these runtime dependencies:
 
 - **Jinja2** - Template engine
-- **Pydantic** - Data validation and settings
 - **MarkupSafe** - Safe HTML string handling
+- **Pydantic** - Data validation and settings
+
+PyJinHx does **not** install a web framework. FastAPI, Starlette, and uvicorn are user-supplied — install them yourself before following the FastAPI quickstart or [Build an App](build-an-app.md):
+
+```bash
+pip install fastapi uvicorn
+```
 
 ## Verify Installation
 

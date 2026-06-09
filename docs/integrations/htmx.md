@@ -13,7 +13,7 @@ pip install pyjinhx
 Include HTMX in your HTML:
 
 ```html
-<script src="https://unpkg.com/htmx.org@1.9.10"></script>
+<script src="https://unpkg.com/htmx.org@2.0.3"></script>
 ```
 
 ## Project Structure
@@ -66,7 +66,7 @@ class Button(BaseComponent):
 <!DOCTYPE html>
 <html>
 <head>
-    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <script src="https://unpkg.com/htmx.org@2.0.3"></script>
 </head>
 <body>
     <Button id="click-me" text="Click Me" endpoint="/clicked"></Button>
@@ -143,9 +143,11 @@ document.body.addEventListener('htmx:afterSwap', (event) => {
 
 ## HTMX Patterns with PyJinHx
 
-### Use `hx-swap="outerHTML"` for Component Updates
+### Target a component by id and swap `outerHTML`
 
-When returning a full component, use `outerHTML` to replace the entire element:
+When a route returns a full component, pass its `id` in the request (so the
+server can target the right element) and use `hx-swap="outerHTML"` to replace
+the whole element with the response:
 
 ```html
 <!-- components/ui/item.html -->
@@ -153,29 +155,13 @@ When returning a full component, use `outerHTML` to replace the entire element:
     <h3>{{ title }}</h3>
     <button
         hx-post="/items/{{ id }}/update"
+        hx-vals='{"item_id": "{{ id }}"}'
         hx-target="#{{ id }}"
         hx-swap="outerHTML"
     >
         Update
     </button>
 </div>
-```
-
-### Pass Component ID in Requests
-
-Include the component ID so you can target the right element:
-
-```html
-<!-- components/ui/form.html -->
-<form
-    id="{{ id }}"
-    hx-post="/submit"
-    hx-vals='{"form_id": "{{ id }}"}'
-    hx-target="#{{ id }}"
-    hx-swap="outerHTML"
->
-    <!-- form fields -->
-</form>
 ```
 
 ### Conditional HTMX Attributes
@@ -202,21 +188,29 @@ Use Jinja conditionals to control HTMX behavior:
 
 Bundled **`panel.js`** re-runs its init on `htmx:afterSwap` and `htmx:afterSettle`, so triggers and panels stay in sync after partial HTML updates.
 
-### Loading States
+### Loading states
 
-Show loading indicators during HTMX requests:
+For ad-hoc cases you can use htmx's own [`hx-indicator`](https://htmx.org/attributes/hx-indicator/)
+with a `.htmx-indicator` element. For reactive components, PyJinHx ships built-in
+indicators instead: add `data-pjx-loading="skeleton"` or `data-pjx-loading="spinner"`
+to the element(s) that should show an in-flight effect — no extra markup or CSS
+needed. A trigger can also name extra regions to light with
+`data-pjx-loading-extra="<css-selector>"`, and every effect is themable through
+`--pjx-*` CSS custom properties. See [Loading indicators](../reactivity.md#loading-indicators-in-flight).
 
-```html
-<!-- components/ui/button.html -->
-<button
-    id="{{ id }}"
-    hx-post="{{ endpoint }}"
-    hx-indicator="#spinner"
->
-    <span class="button-text">{{ text }}</span>
-    <span id="spinner" class="htmx-indicator">Loading...</span>
-</button>
-```
+## How PyJinHx talks to htmx
+
+`pjx.js` (auto-included with reactive components) hooks a few htmx events. You
+don't call these yourself, but it helps to know what's on the wire:
+
+- On **`htmx:configRequest`** it stamps three request headers the server reads to
+  decide what to re-render: `X-PJX-Mounted` (the manifest of mounted components),
+  `X-PJX-Assets` (already-loaded script/stylesheet URLs, so they aren't re-sent),
+  and `X-PJX-Trigger` (the component that triggered the request).
+- The loading-indicator lifecycle is driven from htmx events: it lights indicators
+  on **`htmx:beforeRequest`**, re-applies them across swaps on **`htmx:afterSettle`**,
+  and clears them on **`htmx:afterOnLoad`** (plus the error/abort events
+  `htmx:responseError`, `htmx:timeout`, `htmx:sendError`, and `htmx:abort`).
 
 ## Tips
 
@@ -234,39 +228,21 @@ document.body.addEventListener('htmx:afterSwap', (event) => {
 });
 ```
 
-### Server-Sent Events
+### Server-Sent Events and WebSockets
 
-HTMX supports Server-Sent Events (SSE) for real-time updates:
-
-```html
-<!-- components/ui/feed.html -->
-<div
-    id="{{ id }}"
-    hx-sse="connect:/events"
-    hx-swap="beforeend"
->
-    <!-- Feed items will be appended here -->
-</div>
-```
-
-### WebSockets
-
-HTMX also supports WebSockets:
-
-```html
-<!-- components/ui/chat.html -->
-<div
-    id="{{ id }}"
-    hx-ws="connect:/ws"
-    hx-swap="beforeend"
->
-    <!-- Messages will be appended here -->
-</div>
-```
+These aren't PyJinHx-specific. In htmx 2 the old `hx-sse` / `hx-ws` core
+attributes are gone — SSE and WebSockets are now opt-in extensions
+(`hx-ext="sse"` with `sse-connect`, `hx-ext="ws"` with `ws-connect`). See htmx's
+[SSE](https://htmx.org/extensions/sse/) and [WebSocket](https://htmx.org/extensions/ws/)
+extension docs, and render the streamed fragments with PyJinHx components as usual.
 
 ## Dependency-aware updates (reactive OOB)
 
-The patterns above use manual `hx-target` / `hx-swap` for each interaction. For apps where **one mutation updates multiple regions** (counter, list, totals) without wiring every swap by hand, use PyJinHx reactivity:
+The patterns above use manual `hx-target` / `hx-swap` for each interaction. With
+PyJinHx reactivity, a mutation route simply returns `Cls.render()` and every
+dependent region rides along as an `hx-swap-oob` fragment — no per-swap wiring.
+This is the path to reach for when **one mutation updates multiple regions**
+(counter, list, totals):
 
 - Declare `reacts_to` + `load()` on `ReactiveComponent` subclasses
 - Return `Cls.render()` from mutation routes — dependent regions ride along as `hx-swap-oob` fragments

@@ -14,6 +14,9 @@ from pyjinhx.dev import disable_reactive_dev, enable_reactive_dev
 logger = logging.getLogger("pyjinhx")
 
 
+_UNSET: Any = object()  # sentinel: distinguishes "argument omitted" from None / a real value
+
+
 @dataclass(frozen=True)
 class PyJinhxSettings:
     cache_scope: CacheScope = CacheScope.REQUEST
@@ -42,17 +45,23 @@ class PyJinhxSettings:
         )
 
     def merge(self, **overrides: Any) -> PyJinhxSettings:
+        # only fields explicitly provided (not the _UNSET sentinel) override self, so an
+        # explicit `settings=` is never clobbered by setup()'s default keyword arguments
         valid = {field.name for field in fields(self)}
-        filtered = {key: value for key, value in overrides.items() if key in valid}
+        filtered = {
+            key: value
+            for key, value in overrides.items()
+            if key in valid and value is not _UNSET
+        }
         return replace(self, **filtered)
 
 
 def _merge_settings(
     settings: PyJinhxSettings | None,
     *,
-    cache_scope: CacheScope,
-    invalidation_backend: InvalidationBackend | None,
-    reactive_dev: bool,
+    cache_scope: Any,
+    invalidation_backend: Any,
+    reactive_dev: Any,
     extra: dict[str, Any],
 ) -> PyJinhxSettings:
     return (settings or PyJinhxSettings()).merge(
@@ -71,9 +80,9 @@ def configure_pyjinhx(
     if kwargs or settings is None:
         resolved = _merge_settings(
             settings,
-            cache_scope=kwargs.pop("cache_scope", CacheScope.REQUEST),
-            invalidation_backend=kwargs.pop("invalidation_backend", None),
-            reactive_dev=kwargs.pop("reactive_dev", False),
+            cache_scope=kwargs.pop("cache_scope", _UNSET),
+            invalidation_backend=kwargs.pop("invalidation_backend", _UNSET),
+            reactive_dev=kwargs.pop("reactive_dev", _UNSET),
             extra=kwargs,
         )
     else:
@@ -133,9 +142,9 @@ def setup(
     app: object | None = None,
     *,
     settings: PyJinhxSettings | None = None,
-    cache_scope: CacheScope = CacheScope.REQUEST,
-    invalidation_backend: InvalidationBackend | None = None,
-    reactive_dev: bool = False,
+    cache_scope: CacheScope = _UNSET,
+    invalidation_backend: InvalidationBackend | None = _UNSET,
+    reactive_dev: bool = _UNSET,
     load_context_factory: Callable[[Any], object | None] | None = None,
     **kwargs: Any,
 ) -> PyJinhxSettings:

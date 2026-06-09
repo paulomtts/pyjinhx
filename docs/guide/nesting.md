@@ -2,6 +2,12 @@
 
 PyJinHx makes it easy to compose components together. You can nest single components, lists of components, or dictionaries of components.
 
+!!! note "Two nesting styles, two `id` rules"
+    There are two ways to nest:
+
+    - **Python field values** (this page) — you build child instances yourself, so each child needs an **explicit `id`** (a plain `BaseComponent` always requires one).
+    - **PascalCase `<Tag/>` in templates** (see [PascalCase Tags](tags.md)) — the renderer instantiates children for you and can **auto-generate the `id`** when `auto_id=True` (the default).
+
 ## Direct Nesting
 
 Pass a component as a field value:
@@ -108,6 +114,11 @@ group = ButtonGroup(
 Combine different types in lists and dicts:
 
 ```python
+class Widget(BaseComponent):
+    id: str
+    content: str
+
+
 class Container(BaseComponent):
     id: str
     items: list[Button | Card | Widget]
@@ -151,20 +162,9 @@ dashboard = Dashboard(
 
 ## Deep Nesting
 
-Components can be nested to any depth:
+Components can be nested to any depth. Reusing the `Button` and `Card` classes from above:
 
 ```python
-class Button(BaseComponent):
-    id: str
-    text: str
-
-
-class Card(BaseComponent):
-    id: str
-    title: str
-    action: Button
-
-
 class Page(BaseComponent):
     id: str
     title: str

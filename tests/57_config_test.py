@@ -72,3 +72,27 @@ def test_configure_warns_when_backend_set_with_request_scope(caplog):
     )
     assert LoadCache.scope() == CacheScope.REQUEST
     assert any("invalidation_backend" in record.message for record in caplog.records)
+
+
+def test_settings_object_not_clobbered_by_default_kwargs():
+    # regression: default kwargs must not overwrite an explicit settings=
+    # (cache_scope previously reverted to REQUEST, nulling PROCESS config).
+    resolved = configure_pyjinhx(PyJinhxSettings(cache_scope=CacheScope.PROCESS))
+    assert resolved.cache_scope == CacheScope.PROCESS
+    assert LoadCache.scope() == CacheScope.PROCESS
+
+
+def test_settings_process_keeps_invalidation_backend():
+    backend = _StubBackend()
+    resolved = configure_pyjinhx(
+        PyJinhxSettings(cache_scope=CacheScope.PROCESS, invalidation_backend=backend)
+    )
+    assert resolved.cache_scope == CacheScope.PROCESS
+    assert resolved.invalidation_backend is backend
+
+
+def test_explicit_kwarg_still_overrides_settings():
+    resolved = configure_pyjinhx(
+        PyJinhxSettings(cache_scope=CacheScope.PROCESS), cache_scope=CacheScope.NONE
+    )
+    assert resolved.cache_scope == CacheScope.NONE

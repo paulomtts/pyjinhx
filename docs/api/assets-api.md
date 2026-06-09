@@ -46,7 +46,7 @@ app.mount(
 ## default_asset_url
 
 ```python
-def default_asset_url(path: str, *, kind: AssetKind, root: str) -> str
+def default_asset_url(path: str, *, root: str) -> str
 ```
 
 Map an absolute asset path to a default public URL under `/static/components/`. The runtime path maps to `DEFAULT_RUNTIME_URL`.
@@ -95,20 +95,18 @@ def asset_manifest(session: RenderSession, *, resolver: AssetUrlResolver) -> Ass
 
 Build an `AssetManifest` from a `RenderSession` and a URL resolver. Equivalent to `session.manifest(resolver=resolver)`.
 
-## layout_asset_tags
+## Finder.layout_asset_tags
 
 ```python
-def layout_asset_tags(finder: Finder, *, resolver: AssetUrlResolver) -> Markup
+def layout_asset_tags(self, *, resolver: AssetUrlResolver) -> Markup
 ```
 
-Emit `<link>` and `<script src>` tags for every component asset discovered by a `Finder`. Use in layout shells to preload all component assets instead of per-page discovery.
+Instance method on [`Finder`](finder.md). Emit `<link>` and `<script src>` tags for every component asset discovered under the finder's root. Use in layout shells to preload all component assets instead of per-page discovery.
 
 ```python
-from pyjinhx import Finder, layout_asset_tags, make_default_asset_url_resolver
+from pyjinhx import Finder, make_default_asset_url_resolver
 
 finder = Finder(root="./components")
 resolver = make_default_asset_url_resolver("./components")
-head_tags = layout_asset_tags(finder, resolver=resolver)
+head_tags = finder.layout_asset_tags(resolver=resolver)
 ```
-
-Defined in `pyjinhx.finder` and re-exported from the top-level package.

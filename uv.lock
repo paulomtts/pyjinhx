@@ -572,13 +572,12 @@ wheels = [
 
 [[package]]
 name = "pyjinhx"
-version = "0.7.0"
+version = "0.7.1"
 source = { editable = "." }
 dependencies = [
     { name = "jinja2" },
     { name = "markupsafe" },
     { name = "pydantic" },
-    { name = "pytest" },
 ]
 
 [package.optional-dependencies]
@@ -594,6 +593,7 @@ dev = [
     { name = "httpx" },
     { name = "mkdocs-material" },
     { name = "mkdocstrings", extra = ["python"] },
+    { name = "pytest" },
     { name = "python-multipart" },
     { name = "redis" },
     { name = "uvicorn" },
@@ -605,7 +605,6 @@ requires-dist = [
     { name = "jinja2", specifier = ">=3.1.6" },
     { name = "markupsafe", specifier = ">=3.0.3" },
     { name = "pydantic", specifier = ">=2.12.5" },
-    { name = "pytest", specifier = ">=9.0.1" },
     { name = "redis", marker = "extra == 'redis'", specifier = ">=5.0.0" },
 ]
 provides-extras = ["redis"]
@@ -617,6 +616,7 @@ dev = [
     { name = "httpx", specifier = ">=0.27.0" },
     { name = "mkdocs-material", specifier = ">=9.7.1" },
     { name = "mkdocstrings", extras = ["python"], specifier = ">=1.0.1" },
+    { name = "pytest", specifier = ">=9.0.1" },
     { name = "python-multipart", specifier = ">=0.0.9" },
     { name = "redis", specifier = ">=5.0.0" },
     { name = "uvicorn", specifier = ">=0.32.0" },

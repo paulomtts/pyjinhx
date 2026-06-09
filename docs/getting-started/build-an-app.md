@@ -280,16 +280,21 @@ Template button:
 
 ## Step 8 — Reactive components
 
-Upgrade the counter:
+Upgrade the counter. It names the state it derives from with a `Keys` enum and
+reads from a `store` module — **we define both `keys.py` and `store.py` in Step 9**;
+for now just note that `Keys.TODOS` and `store` are imported from there:
 
 ```python
 from typing import ClassVar
 from pyjinhx import ReactiveComponent
 
+from .keys import Keys
+from . import store
+
 
 class TodoCounter(ReactiveComponent):
     remaining: int = 0
-    reacts_to: ClassVar[set[str]] = {"todos"}
+    reacts_to: ClassVar[set[str]] = {Keys.TODOS}
 
     @classmethod
     def load(cls) -> "TodoCounter":
@@ -314,7 +319,8 @@ class TodoApp(BaseComponent):
 
 ## Step 9 — Keys, mutations, and render()
 
-`keys.py`:
+Centralize reactive key strings in a `StateKey` enum so `reacts_to`, `@mutates`, and
+`dirtied` all share one vocabulary (no stray raw strings to typo). `keys.py`:
 
 ```python
 from pyjinhx import StateKey
@@ -342,7 +348,7 @@ def toggle(todo_id: int) -> None:
     ...
 ```
 
-Route:
+Route (the `TodoItemRow` it renders is the instance-keyed row **we define in Step 10**):
 
 ```python
 @app.post("/rows/{todo_id}/toggle", response_class=HTMLResponse)
@@ -382,10 +388,10 @@ class TodoItemRow(ReactiveComponent):
         )
 ```
 
-Template:
+Template (note `data-pjx-loading` — covered in Step 11):
 
 ```html
-<li>
+<li data-pjx-loading="skeleton">
   <button hx-post="/rows/{{ todo_id }}/toggle"
           hx-target="closest [data-pjx-id]" hx-swap="outerHTML">toggle</button>
   <span>{{ title }}</span>
@@ -397,7 +403,39 @@ Template:
 
 ---
 
-## Step 11 — LoadContext (avoid globals in load())
+## Step 11 — Loading states (in-flight indicators)
+
+While a reactive region's OOB update is in flight, it can show a built-in indicator.
+You opt in **in the template** by adding `data-pjx-loading` to any element — the
+component root or something inside it. No route or Python changes:
+
+```html
+<!-- todo_item_row.html: shimmer the whole row while it reloads -->
+<li data-pjx-loading="skeleton"> ... </li>
+
+<!-- clear_button.html: spin just this button -->
+<button data-pjx-loading="spinner">Clear completed ({{ completed }})</button>
+```
+
+Two built-in styles ship: `"skeleton"` (silhouette shimmer) and `"spinner"` (dimmed
+overlay with a circular indicator). `pjx.js` reads each reactive root's `reacts_to`
+keys and lights the matching `data-pjx-loading` elements on every mounted region a
+mutation touches — the swap target *and* its OOB dependents.
+
+???+ question "Why template-driven, and how do I theme it?"
+    Indicators are purely a client affordance — no server reactive semantics change, and
+    nothing fires unless an element opts in. Both styles read overridable `--pjx-*` CSS
+    variables (e.g. `--pjx-skeleton-color`, `--pjx-spinner-color`, `--pjx-spinner-speed`)
+    you can set on `:root` or any wrapper. Any other value (`data-pjx-loading="pulse"`)
+    just applies `.pjx-loading--pulse` for you to style.
+
+    See: [Reactivity → Loading indicators](../reactivity.md#loading-indicators-in-flight).
+
+---
+
+## Step 12 — LoadContext (avoid globals in load())
+
+The context is just a **plain frozen dataclass** — `LoadContext.current()` is duck-typed, so you don't need to subclass anything:
 
 ```python
 from dataclasses import dataclass
@@ -405,7 +443,7 @@ from pyjinhx import LoadContext
 
 
 @dataclass(frozen=True)
-class AppLoadContext(LoadContext):
+class AppLoadContext:
     store: object
 
 
@@ -425,7 +463,7 @@ setup(app, load_context_factory=lambda request: AppLoadContext(store=store))
 
 ---
 
-## Step 12 — Load cache scope and invalidation
+## Step 13 — Load cache scope and invalidation
 
 Default: **`CacheScope.REQUEST`** — `load()` results cache within each HTTP request (multi-worker safe).
 
@@ -453,11 +491,15 @@ setup(
 ???+ question "Why cache at all?"
     A single page may call `TodoCounter.load()` many times during composition and OOB walks. Caching `(class, load_arg) → component snapshot` avoids repeated store/DB work. **Invalidation** (`@mutates` or `LoadCache.invalidate`) evicts entries when state changes — cache is a performance layer, not the source of truth.
 
-    If toggles feel stale, check that mutations dirtied the **instance key** (`todo:42`), not just the stem (`todo`).
+    If toggles feel stale, check that `@mutates` dirtied a key your rows actually
+    declare in `reacts_to`. Rows here use **pub-sub** on `{Keys.TODOS}` — every mounted
+    row reloads when `todos` changes, and hash-gating skips the unchanged ones. (For
+    per-instance keys like `"todo:42"` instead of a shared stem, see
+    [Reactivity → Instance-keyed regions](../reactivity.md#instance-keyed-regions-rows).)
 
 ---
 
-## Step 13 — Production assets
+## Step 14 — Production assets
 
 ```python
 from pyjinhx import AssetMode, Renderer
@@ -479,7 +521,7 @@ TodoApp(...).render()  # client headers from middleware ClientBackend
 
 ---
 
-## Step 14 — Dev guardrails (optional)
+## Step 15 — Dev guardrails (optional)
 
 ```python
 from pyjinhx import enable_reactive_dev, dependency_graph, format_dependency_graph
@@ -493,7 +535,7 @@ print(format_dependency_graph())
 
 ---
 
-## Step 15 — Built-in UI kit (optional)
+## Step 16 — Built-in UI kit (optional)
 
 ```python
 import pyjinhx.builtins  # register templates
@@ -509,20 +551,13 @@ from pyjinhx.builtins import Alert, Button, Card
 
 ## Checklist — full app wiring
 
-| Piece | Required for reactive HTMX app |
-|-------|--------------------------------|
-| `Renderer.set_default_environment(...)` | Yes |
-| `Registry.request_scope()` middleware | Yes |
-| Root full-page render (auto `pjx.js` unless `X-PJX-Mounted` present) | Yes |
-| HTMX in layout | Yes |
-| `ReactiveComponent` + `reacts_to` + `load()` | Yes |
-| `@mutates(Keys.TODOS)` on store mutations | Yes |
-| `setup()` wires `FastAPIClientBackend` | Yes |
-| `PjxLoad` on keyed row components | Yes |
-| `LoadContext` | Recommended |
-| Assets / REFERENCE mode | Production |
-| Invalidation backend | Multi-worker + PROCESS cache |
-| `enable_reactive_dev()` | Development |
+The per-step **Why?** panels above cover the *why*; this is the at-a-glance *what*.
+
+| Tier | Pieces |
+|------|--------|
+| **Required** | `set_default_environment` · `Registry.request_scope()` middleware · root full-page render · HTMX in layout · `ReactiveComponent` (`reacts_to` + `load()`) · `@mutates(Keys.…)` on mutations · `setup()` (wires `FastAPIClientBackend`) · `PjxLoad` on keyed rows |
+| **Recommended** | `LoadContext` · `data-pjx-loading` indicators · `enable_reactive_dev()` in dev |
+| **Production** | `AssetMode.REFERENCE` + URL resolver · `InvalidationBackend` for multi-worker `PROCESS` cache |
 
 ---
 
