@@ -17,10 +17,12 @@ What to watch (open the network tab):
 - **Clear completed** → the list and total update; the **"N left"** counter is skipped
   (remaining is unchanged).
 
-**Loading shimmer:** `Counter` and `Total` set `loading_skeleton = True`, so when you
-toggle/add a todo they show a shimmer over their current value until the server's fresh
-value swaps in. (Each `load()` has a small artificial `time.sleep` so the effect is
-visible on a fast local server — remove it in real apps.)
+**Loading indicators:** components opt in with `loading`. `ItemList`, `Counter`, and
+`Total` use `loading = "skeleton"` (a silhouette shimmer in place of their content);
+`ClearButton` uses `loading = "spinner"` (a dim overlay + circular progress, content kept
+visible). When you toggle/add/clear a todo, the affected regions show their indicator until
+the server's fresh HTML swaps in. (`Counter`/`Total` `load()` have a small artificial
+`time.sleep` so the effect is visible on a fast local server — remove it in real apps.)
 
 The routes never mention the counter/total/clear button — `@mutates` and
 `@mutates` accumulates dirtied keys automatically, and `setup()` wires

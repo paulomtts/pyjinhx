@@ -58,12 +58,21 @@
     var style = document.createElement("style");
     style.id = "pjx-style";
     style.textContent =
-      ".pjx-loading{color:transparent !important;border-radius:6px;" +
+      ".pjx-loading--skeleton,.pjx-loading--spinner{pointer-events:none}" +
+      ".pjx-loading--skeleton{color:transparent !important;border-radius:6px;" +
       "background-image:linear-gradient(90deg," +
       "rgba(127,127,127,.12),rgba(127,127,127,.30) 50%,rgba(127,127,127,.12));" +
       "background-size:200% 100%;animation:pjx-shimmer 1.2s ease-in-out infinite}" +
-      ".pjx-loading *{visibility:hidden}" +
-      "@keyframes pjx-shimmer{from{background-position:100% 0}to{background-position:-100% 0}}";
+      ".pjx-loading--skeleton *{visibility:hidden}" +
+      ".pjx-loading--spinner{position:relative}" +
+      ".pjx-loading--spinner::before{content:'';position:absolute;inset:0;" +
+      "background:rgba(127,127,127,.35);border-radius:inherit}" +
+      ".pjx-loading--spinner::after{content:'';position:absolute;top:50%;left:50%;" +
+      "width:1.1em;height:1.1em;margin:-.55em 0 0 -.55em;box-sizing:border-box;" +
+      "border:2px solid rgba(0,0,0,.2);border-top-color:rgba(0,0,0,.65);" +
+      "border-radius:50%;animation:pjx-spin .6s linear infinite}" +
+      "@keyframes pjx-shimmer{from{background-position:100% 0}to{background-position:-100% 0}}" +
+      "@keyframes pjx-spin{to{transform:rotate(360deg)}}";
     document.head.appendChild(style);
   }
 
@@ -87,14 +96,15 @@
     });
     var marked = [];
     Array.prototype.forEach.call(
-      document.querySelectorAll("[data-pjx-skeleton][data-pjx-reacts]"),
+      document.querySelectorAll("[data-pjx-loading][data-pjx-reacts]"),
       function (el) {
         var hit = pjxReacts(el).some(function (key) {
           return dirty[key];
         });
         if (hit) {
-          el.classList.add("pjx-loading");
-          marked.push(el);
+          var cls = "pjx-loading--" + (el.getAttribute("data-pjx-loading") || "skeleton");
+          el.classList.add(cls);
+          marked.push([el, cls]);
         }
       }
     );
@@ -109,8 +119,8 @@
     if (!marked) {
       return;
     }
-    marked.forEach(function (el) {
-      el.classList.remove("pjx-loading");
+    marked.forEach(function (pair) {
+      pair[0].classList.remove(pair[1]);
     });
     pjxLoadingByXhr.delete(xhr);
   }

@@ -45,6 +45,7 @@ class ItemRow(ReactiveComponent):
 class ItemList(ReactiveComponent):
     items: list[ItemRow] = []
     reacts_to: ClassVar[set[str]] = {Keys.TODOS}
+    loading: ClassVar[str] = "skeleton"
 
     @classmethod
     def load(cls) -> "ItemList":
@@ -58,28 +59,33 @@ class ItemList(ReactiveComponent):
 class Counter(ReactiveComponent):
     remaining: int = 0
     reacts_to: ClassVar[set[str]] = {Keys.TODOS}
-    loading_skeleton: ClassVar[bool] = True
+    loading: ClassVar[str] = "skeleton"
 
     @classmethod
     def load(cls) -> "Counter":
-        time.sleep(0.4)  # demo only: artificial latency so the loading shimmer is visible
+        time.sleep(
+            0.4
+        )  # demo only: artificial latency so the loading shimmer is visible
         return cls(remaining=_store().remaining())
 
 
 class Total(ReactiveComponent):
     count: int = 0
     reacts_to: ClassVar[set[str]] = {Keys.TODOS}
-    loading_skeleton: ClassVar[bool] = True
+    loading: ClassVar[str] = "skeleton"
 
     @classmethod
     def load(cls) -> "Total":
-        time.sleep(0.4)  # demo only: artificial latency so the loading shimmer is visible
+        time.sleep(
+            0.4
+        )  # demo only: artificial latency so the loading shimmer is visible
         return cls(count=_store().total())
 
 
 class ClearButton(ReactiveComponent):
     completed: int = 0
     reacts_to: ClassVar[set[str]] = {Keys.TODOS}
+    loading: ClassVar[str] = "spinner"
 
     @classmethod
     def load(cls) -> "ClearButton":
