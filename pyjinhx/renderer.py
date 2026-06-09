@@ -112,6 +112,11 @@ def stamp_reactive_markup(markup: str, component: BaseComponent) -> str:
     load_value = pjx_load_value(component)
     if load_value is not None:
         attrs["data-pjx-load"] = load_value
+    reacts = getattr(type(component), "_pjx_reacts_to", frozenset())
+    if reacts:
+        attrs["data-pjx-reacts"] = " ".join(sorted(reacts))
+    if getattr(type(component), "loading_skeleton", False):
+        attrs["data-pjx-skeleton"] = "true"
     return stamp_root_attributes(markup, attrs)
 
 
