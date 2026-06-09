@@ -61,3 +61,4 @@ def test_runtime_has_loading_indicator_logic():
     assert "data-pjx-reacts" in source
     assert "triggerLoad" in source
     assert "data-pjx-loading-extra" in source
+    assert "loadend" in source

@@ -77,11 +77,20 @@
     document.head.appendChild(style);
   }
 
-  var pjxLoadingByXhr = new Map();
+  var pjxLoadingByXhr = new Map();  // xhr -> [region id, ...]
+  var pjxLoading = {};              // region id -> in-flight request count (ref-count)
 
   function pjxReacts(el) {
     var value = el.getAttribute("data-pjx-reacts");
     return value ? value.split(" ").filter(Boolean) : [];
+  }
+
+  function pjxLoadingClass(el) {
+    return "pjx-loading--" + (el.getAttribute("data-pjx-loading") || "skeleton");
+  }
+
+  function pjxRegion(id) {
+    return document.querySelector('[data-pjx-id="' + (window.CSS && CSS.escape ? CSS.escape(id) : id) + '"]');
   }
 
   function pjxBeginLoading(evt) {
@@ -96,11 +105,15 @@
       dirty[key] = true;
     });
     var triggerLoad = root.getAttribute("data-pjx-load");
-    var marked = [];
+    var ids = [];
     function mark(el) {
-      var cls = "pjx-loading--" + (el.getAttribute("data-pjx-loading") || "skeleton");
-      el.classList.add(cls);
-      marked.push([el, cls]);
+      var id = el.getAttribute("data-pjx-id");
+      if (!id) {
+        return;
+      }
+      el.classList.add(pjxLoadingClass(el));
+      pjxLoading[id] = (pjxLoading[id] || 0) + 1;
+      ids.push(id);
     }
     Array.prototype.forEach.call(
       document.querySelectorAll("[data-pjx-loading][data-pjx-reacts]"),
@@ -120,25 +133,48 @@
     if (extra) {
       Array.prototype.forEach.call(document.querySelectorAll(extra), mark);
     }
-    if (marked.length) {
-      pjxLoadingByXhr.set(xhr, marked);
+    if (ids.length) {
+      pjxLoadingByXhr.set(xhr, ids);
+      // loadend always fires (load/error/abort), even when htmx discards the
+      // response of a superseded request -- a reliable cue to release the refs
+      xhr.addEventListener("loadend", function () {
+        pjxEndLoading(xhr);
+      });
     }
   }
 
-  function pjxEndLoading(evt) {
-    var xhr = evt.detail && evt.detail.xhr;
-    var marked = xhr && pjxLoadingByXhr.get(xhr);
-    if (!marked) {
+  function pjxEndLoading(xhrOrEvt) {
+    var xhr = xhrOrEvt && xhrOrEvt.detail ? xhrOrEvt.detail.xhr : xhrOrEvt;
+    var ids = xhr && pjxLoadingByXhr.get(xhr);
+    if (!ids) {
       return;
     }
-    marked.forEach(function (pair) {
-      pair[0].classList.remove(pair[1]);
-    });
     pjxLoadingByXhr.delete(xhr);
+    ids.forEach(function (id) {
+      pjxLoading[id] -= 1;
+      if (pjxLoading[id] <= 0) {
+        delete pjxLoading[id];
+        var el = pjxRegion(id);
+        if (el) {
+          el.classList.remove(pjxLoadingClass(el));
+        }
+      }
+    });
+  }
+
+  // a swap can replace a region another in-flight request still needs lit
+  function pjxReapplyLoading() {
+    Object.keys(pjxLoading).forEach(function (id) {
+      var el = pjxRegion(id);
+      if (el) {
+        el.classList.add(pjxLoadingClass(el));
+      }
+    });
   }
 
   pjxInjectStyle();
   document.body.addEventListener("htmx:beforeRequest", pjxBeginLoading);
+  document.body.addEventListener("htmx:afterSettle", pjxReapplyLoading);
   document.body.addEventListener("htmx:afterOnLoad", pjxEndLoading);
   document.body.addEventListener("htmx:responseError", pjxEndLoading);
   document.body.addEventListener("htmx:timeout", pjxEndLoading);
