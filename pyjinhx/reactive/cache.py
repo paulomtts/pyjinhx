@@ -1,7 +1,11 @@
+"""Load-cache memoization for ``load()`` and cross-process invalidation."""
+
 from __future__ import annotations
 
+import logging
 import threading
-from collections.abc import Iterable
+from abc import ABC, abstractmethod
+from collections.abc import Callable, Iterable
 from contextvars import ContextVar
 from dataclasses import dataclass, field
 from enum import Enum
@@ -11,6 +15,8 @@ from .keys import coerce_load_key_str, coerce_reactive_keys
 
 if TYPE_CHECKING:
     from pyjinhx.core.base import BaseComponent
+
+logger = logging.getLogger("pyjinhx")
 
 
 class CacheScope(str, Enum):
@@ -77,8 +83,6 @@ class LoadCache:
             return
         cls._evict_local(keys)
         if propagate and cls.scope() == CacheScope.PROCESS:
-            from .invalidation import InvalidationHub
-
             InvalidationHub.publish(frozenset(keys))
 
     @classmethod
@@ -227,3 +231,77 @@ class LoadCache:
             state._cache[cache_key] = result
             for reactive_key in cls._indexed_keys(result):
                 state._reverse.setdefault(reactive_key, set()).add(cache_key)
+
+
+class InvalidationBackend(ABC):
+    """Base class for cross-process load-cache invalidation fan-out."""
+
+    @abstractmethod
+    def publish(self, keys: frozenset[str]) -> None: ...
+
+    @abstractmethod
+    def start(self, handler: Callable[[frozenset[str]], None]) -> None: ...
+
+    @abstractmethod
+    def stop(self) -> None: ...
+
+
+class InvalidationHub:
+    """Runtime coordinator for cross-process load-cache invalidation."""
+
+    _lock: ClassVar[threading.Lock] = threading.Lock()
+    _backend: ClassVar[InvalidationBackend | None] = None
+    _listener_started: ClassVar[bool] = False
+
+    @classmethod
+    def set_backend(cls, backend: InvalidationBackend | None) -> None:
+        with cls._lock:
+            if cls._listener_started and cls._backend is not None:
+                cls._backend.stop()
+                cls._listener_started = False
+            cls._backend = backend
+
+    @classmethod
+    def publish(cls, keys: frozenset[str]) -> None:
+        if not keys or cls._backend is None:
+            return
+        try:
+            cls._backend.publish(keys)
+        except Exception:
+            logger.exception(
+                "Failed to publish load-cache invalidation for keys %r", keys
+            )
+
+    @classmethod
+    def start_listener(cls) -> None:
+        with cls._lock:
+            if cls._backend is None:
+                raise RuntimeError(
+                    "No InvalidationBackend configured; call "
+                    "InvalidationHub.set_backend() first."
+                )
+            if cls._listener_started:
+                return
+            cls._backend.start(cls._on_remote_invalidation)
+            cls._listener_started = True
+
+    @classmethod
+    def stop_listener(cls) -> None:
+        with cls._lock:
+            if cls._backend is None or not cls._listener_started:
+                return
+            cls._backend.stop()
+            cls._listener_started = False
+
+    @classmethod
+    def reset(cls) -> None:
+        """Reset backend listener state. Mainly for tests."""
+        with cls._lock:
+            if cls._listener_started and cls._backend is not None:
+                cls._backend.stop()
+            cls._listener_started = False
+            cls._backend = None
+
+    @staticmethod
+    def _on_remote_invalidation(keys: frozenset[str]) -> None:
+        LoadCache.invalidate(keys, propagate=False)

@@ -182,6 +182,6 @@ class ReactiveComponent(BaseComponent):
             validate_pjx_load_subclass(cls, keyed=cls._pjx_keyed)
             cls._pjx_load_field = resolve_pjx_load_field(cls)
         if "load" in cls.__dict__:
-            from .load_cache import LoadCache
+            from .cache import LoadCache
 
             LoadCache.install_cached_load(cls)

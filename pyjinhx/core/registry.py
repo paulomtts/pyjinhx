@@ -143,7 +143,7 @@ class Registry:
         from contextlib import ExitStack
 
         from pyjinhx.reactive.client import ClientBackend
-        from pyjinhx.reactive.load_cache import LoadCache
+        from pyjinhx.reactive.cache import LoadCache
         from pyjinhx.reactive.context import LoadContext
         from pyjinhx.reactive.dev import warn_mutations_without_render
         from pyjinhx.reactive.mutations import MutationTracker

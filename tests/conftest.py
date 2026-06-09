@@ -5,7 +5,7 @@ import pytest
 
 from pyjinhx import CacheScope, ClientBackend, LoadCache, MutationTracker, Registry, shutdown_pyjinhx
 from pyjinhx.core.assets import RenderSession
-from pyjinhx.reactive.invalidation import InvalidationHub
+from pyjinhx.reactive.cache import InvalidationHub
 
 
 def _noop_inject_runtime(
