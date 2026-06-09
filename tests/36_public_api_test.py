@@ -67,6 +67,7 @@ def test_reactive_api_is_exported():
     assert callable(MutationTracker.record)
     assert issubclass(ReactiveComponent, pyjinhx.BaseComponent)
     assert issubclass(StateKey, str)
+    assert PjxLoad.__name__ == "PjxLoad"
 
 
 def test_names_in_all():

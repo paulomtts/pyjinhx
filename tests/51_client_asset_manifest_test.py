@@ -173,11 +173,6 @@ def test_reactive_partial_still_emits_no_assets_with_client_header():
     Renderer.set_default_asset_dedup(True)
 
     manifest = [{"id": "counter", "type": "ReactiveCounter", "hash": "stale"}]
-    client = _Client(
-        {
-            PJX_ASSETS_HEADER: json.dumps(["/static/components/counter.js"]),
-        }
-    )
     from tests.reactive_test_support import reactive_client, record_mutation
 
     with reactive_client(
