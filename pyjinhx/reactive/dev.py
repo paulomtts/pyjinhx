@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass
 
-from pyjinhx.core.registry import Registry
+from pyjinhx.registry import Registry
 
 from .client import ClientBackend
 from .mutations import MutationTracker

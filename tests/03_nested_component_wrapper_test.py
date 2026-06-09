@@ -1,7 +1,7 @@
 import pytest
 from markupsafe import Markup
 
-from pyjinhx.core.base import NestedComponentWrapper
+from pyjinhx.base import NestedComponentWrapper
 from tests.ui.unified_component import UnifiedComponent
 
 

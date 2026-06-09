@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from jinja2 import FileSystemLoader
 from markupsafe import Markup
 
-from ..utils import (
+from .utils import (
     normalize_path_separators,
     pascal_case_to_kebab_case,
     pascal_case_to_snake_case,

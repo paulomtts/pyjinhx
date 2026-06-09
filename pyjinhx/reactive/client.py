@@ -12,8 +12,8 @@ from typing import Any, ClassVar
 
 from markupsafe import Markup
 
-from pyjinhx.core.assets import DEFAULT_RUNTIME_URL, AssetMode
-from pyjinhx.core.renderer import Renderer
+from pyjinhx.assets import DEFAULT_RUNTIME_URL, AssetMode
+from pyjinhx.renderer import Renderer
 from pyjinhx.utils import read_client_runtime
 
 logger = logging.getLogger("pyjinhx")

@@ -25,7 +25,7 @@ from .finder import Finder
 from .registry import Registry
 from .tags import Parser
 from .tags import expand_custom_tags, render_tag_node
-from ..utils import detect_root_directory, stamp_root_attributes, tag_name_to_template_filenames
+from .utils import detect_root_directory, stamp_root_attributes, tag_name_to_template_filenames
 
 if TYPE_CHECKING:
     from .base import BaseComponent

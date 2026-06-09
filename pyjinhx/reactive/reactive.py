@@ -15,9 +15,9 @@ from markupsafe import Markup
 from pydantic import ConfigDict, PrivateAttr, model_validator
 from pydantic.fields import FieldInfo
 
-from pyjinhx.core.base import BaseComponent
-from pyjinhx.core.registry import Registry
-from pyjinhx.core.renderer import Renderer
+from pyjinhx.base import BaseComponent
+from pyjinhx.registry import Registry
+from pyjinhx.renderer import Renderer
 from pyjinhx.utils import (
     css_attribute_selector_attr_value,
     pascal_case_to_kebab_case,

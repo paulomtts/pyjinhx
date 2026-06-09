@@ -13,7 +13,7 @@ from html.parser import HTMLParser
 from typing import TYPE_CHECKING, Any, ClassVar
 
 from .registry import Registry
-from ..utils import extract_tag_name_from_raw, pascal_case_to_snake_case
+from .utils import extract_tag_name_from_raw, pascal_case_to_snake_case
 
 logger = logging.getLogger("pyjinhx")
 

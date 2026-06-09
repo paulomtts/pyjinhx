@@ -3,7 +3,7 @@ from jinja2 import DictLoader, Environment
 from jinja2.exceptions import TemplateNotFound
 
 from pyjinhx import BaseComponent
-from pyjinhx.core.renderer import Renderer
+from pyjinhx.renderer import Renderer
 
 
 def test_missing_template_file():

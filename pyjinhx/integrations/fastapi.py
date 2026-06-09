@@ -5,7 +5,7 @@ from collections.abc import Callable
 from contextlib import asynccontextmanager
 from typing import Any
 
-from pyjinhx.core.registry import Registry
+from pyjinhx.registry import Registry
 from pyjinhx.config import PyJinhxSettings, configure_pyjinhx, shutdown_pyjinhx
 from pyjinhx.reactive.client import ClientBackend
 

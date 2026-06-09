@@ -9,7 +9,7 @@ from enum import Enum
 from typing import TYPE_CHECKING, Literal
 
 from .finder import Finder
-from ..utils import pascal_case_to_kebab_case, read_client_runtime
+from .utils import pascal_case_to_kebab_case, read_client_runtime
 
 if TYPE_CHECKING:
     from .base import BaseComponent

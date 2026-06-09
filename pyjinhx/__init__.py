@@ -1,4 +1,4 @@
-from pyjinhx.core.assets import (
+from pyjinhx.assets import (
     AssetManifest,
     AssetMode,
     DEFAULT_RUNTIME_URL,
@@ -10,12 +10,12 @@ from pyjinhx.core.assets import (
     resolver_with_hash,
     runtime_asset_path,
 )
-from pyjinhx.core.base import BaseComponent
-from pyjinhx.core.finder import Finder
-from pyjinhx.core.tags import Parser
-from pyjinhx.core.registry import Registry
-from pyjinhx.core.renderer import Renderer
-from pyjinhx.core.tags import Tag
+from pyjinhx.base import BaseComponent
+from pyjinhx.finder import Finder
+from pyjinhx.tags import Parser
+from pyjinhx.registry import Registry
+from pyjinhx.renderer import Renderer
+from pyjinhx.tags import Tag
 from pyjinhx.config import (
     PyJinhxSettings,
     configure_pyjinhx,

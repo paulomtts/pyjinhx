@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING, Any, ClassVar
 from .keys import coerce_load_key_str, coerce_reactive_keys
 
 if TYPE_CHECKING:
-    from pyjinhx.core.base import BaseComponent
+    from pyjinhx.base import BaseComponent
 
 logger = logging.getLogger("pyjinhx")
 
