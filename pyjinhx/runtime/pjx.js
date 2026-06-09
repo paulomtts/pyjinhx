@@ -58,11 +58,11 @@
     var style = document.createElement("style");
     style.id = "pjx-style";
     style.textContent =
-      ".pjx-loading{position:relative;overflow:hidden}" +
-      ".pjx-loading>*{opacity:.55;transition:opacity .15s ease}" +
-      ".pjx-loading::after{content:'';position:absolute;inset:0;pointer-events:none;" +
-      "background:linear-gradient(90deg,transparent,rgba(127,127,127,.18) 50%,transparent);" +
+      ".pjx-loading{color:transparent !important;border-radius:6px;" +
+      "background-image:linear-gradient(90deg," +
+      "rgba(127,127,127,.12),rgba(127,127,127,.30) 50%,rgba(127,127,127,.12));" +
       "background-size:200% 100%;animation:pjx-shimmer 1.2s ease-in-out infinite}" +
+      ".pjx-loading *{visibility:hidden}" +
       "@keyframes pjx-shimmer{from{background-position:100% 0}to{background-position:-100% 0}}";
     document.head.appendChild(style);
   }

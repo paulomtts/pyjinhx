@@ -389,8 +389,9 @@ Requires `pip install pyjinhx[redis]`. See [Redis integration](api/integrations-
 
 ## Loading shimmer (in-flight)
 
-A reactive region can shimmer over its current content while a reactive update is in
-flight, then swap in the fresh HTML when the response arrives. Opt in per component:
+A reactive region can show a shimmer in place of its current content while a reactive
+update is in flight, then swap in the fresh HTML when the response arrives. Opt in per
+component:
 
 ```python
 class TodoCounter(ReactiveComponent):
