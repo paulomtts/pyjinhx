@@ -1,3 +1,4 @@
+import time
 from dataclasses import dataclass
 from typing import Annotated, ClassVar, Optional
 
@@ -57,18 +58,22 @@ class ItemList(ReactiveComponent):
 class Counter(ReactiveComponent):
     remaining: int = 0
     reacts_to: ClassVar[set[str]] = {Keys.TODOS}
+    loading_skeleton: ClassVar[bool] = True
 
     @classmethod
     def load(cls) -> "Counter":
+        time.sleep(0.4)  # demo only: artificial latency so the loading shimmer is visible
         return cls(remaining=_store().remaining())
 
 
 class Total(ReactiveComponent):
     count: int = 0
     reacts_to: ClassVar[set[str]] = {Keys.TODOS}
+    loading_skeleton: ClassVar[bool] = True
 
     @classmethod
     def load(cls) -> "Total":
+        time.sleep(0.4)  # demo only: artificial latency so the loading shimmer is visible
         return cls(count=_store().total())
 
 

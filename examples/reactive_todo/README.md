@@ -17,6 +17,11 @@ What to watch (open the network tab):
 - **Clear completed** → the list and total update; the **"N left"** counter is skipped
   (remaining is unchanged).
 
+**Loading shimmer:** `Counter` and `Total` set `loading_skeleton = True`, so when you
+toggle/add a todo they show a shimmer over their current value until the server's fresh
+value swaps in. (Each `load()` has a small artificial `time.sleep` so the effect is
+visible on a fast local server — remove it in real apps.)
+
 The routes never mention the counter/total/clear button — `@mutates` and
 `@mutates` accumulates dirtied keys automatically, and `setup()` wires
 `ClientBackend` so `render()` reads `X-PJX-Mounted` from the request.
