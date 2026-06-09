@@ -1,6 +1,7 @@
 from typing import ClassVar
 
 from pyjinhx import ReactiveComponent
+from pyjinhx.utils import read_client_runtime
 
 
 class ShimmerCounter(ReactiveComponent):
@@ -32,3 +33,11 @@ def test_default_component_stamps_reacts_but_not_skeleton():
     html = str(PlainCounter(id="c2", remaining=2)._render(source="<span>{{ remaining }}</span>"))
     assert 'data-pjx-reacts="todos"' in html
     assert "data-pjx-skeleton" not in html
+
+
+def test_runtime_has_loading_shimmer_logic():
+    source = read_client_runtime()
+    assert "htmx:beforeRequest" in source
+    assert "pjx-loading" in source
+    assert "data-pjx-skeleton" in source
+    assert "data-pjx-reacts" in source
