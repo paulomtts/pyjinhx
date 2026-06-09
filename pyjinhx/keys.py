@@ -25,7 +25,7 @@ def coerce_load_key_str(key: object) -> str | None:
     return coerce_reactive_key(key)
 
 
-class StateKey(StrEnum):
+class MutationKey(StrEnum):
     """
     Base class for app-level reactive state keys.
 

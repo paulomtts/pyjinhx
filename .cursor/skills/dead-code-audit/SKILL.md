@@ -44,8 +44,8 @@ Re-grep after each breaking reactive/API change. Absence in `pyjinhx/` but prese
 mutation_scope
 coerce_dirty_args
 interpolate_reactive_keys
-StateKey.instance_key
-StateKey.dirty_keys
+MutationKey.instance_key
+MutationKey.dirty_keys
 dirty_keys
 resolve_mounted
 resolve_effective_dirtied

@@ -12,7 +12,7 @@ from pyjinhx.cache import CacheScope
 from pyjinhx.client import client_script
 from pyjinhx.config import PjxSettings, setup
 from pyjinhx.context import PjxContext
-from pyjinhx.keys import StateKey
+from pyjinhx.keys import MutationKey
 from pyjinhx.mutations import mutates
 from pyjinhx.reactive import PjxKey, ReactiveComponent
 from pyjinhx.registry import Registry
@@ -28,7 +28,7 @@ __all__ = [
     "Registry",
     # Reactive authoring
     "mutates",
-    "StateKey",
+    "MutationKey",
     "PjxKey",
     "PjxContext",
     # Configuration

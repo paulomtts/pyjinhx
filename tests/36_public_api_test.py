@@ -9,7 +9,7 @@ from pyjinhx import (
     ReactiveComponent,
     Registry,
     Renderer,
-    StateKey,
+    MutationKey,
     client_script,
     mutates,
     setup,
@@ -22,7 +22,7 @@ PUBLIC_API = {
     "setup",
     "Registry",
     "mutates",
-    "StateKey",
+    "MutationKey",
     "PjxKey",
     "PjxContext",
     "PjxSettings",
@@ -39,7 +39,7 @@ def test_public_api_is_exactly_the_curated_set():
 
 def test_public_symbols_are_correct():
     assert issubclass(ReactiveComponent, BaseComponent)
-    assert issubclass(StateKey, str)
+    assert issubclass(MutationKey, str)
     assert CacheScope.REQUEST == "request"
     assert AssetMode.INLINE is not None
     assert PjxKey.__name__ == "PjxKey"

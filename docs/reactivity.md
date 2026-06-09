@@ -210,13 +210,13 @@ from the DOM without a server error.
 
 ## State keys
 
-Centralize reactive key strings in a `StateKey` enum so `reacts_to`, `dirtied`, and
+Centralize reactive key strings in a `MutationKey` enum so `reacts_to`, `dirtied`, and
 `@mutates` share one vocabulary:
 
 ```python
-from pyjinhx import StateKey
+from pyjinhx import MutationKey
 
-class Keys(StateKey):
+class Keys(MutationKey):
     TODOS = "todos"
 
 class TodoCounter(ReactiveComponent):

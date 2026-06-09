@@ -1,6 +1,6 @@
-from pyjinhx import StateKey
+from pyjinhx import MutationKey
 
 
-class Keys(StateKey):
+class Keys(MutationKey):
     TODOS = "todos"
     TODO_LIST = "todo-list"

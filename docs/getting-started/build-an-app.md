@@ -319,14 +319,14 @@ class TodoApp(BaseComponent):
 
 ## Step 9 — Keys, mutations, and render()
 
-Centralize reactive key strings in a `StateKey` enum so `reacts_to`, `@mutates`, and
+Centralize reactive key strings in a `MutationKey` enum so `reacts_to`, `@mutates`, and
 `dirtied` all share one vocabulary (no stray raw strings to typo). `keys.py`:
 
 ```python
-from pyjinhx import StateKey
+from pyjinhx import MutationKey
 
 
-class Keys(StateKey):
+class Keys(MutationKey):
     TODOS = "todos"
 ```
 
