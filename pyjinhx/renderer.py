@@ -91,12 +91,6 @@ def load_template_for_component(
     )
 
 
-def find_template_for_tag(renderer: Renderer, tag_name: str) -> str:
-    loader_root = get_loader_root(renderer.environment)
-    finder = get_finder_for_root(renderer, loader_root)
-    return finder.find_template_for_tag(tag_name)
-
-
 def build_render_context(context: dict[str, Any]) -> dict[str, Any]:
     render_context = dict(context)
     for instance in Registry.get_instances().values():
@@ -249,22 +243,10 @@ class Renderer:
     def new_session(self) -> RenderSession:
         return RenderSession()
 
-    def _load_template_for_component(
-        self,
-        component: BaseComponent,
-        *,
-        template_source: str | None,
-        template_path: str | None,
-    ):
-        return load_template_for_component(
-            self,
-            component,
-            template_source=template_source,
-            template_path=template_path,
-        )
-
     def _find_template_for_tag(self, tag_name: str) -> str:
-        return find_template_for_tag(self, tag_name)
+        loader_root = get_loader_root(self._environment)
+        finder = get_finder_for_root(self, loader_root)
+        return finder.find_template_for_tag(tag_name)
 
     def render_component_with_context(
         self,
@@ -280,8 +262,8 @@ class Renderer:
         loaded_assets: frozenset[str] = frozenset(),
         client: object | None = None,
     ) -> Markup:
-        template = self._load_template_for_component(
-            component, template_source=template_source, template_path=template_path
+        template = load_template_for_component(
+            self, component, template_source=template_source, template_path=template_path
         )
 
         render_context = build_render_context(context)
