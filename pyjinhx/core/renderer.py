@@ -12,15 +12,15 @@ from .assets import (
     make_default_asset_url_resolver,
     runtime_asset_path,
 )
-from .parser import Parser
-from .render_assets import (
+from .tags import Parser
+from .assets import (
     apply_component_render_assets,
     inject_assets,
     normalize_asset_path,
 )
 from .render_context import build_render_context, stamp_reactive_markup
 from .renderer_settings import RendererSettings
-from .tag_expand import expand_custom_tags, render_tag_node
+from .tags import expand_custom_tags, render_tag_node
 from .template_load import find_template_for_tag, load_template_for_component
 
 if TYPE_CHECKING:

@@ -1,0 +1,313 @@
+"""Tag data model, HTML-like parser, autodiscovery, and PascalCase tag expansion."""
+
+from __future__ import annotations
+
+import importlib.util
+import logging
+import os
+import re
+import sys
+import uuid
+from dataclasses import dataclass, field
+from html.parser import HTMLParser
+from typing import TYPE_CHECKING, Any, ClassVar
+
+from .registry import Registry
+from ..utils import extract_tag_name_from_raw, pascal_case_to_snake_case
+
+logger = logging.getLogger("pyjinhx")
+
+
+@dataclass
+class Tag:
+    """
+    Represents a parsed HTML/component tag with its attributes and children.
+
+    Used by the Parser to build a tree structure from HTML-like markup containing
+    PascalCase component tags (e.g., `<MyButton text="OK">`).
+
+    Attributes:
+        name: The tag name (e.g., "MyButton", "div").
+        attrs: Dictionary of attribute names to values.
+        children: Nested tags or raw text content within this tag.
+    """
+
+    name: str
+    attrs: dict[str, str]
+    children: list["Tag | str"] = field(default_factory=list)
+
+
+RE_PASCAL_CASE_TAG_NAME = re.compile(r"^[A-Z](?:[a-z]+(?:[A-Z][a-z]+)*)?$")
+
+
+class Parser(HTMLParser):
+    """
+    HTML parser that identifies PascalCase component tags and builds a tree of Tag nodes.
+
+    Standard HTML tags are passed through as raw strings, while PascalCase tags (e.g., `<MyButton>`)
+    are parsed into Tag objects for component rendering. After calling `feed(html)`, the parsed
+    structure is available in `root_nodes`.
+
+    Attributes:
+        root_nodes: List of top-level parsed nodes (Tag objects or raw HTML strings).
+    """
+
+    def __init__(self) -> None:
+        super().__init__()
+        self._stack: list[Tag] = []
+        self.root_nodes: list[Tag | str] = []
+
+    def _is_custom_component(self, tag_name: str) -> bool:
+        return bool(RE_PASCAL_CASE_TAG_NAME.match(tag_name))
+
+    def _attrs_to_dict(self, attrs: list[tuple[str, str | None]]) -> dict[str, str]:
+        return {attr_name: (attr_value or "") for attr_name, attr_value in attrs}
+
+    def _append_child(self, node: Tag | str) -> None:
+        if self._stack:
+            self._stack[-1].children.append(node)
+        else:
+            self.root_nodes.append(node)
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        raw = self.get_starttag_text() or f"<{tag}>"
+        original_tag_name = extract_tag_name_from_raw(raw) or tag
+
+        if self._is_custom_component(original_tag_name):
+            tag_node = Tag(name=original_tag_name, attrs=self._attrs_to_dict(attrs))
+            self._stack.append(tag_node)
+            return
+
+        self._append_child(raw)
+
+    def handle_startendtag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        raw = self.get_starttag_text() or f"<{tag} />"
+        original_tag_name = extract_tag_name_from_raw(raw) or tag
+
+        if self._is_custom_component(original_tag_name):
+            tag_node = Tag(name=original_tag_name, attrs=self._attrs_to_dict(attrs))
+            self._append_child(tag_node)
+            return
+
+        self._append_child(raw)
+
+    def handle_endtag(self, tag: str) -> None:
+        if self._stack and self._stack[-1].name.lower() == tag.lower():
+            tag_node = self._stack.pop()
+            self._append_child(tag_node)
+            return
+
+        logger.warning("Mismatched closing tag </%s>; emitting as raw HTML", tag)
+        self._append_child(f"</{tag}>")
+
+    def handle_data(self, data: str) -> None:
+        self._append_child(data)
+
+    def handle_comment(self, data: str) -> None:
+        self._append_child(f"<!--{data}-->")
+
+    def handle_decl(self, decl: str) -> None:
+        self._append_child(f"<!{decl}>")
+
+    def close(self) -> None:
+        if self._stack:
+            unclosed = ", ".join(tag.name for tag in self._stack)
+            raise ValueError(f"Unclosed PascalCase component tags: {unclosed}")
+        super().close()
+
+
+class ComponentAutodiscover:
+    """Import co-located Python modules to register ``BaseComponent`` subclasses."""
+
+    _imported_files: ClassVar[set[str]] = set()
+
+    @classmethod
+    def clear(cls) -> None:
+        """Drop the deduplication set. Mainly for tests."""
+        cls._imported_files.clear()
+
+    @classmethod
+    def import_from_file(cls, filepath: str) -> None:
+        """Import a Python file by path to trigger ``BaseComponent`` registration."""
+        if filepath in cls._imported_files:
+            return
+        cls._imported_files.add(filepath)
+        try:
+            module_name = (
+                f"_pyjinhx_autodiscovered_{os.path.splitext(os.path.basename(filepath))[0]}"
+            )
+            spec = importlib.util.spec_from_file_location(module_name, filepath)
+            if spec is None or spec.loader is None:
+                return
+            module = importlib.util.module_from_spec(spec)
+            sys.modules[module_name] = (
+                module  # required for inspect.getfile to resolve the class
+            )
+            spec.loader.exec_module(module)
+        except Exception:
+            logger.debug("Failed to autodiscover module at %s", filepath, exc_info=True)
+
+    @classmethod
+    def try_for_tag(cls, tag_name: str, template_path: str | None) -> None:
+        """
+        Look for a co-located Python module next to the template and import it.
+
+        Search order: ``<snake_name>.py`` → ``__init__.py`` → first alphabetical ``.py``.
+        """
+        if template_path is None:
+            return
+        component_dir = os.path.dirname(template_path)
+        snake_name = pascal_case_to_snake_case(tag_name)
+        for filename in (f"{snake_name}.py", "__init__.py"):
+            candidate = os.path.join(component_dir, filename)
+            if os.path.exists(candidate):
+                cls.import_from_file(candidate)
+                return
+        try:
+            py_files = sorted(f for f in os.listdir(component_dir) if f.endswith(".py"))
+            if py_files:
+                cls.import_from_file(os.path.join(component_dir, py_files[0]))
+        except OSError:
+            pass
+
+
+if TYPE_CHECKING:
+    from .assets import RenderSession
+    from .renderer import Renderer
+
+
+def render_tag_node(
+    renderer: Renderer,
+    node: Tag | str,
+    base_context: dict[str, Any],
+    session: RenderSession,
+    *,
+    emit_assets: bool,
+) -> str:
+    if isinstance(node, str):
+        return node
+
+    rendered_children = "".join(
+        render_tag_node(
+            renderer,
+            child,
+            base_context=base_context,
+            session=session,
+            emit_assets=emit_assets,
+        )
+        for child in node.children
+    ).strip()
+
+    component_id = node.attrs.get("id")
+    if not component_id:
+        if not renderer._auto_id:
+            raise ValueError(
+                f'Missing required "id" for <{node.name}> and auto_id=False'
+            )
+        component_id = f"{node.name.lower()}-{uuid.uuid4().hex}"
+
+    attrs_without_id = {k: v for k, v in node.attrs.items() if k != "id"}
+
+    registry_key = Registry.make_key(node.name, component_id)
+    existing_instance = Registry.get_instances().get(registry_key)
+    template_path: str | None = None
+    try:
+        template_path = renderer._find_template_for_tag(node.name)
+    except FileNotFoundError:
+        pass
+
+    if existing_instance is not None:
+        instance_class_name = type(existing_instance).__name__
+        if instance_class_name != node.name:
+            raise TypeError(
+                f"Tag <{node.name}> references instance '{component_id}' "
+                f"which is of type {instance_class_name}"
+            )
+
+        updates: dict[str, Any] = dict(attrs_without_id)
+        if rendered_children:
+            updates["content"] = rendered_children
+        existing_instance = existing_instance.model_copy(update=updates)
+        Registry.get_instances()[registry_key] = existing_instance
+
+        return str(
+            existing_instance._render(
+                base_context=base_context,
+                _renderer=renderer,
+                _session=session,
+                _template_path=template_path,
+                emit_assets=emit_assets,
+            )
+        )
+
+    if not Registry.has_class(node.name):
+        ComponentAutodiscover.try_for_tag(node.name, template_path)
+
+    component_class = Registry.get_class(node.name)
+    if component_class is not None:
+        component = component_class(
+            id=component_id,
+            content=rendered_children,
+            **attrs_without_id,
+        )
+    else:
+        if template_path is None:
+            raise FileNotFoundError(
+                f"No template found for <{node.name}>. "
+                f"Expected {node.name.lower()}.html or {node.name.lower()}.jinja"
+            )
+        from .base import BaseComponent
+
+        component = BaseComponent(
+            id=component_id,
+            content=rendered_children,
+            **attrs_without_id,
+        )
+        Registry.get_instances().pop(
+            Registry.make_key("BaseComponent", component_id), None
+        )
+
+    return str(
+        component._render(
+            base_context=base_context,
+            _renderer=renderer,
+            _session=session,
+            _template_path=template_path,
+            emit_assets=emit_assets,
+        )
+    )
+
+
+def expand_custom_tags(
+    renderer: Renderer,
+    markup: str,
+    base_context: dict[str, Any],
+    session: RenderSession,
+    *,
+    emit_assets: bool,
+) -> str:
+    """Expand PascalCase custom tags found inside ``markup``."""
+    if "<" not in markup:
+        return markup
+
+    parser = Parser()
+    has_custom_tags = False
+    for match in re.finditer(r"<\s*([A-Za-z][A-Za-z0-9]*)", markup):
+        if parser._is_custom_component(match.group(1)):
+            has_custom_tags = True
+            break
+    if not has_custom_tags:
+        return markup
+
+    parser.feed(markup)
+    parser.close()
+    return "".join(
+        render_tag_node(
+            renderer,
+            node,
+            base_context=base_context,
+            session=session,
+            emit_assets=emit_assets,
+        )
+        for node in parser.root_nodes
+    )

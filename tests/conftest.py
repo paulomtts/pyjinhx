@@ -22,7 +22,7 @@ def _suppress_pjx_runtime_injection(request: pytest.FixtureRequest, monkeypatch:
     if request.node.get_closest_marker("pjx_runtime"):
         return
     monkeypatch.setattr(
-        "pyjinhx.core.render_assets.inject_runtime",
+        "pyjinhx.core.assets.inject_runtime",
         _noop_inject_runtime,
     )
 

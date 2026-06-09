@@ -19,7 +19,7 @@ import pytest
 from jinja2 import Environment, FileSystemLoader
 
 from pyjinhx import Registry
-from pyjinhx.core.autodiscover import ComponentAutodiscover
+from pyjinhx.core.tags import ComponentAutodiscover
 from pyjinhx.core.renderer import Renderer
 
 _COMPONENT_SRC = """\

@@ -12,10 +12,10 @@ from pyjinhx.core.assets import (
 )
 from pyjinhx.core.base import BaseComponent
 from pyjinhx.core.finder import Finder
-from pyjinhx.core.parser import Parser
+from pyjinhx.core.tags import Parser
 from pyjinhx.core.registry import Registry
 from pyjinhx.core.renderer import Renderer
-from pyjinhx.core.tag import Tag
+from pyjinhx.core.tags import Tag
 from pyjinhx.config import (
     PyJinhxSettings,
     configure_pyjinhx,
