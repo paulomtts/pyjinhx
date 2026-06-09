@@ -34,7 +34,7 @@ from pyjinhx.reactive.client import (
     TriggerManifest,
     client_script,
 )
-from pyjinhx.reactive.component import ReactiveComponent
+from pyjinhx.reactive.reactive import ReactiveComponent
 from pyjinhx.reactive.context import LoadContext
 from pyjinhx.reactive.dev import (
     dependency_graph,
@@ -45,8 +45,8 @@ from pyjinhx.reactive.dev import (
 from pyjinhx.reactive.cache import CacheScope, InvalidationBackend, InvalidationHub, LoadCache
 from pyjinhx.reactive.keys import StateKey
 from pyjinhx.reactive.mutations import MutationTracker, mutates
-from pyjinhx.reactive.oob import oob_swaps
-from pyjinhx.reactive.pjx_load import PjxLoad
+from pyjinhx.reactive.reactive import oob_swaps
+from pyjinhx.reactive.reactive import PjxLoad
 
 __all__ = [
     "AssetManifest",

@@ -10,7 +10,7 @@ from pyjinhx import (
     PJX_ASSETS_HEADER,
     Renderer,
 )
-from pyjinhx.reactive.oob import oob_swaps
+from pyjinhx.reactive.reactive import oob_swaps
 from pyjinhx.utils import read_client_runtime
 from tests.ui.reactive.reactive_counter import ReactiveCounter
 from tests.ui.unified_component import UnifiedComponent
