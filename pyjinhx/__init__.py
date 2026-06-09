@@ -24,7 +24,16 @@ from pyjinhx.config import (
     shutdown_pyjinhx,
 )
 from pyjinhx.integrations.fastapi import FastAPIClientBackend
-from pyjinhx.reactive.backend import ClientBackend
+from pyjinhx.reactive.client import (
+    ClientBackend,
+    LoadedAssets,
+    MountedManifest,
+    PJX_ASSETS_HEADER,
+    PJX_MOUNTED_HEADER,
+    PJX_TRIGGER_HEADER,
+    TriggerManifest,
+    client_script,
+)
 from pyjinhx.reactive.component import ReactiveComponent
 from pyjinhx.reactive.context import LoadContext
 from pyjinhx.reactive.dev import (
@@ -38,16 +47,7 @@ from pyjinhx.reactive.keys import StateKey
 from pyjinhx.reactive.load_cache import CacheScope, LoadCache
 from pyjinhx.reactive.mutations import MutationTracker, mutates
 from pyjinhx.reactive.oob import oob_swaps
-from pyjinhx.reactive.payload import (
-    LoadedAssets,
-    MountedManifest,
-    PJX_ASSETS_HEADER,
-    PJX_MOUNTED_HEADER,
-    PJX_TRIGGER_HEADER,
-    TriggerManifest,
-)
 from pyjinhx.reactive.pjx_load import PjxLoad
-from pyjinhx.reactive.runtime import client_script
 
 __all__ = [
     "AssetManifest",

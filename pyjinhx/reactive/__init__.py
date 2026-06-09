@@ -8,11 +8,9 @@ Modules:
 - ``mutations`` — ``MutationTracker``, ``@mutates``
 - ``pjx_load`` — ``PjxLoad`` field marker for ``data-pjx-load`` stamping
 - ``invalidation`` — ``InvalidationBackend`` ABC and ``InvalidationHub``
-- ``payload`` — client header parsing (``MountedManifest``, ``TriggerManifest``, ``LoadedAssets``)
+- ``client`` — ``ClientBackend``, mounted/trigger/asset manifest parsing, and ``client_script`` runtime injection
 - ``oob`` — out-of-band HTMX swap computation
-- ``runtime`` — ``client_script`` injection
 - ``keys`` — reactive key coercion and ``StateKey``
 - ``context`` — ``LoadContext`` for ``load()`` DI
-- ``backend`` — ``ClientBackend`` ABC for request headers
 - ``dev`` — development guardrails and dependency graph
 """

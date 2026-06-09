@@ -10,8 +10,8 @@ from pyjinhx.core.renderer import Renderer
 from pyjinhx.reactive.keys import ReactiveKey, coerce_reactive_keys
 from pyjinhx.utils import css_attribute_selector_attr_value, stamp_root_attributes
 
+from .client import MountedManifest
 from .load_cache import LoadCache
-from .payload import MountedManifest
 
 
 @dataclass

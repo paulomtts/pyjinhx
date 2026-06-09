@@ -7,7 +7,7 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 
 from pyjinhx import FastAPIClientBackend
-from pyjinhx.reactive.backend import ClientBackend
+from pyjinhx.reactive.client import ClientBackend
 from pyjinhx.reactive.mutations import MutationTracker
 
 

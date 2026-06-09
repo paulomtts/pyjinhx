@@ -4,12 +4,11 @@ from collections.abc import Callable
 
 from markupsafe import Markup
 
-from .backend import ClientBackend
+from .client import ClientBackend, MountedManifest, TriggerManifest
 from .dev import warn_reactive_render_without_client
 from .load_cache import LoadCache
 from .mutations import MutationTracker
 from .oob import oob_swaps
-from .payload import MountedManifest, TriggerManifest
 
 
 def _reactive_context_active() -> bool:

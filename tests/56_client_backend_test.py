@@ -1,5 +1,5 @@
 from pyjinhx import FastAPIClientBackend, Registry
-from pyjinhx.reactive.backend import ClientBackend
+from pyjinhx.reactive.client import ClientBackend
 
 
 class _FakeRequest:
