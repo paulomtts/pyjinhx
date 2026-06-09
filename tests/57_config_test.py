@@ -1,48 +1,9 @@
 import os
 from unittest.mock import patch
 
-from pyjinhx import CacheScope, PjxSettings
-from pyjinhx.cache import InvalidationBackend, LoadCache
+from pyjinhx import PjxSettings
+from pyjinhx.cache import CacheScope, InvalidationBackend, LoadCache
 from pyjinhx.config import configure_pyjinhx, pyjinhx_lifespan, shutdown_pyjinhx
-
-
-def test_pyjinhx_settings_default_is_request():
-    assert PjxSettings().cache_scope == CacheScope.REQUEST
-
-
-def test_configure_pyjinhx_sets_cache_scope():
-    configure_pyjinhx(cache_scope=CacheScope.NONE)
-    assert LoadCache.scope() == CacheScope.NONE
-
-
-def test_configure_pyjinhx_accepts_settings_object():
-    settings = PjxSettings(cache_scope=CacheScope.REQUEST)
-    configure_pyjinhx(settings)
-    assert LoadCache.scope() == CacheScope.REQUEST
-
-
-def test_pyjinhx_lifespan_context_manager():
-    with pyjinhx_lifespan(cache_scope=CacheScope.REQUEST):
-        assert LoadCache.scope() == CacheScope.REQUEST
-    shutdown_pyjinhx()
-
-
-def test_from_env_defaults_to_request():
-    with patch.dict(os.environ, {}, clear=True):
-        settings = PjxSettings.from_env()
-    assert settings.cache_scope == CacheScope.REQUEST
-    assert settings.invalidation_backend is None
-
-
-def test_from_env_process_with_redis_url():
-    with patch.dict(
-        os.environ,
-        {"PJX_LOAD_CACHE_SCOPE": "process", "REDIS_URL": "memory://"},
-        clear=True,
-    ):
-        settings = PjxSettings.from_env()
-    assert settings.cache_scope == CacheScope.PROCESS
-    assert settings.invalidation_backend is not None
 
 
 class _StubBackend(InvalidationBackend):
@@ -56,37 +17,76 @@ class _StubBackend(InvalidationBackend):
         pass
 
 
-def test_configure_warns_when_backend_set_with_request_scope(caplog):
-    import logging
+def test_pyjinhx_settings_default_has_no_backend():
+    assert PjxSettings().invalidation_backend is None
 
-    caplog.set_level(logging.WARNING, logger="pyjinhx")
-    configure_pyjinhx(
-        cache_scope=CacheScope.REQUEST,
-        invalidation_backend=_StubBackend(),
-    )
+
+def test_configure_pyjinhx_no_backend_is_request():
+    configure_pyjinhx()
     assert LoadCache.scope() == CacheScope.REQUEST
-    assert any("invalidation_backend" in record.message for record in caplog.records)
+
+
+def test_configure_pyjinhx_with_backend_is_process():
+    configure_pyjinhx(invalidation_backend=_StubBackend())
+    assert LoadCache.scope() == CacheScope.PROCESS
+
+
+def test_configure_pyjinhx_accepts_settings_object():
+    settings = PjxSettings()
+    configure_pyjinhx(settings)
+    assert LoadCache.scope() == CacheScope.REQUEST
+
+
+def test_pyjinhx_lifespan_context_manager():
+    with pyjinhx_lifespan():
+        assert LoadCache.scope() == CacheScope.REQUEST
+    shutdown_pyjinhx()
+
+
+def test_from_env_defaults_to_request():
+    with patch.dict(os.environ, {}, clear=True):
+        settings = PjxSettings.from_env()
+    assert settings.invalidation_backend is None
+    configure_pyjinhx(settings)
+    assert LoadCache.scope() == CacheScope.REQUEST
+
+
+def test_from_env_process_with_redis_url():
+    with patch.dict(os.environ, {"REDIS_URL": "memory://"}, clear=True):
+        settings = PjxSettings.from_env()
+    assert settings.invalidation_backend is not None
+    configure_pyjinhx(settings)
+    assert LoadCache.scope() == CacheScope.PROCESS
+
+
+def test_configure_with_backend_is_process_and_keeps_backend():
+    backend = _StubBackend()
+    resolved = configure_pyjinhx(invalidation_backend=backend)
+    assert resolved.invalidation_backend is backend
+    assert LoadCache.scope() == CacheScope.PROCESS
 
 
 def test_settings_object_not_clobbered_by_default_kwargs():
     # regression: default kwargs must not overwrite an explicit settings=
-    # (cache_scope previously reverted to REQUEST, nulling PROCESS config).
-    resolved = configure_pyjinhx(PjxSettings(cache_scope=CacheScope.PROCESS))
-    assert resolved.cache_scope == CacheScope.PROCESS
+    # (an explicit backend previously reverted to None, nulling PROCESS config).
+    backend = _StubBackend()
+    resolved = configure_pyjinhx(PjxSettings(invalidation_backend=backend))
+    assert resolved.invalidation_backend is backend
     assert LoadCache.scope() == CacheScope.PROCESS
 
 
 def test_settings_process_keeps_invalidation_backend():
     backend = _StubBackend()
-    resolved = configure_pyjinhx(
-        PjxSettings(cache_scope=CacheScope.PROCESS, invalidation_backend=backend)
-    )
-    assert resolved.cache_scope == CacheScope.PROCESS
+    resolved = configure_pyjinhx(PjxSettings(invalidation_backend=backend))
     assert resolved.invalidation_backend is backend
+    assert LoadCache.scope() == CacheScope.PROCESS
 
 
 def test_explicit_kwarg_still_overrides_settings():
+    # explicit invalidation_backend=None overrides a backend on the settings object,
+    # which derives REQUEST instead of PROCESS.
     resolved = configure_pyjinhx(
-        PjxSettings(cache_scope=CacheScope.PROCESS), cache_scope=CacheScope.NONE
+        PjxSettings(invalidation_backend=_StubBackend()), invalidation_backend=None
     )
-    assert resolved.cache_scope == CacheScope.NONE
+    assert resolved.invalidation_backend is None
+    assert LoadCache.scope() == CacheScope.REQUEST

@@ -1,5 +1,4 @@
-from pyjinhx import CacheScope
-from pyjinhx.cache import InvalidationHub, LoadCache
+from pyjinhx.cache import CacheScope, InvalidationHub, LoadCache
 from pyjinhx.config import configure_pyjinhx, shutdown_pyjinhx
 
 

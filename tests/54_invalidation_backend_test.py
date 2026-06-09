@@ -1,7 +1,6 @@
 from collections.abc import Callable
 
-from pyjinhx import CacheScope
-from pyjinhx.cache import InvalidationBackend, InvalidationHub, LoadCache
+from pyjinhx.cache import CacheScope, InvalidationBackend, InvalidationHub, LoadCache
 
 
 class FakeInvalidationBackend(InvalidationBackend):

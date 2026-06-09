@@ -2,7 +2,6 @@ import pyjinhx
 from pyjinhx import (
     AssetMode,
     BaseComponent,
-    CacheScope,
     MutationKey,
     PjxContext,
     PjxKey,
@@ -25,7 +24,6 @@ PUBLIC_API = {
     "PjxKey",
     "PjxContext",
     "PjxSettings",
-    "CacheScope",
     "AssetMode",
 }
 
@@ -38,7 +36,6 @@ def test_public_api_is_exactly_the_curated_set():
 def test_public_symbols_are_correct():
     assert issubclass(ReactiveComponent, BaseComponent)
     assert issubclass(MutationKey, str)
-    assert CacheScope.REQUEST == "request"
     assert AssetMode.INLINE is not None
     assert PjxKey.__name__ == "PjxKey"
     for fn in (setup, mutates, PjxSettings.from_env,
@@ -50,7 +47,7 @@ def test_public_symbols_are_correct():
 def test_internals_are_not_in_the_public_surface():
     # advanced/internal building blocks must NOT leak into the top-level API
     for name in (
-        "client_script", "oob_swaps", "LoadCache", "InvalidationHub",
+        "CacheScope", "client_script", "oob_swaps", "LoadCache", "InvalidationHub",
         "InvalidationBackend", "MutationTracker", "Finder", "Parser", "Tag",
         "ClientBackend", "FastAPIClientBackend", "MountedManifest", "TriggerManifest",
         "LoadedAssets", "PJX_MOUNTED_HEADER", "PJX_ASSETS_HEADER", "PJX_TRIGGER_HEADER",
@@ -66,7 +63,7 @@ def test_internals_are_not_in_the_public_surface():
 
 def test_internals_remain_importable_from_submodules():
     # still available for advanced use — just not on the curated surface
-    from pyjinhx.cache import InvalidationHub, LoadCache  # noqa: F401
+    from pyjinhx.cache import CacheScope, InvalidationHub, LoadCache  # noqa: F401
     from pyjinhx.client import (  # noqa: F401
         PJX_MOUNTED_HEADER,
         ClientBackend,
