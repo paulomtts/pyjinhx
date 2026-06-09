@@ -6,8 +6,8 @@ from pyjinhx import (
     AssetMode,
     BaseComponent,
     Renderer,
-    client_script,
 )
+from pyjinhx.client import client_script
 from pyjinhx.assets import (
     asset_manifest,
     hashed_filename,

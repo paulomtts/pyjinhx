@@ -84,7 +84,7 @@ Marker for `Annotated[..., PjxKey()]`. The field value is stamped as `data-pjx-l
 def client_script(*, mode: AssetMode | None = None, src: str | None = None) -> Markup
 ```
 
-Return the pyjinhx client runtime as a `<script>` tag. Root `BaseComponent.render()` injects the runtime automatically unless `X-PJX-Mounted` is already present on the request.
+Return the pyjinhx client runtime as a `<script>` tag (`from pyjinhx.client import client_script`). It is not part of the top-level public API — root `BaseComponent.render()` injects the runtime automatically unless `X-PJX-Mounted` is already present on the request.
 
 ## MountedManifest
 

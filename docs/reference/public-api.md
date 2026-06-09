@@ -24,23 +24,17 @@ These 13 symbols are the entire top-level public API; advanced/internal building
 | Symbol | Description | Documentation |
 |--------|-------------|---------------|
 | `mutates()` | Decorator: invalidate cache and accumulate dirtied keys after mutation | [Mutations, Keys & PjxContext](../api/mutations-keys-context.md#mutates) |
-| `MutationKey` | Base `StrEnum` for app-level reactive key constants | [Mutations, Keys & PjxContext](../api/mutations-keys-context.md#statekey) |
-| `PjxKey` | Marker for `Annotated[..., PjxKey()]` fields stamped as `data-pjx-load` | [Mutations, Keys & PjxContext](../api/mutations-keys-context.md#pjxload) |
-| `PjxContext` | Opaque base dataclass for request-scoped `load()` data | [Mutations, Keys & PjxContext](../api/mutations-keys-context.md#loadcontext) |
+| `MutationKey` | Base `StrEnum` for app-level reactive key constants | [Mutations, Keys & PjxContext](../api/mutations-keys-context.md#mutationkey) |
+| `PjxKey` | Marker for `Annotated[..., PjxKey()]` fields stamped as `data-pjx-load` | [Mutations, Keys & PjxContext](../api/mutations-keys-context.md#pjxkey) |
+| `PjxContext` | Opaque base dataclass for request-scoped `load()` data | [Mutations, Keys & PjxContext](../api/mutations-keys-context.md#pjxcontext) |
 
 ## Configuration
 
 | Symbol | Description | Documentation |
 |--------|-------------|---------------|
-| `PjxSettings` | Cache scope, invalidation backend, reactive dev flags | [Configuration](../api/config.md#pyjinhxsettings) |
+| `PjxSettings` | Cache scope, invalidation backend, reactive dev flags | [Configuration](../api/config.md#pjxsettings) |
 | `CacheScope` | Enum: `PROCESS`, `REQUEST`, or `NONE` | [Cache & Invalidation](../api/cache-invalidation.md#cachescope) |
 | `AssetMode` | Enum: `INLINE`, `REFERENCE`, or `NONE` | [Renderer](../api/renderer.md#assetmode) |
-
-## Runtime
-
-| Symbol | Description | Documentation |
-|--------|-------------|---------------|
-| `client_script()` | Emit the pyjinhx client runtime as a `<script>` tag | [Reactive API](../api/reactive-api.md#client_script) |
 
 ## Conceptual guides
 

@@ -88,7 +88,7 @@ Partial renders ignore the asset header (no assets emitted). Dedup defaults to *
 
 In `REFERENCE` mode, root full-page renders emit `<script src="/static/pyjinhx/pjx.js">` when the request lacks `X-PJX-Mounted`. Mount the packaged file from `pyjinhx/runtime/pjx.js` or override with `Renderer.set_default_runtime_url()`.
 
-For raw Jinja shells, use `client_script(mode=AssetMode.REFERENCE)`. Pass `client_script(src=...)` to override the runtime URL (otherwise it falls back to `Renderer`'s configured URL, then `DEFAULT_RUNTIME_URL`).
+For raw Jinja shells, use `client_script(mode=AssetMode.REFERENCE)` (`from pyjinhx.client import client_script`). Pass `client_script(src=...)` to override the runtime URL (otherwise it falls back to `Renderer`'s configured URL, then `DEFAULT_RUNTIME_URL`).
 
 ### CSP
 

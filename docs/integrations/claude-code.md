@@ -337,14 +337,14 @@ my_app/
 ```python
 from pyjinhx import (
     BaseComponent, ReactiveComponent, Renderer, Registry,
-    PjxKey, mutates, client_script, setup,
+    PjxKey, mutates, setup,
 )
 # advanced/internal building blocks live in submodules:
 from pyjinhx.finder import Finder
 from pyjinhx.tags import Parser, Tag
 from pyjinhx.cache import LoadCache
 from pyjinhx.reactive import oob_swaps
-from pyjinhx.client import PJX_MOUNTED_HEADER, PJX_TRIGGER_HEADER
+from pyjinhx.client import PJX_MOUNTED_HEADER, PJX_TRIGGER_HEADER, client_script
 import pyjinhx.builtins  # optional: registers all builtin classes
 from pyjinhx.builtins import Alert, Modal, Panel, PanelTrigger, TabGroup  # …
 ```

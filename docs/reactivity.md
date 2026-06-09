@@ -80,7 +80,7 @@ class AppShell(BaseComponent):
 For a raw Jinja layout (outside the component render path), drop in `client_script()`:
 
 ```python
-from pyjinhx import client_script
+from pyjinhx.client import client_script
 
 # in your template context
 {"pjx_runtime": client_script()}
