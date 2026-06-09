@@ -17,12 +17,14 @@ What to watch (open the network tab):
 - **Clear completed** → the list and total update; the **"N left"** counter is skipped
   (remaining is unchanged).
 
-**Loading indicators:** components opt in with `loading`. `ItemRow` uses
-`loading = "skeleton"` (a silhouette shimmer while a row reloads); `ClearButton` uses
-`loading = "spinner"` (a dim overlay + circular progress, content kept visible). Toggling
-a row or clearing shows the indicator until the fresh HTML swaps in. The toggle/clear
-routes `time.sleep` briefly so this is visible on a fast local server — adding a todo stays
-instant (it shows no indicator). Set `PJX_DEMO_LATENCY=0` to disable.
+**Loading indicators:** opt in *in the template* with `data-pjx-loading`. `item_row.html`
+puts `data-pjx-loading="skeleton"` on the row (a silhouette shimmer while it reloads);
+`clear_button.html` puts `data-pjx-loading="spinner"` on the button (a dim, blurred overlay +
+circular progress). The element auto-triggers off its component's `reacts_to`, so toggling a
+row or clearing shows the indicator until the fresh HTML swaps in. The toggle/clear routes
+`time.sleep` briefly so this is visible on a fast local server — adding a todo stays instant
+(no indicator). Set `PJX_DEMO_LATENCY=0` to disable; restyle via the `--pjx-*` CSS tokens
+(see [Loading indicators](../../docs/reactivity.md)).
 
 The routes never mention the counter/total/clear button — `@mutates` and
 `@mutates` accumulates dirtied keys automatically, and `setup()` wires

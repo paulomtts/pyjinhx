@@ -115,9 +115,6 @@ def stamp_reactive_markup(markup: str, component: BaseComponent) -> str:
     reacts = getattr(type(component), "_pjx_reacts_to", frozenset())
     if reacts:
         attrs["data-pjx-reacts"] = " ".join(sorted(reacts))
-    loading = getattr(type(component), "loading", None)
-    if loading:
-        attrs["data-pjx-loading"] = str(loading)
     return stamp_root_attributes(markup, attrs)
 
 

@@ -183,7 +183,6 @@ class ReactiveComponent(BaseComponent):
 
     reacts_to: ClassVar[set[str]] = set()
     state_hash_exclude: ClassVar[frozenset[str]] = frozenset({"id"})
-    loading: ClassVar[str | None] = None  # "skeleton" | "spinner"
 
     _pjx_key: str | None = PrivateAttr(default=None)
 
