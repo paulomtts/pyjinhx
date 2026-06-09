@@ -47,6 +47,18 @@ def test_toggle_swaps_changed_dependents(client):
     )
 
 
+def test_toggle_does_not_reswap_whole_list(client):
+    # regression: a full-list swap on toggle detaches a concurrent row's target
+    headers = _manifest(
+        {"id": "list", "type": "ItemList", "hash": "stale"},
+        {"id": "row-1", "type": "ItemRow", "load": "1", "hash": "stale"},
+        {"id": "row-2", "type": "ItemRow", "load": "2", "hash": "stale"},
+    )
+    body = client.post("/rows/1/toggle", headers=headers).text
+    assert 'data-pjx-id="row-1"' in body
+    assert "outerHTML:[data-pjx-id='list']" not in body
+
+
 def test_toggle_hash_gates_unchanged_total(client):
     fresh_total = Total.load()
     headers = _manifest(

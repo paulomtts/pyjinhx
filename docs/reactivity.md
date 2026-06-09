@@ -389,6 +389,78 @@ setup(
 
 Requires `pip install pyjinhx[redis]`. See [Redis integration](api/integrations-redis.md).
 
+## Loading indicators (in-flight)
+
+A reactive region can show a loading indicator while an update is in flight, then swap in the
+fresh HTML when the response arrives. You opt in **in the template** by adding a
+`data-pjx-loading` attribute to whichever element(s) should show the effect — the component
+root, or any element inside it:
+
+```html
+<!-- item_row.html: shimmer the whole row while it reloads -->
+<li class="todo" data-pjx-loading="skeleton">…</li>
+
+<!-- clear_button.html: spin just this button -->
+<button class="clear" data-pjx-loading="spinner">Clear completed ({{ completed }})</button>
+```
+
+Two built-in styles:
+
+- **`"skeleton"`** — a silhouette shimmer in place of the element's content (the box keeps its
+  shape; the content is hidden while it shimmers).
+- **`"spinner"`** — a dim, blurred overlay with a centered circular progress indicator; the
+  content stays underneath and the element is non-interactive while loading.
+
+**Auto-triggered — no per-route wiring.** Every reactive root is stamped with `data-pjx-reacts`
+(its `reacts_to` keys). When an htmx request starts, `pjx.js` reads the triggering region's
+`data-pjx-reacts` as the predicted dirtied set, then lights the `data-pjx-loading` elements of
+**every mounted region whose keys intersect it** — the swap target *and* its out-of-band
+dependents. Declaring `reacts_to` is all it takes for a component's loading elements to fire on
+the right mutations; routes don't change.
+
+- A loading element is matched through its **enclosing reactive root**, so it can sit on the
+  root or any inner element; the root supplies the reactivity and the instance key.
+- **Instance-keyed rows stay scoped:** the template renders per instance, so each instance
+  carries the attribute, but only the instance whose `data-pjx-load` matches the trigger (plus
+  singleton dependents) lights up — clicking one row doesn't shimmer its siblings.
+- Indicators are **ref-counted across overlapping requests** and re-applied across swaps, so a
+  shared dependent stays lit until the *last* in-flight request finishes.
+- The class clears once the response settles (swapped regions replace themselves; hash-gated,
+  aborted, and errored requests are released too). Purely a client affordance — no server
+  reactive semantics change, and it is off unless an element opts in.
+
+A trigger can also carry `data-pjx-loading-extra="<css-selector>"` to light regions the
+dependency walk can't predict — e.g. the specific rows a bulk action like "clear completed" is
+about to remove. Matched regions use their own `data-pjx-loading` style.
+
+### Styling and overrides
+
+Both styles read overridable CSS custom properties (with sensible defaults), so you can restyle
+them from your own CSS without touching the runtime — set the tokens on `:root`, a theme
+wrapper, or a specific element:
+
+```css
+:root {
+  /* spinner */
+  --pjx-spinner-color: #b8ff4d;             /* the moving arc */
+  --pjx-spinner-track: rgba(255, 255, 255, 0.4);
+  --pjx-spinner-overlay: rgba(0, 0, 0, 0.45); /* dim/scrim behind it */
+  --pjx-spinner-blur: 2px;
+  --pjx-spinner-size: 1.1em;
+  --pjx-spinner-thickness: 2px;
+  --pjx-spinner-speed: 0.6s;
+  /* skeleton */
+  --pjx-skeleton-color: rgba(127, 127, 127, 0.12);     /* base */
+  --pjx-skeleton-highlight: rgba(127, 127, 127, 0.30); /* shimmer sweep */
+  --pjx-skeleton-radius: 6px;
+  --pjx-skeleton-speed: 1.2s;
+}
+```
+
+Want a different effect entirely? Use your own value (e.g. `data-pjx-loading="pulse"`) and
+style `.pjx-loading--pulse` yourself — `pjx.js` applies `.pjx-loading--<value>` regardless of
+the name.
+
 ## Boundaries
 
 - **Hash gating is a skip-hint, not correctness authority**: a matching client hash
