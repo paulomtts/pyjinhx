@@ -203,7 +203,7 @@ class ReactiveComponent(BaseComponent):
 
     @staticmethod
     def _load_param_count(func: Any, owner: type[Any] | None = None) -> int:
-        """Count ``load()`` parameters excluding ``cls``, LoadContext params, and variadics."""
+        """Count ``load()`` parameters excluding ``cls``, PjxContext params, and variadics."""
         from .context import _is_load_context_param, _resolved_hints
 
         signature = inspect.signature(func)

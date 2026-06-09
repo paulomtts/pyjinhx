@@ -17,7 +17,7 @@ def _hint_namespace(owner: type[Any] | None, func: Callable[..., Any]) -> dict[s
     globalns = dict(vars(module)) if module is not None else {}
     if owner is not None:
         globalns[owner.__name__] = owner
-    globalns.setdefault("LoadContext", LoadContext)
+    globalns.setdefault("PjxContext", PjxContext)
     return globalns
 
 
@@ -29,7 +29,7 @@ def _resolved_hints(func: Callable[..., Any], owner: type[Any] | None = None) ->
 
 
 def _is_load_context(annotation: Any) -> bool:
-    """True if ``annotation`` is ``LoadContext`` or a subclass, including ``X | None``."""
+    """True if ``annotation`` is ``PjxContext`` or a subclass, including ``X | None``."""
     if annotation is inspect.Parameter.empty or annotation is None:
         return False
     origin = get_origin(annotation)
@@ -41,7 +41,7 @@ def _is_load_context(annotation: Any) -> bool:
         )
     if origin is not None:
         return False
-    return isinstance(annotation, type) and issubclass(annotation, LoadContext)
+    return isinstance(annotation, type) and issubclass(annotation, PjxContext)
 
 
 def _is_load_context_param(param: inspect.Parameter, hints: dict[str, Any]) -> bool:
@@ -55,7 +55,7 @@ def resolve_load_context_param(
     owner: type[Any] | None = None,
 ) -> inspect.Parameter | None:
     """
-    Return the single ``load()`` parameter annotated with ``LoadContext`` (or a
+    Return the single ``load()`` parameter annotated with ``PjxContext`` (or a
     subclass), or ``None`` when absent.
 
     Raises ``TypeError`` when more than one parameter carries that annotation.
@@ -70,7 +70,7 @@ def resolve_load_context_param(
     if len(matches) > 1:
         names = ", ".join(param.name for param in matches)
         raise TypeError(
-            f"{func.__qualname__} declares multiple LoadContext parameters "
+            f"{func.__qualname__} declares multiple PjxContext parameters "
             f"({names}); at most one is allowed."
         )
     return matches[0] if matches else None
@@ -80,7 +80,7 @@ def resolve_instance_key_param(
     func: Callable[..., Any],
     owner: type[Any] | None = None,
 ) -> inspect.Parameter | None:
-    """Return the instance-key parameter, excluding ``cls`` and LoadContext params."""
+    """Return the instance-key parameter, excluding ``cls`` and PjxContext params."""
     signature = inspect.signature(func)
     hints = _resolved_hints(func, owner)
     for param in signature.parameters.values():
@@ -105,7 +105,7 @@ def invoke_raw_load(
     ctx: Any | None,
     owner: type[Any] | None = None,
 ) -> Any:
-    """Call a raw ``load()`` implementation, injecting bound LoadContext when declared."""
+    """Call a raw ``load()`` implementation, injecting bound PjxContext when declared."""
     signature = inspect.signature(raw_func)
     ctx_param = resolve_load_context_param(raw_func, owner)
     bind_kwargs: dict[str, Any] = {}
@@ -125,12 +125,12 @@ def invoke_raw_load(
 
 
 @dataclass(frozen=True)
-class LoadContext:
+class PjxContext:
     """
     Opaque base for request-scoped data available inside reactive ``load()``.
 
     Subclass or replace with your own frozen dataclass; set per request via
-    ``LoadContext.bind()`` or ``Registry.request_scope(load_context=...)``.
+    ``PjxContext.bind()`` or ``Registry.request_scope(load_context=...)``.
     """
 
     @staticmethod

@@ -36,7 +36,7 @@ Read: [CONVENTIONS.md](../code-audit-sweep/CONVENTIONS.md).
 - [ ] No removed symbols in docs (`mutation_scope`, `dirty_keys`, `get_load_context`, `fastapi_client_backend`, top-level `invalidate`, etc.)
 - [ ] New exports documented (`PjxKey`, `TriggerManifest`, `PJX_TRIGGER_HEADER`)
 - [ ] `tests/36_public_api_test.py` imports match `__all__`
-- [ ] Examples use canonical names (`LoadContext.current`, not `get_load_context`)
+- [ ] Examples use canonical names (`PjxContext.current`, not `get_load_context`)
 - [ ] Breaking renames noted in README if user-facing
 
 ## Mechanical checks

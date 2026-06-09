@@ -144,7 +144,7 @@ class Registry:
 
         from pyjinhx.client import ClientBackend
         from pyjinhx.cache import LoadCache
-        from pyjinhx.context import LoadContext
+        from pyjinhx.context import PjxContext
         from pyjinhx.dev import warn_mutations_without_render
         from pyjinhx.mutations import MutationTracker
 
@@ -154,7 +154,7 @@ class Registry:
         try:
             with ExitStack() as stack:
                 if load_context is not None:
-                    stack.enter_context(LoadContext.bind(load_context))
+                    stack.enter_context(PjxContext.bind(load_context))
                 if client_backend is not None:
                     stack.enter_context(ClientBackend.scope(client_backend))
                 yield

@@ -7,7 +7,7 @@ When you're done you will have used:
 - `BaseComponent` and `ReactiveComponent`
 - Template discovery, nesting, and PascalCase tags
 - Co-located JS/CSS and asset delivery modes
-- `Registry.request_scope`, `@mutates`, and `LoadContext`
+- `Registry.request_scope`, `@mutates`, and `PjxContext`
 - Reactive `render()` with `ClientBackend` wired in middleware
 - Load-cache scopes and optional invalidation fan-out
 
@@ -433,13 +433,13 @@ mutation touches — the swap target *and* its OOB dependents.
 
 ---
 
-## Step 12 — LoadContext (avoid globals in load())
+## Step 12 — PjxContext (avoid globals in load())
 
-The context is just a **plain frozen dataclass** — `LoadContext.current()` is duck-typed, so you don't need to subclass anything:
+The context is just a **plain frozen dataclass** — `PjxContext.current()` is duck-typed, so you don't need to subclass anything:
 
 ```python
 from dataclasses import dataclass
-from pyjinhx import LoadContext
+from pyjinhx import PjxContext
 
 
 @dataclass(frozen=True)
@@ -448,7 +448,7 @@ class AppLoadContext:
 
 
 def _store():
-    ctx = LoadContext.current()
+    ctx = PjxContext.current()
     return ctx.store if isinstance(ctx, AppLoadContext) else store
 ```
 
@@ -458,7 +458,7 @@ Pass a factory to `setup()` (Step 6):
 setup(app, load_context_factory=lambda request: AppLoadContext(store=store))
 ```
 
-???+ question "Why LoadContext?"
+???+ question "Why PjxContext?"
     `load()` must rebuild components from the current world. Passing a database handle or store through a **request-scoped context** avoids hidden globals and makes tests inject a fake store. Optional `load(cls, *, ctx=...)` is supported if you prefer explicit parameters.
 
 ---
@@ -556,7 +556,7 @@ The per-step **Why?** panels above cover the *why*; this is the at-a-glance *wha
 | Tier | Pieces |
 |------|--------|
 | **Required** | `set_default_environment` · `Registry.request_scope()` middleware · root full-page render · HTMX in layout · `ReactiveComponent` (`reacts_to` + `load()`) · `@mutates(Keys.…)` on mutations · `setup()` (wires `FastAPIClientBackend`) · `PjxKey` on keyed rows |
-| **Recommended** | `LoadContext` · `data-pjx-loading` indicators · `enable_reactive_dev()` in dev |
+| **Recommended** | `PjxContext` · `data-pjx-loading` indicators · `enable_reactive_dev()` in dev |
 | **Production** | `AssetMode.REFERENCE` + URL resolver · `InvalidationBackend` for multi-worker `PROCESS` cache |
 
 ---

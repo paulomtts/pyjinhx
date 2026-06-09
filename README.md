@@ -160,9 +160,9 @@ def toggle():
     return Counter.render()
 ```
 
-Call `setup(app, ...)` once: it installs the lifespan and registry middleware that handle cache scope, optional invalidation, `LoadContext`, and the `ClientBackend` that resolves the `X-PJX-*` headers — so mutation routes call `Cls.render(*args)` with no framework kwargs. The client runtime (`pjx.js`) is injected on root full-page renders unless `X-PJX-Mounted` is already present.
+Call `setup(app, ...)` once: it installs the lifespan and registry middleware that handle cache scope, optional invalidation, `PjxContext`, and the `ClientBackend` that resolves the `X-PJX-*` headers — so mutation routes call `Cls.render(*args)` with no framework kwargs. The client runtime (`pjx.js`) is injected on root full-page renders unless `X-PJX-Mounted` is already present.
 
-**Reactive ergonomics:** `StateKey` enums for typed keys; `@mutates` on store methods to accumulate pending dirtied keys for the next reactive `render()`; one `PjxKey`-annotated field per keyed component for the `data-pjx-load` round-trip; `LoadContext` to inject request-scoped dependencies into `load()`; `enable_reactive_dev()` and `dependency_graph()` for guardrails and debugging.
+**Reactive ergonomics:** `StateKey` enums for typed keys; `@mutates` on store methods to accumulate pending dirtied keys for the next reactive `render()`; one `PjxKey`-annotated field per keyed component for the `data-pjx-load` round-trip; `PjxContext` to inject request-scoped dependencies into `load()`; `enable_reactive_dev()` and `dependency_graph()` for guardrails and debugging.
 
 **Loading indicators:** a reactive region can show an in-flight indicator while it reloads — add `data-pjx-loading="skeleton"` (or `"spinner"`) to a template element, and `pjx.js` lights it automatically off the region's `reacts_to`. Themeable via `--pjx-*` CSS variables. See the [reactivity guide](docs/reactivity.md#loading-indicators-in-flight).
 

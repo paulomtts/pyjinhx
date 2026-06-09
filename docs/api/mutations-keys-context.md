@@ -1,4 +1,4 @@
-# Mutations, Keys & LoadContext
+# Mutations, Keys & PjxContext
 
 Public API for reactive state keys, mutation tracking, request-scoped load context, and development guardrails.
 
@@ -59,33 +59,33 @@ class Store:
         ...
 ```
 
-## LoadContext
+## PjxContext
 
 ```python
 @dataclass(frozen=True)
-class LoadContext:
+class PjxContext:
     ...
 ```
 
 Opaque base for request-scoped data available inside reactive `load()`. Subclass with your own frozen dataclass fields (database session, user id, feature flags).
 
-## LoadContext.current / LoadContext.bind
+## PjxContext.current / PjxContext.bind
 
 ```python
-LoadContext.current() -> Any | None
-LoadContext.bind(ctx) -> ContextManager[None]
+PjxContext.current() -> Any | None
+PjxContext.bind(ctx) -> ContextManager[None]
 ```
 
-Return or set the load context for the current scope. Reactive `load()` methods receive a parameter annotated with `LoadContext` (or a subclass) when the context is set.
+Return or set the load context for the current scope. Reactive `load()` methods receive a parameter annotated with `PjxContext` (or a subclass) when the context is set.
 
 Prefer `Registry.request_scope(load_context=ctx)` in web apps — it combines registry isolation, request cache, mutation tracking, and load context in one call.
 
 ```python
-from pyjinhx import LoadContext, Registry
+from pyjinhx import PjxContext, Registry
 from pyjinhx.integrations.fastapi import FastAPIClientBackend
 
 @dataclass(frozen=True)
-class AppLoadContext(LoadContext):
+class AppLoadContext(PjxContext):
     db: Session
 
 with Registry.request_scope(

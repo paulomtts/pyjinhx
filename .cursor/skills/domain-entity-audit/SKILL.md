@@ -23,7 +23,7 @@ Read: [CONVENTIONS.md](../code-audit-sweep/CONVENTIONS.md).
 | Concept | Representation | Not |
 |---------|----------------|-----|
 | Reactive UI unit | `ReactiveComponent` | functions in `component.py` only |
-| Load DI | `LoadContext` | `get_load_context()` wrapper |
+| Load DI | `PjxContext` | `get_load_context()` wrapper |
 | HTTP header source | `ClientBackend` ABC | FastAPI type in `reactive/` |
 | Load memoization | `LoadCache` | procedural `cache.py` |
 | Dirtied keys | `MutationTracker` | scattered ContextVar helpers |

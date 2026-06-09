@@ -114,13 +114,13 @@ class LoadCache:
             if cached is not None:
                 return cls._with_key(cached.model_copy(), key)
 
-        from .context import LoadContext, invoke_raw_load
+        from .context import PjxContext, invoke_raw_load
 
         result = invoke_raw_load(
             raw_func,
             component_class,
             key=key,
-            ctx=LoadContext.current(),
+            ctx=PjxContext.current(),
             owner=component_class,
         )
         result = cls._with_key(result, key)

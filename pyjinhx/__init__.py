@@ -11,7 +11,7 @@ from pyjinhx.base import BaseComponent
 from pyjinhx.cache import CacheScope
 from pyjinhx.client import client_script
 from pyjinhx.config import PyJinhxSettings, setup
-from pyjinhx.context import LoadContext
+from pyjinhx.context import PjxContext
 from pyjinhx.keys import StateKey
 from pyjinhx.mutations import mutates
 from pyjinhx.reactive import PjxKey, ReactiveComponent
@@ -30,7 +30,7 @@ __all__ = [
     "mutates",
     "StateKey",
     "PjxKey",
-    "LoadContext",
+    "PjxContext",
     # Configuration
     "PyJinhxSettings",
     "CacheScope",

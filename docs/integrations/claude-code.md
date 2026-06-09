@@ -353,7 +353,7 @@ from pyjinhx.builtins import Alert, Modal, Panel, PanelTrigger, TabGroup  # …
 - `ReactiveComponent` — dependency-aware components (`reacts_to` + `load()`); `Cls.render(*args)` is the route entry point
 - `PjxKey` — `Annotated[..., PjxKey()]` marker for keyed `data-pjx-load` / manifest `load`
 - `mutates` — decorator on store methods; state keys only (`@mutates("todos")`)
-- `setup` — wires FastAPI middleware (`Registry.request_scope`, `ClientBackend`, `LoadContext`)
+- `setup` — wires FastAPI middleware (`Registry.request_scope`, `ClientBackend`, `PjxContext`)
 - `Renderer` — renders strings with PascalCase tags or manages environments
 - `Registry` — query/clear instances and classes, `request_scope()` context manager
 - `Finder` — template/asset discovery, `collect_javascript_files()`, `collect_css_files()`, `detect_root_directory()`

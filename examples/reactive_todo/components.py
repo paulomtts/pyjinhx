@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Annotated, ClassVar, Optional
 
-from pyjinhx import BaseComponent, LoadContext, PjxKey, ReactiveComponent
+from pyjinhx import BaseComponent, PjxContext, PjxKey, ReactiveComponent
 
 from .keys import Keys
 
@@ -14,7 +14,7 @@ class AppLoadContext:
 
 
 def _store():
-    ctx = LoadContext.current()
+    ctx = PjxContext.current()
     if isinstance(ctx, AppLoadContext):
         return ctx.store
     from . import store

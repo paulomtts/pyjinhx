@@ -164,7 +164,7 @@ def request_scope(cls, *, load_context: object | None = None, client_backend: ob
 
 Context manager for request-scoped component instances, load cache, mutation tracking, optional load context, and optional client backend for HTTP headers.
 
-On entry: clears pending mutations, initializes the request-scoped load cache, and optionally sets a `LoadContext` for reactive `load()` methods and a `ClientBackend` for `render()` header auto-resolution. On exit: warns about unconsumed mutations (when reactive dev is enabled), clears mutations, and resets the request cache.
+On entry: clears pending mutations, initializes the request-scoped load cache, and optionally sets a `PjxContext` for reactive `load()` methods and a `ClientBackend` for `render()` header auto-resolution. On exit: warns about unconsumed mutations (when reactive dev is enabled), clears mutations, and resets the request cache.
 
 **Usage:**
 

@@ -281,16 +281,16 @@ Pass request-scoped dependencies into `load()` without global imports:
 
 ```python
 from dataclasses import dataclass
-from pyjinhx import LoadContext
+from pyjinhx import PjxContext
 
 @dataclass(frozen=True)
-class AppContext(LoadContext):
+class AppContext(PjxContext):
     db: Database
 
 class Counter(ReactiveComponent):
     @classmethod
     def load(cls, *, ctx: AppContext | None = None) -> "Counter":
-        ctx = ctx or LoadContext.current()
+        ctx = ctx or PjxContext.current()
         return cls(remaining=ctx.db.remaining())
 ```
 
@@ -355,7 +355,7 @@ Use `Registry.request_scope()` on every HTTP request (middleware) for instance r
 isolation and optional request-tier cache when scope is `REQUEST`.
 
 **Cache identity:** entries are keyed by `(component class, load key)` only. Encode
-tenant or user scope in reactive keys (e.g. `"user:7:todos"`) or ensure `LoadContext`
+tenant or user scope in reactive keys (e.g. `"user:7:todos"`) or ensure `PjxContext`
 data is stable for all requests sharing a cache entry.
 
 Reactive `render()` (and `oob_swaps`) evicts pending dirtied keys before reloading

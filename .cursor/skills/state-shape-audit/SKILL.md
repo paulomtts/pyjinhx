@@ -22,7 +22,7 @@ Read: [CONVENTIONS.md](../code-audit-sweep/CONVENTIONS.md).
 | Situation | Shape | pyjinhx example |
 |-----------|-------|-----------------|
 | ContextVar + locks + process/request state | Class with `@classmethod` | `LoadCache`, `MutationTracker`, `InvalidationHub`, `ClientBackend` |
-| Request-scoped opaque DI bag | Static methods on frozen dataclass base | `LoadContext` |
+| Request-scoped opaque DI bag | Static methods on frozen dataclass base | `PjxContext` |
 | Pure input → output | Module functions | `coerce_reactive_key`, `pjx_load_field_names`, `PjxKey` validation |
 | Decorator ergonomics | Module decorator → class method | `@mutates` → `MutationTracker.record` |
 | Plugin extension point | ABC, no hub state | `InvalidationBackend` |
@@ -47,7 +47,7 @@ For each module-global cluster, ask: should this be methods on one class?
 ## OK patterns (do not flag)
 
 - `_dev_config` module global with functions as canonical dev API
-- Module-level ContextVar with static methods on owning type (`LoadContext.current` / `Registry.request_scope` pattern)
+- Module-level ContextVar with static methods on owning type (`PjxContext.current` / `Registry.request_scope` pattern)
 - Lazy import inside method to avoid cycles
 - `CacheScope` enum at module level next to `LoadCache` class
 
