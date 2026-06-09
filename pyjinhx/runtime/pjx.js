@@ -95,18 +95,25 @@
     pjxReacts(root).forEach(function (key) {
       dirty[key] = true;
     });
+    var triggerLoad = root.getAttribute("data-pjx-load");
     var marked = [];
     Array.prototype.forEach.call(
       document.querySelectorAll("[data-pjx-loading][data-pjx-reacts]"),
       function (el) {
-        var hit = pjxReacts(el).some(function (key) {
-          return dirty[key];
-        });
-        if (hit) {
-          var cls = "pjx-loading--" + (el.getAttribute("data-pjx-loading") || "skeleton");
-          el.classList.add(cls);
-          marked.push([el, cls]);
+        if (!pjxReacts(el).some(function (key) { return dirty[key]; })) {
+          return;
         }
+        // Instance-keyed regions (data-pjx-load) share reacts_to across every instance,
+        // so reacts-matching alone can't tell which one will change. Flag only the keyed
+        // instance whose load key matches the trigger's; singletons (no data-pjx-load)
+        // are flagged by reacts_to as usual.
+        var elLoad = el.getAttribute("data-pjx-load");
+        if (elLoad !== null && elLoad !== triggerLoad) {
+          return;
+        }
+        var cls = "pjx-loading--" + (el.getAttribute("data-pjx-loading") || "skeleton");
+        el.classList.add(cls);
+        marked.push([el, cls]);
       }
     );
     if (marked.length) {
