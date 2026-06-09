@@ -21,8 +21,6 @@ def __init__(
     environment: Environment,
     *,
     auto_id: bool = True,
-    inline_js: bool | None = None,
-    inline_css: bool | None = None,
     js_mode: AssetMode | None = None,
     css_mode: AssetMode | None = None,
 ) -> None
@@ -33,8 +31,6 @@ Initialize a Renderer with the given Jinja environment.
 **Parameters:**
 - `environment` (Environment): The Jinja2 Environment to use for template rendering
 - `auto_id` (bool): If True (default), generate UUIDs for components without explicit IDs
-- `inline_js` (bool | None): Deprecated bool shim; maps to `AssetMode.INLINE` or `AssetMode.NONE`
-- `inline_css` (bool | None): Deprecated bool shim; maps to `AssetMode.INLINE` or `AssetMode.NONE`
 - `js_mode` (AssetMode | None): JavaScript delivery mode. Defaults to the class-level setting
 - `css_mode` (AssetMode | None): CSS delivery mode. Defaults to the class-level setting
 
@@ -47,8 +43,6 @@ Initialize a Renderer with the given Jinja environment.
 def get_default_renderer(
     *,
     auto_id: bool = True,
-    inline_js: bool | None = None,
-    inline_css: bool | None = None,
     js_mode: AssetMode | None = None,
     css_mode: AssetMode | None = None,
 ) -> Renderer
@@ -58,8 +52,6 @@ Return a cached default renderer instance.
 
 **Parameters:**
 - `auto_id` (bool): If True, generate UUIDs for components without explicit IDs
-- `inline_js` (bool | None): Deprecated bool shim for JavaScript delivery
-- `inline_css` (bool | None): Deprecated bool shim for CSS delivery
 - `js_mode` (AssetMode | None): JavaScript delivery mode
 - `css_mode` (AssetMode | None): CSS delivery mode
 
@@ -136,24 +128,6 @@ Set or clear the process-wide default Jinja environment.
 
 **Parameters:**
 - `environment` (Environment | str | os.PathLike[str] | None): A Jinja Environment instance, a path to a template directory, or None to clear the default and reset to auto-detection
-
-##### set_default_inline_js()
-
-```python
-@classmethod
-def set_default_inline_js(inline_js: bool) -> None
-```
-
-Deprecated bool shim. Maps to `AssetMode.INLINE` (True) or `AssetMode.NONE` (False).
-
-##### set_default_inline_css()
-
-```python
-@classmethod
-def set_default_inline_css(inline_css: bool) -> None
-```
-
-Deprecated bool shim. Maps to `AssetMode.INLINE` (True) or `AssetMode.NONE` (False).
 
 ##### peek_default_environment()
 
