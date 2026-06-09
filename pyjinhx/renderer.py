@@ -10,6 +10,7 @@ from markupsafe import Markup
 from .assets import (
     DEFAULT_RUNTIME_URL as _DEFAULT_RUNTIME_URL,
     AssetMode,
+    AssetPolicy,
     AssetUrlResolver,
     RenderSession,
     apply_component_render_assets,
@@ -297,6 +298,13 @@ class Renderer:
         if not emit_assets:
             return Markup(rendered_markup).unescape()
 
+        policy = AssetPolicy(
+            js_mode=self._js_mode,
+            css_mode=self._css_mode,
+            resolve_url=self._resolve_asset_url,
+            loaded_assets=loaded_assets,
+            dedup_enabled=Renderer._default_asset_dedup,
+        )
         rendered_markup = apply_component_render_assets(
             component,
             rendered_markup,
@@ -304,11 +312,7 @@ class Renderer:
             template_path=template_path,
             is_root=is_root,
             collect_component_js=collect_component_js,
-            js_mode=self._js_mode,
-            css_mode=self._css_mode,
-            resolve_url=self._resolve_asset_url,
-            loaded_assets=loaded_assets,
-            dedup_enabled=Renderer._default_asset_dedup,
+            policy=policy,
             client=client,
         )
         return Markup(rendered_markup).unescape()
@@ -330,12 +334,11 @@ class Renderer:
             for node in parser.root_nodes
         )
         if self._css_mode != AssetMode.NONE or self._js_mode != AssetMode.NONE:
-            rendered_markup = inject_assets(
-                rendered_markup,
-                session,
+            policy = AssetPolicy(
                 js_mode=self._js_mode,
                 css_mode=self._css_mode,
                 resolve_url=self._resolve_asset_url,
                 dedup_enabled=Renderer._default_asset_dedup,
             )
+            rendered_markup = inject_assets(rendered_markup, session, policy=policy)
         return rendered_markup.strip()
