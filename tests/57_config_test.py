@@ -90,3 +90,26 @@ def test_explicit_kwarg_still_overrides_settings():
     )
     assert resolved.invalidation_backend is None
     assert LoadCache.scope() == CacheScope.REQUEST
+
+
+def test_from_env_with_sqlite_db(tmp_path):
+    from pyjinhx.integrations.sqlite import SqliteInvalidationBackend
+
+    db = str(tmp_path / "inval.db")
+    with patch.dict(os.environ, {"PJX_INVALIDATION_DB": db}, clear=True):
+        settings = PjxSettings.from_env()
+    assert isinstance(settings.invalidation_backend, SqliteInvalidationBackend)
+    configure_pyjinhx(settings)
+    assert LoadCache.scope() == CacheScope.PROCESS
+    shutdown_pyjinhx()
+
+
+def test_from_env_redis_wins_over_sqlite(tmp_path):
+    from pyjinhx.integrations.redis import RedisInvalidationBackend
+
+    db = str(tmp_path / "inval.db")
+    with patch.dict(
+        os.environ, {"REDIS_URL": "memory://", "PJX_INVALIDATION_DB": db}, clear=True
+    ):
+        settings = PjxSettings.from_env()
+    assert isinstance(settings.invalidation_backend, RedisInvalidationBackend)

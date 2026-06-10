@@ -26,10 +26,15 @@ class PjxSettings:
         }
         invalidation_backend: InvalidationBackend | None = None
         redis_url = os.environ.get("REDIS_URL")
+        sqlite_db = os.environ.get("PJX_INVALIDATION_DB")
         if redis_url:
             from pyjinhx.integrations.redis import RedisInvalidationBackend
 
             invalidation_backend = RedisInvalidationBackend(redis_url)
+        elif sqlite_db:
+            from pyjinhx.integrations.sqlite import SqliteInvalidationBackend
+
+            invalidation_backend = SqliteInvalidationBackend(sqlite_db)
         return cls(
             invalidation_backend=invalidation_backend,
             reactive_dev=reactive_dev,
