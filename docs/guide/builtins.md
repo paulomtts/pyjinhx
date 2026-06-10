@@ -141,12 +141,13 @@ This component declares no extra fields beyond the inherited `id`.
 
 **Layout:** Overlay is `position: absolute; inset: 0`. Parent must be **`position: relative`** (or any non-`static` value) so coverage is correct.
 
-Globals from **`loading-overlay.js`**:
+Globals from **`loading-overlay.js`**. Show/hide are **reference-counted per `id`**, so overlapping async operations are safe: the overlay stays visible until every `show` is matched by a `hide`.
 
 | Function | Description |
 | --- | --- |
-| `showLoadingOverlay(id)` | Removes `px-loading-overlay--hiding`, adds `px-loading-overlay--visible`. |
-| `hideLoadingOverlay(id)` | Adds `px-loading-overlay--hiding`; on `animationend` clears visible/hiding classes. |
+| `showLoadingOverlay(id)` | Increments the count; on 0 → 1 removes `px-loading-overlay--hiding` and adds `px-loading-overlay--visible`. |
+| `hideLoadingOverlay(id)` | Decrements the count (floor 0); on 1 → 0 adds `px-loading-overlay--hiding`, then `animationend` clears both state classes. |
+| `resetLoadingOverlay(id)` | Zeroes the count and clears both state classes immediately (no animation) — escape hatch for stranded counts, e.g. a missed `hide` on an error path or htmx history back-navigation. |
 
 **Classes:** `px-loading-overlay`; state `px-loading-overlay--visible`, `px-loading-overlay--hiding`; `px-loading-overlay__spinner`. Spinner ring uses **`var(--radius-full)`** from your theme. Theming: see [appendix](#loadingoverlay-1).
 
