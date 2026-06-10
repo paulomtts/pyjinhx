@@ -259,9 +259,11 @@ Centered empty view. **Assets:** `empty-state.css` only (template file **`empty-
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
+| `image` | `str \| BaseComponent` | `""` | Optional slot above the heading (e.g. illustration markup). |
 | `title` | `str \| BaseComponent` | `""` | Heading. |
 | `description` | `str \| BaseComponent` | `""` | Supporting text. |
 | `action` | `str \| BaseComponent` | `""` | Optional slot (e.g. button markup). |
+| `actions` | `list[str \| BaseComponent]` | `[]` | Optional flex row of slots (e.g. suggestion chips); renders after `action` when both are set. |
 
 Theming: see [appendix](#emptystate-1).
 
@@ -602,6 +604,7 @@ Content uses `var(--font-size-sm)`, `var(--text)`; close hover uses `var(--surfa
 | `--px-empty-state-title-color` | `var(--text)` |
 | `--px-empty-state-desc-color` | `var(--text-muted)` |
 | `--px-empty-state-gap` | `0.5rem` |
+| `--px-empty-state-actions-gap` | `0.5rem` |
 
 ### Divider
 
