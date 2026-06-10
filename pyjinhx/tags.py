@@ -201,6 +201,8 @@ _BUILTIN_TAG_NAMES = frozenset(
         "Modal",
         "Notification",
         "Popover",
+        "PopoverPanel",
+        "PopoverTrigger",
         "Progress",
         "Panel",
         "PanelTrigger",

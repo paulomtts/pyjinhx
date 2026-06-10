@@ -25,6 +25,8 @@ from pyjinhx.builtins import (
     Panel,
     PanelTrigger,
     Popover,
+    PopoverPanel,
+    PopoverTrigger,
     Progress,
     Skeleton,
     Spinner,
@@ -212,10 +214,10 @@ def _gallery_inner_html() -> str:
         ),
         popover=Popover(
             id="g-pop",
-            content="Hover me",
-            card_content="Popover details appear on hover.",
-            position="anchor",
-            backdrop=True,
+            content=(
+                str(PopoverTrigger(id="g-pop-t", content="Open popover").render())
+                + str(PopoverPanel(id="g-pop-p", content="Popover details appear on click.").render())
+            ),
         ),
         loading_overlay=LoadingOverlay(id="g-overlay"),
         tooltip=Tooltip(
@@ -233,7 +235,7 @@ def _gallery_inner_html() -> str:
         dropdown=Dropdown(
             id="g-drop",
             trigger="Options",
-            menu='<a href="#">First</a><a href="#">Second</a>',
+            items=['<a role="menuitem" href="#">First</a>', '<a role="menuitem" href="#">Second</a>'],
         ),
         drawer=Drawer(
             id="g-drawer",

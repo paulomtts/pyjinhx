@@ -1,7 +1,1 @@
-<span class="px-popover-trigger" id="{{ id }}" data-popover-position="{{ position }}" {% if backdrop %}
-    data-popover-backdrop{% endif %}>
-    <span class="px-popover-trigger__body">{{ content }}</span>
-    <div class="px-popover-card" role="tooltip" aria-hidden="true">
-        {{ card_content }}
-    </div>
-</span>
+<div id="{{ id }}" class="px-popover{% if align == "end" %} px-popover--align-end{% endif %}{% if class_name %} {{ class_name }}{% endif %}"{% if behavior %} data-px-popover{% endif %}{% for k, v in extra_attrs.items() %} {{ k }}="{{ v }}"{% endfor %}>{{ content }}</div>

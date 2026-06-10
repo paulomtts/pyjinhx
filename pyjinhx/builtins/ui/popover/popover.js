@@ -1,148 +1,94 @@
 (function () {
-    let _activeCard = null;
-    let _activeTrigger = null;
-    let _hideTimer = null;
-    let _bdGen = 0;
+    window.px = window.px || {};
+    if (px.popover) return;
 
-    function _getBackdrop() {
-        let bd = document.getElementById('px-popover-backdrop');
-        if (!bd) {
-            bd = document.createElement('div');
-            bd.id = 'px-popover-backdrop';
-            bd.className = 'px-popover-backdrop';
-            bd.setAttribute('aria-hidden', 'true');
-            document.body.appendChild(bd);
-        }
-        return bd;
-    }
-
-    function liftTrigger(trigger) {
-        trigger.style.zIndex = 'calc(var(--px-popover-z) + 1)';
-    }
-
-    function dropTrigger(trigger) {
-        if (trigger) trigger.style.zIndex = '';
-    }
-
-    function showBackdrop() {
-        _bdGen++;
-        const bd = _getBackdrop();
-        bd.style.visibility = 'visible';
-        requestAnimationFrame(() => requestAnimationFrame(() => {
-            bd.classList.add('px-popover-backdrop--visible');
+    function fire(el, name, detail, cancelable) {
+        return el.dispatchEvent(new CustomEvent(name, {
+            bubbles: true, cancelable: Boolean(cancelable), detail: detail || {},
         }));
     }
 
-    function hideBackdrop() {
-        const gen = ++_bdGen;
-        const bd = document.getElementById('px-popover-backdrop');
-        if (!bd) return;
-        bd.classList.remove('px-popover-backdrop--visible');
-        bd.addEventListener('transitionend', () => {
-            if (_bdGen !== gen) return;
-            bd.style.visibility = 'hidden';
-        }, { once: true });
+    function rootOf(panel) {
+        return panel.closest('[data-px-popover]') || panel;
     }
 
-    function place(card, trigger, x, y) {
-        const mode = trigger.dataset.popoverPosition || 'anchor';
-        const gap = 10;
-        const vw = window.innerWidth;
-        const vh = window.innerHeight;
-        const cw = card.offsetWidth;
-        const ch = card.offsetHeight;
-        let left, top;
+    function triggerFor(panel) {
+        const root = panel.closest('[data-px-popover]');
+        return root ? root.querySelector('[data-px-toggle]') : null;
+    }
 
-        // position:fixed inside a <dialog> (top layer) is contained by the dialog,
-        // not the viewport — subtract the dialog's origin to correct coordinates.
-        const dialog = card.closest('dialog');
-        const dr = dialog ? dialog.getBoundingClientRect() : { left: 0, top: 0 };
-        const ox = dr.left;
-        const oy = dr.top;
+    function resolvePanel(idOrEl) {
+        if (typeof idOrEl === 'string') return document.getElementById(idOrEl);
+        return idOrEl;
+    }
 
-        if (mode === 'follow') {
-            left = x - ox + gap;
-            top = y - oy + gap;
-            if (left + cw > vw - ox - gap) left = x - ox - cw - gap;
-            if (top + ch > vh - oy - gap) top = y - oy - ch - gap;
-        } else {
-            const rect = trigger.getBoundingClientRect();
-            left = rect.left - ox;
-            top = rect.bottom - oy + 8;
-            if (left + cw > vw - ox - gap) left = vw - ox - cw - gap;
-            if (top + ch > vh - oy - gap) top = rect.top - oy - ch - 8;
+    function open(idOrEl, reason, trigger) {
+        const panel = resolvePanel(idOrEl);
+        if (!panel || !panel.hidden) return false;
+        const target = rootOf(panel);
+        const detail = { reason: reason || 'api', trigger: trigger || null };
+        if (!fire(target, 'px:popover:before-open', detail, true)) return false;
+        panel.hidden = false;
+        const t = trigger || triggerFor(panel);
+        if (t) t.setAttribute('aria-expanded', 'true');
+        fire(target, 'px:popover:open', detail);
+        return true;
+    }
+
+    function close(idOrEl, reason, trigger) {
+        const panel = resolvePanel(idOrEl);
+        if (!panel || panel.hidden) return false;
+        const target = rootOf(panel);
+        const detail = { reason: reason || 'api', trigger: trigger || null };
+        if (!fire(target, 'px:popover:before-close', detail, true)) return false;
+        panel.hidden = true;
+        const t = trigger || triggerFor(panel);
+        if (t) t.setAttribute('aria-expanded', 'false');
+        fire(target, 'px:popover:close', detail);
+        return true;
+    }
+
+    function toggle(idOrEl, reason, trigger) {
+        const panel = resolvePanel(idOrEl);
+        if (!panel) return false;
+        return panel.hidden ? open(panel, reason, trigger) : close(panel, reason, trigger);
+    }
+
+    function panelForToggle(toggleEl) {
+        const explicit = toggleEl.getAttribute('data-px-toggle');
+        if (explicit) return document.getElementById(explicit);
+        const root = toggleEl.closest('[data-px-popover]');
+        return root ? root.querySelector('[data-px-popover-panel]') : null;
+    }
+
+    document.addEventListener('click', (e) => {
+        const toggleEl = e.target.closest('[data-px-toggle]');
+        if (toggleEl) {
+            const panel = panelForToggle(toggleEl);
+            if (panel) toggle(panel, 'trigger', toggleEl);
+            return;
         }
-
-        card.style.left = left + 'px';
-        card.style.top = top + 'px';
-    }
-
-    function showCard(trigger, x, y) {
-        const card = trigger.querySelector('.px-popover-card');
-        if (!card) return;
-
-        clearTimeout(_hideTimer);
-
-        if (_activeCard && _activeCard !== card) {
-            _activeCard.classList.remove('px-popover-card--visible');
-            dropTrigger(_activeTrigger);
-        }
-
-        _activeCard = card;
-        _activeTrigger = trigger;
-        card.style.visibility = 'visible';
-        card.removeAttribute('aria-hidden');
-
-        if ('popoverBackdrop' in trigger.dataset) {
-            liftTrigger(trigger);
-            showBackdrop();
-        }
-
-        requestAnimationFrame(() => requestAnimationFrame(() => {
-            place(card, trigger, x, y);
-            card.classList.add('px-popover-card--visible');
-        }));
-    }
-
-    function hideCard() {
-        clearTimeout(_hideTimer);
-        _hideTimer = setTimeout(() => {
-            if (!_activeCard) return;
-            const card = _activeCard;
-            const trigger = _activeTrigger;
-            _activeCard = null;
-            _activeTrigger = null;
-            card.classList.remove('px-popover-card--visible');
-            card.setAttribute('aria-hidden', 'true');
-            card.addEventListener('transitionend', () => {
-                if (!card.classList.contains('px-popover-card--visible')) {
-                    card.style.visibility = 'hidden';
-                }
-            }, { once: true });
-            dropTrigger(trigger);
-            if (trigger && 'popoverBackdrop' in trigger.dataset) hideBackdrop();
-        }, 55);
-    }
-
-    document.addEventListener('mouseover', e => {
-        const trigger = e.target.closest('.px-popover-trigger');
-        if (!trigger) return;
-        clearTimeout(_hideTimer);
-        const card = trigger.querySelector('.px-popover-card');
-        if (card && _activeCard !== card) showCard(trigger, e.clientX, e.clientY);
+        // Outside click: close every open panel whose root doesn't contain the click.
+        document.querySelectorAll('[data-px-popover-panel]:not([hidden])').forEach((panel) => {
+            if (!rootOf(panel).contains(e.target)) close(panel, 'backdrop', null);
+        });
     });
 
-    document.addEventListener('mouseout', e => {
-        const trigger = e.target.closest('.px-popover-trigger');
-        if (!trigger) return;
-        if (!trigger.contains(e.relatedTarget)) hideCard();
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+            const toggleEl = e.target.closest('div[data-px-toggle][role="button"]');
+            if (toggleEl) {
+                e.preventDefault();
+                const panel = panelForToggle(toggleEl);
+                if (panel) toggle(panel, 'trigger', toggleEl);
+                return;
+            }
+        }
+        if (e.key !== 'Escape') return;
+        document.querySelectorAll('[data-px-popover-panel]:not([hidden])').forEach((panel) => {
+            close(panel, 'escape', null);
+        });
     });
 
-    document.addEventListener('mousemove', e => {
-        if (!_activeCard || !_activeCard.classList.contains('px-popover-card--visible')) return;
-        const trigger = e.target.closest('.px-popover-trigger');
-        if (trigger && trigger.dataset.popoverPosition === 'follow') {
-            place(_activeCard, trigger, e.clientX, e.clientY);
-        }
-    });
+    px.popover = { open: open, close: close, toggle: toggle };
 }());

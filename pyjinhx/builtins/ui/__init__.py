@@ -11,7 +11,7 @@ from pyjinhx.builtins.ui.lazy_panel import LazyPanel
 from pyjinhx.builtins.ui.loading_overlay import LoadingOverlay
 from pyjinhx.builtins.ui.modal import Modal
 from pyjinhx.builtins.ui.notification import Notification
-from pyjinhx.builtins.ui.popover import Popover
+from pyjinhx.builtins.ui.popover import Popover, PopoverPanel, PopoverTrigger
 from pyjinhx.builtins.ui.progress import Progress
 from pyjinhx.builtins.ui.panel import Panel, PanelTrigger
 from pyjinhx.builtins.ui.skeleton import Skeleton
@@ -34,6 +34,8 @@ __all__ = [
     "Modal",
     "Notification",
     "Popover",
+    "PopoverPanel",
+    "PopoverTrigger",
     "Progress",
     "Panel",
     "PanelTrigger",
