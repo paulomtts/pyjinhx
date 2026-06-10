@@ -23,3 +23,7 @@ Five loading niches, one decision rule: *what is missing?*
 ```
 
 `htmx-request` is htmx's own class; without htmx these indicators simply stay hidden.
+
+!!! note "Singletons"
+    `ToastHost` and `PageLoader` are mounted **once in your layout**. `PageLoader`'s
+    `active_on_load` state clears on full page loads — don't deliver one via a fragment swap.

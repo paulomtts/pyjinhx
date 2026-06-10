@@ -38,7 +38,7 @@
         toast.className = 'px-toast px-toast--' + level;
         const message = document.createElement('span');
         message.className = 'px-toast__message';
-        message.textContent = data.message || '';
+        message.textContent = data.message || data.value || '';
         const dismiss = document.createElement('button');
         dismiss.type = 'button';
         dismiss.className = 'px-toast__dismiss';
