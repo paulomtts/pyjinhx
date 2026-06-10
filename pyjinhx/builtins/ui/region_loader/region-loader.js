@@ -93,5 +93,26 @@
         }
     }
 
+    // A swap can replace the overlay's node while sources are still active
+    // (count > 0). Re-light replacements after htmx settles — same strategy
+    // as the reactive runtime's pjxReapplyLoading. Silent on purpose: the
+    // show event for this loading episode already fired on the old node.
+    function relight() {
+        counts.forEach(function (count, id) {
+            if (count <= 0) return;
+            const overlay = document.getElementById(id);
+            if (!overlay) return;
+            if (overlay.classList.contains(VISIBLE) || overlay.classList.contains(HIDING)) return;
+            overlay.classList.add(VISIBLE);
+        });
+    }
+    if (document.body) {
+        document.body.addEventListener('htmx:afterSettle', relight);
+    } else {
+        document.addEventListener('DOMContentLoaded', function () {
+            document.body.addEventListener('htmx:afterSettle', relight);
+        });
+    }
+
     px.loader.region = { show: show, hide: hide, reset: reset, wrap: wrap };
 }());
