@@ -5,6 +5,7 @@ from typing import Annotated, Any
 from pydantic import BeforeValidator, Field, field_validator
 
 from pyjinhx import BaseComponent
+from pyjinhx.base import AttrValue, ExtraAttrs
 
 
 def _coerce_panels(value: Any) -> dict[str, str | BaseComponent]:
@@ -23,6 +24,8 @@ class Panel(BaseComponent):
     panels: Annotated[
         dict[str, str | BaseComponent], BeforeValidator(_coerce_panels)
     ] = Field(default_factory=dict)
+    class_name: AttrValue = ""
+    extra_attrs: ExtraAttrs = Field(default_factory=dict)
 
     @field_validator("panels", mode="after")
     @classmethod

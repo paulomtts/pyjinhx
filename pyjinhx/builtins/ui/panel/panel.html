@@ -1,9 +1,10 @@
-<div id="{{ id }}" class="px-panel">
+<div id="{{ id }}" class="px-panel{% if class_name %} {{ class_name }}{% endif %}"{% for k, v in extra_attrs.items() %} {{ k }}="{{ v }}"{% endfor %}>
   {% for panel_key, panel_body in panels.items() %}
   <div class="px-panel__panel"
        role="tabpanel"
        id="{{ id }}-panel-{{ panel_key }}"
        data-px-panel-key="{{ panel_key }}"
+       data-px-region
        {% if not loop.first %}hidden{% endif %}>{{ panel_body }}</div>
   {% endfor %}
 </div>
