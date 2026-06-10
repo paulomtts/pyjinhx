@@ -105,7 +105,11 @@ class SqliteInvalidationBackend(InvalidationBackend):
         self._thread.start()
         # Wait for the poll thread to seed its cursor before returning, so
         # callers can safely call publish() immediately after start().
-        self._ready_event.wait(timeout=5.0)
+        if not self._ready_event.wait(timeout=5.0):
+            logger.warning(
+                "SQLite invalidation poll thread did not become ready within 5 s; "
+                "the listener may be silently dead."
+            )
 
     def stop(self) -> None:
         self._stop_event.set()
@@ -115,17 +119,29 @@ class SqliteInvalidationBackend(InvalidationBackend):
         self._handler = None
 
     def _poll_loop(self) -> None:
-        # Retry _connect until we get a clean connection or stop is requested.
-        # PRAGMA journal_mode=WAL requires an exclusive lock that busy_timeout
-        # does not cover; a brief retry loop bridges that gap.
+        # Retry transient lock errors (e.g. WAL setup races) until we get a
+        # clean connection or stop is requested.  Note: start() and publish()
+        # both call _connect() synchronously in the caller's thread, so a
+        # genuinely bad db_path (e.g. missing directory) is already surfaced
+        # loudly before the poll thread ever runs.  A persistent failure here
+        # (e.g. concurrent exclusive lock that never releases) will keep
+        # retrying until stop() is called, then log an error (see below).
         conn: sqlite3.Connection | None = None
+        _any_connect_failure = False
         while conn is None and not self._stop_event.is_set():
             try:
                 conn = _connect(self._db_path)
             except sqlite3.OperationalError:
+                _any_connect_failure = True
                 logger.debug("SQLite connect retry (database locked)", exc_info=True)
                 self._stop_event.wait(0.05)
         if conn is None:
+            if _any_connect_failure:
+                logger.error(
+                    "SQLite invalidation listener could not establish a connection "
+                    "to %r and will not receive any invalidations.",
+                    self._db_path,
+                )
             self._ready_event.set()
             return
         with closing(conn):

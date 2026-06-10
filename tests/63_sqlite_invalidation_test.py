@@ -3,9 +3,9 @@ import sqlite3
 import threading
 import time
 
-import pytest
-
+from pyjinhx.cache import CacheScope, InvalidationHub, LoadCache
 from pyjinhx.integrations.sqlite import DEFAULT_CHANNEL, SqliteInvalidationBackend
+from tests.ui.reactive.cached_widget import CachedWidget, load_calls
 
 
 def test_publish_inserts_one_row(tmp_path):
@@ -136,10 +136,6 @@ def test_stop_is_idempotent(tmp_path):
     backend.stop()
     backend.stop()
     assert backend._thread is None
-
-
-from pyjinhx.cache import CacheScope, InvalidationHub, LoadCache
-from tests.ui.reactive.cached_widget import CachedWidget, load_calls
 
 
 def test_sqlite_invalidate_evicts_process_cache(tmp_path):
