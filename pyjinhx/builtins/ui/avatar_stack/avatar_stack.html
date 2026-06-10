@@ -1,0 +1,5 @@
+<div id="{{ id }}" class="px-avatar-stack{% if class_name %} {{ class_name }}{% endif %}"{% for k, v in extra_attrs.items() %} {{ k }}="{{ v }}"{% endfor %}>
+  {% for avatar in avatars %}{{ avatar }}{% endfor %}
+  {% if extra_count > 0 %}<span class="px-avatar-stack__more">+{{ extra_count }}</span>{% endif %}
+  {% if not avatars and empty_label %}<span class="px-avatar-stack__empty">{{ empty_label }}</span>{% endif %}
+</div>

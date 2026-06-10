@@ -1,4 +1,4 @@
-from pyjinhx.builtins import LazyPanel, LoadingOverlay, Spinner
+from pyjinhx.builtins import LazyPanel, RegionLoader, Spinner
 
 
 def test_lazy_panel_when_viewport_default():
@@ -21,9 +21,9 @@ def test_lazy_panel_raw_trigger_wins():
     assert 'hx-trigger="click once"' in html
 
 
-def test_loading_overlay_props():
-    html = str(LoadingOverlay(id="lo", aria_label="Carregando", class_name="mine").render())
-    assert 'aria-label="Carregando"' in html and "px-loading-overlay mine" in html
+def test_region_loader_props():
+    html = str(RegionLoader(id="lo", aria_label="Carregando", class_name="mine").render())
+    assert 'aria-label="Carregando"' in html and "px-region-loader mine" in html
 
 
 def test_spinner_contract():

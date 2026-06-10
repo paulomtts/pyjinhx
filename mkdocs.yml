@@ -79,6 +79,7 @@ nav:
       - Asset Collection: guide/assets.md
       - Built-in UI components: guide/builtins.md
       - Builtin conventions: guide/builtin-conventions.md
+      - Loading states: guide/loading.md
       - Configuration: guide/configuration.md
       - Reactivity: reactivity.md
   - Integrations:

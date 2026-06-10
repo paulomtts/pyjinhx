@@ -1,0 +1,65 @@
+/* ── RegionLoader tokens ──────────────────────────────────── */
+:root {
+  --px-region-loader-bg:            rgb(0 0 0 / 0.55);
+  --px-region-loader-backdrop:      blur(2px);
+  --px-region-loader-z:             100;
+  --px-region-loader-spinner-size:  2.5rem;
+  --px-region-loader-spinner-width: 3px;
+  --px-region-loader-spinner-color: var(--brand);
+  --px-region-loader-spinner-track: rgb(255 255 255 / 0.1);
+}
+
+/* ── Overlay ────────────────────────────────────────────────── */
+/* Parent must have position: relative (or any non-static position). */
+.px-region-loader {
+  display: none;
+  position: absolute;
+  inset: 0;
+  z-index: var(--px-region-loader-z);
+  align-items: center;
+  justify-content: center;
+  background: var(--px-region-loader-bg);
+  backdrop-filter: var(--px-region-loader-backdrop);
+  border-radius: inherit;
+}
+
+.px-region-loader--visible {
+  display: flex;
+  animation: region-loader-in 150ms ease forwards;
+}
+
+.px-region-loader.htmx-request {
+  display: flex;
+  animation: region-loader-in 150ms ease forwards;
+}
+
+.px-region-loader--hiding {
+  display: flex;
+  animation: region-loader-out 150ms ease forwards;
+}
+
+/* ── Spinner ────────────────────────────────────────────────── */
+.px-region-loader__spinner {
+  width: var(--px-region-loader-spinner-size);
+  height: var(--px-region-loader-spinner-size);
+  border: var(--px-region-loader-spinner-width) solid var(--px-region-loader-spinner-track);
+  border-top-color: var(--px-region-loader-spinner-color);
+  border-radius: var(--radius-full);
+  animation: region-loader-spin 600ms linear infinite;
+  flex-shrink: 0;
+}
+
+/* ── Animations ────────────────────────────────────────────── */
+@keyframes region-loader-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes region-loader-out {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+
+@keyframes region-loader-spin {
+  to { transform: rotate(360deg); }
+}
