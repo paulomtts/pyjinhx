@@ -172,9 +172,9 @@ Click-toggle compound. Three separate components; compose them by placing `Popov
 ```python
 Popover(
     id="menu",
-    content=str(
-        PopoverTrigger(id="menu-t", content="Open") +
-        PopoverPanel(id="menu-p", role="menu", content="…")
+    content=(
+        PopoverTrigger(id="menu-t", content="Open").render()
+        + PopoverPanel(id="menu-p", role="menu", content="…").render()
     ),
 )
 ```
@@ -662,8 +662,8 @@ Overlapping row of avatars with optional overflow count. **Assets:** `avatar-sta
 AvatarStack(
     id="team",
     avatars=[
-        str(Avatar(id="a1", initials="AB", size="sm")),
-        str(Avatar(id="a2", initials="CD", size="sm")),
+        Avatar(id="a1", initials="AB", size="sm"),
+        Avatar(id="a2", initials="CD", size="sm"),
     ],
     extra_count=3,
 )
