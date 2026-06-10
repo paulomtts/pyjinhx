@@ -1,8 +1,8 @@
 <span id="{{ id }}"
-      class="px-spinner px-spinner--{{ size }}"
+      class="px-spinner px-spinner--{{ size }}{% if class_name %} {{ class_name }}{% endif %}"
       role="status"
       aria-live="polite"
-      aria-busy="true">
+      aria-busy="true"{% for k, v in extra_attrs.items() %} {{ k }}="{{ v }}"{% endfor %}>
   <span class="px-spinner__ring" aria-hidden="true"></span>
   <span class="px-spinner__label">{{ label }}</span>
 </span>

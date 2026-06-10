@@ -1,10 +1,11 @@
 <div class="px-notification px-notification--bottom-right"
      id="g"
      data-timeout="0"
+     data-px-autoshow
      role="status"
      aria-live="polite">
     <div class="px-notification__content">Hi</div>
-    <button class="px-notification__close"
-            onclick="hideNotification('g')"
+    <button type="button" class="px-notification__close"
+            data-px-close
             aria-label="Dismiss">✕</button>
 </div>

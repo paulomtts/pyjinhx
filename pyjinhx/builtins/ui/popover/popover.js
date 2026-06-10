@@ -2,6 +2,8 @@
     window.px = window.px || {};
     if (px.popover) return;
 
+    const DISMISSIBLE = '.px-notification, .px-alert, dialog.px-modal, dialog.px-drawer, [data-px-popover-panel]';
+
     function fire(el, name, detail, cancelable) {
         return el.dispatchEvent(new CustomEvent(name, {
             bubbles: true, cancelable: Boolean(cancelable), detail: detail || {},
@@ -64,11 +66,14 @@
     document.addEventListener('click', (e) => {
         const closer = e.target.closest('[data-px-close]');
         if (closer) {
-            const panel = closer.closest('[data-px-popover-panel]');
-            if (panel) {
-                close(panel, 'trigger', closer);
+            const dismissible = closer.closest(DISMISSIBLE);
+            if (dismissible && dismissible.hasAttribute && dismissible.hasAttribute('data-px-popover-panel')) {
+                close(dismissible, 'trigger', closer);
                 return;
             }
+            // Nearest dismissible is another kind (modal, drawer, alert, notification) —
+            // fall through to the outside-close loop WITHOUT toggling; no open popover
+            // panel would have the click inside its root anyway.
         }
         const toggleEl = e.target.closest('[data-px-toggle]');
         const targetPanel = toggleEl ? panelForToggle(toggleEl) : null;

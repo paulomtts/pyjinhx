@@ -2,6 +2,8 @@
     window.px = window.px || {};
     if (px.modal) return;
 
+    const DISMISSIBLE = '.px-notification, .px-alert, dialog.px-modal, dialog.px-drawer, [data-px-popover-panel]';
+
     function fire(el, name, detail, cancelable) {
         return el.dispatchEvent(new CustomEvent(name, {
             bubbles: true, cancelable: Boolean(cancelable), detail: detail || {},
@@ -57,11 +59,11 @@
         }
         const closer = e.target.closest('[data-px-close]');
         if (closer) {
-            const dialog = closer.closest('dialog.px-modal');
-            if (dialog) {
-                close(dialog.id, 'trigger', closer);
-                return;
+            const dismissible = closer.closest(DISMISSIBLE);
+            if (dismissible && dismissible.matches('dialog.px-modal')) {
+                close(dismissible.id, 'trigger', closer);
             }
+            return;
         }
         if (e.target.tagName === 'DIALOG' && e.target.classList.contains('px-modal')) {
             close(e.target.id, 'backdrop', null);
