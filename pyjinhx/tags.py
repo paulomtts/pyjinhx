@@ -7,7 +7,6 @@ import logging
 import os
 import re
 import sys
-import uuid
 from dataclasses import dataclass, field
 from html.parser import HTMLParser
 from typing import TYPE_CHECKING, Any, ClassVar
