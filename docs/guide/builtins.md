@@ -41,7 +41,7 @@ from pyjinhx.builtins import (
 
 **Template discovery:** Builtins ship inside `site-packages`, not under your app's Jinja loader root, so PascalCase tags do **not** auto-discover them — `<Tooltip/>` raises a `FileNotFoundError` unless the class was imported once at startup (`import pyjinhx.builtins` or any of the imports above), which registers it. For registered builtin classes, the renderer **falls back** to adjacent package templates: each component's Jinja template lives next to its Python source in `pyjinhx/builtins/ui/<component>/` (e.g. `pyjinhx/builtins/ui/modal/modal.html`).
 
-**Inherited fields:** Every component inherits **`id`** (optional — omitted/falsy ids become `px-<n>`; reactive components still need explicit ids), **`js`** / **`css`** (extra asset paths), **`render()`**, and **`__html__()`** from [`BaseComponent`](../api/base-component.md). `id` is omitted from per-component props tables below. Every builtin also accepts `class_name` (extra classes appended to the root) and `extra_attrs` (validated `dict[str, str]` rendered on the root element).
+**Inherited fields:** Every component inherits **`id`** (optional — omitted/falsy ids become `px-<n>`; reactive components need stable ids, defaulted to the kebab-cased class name; pass explicit ids for instance-keyed rows), **`js`** / **`css`** (extra asset paths), **`render()`**, and **`__html__()`** from [`BaseComponent`](../api/base-component.md). `id` is omitted from per-component props tables below. Every builtin also accepts `class_name` (extra classes appended to the root) and `extra_attrs` (validated `dict[str, str]` rendered on the root element).
 
 **Theming:** Per-component `--px-*` tokens are collected in the [Theming tokens](#theming-tokens) appendix. Each component section points there.
 
@@ -98,7 +98,7 @@ Small status label. **Assets:** `badge.css` only.
 
 **DOM contract.** Root `.px-badge`; no JS API.
 
-**Classes:** `px-badge`; color modifiers `px-badge--brand`, `--error`, `--neutral`, `--muted`; shape `px-badge--square`, `--sm`, `--md`, `--full`. Theming: see [appendix](#badge).
+**Classes:** `px-badge`; color modifiers `px-badge--brand`, `--error`, `--neutral`, `--muted`; shape `px-badge--square`, `--sm`, `--md`, `--full`. Theming: see [Badge tokens](#badge-tokens).
 
 ---
 
@@ -116,6 +116,11 @@ Native `<dialog>`. **Assets:** `modal.css`, `modal.js`.
 | `open_on_mount` | `bool` | `False` | When `True`, adds `data-px-open-on-mount`; JS opens the dialog as soon as it mounts (e.g. via `hx-swap="beforeend"`). |
 | `remove_on_close` | `bool` | `False` | When `True`, adds `data-px-remove-on-close`; JS removes the element from the DOM on close. |
 
+```html
+<button data-px-open="info-modal">Open</button>
+<Modal id="info-modal" title="Hello" body="Content here."/>
+```
+
 **DOM contract.** Root `dialog.px-modal` (state: `[open]`, `.px-modal--closing`).
 Attributes: `data-px-open="<id>"` on any element opens it on click; `data-px-close` inside closes it;
 `data-px-open-on-mount`, `data-px-remove-on-close` reflect the lifecycle props.
@@ -123,12 +128,7 @@ Events (bubble from the root): `px:modal:before-open`*, `px:modal:open`,
 `px:modal:before-close`*, `px:modal:close` — `*` = cancelable, `detail = {reason, trigger}`,
 `reason ∈ escape|backdrop|api|trigger`. API: `px.modal.open(id)`, `px.modal.close(id)`.
 
-```html
-<button data-px-open="info-modal">Open</button>
-<Modal id="info-modal" title="Hello" body="Content here."/>
-```
-
-**Classes:** `px-modal`; closing state `px-modal--closing`; `px-modal__box`, `__header`, `__title`, `__close`, `__body`, `__footer`. Theming: see [appendix](#modal).
+**Classes:** `px-modal`; closing state `px-modal--closing`; `px-modal__box`, `__header`, `__title`, `__close`, `__body`, `__footer`. Theming: see [Modal tokens](#modal-tokens).
 
 ---
 
@@ -149,7 +149,9 @@ Fixed-position toast. **Assets:** `notification.css`, `notification.js`.
 Events: `px:notification:before-show`*, `px:notification:show`, `px:notification:before-hide`*, `px:notification:hide` — `*` = cancelable, `detail = {reason, trigger}`.
 API: `px.notification.show(id)`, `px.notification.hide(id)`.
 
-**Classes:** `px-notification`; placement `px-notification--top-right`, `--top-left`, `--bottom-right`, `--bottom-left`; JS state `px-notification--visible`, `px-notification--hiding`; `px-notification__content`, `px-notification__close`. Theming: see [appendix](#notification).
+Maps children to `content`; see the [children-vs-`content` note](#built-in-ui-components).
+
+**Classes:** `px-notification`; placement `px-notification--top-right`, `--top-left`, `--bottom-right`, `--bottom-left`; JS state `px-notification--visible`, `px-notification--hiding`; `px-notification__content`, `px-notification__close`. Theming: see [Notification tokens](#notification-tokens).
 
 ---
 
@@ -208,7 +210,7 @@ Root wrapper — sets up the `data-px-popover` attribute scope.
 Events (bubble from `[data-px-popover]`): `px:popover:before-open`*, `px:popover:open`, `px:popover:before-close`*, `px:popover:close` — `detail = {reason, trigger}`.
 API: `px.popover.open(idOrEl)`, `px.popover.close(idOrEl)`, `px.popover.toggle(idOrEl)`.
 
-**Classes:** `px-popover`, `px-popover--align-end`, `px-popover__trigger`, `px-popover__panel`. Theming: see [appendix](#popover).
+**Classes:** `px-popover`, `px-popover--align-end`, `px-popover__trigger`, `px-popover__panel`. Theming: see [Popover tokens](#popover-tokens).
 
 ---
 
@@ -228,7 +230,7 @@ Also works as an **`hx-indicator`** target: htmx adds `htmx-request` to the elem
 Events (non-cancelable): `px:overlay:show`, `px:overlay:hide`.
 API: `px.overlay.show(id)`, `px.overlay.hide(id)`, `px.overlay.reset(id)`.
 
-**Classes:** `px-loading-overlay`; state `px-loading-overlay--visible`, `px-loading-overlay--hiding`; `px-loading-overlay__spinner`. Theming: see [appendix](#loadingoverlay).
+**Classes:** `px-loading-overlay`; state `px-loading-overlay--visible`, `px-loading-overlay--hiding`; `px-loading-overlay__spinner`. Theming: see [LoadingOverlay tokens](#loadingoverlay-tokens).
 
 ---
 
@@ -244,7 +246,7 @@ Compact focus/hover hint. **Assets:** `tooltip.css`, `tooltip.js` (IIFE — no A
 
 **DOM contract.** Root `.px-tooltip`. `data-px-tooltip-placement` drives JS positioning (`top`/`bottom`/`start`/`end`). Tip shows on `mouseover`/`focusin` of `.px-tooltip__trigger`; hides on `mouseout`/`focusout`; repositions on `scroll`. No JS API (`px._tooltipWired` guard only).
 
-Maps children to `tip`; see the [children-vs-`content` note](#built-in-ui-components). Theming: see [appendix](#tooltip).
+**Classes:** `px-tooltip`, `px-tooltip__trigger`, `px-tooltip__tip`, `px-tooltip__tip--visible`. Maps children to `tip`; see the [children-vs-`content` note](#built-in-ui-components). Theming: see [Tooltip tokens](#tooltip-tokens).
 
 ---
 
@@ -264,7 +266,7 @@ Inline status banner. **Assets:** `alert.css`, `alert.js`.
 `data-px-close` inside triggers dismissal.
 Events: `px:alert:before-dismiss`* (cancelable), `px:alert:dismiss` — `detail = {reason: 'trigger', trigger}`.
 
-Variants use `color-mix` with `--brand`, `--success`, `--warning`, or `--error` / `--error-bg` / `--error-border` where applicable. Theming: see [appendix](#alert).
+**Classes:** `px-alert`; variant modifiers `px-alert--info`, `--success`, `--warning`, `--error`; dismissed state `px-alert--dismissed`; `px-alert__inner`, `__text`, `__title`, `__body`, `__dismiss`. Variants use `color-mix` with `--brand`, `--success`, `--warning`, or `--error` / `--error-bg` / `--error-border` where applicable. Theming: see [Alert tokens](#alert-tokens).
 
 ---
 
@@ -284,7 +286,7 @@ Trigger id is `{{ id }}-trigger`, menu is `{{ id }}-menu`.
 
 **DOM contract.** Root `.px-dropdown` with `data-px-popover`. Trigger: `button.px-dropdown__trigger` with `data-px-toggle="{{ id }}-menu"`, `aria-expanded` synced by `popover.js`. Panel: `div.px-dropdown__menu[data-px-popover-panel][role="menu"]`, `hidden` when closed. All popover events and API apply: `px.popover.open/close/toggle(panelId)`. Document click outside closes the menu; `Escape` closes all open popovers.
 
-**Classes:** `px-dropdown`, `px-dropdown--align-end`, `px-dropdown__trigger`, `px-dropdown__menu`. Theming: see [appendix](#dropdown).
+**Classes:** `px-dropdown`, `px-dropdown--align-end`, `px-dropdown__trigger`, `px-dropdown__menu`. Theming: see [Dropdown tokens](#dropdown-tokens).
 
 ---
 
@@ -308,7 +310,7 @@ Trigger id is `{{ id }}-trigger`, menu is `{{ id }}-menu`.
 Events: `px:drawer:before-open`*, `px:drawer:open`, `px:drawer:before-close`*, `px:drawer:close` — `*` = cancelable, `detail = {reason, trigger}`, `reason ∈ escape|backdrop|api|trigger`.
 API: `px.drawer.open(id)`, `px.drawer.close(id)`.
 
-Backdrop click closes the dialog (see [intro note](#built-in-ui-components)). Theming: see [appendix](#drawer).
+**Classes:** `px-drawer`; side modifiers `px-drawer--left`, `--right`, `--bottom`; closing state `px-drawer--closing`; `px-drawer__box`, `__header`, `__title`, `__close`, `__body`, `__footer`. Backdrop click closes the dialog (see [intro note](#built-in-ui-components)). Theming: see [Drawer tokens](#drawer-tokens).
 
 ---
 
@@ -324,7 +326,7 @@ Determinate or indeterminate meter. **Assets:** `progress.css` only.
 
 **DOM contract.** Root `.px-progress`; no JS API.
 
-Theming: see [appendix](#progress).
+**Classes:** `px-progress`, `px-progress__label`, `px-progress__bar`. Theming: see [Progress tokens](#progress-tokens).
 
 ---
 
@@ -339,7 +341,7 @@ Placeholder shimmer blocks. **Assets:** `skeleton.css` only.
 
 **DOM contract.** Root `.px-skeleton`; no JS API.
 
-Theming: see [appendix](#skeleton).
+**Classes:** `px-skeleton`; variant modifiers `px-skeleton--text`, `--circle`, `--rect`; `px-skeleton__line`, `px-skeleton__circle`, `px-skeleton__rect`. Theming: see [Skeleton tokens](#skeleton-tokens).
 
 ---
 
@@ -357,7 +359,7 @@ Centered empty view. **Assets:** `empty-state.css` only (template file **`empty-
 
 **DOM contract.** Root `.px-empty-state`; no JS API.
 
-Theming: see [appendix](#emptystate).
+**Classes:** `px-empty-state`, `px-empty-state__image`, `px-empty-state__title`, `px-empty-state__desc`, `px-empty-state__action`, `px-empty-state__actions`. Theming: see [EmptyState tokens](#emptystate-tokens).
 
 ---
 
@@ -402,7 +404,7 @@ Separator line. **Assets:** `divider.css` only.
 
 **DOM contract.** Root `.px-divider`; no JS API.
 
-**Classes:** `px-divider--horizontal`, `px-divider--vertical`, `px-divider--labeled`, `px-divider__line`, `px-divider__label`. Theming: see [appendix](#divider).
+**Classes:** `px-divider--horizontal`, `px-divider--vertical`, `px-divider--labeled`, `px-divider__line`, `px-divider__label`. Theming: see [Divider tokens](#divider-tokens).
 
 ---
 
@@ -417,7 +419,7 @@ Inline loading indicator. **Assets:** `spinner.css` only.
 
 **DOM contract.** Root `.px-spinner`; no JS API.
 
-**Classes:** `px-spinner`, `px-spinner--sm|md|lg`, `px-spinner__ring`, `px-spinner__label` (screen-reader-only). Theming: see [appendix](#spinner).
+**Classes:** `px-spinner`, `px-spinner--sm|md|lg`, `px-spinner__ring`, `px-spinner__label` (screen-reader-only). Theming: see [Spinner tokens](#spinner-tokens).
 
 ---
 
@@ -435,7 +437,7 @@ Image or initials in a circle. **Assets:** `avatar.css` only.
 
 **DOM contract.** Root `.px-avatar`; no JS API.
 
-**Classes:** `px-avatar`, `px-avatar--sm|md|lg`, `px-avatar__img`, `px-avatar__initials`. Theming: see [appendix](#avatar).
+**Classes:** `px-avatar`, `px-avatar--sm|md|lg`, `px-avatar__img`, `px-avatar__initials`. Theming: see [Avatar tokens](#avatar-tokens).
 
 ---
 
@@ -452,7 +454,7 @@ Grouped content with optional header and footer. **Assets:** `card.css` only.
 
 **DOM contract.** Root `.px-card`; no JS API.
 
-**Classes:** `px-card`, `px-card__header`, `px-card__title`, `px-card__body`, `px-card__footer`. Theming: see [appendix](#card).
+**Classes:** `px-card`, `px-card__header`, `px-card__title`, `px-card__body`, `px-card__footer`. Theming: see [Card tokens](#card-tokens).
 
 ---
 
@@ -468,7 +470,7 @@ Ordered trail of links. **Assets:** `breadcrumb.css` only.
 
 **DOM contract.** Root `.px-breadcrumb`; no JS API.
 
-**Classes:** `px-breadcrumb`, `px-breadcrumb__list`, `px-breadcrumb__item`, `px-breadcrumb__link`, `px-breadcrumb__current`. Separators via `::after` on items except the last. Theming: see [appendix](#breadcrumb).
+**Classes:** `px-breadcrumb`, `px-breadcrumb__list`, `px-breadcrumb__item`, `px-breadcrumb__link`, `px-breadcrumb__current`. Separators via `::after` on items except the last. Theming: see [Breadcrumb tokens](#breadcrumb-tokens).
 
 ---
 
@@ -485,7 +487,7 @@ Tab buttons and panels. **Assets:** `tab-group.css`, `tab-group.js`.
 
 **DOM contract.** Root `.px-tab-group` with `data-px-region` (fires `px:reveal`/`px:before-reveal` on panel switch). Tab elements: `.px-tab-group__tab` with `data-px-panel-key`; panel elements: `.px-tab-group__panel[data-px-region]`. `px:before-reveal` (cancelable) fires before switching; `px:reveal` fires after; `data-px-revealed` is set on the visible panel. `tab-group.js` delegates `click` within `.px-tab-group__list`, updates `aria-selected`, `tabindex`, and `hidden`.
 
-**Classes:** `px-tab-group`, `px-tab-group__list`, `px-tab-group__tab`, `px-tab-group__panel`. Theming: see [appendix](#tabgroup).
+**Classes:** `px-tab-group`, `px-tab-group__list`, `px-tab-group__tab`, `px-tab-group__panel`. Theming: see [TabGroup tokens](#tabgroup-tokens).
 
 ---
 
@@ -518,6 +520,8 @@ Invisible wrapper that wires clicks to a [`Panel`](#panel) slot. **Assets:** `pa
 Maps children to `content`; see the [children-vs-`content` note](#built-in-ui-components).
 
 **DOM contract.** Root `.px-panel-trigger[data-px-panel-id][data-px-panel-key]`; no own JS (wired by `panel.js`). `display: contents` so no layout box.
+
+**Classes:** `px-panel-trigger`. No theming tokens.
 
 ---
 
@@ -559,7 +563,7 @@ if (ok) { /* proceed */ }
 API: `px.confirm(message, {okLabel?, cancelLabel?, danger?}) → Promise<boolean>`.
 Falls back to `window.confirm` if no `ConfirmDialog` is mounted.
 
-**Classes:** `px-confirm-dialog`, `px-confirm-dialog__card`, `px-confirm-dialog__message`, `px-confirm-dialog__actions`, `px-confirm-dialog__ok`, `px-confirm-dialog__ok--danger`, `px-confirm-dialog__cancel`.
+**Classes:** `px-confirm-dialog`, `px-confirm-dialog__card`, `px-confirm-dialog__message`, `px-confirm-dialog__actions`, `px-confirm-dialog__ok`, `px-confirm-dialog__ok--danger`, `px-confirm-dialog__cancel`. Theming: see [ConfirmDialog tokens](#confirmdialog-tokens).
 
 ---
 
@@ -590,7 +594,7 @@ if (name !== null) { /* user submitted */ }
 API: `px.prompt(title, {initial?, placeholder?, okLabel?, cancelLabel?}) → Promise<string | null>`.
 Returns `null` on cancel/Escape/backdrop close. Falls back to `window.prompt` if no `PromptDialog` is mounted.
 
-**Classes:** `px-prompt-dialog`, `px-prompt-dialog__card`, `px-prompt-dialog__label`, `px-prompt-dialog__input`, `px-prompt-dialog__actions`, `px-prompt-dialog__ok`, `px-prompt-dialog__cancel`.
+**Classes:** `px-prompt-dialog`, `px-prompt-dialog__card`, `px-prompt-dialog__label`, `px-prompt-dialog__input`, `px-prompt-dialog__actions`, `px-prompt-dialog__ok`, `px-prompt-dialog__cancel`. Theming: see [PromptDialog tokens](#promptdialog-tokens).
 
 ---
 
@@ -630,7 +634,7 @@ Events (bubble from the host): `px:toasthost:show` (detail: `{level}`), `px:toas
 API: `px.toast(message, {level?, timeout?})`.
 Individual toasts: `div.px-toast.px-toast--<level>` > `.px-toast__message` + `button.px-toast__dismiss`.
 
-**Classes:** `px-toast-host`, `px-toast-host--top-right`, `--top-left`, `--bottom-right`, `--bottom-left`; `px-toast`, `px-toast--info`, `--success`, `--warning`, `--error`; `px-toast--hiding`; `px-toast__message`, `px-toast__dismiss`.
+**Classes:** `px-toast-host`, `px-toast-host--top-right`, `--top-left`, `--bottom-right`, `--bottom-left`; `px-toast`, `px-toast--info`, `--success`, `--warning`, `--error`; `px-toast--hiding`; `px-toast__message`, `px-toast__dismiss`. Theming: see [ToastHost tokens](#toasthost-tokens).
 
 ---
 
@@ -657,7 +661,7 @@ AvatarStack(
 
 **DOM contract.** Root `.px-avatar-stack`; no JS API.
 
-**Classes:** `px-avatar-stack`, `px-avatar-stack__more`, `px-avatar-stack__empty`.
+**Classes:** `px-avatar-stack`, `px-avatar-stack__more`, `px-avatar-stack__empty`. Theming: see [AvatarStack tokens](#avatarstack-tokens).
 
 ---
 
@@ -687,7 +691,7 @@ Add `data-px-loader` to any element to make its htmx requests activate the loade
 Events (non-cancelable, bubble from the root): `px:loader:show`, `px:loader:hide`.
 API: `px.loader.show()`, `px.loader.hide()`, `px.loader.reset()`, `px.loader.wrap(promise)`.
 
-**Classes:** `px-page-loader`, `px-page-loader--active`, `px-page-loader__spinner`.
+**Classes:** `px-page-loader`, `px-page-loader--active`, `px-page-loader__spinner`. Theming: see [PageLoader tokens](#pageloader-tokens).
 
 ---
 
@@ -739,9 +743,9 @@ avatar_stack = AvatarStack(id="team", avatars=[], extra_count=5)
 
 ## Theming tokens
 
-Per-component `--px-*` custom properties and their default mappings. Override any token in your own CSS. Components not listed here (Panel, PanelTrigger, etc.) expose no tokens or are noted inline above.
+Per-component `--px-*` custom properties and their default mappings. Override any token in your own CSS.
 
-### Badge
+### Badge tokens
 
 | Token | Default (maps to) |
 | --- | --- |
@@ -762,7 +766,7 @@ Per-component `--px-*` custom properties and their default mappings. Override an
 | `--px-badge-muted-fg` | `var(--text-muted)` |
 | `--px-badge-muted-border` | `var(--border)` |
 
-### Modal
+### Modal tokens
 
 | Token | Default |
 | --- | --- |
@@ -783,7 +787,7 @@ Per-component `--px-*` custom properties and their default mappings. Override an
 
 Close control hover uses `var(--surface)`, `var(--text)`, `var(--radius-sm)`, `var(--transition)` from your theme.
 
-### Notification
+### Notification tokens
 
 | Token | Default |
 | --- | --- |
@@ -799,7 +803,7 @@ Close control hover uses `var(--surface)`, `var(--text)`, `var(--radius-sm)`, `v
 
 Content uses `var(--font-size-sm)`, `var(--text)`; close hover uses `var(--surface)`, `var(--text)`, `var(--radius-sm)`, `var(--transition)`.
 
-### Popover
+### Popover tokens
 
 | Token | Default |
 | --- | --- |
@@ -811,7 +815,7 @@ Content uses `var(--font-size-sm)`, `var(--text)`; close hover uses `var(--surfa
 | `--px-popover-padding` | `var(--space-3, 0.75rem) var(--space-4, 1rem)` |
 | `--px-popover-z` | `300` |
 
-### LoadingOverlay
+### LoadingOverlay tokens
 
 | Token | Default |
 | --- | --- |
@@ -823,7 +827,7 @@ Content uses `var(--font-size-sm)`, `var(--text)`; close hover uses `var(--surfa
 | `--px-loading-overlay-spinner-color` | `var(--brand)` |
 | `--px-loading-overlay-spinner-track` | `rgb(255 255 255 / 0.1)` |
 
-### Tooltip
+### Tooltip tokens
 
 | Token | Default |
 | --- | --- |
@@ -838,7 +842,7 @@ Content uses `var(--font-size-sm)`, `var(--text)`; close hover uses `var(--surfa
 | `--px-tooltip-font-size` | `var(--font-size-xs)` |
 | `--px-tooltip-z` | `400` |
 
-### Alert
+### Alert tokens
 
 | Token | Default |
 | --- | --- |
@@ -850,7 +854,7 @@ Content uses `var(--font-size-sm)`, `var(--text)`; close hover uses `var(--surfa
 | `--px-alert-body-size` | `var(--font-size-sm)` |
 | `--px-alert-dismiss-color` | `var(--text-muted)` |
 
-### Dropdown
+### Dropdown tokens
 
 | Token | Default |
 | --- | --- |
@@ -863,7 +867,7 @@ Content uses `var(--font-size-sm)`, `var(--text)`; close hover uses `var(--surfa
 | `--px-dropdown-menu-max-h` | `min(70dvh, 24rem)` |
 | `--px-dropdown-z` | `350` |
 
-### Drawer
+### Drawer tokens
 
 | Token | Default |
 | --- | --- |
@@ -880,7 +884,7 @@ Content uses `var(--font-size-sm)`, `var(--text)`; close hover uses `var(--surfa
 | `--px-drawer-padding` | `1rem` |
 | `--px-drawer-z` | `250` |
 
-### Progress
+### Progress tokens
 
 | Token | Default |
 | --- | --- |
@@ -890,7 +894,7 @@ Content uses `var(--font-size-sm)`, `var(--text)`; close hover uses `var(--surfa
 | `--px-progress-fill` | `var(--brand)` |
 | `--px-progress-indeterminate-speed` | `1.2s` |
 
-### Skeleton
+### Skeleton tokens
 
 | Token | Default |
 | --- | --- |
@@ -903,7 +907,7 @@ Content uses `var(--font-size-sm)`, `var(--text)`; close hover uses `var(--surfa
 | `--px-skeleton-rect-radius` | `var(--radius-md)` |
 | `--px-skeleton-duration` | `1.2s` |
 
-### EmptyState
+### EmptyState tokens
 
 | Token | Default |
 | --- | --- |
@@ -916,7 +920,7 @@ Content uses `var(--font-size-sm)`, `var(--text)`; close hover uses `var(--surfa
 | `--px-empty-state-gap` | `0.5rem` |
 | `--px-empty-state-actions-gap` | `0.5rem` |
 
-### Divider
+### Divider tokens
 
 | Token | Default |
 | --- | --- |
@@ -926,7 +930,7 @@ Content uses `var(--font-size-sm)`, `var(--text)`; close hover uses `var(--surfa
 | `--px-divider-label-color` | `var(--text-muted)` |
 | `--px-divider-label-size` | `var(--font-size-sm)` |
 
-### Spinner
+### Spinner tokens
 
 | Token | Default |
 | --- | --- |
@@ -936,7 +940,7 @@ Content uses `var(--font-size-sm)`, `var(--text)`; close hover uses `var(--surfa
 | `--px-spinner-track` | `color-mix(in srgb, var(--text-muted) 35%, transparent)` |
 | `--px-spinner-accent` | `var(--brand)` |
 
-### Avatar
+### Avatar tokens
 
 | Token | Default |
 | --- | --- |
@@ -947,7 +951,7 @@ Content uses `var(--font-size-sm)`, `var(--text)`; close hover uses `var(--surfa
 | `--px-avatar-fg` | `var(--text-muted)` |
 | `--px-avatar-border` | `var(--border)` |
 
-### Card
+### Card tokens
 
 | Token | Default |
 | --- | --- |
@@ -957,7 +961,7 @@ Content uses `var(--font-size-sm)`, `var(--text)`; close hover uses `var(--surfa
 | `--px-card-title-color` | `var(--text)` |
 | `--px-card-padding` | `var(--space-4, 1rem)` |
 
-### Breadcrumb
+### Breadcrumb tokens
 
 | Token | Default |
 | --- | --- |
@@ -965,7 +969,7 @@ Content uses `var(--font-size-sm)`, `var(--text)`; close hover uses `var(--surfa
 | `--px-breadcrumb-link-color` | `var(--brand)` |
 | `--px-breadcrumb-current-color` | `var(--text)` |
 
-### TabGroup
+### TabGroup tokens
 
 | Token | Default |
 | --- | --- |
@@ -975,5 +979,54 @@ Content uses `var(--font-size-sm)`, `var(--text)`; close hover uses `var(--surfa
 | `--px-tab-group-tab-active-bg` | `color-mix(in srgb, var(--surface) 55%, var(--surface-alt))` |
 | `--px-tab-group-tab-active-border` | `var(--brand)` |
 | `--px-tab-group-panel-bg` | `var(--surface)` |
-</content>
-</invoke>
+
+### ConfirmDialog tokens
+
+| Token | Default |
+| --- | --- |
+| `--px-confirm-dialog-bg` | `var(--surface)` |
+| `--px-confirm-dialog-border` | `var(--border)` |
+| `--px-confirm-dialog-radius` | `var(--radius-md)` |
+| `--px-confirm-dialog-shadow` | `var(--shadow-md)` |
+| `--px-confirm-dialog-backdrop` | `rgb(0 0 0 / 0.5)` |
+| `--px-confirm-dialog-danger` | `#b3261e` |
+
+### PromptDialog tokens
+
+| Token | Default |
+| --- | --- |
+| `--px-prompt-dialog-bg` | `var(--surface)` |
+| `--px-prompt-dialog-border` | `var(--border)` |
+| `--px-prompt-dialog-radius` | `var(--radius-md)` |
+| `--px-prompt-dialog-shadow` | `var(--shadow-md)` |
+| `--px-prompt-dialog-backdrop` | `rgb(0 0 0 / 0.5)` |
+
+### ToastHost tokens
+
+| Token | Default |
+| --- | --- |
+| `--px-toast-bg` | `var(--surface)` |
+| `--px-toast-border` | `var(--border)` |
+| `--px-toast-radius` | `var(--radius-md)` |
+| `--px-toast-shadow` | `var(--shadow-md)` |
+| `--px-toast-gap` | `0.5rem` |
+| `--px-toast-z` | `1000` |
+| `--px-toast-info` | `var(--brand, #5c8fa8)` |
+| `--px-toast-success` | `#3e7d4f` |
+| `--px-toast-warning` | `#b07415` |
+| `--px-toast-error` | `#b3261e` |
+
+### AvatarStack tokens
+
+| Token | Default |
+| --- | --- |
+| `--px-avatar-stack-overlap` | `-0.5rem` |
+| `--px-avatar-stack-ring` | `var(--surface)` |
+
+### PageLoader tokens
+
+| Token | Default |
+| --- | --- |
+| `--px-page-loader-backdrop` | `rgb(0 0 0 / 0.15)` |
+| `--px-page-loader-z` | `9999` |
+| `--px-page-loader-size` | `2rem` |

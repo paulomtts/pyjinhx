@@ -16,7 +16,7 @@ You are building with PyJinHx — reusable, type-safe UI components from Pydanti
 
 ## Components
 
-A component is a Pydantic class plus a Jinja2 template in the **same directory**. `id: str` is required on every component. Extra fields passed at instantiation are accepted unvalidated and available in the template context.
+A component is a Pydantic class plus a Jinja2 template in the **same directory**. `id` is optional — omitted/falsy ids auto-generate `px-<n>`; pass explicit ids for stable CSS/htmx targets. Reactive components need stable ids (defaulted to the kebab-cased class name; pass explicit ids for instance-keyed rows). Extra fields passed at instantiation are accepted unvalidated and available in the template context.
 
 ```python
 from pyjinhx import BaseComponent

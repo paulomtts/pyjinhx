@@ -235,6 +235,8 @@ component asset and serve two concatenated bundles with a content-hash ETag:
 
 ```python
 import hashlib
+import os
+from pathlib import Path
 
 from fastapi import FastAPI, Request, Response
 from pyjinhx.finder import Finder
@@ -246,7 +248,7 @@ def _build(paths: list[str], marker: str) -> tuple[bytes, str]:
     parts = []
     for path in paths:
         parts.append(marker.format(path=path).encode())
-        parts.append(open(path, "rb").read() + b"\n")
+        parts.append(Path(path).read_bytes() + b"\n")
     payload = b"".join(parts)
     return payload, '"' + hashlib.md5(payload).hexdigest() + '"'
 
@@ -277,5 +279,10 @@ Reference the bundles from your layout `<head>` and render with
 `Renderer.set_default_js_mode(AssetMode.NONE)` / `set_default_css_mode(AssetMode.NONE)` so
 components stop inlining what the bundle already ships. Concatenation order is alphabetical;
 if your app's cascade needs a specific sheet first, prepend it to the list before building.
-To include the pyjinhx builtins, build a second `Finder` over
-`os.path.join(os.path.dirname(pyjinhx.builtins.__file__), "ui")` and concatenate both lists.
+To include the pyjinhx builtins, add `import pyjinhx.builtins` and build a second `Finder`:
+
+```python
+CSS_B, JS_B = Finder(os.path.join(os.path.dirname(pyjinhx.builtins.__file__), "ui")).all_assets()
+```
+
+Concatenate both lists before building the bundles.

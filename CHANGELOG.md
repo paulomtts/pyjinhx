@@ -21,7 +21,7 @@ AvatarStack, PageLoader (28 exported components).
 | `showNotification(id)` / `hideNotification(id)` | auto-shows on mount (`autoshow=True`); `px.notification.show/hide(id)` |
 | `showLoadingOverlay` / `hideLoadingOverlay` / `resetLoadingOverlay` | `px.overlay.show/hide/reset(id)`; also works as an `hx-indicator` target |
 | `LazyPanel(trigger=...)` incantations for panels | `LazyPanel(when="reveal")` (`px:reveal` on `[data-px-region]`, + cancelable `px:before-reveal`) |
-| `BaseComponent.id` required; empty id raised | optional — omitted/falsy ids become `px-<n>` (reactive components still need explicit ids) |
+| `BaseComponent.id` required; empty id raised | optional — omitted/falsy ids become `px-<n>` (reactive components need stable ids, defaulted to the kebab-cased class name; pass explicit ids for instance-keyed rows) |
 | Hardcoded `aria-label="Close"`/`"Dismiss"`/`"Submenu"`/`"Tabs"`/`"Loading"` | label props with English defaults |
 | Tag instance-reuse updates skipped validation | updates re-validate per-field through pydantic |
 
