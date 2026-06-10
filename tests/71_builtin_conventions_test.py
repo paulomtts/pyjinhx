@@ -10,7 +10,7 @@ import pyjinhx.builtins as b
 
 SWEPT: list[type] = [
     b.Avatar, b.Badge, b.Breadcrumb, b.Card, b.Divider, b.EmptyState,
-    b.Progress, b.Skeleton, b.Tooltip,
+    b.Modal, b.Drawer, b.Progress, b.Skeleton, b.Tooltip,
 ]
 
 UI_ROOT = os.path.join(os.path.dirname(b.__file__), "ui")
