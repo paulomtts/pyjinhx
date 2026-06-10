@@ -14,7 +14,7 @@ AvatarStack, PageLoader (28 exported components).
 |---|---|
 | `openModal(id)` / `closeModal(id)` + `onclick` | `px.modal.open/close(id)`, or `data-px-open="<id>"` / `data-px-close` |
 | `openPxDrawer` / `closePxDrawer` | `px.drawer.open/close(id)` + the same data attributes |
-| `togglePxDropdown(id)` | gone — Dropdown wires `data-px-toggle`; the shared popover JS owns the behavior |
+| `togglePxDropdown(id)` / `closePxDropdown(id)` | gone — Dropdown wires `data-px-toggle`; the shared popover JS owns the behavior |
 | `Dropdown(menu="...")` | `Dropdown(items=[...], menu_label="...")` |
 | `Popover(content=, card_content=, position=, backdrop=)` (hover card) | compound `Popover` + `PopoverTrigger` + `PopoverPanel` (click toggle) |
 | `dismissPxAlert(id)` | `data-px-close` inside the alert; hooks `px:alert:before-dismiss`/`dismiss` |
