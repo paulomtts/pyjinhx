@@ -224,6 +224,7 @@ Map each absolute asset path to your `{% static %}` URL in the resolver callback
 | `resolver_with_hash()` | Resolver that embeds hashes in URLs |
 | `asset_manifest()` | Build `AssetManifest` from a `RenderSession` |
 | `Finder.layout_asset_tags()` | Preload all component assets in a layout shell (instance method) |
+| `Finder.all_assets()` | Every component asset as `(css_paths, js_paths)` — bundle input (instance method) |
 
 See [Assets API](../api/assets-api.md) for signatures and examples.
 
