@@ -1,0 +1,6 @@
+<div id="{{ id }}" class="px-form-field{% if error %} px-form-field--error{% endif %}{% if class_name %} {{ class_name }}{% endif %}"{% for k, v in extra_attrs.items() %} {{ k }}="{{ v }}"{% endfor %}>
+  {% if label %}<label class="px-form-field__label"{% if for_id %} for="{{ for_id }}"{% endif %}>{{ label }}{% if required %}<span class="px-form-field__required" aria-hidden="true">*</span>{% endif %}</label>{% endif %}
+  <div class="px-form-field__control">{{ content }}</div>
+  {% if help and not error %}<p class="px-form-field__help" id="{{ id }}-help">{{ help }}</p>{% endif %}
+  {% if error %}<p class="px-form-field__error" id="{{ id }}-error" role="alert">{{ error }}</p>{% endif %}
+</div>

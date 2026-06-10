@@ -10,6 +10,7 @@ from pyjinhx.builtins.ui.divider import Divider
 from pyjinhx.builtins.ui.dropdown import Dropdown
 from pyjinhx.builtins.ui.drawer import Drawer
 from pyjinhx.builtins.ui.empty_state import EmptyState
+from pyjinhx.builtins.ui.form_field import FormField
 from pyjinhx.builtins.ui.lazy_panel import LazyPanel
 from pyjinhx.builtins.ui.region_loader import RegionLoader
 from pyjinhx.builtins.ui.modal import Modal
@@ -38,6 +39,7 @@ __all__ = [
     "Dropdown",
     "Drawer",
     "EmptyState",
+    "FormField",
     "LazyPanel",
     "Modal",
     "Notification",
