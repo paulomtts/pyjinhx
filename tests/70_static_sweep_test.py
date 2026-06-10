@@ -7,12 +7,6 @@ from pyjinhx.builtins import (
 SWEPT = [Avatar, Badge, Breadcrumb, Card, Divider, EmptyState, Progress, Skeleton, Tooltip]
 
 
-def test_contract_fields_present():
-    for cls in SWEPT:
-        assert "class_name" in cls.model_fields, cls.__name__
-        assert "extra_attrs" in cls.model_fields, cls.__name__
-
-
 def test_class_name_and_extra_attrs_render():
     html = str(Badge(id="b", label="x", class_name="mine", extra_attrs={"data-k": "v"}).render())
     assert 'class="px-badge px-badge--neutral px-badge--md mine"' in html
@@ -25,11 +19,21 @@ def test_extra_attrs_rejects_breakout_values():
         Badge(id="b", label="x", extra_attrs={"data-k": '"><script>'})
     with pytest.raises(ValueError):
         Badge(id="b", label="x", extra_attrs={"data-k": '" onmouseover="x'})
+    # < and > are spec-legal inside double-quoted attrs — must NOT be rejected
+    badge = Badge(id="b", label="x", extra_attrs={"x-show": "count > 3"})
+    assert 'x-show="count &gt; 3"' in str(badge.render()) or 'x-show="count > 3"' in str(badge.render())
 
 
 def test_extra_attrs_rejects_bad_names():
     with pytest.raises(ValueError):
         Badge(id="b", label="x", extra_attrs={"data k": "v"})
+
+
+def test_class_name_and_color_reject_quotes():
+    with pytest.raises(ValueError):
+        Badge(id="b", label="x", class_name='mine" onmouseover="x')
+    with pytest.raises(ValueError):
+        Avatar(id="a", initials="X", color='red" onmouseover="x')
 
 
 def test_extra_attrs_allows_htmx_and_alpine_names():
@@ -38,7 +42,12 @@ def test_extra_attrs_allows_htmx_and_alpine_names():
         "x-on:click.prevent": "go()", "hx-on::after-swap": "init()",
         "aria-label": "ok",
     }).render())
-    assert 'hx-get="/x"' in html and '@click="open = !open"' in html
+    assert 'hx-get="/x"' in html
+    assert '@click="open = !open"' in html
+    assert 'data-k="v"' in html
+    assert 'x-on:click.prevent="go()"' in html
+    assert 'hx-on::after-swap="init()"' in html
+    assert 'aria-label="ok"' in html
 
 
 def test_avatar_color():

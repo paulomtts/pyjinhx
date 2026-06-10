@@ -2,20 +2,20 @@
 
 Every pyjinhx builtin follows the same contract, so knowing one means knowing all of them.
 
+> **Status:** the `px.*` namespace, event vocabulary, and declarative attributes described here land progressively across the 0.8.0 PR stack — this page is the contract the release converges on.
+
 ## The contract
 
 1. **`id` is optional.** Omit it and pyjinhx generates `px-<n>`. Pass one when you need a stable
    hook (CSS, htmx targets) — and always for reactive components, whose OOB targeting requires
    stable identity across renders.
 2. **`class_name`** appends your classes to the root element: `Badge(label="New", class_name="pill")`.
-3. **`extra_attrs`** renders extra attributes (validated — values may not contain `"`, `<`, or `>`) on the root element — the carrier for
+3. **`extra_attrs`** renders extra attributes (validated — values may not contain `"`) on the root element — the carrier for
    `hx-*`, `data-*`, `aria-*`, or Alpine directives:
    `Card(body=..., extra_attrs={"hx-get": "/refresh", "hx-trigger": "every 30s"})`.
 4. **All copy is props.** Every user-visible string, aria-labels included, has an English default
    you can replace: `Modal(title="Excluir?", close_label="Fechar")`.
-5. **JS is headless.** Builtin JavaScript toggles classes and attributes only — never inline
-   styles — and communicates through `px:*` DOM events and `data-px-*` attributes. Programmatic
-   APIs live under the single `window.px` namespace.
+5. **JS is headless.** Builtin JavaScript never writes inline styles for state — visibility and variants are classes/attributes; computed positioning coordinates (tooltip/popover placement) are the one sanctioned inline-style use. Communication is through `px:*` DOM events and `data-px-*` attributes; programmatic APIs live under the single `window.px` namespace.
 6. **The DOM contract is API.** Each builtin's documentation ends with a "DOM contract" block —
    stable classes, `data-px-*` attributes, events, state attributes. We version those like code.
 
