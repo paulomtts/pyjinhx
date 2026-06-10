@@ -100,6 +100,8 @@ from pyjinhx.builtins import (
 
 Small status label. **Assets:** `badge.css` only.
 
+<!-- demo: Badge -->
+
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
 | `label` | `str` | `""` | Inner text. |
@@ -115,6 +117,8 @@ Small status label. **Assets:** `badge.css` only.
 ## Modal
 
 Native `<dialog>`. **Assets:** `modal.css`, `modal.js`.
+
+<!-- demo: Modal -->
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
@@ -146,6 +150,8 @@ Events (bubble from the root): `px:modal:before-open`*, `px:modal:open`,
 
 Fixed-position toast. **Assets:** `notification.css`, `notification.js`.
 
+<!-- demo: Notification -->
+
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
 | `content` | `str \| BaseComponent` | `""` | Message body. |
@@ -169,12 +175,14 @@ Maps children to `content`; see the [children-vs-`content` note](#built-in-ui-co
 
 Click-toggle compound. Three separate components; compose them by placing `PopoverTrigger` and `PopoverPanel` **as children inside `Popover`**. **Assets:** `popover.css`, `popover.js` (IIFE under `px.popover`).
 
+<!-- demo: Popover -->
+
 ```python
 Popover(
     id="menu",
-    content=str(
-        PopoverTrigger(id="menu-t", content="Open") +
-        PopoverPanel(id="menu-p", role="menu", content="…")
+    content=(
+        PopoverTrigger(id="menu-t", content="Open").render()
+        + PopoverPanel(id="menu-p", role="menu", content="…").render()
     ),
 )
 ```
@@ -228,6 +236,8 @@ API: `px.popover.open(idOrEl)`, `px.popover.close(idOrEl)`, `px.popover.toggle(i
 
 In-place loading veil over a positioned ancestor. **Assets:** `region-loader.css`, `region-loader.js`.
 
+<!-- demo: RegionLoader -->
+
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
 | `aria_label` | `str` | `"Loading"` | Accessible label (`role="status"`). |
@@ -248,6 +258,8 @@ API: `px.loader.region.show/hide/reset(id)` and `px.loader.region.wrap(id, promi
 
 Compact focus/hover hint. **Assets:** `tooltip.css`, `tooltip.js` (IIFE — no API, behavior only).
 
+<!-- demo: Tooltip -->
+
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
 | `trigger` | `str \| BaseComponent` | `""` | Focusable trigger (`px-tooltip__trigger`, `tabindex="0"`). |
@@ -263,6 +275,8 @@ Compact focus/hover hint. **Assets:** `tooltip.css`, `tooltip.js` (IIFE — no A
 ## Alert
 
 Inline status banner. **Assets:** `alert.css`, `alert.js`.
+
+<!-- demo: Alert -->
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
@@ -284,6 +298,8 @@ Events: `px:alert:before-dismiss`* (cancelable), `px:alert:dismiss` — `detail 
 
 Button + anchored panel backed by the shared popover engine. **Assets:** `dropdown.css` only (ships no own JS — `popover.js` is included via the `js` extra-asset field whenever a Dropdown renders).
 
+<!-- demo: Dropdown -->
+
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
 | `trigger` | `str \| BaseComponent` | `""` | Button label. |
@@ -303,6 +319,8 @@ Trigger id is `{{ id }}-trigger`, menu is `{{ id }}-menu`.
 ## Drawer
 
 `<dialog>` sheet from an edge. **Assets:** `drawer.css`, `drawer.js`.
+
+<!-- demo: Drawer -->
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
@@ -328,6 +346,8 @@ API: `px.drawer.open(id)`, `px.drawer.close(id)`.
 
 Determinate or indeterminate meter. **Assets:** `progress.css` only.
 
+<!-- demo: Progress -->
+
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
 | `value` | `float \| None` | `None` | Omit or `None` for indeterminate `<progress>`. |
@@ -344,6 +364,8 @@ Determinate or indeterminate meter. **Assets:** `progress.css` only.
 
 Placeholder shimmer blocks. **Assets:** `skeleton.css` only.
 
+<!-- demo: Skeleton -->
+
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
 | `variant` | literal | `"text"` | `text` (stacked lines), `circle`, or `rect`. |
@@ -358,6 +380,8 @@ Placeholder shimmer blocks. **Assets:** `skeleton.css` only.
 ## EmptyState
 
 Centered empty view. **Assets:** `empty-state.css` only (template file **`empty-state.html`** next to `empty_state.py`).
+
+<!-- demo: EmptyState -->
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
@@ -407,6 +431,8 @@ LazyPanel(id="comments", url="/posts/42/comments", content=Skeleton(id="comments
 
 Separator line. **Assets:** `divider.css` only.
 
+<!-- demo: Divider -->
+
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
 | `orientation` | literal | `"horizontal"` | `horizontal` (default `hr`) or `vertical` (bar). |
@@ -422,6 +448,8 @@ Separator line. **Assets:** `divider.css` only.
 
 Inline loading indicator. **Assets:** `spinner.css` only.
 
+<!-- demo: Spinner -->
+
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
 | `size` | literal | `"md"` | `sm`, `md`, or `lg`. |
@@ -436,6 +464,8 @@ Inline loading indicator. **Assets:** `spinner.css` only.
 ## Avatar
 
 Image or initials in a circle. **Assets:** `avatar.css` only.
+
+<!-- demo: Avatar -->
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
@@ -455,6 +485,8 @@ Image or initials in a circle. **Assets:** `avatar.css` only.
 
 Grouped content with optional header and footer. **Assets:** `card.css` only.
 
+<!-- demo: Card -->
+
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
 | `title` | `str \| BaseComponent` | `""` | Default header title (ignored if `header` is set). |
@@ -472,6 +504,8 @@ Grouped content with optional header and footer. **Assets:** `card.css` only.
 
 Ordered trail of links. **Assets:** `breadcrumb.css` only.
 
+<!-- demo: Breadcrumb -->
+
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
 | `items` | `list[tuple[str, str \| None]]` | `[]` | `(label, href)` left to right; `href` `None` marks the current page. |
@@ -487,6 +521,8 @@ Ordered trail of links. **Assets:** `breadcrumb.css` only.
 ## TabGroup
 
 Tab buttons and panels. **Assets:** `tab-group.css`, `tab-group.js`.
+
+<!-- demo: TabGroup -->
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
@@ -504,6 +540,8 @@ Tab buttons and panels. **Assets:** `tab-group.css`, `tab-group.js`.
 ## Panel
 
 Host for **distributed** tab-like switching: all bodies render here; controls are separate [`PanelTrigger`](#paneltrigger) components. **Unstyled** aside from `hidden` panels. **Assets:** `panel.css`, `panel.js`.
+
+<!-- demo: Panel -->
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
@@ -538,6 +576,8 @@ Maps children to `content`; see the [children-vs-`content` note](#built-in-ui-co
 ## ConfirmDialog
 
 Accessible `<dialog>` singleton that replaces `window.confirm`. Mount once in the layout; `px.confirm()` is available everywhere. **Assets:** `confirm-dialog.css`, `confirm-dialog.js`.
+
+<!-- demo: ConfirmDialog -->
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
@@ -581,6 +621,8 @@ Falls back to `window.confirm` if no `ConfirmDialog` is mounted.
 
 Accessible `<dialog>` singleton that replaces `window.prompt`. Mount once in the layout; `px.prompt()` is available everywhere. **Assets:** `prompt-dialog.css`, `prompt-dialog.js`.
 
+<!-- demo: PromptDialog -->
+
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
 | `input_label` | `str` | `""` | Default label text above the input. |
@@ -611,6 +653,8 @@ Returns `null` on cancel/Escape/backdrop close. Falls back to `window.prompt` if
 ## ToastHost
 
 HX-Trigger-driven toast container singleton. Mount once in the layout. **Assets:** `toast-host.css`, `toast-host.js`.
+
+<!-- demo: ToastHost -->
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
@@ -652,6 +696,8 @@ Individual toasts: `div.px-toast.px-toast--<level>` > `.px-toast__message` + `bu
 
 Overlapping row of avatars with optional overflow count. **Assets:** `avatar-stack.css` only.
 
+<!-- demo: AvatarStack -->
+
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
 | `avatars` | `list[str \| BaseComponent]` | `[]` | Avatar items (typically `Avatar` components or HTML strings). |
@@ -662,8 +708,8 @@ Overlapping row of avatars with optional overflow count. **Assets:** `avatar-sta
 AvatarStack(
     id="team",
     avatars=[
-        str(Avatar(id="a1", initials="AB", size="sm")),
-        str(Avatar(id="a2", initials="CD", size="sm")),
+        Avatar(id="a1", initials="AB", size="sm"),
+        Avatar(id="a2", initials="CD", size="sm"),
     ],
     extra_count=3,
 )
@@ -678,6 +724,8 @@ AvatarStack(
 ## PageLoader
 
 Full-page navigation loader. Mount once at the top of the layout body. **Assets:** `page-loader.css`, `page-loader.js`.
+
+<!-- demo: PageLoader -->
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
@@ -714,6 +762,8 @@ API: `px.loader.page.show()`, `px.loader.page.hide()`, `px.loader.page.reset()`,
 
 Tag-style multi-value input. Each chip carries its own `<input type="hidden">` so values post with any enclosing form and removal is pure DOM removal. **Assets:** `chip-input.css`, `chip-input.js`.
 
+<!-- demo: ChipInput -->
+
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
 | `name` | `str` | — | `name` attribute on the hidden inputs and the `data-name` data attribute. |
@@ -745,6 +795,8 @@ Events (bubble from root): `px:chip-input:before-add`* (detail `{value}`), `px:c
 
 Labelled control wrapper with help text and error state. **Assets:** `form-field.css` only.
 
+<!-- demo: FormField -->
+
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
 | `label` | `str` | `""` | Label text; renders `<label>` only when non-empty. |
@@ -775,6 +827,8 @@ FormField(
 
 Accessible on/off toggle backed by a visually-hidden checkbox. **Assets:** `toggle-switch.css` only — no JS.
 
+<!-- demo: ToggleSwitch -->
+
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
 | `name` | `str` | `""` | `name` attribute on the hidden checkbox. |
@@ -796,6 +850,8 @@ ToggleSwitch(id="dark-mode", name="dark_mode", checked=True, label="Dark mode")
 ## SegmentedControl
 
 Pill-style radio group for mutually exclusive options. **Assets:** `segmented-control.css` only — no JS.
+
+<!-- demo: SegmentedControl -->
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
@@ -822,6 +878,8 @@ SegmentedControl(
 ## PasswordInput
 
 Password field with a show/hide toggle button. **Assets:** `password-input.css`, `password-input.js`.
+
+<!-- demo: PasswordInput -->
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |

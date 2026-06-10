@@ -7,6 +7,11 @@ repo_name: paulomtts/pyjinhx
 exclude_docs: |
   __init__.py
   superpowers/
+  hooks.py
+  demos/
+
+hooks:
+  - docs/hooks.py
 
 theme:
   name: material
@@ -65,6 +70,7 @@ markdown_extensions:
 
 nav:
   - Home: index.md
+  - Gallery: gallery.md
   - Getting Started:
       - Installation: getting-started/installation.md
       - Quick Start: getting-started/quickstart.md
