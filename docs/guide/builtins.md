@@ -1,6 +1,6 @@
 # Built-in UI components
 
-Optional package **`pyjinhx.builtins`** registers twenty [`BaseComponent`](../api/base-component.md) subclasses. Import:
+Optional package **`pyjinhx.builtins`** registers twenty-one [`BaseComponent`](../api/base-component.md) subclasses. Import:
 
 ```python
 from pyjinhx.builtins import (
@@ -13,6 +13,7 @@ from pyjinhx.builtins import (
     Dropdown,
     Drawer,
     EmptyState,
+    LazyPanel,
     LoadingOverlay,
     Modal,
     Notification,
@@ -27,7 +28,7 @@ from pyjinhx.builtins import (
 )
 ```
 
-`__all__` matches that set of twenty names.
+`__all__` matches that set of twenty-one names.
 
 **Conventions:** Markup classes use the **`px-`** prefix; overrides use **`--px-`** custom properties. Builtin CSS also references **theme variables** (`--surface`, `--border`, `--text`, `--radius-md`, `--shadow-md`, `--transition`, `--brand`, …)—define those in your global CSS or map them to your design system.
 
@@ -37,7 +38,7 @@ from pyjinhx.builtins import (
 
 **Theming:** Per-component `--px-*` tokens are collected in the [Theming tokens](#theming-tokens) appendix. Each component section points there.
 
-**CSS-only components** (no bundled script): Badge, Tooltip, Progress, Skeleton, EmptyState, Divider, Spinner, Avatar, Card, Breadcrumb. (Tooltip and Popover ship CSS plus an IIFE that exports no globals.)
+**CSS-only components** (no bundled script): Badge, Tooltip, Progress, Skeleton, EmptyState, Divider, Spinner, Avatar, Card, Breadcrumb. (Tooltip and Popover ship CSS plus an IIFE that exports no globals.) LazyPanel ships no assets at all.
 
 **Children-vs-`content` tag gotcha (children-mapping components):** Several components map children to a single attribute (e.g. Tooltip `tip`, Popover `card_content`, Notification `content`, PanelTrigger `content`). If you use `Renderer.render()` with PascalCase tags, do **not** supply both child text and the corresponding attribute on the same tag—use body text as the child *or* the attribute, not both.
 
@@ -267,6 +268,25 @@ Centered empty view. **Assets:** `empty-state.css` only (template file **`empty-
 | `actions` | `list[str \| BaseComponent]` | `[]` | Optional flex row of slots (e.g. suggestion chips); renders after `action` when both are set. |
 
 Theming: see [appendix](#emptystate-1).
+
+---
+
+## LazyPanel
+
+HTMX lazy-load wrapper: a single `div` that fetches `url` on `trigger` and swaps itself with the response. **Assets:** none (template file **`lazy-panel.html`** next to `lazy_panel.py`).
+
+| Field | Type | Default | Description |
+| --- | --- | --- | --- |
+| `url` | `str` | required | Endpoint for the deferred content (`hx-get`). |
+| `trigger` | `str` | `"revealed"` | `hx-trigger` value; the default fires when scrolled into view. |
+| `swap` | `str` | `"outerHTML"` | `hx-swap` strategy; the default replaces the wrapper itself. |
+| `content` | `str \| BaseComponent` | `""` | Optional placeholder shown until the fetch lands (e.g. a [`Skeleton`](#skeleton)). |
+
+```python
+LazyPanel(id="comments", url="/posts/42/comments", content=Skeleton(id="comments-skel"))
+```
+
+**Classes:** `px-lazy-panel` (unstyled hook). No theming tokens.
 
 ---
 
