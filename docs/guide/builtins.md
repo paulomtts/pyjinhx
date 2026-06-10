@@ -829,14 +829,13 @@ Password field with a show/hide toggle button. **Assets:** `password-input.css`,
 | `placeholder` | `str` | `""` | `placeholder` on the `<input>`; omitted when empty. |
 | `autocomplete` | `str` | `"current-password"` | `autocomplete` attribute. |
 | `required` | `bool` | `False` | When `True`, adds `required` to the `<input>`. |
-| `show_label` | `str` | `"Show password"` | `aria-label` on the toggle button when password is hidden. Also stored as `data-show-label`. |
-| `hide_label` | `str` | `"Hide password"` | `aria-label` on the toggle button when password is visible. Also stored as `data-hide-label`. |
+| `show_label` | `str` | `"Show password"` | Static `aria-label` on the toggle button; visibility state is conveyed by `aria-pressed` (ARIA toggle-button pattern). |
 
 ```python
 PasswordInput(id="login-pw", autocomplete="current-password", required=True)
 ```
 
-**DOM contract.** Root `div.px-password-input[data-px-password]`. Field: `input.px-password-input__field` with id `{{ id }}-field`. Toggle button: `button.px-password-input__toggle[data-px-password-toggle][data-show-label][data-hide-label]`; `aria-pressed` reflects state (`"false"` when hidden, `"true"` when shown); `.px-password-input__toggle--on` class added when visible. No `px:*` events — state is readable from `aria-pressed` on the button. No JS API under `window.px`.
+**DOM contract.** Root `div.px-password-input[data-px-password]`. Field: `input.px-password-input__field` with id `{{ id }}-field`. Toggle button: `button.px-password-input__toggle[data-px-password-toggle]`; `aria-pressed` reflects state (`"false"` when hidden, `"true"` when shown); `.px-password-input__toggle--on` class added when visible. No `px:*` events — state is readable from `aria-pressed` on the button. No JS API under `window.px`.
 
 **Classes:** `px-password-input`, `px-password-input__field`, `px-password-input__toggle`, `px-password-input__toggle--on`, `px-password-input__eye`. Theming: see [PasswordInput tokens](#passwordinput-tokens).
 
