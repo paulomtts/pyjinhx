@@ -226,3 +226,55 @@ Map each absolute asset path to your `{% static %}` URL in the resolver callback
 | `Finder.layout_asset_tags()` | Preload all component assets in a layout shell (instance method) |
 
 See [Assets API](../api/assets-api.md) for signatures and examples.
+
+## One-bundle deployment
+
+For apps that prefer a single stylesheet/script over per-component references, enumerate every
+component asset and serve two concatenated bundles with a content-hash ETag:
+
+```python
+import hashlib
+
+from fastapi import FastAPI, Request, Response
+from pyjinhx.finder import Finder
+
+app = FastAPI()
+
+
+def _build(paths: list[str], marker: str) -> tuple[bytes, str]:
+    parts = []
+    for path in paths:
+        parts.append(marker.format(path=path).encode())
+        parts.append(open(path, "rb").read() + b"\n")
+    payload = b"".join(parts)
+    return payload, '"' + hashlib.md5(payload).hexdigest() + '"'
+
+
+CSS_PATHS, JS_PATHS = Finder("app/components").all_assets()
+CSS_BUNDLE, CSS_ETAG = _build(CSS_PATHS, "/* === {path} === */\n")
+JS_BUNDLE, JS_ETAG = _build(JS_PATHS, "// === {path} ===\n")
+
+
+def _bundle(request: Request, body: bytes, etag: str, media_type: str) -> Response:
+    if request.headers.get("if-none-match") == etag:
+        return Response(status_code=304, headers={"ETag": etag})
+    return Response(body, media_type=media_type,
+                    headers={"ETag": etag, "Cache-Control": "public, max-age=300"})
+
+
+@app.get("/assets/bundle.css", include_in_schema=False)
+def bundle_css(request: Request) -> Response:
+    return _bundle(request, CSS_BUNDLE, CSS_ETAG, "text/css")
+
+
+@app.get("/assets/bundle.js", include_in_schema=False)
+def bundle_js(request: Request) -> Response:
+    return _bundle(request, JS_BUNDLE, JS_ETAG, "application/javascript")
+```
+
+Reference the bundles from your layout `<head>` and render with
+`Renderer.set_default_js_mode(AssetMode.NONE)` / `set_default_css_mode(AssetMode.NONE)` so
+components stop inlining what the bundle already ships. Concatenation order is alphabetical;
+if your app's cascade needs a specific sheet first, prepend it to the list before building.
+To include the pyjinhx builtins, build a second `Finder` over
+`os.path.join(os.path.dirname(pyjinhx.builtins.__file__), "ui")` and concatenate both lists.
