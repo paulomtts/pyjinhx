@@ -228,7 +228,7 @@ Also works as an **`hx-indicator`** target: htmx adds `htmx-request` to the elem
 
 **DOM contract.** Root `.px-region-loader` (state: `.px-region-loader--visible`, `.px-region-loader--hiding`; also responds to `.htmx-request` as an htmx indicator).
 Events (non-cancelable): `px:region-loader:show`, `px:region-loader:hide`.
-API: `px.loader.region.{show,hide,reset,wrap}(id)`. Ref-counted for concurrent sources: visible from the first `show(id)` to the last `hide(id)`; `show`/`hide` events fire only on real visibility transitions (a show during an in-flight hide cancels it silently); hides finalize via a fallback timer even when animations are disabled. `wrap(id, promise)` pairs show/hide around any async task.
+API: `px.loader.region.show/hide/reset(id)` and `px.loader.region.wrap(id, promise)`. Ref-counted for concurrent sources: visible from the first `show(id)` to the last `hide(id)`; `show`/`hide` events fire only on real visibility transitions (a show during an in-flight hide cancels it silently); hides finalize via a fallback timer even when animations are disabled. `wrap(id, promise)` pairs show/hide around any async task.
 
 **Classes:** `px-region-loader`; state `px-region-loader--visible`, `px-region-loader--hiding`; `px-region-loader__spinner`. Theming: see [RegionLoader tokens](#regionloader-tokens).
 

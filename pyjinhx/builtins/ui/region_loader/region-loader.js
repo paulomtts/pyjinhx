@@ -37,7 +37,8 @@
         if (!overlay) return;
         const count = counts.get(id) || 0;
         counts.set(id, count + 1);
-        if (count > 0) return;
+        const isFresh = !overlay.classList.contains(VISIBLE) && !overlay.classList.contains(HIDING);
+        if (count > 0 && !isFresh) return;
         clearHideTimer(id);
         overlay.classList.remove(HIDING);
         const wasVisible = overlay.classList.contains(VISIBLE);
@@ -61,10 +62,17 @@
             return;
         }
         counts.delete(id);
+        if (!overlay.classList.contains(VISIBLE)) {
+            // Same-id node replaced mid-flight: it never showed, so there is
+            // no visibility transition to animate or announce.
+            clearHideTimer(id);
+            return;
+        }
         overlay.classList.add(HIDING);
         // Same-function listeners dedupe, so repeated hides never stack.
         overlay.addEventListener('animationend', onAnimationEnd);
         // Fallback for animation-less environments (prefers-reduced-motion).
+        // 250ms > the 150ms default out-animation; raw-CSS themes with longer fades get cut to display:none early.
         hideTimers.set(id, setTimeout(() => finalizeHide(overlay, id), 250));
     }
 
