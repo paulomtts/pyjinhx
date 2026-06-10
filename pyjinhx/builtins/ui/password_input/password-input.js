@@ -16,10 +16,7 @@
         const isShowing = field.type === 'text';
         field.type = isShowing ? 'password' : 'text';
 
-        const newLabel = isShowing
-            ? btn.dataset.showLabel
-            : btn.dataset.hideLabel;
-        btn.setAttribute('aria-label', newLabel);
+        // single ARIA signal: static label + aria-pressed (ARIA APG toggle-button pattern)
         btn.setAttribute('aria-pressed', String(!isShowing));
         btn.classList.toggle('px-password-input__toggle--on', !isShowing);
     });

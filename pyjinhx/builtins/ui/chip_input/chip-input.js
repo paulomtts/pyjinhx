@@ -56,16 +56,15 @@
     }
 
     function commit(root, field) {
-        var value = field.value.trim().replace(/,$/, '');
+        const value = field.value.trim().replace(/,$/, '');
         if (!value) return;
         if (isDuplicate(root, value)) {
             field.value = '';
             return;
         }
         if (!fire(root, 'px:chip-input:before-add', { value: value }, true)) return;
-        const textField = root.querySelector('.px-chip-input__field');
         const chip = buildChip(root, value);
-        root.insertBefore(chip, textField);
+        root.insertBefore(chip, field);
         field.value = '';
         fire(root, 'px:chip-input:add', { value: value });
     }
@@ -81,11 +80,17 @@
     }
 
     document.addEventListener('keydown', function (e) {
+        if (e.isComposing) return;
         if (!e.target.classList.contains('px-chip-input__field')) return;
         const root = getRoot(e.target);
         if (!root || isDisabled(root)) return;
 
-        if (e.key === 'Enter' || e.key === ',') {
+        if (e.key === 'Enter') {
+            if (e.target.value.trim()) {
+                e.preventDefault();
+                commit(root, e.target);
+            }
+        } else if (e.key === ',') {
             e.preventDefault();
             commit(root, e.target);
         } else if (e.key === 'Backspace' && e.target.value === '') {
@@ -108,5 +113,17 @@
         if (!btn) return;
         const chip = btn.closest('[data-px-chip]');
         if (chip) removeChip(chip);
+    });
+
+    // Commit pending text on form submit (Safari never fires focusout on button click).
+    document.addEventListener('submit', function (e) {
+        const form = e.target;
+        if (!form.querySelectorAll) return;
+        form.querySelectorAll('.px-chip-input__field').forEach(function (field) {
+            const root = field.closest('[data-px-chip-input]');
+            if (root && !root.hasAttribute('data-disabled') && field.value.trim()) {
+                commit(root, field);
+            }
+        });
     });
 }());

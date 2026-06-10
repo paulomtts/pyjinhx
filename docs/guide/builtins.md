@@ -733,6 +733,12 @@ Events (bubble from root): `px:chip-input:before-add`* (detail `{value}`), `px:c
 
 **Classes:** `px-chip-input`, `px-chip-input__chip`, `px-chip-input__label`, `px-chip-input__remove`, `px-chip-input__field`. Theming: see [ChipInput tokens](#chipinput-tokens).
 
+**Notes:**
+
+- `values` render verbatim (the renderer unescapes markup by design) — sanitize user-supplied tag text server-side before re-rendering it.
+- Duplicate entries are silently dropped (the field clears).
+- Chips added client-side exist only in the DOM until the form posts; an htmx swap of the surrounding region re-renders from server state.
+
 ---
 
 ## FormField
