@@ -45,3 +45,8 @@ from pyjinhx import BaseComponent, Renderer
 
 print("PyJinHx installed successfully!")
 ```
+
+## Upgrading from 0.4.x
+
+Coming from an older render-only release? See [Migrating from 0.4.x](../migration.md) for the
+compatibility matrix, the handful of mechanical fixes, and how to adopt the new reactive layer.

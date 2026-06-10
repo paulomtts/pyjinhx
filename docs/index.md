@@ -83,3 +83,4 @@ print(button.render())
 - [Guide](guide/components.md) - Feature reference
 - [Built-in UI components](guide/builtins.md) - Optional `pyjinhx.builtins` package
 - [Public API Index](reference/public-api.md) - Every symbol exported from `pyjinhx`
+- [Migrating from 0.4.x](migration.md) - Upgrading a render-only `0.4.x` app to the current release
