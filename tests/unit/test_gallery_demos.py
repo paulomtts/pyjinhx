@@ -49,3 +49,10 @@ def test_every_factory_renders():
         markup = hooks.demo_markup(factory())
         assert markup.strip(), name
         assert isinstance(height, int), name
+
+
+def test_registry_covers_all_builtins():
+    import pyjinhx.builtins as builtins
+
+    folded = {"LazyPanel", "PanelTrigger", "PopoverTrigger", "PopoverPanel"}
+    assert set(DEMOS) == set(builtins.__all__) - folded

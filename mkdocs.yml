@@ -70,6 +70,7 @@ markdown_extensions:
 
 nav:
   - Home: index.md
+  - Gallery: gallery.md
   - Getting Started:
       - Installation: getting-started/installation.md
       - Quick Start: getting-started/quickstart.md
