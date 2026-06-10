@@ -213,6 +213,7 @@ _BUILTIN_TAG_NAMES = frozenset(
         "SegmentedControl",
         "Panel",
         "PanelTrigger",
+        "PasswordInput",
         "Skeleton",
         "Spinner",
         "TabGroup",

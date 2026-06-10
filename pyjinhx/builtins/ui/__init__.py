@@ -21,6 +21,7 @@ from pyjinhx.builtins.ui.popover import Popover, PopoverPanel, PopoverTrigger
 from pyjinhx.builtins.ui.progress import Progress
 from pyjinhx.builtins.ui.prompt_dialog import PromptDialog
 from pyjinhx.builtins.ui.panel import Panel, PanelTrigger
+from pyjinhx.builtins.ui.password_input import PasswordInput
 from pyjinhx.builtins.ui.skeleton import Skeleton
 from pyjinhx.builtins.ui.spinner import Spinner
 from pyjinhx.builtins.ui.tab_group import TabGroup
@@ -55,6 +56,7 @@ __all__ = [
     "SegmentedControl",
     "Panel",
     "PanelTrigger",
+    "PasswordInput",
     "Skeleton",
     "Spinner",
     "TabGroup",
