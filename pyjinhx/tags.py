@@ -7,7 +7,6 @@ import logging
 import os
 import re
 import sys
-import uuid
 from dataclasses import dataclass, field
 from html.parser import HTMLParser
 from typing import TYPE_CHECKING, Any, ClassVar
@@ -123,8 +122,9 @@ class ComponentAutodiscover:
 
     @classmethod
     def clear(cls) -> None:
-        """Drop the deduplication set. Mainly for tests."""
+        """Drop the deduplication sets. Mainly for tests."""
         cls._imported_files.clear()
+        _warned_unregistered_tags.clear()
 
     @classmethod
     def import_from_file(cls, filepath: str) -> None:
@@ -145,7 +145,12 @@ class ComponentAutodiscover:
             )
             spec.loader.exec_module(module)
         except Exception:
-            logger.debug("Failed to autodiscover module at %s", filepath, exc_info=True)
+            logger.warning(
+                "Autodiscovery import failed for %s; the tag will fall back to "
+                "BaseComponent and class defaults will not apply.",
+                filepath,
+                exc_info=True,
+            )
 
     @classmethod
     def try_for_tag(cls, tag_name: str, template_path: str | None) -> None:
@@ -175,6 +180,8 @@ if TYPE_CHECKING:
     from .assets import RenderSession
     from .renderer import Renderer
 
+
+_warned_unregistered_tags: set[str] = set()
 
 # Kept in sync with pyjinhx.builtins.__all__ by a test. Listed here instead of
 # imported so the error path doesn't register every builtin as a side effect.
@@ -246,7 +253,9 @@ def render_tag_node(
             raise ValueError(
                 f'Missing required "id" for <{node.name}> and auto_id=False'
             )
-        component_id = f"{node.name.lower()}-{uuid.uuid4().hex}"
+        from .base import _auto_id
+
+        component_id = _auto_id()
 
     attrs_without_id = {k: v for k, v in node.attrs.items() if k != "id"}
 
@@ -269,8 +278,13 @@ def render_tag_node(
         updates: dict[str, Any] = dict(attrs_without_id)
         if rendered_children:
             updates["content"] = rendered_children
-        existing_instance = existing_instance.model_copy(update=updates)
-        Registry.get_instances()[registry_key] = existing_instance
+        if updates:
+            updated_instance = existing_instance.model_copy()
+            validator = type(existing_instance).__pydantic_validator__
+            for field_name, field_value in updates.items():
+                validator.validate_assignment(updated_instance, field_name, field_value)
+            existing_instance = updated_instance
+            Registry.get_instances()[registry_key] = existing_instance
 
         return str(
             existing_instance._render(
@@ -296,6 +310,17 @@ def render_tag_node(
         if template_path is None:
             raise _missing_template_error(node.name)
         from .base import BaseComponent
+
+        component_dir = os.path.dirname(template_path)
+        snake_name = pascal_case_to_snake_case(node.name)
+        sibling_py = os.path.join(component_dir, f"{snake_name}.py")
+        if os.path.exists(sibling_py) and node.name not in _warned_unregistered_tags:
+            _warned_unregistered_tags.add(node.name)
+            logger.warning(
+                "Template found for <%s> but class %s is not registered — "
+                "defaults won't apply. Import the module defining %s at app startup.",
+                node.name, node.name, node.name,
+            )
 
         component = BaseComponent(
             id=component_id,
