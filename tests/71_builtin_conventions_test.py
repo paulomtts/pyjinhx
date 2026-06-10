@@ -9,8 +9,8 @@ import re
 import pyjinhx.builtins as b
 
 SWEPT: list[type] = [
-    b.Avatar, b.Badge, b.Breadcrumb, b.Card, b.Divider, b.EmptyState,
-    b.Modal, b.Drawer, b.Progress, b.Skeleton, b.Tooltip,
+    b.Avatar, b.Badge, b.Breadcrumb, b.Card, b.ConfirmDialog, b.Divider, b.EmptyState,
+    b.Modal, b.Drawer, b.Progress, b.PromptDialog, b.Skeleton, b.Tooltip,
     b.Popover, b.PopoverTrigger, b.PopoverPanel, b.Dropdown,
     b.Notification, b.Alert, b.Panel, b.PanelTrigger, b.TabGroup,
     b.LazyPanel, b.LoadingOverlay, b.Spinner,
