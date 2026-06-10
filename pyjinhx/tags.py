@@ -145,7 +145,12 @@ class ComponentAutodiscover:
             )
             spec.loader.exec_module(module)
         except Exception:
-            logger.debug("Failed to autodiscover module at %s", filepath, exc_info=True)
+            logger.warning(
+                "Autodiscovery import failed for %s; the tag will fall back to "
+                "BaseComponent and class defaults will not apply.",
+                filepath,
+                exc_info=True,
+            )
 
     @classmethod
     def try_for_tag(cls, tag_name: str, template_path: str | None) -> None:
@@ -175,6 +180,8 @@ if TYPE_CHECKING:
     from .assets import RenderSession
     from .renderer import Renderer
 
+
+_warned_unregistered_tags: set[str] = set()
 
 # Kept in sync with pyjinhx.builtins.__all__ by a test. Listed here instead of
 # imported so the error path doesn't register every builtin as a side effect.
@@ -300,6 +307,17 @@ def render_tag_node(
         if template_path is None:
             raise _missing_template_error(node.name)
         from .base import BaseComponent
+
+        component_dir = os.path.dirname(template_path)
+        snake_name = pascal_case_to_snake_case(node.name)
+        sibling_py = os.path.join(component_dir, f"{snake_name}.py")
+        if os.path.exists(sibling_py) and node.name not in _warned_unregistered_tags:
+            _warned_unregistered_tags.add(node.name)
+            logger.warning(
+                "Template found for <%s> but class %s is not registered — "
+                "defaults won't apply. Import the module defining %s at app startup.",
+                node.name, node.name, node.name,
+            )
 
         component = BaseComponent(
             id=component_id,
