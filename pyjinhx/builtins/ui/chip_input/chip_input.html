@@ -1,0 +1,10 @@
+<div id="{{ id }}" class="px-chip-input{% if class_name %} {{ class_name }}{% endif %}" data-px-chip-input data-name="{{ name }}" data-remove-label="{{ remove_label }}"{% if disabled %} data-disabled{% endif %}{% for k, v in extra_attrs.items() %} {{ k }}="{{ v }}"{% endfor %}>
+  {% for value in values %}
+  <span class="px-chip-input__chip" data-px-chip>
+    <span class="px-chip-input__label">{{ value }}</span>
+    <input type="hidden" name="{{ name }}" value="{{ value }}">
+    {% if not disabled %}<button type="button" class="px-chip-input__remove" data-px-chip-remove aria-label="{{ remove_label }}">&#x2715;</button>{% endif %}
+  </span>
+  {% endfor %}
+  {% if not disabled %}<input type="text" class="px-chip-input__field" placeholder="{{ placeholder }}" autocomplete="off">{% endif %}
+</div>

@@ -4,6 +4,7 @@ from pyjinhx.builtins.ui.avatar_stack import AvatarStack
 from pyjinhx.builtins.ui.badge import Badge
 from pyjinhx.builtins.ui.breadcrumb import Breadcrumb
 from pyjinhx.builtins.ui.card import Card
+from pyjinhx.builtins.ui.chip_input import ChipInput
 from pyjinhx.builtins.ui.confirm_dialog import ConfirmDialog
 from pyjinhx.builtins.ui.divider import Divider
 from pyjinhx.builtins.ui.dropdown import Dropdown
@@ -31,6 +32,7 @@ __all__ = [
     "Badge",
     "Breadcrumb",
     "Card",
+    "ChipInput",
     "ConfirmDialog",
     "Divider",
     "Dropdown",

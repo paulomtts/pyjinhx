@@ -1,0 +1,82 @@
+/* ── ChipInput tokens ──────────────────────────────────────────────────────── */
+:root {
+  --px-chip-input-gap:        0.375rem;
+  --px-chip-input-chip-bg:    var(--surface-alt);
+  --px-chip-input-chip-fg:    var(--text);
+  --px-chip-input-chip-radius: var(--radius-full);
+  --px-chip-input-border:     var(--border);
+  --px-chip-input-focus:      var(--border-focus, var(--border));
+  --px-chip-input-radius:     var(--radius-md);
+  --px-chip-input-padding:    0.375rem 0.5rem;
+}
+
+.px-chip-input {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--px-chip-input-gap);
+  padding: var(--px-chip-input-padding);
+  border: 1px solid var(--px-chip-input-border);
+  border-radius: var(--px-chip-input-radius);
+  background: var(--surface, #fff);
+  cursor: text;
+}
+
+.px-chip-input:focus-within {
+  outline: 2px solid var(--px-chip-input-focus);
+  outline-offset: -1px;
+}
+
+.px-chip-input__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.125rem 0.5rem;
+  background: var(--px-chip-input-chip-bg);
+  color: var(--px-chip-input-chip-fg);
+  border-radius: var(--px-chip-input-chip-radius);
+  border: 1px solid var(--px-chip-input-border);
+  font-size: 0.875em;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+
+.px-chip-input__label {
+  max-width: 16rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.px-chip-input__remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1rem;
+  height: 1rem;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font-size: 0.75em;
+  line-height: 1;
+  opacity: 0.7;
+  transition: opacity var(--transition, 0.15s ease);
+}
+
+.px-chip-input__remove:hover {
+  opacity: 1;
+}
+
+.px-chip-input__field {
+  flex: 1;
+  min-width: 6rem;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--text, inherit);
+  font: inherit;
+  padding: 0;
+}

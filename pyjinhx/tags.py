@@ -193,6 +193,7 @@ _BUILTIN_TAG_NAMES = frozenset(
         "Badge",
         "Breadcrumb",
         "Card",
+        "ChipInput",
         "ConfirmDialog",
         "Divider",
         "Dropdown",
