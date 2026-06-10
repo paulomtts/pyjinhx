@@ -32,6 +32,7 @@ Homepage = "https://github.com/paulomtts/pyjinhx"
 [tool.pytest.ini_options]
 markers = [
     "pjx_runtime: enable pjx.js auto-injection in tests (disabled by default via conftest)",
+    "reactivity: browser-based tests for the builtin JS contracts (needs playwright chromium)",
 ]
 
 [project.optional-dependencies]
@@ -48,4 +49,5 @@ dev = [
     "python-multipart>=0.0.9",
     "fakeredis>=2.26.0",
     "redis>=5.0.0",
+    "pytest-playwright>=0.8.0",
 ]

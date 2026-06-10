@@ -1,0 +1,244 @@
+"""Kitchen-sink FastAPI app serving real builtins for the browser reactivity tier.
+
+Mirrors the bones of ``tests/integration/app.py`` (full-page shell + rendered
+builtins) but wires the production middleware via ``setup()`` so every request
+runs inside ``Registry.request_scope``. htmx is loaded from the same jsdelivr
+CDN the integration gallery uses.
+"""
+
+from __future__ import annotations
+
+import json
+import time
+
+from fastapi import FastAPI, Request
+from fastapi.responses import HTMLResponse, JSONResponse, Response
+
+from pyjinhx import BaseComponent, PjxSettings, setup
+from pyjinhx.builtins import (
+    ChipInput,
+    Drawer,
+    Dropdown,
+    LazyPanel,
+    Modal,
+    Notification,
+    PageLoader,
+    Panel,
+    PanelTrigger,
+    PasswordInput,
+    Popover,
+    PopoverPanel,
+    PopoverTrigger,
+    RegionLoader,
+    TabGroup,
+    ToastHost,
+)
+
+_PAGE_TEMPLATE = """
+<h1 id="page-title">Reactivity kitchen sink</h1>
+
+<section>
+{{ modal }}
+<button type="button" id="modal-open-btn" data-px-open="rx-modal">Open modal</button>
+</section>
+
+<section>
+{{ drawer }}
+<button type="button" id="drawer-open-btn" data-px-open="rx-drawer">Open drawer</button>
+</section>
+
+<section>
+{{ popover_a }}
+{{ popover_b }}
+{{ dropdown }}
+</section>
+
+<section>
+<form id="chip-form" method="post" action="/chips/echo">
+{{ chips }}
+<button type="submit" id="chip-submit">Submit</button>
+</form>
+</section>
+
+<section>
+{{ notification }}
+<button type="button" id="note-frag-btn"
+        hx-get="/fragments/notification" hx-target="body" hx-swap="beforeend">
+Fetch notification
+</button>
+{{ toast_host }}
+<button type="button" id="save-btn" hx-post="/actions/save" hx-swap="none">Save</button>
+</section>
+
+<section>
+<div id="region-wrap" style="position:relative;min-height:80px;">
+{{ region_loader }}
+<p>Region content</p>
+</div>
+{{ page_loader }}
+<button type="button" id="nav-btn" hx-get="/slow-content" hx-target="#app-content">Navigate</button>
+<div id="app-content"><p>Initial content</p></div>
+</section>
+
+<section>
+{{ panel_trigger_a }}
+{{ panel_trigger_b }}
+{{ panel }}
+</section>
+
+<section>
+{{ password }}
+{{ tabs }}
+</section>
+"""
+
+
+class KitchenSinkPage(BaseComponent):
+    modal: Modal
+    drawer: Drawer
+    popover_a: Popover
+    popover_b: Popover
+    dropdown: Dropdown
+    chips: ChipInput
+    notification: Notification
+    toast_host: ToastHost
+    region_loader: RegionLoader
+    page_loader: PageLoader
+    panel_trigger_a: PanelTrigger
+    panel_trigger_b: PanelTrigger
+    panel: Panel
+    password: PasswordInput
+    tabs: TabGroup
+
+    def render(self) -> str:
+        return str(self._render(source=_PAGE_TEMPLATE.strip()))
+
+
+def _popover(prefix: str, label: str) -> Popover:
+    return Popover(
+        id=prefix,
+        content=(
+            str(PopoverTrigger(id=f"{prefix}-t", content=label).render())
+            + str(PopoverPanel(id=f"{prefix}-p", content=f"{label} panel content").render())
+        ),
+    )
+
+
+def render_page() -> str:
+    page = KitchenSinkPage(
+        id="kitchen-sink",
+        modal=Modal(id="rx-modal", title="Demo modal", body="Modal body."),
+        drawer=Drawer(id="rx-drawer", side="right", title="Demo drawer", body="Drawer body."),
+        popover_a=_popover("rx-pop-a", "Open A"),
+        popover_b=_popover("rx-pop-b", "Open B"),
+        dropdown=Dropdown(
+            id="rx-drop",
+            trigger="Options",
+            items=[
+                '<button type="button" role="menuitem" id="drop-close-item" data-px-close>Close menu</button>',
+                '<a role="menuitem" href="#">Plain item</a>',
+            ],
+        ),
+        chips=ChipInput(id="rx-chips", name="tags", placeholder="Add tag…"),
+        notification=Notification(
+            id="rx-note",
+            content="Manual note",
+            corner="top-right",
+            timeout=0,
+            autoshow=False,
+        ),
+        toast_host=ToastHost(id="rx-toasts", position="bottom-right", timeout=0),
+        region_loader=RegionLoader(id="rx-region"),
+        page_loader=PageLoader(id="rx-page-loader", nav_targets="app-content", active_on_load=False),
+        panel_trigger_a=PanelTrigger(
+            id="rx-trig-a",
+            panel_id="rx-panel",
+            panel="a",
+            content='<button type="button" id="trig-a-btn">Panel A</button>',
+        ),
+        panel_trigger_b=PanelTrigger(
+            id="rx-trig-b",
+            panel_id="rx-panel",
+            panel="b",
+            content='<button type="button" id="trig-b-btn">Panel B</button>',
+        ),
+        panel=Panel(
+            id="rx-panel",
+            panels={
+                "a": "<p>Panel A body</p>",
+                "b": str(
+                    LazyPanel(
+                        id="rx-lazy",
+                        url="/fragments/lazy",
+                        when="reveal",
+                        content='<p id="lazy-placeholder">Loading…</p>',
+                    ).render()
+                ),
+            },
+        ),
+        password=PasswordInput(id="rx-pw"),
+        tabs=TabGroup(
+            id="rx-tabs",
+            tabs={"One": "<p>Tab one body</p>", "Two": "<p>Tab two body</p>"},
+        ),
+    )
+    return f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>pyjinhx reactivity kitchen sink</title>
+<script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.8/dist/htmx.min.js"
+        integrity="sha384-/TgkGk7p307TH7EXJDuUlgG3Ce1UVolAOFopFekQkkXihi5u/6OCvVKyz1W+idaz"
+        crossorigin="anonymous"></script>
+</head>
+<body>
+{page.render()}
+</body>
+</html>"""
+
+
+def create_app() -> FastAPI:
+    app = FastAPI()
+    setup(app, settings=PjxSettings())
+
+    @app.get("/healthz")
+    def healthz() -> str:
+        return "ok"
+
+    @app.get("/", response_class=HTMLResponse)
+    def index() -> str:
+        return render_page()
+
+    @app.post("/chips/echo")
+    async def chips_echo(request: Request) -> JSONResponse:
+        form = await request.form()
+        return JSONResponse({"tags": form.getlist("tags")})
+
+    @app.get("/fragments/notification", response_class=HTMLResponse)
+    def notification_fragment() -> str:
+        return str(
+            Notification(
+                id="rx-note-frag",
+                content="Fragment note",
+                corner="bottom-left",
+                timeout=600,
+                autoshow=True,
+            ).render()
+        )
+
+    @app.post("/actions/save")
+    def save() -> Response:
+        headers = {"HX-Trigger": json.dumps({"px:toast": {"message": "Saved!", "level": "success"}})}
+        return Response(status_code=200, headers=headers)
+
+    @app.get("/slow-content", response_class=HTMLResponse)
+    def slow_content() -> str:
+        time.sleep(0.3)
+        return '<p id="slow-loaded">Fresh content</p>'
+
+    @app.get("/fragments/lazy", response_class=HTMLResponse)
+    def lazy_fragment() -> str:
+        time.sleep(0.2)
+        return '<p id="rx-lazy-loaded">Lazy content arrived</p>'
+
+    return app
