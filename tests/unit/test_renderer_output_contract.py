@@ -12,7 +12,7 @@ from pyjinhx.renderer import Renderer
 def test_render_returns_markup():
     """render() and __html__() both return a markupsafe.Markup instance.
 
-    Uses the tmp-template + importlib pattern from tests/22 so the component
+    Uses the tmp-template + importlib pattern from tests/unit/test_jinja_template_auto_lookup.py so the component
     class lives in a real file and inspect.getfile() succeeds.
     """
     original_environment = Renderer.peek_default_environment()

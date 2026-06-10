@@ -1,4 +1,4 @@
-# tests/71_builtin_conventions_test.py
+# tests/unit/test_builtin_conventions.py
 """Mechanical enforcement of docs/guide/builtin-conventions.md."""
 import os
 import re
