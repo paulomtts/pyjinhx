@@ -23,7 +23,7 @@ def test_custom_html():
             auto_id=True,
         ).render(index_html)
 
-        expected_pattern = r"^<div id=container-[a-f0-9]{32}>\n  <span id=message-[a-f0-9]{32}>Hello Paulo!</span>\n</div>$"
+        expected_pattern = r"^<div id=px-\d+>\n  <span id=px-\d+>Hello Paulo!</span>\n</div>$"
         assert re.match(expected_pattern, rendered), (
             f"Output does not match expected pattern. Got: {rendered!r}"
         )
@@ -47,7 +47,7 @@ def test_deep_nesting():
         ).render(index_html)
 
         assert re.match(
-            r"^<section id=outer-[a-f0-9]{32} class=wrapper>\n  <div id=middle-[a-f0-9]{32}>\n  <p id=inner-[a-f0-9]{32}>Deep nesting works!</p>\n</div>\n</section>$",
+            r"^<section id=px-\d+ class=wrapper>\n  <div id=px-\d+>\n  <p id=px-\d+>Deep nesting works!</p>\n</div>\n</section>$",
             rendered,
         ), f"Output does not match expected pattern. Got: {rendered!r}"
 
@@ -68,7 +68,7 @@ def test_multiple_children():
         ).render(index_html)
 
         assert re.match(
-            r"^<ul id=list-[a-f0-9]{32}>\n  <li id=item-[a-f0-9]{32}>First</li><li id=item-[a-f0-9]{32}>Second</li><li id=item-[a-f0-9]{32}>Third</li>\n</ul>$",
+            r"^<ul id=px-\d+>\n  <li id=px-\d+>First</li><li id=px-\d+>Second</li><li id=px-\d+>Third</li>\n</ul>$",
             rendered,
         ), f"Output does not match expected pattern. Got: {rendered!r}"
 
@@ -89,7 +89,7 @@ def test_mixed_content_and_components():
         ).render(index_html)
 
         assert re.match(
-            r"^<div id=frame-[a-f0-9]{32} class=card>\n  Before <button id=actionbutton-[a-f0-9]{32}>Click Me</button> After\n</div>$",
+            r"^<div id=px-\d+ class=card>\n  Before <button id=px-\d+>Click Me</button> After\n</div>$",
             rendered,
         ), f"Output does not match expected pattern. Got: {rendered!r}"
 
@@ -129,7 +129,7 @@ def test_complex_attributes():
         ).render(index_html)
 
         assert re.match(
-            r"^<input id=input-[a-f0-9]{32} type=text name=username placeholder=Enter username required=true/>$",
+            r"^<input id=px-\d+ type=text name=username placeholder=Enter username required=true/>$",
             rendered,
         ), f"Output does not match expected pattern. Got: {rendered!r}"
 
@@ -146,7 +146,7 @@ def test_empty_component():
         ).render(index_html)
 
         assert re.match(
-            r"^<div id=spacer-[a-f0-9]{32} class=spacer></div>$", rendered
+            r"^<div id=px-\d+ class=spacer></div>$", rendered
         ), f"Output does not match expected pattern. Got: {rendered!r}"
 
 
@@ -203,7 +203,7 @@ def test_renderer_uses_registered_class():
         ).render(index_html)
 
         assert re.match(
-            r'^<button id="button-[a-f0-9]{32}" class="btn btn-primary">Click me</button>$',
+            r'^<button id="px-\d+" class="btn btn-primary">Click me</button>$',
             rendered,
         ), f"Output does not match expected pattern. Got: {rendered!r}"
 
@@ -221,7 +221,7 @@ def test_renderer_fallback_to_generic_when_class_not_found():
         ).render(index_html)
 
         assert re.match(
-            r'^<div id="custom-[a-f0-9]{32}" class="test">Some content</div>$', rendered
+            r'^<div id="px-\d+" class="test">Some content</div>$', rendered
         ), f"Output does not match expected pattern. Got: {rendered!r}"
 
 
@@ -254,7 +254,7 @@ def test_renderer_with_registered_class_and_nested_components():
         ).render(index_html)
 
         assert re.match(
-            r'^<div id="albumcard-[a-f0-9]{32}" class="card">\n  <h2>My Card</h2>\n  <button id="albumbutton-[a-f0-9]{32}">Action</button>\n</div>$',
+            r'^<div id="px-\d+" class="card">\n  <h2>My Card</h2>\n  <button id="px-\d+">Action</button>\n</div>$',
             rendered,
         ), f"Output does not match expected pattern. Got: {rendered!r}"
 
@@ -281,7 +281,7 @@ def test_renderer_with_registered_class_validation():
         ).render(index_html)
 
         assert re.match(
-            r'^<input id="input-[a-f0-9]{32}" type="text" name="username" placeholder="Enter username"/>$',
+            r'^<input id="px-\d+" type="text" name="username" placeholder="Enter username"/>$',
             rendered,
         ), f"Output does not match expected pattern. Got: {rendered!r}"
 
@@ -306,6 +306,6 @@ def test_renderer_mixed_registered_and_generic():
         ).render(index_html)
 
         assert re.match(
-            r'^<header id="header-[a-f0-9]{32}"><h1>My Site</h1></header><footer id="footer-[a-f0-9]{32}">Copyright 2024</footer>$',
+            r'^<header id="px-\d+"><h1>My Site</h1></header><footer id="px-\d+">Copyright 2024</footer>$',
             rendered,
         ), f"Output does not match expected pattern. Got: {rendered!r}"

@@ -246,7 +246,9 @@ def render_tag_node(
             raise ValueError(
                 f'Missing required "id" for <{node.name}> and auto_id=False'
             )
-        component_id = f"{node.name.lower()}-{uuid.uuid4().hex}"
+        from .base import _auto_id
+
+        component_id = _auto_id()
 
     attrs_without_id = {k: v for k, v in node.attrs.items() if k != "id"}
 
@@ -269,7 +271,9 @@ def render_tag_node(
         updates: dict[str, Any] = dict(attrs_without_id)
         if rendered_children:
             updates["content"] = rendered_children
-        existing_instance = existing_instance.model_copy(update=updates)
+        existing_instance = type(existing_instance).model_validate(
+            {**existing_instance.model_dump(), **updates}
+        )
         Registry.get_instances()[registry_key] = existing_instance
 
         return str(
