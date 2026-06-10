@@ -1,3 +1,4 @@
+import itertools
 import logging
 from typing import Any, Optional
 
@@ -10,6 +11,13 @@ from .assets import RenderSession
 
 logger = logging.getLogger("pyjinhx")
 logger.setLevel(logging.WARNING)
+
+_auto_id_counter = itertools.count(1)
+
+
+def _auto_id() -> str:
+    """Generate a process-unique component id (``px-<n>``)."""
+    return f"px-{next(_auto_id_counter)}"
 
 
 class NestedComponentWrapper(BaseModel):
@@ -43,7 +51,10 @@ class BaseComponent(BaseModel):
 
     model_config = ConfigDict(extra="allow")
 
-    id: str = Field(..., description="The unique ID for this component.")
+    id: str = Field(
+        default_factory=_auto_id,
+        description="The unique ID for this component. Auto-generated when omitted.",
+    )
     js: list[str] = Field(
         default_factory=list,
         description="List of paths to extra JavaScript files to include.",
@@ -56,7 +67,7 @@ class BaseComponent(BaseModel):
     @field_validator("id", mode="before")
     def validate_id(cls, v: object) -> str:
         if not v:
-            raise ValueError("ID is required")
+            return _auto_id()
         return str(v)
 
     def __init_subclass__(cls, **kwargs: Any) -> None:
