@@ -1,0 +1,51 @@
+.px-prompt-dialog::backdrop {
+  background: var(--px-confirm-dialog-backdrop, rgb(0 0 0 / 0.5));
+}
+
+.px-prompt-dialog[open] {
+  margin: auto;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  box-shadow: var(--shadow-md);
+  max-width: min(26rem, calc(100vw - 2rem));
+}
+
+.px-prompt-dialog__card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1.25rem 1.5rem;
+}
+
+.px-prompt-dialog__label {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.px-prompt-dialog__input {
+  padding: 0.45rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-alt);
+  color: var(--text);
+  font: inherit;
+}
+
+.px-prompt-dialog__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.px-prompt-dialog__ok,
+.px-prompt-dialog__cancel {
+  padding: 0.4rem 0.9rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface-alt);
+  color: var(--text);
+  cursor: pointer;
+  font: inherit;
+}
