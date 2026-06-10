@@ -244,6 +244,15 @@ class Finder:
         """
         return self._collect_files_by_extension(".css", relative_to_root)
 
+    def all_assets(self) -> tuple[list[str], list[str]]:
+        """
+        Return every component asset under ``root`` as ``(css_paths, js_paths)``.
+
+        Paths are absolute and deterministically sorted — the input for a
+        build-your-own-bundle endpoint (see the assets guide).
+        """
+        return (self.collect_css_files(), self.collect_javascript_files())
+
     def layout_asset_tags(
         self,
         *,

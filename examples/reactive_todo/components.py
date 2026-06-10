@@ -27,7 +27,6 @@ class ItemRow(ReactiveComponent):
     title: str = ""
     done: bool = False
     reacts_to: ClassVar[set[str]] = {Keys.TODOS}
-    loading: ClassVar[str] = "skeleton"
 
     @classmethod
     def load(cls, todo_id: int | str) -> "ItemRow":
@@ -76,7 +75,6 @@ class Total(ReactiveComponent):
 class ClearButton(ReactiveComponent):
     completed: int = 0
     reacts_to: ClassVar[set[str]] = {Keys.TODOS}
-    loading: ClassVar[str] = "spinner"
 
     @classmethod
     def load(cls) -> "ClearButton":

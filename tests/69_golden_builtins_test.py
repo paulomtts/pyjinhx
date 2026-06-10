@@ -31,7 +31,7 @@ CASES = [
     ("dropdown", lambda: b.Dropdown(id="g", trigger="Menu", items=["<a href='/x'>X</a>"])),
     ("empty_state", lambda: b.EmptyState(id="g", title="Nothing", description="D", action="<button>A</button>")),
     ("lazy_panel", lambda: b.LazyPanel(id="g", url="/load")),
-    ("loading_overlay", lambda: b.LoadingOverlay(id="g")),
+    ("region_loader", lambda: b.RegionLoader(id="g")),
     ("modal", lambda: b.Modal(id="g", title="T", body="B", footer="F")),
     ("notification", lambda: b.Notification(id="g", content="Hi", corner="bottom-right", timeout=0)),
     ("page_loader", lambda: b.PageLoader(id="g")),

@@ -1,6 +1,7 @@
 (function () {
     window.px = window.px || {};
-    if (px.loader) return;
+    px.loader = px.loader || {};
+    if (px.loader.page) return;
 
     function fire(el, name) {
         el.dispatchEvent(new CustomEvent(name, { bubbles: true, detail: {} }));
@@ -17,14 +18,13 @@
     }
 
     let pending = 0;
-    const tracked = new WeakSet();
 
     function show() {
         pending += 1;
         const el = loaderEl();
         if (pending === 1 && el && !el.classList.contains('px-page-loader--active')) {
             el.classList.add('px-page-loader--active');
-            fire(el, 'px:loader:show');
+            fire(el, 'px:page-loader:show');
         }
     }
 
@@ -36,7 +36,7 @@
                 const el = loaderEl();
                 if (el && el.classList.contains('px-page-loader--active')) {
                     el.classList.remove('px-page-loader--active');
-                    fire(el, 'px:loader:hide');
+                    fire(el, 'px:page-loader:hide');
                 }
             }
         }, 300);
@@ -72,16 +72,14 @@
     }
 
     document.addEventListener('htmx:beforeRequest', (e) => {
+        if (e.defaultPrevented) return; // cancelled request: its xhr is never sent
         if (!shouldTrack(e.detail)) return;
-        tracked.add(e.detail);
+        const xhr = e.detail && e.detail.xhr;
+        if (!xhr) return;
         show();
-    });
-    ['htmx:afterRequest', 'htmx:responseError', 'htmx:sendError'].forEach((name) => {
-        document.addEventListener(name, (e) => {
-            if (!tracked.has(e.detail)) return;
-            tracked.delete(e.detail);
-            hide();
-        });
+        // loadend is terminal on load/error/abort/timeout — even when htmx
+        // discards a superseded response. Same release cue as pjx.js.
+        xhr.addEventListener('loadend', () => hide(), { once: true });
     });
     document.addEventListener('htmx:historyRestore', reset);
 
@@ -96,5 +94,5 @@
         coldLoadDone();
     }
 
-    px.loader = { show: show, hide: hide, wrap: wrap, reset: reset };
+    px.loader.page = { show: show, hide: hide, wrap: wrap, reset: reset };
 }());

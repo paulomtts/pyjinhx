@@ -10,7 +10,7 @@ from pyjinhx.builtins.ui.dropdown import Dropdown
 from pyjinhx.builtins.ui.drawer import Drawer
 from pyjinhx.builtins.ui.empty_state import EmptyState
 from pyjinhx.builtins.ui.lazy_panel import LazyPanel
-from pyjinhx.builtins.ui.loading_overlay import LoadingOverlay
+from pyjinhx.builtins.ui.region_loader import RegionLoader
 from pyjinhx.builtins.ui.modal import Modal
 from pyjinhx.builtins.ui.notification import Notification
 from pyjinhx.builtins.ui.page_loader import PageLoader
@@ -37,7 +37,6 @@ __all__ = [
     "Drawer",
     "EmptyState",
     "LazyPanel",
-    "LoadingOverlay",
     "Modal",
     "Notification",
     "PageLoader",
@@ -46,6 +45,7 @@ __all__ = [
     "PopoverTrigger",
     "Progress",
     "PromptDialog",
+    "RegionLoader",
     "Panel",
     "PanelTrigger",
     "Skeleton",
