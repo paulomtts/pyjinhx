@@ -2,8 +2,6 @@
 """Tests for the ChipInput builtin component."""
 import re
 
-import pytest
-
 from pyjinhx.builtins import ChipInput
 
 

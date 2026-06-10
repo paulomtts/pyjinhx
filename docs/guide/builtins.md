@@ -1,6 +1,6 @@
 # Built-in UI components
 
-Optional package **`pyjinhx.builtins`** registers twenty-eight [`BaseComponent`](../api/base-component.md) subclasses. Import:
+Optional package **`pyjinhx.builtins`** registers thirty-three [`BaseComponent`](../api/base-component.md) subclasses. Import:
 
 ```python
 from pyjinhx.builtins import (
@@ -10,16 +10,19 @@ from pyjinhx.builtins import (
     Badge,
     Breadcrumb,
     Card,
+    ChipInput,
     ConfirmDialog,
     Divider,
     Dropdown,
     Drawer,
     EmptyState,
+    FormField,
     LazyPanel,
     RegionLoader,
     Modal,
     Notification,
     PageLoader,
+    PasswordInput,
     Popover,
     PopoverPanel,
     PopoverTrigger,
@@ -27,15 +30,17 @@ from pyjinhx.builtins import (
     PromptDialog,
     Panel,
     PanelTrigger,
+    SegmentedControl,
     Skeleton,
     Spinner,
     TabGroup,
     ToastHost,
+    ToggleSwitch,
     Tooltip,
 )
 ```
 
-`__all__` matches that set of twenty-eight names.
+`__all__` matches that set of thirty-three names.
 
 **Conventions:** Markup classes use the **`px-`** prefix; overrides use **`--px-`** custom properties. Builtin CSS also references **theme variables** (`--surface`, `--border`, `--text`, `--radius-md`, `--shadow-md`, `--transition`, `--brand`, …)—define those in your global CSS or map them to your design system. See [builtin-conventions.md](./builtin-conventions.md) for the full per-component contract (auto-id, `class_name`, `extra_attrs`, `js`/`css`, headless IIFE JS under `window.px`, cancelable `px:*:before-*` events).
 
@@ -55,11 +60,13 @@ from pyjinhx.builtins import (
 | Badge | `badge.css` | — |
 | Breadcrumb | `breadcrumb.css` | — |
 | Card | `card.css` | — |
+| ChipInput | `chip-input.css` | `chip-input.js` |
 | ConfirmDialog | `confirm-dialog.css` | `confirm-dialog.js` |
 | Divider | `divider.css` | — |
 | Drawer | `drawer.css` | `drawer.js` |
 | Dropdown | `dropdown.css` | *(via popover.js, extra-asset)* |
 | EmptyState | `empty-state.css` | — |
+| FormField | `form-field.css` | — |
 | LazyPanel | — | — |
 | RegionLoader | `region-loader.css` | `region-loader.js` |
 | Modal | `modal.css` | `modal.js` |
@@ -67,15 +74,18 @@ from pyjinhx.builtins import (
 | PageLoader | `page-loader.css` | `page-loader.js` |
 | Panel | `panel.css` | `panel.js` |
 | PanelTrigger | `panel-trigger.css` | *(panel.js from Panel)* |
+| PasswordInput | `password-input.css` | `password-input.js` |
 | Popover | `popover.css` | `popover.js` |
 | PopoverPanel | *(from Popover)* | *(from Popover)* |
 | PopoverTrigger | *(from Popover)* | *(from Popover)* |
 | Progress | `progress.css` | — |
 | PromptDialog | `prompt-dialog.css` | `prompt-dialog.js` |
+| SegmentedControl | `segmented-control.css` | — |
 | Skeleton | `skeleton.css` | — |
 | Spinner | `spinner.css` | — |
 | TabGroup | `tab-group.css` | `tab-group.js` |
 | ToastHost | `toast-host.css` | `toast-host.js` |
+| ToggleSwitch | `toggle-switch.css` | — |
 | Tooltip | `tooltip.css` | `tooltip.js` (IIFE, no API) |
 
 **Children-vs-`content` tag gotcha (children-mapping components):** Several components map children to a single attribute (e.g. Tooltip `tip`, Notification `content`, PanelTrigger `content`). If you use `Renderer.render()` with PascalCase tags, do **not** supply both child text and the corresponding attribute on the same tag—use body text as the child *or* the attribute, not both.
@@ -696,6 +706,136 @@ API: `px.loader.page.show()`, `px.loader.page.hide()`, `px.loader.page.reset()`,
 
 ---
 
+## Form controls
+
+---
+
+## ChipInput
+
+Tag-style multi-value input. Each chip carries its own `<input type="hidden">` so values post with any enclosing form and removal is pure DOM removal. **Assets:** `chip-input.css`, `chip-input.js`.
+
+| Field | Type | Default | Description |
+| --- | --- | --- | --- |
+| `name` | `str` | — | `name` attribute on the hidden inputs and the `data-name` data attribute. |
+| `values` | `list[str]` | `[]` | Initial chip values. |
+| `placeholder` | `str` | `"Add…"` | Placeholder text in the text field. |
+| `remove_label` | `str` | `"Remove"` | `aria-label` on every remove button; also stored as `data-remove-label` so JS can copy it into dynamically built chips. |
+| `disabled` | `bool` | `False` | When `True`, no text field or remove buttons are rendered; `data-disabled` is set on the root. |
+
+```python
+ChipInput(id="tags", name="tags", values=["python", "jinja2"], placeholder="Add tag…")
+```
+
+**DOM contract.** Root `div.px-chip-input[data-px-chip-input][data-name][data-remove-label]`; state: `[data-disabled]`.
+Each chip: `span.px-chip-input__chip[data-px-chip]` containing a `.px-chip-input__label`, `input[type=hidden]`, and (when enabled) `button.px-chip-input__remove[data-px-chip-remove]`.
+Text field: `input.px-chip-input__field`.
+Events (bubble from root): `px:chip-input:before-add`* (detail `{value}`), `px:chip-input:add`, `px:chip-input:before-remove`* (detail `{value}`), `px:chip-input:remove` — `*` = cancelable. Commit triggers: `Enter`, `,`, `focusout`; Backspace on empty field removes the last chip.
+
+**Classes:** `px-chip-input`, `px-chip-input__chip`, `px-chip-input__label`, `px-chip-input__remove`, `px-chip-input__field`. Theming: see [ChipInput tokens](#chipinput-tokens).
+
+---
+
+## FormField
+
+Labelled control wrapper with help text and error state. **Assets:** `form-field.css` only.
+
+| Field | Type | Default | Description |
+| --- | --- | --- | --- |
+| `label` | `str` | `""` | Label text; renders `<label>` only when non-empty. |
+| `for_id` | `str` | `""` | When set, adds `for="{{ for_id }}"` to the label. |
+| `content` | `str \| BaseComponent` | `""` | Control HTML (an `<input>`, `<select>`, etc.). |
+| `help` | `str` | `""` | Help text shown below the control — suppressed when `error` is set. |
+| `error` | `str` | `""` | Error message; adds `px-form-field--error` to the root and a `role="alert"` paragraph with id `{{ id }}-error`. |
+| `required` | `bool` | `False` | Renders a `<span class="px-form-field__required" aria-hidden="true">*</span>` inside the label. |
+
+```python
+FormField(
+    id="email-field",
+    label="Email",
+    for_id="email-input",
+    content='<input id="email-input" type="email" name="email">',
+    error="Please enter a valid email address.",
+    required=True,
+)
+```
+
+**DOM contract.** Root `div.px-form-field`; error state `div.px-form-field--error`. Help paragraph id: `{{ id }}-help`. Error paragraph id: `{{ id }}-error`, `role="alert"`. No JS.
+
+**Classes:** `px-form-field`, `px-form-field--error`, `px-form-field__label`, `px-form-field__required`, `px-form-field__control`, `px-form-field__help`, `px-form-field__error`. Theming: see [FormField tokens](#formfield-tokens).
+
+---
+
+## ToggleSwitch
+
+Accessible on/off toggle backed by a visually-hidden checkbox. **Assets:** `toggle-switch.css` only — no JS.
+
+| Field | Type | Default | Description |
+| --- | --- | --- | --- |
+| `name` | `str` | `""` | `name` attribute on the hidden checkbox. |
+| `value` | `str` | `"on"` | `value` attribute on the checkbox. |
+| `checked` | `bool` | `False` | When `True`, adds `checked` to the checkbox. |
+| `label` | `str` | `""` | Visible label text rendered after the track; omitted when empty. |
+| `disabled` | `bool` | `False` | When `True`, adds `disabled` to the checkbox. |
+
+```python
+ToggleSwitch(id="dark-mode", name="dark_mode", checked=True, label="Dark mode")
+```
+
+**DOM contract.** Root `label.px-toggle-switch` wrapping a visually-hidden `input[type=checkbox].px-toggle-switch__input` (uses `clip-path: inset(50%)`, not `display:none` — keeps focus and click). CSS keys on `:checked + .px-toggle-switch__track` for the active state and `:focus-visible + .px-toggle-switch__track` for the ring. No JS API.
+
+**Classes:** `px-toggle-switch`, `px-toggle-switch__input`, `px-toggle-switch__track`, `px-toggle-switch__thumb`, `px-toggle-switch__label`. Theming: see [ToggleSwitch tokens](#toggleswitch-tokens).
+
+---
+
+## SegmentedControl
+
+Pill-style radio group for mutually exclusive options. **Assets:** `segmented-control.css` only — no JS.
+
+| Field | Type | Default | Description |
+| --- | --- | --- | --- |
+| `name` | `str` | — | `name` on all radio inputs. |
+| `options` | `list[tuple[str, str]]` | `[]` | `(value, label)` pairs. Also accepts a JSON string when passed as a tag attribute. |
+| `selected` | `str` | `""` | Value of the pre-checked option. |
+| `disabled` | `bool` | `False` | When `True`, adds `disabled` to all radio inputs. |
+
+```python
+SegmentedControl(
+    id="view-switcher",
+    name="view",
+    options=[("list", "List"), ("grid", "Grid"), ("table", "Table")],
+    selected="list",
+)
+```
+
+**DOM contract.** Root `div.px-segmented-control[role="radiogroup"]`. Each option: `label.px-segmented-control__segment` > `input[type=radio].px-segmented-control__input` (visually hidden, `clip-path: inset(50%)`) + `span.px-segmented-control__text`. CSS keys on `:checked + .px-segmented-control__text` for the active segment. No JS API.
+
+**Classes:** `px-segmented-control`, `px-segmented-control__segment`, `px-segmented-control__input`, `px-segmented-control__text`. Theming: see [SegmentedControl tokens](#segmentedcontrol-tokens).
+
+---
+
+## PasswordInput
+
+Password field with a show/hide toggle button. **Assets:** `password-input.css`, `password-input.js`.
+
+| Field | Type | Default | Description |
+| --- | --- | --- | --- |
+| `name` | `str` | `"password"` | `name` on the `<input>`. |
+| `placeholder` | `str` | `""` | `placeholder` on the `<input>`; omitted when empty. |
+| `autocomplete` | `str` | `"current-password"` | `autocomplete` attribute. |
+| `required` | `bool` | `False` | When `True`, adds `required` to the `<input>`. |
+| `show_label` | `str` | `"Show password"` | `aria-label` on the toggle button when password is hidden. Also stored as `data-show-label`. |
+| `hide_label` | `str` | `"Hide password"` | `aria-label` on the toggle button when password is visible. Also stored as `data-hide-label`. |
+
+```python
+PasswordInput(id="login-pw", autocomplete="current-password", required=True)
+```
+
+**DOM contract.** Root `div.px-password-input[data-px-password]`. Field: `input.px-password-input__field` with id `{{ id }}-field`. Toggle button: `button.px-password-input__toggle[data-px-password-toggle][data-show-label][data-hide-label]`; `aria-pressed` reflects state (`"false"` when hidden, `"true"` when shown); `.px-password-input__toggle--on` class added when visible. No `px:*` events — state is readable from `aria-pressed` on the button. No JS API under `window.px`.
+
+**Classes:** `px-password-input`, `px-password-input__field`, `px-password-input__toggle`, `px-password-input__toggle--on`, `px-password-input__eye`. Theming: see [PasswordInput tokens](#passwordinput-tokens).
+
+---
+
 ## Example
 
 ```python
@@ -1031,3 +1171,63 @@ Content uses `var(--font-size-sm)`, `var(--text)`; close hover uses `var(--surfa
 | `--px-page-loader-backdrop` | `rgb(0 0 0 / 0.15)` |
 | `--px-page-loader-z` | `9999` |
 | `--px-page-loader-size` | `2rem` |
+
+### ChipInput tokens
+
+| Token | Default |
+| --- | --- |
+| `--px-chip-input-gap` | `0.375rem` |
+| `--px-chip-input-chip-bg` | `var(--surface-alt)` |
+| `--px-chip-input-chip-fg` | `var(--text)` |
+| `--px-chip-input-chip-radius` | `var(--radius-full)` |
+| `--px-chip-input-border` | `var(--border)` |
+| `--px-chip-input-focus` | `var(--border-focus, var(--border))` |
+| `--px-chip-input-radius` | `var(--radius-md)` |
+| `--px-chip-input-padding` | `0.375rem 0.5rem` |
+
+### FormField tokens
+
+| Token | Default |
+| --- | --- |
+| `--px-form-field-gap` | `0.375rem` |
+| `--px-form-field-label-size` | `0.875em` |
+| `--px-form-field-label-color` | `var(--text)` |
+| `--px-form-field-help-color` | `var(--text-muted)` |
+| `--px-form-field-error` | `#b3261e` |
+
+### ToggleSwitch tokens
+
+| Token | Default |
+| --- | --- |
+| `--px-toggle-switch-width` | `2.75rem` |
+| `--px-toggle-switch-height` | `1.5rem` |
+| `--px-toggle-switch-track` | `var(--border)` |
+| `--px-toggle-switch-track-on` | `var(--brand)` |
+| `--px-toggle-switch-thumb` | `#fff` |
+| `--px-toggle-switch-radius` | `var(--radius-full)` |
+| `--px-toggle-switch-gap` | `0.5rem` |
+
+### SegmentedControl tokens
+
+| Token | Default |
+| --- | --- |
+| `--px-segmented-control-bg` | `var(--surface-alt)` |
+| `--px-segmented-control-border` | `var(--border)` |
+| `--px-segmented-control-radius` | `var(--radius-full)` |
+| `--px-segmented-control-gap` | `0.25rem` |
+| `--px-segmented-control-padding` | `0.25rem` |
+| `--px-segmented-control-active-bg` | `var(--surface)` |
+| `--px-segmented-control-active-fg` | `var(--text)` |
+| `--px-segmented-control-active-shadow` | `0 1px 3px rgb(0 0 0 / 0.12)` |
+| `--px-segmented-control-fg` | `var(--text-muted)` |
+| `--px-segmented-control-focus` | `var(--border-focus, var(--brand))` |
+
+### PasswordInput tokens
+
+| Token | Default |
+| --- | --- |
+| `--px-password-input-border` | `var(--border)` |
+| `--px-password-input-radius` | `var(--radius-md)` |
+| `--px-password-input-focus` | `var(--border-focus, var(--brand))` |
+| `--px-password-input-toggle-color` | `var(--text-muted)` |
+| `--px-password-input-eye-size` | `1.25rem` |

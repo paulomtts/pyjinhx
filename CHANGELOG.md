@@ -8,6 +8,11 @@ headless IIFE JS under the single `window.px` namespace, cancelable `px:*:before
 and a documented DOM contract. New builtins: ConfirmDialog, PromptDialog, ToastHost,
 AvatarStack, PageLoader (28 exported components).
 
+### Added
+
+- Five new form-control builtins (33 exported components total): `ChipInput`, `FormField`,
+  `PasswordInput`, `SegmentedControl`, `ToggleSwitch`.
+
 ### Breaking changes (0.7.x → 0.8.0)
 
 | 0.7.x | 0.8.0 |
