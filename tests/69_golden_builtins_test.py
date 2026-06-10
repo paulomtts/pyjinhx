@@ -21,6 +21,7 @@ CASES = [
     ("alert_dismissible", lambda: b.Alert(id="g", title="Heads up", body="x", dismissible=True, variant="warning")),
     ("avatar_initials", lambda: b.Avatar(id="g", initials="PM")),
     ("avatar_image", lambda: b.Avatar(id="g", src="/u.png", alt="User", size="lg")),
+    ("avatar_stack", lambda: b.AvatarStack(id="g", avatars=[b.Avatar(id="g-a", initials="AB")], extra_count=2)),
     ("badge_default", lambda: b.Badge(id="g", label="New")),
     ("breadcrumb", lambda: b.Breadcrumb(id="g", items=[("Home", "/"), ("Here", None)])),
     ("card_full", lambda: b.Card(id="g", title="T", body="B", footer="F")),
@@ -33,6 +34,7 @@ CASES = [
     ("loading_overlay", lambda: b.LoadingOverlay(id="g")),
     ("modal", lambda: b.Modal(id="g", title="T", body="B", footer="F")),
     ("notification", lambda: b.Notification(id="g", content="Hi", corner="bottom-right", timeout=0)),
+    ("page_loader", lambda: b.PageLoader(id="g")),
     ("panel", lambda: b.Panel(id="g", panels={"a": "<p>A</p>", "b": "<p>B</p>"})),
     ("panel_trigger", lambda: b.PanelTrigger(id="g", panel_id="host", panel="a", content="Tab A")),
     ("popover_compound", lambda: b.Popover(id="g", content=(
@@ -45,6 +47,7 @@ CASES = [
     ("skeleton_text", lambda: b.Skeleton(id="g", lines=2)),
     ("spinner", lambda: b.Spinner(id="g")),
     ("tab_group", lambda: b.TabGroup(id="g", tabs={"One": "<p>1</p>", "Two": "<p>2</p>"})),
+    ("toast_host", lambda: b.ToastHost(id="g")),
     ("tooltip", lambda: b.Tooltip(id="g", trigger="?", tip="Help")),
 ]
 
