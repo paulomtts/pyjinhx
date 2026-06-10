@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.8.0 — Builtins v2
+## 0.8.0 — Builtins v2 (2026-06-10)
 
 Every builtin now follows one contract: optional auto-generated `id`, `class_name`,
 `extra_attrs` (validated dict rendered on the root), all copy as props (aria-labels included),
