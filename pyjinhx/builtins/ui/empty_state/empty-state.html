@@ -1,4 +1,4 @@
-<div class="px-empty-state" id="{{ id }}">
+<div class="px-empty-state{% if class_name %} {{ class_name }}{% endif %}" id="{{ id }}"{% for k, v in extra_attrs.items() %} {{ k }}="{{ v }}"{% endfor %}>
     {% if image %}
     <div class="px-empty-state__image">{{ image }}</div>
     {% endif %}

@@ -1,7 +1,7 @@
 import json
 from typing import Annotated, Any
 
-from pydantic import BeforeValidator, Field
+from pydantic import BeforeValidator, Field, field_validator
 
 from pyjinhx import BaseComponent
 
@@ -21,3 +21,11 @@ class Breadcrumb(BaseComponent):
         list[tuple[str, str | None]],
         BeforeValidator(_coerce_breadcrumb_items),
     ] = Field(default_factory=list)
+    aria_label: str = "Breadcrumb"
+    class_name: str = ""
+    extra_attrs: dict[str, str] = Field(default_factory=dict)
+
+    @field_validator("extra_attrs", mode="before")
+    @classmethod
+    def _sanitize_extra_attrs(cls, v: dict) -> dict:
+        return {k: str(val).replace("<", "").replace(">", "") for k, val in v.items()}
