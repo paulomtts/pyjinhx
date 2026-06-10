@@ -1,0 +1,71 @@
+/* Design tokens for the component gallery demo pages.
+   Light values default; dark values override via media query. */
+:root {
+  --surface: #ffffff;
+  --surface-alt: #f4f4f5;
+  --text: #111318;
+  --text-muted: #6b7280;
+  --border: #d1d5db;
+  --border-focus: #6366f1;
+  --brand: #4f46e5;
+  --brand-subtle: #eef2ff;
+  --brand-muted: #a5b4fc;
+  --error: #ef4444;
+  --error-bg: #fef2f2;
+  --error-border: #fca5a5;
+  --success: #22c55e;
+  --warning: #f59e0b;
+  --font-size-xs: 0.75rem;
+  --font-size-sm: 0.875rem;
+  --font-size-md: 1rem;
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-full: 9999px;
+  --shadow-md: 0 4px 20px rgb(0 0 0 / 0.1);
+  --transition: 0.15s ease;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --surface: #1a1b1e;
+    --surface-alt: #25262b;
+    --text: #e8e9ed;
+    --text-muted: #909296;
+    --border: #373a40;
+    --border-focus: #818cf8;
+    --brand: #4c6ef5;
+    --brand-subtle: #1e1f3a;
+    --brand-muted: #a5b4fc;
+    --error: #fa5252;
+    --error-bg: #2d1515;
+    --error-border: #7f1d1d;
+    --success: #51cf66;
+    --warning: #fcc419;
+    --shadow-md: 0 4px 20px rgb(0 0 0 / 0.35);
+  }
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 1rem;
+  font-family: system-ui, sans-serif;
+  background: var(--surface);
+  color: var(--text);
+}
+
+.px-demo-btn {
+  padding: 0.4rem 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-alt);
+  color: var(--text);
+  cursor: pointer;
+}
