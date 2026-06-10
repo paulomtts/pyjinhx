@@ -4,6 +4,7 @@ import sys
 from pathlib import Path
 
 import pytest
+import pyjinhx.builtins
 
 DOCS = Path(__file__).resolve().parents[2] / "docs"
 sys.path.insert(0, str(DOCS))
@@ -52,7 +53,5 @@ def test_every_factory_renders():
 
 
 def test_registry_covers_all_builtins():
-    import pyjinhx.builtins as builtins
-
     folded = {"LazyPanel", "PanelTrigger", "PopoverTrigger", "PopoverPanel"}
-    assert set(DEMOS) == set(builtins.__all__) - folded
+    assert set(DEMOS) == set(pyjinhx.builtins.__all__) - folded

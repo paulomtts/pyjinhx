@@ -98,9 +98,9 @@ from pyjinhx.builtins import (
 
 ## Badge
 
-<!-- demo: Badge -->
-
 Small status label. **Assets:** `badge.css` only.
+
+<!-- demo: Badge -->
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
@@ -116,9 +116,9 @@ Small status label. **Assets:** `badge.css` only.
 
 ## Modal
 
-<!-- demo: Modal -->
-
 Native `<dialog>`. **Assets:** `modal.css`, `modal.js`.
+
+<!-- demo: Modal -->
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
@@ -148,9 +148,9 @@ Events (bubble from the root): `px:modal:before-open`*, `px:modal:open`,
 
 ## Notification
 
-<!-- demo: Notification -->
-
 Fixed-position toast. **Assets:** `notification.css`, `notification.js`.
+
+<!-- demo: Notification -->
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
@@ -173,9 +173,9 @@ Maps children to `content`; see the [children-vs-`content` note](#built-in-ui-co
 
 ## Popover
 
-<!-- demo: Popover -->
-
 Click-toggle compound. Three separate components; compose them by placing `PopoverTrigger` and `PopoverPanel` **as children inside `Popover`**. **Assets:** `popover.css`, `popover.js` (IIFE under `px.popover`).
+
+<!-- demo: Popover -->
 
 ```python
 Popover(
@@ -234,9 +234,9 @@ API: `px.popover.open(idOrEl)`, `px.popover.close(idOrEl)`, `px.popover.toggle(i
 
 ## RegionLoader
 
-<!-- demo: RegionLoader -->
-
 In-place loading veil over a positioned ancestor. **Assets:** `region-loader.css`, `region-loader.js`.
+
+<!-- demo: RegionLoader -->
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
@@ -256,9 +256,9 @@ API: `px.loader.region.show/hide/reset(id)` and `px.loader.region.wrap(id, promi
 
 ## Tooltip
 
-<!-- demo: Tooltip -->
-
 Compact focus/hover hint. **Assets:** `tooltip.css`, `tooltip.js` (IIFE — no API, behavior only).
+
+<!-- demo: Tooltip -->
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
@@ -274,9 +274,9 @@ Compact focus/hover hint. **Assets:** `tooltip.css`, `tooltip.js` (IIFE — no A
 
 ## Alert
 
-<!-- demo: Alert -->
-
 Inline status banner. **Assets:** `alert.css`, `alert.js`.
+
+<!-- demo: Alert -->
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
@@ -296,9 +296,9 @@ Events: `px:alert:before-dismiss`* (cancelable), `px:alert:dismiss` — `detail 
 
 ## Dropdown
 
-<!-- demo: Dropdown -->
-
 Button + anchored panel backed by the shared popover engine. **Assets:** `dropdown.css` only (ships no own JS — `popover.js` is included via the `js` extra-asset field whenever a Dropdown renders).
+
+<!-- demo: Dropdown -->
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
@@ -318,9 +318,9 @@ Trigger id is `{{ id }}-trigger`, menu is `{{ id }}-menu`.
 
 ## Drawer
 
-<!-- demo: Drawer -->
-
 `<dialog>` sheet from an edge. **Assets:** `drawer.css`, `drawer.js`.
+
+<!-- demo: Drawer -->
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
@@ -344,9 +344,9 @@ API: `px.drawer.open(id)`, `px.drawer.close(id)`.
 
 ## Progress
 
-<!-- demo: Progress -->
-
 Determinate or indeterminate meter. **Assets:** `progress.css` only.
+
+<!-- demo: Progress -->
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
@@ -362,9 +362,9 @@ Determinate or indeterminate meter. **Assets:** `progress.css` only.
 
 ## Skeleton
 
-<!-- demo: Skeleton -->
-
 Placeholder shimmer blocks. **Assets:** `skeleton.css` only.
+
+<!-- demo: Skeleton -->
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
@@ -379,9 +379,9 @@ Placeholder shimmer blocks. **Assets:** `skeleton.css` only.
 
 ## EmptyState
 
-<!-- demo: EmptyState -->
-
 Centered empty view. **Assets:** `empty-state.css` only (template file **`empty-state.html`** next to `empty_state.py`).
+
+<!-- demo: EmptyState -->
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
@@ -429,9 +429,9 @@ LazyPanel(id="comments", url="/posts/42/comments", content=Skeleton(id="comments
 
 ## Divider
 
-<!-- demo: Divider -->
-
 Separator line. **Assets:** `divider.css` only.
+
+<!-- demo: Divider -->
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
@@ -446,9 +446,9 @@ Separator line. **Assets:** `divider.css` only.
 
 ## Spinner
 
-<!-- demo: Spinner -->
-
 Inline loading indicator. **Assets:** `spinner.css` only.
+
+<!-- demo: Spinner -->
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
@@ -463,9 +463,9 @@ Inline loading indicator. **Assets:** `spinner.css` only.
 
 ## Avatar
 
-<!-- demo: Avatar -->
-
 Image or initials in a circle. **Assets:** `avatar.css` only.
+
+<!-- demo: Avatar -->
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
@@ -483,9 +483,9 @@ Image or initials in a circle. **Assets:** `avatar.css` only.
 
 ## Card
 
-<!-- demo: Card -->
-
 Grouped content with optional header and footer. **Assets:** `card.css` only.
+
+<!-- demo: Card -->
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
@@ -502,9 +502,9 @@ Grouped content with optional header and footer. **Assets:** `card.css` only.
 
 ## Breadcrumb
 
-<!-- demo: Breadcrumb -->
-
 Ordered trail of links. **Assets:** `breadcrumb.css` only.
+
+<!-- demo: Breadcrumb -->
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
@@ -520,9 +520,9 @@ Ordered trail of links. **Assets:** `breadcrumb.css` only.
 
 ## TabGroup
 
-<!-- demo: TabGroup -->
-
 Tab buttons and panels. **Assets:** `tab-group.css`, `tab-group.js`.
+
+<!-- demo: TabGroup -->
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
@@ -539,9 +539,9 @@ Tab buttons and panels. **Assets:** `tab-group.css`, `tab-group.js`.
 
 ## Panel
 
-<!-- demo: Panel -->
-
 Host for **distributed** tab-like switching: all bodies render here; controls are separate [`PanelTrigger`](#paneltrigger) components. **Unstyled** aside from `hidden` panels. **Assets:** `panel.css`, `panel.js`.
+
+<!-- demo: Panel -->
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
@@ -575,9 +575,9 @@ Maps children to `content`; see the [children-vs-`content` note](#built-in-ui-co
 
 ## ConfirmDialog
 
-<!-- demo: ConfirmDialog -->
-
 Accessible `<dialog>` singleton that replaces `window.confirm`. Mount once in the layout; `px.confirm()` is available everywhere. **Assets:** `confirm-dialog.css`, `confirm-dialog.js`.
+
+<!-- demo: ConfirmDialog -->
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
@@ -619,9 +619,9 @@ Falls back to `window.confirm` if no `ConfirmDialog` is mounted.
 
 ## PromptDialog
 
-<!-- demo: PromptDialog -->
-
 Accessible `<dialog>` singleton that replaces `window.prompt`. Mount once in the layout; `px.prompt()` is available everywhere. **Assets:** `prompt-dialog.css`, `prompt-dialog.js`.
+
+<!-- demo: PromptDialog -->
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
@@ -652,9 +652,9 @@ Returns `null` on cancel/Escape/backdrop close. Falls back to `window.prompt` if
 
 ## ToastHost
 
-<!-- demo: ToastHost -->
-
 HX-Trigger-driven toast container singleton. Mount once in the layout. **Assets:** `toast-host.css`, `toast-host.js`.
+
+<!-- demo: ToastHost -->
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
@@ -694,9 +694,9 @@ Individual toasts: `div.px-toast.px-toast--<level>` > `.px-toast__message` + `bu
 
 ## AvatarStack
 
-<!-- demo: AvatarStack -->
-
 Overlapping row of avatars with optional overflow count. **Assets:** `avatar-stack.css` only.
+
+<!-- demo: AvatarStack -->
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
@@ -723,9 +723,9 @@ AvatarStack(
 
 ## PageLoader
 
-<!-- demo: PageLoader -->
-
 Full-page navigation loader. Mount once at the top of the layout body. **Assets:** `page-loader.css`, `page-loader.js`.
+
+<!-- demo: PageLoader -->
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
@@ -760,9 +760,9 @@ API: `px.loader.page.show()`, `px.loader.page.hide()`, `px.loader.page.reset()`,
 
 ## ChipInput
 
-<!-- demo: ChipInput -->
-
 Tag-style multi-value input. Each chip carries its own `<input type="hidden">` so values post with any enclosing form and removal is pure DOM removal. **Assets:** `chip-input.css`, `chip-input.js`.
+
+<!-- demo: ChipInput -->
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
@@ -793,9 +793,9 @@ Events (bubble from root): `px:chip-input:before-add`* (detail `{value}`), `px:c
 
 ## FormField
 
-<!-- demo: FormField -->
-
 Labelled control wrapper with help text and error state. **Assets:** `form-field.css` only.
+
+<!-- demo: FormField -->
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
@@ -825,9 +825,9 @@ FormField(
 
 ## ToggleSwitch
 
-<!-- demo: ToggleSwitch -->
-
 Accessible on/off toggle backed by a visually-hidden checkbox. **Assets:** `toggle-switch.css` only — no JS.
+
+<!-- demo: ToggleSwitch -->
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
@@ -849,9 +849,9 @@ ToggleSwitch(id="dark-mode", name="dark_mode", checked=True, label="Dark mode")
 
 ## SegmentedControl
 
-<!-- demo: SegmentedControl -->
-
 Pill-style radio group for mutually exclusive options. **Assets:** `segmented-control.css` only — no JS.
+
+<!-- demo: SegmentedControl -->
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
@@ -877,9 +877,9 @@ SegmentedControl(
 
 ## PasswordInput
 
-<!-- demo: PasswordInput -->
-
 Password field with a show/hide toggle button. **Assets:** `password-input.css`, `password-input.js`.
+
+<!-- demo: PasswordInput -->
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
