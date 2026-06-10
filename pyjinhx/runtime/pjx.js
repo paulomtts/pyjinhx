@@ -116,6 +116,9 @@
   }
 
   function pjxBeginLoading(evt) {
+    if (evt.defaultPrevented) {
+      return; // cancelled request: its xhr is never sent, so loadend never fires
+    }
     var xhr = evt.detail && evt.detail.xhr;
     var elt = evt.detail && evt.detail.elt;
     var root = elt && elt.closest ? elt.closest("[data-pjx-id][data-pjx-reacts]") : null;

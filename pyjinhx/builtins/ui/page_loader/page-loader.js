@@ -72,6 +72,7 @@
     }
 
     document.addEventListener('htmx:beforeRequest', (e) => {
+        if (e.defaultPrevented) return; // cancelled request: its xhr is never sent
         if (!shouldTrack(e.detail)) return;
         const xhr = e.detail && e.detail.xhr;
         if (!xhr) return;
