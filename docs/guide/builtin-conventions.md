@@ -16,6 +16,10 @@ Every pyjinhx builtin follows the same contract, so knowing one means knowing al
 4. **All copy is props.** Every user-visible string, aria-labels included, has an English default
    you can replace: `Modal(title="Excluir?", close_label="Fechar")`.
 5. **JS is headless.** Builtin JavaScript never writes inline styles for state — visibility and variants are classes/attributes; computed positioning coordinates (tooltip/popover placement) are the one sanctioned inline-style use. Communication is through `px:*` DOM events and `data-px-*` attributes; programmatic APIs live under the single `window.px` namespace.
+   Async-state JS follows the runtime's concurrency pattern: a ref-count per scope,
+   release keyed to each request's `loadend` (terminal on load, error, abort, and
+   timeout), and state re-applied after `htmx:afterSettle` for nodes a swap replaced
+   mid-flight.
 6. **The DOM contract is API.** Each builtin's documentation ends with a "DOM contract" block —
    stable classes, `data-px-*` attributes, events, state attributes. We version those like code.
 

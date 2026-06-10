@@ -18,7 +18,6 @@
     }
 
     let pending = 0;
-    const tracked = new WeakSet();
 
     function show() {
         pending += 1;
@@ -74,15 +73,12 @@
 
     document.addEventListener('htmx:beforeRequest', (e) => {
         if (!shouldTrack(e.detail)) return;
-        tracked.add(e.detail);
+        const xhr = e.detail && e.detail.xhr;
+        if (!xhr) return;
         show();
-    });
-    ['htmx:afterRequest', 'htmx:responseError', 'htmx:sendError'].forEach((name) => {
-        document.addEventListener(name, (e) => {
-            if (!tracked.has(e.detail)) return;
-            tracked.delete(e.detail);
-            hide();
-        });
+        // loadend is terminal on load/error/abort/timeout — even when htmx
+        // discards a superseded response. Same release cue as pjx.js.
+        xhr.addEventListener('loadend', () => hide(), { once: true });
     });
     document.addEventListener('htmx:historyRestore', reset);
 

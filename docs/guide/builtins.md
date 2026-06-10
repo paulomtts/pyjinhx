@@ -688,6 +688,7 @@ Add `data-px-loader` to any element to make its htmx requests activate the loade
 **DOM contract.** Root `div.px-page-loader[data-px-page-loader]` (state: `.px-page-loader--active`).
 `data-nav-targets` — comma-separated ids; htmx GET requests targeting any of these activate the loader.
 `data-px-loader` on any element marks its htmx requests as loader-tracked regardless of target.
+Tracking is detected via `htmx:beforeRequest`; the loader releases via the request's `loadend` (terminal on load, error, abort, and timeout); history navigations reset via `htmx:historyRestore`.
 Events (non-cancelable, bubble from the root): `px:page-loader:show`, `px:page-loader:hide`.
 API: `px.loader.page.show()`, `px.loader.page.hide()`, `px.loader.page.reset()`, `px.loader.page.wrap(promise)`.
 
