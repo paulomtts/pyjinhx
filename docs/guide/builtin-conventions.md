@@ -52,8 +52,8 @@ document.getElementById("confirm-del").addEventListener("px:modal:before-close",
 
 ## The `window.px` namespace
 
-`px.modal` · `px.drawer` · `px.popover` · `px.notification` · `px.overlay` (region loading) ·
-`px.loader` (page loading) · `px.confirm` · `px.prompt` · `px.toast`. Open/close/show/hide
+`px.modal` · `px.drawer` · `px.popover` · `px.notification` · `px.loader.region` (region busy-state) ·
+`px.loader.page` (page navigation) · `px.confirm` · `px.prompt` · `px.toast`. Open/close/show/hide
 functions return `false` when a `before-*` hook canceled the action.
 
 ## Theming

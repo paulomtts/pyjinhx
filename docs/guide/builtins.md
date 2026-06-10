@@ -16,7 +16,7 @@ from pyjinhx.builtins import (
     Drawer,
     EmptyState,
     LazyPanel,
-    LoadingOverlay,
+    RegionLoader,
     Modal,
     Notification,
     PageLoader,
@@ -61,7 +61,7 @@ from pyjinhx.builtins import (
 | Dropdown | `dropdown.css` | *(via popover.js, extra-asset)* |
 | EmptyState | `empty-state.css` | — |
 | LazyPanel | — | — |
-| LoadingOverlay | `loading-overlay.css` | `loading-overlay.js` |
+| RegionLoader | `region-loader.css` | `region-loader.js` |
 | Modal | `modal.css` | `modal.js` |
 | Notification | `notification.css` | `notification.js` |
 | PageLoader | `page-loader.css` | `page-loader.js` |
@@ -214,9 +214,9 @@ API: `px.popover.open(idOrEl)`, `px.popover.close(idOrEl)`, `px.popover.toggle(i
 
 ---
 
-## LoadingOverlay
+## RegionLoader
 
-In-place loading veil over a positioned ancestor. **Assets:** `loading-overlay.css`, `loading-overlay.js`.
+In-place loading veil over a positioned ancestor. **Assets:** `region-loader.css`, `region-loader.js`.
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
@@ -224,13 +224,13 @@ In-place loading veil over a positioned ancestor. **Assets:** `loading-overlay.c
 
 **Layout:** Overlay is `position: absolute; inset: 0`. Parent must be **`position: relative`** (or any non-`static` value) so coverage is correct.
 
-Also works as an **`hx-indicator`** target: htmx adds `htmx-request` to the element, and the overlay CSS responds to `.px-loading-overlay.htmx-request` by activating the veil — no JS call required. For programmatic use, `show`/`hide` are **reference-counted per `id`** so overlapping async operations are safe.
+Also works as an **`hx-indicator`** target: htmx adds `htmx-request` to the element, and the overlay CSS responds to `.px-region-loader.htmx-request` by activating the veil — no JS call required. For programmatic use, `show`/`hide` are **reference-counted per `id`** so overlapping async operations are safe.
 
-**DOM contract.** Root `.px-loading-overlay` (state: `.px-loading-overlay--visible`, `.px-loading-overlay--hiding`; also responds to `.htmx-request` as an htmx indicator).
-Events (non-cancelable): `px:overlay:show`, `px:overlay:hide`.
-API: `px.overlay.show(id)`, `px.overlay.hide(id)`, `px.overlay.reset(id)`.
+**DOM contract.** Root `.px-region-loader` (state: `.px-region-loader--visible`, `.px-region-loader--hiding`; also responds to `.htmx-request` as an htmx indicator).
+Events (non-cancelable): `px:region-loader:show`, `px:region-loader:hide`.
+API: `px.loader.region.show(id)`, `px.loader.region.hide(id)`, `px.loader.region.reset(id)`.
 
-**Classes:** `px-loading-overlay`; state `px-loading-overlay--visible`, `px-loading-overlay--hiding`; `px-loading-overlay__spinner`. Theming: see [LoadingOverlay tokens](#loadingoverlay-tokens).
+**Classes:** `px-region-loader`; state `px-region-loader--visible`, `px-region-loader--hiding`; `px-region-loader__spinner`. Theming: see [RegionLoader tokens](#regionloader-tokens).
 
 ---
 
@@ -688,8 +688,8 @@ Add `data-px-loader` to any element to make its htmx requests activate the loade
 **DOM contract.** Root `div.px-page-loader[data-px-page-loader]` (state: `.px-page-loader--active`).
 `data-nav-targets` — comma-separated ids; htmx GET requests targeting any of these activate the loader.
 `data-px-loader` on any element marks its htmx requests as loader-tracked regardless of target.
-Events (non-cancelable, bubble from the root): `px:loader:show`, `px:loader:hide`.
-API: `px.loader.show()`, `px.loader.hide()`, `px.loader.reset()`, `px.loader.wrap(promise)`.
+Events (non-cancelable, bubble from the root): `px:page-loader:show`, `px:page-loader:hide`.
+API: `px.loader.page.show()`, `px.loader.page.hide()`, `px.loader.page.reset()`, `px.loader.page.wrap(promise)`.
 
 **Classes:** `px-page-loader`, `px-page-loader--active`, `px-page-loader__spinner`. Theming: see [PageLoader tokens](#pageloader-tokens).
 
@@ -815,17 +815,17 @@ Content uses `var(--font-size-sm)`, `var(--text)`; close hover uses `var(--surfa
 | `--px-popover-padding` | `var(--space-3, 0.75rem) var(--space-4, 1rem)` |
 | `--px-popover-z` | `300` |
 
-### LoadingOverlay tokens
+### RegionLoader tokens
 
 | Token | Default |
 | --- | --- |
-| `--px-loading-overlay-bg` | `rgb(0 0 0 / 0.55)` |
-| `--px-loading-overlay-backdrop` | `blur(2px)` |
-| `--px-loading-overlay-z` | `100` |
-| `--px-loading-overlay-spinner-size` | `2.5rem` |
-| `--px-loading-overlay-spinner-width` | `3px` |
-| `--px-loading-overlay-spinner-color` | `var(--brand)` |
-| `--px-loading-overlay-spinner-track` | `rgb(255 255 255 / 0.1)` |
+| `--px-region-loader-bg` | `rgb(0 0 0 / 0.55)` |
+| `--px-region-loader-backdrop` | `blur(2px)` |
+| `--px-region-loader-z` | `100` |
+| `--px-region-loader-spinner-size` | `2.5rem` |
+| `--px-region-loader-spinner-width` | `3px` |
+| `--px-region-loader-spinner-color` | `var(--brand)` |
+| `--px-region-loader-spinner-track` | `rgb(255 255 255 / 0.1)` |
 
 ### Tooltip tokens
 

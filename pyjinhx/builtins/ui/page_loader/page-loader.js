@@ -1,6 +1,7 @@
 (function () {
     window.px = window.px || {};
-    if (px.loader) return;
+    px.loader = px.loader || {};
+    if (px.loader.page) return;
 
     function fire(el, name) {
         el.dispatchEvent(new CustomEvent(name, { bubbles: true, detail: {} }));
@@ -24,7 +25,7 @@
         const el = loaderEl();
         if (pending === 1 && el && !el.classList.contains('px-page-loader--active')) {
             el.classList.add('px-page-loader--active');
-            fire(el, 'px:loader:show');
+            fire(el, 'px:page-loader:show');
         }
     }
 
@@ -36,7 +37,7 @@
                 const el = loaderEl();
                 if (el && el.classList.contains('px-page-loader--active')) {
                     el.classList.remove('px-page-loader--active');
-                    fire(el, 'px:loader:hide');
+                    fire(el, 'px:page-loader:hide');
                 }
             }
         }, 300);
@@ -96,5 +97,5 @@
         coldLoadDone();
     }
 
-    px.loader = { show: show, hide: hide, wrap: wrap, reset: reset };
+    px.loader.page = { show: show, hide: hide, wrap: wrap, reset: reset };
 }());

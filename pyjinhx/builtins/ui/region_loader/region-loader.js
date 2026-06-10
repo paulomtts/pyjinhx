@@ -1,6 +1,7 @@
 (function () {
     window.px = window.px || {};
-    if (px.overlay) return;
+    px.loader = px.loader || {};
+    if (px.loader.region) return;
 
     const counts = new Map();
 
@@ -13,9 +14,9 @@
     // Only strip classes while a hide is genuinely in progress; a stale
     // animationend (e.g. the fade-in after a cancelled hide) must be a no-op.
     function finishHide(e) {
-        if (!e.target.classList.contains('px-loading-overlay--hiding')) return;
-        e.target.classList.remove('px-loading-overlay--visible', 'px-loading-overlay--hiding');
-        fire(e.target, 'px:overlay:hide', {});
+        if (!e.target.classList.contains('px-region-loader--hiding')) return;
+        e.target.classList.remove('px-region-loader--visible', 'px-region-loader--hiding');
+        fire(e.target, 'px:region-loader:hide', {});
     }
 
     function show(id) {
@@ -24,9 +25,9 @@
         const count = counts.get(id) || 0;
         counts.set(id, count + 1);
         if (count > 0) return;
-        overlay.classList.remove('px-loading-overlay--hiding');
-        overlay.classList.add('px-loading-overlay--visible');
-        fire(overlay, 'px:overlay:show', {});
+        overlay.classList.remove('px-region-loader--hiding');
+        overlay.classList.add('px-region-loader--visible');
+        fire(overlay, 'px:region-loader:show', {});
     }
 
     function hide(id) {
@@ -39,7 +40,7 @@
             return;
         }
         counts.delete(id);
-        overlay.classList.add('px-loading-overlay--hiding');
+        overlay.classList.add('px-region-loader--hiding');
         overlay.addEventListener('animationend', finishHide);
     }
 
@@ -47,8 +48,8 @@
         counts.delete(id);
         const overlay = document.getElementById(id);
         if (!overlay) return;
-        overlay.classList.remove('px-loading-overlay--visible', 'px-loading-overlay--hiding');
+        overlay.classList.remove('px-region-loader--visible', 'px-region-loader--hiding');
     }
 
-    px.overlay = { show: show, hide: hide, reset: reset };
+    px.loader.region = { show: show, hide: hide, reset: reset };
 }());

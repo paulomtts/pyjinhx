@@ -10,10 +10,10 @@ import pyjinhx.builtins as b
 
 SWEPT: list[type] = [
     b.Alert, b.Avatar, b.AvatarStack, b.Badge, b.Breadcrumb, b.Card, b.ConfirmDialog,
-    b.Divider, b.Drawer, b.Dropdown, b.EmptyState, b.LazyPanel, b.LoadingOverlay,
+    b.Divider, b.Drawer, b.Dropdown, b.EmptyState, b.LazyPanel,
     b.Modal, b.Notification, b.PageLoader, b.Panel, b.PanelTrigger,
     b.Popover, b.PopoverPanel, b.PopoverTrigger, b.Progress, b.PromptDialog,
-    b.Skeleton, b.Spinner, b.TabGroup, b.ToastHost, b.Tooltip,
+    b.RegionLoader, b.Skeleton, b.Spinner, b.TabGroup, b.ToastHost, b.Tooltip,
 ]
 
 UI_ROOT = os.path.join(os.path.dirname(b.__file__), "ui")

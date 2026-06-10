@@ -19,7 +19,7 @@ from pyjinhx.builtins import (
     Drawer,
     Dropdown,
     EmptyState,
-    LoadingOverlay,
+    RegionLoader,
     Modal,
     Notification,
     Panel,
@@ -61,15 +61,15 @@ _SHOWCASE_TEMPLATE = """
 {{ popover }}
 </section>
 
-<h2>Loading overlay</h2>
+<h2>Region loader</h2>
 <section>
 <div style="position:relative;min-height:100px;padding:1rem;border:1px dashed var(--border);border-radius:var(--radius-md);">
 {{ loading_overlay }}
 <p style="margin:0;color:var(--text-muted);font-size:var(--font-size-sm);">Parent is position: relative</p>
 </div>
 <div class="demo-row" style="margin-top:0.75rem;">
-<button type="button" class="demo-btn" onclick="px.overlay.show('g-overlay')">Show overlay</button>
-<button type="button" class="demo-btn" onclick="px.overlay.hide('g-overlay')">Hide overlay</button>
+<button type="button" class="demo-btn" onclick="px.loader.region.show('g-overlay')">Show overlay</button>
+<button type="button" class="demo-btn" onclick="px.loader.region.hide('g-overlay')">Hide overlay</button>
 </div>
 </section>
 
@@ -164,7 +164,7 @@ class BuiltinsGalleryPage(BaseComponent):
     modal: Modal
     notification: Notification
     popover: Popover
-    loading_overlay: LoadingOverlay
+    loading_overlay: RegionLoader
     tooltip: Tooltip
     alert: Alert
     dropdown: Dropdown
@@ -219,7 +219,7 @@ def _gallery_inner_html() -> str:
                 + str(PopoverPanel(id="g-pop-p", content="Popover details appear on click.").render())
             ),
         ),
-        loading_overlay=LoadingOverlay(id="g-overlay"),
+        loading_overlay=RegionLoader(id="g-overlay"),
         tooltip=Tooltip(
             id="g-tip",
             trigger="Focus or hover",
