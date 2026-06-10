@@ -1,14 +1,16 @@
 # Built-in UI components
 
-Optional package **`pyjinhx.builtins`** registers twenty-one [`BaseComponent`](../api/base-component.md) subclasses. Import:
+Optional package **`pyjinhx.builtins`** registers twenty-eight [`BaseComponent`](../api/base-component.md) subclasses. Import:
 
 ```python
 from pyjinhx.builtins import (
     Alert,
     Avatar,
+    AvatarStack,
     Badge,
     Breadcrumb,
     Card,
+    ConfirmDialog,
     Divider,
     Dropdown,
     Drawer,
@@ -17,30 +19,66 @@ from pyjinhx.builtins import (
     LoadingOverlay,
     Modal,
     Notification,
+    PageLoader,
     Popover,
+    PopoverPanel,
+    PopoverTrigger,
     Progress,
+    PromptDialog,
     Panel,
     PanelTrigger,
     Skeleton,
     Spinner,
     TabGroup,
+    ToastHost,
     Tooltip,
 )
 ```
 
-`__all__` matches that set of twenty-one names.
+`__all__` matches that set of twenty-eight names.
 
-**Conventions:** Markup classes use the **`px-`** prefix; overrides use **`--px-`** custom properties. Builtin CSS also references **theme variables** (`--surface`, `--border`, `--text`, `--radius-md`, `--shadow-md`, `--transition`, `--brand`, …)—define those in your global CSS or map them to your design system.
+**Conventions:** Markup classes use the **`px-`** prefix; overrides use **`--px-`** custom properties. Builtin CSS also references **theme variables** (`--surface`, `--border`, `--text`, `--radius-md`, `--shadow-md`, `--transition`, `--brand`, …)—define those in your global CSS or map them to your design system. See [builtin-conventions.md](./builtin-conventions.md) for the full per-component contract (auto-id, `class_name`, `extra_attrs`, `js`/`css`, headless IIFE JS under `window.px`, cancelable `px:*:before-*` events).
 
 **Template discovery:** Builtins ship inside `site-packages`, not under your app's Jinja loader root, so PascalCase tags do **not** auto-discover them — `<Tooltip/>` raises a `FileNotFoundError` unless the class was imported once at startup (`import pyjinhx.builtins` or any of the imports above), which registers it. For registered builtin classes, the renderer **falls back** to adjacent package templates: each component's Jinja template lives next to its Python source in `pyjinhx/builtins/ui/<component>/` (e.g. `pyjinhx/builtins/ui/modal/modal.html`).
 
-**Inherited fields:** Every component inherits **`id`** (required), **`js`** / **`css`** (extra asset paths), **`render()`**, and **`__html__()`** from [`BaseComponent`](../api/base-component.md). Because `id` is universal it is omitted from the per-component props tables below. `extra="allow"` lets you pass additional kwargs into the Jinja context.
+**Inherited fields:** Every component inherits **`id`** (optional — omitted/falsy ids become `px-<n>`; reactive components still need explicit ids), **`js`** / **`css`** (extra asset paths), **`render()`**, and **`__html__()`** from [`BaseComponent`](../api/base-component.md). `id` is omitted from per-component props tables below. Every builtin also accepts `class_name` (extra classes appended to the root) and `extra_attrs` (validated `dict[str, str]` rendered on the root element).
 
 **Theming:** Per-component `--px-*` tokens are collected in the [Theming tokens](#theming-tokens) appendix. Each component section points there.
 
-**CSS-only components** (no bundled script): Badge, Tooltip, Progress, Skeleton, EmptyState, Divider, Spinner, Avatar, Card, Breadcrumb. (Tooltip and Popover ship CSS plus an IIFE that exports no globals.) LazyPanel ships no assets at all.
+**Asset summary:**
 
-**Children-vs-`content` tag gotcha (children-mapping components):** Several components map children to a single attribute (e.g. Tooltip `tip`, Popover `card_content`, Notification `content`, PanelTrigger `content`). If you use `Renderer.render()` with PascalCase tags, do **not** supply both child text and the corresponding attribute on the same tag—use body text as the child *or* the attribute, not both.
+| Component | CSS | JS |
+|---|---|---|
+| Alert | `alert.css` | `alert.js` |
+| Avatar | `avatar.css` | — |
+| AvatarStack | `avatar-stack.css` | — |
+| Badge | `badge.css` | — |
+| Breadcrumb | `breadcrumb.css` | — |
+| Card | `card.css` | — |
+| ConfirmDialog | `confirm-dialog.css` | `confirm-dialog.js` |
+| Divider | `divider.css` | — |
+| Drawer | `drawer.css` | `drawer.js` |
+| Dropdown | `dropdown.css` | *(via popover.js, extra-asset)* |
+| EmptyState | `empty-state.css` | — |
+| LazyPanel | — | — |
+| LoadingOverlay | `loading-overlay.css` | `loading-overlay.js` |
+| Modal | `modal.css` | `modal.js` |
+| Notification | `notification.css` | `notification.js` |
+| PageLoader | `page-loader.css` | `page-loader.js` |
+| Panel | `panel.css` | `panel.js` |
+| PanelTrigger | `panel-trigger.css` | *(panel.js from Panel)* |
+| Popover | `popover.css` | `popover.js` |
+| PopoverPanel | *(from Popover)* | *(from Popover)* |
+| PopoverTrigger | *(from Popover)* | *(from Popover)* |
+| Progress | `progress.css` | — |
+| PromptDialog | `prompt-dialog.css` | `prompt-dialog.js` |
+| Skeleton | `skeleton.css` | — |
+| Spinner | `spinner.css` | — |
+| TabGroup | `tab-group.css` | `tab-group.js` |
+| ToastHost | `toast-host.css` | `toast-host.js` |
+| Tooltip | `tooltip.css` | `tooltip.js` (IIFE, no API) |
+
+**Children-vs-`content` tag gotcha (children-mapping components):** Several components map children to a single attribute (e.g. Tooltip `tip`, Notification `content`, PanelTrigger `content`). If you use `Renderer.render()` with PascalCase tags, do **not** supply both child text and the corresponding attribute on the same tag—use body text as the child *or* the attribute, not both.
 
 **Backdrop click (Modal and Drawer):** Both render a native `<dialog>`; a document `click` listener treats a click whose target is the `<dialog>` root itself (the backdrop) as a close. Any native `<dialog>` clicked directly is affected—use unique ids and avoid stacking multiple dialogs unless you adjust this.
 
@@ -57,9 +95,10 @@ Small status label. **Assets:** `badge.css` only.
 | `label` | `str` | `""` | Inner text. |
 | `color` | literal | `"neutral"` | `brand`, `error`, `neutral`, `muted` → `px-badge--{color}`. |
 | `shape` | literal | `"md"` | `square`, `sm`, `md`, `full` → `px-badge--{shape}`. |
-| `class_name` | `str` | `""` | Extra classes after the `px-badge*` classes. |
 
-**Classes:** `px-badge`; color modifiers `px-badge--brand`, `--error`, `--neutral`, `--muted`; shape `px-badge--square`, `--sm`, `--md`, `--full`. Theming: see [appendix](#badge-1).
+**DOM contract.** Root `.px-badge`; no JS API.
+
+**Classes:** `px-badge`; color modifiers `px-badge--brand`, `--error`, `--neutral`, `--muted`; shape `px-badge--square`, `--sm`, `--md`, `--full`. Theming: see [appendix](#badge).
 
 ---
 
@@ -73,17 +112,23 @@ Native `<dialog>`. **Assets:** `modal.css`, `modal.js`.
 | `header` | `str \| BaseComponent` | `""` | If set, replaces the built-in title row. |
 | `body` | `str \| BaseComponent` | `""` | Main content; wrapper id `{{ id }}-body`. |
 | `footer` | `str \| BaseComponent` | `""` | If non-empty, renders `<footer class="px-modal__footer">`. |
+| `close_label` | `str` | `"Close"` | `aria-label` for the close button. |
+| `open_on_mount` | `bool` | `False` | When `True`, adds `data-px-open-on-mount`; JS opens the dialog as soon as it mounts (e.g. via `hx-swap="beforeend"`). |
+| `remove_on_close` | `bool` | `False` | When `True`, adds `data-px-remove-on-close`; JS removes the element from the DOM on close. |
 
-Globals from **`modal.js`** (injected with the component):
+**DOM contract.** Root `dialog.px-modal` (state: `[open]`, `.px-modal--closing`).
+Attributes: `data-px-open="<id>"` on any element opens it on click; `data-px-close` inside closes it;
+`data-px-open-on-mount`, `data-px-remove-on-close` reflect the lifecycle props.
+Events (bubble from the root): `px:modal:before-open`*, `px:modal:open`,
+`px:modal:before-close`*, `px:modal:close` — `*` = cancelable, `detail = {reason, trigger}`,
+`reason ∈ escape|backdrop|api|trigger`. API: `px.modal.open(id)`, `px.modal.close(id)`.
 
-| Function | Description |
-| --- | --- |
-| `openModal(id)` | `document.getElementById(id).showModal()` if present. |
-| `closeModal(id)` | Adds `px-modal--closing`, on `animationend` removes it and calls `dialog.close()`. |
+```html
+<button data-px-open="info-modal">Open</button>
+<Modal id="info-modal" title="Hello" body="Content here."/>
+```
 
-Backdrop click closes the dialog (see [intro note](#built-in-ui-components)).
-
-**Classes:** `px-modal`; closing state `px-modal--closing`; `px-modal__box`, `__header`, `__title`, `__close`, `__body`, `__footer`. Theming: see [appendix](#modal-1).
+**Classes:** `px-modal`; closing state `px-modal--closing`; `px-modal__box`, `__header`, `__title`, `__close`, `__body`, `__footer`. Theming: see [appendix](#modal).
 
 ---
 
@@ -96,41 +141,74 @@ Fixed-position toast. **Assets:** `notification.css`, `notification.js`.
 | `content` | `str \| BaseComponent` | `""` | Message body. |
 | `corner` | literal | `"top-right"` | `top-right`, `top-left`, `bottom-right`, `bottom-left`. |
 | `timeout` | `int` | `5000` | Auto-dismiss ms; `0` disables. Rendered as `data-timeout`. |
+| `autoshow` | `bool` | `True` | When `True`, adds `data-px-autoshow`; JS shows the notification as soon as it mounts. |
+| `dismiss_label` | `str` | `"Dismiss"` | `aria-label` for the dismiss button. |
 
-Globals from **`notification.js`**:
+**DOM contract.** Root `.px-notification` (state: `.px-notification--visible`, `.px-notification--hiding`).
+`data-px-autoshow` triggers auto-show on mount. `data-px-close` inside hides it.
+Events: `px:notification:before-show`*, `px:notification:show`, `px:notification:before-hide`*, `px:notification:hide` — `*` = cancelable, `detail = {reason, trigger}`.
+API: `px.notification.show(id)`, `px.notification.hide(id)`.
 
-| Function | Description |
-| --- | --- |
-| `showNotification(id)` | Clears `px-notification--hiding`, adds `px-notification--visible`. Reads `data-timeout`; if numeric `> 0`, schedules `hideNotification(id)`. |
-| `hideNotification(id)` | If visible, adds `px-notification--hiding`; on `animationend` removes `visible` / `hiding`. |
-
-**Classes:** `px-notification`; placement `px-notification--top-right`, `--top-left`, `--bottom-right`, `--bottom-left`; JS state `px-notification--visible`, `px-notification--hiding`; `px-notification__content`, `px-notification__close`. Theming: see [appendix](#notification-1).
+**Classes:** `px-notification`; placement `px-notification--top-right`, `--top-left`, `--bottom-right`, `--bottom-left`; JS state `px-notification--visible`, `px-notification--hiding`; `px-notification__content`, `px-notification__close`. Theming: see [appendix](#notification).
 
 ---
 
 ## Popover
 
-Hover trigger + floating card. **Assets:** `popover.css`, `popover.js` (IIFE, no globals).
+Click-toggle compound. Three separate components; compose them by placing `PopoverTrigger` and `PopoverPanel` **as children inside `Popover`**. **Assets:** `popover.css`, `popover.js` (IIFE under `px.popover`).
+
+```python
+Popover(
+    id="menu",
+    content=str(
+        PopoverTrigger(id="menu-t", content="Open") +
+        PopoverPanel(id="menu-p", role="menu", content="…")
+    ),
+)
+```
+
+Or with PascalCase tags:
+
+```html
+<Popover id="menu">
+  <PopoverTrigger id="menu-t">Open</PopoverTrigger>
+  <PopoverPanel id="menu-p" role="menu">…</PopoverPanel>
+</Popover>
+```
+
+### Popover
+
+Root wrapper — sets up the `data-px-popover` attribute scope.
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
-| `content` | `str \| BaseComponent` | `""` | Trigger label (`px-popover-trigger__body`). |
-| `card_content` | `str \| BaseComponent` | `""` | Panel body (`px-popover-card`). |
-| `position` | literal | `"anchor"` | `anchor` (below trigger) or `follow` (pointer). → `data-popover-position`. |
-| `backdrop` | `bool` | `False` | When `True`, emits `data-popover-backdrop` on the trigger (dim layer + lifted z-index). |
+| `content` | `str \| BaseComponent` | `""` | Children (trigger + panel). |
+| `align` | literal | `"start"` | `start` or `end` (panel alignment) → `px-popover--align-end`. |
+| `behavior` | `bool` | `True` | When `True`, adds `data-px-popover` (JS picks it up). |
 
-**Runtime behavior:** Mouse over the trigger opens the card; leaving the trigger (and its descendants) starts a short delayed hide. With **`data-popover-backdrop`** on the trigger (set `backdrop=True`, or add the attribute in custom markup), the script shows a full-screen dim layer, lifts the trigger z-index, and injects `#px-popover-backdrop` if needed.
+### PopoverTrigger
 
-No exported functions. Behavior is driven by:
+| Field | Type | Default | Description |
+| --- | --- | --- | --- |
+| `content` | `str \| BaseComponent` | `""` | Button/div label. |
+| `tag` | literal | `"button"` | `button` or `div` (role="button"). |
+| `role` | literal | `""` | `aria-haspopup` value: `menu`, `listbox`, `dialog`, or `""`. |
+| `behavior` | `bool` | `True` | When `True`, adds `data-px-toggle`. |
 
-| Mechanism | Role |
-| --- | --- |
-| `.px-popover-trigger` / `.px-popover-card` | Discovery and visibility (`px-popover-card--visible`). |
-| `data-popover-position` | `anchor` or `follow` (pointer tracking). |
-| `data-popover-backdrop` | If present (any value), backdrop + trigger lift. |
-| `#px-popover-backdrop` | Shared element; class `px-popover-backdrop`, state `px-popover-backdrop--visible`. |
+### PopoverPanel
 
-**Classes:** `px-popover-trigger`, `px-popover-trigger__body`, `px-popover-card`, `px-popover-card--visible`, `px-popover-backdrop`, `px-popover-backdrop--visible`. Backdrop fill is fixed **`rgba(0, 0, 0, 0.35)`** in CSS (not a token); JS sets `z-index: calc(var(--px-popover-z) + 1)` on the trigger when the backdrop is active. Theming: see [appendix](#popover-1).
+| Field | Type | Default | Description |
+| --- | --- | --- | --- |
+| `content` | `str \| BaseComponent` | `""` | Panel body. |
+| `as_form` | `bool` | `False` | Render panel as `<form>` instead of `<div>`. |
+| `role` | literal | `""` | ARIA `role` attribute (`menu`, `listbox`, `dialog`, or `""`). |
+| `behavior` | `bool` | `True` | When `True`, adds `data-px-popover-panel` (hidden by default). |
+
+**DOM contract.** Root `[data-px-popover]` (the Popover wrapper). Trigger: `[data-px-toggle]` on the trigger element; `aria-expanded` synced by JS. Panel: `[data-px-popover-panel]` element, `hidden` when closed. `data-px-close` inside the panel closes it. `data-px-toggle="<panel-id>"` on any element opens/closes a named panel.
+Events (bubble from `[data-px-popover]`): `px:popover:before-open`*, `px:popover:open`, `px:popover:before-close`*, `px:popover:close` — `detail = {reason, trigger}`.
+API: `px.popover.open(idOrEl)`, `px.popover.close(idOrEl)`, `px.popover.toggle(idOrEl)`.
+
+**Classes:** `px-popover`, `px-popover--align-end`, `px-popover__trigger`, `px-popover__panel`. Theming: see [appendix](#popover).
 
 ---
 
@@ -138,25 +216,25 @@ No exported functions. Behavior is driven by:
 
 In-place loading veil over a positioned ancestor. **Assets:** `loading-overlay.css`, `loading-overlay.js`.
 
-This component declares no extra fields beyond the inherited `id`.
+| Field | Type | Default | Description |
+| --- | --- | --- | --- |
+| `aria_label` | `str` | `"Loading"` | Accessible label (`role="status"`). |
 
 **Layout:** Overlay is `position: absolute; inset: 0`. Parent must be **`position: relative`** (or any non-`static` value) so coverage is correct.
 
-Globals from **`loading-overlay.js`**. Show/hide are **reference-counted per `id`**, so overlapping async operations are safe: the overlay stays visible until every `show` is matched by a `hide`.
+Also works as an **`hx-indicator`** target: htmx adds `htmx-request` to the element, and the overlay CSS responds to `.px-loading-overlay.htmx-request` by activating the veil — no JS call required. For programmatic use, `show`/`hide` are **reference-counted per `id`** so overlapping async operations are safe.
 
-| Function | Description |
-| --- | --- |
-| `showLoadingOverlay(id)` | Increments the count; on 0 → 1 removes `px-loading-overlay--hiding` and adds `px-loading-overlay--visible`. |
-| `hideLoadingOverlay(id)` | Decrements the count (floor 0); on 1 → 0 adds `px-loading-overlay--hiding`, then `animationend` clears both state classes. |
-| `resetLoadingOverlay(id)` | Zeroes the count and clears both state classes immediately (no animation) — escape hatch for stranded counts, e.g. a missed `hide` on an error path or htmx history back-navigation. |
+**DOM contract.** Root `.px-loading-overlay` (state: `.px-loading-overlay--visible`, `.px-loading-overlay--hiding`; also responds to `.htmx-request` as an htmx indicator).
+Events (non-cancelable): `px:overlay:show`, `px:overlay:hide`.
+API: `px.overlay.show(id)`, `px.overlay.hide(id)`, `px.overlay.reset(id)`.
 
-**Classes:** `px-loading-overlay`; state `px-loading-overlay--visible`, `px-loading-overlay--hiding`; `px-loading-overlay__spinner`. Spinner ring uses **`var(--radius-full)`** from your theme. Theming: see [appendix](#loadingoverlay-1).
+**Classes:** `px-loading-overlay`; state `px-loading-overlay--visible`, `px-loading-overlay--hiding`; `px-loading-overlay__spinner`. Theming: see [appendix](#loadingoverlay).
 
 ---
 
 ## Tooltip
 
-Compact focus/hover hint. **Assets:** `tooltip.css`, `tooltip.js` (IIFE).
+Compact focus/hover hint. **Assets:** `tooltip.css`, `tooltip.js` (IIFE — no API, behavior only).
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
@@ -164,7 +242,9 @@ Compact focus/hover hint. **Assets:** `tooltip.css`, `tooltip.js` (IIFE).
 | `tip` | `str \| BaseComponent` | `""` | `role="tooltip"` body. |
 | `placement` | literal | `"top"` | `top`, `bottom`, `start`, `end` → `data-px-tooltip-placement`. |
 
-Maps children to `tip`; see the [children-vs-`content` note](#built-in-ui-components). Theming: see [appendix](#tooltip-1).
+**DOM contract.** Root `.px-tooltip`. `data-px-tooltip-placement` drives JS positioning (`top`/`bottom`/`start`/`end`). Tip shows on `mouseover`/`focusin` of `.px-tooltip__trigger`; hides on `mouseout`/`focusout`; repositions on `scroll`. No JS API (`px._tooltipWired` guard only).
+
+Maps children to `tip`; see the [children-vs-`content` note](#built-in-ui-components). Theming: see [appendix](#tooltip).
 
 ---
 
@@ -177,33 +257,34 @@ Inline status banner. **Assets:** `alert.css`, `alert.js`.
 | `variant` | literal | `"info"` | `info`, `success`, `warning`, `error` → `px-alert--{variant}`. |
 | `title` | `str` | `""` | Optional heading. |
 | `body` | `str \| BaseComponent` | `""` | Main copy. |
-| `dismissible` | `bool` | `False` | When true, renders dismiss control calling `dismissPxAlert`. |
+| `dismissible` | `bool` | `False` | When `True`, renders a dismiss button with `data-px-close`. |
+| `dismiss_label` | `str` | `"Dismiss"` | `aria-label` for the dismiss button. |
 
-| Function | Description |
-| --- | --- |
-| `dismissPxAlert(id)` | Adds `px-alert--dismissed` (hides via `display: none`). |
+**DOM contract.** Root `.px-alert` (state: `.px-alert--dismissed` — set by JS, hides via `display: none`).
+`data-px-close` inside triggers dismissal.
+Events: `px:alert:before-dismiss`* (cancelable), `px:alert:dismiss` — `detail = {reason: 'trigger', trigger}`.
 
-Variants use `color-mix` with `--brand`, `--success`, `--warning`, or `--error` / `--error-bg` / `--error-border` where applicable. Theming: see [appendix](#alert-1).
+Variants use `color-mix` with `--brand`, `--success`, `--warning`, or `--error` / `--error-bg` / `--error-border` where applicable. Theming: see [appendix](#alert).
 
 ---
 
 ## Dropdown
 
-Button + anchored panel. **Assets:** `dropdown.css`, `dropdown.js`.
+Button + anchored panel backed by the shared popover engine. **Assets:** `dropdown.css` only (ships no own JS — `popover.js` is included via the `js` extra-asset field whenever a Dropdown renders).
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
 | `trigger` | `str \| BaseComponent` | `""` | Button label. |
-| `menu` | `str \| BaseComponent` | `""` | Panel HTML (e.g. links or custom markup). |
+| `items` | `list[str \| BaseComponent]` | `[]` | Menu items rendered inside the panel. |
+| `align` | literal | `"start"` | `start` or `end` → `px-dropdown--align-end`. |
+| `menu_label` | `str` | `"Submenu"` | `aria-label` on the menu panel. |
+| `behavior` | `bool` | `True` | When `False`, removes all `data-px-*` wiring. |
 
 Trigger id is `{{ id }}-trigger`, menu is `{{ id }}-menu`.
 
-| Function | Description |
-| --- | --- |
-| `togglePxDropdown(id)` | Toggles `hidden` on the menu and `aria-expanded` on the trigger. |
-| `closePxDropdown(id)` | Closes the menu. |
+**DOM contract.** Root `.px-dropdown` with `data-px-popover`. Trigger: `button.px-dropdown__trigger` with `data-px-toggle="{{ id }}-menu"`, `aria-expanded` synced by `popover.js`. Panel: `div.px-dropdown__menu[data-px-popover-panel][role="menu"]`, `hidden` when closed. All popover events and API apply: `px.popover.open/close/toggle(panelId)`. Document click outside closes the menu; `Escape` closes all open popovers.
 
-**Listeners:** `document` `click` closes any open menu whose root does not contain the event target. `keydown` `Escape` closes all open menus. Theming: see [appendix](#dropdown-1).
+**Classes:** `px-dropdown`, `px-dropdown--align-end`, `px-dropdown__trigger`, `px-dropdown__menu`. Theming: see [appendix](#dropdown).
 
 ---
 
@@ -217,13 +298,17 @@ Trigger id is `{{ id }}-trigger`, menu is `{{ id }}-menu`.
 | `title` | `str \| BaseComponent` | `""` | Header title. |
 | `body` | `str \| BaseComponent` | `""` | Scrollable body. |
 | `footer` | `str \| BaseComponent` | `""` | Optional footer strip. |
+| `close_label` | `str` | `"Close"` | `aria-label` for the close button. |
+| `open_on_mount` | `bool` | `False` | Adds `data-px-open-on-mount`; JS opens on arrival. |
+| `remove_on_close` | `bool` | `False` | Adds `data-px-remove-on-close`; JS removes element on close. |
 
-| Function | Description |
-| --- | --- |
-| `openPxDrawer(id)` | `showModal()` on the dialog. |
-| `closePxDrawer(id)` | Adds `px-drawer--closing`; on `animationend`, removes it and `dialog.close()`. |
+**DOM contract.** Root `dialog.px-drawer` (state: `[open]`, `.px-drawer--closing`).
+`data-px-open="<id>"` on any element opens it; `data-px-close` inside closes it;
+`data-px-open-on-mount`, `data-px-remove-on-close` reflect lifecycle props.
+Events: `px:drawer:before-open`*, `px:drawer:open`, `px:drawer:before-close`*, `px:drawer:close` — `*` = cancelable, `detail = {reason, trigger}`, `reason ∈ escape|backdrop|api|trigger`.
+API: `px.drawer.open(id)`, `px.drawer.close(id)`.
 
-Backdrop click closes the dialog (see [intro note](#built-in-ui-components)). Theming: see [appendix](#drawer-1).
+Backdrop click closes the dialog (see [intro note](#built-in-ui-components)). Theming: see [appendix](#drawer).
 
 ---
 
@@ -237,7 +322,9 @@ Determinate or indeterminate meter. **Assets:** `progress.css` only.
 | `max` | `float` | `100` | Passed to `<progress max="…">`. |
 | `label` | `str` | `""` | Optional `px-progress__label`; wires `aria-labelledby` when set. |
 
-Theming: see [appendix](#progress-1).
+**DOM contract.** Root `.px-progress`; no JS API.
+
+Theming: see [appendix](#progress).
 
 ---
 
@@ -249,9 +336,10 @@ Placeholder shimmer blocks. **Assets:** `skeleton.css` only.
 | --- | --- | --- | --- |
 | `variant` | literal | `"text"` | `text` (stacked lines), `circle`, or `rect`. |
 | `lines` | `int` | `3` | For `text`, count of `px-skeleton__line` rows. |
-| `class_name` | `str` | `""` | Extra classes on the root. |
 
-Theming: see [appendix](#skeleton-1).
+**DOM contract.** Root `.px-skeleton`; no JS API.
+
+Theming: see [appendix](#skeleton).
 
 ---
 
@@ -265,26 +353,39 @@ Centered empty view. **Assets:** `empty-state.css` only (template file **`empty-
 | `title` | `str \| BaseComponent` | `""` | Heading. |
 | `description` | `str \| BaseComponent` | `""` | Supporting text. |
 | `action` | `str \| BaseComponent` | `""` | Optional slot (e.g. button markup). |
-| `actions` | `list[str \| BaseComponent]` | `[]` | Optional flex row of slots (e.g. suggestion chips); renders after `action` when both are set. |
+| `actions` | `list[str \| BaseComponent]` | `[]` | Optional flex row of slots; renders after `action` when both are set. |
 
-Theming: see [appendix](#emptystate-1).
+**DOM contract.** Root `.px-empty-state`; no JS API.
+
+Theming: see [appendix](#emptystate).
 
 ---
 
 ## LazyPanel
 
-HTMX lazy-load wrapper: a single `div` that fetches `url` on `trigger` and swaps itself with the response. **Assets:** none (template file **`lazy-panel.html`** next to `lazy_panel.py`).
+HTMX lazy-load wrapper: a single `div` that fetches `url` on a computed trigger and swaps itself with the response. **Assets:** none.
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
 | `url` | `str` | required | Endpoint for the deferred content (`hx-get`). |
-| `trigger` | `str` | `"revealed"` | `hx-trigger` value; the default fires when scrolled into view. |
-| `swap` | `str` | `"outerHTML"` | `hx-swap` strategy; the default replaces the wrapper itself. |
-| `content` | `str \| BaseComponent` | `""` | Optional placeholder shown until the fetch lands (e.g. a [`Skeleton`](#skeleton)). |
+| `when` | literal | `"viewport"` | `viewport` (scroll-revealed), `reveal` (`px:reveal` from nearest `[data-px-region]`), `load` (immediately). Overridden by `trigger`. |
+| `trigger` | `str` | `""` | Explicit `hx-trigger` value; overrides `when` entirely when set. |
+| `swap` | `str` | `"outerHTML"` | `hx-swap` strategy. |
+| `content` | `str \| BaseComponent` | `""` | Placeholder shown until the fetch lands (e.g. a [`Skeleton`](#skeleton)). |
+
+`when` preset mapping:
+
+| `when` | `hx-trigger` value |
+| --- | --- |
+| `viewport` (default) | `revealed` |
+| `reveal` | `px:reveal from:closest [data-px-region] once` |
+| `load` | `load` |
 
 ```python
 LazyPanel(id="comments", url="/posts/42/comments", content=Skeleton(id="comments-skel"))
 ```
+
+**DOM contract.** Root `.px-lazy-panel`; no JS (pure HTMX). `data-px-region` on a Panel or PanelTrigger host fires `px:reveal`/`px:before-reveal` events that `when="reveal"` listens for.
 
 **Classes:** `px-lazy-panel` (unstyled hook). No theming tokens.
 
@@ -298,9 +399,10 @@ Separator line. **Assets:** `divider.css` only.
 | --- | --- | --- | --- |
 | `orientation` | literal | `"horizontal"` | `horizontal` (default `hr`) or `vertical` (bar). |
 | `label` | `str` | `""` | If set with horizontal orientation, flex row with label between lines. |
-| `class_name` | `str` | `""` | Extra classes on the root. |
 
-**Classes:** `px-divider--horizontal`, `px-divider--vertical`, `px-divider--labeled`, `px-divider__line`, `px-divider__label`. Theming: see [appendix](#divider-1).
+**DOM contract.** Root `.px-divider`; no JS API.
+
+**Classes:** `px-divider--horizontal`, `px-divider--vertical`, `px-divider--labeled`, `px-divider__line`, `px-divider__label`. Theming: see [appendix](#divider).
 
 ---
 
@@ -313,13 +415,15 @@ Inline loading indicator. **Assets:** `spinner.css` only.
 | `size` | literal | `"md"` | `sm`, `md`, or `lg`. |
 | `label` | `str` | `"Loading"` | Visually hidden; exposed to assistive tech. |
 
-**Classes:** `px-spinner`, `px-spinner--sm|md|lg`, `px-spinner__ring`, `px-spinner__label` (screen-reader-only). Theming: see [appendix](#spinner-1).
+**DOM contract.** Root `.px-spinner`; no JS API.
+
+**Classes:** `px-spinner`, `px-spinner--sm|md|lg`, `px-spinner__ring`, `px-spinner__label` (screen-reader-only). Theming: see [appendix](#spinner).
 
 ---
 
 ## Avatar
 
-Image or initials in a circle. **Assets:** `avatar.css` only (template **`avatar.html`**).
+Image or initials in a circle. **Assets:** `avatar.css` only.
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
@@ -327,9 +431,11 @@ Image or initials in a circle. **Assets:** `avatar.css` only (template **`avatar
 | `alt` | `str` | `""` | `img` alt text; also used as `title` on initials. |
 | `initials` | `str` | `""` | Up to two characters (trimmed/capped in validation). |
 | `size` | literal | `"md"` | `sm`, `md`, or `lg`. |
-| `class_name` | `str` | `""` | Extra classes on the root. |
+| `color` | `str` | `""` | Extra class or inline color hint (appended to root classes). |
 
-**Classes:** `px-avatar`, `px-avatar--sm|md|lg`, `px-avatar__img`, `px-avatar__initials`. Theming: see [appendix](#avatar-1).
+**DOM contract.** Root `.px-avatar`; no JS API.
+
+**Classes:** `px-avatar`, `px-avatar--sm|md|lg`, `px-avatar__img`, `px-avatar__initials`. Theming: see [appendix](#avatar).
 
 ---
 
@@ -344,7 +450,9 @@ Grouped content with optional header and footer. **Assets:** `card.css` only.
 | `body` | `str \| BaseComponent` | `""` | Main content. |
 | `footer` | `str \| BaseComponent` | `""` | Optional footer. |
 
-**Classes:** `px-card`, `px-card__header`, `px-card__title`, `px-card__body`, `px-card__footer`. Theming: see [appendix](#card-1).
+**DOM contract.** Root `.px-card`; no JS API.
+
+**Classes:** `px-card`, `px-card__header`, `px-card__title`, `px-card__body`, `px-card__footer`. Theming: see [appendix](#card).
 
 ---
 
@@ -358,29 +466,32 @@ Ordered trail of links. **Assets:** `breadcrumb.css` only.
 
 `items` may also be passed as a **JSON array** string (e.g. from PascalCase tags): `[["Home","/"],["Here",null]]`.
 
-**Classes:** `px-breadcrumb`, `px-breadcrumb__list`, `px-breadcrumb__item`, `px-breadcrumb__link`, `px-breadcrumb__current`. Separators via `::after` on items except the last. Theming: see [appendix](#breadcrumb-1).
+**DOM contract.** Root `.px-breadcrumb`; no JS API.
+
+**Classes:** `px-breadcrumb`, `px-breadcrumb__list`, `px-breadcrumb__item`, `px-breadcrumb__link`, `px-breadcrumb__current`. Separators via `::after` on items except the last. Theming: see [appendix](#breadcrumb).
 
 ---
 
 ## TabGroup
 
-Tab buttons and panels. **Assets:** `tab-group.css`, **`tab-group.js`** (kebab-case filenames so the renderer's JS/CSS collector finds them; see `LoadingOverlay` → `loading-overlay.*`).
+Tab buttons and panels. **Assets:** `tab-group.css`, `tab-group.js`.
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
 | `tabs` | `dict[str, str \| BaseComponent]` | `{}` | **Insertion order** is tab order; keys are labels, values are panel bodies. |
+| `tabs_label` | `str` | `"Tabs"` | `aria-label` for the tab list. |
 
 `tabs` may also be a **JSON object** string from markup tags (values are HTML strings).
 
-**`tab-group.js`:** `click` delegation on `.px-tab-group__tab` updates `aria-selected`, `tabindex`, and `hidden` on sibling panels within the same `.px-tab-group`.
+**DOM contract.** Root `.px-tab-group` with `data-px-region` (fires `px:reveal`/`px:before-reveal` on panel switch). Tab elements: `.px-tab-group__tab` with `data-px-panel-key`; panel elements: `.px-tab-group__panel[data-px-region]`. `px:before-reveal` (cancelable) fires before switching; `px:reveal` fires after; `data-px-revealed` is set on the visible panel. `tab-group.js` delegates `click` within `.px-tab-group__list`, updates `aria-selected`, `tabindex`, and `hidden`.
 
-**Classes:** `px-tab-group`, `px-tab-group__list`, `px-tab-group__tab`, `px-tab-group__panel`. Theming: see [appendix](#tabgroup-1).
+**Classes:** `px-tab-group`, `px-tab-group__list`, `px-tab-group__tab`, `px-tab-group__panel`. Theming: see [appendix](#tabgroup).
 
 ---
 
 ## Panel
 
-Host for **distributed** tab-like switching: all bodies render here; controls are separate [`PanelTrigger`](#paneltrigger) components. **Unstyled** aside from `hidden` panels. **Assets:** `panel.css`, **`panel.js`**.
+Host for **distributed** tab-like switching: all bodies render here; controls are separate [`PanelTrigger`](#paneltrigger) components. **Unstyled** aside from `hidden` panels. **Assets:** `panel.css`, `panel.js`.
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
@@ -388,7 +499,7 @@ Host for **distributed** tab-like switching: all bodies render here; controls ar
 
 `panels` may be a **JSON object** string from PascalCase tags. Keys are used in HTML `id` attributes and `data-px-panel-key`. Slot element ids are `{{ id }}-panel-{{ key }}`. The `id` must match `PanelTrigger.panel_id`.
 
-**`panel.js`:** `click` on `.px-panel-trigger` shows the matching `.px-panel__panel` inside the host `getElementById(panel_id)`, hides others, syncs `aria-selected` / `tabIndex` on **all** triggers for that host. **`pxPanelInit`** runs on `DOMContentLoaded`, `htmx:afterSwap`, and `htmx:afterSettle` so swapped fragments pick up correct ARIA after partial updates.
+**DOM contract.** Root `.px-panel` with `id`. Panels: `.px-panel__panel[data-px-panel-key][data-px-region]`. Events (bubble from the active panel): `px:before-reveal`* (cancelable, `detail = {reason, trigger}`), `px:reveal`; `data-px-revealed` on the visible panel. `panel.js` click delegation on `.px-panel-trigger`; `pxPanelInit` runs on `DOMContentLoaded`, `htmx:afterSwap`, `htmx:afterSettle`.
 
 **Classes:** `px-panel`, `px-panel__panel`. No theme tokens; minimal rules for `[hidden]` panels.
 
@@ -396,7 +507,7 @@ Host for **distributed** tab-like switching: all bodies render here; controls ar
 
 ## PanelTrigger
 
-Invisible wrapper that wires clicks to a [`Panel`](#panel) slot (place it anywhere; put your own links, buttons, or styled markup in `content`, same pattern as [`Popover`](#popover) / [`Notification`](#notification)). **Assets:** `panel-trigger.css`. See the [`panel.js` loading note](#built-in-ui-components)—render a `Panel` on the same page so the script is included.
+Invisible wrapper that wires clicks to a [`Panel`](#panel) slot. **Assets:** `panel-trigger.css`. See the [`panel.js` loading note](#built-in-ui-components)—render a `Panel` on the same page so the script is included.
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
@@ -406,7 +517,177 @@ Invisible wrapper that wires clicks to a [`Panel`](#panel) slot (place it anywhe
 
 Maps children to `content`; see the [children-vs-`content` note](#built-in-ui-components).
 
-**`panel-trigger.css`:** `.px-panel-trigger { display: contents; }` so the wrapper does not create a layout box. Override in your app (e.g. `display: block`) if you need a real box.
+**DOM contract.** Root `.px-panel-trigger[data-px-panel-id][data-px-panel-key]`; no own JS (wired by `panel.js`). `display: contents` so no layout box.
+
+---
+
+## ConfirmDialog
+
+Accessible `<dialog>` singleton that replaces `window.confirm`. Mount once in the layout; `px.confirm()` is available everywhere. **Assets:** `confirm-dialog.css`, `confirm-dialog.js`.
+
+| Field | Type | Default | Description |
+| --- | --- | --- | --- |
+| `confirm_label` | `str` | `"Confirm"` | Default OK button text. |
+| `cancel_label` | `str` | `"Cancel"` | Default cancel button text. |
+
+```python
+ConfirmDialog(id="app-confirm")
+```
+
+Intercepts every `hx-confirm="…"` automatically (via `htmx:confirm` event):
+
+```html
+<button hx-post="/delete/1"
+        hx-confirm="Delete this item?"
+        data-px-confirm-danger>Delete</button>
+```
+
+For non-htmx forms use `data-confirm="…"` on the `<form>`.
+
+Override labels per-call:
+
+```javascript
+const ok = await px.confirm("Are you sure?", {
+    okLabel: "Yes, delete",
+    cancelLabel: "No",
+    danger: true,
+});
+if (ok) { /* proceed */ }
+```
+
+**DOM contract.** Root `dialog.px-confirm-dialog[data-px-dialog="confirm"]` — singleton, matched by `document.querySelector`. `data-px-confirm-danger` on the htmx element → OK button gets `.px-confirm-dialog__ok--danger`. `data-px-confirm-ok` / `data-px-confirm-cancel` per-trigger label overrides.
+API: `px.confirm(message, {okLabel?, cancelLabel?, danger?}) → Promise<boolean>`.
+Falls back to `window.confirm` if no `ConfirmDialog` is mounted.
+
+**Classes:** `px-confirm-dialog`, `px-confirm-dialog__card`, `px-confirm-dialog__message`, `px-confirm-dialog__actions`, `px-confirm-dialog__ok`, `px-confirm-dialog__ok--danger`, `px-confirm-dialog__cancel`.
+
+---
+
+## PromptDialog
+
+Accessible `<dialog>` singleton that replaces `window.prompt`. Mount once in the layout; `px.prompt()` is available everywhere. **Assets:** `prompt-dialog.css`, `prompt-dialog.js`.
+
+| Field | Type | Default | Description |
+| --- | --- | --- | --- |
+| `input_label` | `str` | `""` | Default label text above the input. |
+| `submit_label` | `str` | `"OK"` | Submit button text. |
+| `cancel_label` | `str` | `"Cancel"` | Cancel button text. |
+
+```python
+PromptDialog(id="app-prompt")
+```
+
+```javascript
+const name = await px.prompt("Enter your name", {
+    initial: "Alice",
+    placeholder: "Full name",
+    okLabel: "Save",
+});
+if (name !== null) { /* user submitted */ }
+```
+
+**DOM contract.** Root `dialog.px-prompt-dialog[data-px-dialog="prompt"]` — singleton, matched by `document.querySelector`. Input pre-focused and selected on open.
+API: `px.prompt(title, {initial?, placeholder?, okLabel?, cancelLabel?}) → Promise<string | null>`.
+Returns `null` on cancel/Escape/backdrop close. Falls back to `window.prompt` if no `PromptDialog` is mounted.
+
+**Classes:** `px-prompt-dialog`, `px-prompt-dialog__card`, `px-prompt-dialog__label`, `px-prompt-dialog__input`, `px-prompt-dialog__actions`, `px-prompt-dialog__ok`, `px-prompt-dialog__cancel`.
+
+---
+
+## ToastHost
+
+HX-Trigger-driven toast container singleton. Mount once in the layout. **Assets:** `toast-host.css`, `toast-host.js`.
+
+| Field | Type | Default | Description |
+| --- | --- | --- | --- |
+| `position` | literal | `"bottom-right"` | `top-right`, `top-left`, `bottom-right`, `bottom-left`. |
+| `timeout` | `int` | `4000` | Default auto-dismiss ms; `0` disables. |
+| `dismiss_label` | `str` | `"Dismiss"` | `aria-label` for dismiss buttons on individual toasts. |
+| `event_name` | `str` | `"px:toast"` | Custom event name to listen for (wired on mount). |
+
+```python
+ToastHost(id="app-toasts", position="top-right")
+```
+
+Fire from a FastAPI route via `HX-Trigger`:
+
+```python
+import json
+
+response.headers["HX-Trigger"] = json.dumps({"px:toast": {"message": "Saved.", "level": "success"}})
+```
+
+Or from JS:
+
+```javascript
+px.toast("Upload complete.", { level: "success", timeout: 3000 });
+```
+
+Toast `level` maps to `.px-toast--<level>`; supported values: `info`, `success`, `warning`, `error`.
+
+**DOM contract.** Root `div.px-toast-host[data-px-toast-host]`. `data-event-name` sets the custom event; `data-timeout` sets the default dismiss timeout; `data-dismiss-label` sets dismiss button label.
+Events (bubble from the host): `px:toasthost:show` (detail: `{level}`), `px:toasthost:hide`.
+API: `px.toast(message, {level?, timeout?})`.
+Individual toasts: `div.px-toast.px-toast--<level>` > `.px-toast__message` + `button.px-toast__dismiss`.
+
+**Classes:** `px-toast-host`, `px-toast-host--top-right`, `--top-left`, `--bottom-right`, `--bottom-left`; `px-toast`, `px-toast--info`, `--success`, `--warning`, `--error`; `px-toast--hiding`; `px-toast__message`, `px-toast__dismiss`.
+
+---
+
+## AvatarStack
+
+Overlapping row of avatars with optional overflow count. **Assets:** `avatar-stack.css` only.
+
+| Field | Type | Default | Description |
+| --- | --- | --- | --- |
+| `avatars` | `list[str \| BaseComponent]` | `[]` | Avatar items (typically `Avatar` components or HTML strings). |
+| `extra_count` | `int` | `0` | When `> 0`, renders a `+N` overflow chip. |
+| `empty_label` | `str` | `""` | When no avatars and `empty_label` is set, renders a fallback label. |
+
+```python
+AvatarStack(
+    id="team",
+    avatars=[
+        str(Avatar(id="a1", initials="AB", size="sm")),
+        str(Avatar(id="a2", initials="CD", size="sm")),
+    ],
+    extra_count=3,
+)
+```
+
+**DOM contract.** Root `.px-avatar-stack`; no JS API.
+
+**Classes:** `px-avatar-stack`, `px-avatar-stack__more`, `px-avatar-stack__empty`.
+
+---
+
+## PageLoader
+
+Full-page navigation loader. Mount once at the top of the layout body. **Assets:** `page-loader.css`, `page-loader.js`.
+
+| Field | Type | Default | Description |
+| --- | --- | --- | --- |
+| `nav_targets` | `str` | `"app-content"` | Comma-separated element ids whose htmx GET requests activate the loader. |
+| `active_on_load` | `bool` | `True` | When `True`, renders with `.px-page-loader--active` (cold-load shimmer, removed on `DOMContentLoaded`). |
+| `loading_label` | `str` | `"Loading"` | `aria-label` for the `role="status"` element. |
+
+```python
+PageLoader(id="page-loader", nav_targets="main-content,sidebar")
+```
+
+Add `data-px-loader` to any element to make its htmx requests activate the loader regardless of `nav_targets`:
+
+```html
+<a hx-get="/slow-page" hx-target="#main-content" data-px-loader>Go</a>
+```
+
+**DOM contract.** Root `div.px-page-loader[data-px-page-loader]` (state: `.px-page-loader--active`).
+`data-nav-targets` — comma-separated ids; htmx GET requests targeting any of these activate the loader.
+`data-px-loader` on any element marks its htmx requests as loader-tracked regardless of target.
+Events (non-cancelable, bubble from the root): `px:loader:show`, `px:loader:hide`.
+API: `px.loader.show()`, `px.loader.hide()`, `px.loader.reset()`, `px.loader.wrap(promise)`.
+
+**Classes:** `px-page-loader`, `px-page-loader--active`, `px-page-loader__spinner`.
 
 ---
 
@@ -414,15 +695,19 @@ Maps children to `content`; see the [children-vs-`content` note](#built-in-ui-co
 
 ```python
 from pyjinhx.builtins import (
+    AvatarStack,
     Badge,
     Breadcrumb,
     Card,
+    ConfirmDialog,
     Drawer,
     Modal,
     Notification,
+    PageLoader,
     Panel,
     PanelTrigger,
     TabGroup,
+    ToastHost,
     Tooltip,
 )
 
@@ -444,13 +729,17 @@ main_panel = Panel(
 open_chat = PanelTrigger(
     id="open-chat", panel_id="app-panels", panel="chat", content="Chat"
 )
+confirm = ConfirmDialog(id="app-confirm")
+toasts = ToastHost(id="app-toasts", position="bottom-right")
+page_loader = PageLoader(id="page-loader")
+avatar_stack = AvatarStack(id="team", avatars=[], extra_count=5)
 ```
 
 ---
 
 ## Theming tokens
 
-Per-component `--px-*` custom properties and their default mappings. Override any token in your own CSS. Components not listed here (Panel, PanelTrigger, Tooltip's IIFE behavior, etc.) expose no tokens or are noted inline above.
+Per-component `--px-*` custom properties and their default mappings. Override any token in your own CSS. Components not listed here (Panel, PanelTrigger, etc.) expose no tokens or are noted inline above.
 
 ### Badge
 
