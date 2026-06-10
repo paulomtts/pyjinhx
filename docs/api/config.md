@@ -66,6 +66,7 @@ def from_env(cls) -> PjxSettings
 | Variable | Default | Effect |
 |----------|---------|--------|
 | `REDIS_URL` | unset | Auto-wire `RedisInvalidationBackend` (derives cross-request caching) |
+| `PJX_INVALIDATION_DB` | unset | Auto-wire `SqliteInvalidationBackend` from a SQLite file path (single-host; ignored if `REDIS_URL` is also set) |
 | `PJX_REACTIVE_DEV` | off | Enable dev guardrails when `1`/`true`/`yes` |
 
 ## configure_pyjinhx / shutdown_pyjinhx
