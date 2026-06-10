@@ -189,6 +189,7 @@ _BUILTIN_TAG_NAMES = frozenset(
     {
         "Alert",
         "Avatar",
+        "AvatarStack",
         "Badge",
         "Breadcrumb",
         "Card",
@@ -201,6 +202,7 @@ _BUILTIN_TAG_NAMES = frozenset(
         "LoadingOverlay",
         "Modal",
         "Notification",
+        "PageLoader",
         "Popover",
         "PopoverPanel",
         "PopoverTrigger",
@@ -211,6 +213,7 @@ _BUILTIN_TAG_NAMES = frozenset(
         "Skeleton",
         "Spinner",
         "TabGroup",
+        "ToastHost",
         "Tooltip",
     }
 )
