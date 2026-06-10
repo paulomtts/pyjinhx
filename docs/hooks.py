@@ -12,7 +12,7 @@ sys.path.insert(0, HERE)
 
 from demos import DEMOS  # noqa: E402
 
-from pyjinhx import BaseComponent  # noqa: E402
+from pyjinhx import BaseComponent, Registry  # noqa: E402
 
 _MARKER = re.compile(r"<!--\s*demo:\s*([A-Za-z]+)\s*-->")
 
@@ -63,5 +63,5 @@ def on_post_build(config):
     shutil.copy(os.path.join(HERE, "demos", "base.css"), os.path.join(out, "demo-base.css"))
     for name, (factory, _height) in DEMOS.items():
         path = os.path.join(out, f"{name.lower()}.html")
-        with open(path, "w", encoding="utf-8") as fh:
+        with open(path, "w", encoding="utf-8") as fh, Registry.request_scope():
             fh.write(_PAGE.format(markup=demo_markup(factory())))
