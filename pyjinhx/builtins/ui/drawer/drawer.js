@@ -21,15 +21,28 @@
     function close(id, reason, trigger) {
         const drawer = document.getElementById(id);
         if (!drawer || !drawer.open) return false;
+        if (drawer.classList.contains('px-drawer--closing')) return false;
         const detail = { reason: reason || 'api', trigger: trigger || null };
         if (!fire(drawer, 'px:drawer:before-close', detail, true)) return false;
         drawer.classList.add('px-drawer--closing');
-        drawer.addEventListener('animationend', () => {
+
+        let fallbackTimer = null;
+        function finalize() {
+            drawer.removeEventListener('animationend', onAnimationEnd);
+            clearTimeout(fallbackTimer);
+            if (!drawer.classList.contains('px-drawer--closing')) return;
             drawer.classList.remove('px-drawer--closing');
             drawer.close();
             fire(drawer, 'px:drawer:close', detail);
             if (drawer.hasAttribute('data-px-remove-on-close')) drawer.remove();
-        }, { once: true });
+        }
+        function onAnimationEnd(e) {
+            if (e.target !== drawer) return; // ignore bubbled descendant animations
+            finalize();
+        }
+        drawer.addEventListener('animationend', onAnimationEnd);
+        // Fallback for animation-less environments (prefers-reduced-motion, overrides).
+        fallbackTimer = setTimeout(finalize, 250);
         return true;
     }
 
@@ -67,6 +80,9 @@
 
     // open_on_mount: fragment-delivered drawers (hx-swap="beforeend") open on arrival.
     function openMounted(rootNode) {
+        if (rootNode.matches && rootNode.matches('dialog.px-drawer[data-px-open-on-mount]')) {
+            if (!rootNode.open) open(rootNode.id, 'api', null);
+        }
         if (!rootNode.querySelectorAll) return;
         rootNode.querySelectorAll('dialog.px-drawer[data-px-open-on-mount]').forEach((d) => {
             if (!d.open) open(d.id, 'api', null);

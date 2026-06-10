@@ -21,15 +21,28 @@
     function close(id, reason, trigger) {
         const modal = document.getElementById(id);
         if (!modal || !modal.open) return false;
+        if (modal.classList.contains('px-modal--closing')) return false;
         const detail = { reason: reason || 'api', trigger: trigger || null };
         if (!fire(modal, 'px:modal:before-close', detail, true)) return false;
         modal.classList.add('px-modal--closing');
-        modal.addEventListener('animationend', () => {
+
+        let fallbackTimer = null;
+        function finalize() {
+            modal.removeEventListener('animationend', onAnimationEnd);
+            clearTimeout(fallbackTimer);
+            if (!modal.classList.contains('px-modal--closing')) return;
             modal.classList.remove('px-modal--closing');
             modal.close();
             fire(modal, 'px:modal:close', detail);
             if (modal.hasAttribute('data-px-remove-on-close')) modal.remove();
-        }, { once: true });
+        }
+        function onAnimationEnd(e) {
+            if (e.target !== modal) return; // ignore bubbled descendant animations
+            finalize();
+        }
+        modal.addEventListener('animationend', onAnimationEnd);
+        // Fallback for animation-less environments (prefers-reduced-motion, overrides).
+        fallbackTimer = setTimeout(finalize, 250);
         return true;
     }
 
@@ -67,6 +80,9 @@
 
     // open_on_mount: fragment-delivered modals (hx-swap="beforeend") open on arrival.
     function openMounted(rootNode) {
+        if (rootNode.matches && rootNode.matches('dialog.px-modal[data-px-open-on-mount]')) {
+            if (!rootNode.open) open(rootNode.id, 'api', null);
+        }
         if (!rootNode.querySelectorAll) return;
         rootNode.querySelectorAll('dialog.px-modal[data-px-open-on-mount]').forEach((m) => {
             if (!m.open) open(m.id, 'api', null);
