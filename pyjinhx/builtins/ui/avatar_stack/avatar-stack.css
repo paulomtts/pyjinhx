@@ -1,0 +1,37 @@
+:root {
+  --px-avatar-stack-overlap: -0.5rem;
+  --px-avatar-stack-ring:    var(--surface);
+}
+
+.px-avatar-stack {
+  display: inline-flex;
+  align-items: center;
+}
+
+.px-avatar-stack > .px-avatar,
+.px-avatar-stack > .px-avatar-stack__more {
+  box-shadow: 0 0 0 2px var(--px-avatar-stack-ring);
+}
+
+.px-avatar-stack > * + * {
+  margin-left: var(--px-avatar-stack-overlap);
+}
+
+.px-avatar-stack__more {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2rem;
+  height: 2rem;
+  padding: 0 0.3rem;
+  border-radius: 50%;
+  background: var(--surface-alt);
+  color: var(--text-muted);
+  font-size: var(--font-size-sm, 0.85rem);
+  font-weight: 600;
+}
+
+.px-avatar-stack__empty {
+  color: var(--text-muted);
+  font-size: var(--font-size-sm, 0.85rem);
+}
