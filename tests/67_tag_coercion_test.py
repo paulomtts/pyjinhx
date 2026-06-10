@@ -47,3 +47,20 @@ def test_instance_reuse_invalid_update_raises(tmp_path):
     CoercionProbe(id="reuse-2", count=1)
     with pytest.raises(ValidationError):
         renderer.render('<CoercionProbe id="reuse-2" count="not-a-number"/>')
+
+
+def test_instance_reuse_preserves_nested_components(tmp_path):
+    from pyjinhx.builtins import Badge, Card
+
+    (tmp_path / "unused_probe.html").write_text("<i></i>")
+    original_environment = Renderer.peek_default_environment()
+    try:
+        Renderer.set_default_environment(str(tmp_path))
+        renderer = Renderer.get_default_renderer()
+        Card(id="c1", body=Badge(id="b1", label="hi"))
+        html = renderer.render('<Card id="c1" title="X"/>')
+        assert "hi" in html          # Badge subclass state survived the reuse update
+        assert "px-badge" in html    # it rendered as a Badge, not a degraded BaseComponent
+        assert ">X<" in html         # the update itself applied
+    finally:
+        Renderer.set_default_environment(original_environment)

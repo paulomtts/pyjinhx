@@ -122,8 +122,9 @@ class ComponentAutodiscover:
 
     @classmethod
     def clear(cls) -> None:
-        """Drop the deduplication set. Mainly for tests."""
+        """Drop the deduplication sets. Mainly for tests."""
         cls._imported_files.clear()
+        _warned_unregistered_tags.clear()
 
     @classmethod
     def import_from_file(cls, filepath: str) -> None:
@@ -277,10 +278,13 @@ def render_tag_node(
         updates: dict[str, Any] = dict(attrs_without_id)
         if rendered_children:
             updates["content"] = rendered_children
-        existing_instance = type(existing_instance).model_validate(
-            {**existing_instance.model_dump(), **updates}
-        )
-        Registry.get_instances()[registry_key] = existing_instance
+        if updates:
+            updated_instance = existing_instance.model_copy()
+            validator = type(existing_instance).__pydantic_validator__
+            for field_name, field_value in updates.items():
+                validator.validate_assignment(updated_instance, field_name, field_value)
+            existing_instance = updated_instance
+            Registry.get_instances()[registry_key] = existing_instance
 
         return str(
             existing_instance._render(
