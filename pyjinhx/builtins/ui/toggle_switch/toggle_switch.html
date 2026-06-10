@@ -1,0 +1,5 @@
+<label id="{{ id }}" class="px-toggle-switch{% if class_name %} {{ class_name }}{% endif %}"{% for k, v in extra_attrs.items() %} {{ k }}="{{ v }}"{% endfor %}>
+  <input type="checkbox" class="px-toggle-switch__input"{% if name %} name="{{ name }}"{% endif %} value="{{ value }}"{% if checked %} checked{% endif %}{% if disabled %} disabled{% endif %}>
+  <span class="px-toggle-switch__track" aria-hidden="true"><span class="px-toggle-switch__thumb"></span></span>
+  {% if label %}<span class="px-toggle-switch__label">{{ label }}</span>{% endif %}
+</label>

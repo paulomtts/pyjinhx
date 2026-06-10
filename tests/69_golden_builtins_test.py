@@ -49,6 +49,11 @@ CASES = [
     ("tab_group", lambda: b.TabGroup(id="g", tabs={"One": "<p>1</p>", "Two": "<p>2</p>"})),
     ("toast_host", lambda: b.ToastHost(id="g")),
     ("tooltip", lambda: b.Tooltip(id="g", trigger="?", tip="Help")),
+    ("chip_input", lambda: b.ChipInput(id="g", name="tags", values=["alpha", "beta"])),
+    ("form_field", lambda: b.FormField(id="g", label="Email", for_id="g-in", content="<input id='g-in'>", error="Required")),
+    ("toggle_switch", lambda: b.ToggleSwitch(id="g", name="active", checked=True, label="Active")),
+    ("segmented_control", lambda: b.SegmentedControl(id="g", name="view", options=[("list", "List"), ("grid", "Grid")], selected="list")),
+    ("password_input", lambda: b.PasswordInput(id="g")),
 ]
 
 

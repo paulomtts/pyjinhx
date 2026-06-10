@@ -1,0 +1,8 @@
+<div id="{{ id }}" class="px-segmented-control{% if class_name %} {{ class_name }}{% endif %}" role="radiogroup"{% for k, v in extra_attrs.items() %} {{ k }}="{{ v }}"{% endfor %}>
+  {% for value, label in options %}
+  <label class="px-segmented-control__segment">
+    <input type="radio" class="px-segmented-control__input" name="{{ name }}" value="{{ value }}"{% if value == selected %} checked{% endif %}{% if disabled %} disabled{% endif %}>
+    <span class="px-segmented-control__text">{{ label }}</span>
+  </label>
+  {% endfor %}
+</div>
