@@ -33,10 +33,11 @@
   box-shadow: var(--px-dropdown-menu-shadow);
 }
 
-.px-dropdown__menu.px-dropdown__menu--open {
-  display: block;
-}
-
 .px-dropdown__menu[hidden] {
   display: none !important;
+}
+
+.px-dropdown[data-px-align="end"] .px-dropdown__menu {
+  left: auto;
+  right: 0;
 }
