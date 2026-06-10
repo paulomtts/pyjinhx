@@ -17,21 +17,26 @@
         });
     }
 
-    function pxPanelShowPanel(hostRoot, panelKey) {
+    function pxPanelShowPanel(hostRoot, panelKey, trigger) {
         const hostId = hostRoot.id;
         if (!hostId) return;
         const target = hostRoot.querySelector(
             '.px-panel__panel[data-px-panel-key="' + panelKey + '"]'
         );
         if (!target) return;
-        if (target.hidden) {
-            if (!fire(target, 'px:before-reveal', { reason: 'trigger', trigger: null }, true)) return;
-        }
+        if (!target.hidden) return; // already active: nothing to announce
+        const detail = { reason: 'trigger', trigger: trigger || null };
+        if (!fire(target, 'px:before-reveal', detail, true)) return;
         hostRoot.querySelectorAll('.px-panel__panel').forEach((panelEl) => {
-            panelEl.hidden = panelEl !== target;
+            if (panelEl !== target) {
+                panelEl.hidden = true;
+                panelEl.removeAttribute('data-px-revealed');
+            }
         });
+        target.hidden = false;
+        target.setAttribute('data-px-revealed', '');
         pxPanelSyncTriggers(hostId, panelKey);
-        fire(target, 'px:reveal', { reason: 'trigger', trigger: null });
+        fire(target, 'px:reveal', detail);
     }
 
     function pxPanelInit() {
@@ -57,7 +62,10 @@
             if (activeKey !== null) {
                 pxPanelSyncTriggers(hostId, activeKey);
                 const visible = root.querySelector('.px-panel__panel:not([hidden])');
-                if (visible) fire(visible, 'px:reveal', { reason: 'api', trigger: null });
+                if (visible && !visible.hasAttribute('data-px-revealed')) {
+                    visible.setAttribute('data-px-revealed', '');
+                    fire(visible, 'px:reveal', { reason: 'api', trigger: null });
+                }
             }
         });
     }
@@ -78,7 +86,7 @@
             console.warn('px-panel: no panel for key', panelKey, 'in', hostId);
             return;
         }
-        pxPanelShowPanel(hostRoot, panelKey);
+        pxPanelShowPanel(hostRoot, panelKey, trigger);
     });
 
     if (document.readyState === 'loading') {

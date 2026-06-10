@@ -30,7 +30,12 @@
 
     function hide(id, reason, trigger) {
         const el = document.getElementById(id);
-        if (!el || !el.classList.contains('px-notification--visible')) return false;
+        if (!el) {
+            clearTimeout(timers.get(id));
+            timers.delete(id);
+            return false;
+        }
+        if (!el.classList.contains('px-notification--visible')) return false;
         if (el.classList.contains('px-notification--hiding')) return false;
         const detail = { reason: reason || 'api', trigger: trigger || null };
         if (!fire(el, 'px:notification:before-hide', detail, true)) return false;
