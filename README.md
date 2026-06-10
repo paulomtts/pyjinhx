@@ -1,48 +1,22 @@
 # PyJinHx
 
-Build reusable, type-safe UI components for template-based web apps in Python. PyJinHx combines Pydantic models with co-located Jinja templates — compose in Python, with PascalCase tags in templates, or in HTML strings.
+[![Pydantic](https://img.shields.io/badge/Pydantic-E92063?logo=pydantic&logoColor=white)](https://docs.pydantic.dev/)
+[![Jinja](https://img.shields.io/badge/Jinja-B41717?logo=jinja&logoColor=white)](https://jinja.palletsprojects.com/)
+[![HTMX](https://img.shields.io/badge/HTMX-3366CC?logo=htmx&logoColor=white)](https://htmx.org/)
 
-- **Template discovery** — templates live next to component classes
-- **Composability** — nest via Pydantic fields or PascalCase tags in templates
-- **Assets** — co-located JS/CSS collected at the root render
-- **Reactivity** — dependency-aware out-of-band swaps for HTMX apps
-- **Type safety** — Pydantic validates component fields
-
-## Installation
+Type-safe UI components for Python web apps. A component is a Pydantic model plus a Jinja template sitting next to it — nest them with PascalCase tags, and co-located JS/CSS is collected automatically at render.
 
 ```bash
 pip install pyjinhx
 ```
 
-## Package layout
-
-Import from the top level only — `from pyjinhx import BaseComponent, ReactiveComponent, setup, ...`. Internal module paths are not a stable API.
-
-| Area | Modules |
-|--------|------|
-| Render engine (tiers 1–2) | `base`, `renderer`, `assets`, `tags`, `finder`, `registry` |
-| Reactivity (tier 3+) | `reactive`, `client`, `cache`, `mutations`, `keys`, `context`, `dev` |
-| Setup | `config` — `setup()`, `PjxSettings`, lifespan helpers |
-| `pyjinhx/integrations/` | FastAPI wiring, Redis invalidation backend |
-| `pyjinhx/builtins/` | Optional UI kit |
-| `pyjinhx/runtime/` | Client runtime (`pjx.js`) |
-
-See [usage tiers](docs/guide/usage-tiers.md) for which layers to adopt when.
-
-## Development
-
-Structural audits: invoke the **`code-audit-sweep`** skill (`.cursor/skills/code-audit-sweep/`) to run read-only architecture reviews before large PRs. Individual lenses (`indirection-audit`, `module-placement-audit`, etc.) can be run alone. Dry-run baselines: [VALIDATION.md](.cursor/skills/code-audit-sweep/VALIDATION.md).
-
 ## Example
 
-Two levels: **Card → Button**. Card is built in Python; Button is declared as a PascalCase tag in `card.html`.
-
-### Components
+A `Card` that renders a `Button` — the tag's attributes become validated Pydantic fields:
 
 ```python
-# components/ui/button.py
+# components/button.py
 from pyjinhx import BaseComponent
-
 
 class Button(BaseComponent):
     id: str
@@ -50,100 +24,43 @@ class Button(BaseComponent):
     variant: str = "default"
 ```
 
-```python
-# components/ui/card.py
-from pyjinhx import BaseComponent
-
-
-class Card(BaseComponent):
-    id: str
-    title: str
-    button_text: str = "Sign up"
-```
-
-### Templates
-
 ```html
-<!-- components/ui/button.html -->
+<!-- components/button.html -->
 <button id="{{ id }}" class="btn btn-{{ variant }}">{{ text }}</button>
 ```
 
 ```html
-<!-- components/ui/card.html -->
+<!-- components/card.html -->
 <div id="{{ id }}" class="card">
   <h2>{{ title }}</h2>
   <Button id="cta" text="{{ button_text }}" variant="primary"/>
 </div>
 ```
 
-### Render
-
 ```python
-from pyjinhx import Renderer
-from components.ui.card import Card
+from pyjinhx import BaseComponent, Renderer
+
+class Card(BaseComponent):
+    id: str
+    title: str
+    button_text: str = "Sign up"
 
 Renderer.set_default_environment("./components")
-
-html = Card(id="hero", title="Get Started", button_text="Sign up").render()
+html = Card(id="hero", title="Get Started").render()
 ```
 
-## Render order & tag resolution
+Drop a `button.css` or `card.js` next to the component and it's included once, automatically.
 
-When `Card.render()` runs:
+## Reactivity (HTMX)
 
-1. **Card template** — Jinja runs first; it outputs a `<Button .../>` tag (not final HTML yet).
-2. **Tag expansion** — PascalCase tags in template output are resolved and rendered next.
-3. **Button** — tag attrs become `Button` fields (Pydantic validation); `button.html` runs.
-4. **Assets** — co-located JS/CSS are collected once at the root render and injected last (CSS before HTML, JS after).
-
-When `<Button id="cta" text="..." variant="primary"/>` is expanded:
-
-| Priority | Rule | In this example |
-|----------|------|-----------------|
-| 1 | Existing instance with same class + `id` | — (none yet) |
-| 2 | Registered class matching the tag name | `Button` instantiated from attrs |
-| 3 | Template only (no class) | — |
-
-Inner tag content becomes the `content` field. See [PascalCase tags](docs/guide/tags.md) for details.
-
-```mermaid
-flowchart TB
-    subgraph order["Render order (inside-out)"]
-        C["1. Card template runs<br/>emits &lt;Button/&gt; tag"]
-        T["2. Tag expansion"]
-        B["3. Button template runs"]
-        A["4. Root CSS / JS injected"]
-    end
-
-    subgraph resolve["Tag resolution for Button"]
-        R1["Existing instance?"]
-        R2["Registered Button class"]
-        R3["Generic + template"]
-    end
-
-    C --> T
-    T --> R1
-    R1 -->|no| R2
-    R2 --> B
-    R1 -->|yes| B
-    B --> A
-```
-
-You can also start from an HTML string — `Renderer.get_default_renderer().render("<Card ...><Button .../></Card>")` — same order and tag rules.
-
-## Reactivity
-
-Declare what state each component depends on. After a mutation, return `Cls.render()`; PyJinHx appends out-of-band swaps for other mounted regions whose dependencies overlap.
+Components declare what state they depend on. Return one component from a mutation route — every other mounted region that reacts to the same keys updates via out-of-band swaps, no manual wiring:
 
 ```python
 from typing import ClassVar
-
-from pyjinhx import ReactiveComponent, MutationKey
-
+from pyjinhx import ReactiveComponent, MutationKey, setup
 
 class Keys(MutationKey):
     TODOS = "todos"
-
 
 class Counter(ReactiveComponent):
     remaining: int
@@ -151,169 +68,19 @@ class Counter(ReactiveComponent):
 
     @classmethod
     def load(cls) -> "Counter":
-        return cls(remaining=db.remaining())  # id defaults to "counter"
+        return cls(remaining=db.remaining())
 
+setup(app)  # FastAPI: lifespan + middleware, done
 
 @app.post("/todos/toggle")
 def toggle():
     db.toggle_all()
-    return Counter.render()
+    return Counter.render()  # other regions reacting to TODOS update too
 ```
 
-Call `setup(app, ...)` once: it installs the lifespan and registry middleware that handle cache scope, optional invalidation, `PjxContext`, and the `ClientBackend` that resolves the `X-PJX-*` headers — so mutation routes call `Cls.render(*args)` with no framework kwargs. The client runtime (`pjx.js`) is injected on root full-page renders unless `X-PJX-Mounted` is already present.
+## Learn more
 
-**Reactive ergonomics:** `MutationKey` enums for typed keys; `@mutates` on store methods to accumulate pending dirtied keys for the next reactive `render()`; one `PjxKey`-annotated field per keyed component for the `data-pjx-load` round-trip; `PjxContext` to inject request-scoped dependencies into `load()`; `enable_reactive_dev()` and `dependency_graph()` for guardrails and debugging.
-
-**Loading indicators:** a reactive region can show an in-flight indicator while it reloads — add `data-pjx-loading="skeleton"` (or `"spinner"`) to a template element, and `pjx.js` lights it automatically off the region's `reacts_to`. Themeable via `--pjx-*` CSS variables. See the [reactivity guide](docs/reactivity.md#loading-indicators-in-flight).
-
-The cache, hashing, `depends_on()`, `MutationTracker`/`InvalidationHub`, and the `oob_swaps` walk are all covered in the [reactivity guide](docs/reactivity.md). Load results are cached per request by default (`CacheScope.REQUEST`); pass `cache_scope=CacheScope.PROCESS` to `setup()` plus a Redis `InvalidationBackend` ([reference](pyjinhx/integrations/redis.py), `pip install pyjinhx[redis]`) for cross-request caching across workers.
-
-Details: [usage tiers](docs/guide/usage-tiers.md) · [reactivity guide](docs/reactivity.md) · [Build an App](docs/getting-started/build-an-app.md) · [examples/reactive_todo/](examples/reactive_todo/).
-
-## JS & CSS collection
-
-Place kebab-case asset files next to the component class (auto-collected at the root render):
-
-```
-components/ui/
-├── card.py
-├── card.html
-├── card.css      # Card → card.css
-└── button.js     # Button → button.js
-```
-
-| Class | JS / CSS file |
-|-------|----------------|
-| `Button` | `button.js`, `button.css` |
-| `ActionButton` | `action-button.js`, `action-button.css` |
-
-Each asset is included once per render session. Output order: `<style>` tags, HTML, then `<script>` tags (inline mode). Pass extra paths via `js=[...]` and `css=[...]` on the component.
-
-**Asset delivery modes** (`AssetMode.INLINE`, `REFERENCE`, `NONE`):
-
-- **INLINE** (default): zero-config demos — assets are inlined as `<style>` / `<script>` blocks.
-- **REFERENCE**: production — emits `<link href="...">` / `<script src="...">` from a per-render manifest; configure `Renderer.set_asset_url_resolver()`.
-- **NONE**: no asset tags.
-
-Reactive partial responses (when `mounted` is set) and OOB swaps never emit assets. Full-page layout renders emit them once. For boosted navigation in REFERENCE mode, enable client asset dedup so root renders skip URLs the browser already has (`X-PJX-Assets` via `ClientBackend` in middleware, or `render(client=request)`).
-
-```python
-from pyjinhx import AssetMode, Renderer
-
-Renderer.set_default_js_mode(AssetMode.REFERENCE)
-Renderer.set_default_css_mode(AssetMode.REFERENCE)
-Renderer.set_asset_url_resolver(lambda path: f"/static/{path.split('/')[-1]}")
-Renderer.set_default_asset_dedup(True)
-```
-
-Details: [asset collection guide](docs/guide/assets.md). Optional UI kit: [pyjinhx.builtins](docs/guide/builtins.md).
-
-## FastAPI + HTMX (reactive)
-
-A toggle route returns the row as the primary swap; the counter updates out-of-band because both declare `reacts_to={Keys.TODOS}`. (Matches [examples/reactive_todo/](examples/reactive_todo/).)
-
-```python
-# components.py
-from typing import Annotated, ClassVar
-
-from pyjinhx import BaseComponent, PjxKey, ReactiveComponent, MutationKey
-
-
-class Keys(MutationKey):
-    TODOS = "todos"
-
-
-class ItemRow(ReactiveComponent):
-    todo_id: Annotated[int, PjxKey()]
-    title: str = ""
-    done: bool = False
-    reacts_to: ClassVar[set[str]] = {Keys.TODOS}
-
-    @classmethod
-    def load(cls, todo_id: int) -> "ItemRow":
-        todo = db.get(todo_id)
-        return cls(id=f"row-{todo_id}", todo_id=todo_id, title=todo.text, done=todo.done)
-
-
-class Counter(ReactiveComponent):
-    remaining: int = 0
-    reacts_to: ClassVar[set[str]] = {Keys.TODOS}
-
-    @classmethod
-    def load(cls) -> "Counter":  # id defaults to "counter"
-        return cls(remaining=db.remaining())
-
-
-class ItemList(BaseComponent):
-    items: list[ItemRow] = []
-
-
-class App(BaseComponent):
-    item_list: ItemList | None = None
-    remaining: Counter | None = None
-```
-
-```html
-<!-- item_list.html -->
-<ul id="{{ id }}">
-  {% for item in items %}{{ item }}{% endfor %}
-</ul>
-```
-
-```html
-<!-- item_row.html -->
-<li>
-  <button hx-post="/rows/{{ todo_id }}/toggle"
-          hx-target="closest [data-pjx-id]" hx-swap="outerHTML">toggle</button>
-  <span>{{ title }}</span>
-</li>
-```
-
-```html
-<!-- counter.html -->
-<span>{{ remaining }} left</span>
-```
-
-```html
-<!-- app.html -->
-<!doctype html>
-<html lang="en">
-  <head>
-    <script src="https://unpkg.com/htmx.org@2.0.3"></script>
-  </head>
-  <body>
-    <h1>Todos</h1>
-    {{ item_list }}
-    {{ remaining }}
-  </body>
-</html>
-```
-
-```python
-from fastapi import FastAPI
-from fastapi.responses import HTMLResponse
-from pyjinhx import Renderer, setup
-
-Renderer.set_default_environment("./components")
-app = FastAPI()
-setup(app)  # installs the lifespan + registry/ClientBackend middleware
-
-
-@app.get("/", response_class=HTMLResponse)
-def index():
-    return App(
-        id="app",
-        item_list=ItemList(id="list", items=[ItemRow.load(t.id) for t in db.all()]),
-        remaining=Counter.load(),
-    ).render()
-
-
-@app.post("/rows/{todo_id}/toggle", response_class=HTMLResponse)
-def toggle_row(todo_id: int):
-    db.toggle(todo_id)
-    return ItemRow.render(todo_id)
-```
-
-Run the full app: `uv run uvicorn examples.reactive_todo.app:app --reload` — see [examples/reactive_todo/README.md](examples/reactive_todo/README.md).
-
-More: [components](docs/guide/components.md) · [nesting](docs/guide/nesting.md) · [public API index](docs/reference/public-api.md) · [FastAPI integration](docs/integrations/fastapi.md) · [HTMX integration](docs/integrations/htmx.md)
+- [Usage tiers](docs/guide/usage-tiers.md) — adopt only the layers you need
+- [Components](docs/guide/components.md) · [PascalCase tags](docs/guide/tags.md) · [Assets](docs/guide/assets.md)
+- [Reactivity guide](docs/reactivity.md) · [full todo example](examples/reactive_todo/)
+- [Built-in UI kit](docs/guide/builtins.md)
