@@ -1,8 +1,9 @@
 from typing import Literal
 
-from pydantic import field_validator
+from pydantic import Field, field_validator
 
 from pyjinhx import BaseComponent
+from pyjinhx.base import AttrValue, ExtraAttrs
 
 
 class Avatar(BaseComponent):
@@ -10,7 +11,9 @@ class Avatar(BaseComponent):
     alt: str = ""
     initials: str = ""
     size: Literal["sm", "md", "lg"] = "md"
-    class_name: str = ""
+    class_name: AttrValue = ""
+    color: AttrValue = ""
+    extra_attrs: ExtraAttrs = Field(default_factory=dict)
 
     @field_validator("initials", mode="before")
     @classmethod

@@ -3,9 +3,9 @@
      class="px-divider px-divider--vertical{% if class_name %} {{ class_name }}{% endif %}"
      role="separator"
      aria-orientation="vertical"
-     {% if label %}aria-label="{{ label }}"{% endif %}></div>
+     {% if label %}aria-label="{{ label }}"{% endif %}{% for k, v in extra_attrs.items() %} {{ k }}="{{ v }}"{% endfor %}></div>
 {% elif label %}
-<div id="{{ id }}" class="px-divider px-divider--labeled{% if class_name %} {{ class_name }}{% endif %}" role="presentation">
+<div id="{{ id }}" class="px-divider px-divider--labeled{% if class_name %} {{ class_name }}{% endif %}" role="presentation"{% for k, v in extra_attrs.items() %} {{ k }}="{{ v }}"{% endfor %}>
   <span class="px-divider__line" aria-hidden="true"></span>
   <span class="px-divider__label">{{ label }}</span>
   <span class="px-divider__line" aria-hidden="true"></span>
@@ -14,5 +14,5 @@
 <hr id="{{ id }}"
     class="px-divider px-divider--horizontal{% if class_name %} {{ class_name }}{% endif %}"
     role="separator"
-    aria-orientation="horizontal" />
+    aria-orientation="horizontal"{% for k, v in extra_attrs.items() %} {{ k }}="{{ v }}"{% endfor %} />
 {% endif %}

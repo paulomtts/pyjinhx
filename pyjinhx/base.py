@@ -1,9 +1,10 @@
 import itertools
 import logging
-from typing import Any, Optional
+import re
+from typing import Annotated, Any, Optional
 
 from markupsafe import Markup
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import AfterValidator, BaseModel, ConfigDict, Field, field_validator
 
 from .registry import Registry
 from .renderer import Renderer
@@ -14,10 +15,36 @@ logger.setLevel(logging.WARNING)
 
 _auto_id_counter = itertools.count(1)
 
+_ATTR_NAME_RE = re.compile(r"[A-Za-z@:][A-Za-z0-9_.:@-]*")
+
 
 def _auto_id() -> str:
     """Generate a process-unique component id (``px-<n>``)."""
     return f"px-{next(_auto_id_counter)}"
+
+
+def validate_attr_value(value: str) -> str:
+    """Reject values that could break out of a double-quoted HTML attribute.
+
+    The renderer unescapes final markup by design, so attribute safety is
+    enforced at construction time. Post-construction mutation bypasses this.
+    """
+    if '"' in value:
+        raise ValueError('attribute values must not contain \'"\'')
+    return value
+
+
+def validate_extra_attrs(value: dict[str, str]) -> dict[str, str]:
+    """Reject attribute names/values that could break out of an HTML attribute."""
+    for name, attr_value in value.items():
+        if not _ATTR_NAME_RE.fullmatch(name):
+            raise ValueError(f"extra_attrs name {name!r} is not a valid attribute name")
+        validate_attr_value(attr_value)
+    return value
+
+
+AttrValue = Annotated[str, AfterValidator(validate_attr_value)]
+ExtraAttrs = Annotated[dict[str, str], AfterValidator(validate_extra_attrs)]
 
 
 class NestedComponentWrapper(BaseModel):

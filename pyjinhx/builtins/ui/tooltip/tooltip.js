@@ -1,4 +1,7 @@
 (function () {
+    window.px = window.px || {};
+    if (px._tooltipWired) return;
+    px._tooltipWired = true;
     let activeTip = null;
     let hideTimer = null;
 

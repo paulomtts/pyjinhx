@@ -45,7 +45,7 @@ _SHOWCASE_TEMPLATE = """
 <h2>Modal</h2>
 <section class="demo-stack">
 {{ modal }}
-<button type="button" class="demo-btn" onclick="openModal('g-modal')">Open modal</button>
+<button type="button" class="demo-btn" data-px-open="g-modal">Open modal</button>
 </section>
 
 <h2>Notification</h2>
@@ -89,7 +89,7 @@ _SHOWCASE_TEMPLATE = """
 <h2>Drawer</h2>
 <section class="demo-stack">
 {{ drawer }}
-<button type="button" class="demo-btn" onclick="openPxDrawer('g-drawer')">Open drawer</button>
+<button type="button" class="demo-btn" data-px-open="g-drawer">Open drawer</button>
 </section>
 
 <h2>Progress</h2>

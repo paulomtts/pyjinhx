@@ -4,6 +4,7 @@ from typing import Annotated, Any
 from pydantic import BeforeValidator, Field
 
 from pyjinhx import BaseComponent
+from pyjinhx.base import AttrValue, ExtraAttrs
 
 
 def _coerce_breadcrumb_items(value: Any) -> list[tuple[str, str | None]]:
@@ -21,3 +22,6 @@ class Breadcrumb(BaseComponent):
         list[tuple[str, str | None]],
         BeforeValidator(_coerce_breadcrumb_items),
     ] = Field(default_factory=list)
+    aria_label: str = "Breadcrumb"
+    class_name: AttrValue = ""
+    extra_attrs: ExtraAttrs = Field(default_factory=dict)
