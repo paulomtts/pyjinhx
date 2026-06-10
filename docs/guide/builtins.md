@@ -31,7 +31,7 @@ from pyjinhx.builtins import (
 
 **Conventions:** Markup classes use the **`px-`** prefix; overrides use **`--px-`** custom properties. Builtin CSS also references **theme variables** (`--surface`, `--border`, `--text`, `--radius-md`, `--shadow-md`, `--transition`, `--brand`, …)—define those in your global CSS or map them to your design system.
 
-**Template discovery:** Builtins ship inside `site-packages`. If your Jinja loader only covers your app tree, the renderer **falls back** to adjacent package templates for `pyjinhx.builtins` classes. Each component's Jinja template lives next to its Python source in `pyjinhx/builtins/ui/<component>/` (e.g. `pyjinhx/builtins/ui/modal/modal.html`).
+**Template discovery:** Builtins ship inside `site-packages`, not under your app's Jinja loader root, so PascalCase tags do **not** auto-discover them — `<Tooltip/>` raises a `FileNotFoundError` unless the class was imported once at startup (`import pyjinhx.builtins` or any of the imports above), which registers it. For registered builtin classes, the renderer **falls back** to adjacent package templates: each component's Jinja template lives next to its Python source in `pyjinhx/builtins/ui/<component>/` (e.g. `pyjinhx/builtins/ui/modal/modal.html`).
 
 **Inherited fields:** Every component inherits **`id`** (required), **`js`** / **`css`** (extra asset paths), **`render()`**, and **`__html__()`** from [`BaseComponent`](../api/base-component.md). Because `id` is universal it is omitted from the per-component props tables below. `extra="allow"` lets you pass additional kwargs into the Jinja context.
 
