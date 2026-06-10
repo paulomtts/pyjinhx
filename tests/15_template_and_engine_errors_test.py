@@ -4,6 +4,7 @@ from jinja2.exceptions import TemplateNotFound
 
 from pyjinhx import BaseComponent
 from pyjinhx.renderer import Renderer
+from pyjinhx.tags import _BUILTIN_TAG_NAMES, _missing_template_error
 
 
 def test_missing_template_file():
@@ -33,3 +34,24 @@ def test_non_filesystem_loader_error():
         component.render()
 
     Renderer.set_default_environment(original_environment)
+
+
+def test_missing_template_error_hints_at_builtin_import():
+    error = _missing_template_error("Tooltip")
+
+    assert isinstance(error, FileNotFoundError)
+    assert "from pyjinhx.builtins import Tooltip" in str(error)
+
+
+def test_missing_template_error_keeps_legacy_message():
+    error = _missing_template_error("UserCard")
+
+    assert str(error) == (
+        "No template found for <UserCard>. Expected usercard.html or usercard.jinja"
+    )
+
+
+def test_builtin_tag_names_match_builtins_all():
+    import pyjinhx.builtins
+
+    assert _BUILTIN_TAG_NAMES == frozenset(pyjinhx.builtins.__all__)
