@@ -9,6 +9,7 @@ from pyjinhx.cache import CacheScope, InvalidationHub, LoadCache
 from pyjinhx.client import ClientBackend
 from pyjinhx.config import shutdown_pyjinhx
 from pyjinhx.mutations import MutationTracker
+from pyjinhx.renderer import Renderer
 
 
 def _noop_inject_runtime(
@@ -34,9 +35,11 @@ def _suppress_pjx_runtime_injection(request: pytest.FixtureRequest, monkeypatch:
 def _clean_config_state() -> Generator[None, None, None]:
     shutdown_pyjinhx()
     InvalidationHub.reset()
+    Renderer.set_default_environment(None)
     yield
     shutdown_pyjinhx()
     InvalidationHub.reset()
+    Renderer.set_default_environment(None)
 
 
 @pytest.fixture(autouse=True)

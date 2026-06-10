@@ -1,6 +1,6 @@
 """Golden-HTML snapshots for every builtin.
 
-Regenerate intentionally with:  PJX_GOLDEN_UPDATE=1 uv run pytest tests/69_golden_builtins_test.py -q
+Regenerate intentionally with:  PJX_GOLDEN_UPDATE=1 uv run pytest tests/unit/test_golden_builtins.py -q
 Auto-generated ids (px-<n>) are masked so snapshots are stable.
 """
 import os

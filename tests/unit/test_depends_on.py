@@ -11,7 +11,7 @@ from tests.ui.reactive.conditional_panel import ConditionalPanel  # noqa: F401
 from tests.ui.reactive.dynamic_widget import DynamicWidget
 from tests.ui.reactive.store import state
 
-UI_ROOT = Path(__file__).parent / "ui" / "reactive"
+UI_ROOT = Path(__file__).parent.parent / "ui" / "reactive"
 
 
 class OverBroad(ReactiveComponent):
