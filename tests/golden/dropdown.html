@@ -1,14 +1,15 @@
-<div class="px-dropdown" id="g">
+<div class="px-dropdown" id="g" data-px-popover>
     <button type="button"
             class="px-dropdown__trigger"
             id="g-trigger"
             aria-expanded="false"
-            aria-haspopup="true"
+            aria-haspopup="menu"
             aria-controls="g-menu"
-            onclick="togglePxDropdown('g')">Menu</button>
+            data-px-toggle="g-menu">Menu</button>
     <div class="px-dropdown__menu"
          id="g-menu"
-         role="region"
+         data-px-popover-panel
+         role="menu"
          aria-label="Submenu"
          hidden><a href='/x'>X</a></div>
 </div>
