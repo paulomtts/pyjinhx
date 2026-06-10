@@ -10,6 +10,7 @@
         const opts = options || {};
         const dialog = dialogEl();
         if (!dialog) return Promise.resolve(window.prompt(title, opts.initial || ''));
+        if (dialog.open) return Promise.resolve(null); // singleton busy: treat as cancelled
 
         const label = dialog.querySelector('.px-prompt-dialog__label');
         const input = dialog.querySelector('.px-prompt-dialog__input');
@@ -35,8 +36,8 @@
             const done = (result) => {
                 okBtn.textContent = prevOk;
                 cancelBtn.textContent = prevCancel;
-                if (dialog.open) dialog.close();
                 ac.abort();
+                if (dialog.open) dialog.close();
                 resolve(result);
             };
             form.addEventListener('submit', (e) => {

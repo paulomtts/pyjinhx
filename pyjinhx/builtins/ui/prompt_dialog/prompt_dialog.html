@@ -1,6 +1,6 @@
-<dialog id="{{ id }}" class="px-prompt-dialog{% if class_name %} {{ class_name }}{% endif %}" data-px-dialog="prompt" aria-modal="true"{% for k, v in extra_attrs.items() %} {{ k }}="{{ v }}"{% endfor %}>
+<dialog id="{{ id }}" class="px-prompt-dialog{% if class_name %} {{ class_name }}{% endif %}" data-px-dialog="prompt" aria-modal="true" aria-labelledby="{{ id }}-label"{% for k, v in extra_attrs.items() %} {{ k }}="{{ v }}"{% endfor %}>
     <form method="dialog" class="px-prompt-dialog__card">
-        <label class="px-prompt-dialog__label" for="{{ id }}-input">{{ input_label }}</label>
+        <label id="{{ id }}-label" class="px-prompt-dialog__label" for="{{ id }}-input">{{ input_label }}</label>
         <input id="{{ id }}-input" class="px-prompt-dialog__input" type="text" autocomplete="off" />
         <div class="px-prompt-dialog__actions">
             <button type="button" class="px-prompt-dialog__cancel">{{ cancel_label }}</button>

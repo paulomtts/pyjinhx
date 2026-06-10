@@ -10,6 +10,7 @@
         const opts = options || {};
         const dialog = dialogEl();
         if (!dialog) return Promise.resolve(window.confirm(message));
+        if (dialog.open) return Promise.resolve(false); // singleton busy: treat as declined
 
         const messageEl = dialog.querySelector('.px-confirm-dialog__message');
         const okBtn = dialog.querySelector('.px-confirm-dialog__ok');
@@ -28,8 +29,8 @@
             const done = (result) => {
                 okBtn.textContent = prevOk;
                 cancelBtn.textContent = prevCancel;
-                if (dialog.open) dialog.close();
                 ac.abort();
+                if (dialog.open) dialog.close();
                 resolve(result);
             };
             okBtn.addEventListener('click', () => done(true), { signal: ac.signal });
@@ -56,6 +57,7 @@
 
     // Non-htmx forms: <form data-confirm="...">.
     document.addEventListener('submit', (evt) => {
+        if (evt.defaultPrevented) return; // htmx (or other code) already owns this submit
         const question = evt.target.getAttribute && evt.target.getAttribute('data-confirm');
         if (!question || !dialogEl()) return;
         evt.preventDefault();

@@ -1,14 +1,22 @@
+:root {
+  --px-prompt-dialog-bg:       var(--surface);
+  --px-prompt-dialog-border:   var(--border);
+  --px-prompt-dialog-radius:   var(--radius-md);
+  --px-prompt-dialog-shadow:   var(--shadow-md);
+  --px-prompt-dialog-backdrop: rgb(0 0 0 / 0.5);
+}
+
 .px-prompt-dialog::backdrop {
-  background: var(--px-confirm-dialog-backdrop, rgb(0 0 0 / 0.5));
+  background: var(--px-prompt-dialog-backdrop);
 }
 
 .px-prompt-dialog[open] {
   margin: auto;
   padding: 0;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  background: var(--surface);
-  box-shadow: var(--shadow-md);
+  border: 1px solid var(--px-prompt-dialog-border);
+  border-radius: var(--px-prompt-dialog-radius);
+  background: var(--px-prompt-dialog-bg);
+  box-shadow: var(--px-prompt-dialog-shadow);
   max-width: min(26rem, calc(100vw - 2rem));
 }
 
