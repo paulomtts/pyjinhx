@@ -1,0 +1,72 @@
+"""Golden-HTML snapshots for every builtin.
+
+Regenerate intentionally with:  PJX_GOLDEN_UPDATE=1 uv run pytest tests/69_golden_builtins_test.py -q
+Auto-generated ids (px-<n>) are masked so snapshots are stable.
+"""
+import os
+import re
+from pathlib import Path
+
+import pytest
+
+from pyjinhx.assets import AssetMode
+from pyjinhx.renderer import Renderer
+
+import pyjinhx.builtins as b
+
+GOLDEN_DIR = Path(__file__).parent / "golden"
+
+CASES = [
+    ("alert_default", lambda: b.Alert(id="g", body="Saved.")),
+    ("alert_dismissible", lambda: b.Alert(id="g", title="Heads up", body="x", dismissible=True, variant="warning")),
+    ("avatar_initials", lambda: b.Avatar(id="g", initials="PM")),
+    ("avatar_image", lambda: b.Avatar(id="g", src="/u.png", alt="User", size="lg")),
+    ("badge_default", lambda: b.Badge(id="g", label="New")),
+    ("breadcrumb", lambda: b.Breadcrumb(id="g", items=[("Home", "/"), ("Here", None)])),
+    ("card_full", lambda: b.Card(id="g", title="T", body="B", footer="F")),
+    ("divider_labeled", lambda: b.Divider(id="g", label="or")),
+    ("drawer", lambda: b.Drawer(id="g", title="T", body="B", footer="F")),
+    ("dropdown", lambda: b.Dropdown(id="g", trigger="Menu", menu="<a href='/x'>X</a>")),
+    ("empty_state", lambda: b.EmptyState(id="g", title="Nothing", description="D", action="<button>A</button>")),
+    ("lazy_panel", lambda: b.LazyPanel(id="g", url="/load")),
+    ("loading_overlay", lambda: b.LoadingOverlay(id="g")),
+    ("modal", lambda: b.Modal(id="g", title="T", body="B", footer="F")),
+    ("notification", lambda: b.Notification(id="g", content="Hi", corner="bottom-right", timeout=0)),
+    ("panel", lambda: b.Panel(id="g", panels={"a": "<p>A</p>", "b": "<p>B</p>"})),
+    ("panel_trigger", lambda: b.PanelTrigger(id="g", panel_id="host", panel="a", content="Tab A")),
+    ("popover", lambda: b.Popover(id="g", content="hover me", card_content="tip")),
+    ("progress_determinate", lambda: b.Progress(id="g", value=40, label="Upload")),
+    ("progress_indeterminate", lambda: b.Progress(id="g")),
+    ("skeleton_text", lambda: b.Skeleton(id="g", lines=2)),
+    ("spinner", lambda: b.Spinner(id="g")),
+    ("tab_group", lambda: b.TabGroup(id="g", tabs={"One": "<p>1</p>", "Two": "<p>2</p>"})),
+    ("tooltip", lambda: b.Tooltip(id="g", trigger="?", tip="Help")),
+]
+
+
+def _normalize(html: str) -> str:
+    html = re.sub(r"px-\d+", "px-AUTO", html)
+    return html.strip() + "\n"
+
+
+@pytest.fixture()
+def _markup_only_renderer():
+    prev_js, prev_css = Renderer._default_js_mode, Renderer._default_css_mode
+    Renderer.set_default_js_mode(AssetMode.NONE)
+    Renderer.set_default_css_mode(AssetMode.NONE)
+    yield
+    Renderer.set_default_js_mode(prev_js)
+    Renderer.set_default_css_mode(prev_css)
+
+
+@pytest.mark.parametrize("name,factory", CASES, ids=[c[0] for c in CASES])
+def test_golden(name, factory, _markup_only_renderer):
+    rendered = _normalize(str(factory().render()))
+    path = GOLDEN_DIR / f"{name}.html"
+    if os.environ.get("PJX_GOLDEN_UPDATE") == "1":
+        GOLDEN_DIR.mkdir(exist_ok=True)
+        path.write_text(rendered)
+    assert path.exists(), f"missing snapshot {path.name}; run with PJX_GOLDEN_UPDATE=1"
+    assert rendered == path.read_text(), (
+        f"golden mismatch for {name}; if intentional, regenerate with PJX_GOLDEN_UPDATE=1 and review the diff"
+    )
