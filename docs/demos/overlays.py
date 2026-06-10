@@ -37,16 +37,20 @@ def drawer():
     ]
 
 
-def confirmdialog():
+def confirm_dialog():
     return [
-        '<button class="px-demo-btn" onclick="px.confirm(\'Delete this file?\', { okLabel: \'Delete\', danger: true }).then(ok => { if (ok) alert(\'Deleted.\') })">Delete file</button>',
+        """<button class="px-demo-btn"
+            onclick="px.confirm('Delete this file?', { okLabel: 'Delete', danger: true })
+                .then(ok => { if (ok) alert('Deleted.') })">Delete file</button>""",
         ConfirmDialog(id="demo-confirm"),
     ]
 
 
-def promptdialog():
+def prompt_dialog():
     return [
-        '<button class="px-demo-btn" onclick="px.prompt(\'Rename file\', { initial: \'report.pdf\', placeholder: \'New name\' }).then(name => { if (name !== null) alert(\'Renamed to: \' + name) })">Rename file</button>',
+        """<button class="px-demo-btn"
+            onclick="px.prompt('Rename file', { initial: 'report.pdf', placeholder: 'New name' })
+                .then(name => { if (name !== null) alert('Renamed to: ' + name) })">Rename file</button>""",
         PromptDialog(id="demo-prompt"),
     ]
 
@@ -95,10 +99,10 @@ def popover():
 
 
 DEMOS = {
-    "Modal": (modal, 360),
+    "Modal": (modal, 520),
     "Drawer": (drawer, 360),
-    "ConfirmDialog": (confirmdialog, 360),
-    "PromptDialog": (promptdialog, 360),
+    "ConfirmDialog": (confirm_dialog, 360),
+    "PromptDialog": (prompt_dialog, 360),
     "Notification": (notification, 160),
     "Alert": (alert, 160),
     "Tooltip": (tooltip, 160),

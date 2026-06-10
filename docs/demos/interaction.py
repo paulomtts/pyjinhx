@@ -1,8 +1,8 @@
 from pyjinhx.builtins import (
     Dropdown,
+    PageLoader,
     Panel,
     PanelTrigger,
-    PageLoader,
     RegionLoader,
     TabGroup,
     ToastHost,
@@ -23,7 +23,6 @@ def dropdown():
 
 def tab_group():
     return TabGroup(
-        id="demo-tabs",
         tabs={
             "Overview": "<p>Project summary and key metrics.</p>",
             "Activity": "<p>Recent commits and deploys.</p>",
@@ -55,9 +54,9 @@ def panel():
         Panel(
             id="demo-panel",
             panels={
-                "chat": "<p>Chat interface goes here.</p>",
-                "files": "<p>File browser goes here.</p>",
-                "settings": "<p>Configuration options go here.</p>",
+                "chat": "<p>Active conversations with your team.</p>",
+                "files": "<p>Uploaded assets and project documents.</p>",
+                "settings": "<p>Notification preferences and integrations.</p>",
             },
         ),
     ]
@@ -65,8 +64,7 @@ def panel():
 
 def toast_host():
     return [
-        """<button class="px-demo-btn" onclick="document.dispatchEvent(
-            new CustomEvent('px:toast', {detail: {message: 'Saved.'}}))">Show toast</button>""",
+        '<button class="px-demo-btn" onclick="px.toast(\'Saved.\')">Show toast</button>',
         ToastHost(position="bottom-right"),
     ]
 
@@ -84,7 +82,12 @@ def region_loader():
 
 
 def page_loader():
-    return PageLoader(id="demo-page-loader", active_on_load=True)
+    return [
+        PageLoader(id="demo-page-loader"),
+        """<button class="px-demo-btn" style="margin-top:0.75rem"
+            onclick="px.loader.page.show();setTimeout(()=>px.loader.page.hide(),1500)">
+            Simulate load</button>""",
+    ]
 
 
 DEMOS = {
