@@ -53,7 +53,7 @@ _SHOWCASE_TEMPLATE = """
 <h2>Notification</h2>
 <section class="demo-stack">
 {{ notification }}
-<button type="button" class="demo-btn" onclick="showNotification('g-toast')">Show notification</button>
+<button type="button" class="demo-btn" onclick="px.notification.show('g-toast')">Show notification</button>
 </section>
 
 <h2>Popover</h2>
@@ -68,8 +68,8 @@ _SHOWCASE_TEMPLATE = """
 <p style="margin:0;color:var(--text-muted);font-size:var(--font-size-sm);">Parent is position: relative</p>
 </div>
 <div class="demo-row" style="margin-top:0.75rem;">
-<button type="button" class="demo-btn" onclick="showLoadingOverlay('g-overlay')">Show overlay</button>
-<button type="button" class="demo-btn" onclick="hideLoadingOverlay('g-overlay')">Hide overlay</button>
+<button type="button" class="demo-btn" onclick="px.overlay.show('g-overlay')">Show overlay</button>
+<button type="button" class="demo-btn" onclick="px.overlay.hide('g-overlay')">Hide overlay</button>
 </div>
 </section>
 
