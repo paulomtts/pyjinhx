@@ -1,4 +1,5 @@
 import pytest
+from markupsafe import Markup
 
 from tests.ui.unified_component import UnifiedComponent
 
@@ -28,7 +29,8 @@ def test_basic_rendering(component_id: str, text: str):
 def test_html_method():
     component = UnifiedComponent(id="auto-1", text="Auto Render")
 
-    rendered = component.__html__()
+    html_result = component.__html__()
+    render_result = component.render()
 
     expected = (
         CSS + '<div id="auto-1" class="test-component">\n'
@@ -36,4 +38,6 @@ def test_html_method():
         "</div>\n" + JS
     )
 
-    assert rendered == expected
+    assert html_result == expected
+    assert isinstance(html_result, Markup), "__html__() must return markupsafe.Markup"
+    assert isinstance(render_result, Markup), "render() must return markupsafe.Markup"

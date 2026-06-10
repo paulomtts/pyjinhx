@@ -8,7 +8,7 @@ from tests.ui.reactive.reactive_clear_button import ReactiveClearButton
 from tests.ui.reactive.reactive_counter import ReactiveCounter  # noqa: F401
 from tests.ui.reactive.store import state
 
-UI_ROOT = Path(__file__).parent / "ui" / "reactive"
+UI_ROOT = Path(__file__).parent.parent / "ui" / "reactive"
 
 
 @mutates("todos")
