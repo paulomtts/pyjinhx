@@ -7,6 +7,7 @@ from pyjinhx.builtins.ui.divider import Divider
 from pyjinhx.builtins.ui.dropdown import Dropdown
 from pyjinhx.builtins.ui.drawer import Drawer
 from pyjinhx.builtins.ui.empty_state import EmptyState
+from pyjinhx.builtins.ui.lazy_panel import LazyPanel
 from pyjinhx.builtins.ui.loading_overlay import LoadingOverlay
 from pyjinhx.builtins.ui.modal import Modal
 from pyjinhx.builtins.ui.notification import Notification
@@ -28,6 +29,7 @@ __all__ = [
     "Dropdown",
     "Drawer",
     "EmptyState",
+    "LazyPanel",
     "LoadingOverlay",
     "Modal",
     "Notification",

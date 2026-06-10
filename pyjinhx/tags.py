@@ -189,6 +189,7 @@ _BUILTIN_TAG_NAMES = frozenset(
         "Dropdown",
         "Drawer",
         "EmptyState",
+        "LazyPanel",
         "LoadingOverlay",
         "Modal",
         "Notification",
