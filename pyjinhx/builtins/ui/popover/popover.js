@@ -62,16 +62,23 @@
     }
 
     document.addEventListener('click', (e) => {
-        const toggleEl = e.target.closest('[data-px-toggle]');
-        if (toggleEl) {
-            const panel = panelForToggle(toggleEl);
-            if (panel) toggle(panel, 'trigger', toggleEl);
-            return;
+        const closer = e.target.closest('[data-px-close]');
+        if (closer) {
+            const panel = closer.closest('[data-px-popover-panel]');
+            if (panel) {
+                close(panel, 'trigger', closer);
+                return;
+            }
         }
-        // Outside click: close every open panel whose root doesn't contain the click.
+        const toggleEl = e.target.closest('[data-px-toggle]');
+        const targetPanel = toggleEl ? panelForToggle(toggleEl) : null;
+        // Close every open panel whose root doesn't contain the click —
+        // also when clicking a trigger (so opening B closes A; nested popovers survive).
         document.querySelectorAll('[data-px-popover-panel]:not([hidden])').forEach((panel) => {
+            if (panel === targetPanel) return;
             if (!rootOf(panel).contains(e.target)) close(panel, 'backdrop', null);
         });
+        if (toggleEl && targetPanel) toggle(targetPanel, 'trigger', toggleEl);
     });
 
     document.addEventListener('keydown', (e) => {

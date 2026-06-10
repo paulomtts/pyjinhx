@@ -3,12 +3,6 @@ import re
 from pyjinhx.builtins import Popover, PopoverPanel, PopoverTrigger
 
 
-def _markup(html: str, selector: str) -> str:
-    """Slice out the first element matching a CSS-like start-tag prefix, stripping inlined assets."""
-    m = re.search(r"(<" + selector + r"[\s\S]*?</" + selector.split(r"\b")[0] + r">)", html)
-    return m.group(1) if m else html
-
-
 def _popover_el(html: str) -> str:
     m = re.search(r'(<div[^>]*class="px-popover[\s\S]*?</div>)', html)
     return m.group(1) if m else html
@@ -31,6 +25,11 @@ def test_popover_headless_mode():
     html = str(Popover(id="p", content="x", behavior=False).render())
     el = _popover_el(html)
     assert "data-px-popover" not in el
+
+
+def test_popover_panel_headless_mode():
+    html = str(PopoverPanel(id="pp", content="x", behavior=False).render())
+    assert "data-px-popover-panel" not in html
 
 
 def test_trigger_wiring_and_a11y():

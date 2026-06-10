@@ -334,14 +334,18 @@ def apply_component_render_assets(
             policy=policy, component_dir=asset_dir, asset_name=asset_name,
         )
 
+    # Extra assets (e.g. Dropdown.js = [popover.js]) must be collected for
+    # every component in the tree, not just the root, so nested components
+    # (e.g. a Dropdown inside a Card) still ship their dependencies.
+    collect_extra_assets(component, session, "css", policy=policy)
+    collect_extra_assets(component, session, "js", policy=policy)
+
     if not is_root:
         return rendered_markup
 
-    if policy.css_mode != AssetMode.NONE:
-        collect_extra_assets(component, session, "css", policy=policy)
+    # Runtime injection and markup injection are root-only.
     if policy.js_mode != AssetMode.NONE:
         inject_runtime(session, policy=policy, client=client)
-        collect_extra_assets(component, session, "js", policy=policy)
     if policy.css_mode == AssetMode.NONE and policy.js_mode == AssetMode.NONE:
         return rendered_markup
 

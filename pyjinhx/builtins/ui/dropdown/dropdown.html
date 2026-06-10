@@ -1,4 +1,4 @@
-<div class="px-dropdown{% if class_name %} {{ class_name }}{% endif %}" id="{{ id }}"{% if behavior %} data-px-popover{% endif %}{% if align == "end" %} data-px-align="end"{% endif %}{% for k, v in extra_attrs.items() %} {{ k }}="{{ v }}"{% endfor %}>
+<div class="px-dropdown{% if align == "end" %} px-dropdown--align-end{% endif %}{% if class_name %} {{ class_name }}{% endif %}" id="{{ id }}"{% if behavior %} data-px-popover{% endif %}{% for k, v in extra_attrs.items() %} {{ k }}="{{ v }}"{% endfor %}>
     <button type="button"
             class="px-dropdown__trigger"
             id="{{ id }}-trigger"
@@ -8,7 +8,7 @@
             {% if behavior %}data-px-toggle="{{ id }}-menu"{% endif %}>{{ trigger }}</button>
     <div class="px-dropdown__menu"
          id="{{ id }}-menu"
-         data-px-popover-panel
+         {% if behavior %}data-px-popover-panel{% endif %}
          role="menu"
          aria-label="{{ menu_label }}"
          hidden>{% for item in items %}{{ item }}{% endfor %}</div>

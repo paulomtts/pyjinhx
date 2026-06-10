@@ -27,7 +27,9 @@ def test_dropdown_renders_items_and_wiring():
 
 def test_dropdown_align_end():
     html = str(Dropdown(id="dd", trigger="t", items=[], align="end").render())
-    assert 'data-px-align="end"' in html
+    # align uses class modifier, not a data attribute
+    assert 'px-dropdown--align-end' in html
+    assert 'data-px-align' not in html
 
 
 def test_dropdown_headless_mode():
@@ -37,6 +39,19 @@ def test_dropdown_headless_mode():
     assert " data-px-popover" not in root
     # Button should NOT carry data-px-toggle when behavior=False
     assert 'data-px-toggle=' not in html
+    # Menu div should NOT carry data-px-popover-panel when behavior=False.
+    # Search only the opening tag of the menu div; the inlined JS also
+    # contains the string as a selector, so a full-html check would false-positive.
+    menu_div = re.search(r'<div[^>]*px-dropdown__menu[^>]*>', html)
+    assert menu_div and 'data-px-popover-panel' not in menu_div.group(0)
+
+
+def test_nested_dropdown_ships_popover_js():
+    # Regression: extra-asset JS must be collected for nested components,
+    # not only for the outermost root (fix to apply_component_render_assets).
+    from pyjinhx.builtins import Card
+    html = str(Card(id="c", body=Dropdown(id="dd", trigger="t", items=["x"])).render())
+    assert "px.popover" in html  # the extra-asset JS arrived despite nesting
 
 
 def test_dropdown_ships_no_js():

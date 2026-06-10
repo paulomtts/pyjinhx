@@ -27,5 +27,6 @@ class PopoverPanel(BaseComponent):
     content: str | BaseComponent = ""
     as_form: bool = False
     role: Literal["", "menu", "listbox", "dialog"] = ""
+    behavior: bool = True
     class_name: AttrValue = ""
     extra_attrs: ExtraAttrs = Field(default_factory=dict)
