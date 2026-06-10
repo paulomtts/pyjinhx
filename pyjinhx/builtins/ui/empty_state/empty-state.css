@@ -6,6 +6,7 @@
   --px-empty-state-title-color: var(--text);
   --px-empty-state-desc-color:  var(--text-muted);
   --px-empty-state-gap:       0.5rem;
+  --px-empty-state-actions-gap: 0.5rem;
 }
 
 .px-empty-state {
@@ -17,6 +18,10 @@
   padding: var(--px-empty-state-padding);
   max-width: var(--px-empty-state-max-width);
   margin: 0 auto;
+}
+
+.px-empty-state__image {
+  margin-bottom: 0.75rem;
 }
 
 .px-empty-state__title {
@@ -34,5 +39,13 @@
 }
 
 .px-empty-state__action {
+  margin-top: 0.75rem;
+}
+
+.px-empty-state__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--px-empty-state-actions-gap);
   margin-top: 0.75rem;
 }
