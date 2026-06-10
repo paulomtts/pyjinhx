@@ -1,59 +1,49 @@
-/* ── Popover tokens ──────────────────────────────────────── */
 :root {
-  --px-popover-max-width: 28ch;
-  --px-popover-bg:        var(--surface-alt);
-  --px-popover-border:    var(--border);
-  --px-popover-radius:    var(--radius-md);
-  --px-popover-shadow:    var(--shadow-md);
-  --px-popover-padding:   var(--space-3, 0.75rem) var(--space-4, 1rem);
-  --px-popover-z:         300;
+  --px-popover-bg:      var(--surface-alt);
+  --px-popover-border:  var(--border);
+  --px-popover-radius:  var(--radius-md);
+  --px-popover-shadow:  var(--shadow-md);
+  --px-popover-min-w:   12rem;
+  --px-popover-z:       300;
 }
 
-/* ── Trigger ────────────────────────────────────────────── */
-.px-popover-trigger {
-  display: inline;
-}
-
-/* Backdrop triggers need position:relative so z-index lifts work */
-.px-popover-trigger[data-popover-backdrop] {
+.px-popover {
   position: relative;
+  display: inline-block;
 }
 
-/* ── Card ───────────────────────────────────────────────── */
-.px-popover-card {
-  position: fixed;
+.px-popover__trigger {
+  background: transparent;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+}
+
+.px-popover__trigger:focus-visible {
+  outline: 2px solid var(--border-focus, var(--border));
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+.px-popover__panel {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
   z-index: var(--px-popover-z);
-  max-width: min(var(--px-popover-max-width), calc(100vw - 1rem));
+  min-width: var(--px-popover-min-w);
   background: var(--px-popover-bg);
   border: 1px solid var(--px-popover-border);
   border-radius: var(--px-popover-radius);
   box-shadow: var(--px-popover-shadow);
-  padding: var(--px-popover-padding);
-  visibility: hidden;
-  opacity: 0;
-  transform: translateY(4px);
-  transition: opacity 0.15s ease, transform 0.15s ease;
-  pointer-events: none;
 }
 
-.px-popover-card--visible {
-  opacity: 1;
-  transform: translateY(0);
-  pointer-events: auto;
+.px-popover--align-end .px-popover__panel {
+  left: auto;
+  right: 0;
 }
 
-/* ── Backdrop ───────────────────────────────────────────── */
-.px-popover-backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: calc(var(--px-popover-z) - 2); /* below card and lifted trigger */
-  background: rgba(0, 0, 0, 0.35);
-  backdrop-filter: blur(2px);
-  visibility: hidden;
-  opacity: 0;
-  transition: opacity 0.15s ease;
-}
-
-.px-popover-backdrop--visible {
-  opacity: 1;
+.px-popover__panel[hidden] {
+  display: none !important;
 }

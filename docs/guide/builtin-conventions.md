@@ -48,6 +48,7 @@ document.getElementById("confirm-del").addEventListener("px:modal:before-close",
 | `data-px-confirm-ok`, `data-px-confirm-cancel` | per-trigger confirm-dialog label overrides |
 | `data-px-loader` | requests from this subtree show the PageLoader |
 | `data-px-region` | marks a show/hide region (emits `px:reveal`) |
+| `data-px-autoshow` | Notification auto-shows when this attribute is present on mount |
 
 ## The `window.px` namespace
 

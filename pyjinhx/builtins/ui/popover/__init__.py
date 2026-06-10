@@ -1,3 +1,3 @@
-from .popover import Popover
+from .popover import Popover, PopoverPanel, PopoverTrigger
 
-__all__ = ["Popover"]
+__all__ = ["Popover", "PopoverPanel", "PopoverTrigger"]

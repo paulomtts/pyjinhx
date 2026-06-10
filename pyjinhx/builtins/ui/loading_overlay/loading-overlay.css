@@ -28,6 +28,11 @@
   animation: loading-overlay-in 150ms ease forwards;
 }
 
+.px-loading-overlay.htmx-request {
+  display: flex;
+  animation: loading-overlay-in 150ms ease forwards;
+}
+
 .px-loading-overlay--hiding {
   display: flex;
   animation: loading-overlay-out 150ms ease forwards;

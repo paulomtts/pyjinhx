@@ -25,6 +25,8 @@ from pyjinhx.builtins import (
     Panel,
     PanelTrigger,
     Popover,
+    PopoverPanel,
+    PopoverTrigger,
     Progress,
     Skeleton,
     Spinner,
@@ -51,7 +53,7 @@ _SHOWCASE_TEMPLATE = """
 <h2>Notification</h2>
 <section class="demo-stack">
 {{ notification }}
-<button type="button" class="demo-btn" onclick="showNotification('g-toast')">Show notification</button>
+<button type="button" class="demo-btn" onclick="px.notification.show('g-toast')">Show notification</button>
 </section>
 
 <h2>Popover</h2>
@@ -66,8 +68,8 @@ _SHOWCASE_TEMPLATE = """
 <p style="margin:0;color:var(--text-muted);font-size:var(--font-size-sm);">Parent is position: relative</p>
 </div>
 <div class="demo-row" style="margin-top:0.75rem;">
-<button type="button" class="demo-btn" onclick="showLoadingOverlay('g-overlay')">Show overlay</button>
-<button type="button" class="demo-btn" onclick="hideLoadingOverlay('g-overlay')">Hide overlay</button>
+<button type="button" class="demo-btn" onclick="px.overlay.show('g-overlay')">Show overlay</button>
+<button type="button" class="demo-btn" onclick="px.overlay.hide('g-overlay')">Hide overlay</button>
 </div>
 </section>
 
@@ -212,10 +214,10 @@ def _gallery_inner_html() -> str:
         ),
         popover=Popover(
             id="g-pop",
-            content="Hover me",
-            card_content="Popover details appear on hover.",
-            position="anchor",
-            backdrop=True,
+            content=(
+                str(PopoverTrigger(id="g-pop-t", content="Open popover").render())
+                + str(PopoverPanel(id="g-pop-p", content="Popover details appear on click.").render())
+            ),
         ),
         loading_overlay=LoadingOverlay(id="g-overlay"),
         tooltip=Tooltip(
@@ -233,7 +235,7 @@ def _gallery_inner_html() -> str:
         dropdown=Dropdown(
             id="g-drop",
             trigger="Options",
-            menu='<a href="#">First</a><a href="#">Second</a>',
+            items=['<a role="menuitem" href="#">First</a>', '<a role="menuitem" href="#">Second</a>'],
         ),
         drawer=Drawer(
             id="g-drawer",

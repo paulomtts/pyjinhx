@@ -26,7 +26,7 @@ CASES = [
     ("card_full", lambda: b.Card(id="g", title="T", body="B", footer="F")),
     ("divider_labeled", lambda: b.Divider(id="g", label="or")),
     ("drawer", lambda: b.Drawer(id="g", title="T", body="B", footer="F")),
-    ("dropdown", lambda: b.Dropdown(id="g", trigger="Menu", menu="<a href='/x'>X</a>")),
+    ("dropdown", lambda: b.Dropdown(id="g", trigger="Menu", items=["<a href='/x'>X</a>"])),
     ("empty_state", lambda: b.EmptyState(id="g", title="Nothing", description="D", action="<button>A</button>")),
     ("lazy_panel", lambda: b.LazyPanel(id="g", url="/load")),
     ("loading_overlay", lambda: b.LoadingOverlay(id="g")),
@@ -34,7 +34,10 @@ CASES = [
     ("notification", lambda: b.Notification(id="g", content="Hi", corner="bottom-right", timeout=0)),
     ("panel", lambda: b.Panel(id="g", panels={"a": "<p>A</p>", "b": "<p>B</p>"})),
     ("panel_trigger", lambda: b.PanelTrigger(id="g", panel_id="host", panel="a", content="Tab A")),
-    ("popover", lambda: b.Popover(id="g", content="hover me", card_content="tip")),
+    ("popover_compound", lambda: b.Popover(id="g", content=(
+        str(b.PopoverTrigger(id="g-t", content="Open", role="menu").render())
+        + str(b.PopoverPanel(id="g-p", content="Items", role="menu").render())
+    ))),
     ("progress_determinate", lambda: b.Progress(id="g", value=40, label="Upload")),
     ("progress_indeterminate", lambda: b.Progress(id="g")),
     ("skeleton_text", lambda: b.Skeleton(id="g", lines=2)),

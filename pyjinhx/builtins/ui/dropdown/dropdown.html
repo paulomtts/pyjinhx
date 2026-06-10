@@ -1,14 +1,15 @@
-<div class="px-dropdown" id="{{ id }}">
+<div class="px-dropdown{% if align == "end" %} px-dropdown--align-end{% endif %}{% if class_name %} {{ class_name }}{% endif %}" id="{{ id }}"{% if behavior %} data-px-popover{% endif %}{% for k, v in extra_attrs.items() %} {{ k }}="{{ v }}"{% endfor %}>
     <button type="button"
             class="px-dropdown__trigger"
             id="{{ id }}-trigger"
             aria-expanded="false"
-            aria-haspopup="true"
+            aria-haspopup="menu"
             aria-controls="{{ id }}-menu"
-            onclick="togglePxDropdown('{{ id }}')">{{ trigger }}</button>
+            {% if behavior %}data-px-toggle="{{ id }}-menu"{% endif %}>{{ trigger }}</button>
     <div class="px-dropdown__menu"
          id="{{ id }}-menu"
-         role="region"
-         aria-label="Submenu"
-         hidden>{{ menu }}</div>
+         {% if behavior %}data-px-popover-panel{% endif %}
+         role="menu"
+         aria-label="{{ menu_label }}"
+         hidden>{% for item in items %}{{ item }}{% endfor %}</div>
 </div>
