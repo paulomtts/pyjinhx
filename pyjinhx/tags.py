@@ -176,6 +176,47 @@ if TYPE_CHECKING:
     from .renderer import Renderer
 
 
+# Kept in sync with pyjinhx.builtins.__all__ by a test. Listed here instead of
+# imported so the error path doesn't register every builtin as a side effect.
+_BUILTIN_TAG_NAMES = frozenset(
+    {
+        "Alert",
+        "Avatar",
+        "Badge",
+        "Breadcrumb",
+        "Card",
+        "Divider",
+        "Dropdown",
+        "Drawer",
+        "EmptyState",
+        "LoadingOverlay",
+        "Modal",
+        "Notification",
+        "Popover",
+        "Progress",
+        "Panel",
+        "PanelTrigger",
+        "Skeleton",
+        "Spinner",
+        "TabGroup",
+        "Tooltip",
+    }
+)
+
+
+def _missing_template_error(tag_name: str) -> FileNotFoundError:
+    if tag_name in _BUILTIN_TAG_NAMES:
+        return FileNotFoundError(
+            f"<{tag_name}> is a pyjinhx builtin but its class isn't registered. "
+            f"Add `from pyjinhx.builtins import {tag_name}` "
+            f"(or `import pyjinhx.builtins`) once at app startup so the tag resolves."
+        )
+    return FileNotFoundError(
+        f"No template found for <{tag_name}>. "
+        f"Expected {tag_name.lower()}.html or {tag_name.lower()}.jinja"
+    )
+
+
 def render_tag_node(
     renderer: Renderer,
     node: Tag | str,
@@ -252,10 +293,7 @@ def render_tag_node(
         )
     else:
         if template_path is None:
-            raise FileNotFoundError(
-                f"No template found for <{node.name}>. "
-                f"Expected {node.name.lower()}.html or {node.name.lower()}.jinja"
-            )
+            raise _missing_template_error(node.name)
         from .base import BaseComponent
 
         component = BaseComponent(
