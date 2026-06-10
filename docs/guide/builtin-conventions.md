@@ -8,7 +8,7 @@ Every pyjinhx builtin follows the same contract, so knowing one means knowing al
    hook (CSS, htmx targets) — and always for reactive components, whose OOB targeting requires
    stable identity across renders.
 2. **`class_name`** appends your classes to the root element: `Badge(label="New", class_name="pill")`.
-3. **`extra_attrs`** renders extra attributes (escaped) on the root element — the carrier for
+3. **`extra_attrs`** renders extra attributes (validated — values may not contain `"`, `<`, or `>`) on the root element — the carrier for
    `hx-*`, `data-*`, `aria-*`, or Alpine directives:
    `Card(body=..., extra_attrs={"hx-get": "/refresh", "hx-trigger": "every 30s"})`.
 4. **All copy is props.** Every user-visible string, aria-labels included, has an English default

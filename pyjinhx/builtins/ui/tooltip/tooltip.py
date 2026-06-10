@@ -3,6 +3,7 @@ from typing import Literal
 from pydantic import Field, field_validator
 
 from pyjinhx import BaseComponent
+from pyjinhx.base import validate_extra_attrs
 
 
 class Tooltip(BaseComponent):
@@ -12,7 +13,7 @@ class Tooltip(BaseComponent):
     class_name: str = ""
     extra_attrs: dict[str, str] = Field(default_factory=dict)
 
-    @field_validator("extra_attrs", mode="before")
+    @field_validator("extra_attrs")
     @classmethod
-    def _sanitize_extra_attrs(cls, v: dict) -> dict:
-        return {k: str(val).replace("<", "").replace(">", "") for k, val in v.items()}
+    def _validate_extra_attrs(cls, value: dict[str, str]) -> dict[str, str]:
+        return validate_extra_attrs(value)

@@ -1,5 +1,6 @@
 import itertools
 import logging
+import re
 from typing import Any, Optional
 
 from markupsafe import Markup
@@ -14,10 +15,28 @@ logger.setLevel(logging.WARNING)
 
 _auto_id_counter = itertools.count(1)
 
+_ATTR_NAME_RE = re.compile(r"^[A-Za-z@:][A-Za-z0-9_.:@-]*$")
+
 
 def _auto_id() -> str:
     """Generate a process-unique component id (``px-<n>``)."""
     return f"px-{next(_auto_id_counter)}"
+
+
+def validate_extra_attrs(value: dict[str, str]) -> dict[str, str]:
+    """Reject attribute names/values that could break out of an HTML attribute.
+
+    The renderer unescapes final markup by design, so attribute safety is
+    enforced here instead of by Jinja autoescaping.
+    """
+    for name, attr_value in value.items():
+        if not _ATTR_NAME_RE.match(name):
+            raise ValueError(f"extra_attrs name {name!r} is not a valid attribute name")
+        if any(ch in attr_value for ch in ('"', "<", ">")):
+            raise ValueError(
+                f"extra_attrs value for {name!r} must not contain '\"', '<' or '>'"
+            )
+    return value
 
 
 class NestedComponentWrapper(BaseModel):

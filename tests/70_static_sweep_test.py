@@ -1,3 +1,5 @@
+import pytest
+
 from pyjinhx.builtins import (
     Avatar, Badge, Breadcrumb, Card, Divider, EmptyState, Progress, Skeleton, Tooltip,
 )
@@ -18,9 +20,25 @@ def test_class_name_and_extra_attrs_render():
     assert 'id="b"' in html  # Badge root gains an id attribute
 
 
-def test_extra_attrs_values_are_escaped():
-    html = str(Badge(id="b", label="x", extra_attrs={"data-k": '"><script>'}).render())
-    assert "<script>" not in html
+def test_extra_attrs_rejects_breakout_values():
+    with pytest.raises(ValueError):
+        Badge(id="b", label="x", extra_attrs={"data-k": '"><script>'})
+    with pytest.raises(ValueError):
+        Badge(id="b", label="x", extra_attrs={"data-k": '" onmouseover="x'})
+
+
+def test_extra_attrs_rejects_bad_names():
+    with pytest.raises(ValueError):
+        Badge(id="b", label="x", extra_attrs={"data k": "v"})
+
+
+def test_extra_attrs_allows_htmx_and_alpine_names():
+    html = str(Badge(id="b", label="x", extra_attrs={
+        "hx-get": "/x", "data-k": "v", "@click": "open = !open",
+        "x-on:click.prevent": "go()", "hx-on::after-swap": "init()",
+        "aria-label": "ok",
+    }).render())
+    assert 'hx-get="/x"' in html and '@click="open = !open"' in html
 
 
 def test_avatar_color():
