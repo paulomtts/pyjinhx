@@ -210,12 +210,14 @@ _BUILTIN_TAG_NAMES = frozenset(
         "Progress",
         "PromptDialog",
         "RegionLoader",
+        "SegmentedControl",
         "Panel",
         "PanelTrigger",
         "Skeleton",
         "Spinner",
         "TabGroup",
         "ToastHost",
+        "ToggleSwitch",
         "Tooltip",
     }
 )

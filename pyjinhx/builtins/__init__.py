@@ -14,6 +14,7 @@ from .ui import (
     FormField,
     LazyPanel,
     RegionLoader,
+    SegmentedControl,
     Modal,
     Notification,
     PageLoader,
@@ -28,6 +29,7 @@ from .ui import (
     Spinner,
     TabGroup,
     ToastHost,
+    ToggleSwitch,
     Tooltip,
 )
 
@@ -55,11 +57,13 @@ __all__ = [
     "Progress",
     "PromptDialog",
     "RegionLoader",
+    "SegmentedControl",
     "Panel",
     "PanelTrigger",
     "Skeleton",
     "Spinner",
     "TabGroup",
     "ToastHost",
+    "ToggleSwitch",
     "Tooltip",
 ]

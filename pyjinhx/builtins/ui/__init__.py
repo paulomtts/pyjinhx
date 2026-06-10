@@ -13,6 +13,7 @@ from pyjinhx.builtins.ui.empty_state import EmptyState
 from pyjinhx.builtins.ui.form_field import FormField
 from pyjinhx.builtins.ui.lazy_panel import LazyPanel
 from pyjinhx.builtins.ui.region_loader import RegionLoader
+from pyjinhx.builtins.ui.segmented_control import SegmentedControl
 from pyjinhx.builtins.ui.modal import Modal
 from pyjinhx.builtins.ui.notification import Notification
 from pyjinhx.builtins.ui.page_loader import PageLoader
@@ -24,6 +25,7 @@ from pyjinhx.builtins.ui.skeleton import Skeleton
 from pyjinhx.builtins.ui.spinner import Spinner
 from pyjinhx.builtins.ui.tab_group import TabGroup
 from pyjinhx.builtins.ui.toast_host import ToastHost
+from pyjinhx.builtins.ui.toggle_switch import ToggleSwitch
 from pyjinhx.builtins.ui.tooltip import Tooltip
 
 __all__ = [
@@ -50,11 +52,13 @@ __all__ = [
     "Progress",
     "PromptDialog",
     "RegionLoader",
+    "SegmentedControl",
     "Panel",
     "PanelTrigger",
     "Skeleton",
     "Spinner",
     "TabGroup",
     "ToastHost",
+    "ToggleSwitch",
     "Tooltip",
 ]
