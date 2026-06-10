@@ -1,3 +1,5 @@
+import re
+
 from tests.ui.unified_component import UnifiedComponent
 
 CSS = "<style>.test-component { color: red; }\n</style>\n"
@@ -39,8 +41,11 @@ def test_component_reuse():
         items=[shared_component, shared_component, shared_component],
     )
 
-    rendered = component.render()
+    rendered = str(component.render())
 
-    assert "shared-1" in str(rendered)
-    assert str(rendered).count("shared-1") >= 3
-    assert "Shared Component" in str(rendered)
+    # Count structural occurrences: id="shared-1" in element attributes, not text or scripts
+    id_occurrences = re.findall(r'id="shared-1"', rendered)
+    assert len(id_occurrences) == 3, (
+        f"Expected exactly 3 id=\"shared-1\" element attributes, got {len(id_occurrences)}"
+    )
+    assert "Shared Component" in rendered

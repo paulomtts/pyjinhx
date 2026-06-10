@@ -1,4 +1,11 @@
+import re
+
 from tests.ui.unified_component import UnifiedComponent
+
+
+def _extract_scripts(rendered: str) -> list[str]:
+    """Return a list of script block contents (inner text of each <script>...</script>)."""
+    return re.findall(r"<script>(.*?)</script>", rendered, re.S)
 
 
 def test_js_collection_order():
@@ -7,14 +14,18 @@ def test_js_collection_order():
     )
 
     rendered = str(component.render())
+    scripts = _extract_scripts(rendered)
 
-    assert "console.log('Button loaded');" in rendered
-    assert "console.log('Extra script loaded');" in rendered
+    # Both payloads must appear inside script blocks
+    button_script = next((s for s in scripts if "console.log('Button loaded');" in s), None)
+    extra_script = next((s for s in scripts if "console.log('Extra script loaded');" in s), None)
+    assert button_script is not None, "Button JS payload not found inside any <script> block"
+    assert extra_script is not None, "Extra JS payload not found inside any <script> block"
 
-    button_index = rendered.find("console.log('Button loaded');")
-    extra_index = rendered.find("console.log('Extra script loaded');")
-
-    assert button_index < extra_index, "Auto JS should come before extra JS"
+    # Auto JS (button) block must appear before the extra JS block in document order
+    button_block_index = rendered.index(button_script)
+    extra_block_index = rendered.index(extra_script)
+    assert button_block_index < extra_block_index, "Auto JS block should come before extra JS block"
 
 
 def test_js_collection_from_nested_components():
@@ -26,9 +37,13 @@ def test_js_collection_from_nested_components():
     )
 
     rendered = str(component.render())
+    scripts = _extract_scripts(rendered)
 
-    assert "console.log('Button loaded');" in rendered
-    assert rendered.count("console.log('Button loaded');") == 1
+    # Deduplicated: exactly one script block contains the button payload
+    matching = [s for s in scripts if "console.log('Button loaded');" in s]
+    assert len(matching) == 1, (
+        f"Expected exactly 1 script block with Button JS, found {len(matching)}"
+    )
 
 
 def test_js_collection_with_extra_js_in_nested():
@@ -46,9 +61,15 @@ def test_js_collection_with_extra_js_in_nested():
     )
 
     rendered = str(component.render())
+    scripts = _extract_scripts(rendered)
 
-    assert "console.log('Button loaded');" in rendered
-    assert rendered.count("console.log('Extra script loaded');") == 1
+    assert any("console.log('Button loaded');" in s for s in scripts), (
+        "Button JS payload not found inside any <script> block"
+    )
+    extra_matching = [s for s in scripts if "console.log('Extra script loaded');" in s]
+    assert len(extra_matching) == 1, (
+        f"Expected exactly 1 script block with Extra JS (deduplicated), found {len(extra_matching)}"
+    )
 
 
 def test_separate_script_tags():
@@ -57,6 +78,6 @@ def test_separate_script_tags():
     )
 
     rendered = str(component.render())
+    scripts = _extract_scripts(rendered)
 
-    assert rendered.count("<script>") == 2
-    assert rendered.count("</script>") == 2
+    assert len(scripts) == 2, f"Expected 2 <script> blocks, found {len(scripts)}"

@@ -1,21 +1,11 @@
 # tests/71_builtin_conventions_test.py
-"""Mechanical enforcement of docs/guide/builtin-conventions.md.
-
-SWEPT grows phase by phase; Phase 7 asserts SWEPT covers every builtin.
-"""
+"""Mechanical enforcement of docs/guide/builtin-conventions.md."""
 import os
 import re
 
 import pyjinhx.builtins as b
 
-SWEPT: list[type] = [
-    b.Alert, b.Avatar, b.AvatarStack, b.Badge, b.Breadcrumb, b.Card, b.ChipInput,
-    b.ConfirmDialog, b.Divider, b.Drawer, b.Dropdown, b.EmptyState, b.FormField,
-    b.LazyPanel, b.Modal, b.Notification, b.PageLoader, b.Panel, b.PanelTrigger,
-    b.PasswordInput, b.Popover, b.PopoverPanel, b.PopoverTrigger, b.Progress,
-    b.PromptDialog, b.RegionLoader, b.SegmentedControl, b.Skeleton, b.Spinner,
-    b.TabGroup, b.ToastHost, b.ToggleSwitch, b.Tooltip,
-]
+SWEPT: list[type] = [getattr(b, name) for name in b.__all__]
 
 UI_ROOT = os.path.join(os.path.dirname(b.__file__), "ui")
 
@@ -60,8 +50,3 @@ def test_swept_js_files_are_guarded_iifes():
             assert "window.px = window.px || {}" in content, f"{cls.__name__}/{name}: missing px guard"
 
 
-def test_swept_covers_every_builtin():
-    exported = {getattr(b, name) for name in b.__all__}
-    assert set(SWEPT) == exported, sorted(
-        c.__name__ for c in exported.symmetric_difference(set(SWEPT))
-    )

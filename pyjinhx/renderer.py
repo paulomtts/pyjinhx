@@ -281,7 +281,7 @@ class Renderer:
         rendered_markup = stamp_reactive_markup(rendered_markup, component)
 
         if not emit_assets:
-            return Markup(rendered_markup).unescape()
+            return Markup(Markup(rendered_markup).unescape())
 
         policy = AssetPolicy(
             js_mode=self._js_mode,
@@ -300,7 +300,7 @@ class Renderer:
             policy=policy,
             client=client,
         )
-        return Markup(rendered_markup).unescape()
+        return Markup(Markup(rendered_markup).unescape())
 
     def render(self, source: str) -> str:
         parser = Parser()
