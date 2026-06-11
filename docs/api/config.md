@@ -9,12 +9,14 @@ def setup(
     app: object | None = None,
     *,
     settings: PjxSettings | None = None,
-    invalidation_backend: InvalidationBackend | None = None,
-    reactive_dev: bool = False,
+    invalidation_backend: InvalidationBackend | None = ...,  # unset sentinel
+    reactive_dev: bool = ...,  # unset sentinel
     load_context_factory: Callable[[Any], object | None] | None = None,
     **kwargs: Any,
 ) -> PjxSettings
 ```
+
+When omitted, `invalidation_backend` and `reactive_dev` never override a value already present in `settings` — their defaults are unset sentinels, so only explicitly passed values are applied.
 
 **Single call** for typical web apps:
 
@@ -89,12 +91,3 @@ with pyjinhx_lifespan():
     ...
 ```
 
-## Cache defaults
-
-By default (no backend), `load()` caching is **per request** — multi-worker safe without Redis. Pass an `invalidation_backend` to opt into cross-request caching per worker process:
-
-```python
-setup(app, invalidation_backend=...)
-```
-
-See [Cache & Invalidation](cache-invalidation.md) and [Redis integration](integrations-redis.md).

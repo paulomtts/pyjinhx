@@ -5,7 +5,7 @@ This guide walks a complete path from zero to a **reactive FastAPI + HTMX app** 
 When you're done you will have used:
 
 - `BaseComponent` and `ReactiveComponent`
-- Template discovery, nesting, and PascalCase tags
+- Template discovery and nesting via typed child fields
 - Co-located JS/CSS and asset delivery modes
 - `Registry.request_scope`, `@mutates`, and `PjxContext`
 - Reactive `render()` with `ClientBackend` wired in middleware
@@ -42,16 +42,21 @@ uv add pyjinhx fastapi uvicorn httpx python-multipart
 
 ```
 my_app/
-├── app.py                 # FastAPI routes
-├── store.py               # mutations + @mutates
-├── keys.py                # reactive key enums
+├── app.py                   # FastAPI routes
+├── store.py                 # mutations + @mutates
+├── keys.py                  # reactive key enums
 ├── components/
-│   ├── todo_app.py
-│   ├── todo_app.html
-│   ├── todo_row.py
-│   ├── todo_row.html
 │   ├── todo_counter.py
-│   └── todo_counter.html
+│   ├── todo_counter.html
+│   ├── todo-counter.js
+│   ├── todo_list.py
+│   ├── todo_list.html
+│   ├── todo_panel.py
+│   ├── todo_panel.html
+│   ├── todo_item_row.py
+│   ├── todo_item_row.html
+│   ├── todo_app.py
+│   └── todo_app.html
 └── pyproject.toml
 ```
 
@@ -89,8 +94,8 @@ Renderer.set_default_environment("./components")
 print(TodoCounter(id="counter", remaining=3).render())
 ```
 
-???+ question "Why BaseComponent and a required id?"
-    `BaseComponent` is a **Pydantic model** — fields are validated at construction time. The `id` is the stable DOM identity: HTMX targets, registry lookups, and reactive `data-pjx-id` stamping all depend on it. Without an `id`, the library cannot reliably find or swap a region later.
+???+ question "Why BaseComponent and a stable id?"
+    `BaseComponent` is a **Pydantic model** — fields are validated at construction time. The `id` is the stable DOM identity: HTMX targets, registry lookups, and reactive `data-pjx-id` stamping all depend on it. Omitted ids auto-generate a `px-<n>` value; reactive components additionally default to the kebab-cased class name. Explicit ids matter when you need a stable swap target across requests.
 
 ???+ question "Why set_default_environment?"
     The renderer needs one search root for templates (and co-located assets). You set it once at startup (module import or app factory), not per render.
@@ -138,37 +143,43 @@ print(page.render())
 
 ---
 
-## Step 3 — Compose with PascalCase tags in templates
+## Step 3 — A panel with typed child fields
 
 `components/todo_panel.py`:
 
 ```python
 from pyjinhx import BaseComponent
 
+from components.todo_counter import TodoCounter
+
 
 class TodoPanel(BaseComponent):
     id: str
-    remaining: int = 0
+    counter: TodoCounter
 ```
 
 `components/todo_panel.html`:
 
 ```html
 <div id="{{ id }}" class="panel">
-  <TodoCounter id="counter" remaining="{{ remaining }}"/>
+  {{ counter }}
 </div>
 ```
 
-???+ question "Why PascalCase tags?"
-    Tags let **templates own layout** while Python owns data. The parent template emits `<TodoCounter .../>`; PyJinHx expands it using the registered `TodoCounter` class — attrs become constructor fields. Resolution order: existing instance with same class+id → registered class → template-only fallback.
+Build it in Python; the template decides where the child renders:
 
-    See: [PascalCase tags](../guide/tags.md).
+```python
+TodoPanel(id="panel", counter=TodoCounter(id="counter", remaining=3)).render()
+```
+
+???+ question "Why typed child fields?"
+    The panel declares **which child it holds** as a typed Pydantic field; the template owns **where it goes** — `{{ counter }}` renders the nested component in place. This is the same style the runnable `examples/reactive_todo` app uses. PyJinHx also supports `<PascalCase/>` tags for template-driven composition — see [PascalCase tags](../guide/tags.md).
 
 ---
 
 ## Step 4 — Co-located assets
 
-Add `components/todo_counter.js` next to `todo_counter.py`:
+Add `components/todo-counter.js` next to `todo_counter.py` (asset filenames are the **kebab-cased** class name):
 
 ```javascript
 console.log("todo counter ready");
@@ -177,7 +188,7 @@ console.log("todo counter ready");
 On the **root** render, PyJinHx collects JS/CSS once and injects it (inline by default):
 
 ```python
-TodoPanel(id="panel", remaining=2).render()
+TodoPanel(id="panel", counter=TodoCounter(id="counter", remaining=2)).render()
 # → <style>...</style> HTML <script>...</script>
 ```
 
@@ -197,6 +208,7 @@ from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
 from pyjinhx import Renderer
 
+from components.todo_counter import TodoCounter
 from components.todo_panel import TodoPanel
 
 Renderer.set_default_environment("./components")
@@ -205,7 +217,7 @@ app = FastAPI()
 
 @app.get("/", response_class=HTMLResponse)
 def index():
-    return TodoPanel(id="panel", remaining=3).render()
+    return TodoPanel(id="panel", counter=TodoCounter(id="counter", remaining=3)).render()
 ```
 
 Run: `uvicorn app:app --reload`
@@ -228,7 +240,7 @@ from pyjinhx import Registry
 @app.get("/", response_class=HTMLResponse)
 def index():
     with Registry.request_scope():
-        return TodoPanel(id="panel", remaining=3).render()
+        return TodoPanel(id="panel", counter=TodoCounter(id="counter", remaining=3)).render()
 ```
 
 For a real app, use **`setup(app, ...)`** so lifespan and middleware are wired automatically:
@@ -237,7 +249,7 @@ For a real app, use **`setup(app, ...)`** so lifespan and middleware are wired a
 from pyjinhx import setup
 
 app = FastAPI()
-setup(app, load_context_factory=lambda req: AppLoadContext(db=get_db(req)))
+setup(app, load_context_factory=lambda request: AppLoadContext(store=store))  # AppLoadContext defined in Step 12
 ```
 
 See [Configuration API](../api/config.md) and [FastAPI integration](../integrations/fastapi.md).
@@ -287,8 +299,8 @@ for now just note that `Keys.TODOS` and `store` are imported from there:
 ```python
 from pyjinhx import ReactiveComponent
 
-from .keys import Keys
-from . import store
+from keys import Keys
+import store
 
 
 class TodoCounter(ReactiveComponent, react={Keys.TODOS}):
@@ -333,17 +345,30 @@ class Keys(MutationKey):
 ```python
 from pyjinhx import mutates
 
-from .keys import Keys
+from keys import Keys
+
+_todos: dict[int, dict] = {}
+_next_id = 1
+
+
+def remaining() -> int:
+    return sum(1 for t in _todos.values() if not t["done"])
+
+
+def get(todo_id: int) -> object:
+    return type("Todo", (), _todos[todo_id])()
 
 
 @mutates(Keys.TODOS)
 def add(text: str) -> None:
-    ...
+    global _next_id
+    _todos[_next_id] = {"text": text, "done": False}
+    _next_id += 1
 
 
 @mutates(Keys.TODOS)
 def toggle(todo_id: int) -> None:
-    ...
+    _todos[todo_id]["done"] = not _todos[todo_id]["done"]
 ```
 
 Route (the `TodoItemRow` it renders is the instance-keyed row **we define in Step 10**):
@@ -375,15 +400,18 @@ class TodoItemRow(ReactiveComponent, react={Keys.TODOS}):
     done: bool = False
 
     @classmethod
-    def load(cls, todo_id: int) -> "TodoItemRow":
-        todo = store.get(todo_id)
+    def load(cls, todo_id: int | str) -> "TodoItemRow":
+        resolved_id = int(todo_id)  # cache wrapper passes the key as a string
+        todo = store.get(resolved_id)
         return cls(
-            id=f"row-{todo_id}",
-            todo_id=todo_id,
+            id=f"row-{resolved_id}",
+            todo_id=resolved_id,
             title=todo.text,
             done=todo.done,
         )
 ```
+
+The `load()` key arrives as a **string** from the cache wrapper (the manifest serialises to JSON), so annotate `int | str` and convert inside `load()`.
 
 Template (note `data-pjx-loading` — covered in Step 11):
 
@@ -432,7 +460,7 @@ mutation touches — the swap target *and* its OOB dependents.
 
 ## Step 12 — PjxContext (avoid globals in load())
 
-The context is just a **plain frozen dataclass** — `PjxContext.current()` is duck-typed, so you don't need to subclass anything:
+The context is just a **plain frozen dataclass** — `PjxContext.current()` is duck-typed, so you don't need to subclass anything for this manual pattern (the annotation-injected `ctx:` parameter style does require a `PjxContext` subclass annotation):
 
 ```python
 from dataclasses import dataclass
@@ -473,6 +501,8 @@ You don't pick a cache scope — it follows the backend. By default (no `invalid
 Multi-worker fan-out (also enables cross-request caching):
 
 ```python
+import os
+
 from pyjinhx import PjxSettings, setup
 from pyjinhx.integrations.redis import RedisInvalidationBackend
 
@@ -535,11 +565,11 @@ print(format_dependency_graph())
 
 ```python
 import pyjinhx.builtins  # register templates
-from pyjinhx.builtins import Alert, Button, Card
+from pyjinhx.builtins import Alert, Card, Modal
 ```
 
 ???+ question "Why builtins?"
-    Optional ready-made components (Alert, Modal, Panel, …) with co-located CSS/JS. Use when you want a consistent kit without building every primitive. Your app components follow the same `BaseComponent` rules.
+    Optional ready-made components (Alert, Card, Modal, Panel, …) with co-located CSS/JS. Use when you want a consistent kit without building every primitive. Your app components follow the same `BaseComponent` rules.
 
     See: [Built-in UI components](../guide/builtins.md).
 

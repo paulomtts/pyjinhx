@@ -46,7 +46,7 @@ from pyjinhx.builtins import (
 
 **Template discovery:** Builtins ship inside `site-packages`, not under your app's Jinja loader root, so PascalCase tags do **not** auto-discover them — `<Tooltip/>` raises a `FileNotFoundError` unless the class was imported once at startup (`import pyjinhx.builtins` or any of the imports above), which registers it. For registered builtin classes, the renderer **falls back** to adjacent package templates: each component's Jinja template lives next to its Python source in `pyjinhx/builtins/ui/<component>/` (e.g. `pyjinhx/builtins/ui/modal/modal.html`). Subclasses of builtins inherit the builtin's template and assets through the MRO, so `class TaskBadge(Badge)` renders like a Badge — see the [reactivity guide](../reactivity.md#making-builtins-reactive) for the reactive pattern.
 
-**Inherited fields:** Every component inherits **`id`** (optional — omitted/falsy ids become `px-<n>`; reactive components need stable ids, defaulted to the kebab-cased class name; pass explicit ids for instance-keyed rows), **`js`** / **`css`** (extra asset paths), **`render()`**, and **`__html__()`** from [`BaseComponent`](../api/base-component.md). `id` is omitted from per-component props tables below. Every builtin also accepts `class_name` (extra classes appended to the root) and `extra_attrs` (validated `dict[str, str]` rendered on the root element).
+**Inherited fields:** Every component inherits `id`, `js`/`css` (extra-asset fields — see [BaseComponent](../api/base-component.md)), `class_name`, `extra_attrs`, `render()`, and `__html__()` — see [builtin-conventions.md](./builtin-conventions.md) for the full contract. `id` is omitted from per-component props tables below.
 
 **Theming:** Per-component `--px-*` tokens are collected in the [Theming tokens](#theming-tokens) appendix. Each component section points there.
 
@@ -88,7 +88,7 @@ from pyjinhx.builtins import (
 | ToggleSwitch | `toggle-switch.css` | — |
 | Tooltip | `tooltip.css` | `tooltip.js` (IIFE, no API) |
 
-**Children-vs-`content` tag gotcha (children-mapping components):** Several components map children to a single attribute (e.g. Tooltip `tip`, Notification `content`, PanelTrigger `content`). If you use `Renderer.render()` with PascalCase tags, do **not** supply both child text and the corresponding attribute on the same tag—use body text as the child *or* the attribute, not both.
+**Children-vs-`content` tag gotcha (children-mapping components):** Several components map children to a single attribute (e.g. Notification `content`, PanelTrigger `content`). If you use `Renderer.render()` with PascalCase tags, do **not** supply both child text and the corresponding attribute on the same tag—use body text as the child *or* the attribute, not both.
 
 **Backdrop click (Modal and Drawer):** Both render a native `<dialog>`; a document `click` listener treats a click whose target is the `<dialog>` root itself (the backdrop) as a close. Any native `<dialog>` clicked directly is affected—use unique ids and avoid stacking multiple dialogs unless you adjust this.
 
@@ -244,9 +244,9 @@ In-place loading veil over a positioned ancestor. **Assets:** `region-loader.css
 
 **Layout:** Overlay is `position: absolute; inset: 0`. Parent must be **`position: relative`** (or any non-`static` value) so coverage is correct.
 
-Also works as an **`hx-indicator`** target: htmx adds `htmx-request` to the element, and the overlay CSS responds to `.px-region-loader.htmx-request` by activating the veil — no JS call required. For programmatic use, `show`/`hide` are **reference-counted per `id`** so overlapping async operations are safe.
+Supports both declarative (`hx-indicator`) and programmatic use (`px.loader.region.*`).
 
-**DOM contract.** Root `.px-region-loader` (state: `.px-region-loader--visible`, `.px-region-loader--hiding`; also responds to `.htmx-request` as an htmx indicator).
+**DOM contract.** Root `.px-region-loader` (state: `.px-region-loader--visible`, `.px-region-loader--hiding`; also responds to `.htmx-request` as an htmx indicator — CSS activates the veil, no JS call required).
 Events (non-cancelable): `px:region-loader:show`, `px:region-loader:hide`.
 API: `px.loader.region.show/hide/reset(id)` and `px.loader.region.wrap(id, promise)`. Ref-counted for concurrent sources: visible from the first `show(id)` to the last `hide(id)`; `show`/`hide` events fire only on real visibility transitions (a show during an in-flight hide cancels it silently); hides finalize via a fallback timer even when animations are disabled. `wrap(id, promise)` pairs show/hide around any async task. Nodes replaced by a swap while sources remain active are re-lit on htmx:afterSettle.
 
@@ -266,9 +266,9 @@ Compact focus/hover hint. **Assets:** `tooltip.css`, `tooltip.js` (IIFE — no A
 | `tip` | `str \| BaseComponent` | `""` | `role="tooltip"` body. |
 | `placement` | literal | `"top"` | `top`, `bottom`, `start`, `end` → `data-px-tooltip-placement`. |
 
-**DOM contract.** Root `.px-tooltip`. `data-px-tooltip-placement` drives JS positioning (`top`/`bottom`/`start`/`end`). Tip shows on `mouseover`/`focusin` of `.px-tooltip__trigger`; hides on `mouseout`/`focusout`; repositions on `scroll`. No JS API (`px._tooltipWired` guard only).
+**DOM contract.** Root `.px-tooltip`. `data-px-tooltip-placement` drives JS positioning (`top`/`bottom`/`start`/`end`). Tip shows on `mouseover` anywhere inside `.px-tooltip` root, or on `focusin` of `.px-tooltip__trigger`; hides on `mouseout`/`focusout`; repositions on `scroll`. No JS API (`px._tooltipWired` guard only).
 
-**Classes:** `px-tooltip`, `px-tooltip__trigger`, `px-tooltip__tip`, `px-tooltip__tip--visible`. Maps children to `tip`; see the [children-vs-`content` note](#built-in-ui-components). Theming: see [Tooltip tokens](#tooltip-tokens).
+**Classes:** `px-tooltip`, `px-tooltip__trigger`, `px-tooltip__tip`, `px-tooltip__tip--visible`. Tip text goes through the `tip` attribute — children are not mapped and are silently dropped; see the [children-vs-`content` note](#built-in-ui-components). Theming: see [Tooltip tokens](#tooltip-tokens).
 
 ---
 
@@ -353,6 +353,7 @@ Determinate or indeterminate meter. **Assets:** `progress.css` only.
 | `value` | `float \| None` | `None` | Omit or `None` for indeterminate `<progress>`. |
 | `max` | `float` | `100` | Passed to `<progress max="…">`. |
 | `label` | `str` | `""` | Optional `px-progress__label`; wires `aria-labelledby` when set. |
+| `loading_label` | `str` | `"Loading"` | `aria-label` fallback on `<progress>` when `label` is empty. |
 
 **DOM contract.** Root `.px-progress`; no JS API.
 
@@ -509,6 +510,7 @@ Ordered trail of links. **Assets:** `breadcrumb.css` only.
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
 | `items` | `list[tuple[str, str \| None]]` | `[]` | `(label, href)` left to right; `href` `None` marks the current page. |
+| `aria_label` | `str` | `"Breadcrumb"` | `aria-label` on the `<nav>` wrapper. |
 
 `items` may also be passed as a **JSON array** string (e.g. from PascalCase tags): `[["Home","/"],["Here",null]]`.
 
@@ -531,7 +533,7 @@ Tab buttons and panels. **Assets:** `tab-group.css`, `tab-group.js`.
 
 `tabs` may also be a **JSON object** string from markup tags (values are HTML strings).
 
-**DOM contract.** Root `.px-tab-group` with `data-px-region` (fires `px:reveal`/`px:before-reveal` on panel switch). Tab elements: `.px-tab-group__tab` with `data-px-panel-key`; panel elements: `.px-tab-group__panel[data-px-region]`. `px:before-reveal` (cancelable) fires before switching; `px:reveal` fires after; `data-px-revealed` is set on the visible panel. `tab-group.js` delegates `click` within `.px-tab-group__list`, updates `aria-selected`, `tabindex`, and `hidden`.
+**DOM contract.** Root `.px-tab-group` (no `data-px-region` on the root). Tab elements: `.px-tab-group__tab` (no `data-px-panel-key` — tabs match panels by insertion-order index); panel elements: `.px-tab-group__panel[data-px-region]` (each panel carries `data-px-region`). `px:before-reveal` (cancelable) fires before switching; `px:reveal` fires after; `data-px-revealed` is set on the visible panel. `tab-group.js` delegates `click` document-wide on `.px-tab-group__tab` (not scoped to `.px-tab-group__list`), updates `aria-selected`, `tabindex`, and `hidden`. On `DOMContentLoaded`, `htmx:afterSwap`, and `htmx:afterSettle`, `pxTabGroupInit` announces the initially visible panel once (`px:reveal`, reason `"api"`) so `LazyPanel(when="reveal")` works in default tabs.
 
 **Classes:** `px-tab-group`, `px-tab-group__list`, `px-tab-group__tab`, `px-tab-group__panel`. Theming: see [TabGroup tokens](#tabgroup-tokens).
 
@@ -567,7 +569,7 @@ Invisible wrapper that wires clicks to a [`Panel`](#panel) slot. **Assets:** `pa
 
 Maps children to `content`; see the [children-vs-`content` note](#built-in-ui-components).
 
-**DOM contract.** Root `.px-panel-trigger[data-px-panel-id][data-px-panel-key]`; no own JS (wired by `panel.js`). `display: contents` so no layout box.
+**DOM contract.** Root `.px-panel-trigger[data-px-panel-id][data-px-panel-key]`; no own JS (wired by `panel.js`). `display: contents` so no layout box. On every panel switch, `panel.js` syncs `aria-selected` and `tabindex` on every `.px-panel-trigger[data-px-panel-id]` matching the host Panel.
 
 **Classes:** `px-panel-trigger`. No theming tokens.
 
@@ -779,7 +781,7 @@ ChipInput(id="tags", name="tags", values=["python", "jinja2"], placeholder="Add 
 **DOM contract.** Root `div.px-chip-input[data-px-chip-input][data-name][data-remove-label]`; state: `[data-disabled]`.
 Each chip: `span.px-chip-input__chip[data-px-chip]` containing a `.px-chip-input__label`, `input[type=hidden]`, and (when enabled) `button.px-chip-input__remove[data-px-chip-remove]`.
 Text field: `input.px-chip-input__field`.
-Events (bubble from root): `px:chip-input:before-add`* (detail `{value}`), `px:chip-input:add`, `px:chip-input:before-remove`* (detail `{value}`), `px:chip-input:remove` — `*` = cancelable. Commit triggers: `Enter`, `,`, `focusout`; Backspace on empty field removes the last chip.
+Events (bubble from root): `px:chip-input:before-add`* (detail `{value}`), `px:chip-input:add`, `px:chip-input:before-remove`* (detail `{value}`), `px:chip-input:remove` — `*` = cancelable. Commit triggers: `Enter`, `,`, `focusout`, `submit` (form submit commits pending text); Backspace on empty field removes the last chip.
 
 **Classes:** `px-chip-input`, `px-chip-input__chip`, `px-chip-input__label`, `px-chip-input__remove`, `px-chip-input__field`. Theming: see [ChipInput tokens](#chipinput-tokens).
 

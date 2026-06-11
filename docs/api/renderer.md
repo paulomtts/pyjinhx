@@ -55,7 +55,7 @@ Return a cached default renderer instance.
 - `js_mode` (AssetMode | None): JavaScript delivery mode
 - `css_mode` (AssetMode | None): CSS delivery mode
 
-**Returns:** A Renderer instance cached by environment identity, asset modes, and resolver identity.
+**Returns:** A Renderer instance cached by environment identity, `auto_id`, asset modes, and resolver identity.
 
 ##### set_default_js_mode()
 

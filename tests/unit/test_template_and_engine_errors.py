@@ -43,11 +43,12 @@ def test_missing_template_error_hints_at_builtin_import():
     assert "from pyjinhx.builtins import Tooltip" in str(error)
 
 
-def test_missing_template_error_keeps_legacy_message():
+def test_missing_template_error_lists_real_candidates():
     error = _missing_template_error("UserCard")
 
     assert str(error) == (
-        "No template found for <UserCard>. Expected usercard.html or usercard.jinja"
+        "No template found for <UserCard>. Expected one of: "
+        "user_card.html, user-card.html, user_card.jinja, user-card.jinja"
     )
 
 

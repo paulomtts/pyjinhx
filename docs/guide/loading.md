@@ -1,6 +1,6 @@
 # Loading states
 
-Five loading niches, one decision rule: *what is missing?*
+Six loading niches, one decision rule: *what is missing?*
 
 | What's missing | Builtin | Activation |
 |---|---|---|

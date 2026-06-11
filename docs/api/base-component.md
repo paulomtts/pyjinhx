@@ -12,7 +12,7 @@ Subclasses are automatically registered and can be rendered using their correspo
 
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
-| `id` | `str` | Yes | - | Unique identifier for the component instance |
+| `id` | `str` | No | auto-generated (`px-<n>`) when omitted | Unique identifier for the component instance |
 | `js` | `list[str]` | No | `[]` | Paths to additional JavaScript files to include when rendering |
 | `css` | `list[str]` | No | `[]` | Paths to additional CSS files to include when rendering |
 
@@ -28,7 +28,7 @@ def render() -> Markup
 
 Render this component to HTML using its associated Jinja template.
 
-The template is auto-discovered based on the component class name (e.g., `MyButton` looks for `my_button.html` or `my_button.jinja`). All component fields are available in the template context, and nested components are rendered recursively.
+The template is auto-discovered based on the component class name (e.g., `MyButton` looks for `my_button.html` or `my_button.jinja`). All component fields are available in the template context, and nested components are rendered recursively. Subclasses with no adjacent template inherit the nearest ancestor's template and assets through the MRO (first found per kind); a class may have at most one concrete component base — multiple concrete bases raise `TypeError` at definition time (see [Component guide](../guide/components.md)).
 
 This is a plain, zero-argument render. The dependency-aware reactive behavior (`dirtied` / `mounted` / `client`) lives on `ReactiveComponent` — see [Reactive API](reactive-api.md).
 

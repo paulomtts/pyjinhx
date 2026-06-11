@@ -2,7 +2,7 @@
 
 Every symbol exported from `pyjinhx` (`__all__`) is listed below with a one-line description and a link to detailed documentation.
 
-These 13 symbols are the entire top-level public API; advanced/internal building blocks (e.g. `oob_swaps`, `LoadCache`, `ClientBackend`, the asset-resolver helpers, dev tooling) remain importable from their submodules — e.g. `from pyjinhx.cache import LoadCache`.
+These 11 symbols are the entire top-level public API; advanced/internal building blocks (e.g. `oob_swaps`, `LoadCache`, `ClientBackend`, the asset-resolver helpers, dev tooling) remain importable from their submodules — e.g. `from pyjinhx.cache import LoadCache`.
 
 ## Components & rendering
 

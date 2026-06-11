@@ -30,9 +30,9 @@ Find a file by name under the root directory.
 **Parameters:**
 - `filename` (str): The filename to search for.
 
-**Returns:** The full path to the first matching file.
+**Returns:** The full path to the unique matching file.
 
-**Raises:** `FileNotFoundError` if the file is not found.
+**Raises:** `FileNotFoundError` if the file is not found, or if multiple files match (ambiguous template name).
 
 ##### find_template_for_tag()
 

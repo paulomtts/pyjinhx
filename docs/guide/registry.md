@@ -65,7 +65,7 @@ def index():
     # Registry automatically cleaned up
 ```
 
-On entry, `request_scope()` also clears pending mutations, initializes the request-tier load cache, and optionally sets `load_context` and `client_backend`. On exit, it warns about unconsumed mutations (when reactive dev is enabled), clears mutations, and resets the request cache.
+On entry, `request_scope()` also clears pending mutations, initializes the request-tier load cache, and optionally sets `load_context` and `client_backend`. On exit — even when an exception occurs — it restores the previous registry state, warns about unconsumed mutations (when reactive dev is enabled), clears mutations, and resets the request cache.
 
 `load_context` and `client_backend` are **optional** — bare `Registry.request_scope()` is enough for instance isolation.
 
@@ -155,7 +155,7 @@ The class registry enables the `Renderer` to instantiate components from PascalC
 
 ### Template context precedence
 
-During render, registered instances are injected into the Jinja context by `id` so templates can reference them by registry key. **Component field values from `model_dump()` take precedence** when a field name collides with an instance `id` (registry injection uses `setdefault`). Watch for this with `ReactiveComponent`, whose `id` defaults to the kebab-cased class name: a `Total` reactive component with a `total` field defaults its `id` to `"total"`, so the field would shadow the instance. (A plain `BaseComponent` has no such default — it always requires an explicit `id`.)
+During render, registered instances are injected into the Jinja context by `id` so templates can reference them by registry key. **Component field values from `model_dump()` take precedence** when a field name collides with an instance `id` (registry injection uses `setdefault`). Watch for this with `ReactiveComponent`, whose `id` defaults to the kebab-cased class name: a `Total` reactive component with a `total` field defaults its `id` to `"total"`, so the field would shadow the instance. (A plain `BaseComponent` defaults to `px-<n>` — not the kebab-class default that reactive components get.)
 
 ```python
 # Class registry (automatic when you define a class)

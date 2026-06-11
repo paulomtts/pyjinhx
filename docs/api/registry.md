@@ -182,11 +182,4 @@ with Registry.request_scope(
 # Registry, cache, and mutations automatically restored
 ```
 
-**Features:**
-
-- Creates a fresh empty registry on entry
-- Restores previous registry state on exit (even if an exception occurs)
-- Supports nesting—each scope is independent
-- Prevents "Overwriting..." warnings when reusing component IDs across requests
-
-See the [FastAPI integration guide](../integrations/fastapi.md#middleware-recommended) for practical examples.
+Scopes support nesting — each scope is independent. See the [Component Registry guide](../guide/registry.md) for conceptual documentation and the [FastAPI integration guide](../integrations/fastapi.md#middleware-recommended) for practical examples.

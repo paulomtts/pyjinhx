@@ -27,7 +27,7 @@ class Card(BaseComponent):
     subtitle: str = ""   # optional
 ```
 
-The template is auto-discovered from the class name: `Card` → `card.html`/`card.jinja`; `ActionButton` → `action_button` or `action-button` (`.html` or `.jinja`).
+The template is auto-discovered from the class name: `Card` → `card.html`/`card.jinja`; `ActionButton` → `action_button` or `action-button` (`.html` or `.jinja`). Subclasses with no adjacent template inherit the nearest ancestor's template and assets through the MRO (first found per kind), so do **not** duplicate templates for every subclass; a class may have at most one concrete component base (definition-time `TypeError`).
 
 ## Rendering
 
@@ -52,7 +52,7 @@ Fields typed as components — `action: Button`, `items: list[Button]`, `widgets
 
 ## Assets (JS & CSS)
 
-**Kebab-case** `.js`/`.css` files next to the component (`TabGroup` → `tab-group.js`; a snake_case stem like `tab_group.js` is **not** collected) are auto-collected, deduplicated per render session, and injected at the root render — CSS as `<style>` before the HTML, JS as `<script>` after, one tag per component so an error in one doesn't break others.
+**Kebab-case** `.js`/`.css` files next to the component (`TabGroup` → `tab-group.js`; a snake_case stem like `tab_group.js` is **not** collected) are auto-collected, deduplicated per render session, and injected at the root render — CSS as `<style>` before the HTML, JS as `<script>` after, one tag per component so an error in one doesn't break others. Subclasses with no adjacent assets inherit the nearest ancestor's assets through the MRO (first found per kind).
 
 Add extra files via the `js=[...]` / `css=[...]` fields; missing files warn on the `pyjinhx` logger. For production use `AssetMode.REFERENCE` with `Renderer.set_asset_url_resolver()`; disable with `AssetMode.NONE`. For layout preload use `Finder(root).collect_javascript_files()` / `.collect_css_files()` or `layout_asset_tags()`.
 
@@ -127,7 +127,7 @@ Set an explicit `id` in `load()` for stable DOM targets; templates use the key f
 
 ### Client runtime & cache
 
-- Root full-page renders auto-inject `pjx.js` unless the request already carries `X-PJX-Mounted`. For a raw Jinja shell, put `{{ client_script() }}` in `<head>`.
+- Root full-page renders auto-inject `pjx.js` unless the request already carries `X-PJX-Mounted`. For a raw Jinja shell, call `client_script()` Python-side and pass it into the template context (e.g. `{"pjx_runtime": client_script()}`), then render with `{{ pjx_runtime }}` in `<head>` or `<body>`.
 - **Loading indicators:** `data-pjx-loading="skeleton"` (or `"spinner"`) on any element inside a reactive root template flags it (matched via the enclosing reactive root) while an in-flight request dirties keys the region reacts to, until the swap lands. A trigger may add `data-pjx-loading-extra="<css-selector>"` to also flag regions a bulk action will touch. Style via `--pjx-*` CSS vars (`--pjx-skeleton-color`, `--pjx-spinner-color`, …).
 - Every `load()` is memoized in `LoadCache`, one entry per `(type, key)`. Scope follows the backend: per-request with no `invalidation_backend`; pass `setup(invalidation_backend=...)` (e.g. Redis) for process-wide caching plus eviction fan-out across workers.
 
@@ -164,7 +164,8 @@ from pyjinhx import (
     setup,              # wires FastAPI middleware (request_scope, ClientBackend, PjxContext)
 )
 # advanced/internal building blocks live in submodules:
-from pyjinhx.finder import Finder        # asset/template discovery, detect_root_directory()
+from pyjinhx.finder import Finder        # asset/template discovery
+from pyjinhx.utils import detect_root_directory  # locate project root
 from pyjinhx.tags import Parser, Tag     # HTML parsing internals (rarely needed)
 from pyjinhx.cache import LoadCache      # LoadCache.invalidate — manual cache eviction
 from pyjinhx.reactive import oob_swaps   # manual OOB walk (tests/advanced)

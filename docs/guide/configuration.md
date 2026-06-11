@@ -101,6 +101,7 @@ Pass a settings object via `settings=`, or override individual fields with expli
 `PjxSettings.from_env()` builds settings from the environment:
 
 - `REDIS_URL` — wires a `RedisInvalidationBackend` (which derives cross-request caching)
+- `PJX_INVALIDATION_DB` — wires a `SqliteInvalidationBackend` with the given path (used when `REDIS_URL` is not set)
 - `PJX_REACTIVE_DEV` — enables reactive dev mode when set to `1`, `true`, or `yes`
 
 ```python
