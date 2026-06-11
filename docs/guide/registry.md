@@ -155,7 +155,7 @@ The class registry enables the `Renderer` to instantiate components from PascalC
 
 ### Template context precedence
 
-During render, registered instances are injected into the Jinja context by `id` so templates can reference them by registry key. **Component field values from `model_dump()` take precedence** when a field name collides with an instance `id` (registry injection uses `setdefault`). Watch for this with `ReactiveComponent`, whose `id` defaults to the kebab-cased class name: a `Total` reactive component with a `total` field defaults its `id` to `"total"`, so the field would shadow the instance. (A plain `BaseComponent` defaults to `px-<n>` — not the kebab-class default that reactive components get.)
+During render, registered instances are injected into the Jinja context by `id` so templates can reference them by registry key. A component cannot cross-reference a component of the **same type and id** that is currently being rendered — such a reference renders empty and logs a warning. Different component types that share the same `id` are tracked independently, so nesting an `InnerChip(id="x")` inside an `OuterShell(id="x")` renders both in full. **Component field values from `model_dump()` take precedence** when a field name collides with an instance `id` (registry injection uses `setdefault`). Watch for this with `ReactiveComponent`, whose `id` defaults to the kebab-cased class name: a `Total` reactive component with a `total` field defaults its `id` to `"total"`, so the field would shadow the instance. (A plain `BaseComponent` defaults to `px-<n>` — not the kebab-class default that reactive components get.)
 
 ```python
 # Class registry (automatic when you define a class)

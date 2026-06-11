@@ -50,6 +50,10 @@ class RenderSession:
         scripts: Inline JavaScript payloads (INLINE mode only).
         styles: Inline CSS payloads (INLINE mode only).
         runtime_injected: Whether the pyjinhx client runtime was scheduled.
+        rendering: Registry keys (``"TypeName_id"`` tuples) of components
+            currently on the render stack, used to break cross-reference
+            cycles (a same-type-and-id reference renders empty and logs a
+            warning).
     """
 
     assets: list[CollectedAsset] = field(default_factory=list)
@@ -57,6 +61,7 @@ class RenderSession:
     scripts: list[str] = field(default_factory=list)
     styles: list[str] = field(default_factory=list)
     runtime_injected: bool = False
+    rendering: set[tuple[str, str]] = field(default_factory=set)
 
     def manifest(self, *, resolver: AssetUrlResolver) -> AssetManifest:
         stylesheets: list[str] = []

@@ -80,6 +80,10 @@ class BaseComponent(BaseModel):
 
     _pjx_framework: ClassVar[bool] = True
 
+    # Field that children of a PascalCase tag map into (e.g. <Card>text</Card>).
+    # Components without a `content` field can point this at their text slot.
+    _pjx_children_field: ClassVar[str] = "content"
+
     id: str = Field(
         default_factory=_auto_id,
         description="The unique ID for this component. Auto-generated when omitted.",
@@ -138,6 +142,16 @@ class BaseComponent(BaseModel):
         session: RenderSession,
     ) -> Any:
         if isinstance(field_value, BaseComponent):
+            _guard_key = (type(field_value).__name__, field_value.id)
+            if _guard_key in session.rendering:
+                # Already on the render stack: rendering it here would recurse
+                # forever, so the cyclic reference renders empty instead.
+                logger.warning(
+                    "render cycle suppressed: <%s id=%s> is already being rendered",
+                    type(field_value).__name__,
+                    field_value.id,
+                )
+                return NestedComponentWrapper(html="", props=field_value)
             return NestedComponentWrapper(
                 html=field_value._render(
                     base_context=context,
@@ -212,54 +226,69 @@ class BaseComponent(BaseModel):
         is_root = base_context is None and _session is None
         session = _session or renderer.new_session()
 
-        if base_context is None:
-            context: dict[str, Any] = self.model_dump()
-        else:
-            context = {**base_context, **self.model_dump()}
+        _guard_key = (type(self).__name__, self.id)
+        if _guard_key in session.rendering:
+            # This component is already being rendered higher up the stack
+            # (a self- or ancestor tag reference). Render empty to break the
+            # cycle instead of recursing forever.
+            logger.warning(
+                "render cycle suppressed: <%s id=%s> is already being rendered",
+                type(self).__name__,
+                self.id,
+            )
+            return Markup("")
+        session.rendering.add(_guard_key)
+        try:
+            if base_context is None:
+                context: dict[str, Any] = self.model_dump()
+            else:
+                context = {**base_context, **self.model_dump()}
 
-        for field_name in type(self).model_fields.keys():
-            field_value = getattr(self, field_name)
-            context = self._update_context_(
-                context,
-                field_name,
-                field_value,
-                renderer=renderer,
-                session=session,
+            for field_name in type(self).model_fields.keys():
+                field_value = getattr(self, field_name)
+                context = self._update_context_(
+                    context,
+                    field_name,
+                    field_value,
+                    renderer=renderer,
+                    session=session,
+                )
+
+            declared_fields = set(type(self).model_fields.keys())
+            for field_name, field_value in context.items():
+                if field_name in declared_fields:
+                    continue
+                context = self._update_context_(
+                    context,
+                    field_name,
+                    field_value,
+                    renderer=renderer,
+                    session=session,
+                )
+
+            from pyjinhx.client import ClientBackend, LoadedAssets
+
+            resolved_client = ClientBackend.resolve_client(client)
+            loaded_assets = (
+                LoadedAssets.parse(resolved_client)
+                if resolved_client is not None and emit_assets
+                else frozenset()
             )
 
-        declared_fields = set(type(self).model_fields.keys())
-        for field_name, field_value in context.items():
-            if field_name in declared_fields:
-                continue
-            context = self._update_context_(
-                context,
-                field_name,
-                field_value,
-                renderer=renderer,
+            return renderer.render_component_with_context(
+                self,
+                context=context,
+                template_source=source,
+                template_path=_template_path,
                 session=session,
+                is_root=is_root,
+                collect_component_js=source is None,
+                emit_assets=emit_assets,
+                loaded_assets=loaded_assets,
+                client=resolved_client,
             )
-
-        from pyjinhx.client import ClientBackend, LoadedAssets
-
-        resolved_client = ClientBackend.resolve_client(client)
-        loaded_assets = (
-            LoadedAssets.parse(resolved_client)
-            if resolved_client is not None and emit_assets
-            else frozenset()
-        )
-
-        return renderer.render_component_with_context(
-            self,
-            context=context,
-            template_source=source,
-            template_path=_template_path,
-            session=session,
-            is_root=is_root,
-            collect_component_js=source is None,
-            emit_assets=emit_assets,
-            loaded_assets=loaded_assets,
-            client=resolved_client,
-        )
+        finally:
+            session.rendering.discard(_guard_key)
 
     def render(self) -> Markup:
         """

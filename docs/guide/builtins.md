@@ -88,7 +88,7 @@ from pyjinhx.builtins import (
 | ToggleSwitch | `toggle-switch.css` | — |
 | Tooltip | `tooltip.css` | `tooltip.js` (IIFE, no API) |
 
-**Children-vs-`content` tag gotcha (children-mapping components):** Several components map children to a single attribute (e.g. Notification `content`, PanelTrigger `content`). If you use `Renderer.render()` with PascalCase tags, do **not** supply both child text and the corresponding attribute on the same tag—use body text as the child *or* the attribute, not both.
+**Children-vs-`content` tag gotcha (children-mapping components):** Several components map children to a single attribute (e.g. Notification `content`, PanelTrigger `content`, Tooltip `tip`). If you use `Renderer.render()` with PascalCase tags, do **not** supply both child text and the corresponding attribute on the same tag—use body text as the child *or* the attribute, not both.
 
 **Backdrop click (Modal and Drawer):** Both render a native `<dialog>`; a document `click` listener treats a click whose target is the `<dialog>` root itself (the backdrop) as a close. Any native `<dialog>` clicked directly is affected—use unique ids and avoid stacking multiple dialogs unless you adjust this.
 
@@ -268,7 +268,7 @@ Compact focus/hover hint. **Assets:** `tooltip.css`, `tooltip.js` (IIFE — no A
 
 **DOM contract.** Root `.px-tooltip`. `data-px-tooltip-placement` drives JS positioning (`top`/`bottom`/`start`/`end`). Tip shows on `mouseover` anywhere inside `.px-tooltip` root, or on `focusin` of `.px-tooltip__trigger`; hides on `mouseout`/`focusout`; repositions on `scroll`. No JS API (`px._tooltipWired` guard only).
 
-**Classes:** `px-tooltip`, `px-tooltip__trigger`, `px-tooltip__tip`, `px-tooltip__tip--visible`. Tip text goes through the `tip` attribute — children are not mapped and are silently dropped; see the [children-vs-`content` note](#built-in-ui-components). Theming: see [Tooltip tokens](#tooltip-tokens).
+**Classes:** `px-tooltip`, `px-tooltip__trigger`, `px-tooltip__tip`, `px-tooltip__tip--visible`. Tip text goes through the `tip` attribute; tag children map to `tip` as well — see the [children-vs-`content` note](#built-in-ui-components). Theming: see [Tooltip tokens](#tooltip-tokens).
 
 ---
 
