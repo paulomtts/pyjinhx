@@ -184,6 +184,8 @@ class ReactiveComponent(BaseComponent):
 
     model_config = ConfigDict(extra="allow", ignored_types=(_ReactiveRender,))
 
+    _pjx_framework: ClassVar[bool] = True
+
     state_hash_exclude: ClassVar[frozenset[str]] = frozenset({"id"})
 
     _pjx_key: str | None = PrivateAttr(default=None)
