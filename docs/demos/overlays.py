@@ -20,7 +20,7 @@ def modal():
             title="Confirm changes",
             body="Your draft will be published immediately. This action cannot be undone.",
             footer='<button class="px-demo-btn" data-px-close>Cancel</button>',
-        ),
+        ).render(),
     ]
 
 
@@ -33,7 +33,7 @@ def drawer():
             title="Filter results",
             body="<p>Adjust filters to narrow down your results.</p>",
             footer='<button class="px-demo-btn" data-px-close>Done</button>',
-        ),
+        ).render(),
     ]
 
 
@@ -42,7 +42,7 @@ def confirm_dialog():
         """<button class="px-demo-btn"
             onclick="px.confirm('Delete this file?', { okLabel: 'Delete', danger: true })
                 .then(ok => { if (ok) alert('Deleted.') })">Delete file</button>""",
-        ConfirmDialog(id="demo-confirm"),
+        ConfirmDialog(id="demo-confirm").render(),
     ]
 
 
@@ -51,7 +51,7 @@ def prompt_dialog():
         """<button class="px-demo-btn"
             onclick="px.prompt('Rename file', { initial: 'report.pdf', placeholder: 'New name' })
                 .then(name => { if (name !== null) alert('Renamed to: ' + name) })">Rename file</button>""",
-        PromptDialog(id="demo-prompt"),
+        PromptDialog(id="demo-prompt").render(),
     ]
 
 
@@ -62,7 +62,7 @@ def notification():
         corner="top-right",
         timeout=4000,
         autoshow=True,
-    )
+    ).render()
 
 
 def alert():
@@ -72,7 +72,7 @@ def alert():
         title="Storage almost full",
         body="You have used 90% of your storage quota. Consider removing old files.",
         dismissible=True,
-    )
+    ).render()
 
 
 def tooltip():
@@ -81,7 +81,7 @@ def tooltip():
         trigger="Hover over me",
         tip="This is additional context shown on hover or focus.",
         placement="top",
-    )
+    ).render()
 
 
 def popover():
@@ -95,7 +95,7 @@ def popover():
                 content="<p>Here is some extra detail about this item.</p>",
             ).render()
         ),
-    )
+    ).render()
 
 
 DEMOS = {

@@ -55,7 +55,14 @@
 }
 
 body {
-  margin: 1rem;
+  display: grid;
+  place-content: center;
+  place-items: center;
+  gap: 0.75rem;
+  min-height: 100dvh;
+  margin: 0;
+  padding: 1rem;
+  box-sizing: border-box;
   font-family: system-ui, sans-serif;
   background: var(--surface);
   color: var(--text);
