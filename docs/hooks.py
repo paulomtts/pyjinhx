@@ -40,6 +40,13 @@ def demo_markup(value):
     return str(value)
 
 
+def demo_source(factory):
+    """The factory's body as a bare expression: drop the def line and the return keyword."""
+    lines = textwrap.dedent(inspect.getsource(factory)).strip().splitlines()
+    body = textwrap.dedent("\n".join(lines[1:]))
+    return body.removeprefix("return ")
+
+
 def on_page_markdown(markdown, *, page, config, files):
     def replace(match):
         name = match.group(1)
@@ -47,7 +54,7 @@ def on_page_markdown(markdown, *, page, config, files):
             raise ValueError(f"unknown demo {name!r} in {page.file.src_path}")
         factory, height = DEMOS[name]
         prefix = "../" * page.url.count("/")
-        source = textwrap.dedent(inspect.getsource(factory)).strip()
+        source = demo_source(factory)
         return (
             f'<iframe src="{prefix}demos/{name.lower()}.html" height="{height}" '
             f'style="{_IFRAME_STYLE}" loading="lazy" title="{name} demo"></iframe>\n\n'

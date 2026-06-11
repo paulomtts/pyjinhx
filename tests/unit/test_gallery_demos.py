@@ -28,7 +28,9 @@ def test_marker_becomes_iframe_and_source():
     )
     assert '<iframe src="../../demos/badge.html"' in out
     assert "```python" in out
-    assert "def badge" in out
+    assert 'Badge(label="Active"' in out
+    assert "def " not in out
+    assert "return " not in out
     assert "<!-- demo:" not in out
 
 
