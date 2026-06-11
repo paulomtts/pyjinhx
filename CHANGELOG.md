@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.10.1 — Render-cycle guard + Tooltip tag children (2026-06-11)
+
+### Fixed
+
+- Registered components that cross-reference each other inside
+  `Registry.request_scope()` no longer recurse infinitely (#64). A render-stack
+  guard on the session (keyed by type + id) renders cyclic references empty and
+  logs a `render cycle suppressed` warning; sequential reuse and same-id
+  components of different types are unaffected.
+- `<Tooltip>text</Tooltip>` maps children to `tip` again (the v2 tag parser
+  hardcoded `content`, which Tooltip lacks — text was silently dropped). Tag
+  children now target a per-class field (`BaseComponent._pjx_children_field`).
+- Supplying both children and the children-target attribute on one tag raises a
+  clear `ValueError`; the attribute-only form (`<Notification content="hi"/>`),
+  which previously raised a spurious `TypeError`, now works.
+
 ## 0.10.0 — Component aliasing via subclassing (2026-06-11)
 
 A component subclass now resolves to its nearest ancestor's template and assets
