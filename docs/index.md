@@ -51,30 +51,6 @@ Within Tier 1, PyJinHx offers two complementary approaches:
     html = renderer.render('<Button text="Submit" variant="primary"/>')
     ```
 
-## Quick Example
-
-```python
-from pyjinhx import BaseComponent
-
-class Button(BaseComponent):
-    id: str
-    text: str
-    variant: str = "default"
-```
-
-```html
-<!-- button.html (next to button.py) -->
-<button id="{{ id }}" class="btn btn-{{ variant }}">
-    {{ text }}
-</button>
-```
-
-```python
-button = Button(id="cta", text="Click me", variant="primary")
-print(button.render())
-# <button id="cta" class="btn btn-primary">Click me</button>
-```
-
 ## Next Steps
 
 - [Installation](getting-started/installation.md) - Install PyJinHx
@@ -83,4 +59,4 @@ print(button.render())
 - [Guide](guide/components.md) - Feature reference
 - [Built-in UI components](guide/builtins.md) - Optional `pyjinhx.builtins` package
 - [Public API Index](reference/public-api.md) - Every symbol exported from `pyjinhx`
-- [Migrating from 0.4.x](migration.md) - Upgrading a render-only `0.4.x` app to the current release
+- [Migration guide](migration.md) — 0.8 → 0.9 breaking changes and upgrading from 0.4.x

@@ -1,6 +1,6 @@
 # Gallery
 
-Every builtin, rendered by pyjinhx at docs build time. Click through to the [guide](guide/builtins.md) for props and DOM contracts.
+The builtins, rendered by pyjinhx at docs build time (LazyPanel needs a backend, so it sits this page out). Click through to the [guide](guide/builtins.md) for props and DOM contracts.
 
 ## Static
 

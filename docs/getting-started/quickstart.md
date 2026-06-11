@@ -31,7 +31,7 @@ class Button(BaseComponent):
 Every component:
 
 - Inherits from `BaseComponent`
-- Has a required `id` field (unique identifier)
+- Has an `id` field — auto-generated (`px-<n>`) if omitted; redeclare `id: str` to require one
 - Can have additional fields with optional defaults
 
 ## Step 2: Create the Template
@@ -46,7 +46,9 @@ Create `components/ui/button.html` (same directory as the class):
 
 !!! info "Template Discovery"
     PyJinHx automatically finds templates by converting the class name to snake_case.
-    `Button` → `button.html`, `ActionButton` → `action_button.html`
+    `Button` → `button.html`, `ActionButton` → `action_button.html` — kebab-case
+    (`action-button.html`) and `.jinja` candidates are also tried; see
+    [PascalCase tags](../guide/tags.md) for the full list.
 
 ## Step 3: Render the Component
 

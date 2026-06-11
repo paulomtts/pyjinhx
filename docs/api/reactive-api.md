@@ -18,6 +18,7 @@ Base class for components that reload from application state via a `load()` clas
 - Declare the `react` **class keyword** — a set of `MutationKey` members this component subscribes to: `class Counter(ReactiveComponent, react={Keys.TODOS})`.
 - Implement `load()` as a `@classmethod` that returns a fresh component instance.
 - For keyed `load(cls, resource)` types, declare exactly one `Annotated[..., PjxKey()]` field.
+- **Subclassing builtins** — a builtin can be mixed in directly: `class LiveBadge(ReactiveComponent, Badge, react={...})`. The subclass inherits the builtin's template and assets via the MRO. At most one concrete component base is allowed — `class X(Badge, Card)` raises `TypeError` at definition. See [Making builtins reactive](../reactivity.md#making-builtins-reactive).
 
 ### Keyed vs singleton
 

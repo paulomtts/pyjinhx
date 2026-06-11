@@ -12,7 +12,11 @@ from html.parser import HTMLParser
 from typing import TYPE_CHECKING, Any, ClassVar
 
 from .registry import Registry
-from .utils import extract_tag_name_from_raw, pascal_case_to_snake_case
+from .utils import (
+    extract_tag_name_from_raw,
+    pascal_case_to_snake_case,
+    tag_name_to_template_filenames,
+)
 
 logger = logging.getLogger("pyjinhx")
 
@@ -231,9 +235,9 @@ def _missing_template_error(tag_name: str) -> FileNotFoundError:
             f"Add `from pyjinhx.builtins import {tag_name}` "
             f"(or `import pyjinhx.builtins`) once at app startup so the tag resolves."
         )
+    candidates = ", ".join(tag_name_to_template_filenames(tag_name))
     return FileNotFoundError(
-        f"No template found for <{tag_name}>. "
-        f"Expected {tag_name.lower()}.html or {tag_name.lower()}.jinja"
+        f"No template found for <{tag_name}>. Expected one of: {candidates}"
     )
 
 

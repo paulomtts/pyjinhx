@@ -2,8 +2,6 @@
 
 Every pyjinhx builtin follows the same contract, so knowing one means knowing all of them.
 
-> **Status:** the `px.*` namespace, event vocabulary, and declarative attributes described here land progressively across the 0.8.0 PR stack — this page is the contract the release converges on.
-
 ## The contract
 
 1. **`id` is optional.** Omit it and pyjinhx generates `px-<n>`. Pass one when you need a stable

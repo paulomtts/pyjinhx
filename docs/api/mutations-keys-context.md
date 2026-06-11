@@ -40,7 +40,9 @@ class ItemRow(ReactiveComponent, react={Keys.TODOS}):
     todo_id: Annotated[int, PjxKey()]
 
     @classmethod
-    def load(cls, todo_id: int) -> "ItemRow":
+    def load(cls, todo_id: int | str) -> "ItemRow":
+        # The cache wrapper passes the key as a string; convert before use.
+        resolved_id = int(todo_id)
         ...
 ```
 

@@ -40,15 +40,15 @@ PyJinHX uses **Jinja2** templates for its components:
 
 ## The `id` Field
 
-Every component requires an `id`:
+`id` is **auto-generated** (`px-<n>`) when omitted. Pass an explicit id for stable hooks (CSS selectors, htmx targets, reactive OOB targeting):
 
 ```python
-button = Button(id="submit", text="Submit")  # OK
-button = Button(text="Submit")  # Error: id is required
+button = Button(id="submit", text="Submit")  # explicit — stable hook
+button = Button(text="Submit")               # auto-generated px-<n>
 ```
 
-!!! tip "Customizing the `id` Field"
-    You can override the `id` field in your component to automatically generate a value using Pydantic's `default_factory`. For example, to have a random UUID assigned if no `id` is passed:
+!!! tip "Using your own id scheme"
+    Override `id` with a `default_factory` to apply your own generation strategy — for example a UUID:
 
     ```python
     import uuid
@@ -60,11 +60,11 @@ button = Button(text="Submit")  # Error: id is required
         # ... other fields ...
     ```
 
-    This way, when you instantiate `MyComponent()` without providing an `id`, a unique value will be generated.
+    A subclass that redeclares `id: str` **without** a default makes it required at instantiation time.
 
 
 !!! tip "Auto-generated IDs apply to PascalCase tags only"
-    `auto_id` does **not** affect plain Python instances — `BaseComponent(...)` always requires a truthy `id`. The `Renderer`'s `auto_id=True` only generates an `id` when a PascalCase `<Tag/>` is expanded in a template without one (see [PascalCase Tags](tags.md)). Separately, `ReactiveComponent` (not `BaseComponent`) defaults its `id` to the kebab-cased class name (e.g. `TodoCounter` → `"todo-counter"`).
+    `auto_id` does **not** affect plain Python instances — omitting `id` on `BaseComponent(...)` falls back to the built-in `px-<n>` counter. The `Renderer`'s `auto_id=True` only generates an `id` when a PascalCase `<Tag/>` is expanded in a template without one (see [PascalCase Tags](tags.md)). Separately, `ReactiveComponent` (not `BaseComponent`) defaults its `id` to the kebab-cased class name (e.g. `TodoCounter` → `"todo-counter"`).
 
 
 ## Template Discovery

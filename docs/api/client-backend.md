@@ -34,7 +34,7 @@ Abstract base — implement for non-FastAPI frameworks if needed.
 
 ## FastAPIClientBackend
 
-Defined in `pyjinhx.integrations.fastapi` (re-exported from `pyjinhx`):
+Defined in `pyjinhx.integrations.fastapi`:
 
 ```python
 class FastAPIClientBackend(ClientBackend):

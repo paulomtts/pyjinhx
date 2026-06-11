@@ -5,7 +5,7 @@ PyJinHx makes it easy to compose components together. You can nest single compon
 !!! note "Two nesting styles, two `id` rules"
     There are two ways to nest:
 
-    - **Python field values** (this page) — you build child instances yourself, so each child needs an **explicit `id`** (a plain `BaseComponent` always requires one).
+    - **Python field values** (this page) — you build child instances yourself; give each child an **explicit `id`** (auto-generated `px-<n>` ids are not stable hooks).
     - **PascalCase `<Tag/>` in templates** (see [PascalCase Tags](tags.md)) — the renderer instantiates children for you and can **auto-generate the `id`** when `auto_id=True` (the default).
 
 ## Direct Nesting

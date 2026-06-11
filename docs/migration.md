@@ -177,7 +177,7 @@ intermediate `0.5`–`0.7` reactive API, apply these renames:
 | `PyJinhxSettings` | `PjxSettings` |
 | `LoadContext` | `PjxContext` |
 | `PjxLoad` | `PjxKey` |
-| `client_script()` | removed (the client runtime is injected via `setup()` now) |
+| `client_script()` | no longer top-level — `from pyjinhx.client import client_script` |
 
 Also note the **public surface was curated from ~45 down to ~11 symbols**. Advanced/internal
 symbols are no longer top-level — import them from their submodule
@@ -277,7 +277,7 @@ class NavMembersBadge(ReactiveComponent, react={Keys.MEMBERS}):
 @app.post("/orgs/{slug}/members/{mid}/remove")
 def remove_member_route(slug: str, mid: str):
     remove_member(slug, mid)          # @mutates records Keys.MEMBERS as dirtied
-    return MembersList.render()       # framework reloads every mounted region whose
+    return MembersCounter.render()    # framework reloads every mounted region whose
                                       # react keys ∩ {MEMBERS} ≠ ∅, hashes them, and
                                       # appends an hx-swap-oob fragment for each *changed* one
 ```
@@ -316,7 +316,7 @@ StateKey         → MutationKey
 PyJinhxSettings  → PjxSettings
 LoadContext      → PjxContext
 PjxLoad          → PjxKey
-client_script()  → (removed; runtime injected by setup())
+client_script()  → no longer top-level — from pyjinhx.client import client_script
 
 # Advanced symbols are no longer top-level — import from submodules
 from pyjinhx.cache import LoadCache, CacheScope

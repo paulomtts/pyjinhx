@@ -38,6 +38,7 @@ class Button(BaseComponent):
 ```
 
 ```python
+# components/card.py
 from pyjinhx import BaseComponent, Renderer
 
 class Card(BaseComponent):
@@ -56,7 +57,7 @@ Drop a `button.css` or `card.js` next to the component and it's included once, a
 Components declare what state they depend on. Return one component from a mutation route — every other mounted region that reacts to the same keys updates via out-of-band swaps, no manual wiring:
 
 ```python
-from pyjinhx import ReactiveComponent, MutationKey, setup
+from pyjinhx import ReactiveComponent, MutationKey, mutates, setup
 
 class Keys(MutationKey):
     TODOS = "todos"
@@ -68,11 +69,15 @@ class Counter(ReactiveComponent, react={Keys.TODOS}):
     def load(cls) -> "Counter":
         return cls(remaining=db.remaining())
 
+@mutates(Keys.TODOS)
+def toggle_all():
+    db.toggle_all()
+
 setup(app)  # FastAPI: lifespan + middleware, done
 
 @app.post("/todos/toggle")
 def toggle():
-    db.toggle_all()
+    toggle_all()
     return Counter.render()  # other regions reacting to TODOS update too
 ```
 

@@ -32,7 +32,7 @@ PyJinHx automatically installs these runtime dependencies:
 - **MarkupSafe** - Safe HTML string handling
 - **Pydantic** - Data validation and settings
 
-PyJinHx does **not** install a web framework. FastAPI, Starlette, and uvicorn are user-supplied — install them yourself before following the FastAPI quickstart or [Build an App](build-an-app.md):
+PyJinHx does **not** install a web framework. FastAPI, Starlette, and uvicorn are user-supplied — install them yourself before following the [FastAPI quickstart](../integrations/fastapi.md) or [Build an App](build-an-app.md):
 
 ```bash
 pip install fastapi uvicorn

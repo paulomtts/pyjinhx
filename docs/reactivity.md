@@ -24,7 +24,7 @@ the hash the client reported, and a matching hash is skipped.
 
 See the [Public API Index](reference/public-api.md) for every exported reactive symbol.
 
-## 1. Make a component reactive
+## Make a component reactive
 
 Subclass `ReactiveComponent` and declare **both** the `react` class keyword and a
 `load()` classmethod — `ReactiveComponent` enforces both (a missing `load()` can't be
@@ -57,9 +57,7 @@ class Counter(ReactiveComponent, react={Keys.TODOS}):
 - `state_hash()` — canonical SHA-256 of sorted JSON from `model_dump(mode="json")`
   with `state_hash_exclude` applied (`id` is excluded by default). Override for custom
   hashing or add fields to `state_hash_exclude` for ephemeral UI-only state.
-- `depends_on()` — optional runtime narrowing for load-cache indexing after `load()`.
-  The static `react` set must remain a **superset** of every key `depends_on()`
-  may return (dev mode enforces this). `oob_swaps` matches on the static `react` set only.
+- `depends_on()` — optional runtime narrowing for load-cache indexing; the static `react` set must remain a superset. See [Runtime dependencies](#runtime-dependencies-depends_on).
 
 Reactive components are stamped with `data-pjx-id`, `data-pjx-type` (the class
 name), and `data-pjx-hash` on their root element automatically.
@@ -95,7 +93,7 @@ Fit: display builtins (Badge, Progress, AvatarStack, EmptyState, Card).
 Stateful overlays (Modal, Drawer, Popover, Dropdown) are a poor fit — an OOB
 swap replaces the region's DOM, so an open dialog snaps shut mid-interaction.
 
-## 2. Ship the client runtime
+## Ship the client runtime
 
 On root full-page renders, `pjx.js` is injected automatically unless the request
 already carries a valid `X-PJX-Mounted` header (meaning the runtime is active in
@@ -124,13 +122,13 @@ from pyjinhx.client import client_script
 </body>
 ```
 
-The runtime attaches two client manifests to every htmx request:
+The runtime attaches these headers to htmx requests:
 
 | Header | Purpose |
 |--------|---------|
 | `X-PJX-Mounted` | Reactive regions currently in the DOM (`id`, `type`, `hash`, optional `load`) |
 | `X-PJX-Assets` | URLs of `<script src>` and `<link rel="stylesheet">` already loaded |
-| `X-PJX-Trigger` | `data-pjx-id` of the element that started the HTMX request |
+| `X-PJX-Trigger` | `data-pjx-id` of the element that started the request — sent only when a reactive root triggered it |
 
 Wire `FastAPIClientBackend` via `setup(app, ...)` — see the
 [canonical snippet](integrations/fastapi.md#middleware-recommended) and
@@ -139,7 +137,7 @@ Wire `FastAPIClientBackend` via `setup(app, ...)` — see the
 `@mutates`. Full-page routes call `.render()` plainly; boosted navigations skip
 re-injecting `pjx.js` when `X-PJX-Mounted` is present.
 
-## 3. Emit OOB swaps from your route
+## Emit OOB swaps from your route
 
 A mutation route does exactly one thing: **`return <component>.render(...)`**. You
 never call `load()` and never assemble swaps yourself. For a **reactive** primary,
@@ -174,17 +172,7 @@ the instance: `MyFragment(id=..., ...).render()`.
 
 ### Under the hood: `oob_swaps()`
 
-`render()` delegates its dependency walk to `oob_swaps(dirtied, mounted)` (passing
-`exclude_ids={primary.id}`), which returns the concatenated `hx-swap-oob` fragments.
-It's exported for tests and advanced composition, but it is **not** how you write a
-route — a route returns `render()`, not bare swaps. `oob_swaps`:
-- keeps only mounted regions whose `react` keys intersect `dirtied`,
-- calls each region's `load()` and re-renders it,
-- skips a region whose freshly computed `state_hash()` matches the hash the client
-  reported (its DOM value is already current); a missing or mismatched hash always
-  swaps — *when in doubt, swap*,
-- drops any region nested inside another swapped region (the parent already contains it),
-- returns concatenated `hx-swap-oob` fragments (empty if nothing changed).
+`render()` delegates its dependency walk to `oob_swaps(dirtied, mounted)` — hash-gate, nesting-dedup, and delete-on-LookupError in one call. It's exported for tests and advanced composition, but routes return `render()`, not bare swaps. Full walk mechanics are in [How it works (under the hood)](#how-it-works-under-the-hood) below.
 
 The dependency graph lives in exactly one place — the `react` class keyword
 declarations — not smeared across endpoints. Adding a progress bar that declares
@@ -209,15 +197,18 @@ class TodoItemRow(ReactiveComponent, react={Keys.TODOS}):
     done: bool = False
 
     @classmethod
-    def load(cls, todo_id: int) -> "TodoItemRow":
-        t = store.get(todo_id)
+    def load(cls, todo_id: int | str) -> "TodoItemRow":
+        resolved_id = int(todo_id)  # cache wrapper passes the key as a string
+        t = store.get(resolved_id)
         return cls(
-            id=f"row-{todo_id}",
-            todo_id=todo_id,
+            id=f"row-{resolved_id}",
+            todo_id=resolved_id,
             title=t.text,
             done=t.done,
         )
 ```
+
+The `load()` key arrives as a **string** from the cache wrapper (the manifest serialises to JSON), so annotate `int | str` and convert inside `load()`.
 
 - **`data-pjx-load`** is stamped from the `PjxKey` field and returned in the manifest
   so OOB reloads call `load(manifest.load)`.
@@ -285,12 +276,7 @@ class AdminPanel(ReactiveComponent, react={Keys.USER, Keys.SETTINGS}):
         return {Keys.SETTINGS}
 ```
 
-`depends_on()` affects load-cache reverse indexing; `oob_swaps` matches on the static
-`react` set only.
-
-`dependency_graph()` uses the static superset only. In dev mode,
-`enable_reactive_dev()` warns (or raises) when `depends_on()` returns keys outside
-the superset.
+`depends_on()` narrows load-cache reverse indexing; `oob_swaps` and `dependency_graph()` always use the static `react` superset, and dev mode warns (or raises) when `depends_on()` returns keys outside it.
 
 ## Mutation tracking (`@mutates`)
 
@@ -320,13 +306,16 @@ Pass request-scoped dependencies into `load()` without global imports:
 
 ```python
 from dataclasses import dataclass
-from pyjinhx import PjxContext
+from pyjinhx import MutationKey, PjxContext, ReactiveComponent
+
+class Keys(MutationKey):
+    TODOS = "todos"
 
 @dataclass(frozen=True)
 class AppContext(PjxContext):
     db: Database
 
-class Counter(ReactiveComponent):
+class Counter(ReactiveComponent, react={Keys.TODOS}):
     @classmethod
     def load(cls, *, ctx: AppContext | None = None) -> "Counter":
         ctx = ctx or PjxContext.current()
@@ -363,7 +352,7 @@ print(format_dependency_graph())
 # or format_dependency_graph(as_mermaid=True) for a flowchart
 ```
 
-## 4. `load()` results are cached
+## `load()` results are cached
 
 Every reactive component's `load()` is wrapped in a **dependency-keyed cache**.
 Repeated reads within the same request return the cached result and skip the database
@@ -395,8 +384,8 @@ setup(app, invalidation_backend=...)  # cross-request per worker
 Use `Registry.request_scope()` on every HTTP request (middleware) for instance registry
 isolation and the request-tier cache (which dedups the OOB walk regardless of backend).
 
-**Cache identity:** entries are keyed by `(component class, load key)` only. Encode
-tenant or user scope in reactive keys (e.g. `"user:7:todos"`) or ensure `PjxContext`
+**Cache identity:** entries are keyed by `(component class, load key)` only. For per-user
+isolation use a `PjxKey`-keyed instance (one entry per user id) or ensure `PjxContext`
 data is stable for all requests sharing a cache entry.
 
 Reactive `render()` (and `oob_swaps`) evicts pending dirtied keys before reloading
@@ -408,7 +397,7 @@ from pyjinhx.cache import LoadCache
 
 def nightly_recalc():
     db.rebuild_todos()
-    LoadCache.invalidate({"todos"})
+    LoadCache.invalidate({Keys.TODOS})
 ```
 
 The cache holds one result per `(type, key)` and returns a fresh copy on every call, so
