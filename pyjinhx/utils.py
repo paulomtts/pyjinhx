@@ -29,6 +29,20 @@ def pascal_case_to_kebab_case(name: str) -> str:
     return pascal_case_to_snake_case(name).replace("_", "-")
 
 
+def component_resolution_classes(component_class: type) -> list[type]:
+    """Concrete component classes of an MRO, nearest first.
+
+    Framework classes (BaseComponent, ReactiveComponent) declare
+    ``_pjx_framework`` in their own body and are skipped; concrete components
+    inherit the attribute without owning it.
+    """
+    return [
+        klass
+        for klass in component_class.__mro__
+        if hasattr(klass, "_pjx_framework") and "_pjx_framework" not in klass.__dict__
+    ]
+
+
 def tag_name_to_template_filenames(
     tag_name: str, *, extensions: tuple[str, ...] = (".html", ".jinja")
 ) -> list[str]:

@@ -22,7 +22,12 @@ from .assets import (
 from .finder import Finder
 from .registry import Registry
 from .tags import Parser, expand_custom_tags, render_tag_node
-from .utils import detect_root_directory, stamp_root_attributes, tag_name_to_template_filenames
+from .utils import (
+    component_resolution_classes,
+    detect_root_directory,
+    stamp_root_attributes,
+    tag_name_to_template_filenames,
+)
 
 if TYPE_CHECKING:
     from .base import BaseComponent
@@ -59,36 +64,36 @@ def load_template_for_component(
         relative_path = os.path.relpath(template_path, loader_root)
         return environment.get_template(relative_path)
 
-    if type(component).__name__ == "BaseComponent":
+    resolution_classes = component_resolution_classes(type(component))
+    if not resolution_classes:
         raise FileNotFoundError(
             "No template found. Use a BaseComponent subclass with an adjacent template file, "
             "or use Renderer.render() with PascalCase tags."
         )
 
     loader_root = get_loader_root(environment)
-    relative_template_paths = Finder.get_relative_template_paths(
-        component_dir=Finder.get_class_directory(type(component)),
-        search_root=loader_root,
-        component_name=type(component).__name__,
-    )
+    attempted: list[str] = []
+    for klass in resolution_classes:
+        relative_template_paths = Finder.get_relative_template_paths(
+            component_dir=Finder.get_class_directory(klass),
+            search_root=loader_root,
+            component_name=klass.__name__,
+        )
+        attempted.extend(relative_template_paths)
+        for relative_template_path in relative_template_paths:
+            try:
+                return environment.get_template(relative_template_path)
+            except TemplateNotFound:
+                continue
+        if klass.__module__.startswith("pyjinhx.builtins"):
+            component_dir = Finder.get_class_directory(klass)
+            for filename in tag_name_to_template_filenames(klass.__name__):
+                candidate_path = os.path.join(component_dir, filename)
+                if os.path.isfile(candidate_path):
+                    with open(candidate_path, encoding="utf-8") as template_file:
+                        return environment.from_string(template_file.read())
 
-    for relative_template_path in relative_template_paths:
-        try:
-            return environment.get_template(relative_template_path)
-        except TemplateNotFound:
-            continue
-
-    if type(component).__module__.startswith("pyjinhx.builtins"):
-        component_dir = Finder.get_class_directory(type(component))
-        for filename in tag_name_to_template_filenames(type(component).__name__):
-            candidate_path = os.path.join(component_dir, filename)
-            if os.path.isfile(candidate_path):
-                with open(candidate_path, encoding="utf-8") as template_file:
-                    return environment.from_string(template_file.read())
-
-    raise TemplateNotFound(
-        ", ".join(relative_template_paths) if relative_template_paths else "unknown"
-    )
+    raise TemplateNotFound(", ".join(attempted) if attempted else "unknown")
 
 
 def build_render_context(context: dict[str, Any]) -> dict[str, Any]:

@@ -9,7 +9,11 @@ from enum import Enum
 from typing import TYPE_CHECKING, Literal
 
 from .finder import Finder
-from .utils import pascal_case_to_kebab_case, read_client_runtime
+from .utils import (
+    component_resolution_classes,
+    pascal_case_to_kebab_case,
+    read_client_runtime,
+)
 
 if TYPE_CHECKING:
     from .base import BaseComponent
@@ -205,14 +209,24 @@ def collect_component_asset(
     if mode == AssetMode.NONE:
         return
 
-    component_directory = component_dir or Finder.get_class_directory(type(component))
-    name = asset_name or pascal_case_to_kebab_case(type(component).__name__)
-    asset_filename = f"{name}.{kind}"
-    asset_path = Finder.find_in_directory(component_directory, asset_filename)
-    if not asset_path:
-        return
+    if component_dir or asset_name:
+        candidates = [
+            (
+                component_dir or Finder.get_class_directory(type(component)),
+                asset_name or pascal_case_to_kebab_case(type(component).__name__),
+            )
+        ]
+    else:
+        candidates = [
+            (Finder.get_class_directory(klass), pascal_case_to_kebab_case(klass.__name__))
+            for klass in component_resolution_classes(type(component))
+        ]
 
-    register_asset(session, asset_path, kind, mode)
+    for directory, name in candidates:
+        asset_path = Finder.find_in_directory(directory, f"{name}.{kind}")
+        if asset_path:
+            register_asset(session, asset_path, kind, mode)
+            return
 
 
 def collect_extra_assets(

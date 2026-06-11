@@ -80,6 +80,12 @@ Templates are automatically discovered based on the class name:
 !!! warning "Template Location Requirement"
     Templates must be in the same directory as the Python class file.
 
+A subclass with no adjacent template inherits the nearest ancestor's template and class
+assets, each resolved independently (first found per kind walking the MRO). At most one
+component base per class — a definition-time `TypeError` is raised if two component bases
+appear in `__bases__`. Framework bases (`ReactiveComponent`) don't count toward that
+limit, so `class LiveBadge(ReactiveComponent, Badge, react={...})` is valid.
+
 ## Extra Fields
 
 A plain Pydantic `BaseModel` rejects unknown fields with a `ValidationError`. With `BaseComponent`, **extra fields are accepted and available in the template context**. This allows you to pass dictionaries or data objects with additional fields without raising validation errors.

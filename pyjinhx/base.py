@@ -1,7 +1,7 @@
 import itertools
 import logging
 import re
-from typing import Annotated, Any, Optional
+from typing import Annotated, Any, ClassVar, Optional
 
 from markupsafe import Markup
 from pydantic import AfterValidator, BaseModel, ConfigDict, Field, field_validator
@@ -78,6 +78,8 @@ class BaseComponent(BaseModel):
 
     model_config = ConfigDict(extra="allow")
 
+    _pjx_framework: ClassVar[bool] = True
+
     id: str = Field(
         default_factory=_auto_id,
         description="The unique ID for this component. Auto-generated when omitted.",
@@ -100,6 +102,16 @@ class BaseComponent(BaseModel):
     def __init_subclass__(cls, **kwargs: Any) -> None:
         """Register the component class on subclass definition."""
         super().__init_subclass__(**kwargs)
+        component_bases = [
+            base
+            for base in cls.__bases__
+            if issubclass(base, BaseComponent) and "_pjx_framework" not in base.__dict__
+        ]
+        if len(component_bases) > 1:
+            names = ", ".join(base.__name__ for base in component_bases)
+            raise TypeError(
+                f"{cls.__name__}: subclass one component at a time; got {names}"
+            )
         Registry.register_class(cls)
 
     def __init__(self, **kwargs: Any) -> None:
