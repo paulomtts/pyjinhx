@@ -1,5 +1,38 @@
 # Changelog
 
+## 0.10.0 — Component aliasing via subclassing (2026-06-11)
+
+A component subclass now resolves to its nearest ancestor's template and assets
+through the MRO, so builtins can be subclassed into reactive components with no
+templates of their own: `class LiveBadge(ReactiveComponent, Badge, react={Keys.TASKS})`.
+
+### Added
+
+- MRO-aware template/asset resolution: template, CSS, and JS each resolve
+  independently to the nearest ancestor that ships the file — ship only
+  `live-badge.css` and you replace the CSS while keeping the base template and JS.
+- Safety guard: a class may have at most one concrete component base;
+  `class X(Badge, Card)` raises at class definition. Framework bases
+  (`ReactiveComponent`) don't count toward the limit.
+- `TemplateNotFound` now lists every candidate tried across the whole MRO.
+- Docs: "Making builtins reactive" recipe in the reactivity guide.
+
+## 0.9.0 — `react=` class keyword + gallery polish (2026-06-10)
+
+### Breaking changes (0.8.0 → 0.9.0)
+
+- `reacts_to: ClassVar[set[str]]` is removed. Declare state keys as a class
+  keyword: `class Counter(ReactiveComponent, react={Keys.TODOS})`. The old
+  declaration raises a `TypeError` pointing at the new syntax.
+- Both `react=` and `@mutates` accept only `MutationKey` members; bare strings
+  raise `TypeError` (decoration time for `@mutates`). See the
+  [migration guide](https://paulomtts.github.io/pyjinhx/migration/) for the 0.8 → 0.9 section.
+
+### Docs
+
+- Component gallery demos are centered in their iframes, and every snippet shows
+  `.render()` on the top-level component.
+
 ## 0.8.0 — Builtins v2 (2026-06-10)
 
 Every builtin now follows one contract: optional auto-generated `id`, `class_name`,
