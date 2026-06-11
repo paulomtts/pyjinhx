@@ -1,4 +1,4 @@
-from typing import Literal
+from typing import ClassVar, Literal
 
 from pydantic import Field
 
@@ -7,6 +7,8 @@ from pyjinhx.base import AttrValue, ExtraAttrs
 
 
 class Tooltip(BaseComponent):
+    _pjx_children_field: ClassVar[str] = "tip"
+
     trigger: str | BaseComponent = ""
     tip: str | BaseComponent = ""
     placement: Literal["top", "bottom", "start", "end"] = "top"

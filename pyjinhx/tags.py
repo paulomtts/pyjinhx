@@ -293,7 +293,7 @@ def render_tag_node(
 
         updates: dict[str, Any] = dict(attrs_without_id)
         if rendered_children:
-            updates["content"] = rendered_children
+            updates[type(existing_instance)._pjx_children_field] = rendered_children
         if updates:
             updated_instance = existing_instance.model_copy()
             validator = type(existing_instance).__pydantic_validator__
@@ -317,11 +317,16 @@ def render_tag_node(
 
     component_class = Registry.get_class(node.name)
     if component_class is not None:
-        component = component_class(
-            id=component_id,
-            content=rendered_children,
-            **attrs_without_id,
-        )
+        init_kwargs: dict[str, Any] = dict(attrs_without_id)
+        children_field = component_class._pjx_children_field
+        if rendered_children and children_field in init_kwargs:
+            raise ValueError(
+                f"<{node.name}> received both children and the "
+                f"'{children_field}' attribute; supply one"
+            )
+        if rendered_children or children_field not in init_kwargs:
+            init_kwargs[children_field] = rendered_children
+        component = component_class(id=component_id, **init_kwargs)
     else:
         if template_path is None:
             raise _missing_template_error(node.name)
