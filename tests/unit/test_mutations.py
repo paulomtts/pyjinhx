@@ -3,7 +3,7 @@ from pathlib import Path
 from pyjinhx import Registry, Renderer, mutates
 from pyjinhx.cache import LoadCache
 from pyjinhx.mutations import MutationTracker
-from tests.reactive_test_support import reactive_client
+from tests.reactive_test_support import Keys, reactive_client
 from tests.ui.reactive.reactive_clear_button import ReactiveClearButton
 from tests.ui.reactive.reactive_counter import ReactiveCounter  # noqa: F401
 from tests.ui.reactive.store import state
@@ -11,7 +11,7 @@ from tests.ui.reactive.store import state
 UI_ROOT = Path(__file__).parent.parent / "ui" / "reactive"
 
 
-@mutates("todos")
+@mutates(Keys.TODOS)
 def _mutate_todos() -> None:
     state["remaining"] -= 1
 

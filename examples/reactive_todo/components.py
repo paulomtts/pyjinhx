@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Annotated, ClassVar, Optional
+from typing import Annotated, Optional
 
 from pyjinhx import BaseComponent, PjxContext, PjxKey, ReactiveComponent
 
@@ -22,11 +22,10 @@ def _store():
     return store
 
 
-class ItemRow(ReactiveComponent):
+class ItemRow(ReactiveComponent, react={Keys.TODOS}):
     todo_id: Annotated[int, PjxKey()]
     title: str = ""
     done: bool = False
-    reacts_to: ClassVar[set[str]] = {Keys.TODOS}
 
     @classmethod
     def load(cls, todo_id: int | str) -> "ItemRow":
@@ -41,9 +40,8 @@ class ItemRow(ReactiveComponent):
         )
 
 
-class ItemList(ReactiveComponent):
+class ItemList(ReactiveComponent, react={Keys.TODO_LIST}):
     items: list[ItemRow] = []
-    reacts_to: ClassVar[set[str]] = {Keys.TODO_LIST}
 
     @classmethod
     def load(cls) -> "ItemList":
@@ -54,27 +52,24 @@ class ItemList(ReactiveComponent):
         )
 
 
-class Counter(ReactiveComponent):
+class Counter(ReactiveComponent, react={Keys.TODOS}):
     remaining: int = 0
-    reacts_to: ClassVar[set[str]] = {Keys.TODOS}
 
     @classmethod
     def load(cls) -> "Counter":
         return cls(remaining=_store().remaining())
 
 
-class Total(ReactiveComponent):
+class Total(ReactiveComponent, react={Keys.TODOS}):
     count: int = 0
-    reacts_to: ClassVar[set[str]] = {Keys.TODOS}
 
     @classmethod
     def load(cls) -> "Total":
         return cls(count=_store().total())
 
 
-class ClearButton(ReactiveComponent):
+class ClearButton(ReactiveComponent, react={Keys.TODOS}):
     completed: int = 0
-    reacts_to: ClassVar[set[str]] = {Keys.TODOS}
 
     @classmethod
     def load(cls) -> "ClearButton":

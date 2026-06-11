@@ -59,7 +59,7 @@ def warn_reactive_render_without_client(*, backend: ClientBackend | None) -> Non
 
 
 def validate_depends_on(instance: object) -> None:
-    """Ensure ``depends_on()`` is a subset of the static ``reacts_to`` superset."""
+    """Ensure ``depends_on()`` is a subset of the static ``react`` superset."""
     if not _dev_config.enabled:
         return
     component_class = type(instance)
@@ -73,7 +73,7 @@ def validate_depends_on(instance: object) -> None:
     if extra:
         _report(
             f"{component_class.__name__}.depends_on() {extra!r} exceeds "
-            f"the static reacts_to superset {superset!r}."
+            f"the static react superset {superset!r}."
         )
 
 
@@ -81,17 +81,17 @@ def dependency_graph() -> dict[str, list[str]]:
     """
     Map each declared reactive key to component class names that depend on it.
 
-    Shows the static ``reacts_to`` superset only — not per-instance narrowing
+    Shows the static ``react`` superset only — not per-instance narrowing
     from ``depends_on()``.
     """
     graph: dict[str, set[str]] = {}
     for class_name, component_class in Registry.get_classes().items():
-        reacts_to = getattr(component_class, "_pjx_reacts_to", None)
-        if not reacts_to:
+        react_keys = getattr(component_class, "_pjx_reacts_to", None)
+        if not react_keys:
             continue
         if not getattr(component_class, "_pjx_reactive", False):
             continue
-        for key in reacts_to:
+        for key in react_keys:
             graph.setdefault(key, set()).add(class_name)
     return {key: sorted(names) for key, names in sorted(graph.items())}
 

@@ -27,7 +27,7 @@ from pyjinhx.utils import (
 from .cache import LoadCache
 from .client import ClientBackend, MountedManifest
 from .dev import warn_reactive_render_without_client
-from .keys import ReactiveKey, coerce_load_key_str, coerce_reactive_keys
+from .keys import MutationKey, ReactiveKey, coerce_load_key_str, coerce_reactive_keys
 from .mutations import MutationTracker
 
 
@@ -166,12 +166,15 @@ class ReactiveComponent(BaseComponent):
     """
     Base class for dependency-aware reactive components.
 
-    A reactive component declares the state keys it derives from (``reacts_to``)
-    and how to rebuild itself from the current world (``load()``). Both are
+    A reactive component declares the state keys it derives from via the
+    ``react`` class keyword — ``class Counter(ReactiveComponent, react={Keys.TODOS})``
+    — and how to rebuild itself from the current world (``load()``). Both are
     required — ``load()`` is enforced by ABC (you cannot instantiate a subclass
-    that does not implement it) and ``reacts_to`` is enforced at class-definition
-    time. Reactive components are stamped with ``data-pjx-*`` on render and are the
-    units the dependency walk (``oob_swaps``) reloads and swaps.
+    that does not implement it) and ``react`` is enforced at class-definition
+    time; keys must be ``MutationKey`` members. A subclass without its own
+    ``react`` inherits its parent's keys; declaring ``react`` replaces them
+    (no union). Reactive components are stamped with ``data-pjx-*`` on render
+    and are the units the dependency walk (``oob_swaps``) reloads and swaps.
 
     The ``id`` defaults to the kebab-cased class name (``TodoCounter`` ->
     ``"todo-counter"``), since a type-singleton's identity is its type — so ``load()``
@@ -181,7 +184,6 @@ class ReactiveComponent(BaseComponent):
 
     model_config = ConfigDict(extra="allow", ignored_types=(_ReactiveRender,))
 
-    reacts_to: ClassVar[set[str]] = set()
     state_hash_exclude: ClassVar[frozenset[str]] = frozenset({"id"})
 
     _pjx_key: str | None = PrivateAttr(default=None)
@@ -237,16 +239,31 @@ class ReactiveComponent(BaseComponent):
         canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"))
         return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
-    def __init_subclass__(cls, **kwargs: Any) -> None:
+    def __init_subclass__(cls, react: set[MutationKey] | None = None, **kwargs: Any) -> None:
         super().__init_subclass__(**kwargs)
-        cls._pjx_reactive = True
-        cls._pjx_reacts_to = frozenset(
-            coerce_reactive_keys(getattr(cls, "reacts_to", None) or ())
-        )
-        if "load" in cls.__dict__ and not cls._pjx_reacts_to:
+        if "reacts_to" in cls.__dict__:
             raise TypeError(
-                f"{cls.__name__} defines load() but declares no reacts_to; a "
-                f"reactive component must declare both."
+                f"{cls.__name__}: reacts_to was replaced by the react class keyword: "
+                f"class {cls.__name__}(ReactiveComponent, react={{...}})"
+            )
+        cls._pjx_reactive = True
+        if react is not None:
+            if isinstance(react, str):
+                raise TypeError(
+                    f"{cls.__name__}: react must be a set of MutationKey members, "
+                    f"not a single key: react={{{react!r}}}"
+                )
+            invalid = sorted(repr(key) for key in react if not isinstance(key, MutationKey))
+            if invalid:
+                raise TypeError(
+                    f"{cls.__name__}: react only accepts MutationKey members; "
+                    f"got {', '.join(invalid)}"
+                )
+            cls._pjx_reacts_to = frozenset(coerce_reactive_keys(react))
+        if "load" in cls.__dict__ and not getattr(cls, "_pjx_reacts_to", frozenset()):
+            raise TypeError(
+                f"{cls.__name__} defines load() but declares no react keys; declare "
+                f"both: class {cls.__name__}(ReactiveComponent, react={{...}})"
             )
         if "load" in cls.__dict__:
             from .context import resolve_load_context_param

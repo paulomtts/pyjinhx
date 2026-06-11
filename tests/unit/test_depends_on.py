@@ -1,9 +1,8 @@
 from pathlib import Path
-from typing import ClassVar
 
 import pytest
 
-from pyjinhx import ReactiveComponent, Registry, Renderer
+from pyjinhx import MutationKey, ReactiveComponent, Registry, Renderer
 from pyjinhx.cache import LoadCache
 from pyjinhx.dev import disable_reactive_dev, enable_reactive_dev
 from pyjinhx.reactive import oob_swaps
@@ -14,9 +13,11 @@ from tests.ui.reactive.store import state
 UI_ROOT = Path(__file__).parent.parent / "ui" / "reactive"
 
 
-class OverBroad(ReactiveComponent):
-    reacts_to: ClassVar[set[str]] = {"alpha"}
+class _Keys(MutationKey):
+    ALPHA = "alpha"
 
+
+class OverBroad(ReactiveComponent, react={_Keys.ALPHA}):
     @classmethod
     def load(cls) -> "OverBroad":
         return cls(id="over")

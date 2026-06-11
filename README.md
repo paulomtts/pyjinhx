@@ -56,15 +56,13 @@ Drop a `button.css` or `card.js` next to the component and it's included once, a
 Components declare what state they depend on. Return one component from a mutation route — every other mounted region that reacts to the same keys updates via out-of-band swaps, no manual wiring:
 
 ```python
-from typing import ClassVar
 from pyjinhx import ReactiveComponent, MutationKey, setup
 
 class Keys(MutationKey):
     TODOS = "todos"
 
-class Counter(ReactiveComponent):
+class Counter(ReactiveComponent, react={Keys.TODOS}):
     remaining: int
-    reacts_to: ClassVar[set[str]] = {Keys.TODOS}
 
     @classmethod
     def load(cls) -> "Counter":

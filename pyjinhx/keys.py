@@ -29,6 +29,6 @@ class MutationKey(StrEnum):
     """
     Base class for app-level reactive state keys.
 
-    Subclass and declare members; use the enum in ``reacts_to`` and ``@mutates`` —
+    Subclass and declare members; use the members in ``react={...}`` and ``@mutates`` —
     all normalize to their string values.
     """

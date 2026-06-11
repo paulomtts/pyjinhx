@@ -13,23 +13,23 @@ from pyjinhx.builtins import (
 
 
 def badge():
-    return Badge(label="Active", color="brand")
+    return Badge(label="Active", color="brand").render()
 
 
 def card():
-    return Card(title="Quarterly report", body="Revenue grew 12% over Q1.", footer="Updated today")
+    return Card(title="Quarterly report", body="Revenue grew 12% over Q1.", footer="Updated today").render()
 
 
 def divider():
-    return Divider(orientation="horizontal", label="or continue with")
+    return Divider(orientation="horizontal", label="or continue with").render()
 
 
 def spinner():
-    return Spinner(size="md", label="Loading data")
+    return Spinner(size="md", label="Loading data").render()
 
 
 def avatar():
-    return Avatar(initials="JD", size="md", alt="Jane Doe")
+    return Avatar(initials="JD", size="md", alt="Jane Doe").render()
 
 
 def avatar_stack():
@@ -40,19 +40,19 @@ def avatar_stack():
             Avatar(initials="EF", size="sm", alt="Eve Foster"),
         ],
         extra_count=4,
-    )
+    ).render()
 
 
 def breadcrumb():
-    return Breadcrumb(items=[("Home", "/"), ("Projects", "/projects"), ("Dashboard", None)])
+    return Breadcrumb(items=[("Home", "/"), ("Projects", "/projects"), ("Dashboard", None)]).render()
 
 
 def skeleton():
-    return Skeleton(variant="text", lines=3)
+    return Skeleton(variant="text", lines=3).render()
 
 
 def progress():
-    return Progress(value=65, max=100, label="Upload progress")
+    return Progress(value=65, max=100, label="Upload progress").render()
 
 
 def empty_state():
@@ -60,7 +60,7 @@ def empty_state():
         title="No results",
         description="Try a different search term.",
         actions=['<button class="px-demo-btn">Clear filters</button>'],
-    )
+    ).render()
 
 
 DEMOS = {

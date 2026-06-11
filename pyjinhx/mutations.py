@@ -5,7 +5,7 @@ from collections.abc import Callable, Iterable
 from contextvars import ContextVar
 from typing import Any, ClassVar, TypeVar
 
-from .keys import ReactiveKey, coerce_reactive_keys
+from .keys import MutationKey, ReactiveKey, coerce_reactive_keys
 from .cache import LoadCache
 
 F = TypeVar("F", bound=Callable[..., Any])
@@ -55,13 +55,17 @@ class MutationTracker:
         return cls._render_consumed.get()
 
 
-def mutates(*keys: ReactiveKey) -> Callable[[F], F]:
+def mutates(*keys: MutationKey) -> Callable[[F], F]:
     """
     Decorator for store mutation methods.
 
     Invalidates the load cache for ``keys`` and accumulates them as pending
-    dirtied for the next reactive ``render()``.
+    dirtied for the next reactive ``render()``. Keys must be ``MutationKey``
+    members.
     """
+    invalid = sorted(repr(key) for key in keys if not isinstance(key, MutationKey))
+    if invalid:
+        raise TypeError(f"@mutates only accepts MutationKey members; got {', '.join(invalid)}")
 
     def decorator(func: F) -> F:
         @functools.wraps(func)

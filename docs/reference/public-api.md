@@ -9,7 +9,7 @@ These 13 symbols are the entire top-level public API; advanced/internal building
 | Symbol | Description | Documentation |
 |--------|-------------|---------------|
 | `BaseComponent` | Pydantic base class for UI components with Jinja templates | [BaseComponent](../api/base-component.md) |
-| `ReactiveComponent` | Base class for dependency-aware reactive components (`reacts_to` + `load()` + `depends_on()`) | [Reactive API](../api/reactive-api.md) |
+| `ReactiveComponent` | Base class for dependency-aware reactive components (`react={...}` class keyword + `load()` + `depends_on()`) | [Reactive API](../api/reactive-api.md) |
 | `Renderer` | Renders PascalCase tag strings and manages default Jinja environment | [Renderer](../api/renderer.md) |
 
 ## App wiring

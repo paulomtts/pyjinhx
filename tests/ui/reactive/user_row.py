@@ -1,14 +1,17 @@
-from typing import Annotated, ClassVar
+from typing import Annotated
 
-from pyjinhx import PjxKey, ReactiveComponent
+from pyjinhx import MutationKey, PjxKey, ReactiveComponent
 
 names = {"1": "Alice", "2": "Bob", "3": "Carol"}
 
 
-class UserRow(ReactiveComponent):
+class Keys(MutationKey):
+    USERS = "users"
+
+
+class UserRow(ReactiveComponent, react={Keys.USERS}):
     user_key: Annotated[str, PjxKey()]
     name: str = ""
-    reacts_to: ClassVar[set[str]] = {"users"}
 
     @classmethod
     def load(cls, key: str) -> "UserRow":

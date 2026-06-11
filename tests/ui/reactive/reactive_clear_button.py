@@ -1,13 +1,12 @@
-from typing import ClassVar
-
 from pyjinhx import ReactiveComponent
+
+from tests.reactive_test_support import Keys
 
 from .store import state
 
 
-class ReactiveClearButton(ReactiveComponent):
+class ReactiveClearButton(ReactiveComponent, react={Keys.TODOS}):
     completed: int = 0
-    reacts_to: ClassVar[set[str]] = {"todos"}
 
     @classmethod
     def load(cls) -> "ReactiveClearButton":

@@ -1,12 +1,13 @@
-from typing import ClassVar
-
-from pyjinhx import ReactiveComponent
+from pyjinhx import MutationKey, ReactiveComponent
 from pyjinhx.utils import read_client_runtime
 
 
-class LoadingProbe(ReactiveComponent):
+class Keys(MutationKey):
+    TODOS = "todos"
+
+
+class LoadingProbe(ReactiveComponent, react={Keys.TODOS}):
     value: int = 0
-    reacts_to: ClassVar[set[str]] = {"todos"}
 
     @classmethod
     def load(cls) -> "LoadingProbe":

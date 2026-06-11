@@ -11,7 +11,7 @@ class MutationKey(StrEnum):
     ...
 ```
 
-Base class for app-level reactive key constants. Subclass and declare members; use the enum in `reacts_to` and `@mutates` — all normalize to their string values.
+Base class for app-level reactive key constants. Subclass and declare members; use the members in `react={...}` and `@mutates` — all normalize to their string values. Both `react=` and `@mutates` only accept `MutationKey` members; passing a bare string raises `TypeError`.
 
 ```python
 from pyjinhx import MutationKey
@@ -31,11 +31,13 @@ Marker for `Annotated[..., PjxKey()]`. Keyed components declare exactly one `Pjx
 
 ```python
 from typing import Annotated
-from pyjinhx import PjxKey, ReactiveComponent
+from pyjinhx import MutationKey, PjxKey, ReactiveComponent
 
-class ItemRow(ReactiveComponent):
+class Keys(MutationKey):
+    TODOS = "todos"
+
+class ItemRow(ReactiveComponent, react={Keys.TODOS}):
     todo_id: Annotated[int, PjxKey()]
-    reacts_to: ClassVar[set[str]] = {"todos"}
 
     @classmethod
     def load(cls, todo_id: int) -> "ItemRow":
@@ -45,16 +47,19 @@ class ItemRow(ReactiveComponent):
 ## mutates
 
 ```python
-def mutates(*keys: ReactiveKey) -> Callable[[F], F]
+def mutates(*keys: MutationKey) -> Callable[[F], F]
 ```
 
-Decorator for store mutation methods. Each arg is a **state key** (string or `MutationKey` enum). After the wrapped function returns, invalidates the load cache and accumulates pending dirtied keys for the next reactive `render()`.
+Decorator for store mutation methods. Each arg must be a **`MutationKey` member** — bare strings raise `TypeError` at decoration time. After the wrapped function returns, invalidates the load cache and accumulates pending dirtied keys for the next reactive `render()`.
 
 ```python
-from pyjinhx import mutates
+from pyjinhx import MutationKey, mutates
+
+class Keys(MutationKey):
+    TODOS = "todos"
 
 class Store:
-    @mutates("todos")
+    @mutates(Keys.TODOS)
     def add(self, text: str) -> None:
         ...
 ```
@@ -109,7 +114,7 @@ Enable guardrails. When enabled:
 
 - Warns if `@mutates` recorded dirtied keys but no reactive `render()` consumed them in the request scope.
 - Warns if mutations are pending but no `ClientBackend` is active (OOB swaps skipped).
-- Validates that `depends_on()` is a subset of the static `reacts_to` superset on each `load()`.
+- Validates that `depends_on()` is a subset of the static `react` superset on each `load()`.
 
 Set `strict=True` to raise `RuntimeError` instead of logging warnings.
 

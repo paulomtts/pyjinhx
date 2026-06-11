@@ -26,28 +26,29 @@ See the [Public API Index](reference/public-api.md) for every exported reactive 
 
 ## 1. Make a component reactive
 
-Subclass `ReactiveComponent` and declare **both** `reacts_to` and a `load()`
-classmethod — `ReactiveComponent` enforces both (a missing `load()` can't be
-instantiated; a missing `reacts_to` is a definition-time error):
+Subclass `ReactiveComponent` and declare **both** the `react` class keyword and a
+`load()` classmethod — `ReactiveComponent` enforces both (a missing `load()` can't be
+instantiated; a missing `react` is a definition-time error):
 
 ```python
-from typing import ClassVar
-from pyjinhx import ReactiveComponent
+from pyjinhx import ReactiveComponent, MutationKey
 
-class Counter(ReactiveComponent):
+class Keys(MutationKey):
+    TODOS = "todos"
+
+class Counter(ReactiveComponent, react={Keys.TODOS}):
     remaining: int
-    reacts_to: ClassVar[set[str]] = {"todos"}
 
     @classmethod
     def load(cls) -> "Counter":
         return cls(remaining=db.remaining())   # id defaults to "counter"
 ```
 
-- `reacts_to` — the **state keys** this component derives from. These are arbitrary
-  strings *you* choose to name pieces of state (`"todos"`, `"user:42"`) — **not**
-  component ids or types, and not client-side watchers. The server simply intersects
-  a component's `reacts_to` with the route's `dirtied` keys (and uses them to evict the
-  `load()` cache): it's cache invalidation, not signals.
+- `react` — the **state keys** this component derives from, as a set of `MutationKey`
+  members. These are the keys *you* choose to name pieces of state (`Keys.TODOS`,
+  `Keys.USER`) — **not** component ids or types, and not client-side watchers. The
+  server simply intersects a component's declared keys with the route's `dirtied` keys
+  (and uses them to evict the `load()` cache): it's cache invalidation, not signals.
 - `load()` — rebuilds the component from the current world, independent of any route.
 - `id` — defaults to the **kebab-cased class name** (`Counter` → `"counter"`,
   `TodoCounter` → `"todo-counter"`), since a type-singleton's identity is its type, so
@@ -57,8 +58,8 @@ class Counter(ReactiveComponent):
   with `state_hash_exclude` applied (`id` is excluded by default). Override for custom
   hashing or add fields to `state_hash_exclude` for ephemeral UI-only state.
 - `depends_on()` — optional runtime narrowing for load-cache indexing after `load()`.
-  Static `reacts_to` must remain a **superset** of every key `depends_on()`
-  may return (dev mode enforces this). `oob_swaps` matches on static `reacts_to` only.
+  The static `react` set must remain a **superset** of every key `depends_on()`
+  may return (dev mode enforces this). `oob_swaps` matches on the static `react` set only.
 
 Reactive components are stamped with `data-pjx-id`, `data-pjx-type` (the class
 name), and `data-pjx-hash` on their root element automatically.
@@ -125,14 +126,14 @@ With `@mutates` on the store method, pending dirtied keys drive OOB swaps automa
 
 `Cls.render(*args)` loads the primary (`load(*args)` for keyed types, `load()` for
 singletons), renders it as the main-target response, then appends OOB swaps for every
-*other* mounted reactive region whose `reacts_to` intersects pending mutations from
+*other* mounted reactive region whose `react` keys intersect pending mutations from
 `@mutates`. Only the primary id is excluded (htmx swaps it as the main-target response);
 the region that *initiated* the request still updates out-of-band if it depends on the
 dirtied keys — e.g. a "Clear completed (N)" button updates its own count.
 
 `X-PJX-Trigger` is **client-only**: `pjx.js` reads it to drive loading indicators (which
 region the user clicked). The server reactive walk (`render` / `oob_swaps`) never reads it —
-it excludes only the primary id and gates everything else on `reacts_to` and hashes.
+it excludes only the primary id and gates everything else on `react` keys and hashes.
 
 A **plain, non-reactive** primary has no `load()` to call, so you build it and render
 the instance: `MyFragment(id=..., ...).render()`.
@@ -146,7 +147,7 @@ the instance: `MyFragment(id=..., ...).render()`.
 `exclude_ids={primary.id}`), which returns the concatenated `hx-swap-oob` fragments.
 It's exported for tests and advanced composition, but it is **not** how you write a
 route — a route returns `render()`, not bare swaps. `oob_swaps`:
-- keeps only mounted regions whose `reacts_to` intersects `dirtied`,
+- keeps only mounted regions whose `react` keys intersect `dirtied`,
 - calls each region's `load()` and re-renders it,
 - skips a region whose freshly computed `state_hash()` matches the hash the client
   reported (its DOM value is already current); a missing or mismatched hash always
@@ -154,9 +155,9 @@ route — a route returns `render()`, not bare swaps. `oob_swaps`:
 - drops any region nested inside another swapped region (the parent already contains it),
 - returns concatenated `hx-swap-oob` fragments (empty if nothing changed).
 
-The dependency graph lives in exactly one place — the `reacts_to` declarations —
-not smeared across endpoints. Adding a progress bar that declares
-`reacts_to = {"todos"}` makes it participate automatically; no endpoint changes.
+The dependency graph lives in exactly one place — the `react` class keyword
+declarations — not smeared across endpoints. Adding a progress bar that declares
+`react={Keys.TODOS}` makes it participate automatically; no endpoint changes.
 
 ### Instance-keyed regions (rows)
 
@@ -166,13 +167,15 @@ A component is **instance-keyed iff its `load()` takes one resource parameter af
 
 ```python
 from typing import Annotated
-from pyjinhx import PjxKey, ReactiveComponent
+from pyjinhx import MutationKey, PjxKey, ReactiveComponent
 
-class TodoItemRow(ReactiveComponent):
+class Keys(MutationKey):
+    TODOS = "todos"
+
+class TodoItemRow(ReactiveComponent, react={Keys.TODOS}):
     todo_id: Annotated[int, PjxKey()]
     title: str = ""
     done: bool = False
-    reacts_to: ClassVar[set[str]] = {"todos"}
 
     @classmethod
     def load(cls, todo_id: int) -> "TodoItemRow":
@@ -188,8 +191,8 @@ class TodoItemRow(ReactiveComponent):
 - **`data-pjx-load`** is stamped from the `PjxKey` field and returned in the manifest
   so OOB reloads call `load(manifest.load)`.
 - **Templates** use the field directly: `hx-post="/rows/{{ todo_id }}/toggle"`.
-- **`reacts_to`** lists **state keys only** (e.g. `{"todos"}`). Pub-sub OOB reloads
-  every mounted row whose `reacts_to` intersects pending mutations; hash-gating skips
+- **`react`** lists **state keys only** (e.g. `{Keys.TODOS}`). Pub-sub OOB reloads
+  every mounted row whose `react` keys intersect pending mutations; hash-gating skips
   unchanged rows.
 
 ```python
@@ -210,30 +213,35 @@ from the DOM without a server error.
 
 ## State keys
 
-Centralize reactive key strings in a `MutationKey` enum so `reacts_to`, `dirtied`, and
+Centralize reactive key strings in a `MutationKey` enum so `react=`, `dirtied`, and
 `@mutates` share one vocabulary:
 
 ```python
-from pyjinhx import MutationKey
+from pyjinhx import MutationKey, ReactiveComponent
 
 class Keys(MutationKey):
     TODOS = "todos"
 
-class TodoCounter(ReactiveComponent):
-    reacts_to: ClassVar[set[str | Keys]] = {Keys.TODOS}
+class TodoCounter(ReactiveComponent, react={Keys.TODOS}):
+    ...
 ```
 
-Enums normalize to their `.value` everywhere keys are coerced.
+Both `react=` and `@mutates` **only accept `MutationKey` members** — passing a bare
+string raises `TypeError` at class-definition time (for `react=`) or at decoration time
+(for `@mutates`).
 
 ## Runtime dependencies (`depends_on`)
 
 When a component's dependencies depend on loaded state, declare a static **superset**
-on `reacts_to` and override `depends_on()` to narrow at runtime:
+via `react=` and override `depends_on()` to narrow at runtime:
 
 ```python
-class AdminPanel(ReactiveComponent):
+class Keys(MutationKey):
+    USER = "user"
+    SETTINGS = "settings"
+
+class AdminPanel(ReactiveComponent, react={Keys.USER, Keys.SETTINGS}):
     is_admin: bool = False
-    reacts_to: ClassVar[set[str]] = {"user", "settings"}
 
     @classmethod
     def load(cls) -> "AdminPanel":
@@ -242,12 +250,12 @@ class AdminPanel(ReactiveComponent):
 
     def depends_on(self) -> set[str]:
         if self.is_admin:
-            return {"user", "settings"}
-        return {"settings"}
+            return {Keys.USER, Keys.SETTINGS}
+        return {Keys.SETTINGS}
 ```
 
-`depends_on()` affects load-cache reverse indexing; `oob_swaps` matches on static
-`reacts_to` only.
+`depends_on()` affects load-cache reverse indexing; `oob_swaps` matches on the static
+`react` set only.
 
 `dependency_graph()` uses the static superset only. In dev mode,
 `enable_reactive_dev()` warns (or raises) when `depends_on()` returns keys outside
@@ -313,7 +321,7 @@ Checks include:
 
 - mutations recorded via `@mutates` but no reactive `render()` in the same request scope
 - mutations pending but no `ClientBackend` active (OOB swaps skipped)
-- `depends_on()` keys outside the static `reacts_to` superset
+- `depends_on()` keys outside the static `react` superset
 
 Inspect the dependency graph at startup:
 
@@ -417,11 +425,11 @@ Two built-in styles:
   content stays underneath and the element is non-interactive while loading.
 
 **Auto-triggered — no per-route wiring.** Every reactive root is stamped with `data-pjx-reacts`
-(its `reacts_to` keys). When an htmx request starts, `pjx.js` reads the triggering region's
+(its `react` keys). When an htmx request starts, `pjx.js` reads the triggering region's
 `data-pjx-reacts` as the predicted dirtied set, then lights the `data-pjx-loading` elements of
 **every mounted region whose keys intersect it** — the swap target *and* its out-of-band
-dependents. Declaring `reacts_to` is all it takes for a component's loading elements to fire on
-the right mutations; routes don't change.
+dependents. Declaring the `react` class keyword is all it takes for a component's loading
+elements to fire on the right mutations; routes don't change.
 
 - A loading element is matched through its **enclosing reactive root**, so it can sit on the
   root or any inner element; the root supplies the reactivity and the instance key.
@@ -484,7 +492,7 @@ parent never suppresses a changed child.
 
 ```mermaid
 flowchart TD
-    M["manifest entry"] --> F{"reactive type AND<br/>reacts_to intersects dirtied?"}
+    M["manifest entry"] --> F{"reactive type AND<br/>react keys intersect dirtied?"}
     F -->|no| X1["ignore"]
     F -->|yes| EX{"id in exclude_ids?<br/>(it is the primary)"}
     EX -->|yes| X2["ignore"]

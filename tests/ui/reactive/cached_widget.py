@@ -1,13 +1,14 @@
-from typing import ClassVar
-
-from pyjinhx import ReactiveComponent
+from pyjinhx import MutationKey, ReactiveComponent
 
 load_calls = {"count": 0}
 
 
-class CachedWidget(ReactiveComponent):
+class Keys(MutationKey):
+    WIDGETS = "widgets"
+
+
+class CachedWidget(ReactiveComponent, react={Keys.WIDGETS}):
     value: int = 0
-    reacts_to: ClassVar[set[str]] = {"widgets"}
 
     @classmethod
     def load(cls) -> "CachedWidget":

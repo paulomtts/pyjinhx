@@ -1,12 +1,13 @@
-from typing import ClassVar
-
-from pyjinhx import ReactiveComponent
+from pyjinhx import MutationKey, ReactiveComponent
 from tests.ui.unified_component import UnifiedComponent
 
 
-class StampCounter(ReactiveComponent):
+class Keys(MutationKey):
+    TODOS = "todos"
+
+
+class StampCounter(ReactiveComponent, react={Keys.TODOS}):
     remaining: int = 0
-    reacts_to: ClassVar[set[str]] = {"todos"}
 
     @classmethod
     def load(cls) -> "StampCounter":

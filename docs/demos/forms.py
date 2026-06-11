@@ -12,7 +12,7 @@ def chip_input():
         name="tags",
         values=["python", "jinja2", "htmx"],
         placeholder="Add tag…",
-    )
+    ).render()
 
 
 def form_field():
@@ -22,11 +22,11 @@ def form_field():
         content='<input id="demo-email" type="email" name="email" placeholder="you@example.com">',
         help="We'll never share your email with anyone.",
         required=True,
-    )
+    ).render()
 
 
 def toggle_switch():
-    return ToggleSwitch(name="notifications", checked=True, label="Email notifications")
+    return ToggleSwitch(name="notifications", checked=True, label="Email notifications").render()
 
 
 def segmented_control():
@@ -34,7 +34,7 @@ def segmented_control():
         name="view",
         options=[("list", "List"), ("grid", "Grid"), ("table", "Table")],
         selected="grid",
-    )
+    ).render()
 
 
 def password_input():
@@ -43,7 +43,7 @@ def password_input():
         placeholder="Enter your password",
         autocomplete="current-password",
         required=True,
-    )
+    ).render()
 
 
 DEMOS = {
