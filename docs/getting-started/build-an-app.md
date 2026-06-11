@@ -285,16 +285,14 @@ reads from a `store` module — **we define both `keys.py` and `store.py` in Ste
 for now just note that `Keys.TODOS` and `store` are imported from there:
 
 ```python
-from typing import ClassVar
 from pyjinhx import ReactiveComponent
 
 from .keys import Keys
 from . import store
 
 
-class TodoCounter(ReactiveComponent):
+class TodoCounter(ReactiveComponent, react={Keys.TODOS}):
     remaining: int = 0
-    reacts_to: ClassVar[set[str]] = {Keys.TODOS}
 
     @classmethod
     def load(cls) -> "TodoCounter":
@@ -309,7 +307,7 @@ class TodoApp(BaseComponent):
 ```
 
 ???+ question "Why ReactiveComponent?"
-    Reactive components declare **what state they derive from** (`reacts_to`) and **how to rebuild** (`load()`). After a mutation, you return one primary fragment; PyJinHx appends OOB swaps for other mounted regions whose dependencies overlap — you don't list every widget in every route.
+    Reactive components declare **what state they derive from** (the `react` class keyword) and **how to rebuild** (`load()`). After a mutation, you return one primary fragment; PyJinHx appends OOB swaps for other mounted regions whose dependencies overlap — you don't list every widget in every route.
 
     Root full-page renders inject `pjx.js` automatically unless the request already carries `X-PJX-Mounted`. That runtime sends the manifest on every HTMX request so the server knows what's on screen.
 
@@ -319,7 +317,7 @@ class TodoApp(BaseComponent):
 
 ## Step 9 — Keys, mutations, and render()
 
-Centralize reactive key strings in a `MutationKey` enum so `reacts_to`, `@mutates`, and
+Centralize reactive key strings in a `MutationKey` enum so `react=`, `@mutates`, and
 `dirtied` all share one vocabulary (no stray raw strings to typo). `keys.py`:
 
 ```python
@@ -371,11 +369,10 @@ def toggle_row(todo_id: int):
 from typing import Annotated
 from pyjinhx import PjxKey
 
-class TodoItemRow(ReactiveComponent):
+class TodoItemRow(ReactiveComponent, react={Keys.TODOS}):
     todo_id: Annotated[int, PjxKey()]
     title: str = ""
     done: bool = False
-    reacts_to: ClassVar[set[str]] = {Keys.TODOS}
 
     @classmethod
     def load(cls, todo_id: int) -> "TodoItemRow":
@@ -399,7 +396,7 @@ Template (note `data-pjx-loading` — covered in Step 11):
 ```
 
 ???+ question "Why PjxKey and load(cls, todo_id)?"
-    A parameter after `cls` makes the type **instance-keyed**. `PjxKey` stamps `data-pjx-load` for OOB round-trip. Use the same field in templates (`{{ todo_id }}`). `reacts_to = {Keys.TODOS}` is pub-sub — all mounted rows with matching state keys may OOB-reload when todos change.
+    A parameter after `cls` makes the type **instance-keyed**. `PjxKey` stamps `data-pjx-load` for OOB round-trip. Use the same field in templates (`{{ todo_id }}`). `react={Keys.TODOS}` is pub-sub — all mounted rows with matching state keys may OOB-reload when todos change.
 
 ---
 
@@ -418,8 +415,8 @@ component root or something inside it. No route or Python changes:
 ```
 
 Two built-in styles ship: `"skeleton"` (silhouette shimmer) and `"spinner"` (dimmed
-overlay with a circular indicator). `pjx.js` reads each reactive root's `reacts_to`
-keys and lights the matching `data-pjx-loading` elements on every mounted region a
+overlay with a circular indicator). `pjx.js` reads each reactive root's `react` keys
+and lights the matching `data-pjx-loading` elements on every mounted region a
 mutation touches — the swap target *and* its OOB dependents.
 
 ???+ question "Why template-driven, and how do I theme it?"
@@ -491,7 +488,7 @@ setup(
     A single page may call `TodoCounter.load()` many times during composition and OOB walks. Caching `(class, load_arg) → component snapshot` avoids repeated store/DB work. **Invalidation** (`@mutates` or `LoadCache.invalidate`) evicts entries when state changes — cache is a performance layer, not the source of truth.
 
     If toggles feel stale, check that `@mutates` dirtied a key your rows actually
-    declare in `reacts_to`. Rows here use **pub-sub** on `{Keys.TODOS}` — every mounted
+    declare via `react=`. Rows here use **pub-sub** on `{Keys.TODOS}` — every mounted
     row reloads when `todos` changes, and hash-gating skips the unchanged ones. (For
     per-instance keys like `"todo:42"` instead of a shared stem, see
     [Reactivity → Instance-keyed regions](../reactivity.md#instance-keyed-regions-rows).)
@@ -530,7 +527,7 @@ print(format_dependency_graph())
 ```
 
 ???+ question "Why enable_reactive_dev?"
-    Reactivity bugs are often silent (missing `ClientBackend`, wrong `reacts_to` keys, `depends_on()` outside `reacts_to`). Dev mode turns those into log warnings or strict exceptions during development.
+    Reactivity bugs are often silent (missing `ClientBackend`, wrong `react` keys, `depends_on()` outside the `react` superset). Dev mode turns those into log warnings or strict exceptions during development.
 
 ---
 
@@ -554,7 +551,7 @@ The per-step **Why?** panels above cover the *why*; this is the at-a-glance *wha
 
 | Tier | Pieces |
 |------|--------|
-| **Required** | `set_default_environment` · `Registry.request_scope()` middleware · root full-page render · HTMX in layout · `ReactiveComponent` (`reacts_to` + `load()`) · `@mutates(Keys.…)` on mutations · `setup()` (wires `FastAPIClientBackend`) · `PjxKey` on keyed rows |
+| **Required** | `set_default_environment` · `Registry.request_scope()` middleware · root full-page render · HTMX in layout · `ReactiveComponent` (`react={...}` + `load()`) · `@mutates(Keys.…)` on mutations · `setup()` (wires `FastAPIClientBackend`) · `PjxKey` on keyed rows |
 | **Recommended** | `PjxContext` · `data-pjx-loading` indicators · `enable_reactive_dev()` in dev |
 | **Production** | `AssetMode.REFERENCE` + URL resolver · `InvalidationBackend` for multi-worker `PROCESS` cache |
 

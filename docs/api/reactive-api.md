@@ -8,14 +8,14 @@ See [Reactivity](../reactivity.md) for conceptual documentation and usage patter
 
 ```python
 class ReactiveComponent(BaseComponent):
-    reacts_to: ClassVar[set[str]]
+    ...
 ```
 
 Base class for components that reload from application state via a `load()` classmethod and participate in out-of-band HTMX swaps.
 
 ### Requirements
 
-- Declare `reacts_to` — **state keys** this component subscribes to (e.g. `"todos"`).
+- Declare the `react` **class keyword** — a set of `MutationKey` members this component subscribes to: `class Counter(ReactiveComponent, react={Keys.TODOS})`.
 - Implement `load()` as a `@classmethod` that returns a fresh component instance.
 - For keyed `load(cls, resource)` types, declare exactly one `Annotated[..., PjxKey()]` field.
 
@@ -53,7 +53,7 @@ Render an already-built instance as the primary without re-loading from the worl
 def depends_on(self) -> set[str]
 ```
 
-Reactive state keys this loaded instance depends on. Defaults to static `reacts_to`. Override to narrow for load-cache indexing (static `reacts_to` must remain a superset). `oob_swaps` matches on static `reacts_to` only.
+Reactive state keys this loaded instance depends on. Defaults to the static `react` set. Override to narrow for load-cache indexing (the static `react` set must remain a superset). `oob_swaps` matches on the static `react` set only.
 
 ### state_hash()
 
@@ -143,7 +143,7 @@ def oob_swaps(
 ) -> Markup
 ```
 
-Compute out-of-band swap fragments for every mounted reactive region whose `reacts_to` intersects `dirtied`.
+Compute out-of-band swap fragments for every mounted reactive region whose `react` keys intersect `dirtied`.
 
 When a keyed `load(manifest.load)` raises `LookupError` (entity removed), emits a delete OOB swap (`delete:[data-pjx-id='…']`) instead of failing.
 

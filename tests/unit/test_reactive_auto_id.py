@@ -1,11 +1,12 @@
-from typing import ClassVar
-
-from pyjinhx import ReactiveComponent
+from pyjinhx import MutationKey, ReactiveComponent
 
 
-class AutoIdWidget(ReactiveComponent):
+class Keys(MutationKey):
+    THINGS = "things"
+
+
+class AutoIdWidget(ReactiveComponent, react={Keys.THINGS}):
     value: int = 0
-    reacts_to: ClassVar[set[str]] = {"things"}
 
     @classmethod
     def load(cls) -> "AutoIdWidget":

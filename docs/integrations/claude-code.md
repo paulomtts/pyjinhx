@@ -60,33 +60,35 @@ Add extra files via the `js=[...]` / `css=[...]` fields; missing files warn on t
 
 Server-side **cache invalidation, not signals** — no client watchers. Components declare state dependencies once; a mutation route re-emits exactly the mounted regions that depend on what changed, as HTMX out-of-band swaps.
 
-Subclass `ReactiveComponent` and declare **both** `reacts_to` and a `load()` classmethod (enforced: missing `load()` can't instantiate; missing `reacts_to` is a definition-time error):
+Subclass `ReactiveComponent` and declare **both** the `react` class keyword and a `load()` classmethod (enforced: missing `load()` can't instantiate; missing `react` is a definition-time error):
 
 ```python
-from typing import Annotated, ClassVar
-from pyjinhx import PjxKey, ReactiveComponent, mutates
+from typing import Annotated
+from pyjinhx import MutationKey, PjxKey, ReactiveComponent, mutates
 
-class Counter(ReactiveComponent):
+class Keys(MutationKey):
+    TODOS = "todos"
+
+class Counter(ReactiveComponent, react={Keys.TODOS}):
     remaining: int
-    reacts_to: ClassVar[set[str]] = {"todos"}   # state keys you name (not ids/types)
 
     @classmethod
     def load(cls) -> "Counter":
         return cls(remaining=db.remaining())     # id defaults to "counter"
 ```
 
-- `reacts_to` — arbitrary state-key strings *you* choose. The server intersects them with pending `@mutates` keys to decide what to swap (and what to evict from the `load()` cache).
+- `react` — `MutationKey` members *you* define. The server intersects them with pending `@mutates` keys to decide what to swap (and what to evict from the `load()` cache). Both `react=` and `@mutates` only accept `MutationKey` members; bare strings raise `TypeError`.
 - `load()` — rebuilds the component from the current world, independent of any route.
 - `id` defaults to the kebab-cased class name; pass an explicit `id` for instance-keyed regions (`id=f"row-{todo_id}"`).
 - `state_hash()` gates swaps: a region is re-sent only if its fresh hash differs from the one the client reported.
-- Roots are auto-stamped with `data-pjx-id` / `data-pjx-type` / `data-pjx-hash` / `data-pjx-reacts` (space-joined `reacts_to`, read by `pjx.js` to scope loading indicators) — plus `data-pjx-load` when keyed. A reactive component **must render a single root element**.
+- Roots are auto-stamped with `data-pjx-id` / `data-pjx-type` / `data-pjx-hash` / `data-pjx-reacts` (space-joined `react` keys, read by `pjx.js` to scope loading indicators) — plus `data-pjx-load` when keyed. A reactive component **must render a single root element**.
 
 ### Mutation routes return `render()` — nothing else
 
-A mutation route does exactly one thing: `return <component>.render(...)`. Never call `load()` or assemble swaps yourself. Decorate store methods with `@mutates` on **state keys only**:
+A mutation route does exactly one thing: `return <component>.render(...)`. Never call `load()` or assemble swaps yourself. Decorate store methods with `@mutates` using **`MutationKey` members only**:
 
 ```python
-@mutates("todos")
+@mutates(Keys.TODOS)
 def toggle_all():
     ...
 
@@ -96,7 +98,7 @@ def toggle():
     return Counter.render()
 ```
 
-- **Class form (route entry)** — `Cls.render(*args)`: auto-`load()`s the primary, renders it as the HTMX main-target response, then appends OOB swaps for every *other* mounted reactive region whose `reacts_to` intersects the pending `@mutates` keys. **Only the primary is excluded** from OOB; the trigger region is not — a clicked region that depends on the dirtied keys updates itself OOB like any other dependent (e.g. a "Clear completed (N)" button refreshing its own count). `X-PJX-Trigger` is client-only (loading indicators); the server OOB walk reads the mounted manifest, never the trigger header.
+- **Class form (route entry)** — `Cls.render(*args)`: auto-`load()`s the primary, renders it as the HTMX main-target response, then appends OOB swaps for every *other* mounted reactive region whose `react` keys intersect the pending `@mutates` keys. **Only the primary is excluded** from OOB; the trigger region is not — a clicked region that depends on the dirtied keys updates itself OOB like any other dependent (e.g. a "Clear completed (N)" button refreshing its own count). `X-PJX-Trigger` is client-only (loading indicators); the server OOB walk reads the mounted manifest, never the trigger header.
 - **Instance form** — `instance.render()`: plain render of an already-built instance, no re-`load()`.
 
 Wire `setup(app, ...)` so `ClientBackend` is active — mutation routes need no `mounted`/`client` kwargs. `pjx.js` sends `X-PJX-Mounted`, `X-PJX-Assets`, and `X-PJX-Trigger` on every HTMX request. `oob_swaps(dirtied, mounted)` is exported for tests/advanced use.
@@ -106,10 +108,9 @@ Wire `setup(app, ...)` so `ClientBackend` is active — mutation routes need no 
 A component is keyed **iff `load()` takes one argument after `cls`**. Declare exactly one `Annotated[..., PjxKey()]` field — its value is stamped as `data-pjx-load` and returned in the manifest as `load` for OOB reloads.
 
 ```python
-class TodoItemRow(ReactiveComponent):
+class TodoItemRow(ReactiveComponent, react={Keys.TODOS}):
     todo_id: Annotated[int, PjxKey()]
     title: str = ""
-    reacts_to: ClassVar[set[str]] = {"todos"}
 
     @classmethod
     def load(cls, todo_id: int | str) -> "TodoItemRow":
@@ -127,7 +128,7 @@ Set an explicit `id` in `load()` for stable DOM targets; templates use the key f
 ### Client runtime & cache
 
 - Root full-page renders auto-inject `pjx.js` unless the request already carries `X-PJX-Mounted`. For a raw Jinja shell, put `{{ client_script() }}` in `<head>`.
-- **Loading indicators:** `data-pjx-loading="skeleton"` (or `"spinner"`) on any element inside a reactive root template flags it (matched via the enclosing reactive root) while an in-flight request dirties keys the region `reacts_to`, until the swap lands. A trigger may add `data-pjx-loading-extra="<css-selector>"` to also flag regions a bulk action will touch. Style via `--pjx-*` CSS vars (`--pjx-skeleton-color`, `--pjx-spinner-color`, …).
+- **Loading indicators:** `data-pjx-loading="skeleton"` (or `"spinner"`) on any element inside a reactive root template flags it (matched via the enclosing reactive root) while an in-flight request dirties keys the region reacts to, until the swap lands. A trigger may add `data-pjx-loading-extra="<css-selector>"` to also flag regions a bulk action will touch. Style via `--pjx-*` CSS vars (`--pjx-skeleton-color`, `--pjx-spinner-color`, …).
 - Every `load()` is memoized in `LoadCache`, one entry per `(type, key)`. Scope follows the backend: per-request with no `invalidation_backend`; pass `setup(invalidation_backend=...)` (e.g. Redis) for process-wide caching plus eviction fan-out across workers.
 
 Full guide: [docs/reactivity.md](../reactivity.md).
@@ -156,7 +157,7 @@ Keep each component's `.py`, template, and optional assets together, e.g. `compo
 ```python
 from pyjinhx import (
     BaseComponent,      # base class for all components
-    ReactiveComponent,  # reacts_to + load(); Cls.render(*args) is the route entry point
+    ReactiveComponent,  # react={...} + load(); Cls.render(*args) is the route entry point
     Renderer, Registry,
     PjxKey,             # Annotated[..., PjxKey()] marker for keyed regions
     mutates,            # decorator on store methods; state keys only

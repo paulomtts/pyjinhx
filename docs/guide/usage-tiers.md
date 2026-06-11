@@ -58,7 +58,7 @@ def toggle(todo_id: int):
     return TodoItemRow.render(todo_id)  # OOB for dependents
 ```
 
-Every `ReactiveComponent` must declare `reacts_to` (the state keys it derives from) — it is enforced at class-definition time alongside `load()`.
+Every `ReactiveComponent` must declare the `react` class keyword (the state keys it derives from) — it is enforced at class-definition time alongside `load()`.
 
 OOB swaps require an **active `ClientBackend`** so the renderer can read the client's mounted-region manifest. Wire one via `setup(app)` or `Registry.request_scope(client_backend=...)`. A bare `Registry.request_scope()` has no backend, so `render()` falls through to a plain single-region render with no OOB swaps.
 

@@ -1,12 +1,14 @@
-from typing import ClassVar
-
-from pyjinhx import ReactiveComponent
+from pyjinhx import MutationKey, ReactiveComponent
 
 from .store import state
 
 
-class DynamicWidget(ReactiveComponent):
-    reacts_to: ClassVar[set[str]] = {"alpha", "beta"}
+class Keys(MutationKey):
+    ALPHA = "alpha"
+    BETA = "beta"
+
+
+class DynamicWidget(ReactiveComponent, react={Keys.ALPHA, Keys.BETA}):
     flag: str = "on"
 
     @classmethod

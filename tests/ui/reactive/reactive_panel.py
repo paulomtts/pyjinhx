@@ -1,13 +1,14 @@
-from typing import ClassVar, Optional
+from typing import Optional
 
 from pyjinhx import ReactiveComponent
+
+from tests.reactive_test_support import Keys
 
 from .reactive_counter import ReactiveCounter
 
 
-class ReactivePanel(ReactiveComponent):
+class ReactivePanel(ReactiveComponent, react={Keys.TODOS}):
     child: Optional[ReactiveCounter] = None
-    reacts_to: ClassVar[set[str]] = {"todos"}
 
     @classmethod
     def load(cls) -> "ReactivePanel":

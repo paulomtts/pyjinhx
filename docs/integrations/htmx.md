@@ -244,7 +244,7 @@ dependent region rides along as an `hx-swap-oob` fragment — no per-swap wiring
 This is the path to reach for when **one mutation updates multiple regions**
 (counter, list, totals):
 
-- Declare `reacts_to` + `load()` on `ReactiveComponent` subclasses
+- Declare `react={...}` + `load()` on `ReactiveComponent` subclasses
 - Return `Cls.render()` from mutation routes — dependent regions ride along as `hx-swap-oob` fragments
 - Wire [ClientBackend](../api/client-backend.md) via `setup()` so routes call `Cls.render()` with no framework kwargs
 

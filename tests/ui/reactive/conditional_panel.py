@@ -1,10 +1,12 @@
-from typing import ClassVar
-
-from pyjinhx import ReactiveComponent
+from pyjinhx import MutationKey, ReactiveComponent
 
 
-class ConditionalPanel(ReactiveComponent):
-    reacts_to: ClassVar[set[str]] = {"user", "settings"}
+class Keys(MutationKey):
+    USER = "user"
+    SETTINGS = "settings"
+
+
+class ConditionalPanel(ReactiveComponent, react={Keys.USER, Keys.SETTINGS}):
     is_admin: bool = False
     label: str = ""
 

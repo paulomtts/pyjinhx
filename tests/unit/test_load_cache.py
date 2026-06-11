@@ -1,6 +1,4 @@
-from typing import ClassVar
-
-from pyjinhx import ReactiveComponent
+from pyjinhx import MutationKey, ReactiveComponent
 from pyjinhx.cache import LoadCache
 from tests.ui.reactive.cached_widget import CachedWidget, load_calls
 
@@ -58,9 +56,12 @@ def test_invalidate_cleans_reverse_index_across_keys():
     LoadCache.clear()
     calls = {"n": 0}
 
-    class MultiDep(ReactiveComponent):
+    class _MultiKeys(MutationKey):
+        ALPHA = "alpha"
+        BETA = "beta"
+
+    class MultiDep(ReactiveComponent, react={_MultiKeys.ALPHA, _MultiKeys.BETA}):
         n: int = 0
-        reacts_to: ClassVar[set[str]] = {"alpha", "beta"}
 
         @classmethod
         def load(cls):

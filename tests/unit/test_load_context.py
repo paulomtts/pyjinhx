@@ -1,9 +1,9 @@
 from dataclasses import dataclass
-from typing import Annotated, ClassVar
+from typing import Annotated
 
 import pytest
 
-from pyjinhx import PjxKey, ReactiveComponent, Registry
+from pyjinhx import MutationKey, PjxKey, ReactiveComponent, Registry
 from pyjinhx.cache import LoadCache
 from pyjinhx.context import (
     PjxContext,
@@ -11,33 +11,37 @@ from pyjinhx.context import (
 )
 
 
+class Keys(MutationKey):
+    WIDGETS = "widgets"
+    ROW = "row"
+    PLAIN = "plain"
+    DUP = "dup"
+
+
 @dataclass(frozen=True)
 class AppLoadContext(PjxContext):
     value: int = 0
 
 
-class CtxSingleton(ReactiveComponent):
+class CtxSingleton(ReactiveComponent, react={Keys.WIDGETS}):
     value: int = 0
-    reacts_to: ClassVar[set[str]] = {"widgets"}
 
     @classmethod
     def load(cls, *, app: AppLoadContext | None = None) -> "CtxSingleton":
         return cls(id="ctx-singleton", value=app.value if app else -1)
 
 
-class CtxKeyed(ReactiveComponent):
+class CtxKeyed(ReactiveComponent, react={Keys.ROW}):
     row_key: Annotated[str, PjxKey()]
     label: str = ""
-    reacts_to: ClassVar[set[str]] = {"row"}
 
     @classmethod
     def load(cls, key: str, app_ctx: AppLoadContext) -> "CtxKeyed":
         return cls(row_key=key, label=f"{key}:{app_ctx.value}")
 
 
-class CtxPlain(ReactiveComponent):
+class CtxPlain(ReactiveComponent, react={Keys.PLAIN}):
     value: int = 0
-    reacts_to: ClassVar[set[str]] = {"plain"}
 
     @classmethod
     def load(cls) -> "CtxPlain":
@@ -105,9 +109,7 @@ def test_resolve_load_context_param_detects_subclass_annotation():
 def test_duplicate_load_context_params_raise_at_class_definition():
     with pytest.raises(TypeError, match="multiple PjxContext parameters"):
 
-        class DuplicateCtxLoad(ReactiveComponent):
-            reacts_to: ClassVar[set[str]] = {"dup"}
-
+        class DuplicateCtxLoad(ReactiveComponent, react={Keys.DUP}):
             @classmethod
             def load(
                 cls,

@@ -20,7 +20,7 @@ What to watch (open the network tab):
 **Loading indicators:** opt in *in the template* with `data-pjx-loading`. `item_row.html`
 puts `data-pjx-loading="skeleton"` on the row (a silhouette shimmer while it reloads);
 `clear_button.html` puts `data-pjx-loading="spinner"` on the button (a dim, blurred overlay +
-circular progress). The element auto-triggers off its component's `reacts_to`, so toggling a
+circular progress). The element auto-triggers off its component's `react` keys, so toggling a
 row or clearing shows the indicator until the fresh HTML swaps in. The toggle/clear routes
 `time.sleep` briefly so this is visible on a fast local server — adding a todo stays instant
 (no indicator). Set `PJX_DEMO_LATENCY=0` to disable; restyle via the `--pjx-*` CSS tokens
@@ -29,7 +29,7 @@ row or clearing shows the indicator until the fresh HTML swaps in. The toggle/cl
 The routes never mention the counter/total/clear button — `@mutates` and
 `@mutates` accumulates dirtied keys automatically, and `setup()` wires
 `ClientBackend` so `render()` reads `X-PJX-Mounted` from the request.
-The dependency graph lives on the components (`reacts_to`), and `pjx.js` reports
+The dependency graph lives on the components (`react` class keyword), and `pjx.js` reports
 what's mounted on every HTMX request.
 
 ## Setup

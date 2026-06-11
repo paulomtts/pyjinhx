@@ -1,9 +1,8 @@
 import logging
-from typing import ClassVar
 
 import pytest
 
-from pyjinhx import ReactiveComponent, Registry, mutates
+from pyjinhx import MutationKey, ReactiveComponent, Registry, mutates
 from pyjinhx.cache import LoadCache
 from pyjinhx.dev import (
     dependency_graph,
@@ -13,14 +12,18 @@ from pyjinhx.dev import (
 )
 
 
-@mutates("orphan")
+class Keys(MutationKey):
+    ORPHAN = "orphan"
+    TODOS = "todos"
+
+
+@mutates(Keys.ORPHAN)
 def _orphan_mutation() -> None:
     pass
 
 
-class DevCounter(ReactiveComponent):
+class DevCounter(ReactiveComponent, react={Keys.TODOS}):
     remaining: int = 0
-    reacts_to: ClassVar[set[str]] = {"todos"}
 
     @classmethod
     def load(cls) -> "DevCounter":

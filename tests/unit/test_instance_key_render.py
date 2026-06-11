@@ -1,13 +1,16 @@
-from typing import Annotated, ClassVar
+from typing import Annotated
 
-from pyjinhx import PjxKey, ReactiveComponent
+from pyjinhx import MutationKey, PjxKey, ReactiveComponent
 from pyjinhx.utils import read_client_runtime
 
 
-class KeyedCard(ReactiveComponent):
+class Keys(MutationKey):
+    CARD = "card"
+
+
+class KeyedCard(ReactiveComponent, react={Keys.CARD}):
     card_key: Annotated[str, PjxKey()]
     title: str = ""
-    reacts_to: ClassVar[set[str]] = {"card"}
 
     @classmethod
     def load(cls, key: str | int) -> "KeyedCard":

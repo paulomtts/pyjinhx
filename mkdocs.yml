@@ -75,7 +75,7 @@ nav:
       - Installation: getting-started/installation.md
       - Quick Start: getting-started/quickstart.md
       - Build an App: getting-started/build-an-app.md
-  - Migrating from 0.4.x: migration.md
+  - Migration guide: migration.md
   - Guide:
       - Usage tiers: guide/usage-tiers.md
       - Creating Components: guide/components.md

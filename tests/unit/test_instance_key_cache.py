@@ -1,15 +1,19 @@
-from typing import Annotated, ClassVar
+from typing import Annotated
 
-from pyjinhx import PjxKey, ReactiveComponent
+from pyjinhx import MutationKey, PjxKey, ReactiveComponent
 from pyjinhx.cache import LoadCache
 
 load_calls = {"n": 0}
 
 
-class Row(ReactiveComponent):
+class Keys(MutationKey):
+    ROW = "row"
+    ROWS = "rows"
+
+
+class Row(ReactiveComponent, react={Keys.ROW, Keys.ROWS}):
     row_key: Annotated[str, PjxKey()]
     title: str = ""
-    reacts_to: ClassVar[set[str]] = {"row", "rows"}
 
     @classmethod
     def load(cls, key: str | int) -> "Row":

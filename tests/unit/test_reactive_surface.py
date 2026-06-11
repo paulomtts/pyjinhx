@@ -2,12 +2,15 @@ from typing import ClassVar
 
 import pytest
 
-from pyjinhx import BaseComponent, ReactiveComponent
+from pyjinhx import BaseComponent, MutationKey, ReactiveComponent
 
 
-class GoodCounter(ReactiveComponent):
+class Keys(MutationKey):
+    TODOS = "todos"
+
+
+class GoodCounter(ReactiveComponent, react={Keys.TODOS}):
     remaining: int = 0
-    reacts_to: ClassVar[set[str]] = {"todos"}
 
     @classmethod
     def load(cls) -> "GoodCounter":
@@ -29,8 +32,7 @@ def test_state_hash_ignores_id_by_default():
 
 
 def test_state_hash_field_order_invariant():
-    class FieldsA(ReactiveComponent):
-        reacts_to: ClassVar[set[str]] = {"todos"}
+    class FieldsA(ReactiveComponent, react={Keys.TODOS}):
         zebra: str = ""
         alpha: int = 0
 
@@ -38,8 +40,7 @@ def test_state_hash_field_order_invariant():
         def load(cls) -> "FieldsA":
             return cls(zebra="z", alpha=1)
 
-    class FieldsB(ReactiveComponent):
-        reacts_to: ClassVar[set[str]] = {"todos"}
+    class FieldsB(ReactiveComponent, react={Keys.TODOS}):
         alpha: int = 0
         zebra: str = ""
 
@@ -51,8 +52,7 @@ def test_state_hash_field_order_invariant():
 
 
 def test_state_hash_exclude_omits_fields():
-    class Noisy(ReactiveComponent):
-        reacts_to: ClassVar[set[str]] = {"todos"}
+    class Noisy(ReactiveComponent, react={Keys.TODOS}):
         state_hash_exclude: ClassVar[frozenset[str]] = frozenset({"id", "noise"})
         remaining: int = 0
         noise: str = "ephemeral"
@@ -81,16 +81,15 @@ def test_reacts_to_is_not_a_model_field():
     assert GoodCounter(id="c", remaining=3).remaining == 3
 
 
-def test_unannotated_reacts_to_assignment_works():
-    class Plain(ReactiveComponent):
-        reacts_to = {"todos"}
+def test_reacts_to_classvar_raises():
+    with pytest.raises(TypeError, match="react class keyword"):
 
-        @classmethod
-        def load(cls):
-            return cls(id="p")
+        class Old(ReactiveComponent):
+            reacts_to: ClassVar[set[str]] = {"todos"}
 
-    assert "reacts_to" not in Plain.model_fields
-    assert Plain._pjx_reacts_to == frozenset({"todos"})
+            @classmethod
+            def load(cls):
+                return cls(id="p")
 
 
 def test_plain_basecomponent_is_not_reactive():
@@ -110,8 +109,8 @@ def test_stray_load_on_basecomponent_is_not_reactive():
     assert getattr(HasLoad, "_pjx_reactive", False) is False
 
 
-def test_load_without_reacts_to_raises_at_definition():
-    with pytest.raises(TypeError, match="reacts_to"):
+def test_load_without_react_raises_at_definition():
+    with pytest.raises(TypeError, match="react"):
 
         class Inert(ReactiveComponent):
             @classmethod
@@ -119,9 +118,9 @@ def test_load_without_reacts_to_raises_at_definition():
                 return cls(id="i")
 
 
-def test_reacts_to_without_load_cannot_be_instantiated():
-    class NoLoad(ReactiveComponent):
-        reacts_to: ClassVar[set[str]] = {"todos"}
+def test_react_without_load_cannot_be_instantiated():
+    class NoLoad(ReactiveComponent, react={Keys.TODOS}):
+        pass
 
     with pytest.raises(TypeError, match="abstract"):
         NoLoad(id="n")
