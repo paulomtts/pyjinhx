@@ -1,4 +1,4 @@
-<div class="px-progress{% if class_name %} {{ class_name }}{% endif %}" id="{{ id }}"{% for k, v in extra_attrs.items() %} {{ k }}="{{ v }}"{% endfor %}>
+<div class="px-progress{% if class_name %} {{ class_name }}{% endif %}" id="{{ id }}"{{ extra_attrs_html }}>
     {% if label %}
     <span class="px-progress__label" id="{{ id }}-label">{{ label }}</span>
     {% endif %}

@@ -1,5 +1,5 @@
 <div id="{{ id }}"
-     class="px-avatar px-avatar--{{ size }}{% if class_name %} {{ class_name }}{% endif %}"{% if color %} style="background:{{ color }};"{% endif %}{% for k, v in extra_attrs.items() %} {{ k }}="{{ v }}"{% endfor %}>
+     class="px-avatar px-avatar--{{ size }}{% if class_name %} {{ class_name }}{% endif %}"{% if color %} style="background:{{ color }};"{% endif %}{{ extra_attrs_html }}>
   {% if src %}
   <img class="px-avatar__img" src="{{ src }}" alt="{{ alt }}" loading="lazy" decoding="async" />
   {% else %}

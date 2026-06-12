@@ -1,4 +1,4 @@
-<div id="{{ id }}" class="px-panel{% if class_name %} {{ class_name }}{% endif %}"{% for k, v in extra_attrs.items() %} {{ k }}="{{ v }}"{% endfor %}>
+<div id="{{ id }}" class="px-panel{% if class_name %} {{ class_name }}{% endif %}"{{ extra_attrs_html }}>
   {% for panel_key, panel_body in panels.items() %}
   <div class="px-panel__panel"
        role="tabpanel"

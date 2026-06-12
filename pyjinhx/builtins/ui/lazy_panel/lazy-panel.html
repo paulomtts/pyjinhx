@@ -2,4 +2,4 @@
      class="px-lazy-panel{% if class_name %} {{ class_name }}{% endif %}"
      hx-get="{{ url }}"
      hx-trigger="{% if trigger %}{{ trigger }}{% elif when == 'reveal' %}px:reveal from:closest [data-px-region] once{% elif when == 'load' %}load{% else %}revealed{% endif %}"
-     hx-swap="{{ swap }}"{% for k, v in extra_attrs.items() %} {{ k }}="{{ v }}"{% endfor %}>{{ content }}</div>
+     hx-swap="{{ swap }}"{{ extra_attrs_html }}>{{ content }}</div>

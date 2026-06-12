@@ -1,4 +1,4 @@
-<dialog id="{{ id }}" class="px-confirm-dialog{% if class_name %} {{ class_name }}{% endif %}" data-px-dialog="confirm" aria-modal="true" aria-labelledby="{{ id }}-message"{% for k, v in extra_attrs.items() %} {{ k }}="{{ v }}"{% endfor %}>
+<dialog id="{{ id }}" class="px-confirm-dialog{% if class_name %} {{ class_name }}{% endif %}" data-px-dialog="confirm" aria-modal="true" aria-labelledby="{{ id }}-message"{{ extra_attrs_html }}>
     <div class="px-confirm-dialog__card">
         <p id="{{ id }}-message" class="px-confirm-dialog__message"></p>
         <div class="px-confirm-dialog__actions">

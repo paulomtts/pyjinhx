@@ -2,7 +2,7 @@
       class="px-spinner px-spinner--{{ size }}{% if class_name %} {{ class_name }}{% endif %}"
       role="status"
       aria-live="polite"
-      aria-busy="true"{% for k, v in extra_attrs.items() %} {{ k }}="{{ v }}"{% endfor %}>
+      aria-busy="true"{{ extra_attrs_html }}>
   <span class="px-spinner__ring" aria-hidden="true"></span>
   <span class="px-spinner__label">{{ label }}</span>
 </span>

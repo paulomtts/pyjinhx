@@ -3,7 +3,7 @@
      data-timeout="{{ timeout }}"
      {% if autoshow %}data-px-autoshow{% endif %}
      role="status"
-     aria-live="polite"{% for k, v in extra_attrs.items() %} {{ k }}="{{ v }}"{% endfor %}>
+     aria-live="polite"{{ extra_attrs_html }}>
     <div class="px-notification__content">{{ content }}</div>
     <button type="button" class="px-notification__close"
             data-px-close
