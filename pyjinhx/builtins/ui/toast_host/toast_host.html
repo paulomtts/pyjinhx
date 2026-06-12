@@ -5,4 +5,4 @@
      data-timeout="{{ timeout }}"
      data-dismiss-label="{{ dismiss_label }}"
      aria-live="polite"
-     aria-atomic="false"{% for k, v in extra_attrs.items() %} {{ k }}="{{ v }}"{% endfor %}></div>
+     aria-atomic="false"{{ extra_attrs_html }}></div>

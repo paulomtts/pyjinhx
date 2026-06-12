@@ -30,3 +30,14 @@ def test_modal_defaults_omit_lifecycle_attrs():
     assert "data-px-open-on-mount" not in dialog
     assert "data-px-remove-on-close" not in dialog
     assert 'aria-label="Close"' in dialog
+
+
+def test_modal_close_content_defaults_to_glyph():
+    dialog = _dialog(str(Modal(id="m3", body="B").render()))
+    assert ">✕</button>" in dialog
+
+
+def test_modal_close_content_is_configurable():
+    dialog = _dialog(str(Modal(id="m4", body="B", close_content="Close me").render()))
+    assert ">Close me</button>" in dialog
+    assert "✕" not in dialog

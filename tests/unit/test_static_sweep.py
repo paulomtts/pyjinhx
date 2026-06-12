@@ -15,11 +15,13 @@ def test_class_name_and_extra_attrs_render():
 
 
 def test_extra_attrs_rejects_breakout_values():
+    # Both quote types make a value inexpressible — rejected at construction.
     with pytest.raises(ValueError):
-        Badge(id="b", label="x", extra_attrs={"data-k": '"><script>'})
-    with pytest.raises(ValueError):
-        Badge(id="b", label="x", extra_attrs={"data-k": '" onmouseover="x'})
-    # < and > are spec-legal inside double-quoted attrs — must NOT be rejected
+        Badge(id="b", label="x", extra_attrs={"data-k": "a\"b'c"})
+    # A lone double quote is fine: emission switches to single quotes.
+    html = str(Badge(id="b", label="x", extra_attrs={"data-k": '" onmouseover="x'}).render())
+    assert "data-k='\" onmouseover=\"x'" in html
+    # < and > are spec-legal inside quoted attrs — must NOT be rejected
     badge = Badge(id="b", label="x", extra_attrs={"x-show": "count > 3"})
     assert 'x-show="count &gt; 3"' in str(badge.render()) or 'x-show="count > 3"' in str(badge.render())
 

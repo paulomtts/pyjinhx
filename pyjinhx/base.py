@@ -36,16 +36,51 @@ def validate_attr_value(value: str) -> str:
 
 
 def validate_extra_attrs(value: dict[str, str]) -> dict[str, str]:
-    """Reject attribute names/values that could break out of an HTML attribute."""
+    """Reject attribute names/values that could break out of an HTML attribute.
+
+    Values with one quote type are fine: emission picks the other quote
+    (see ``render_extra_attrs``). Values with both are inexpressible.
+    """
     for name, attr_value in value.items():
         if not _ATTR_NAME_RE.fullmatch(name):
             raise ValueError(f"extra_attrs name {name!r} is not a valid attribute name")
-        validate_attr_value(attr_value)
+        if '"' in attr_value and "'" in attr_value:
+            raise ValueError(
+                "attribute values must not contain both '\"' and \"'\""
+            )
     return value
 
 
 AttrValue = Annotated[str, AfterValidator(validate_attr_value)]
 ExtraAttrs = Annotated[dict[str, str], AfterValidator(validate_extra_attrs)]
+
+
+def render_extra_attrs(component: "BaseComponent") -> str:
+    """Emit a component's pass-through HTML attributes as ` name="value"` pairs.
+
+    Merges the ``extra_attrs`` dict with stray tag attributes (pydantic extras
+    that are plain strings with valid attribute names). Values containing ``"``
+    are emitted single-quoted; values containing both quote types raise.
+    """
+    attrs = dict(getattr(component, "extra_attrs", None) or {})
+    children_field = type(component)._pjx_children_field
+    for name, value in (component.model_extra or {}).items():
+        if name == children_field or not isinstance(value, str):
+            continue
+        if _ATTR_NAME_RE.fullmatch(name):
+            attrs.setdefault(name, value)
+
+    parts = []
+    for name, value in attrs.items():
+        if '"' in value:
+            if "'" in value:
+                raise ValueError(
+                    f"attribute {name!r} value must not contain both '\"' and \"'\""
+                )
+            parts.append(f" {name}='{value}'")
+        else:
+            parts.append(f' {name}="{value}"')
+    return "".join(parts)
 
 
 class NestedComponentWrapper(BaseModel):
@@ -321,6 +356,9 @@ class BaseComponent(BaseModel):
                     renderer=renderer,
                     session=session,
                 )
+
+            if type(self).__module__.startswith("pyjinhx.builtins"):
+                context["extra_attrs_html"] = render_extra_attrs(self)
 
             from pyjinhx.client import ClientBackend, LoadedAssets
 

@@ -4,6 +4,6 @@
      data-nav-targets="{{ nav_targets }}"
      role="status"
      aria-label="{{ loading_label }}"
-     aria-live="polite"{% for k, v in extra_attrs.items() %} {{ k }}="{{ v }}"{% endfor %}>
+     aria-live="polite"{{ extra_attrs_html }}>
     <div class="px-page-loader__spinner" aria-hidden="true"></div>
 </div>

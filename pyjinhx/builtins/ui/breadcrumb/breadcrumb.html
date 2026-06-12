@@ -1,4 +1,4 @@
-<nav id="{{ id }}" class="px-breadcrumb{% if class_name %} {{ class_name }}{% endif %}" aria-label="{{ aria_label }}"{% for k, v in extra_attrs.items() %} {{ k }}="{{ v }}"{% endfor %}>
+<nav id="{{ id }}" class="px-breadcrumb{% if class_name %} {{ class_name }}{% endif %}" aria-label="{{ aria_label }}"{{ extra_attrs_html }}>
   <ol class="px-breadcrumb__list">
     {% for label, href in items %}
     <li class="px-breadcrumb__item">

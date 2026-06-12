@@ -90,17 +90,17 @@ def test_root_render_skips_runtime_for_valid_manifest():
 
 def test_request_scope_injects_runtime_once_across_root_renders():
     with Registry.request_scope():
-        first = str(Page(id="page-a")._render(source="<div>a</div>"))
-        second = str(Page(id="page-b")._render(source="<div>b</div>"))
+        first = str(RuntimePage(id="page-a")._render(source="<div>a</div>"))
+        second = str(RuntimePage(id="page-b")._render(source="<div>b</div>"))
     assert first.count("htmx:configRequest") == 1
     assert "htmx:configRequest" not in second
 
 
 def test_separate_request_scopes_each_inject_runtime():
     with Registry.request_scope():
-        first = str(Page(id="page-a")._render(source="<div>a</div>"))
+        first = str(RuntimePage(id="page-a")._render(source="<div>a</div>"))
     with Registry.request_scope():
-        second = str(Page(id="page-b")._render(source="<div>b</div>"))
+        second = str(RuntimePage(id="page-b")._render(source="<div>b</div>"))
     assert first.count("htmx:configRequest") == 1
     assert second.count("htmx:configRequest") == 1
 
@@ -110,8 +110,8 @@ def test_without_request_scope_each_root_render_injects_runtime():
     # request-scoped flag to exercise the no-scope fallback.
     token = _runtime_injected.set(None)
     try:
-        first = str(Page(id="page-a")._render(source="<div>a</div>"))
-        second = str(Page(id="page-b")._render(source="<div>b</div>"))
+        first = str(RuntimePage(id="page-a")._render(source="<div>a</div>"))
+        second = str(RuntimePage(id="page-b")._render(source="<div>b</div>"))
     finally:
         _runtime_injected.reset(token)
     assert first.count("htmx:configRequest") == 1

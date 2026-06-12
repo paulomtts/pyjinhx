@@ -1,1 +1,1 @@
-<span id="{{ id }}" class="px-badge px-badge--{{ color }} px-badge--{{ shape }}{% if class_name %} {{ class_name }}{% endif %}"{% for k, v in extra_attrs.items() %} {{ k }}="{{ v }}"{% endfor %}>{{ label }}</span>
+<span id="{{ id }}" class="px-badge px-badge--{{ color }} px-badge--{{ shape }}{% if class_name %} {{ class_name }}{% endif %}"{{ extra_attrs_html }}>{{ label }}</span>

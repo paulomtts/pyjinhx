@@ -1,4 +1,4 @@
-<div class="px-skeleton px-skeleton--{{ variant }}{% if class_name %} {{ class_name }}{% endif %}" id="{{ id }}"{% for k, v in extra_attrs.items() %} {{ k }}="{{ v }}"{% endfor %}>
+<div class="px-skeleton px-skeleton--{{ variant }}{% if class_name %} {{ class_name }}{% endif %}" id="{{ id }}"{{ extra_attrs_html }}>
     {% if variant == 'text' %}
     {% for _ in range(lines) %}
     <div class="px-skeleton__line"></div>
