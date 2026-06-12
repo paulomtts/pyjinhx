@@ -84,7 +84,7 @@ def test_reacts_to_is_not_a_model_field():
 def test_reacts_to_classvar_raises():
     with pytest.raises(TypeError, match="react class keyword"):
 
-        class Old(ReactiveComponent):
+        class OldSurface(ReactiveComponent):
             reacts_to: ClassVar[set[str]] = {"todos"}
 
             @classmethod

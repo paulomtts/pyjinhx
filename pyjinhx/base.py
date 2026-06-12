@@ -103,8 +103,13 @@ class BaseComponent(BaseModel):
             return _auto_id()
         return str(v)
 
-    def __init_subclass__(cls, **kwargs: Any) -> None:
-        """Register the component class on subclass definition."""
+    def __init_subclass__(cls, pjx_replace: bool = False, **kwargs: Any) -> None:
+        """
+        Register the component class on subclass definition.
+
+        ``pjx_replace=True`` intentionally shadows a same-named component from
+        another module (e.g. a builtin): ``class Avatar(BaseComponent, pjx_replace=True)``.
+        """
         super().__init_subclass__(**kwargs)
         component_bases = [
             base
@@ -116,7 +121,7 @@ class BaseComponent(BaseModel):
             raise TypeError(
                 f"{cls.__name__}: subclass one component at a time; got {names}"
             )
-        Registry.register_class(cls)
+        Registry.register_class(cls, replace=pjx_replace)
 
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)

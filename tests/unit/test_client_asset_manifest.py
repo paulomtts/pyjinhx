@@ -195,7 +195,7 @@ def test_oob_swaps_emit_no_assets():
     assert "<script" not in rendered
 
 
-class Page(BaseComponent):
+class ManifestPage(BaseComponent):
     pass
 
 
@@ -206,7 +206,7 @@ def test_runtime_url_skipped_when_already_loaded():
     renderer = Renderer.get_default_renderer(js_mode=AssetMode.REFERENCE)
 
     rendered = str(
-        Page(id="page")._render(
+        ManifestPage(id="page")._render(
             source="<html><body>hi</body></html>",
             _renderer=renderer,
             client=["/static/pyjinhx/pjx.js"],
@@ -224,7 +224,7 @@ def test_runtime_url_emitted_when_not_loaded():
     renderer = Renderer.get_default_renderer(js_mode=AssetMode.REFERENCE)
 
     rendered = str(
-        Page(id="page")._render(
+        ManifestPage(id="page")._render(
             source="<html><body>hi</body></html>",
             _renderer=renderer,
         )

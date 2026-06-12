@@ -1,4 +1,6 @@
+import inspect
 import logging
+import os
 from collections.abc import Generator
 from contextlib import contextmanager
 from contextvars import ContextVar
@@ -30,21 +32,48 @@ class Registry:
     _class_registry: ClassVar[dict[str, type["BaseComponent"]]] = {}
 
     @classmethod
-    def register_class(cls, component_class: type["BaseComponent"]) -> None:
+    def register_class(
+        cls, component_class: type["BaseComponent"], *, replace: bool = False
+    ) -> None:
         """
         Register a component class by its name.
 
-        Called automatically when subclassing BaseComponent.
+        Called automatically when subclassing BaseComponent. Re-registering the
+        same name from the same source file (test reruns, hot reload,
+        autodiscovery) replaces the previous class. Registering a same-named
+        class from a *different* file raises, since `<Name/>` tags would
+        silently resolve to whichever class was imported last.
 
         Args:
             component_class: The component class to register.
+            replace: Skip the cross-file collision check and overwrite.
+                Set via ``class Avatar(BaseComponent, pjx_replace=True)``.
         """
         class_name = component_class.__name__
-        if class_name in cls._class_registry:
+        existing = cls._class_registry.get(class_name)
+        if existing is not None and existing is not component_class and not replace:
+            existing_file = cls._source_file(existing)
+            new_file = cls._source_file(component_class)
+            if existing_file and new_file and existing_file != new_file:
+                raise TypeError(
+                    f"Component class {class_name} is already registered by "
+                    f"{existing.__module__} ({existing_file}); refusing to overwrite "
+                    f"it with {component_class.__module__} ({new_file}). Rename one "
+                    f"of the classes, or shadow it intentionally with: "
+                    f"class {class_name}(BaseComponent, pjx_replace=True)"
+                )
             logger.warning(
                 f"Component class {class_name} is already registered. Overwriting..."
             )
         cls._class_registry[class_name] = component_class
+
+    @staticmethod
+    def _source_file(component_class: type) -> str | None:
+        """Resolve the file a class was defined in, or None (exec'd/REPL code)."""
+        try:
+            return os.path.realpath(inspect.getfile(component_class))
+        except (TypeError, OSError):
+            return None
 
     @classmethod
     def get_classes(cls) -> dict[str, type["BaseComponent"]]:

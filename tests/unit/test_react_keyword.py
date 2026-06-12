@@ -47,26 +47,26 @@ def test_react_rejects_mixed_valid_and_invalid():
 
 def test_reacts_to_classvar_rejected():
     with pytest.raises(TypeError, match="react class keyword"):
-        class Old(ReactiveComponent):
+        class OldKeyword(ReactiveComponent):
             reacts_to: ClassVar[set] = {Keys.NAVBAR}
 
             @classmethod
-            def load(cls) -> "Old":
+            def load(cls) -> "OldKeyword":
                 return cls()
 
 
 def test_subclass_inherits_react_keys():
-    class Parent(ReactiveComponent, react={Keys.TODOS}):
+    class ReactParent(ReactiveComponent, react={Keys.TODOS}):
         @classmethod
-        def load(cls) -> "Parent":
+        def load(cls) -> "ReactParent":
             return cls()
 
-    class Child(Parent):
+    class ReactChild(ReactParent):
         @classmethod
-        def load(cls) -> "Child":
+        def load(cls) -> "ReactChild":
             return cls()
 
-    assert Child._pjx_reacts_to == frozenset({"todos"})
+    assert ReactChild._pjx_reacts_to == frozenset({"todos"})
 
 
 def test_load_without_react_keys_rejected():
