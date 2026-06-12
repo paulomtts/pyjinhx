@@ -21,6 +21,22 @@ class Row(ReactiveComponent, react={Keys.ROW, Keys.ROWS}):
         return cls(row_key=str(key), title=f"row {key}")
 
 
+class PinnedRow(ReactiveComponent, react={Keys.ROW}):
+    row_key: Annotated[str, PjxKey()]
+
+    @classmethod
+    def load(cls, key: str) -> "PinnedRow":
+        return cls(id="pinned-row", row_key=str(key))
+
+
+class CustomIdRow(ReactiveComponent, react={Keys.ROW}):
+    row_key: Annotated[str, PjxKey()]
+
+    @classmethod
+    def load(cls, key: str) -> "CustomIdRow":
+        return cls(id=f"my-row-{key}", row_key=str(key))
+
+
 def _reset():
     LoadCache.clear()
     load_calls["n"] = 0
@@ -42,6 +58,20 @@ def test_key_is_coerced_to_string():
     _reset()
     r = Row.load(42)
     assert r.id == "row-42" and r._pjx_key == "42"
+
+
+def test_explicitly_pinned_default_id_is_not_suffixed():
+    _reset()
+    r = PinnedRow.load("7")
+    assert r.id == "pinned-row"
+    assert r._pjx_key == "7"
+
+
+def test_custom_id_is_preserved():
+    _reset()
+    r = CustomIdRow.load("7")
+    assert r.id == "my-row-7"
+    assert r._pjx_key == "7"
 
 
 def test_cache_is_per_key():
