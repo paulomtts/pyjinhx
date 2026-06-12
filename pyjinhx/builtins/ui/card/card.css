@@ -1,4 +1,4 @@
-:root {
+:where(:root) {
   --px-card-bg: var(--surface-alt);
   --px-card-border: var(--border);
   --px-card-radius: var(--radius-md);

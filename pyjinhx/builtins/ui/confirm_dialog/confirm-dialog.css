@@ -1,4 +1,4 @@
-:root {
+:where(:root) {
   --px-confirm-dialog-bg:       var(--surface);
   --px-confirm-dialog-border:   var(--border);
   --px-confirm-dialog-radius:   var(--radius-md);

@@ -1,4 +1,4 @@
-:root {
+:where(:root) {
   --px-spinner-sm: 1.25rem;
   --px-spinner-md: 2rem;
   --px-spinner-lg: 2.75rem;

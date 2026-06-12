@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased
+
+### Docs
+
+- Retroactive note: `render()` now really returns `markupsafe.Markup` at
+  runtime, matching its long-standing annotation (older versions, 0.5.2
+  included, unescaped to a plain `str` before returning despite the `-> Markup`
+  annotation). This silently changed concatenation: `pane.render() + raw_html_str`
+  HTML-escapes the right-hand string, per markupsafe semantics. If you
+  concatenate rendered output with raw HTML strings, use
+  `str(pane.render()) + raw` or `pane.render() + Markup(raw)`.
+
 ## 0.10.1 — Render-cycle guard + Tooltip tag children (2026-06-11)
 
 ### Fixed

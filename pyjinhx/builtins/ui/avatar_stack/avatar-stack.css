@@ -1,4 +1,4 @@
-:root {
+:where(:root) {
   --px-avatar-stack-overlap: -0.5rem;
   --px-avatar-stack-ring:    var(--surface);
 }

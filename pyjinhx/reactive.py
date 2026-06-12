@@ -12,7 +12,7 @@ from functools import partial
 from typing import Annotated, Any, ClassVar, get_args, get_origin, get_type_hints
 
 from markupsafe import Markup
-from pydantic import ConfigDict, PrivateAttr, model_validator
+from pydantic import ConfigDict, ModelWrapValidatorHandler, PrivateAttr, model_validator
 from pydantic.fields import FieldInfo
 
 from pyjinhx.base import BaseComponent
@@ -195,15 +195,21 @@ class ReactiveComponent(BaseComponent):
     state_hash_exclude: ClassVar[frozenset[str]] = frozenset({"id"})
 
     _pjx_key: str | None = PrivateAttr(default=None)
+    _pjx_id_defaulted: bool = PrivateAttr(default=False)
 
     render = _ReactiveRender()
 
-    @model_validator(mode="before")
+    @model_validator(mode="wrap")
     @classmethod
-    def _default_id_from_type(cls, data: Any) -> Any:
-        if isinstance(data, dict) and not data.get("id"):
-            return {**data, "id": pascal_case_to_kebab_case(cls.__name__)}
-        return data
+    def _default_id_from_type(
+        cls, data: Any, handler: ModelWrapValidatorHandler[ReactiveComponent]
+    ) -> ReactiveComponent:
+        defaulted = isinstance(data, dict) and not data.get("id")
+        if defaulted:
+            data = {**data, "id": pascal_case_to_kebab_case(cls.__name__)}
+        instance = handler(data)
+        instance._pjx_id_defaulted = defaulted
+        return instance
 
     @classmethod
     @abstractmethod

@@ -1,5 +1,5 @@
 /* ── RegionLoader tokens ──────────────────────────────────── */
-:root {
+:where(:root) {
   --px-region-loader-bg:            rgb(0 0 0 / 0.55);
   --px-region-loader-backdrop:      blur(2px);
   --px-region-loader-z:             100;

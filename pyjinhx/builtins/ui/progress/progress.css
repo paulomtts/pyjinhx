@@ -1,4 +1,4 @@
-:root {
+:where(:root) {
   --px-progress-height:     0.5rem;
   --px-progress-radius:     var(--radius-full);
   --px-progress-track:      var(--surface-alt);

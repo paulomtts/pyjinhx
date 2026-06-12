@@ -1,4 +1,4 @@
-:root {
+:where(:root) {
   --px-breadcrumb-gap: 0.35rem;
   --px-breadcrumb-sep: "/";
   --px-breadcrumb-sep-color: var(--text-muted);

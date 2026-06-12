@@ -1,5 +1,5 @@
 /* ── SegmentedControl tokens ──────────────────────────────────────────────── */
-:root {
+:where(:root) {
   --px-segmented-control-bg:        var(--surface-alt, #f0f0f0);
   --px-segmented-control-border:    var(--border, #ddd);
   --px-segmented-control-radius:    var(--radius-full, 9999px);

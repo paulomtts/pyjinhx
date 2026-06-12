@@ -1,4 +1,4 @@
-:root {
+:where(:root) {
   --px-skeleton-bg:         var(--surface-alt);
   --px-skeleton-shine:      color-mix(in srgb, var(--text) 8%, var(--surface-alt));
   --px-skeleton-line-height: 0.65rem;

@@ -1,4 +1,4 @@
-:root {
+:where(:root) {
   --px-tooltip-gap:         6px;
   --px-tooltip-bg:          var(--surface-alt);
   --px-tooltip-border:      var(--border);

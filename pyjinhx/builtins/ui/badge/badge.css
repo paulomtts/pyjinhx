@@ -1,5 +1,5 @@
 /* ── Badge tokens (override --px-badge-*; defaults use common design tokens) ─ */
-:root {
+:where(:root) {
   --px-badge-font-size:       var(--font-size-xs);
   --px-badge-radius-sm:       var(--radius-sm);
   --px-badge-radius-md:       var(--radius-md);
