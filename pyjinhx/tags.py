@@ -40,7 +40,7 @@ class Tag:
     children: list["Tag | str"] = field(default_factory=list)
 
 
-RE_PASCAL_CASE_TAG_NAME = re.compile(r"^[A-Z](?:[a-z]+(?:[A-Z][a-z]+)*)?$")
+RE_PASCAL_CASE_TAG_NAME = re.compile(r"^[A-Z](?=[A-Za-z0-9]*[a-z])[A-Za-z0-9]*$")
 
 
 class Parser(HTMLParser):
