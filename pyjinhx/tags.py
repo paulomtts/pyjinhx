@@ -100,7 +100,12 @@ class Parser(HTMLParser):
             self._append_child(tag_node)
             return
 
-        logger.warning("Mismatched closing tag </%s>; emitting as raw HTML", tag)
+        # Plain HTML tags are never stacked, so their closing tags land here.
+        if any(t.name.lower() == tag.lower() for t in self._stack):
+            logger.warning(
+                "Closing tag </%s> interleaves with an open component tag; "
+                "emitting as raw HTML", tag,
+            )
         self._append_child(f"</{tag}>")
 
     def handle_data(self, data: str) -> None:
