@@ -9,7 +9,7 @@ from abc import abstractmethod
 from collections.abc import Callable
 from dataclasses import dataclass
 from functools import partial
-from typing import Annotated, Any, ClassVar, get_args, get_origin
+from typing import Annotated, Any, ClassVar, get_args, get_origin, get_type_hints
 
 from markupsafe import Markup
 from pydantic import ConfigDict, PrivateAttr, model_validator
@@ -60,7 +60,13 @@ def pjx_load_field_names(model_cls: type[Any]) -> list[str]:
         return names
     # During __init_subclass__ pydantic has not yet populated model_fields, so
     # fall back to the raw annotations to detect the PjxKey marker at definition.
-    for name, annotation in getattr(model_cls, "__annotations__", {}).items():
+    # Under PEP 563 (from __future__ import annotations) those are strings, so
+    # resolve them first; include_extras keeps the Annotated metadata.
+    try:
+        annotations = get_type_hints(model_cls, include_extras=True)
+    except (NameError, TypeError, AttributeError):
+        annotations = getattr(model_cls, "__annotations__", {})
+    for name, annotation in annotations.items():
         if _annotation_has_pjx_load(annotation):
             names.append(name)
     return names
