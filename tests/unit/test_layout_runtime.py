@@ -9,7 +9,7 @@ from pyjinhx.client import PJX_MOUNTED_HEADER, MountedManifest
 pytestmark = pytest.mark.pjx_runtime
 
 
-class Page(BaseComponent):
+class RuntimePage(BaseComponent):
     pass
 
 
@@ -46,7 +46,7 @@ def test_mounted_manifest_is_present():
 
 
 def test_root_render_injects_runtime_without_client():
-    html = str(Page(id="page")._render(source="<html><body>hi</body></html>"))
+    html = str(RuntimePage(id="page")._render(source="<html><body>hi</body></html>"))
     assert "htmx:configRequest" in html
     assert "X-PJX-Mounted" in html
     assert html.count("htmx:configRequest") == 1
@@ -55,7 +55,7 @@ def test_root_render_injects_runtime_without_client():
 def test_root_render_injects_runtime_when_manifest_header_missing():
     request = _Request({})
     html = str(
-        Page(id="page")._render(
+        RuntimePage(id="page")._render(
             source="<html><body>hi</body></html>",
             client=request,
         )
@@ -66,7 +66,7 @@ def test_root_render_injects_runtime_when_manifest_header_missing():
 def test_root_render_skips_runtime_when_manifest_header_present():
     request = _Request({PJX_MOUNTED_HEADER: "[]"})
     html = str(
-        Page(id="page")._render(
+        RuntimePage(id="page")._render(
             source="<html><body>hi</body></html>",
             client=request,
         )
@@ -76,11 +76,11 @@ def test_root_render_skips_runtime_when_manifest_header_present():
 
 def test_root_render_skips_runtime_for_valid_manifest():
     manifest = json.dumps(
-        [{"id": "page", "type": "Page", "hash": "abc123"}]
+        [{"id": "page", "type": "RuntimePage", "hash": "abc123"}]
     )
     request = _Request({PJX_MOUNTED_HEADER: manifest})
     html = str(
-        Page(id="page")._render(
+        RuntimePage(id="page")._render(
             source="<html><body>hi</body></html>",
             client=request,
         )

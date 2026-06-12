@@ -1,4 +1,25 @@
+import importlib.util
+import sys
+
+import pytest
+
 from pyjinhx import BaseComponent, Registry
+
+_COLLISION_SRC = """\
+from pyjinhx import BaseComponent
+
+class {class_name}(BaseComponent):
+    id: str = ""
+"""
+
+
+def _import_component_file(filepath, module_name):
+    """Import a component file by path, like ComponentAutodiscover does."""
+    spec = importlib.util.spec_from_file_location(module_name, str(filepath))
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[module_name] = module
+    spec.loader.exec_module(module)
+    return module
 
 
 def test_class_registered_at_definition_time():
@@ -124,3 +145,48 @@ def test_inherited_classes_registered():
     assert classes["BaseButton"] is BaseButton
     assert classes["PrimaryButton"] is PrimaryButton
     assert classes["SecondaryButton"] is SecondaryButton
+
+
+def test_same_name_from_different_files_raises(tmp_path):
+    """Two same-name classes from different source files collide loudly."""
+    first = tmp_path / "first.py"
+    second = tmp_path / "second.py"
+    first.write_text(_COLLISION_SRC.format(class_name="CollisionWidget"))
+    second.write_text(_COLLISION_SRC.format(class_name="CollisionWidget"))
+
+    _import_component_file(first, "_test_collision_first")
+    with pytest.raises(TypeError) as exc_info:
+        _import_component_file(second, "_test_collision_second")
+
+    message = str(exc_info.value)
+    assert "CollisionWidget" in message
+    assert "first.py" in message
+    assert "second.py" in message
+    assert "pjx_replace=True" in message
+
+    # The original registration survives the failed overwrite.
+    assert Registry.get_class("CollisionWidget").__module__ == "_test_collision_first"
+
+
+def test_reregistering_from_same_file_is_allowed(tmp_path):
+    """Re-executing the same module (test reruns, hot reload) does not raise."""
+    module_file = tmp_path / "reloaded.py"
+    module_file.write_text(_COLLISION_SRC.format(class_name="ReloadedWidget"))
+
+    first = _import_component_file(module_file, "_test_reload_widget")
+    second = _import_component_file(module_file, "_test_reload_widget")
+
+    assert first.ReloadedWidget is not second.ReloadedWidget
+    assert Registry.get_class("ReloadedWidget") is second.ReloadedWidget
+
+
+def test_pjx_replace_keyword_shadows_cross_file_registration(tmp_path):
+    """pjx_replace=True intentionally shadows a same-name class from elsewhere."""
+    module_file = tmp_path / "shadowed.py"
+    module_file.write_text(_COLLISION_SRC.format(class_name="ShadowedWidget"))
+    _import_component_file(module_file, "_test_shadowed_widget")
+
+    class ShadowedWidget(BaseComponent, pjx_replace=True):
+        id: str = ""
+
+    assert Registry.get_class("ShadowedWidget") is ShadowedWidget

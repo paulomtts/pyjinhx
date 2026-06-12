@@ -19,7 +19,7 @@ def test_missing_template_file():
 
 
 def test_non_filesystem_loader_error():
-    class TestComponent(BaseComponent):
+    class DictLoaderComponent(BaseComponent):
         id: str
         text: str
 
@@ -28,7 +28,7 @@ def test_non_filesystem_loader_error():
     original_environment = Renderer.peek_default_environment()
     Renderer.set_default_environment(env)
 
-    component = TestComponent(id="test-1", text="Test")
+    component = DictLoaderComponent(id="test-1", text="Test")
 
     with pytest.raises(ValueError, match="Jinja2 loader must be a FileSystemLoader"):
         component.render()
