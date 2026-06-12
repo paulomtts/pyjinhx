@@ -1,6 +1,52 @@
 # Changelog
 
-## Unreleased
+## 0.11.0 — nori migration fixes (2026-06-12)
+
+Fixes for every finding from the nori 0.5.2 → 0.10.1 migration (#67, #68),
+landed as PRs #69–#75.
+
+### Breaking changes (0.10.x → 0.11.0)
+
+- Registering two different component classes under the same name from
+  different source files now raises `TypeError` instead of silently
+  overwriting based on import order (#74). Same-file re-registration
+  (autodiscovery, reload) is still allowed. To intentionally shadow a
+  builtin: `class Avatar(BaseComponent, pjx_replace=True)`.
+- Stray PascalCase tag attributes on **builtin** components now render onto
+  the component's root element instead of being silently dropped
+  (`<PopoverTrigger title="hello" hx-post="/x"/>` works) (#75). User
+  components keep extras-as-template-context semantics.
+
+### Fixed
+
+- Parser no longer logs a `WARNING` for every plain HTML closing tag on
+  well-formed input; the warning now fires only for genuinely interleaved
+  closes around an open component tag (#68, #69).
+- Render explosion fixed: registry peers injected into render contexts are
+  consumed lazily (rendered only when a template actually references them),
+  instead of eagerly re-rendered in every component's context. A page with 5
+  registered siblings went from 32,784 renders to 2 (#72).
+- The pjx.js client runtime is injected once per `Registry.request_scope()`,
+  not once per top-level `render()` call — multi-root page assembly no longer
+  duplicates the runtime (#70).
+- Modules using `from __future__ import annotations` (PEP 563) can declare
+  `Annotated[..., PjxKey()]` fields — string annotations are now resolved
+  during class definition (#71).
+- `<Modal>children</Modal>` maps children into `body` instead of silently
+  discarding them; same for `Drawer`, `Card`, and `Alert` (#75).
+- A keyed `load()` that explicitly pins an id equal to the kebab-cased class
+  default keeps it; only defaulted ids get the `-{key}` suffix (#73).
+
+### Changed
+
+- `extra_attrs` values may contain `"` — they're emitted single-quoted
+  (htmx `hx-headers`/`hx-vals` JSON now expressible); values containing both
+  quote types are rejected (#75).
+- Modal and Drawer close-button glyph is configurable via `close_content`
+  (defaults to `✕`) (#75).
+- Builtin CSS token defaults moved from `:root` to zero-specificity
+  `:where(:root)`, so app-level `:root` overrides win regardless of bundle
+  order (#73).
 
 ### Docs
 
