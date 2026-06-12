@@ -1,4 +1,4 @@
-from typing import Literal
+from typing import ClassVar, Literal
 
 from pydantic import Field
 
@@ -7,6 +7,8 @@ from pyjinhx.base import AttrValue, ExtraAttrs
 
 
 class Alert(BaseComponent):
+    _pjx_children_field: ClassVar[str] = "body"
+
     variant: Literal["info", "success", "warning", "error"] = "info"
     title: str = ""
     body: str | BaseComponent = ""

@@ -1,4 +1,4 @@
-from typing import Literal
+from typing import ClassVar, Literal
 
 from pydantic import Field
 
@@ -7,11 +7,14 @@ from pyjinhx.base import AttrValue, ExtraAttrs
 
 
 class Drawer(BaseComponent):
+    _pjx_children_field: ClassVar[str] = "body"
+
     side: Literal["left", "right", "bottom"] = "right"
     title: str | BaseComponent = ""
     body: str | BaseComponent = ""
     footer: str | BaseComponent = ""
     close_label: str = "Close"
+    close_content: str | BaseComponent = "✕"
     open_on_mount: bool = False
     remove_on_close: bool = False
     class_name: AttrValue = ""
