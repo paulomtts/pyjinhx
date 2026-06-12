@@ -133,8 +133,9 @@ class Registry:
         Context manager for request-scoped component instances.
 
         Creates a fresh instance registry on entry and restores
-        the previous state on exit. Also resets mutation tracking and
-        optionally sets a load context for reactive ``load()`` calls.
+        the previous state on exit. Also resets mutation tracking,
+        dedupes client runtime injection across renders in the scope,
+        and optionally sets a load context for reactive ``load()`` calls.
 
         Usage:
             with Registry.request_scope():
@@ -142,6 +143,7 @@ class Registry:
         """
         from contextlib import ExitStack
 
+        from pyjinhx.assets import _runtime_injected
         from pyjinhx.client import ClientBackend
         from pyjinhx.cache import LoadCache
         from pyjinhx.context import PjxContext
@@ -151,6 +153,7 @@ class Registry:
         MutationTracker.clear()
         LoadCache.init_request()
         token = _registry_context.set({})
+        runtime_token = _runtime_injected.set(False)
         try:
             with ExitStack() as stack:
                 if load_context is not None:
@@ -162,4 +165,5 @@ class Registry:
             warn_mutations_without_render()
             MutationTracker.clear()
             LoadCache.reset_request()
+            _runtime_injected.reset(runtime_token)
             _registry_context.reset(token)

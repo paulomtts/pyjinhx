@@ -4,6 +4,7 @@ import hashlib
 import logging
 import os
 from collections.abc import Callable
+from contextvars import ContextVar
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import TYPE_CHECKING, Literal
@@ -25,6 +26,12 @@ logger = logging.getLogger("pyjinhx")
 
 DEFAULT_RUNTIME_URL = "/static/pyjinhx/pjx.js"
 DEFAULT_STATIC_PREFIX = "/static/components"
+
+# Request-scoped "runtime already injected" flag, set by Registry.request_scope.
+# ``None`` means no request scope is active and per-session dedup applies alone.
+_runtime_injected: ContextVar[bool | None] = ContextVar(
+    "runtime_injected", default=None
+)
 
 
 class AssetMode(str, Enum):
@@ -269,7 +276,8 @@ def inject_runtime(
 ) -> None:
     from pyjinhx.client import MountedManifest
 
-    if session.runtime_injected:
+    request_injected = _runtime_injected.get()
+    if session.runtime_injected or request_injected:
         return
     if MountedManifest.is_present(client):
         return
@@ -281,6 +289,8 @@ def inject_runtime(
             session.collected_paths.add(runtime_path)
             session.assets.insert(0, CollectedAsset(path=runtime_path, kind="js"))
     session.runtime_injected = True
+    if request_injected is not None:
+        _runtime_injected.set(True)
 
 
 def should_emit_reference_url(
