@@ -1,5 +1,5 @@
 /* ── Notification tokens ────────────────────────────────────── */
-:root {
+:where(:root) {
   --px-notification-width:       22rem;
   --px-notification-gap:         1.25rem;
   --px-notification-bg:          var(--surface-alt);

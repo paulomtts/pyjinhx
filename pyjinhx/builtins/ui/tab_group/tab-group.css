@@ -1,4 +1,4 @@
-:root {
+:where(:root) {
   --px-tab-group-border: var(--border);
   --px-tab-group-bg: var(--surface-alt);
   --px-tab-group-tab-fg: var(--text-muted);

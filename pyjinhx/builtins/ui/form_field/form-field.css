@@ -1,5 +1,5 @@
 /* ── FormField tokens ─────────────────────────────────────────────────────── */
-:root {
+:where(:root) {
   --px-form-field-gap:        0.375rem;
   --px-form-field-label-size: 0.875em;
   --px-form-field-label-color: var(--text, inherit);

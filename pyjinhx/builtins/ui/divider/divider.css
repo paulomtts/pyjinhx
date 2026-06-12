@@ -1,4 +1,4 @@
-:root {
+:where(:root) {
   --px-divider-color: var(--border);
   --px-divider-thickness: 1px;
   --px-divider-gap: 0.75rem;

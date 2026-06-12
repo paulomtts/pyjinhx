@@ -1,4 +1,4 @@
-:root {
+:where(:root) {
   --px-alert-radius:     var(--radius-md);
   --px-alert-padding:    0.875rem 1rem;
   --px-alert-border:     var(--border);

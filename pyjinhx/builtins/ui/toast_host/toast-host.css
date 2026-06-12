@@ -1,4 +1,4 @@
-:root {
+:where(:root) {
   --px-toast-bg:      var(--surface);
   --px-toast-border:  var(--border);
   --px-toast-radius:  var(--radius-md);

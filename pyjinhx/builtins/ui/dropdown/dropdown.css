@@ -1,4 +1,4 @@
-:root {
+:where(:root) {
   --px-dropdown-menu-bg:       var(--surface-alt);
   --px-dropdown-menu-border:   var(--border);
   --px-dropdown-menu-radius:   var(--radius-md);

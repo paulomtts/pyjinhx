@@ -1,5 +1,5 @@
 /* ── Modal tokens (defaults wire to common design tokens) ─── */
-:root {
+:where(:root) {
   --px-modal-width:        52rem;
   --px-modal-min-height:   28rem;
   --px-modal-bg:           var(--surface);

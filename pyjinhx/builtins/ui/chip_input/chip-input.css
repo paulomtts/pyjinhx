@@ -1,5 +1,5 @@
 /* ── ChipInput tokens ──────────────────────────────────────────────────────── */
-:root {
+:where(:root) {
   --px-chip-input-gap:        0.375rem;
   --px-chip-input-chip-bg:    var(--surface-alt);
   --px-chip-input-chip-fg:    var(--text);

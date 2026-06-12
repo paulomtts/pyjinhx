@@ -1,4 +1,4 @@
-:root {
+:where(:root) {
   --px-page-loader-backdrop: rgb(0 0 0 / 0.15);
   --px-page-loader-z:        9999;
   --px-page-loader-size:     2rem;

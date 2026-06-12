@@ -1,4 +1,4 @@
-:root {
+:where(:root) {
   --px-prompt-dialog-bg:       var(--surface);
   --px-prompt-dialog-border:   var(--border);
   --px-prompt-dialog-radius:   var(--radius-md);

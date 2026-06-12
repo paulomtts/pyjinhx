@@ -1,4 +1,4 @@
-:root {
+:where(:root) {
   --px-empty-state-padding:   2rem 1.5rem;
   --px-empty-state-max-width: 28rem;
   --px-empty-state-title-size: var(--font-size-md);

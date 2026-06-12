@@ -1,4 +1,4 @@
-:root {
+:where(:root) {
   --px-drawer-width:        min(24rem, 100vw);
   --px-drawer-height-bottom: min(50dvh, 28rem);
   --px-drawer-bg:           var(--surface);

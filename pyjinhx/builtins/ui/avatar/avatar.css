@@ -1,4 +1,4 @@
-:root {
+:where(:root) {
   --px-avatar-sm: 2rem;
   --px-avatar-md: 2.5rem;
   --px-avatar-lg: 3.25rem;

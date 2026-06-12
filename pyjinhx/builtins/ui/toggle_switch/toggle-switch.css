@@ -1,5 +1,5 @@
 /* ── ToggleSwitch tokens ──────────────────────────────────────────────────── */
-:root {
+:where(:root) {
   --px-toggle-switch-width:    2.75rem;
   --px-toggle-switch-height:   1.5rem;
   --px-toggle-switch-track:    var(--border, #ccc);
