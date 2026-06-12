@@ -1,4 +1,4 @@
-"""Browser contracts for the Popover compound and the Dropdown built on it."""
+"""Browser contracts for the PJXPopover compound and the PJXDropdown built on it."""
 
 import pytest
 
@@ -45,13 +45,13 @@ def test_opening_b_closes_a(sink_page):
     expect(sink_page.locator("#rx-pop-a-t")).to_have_attribute("aria-expanded", "false")
 
 
-def test_data_px_close_inside_dropdown_closes_menu_only(sink_page):
+def test_data_pjx_close_inside_dropdown_closes_menu_only(sink_page):
     menu = sink_page.locator("#rx-drop-menu")
     sink_page.click("#rx-drop-trigger")
     expect(menu).to_be_visible()
 
     # Hold popover A open via the API (a trigger click would close the menu).
-    sink_page.evaluate("px.popover.open('rx-pop-a-p')")
+    sink_page.evaluate("pjx.popover.open('rx-pop-a-p')")
     expect(sink_page.locator("#rx-pop-a-p")).to_be_visible()
 
     sink_page.click("#drop-close-item")

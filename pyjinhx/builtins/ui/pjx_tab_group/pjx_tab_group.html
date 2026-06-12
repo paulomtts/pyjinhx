@@ -1,0 +1,21 @@
+<div id="{{ id }}" class="pjx-tab-group{% if class_name %} {{ class_name }}{% endif %}"{{ extra_attrs_html }}>
+  <div class="pjx-tab-group__list" role="tablist" aria-label="{{ tabs_label }}">
+    {% for label, panel in tabs.items() %}
+    <button type="button"
+            class="pjx-tab-group__tab"
+            role="tab"
+            id="{{ id }}-tab-{{ loop.index0 }}"
+            aria-controls="{{ id }}-panel-{{ loop.index0 }}"
+            aria-selected="{% if loop.first %}true{% else %}false{% endif %}"
+            tabindex="{% if loop.first %}0{% else %}-1{% endif %}">{{ label }}</button>
+    {% endfor %}
+  </div>
+  {% for label, panel in tabs.items() %}
+  <div class="pjx-tab-group__panel"
+       role="tabpanel"
+       data-pjx-region
+       id="{{ id }}-panel-{{ loop.index0 }}"
+       aria-labelledby="{{ id }}-tab-{{ loop.index0 }}"
+       {% if not loop.first %}hidden{% endif %}>{{ panel }}</div>
+  {% endfor %}
+</div>

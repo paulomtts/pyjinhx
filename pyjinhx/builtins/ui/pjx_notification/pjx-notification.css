@@ -1,0 +1,112 @@
+/* ── PJXNotification tokens ────────────────────────────────────── */
+:where(:root) {
+  --pjx-notification-width:       22rem;
+  --pjx-notification-gap:         1.25rem;
+  --pjx-notification-bg:          var(--surface-alt);
+  --pjx-notification-border:      var(--border);
+  --pjx-notification-radius:      var(--radius-md);
+  --pjx-notification-shadow:      var(--shadow-md);
+  --pjx-notification-padding:     1rem 1rem 1rem 1.25rem;
+  --pjx-notification-close-color: var(--text-muted);
+  --pjx-notification-z:           500;
+}
+
+/* ── Base ───────────────────────────────────────────────────── */
+.pjx-notification {
+  display: none;
+  position: fixed;
+  z-index: var(--pjx-notification-z);
+  width: min(var(--pjx-notification-width), calc(100vw - 2 * var(--pjx-notification-gap)));
+  background: var(--pjx-notification-bg);
+  border: 1px solid var(--pjx-notification-border);
+  border-radius: var(--pjx-notification-radius);
+  box-shadow: var(--pjx-notification-shadow);
+  padding: var(--pjx-notification-padding);
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+/* ── Corner placement ───────────────────────────────────────── */
+.pjx-notification--top-right    { top: var(--pjx-notification-gap); right: var(--pjx-notification-gap); }
+.pjx-notification--top-left     { top: var(--pjx-notification-gap); left:  var(--pjx-notification-gap); }
+.pjx-notification--bottom-right { bottom: var(--pjx-notification-gap); right: var(--pjx-notification-gap); }
+.pjx-notification--bottom-left  { bottom: var(--pjx-notification-gap); left:  var(--pjx-notification-gap); }
+
+/* ── Visibility states ──────────────────────────────────────── */
+.pjx-notification--visible {
+  display: flex;
+}
+
+.pjx-notification--top-right.pjx-notification--visible,
+.pjx-notification--bottom-right.pjx-notification--visible {
+  animation: notification-in-right 200ms ease forwards;
+}
+
+.pjx-notification--top-left.pjx-notification--visible,
+.pjx-notification--bottom-left.pjx-notification--visible {
+  animation: notification-in-left 200ms ease forwards;
+}
+
+.pjx-notification--top-right.pjx-notification--hiding,
+.pjx-notification--bottom-right.pjx-notification--hiding {
+  display: flex;
+  animation: notification-out-right 150ms ease forwards;
+}
+
+.pjx-notification--top-left.pjx-notification--hiding,
+.pjx-notification--bottom-left.pjx-notification--hiding {
+  display: flex;
+  animation: notification-out-left 150ms ease forwards;
+}
+
+/* ── Content ────────────────────────────────────────────────── */
+.pjx-notification__content {
+  flex: 1;
+  font-size: var(--font-size-sm);
+  color: var(--text);
+  line-height: 1.5;
+}
+
+/* ── Close button ───────────────────────────────────────────── */
+.pjx-notification__close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 1.5rem;
+  height: 1.5rem;
+  padding: 0;
+  font-size: 0.75rem;
+  line-height: 1;
+  background: transparent;
+  color: var(--pjx-notification-close-color);
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background var(--transition), color var(--transition);
+}
+.pjx-notification__close:hover {
+  background: var(--surface);
+  color: var(--text);
+}
+
+/* ── Animations ─────────────────────────────────────────────── */
+@keyframes notification-in-right {
+  from { opacity: 0; transform: translateX(calc(100% + var(--pjx-notification-gap))); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes notification-out-right {
+  from { opacity: 1; transform: translateX(0); }
+  to   { opacity: 0; transform: translateX(calc(100% + var(--pjx-notification-gap))); }
+}
+
+@keyframes notification-in-left {
+  from { opacity: 0; transform: translateX(calc(-100% - var(--pjx-notification-gap))); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes notification-out-left {
+  from { opacity: 1; transform: translateX(0); }
+  to   { opacity: 0; transform: translateX(calc(-100% - var(--pjx-notification-gap))); }
+}

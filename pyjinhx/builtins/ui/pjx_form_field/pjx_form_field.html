@@ -1,0 +1,6 @@
+<div id="{{ id }}" class="pjx-form-field{% if error %} pjx-form-field--error{% endif %}{% if class_name %} {{ class_name }}{% endif %}"{{ extra_attrs_html }}>
+  {% if label %}<label class="pjx-form-field__label"{% if for_id %} for="{{ for_id }}"{% endif %}>{{ label }}{% if required %}<span class="pjx-form-field__required" aria-hidden="true">*</span>{% endif %}</label>{% endif %}
+  <div class="pjx-form-field__control">{{ content }}</div>
+  {% if help and not error %}<p class="pjx-form-field__help" id="{{ id }}-help">{{ help }}</p>{% endif %}
+  {% if error %}<p class="pjx-form-field__error" id="{{ id }}-error" role="alert">{{ error }}</p>{% endif %}
+</div>

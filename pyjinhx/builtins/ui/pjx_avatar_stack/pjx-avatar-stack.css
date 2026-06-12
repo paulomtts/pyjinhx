@@ -1,0 +1,37 @@
+:where(:root) {
+  --pjx-avatar-stack-overlap: -0.5rem;
+  --pjx-avatar-stack-ring:    var(--surface);
+}
+
+.pjx-avatar-stack {
+  display: inline-flex;
+  align-items: center;
+}
+
+.pjx-avatar-stack > .pjx-avatar,
+.pjx-avatar-stack > .pjx-avatar-stack__more {
+  box-shadow: 0 0 0 2px var(--pjx-avatar-stack-ring);
+}
+
+.pjx-avatar-stack > * + * {
+  margin-left: var(--pjx-avatar-stack-overlap);
+}
+
+.pjx-avatar-stack__more {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2rem;
+  height: 2rem;
+  padding: 0 0.3rem;
+  border-radius: 50%;
+  background: var(--surface-alt);
+  color: var(--text-muted);
+  font-size: var(--font-size-sm, 0.85rem);
+  font-weight: 600;
+}
+
+.pjx-avatar-stack__empty {
+  color: var(--text-muted);
+  font-size: var(--font-size-sm, 0.85rem);
+}

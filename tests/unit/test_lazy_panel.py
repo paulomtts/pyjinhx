@@ -1,8 +1,8 @@
-from pyjinhx.builtins import LazyPanel, Skeleton
+from pyjinhx.builtins import PJXLazyPanel, PJXSkeleton
 
 
 def test_lazy_panel_default_render():
-    html = str(LazyPanel(id="lp-comments", url="/posts/42/comments").render())
+    html = str(PJXLazyPanel(id="lp-comments", url="/posts/42/comments").render())
 
     assert 'id="lp-comments"' in html
     assert 'hx-get="/posts/42/comments"' in html
@@ -12,7 +12,7 @@ def test_lazy_panel_default_render():
 
 def test_lazy_panel_custom_trigger_and_swap():
     html = str(
-        LazyPanel(
+        PJXLazyPanel(
             id="lp-tab",
             url="/tabs/activity",
             trigger="click once",
@@ -26,10 +26,10 @@ def test_lazy_panel_custom_trigger_and_swap():
 
 def test_lazy_panel_children_render_as_placeholder():
     html = str(
-        LazyPanel(
+        PJXLazyPanel(
             id="lp-feed",
             url="/feed",
-            content=Skeleton(id="lp-feed-skel"),
+            content=PJXSkeleton(id="lp-feed-skel"),
         ).render()
     )
 

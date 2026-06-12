@@ -1,0 +1,61 @@
+/* ── PJXBadge tokens (override --pjx-badge-*; defaults use common design tokens) ─ */
+:where(:root) {
+  --pjx-badge-font-size:       var(--font-size-xs);
+  --pjx-badge-radius-sm:       var(--radius-sm);
+  --pjx-badge-radius-md:       var(--radius-md);
+  --pjx-badge-radius-full:     var(--radius-full);
+  --pjx-badge-brand-bg:        var(--brand-subtle);
+  --pjx-badge-brand-fg:        var(--brand-muted);
+  --pjx-badge-brand-accent:    var(--brand);
+  --pjx-badge-error-bg:        var(--error-bg);
+  --pjx-badge-error-fg:        var(--error);
+  --pjx-badge-error-border:    var(--error-border);
+  --pjx-badge-neutral-bg:      var(--surface-alt);
+  --pjx-badge-neutral-fg:      var(--text);
+  --pjx-badge-neutral-border:  var(--border);
+  --pjx-badge-muted-bg:        var(--surface);
+  --pjx-badge-muted-fg:        var(--text-muted);
+  --pjx-badge-muted-border:    var(--border);
+}
+
+.pjx-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.125rem 0.5rem;
+  font-size: var(--pjx-badge-font-size);
+  font-weight: 500;
+  line-height: 1.5;
+  white-space: nowrap;
+  border: 1px solid transparent;
+}
+
+/* Shapes */
+.pjx-badge--square { border-radius: 0; }
+.pjx-badge--sm     { border-radius: var(--pjx-badge-radius-sm); }
+.pjx-badge--md     { border-radius: var(--pjx-badge-radius-md); }
+.pjx-badge--full   { border-radius: var(--pjx-badge-radius-full); }
+
+/* Colors */
+.pjx-badge--brand {
+  background: var(--pjx-badge-brand-bg);
+  color: var(--pjx-badge-brand-fg);
+  border-color: color-mix(in srgb, var(--pjx-badge-brand-accent) 30%, transparent);
+}
+
+.pjx-badge--error {
+  background: var(--pjx-badge-error-bg);
+  color: var(--pjx-badge-error-fg);
+  border-color: var(--pjx-badge-error-border);
+}
+
+.pjx-badge--neutral {
+  background: var(--pjx-badge-neutral-bg);
+  color: var(--pjx-badge-neutral-fg);
+  border-color: var(--pjx-badge-neutral-border);
+}
+
+.pjx-badge--muted {
+  background: var(--pjx-badge-muted-bg);
+  color: var(--pjx-badge-muted-fg);
+  border-color: var(--pjx-badge-muted-border);
+}

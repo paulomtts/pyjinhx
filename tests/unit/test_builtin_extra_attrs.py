@@ -3,7 +3,7 @@
 import pytest
 
 from pyjinhx import Renderer
-from pyjinhx.builtins import Modal, PopoverPanel, PopoverTrigger
+from pyjinhx.builtins import PJXModal, PJXPopoverPanel, PJXPopoverTrigger
 
 
 def test_tag_attrs_pass_through_to_builtin_root(tmp_path):
@@ -11,7 +11,7 @@ def test_tag_attrs_pass_through_to_builtin_root(tmp_path):
     renderer = Renderer.get_default_renderer()
 
     rendered = renderer.render(
-        '<PopoverTrigger id="t" title="hello" data-action="x">go</PopoverTrigger>'
+        '<PJXPopoverTrigger id="t" title="hello" data-action="x">go</PJXPopoverTrigger>'
     )
 
     assert 'title="hello"' in rendered
@@ -23,7 +23,7 @@ def test_extra_attrs_with_double_quotes_render_single_quoted(tmp_path):
     Renderer.set_default_environment(str(tmp_path))
 
     html = str(
-        PopoverPanel(
+        PJXPopoverPanel(
             id="pp",
             content="x",
             extra_attrs={"hx-headers": '{"X-CSRF-Token": "t"}'},
@@ -38,7 +38,7 @@ def test_tag_attr_with_double_quotes_survives_full_render(tmp_path):
     renderer = Renderer.get_default_renderer()
 
     rendered = renderer.render(
-        """<PopoverPanel id="pp" hx-headers='{"X-CSRF-Token": "t"}'>x</PopoverPanel>"""
+        """<PJXPopoverPanel id="pp" hx-headers='{"X-CSRF-Token": "t"}'>x</PJXPopoverPanel>"""
     )
 
     assert "hx-headers='{\"X-CSRF-Token\": \"t\"}'" in rendered
@@ -46,11 +46,11 @@ def test_tag_attr_with_double_quotes_survives_full_render(tmp_path):
 
 def test_extra_attrs_value_with_both_quote_types_raises():
     with pytest.raises(ValueError, match="both"):
-        Modal(id="m", extra_attrs={"data-x": "a\"b'c"})
+        PJXModal(id="m", extra_attrs={"data-x": "a\"b'c"})
 
 
 def test_stray_attr_with_both_quote_types_raises_at_render(tmp_path):
     Renderer.set_default_environment(str(tmp_path))
 
     with pytest.raises(ValueError, match="both"):
-        str(PopoverTrigger(id="t", content="go", **{"data-x": "a\"b'c"}).render())
+        str(PJXPopoverTrigger(id="t", content="go", **{"data-x": "a\"b'c"}).render())

@@ -1,5 +1,5 @@
-from pyjinhx.builtins import Badge
+from pyjinhx.builtins import PJXBadge
 
 
-class FancyBadge(Badge):
+class FancyBadge(PJXBadge):
     pass

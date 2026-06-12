@@ -1,0 +1,11 @@
+<div class="pjx-skeleton pjx-skeleton--{{ variant }}{% if class_name %} {{ class_name }}{% endif %}" id="{{ id }}"{{ extra_attrs_html }}>
+    {% if variant == 'text' %}
+    {% for _ in range(lines) %}
+    <div class="pjx-skeleton__line"></div>
+    {% endfor %}
+    {% elif variant == 'circle' %}
+    <div class="pjx-skeleton__circle"></div>
+    {% else %}
+    <div class="pjx-skeleton__rect"></div>
+    {% endif %}
+</div>

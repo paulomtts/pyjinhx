@@ -1,16 +1,16 @@
 from pyjinhx.builtins import (
-    Dropdown,
-    PageLoader,
-    Panel,
-    PanelTrigger,
-    RegionLoader,
-    TabGroup,
-    ToastHost,
+    PJXDropdown,
+    PJXPageLoader,
+    PJXPanel,
+    PJXPanelTrigger,
+    PJXRegionLoader,
+    PJXTabGroup,
+    PJXToastHost,
 )
 
 
 def dropdown():
-    return Dropdown(
+    return PJXDropdown(
         trigger="Actions",
         items=[
             "<button>Edit</button>",
@@ -22,7 +22,7 @@ def dropdown():
 
 
 def tab_group():
-    return TabGroup(
+    return PJXTabGroup(
         tabs={
             "Overview": "<p>Project summary and key metrics.</p>",
             "Activity": "<p>Recent commits and deploys.</p>",
@@ -35,23 +35,23 @@ def tab_group():
 def panel():
     return [
         '<div style="display:flex;gap:0.5rem;margin-bottom:1rem">',
-        PanelTrigger(
+        PJXPanelTrigger(
             panel_id="demo-panel",
             panel="chat",
-            content='<button class="px-demo-btn">Chat</button>',
+            content='<button class="pjx-demo-btn">Chat</button>',
         ).render(),
-        PanelTrigger(
+        PJXPanelTrigger(
             panel_id="demo-panel",
             panel="files",
-            content='<button class="px-demo-btn">Files</button>',
+            content='<button class="pjx-demo-btn">Files</button>',
         ).render(),
-        PanelTrigger(
+        PJXPanelTrigger(
             panel_id="demo-panel",
             panel="settings",
-            content='<button class="px-demo-btn">Settings</button>',
+            content='<button class="pjx-demo-btn">Settings</button>',
         ).render(),
         "</div>",
-        Panel(
+        PJXPanel(
             id="demo-panel",
             panels={
                 "chat": "<p>Active conversations with your team.</p>",
@@ -64,8 +64,8 @@ def panel():
 
 def toast_host():
     return [
-        '<button class="px-demo-btn" onclick="px.toast(\'Saved.\')">Show toast</button>',
-        ToastHost(position="bottom-right").render(),
+        '<button class="pjx-demo-btn" onclick="pjx.toast(\'Saved.\')">Show toast</button>',
+        PJXToastHost(position="bottom-right").render(),
     ]
 
 
@@ -73,28 +73,28 @@ def region_loader():
     return [
         '<div style="position:relative;min-height:6rem;padding:1rem;border:1px solid #8884;border-radius:6px">',
         '<p style="margin:0">Region content — click to trigger a loading veil.</p>',
-        RegionLoader(id="demo-region").render(),
+        PJXRegionLoader(id="demo-region").render(),
         "</div>",
-        """<button class="px-demo-btn" style="margin-top:0.75rem"
-            onclick="px.loader.region.show('demo-region');setTimeout(()=>px.loader.region.hide('demo-region'),1500)">
+        """<button class="pjx-demo-btn" style="margin-top:0.75rem"
+            onclick="pjx.loader.region.show('demo-region');setTimeout(()=>pjx.loader.region.hide('demo-region'),1500)">
             Simulate load</button>""",
     ]
 
 
 def page_loader():
     return [
-        PageLoader(id="demo-page-loader").render(),
-        """<button class="px-demo-btn" style="margin-top:0.75rem"
-            onclick="px.loader.page.show();setTimeout(()=>px.loader.page.hide(),1500)">
+        PJXPageLoader(id="demo-page-loader").render(),
+        """<button class="pjx-demo-btn" style="margin-top:0.75rem"
+            onclick="pjx.loader.page.show();setTimeout(()=>pjx.loader.page.hide(),1500)">
             Simulate load</button>""",
     ]
 
 
 DEMOS = {
-    "Dropdown": (dropdown, 200),
-    "TabGroup": (tab_group, 320),
-    "Panel": (panel, 300),
-    "ToastHost": (toast_host, 160),
-    "RegionLoader": (region_loader, 220),
-    "PageLoader": (page_loader, 160),
+    "PJXDropdown": (dropdown, 200),
+    "PJXTabGroup": (tab_group, 320),
+    "PJXPanel": (panel, 300),
+    "PJXToastHost": (toast_host, 160),
+    "PJXRegionLoader": (region_loader, 220),
+    "PJXPageLoader": (page_loader, 160),
 }

@@ -47,7 +47,7 @@ class Registry:
         Args:
             component_class: The component class to register.
             replace: Skip the cross-file collision check and overwrite.
-                Set via ``class Avatar(BaseComponent, pjx_replace=True)``.
+                Set via ``class PJXAvatar(BaseComponent, pjx_replace=True)``.
         """
         class_name = component_class.__name__
         existing = cls._class_registry.get(class_name)

@@ -1,0 +1,60 @@
+:where(:root) {
+  --pjx-skeleton-bg:         var(--surface-alt);
+  --pjx-skeleton-shine:      color-mix(in srgb, var(--text) 8%, var(--surface-alt));
+  --pjx-skeleton-line-height: 0.65rem;
+  --pjx-skeleton-line-gap:   0.5rem;
+  --pjx-skeleton-circle-size: 2.5rem;
+  --pjx-skeleton-rect-height: 6rem;
+  --pjx-skeleton-rect-radius: var(--radius-md);
+  --pjx-skeleton-duration:   1.2s;
+}
+
+.pjx-skeleton {
+  width: 100%;
+}
+
+.pjx-skeleton__line,
+.pjx-skeleton__circle,
+.pjx-skeleton__rect {
+  background: linear-gradient(
+    90deg,
+    var(--pjx-skeleton-bg) 0%,
+    var(--pjx-skeleton-shine) 50%,
+    var(--pjx-skeleton-bg) 100%
+  );
+  background-size: 200% 100%;
+  animation: pjx-skeleton-shimmer var(--pjx-skeleton-duration) ease-in-out infinite;
+}
+
+.pjx-skeleton--text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pjx-skeleton-line-gap);
+}
+
+.pjx-skeleton__line {
+  height: var(--pjx-skeleton-line-height);
+  border-radius: var(--radius-sm);
+  width: 100%;
+}
+
+.pjx-skeleton__line:last-child {
+  width: 65%;
+}
+
+.pjx-skeleton--circle .pjx-skeleton__circle {
+  width: var(--pjx-skeleton-circle-size);
+  height: var(--pjx-skeleton-circle-size);
+  border-radius: var(--radius-full);
+}
+
+.pjx-skeleton--rect .pjx-skeleton__rect {
+  width: 100%;
+  height: var(--pjx-skeleton-rect-height);
+  border-radius: var(--pjx-skeleton-rect-radius);
+}
+
+@keyframes pjx-skeleton-shimmer {
+  0% { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
+}

@@ -1,4 +1,4 @@
-"""Browser contracts for the PasswordInput visibility toggle."""
+"""Browser contracts for the PJXPasswordInput visibility toggle."""
 
 import pytest
 
@@ -11,7 +11,7 @@ pytestmark = [pytest.mark.pjx_runtime, pytest.mark.reactivity]
 
 def test_toggle_reveals_and_hides_password(sink_page):
     field = sink_page.locator("#rx-pw-field")
-    toggle = sink_page.locator("#rx-pw [data-px-password-toggle]")
+    toggle = sink_page.locator("#rx-pw [data-pjx-password-toggle]")
 
     field.fill("hunter2")
     expect(field).to_have_attribute("type", "password")
@@ -20,9 +20,9 @@ def test_toggle_reveals_and_hides_password(sink_page):
     toggle.click()
     expect(field).to_have_attribute("type", "text")
     expect(toggle).to_have_attribute("aria-pressed", "true")
-    expect(toggle).to_contain_class("px-password-input__toggle--on")
+    expect(toggle).to_contain_class("pjx-password-input__toggle--on")
 
     toggle.click()
     expect(field).to_have_attribute("type", "password")
     expect(toggle).to_have_attribute("aria-pressed", "false")
-    expect(toggle).not_to_contain_class("px-password-input__toggle--on")
+    expect(toggle).not_to_contain_class("pjx-password-input__toggle--on")

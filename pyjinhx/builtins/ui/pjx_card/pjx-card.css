@@ -1,0 +1,46 @@
+:where(:root) {
+  --pjx-card-bg: var(--surface-alt);
+  --pjx-card-border: var(--border);
+  --pjx-card-radius: var(--radius-md);
+  --pjx-card-shadow: none;
+  --pjx-card-title-color: var(--text);
+  --pjx-card-padding: var(--space-4, 1rem);
+  --pjx-card-header-sep: var(--border);
+  --pjx-card-footer-sep: var(--border);
+  --pjx-card-footer-bg: color-mix(in srgb, var(--surface) 60%, var(--surface-alt));
+}
+
+.pjx-card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  background: var(--pjx-card-bg);
+  border: 1px solid var(--pjx-card-border);
+  border-radius: var(--pjx-card-radius);
+  box-shadow: var(--pjx-card-shadow);
+  overflow: hidden;
+}
+
+.pjx-card__header {
+  padding: var(--pjx-card-padding);
+  border-bottom: 1px solid var(--pjx-card-header-sep);
+}
+
+.pjx-card__title {
+  margin: 0;
+  font-size: var(--font-size-md);
+  font-weight: 600;
+  color: var(--pjx-card-title-color);
+}
+
+.pjx-card__body {
+  padding: var(--pjx-card-padding);
+  flex: 1;
+  min-height: 0;
+}
+
+.pjx-card__footer {
+  padding: var(--pjx-card-padding);
+  border-top: 1px solid var(--pjx-card-footer-sep);
+  background: var(--pjx-card-footer-bg);
+}

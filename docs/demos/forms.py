@@ -1,14 +1,14 @@
 from pyjinhx.builtins import (
-    ChipInput,
-    FormField,
-    PasswordInput,
-    SegmentedControl,
-    ToggleSwitch,
+    PJXChipInput,
+    PJXFormField,
+    PJXPasswordInput,
+    PJXSegmentedControl,
+    PJXToggleSwitch,
 )
 
 
 def chip_input():
-    return ChipInput(
+    return PJXChipInput(
         name="tags",
         values=["python", "jinja2", "htmx"],
         placeholder="Add tag…",
@@ -16,7 +16,7 @@ def chip_input():
 
 
 def form_field():
-    return FormField(
+    return PJXFormField(
         label="Email address",
         for_id="demo-email",
         content='<input id="demo-email" type="email" name="email" placeholder="you@example.com">',
@@ -26,11 +26,11 @@ def form_field():
 
 
 def toggle_switch():
-    return ToggleSwitch(name="notifications", checked=True, label="Email notifications").render()
+    return PJXToggleSwitch(name="notifications", checked=True, label="Email notifications").render()
 
 
 def segmented_control():
-    return SegmentedControl(
+    return PJXSegmentedControl(
         name="view",
         options=[("list", "List"), ("grid", "Grid"), ("table", "Table")],
         selected="grid",
@@ -38,7 +38,7 @@ def segmented_control():
 
 
 def password_input():
-    return PasswordInput(
+    return PJXPasswordInput(
         name="password",
         placeholder="Enter your password",
         autocomplete="current-password",
@@ -47,9 +47,9 @@ def password_input():
 
 
 DEMOS = {
-    "ChipInput": (chip_input, 160),
-    "FormField": (form_field, 200),
-    "ToggleSwitch": (toggle_switch, 120),
-    "SegmentedControl": (segmented_control, 120),
-    "PasswordInput": (password_input, 140),
+    "PJXChipInput": (chip_input, 160),
+    "PJXFormField": (form_field, 200),
+    "PJXToggleSwitch": (toggle_switch, 120),
+    "PJXSegmentedControl": (segmented_control, 120),
+    "PJXPasswordInput": (password_input, 140),
 }

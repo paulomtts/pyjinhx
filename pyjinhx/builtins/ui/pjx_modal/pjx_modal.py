@@ -1,0 +1,21 @@
+from typing import ClassVar
+
+from pydantic import Field
+
+from pyjinhx import BaseComponent
+from pyjinhx.base import AttrValue, ExtraAttrs
+
+
+class PJXModal(BaseComponent):
+    _pjx_children_field: ClassVar[str] = "body"
+
+    title: str | BaseComponent = ""
+    header: str | BaseComponent = ""
+    body: str | BaseComponent = ""
+    footer: str | BaseComponent = ""
+    close_label: str = "Close"
+    close_content: str | BaseComponent = "✕"
+    open_on_mount: bool = False
+    remove_on_close: bool = False
+    class_name: AttrValue = ""
+    extra_attrs: ExtraAttrs = Field(default_factory=dict)

@@ -1,5 +1,29 @@
 # Migration guide
 
+## 0.11 → 0.12 (breaking: `PJX` prefix on all builtins)
+
+Every builtin component is renamed with a `PJX` prefix, in Python and in tag form:
+
+```python
+# BEFORE (0.11)
+from pyjinhx.builtins import Avatar, Modal
+html = renderer.render('<Modal id="m" title="Hi"/>')
+
+# AFTER (0.12)
+from pyjinhx.builtins import PJXAvatar, PJXModal
+html = renderer.render('<PJXModal id="m" title="Hi"/>')
+```
+
+Related renames, all mechanical:
+
+- Builtin CSS classes: `px-*` → `pjx-*` (e.g. `px-modal__inner` → `pjx-modal__inner`). Update any custom CSS targeting builtin classes.
+- The browser API namespace: `window.px` → `window.pjx` (`px.modal.open(...)` → `pjx.modal.open(...)`), and DOM events `px:*` → `pjx:*` (e.g. `px:toast` → `pjx:toast`).
+- Auto-generated component ids: `px-<n>` → `pjx-<n>`.
+- Template auto-discovery is now acronym-aware: `HTMLBlock` resolves to `html_block.html` (previously `h_t_m_l_block.html`). Rename template files for your own components whose class names contain consecutive capitals.
+- Single-capital tags (e.g. `<X/>`) are no longer parsed as components.
+
+Your own component names no longer risk colliding with builtins — `Avatar`, `Card`, `Modal`, etc. are free for application code.
+
 ## 0.8 → 0.9 (breaking: `react=` class keyword + strict `@mutates`)
 
 ### `reacts_to` → `react=` class keyword
@@ -99,7 +123,7 @@ for you. So migration is two separable jobs:
 | `_update_context_(self, context, field_name, field_value, *, renderer, session)` hook | ✅ Unchanged | None |
 | `from pyjinhx.renderer import Renderer, RenderSession` | ✅ Still re-exported | None |
 | `Registry`, `Registry.request_scope()` request isolation middleware | ✅ Unchanged | None |
-| `from pyjinhx.builtins import Card, Tooltip, Panel, PanelTrigger, Notification` | ✅ Still a submodule | None |
+| `from pyjinhx.builtins import Card, Tooltip, Panel, PanelTrigger, Notification` | ⚠️ **Renamed in 0.12** | Add the `PJX` prefix: `PJXCard`, `PJXTooltip`, … (see 0.11 → 0.12 above) |
 | `from pyjinhx.parser import Parser` (and `Tag`) | ⚠️ **Moved** | Import from `pyjinhx.tags` |
 | `Renderer.get_default_renderer(inline_css=...)` | ⚠️ **Changed** | Use `css_mode=AssetMode.…` |
 | `Renderer.set_default_environment("some_package")` | ⚠️ **Behavior change** | Pass an explicit path/`Environment` |
@@ -332,7 +356,7 @@ To keep migration cheap, these 0.4.x idioms are untouched:
 - The `_update_context_(self, context, field_name, field_value, *, renderer, session)`
   context-injection hook and `RenderSession`.
 - `Registry.request_scope()` for per-request component isolation.
-- `pyjinhx.builtins` components (`Card`, `Tooltip`, `Panel`, `PanelTrigger`, `Notification`, …).
+- `pyjinhx.builtins` components — though as of 0.12 they carry a `PJX` prefix (`PJXCard`, `PJXTooltip`, `PJXPanel`, …).
 - Child components as rendered strings, `id`-based addressing, and manual `hx-swap-oob`
   strings — still valid if you are not ready to adopt `ReactiveComponent` for a given region.
 

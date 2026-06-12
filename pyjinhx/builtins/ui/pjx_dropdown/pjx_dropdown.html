@@ -1,0 +1,15 @@
+<div class="pjx-dropdown{% if align == "end" %} pjx-dropdown--align-end{% endif %}{% if class_name %} {{ class_name }}{% endif %}" id="{{ id }}"{% if behavior %} data-pjx-popover{% endif %}{{ extra_attrs_html }}>
+    <button type="button"
+            class="pjx-dropdown__trigger"
+            id="{{ id }}-trigger"
+            aria-expanded="false"
+            aria-haspopup="menu"
+            aria-controls="{{ id }}-menu"
+            {% if behavior %}data-pjx-toggle="{{ id }}-menu"{% endif %}>{{ trigger }}</button>
+    <div class="pjx-dropdown__menu"
+         id="{{ id }}-menu"
+         {% if behavior %}data-pjx-popover-panel{% endif %}
+         role="menu"
+         aria-label="{{ menu_label }}"
+         hidden>{% for item in items %}{{ item }}{% endfor %}</div>
+</div>

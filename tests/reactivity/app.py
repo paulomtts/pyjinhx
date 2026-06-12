@@ -16,22 +16,22 @@ from fastapi.responses import HTMLResponse, JSONResponse, Response
 
 from pyjinhx import BaseComponent, PjxSettings, setup
 from pyjinhx.builtins import (
-    ChipInput,
-    Drawer,
-    Dropdown,
-    LazyPanel,
-    Modal,
-    Notification,
-    PageLoader,
-    Panel,
-    PanelTrigger,
-    PasswordInput,
-    Popover,
-    PopoverPanel,
-    PopoverTrigger,
-    RegionLoader,
-    TabGroup,
-    ToastHost,
+    PJXChipInput,
+    PJXDrawer,
+    PJXDropdown,
+    PJXLazyPanel,
+    PJXModal,
+    PJXNotification,
+    PJXPageLoader,
+    PJXPanel,
+    PJXPanelTrigger,
+    PJXPasswordInput,
+    PJXPopover,
+    PJXPopoverPanel,
+    PJXPopoverTrigger,
+    PJXRegionLoader,
+    PJXTabGroup,
+    PJXToastHost,
 )
 
 _PAGE_TEMPLATE = """
@@ -39,12 +39,12 @@ _PAGE_TEMPLATE = """
 
 <section>
 {{ modal }}
-<button type="button" id="modal-open-btn" data-px-open="rx-modal">Open modal</button>
+<button type="button" id="modal-open-btn" data-pjx-open="rx-modal">Open modal</button>
 </section>
 
 <section>
 {{ drawer }}
-<button type="button" id="drawer-open-btn" data-px-open="rx-drawer">Open drawer</button>
+<button type="button" id="drawer-open-btn" data-pjx-open="rx-drawer">Open drawer</button>
 </section>
 
 <section>
@@ -94,32 +94,32 @@ Fetch notification
 
 
 class KitchenSinkPage(BaseComponent):
-    modal: Modal
-    drawer: Drawer
-    popover_a: Popover
-    popover_b: Popover
-    dropdown: Dropdown
-    chips: ChipInput
-    notification: Notification
-    toast_host: ToastHost
-    region_loader: RegionLoader
-    page_loader: PageLoader
-    panel_trigger_a: PanelTrigger
-    panel_trigger_b: PanelTrigger
-    panel: Panel
-    password: PasswordInput
-    tabs: TabGroup
+    modal: PJXModal
+    drawer: PJXDrawer
+    popover_a: PJXPopover
+    popover_b: PJXPopover
+    dropdown: PJXDropdown
+    chips: PJXChipInput
+    notification: PJXNotification
+    toast_host: PJXToastHost
+    region_loader: PJXRegionLoader
+    page_loader: PJXPageLoader
+    panel_trigger_a: PJXPanelTrigger
+    panel_trigger_b: PJXPanelTrigger
+    panel: PJXPanel
+    password: PJXPasswordInput
+    tabs: PJXTabGroup
 
     def render(self) -> str:
         return str(self._render(source=_PAGE_TEMPLATE.strip()))
 
 
-def _popover(prefix: str, label: str) -> Popover:
-    return Popover(
+def _popover(prefix: str, label: str) -> PJXPopover:
+    return PJXPopover(
         id=prefix,
         content=(
-            str(PopoverTrigger(id=f"{prefix}-t", content=label).render())
-            + str(PopoverPanel(id=f"{prefix}-p", content=f"{label} panel content").render())
+            str(PJXPopoverTrigger(id=f"{prefix}-t", content=label).render())
+            + str(PJXPopoverPanel(id=f"{prefix}-p", content=f"{label} panel content").render())
         ),
     )
 
@@ -127,47 +127,47 @@ def _popover(prefix: str, label: str) -> Popover:
 def render_page() -> str:
     page = KitchenSinkPage(
         id="kitchen-sink",
-        modal=Modal(id="rx-modal", title="Demo modal", body="Modal body."),
-        drawer=Drawer(id="rx-drawer", side="right", title="Demo drawer", body="Drawer body."),
+        modal=PJXModal(id="rx-modal", title="Demo modal", body="Modal body."),
+        drawer=PJXDrawer(id="rx-drawer", side="right", title="Demo drawer", body="Drawer body."),
         popover_a=_popover("rx-pop-a", "Open A"),
         popover_b=_popover("rx-pop-b", "Open B"),
-        dropdown=Dropdown(
+        dropdown=PJXDropdown(
             id="rx-drop",
             trigger="Options",
             items=[
-                '<button type="button" role="menuitem" id="drop-close-item" data-px-close>Close menu</button>',
+                '<button type="button" role="menuitem" id="drop-close-item" data-pjx-close>Close menu</button>',
                 '<a role="menuitem" href="#">Plain item</a>',
             ],
         ),
-        chips=ChipInput(id="rx-chips", name="tags", placeholder="Add tag…"),
-        notification=Notification(
+        chips=PJXChipInput(id="rx-chips", name="tags", placeholder="Add tag…"),
+        notification=PJXNotification(
             id="rx-note",
             content="Manual note",
             corner="top-right",
             timeout=0,
             autoshow=False,
         ),
-        toast_host=ToastHost(id="rx-toasts", position="bottom-right", timeout=0),
-        region_loader=RegionLoader(id="rx-region"),
-        page_loader=PageLoader(id="rx-page-loader", nav_targets="app-content", active_on_load=False),
-        panel_trigger_a=PanelTrigger(
+        toast_host=PJXToastHost(id="rx-toasts", position="bottom-right", timeout=0),
+        region_loader=PJXRegionLoader(id="rx-region"),
+        page_loader=PJXPageLoader(id="rx-page-loader", nav_targets="app-content", active_on_load=False),
+        panel_trigger_a=PJXPanelTrigger(
             id="rx-trig-a",
             panel_id="rx-panel",
             panel="a",
             content='<button type="button" id="trig-a-btn">Panel A</button>',
         ),
-        panel_trigger_b=PanelTrigger(
+        panel_trigger_b=PJXPanelTrigger(
             id="rx-trig-b",
             panel_id="rx-panel",
             panel="b",
             content='<button type="button" id="trig-b-btn">Panel B</button>',
         ),
-        panel=Panel(
+        panel=PJXPanel(
             id="rx-panel",
             panels={
                 "a": "<p>Panel A body</p>",
                 "b": str(
-                    LazyPanel(
+                    PJXLazyPanel(
                         id="rx-lazy",
                         url="/fragments/lazy",
                         when="reveal",
@@ -176,8 +176,8 @@ def render_page() -> str:
                 ),
             },
         ),
-        password=PasswordInput(id="rx-pw"),
-        tabs=TabGroup(
+        password=PJXPasswordInput(id="rx-pw"),
+        tabs=PJXTabGroup(
             id="rx-tabs",
             tabs={"One": "<p>Tab one body</p>", "Two": "<p>Tab two body</p>"},
         ),
@@ -217,7 +217,7 @@ def create_app() -> FastAPI:
     @app.get("/fragments/notification", response_class=HTMLResponse)
     def notification_fragment() -> str:
         return str(
-            Notification(
+            PJXNotification(
                 id="rx-note-frag",
                 content="Fragment note",
                 corner="bottom-left",
@@ -228,7 +228,7 @@ def create_app() -> FastAPI:
 
     @app.post("/actions/save")
     def save() -> Response:
-        headers = {"HX-Trigger": json.dumps({"px:toast": {"message": "Saved!", "level": "success"}})}
+        headers = {"HX-Trigger": json.dumps({"pjx:toast": {"message": "Saved!", "level": "success"}})}
         return Response(status_code=200, headers=headers)
 
     @app.get("/slow-content", response_class=HTMLResponse)

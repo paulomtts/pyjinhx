@@ -363,9 +363,9 @@ def apply_component_render_assets(
             policy=policy, component_dir=asset_dir, asset_name=asset_name,
         )
 
-    # Extra assets (e.g. Dropdown.js = [popover.js]) must be collected for
+    # Extra assets (e.g. PJXDropdown.js = [pjx_popover.js]) must be collected for
     # every component in the tree, not just the root, so nested components
-    # (e.g. a Dropdown inside a Card) still ship their dependencies.
+    # (e.g. a PJXDropdown inside a PJXCard) still ship their dependencies.
     collect_extra_assets(component, session, "css", policy=policy)
     collect_extra_assets(component, session, "js", policy=policy)
 

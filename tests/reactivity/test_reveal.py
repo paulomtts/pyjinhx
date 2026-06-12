@@ -1,5 +1,5 @@
-"""Browser contracts for Panel/PanelTrigger reveal events, LazyPanel(when="reveal"),
-and TabGroup panel switching."""
+"""Browser contracts for PJXPanel/PJXPanelTrigger reveal events, PJXLazyPanel(when="reveal"),
+and PJXTabGroup panel switching."""
 
 import pytest
 
@@ -15,14 +15,14 @@ def test_trigger_reveals_panel_exactly_once(sink_page):
         """
         window.__revealsB = 0;
         document.getElementById('rx-panel-panel-b')
-            .addEventListener('px:reveal', () => window.__revealsB++);
+            .addEventListener('pjx:reveal', () => window.__revealsB++);
         """
     )
 
     sink_page.click("#trig-b-btn")
     panel_b = sink_page.locator("#rx-panel-panel-b")
     expect(panel_b).to_be_visible()
-    expect(panel_b).to_have_attribute("data-px-revealed", "")
+    expect(panel_b).to_have_attribute("data-pjx-revealed", "")
     expect(sink_page.locator("#rx-panel-panel-a")).to_be_hidden()
     assert sink_page.evaluate("window.__revealsB") == 1
 
@@ -47,7 +47,7 @@ def test_tab_group_switch_reveals_panel(sink_page):
 
     second_tab.click()
     expect(second_panel).to_be_visible()
-    expect(second_panel).to_have_attribute("data-px-revealed", "")
+    expect(second_panel).to_have_attribute("data-pjx-revealed", "")
     expect(second_tab).to_have_attribute("aria-selected", "true")
     expect(sink_page.locator("#rx-tabs-tab-0")).to_have_attribute("aria-selected", "false")
     expect(sink_page.locator("#rx-tabs-panel-0")).to_be_hidden()

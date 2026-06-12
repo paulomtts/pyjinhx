@@ -1,0 +1,13 @@
+<div class="pjx-alert pjx-alert--{{ variant }}{% if class_name %} {{ class_name }}{% endif %}" id="{{ id }}" role="status"{{ extra_attrs_html }}>
+    <div class="pjx-alert__inner">
+        <div class="pjx-alert__text">
+            {% if title %}
+            <div class="pjx-alert__title">{{ title }}</div>
+            {% endif %}
+            <div class="pjx-alert__body">{{ body }}</div>
+        </div>
+        {% if dismissible %}
+        <button type="button" class="pjx-alert__dismiss" data-pjx-close aria-label="{{ dismiss_label }}">&#x2715;</button>
+        {% endif %}
+    </div>
+</div>

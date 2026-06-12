@@ -95,7 +95,7 @@ print(TodoCounter(id="counter", remaining=3).render())
 ```
 
 ???+ question "Why BaseComponent and a stable id?"
-    `BaseComponent` is a **Pydantic model** — fields are validated at construction time. The `id` is the stable DOM identity: HTMX targets, registry lookups, and reactive `data-pjx-id` stamping all depend on it. Omitted ids auto-generate a `px-<n>` value; reactive components additionally default to the kebab-cased class name. Explicit ids matter when you need a stable swap target across requests.
+    `BaseComponent` is a **Pydantic model** — fields are validated at construction time. The `id` is the stable DOM identity: HTMX targets, registry lookups, and reactive `data-pjx-id` stamping all depend on it. Omitted ids auto-generate a `pjx-<n>` value; reactive components additionally default to the kebab-cased class name. Explicit ids matter when you need a stable swap target across requests.
 
 ???+ question "Why set_default_environment?"
     The renderer needs one search root for templates (and co-located assets). You set it once at startup (module import or app factory), not per render.
@@ -565,11 +565,11 @@ print(format_dependency_graph())
 
 ```python
 import pyjinhx.builtins  # register templates
-from pyjinhx.builtins import Alert, Card, Modal
+from pyjinhx.builtins import PJXAlert, PJXCard, PJXModal
 ```
 
 ???+ question "Why builtins?"
-    Optional ready-made components (Alert, Card, Modal, Panel, …) with co-located CSS/JS. Use when you want a consistent kit without building every primitive. Your app components follow the same `BaseComponent` rules.
+    Optional ready-made components (PJXAlert, PJXCard, PJXModal, PJXPanel, …) with co-located CSS/JS. Use when you want a consistent kit without building every primitive. Your app components follow the same `BaseComponent` rules.
 
     See: [Built-in UI components](../guide/builtins.md).
 

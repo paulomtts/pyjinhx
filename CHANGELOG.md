@@ -1,5 +1,28 @@
 # Changelog
 
+## 0.12.0 — PJX prefix on all builtins (2026-06-12)
+
+### Breaking changes (0.11.x → 0.12.0)
+
+- All builtin components are renamed with a `PJX` prefix, in Python and in
+  tag form: `Avatar` → `PJXAvatar`, `<Modal/>` → `<PJXModal/>`, etc. The old
+  names are gone (no aliases); they are now free for application components.
+- Builtin CSS classes and auto-generated component ids use the `pjx-` prefix
+  (was `px-`): `px-modal__inner` → `pjx-modal__inner`, auto ids `px-1` →
+  `pjx-1`.
+- The builtin browser API namespace is `window.pjx` (was `window.px`):
+  `px.modal.open(...)` → `pjx.modal.open(...)`; DOM events `px:*` → `pjx:*`
+  (e.g. `px:toast` → `pjx:toast`, `px:reveal` → `pjx:reveal`).
+- `pascal_case_to_snake_case` / `pascal_case_to_kebab_case` are acronym-aware:
+  `HTMLBlock` now resolves to `html_block.html` (was `h_t_m_l_block.html`).
+  Rename template files for components whose class names contain consecutive
+  capitals.
+- Single-capital tags (e.g. `<X/>`) are no longer parsed as components.
+
+Migration: prefix builtin imports and tags with `PJX`, and update CSS
+selectors, `window.px.*` calls, and `px:*` event listeners to `pjx`. See
+docs/migration.md for the full cheat sheet.
+
 ## 0.11.0 — nori migration fixes (2026-06-12)
 
 Fixes for every finding from the nori 0.5.2 → 0.10.1 migration (#67, #68),

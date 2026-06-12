@@ -1,4 +1,4 @@
-"""Browser contracts for ChipInput: chips, vetoes, and form submission."""
+"""Browser contracts for PJXChipInput: chips, vetoes, and form submission."""
 
 import pytest
 
@@ -8,8 +8,8 @@ from playwright.sync_api import expect
 
 pytestmark = [pytest.mark.pjx_runtime, pytest.mark.reactivity]
 
-FIELD = "#rx-chips .px-chip-input__field"
-CHIPS = "#rx-chips [data-px-chip]"
+FIELD = "#rx-chips .pjx-chip-input__field"
+CHIPS = "#rx-chips [data-pjx-chip]"
 
 
 def test_enter_adds_chip_and_drops_duplicates(sink_page):
@@ -37,13 +37,13 @@ def test_backspace_on_empty_field_removes_last_chip(sink_page):
 
     field.press("Backspace")
     expect(sink_page.locator(CHIPS)).to_have_count(1)
-    expect(sink_page.locator(f"{CHIPS} .px-chip-input__label")).to_have_text("one")
+    expect(sink_page.locator(f"{CHIPS} .pjx-chip-input__label")).to_have_text("one")
 
 
 def test_before_add_veto_keeps_text(sink_page):
     sink_page.evaluate(
         "document.getElementById('rx-chips')"
-        ".addEventListener('px:chip-input:before-add', (e) => e.preventDefault(), { once: true })"
+        ".addEventListener('pjx:chip-input:before-add', (e) => e.preventDefault(), { once: true })"
     )
     field = sink_page.locator(FIELD)
     field.fill("vetoed")

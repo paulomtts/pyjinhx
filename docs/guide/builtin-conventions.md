@@ -4,37 +4,37 @@ Every pyjinhx builtin follows the same contract, so knowing one means knowing al
 
 ## The contract
 
-1. **`id` is optional.** Omit it and pyjinhx generates `px-<n>`. Pass one when you need a stable
+1. **`id` is optional.** Omit it and pyjinhx generates `pjx-<n>`. Pass one when you need a stable
    hook (CSS, htmx targets) — and always for reactive components, whose OOB targeting requires
    stable identity across renders.
-2. **`class_name`** appends your classes to the root element: `Badge(label="New", class_name="pill")`.
+2. **`class_name`** appends your classes to the root element: `PJXBadge(label="New", class_name="pill")`.
 3. **`extra_attrs`** renders extra attributes (validated — values may not contain `"`) on the root element — the carrier for
    `hx-*`, `data-*`, `aria-*`, or Alpine directives:
-   `Card(body=..., extra_attrs={"hx-get": "/refresh", "hx-trigger": "every 30s"})`.
+   `PJXCard(body=..., extra_attrs={"hx-get": "/refresh", "hx-trigger": "every 30s"})`.
 4. **All copy is props.** Every user-visible string, aria-labels included, has an English default
-   you can replace: `Modal(title="Excluir?", close_label="Fechar")`.
-5. **JS is headless.** Builtin JavaScript never writes inline styles for state — visibility and variants are classes/attributes; computed positioning coordinates (tooltip/popover placement) are the one sanctioned inline-style use. Communication is through `px:*` DOM events and `data-px-*` attributes; programmatic APIs live under the single `window.px` namespace.
+   you can replace: `PJXModal(title="Excluir?", close_label="Fechar")`.
+5. **JS is headless.** Builtin JavaScript never writes inline styles for state — visibility and variants are classes/attributes; computed positioning coordinates (tooltip/popover placement) are the one sanctioned inline-style use. Communication is through `pjx:*` DOM events and `data-pjx-*` attributes; programmatic APIs live under the single `window.pjx` namespace.
    Async-state JS follows the runtime's concurrency pattern: a ref-count per scope,
    release keyed to each request's `loadend` (terminal on load, error, abort, and
    timeout), and state re-applied after `htmx:afterSettle` for nodes a swap replaced
    mid-flight.
 6. **The DOM contract is API.** Each builtin's documentation ends with a "DOM contract" block —
-   stable classes, `data-px-*` attributes, events, state attributes. We version those like code.
+   stable classes, `data-pjx-*` attributes, events, state attributes. We version those like code.
 
 ## Events and hooks
 
 Interactive builtins fire a two-tier event vocabulary on their root element (all bubble):
 
-- `px:<component>:before-<verb>` — **cancelable**. `event.preventDefault()` aborts the action.
+- `pjx:<component>:before-<verb>` — **cancelable**. `event.preventDefault()` aborts the action.
   `detail = {reason, trigger}` with `reason ∈ {"escape","backdrop","api","trigger"}`.
-- `px:<component>:<verb>` — fired after the DOM change. Not cancelable.
+- `pjx:<component>:<verb>` — fired after the DOM change. Not cancelable.
 
-Shared vocabulary: `px:before-reveal` / `px:reveal` fire on any `[data-px-region]` (Panel panels,
-TabGroup bodies) when it is shown — `LazyPanel(when="reveal")` builds on it; `px:toast` is the
-input event ToastHost listens for (htmx fires it from `HX-Trigger` response headers).
+Shared vocabulary: `pjx:before-reveal` / `pjx:reveal` fire on any `[data-pjx-region]` (PJXPanel panels,
+PJXTabGroup bodies) when it is shown — `PJXLazyPanel(when="reveal")` builds on it; `pjx:toast` is the
+input event PJXToastHost listens for (htmx fires it from `HX-Trigger` response headers).
 
 ```js
-document.getElementById("confirm-del").addEventListener("px:modal:before-close", (e) => {
+document.getElementById("confirm-del").addEventListener("pjx:modal:before-close", (e) => {
     if (hasUnsavedChanges()) e.preventDefault();
 });
 ```
@@ -43,31 +43,31 @@ document.getElementById("confirm-del").addEventListener("px:modal:before-close",
 
 | attribute | effect |
 |---|---|
-| `data-px-open="<id>"` | click opens that Modal / Drawer |
-| `data-px-close` | click closes the nearest enclosing dismissible |
-| `data-px-toggle="<id>"` | click toggles that Popover / Dropdown menu |
-| `data-px-confirm-danger` | `hx-confirm` on this element gets a danger-styled OK button |
-| `data-px-confirm-ok`, `data-px-confirm-cancel` | per-trigger confirm-dialog label overrides |
-| `data-px-loader` | requests from this subtree show the PageLoader |
-| `data-px-region` | marks a show/hide region (emits `px:reveal`) |
-| `data-px-autoshow` | Notification auto-shows when this attribute is present on mount |
+| `data-pjx-open="<id>"` | click opens that PJXModal / PJXDrawer |
+| `data-pjx-close` | click closes the nearest enclosing dismissible |
+| `data-pjx-toggle="<id>"` | click toggles that PJXPopover / PJXDropdown menu |
+| `data-pjx-confirm-danger` | `hx-confirm` on this element gets a danger-styled OK button |
+| `data-pjx-confirm-ok`, `data-pjx-confirm-cancel` | per-trigger confirm-dialog label overrides |
+| `data-pjx-loader` | requests from this subtree show the PJXPageLoader |
+| `data-pjx-region` | marks a show/hide region (emits `pjx:reveal`) |
+| `data-pjx-autoshow` | PJXNotification auto-shows when this attribute is present on mount |
 
-## The `window.px` namespace
+## The `window.pjx` namespace
 
-`px.modal` · `px.drawer` · `px.popover` · `px.notification` · `px.loader.region` (region busy-state) ·
-`px.loader.page` (page navigation) · `px.confirm` · `px.prompt` · `px.toast`. Open/close/show/hide
+`pjx.modal` · `pjx.drawer` · `pjx.popover` · `pjx.notification` · `pjx.loader.region` (region busy-state) ·
+`pjx.loader.page` (page navigation) · `pjx.confirm` · `pjx.prompt` · `pjx.toast`. Open/close/show/hide
 functions return `false` when a `before-*` hook canceled the action.
 
 ## Theming
 
-Builtins read `--px-*` tokens that default to your app-level semantic tokens. Re-skin globally in
+Builtins read `--pjx-*` tokens that default to your app-level semantic tokens. Re-skin globally in
 one block:
 
 ```css
 :root {
-  --px-modal-bg: var(--surface);
-  --px-card-radius: var(--radius-lg);
+  --pjx-modal-bg: var(--surface);
+  --pjx-card-radius: var(--radius-lg);
 }
 ```
 
-or per-context: `.settings-pane { --px-card-bg: var(--surface-alt); }`.
+or per-context: `.settings-pane { --pjx-card-bg: var(--surface-alt); }`.

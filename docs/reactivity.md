@@ -69,28 +69,28 @@ inherits its ancestor's template and assets through the MRO:
 
 ```python
 from pyjinhx import MutationKey, ReactiveComponent
-from pyjinhx.builtins import Badge
+from pyjinhx.builtins import PJXBadge
 
 class Keys(MutationKey):
     TASKS = "tasks"
 
-class LiveBadge(ReactiveComponent, Badge, react={Keys.TASKS}):
+class LiveBadge(ReactiveComponent, PJXBadge, react={Keys.TASKS}):
     @classmethod
     def load(cls) -> "LiveBadge":
         return cls(label=f"{db.open_tasks()} open", color="brand")
 ```
 
-No template or CSS needed: `LiveBadge` renders Badge's `badge.html` and ships
-`badge.css`. Resolution is **first found per kind** — ship your own
-`live-badge.css` next to the subclass and it replaces `badge.css` (the
-template and JS still come from Badge); ship `live_badge.html` and the
+No template or CSS needed: `LiveBadge` renders PJXBadge's `pjx_badge.html` and ships
+`pjx-badge.css`. Resolution is **first found per kind** — ship your own
+`live-badge.css` next to the subclass and it replaces `pjx-badge.css` (the
+template and JS still come from PJXBadge); ship `live_badge.html` and the
 template is yours too. Additions go through the `js=`/`css=` fields.
 
-One rule: **subclass one component at a time.** `class X(Badge, Card)` raises
+One rule: **subclass one component at a time.** `class X(PJXBadge, PJXCard)` raises
 at class definition — two templates is no template.
 
-Fit: display builtins (Badge, Progress, AvatarStack, EmptyState, Card).
-Stateful overlays (Modal, Drawer, Popover, Dropdown) are a poor fit — an OOB
+Fit: display builtins (PJXBadge, PJXProgress, PJXAvatarStack, PJXEmptyState, PJXCard).
+Stateful overlays (PJXModal, PJXDrawer, PJXPopover, PJXDropdown) are a poor fit — an OOB
 swap replaces the region's DOM, so an open dialog snaps shut mid-interaction.
 
 ## Ship the client runtime

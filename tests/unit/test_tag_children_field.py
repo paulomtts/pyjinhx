@@ -1,10 +1,10 @@
-"""Tag children map into each component's children field (Tooltip uses ``tip``)."""
+"""Tag children map into each component's children field (PJXTooltip uses ``tip``)."""
 
 import pytest
 from jinja2 import Environment, FileSystemLoader
 
 from pyjinhx import BaseComponent, Renderer
-from pyjinhx.builtins import Modal, Tooltip  # noqa: F401  (importing Modal registers the tag)
+from pyjinhx.builtins import PJXModal, PJXTooltip  # noqa: F401  (importing PJXModal registers the tag)
 
 
 def test_tooltip_tag_children_map_to_tip(tmp_path):
@@ -12,11 +12,11 @@ def test_tooltip_tag_children_map_to_tip(tmp_path):
     renderer = Renderer.get_default_renderer()
 
     rendered = renderer.render(
-        '<Tooltip id="t" trigger="hover me">helpful text</Tooltip>'
+        '<PJXTooltip id="t" trigger="hover me">helpful text</PJXTooltip>'
     )
 
     assert (
-        '<span class="px-tooltip__tip" id="t-tip" role="tooltip" hidden>'
+        '<span class="pjx-tooltip__tip" id="t-tip" role="tooltip" hidden>'
         "helpful text</span>" in rendered
     )
     assert ">hover me</span>" in rendered
@@ -38,11 +38,11 @@ def test_preregistered_tooltip_instance_update_maps_children_to_tip(tmp_path):
     Renderer.set_default_environment(str(tmp_path))
     renderer = Renderer.get_default_renderer()
 
-    Tooltip(id="t2", trigger="hover me")
-    rendered = renderer.render('<Tooltip id="t2">updated tip</Tooltip>')
+    PJXTooltip(id="t2", trigger="hover me")
+    rendered = renderer.render('<PJXTooltip id="t2">updated tip</PJXTooltip>')
 
     assert (
-        '<span class="px-tooltip__tip" id="t2-tip" role="tooltip" hidden>'
+        '<span class="pjx-tooltip__tip" id="t2-tip" role="tooltip" hidden>'
         "updated tip</span>" in rendered
     )
     assert ">hover me</span>" in rendered
@@ -67,19 +67,19 @@ def test_both_children_and_content_attr_raises(tmp_path):
 
 
 def test_both_children_and_tip_attr_raises(tmp_path):
-    """<Tooltip tip="explicit">inner</Tooltip> must raise ValueError."""
+    """<PJXTooltip tip="explicit">inner</PJXTooltip> must raise ValueError."""
     Renderer.set_default_environment(str(tmp_path))
     renderer = Renderer.get_default_renderer()
 
     with pytest.raises(ValueError, match="both children and the 'tip' attribute"):
-        renderer.render('<Tooltip id="tt" tip="explicit">inner tip</Tooltip>')
+        renderer.render('<PJXTooltip id="tt" tip="explicit">inner tip</PJXTooltip>')
 
 
 def test_modal_tag_children_map_to_body(tmp_path):
     Renderer.set_default_environment(str(tmp_path))
     renderer = Renderer.get_default_renderer()
 
-    rendered = renderer.render('<Modal id="m">CHILD</Modal>')
+    rendered = renderer.render('<PJXModal id="m">CHILD</PJXModal>')
 
     assert 'id="m-body">CHILD</div>' in rendered
 
@@ -89,4 +89,4 @@ def test_modal_both_children_and_body_attr_raises(tmp_path):
     renderer = Renderer.get_default_renderer()
 
     with pytest.raises(ValueError, match="both children and the 'body' attribute"):
-        renderer.render('<Modal id="m2" body="x">y</Modal>')
+        renderer.render('<PJXModal id="m2" body="x">y</PJXModal>')
