@@ -4,7 +4,7 @@ import pytest
 from jinja2 import Environment, FileSystemLoader
 
 from pyjinhx import BaseComponent, Renderer
-from pyjinhx.builtins import Modal, Tooltip
+from pyjinhx.builtins import Modal, Tooltip  # noqa: F401  (importing Modal registers the tag)
 
 
 def test_tooltip_tag_children_map_to_tip(tmp_path):
