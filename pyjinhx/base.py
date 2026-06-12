@@ -1,6 +1,7 @@
 import itertools
 import logging
 import re
+from functools import cached_property
 from typing import Annotated, Any, ClassVar, Optional
 
 from markupsafe import Markup
@@ -60,6 +61,48 @@ class NestedComponentWrapper(BaseModel):
     props: Optional["BaseComponent"]
 
     def __str__(self) -> Markup:
+        return self.html
+
+
+class LazyNestedComponentWrapper:
+    """
+    A registry peer injected into a render context by id. Same interface as
+    `NestedComponentWrapper` (`html`, `props`, string conversion) but renders
+    only when a template actually references it.
+
+    Holds the live render session so the deferred render happens inside the
+    originating render call and the render-cycle guard still applies.
+    """
+
+    def __init__(
+        self,
+        instance: "BaseComponent",
+        context: dict[str, Any],
+        *,
+        renderer: Renderer,
+        session: RenderSession,
+    ) -> None:
+        self._instance = instance
+        self._context = context
+        self._renderer = renderer
+        self._session = session
+
+    @cached_property
+    def html(self) -> str:
+        return self._instance._render(
+            base_context=self._context,
+            _renderer=self._renderer,
+            _session=self._session,
+        )
+
+    @property
+    def props(self) -> "BaseComponent":
+        return self._instance
+
+    def __html__(self) -> Markup:
+        return Markup(self.html)
+
+    def __str__(self) -> str:
         return self.html
 
 
@@ -262,6 +305,14 @@ class BaseComponent(BaseModel):
             declared_fields = set(type(self).model_fields.keys())
             for field_name, field_value in context.items():
                 if field_name in declared_fields:
+                    continue
+                if isinstance(field_value, BaseComponent):
+                    # Registry peers injected by id. Rendering them eagerly
+                    # multiplied across every registered instance (issue #67),
+                    # so defer until a template actually references them.
+                    context[field_name] = LazyNestedComponentWrapper(
+                        field_value, context, renderer=renderer, session=session
+                    )
                     continue
                 context = self._update_context_(
                     context,
