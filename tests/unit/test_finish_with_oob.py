@@ -96,3 +96,16 @@ def test_base_render_unchanged_without_backend():
     record_mutation("todos")
     out = str(UnifiedComponent(id="result", text="done").render())
     assert "outerHTML:" not in out
+
+
+def test_reactive_response_fans_out_for_raw_string():
+    from pyjinhx.reactive import reactive_response
+
+    store.state["remaining"] = 9
+    manifest = [{"id": "counter", "type": "ReactiveCounter", "hash": "stale"}]
+    with reactive_client(manifest):
+        record_mutation("todos")
+        out = str(reactive_response("<p>no component here</p>"))
+    assert "<p>no component here</p>" in out
+    assert "outerHTML:[data-pjx-id='counter']" in out
+    assert "9 left" in out

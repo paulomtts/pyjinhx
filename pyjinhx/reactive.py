@@ -508,3 +508,14 @@ def _finish_with_oob(html: str | Markup) -> Markup:
     swaps = oob_swaps(pending, backend, exclude_ids=_mounted_ids_in(html))
     MutationTracker.mark_render_consumed()
     return Markup(html) + swaps
+
+
+def reactive_response(html: str | Markup) -> Markup:
+    """
+    Attach pending OOB swaps to a response that renders no component.
+
+    Use for raw-string, ``204``, or hand-assembled responses. Any component's
+    ``.render()`` already does this automatically; reach for this only when no
+    component render happens in the request.
+    """
+    return _finish_with_oob(html)

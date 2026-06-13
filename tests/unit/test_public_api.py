@@ -73,4 +73,4 @@ def test_internals_remain_importable_from_submodules():
     from pyjinhx.config import configure_pyjinhx, pyjinhx_lifespan, shutdown_pyjinhx  # noqa: F401
     from pyjinhx.dev import dependency_graph, enable_reactive_dev  # noqa: F401
     from pyjinhx.integrations.fastapi import FastAPIClientBackend  # noqa: F401
-    from pyjinhx.reactive import oob_swaps  # noqa: F401
+    from pyjinhx.reactive import oob_swaps, reactive_response  # noqa: F401
