@@ -167,6 +167,33 @@ it excludes only the primary id and gates everything else on `react` keys and ha
 A **plain, non-reactive** primary has no `load()` to call, so you build it and render
 the instance: `MyFragment(id=..., ...).render()`.
 
+### OOB swaps ride along any render
+
+The fan-out is not exclusive to `ReactiveComponent.render()`. **Any** component's
+`.render()` appends OOB swaps for dirtied mounted reactive regions when a client
+backend is active and mutations occurred in the request — including a non-reactive
+command-result view. Fan-out happens once per request scope and never double-swaps a
+region already present in the response body.
+
+```python
+@app.post("/generate")
+def generate():
+    report = controller.generate()      # @mutates dirties "reports", "quota"
+    return ReportSummary(report=report).render()   # non-reactive; counters fan out OOB
+```
+
+For a response that renders no component at all (a raw string, a `204`), use
+`from pyjinhx.reactive import reactive_response` to attach the same fan-out:
+
+```python
+from pyjinhx.reactive import reactive_response
+
+@app.post("/dismiss")
+def dismiss():
+    controller.dismiss()                # @mutates dirties mounted regions
+    return reactive_response("")        # no primary; dependents still fan out OOB
+```
+
 !!! note "Without ClientBackend"
     Wire `ClientBackend` in middleware (via `setup()`) so `render()` reads manifest and asset headers automatically. Without a backend, reactive OOB is skipped when mutations are pending.
 

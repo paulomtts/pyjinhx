@@ -1,5 +1,41 @@
 # Migration guide
 
+## 0.12 → 0.13
+
+### `setup()` keyword `load_context_factory` → `context_factory`
+
+The `setup()` keyword `load_context_factory` is renamed `context_factory`:
+
+```python
+# BEFORE (0.12)
+setup(app, load_context_factory=lambda: AppContext(db=...))
+
+# AFTER (0.13)
+setup(app, context_factory=lambda: AppContext(db=...))
+```
+
+The old name is **silently ignored** (absorbed by `**kwargs`) — no error is
+raised, so your context factory simply stops being installed. Update every call
+site.
+
+### Non-reactive renders now fan out OOB swaps
+
+Any component's `.render()` now appends out-of-band swaps for dirtied mounted
+reactive regions when a client backend is active and mutations occurred — not
+only `ReactiveComponent.render()`. A command-result view returned from a mutating
+route now updates mounted read-models with no wrapper:
+
+```python
+@app.post("/generate")
+def generate():
+    report = controller.generate()      # @mutates dirties "reports", "quota"
+    return ReportSummary(report=report).render()   # non-reactive; counters fan out OOB
+```
+
+Fan-out happens once per request scope and never double-swaps a region already
+present in the response body. For a response that renders no component (a raw
+string, a `204`), use `from pyjinhx.reactive import reactive_response`.
+
 ## 0.11 → 0.12 (breaking: `PJX` prefix on all builtins)
 
 Every builtin component is renamed with a `PJX` prefix, in Python and in tag form:

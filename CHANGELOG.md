@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.13.0 — OOB swaps ride along any render (2026-06-13)
+
+### Added
+
+- Any component's `.render()` now appends out-of-band swaps for dirtied mounted
+  reactive regions when a client backend is active and mutations occurred — not
+  only `ReactiveComponent.render()`. A route that mutates state and returns a
+  non-reactive command-result view now updates mounted read-models with no
+  wrapper. Fan-out happens once per request scope and never double-swaps a
+  region already present in the response body.
+- `pyjinhx.reactive.reactive_response(html)` — escape hatch attaching the same
+  fan-out to responses that render no component (raw strings, `204`).
+
+### Breaking changes (0.12.x → 0.13.0)
+
+- `setup()` keyword `load_context_factory` is renamed `context_factory`. The
+  old name is silently ignored (absorbed by `**kwargs`), so update call sites.
+
 ## 0.12.0 — PJX prefix on all builtins (2026-06-12)
 
 ### Breaking changes (0.11.x → 0.12.0)
