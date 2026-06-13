@@ -4,185 +4,185 @@ Optional package **`pyjinhx.builtins`** registers thirty-three [`BaseComponent`]
 
 ```python
 from pyjinhx.builtins import (
-    Alert,
-    Avatar,
-    AvatarStack,
-    Badge,
-    Breadcrumb,
-    Card,
-    ChipInput,
-    ConfirmDialog,
-    Divider,
-    Dropdown,
-    Drawer,
-    EmptyState,
-    FormField,
-    LazyPanel,
-    RegionLoader,
-    Modal,
-    Notification,
-    PageLoader,
-    PasswordInput,
-    Popover,
-    PopoverPanel,
-    PopoverTrigger,
-    Progress,
-    PromptDialog,
-    Panel,
-    PanelTrigger,
-    SegmentedControl,
-    Skeleton,
-    Spinner,
-    TabGroup,
-    ToastHost,
-    ToggleSwitch,
-    Tooltip,
+    PJXAlert,
+    PJXAvatar,
+    PJXAvatarStack,
+    PJXBadge,
+    PJXBreadcrumb,
+    PJXCard,
+    PJXChipInput,
+    PJXConfirmDialog,
+    PJXDivider,
+    PJXDropdown,
+    PJXDrawer,
+    PJXEmptyState,
+    PJXFormField,
+    PJXLazyPanel,
+    PJXRegionLoader,
+    PJXModal,
+    PJXNotification,
+    PJXPageLoader,
+    PJXPasswordInput,
+    PJXPopover,
+    PJXPopoverPanel,
+    PJXPopoverTrigger,
+    PJXProgress,
+    PJXPromptDialog,
+    PJXPanel,
+    PJXPanelTrigger,
+    PJXSegmentedControl,
+    PJXSkeleton,
+    PJXSpinner,
+    PJXTabGroup,
+    PJXToastHost,
+    PJXToggleSwitch,
+    PJXTooltip,
 )
 ```
 
 `__all__` matches that set of thirty-three names.
 
-**Conventions:** Markup classes use the **`px-`** prefix; overrides use **`--px-`** custom properties. Builtin CSS also references **theme variables** (`--surface`, `--border`, `--text`, `--radius-md`, `--shadow-md`, `--transition`, `--brand`, …)—define those in your global CSS or map them to your design system. See [builtin-conventions.md](./builtin-conventions.md) for the full per-component contract (auto-id, `class_name`, `extra_attrs`, `js`/`css`, headless IIFE JS under `window.px`, cancelable `px:*:before-*` events).
+**Conventions:** Markup classes use the **`pjx-`** prefix; overrides use **`--pjx-`** custom properties. Builtin CSS also references **theme variables** (`--surface`, `--border`, `--text`, `--radius-md`, `--shadow-md`, `--transition`, `--brand`, …)—define those in your global CSS or map them to your design system. See [builtin-conventions.md](./builtin-conventions.md) for the full per-component contract (auto-id, `class_name`, `extra_attrs`, `js`/`css`, headless IIFE JS under `window.pjx`, cancelable `pjx:*:before-*` events).
 
-**Template discovery:** Builtins ship inside `site-packages`, not under your app's Jinja loader root, so PascalCase tags do **not** auto-discover them — `<Tooltip/>` raises a `FileNotFoundError` unless the class was imported once at startup (`import pyjinhx.builtins` or any of the imports above), which registers it. For registered builtin classes, the renderer **falls back** to adjacent package templates: each component's Jinja template lives next to its Python source in `pyjinhx/builtins/ui/<component>/` (e.g. `pyjinhx/builtins/ui/modal/modal.html`). Subclasses of builtins inherit the builtin's template and assets through the MRO, so `class TaskBadge(Badge)` renders like a Badge — see the [reactivity guide](../reactivity.md#making-builtins-reactive) for the reactive pattern.
+**Template discovery:** Builtins ship inside `site-packages`, not under your app's Jinja loader root, so PascalCase tags do **not** auto-discover them — `<PJXTooltip/>` raises a `FileNotFoundError` unless the class was imported once at startup (`import pyjinhx.builtins` or any of the imports above), which registers it. For registered builtin classes, the renderer **falls back** to adjacent package templates: each component's Jinja template lives next to its Python source in `pyjinhx/builtins/ui/pjx_<component>/` (e.g. `pyjinhx/builtins/ui/pjx_modal/pjx_modal.html`). Subclasses of builtins inherit the builtin's template and assets through the MRO, so `class TaskBadge(PJXBadge)` renders like a PJXBadge — see the [reactivity guide](../reactivity.md#making-builtins-reactive) for the reactive pattern.
 
 **Inherited fields:** Every component inherits `id`, `js`/`css` (extra-asset fields — see [BaseComponent](../api/base-component.md)), `class_name`, `extra_attrs`, `render()`, and `__html__()` — see [builtin-conventions.md](./builtin-conventions.md) for the full contract. `id` is omitted from per-component props tables below.
 
-**Theming:** Per-component `--px-*` tokens are collected in the [Theming tokens](#theming-tokens) appendix. Each component section points there.
+**Theming:** Per-component `--pjx-*` tokens are collected in the [Theming tokens](#theming-tokens) appendix. Each component section points there.
 
 **Asset summary:**
 
 | Component | CSS | JS |
 |---|---|---|
-| Alert | `alert.css` | `alert.js` |
-| Avatar | `avatar.css` | — |
-| AvatarStack | `avatar-stack.css` | — |
-| Badge | `badge.css` | — |
-| Breadcrumb | `breadcrumb.css` | — |
-| Card | `card.css` | — |
-| ChipInput | `chip-input.css` | `chip-input.js` |
-| ConfirmDialog | `confirm-dialog.css` | `confirm-dialog.js` |
-| Divider | `divider.css` | — |
-| Drawer | `drawer.css` | `drawer.js` |
-| Dropdown | `dropdown.css` | *(via popover.js, extra-asset)* |
-| EmptyState | `empty-state.css` | — |
-| FormField | `form-field.css` | — |
-| LazyPanel | — | — |
-| RegionLoader | `region-loader.css` | `region-loader.js` |
-| Modal | `modal.css` | `modal.js` |
-| Notification | `notification.css` | `notification.js` |
-| PageLoader | `page-loader.css` | `page-loader.js` |
-| Panel | `panel.css` | `panel.js` |
-| PanelTrigger | `panel-trigger.css` | *(panel.js from Panel)* |
-| PasswordInput | `password-input.css` | `password-input.js` |
-| Popover | `popover.css` | `popover.js` |
-| PopoverPanel | *(from Popover)* | *(from Popover)* |
-| PopoverTrigger | *(from Popover)* | *(from Popover)* |
-| Progress | `progress.css` | — |
-| PromptDialog | `prompt-dialog.css` | `prompt-dialog.js` |
-| SegmentedControl | `segmented-control.css` | — |
-| Skeleton | `skeleton.css` | — |
-| Spinner | `spinner.css` | — |
-| TabGroup | `tab-group.css` | `tab-group.js` |
-| ToastHost | `toast-host.css` | `toast-host.js` |
-| ToggleSwitch | `toggle-switch.css` | — |
-| Tooltip | `tooltip.css` | `tooltip.js` (IIFE, no API) |
+| PJXAlert | `pjx_alert.css` | `pjx_alert.js` |
+| PJXAvatar | `pjx_avatar.css` | — |
+| PJXAvatarStack | `pjx-avatar-stack.css` | — |
+| PJXBadge | `pjx_badge.css` | — |
+| PJXBreadcrumb | `pjx_breadcrumb.css` | — |
+| PJXCard | `pjx_card.css` | — |
+| PJXChipInput | `pjx-chip-input.css` | `pjx-chip-input.js` |
+| PJXConfirmDialog | `pjx-confirm-dialog.css` | `pjx-confirm-dialog.js` |
+| PJXDivider | `pjx_divider.css` | — |
+| PJXDrawer | `pjx_drawer.css` | `pjx_drawer.js` |
+| PJXDropdown | `pjx_dropdown.css` | *(via pjx_popover.js, extra-asset)* |
+| PJXEmptyState | `pjx-empty-state.css` | — |
+| PJXFormField | `pjx-form-field.css` | — |
+| PJXLazyPanel | — | — |
+| PJXRegionLoader | `pjx-region-loader.css` | `pjx-region-loader.js` |
+| PJXModal | `pjx_modal.css` | `pjx_modal.js` |
+| PJXNotification | `pjx_notification.css` | `pjx_notification.js` |
+| PJXPageLoader | `pjx-page-loader.css` | `pjx-page-loader.js` |
+| PJXPanel | `pjx_panel.css` | `pjx_panel.js` |
+| PJXPanelTrigger | `pjx-panel-trigger.css` | *(pjx_panel.js from PJXPanel)* |
+| PJXPasswordInput | `pjx-password-input.css` | `pjx-password-input.js` |
+| PJXPopover | `pjx_popover.css` | `pjx_popover.js` |
+| PJXPopoverPanel | *(from PJXPopover)* | *(from PJXPopover)* |
+| PJXPopoverTrigger | *(from PJXPopover)* | *(from PJXPopover)* |
+| PJXProgress | `pjx_progress.css` | — |
+| PJXPromptDialog | `pjx-prompt-dialog.css` | `pjx-prompt-dialog.js` |
+| PJXSegmentedControl | `pjx-segmented-control.css` | — |
+| PJXSkeleton | `pjx_skeleton.css` | — |
+| PJXSpinner | `pjx_spinner.css` | — |
+| PJXTabGroup | `pjx-tab-group.css` | `pjx-tab-group.js` |
+| PJXToastHost | `pjx-toast-host.css` | `pjx-toast-host.js` |
+| PJXToggleSwitch | `pjx-toggle-switch.css` | — |
+| PJXTooltip | `pjx-tooltip.css` | `pjx-tooltip.js` (IIFE, no API) |
 
-**Children-vs-`content` tag gotcha (children-mapping components):** Several components map children to a single attribute (e.g. Notification `content`, PanelTrigger `content`, Tooltip `tip`). If you use `Renderer.render()` with PascalCase tags, do **not** supply both child text and the corresponding attribute on the same tag—use body text as the child *or* the attribute, not both.
+**Children-vs-`content` tag gotcha (children-mapping components):** Several components map children to a single attribute (e.g. PJXNotification `content`, PJXPanelTrigger `content`, PJXTooltip `tip`). If you use `Renderer.render()` with PascalCase tags, do **not** supply both child text and the corresponding attribute on the same tag—use body text as the child *or* the attribute, not both.
 
-**Backdrop click (Modal and Drawer):** Both render a native `<dialog>`; a document `click` listener treats a click whose target is the `<dialog>` root itself (the backdrop) as a close. Any native `<dialog>` clicked directly is affected—use unique ids and avoid stacking multiple dialogs unless you adjust this.
+**Backdrop click (PJXModal and PJXDrawer):** Both render a native `<dialog>`; a document `click` listener treats a click whose target is the `<dialog>` root itself (the backdrop) as a close. Any native `<dialog>` clicked directly is affected—use unique ids and avoid stacking multiple dialogs unless you adjust this.
 
-**`panel.js` loading:** `panel.js` is included only when a [`Panel`](#panel) is rendered on the page. [`PanelTrigger`](#paneltrigger) does **not** load `panel.js` by asset name, so render a `Panel` on the same page (or add the script yourself) for triggers to work.
+**`pjx_panel.js` loading:** `pjx_panel.js` is included only when a [`PJXPanel`](#pjxpanel) is rendered on the page. [`PJXPanelTrigger`](#pjxpaneltrigger) does **not** load `pjx_panel.js` by asset name, so render a `PJXPanel` on the same page (or add the script yourself) for triggers to work.
 
 ---
 
-## Badge
+## PJXBadge
 
-Small status label. **Assets:** `badge.css` only.
+Small status label. **Assets:** `pjx_badge.css` only.
 
-<!-- demo: Badge -->
+<!-- demo: PJXBadge -->
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
 | `label` | `str` | `""` | Inner text. |
-| `color` | literal | `"neutral"` | `brand`, `error`, `neutral`, `muted` → `px-badge--{color}`. |
-| `shape` | literal | `"md"` | `square`, `sm`, `md`, `full` → `px-badge--{shape}`. |
+| `color` | literal | `"neutral"` | `brand`, `error`, `neutral`, `muted` → `pjx-badge--{color}`. |
+| `shape` | literal | `"md"` | `square`, `sm`, `md`, `full` → `pjx-badge--{shape}`. |
 
-**DOM contract.** Root `.px-badge`; no JS API.
+**DOM contract.** Root `.pjx-badge`; no JS API.
 
-**Classes:** `px-badge`; color modifiers `px-badge--brand`, `--error`, `--neutral`, `--muted`; shape `px-badge--square`, `--sm`, `--md`, `--full`. Theming: see [Badge tokens](#badge-tokens).
+**Classes:** `pjx-badge`; color modifiers `pjx-badge--brand`, `--error`, `--neutral`, `--muted`; shape `pjx-badge--square`, `--sm`, `--md`, `--full`. Theming: see [PJXBadge tokens](#pjxbadge-tokens).
 
 ---
 
-## Modal
+## PJXModal
 
-Native `<dialog>`. **Assets:** `modal.css`, `modal.js`.
+Native `<dialog>`. **Assets:** `pjx_modal.css`, `pjx_modal.js`.
 
-<!-- demo: Modal -->
+<!-- demo: PJXModal -->
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
 | `title` | `str \| BaseComponent` | `""` | Default header title when `header` is empty. |
 | `header` | `str \| BaseComponent` | `""` | If set, replaces the built-in title row. |
 | `body` | `str \| BaseComponent` | `""` | Main content; wrapper id `{{ id }}-body`. |
-| `footer` | `str \| BaseComponent` | `""` | If non-empty, renders `<footer class="px-modal__footer">`. |
+| `footer` | `str \| BaseComponent` | `""` | If non-empty, renders `<footer class="pjx-modal__footer">`. |
 | `close_label` | `str` | `"Close"` | `aria-label` for the close button. |
-| `open_on_mount` | `bool` | `False` | When `True`, adds `data-px-open-on-mount`; JS opens the dialog as soon as it mounts (e.g. via `hx-swap="beforeend"`). |
-| `remove_on_close` | `bool` | `False` | When `True`, adds `data-px-remove-on-close`; JS removes the element from the DOM on close. |
+| `open_on_mount` | `bool` | `False` | When `True`, adds `data-pjx-open-on-mount`; JS opens the dialog as soon as it mounts (e.g. via `hx-swap="beforeend"`). |
+| `remove_on_close` | `bool` | `False` | When `True`, adds `data-pjx-remove-on-close`; JS removes the element from the DOM on close. |
 
 ```html
-<button data-px-open="info-modal">Open</button>
-<Modal id="info-modal" title="Hello" body="Content here."/>
+<button data-pjx-open="info-modal">Open</button>
+<PJXModal id="info-modal" title="Hello" body="Content here."/>
 ```
 
-**DOM contract.** Root `dialog.px-modal` (state: `[open]`, `.px-modal--closing`).
-Attributes: `data-px-open="<id>"` on any element opens it on click; `data-px-close` inside closes it;
-`data-px-open-on-mount`, `data-px-remove-on-close` reflect the lifecycle props.
-Events (bubble from the root): `px:modal:before-open`*, `px:modal:open`,
-`px:modal:before-close`*, `px:modal:close` — `*` = cancelable, `detail = {reason, trigger}`,
-`reason ∈ escape|backdrop|api|trigger`. API: `px.modal.open(id)`, `px.modal.close(id)`.
+**DOM contract.** Root `dialog.pjx-modal` (state: `[open]`, `.pjx-modal--closing`).
+Attributes: `data-pjx-open="<id>"` on any element opens it on click; `data-pjx-close` inside closes it;
+`data-pjx-open-on-mount`, `data-pjx-remove-on-close` reflect the lifecycle props.
+Events (bubble from the root): `pjx:modal:before-open`*, `pjx:modal:open`,
+`pjx:modal:before-close`*, `pjx:modal:close` — `*` = cancelable, `detail = {reason, trigger}`,
+`reason ∈ escape|backdrop|api|trigger`. API: `pjx.modal.open(id)`, `pjx.modal.close(id)`.
 
-**Classes:** `px-modal`; closing state `px-modal--closing`; `px-modal__box`, `__header`, `__title`, `__close`, `__body`, `__footer`. Theming: see [Modal tokens](#modal-tokens).
+**Classes:** `pjx-modal`; closing state `pjx-modal--closing`; `pjx-modal__box`, `__header`, `__title`, `__close`, `__body`, `__footer`. Theming: see [PJXModal tokens](#pjxmodal-tokens).
 
 ---
 
-## Notification
+## PJXNotification
 
-Fixed-position toast. **Assets:** `notification.css`, `notification.js`.
+Fixed-position toast. **Assets:** `pjx_notification.css`, `pjx_notification.js`.
 
-<!-- demo: Notification -->
+<!-- demo: PJXNotification -->
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
 | `content` | `str \| BaseComponent` | `""` | Message body. |
 | `corner` | literal | `"top-right"` | `top-right`, `top-left`, `bottom-right`, `bottom-left`. |
 | `timeout` | `int` | `5000` | Auto-dismiss ms; `0` disables. Rendered as `data-timeout`. |
-| `autoshow` | `bool` | `True` | When `True`, adds `data-px-autoshow`; JS shows the notification as soon as it mounts. |
+| `autoshow` | `bool` | `True` | When `True`, adds `data-pjx-autoshow`; JS shows the notification as soon as it mounts. |
 | `dismiss_label` | `str` | `"Dismiss"` | `aria-label` for the dismiss button. |
 
-**DOM contract.** Root `.px-notification` (state: `.px-notification--visible`, `.px-notification--hiding`).
-`data-px-autoshow` triggers auto-show on mount. `data-px-close` inside hides it.
-Events: `px:notification:before-show`*, `px:notification:show`, `px:notification:before-hide`*, `px:notification:hide` — `*` = cancelable, `detail = {reason, trigger}`.
-API: `px.notification.show(id)`, `px.notification.hide(id)`.
+**DOM contract.** Root `.pjx-notification` (state: `.pjx-notification--visible`, `.pjx-notification--hiding`).
+`data-pjx-autoshow` triggers auto-show on mount. `data-pjx-close` inside hides it.
+Events: `pjx:notification:before-show`*, `pjx:notification:show`, `pjx:notification:before-hide`*, `pjx:notification:hide` — `*` = cancelable, `detail = {reason, trigger}`.
+API: `pjx.notification.show(id)`, `pjx.notification.hide(id)`.
 
 Maps children to `content`; see the [children-vs-`content` note](#built-in-ui-components).
 
-**Classes:** `px-notification`; placement `px-notification--top-right`, `--top-left`, `--bottom-right`, `--bottom-left`; JS state `px-notification--visible`, `px-notification--hiding`; `px-notification__content`, `px-notification__close`. Theming: see [Notification tokens](#notification-tokens).
+**Classes:** `pjx-notification`; placement `pjx-notification--top-right`, `--top-left`, `--bottom-right`, `--bottom-left`; JS state `pjx-notification--visible`, `pjx-notification--hiding`; `pjx-notification__content`, `pjx-notification__close`. Theming: see [PJXNotification tokens](#pjxnotification-tokens).
 
 ---
 
-## Popover
+## PJXPopover
 
-Click-toggle compound. Three separate components; compose them by placing `PopoverTrigger` and `PopoverPanel` **as children inside `Popover`**. **Assets:** `popover.css`, `popover.js` (IIFE under `px.popover`).
+Click-toggle compound. Three separate components; compose them by placing `PJXPopoverTrigger` and `PJXPopoverPanel` **as children inside `PJXPopover`**. **Assets:** `pjx_popover.css`, `pjx_popover.js` (IIFE under `pjx.popover`).
 
-<!-- demo: Popover -->
+<!-- demo: PJXPopover -->
 
 ```python
-Popover(
+PJXPopover(
     id="menu",
     content=(
-        PopoverTrigger(id="menu-t", content="Open").render()
-        + PopoverPanel(id="menu-p", role="menu", content="…").render()
+        PJXPopoverTrigger(id="menu-t", content="Open").render()
+        + PJXPopoverPanel(id="menu-p", role="menu", content="…").render()
     ),
 )
 ```
@@ -190,53 +190,53 @@ Popover(
 Or with PascalCase tags:
 
 ```html
-<Popover id="menu">
-  <PopoverTrigger id="menu-t">Open</PopoverTrigger>
-  <PopoverPanel id="menu-p" role="menu">…</PopoverPanel>
-</Popover>
+<PJXPopover id="menu">
+  <PJXPopoverTrigger id="menu-t">Open</PJXPopoverTrigger>
+  <PJXPopoverPanel id="menu-p" role="menu">…</PJXPopoverPanel>
+</PJXPopover>
 ```
 
-### Popover
+### PJXPopover
 
-Root wrapper — sets up the `data-px-popover` attribute scope.
+Root wrapper — sets up the `data-pjx-popover` attribute scope.
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
 | `content` | `str \| BaseComponent` | `""` | Children (trigger + panel). |
-| `align` | literal | `"start"` | `start` or `end` (panel alignment) → `px-popover--align-end`. |
-| `behavior` | `bool` | `True` | When `True`, adds `data-px-popover` (JS picks it up). |
+| `align` | literal | `"start"` | `start` or `end` (panel alignment) → `pjx-popover--align-end`. |
+| `behavior` | `bool` | `True` | When `True`, adds `data-pjx-popover` (JS picks it up). |
 
-### PopoverTrigger
+### PJXPopoverTrigger
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
 | `content` | `str \| BaseComponent` | `""` | Button/div label. |
 | `tag` | literal | `"button"` | `button` or `div` (role="button"). |
 | `role` | literal | `""` | `aria-haspopup` value: `menu`, `listbox`, `dialog`, or `""`. |
-| `behavior` | `bool` | `True` | When `True`, adds `data-px-toggle`. |
+| `behavior` | `bool` | `True` | When `True`, adds `data-pjx-toggle`. |
 
-### PopoverPanel
+### PJXPopoverPanel
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
 | `content` | `str \| BaseComponent` | `""` | Panel body. |
 | `as_form` | `bool` | `False` | Render panel as `<form>` instead of `<div>`. |
 | `role` | literal | `""` | ARIA `role` attribute (`menu`, `listbox`, `dialog`, or `""`). |
-| `behavior` | `bool` | `True` | When `True`, adds `data-px-popover-panel` (hidden by default). |
+| `behavior` | `bool` | `True` | When `True`, adds `data-pjx-popover-panel` (hidden by default). |
 
-**DOM contract.** Root `[data-px-popover]` (the Popover wrapper). Trigger: `[data-px-toggle]` on the trigger element; `aria-expanded` synced by JS. Panel: `[data-px-popover-panel]` element, `hidden` when closed. `data-px-close` inside the panel closes it. `data-px-toggle="<panel-id>"` on any element opens/closes a named panel.
-Events (bubble from `[data-px-popover]`): `px:popover:before-open`*, `px:popover:open`, `px:popover:before-close`*, `px:popover:close` — `detail = {reason, trigger}`.
-API: `px.popover.open(idOrEl)`, `px.popover.close(idOrEl)`, `px.popover.toggle(idOrEl)`.
+**DOM contract.** Root `[data-pjx-popover]` (the PJXPopover wrapper). Trigger: `[data-pjx-toggle]` on the trigger element; `aria-expanded` synced by JS. Panel: `[data-pjx-popover-panel]` element, `hidden` when closed. `data-pjx-close` inside the panel closes it. `data-pjx-toggle="<panel-id>"` on any element opens/closes a named panel.
+Events (bubble from `[data-pjx-popover]`): `pjx:popover:before-open`*, `pjx:popover:open`, `pjx:popover:before-close`*, `pjx:popover:close` — `detail = {reason, trigger}`.
+API: `pjx.popover.open(idOrEl)`, `pjx.popover.close(idOrEl)`, `pjx.popover.toggle(idOrEl)`.
 
-**Classes:** `px-popover`, `px-popover--align-end`, `px-popover__trigger`, `px-popover__panel`. Theming: see [Popover tokens](#popover-tokens).
+**Classes:** `pjx-popover`, `pjx-popover--align-end`, `pjx-popover__trigger`, `pjx-popover__panel`. Theming: see [PJXPopover tokens](#pjxpopover-tokens).
 
 ---
 
-## RegionLoader
+## PJXRegionLoader
 
-In-place loading veil over a positioned ancestor. **Assets:** `region-loader.css`, `region-loader.js`.
+In-place loading veil over a positioned ancestor. **Assets:** `pjx-region-loader.css`, `pjx-region-loader.js`.
 
-<!-- demo: RegionLoader -->
+<!-- demo: PJXRegionLoader -->
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
@@ -244,145 +244,145 @@ In-place loading veil over a positioned ancestor. **Assets:** `region-loader.css
 
 **Layout:** Overlay is `position: absolute; inset: 0`. Parent must be **`position: relative`** (or any non-`static` value) so coverage is correct.
 
-Supports both declarative (`hx-indicator`) and programmatic use (`px.loader.region.*`).
+Supports both declarative (`hx-indicator`) and programmatic use (`pjx.loader.region.*`).
 
-**DOM contract.** Root `.px-region-loader` (state: `.px-region-loader--visible`, `.px-region-loader--hiding`; also responds to `.htmx-request` as an htmx indicator — CSS activates the veil, no JS call required).
-Events (non-cancelable): `px:region-loader:show`, `px:region-loader:hide`.
-API: `px.loader.region.show/hide/reset(id)` and `px.loader.region.wrap(id, promise)`. Ref-counted for concurrent sources: visible from the first `show(id)` to the last `hide(id)`; `show`/`hide` events fire only on real visibility transitions (a show during an in-flight hide cancels it silently); hides finalize via a fallback timer even when animations are disabled. `wrap(id, promise)` pairs show/hide around any async task. Nodes replaced by a swap while sources remain active are re-lit on htmx:afterSettle.
+**DOM contract.** Root `.pjx-region-loader` (state: `.pjx-region-loader--visible`, `.pjx-region-loader--hiding`; also responds to `.htmx-request` as an htmx indicator — CSS activates the veil, no JS call required).
+Events (non-cancelable): `pjx:region-loader:show`, `pjx:region-loader:hide`.
+API: `pjx.loader.region.show/hide/reset(id)` and `pjx.loader.region.wrap(id, promise)`. Ref-counted for concurrent sources: visible from the first `show(id)` to the last `hide(id)`; `show`/`hide` events fire only on real visibility transitions (a show during an in-flight hide cancels it silently); hides finalize via a fallback timer even when animations are disabled. `wrap(id, promise)` pairs show/hide around any async task. Nodes replaced by a swap while sources remain active are re-lit on htmx:afterSettle.
 
-**Classes:** `px-region-loader`; state `px-region-loader--visible`, `px-region-loader--hiding`; `px-region-loader__spinner`. Theming: see [RegionLoader tokens](#regionloader-tokens).
+**Classes:** `pjx-region-loader`; state `pjx-region-loader--visible`, `pjx-region-loader--hiding`; `pjx-region-loader__spinner`. Theming: see [PJXRegionLoader tokens](#pjxregionloader-tokens).
 
 ---
 
-## Tooltip
+## PJXTooltip
 
-Compact focus/hover hint. **Assets:** `tooltip.css`, `tooltip.js` (IIFE — no API, behavior only).
+Compact focus/hover hint. **Assets:** `pjx-tooltip.css`, `pjx-tooltip.js` (IIFE — no API, behavior only).
 
-<!-- demo: Tooltip -->
+<!-- demo: PJXTooltip -->
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
-| `trigger` | `str \| BaseComponent` | `""` | Focusable trigger (`px-tooltip__trigger`, `tabindex="0"`). |
+| `trigger` | `str \| BaseComponent` | `""` | Focusable trigger (`pjx-tooltip__trigger`, `tabindex="0"`). |
 | `tip` | `str \| BaseComponent` | `""` | `role="tooltip"` body. |
-| `placement` | literal | `"top"` | `top`, `bottom`, `start`, `end` → `data-px-tooltip-placement`. |
+| `placement` | literal | `"top"` | `top`, `bottom`, `start`, `end` → `data-pjx-tooltip-placement`. |
 
-**DOM contract.** Root `.px-tooltip`. `data-px-tooltip-placement` drives JS positioning (`top`/`bottom`/`start`/`end`). Tip shows on `mouseover` anywhere inside `.px-tooltip` root, or on `focusin` of `.px-tooltip__trigger`; hides on `mouseout`/`focusout`; repositions on `scroll`. No JS API (`px._tooltipWired` guard only).
+**DOM contract.** Root `.pjx-tooltip`. `data-pjx-tooltip-placement` drives JS positioning (`top`/`bottom`/`start`/`end`). Tip shows on `mouseover` anywhere inside `.pjx-tooltip` root, or on `focusin` of `.pjx-tooltip__trigger`; hides on `mouseout`/`focusout`; repositions on `scroll`. No JS API (`pjx._tooltipWired` guard only).
 
-**Classes:** `px-tooltip`, `px-tooltip__trigger`, `px-tooltip__tip`, `px-tooltip__tip--visible`. Tip text goes through the `tip` attribute; tag children map to `tip` as well — see the [children-vs-`content` note](#built-in-ui-components). Theming: see [Tooltip tokens](#tooltip-tokens).
+**Classes:** `pjx-tooltip`, `pjx-tooltip__trigger`, `pjx-tooltip__tip`, `pjx-tooltip__tip--visible`. Tip text goes through the `tip` attribute; tag children map to `tip` as well — see the [children-vs-`content` note](#built-in-ui-components). Theming: see [PJXTooltip tokens](#pjxtooltip-tokens).
 
 ---
 
-## Alert
+## PJXAlert
 
-Inline status banner. **Assets:** `alert.css`, `alert.js`.
+Inline status banner. **Assets:** `pjx_alert.css`, `pjx_alert.js`.
 
-<!-- demo: Alert -->
+<!-- demo: PJXAlert -->
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
-| `variant` | literal | `"info"` | `info`, `success`, `warning`, `error` → `px-alert--{variant}`. |
+| `variant` | literal | `"info"` | `info`, `success`, `warning`, `error` → `pjx-alert--{variant}`. |
 | `title` | `str` | `""` | Optional heading. |
 | `body` | `str \| BaseComponent` | `""` | Main copy. |
-| `dismissible` | `bool` | `False` | When `True`, renders a dismiss button with `data-px-close`. |
+| `dismissible` | `bool` | `False` | When `True`, renders a dismiss button with `data-pjx-close`. |
 | `dismiss_label` | `str` | `"Dismiss"` | `aria-label` for the dismiss button. |
 
-**DOM contract.** Root `.px-alert` (state: `.px-alert--dismissed` — set by JS, hides via `display: none`).
-`data-px-close` inside triggers dismissal.
-Events: `px:alert:before-dismiss`* (cancelable), `px:alert:dismiss` — `detail = {reason: 'trigger', trigger}`.
+**DOM contract.** Root `.pjx-alert` (state: `.pjx-alert--dismissed` — set by JS, hides via `display: none`).
+`data-pjx-close` inside triggers dismissal.
+Events: `pjx:alert:before-dismiss`* (cancelable), `pjx:alert:dismiss` — `detail = {reason: 'trigger', trigger}`.
 
-**Classes:** `px-alert`; variant modifiers `px-alert--info`, `--success`, `--warning`, `--error`; dismissed state `px-alert--dismissed`; `px-alert__inner`, `__text`, `__title`, `__body`, `__dismiss`. Variants use `color-mix` with `--brand`, `--success`, `--warning`, or `--error` / `--error-bg` / `--error-border` where applicable. Theming: see [Alert tokens](#alert-tokens).
+**Classes:** `pjx-alert`; variant modifiers `pjx-alert--info`, `--success`, `--warning`, `--error`; dismissed state `pjx-alert--dismissed`; `pjx-alert__inner`, `__text`, `__title`, `__body`, `__dismiss`. Variants use `color-mix` with `--brand`, `--success`, `--warning`, or `--error` / `--error-bg` / `--error-border` where applicable. Theming: see [PJXAlert tokens](#pjxalert-tokens).
 
 ---
 
-## Dropdown
+## PJXDropdown
 
-Button + anchored panel backed by the shared popover engine. **Assets:** `dropdown.css` only (ships no own JS — `popover.js` is included via the `js` extra-asset field whenever a Dropdown renders).
+Button + anchored panel backed by the shared popover engine. **Assets:** `pjx_dropdown.css` only (ships no own JS — `pjx_popover.js` is included via the `js` extra-asset field whenever a PJXDropdown renders).
 
-<!-- demo: Dropdown -->
+<!-- demo: PJXDropdown -->
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
 | `trigger` | `str \| BaseComponent` | `""` | Button label. |
 | `items` | `list[str \| BaseComponent]` | `[]` | Menu items rendered inside the panel. |
-| `align` | literal | `"start"` | `start` or `end` → `px-dropdown--align-end`. |
+| `align` | literal | `"start"` | `start` or `end` → `pjx-dropdown--align-end`. |
 | `menu_label` | `str` | `"Submenu"` | `aria-label` on the menu panel. |
-| `behavior` | `bool` | `True` | When `False`, removes all `data-px-*` wiring. |
+| `behavior` | `bool` | `True` | When `False`, removes all `data-pjx-*` wiring. |
 
 Trigger id is `{{ id }}-trigger`, menu is `{{ id }}-menu`.
 
-**DOM contract.** Root `.px-dropdown` with `data-px-popover`. Trigger: `button.px-dropdown__trigger` with `data-px-toggle="{{ id }}-menu"`, `aria-expanded` synced by `popover.js`. Panel: `div.px-dropdown__menu[data-px-popover-panel][role="menu"]`, `hidden` when closed. All popover events and API apply: `px.popover.open/close/toggle(panelId)`. Document click outside closes the menu; `Escape` closes all open popovers.
+**DOM contract.** Root `.pjx-dropdown` with `data-pjx-popover`. Trigger: `button.pjx-dropdown__trigger` with `data-pjx-toggle="{{ id }}-menu"`, `aria-expanded` synced by `pjx_popover.js`. Panel: `div.pjx-dropdown__menu[data-pjx-popover-panel][role="menu"]`, `hidden` when closed. All popover events and API apply: `pjx.popover.open/close/toggle(panelId)`. Document click outside closes the menu; `Escape` closes all open popovers.
 
-**Classes:** `px-dropdown`, `px-dropdown--align-end`, `px-dropdown__trigger`, `px-dropdown__menu`. Theming: see [Dropdown tokens](#dropdown-tokens).
+**Classes:** `pjx-dropdown`, `pjx-dropdown--align-end`, `pjx-dropdown__trigger`, `pjx-dropdown__menu`. Theming: see [PJXDropdown tokens](#pjxdropdown-tokens).
 
 ---
 
-## Drawer
+## PJXDrawer
 
-`<dialog>` sheet from an edge. **Assets:** `drawer.css`, `drawer.js`.
+`<dialog>` sheet from an edge. **Assets:** `pjx_drawer.css`, `pjx_drawer.js`.
 
-<!-- demo: Drawer -->
+<!-- demo: PJXDrawer -->
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
-| `side` | literal | `"right"` | `left`, `right`, or `bottom` → `px-drawer--{side}`. |
+| `side` | literal | `"right"` | `left`, `right`, or `bottom` → `pjx-drawer--{side}`. |
 | `title` | `str \| BaseComponent` | `""` | Header title. |
 | `body` | `str \| BaseComponent` | `""` | Scrollable body. |
 | `footer` | `str \| BaseComponent` | `""` | Optional footer strip. |
 | `close_label` | `str` | `"Close"` | `aria-label` for the close button. |
-| `open_on_mount` | `bool` | `False` | Adds `data-px-open-on-mount`; JS opens on arrival. |
-| `remove_on_close` | `bool` | `False` | Adds `data-px-remove-on-close`; JS removes element on close. |
+| `open_on_mount` | `bool` | `False` | Adds `data-pjx-open-on-mount`; JS opens on arrival. |
+| `remove_on_close` | `bool` | `False` | Adds `data-pjx-remove-on-close`; JS removes element on close. |
 
-**DOM contract.** Root `dialog.px-drawer` (state: `[open]`, `.px-drawer--closing`).
-`data-px-open="<id>"` on any element opens it; `data-px-close` inside closes it;
-`data-px-open-on-mount`, `data-px-remove-on-close` reflect lifecycle props.
-Events: `px:drawer:before-open`*, `px:drawer:open`, `px:drawer:before-close`*, `px:drawer:close` — `*` = cancelable, `detail = {reason, trigger}`, `reason ∈ escape|backdrop|api|trigger`.
-API: `px.drawer.open(id)`, `px.drawer.close(id)`.
+**DOM contract.** Root `dialog.pjx-drawer` (state: `[open]`, `.pjx-drawer--closing`).
+`data-pjx-open="<id>"` on any element opens it; `data-pjx-close` inside closes it;
+`data-pjx-open-on-mount`, `data-pjx-remove-on-close` reflect lifecycle props.
+Events: `pjx:drawer:before-open`*, `pjx:drawer:open`, `pjx:drawer:before-close`*, `pjx:drawer:close` — `*` = cancelable, `detail = {reason, trigger}`, `reason ∈ escape|backdrop|api|trigger`.
+API: `pjx.drawer.open(id)`, `pjx.drawer.close(id)`.
 
-**Classes:** `px-drawer`; side modifiers `px-drawer--left`, `--right`, `--bottom`; closing state `px-drawer--closing`; `px-drawer__box`, `__header`, `__title`, `__close`, `__body`, `__footer`. Backdrop click closes the dialog (see [intro note](#built-in-ui-components)). Theming: see [Drawer tokens](#drawer-tokens).
+**Classes:** `pjx-drawer`; side modifiers `pjx-drawer--left`, `--right`, `--bottom`; closing state `pjx-drawer--closing`; `pjx-drawer__box`, `__header`, `__title`, `__close`, `__body`, `__footer`. Backdrop click closes the dialog (see [intro note](#built-in-ui-components)). Theming: see [PJXDrawer tokens](#pjxdrawer-tokens).
 
 ---
 
-## Progress
+## PJXProgress
 
-Determinate or indeterminate meter. **Assets:** `progress.css` only.
+Determinate or indeterminate meter. **Assets:** `pjx_progress.css` only.
 
-<!-- demo: Progress -->
+<!-- demo: PJXProgress -->
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
 | `value` | `float \| None` | `None` | Omit or `None` for indeterminate `<progress>`. |
 | `max` | `float` | `100` | Passed to `<progress max="…">`. |
-| `label` | `str` | `""` | Optional `px-progress__label`; wires `aria-labelledby` when set. |
+| `label` | `str` | `""` | Optional `pjx-progress__label`; wires `aria-labelledby` when set. |
 | `loading_label` | `str` | `"Loading"` | `aria-label` fallback on `<progress>` when `label` is empty. |
 
-**DOM contract.** Root `.px-progress`; no JS API.
+**DOM contract.** Root `.pjx-progress`; no JS API.
 
-**Classes:** `px-progress`, `px-progress__label`, `px-progress__bar`. Theming: see [Progress tokens](#progress-tokens).
+**Classes:** `pjx-progress`, `pjx-progress__label`, `pjx-progress__bar`. Theming: see [PJXProgress tokens](#pjxprogress-tokens).
 
 ---
 
-## Skeleton
+## PJXSkeleton
 
-Placeholder shimmer blocks. **Assets:** `skeleton.css` only.
+Placeholder shimmer blocks. **Assets:** `pjx_skeleton.css` only.
 
-<!-- demo: Skeleton -->
+<!-- demo: PJXSkeleton -->
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
 | `variant` | literal | `"text"` | `text` (stacked lines), `circle`, or `rect`. |
-| `lines` | `int` | `3` | For `text`, count of `px-skeleton__line` rows. |
+| `lines` | `int` | `3` | For `text`, count of `pjx-skeleton__line` rows. |
 
-**DOM contract.** Root `.px-skeleton`; no JS API.
+**DOM contract.** Root `.pjx-skeleton`; no JS API.
 
-**Classes:** `px-skeleton`; variant modifiers `px-skeleton--text`, `--circle`, `--rect`; `px-skeleton__line`, `px-skeleton__circle`, `px-skeleton__rect`. Theming: see [Skeleton tokens](#skeleton-tokens).
+**Classes:** `pjx-skeleton`; variant modifiers `pjx-skeleton--text`, `--circle`, `--rect`; `pjx-skeleton__line`, `pjx-skeleton__circle`, `pjx-skeleton__rect`. Theming: see [PJXSkeleton tokens](#pjxskeleton-tokens).
 
 ---
 
-## EmptyState
+## PJXEmptyState
 
-Centered empty view. **Assets:** `empty-state.css` only (template file **`empty-state.html`** next to `empty_state.py`).
+Centered empty view. **Assets:** `pjx-empty-state.css` only (template file **`pjx-empty-state.html`** next to `pjx_empty_state.py`).
 
-<!-- demo: EmptyState -->
+<!-- demo: PJXEmptyState -->
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
@@ -392,81 +392,81 @@ Centered empty view. **Assets:** `empty-state.css` only (template file **`empty-
 | `action` | `str \| BaseComponent` | `""` | Optional slot (e.g. button markup). |
 | `actions` | `list[str \| BaseComponent]` | `[]` | Optional flex row of slots; renders after `action` when both are set. |
 
-**DOM contract.** Root `.px-empty-state`; no JS API.
+**DOM contract.** Root `.pjx-empty-state`; no JS API.
 
-**Classes:** `px-empty-state`, `px-empty-state__image`, `px-empty-state__title`, `px-empty-state__desc`, `px-empty-state__action`, `px-empty-state__actions`. Theming: see [EmptyState tokens](#emptystate-tokens).
+**Classes:** `pjx-empty-state`, `pjx-empty-state__image`, `pjx-empty-state__title`, `pjx-empty-state__desc`, `pjx-empty-state__action`, `pjx-empty-state__actions`. Theming: see [PJXEmptyState tokens](#pjxemptystate-tokens).
 
 ---
 
-## LazyPanel
+## PJXLazyPanel
 
 HTMX lazy-load wrapper: a single `div` that fetches `url` on a computed trigger and swaps itself with the response. **Assets:** none.
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
 | `url` | `str` | required | Endpoint for the deferred content (`hx-get`). |
-| `when` | literal | `"viewport"` | `viewport` (scroll-revealed), `reveal` (`px:reveal` from nearest `[data-px-region]`), `load` (immediately). Overridden by `trigger`. |
+| `when` | literal | `"viewport"` | `viewport` (scroll-revealed), `reveal` (`pjx:reveal` from nearest `[data-pjx-region]`), `load` (immediately). Overridden by `trigger`. |
 | `trigger` | `str` | `""` | Explicit `hx-trigger` value; overrides `when` entirely when set. |
 | `swap` | `str` | `"outerHTML"` | `hx-swap` strategy. |
-| `content` | `str \| BaseComponent` | `""` | Placeholder shown until the fetch lands (e.g. a [`Skeleton`](#skeleton)). |
+| `content` | `str \| BaseComponent` | `""` | Placeholder shown until the fetch lands (e.g. a [`PJXSkeleton`](#pjxskeleton)). |
 
 `when` preset mapping:
 
 | `when` | `hx-trigger` value |
 | --- | --- |
 | `viewport` (default) | `revealed` |
-| `reveal` | `px:reveal from:closest [data-px-region] once` |
+| `reveal` | `pjx:reveal from:closest [data-pjx-region] once` |
 | `load` | `load` |
 
 ```python
-LazyPanel(id="comments", url="/posts/42/comments", content=Skeleton(id="comments-skel"))
+PJXLazyPanel(id="comments", url="/posts/42/comments", content=PJXSkeleton(id="comments-skel"))
 ```
 
-**DOM contract.** Root `.px-lazy-panel`; no JS (pure HTMX). `data-px-region` on a Panel or PanelTrigger host fires `px:reveal`/`px:before-reveal` events that `when="reveal"` listens for.
+**DOM contract.** Root `.pjx-lazy-panel`; no JS (pure HTMX). `data-pjx-region` on a PJXPanel or PJXPanelTrigger host fires `pjx:reveal`/`pjx:before-reveal` events that `when="reveal"` listens for.
 
-**Classes:** `px-lazy-panel` (unstyled hook). No theming tokens.
+**Classes:** `pjx-lazy-panel` (unstyled hook). No theming tokens.
 
 ---
 
-## Divider
+## PJXDivider
 
-Separator line. **Assets:** `divider.css` only.
+Separator line. **Assets:** `pjx_divider.css` only.
 
-<!-- demo: Divider -->
+<!-- demo: PJXDivider -->
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
 | `orientation` | literal | `"horizontal"` | `horizontal` (default `hr`) or `vertical` (bar). |
 | `label` | `str` | `""` | If set with horizontal orientation, flex row with label between lines. |
 
-**DOM contract.** Root `.px-divider`; no JS API.
+**DOM contract.** Root `.pjx-divider`; no JS API.
 
-**Classes:** `px-divider--horizontal`, `px-divider--vertical`, `px-divider--labeled`, `px-divider__line`, `px-divider__label`. Theming: see [Divider tokens](#divider-tokens).
+**Classes:** `pjx-divider--horizontal`, `pjx-divider--vertical`, `pjx-divider--labeled`, `pjx-divider__line`, `pjx-divider__label`. Theming: see [PJXDivider tokens](#pjxdivider-tokens).
 
 ---
 
-## Spinner
+## PJXSpinner
 
-Inline loading indicator. **Assets:** `spinner.css` only.
+Inline loading indicator. **Assets:** `pjx_spinner.css` only.
 
-<!-- demo: Spinner -->
+<!-- demo: PJXSpinner -->
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
 | `size` | literal | `"md"` | `sm`, `md`, or `lg`. |
 | `label` | `str` | `"Loading"` | Visually hidden; exposed to assistive tech. |
 
-**DOM contract.** Root `.px-spinner`; no JS API.
+**DOM contract.** Root `.pjx-spinner`; no JS API.
 
-**Classes:** `px-spinner`, `px-spinner--sm|md|lg`, `px-spinner__ring`, `px-spinner__label` (screen-reader-only). Theming: see [Spinner tokens](#spinner-tokens).
+**Classes:** `pjx-spinner`, `pjx-spinner--sm|md|lg`, `pjx-spinner__ring`, `pjx-spinner__label` (screen-reader-only). Theming: see [PJXSpinner tokens](#pjxspinner-tokens).
 
 ---
 
-## Avatar
+## PJXAvatar
 
-Image or initials in a circle. **Assets:** `avatar.css` only.
+Image or initials in a circle. **Assets:** `pjx_avatar.css` only.
 
-<!-- demo: Avatar -->
+<!-- demo: PJXAvatar -->
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
@@ -476,17 +476,17 @@ Image or initials in a circle. **Assets:** `avatar.css` only.
 | `size` | literal | `"md"` | `sm`, `md`, or `lg`. |
 | `color` | `str` | `""` | Extra class or inline color hint (appended to root classes). |
 
-**DOM contract.** Root `.px-avatar`; no JS API.
+**DOM contract.** Root `.pjx-avatar`; no JS API.
 
-**Classes:** `px-avatar`, `px-avatar--sm|md|lg`, `px-avatar__img`, `px-avatar__initials`. Theming: see [Avatar tokens](#avatar-tokens).
+**Classes:** `pjx-avatar`, `pjx-avatar--sm|md|lg`, `pjx-avatar__img`, `pjx-avatar__initials`. Theming: see [PJXAvatar tokens](#pjxavatar-tokens).
 
 ---
 
-## Card
+## PJXCard
 
-Grouped content with optional header and footer. **Assets:** `card.css` only.
+Grouped content with optional header and footer. **Assets:** `pjx_card.css` only.
 
-<!-- demo: Card -->
+<!-- demo: PJXCard -->
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
@@ -495,36 +495,36 @@ Grouped content with optional header and footer. **Assets:** `card.css` only.
 | `body` | `str \| BaseComponent` | `""` | Main content. |
 | `footer` | `str \| BaseComponent` | `""` | Optional footer. |
 
-**DOM contract.** Root `.px-card`; no JS API.
+**DOM contract.** Root `.pjx-card`; no JS API.
 
-**Classes:** `px-card`, `px-card__header`, `px-card__title`, `px-card__body`, `px-card__footer`. Theming: see [Card tokens](#card-tokens).
+**Classes:** `pjx-card`, `pjx-card__header`, `pjx-card__title`, `pjx-card__body`, `pjx-card__footer`. Theming: see [PJXCard tokens](#pjxcard-tokens).
 
 ---
 
-## Breadcrumb
+## PJXBreadcrumb
 
-Ordered trail of links. **Assets:** `breadcrumb.css` only.
+Ordered trail of links. **Assets:** `pjx_breadcrumb.css` only.
 
-<!-- demo: Breadcrumb -->
+<!-- demo: PJXBreadcrumb -->
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
 | `items` | `list[tuple[str, str \| None]]` | `[]` | `(label, href)` left to right; `href` `None` marks the current page. |
-| `aria_label` | `str` | `"Breadcrumb"` | `aria-label` on the `<nav>` wrapper. |
+| `aria_label` | `str` | `"PJXBreadcrumb"` | `aria-label` on the `<nav>` wrapper. |
 
 `items` may also be passed as a **JSON array** string (e.g. from PascalCase tags): `[["Home","/"],["Here",null]]`.
 
-**DOM contract.** Root `.px-breadcrumb`; no JS API.
+**DOM contract.** Root `.pjx-breadcrumb`; no JS API.
 
-**Classes:** `px-breadcrumb`, `px-breadcrumb__list`, `px-breadcrumb__item`, `px-breadcrumb__link`, `px-breadcrumb__current`. Separators via `::after` on items except the last. Theming: see [Breadcrumb tokens](#breadcrumb-tokens).
+**Classes:** `pjx-breadcrumb`, `pjx-breadcrumb__list`, `pjx-breadcrumb__item`, `pjx-breadcrumb__link`, `pjx-breadcrumb__current`. Separators via `::after` on items except the last. Theming: see [PJXBreadcrumb tokens](#pjxbreadcrumb-tokens).
 
 ---
 
-## TabGroup
+## PJXTabGroup
 
-Tab buttons and panels. **Assets:** `tab-group.css`, `tab-group.js`.
+Tab buttons and panels. **Assets:** `pjx-tab-group.css`, `pjx-tab-group.js`.
 
-<!-- demo: TabGroup -->
+<!-- demo: PJXTabGroup -->
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
@@ -533,53 +533,53 @@ Tab buttons and panels. **Assets:** `tab-group.css`, `tab-group.js`.
 
 `tabs` may also be a **JSON object** string from markup tags (values are HTML strings).
 
-**DOM contract.** Root `.px-tab-group` (no `data-px-region` on the root). Tab elements: `.px-tab-group__tab` (no `data-px-panel-key` — tabs match panels by insertion-order index); panel elements: `.px-tab-group__panel[data-px-region]` (each panel carries `data-px-region`). `px:before-reveal` (cancelable) fires before switching; `px:reveal` fires after; `data-px-revealed` is set on the visible panel. `tab-group.js` delegates `click` document-wide on `.px-tab-group__tab` (not scoped to `.px-tab-group__list`), updates `aria-selected`, `tabindex`, and `hidden`. On `DOMContentLoaded`, `htmx:afterSwap`, and `htmx:afterSettle`, `pxTabGroupInit` announces the initially visible panel once (`px:reveal`, reason `"api"`) so `LazyPanel(when="reveal")` works in default tabs.
+**DOM contract.** Root `.pjx-tab-group` (no `data-pjx-region` on the root). Tab elements: `.pjx-tab-group__tab` (no `data-pjx-panel-key` — tabs match panels by insertion-order index); panel elements: `.pjx-tab-group__panel[data-pjx-region]` (each panel carries `data-pjx-region`). `pjx:before-reveal` (cancelable) fires before switching; `pjx:reveal` fires after; `data-pjx-revealed` is set on the visible panel. `pjx-tab-group.js` delegates `click` document-wide on `.pjx-tab-group__tab` (not scoped to `.pjx-tab-group__list`), updates `aria-selected`, `tabindex`, and `hidden`. On `DOMContentLoaded`, `htmx:afterSwap`, and `htmx:afterSettle`, `pxTabGroupInit` announces the initially visible panel once (`pjx:reveal`, reason `"api"`) so `PJXLazyPanel(when="reveal")` works in default tabs.
 
-**Classes:** `px-tab-group`, `px-tab-group__list`, `px-tab-group__tab`, `px-tab-group__panel`. Theming: see [TabGroup tokens](#tabgroup-tokens).
+**Classes:** `pjx-tab-group`, `pjx-tab-group__list`, `pjx-tab-group__tab`, `pjx-tab-group__panel`. Theming: see [PJXTabGroup tokens](#pjxtabgroup-tokens).
 
 ---
 
-## Panel
+## PJXPanel
 
-Host for **distributed** tab-like switching: all bodies render here; controls are separate [`PanelTrigger`](#paneltrigger) components. **Unstyled** aside from `hidden` panels. **Assets:** `panel.css`, `panel.js`.
+Host for **distributed** tab-like switching: all bodies render here; controls are separate [`PJXPanelTrigger`](#pjxpaneltrigger) components. **Unstyled** aside from `hidden` panels. **Assets:** `pjx_panel.css`, `pjx_panel.js`.
 
-<!-- demo: Panel -->
+<!-- demo: PJXPanel -->
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
 | `panels` | `dict[str, str \| BaseComponent]` | `{}` | **Insertion order** sets the initially visible slot (first is shown). Keys must match `[a-zA-Z0-9_-]+`. |
 
-`panels` may be a **JSON object** string from PascalCase tags. Keys are used in HTML `id` attributes and `data-px-panel-key`. Slot element ids are `{{ id }}-panel-{{ key }}`. The `id` must match `PanelTrigger.panel_id`.
+`panels` may be a **JSON object** string from PascalCase tags. Keys are used in HTML `id` attributes and `data-pjx-panel-key`. Slot element ids are `{{ id }}-panel-{{ key }}`. The `id` must match `PJXPanelTrigger.panel_id`.
 
-**DOM contract.** Root `.px-panel` with `id`. Panels: `.px-panel__panel[data-px-panel-key][data-px-region]`. Events (bubble from the active panel): `px:before-reveal`* (cancelable, `detail = {reason, trigger}`), `px:reveal`; `data-px-revealed` on the visible panel. `panel.js` click delegation on `.px-panel-trigger`; `pxPanelInit` runs on `DOMContentLoaded`, `htmx:afterSwap`, `htmx:afterSettle`.
+**DOM contract.** Root `.pjx-panel` with `id`. Panels: `.pjx-panel__panel[data-pjx-panel-key][data-pjx-region]`. Events (bubble from the active panel): `pjx:before-reveal`* (cancelable, `detail = {reason, trigger}`), `pjx:reveal`; `data-pjx-revealed` on the visible panel. `pjx_panel.js` click delegation on `.pjx-panel-trigger`; `pxPanelInit` runs on `DOMContentLoaded`, `htmx:afterSwap`, `htmx:afterSettle`.
 
-**Classes:** `px-panel`, `px-panel__panel`. No theme tokens; minimal rules for `[hidden]` panels.
+**Classes:** `pjx-panel`, `pjx-panel__panel`. No theme tokens; minimal rules for `[hidden]` panels.
 
 ---
 
-## PanelTrigger
+## PJXPanelTrigger
 
-Invisible wrapper that wires clicks to a [`Panel`](#panel) slot. **Assets:** `panel-trigger.css`. See the [`panel.js` loading note](#built-in-ui-components)—render a `Panel` on the same page so the script is included.
+Invisible wrapper that wires clicks to a [`PJXPanel`](#pjxpanel) slot. **Assets:** `pjx-panel-trigger.css`. See the [`pjx_panel.js` loading note](#built-in-ui-components)—render a `PJXPanel` on the same page so the script is included.
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
-| `panel_id` | `str` | (required) | Must equal the target `Panel.id`. |
-| `panel` | `str` | (required) | Key matching a key in `Panel.panels`; `[a-zA-Z0-9_-]+`. |
+| `panel_id` | `str` | (required) | Must equal the target `PJXPanel.id`. |
+| `panel` | `str` | (required) | Key matching a key in `PJXPanel.panels`; `[a-zA-Z0-9_-]+`. |
 | `content` | `str \| BaseComponent` | `""` | Inner HTML / nested components (your visible control). |
 
 Maps children to `content`; see the [children-vs-`content` note](#built-in-ui-components).
 
-**DOM contract.** Root `.px-panel-trigger[data-px-panel-id][data-px-panel-key]`; no own JS (wired by `panel.js`). `display: contents` so no layout box. On every panel switch, `panel.js` syncs `aria-selected` and `tabindex` on every `.px-panel-trigger[data-px-panel-id]` matching the host Panel.
+**DOM contract.** Root `.pjx-panel-trigger[data-pjx-panel-id][data-pjx-panel-key]`; no own JS (wired by `pjx_panel.js`). `display: contents` so no layout box. On every panel switch, `pjx_panel.js` syncs `aria-selected` and `tabindex` on every `.pjx-panel-trigger[data-pjx-panel-id]` matching the host PJXPanel.
 
-**Classes:** `px-panel-trigger`. No theming tokens.
+**Classes:** `pjx-panel-trigger`. No theming tokens.
 
 ---
 
-## ConfirmDialog
+## PJXConfirmDialog
 
-Accessible `<dialog>` singleton that replaces `window.confirm`. Mount once in the layout; `px.confirm()` is available everywhere. **Assets:** `confirm-dialog.css`, `confirm-dialog.js`.
+Accessible `<dialog>` singleton that replaces `window.confirm`. Mount once in the layout; `pjx.confirm()` is available everywhere. **Assets:** `pjx-confirm-dialog.css`, `pjx-confirm-dialog.js`.
 
-<!-- demo: ConfirmDialog -->
+<!-- demo: PJXConfirmDialog -->
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
@@ -587,7 +587,7 @@ Accessible `<dialog>` singleton that replaces `window.confirm`. Mount once in th
 | `cancel_label` | `str` | `"Cancel"` | Default cancel button text. |
 
 ```python
-ConfirmDialog(id="app-confirm")
+PJXConfirmDialog(id="app-confirm")
 ```
 
 Intercepts every `hx-confirm="…"` automatically (via `htmx:confirm` event):
@@ -595,7 +595,7 @@ Intercepts every `hx-confirm="…"` automatically (via `htmx:confirm` event):
 ```html
 <button hx-post="/delete/1"
         hx-confirm="Delete this item?"
-        data-px-confirm-danger>Delete</button>
+        data-pjx-confirm-danger>Delete</button>
 ```
 
 For non-htmx forms use `data-confirm="…"` on the `<form>`.
@@ -603,7 +603,7 @@ For non-htmx forms use `data-confirm="…"` on the `<form>`.
 Override labels per-call:
 
 ```javascript
-const ok = await px.confirm("Are you sure?", {
+const ok = await pjx.confirm("Are you sure?", {
     okLabel: "Yes, delete",
     cancelLabel: "No",
     danger: true,
@@ -611,19 +611,19 @@ const ok = await px.confirm("Are you sure?", {
 if (ok) { /* proceed */ }
 ```
 
-**DOM contract.** Root `dialog.px-confirm-dialog[data-px-dialog="confirm"]` — singleton, matched by `document.querySelector`. `data-px-confirm-danger` on the htmx element → OK button gets `.px-confirm-dialog__ok--danger`. `data-px-confirm-ok` / `data-px-confirm-cancel` per-trigger label overrides.
-API: `px.confirm(message, {okLabel?, cancelLabel?, danger?}) → Promise<boolean>`.
-Falls back to `window.confirm` if no `ConfirmDialog` is mounted.
+**DOM contract.** Root `dialog.pjx-confirm-dialog[data-pjx-dialog="confirm"]` — singleton, matched by `document.querySelector`. `data-pjx-confirm-danger` on the htmx element → OK button gets `.pjx-confirm-dialog__ok--danger`. `data-pjx-confirm-ok` / `data-pjx-confirm-cancel` per-trigger label overrides.
+API: `pjx.confirm(message, {okLabel?, cancelLabel?, danger?}) → Promise<boolean>`.
+Falls back to `window.confirm` if no `PJXConfirmDialog` is mounted.
 
-**Classes:** `px-confirm-dialog`, `px-confirm-dialog__card`, `px-confirm-dialog__message`, `px-confirm-dialog__actions`, `px-confirm-dialog__ok`, `px-confirm-dialog__ok--danger`, `px-confirm-dialog__cancel`. Theming: see [ConfirmDialog tokens](#confirmdialog-tokens).
+**Classes:** `pjx-confirm-dialog`, `pjx-confirm-dialog__card`, `pjx-confirm-dialog__message`, `pjx-confirm-dialog__actions`, `pjx-confirm-dialog__ok`, `pjx-confirm-dialog__ok--danger`, `pjx-confirm-dialog__cancel`. Theming: see [PJXConfirmDialog tokens](#pjxconfirmdialog-tokens).
 
 ---
 
-## PromptDialog
+## PJXPromptDialog
 
-Accessible `<dialog>` singleton that replaces `window.prompt`. Mount once in the layout; `px.prompt()` is available everywhere. **Assets:** `prompt-dialog.css`, `prompt-dialog.js`.
+Accessible `<dialog>` singleton that replaces `window.prompt`. Mount once in the layout; `pjx.prompt()` is available everywhere. **Assets:** `pjx-prompt-dialog.css`, `pjx-prompt-dialog.js`.
 
-<!-- demo: PromptDialog -->
+<!-- demo: PJXPromptDialog -->
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
@@ -632,11 +632,11 @@ Accessible `<dialog>` singleton that replaces `window.prompt`. Mount once in the
 | `cancel_label` | `str` | `"Cancel"` | Cancel button text. |
 
 ```python
-PromptDialog(id="app-prompt")
+PJXPromptDialog(id="app-prompt")
 ```
 
 ```javascript
-const name = await px.prompt("Enter your name", {
+const name = await pjx.prompt("Enter your name", {
     initial: "Alice",
     placeholder: "Full name",
     okLabel: "Save",
@@ -644,29 +644,29 @@ const name = await px.prompt("Enter your name", {
 if (name !== null) { /* user submitted */ }
 ```
 
-**DOM contract.** Root `dialog.px-prompt-dialog[data-px-dialog="prompt"]` — singleton, matched by `document.querySelector`. Input pre-focused and selected on open.
-API: `px.prompt(title, {initial?, placeholder?, okLabel?, cancelLabel?}) → Promise<string | null>`.
-Returns `null` on cancel/Escape/backdrop close. Falls back to `window.prompt` if no `PromptDialog` is mounted.
+**DOM contract.** Root `dialog.pjx-prompt-dialog[data-pjx-dialog="prompt"]` — singleton, matched by `document.querySelector`. Input pre-focused and selected on open.
+API: `pjx.prompt(title, {initial?, placeholder?, okLabel?, cancelLabel?}) → Promise<string | null>`.
+Returns `null` on cancel/Escape/backdrop close. Falls back to `window.prompt` if no `PJXPromptDialog` is mounted.
 
-**Classes:** `px-prompt-dialog`, `px-prompt-dialog__card`, `px-prompt-dialog__label`, `px-prompt-dialog__input`, `px-prompt-dialog__actions`, `px-prompt-dialog__ok`, `px-prompt-dialog__cancel`. Theming: see [PromptDialog tokens](#promptdialog-tokens).
+**Classes:** `pjx-prompt-dialog`, `pjx-prompt-dialog__card`, `pjx-prompt-dialog__label`, `pjx-prompt-dialog__input`, `pjx-prompt-dialog__actions`, `pjx-prompt-dialog__ok`, `pjx-prompt-dialog__cancel`. Theming: see [PJXPromptDialog tokens](#pjxpromptdialog-tokens).
 
 ---
 
-## ToastHost
+## PJXToastHost
 
-HX-Trigger-driven toast container singleton. Mount once in the layout. **Assets:** `toast-host.css`, `toast-host.js`.
+HX-Trigger-driven toast container singleton. Mount once in the layout. **Assets:** `pjx-toast-host.css`, `pjx-toast-host.js`.
 
-<!-- demo: ToastHost -->
+<!-- demo: PJXToastHost -->
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
 | `position` | literal | `"bottom-right"` | `top-right`, `top-left`, `bottom-right`, `bottom-left`. |
 | `timeout` | `int` | `4000` | Default auto-dismiss ms; `0` disables. |
 | `dismiss_label` | `str` | `"Dismiss"` | `aria-label` for dismiss buttons on individual toasts. |
-| `event_name` | `str` | `"px:toast"` | Custom event name to listen for (wired on mount). |
+| `event_name` | `str` | `"pjx:toast"` | Custom event name to listen for (wired on mount). |
 
 ```python
-ToastHost(id="app-toasts", position="top-right")
+PJXToastHost(id="app-toasts", position="top-right")
 ```
 
 Fire from a FastAPI route via `HX-Trigger`:
@@ -674,85 +674,85 @@ Fire from a FastAPI route via `HX-Trigger`:
 ```python
 import json
 
-response.headers["HX-Trigger"] = json.dumps({"px:toast": {"message": "Saved.", "level": "success"}})
+response.headers["HX-Trigger"] = json.dumps({"pjx:toast": {"message": "Saved.", "level": "success"}})
 ```
 
 Or from JS:
 
 ```javascript
-px.toast("Upload complete.", { level: "success", timeout: 3000 });
+pjx.toast("Upload complete.", { level: "success", timeout: 3000 });
 ```
 
-Toast `level` maps to `.px-toast--<level>`; supported values: `info`, `success`, `warning`, `error`.
+Toast `level` maps to `.pjx-toast--<level>`; supported values: `info`, `success`, `warning`, `error`.
 
-**DOM contract.** Root `div.px-toast-host[data-px-toast-host]`. `data-event-name` sets the custom event; `data-timeout` sets the default dismiss timeout; `data-dismiss-label` sets dismiss button label.
-Events (bubble from the host): `px:toasthost:show` (detail: `{level}`), `px:toasthost:hide`.
-API: `px.toast(message, {level?, timeout?})`.
-Individual toasts: `div.px-toast.px-toast--<level>` > `.px-toast__message` + `button.px-toast__dismiss`.
+**DOM contract.** Root `div.pjx-toast-host[data-pjx-toast-host]`. `data-event-name` sets the custom event; `data-timeout` sets the default dismiss timeout; `data-dismiss-label` sets dismiss button label.
+Events (bubble from the host): `pjx:toasthost:show` (detail: `{level}`), `pjx:toasthost:hide`.
+API: `pjx.toast(message, {level?, timeout?})`.
+Individual toasts: `div.pjx-toast.pjx-toast--<level>` > `.pjx-toast__message` + `button.pjx-toast__dismiss`.
 
-**Classes:** `px-toast-host`, `px-toast-host--top-right`, `--top-left`, `--bottom-right`, `--bottom-left`; `px-toast`, `px-toast--info`, `--success`, `--warning`, `--error`; `px-toast--hiding`; `px-toast__message`, `px-toast__dismiss`. Theming: see [ToastHost tokens](#toasthost-tokens).
+**Classes:** `pjx-toast-host`, `pjx-toast-host--top-right`, `--top-left`, `--bottom-right`, `--bottom-left`; `pjx-toast`, `pjx-toast--info`, `--success`, `--warning`, `--error`; `pjx-toast--hiding`; `pjx-toast__message`, `pjx-toast__dismiss`. Theming: see [PJXToastHost tokens](#pjxtoasthost-tokens).
 
 ---
 
-## AvatarStack
+## PJXAvatarStack
 
-Overlapping row of avatars with optional overflow count. **Assets:** `avatar-stack.css` only.
+Overlapping row of avatars with optional overflow count. **Assets:** `pjx-avatar-stack.css` only.
 
-<!-- demo: AvatarStack -->
+<!-- demo: PJXAvatarStack -->
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
-| `avatars` | `list[str \| BaseComponent]` | `[]` | Avatar items (typically `Avatar` components or HTML strings). |
+| `avatars` | `list[str \| BaseComponent]` | `[]` | PJXAvatar items (typically `PJXAvatar` components or HTML strings). |
 | `extra_count` | `int` | `0` | When `> 0`, renders a `+N` overflow chip. |
 | `empty_label` | `str` | `""` | When no avatars and `empty_label` is set, renders a fallback label. |
 
 ```python
-AvatarStack(
+PJXAvatarStack(
     id="team",
     avatars=[
-        Avatar(id="a1", initials="AB", size="sm"),
-        Avatar(id="a2", initials="CD", size="sm"),
+        PJXAvatar(id="a1", initials="AB", size="sm"),
+        PJXAvatar(id="a2", initials="CD", size="sm"),
     ],
     extra_count=3,
 )
 ```
 
-**DOM contract.** Root `.px-avatar-stack`; no JS API.
+**DOM contract.** Root `.pjx-avatar-stack`; no JS API.
 
-**Classes:** `px-avatar-stack`, `px-avatar-stack__more`, `px-avatar-stack__empty`. Theming: see [AvatarStack tokens](#avatarstack-tokens).
+**Classes:** `pjx-avatar-stack`, `pjx-avatar-stack__more`, `pjx-avatar-stack__empty`. Theming: see [PJXAvatarStack tokens](#pjxavatarstack-tokens).
 
 ---
 
-## PageLoader
+## PJXPageLoader
 
-Full-page navigation loader. Mount once at the top of the layout body. **Assets:** `page-loader.css`, `page-loader.js`.
+Full-page navigation loader. Mount once at the top of the layout body. **Assets:** `pjx-page-loader.css`, `pjx-page-loader.js`.
 
-<!-- demo: PageLoader -->
+<!-- demo: PJXPageLoader -->
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
 | `nav_targets` | `str` | `"app-content"` | Comma-separated element ids whose htmx GET requests activate the loader. |
-| `active_on_load` | `bool` | `True` | When `True`, renders with `.px-page-loader--active` (cold-load shimmer, removed on `DOMContentLoaded`). |
+| `active_on_load` | `bool` | `True` | When `True`, renders with `.pjx-page-loader--active` (cold-load shimmer, removed on `DOMContentLoaded`). |
 | `loading_label` | `str` | `"Loading"` | `aria-label` for the `role="status"` element. |
 
 ```python
-PageLoader(id="page-loader", nav_targets="main-content,sidebar")
+PJXPageLoader(id="page-loader", nav_targets="main-content,sidebar")
 ```
 
-Add `data-px-loader` to any element to make its htmx requests activate the loader regardless of `nav_targets`:
+Add `data-pjx-loader` to any element to make its htmx requests activate the loader regardless of `nav_targets`:
 
 ```html
-<a hx-get="/slow-page" hx-target="#main-content" data-px-loader>Go</a>
+<a hx-get="/slow-page" hx-target="#main-content" data-pjx-loader>Go</a>
 ```
 
-**DOM contract.** Root `div.px-page-loader[data-px-page-loader]` (state: `.px-page-loader--active`).
+**DOM contract.** Root `div.pjx-page-loader[data-pjx-page-loader]` (state: `.pjx-page-loader--active`).
 `data-nav-targets` — comma-separated ids; htmx GET requests targeting any of these activate the loader.
-`data-px-loader` on any element marks its htmx requests as loader-tracked regardless of target.
+`data-pjx-loader` on any element marks its htmx requests as loader-tracked regardless of target.
 Tracking is detected via `htmx:beforeRequest`; the loader releases via the request's `loadend` (terminal on load, error, abort, and timeout); history navigations reset via `htmx:historyRestore`.
-Events (non-cancelable, bubble from the root): `px:page-loader:show`, `px:page-loader:hide`.
-API: `px.loader.page.show()`, `px.loader.page.hide()`, `px.loader.page.reset()`, `px.loader.page.wrap(promise)`.
+Events (non-cancelable, bubble from the root): `pjx:page-loader:show`, `pjx:page-loader:hide`.
+API: `pjx.loader.page.show()`, `pjx.loader.page.hide()`, `pjx.loader.page.reset()`, `pjx.loader.page.wrap(promise)`.
 
-**Classes:** `px-page-loader`, `px-page-loader--active`, `px-page-loader__spinner`. Theming: see [PageLoader tokens](#pageloader-tokens).
+**Classes:** `pjx-page-loader`, `pjx-page-loader--active`, `pjx-page-loader__spinner`. Theming: see [PJXPageLoader tokens](#pjxpageloader-tokens).
 
 ---
 
@@ -760,11 +760,11 @@ API: `px.loader.page.show()`, `px.loader.page.hide()`, `px.loader.page.reset()`,
 
 ---
 
-## ChipInput
+## PJXChipInput
 
-Tag-style multi-value input. Each chip carries its own `<input type="hidden">` so values post with any enclosing form and removal is pure DOM removal. **Assets:** `chip-input.css`, `chip-input.js`.
+Tag-style multi-value input. Each chip carries its own `<input type="hidden">` so values post with any enclosing form and removal is pure DOM removal. **Assets:** `pjx-chip-input.css`, `pjx-chip-input.js`.
 
-<!-- demo: ChipInput -->
+<!-- demo: PJXChipInput -->
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
@@ -775,15 +775,15 @@ Tag-style multi-value input. Each chip carries its own `<input type="hidden">` s
 | `disabled` | `bool` | `False` | When `True`, no text field or remove buttons are rendered; `data-disabled` is set on the root. |
 
 ```python
-ChipInput(id="tags", name="tags", values=["python", "jinja2"], placeholder="Add tag…")
+PJXChipInput(id="tags", name="tags", values=["python", "jinja2"], placeholder="Add tag…")
 ```
 
-**DOM contract.** Root `div.px-chip-input[data-px-chip-input][data-name][data-remove-label]`; state: `[data-disabled]`.
-Each chip: `span.px-chip-input__chip[data-px-chip]` containing a `.px-chip-input__label`, `input[type=hidden]`, and (when enabled) `button.px-chip-input__remove[data-px-chip-remove]`.
-Text field: `input.px-chip-input__field`.
-Events (bubble from root): `px:chip-input:before-add`* (detail `{value}`), `px:chip-input:add`, `px:chip-input:before-remove`* (detail `{value}`), `px:chip-input:remove` — `*` = cancelable. Commit triggers: `Enter`, `,`, `focusout`, `submit` (form submit commits pending text); Backspace on empty field removes the last chip.
+**DOM contract.** Root `div.pjx-chip-input[data-pjx-chip-input][data-name][data-remove-label]`; state: `[data-disabled]`.
+Each chip: `span.pjx-chip-input__chip[data-pjx-chip]` containing a `.pjx-chip-input__label`, `input[type=hidden]`, and (when enabled) `button.pjx-chip-input__remove[data-pjx-chip-remove]`.
+Text field: `input.pjx-chip-input__field`.
+Events (bubble from root): `pjx:chip-input:before-add`* (detail `{value}`), `pjx:chip-input:add`, `pjx:chip-input:before-remove`* (detail `{value}`), `pjx:chip-input:remove` — `*` = cancelable. Commit triggers: `Enter`, `,`, `focusout`, `submit` (form submit commits pending text); Backspace on empty field removes the last chip.
 
-**Classes:** `px-chip-input`, `px-chip-input__chip`, `px-chip-input__label`, `px-chip-input__remove`, `px-chip-input__field`. Theming: see [ChipInput tokens](#chipinput-tokens).
+**Classes:** `pjx-chip-input`, `pjx-chip-input__chip`, `pjx-chip-input__label`, `pjx-chip-input__remove`, `pjx-chip-input__field`. Theming: see [PJXChipInput tokens](#pjxchipinput-tokens).
 
 **Notes:**
 
@@ -793,11 +793,11 @@ Events (bubble from root): `px:chip-input:before-add`* (detail `{value}`), `px:c
 
 ---
 
-## FormField
+## PJXFormField
 
-Labelled control wrapper with help text and error state. **Assets:** `form-field.css` only.
+Labelled control wrapper with help text and error state. **Assets:** `pjx-form-field.css` only.
 
-<!-- demo: FormField -->
+<!-- demo: PJXFormField -->
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
@@ -805,11 +805,11 @@ Labelled control wrapper with help text and error state. **Assets:** `form-field
 | `for_id` | `str` | `""` | When set, adds `for="{{ for_id }}"` to the label. |
 | `content` | `str \| BaseComponent` | `""` | Control HTML (an `<input>`, `<select>`, etc.). |
 | `help` | `str` | `""` | Help text shown below the control — suppressed when `error` is set. |
-| `error` | `str` | `""` | Error message; adds `px-form-field--error` to the root and a `role="alert"` paragraph with id `{{ id }}-error`. |
-| `required` | `bool` | `False` | Renders a `<span class="px-form-field__required" aria-hidden="true">*</span>` inside the label. |
+| `error` | `str` | `""` | Error message; adds `pjx-form-field--error` to the root and a `role="alert"` paragraph with id `{{ id }}-error`. |
+| `required` | `bool` | `False` | Renders a `<span class="pjx-form-field__required" aria-hidden="true">*</span>` inside the label. |
 
 ```python
-FormField(
+PJXFormField(
     id="email-field",
     label="Email",
     for_id="email-input",
@@ -819,17 +819,17 @@ FormField(
 )
 ```
 
-**DOM contract.** Root `div.px-form-field`; error state `div.px-form-field--error`. Help paragraph id: `{{ id }}-help`. Error paragraph id: `{{ id }}-error`, `role="alert"`. No JS.
+**DOM contract.** Root `div.pjx-form-field`; error state `div.pjx-form-field--error`. Help paragraph id: `{{ id }}-help`. Error paragraph id: `{{ id }}-error`, `role="alert"`. No JS.
 
-**Classes:** `px-form-field`, `px-form-field--error`, `px-form-field__label`, `px-form-field__required`, `px-form-field__control`, `px-form-field__help`, `px-form-field__error`. Theming: see [FormField tokens](#formfield-tokens).
+**Classes:** `pjx-form-field`, `pjx-form-field--error`, `pjx-form-field__label`, `pjx-form-field__required`, `pjx-form-field__control`, `pjx-form-field__help`, `pjx-form-field__error`. Theming: see [PJXFormField tokens](#pjxformfield-tokens).
 
 ---
 
-## ToggleSwitch
+## PJXToggleSwitch
 
-Accessible on/off toggle backed by a visually-hidden checkbox. **Assets:** `toggle-switch.css` only — no JS.
+Accessible on/off toggle backed by a visually-hidden checkbox. **Assets:** `pjx-toggle-switch.css` only — no JS.
 
-<!-- demo: ToggleSwitch -->
+<!-- demo: PJXToggleSwitch -->
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
@@ -840,20 +840,20 @@ Accessible on/off toggle backed by a visually-hidden checkbox. **Assets:** `togg
 | `disabled` | `bool` | `False` | When `True`, adds `disabled` to the checkbox. |
 
 ```python
-ToggleSwitch(id="dark-mode", name="dark_mode", checked=True, label="Dark mode")
+PJXToggleSwitch(id="dark-mode", name="dark_mode", checked=True, label="Dark mode")
 ```
 
-**DOM contract.** Root `label.px-toggle-switch` wrapping a visually-hidden `input[type=checkbox].px-toggle-switch__input` (uses `clip-path: inset(50%)`, not `display:none` — keeps focus and click). CSS keys on `:checked + .px-toggle-switch__track` for the active state and `:focus-visible + .px-toggle-switch__track` for the ring. No JS API.
+**DOM contract.** Root `label.pjx-toggle-switch` wrapping a visually-hidden `input[type=checkbox].pjx-toggle-switch__input` (uses `clip-path: inset(50%)`, not `display:none` — keeps focus and click). CSS keys on `:checked + .pjx-toggle-switch__track` for the active state and `:focus-visible + .pjx-toggle-switch__track` for the ring. No JS API.
 
-**Classes:** `px-toggle-switch`, `px-toggle-switch__input`, `px-toggle-switch__track`, `px-toggle-switch__thumb`, `px-toggle-switch__label`. Theming: see [ToggleSwitch tokens](#toggleswitch-tokens).
+**Classes:** `pjx-toggle-switch`, `pjx-toggle-switch__input`, `pjx-toggle-switch__track`, `pjx-toggle-switch__thumb`, `pjx-toggle-switch__label`. Theming: see [PJXToggleSwitch tokens](#pjxtoggleswitch-tokens).
 
 ---
 
-## SegmentedControl
+## PJXSegmentedControl
 
-Pill-style radio group for mutually exclusive options. **Assets:** `segmented-control.css` only — no JS.
+Pill-style radio group for mutually exclusive options. **Assets:** `pjx-segmented-control.css` only — no JS.
 
-<!-- demo: SegmentedControl -->
+<!-- demo: PJXSegmentedControl -->
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
@@ -863,7 +863,7 @@ Pill-style radio group for mutually exclusive options. **Assets:** `segmented-co
 | `disabled` | `bool` | `False` | When `True`, adds `disabled` to all radio inputs. |
 
 ```python
-SegmentedControl(
+PJXSegmentedControl(
     id="view-switcher",
     name="view",
     options=[("list", "List"), ("grid", "Grid"), ("table", "Table")],
@@ -871,17 +871,17 @@ SegmentedControl(
 )
 ```
 
-**DOM contract.** Root `div.px-segmented-control[role="radiogroup"]`. Each option: `label.px-segmented-control__segment` > `input[type=radio].px-segmented-control__input` (visually hidden, `clip-path: inset(50%)`) + `span.px-segmented-control__text`. CSS keys on `:checked + .px-segmented-control__text` for the active segment. No JS API.
+**DOM contract.** Root `div.pjx-segmented-control[role="radiogroup"]`. Each option: `label.pjx-segmented-control__segment` > `input[type=radio].pjx-segmented-control__input` (visually hidden, `clip-path: inset(50%)`) + `span.pjx-segmented-control__text`. CSS keys on `:checked + .pjx-segmented-control__text` for the active segment. No JS API.
 
-**Classes:** `px-segmented-control`, `px-segmented-control__segment`, `px-segmented-control__input`, `px-segmented-control__text`. Theming: see [SegmentedControl tokens](#segmentedcontrol-tokens).
+**Classes:** `pjx-segmented-control`, `pjx-segmented-control__segment`, `pjx-segmented-control__input`, `pjx-segmented-control__text`. Theming: see [PJXSegmentedControl tokens](#pjxsegmentedcontrol-tokens).
 
 ---
 
-## PasswordInput
+## PJXPasswordInput
 
-Password field with a show/hide toggle button. **Assets:** `password-input.css`, `password-input.js`.
+Password field with a show/hide toggle button. **Assets:** `pjx-password-input.css`, `pjx-password-input.js`.
 
-<!-- demo: PasswordInput -->
+<!-- demo: PJXPasswordInput -->
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
@@ -892,12 +892,12 @@ Password field with a show/hide toggle button. **Assets:** `password-input.css`,
 | `show_label` | `str` | `"Show password"` | Static `aria-label` on the toggle button; visibility state is conveyed by `aria-pressed` (ARIA toggle-button pattern). |
 
 ```python
-PasswordInput(id="login-pw", autocomplete="current-password", required=True)
+PJXPasswordInput(id="login-pw", autocomplete="current-password", required=True)
 ```
 
-**DOM contract.** Root `div.px-password-input[data-px-password]`. Field: `input.px-password-input__field` with id `{{ id }}-field`. Toggle button: `button.px-password-input__toggle[data-px-password-toggle]`; `aria-pressed` reflects state (`"false"` when hidden, `"true"` when shown); `.px-password-input__toggle--on` class added when visible. No `px:*` events — state is readable from `aria-pressed` on the button. No JS API under `window.px`.
+**DOM contract.** Root `div.pjx-password-input[data-pjx-password]`. Field: `input.pjx-password-input__field` with id `{{ id }}-field`. Toggle button: `button.pjx-password-input__toggle[data-pjx-password-toggle]`; `aria-pressed` reflects state (`"false"` when hidden, `"true"` when shown); `.pjx-password-input__toggle--on` class added when visible. No `pjx:*` events — state is readable from `aria-pressed` on the button. No JS API under `window.pjx`.
 
-**Classes:** `px-password-input`, `px-password-input__field`, `px-password-input__toggle`, `px-password-input__toggle--on`, `px-password-input__eye`. Theming: see [PasswordInput tokens](#passwordinput-tokens).
+**Classes:** `pjx-password-input`, `pjx-password-input__field`, `pjx-password-input__toggle`, `pjx-password-input__toggle--on`, `pjx-password-input__eye`. Theming: see [PJXPasswordInput tokens](#pjxpasswordinput-tokens).
 
 ---
 
@@ -905,394 +905,394 @@ PasswordInput(id="login-pw", autocomplete="current-password", required=True)
 
 ```python
 from pyjinhx.builtins import (
-    AvatarStack,
-    Badge,
-    Breadcrumb,
-    Card,
-    ConfirmDialog,
-    Drawer,
-    Modal,
-    Notification,
-    PageLoader,
-    Panel,
-    PanelTrigger,
-    TabGroup,
-    ToastHost,
-    Tooltip,
+    PJXAvatarStack,
+    PJXBadge,
+    PJXBreadcrumb,
+    PJXCard,
+    PJXConfirmDialog,
+    PJXDrawer,
+    PJXModal,
+    PJXNotification,
+    PJXPageLoader,
+    PJXPanel,
+    PJXPanelTrigger,
+    PJXTabGroup,
+    PJXToastHost,
+    PJXTooltip,
 )
 
-badge = Badge(id="status-badge", label="Beta", color="brand")
-modal = Modal(id="info-modal", title="Hello", body="Content here.")
-toast = Notification(id="welcome-toast", content="Saved.", corner="bottom-right", timeout=3000)
-drawer = Drawer(id="filters", side="right", title="Filters", body="…")
-tip = Tooltip(id="help-tip", trigger="?", tip="More detail", placement="top")
-card = Card(id="summary", title="Summary", body="Details go here.")
-crumb = Breadcrumb(id="crumb", items=[("App", "/"), ("Page", None)])
-tabs = TabGroup(
+badge = PJXBadge(id="status-badge", label="Beta", color="brand")
+modal = PJXModal(id="info-modal", title="Hello", body="Content here.")
+toast = PJXNotification(id="welcome-toast", content="Saved.", corner="bottom-right", timeout=3000)
+drawer = PJXDrawer(id="filters", side="right", title="Filters", body="…")
+tip = PJXTooltip(id="help-tip", trigger="?", tip="More detail", placement="top")
+card = PJXCard(id="summary", title="Summary", body="Details go here.")
+crumb = PJXBreadcrumb(id="crumb", items=[("App", "/"), ("Page", None)])
+tabs = PJXTabGroup(
     id="main-tabs",
     tabs={"A": "<p>First</p>", "B": "<p>Second</p>"},
 )
-main_panel = Panel(
+main_panel = PJXPanel(
     id="app-panels",
     panels={"chat": "<p>Chat UI</p>", "other": "<p>Other</p>"},
 )
-open_chat = PanelTrigger(
+open_chat = PJXPanelTrigger(
     id="open-chat", panel_id="app-panels", panel="chat", content="Chat"
 )
-confirm = ConfirmDialog(id="app-confirm")
-toasts = ToastHost(id="app-toasts", position="bottom-right")
-page_loader = PageLoader(id="page-loader")
-avatar_stack = AvatarStack(id="team", avatars=[], extra_count=5)
+confirm = PJXConfirmDialog(id="app-confirm")
+toasts = PJXToastHost(id="app-toasts", position="bottom-right")
+page_loader = PJXPageLoader(id="page-loader")
+avatar_stack = PJXAvatarStack(id="team", avatars=[], extra_count=5)
 ```
 
 ---
 
 ## Theming tokens
 
-Per-component `--px-*` custom properties and their default mappings. Override any token in your own CSS.
+Per-component `--pjx-*` custom properties and their default mappings. Override any token in your own CSS.
 
-### Badge tokens
+### PJXBadge tokens
 
 | Token | Default (maps to) |
 | --- | --- |
-| `--px-badge-font-size` | `var(--font-size-xs)` |
-| `--px-badge-radius-sm` | `var(--radius-sm)` |
-| `--px-badge-radius-md` | `var(--radius-md)` |
-| `--px-badge-radius-full` | `var(--radius-full)` |
-| `--px-badge-brand-bg` | `var(--brand-subtle)` |
-| `--px-badge-brand-fg` | `var(--brand-muted)` |
-| `--px-badge-brand-accent` | `var(--brand)` |
-| `--px-badge-error-bg` | `var(--error-bg)` |
-| `--px-badge-error-fg` | `var(--error)` |
-| `--px-badge-error-border` | `var(--error-border)` |
-| `--px-badge-neutral-bg` | `var(--surface-alt)` |
-| `--px-badge-neutral-fg` | `var(--text)` |
-| `--px-badge-neutral-border` | `var(--border)` |
-| `--px-badge-muted-bg` | `var(--surface)` |
-| `--px-badge-muted-fg` | `var(--text-muted)` |
-| `--px-badge-muted-border` | `var(--border)` |
+| `--pjx-badge-font-size` | `var(--font-size-xs)` |
+| `--pjx-badge-radius-sm` | `var(--radius-sm)` |
+| `--pjx-badge-radius-md` | `var(--radius-md)` |
+| `--pjx-badge-radius-full` | `var(--radius-full)` |
+| `--pjx-badge-brand-bg` | `var(--brand-subtle)` |
+| `--pjx-badge-brand-fg` | `var(--brand-muted)` |
+| `--pjx-badge-brand-accent` | `var(--brand)` |
+| `--pjx-badge-error-bg` | `var(--error-bg)` |
+| `--pjx-badge-error-fg` | `var(--error)` |
+| `--pjx-badge-error-border` | `var(--error-border)` |
+| `--pjx-badge-neutral-bg` | `var(--surface-alt)` |
+| `--pjx-badge-neutral-fg` | `var(--text)` |
+| `--pjx-badge-neutral-border` | `var(--border)` |
+| `--pjx-badge-muted-bg` | `var(--surface)` |
+| `--pjx-badge-muted-fg` | `var(--text-muted)` |
+| `--pjx-badge-muted-border` | `var(--border)` |
 
-### Modal tokens
+### PJXModal tokens
 
 | Token | Default |
 | --- | --- |
-| `--px-modal-width` | `52rem` |
-| `--px-modal-min-height` | `28rem` |
-| `--px-modal-bg` | `var(--surface)` |
-| `--px-modal-border` | `var(--border)` |
-| `--px-modal-radius` | `var(--radius-lg)` |
-| `--px-modal-shadow` | `var(--shadow-md)` |
-| `--px-modal-header-bg` | `var(--surface-alt)` |
-| `--px-modal-header-sep` | `var(--border)` |
-| `--px-modal-footer-bg` | `var(--surface-alt)` |
-| `--px-modal-footer-sep` | `var(--border)` |
-| `--px-modal-title-color` | `var(--text)` |
-| `--px-modal-close-color` | `var(--text-muted)` |
-| `--px-modal-backdrop` | `rgb(0 0 0 / 0.6)` |
-| `--px-modal-padding` | `1.5rem` |
+| `--pjx-modal-width` | `52rem` |
+| `--pjx-modal-min-height` | `28rem` |
+| `--pjx-modal-bg` | `var(--surface)` |
+| `--pjx-modal-border` | `var(--border)` |
+| `--pjx-modal-radius` | `var(--radius-lg)` |
+| `--pjx-modal-shadow` | `var(--shadow-md)` |
+| `--pjx-modal-header-bg` | `var(--surface-alt)` |
+| `--pjx-modal-header-sep` | `var(--border)` |
+| `--pjx-modal-footer-bg` | `var(--surface-alt)` |
+| `--pjx-modal-footer-sep` | `var(--border)` |
+| `--pjx-modal-title-color` | `var(--text)` |
+| `--pjx-modal-close-color` | `var(--text-muted)` |
+| `--pjx-modal-backdrop` | `rgb(0 0 0 / 0.6)` |
+| `--pjx-modal-padding` | `1.5rem` |
 
 Close control hover uses `var(--surface)`, `var(--text)`, `var(--radius-sm)`, `var(--transition)` from your theme.
 
-### Notification tokens
+### PJXNotification tokens
 
 | Token | Default |
 | --- | --- |
-| `--px-notification-width` | `22rem` |
-| `--px-notification-gap` | `1.25rem` (viewport inset; used in slide animations) |
-| `--px-notification-bg` | `var(--surface-alt)` |
-| `--px-notification-border` | `var(--border)` |
-| `--px-notification-radius` | `var(--radius-md)` |
-| `--px-notification-shadow` | `var(--shadow-md)` |
-| `--px-notification-padding` | `1rem 1rem 1rem 1.25rem` |
-| `--px-notification-close-color` | `var(--text-muted)` |
-| `--px-notification-z` | `500` |
+| `--pjx-notification-width` | `22rem` |
+| `--pjx-notification-gap` | `1.25rem` (viewport inset; used in slide animations) |
+| `--pjx-notification-bg` | `var(--surface-alt)` |
+| `--pjx-notification-border` | `var(--border)` |
+| `--pjx-notification-radius` | `var(--radius-md)` |
+| `--pjx-notification-shadow` | `var(--shadow-md)` |
+| `--pjx-notification-padding` | `1rem 1rem 1rem 1.25rem` |
+| `--pjx-notification-close-color` | `var(--text-muted)` |
+| `--pjx-notification-z` | `500` |
 
 Content uses `var(--font-size-sm)`, `var(--text)`; close hover uses `var(--surface)`, `var(--text)`, `var(--radius-sm)`, `var(--transition)`.
 
-### Popover tokens
+### PJXPopover tokens
 
 | Token | Default |
 | --- | --- |
-| `--px-popover-max-width` | `28ch` |
-| `--px-popover-bg` | `var(--surface-alt)` |
-| `--px-popover-border` | `var(--border)` |
-| `--px-popover-radius` | `var(--radius-md)` |
-| `--px-popover-shadow` | `var(--shadow-md)` |
-| `--px-popover-padding` | `var(--space-3, 0.75rem) var(--space-4, 1rem)` |
-| `--px-popover-z` | `300` |
+| `--pjx-popover-max-width` | `28ch` |
+| `--pjx-popover-bg` | `var(--surface-alt)` |
+| `--pjx-popover-border` | `var(--border)` |
+| `--pjx-popover-radius` | `var(--radius-md)` |
+| `--pjx-popover-shadow` | `var(--shadow-md)` |
+| `--pjx-popover-padding` | `var(--space-3, 0.75rem) var(--space-4, 1rem)` |
+| `--pjx-popover-z` | `300` |
 
-### RegionLoader tokens
-
-| Token | Default |
-| --- | --- |
-| `--px-region-loader-bg` | `rgb(0 0 0 / 0.55)` |
-| `--px-region-loader-backdrop` | `blur(2px)` |
-| `--px-region-loader-z` | `100` |
-| `--px-region-loader-spinner-size` | `2.5rem` |
-| `--px-region-loader-spinner-width` | `3px` |
-| `--px-region-loader-spinner-color` | `var(--brand)` |
-| `--px-region-loader-spinner-track` | `rgb(255 255 255 / 0.1)` |
-
-### Tooltip tokens
+### PJXRegionLoader tokens
 
 | Token | Default |
 | --- | --- |
-| `--px-tooltip-gap` | `6px` |
-| `--px-tooltip-bg` | `var(--surface-alt)` |
-| `--px-tooltip-border` | `var(--border)` |
-| `--px-tooltip-radius` | `var(--radius-sm)` |
-| `--px-tooltip-shadow` | `var(--shadow-md)` |
-| `--px-tooltip-padding` | `0.35rem 0.5rem` |
-| `--px-tooltip-max-width` | `20ch` |
-| `--px-tooltip-fg` | `var(--text)` |
-| `--px-tooltip-font-size` | `var(--font-size-xs)` |
-| `--px-tooltip-z` | `400` |
+| `--pjx-region-loader-bg` | `rgb(0 0 0 / 0.55)` |
+| `--pjx-region-loader-backdrop` | `blur(2px)` |
+| `--pjx-region-loader-z` | `100` |
+| `--pjx-region-loader-spinner-size` | `2.5rem` |
+| `--pjx-region-loader-spinner-width` | `3px` |
+| `--pjx-region-loader-spinner-color` | `var(--brand)` |
+| `--pjx-region-loader-spinner-track` | `rgb(255 255 255 / 0.1)` |
 
-### Alert tokens
+### PJXTooltip tokens
 
 | Token | Default |
 | --- | --- |
-| `--px-alert-radius` | `var(--radius-md)` |
-| `--px-alert-padding` | `0.875rem 1rem` |
-| `--px-alert-border` | `var(--border)` |
-| `--px-alert-shadow` | `var(--shadow-md)` |
-| `--px-alert-title-size` | `var(--font-size-sm)` |
-| `--px-alert-body-size` | `var(--font-size-sm)` |
-| `--px-alert-dismiss-color` | `var(--text-muted)` |
+| `--pjx-tooltip-gap` | `6px` |
+| `--pjx-tooltip-bg` | `var(--surface-alt)` |
+| `--pjx-tooltip-border` | `var(--border)` |
+| `--pjx-tooltip-radius` | `var(--radius-sm)` |
+| `--pjx-tooltip-shadow` | `var(--shadow-md)` |
+| `--pjx-tooltip-padding` | `0.35rem 0.5rem` |
+| `--pjx-tooltip-max-width` | `20ch` |
+| `--pjx-tooltip-fg` | `var(--text)` |
+| `--pjx-tooltip-font-size` | `var(--font-size-xs)` |
+| `--pjx-tooltip-z` | `400` |
 
-### Dropdown tokens
-
-| Token | Default |
-| --- | --- |
-| `--px-dropdown-menu-bg` | `var(--surface-alt)` |
-| `--px-dropdown-menu-border` | `var(--border)` |
-| `--px-dropdown-menu-radius` | `var(--radius-md)` |
-| `--px-dropdown-menu-shadow` | `var(--shadow-md)` |
-| `--px-dropdown-menu-padding` | `0.35rem 0` |
-| `--px-dropdown-menu-min-w` | `10rem` |
-| `--px-dropdown-menu-max-h` | `min(70dvh, 24rem)` |
-| `--px-dropdown-z` | `350` |
-
-### Drawer tokens
+### PJXAlert tokens
 
 | Token | Default |
 | --- | --- |
-| `--px-drawer-width` | `min(24rem, 100vw)` |
-| `--px-drawer-height-bottom` | `min(50dvh, 28rem)` |
-| `--px-drawer-bg` | `var(--surface)` |
-| `--px-drawer-border` | `var(--border)` |
-| `--px-drawer-shadow` | `var(--shadow-md)` |
-| `--px-drawer-backdrop` | `rgb(0 0 0 / 0.45)` |
-| `--px-drawer-header-bg` | `var(--surface-alt)` |
-| `--px-drawer-header-sep` | `var(--border)` |
-| `--px-drawer-footer-bg` | `var(--surface-alt)` |
-| `--px-drawer-footer-sep` | `var(--border)` |
-| `--px-drawer-padding` | `1rem` |
-| `--px-drawer-z` | `250` |
+| `--pjx-alert-radius` | `var(--radius-md)` |
+| `--pjx-alert-padding` | `0.875rem 1rem` |
+| `--pjx-alert-border` | `var(--border)` |
+| `--pjx-alert-shadow` | `var(--shadow-md)` |
+| `--pjx-alert-title-size` | `var(--font-size-sm)` |
+| `--pjx-alert-body-size` | `var(--font-size-sm)` |
+| `--pjx-alert-dismiss-color` | `var(--text-muted)` |
 
-### Progress tokens
+### PJXDropdown tokens
 
 | Token | Default |
 | --- | --- |
-| `--px-progress-height` | `0.5rem` |
-| `--px-progress-radius` | `var(--radius-full)` |
-| `--px-progress-track` | `var(--surface-alt)` |
-| `--px-progress-fill` | `var(--brand)` |
-| `--px-progress-indeterminate-speed` | `1.2s` |
+| `--pjx-dropdown-menu-bg` | `var(--surface-alt)` |
+| `--pjx-dropdown-menu-border` | `var(--border)` |
+| `--pjx-dropdown-menu-radius` | `var(--radius-md)` |
+| `--pjx-dropdown-menu-shadow` | `var(--shadow-md)` |
+| `--pjx-dropdown-menu-padding` | `0.35rem 0` |
+| `--pjx-dropdown-menu-min-w` | `10rem` |
+| `--pjx-dropdown-menu-max-h` | `min(70dvh, 24rem)` |
+| `--pjx-dropdown-z` | `350` |
 
-### Skeleton tokens
-
-| Token | Default |
-| --- | --- |
-| `--px-skeleton-bg` | `var(--surface-alt)` |
-| `--px-skeleton-shine` | `color-mix(in srgb, var(--text) 8%, var(--surface-alt))` |
-| `--px-skeleton-line-height` | `0.65rem` |
-| `--px-skeleton-line-gap` | `0.5rem` |
-| `--px-skeleton-circle-size` | `2.5rem` |
-| `--px-skeleton-rect-height` | `6rem` |
-| `--px-skeleton-rect-radius` | `var(--radius-md)` |
-| `--px-skeleton-duration` | `1.2s` |
-
-### EmptyState tokens
+### PJXDrawer tokens
 
 | Token | Default |
 | --- | --- |
-| `--px-empty-state-padding` | `2rem 1.5rem` |
-| `--px-empty-state-max-width` | `28rem` |
-| `--px-empty-state-title-size` | `var(--font-size-md)` |
-| `--px-empty-state-desc-size` | `var(--font-size-sm)` |
-| `--px-empty-state-title-color` | `var(--text)` |
-| `--px-empty-state-desc-color` | `var(--text-muted)` |
-| `--px-empty-state-gap` | `0.5rem` |
-| `--px-empty-state-actions-gap` | `0.5rem` |
+| `--pjx-drawer-width` | `min(24rem, 100vw)` |
+| `--pjx-drawer-height-bottom` | `min(50dvh, 28rem)` |
+| `--pjx-drawer-bg` | `var(--surface)` |
+| `--pjx-drawer-border` | `var(--border)` |
+| `--pjx-drawer-shadow` | `var(--shadow-md)` |
+| `--pjx-drawer-backdrop` | `rgb(0 0 0 / 0.45)` |
+| `--pjx-drawer-header-bg` | `var(--surface-alt)` |
+| `--pjx-drawer-header-sep` | `var(--border)` |
+| `--pjx-drawer-footer-bg` | `var(--surface-alt)` |
+| `--pjx-drawer-footer-sep` | `var(--border)` |
+| `--pjx-drawer-padding` | `1rem` |
+| `--pjx-drawer-z` | `250` |
 
-### Divider tokens
-
-| Token | Default |
-| --- | --- |
-| `--px-divider-color` | `var(--border)` |
-| `--px-divider-thickness` | `1px` |
-| `--px-divider-gap` | `0.75rem` |
-| `--px-divider-label-color` | `var(--text-muted)` |
-| `--px-divider-label-size` | `var(--font-size-sm)` |
-
-### Spinner tokens
+### PJXProgress tokens
 
 | Token | Default |
 | --- | --- |
-| `--px-spinner-sm` | `1.25rem` |
-| `--px-spinner-md` | `2rem` |
-| `--px-spinner-lg` | `2.75rem` |
-| `--px-spinner-track` | `color-mix(in srgb, var(--text-muted) 35%, transparent)` |
-| `--px-spinner-accent` | `var(--brand)` |
+| `--pjx-progress-height` | `0.5rem` |
+| `--pjx-progress-radius` | `var(--radius-full)` |
+| `--pjx-progress-track` | `var(--surface-alt)` |
+| `--pjx-progress-fill` | `var(--brand)` |
+| `--pjx-progress-indeterminate-speed` | `1.2s` |
 
-### Avatar tokens
-
-| Token | Default |
-| --- | --- |
-| `--px-avatar-sm` | `2rem` |
-| `--px-avatar-md` | `2.5rem` |
-| `--px-avatar-lg` | `3.25rem` |
-| `--px-avatar-bg` | `var(--surface-alt)` |
-| `--px-avatar-fg` | `var(--text-muted)` |
-| `--px-avatar-border` | `var(--border)` |
-
-### Card tokens
+### PJXSkeleton tokens
 
 | Token | Default |
 | --- | --- |
-| `--px-card-bg` | `var(--surface-alt)` |
-| `--px-card-border` | `var(--border)` |
-| `--px-card-radius` | `var(--radius-md)` |
-| `--px-card-title-color` | `var(--text)` |
-| `--px-card-padding` | `var(--space-4, 1rem)` |
+| `--pjx-skeleton-bg` | `var(--surface-alt)` |
+| `--pjx-skeleton-shine` | `color-mix(in srgb, var(--text) 8%, var(--surface-alt))` |
+| `--pjx-skeleton-line-height` | `0.65rem` |
+| `--pjx-skeleton-line-gap` | `0.5rem` |
+| `--pjx-skeleton-circle-size` | `2.5rem` |
+| `--pjx-skeleton-rect-height` | `6rem` |
+| `--pjx-skeleton-rect-radius` | `var(--radius-md)` |
+| `--pjx-skeleton-duration` | `1.2s` |
 
-### Breadcrumb tokens
-
-| Token | Default |
-| --- | --- |
-| `--px-breadcrumb-sep` | `"/"` |
-| `--px-breadcrumb-link-color` | `var(--brand)` |
-| `--px-breadcrumb-current-color` | `var(--text)` |
-
-### TabGroup tokens
+### PJXEmptyState tokens
 
 | Token | Default |
 | --- | --- |
-| `--px-tab-group-border` | `var(--border)` |
-| `--px-tab-group-bg` | `var(--surface-alt)` |
-| `--px-tab-group-tab-active-fg` | `var(--text)` |
-| `--px-tab-group-tab-active-bg` | `color-mix(in srgb, var(--surface) 55%, var(--surface-alt))` |
-| `--px-tab-group-tab-active-border` | `var(--brand)` |
-| `--px-tab-group-panel-bg` | `var(--surface)` |
+| `--pjx-empty-state-padding` | `2rem 1.5rem` |
+| `--pjx-empty-state-max-width` | `28rem` |
+| `--pjx-empty-state-title-size` | `var(--font-size-md)` |
+| `--pjx-empty-state-desc-size` | `var(--font-size-sm)` |
+| `--pjx-empty-state-title-color` | `var(--text)` |
+| `--pjx-empty-state-desc-color` | `var(--text-muted)` |
+| `--pjx-empty-state-gap` | `0.5rem` |
+| `--pjx-empty-state-actions-gap` | `0.5rem` |
 
-### ConfirmDialog tokens
-
-| Token | Default |
-| --- | --- |
-| `--px-confirm-dialog-bg` | `var(--surface)` |
-| `--px-confirm-dialog-border` | `var(--border)` |
-| `--px-confirm-dialog-radius` | `var(--radius-md)` |
-| `--px-confirm-dialog-shadow` | `var(--shadow-md)` |
-| `--px-confirm-dialog-backdrop` | `rgb(0 0 0 / 0.5)` |
-| `--px-confirm-dialog-danger` | `#b3261e` |
-
-### PromptDialog tokens
+### PJXDivider tokens
 
 | Token | Default |
 | --- | --- |
-| `--px-prompt-dialog-bg` | `var(--surface)` |
-| `--px-prompt-dialog-border` | `var(--border)` |
-| `--px-prompt-dialog-radius` | `var(--radius-md)` |
-| `--px-prompt-dialog-shadow` | `var(--shadow-md)` |
-| `--px-prompt-dialog-backdrop` | `rgb(0 0 0 / 0.5)` |
+| `--pjx-divider-color` | `var(--border)` |
+| `--pjx-divider-thickness` | `1px` |
+| `--pjx-divider-gap` | `0.75rem` |
+| `--pjx-divider-label-color` | `var(--text-muted)` |
+| `--pjx-divider-label-size` | `var(--font-size-sm)` |
 
-### ToastHost tokens
-
-| Token | Default |
-| --- | --- |
-| `--px-toast-bg` | `var(--surface)` |
-| `--px-toast-border` | `var(--border)` |
-| `--px-toast-radius` | `var(--radius-md)` |
-| `--px-toast-shadow` | `var(--shadow-md)` |
-| `--px-toast-gap` | `0.5rem` |
-| `--px-toast-z` | `1000` |
-| `--px-toast-info` | `var(--brand, #5c8fa8)` |
-| `--px-toast-success` | `#3e7d4f` |
-| `--px-toast-warning` | `#b07415` |
-| `--px-toast-error` | `#b3261e` |
-
-### AvatarStack tokens
+### PJXSpinner tokens
 
 | Token | Default |
 | --- | --- |
-| `--px-avatar-stack-overlap` | `-0.5rem` |
-| `--px-avatar-stack-ring` | `var(--surface)` |
+| `--pjx-spinner-sm` | `1.25rem` |
+| `--pjx-spinner-md` | `2rem` |
+| `--pjx-spinner-lg` | `2.75rem` |
+| `--pjx-spinner-track` | `color-mix(in srgb, var(--text-muted) 35%, transparent)` |
+| `--pjx-spinner-accent` | `var(--brand)` |
 
-### PageLoader tokens
-
-| Token | Default |
-| --- | --- |
-| `--px-page-loader-backdrop` | `rgb(0 0 0 / 0.15)` |
-| `--px-page-loader-z` | `9999` |
-| `--px-page-loader-size` | `2rem` |
-
-### ChipInput tokens
+### PJXAvatar tokens
 
 | Token | Default |
 | --- | --- |
-| `--px-chip-input-gap` | `0.375rem` |
-| `--px-chip-input-chip-bg` | `var(--surface-alt)` |
-| `--px-chip-input-chip-fg` | `var(--text)` |
-| `--px-chip-input-chip-radius` | `var(--radius-full)` |
-| `--px-chip-input-border` | `var(--border)` |
-| `--px-chip-input-focus` | `var(--border-focus, var(--border))` |
-| `--px-chip-input-radius` | `var(--radius-md)` |
-| `--px-chip-input-padding` | `0.375rem 0.5rem` |
+| `--pjx-avatar-sm` | `2rem` |
+| `--pjx-avatar-md` | `2.5rem` |
+| `--pjx-avatar-lg` | `3.25rem` |
+| `--pjx-avatar-bg` | `var(--surface-alt)` |
+| `--pjx-avatar-fg` | `var(--text-muted)` |
+| `--pjx-avatar-border` | `var(--border)` |
 
-### FormField tokens
+### PJXCard tokens
 
 | Token | Default |
 | --- | --- |
-| `--px-form-field-gap` | `0.375rem` |
-| `--px-form-field-label-size` | `0.875em` |
-| `--px-form-field-label-color` | `var(--text)` |
-| `--px-form-field-help-color` | `var(--text-muted)` |
-| `--px-form-field-error` | `#b3261e` |
+| `--pjx-card-bg` | `var(--surface-alt)` |
+| `--pjx-card-border` | `var(--border)` |
+| `--pjx-card-radius` | `var(--radius-md)` |
+| `--pjx-card-title-color` | `var(--text)` |
+| `--pjx-card-padding` | `var(--space-4, 1rem)` |
 
-### ToggleSwitch tokens
-
-| Token | Default |
-| --- | --- |
-| `--px-toggle-switch-width` | `2.75rem` |
-| `--px-toggle-switch-height` | `1.5rem` |
-| `--px-toggle-switch-track` | `var(--border)` |
-| `--px-toggle-switch-track-on` | `var(--brand)` |
-| `--px-toggle-switch-thumb` | `#fff` |
-| `--px-toggle-switch-radius` | `var(--radius-full)` |
-| `--px-toggle-switch-gap` | `0.5rem` |
-
-### SegmentedControl tokens
+### PJXBreadcrumb tokens
 
 | Token | Default |
 | --- | --- |
-| `--px-segmented-control-bg` | `var(--surface-alt)` |
-| `--px-segmented-control-border` | `var(--border)` |
-| `--px-segmented-control-radius` | `var(--radius-full)` |
-| `--px-segmented-control-gap` | `0.25rem` |
-| `--px-segmented-control-padding` | `0.25rem` |
-| `--px-segmented-control-active-bg` | `var(--surface)` |
-| `--px-segmented-control-active-fg` | `var(--text)` |
-| `--px-segmented-control-active-shadow` | `0 1px 3px rgb(0 0 0 / 0.12)` |
-| `--px-segmented-control-fg` | `var(--text-muted)` |
-| `--px-segmented-control-focus` | `var(--border-focus, var(--brand))` |
+| `--pjx-breadcrumb-sep` | `"/"` |
+| `--pjx-breadcrumb-link-color` | `var(--brand)` |
+| `--pjx-breadcrumb-current-color` | `var(--text)` |
 
-### PasswordInput tokens
+### PJXTabGroup tokens
 
 | Token | Default |
 | --- | --- |
-| `--px-password-input-border` | `var(--border)` |
-| `--px-password-input-radius` | `var(--radius-md)` |
-| `--px-password-input-focus` | `var(--border-focus, var(--brand))` |
-| `--px-password-input-toggle-color` | `var(--text-muted)` |
-| `--px-password-input-eye-size` | `1.25rem` |
+| `--pjx-tab-group-border` | `var(--border)` |
+| `--pjx-tab-group-bg` | `var(--surface-alt)` |
+| `--pjx-tab-group-tab-active-fg` | `var(--text)` |
+| `--pjx-tab-group-tab-active-bg` | `color-mix(in srgb, var(--surface) 55%, var(--surface-alt))` |
+| `--pjx-tab-group-tab-active-border` | `var(--brand)` |
+| `--pjx-tab-group-panel-bg` | `var(--surface)` |
+
+### PJXConfirmDialog tokens
+
+| Token | Default |
+| --- | --- |
+| `--pjx-confirm-dialog-bg` | `var(--surface)` |
+| `--pjx-confirm-dialog-border` | `var(--border)` |
+| `--pjx-confirm-dialog-radius` | `var(--radius-md)` |
+| `--pjx-confirm-dialog-shadow` | `var(--shadow-md)` |
+| `--pjx-confirm-dialog-backdrop` | `rgb(0 0 0 / 0.5)` |
+| `--pjx-confirm-dialog-danger` | `#b3261e` |
+
+### PJXPromptDialog tokens
+
+| Token | Default |
+| --- | --- |
+| `--pjx-prompt-dialog-bg` | `var(--surface)` |
+| `--pjx-prompt-dialog-border` | `var(--border)` |
+| `--pjx-prompt-dialog-radius` | `var(--radius-md)` |
+| `--pjx-prompt-dialog-shadow` | `var(--shadow-md)` |
+| `--pjx-prompt-dialog-backdrop` | `rgb(0 0 0 / 0.5)` |
+
+### PJXToastHost tokens
+
+| Token | Default |
+| --- | --- |
+| `--pjx-toast-bg` | `var(--surface)` |
+| `--pjx-toast-border` | `var(--border)` |
+| `--pjx-toast-radius` | `var(--radius-md)` |
+| `--pjx-toast-shadow` | `var(--shadow-md)` |
+| `--pjx-toast-gap` | `0.5rem` |
+| `--pjx-toast-z` | `1000` |
+| `--pjx-toast-info` | `var(--brand, #5c8fa8)` |
+| `--pjx-toast-success` | `#3e7d4f` |
+| `--pjx-toast-warning` | `#b07415` |
+| `--pjx-toast-error` | `#b3261e` |
+
+### PJXAvatarStack tokens
+
+| Token | Default |
+| --- | --- |
+| `--pjx-avatar-stack-overlap` | `-0.5rem` |
+| `--pjx-avatar-stack-ring` | `var(--surface)` |
+
+### PJXPageLoader tokens
+
+| Token | Default |
+| --- | --- |
+| `--pjx-page-loader-backdrop` | `rgb(0 0 0 / 0.15)` |
+| `--pjx-page-loader-z` | `9999` |
+| `--pjx-page-loader-size` | `2rem` |
+
+### PJXChipInput tokens
+
+| Token | Default |
+| --- | --- |
+| `--pjx-chip-input-gap` | `0.375rem` |
+| `--pjx-chip-input-chip-bg` | `var(--surface-alt)` |
+| `--pjx-chip-input-chip-fg` | `var(--text)` |
+| `--pjx-chip-input-chip-radius` | `var(--radius-full)` |
+| `--pjx-chip-input-border` | `var(--border)` |
+| `--pjx-chip-input-focus` | `var(--border-focus, var(--border))` |
+| `--pjx-chip-input-radius` | `var(--radius-md)` |
+| `--pjx-chip-input-padding` | `0.375rem 0.5rem` |
+
+### PJXFormField tokens
+
+| Token | Default |
+| --- | --- |
+| `--pjx-form-field-gap` | `0.375rem` |
+| `--pjx-form-field-label-size` | `0.875em` |
+| `--pjx-form-field-label-color` | `var(--text)` |
+| `--pjx-form-field-help-color` | `var(--text-muted)` |
+| `--pjx-form-field-error` | `#b3261e` |
+
+### PJXToggleSwitch tokens
+
+| Token | Default |
+| --- | --- |
+| `--pjx-toggle-switch-width` | `2.75rem` |
+| `--pjx-toggle-switch-height` | `1.5rem` |
+| `--pjx-toggle-switch-track` | `var(--border)` |
+| `--pjx-toggle-switch-track-on` | `var(--brand)` |
+| `--pjx-toggle-switch-thumb` | `#fff` |
+| `--pjx-toggle-switch-radius` | `var(--radius-full)` |
+| `--pjx-toggle-switch-gap` | `0.5rem` |
+
+### PJXSegmentedControl tokens
+
+| Token | Default |
+| --- | --- |
+| `--pjx-segmented-control-bg` | `var(--surface-alt)` |
+| `--pjx-segmented-control-border` | `var(--border)` |
+| `--pjx-segmented-control-radius` | `var(--radius-full)` |
+| `--pjx-segmented-control-gap` | `0.25rem` |
+| `--pjx-segmented-control-padding` | `0.25rem` |
+| `--pjx-segmented-control-active-bg` | `var(--surface)` |
+| `--pjx-segmented-control-active-fg` | `var(--text)` |
+| `--pjx-segmented-control-active-shadow` | `0 1px 3px rgb(0 0 0 / 0.12)` |
+| `--pjx-segmented-control-fg` | `var(--text-muted)` |
+| `--pjx-segmented-control-focus` | `var(--border-focus, var(--brand))` |
+
+### PJXPasswordInput tokens
+
+| Token | Default |
+| --- | --- |
+| `--pjx-password-input-border` | `var(--border)` |
+| `--pjx-password-input-radius` | `var(--radius-md)` |
+| `--pjx-password-input-focus` | `var(--border-focus, var(--brand))` |
+| `--pjx-password-input-toggle-color` | `var(--text-muted)` |
+| `--pjx-password-input-eye-size` | `1.25rem` |

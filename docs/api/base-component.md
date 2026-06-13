@@ -12,7 +12,7 @@ Subclasses are automatically registered and can be rendered using their correspo
 
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
-| `id` | `str` | No | auto-generated (`px-<n>`) when omitted | Unique identifier for the component instance |
+| `id` | `str` | No | auto-generated (`pjx-<n>`) when omitted | Unique identifier for the component instance |
 | `js` | `list[str]` | No | `[]` | Paths to additional JavaScript files to include when rendering |
 | `css` | `list[str]` | No | `[]` | Paths to additional CSS files to include when rendering |
 

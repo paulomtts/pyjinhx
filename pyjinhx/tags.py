@@ -40,7 +40,7 @@ class Tag:
     children: list["Tag | str"] = field(default_factory=list)
 
 
-RE_PASCAL_CASE_TAG_NAME = re.compile(r"^[A-Z](?:[a-z]+(?:[A-Z][a-z]+)*)?$")
+RE_PASCAL_CASE_TAG_NAME = re.compile(r"^[A-Z](?=[A-Za-z0-9]*[a-z])[A-Za-z0-9]*$")
 
 
 class Parser(HTMLParser):
@@ -196,39 +196,39 @@ _warned_unregistered_tags: set[str] = set()
 # imported so the error path doesn't register every builtin as a side effect.
 _BUILTIN_TAG_NAMES = frozenset(
     {
-        "Alert",
-        "Avatar",
-        "AvatarStack",
-        "Badge",
-        "Breadcrumb",
-        "Card",
-        "ChipInput",
-        "ConfirmDialog",
-        "Divider",
-        "Dropdown",
-        "Drawer",
-        "EmptyState",
-        "FormField",
-        "LazyPanel",
-        "Modal",
-        "Notification",
-        "PageLoader",
-        "Popover",
-        "PopoverPanel",
-        "PopoverTrigger",
-        "Progress",
-        "PromptDialog",
-        "RegionLoader",
-        "SegmentedControl",
-        "Panel",
-        "PanelTrigger",
-        "PasswordInput",
-        "Skeleton",
-        "Spinner",
-        "TabGroup",
-        "ToastHost",
-        "ToggleSwitch",
-        "Tooltip",
+        "PJXAlert",
+        "PJXAvatar",
+        "PJXAvatarStack",
+        "PJXBadge",
+        "PJXBreadcrumb",
+        "PJXCard",
+        "PJXChipInput",
+        "PJXConfirmDialog",
+        "PJXDivider",
+        "PJXDropdown",
+        "PJXDrawer",
+        "PJXEmptyState",
+        "PJXFormField",
+        "PJXLazyPanel",
+        "PJXModal",
+        "PJXNotification",
+        "PJXPageLoader",
+        "PJXPopover",
+        "PJXPopoverPanel",
+        "PJXPopoverTrigger",
+        "PJXProgress",
+        "PJXPromptDialog",
+        "PJXRegionLoader",
+        "PJXSegmentedControl",
+        "PJXPanel",
+        "PJXPanelTrigger",
+        "PJXPasswordInput",
+        "PJXSkeleton",
+        "PJXSpinner",
+        "PJXTabGroup",
+        "PJXToastHost",
+        "PJXToggleSwitch",
+        "PJXTooltip",
     }
 )
 

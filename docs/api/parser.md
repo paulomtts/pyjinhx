@@ -54,6 +54,6 @@ Represents a parsed PascalCase component tag.
 Inner text between opening and closing tags becomes string children. Self-closing tags have an empty `children` list.
 
 ```python
-# <Card title="Note">Hello</Card>
-# Tag(name="Card", attrs={"title": "Note"}, children=["Hello"])
+# <PJXCard title="Note">Hello</PJXCard>
+# Tag(name="PJXCard", attrs={"title": "Note"}, children=["Hello"])
 ```

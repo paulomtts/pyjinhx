@@ -31,7 +31,7 @@ class Button(BaseComponent):
 Every component:
 
 - Inherits from `BaseComponent`
-- Has an `id` field — auto-generated (`px-<n>`) if omitted; redeclare `id: str` to require one
+- Has an `id` field — auto-generated (`pjx-<n>`) if omitted; redeclare `id: str` to require one
 - Can have additional fields with optional defaults
 
 ## Step 2: Create the Template

@@ -40,11 +40,11 @@ PyJinHX uses **Jinja2** templates for its components:
 
 ## The `id` Field
 
-`id` is **auto-generated** (`px-<n>`) when omitted. Pass an explicit id for stable hooks (CSS selectors, htmx targets, reactive OOB targeting):
+`id` is **auto-generated** (`pjx-<n>`) when omitted. Pass an explicit id for stable hooks (CSS selectors, htmx targets, reactive OOB targeting):
 
 ```python
 button = Button(id="submit", text="Submit")  # explicit — stable hook
-button = Button(text="Submit")               # auto-generated px-<n>
+button = Button(text="Submit")               # auto-generated pjx-<n>
 ```
 
 !!! tip "Using your own id scheme"
@@ -64,7 +64,7 @@ button = Button(text="Submit")               # auto-generated px-<n>
 
 
 !!! tip "Auto-generated IDs apply to PascalCase tags only"
-    `auto_id` does **not** affect plain Python instances — omitting `id` on `BaseComponent(...)` falls back to the built-in `px-<n>` counter. The `Renderer`'s `auto_id=True` only generates an `id` when a PascalCase `<Tag/>` is expanded in a template without one (see [PascalCase Tags](tags.md)). Separately, `ReactiveComponent` (not `BaseComponent`) defaults its `id` to the kebab-cased class name (e.g. `TodoCounter` → `"todo-counter"`).
+    `auto_id` does **not** affect plain Python instances — omitting `id` on `BaseComponent(...)` falls back to the built-in `pjx-<n>` counter. The `Renderer`'s `auto_id=True` only generates an `id` when a PascalCase `<Tag/>` is expanded in a template without one (see [PascalCase Tags](tags.md)). Separately, `ReactiveComponent` (not `BaseComponent`) defaults its `id` to the kebab-cased class name (e.g. `TodoCounter` → `"todo-counter"`).
 
 
 ## Template Discovery
@@ -84,7 +84,7 @@ A subclass with no adjacent template inherits the nearest ancestor's template an
 assets, each resolved independently (first found per kind walking the MRO). At most one
 component base per class — a definition-time `TypeError` is raised if two component bases
 appear in `__bases__`. Framework bases (`ReactiveComponent`) don't count toward that
-limit, so `class LiveBadge(ReactiveComponent, Badge, react={...})` is valid.
+limit, so `class LiveBadge(ReactiveComponent, PJXBadge, react={...})` is valid.
 
 ## Extra Fields
 

@@ -1,0 +1,11 @@
+<div class="pjx-notification pjx-notification--{{ corner }}{% if class_name %} {{ class_name }}{% endif %}"
+     id="{{ id }}"
+     data-timeout="{{ timeout }}"
+     {% if autoshow %}data-pjx-autoshow{% endif %}
+     role="status"
+     aria-live="polite"{{ extra_attrs_html }}>
+    <div class="pjx-notification__content">{{ content }}</div>
+    <button type="button" class="pjx-notification__close"
+            data-pjx-close
+            aria-label="{{ dismiss_label }}">&#x2715;</button>
+</div>

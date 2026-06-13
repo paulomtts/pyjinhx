@@ -1,0 +1,10 @@
+<div id="{{ id }}" class="pjx-chip-input{% if class_name %} {{ class_name }}{% endif %}" data-pjx-chip-input data-name="{{ name }}" data-remove-label="{{ remove_label }}"{% if disabled %} data-disabled{% endif %}{{ extra_attrs_html }}>
+  {% for value in values %}
+  <span class="pjx-chip-input__chip" data-pjx-chip>
+    <span class="pjx-chip-input__label">{{ value }}</span>
+    <input type="hidden" name="{{ name }}" value="{{ value }}">
+    {% if not disabled %}<button type="button" class="pjx-chip-input__remove" data-pjx-chip-remove aria-label="{{ remove_label }}">&#x2715;</button>{% endif %}
+  </span>
+  {% endfor %}
+  {% if not disabled %}<input type="text" class="pjx-chip-input__field" placeholder="{{ placeholder }}" autocomplete="off">{% endif %}
+</div>

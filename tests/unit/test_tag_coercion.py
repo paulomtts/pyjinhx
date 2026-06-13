@@ -28,7 +28,7 @@ def test_tag_without_id_uses_px_format(tmp_path):
     env = Environment(loader=FileSystemLoader(str(tmp_path)))
     renderer = Renderer(env)
     html = renderer.render('<CoercionProbe count="1"/>')
-    assert re.search(r'id="px-\d+"', html)
+    assert re.search(r'id="pjx-\d+"', html)
 
 
 def test_instance_reuse_update_is_validated(tmp_path):
@@ -50,17 +50,17 @@ def test_instance_reuse_invalid_update_raises(tmp_path):
 
 
 def test_instance_reuse_preserves_nested_components(tmp_path):
-    from pyjinhx.builtins import Badge, Card
+    from pyjinhx.builtins import PJXBadge, PJXCard
 
     (tmp_path / "unused_probe.html").write_text("<i></i>")
     original_environment = Renderer.peek_default_environment()
     try:
         Renderer.set_default_environment(str(tmp_path))
         renderer = Renderer.get_default_renderer()
-        Card(id="c1", body=Badge(id="b1", label="hi"))
-        html = renderer.render('<Card id="c1" title="X"/>')
-        assert "hi" in html          # Badge subclass state survived the reuse update
-        assert "px-badge" in html    # it rendered as a Badge, not a degraded BaseComponent
+        PJXCard(id="c1", body=PJXBadge(id="b1", label="hi"))
+        html = renderer.render('<PJXCard id="c1" title="X"/>')
+        assert "hi" in html          # PJXBadge subclass state survived the reuse update
+        assert "pjx-badge" in html    # it rendered as a PJXBadge, not a degraded BaseComponent
         assert ">X<" in html         # the update itself applied
     finally:
         Renderer.set_default_environment(original_environment)

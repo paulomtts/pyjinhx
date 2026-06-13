@@ -1,0 +1,18 @@
+<div class="pjx-progress{% if class_name %} {{ class_name }}{% endif %}" id="{{ id }}"{{ extra_attrs_html }}>
+    {% if label %}
+    <span class="pjx-progress__label" id="{{ id }}-label">{{ label }}</span>
+    {% endif %}
+    {% if value is none %}
+    <progress class="pjx-progress__bar"
+              max="{{ max }}"
+              {% if label %}aria-labelledby="{{ id }}-label"{% else %}aria-label="{{ loading_label }}"{% endif %}></progress>
+    {% else %}
+    <progress class="pjx-progress__bar"
+              max="{{ max }}"
+              value="{{ value }}"
+              aria-valuenow="{{ value }}"
+              aria-valuemin="0"
+              aria-valuemax="{{ max }}"
+              {% if label %}aria-labelledby="{{ id }}-label"{% endif %}></progress>
+    {% endif %}
+</div>

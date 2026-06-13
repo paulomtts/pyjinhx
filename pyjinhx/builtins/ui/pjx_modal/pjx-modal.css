@@ -1,0 +1,142 @@
+/* ── PJXModal tokens (defaults wire to common design tokens) ─── */
+:where(:root) {
+  --pjx-modal-width:        52rem;
+  --pjx-modal-min-height:   28rem;
+  --pjx-modal-bg:           var(--surface);
+  --pjx-modal-border:       var(--border);
+  --pjx-modal-radius:       var(--radius-lg);
+  --pjx-modal-shadow:       var(--shadow-md);
+  --pjx-modal-header-bg:    var(--surface-alt);
+  --pjx-modal-header-sep:   var(--border);
+  --pjx-modal-footer-bg:    var(--surface-alt);
+  --pjx-modal-footer-sep:   var(--border);
+  --pjx-modal-title-color:  var(--text);
+  --pjx-modal-close-color:  var(--text-muted);
+  --pjx-modal-backdrop:     rgb(0 0 0 / 0.6);
+  --pjx-modal-padding:      1.5rem;
+}
+
+/* ── Backdrop ──────────────────────────────────────────────── */
+.pjx-modal::backdrop {
+  background: var(--pjx-modal-backdrop);
+  backdrop-filter: blur(2px);
+  animation: modal-backdrop-in 200ms ease forwards;
+}
+
+/* ── Dialog element ────────────────────────────────────────── */
+.pjx-modal[open] {
+  display: flex;
+  flex-direction: column;
+  width: min(var(--pjx-modal-width), calc(100vw - 2rem));
+  min-height: var(--pjx-modal-min-height);
+  max-height: calc(100dvh - 4rem);
+  margin: auto;
+  padding: 0;
+  border: 1px solid var(--pjx-modal-border);
+  border-radius: var(--pjx-modal-radius);
+  background: transparent;
+  box-shadow: var(--pjx-modal-shadow);
+  overflow: hidden;
+  animation: modal-in 200ms ease forwards;
+}
+
+.pjx-modal.pjx-modal--closing {
+  animation: modal-out 150ms ease forwards;
+}
+
+.pjx-modal.pjx-modal--closing::backdrop {
+  animation: modal-backdrop-out 150ms ease forwards;
+}
+
+/* ── Inner box ─────────────────────────────────────────────── */
+.pjx-modal__box {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  background: var(--pjx-modal-bg);
+}
+
+/* ── Header ────────────────────────────────────────────────── */
+.pjx-modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem var(--pjx-modal-padding);
+  background: var(--pjx-modal-header-bg);
+  border-bottom: 1px solid var(--pjx-modal-header-sep);
+  flex-shrink: 0;
+}
+
+.pjx-modal__title {
+  font-size: var(--font-size-md);
+  font-weight: 600;
+  color: var(--pjx-modal-title-color);
+  letter-spacing: -0.01em;
+}
+
+.pjx-modal__close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  padding: 0;
+  font-size: 1rem;
+  line-height: 1;
+  background: transparent;
+  color: var(--pjx-modal-close-color);
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background var(--transition), color var(--transition);
+  flex-shrink: 0;
+}
+.pjx-modal__close:hover {
+  background: var(--surface);
+  color: var(--text);
+}
+
+/* ── Body ──────────────────────────────────────────────────── */
+.pjx-modal__body {
+  padding: var(--pjx-modal-padding);
+  overflow-y: auto;
+  flex: 1;
+  color: var(--text);
+  font-size: var(--font-size-md);
+  line-height: 1.6;
+}
+
+/* ── Footer ────────────────────────────────────────────────── */
+.pjx-modal__footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  padding: 0.875rem var(--pjx-modal-padding);
+  background: var(--pjx-modal-footer-bg);
+  border-top: 1px solid var(--pjx-modal-footer-sep);
+  flex-shrink: 0;
+}
+
+/* ── Animations ────────────────────────────────────────────── */
+@keyframes modal-in {
+  from { opacity: 0; transform: translateY(-0.5rem) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0)        scale(1);    }
+}
+
+@keyframes modal-out {
+  from { opacity: 1; transform: translateY(0)        scale(1);    }
+  to   { opacity: 0; transform: translateY(-0.5rem) scale(0.98); }
+}
+
+@keyframes modal-backdrop-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes modal-backdrop-out {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}

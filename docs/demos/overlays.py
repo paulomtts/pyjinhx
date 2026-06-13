@@ -1,62 +1,62 @@
 from pyjinhx.builtins import (
-    Alert,
-    ConfirmDialog,
-    Drawer,
-    Modal,
-    Notification,
-    Popover,
-    PopoverPanel,
-    PopoverTrigger,
-    PromptDialog,
-    Tooltip,
+    PJXAlert,
+    PJXConfirmDialog,
+    PJXDrawer,
+    PJXModal,
+    PJXNotification,
+    PJXPopover,
+    PJXPopoverPanel,
+    PJXPopoverTrigger,
+    PJXPromptDialog,
+    PJXTooltip,
 )
 
 
 def modal():
     return [
-        '<button class="px-demo-btn" data-px-open="demo-modal">Open modal</button>',
-        Modal(
+        '<button class="pjx-demo-btn" data-pjx-open="demo-modal">Open modal</button>',
+        PJXModal(
             id="demo-modal",
             title="Confirm changes",
             body="Your draft will be published immediately. This action cannot be undone.",
-            footer='<button class="px-demo-btn" data-px-close>Cancel</button>',
+            footer='<button class="pjx-demo-btn" data-pjx-close>Cancel</button>',
         ).render(),
     ]
 
 
 def drawer():
     return [
-        '<button class="px-demo-btn" data-px-open="demo-drawer">Open drawer</button>',
-        Drawer(
+        '<button class="pjx-demo-btn" data-pjx-open="demo-drawer">Open drawer</button>',
+        PJXDrawer(
             id="demo-drawer",
             side="right",
             title="Filter results",
             body="<p>Adjust filters to narrow down your results.</p>",
-            footer='<button class="px-demo-btn" data-px-close>Done</button>',
+            footer='<button class="pjx-demo-btn" data-pjx-close>Done</button>',
         ).render(),
     ]
 
 
 def confirm_dialog():
     return [
-        """<button class="px-demo-btn"
-            onclick="px.confirm('Delete this file?', { okLabel: 'Delete', danger: true })
+        """<button class="pjx-demo-btn"
+            onclick="pjx.confirm('Delete this file?', { okLabel: 'Delete', danger: true })
                 .then(ok => { if (ok) alert('Deleted.') })">Delete file</button>""",
-        ConfirmDialog(id="demo-confirm").render(),
+        PJXConfirmDialog(id="demo-confirm").render(),
     ]
 
 
 def prompt_dialog():
     return [
-        """<button class="px-demo-btn"
-            onclick="px.prompt('Rename file', { initial: 'report.pdf', placeholder: 'New name' })
+        """<button class="pjx-demo-btn"
+            onclick="pjx.prompt('Rename file', { initial: 'report.pdf', placeholder: 'New name' })
                 .then(name => { if (name !== null) alert('Renamed to: ' + name) })">Rename file</button>""",
-        PromptDialog(id="demo-prompt").render(),
+        PJXPromptDialog(id="demo-prompt").render(),
     ]
 
 
 def notification():
-    return Notification(
+    return PJXNotification(
         id="demo-notification",
         content="Your changes have been saved.",
         corner="top-right",
@@ -66,7 +66,7 @@ def notification():
 
 
 def alert():
-    return Alert(
+    return PJXAlert(
         id="demo-alert",
         variant="warning",
         title="Storage almost full",
@@ -76,7 +76,7 @@ def alert():
 
 
 def tooltip():
-    return Tooltip(
+    return PJXTooltip(
         id="demo-tooltip",
         trigger="Hover over me",
         tip="This is additional context shown on hover or focus.",
@@ -85,11 +85,11 @@ def tooltip():
 
 
 def popover():
-    return Popover(
+    return PJXPopover(
         id="demo-popover",
         content=(
-            PopoverTrigger(id="demo-popover-t", content="Show info", role="dialog").render()
-            + PopoverPanel(
+            PJXPopoverTrigger(id="demo-popover-t", content="Show info", role="dialog").render()
+            + PJXPopoverPanel(
                 id="demo-popover-p",
                 role="dialog",
                 content="<p>Here is some extra detail about this item.</p>",
@@ -99,12 +99,12 @@ def popover():
 
 
 DEMOS = {
-    "Modal": (modal, 520),
-    "Drawer": (drawer, 360),
-    "ConfirmDialog": (confirm_dialog, 360),
-    "PromptDialog": (prompt_dialog, 360),
-    "Notification": (notification, 160),
-    "Alert": (alert, 160),
-    "Tooltip": (tooltip, 160),
-    "Popover": (popover, 200),
+    "PJXModal": (modal, 520),
+    "PJXDrawer": (drawer, 360),
+    "PJXConfirmDialog": (confirm_dialog, 360),
+    "PJXPromptDialog": (prompt_dialog, 360),
+    "PJXNotification": (notification, 160),
+    "PJXAlert": (alert, 160),
+    "PJXTooltip": (tooltip, 160),
+    "PJXPopover": (popover, 200),
 }

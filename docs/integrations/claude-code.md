@@ -16,7 +16,7 @@ You are building with PyJinHx — reusable, type-safe UI components from Pydanti
 
 ## Components
 
-A component is a Pydantic class plus a Jinja2 template in the **same directory**. `id` is optional — omitted/falsy ids auto-generate `px-<n>`; pass explicit ids for stable CSS/htmx targets. Reactive components need stable ids (defaulted to the kebab-cased class name; pass explicit ids for instance-keyed rows). Extra fields passed at instantiation are accepted unvalidated and available in the template context.
+A component is a Pydantic class plus a Jinja2 template in the **same directory**. `id` is optional — omitted/falsy ids auto-generate `pjx-<n>`; pass explicit ids for stable CSS/htmx targets. Reactive components need stable ids (defaulted to the kebab-cased class name; pass explicit ids for instance-keyed rows). Extra fields passed at instantiation are accepted unvalidated and available in the template context.
 
 ```python
 from pyjinhx import BaseComponent
@@ -52,7 +52,7 @@ Fields typed as components — `action: Button`, `items: list[Button]`, `widgets
 
 ## Assets (JS & CSS)
 
-**Kebab-case** `.js`/`.css` files next to the component (`TabGroup` → `tab-group.js`; a snake_case stem like `tab_group.js` is **not** collected) are auto-collected, deduplicated per render session, and injected at the root render — CSS as `<style>` before the HTML, JS as `<script>` after, one tag per component so an error in one doesn't break others. Subclasses with no adjacent assets inherit the nearest ancestor's assets through the MRO (first found per kind).
+**Kebab-case** `.js`/`.css` files next to the component (`PJXTabGroup` → `pjx-tab-group.js`; a snake_case stem like `pjx_tab_group.js` is **not** collected) are auto-collected, deduplicated per render session, and injected at the root render — CSS as `<style>` before the HTML, JS as `<script>` after, one tag per component so an error in one doesn't break others. Subclasses with no adjacent assets inherit the nearest ancestor's assets through the MRO (first found per kind).
 
 Add extra files via the `js=[...]` / `css=[...]` fields; missing files warn on the `pyjinhx` logger. For production use `AssetMode.REFERENCE` with `Renderer.set_asset_url_resolver()`; disable with `AssetMode.NONE`. For layout preload use `Finder(root).collect_javascript_files()` / `.collect_css_files()` or `layout_asset_tags()`.
 
@@ -135,14 +135,14 @@ Full guide: [docs/reactivity.md](../reactivity.md).
 
 ## Builtins (`pyjinhx.builtins`)
 
-`import pyjinhx.builtins` registers thirty-three optional components: `Alert`, `Avatar`, `AvatarStack`, `Badge`, `Breadcrumb`, `Card`, `ChipInput`, `ConfirmDialog`, `Divider`, `Drawer`, `Dropdown`, `EmptyState`, `FormField`, `LazyPanel`, `Modal`, `Notification`, `PageLoader`, `PasswordInput`, `Popover`, `PopoverPanel`, `PopoverTrigger`, `Progress`, `PromptDialog`, `RegionLoader`, `Panel`, `PanelTrigger`, `SegmentedControl`, `Skeleton`, `Spinner`, `TabGroup`, `ToastHost`, `ToggleSwitch`, `Tooltip`. Same `BaseComponent` rules; templates/CSS/JS live under `pyjinhx/builtins/ui/<component>/`, and the renderer falls back to on-disk templates if the app's Jinja loader can't see package templates. **Do not** register user subclasses with the same class name as a builtin — the global `Registry` is one class per name.
+`import pyjinhx.builtins` registers thirty-three optional components: `PJXAlert`, `PJXAvatar`, `PJXAvatarStack`, `PJXBadge`, `PJXBreadcrumb`, `PJXCard`, `PJXChipInput`, `PJXConfirmDialog`, `PJXDivider`, `PJXDrawer`, `PJXDropdown`, `PJXEmptyState`, `PJXFormField`, `PJXLazyPanel`, `PJXModal`, `PJXNotification`, `PJXPageLoader`, `PJXPasswordInput`, `PJXPopover`, `PJXPopoverPanel`, `PJXPopoverTrigger`, `PJXProgress`, `PJXPromptDialog`, `PJXRegionLoader`, `PJXPanel`, `PJXPanelTrigger`, `PJXSegmentedControl`, `PJXSkeleton`, `PJXSpinner`, `PJXTabGroup`, `PJXToastHost`, `PJXToggleSwitch`, `PJXTooltip`. Same `BaseComponent` rules; templates/CSS/JS live under `pyjinhx/builtins/ui/pjx_<component>/`, and the renderer falls back to on-disk templates if the app's Jinja loader can't see package templates. **Do not** register user subclasses with the same class name as a builtin — the global `Registry` is one class per name.
 
 - **Host theme** (set on `:root` or a wrapper): builtin CSS reads shared tokens — define at least `--surface`, `--surface-alt`, `--text`, `--text-muted`, `--border`, `--brand`, `--brand-subtle`, `--brand-muted`, `--error`, `--success`, `--warning`, `--font-size-{xs,sm,md}`, `--radius-{sm,md,lg,full}`, `--shadow-md`, `--transition`, `--space-3`, `--space-4`. Optional `--error-bg` / `--error-border` for error surfaces (badge/alert fall back with `color-mix`).
-- **Per-component tokens:** each stylesheet declares `--px-<widget>-*` properties on `:root` — override to tune one component without editing package files (e.g. `--px-modal-width`, `--px-dropdown-z`, `--px-drawer-width`).
-- **Classes** are BEM: `px-<widget>`, `px-<widget>__element`, `px-<widget>--modifier`. Every builtin accepts `class_name` (appended on the root) and `extra_attrs` (validated dict rendered on the root).
-- **PascalCase tag quirks:** `TabGroup.tabs`, `Panel.panels`, `Breadcrumb.items` accept a JSON-string attribute in tag strings (the dict/list equivalent). `Panel` / `PanelTrigger` panel keys must match `[a-zA-Z0-9_-]+` (stable `id`s). JS components use `window.px.*` APIs (`px.modal.open/close`, `px.drawer.open/close`, `px.popover.open/close/toggle`, `px.notification.show/hide`, `px.loader.region.show/hide/reset/wrap`, `px.confirm`, `px.prompt`, `px.toast`, `px.loader.page.*`); `Panel`, `TabGroup`, `Tooltip` use delegated events with no exported API.
+- **Per-component tokens:** each stylesheet declares `--pjx-<widget>-*` properties on `:root` — override to tune one component without editing package files (e.g. `--pjx-modal-width`, `--pjx-dropdown-z`, `--pjx-drawer-width`).
+- **Classes** are BEM: `pjx-<widget>`, `pjx-<widget>__element`, `pjx-<widget>--modifier`. Every builtin accepts `class_name` (appended on the root) and `extra_attrs` (validated dict rendered on the root).
+- **PascalCase tag quirks:** `PJXTabGroup.tabs`, `PJXPanel.panels`, `PJXBreadcrumb.items` accept a JSON-string attribute in tag strings (the dict/list equivalent). `PJXPanel` / `PJXPanelTrigger` panel keys must match `[a-zA-Z0-9_-]+` (stable `id`s). JS components use `window.pjx.*` APIs (`pjx.modal.open/close`, `pjx.drawer.open/close`, `pjx.popover.open/close/toggle`, `pjx.notification.show/hide`, `pjx.loader.region.show/hide/reset/wrap`, `pjx.confirm`, `pjx.prompt`, `pjx.toast`, `pjx.loader.page.*`); `PJXPanel`, `PJXTabGroup`, `PJXTooltip` use delegated events with no exported API.
 
-Full reference (props, classes, `--px-*` tokens, JS helpers per component): [../guide/builtins.md](../guide/builtins.md).
+Full reference (props, classes, `--pjx-*` tokens, JS helpers per component): [../guide/builtins.md](../guide/builtins.md).
 
 ## Registry & configuration
 

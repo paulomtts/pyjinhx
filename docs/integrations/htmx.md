@@ -182,11 +182,11 @@ Use Jinja conditionals to control HTMX behavior:
 </button>
 ```
 
-### `Panel` outside the swap target
+### `PJXPanel` outside the swap target
 
-[`Panel`](../guide/builtins.md#panel) holds multiple slots (e.g. chat vs. other tools) while [`PanelTrigger`](../guide/builtins.md#paneltrigger) controls can live in a navbar or sidebar. To **keep in-DOM state** (messages, inputs) when other UI updates, mount the **`Panel` root outside** the element you pass to `hx-target` for those swaps. Only swap inner fragments that should reload; avoid replacing the entire `Panel` wrapper unless you intend to reset that state.
+[`PJXPanel`](../guide/builtins.md#pjxpanel) holds multiple slots (e.g. chat vs. other tools) while [`PJXPanelTrigger`](../guide/builtins.md#pjxpaneltrigger) controls can live in a navbar or sidebar. To **keep in-DOM state** (messages, inputs) when other UI updates, mount the **`PJXPanel` root outside** the element you pass to `hx-target` for those swaps. Only swap inner fragments that should reload; avoid replacing the entire `PJXPanel` wrapper unless you intend to reset that state.
 
-Bundled **`panel.js`** re-runs its init on `htmx:afterSwap` and `htmx:afterSettle`, so triggers and panels stay in sync after partial HTML updates.
+Bundled **`pjx-panel.js`** re-runs its init on `htmx:afterSwap` and `htmx:afterSettle`, so triggers and panels stay in sync after partial HTML updates.
 
 ### Loading states
 

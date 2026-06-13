@@ -13,6 +13,7 @@ sys.path.insert(0, HERE)
 from demos import DEMOS  # noqa: E402
 
 from pyjinhx import BaseComponent, Registry  # noqa: E402
+from pyjinhx.utils import pascal_case_to_kebab_case  # noqa: E402
 
 _MARKER = re.compile(r"<!--\s*demo:\s*([A-Za-z]+)\s*-->")
 
@@ -56,7 +57,7 @@ def on_page_markdown(markdown, *, page, config, files):
         prefix = "../" * page.url.count("/")
         source = demo_source(factory)
         return (
-            f'<iframe src="{prefix}demos/{name.lower()}.html" height="{height}" '
+            f'<iframe src="{prefix}demos/{pascal_case_to_kebab_case(name)}.html" height="{height}" '
             f'style="{_IFRAME_STYLE}" loading="lazy" title="{name} demo"></iframe>\n\n'
             f"```python\n{source}\n```"
         )
@@ -69,6 +70,6 @@ def on_post_build(config):
     os.makedirs(out, exist_ok=True)
     shutil.copy(os.path.join(HERE, "demos", "base.css"), os.path.join(out, "demo-base.css"))
     for name, (factory, _height) in DEMOS.items():
-        path = os.path.join(out, f"{name.lower()}.html")
+        path = os.path.join(out, f"{pascal_case_to_kebab_case(name)}.html")
         with open(path, "w", encoding="utf-8") as fh, Registry.request_scope():
             fh.write(_PAGE.format(markup=demo_markup(factory())))

@@ -10,28 +10,28 @@ from jinja2 import Environment, FileSystemLoader
 
 from pyjinhx import BaseComponent, Renderer
 from pyjinhx.builtins import (
-    Alert,
-    Avatar,
-    Badge,
-    Breadcrumb,
-    Card,
-    Divider,
-    Drawer,
-    Dropdown,
-    EmptyState,
-    RegionLoader,
-    Modal,
-    Notification,
-    Panel,
-    PanelTrigger,
-    Popover,
-    PopoverPanel,
-    PopoverTrigger,
-    Progress,
-    Skeleton,
-    Spinner,
-    TabGroup,
-    Tooltip,
+    PJXAlert,
+    PJXAvatar,
+    PJXBadge,
+    PJXBreadcrumb,
+    PJXCard,
+    PJXDivider,
+    PJXDrawer,
+    PJXDropdown,
+    PJXEmptyState,
+    PJXRegionLoader,
+    PJXModal,
+    PJXNotification,
+    PJXPanel,
+    PJXPanelTrigger,
+    PJXPopover,
+    PJXPopoverPanel,
+    PJXPopoverTrigger,
+    PJXProgress,
+    PJXSkeleton,
+    PJXSpinner,
+    PJXTabGroup,
+    PJXTooltip,
 )
 
 DEFAULT_GALLERY_PORT = 9000
@@ -47,13 +47,13 @@ _SHOWCASE_TEMPLATE = """
 <h2>Modal</h2>
 <section class="demo-stack">
 {{ modal }}
-<button type="button" class="demo-btn" data-px-open="g-modal">Open modal</button>
+<button type="button" class="demo-btn" data-pjx-open="g-modal">Open modal</button>
 </section>
 
 <h2>Notification</h2>
 <section class="demo-stack">
 {{ notification }}
-<button type="button" class="demo-btn" onclick="px.notification.show('g-toast')">Show notification</button>
+<button type="button" class="demo-btn" onclick="pjx.notification.show('g-toast')">Show notification</button>
 </section>
 
 <h2>Popover</h2>
@@ -64,12 +64,12 @@ _SHOWCASE_TEMPLATE = """
 <h2>Region loader</h2>
 <section>
 <div style="position:relative;min-height:100px;padding:1rem;border:1px dashed var(--border);border-radius:var(--radius-md);">
-{{ loading_overlay }}
+{{ region_loader }}
 <p style="margin:0;color:var(--text-muted);font-size:var(--font-size-sm);">Parent is position: relative</p>
 </div>
 <div class="demo-row" style="margin-top:0.75rem;">
-<button type="button" class="demo-btn" onclick="px.loader.region.show('g-overlay')">Show overlay</button>
-<button type="button" class="demo-btn" onclick="px.loader.region.hide('g-overlay')">Hide overlay</button>
+<button type="button" class="demo-btn" onclick="pjx.loader.region.show('g-overlay')">Show overlay</button>
+<button type="button" class="demo-btn" onclick="pjx.loader.region.hide('g-overlay')">Hide overlay</button>
 </div>
 </section>
 
@@ -91,7 +91,7 @@ _SHOWCASE_TEMPLATE = """
 <h2>Drawer</h2>
 <section class="demo-stack">
 {{ drawer }}
-<button type="button" class="demo-btn" data-px-open="g-drawer">Open drawer</button>
+<button type="button" class="demo-btn" data-pjx-open="g-drawer">Open drawer</button>
 </section>
 
 <h2>Progress</h2>
@@ -160,34 +160,34 @@ _SHOWCASE_TEMPLATE = """
 
 
 class BuiltinsGalleryPage(BaseComponent):
-    badge: Badge
-    modal: Modal
-    notification: Notification
-    popover: Popover
-    loading_overlay: RegionLoader
-    tooltip: Tooltip
-    alert: Alert
-    dropdown: Dropdown
-    drawer: Drawer
-    progress_determinate: Progress
-    progress_indeterminate: Progress
-    skeleton_text: Skeleton
-    skeleton_circle: Skeleton
-    skeleton_rect: Skeleton
-    empty_state: EmptyState
-    divider_horizontal: Divider
-    divider_labeled: Divider
-    spinner_small: Spinner
-    spinner_medium: Spinner
-    spinner_large: Spinner
-    avatar_image: Avatar
-    avatar_initials: Avatar
-    card: Card
-    breadcrumb: Breadcrumb
-    tab_group: TabGroup
-    panel_trigger_alpha: PanelTrigger
-    panel_trigger_beta: PanelTrigger
-    panel_host: Panel
+    badge: PJXBadge
+    modal: PJXModal
+    notification: PJXNotification
+    popover: PJXPopover
+    region_loader: PJXRegionLoader
+    tooltip: PJXTooltip
+    alert: PJXAlert
+    dropdown: PJXDropdown
+    drawer: PJXDrawer
+    progress_determinate: PJXProgress
+    progress_indeterminate: PJXProgress
+    skeleton_text: PJXSkeleton
+    skeleton_circle: PJXSkeleton
+    skeleton_rect: PJXSkeleton
+    empty_state: PJXEmptyState
+    divider_horizontal: PJXDivider
+    divider_labeled: PJXDivider
+    spinner_small: PJXSpinner
+    spinner_medium: PJXSpinner
+    spinner_large: PJXSpinner
+    avatar_image: PJXAvatar
+    avatar_initials: PJXAvatar
+    card: PJXCard
+    breadcrumb: PJXBreadcrumb
+    tab_group: PJXTabGroup
+    panel_trigger_alpha: PJXPanelTrigger
+    panel_trigger_beta: PJXPanelTrigger
+    panel_host: PJXPanel
 
     def render(self) -> str:
         return str(self._render(source=_SHOWCASE_TEMPLATE.strip()))
@@ -200,110 +200,110 @@ def _gallery_inner_html() -> str:
     Renderer.get_default_renderer(auto_id=False)
     gallery_page = BuiltinsGalleryPage(
         id="builtins-gallery",
-        badge=Badge(id="g-badge", label="Beta", color="brand", shape="md"),
-        modal=Modal(
+        badge=PJXBadge(id="g-badge", label="Beta", color="brand", shape="md"),
+        modal=PJXModal(
             id="g-modal",
             title="Demo modal",
             body="Modal body content from the gallery.",
         ),
-        notification=Notification(
+        notification=PJXNotification(
             id="g-toast",
             content="Toast message",
             corner="top-right",
             timeout=0,
         ),
-        popover=Popover(
+        popover=PJXPopover(
             id="g-pop",
             content=(
-                str(PopoverTrigger(id="g-pop-t", content="Open popover").render())
-                + str(PopoverPanel(id="g-pop-p", content="Popover details appear on click.").render())
+                str(PJXPopoverTrigger(id="g-pop-t", content="Open popover").render())
+                + str(PJXPopoverPanel(id="g-pop-p", content="Popover details appear on click.").render())
             ),
         ),
-        loading_overlay=RegionLoader(id="g-overlay"),
-        tooltip=Tooltip(
+        region_loader=PJXRegionLoader(id="g-overlay"),
+        tooltip=PJXTooltip(
             id="g-tip",
             trigger="Focus or hover",
             tip="Tooltip copy",
             placement="top",
         ),
-        alert=Alert(
+        alert=PJXAlert(
             id="g-alert",
             variant="info",
             title="Heads up",
             body="This is an inline alert.",
         ),
-        dropdown=Dropdown(
+        dropdown=PJXDropdown(
             id="g-drop",
             trigger="Options",
             items=['<a role="menuitem" href="#">First</a>', '<a role="menuitem" href="#">Second</a>'],
         ),
-        drawer=Drawer(
+        drawer=PJXDrawer(
             id="g-drawer",
             side="right",
             title="Drawer",
             body="Side panel content.",
         ),
-        progress_determinate=Progress(
+        progress_determinate=PJXProgress(
             id="g-prog-det",
             value=62,
             max=100,
             label="Determinate",
         ),
-        progress_indeterminate=Progress(
+        progress_indeterminate=PJXProgress(
             id="g-prog-ind",
             max=100,
             label="Indeterminate",
         ),
-        skeleton_text=Skeleton(id="g-skel-text", variant="text", lines=3),
-        skeleton_circle=Skeleton(id="g-skel-circle", variant="circle"),
-        skeleton_rect=Skeleton(id="g-skel-rect", variant="rect"),
-        empty_state=EmptyState(
+        skeleton_text=PJXSkeleton(id="g-skel-text", variant="text", lines=3),
+        skeleton_circle=PJXSkeleton(id="g-skel-circle", variant="circle"),
+        skeleton_rect=PJXSkeleton(id="g-skel-rect", variant="rect"),
+        empty_state=PJXEmptyState(
             id="g-empty",
             title="No results",
             description="Adjust filters or create a new item.",
         ),
-        divider_horizontal=Divider(id="g-div-h"),
-        divider_labeled=Divider(id="g-div-labeled", label="Or"),
-        spinner_small=Spinner(id="g-spin-sm", size="sm"),
-        spinner_medium=Spinner(id="g-spin-md", size="md"),
-        spinner_large=Spinner(id="g-spin-lg", size="lg"),
-        avatar_image=Avatar(
+        divider_horizontal=PJXDivider(id="g-div-h"),
+        divider_labeled=PJXDivider(id="g-div-labeled", label="Or"),
+        spinner_small=PJXSpinner(id="g-spin-sm", size="sm"),
+        spinner_medium=PJXSpinner(id="g-spin-md", size="md"),
+        spinner_large=PJXSpinner(id="g-spin-lg", size="lg"),
+        avatar_image=PJXAvatar(
             id="g-av-img",
             src="",
             alt="Sample user",
             initials="IM",
             size="md",
         ),
-        avatar_initials=Avatar(id="g-av-in", initials="PJ", size="md"),
-        card=Card(
+        avatar_initials=PJXAvatar(id="g-av-in", initials="PJ", size="md"),
+        card=PJXCard(
             id="g-card",
             title="Card title",
             body="Card body copy.",
         ),
-        breadcrumb=Breadcrumb(
+        breadcrumb=PJXBreadcrumb(
             id="g-crumb",
             items=[("Home", "#"), ("Built-ins", None)],
         ),
-        tab_group=TabGroup(
+        tab_group=PJXTabGroup(
             id="g-tabs",
             tabs={
                 "Overview": "<p>First panel content.</p>",
                 "Details": "<p>Second panel content.</p>",
             },
         ),
-        panel_trigger_alpha=PanelTrigger(
+        panel_trigger_alpha=PJXPanelTrigger(
             id="g-panel-tr-a",
             panel_id="g-panel",
             panel="alpha",
             content='<button type="button" class="demo-btn">Alpha</button>',
         ),
-        panel_trigger_beta=PanelTrigger(
+        panel_trigger_beta=PJXPanelTrigger(
             id="g-panel-tr-b",
             panel_id="g-panel",
             panel="beta",
             content='<button type="button" class="demo-btn">Beta</button>',
         ),
-        panel_host=Panel(
+        panel_host=PJXPanel(
             id="g-panel",
             panels={
                 "alpha": "<p>Panel alpha (default). Beta is hidden but still connected to SSE.</p>",

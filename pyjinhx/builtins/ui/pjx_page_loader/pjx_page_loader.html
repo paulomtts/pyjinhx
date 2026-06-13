@@ -1,0 +1,9 @@
+<div id="{{ id }}"
+     class="pjx-page-loader{% if active_on_load %} pjx-page-loader--active{% endif %}{% if class_name %} {{ class_name }}{% endif %}"
+     data-pjx-page-loader
+     data-nav-targets="{{ nav_targets }}"
+     role="status"
+     aria-label="{{ loading_label }}"
+     aria-live="polite"{{ extra_attrs_html }}>
+    <div class="pjx-page-loader__spinner" aria-hidden="true"></div>
+</div>

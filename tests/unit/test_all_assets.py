@@ -11,5 +11,5 @@ def test_all_assets_returns_ordered_pairs():
     assert all(p.endswith(".css") for p in css)
     assert all(p.endswith(".js") for p in js)
     assert css == sorted(css) and js == sorted(js)
-    assert any(p.endswith("modal/modal.css") for p in css)
-    assert any(p.endswith("modal/modal.js") for p in js)
+    assert any(p.endswith("pjx_modal/pjx-modal.css") for p in css)
+    assert any(p.endswith("pjx_modal/pjx-modal.js") for p in js)

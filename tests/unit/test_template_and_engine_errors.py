@@ -37,10 +37,10 @@ def test_non_filesystem_loader_error():
 
 
 def test_missing_template_error_hints_at_builtin_import():
-    error = _missing_template_error("Tooltip")
+    error = _missing_template_error("PJXTooltip")
 
     assert isinstance(error, FileNotFoundError)
-    assert "from pyjinhx.builtins import Tooltip" in str(error)
+    assert "from pyjinhx.builtins import PJXTooltip" in str(error)
 
 
 def test_missing_template_error_lists_real_candidates():

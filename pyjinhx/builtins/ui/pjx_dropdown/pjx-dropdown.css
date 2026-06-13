@@ -1,0 +1,43 @@
+:where(:root) {
+  --pjx-dropdown-menu-bg:       var(--surface-alt);
+  --pjx-dropdown-menu-border:   var(--border);
+  --pjx-dropdown-menu-radius:   var(--radius-md);
+  --pjx-dropdown-menu-shadow:   var(--shadow-md);
+  --pjx-dropdown-menu-padding:  0.35rem 0;
+  --pjx-dropdown-menu-min-w:    10rem;
+  --pjx-dropdown-menu-max-h:    min(70dvh, 24rem);
+  --pjx-dropdown-z:             350;
+}
+
+.pjx-dropdown {
+  position: relative;
+  display: inline-block;
+}
+
+.pjx-dropdown__trigger {
+  cursor: pointer;
+}
+
+.pjx-dropdown__menu {
+  position: absolute;
+  z-index: var(--pjx-dropdown-z);
+  top: calc(100% + 4px);
+  left: 0;
+  min-width: var(--pjx-dropdown-menu-min-w);
+  max-height: var(--pjx-dropdown-menu-max-h);
+  overflow-y: auto;
+  padding: var(--pjx-dropdown-menu-padding);
+  background: var(--pjx-dropdown-menu-bg);
+  border: 1px solid var(--pjx-dropdown-menu-border);
+  border-radius: var(--pjx-dropdown-menu-radius);
+  box-shadow: var(--pjx-dropdown-menu-shadow);
+}
+
+.pjx-dropdown__menu[hidden] {
+  display: none !important;
+}
+
+.pjx-dropdown--align-end .pjx-dropdown__menu {
+  left: auto;
+  right: 0;
+}

@@ -1,0 +1,47 @@
+:where(:root) {
+  --pjx-breadcrumb-gap: 0.35rem;
+  --pjx-breadcrumb-sep: "/";
+  --pjx-breadcrumb-sep-color: var(--text-muted);
+  --pjx-breadcrumb-link-color: var(--brand);
+  --pjx-breadcrumb-current-color: var(--text);
+  --pjx-breadcrumb-font-size: var(--font-size-sm);
+}
+
+.pjx-breadcrumb__list {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--pjx-breadcrumb-font-size);
+}
+
+.pjx-breadcrumb__item {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--pjx-breadcrumb-gap);
+}
+
+.pjx-breadcrumb__item:not(:last-child)::after {
+  content: var(--pjx-breadcrumb-sep);
+  color: var(--pjx-breadcrumb-sep-color);
+  margin-left: var(--pjx-breadcrumb-gap);
+  user-select: none;
+  pointer-events: none;
+}
+
+.pjx-breadcrumb__link {
+  color: var(--pjx-breadcrumb-link-color);
+  text-decoration: none;
+}
+
+.pjx-breadcrumb__link:hover {
+  text-decoration: underline;
+}
+
+.pjx-breadcrumb__current {
+  color: var(--pjx-breadcrumb-current-color);
+  font-weight: 500;
+}

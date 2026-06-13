@@ -68,7 +68,7 @@ body {
   color: var(--text);
 }
 
-.px-demo-btn {
+.pjx-demo-btn {
   padding: 0.4rem 0.9rem;
   border: 1px solid var(--border);
   border-radius: var(--radius-md);

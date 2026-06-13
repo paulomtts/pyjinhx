@@ -20,8 +20,8 @@ _ATTR_NAME_RE = re.compile(r"[A-Za-z@:][A-Za-z0-9_.:@-]*")
 
 
 def _auto_id() -> str:
-    """Generate a process-unique component id (``px-<n>``)."""
-    return f"px-{next(_auto_id_counter)}"
+    """Generate a process-unique component id (``pjx-<n>``)."""
+    return f"pjx-{next(_auto_id_counter)}"
 
 
 def validate_attr_value(value: str) -> str:
@@ -158,7 +158,7 @@ class BaseComponent(BaseModel):
 
     _pjx_framework: ClassVar[bool] = True
 
-    # Field that children of a PascalCase tag map into (e.g. <Card>text</Card>).
+    # Field that children of a PascalCase tag map into (e.g. <PJXCard>text</PJXCard>).
     # Components without a `content` field can point this at their text slot.
     _pjx_children_field: ClassVar[str] = "content"
 
@@ -186,7 +186,7 @@ class BaseComponent(BaseModel):
         Register the component class on subclass definition.
 
         ``pjx_replace=True`` intentionally shadows a same-named component from
-        another module (e.g. a builtin): ``class Avatar(BaseComponent, pjx_replace=True)``.
+        another module (e.g. a builtin): ``class PJXAvatar(BaseComponent, pjx_replace=True)``.
         """
         super().__init_subclass__(**kwargs)
         component_bases = [

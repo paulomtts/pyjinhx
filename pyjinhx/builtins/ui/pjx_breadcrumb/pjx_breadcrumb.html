@@ -1,0 +1,13 @@
+<nav id="{{ id }}" class="pjx-breadcrumb{% if class_name %} {{ class_name }}{% endif %}" aria-label="{{ aria_label }}"{{ extra_attrs_html }}>
+  <ol class="pjx-breadcrumb__list">
+    {% for label, href in items %}
+    <li class="pjx-breadcrumb__item">
+      {% if href %}
+      <a class="pjx-breadcrumb__link" href="{{ href }}">{{ label }}</a>
+      {% else %}
+      <span class="pjx-breadcrumb__current" aria-current="page">{{ label }}</span>
+      {% endif %}
+    </li>
+    {% endfor %}
+  </ol>
+</nav>

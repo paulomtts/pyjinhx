@@ -1,0 +1,82 @@
+/* ── PJXChipInput tokens ──────────────────────────────────────────────────────── */
+:where(:root) {
+  --pjx-chip-input-gap:        0.375rem;
+  --pjx-chip-input-chip-bg:    var(--surface-alt);
+  --pjx-chip-input-chip-fg:    var(--text);
+  --pjx-chip-input-chip-radius: var(--radius-full);
+  --pjx-chip-input-border:     var(--border);
+  --pjx-chip-input-focus:      var(--border-focus, var(--border));
+  --pjx-chip-input-radius:     var(--radius-md);
+  --pjx-chip-input-padding:    0.375rem 0.5rem;
+}
+
+.pjx-chip-input {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--pjx-chip-input-gap);
+  padding: var(--pjx-chip-input-padding);
+  border: 1px solid var(--pjx-chip-input-border);
+  border-radius: var(--pjx-chip-input-radius);
+  background: var(--surface, #fff);
+  cursor: text;
+}
+
+.pjx-chip-input:focus-within {
+  outline: 2px solid var(--pjx-chip-input-focus);
+  outline-offset: -1px;
+}
+
+.pjx-chip-input__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.125rem 0.5rem;
+  background: var(--pjx-chip-input-chip-bg);
+  color: var(--pjx-chip-input-chip-fg);
+  border-radius: var(--pjx-chip-input-chip-radius);
+  border: 1px solid var(--pjx-chip-input-border);
+  font-size: 0.875em;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+
+.pjx-chip-input__label {
+  max-width: 16rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pjx-chip-input__remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1rem;
+  height: 1rem;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font-size: 0.75em;
+  line-height: 1;
+  opacity: 0.7;
+  transition: opacity var(--transition, 0.15s ease);
+}
+
+.pjx-chip-input__remove:hover {
+  opacity: 1;
+}
+
+.pjx-chip-input__field {
+  flex: 1;
+  min-width: 6rem;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--text, inherit);
+  font: inherit;
+  padding: 0;
+}

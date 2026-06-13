@@ -1,0 +1,13 @@
+<div class="pjx-empty-state{% if class_name %} {{ class_name }}{% endif %}" id="{{ id }}"{{ extra_attrs_html }}>
+    {% if image %}
+    <div class="pjx-empty-state__image">{{ image }}</div>
+    {% endif %}
+    <h3 class="pjx-empty-state__title">{{ title }}</h3>
+    <p class="pjx-empty-state__desc">{{ description }}</p>
+    {% if action %}
+    <div class="pjx-empty-state__action">{{ action }}</div>
+    {% endif %}
+    {% if actions %}
+    <div class="pjx-empty-state__actions">{% for item in actions %}{{ item }}{% endfor %}</div>
+    {% endif %}
+</div>

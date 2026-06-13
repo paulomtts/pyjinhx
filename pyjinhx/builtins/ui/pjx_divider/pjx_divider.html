@@ -1,0 +1,18 @@
+{% if orientation == 'vertical' %}
+<div id="{{ id }}"
+     class="pjx-divider pjx-divider--vertical{% if class_name %} {{ class_name }}{% endif %}"
+     role="separator"
+     aria-orientation="vertical"
+     {% if label %}aria-label="{{ label }}"{% endif %}{{ extra_attrs_html }}></div>
+{% elif label %}
+<div id="{{ id }}" class="pjx-divider pjx-divider--labeled{% if class_name %} {{ class_name }}{% endif %}" role="presentation"{{ extra_attrs_html }}>
+  <span class="pjx-divider__line" aria-hidden="true"></span>
+  <span class="pjx-divider__label">{{ label }}</span>
+  <span class="pjx-divider__line" aria-hidden="true"></span>
+</div>
+{% else %}
+<hr id="{{ id }}"
+    class="pjx-divider pjx-divider--horizontal{% if class_name %} {{ class_name }}{% endif %}"
+    role="separator"
+    aria-orientation="horizontal"{{ extra_attrs_html }} />
+{% endif %}

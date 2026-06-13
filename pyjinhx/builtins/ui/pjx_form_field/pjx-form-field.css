@@ -1,0 +1,45 @@
+/* ── PJXFormField tokens ─────────────────────────────────────────────────────── */
+:where(:root) {
+  --pjx-form-field-gap:        0.375rem;
+  --pjx-form-field-label-size: 0.875em;
+  --pjx-form-field-label-color: var(--text, inherit);
+  --pjx-form-field-help-color: var(--text-muted, #666);
+  --pjx-form-field-error:      #b3261e;
+}
+
+.pjx-form-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pjx-form-field-gap);
+}
+
+.pjx-form-field__label {
+  font-size: var(--pjx-form-field-label-size);
+  font-weight: 500;
+  color: var(--pjx-form-field-label-color);
+}
+
+.pjx-form-field__required {
+  margin-left: 0.2em;
+  color: var(--pjx-form-field-error);
+}
+
+.pjx-form-field__control {
+  display: contents;
+}
+
+.pjx-form-field__help {
+  font-size: 0.8125em;
+  color: var(--pjx-form-field-help-color);
+  margin: 0;
+}
+
+.pjx-form-field__error {
+  font-size: 0.8125em;
+  color: var(--pjx-form-field-error);
+  margin: 0;
+}
+
+.pjx-form-field--error .pjx-form-field__label {
+  color: var(--pjx-form-field-error);
+}

@@ -1,98 +1,98 @@
 # Gallery
 
-The builtins, rendered by pyjinhx at docs build time (LazyPanel needs a backend, so it sits this page out). Click through to the [guide](guide/builtins.md) for props and DOM contracts.
+The builtins, rendered by pyjinhx at docs build time (PJXLazyPanel needs a backend, so it sits this page out). Click through to the [guide](guide/builtins.md) for props and DOM contracts.
 
 ## Static
 
-### [Badge](guide/builtins.md#badge)
-<!-- demo: Badge -->
+### [PJXBadge](guide/builtins.md#pjxbadge)
+<!-- demo: PJXBadge -->
 
-### [Card](guide/builtins.md#card)
-<!-- demo: Card -->
+### [PJXCard](guide/builtins.md#pjxcard)
+<!-- demo: PJXCard -->
 
-### [Divider](guide/builtins.md#divider)
-<!-- demo: Divider -->
+### [PJXDivider](guide/builtins.md#pjxdivider)
+<!-- demo: PJXDivider -->
 
-### [Spinner](guide/builtins.md#spinner)
-<!-- demo: Spinner -->
+### [PJXSpinner](guide/builtins.md#pjxspinner)
+<!-- demo: PJXSpinner -->
 
-### [Avatar](guide/builtins.md#avatar)
-<!-- demo: Avatar -->
+### [PJXAvatar](guide/builtins.md#pjxavatar)
+<!-- demo: PJXAvatar -->
 
-### [AvatarStack](guide/builtins.md#avatarstack)
-<!-- demo: AvatarStack -->
+### [PJXAvatarStack](guide/builtins.md#pjxavatarstack)
+<!-- demo: PJXAvatarStack -->
 
-### [Breadcrumb](guide/builtins.md#breadcrumb)
-<!-- demo: Breadcrumb -->
+### [PJXBreadcrumb](guide/builtins.md#pjxbreadcrumb)
+<!-- demo: PJXBreadcrumb -->
 
-### [Skeleton](guide/builtins.md#skeleton)
-<!-- demo: Skeleton -->
+### [PJXSkeleton](guide/builtins.md#pjxskeleton)
+<!-- demo: PJXSkeleton -->
 
-### [Progress](guide/builtins.md#progress)
-<!-- demo: Progress -->
+### [PJXProgress](guide/builtins.md#pjxprogress)
+<!-- demo: PJXProgress -->
 
-### [EmptyState](guide/builtins.md#emptystate)
-<!-- demo: EmptyState -->
+### [PJXEmptyState](guide/builtins.md#pjxemptystate)
+<!-- demo: PJXEmptyState -->
 
 ## Overlays & dialogs
 
-### [Modal](guide/builtins.md#modal)
-<!-- demo: Modal -->
+### [PJXModal](guide/builtins.md#pjxmodal)
+<!-- demo: PJXModal -->
 
-### [Drawer](guide/builtins.md#drawer)
-<!-- demo: Drawer -->
+### [PJXDrawer](guide/builtins.md#pjxdrawer)
+<!-- demo: PJXDrawer -->
 
-### [ConfirmDialog](guide/builtins.md#confirmdialog)
-<!-- demo: ConfirmDialog -->
+### [PJXConfirmDialog](guide/builtins.md#pjxconfirmdialog)
+<!-- demo: PJXConfirmDialog -->
 
-### [PromptDialog](guide/builtins.md#promptdialog)
-<!-- demo: PromptDialog -->
+### [PJXPromptDialog](guide/builtins.md#pjxpromptdialog)
+<!-- demo: PJXPromptDialog -->
 
-### [Notification](guide/builtins.md#notification)
-<!-- demo: Notification -->
+### [PJXNotification](guide/builtins.md#pjxnotification)
+<!-- demo: PJXNotification -->
 
-### [Alert](guide/builtins.md#alert)
-<!-- demo: Alert -->
+### [PJXAlert](guide/builtins.md#pjxalert)
+<!-- demo: PJXAlert -->
 
-### [Tooltip](guide/builtins.md#tooltip)
-<!-- demo: Tooltip -->
+### [PJXTooltip](guide/builtins.md#pjxtooltip)
+<!-- demo: PJXTooltip -->
 
-### [Popover](guide/builtins.md#popover)
-<!-- demo: Popover -->
+### [PJXPopover](guide/builtins.md#pjxpopover)
+<!-- demo: PJXPopover -->
 
 ## Interaction & loading
 
-### [Dropdown](guide/builtins.md#dropdown)
-<!-- demo: Dropdown -->
+### [PJXDropdown](guide/builtins.md#pjxdropdown)
+<!-- demo: PJXDropdown -->
 
-### [TabGroup](guide/builtins.md#tabgroup)
-<!-- demo: TabGroup -->
+### [PJXTabGroup](guide/builtins.md#pjxtabgroup)
+<!-- demo: PJXTabGroup -->
 
-### [Panel](guide/builtins.md#panel)
-<!-- demo: Panel -->
+### [PJXPanel](guide/builtins.md#pjxpanel)
+<!-- demo: PJXPanel -->
 
-### [ToastHost](guide/builtins.md#toasthost)
-<!-- demo: ToastHost -->
+### [PJXToastHost](guide/builtins.md#pjxtoasthost)
+<!-- demo: PJXToastHost -->
 
-### [RegionLoader](guide/builtins.md#regionloader)
-<!-- demo: RegionLoader -->
+### [PJXRegionLoader](guide/builtins.md#pjxregionloader)
+<!-- demo: PJXRegionLoader -->
 
-### [PageLoader](guide/builtins.md#pageloader)
-<!-- demo: PageLoader -->
+### [PJXPageLoader](guide/builtins.md#pjxpageloader)
+<!-- demo: PJXPageLoader -->
 
 ## Form controls
 
-### [ChipInput](guide/builtins.md#chipinput)
-<!-- demo: ChipInput -->
+### [PJXChipInput](guide/builtins.md#pjxchipinput)
+<!-- demo: PJXChipInput -->
 
-### [FormField](guide/builtins.md#formfield)
-<!-- demo: FormField -->
+### [PJXFormField](guide/builtins.md#pjxformfield)
+<!-- demo: PJXFormField -->
 
-### [ToggleSwitch](guide/builtins.md#toggleswitch)
-<!-- demo: ToggleSwitch -->
+### [PJXToggleSwitch](guide/builtins.md#pjxtoggleswitch)
+<!-- demo: PJXToggleSwitch -->
 
-### [SegmentedControl](guide/builtins.md#segmentedcontrol)
-<!-- demo: SegmentedControl -->
+### [PJXSegmentedControl](guide/builtins.md#pjxsegmentedcontrol)
+<!-- demo: PJXSegmentedControl -->
 
-### [PasswordInput](guide/builtins.md#passwordinput)
-<!-- demo: PasswordInput -->
+### [PJXPasswordInput](guide/builtins.md#pjxpasswordinput)
+<!-- demo: PJXPasswordInput -->

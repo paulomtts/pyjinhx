@@ -1,24 +1,24 @@
-from pyjinhx.builtins import Panel, PanelTrigger, TabGroup
+from pyjinhx.builtins import PJXPanel, PJXPanelTrigger, PJXTabGroup
 
 
 def test_panel_panels_are_regions():
-    html = str(Panel(id="h", panels={"a": "<p>A</p>", "b": "<p>B</p>"}).render())
-    assert html.count("data-px-region") >= 2
+    html = str(PJXPanel(id="h", panels={"a": "<p>A</p>", "b": "<p>B</p>"}).render())
+    assert html.count("data-pjx-region") >= 2
 
 
 def test_panel_contract_fields():
-    html = str(Panel(id="h", panels={"a": "x"}, class_name="mine",
+    html = str(PJXPanel(id="h", panels={"a": "x"}, class_name="mine",
                      extra_attrs={"data-k": "v"}).render())
-    assert 'class="px-panel mine"' in html and 'data-k="v"' in html
+    assert 'class="pjx-panel mine"' in html and 'data-k="v"' in html
 
 
 def test_panel_trigger_contract_fields():
-    html = str(PanelTrigger(id="t", panel_id="h", panel="a", content="A",
+    html = str(PJXPanelTrigger(id="t", panel_id="h", panel="a", content="A",
                             class_name="mine", extra_attrs={"data-k": "v"}).render())
-    assert "px-panel-trigger mine" in html and 'data-k="v"' in html
+    assert "pjx-panel-trigger mine" in html and 'data-k="v"' in html
 
 
 def test_tab_group_regions_and_label():
-    html = str(TabGroup(id="tg", tabs={"One": "1", "Two": "2"}, tabs_label="Abas").render())
-    assert html.count("data-px-region") >= 2
+    html = str(PJXTabGroup(id="tg", tabs={"One": "1", "Two": "2"}, tabs_label="Abas").render())
+    assert html.count("data-pjx-region") >= 2
     assert 'aria-label="Abas"' in html

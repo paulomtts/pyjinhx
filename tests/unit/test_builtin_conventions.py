@@ -47,6 +47,6 @@ def test_swept_js_files_are_guarded_iifes():
                 continue
             content = _read(os.path.join(directory, name)).lstrip()
             assert content.startswith("(function ()"), f"{cls.__name__}/{name}: not an IIFE"
-            assert "window.px = window.px || {}" in content, f"{cls.__name__}/{name}: missing px guard"
+            assert "window.pjx = window.pjx || {}" in content, f"{cls.__name__}/{name}: missing pjx guard"
 
 

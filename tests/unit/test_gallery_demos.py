@@ -24,11 +24,11 @@ class FakePage:
 
 def test_marker_becomes_iframe_and_source():
     out = hooks.on_page_markdown(
-        "intro\n\n<!-- demo: Badge -->\n\nafter", page=FakePage(), config={}, files=None
+        "intro\n\n<!-- demo: PJXBadge -->\n\nafter", page=FakePage(), config={}, files=None
     )
-    assert '<iframe src="../../demos/badge.html"' in out
+    assert '<iframe src="../../demos/pjx-badge.html"' in out
     assert "```python" in out
-    assert 'Badge(label="Active"' in out
+    assert 'PJXBadge(label="Active"' in out
     assert "def " not in out
     assert "return " not in out
     assert "<!-- demo:" not in out
@@ -41,8 +41,8 @@ def test_unknown_demo_fails_build():
 
 def test_post_build_writes_selfcontained_pages(tmp_path):
     hooks.on_post_build({"site_dir": str(tmp_path)})
-    page = (tmp_path / "demos" / "badge.html").read_text()
-    assert "px-badge" in page
+    page = (tmp_path / "demos" / "pjx-badge.html").read_text()
+    assert "pjx-badge" in page
     assert "demo-base.css" in page
     assert (tmp_path / "demos" / "demo-base.css").exists()
 
@@ -55,5 +55,5 @@ def test_every_factory_renders():
 
 
 def test_registry_covers_all_builtins():
-    folded = {"LazyPanel", "PanelTrigger", "PopoverTrigger", "PopoverPanel"}
+    folded = {"PJXLazyPanel", "PJXPanelTrigger", "PJXPopoverTrigger", "PJXPopoverPanel"}
     assert set(DEMOS) == set(pyjinhx.builtins.__all__) - folded

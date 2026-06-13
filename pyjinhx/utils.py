@@ -7,13 +7,17 @@ def pascal_case_to_snake_case(name: str) -> str:
     """
     Convert a PascalCase/CamelCase identifier into snake_case.
 
+    Consecutive capitals are treated as acronyms (PJXAvatar -> pjx_avatar).
+
     Args:
         name: The identifier to convert.
 
     Returns:
         The snake_case version of the identifier.
     """
-    return re.sub(r"(?<!^)(?=[A-Z])", "_", name).lower()
+    return re.sub(
+        r"(?<=[a-z0-9])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])", "_", name
+    ).lower()
 
 
 def pascal_case_to_kebab_case(name: str) -> str:

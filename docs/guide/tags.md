@@ -109,7 +109,7 @@ html = renderer.render('<Hint kind="warning">Be careful</Hint>')
 ```
 
 !!! note "Builtins are not auto-discovered"
-    The fallback only searches under your Jinja loader root, so it does **not** cover [built-in components](builtins.md) — their templates ship inside the pyjinhx package. Using `<Tooltip/>` (or any builtin) as a tag requires importing it once at startup (`from pyjinhx.builtins import Tooltip` or `import pyjinhx.builtins`), which registers the class. Otherwise rendering raises a `FileNotFoundError` telling you which import to add.
+    The fallback only searches under your Jinja loader root, so it does **not** cover [built-in components](builtins.md) — their templates ship inside the pyjinhx package. Using `<PJXTooltip/>` (or any builtin) as a tag requires importing it once at startup (`from pyjinhx.builtins import PJXTooltip` or `import pyjinhx.builtins`), which registers the class. Otherwise rendering raises a `FileNotFoundError` telling you which import to add.
 
 The generic-fallback instance is **removed from the registry** after rendering, so it cannot be cross-referenced by other templates (unlike a registered-class instance).
 

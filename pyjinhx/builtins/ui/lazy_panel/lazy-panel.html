@@ -1,5 +1,0 @@
-<div id="{{ id }}"
-     class="px-lazy-panel{% if class_name %} {{ class_name }}{% endif %}"
-     hx-get="{{ url }}"
-     hx-trigger="{% if trigger %}{{ trigger }}{% elif when == 'reveal' %}px:reveal from:closest [data-px-region] once{% elif when == 'load' %}load{% else %}revealed{% endif %}"
-     hx-swap="{{ swap }}"{{ extra_attrs_html }}>{{ content }}</div>

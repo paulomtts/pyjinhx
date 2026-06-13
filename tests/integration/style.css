@@ -89,7 +89,7 @@ button.demo-btn:hover {
   background: var(--surface-alt);
 }
 
-.px-dropdown__trigger {
+.pjx-dropdown__trigger {
   padding: 0.4rem 0.75rem;
   font-size: var(--font-size-sm);
   color: var(--text);
@@ -98,18 +98,18 @@ button.demo-btn:hover {
   border-radius: var(--radius-sm);
 }
 
-.px-dropdown__menu {
+.pjx-dropdown__menu {
   font-size: var(--font-size-sm);
   color: var(--text);
 }
 
-.px-dropdown__menu a {
+.pjx-dropdown__menu a {
   display: block;
   padding: 0.35rem 0.75rem;
   color: var(--text);
   text-decoration: none;
 }
 
-.px-dropdown__menu a:hover {
+.pjx-dropdown__menu a:hover {
   background: var(--surface);
 }
