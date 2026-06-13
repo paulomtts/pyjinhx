@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import inspect
 import json
+import re
 from abc import abstractmethod
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -494,3 +495,11 @@ def oob_swaps(
                 )
             )
     return Markup("\n".join(fragments))
+
+
+_PJX_ID_RE = re.compile(r'data-pjx-id="([^"]*)"')
+
+
+def _mounted_ids_in(html: str | Markup) -> set[str]:
+    """Every ``data-pjx-id`` already present in a rendered fragment."""
+    return set(_PJX_ID_RE.findall(str(html)))
