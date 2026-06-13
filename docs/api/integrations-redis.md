@@ -39,7 +39,7 @@ setup(
     settings=PjxSettings(
         invalidation_backend=RedisInvalidationBackend("redis://localhost:6379/0"),
     ),
-    load_context_factory=...,
+    context_factory=...,
 )
 ```
 

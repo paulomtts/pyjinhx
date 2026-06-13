@@ -130,7 +130,7 @@ def setup(
     settings: PjxSettings | None = None,
     invalidation_backend: InvalidationBackend | None = _UNSET,
     reactive_dev: bool = _UNSET,
-    load_context_factory: Callable[[Any], object | None] | None = None,
+    context_factory: Callable[[Any], object | None] | None = None,
     **kwargs: Any,
 ) -> PjxSettings:
     """
@@ -160,5 +160,5 @@ def setup(
         )
     from pyjinhx.integrations.fastapi import apply_setup
 
-    apply_setup(app, resolved, load_context_factory=load_context_factory)
+    apply_setup(app, resolved, context_factory=context_factory)
     return resolved

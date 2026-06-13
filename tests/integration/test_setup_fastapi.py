@@ -77,3 +77,17 @@ def test_setup_is_idempotent():
 def test_setup_rejects_non_asgi_app():
     with pytest.raises(TypeError, match="Starlette/FastAPI-like app"):
         setup(object())
+
+
+def test_setup_context_factory_threads_context():
+    from pyjinhx.context import PjxContext
+
+    app = FastAPI()
+    setup(app, context_factory=lambda _request: "CTX")
+
+    @app.get("/ctx")
+    def ctx_route():
+        return PjxContext.current()
+
+    with TestClient(app) as client:
+        assert client.get("/ctx").text == '"CTX"'

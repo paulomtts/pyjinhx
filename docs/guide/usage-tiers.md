@@ -86,7 +86,7 @@ OOB swaps require an **active `ClientBackend`** so the renderer can read the cli
 ```python
 from pyjinhx import setup
 
-setup(app, load_context_factory=lambda request: AppLoadContext(db=get_db(request)))
+setup(app, context_factory=lambda request: AppLoadContext(db=get_db(request)))
 ```
 
 See [FastAPI integration § Middleware](../integrations/fastapi.md#middleware-recommended).

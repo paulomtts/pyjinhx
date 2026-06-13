@@ -29,7 +29,7 @@ app = FastAPI(title="pyjinhx reactive todo demo")
 setup(
     app,
     settings=PjxSettings.from_env(),
-    load_context_factory=lambda _request: AppLoadContext(store=store),
+    context_factory=lambda _request: AppLoadContext(store=store),
 )
 
 

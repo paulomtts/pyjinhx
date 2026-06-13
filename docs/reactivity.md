@@ -322,7 +322,7 @@ class Counter(ReactiveComponent, react={Keys.TODOS}):
         return cls(remaining=ctx.db.remaining())
 ```
 
-Set context per request via `setup(app, load_context_factory=...)` or
+Set context per request via `setup(app, context_factory=...)` or
 `Registry.request_scope(load_context=AppContext(db=...))`. Cache keys remain
 `(class, load_arg)` — context is not part of the cache identity.
 

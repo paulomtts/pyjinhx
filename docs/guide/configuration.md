@@ -84,7 +84,7 @@ For web apps, use a single call:
 ```python
 from pyjinhx import setup
 
-setup(app, load_context_factory=lambda req: AppLoadContext(db=get_db(req)))
+setup(app, context_factory=lambda req: AppLoadContext(db=get_db(req)))
 ```
 
 `PjxSettings` has two fields:

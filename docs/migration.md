@@ -229,7 +229,7 @@ setup(
     app,
     settings=PjxSettings.from_env(),   # REDIS_URL / PJX_INVALIDATION_DB / PJX_REACTIVE_DEV
     # Inject per-request data reachable inside reactive load():
-    load_context_factory=lambda request: AppLoadContext(db=get_db(request)),
+    context_factory=lambda request: AppLoadContext(db=get_db(request)),
 )
 ```
 
