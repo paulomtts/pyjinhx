@@ -136,16 +136,12 @@ class _ReactiveRender:
             instance = cls.load(*args, **kwargs) if keyed else cls.load(**kwargs)
             return Markup(instance._render(emit_assets=False))
 
-        loaded: list[ReactiveComponent] = []
-
-        def build_primary_tracked() -> str:
+        def build_primary() -> str:
             instance = cls.load(*args, **kwargs) if keyed else cls.load(**kwargs)
-            loaded.append(instance)
             return instance._render(emit_assets=False)
 
         return reactive_render_bundle(
-            primary_html=build_primary_tracked,
-            exclude_ids=lambda: {loaded[0].id} if loaded else set(),
+            primary_html=build_primary,
             invalidate_before_primary=True,
         )
 
@@ -162,7 +158,6 @@ class _ReactiveRender:
                 return instance._render()
             return reactive_render_bundle(
                 primary_html=lambda: instance._render(emit_assets=False),
-                exclude_ids={instance.id},
                 invalidate_before_primary=False,
             )
 
@@ -311,34 +306,23 @@ def _reactive_context_active() -> bool:
 def reactive_render_bundle(
     *,
     primary_html: Markup | Callable[[], Markup | str],
-    exclude_ids: set[str] | Callable[[], set[str]],
     invalidate_before_primary: bool,
 ) -> Markup:
     """
-    Shared reactive render orchestration for class and instance ``render()`` paths.
-    """
-    backend = ClientBackend.current()
-    warn_reactive_render_without_client(backend=backend)
+    Shared reactive render orchestration for class and instance ``render()``.
 
-    effective_dirtied = MutationTracker.pending()
+    The only reactive-specific step is invalidating dirtied keys *before*
+    rendering the primary, so the primary itself reflects fresh state. The OOB
+    tail (compute swaps, exclude regions already in the body, mark consumed) is
+    the shared ``_finish_with_oob`` path.
+    """
+    warn_reactive_render_without_client(backend=ClientBackend.current())
+
     if invalidate_before_primary:
-        LoadCache.invalidate(effective_dirtied)
+        LoadCache.invalidate(MutationTracker.pending())
 
     primary = primary_html() if callable(primary_html) else primary_html
-    MutationTracker.mark_render_consumed()
-
-    # Exclude only the primary (htmx swaps it as the main response). The trigger is
-    # NOT excluded: a clicked region that depends on the dirtied keys must update
-    # out-of-band like any other dependent (e.g. a "Clear (N)" button updating itself).
-    resolved_exclude = set(exclude_ids() if callable(exclude_ids) else exclude_ids)
-
-    swaps = oob_swaps(
-        effective_dirtied,
-        backend,
-        exclude_ids=resolved_exclude,
-        skip_invalidate=invalidate_before_primary,
-    )
-    return Markup(primary) + swaps
+    return _finish_with_oob(primary)
 
 
 @dataclass
