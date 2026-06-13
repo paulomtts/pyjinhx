@@ -322,7 +322,7 @@ def reactive_render_bundle(
         LoadCache.invalidate(MutationTracker.pending())
 
     primary = primary_html() if callable(primary_html) else primary_html
-    return _finish_with_oob(primary)
+    return _finish_with_oob(primary, skip_invalidate=invalidate_before_primary)
 
 
 @dataclass
@@ -489,7 +489,7 @@ def _mounted_ids_in(html: str | Markup) -> set[str]:
     return set(_PJX_ID_RE.findall(str(html)))
 
 
-def _finish_with_oob(html: str | Markup) -> Markup:
+def _finish_with_oob(html: str | Markup, *, skip_invalidate: bool = False) -> Markup:
     """
     Append OOB swaps for dirtied mounted regions to a rendered response.
 
@@ -498,6 +498,10 @@ def _finish_with_oob(html: str | Markup) -> Markup:
     itself and any embedded reactive child — are excluded so nothing is swapped
     twice. Returns ``html`` unchanged outside a client scope or when no
     mutations are pending.
+
+    ``skip_invalidate=True`` when the caller already invalidated the dirtied
+    keys' load cache (the reactive class-render path), avoiding a redundant
+    second invalidation/publish.
     """
     if MutationTracker.render_was_consumed():
         return Markup(html)
@@ -505,7 +509,9 @@ def _finish_with_oob(html: str | Markup) -> Markup:
     pending = MutationTracker.pending()
     if backend is None or not pending:
         return Markup(html)
-    swaps = oob_swaps(pending, backend, exclude_ids=_mounted_ids_in(html))
+    swaps = oob_swaps(
+        pending, backend, exclude_ids=_mounted_ids_in(html), skip_invalidate=skip_invalidate
+    )
     MutationTracker.mark_render_consumed()
     return Markup(html) + swaps
 

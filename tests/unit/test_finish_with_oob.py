@@ -109,3 +109,29 @@ def test_reactive_response_fans_out_for_raw_string():
     assert "<p>no component here</p>" in out
     assert "outerHTML:[data-pjx-id='counter']" in out
     assert "9 left" in out
+
+
+def test_class_render_does_not_double_invalidate(monkeypatch):
+    # The class-render path invalidates before rendering the primary, so the
+    # OOB tail must NOT invalidate again (avoids a redundant publish).
+    from pyjinhx import cache as cache_mod
+
+    calls = []
+    original = cache_mod.LoadCache.invalidate
+
+    def counting_invalidate(keys):
+        calls.append(set(keys))
+        return original(keys)
+
+    monkeypatch.setattr(cache_mod.LoadCache, "invalidate", counting_invalidate)
+
+    store.state["remaining"] = 2
+    manifest = [{"id": "clear-btn", "type": "ReactiveClearButton", "hash": "stale"}]
+    with reactive_client(manifest):
+        record_mutation("todos")
+        out = str(ReactiveCounter.render())
+
+    assert "outerHTML:[data-pjx-id='clear-btn']" in out
+    # one invalidate from record_mutation, one from the bundle's pre-primary
+    # step; the OOB tail must NOT add a third (it skips invalidation).
+    assert len(calls) == 2
