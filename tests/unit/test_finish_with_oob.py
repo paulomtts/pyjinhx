@@ -69,3 +69,30 @@ def test_excludes_region_already_in_body():
         out = str(_finish_with_oob('<div data-pjx-id="counter">3 left</div>'))
     assert "outerHTML:[data-pjx-id='counter']" not in out
     assert "outerHTML:[data-pjx-id='clear-btn']" in out
+
+
+from pathlib import Path
+
+from pyjinhx.renderer import Renderer
+from tests.ui.unified_component import UnifiedComponent  # noqa: F401 (registers)
+
+_UI_DIR = Path(__file__).resolve().parents[1] / "ui"
+
+
+def test_base_render_fans_out_for_nonreactive():
+    Renderer.set_default_environment(_UI_DIR)
+    store.state["remaining"] = 4
+    manifest = [{"id": "counter", "type": "ReactiveCounter", "hash": "stale"}]
+    with reactive_client(manifest):
+        record_mutation("todos")
+        out = str(UnifiedComponent(id="result", text="done").render())
+    assert "result" in out
+    assert "outerHTML:[data-pjx-id='counter']" in out
+    assert "4 left" in out
+
+
+def test_base_render_unchanged_without_backend():
+    Renderer.set_default_environment(_UI_DIR)
+    record_mutation("todos")
+    out = str(UnifiedComponent(id="result", text="done").render())
+    assert "outerHTML:" not in out
