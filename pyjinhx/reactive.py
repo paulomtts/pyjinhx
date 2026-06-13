@@ -503,3 +503,24 @@ _PJX_ID_RE = re.compile(r'data-pjx-id="([^"]*)"')
 def _mounted_ids_in(html: str | Markup) -> set[str]:
     """Every ``data-pjx-id`` already present in a rendered fragment."""
     return set(_PJX_ID_RE.findall(str(html)))
+
+
+def _finish_with_oob(html: str | Markup) -> Markup:
+    """
+    Append OOB swaps for dirtied mounted regions to a rendered response.
+
+    Fans out at most once per request scope (guarded by
+    ``render_was_consumed``). Regions already present in ``html`` — the primary
+    itself and any embedded reactive child — are excluded so nothing is swapped
+    twice. Returns ``html`` unchanged outside a client scope or when no
+    mutations are pending.
+    """
+    if MutationTracker.render_was_consumed():
+        return Markup(html)
+    backend = ClientBackend.current()
+    pending = MutationTracker.pending()
+    if backend is None or not pending:
+        return Markup(html)
+    swaps = oob_swaps(pending, backend, exclude_ids=_mounted_ids_in(html))
+    MutationTracker.mark_render_consumed()
+    return Markup(html) + swaps
