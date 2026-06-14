@@ -90,3 +90,63 @@ def test_multiple_ctx_params_raise_at_class_definition():
         class BadMultiCtx(BaseComponent):
             def m(self, a: Ctx, b: Ctx | None = None) -> None:
                 ...
+
+
+class CtxKeys(MutationKey):
+    W = "w"
+
+
+class CtxReactive(ReactiveComponent, react={CtxKeys.W}):
+    value: int = 0
+
+    @classmethod
+    def load(cls, *, ctx: Ctx | None = None) -> "CtxReactive":
+        return cls(id="ctx-reactive", value=ctx.value if ctx else -1)
+
+
+def test_reactive_load_still_injects_once():
+    LoadCache.clear()
+    with PjxContext.bind(Ctx(value=11)):
+        instance = CtxReactive.load()
+    assert instance.value == 11
+
+
+def test_reactive_load_not_wrapped_by_generic_injector():
+    # load is owned by LoadCache.install_cached_load, not the generic ctx wrapper.
+    load_func = CtxReactive.__dict__["load"].__func__
+    assert getattr(load_func, "_pjx_ctx_injected", False) is False
+
+
+class CtxBase(BaseComponent):
+    def m(self, ctx: Ctx | None = None) -> str:
+        return f"base:{ctx.value if ctx else '-'}"
+
+
+class CtxSub(CtxBase):
+    def m(self, ctx: Ctx | None = None) -> str:
+        return f"sub:{ctx.value if ctx else '-'}"
+
+
+class CtxSubNoOverride(CtxBase):
+    pass
+
+
+def test_override_is_rewrapped():
+    with PjxContext.bind(Ctx(value=3)):
+        assert CtxSub().m() == "sub:3"
+
+
+def test_inherited_method_not_rewrapped():
+    assert "m" not in vars(CtxSubNoOverride)
+    with PjxContext.bind(Ctx(value=4)):
+        assert CtxSubNoOverride().m() == "base:4"
+
+
+class CtxStrict(BaseComponent):
+    def need(self, ctx: Ctx) -> int:
+        return ctx.value
+
+
+def test_non_optional_subclass_param_injected():
+    with PjxContext.bind(Ctx(value=6)):
+        assert CtxStrict().need() == 6
