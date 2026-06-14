@@ -58,3 +58,35 @@ def test_classmethod_none_outside_scope():
 
 def test_staticmethod_none_outside_scope():
     assert CtxWidget.stat() == "stat:none"
+
+
+def test_explicit_positional_arg_respected():
+    widget = CtxWidget()
+    with PjxContext.bind(Ctx(value=5)):
+        assert widget.describe(Ctx(value=99)) == "v=99"
+
+
+def test_explicit_keyword_arg_respected():
+    widget = CtxWidget()
+    with PjxContext.bind(Ctx(value=5)):
+        assert widget.describe(ctx=Ctx(value=42)) == "v=42"
+
+
+def test_other_positional_args_plus_injection():
+    widget = CtxWidget()
+    with PjxContext.bind(Ctx(value=8)):
+        assert widget.greet("hi") == "hi:8"
+
+
+def test_method_without_ctx_param_not_wrapped():
+    widget = CtxWidget()
+    assert widget.plain(3) == 6
+    assert getattr(vars(CtxWidget)["plain"], "_pjx_ctx_injected", False) is False
+
+
+def test_multiple_ctx_params_raise_at_class_definition():
+    with pytest.raises(TypeError):
+
+        class BadMultiCtx(BaseComponent):
+            def m(self, a: Ctx, b: Ctx | None = None) -> None:
+                ...
