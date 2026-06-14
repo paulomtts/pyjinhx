@@ -164,6 +164,8 @@ def wrap_context_methods(cls: type[Any]) -> None:
         if ctx_param is None:
             continue
         wrapped = _make_context_wrapper(func, ctx_param.name)
+        # ``func`` retains its leading ``self``/``cls`` arg; the descriptor re-wrap
+        # below restores it, so ``bind_partial`` sees the same args as a raw call.
         if isinstance(attr, classmethod):
             wrapped = classmethod(wrapped)
         elif isinstance(attr, staticmethod):

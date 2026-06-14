@@ -50,3 +50,11 @@ def test_classmethod_injected():
 def test_staticmethod_injected():
     with PjxContext.bind(Ctx(value=9)):
         assert CtxWidget.stat() == "stat:9"
+
+
+def test_classmethod_none_outside_scope():
+    assert CtxWidget.from_ctx() == "cls:none"
+
+
+def test_staticmethod_none_outside_scope():
+    assert CtxWidget.stat() == "stat:none"
