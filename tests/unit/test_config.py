@@ -3,7 +3,7 @@ from unittest.mock import patch
 
 from pyjinhx import PjxSettings
 from pyjinhx.cache import CacheScope, InvalidationBackend, LoadCache
-from pyjinhx.config import configure_pyjinhx, pyjinhx_lifespan, shutdown_pyjinhx
+from pyjinhx.config import configure_pyjinhx, shutdown_pyjinhx
 
 
 class _StubBackend(InvalidationBackend):
@@ -35,12 +35,6 @@ def test_configure_pyjinhx_accepts_settings_object():
     settings = PjxSettings()
     configure_pyjinhx(settings)
     assert LoadCache.scope() == CacheScope.REQUEST
-
-
-def test_pyjinhx_lifespan_context_manager():
-    with pyjinhx_lifespan():
-        assert LoadCache.scope() == CacheScope.REQUEST
-    shutdown_pyjinhx()
 
 
 def test_from_env_defaults_to_request():

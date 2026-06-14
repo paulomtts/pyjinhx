@@ -19,3 +19,6 @@ site/
 
 # Superpowers planning artifacts
 docs/superpowers/
+
+# .claude
+.claude/worktrees/

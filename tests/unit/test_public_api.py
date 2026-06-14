@@ -51,7 +51,7 @@ def test_internals_are_not_in_the_public_surface():
         "InvalidationBackend", "MutationTracker", "Finder", "Parser", "Tag",
         "ClientBackend", "FastAPIClientBackend", "MountedManifest", "TriggerManifest",
         "LoadedAssets", "PJX_MOUNTED_HEADER", "PJX_ASSETS_HEADER", "PJX_TRIGGER_HEADER",
-        "configure_pyjinhx", "shutdown_pyjinhx", "pyjinhx_lifespan",
+        "configure_pyjinhx", "shutdown_pyjinhx",
         "enable_reactive_dev", "disable_reactive_dev", "dependency_graph",
         "format_dependency_graph", "AssetManifest", "RenderSession", "asset_manifest",
         "default_asset_url", "hashed_filename", "make_default_asset_url_resolver",
@@ -70,7 +70,7 @@ def test_internals_remain_importable_from_submodules():
         MountedManifest,
         client_script,
     )
-    from pyjinhx.config import configure_pyjinhx, pyjinhx_lifespan, shutdown_pyjinhx  # noqa: F401
+    from pyjinhx.config import configure_pyjinhx, shutdown_pyjinhx  # noqa: F401
     from pyjinhx.dev import dependency_graph, enable_reactive_dev  # noqa: F401
     from pyjinhx.integrations.fastapi import FastAPIClientBackend  # noqa: F401
     from pyjinhx.reactive import oob_swaps, reactive_response  # noqa: F401

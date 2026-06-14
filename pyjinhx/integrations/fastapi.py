@@ -5,9 +5,9 @@ from collections.abc import Callable
 from contextlib import asynccontextmanager
 from typing import Any
 
-from pyjinhx.registry import Registry
-from pyjinhx.config import PjxSettings, configure_pyjinhx, shutdown_pyjinhx
 from pyjinhx.client import ClientBackend
+from pyjinhx.config import PjxSettings, configure_pyjinhx, shutdown_pyjinhx
+from pyjinhx.registry import Registry
 
 logger = logging.getLogger("pyjinhx")
 
@@ -69,11 +69,11 @@ def _registry_middleware_class(
 ) -> type:
     from starlette.middleware.base import BaseHTTPMiddleware
 
-    factory = context_factory
-
     class RegistryScopeMiddleware(BaseHTTPMiddleware):
         async def dispatch(self, request, call_next):
-            load_context = factory(request) if factory is not None else None
+            load_context = (
+                context_factory(request) if context_factory is not None else None
+            )
             with Registry.request_scope(
                 load_context=load_context,
                 client_backend=FastAPIClientBackend(request),

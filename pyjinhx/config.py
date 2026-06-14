@@ -1,15 +1,16 @@
 from __future__ import annotations
 
 import os
-from collections.abc import Callable, Generator
-from contextlib import contextmanager
+from collections.abc import Callable
 from dataclasses import dataclass, fields, replace
 from typing import Any
 
 from pyjinhx.cache import CacheScope, InvalidationBackend, InvalidationHub, LoadCache
 from pyjinhx.dev import disable_reactive_dev, enable_reactive_dev
 
-_UNSET: Any = object()  # sentinel: distinguishes "argument omitted" from None / a real value
+_UNSET: Any = (
+    object()
+)  # sentinel: distinguishes "argument omitted" from None / a real value
 
 
 @dataclass(frozen=True)
@@ -85,13 +86,13 @@ def configure_pyjinhx(
     # (e.g. Redis) makes cross-request PROCESS caching safe across workers; without
     # one, the only multi-worker-safe behavior is per-request (REQUEST) caching.
     backend = resolved.invalidation_backend
-    LoadCache.set_scope(CacheScope.PROCESS if backend is not None else CacheScope.REQUEST)
+    LoadCache.set_scope(
+        CacheScope.PROCESS if backend is not None else CacheScope.REQUEST
+    )
 
+    InvalidationHub.set_backend(backend)
     if backend is not None:
-        InvalidationHub.set_backend(backend)
         InvalidationHub.start_listener()
-    else:
-        InvalidationHub.set_backend(None)
 
     if resolved.reactive_dev:
         enable_reactive_dev()
@@ -107,19 +108,6 @@ def shutdown_pyjinhx() -> None:
     disable_reactive_dev()
 
 
-@contextmanager
-def pyjinhx_lifespan(
-    settings: PjxSettings | None = None,
-    /,
-    **kwargs: Any,
-) -> Generator[None, None, None]:
-    configure_pyjinhx(settings, **kwargs)
-    try:
-        yield
-    finally:
-        shutdown_pyjinhx()
-
-
 def _is_asgi_app(app: object) -> bool:
     return hasattr(app, "add_middleware") and hasattr(app, "router")
 
@@ -128,9 +116,9 @@ def setup(
     app: object | None = None,
     *,
     settings: PjxSettings | None = None,
+    context_factory: Callable[[Any], object | None] | None = None,
     invalidation_backend: InvalidationBackend | None = _UNSET,
     reactive_dev: bool = _UNSET,
-    context_factory: Callable[[Any], object | None] | None = None,
     **kwargs: Any,
 ) -> PjxSettings:
     """
@@ -158,6 +146,7 @@ def setup(
             "setup(app=...) requires a Starlette/FastAPI-like app "
             "with add_middleware and router"
         )
+
     from pyjinhx.integrations.fastapi import apply_setup
 
     apply_setup(app, resolved, context_factory=context_factory)
