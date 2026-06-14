@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import functools
 import inspect
 import sys
 from collections.abc import Callable, Generator
@@ -122,6 +123,40 @@ def invoke_raw_load(
     bound = signature.bind(component_class, **bind_kwargs)
     bound.apply_defaults()
     return raw_func(*bound.args, **bound.kwargs)
+
+
+def _make_context_wrapper(func: Callable[..., Any], ctx_name: str) -> Callable[..., Any]:
+    """Wrap ``func`` so ``ctx_name`` is filled from ``PjxContext.current()`` when
+    the caller leaves it unbound."""
+    signature = inspect.signature(func)
+
+    @functools.wraps(func)
+    def wrapper(*args: Any, **kwargs: Any) -> Any:
+        bound = signature.bind_partial(*args, **kwargs)
+        if ctx_name not in bound.arguments:
+            kwargs[ctx_name] = PjxContext.current()
+        return func(*args, **kwargs)
+
+    wrapper._pjx_ctx_injected = True  # type: ignore[attr-defined]
+    return wrapper
+
+
+def wrap_context_methods(cls: type[Any]) -> None:
+    """Wrap each of ``cls``'s own instance methods declaring a single PjxContext
+    parameter so the current load context is injected when left unbound.
+
+    ``load`` is skipped — it keeps its dedicated injection path via
+    ``LoadCache.install_cached_load``.
+    """
+    for name, attr in list(vars(cls).items()):
+        if name == "load" or not inspect.isfunction(attr):
+            continue
+        if getattr(attr, "_pjx_ctx_injected", False):
+            continue
+        ctx_param = resolve_load_context_param(attr, cls)
+        if ctx_param is None:
+            continue
+        setattr(cls, name, _make_context_wrapper(attr, ctx_param.name))
 
 
 @dataclass(frozen=True)
