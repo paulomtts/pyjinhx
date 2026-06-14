@@ -142,21 +142,33 @@ def _make_context_wrapper(func: Callable[..., Any], ctx_name: str) -> Callable[.
 
 
 def wrap_context_methods(cls: type[Any]) -> None:
-    """Wrap each of ``cls``'s own instance methods declaring a single PjxContext
-    parameter so the current load context is injected when left unbound.
+    """Wrap each of ``cls``'s own methods declaring a single PjxContext parameter
+    so the current load context is injected when left unbound.
 
-    ``load`` is skipped — it keeps its dedicated injection path via
+    Handles instance methods, ``@classmethod`` and ``@staticmethod``. ``load`` is
+    skipped — it keeps its dedicated injection path via
     ``LoadCache.install_cached_load``.
     """
     for name, attr in list(vars(cls).items()):
-        if name == "load" or not inspect.isfunction(attr):
+        if name == "load":
             continue
-        if getattr(attr, "_pjx_ctx_injected", False):
+        if isinstance(attr, (classmethod, staticmethod)):
+            func = attr.__func__
+        elif inspect.isfunction(attr):
+            func = attr
+        else:
             continue
-        ctx_param = resolve_load_context_param(attr, cls)
+        if getattr(func, "_pjx_ctx_injected", False):
+            continue
+        ctx_param = resolve_load_context_param(func, cls)
         if ctx_param is None:
             continue
-        setattr(cls, name, _make_context_wrapper(attr, ctx_param.name))
+        wrapped = _make_context_wrapper(func, ctx_param.name)
+        if isinstance(attr, classmethod):
+            wrapped = classmethod(wrapped)
+        elif isinstance(attr, staticmethod):
+            wrapped = staticmethod(wrapped)
+        setattr(cls, name, wrapped)
 
 
 @dataclass(frozen=True)

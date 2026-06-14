@@ -40,3 +40,13 @@ def test_instance_method_injected_inside_scope():
 def test_instance_method_none_outside_scope():
     widget = CtxWidget()
     assert widget.describe() == "none"
+
+
+def test_classmethod_injected():
+    with PjxContext.bind(Ctx(value=7)):
+        assert CtxWidget.from_ctx() == "cls:7"
+
+
+def test_staticmethod_injected():
+    with PjxContext.bind(Ctx(value=9)):
+        assert CtxWidget.stat() == "stat:9"
