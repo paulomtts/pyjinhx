@@ -34,7 +34,7 @@ def apply_setup(
     app: object,
     settings: PjxSettings,
     *,
-    load_context_factory: Callable[[Any], object | None] | None = None,
+    context_factory: Callable[[Any], object | None] | None = None,
 ) -> None:
     if getattr(app.state, "pyjinhx_setup", False):
         logger.warning(
@@ -42,7 +42,7 @@ def apply_setup(
         )
         return
     _chain_lifespan(app, settings)
-    app.add_middleware(_registry_middleware_class(load_context_factory))
+    app.add_middleware(_registry_middleware_class(context_factory))
     app.state.pyjinhx_setup = True
 
 
@@ -65,11 +65,11 @@ def _chain_lifespan(app: object, settings: PjxSettings) -> None:
 
 
 def _registry_middleware_class(
-    load_context_factory: Callable[[Any], object | None] | None,
+    context_factory: Callable[[Any], object | None] | None,
 ) -> type:
     from starlette.middleware.base import BaseHTTPMiddleware
 
-    factory = load_context_factory
+    factory = context_factory
 
     class RegistryScopeMiddleware(BaseHTTPMiddleware):
         async def dispatch(self, request, call_next):

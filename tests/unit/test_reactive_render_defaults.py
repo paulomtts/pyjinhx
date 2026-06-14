@@ -30,7 +30,7 @@ def test_no_pending_mutations_skips_oob():
     assert "outerHTML:[data-pjx-id='clear-btn']" not in out
 
 
-def test_non_reactive_primary_defaults_to_no_swaps():
+def test_non_reactive_primary_fans_out_swaps():
     store.state["completed"] = 4
     primary = UnifiedComponent(id="u1", text="hi")
     manifest = [
@@ -39,5 +39,6 @@ def test_non_reactive_primary_defaults_to_no_swaps():
     with reactive_client(manifest):
         record_mutation("todos")
         out = str(primary.render())
-    assert "outerHTML:[data-pjx-id='clear-btn']" not in out
+    assert "outerHTML:[data-pjx-id='clear-btn']" in out
+    assert "Clear (4)" in out
     assert "hi" in out

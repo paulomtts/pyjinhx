@@ -249,7 +249,7 @@ For a real app, use **`setup(app, ...)`** so lifespan and middleware are wired a
 from pyjinhx import setup
 
 app = FastAPI()
-setup(app, load_context_factory=lambda request: AppLoadContext(store=store))  # AppLoadContext defined in Step 12
+setup(app, context_factory=lambda request: AppLoadContext(store=store))  # AppLoadContext defined in Step 12
 ```
 
 See [Configuration API](../api/config.md) and [FastAPI integration](../integrations/fastapi.md).
@@ -480,7 +480,7 @@ def _store():
 Pass a factory to `setup()` (Step 6):
 
 ```python
-setup(app, load_context_factory=lambda request: AppLoadContext(store=store))
+setup(app, context_factory=lambda request: AppLoadContext(store=store))
 ```
 
 ???+ question "Why PjxContext?"

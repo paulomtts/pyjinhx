@@ -44,7 +44,7 @@ setup(
     settings=PjxSettings(
         invalidation_backend=SqliteInvalidationBackend("/var/lib/myapp/pjx.db"),
     ),
-    load_context_factory=...,
+    context_factory=...,
 )
 ```
 

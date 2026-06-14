@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import inspect
 import json
+import re
 from abc import abstractmethod
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -135,16 +136,12 @@ class _ReactiveRender:
             instance = cls.load(*args, **kwargs) if keyed else cls.load(**kwargs)
             return Markup(instance._render(emit_assets=False))
 
-        loaded: list[ReactiveComponent] = []
-
-        def build_primary_tracked() -> str:
+        def build_primary() -> str:
             instance = cls.load(*args, **kwargs) if keyed else cls.load(**kwargs)
-            loaded.append(instance)
             return instance._render(emit_assets=False)
 
         return reactive_render_bundle(
-            primary_html=build_primary_tracked,
-            exclude_ids=lambda: {loaded[0].id} if loaded else set(),
+            primary_html=build_primary,
             invalidate_before_primary=True,
         )
 
@@ -161,7 +158,6 @@ class _ReactiveRender:
                 return instance._render()
             return reactive_render_bundle(
                 primary_html=lambda: instance._render(emit_assets=False),
-                exclude_ids={instance.id},
                 invalidate_before_primary=False,
             )
 
@@ -310,34 +306,23 @@ def _reactive_context_active() -> bool:
 def reactive_render_bundle(
     *,
     primary_html: Markup | Callable[[], Markup | str],
-    exclude_ids: set[str] | Callable[[], set[str]],
     invalidate_before_primary: bool,
 ) -> Markup:
     """
-    Shared reactive render orchestration for class and instance ``render()`` paths.
-    """
-    backend = ClientBackend.current()
-    warn_reactive_render_without_client(backend=backend)
+    Shared reactive render orchestration for class and instance ``render()``.
 
-    effective_dirtied = MutationTracker.pending()
+    The only reactive-specific step is invalidating dirtied keys *before*
+    rendering the primary, so the primary itself reflects fresh state. The OOB
+    tail (compute swaps, exclude regions already in the body, mark consumed) is
+    the shared ``_finish_with_oob`` path.
+    """
+    warn_reactive_render_without_client(backend=ClientBackend.current())
+
     if invalidate_before_primary:
-        LoadCache.invalidate(effective_dirtied)
+        LoadCache.invalidate(MutationTracker.pending())
 
     primary = primary_html() if callable(primary_html) else primary_html
-    MutationTracker.mark_render_consumed()
-
-    # Exclude only the primary (htmx swaps it as the main response). The trigger is
-    # NOT excluded: a clicked region that depends on the dirtied keys must update
-    # out-of-band like any other dependent (e.g. a "Clear (N)" button updating itself).
-    resolved_exclude = set(exclude_ids() if callable(exclude_ids) else exclude_ids)
-
-    swaps = oob_swaps(
-        effective_dirtied,
-        backend,
-        exclude_ids=resolved_exclude,
-        skip_invalidate=invalidate_before_primary,
-    )
-    return Markup(primary) + swaps
+    return _finish_with_oob(primary, skip_invalidate=invalidate_before_primary)
 
 
 @dataclass
@@ -494,3 +479,49 @@ def oob_swaps(
                 )
             )
     return Markup("\n".join(fragments))
+
+
+_PJX_ID_RE = re.compile(r'data-pjx-id="([^"]*)"')
+
+
+def _mounted_ids_in(html: str | Markup) -> set[str]:
+    """Every ``data-pjx-id`` already present in a rendered fragment."""
+    return set(_PJX_ID_RE.findall(str(html)))
+
+
+def _finish_with_oob(html: str | Markup, *, skip_invalidate: bool = False) -> Markup:
+    """
+    Append OOB swaps for dirtied mounted regions to a rendered response.
+
+    Fans out at most once per request scope (guarded by
+    ``render_was_consumed``). Regions already present in ``html`` — the primary
+    itself and any embedded reactive child — are excluded so nothing is swapped
+    twice. Returns ``html`` unchanged outside a client scope or when no
+    mutations are pending.
+
+    ``skip_invalidate=True`` when the caller already invalidated the dirtied
+    keys' load cache (the reactive class-render path), avoiding a redundant
+    second invalidation/publish.
+    """
+    if MutationTracker.render_was_consumed():
+        return Markup(html)
+    backend = ClientBackend.current()
+    pending = MutationTracker.pending()
+    if backend is None or not pending:
+        return Markup(html)
+    swaps = oob_swaps(
+        pending, backend, exclude_ids=_mounted_ids_in(html), skip_invalidate=skip_invalidate
+    )
+    MutationTracker.mark_render_consumed()
+    return Markup(html) + swaps
+
+
+def reactive_response(html: str | Markup) -> Markup:
+    """
+    Attach pending OOB swaps to a response that renders no component.
+
+    Use for raw-string, ``204``, or hand-assembled responses. Any component's
+    ``.render()`` already does this automatically; reach for this only when no
+    component render happens in the request.
+    """
+    return _finish_with_oob(html)

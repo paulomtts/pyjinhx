@@ -11,7 +11,7 @@ def setup(
     settings: PjxSettings | None = None,
     invalidation_backend: InvalidationBackend | None = ...,  # unset sentinel
     reactive_dev: bool = ...,  # unset sentinel
-    load_context_factory: Callable[[Any], object | None] | None = None,
+    context_factory: Callable[[Any], object | None] | None = None,
     **kwargs: Any,
 ) -> PjxSettings
 ```
@@ -25,7 +25,7 @@ from fastapi import FastAPI
 from pyjinhx import setup
 
 app = FastAPI()
-setup(app, load_context_factory=lambda req: AppLoadContext(db=get_db(req)))
+setup(app, context_factory=lambda req: AppLoadContext(db=get_db(req)))
 ```
 
 | `app` | Behavior |

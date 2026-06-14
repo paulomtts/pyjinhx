@@ -388,11 +388,15 @@ class BaseComponent(BaseModel):
         """
         Render this component to HTML using its associated Jinja template.
 
-        The template is auto-discovered based on the component class name (e.g., `MyButton` looks
-        for `my_button.html` or `my_button.jinja`). All component fields are available in the
-        template context, and nested components are rendered recursively.
+        The template is auto-discovered from the component class name (e.g.,
+        ``MyButton`` looks for ``my_button.html``/``my_button.jinja``). All
+        fields are available in the template context, and nested components
+        render recursively.
 
-        Returns:
-            The rendered HTML as a Markup object (safe for direct use in templates).
+        When mutations occurred in the current request scope and a client
+        backend is active, OOB swaps for the dirtied mounted reactive regions
+        are appended (once per scope). Returns plain rendered HTML otherwise.
         """
-        return self._render()
+        from pyjinhx.reactive import _finish_with_oob
+
+        return _finish_with_oob(self._render())
