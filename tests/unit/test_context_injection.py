@@ -115,6 +115,9 @@ def test_reactive_load_not_wrapped_by_generic_injector():
     # load is owned by LoadCache.install_cached_load, not the generic ctx wrapper.
     load_func = CtxReactive.__dict__["load"].__func__
     assert getattr(load_func, "_pjx_ctx_injected", False) is False
+    # Precise guard for the name-exclusion: the raw user load captured by
+    # install_cached_load (after the generic pass runs) was never injected.
+    assert getattr(CtxReactive._pjx_raw_load, "_pjx_ctx_injected", False) is False
 
 
 class CtxBase(BaseComponent):
