@@ -92,6 +92,24 @@ def test_multiple_ctx_params_raise_at_class_definition():
                 ...
 
 
+def test_multiple_ctx_params_classmethod_raises():
+    with pytest.raises(TypeError):
+
+        class BadMultiCtxClassmethod(BaseComponent):
+            @classmethod
+            def m(cls, a: Ctx, b: Ctx | None = None) -> None:
+                ...
+
+
+def test_multiple_ctx_params_staticmethod_raises():
+    with pytest.raises(TypeError):
+
+        class BadMultiCtxStaticmethod(BaseComponent):
+            @staticmethod
+            def m(a: Ctx, b: Ctx | None = None) -> None:
+                ...
+
+
 class CtxKeys(MutationKey):
     W = "w"
 
@@ -153,3 +171,17 @@ class CtxStrict(BaseComponent):
 def test_non_optional_subclass_param_injected():
     with PjxContext.bind(Ctx(value=6)):
         assert CtxStrict().need() == 6
+
+
+class CtxPosOnly(BaseComponent):
+    def m(self, ctx: Ctx | None = None, /) -> str:
+        return f"pos:{ctx.value if ctx else '-'}"
+
+
+def test_positional_only_ctx_param_injected():
+    with PjxContext.bind(Ctx(value=13)):
+        assert CtxPosOnly().m() == "pos:13"
+
+
+def test_positional_only_ctx_param_none_outside_scope():
+    assert CtxPosOnly().m() == "pos:-"

@@ -134,8 +134,8 @@ def _make_context_wrapper(func: Callable[..., Any], ctx_name: str) -> Callable[.
     def wrapper(*args: Any, **kwargs: Any) -> Any:
         bound = signature.bind_partial(*args, **kwargs)
         if ctx_name not in bound.arguments:
-            kwargs[ctx_name] = PjxContext.current()
-        return func(*args, **kwargs)
+            bound.arguments[ctx_name] = PjxContext.current()
+        return func(*bound.args, **bound.kwargs)
 
     wrapper._pjx_ctx_injected = True  # type: ignore[attr-defined]
     return wrapper
