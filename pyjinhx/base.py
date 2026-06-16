@@ -7,6 +7,7 @@ from typing import Annotated, Any, ClassVar, Optional
 from markupsafe import Markup
 from pydantic import AfterValidator, BaseModel, ConfigDict, Field, field_validator
 
+from .context import wrap_context_methods
 from .registry import Registry
 from .renderer import Renderer
 from .assets import RenderSession
@@ -200,6 +201,7 @@ class BaseComponent(BaseModel):
                 f"{cls.__name__}: subclass one component at a time; got {names}"
             )
         Registry.register_class(cls, replace=pjx_replace)
+        wrap_context_methods(cls)
 
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)

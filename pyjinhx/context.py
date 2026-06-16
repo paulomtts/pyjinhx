@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import functools
 import inspect
 import sys
 from collections.abc import Callable, Generator
@@ -122,6 +123,54 @@ def invoke_raw_load(
     bound = signature.bind(component_class, **bind_kwargs)
     bound.apply_defaults()
     return raw_func(*bound.args, **bound.kwargs)
+
+
+def _make_context_wrapper(func: Callable[..., Any], ctx_name: str) -> Callable[..., Any]:
+    """Wrap ``func`` so ``ctx_name`` is filled from ``PjxContext.current()`` when
+    the caller leaves it unbound."""
+    signature = inspect.signature(func)
+
+    @functools.wraps(func)
+    def wrapper(*args: Any, **kwargs: Any) -> Any:
+        bound = signature.bind_partial(*args, **kwargs)
+        if ctx_name not in bound.arguments:
+            bound.arguments[ctx_name] = PjxContext.current()
+        return func(*bound.args, **bound.kwargs)
+
+    wrapper._pjx_ctx_injected = True  # type: ignore[attr-defined]
+    return wrapper
+
+
+def wrap_context_methods(cls: type[Any]) -> None:
+    """Wrap each of ``cls``'s own methods declaring a single PjxContext parameter
+    so the current load context is injected when left unbound.
+
+    Handles instance methods, ``@classmethod`` and ``@staticmethod``. ``load`` is
+    skipped — it keeps its dedicated injection path via
+    ``LoadCache.install_cached_load``.
+    """
+    for name, attr in list(vars(cls).items()):
+        if name == "load":
+            continue
+        if isinstance(attr, (classmethod, staticmethod)):
+            func = attr.__func__
+        elif inspect.isfunction(attr):
+            func = attr
+        else:
+            continue
+        if getattr(func, "_pjx_ctx_injected", False):
+            continue
+        ctx_param = resolve_load_context_param(func, cls)
+        if ctx_param is None:
+            continue
+        wrapped = _make_context_wrapper(func, ctx_param.name)
+        # ``func`` retains its leading ``self``/``cls`` arg; the descriptor re-wrap
+        # below restores it, so ``bind_partial`` sees the same args as a raw call.
+        if isinstance(attr, classmethod):
+            wrapped = classmethod(wrapped)
+        elif isinstance(attr, staticmethod):
+            wrapped = staticmethod(wrapped)
+        setattr(cls, name, wrapped)
 
 
 @dataclass(frozen=True)

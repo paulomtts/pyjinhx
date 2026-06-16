@@ -74,7 +74,7 @@ class PjxContext:
     ...
 ```
 
-Opaque base for request-scoped data available inside reactive `load()`. Subclass with your own frozen dataclass fields (database session, user id, feature flags).
+Opaque base for request-scoped data available inside reactive `load()` and any component method that declares a `PjxContext` parameter. Subclass with your own frozen dataclass fields (database session, user id, feature flags).
 
 ## PjxContext.current / PjxContext.bind
 
@@ -83,7 +83,7 @@ PjxContext.current() -> Any | None
 PjxContext.bind(ctx) -> ContextManager[None]
 ```
 
-Return or set the load context for the current scope. Reactive `load()` methods receive a parameter annotated with `PjxContext` (or a subclass) when the context is set.
+Return or set the load context for the current scope. Any component method that declares a parameter annotated with `PjxContext` (or a subclass) — including reactive `load()` — receives the current context when the parameter is left unbound; an explicitly passed argument takes precedence. At most one such parameter is allowed per method.
 
 Prefer `Registry.request_scope(load_context=ctx)` in web apps — it combines registry isolation, request cache, mutation tracking, and load context in one call.
 
