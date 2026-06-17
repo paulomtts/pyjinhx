@@ -55,6 +55,12 @@ class MutationTracker:
         return cls._render_consumed.get()
 
 
+def _require_mutation_keys(keys: tuple[Any, ...], caller: str) -> None:
+    invalid = sorted(repr(key) for key in keys if not isinstance(key, MutationKey))
+    if invalid:
+        raise TypeError(f"{caller} only accepts MutationKey members; got {', '.join(invalid)}")
+
+
 def mutates(*keys: MutationKey) -> Callable[[F], F]:
     """
     Decorator for store mutation methods.
@@ -63,9 +69,7 @@ def mutates(*keys: MutationKey) -> Callable[[F], F]:
     dirtied for the next reactive ``render()``. Keys must be ``MutationKey``
     members.
     """
-    invalid = sorted(repr(key) for key in keys if not isinstance(key, MutationKey))
-    if invalid:
-        raise TypeError(f"@mutates only accepts MutationKey members; got {', '.join(invalid)}")
+    _require_mutation_keys(keys, "@mutates")
 
     def decorator(func: F) -> F:
         @functools.wraps(func)
@@ -77,3 +81,15 @@ def mutates(*keys: MutationKey) -> Callable[[F], F]:
         return wrapper  # type: ignore[return-value]
 
     return decorator
+
+
+def dirty(*keys: MutationKey) -> None:
+    """
+    Imperatively dirty reactive keys, like ``@mutates`` without a decorator.
+
+    Invalidates the load cache for ``keys`` and accumulates them as pending
+    dirtied for the next reactive ``render()``. Keys must be ``MutationKey``
+    members.
+    """
+    _require_mutation_keys(keys, "dirty()")
+    MutationTracker.record(keys)
