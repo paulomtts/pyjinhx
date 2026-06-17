@@ -46,6 +46,31 @@ Enables cleaner template syntax: `{{ component }}` instead of `{{ component.rend
 
 **Returns:** The rendered HTML as a Markup object.
 
+## component
+
+```python
+def component(name: str) -> type[BaseComponent]
+```
+
+Reference an **html-only** component — a template that has no hand-written Python class — from Python. Returns a `BaseComponent` subclass bound to that template, so you can instantiate, nest, and render it like any declared component.
+
+```python
+from pyjinhx import component
+
+Card = component("Card")                  # finds card.html under the default environment
+Card(title="Hi", content="body").render()
+```
+
+The template is resolved by **scanning the default environment** by tag name (`card.html`/`card.jinja`), the same lookup used for `<Card/>` tags in templates — so set the default environment first (e.g. `setup(components_root=...)` or `Renderer.set_default_environment(...)`). Resolution is lazy: `component("Card")` works even before the environment is set; the template is located at render time.
+
+Arbitrary attributes are accepted (`extra="allow"`) and children map to the `content` slot, e.g. `component("Card")(title="Hi", content="body")`.
+
+- **`name`** must be PascalCase (so it round-trips as `<Name/>` in templates) — otherwise `ValueError`.
+- **Idempotent and non-shadowing:** if a class is already registered under `name` (previously synthesized, or a real declared component), that class is returned — `component("Card")` twice returns the same object, and it never replaces a declared component.
+- A missing template raises `FileNotFoundError` at render time.
+
+Because the returned class is registered, it also resolves as `<Card/>` inside other templates.
+
 ## NestedComponentWrapper
 
 A wrapper for nested components. Enables access to the component's properties and rendered HTML.
