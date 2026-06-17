@@ -352,21 +352,6 @@ class BaseComponent(BaseModel):
                     session=session,
                 )
 
-            if type(self).__module__.startswith("pyjinhx.builtins"):
-                # Serialize collected attrs to HTML string. Task 2 will extract this logic.
-                attrs = collect_extra_attrs(self)
-                parts = []
-                for name, value in attrs.items():
-                    if '"' in value:
-                        if "'" in value:
-                            raise ValueError(
-                                f"attribute {name!r} value must not contain both '\"' and \"'\""
-                            )
-                        parts.append(f" {name}='{value}'")
-                    else:
-                        parts.append(f' {name}="{value}"')
-                context["extra_attrs_html"] = "".join(parts)
-
             from pyjinhx.client import ClientBackend, LoadedAssets
 
             resolved_client = ClientBackend.resolve_client(client)
