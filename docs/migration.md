@@ -34,7 +34,9 @@ def generate():
 
 Fan-out happens once per request scope and never double-swaps a region already
 present in the response body. For a response that renders no component (a raw
-string, a `204`), use `from pyjinhx.reactive import reactive_response`.
+string, a `204`), use `from pyjinhx.reactive import ReactiveResponse`. The old
+function `reactive_response(html)` is now the class `ReactiveResponse(html)`,
+and the dummy `""` is no longer needed — `ReactiveResponse()` works.
 
 ## 0.11 → 0.12 (breaking: `PJX` prefix on all builtins)
 

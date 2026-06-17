@@ -516,12 +516,15 @@ def _finish_with_oob(html: str | Markup, *, skip_invalidate: bool = False) -> Ma
     return Markup(html) + swaps
 
 
-def reactive_response(html: str | Markup) -> Markup:
+class ReactiveResponse(Markup):
     """
-    Attach pending OOB swaps to a response that renders no component.
+    HTML response that carries pending OOB swaps for a request that renders no
+    component (raw string, ``204``, hand-assembled).
 
-    Use for raw-string, ``204``, or hand-assembled responses. Any component's
-    ``.render()`` already does this automatically; reach for this only when no
-    component render happens in the request.
+    Any component's ``.render()`` already attaches these automatically; reach
+    for this only when no component render happens in the request. The instance
+    IS the resulting markup, so return it directly as the response body.
     """
-    return _finish_with_oob(html)
+
+    def __new__(cls, html: str | Markup = "") -> "ReactiveResponse":
+        return super().__new__(cls, _finish_with_oob(html))
