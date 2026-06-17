@@ -86,6 +86,27 @@ component base per class — a definition-time `TypeError` is raised if two comp
 appear in `__bases__`. Framework bases (`ReactiveComponent`) don't count toward that
 limit, so `class LiveBadge(ReactiveComponent, PJXBadge, react={...})` is valid.
 
+## HTML-only components
+
+A component doesn't always need a Python class. If you have a template with no
+behaviour or typed fields — just markup — you can reference it from Python with
+the `component()` factory instead of hand-writing a `BaseComponent` subclass:
+
+```python
+from pyjinhx import component
+
+Card = component("Card")                   # finds card.html under the default environment
+Card(title="Hi", content="body").render()
+```
+
+`component("Card")` returns a registered `BaseComponent` subclass bound to
+`card.html`, resolved by scanning the default environment (set it via
+`setup(components_root=...)` or `Renderer.set_default_environment(...)`). The
+result is a first-class component: instantiate it, pass it as a field of another
+component, or use `<Card/>` in a template — they all resolve to the same class.
+It's idempotent and never shadows a component you've actually declared. See
+[`component()`](../api/base-component.md#component).
+
 ## Extra Fields
 
 A plain Pydantic `BaseModel` rejects unknown fields with a `ValidationError`. With `BaseComponent`, **extra fields are accepted and available in the template context**. This allows you to pass dictionaries or data objects with additional fields without raising validation errors.
