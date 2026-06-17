@@ -119,6 +119,8 @@ def setup(
     context_factory: Callable[[Any], object | None] | None = None,
     invalidation_backend: InvalidationBackend | None = _UNSET,
     reactive_dev: bool = _UNSET,
+    components_root: str | os.PathLike[str] | None = None,
+    static_root: str | os.PathLike[str] | None = None,
     **kwargs: Any,
 ) -> PjxSettings:
     """
@@ -128,10 +130,21 @@ def setup(
     With a FastAPI/Starlette app, lifespan is chained and registry middleware
     is registered.
 
+    ``components_root`` sets the renderer's default environment to a
+    ``FileSystemLoader`` rooted there (works with or without an ``app``).
+    ``static_root`` mounts a ``StaticFiles`` app at ``/static`` and therefore
+    requires an ``app``.
+
     The load-cache scope is derived from ``invalidation_backend``: cross-request
     ``PROCESS`` caching when a backend is set (kept consistent across workers by
     the backend), per-request ``REQUEST`` caching otherwise.
     """
+    if components_root is not None:
+        from pyjinhx.renderer import Renderer
+
+        Renderer.set_default_environment(components_root)
+    if static_root is not None and app is None:
+        raise TypeError("setup(static_root=...) requires an app to mount it on")
     resolved = _merge_settings(
         settings,
         invalidation_backend=invalidation_backend,
@@ -149,5 +162,5 @@ def setup(
 
     from pyjinhx.integrations.fastapi import apply_setup
 
-    apply_setup(app, resolved, context_factory=context_factory)
+    apply_setup(app, resolved, context_factory=context_factory, static_root=static_root)
     return resolved
