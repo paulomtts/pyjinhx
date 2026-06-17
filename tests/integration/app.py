@@ -39,6 +39,7 @@ DEFAULT_GALLERY_PORT = 9000
 _GALLERY_DIR = Path(__file__).resolve().parent
 
 _SHOWCASE_TEMPLATE = """
+<div class="builtins-gallery">
 <h2>Badge</h2>
 <section class="demo-row">
 {{ badge }}
@@ -156,6 +157,7 @@ _SHOWCASE_TEMPLATE = """
 </div>
 {{ panel_host }}
 </section>
+</div>
 """
 
 

@@ -23,7 +23,7 @@ def test_custom_html():
             auto_id=True,
         ).render(index_html)
 
-        expected_pattern = r"^<div id=pjx-\d+>\n  <span id=pjx-\d+>Hello Paulo!</span>\n</div>$"
+        expected_pattern = r'^<div id=pjx-\d+>\n  <span id=pjx-\d+ name="Paulo">Hello Paulo!</span>\n</div>$'
         assert re.match(expected_pattern, rendered), (
             f"Output does not match expected pattern. Got: {rendered!r}"
         )
@@ -47,7 +47,7 @@ def test_deep_nesting():
         ).render(index_html)
 
         assert re.match(
-            r"^<section id=pjx-\d+ class=wrapper>\n  <div id=pjx-\d+>\n  <p id=pjx-\d+>Deep nesting works!</p>\n</div>\n</section>$",
+            r'^<section id=pjx-\d+ class="wrapper">\n  <div id=pjx-\d+>\n  <p id=pjx-\d+ text="Deep nesting works!">Deep nesting works!</p>\n</div>\n</section>$',
             rendered,
         ), f"Output does not match expected pattern. Got: {rendered!r}"
 
@@ -68,7 +68,7 @@ def test_multiple_children():
         ).render(index_html)
 
         assert re.match(
-            r"^<ul id=pjx-\d+>\n  <li id=pjx-\d+>First</li><li id=pjx-\d+>Second</li><li id=pjx-\d+>Third</li>\n</ul>$",
+            r'^<ul id=pjx-\d+>\n  <li id=pjx-\d+ text="First">First</li><li id=pjx-\d+ text="Second">Second</li><li id=pjx-\d+ text="Third">Third</li>\n</ul>$',
             rendered,
         ), f"Output does not match expected pattern. Got: {rendered!r}"
 
@@ -89,7 +89,7 @@ def test_mixed_content_and_components():
         ).render(index_html)
 
         assert re.match(
-            r"^<div id=pjx-\d+ class=card>\n  Before <button id=pjx-\d+>Click Me</button> After\n</div>$",
+            r'^<div id=pjx-\d+ class="card">\n  Before <button id=pjx-\d+ label="Click Me">Click Me</button> After\n</div>$',
             rendered,
         ), f"Output does not match expected pattern. Got: {rendered!r}"
 
@@ -111,7 +111,7 @@ def test_manual_ids():
 
         assert (
             rendered
-            == "<header id=main-header>\n  <h1>My Site</h1>\n  <nav id=main-nav>Home | About</nav>\n</header>"
+            == '<header id=main-header title="My Site">\n  <h1>My Site</h1>\n  <nav id=main-nav>Home | About</nav>\n</header>'
         )
 
 
@@ -129,7 +129,7 @@ def test_complex_attributes():
         ).render(index_html)
 
         assert re.match(
-            r"^<input id=pjx-\d+ type=text name=username placeholder=Enter username required=true/>$",
+            r'^<input id=pjx-\d+ type="text" name="username" placeholder="Enter username" username required="true"/>$',
             rendered,
         ), f"Output does not match expected pattern. Got: {rendered!r}"
 
@@ -146,7 +146,7 @@ def test_empty_component():
         ).render(index_html)
 
         assert re.match(
-            r"^<div id=pjx-\d+ class=spacer></div>$", rendered
+            r'^<div id=pjx-\d+ class="spacer"></div>$', rendered
         ), f"Output does not match expected pattern. Got: {rendered!r}"
 
 
@@ -179,7 +179,7 @@ def test_auto_id_false_with_manual_id():
             auto_id=False,
         ).render(index_html)
 
-        assert rendered == "<div id=custom-box class=container></div>"
+        assert rendered == '<div id=custom-box class="container"></div>'
 
 
 def test_renderer_uses_registered_class():

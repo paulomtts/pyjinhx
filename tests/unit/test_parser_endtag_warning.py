@@ -31,7 +31,7 @@ def test_plain_html_wrapping_component_does_not_warn(caplog):
                 auto_id=True,
             ).render(index_html)
 
-    assert re.match(r"^<div><span id=pjx-\d+>New</span></div>$", rendered), (
+    assert re.match(r'^<div><span id=pjx-\d+ text="New">New</span></div>$', rendered), (
         f"Output does not match expected pattern. Got: {rendered!r}"
     )
     assert not caplog.records
