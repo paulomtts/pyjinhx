@@ -82,12 +82,3 @@ shutdown_pyjinhx()            # shutdown
 
 When an `invalidation_backend` is configured, its listener starts and cross-request (process-wide) caching is enabled; otherwise caching is per-request.
 
-## pyjinhx_lifespan
-
-Sync context manager for non-ASGI tests and scripts:
-
-```python
-with pyjinhx_lifespan():
-    ...
-```
-
