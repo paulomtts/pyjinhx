@@ -100,7 +100,7 @@ def test_reactive_response_fans_out_for_raw_string():
     manifest = [{"id": "counter", "type": "ReactiveCounter", "hash": "stale"}]
     with reactive_client(manifest):
         record_mutation("todos")
-        out = str(ReactiveResponse("<p>no component here</p>"))
+        out = str(ReactiveResponse(html="<p>no component here</p>"))
     assert "<p>no component here</p>" in out
     assert "outerHTML:[data-pjx-id='counter']" in out
     assert "9 left" in out
@@ -122,7 +122,7 @@ def test_reactive_response_passthrough_without_backend():
     from pyjinhx.reactive import ReactiveResponse
 
     record_mutation("todos")
-    out = ReactiveResponse("<p>x</p>")
+    out = ReactiveResponse(html="<p>x</p>")
     assert out == "<p>x</p>"
 
 
@@ -143,10 +143,99 @@ def test_reactive_response_emits_once_per_scope():
     manifest = [{"id": "counter", "type": "ReactiveCounter", "hash": "stale"}]
     with reactive_client(manifest):
         record_mutation("todos")
-        first = str(ReactiveResponse("<div>a</div>"))
-        second = str(ReactiveResponse("<div>b</div>"))
+        first = str(ReactiveResponse(html="<div>a</div>"))
+        second = str(ReactiveResponse(html="<div>b</div>"))
     assert "outerHTML:[data-pjx-id='counter']" in first
     assert second == "<div>b</div>"
+
+
+def test_reactive_response_key_dirties_and_fans_out():
+    from pyjinhx.mutations import MutationTracker
+    from pyjinhx.reactive import ReactiveResponse
+    from tests.reactive_test_support import Keys
+
+    # No client scope: record() runs but the fan-out (which would consume the
+    # pending set) is a no-op, so we can observe the dirtied key directly.
+    ReactiveResponse(Keys.TODOS)
+    assert "todos" in MutationTracker.pending()
+
+    store.state["remaining"] = 6
+    manifest = [{"id": "counter", "type": "ReactiveCounter", "hash": "stale"}]
+    with reactive_client(manifest):
+        out = str(ReactiveResponse(Keys.TODOS))
+    assert "outerHTML:[data-pjx-id='counter']" in out
+    assert "6 left" in out
+
+
+def test_reactive_response_records_multiple_keys():
+    from pyjinhx import MutationKey
+    from pyjinhx.mutations import MutationTracker
+    from pyjinhx.reactive import ReactiveResponse
+    from tests.reactive_test_support import Keys
+
+    class OtherKeys(MutationKey):
+        QUOTA = "quota"
+
+    ReactiveResponse(Keys.TODOS, OtherKeys.QUOTA)
+    assert MutationTracker.pending() == {"todos", "quota"}
+
+
+def test_reactive_response_html_keyword_keeps_primary_and_fans_out():
+    from pyjinhx.reactive import ReactiveResponse
+
+    store.state["remaining"] = 8
+    manifest = [{"id": "counter", "type": "ReactiveCounter", "hash": "stale"}]
+    with reactive_client(manifest):
+        record_mutation("todos")
+        out = str(ReactiveResponse(html="<p>x</p>"))
+    assert "<p>x</p>" in out
+    assert "outerHTML:[data-pjx-id='counter']" in out
+    assert "8 left" in out
+
+
+def test_reactive_response_key_and_html():
+    from pyjinhx.reactive import ReactiveResponse
+    from tests.reactive_test_support import Keys
+
+    store.state["remaining"] = 8
+    manifest = [{"id": "counter", "type": "ReactiveCounter", "hash": "stale"}]
+    with reactive_client(manifest):
+        out = str(ReactiveResponse(Keys.TODOS, html="<p>x</p>"))
+    assert "<p>x</p>" in out
+    assert out.count("outerHTML:[data-pjx-id='counter']") == 1
+    assert "8 left" in out
+
+
+def test_reactive_response_bare_string_positional_raises():
+    import pytest
+
+    from pyjinhx.reactive import ReactiveResponse
+
+    with pytest.raises(TypeError) as exc:
+        ReactiveResponse("<p>oops</p>")
+    assert str(exc.value).startswith("ReactiveResponse()")
+
+
+def test_reactive_response_record_invalidates_load_cache(monkeypatch):
+    from pyjinhx import cache as cache_mod
+    from pyjinhx.reactive import ReactiveResponse
+    from tests.reactive_test_support import Keys
+
+    calls = []
+    original = cache_mod.LoadCache.invalidate
+
+    def counting_invalidate(keys):
+        calls.append(set(keys))
+        return original(keys)
+
+    monkeypatch.setattr(cache_mod.LoadCache, "invalidate", counting_invalidate)
+
+    store.state["remaining"] = 2
+    manifest = [{"id": "counter", "type": "ReactiveCounter", "hash": "stale"}]
+    with reactive_client(manifest):
+        str(ReactiveResponse(Keys.TODOS))
+
+    assert any("todos" in keys for keys in calls)
 
 
 def test_class_render_does_not_double_invalidate(monkeypatch):

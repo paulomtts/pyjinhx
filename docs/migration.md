@@ -35,8 +35,13 @@ def generate():
 Fan-out happens once per request scope and never double-swaps a region already
 present in the response body. For a response that renders no component (a raw
 string, a `204`), use `from pyjinhx.reactive import ReactiveResponse`. The old
-function `reactive_response(html)` is now the class `ReactiveResponse(html)`,
-and the dummy `""` is no longer needed — `ReactiveResponse()` works.
+function `reactive_response(html)` is now the class `ReactiveResponse`, and the
+dummy `""` is no longer needed — `ReactiveResponse()` works.
+
+`ReactiveResponse`'s `html` is now **keyword-only** — pass it as
+`ReactiveResponse(html="<p>…</p>")`, not positionally. The positional slots now
+take mutation keys, so you can dirty and fan out in one call:
+`ReactiveResponse(Keys.TODOS)` (or `ReactiveResponse(Keys.TODOS, html="<p>…</p>")`).
 
 ## 0.11 → 0.12 (breaking: `PJX` prefix on all builtins)
 
