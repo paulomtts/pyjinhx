@@ -163,6 +163,10 @@ class BaseComponent(BaseModel):
     # Components without a `content` field can point this at their text slot.
     _pjx_children_field: ClassVar[str] = "content"
 
+    # Tag name for html-only components synthesized via `component(name)`. When
+    # set, the template is resolved by scanning the default env at render time.
+    _pjx_template: ClassVar[str | None] = None
+
     id: str = Field(
         default_factory=_auto_id,
         description="The unique ID for this component. Auto-generated when omitted.",
@@ -402,3 +406,26 @@ class BaseComponent(BaseModel):
         from pyjinhx.reactive import _finish_with_oob
 
         return _finish_with_oob(self._render())
+
+
+def component(name: str) -> type[BaseComponent]:
+    """
+    Reference an html-only component (a template with no hand-written class).
+
+    ``component("Card")`` returns a class whose template (``card.html``) is
+    resolved by scanning the default environment at render time, so it works
+    even if the default environment isn't set yet at call time::
+
+        Card = component("Card")
+        Card(title="Hi", content="body").render()
+
+    Idempotent: calling it twice returns the same class, and it never shadows
+    an already-declared component of the same name.
+    """
+    from .tags import RE_PASCAL_CASE_TAG_NAME
+
+    if not RE_PASCAL_CASE_TAG_NAME.match(name):
+        raise ValueError(f"component name {name!r} must be PascalCase")
+    if Registry.has_class(name):
+        return Registry.get_class(name)
+    return type(name, (BaseComponent,), {"_pjx_template": name})

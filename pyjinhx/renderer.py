@@ -64,6 +64,20 @@ def load_template_for_component(
         relative_path = os.path.relpath(template_path, loader_root)
         return environment.get_template(relative_path)
 
+    # Html-only components synthesized via `component(name)` have no real source
+    # file, so resolve their template by scanning the default env by tag name.
+    pjx_template = getattr(type(component), "_pjx_template", None)
+    if pjx_template is not None:
+        try:
+            found_path = renderer._find_template_for_tag(pjx_template)
+        except FileNotFoundError:
+            from .tags import _missing_template_error
+
+            raise _missing_template_error(pjx_template)
+        loader_root = get_loader_root(environment)
+        relative_path = os.path.relpath(found_path, loader_root)
+        return environment.get_template(relative_path)
+
     resolution_classes = component_resolution_classes(type(component))
     if not resolution_classes:
         raise FileNotFoundError(

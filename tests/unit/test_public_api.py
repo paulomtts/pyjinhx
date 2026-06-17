@@ -9,12 +9,14 @@ from pyjinhx import (
     ReactiveComponent,
     Registry,
     Renderer,
+    component,
     mutates,
     setup,
 )
 
 PUBLIC_API = {
     "BaseComponent",
+    "component",
     "ReactiveComponent",
     "Renderer",
     "setup",
@@ -38,7 +40,7 @@ def test_public_symbols_are_correct():
     assert issubclass(MutationKey, str)
     assert AssetMode.INLINE is not None
     assert PjxKey.__name__ == "PjxKey"
-    for fn in (setup, mutates, PjxSettings.from_env,
+    for fn in (setup, mutates, component, PjxSettings.from_env,
                Renderer.set_default_environment, Registry.request_scope,
                PjxContext.current):
         assert callable(fn)

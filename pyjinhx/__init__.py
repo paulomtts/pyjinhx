@@ -7,7 +7,7 @@ LoadCache`` — and are not part of this curated surface.
 """
 
 from pyjinhx.assets import AssetMode
-from pyjinhx.base import BaseComponent
+from pyjinhx.base import BaseComponent, component
 from pyjinhx.config import PjxSettings, setup
 from pyjinhx.context import PjxContext
 from pyjinhx.keys import MutationKey
@@ -19,6 +19,7 @@ from pyjinhx.renderer import Renderer
 __all__ = [
     # Components & rendering
     "BaseComponent",
+    "component",
     "ReactiveComponent",
     "Renderer",
     # App wiring
