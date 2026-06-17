@@ -299,6 +299,17 @@ class Renderer:
         )
         rendered_markup = stamp_reactive_markup(rendered_markup, component)
 
+        from .base import collect_extra_attrs
+        from .root_attrs import apply_root_attrs
+
+        rendered_markup = Markup(
+            apply_root_attrs(
+                str(rendered_markup),
+                component_name=type(component).__name__,
+                attrs=collect_extra_attrs(component),
+            )
+        )
+
         if not emit_assets:
             return Markup(Markup(rendered_markup).unescape())
 

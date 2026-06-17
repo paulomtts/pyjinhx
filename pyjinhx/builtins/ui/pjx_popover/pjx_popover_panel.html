@@ -1,2 +1,2 @@
 {% set _tag = "form" if as_form else "div" %}
-<{{ _tag }} id="{{ id }}" class="pjx-popover__panel{% if class_name %} {{ class_name }}{% endif %}"{% if behavior %} data-pjx-popover-panel{% endif %} hidden{% if role %} role="{{ role }}"{% endif %}{{ extra_attrs_html }}>{{ content }}</{{ _tag }}>
+<{{ _tag }} id="{{ id }}" class="pjx-popover__panel{% if class_name %} {{ class_name }}{% endif %}"{% if behavior %} data-pjx-popover-panel{% endif %} hidden{% if role %} role="{{ role }}"{% endif %}>{{ content }}</{{ _tag }}>

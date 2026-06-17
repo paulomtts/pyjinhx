@@ -1,5 +1,48 @@
 # Migration guide
 
+## 0.17 → 0.18
+
+### Universal attribute pass-through + single-root invariant
+
+Inline tag attributes on a PascalCase component tag are now automatically injected onto that
+component's root element for **every** component — builtins, `BaseComponent` subclasses, and
+template-only `.html` components. No template boilerplate is needed.
+
+**For authors of custom components:** nothing to do for pass-through. The only required change
+is ensuring every component template renders exactly **one** top-level element. Templates with
+zero or two or more top-level elements now raise a `ValueError` at render time.
+
+```html
+<!-- BEFORE (0.17): was silently accepted, pass-through silently dropped -->
+<h2>{{ title }}</h2>
+<p>{{ body }}</p>
+
+<!-- AFTER (0.18): wrap in a single root — required -->
+<div id="{{ id }}">
+    <h2>{{ title }}</h2>
+    <p>{{ body }}</p>
+</div>
+```
+
+### `{{ extra_attrs_html }}` template token removed
+
+The `{{ extra_attrs_html }}` Jinja variable is no longer injected into the template context.
+If your custom builtin or app-component templates contain `{{ extra_attrs_html }}`, remove
+the token — injection is now automatic and placing the token would produce a blank string.
+
+```html
+<!-- BEFORE (0.17): builtin-only manual token -->
+<div id="{{ id }}" class="pjx-card" {{ extra_attrs_html }}>…</div>
+
+<!-- AFTER (0.18): token removed; attributes inject automatically -->
+<div id="{{ id }}" class="pjx-card">…</div>
+```
+
+The `extra_attrs` field on `BaseComponent` still works: pass a dict and it is injected onto
+the root alongside any stray tag attributes.
+
+---
+
 ## 0.12 → 0.13
 
 ### `setup()` keyword `load_context_factory` → `context_factory`

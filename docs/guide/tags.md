@@ -18,7 +18,10 @@ You can also use PascalCase tags **inside component templates** to compose compo
 
 ## Attributes
 
-Tag attributes become template context variables:
+Tag attributes become template context variables. For components with a `BaseComponent`
+subclass, declared fields are consumed as props (Pydantic-validated and available in the
+template). Non-declared ("stray") attributes are injected onto the component's root
+element automatically — no template token needed.
 
 ```python
 html = renderer.render('''
@@ -30,6 +33,11 @@ html = renderer.render('''
     />
 ''')
 ```
+
+Stray attributes like `hx-*`, `data-*`, or `aria-*` passed on any PascalCase tag land
+on the root element of that component with **override semantics** — an inline attribute
+replaces any same-named attribute the template hardcodes, including `class` and `style`.
+See [Creating Components](components.md#attribute-pass-through) for the full rules.
 
 ## The `content` Variable
 

@@ -35,6 +35,7 @@ from pyjinhx.builtins import (
 )
 
 _PAGE_TEMPLATE = """
+<div class="kitchen-sink-page">
 <h1 id="page-title">Reactivity kitchen sink</h1>
 
 <section>
@@ -90,6 +91,7 @@ Fetch notification
 {{ password }}
 {{ tabs }}
 </section>
+</div>
 """
 
 

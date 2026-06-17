@@ -28,7 +28,7 @@ def test_component_template_can_expand_custom_tags():
 
         rendered = renderer.render('<Parent id="parent-1" child_text="Hello"/>')
 
-        assert rendered == '<div id="parent-1"><span id="child-1">Hello</span></div>'
+        assert rendered == '<div id="parent-1" child_text="Hello"><span id="child-1">Hello</span></div>'
 
 
 def test_nested_custom_tags_in_renderer():
@@ -50,5 +50,5 @@ def test_nested_custom_tags_in_renderer():
 
         assert (
             rendered
-            == '<section id="outer-1"><p id="inner-1">Nested content</p></section>'
+            == '<section id="outer-1"><p id="inner-1" text="Nested content">Nested content</p></section>'
         )

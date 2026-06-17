@@ -30,7 +30,8 @@ def test_component_renders_html_only_template(default_env):
     CfCard = component("CfCard")
     rendered = str(CfCard(title="Hi", content="body").render())
 
-    assert '<div class="card">' in rendered
+    assert '<div class="card"' in rendered
+    assert 'title="Hi"' in rendered
     assert "<h1>Hi</h1>" in rendered
     assert "body" in rendered
 
