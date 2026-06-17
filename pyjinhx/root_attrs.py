@@ -104,7 +104,7 @@ def _override_tag(tag_text: str, attrs: dict[str, str]) -> str:
             body = pattern.sub(" " + pair, body, count=1)
         elif body.rstrip().endswith("/>"):
             idx = body.rindex("/>")
-            body = body[:idx].rstrip() + " " + pair + body[idx:]
+            body = body[:idx].rstrip() + " " + pair + body[idx:]  # rstrip intentional: prevents extra space before '/>' (e.g. '<br data-y="1"/>' not '<br  data-y="1"/>')
         else:
             idx = body.rindex(">")
             body = body[:idx] + " " + pair + body[idx:]

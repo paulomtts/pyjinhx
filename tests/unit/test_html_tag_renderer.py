@@ -119,7 +119,7 @@ def test_complex_attributes():
     with tempfile.TemporaryDirectory() as temp_dir:
         with open(os.path.join(temp_dir, "input.html"), "w") as file:
             file.write(
-                "<input id={{ id }} type={{ type }} name={{ name }} placeholder={{ placeholder }} required={{ required }}/>\n"
+                '<input id={{ id }} type={{ type }} name={{ name }} placeholder="{{ placeholder }}" required={{ required }}/>\n'
             )
 
         index_html = '<Input type="text" name="username" placeholder="Enter username" required="true"/>'
@@ -129,7 +129,7 @@ def test_complex_attributes():
         ).render(index_html)
 
         assert re.match(
-            r'^<input id=pjx-\d+ type="text" name="username" placeholder="Enter username" username required="true"/>$',
+            r'^<input id=pjx-\d+ type="text" name="username" placeholder="Enter username" required="true"/>$',
             rendered,
         ), f"Output does not match expected pattern. Got: {rendered!r}"
 

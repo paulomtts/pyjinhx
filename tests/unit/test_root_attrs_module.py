@@ -81,3 +81,19 @@ def test_apply_root_attrs_empty_attrs_still_validates():
 def test_apply_root_attrs_empty_attrs_returns_unchanged():
     html = "<div>x</div>"
     assert apply_root_attrs(html, component_name="X", attrs={}) == html
+
+
+def test_apply_root_attrs_handles_multiline_root_tag():
+    html = '<div\n  id="a"\n  class="c">body</div>'
+    out = apply_root_attrs(html, component_name="X", attrs={"data-y": "1"})
+    assert 'data-y="1"' in out
+    # injected attr lands inside the opening tag, before the closing '>'
+    assert out.index('data-y="1"') < out.index('>')
+    assert "body</div>" in out
+
+
+def test_find_single_root_returns_span_of_multiline_opening_tag():
+    html = '<div\n  id="a"\n  class="c">body</div>'
+    start, end = find_single_root(html, component_name="X")
+    # The span must cover the entire multi-line opening tag up to and including '>'
+    assert html[start:end] == '<div\n  id="a"\n  class="c">'
