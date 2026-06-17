@@ -129,8 +129,8 @@ class Card(BaseComponent):
 ```
 
 **Override semantics:** a stray inline attribute replaces any same-named attribute the template
-already hardcodes on its root, including `class` and `style` (full replace, not merge). New
-attributes are appended after the existing ones.
+already hardcodes on its root, including `class` and `style` (full replace, not merge). Attributes
+that don't collide are added to the root element alongside the existing ones.
 
 **Props vs. pass-through:** declared fields are props — they fill the template context and are
 not injected. Non-declared ("stray") attributes and the explicit `extra_attrs` dict are

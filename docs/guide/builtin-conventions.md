@@ -81,7 +81,7 @@ they flow into the template context and are **not** injected onto the root. Only
 (no declared fields), all attributes inject onto the root and are also available as template
 variables.
 
-For builtins, `class_name` is the right way to append CSS classes (it concatenates onto the
+For builtins specifically, `class_name` is the right way to append CSS classes (it concatenates onto the
 template's root class). Use inline `class="..."` or `extra_attrs={"class": "..."}` only when
 you want to **replace** the root class entirely.
 
