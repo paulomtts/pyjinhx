@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import os
 from collections.abc import Callable
 from contextlib import asynccontextmanager
 from typing import Any
@@ -35,6 +36,7 @@ def apply_setup(
     settings: PjxSettings,
     *,
     context_factory: Callable[[Any], object | None] | None = None,
+    static_root: str | os.PathLike[str] | None = None,
 ) -> None:
     if getattr(app.state, "pyjinhx_setup", False):
         logger.warning(
@@ -43,6 +45,10 @@ def apply_setup(
         return
     _chain_lifespan(app, settings)
     app.add_middleware(_registry_middleware_class(context_factory))
+    if static_root is not None:
+        from starlette.staticfiles import StaticFiles
+
+        app.mount("/static", StaticFiles(directory=static_root), name="static")
     app.state.pyjinhx_setup = True
 
 

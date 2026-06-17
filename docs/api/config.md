@@ -12,11 +12,20 @@ def setup(
     invalidation_backend: InvalidationBackend | None = ...,  # unset sentinel
     reactive_dev: bool = ...,  # unset sentinel
     context_factory: Callable[[Any], object | None] | None = None,
+    components_root: str | os.PathLike[str] | None = None,
+    static_root: str | os.PathLike[str] | None = None,
     **kwargs: Any,
 ) -> PjxSettings
 ```
 
 When omitted, `invalidation_backend` and `reactive_dev` never override a value already present in `settings` — their defaults are unset sentinels, so only explicitly passed values are applied.
+
+`components_root` sets the renderer's default environment to a `FileSystemLoader` rooted there; it works with or without an `app`. `static_root` mounts a `StaticFiles` app at `/static` (name `"static"`) and therefore requires an `app` — passing it with `app=None` raises `TypeError`. Both default to `None` (no-op), and the static mount is covered by the idempotency guard, so a second `setup()` won't double-mount.
+
+```python
+app = FastAPI()
+setup(app, components_root=COMPONENTS_ROOT, static_root=STATIC_ROOT)
+```
 
 **Single call** for typical web apps:
 
