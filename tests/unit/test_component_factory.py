@@ -43,7 +43,7 @@ def test_component_nests_in_another_component(default_env):
         '<section id="{{ id }}">{{ content }}<CfWidget>inner</CfWidget></section>',
     )
 
-    CfWidget = component("CfWidget")
+    component("CfWidget")  # register so the <CfWidget> tag resolves
     CfHost = component("CfHost")
 
     host = CfHost(content="head")
