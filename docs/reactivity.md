@@ -194,6 +194,19 @@ def dismiss():
     return ReactiveResponse()           # no primary; dependents still fan out OOB
 ```
 
+`ReactiveResponse` can also dirty keys and fan out in one call — pass the
+mutation keys positionally, folding the `dirty()` into the response:
+
+```python
+@app.post("/dismiss")
+def dismiss():
+    controller.dismiss()                # plain mutation, no @mutates
+    return ReactiveResponse(Keys.TODOS) # dirty TODOS + fan out dependents OOB
+```
+
+Pass `html=` for a primary body alongside the keys, e.g.
+`ReactiveResponse(Keys.TODOS, html="<p>dismissed</p>")`.
+
 !!! note "Without ClientBackend"
     Wire `ClientBackend` in middleware (via `setup()`) so `render()` reads manifest and asset headers automatically. Without a backend, reactive OOB is skipped when mutations are pending.
 

@@ -29,7 +29,7 @@ from .cache import LoadCache
 from .client import ClientBackend, MountedManifest
 from .dev import warn_reactive_render_without_client
 from .keys import MutationKey, ReactiveKey, coerce_load_key_str, coerce_reactive_keys
-from .mutations import MutationTracker
+from .mutations import MutationTracker, _require_mutation_keys
 
 
 class PjxKey:
@@ -524,7 +524,12 @@ class ReactiveResponse(Markup):
     Any component's ``.render()`` already attaches these automatically; reach
     for this only when no component render happens in the request. The instance
     IS the resulting markup, so return it directly as the response body.
+
+    Pass mutation keys positionally to dirty them and fan out in one call, e.g.
+    ``ReactiveResponse(Keys.TODOS)`` — no separate ``dirty()``/``@mutates`` needed.
     """
 
-    def __new__(cls, html: str | Markup = "") -> "ReactiveResponse":
+    def __new__(cls, *keys: MutationKey, html: str | Markup = "") -> "ReactiveResponse":
+        _require_mutation_keys(keys, "ReactiveResponse()")
+        MutationTracker.record(keys)  # no-op when keys is empty
         return super().__new__(cls, _finish_with_oob(html))

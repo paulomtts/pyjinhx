@@ -39,7 +39,7 @@ def _app() -> FastAPI:
         # Renders no component; ReactiveResponse fans out the dependents OOB.
         store.state["remaining"] = 7
         MutationTracker.record(("todos",))
-        return str(ReactiveResponse("<p>no component here</p>"))
+        return str(ReactiveResponse(html="<p>no component here</p>"))
 
     return app
 
