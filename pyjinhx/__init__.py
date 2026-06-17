@@ -11,7 +11,7 @@ from pyjinhx.base import BaseComponent, component
 from pyjinhx.config import PjxSettings, setup
 from pyjinhx.context import PjxContext
 from pyjinhx.keys import MutationKey
-from pyjinhx.mutations import mutates
+from pyjinhx.mutations import dirty, mutates
 from pyjinhx.reactive import PjxKey, ReactiveComponent
 from pyjinhx.registry import Registry
 from pyjinhx.renderer import Renderer
@@ -27,6 +27,7 @@ __all__ = [
     "Registry",
     # Reactive authoring
     "mutates",
+    "dirty",
     "MutationKey",
     "PjxKey",
     "PjxContext",

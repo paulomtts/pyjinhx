@@ -66,6 +66,24 @@ class Store:
         ...
 ```
 
+## dirty
+
+```python
+def dirty(*keys: MutationKey) -> None
+```
+
+Imperatively dirty reactive keys — the same effect `@mutates` has, but without decorating a function. Each arg must be a **`MutationKey` member** — bare strings raise `TypeError`. Invalidates the load cache and accumulates pending dirtied keys for the next reactive `render()`. A no-arg call is a no-op.
+
+```python
+from pyjinhx import MutationKey, dirty
+
+class Keys(MutationKey):
+    TODOS = "todos"
+
+store.add_without_decorator(text)
+dirty(Keys.TODOS)
+```
+
 ## PjxContext
 
 ```python
