@@ -86,6 +86,57 @@ component base per class — a definition-time `TypeError` is raised if two comp
 appear in `__bases__`. Framework bases (`ReactiveComponent`) don't count toward that
 limit, so `class LiveBadge(ReactiveComponent, PJXBadge, react={...})` is valid.
 
+## Single-root rule
+
+Every component template must render exactly **one** top-level HTML element. Rendering a
+template with zero or two or more sibling top-level elements raises a `ValueError`:
+
+```html
+<!-- WRONG: two siblings at the top level -->
+<h2>{{ title }}</h2>
+<p>{{ body }}</p>
+
+<!-- RIGHT: wrap them in a single root -->
+<div id="{{ id }}" class="card">
+    <h2>{{ title }}</h2>
+    <p>{{ body }}</p>
+</div>
+```
+
+Conditional roots are fine — the check runs on the rendered output, so any branch that
+resolves to a single element passes:
+
+```jinja
+{% if href %}<a href="{{ href }}">{{ label }}</a>{% else %}<button>{{ label }}</button>{% endif %}
+```
+
+## Attribute pass-through
+
+Inline tag attributes that are not declared fields of a component are automatically injected
+onto that component's root element at render time. No template boilerplate is needed — you
+don't place any special token in the template.
+
+```python
+class Card(BaseComponent):
+    id: str
+    title: str          # declared field — consumed as a prop, NOT injected
+    subtitle: str = ""  # declared field — consumed as a prop, NOT injected
+```
+
+```html
+<!-- hx-get and data-section are not Card fields, so they land on the root <div> -->
+<Card id="orders" title="Orders" hx-get="/orders" hx-trigger="every 5s" data-section="main"/>
+```
+
+**Override semantics:** a stray inline attribute replaces any same-named attribute the template
+already hardcodes on its root, including `class` and `style` (full replace, not merge). New
+attributes are appended after the existing ones.
+
+**Props vs. pass-through:** declared fields are props — they fill the template context and are
+not injected. Non-declared ("stray") attributes and the explicit `extra_attrs` dict are
+injected. For template-only components (no Python class, or created with `component()`), all
+attributes inject onto the root and are also available as template variables.
+
 ## HTML-only components
 
 A component doesn't always need a Python class. If you have a template with no
