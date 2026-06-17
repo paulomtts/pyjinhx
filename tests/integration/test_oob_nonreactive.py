@@ -8,6 +8,7 @@ from fastapi.testclient import TestClient
 from pyjinhx import setup
 from pyjinhx.client import PJX_MOUNTED_HEADER
 from pyjinhx.mutations import MutationTracker
+from pyjinhx.reactive import ReactiveResponse
 from pyjinhx.renderer import Renderer
 from tests.ui.reactive import store
 from tests.ui.reactive.reactive_counter import ReactiveCounter  # noqa: F401 (registers)
@@ -33,6 +34,13 @@ def _app() -> FastAPI:
         MutationTracker.record(("todos",))
         return str(ReactiveCounter.render())
 
+    @app.post("/dismiss", response_class=HTMLResponse)
+    def dismiss():
+        # Renders no component; ReactiveResponse fans out the dependents OOB.
+        store.state["remaining"] = 7
+        MutationTracker.record(("todos",))
+        return str(ReactiveResponse("<p>no component here</p>"))
+
     return app
 
 
@@ -57,3 +65,15 @@ def test_reactive_response_emits_single_swap_set():
     body = resp.text
     assert "7 left" in body
     assert "outerHTML:[data-pjx-id='counter']" not in body
+
+
+def test_dismiss_keeps_primary_and_appends_single_swap_set():
+    Renderer.set_default_environment(REPO_ROOT)
+    manifest = json.dumps([{"id": "counter", "type": "ReactiveCounter", "hash": "stale"}])
+    with TestClient(_app()) as client:
+        resp = client.post("/dismiss", headers={PJX_MOUNTED_HEADER: manifest})
+    body = resp.text
+    assert resp.status_code == 200
+    assert "<p>no component here</p>" in body
+    assert "7 left" in body
+    assert body.count("outerHTML:[data-pjx-id='counter']") == 1

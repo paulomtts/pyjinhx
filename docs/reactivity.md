@@ -183,15 +183,15 @@ def generate():
 ```
 
 For a response that renders no component at all (a raw string, a `204`), use
-`from pyjinhx.reactive import reactive_response` to attach the same fan-out:
+`from pyjinhx.reactive import ReactiveResponse` to attach the same fan-out:
 
 ```python
-from pyjinhx.reactive import reactive_response
+from pyjinhx.reactive import ReactiveResponse
 
 @app.post("/dismiss")
 def dismiss():
     controller.dismiss()                # @mutates dirties mounted regions
-    return reactive_response("")        # no primary; dependents still fan out OOB
+    return ReactiveResponse()           # no primary; dependents still fan out OOB
 ```
 
 !!! note "Without ClientBackend"

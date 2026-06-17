@@ -94,16 +94,59 @@ def test_base_render_unchanged_without_backend():
 
 
 def test_reactive_response_fans_out_for_raw_string():
-    from pyjinhx.reactive import reactive_response
+    from pyjinhx.reactive import ReactiveResponse
 
     store.state["remaining"] = 9
     manifest = [{"id": "counter", "type": "ReactiveCounter", "hash": "stale"}]
     with reactive_client(manifest):
         record_mutation("todos")
-        out = str(reactive_response("<p>no component here</p>"))
+        out = str(ReactiveResponse("<p>no component here</p>"))
     assert "<p>no component here</p>" in out
     assert "outerHTML:[data-pjx-id='counter']" in out
     assert "9 left" in out
+
+
+def test_reactive_response_no_arg_fans_out():
+    from pyjinhx.reactive import ReactiveResponse
+
+    store.state["remaining"] = 5
+    manifest = [{"id": "counter", "type": "ReactiveCounter", "hash": "stale"}]
+    with reactive_client(manifest):
+        record_mutation("todos")
+        out = str(ReactiveResponse())
+    assert "outerHTML:[data-pjx-id='counter']" in out
+    assert "5 left" in out
+
+
+def test_reactive_response_passthrough_without_backend():
+    from pyjinhx.reactive import ReactiveResponse
+
+    record_mutation("todos")
+    out = ReactiveResponse("<p>x</p>")
+    assert out == "<p>x</p>"
+
+
+def test_reactive_response_is_str_and_markup():
+    from markupsafe import Markup
+
+    from pyjinhx.reactive import ReactiveResponse
+
+    out = ReactiveResponse()
+    assert isinstance(out, str)
+    assert isinstance(out, Markup)
+
+
+def test_reactive_response_emits_once_per_scope():
+    from pyjinhx.reactive import ReactiveResponse
+
+    store.state["remaining"] = 1
+    manifest = [{"id": "counter", "type": "ReactiveCounter", "hash": "stale"}]
+    with reactive_client(manifest):
+        record_mutation("todos")
+        first = str(ReactiveResponse("<div>a</div>"))
+        second = str(ReactiveResponse("<div>b</div>"))
+    assert "outerHTML:[data-pjx-id='counter']" in first
+    assert second == "<div>b</div>"
 
 
 def test_class_render_does_not_double_invalidate(monkeypatch):
