@@ -28,7 +28,7 @@ CURATED: tuple[str, ...] = (
     "rotate-cw", "undo", "redo", "send", "filter", "sliders-horizontal",
     "search", "settings", "settings-2",
     # status / feedback
-    "alert-triangle", "alert-circle", "info", "check-circle", "x-circle",
+    "triangle-alert", "alert-circle", "info", "check-circle", "x-circle",
     "help-circle", "ban", "shield", "shield-check", "loader", "clock",
     # users / communication
     "user", "users", "user-plus", "user-check", "user-x", "mail", "at-sign",
@@ -49,6 +49,8 @@ CURATED: tuple[str, ...] = (
     "home", "globe", "map-pin", "sun", "moon", "cloud", "zap", "activity",
     "bar-chart", "trending-up", "code", "terminal", "git-branch",
     "log-in", "log-out", "power",
+    # issue-99: new additions
+    "building", "brain",
 )
 
 INNER_RE = re.compile(r"<svg[^>]*>(.*)</svg>", re.DOTALL)
