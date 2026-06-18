@@ -209,6 +209,7 @@ _BUILTIN_TAG_NAMES = frozenset(
         "PJXDrawer",
         "PJXEmptyState",
         "PJXFormField",
+        "PJXIcon",
         "PJXLazyPanel",
         "PJXModal",
         "PJXNotification",

@@ -11,6 +11,7 @@ from pyjinhx.builtins.ui.pjx_dropdown import PJXDropdown
 from pyjinhx.builtins.ui.pjx_drawer import PJXDrawer
 from pyjinhx.builtins.ui.pjx_empty_state import PJXEmptyState
 from pyjinhx.builtins.ui.pjx_form_field import PJXFormField
+from pyjinhx.builtins.ui.pjx_icon import PJXIcon
 from pyjinhx.builtins.ui.pjx_lazy_panel import PJXLazyPanel
 from pyjinhx.builtins.ui.pjx_region_loader import PJXRegionLoader
 from pyjinhx.builtins.ui.pjx_segmented_control import PJXSegmentedControl
@@ -43,6 +44,7 @@ __all__ = [
     "PJXDrawer",
     "PJXEmptyState",
     "PJXFormField",
+    "PJXIcon",
     "PJXLazyPanel",
     "PJXModal",
     "PJXNotification",

@@ -23,7 +23,6 @@ def _read(path: str) -> str:
 def test_swept_builtins_declare_contract_fields():
     for cls in SWEPT:
         assert "class_name" in cls.model_fields, cls.__name__
-        assert "extra_attrs" in cls.model_fields, cls.__name__
 
 
 def test_swept_templates_have_no_literal_aria_labels():

@@ -54,6 +54,8 @@ CASES = [
     ("toggle_switch", lambda: b.PJXToggleSwitch(id="g", name="active", checked=True, label="Active")),
     ("segmented_control", lambda: b.PJXSegmentedControl(id="g", name="view", options=[("list", "List"), ("grid", "Grid")], selected="list")),
     ("password_input", lambda: b.PJXPasswordInput(id="g")),
+    ("icon_plus", lambda: b.PJXIcon(id="g", name="plus")),
+    ("icon_labeled", lambda: b.PJXIcon(id="g", name="search", label="Search", size=20)),
 ]
 
 
