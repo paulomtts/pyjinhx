@@ -1,5 +1,5 @@
 <div id="{{ id }}"
-     class="pjx-avatar pjx-avatar--{{ size }}{% if class_name %} {{ class_name }}{% endif %}"{% if color %} style="background:{{ color }};"{% endif %}>
+     class="pjx-avatar{% if size_is_token %} pjx-avatar--{{ size }}{% endif %}{% if class_name %} {{ class_name }}{% endif %}"{% if not size_is_token %} style="width:{{ size_css }};height:{{ size_css }};{% if color %}background:{{ color }};{% endif %}"{% elif color %} style="background:{{ color }};"{% endif %}>
   {% if src %}
   <img class="pjx-avatar__img" src="{{ src }}" alt="{{ alt }}" loading="lazy" decoding="async" />
   {% else %}
