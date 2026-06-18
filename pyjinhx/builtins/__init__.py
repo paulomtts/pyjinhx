@@ -1,5 +1,6 @@
 from .ui import (
     PJXAccordion,
+    PJXAccordionGroup,
     PJXAlert,
     PJXButton,
     PJXAvatar,
@@ -39,6 +40,7 @@ from .ui import (
 
 __all__ = [
     "PJXAccordion",
+    "PJXAccordionGroup",
     "PJXAlert",
     "PJXButton",
     "PJXAvatar",
