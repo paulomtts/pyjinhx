@@ -1,4 +1,5 @@
 from pyjinhx.builtins.ui.pjx_alert import PJXAlert
+from pyjinhx.builtins.ui.pjx_button import PJXButton
 from pyjinhx.builtins.ui.pjx_avatar import PJXAvatar
 from pyjinhx.builtins.ui.pjx_avatar_stack import PJXAvatarStack
 from pyjinhx.builtins.ui.pjx_badge import PJXBadge
@@ -32,6 +33,7 @@ from pyjinhx.builtins.ui.pjx_tooltip import PJXTooltip
 
 __all__ = [
     "PJXAlert",
+    "PJXButton",
     "PJXAvatar",
     "PJXAvatarStack",
     "PJXBadge",

@@ -1,6 +1,6 @@
 # Built-in UI components
 
-Optional package **`pyjinhx.builtins`** registers thirty-four [`BaseComponent`](../api/base-component.md) subclasses. Import:
+Optional package **`pyjinhx.builtins`** registers thirty-five [`BaseComponent`](../api/base-component.md) subclasses. Import:
 
 ```python
 from pyjinhx.builtins import (
@@ -9,6 +9,7 @@ from pyjinhx.builtins import (
     PJXAvatarStack,
     PJXBadge,
     PJXBreadcrumb,
+    PJXButton,
     PJXCard,
     PJXChipInput,
     PJXConfirmDialog,
@@ -41,7 +42,7 @@ from pyjinhx.builtins import (
 )
 ```
 
-`__all__` matches that set of thirty-four names.
+`__all__` matches that set of thirty-five names.
 
 **Conventions:** Markup classes use the **`pjx-`** prefix; overrides use **`--pjx-`** custom properties. Builtin CSS also references **theme variables** (`--surface`, `--border`, `--text`, `--radius-md`, `--shadow-md`, `--transition`, `--brand`, …)—define those in your global CSS or map them to your design system. See [builtin-conventions.md](./builtin-conventions.md) for the full per-component contract (auto-id, `class_name`, `extra_attrs`, `js`/`css`, headless IIFE JS under `window.pjx`, cancelable `pjx:*:before-*` events).
 
@@ -60,6 +61,7 @@ from pyjinhx.builtins import (
 | PJXAvatarStack | `pjx-avatar-stack.css` | — |
 | PJXBadge | `pjx_badge.css` | — |
 | PJXBreadcrumb | `pjx_breadcrumb.css` | — |
+| PJXButton | `pjx-button.css` | — |
 | PJXCard | `pjx_card.css` | — |
 | PJXChipInput | `pjx-chip-input.css` | `pjx-chip-input.js` |
 | PJXConfirmDialog | `pjx-confirm-dialog.css` | `pjx-confirm-dialog.js` |
@@ -132,6 +134,29 @@ Inline SVG icon from a vendored [Lucide](https://lucide.dev) set (ISC). **Assets
 **DOM contract.** Root `<svg>` with `stroke="currentColor"` and `fill="none"`; no JS API. It inherits text color, so it themes for free — set `color` on the icon or any ancestor. Compose into slots, e.g. `<PJXButton start="<PJXIcon name='plus'/>" center="Add"/>`.
 
 **Classes:** `pjx-icon`. Theming: no `--pjx-icon-*` tokens — size comes from the `size`/`stroke_width` props and color from `currentColor`.
+
+---
+
+## PJXButton
+
+Structural, themeable button. Composes [`PJXRegionLoader`](#pjxregionloader) for the inline loading state. **Assets:** `pjx-button.css` only.
+
+<!-- demo: PJXButton -->
+
+| Field | Type | Default | Description |
+| --- | --- | --- | --- |
+| `start` | `str \| BaseComponent \| None` | `None` | Leading slot (e.g. an icon); the `.pjx-button__start` span is omitted when empty. |
+| `center` | `str \| BaseComponent \| None` | `None` | Label slot (`.pjx-button__center`), omitted when empty. |
+| `end` | `str \| BaseComponent \| None` | `None` | Trailing slot (icon/badge, `.pjx-button__end`), omitted when empty. |
+| `variant` | `str` | `"default"` | Class hook only → `pjx-button--{variant}`. No baked palette; style it yourself. |
+| `block` | `bool` | `False` | Full-width (`pjx-button--block`) instead of content-width. |
+| `loading` | `bool` | `False` | Renders a `<PJXRegionLoader/>` overlay and sets `aria-busy="true"`. |
+| `disabled` | `bool` | `False` | Sets the `disabled` attribute. |
+| `type` | literal | `"button"` | `button`, `submit`, or `reset`. |
+
+**DOM contract.** Root `<button>`; slot spans render only when their value is set. No JS API — pass `hx-*`/`@click` inline (they pass through to the root). The default `.pjx-button` is visually neutral so it never fights your design system; paint variants via `.pjx-button--<variant>`.
+
+**Classes:** `pjx-button`; `pjx-button--block`; variant seams `pjx-button--<variant>`; `pjx-button__start`, `__center`, `__end`. Theming: see [PJXButton tokens](#pjxbutton-tokens).
 
 ---
 
@@ -992,6 +1017,21 @@ Per-component `--pjx-*` custom properties and their default mappings. Override a
 | `--pjx-badge-muted-bg` | `var(--surface)` |
 | `--pjx-badge-muted-fg` | `var(--text-muted)` |
 | `--pjx-badge-muted-border` | `var(--border)` |
+
+### PJXButton tokens
+
+| Token | Default |
+| --- | --- |
+| `--pjx-button-bg` | `transparent` |
+| `--pjx-button-color` | `inherit` |
+| `--pjx-button-border` | `1px solid currentColor` |
+| `--pjx-button-radius` | `0.375rem` |
+| `--pjx-button-padding` | `0.5rem 0.875rem` |
+| `--pjx-button-gap` | `0.5rem` |
+| `--pjx-button-font-size` | `inherit` |
+| `--pjx-button-font-weight` | `500` |
+| `--pjx-button-bg-hover` | `var(--pjx-button-bg)` |
+| `--pjx-button-border-hover` | `currentColor` |
 
 ### PJXModal tokens
 

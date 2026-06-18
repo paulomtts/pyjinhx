@@ -3,6 +3,7 @@ from pyjinhx.builtins import (
     PJXAvatarStack,
     PJXBadge,
     PJXBreadcrumb,
+    PJXButton,
     PJXCard,
     PJXDivider,
     PJXEmptyState,
@@ -68,6 +69,10 @@ def icon():
     return PJXIcon(name="plus", size=24, label="Add item").render()
 
 
+def button():
+    return PJXButton(center="Save", variant="primary").render()
+
+
 DEMOS = {
     "PJXBadge": (badge, 120),
     "PJXCard": (card, 220),
@@ -80,4 +85,5 @@ DEMOS = {
     "PJXProgress": (progress, 120),
     "PJXEmptyState": (empty_state, 260),
     "PJXIcon": (icon, 120),
+    "PJXButton": (button, 120),
 }
