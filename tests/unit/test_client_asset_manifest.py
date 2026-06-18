@@ -6,7 +6,8 @@ from tests.ui.reactive.reactive_counter import ReactiveCounter
 def test_runtime_source_reports_assets_header():
     source = read_client_runtime()
     assert "X-PJX-Assets" in source
-    assert 'link[rel="stylesheet"][href]' in source
+    # Token-based dedup: runtime reports data-pjx-asset tokens, not stylesheet URLs
+    assert "data-pjx-asset" in source
 
 
 def test_oob_swaps_emit_missing_assets():

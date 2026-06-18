@@ -29,17 +29,12 @@
   }
 
   function pjxLoadedAssets() {
-    var urls = [];
+    var tokens = [];
     Array.prototype.forEach.call(
-      document.querySelectorAll('script[src], link[rel="stylesheet"][href]'),
-      function (el) {
-        var url = el.src || el.href;
-        if (url) {
-          urls.push(url);
-        }
-      }
+      document.querySelectorAll('[data-pjx-asset]'),
+      function (el) { tokens.push(el.getAttribute('data-pjx-asset')); }
     );
-    return urls;
+    return tokens;
   }
 
   document.body.addEventListener("htmx:configRequest", function (evt) {
@@ -207,6 +202,32 @@
     });
   }
 
+  // Re-execute <script data-pjx-asset> nodes injected into <head> via
+  // hx-swap-oob="beforeend:head".  Browsers do not run scripts inserted as
+  // parsed HTML, so we clone each one as a fresh <script> node.  The guard
+  // prevents double-execution when the same token arrives more than once.
+  var pjxExecutedTokens = {};
+  function pjxReexecHeadScripts() {
+    Array.prototype.forEach.call(
+      document.head.querySelectorAll('script[data-pjx-asset]'),
+      function (el) {
+        var token = el.getAttribute('data-pjx-asset');
+        if (pjxExecutedTokens[token]) {
+          return; // already executed or duplicated; remove the inert copy
+        }
+        pjxExecutedTokens[token] = true;
+        var fresh = document.createElement('script');
+        if (el.src) {
+          fresh.src = el.src;
+        } else {
+          fresh.textContent = el.textContent;
+        }
+        fresh.setAttribute('data-pjx-asset', token);
+        el.parentNode.replaceChild(fresh, el);
+      }
+    );
+  }
+
   pjxInjectStyle();
   document.body.addEventListener("htmx:beforeRequest", pjxBeginLoading);
   document.body.addEventListener("htmx:afterSettle", pjxReapplyLoading);
@@ -215,4 +236,6 @@
   document.body.addEventListener("htmx:timeout", pjxEndLoading);
   document.body.addEventListener("htmx:sendError", pjxEndLoading);
   document.body.addEventListener("htmx:abort", pjxEndLoading);
+  document.body.addEventListener("htmx:oobAfterSwap", pjxReexecHeadScripts);
+  document.body.addEventListener("htmx:afterSwap", pjxReexecHeadScripts);
 })();

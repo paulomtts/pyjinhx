@@ -16,6 +16,11 @@ def test_runtime_source_reports_manifest_header():
     assert "data-pjx-id" in source
 
 
+def test_runtime_reports_asset_tokens():
+    source = read_client_runtime()
+    assert "data-pjx-asset" in source
+
+
 def test_client_script_wraps_runtime_in_script_tag():
     script = client_script()
     assert isinstance(script, Markup)
