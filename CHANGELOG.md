@@ -1,6 +1,45 @@
 # Changelog
 
-## Unreleased — htmx ships with the runtime
+## 0.22.0 — issue batch: AccordionGroup, accordion actions, avatar/empty-state data, icons; swap-asset fix (2026-06-18)
+
+### Added
+
+- **`PJXAccordionGroup`** — a first-class builtin that treats a set of
+  `PJXAccordion`s as one group, with `mode="exclusive" | "multi"` and a `gap`.
+  Exclusive-open is coordinated by a small guarded-IIFE script. (#106)
+- **`PJXAccordion` `actions` slot** — non-toggling action buttons (restore /
+  delete, …) pinned to the end of the trigger. Clicks inside it `preventDefault()`
+  the native `<summary>` toggle *without* `stopPropagation()`, so the buttons'
+  own htmx/Alpine handlers still fire. (#103)
+- **`PJXAvatar`** accepts an arbitrary pixel/CSS size (`size: str | int`); the
+  named tokens (`sm`/`md`/`lg`) still emit the `pjx-avatar--{size}` class. (#77)
+- **`PJXAvatarStack`** accepts structured `dict` items
+  (`initials`/`color`/`alt`/`name`) and renders its own pills, alongside the
+  existing string / component shapes. (#77)
+- **`PJXEmptyState` suggestion chips** (`suggestions`) — a first-class
+  "click a chip → dispatch an event" pattern (the event name is read from a
+  `data-*` attribute, never interpolated into JS). (#77)
+- Three icons added to the vendored Lucide subset — `building`,
+  `triangle-alert`, `brain` (and a stale `alert-triangle` name corrected). (#99)
+
+### Fixed
+
+- **Swap-delivered head assets now reach the page.** The 0.19.0 mechanism
+  emitted `hx-swap-oob="beforeend:head"` fragments, but htmx core silently drops
+  OOB swaps targeting `<head>` — so reactive swap-ins needing assets absent at
+  cold load rendered unstyled. `pjx.js` now applies those `data-pjx-asset`
+  `<style>`/`<script>` elements to `<head>` itself. (#105)
+
+## 0.21.1 — single root-attribute stamp pass (2026-06-18)
+
+### Changed
+
+- Internal: the renderer stamps reactive `data-pjx-*` and pass-through
+  `extra_attrs` onto the root element in a single pass (previously two
+  back-to-back locate-and-rebuild passes). Behavior-preserving; reactive root
+  attribute order may differ.
+
+## 0.21.0 — htmx ships with the runtime (2026-06-18)
 
 ### Added
 
@@ -12,6 +51,49 @@
   manage their own htmx. `pjx.js` now logs a `console.error` when htmx is
   missing instead of failing silently. Regenerate the vendored copy with
   `scripts/vendor_htmx.py`.
+
+## 0.20.0 — `{#def#}` prop headers for classless components (2026-06-18)
+
+### Added
+
+- A template-only component may declare its props in a leading
+  `{#def title: str, count: int = 0 #}` header; pyjinhx parses it safely (via
+  `ast`, no code execution) into a validated pydantic model — so classless
+  components get defaults, required-checks, and type coercion without a Python
+  class. Applied on both the `<Tag/>` path and the `component()` factory.
+
+## 0.19.1 — gallery polish + Dropdown/Popover defaults (2026-06-18)
+
+### Added
+
+- Component gallery: multi-variation boxes (badge/button/icon/…), a
+  first-variation-only code snippet, a fixed Skeleton rendering, and a
+  Notification replay button.
+
+### Fixed
+
+- `PJXDropdown` menu items get sensible default styling (they were unstyled
+  native buttons); `PJXPopover` panels get default content padding.
+
+## 0.19.0 — structural builtins, INLINE swap assets, REFERENCE removed (2026-06-18)
+
+### Added
+
+- New structural builtins: **`PJXIcon`** (vendored Lucide set), **`PJXButton`**,
+  **`PJXAccordion`**.
+- Reactive OOB swaps deliver missing **INLINE** component assets (CSS/JS),
+  deduped by a client-reported token (`X-PJX-Assets`). (See the 0.22.0 fix above
+  for the `<head>`-delivery follow-up — #96, #105.)
+
+### Removed (breaking)
+
+- The `REFERENCE` asset mode and its URL-emission / resolver APIs
+  (`set_asset_url_resolver`, `set_default_runtime_url`, …). `AssetMode` is now
+  `{INLINE, NONE}`. For external/CSP/CDN delivery, render in `NONE` and serve a
+  bundle built from `Finder.all_assets()`.
+
+> Note: CHANGELOG entries for **0.14.0–0.18.0** are not yet backfilled — they
+> predate this changelog-maintenance pass. See the git tags for their history.
 
 ## 0.13.0 — OOB swaps ride along any render (2026-06-13)
 
