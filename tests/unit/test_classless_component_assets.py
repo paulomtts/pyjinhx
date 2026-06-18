@@ -112,7 +112,7 @@ def test_classless_component_css_injected_before_html():
 
         rendered = renderer.render('<NavBar id="nav1">Menu</NavBar>')
 
-        style_pos = rendered.find("<style>")
+        style_pos = rendered.find("<style")
         nav_pos = rendered.find("<nav")
         assert style_pos != -1
         assert style_pos < nav_pos, "CSS <style> block should precede the HTML"
@@ -134,7 +134,7 @@ def test_classless_component_js_injected_after_html():
         rendered = renderer.render('<SideBar id="s1">Links</SideBar>')
 
         aside_pos = rendered.find("<aside")
-        script_pos = rendered.find("<script>")
+        script_pos = rendered.find("<script")
         assert script_pos != -1
         assert aside_pos < script_pos, "JS <script> block should follow the HTML"
 
@@ -152,6 +152,6 @@ def test_classless_component_no_assets_no_injection():
 
         rendered = renderer.render('<BareBlock id="p1">Words</BareBlock>')
 
-        assert "<script>" not in rendered
-        assert "<style>" not in rendered
+        assert "<script" not in rendered
+        assert "<style" not in rendered
         assert '<p id="p1">Words</p>' in rendered

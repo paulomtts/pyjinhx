@@ -6,7 +6,7 @@ from tests.ui.unified_component import UnifiedComponent
 
 def _extract_scripts(rendered: str) -> list[str]:
     """Return a list of script block contents (inner text of each <script>...</script>)."""
-    return re.findall(r"<script>(.*?)</script>", rendered, re.S)
+    return re.findall(r"<script[^>]*>(.*?)</script>", rendered, re.S)
 
 
 def test_js_collection_order():
@@ -93,6 +93,6 @@ def test_inline_mode_regression():
         UnifiedComponent(id="inline-1", text="Inline")._render(_renderer=renderer)
     )
 
-    assert "<style>" in rendered
+    assert "<style" in rendered
     assert ".test-component { color: red; }" in rendered
-    assert "<script>console.log('Button loaded');</script>" in rendered
+    assert "console.log('Button loaded');" in rendered

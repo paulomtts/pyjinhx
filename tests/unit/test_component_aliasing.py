@@ -21,7 +21,7 @@ class TaskBadge(PJXBadge):
 def test_subclass_renders_base_template_and_assets():
     html = str(TaskBadge(label="3 open", color="brand").render())
     assert 'class="pjx-badge' in html              # PJXBadge's template
-    assert "<style>" in html
+    assert "<style" in html
     assert "--pjx-badge-radius-sm" in html         # PJXBadge's badge.css inlined
 
 
