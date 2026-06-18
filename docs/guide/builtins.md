@@ -1,6 +1,6 @@
 # Built-in UI components
 
-Optional package **`pyjinhx.builtins`** registers thirty-three [`BaseComponent`](../api/base-component.md) subclasses. Import:
+Optional package **`pyjinhx.builtins`** registers thirty-four [`BaseComponent`](../api/base-component.md) subclasses. Import:
 
 ```python
 from pyjinhx.builtins import (
@@ -17,6 +17,7 @@ from pyjinhx.builtins import (
     PJXDrawer,
     PJXEmptyState,
     PJXFormField,
+    PJXIcon,
     PJXLazyPanel,
     PJXRegionLoader,
     PJXModal,
@@ -40,7 +41,7 @@ from pyjinhx.builtins import (
 )
 ```
 
-`__all__` matches that set of thirty-three names.
+`__all__` matches that set of thirty-four names.
 
 **Conventions:** Markup classes use the **`pjx-`** prefix; overrides use **`--pjx-`** custom properties. Builtin CSS also references **theme variables** (`--surface`, `--border`, `--text`, `--radius-md`, `--shadow-md`, `--transition`, `--brand`, …)—define those in your global CSS or map them to your design system. See [builtin-conventions.md](./builtin-conventions.md) for the full per-component contract (auto-id, `class_name`, `extra_attrs`, `js`/`css`, headless IIFE JS under `window.pjx`, cancelable `pjx:*:before-*` events).
 
@@ -67,6 +68,7 @@ from pyjinhx.builtins import (
 | PJXDropdown | `pjx_dropdown.css` | *(via pjx_popover.js, extra-asset)* |
 | PJXEmptyState | `pjx-empty-state.css` | — |
 | PJXFormField | `pjx-form-field.css` | — |
+| PJXIcon | `pjx-icon.css` | — |
 | PJXLazyPanel | — | — |
 | PJXRegionLoader | `pjx-region-loader.css` | `pjx-region-loader.js` |
 | PJXModal | `pjx_modal.css` | `pjx_modal.js` |
@@ -111,6 +113,25 @@ Small status label. **Assets:** `pjx_badge.css` only.
 **DOM contract.** Root `.pjx-badge`; no JS API.
 
 **Classes:** `pjx-badge`; color modifiers `pjx-badge--brand`, `--error`, `--neutral`, `--muted`; shape `pjx-badge--square`, `--sm`, `--md`, `--full`. Theming: see [PJXBadge tokens](#pjxbadge-tokens).
+
+---
+
+## PJXIcon
+
+Inline SVG icon from a vendored [Lucide](https://lucide.dev) set (ISC). **Assets:** `pjx-icon.css` only.
+
+<!-- demo: PJXIcon -->
+
+| Field | Type | Default | Description |
+| --- | --- | --- | --- |
+| `name` | `str` | *(required)* | Icon key into the vendored set (e.g. `chevron-right`, `plus`, `search`). An unknown name renders a hidden placeholder (nothing visible) and logs a warning. |
+| `size` | `int \| str` | `16` | `int` → `width`/`height` in px; `str` → used verbatim as a CSS length. |
+| `stroke_width` | `float` | `1.5` | SVG `stroke-width`. |
+| `label` | `str \| None` | `None` | `None` → `aria-hidden="true"`; a string → `role="img"` + a `<title>`. |
+
+**DOM contract.** Root `<svg>` with `stroke="currentColor"` and `fill="none"`; no JS API. It inherits text color, so it themes for free — set `color` on the icon or any ancestor. Compose into slots, e.g. `<PJXButton start="<PJXIcon name='plus'/>" center="Add"/>`.
+
+**Classes:** `pjx-icon`. Theming: no `--pjx-icon-*` tokens — size comes from the `size`/`stroke_width` props and color from `currentColor`.
 
 ---
 

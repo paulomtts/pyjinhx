@@ -13,6 +13,10 @@ Every pyjinhx builtin follows the same contract, so knowing one means knowing al
    `PJXCard(body=..., extra_attrs={"hx-get": "/refresh", "hx-trigger": "every 30s"})`.
    Any attribute passed inline on a PascalCase tag is also injected onto the root automatically
    (see [Attribute pass-through](#attribute-pass-through) below).
+   The newer structural builtins (`PJXIcon`, `PJXButton`, `PJXAccordion`) intentionally **omit**
+   the `extra_attrs` field — inline tag attributes (`<PJXButton Hx-Post="/save"/>`) still pass
+   through to the root, but the dict-style `extra_attrs={...}` API is not available on them; use
+   inline attributes or `class_name` instead.
 4. **All copy is props.** Every user-visible string, aria-labels included, has an English default
    you can replace: `PJXModal(title="Excluir?", close_label="Fechar")`.
 5. **JS is headless.** Builtin JavaScript never writes inline styles for state — visibility and variants are classes/attributes; computed positioning coordinates (tooltip/popover placement) are the one sanctioned inline-style use. Communication is through `pjx:*` DOM events and `data-pjx-*` attributes; programmatic APIs live under the single `window.pjx` namespace.
