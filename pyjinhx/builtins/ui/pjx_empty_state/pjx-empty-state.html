@@ -10,4 +10,7 @@
     {% if actions %}
     <div class="pjx-empty-state__actions">{% for item in actions %}{{ item }}{% endfor %}</div>
     {% endif %}
+    {% if suggestions %}
+    <div class="pjx-empty-state__suggestions">{% for chip in suggestions %}<button type="button" class="pjx-empty-state__chip" data-pjx-suggestion="{{ chip.value if chip.value is defined else chip.label }}" data-pjx-event="{{ chip.event if chip.event is defined else 'pjx:suggestion' }}" @click="$dispatch($el.dataset.pjxEvent, { value: $el.dataset.pjxSuggestion })">{{ chip.label }}</button>{% endfor %}</div>
+    {% endif %}
 </div>
