@@ -408,4 +408,21 @@ def component(name: str) -> type[BaseComponent]:
         raise ValueError(f"component name {name!r} must be PascalCase")
     if Registry.has_class(name):
         return Registry.get_class(name)
+
+    # If the template is resolvable now and carries a {#def#} header, build a
+    # validated-field model; otherwise fall back to a permissive placeholder
+    # (header is applied lazily on the tag-render path instead).
+    from .props_header import build_component_model
+    from .renderer import Renderer
+
+    try:
+        template_path = Renderer.get_default_renderer()._find_template_for_tag(name)
+    except FileNotFoundError:
+        template_path = None
+    if template_path is not None:
+        with open(template_path, encoding="utf-8") as template_file:
+            model = build_component_model(name, template_file.read())
+        if model is not None:
+            return model  # auto-registered via __init_subclass__
+
     return type(name, (BaseComponent,), {"_pjx_template": name})
