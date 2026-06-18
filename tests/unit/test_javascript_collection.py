@@ -1,5 +1,6 @@
 import re
 
+from pyjinhx import AssetMode, Renderer
 from tests.ui.unified_component import UnifiedComponent
 
 
@@ -81,3 +82,17 @@ def test_separate_script_tags():
     scripts = _extract_scripts(rendered)
 
     assert len(scripts) == 2, f"Expected 2 <script> blocks, found {len(scripts)}"
+
+
+def test_inline_mode_regression():
+    renderer = Renderer.get_default_renderer(
+        js_mode=AssetMode.INLINE,
+        css_mode=AssetMode.INLINE,
+    )
+    rendered = str(
+        UnifiedComponent(id="inline-1", text="Inline")._render(_renderer=renderer)
+    )
+
+    assert "<style>" in rendered
+    assert ".test-component { color: red; }" in rendered
+    assert "<script>console.log('Button loaded');</script>" in rendered

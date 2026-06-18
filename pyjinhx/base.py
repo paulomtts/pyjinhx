@@ -352,14 +352,9 @@ class BaseComponent(BaseModel):
                     session=session,
                 )
 
-            from pyjinhx.client import ClientBackend, LoadedAssets
+            from pyjinhx.client import ClientBackend
 
             resolved_client = ClientBackend.resolve_client(client)
-            loaded_assets = (
-                LoadedAssets.parse(resolved_client)
-                if resolved_client is not None and emit_assets
-                else frozenset()
-            )
 
             return renderer.render_component_with_context(
                 self,
@@ -370,7 +365,6 @@ class BaseComponent(BaseModel):
                 is_root=is_root,
                 collect_component_js=source is None,
                 emit_assets=emit_assets,
-                loaded_assets=loaded_assets,
                 client=resolved_client,
             )
         finally:

@@ -21,7 +21,7 @@ Resolved public URLs for assets collected during a render session. Built by `ass
 DEFAULT_RUNTIME_URL = "/static/pyjinhx/pjx.js"
 ```
 
-Default public URL for the pyjinhx client runtime in `AssetMode.REFERENCE`. Override process-wide with `Renderer.set_default_runtime_url()`.
+Default public URL for the pyjinhx client runtime (`/static/pyjinhx/pjx.js`). Use as a reference constant when building your own bundle or static-serving setup.
 
 ## runtime_asset_path
 
@@ -57,13 +57,13 @@ Map an absolute asset path to a default public URL under `/static/components/`. 
 def make_default_asset_url_resolver(root: str) -> AssetUrlResolver
 ```
 
-Build a callable resolver using `default_asset_url()`. Pass to `Renderer.set_asset_url_resolver()` or `asset_manifest()`.
+Build a callable resolver using `default_asset_url()`. Pass to `asset_manifest()`, `Finder.layout_asset_tags()`, or `resolver_with_hash()`.
 
 ```python
-from pyjinhx import Renderer
-from pyjinhx.assets import make_default_asset_url_resolver
+from pyjinhx.assets import make_default_asset_url_resolver, asset_manifest
 
-Renderer.set_asset_url_resolver(make_default_asset_url_resolver("./components"))
+resolver = make_default_asset_url_resolver("./components")
+manifest = asset_manifest(session, resolver=resolver)
 ```
 
 ## hashed_filename
@@ -83,10 +83,12 @@ def resolver_with_hash(base_url: str, root: str) -> AssetUrlResolver
 Build an asset URL resolver that embeds a content hash in each filename. The runtime file is placed under `{base_url}/pyjinhx/{hashed}`.
 
 ```python
-from pyjinhx import Renderer
 from pyjinhx.assets import resolver_with_hash
+from pyjinhx.finder import Finder
 
-Renderer.set_asset_url_resolver(resolver_with_hash("/static/components", root="./components"))
+finder = Finder(root="./components")
+resolver = resolver_with_hash("/static/components", root="./components")
+head_tags = finder.layout_asset_tags(resolver=resolver)
 ```
 
 ## asset_manifest

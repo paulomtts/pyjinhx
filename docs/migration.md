@@ -1,5 +1,40 @@
 # Migration guide
 
+## 0.18 → 0.19
+
+### REFERENCE asset mode removed (breaking)
+
+`AssetMode.REFERENCE` is gone. `AssetMode` is now a two-member enum: `INLINE` and `NONE`.
+
+The following APIs are removed:
+
+- `Renderer.set_asset_url_resolver()` — registered a callable to map asset paths to public URLs for REFERENCE rendering
+- `Renderer.set_default_runtime_url()` — set the public URL for `pjx.js` emitted in REFERENCE mode
+- `Renderer.set_default_asset_dedup()` — toggled per-render `X-PJX-Assets` dedup for REFERENCE renders
+- `client_script(mode=..., src=...)` — `mode` and `src` parameters are removed; call `client_script()` with no arguments
+
+**Migration:** If you used REFERENCE mode for external/CSP/CDN delivery, switch to `AssetMode.NONE` and serve a pre-built bundle:
+
+```python
+from pyjinhx import AssetMode, Renderer
+from pyjinhx.finder import Finder
+
+# Build once at startup
+CSS_PATHS, JS_PATHS = Finder("./components").all_assets()
+# ... concatenate and serve as /assets/bundle.css + /assets/bundle.js
+
+Renderer.set_default_js_mode(AssetMode.NONE)
+Renderer.set_default_css_mode(AssetMode.NONE)
+```
+
+Link the bundles in your layout `<head>`. Components will no longer emit inline or URL-referenced asset tags — the bundle covers everything.
+
+See [One-bundle deployment](guide/assets.md#one-bundle-deployment) for a full FastAPI example.
+
+The bundle helpers (`Finder.all_assets()`, `asset_manifest()`, `resolver_with_hash()`, `make_default_asset_url_resolver()`, `Finder.layout_asset_tags()`, `DEFAULT_RUNTIME_URL`) are **unchanged** and remain the production path for `AssetMode.NONE`.
+
+---
+
 ## 0.17 → 0.18
 
 ### Universal attribute pass-through + single-root invariant
@@ -240,7 +275,7 @@ at `pyjinhx.tags.Parser` — the method still exists.
 #### 1b. `inline_css=` → asset modes
 
 `Renderer.get_default_renderer()` no longer takes `inline_css`. Assets are now governed by
-`AssetMode` (`INLINE`, `REFERENCE`, `NONE`) per asset kind.
+`AssetMode` (`INLINE`, `NONE`) per asset kind.
 
 ```python
 from pyjinhx import AssetMode, Renderer
@@ -249,17 +284,15 @@ from pyjinhx import AssetMode, Renderer
 renderer = Renderer.get_default_renderer(inline_css=False)
 
 # NEW: choose a CSS mode explicitly
-renderer = Renderer.get_default_renderer(css_mode=AssetMode.REFERENCE)  # <link>/<script src>
-# or AssetMode.NONE to skip emitting CSS entirely
-# (the old default, inline_css=True, is AssetMode.INLINE)
+renderer = Renderer.get_default_renderer(css_mode=AssetMode.NONE)  # skip emitting CSS entirely
+# or AssetMode.INLINE (the old default, inline_css=True)
 ```
 
 Process-wide defaults moved to dedicated setters:
 
 ```python
-Renderer.set_default_css_mode(AssetMode.REFERENCE)
+Renderer.set_default_css_mode(AssetMode.NONE)
 Renderer.set_default_js_mode(AssetMode.INLINE)
-Renderer.set_default_runtime_url("/static/pjx.js")   # used by REFERENCE mode
 ```
 
 #### 1c. `set_default_environment` is now path-based for strings
@@ -418,7 +451,7 @@ and invalidation backends.
 # Imports that move / change
 from pyjinhx.parser import Parser          →  from pyjinhx.tags import Parser, Tag
 Renderer.get_default_renderer(inline_css=False)
-                                           →  Renderer.get_default_renderer(css_mode=AssetMode.REFERENCE)
+                                           →  Renderer.get_default_renderer(css_mode=AssetMode.NONE)
 Renderer.set_default_environment("pkg")    →  Renderer.set_default_environment(Path(".../templates"))
 
 # Pre-0.7 reactive renames (skip if you never used them)

@@ -33,7 +33,7 @@ These 11 symbols are the entire top-level public API; advanced/internal building
 | Symbol | Description | Documentation |
 |--------|-------------|---------------|
 | `PjxSettings` | Invalidation backend and reactive dev flags | [Configuration](../api/config.md#pjxsettings) |
-| `AssetMode` | Enum: `INLINE`, `REFERENCE`, or `NONE` | [Renderer](../api/renderer.md#assetmode) |
+| `AssetMode` | Enum: `INLINE` or `NONE` | [Renderer](../api/renderer.md#assetmode) |
 
 ## Conceptual guides
 

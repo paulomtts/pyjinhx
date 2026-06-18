@@ -82,7 +82,7 @@ Marker for `Annotated[..., PjxKey()]`. The field value is stamped as `data-pjx-l
 ## client_script
 
 ```python
-def client_script(*, mode: AssetMode | None = None, src: str | None = None) -> Markup
+def client_script() -> Markup
 ```
 
 Return the pyjinhx client runtime as a `<script>` tag (`from pyjinhx.client import client_script`). It is not part of the top-level public API — root `BaseComponent.render()` injects the runtime automatically unless `X-PJX-Mounted` is already present on the request.
@@ -117,20 +117,9 @@ Parse `X-PJX-Trigger` — the `data-pjx-id` of the element that started the HTMX
 | Constant | Value | Purpose |
 |----------|-------|---------|
 | `PJX_MOUNTED_HEADER` | `"X-PJX-Mounted"` | JSON manifest of mounted regions (`id`, `type`, `hash`, optional `load`) |
-| `PJX_ASSETS_HEADER` | `"X-PJX-Assets"` | JSON list of asset URLs already loaded |
 | `PJX_TRIGGER_HEADER` | `"X-PJX-Trigger"` | JSON `{"id": "<data-pjx-id>"}` of the swap origin |
 
 Wire [ClientBackend](client-backend.md) via `setup()`; `render()` reads headers from the active backend.
-
-## LoadedAssets
-
-```python
-class LoadedAssets:
-    @staticmethod
-    def parse(client: str | list[str] | object | None) -> frozenset[str]: ...
-```
-
-Parse `X-PJX-Assets` for REFERENCE-mode asset dedup on root renders.
 
 ## oob_swaps
 

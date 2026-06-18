@@ -12,8 +12,6 @@ from typing import Any, ClassVar
 
 from markupsafe import Markup
 
-from pyjinhx.assets import DEFAULT_RUNTIME_URL, AssetMode
-from pyjinhx.renderer import Renderer
 from pyjinhx.utils import read_client_runtime
 
 logger = logging.getLogger("pyjinhx")
@@ -56,9 +54,6 @@ class ClientBackend(ABC):
 
 PJX_MOUNTED_HEADER = "X-PJX-Mounted"
 """Name of the HTTP header carrying the client's mounted-region manifest."""
-
-PJX_ASSETS_HEADER = "X-PJX-Assets"
-"""Name of the HTTP header carrying asset URLs already loaded in the browser."""
 
 PJX_TRIGGER_HEADER = "X-PJX-Trigger"
 """Name of the HTTP header carrying the data-pjx-id of the element that started the request."""
@@ -131,47 +126,12 @@ class TriggerManifest:
         return TriggerManifest.parse(header_value)
 
 
-class LoadedAssets:
-    @staticmethod
-    def parse(client: str | list[str] | object | None) -> frozenset[str]:
-        if client is None or client == "":
-            return frozenset()
-        if isinstance(client, (list, tuple, set, frozenset)):
-            return frozenset(str(url) for url in client)
-        if isinstance(client, str):
-            try:
-                parsed = json.loads(client)
-            except json.JSONDecodeError:
-                logger.warning("Could not parse %s as JSON; ignoring.", PJX_ASSETS_HEADER)
-                return frozenset()
-            return frozenset(str(url) for url in parsed) if isinstance(parsed, list) else frozenset()
-        try:
-            header_value = client.headers.get(PJX_ASSETS_HEADER)  # type: ignore[attr-defined]
-        except AttributeError:
-            return frozenset()
-        return LoadedAssets.parse(header_value)
-
-
-def client_script(
-    *,
-    mode: AssetMode | None = None,
-    src: str | None = None,
-) -> Markup:
+def client_script() -> Markup:
     """
-    Return the pyjinhx client runtime as a ``<script>`` tag.
+    Return the pyjinhx client runtime as an inline ``<script>`` tag.
 
     Drop this into a raw Jinja page shell when you are not rendering through a
     root ``BaseComponent.render()`` call. Root full-page renders inject the
     runtime automatically unless the request already carries ``X-PJX-Mounted``.
-
-    Args:
-        mode: ``AssetMode.INLINE`` (default) inlines the runtime source.
-            ``AssetMode.REFERENCE`` emits ``<script src="...">``.
-        src: Public URL for the runtime when ``mode`` is ``AssetMode.REFERENCE``.
-            Defaults to ``Renderer``'s configured runtime URL.
     """
-    effective_mode = mode or AssetMode.INLINE
-    if effective_mode == AssetMode.REFERENCE:
-        runtime_url = src or Renderer._default_runtime_url or DEFAULT_RUNTIME_URL
-        return Markup(f'<script src="{runtime_url}"></script>')
     return Markup(f"<script>{read_client_runtime()}</script>")

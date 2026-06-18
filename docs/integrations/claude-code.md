@@ -54,7 +54,7 @@ Fields typed as components — `action: Button`, `items: list[Button]`, `widgets
 
 **Kebab-case** `.js`/`.css` files next to the component (`PJXTabGroup` → `pjx-tab-group.js`; a snake_case stem like `pjx_tab_group.js` is **not** collected) are auto-collected, deduplicated per render session, and injected at the root render — CSS as `<style>` before the HTML, JS as `<script>` after, one tag per component so an error in one doesn't break others. Subclasses with no adjacent assets inherit the nearest ancestor's assets through the MRO (first found per kind).
 
-Add extra files via the `js=[...]` / `css=[...]` fields; missing files warn on the `pyjinhx` logger. For production use `AssetMode.REFERENCE` with `Renderer.set_asset_url_resolver()`; disable with `AssetMode.NONE`. For layout preload use `Finder(root).collect_javascript_files()` / `.collect_css_files()` or `layout_asset_tags()`.
+Add extra files via the `js=[...]` / `css=[...]` fields; missing files warn on the `pyjinhx` logger. For production, use `AssetMode.NONE` and serve assets from a pre-built bundle via `Finder.all_assets()`; see [One-bundle deployment](../guide/assets.md#one-bundle-deployment). For layout preload use `Finder(root).collect_javascript_files()` / `.collect_css_files()` or `layout_asset_tags()`.
 
 ## Reactivity (dependency-aware OOB swaps)
 
