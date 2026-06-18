@@ -54,3 +54,39 @@ def test_disabled_marks_summary():
 def test_inline_attrs_pass_through():
     html = str(PJXAccordion(id="a", label="X", **{"data-y": "z"}).render())
     assert 'data-y="z"' in html
+
+
+# --- actions slot ---
+
+
+def test_actions_absent_by_default():
+    html = _html(label="X")
+    assert '<div class="pjx-accordion__actions">' not in html
+
+
+def test_actions_rendered_inside_summary():
+    html = _html(label="X", actions='<button id="del">Delete</button>')
+    assert '<div class="pjx-accordion__actions">' in html
+    assert '<button id="del">Delete</button>' in html
+    # actions div is inside summary, not inside the body
+    summary_end = html.index("</summary>")
+    actions_start = html.index("pjx-accordion__actions")
+    assert actions_start < summary_end
+
+
+def test_actions_slot_after_label_in_trigger():
+    html = _html(label="Conv", actions='<button>Restore</button>')
+    trigger = html[html.index("<summary") : html.index("</summary>") + len("</summary>")]
+    assert "Conv" in trigger
+    assert "Restore" in trigger
+    # label comes before the actions container
+    assert trigger.index("Conv") < trigger.index("pjx-accordion__actions")
+
+
+def test_actions_accepts_component():
+    from pyjinhx.builtins import PJXButton
+
+    btn = PJXButton(id="b", label="Delete")
+    html = _html(label="X", actions=btn)
+    assert "pjx-accordion__actions" in html
+    assert "Delete" in html

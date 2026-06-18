@@ -37,3 +37,11 @@
   pointer-events: none;
   opacity: 0.6;
 }
+
+.pjx-accordion__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--pjx-accordion-actions-gap, 0.25rem);
+  margin-left: auto;
+  /* Clicks are stopped by pjx-accordion.js so the summary does not toggle. */
+}

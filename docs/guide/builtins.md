@@ -57,7 +57,7 @@ from pyjinhx.builtins import (
 
 | Component | CSS | JS |
 |---|---|---|
-| PJXAccordion | `pjx-accordion.css` | — |
+| PJXAccordion | `pjx-accordion.css` | `pjx-accordion.js` |
 | PJXAlert | `pjx_alert.css` | `pjx_alert.js` |
 | PJXAvatar | `pjx_avatar.css` | — |
 | PJXAvatarStack | `pjx-avatar-stack.css` | — |
@@ -164,7 +164,7 @@ Structural, themeable button. Composes [`PJXRegionLoader`](#pjxregionloader) for
 
 ## PJXAccordion
 
-Collapsible section built on native `<details>`/`<summary>` — toggle behavior with **zero JS**, accessible by default. Composes [`PJXIcon`](#pjxicon) for the disclosure chevron. **Assets:** `pjx-accordion.css` only.
+Collapsible section built on native `<details>`/`<summary>`. Composes [`PJXIcon`](#pjxicon) for the disclosure chevron. **Assets:** `pjx-accordion.css`, `pjx-accordion.js`.
 
 <!-- demo: PJXAccordion -->
 
@@ -176,10 +176,13 @@ Collapsible section built on native `<details>`/`<summary>` — toggle behavior 
 | `disabled` | `bool` | `False` | Marks the summary `aria-disabled="true"` + `tabindex="-1"` (and `pointer-events: none` via CSS). |
 | `group` | `str \| None` | `None` | Native `<details name="...">` for exclusive-open groups; default is independent multi-open. |
 | `content` | `str \| BaseComponent` | `""` | Body slot (children map here); rendered inside `.pjx-accordion__body`. |
+| `actions` | `str \| BaseComponent \| None` | `None` | Non-toggling action slot rendered at the **end** of the trigger (e.g. restore / delete buttons). Clicks inside it are suppressed by `pjx-accordion.js` so the `<details>` does **not** toggle. |
 
-**DOM contract.** Root `<details>` with a `<summary class="pjx-accordion__trigger">` (chevron + `header`-or-`label`) and a `<div class="pjx-accordion__body">`. No JS — the browser handles toggling; the chevron rotates on `[open]` via CSS. The default marker is stripped.
+**DOM contract.** Root `<details>` with a `<summary class="pjx-accordion__trigger">` (chevron + `header`-or-`label` + optional `__actions`) and a `<div class="pjx-accordion__body">`. The chevron rotates on `[open]` via CSS. The default marker is stripped.
 
-**Classes:** `pjx-accordion`; `pjx-accordion__trigger`, `__chevron`, `__body`. Theming: see [PJXAccordion tokens](#pjxaccordion-tokens).
+**Classes:** `pjx-accordion`; `pjx-accordion__trigger`, `__chevron`, `__body`, `__actions`. Theming: see [PJXAccordion tokens](#pjxaccordion-tokens).
+
+**Toggle suppression.** The `actions` slot is wrapped in `.pjx-accordion__actions`. `pjx-accordion.js` registers a single capture-phase `click` listener that calls `preventDefault()` + `stopPropagation()` for any click inside that wrapper — preventing the native `<summary>` toggle while leaving htmx and other handlers on the action elements free to fire normally.
 
 ---
 
