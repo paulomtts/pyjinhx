@@ -60,6 +60,8 @@ CASES = [
     ("button_loading", lambda: b.PJXButton(id="g", center="Save", loading=True, variant="primary")),
     ("accordion_open", lambda: b.PJXAccordion(id="g", label="Today", content="<p>x</p>")),
     ("accordion_grouped_closed", lambda: b.PJXAccordion(id="g", label="Older", open=False, group="nav", content="<p>y</p>")),
+    ("accordion_group_multi", lambda: b.PJXAccordionGroup(id="g", content=str(b.PJXAccordion(id="g-a", label="A", content="<p>x</p>").render()) + str(b.PJXAccordion(id="g-b", label="B", open=False, content="<p>y</p>").render()))),
+    ("accordion_group_exclusive", lambda: b.PJXAccordionGroup(id="g", mode="exclusive", gap="0.5rem", content=str(b.PJXAccordion(id="g-a", label="A", content="<p>x</p>").render()) + str(b.PJXAccordion(id="g-b", label="B", open=False, content="<p>y</p>").render()))),
 ]
 
 

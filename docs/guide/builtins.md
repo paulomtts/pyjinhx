@@ -1,10 +1,11 @@
 # Built-in UI components
 
-Optional package **`pyjinhx.builtins`** registers thirty-six [`BaseComponent`](../api/base-component.md) subclasses. Import:
+Optional package **`pyjinhx.builtins`** registers thirty-seven [`BaseComponent`](../api/base-component.md) subclasses. Import:
 
 ```python
 from pyjinhx.builtins import (
     PJXAccordion,
+    PJXAccordionGroup,
     PJXAlert,
     PJXAvatar,
     PJXAvatarStack,
@@ -43,7 +44,7 @@ from pyjinhx.builtins import (
 )
 ```
 
-`__all__` matches that set of thirty-six names.
+`__all__` matches that set of thirty-seven names.
 
 **Conventions:** Markup classes use the **`pjx-`** prefix; overrides use **`--pjx-`** custom properties. Builtin CSS also references **theme variables** (`--surface`, `--border`, `--text`, `--radius-md`, `--shadow-md`, `--transition`, `--brand`, …)—define those in your global CSS or map them to your design system. See [builtin-conventions.md](./builtin-conventions.md) for the full per-component contract (auto-id, `class_name`, `extra_attrs`, `js`/`css`, headless IIFE JS under `window.pjx`, cancelable `pjx:*:before-*` events).
 
@@ -58,6 +59,7 @@ from pyjinhx.builtins import (
 | Component | CSS | JS |
 |---|---|---|
 | PJXAccordion | `pjx-accordion.css` | `pjx-accordion.js` |
+| PJXAccordionGroup | `pjx-accordion-group.css` | `pjx-accordion-group.js` |
 | PJXAlert | `pjx_alert.css` | `pjx_alert.js` |
 | PJXAvatar | `pjx_avatar.css` | — |
 | PJXAvatarStack | `pjx-avatar-stack.css` | — |
@@ -183,6 +185,47 @@ Collapsible section built on native `<details>`/`<summary>`. Composes [`PJXIcon`
 **Classes:** `pjx-accordion`; `pjx-accordion__trigger`, `__chevron`, `__body`, `__actions`. Theming: see [PJXAccordion tokens](#pjxaccordion-tokens).
 
 **Toggle suppression.** The `actions` slot is wrapped in `.pjx-accordion__actions`. `pjx-accordion.js` registers a single capture-phase `click` listener that calls `preventDefault()` + `stopPropagation()` for any click inside that wrapper — preventing the native `<summary>` toggle while leaving htmx and other handlers on the action elements free to fire normally.
+
+---
+
+## PJXAccordionGroup
+
+Groups a set of `PJXAccordion`s into a shared layout/behavior container. Handles exclusive-open coordination in JS so you don't need to stamp a `group=` on every child. **Assets:** `pjx-accordion-group.css`, `pjx-accordion-group.js`.
+
+<!-- demo: PJXAccordionGroup -->
+
+```python
+PJXAccordionGroup(
+    id="faq",
+    mode="exclusive",
+    gap="0.25rem",
+    content=(
+        PJXAccordion(id="faq-a", label="What is it?", content="<p>A framework.</p>").render()
+        + PJXAccordion(id="faq-b", label="How to install?", open=False, content="<p>pip install pyjinhx</p>").render()
+    ),
+)
+```
+
+Or with PascalCase tags:
+
+```html
+<PJXAccordionGroup id="faq" mode="exclusive" gap="0.25rem">
+  <PJXAccordion id="faq-a" label="What is it?">A framework.</PJXAccordion>
+  <PJXAccordion id="faq-b" label="How to install?" open="False">pip install pyjinhx</PJXAccordion>
+</PJXAccordionGroup>
+```
+
+| Field | Type | Default | Description |
+| --- | --- | --- | --- |
+| `mode` | `"exclusive" \| "multi"` | `"multi"` | `exclusive` — at most one child `<details>` open at a time (JS-coordinated via `toggle` capture); `multi` — independent, no JS coordination. |
+| `gap` | `str` | `"0"` | Space between accordion items; written to `--pjx-accordion-group-gap` inline on the root. |
+| `content` | `str \| BaseComponent` | `""` | Children (nested `PJXAccordion`s or raw HTML). |
+
+**DOM contract.** Root `<div class="pjx-accordion-group" data-pjx-accordion-group data-mode="...">`. JS captures `toggle` events on `details` children in `exclusive` mode and closes any sibling that is open. HTMX-swapped groups are re-initialized on `htmx:afterSettle`. In `multi` mode the JS is loaded but does nothing — no additional work needed.
+
+**Design decision — JS vs native `<details name>`.** The issue requested `multi` mode (independent open) as a first-class peer of `exclusive`, which the native `<details name>` attribute cannot express. A thin capture-phase JS listener handles exclusive-open so both modes work with the same markup; no library dependency is added.
+
+**Classes:** `pjx-accordion-group`. Theming: see [PJXAccordionGroup tokens](#pjxaccordiongroup-tokens).
 
 ---
 
@@ -1071,6 +1114,12 @@ Per-component `--pjx-*` custom properties and their default mappings. Override a
 | `--pjx-accordion-trigger-font-weight` | `500` |
 | `--pjx-accordion-trigger-bg-hover` | `var(--pjx-accordion-trigger-bg)` |
 | `--pjx-accordion-chevron-size` | `1em` |
+
+### PJXAccordionGroup tokens
+
+| Token | Default |
+| --- | --- |
+| `--pjx-accordion-group-gap` | `0` |
 
 ### PJXModal tokens
 

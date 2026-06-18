@@ -197,6 +197,7 @@ _warned_unregistered_tags: set[str] = set()
 _BUILTIN_TAG_NAMES = frozenset(
     {
         "PJXAccordion",
+        "PJXAccordionGroup",
         "PJXAlert",
         "PJXButton",
         "PJXAvatar",

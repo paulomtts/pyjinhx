@@ -1,5 +1,6 @@
 from pyjinhx.builtins import (
     PJXAccordion,
+    PJXAccordionGroup,
     PJXAvatar,
     PJXAvatarStack,
     PJXBadge,
@@ -17,6 +18,18 @@ from pyjinhx.builtins import (
 
 def accordion():
     return PJXAccordion(label="What is pyjinhx?", content="<p>A Python/Jinja HTML component framework.</p>").render()
+
+
+def accordion_group():
+    return PJXAccordionGroup(
+        mode="exclusive",
+        gap="0.25rem",
+        content=(
+            PJXAccordion(label="Section A", content="<p>Content A.</p>").render()
+            + PJXAccordion(label="Section B", open=False, content="<p>Content B.</p>").render()
+            + PJXAccordion(label="Section C", open=False, content="<p>Content C.</p>").render()
+        ),
+    ).render()
 
 
 def badge():
@@ -111,6 +124,7 @@ def button():
 
 DEMOS = {
     "PJXAccordion": (accordion, 160),
+    "PJXAccordionGroup": (accordion_group, 260),
     "PJXBadge": (badge, 140),
     "PJXCard": (card, 220),
     "PJXDivider": (divider, 120),
