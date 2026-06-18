@@ -7,6 +7,9 @@
   --pjx-dropdown-menu-min-w:    10rem;
   --pjx-dropdown-menu-max-h:    min(70dvh, 24rem);
   --pjx-dropdown-z:             350;
+  --pjx-dropdown-item-padding:  0.5rem 0.85rem;
+  --pjx-dropdown-item-radius:   var(--radius-sm);
+  --pjx-dropdown-item-bg-hover: color-mix(in srgb, var(--text) 8%, transparent);
 }
 
 .pjx-dropdown {
@@ -40,4 +43,30 @@
 .pjx-dropdown--align-end .pjx-dropdown__menu {
   left: auto;
   right: 0;
+}
+
+.pjx-dropdown__menu button,
+.pjx-dropdown__menu a,
+.pjx-dropdown__menu .pjx-dropdown__item {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  margin: 0;
+  padding: var(--pjx-dropdown-item-padding);
+  text-align: left;
+  background: transparent;
+  border: 0;
+  border-radius: var(--pjx-dropdown-item-radius);
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.pjx-dropdown__menu button:hover,
+.pjx-dropdown__menu a:hover,
+.pjx-dropdown__menu button:focus-visible,
+.pjx-dropdown__menu a:focus-visible {
+  background: var(--pjx-dropdown-item-bg-hover);
+  outline: none;
 }
