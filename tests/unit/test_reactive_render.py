@@ -4,6 +4,7 @@ from markupsafe import Markup
 
 from pyjinhx.client import PJX_MOUNTED_HEADER
 from pyjinhx.reactive import oob_swaps
+from pyjinhx.renderer import reactive_root_attrs
 from tests.reactive_test_support import reactive_client, record_mutation
 from tests.ui.reactive import store
 from tests.ui.reactive.reactive_counter import ReactiveCounter  # noqa: F401
@@ -118,3 +119,26 @@ def test_reactive_render_does_not_escape_primary_html():
         out = str(primary.render())
     assert "&lt;span" not in out and "&#34;" not in out
     assert '<span class="counter" data-pjx-id="counter"' in out
+
+
+def test_reactive_root_attrs_returns_pjx_dict():
+    attrs = reactive_root_attrs(ReactiveCounter(id="counter", remaining=0))
+    assert attrs["data-pjx-id"] == "counter"
+    assert attrs["data-pjx-type"] == "ReactiveCounter"
+    assert "data-pjx-hash" in attrs
+    assert "data-pjx-reacts" in attrs  # ReactiveCounter declares react={Keys.TODOS}
+
+
+def test_reactive_root_attrs_empty_for_non_reactive():
+    from pyjinhx.builtins import PJXBadge
+
+    assert reactive_root_attrs(PJXBadge(id="b", label="x")) == {}
+
+
+def test_reactive_root_carries_both_pjx_and_extra_attrs_on_one_root():
+    counter = ReactiveCounter(id="counter", remaining=0, **{"hx-get": "/inc"})
+    out = str(counter.render())
+    root_tag = out[: out.index(">") + 1]  # the single root's opening tag
+    assert 'data-pjx-id="counter"' in root_tag
+    assert 'hx-get="/inc"' in root_tag
+    assert out.count('data-pjx-id="counter"') == 1  # stamped once, not twice
