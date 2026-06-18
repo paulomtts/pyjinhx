@@ -37,6 +37,9 @@ The builtins, rendered by pyjinhx at docs build time (PJXLazyPanel needs a backe
 ### [PJXIcon](guide/builtins.md#pjxicon)
 <!-- demo: PJXIcon -->
 
+### [PJXButton](guide/builtins.md#pjxbutton)
+<!-- demo: PJXButton -->
+
 ## Overlays & dialogs
 
 ### [PJXModal](guide/builtins.md#pjxmodal)
