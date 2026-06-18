@@ -121,3 +121,26 @@ def test_empty_state_suggestions_after_actions():
         ).render()
     )
     assert html.index('class="pjx-empty-state__actions"') < html.index('class="pjx-empty-state__suggestions"')
+
+
+def test_empty_state_chip_event_is_not_interpolated_into_click_handler():
+    # Security regression: the event name must never be interpolated into the
+    # @click JS string literal. It is carried in a data attribute and read via
+    # $el.dataset, so a quote in the event name cannot break out and inject JS.
+    payload = "x');alert(1);('"
+    html = str(
+        PJXEmptyState(
+            id="es-xss",
+            title="T",
+            suggestions=[{"label": "x", "event": payload}],
+        ).render()
+    )
+    # @click is a fixed expression that reads the event from the dataset — the
+    # event name is never interpolated into the JS string literal.
+    assert (
+        '@click="$dispatch($el.dataset.pjxEvent, { value: $el.dataset.pjxSuggestion })"'
+        in html
+    )
+    # The old vulnerable JS-context form ($dispatch('<event>', ...)) is gone, so a
+    # quote in the event name cannot break out of the JS string and execute.
+    assert "$dispatch('" not in html
