@@ -51,6 +51,8 @@ def test_unknown_name_renders_nothing_and_warns(caplog):
     with caplog.at_level(logging.WARNING):
         html = _html(name="definitely-not-an-icon")
     assert "<svg" not in html
+    assert " hidden" in html  # fallback hidden span — renders nothing visible
+    assert "<span" in html
     assert any("definitely-not-an-icon" in r.message for r in caplog.records)
 
 
