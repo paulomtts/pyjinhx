@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pytest
 import pyjinhx.builtins
+from pyjinhx.builtins import PJXBadge  # noqa: E402
 
 DOCS = Path(__file__).resolve().parents[2] / "docs"
 sys.path.insert(0, str(DOCS))
@@ -57,3 +58,35 @@ def test_every_factory_renders():
 def test_registry_covers_all_builtins():
     folded = {"PJXLazyPanel", "PJXPanelTrigger", "PJXPopoverTrigger", "PJXPopoverPanel"}
     assert set(DEMOS) == set(pyjinhx.builtins.__all__) - folded
+
+
+def test_first_variation_source_picks_first_list_element():
+    def f():
+        return [
+            PJXBadge(label="A", color="brand").render(),
+            PJXBadge(label="B", color="error").render(),
+        ]
+    assert hooks.first_variation_source(f) == 'PJXBadge(label="A", color="brand").render()'
+
+
+def test_first_variation_source_single_expression():
+    def f():
+        return PJXBadge(label="A").render()
+    assert hooks.first_variation_source(f) == 'PJXBadge(label="A").render()'
+
+
+def test_demo_markup_wraps_in_stage():
+    assert hooks.demo_markup("<b>x</b>") == '<div class="pjx-demo-stage"><b>x</b></div>'
+    row = hooks.demo_markup(["<b>x</b>", "<i>y</i>"])
+    assert 'class="pjx-demo-stage pjx-demo-stage--row"' in row
+    assert "<b>x</b>" in row and "<i>y</i>" in row
+
+
+def test_all_demo_factories_render(tmp_path):
+    from pyjinhx import Registry, Renderer
+    Renderer.set_default_environment(str(tmp_path))
+    for name, (factory, _h) in DEMOS.items():
+        with Registry.request_scope():
+            markup = hooks.demo_markup(factory())
+        assert "pjx-demo-stage" in markup, name
+        assert markup.strip(), name
