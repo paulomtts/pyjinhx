@@ -417,7 +417,7 @@ def component(name: str) -> type[BaseComponent]:
 
     try:
         template_path = Renderer.get_default_renderer()._find_template_for_tag(name)
-    except FileNotFoundError:
+    except (FileNotFoundError, ValueError):
         template_path = None
     if template_path is not None:
         with open(template_path, encoding="utf-8") as template_file:

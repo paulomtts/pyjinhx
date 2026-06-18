@@ -23,7 +23,6 @@ _TYPES: dict[str, Any] = {
     "bool": bool,
     "list": list,
     "dict": dict,
-    "None": type(None),
     "Any": Any,
 }
 

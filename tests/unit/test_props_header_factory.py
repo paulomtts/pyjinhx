@@ -1,4 +1,5 @@
 import pytest
+from jinja2 import DictLoader, Environment
 from pydantic import ValidationError
 
 from pyjinhx import Renderer
@@ -32,3 +33,19 @@ def test_factory_no_header_is_permissive(env):
     BareFac = component("BareFac")
     inst = BareFac(id="i", foo="bar")  # extra='allow' keeps undeclared props
     assert "bar" in str(inst.render())
+
+
+def test_factory_dictloader_env_does_not_raise():
+    """Regression: component() must not raise when the default env uses a
+    non-FileSystemLoader (e.g. DictLoader).  _find_template_for_tag() raises
+    ValueError("Jinja2 loader must be a FileSystemLoader") for such loaders;
+    the except clause in component() must catch it and fall back to a bare
+    placeholder class instead of propagating the error.
+    """
+    Renderer.set_default_environment(Environment(loader=DictLoader({})))
+    try:
+        result = component("SomeUnresolvable")
+        assert issubclass(result, BaseComponent)
+    finally:
+        # Restore a clean state so other tests are not affected.
+        Renderer.set_default_environment(None)

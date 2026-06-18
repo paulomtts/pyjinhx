@@ -1,4 +1,5 @@
 import pytest
+from pydantic import ValidationError
 
 from pyjinhx import Renderer
 
@@ -26,7 +27,7 @@ def test_header_coerces_declared_prop(env):
 
 
 def test_header_required_missing_errors(env):
-    with pytest.raises(Exception) as exc:  # pydantic ValidationError surfaces
+    with pytest.raises(ValidationError) as exc:
         env.render("<CardHdr/>")
     assert "title" in str(exc.value)
 
