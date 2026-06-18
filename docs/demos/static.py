@@ -20,7 +20,12 @@ def accordion():
 
 
 def badge():
-    return PJXBadge(label="Active", color="brand").render()
+    return [
+        PJXBadge(label="Active", color="brand").render(),
+        PJXBadge(label="Error", color="error").render(),
+        PJXBadge(label="Neutral", color="neutral").render(),
+        PJXBadge(label="Beta", color="muted", shape="full").render(),
+    ]
 
 
 def card():
@@ -32,11 +37,19 @@ def divider():
 
 
 def spinner():
-    return PJXSpinner(size="md", label="Loading data").render()
+    return [
+        PJXSpinner(size="sm", label="Loading data").render(),
+        PJXSpinner(size="md", label="Loading data").render(),
+        PJXSpinner(size="lg", label="Loading data").render(),
+    ]
 
 
 def avatar():
-    return PJXAvatar(initials="JD", size="md", alt="Jane Doe").render()
+    return [
+        PJXAvatar(initials="JD", size="sm", alt="Jane Doe").render(),
+        PJXAvatar(initials="JD", size="md", alt="Jane Doe").render(),
+        PJXAvatar(initials="JD", size="lg", alt="Jane Doe").render(),
+    ]
 
 
 def avatar_stack():
@@ -55,11 +68,18 @@ def breadcrumb():
 
 
 def skeleton():
-    return PJXSkeleton(variant="text", lines=3).render()
+    return [
+        PJXSkeleton(variant="text", lines=3).render(),
+        PJXSkeleton(variant="circle").render(),
+        PJXSkeleton(variant="rect").render(),
+    ]
 
 
 def progress():
-    return PJXProgress(value=65, max=100, label="Upload progress").render()
+    return [
+        PJXProgress(value=65, max=100, label="Upload progress").render(),
+        PJXProgress(label="Processing").render(),
+    ]
 
 
 def empty_state():
@@ -71,25 +91,36 @@ def empty_state():
 
 
 def icon():
-    return PJXIcon(name="plus", size=24, label="Add item").render()
+    return [
+        PJXIcon(name="plus", size=24, label="Add").render(),
+        PJXIcon(name="search", size=24, label="Search").render(),
+        PJXIcon(name="trash", size=24, label="Delete").render(),
+        PJXIcon(name="settings", size=24, label="Settings").render(),
+        PJXIcon(name="chevron-right", size=24, label="Next").render(),
+    ]
 
 
 def button():
-    return PJXButton(center="Save", variant="primary").render()
+    return [
+        PJXButton(center="Save", variant="primary").render(),
+        PJXButton(center="Cancel").render(),
+        PJXButton(center="Saving", variant="primary", loading=True).render(),
+        PJXButton(center="Disabled", disabled=True).render(),
+    ]
 
 
 DEMOS = {
     "PJXAccordion": (accordion, 160),
-    "PJXBadge": (badge, 120),
+    "PJXBadge": (badge, 140),
     "PJXCard": (card, 220),
     "PJXDivider": (divider, 120),
-    "PJXSpinner": (spinner, 120),
-    "PJXAvatar": (avatar, 120),
+    "PJXSpinner": (spinner, 140),
+    "PJXAvatar": (avatar, 140),
     "PJXAvatarStack": (avatar_stack, 120),
     "PJXBreadcrumb": (breadcrumb, 120),
-    "PJXSkeleton": (skeleton, 160),
-    "PJXProgress": (progress, 120),
+    "PJXSkeleton": (skeleton, 220),
+    "PJXProgress": (progress, 170),
     "PJXEmptyState": (empty_state, 260),
-    "PJXIcon": (icon, 120),
-    "PJXButton": (button, 120),
+    "PJXIcon": (icon, 140),
+    "PJXButton": (button, 140),
 }

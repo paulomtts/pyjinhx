@@ -5,6 +5,7 @@
   --pjx-popover-shadow:  var(--shadow-md);
   --pjx-popover-min-w:   12rem;
   --pjx-popover-z:       300;
+  --pjx-popover-padding: var(--space-3, 0.75rem);
 }
 
 .pjx-popover {
@@ -33,6 +34,7 @@
   left: 0;
   z-index: var(--pjx-popover-z);
   min-width: var(--pjx-popover-min-w);
+  padding: var(--pjx-popover-padding);
   background: var(--pjx-popover-bg);
   border: 1px solid var(--pjx-popover-border);
   border-radius: var(--pjx-popover-radius);

@@ -56,23 +56,25 @@ def prompt_dialog():
 
 
 def notification():
-    return PJXNotification(
-        id="demo-notification",
-        content="Your changes have been saved.",
-        corner="top-right",
-        timeout=4000,
-        autoshow=True,
-    ).render()
+    return [
+        PJXNotification(
+            id="demo-notification",
+            content="Your changes have been saved.",
+            corner="top-right",
+            timeout=4000,
+        ).render(),
+        '<button class="pjx-demo-btn" onclick="pjx.notification.show(\'demo-notification\')">'
+        "Show notification</button>",
+    ]
 
 
 def alert():
-    return PJXAlert(
-        id="demo-alert",
-        variant="warning",
-        title="Storage almost full",
-        body="You have used 90% of your storage quota. Consider removing old files.",
-        dismissible=True,
-    ).render()
+    return [
+        PJXAlert(variant="info", title="Heads up", body="A new version is available.").render(),
+        PJXAlert(variant="success", body="Your changes were saved.").render(),
+        PJXAlert(variant="warning", body="Your session expires in 5 minutes.").render(),
+        PJXAlert(variant="error", body="Could not reach the server.", dismissible=True).render(),
+    ]
 
 
 def tooltip():
@@ -92,7 +94,10 @@ def popover():
             + PJXPopoverPanel(
                 id="demo-popover-p",
                 role="dialog",
-                content="<p>Here is some extra detail about this item.</p>",
+                content=(
+                    "<strong>Keyboard shortcuts</strong>"
+                    '<p style="margin:.35rem 0 0">Press <kbd>?</kbd> anytime to reopen this panel.</p>'
+                ),
             ).render()
         ),
     ).render()
@@ -103,8 +108,8 @@ DEMOS = {
     "PJXDrawer": (drawer, 360),
     "PJXConfirmDialog": (confirm_dialog, 360),
     "PJXPromptDialog": (prompt_dialog, 360),
-    "PJXNotification": (notification, 160),
-    "PJXAlert": (alert, 160),
+    "PJXNotification": (notification, 140),
+    "PJXAlert": (alert, 280),
     "PJXTooltip": (tooltip, 160),
     "PJXPopover": (popover, 200),
 }
