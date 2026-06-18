@@ -34,10 +34,8 @@ Rendered output follows this structure:
 
 ```html
 <style>/* component CSS — INLINE mode */</style>
-<link rel="stylesheet" href="...">  <!-- REFERENCE mode -->
 <div id="root-component">...</div>
 <script>/* component JS — INLINE mode */</script>
-<script src="..."></script>           <!-- REFERENCE mode -->
 ```
 
 - **CSS** is injected **before** the HTML (styles apply immediately)
@@ -51,48 +49,30 @@ Configure how assets are delivered with `AssetMode`:
 | Mode | CSS | JS | Use case |
 |------|-----|----|----------|
 | `INLINE` (default) | `<style>` | inline `<script>` | Zero-config demos |
-| `REFERENCE` | `<link href>` | `<script src>` | Production monoliths with static file serving |
-| `NONE` | silence | silence | Manual static wiring |
+| `NONE` | silence | silence | Production: serve a pre-built bundle |
 
 ```python
 from pyjinhx import AssetMode, Renderer
 
-Renderer.set_default_js_mode(AssetMode.REFERENCE)
-Renderer.set_default_css_mode(AssetMode.REFERENCE)
-Renderer.set_asset_url_resolver(lambda path: f"/static/{path}")
+Renderer.set_default_js_mode(AssetMode.NONE)
+Renderer.set_default_css_mode(AssetMode.NONE)
 ```
 
-When `REFERENCE` mode is active, co-located assets and `js`/`css` fields are collected into a per-render manifest and emitted as URL tags. Override the default URL builder with `Renderer.set_asset_url_resolver()`.
+When `NONE` mode is active no asset tags are emitted by the renderer. Link your pre-built CSS and JS bundles in the layout `<head>` manually — see [One-bundle deployment](#one-bundle-deployment) below.
 
 ### Reactive partial suppression
 
 Full-page renders emit assets once at the layout root. Reactive partial responses and OOB swaps **never** re-ship assets — matching production expectations where the layout shell loads static files once.
 
-### Client asset dedup (REFERENCE mode, opt-in)
-
-On HTMX requests, `pjx.js` reports asset URLs already in the DOM via the `X-PJX-Assets` header. When dedup is enabled, root renders emit only missing `<link>` / `<script src>` tags — useful for hx-boost full-page swaps.
-
-```python
-Renderer.set_default_asset_dedup(True)
-
-@app.get("/page-b")
-def page_b():
-    return str(PageB(id="app").render())  # X-PJX-Assets from ClientBackend in middleware
-```
-
-With [ClientBackend](../api/client-backend.md) wired in middleware, root renders pick up `X-PJX-Assets` automatically. Without it, pass `client=request` explicitly.
-
-Partial renders ignore the asset header (no assets emitted). Dedup defaults to **off** for backward compatibility.
-
 ### Client runtime (`pjx.js`)
 
-In `REFERENCE` mode, root full-page renders emit `<script src="/static/pyjinhx/pjx.js">` when the request lacks `X-PJX-Mounted`. Mount the packaged file from `pyjinhx/runtime/pjx.js` or override with `Renderer.set_default_runtime_url()`.
+Root full-page renders auto-inject the pyjinhx client runtime (`pjx.js`) as an inline `<script>` unless the request already carries `X-PJX-Mounted`.
 
-For raw Jinja shells, use `client_script(mode=AssetMode.REFERENCE)` (`from pyjinhx.client import client_script`). Pass `client_script(src=...)` to override the runtime URL (otherwise it falls back to `Renderer`'s configured URL, then `DEFAULT_RUNTIME_URL`).
+For raw Jinja shells, call `client_script()` (`from pyjinhx.client import client_script`) and pass the result into the template context (e.g. `{"pjx_runtime": client_script()}`), then render with `{{ pjx_runtime }}` in `<head>` or `<body>`.
 
 ### CSP
 
-`REFERENCE` mode avoids inline scripts entirely — compatible with strict `script-src` policies without nonce plumbing.
+For strict `script-src` policies, use `AssetMode.NONE`, serve assets from a pre-built bundle, and add a nonce or hash for the single inline runtime script (or serve `pjx.js` as a static file and link it yourself).
 
 ## Extra Asset Files
 
@@ -135,7 +115,7 @@ resolver = make_default_asset_url_resolver("./components")
 head_tags = finder.layout_asset_tags(resolver=resolver)
 ```
 
-Combine with `AssetMode.REFERENCE` and reactive partial suppression so HTMX swaps never re-ship assets.
+Combine with `AssetMode.NONE` and reactive partial suppression so HTMX swaps never re-ship assets.
 
 ## Cache-Busting
 
@@ -175,42 +155,26 @@ css_files = finder.collect_css_files(relative_to_root=True)
 # ['ui/button.css', 'ui/dropdown.css', ...]
 ```
 
-### Example: FastAPI with REFERENCE mode
+### Example: FastAPI with bundle serving
+
+Build a bundle at startup (see [One-bundle deployment](#one-bundle-deployment)) and serve it as
+a static file. Set both modes to `NONE` so components don't inline what the bundle already ships.
 
 ```python
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from pyjinhx import AssetMode, Renderer
-from pyjinhx.assets import make_default_asset_url_resolver
-from pyjinhx.finder import Finder
 
 app = FastAPI()
-app.mount("/static/components", StaticFiles(directory="components"), name="components")
-app.mount(
-    "/static/pyjinhx",
-    StaticFiles(directory="path/to/pyjinhx/runtime"),
-    name="pyjinhx",
-)
+app.mount("/static/pyjinhx", StaticFiles(directory="path/to/pyjinhx/runtime"), name="pyjinhx")
 
-Renderer.set_default_js_mode(AssetMode.REFERENCE)
-Renderer.set_default_css_mode(AssetMode.REFERENCE)
-Renderer.set_asset_url_resolver(make_default_asset_url_resolver("components"))
+Renderer.set_default_js_mode(AssetMode.NONE)
+Renderer.set_default_css_mode(AssetMode.NONE)
 
 @app.get("/")
 def index():
-    return str(MyApp(id="app").render())  # emits link/script refs for used components
+    return str(MyApp(id="app").render())  # bundle already linked in layout <head>
 ```
-
-### Example: Django
-
-```python
-from django.templatetags.static import static
-from pyjinhx import Renderer
-
-Renderer.set_asset_url_resolver(lambda path: static(path_relative_to_static_root(path)))
-```
-
-Map each absolute asset path to your `{% static %}` URL in the resolver callback.
 
 ## Asset helpers reference
 

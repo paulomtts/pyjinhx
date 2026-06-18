@@ -75,33 +75,6 @@ def set_default_css_mode(mode: AssetMode) -> None
 
 Set the process-wide default CSS asset delivery mode.
 
-##### set_asset_url_resolver()
-
-```python
-@classmethod
-def set_asset_url_resolver(resolver: AssetUrlResolver | None) -> None
-```
-
-Set the callable that maps absolute asset paths to public URLs for `AssetMode.REFERENCE`.
-
-##### set_default_runtime_url()
-
-```python
-@classmethod
-def set_default_runtime_url(url: str) -> None
-```
-
-Set the public URL for the pyjinhx client runtime in `AssetMode.REFERENCE` (default: `/static/pyjinhx/pjx.js`).
-
-##### set_default_asset_dedup()
-
-```python
-@classmethod
-def set_default_asset_dedup(enabled: bool) -> None
-```
-
-When `True`, root REFERENCE renders skip `<link>` / `<script src>` tags for URLs the client reported via `X-PJX-Assets`. Defaults to `False`. With [ClientBackend](../api/client-backend.md) wired in middleware, root renders pick up the header automatically; otherwise pass `client=request` on boosted full-page routes.
-
 ##### get_default_environment()
 
 ```python
@@ -183,7 +156,6 @@ Create a new render session for tracking assets during rendering.
 ```python
 class AssetMode(str, Enum):
     INLINE = "inline"
-    REFERENCE = "reference"
     NONE = "none"
 ```
 

@@ -195,7 +195,7 @@ TodoPanel(id="panel", counter=TodoCounter(id="counter", remaining=2)).render()
 ???+ question "Why co-located assets?"
     Components carry their own behavior and styling. Collecting at the **root render** avoids duplicate script tags when nested components share assets. Reactive partials and OOB swaps **never** emit assets — only full layout renders do.
 
-    Production: switch to `AssetMode.REFERENCE` and a URL resolver. See [Asset collection](../guide/assets.md).
+    Production: use `AssetMode.NONE` and serve a pre-built bundle. See [Asset collection](../guide/assets.md).
 
 ---
 
@@ -527,23 +527,25 @@ setup(
 
 ## Step 14 — Production assets
 
+Build a single CSS and JS bundle from all component assets and serve them as static files. Set
+both modes to `NONE` so components don't duplicate what the bundle already ships.
+
 ```python
 from pyjinhx import AssetMode, Renderer
+from pyjinhx.finder import Finder
 
-Renderer.set_default_js_mode(AssetMode.REFERENCE)
-Renderer.set_default_css_mode(AssetMode.REFERENCE)
-Renderer.set_asset_url_resolver(lambda path: f"/static/{path.split('/')[-1]}")
-Renderer.set_default_asset_dedup(True)  # hx-boost: skip already-loaded URLs
+# Build bundles at startup — see guide/assets.md "One-bundle deployment"
+CSS_PATHS, JS_PATHS = Finder("app/components").all_assets()
+Renderer.set_default_js_mode(AssetMode.NONE)
+Renderer.set_default_css_mode(AssetMode.NONE)
 ```
 
-Full-page route with boosted navigation:
+Link `bundle.css` and `bundle.js` in your layout `<head>`. Full-page renders then emit only
+the HTML — no inline asset tags.
 
 ```python
-TodoApp(...).render()  # client headers from middleware ClientBackend
+TodoApp(...).render()  # assets come from the bundle, not inline tags
 ```
-
-???+ question "Why REFERENCE mode?"
-    Inline `<script>` blocks are fine for demos but awkward in production (CSP, caching, size). REFERENCE emits `<link>` / `<script src>` URLs. Client dedup (`X-PJX-Assets`) avoids re-downloading assets on boosted full-page swaps.
 
 ---
 
@@ -583,7 +585,7 @@ The per-step **Why?** panels above cover the *why*; this is the at-a-glance *wha
 |------|--------|
 | **Required** | `set_default_environment` · `Registry.request_scope()` middleware · root full-page render · HTMX in layout · `ReactiveComponent` (`react={...}` + `load()`) · `@mutates(Keys.…)` on mutations · `setup()` (wires `FastAPIClientBackend`) · `PjxKey` on keyed rows |
 | **Recommended** | `PjxContext` · `data-pjx-loading` indicators · `enable_reactive_dev()` in dev |
-| **Production** | `AssetMode.REFERENCE` + URL resolver · `InvalidationBackend` for multi-worker `PROCESS` cache |
+| **Production** | `AssetMode.NONE` + pre-built bundle (`Finder.all_assets()`) · `InvalidationBackend` for multi-worker `PROCESS` cache |
 
 ---
 
