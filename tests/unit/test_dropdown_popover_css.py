@@ -2,7 +2,7 @@
 import pytest
 
 from pyjinhx import Renderer
-from pyjinhx.builtins import PJXDropdown, PJXPopover, PJXPopoverPanel, PJXPopoverTrigger
+from pyjinhx.builtins import PJXDropdown, PJXPopover, PJXPopoverPanel
 
 
 @pytest.fixture(autouse=True)
