@@ -1,5 +1,6 @@
 from .ui import (
     PJXAlert,
+    PJXButton,
     PJXAvatar,
     PJXAvatarStack,
     PJXBadge,
@@ -37,6 +38,7 @@ from .ui import (
 
 __all__ = [
     "PJXAlert",
+    "PJXButton",
     "PJXAvatar",
     "PJXAvatarStack",
     "PJXBadge",

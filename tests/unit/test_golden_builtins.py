@@ -56,6 +56,8 @@ CASES = [
     ("password_input", lambda: b.PJXPasswordInput(id="g")),
     ("icon_plus", lambda: b.PJXIcon(id="g", name="plus")),
     ("icon_labeled", lambda: b.PJXIcon(id="g", name="search", label="Search", size=20)),
+    ("button_default", lambda: b.PJXButton(id="g", center="Save")),
+    ("button_loading", lambda: b.PJXButton(id="g", center="Save", loading=True, variant="primary")),
 ]
 
 
