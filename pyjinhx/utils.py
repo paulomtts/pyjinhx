@@ -231,3 +231,17 @@ def read_client_runtime() -> str:
     runtime_path = os.path.join(os.path.dirname(__file__), "runtime", "pjx.js")
     with open(runtime_path, encoding="utf-8") as runtime_file:
         return runtime_file.read()
+
+
+def read_vendored_htmx() -> str:
+    """Return the bundled htmx source, guarded so it no-ops if htmx is present.
+
+    pjx.js (the reactive transport) depends on htmx. We ship and inline a pinned
+    copy ahead of pjx.js on reactive root renders. The ``if (!window.htmx)``
+    guard means a page that already loaded its own htmx keeps that copy instead
+    of redefining it — so injecting ours is safe even when the user adds htmx.
+    """
+    htmx_path = os.path.join(os.path.dirname(__file__), "runtime", "htmx.min.js")
+    with open(htmx_path, encoding="utf-8") as htmx_file:
+        source = htmx_file.read()
+    return f"if (!window.htmx) {{\n{source}\n}}\n"

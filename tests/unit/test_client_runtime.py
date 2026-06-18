@@ -27,3 +27,10 @@ def test_client_script_wraps_runtime_in_script_tag():
     assert script.startswith("<script>")
     assert script.endswith("</script>")
     assert "htmx:configRequest" in script
+
+
+def test_runtime_warns_when_htmx_missing():
+    # Reactivity silently no-ops without htmx; pjx.js must make that loud.
+    source = read_client_runtime()
+    assert "window.htmx" in source
+    assert "console.error" in source

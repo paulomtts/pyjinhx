@@ -48,8 +48,12 @@ def test_mounted_manifest_is_present():
 def test_root_render_injects_runtime_without_client():
     html = str(RuntimePage(id="page")._render(source="<html><body>hi</body></html>"))
     assert "htmx:configRequest" in html
-    assert "X-PJX-Mounted" in html
-    assert html.count("htmx:configRequest") == 1
+    # "X-PJX-Mounted" is unique to pjx.js (htmx never references it), so it is a
+    # reliable proxy for "pjx.js present exactly once" now that htmx — which also
+    # contains "htmx:configRequest" — is inlined alongside it.
+    assert html.count("X-PJX-Mounted") == 1
+    # the vendored htmx transport is injected too
+    assert "var htmx" in html
 
 
 def test_root_render_injects_runtime_when_manifest_header_missing():
@@ -92,8 +96,8 @@ def test_request_scope_injects_runtime_once_across_root_renders():
     with Registry.request_scope():
         first = str(RuntimePage(id="page-a")._render(source="<div>a</div>"))
         second = str(RuntimePage(id="page-b")._render(source="<div>b</div>"))
-    assert first.count("htmx:configRequest") == 1
-    assert "htmx:configRequest" not in second
+    assert first.count("X-PJX-Mounted") == 1
+    assert "X-PJX-Mounted" not in second
 
 
 def test_separate_request_scopes_each_inject_runtime():
@@ -101,8 +105,8 @@ def test_separate_request_scopes_each_inject_runtime():
         first = str(RuntimePage(id="page-a")._render(source="<div>a</div>"))
     with Registry.request_scope():
         second = str(RuntimePage(id="page-b")._render(source="<div>b</div>"))
-    assert first.count("htmx:configRequest") == 1
-    assert second.count("htmx:configRequest") == 1
+    assert first.count("X-PJX-Mounted") == 1
+    assert second.count("X-PJX-Mounted") == 1
 
 
 def test_without_request_scope_each_root_render_injects_runtime():
@@ -114,8 +118,8 @@ def test_without_request_scope_each_root_render_injects_runtime():
         second = str(RuntimePage(id="page-b")._render(source="<div>b</div>"))
     finally:
         _runtime_injected.reset(token)
-    assert first.count("htmx:configRequest") == 1
-    assert second.count("htmx:configRequest") == 1
+    assert first.count("X-PJX-Mounted") == 1
+    assert second.count("X-PJX-Mounted") == 1
 
 
 def test_nested_render_does_not_inject_runtime():

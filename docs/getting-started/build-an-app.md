@@ -258,11 +258,16 @@ See [Configuration API](../api/config.md) and [FastAPI integration](../integrati
 
 ## Step 7 — HTMX partial responses
 
-Load HTMX in your layout template:
+HTMX is the transport for reactivity. PyJinHx auto-injects a vendored copy on
+reactive root renders, so you don't need to add it yourself — but you can load
+your own in the layout to pin a version or add extensions (the injected copy
+self-guards against double-loading):
 
 ```html
 <script src="https://unpkg.com/htmx.org@2.0.3"></script>
 ```
+
+Opt out of auto-injection with `setup(app, inject_htmx=False)`.
 
 Return a **fragment** from a mutation route:
 
@@ -583,7 +588,8 @@ The per-step **Why?** panels above cover the *why*; this is the at-a-glance *wha
 
 | Tier | Pieces |
 |------|--------|
-| **Required** | `set_default_environment` · `Registry.request_scope()` middleware · root full-page render · HTMX in layout · `ReactiveComponent` (`react={...}` + `load()`) · `@mutates(Keys.…)` on mutations · `setup()` (wires `FastAPIClientBackend`) · `PjxKey` on keyed rows |
+| **Required** | `set_default_environment` · `Registry.request_scope()` middleware · root full-page render · `ReactiveComponent` (`react={...}` + `load()`) · `@mutates(Keys.…)` on mutations · `setup()` (wires `FastAPIClientBackend`) · `PjxKey` on keyed rows |
+| **Auto-provided** | HTMX (vendored, inlined on reactive root renders — disable with `setup(inject_htmx=False)`) |
 | **Recommended** | `PjxContext` · `data-pjx-loading` indicators · `enable_reactive_dev()` in dev |
 | **Production** | `AssetMode.NONE` + pre-built bundle (`Finder.all_assets()`) · `InvalidationBackend` for multi-worker `PROCESS` cache |
 

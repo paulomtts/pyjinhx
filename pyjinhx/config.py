@@ -17,6 +17,7 @@ _UNSET: Any = (
 class PjxSettings:
     invalidation_backend: InvalidationBackend | None = None
     reactive_dev: bool = False
+    inject_htmx: bool = True
 
     @classmethod
     def from_env(cls) -> PjxSettings:
@@ -24,6 +25,11 @@ class PjxSettings:
             "1",
             "true",
             "yes",
+        }
+        inject_htmx = os.environ.get("PJX_INJECT_HTMX", "").lower() not in {
+            "0",
+            "false",
+            "no",
         }
         invalidation_backend: InvalidationBackend | None = None
         redis_url = os.environ.get("REDIS_URL")
@@ -39,6 +45,7 @@ class PjxSettings:
         return cls(
             invalidation_backend=invalidation_backend,
             reactive_dev=reactive_dev,
+            inject_htmx=inject_htmx,
         )
 
     def merge(self, **overrides: Any) -> PjxSettings:
@@ -58,11 +65,13 @@ def _merge_settings(
     *,
     invalidation_backend: Any,
     reactive_dev: Any,
+    inject_htmx: Any,
     extra: dict[str, Any],
 ) -> PjxSettings:
     return (settings or PjxSettings()).merge(
         invalidation_backend=invalidation_backend,
         reactive_dev=reactive_dev,
+        inject_htmx=inject_htmx,
         **extra,
     )
 
@@ -77,6 +86,7 @@ def configure_pyjinhx(
             settings,
             invalidation_backend=kwargs.pop("invalidation_backend", _UNSET),
             reactive_dev=kwargs.pop("reactive_dev", _UNSET),
+            inject_htmx=kwargs.pop("inject_htmx", _UNSET),
             extra=kwargs,
         )
     else:
@@ -99,6 +109,10 @@ def configure_pyjinhx(
     else:
         disable_reactive_dev()
 
+    from pyjinhx.assets import set_inject_htmx
+
+    set_inject_htmx(resolved.inject_htmx)
+
     return resolved
 
 
@@ -119,6 +133,7 @@ def setup(
     context_factory: Callable[[Any], object | None] | None = None,
     invalidation_backend: InvalidationBackend | None = _UNSET,
     reactive_dev: bool = _UNSET,
+    inject_htmx: bool = _UNSET,
     components_root: str | os.PathLike[str] | None = None,
     static_root: str | os.PathLike[str] | None = None,
     **kwargs: Any,
@@ -138,6 +153,11 @@ def setup(
     The load-cache scope is derived from ``invalidation_backend``: cross-request
     ``PROCESS`` caching when a backend is set (kept consistent across workers by
     the backend), per-request ``REQUEST`` caching otherwise.
+
+    ``inject_htmx`` (default ``True``) inlines a vendored htmx ahead of the
+    pyjinhx runtime on reactive root renders, so reactivity works out of the
+    box. Set it to ``False`` if you load/manage htmx yourself; the inlined copy
+    self-guards against double-load regardless.
     """
     if components_root is not None:
         from pyjinhx.renderer import Renderer
@@ -149,6 +169,7 @@ def setup(
         settings,
         invalidation_backend=invalidation_backend,
         reactive_dev=reactive_dev,
+        inject_htmx=inject_htmx,
         extra=kwargs,
     )
     if app is None:

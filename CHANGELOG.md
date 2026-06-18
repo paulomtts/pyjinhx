@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased — htmx ships with the runtime
+
+### Added
+
+- htmx (the reactive transport `pjx.js` depends on) is now vendored and inlined
+  ahead of `pjx.js` on reactive root renders, so reactivity works without
+  manually adding an htmx `<script>`. The inlined copy self-guards
+  (`if (!window.htmx)`) and never double-loads when the page already has htmx.
+- `setup(inject_htmx=False)` / `PJX_INJECT_HTMX=false` opts out for apps that
+  manage their own htmx. `pjx.js` now logs a `console.error` when htmx is
+  missing instead of failing silently. Regenerate the vendored copy with
+  `scripts/vendor_htmx.py`.
+
 ## 0.13.0 — OOB swaps ride along any render (2026-06-13)
 
 ### Added

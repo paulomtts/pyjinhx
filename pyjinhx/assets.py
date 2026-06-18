@@ -14,6 +14,7 @@ from .utils import (
     component_resolution_classes,
     pascal_case_to_kebab_case,
     read_client_runtime,
+    read_vendored_htmx,
 )
 
 if TYPE_CHECKING:
@@ -25,7 +26,20 @@ AssetUrlResolver = Callable[[str], str]
 logger = logging.getLogger("pyjinhx")
 
 DEFAULT_RUNTIME_URL = "/static/pyjinhx/pjx.js"
+DEFAULT_HTMX_URL = "/static/pyjinhx/htmx.min.js"
 DEFAULT_STATIC_PREFIX = "/static/components"
+
+# Process-wide toggle: auto-inline a vendored htmx ahead of pjx.js on reactive
+# root renders. pjx.js depends on htmx; injecting it removes the silent-failure
+# mode where reactivity no-ops because htmx was never added to the page. Users
+# who manage their own htmx can disable this via ``setup(inject_htmx=False)``.
+_inject_htmx: bool = True
+
+
+def set_inject_htmx(enabled: bool) -> None:
+    """Toggle auto-inlining of the vendored htmx runtime (see ``_inject_htmx``)."""
+    global _inject_htmx
+    _inject_htmx = enabled
 
 # Request-scoped "runtime already injected" flag, set by Registry.request_scope.
 # ``None`` means no request scope is active and per-session dedup applies alone.
@@ -105,6 +119,13 @@ def runtime_asset_path() -> str:
     """Return the absolute path to the bundled pyjinhx client runtime."""
     return os.path.normpath(
         os.path.join(os.path.dirname(__file__), "runtime", "pjx.js")
+    )
+
+
+def htmx_asset_path() -> str:
+    """Return the absolute path to the bundled (vendored) htmx runtime."""
+    return os.path.normpath(
+        os.path.join(os.path.dirname(__file__), "runtime", "htmx.min.js")
     )
 
 
@@ -291,6 +312,14 @@ def inject_runtime(
         session.scripts.insert(0, read_client_runtime())
         session.assets.insert(0, CollectedAsset(path=rt_path, kind="js"))
         session.collected_paths.add(normalize_asset_path(rt_path))
+        # htmx is pjx.js's transport — inline it *before* pjx.js (insert at 0
+        # after pjx.js) so window.htmx exists when pjx.js registers listeners.
+        # The vendored source self-guards against double-load (see util).
+        if _inject_htmx:
+            htmx_path = htmx_asset_path()
+            session.scripts.insert(0, read_vendored_htmx())
+            session.assets.insert(0, CollectedAsset(path=htmx_path, kind="js"))
+            session.collected_paths.add(normalize_asset_path(htmx_path))
     session.runtime_injected = True
     if request_injected is not None:
         _runtime_injected.set(True)
