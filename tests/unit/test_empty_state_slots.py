@@ -1,6 +1,8 @@
 from pyjinhx.builtins import PJXBadge, PJXEmptyState
 
 
+
+
 def test_empty_state_default_render_has_no_image_or_actions():
     html = str(
         PJXEmptyState(
@@ -55,3 +57,67 @@ def test_empty_state_action_renders_before_actions():
     assert "<button>Use a template</button>" in html
     assert "<button>Import</button>" in html
     assert html.index('class="pjx-empty-state__action"') < html.index('class="pjx-empty-state__actions"')
+
+
+# --- Suggestion chips (issue #77) ---
+
+def test_empty_state_suggestions_renders_chips():
+    html = str(
+        PJXEmptyState(
+            id="es-chips",
+            title="What would you like to do?",
+            suggestions=[
+                {"label": "Draft a message"},
+                {"label": "Summarise a thread"},
+            ],
+        ).render()
+    )
+    assert '<div class="pjx-empty-state__suggestions">' in html
+    assert "Draft a message" in html
+    assert "Summarise a thread" in html
+    assert 'class="pjx-empty-state__chip"' in html
+
+
+def test_empty_state_chip_default_event_and_value():
+    html = str(
+        PJXEmptyState(
+            id="es-chip-defaults",
+            title="T",
+            suggestions=[{"label": "Fill me in"}],
+        ).render()
+    )
+    assert 'data-pjx-suggestion="Fill me in"' in html
+    assert "@click=" in html
+    assert "pjx:suggestion" in html
+
+
+def test_empty_state_chip_custom_event_and_value():
+    html = str(
+        PJXEmptyState(
+            id="es-chip-custom",
+            title="T",
+            suggestions=[{"label": "Click me", "value": "fill-input-value", "event": "fill-input"}],
+        ).render()
+    )
+    assert 'data-pjx-suggestion="fill-input-value"' in html
+    assert "fill-input" in html
+    assert "Click me" in html
+
+
+def test_empty_state_no_suggestions_block_when_empty():
+    html = str(
+        PJXEmptyState(id="es-no-chips", title="T").render()
+    )
+    assert 'class="pjx-empty-state__suggestions"' not in html
+
+
+def test_empty_state_suggestions_after_actions():
+    html = str(
+        PJXEmptyState(
+            id="es-order",
+            title="T",
+            actions=["<button>Act</button>"],
+            suggestions=[{"label": "Chip"}],
+        ).render()
+    )
+    assert html.index('class="pjx-empty-state__actions"') < html.index('class="pjx-empty-state__suggestions"')

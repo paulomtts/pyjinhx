@@ -506,10 +506,39 @@ Centered empty view. **Assets:** `pjx-empty-state.css` only (template file **`pj
 | `description` | `str \| BaseComponent` | `""` | Supporting text. |
 | `action` | `str \| BaseComponent` | `""` | Optional slot (e.g. button markup). |
 | `actions` | `list[str \| BaseComponent]` | `[]` | Optional flex row of slots; renders after `action` when both are set. |
+| `suggestions` | `list[dict]` | `[]` | Interactive suggestion chips; each dict dispatches a custom event on click. See below. |
 
-**DOM contract.** Root `.pjx-empty-state`; no JS API.
+**Suggestion chips** (`suggestions`) provide a first-class "click a chip → dispatch an event" pattern — the common use case of filling an input or triggering a quick action without navigation.
 
-**Classes:** `pjx-empty-state`, `pjx-empty-state__image`, `pjx-empty-state__title`, `pjx-empty-state__desc`, `pjx-empty-state__action`, `pjx-empty-state__actions`. Theming: see [PJXEmptyState tokens](#pjxemptystate-tokens).
+Each item in `suggestions` is a dict with:
+
+| Key | Type | Required | Description |
+| --- | --- | --- | --- |
+| `label` | `str` | yes | Visible chip text. |
+| `value` | `str` | no | Value dispatched in the event payload; defaults to `label`. |
+| `event` | `str` | no | Custom event name; defaults to `"pjx:suggestion"`. |
+
+The rendered chip uses Alpine's `$dispatch`, so any parent can listen with `@pjx:suggestion.window="..."` (or the custom event name). The dispatched detail is `{ value: "<chip value>" }`.
+
+```python
+PJXEmptyState(
+    id="chat-empty",
+    title="What would you like to do?",
+    suggestions=[
+        {"label": "Draft a message", "value": "Draft a message"},
+        {"label": "Summarise a thread", "event": "fill-input"},
+    ],
+)
+```
+
+```html
+<!-- Listener in a parent template -->
+<textarea @pjx:suggestion.window="$el.value = $event.detail.value"></textarea>
+```
+
+**DOM contract.** Root `.pjx-empty-state`; no JS API (suggestion chips require Alpine for `$dispatch`).
+
+**Classes:** `pjx-empty-state`, `pjx-empty-state__image`, `pjx-empty-state__title`, `pjx-empty-state__desc`, `pjx-empty-state__action`, `pjx-empty-state__actions`, `pjx-empty-state__suggestions`, `pjx-empty-state__chip`. Theming: see [PJXEmptyState tokens](#pjxemptystate-tokens).
 
 ---
 
@@ -588,12 +617,25 @@ Image or initials in a circle. **Assets:** `pjx_avatar.css` only.
 | `src` | `str` | `""` | Image URL; when empty, initials fallback is shown. |
 | `alt` | `str` | `""` | `img` alt text; also used as `title` on initials. |
 | `initials` | `str` | `""` | Up to two characters (trimmed/capped in validation). |
-| `size` | literal | `"md"` | `sm`, `md`, or `lg`. |
-| `color` | `str` | `""` | Extra class or inline color hint (appended to root classes). |
+| `size` | `str \| int` | `"md"` | Named token (`sm`, `md`, `lg`) **or** an arbitrary pixel size (`int`) or CSS length string (`"36px"`, `"2.5rem"`). Named tokens emit the BEM modifier class; an int/CSS length renders `width`/`height` inline. |
+| `color` | `str` | `""` | Inline `background` color (e.g. `"#4f46e5"`, `"hsl(240 60% 50%)"` ). |
+
+**Arbitrary pixel sizing:** pass an `int` for a pixel size or any CSS length string for a custom size. This bypasses the named-token classes so the avatar can be sized by data rather than the three design-system tokens.
+
+```python
+# Named token (emits .pjx-avatar--md)
+PJXAvatar(id="a1", initials="AB")
+
+# Pixel size — 36 px circle, no BEM modifier
+PJXAvatar(id="a2", initials="AB", size=36)
+
+# Arbitrary CSS length
+PJXAvatar(id="a3", initials="AB", size="2.5rem")
+```
 
 **DOM contract.** Root `.pjx-avatar`; no JS API.
 
-**Classes:** `pjx-avatar`, `pjx-avatar--sm|md|lg`, `pjx-avatar__img`, `pjx-avatar__initials`. Theming: see [PJXAvatar tokens](#pjxavatar-tokens).
+**Classes:** `pjx-avatar`, `pjx-avatar--sm|md|lg` (named tokens only), `pjx-avatar__img`, `pjx-avatar__initials`. Theming: see [PJXAvatar tokens](#pjxavatar-tokens).
 
 ---
 
@@ -817,11 +859,35 @@ Overlapping row of avatars with optional overflow count. **Assets:** `pjx-avatar
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
-| `avatars` | `list[str \| BaseComponent]` | `[]` | PJXAvatar items (typically `PJXAvatar` components or HTML strings). |
+| `avatars` | `list[dict \| str \| BaseComponent]` | `[]` | Per-avatar items — see below for the two accepted shapes. |
 | `extra_count` | `int` | `0` | When `> 0`, renders a `+N` overflow chip. |
 | `empty_label` | `str` | `""` | When no avatars and `empty_label` is set, renders a fallback label. |
 
+**Two item shapes are accepted in `avatars`:**
+
+1. **Structured data dict** — the stack renders its own pill; no child `PJXAvatar` needed.
+
+   | Key | Type | Required | Description |
+   | --- | --- | --- | --- |
+   | `initials` | `str` | yes | Up to two characters shown in the pill. |
+   | `color` | `str` | no | Inline `background` color. |
+   | `alt` | `str` | no | `title` tooltip (takes precedence over `name`). |
+   | `name` | `str` | no | Fallback tooltip when `alt` is not set. |
+
+2. **Pre-built item** — an HTML string or any `BaseComponent` instance (original interface, still fully supported).
+
 ```python
+# Structured data — stack owns rendering; no PJXAvatar required
+PJXAvatarStack(
+    id="team",
+    avatars=[
+        {"initials": "AB", "color": "#4f46e5", "name": "Alice"},
+        {"initials": "CD", "color": "#16a34a", "name": "Charlie"},
+    ],
+    extra_count=3,
+)
+
+# Pre-built components (original interface)
 PJXAvatarStack(
     id="team",
     avatars=[
@@ -834,7 +900,7 @@ PJXAvatarStack(
 
 **DOM contract.** Root `.pjx-avatar-stack`; no JS API.
 
-**Classes:** `pjx-avatar-stack`, `pjx-avatar-stack__more`, `pjx-avatar-stack__empty`. Theming: see [PJXAvatarStack tokens](#pjxavatarstack-tokens).
+**Classes:** `pjx-avatar-stack`, `pjx-avatar-stack__pill` (dict-rendered pills), `pjx-avatar-stack__more`, `pjx-avatar-stack__empty`. Theming: see [PJXAvatarStack tokens](#pjxavatarstack-tokens).
 
 ---
 
