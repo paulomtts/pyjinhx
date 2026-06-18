@@ -19,7 +19,7 @@ def test_single_root_button_with_defaults():
     assert html.count("<button") == 1
     assert 'type="button"' in html
     assert "pjx-button--default" in html
-    assert ">Save<" in html.replace(" ", "").replace("\n", "") or "Save" in html
+    assert ">Save<" in html
 
 
 def test_slots_render_and_omit_when_empty():
