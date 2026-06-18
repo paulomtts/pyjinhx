@@ -10,7 +10,7 @@ def test_runtime_source_reports_assets_header():
 
 
 def test_oob_swaps_emit_no_assets():
-    manifest = [{"id": "counter", "type": "ReactiveCounter", "hash": "stale"}]
+    manifest = [{"id": "counter", "type": ReactiveCounter.__name__, "hash": "stale"}]
     rendered = str(oob_swaps({"todos"}, manifest))
 
     assert "<link" not in rendered
