@@ -25,7 +25,7 @@ from pyjinhx.utils import (
     stamp_root_attributes,
 )
 
-from .assets import RenderSession, render_missing_assets_oob
+from .assets import render_missing_assets_oob
 from .cache import LoadCache
 from .client import ClientBackend, LoadedAssets, MountedManifest
 from .dev import warn_reactive_render_without_client
