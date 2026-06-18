@@ -20,7 +20,6 @@ from .tags import Parser, expand_custom_tags, render_tag_node
 from .utils import (
     component_resolution_classes,
     detect_root_directory,
-    stamp_root_attributes,
     tag_name_to_template_filenames,
 )
 
@@ -112,9 +111,11 @@ def build_render_context(context: dict[str, Any]) -> dict[str, Any]:
     return render_context
 
 
-def stamp_reactive_markup(markup: str, component: BaseComponent) -> str:
+def reactive_root_attrs(component: BaseComponent) -> dict[str, str]:
+    """The ``data-pjx-*`` attributes to stamp onto a reactive component's root
+    tag, or an empty dict for a non-reactive component."""
     if not getattr(type(component), "_pjx_reactive", False):
-        return markup
+        return {}
 
     from pyjinhx.reactive import pjx_load_value
 
@@ -129,7 +130,7 @@ def stamp_reactive_markup(markup: str, component: BaseComponent) -> str:
     reacts = getattr(type(component), "_pjx_reacts_to", frozenset())
     if reacts:
         attrs["data-pjx-reacts"] = " ".join(sorted(reacts))
-    return stamp_root_attributes(markup, attrs)
+    return attrs
 
 
 class Renderer:
@@ -262,16 +263,15 @@ class Renderer:
             session=session,
             emit_assets=emit_assets,
         )
-        rendered_markup = stamp_reactive_markup(rendered_markup, component)
-
         from .base import collect_extra_attrs
         from .root_attrs import apply_root_attrs
 
+        attrs = {**collect_extra_attrs(component), **reactive_root_attrs(component)}
         rendered_markup = Markup(
             apply_root_attrs(
                 str(rendered_markup),
                 component_name=type(component).__name__,
-                attrs=collect_extra_attrs(component),
+                attrs=attrs,
             )
         )
 
