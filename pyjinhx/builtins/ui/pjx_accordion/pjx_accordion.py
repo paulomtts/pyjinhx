@@ -9,4 +9,5 @@ class PJXAccordion(BaseComponent):
     disabled: bool = False
     group: str | None = None
     content: str | BaseComponent = ""
+    actions: str | BaseComponent | None = None
     class_name: AttrValue = ""
