@@ -36,7 +36,6 @@ _runtime_injected: ContextVar[bool | None] = ContextVar(
 
 class AssetMode(str, Enum):
     INLINE = "inline"
-    REFERENCE = "reference"
     NONE = "none"
 
 
@@ -93,13 +92,10 @@ class AssetManifest:
 
 @dataclass(frozen=True)
 class AssetPolicy:
-    """How a render emits assets: per-kind mode, URL resolution, and dedup."""
+    """How a render emits assets: per-kind mode."""
 
     js_mode: AssetMode
     css_mode: AssetMode
-    resolve_url: AssetUrlResolver
-    loaded_assets: frozenset[str] = frozenset()
-    dedup_enabled: bool = False
 
     def mode(self, kind: AssetKind) -> AssetMode:
         return self.js_mode if kind == "js" else self.css_mode
@@ -196,11 +192,6 @@ def register_asset(
             session.scripts.append(content)
         else:
             session.styles.append(content)
-    elif mode == AssetMode.REFERENCE:
-        if not os.path.isfile(normalized_path):
-            return
-        if os.path.getsize(normalized_path) == 0:
-            return
     else:
         return
 
@@ -283,27 +274,9 @@ def inject_runtime(
         return
     if policy.js_mode == AssetMode.INLINE:
         session.scripts.insert(0, read_client_runtime())
-    elif policy.js_mode == AssetMode.REFERENCE:
-        runtime_path = normalize_asset_path(runtime_asset_path())
-        if runtime_path not in session.collected_paths:
-            session.collected_paths.add(runtime_path)
-            session.assets.insert(0, CollectedAsset(path=runtime_path, kind="js"))
     session.runtime_injected = True
     if request_injected is not None:
         _runtime_injected.set(True)
-
-
-def should_emit_reference_url(
-    url: str,
-    loaded_assets: frozenset[str],
-    *,
-    dedup_enabled: bool,
-) -> bool:
-    if not dedup_enabled:
-        return True
-    if not loaded_assets:
-        return True
-    return url not in loaded_assets
 
 
 def render_assets(session: RenderSession, kind: AssetKind, *, policy: AssetPolicy) -> str:
@@ -315,21 +288,6 @@ def render_assets(session: RenderSession, kind: AssetKind, *, policy: AssetPolic
         if kind == "js":
             return "\n".join(f"<script>{script}</script>" for script in items)
         return "\n".join(f"<style>{style}</style>" for style in items)
-    if mode == AssetMode.REFERENCE:
-        kind_assets = [asset for asset in session.assets if asset.kind == kind]
-        if not kind_assets:
-            return ""
-        tags: list[str] = []
-        for asset in kind_assets:
-            url = policy.resolve_url(asset.path)
-            if should_emit_reference_url(
-                url, policy.loaded_assets, dedup_enabled=policy.dedup_enabled
-            ):
-                if kind == "js":
-                    tags.append(f'<script src="{url}"></script>')
-                else:
-                    tags.append(f'<link rel="stylesheet" href="{url}">')
-        return "\n".join(tags)
     return ""
 
 

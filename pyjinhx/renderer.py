@@ -8,16 +8,11 @@ from jinja2.exceptions import TemplateNotFound
 from markupsafe import Markup
 
 from .assets import (
-    DEFAULT_RUNTIME_URL as _DEFAULT_RUNTIME_URL,
     AssetMode,
     AssetPolicy,
-    AssetUrlResolver,
     RenderSession,
     apply_component_render_assets,
     inject_assets,
-    make_default_asset_url_resolver,
-    normalize_asset_path,
-    runtime_asset_path,
 )
 from .finder import Finder
 from .registry import Registry
@@ -152,10 +147,7 @@ class Renderer:
     _default_environment: ClassVar[Environment | None] = None
     _default_js_mode: ClassVar[AssetMode] = AssetMode.INLINE
     _default_css_mode: ClassVar[AssetMode] = AssetMode.INLINE
-    _default_runtime_url: ClassVar[str] = _DEFAULT_RUNTIME_URL
-    _asset_url_resolver: ClassVar[AssetUrlResolver | None] = None
-    _default_asset_dedup: ClassVar[bool] = False
-    _default_renderers: ClassVar[dict[tuple[int, bool, AssetMode, AssetMode, int], object]] = {}
+    _default_renderers: ClassVar[dict[tuple[int, bool, AssetMode, AssetMode], object]] = {}
 
     @classmethod
     def peek_default_environment(cls) -> Environment | None:
@@ -184,20 +176,6 @@ class Renderer:
         cls._default_renderers.clear()
 
     @classmethod
-    def set_default_runtime_url(cls, url: str) -> None:
-        cls._default_runtime_url = url
-        cls._default_renderers.clear()
-
-    @classmethod
-    def set_asset_url_resolver(cls, resolver: AssetUrlResolver | None) -> None:
-        cls._asset_url_resolver = resolver
-        cls._default_renderers.clear()
-
-    @classmethod
-    def set_default_asset_dedup(cls, enabled: bool) -> None:
-        cls._default_asset_dedup = enabled
-
-    @classmethod
     def get_default_environment(cls) -> Environment:
         if cls._default_environment is None:
             root_dir = detect_root_directory()
@@ -215,13 +193,11 @@ class Renderer:
         environment = cls.get_default_environment()
         effective_js_mode = js_mode if js_mode is not None else cls._default_js_mode
         effective_css_mode = css_mode if css_mode is not None else cls._default_css_mode
-        resolver_id = id(cls._asset_url_resolver)
         cache_key = (
             id(environment),
             auto_id,
             effective_js_mode,
             effective_css_mode,
-            resolver_id,
         )
         renderer = cls._default_renderers.get(cache_key)
         if renderer is None:
@@ -252,16 +228,6 @@ class Renderer:
     def environment(self) -> Environment:
         return self._environment
 
-    def _resolve_asset_url(self, path: str) -> str:
-        normalized_path = normalize_asset_path(path)
-        if normalized_path == normalize_asset_path(runtime_asset_path()):
-            return Renderer._default_runtime_url
-        resolver = Renderer._asset_url_resolver
-        if resolver is not None:
-            return resolver(normalized_path)
-        root = get_loader_root(self._environment)
-        return make_default_asset_url_resolver(root)(normalized_path)
-
     def new_session(self) -> RenderSession:
         return RenderSession()
 
@@ -281,7 +247,6 @@ class Renderer:
         collect_component_js: bool,
         *,
         emit_assets: bool = True,
-        loaded_assets: frozenset[str] = frozenset(),
         client: object | None = None,
     ) -> Markup:
         template = load_template_for_component(
@@ -316,9 +281,6 @@ class Renderer:
         policy = AssetPolicy(
             js_mode=self._js_mode,
             css_mode=self._css_mode,
-            resolve_url=self._resolve_asset_url,
-            loaded_assets=loaded_assets,
-            dedup_enabled=Renderer._default_asset_dedup,
         )
         rendered_markup = apply_component_render_assets(
             component,
@@ -352,8 +314,6 @@ class Renderer:
             policy = AssetPolicy(
                 js_mode=self._js_mode,
                 css_mode=self._css_mode,
-                resolve_url=self._resolve_asset_url,
-                dedup_enabled=Renderer._default_asset_dedup,
             )
             rendered_markup = inject_assets(rendered_markup, session, policy=policy)
         return rendered_markup.strip()

@@ -54,7 +54,7 @@ def test_internals_are_not_in_the_public_surface():
         "CacheScope", "client_script", "oob_swaps", "LoadCache", "InvalidationHub",
         "InvalidationBackend", "MutationTracker", "Finder", "Parser", "Tag",
         "ClientBackend", "FastAPIClientBackend", "MountedManifest", "TriggerManifest",
-        "LoadedAssets", "PJX_MOUNTED_HEADER", "PJX_ASSETS_HEADER", "PJX_TRIGGER_HEADER",
+        "PJX_MOUNTED_HEADER", "PJX_TRIGGER_HEADER",
         "configure_pyjinhx", "shutdown_pyjinhx",
         "enable_reactive_dev", "disable_reactive_dev", "dependency_graph",
         "format_dependency_graph", "AssetManifest", "RenderSession", "asset_manifest",

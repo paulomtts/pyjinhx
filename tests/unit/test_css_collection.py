@@ -1,5 +1,19 @@
+import pytest
+
 from pyjinhx import AssetMode, Renderer
 from tests.ui.unified_component import UnifiedComponent
+from tests.ui.reactive.reactive_counter import ReactiveCounter
+
+
+@pytest.fixture(autouse=True)
+def reset_renderer_defaults():
+    original_js = Renderer._default_js_mode
+    original_css = Renderer._default_css_mode
+    Renderer._default_renderers.clear()
+    yield
+    Renderer.set_default_js_mode(original_js)
+    Renderer.set_default_css_mode(original_css)
+    Renderer._default_renderers.clear()
 
 
 def test_css_auto_discovery():
@@ -89,3 +103,36 @@ def test_css_order_styles_before_scripts():
     style_pos = rendered.find("<style>")
     script_pos = rendered.find("<script>")
     assert style_pos < script_pos, "Styles should come before scripts"
+
+
+def test_none_mode_stays_silent():
+    renderer = Renderer.get_default_renderer(
+        js_mode=AssetMode.NONE,
+        css_mode=AssetMode.NONE,
+    )
+    rendered = str(
+        UnifiedComponent(id="none-1", text="Silent")._render(_renderer=renderer)
+    )
+
+    assert "<style>" not in rendered
+    assert "<script" not in rendered
+    assert "<link" not in rendered
+
+
+def test_set_default_js_mode_none():
+    Renderer.set_default_js_mode(AssetMode.NONE)
+    renderer = Renderer.get_default_renderer()
+    assert renderer._js_mode == AssetMode.NONE
+
+
+def test_reactive_partial_render_suppresses_assets():
+    from tests.reactive_test_support import reactive_client, record_mutation
+
+    manifest = [{"id": "counter", "type": "ReactiveCounter", "hash": "stale"}]
+    with reactive_client(manifest):
+        record_mutation("todos")
+        rendered = str(ReactiveCounter.render())
+
+    assert "<style>" not in rendered
+    assert "<script" not in rendered
+    assert "<link" not in rendered
