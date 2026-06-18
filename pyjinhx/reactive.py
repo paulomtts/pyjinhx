@@ -25,8 +25,9 @@ from pyjinhx.utils import (
     stamp_root_attributes,
 )
 
+from .assets import render_missing_assets_oob
 from .cache import LoadCache
-from .client import ClientBackend, MountedManifest
+from .client import ClientBackend, LoadedAssets, MountedManifest
 from .dev import warn_reactive_render_without_client
 from .keys import MutationKey, ReactiveKey, coerce_load_key_str, coerce_reactive_keys
 from .mutations import MutationTracker, _require_mutation_keys
@@ -397,6 +398,9 @@ def oob_swaps(
 
     classes = Registry.get_classes()
     renderer = Renderer.get_default_renderer()
+    # Shared session accumulates assets across all swapped regions so we can
+    # emit a single deduplicated OOB head injection at the end.
+    shared_session = renderer.new_session()
 
     candidates: list[_Candidate] = []
     seen: set[tuple[str, str | None]] = set()
@@ -452,7 +456,9 @@ def oob_swaps(
         fresh_hash = instance.state_hash()
         if fresh_hash == reported_hash:
             continue
-        html = str(instance._render(_renderer=renderer, emit_assets=False))
+        # Pass shared_session so assets are collected (is_root=False → no inline
+        # injection into the fragment HTML, but collect_component_asset still runs).
+        html = str(instance._render(_renderer=renderer, _session=shared_session))
         candidates.append(
             _Candidate(
                 id=component_id,
@@ -478,7 +484,10 @@ def oob_swaps(
                     candidate.html, {"hx-swap-oob": _oob_swap_selector(candidate.id)}
                 )
             )
-    return Markup("\n".join(fragments))
+
+    loaded = LoadedAssets.parse(ClientBackend.current())
+    head = render_missing_assets_oob(shared_session, loaded)
+    return Markup("\n".join(fragments) + (("\n" + head) if head else ""))
 
 
 _PJX_ID_RE = re.compile(r'data-pjx-id="([^"]*)"')

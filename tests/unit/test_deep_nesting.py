@@ -1,7 +1,15 @@
+import os
+
+from pyjinhx.assets import asset_token
+from pyjinhx.finder import Finder
 from tests.ui.unified_component import UnifiedComponent
 
-CSS = "<style>.test-component { color: red; }\n</style>\n"
-JS = "\n<script>console.log('Button loaded');</script>"
+_UI_DIR = Finder.get_class_directory(UnifiedComponent)
+_CSS_TOKEN = asset_token(os.path.join(_UI_DIR, "unified-component.css"))
+_JS_TOKEN = asset_token(os.path.join(_UI_DIR, "unified-component.js"))
+
+CSS = f'<style data-pjx-asset="{_CSS_TOKEN}">.test-component {{ color: red; }}\n</style>\n'
+JS = f'\n<script data-pjx-asset="{_JS_TOKEN}">console.log(\'Button loaded\');</script>'
 
 
 def test_3_level_deep_nesting():

@@ -58,6 +58,41 @@ PJX_MOUNTED_HEADER = "X-PJX-Mounted"
 PJX_TRIGGER_HEADER = "X-PJX-Trigger"
 """Name of the HTTP header carrying the data-pjx-id of the element that started the request."""
 
+PJX_ASSETS_HEADER = "X-PJX-Assets"
+"""Name of the HTTP header carrying the client's already-loaded asset token set."""
+
+
+class LoadedAssets:
+    @staticmethod
+    def parse(client: str | list[str] | object | None) -> frozenset[str]:
+        """
+        Parse ``X-PJX-Assets`` off *client* and return a frozenset of token strings.
+
+        *client* may be a raw JSON string, a pre-parsed list, a request-like
+        object with a ``.headers`` mapping, or ``None`` / empty string — all
+        yield an empty frozenset gracefully.
+        """
+        if client is None or client == "":
+            return frozenset()
+        if isinstance(client, list):
+            return frozenset(str(t) for t in client)
+        if isinstance(client, str):
+            try:
+                parsed = json.loads(client)
+            except json.JSONDecodeError:
+                logger.warning(
+                    "Could not parse %s as JSON; ignoring.", PJX_ASSETS_HEADER
+                )
+                return frozenset()
+            if isinstance(parsed, list):
+                return frozenset(str(t) for t in parsed)
+            return frozenset()
+        try:
+            header_value = client.headers.get(PJX_ASSETS_HEADER)  # type: ignore[attr-defined]
+        except AttributeError:
+            return frozenset()
+        return LoadedAssets.parse(header_value)
+
 
 class MountedManifest:
     @staticmethod

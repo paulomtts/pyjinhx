@@ -21,7 +21,7 @@ def test_css_auto_discovery():
 
     rendered = str(component.render())
 
-    assert "<style>" in rendered
+    assert "<style" in rendered
     assert ".test-component { color: red; }" in rendered
 
 
@@ -30,7 +30,7 @@ def test_css_injected_before_html():
 
     rendered = str(component.render())
 
-    style_pos = rendered.find("<style>")
+    style_pos = rendered.find("<style")
     div_pos = rendered.find("<div")
     assert style_pos < div_pos, "Styles should be injected before HTML"
 
@@ -92,7 +92,7 @@ def test_css_mode_none_disables_injection():
 
     rendered = str(component._render(_renderer=renderer))
 
-    assert "<style>" not in rendered
+    assert "<style" not in rendered
 
 
 def test_css_order_styles_before_scripts():
@@ -100,8 +100,8 @@ def test_css_order_styles_before_scripts():
 
     rendered = str(component.render())
 
-    style_pos = rendered.find("<style>")
-    script_pos = rendered.find("<script>")
+    style_pos = rendered.find("<style")
+    script_pos = rendered.find("<script")
     assert style_pos < script_pos, "Styles should come before scripts"
 
 
@@ -114,7 +114,7 @@ def test_none_mode_stays_silent():
         UnifiedComponent(id="none-1", text="Silent")._render(_renderer=renderer)
     )
 
-    assert "<style>" not in rendered
+    assert "<style" not in rendered
     assert "<script" not in rendered
     assert "<link" not in rendered
 
@@ -133,6 +133,6 @@ def test_reactive_partial_render_suppresses_assets():
         record_mutation("todos")
         rendered = str(ReactiveCounter.render())
 
-    assert "<style>" not in rendered
+    assert "<style" not in rendered
     assert "<script" not in rendered
     assert "<link" not in rendered

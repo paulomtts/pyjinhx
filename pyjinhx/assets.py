@@ -173,6 +173,20 @@ def normalize_asset_path(path: str) -> str:
     return os.path.normpath(path).replace("\\", "/")
 
 
+def asset_token(path: str) -> str:
+    """Stable opaque dedup token for an asset (hash of its normalized path)."""
+    normalized = normalize_asset_path(path)
+    return hashlib.sha1(normalized.encode("utf-8")).hexdigest()[:16]
+
+
+def should_emit_asset(
+    token: str, loaded: frozenset[str], *, dedup_enabled: bool
+) -> bool:
+    if not dedup_enabled:
+        return True
+    return token not in loaded
+
+
 def register_asset(
     session: RenderSession,
     path: str,
@@ -273,22 +287,64 @@ def inject_runtime(
     if MountedManifest.is_present(client):
         return
     if policy.js_mode == AssetMode.INLINE:
+        rt_path = runtime_asset_path()
         session.scripts.insert(0, read_client_runtime())
+        session.assets.insert(0, CollectedAsset(path=rt_path, kind="js"))
+        session.collected_paths.add(normalize_asset_path(rt_path))
     session.runtime_injected = True
     if request_injected is not None:
         _runtime_injected.set(True)
 
 
+def _inline_items(
+    session: RenderSession, kind: AssetKind
+) -> list[tuple[CollectedAsset, str]]:
+    """Return (asset, content) pairs for all INLINE assets of ``kind``, in order."""
+    payloads = session.scripts if kind == "js" else session.styles
+    assets = [a for a in session.assets if a.kind == kind]
+    return list(zip(assets, payloads))
+
+
 def render_assets(session: RenderSession, kind: AssetKind, *, policy: AssetPolicy) -> str:
     mode = policy.mode(kind)
     if mode == AssetMode.INLINE:
-        items = session.scripts if kind == "js" else session.styles
+        items = _inline_items(session, kind)
         if not items:
             return ""
         if kind == "js":
-            return "\n".join(f"<script>{script}</script>" for script in items)
-        return "\n".join(f"<style>{style}</style>" for style in items)
+            return "\n".join(
+                f'<script data-pjx-asset="{asset_token(asset.path)}">{content}</script>'
+                for asset, content in items
+            )
+        return "\n".join(
+            f'<style data-pjx-asset="{asset_token(asset.path)}">{content}</style>'
+            for asset, content in items
+        )
     return ""
+
+
+def render_missing_assets_oob(
+    session: RenderSession, loaded: frozenset[str]
+) -> str:
+    """
+    Build an OOB head-injection for INLINE assets not yet in the client's page.
+
+    Returns an empty string when nothing needs to be injected.
+    """
+    parts: list[str] = []
+    for asset, content in _inline_items(session, "css"):
+        token = asset_token(asset.path)
+        if should_emit_asset(token, loaded, dedup_enabled=True):
+            parts.append(
+                f'<style data-pjx-asset="{token}" hx-swap-oob="beforeend:head">{content}</style>'
+            )
+    for asset, content in _inline_items(session, "js"):
+        token = asset_token(asset.path)
+        if should_emit_asset(token, loaded, dedup_enabled=True):
+            parts.append(
+                f'<script data-pjx-asset="{token}" hx-swap-oob="beforeend:head">{content}</script>'
+            )
+    return "\n".join(parts)
 
 
 def apply_component_render_assets(
