@@ -7,6 +7,9 @@
   --pjx-empty-state-desc-color:  var(--text-muted);
   --pjx-empty-state-gap:       0.5rem;
   --pjx-empty-state-actions-gap: 0.5rem;
+  --pjx-empty-state-chip-bg:    var(--surface-alt);
+  --pjx-empty-state-chip-color: var(--text-muted);
+  --pjx-empty-state-chip-border: var(--border);
 }
 
 .pjx-empty-state {
@@ -48,4 +51,30 @@
   justify-content: center;
   gap: var(--pjx-empty-state-actions-gap);
   margin-top: 0.75rem;
+}
+
+.pjx-empty-state__suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--pjx-empty-state-actions-gap);
+  margin-top: 0.75rem;
+}
+
+.pjx-empty-state__chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.75rem;
+  border-radius: var(--radius-full, 9999px);
+  border: 1px solid var(--pjx-empty-state-chip-border);
+  background: var(--pjx-empty-state-chip-bg);
+  color: var(--pjx-empty-state-chip-color);
+  font-size: var(--font-size-sm, 0.875rem);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.pjx-empty-state__chip:hover {
+  background: var(--surface-hover, var(--surface-alt));
+  color: var(--text);
 }
