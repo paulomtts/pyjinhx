@@ -174,8 +174,9 @@ def normalize_asset_path(path: str) -> str:
 
 
 def asset_token(path: str) -> str:
-    """Stable dedup token for an asset = its normalized path."""
-    return normalize_asset_path(path)
+    """Stable opaque dedup token for an asset (hash of its normalized path)."""
+    normalized = normalize_asset_path(path)
+    return hashlib.sha1(normalized.encode("utf-8")).hexdigest()[:16]
 
 
 def should_emit_asset(

@@ -213,7 +213,7 @@
       function (el) {
         var token = el.getAttribute('data-pjx-asset');
         if (pjxExecutedTokens[token]) {
-          return; // already executed or duplicated; remove the inert copy
+          return; // already executed; skip
         }
         pjxExecutedTokens[token] = true;
         var fresh = document.createElement('script');
