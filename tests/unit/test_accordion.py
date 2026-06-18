@@ -48,6 +48,7 @@ def test_header_slot_wins_over_label():
 def test_disabled_marks_summary():
     html = _html(label="X", disabled=True)
     assert 'aria-disabled="true"' in html
+    assert 'tabindex="-1"' in html
 
 
 def test_inline_attrs_pass_through():
