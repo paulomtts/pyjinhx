@@ -228,6 +228,13 @@
     );
   }
 
+  if (!window.htmx) {
+    console.error(
+      "[pyjinhx] htmx not found — reactivity (OOB swaps) will not work. " +
+        "Load htmx, or let setup() inject it (inject_htmx defaults to True)."
+    );
+  }
+
   pjxInjectStyle();
   document.body.addEventListener("htmx:beforeRequest", pjxBeginLoading);
   document.body.addEventListener("htmx:afterSettle", pjxReapplyLoading);

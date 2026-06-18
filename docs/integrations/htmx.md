@@ -10,11 +10,29 @@ Install PyJinHx:
 pip install pyjinhx
 ```
 
-Include HTMX in your HTML:
+### HTMX delivery
+
+HTMX is the transport for PyJinHx reactivity (the client runtime `pjx.js`
+depends on it). You don't have to add it yourself: on a **reactive root render**
+PyJinHx inlines a pinned, vendored copy of HTMX ahead of `pjx.js`, so reactivity
+works out of the box.
+
+If you prefer to manage HTMX yourself — to pin a version, add extensions, or
+serve it from your own CDN — include it in your layout as usual:
 
 ```html
 <script src="https://unpkg.com/htmx.org@2.0.3"></script>
 ```
+
+The inlined copy self-guards (`if (!window.htmx)`), so it never double-loads
+when your page already provides HTMX. To turn auto-injection off entirely:
+
+```python
+setup(app, inject_htmx=False)   # or env: PJX_INJECT_HTMX=false
+```
+
+If HTMX ends up missing at runtime, `pjx.js` logs a clear `console.error`
+instead of failing silently.
 
 ## Project Structure
 

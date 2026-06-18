@@ -107,3 +107,24 @@ def test_from_env_redis_wins_over_sqlite(tmp_path):
     ):
         settings = PjxSettings.from_env()
     assert isinstance(settings.invalidation_backend, RedisInvalidationBackend)
+
+
+def test_inject_htmx_defaults_true():
+    assert PjxSettings().inject_htmx is True
+
+
+def test_configure_pyjinhx_toggles_inject_htmx():
+    import pyjinhx.assets as assets
+
+    configure_pyjinhx(inject_htmx=False)
+    assert assets._inject_htmx is False
+    configure_pyjinhx(inject_htmx=True)
+    assert assets._inject_htmx is True
+
+
+def test_from_env_reads_inject_htmx():
+    with patch.dict(os.environ, {"PJX_INJECT_HTMX": "false"}, clear=True):
+        settings = PjxSettings.from_env()
+    assert settings.inject_htmx is False
+    with patch.dict(os.environ, {}, clear=True):
+        assert PjxSettings.from_env().inject_htmx is True
