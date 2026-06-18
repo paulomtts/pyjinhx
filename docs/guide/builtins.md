@@ -184,7 +184,7 @@ Collapsible section built on native `<details>`/`<summary>`. Composes [`PJXIcon`
 
 **Classes:** `pjx-accordion`; `pjx-accordion__trigger`, `__chevron`, `__body`, `__actions`. Theming: see [PJXAccordion tokens](#pjxaccordion-tokens).
 
-**Toggle suppression.** The `actions` slot is wrapped in `.pjx-accordion__actions`. `pjx-accordion.js` registers a single capture-phase `click` listener that calls `preventDefault()` + `stopPropagation()` for any click inside that wrapper — preventing the native `<summary>` toggle while leaving htmx and other handlers on the action elements free to fire normally.
+**Toggle suppression.** The `actions` slot is wrapped in `.pjx-accordion__actions`. `pjx-accordion.js` registers a single capture-phase `click` listener that calls `preventDefault()` (only — deliberately **not** `stopPropagation()`) for any click inside that wrapper. `preventDefault()` cancels the native `<summary>` toggle, which is the click's *default action*; because propagation is left intact, htmx and other handlers on the action elements still fire normally.
 
 ---
 
