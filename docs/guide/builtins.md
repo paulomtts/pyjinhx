@@ -1,9 +1,10 @@
 # Built-in UI components
 
-Optional package **`pyjinhx.builtins`** registers thirty-five [`BaseComponent`](../api/base-component.md) subclasses. Import:
+Optional package **`pyjinhx.builtins`** registers thirty-six [`BaseComponent`](../api/base-component.md) subclasses. Import:
 
 ```python
 from pyjinhx.builtins import (
+    PJXAccordion,
     PJXAlert,
     PJXAvatar,
     PJXAvatarStack,
@@ -42,7 +43,7 @@ from pyjinhx.builtins import (
 )
 ```
 
-`__all__` matches that set of thirty-five names.
+`__all__` matches that set of thirty-six names.
 
 **Conventions:** Markup classes use the **`pjx-`** prefix; overrides use **`--pjx-`** custom properties. Builtin CSS also references **theme variables** (`--surface`, `--border`, `--text`, `--radius-md`, `--shadow-md`, `--transition`, `--brand`, …)—define those in your global CSS or map them to your design system. See [builtin-conventions.md](./builtin-conventions.md) for the full per-component contract (auto-id, `class_name`, `extra_attrs`, `js`/`css`, headless IIFE JS under `window.pjx`, cancelable `pjx:*:before-*` events).
 
@@ -56,6 +57,7 @@ from pyjinhx.builtins import (
 
 | Component | CSS | JS |
 |---|---|---|
+| PJXAccordion | `pjx-accordion.css` | — |
 | PJXAlert | `pjx_alert.css` | `pjx_alert.js` |
 | PJXAvatar | `pjx_avatar.css` | — |
 | PJXAvatarStack | `pjx-avatar-stack.css` | — |
@@ -157,6 +159,27 @@ Structural, themeable button. Composes [`PJXRegionLoader`](#pjxregionloader) for
 **DOM contract.** Root `<button>`; slot spans render only when their value is set. No JS API — pass `hx-*`/`@click` inline (they pass through to the root). The default `.pjx-button` is visually neutral so it never fights your design system; paint variants via `.pjx-button--<variant>`.
 
 **Classes:** `pjx-button`; `pjx-button--block`; variant seams `pjx-button--<variant>`; `pjx-button__start`, `__center`, `__end`. Theming: see [PJXButton tokens](#pjxbutton-tokens).
+
+---
+
+## PJXAccordion
+
+Collapsible section built on native `<details>`/`<summary>` — toggle behavior with **zero JS**, accessible by default. Composes [`PJXIcon`](#pjxicon) for the disclosure chevron. **Assets:** `pjx-accordion.css` only.
+
+<!-- demo: PJXAccordion -->
+
+| Field | Type | Default | Description |
+| --- | --- | --- | --- |
+| `label` | `str` | `""` | Trigger text (the common case). |
+| `header` | `str \| BaseComponent \| None` | `None` | Rich trigger slot (badges, counts); when set it **wins over** `label`. |
+| `open` | `bool` | `True` | Initial expanded state (renders the `open` attribute). |
+| `disabled` | `bool` | `False` | Marks the summary `aria-disabled="true"` + `tabindex="-1"` (and `pointer-events: none` via CSS). |
+| `group` | `str \| None` | `None` | Native `<details name="...">` for exclusive-open groups; default is independent multi-open. |
+| `content` | `str \| BaseComponent` | `""` | Body slot (children map here); rendered inside `.pjx-accordion__body`. |
+
+**DOM contract.** Root `<details>` with a `<summary class="pjx-accordion__trigger">` (chevron + `header`-or-`label`) and a `<div class="pjx-accordion__body">`. No JS — the browser handles toggling; the chevron rotates on `[open]` via CSS. The default marker is stripped.
+
+**Classes:** `pjx-accordion`; `pjx-accordion__trigger`, `__chevron`, `__body`. Theming: see [PJXAccordion tokens](#pjxaccordion-tokens).
 
 ---
 
@@ -1032,6 +1055,19 @@ Per-component `--pjx-*` custom properties and their default mappings. Override a
 | `--pjx-button-font-weight` | `500` |
 | `--pjx-button-bg-hover` | `var(--pjx-button-bg)` |
 | `--pjx-button-border-hover` | `currentColor` |
+
+### PJXAccordion tokens
+
+| Token | Default |
+| --- | --- |
+| `--pjx-accordion-radius` | `0` |
+| `--pjx-accordion-trigger-bg` | `transparent` |
+| `--pjx-accordion-trigger-color` | `inherit` |
+| `--pjx-accordion-trigger-padding` | `0.5rem 0.75rem` |
+| `--pjx-accordion-trigger-font-size` | `inherit` |
+| `--pjx-accordion-trigger-font-weight` | `500` |
+| `--pjx-accordion-trigger-bg-hover` | `var(--pjx-accordion-trigger-bg)` |
+| `--pjx-accordion-chevron-size` | `1em` |
 
 ### PJXModal tokens
 

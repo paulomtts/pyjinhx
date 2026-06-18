@@ -40,6 +40,9 @@ The builtins, rendered by pyjinhx at docs build time (PJXLazyPanel needs a backe
 ### [PJXButton](guide/builtins.md#pjxbutton)
 <!-- demo: PJXButton -->
 
+### [PJXAccordion](guide/builtins.md#pjxaccordion)
+<!-- demo: PJXAccordion -->
+
 ## Overlays & dialogs
 
 ### [PJXModal](guide/builtins.md#pjxmodal)

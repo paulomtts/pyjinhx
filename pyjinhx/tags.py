@@ -196,6 +196,7 @@ _warned_unregistered_tags: set[str] = set()
 # imported so the error path doesn't register every builtin as a side effect.
 _BUILTIN_TAG_NAMES = frozenset(
     {
+        "PJXAccordion",
         "PJXAlert",
         "PJXButton",
         "PJXAvatar",

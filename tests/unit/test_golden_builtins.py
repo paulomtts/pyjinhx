@@ -58,6 +58,8 @@ CASES = [
     ("icon_labeled", lambda: b.PJXIcon(id="g", name="search", label="Search", size=20)),
     ("button_default", lambda: b.PJXButton(id="g", center="Save")),
     ("button_loading", lambda: b.PJXButton(id="g", center="Save", loading=True, variant="primary")),
+    ("accordion_open", lambda: b.PJXAccordion(id="g", label="Today", content="<p>x</p>")),
+    ("accordion_grouped_closed", lambda: b.PJXAccordion(id="g", label="Older", open=False, group="nav", content="<p>y</p>")),
 ]
 
 
