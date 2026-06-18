@@ -202,30 +202,45 @@
     });
   }
 
-  // Re-execute <script data-pjx-asset> nodes injected into <head> via
-  // hx-swap-oob="beforeend:head".  Browsers do not run scripts inserted as
-  // parsed HTML, so we clone each one as a fresh <script> node.  The guard
-  // prevents double-execution when the same token arrives more than once.
-  var pjxExecutedTokens = {};
-  function pjxReexecHeadScripts() {
+  // Insert swap-delivered head assets ourselves.  The server carries missing
+  // INLINE component assets alongside OOB fragments as
+  // <style|script data-pjx-asset hx-swap-oob="beforeend:head">, but htmx core
+  // silently drops hx-swap-oob swaps that target <head>, so we parse them out
+  // of the response and append them to <head> directly.  A fresh <script>
+  // executes on append and a <style> applies on insert.  The server already
+  // dedups against the page's loaded tokens (X-PJX-Assets); the per-token <head>
+  // check guards against the same asset arriving on two swaps before settle.
+  function pjxApplyHeadAssets(html) {
+    if (!html || html.indexOf('hx-swap-oob="beforeend:head"') === -1) {
+      return;
+    }
+    var doc = new DOMParser().parseFromString(html, "text/html");
     Array.prototype.forEach.call(
-      document.head.querySelectorAll('script[data-pjx-asset]'),
-      function (el) {
-        var token = el.getAttribute('data-pjx-asset');
-        if (pjxExecutedTokens[token]) {
-          return; // already executed; skip
+      doc.querySelectorAll("[data-pjx-asset]"),
+      function (node) {
+        var tag = node.tagName.toLowerCase();
+        if (tag !== "style" && tag !== "script") {
+          return;
         }
-        pjxExecutedTokens[token] = true;
-        var fresh = document.createElement('script');
-        if (el.src) {
-          fresh.src = el.src;
+        var token = node.getAttribute("data-pjx-asset");
+        if (document.head.querySelector('[data-pjx-asset="' + token + '"]')) {
+          return; // already on the page; skip
+        }
+        var fresh = document.createElement(tag);
+        fresh.setAttribute("data-pjx-asset", token);
+        if (tag === "script" && node.src) {
+          fresh.src = node.src;
         } else {
-          fresh.textContent = el.textContent;
+          fresh.textContent = node.textContent;
         }
-        fresh.setAttribute('data-pjx-asset', token);
-        el.parentNode.replaceChild(fresh, el);
+        document.head.appendChild(fresh);
       }
     );
+  }
+
+  function pjxApplyHeadAssetsFromRequest(evt) {
+    var xhr = evt.detail && evt.detail.xhr;
+    pjxApplyHeadAssets(xhr && xhr.responseText);
   }
 
   if (!window.htmx) {
@@ -243,6 +258,5 @@
   document.body.addEventListener("htmx:timeout", pjxEndLoading);
   document.body.addEventListener("htmx:sendError", pjxEndLoading);
   document.body.addEventListener("htmx:abort", pjxEndLoading);
-  document.body.addEventListener("htmx:oobAfterSwap", pjxReexecHeadScripts);
-  document.body.addEventListener("htmx:afterSwap", pjxReexecHeadScripts);
+  document.body.addEventListener("htmx:afterRequest", pjxApplyHeadAssetsFromRequest);
 })();

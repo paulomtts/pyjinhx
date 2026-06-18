@@ -1,15 +1,29 @@
 """Browser contracts for head-injection of missing INLINE assets on reactive OOB swaps.
 
-Verifies that:
-1. CSS injected into <head> via hx-swap-oob actually styles content (no FOUC).
-2. JS injected into <head> via hx-swap-oob actually executes in the browser.
+These exercise the case the feature exists for: a region whose CSS/JS are NOT on
+the page at cold load and arrive only on a later OOB swap, as
+``<style|script data-pjx-asset hx-swap-oob="beforeend:head">``. htmx core silently
+drops OOB swaps that target ``<head>`` (issue #105), so ``pjx.js`` must insert these
+itself. Verifies that:
+
+1. CSS delivered on the swap actually styles the swapped content (no FOUC).
+2. JS delivered on the swap actually executes in the browser.
 3. Duplicate tokens are NOT re-injected (idempotency guard).
+
+To keep the swap honest, the cold-load page is served with its ``data-pjx-asset``
+tags stripped: the badge marker (and its manifest entry) are present, but the CSS
+and JS are absent until the swap delivers them via the head OOB. The component
+lives in a temp module so its co-located template and assets are discovered the
+real way (``oob_swaps`` re-renders it from the template, pulling the assets in).
 """
 
 from __future__ import annotations
 
+import importlib.util
 import json
+import re
 import socket
+import sys
 import threading
 import time
 from pathlib import Path
@@ -19,16 +33,48 @@ import pytest
 
 pytest.importorskip("playwright")
 
+# Imported at module scope so FastAPI can resolve the ``request: Request``
+# annotation on the route below under ``from __future__ import annotations``.
+from fastapi import Request  # noqa: E402
 from playwright.sync_api import Page, expect  # noqa: E402
 
 pytestmark = [pytest.mark.pjx_runtime, pytest.mark.reactivity]
 
 # ---------------------------------------------------------------------------
-# Minimal swap app
+# Component module written to a temp components root
 # ---------------------------------------------------------------------------
+
+_COMPONENT_MODULE = '''\
+from pyjinhx import MutationKey, ReactiveComponent
+
+
+class BadgeKey(MutationKey):
+    BADGE = "badge"
+
+
+# Bumped by the /increment route so each swap re-renders with a new state hash.
+COUNT = {"value": 0}
+
+
+class SwapBadge(ReactiveComponent, react={BadgeKey.BADGE}, pjx_replace=True):
+    count: int = 0
+
+    @classmethod
+    def load(cls) -> "SwapBadge":
+        return cls(id="swap-badge", count=COUNT["value"])
+'''
 
 _BADGE_TEMPLATE = '<span id="{{ id }}" class="swap-badge">{{ count }}</span>'
 
+# Strip any <style|script data-pjx-asset ...> tag (the component's inline assets)
+# so the cold-load page carries the badge marker but NOT its CSS/JS — they may
+# only reach the page via the swap.
+_ASSET_TAG_RE = re.compile(
+    r"<(style|script)\b[^>]*\bdata-pjx-asset=[^>]*>.*?</\1>", re.DOTALL
+)
+
+# htmx loads in <head>; the pyjinhx runtime is placed at the end of <body> (where
+# it lands in production) because it binds listeners on document.body at load.
 _PAGE_HTML = """<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -40,54 +86,47 @@ _PAGE_HTML = """<!DOCTYPE html>
 <body>
 {badge_markup}
 <button id="inc-btn" hx-post="/increment" hx-swap="none" hx-trigger="click">Inc</button>
+{runtime}
 </body>
 </html>"""
 
 
 def _make_swap_app(tmp_path: Path) -> object:
     """Build a minimal FastAPI app that serves a reactive component with CSS/JS."""
-    from fastapi import FastAPI, Request
+    from fastapi import FastAPI
     from fastapi.responses import HTMLResponse
 
-    from pyjinhx import MutationKey, PjxSettings, ReactiveComponent, setup
+    from pyjinhx import PjxSettings, setup
+    from pyjinhx.client import client_script
+    from pyjinhx.renderer import Renderer
 
-    # --------------- assets -----------------------------------------------
-    css_path = tmp_path / "swap-badge.css"
-    js_path = tmp_path / "swap-badge.js"
-    css_path.write_text(
+    # --------------- component + co-located template & assets -------------
+    (tmp_path / "swap_badge.html").write_text(_BADGE_TEMPLATE)
+    (tmp_path / "swap-badge.css").write_text(
         ".swap-badge { color: rgb(255, 0, 0); font-weight: bold; }"
     )
-    js_path.write_text(
+    (tmp_path / "swap-badge.js").write_text(
         "window.__pjxHeadInjectRan = (window.__pjxHeadInjectRan || 0) + 1;"
     )
+    module_path = tmp_path / "swap_badge_component.py"
+    module_path.write_text(_COMPONENT_MODULE)
 
-    # --------------- mutation key -----------------------------------------
-    class BadgeKey(MutationKey):
-        BADGE = "badge"
-
-    # --------------- component --------------------------------------------
-    class SwapBadge(
-        ReactiveComponent,
-        react={BadgeKey.BADGE},
-        pjx_replace=True,
-    ):
-        count: int = 0
-
-        def render(self) -> str:  # type: ignore[override]
-            return str(self._render(source=_BADGE_TEMPLATE))
-
-        @classmethod
-        def load(cls) -> "SwapBadge":  # type: ignore[override]
-            return cls(
-                id="swap-badge",
-                count=0,
-                css=[str(css_path)],
-                js=[str(js_path)],
-            )
+    spec = importlib.util.spec_from_file_location("swap_badge_component", module_path)
+    module = importlib.util.module_from_spec(spec)
+    sys.modules["swap_badge_component"] = module
+    spec.loader.exec_module(module)
+    SwapBadge = module.SwapBadge
+    BadgeKey = module.BadgeKey
 
     # --------------- app --------------------------------------------------
     app = FastAPI()
-    setup(app, settings=PjxSettings())
+    setup(app, settings=PjxSettings(), components_root=tmp_path)
+
+    def _use_components_root() -> None:
+        # The autouse conftest fixture resets the default environment around
+        # every test; this module-scoped server outlives it, so point the
+        # renderer back at our components root on each request.
+        Renderer.set_default_environment(tmp_path)
 
     @app.get("/healthz")
     def healthz() -> str:
@@ -95,10 +134,14 @@ def _make_swap_app(tmp_path: Path) -> object:
 
     @app.get("/", response_class=HTMLResponse)
     def index() -> str:
-        badge = SwapBadge(
-            id="swap-badge", count=0, css=[str(css_path)], js=[str(js_path)]
+        _use_components_root()
+        module.COUNT["value"] = 0
+        # Strip the badge's inline asset tags: the region is on the page but its
+        # CSS/JS are not, so the swap is the only path that can deliver them.
+        badge_markup = _ASSET_TAG_RE.sub("", SwapBadge.load().render())
+        return _PAGE_HTML.format(
+            badge_markup=badge_markup, runtime=client_script()
         )
-        return _PAGE_HTML.format(badge_markup=badge.render())
 
     @app.post("/increment", response_class=HTMLResponse)
     async def increment(request: Request) -> str:
@@ -106,9 +149,10 @@ def _make_swap_app(tmp_path: Path) -> object:
         from pyjinhx.integrations.fastapi import FastAPIClientBackend
         from pyjinhx.reactive import oob_swaps
 
+        _use_components_root()
+        module.COUNT["value"] += 1  # change state so the region is actually swapped
         backend = FastAPIClientBackend(request)
-        manifest_str = request.headers.get("X-PJX-Mounted", "[]")
-        manifest = json.loads(manifest_str)
+        manifest = json.loads(request.headers.get("X-PJX-Mounted", "[]"))
 
         with ClientBackend.scope(backend):
             return str(oob_swaps({BadgeKey.BADGE}, manifest))
@@ -165,8 +209,22 @@ def swap_page(page: Page, swap_server: str) -> Page:
 # ---------------------------------------------------------------------------
 
 
+def test_cold_load_has_no_badge_assets(swap_page: Page) -> None:
+    """Guard: the badge's CSS/JS must be absent at cold load (only the swap delivers them)."""
+    expect(swap_page.locator("#swap-badge")).to_be_visible()
+    present = swap_page.evaluate(
+        "document.querySelectorAll('[data-pjx-asset]').length"
+    )
+    assert present == 0, f"expected no badge assets on cold load, found {present}"
+    # And the badge is unstyled (default color), proving the CSS has not arrived.
+    color = swap_page.evaluate(
+        "getComputedStyle(document.querySelector('#swap-badge')).color"
+    )
+    assert color != "rgb(255, 0, 0)", "CSS reached the page before any swap"
+
+
 def test_head_injected_css_styles_swapped_content(swap_page: Page) -> None:
-    """CSS OOB-injected into <head> must actually style the swapped element."""
+    """CSS delivered on the swap (head OOB) must actually style the swapped element."""
     badge = swap_page.locator("#swap-badge")
     expect(badge).to_be_visible()
 
@@ -182,7 +240,7 @@ def test_head_injected_css_styles_swapped_content(swap_page: Page) -> None:
 
 
 def test_head_injected_script_executes(swap_page: Page) -> None:
-    """<script> OOB-injected into <head> must execute in the browser."""
+    """<script> delivered on the swap (head OOB) must execute in the browser."""
     swap_page.click("#inc-btn")
     swap_page.wait_for_timeout(800)
 
