@@ -9,8 +9,28 @@
 }
 
 .pjx-avatar-stack > .pjx-avatar,
+.pjx-avatar-stack > .pjx-avatar-stack__pill,
 .pjx-avatar-stack > .pjx-avatar-stack__more {
   box-shadow: 0 0 0 2px var(--pjx-avatar-stack-ring);
+}
+
+.pjx-avatar-stack__pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: var(--pjx-avatar-sm, 2rem);
+  height: var(--pjx-avatar-sm, 2rem);
+  border-radius: var(--radius-full, 9999px);
+  overflow: hidden;
+  background: var(--pjx-avatar-bg, var(--surface-alt));
+  border: 1px solid var(--pjx-avatar-border, var(--border));
+  font-size: var(--pjx-avatar-font-size-sm, var(--font-size-xs));
+  font-weight: 600;
+  color: var(--pjx-avatar-fg, var(--text-muted));
+  text-transform: uppercase;
+  user-select: none;
+  line-height: 1;
 }
 
 .pjx-avatar-stack > * + * {
