@@ -1,4 +1,4 @@
-"""The renderer's output contract: Markup objects, unescaped by design."""
+"""The renderer's output contract: Markup objects, escaped by default."""
 import importlib.util
 import os
 import sys
@@ -54,14 +54,13 @@ def test_render_returns_markup():
     )
 
 
-def test_renderer_unescapes_final_markup():
-    """body containing literal HTML tags renders them unescaped.
+def test_renderer_escapes_scalar_values_by_default():
+    """A scalar (non-slot) field containing literal HTML tags is escaped.
 
-    The renderer calls Markup(Markup(rendered_markup).unescape()) on the
-    final output (see renderer.py render_component_with_context). This is
-    load-bearing: attribute safety must be enforced at construction time,
-    not by escaping. Jinja's default autoescape is off so the template
-    renders body verbatim; the outer Markup() wraps it as safe markup.
+    Autoescape is on by default (see renderer.py Environment(autoescape=True)).
+    A plain ``str`` field is not a slot, so Jinja escapes its value: ``<em>``
+    becomes ``&lt;em&gt;`` in the output. Raw HTML requires a ``Slot`` field,
+    ``Markup(...)``, or ``{{ value|safe }}``.
     """
     original_environment = Renderer.peek_default_environment()
 
@@ -93,11 +92,55 @@ def test_renderer_unescapes_final_markup():
     Renderer.set_default_environment(original_environment)
     sys.modules.pop("output_probe2", None)
 
-    # Jinja2 default environment has autoescape=False, so <em>hi</em> passes
-    # through verbatim; the outer Markup() preserves the literal tags.
+    # Autoescape is on: a scalar str field is HTML-escaped.
+    assert "&lt;em&gt;hi&lt;/em&gt;" in rendered, (
+        "Renderer must HTML-escape scalar values by default"
+    )
+    assert "<em>hi</em>" not in rendered, (
+        "Renderer must not emit raw scalar values — raw HTML needs Slot/Markup/|safe"
+    )
+
+
+def test_renderer_renders_slot_value_raw():
+    """A ``Slot``-annotated field renders its string value as raw HTML.
+
+    Even with autoescape on, the context builder wraps slot strings as
+    ``Markup`` (see Slot machinery), so literal tags pass through verbatim.
+    """
+    original_environment = Renderer.peek_default_environment()
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        module_path = os.path.join(temp_dir, "output_probe3.py")
+        with open(module_path, "w", encoding="utf-8") as fh:
+            fh.write(
+                "from pyjinhx import BaseComponent, Slot\n\n"
+                "class OutputProbe3(BaseComponent):\n"
+                "    body: Slot = ''\n"
+            )
+
+        template_path = os.path.join(temp_dir, "output_probe3.html")
+        with open(template_path, "w", encoding="utf-8") as fh:
+            fh.write('<div id="{{ id }}">{{ body }}</div>\n')
+
+        Renderer.set_default_environment(temp_dir)
+
+        spec = importlib.util.spec_from_file_location("output_probe3", module_path)
+        assert spec is not None and spec.loader is not None
+        module = importlib.util.module_from_spec(spec)
+        sys.modules["output_probe3"] = module
+        spec.loader.exec_module(module)
+
+        OutputProbe3 = getattr(module, "OutputProbe3")
+        component = OutputProbe3(id="out-3", body="<em>hi</em>")
+        rendered = str(component.render())
+
+    Renderer.set_default_environment(original_environment)
+    sys.modules.pop("output_probe3", None)
+
+    # Slot field: literal tags are preserved unescaped.
     assert "<em>hi</em>" in rendered, (
-        "Renderer should preserve literal tags — '<em>hi</em>' expected in output"
+        "Slot field should render its string value as raw HTML"
     )
     assert "&lt;em&gt;" not in rendered, (
-        "Renderer must not HTML-escape the final output string"
+        "Slot field must not HTML-escape its value"
     )

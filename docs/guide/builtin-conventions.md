@@ -26,6 +26,10 @@ Every pyjinhx builtin follows the same contract, so knowing one means knowing al
    mid-flight.
 6. **The DOM contract is API.** Each builtin's documentation ends with a "DOM contract" block —
    stable classes, `data-pjx-*` attributes, events, state attributes. We version those like code.
+7. **Output is escaped by default.** Scalar props, text, attributes, and loop values are
+   HTML-escaped. A builtin's children/`content` field and any field typed `Slot` (e.g. a card's
+   `body`, a tab group's `tabs`) render raw HTML, as do nested `BaseComponent` values. See
+   [Escaping & slots](components.md#escaping-and-slots) for the full rule and escape hatches.
 
 ## Events and hooks
 

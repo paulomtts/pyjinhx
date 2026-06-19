@@ -2,6 +2,48 @@
 
 ## 0.18 → 0.19
 
+### Template output is escaped by default (breaking)
+
+Rendered output is now **HTML-escaped by default** (Jinja runs with
+`autoescape=True`). Previously the renderer emitted markup raw (it called
+`Markup(...).unescape()` on the final output), so any string value passed through
+verbatim. Now scalar props, text, attribute values, and loop-derived values are
+escaped — `& < > " '` become entities — which closes the default XSS hole.
+
+**What changed for you:**
+
+- **Scalar props that contained HTML now escape.** A `title`, `label`, `alt`, etc.
+  holding `<b>x</b>` now renders `&lt;b&gt;x&lt;/b&gt;`.
+- **Raw HTML now requires an opt-in.** To emit raw markup in a *scalar* field, do
+  one of: declare the field as `Slot` (`from pyjinhx import Slot`), pass a
+  `markupsafe.Markup(...)` value, or use `{{ value|safe }}` in the template.
+- **Children/`content` and `Slot` fields still render raw**, including `Slot`
+  collections (string elements in a `Slot`-annotated `list`/`dict`). Nested
+  `BaseComponent` values still render raw via `__html__`.
+- **`Slot` is exported from `pyjinhx`** (`from pyjinhx import Slot`) for declaring
+  raw-HTML fields on your own components.
+
+```python
+from pyjinhx import BaseComponent, Slot
+from markupsafe import Markup
+
+class Card(BaseComponent):
+    title: str = ""      # escaped
+    body: Slot = ""      # raw HTML
+
+Card(title="<b>x</b>", body="<p>ok</p>")
+# title → &lt;b&gt;x&lt;/b&gt;   body → <p>ok</p>
+
+# scalar escape hatch:
+Card(title=Markup("<b>x</b>"))   # title now raw
+```
+
+The builtins were updated for you — their slot fields (card `body`, modal/drawer
+`header`/`footer`, tab group `tabs`, dropdown `items`, empty-state `actions`, …)
+are typed `Slot` and keep rendering raw. Only *your own* scalar fields that relied
+on raw passthrough need the opt-in above. See
+[Escaping & slots](guide/components.md#escaping-and-slots).
+
 ### REFERENCE asset mode removed (breaking)
 
 `AssetMode.REFERENCE` is gone. `AssetMode` is now a two-member enum: `INLINE` and `NONE`.

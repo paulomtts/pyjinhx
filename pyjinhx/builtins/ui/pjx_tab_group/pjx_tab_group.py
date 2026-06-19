@@ -4,7 +4,7 @@ from typing import Annotated, Any
 from pydantic import BeforeValidator, Field
 
 from pyjinhx import BaseComponent
-from pyjinhx.base import AttrValue, ExtraAttrs
+from pyjinhx.base import AttrValue, ExtraAttrs, PjxSlot
 
 
 def _coerce_tabs(value: Any) -> dict[str, str | BaseComponent]:
@@ -17,9 +17,9 @@ def _coerce_tabs(value: Any) -> dict[str, str | BaseComponent]:
 
 
 class PJXTabGroup(BaseComponent):
-    tabs: Annotated[dict[str, str | BaseComponent], BeforeValidator(_coerce_tabs)] = (
-        Field(default_factory=dict)
-    )
+    tabs: Annotated[
+        dict[str, str | BaseComponent], BeforeValidator(_coerce_tabs), PjxSlot()
+    ] = Field(default_factory=dict)
     tabs_label: str = "Tabs"
     class_name: AttrValue = ""
     extra_attrs: ExtraAttrs = Field(default_factory=dict)

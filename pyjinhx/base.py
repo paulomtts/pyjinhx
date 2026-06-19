@@ -71,6 +71,20 @@ def _is_slot_field(cls: type, field_name: str) -> bool:
     return bool(field) and any(isinstance(m, PjxSlot) for m in field.metadata)
 
 
+def _wrap_slot_value(value: Any) -> Any:
+    """Wrap a slot field's string value(s) as ``markupsafe.Markup`` so they
+    pass through Jinja unescaped. Recurses into list/dict slot collections
+    (e.g. ``PJXTabGroup.tabs``); non-string elements (nested components) are
+    left untouched and render raw via their own ``__html__``."""
+    if isinstance(value, str):
+        return Markup(value)
+    if isinstance(value, list):
+        return [_wrap_slot_value(item) for item in value]
+    if isinstance(value, dict):
+        return {key: _wrap_slot_value(item) for key, item in value.items()}
+    return value
+
+
 def collect_extra_attrs(component: "BaseComponent") -> dict[str, str]:
     """Collect a component's pass-through HTML attributes as an ordered dict.
 
@@ -100,7 +114,10 @@ class NestedComponentWrapper(BaseModel):
     html: str
     props: Optional["BaseComponent"]
 
-    def __str__(self) -> Markup:
+    def __html__(self) -> Markup:
+        return Markup(self.html)
+
+    def __str__(self) -> str:
         return self.html
 
 
@@ -337,10 +354,8 @@ class BaseComponent(BaseModel):
                 renderer=_renderer,
                 session=_session,
             )
-            if _is_slot_field(type(self), field_name) and isinstance(
-                context.get(field_name), str
-            ):
-                context[field_name] = Markup(context[field_name])
+            if _is_slot_field(type(self), field_name):
+                context[field_name] = _wrap_slot_value(context.get(field_name))
 
         declared_fields = set(type(self).model_fields.keys())
         for field_name, field_value in context.items():

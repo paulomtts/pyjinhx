@@ -5,7 +5,7 @@ from typing import Annotated, Any
 from pydantic import BeforeValidator, Field, field_validator
 
 from pyjinhx import BaseComponent
-from pyjinhx.base import AttrValue, ExtraAttrs
+from pyjinhx.base import AttrValue, ExtraAttrs, PjxSlot
 
 
 def _coerce_panels(value: Any) -> dict[str, str | BaseComponent]:
@@ -22,7 +22,7 @@ _PANEL_KEY_PATTERN = re.compile(r"^[a-zA-Z0-9_-]+$")
 
 class PJXPanel(BaseComponent):
     panels: Annotated[
-        dict[str, str | BaseComponent], BeforeValidator(_coerce_panels)
+        dict[str, str | BaseComponent], BeforeValidator(_coerce_panels), PjxSlot()
     ] = Field(default_factory=dict)
     class_name: AttrValue = ""
     extra_attrs: ExtraAttrs = Field(default_factory=dict)
