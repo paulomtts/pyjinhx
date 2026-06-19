@@ -57,12 +57,14 @@ html = renderer.render("""
 
 PascalCase tag names are converted to candidate template filenames in this order:
 
-1. `snake_case.html`
-2. `kebab-case.html`
-3. `snake_case.jinja`
-4. `kebab-case.jinja`
+1. `snake_case.pjx`
+2. `kebab-case.pjx`
+3. `snake_case.html`
+4. `kebab-case.html`
+5. `snake_case.jinja`
+6. `kebab-case.jinja`
 
-For example, `<ActionButton/>` searches for: `action_button.html`, `action-button.html`, `action_button.jinja`, `action-button.jinja`.
+For example, `<ActionButton/>` searches for: `action_button.pjx`, `action-button.pjx`, `action_button.html`, `action-button.html`, `action_button.jinja`, `action-button.jinja`.
 
 Templates are searched under the root directory of your Jinja `FileSystemLoader` (see [Configuration](configuration.md)).
 

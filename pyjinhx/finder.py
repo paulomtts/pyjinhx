@@ -7,6 +7,7 @@ from jinja2 import FileSystemLoader
 from markupsafe import Markup
 
 from .utils import (
+    TEMPLATE_EXTENSIONS,
     normalize_path_separators,
     pascal_case_to_kebab_case,
     pascal_case_to_snake_case,
@@ -114,7 +115,7 @@ class Finder:
         search_root: str,
         component_name: str,
         *,
-        extensions: tuple[str, ...] = (".html", ".jinja"),
+        extensions: tuple[str, ...] = TEMPLATE_EXTENSIONS,
     ) -> list[str]:
         """
         Compute candidate template paths relative to the Jinja loader root.
@@ -170,7 +171,7 @@ class Finder:
         """
         Resolve a PascalCase component tag name to its template path.
 
-        Tries multiple extensions (.html, .jinja) in order of preference.
+        Tries multiple extensions (.pjx, .html, .jinja) in order of preference.
 
         Args:
             tag_name: The PascalCase component tag name (e.g., "ButtonGroup").

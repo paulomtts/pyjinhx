@@ -40,7 +40,7 @@ Find a file by name under the root directory.
 def find_template_for_tag(tag_name: str) -> str
 ```
 
-Resolve a PascalCase tag name to its template file path. Tries candidates in order: `snake_case.html`, `kebab-case.html`, `snake_case.jinja`, `kebab-case.jinja`.
+Resolve a PascalCase tag name to its template file path. Tries candidates in order: `snake_case.pjx`, `kebab-case.pjx`, `snake_case.html`, `kebab-case.html`, `snake_case.jinja`, `kebab-case.jinja`.
 
 **Parameters:**
 - `tag_name` (str): The PascalCase component name (e.g., `"ButtonGroup"`).
@@ -115,7 +115,7 @@ def get_relative_template_paths(
     search_root: str,
     component_name: str,
     *,
-    extensions: tuple[str, ...] = (".html", ".jinja"),
+    extensions: tuple[str, ...] = (".pjx", ".html", ".jinja"),
 ) -> list[str]
 ```
 

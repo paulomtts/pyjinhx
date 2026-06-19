@@ -48,7 +48,8 @@ def test_missing_template_error_lists_real_candidates():
 
     assert str(error) == (
         "No template found for <UserCard>. Expected one of: "
-        "user_card.html, user-card.html, user_card.jinja, user-card.jinja"
+        "user_card.pjx, user-card.pjx, user_card.html, user-card.html, "
+        "user_card.jinja, user-card.jinja"
     )
 
 

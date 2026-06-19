@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.24.0 — .pjx template extension (2026-06-19)
+
+### Added
+
+- **`.pjx` template extension.** Templates can now use the `.pjx` extension alongside
+  `.html` and `.jinja`. `.pjx` is tried first during auto-discovery, so a `widget.pjx`
+  takes precedence over a co-located `widget.html`/`widget.jinja`. The extension list is
+  centralized in `pyjinhx.utils.TEMPLATE_EXTENSIONS`.
+
 ## 0.23.2 — classless component assets (2026-06-19)
 
 ### Fixed

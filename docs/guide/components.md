@@ -73,9 +73,9 @@ Templates are automatically discovered based on the class name:
 
 | Class Name | Template File |
 |------------|---------------|
-| `Button` | `button.html` or `button.jinja` |
-| `ActionButton` | `action_button.html`, `action-button.html`, or `.jinja` variants |
-| `UserCard` | `user_card.html`, `user-card.html`, or `.jinja` variants |
+| `Button` | `button.pjx`, `button.html`, or `button.jinja` |
+| `ActionButton` | `action_button.pjx`, `action-button.pjx`, or `.html`/`.jinja` variants |
+| `UserCard` | `user_card.pjx`, `user-card.pjx`, or `.html`/`.jinja` variants |
 
 !!! warning "Template Location Requirement"
     Templates must be in the same directory as the Python class file.
