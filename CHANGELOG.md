@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.25.0 — slot-escaping consistency (2026-06-19)
 
 ### Fixed
 
