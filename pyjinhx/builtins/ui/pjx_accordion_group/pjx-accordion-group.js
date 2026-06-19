@@ -4,9 +4,23 @@
   if (pjx._accordionGroupWired) return;
   pjx._accordionGroupWired = true;
 
+  function applyDefaultOpen(el) {
+    var spec = el.dataset.defaultOpen;
+    if (!spec || spec === "none") return;
+    var items = el.querySelectorAll(":scope > details");
+    if (spec === "first") {
+      if (items.length) items[0].open = true;
+    } else if (spec === "all") {
+      items.forEach(function (d) { d.open = true; });
+    }
+  }
+
   function initGroup(el) {
     if (el.dataset.pjxGroupInit) return;
     el.dataset.pjxGroupInit = "1";
+
+    applyDefaultOpen(el);
+
     if (el.dataset.mode !== "exclusive") return;
     el.addEventListener("toggle", function (e) {
       if (!e.target.matches("details") || !e.target.open) return;

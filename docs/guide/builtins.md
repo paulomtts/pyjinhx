@@ -217,13 +217,18 @@ Or with PascalCase tags:
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
-| `mode` | `"exclusive" \| "multi"` | `"multi"` | `exclusive` — at most one child `<details>` open at a time (JS-coordinated via `toggle` capture); `multi` — independent, no JS coordination. |
+| `mode` | `"exclusive" \| "multi"` | `"multi"` | `exclusive` — at most one child `<details>` open at a time (JS-coordinated via `toggle` capture); `multi` — independent. |
 | `gap` | `str` | `"0"` | Space between accordion items; written to `--pjx-accordion-group-gap` inline on the root. |
+| `default_open` | `"none" \| "first" \| "all"` | `"none"` | Which items start open on mount. `none` — no change (each child respects its own `open` prop); `first` — JS opens the first direct `<details>` child; `all` — JS opens all direct `<details>` children. Applied by `pjx-accordion-group.js` after DOM settle. |
 | `content` | `str \| BaseComponent` | `""` | Children (nested `PJXAccordion`s or raw HTML). |
 
-**DOM contract.** Root `<div class="pjx-accordion-group" data-pjx-accordion-group data-mode="...">`. JS captures `toggle` events on `details` children in `exclusive` mode and closes any sibling that is open. HTMX-swapped groups are re-initialized on `htmx:afterSettle`. In `multi` mode the JS is loaded but does nothing — no additional work needed.
+**DOM contract.** Root `<div class="pjx-accordion-group" data-pjx-accordion-group data-mode="..." [data-default-open="..."]>`. `pjx-accordion-group.js` runs once per element (guarded by `data-pjx-group-init`), applies `default_open`, then wires the exclusive-open `toggle` listener when `mode="exclusive"`. Re-initialized on `htmx:afterSettle`.
 
-**Design decision — JS vs native `<details name>`.** The issue requested `multi` mode (independent open) as a first-class peer of `exclusive`, which the native `<details name>` attribute cannot express. A thin capture-phase JS listener handles exclusive-open so both modes work with the same markup; no library dependency is added.
+**`default_open` is JS-driven.** The group receives its `content` as a pre-rendered string, so it cannot set the `open` attribute on individual child elements at the server level. Instead, `data-default-open` is emitted on the root div and `pjx-accordion-group.js` opens the appropriate children on mount (and after every htmx swap). Per-child `open=True/False` props are still respected when `default_open="none"`.
+
+**JS is always loaded with the group asset.** The script is a compact guarded IIFE; it exits early per-element when neither `mode="exclusive"` nor `data-default-open` requires action. In pure `multi` mode with `default_open="none"` (the defaults) the only runtime cost is the per-element `data-pjx-group-init` guard check.
+
+**Design decision — JS vs native `<details name>`.** Native `<details name="...">` provides exclusive-open without JS, but requires stamping the same `name` on every child element. `PJXAccordion.group=` exposes this as an explicit per-child opt-in (still supported, not deprecated). `PJXAccordionGroup(mode="exclusive")` is the composition-friendly alternative: the group's capture-phase `toggle` listener handles exclusive-open so callers don't set `group=` on every child. The two approaches are independent and can coexist.
 
 **Classes:** `pjx-accordion-group`. Theming: see [PJXAccordionGroup tokens](#pjxaccordiongroup-tokens).
 

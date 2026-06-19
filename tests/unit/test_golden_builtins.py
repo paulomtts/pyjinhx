@@ -62,6 +62,8 @@ CASES = [
     ("accordion_grouped_closed", lambda: b.PJXAccordion(id="g", label="Older", open=False, group="nav", content="<p>y</p>")),
     ("accordion_group_multi", lambda: b.PJXAccordionGroup(id="g", content=str(b.PJXAccordion(id="g-a", label="A", content="<p>x</p>").render()) + str(b.PJXAccordion(id="g-b", label="B", open=False, content="<p>y</p>").render()))),
     ("accordion_group_exclusive", lambda: b.PJXAccordionGroup(id="g", mode="exclusive", gap="0.5rem", content=str(b.PJXAccordion(id="g-a", label="A", content="<p>x</p>").render()) + str(b.PJXAccordion(id="g-b", label="B", open=False, content="<p>y</p>").render()))),
+    ("accordion_group_default_open_first", lambda: b.PJXAccordionGroup(id="g", default_open="first", content=str(b.PJXAccordion(id="g-a", label="A", open=False, content="<p>x</p>").render()) + str(b.PJXAccordion(id="g-b", label="B", open=False, content="<p>y</p>").render()))),
+    ("accordion_group_default_open_all", lambda: b.PJXAccordionGroup(id="g", default_open="all", content=str(b.PJXAccordion(id="g-a", label="A", open=False, content="<p>x</p>").render()) + str(b.PJXAccordion(id="g-b", label="B", open=False, content="<p>y</p>").render()))),
 ]
 
 
