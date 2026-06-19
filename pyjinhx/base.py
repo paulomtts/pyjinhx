@@ -382,6 +382,11 @@ class BaseComponent(BaseModel):
                 renderer=_renderer,
                 session=_session,
             )
+            # The children field can arrive here as a pydantic extra (classless /
+            # undeclared `content`); slot-wrap it too so it renders raw without
+            # `| safe`, matching a declared children field (#125).
+            if _is_slot_field(type(self), field_name):
+                context[field_name] = _wrap_slot_value(context.get(field_name))
 
         return context
 

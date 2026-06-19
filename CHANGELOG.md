@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.24.1 — classless content escape fix (2026-06-19)
+
+### Fixed
+
+- **Classless / undeclared `content` children no longer render HTML-escaped.** When a
+  component received inner content but did not *declare* a `content` field (a classless
+  `{#def … #}` component, or a subclass without `content`), `{{ content }}` was autoescaped,
+  forcing `{{ content | safe }}`. `_build_template_context` only slot-wrapped *declared*
+  fields; the children field arriving as a pydantic extra was missed. The extras loop now
+  slot-wraps it too (via the existing `_is_slot_field` check), so inner content renders raw
+  regardless of whether the receiving component declares `content`. (#125)
+
 ## 0.24.0 — .pjx template extension (2026-06-19)
 
 ### Added

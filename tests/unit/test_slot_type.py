@@ -44,3 +44,19 @@ def test_slot_string_value_becomes_markup_in_context(tmp_path):
     assert isinstance(built["body"], Markup)
     assert isinstance(built["kids"], Markup)
     assert not isinstance(built["label"], Markup)
+
+
+def test_undeclared_children_field_becomes_markup_in_context(tmp_path):
+    # Issue #125: the children field arriving as a pydantic *extra* (classless /
+    # undeclared `content`) must still be slot-wrapped, not autoescaped — the same
+    # as a declared children field. Otherwise `{{ content }}` forces `| safe`.
+    from pyjinhx import Renderer
+    Renderer.set_default_environment(str(tmp_path))
+
+    class _Classless(BaseComponent):
+        pass  # no declared `content`; _pjx_children_field defaults to "content"
+
+    inst = _Classless(id="c", content="<div>inner</div>")
+    assert "content" not in type(inst).model_fields  # sanity: it's an extra
+    built = inst._build_template_context()
+    assert isinstance(built["content"], Markup)
