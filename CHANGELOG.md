@@ -13,6 +13,15 @@
   render raw). A component's children/`content` field is always a slot; nested
   `BaseComponent` values render raw via `__html__`. (#113)
 
+### Fixed
+
+- **Autoescape was defeated for components containing nested PascalCase tags.**
+  HTML entities produced by autoescape were decoded during tag expansion (the
+  `HTMLParser`-based tag parser ran with `convert_charrefs=True`), re-emitting
+  escaped scalars as raw HTML and reopening the XSS hole for any component that
+  embeds a nested tag (e.g. `PJXAccordion`, `PJXButton` loading state). Entities
+  now survive the round-trip. (#120)
+
 ### Breaking
 
 - **Scalar values are now HTML-escaped.** Strings that previously rendered raw

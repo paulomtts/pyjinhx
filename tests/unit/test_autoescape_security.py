@@ -95,3 +95,41 @@ def test_drawer_close_content_slot_renders_raw():
     from pyjinhx.builtins import PJXDrawer
     html = str(PJXDrawer(id="dr", close_content="<i class='close'></i>").render())
     assert "<i class='close'></i>" in html  # close_content is Slot → raw
+
+
+# --- Nested-tag components (#120): escaping must survive tag expansion ---
+
+def test_nested_tag_component_scalar_text_is_escaped():
+    """PJXAccordion embeds <PJXIcon/>; entities must not be decoded by tag expansion."""
+    from pyjinhx.builtins import PJXAccordion
+    html = str(
+        PJXAccordion(id="a", label="<script>alert(1)</script>", content="ok").render()
+    )
+    assert "<script>alert(1)</script>" not in html
+    assert "&lt;script&gt;" in html
+
+
+def test_nested_tag_component_slot_renders_raw():
+    from pyjinhx.builtins import PJXAccordion
+    html = str(
+        PJXAccordion(id="a2", label="t", content="<p data-x='1'>hi</p>").render()
+    )
+    assert "<p data-x='1'>hi</p>" in html  # content slot stays raw
+
+
+def test_nested_tag_component_scalar_is_escaped_when_nested_tag_present():
+    """PJXButton loading state embeds <PJXRegionLoader/>; the center scalar must still
+    escape even though a nested PascalCase tag triggers tag expansion."""
+    from pyjinhx.builtins import PJXButton
+    html = str(
+        PJXButton(id="b", center="<b>x</b>", loading=True).render()
+    )
+    assert "<b>x</b>" not in html  # center stays str | BaseComponent → escaped
+    assert "&lt;b&gt;" in html
+
+
+def test_nested_tag_component_still_renders_nested_component():
+    """The accordion's <PJXIcon/> chevron must still render after the parser change."""
+    from pyjinhx.builtins import PJXAccordion
+    html = str(PJXAccordion(id="a3", label="t", content="ok").render())
+    assert "pjx-icon" in html or "<svg" in html
