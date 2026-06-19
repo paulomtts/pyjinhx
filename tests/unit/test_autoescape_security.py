@@ -57,3 +57,41 @@ def test_markup_value_on_scalar_field_is_still_escaped():
     html = str(PJXCard(id="c", title=Markup("<b>x</b>"), body="ok").render())
     assert "<b>x</b>" not in html   # still escaped — Markup hatch does NOT work here
     assert "&lt;b&gt;" in html
+
+
+def test_button_start_end_slot_render_raw():
+    from pyjinhx.builtins import PJXButton
+    html = str(PJXButton(id="b", start="<svg data-x='1'>i</svg>", center="Save").render())
+    assert "<svg data-x='1'>i</svg>" in html  # start is Slot → raw
+    assert "Save" in html
+
+
+def test_button_center_label_is_escaped():
+    from pyjinhx.builtins import PJXButton
+    html = str(PJXButton(id="b2", center="<b>x</b>").render())
+    assert "<b>x</b>" not in html   # center stays str | BaseComponent → escaped
+    assert "&lt;b&gt;" in html
+
+
+def test_dropdown_trigger_slot_renders_raw():
+    from pyjinhx.builtins import PJXDropdown
+    html = str(PJXDropdown(id="d", trigger="<b>menu</b>", items=[]).render())
+    assert "<b>menu</b>" in html  # trigger is Slot → raw
+
+
+def test_modal_close_content_slot_renders_raw():
+    from pyjinhx.builtins import PJXModal
+    html = str(PJXModal(id="m", body="x", close_content="<i class='x'></i>").render())
+    assert "<i class='x'></i>" in html  # close_content is Slot → raw
+
+
+def test_tooltip_trigger_slot_renders_raw():
+    from pyjinhx.builtins import PJXTooltip
+    html = str(PJXTooltip(id="t", trigger="<b>hover</b>", tip="hint").render())
+    assert "<b>hover</b>" in html  # trigger is Slot → raw
+
+
+def test_drawer_close_content_slot_renders_raw():
+    from pyjinhx.builtins import PJXDrawer
+    html = str(PJXDrawer(id="dr", close_content="<i class='close'></i>").render())
+    assert "<i class='close'></i>" in html  # close_content is Slot → raw

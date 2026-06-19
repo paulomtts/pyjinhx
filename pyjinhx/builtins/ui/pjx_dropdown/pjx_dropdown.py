@@ -3,12 +3,12 @@ from typing import Annotated, Literal
 
 from pydantic import Field
 
-from pyjinhx import BaseComponent
+from pyjinhx import BaseComponent, Slot
 from pyjinhx.base import AttrValue, ExtraAttrs, PjxSlot
 
 
 class PJXDropdown(BaseComponent):
-    trigger: str | BaseComponent = ""
+    trigger: Slot = ""
     items: Annotated[list[str | BaseComponent], PjxSlot()] = Field(default_factory=list)
     align: Literal["start", "end"] = "start"
     menu_label: str = "Submenu"
