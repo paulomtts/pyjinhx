@@ -64,3 +64,26 @@ def test_children_rendered_in_content():
 def test_inline_attrs_pass_through():
     html = str(PJXAccordionGroup(id="g", **{"data-foo": "bar"}).render())
     assert 'data-foo="bar"' in html
+
+
+# --- default_open ---
+
+
+def test_default_open_default_is_none():
+    html = _group()
+    assert "data-default-open" not in html
+
+
+def test_default_open_none_emits_no_attr():
+    html = _group(default_open="none")
+    assert "data-default-open" not in html
+
+
+def test_default_open_first_emits_attr():
+    html = _group(default_open="first")
+    assert 'data-default-open="first"' in html
+
+
+def test_default_open_all_emits_attr():
+    html = _group(default_open="all")
+    assert 'data-default-open="all"' in html
