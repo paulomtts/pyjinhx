@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.24.1 — classless content escape fix (2026-06-19)
 
 ### Fixed
 
