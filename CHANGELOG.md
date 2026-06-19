@@ -1,6 +1,26 @@
 # Changelog
 
-## Unreleased
+## 0.23.1 — security & slot fixes (2026-06-19)
+
+### Fixed
+
+- **Autoescape was defeated for components containing nested PascalCase tags.**
+  HTML entities produced by autoescape were decoded during tag expansion (the
+  `HTMLParser`-based tag parser decoded entities back into raw text), re-emitting
+  escaped scalars as raw HTML and reopening the XSS hole for any component that
+  embeds a nested tag (e.g. `PJXAccordion`, `PJXButton` loading state) — including
+  user components that embed builtin tags. The tag parser now re-escapes emitted
+  text, so entities survive the round-trip while slot HTML structure and
+  attributes (passed through verbatim) are untouched. (#120)
+- **Several builtin icon/element slots were escaping their string values.** The
+  0.23.0 `Slot` migration missed `PJXButton.start`/`end`, `PJXDropdown.trigger`,
+  `PJXTooltip.trigger`, and `PJXModal`/`PJXDrawer.close_content`, so a string
+  value (e.g. an inline icon) HTML-escaped instead of rendering. Also fixed
+  `PJXAccordion.header`/`actions`: their `Slot | None` annotation silently dropped
+  the slot marker (`Optional[Annotated[...]]` loses the metadata) — the marker now
+  sits on the outer `Annotated[str | BaseComponent | None, PjxSlot()]`. (#118)
+
+## 0.23.0 — autoescape by default (2026-06-18)
 
 ### Added
 
@@ -12,17 +32,6 @@
   fields and on `Slot`-annotated `list`/`dict` collections (string elements
   render raw). A component's children/`content` field is always a slot; nested
   `BaseComponent` values render raw via `__html__`. (#113)
-
-### Fixed
-
-- **Autoescape was defeated for components containing nested PascalCase tags.**
-  HTML entities produced by autoescape were decoded during tag expansion (the
-  `HTMLParser`-based tag parser decoded entities back into raw text), re-emitting
-  escaped scalars as raw HTML and reopening the XSS hole for any component that
-  embeds a nested tag (e.g. `PJXAccordion`, `PJXButton` loading state). The tag
-  parser now re-escapes emitted text, so entities survive the round-trip while
-  slot HTML structure and attributes (passed through verbatim) are untouched.
-  (#120)
 
 ### Breaking
 
