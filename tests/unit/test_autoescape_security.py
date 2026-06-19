@@ -38,3 +38,11 @@ def test_nested_component_renders_raw():
     from pyjinhx.builtins import PJXCard, PJXBadge
     html = str(PJXCard(id="c", title="T", body=PJXBadge(id="b", label="New")).render())
     assert "pjx-badge" in html and "&lt;span" not in html
+
+
+def test_collection_slot_text_key_is_escaped():
+    from pyjinhx.builtins import PJXTabGroup
+    html = str(PJXTabGroup(id="t", tabs={"<script>alert(1)</script>": "<b>panel</b>"}).render())
+    assert "<script>alert(1)</script>" not in html      # label (dict key) escaped
+    assert "&lt;script&gt;" in html
+    assert "<b>panel</b>" in html                          # panel (dict value) raw

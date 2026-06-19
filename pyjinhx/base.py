@@ -28,8 +28,10 @@ def _auto_id() -> str:
 def validate_attr_value(value: str) -> str:
     """Reject values that could break out of a double-quoted HTML attribute.
 
-    The renderer unescapes final markup by design, so attribute safety is
-    enforced at construction time. Post-construction mutation bypasses this.
+    Belt-and-suspenders construction-time guard complementing autoescape:
+    autoescape handles text content, but attribute quoting is structural and
+    must be caught before the value reaches the template.
+    Post-construction mutation bypasses this check.
     """
     if '"' in value:
         raise ValueError('attribute values must not contain \'"\'')

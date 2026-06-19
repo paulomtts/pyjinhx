@@ -1,6 +1,6 @@
 # Migration guide
 
-## 0.18 → 0.19
+## 0.22.x → next (autoescape by default)
 
 ### Template output is escaped by default (breaking)
 
@@ -43,6 +43,10 @@ The builtins were updated for you — their slot fields (card `body`, modal/draw
 are typed `Slot` and keep rendering raw. Only *your own* scalar fields that relied
 on raw passthrough need the opt-in above. See
 [Escaping & slots](guide/components.md#escaping-and-slots).
+
+---
+
+## 0.18 → 0.19
 
 ### REFERENCE asset mode removed (breaking)
 
