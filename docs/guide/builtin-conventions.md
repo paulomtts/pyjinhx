@@ -30,6 +30,11 @@ Every pyjinhx builtin follows the same contract, so knowing one means knowing al
    HTML-escaped. A builtin's children/`content` field and any field typed `Slot` (e.g. a card's
    `body`, a tab group's `tabs`) render raw HTML, as do nested `BaseComponent` values. See
    [Escaping & slots](components.md#escaping-and-slots) for the full rule and escape hatches.
+8. **Type matches escaping.** A field's annotation must reflect whether it renders raw: text
+   fields (titles, labels, descriptions) are plain `str` and stay escaped; raw-HTML/icon/component
+   fields are `Slot` (or the children field). A field is never typed `str | BaseComponent` unless
+   it is a slot — otherwise a component renders raw while a string escapes, an inconsistency that
+   is also an XSS footgun. `test_swept_fields_holding_components_are_slots` enforces this.
 
 ## Events and hooks
 
