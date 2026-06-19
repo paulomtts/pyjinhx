@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.23.2 — classless component assets (2026-06-19)
 
 ### Fixed
 
