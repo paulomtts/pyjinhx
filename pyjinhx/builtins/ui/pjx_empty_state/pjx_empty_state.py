@@ -1,17 +1,19 @@
-from typing import Any
+from typing import Annotated, Any
 
 from pydantic import Field
 
-from pyjinhx import BaseComponent
-from pyjinhx.base import AttrValue, ExtraAttrs
+from pyjinhx import BaseComponent, Slot
+from pyjinhx.base import AttrValue, ExtraAttrs, PjxSlot
 
 
 class PJXEmptyState(BaseComponent):
-    image: str | BaseComponent = ""
+    image: Slot = ""
     title: str | BaseComponent = ""
     description: str | BaseComponent = ""
-    action: str | BaseComponent = ""
-    actions: list[str | BaseComponent] = Field(default_factory=list)
+    action: Slot = ""
+    actions: Annotated[list[str | BaseComponent], PjxSlot()] = Field(
+        default_factory=list
+    )
     # First-class interactive suggestion chips (option a from issue #77).
     # Each item is a dict with:
     #   - label      (str): button text

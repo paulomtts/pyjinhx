@@ -1,5 +1,26 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- **Autoescape by default.** Template output is now HTML-escaped (Jinja runs with
+  `autoescape=True`): scalar props, text, attribute values, and loop-derived
+  values are escaped, closing the default XSS hole. (#113)
+- **`Slot` type** (`from pyjinhx import Slot`) — declares a raw-HTML field
+  (`str | BaseComponent`) whose string value renders unescaped. Works on scalar
+  fields and on `Slot`-annotated `list`/`dict` collections (string elements
+  render raw). A component's children/`content` field is always a slot; nested
+  `BaseComponent` values render raw via `__html__`. (#113)
+
+### Breaking
+
+- **Scalar values are now HTML-escaped.** Strings that previously rendered raw
+  (`<b>x</b>`) now escape to entities. Raw HTML in a scalar field requires an
+  opt-in: declare the field as `Slot`, use `{{ value|safe }}` in the template, or
+  pass a `BaseComponent` instance. Builtin slot fields are pre-typed `Slot` and are
+  unaffected. See the [migration guide](docs/migration.md). (#113)
+
 ## 0.22.0 — issue batch: AccordionGroup, accordion actions, avatar/empty-state data, icons; swap-asset fix (2026-06-18)
 
 ### Added

@@ -973,7 +973,7 @@ Events (bubble from root): `pjx:chip-input:before-add`* (detail `{value}`), `pjx
 
 **Notes:**
 
-- `values` render verbatim (the renderer unescapes markup by design) — sanitize user-supplied tag text server-side before re-rendering it.
+- `values` are plain-text chip labels and are **HTML-escaped** on render (output is escaped by default — see [Escaping & slots](components.md#escaping-and-slots)). Passing markup shows it as literal text, not HTML.
 - Duplicate entries are silently dropped (the field clears).
 - Chips added client-side exist only in the DOM until the form posts; an htmx swap of the surrounding region re-renders from server state.
 

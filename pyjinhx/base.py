@@ -28,8 +28,10 @@ def _auto_id() -> str:
 def validate_attr_value(value: str) -> str:
     """Reject values that could break out of a double-quoted HTML attribute.
 
-    The renderer unescapes final markup by design, so attribute safety is
-    enforced at construction time. Post-construction mutation bypasses this.
+    Belt-and-suspenders construction-time guard complementing autoescape:
+    autoescape handles text content, but attribute quoting is structural and
+    must be caught before the value reaches the template.
+    Post-construction mutation bypasses this check.
     """
     if '"' in value:
         raise ValueError('attribute values must not contain \'"\'')
@@ -54,6 +56,35 @@ def validate_extra_attrs(value: dict[str, str]) -> dict[str, str]:
 
 AttrValue = Annotated[str, AfterValidator(validate_attr_value)]
 ExtraAttrs = Annotated[dict[str, str], AfterValidator(validate_extra_attrs)]
+
+
+class PjxSlot:
+    """Marker (in a field's Annotated metadata) for a raw-HTML slot field —
+    its string value is emitted unescaped. Use via the ``Slot`` alias."""
+
+
+# Slot is defined after BaseComponent (forward-ref resolved at class definition time)
+
+
+def _is_slot_field(cls: type, field_name: str) -> bool:
+    if field_name == getattr(cls, "_pjx_children_field", None):
+        return True
+    field = cls.model_fields.get(field_name)
+    return bool(field) and any(isinstance(m, PjxSlot) for m in field.metadata)
+
+
+def _wrap_slot_value(value: Any) -> Any:
+    """Wrap a slot field's string value(s) as ``markupsafe.Markup`` so they
+    pass through Jinja unescaped. Recurses into list/dict slot collections
+    (e.g. ``PJXTabGroup.tabs``); non-string elements (nested components) are
+    left untouched and render raw via their own ``__html__``."""
+    if isinstance(value, str):
+        return Markup(value)
+    if isinstance(value, list):
+        return [_wrap_slot_value(item) for item in value]
+    if isinstance(value, dict):
+        return {key: _wrap_slot_value(item) for key, item in value.items()}
+    return value
 
 
 def collect_extra_attrs(component: "BaseComponent") -> dict[str, str]:
@@ -85,7 +116,10 @@ class NestedComponentWrapper(BaseModel):
     html: str
     props: Optional["BaseComponent"]
 
-    def __str__(self) -> Markup:
+    def __html__(self) -> Markup:
+        return Markup(self.html)
+
+    def __str__(self) -> str:
         return self.html
 
 
@@ -288,6 +322,65 @@ class BaseComponent(BaseModel):
             context[field_name] = wrapped
         return context
 
+    def _build_template_context(
+        self,
+        base_context: dict[str, Any] | None = None,
+        *,
+        renderer: Renderer | None = None,
+        session: RenderSession | None = None,
+    ) -> dict[str, Any]:
+        """Build the template context dict for this component.
+
+        Merges ``base_context`` with the component's field values, runs
+        ``_update_context_`` for each declared field, and wraps slot-field
+        string values as ``markupsafe.Markup`` (so they pass through Jinja
+        unescaped once autoescape is enabled).
+
+        Safe to call outside an active request scope (renderer and session
+        default to the process-level defaults).
+        """
+        _renderer = renderer or Renderer.get_default_renderer()
+        _session = session or _renderer.new_session()
+
+        if base_context is None:
+            context: dict[str, Any] = self.model_dump()
+        else:
+            context = {**base_context, **self.model_dump()}
+
+        for field_name in type(self).model_fields.keys():
+            field_value = getattr(self, field_name)
+            context = self._update_context_(
+                context,
+                field_name,
+                field_value,
+                renderer=_renderer,
+                session=_session,
+            )
+            if _is_slot_field(type(self), field_name):
+                context[field_name] = _wrap_slot_value(context.get(field_name))
+
+        declared_fields = set(type(self).model_fields.keys())
+        for field_name, field_value in context.items():
+            if field_name in declared_fields:
+                continue
+            if isinstance(field_value, BaseComponent):
+                # Registry peers injected by id. Rendering them eagerly
+                # multiplied across every registered instance (issue #67),
+                # so defer until a template actually references them.
+                context[field_name] = LazyNestedComponentWrapper(
+                    field_value, context, renderer=_renderer, session=_session
+                )
+                continue
+            context = self._update_context_(
+                context,
+                field_name,
+                field_value,
+                renderer=_renderer,
+                session=_session,
+            )
+
+        return context
+
     def _render(
         self,
         source: str | None = None,
@@ -317,40 +410,9 @@ class BaseComponent(BaseModel):
             return Markup("")
         session.rendering.add(_guard_key)
         try:
-            if base_context is None:
-                context: dict[str, Any] = self.model_dump()
-            else:
-                context = {**base_context, **self.model_dump()}
-
-            for field_name in type(self).model_fields.keys():
-                field_value = getattr(self, field_name)
-                context = self._update_context_(
-                    context,
-                    field_name,
-                    field_value,
-                    renderer=renderer,
-                    session=session,
-                )
-
-            declared_fields = set(type(self).model_fields.keys())
-            for field_name, field_value in context.items():
-                if field_name in declared_fields:
-                    continue
-                if isinstance(field_value, BaseComponent):
-                    # Registry peers injected by id. Rendering them eagerly
-                    # multiplied across every registered instance (issue #67),
-                    # so defer until a template actually references them.
-                    context[field_name] = LazyNestedComponentWrapper(
-                        field_value, context, renderer=renderer, session=session
-                    )
-                    continue
-                context = self._update_context_(
-                    context,
-                    field_name,
-                    field_value,
-                    renderer=renderer,
-                    session=session,
-                )
+            context = self._build_template_context(
+                base_context, renderer=renderer, session=session
+            )
 
             from pyjinhx.client import ClientBackend
 
@@ -386,6 +448,9 @@ class BaseComponent(BaseModel):
         from pyjinhx.reactive import _finish_with_oob
 
         return _finish_with_oob(self._render())
+
+
+Slot = Annotated[str | BaseComponent, PjxSlot()]
 
 
 def component(name: str) -> type[BaseComponent]:

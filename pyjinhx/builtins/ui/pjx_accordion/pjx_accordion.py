@@ -1,13 +1,13 @@
-from pyjinhx import BaseComponent
+from pyjinhx import BaseComponent, Slot
 from pyjinhx.base import AttrValue
 
 
 class PJXAccordion(BaseComponent):
     label: str = ""
-    header: str | BaseComponent | None = None
+    header: Slot | None = None
     open: bool = True
     disabled: bool = False
     group: str | None = None
     content: str | BaseComponent = ""
-    actions: str | BaseComponent | None = None
+    actions: Slot | None = None
     class_name: AttrValue = ""

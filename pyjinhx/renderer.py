@@ -162,7 +162,8 @@ class Renderer:
             cls._default_environment = environment
         else:
             cls._default_environment = Environment(
-                loader=FileSystemLoader(os.fspath(environment))
+                loader=FileSystemLoader(os.fspath(environment)),
+                autoescape=True,
             )
         cls._default_renderers.clear()
 
@@ -180,7 +181,9 @@ class Renderer:
     def get_default_environment(cls) -> Environment:
         if cls._default_environment is None:
             root_dir = detect_root_directory()
-            cls._default_environment = Environment(loader=FileSystemLoader(root_dir))
+            cls._default_environment = Environment(
+                loader=FileSystemLoader(root_dir), autoescape=True
+            )
         return cls._default_environment
 
     @classmethod
@@ -276,7 +279,7 @@ class Renderer:
         )
 
         if not emit_assets:
-            return Markup(Markup(rendered_markup).unescape())
+            return Markup(rendered_markup)
 
         policy = AssetPolicy(
             js_mode=self._js_mode,
@@ -292,7 +295,7 @@ class Renderer:
             policy=policy,
             client=client,
         )
-        return Markup(Markup(rendered_markup).unescape())
+        return Markup(rendered_markup)
 
     def render(self, source: str) -> str:
         parser = Parser()

@@ -93,3 +93,27 @@ def test_stack_mixed_dict_and_component():
     assert "DT" in html
     assert 'id="a1"' in html
     assert ">+1<" in html
+
+
+# --- Autoescape safety (issue #113) ---
+
+def test_stack_dict_malicious_initials_are_escaped():
+    """Dict field values (initials) are HTML-escaped; no XSS via pill text.
+    The template slices initials to [:2], so only the first two chars render —
+    but they must be escaped, not raw."""
+    html = str(PJXAvatarStack(
+        id="st",
+        avatars=[{"initials": "<script>alert(1)</script>", "color": "red"}],
+    ).render())
+    assert "<script>" not in html
+    assert "&lt;" in html   # the < is escaped (rendered as &lt;s after [:2] slice)
+
+
+def test_stack_string_item_is_escaped():
+    """Plain HTML strings passed as avatar items are escaped (autoescape is on)."""
+    html = str(PJXAvatarStack(
+        id="st",
+        avatars=["<span class='x'>AB</span>"],
+    ).render())
+    assert "<span class='x'>AB</span>" not in html
+    assert "&lt;span" in html

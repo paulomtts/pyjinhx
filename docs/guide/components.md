@@ -137,6 +137,52 @@ not injected. Non-declared ("stray") attributes and the explicit `extra_attrs` d
 injected. For template-only components (no Python class, or created with `component()`), all
 attributes inject onto the root and are also available as template variables.
 
+## Escaping and slots
+
+Template output is **HTML-escaped by default**. pyjinhx runs Jinja with
+`autoescape=True`, so the special characters `& < > " '` in a value are turned
+into entities (`&amp; &lt; &gt; &#34; &#39;`) before they reach the page. This is
+the safe default: a scalar prop, text, an attribute value, or a value derived in
+a `{% for %}` loop is escaped, so user-supplied data can't inject markup or break
+out of an attribute.
+
+```python
+PJXCard(id="c", title="<script>alert(1)</script>", body="ok")
+# title renders as &lt;script&gt;alert(1)&lt;/script&gt; — not executable
+```
+
+**What renders as raw HTML (not escaped):**
+
+- A component's **children**/`content` field (the `_pjx_children_field`, e.g.
+  `PJXCard.body`) — its string value is emitted verbatim.
+- Any field declared `Slot` (`from pyjinhx import Slot`). A `Slot` field is
+  `str | BaseComponent`; its string value renders raw. `Slot` collections work
+  too — string elements inside a `Slot`-annotated `list`/`dict` (e.g.
+  `PJXTabGroup.tabs`, `PJXDropdown.items`) render raw.
+- Any **`BaseComponent`** value — a nested component always renders its own HTML
+  raw via the `__html__` protocol, whether passed directly or inside a list/dict.
+
+```python
+# body is the children field → raw HTML
+PJXCard(id="c", title="T", body="<p data-x='1'>hi</p>")
+# renders <p data-x='1'>hi</p> verbatim
+```
+
+**Escape hatches** — when you trust the markup and want it raw in a *scalar*
+field, choose one:
+
+- Declare the field as `Slot` (`field: Slot = ""`).
+- Mark it safe in the template: `{{ value|safe }}`.
+- Pass a `BaseComponent` instance — it renders raw via `__html__`.
+
+> Raw HTML is only as safe as its source. Reserve slots / `|safe` / nested
+> components for markup you control; never pass unsanitized user input raw.
+
+Prop-header props (`{#def ... #}`, below) follow the same rule: a header-declared
+prop is **escaped** unless you mark it safe in the template (`{{ prop|safe }}`) or
+the prop is the component's children field. Header props can't be typed `Slot`
+directly, so use `|safe` for intentional raw HTML there.
+
 ## HTML-only components
 
 A component doesn't always need a Python class. If you have a template with no
@@ -180,6 +226,9 @@ Python class:
   value that can't coerce, raises a clear error). **Undeclared** attributes still
   pass through to the root element (`hx-*`, `data-*`, `@click`, `class`).
 - The header is a normal Jinja comment, so it never appears in the output.
+- Header-declared props are **HTML-escaped** like any scalar value (see
+  [Escaping & slots](#escaping-and-slots)). For intentional raw HTML, mark it safe
+  in the template with `{{ prop|safe }}` — header props can't be typed `Slot`.
 - A hand-written Python class always takes precedence over a header.
 
 On the `component()` factory, the header is applied when the template is

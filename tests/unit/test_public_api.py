@@ -9,6 +9,7 @@ from pyjinhx import (
     ReactiveComponent,
     Registry,
     Renderer,
+    Slot,  # noqa: F401
     component,
     dirty,
     mutates,
@@ -17,6 +18,7 @@ from pyjinhx import (
 
 PUBLIC_API = {
     "BaseComponent",
+    "Slot",
     "component",
     "ReactiveComponent",
     "Renderer",
