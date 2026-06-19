@@ -92,8 +92,53 @@
   `{INLINE, NONE}`. For external/CSP/CDN delivery, render in `NONE` and serve a
   bundle built from `Finder.all_assets()`.
 
-> Note: CHANGELOG entries for **0.14.0–0.18.0** are not yet backfilled — they
-> predate this changelog-maintenance pass. See the git tags for their history.
+## 0.18.0 — single-root invariant + universal attribute pass-through (2026-06-17)
+
+### Added
+
+- Inline attributes on any PascalCase tag are injected onto the component's
+  root element automatically (new `root_attrs` module), and every component is
+  enforced to render exactly one root element.
+
+### Changed
+
+- `collect_extra_attrs` now returns a dict (replacing `render_extra_attrs`); the
+  `extra_attrs_html` template token is dropped from builtins. `class_name`
+  guidance scoped to builtins in the docs.
+
+## 0.17.0 — ReactiveResponse accepts mutation keys (2026-06-17)
+
+### Added
+
+- `ReactiveResponse(*keys)` dirties the given mutation keys and fans out the
+  OOB swaps in one call.
+
+## 0.16.0 — ReactiveResponse class (2026-06-17)
+
+### Changed (breaking)
+
+- `reactive_response()` is replaced by the `ReactiveResponse` class.
+
+## 0.15.0 — `component()` factory + setup wiring (2026-06-17)
+
+### Added
+
+- `component(name)` factory for html-only (classless) components.
+- `dirty()` for imperative reactive-key dirtying.
+- `setup()` wires the `components_root` Jinja environment and mounts
+  `static_root`.
+
+### Changed
+
+- Removed `pyjinhx_lifespan`; `setup()` and backend wiring tidied.
+
+## 0.14.0 — PjxContext method injection (2026-06-15)
+
+### Added
+
+- `PjxContext` is injected into component instance methods, classmethods, and
+  staticmethods that declare it (threaded through bound args, so positional-only
+  params work).
 
 ## 0.13.0 — OOB swaps ride along any render (2026-06-13)
 

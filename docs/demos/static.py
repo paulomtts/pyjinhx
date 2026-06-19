@@ -17,7 +17,11 @@ from pyjinhx.builtins import (
 
 
 def accordion():
-    return PJXAccordion(label="What is pyjinhx?", content="<p>A Python/Jinja HTML component framework.</p>").render()
+    return PJXAccordion(
+        label="What is pyjinhx?",
+        actions='<button class="pjx-demo-btn" type="button">Archive</button>',
+        content="<p>A Python/Jinja HTML component framework.</p>",
+    ).render()
 
 
 def accordion_group():
@@ -62,6 +66,7 @@ def avatar():
         PJXAvatar(initials="JD", size="sm", alt="Jane Doe").render(),
         PJXAvatar(initials="JD", size="md", alt="Jane Doe").render(),
         PJXAvatar(initials="JD", size="lg", alt="Jane Doe").render(),
+        PJXAvatar(initials="JD", size=64, alt="Jane Doe").render(),
     ]
 
 
@@ -100,6 +105,10 @@ def empty_state():
         title="No results",
         description="Try a different search term.",
         actions=['<button class="pjx-demo-btn">Clear filters</button>'],
+        suggestions=[
+            {"label": "Draft a message"},
+            {"label": "Summarise a thread"},
+        ],
     ).render()
 
 
