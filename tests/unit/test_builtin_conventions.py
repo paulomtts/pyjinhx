@@ -4,6 +4,7 @@ import os
 import re
 
 import pyjinhx.builtins as b
+from pyjinhx.utils import TEMPLATE_EXTENSIONS
 
 SWEPT: list[type] = [getattr(b, name) for name in b.__all__]
 
@@ -29,7 +30,7 @@ def test_swept_templates_have_no_literal_aria_labels():
     for cls in SWEPT:
         directory = _component_dir(cls)
         for name in os.listdir(directory):
-            if not name.endswith((".html", ".jinja")):
+            if not name.endswith(TEMPLATE_EXTENSIONS):
                 continue
             content = _read(os.path.join(directory, name))
             for match in re.finditer(r'aria-label="([^"]*)"', content):

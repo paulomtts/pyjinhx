@@ -47,7 +47,7 @@ Create `components/ui/button.html` (same directory as the class):
 !!! info "Template Discovery"
     PyJinHx automatically finds templates by converting the class name to snake_case.
     `Button` → `button.html`, `ActionButton` → `action_button.html` — kebab-case
-    (`action-button.html`) and `.jinja` candidates are also tried; see
+    (`action-button.html`), `.pjx`, and `.jinja` candidates are also tried; see
     [PascalCase tags](../guide/tags.md) for the full list.
 
 ## Step 3: Render the Component

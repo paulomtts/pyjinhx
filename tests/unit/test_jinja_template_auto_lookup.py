@@ -61,6 +61,42 @@ def test_class_template_auto_lookup_supports_jinja_extension():
     Renderer.set_default_environment(original_environment)
 
 
+def test_tag_template_auto_lookup_supports_pjx_extension():
+    original_environment = Renderer.peek_default_environment()
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        child_template_path = os.path.join(temp_dir, "pjx_child.pjx")
+        with open(child_template_path, "w") as file:
+            file.write('<span id="{{ id }}">from pjx</span>\n')
+
+        Renderer.set_default_environment(temp_dir)
+
+        renderer = Renderer.get_default_renderer()
+        rendered = renderer.render('<PjxChild id="child-1"/>')
+        assert rendered == '<span id="child-1">from pjx</span>'
+
+    Renderer.set_default_environment(original_environment)
+
+
+def test_pjx_extension_preferred_over_html():
+    """A .pjx template wins when a .html sibling also exists."""
+    original_environment = Renderer.peek_default_environment()
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        with open(os.path.join(temp_dir, "widget.pjx"), "w") as file:
+            file.write('<div id="{{ id }}">pjx</div>\n')
+        with open(os.path.join(temp_dir, "widget.html"), "w") as file:
+            file.write('<div id="{{ id }}">html</div>\n')
+
+        Renderer.set_default_environment(temp_dir)
+
+        renderer = Renderer.get_default_renderer()
+        rendered = renderer.render('<Widget id="w-1"/>')
+        assert rendered == '<div id="w-1">pjx</div>'
+
+    Renderer.set_default_environment(original_environment)
+
+
 def test_tag_template_lookup_supports_hyphen_separator():
     """Test that templates with hyphen separators (kebab-case) are found."""
     original_environment = Renderer.peek_default_environment()
