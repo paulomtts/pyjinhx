@@ -172,11 +172,11 @@ PJXCard(id="c", title="T", body="<p data-x='1'>hi</p>")
 field, choose one:
 
 - Declare the field as `Slot` (`field: Slot = ""`).
-- Pass a `markupsafe.Markup(...)` value — `Markup` is treated as already-safe.
 - Mark it safe in the template: `{{ value|safe }}`.
+- Pass a `BaseComponent` instance — it renders raw via `__html__`.
 
-> Raw HTML is only as safe as its source. Reserve slots / `Markup` / `|safe` for
-> markup you control; never wrap unsanitized user input.
+> Raw HTML is only as safe as its source. Reserve slots / `|safe` / nested
+> components for markup you control; never pass unsanitized user input raw.
 
 Prop-header props (`{#def ... #}`, below) follow the same rule: a header-declared
 prop is **escaped** unless you mark it safe in the template (`{{ prop|safe }}`) or

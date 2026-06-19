@@ -15,8 +15,9 @@ escaped — `& < > " '` become entities — which closes the default XSS hole.
 - **Scalar props that contained HTML now escape.** A `title`, `label`, `alt`, etc.
   holding `<b>x</b>` now renders `&lt;b&gt;x&lt;/b&gt;`.
 - **Raw HTML now requires an opt-in.** To emit raw markup in a *scalar* field, do
-  one of: declare the field as `Slot` (`from pyjinhx import Slot`), pass a
-  `markupsafe.Markup(...)` value, or use `{{ value|safe }}` in the template.
+  one of: declare the field as `Slot` (`from pyjinhx import Slot`), use
+  `{{ value|safe }}` in the template, or pass a `BaseComponent` instance (renders
+  raw via `__html__`).
 - **Children/`content` and `Slot` fields still render raw**, including `Slot`
   collections (string elements in a `Slot`-annotated `list`/`dict`). Nested
   `BaseComponent` values still render raw via `__html__`.
@@ -25,7 +26,6 @@ escaped — `& < > " '` become entities — which closes the default XSS hole.
 
 ```python
 from pyjinhx import BaseComponent, Slot
-from markupsafe import Markup
 
 class Card(BaseComponent):
     title: str = ""      # escaped
@@ -33,9 +33,6 @@ class Card(BaseComponent):
 
 Card(title="<b>x</b>", body="<p>ok</p>")
 # title → &lt;b&gt;x&lt;/b&gt;   body → <p>ok</p>
-
-# scalar escape hatch:
-Card(title=Markup("<b>x</b>"))   # title now raw
 ```
 
 The builtins were updated for you — their slot fields (card `body`, modal/drawer
@@ -43,6 +40,11 @@ The builtins were updated for you — their slot fields (card `body`, modal/draw
 are typed `Slot` and keep rendering raw. Only *your own* scalar fields that relied
 on raw passthrough need the opt-in above. See
 [Escaping & slots](guide/components.md#escaping-and-slots).
+
+**`PJXAvatarStack` — string items are now escaped.** If you passed pre-rendered
+HTML strings as `avatars` items, those strings are now escaped. Use structured
+dicts (`{"initials": "AB", "color": "#f00", ...}`) for pill rendering, or pass
+`BaseComponent` instances for raw markup.
 
 ---
 

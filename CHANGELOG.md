@@ -17,8 +17,8 @@
 
 - **Scalar values are now HTML-escaped.** Strings that previously rendered raw
   (`<b>x</b>`) now escape to entities. Raw HTML in a scalar field requires an
-  opt-in: declare the field as `Slot`, pass a `markupsafe.Markup(...)` value, or
-  use `{{ value|safe }}`. Builtin slot fields are pre-typed `Slot` and are
+  opt-in: declare the field as `Slot`, use `{{ value|safe }}` in the template, or
+  pass a `BaseComponent` instance. Builtin slot fields are pre-typed `Slot` and are
   unaffected. See the [migration guide](docs/migration.md). (#113)
 
 ## 0.22.0 — issue batch: AccordionGroup, accordion actions, avatar/empty-state data, icons; swap-asset fix (2026-06-18)

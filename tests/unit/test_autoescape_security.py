@@ -46,3 +46,14 @@ def test_collection_slot_text_key_is_escaped():
     assert "<script>alert(1)</script>" not in html      # label (dict key) escaped
     assert "&lt;script&gt;" in html
     assert "<b>panel</b>" in html                          # panel (dict value) raw
+
+
+def test_markup_value_on_scalar_field_is_still_escaped():
+    """Pydantic coerces markupsafe.Markup to plain str on str-typed fields,
+    so the safe marker is lost before the context builder runs.  Markup is NOT
+    a working escape hatch for scalar fields; use Slot or |safe instead."""
+    from markupsafe import Markup
+    from pyjinhx.builtins import PJXCard
+    html = str(PJXCard(id="c", title=Markup("<b>x</b>"), body="ok").render())
+    assert "<b>x</b>" not in html   # still escaped — Markup hatch does NOT work here
+    assert "&lt;b&gt;" in html
