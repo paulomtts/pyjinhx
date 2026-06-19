@@ -190,6 +190,10 @@ class BaseComponent(BaseModel):
     # set, the template is resolved by scanning the default env at render time.
     _pjx_template: ClassVar[str | None] = None
 
+    # True on classes built dynamically (props_header or component() factory).
+    # Distinct from _pjx_template because file-backed classes may also set that.
+    _pjx_classless: ClassVar[bool] = False
+
     id: str = Field(
         default_factory=_auto_id,
         description="The unique ID for this component. Auto-generated when omitted.",
@@ -490,4 +494,4 @@ def component(name: str) -> type[BaseComponent]:
         if model is not None:
             return model  # auto-registered via __init_subclass__
 
-    return type(name, (BaseComponent,), {"_pjx_template": name})
+    return type(name, (BaseComponent,), {"_pjx_template": name, "_pjx_classless": True})

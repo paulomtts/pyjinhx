@@ -387,7 +387,9 @@ def apply_component_render_assets(
     policy: AssetPolicy,
     client: object | None,
 ) -> str:
-    if template_path is not None and type(component).__name__ == "BaseComponent":
+    cls = type(component)
+    is_classless = cls.__name__ == "BaseComponent" or getattr(cls, "_pjx_classless", False)
+    if template_path is not None and is_classless:
         asset_dir: str | None = os.path.dirname(template_path)
         asset_name: str | None = os.path.splitext(os.path.basename(template_path))[
             0

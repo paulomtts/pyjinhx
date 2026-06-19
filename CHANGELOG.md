@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- **Classless / `{#def#}` / `component()` components now collect co-located CSS/JS.** Assets
+  co-located with template-only components (built via the `{#def … #}` prop-header or via
+  `component("Name")`) were never inlined because the asset guard only checked for the exact
+  `BaseComponent` class name, missing the dynamically-named subclasses those paths produce.
+  Added a `_pjx_classless` ClassVar marker set on all dynamically-built subclasses and broadened
+  the guard to include it; the factory render path now also resolves the template path so
+  `apply_component_render_assets` can locate the asset directory. (#122)
+
 ## 0.23.1 — security & slot fixes (2026-06-19)
 
 ### Fixed

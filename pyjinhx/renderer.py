@@ -285,11 +285,23 @@ class Renderer:
             js_mode=self._js_mode,
             css_mode=self._css_mode,
         )
+        # For classless components built via the factory path, template_path is
+        # None (the renderer resolved the template internally via _pjx_template).
+        # Compute the effective asset path so apply_component_render_assets can
+        # find co-located CSS/JS next to the template file.
+        asset_template_path = template_path
+        if asset_template_path is None and getattr(type(component), "_pjx_classless", False):
+            pjx_template = getattr(type(component), "_pjx_template", None)
+            if pjx_template is not None:
+                try:
+                    asset_template_path = self._find_template_for_tag(pjx_template)
+                except FileNotFoundError:
+                    asset_template_path = None
         rendered_markup = apply_component_render_assets(
             component,
             rendered_markup,
             session,
-            template_path=template_path,
+            template_path=asset_template_path,
             is_root=is_root,
             collect_component_js=collect_component_js,
             policy=policy,

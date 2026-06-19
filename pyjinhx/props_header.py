@@ -115,4 +115,5 @@ def build_component_model(name: str, source: str) -> "type | None":
         **{field_name: (field_type, default) for field_name, field_type, default in fields},
     )
     model._pjx_template = name
+    model._pjx_classless = True
     return model
