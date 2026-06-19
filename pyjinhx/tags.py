@@ -11,6 +11,8 @@ from dataclasses import dataclass, field
 from html.parser import HTMLParser
 from typing import TYPE_CHECKING, Any, ClassVar
 
+from markupsafe import escape
+
 from .registry import Registry
 from .utils import (
     extract_tag_name_from_raw,
@@ -56,10 +58,7 @@ class Parser(HTMLParser):
     """
 
     def __init__(self) -> None:
-        # convert_charrefs=False keeps entities out of handle_data so that
-        # autoescaped scalars (e.g. &lt;script&gt;) survive the tag-expansion
-        # round-trip instead of being decoded back into raw HTML (#120).
-        super().__init__(convert_charrefs=False)
+        super().__init__()
         self._stack: list[Tag] = []
         self.root_nodes: list[Tag | str] = []
 
@@ -112,15 +111,11 @@ class Parser(HTMLParser):
         self._append_child(f"</{tag}>")
 
     def handle_data(self, data: str) -> None:
-        self._append_child(data)
-
-    def handle_entityref(self, name: str) -> None:
-        # Re-emit verbatim so escaped scalars stay escaped (e.g. &lt; stays &lt;).
-        self._append_child(f"&{name};")
-
-    def handle_charref(self, name: str) -> None:
-        # Re-emit verbatim so numeric refs survive (e.g. &#34; stays &#34;).
-        self._append_child(f"&#{name};")
+        # Re-escape decoded text so autoescaped scalars stay escaped through the
+        # tag-expansion round-trip (e.g. &lt;script&gt; → decoded <script> →
+        # &lt;script&gt;). Slot tags/attributes go through get_starttag_text()
+        # (raw), not here, so HTML structure is preserved untouched (#120).
+        self._append_child(str(escape(data)))
 
     def handle_comment(self, data: str) -> None:
         self._append_child(f"<!--{data}-->")

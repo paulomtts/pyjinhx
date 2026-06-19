@@ -133,3 +133,25 @@ def test_nested_tag_component_still_renders_nested_component():
     from pyjinhx.builtins import PJXAccordion
     html = str(PJXAccordion(id="a3", label="t", content="ok").render())
     assert "pjx-icon" in html or "<svg" in html
+
+
+# --- #120 regression: bare `&word` text must not gain a spurious `;` ---
+
+def test_bare_ampersand_in_slot_text_not_corrupted():
+    """`R&D`/`Q&A` in slot text must not become `R&D;`/`Q&A;` during tag expansion."""
+    from pyjinhx.builtins import PJXAccordion
+    html = str(
+        PJXAccordion(id="r", label="t", content="<p>R&D and Q&A</p>").render()
+    )
+    assert "R&D;" not in html
+    assert "Q&A;" not in html
+
+
+def test_bare_ampersand_in_slot_attribute_not_corrupted():
+    """`href='?x=1&y=2'` must not become `?x=1&y;=2` during tag expansion."""
+    from pyjinhx.builtins import PJXAccordion
+    html = str(
+        PJXAccordion(id="r2", label="t", content="<a href='?x=1&y=2'>L</a>").render()
+    )
+    assert "&y;=2" not in html
+    assert "?x=1&y=2" in html or "?x=1&amp;y=2" in html
