@@ -27,7 +27,7 @@ class Card(BaseComponent):
     subtitle: str = ""   # optional
 ```
 
-The template is auto-discovered from the class name: `Card` → `card.html`/`card.jinja`; `ActionButton` → `action_button` or `action-button` (`.html` or `.jinja`). Subclasses with no adjacent template inherit the nearest ancestor's template and assets through the MRO (first found per kind), so do **not** duplicate templates for every subclass; a class may have at most one concrete component base (definition-time `TypeError`).
+The template is auto-discovered from the class name: `Card` → `card.pjx`/`card.html`/`card.jinja`; `ActionButton` → `action_button` or `action-button` (`.pjx`, `.html`, or `.jinja`, tried in that order — `.pjx` wins). Subclasses with no adjacent template inherit the nearest ancestor's template and assets through the MRO (first found per kind), so do **not** duplicate templates for every subclass; a class may have at most one concrete component base (definition-time `TypeError`).
 
 ## Rendering
 
@@ -44,6 +44,28 @@ Templates receive all component fields as variables and support full Jinja2. Pas
     {% if subtitle %}<p>{{ subtitle }}</p>{% endif %}
     <Button id="card-action" text="Click me"/>
 </div>
+```
+
+## Escaping & slots (security)
+
+Template output is **HTML-escaped by default** (Jinja runs with `autoescape=True`). Scalar props, text, attribute values, and loop-derived values are escaped — so user-supplied data can't inject markup. This is the secure default; do **not** defeat it for untrusted content.
+
+What renders **raw** (unescaped):
+
+- The component's children/`content` field (tag inner content).
+- Any field declared `Slot` (`from pyjinhx import Slot`) — `Slot` is `str | BaseComponent`; its string value renders raw. `Slot` collections work too (string elements inside a `Slot`-annotated `list`/`dict`).
+- Nested `BaseComponent` values (they render raw via `__html__`).
+
+To intentionally render raw HTML / an icon / a snippet, opt in: declare the field as `Slot` (`badge: Slot = ""`), use `{{ value|safe }}` in the template, or pass a `BaseComponent`.
+
+**Type matches escaping (convention).** A field's annotation must reflect how it renders. Text fields (titles, labels, descriptions) are plain `str` and stay escaped; raw-HTML/icon/component fields are `Slot`. **Never** type a text field `str | BaseComponent` unless it's a real slot — otherwise a component renders raw while a string escapes (inconsistent, and an XSS footgun).
+
+```python
+from pyjinhx import BaseComponent, Slot
+
+class Callout(BaseComponent):
+    title: str = ""      # text → escaped (safe default)
+    body: Slot = ""      # raw HTML / icon / nested component → rendered as-is
 ```
 
 ## Nesting
@@ -135,7 +157,7 @@ Full guide: [docs/reactivity.md](../reactivity.md).
 
 ## Builtins (`pyjinhx.builtins`)
 
-`import pyjinhx.builtins` registers thirty-three optional components: `PJXAlert`, `PJXAvatar`, `PJXAvatarStack`, `PJXBadge`, `PJXBreadcrumb`, `PJXCard`, `PJXChipInput`, `PJXConfirmDialog`, `PJXDivider`, `PJXDrawer`, `PJXDropdown`, `PJXEmptyState`, `PJXFormField`, `PJXLazyPanel`, `PJXModal`, `PJXNotification`, `PJXPageLoader`, `PJXPasswordInput`, `PJXPopover`, `PJXPopoverPanel`, `PJXPopoverTrigger`, `PJXProgress`, `PJXPromptDialog`, `PJXRegionLoader`, `PJXPanel`, `PJXPanelTrigger`, `PJXSegmentedControl`, `PJXSkeleton`, `PJXSpinner`, `PJXTabGroup`, `PJXToastHost`, `PJXToggleSwitch`, `PJXTooltip`. Same `BaseComponent` rules; templates/CSS/JS live under `pyjinhx/builtins/ui/pjx_<component>/`, and the renderer falls back to on-disk templates if the app's Jinja loader can't see package templates. **Do not** register user subclasses with the same class name as a builtin — the global `Registry` is one class per name.
+`import pyjinhx.builtins` registers thirty-seven optional components: `PJXAccordion`, `PJXAccordionGroup`, `PJXAlert`, `PJXAvatar`, `PJXAvatarStack`, `PJXBadge`, `PJXBreadcrumb`, `PJXButton`, `PJXCard`, `PJXChipInput`, `PJXConfirmDialog`, `PJXDivider`, `PJXDrawer`, `PJXDropdown`, `PJXEmptyState`, `PJXFormField`, `PJXIcon`, `PJXLazyPanel`, `PJXModal`, `PJXNotification`, `PJXPageLoader`, `PJXPasswordInput`, `PJXPopover`, `PJXPopoverPanel`, `PJXPopoverTrigger`, `PJXProgress`, `PJXPromptDialog`, `PJXRegionLoader`, `PJXPanel`, `PJXPanelTrigger`, `PJXSegmentedControl`, `PJXSkeleton`, `PJXSpinner`, `PJXTabGroup`, `PJXToastHost`, `PJXToggleSwitch`, `PJXTooltip`. Same `BaseComponent` rules; templates/CSS/JS live under `pyjinhx/builtins/ui/pjx_<component>/`, and the renderer falls back to on-disk templates if the app's Jinja loader can't see package templates. **Do not** register user subclasses with the same class name as a builtin — the global `Registry` is one class per name.
 
 - **Host theme** (set on `:root` or a wrapper): builtin CSS reads shared tokens — define at least `--surface`, `--surface-alt`, `--text`, `--text-muted`, `--border`, `--brand`, `--brand-subtle`, `--brand-muted`, `--error`, `--success`, `--warning`, `--font-size-{xs,sm,md}`, `--radius-{sm,md,lg,full}`, `--shadow-md`, `--transition`, `--space-3`, `--space-4`. Optional `--error-bg` / `--error-border` for error surfaces (badge/alert fall back with `color-mix`).
 - **Per-component tokens:** each stylesheet declares `--pjx-<widget>-*` properties on `:root` — override to tune one component without editing package files (e.g. `--pjx-modal-width`, `--pjx-dropdown-z`, `--pjx-drawer-width`).
@@ -159,6 +181,7 @@ from pyjinhx import (
     BaseComponent,      # base class for all components
     ReactiveComponent,  # react={...} + load(); Cls.render(*args) is the route entry point
     Renderer, Registry,
+    Slot,               # field type for raw-HTML/icon/component values (opt out of escaping)
     PjxKey,             # Annotated[..., PjxKey()] marker for keyed regions
     mutates,            # decorator on store methods; state keys only
     setup,              # wires FastAPI middleware (request_scope, ClientBackend, PjxContext)

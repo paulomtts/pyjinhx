@@ -20,6 +20,14 @@
   and `PJXEmptyState.description` no longer accept a `BaseComponent` value (they are now `str`).
   Pass rich/markup content through the components' slot fields instead.
 
+### Docs
+
+- Brought the `/pyjinhx` Claude Code skill (`docs/integrations/claude-code.md`) up to date: added an
+  **Escaping & slots** section (autoescape-by-default, `Slot` opt-in, the "type matches escaping"
+  convention), `Slot` in the public-API import block, `.pjx` in template auto-discovery, and
+  corrected the builtins roster (37 components; added the missing `PJXAccordion`,
+  `PJXAccordionGroup`, `PJXButton`, `PJXIcon`).
+
 ## 0.24.0 — .pjx template extension (2026-06-19)
 
 ### Added
