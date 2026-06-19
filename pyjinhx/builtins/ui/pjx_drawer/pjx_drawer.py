@@ -10,7 +10,7 @@ class PJXDrawer(BaseComponent):
     _pjx_children_field: ClassVar[str] = "body"
 
     side: Literal["left", "right", "bottom"] = "right"
-    title: str | BaseComponent = ""
+    title: str = ""  # heading text — escaped
     body: str | BaseComponent = ""
     footer: Slot = ""
     close_label: str = "Close"

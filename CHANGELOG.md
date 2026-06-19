@@ -1,5 +1,33 @@
 # Changelog
 
+## 0.25.0 — slot-escaping consistency (2026-06-19)
+
+### Fixed
+
+- **Builtin text fields no longer carry a misleading `str | BaseComponent` type.** Several
+  builtin fields (`PJXButton.center`, `PJXModal`/`PJXDrawer`/`PJXCard`/`PJXEmptyState.title`,
+  `PJXEmptyState.description`) were typed `str | BaseComponent` but rendered their string value
+  **escaped** — so a passed component rendered raw while a markup string escaped, an inconsistency
+  and a latent XSS footgun. These are now plain `str` (text, escaped by default), matching their
+  actual behavior and the autoescape-by-default security posture. Icons/markup go in the adjacent
+  `Slot` fields (`start`/`end`, `header`, `image`/`action`). A new convention test
+  (`test_swept_fields_holding_components_are_slots`) enforces the invariant: any builtin field
+  whose type can hold a `BaseComponent` must be a slot (children field or `Slot`-typed).
+
+### Breaking
+
+- `PJXButton.center`, `PJXModal.title`, `PJXDrawer.title`, `PJXCard.title`, `PJXEmptyState.title`,
+  and `PJXEmptyState.description` no longer accept a `BaseComponent` value (they are now `str`).
+  Pass rich/markup content through the components' slot fields instead.
+
+### Docs
+
+- Brought the `/pyjinhx` Claude Code skill (`docs/integrations/claude-code.md`) up to date: added an
+  **Escaping & slots** section (autoescape-by-default, `Slot` opt-in, the "type matches escaping"
+  convention), `Slot` in the public-API import block, `.pjx` in template auto-discovery, and
+  corrected the builtins roster (37 components; added the missing `PJXAccordion`,
+  `PJXAccordionGroup`, `PJXButton`, `PJXIcon`).
+
 ## 0.24.1 — classless content escape fix (2026-06-19)
 
 ### Fixed

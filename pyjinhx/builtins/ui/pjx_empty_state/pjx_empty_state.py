@@ -8,8 +8,8 @@ from pyjinhx.base import AttrValue, ExtraAttrs, PjxSlot
 
 class PJXEmptyState(BaseComponent):
     image: Slot = ""
-    title: str | BaseComponent = ""
-    description: str | BaseComponent = ""
+    title: str = ""  # heading text — escaped
+    description: str = ""  # body text — escaped
     action: Slot = ""
     actions: Annotated[list[str | BaseComponent], PjxSlot()] = Field(
         default_factory=list

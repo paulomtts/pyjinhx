@@ -9,7 +9,7 @@ from pyjinhx.base import AttrValue, ExtraAttrs
 class PJXModal(BaseComponent):
     _pjx_children_field: ClassVar[str] = "body"
 
-    title: str | BaseComponent = ""
+    title: str = ""  # text — escaped; use the header slot for custom markup
     header: Slot = ""
     body: str | BaseComponent = ""
     footer: Slot = ""

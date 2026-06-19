@@ -69,7 +69,7 @@ def test_button_start_end_slot_render_raw():
 def test_button_center_label_is_escaped():
     from pyjinhx.builtins import PJXButton
     html = str(PJXButton(id="b2", center="<b>x</b>").render())
-    assert "<b>x</b>" not in html   # center stays str | BaseComponent → escaped
+    assert "<b>x</b>" not in html   # center is text (str) → escaped; use start/end for icons
     assert "&lt;b&gt;" in html
 
 
@@ -124,7 +124,7 @@ def test_nested_tag_component_scalar_is_escaped_when_nested_tag_present():
     html = str(
         PJXButton(id="b", center="<b>x</b>", loading=True).render()
     )
-    assert "<b>x</b>" not in html  # center stays str | BaseComponent → escaped
+    assert "<b>x</b>" not in html  # center is text (str) → escaped through tag expansion
     assert "&lt;b&gt;" in html
 
 

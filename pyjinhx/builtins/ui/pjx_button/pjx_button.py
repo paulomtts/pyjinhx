@@ -6,7 +6,7 @@ from pyjinhx.base import AttrValue, PjxSlot
 
 class PJXButton(BaseComponent):
     start: Annotated[str | BaseComponent | None, PjxSlot()] = None
-    center: str | BaseComponent | None = None
+    center: str | None = None  # label text — escaped; use start/end slots for icons
     end: Annotated[str | BaseComponent | None, PjxSlot()] = None
     variant: str = "default"
     block: bool = False

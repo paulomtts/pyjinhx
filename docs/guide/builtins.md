@@ -150,7 +150,7 @@ Structural, themeable button. Composes [`PJXRegionLoader`](#pjxregionloader) for
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
 | `start` | `str \| BaseComponent \| None` | `None` | Leading slot (e.g. an icon); the `.pjx-button__start` span is omitted when empty. |
-| `center` | `str \| BaseComponent \| None` | `None` | Label slot (`.pjx-button__center`), omitted when empty. |
+| `center` | `str \| None` | `None` | Label text (`.pjx-button__center`), HTML-escaped; omitted when empty. Use `start`/`end` for icon slots. |
 | `end` | `str \| BaseComponent \| None` | `None` | Trailing slot (icon/badge, `.pjx-button__end`), omitted when empty. |
 | `variant` | `str` | `"default"` | Class hook only → `pjx-button--{variant}`. No baked palette; style it yourself. |
 | `block` | `bool` | `False` | Full-width (`pjx-button--block`) instead of content-width. |
@@ -242,7 +242,7 @@ Native `<dialog>`. **Assets:** `pjx_modal.css`, `pjx_modal.js`.
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
-| `title` | `str \| BaseComponent` | `""` | Default header title when `header` is empty. |
+| `title` | `str` | `""` | Default header title (text, escaped) when `header` is empty; use the `header` slot for custom markup. |
 | `header` | `str \| BaseComponent` | `""` | If set, replaces the built-in title row. |
 | `body` | `str \| BaseComponent` | `""` | Main content; wrapper id `{{ id }}-body`. |
 | `footer` | `str \| BaseComponent` | `""` | If non-empty, renders `<footer class="pjx-modal__footer">`. |
@@ -445,7 +445,7 @@ Trigger id is `{{ id }}-trigger`, menu is `{{ id }}-menu`.
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
 | `side` | literal | `"right"` | `left`, `right`, or `bottom` → `pjx-drawer--{side}`. |
-| `title` | `str \| BaseComponent` | `""` | Header title. |
+| `title` | `str` | `""` | Header title (text, escaped). |
 | `body` | `str \| BaseComponent` | `""` | Scrollable body. |
 | `footer` | `str \| BaseComponent` | `""` | Optional footer strip. |
 | `close_label` | `str` | `"Close"` | `aria-label` for the close button. |
@@ -507,8 +507,8 @@ Centered empty view. **Assets:** `pjx-empty-state.css` only (template file **`pj
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
 | `image` | `str \| BaseComponent` | `""` | Optional slot above the heading (e.g. illustration markup). |
-| `title` | `str \| BaseComponent` | `""` | Heading. |
-| `description` | `str \| BaseComponent` | `""` | Supporting text. |
+| `title` | `str` | `""` | Heading (text, escaped). |
+| `description` | `str` | `""` | Supporting text (escaped). |
 | `action` | `str \| BaseComponent` | `""` | Optional slot (e.g. button markup). |
 | `actions` | `list[str \| BaseComponent]` | `[]` | Optional flex row of slots; renders after `action` when both are set. |
 | `suggestions` | `list[dict]` | `[]` | Interactive suggestion chips; each dict dispatches a custom event on click. See below. |
@@ -652,7 +652,7 @@ Grouped content with optional header and footer. **Assets:** `pjx_card.css` only
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
-| `title` | `str \| BaseComponent` | `""` | Default header title (ignored if `header` is set). |
+| `title` | `str` | `""` | Default header title (text, escaped; ignored if `header` is set). |
 | `header` | `str \| BaseComponent` | `""` | Custom header slot; replaces `title` block when set. |
 | `body` | `str \| BaseComponent` | `""` | Main content. |
 | `footer` | `str \| BaseComponent` | `""` | Optional footer. |
