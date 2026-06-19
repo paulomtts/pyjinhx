@@ -14,7 +14,7 @@ class PJXModal(BaseComponent):
     body: str | BaseComponent = ""
     footer: Slot = ""
     close_label: str = "Close"
-    close_content: str | BaseComponent = "✕"
+    close_content: Slot = "✕"
     open_on_mount: bool = False
     remove_on_close: bool = False
     class_name: AttrValue = ""

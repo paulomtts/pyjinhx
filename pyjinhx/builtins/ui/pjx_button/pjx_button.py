@@ -1,13 +1,13 @@
-from typing import Literal
+from typing import Annotated, Literal
 
 from pyjinhx import BaseComponent
-from pyjinhx.base import AttrValue
+from pyjinhx.base import AttrValue, PjxSlot
 
 
 class PJXButton(BaseComponent):
-    start: str | BaseComponent | None = None
+    start: Annotated[str | BaseComponent | None, PjxSlot()] = None
     center: str | BaseComponent | None = None
-    end: str | BaseComponent | None = None
+    end: Annotated[str | BaseComponent | None, PjxSlot()] = None
     variant: str = "default"
     block: bool = False
     loading: bool = False
