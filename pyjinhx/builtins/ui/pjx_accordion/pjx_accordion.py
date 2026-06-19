@@ -1,13 +1,17 @@
-from pyjinhx import BaseComponent, Slot
-from pyjinhx.base import AttrValue
+from typing import Annotated
+
+from pyjinhx import BaseComponent
+from pyjinhx.base import AttrValue, PjxSlot
 
 
 class PJXAccordion(BaseComponent):
     label: str = ""
-    header: Slot | None = None
+    # `Slot | None` (Optional[Annotated[...]]) drops the PjxSlot metadata at the
+    # field level, so the marker must sit on the outer Annotated. See #118.
+    header: Annotated[str | BaseComponent | None, PjxSlot()] = None
     open: bool = True
     disabled: bool = False
     group: str | None = None
     content: str | BaseComponent = ""
-    actions: Slot | None = None
+    actions: Annotated[str | BaseComponent | None, PjxSlot()] = None
     class_name: AttrValue = ""
