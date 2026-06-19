@@ -11,6 +11,8 @@ from dataclasses import dataclass, field
 from html.parser import HTMLParser
 from typing import TYPE_CHECKING, Any, ClassVar
 
+from markupsafe import escape
+
 from .registry import Registry
 from .utils import (
     extract_tag_name_from_raw,
@@ -109,7 +111,11 @@ class Parser(HTMLParser):
         self._append_child(f"</{tag}>")
 
     def handle_data(self, data: str) -> None:
-        self._append_child(data)
+        # Re-escape decoded text so autoescaped scalars stay escaped through the
+        # tag-expansion round-trip (e.g. &lt;script&gt; → decoded <script> →
+        # &lt;script&gt;). Slot tags/attributes go through get_starttag_text()
+        # (raw), not here, so HTML structure is preserved untouched (#120).
+        self._append_child(str(escape(data)))
 
     def handle_comment(self, data: str) -> None:
         self._append_child(f"<!--{data}-->")
