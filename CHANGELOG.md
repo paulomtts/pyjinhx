@@ -25,6 +25,10 @@
   component classes defined in `.pjx` files alongside the existing `.pjx`
   template-only and `.html` autodiscovery paths.
 
+- **Co-located assets for single-file components.** CSS/JS sitting next to a
+  `.pjx` and sharing its file stem (e.g. `card.css`/`card.js` beside `card.pjx`)
+  are now inlined on render, matching the behavior classless templates already had.
+
 ### Removed
 
 - **`{#def … #}` typed prop-header path.** The leading comment syntax for

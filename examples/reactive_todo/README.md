@@ -2,6 +2,10 @@
 
 A minimal FastAPI + htmx app showing pyjinhx dependency-aware reactivity end to end.
 
+Each component is a **single-file component** — its class and template live together in
+one `.pjx` (`counter.pjx`, `item_row.pjx`, …, with the page shell in `page.pjx`),
+imported directly with no build step. See `docs/single-file-components.md`.
+
 ```bash
 uv run uvicorn examples.reactive_todo.app:app --reload
 # open http://127.0.0.1:8000
