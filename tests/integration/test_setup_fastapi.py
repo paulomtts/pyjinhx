@@ -121,6 +121,7 @@ def test_setup_components_root_sets_default_environment(
     setup(app, components_root=tmp_path)
 
     env = Renderer.peek_default_environment()
+    assert env is not None
     assert isinstance(env.loader, FileSystemLoader)
     assert env.loader.searchpath[0] == str(tmp_path)
 
@@ -129,6 +130,7 @@ def test_setup_components_root_without_app(tmp_path, restore_default_environment
     setup(components_root=tmp_path)
 
     env = Renderer.peek_default_environment()
+    assert env is not None
     assert isinstance(env.loader, FileSystemLoader)
     assert env.loader.searchpath[0] == str(tmp_path)
 

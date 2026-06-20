@@ -102,7 +102,8 @@ def test_resolve_load_context_param_detects_subclass_annotation():
     def without_context(cls):
         pass
 
-    assert resolve_load_context_param(with_context).name == "app"
+    resolved = resolve_load_context_param(with_context)
+    assert resolved is not None and resolved.name == "app"
     assert resolve_load_context_param(without_context) is None
 
 

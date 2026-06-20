@@ -16,6 +16,7 @@ class {class_name}(BaseComponent):
 def _import_component_file(filepath, module_name):
     """Import a component file by path, like ComponentAutodiscover does."""
     spec = importlib.util.spec_from_file_location(module_name, str(filepath))
+    assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)
     sys.modules[module_name] = module
     spec.loader.exec_module(module)

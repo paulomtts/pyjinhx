@@ -112,6 +112,7 @@ def _make_swap_app(tmp_path: Path) -> object:
     module_path.write_text(_COMPONENT_MODULE)
 
     spec = importlib.util.spec_from_file_location("swap_badge_component", module_path)
+    assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)
     sys.modules["swap_badge_component"] = module
     spec.loader.exec_module(module)
