@@ -4,5 +4,9 @@
     "editor.codeActionsOnSave": {
         "source.organizeImports.ruff": "explicit",
         "source.fixAll.ruff": "explicit"
+    },
+    "files.exclude": {
+        "**/*.pyi": true,
+        "**/_pjx_virtual_*.py": true
     }
 }

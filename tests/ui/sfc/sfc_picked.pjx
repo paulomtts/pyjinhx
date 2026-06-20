@@ -1,15 +1,17 @@
 {# python
+from dataclasses import dataclass
+
 from pyjinhx import BaseComponent
 
 
-class SfcHelper(BaseComponent):
-    note: str = ""
+@dataclass
+class SfcLabel:
+    """A plain helper class (not a component) — allowed alongside the component."""
+
+    text: str = "picked"
 
 
 class SfcPicked(BaseComponent):
-    label: str = "picked"
-
-
-__pjx_component__ = SfcPicked
+    label: str = SfcLabel().text
 #}
 <div class="sfc-picked">{{ label }}</div>

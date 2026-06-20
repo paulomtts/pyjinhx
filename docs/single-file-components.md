@@ -30,17 +30,16 @@ Counter.load().render()
 
 - The block opens with `{# python` alone on the first line and closes at the
   first later line that is exactly `#}`.
-- Exactly one component class per file. For a file with helper classes, set
-  `__pjx_component__ = TheComponent` to name the one that is the component.
+- **Exactly one component class per file.** The block may define plain helper
+  classes/functions, but exactly one `BaseComponent`/`ReactiveComponent`
+  subclass — that one binds the template. Two or more raises `ImportError`
+  (move the extras to their own `.pjx`).
 - A `.pjx` with no `{# python #}` block is a plain template/partial, not a
   component — importing it raises `ImportError`.
 - A `.py` and a `.pjx` with the same stem on the same path is a hard error;
   remove one.
 - A `{# python #}` block that defines **no** `BaseComponent`/`ReactiveComponent`
   subclass raises `ImportError` on import.
-- A block defining **more than one** component class without an explicit
-  `__pjx_component__ = <Class>` raises `ImportError`; set the marker to
-  disambiguate.
 
 ## Simple (non-reactive) example
 

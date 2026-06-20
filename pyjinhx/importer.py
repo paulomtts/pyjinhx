@@ -46,10 +46,6 @@ class PjxLoader(importlib.abc.Loader):
     def _select_component(self, module):
         from pyjinhx.base import BaseComponent
 
-        explicit = module.__dict__.get("__pjx_component__")
-        if explicit is not None:
-            return explicit
-
         defined = [
             value
             for value in module.__dict__.values()
@@ -65,8 +61,9 @@ class PjxLoader(importlib.abc.Loader):
         if len(defined) > 1:
             names = ", ".join(sorted(cls.__name__ for cls in defined))
             raise ImportError(
-                f"{self._source_path}: more than one component class ({names}); "
-                f"set `__pjx_component__ = <Class>` to pick one"
+                f"{self._source_path}: a .pjx must define exactly one component "
+                f"class, but found {len(defined)} ({names}). Move the extras to "
+                f"their own .pjx files."
             )
         return defined[0]
 

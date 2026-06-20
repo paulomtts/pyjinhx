@@ -30,10 +30,12 @@ def test_plain_sfc_renders_and_is_file_backed():
     assert SfcCard._pjx_source_path.endswith("sfc_card.pjx")
 
 
-def test_picked_component_is_the_marked_one():
+def test_single_component_with_helper_class():
+    # sfc_picked.pjx defines a plain helper class (SfcLabel) alongside the one
+    # component — the helper is fine; only one BaseComponent subclass is the
+    # component, and it binds the template.
     assert SfcPicked.__name__ == "SfcPicked"
     assert "picked" in SfcPicked(label="picked").render()
-    # the bound template came from sfc_picked.pjx
     assert SfcPicked._pjx_source_path.endswith("sfc_picked.pjx")
 
 

@@ -66,7 +66,7 @@ def test_zero_component_classes_errors(pjx_pkg):
         __import__("comps.empty")
 
 
-def test_multiple_classes_require_explicit_marker(pjx_pkg):
+def test_multiple_component_classes_error(pjx_pkg):
     write(pjx_pkg, "two", """
         {# python
         from pyjinhx import BaseComponent
@@ -75,23 +75,28 @@ def test_multiple_classes_require_explicit_marker(pjx_pkg):
         #}
         <p></p>
     """)
-    with pytest.raises(ImportError, match="more than one component"):
+    with pytest.raises(ImportError, match="exactly one component class"):
         __import__("comps.two")
 
 
-def test_explicit_marker_selects_component(pjx_pkg):
-    write(pjx_pkg, "marked", """
+def test_helper_non_component_class_is_allowed(pjx_pkg):
+    write(pjx_pkg, "helped", """
         {# python
+        from dataclasses import dataclass
         from pyjinhx import BaseComponent
-        class A(BaseComponent): ...
-        class B(BaseComponent):
-            title: str
-        __pjx_component__ = B
+
+        @dataclass
+        class Helper:
+            value: str = "hi"
+
+        class Helped(BaseComponent):
+            title: str = Helper().value
         #}
         <p>{{ title }}</p>
     """)
-    from comps.marked import B
-    assert B._pjx_inline_template.strip() == "<p>{{ title }}</p>"
+    from comps.helped import Helped
+    assert Helped._pjx_inline_template.strip() == "<p>{{ title }}</p>"
+    assert "hi" in Helped().render()
 
 
 def test_py_and_pjx_shadow_errors(pjx_pkg):
