@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import logging
 import os
+import re
 from typing import TYPE_CHECKING, Any, ClassVar
 
 from jinja2 import Environment, FileSystemLoader, Template
@@ -25,6 +27,14 @@ from .utils import (
 
 if TYPE_CHECKING:
     from .base import BaseComponent
+
+logger = logging.getLogger("pyjinhx")
+
+# Dedup set: component names for which the stale-def-header warning has fired.
+_warned_stale_def_header: set[str] = set()
+
+# Cheap regex — mirrors _HEADER_RE in props_header.py, without the full parse.
+_STALE_DEF_HEADER_RE = re.compile(r"\A\s*\{#\s*def\s", re.DOTALL)
 
 
 def get_loader_root(environment: Environment) -> str:
@@ -131,6 +141,48 @@ def reactive_root_attrs(component: BaseComponent) -> dict[str, str]:
     if reacts:
         attrs["data-pjx-reacts"] = " ".join(sorted(reacts))
     return attrs
+
+
+def _warn_if_stale_def_header(component: "BaseComponent", template: Template) -> None:
+    """Emit a one-time warning when a hand-written class has a {#def#} header in its template.
+
+    The header is silently ignored by the engine (the class's declared fields take over),
+    so a warning helps developers notice the dead code.  Skips classless components
+    (_pjx_classless = True) and fires at most once per component name.
+    """
+    if getattr(type(component), "_pjx_classless", False):
+        return
+
+    component_name = type(component).__name__
+    if component_name in _warned_stale_def_header:
+        return
+
+    # Read the template source cheaply: file-backed templates expose .filename;
+    # in-memory (from_string) templates expose .source (Jinja2 >=3.1 sets it
+    # only when Environment.keep_trailing_newline is used, so prefer .filename).
+    source: str | None = None
+    filename = getattr(template, "filename", None)
+    if filename is not None and os.path.isfile(filename):
+        try:
+            with open(filename, encoding="utf-8") as f:
+                source = f.read()
+        except OSError:
+            return
+    else:
+        source = getattr(template, "source", None)
+
+    if source is None:
+        return
+
+    if not _STALE_DEF_HEADER_RE.match(source):
+        return
+
+    _warned_stale_def_header.add(component_name)
+    logger.warning(
+        "<%s>: a {#def#} header is present but a Python class is registered — "
+        "the header is ignored. Remove the header (or the class).",
+        component_name,
+    )
 
 
 class Renderer:
@@ -256,6 +308,8 @@ class Renderer:
         template = load_template_for_component(
             self, component, template_source=template_source, template_path=template_path
         )
+
+        _warn_if_stale_def_header(component, template)
 
         render_context = build_render_context(context)
         rendered_markup = template.render(render_context)
