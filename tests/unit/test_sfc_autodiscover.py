@@ -36,3 +36,36 @@ def test_tag_resolves_to_pjx_class(pjx_env):
     assert Registry.has_class("Badge"), "Badge class should be registered via .pjx autodiscovery"
     badge_cls = Registry.get_class("Badge")
     assert badge_cls.model_fields["count"].default == 0, "Badge.count default should be 0 (class registered)"
+
+
+def test_plain_pjx_falls_through_to_init_py_class(pjx_env):
+    """A plain .pjx (no {# python #} block) must NOT block autodiscovery of an
+    __init__.py that defines+registers the component class (regression for the
+    unconditional `return` after the .pjx probe)."""
+    # Put PlainWidget in a dedicated sub-directory so it has its own __init__.py
+    # that is NOT the package root (which pjx_env already owns).
+    comp_dir = pjx_env / "plain_widget_pkg"
+    comp_dir.mkdir()
+
+    # Plain .pjx — template only, no {# python #} block
+    (comp_dir / "plain_widget.pjx").write_text(
+        '<div class="plain-widget">{{ label }}</div>'
+    )
+    # __init__.py in the same directory registers PlainWidget
+    (comp_dir / "__init__.py").write_text(textwrap.dedent("""
+        from pyjinhx import BaseComponent
+
+        class PlainWidget(BaseComponent):
+            label: str = "default-label"
+    """))
+
+    # Render — autodiscovery must fall through the plain .pjx and pick up __init__.py
+    html = Renderer.get_default_renderer().render('<PlainWidget/>')
+    assert "plain-widget" in html
+    assert "default-label" in html
+    assert Registry.has_class("PlainWidget"), (
+        "PlainWidget must be registered from __init__.py; "
+        "a plain .pjx (no python block) must not block the __init__.py fallback"
+    )
+    widget_cls = Registry.get_class("PlainWidget")
+    assert widget_cls.model_fields["label"].default == "default-label"

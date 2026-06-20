@@ -184,8 +184,7 @@ class ComponentAutodiscover:
             return
 
         sibling_pjx = os.path.join(component_dir, f"{snake_name}.pjx")
-        if os.path.exists(sibling_pjx):
-            cls.import_pjx_for_tag(tag_name, sibling_pjx)
+        if os.path.exists(sibling_pjx) and cls.import_pjx_for_tag(sibling_pjx):
             return
 
         init_py = os.path.join(component_dir, "__init__.py")
@@ -201,17 +200,21 @@ class ComponentAutodiscover:
             pass
 
     @classmethod
-    def import_pjx_for_tag(cls, tag_name: str, pjx_path: str) -> None:
+    def import_pjx_for_tag(cls, pjx_path: str) -> bool:
         """Import a sibling `.pjx` (if it carries a {# python #} block) so its
-        component class registers. Plain templates (no block) are left alone."""
-        if pjx_path in cls._imported_files:
-            return
+        component class registers. Plain templates (no block) are left alone.
+
+        Returns True when the SFC module was (or had already been) imported,
+        False when the file has no ``{# python #}`` block and was skipped.
+        """
         from pyjinhx.sfc import split_pjx
 
         with open(pjx_path, encoding="utf-8") as handle:
             python_src, _ = split_pjx(handle.read())
         if python_src is None:
-            return  # plain template → bare fallback handles it
+            return False  # plain template → fall through to __init__.py / .py fallbacks
+        if pjx_path in cls._imported_files:
+            return True
         cls._imported_files.add(pjx_path)
         module_name = f"_pyjinhx_sfc_{os.path.splitext(os.path.basename(pjx_path))[0]}"
         try:
@@ -225,6 +228,7 @@ class ComponentAutodiscover:
             spec.loader.exec_module(module)
         except Exception:
             logger.warning("SFC autodiscovery failed for %s", pjx_path, exc_info=True)
+        return True
 
 
 if TYPE_CHECKING:
