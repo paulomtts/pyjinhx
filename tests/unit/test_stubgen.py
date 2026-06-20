@@ -32,7 +32,7 @@ import subprocess
 import sys as _sys
 
 
-def test_cli_writes_stub_into_cache(tmp_path):
+def test_cli_writes_stub_adjacent_and_gitignores(tmp_path):
     comp = tmp_path / "app" / "components"
     comp.mkdir(parents=True)
     (comp / "counter.pjx").write_text(
@@ -44,13 +44,32 @@ def test_cli_writes_stub_into_cache(tmp_path):
         capture_output=True, text=True,
     )
     assert result.returncode == 0
-    stub = tmp_path / ".pjx" / "stubs" / "app" / "components" / "counter.pyi"
+    # stub sits NEXT TO the .pjx so intra-package imports resolve
+    stub = comp / "counter.pyi"
     assert stub.exists()
     assert "class Counter(BaseComponent):" in stub.read_text()
-    assert (tmp_path / ".pjx" / ".gitignore").read_text() == "*\n"
+    # gitignored via a managed block listing the generated stub (repo-relative)
+    gitignore = (tmp_path / ".gitignore").read_text()
+    assert "pyjinhx generated stubs" in gitignore
+    assert "app/components/counter.pyi" in gitignore
     # --check is clean immediately after a write
     check = subprocess.run(
         [_sys.executable, "-m", "pyjinhx.stubgen", str(tmp_path), "--check"],
         capture_output=True, text=True,
     )
     assert check.returncode == 0
+
+
+def test_check_flag_detects_stale(tmp_path):
+    comp = tmp_path / "pkg"
+    comp.mkdir()
+    (comp / "w.pjx").write_text(
+        "{# python\nfrom pyjinhx import BaseComponent\n"
+        "class W(BaseComponent):\n    n: int\n#}\n<p>{{ n }}</p>\n"
+    )
+    # never generated → --check must fail (non-zero)
+    check = subprocess.run(
+        [_sys.executable, "-m", "pyjinhx.stubgen", str(tmp_path), "--check"],
+        capture_output=True, text=True,
+    )
+    assert check.returncode == 1

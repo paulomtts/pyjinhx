@@ -22,3 +22,19 @@ docs/superpowers/
 
 # .claude
 .claude/worktrees/
+_pjx_virtual_*.py
+
+# >>> pyjinhx generated stubs (do not edit) >>>
+examples/reactive_todo/clear_button.pyi
+examples/reactive_todo/counter.pyi
+examples/reactive_todo/item_list.pyi
+examples/reactive_todo/item_row.pyi
+examples/reactive_todo/page.pyi
+examples/reactive_todo/total.pyi
+tests/ui/sfc/sfc_card.pyi
+tests/ui/sfc/sfc_counter.pyi
+tests/ui/sfc/sfc_inner.pyi
+tests/ui/sfc/sfc_outer.pyi
+tests/ui/sfc/sfc_picked.pyi
+tests/ui/sfc/sfc_styled.pyi
+# <<< pyjinhx generated stubs <<<

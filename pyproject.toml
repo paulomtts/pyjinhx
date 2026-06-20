@@ -37,10 +37,11 @@ markers = [
 
 [tool.pyright]
 # `.pjx` single-file components are importable at runtime via pyjinhx's import
-# hook, but Pylance/pyright can't see that. `python -m pyjinhx.stubgen` emits
-# signature-only stubs into the gitignored `.pjx/stubs/` cache; this puts them
-# on the type-checker's search path so component imports resolve and autocomplete.
-extraPaths = [".pjx/stubs"]
+# hook, but a type checker can't see that. `python -m pyjinhx.stubgen` emits
+# signature-only `.pyi` stubs NEXT TO each `.pjx` (gitignored) so both consumer
+# `.py` files and intra-package component imports resolve. The stub has no `.py`
+# source by design, so silence the otherwise-expected missing-source warning.
+reportMissingModuleSource = "none"
 
 [project.optional-dependencies]
 redis = ["redis>=5.0.0", "fakeredis>=2.26.0"]

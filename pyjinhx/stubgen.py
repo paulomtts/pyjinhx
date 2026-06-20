@@ -1,8 +1,12 @@
 """Generate signature-only `.pyi` stubs for `.pjx` single-file components.
 
-Stubs let a type checker resolve ``from app.components.counter import Counter``
-in ordinary `.py` files. They are generated into a gitignored ``.pjx/stubs/``
-cache mirroring the import path and are never hand-edited.
+Stubs let a type checker resolve component imports — both from ordinary `.py`
+files and, crucially, between `.pjx` components in the same package. They are
+written **next to** each `.pjx` (e.g. ``counter.pyi`` beside ``counter.pjx``)
+because a type checker anchors a regular package to its source directory and
+will not fall back to a separate stub tree for a `.pjx`-only submodule. The
+generated files are gitignored (a managed block in the repo-root ``.gitignore``)
+and never hand-edited.
 """
 import argparse
 import ast
@@ -10,6 +14,9 @@ import os
 import sys
 
 from pyjinhx.sfc import split_pjx
+
+_GITIGNORE_BEGIN = "# >>> pyjinhx generated stubs (do not edit) >>>"
+_GITIGNORE_END = "# <<< pyjinhx generated stubs <<<"
 
 
 def generate_stub(python_src: str) -> str:
@@ -40,28 +47,51 @@ def generate_stub(python_src: str) -> str:
 
 def _iter_pjx(root: str) -> "list[str]":
     found: list[str] = []
-    for dirpath, dirnames, filenames in os.walk(root):
-        if ".pjx" in dirnames:
-            dirnames.remove(".pjx")  # never descend into the stub cache
+    for dirpath, _dirnames, filenames in os.walk(root):
         for name in filenames:
             if name.endswith(".pjx"):
                 found.append(os.path.join(dirpath, name))
     return sorted(found)
 
 
-def _stub_path(root: str, pjx_path: str) -> str:
-    rel = os.path.relpath(pjx_path, root)
-    rel_pyi = os.path.splitext(rel)[0] + ".pyi"
-    return os.path.join(root, ".pjx", "stubs", rel_pyi)
+def _stub_path(pjx_path: str) -> str:
+    """The stub sits next to the `.pjx` so the type checker resolves it as a
+    submodule of the same package (e.g. ``counter.pjx`` → ``counter.pyi``)."""
+    return os.path.splitext(pjx_path)[0] + ".pyi"
 
 
-def _ensure_gitignore(root: str) -> None:
-    cache = os.path.join(root, ".pjx")
-    os.makedirs(cache, exist_ok=True)
-    gitignore = os.path.join(cache, ".gitignore")
-    if not os.path.exists(gitignore):
-        with open(gitignore, "w", encoding="utf-8") as handle:
-            handle.write("*\n")
+def _update_gitignore(root: str, stub_paths: "list[str]") -> None:
+    """Rewrite the managed pyjinhx-stubs block in ``<root>/.gitignore`` to list
+    every generated stub (repo-relative, forward slashes). Leaves the rest of
+    the file untouched."""
+    gitignore = os.path.join(root, ".gitignore")
+    lines: list[str] = []
+    if os.path.exists(gitignore):
+        with open(gitignore, encoding="utf-8") as handle:
+            lines = handle.read().splitlines()
+
+    # Drop any previous managed block.
+    cleaned: list[str] = []
+    skipping = False
+    for line in lines:
+        if line.strip() == _GITIGNORE_BEGIN:
+            skipping = True
+            continue
+        if line.strip() == _GITIGNORE_END:
+            skipping = False
+            continue
+        if not skipping:
+            cleaned.append(line)
+    while cleaned and cleaned[-1] == "":
+        cleaned.pop()
+
+    block = [_GITIGNORE_BEGIN]
+    block += [os.path.relpath(p, root).replace(os.sep, "/") for p in stub_paths]
+    block.append(_GITIGNORE_END)
+
+    out = (cleaned + [""] if cleaned else []) + block
+    with open(gitignore, "w", encoding="utf-8") as handle:
+        handle.write("\n".join(out) + "\n")
 
 
 def main(argv: "list[str] | None" = None) -> int:
@@ -72,13 +102,14 @@ def main(argv: "list[str] | None" = None) -> int:
     root = os.path.abspath(args.root)
 
     stale: list[str] = []
+    written: list[str] = []
     for pjx_path in _iter_pjx(root):
         with open(pjx_path, encoding="utf-8") as handle:
             python_src, _ = split_pjx(handle.read())
         if python_src is None:
             continue
         want = generate_stub(python_src)
-        out_path = _stub_path(root, pjx_path)
+        out_path = _stub_path(pjx_path)
         have = ""
         if os.path.exists(out_path):
             with open(out_path, encoding="utf-8") as handle:
@@ -87,14 +118,15 @@ def main(argv: "list[str] | None" = None) -> int:
             if have != want:
                 stale.append(os.path.relpath(pjx_path, root))
             continue
-        _ensure_gitignore(root)
-        os.makedirs(os.path.dirname(out_path), exist_ok=True)
         with open(out_path, "w", encoding="utf-8") as handle:
             handle.write(want)
+        written.append(out_path)
 
     if args.check and stale:
         print("stale stubs:\n  " + "\n  ".join(stale), file=sys.stderr)
         return 1
+    if not args.check:
+        _update_gitignore(root, written)
     return 0
 
 
