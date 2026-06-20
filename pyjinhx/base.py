@@ -480,8 +480,9 @@ def component(name: str) -> type[BaseComponent]:
 
     if not RE_PASCAL_CASE_TAG_NAME.match(name):
         raise ValueError(f"component name {name!r} must be PascalCase")
-    if Registry.has_class(name):
-        return Registry.get_class(name)
+    existing = Registry.get_class(name)
+    if existing is not None:
+        return existing
 
     # If the template is resolvable now and carries a {#def#} header, build a
     # validated-field model; otherwise fall back to a permissive placeholder

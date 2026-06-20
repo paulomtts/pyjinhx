@@ -62,11 +62,11 @@ def validate_depends_on(instance: object) -> None:
     """Ensure ``depends_on()`` is a subset of the static ``react`` superset."""
     if not _dev_config.enabled:
         return
+    from .reactive import ReactiveComponent
+
+    if not isinstance(instance, ReactiveComponent):
+        return
     component_class = type(instance)
-    if not getattr(component_class, "_pjx_reactive", False):
-        return
-    if not hasattr(instance, "depends_on"):
-        return
     superset = set(getattr(component_class, "_pjx_reacts_to", frozenset()))
     runtime = instance.depends_on()
     extra = runtime - superset

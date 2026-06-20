@@ -144,7 +144,7 @@ def make_default_asset_url_resolver(root: str) -> AssetUrlResolver:
     return resolve
 
 
-_hash_filename_cache: dict[tuple[str, float], str] = {}
+_hash_filename_cache: dict[tuple[str, float, int], str] = {}
 
 
 def hashed_filename(path: str, *, hash_len: int = 8) -> str:

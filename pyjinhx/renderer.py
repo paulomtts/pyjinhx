@@ -124,7 +124,9 @@ def build_render_context(context: dict[str, Any]) -> dict[str, Any]:
 def reactive_root_attrs(component: BaseComponent) -> dict[str, str]:
     """The ``data-pjx-*`` attributes to stamp onto a reactive component's root
     tag, or an empty dict for a non-reactive component."""
-    if not getattr(type(component), "_pjx_reactive", False):
+    from pyjinhx.reactive import ReactiveComponent
+
+    if not isinstance(component, ReactiveComponent):
         return {}
 
     from pyjinhx.reactive import pjx_load_value
@@ -200,7 +202,9 @@ class Renderer:
     _default_environment: ClassVar[Environment | None] = None
     _default_js_mode: ClassVar[AssetMode] = AssetMode.INLINE
     _default_css_mode: ClassVar[AssetMode] = AssetMode.INLINE
-    _default_renderers: ClassVar[dict[tuple[int, bool, AssetMode, AssetMode], object]] = {}
+    _default_renderers: ClassVar[
+        dict[tuple[int, bool, AssetMode, AssetMode], "Renderer"]
+    ] = {}
 
     @classmethod
     def peek_default_environment(cls) -> Environment | None:
@@ -245,7 +249,7 @@ class Renderer:
         auto_id: bool = True,
         js_mode: AssetMode | None = None,
         css_mode: AssetMode | None = None,
-    ):
+    ) -> "Renderer":
         environment = cls.get_default_environment()
         effective_js_mode = js_mode if js_mode is not None else cls._default_js_mode
         effective_css_mode = css_mode if css_mode is not None else cls._default_css_mode
@@ -278,7 +282,7 @@ class Renderer:
         self._auto_id = auto_id
         self._js_mode = js_mode if js_mode is not None else Renderer._default_js_mode
         self._css_mode = css_mode if css_mode is not None else Renderer._default_css_mode
-        self._template_finder_cache: dict[str, object] = {}
+        self._template_finder_cache: dict[str, Finder] = {}
 
     @property
     def environment(self) -> Environment:

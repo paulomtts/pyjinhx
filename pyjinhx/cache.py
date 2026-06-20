@@ -165,7 +165,9 @@ class LoadCache:
 
     @classmethod
     def _indexed_keys(cls, instance: BaseComponent) -> set[str]:
-        if hasattr(instance, "depends_on"):
+        from .reactive import ReactiveComponent
+
+        if isinstance(instance, ReactiveComponent):
             return instance.depends_on()
         return set(getattr(instance.__class__, "_pjx_reacts_to", frozenset()))
 
@@ -211,7 +213,10 @@ class LoadCache:
 
     @staticmethod
     def _with_key(instance: BaseComponent, key: str | None) -> BaseComponent:
-        instance._pjx_key = key
+        from .reactive import ReactiveComponent
+
+        if isinstance(instance, ReactiveComponent):
+            instance._pjx_key = key
         return instance
 
     @classmethod

@@ -10,6 +10,7 @@ logger = logging.getLogger("pyjinhx")
 
 if TYPE_CHECKING:
     from .base import BaseComponent
+    from .client import ClientBackend
 
 
 _registry_context: ContextVar[dict[str, "BaseComponent"] | None] = ContextVar(
@@ -156,7 +157,7 @@ class Registry:
         cls,
         *,
         load_context: object | None = None,
-        client_backend: object | None = None,
+        client_backend: "ClientBackend | None" = None,
     ) -> Generator[None, None, None]:
         """
         Context manager for request-scoped component instances.
