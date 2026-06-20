@@ -26,7 +26,6 @@ def test_class_registered_at_definition_time():
     """Test that classes are registered automatically when defined, before instantiation."""
 
     class TestButton(BaseComponent):
-        id: str
         text: str
 
     classes = Registry.get_classes()
@@ -38,15 +37,12 @@ def test_multiple_classes_registered():
     """Test that multiple component classes can be registered."""
 
     class RegistryButton(BaseComponent):
-        id: str
         text: str
 
     class RegistryCard(BaseComponent):
-        id: str
         title: str
 
     class RegistryModal(BaseComponent):
-        id: str
         content: str
 
     classes = Registry.get_classes()
@@ -63,7 +59,6 @@ def test_class_registry_separate_from_instance_registry():
     Registry.clear_instances()
 
     class TestComponent(BaseComponent):
-        id: str
         value: str
 
     classes_before = Registry.get_classes()
@@ -91,7 +86,6 @@ def test_class_registry_persists_across_instantiations():
     """Test that class registry persists even when instances are cleared."""
 
     class PersistentComponent(BaseComponent):
-        id: str
         data: str
 
     classes = Registry.get_classes()
@@ -111,11 +105,9 @@ def test_nested_class_registration():
     """Test that nested component classes are also registered."""
 
     class OuterComponent(BaseComponent):
-        id: str
         label: str
 
     class InnerComponent(BaseComponent):
-        id: str
         content: OuterComponent
 
     classes = Registry.get_classes()
@@ -129,7 +121,6 @@ def test_inherited_classes_registered():
     """Test that classes inheriting from BaseComponent subclasses are also registered."""
 
     class BaseButton(BaseComponent):
-        id: str
         text: str
 
     class PrimaryButton(BaseButton):

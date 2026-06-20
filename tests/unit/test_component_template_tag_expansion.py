@@ -11,7 +11,6 @@ def test_component_template_can_expand_custom_tags():
     """Test that PascalCase tags inside component templates are expanded."""
 
     class Child(BaseComponent):
-        id: str
         text: str
 
     with tempfile.TemporaryDirectory() as temp_dir:

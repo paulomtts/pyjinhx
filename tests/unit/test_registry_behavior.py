@@ -88,11 +88,9 @@ def test_different_component_types_same_id_no_collision():
     Registry.clear_instances()
 
     class ShelfCard(BaseComponent):
-        id: str
         label: str = ""
 
     class ShelfButton(BaseComponent):
-        id: str
         label: str = ""
 
     ShelfCard(id="shared", label="Card Label")

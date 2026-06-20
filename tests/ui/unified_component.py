@@ -5,7 +5,6 @@ from typing import Optional, Union
 
 
 class UnifiedComponent(BaseComponent):
-    id: str
     text: Optional[str] = None
     title: Optional[str] = None
     nested: Optional[UnifiedComponent] = None

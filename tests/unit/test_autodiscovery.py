@@ -146,7 +146,6 @@ def test_autodiscovery_skipped_when_already_registered():
     from pyjinhx import BaseComponent
 
     class AlreadyRegistered(BaseComponent):
-        id: str
         label: str = ""
 
     with tempfile.TemporaryDirectory() as temp_dir:

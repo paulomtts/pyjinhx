@@ -9,7 +9,6 @@ from pyjinhx.tags import _BUILTIN_TAG_NAMES, _missing_template_error
 
 def test_missing_template_file():
     class MissingTemplateComponent(BaseComponent):
-        id: str
         text: str
 
     component = MissingTemplateComponent(id="missing-1", text="Test")
@@ -20,7 +19,6 @@ def test_missing_template_file():
 
 def test_non_filesystem_loader_error():
     class DictLoaderComponent(BaseComponent):
-        id: str
         text: str
 
     dict_loader = DictLoader({"template.html": "<div>{{ text }}</div>"})

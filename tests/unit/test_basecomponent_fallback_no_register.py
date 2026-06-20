@@ -52,7 +52,6 @@ def test_registered_class_still_works():
     Registry.clear_instances()
 
     class Widget(BaseComponent):
-        id: str
         label: str = ""
 
     with tempfile.TemporaryDirectory() as temp_dir:
