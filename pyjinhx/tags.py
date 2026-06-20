@@ -330,15 +330,6 @@ def render_tag_node(
     if not Registry.has_class(node.name):
         ComponentAutodiscover.try_for_tag(node.name, template_path)
 
-    if not Registry.has_class(node.name) and template_path is not None:
-        from .props_header import build_component_model
-
-        with open(template_path, encoding="utf-8") as template_file:
-            build_component_model(node.name, template_file.read())
-        # build_component_model auto-registers the generated class via
-        # BaseComponent.__init_subclass__; if there's no header it returns None
-        # and we fall through to the bare-BaseComponent path below.
-
     component_class = Registry.get_class(node.name)
     if component_class is not None:
         init_kwargs: dict[str, Any] = dict(attrs_without_id)

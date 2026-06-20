@@ -190,7 +190,7 @@ class BaseComponent(BaseModel):
     # set, the template is resolved by scanning the default env at render time.
     _pjx_template: ClassVar[str | None] = None
 
-    # True on classes built dynamically (props_header or component() factory).
+    # True on classes built dynamically (component() factory / bare classless).
     # Distinct from _pjx_template because file-backed classes may also set that.
     _pjx_classless: ClassVar[bool] = False
 
@@ -483,20 +483,6 @@ def component(name: str) -> type[BaseComponent]:
     if Registry.has_class(name):
         return Registry.get_class(name)
 
-    # If the template is resolvable now and carries a {#def#} header, build a
-    # validated-field model; otherwise fall back to a permissive placeholder
-    # (header is applied lazily on the tag-render path instead).
-    from .props_header import build_component_model
-    from .renderer import Renderer
-
-    try:
-        template_path = Renderer.get_default_renderer()._find_template_for_tag(name)
-    except (FileNotFoundError, ValueError):
-        template_path = None
-    if template_path is not None:
-        with open(template_path, encoding="utf-8") as template_file:
-            model = build_component_model(name, template_file.read())
-        if model is not None:
-            return model  # auto-registered via __init_subclass__
-
+    # No hand-written class and no registered component: synthesize a permissive
+    # placeholder whose template is resolved by tag name at render time.
     return type(name, (BaseComponent,), {"_pjx_template": name, "_pjx_classless": True})
