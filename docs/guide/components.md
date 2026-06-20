@@ -178,10 +178,9 @@ field, choose one:
 > Raw HTML is only as safe as its source. Reserve slots / `|safe` / nested
 > components for markup you control; never pass unsanitized user input raw.
 
-Prop-header props (`{#def ... #}`, below) follow the same rule: a header-declared
-prop is **escaped** unless you mark it safe in the template (`{{ prop|safe }}`) or
-the prop is the component's children field. Header props can't be typed `Slot`
-directly, so use `|safe` for intentional raw HTML there.
+For intentional raw HTML in a plain-template component, mark the value safe in
+the template (`{{ prop|safe }}`) or declare the field `Slot` in a Python-backed
+component class.
 
 ## HTML-only components
 
@@ -204,36 +203,6 @@ component, or use `<Card/>` in a template — they all resolve to the same class
 It's idempotent and never shadows a component you've actually declared. See
 [`component()`](../api/base-component.md#component).
 
-## Prop headers for classless components
-
-A template-only component can declare its props in a `{#def ... #}` header — the
-first thing in the file. pyjinhx parses it into a validated pydantic model, so a
-classless component gets defaults, required-checks, and type coercion without a
-Python class:
-
-    {#def title: str, count: int = 0, variant: str = "primary" #}
-    <article class="pjx-card pjx-card--{{ variant }}">
-      <h3>{{ title }}</h3>
-      <span class="badge">{{ count }}</span>
-      <div>{{ content }}</div>
-    </article>
-
-- The signature is Python-style: `name`, `name: type`, `name = default`, or
-  `name: type = default`. A prop with no default is **required**.
-- Supported types: `str`, `int`, `float`, `bool`, `list`, `dict`, and `T | None`;
-  anything else (or no annotation) is treated as `Any` (no coercion).
-- Declared props are validated (`<Card/>` with a missing required prop, or a
-  value that can't coerce, raises a clear error). **Undeclared** attributes still
-  pass through to the root element (`hx-*`, `data-*`, `@click`, `class`).
-- The header is a normal Jinja comment, so it never appears in the output.
-- Header-declared props are **HTML-escaped** like any scalar value (see
-  [Escaping & slots](#escaping-and-slots)). For intentional raw HTML, mark it safe
-  in the template with `{{ prop|safe }}` — header props can't be typed `Slot`.
-- A hand-written Python class always takes precedence over a header.
-
-On the `component()` factory, the header is applied when the template is
-resolvable at call time (set the default environment first); the `<Tag/>` path
-always applies it.
 
 ## Extra Fields
 

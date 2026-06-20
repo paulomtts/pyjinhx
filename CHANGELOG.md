@@ -1,5 +1,46 @@
 # Changelog
 
+## 0.26.0 — single-file components (2026-06-19)
+
+### Added
+
+- **Single-file components via `{# python … #}` block.** A `.pjx` file can now
+  open with a `{# python … #}` comment block containing a full `BaseComponent`
+  subclass definition. The block ends at the first line whose only non-whitespace
+  content is `#}`. Everything below is the Jinja template — bound to the class
+  automatically, no extra registration required.
+
+- **Zero-build-step imports.** A `sys.meta_path` hook (`pyjinhx.pjx_importer`)
+  makes `.pjx` files importable like plain Python modules — one file, one import:
+  `from app.components.counter import Counter`. The hook mirrors `.py` resolution
+  so packages, sub-packages, and `__init__.py` files all work as expected.
+
+- **`python -m pyjinhx.stubgen` — consumer-side type stubs.** Generates
+  signature-only `.pyi` files into a gitignored `.pjx/stubs/` cache next to each
+  `.pjx` package. Add `"extraPaths": [".pjx/stubs"]` to `pyrightconfig.json` and
+  run `stubgen --check` in CI to catch type errors without committing generated
+  files.
+
+- **`<Tag/>` autodiscovery of `.pjx` classes.** The tag renderer now finds
+  component classes defined in `.pjx` files alongside the existing `.pjx`
+  template-only and `.html` autodiscovery paths.
+
+### Removed
+
+- **`{#def … #}` typed prop-header path.** The leading comment syntax for
+  declaring validated props inside a template (`{#def title: str, count: int = 0 #}`)
+  has been removed, along with `pyjinhx.props_header` (`parse_props_header`,
+  `build_component_model`). Use a `{# python … #}` block or a hand-written
+  Python class for typed, validated props.
+
+### Breaking
+
+- `pyjinhx.props_header` no longer exists; imports of `parse_props_header` or
+  `build_component_model` will raise `ModuleNotFoundError`. The **bare classless
+  fallback** is retained: a plain template with no block and no co-located class
+  still resolves to a permissive `BaseComponent` placeholder via `component()` /
+  `<Tag/>`.
+
 ## 0.25.0 — slot-escaping consistency (2026-06-19)
 
 ### Fixed
