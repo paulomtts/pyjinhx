@@ -194,6 +194,11 @@ class BaseComponent(BaseModel):
     # Distinct from _pjx_template because file-backed classes may also set that.
     _pjx_classless: ClassVar[bool] = False
 
+    # SFC (.pjx with a {# python #} block): the template body bound to this class
+    # by the import hook, and the source file path (for co-located CSS/JS).
+    _pjx_inline_template: ClassVar[str | None] = None
+    _pjx_source_path: ClassVar[str | None] = None
+
     id: str = Field(
         default_factory=_auto_id,
         description="The unique ID for this component. Auto-generated when omitted.",

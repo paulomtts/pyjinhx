@@ -58,6 +58,10 @@ def load_template_for_component(
         relative_path = os.path.relpath(template_path, loader_root)
         return environment.get_template(relative_path)
 
+    inline_template = getattr(type(component), "_pjx_inline_template", None)
+    if inline_template is not None:
+        return environment.from_string(inline_template)
+
     # Html-only components synthesized via `component(name)` have no real source
     # file, so resolve their template by scanning the default env by tag name.
     pjx_template = getattr(type(component), "_pjx_template", None)
@@ -290,6 +294,8 @@ class Renderer:
         # Compute the effective asset path so apply_component_render_assets can
         # find co-located CSS/JS next to the template file.
         asset_template_path = template_path
+        if asset_template_path is None:
+            asset_template_path = getattr(type(component), "_pjx_source_path", None)
         if asset_template_path is None and getattr(type(component), "_pjx_classless", False):
             pjx_template = getattr(type(component), "_pjx_template", None)
             if pjx_template is not None:
