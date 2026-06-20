@@ -1,4 +1,6 @@
 """PJXAccordion: native <details> collapsible composing PJXIcon chevron."""
+from typing import Any
+
 import pytest
 
 from pyjinhx import Renderer
@@ -52,7 +54,8 @@ def test_disabled_marks_summary():
 
 
 def test_inline_attrs_pass_through():
-    html = str(PJXAccordion(id="a", label="X", **{"data-y": "z"}).render())
+    inline_attrs: dict[str, Any] = {"data-y": "z"}
+    html = str(PJXAccordion(id="a", label="X", **inline_attrs).render())
     assert 'data-y="z"' in html
 
 

@@ -1,4 +1,6 @@
 """PJXButton: slotted, themeable, structural button."""
+from typing import Any
+
 import pytest
 
 from pyjinhx import Renderer
@@ -51,5 +53,6 @@ def test_loading_composes_region_loader():
 
 
 def test_inline_attrs_pass_through():
-    html = str(PJXButton(id="b", center="X", **{"hx-post": "/save"}).render())
+    inline_attrs: dict[str, Any] = {"hx-post": "/save"}
+    html = str(PJXButton(id="b", center="X", **inline_attrs).render())
     assert 'hx-post="/save"' in html

@@ -1,3 +1,5 @@
+from typing import Any
+
 import pytest
 
 from pyjinhx import BaseComponent, Renderer
@@ -6,11 +8,12 @@ from pyjinhx.builtins import PJXPopoverTrigger
 
 
 def test_collect_merges_extra_attrs_field_and_stray_attrs():
+    inline_attrs: dict[str, Any] = {"data-stray": "2", "title": "hi"}
     component = PJXPopoverTrigger(
         id="t",
         content="go",
         extra_attrs={"data-explicit": "1"},
-        **{"data-stray": "2", "title": "hi"},
+        **inline_attrs,
     )
     result = collect_extra_attrs(component)
     assert result == {"data-explicit": "1", "data-stray": "2", "title": "hi"}

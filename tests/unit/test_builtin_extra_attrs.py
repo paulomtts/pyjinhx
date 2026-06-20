@@ -1,5 +1,7 @@
 """Builtins pass stray tag attributes through to their root element."""
 
+from typing import Any
+
 import pytest
 
 from pyjinhx import Renderer
@@ -52,5 +54,6 @@ def test_extra_attrs_value_with_both_quote_types_raises():
 def test_stray_attr_with_both_quote_types_raises_at_render(tmp_path):
     Renderer.set_default_environment(str(tmp_path))
 
+    inline_attrs: dict[str, Any] = {"data-x": "a\"b'c"}
     with pytest.raises(ValueError, match="both"):
-        str(PJXPopoverTrigger(id="t", content="go", **{"data-x": "a\"b'c"}).render())
+        str(PJXPopoverTrigger(id="t", content="go", **inline_attrs).render())
