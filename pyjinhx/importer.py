@@ -60,7 +60,7 @@ class PjxLoader(importlib.abc.Loader):
         if not defined:
             raise ImportError(
                 f"{self._source_path}: no component class defined in the "
-                f"`{{# python #}}` block"
+                f"{{# python #}} block"
             )
         if len(defined) > 1:
             names = ", ".join(sorted(cls.__name__ for cls in defined))

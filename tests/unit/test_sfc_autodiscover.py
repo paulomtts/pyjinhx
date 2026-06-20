@@ -38,6 +38,37 @@ def test_tag_resolves_to_pjx_class(pjx_env):
     assert badge_cls.model_fields["count"].default == 0, "Badge.count default should be 0 (class registered)"
 
 
+def test_broken_pjx_falls_through_to_colocated_fallback(pjx_env):
+    """A .pjx with a {# python #} block that raises on exec must NOT halt
+    autodiscovery — the co-located __init__.py defining the same class must
+    still be picked up (regression for import_pjx_for_tag returning True on
+    exec failure)."""
+    comp_dir = pjx_env / "broken_widget_pkg"
+    comp_dir.mkdir()
+
+    # .pjx with a python block that raises at exec time
+    (comp_dir / "broken_widget.pjx").write_text(
+        "{# python\nraise RuntimeError('boom')\n#}\n<div>{{ label }}</div>"
+    )
+    # co-located __init__.py defines+registers the component
+    (comp_dir / "__init__.py").write_text(textwrap.dedent("""
+        from pyjinhx import BaseComponent
+
+        class BrokenWidget(BaseComponent):
+            label: str = "fallback-label"
+    """))
+
+    # Render — broken SFC logs a warning but must NOT block __init__.py fallback
+    html = Renderer.get_default_renderer().render('<BrokenWidget/>')
+    assert "fallback-label" in html
+    assert Registry.has_class("BrokenWidget"), (
+        "BrokenWidget must be registered from __init__.py; "
+        "a broken .pjx (exec raises) must not block the co-located fallback"
+    )
+    widget_cls = Registry.get_class("BrokenWidget")
+    assert widget_cls.model_fields["label"].default == "fallback-label"
+
+
 def test_plain_pjx_falls_through_to_init_py_class(pjx_env):
     """A plain .pjx (no {# python #} block) must NOT block autodiscovery of an
     __init__.py that defines+registers the component class (regression for the

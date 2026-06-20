@@ -36,6 +36,11 @@ Counter.load().render()
   component — importing it raises `ImportError`.
 - A `.py` and a `.pjx` with the same stem on the same path is a hard error;
   remove one.
+- A `{# python #}` block that defines **no** `BaseComponent`/`ReactiveComponent`
+  subclass raises `ImportError` on import.
+- A block defining **more than one** component class without an explicit
+  `__pjx_component__ = <Class>` raises `ImportError`; set the marker to
+  disambiguate.
 
 ## Simple (non-reactive) example
 

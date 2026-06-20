@@ -204,18 +204,20 @@ class ComponentAutodiscover:
         """Import a sibling `.pjx` (if it carries a {# python #} block) so its
         component class registers. Plain templates (no block) are left alone.
 
-        Returns True when the SFC module was (or had already been) imported,
-        False when the file has no ``{# python #}`` block and was skipped.
+        Returns True only when the SFC module was (or had already been) imported
+        successfully. Returns False for plain templates (no block) and for any
+        exec failure — allowing the co-located __init__.py / .py fallback to run.
         """
         from pyjinhx.sfc import split_pjx
+
+        if pjx_path in cls._imported_files:
+            return True  # already successfully imported — halt fallthrough
 
         with open(pjx_path, encoding="utf-8") as handle:
             python_src, _ = split_pjx(handle.read())
         if python_src is None:
             return False  # plain template → fall through to __init__.py / .py fallbacks
-        if pjx_path in cls._imported_files:
-            return True
-        cls._imported_files.add(pjx_path)
+
         module_name = f"_pyjinhx_sfc_{os.path.splitext(os.path.basename(pjx_path))[0]}"
         try:
             from pyjinhx.importer import PjxLoader
@@ -226,9 +228,11 @@ class ComponentAutodiscover:
             module = importlib.util.module_from_spec(spec)
             sys.modules[module_name] = module
             spec.loader.exec_module(module)
+            cls._imported_files.add(pjx_path)  # only mark as done on success
+            return True
         except Exception:
             logger.warning("SFC autodiscovery failed for %s", pjx_path, exc_info=True)
-        return True
+            return False  # broken SFC → fall through to co-located fallback
 
 
 if TYPE_CHECKING:
