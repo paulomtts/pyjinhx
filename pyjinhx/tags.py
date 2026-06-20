@@ -178,17 +178,53 @@ class ComponentAutodiscover:
             return
         component_dir = os.path.dirname(template_path)
         snake_name = pascal_case_to_snake_case(tag_name)
-        for filename in (f"{snake_name}.py", "__init__.py"):
-            candidate = os.path.join(component_dir, filename)
-            if os.path.exists(candidate):
-                cls.import_from_file(candidate)
-                return
+        sibling_py = os.path.join(component_dir, f"{snake_name}.py")
+        if os.path.exists(sibling_py):
+            cls.import_from_file(sibling_py)
+            return
+
+        sibling_pjx = os.path.join(component_dir, f"{snake_name}.pjx")
+        if os.path.exists(sibling_pjx):
+            cls.import_pjx_for_tag(tag_name, sibling_pjx)
+            return
+
+        init_py = os.path.join(component_dir, "__init__.py")
+        if os.path.exists(init_py):
+            cls.import_from_file(init_py)
+            return
+
         try:
             py_files = sorted(f for f in os.listdir(component_dir) if f.endswith(".py"))
             if py_files:
                 cls.import_from_file(os.path.join(component_dir, py_files[0]))
         except OSError:
             pass
+
+    @classmethod
+    def import_pjx_for_tag(cls, tag_name: str, pjx_path: str) -> None:
+        """Import a sibling `.pjx` (if it carries a {# python #} block) so its
+        component class registers. Plain templates (no block) are left alone."""
+        if pjx_path in cls._imported_files:
+            return
+        from pyjinhx.sfc import split_pjx
+
+        with open(pjx_path, encoding="utf-8") as handle:
+            python_src, _ = split_pjx(handle.read())
+        if python_src is None:
+            return  # plain template → bare fallback handles it
+        cls._imported_files.add(pjx_path)
+        module_name = f"_pyjinhx_sfc_{os.path.splitext(os.path.basename(pjx_path))[0]}"
+        try:
+            from pyjinhx.importer import PjxLoader
+
+            spec = importlib.util.spec_from_file_location(
+                module_name, pjx_path, loader=PjxLoader(pjx_path)
+            )
+            module = importlib.util.module_from_spec(spec)
+            sys.modules[module_name] = module
+            spec.loader.exec_module(module)
+        except Exception:
+            logger.warning("SFC autodiscovery failed for %s", pjx_path, exc_info=True)
 
 
 if TYPE_CHECKING:
