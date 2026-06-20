@@ -123,9 +123,9 @@ def test_react_without_load_cannot_be_instantiated():
         pass
 
     with pytest.raises(TypeError, match="abstract"):
-        NoLoad(id="n")
+        NoLoad(id="n")  # type: ignore[abstract]  # deliberately instantiates abstract class
 
 
 def test_reactive_component_base_is_abstract():
     with pytest.raises(TypeError, match="abstract"):
-        ReactiveComponent(id="r")
+        ReactiveComponent(id="r")  # type: ignore[abstract]  # deliberately instantiates abstract base

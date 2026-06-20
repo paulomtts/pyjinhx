@@ -79,7 +79,7 @@ def test_load_without_react_keys_rejected():
 
 def test_mutates_rejects_bare_strings():
     with pytest.raises(TypeError, match="MutationKey"):
-        @mutates("todos")
+        @mutates("todos")  # type: ignore[arg-type]  # deliberately passes a bare string
         def save():
             pass
 

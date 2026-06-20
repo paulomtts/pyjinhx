@@ -56,7 +56,7 @@ def test_undeclared_children_field_becomes_markup_in_context(tmp_path):
     class _Classless(BaseComponent):
         pass  # no declared `content`; _pjx_children_field defaults to "content"
 
-    inst = _Classless(id="c", content="<div>inner</div>")
+    inst = _Classless(id="c", content="<div>inner</div>")  # type: ignore[call-arg]  # content is an undeclared extra
     assert "content" not in type(inst).model_fields  # sanity: it's an extra
     built = inst._build_template_context()
     assert isinstance(built["content"], Markup)

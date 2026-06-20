@@ -89,7 +89,7 @@ def test_actions_slot_after_label_in_trigger():
 def test_actions_accepts_component():
     from pyjinhx.builtins import PJXButton
 
-    btn = PJXButton(id="b", label="Delete")
+    btn = PJXButton(id="b", center="Delete")
     html = _html(label="X", actions=btn)
     assert "pjx-accordion__actions" in html
     assert "Delete" in html

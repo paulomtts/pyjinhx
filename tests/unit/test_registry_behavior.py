@@ -60,7 +60,9 @@ def test_registry_with_multiple_components():
     for i in range(5):
         key = Registry.make_key("UnifiedComponent", f"multi-{i}")
         assert key in registry
-        assert registry[key].text == f"Component {i}"
+        component = registry[key]
+        assert isinstance(component, UnifiedComponent)
+        assert component.text == f"Component {i}"
 
 
 def test_duplicate_component_id_warning(caplog):
@@ -104,5 +106,8 @@ def test_different_component_types_same_id_no_collision():
     assert card_key in Registry.get_instances()
     assert button_key in Registry.get_instances()
 
-    assert Registry.get_instances()[card_key].label == "Card Label"
-    assert Registry.get_instances()[button_key].label == "Button Label"
+    card = Registry.get_instances()[card_key]
+    button = Registry.get_instances()[button_key]
+    assert isinstance(card, ShelfCard) and isinstance(button, ShelfButton)
+    assert card.label == "Card Label"
+    assert button.label == "Button Label"

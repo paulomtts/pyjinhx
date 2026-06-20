@@ -9,5 +9,5 @@ def test_empty_id_autogenerates():
 
 
 def test_none_id_autogenerates():
-    comp = UnifiedComponent(id=None, text="Test")
+    comp = UnifiedComponent(id=None, text="Test")  # type: ignore[arg-type]  # None triggers auto-id
     assert re.fullmatch(r"pjx-\d+", comp.id)

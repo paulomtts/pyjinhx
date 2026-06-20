@@ -212,7 +212,7 @@ def test_reactive_response_bare_string_positional_raises():
     from pyjinhx.reactive import ReactiveResponse
 
     with pytest.raises(TypeError) as exc:
-        ReactiveResponse("<p>oops</p>")
+        ReactiveResponse("<p>oops</p>")  # type: ignore[arg-type]  # deliberately misuses the signature
     assert str(exc.value).startswith("ReactiveResponse()")
 
 
