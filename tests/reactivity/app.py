@@ -13,6 +13,7 @@ import time
 
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, JSONResponse, Response
+from markupsafe import Markup
 
 from pyjinhx import BaseComponent, PjxSettings, setup
 from pyjinhx.builtins import (
@@ -112,8 +113,8 @@ class KitchenSinkPage(BaseComponent):
     password: PJXPasswordInput
     tabs: PJXTabGroup
 
-    def render(self) -> str:
-        return str(self._render(source=_PAGE_TEMPLATE.strip()))
+    def render(self) -> Markup:
+        return self._render(source=_PAGE_TEMPLATE.strip())
 
 
 def _popover(prefix: str, label: str) -> PJXPopover:

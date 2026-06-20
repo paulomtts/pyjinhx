@@ -10,7 +10,7 @@ from abc import abstractmethod
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from functools import partial
-from typing import Annotated, Any, ClassVar, cast, get_args, get_origin, get_type_hints
+from typing import Annotated, Any, ClassVar, get_args, get_origin, get_type_hints
 
 from markupsafe import Markup
 from pydantic import ConfigDict, ModelWrapValidatorHandler, PrivateAttr, model_validator
@@ -210,8 +210,14 @@ class ReactiveComponent(BaseComponent):
 
     @classmethod
     @abstractmethod
-    def load(cls) -> ReactiveComponent:
-        """Rebuild this component from the current world (zero-arg, type-singleton in v1)."""
+    def load(cls, *args: Any, **kwargs: Any) -> ReactiveComponent:
+        """Rebuild this component from the current world.
+
+        Type-singletons override this zero-arg; keyed regions override it with a
+        single key parameter. The ``*args``/``**kwargs`` here only let both
+        override shapes type-check — the real arity is enforced at registration
+        (``_load_param_count``) and dispatched on the ``_pjx_keyed`` flag.
+        """
         ...
 
     @staticmethod
@@ -437,12 +443,11 @@ def oob_swaps(
         reported_hash = entry.get("hash")
         # ``load`` is zero-arg on type-singletons and key-arg on keyed regions;
         # dispatch dynamically on the ``keyed`` flag determined at registration.
-        load = cast("Callable[..., ReactiveComponent]", component_class.load)
         try:
             if keyed and load_arg is not None:
-                instance = load(load_arg)
+                instance = component_class.load(load_arg)
             else:
-                instance = load()
+                instance = component_class.load()
         except LookupError:
             candidates.append(
                 _Candidate(

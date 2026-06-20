@@ -7,6 +7,7 @@ from functools import lru_cache
 from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader
+from markupsafe import Markup
 
 from pyjinhx import BaseComponent, Renderer
 from pyjinhx.builtins import (
@@ -191,8 +192,8 @@ class BuiltinsGalleryPage(BaseComponent):
     panel_trigger_beta: PJXPanelTrigger
     panel_host: PJXPanel
 
-    def render(self) -> str:
-        return str(self._render(source=_SHOWCASE_TEMPLATE.strip()))
+    def render(self) -> Markup:
+        return self._render(source=_SHOWCASE_TEMPLATE.strip())
 
 
 @lru_cache(maxsize=1)
