@@ -1,5 +1,22 @@
 # Changelog
 
+## Unreleased — stale `{#def#}` header warning
+
+### Added
+
+- **Stale `{#def#}` header warning.** When a hand-written `BaseComponent` subclass is rendered
+  and its template contains a `{#def#}` header, pyjinhx now emits a one-time `logger.warning`
+  explaining that the header is ignored (the class's declared fields take precedence). The warning
+  fires at most once per component name (module-level dedup set) and is silenced for classless
+  components (`_pjx_classless = True`), so header-driven and factory components are unaffected.
+  The check uses a cheap leading-regex on the template source file — no full header parse.
+
+  Warning message:
+  ```
+  <Card>: a {#def#} header is present but a Python class is registered —
+  the header is ignored. Remove the header (or the class).
+  ```
+
 ## 0.25.0 — slot-escaping consistency (2026-06-19)
 
 ### Fixed
