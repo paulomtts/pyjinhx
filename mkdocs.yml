@@ -79,6 +79,7 @@ nav:
   - Guide:
       - Usage tiers: guide/usage-tiers.md
       - Creating Components: guide/components.md
+      - Single-file components: single-file-components.md
       - Component Registry: guide/registry.md
       - PascalCase Tags: guide/tags.md
       - Nesting: guide/nesting.md

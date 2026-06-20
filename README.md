@@ -81,6 +81,29 @@ def toggle():
     return Counter.render()  # other regions reacting to TODOS update too
 ```
 
+## Single-file components
+
+Combine the Python class and the Jinja template in a single `.pjx` file — no build step:
+
+```jinja
+{# python
+from pyjinhx import BaseComponent
+
+class Badge(BaseComponent):
+    label: str
+    count: int = 0
+#}
+<span class="badge">{{ label }} ({{ count }})</span>
+```
+
+```python
+from app.components.badge import Badge
+
+html = Badge(label="inbox", count=3).render()
+```
+
+See [Single-file components](docs/single-file-components.md) for the full format, the `__pjx_component__` escape hatch, and the pyright stub workflow.
+
 ## Learn more
 
 - [Usage tiers](docs/guide/usage-tiers.md) — adopt only the layers you need
