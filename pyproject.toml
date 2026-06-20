@@ -35,6 +35,12 @@ markers = [
     "reactivity: browser-based tests for the builtin JS contracts (needs playwright chromium)",
 ]
 
+[tool.pyright]
+# `docs/` holds the mkdocs demo registry (`demos/`) and `hooks.py`, which the
+# gallery tests add to sys.path at runtime. Put it on the type-checker's import
+# roots so those imports resolve in the editor.
+extraPaths = ["docs"]
+
 [project.optional-dependencies]
 redis = ["redis>=5.0.0", "fakeredis>=2.26.0"]
 
