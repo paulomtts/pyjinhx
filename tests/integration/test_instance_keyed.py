@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 
 from examples.reactive_todo import store
-from examples.reactive_todo.components import ItemRow
+from examples.reactive_todo.item_row import ItemRow
 from pyjinhx import Renderer
 from pyjinhx.client import PJX_MOUNTED_HEADER
 

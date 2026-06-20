@@ -1,0 +1,15 @@
+{# python
+from pyjinhx import ReactiveComponent
+
+from .context import _store
+from .keys import Keys
+
+
+class Total(ReactiveComponent, react={Keys.TODOS}):
+    count: int = 0
+
+    @classmethod
+    def load(cls) -> "Total":
+        return cls(count=_store().total())
+#}
+<span class="total">{{ count }} total</span>

@@ -1,0 +1,31 @@
+{# python
+from typing import Annotated
+
+from pyjinhx import PjxKey, ReactiveComponent
+
+from .context import _store
+from .keys import Keys
+
+
+class ItemRow(ReactiveComponent, react={Keys.TODOS}):
+    todo_id: Annotated[int, PjxKey()]
+    title: str = ""
+    done: bool = False
+
+    @classmethod
+    def load(cls, todo_id: int | str) -> "ItemRow":
+        store = _store()
+        resolved_id = int(todo_id)
+        todo = store.get(resolved_id)
+        return cls(
+            id=f"row-{resolved_id}",
+            todo_id=resolved_id,
+            title=todo.text,
+            done=todo.done,
+        )
+#}
+<li class="todo{% if done %} done{% endif %}" data-pjx-loading="skeleton">
+  <button hx-post="/rows/{{ todo_id }}/toggle" hx-target="closest [data-pjx-id]" hx-swap="outerHTML"
+          aria-label="toggle">{% if done %}✓{% else %}○{% endif %}</button>
+  <span>{{ title }}</span>
+</li>

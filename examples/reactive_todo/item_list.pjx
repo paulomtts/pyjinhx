@@ -1,0 +1,22 @@
+{# python
+from pyjinhx import ReactiveComponent
+
+from examples.reactive_todo.item_row import ItemRow
+from .context import _store
+from .keys import Keys
+
+
+class ItemList(ReactiveComponent, react={Keys.TODO_LIST}):
+    items: list[ItemRow] = []
+
+    @classmethod
+    def load(cls) -> "ItemList":
+        store = _store()
+        return cls(
+            id="list",
+            items=[ItemRow.load(todo.id) for todo in store.all_todos()],
+        )
+#}
+<ul id="{{ id }}">
+  {% for item in items %}{{ item }}{% endfor %}
+</ul>

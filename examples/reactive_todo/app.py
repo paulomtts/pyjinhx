@@ -12,15 +12,13 @@ from fastapi import FastAPI, Form
 from fastapi.responses import HTMLResponse
 
 from examples.reactive_todo import store
-from examples.reactive_todo.components import (
-    App,
-    AppLoadContext,
-    ClearButton,
-    Counter,
-    ItemList,
-    ItemRow,
-    Total,
-)
+from examples.reactive_todo.context import AppLoadContext
+from examples.reactive_todo.clear_button import ClearButton
+from examples.reactive_todo.counter import Counter
+from examples.reactive_todo.item_list import ItemList
+from examples.reactive_todo.item_row import ItemRow
+from examples.reactive_todo.page import App
+from examples.reactive_todo.total import Total
 from pyjinhx import PjxSettings, Renderer, setup
 
 Renderer.set_default_environment(Path(__file__).resolve().parents[2])

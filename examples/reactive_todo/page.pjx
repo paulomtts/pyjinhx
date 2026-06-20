@@ -1,3 +1,20 @@
+{# python
+from typing import Optional
+
+from pyjinhx import BaseComponent
+
+from examples.reactive_todo.clear_button import ClearButton
+from examples.reactive_todo.counter import Counter
+from examples.reactive_todo.item_list import ItemList
+from examples.reactive_todo.total import Total
+
+
+class App(BaseComponent):
+    item_list: Optional[ItemList] = None
+    remaining: Optional[Counter] = None
+    total_count: Optional[Total] = None
+    clear_button: Optional[ClearButton] = None
+#}
 <!doctype html>
 <html lang="en">
   <head>

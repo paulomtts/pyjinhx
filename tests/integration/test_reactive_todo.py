@@ -4,7 +4,8 @@ from pathlib import Path
 import pytest
 
 from examples.reactive_todo import store
-from examples.reactive_todo.components import Counter, Total
+from examples.reactive_todo.counter import Counter
+from examples.reactive_todo.total import Total
 from pyjinhx import Renderer
 from pyjinhx.client import PJX_MOUNTED_HEADER
 
@@ -114,3 +115,8 @@ def test_unknown_mounted_region_is_ignored(client):
         headers=_manifest({"id": "ghost", "type": "DoesNotExist", "hash": "x"}),
     ).text
     assert "ghost" not in body
+
+
+def test_components_are_single_file():
+    assert Counter._pjx_source_path.endswith("counter.pjx")
+    assert Total._pjx_source_path.endswith("total.pjx")

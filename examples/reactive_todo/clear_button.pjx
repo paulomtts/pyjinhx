@@ -1,0 +1,18 @@
+{# python
+from pyjinhx import ReactiveComponent
+
+from .context import _store
+from .keys import Keys
+
+
+class ClearButton(ReactiveComponent, react={Keys.TODOS}):
+    completed: int = 0
+
+    @classmethod
+    def load(cls) -> "ClearButton":
+        return cls(id="clear", completed=_store().completed())
+#}
+<button class="clear" hx-post="/todos/clear-completed" hx-target="#list" hx-swap="outerHTML"
+        data-pjx-loading="spinner" data-pjx-loading-extra=".todo.done">
+  Clear completed ({{ completed }})
+</button>

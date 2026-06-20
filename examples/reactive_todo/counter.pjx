@@ -1,0 +1,15 @@
+{# python
+from pyjinhx import ReactiveComponent
+
+from .context import _store
+from .keys import Keys
+
+
+class Counter(ReactiveComponent, react={Keys.TODOS}):
+    remaining: int = 0
+
+    @classmethod
+    def load(cls) -> "Counter":
+        return cls(remaining=_store().remaining())
+#}
+<span class="counter">{{ remaining }} left</span>
