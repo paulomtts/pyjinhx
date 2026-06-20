@@ -1,0 +1,8 @@
+{# python
+from pyjinhx import BaseComponent
+
+
+class SfcInner(BaseComponent):
+    text: str = "inner"
+#}
+<em class="sfc-inner">{{ text }}</em>

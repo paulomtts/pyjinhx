@@ -1,0 +1,8 @@
+{# python
+from pyjinhx import BaseComponent
+
+
+class SfcStyled(BaseComponent):
+    label: str = "styled"
+#}
+<div class="sfc-styled">{{ label }}</div>

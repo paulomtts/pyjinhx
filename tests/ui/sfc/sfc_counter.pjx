@@ -1,0 +1,16 @@
+{# python
+from pyjinhx import MutationKey, ReactiveComponent
+
+
+class SfcKeys(MutationKey):
+    WIDGETS = "sfc-widgets"
+
+
+class SfcCounter(ReactiveComponent, react={SfcKeys.WIDGETS}):
+    remaining: int = 0
+
+    @classmethod
+    def load(cls) -> "SfcCounter":
+        return cls(id="sfc-counter", remaining=3)
+#}
+<span class="sfc-counter">{{ remaining }} left</span>

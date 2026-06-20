@@ -1,0 +1,12 @@
+{# python
+from typing import Optional
+
+from pyjinhx import BaseComponent
+
+from .sfc_inner import SfcInner
+
+
+class SfcOuter(BaseComponent):
+    inner: Optional[SfcInner] = None
+#}
+<div class="sfc-outer">{{ inner }}</div>

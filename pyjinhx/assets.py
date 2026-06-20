@@ -389,11 +389,11 @@ def apply_component_render_assets(
 ) -> str:
     cls = type(component)
     is_classless = cls.__name__ == "BaseComponent" or getattr(cls, "_pjx_classless", False)
-    if template_path is not None and is_classless:
+    is_sfc = getattr(cls, "_pjx_source_path", None) is not None
+    if template_path is not None and (is_classless or is_sfc):
         asset_dir: str | None = os.path.dirname(template_path)
-        asset_name: str | None = os.path.splitext(os.path.basename(template_path))[
-            0
-        ].replace("_", "-")
+        stem = os.path.splitext(os.path.basename(template_path))[0]
+        asset_name: str | None = stem if is_sfc else stem.replace("_", "-")
     else:
         asset_dir = None
         asset_name = None

@@ -1,0 +1,15 @@
+{# python
+from pyjinhx import BaseComponent
+
+
+class SfcHelper(BaseComponent):
+    note: str = ""
+
+
+class SfcPicked(BaseComponent):
+    label: str = "picked"
+
+
+__pjx_component__ = SfcPicked
+#}
+<div class="sfc-picked">{{ label }}</div>

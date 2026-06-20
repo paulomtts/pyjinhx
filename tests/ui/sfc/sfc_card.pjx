@@ -1,0 +1,8 @@
+{# python
+from pyjinhx import BaseComponent
+
+
+class SfcCard(BaseComponent):
+    title: str = "untitled"
+#}
+<div class="sfc-card">{{ title }}</div>
