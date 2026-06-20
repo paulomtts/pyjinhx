@@ -16,6 +16,10 @@ from pyjinhx.reactive import PjxKey, ReactiveComponent
 from pyjinhx.registry import Registry
 from pyjinhx.renderer import Renderer
 
+from pyjinhx.importer import install as _install_pjx_importer
+
+_install_pjx_importer()
+
 __all__ = [
     # Components & rendering
     "BaseComponent",
