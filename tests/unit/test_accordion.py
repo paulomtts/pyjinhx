@@ -62,3 +62,15 @@ def test_plain_string_content_passes_through():
     assert html.count("<details") == 1
     assert "<p>raw body</p>" in html
     assert "<summary" not in html  # shell adds no trigger of its own
+
+
+def test_composed_render_collects_trigger_assets():
+    html = str(
+        PJXAccordion(id="a", content=
+            PJXAccordionTrigger(content="Title").render()
+            + PJXAccordionContent(content="<p>body</p>").render()
+        ).render()
+    )
+    # trigger CSS rule + actions-suppression JS are inlined by asset collection
+    assert ".pjx-accordion__trigger" in html
+    assert "_accordionWired" in html

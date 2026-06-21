@@ -58,7 +58,9 @@ from pyjinhx.builtins import (
 
 | Component | CSS | JS |
 |---|---|---|
-| PJXAccordion | `pjx-accordion.css` | `pjx-accordion.js` |
+| PJXAccordion | `pjx-accordion.css` | — |
+| PJXAccordionContent | — | — |
+| PJXAccordionTrigger | `pjx-accordion-trigger.css` | `pjx-accordion-trigger.js` |
 | PJXAccordionGroup | `pjx-accordion-group.css` | `pjx-accordion-group.js` |
 | PJXAlert | `pjx_alert.css` | `pjx_alert.js` |
 | PJXAvatar | `pjx_avatar.css` | — |
@@ -166,7 +168,7 @@ Structural, themeable button. Composes [`PJXRegionLoader`](#pjxregionloader) for
 
 ## PJXAccordion
 
-Collapsible section built on native `<details>`. Composed with `PJXAccordionTrigger` (the `<summary>`, with the auto chevron) and `PJXAccordionContent` (the body). **Assets:** `pjx-accordion.css` (shell radius only — trigger and chevron CSS ship with `PJXAccordionTrigger`), `pjx-accordion.js` (toggle-suppression for opt-in `pjx-accordion__actions`).
+Collapsible section built on native `<details>`. Composed with `PJXAccordionTrigger` (the `<summary>`, with the auto chevron) and `PJXAccordionContent` (the body). **Assets:** `pjx-accordion.css` (shell radius only — trigger and chevron CSS ship with `PJXAccordionTrigger`). No JS.
 
 <!-- demo: PJXAccordion -->
 
@@ -184,7 +186,7 @@ Collapsible section built on native `<details>`. Composed with `PJXAccordionTrig
 
 ## PJXAccordionTrigger
 
-The `<summary>` part of a composed accordion. Composes [`PJXIcon`](#pjxicon) for the disclosure chevron. **Assets:** `pjx-accordion.css` (trigger + chevron styles), `pjx-accordion.js` (toggle-suppression for opt-in `pjx-accordion__actions`).
+The `<summary>` part of a composed accordion. Composes [`PJXIcon`](#pjxicon) for the disclosure chevron. **Assets:** `pjx-accordion-trigger.css` (trigger + chevron styles), `pjx-accordion-trigger.js` (toggle-suppression for opt-in `pjx-accordion__actions`).
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
@@ -194,7 +196,7 @@ The `<summary>` part of a composed accordion. Composes [`PJXIcon`](#pjxicon) for
 
 **DOM contract.** Root `<summary class="pjx-accordion__trigger">` containing the auto-chevron and `content`. The chevron rotates on `[open]` via CSS. The default marker is stripped.
 
-**Actions (opt-in).** To add non-toggling action buttons, wrap them in `<div class="pjx-accordion__actions">` inside `content`. `pjx-accordion.js` registers a single capture-phase `click` listener that calls `preventDefault()` (only — deliberately **not** `stopPropagation()`) for any click inside `.pjx-accordion__actions`. This cancels the native `<summary>` toggle while leaving htmx and other handlers intact.
+**Actions (opt-in).** To add non-toggling action buttons, wrap them in `<div class="pjx-accordion__actions">` inside `content`. `pjx-accordion-trigger.js` registers a single capture-phase `click` listener that calls `preventDefault()` (only — deliberately **not** `stopPropagation()`) for any click inside `.pjx-accordion__actions`. This cancels the native `<summary>` toggle while leaving htmx and other handlers intact.
 
 **Classes:** `pjx-accordion__trigger`, `pjx-accordion__chevron`, `pjx-accordion__actions`. Theming: see [PJXAccordion tokens](#pjxaccordion-tokens).
 
