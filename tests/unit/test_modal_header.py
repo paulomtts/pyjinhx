@@ -1,4 +1,6 @@
 """Tests for PJXModalHeader composable part."""
+import re
+
 import pytest
 
 from pyjinhx import Renderer
@@ -8,6 +10,12 @@ from pyjinhx.builtins import PJXModalHeader
 @pytest.fixture(autouse=True)
 def _env(tmp_path):
     Renderer.set_default_environment(str(tmp_path))
+
+
+def _header(html: str) -> str:
+    """Extract only the <header> element."""
+    m = re.search(r"<header[\s\S]*?</header>", html)
+    return m.group(0) if m else html
 
 
 def test_modal_header_single_root():
@@ -36,7 +44,7 @@ def test_modal_header_title_renders_span():
 
 
 def test_modal_header_no_title_renders_content():
-    html = str(PJXModalHeader(id="h5", content="<b>Custom</b>").render())
+    html = _header(str(PJXModalHeader(id="h5", content="<b>Custom</b>").render()))
     assert "<b>Custom</b>" in html
     assert "pjx-modal__title" not in html
 
