@@ -26,11 +26,12 @@ def test_nullable_slot_metadata_survives():
     assert _is_slot_field(_Demo, "nullable_slot") is True
 
 
-def test_accordion_optional_slots_are_detected():
-    from pyjinhx.builtins import PJXAccordion
+def test_accordion_content_slot_is_detected():
+    from pyjinhx.builtins import PJXAccordion, PJXAccordionContent, PJXAccordionTrigger
 
-    assert _is_slot_field(PJXAccordion, "header") is True
-    assert _is_slot_field(PJXAccordion, "actions") is True
+    assert _is_slot_field(PJXAccordion, "content") is True
+    assert _is_slot_field(PJXAccordionTrigger, "content") is True
+    assert _is_slot_field(PJXAccordionContent, "content") is True
 
 
 def test_slot_string_value_becomes_markup_in_context(tmp_path):
