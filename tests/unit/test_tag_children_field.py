@@ -1,24 +1,26 @@
-"""Tag children map into each component's children field (PJXTooltip uses ``tip``)."""
+"""Tag children map into each component's children field (PJXTooltip uses ``content``)."""
 
 import pytest
 from jinja2 import Environment, FileSystemLoader
 
 from pyjinhx import BaseComponent, Renderer
-from pyjinhx.builtins import PJXModal, PJXTooltip  # noqa: F401  (importing registers the tags)
+from pyjinhx.builtins import PJXModal, PJXTooltip, PJXTooltipContent, PJXTooltipTrigger  # noqa: F401  (importing registers the tags)
 
 
-def test_tooltip_tag_children_map_to_tip(tmp_path):
+def test_tooltip_tag_children_map_to_content(tmp_path):
     Renderer.set_default_environment(str(tmp_path))
     renderer = Renderer.get_default_renderer()
 
     rendered = renderer.render(
-        '<PJXTooltip id="t" trigger="hover me">helpful text</PJXTooltip>'
+        '<PJXTooltip id="t">'
+        '<PJXTooltipTrigger id="t-tr">hover me</PJXTooltipTrigger>'
+        '<PJXTooltipContent id="t-tc">helpful text</PJXTooltipContent>'
+        '</PJXTooltip>'
     )
 
-    assert (
-        '<span class="pjx-tooltip__tip" id="t-tip" role="tooltip" hidden>'
-        "helpful text</span>" in rendered
-    )
+    assert '<span id="t-tc" class="pjx-tooltip__tip"' in rendered
+    assert "helpful text</span>" in rendered
+    assert '<span id="t-tr" class="pjx-tooltip__trigger"' in rendered
     assert ">hover me</span>" in rendered
 
 
@@ -34,18 +36,19 @@ def test_component_with_content_field_still_maps_children_to_content(tmp_path):
     assert '<div id="cb">hello</div>' in rendered
 
 
-def test_preregistered_tooltip_instance_update_maps_children_to_tip(tmp_path):
+def test_preregistered_tooltip_instance_update_maps_children_to_content(tmp_path):
     Renderer.set_default_environment(str(tmp_path))
     renderer = Renderer.get_default_renderer()
 
-    PJXTooltip(id="t2", trigger="hover me")
-    rendered = renderer.render('<PJXTooltip id="t2">updated tip</PJXTooltip>')
-
-    assert (
-        '<span class="pjx-tooltip__tip" id="t2-tip" role="tooltip" hidden>'
-        "updated tip</span>" in rendered
+    PJXTooltip(id="t2")
+    rendered = renderer.render(
+        '<PJXTooltip id="t2">'
+        '<PJXTooltipContent id="t2-tc">updated tip</PJXTooltipContent>'
+        '</PJXTooltip>'
     )
-    assert ">hover me</span>" in rendered
+
+    assert '<span id="t2-tc" class="pjx-tooltip__tip"' in rendered
+    assert "updated tip</span>" in rendered
 
 
 # ---------------------------------------------------------------------------
@@ -66,13 +69,13 @@ def test_both_children_and_content_attr_raises(tmp_path):
         renderer.render('<ContentPane id="cb" content="explicit">inner</ContentPane>')
 
 
-def test_both_children_and_tip_attr_raises(tmp_path):
-    """<PJXTooltip tip="explicit">inner</PJXTooltip> must raise ValueError."""
+def test_tooltip_both_children_and_content_attr_raises(tmp_path):
+    """<PJXTooltip content="explicit">inner</PJXTooltip> must raise ValueError."""
     Renderer.set_default_environment(str(tmp_path))
     renderer = Renderer.get_default_renderer()
 
-    with pytest.raises(ValueError, match="both children and the 'tip' attribute"):
-        renderer.render('<PJXTooltip id="tt" tip="explicit">inner tip</PJXTooltip>')
+    with pytest.raises(ValueError, match="both children and the 'content' attribute"):
+        renderer.render('<PJXTooltip id="tt" content="explicit">inner</PJXTooltip>')
 
 
 def test_modal_tag_children_map_to_content(tmp_path):

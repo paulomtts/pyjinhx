@@ -78,10 +78,10 @@ def test_modal_close_content_slot_renders_raw():
     assert "<i class='x'></i>" in html  # close_content is Slot → raw
 
 
-def test_tooltip_trigger_slot_renders_raw():
-    from pyjinhx.builtins import PJXTooltip
-    html = str(PJXTooltip(id="t", trigger="<b>hover</b>", tip="hint").render())
-    assert "<b>hover</b>" in html  # trigger is Slot → raw
+def test_tooltip_trigger_content_renders_raw():
+    from pyjinhx.builtins import PJXTooltipTrigger
+    html = str(PJXTooltipTrigger(id="t", content="<b>hover</b>").render())
+    assert "<b>hover</b>" in html  # content is str | BaseComponent → raw via Markup
 
 
 def test_drawer_close_content_slot_renders_raw():

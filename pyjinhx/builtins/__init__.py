@@ -47,6 +47,8 @@ from .ui import (
     PJXToastHost,
     PJXToggleSwitch,
     PJXTooltip,
+    PJXTooltipContent,
+    PJXTooltipTrigger,
 )
 
 __all__ = [
@@ -98,4 +100,6 @@ __all__ = [
     "PJXToastHost",
     "PJXToggleSwitch",
     "PJXTooltip",
+    "PJXTooltipContent",
+    "PJXTooltipTrigger",
 ]

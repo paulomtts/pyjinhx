@@ -41,10 +41,12 @@ from pyjinhx.builtins import (
     PJXToastHost,
     PJXToggleSwitch,
     PJXTooltip,
+    PJXTooltipContent,
+    PJXTooltipTrigger,
 )
 ```
 
-`__all__` matches that set of thirty-seven names.
+`__all__` matches that set of thirty-nine names.
 
 **Conventions:** Markup classes use the **`pjx-`** prefix; overrides use **`--pjx-`** custom properties. Builtin CSS also references **theme variables** (`--surface`, `--border`, `--text`, `--radius-md`, `--shadow-md`, `--transition`, `--brand`, …)—define those in your global CSS or map them to your design system. See [builtin-conventions.md](./builtin-conventions.md) for the full per-component contract (auto-id, `class_name`, `extra_attrs`, `js`/`css`, headless IIFE JS under `window.pjx`, cancelable `pjx:*:before-*` events).
 
@@ -106,8 +108,10 @@ from pyjinhx.builtins import (
 | PJXToastHost | `pjx-toast-host.css` | `pjx-toast-host.js` |
 | PJXToggleSwitch | `pjx-toggle-switch.css` | — |
 | PJXTooltip | `pjx-tooltip.css` | `pjx-tooltip.js` (IIFE, no API) |
+| PJXTooltipTrigger | `pjx-tooltip-trigger.css` | — |
+| PJXTooltipContent | `pjx-tooltip-content.css` | — |
 
-**Children-vs-`content` tag gotcha (children-mapping components):** Several components map children to a single attribute (e.g. PJXNotification `content`, PJXPanelTrigger `content`, PJXTooltip `tip`). If you use `Renderer.render()` with PascalCase tags, do **not** supply both child text and the corresponding attribute on the same tag—use body text as the child *or* the attribute, not both.
+**Children-vs-`content` tag gotcha (children-mapping components):** Several components map children to a single attribute (e.g. PJXNotification `content`, PJXPanelTrigger `content`, PJXTooltip `content`). If you use `Renderer.render()` with PascalCase tags, do **not** supply both child text and the corresponding attribute on the same tag—use body text as the child *or* the attribute, not both.
 
 **Backdrop click (PJXModal and PJXDrawer):** Both render a native `<dialog>`; a document `click` listener treats a click whose target is the `<dialog>` root itself (the backdrop) as a close. Any native `<dialog>` clicked directly is affected—use unique ids and avoid stacking multiple dialogs unless you adjust this.
 
@@ -484,19 +488,52 @@ API: `pjx.loader.region.show/hide/reset(id)` and `pjx.loader.region.wrap(id, pro
 
 ## PJXTooltip
 
-Compact focus/hover hint. **Assets:** `pjx-tooltip.css`, `pjx-tooltip.js` (IIFE — no API, behavior only).
+Composable tooltip shell. Compose with `PJXTooltipTrigger` and `PJXTooltipContent`. **Assets:** `pjx-tooltip.css`, `pjx-tooltip.js` (IIFE — no API, behavior only).
 
 <!-- demo: PJXTooltip -->
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
-| `trigger` | `str \| BaseComponent` | `""` | Focusable trigger (`pjx-tooltip__trigger`, `tabindex="0"`). |
-| `tip` | `str \| BaseComponent` | `""` | `role="tooltip"` body. |
 | `placement` | literal | `"top"` | `top`, `bottom`, `start`, `end` → `data-pjx-tooltip-placement`. |
+| `content` | `str \| BaseComponent` | `""` | Children: compose `PJXTooltipTrigger` + `PJXTooltipContent` here. |
 
-**DOM contract.** Root `.pjx-tooltip`. `data-pjx-tooltip-placement` drives JS positioning (`top`/`bottom`/`start`/`end`). Tip shows on `mouseover` anywhere inside `.pjx-tooltip` root, or on `focusin` of `.pjx-tooltip__trigger`; hides on `mouseout`/`focusout`; repositions on `scroll`. No JS API (`pjx._tooltipWired` guard only).
+**DOM contract.** Root `.pjx-tooltip` `<span>`. `data-pjx-tooltip-placement` drives JS positioning. Tip shows on `mouseover` anywhere inside `.pjx-tooltip` root, or on `focusin` of `.pjx-tooltip__trigger`; hides on `mouseout`/`focusout`; repositions on `scroll`. The JS sets `aria-describedby` at runtime when the tip is shown. No JS API (`pjx._tooltipWired` guard only).
 
-**Classes:** `pjx-tooltip`, `pjx-tooltip__trigger`, `pjx-tooltip__tip`, `pjx-tooltip__tip--visible`. Tip text goes through the `tip` attribute; tag children map to `tip` as well — see the [children-vs-`content` note](#built-in-ui-components). Theming: see [PJXTooltip tokens](#pjxtooltip-tokens).
+**Usage:**
+
+```python
+PJXTooltip(
+    placement="top",
+    content=PJXTooltipTrigger(content="Hover me").render()
+    + PJXTooltipContent(content="Helpful tooltip text").render(),
+).render()
+```
+
+**Classes:** `pjx-tooltip`. Theming: see [PJXTooltip tokens](#pjxtooltip-tokens).
+
+---
+
+## PJXTooltipTrigger
+
+The focusable trigger part of a tooltip. **Assets:** `pjx-tooltip-trigger.css`.
+
+| Field | Type | Default | Description |
+| --- | --- | --- | --- |
+| `content` | `str \| BaseComponent` | `""` | Trigger label or element. |
+
+**DOM contract.** `<span class="pjx-tooltip__trigger" tabindex="0">`. The JS sets `aria-describedby` to the tip's id at show time. Place inside a `PJXTooltip` shell.
+
+---
+
+## PJXTooltipContent
+
+The floating tip body. **Assets:** `pjx-tooltip-content.css`.
+
+| Field | Type | Default | Description |
+| --- | --- | --- | --- |
+| `content` | `str \| BaseComponent` | `""` | Tooltip text or rich content. |
+
+**DOM contract.** `<span class="pjx-tooltip__tip" role="tooltip" hidden>`. The JS removes `hidden` and adds `.pjx-tooltip__tip--visible` on show. Place inside a `PJXTooltip` shell.
 
 ---
 
@@ -1347,6 +1384,8 @@ from pyjinhx.builtins import (
     PJXTabGroup,
     PJXToastHost,
     PJXTooltip,
+    PJXTooltipContent,
+    PJXTooltipTrigger,
 )
 
 badge = PJXBadge(id="status-badge", label="Beta", color="brand")
@@ -1362,7 +1401,12 @@ drawer = PJXDrawer(id="filters", side="right", content=(
     PJXDrawerHeader(title="Filters").render()
     + PJXDrawerBody(content="…").render()
 ))
-tip = PJXTooltip(id="help-tip", trigger="?", tip="More detail", placement="top")
+tip = PJXTooltip(
+    id="help-tip",
+    placement="top",
+    content=PJXTooltipTrigger(id="help-tip-tr", content="?").render()
+    + PJXTooltipContent(id="help-tip-tc", content="More detail").render(),
+)
 card = PJXCard(id="summary", content=PJXCardHeader(title="Summary").render() + PJXCardBody(content="Details go here.").render() + PJXCardFooter(content="Last updated today.").render())
 crumb = PJXBreadcrumb(id="crumb", items=[("App", "/"), ("Page", None)])
 tabs = PJXTabGroup(

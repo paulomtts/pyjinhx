@@ -15,6 +15,8 @@ from pyjinhx.builtins import (
     PJXPopoverTrigger,
     PJXPromptDialog,
     PJXTooltip,
+    PJXTooltipContent,
+    PJXTooltipTrigger,
 )
 
 
@@ -96,9 +98,11 @@ def alert():
 def tooltip():
     return PJXTooltip(
         id="demo-tooltip",
-        trigger="Hover over me",
-        tip="This is additional context shown on hover or focus.",
         placement="top",
+        content=(
+            str(PJXTooltipTrigger(id="demo-tooltip-tr", content="Hover over me").render())
+            + str(PJXTooltipContent(id="demo-tooltip-tc", content="This is additional context shown on hover or focus.").render())
+        ),
     ).render()
 
 

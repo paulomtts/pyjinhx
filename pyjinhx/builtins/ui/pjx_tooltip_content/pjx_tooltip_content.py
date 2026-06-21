@@ -1,10 +1,7 @@
-from typing import Literal
-
 from pyjinhx import BaseComponent
 from pyjinhx.base import AttrValue
 
 
-class PJXTooltip(BaseComponent):
-    placement: Literal["top", "bottom", "start", "end"] = "top"
+class PJXTooltipContent(BaseComponent):
     class_name: AttrValue = ""
     content: str | BaseComponent = ""

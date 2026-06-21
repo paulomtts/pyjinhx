@@ -37,8 +37,8 @@
 
         left = Math.max(8, Math.min(left, vw - tw - 8));
         top = Math.max(8, Math.min(top, vh - th - 8));
-        tip.style.left = left + 'pjx';
-        tip.style.top = top + 'pjx';
+        tip.style.left = left + 'px';
+        tip.style.top = top + 'px';
     }
 
     function show(root) {
@@ -51,6 +51,7 @@
         }
         activeTip = tip;
         tip.removeAttribute('hidden');
+        const trig = root.querySelector('.pjx-tooltip__trigger'); if (trig && tip.id) trig.setAttribute('aria-describedby', tip.id);
         requestAnimationFrame(() => {
             place(tip, root);
             tip.classList.add('pjx-tooltip__tip--visible');

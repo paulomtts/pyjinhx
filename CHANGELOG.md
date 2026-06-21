@@ -46,6 +46,13 @@
   removed per-element rules (`--pjx-empty-state-title-size`, etc.) are also removed.
   Migration: replace `PJXEmptyState(title="No results", description="…", action="<button>…</button>")` with
   `PJXEmptyState(content="<h3>No results</h3><p>…</p><button>…</button>")`.
+- **`PJXTooltip` is now composed of parts (breaking).** The two-slot monolith
+  (`trigger`, `tip`) is replaced by three `{{ content }}`-composed builtins:
+  `PJXTooltip` (the `<span>` shell, keeping `placement`), `PJXTooltipTrigger` (the
+  focusable trigger, `tabindex="0"`), and `PJXTooltipContent` (`role="tooltip"` body).
+  The tooltip JS finds parts by class within `.pjx-tooltip` and sets `aria-describedby`
+  at runtime. Migration: replace `PJXTooltip(trigger="T", tip="Hint")` with
+  `PJXTooltip(content=PJXTooltipTrigger(content="T").render() + PJXTooltipContent(content="Hint").render())`.
 
 ## 0.25.1 — stale `{#def#}` header warning + type-checker cleanup (2026-06-21)
 

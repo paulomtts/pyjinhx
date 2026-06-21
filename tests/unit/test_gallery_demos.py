@@ -72,6 +72,8 @@ def test_registry_covers_all_builtins():
         "PJXDrawerHeader",
         "PJXDrawerBody",
         "PJXDrawerFooter",
+        "PJXTooltipContent",
+        "PJXTooltipTrigger",
     }
     assert set(DEMOS) == set(pyjinhx.builtins.__all__) - folded
 

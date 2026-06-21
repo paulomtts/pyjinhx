@@ -250,6 +250,8 @@ _BUILTIN_TAG_NAMES = frozenset(
         "PJXToastHost",
         "PJXToggleSwitch",
         "PJXTooltip",
+        "PJXTooltipContent",
+        "PJXTooltipTrigger",
     }
 )
 

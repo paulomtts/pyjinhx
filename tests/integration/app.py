@@ -39,6 +39,8 @@ from pyjinhx.builtins import (
     PJXSpinner,
     PJXTabGroup,
     PJXTooltip,
+    PJXTooltipContent,
+    PJXTooltipTrigger,
 )
 
 DEFAULT_GALLERY_PORT = 9000
@@ -233,9 +235,11 @@ def _gallery_inner_html() -> str:
         region_loader=PJXRegionLoader(id="g-overlay"),
         tooltip=PJXTooltip(
             id="g-tip",
-            trigger="Focus or hover",
-            tip="Tooltip copy",
             placement="top",
+            content=(
+                str(PJXTooltipTrigger(id="g-tip-tr", content="Focus or hover").render())
+                + str(PJXTooltipContent(id="g-tip-tc", content="Tooltip copy").render())
+            ),
         ),
         alert=PJXAlert(
             id="g-alert",
