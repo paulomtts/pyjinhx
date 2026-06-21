@@ -83,7 +83,7 @@ def test_coerce_reactive_key_unwraps_todo_id_enum():
 
 def test_load_coerces_enum_to_str_for_load():
     LoadCache.clear()
-    row = EnumRow.load(TodoId.FIRST)
+    row = EnumRow.load(TodoId.FIRST)  # type: ignore[arg-type]  # enum coerced to str key
     assert row.label == "row 1"
     assert row._pjx_key == "1"
     assert row.id == "enum-row-1"

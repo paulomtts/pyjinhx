@@ -140,7 +140,7 @@ def test_segmented_control_disabled():
 
 
 def test_segmented_control_json_string_coercion():
-    sc = PJXSegmentedControl(id="sc6", name="x", options='[["a", "A"], ["b", "B"]]')
+    sc = PJXSegmentedControl(id="sc6", name="x", options='[["a", "A"], ["b", "B"]]')  # type: ignore[arg-type]  # JSON string coerced by validator
     assert sc.options == [("a", "A"), ("b", "B")]
 
 

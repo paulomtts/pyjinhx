@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Annotated, Optional
+from typing import Annotated, Any, Optional
 
 from pyjinhx import BaseComponent, PjxContext, PjxKey, ReactiveComponent
 
@@ -10,10 +10,10 @@ from .keys import Keys
 class AppLoadContext:
     """Request-scoped access to the demo store module."""
 
-    store: object
+    store: Any
 
 
-def _store():
+def _store() -> Any:
     ctx = PjxContext.current()
     if isinstance(ctx, AppLoadContext):
         return ctx.store

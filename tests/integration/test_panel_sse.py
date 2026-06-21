@@ -3,6 +3,7 @@ from __future__ import annotations
 import socket
 import threading
 import time
+from collections.abc import Iterator
 
 import httpx
 import pytest
@@ -18,7 +19,7 @@ def _find_free_port() -> int:
 
 
 @pytest.fixture
-def gallery_server_url() -> str:
+def gallery_server_url() -> Iterator[str]:
     port = _find_free_port()
     config = uvicorn.Config(
         create_app(), host="127.0.0.1", port=port, log_level="warning"

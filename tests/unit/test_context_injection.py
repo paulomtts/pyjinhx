@@ -135,7 +135,7 @@ def test_reactive_load_not_wrapped_by_generic_injector():
     assert getattr(load_func, "_pjx_ctx_injected", False) is False
     # Precise guard for the name-exclusion: the raw user load captured by
     # install_cached_load (after the generic pass runs) was never injected.
-    assert getattr(CtxReactive._pjx_raw_load, "_pjx_ctx_injected", False) is False
+    assert getattr(CtxReactive._pjx_raw_load, "_pjx_ctx_injected", False) is False  # type: ignore[attr-defined]  # installed at registration
 
 
 class CtxBase(BaseComponent):
@@ -170,7 +170,7 @@ class CtxStrict(BaseComponent):
 
 def test_non_optional_subclass_param_injected():
     with PjxContext.bind(Ctx(value=6)):
-        assert CtxStrict().need() == 6
+        assert CtxStrict().need() == 6  # type: ignore[call-arg]  # ctx param injected from PjxContext
 
 
 class CtxPosOnly(BaseComponent):

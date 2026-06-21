@@ -3,10 +3,13 @@ from __future__ import annotations
 import os
 from collections.abc import Callable
 from dataclasses import dataclass, fields, replace
-from typing import Any
+from typing import TYPE_CHECKING, Any, cast
 
 from pyjinhx.cache import CacheScope, InvalidationBackend, InvalidationHub, LoadCache
 from pyjinhx.dev import disable_reactive_dev, enable_reactive_dev
+
+if TYPE_CHECKING:
+    from starlette.applications import Starlette
 
 _UNSET: Any = (
     object()
@@ -183,5 +186,10 @@ def setup(
 
     from pyjinhx.integrations.fastapi import apply_setup
 
-    apply_setup(app, resolved, context_factory=context_factory, static_root=static_root)
+    apply_setup(
+        cast("Starlette", app),
+        resolved,
+        context_factory=context_factory,
+        static_root=static_root,
+    )
     return resolved

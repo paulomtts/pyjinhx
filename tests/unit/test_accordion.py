@@ -1,4 +1,6 @@
 """PJXAccordion: native <details> collapsible composing PJXIcon chevron."""
+from typing import Any
+
 import pytest
 
 from pyjinhx import Renderer
@@ -52,7 +54,8 @@ def test_disabled_marks_summary():
 
 
 def test_inline_attrs_pass_through():
-    html = str(PJXAccordion(id="a", label="X", **{"data-y": "z"}).render())
+    inline_attrs: dict[str, Any] = {"data-y": "z"}
+    html = str(PJXAccordion(id="a", label="X", **inline_attrs).render())
     assert 'data-y="z"' in html
 
 
@@ -86,7 +89,7 @@ def test_actions_slot_after_label_in_trigger():
 def test_actions_accepts_component():
     from pyjinhx.builtins import PJXButton
 
-    btn = PJXButton(id="b", label="Delete")
+    btn = PJXButton(id="b", center="Delete")
     html = _html(label="X", actions=btn)
     assert "pjx-accordion__actions" in html
     assert "Delete" in html

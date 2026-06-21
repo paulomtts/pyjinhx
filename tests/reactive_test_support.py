@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from collections.abc import Iterator
+from collections.abc import Iterator, Mapping, Sequence
 from contextlib import contextmanager
 
 from pyjinhx import MutationKey
@@ -23,7 +23,7 @@ class FakeRequest:
 
 @contextmanager
 def reactive_client(
-    manifest: list[dict[str, object]] | None = None,
+    manifest: Sequence[Mapping[str, object]] | None = None,
     *,
     extra_headers: dict[str, str] | None = None,
     trigger_id: str | None = None,

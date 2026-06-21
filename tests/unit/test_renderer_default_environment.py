@@ -13,6 +13,8 @@ def test_set_default_environment():
     Renderer.set_default_environment(custom_env)
 
     assert Renderer.get_default_environment() == custom_env
-    assert Renderer.get_default_environment().loader.searchpath[0] == custom_root
+    loader = Renderer.get_default_environment().loader
+    assert isinstance(loader, FileSystemLoader)
+    assert loader.searchpath[0] == custom_root
 
     Renderer.set_default_environment(original_environment)

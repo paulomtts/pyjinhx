@@ -85,7 +85,7 @@ def test_dirty_records_multiple_keys():
 
 def test_dirty_rejects_bare_strings():
     with pytest.raises(TypeError) as excinfo:
-        dirty("todos")
+        dirty("todos")  # type: ignore[arg-type]  # deliberately passes a bare string
     assert str(excinfo.value).startswith("dirty()")
 
 

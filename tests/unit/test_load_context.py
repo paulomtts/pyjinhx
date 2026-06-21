@@ -74,7 +74,7 @@ def test_keyed_load_injects_context_positionally():
     LoadCache.clear()
     ctx = AppLoadContext(value=9)
     with PjxContext.bind(ctx):
-        row = CtxKeyed.load("a")
+        row = CtxKeyed.load("a")  # type: ignore[call-arg]  # app_ctx injected from PjxContext
     assert row.label == "a:9"
     assert row.id == "ctx-keyed-a"
 
@@ -102,7 +102,8 @@ def test_resolve_load_context_param_detects_subclass_annotation():
     def without_context(cls):
         pass
 
-    assert resolve_load_context_param(with_context).name == "app"
+    resolved = resolve_load_context_param(with_context)
+    assert resolved is not None and resolved.name == "app"
     assert resolve_load_context_param(without_context) is None
 
 

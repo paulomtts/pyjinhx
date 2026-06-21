@@ -35,7 +35,7 @@ pytest.importorskip("playwright")
 
 # Imported at module scope so FastAPI can resolve the ``request: Request``
 # annotation on the route below under ``from __future__ import annotations``.
-from fastapi import Request  # noqa: E402
+from fastapi import FastAPI, Request  # noqa: E402
 from playwright.sync_api import Page, expect  # noqa: E402
 
 pytestmark = [pytest.mark.pjx_runtime, pytest.mark.reactivity]
@@ -91,7 +91,7 @@ _PAGE_HTML = """<!DOCTYPE html>
 </html>"""
 
 
-def _make_swap_app(tmp_path: Path) -> object:
+def _make_swap_app(tmp_path: Path) -> FastAPI:
     """Build a minimal FastAPI app that serves a reactive component with CSS/JS."""
     from fastapi import FastAPI
     from fastapi.responses import HTMLResponse
@@ -112,6 +112,7 @@ def _make_swap_app(tmp_path: Path) -> object:
     module_path.write_text(_COMPONENT_MODULE)
 
     spec = importlib.util.spec_from_file_location("swap_badge_component", module_path)
+    assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)
     sys.modules["swap_badge_component"] = module
     spec.loader.exec_module(module)

@@ -1,4 +1,6 @@
 """PJXAccordionGroup: wraps PJXAccordions in a shared layout/behavior container."""
+from typing import Any
+
 import pytest
 
 from pyjinhx import Renderer
@@ -62,7 +64,8 @@ def test_children_rendered_in_content():
 
 
 def test_inline_attrs_pass_through():
-    html = str(PJXAccordionGroup(id="g", **{"data-foo": "bar"}).render())
+    inline_attrs: dict[str, Any] = {"data-foo": "bar"}
+    html = str(PJXAccordionGroup(id="g", **inline_attrs).render())
     assert 'data-foo="bar"' in html
 
 

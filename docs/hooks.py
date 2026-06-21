@@ -47,6 +47,7 @@ def first_variation_source(factory):
     node = ret.value
     if isinstance(node, (ast.List, ast.Tuple)) and node.elts:
         node = node.elts[0]
+    assert node is not None
     return ast.get_source_segment(src, node)
 
 

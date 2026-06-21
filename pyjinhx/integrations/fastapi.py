@@ -4,11 +4,14 @@ import logging
 import os
 from collections.abc import Callable
 from contextlib import asynccontextmanager
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from pyjinhx.client import ClientBackend
 from pyjinhx.config import PjxSettings, configure_pyjinhx, shutdown_pyjinhx
 from pyjinhx.registry import Registry
+
+if TYPE_CHECKING:
+    from starlette.applications import Starlette
 
 logger = logging.getLogger("pyjinhx")
 
@@ -32,7 +35,7 @@ class FastAPIClientBackend(ClientBackend):
 
 
 def apply_setup(
-    app: object,
+    app: Starlette,
     settings: PjxSettings,
     *,
     context_factory: Callable[[Any], object | None] | None = None,
@@ -52,7 +55,7 @@ def apply_setup(
     app.state.pyjinhx_setup = True
 
 
-def _chain_lifespan(app: object, settings: PjxSettings) -> None:
+def _chain_lifespan(app: Starlette, settings: PjxSettings) -> None:
     original = app.router.lifespan_context
 
     @asynccontextmanager
@@ -67,7 +70,8 @@ def _chain_lifespan(app: object, settings: PjxSettings) -> None:
         finally:
             shutdown_pyjinhx()
 
-    app.router.lifespan_context = pyjinhx_lifespan
+    # Replace Starlette's internal lifespan with our chained one.
+    app.router.lifespan_context = pyjinhx_lifespan  # type: ignore[assignment]
 
 
 def _registry_middleware_class(

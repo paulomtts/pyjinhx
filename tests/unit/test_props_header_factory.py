@@ -19,14 +19,14 @@ def env(tmp_path):
 def test_factory_builds_validated_fields(env):
     WidgetFac = component("WidgetFac")
     assert issubclass(WidgetFac, BaseComponent)
-    assert WidgetFac(id="i", title="x", count="7").count == 7  # coerced
+    assert WidgetFac(id="i", title="x", count="7").count == 7  # type: ignore[attr-defined]  # coerced; header-defined field
     with pytest.raises(ValidationError):
         WidgetFac(id="i")  # missing required title
 
 
 def test_factory_defaults_apply(env):
     WidgetFac = component("WidgetFac")
-    assert WidgetFac(id="i", title="x").count == 0
+    assert WidgetFac(id="i", title="x").count == 0  # type: ignore[attr-defined]  # header-defined field
 
 
 def test_factory_no_header_is_permissive(env):

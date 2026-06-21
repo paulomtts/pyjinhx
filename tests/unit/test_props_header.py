@@ -53,10 +53,11 @@ def test_duplicate_prop_errors():
 def test_build_model_validates_required_and_coerces():
     src = '{#def title: str, count: int = 0 #}\n<div>{{ title }}</div>'
     model = build_component_model("CardBuildA", src)
+    assert model is not None
     assert issubclass(model, BaseComponent)
     assert model._pjx_template == "CardBuildA"
     inst = model(id="i", title="Hi", count="3")  # "3" coerced to int
-    assert inst.count == 3
+    assert inst.count == 3  # type: ignore[attr-defined]  # count is a header-defined field
     with pytest.raises(ValidationError):
         model(id="i")  # missing required 'title'
 

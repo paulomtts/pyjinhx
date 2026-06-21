@@ -186,7 +186,6 @@ def test_renderer_uses_registered_class():
     """Test that Renderer uses registered BaseComponent classes when available."""
 
     class Button(BaseComponent):
-        id: str
         text: str
         variant: str = "default"
 
@@ -229,12 +228,10 @@ def test_renderer_with_registered_class_and_nested_components():
     """Test that registered classes work with nested components."""
 
     class AlbumCard(BaseComponent):
-        id: str
         title: str
         content: str = ""
 
     class AlbumButton(BaseComponent):
-        id: str
         text: str
 
     with tempfile.TemporaryDirectory() as temp_dir:
@@ -263,7 +260,6 @@ def test_renderer_with_registered_class_validation():
     """Test that registered classes enforce their field types and defaults."""
 
     class Input(BaseComponent):
-        id: str
         type: str = "text"
         name: str
         placeholder: str = ""
@@ -290,7 +286,6 @@ def test_renderer_mixed_registered_and_generic():
     """Test mixing registered classes with generic components."""
 
     class Header(BaseComponent):
-        id: str
         title: str
 
     with tempfile.TemporaryDirectory() as temp_dir:

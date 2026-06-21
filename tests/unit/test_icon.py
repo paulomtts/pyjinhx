@@ -1,4 +1,6 @@
 """PJXIcon renders a themeable inline SVG from the vendored set."""
+from typing import Any
+
 import pytest
 
 from pyjinhx import Renderer
@@ -57,5 +59,6 @@ def test_unknown_name_renders_nothing_and_warns(caplog):
 
 
 def test_inline_attrs_pass_through():
-    html = str(PJXIcon(id="i", name="plus", **{"data-x": "y"}).render())
+    inline_attrs: dict[str, Any] = {"data-x": "y"}
+    html = str(PJXIcon(id="i", name="plus", **inline_attrs).render())
     assert 'data-x="y"' in html

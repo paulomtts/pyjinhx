@@ -68,6 +68,7 @@ def parse_props_header(source: str) -> "list[tuple[str, Any, Any]] | None":
     except SyntaxError as exc:
         raise ValueError(f"invalid {{#def#}} header signature {signature!r}: {exc.msg}") from exc
     func = tree.body[0]
+    assert isinstance(func, ast.FunctionDef)
     arguments = func.args
     if (
         arguments.vararg
@@ -109,11 +110,10 @@ def build_component_model(name: str, source: str) -> "type | None":
         return None
     from pyjinhx.base import BaseComponent
 
-    model = create_model(
-        name,
-        __base__=BaseComponent,
-        **{field_name: (field_type, default) for field_name, field_type, default in fields},
-    )
+    field_definitions: dict[str, Any] = {
+        field_name: (field_type, default) for field_name, field_type, default in fields
+    }
+    model = create_model(name, __base__=BaseComponent, **field_definitions)
     model._pjx_template = name
     model._pjx_classless = True
     return model

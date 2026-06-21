@@ -7,10 +7,10 @@ import inspect
 import json
 import re
 from abc import abstractmethod
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from functools import partial
-from typing import Annotated, Any, ClassVar, get_args, get_origin, get_type_hints
+from typing import Annotated, Any, ClassVar, get_args, get_origin, get_type_hints, overload
 
 from markupsafe import Markup
 from pydantic import ConfigDict, ModelWrapValidatorHandler, PrivateAttr, model_validator
@@ -37,7 +37,7 @@ class PjxKey:
     """Marker for ``Annotated[..., PjxKey()]`` fields stamped as ``data-pjx-load``."""
 
 
-def _metadata_has_pjx_load(metadata: tuple[Any, ...]) -> bool:
+def _metadata_has_pjx_load(metadata: Iterable[Any]) -> bool:
     return any(isinstance(meta, PjxKey) for meta in metadata)
 
 
@@ -146,6 +146,14 @@ class _ReactiveRender:
             invalidate_before_primary=True,
         )
 
+    @overload
+    def __get__(
+        self, instance: None, owner: type[ReactiveComponent]
+    ) -> Callable[..., Markup]: ...
+    @overload
+    def __get__(
+        self, instance: ReactiveComponent, owner: type[ReactiveComponent]
+    ) -> Callable[[], Markup]: ...
     def __get__(
         self,
         instance: ReactiveComponent | None,
@@ -194,7 +202,8 @@ class ReactiveComponent(BaseComponent):
     _pjx_key: str | None = PrivateAttr(default=None)
     _pjx_id_defaulted: bool = PrivateAttr(default=False)
 
-    render = _ReactiveRender()
+    # Descriptor: Cls.render(*args) is the route entry, instance.render() is plain.
+    render: ClassVar[_ReactiveRender] = _ReactiveRender()  # type: ignore[override]
 
     @model_validator(mode="wrap")
     @classmethod
@@ -210,8 +219,14 @@ class ReactiveComponent(BaseComponent):
 
     @classmethod
     @abstractmethod
-    def load(cls) -> ReactiveComponent:
-        """Rebuild this component from the current world (zero-arg, type-singleton in v1)."""
+    def load(cls, *args: Any, **kwargs: Any) -> ReactiveComponent:
+        """Rebuild this component from the current world.
+
+        Type-singletons override this zero-arg; keyed regions override it with a
+        single key parameter. The ``*args``/``**kwargs`` here only let both
+        override shapes type-check — the real arity is enforced at registration
+        (``_load_param_count``) and dispatched on the ``_pjx_keyed`` flag.
+        """
         ...
 
     @staticmethod
@@ -246,7 +261,7 @@ class ReactiveComponent(BaseComponent):
         custom hashing.
         """
         exclude = getattr(type(self), "state_hash_exclude", frozenset({"id"}))
-        payload = self.model_dump(mode="json", exclude=exclude)
+        payload = self.model_dump(mode="json", exclude=set(exclude))
         canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"))
         return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
@@ -378,7 +393,7 @@ def _manifest_load_arg(entry: dict[str, Any]) -> str | None:
 
 
 def oob_swaps(
-    dirtied: set[ReactiveKey],
+    dirtied: Iterable[ReactiveKey],
     mounted: str | list[dict[str, Any]] | object | None,
     *,
     exclude_ids: set[str] | None = None,
@@ -416,7 +431,7 @@ def oob_swaps(
         component_class = classes.get(component_type)
         if component_class is None:
             continue
-        if not getattr(component_class, "_pjx_reactive", False):
+        if not issubclass(component_class, ReactiveComponent):
             continue
 
         keyed = getattr(component_class, "_pjx_keyed", False)
@@ -435,6 +450,8 @@ def oob_swaps(
         seen.add(dedup_key)
 
         reported_hash = entry.get("hash")
+        # ``load`` is zero-arg on type-singletons and key-arg on keyed regions;
+        # dispatch dynamically on the ``keyed`` flag determined at registration.
         try:
             if keyed and load_arg is not None:
                 instance = component_class.load(load_arg)

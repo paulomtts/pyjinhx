@@ -1,4 +1,5 @@
 import json
+from typing import Any
 
 from markupsafe import Markup
 
@@ -136,7 +137,8 @@ def test_reactive_root_attrs_empty_for_non_reactive():
 
 
 def test_reactive_root_carries_both_pjx_and_extra_attrs_on_one_root():
-    counter = ReactiveCounter(id="counter", remaining=0, **{"hx-get": "/inc"})
+    inline_attrs: dict[str, Any] = {"hx-get": "/inc"}
+    counter = ReactiveCounter(id="counter", remaining=0, **inline_attrs)
     out = str(counter.render())
     root_tag = out[: out.index(">") + 1]  # the single root's opening tag
     assert 'data-pjx-id="counter"' in root_tag
