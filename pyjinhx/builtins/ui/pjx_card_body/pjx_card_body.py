@@ -2,6 +2,6 @@ from pyjinhx import BaseComponent
 from pyjinhx.base import AttrValue
 
 
-class PJXCard(BaseComponent):
+class PJXCardBody(BaseComponent):
     class_name: AttrValue = ""
     content: str | BaseComponent = ""

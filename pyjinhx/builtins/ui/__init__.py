@@ -9,6 +9,9 @@ from pyjinhx.builtins.ui.pjx_avatar_stack import PJXAvatarStack
 from pyjinhx.builtins.ui.pjx_badge import PJXBadge
 from pyjinhx.builtins.ui.pjx_breadcrumb import PJXBreadcrumb
 from pyjinhx.builtins.ui.pjx_card import PJXCard
+from pyjinhx.builtins.ui.pjx_card_body import PJXCardBody
+from pyjinhx.builtins.ui.pjx_card_footer import PJXCardFooter
+from pyjinhx.builtins.ui.pjx_card_header import PJXCardHeader
 from pyjinhx.builtins.ui.pjx_chip_input import PJXChipInput
 from pyjinhx.builtins.ui.pjx_confirm_dialog import PJXConfirmDialog
 from pyjinhx.builtins.ui.pjx_divider import PJXDivider
@@ -47,6 +50,9 @@ __all__ = [
     "PJXBadge",
     "PJXBreadcrumb",
     "PJXCard",
+    "PJXCardBody",
+    "PJXCardFooter",
+    "PJXCardHeader",
     "PJXChipInput",
     "PJXConfirmDialog",
     "PJXDivider",

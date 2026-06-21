@@ -20,27 +20,3 @@
   box-shadow: var(--pjx-card-shadow);
   overflow: hidden;
 }
-
-.pjx-card__header {
-  padding: var(--pjx-card-padding);
-  border-bottom: 1px solid var(--pjx-card-header-sep);
-}
-
-.pjx-card__title {
-  margin: 0;
-  font-size: var(--font-size-md);
-  font-weight: 600;
-  color: var(--pjx-card-title-color);
-}
-
-.pjx-card__body {
-  padding: var(--pjx-card-padding);
-  flex: 1;
-  min-height: 0;
-}
-
-.pjx-card__footer {
-  padding: var(--pjx-card-padding);
-  border-top: 1px solid var(--pjx-card-footer-sep);
-  background: var(--pjx-card-footer-bg);
-}

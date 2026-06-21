@@ -10,10 +10,10 @@ Every pyjinhx builtin follows the same contract, so knowing one means knowing al
 2. **`class_name`** appends your classes to the root element: `PJXBadge(label="New", class_name="pill")`.
 3. **`extra_attrs`** passes extra attributes (validated — values may not contain `"`) onto the root element — the carrier for
    `hx-*`, `data-*`, `aria-*`, or Alpine directives:
-   `PJXCard(body=..., extra_attrs={"hx-get": "/refresh", "hx-trigger": "every 30s"})`.
+   `PJXAlert(body="Prices may change.", extra_attrs={"hx-get": "/refresh", "hx-trigger": "every 30s"})`.
    Any attribute passed inline on a PascalCase tag is also injected onto the root automatically
    (see [Attribute pass-through](#attribute-pass-through) below).
-   The newer structural builtins (`PJXIcon`, `PJXButton`, `PJXAccordion`) intentionally **omit**
+   The newer structural builtins (`PJXIcon`, `PJXButton`, `PJXAccordion`, `PJXCard`) intentionally **omit**
    the `extra_attrs` field — inline tag attributes (`<PJXButton Hx-Post="/save"/>`) still pass
    through to the root, but the dict-style `extra_attrs={...}` API is not available on them; use
    inline attributes or `class_name` instead.
@@ -27,8 +27,7 @@ Every pyjinhx builtin follows the same contract, so knowing one means knowing al
 6. **The DOM contract is API.** Each builtin's documentation ends with a "DOM contract" block —
    stable classes, `data-pjx-*` attributes, events, state attributes. We version those like code.
 7. **Output is escaped by default.** Scalar props, text, attributes, and loop values are
-   HTML-escaped. A builtin's children/`content` field and any field typed `Slot` (e.g. a card's
-   `body`, a tab group's `tabs`) render raw HTML, as do nested `BaseComponent` values. See
+   HTML-escaped. A builtin's children/`content` field and any field typed `Slot` (e.g. `PJXCardBody.content`, a tab group's `tabs`) render raw HTML, as do nested `BaseComponent` values. See
    [Escaping & slots](components.md#escaping-and-slots) for the full rule and escape hatches.
 8. **Type matches escaping.** A field's annotation must reflect whether it renders raw: text
    fields (titles, labels, descriptions) are plain `str` and stay escaped; raw-HTML/icon/component
@@ -82,7 +81,7 @@ template boilerplate required.
 
 ```html
 <!-- hx-get and data-label pass through to the root of PJXCard automatically -->
-<PJXCard id="my-card" title="Orders" hx-get="/orders" hx-trigger="every 5s" data-label="orders-panel"/>
+<PJXCard id="my-card" hx-get="/orders" hx-trigger="every 5s" data-label="orders-panel"/>
 ```
 
 **Override semantics:** an inline attribute replaces any same-named attribute the template

@@ -68,7 +68,10 @@ from pyjinhx.builtins import (
 | PJXBadge | `pjx_badge.css` | — |
 | PJXBreadcrumb | `pjx_breadcrumb.css` | — |
 | PJXButton | `pjx-button.css` | — |
-| PJXCard | `pjx_card.css` | — |
+| PJXCard | `pjx-card.css` | — |
+| PJXCardHeader | `pjx-card-header.css` | — |
+| PJXCardBody | `pjx-card-body.css` | — |
+| PJXCardFooter | `pjx-card-footer.css` | — |
 | PJXChipInput | `pjx-chip-input.css` | `pjx-chip-input.js` |
 | PJXConfirmDialog | `pjx-confirm-dialog.css` | `pjx-confirm-dialog.js` |
 | PJXDivider | `pjx_divider.css` | — |
@@ -686,20 +689,72 @@ PJXAvatar(id="a3", initials="AB", size="2.5rem")
 
 ## PJXCard
 
-Grouped content with optional header and footer. **Assets:** `pjx_card.css` only.
+`<article>` shell for composed card layouts. Compose with `PJXCardHeader`, `PJXCardBody`, and `PJXCardFooter` parts. **Assets:** `pjx-card.css` only.
 
 <!-- demo: PJXCard -->
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
-| `title` | `str` | `""` | Default header title (text, escaped; ignored if `header` is set). |
-| `header` | `str \| BaseComponent` | `""` | Custom header slot; replaces `title` block when set. |
-| `body` | `str \| BaseComponent` | `""` | Main content. |
-| `footer` | `str \| BaseComponent` | `""` | Optional footer. |
+| `class_name` | `str` | `""` | Extra CSS class(es) on the root element. |
+| `content` | `str \| BaseComponent` | `""` | Pre-rendered children (header + body + footer parts). |
 
-**DOM contract.** Root `.pjx-card`; no JS API.
+```html
+<PJXCard>
+  <PJXCardHeader title="Q3 report"/>
+  <PJXCardBody>Revenue grew 12% over Q1.</PJXCardBody>
+  <PJXCardFooter>Updated today</PJXCardFooter>
+</PJXCard>
+```
 
-**Classes:** `pjx-card`, `pjx-card__header`, `pjx-card__title`, `pjx-card__body`, `pjx-card__footer`. Theming: see [PJXCard tokens](#pjxcard-tokens).
+**DOM contract.** Root `article.pjx-card`; no JS API.
+
+**Classes:** `pjx-card`. Theming: see [PJXCard tokens](#pjxcard-tokens).
+
+---
+
+## PJXCardHeader
+
+Card header region. When `title` is set it renders `<h3 class="pjx-card__title">` inside the header; when `title` is empty the `content` slot is rendered directly instead. **Assets:** `pjx-card-header.css` only.
+
+| Field | Type | Default | Description |
+| --- | --- | --- | --- |
+| `title` | `str` | `""` | Convenience shorthand — renders `<h3 class="pjx-card__title">` when set; takes precedence over `content`. |
+| `class_name` | `str` | `""` | Extra CSS class(es) on the root element. |
+| `content` | `str \| BaseComponent` | `""` | Rich header slot; used when `title` is empty. |
+
+**DOM contract.** Root `header.pjx-card__header`; no JS API.
+
+**Classes:** `pjx-card__header`, `pjx-card__title`. Theming: see [PJXCard tokens](#pjxcard-tokens).
+
+---
+
+## PJXCardBody
+
+Card body region. **Assets:** `pjx-card-body.css` only.
+
+| Field | Type | Default | Description |
+| --- | --- | --- | --- |
+| `class_name` | `str` | `""` | Extra CSS class(es) on the root element. |
+| `content` | `str \| BaseComponent` | `""` | Main card content. |
+
+**DOM contract.** Root `div.pjx-card__body`; no JS API.
+
+**Classes:** `pjx-card__body`. Theming: see [PJXCard tokens](#pjxcard-tokens).
+
+---
+
+## PJXCardFooter
+
+Card footer region. **Assets:** `pjx-card-footer.css` only.
+
+| Field | Type | Default | Description |
+| --- | --- | --- | --- |
+| `class_name` | `str` | `""` | Extra CSS class(es) on the root element. |
+| `content` | `str \| BaseComponent` | `""` | Footer content (actions, metadata, etc.). |
+
+**DOM contract.** Root `footer.pjx-card__footer`; no JS API.
+
+**Classes:** `pjx-card__footer`. Theming: see [PJXCard tokens](#pjxcard-tokens).
 
 ---
 
@@ -1135,6 +1190,9 @@ from pyjinhx.builtins import (
     PJXBadge,
     PJXBreadcrumb,
     PJXCard,
+    PJXCardBody,
+    PJXCardFooter,
+    PJXCardHeader,
     PJXConfirmDialog,
     PJXDrawer,
     PJXModal,
@@ -1152,7 +1210,7 @@ modal = PJXModal(id="info-modal", title="Hello", body="Content here.")
 toast = PJXNotification(id="welcome-toast", content="Saved.", corner="bottom-right", timeout=3000)
 drawer = PJXDrawer(id="filters", side="right", title="Filters", body="…")
 tip = PJXTooltip(id="help-tip", trigger="?", tip="More detail", placement="top")
-card = PJXCard(id="summary", title="Summary", body="Details go here.")
+card = PJXCard(id="summary", content=PJXCardHeader(title="Summary").render() + PJXCardBody(content="Details go here.").render() + PJXCardFooter(content="Last updated today.").render())
 crumb = PJXBreadcrumb(id="crumb", items=[("App", "/"), ("Page", None)])
 tabs = PJXTabGroup(
     id="main-tabs",
