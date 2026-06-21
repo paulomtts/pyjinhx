@@ -1151,6 +1151,7 @@ from pyjinhx.builtins import (
     PJXBreadcrumb,
     PJXCard,
     PJXCardBody,
+    PJXCardFooter,
     PJXCardHeader,
     PJXConfirmDialog,
     PJXDrawer,
@@ -1169,7 +1170,7 @@ modal = PJXModal(id="info-modal", title="Hello", body="Content here.")
 toast = PJXNotification(id="welcome-toast", content="Saved.", corner="bottom-right", timeout=3000)
 drawer = PJXDrawer(id="filters", side="right", title="Filters", body="…")
 tip = PJXTooltip(id="help-tip", trigger="?", tip="More detail", placement="top")
-card = PJXCard(id="summary", content=PJXCardHeader(title="Summary").render() + PJXCardBody(content="Details go here.").render())
+card = PJXCard(id="summary", content=PJXCardHeader(title="Summary").render() + PJXCardBody(content="Details go here.").render() + PJXCardFooter(content="Last updated today.").render())
 crumb = PJXBreadcrumb(id="crumb", items=[("App", "/"), ("Page", None)])
 tabs = PJXTabGroup(
     id="main-tabs",

@@ -10,10 +10,10 @@ Every pyjinhx builtin follows the same contract, so knowing one means knowing al
 2. **`class_name`** appends your classes to the root element: `PJXBadge(label="New", class_name="pill")`.
 3. **`extra_attrs`** passes extra attributes (validated — values may not contain `"`) onto the root element — the carrier for
    `hx-*`, `data-*`, `aria-*`, or Alpine directives:
-   `PJXCard(content=..., extra_attrs={"hx-get": "/refresh", "hx-trigger": "every 30s"})`.
+   `PJXAlert(body="Prices may change.", extra_attrs={"hx-get": "/refresh", "hx-trigger": "every 30s"})`.
    Any attribute passed inline on a PascalCase tag is also injected onto the root automatically
    (see [Attribute pass-through](#attribute-pass-through) below).
-   The newer structural builtins (`PJXIcon`, `PJXButton`, `PJXAccordion`) intentionally **omit**
+   The newer structural builtins (`PJXIcon`, `PJXButton`, `PJXAccordion`, `PJXCard`) intentionally **omit**
    the `extra_attrs` field — inline tag attributes (`<PJXButton Hx-Post="/save"/>`) still pass
    through to the root, but the dict-style `extra_attrs={...}` API is not available on them; use
    inline attributes or `class_name` instead.
