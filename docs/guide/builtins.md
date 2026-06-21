@@ -189,6 +189,7 @@ The `<summary>` part of a composed accordion. Composes [`PJXIcon`](#pjxicon) for
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
 | `disabled` | `bool` | `False` | Marks the summary `aria-disabled="true"` + `tabindex="-1"` (and `pointer-events: none` via CSS). |
+| `class_name` | `AttrValue` | `""` | Extra CSS class(es) for the root element. |
 | `content` | `str \| BaseComponent` | `""` | Trigger label (text or rich markup). |
 
 **DOM contract.** Root `<summary class="pjx-accordion__trigger">` containing the auto-chevron and `content`. The chevron rotates on `[open]` via CSS. The default marker is stripped.
@@ -205,6 +206,7 @@ The body part of a composed accordion. **Assets:** none (unstyled wrapper; use y
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
+| `class_name` | `AttrValue` | `""` | Extra CSS class(es) for the root element. |
 | `content` | `str \| BaseComponent` | `""` | Body content. |
 
 **DOM contract.** Root `<div class="pjx-accordion__content">` rendering `{{ content }}` verbatim.
