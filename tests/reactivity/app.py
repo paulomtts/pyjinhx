@@ -35,6 +35,9 @@ from pyjinhx.builtins import (
     PJXPopoverPanel,
     PJXPopoverTrigger,
     PJXRegionLoader,
+    PJXResizableGroup,
+    PJXResizableHandle,
+    PJXResizablePanel,
     PJXTabGroup,
     PJXToastHost,
 )
@@ -96,6 +99,12 @@ Fetch notification
 {{ password }}
 {{ tabs }}
 </section>
+
+<section>
+<div id="rx-resize-box" style="width:400px;height:120px;border:1px solid #ccc;">
+{{ resizable }}
+</div>
+</section>
 </div>
 """
 
@@ -116,6 +125,7 @@ class KitchenSinkPage(BaseComponent):
     panel: PJXPanel
     password: PJXPasswordInput
     tabs: PJXTabGroup
+    resizable: PJXResizableGroup
 
     def render(self) -> Markup:
         return self._render(source=_PAGE_TEMPLATE.strip())
@@ -200,6 +210,15 @@ def render_page() -> str:
         tabs=PJXTabGroup(
             id="rx-tabs",
             tabs={"One": "<p>Tab one body</p>", "Two": "<p>Tab two body</p>"},
+        ),
+        resizable=PJXResizableGroup(
+            id="rx-resize-group",
+            direction="row",
+            content=(
+                str(PJXResizablePanel(id="rx-resize-left", size=50, min=20, content="<div>left</div>").render())
+                + str(PJXResizableHandle(id="rx-resize-handle").render())
+                + str(PJXResizablePanel(id="rx-resize-right", size=50, content="<div>right</div>").render())
+            ),
         ),
     )
     return f"""<!DOCTYPE html>
