@@ -72,6 +72,8 @@ def test_registry_covers_all_builtins():
         "PJXDrawerHeader",
         "PJXDrawerBody",
         "PJXDrawerFooter",
+        "PJXResizableHandle",
+        "PJXResizablePanel",
         "PJXTooltipContent",
         "PJXTooltipTrigger",
     }

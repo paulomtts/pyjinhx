@@ -36,6 +36,9 @@ from pyjinhx.builtins.ui.pjx_popover import PJXPopover, PJXPopoverPanel, PJXPopo
 from pyjinhx.builtins.ui.pjx_progress import PJXProgress
 from pyjinhx.builtins.ui.pjx_prompt_dialog import PJXPromptDialog
 from pyjinhx.builtins.ui.pjx_panel import PJXPanel, PJXPanelTrigger
+from pyjinhx.builtins.ui.pjx_resizable_handle import PJXResizableHandle
+from pyjinhx.builtins.ui.pjx_resizable_panel import PJXResizablePanel
+from pyjinhx.builtins.ui.pjx_resizable_group import PJXResizableGroup
 from pyjinhx.builtins.ui.pjx_password_input import PJXPasswordInput
 from pyjinhx.builtins.ui.pjx_skeleton import PJXSkeleton
 from pyjinhx.builtins.ui.pjx_spinner import PJXSpinner
@@ -85,6 +88,9 @@ __all__ = [
     "PJXProgress",
     "PJXPromptDialog",
     "PJXRegionLoader",
+    "PJXResizableHandle",
+    "PJXResizablePanel",
+    "PJXResizableGroup",
     "PJXSegmentedControl",
     "PJXPanel",
     "PJXPanelTrigger",
