@@ -92,8 +92,8 @@ def test_tooltip_trigger_slot_renders_raw():
 
 
 def test_drawer_close_content_slot_renders_raw():
-    from pyjinhx.builtins import PJXDrawer
-    html = str(PJXDrawer(id="dr", close_content="<i class='close'></i>").render())
+    from pyjinhx.builtins import PJXDrawerHeader
+    html = str(PJXDrawerHeader(id="dr", close_content="<i class='close'></i>").render())
     assert "<i class='close'></i>" in html  # close_content is Slot → raw
 
 

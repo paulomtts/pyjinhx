@@ -2,6 +2,9 @@ from pyjinhx.builtins import (
     PJXAlert,
     PJXConfirmDialog,
     PJXDrawer,
+    PJXDrawerBody,
+    PJXDrawerFooter,
+    PJXDrawerHeader,
     PJXModal,
     PJXModalBody,
     PJXModalFooter,
@@ -35,9 +38,17 @@ def drawer():
         PJXDrawer(
             id="demo-drawer",
             side="right",
-            title="Filter results",
-            body="<p>Adjust filters to narrow down your results.</p>",
-            footer='<button class="pjx-demo-btn" data-pjx-close>Done</button>',
+            content=(
+                PJXDrawerHeader(id="demo-drawer-h", title="Filter results").render()
+                + PJXDrawerBody(
+                    id="demo-drawer-b",
+                    content="<p>Adjust filters to narrow down your results.</p>",
+                ).render()
+                + PJXDrawerFooter(
+                    id="demo-drawer-f",
+                    content='<button class="pjx-demo-btn" data-pjx-close>Done</button>',
+                ).render()
+            ),
         ).render(),
     ]
 

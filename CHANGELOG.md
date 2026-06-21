@@ -24,6 +24,13 @@
   `PJXModalFooter`. The dialog JS and behavior stay on the shell. Migration: replace
   `<PJXModal title="T">body</PJXModal>` with
   `<PJXModal><PJXModalHeader title="T"/><PJXModalBody>body</PJXModalBody></PJXModal>`.
+- **`PJXDrawer` is now composed of parts (breaking).** The slot-based monolith
+  (`title`, `body`, `footer`, `close_label`, `close_content`) is replaced by four
+  `{{ content }}`-composed builtins: `PJXDrawer` (the `<dialog>` shell, keeping `side`),
+  `PJXDrawerHeader` (with a `title` convenience and the auto-included close button),
+  `PJXDrawerBody`, and `PJXDrawerFooter`. The dialog JS and behavior stay on the shell.
+  Migration: replace `<PJXDrawer title="T">body</PJXDrawer>` with
+  `<PJXDrawer><PJXDrawerHeader title="T"/><PJXDrawerBody>body</PJXDrawerBody></PJXDrawer>`.
 
 ## 0.25.1 — stale `{#def#}` header warning + type-checker cleanup (2026-06-21)
 

@@ -19,6 +19,8 @@ from pyjinhx import BaseComponent, PjxSettings, setup
 from pyjinhx.builtins import (
     PJXChipInput,
     PJXDrawer,
+    PJXDrawerBody,
+    PJXDrawerHeader,
     PJXDropdown,
     PJXLazyPanel,
     PJXModal,
@@ -139,7 +141,14 @@ def render_page() -> str:
                 + str(PJXModalBody(id="rx-modal-b", content="Modal body.").render())
             ),
         ),
-        drawer=PJXDrawer(id="rx-drawer", side="right", title="Demo drawer", body="Drawer body."),
+        drawer=PJXDrawer(
+            id="rx-drawer",
+            side="right",
+            content=(
+                str(PJXDrawerHeader(id="rx-drawer-h", title="Demo drawer").render())
+                + str(PJXDrawerBody(id="rx-drawer-b", content="Drawer body.").render())
+            ),
+        ),
         popover_a=_popover("rx-pop-a", "Open A"),
         popover_b=_popover("rx-pop-b", "Open B"),
         dropdown=PJXDropdown(

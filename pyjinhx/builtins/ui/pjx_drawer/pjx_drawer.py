@@ -1,21 +1,12 @@
-from typing import ClassVar, Literal
+from typing import Literal
 
-from pydantic import Field
-
-from pyjinhx import BaseComponent, Slot
-from pyjinhx.base import AttrValue, ExtraAttrs
+from pyjinhx import BaseComponent
+from pyjinhx.base import AttrValue
 
 
 class PJXDrawer(BaseComponent):
-    _pjx_children_field: ClassVar[str] = "body"
-
     side: Literal["left", "right", "bottom"] = "right"
-    title: str = ""  # heading text — escaped
-    body: str | BaseComponent = ""
-    footer: Slot = ""
-    close_label: str = "Close"
-    close_content: Slot = "✕"
     open_on_mount: bool = False
     remove_on_close: bool = False
     class_name: AttrValue = ""
-    extra_attrs: ExtraAttrs = Field(default_factory=dict)
+    content: str | BaseComponent = ""
