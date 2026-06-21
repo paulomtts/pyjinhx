@@ -80,8 +80,8 @@ def test_dropdown_trigger_slot_renders_raw():
 
 
 def test_modal_close_content_slot_renders_raw():
-    from pyjinhx.builtins import PJXModal
-    html = str(PJXModal(id="m", body="x", close_content="<i class='x'></i>").render())
+    from pyjinhx.builtins import PJXModalHeader
+    html = str(PJXModalHeader(id="m-h", close_content="<i class='x'></i>").render())
     assert "<i class='x'></i>" in html  # close_content is Slot → raw
 
 

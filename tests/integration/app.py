@@ -24,6 +24,8 @@ from pyjinhx.builtins import (
     PJXEmptyState,
     PJXRegionLoader,
     PJXModal,
+    PJXModalBody,
+    PJXModalHeader,
     PJXNotification,
     PJXPanel,
     PJXPanelTrigger,
@@ -208,8 +210,10 @@ def _gallery_inner_html() -> str:
         badge=PJXBadge(id="g-badge", label="Beta", color="brand", shape="md"),
         modal=PJXModal(
             id="g-modal",
-            title="Demo modal",
-            body="Modal body content from the gallery.",
+            content=(
+                str(PJXModalHeader(id="g-modal-h", title="Demo modal").render())
+                + str(PJXModalBody(id="g-modal-b", content="Modal body content from the gallery.").render())
+            ),
         ),
         notification=PJXNotification(
             id="g-toast",

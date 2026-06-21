@@ -66,6 +66,9 @@ def test_registry_covers_all_builtins():
         "PJXCardHeader",
         "PJXCardBody",
         "PJXCardFooter",
+        "PJXModalHeader",
+        "PJXModalBody",
+        "PJXModalFooter",
     }
     assert set(DEMOS) == set(pyjinhx.builtins.__all__) - folded
 

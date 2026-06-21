@@ -17,6 +17,13 @@
   `<h3 class="pjx-card__title">`, falling back to its content), `PJXCardBody`, and
   `PJXCardFooter`. Migration: replace `<PJXCard title="T">body</PJXCard>` with
   `<PJXCard><PJXCardHeader title="T"/><PJXCardBody>body</PJXCardBody></PJXCard>`.
+- **`PJXModal` is now composed of parts (breaking).** The slot-based monolith
+  (`title`, `header`, `body`, `footer`, `close_label`, `close_content`) is replaced by four
+  `{{ content }}`-composed builtins: `PJXModal` (the `<dialog>` shell), `PJXModalHeader` (with
+  a `title` convenience and the auto-included close button), `PJXModalBody`, and
+  `PJXModalFooter`. The dialog JS and behavior stay on the shell. Migration: replace
+  `<PJXModal title="T">body</PJXModal>` with
+  `<PJXModal><PJXModalHeader title="T"/><PJXModalBody>body</PJXModalBody></PJXModal>`.
 
 ## 0.25.1 — stale `{#def#}` header warning + type-checker cleanup (2026-06-21)
 
