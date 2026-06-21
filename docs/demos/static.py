@@ -16,6 +16,9 @@ from pyjinhx.builtins import (
     PJXEmptyState,
     PJXIcon,
     PJXProgress,
+    PJXResizableGroup,
+    PJXResizableHandle,
+    PJXResizablePanel,
     PJXSkeleton,
     PJXSpinner,
 )
@@ -142,6 +145,17 @@ def button():
     ]
 
 
+def resizable_group():
+    return PJXResizableGroup(
+        direction="row",
+        content=(
+            PJXResizablePanel(size=40, min=20, content="<div style='padding:0.75rem'>Left</div>").render()
+            + PJXResizableHandle().render()
+            + PJXResizablePanel(size=60, content="<div style='padding:0.75rem'>Right (drag the divider)</div>").render()
+        ),
+    ).render()
+
+
 DEMOS = {
     "PJXAccordion": (accordion, 160),
     "PJXAccordionGroup": (accordion_group, 260),
@@ -157,4 +171,5 @@ DEMOS = {
     "PJXEmptyState": (empty_state, 260),
     "PJXIcon": (icon, 140),
     "PJXButton": (button, 140),
+    "PJXResizableGroup": (resizable_group, 160),
 }

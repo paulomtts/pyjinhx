@@ -242,6 +242,7 @@ _BUILTIN_TAG_NAMES = frozenset(
         "PJXRegionLoader",
         "PJXResizableHandle",
         "PJXResizablePanel",
+        "PJXResizableGroup",
         "PJXSegmentedControl",
         "PJXPanel",
         "PJXPanelTrigger",
