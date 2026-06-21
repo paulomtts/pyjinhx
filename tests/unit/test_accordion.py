@@ -55,3 +55,10 @@ def test_chevron_auto_in_trigger():
 def test_clean_break_removed_fields():
     for gone in ("label", "header", "actions", "disabled"):
         assert gone not in PJXAccordion.model_fields
+
+
+def test_plain_string_content_passes_through():
+    html = str(PJXAccordion(id="a", content="<p>raw body</p>").render())
+    assert html.count("<details") == 1
+    assert "<p>raw body</p>" in html
+    assert "<summary" not in html  # shell adds no trigger of its own
