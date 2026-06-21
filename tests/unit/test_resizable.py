@@ -22,8 +22,7 @@ def _group(**kw):
 
 def test_group_single_root_with_role_and_direction():
     html = _group()
-    assert html.count("<div") >= 1
-    assert 'role="group"' in html
+    assert '<div id="g"' in html and 'role="group"' in html
     assert "pjx-resizable-group--row" in html
     assert 'data-pjx-resizable-group' in html
     assert 'data-direction="row"' in html
@@ -42,4 +41,4 @@ def test_composition_order_panel_handle_panel():
 
 
 def test_class_name_appends():
-    assert "pjx-resizable-group mine" in _group(class_name="mine")
+    assert "pjx-resizable-group--row mine" in _group(class_name="mine")
