@@ -272,8 +272,7 @@ def _gallery_inner_html() -> str:
         skeleton_rect=PJXSkeleton(id="g-skel-rect", variant="rect"),
         empty_state=PJXEmptyState(
             id="g-empty",
-            title="No results",
-            description="Adjust filters or create a new item.",
+            content="<h3>No results</h3><p>Adjust filters or create a new item.</p>",
         ),
         divider_horizontal=PJXDivider(id="g-div-h"),
         divider_labeled=PJXDivider(id="g-div-labeled", label="Or"),
