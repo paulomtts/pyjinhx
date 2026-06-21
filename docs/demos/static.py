@@ -137,10 +137,10 @@ def icon():
 
 def button():
     return [
-        PJXButton(center="Save", variant="primary").render(),
-        PJXButton(center="Cancel").render(),
-        PJXButton(center="Saving", variant="primary", loading=True).render(),
-        PJXButton(center="Disabled", disabled=True).render(),
+        PJXButton(content="Save", variant="primary").render(),
+        PJXButton(content="Cancel").render(),
+        PJXButton(content="Saving", variant="primary", loading=True).render(),
+        PJXButton(content="Disabled", disabled=True).render(),
     ]
 
 

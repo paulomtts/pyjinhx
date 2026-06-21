@@ -4,6 +4,14 @@
 
 ### Changed
 
+- **`PJXButton` collapses `start`/`center`/`end` into a single `{{ content }}` slot (breaking).**
+  The prescriptive icon-text-icon layout via `start`/`center`/`end` slots is replaced by a single
+  freeform `content` field — put an icon, text, or any markup there however you like.
+  `variant`, `block`, `loading`, `disabled`, `type` are unchanged; the loading spinner still
+  auto-appends after the content. Migration: replace `PJXButton(center="Save")` with
+  `PJXButton(content="Save")`, and `PJXButton(start="<icon>", center="Add")` with
+  `PJXButton(content="<icon> Add")` (or nest in tag form:
+  `<PJXButton variant="primary"><PJXIcon name="plus"/> Add</PJXButton>`).
 - **`PJXAccordion` is now composed of parts (breaking).** The slot-based monolith
   (`label`, `header`, `actions`) is replaced by three `{{ content }}`-composed builtins:
   `PJXAccordion` (the `<details>` shell), `PJXAccordionTrigger` (the `<summary>`, with the
