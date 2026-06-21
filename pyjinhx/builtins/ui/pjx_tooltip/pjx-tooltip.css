@@ -9,7 +9,6 @@
   --pjx-tooltip-fg:          var(--text);
   --pjx-tooltip-font-size:   var(--font-size-xs);
   --pjx-tooltip-z:           400;
-  --pjx-tooltip-gap:         6px;
 }
 
 .pjx-tooltip {

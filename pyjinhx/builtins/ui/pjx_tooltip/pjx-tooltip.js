@@ -37,8 +37,8 @@
 
         left = Math.max(8, Math.min(left, vw - tw - 8));
         top = Math.max(8, Math.min(top, vh - th - 8));
-        tip.style.left = left + 'pjx';
-        tip.style.top = top + 'pjx';
+        tip.style.left = left + 'px';
+        tip.style.top = top + 'px';
     }
 
     function show(root) {
