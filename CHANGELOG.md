@@ -1,5 +1,35 @@
 # Changelog
 
+## Unreleased
+
+### Breaking Changes
+
+- **`PJXModal` composable parts** (`PJXModalHeader`, `PJXModalBody`, `PJXModalFooter`).
+  The monolithic `PJXModal` has been refactored into four `{{ content }}`-composed builtins.
+  `PJXModal` now accepts only `content`, `open_on_mount`, `remove_on_close`, and `class_name`.
+  The removed fields — `title`, `header`, `body`, `footer`, `close_label`, `close_content` —
+  are replaced by their part equivalents.
+
+  **Before:**
+  ```python
+  PJXModal(id="m", title="Delete file?", body="This cannot be undone.", footer="<button>OK</button>")
+  ```
+
+  **After:**
+  ```python
+  PJXModal(id="m", content=(
+      str(PJXModalHeader(id="m-h", title="Delete file?").render())
+      + str(PJXModalBody(id="m-b", content="This cannot be undone.").render())
+      + str(PJXModalFooter(id="m-f", content="<button>OK</button>").render())
+  ))
+  ```
+
+  The close button now lives in `PJXModalHeader` (auto-included, `data-pjx-close`).
+  The dialog JS (`pjx-modal.js`) and CSS animations stay on the `PJXModal` shell.
+  The part CSS (`__header`, `__body`, `__footer` rules) moves to per-part CSS files.
+
+---
+
 ## 0.25.1 — stale `{#def#}` header warning + type-checker cleanup (2026-06-21)
 
 ### Added
