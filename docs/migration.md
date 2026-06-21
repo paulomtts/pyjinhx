@@ -176,11 +176,11 @@ Every builtin component is renamed with a `PJX` prefix, in Python and in tag for
 ```python
 # BEFORE (0.11)
 from pyjinhx.builtins import Avatar, Modal
-html = renderer.render('<Modal id="m" title="Hi"/>')
+html = renderer.render('<Modal id="m"/>')
 
 # AFTER (0.12)
 from pyjinhx.builtins import PJXAvatar, PJXModal
-html = renderer.render('<PJXModal id="m" title="Hi"/>')
+html = renderer.render('<PJXModal id="m"/>')
 ```
 
 Related renames, all mechanical:
