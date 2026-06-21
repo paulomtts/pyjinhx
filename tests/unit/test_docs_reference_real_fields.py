@@ -1,12 +1,16 @@
-"""Doc-lint: builtin examples in docs/ must only use real component fields.
+"""Doc-lint: builtin examples in docs/ and the gallery test apps must only use
+real component fields.
 
 Catches stale documentation — e.g. ``PJXCard(title=...)`` after ``title`` was
 removed in the composable-parts refactor. Builtins use ``extra="allow"``, so a
 removed field silently becomes an HTML attribute at runtime; nothing raises, and
-the gallery-demo test (which only validates ``<!-- demo: -->`` markers, not prose
-examples) cannot see it. This test parses every ``PJXFoo(...)`` Python call and
-``<PJXFoo ...>`` tag in the docs and asserts each bare-word keyword/attribute is a
-declared field on that builtin.
+neither the gallery-demo test (which only validates ``<!-- demo: -->`` markers)
+nor the integration/reactivity apps (which render but assert nothing on the
+content) can see it. This test parses every ``PJXFoo(...)`` Python call and
+``<PJXFoo ...>`` tag in the published docs **and** the two gallery test apps
+(``tests/integration/app.py``, ``tests/reactivity/app.py`` — the builtin-usage
+surfaces outside ``docs/`` that silently absorb stale fields) and asserts each
+bare-word keyword/attribute is a declared field on that builtin.
 
 Intentional HTML pass-through attrs are skipped: anything hyphenated (``data-*``,
 ``hx-*``, ``aria-*``) and the small set of bare-word global HTML attributes in
@@ -61,6 +65,18 @@ _DOC_FILES = [
     p
     for p in sorted(_DOCS.rglob("*.md")) + sorted((_DOCS / "demos").rglob("*.py"))
     if "superpowers" not in p.parts
+]
+
+# The gallery test apps build real builtins but assert nothing on their rendered
+# content, so a stale field there is the one non-doc surface that ``extra="allow"``
+# silently swallows. Lint them too.
+_DOC_FILES += [
+    p
+    for p in (
+        _ROOT / "tests" / "integration" / "app.py",
+        _ROOT / "tests" / "reactivity" / "app.py",
+    )
+    if p.exists()
 ]
 
 _PY_CALL = re.compile(r"\b(PJX[A-Za-z0-9]+)\(")
