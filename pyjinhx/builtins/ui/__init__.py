@@ -19,6 +19,8 @@ from pyjinhx.builtins.ui.pjx_lazy_panel import PJXLazyPanel
 from pyjinhx.builtins.ui.pjx_region_loader import PJXRegionLoader
 from pyjinhx.builtins.ui.pjx_segmented_control import PJXSegmentedControl
 from pyjinhx.builtins.ui.pjx_modal import PJXModal
+from pyjinhx.builtins.ui.pjx_modal_body import PJXModalBody
+from pyjinhx.builtins.ui.pjx_modal_footer import PJXModalFooter
 from pyjinhx.builtins.ui.pjx_notification import PJXNotification
 from pyjinhx.builtins.ui.pjx_page_loader import PJXPageLoader
 from pyjinhx.builtins.ui.pjx_popover import PJXPopover, PJXPopoverPanel, PJXPopoverTrigger
@@ -53,6 +55,8 @@ __all__ = [
     "PJXIcon",
     "PJXLazyPanel",
     "PJXModal",
+    "PJXModalBody",
+    "PJXModalFooter",
     "PJXNotification",
     "PJXPageLoader",
     "PJXPopover",
