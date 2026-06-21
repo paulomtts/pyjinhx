@@ -1,12 +1,9 @@
 """MkDocs hooks: render builtin demos into standalone pages and splice them into the docs."""
 
-import ast
-import inspect
 import os
 import re
 import shutil
 import sys
-import textwrap
 
 HERE = os.path.dirname(__file__)
 sys.path.insert(0, HERE)
@@ -34,23 +31,6 @@ _PAGE = """<!doctype html>
 _IFRAME_STYLE = "width:100%;border:1px solid #8884;border-radius:6px"
 
 
-def first_variation_source(factory):
-    """Source of the factory's first returned variation.
-
-    If the factory returns a list/tuple, show the first element's source (the
-    first rendering in a multi-variation box); otherwise the single returned
-    expression. Never includes the def line or `return`.
-    """
-    src = textwrap.dedent(inspect.getsource(factory))
-    tree = ast.parse(src)
-    ret = next(n for n in ast.walk(tree) if isinstance(n, ast.Return))
-    node = ret.value
-    if isinstance(node, (ast.List, ast.Tuple)) and node.elts:
-        node = node.elts[0]
-    assert node is not None
-    return ast.get_source_segment(src, node)
-
-
 def _render_one(value):
     if isinstance(value, BaseComponent):
         return str(value.render())
@@ -69,13 +49,11 @@ def on_page_markdown(markdown, *, page, config, files):
         name = match.group(1)
         if name not in DEMOS:
             raise ValueError(f"unknown demo {name!r} in {page.file.src_path}")
-        factory, height = DEMOS[name]
+        _factory, height = DEMOS[name]
         prefix = "../" * page.url.count("/")
-        source = first_variation_source(factory)
         return (
             f'<iframe src="{prefix}demos/{pascal_case_to_kebab_case(name)}.html" height="{height}" '
-            f'style="{_IFRAME_STYLE}" loading="lazy" title="{name} demo"></iframe>\n\n'
-            f"```python\n{source}\n```"
+            f'style="{_IFRAME_STYLE}" loading="lazy" title="{name} demo"></iframe>'
         )
 
     return _MARKER.sub(replace, markdown)
