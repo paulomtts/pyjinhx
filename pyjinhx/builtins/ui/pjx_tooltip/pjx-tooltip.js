@@ -51,6 +51,7 @@
         }
         activeTip = tip;
         tip.removeAttribute('hidden');
+        const trig = root.querySelector('.pjx-tooltip__trigger'); if (trig && tip.id) trig.setAttribute('aria-describedby', tip.id);
         requestAnimationFrame(() => {
             place(tip, root);
             tip.classList.add('pjx-tooltip__tip--visible');
