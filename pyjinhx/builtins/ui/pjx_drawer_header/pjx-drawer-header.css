@@ -1,0 +1,38 @@
+.pjx-drawer__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: var(--pjx-drawer-padding);
+  background: var(--pjx-drawer-header-bg);
+  border-bottom: 1px solid var(--pjx-drawer-header-sep);
+  flex-shrink: 0;
+}
+
+.pjx-drawer__title {
+  font-size: var(--font-size-md);
+  font-weight: 600;
+  color: var(--text);
+}
+
+.pjx-drawer__close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  padding: 0;
+  font-size: 1rem;
+  line-height: 1;
+  background: transparent;
+  color: var(--text-muted);
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.pjx-drawer__close:hover {
+  background: var(--surface-alt);
+  color: var(--text);
+}
