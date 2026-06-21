@@ -97,11 +97,11 @@ from pyjinhx.builtins import (
 | PJXPanelTrigger | `pjx-panel-trigger.css` | *(pjx_panel.js from PJXPanel)* |
 | PJXPasswordInput | `pjx-password-input.css` | `pjx-password-input.js` |
 | PJXPopover | `pjx_popover.css` | `pjx_popover.js` |
+| PJXPopoverPanel | *(from PJXPopover)* | *(from PJXPopover)* |
+| PJXPopoverTrigger | *(from PJXPopover)* | *(from PJXPopover)* |
 | PJXResizableGroup | `pjx-resizable-group.css` | `pjx-resizable-group.js` |
 | PJXResizablePanel | `pjx-resizable-panel.css` | — |
 | PJXResizableHandle | `pjx-resizable-handle.css` | — |
-| PJXPopoverPanel | *(from PJXPopover)* | *(from PJXPopover)* |
-| PJXPopoverTrigger | *(from PJXPopover)* | *(from PJXPopover)* |
 | PJXProgress | `pjx_progress.css` | — |
 | PJXPromptDialog | `pjx-prompt-dialog.css` | `pjx-prompt-dialog.js` |
 | PJXSegmentedControl | `pjx-segmented-control.css` | — |
