@@ -240,6 +240,8 @@ _BUILTIN_TAG_NAMES = frozenset(
         "PJXProgress",
         "PJXPromptDialog",
         "PJXRegionLoader",
+        "PJXResizableHandle",
+        "PJXResizablePanel",
         "PJXSegmentedControl",
         "PJXPanel",
         "PJXPanelTrigger",

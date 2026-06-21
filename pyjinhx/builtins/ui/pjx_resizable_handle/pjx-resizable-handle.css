@@ -1,0 +1,28 @@
+.pjx-resizable-group__handle {
+  flex: 0 0 var(--pjx-resizable-handle-size, 0.5rem);
+  position: relative;
+  touch-action: none;
+  background: var(--pjx-resizable-handle-color, transparent);
+}
+.pjx-resizable-group__handle::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  border-radius: var(--radius-full, 999px);
+  background: var(--pjx-resizable-grip-color, var(--border));
+  transition: background var(--transition, 0.15s ease);
+}
+.pjx-resizable-group__handle:hover::before,
+.pjx-resizable-group--dragging .pjx-resizable-group__handle::before {
+  background: var(--pjx-resizable-handle-color-active, var(--brand-muted));
+}
+.pjx-resizable-group__handle:focus-visible {
+  outline: 2px solid var(--brand-muted);
+  outline-offset: -2px;
+}
+.pjx-resizable-group--row > .pjx-resizable-group__handle { cursor: ew-resize; }
+.pjx-resizable-group--row > .pjx-resizable-group__handle::before { width: 3px; height: 2.5rem; }
+.pjx-resizable-group--column > .pjx-resizable-group__handle { cursor: ns-resize; }
+.pjx-resizable-group--column > .pjx-resizable-group__handle::before { width: 2.5rem; height: 3px; }
