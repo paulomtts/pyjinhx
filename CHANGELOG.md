@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.26.0 — composable builtin parts + resizable split pane (2026-06-21)
 
 ### Changed
 
