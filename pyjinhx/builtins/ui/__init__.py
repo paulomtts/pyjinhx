@@ -12,6 +12,8 @@ from pyjinhx.builtins.ui.pjx_confirm_dialog import PJXConfirmDialog
 from pyjinhx.builtins.ui.pjx_divider import PJXDivider
 from pyjinhx.builtins.ui.pjx_dropdown import PJXDropdown
 from pyjinhx.builtins.ui.pjx_drawer import PJXDrawer
+from pyjinhx.builtins.ui.pjx_drawer_body import PJXDrawerBody
+from pyjinhx.builtins.ui.pjx_drawer_footer import PJXDrawerFooter
 from pyjinhx.builtins.ui.pjx_empty_state import PJXEmptyState
 from pyjinhx.builtins.ui.pjx_form_field import PJXFormField
 from pyjinhx.builtins.ui.pjx_icon import PJXIcon
@@ -48,6 +50,8 @@ __all__ = [
     "PJXDivider",
     "PJXDropdown",
     "PJXDrawer",
+    "PJXDrawerBody",
+    "PJXDrawerFooter",
     "PJXEmptyState",
     "PJXFormField",
     "PJXIcon",
