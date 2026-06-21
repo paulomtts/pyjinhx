@@ -1,7 +1,5 @@
 """Tests for PJXDrawerBody and PJXDrawerFooter."""
 
-import pytest
-
 from pyjinhx.builtins import PJXDrawerBody, PJXDrawerFooter
 
 

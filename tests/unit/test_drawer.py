@@ -2,8 +2,6 @@
 
 import re
 
-import pytest
-
 from pyjinhx.builtins import PJXDrawer, PJXDrawerBody, PJXDrawerFooter, PJXDrawerHeader
 
 

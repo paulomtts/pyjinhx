@@ -18,6 +18,8 @@ from pyjinhx.builtins import (
     PJXCard,
     PJXDivider,
     PJXDrawer,
+    PJXDrawerBody,
+    PJXDrawerHeader,
     PJXDropdown,
     PJXEmptyState,
     PJXRegionLoader,
@@ -243,8 +245,10 @@ def _gallery_inner_html() -> str:
         drawer=PJXDrawer(
             id="g-drawer",
             side="right",
-            title="Drawer",
-            body="Side panel content.",
+            content=(
+                str(PJXDrawerHeader(id="g-drawer-h", title="Drawer").render())
+                + str(PJXDrawerBody(id="g-drawer-b", content="Side panel content.").render())
+            ),
         ),
         progress_determinate=PJXProgress(
             id="g-prog-det",

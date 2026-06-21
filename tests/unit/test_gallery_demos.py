@@ -56,7 +56,7 @@ def test_every_factory_renders():
 
 
 def test_registry_covers_all_builtins():
-    folded = {"PJXLazyPanel", "PJXPanelTrigger", "PJXPopoverTrigger", "PJXPopoverPanel"}
+    folded = {"PJXLazyPanel", "PJXPanelTrigger", "PJXPopoverTrigger", "PJXPopoverPanel", "PJXDrawerHeader", "PJXDrawerBody", "PJXDrawerFooter"}
     assert set(DEMOS) == set(pyjinhx.builtins.__all__) - folded
 
 

@@ -1,7 +1,5 @@
 """Tests for PJXDrawerHeader."""
 
-import pytest
-
 from pyjinhx.builtins import PJXDrawerHeader
 
 

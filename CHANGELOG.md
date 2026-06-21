@@ -1,5 +1,38 @@
 # Changelog
 
+## Unreleased
+
+### Breaking
+
+- **`PJXDrawer` is now a `{{ content }}`-composed shell.** The fields `title`, `body`, `footer`,
+  `close_label`, `close_content`, and `extra_attrs` have been removed from `PJXDrawer`. The `side`,
+  `open_on_mount`, `remove_on_close`, and `class_name` fields are retained. Migrate by composing
+  the new parts inside `PJXDrawer`:
+
+  ```html
+  <!-- Before -->
+  <PJXDrawer id="nav" side="left" title="Menu" body="…links…" footer="v1.0"/>
+
+  <!-- After -->
+  <PJXDrawer id="nav" side="left">
+    <PJXDrawerHeader title="Menu"/>
+    <PJXDrawerBody>…links…</PJXDrawerBody>
+    <PJXDrawerFooter>v1.0</PJXDrawerFooter>
+  </PJXDrawer>
+  ```
+
+### Added
+
+- **`PJXDrawerHeader`** — `<header class="pjx-drawer__header">` with an optional `title`
+  convenience (renders `<span class="pjx-drawer__title">`), `content` slot (used when `title` is
+  empty), and an auto-included close `<button data-pjx-close>` controlled by `close_label` /
+  `close_content`. Drawer JS continues to work via event delegation on `[data-pjx-close]`.
+- **`PJXDrawerBody`** — `<div class="pjx-drawer__body">` with `content` and `class_name`.
+- **`PJXDrawerFooter`** — `<footer class="pjx-drawer__footer">` with `content` and `class_name`.
+- CSS split: `pjx-drawer-header.css`, `pjx-drawer-body.css`, `pjx-drawer-footer.css` are now
+  separate assets loaded with their respective parts. `pjx-drawer.css` retains only the dialog /
+  box / side-variant / animation rules and the custom-property block.
+
 ## 0.25.1 — stale `{#def#}` header warning + type-checker cleanup (2026-06-21)
 
 ### Added
