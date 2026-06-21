@@ -655,8 +655,6 @@ Floating panel for a `PJXPopover`. **Assets:** bundled in `pjx_popover.css`.
 
 In-place loading veil over a positioned ancestor. **Assets:** `pjx-region-loader.css`, `pjx-region-loader.js`.
 
-<!-- demo: PJXRegionLoader -->
-
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
 | `aria_label` | `str` | `"Loading"` | Accessible label (`role="status"`). |
@@ -669,7 +667,29 @@ Supports both declarative (`hx-indicator`) and programmatic use (`pjx.loader.reg
 Events (non-cancelable): `pjx:region-loader:show`, `pjx:region-loader:hide`.
 API: `pjx.loader.region.show/hide/reset(id)` and `pjx.loader.region.wrap(id, promise)`. Ref-counted for concurrent sources: visible from the first `show(id)` to the last `hide(id)`; `show`/`hide` events fire only on real visibility transitions (a show during an in-flight hide cancels it silently); hides finalize via a fallback timer even when animations are disabled. `wrap(id, promise)` pairs show/hide around any async task. Nodes replaced by a swap while sources remain active are re-lit on htmx:afterSettle.
 
-**Classes:** `pjx-region-loader`; state `pjx-region-loader--visible`, `pjx-region-loader--hiding`; `pjx-region-loader__spinner`. Theming: see [PJXRegionLoader tokens](#pjxregionloader-tokens).
+**Classes:** `pjx-region-loader`; state `pjx-region-loader--visible`, `pjx-region-loader--hiding`; `pjx-region-loader__spinner`.
+
+**Style tokens.**
+
+| Token | Default |
+| --- | --- |
+| `--pjx-region-loader-bg` | `rgb(0 0 0 / 0.55)` |
+| `--pjx-region-loader-backdrop` | `blur(2px)` |
+| `--pjx-region-loader-z` | `100` |
+| `--pjx-region-loader-spinner-size` | `2.5rem` |
+| `--pjx-region-loader-spinner-width` | `3px` |
+| `--pjx-region-loader-spinner-color` | `var(--brand)` |
+| `--pjx-region-loader-spinner-track` | `rgb(255 255 255 / 0.1)` |
+
+<!-- demo: PJXRegionLoader -->
+
+```html
+<PJXRegionLoader id="demo-region"/>
+```
+
+```python
+PJXRegionLoader(id="demo-region")
+```
 
 ---
 
@@ -805,8 +825,6 @@ PJXAlert(variant="info", title="Heads up", body="A new version is available.")
 
 Button + anchored panel backed by the shared popover engine. **Assets:** `pjx_dropdown.css` only (ships no own JS — `pjx_popover.js` is included via the `js` extra-asset field whenever a PJXDropdown renders).
 
-<!-- demo: PJXDropdown -->
-
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
 | `trigger` | `str \| BaseComponent` | `""` | Button label. |
@@ -819,7 +837,42 @@ Trigger id is `{{ id }}-trigger`, menu is `{{ id }}-menu`.
 
 **DOM contract.** Root `.pjx-dropdown` with `data-pjx-popover`. Trigger: `button.pjx-dropdown__trigger` with `data-pjx-toggle="{{ id }}-menu"`, `aria-expanded` synced by `pjx_popover.js`. Panel: `div.pjx-dropdown__menu[data-pjx-popover-panel][role="menu"]`, `hidden` when closed. All popover events and API apply: `pjx.popover.open/close/toggle(panelId)`. Document click outside closes the menu; `Escape` closes all open popovers.
 
-**Classes:** `pjx-dropdown`, `pjx-dropdown--align-end`, `pjx-dropdown__trigger`, `pjx-dropdown__menu`. Theming: see [PJXDropdown tokens](#pjxdropdown-tokens).
+**Classes:** `pjx-dropdown`, `pjx-dropdown--align-end`, `pjx-dropdown__trigger`, `pjx-dropdown__menu`.
+
+**Style tokens.**
+
+| Token | Default |
+| --- | --- |
+| `--pjx-dropdown-menu-bg` | `var(--surface-alt)` |
+| `--pjx-dropdown-menu-border` | `var(--border)` |
+| `--pjx-dropdown-menu-radius` | `var(--radius-md)` |
+| `--pjx-dropdown-menu-shadow` | `var(--shadow-md)` |
+| `--pjx-dropdown-menu-padding` | `0.35rem 0` |
+| `--pjx-dropdown-menu-min-w` | `10rem` |
+| `--pjx-dropdown-menu-max-h` | `min(70dvh, 24rem)` |
+| `--pjx-dropdown-z` | `350` |
+
+<!-- demo: PJXDropdown -->
+
+```html
+<PJXDropdown trigger="Actions" menu_label="Actions menu">
+  <button>Edit</button>
+  <button>Duplicate</button>
+  <button>Delete</button>
+</PJXDropdown>
+```
+
+```python
+PJXDropdown(
+    trigger="Actions",
+    items=[
+        "<button>Edit</button>",
+        "<button>Duplicate</button>",
+        "<button>Delete</button>",
+    ],
+    menu_label="Actions menu",
+)
+```
 
 ---
 
@@ -1103,13 +1156,15 @@ HTMX lazy-load wrapper: a single `div` that fetches `url` on a computed trigger 
 | `reveal` | `pjx:reveal from:closest [data-pjx-region] once` |
 | `load` | `load` |
 
-```python
-PJXLazyPanel(id="comments", url="/posts/42/comments", content=PJXSkeleton(id="comments-skel"))
-```
-
 **DOM contract.** Root `.pjx-lazy-panel`; no JS (pure HTMX). `data-pjx-region` on a PJXPanel or PJXPanelTrigger host fires `pjx:reveal`/`pjx:before-reveal` events that `when="reveal"` listens for.
 
 **Classes:** `pjx-lazy-panel` (unstyled hook). No theming tokens.
+
+```html
+<PJXLazyPanel id="comments" url="/posts/42/comments">
+  <PJXSkeleton id="comments-skel"/>
+</PJXLazyPanel>
+```
 
 ---
 
@@ -1372,8 +1427,6 @@ PJXBreadcrumb(items=[("Home", "/"), ("Projects", "/projects"), ("Dashboard", Non
 
 Tab buttons and panels. **Assets:** `pjx-tab-group.css`, `pjx-tab-group.js`.
 
-<!-- demo: PJXTabGroup -->
-
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
 | `tabs` | `dict[str, str \| BaseComponent]` | `{}` | **Insertion order** is tab order; keys are labels, values are panel bodies. |
@@ -1383,15 +1436,41 @@ Tab buttons and panels. **Assets:** `pjx-tab-group.css`, `pjx-tab-group.js`.
 
 **DOM contract.** Root `.pjx-tab-group` (no `data-pjx-region` on the root). Tab elements: `.pjx-tab-group__tab` (no `data-pjx-panel-key` — tabs match panels by insertion-order index); panel elements: `.pjx-tab-group__panel[data-pjx-region]` (each panel carries `data-pjx-region`). `pjx:before-reveal` (cancelable) fires before switching; `pjx:reveal` fires after; `data-pjx-revealed` is set on the visible panel. `pjx-tab-group.js` delegates `click` document-wide on `.pjx-tab-group__tab` (not scoped to `.pjx-tab-group__list`), updates `aria-selected`, `tabindex`, and `hidden`. On `DOMContentLoaded`, `htmx:afterSwap`, and `htmx:afterSettle`, `pxTabGroupInit` announces the initially visible panel once (`pjx:reveal`, reason `"api"`) so `PJXLazyPanel(when="reveal")` works in default tabs.
 
-**Classes:** `pjx-tab-group`, `pjx-tab-group__list`, `pjx-tab-group__tab`, `pjx-tab-group__panel`. Theming: see [PJXTabGroup tokens](#pjxtabgroup-tokens).
+**Classes:** `pjx-tab-group`, `pjx-tab-group__list`, `pjx-tab-group__tab`, `pjx-tab-group__panel`.
+
+**Style tokens.**
+
+| Token | Default |
+| --- | --- |
+| `--pjx-tab-group-border` | `var(--border)` |
+| `--pjx-tab-group-bg` | `var(--surface-alt)` |
+| `--pjx-tab-group-tab-active-fg` | `var(--text)` |
+| `--pjx-tab-group-tab-active-bg` | `color-mix(in srgb, var(--surface) 55%, var(--surface-alt))` |
+| `--pjx-tab-group-tab-active-border` | `var(--brand)` |
+| `--pjx-tab-group-panel-bg` | `var(--surface)` |
+
+<!-- demo: PJXTabGroup -->
+
+```html
+<PJXTabGroup tabs_label="Project tabs" tabs='{"Overview": "<p>Project summary and key metrics.</p>", "Activity": "<p>Recent commits and deploys.</p>", "Settings": "<p>Repository configuration.</p>"}' />
+```
+
+```python
+PJXTabGroup(
+    tabs={
+        "Overview": "<p>Project summary and key metrics.</p>",
+        "Activity": "<p>Recent commits and deploys.</p>",
+        "Settings": "<p>Repository configuration.</p>",
+    },
+    tabs_label="Project tabs",
+)
+```
 
 ---
 
 ## PJXPanel
 
 Host for **distributed** tab-like switching: all bodies render here; controls are separate [`PJXPanelTrigger`](#pjxpaneltrigger) components. **Unstyled** aside from `hidden` panels. **Assets:** `pjx_panel.css`, `pjx_panel.js`.
-
-<!-- demo: PJXPanel -->
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
@@ -1402,6 +1481,23 @@ Host for **distributed** tab-like switching: all bodies render here; controls ar
 **DOM contract.** Root `.pjx-panel` with `id`. Panels: `.pjx-panel__panel[data-pjx-panel-key][data-pjx-region]`. Events (bubble from the active panel): `pjx:before-reveal`* (cancelable, `detail = {reason, trigger}`), `pjx:reveal`; `data-pjx-revealed` on the visible panel. `pjx_panel.js` click delegation on `.pjx-panel-trigger`; `pxPanelInit` runs on `DOMContentLoaded`, `htmx:afterSwap`, `htmx:afterSettle`.
 
 **Classes:** `pjx-panel`, `pjx-panel__panel`. No theme tokens; minimal rules for `[hidden]` panels.
+
+<!-- demo: PJXPanel -->
+
+```html
+<PJXPanel id="demo-panel" panels='{"chat": "<p>Active conversations with your team.</p>", "files": "<p>Uploaded assets and project documents.</p>", "settings": "<p>Notification preferences and integrations.</p>"}' />
+```
+
+```python
+PJXPanel(
+    id="demo-panel",
+    panels={
+        "chat": "<p>Active conversations with your team.</p>",
+        "files": "<p>Uploaded assets and project documents.</p>",
+        "settings": "<p>Notification preferences and integrations.</p>",
+    },
+)
+```
 
 ---
 
@@ -1420,6 +1516,12 @@ Maps children to `content`; see the [children-vs-`content` note](#built-in-ui-co
 **DOM contract.** Root `.pjx-panel-trigger[data-pjx-panel-id][data-pjx-panel-key]`; no own JS (wired by `pjx_panel.js`). `display: contents` so no layout box. On every panel switch, `pjx_panel.js` syncs `aria-selected` and `tabindex` on every `.pjx-panel-trigger[data-pjx-panel-id]` matching the host PJXPanel.
 
 **Classes:** `pjx-panel-trigger`. No theming tokens.
+
+```html
+<PJXPanelTrigger panel_id="demo-panel" panel="chat">
+  <button>Chat</button>
+</PJXPanelTrigger>
+```
 
 ---
 
@@ -1533,18 +1635,12 @@ PJXPromptDialog(id="demo-prompt")
 
 HX-Trigger-driven toast container singleton. Mount once in the layout. **Assets:** `pjx-toast-host.css`, `pjx-toast-host.js`.
 
-<!-- demo: PJXToastHost -->
-
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
 | `position` | literal | `"bottom-right"` | `top-right`, `top-left`, `bottom-right`, `bottom-left`. |
 | `timeout` | `int` | `4000` | Default auto-dismiss ms; `0` disables. |
 | `dismiss_label` | `str` | `"Dismiss"` | `aria-label` for dismiss buttons on individual toasts. |
 | `event_name` | `str` | `"pjx:toast"` | Custom event name to listen for (wired on mount). |
-
-```python
-PJXToastHost(id="app-toasts", position="top-right")
-```
 
 Fire from a FastAPI route via `HX-Trigger`:
 
@@ -1567,7 +1663,32 @@ Events (bubble from the host): `pjx:toasthost:show` (detail: `{level}`), `pjx:to
 API: `pjx.toast(message, {level?, timeout?})`.
 Individual toasts: `div.pjx-toast.pjx-toast--<level>` > `.pjx-toast__message` + `button.pjx-toast__dismiss`.
 
-**Classes:** `pjx-toast-host`, `pjx-toast-host--top-right`, `--top-left`, `--bottom-right`, `--bottom-left`; `pjx-toast`, `pjx-toast--info`, `--success`, `--warning`, `--error`; `pjx-toast--hiding`; `pjx-toast__message`, `pjx-toast__dismiss`. Theming: see [PJXToastHost tokens](#pjxtoasthost-tokens).
+**Classes:** `pjx-toast-host`, `pjx-toast-host--top-right`, `--top-left`, `--bottom-right`, `--bottom-left`; `pjx-toast`, `pjx-toast--info`, `--success`, `--warning`, `--error`; `pjx-toast--hiding`; `pjx-toast__message`, `pjx-toast__dismiss`.
+
+**Style tokens.**
+
+| Token | Default |
+| --- | --- |
+| `--pjx-toast-bg` | `var(--surface)` |
+| `--pjx-toast-border` | `var(--border)` |
+| `--pjx-toast-radius` | `var(--radius-md)` |
+| `--pjx-toast-shadow` | `var(--shadow-md)` |
+| `--pjx-toast-gap` | `0.5rem` |
+| `--pjx-toast-z` | `1000` |
+| `--pjx-toast-info` | `var(--brand, #5c8fa8)` |
+| `--pjx-toast-success` | `#3e7d4f` |
+| `--pjx-toast-warning` | `#b07415` |
+| `--pjx-toast-error` | `#b3261e` |
+
+<!-- demo: PJXToastHost -->
+
+```html
+<PJXToastHost position="bottom-right"/>
+```
+
+```python
+PJXToastHost(position="bottom-right")
+```
 
 ---
 
@@ -1625,17 +1746,11 @@ PJXAvatarStack(avatars=[PJXAvatar(initials="AB", size="sm", alt="Alice Brown"), 
 
 Full-page navigation loader. Mount once at the top of the layout body. **Assets:** `pjx-page-loader.css`, `pjx-page-loader.js`.
 
-<!-- demo: PJXPageLoader -->
-
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
 | `nav_targets` | `str` | `"app-content"` | Comma-separated element ids whose htmx GET requests activate the loader. |
 | `active_on_load` | `bool` | `True` | When `True`, renders with `.pjx-page-loader--active` (cold-load shimmer, removed on `DOMContentLoaded`). |
 | `loading_label` | `str` | `"Loading"` | `aria-label` for the `role="status"` element. |
-
-```python
-PJXPageLoader(id="page-loader", nav_targets="main-content,sidebar")
-```
 
 Add `data-pjx-loader` to any element to make its htmx requests activate the loader regardless of `nav_targets`:
 
@@ -1650,7 +1765,25 @@ Tracking is detected via `htmx:beforeRequest`; the loader releases via the reque
 Events (non-cancelable, bubble from the root): `pjx:page-loader:show`, `pjx:page-loader:hide`.
 API: `pjx.loader.page.show()`, `pjx.loader.page.hide()`, `pjx.loader.page.reset()`, `pjx.loader.page.wrap(promise)`.
 
-**Classes:** `pjx-page-loader`, `pjx-page-loader--active`, `pjx-page-loader__spinner`. Theming: see [PJXPageLoader tokens](#pjxpageloader-tokens).
+**Classes:** `pjx-page-loader`, `pjx-page-loader--active`, `pjx-page-loader__spinner`.
+
+**Style tokens.**
+
+| Token | Default |
+| --- | --- |
+| `--pjx-page-loader-backdrop` | `rgb(0 0 0 / 0.15)` |
+| `--pjx-page-loader-z` | `9999` |
+| `--pjx-page-loader-size` | `2rem` |
+
+<!-- demo: PJXPageLoader -->
+
+```html
+<PJXPageLoader id="demo-page-loader"/>
+```
+
+```python
+PJXPageLoader(id="demo-page-loader")
+```
 
 ---
 
@@ -1658,35 +1791,11 @@ API: `pjx.loader.page.show()`, `pjx.loader.page.hide()`, `pjx.loader.page.reset(
 
 Drag-to-resize split-pane container. Compose `PJXResizablePanel` and `PJXResizableHandle` parts inside. **Assets:** `pjx-resizable-group.css`, `pjx-resizable-group.js`.
 
-<!-- demo: PJXResizableGroup -->
-
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
 | `direction` | `"row" \| "column"` | `"row"` | Flex direction for the group (`row` = side-by-side, `column` = stacked). Emits `pjx-resizable-group--row` / `--column` and `data-direction`. |
 | `class_name` | `AttrValue` | `""` | Extra CSS class(es) on the root element. |
 | `content` | `str \| BaseComponent` | `""` | Pre-rendered children: alternating `PJXResizablePanel` and `PJXResizableHandle` components. |
-
-```html
-<PJXResizableGroup direction="row">
-  <PJXResizablePanel size="25" min="15">sidebar</PJXResizablePanel>
-  <PJXResizableHandle/>
-  <PJXResizablePanel size="75">main</PJXResizablePanel>
-</PJXResizableGroup>
-```
-
-Python:
-
-```python
-PJXResizableGroup(
-    id="split",
-    direction="row",
-    content=(
-        PJXResizablePanel(id="split-l", size=25, min=15, content="sidebar").render()
-        + PJXResizableHandle(id="split-h").render()
-        + PJXResizablePanel(id="split-r", size=75, content="main").render()
-    ),
-)
-```
 
 **DOM contract.** Root `<div role="group" class="pjx-resizable-group pjx-resizable-group--{direction}" data-pjx-resizable-group data-direction="{direction}">` rendering `{{ content }}` verbatim. `pjx-resizable-group.js` initializes on `DOMContentLoaded` and `htmx:afterSettle` (bind-guarded per element), sets `flex-grow` on each panel from the panel's `data-size` attribute, and wires pointer/touch drag and keyboard events to the handles.
 
@@ -1700,7 +1809,38 @@ document.addEventListener("pjx:resize", e => {
 
 **Nesting.** A `PJXResizablePanel` may contain a `PJXResizableGroup` of the perpendicular direction, giving a resizable grid. Each group initializes independently via `:scope` + direct-children traversal.
 
-**Classes:** `pjx-resizable-group`; direction modifiers `pjx-resizable-group--row`, `--column`; drag state `pjx-resizable-group--dragging`. Theming: see [PJXResizableGroup tokens](#pjxresizablegroup-tokens).
+**Classes:** `pjx-resizable-group`; direction modifiers `pjx-resizable-group--row`, `--column`; drag state `pjx-resizable-group--dragging`.
+
+**Style tokens.**
+
+| Token | Default |
+| --- | --- |
+| `--pjx-resizable-handle-size` | `0.5rem` |
+| `--pjx-resizable-handle-color` | `transparent` |
+| `--pjx-resizable-grip-color` | `var(--border)` |
+| `--pjx-resizable-handle-color-active` | `var(--brand-muted)` |
+
+<!-- demo: PJXResizableGroup -->
+
+```html
+<PJXResizableGroup direction="row">
+  <PJXResizablePanel size="25" min="15">sidebar</PJXResizablePanel>
+  <PJXResizableHandle/>
+  <PJXResizablePanel size="75">main</PJXResizablePanel>
+</PJXResizableGroup>
+```
+
+```python
+PJXResizableGroup(
+    id="split",
+    direction="row",
+    content=(
+        PJXResizablePanel(id="split-l", size=25, min=15, content="sidebar").render()
+        + PJXResizableHandle(id="split-h").render()
+        + PJXResizablePanel(id="split-r", size=75, content="main").render()
+    ),
+)
+```
 
 ---
 
@@ -1720,6 +1860,14 @@ A resizable pane inside a `PJXResizableGroup`. Percentage-sized; `flex-grow` is 
 
 **Classes:** `pjx-resizable-group__panel`. No own theming tokens; layout is controlled by `flex-grow`.
 
+```html
+<PJXResizableGroup direction="row">
+  <PJXResizablePanel size="40" min="20">Left panel</PJXResizablePanel>
+  <PJXResizableHandle/>
+  <PJXResizablePanel size="60">Right panel</PJXResizablePanel>
+</PJXResizableGroup>
+```
+
 ---
 
 ## PJXResizableHandle
@@ -1735,7 +1883,15 @@ The draggable divider between two `PJXResizablePanel` siblings. Keyboard-accessi
 
 **Keyboard controls.** When the handle is focused: `ArrowRight`/`ArrowDown` grows the preceding panel by 5 %; `ArrowLeft`/`ArrowUp` shrinks it by 5 %; `Home` collapses the preceding panel to its `min`; `End` expands it to the remaining group space (clamped to `max`). `min`/`max` constraints from both neighbors are respected.
 
-**Classes:** `pjx-resizable-group__handle`. Theming: see [PJXResizableGroup tokens](#pjxresizablegroup-tokens) (handle appearance is controlled by group-level tokens).
+**Classes:** `pjx-resizable-group__handle`. Handle appearance is controlled by [PJXResizableGroup tokens](#pjxresizablegroup).
+
+```html
+<PJXResizableGroup direction="row">
+  <PJXResizablePanel size="50">Left</PJXResizablePanel>
+  <PJXResizableHandle label="Resize panels"/>
+  <PJXResizablePanel size="50">Right</PJXResizablePanel>
+</PJXResizableGroup>
+```
 
 ---
 

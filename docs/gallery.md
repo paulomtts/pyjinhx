@@ -206,23 +206,59 @@ The builtins, rendered by pyjinhx at docs build time (PJXLazyPanel needs a backe
 ### [PJXDropdown](guide/builtins.md#pjxdropdown)
 <!-- demo: PJXDropdown -->
 
+```html
+<PJXDropdown trigger="Actions" menu_label="Actions menu">
+  <button>Edit</button>
+  <button>Duplicate</button>
+  <button>Delete</button>
+</PJXDropdown>
+```
+
 ### [PJXTabGroup](guide/builtins.md#pjxtabgroup)
 <!-- demo: PJXTabGroup -->
+
+```html
+<PJXTabGroup tabs_label="Project tabs" tabs='{"Overview": "<p>Project summary and key metrics.</p>", "Activity": "<p>Recent commits and deploys.</p>", "Settings": "<p>Repository configuration.</p>"}' />
+```
 
 ### [PJXPanel](guide/builtins.md#pjxpanel)
 <!-- demo: PJXPanel -->
 
+```html
+<PJXPanel id="demo-panel" panels='{"chat": "<p>Active conversations with your team.</p>", "files": "<p>Uploaded assets and project documents.</p>", "settings": "<p>Notification preferences and integrations.</p>"}' />
+```
+
 ### [PJXResizableGroup](guide/builtins.md#pjxresizablegroup)
 <!-- demo: PJXResizableGroup -->
+
+```html
+<PJXResizableGroup direction="row">
+  <PJXResizablePanel size="25" min="15">sidebar</PJXResizablePanel>
+  <PJXResizableHandle/>
+  <PJXResizablePanel size="75">main</PJXResizablePanel>
+</PJXResizableGroup>
+```
 
 ### [PJXToastHost](guide/builtins.md#pjxtoasthost)
 <!-- demo: PJXToastHost -->
 
+```html
+<PJXToastHost position="bottom-right"/>
+```
+
 ### [PJXRegionLoader](guide/builtins.md#pjxregionloader)
 <!-- demo: PJXRegionLoader -->
 
+```html
+<PJXRegionLoader id="demo-region"/>
+```
+
 ### [PJXPageLoader](guide/builtins.md#pjxpageloader)
 <!-- demo: PJXPageLoader -->
+
+```html
+<PJXPageLoader id="demo-page-loader"/>
+```
 
 ## Form controls
 
