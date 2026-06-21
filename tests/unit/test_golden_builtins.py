@@ -27,7 +27,15 @@ CASES = [
     ("card_full", lambda: b.PJXCard(id="g", title="T", body="B", footer="F")),
     ("confirm_dialog", lambda: b.PJXConfirmDialog(id="g")),
     ("divider_labeled", lambda: b.PJXDivider(id="g", label="or")),
-    ("drawer", lambda: b.PJXDrawer(id="g", title="T", body="B", footer="F")),
+    ("drawer", lambda: b.PJXDrawer(id="g", side="left", content=(
+        str(b.PJXDrawerHeader(id="g-h", title="Menu").render())
+        + str(b.PJXDrawerBody(id="g-b", content="Links").render())
+        + str(b.PJXDrawerFooter(id="g-f", content="v1.0").render())
+    ))),
+    ("drawer_header_title", lambda: b.PJXDrawerHeader(id="g", title="Settings")),
+    ("drawer_header_content", lambda: b.PJXDrawerHeader(id="g", content="<strong>Custom</strong>")),
+    ("drawer_body", lambda: b.PJXDrawerBody(id="g", content="<p>Body content</p>")),
+    ("drawer_footer", lambda: b.PJXDrawerFooter(id="g", content="<button>Save</button>")),
     ("dropdown", lambda: b.PJXDropdown(id="g", trigger="Menu", items=["<a href='/x'>X</a>"])),
     ("empty_state", lambda: b.PJXEmptyState(id="g", title="Nothing", description="D", action="<button>A</button>")),
     ("lazy_panel", lambda: b.PJXLazyPanel(id="g", url="/load")),
