@@ -59,18 +59,11 @@ def test_markup_value_on_scalar_field_is_still_escaped():
     assert "&lt;b&gt;" in html
 
 
-def test_button_start_end_slot_render_raw():
+def test_button_content_slot_renders_raw():
     from pyjinhx.builtins import PJXButton
-    html = str(PJXButton(id="b", start="<svg data-x='1'>i</svg>", center="Save").render())
-    assert "<svg data-x='1'>i</svg>" in html  # start is Slot → raw
+    html = str(PJXButton(id="b", content="<svg data-x='1'>i</svg> Save").render())
+    assert "<svg data-x='1'>i</svg>" in html  # content is a Slot → raw
     assert "Save" in html
-
-
-def test_button_center_label_is_escaped():
-    from pyjinhx.builtins import PJXButton
-    html = str(PJXButton(id="b2", center="<b>x</b>").render())
-    assert "<b>x</b>" not in html   # center is text (str) → escaped; use start/end for icons
-    assert "&lt;b&gt;" in html
 
 
 def test_dropdown_trigger_slot_renders_raw():
@@ -99,14 +92,13 @@ def test_drawer_close_content_slot_renders_raw():
 
 # --- Nested-tag components (#120): escaping must survive tag expansion ---
 
-def test_nested_tag_component_scalar_text_is_escaped():
-    """PJXButton embeds <PJXRegionLoader/>; scalar `center` text must still be escaped."""
+def test_nested_tag_component_slot_content_renders_raw():
+    """PJXButton embeds <PJXRegionLoader/>; content slot renders raw through tag expansion."""
     from pyjinhx.builtins import PJXButton
     html = str(
-        PJXButton(id="a", center="<script>alert(1)</script>", loading=True).render()
+        PJXButton(id="a", content="<b>safe markup</b>", loading=True).render()
     )
-    assert "<script>alert(1)</script>" not in html
-    assert "&lt;script&gt;" in html
+    assert "<b>safe markup</b>" in html  # content is a slot → raw
 
 
 def test_nested_tag_component_slot_renders_raw():
@@ -117,15 +109,14 @@ def test_nested_tag_component_slot_renders_raw():
     assert "<p data-x='1'>hi</p>" in html  # content slot stays raw
 
 
-def test_nested_tag_component_scalar_is_escaped_when_nested_tag_present():
-    """PJXButton loading state embeds <PJXRegionLoader/>; the center scalar must still
-    escape even though a nested PascalCase tag triggers tag expansion."""
+def test_nested_tag_component_still_expands_loader_when_content_slot_used():
+    """PJXButton loading state embeds <PJXRegionLoader/>; loader renders even when content set."""
     from pyjinhx.builtins import PJXButton
     html = str(
-        PJXButton(id="b", center="<b>x</b>", loading=True).render()
+        PJXButton(id="b", content="Save", loading=True).render()
     )
-    assert "<b>x</b>" not in html  # center is text (str) → escaped through tag expansion
-    assert "&lt;b&gt;" in html
+    assert "pjx-region-loader" in html  # loader auto-appended
+    assert "Save" in html
 
 
 def test_nested_tag_component_still_renders_nested_component():

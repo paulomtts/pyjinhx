@@ -146,7 +146,7 @@ Inline SVG icon from a vendored [Lucide](https://lucide.dev) set (ISC). **Assets
 | `stroke_width` | `float` | `1.5` | SVG `stroke-width`. |
 | `label` | `str \| None` | `None` | `None` → `aria-hidden="true"`; a string → `role="img"` + a `<title>`. |
 
-**DOM contract.** Root `<svg>` with `stroke="currentColor"` and `fill="none"`; no JS API. It inherits text color, so it themes for free — set `color` on the icon or any ancestor. Compose into slots, e.g. `<PJXButton start="<PJXIcon name='plus'/>" center="Add"/>`.
+**DOM contract.** Root `<svg>` with `stroke="currentColor"` and `fill="none"`; no JS API. It inherits text color, so it themes for free — set `color` on the icon or any ancestor. Compose into `content`, e.g. `<PJXButton variant="primary"><PJXIcon name="plus"/> Add</PJXButton>`.
 
 **Classes:** `pjx-icon`. Theming: no `--pjx-icon-*` tokens — size comes from the `size`/`stroke_width` props and color from `currentColor`.
 
@@ -160,18 +160,22 @@ Structural, themeable button. Composes [`PJXRegionLoader`](#pjxregionloader) for
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
-| `start` | `str \| BaseComponent \| None` | `None` | Leading slot (e.g. an icon); the `.pjx-button__start` span is omitted when empty. |
-| `center` | `str \| None` | `None` | Label text (`.pjx-button__center`), HTML-escaped; omitted when empty. Use `start`/`end` for icon slots. |
-| `end` | `str \| BaseComponent \| None` | `None` | Trailing slot (icon/badge, `.pjx-button__end`), omitted when empty. |
+| `content` | `str \| BaseComponent` | `""` | Freeform button content (rendered raw); nest icons, text, or any markup here. The loading spinner auto-appends after this. |
 | `variant` | `str` | `"default"` | Class hook only → `pjx-button--{variant}`. No baked palette; style it yourself. |
 | `block` | `bool` | `False` | Full-width (`pjx-button--block`) instead of content-width. |
 | `loading` | `bool` | `False` | Renders a `<PJXRegionLoader/>` overlay and sets `aria-busy="true"`. |
 | `disabled` | `bool` | `False` | Sets the `disabled` attribute. |
 | `type` | literal | `"button"` | `button`, `submit`, or `reset`. |
 
-**DOM contract.** Root `<button>`; slot spans render only when their value is set. No JS API — pass `hx-*`/`@click` inline (they pass through to the root). The default `.pjx-button` is visually neutral so it never fights your design system; paint variants via `.pjx-button--<variant>`.
+```html
+<PJXButton variant="primary"><PJXIcon name="plus"/> Add item</PJXButton>
+```
 
-**Classes:** `pjx-button`; `pjx-button--block`; variant seams `pjx-button--<variant>`; `pjx-button__start`, `__center`, `__end`. Theming: see [PJXButton tokens](#pjxbutton-tokens).
+Python: `PJXButton(content="Save")` or `PJXButton(variant="primary", content="<icon> Add")`.
+
+**DOM contract.** Root `<button>` rendering `{{ content }}` verbatim. No JS API — pass `hx-*`/`@click` inline (they pass through to the root). The default `.pjx-button` is visually neutral so it never fights your design system; paint variants via `.pjx-button--<variant>`.
+
+**Classes:** `pjx-button`; `pjx-button--block`; variant seams `pjx-button--<variant>`. Theming: see [PJXButton tokens](#pjxbutton-tokens).
 
 ---
 
@@ -301,7 +305,7 @@ Native `<dialog>` shell. Compose with `PJXModalHeader`, `PJXModalBody`, and `PJX
 <PJXModal id="confirm">
   <PJXModalHeader title="Delete file?"/>
   <PJXModalBody>This cannot be undone.</PJXModalBody>
-  <PJXModalFooter><PJXButton center="Delete"/></PJXModalFooter>
+  <PJXModalFooter><PJXButton content="Delete"/></PJXModalFooter>
 </PJXModal>
 ```
 
@@ -363,7 +367,7 @@ Footer part for `PJXModal`. Renders a `<footer class="pjx-modal__footer">`. **As
 | `content` | `str \| BaseComponent` | `""` | Footer content (e.g. action buttons). |
 
 ```html
-<PJXModalFooter><PJXButton center="Delete"/></PJXModalFooter>
+<PJXModalFooter><PJXButton content="Delete"/></PJXModalFooter>
 ```
 
 **Classes:** `pjx-modal__footer`.
