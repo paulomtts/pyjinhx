@@ -77,7 +77,10 @@ from pyjinhx.builtins import (
 | PJXIcon | `pjx-icon.css` | — |
 | PJXLazyPanel | — | — |
 | PJXRegionLoader | `pjx-region-loader.css` | `pjx-region-loader.js` |
-| PJXModal | `pjx_modal.css` | `pjx_modal.js` |
+| PJXModal | `pjx-modal.css` | `pjx-modal.js` |
+| PJXModalHeader | `pjx-modal-header.css` | — |
+| PJXModalBody | `pjx-modal-body.css` | — |
+| PJXModalFooter | `pjx-modal-footer.css` | — |
 | PJXNotification | `pjx_notification.css` | `pjx_notification.js` |
 | PJXPageLoader | `pjx-page-loader.css` | `pjx-page-loader.js` |
 | PJXPanel | `pjx_panel.css` | `pjx_panel.js` |
@@ -236,23 +239,24 @@ Or with PascalCase tags:
 
 ## PJXModal
 
-Native `<dialog>`. **Assets:** `pjx_modal.css`, `pjx_modal.js`.
+Native `<dialog>` shell. Compose with `PJXModalHeader`, `PJXModalBody`, and `PJXModalFooter` for structured layouts. **Assets:** `pjx-modal.css`, `pjx-modal.js`.
 
 <!-- demo: PJXModal -->
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
-| `title` | `str` | `""` | Default header title (text, escaped) when `header` is empty; use the `header` slot for custom markup. |
-| `header` | `str \| BaseComponent` | `""` | If set, replaces the built-in title row. |
-| `body` | `str \| BaseComponent` | `""` | Main content; wrapper id `{{ id }}-body`. |
-| `footer` | `str \| BaseComponent` | `""` | If non-empty, renders `<footer class="pjx-modal__footer">`. |
-| `close_label` | `str` | `"Close"` | `aria-label` for the close button. |
+| `content` | `str \| BaseComponent` | `""` | Inner content (part components or arbitrary markup). |
 | `open_on_mount` | `bool` | `False` | When `True`, adds `data-pjx-open-on-mount`; JS opens the dialog as soon as it mounts (e.g. via `hx-swap="beforeend"`). |
 | `remove_on_close` | `bool` | `False` | When `True`, adds `data-pjx-remove-on-close`; JS removes the element from the DOM on close. |
+| `class_name` | `str` | `""` | Extra CSS classes on the root `<dialog>`. |
 
 ```html
-<button data-pjx-open="info-modal">Open</button>
-<PJXModal id="info-modal" title="Hello" body="Content here."/>
+<button data-pjx-open="confirm">Open</button>
+<PJXModal id="confirm">
+  <PJXModalHeader title="Delete file?"/>
+  <PJXModalBody>This cannot be undone.</PJXModalBody>
+  <PJXModalFooter><PJXButton center="Delete"/></PJXModalFooter>
+</PJXModal>
 ```
 
 **DOM contract.** Root `dialog.pjx-modal` (state: `[open]`, `.pjx-modal--closing`).
@@ -262,7 +266,61 @@ Events (bubble from the root): `pjx:modal:before-open`*, `pjx:modal:open`,
 `pjx:modal:before-close`*, `pjx:modal:close` — `*` = cancelable, `detail = {reason, trigger}`,
 `reason ∈ escape|backdrop|api|trigger`. API: `pjx.modal.open(id)`, `pjx.modal.close(id)`.
 
-**Classes:** `pjx-modal`; closing state `pjx-modal--closing`; `pjx-modal__box`, `__header`, `__title`, `__close`, `__body`, `__footer`. Theming: see [PJXModal tokens](#pjxmodal-tokens).
+**Classes:** `pjx-modal`; closing state `pjx-modal--closing`; `pjx-modal__box`. Part-component classes (`__header`, `__title`, `__close`, `__body`, `__footer`) belong to the respective part components below. Theming: see [PJXModal tokens](#pjxmodal-tokens).
+
+---
+
+## PJXModalHeader
+
+Header part for `PJXModal`. Renders a `<header>` inside the modal box; always includes a close button. **Assets:** `pjx-modal-header.css`.
+
+| Field | Type | Default | Description |
+| --- | --- | --- | --- |
+| `title` | `str` | `""` | When set, renders `<span class="pjx-modal__title">` with this text (escaped); when empty, `{{ content }}` is used instead. |
+| `close_label` | `str` | `"Close"` | `aria-label` for the auto-included close button. |
+| `close_content` | `str` | `"✕"` | Inner markup/text of the close button. |
+| `class_name` | `str` | `""` | Extra CSS classes on the `<header>`. |
+| `content` | `str \| BaseComponent` | `""` | Custom header body; used when `title` is empty. |
+
+```html
+<PJXModalHeader title="Delete file?"/>
+```
+
+**Classes:** `pjx-modal__header`, `pjx-modal__title`, `pjx-modal__close`.
+
+---
+
+## PJXModalBody
+
+Body part for `PJXModal`. Renders a `<div class="pjx-modal__body">`. **Assets:** `pjx-modal-body.css`.
+
+| Field | Type | Default | Description |
+| --- | --- | --- | --- |
+| `class_name` | `str` | `""` | Extra CSS classes on the body `<div>`. |
+| `content` | `str \| BaseComponent` | `""` | Main content. |
+
+```html
+<PJXModalBody>This cannot be undone.</PJXModalBody>
+```
+
+**Classes:** `pjx-modal__body`.
+
+---
+
+## PJXModalFooter
+
+Footer part for `PJXModal`. Renders a `<footer class="pjx-modal__footer">`. **Assets:** `pjx-modal-footer.css`.
+
+| Field | Type | Default | Description |
+| --- | --- | --- | --- |
+| `class_name` | `str` | `""` | Extra CSS classes on the `<footer>`. |
+| `content` | `str \| BaseComponent` | `""` | Footer content (e.g. action buttons). |
+
+```html
+<PJXModalFooter><PJXButton center="Delete"/></PJXModalFooter>
+```
+
+**Classes:** `pjx-modal__footer`.
 
 ---
 
@@ -1108,7 +1166,13 @@ from pyjinhx.builtins import (
 )
 
 badge = PJXBadge(id="status-badge", label="Beta", color="brand")
-modal = PJXModal(id="info-modal", title="Hello", body="Content here.")
+modal = PJXModal(
+    id="info-modal",
+    content=(
+        PJXModalHeader(title="Hello").render()
+        + PJXModalBody(content="Content here.").render()
+    ),
+)
 toast = PJXNotification(id="welcome-toast", content="Saved.", corner="bottom-right", timeout=3000)
 drawer = PJXDrawer(id="filters", side="right", title="Filters", body="…")
 tip = PJXTooltip(id="help-tip", trigger="?", tip="More detail", placement="top")
