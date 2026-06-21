@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+- **`PJXAccordion` is now composed of parts (breaking).** The slot-based monolith
+  (`label`, `header`, `actions`) is replaced by three `{{ content }}`-composed builtins:
+  `PJXAccordion` (the `<details>` shell), `PJXAccordionTrigger` (the `<summary>`, with the
+  auto chevron), and `PJXAccordionContent` (the body). Actions are now an opt-in
+  `<div class="pjx-accordion__actions">` placed inside the trigger. `PJXAccordionGroup` is
+  unchanged. Migration: replace `<PJXAccordion label="T">body</PJXAccordion>` with
+  `<PJXAccordion><PJXAccordionTrigger>T</PJXAccordionTrigger><PJXAccordionContent>body</PJXAccordionContent></PJXAccordion>`.
+
 ## 0.25.1 — stale `{#def#}` header warning + type-checker cleanup (2026-06-21)
 
 ### Added
