@@ -265,14 +265,36 @@ The builtins, rendered by pyjinhx at docs build time (PJXLazyPanel needs a backe
 ### [PJXChipInput](guide/builtins.md#pjxchipinput)
 <!-- demo: PJXChipInput -->
 
+```html
+<PJXChipInput name="tags" values='["python", "jinja2", "htmx"]' placeholder="Add tag…"/>
+```
+
 ### [PJXFormField](guide/builtins.md#pjxformfield)
 <!-- demo: PJXFormField -->
+
+```html
+<PJXFormField label="Email address" for_id="demo-email" help="We'll never share your email with anyone." required="true">
+  <input id="demo-email" type="email" name="email" placeholder="you@example.com">
+</PJXFormField>
+```
 
 ### [PJXToggleSwitch](guide/builtins.md#pjxtoggleswitch)
 <!-- demo: PJXToggleSwitch -->
 
+```html
+<PJXToggleSwitch name="notifications" checked="true" label="Email notifications"/>
+```
+
 ### [PJXSegmentedControl](guide/builtins.md#pjxsegmentedcontrol)
 <!-- demo: PJXSegmentedControl -->
 
+```html
+<PJXSegmentedControl name="view" options='[["list", "List"], ["grid", "Grid"], ["table", "Table"]]' selected="grid"/>
+```
+
 ### [PJXPasswordInput](guide/builtins.md#pjxpasswordinput)
 <!-- demo: PJXPasswordInput -->
+
+```html
+<PJXPasswordInput name="password" placeholder="Enter your password" autocomplete="current-password" required="true"/>
+```

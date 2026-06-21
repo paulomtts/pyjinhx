@@ -1903,8 +1903,6 @@ The draggable divider between two `PJXResizablePanel` siblings. Keyboard-accessi
 
 Tag-style multi-value input. Each chip carries its own `<input type="hidden">` so values post with any enclosing form and removal is pure DOM removal. **Assets:** `pjx-chip-input.css`, `pjx-chip-input.js`.
 
-<!-- demo: PJXChipInput -->
-
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
 | `name` | `str` | — | `name` attribute on the hidden inputs and the `data-name` data attribute. |
@@ -1913,16 +1911,39 @@ Tag-style multi-value input. Each chip carries its own `<input type="hidden">` s
 | `remove_label` | `str` | `"Remove"` | `aria-label` on every remove button; also stored as `data-remove-label` so JS can copy it into dynamically built chips. |
 | `disabled` | `bool` | `False` | When `True`, no text field or remove buttons are rendered; `data-disabled` is set on the root. |
 
-```python
-PJXChipInput(id="tags", name="tags", values=["python", "jinja2"], placeholder="Add tag…")
-```
-
 **DOM contract.** Root `div.pjx-chip-input[data-pjx-chip-input][data-name][data-remove-label]`; state: `[data-disabled]`.
 Each chip: `span.pjx-chip-input__chip[data-pjx-chip]` containing a `.pjx-chip-input__label`, `input[type=hidden]`, and (when enabled) `button.pjx-chip-input__remove[data-pjx-chip-remove]`.
 Text field: `input.pjx-chip-input__field`.
 Events (bubble from root): `pjx:chip-input:before-add`* (detail `{value}`), `pjx:chip-input:add`, `pjx:chip-input:before-remove`* (detail `{value}`), `pjx:chip-input:remove` — `*` = cancelable. Commit triggers: `Enter`, `,`, `focusout`, `submit` (form submit commits pending text); Backspace on empty field removes the last chip.
 
-**Classes:** `pjx-chip-input`, `pjx-chip-input__chip`, `pjx-chip-input__label`, `pjx-chip-input__remove`, `pjx-chip-input__field`. Theming: see [PJXChipInput tokens](#pjxchipinput-tokens).
+**Classes:** `pjx-chip-input`, `pjx-chip-input__chip`, `pjx-chip-input__label`, `pjx-chip-input__remove`, `pjx-chip-input__field`.
+
+**Style tokens.**
+
+| Token | Default |
+| --- | --- |
+| `--pjx-chip-input-gap` | `0.375rem` |
+| `--pjx-chip-input-chip-bg` | `var(--surface-alt)` |
+| `--pjx-chip-input-chip-fg` | `var(--text)` |
+| `--pjx-chip-input-chip-radius` | `var(--radius-full)` |
+| `--pjx-chip-input-border` | `var(--border)` |
+| `--pjx-chip-input-focus` | `var(--border-focus, var(--border))` |
+| `--pjx-chip-input-radius` | `var(--radius-md)` |
+| `--pjx-chip-input-padding` | `0.375rem 0.5rem` |
+
+<!-- demo: PJXChipInput -->
+
+```html
+<PJXChipInput name="tags" values='["python", "jinja2", "htmx"]' placeholder="Add tag…"/>
+```
+
+```python
+PJXChipInput(
+    name="tags",
+    values=["python", "jinja2", "htmx"],
+    placeholder="Add tag…",
+)
+```
 
 **Notes:**
 
@@ -1936,8 +1957,6 @@ Events (bubble from root): `pjx:chip-input:before-add`* (detail `{value}`), `pjx
 
 Labelled control wrapper with help text and error state. **Assets:** `pjx-form-field.css` only.
 
-<!-- demo: PJXFormField -->
-
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
 | `label` | `str` | `""` | Label text; renders `<label>` only when non-empty. |
@@ -1947,28 +1966,43 @@ Labelled control wrapper with help text and error state. **Assets:** `pjx-form-f
 | `error` | `str` | `""` | Error message; adds `pjx-form-field--error` to the root and a `role="alert"` paragraph with id `{{ id }}-error`. |
 | `required` | `bool` | `False` | Renders a `<span class="pjx-form-field__required" aria-hidden="true">*</span>` inside the label. |
 
+**DOM contract.** Root `div.pjx-form-field`; error state `div.pjx-form-field--error`. Help paragraph id: `{{ id }}-help`. Error paragraph id: `{{ id }}-error`, `role="alert"`. No JS.
+
+**Classes:** `pjx-form-field`, `pjx-form-field--error`, `pjx-form-field__label`, `pjx-form-field__required`, `pjx-form-field__control`, `pjx-form-field__help`, `pjx-form-field__error`.
+
+**Style tokens.**
+
+| Token | Default |
+| --- | --- |
+| `--pjx-form-field-gap` | `0.375rem` |
+| `--pjx-form-field-label-size` | `0.875em` |
+| `--pjx-form-field-label-color` | `var(--text)` |
+| `--pjx-form-field-help-color` | `var(--text-muted)` |
+| `--pjx-form-field-error` | `#b3261e` |
+
+<!-- demo: PJXFormField -->
+
+```html
+<PJXFormField label="Email address" for_id="demo-email" help="We'll never share your email with anyone." required="true">
+  <input id="demo-email" type="email" name="email" placeholder="you@example.com">
+</PJXFormField>
+```
+
 ```python
 PJXFormField(
-    id="email-field",
-    label="Email",
-    for_id="email-input",
-    content='<input id="email-input" type="email" name="email">',
-    error="Please enter a valid email address.",
+    label="Email address",
+    for_id="demo-email",
+    content='<input id="demo-email" type="email" name="email" placeholder="you@example.com">',
+    help="We'll never share your email with anyone.",
     required=True,
 )
 ```
-
-**DOM contract.** Root `div.pjx-form-field`; error state `div.pjx-form-field--error`. Help paragraph id: `{{ id }}-help`. Error paragraph id: `{{ id }}-error`, `role="alert"`. No JS.
-
-**Classes:** `pjx-form-field`, `pjx-form-field--error`, `pjx-form-field__label`, `pjx-form-field__required`, `pjx-form-field__control`, `pjx-form-field__help`, `pjx-form-field__error`. Theming: see [PJXFormField tokens](#pjxformfield-tokens).
 
 ---
 
 ## PJXToggleSwitch
 
 Accessible on/off toggle backed by a visually-hidden checkbox. **Assets:** `pjx-toggle-switch.css` only — no JS.
-
-<!-- demo: PJXToggleSwitch -->
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
@@ -1978,21 +2012,37 @@ Accessible on/off toggle backed by a visually-hidden checkbox. **Assets:** `pjx-
 | `label` | `str` | `""` | Visible label text rendered after the track; omitted when empty. |
 | `disabled` | `bool` | `False` | When `True`, adds `disabled` to the checkbox. |
 
-```python
-PJXToggleSwitch(id="dark-mode", name="dark_mode", checked=True, label="Dark mode")
-```
-
 **DOM contract.** Root `label.pjx-toggle-switch` wrapping a visually-hidden `input[type=checkbox].pjx-toggle-switch__input` (uses `clip-path: inset(50%)`, not `display:none` — keeps focus and click). CSS keys on `:checked + .pjx-toggle-switch__track` for the active state and `:focus-visible + .pjx-toggle-switch__track` for the ring. No JS API.
 
-**Classes:** `pjx-toggle-switch`, `pjx-toggle-switch__input`, `pjx-toggle-switch__track`, `pjx-toggle-switch__thumb`, `pjx-toggle-switch__label`. Theming: see [PJXToggleSwitch tokens](#pjxtoggleswitch-tokens).
+**Classes:** `pjx-toggle-switch`, `pjx-toggle-switch__input`, `pjx-toggle-switch__track`, `pjx-toggle-switch__thumb`, `pjx-toggle-switch__label`.
+
+**Style tokens.**
+
+| Token | Default |
+| --- | --- |
+| `--pjx-toggle-switch-width` | `2.75rem` |
+| `--pjx-toggle-switch-height` | `1.5rem` |
+| `--pjx-toggle-switch-track` | `var(--border)` |
+| `--pjx-toggle-switch-track-on` | `var(--brand)` |
+| `--pjx-toggle-switch-thumb` | `#fff` |
+| `--pjx-toggle-switch-radius` | `var(--radius-full)` |
+| `--pjx-toggle-switch-gap` | `0.5rem` |
+
+<!-- demo: PJXToggleSwitch -->
+
+```html
+<PJXToggleSwitch name="notifications" checked="true" label="Email notifications"/>
+```
+
+```python
+PJXToggleSwitch(name="notifications", checked=True, label="Email notifications")
+```
 
 ---
 
 ## PJXSegmentedControl
 
 Pill-style radio group for mutually exclusive options. **Assets:** `pjx-segmented-control.css` only — no JS.
-
-<!-- demo: PJXSegmentedControl -->
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
@@ -2001,26 +2051,44 @@ Pill-style radio group for mutually exclusive options. **Assets:** `pjx-segmente
 | `selected` | `str` | `""` | Value of the pre-checked option. |
 | `disabled` | `bool` | `False` | When `True`, adds `disabled` to all radio inputs. |
 
-```python
-PJXSegmentedControl(
-    id="view-switcher",
-    name="view",
-    options=[("list", "List"), ("grid", "Grid"), ("table", "Table")],
-    selected="list",
-)
-```
-
 **DOM contract.** Root `div.pjx-segmented-control[role="radiogroup"]`. Each option: `label.pjx-segmented-control__segment` > `input[type=radio].pjx-segmented-control__input` (visually hidden, `clip-path: inset(50%)`) + `span.pjx-segmented-control__text`. CSS keys on `:checked + .pjx-segmented-control__text` for the active segment. No JS API.
 
-**Classes:** `pjx-segmented-control`, `pjx-segmented-control__segment`, `pjx-segmented-control__input`, `pjx-segmented-control__text`. Theming: see [PJXSegmentedControl tokens](#pjxsegmentedcontrol-tokens).
+**Classes:** `pjx-segmented-control`, `pjx-segmented-control__segment`, `pjx-segmented-control__input`, `pjx-segmented-control__text`.
+
+**Style tokens.**
+
+| Token | Default |
+| --- | --- |
+| `--pjx-segmented-control-bg` | `var(--surface-alt)` |
+| `--pjx-segmented-control-border` | `var(--border)` |
+| `--pjx-segmented-control-radius` | `var(--radius-full)` |
+| `--pjx-segmented-control-gap` | `0.25rem` |
+| `--pjx-segmented-control-padding` | `0.25rem` |
+| `--pjx-segmented-control-active-bg` | `var(--surface)` |
+| `--pjx-segmented-control-active-fg` | `var(--text)` |
+| `--pjx-segmented-control-active-shadow` | `0 1px 3px rgb(0 0 0 / 0.12)` |
+| `--pjx-segmented-control-fg` | `var(--text-muted)` |
+| `--pjx-segmented-control-focus` | `var(--border-focus, var(--brand))` |
+
+<!-- demo: PJXSegmentedControl -->
+
+```html
+<PJXSegmentedControl name="view" options='[["list", "List"], ["grid", "Grid"], ["table", "Table"]]' selected="grid"/>
+```
+
+```python
+PJXSegmentedControl(
+    name="view",
+    options=[("list", "List"), ("grid", "Grid"), ("table", "Table")],
+    selected="grid",
+)
+```
 
 ---
 
 ## PJXPasswordInput
 
 Password field with a show/hide toggle button. **Assets:** `pjx-password-input.css`, `pjx-password-input.js`.
-
-<!-- demo: PJXPasswordInput -->
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
@@ -2030,13 +2098,34 @@ Password field with a show/hide toggle button. **Assets:** `pjx-password-input.c
 | `required` | `bool` | `False` | When `True`, adds `required` to the `<input>`. |
 | `show_label` | `str` | `"Show password"` | Static `aria-label` on the toggle button; visibility state is conveyed by `aria-pressed` (ARIA toggle-button pattern). |
 
-```python
-PJXPasswordInput(id="login-pw", autocomplete="current-password", required=True)
-```
-
 **DOM contract.** Root `div.pjx-password-input[data-pjx-password]`. Field: `input.pjx-password-input__field` with id `{{ id }}-field`. Toggle button: `button.pjx-password-input__toggle[data-pjx-password-toggle]`; `aria-pressed` reflects state (`"false"` when hidden, `"true"` when shown); `.pjx-password-input__toggle--on` class added when visible. No `pjx:*` events — state is readable from `aria-pressed` on the button. No JS API under `window.pjx`.
 
-**Classes:** `pjx-password-input`, `pjx-password-input__field`, `pjx-password-input__toggle`, `pjx-password-input__toggle--on`, `pjx-password-input__eye`. Theming: see [PJXPasswordInput tokens](#pjxpasswordinput-tokens).
+**Classes:** `pjx-password-input`, `pjx-password-input__field`, `pjx-password-input__toggle`, `pjx-password-input__toggle--on`, `pjx-password-input__eye`.
+
+**Style tokens.**
+
+| Token | Default |
+| --- | --- |
+| `--pjx-password-input-border` | `var(--border)` |
+| `--pjx-password-input-radius` | `var(--radius-md)` |
+| `--pjx-password-input-focus` | `var(--border-focus, var(--brand))` |
+| `--pjx-password-input-toggle-color` | `var(--text-muted)` |
+| `--pjx-password-input-eye-size` | `1.25rem` |
+
+<!-- demo: PJXPasswordInput -->
+
+```html
+<PJXPasswordInput name="password" placeholder="Enter your password" autocomplete="current-password" required="true"/>
+```
+
+```python
+PJXPasswordInput(
+    name="password",
+    placeholder="Enter your password",
+    autocomplete="current-password",
+    required=True,
+)
+```
 
 ---
 
