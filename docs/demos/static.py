@@ -115,9 +115,7 @@ def progress():
 
 def empty_state():
     return PJXEmptyState(
-        title="No results",
-        description="Try a different search term.",
-        actions=['<button class="pjx-demo-btn">Clear filters</button>'],
+        content='<h3>No results</h3><p>Try a different search term.</p><button class="pjx-demo-btn">Clear filters</button>',
         suggestions=[
             {"label": "Draft a message"},
             {"label": "Summarise a thread"},
@@ -137,10 +135,10 @@ def icon():
 
 def button():
     return [
-        PJXButton(center="Save", variant="primary").render(),
-        PJXButton(center="Cancel").render(),
-        PJXButton(center="Saving", variant="primary", loading=True).render(),
-        PJXButton(center="Disabled", disabled=True).render(),
+        PJXButton(content="Save", variant="primary").render(),
+        PJXButton(content="Cancel").render(),
+        PJXButton(content="Saving", variant="primary", loading=True).render(),
+        PJXButton(content="Disabled", disabled=True).render(),
     ]
 
 

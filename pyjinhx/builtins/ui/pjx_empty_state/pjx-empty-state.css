@@ -1,10 +1,6 @@
 :where(:root) {
   --pjx-empty-state-padding:   2rem 1.5rem;
   --pjx-empty-state-max-width: 28rem;
-  --pjx-empty-state-title-size: var(--font-size-md);
-  --pjx-empty-state-desc-size:  var(--font-size-sm);
-  --pjx-empty-state-title-color: var(--text);
-  --pjx-empty-state-desc-color:  var(--text-muted);
   --pjx-empty-state-gap:       0.5rem;
   --pjx-empty-state-actions-gap: 0.5rem;
   --pjx-empty-state-chip-bg:    var(--surface-alt);
@@ -21,36 +17,6 @@
   padding: var(--pjx-empty-state-padding);
   max-width: var(--pjx-empty-state-max-width);
   margin: 0 auto;
-}
-
-.pjx-empty-state__image {
-  margin-bottom: 0.75rem;
-}
-
-.pjx-empty-state__title {
-  margin: 0;
-  font-size: var(--pjx-empty-state-title-size);
-  font-weight: 600;
-  color: var(--pjx-empty-state-title-color);
-}
-
-.pjx-empty-state__desc {
-  margin: 0;
-  font-size: var(--pjx-empty-state-desc-size);
-  line-height: 1.5;
-  color: var(--pjx-empty-state-desc-color);
-}
-
-.pjx-empty-state__action {
-  margin-top: 0.75rem;
-}
-
-.pjx-empty-state__actions {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: var(--pjx-empty-state-actions-gap);
-  margin-top: 0.75rem;
 }
 
 .pjx-empty-state__suggestions {

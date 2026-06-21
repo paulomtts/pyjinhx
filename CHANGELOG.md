@@ -4,6 +4,14 @@
 
 ### Changed
 
+- **`PJXButton` collapses `start`/`center`/`end` into a single `{{ content }}` slot (breaking).**
+  The prescriptive icon-text-icon layout via `start`/`center`/`end` slots is replaced by a single
+  freeform `content` field — put an icon, text, or any markup there however you like.
+  `variant`, `block`, `loading`, `disabled`, `type` are unchanged; the loading spinner still
+  auto-appends after the content. Migration: replace `PJXButton(center="Save")` with
+  `PJXButton(content="Save")`, and `PJXButton(start="<icon>", center="Add")` with
+  `PJXButton(content="<icon> Add")` (or nest in tag form:
+  `<PJXButton variant="primary"><PJXIcon name="plus"/> Add</PJXButton>`).
 - **`PJXAccordion` is now composed of parts (breaking).** The slot-based monolith
   (`label`, `header`, `actions`) is replaced by three `{{ content }}`-composed builtins:
   `PJXAccordion` (the `<details>` shell), `PJXAccordionTrigger` (the `<summary>`, with the
@@ -31,6 +39,13 @@
   `PJXDrawerBody`, and `PJXDrawerFooter`. The dialog JS and behavior stay on the shell.
   Migration: replace `<PJXDrawer title="T">body</PJXDrawer>` with
   `<PJXDrawer><PJXDrawerHeader title="T"/><PJXDrawerBody>body</PJXDrawerBody></PJXDrawer>`.
+- **`PJXEmptyState` collapses presentational slots into `content` (breaking).** The
+  prescriptive slots (`image`, `title`, `description`, `action`, `actions`) are removed; a
+  single freeform `content` field replaces them — compose whatever markup you need inside.
+  `suggestions` (interactive chips) and `class_name` are unchanged. CSS tokens for the
+  removed per-element rules (`--pjx-empty-state-title-size`, etc.) are also removed.
+  Migration: replace `PJXEmptyState(title="No results", description="…", action="<button>…</button>")` with
+  `PJXEmptyState(content="<h3>No results</h3><p>…</p><button>…</button>")`.
 - **`PJXTooltip` is now composed of parts (breaking).** The two-slot monolith
   (`trigger`, `tip`) is replaced by three `{{ content }}`-composed builtins:
   `PJXTooltip` (the `<span>` shell, keeping `placement`), `PJXTooltipTrigger` (the

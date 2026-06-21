@@ -156,7 +156,7 @@ def test_class_based_builtin_still_collects_assets():
     """
     from pyjinhx.builtins.ui.pjx_button.pjx_button import PJXButton
 
-    html = str(PJXButton(center="Click me").render())
+    html = str(PJXButton(content="Click me").render())
 
     # PJXButton's CSS contains its own selectors; just assert style is present
     assert "<style" in html, "PJXButton's CSS was not inlined (regression)"
