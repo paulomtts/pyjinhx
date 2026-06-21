@@ -70,7 +70,10 @@ from pyjinhx.builtins import (
 | PJXChipInput | `pjx-chip-input.css` | `pjx-chip-input.js` |
 | PJXConfirmDialog | `pjx-confirm-dialog.css` | `pjx-confirm-dialog.js` |
 | PJXDivider | `pjx_divider.css` | — |
-| PJXDrawer | `pjx_drawer.css` | `pjx_drawer.js` |
+| PJXDrawer | `pjx-drawer.css` | `pjx-drawer.js` |
+| PJXDrawerHeader | `pjx-drawer-header.css` | — |
+| PJXDrawerBody | `pjx-drawer-body.css` | — |
+| PJXDrawerFooter | `pjx-drawer-footer.css` | — |
 | PJXDropdown | `pjx_dropdown.css` | *(via pjx_popover.js, extra-asset)* |
 | PJXEmptyState | `pjx-empty-state.css` | — |
 | PJXFormField | `pjx-form-field.css` | — |
@@ -438,27 +441,99 @@ Trigger id is `{{ id }}-trigger`, menu is `{{ id }}-menu`.
 
 ## PJXDrawer
 
-`<dialog>` sheet from an edge. **Assets:** `pjx_drawer.css`, `pjx_drawer.js`.
+`<dialog>` shell sheet from an edge. **Assets:** `pjx-drawer.css`, `pjx-drawer.js` (JS stays on the shell; each part ships its own CSS — see [PJXDrawerHeader](#pjxdrawerheader), [PJXDrawerBody](#pjxdrawerbody), [PJXDrawerFooter](#pjxdrawerfooter)).
 
 <!-- demo: PJXDrawer -->
+
+```html
+<PJXDrawer id="nav" side="left">
+  <PJXDrawerHeader title="Menu"/>
+  <PJXDrawerBody>…links…</PJXDrawerBody>
+  <PJXDrawerFooter>v1.0</PJXDrawerFooter>
+</PJXDrawer>
+```
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
 | `side` | literal | `"right"` | `left`, `right`, or `bottom` → `pjx-drawer--{side}`. |
-| `title` | `str` | `""` | Header title (text, escaped). |
-| `body` | `str \| BaseComponent` | `""` | Scrollable body. |
-| `footer` | `str \| BaseComponent` | `""` | Optional footer strip. |
-| `close_label` | `str` | `"Close"` | `aria-label` for the close button. |
 | `open_on_mount` | `bool` | `False` | Adds `data-pjx-open-on-mount`; JS opens on arrival. |
 | `remove_on_close` | `bool` | `False` | Adds `data-pjx-remove-on-close`; JS removes element on close. |
+| `class_name` | `str` | `""` | Extra CSS classes on the root `<dialog>`. |
+| `content` | `str \| BaseComponent` | `""` | Inner slot; place composable part components here. |
 
-**DOM contract.** Root `dialog.pjx-drawer` (state: `[open]`, `.pjx-drawer--closing`).
+**DOM contract.** Root `dialog.pjx-drawer.pjx-drawer--{side}` (state: `[open]`, `.pjx-drawer--closing`).
 `data-pjx-open="<id>"` on any element opens it; `data-pjx-close` inside closes it;
 `data-pjx-open-on-mount`, `data-pjx-remove-on-close` reflect lifecycle props.
 Events: `pjx:drawer:before-open`*, `pjx:drawer:open`, `pjx:drawer:before-close`*, `pjx:drawer:close` — `*` = cancelable, `detail = {reason, trigger}`, `reason ∈ escape|backdrop|api|trigger`.
 API: `pjx.drawer.open(id)`, `pjx.drawer.close(id)`.
 
-**Classes:** `pjx-drawer`; side modifiers `pjx-drawer--left`, `--right`, `--bottom`; closing state `pjx-drawer--closing`; `pjx-drawer__box`, `__header`, `__title`, `__close`, `__body`, `__footer`. Backdrop click closes the dialog (see [intro note](#built-in-ui-components)). Theming: see [PJXDrawer tokens](#pjxdrawer-tokens).
+**Classes:** `pjx-drawer`; side modifiers `pjx-drawer--left`, `--right`, `--bottom`; closing state `pjx-drawer--closing`. The inner layout classes (`__header`, `__title`, `__close`, `__body`, `__footer`) belong to the part components — see below. Backdrop click closes the dialog (see [intro note](#built-in-ui-components)). Theming: see [PJXDrawer tokens](#pjxdrawer-tokens).
+
+---
+
+## PJXDrawerHeader
+
+Header bar for a `PJXDrawer`. Automatically includes a close button. **Assets:** `pjx-drawer-header.css`.
+
+<!-- demo: PJXDrawerHeader -->
+
+```html
+<PJXDrawerHeader title="Menu"/>
+```
+
+| Field | Type | Default | Description |
+| --- | --- | --- | --- |
+| `title` | `str` | `""` | Renders `<span class="pjx-drawer__title">` when set; omit to use `content` for a fully custom header. |
+| `close_label` | `str` | `"Close"` | `aria-label` for the auto-included close button. |
+| `close_content` | `str` | `"✕"` | Inner HTML/text of the close button. |
+| `class_name` | `str` | `""` | Extra CSS classes on the root `<header>`. |
+| `content` | `str \| BaseComponent` | `""` | Custom header slot used when `title` is not set. |
+
+**DOM contract.** Root `<header class="pjx-drawer__header">`. When `title` is set renders `<span class="pjx-drawer__title">`. Always renders a `<button class="pjx-drawer__close" data-pjx-close aria-label="...">`.
+
+**Classes:** `pjx-drawer__header`, `pjx-drawer__title`, `pjx-drawer__close`. Theming: see [PJXDrawer tokens](#pjxdrawer-tokens).
+
+---
+
+## PJXDrawerBody
+
+Scrollable body region for a `PJXDrawer`. **Assets:** `pjx-drawer-body.css`.
+
+<!-- demo: PJXDrawerBody -->
+
+```html
+<PJXDrawerBody>…links…</PJXDrawerBody>
+```
+
+| Field | Type | Default | Description |
+| --- | --- | --- | --- |
+| `class_name` | `str` | `""` | Extra CSS classes on the root `<div>`. |
+| `content` | `str \| BaseComponent` | `""` | Body slot. |
+
+**DOM contract.** Root `<div class="pjx-drawer__body">`.
+
+**Classes:** `pjx-drawer__body`. Theming: see [PJXDrawer tokens](#pjxdrawer-tokens).
+
+---
+
+## PJXDrawerFooter
+
+Footer strip for a `PJXDrawer`. **Assets:** `pjx-drawer-footer.css`.
+
+<!-- demo: PJXDrawerFooter -->
+
+```html
+<PJXDrawerFooter>v1.0</PJXDrawerFooter>
+```
+
+| Field | Type | Default | Description |
+| --- | --- | --- | --- |
+| `class_name` | `str` | `""` | Extra CSS classes on the root `<footer>`. |
+| `content` | `str \| BaseComponent` | `""` | Footer slot. |
+
+**DOM contract.** Root `<footer class="pjx-drawer__footer">`.
+
+**Classes:** `pjx-drawer__footer`. Theming: see [PJXDrawer tokens](#pjxdrawer-tokens).
 
 ---
 
@@ -1110,7 +1185,10 @@ from pyjinhx.builtins import (
 badge = PJXBadge(id="status-badge", label="Beta", color="brand")
 modal = PJXModal(id="info-modal", title="Hello", body="Content here.")
 toast = PJXNotification(id="welcome-toast", content="Saved.", corner="bottom-right", timeout=3000)
-drawer = PJXDrawer(id="filters", side="right", title="Filters", body="…")
+drawer = PJXDrawer(id="filters", side="right", content=(
+    PJXDrawerHeader(title="Filters").render()
+    + PJXDrawerBody(content="…").render()
+))
 tip = PJXTooltip(id="help-tip", trigger="?", tip="More detail", placement="top")
 card = PJXCard(id="summary", title="Summary", body="Details go here.")
 crumb = PJXBreadcrumb(id="crumb", items=[("App", "/"), ("Page", None)])
