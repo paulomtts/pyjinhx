@@ -223,6 +223,7 @@ _BUILTIN_TAG_NAMES = frozenset(
         "PJXModal",
         "PJXModalBody",
         "PJXModalFooter",
+        "PJXModalHeader",
         "PJXNotification",
         "PJXPageLoader",
         "PJXPopover",
