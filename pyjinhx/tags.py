@@ -211,6 +211,8 @@ _BUILTIN_TAG_NAMES = frozenset(
         "PJXBadge",
         "PJXBreadcrumb",
         "PJXCard",
+        "PJXCardBody",
+        "PJXCardFooter",
         "PJXChipInput",
         "PJXConfirmDialog",
         "PJXDivider",
