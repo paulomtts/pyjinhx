@@ -617,8 +617,6 @@ API: `pjx.drawer.open(id)`, `pjx.drawer.close(id)`.
 
 Header bar for a `PJXDrawer`. Automatically includes a close button. **Assets:** `pjx-drawer-header.css`.
 
-<!-- demo: PJXDrawerHeader -->
-
 ```html
 <PJXDrawerHeader title="Menu"/>
 ```
@@ -641,8 +639,6 @@ Header bar for a `PJXDrawer`. Automatically includes a close button. **Assets:**
 
 Scrollable body region for a `PJXDrawer`. **Assets:** `pjx-drawer-body.css`.
 
-<!-- demo: PJXDrawerBody -->
-
 ```html
 <PJXDrawerBody>…links…</PJXDrawerBody>
 ```
@@ -661,8 +657,6 @@ Scrollable body region for a `PJXDrawer`. **Assets:** `pjx-drawer-body.css`.
 ## PJXDrawerFooter
 
 Footer strip for a `PJXDrawer`. **Assets:** `pjx-drawer-footer.css`.
-
-<!-- demo: PJXDrawerFooter -->
 
 ```html
 <PJXDrawerFooter>v1.0</PJXDrawerFooter>
