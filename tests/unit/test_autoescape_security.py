@@ -16,8 +16,8 @@ def test_scalar_attribute_value_is_escaped():
 
 
 def test_scalar_text_value_is_escaped():
-    from pyjinhx.builtins import PJXCard
-    html = str(PJXCard(id="c", title="<script>alert(1)</script>", body="ok").render())
+    from pyjinhx.builtins import PJXCardHeader
+    html = str(PJXCardHeader(id="c", title="<script>alert(1)</script>").render())
     assert "<script>alert(1)</script>" not in html
     assert "&lt;script&gt;" in html
 
@@ -29,14 +29,14 @@ def test_loop_derived_value_is_escaped():
 
 
 def test_slot_string_renders_raw():
-    from pyjinhx.builtins import PJXCard
-    html = str(PJXCard(id="c", title="T", body="<p data-x='1'>hi</p>").render())
+    from pyjinhx.builtins import PJXCardBody
+    html = str(PJXCardBody(id="c", content="<p data-x='1'>hi</p>").render())
     assert "<p data-x='1'>hi</p>" in html  # slot HTML NOT escaped
 
 
 def test_nested_component_renders_raw():
-    from pyjinhx.builtins import PJXCard, PJXBadge
-    html = str(PJXCard(id="c", title="T", body=PJXBadge(id="b", label="New")).render())
+    from pyjinhx.builtins import PJXCardBody, PJXBadge
+    html = str(PJXCardBody(id="c", content=PJXBadge(id="b", label="New")).render())
     assert "pjx-badge" in html and "&lt;span" not in html
 
 
@@ -53,8 +53,8 @@ def test_markup_value_on_scalar_field_is_still_escaped():
     so the safe marker is lost before the context builder runs.  Markup is NOT
     a working escape hatch for scalar fields; use Slot or |safe instead."""
     from markupsafe import Markup
-    from pyjinhx.builtins import PJXCard
-    html = str(PJXCard(id="c", title=Markup("<b>x</b>"), body="ok").render())
+    from pyjinhx.builtins import PJXCardHeader
+    html = str(PJXCardHeader(id="c", title=Markup("<b>x</b>")).render())
     assert "<b>x</b>" not in html   # still escaped — Markup hatch does NOT work here
     assert "&lt;b&gt;" in html
 
@@ -80,8 +80,8 @@ def test_dropdown_trigger_slot_renders_raw():
 
 
 def test_modal_close_content_slot_renders_raw():
-    from pyjinhx.builtins import PJXModal
-    html = str(PJXModal(id="m", body="x", close_content="<i class='x'></i>").render())
+    from pyjinhx.builtins import PJXModalHeader
+    html = str(PJXModalHeader(id="m-h", close_content="<i class='x'></i>").render())
     assert "<i class='x'></i>" in html  # close_content is Slot → raw
 
 
@@ -100,19 +100,19 @@ def test_drawer_close_content_slot_renders_raw():
 # --- Nested-tag components (#120): escaping must survive tag expansion ---
 
 def test_nested_tag_component_scalar_text_is_escaped():
-    """PJXAccordion embeds <PJXIcon/>; entities must not be decoded by tag expansion."""
-    from pyjinhx.builtins import PJXAccordion
+    """PJXButton embeds <PJXRegionLoader/>; scalar `center` text must still be escaped."""
+    from pyjinhx.builtins import PJXButton
     html = str(
-        PJXAccordion(id="a", label="<script>alert(1)</script>", content="ok").render()
+        PJXButton(id="a", center="<script>alert(1)</script>", loading=True).render()
     )
     assert "<script>alert(1)</script>" not in html
     assert "&lt;script&gt;" in html
 
 
 def test_nested_tag_component_slot_renders_raw():
-    from pyjinhx.builtins import PJXAccordion
+    from pyjinhx.builtins import PJXAccordionContent
     html = str(
-        PJXAccordion(id="a2", label="t", content="<p data-x='1'>hi</p>").render()
+        PJXAccordionContent(id="a2", content="<p data-x='1'>hi</p>").render()
     )
     assert "<p data-x='1'>hi</p>" in html  # content slot stays raw
 
@@ -129,9 +129,9 @@ def test_nested_tag_component_scalar_is_escaped_when_nested_tag_present():
 
 
 def test_nested_tag_component_still_renders_nested_component():
-    """The accordion's <PJXIcon/> chevron must still render after the parser change."""
-    from pyjinhx.builtins import PJXAccordion
-    html = str(PJXAccordion(id="a3", label="t", content="ok").render())
+    """PJXAccordionTrigger embeds <PJXIcon/> chevron; it must still render after the parser change."""
+    from pyjinhx.builtins import PJXAccordionTrigger
+    html = str(PJXAccordionTrigger(id="a3", content="t").render())
     assert "pjx-icon" in html or "<svg" in html
 
 
@@ -139,9 +139,9 @@ def test_nested_tag_component_still_renders_nested_component():
 
 def test_bare_ampersand_in_slot_text_not_corrupted():
     """`R&D`/`Q&A` in slot text must not become `R&D;`/`Q&A;` during tag expansion."""
-    from pyjinhx.builtins import PJXAccordion
+    from pyjinhx.builtins import PJXAccordionContent
     html = str(
-        PJXAccordion(id="r", label="t", content="<p>R&D and Q&A</p>").render()
+        PJXAccordionContent(id="r", content="<p>R&D and Q&A</p>").render()
     )
     assert "R&D;" not in html
     assert "Q&A;" not in html
@@ -149,9 +149,9 @@ def test_bare_ampersand_in_slot_text_not_corrupted():
 
 def test_bare_ampersand_in_slot_attribute_not_corrupted():
     """`href='?x=1&y=2'` must not become `?x=1&y;=2` during tag expansion."""
-    from pyjinhx.builtins import PJXAccordion
+    from pyjinhx.builtins import PJXAccordionContent
     html = str(
-        PJXAccordion(id="r2", label="t", content="<a href='?x=1&y=2'>L</a>").render()
+        PJXAccordionContent(id="r2", content="<a href='?x=1&y=2'>L</a>").render()
     )
     assert "&y;=2" not in html
     assert "?x=1&y=2" in html or "?x=1&amp;y=2" in html

@@ -24,6 +24,8 @@ from pyjinhx.builtins import (
     PJXDropdown,
     PJXLazyPanel,
     PJXModal,
+    PJXModalBody,
+    PJXModalHeader,
     PJXNotification,
     PJXPageLoader,
     PJXPanel,
@@ -132,7 +134,13 @@ def _popover(prefix: str, label: str) -> PJXPopover:
 def render_page() -> str:
     page = KitchenSinkPage(
         id="kitchen-sink",
-        modal=PJXModal(id="rx-modal", title="Demo modal", body="Modal body."),
+        modal=PJXModal(
+            id="rx-modal",
+            content=(
+                str(PJXModalHeader(id="rx-modal-h", title="Demo modal").render())
+                + str(PJXModalBody(id="rx-modal-b", content="Modal body.").render())
+            ),
+        ),
         drawer=PJXDrawer(
             id="rx-drawer",
             side="right",

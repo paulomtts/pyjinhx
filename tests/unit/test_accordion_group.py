@@ -4,7 +4,7 @@ from typing import Any
 import pytest
 
 from pyjinhx import Renderer
-from pyjinhx.builtins import PJXAccordion, PJXAccordionGroup
+from pyjinhx.builtins import PJXAccordion, PJXAccordionContent, PJXAccordionGroup, PJXAccordionTrigger
 
 
 @pytest.fixture(autouse=True)
@@ -12,12 +12,16 @@ def _env(tmp_path):
     Renderer.set_default_environment(str(tmp_path))
 
 
+def _item(title, body, **kw):
+    return PJXAccordion(
+        content=PJXAccordionTrigger(content=title).render()
+        + PJXAccordionContent(content=body).render(),
+        **kw,
+    ).render()
+
+
 def _group(**kw):
     return str(PJXAccordionGroup(id="g", **kw).render())
-
-
-def _accordion(**kw):
-    return str(PJXAccordion(**kw).render())
 
 
 def test_single_root_div():
@@ -57,7 +61,7 @@ def test_class_name_appended():
 
 
 def test_children_rendered_in_content():
-    inner = _accordion(id="a1", label="Item", content="<p>body</p>")
+    inner = _item("Item", "<p>body</p>")
     html = _group(content=inner)
     assert "pjx-accordion" in html
     assert "<p>body</p>" in html

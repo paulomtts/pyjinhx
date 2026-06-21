@@ -147,14 +147,14 @@ a `{% for %}` loop is escaped, so user-supplied data can't inject markup or brea
 out of an attribute.
 
 ```python
-PJXCard(id="c", title="<script>alert(1)</script>", body="ok")
+PJXCardHeader(id="c", title="<script>alert(1)</script>")
 # title renders as &lt;script&gt;alert(1)&lt;/script&gt; — not executable
 ```
 
 **What renders as raw HTML (not escaped):**
 
 - A component's **children**/`content` field (the `_pjx_children_field`, e.g.
-  `PJXCard.body`) — its string value is emitted verbatim.
+  `PJXCardBody.content`) — its string value is emitted verbatim.
 - Any field declared `Slot` (`from pyjinhx import Slot`). A `Slot` field is
   `str | BaseComponent`; its string value renders raw. `Slot` collections work
   too — string elements inside a `Slot`-annotated `list`/`dict` (e.g.
@@ -163,8 +163,8 @@ PJXCard(id="c", title="<script>alert(1)</script>", body="ok")
   raw via the `__html__` protocol, whether passed directly or inside a list/dict.
 
 ```python
-# body is the children field → raw HTML
-PJXCard(id="c", title="T", body="<p data-x='1'>hi</p>")
+# content is the children field → raw HTML
+PJXCardBody(id="c", content="<p data-x='1'>hi</p>")
 # renders <p data-x='1'>hi</p> verbatim
 ```
 

@@ -2,36 +2,35 @@
 
 ## Unreleased
 
-### Breaking
+### Changed
 
-- **`PJXDrawer` is now a `{{ content }}`-composed shell.** The fields `title`, `body`, `footer`,
-  `close_label`, `close_content`, and `extra_attrs` have been removed from `PJXDrawer`. The `side`,
-  `open_on_mount`, `remove_on_close`, and `class_name` fields are retained. Migrate by composing
-  the new parts inside `PJXDrawer`:
-
-  ```html
-  <!-- Before -->
-  <PJXDrawer id="nav" side="left" title="Menu" body="…links…" footer="v1.0"/>
-
-  <!-- After -->
-  <PJXDrawer id="nav" side="left">
-    <PJXDrawerHeader title="Menu"/>
-    <PJXDrawerBody>…links…</PJXDrawerBody>
-    <PJXDrawerFooter>v1.0</PJXDrawerFooter>
-  </PJXDrawer>
-  ```
-
-### Added
-
-- **`PJXDrawerHeader`** — `<header class="pjx-drawer__header">` with an optional `title`
-  convenience (renders `<span class="pjx-drawer__title">`), `content` slot (used when `title` is
-  empty), and an auto-included close `<button data-pjx-close>` controlled by `close_label` /
-  `close_content`. Drawer JS continues to work via event delegation on `[data-pjx-close]`.
-- **`PJXDrawerBody`** — `<div class="pjx-drawer__body">` with `content` and `class_name`.
-- **`PJXDrawerFooter`** — `<footer class="pjx-drawer__footer">` with `content` and `class_name`.
-- CSS split: `pjx-drawer-header.css`, `pjx-drawer-body.css`, `pjx-drawer-footer.css` are now
-  separate assets loaded with their respective parts. `pjx-drawer.css` retains only the dialog /
-  box / side-variant / animation rules and the custom-property block.
+- **`PJXAccordion` is now composed of parts (breaking).** The slot-based monolith
+  (`label`, `header`, `actions`) is replaced by three `{{ content }}`-composed builtins:
+  `PJXAccordion` (the `<details>` shell), `PJXAccordionTrigger` (the `<summary>`, with the
+  auto chevron), and `PJXAccordionContent` (the body). Actions are now an opt-in
+  `<div class="pjx-accordion__actions">` placed inside the trigger. `PJXAccordionGroup` is
+  unchanged. Migration: replace `<PJXAccordion label="T">body</PJXAccordion>` with
+  `<PJXAccordion><PJXAccordionTrigger>T</PJXAccordionTrigger><PJXAccordionContent>body</PJXAccordionContent></PJXAccordion>`.
+- **`PJXCard` is now composed of parts (breaking).** The slot-based monolith
+  (`title`, `header`, `body`, `footer`) is replaced by four `{{ content }}`-composed builtins:
+  `PJXCard` (the `<article>` shell), `PJXCardHeader` (with a `title` convenience that renders
+  `<h3 class="pjx-card__title">`, falling back to its content), `PJXCardBody`, and
+  `PJXCardFooter`. Migration: replace `<PJXCard title="T">body</PJXCard>` with
+  `<PJXCard><PJXCardHeader title="T"/><PJXCardBody>body</PJXCardBody></PJXCard>`.
+- **`PJXModal` is now composed of parts (breaking).** The slot-based monolith
+  (`title`, `header`, `body`, `footer`, `close_label`, `close_content`) is replaced by four
+  `{{ content }}`-composed builtins: `PJXModal` (the `<dialog>` shell), `PJXModalHeader` (with
+  a `title` convenience and the auto-included close button), `PJXModalBody`, and
+  `PJXModalFooter`. The dialog JS and behavior stay on the shell. Migration: replace
+  `<PJXModal title="T">body</PJXModal>` with
+  `<PJXModal><PJXModalHeader title="T"/><PJXModalBody>body</PJXModalBody></PJXModal>`.
+- **`PJXDrawer` is now composed of parts (breaking).** The slot-based monolith
+  (`title`, `body`, `footer`, `close_label`, `close_content`) is replaced by four
+  `{{ content }}`-composed builtins: `PJXDrawer` (the `<dialog>` shell, keeping `side`),
+  `PJXDrawerHeader` (with a `title` convenience and the auto-included close button),
+  `PJXDrawerBody`, and `PJXDrawerFooter`. The dialog JS and behavior stay on the shell.
+  Migration: replace `<PJXDrawer title="T">body</PJXDrawer>` with
+  `<PJXDrawer><PJXDrawerHeader title="T"/><PJXDrawerBody>body</PJXDrawerBody></PJXDrawer>`.
 
 ## 0.25.1 — stale `{#def#}` header warning + type-checker cleanup (2026-06-21)
 

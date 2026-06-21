@@ -58,7 +58,9 @@ from pyjinhx.builtins import (
 
 | Component | CSS | JS |
 |---|---|---|
-| PJXAccordion | `pjx-accordion.css` | `pjx-accordion.js` |
+| PJXAccordion | `pjx-accordion.css` | — |
+| PJXAccordionContent | — | — |
+| PJXAccordionTrigger | `pjx-accordion-trigger.css` | `pjx-accordion-trigger.js` |
 | PJXAccordionGroup | `pjx-accordion-group.css` | `pjx-accordion-group.js` |
 | PJXAlert | `pjx_alert.css` | `pjx_alert.js` |
 | PJXAvatar | `pjx_avatar.css` | — |
@@ -66,7 +68,10 @@ from pyjinhx.builtins import (
 | PJXBadge | `pjx_badge.css` | — |
 | PJXBreadcrumb | `pjx_breadcrumb.css` | — |
 | PJXButton | `pjx-button.css` | — |
-| PJXCard | `pjx_card.css` | — |
+| PJXCard | `pjx-card.css` | — |
+| PJXCardHeader | `pjx-card-header.css` | — |
+| PJXCardBody | `pjx-card-body.css` | — |
+| PJXCardFooter | `pjx-card-footer.css` | — |
 | PJXChipInput | `pjx-chip-input.css` | `pjx-chip-input.js` |
 | PJXConfirmDialog | `pjx-confirm-dialog.css` | `pjx-confirm-dialog.js` |
 | PJXDivider | `pjx_divider.css` | — |
@@ -80,7 +85,10 @@ from pyjinhx.builtins import (
 | PJXIcon | `pjx-icon.css` | — |
 | PJXLazyPanel | — | — |
 | PJXRegionLoader | `pjx-region-loader.css` | `pjx-region-loader.js` |
-| PJXModal | `pjx_modal.css` | `pjx_modal.js` |
+| PJXModal | `pjx-modal.css` | `pjx-modal.js` |
+| PJXModalHeader | `pjx-modal-header.css` | — |
+| PJXModalBody | `pjx-modal-body.css` | — |
+| PJXModalFooter | `pjx-modal-footer.css` | — |
 | PJXNotification | `pjx_notification.css` | `pjx_notification.js` |
 | PJXPageLoader | `pjx-page-loader.css` | `pjx-page-loader.js` |
 | PJXPanel | `pjx_panel.css` | `pjx_panel.js` |
@@ -169,25 +177,52 @@ Structural, themeable button. Composes [`PJXRegionLoader`](#pjxregionloader) for
 
 ## PJXAccordion
 
-Collapsible section built on native `<details>`/`<summary>`. Composes [`PJXIcon`](#pjxicon) for the disclosure chevron. **Assets:** `pjx-accordion.css`, `pjx-accordion.js`.
+Collapsible section built on native `<details>`. Composed with `PJXAccordionTrigger` (the `<summary>`, with the auto chevron) and `PJXAccordionContent` (the body). **Assets:** `pjx-accordion.css` (shell radius only — trigger and chevron CSS ship with `PJXAccordionTrigger`). No JS.
 
 <!-- demo: PJXAccordion -->
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
-| `label` | `str` | `""` | Trigger text (the common case). |
-| `header` | `str \| BaseComponent \| None` | `None` | Rich trigger slot (badges, counts); when set it **wins over** `label`. |
-| `open` | `bool` | `True` | Initial expanded state (renders the `open` attribute). |
-| `disabled` | `bool` | `False` | Marks the summary `aria-disabled="true"` + `tabindex="-1"` (and `pointer-events: none` via CSS). |
+| `open` | `bool` | `True` | Initial expanded state (renders the `open` attribute on `<details>`). |
 | `group` | `str \| None` | `None` | Native `<details name="...">` for exclusive-open groups; default is independent multi-open. |
-| `content` | `str \| BaseComponent` | `""` | Body slot (children map here); rendered inside `.pjx-accordion__body`. |
-| `actions` | `str \| BaseComponent \| None` | `None` | Non-toggling action slot rendered at the **end** of the trigger (e.g. restore / delete buttons). Clicks inside it are suppressed by `pjx-accordion.js` so the `<details>` does **not** toggle. |
+| `content` | `str \| BaseComponent` | `""` | Inner HTML; nest a `PJXAccordionTrigger` + `PJXAccordionContent` here. |
 
-**DOM contract.** Root `<details>` with a `<summary class="pjx-accordion__trigger">` (chevron + `header`-or-`label` + optional `__actions`) and a `<div class="pjx-accordion__body">`. The chevron rotates on `[open]` via CSS. The default marker is stripped.
+**DOM contract.** Root `<details class="pjx-accordion">` rendering `{{ content }}` verbatim. Place a `PJXAccordionTrigger` and a `PJXAccordionContent` inside `content` to form a complete accordion.
 
-**Classes:** `pjx-accordion`; `pjx-accordion__trigger`, `__chevron`, `__body`, `__actions`. Theming: see [PJXAccordion tokens](#pjxaccordion-tokens).
+**Classes:** `pjx-accordion`. Theming: see [PJXAccordion tokens](#pjxaccordion-tokens).
 
-**Toggle suppression.** The `actions` slot is wrapped in `.pjx-accordion__actions`. `pjx-accordion.js` registers a single capture-phase `click` listener that calls `preventDefault()` (only — deliberately **not** `stopPropagation()`) for any click inside that wrapper. `preventDefault()` cancels the native `<summary>` toggle, which is the click's *default action*; because propagation is left intact, htmx and other handlers on the action elements still fire normally.
+---
+
+## PJXAccordionTrigger
+
+The `<summary>` part of a composed accordion. Composes [`PJXIcon`](#pjxicon) for the disclosure chevron. **Assets:** `pjx-accordion-trigger.css` (trigger + chevron styles), `pjx-accordion-trigger.js` (toggle-suppression for opt-in `pjx-accordion__actions`).
+
+| Field | Type | Default | Description |
+| --- | --- | --- | --- |
+| `disabled` | `bool` | `False` | Marks the summary `aria-disabled="true"` + `tabindex="-1"` (and `pointer-events: none` via CSS). |
+| `class_name` | `AttrValue` | `""` | Extra CSS class(es) for the root element. |
+| `content` | `str \| BaseComponent` | `""` | Trigger label (text or rich markup). |
+
+**DOM contract.** Root `<summary class="pjx-accordion__trigger">` containing the auto-chevron and `content`. The chevron rotates on `[open]` via CSS. The default marker is stripped.
+
+**Actions (opt-in).** To add non-toggling action buttons, wrap them in `<div class="pjx-accordion__actions">` inside `content`. `pjx-accordion-trigger.js` registers a single capture-phase `click` listener that calls `preventDefault()` (only — deliberately **not** `stopPropagation()`) for any click inside `.pjx-accordion__actions`. This cancels the native `<summary>` toggle while leaving htmx and other handlers intact.
+
+**Classes:** `pjx-accordion__trigger`, `pjx-accordion__chevron`, `pjx-accordion__actions`. Theming: see [PJXAccordion tokens](#pjxaccordion-tokens).
+
+---
+
+## PJXAccordionContent
+
+The body part of a composed accordion. **Assets:** none (unstyled wrapper; use your own or theme the parent shell).
+
+| Field | Type | Default | Description |
+| --- | --- | --- | --- |
+| `class_name` | `AttrValue` | `""` | Extra CSS class(es) for the root element. |
+| `content` | `str \| BaseComponent` | `""` | Body content. |
+
+**DOM contract.** Root `<div class="pjx-accordion__content">` rendering `{{ content }}` verbatim.
+
+**Classes:** `pjx-accordion__content`. No theming tokens — style via the parent `pjx-accordion` or your own rules.
 
 ---
 
@@ -198,23 +233,34 @@ Groups a set of `PJXAccordion`s into a shared layout/behavior container. Handles
 <!-- demo: PJXAccordionGroup -->
 
 ```python
+def item(title, body, **kw):
+    return PJXAccordion(
+        content=PJXAccordionTrigger(content=title).render()
+        + PJXAccordionContent(content=body).render(),
+        **kw,
+    ).render()
+
 PJXAccordionGroup(
     id="faq",
     mode="exclusive",
     gap="0.25rem",
-    content=(
-        PJXAccordion(id="faq-a", label="What is it?", content="<p>A framework.</p>").render()
-        + PJXAccordion(id="faq-b", label="How to install?", open=False, content="<p>pip install pyjinhx</p>").render()
-    ),
+    content=item("What is it?", "<p>A framework.</p>")
+    + item("How to install?", "<p>pip install pyjinhx</p>", open=False),
 )
 ```
 
 Or with PascalCase tags:
 
 ```html
-<PJXAccordionGroup id="faq" mode="exclusive" gap="0.25rem">
-  <PJXAccordion id="faq-a" label="What is it?">A framework.</PJXAccordion>
-  <PJXAccordion id="faq-b" label="How to install?" open="False">pip install pyjinhx</PJXAccordion>
+<PJXAccordionGroup mode="exclusive" gap="0.25rem">
+  <PJXAccordion id="faq-a">
+    <PJXAccordionTrigger>What is pyjinhx?</PJXAccordionTrigger>
+    <PJXAccordionContent><p>A Python/Jinja HTML component framework.</p></PJXAccordionContent>
+  </PJXAccordion>
+  <PJXAccordion id="faq-b" open="False">
+    <PJXAccordionTrigger>How do I install it?</PJXAccordionTrigger>
+    <PJXAccordionContent>pip install pyjinhx</PJXAccordionContent>
+  </PJXAccordion>
 </PJXAccordionGroup>
 ```
 
@@ -239,23 +285,24 @@ Or with PascalCase tags:
 
 ## PJXModal
 
-Native `<dialog>`. **Assets:** `pjx_modal.css`, `pjx_modal.js`.
+Native `<dialog>` shell. Compose with `PJXModalHeader`, `PJXModalBody`, and `PJXModalFooter` for structured layouts. **Assets:** `pjx-modal.css`, `pjx-modal.js`.
 
 <!-- demo: PJXModal -->
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
-| `title` | `str` | `""` | Default header title (text, escaped) when `header` is empty; use the `header` slot for custom markup. |
-| `header` | `str \| BaseComponent` | `""` | If set, replaces the built-in title row. |
-| `body` | `str \| BaseComponent` | `""` | Main content; wrapper id `{{ id }}-body`. |
-| `footer` | `str \| BaseComponent` | `""` | If non-empty, renders `<footer class="pjx-modal__footer">`. |
-| `close_label` | `str` | `"Close"` | `aria-label` for the close button. |
+| `content` | `str \| BaseComponent` | `""` | Inner content (part components or arbitrary markup). |
 | `open_on_mount` | `bool` | `False` | When `True`, adds `data-pjx-open-on-mount`; JS opens the dialog as soon as it mounts (e.g. via `hx-swap="beforeend"`). |
 | `remove_on_close` | `bool` | `False` | When `True`, adds `data-pjx-remove-on-close`; JS removes the element from the DOM on close. |
+| `class_name` | `str` | `""` | Extra CSS classes on the root `<dialog>`. |
 
 ```html
-<button data-pjx-open="info-modal">Open</button>
-<PJXModal id="info-modal" title="Hello" body="Content here."/>
+<button data-pjx-open="confirm">Open</button>
+<PJXModal id="confirm">
+  <PJXModalHeader title="Delete file?"/>
+  <PJXModalBody>This cannot be undone.</PJXModalBody>
+  <PJXModalFooter><PJXButton center="Delete"/></PJXModalFooter>
+</PJXModal>
 ```
 
 **DOM contract.** Root `dialog.pjx-modal` (state: `[open]`, `.pjx-modal--closing`).
@@ -265,7 +312,61 @@ Events (bubble from the root): `pjx:modal:before-open`*, `pjx:modal:open`,
 `pjx:modal:before-close`*, `pjx:modal:close` — `*` = cancelable, `detail = {reason, trigger}`,
 `reason ∈ escape|backdrop|api|trigger`. API: `pjx.modal.open(id)`, `pjx.modal.close(id)`.
 
-**Classes:** `pjx-modal`; closing state `pjx-modal--closing`; `pjx-modal__box`, `__header`, `__title`, `__close`, `__body`, `__footer`. Theming: see [PJXModal tokens](#pjxmodal-tokens).
+**Classes:** `pjx-modal`; closing state `pjx-modal--closing`; `pjx-modal__box`. Part-component classes (`__header`, `__title`, `__close`, `__body`, `__footer`) belong to the respective part components below. Theming: see [PJXModal tokens](#pjxmodal-tokens).
+
+---
+
+## PJXModalHeader
+
+Header part for `PJXModal`. Renders a `<header>` inside the modal box; always includes a close button. **Assets:** `pjx-modal-header.css`.
+
+| Field | Type | Default | Description |
+| --- | --- | --- | --- |
+| `title` | `str` | `""` | When set, renders `<span class="pjx-modal__title">` with this text (escaped); when empty, `{{ content }}` is used instead. |
+| `close_label` | `str` | `"Close"` | `aria-label` for the auto-included close button. |
+| `close_content` | `str` | `"✕"` | Inner markup/text of the close button. |
+| `class_name` | `str` | `""` | Extra CSS classes on the `<header>`. |
+| `content` | `str \| BaseComponent` | `""` | Custom header body; used when `title` is empty. |
+
+```html
+<PJXModalHeader title="Delete file?"/>
+```
+
+**Classes:** `pjx-modal__header`, `pjx-modal__title`, `pjx-modal__close`.
+
+---
+
+## PJXModalBody
+
+Body part for `PJXModal`. Renders a `<div class="pjx-modal__body">`. **Assets:** `pjx-modal-body.css`.
+
+| Field | Type | Default | Description |
+| --- | --- | --- | --- |
+| `class_name` | `str` | `""` | Extra CSS classes on the body `<div>`. |
+| `content` | `str \| BaseComponent` | `""` | Main content. |
+
+```html
+<PJXModalBody>This cannot be undone.</PJXModalBody>
+```
+
+**Classes:** `pjx-modal__body`.
+
+---
+
+## PJXModalFooter
+
+Footer part for `PJXModal`. Renders a `<footer class="pjx-modal__footer">`. **Assets:** `pjx-modal-footer.css`.
+
+| Field | Type | Default | Description |
+| --- | --- | --- | --- |
+| `class_name` | `str` | `""` | Extra CSS classes on the `<footer>`. |
+| `content` | `str \| BaseComponent` | `""` | Footer content (e.g. action buttons). |
+
+```html
+<PJXModalFooter><PJXButton center="Delete"/></PJXModalFooter>
+```
+
+**Classes:** `pjx-modal__footer`.
 
 ---
 
@@ -721,20 +822,72 @@ PJXAvatar(id="a3", initials="AB", size="2.5rem")
 
 ## PJXCard
 
-Grouped content with optional header and footer. **Assets:** `pjx_card.css` only.
+`<article>` shell for composed card layouts. Compose with `PJXCardHeader`, `PJXCardBody`, and `PJXCardFooter` parts. **Assets:** `pjx-card.css` only.
 
 <!-- demo: PJXCard -->
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
-| `title` | `str` | `""` | Default header title (text, escaped; ignored if `header` is set). |
-| `header` | `str \| BaseComponent` | `""` | Custom header slot; replaces `title` block when set. |
-| `body` | `str \| BaseComponent` | `""` | Main content. |
-| `footer` | `str \| BaseComponent` | `""` | Optional footer. |
+| `class_name` | `str` | `""` | Extra CSS class(es) on the root element. |
+| `content` | `str \| BaseComponent` | `""` | Pre-rendered children (header + body + footer parts). |
 
-**DOM contract.** Root `.pjx-card`; no JS API.
+```html
+<PJXCard>
+  <PJXCardHeader title="Q3 report"/>
+  <PJXCardBody>Revenue grew 12% over Q1.</PJXCardBody>
+  <PJXCardFooter>Updated today</PJXCardFooter>
+</PJXCard>
+```
 
-**Classes:** `pjx-card`, `pjx-card__header`, `pjx-card__title`, `pjx-card__body`, `pjx-card__footer`. Theming: see [PJXCard tokens](#pjxcard-tokens).
+**DOM contract.** Root `article.pjx-card`; no JS API.
+
+**Classes:** `pjx-card`. Theming: see [PJXCard tokens](#pjxcard-tokens).
+
+---
+
+## PJXCardHeader
+
+Card header region. When `title` is set it renders `<h3 class="pjx-card__title">` inside the header; when `title` is empty the `content` slot is rendered directly instead. **Assets:** `pjx-card-header.css` only.
+
+| Field | Type | Default | Description |
+| --- | --- | --- | --- |
+| `title` | `str` | `""` | Convenience shorthand — renders `<h3 class="pjx-card__title">` when set; takes precedence over `content`. |
+| `class_name` | `str` | `""` | Extra CSS class(es) on the root element. |
+| `content` | `str \| BaseComponent` | `""` | Rich header slot; used when `title` is empty. |
+
+**DOM contract.** Root `header.pjx-card__header`; no JS API.
+
+**Classes:** `pjx-card__header`, `pjx-card__title`. Theming: see [PJXCard tokens](#pjxcard-tokens).
+
+---
+
+## PJXCardBody
+
+Card body region. **Assets:** `pjx-card-body.css` only.
+
+| Field | Type | Default | Description |
+| --- | --- | --- | --- |
+| `class_name` | `str` | `""` | Extra CSS class(es) on the root element. |
+| `content` | `str \| BaseComponent` | `""` | Main card content. |
+
+**DOM contract.** Root `div.pjx-card__body`; no JS API.
+
+**Classes:** `pjx-card__body`. Theming: see [PJXCard tokens](#pjxcard-tokens).
+
+---
+
+## PJXCardFooter
+
+Card footer region. **Assets:** `pjx-card-footer.css` only.
+
+| Field | Type | Default | Description |
+| --- | --- | --- | --- |
+| `class_name` | `str` | `""` | Extra CSS class(es) on the root element. |
+| `content` | `str \| BaseComponent` | `""` | Footer content (actions, metadata, etc.). |
+
+**DOM contract.** Root `footer.pjx-card__footer`; no JS API.
+
+**Classes:** `pjx-card__footer`. Theming: see [PJXCard tokens](#pjxcard-tokens).
 
 ---
 
@@ -1170,6 +1323,9 @@ from pyjinhx.builtins import (
     PJXBadge,
     PJXBreadcrumb,
     PJXCard,
+    PJXCardBody,
+    PJXCardFooter,
+    PJXCardHeader,
     PJXConfirmDialog,
     PJXDrawer,
     PJXModal,
@@ -1183,14 +1339,20 @@ from pyjinhx.builtins import (
 )
 
 badge = PJXBadge(id="status-badge", label="Beta", color="brand")
-modal = PJXModal(id="info-modal", title="Hello", body="Content here.")
+modal = PJXModal(
+    id="info-modal",
+    content=(
+        PJXModalHeader(title="Hello").render()
+        + PJXModalBody(content="Content here.").render()
+    ),
+)
 toast = PJXNotification(id="welcome-toast", content="Saved.", corner="bottom-right", timeout=3000)
 drawer = PJXDrawer(id="filters", side="right", content=(
     PJXDrawerHeader(title="Filters").render()
     + PJXDrawerBody(content="…").render()
 ))
 tip = PJXTooltip(id="help-tip", trigger="?", tip="More detail", placement="top")
-card = PJXCard(id="summary", title="Summary", body="Details go here.")
+card = PJXCard(id="summary", content=PJXCardHeader(title="Summary").render() + PJXCardBody(content="Details go here.").render() + PJXCardFooter(content="Last updated today.").render())
 crumb = PJXBreadcrumb(id="crumb", items=[("App", "/"), ("Page", None)])
 tabs = PJXTabGroup(
     id="main-tabs",

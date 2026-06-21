@@ -6,6 +6,9 @@ from pyjinhx.builtins import (
     PJXDrawerFooter,
     PJXDrawerHeader,
     PJXModal,
+    PJXModalBody,
+    PJXModalFooter,
+    PJXModalHeader,
     PJXNotification,
     PJXPopover,
     PJXPopoverPanel,
@@ -20,9 +23,11 @@ def modal():
         '<button class="pjx-demo-btn" data-pjx-open="demo-modal">Open modal</button>',
         PJXModal(
             id="demo-modal",
-            title="Confirm changes",
-            body="Your draft will be published immediately. This action cannot be undone.",
-            footer='<button class="pjx-demo-btn" data-pjx-close>Cancel</button>',
+            content=(
+                str(PJXModalHeader(id="demo-modal-h", title="Confirm changes").render())
+                + str(PJXModalBody(id="demo-modal-b", content="Your draft will be published immediately. This action cannot be undone.").render())
+                + str(PJXModalFooter(id="demo-modal-f", content='<button class="pjx-demo-btn" data-pjx-close>Cancel</button>').render())
+            ),
         ).render(),
     ]
 

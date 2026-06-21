@@ -4,7 +4,7 @@ import pytest
 from jinja2 import Environment, FileSystemLoader
 
 from pyjinhx import BaseComponent, Renderer
-from pyjinhx.builtins import PJXModal, PJXTooltip  # noqa: F401  (importing PJXModal registers the tag)
+from pyjinhx.builtins import PJXModal, PJXTooltip  # noqa: F401  (importing registers the tags)
 
 
 def test_tooltip_tag_children_map_to_tip(tmp_path):
@@ -75,18 +75,18 @@ def test_both_children_and_tip_attr_raises(tmp_path):
         renderer.render('<PJXTooltip id="tt" tip="explicit">inner tip</PJXTooltip>')
 
 
-def test_modal_tag_children_map_to_body(tmp_path):
+def test_modal_tag_children_map_to_content(tmp_path):
     Renderer.set_default_environment(str(tmp_path))
     renderer = Renderer.get_default_renderer()
 
     rendered = renderer.render('<PJXModal id="m">CHILD</PJXModal>')
 
-    assert 'id="m-body">CHILD</div>' in rendered
+    assert 'class="pjx-modal__box">CHILD</div>' in rendered
 
 
-def test_modal_both_children_and_body_attr_raises(tmp_path):
+def test_modal_both_children_and_content_attr_raises(tmp_path):
     Renderer.set_default_environment(str(tmp_path))
     renderer = Renderer.get_default_renderer()
 
-    with pytest.raises(ValueError, match="both children and the 'body' attribute"):
-        renderer.render('<PJXModal id="m2" body="x">y</PJXModal>')
+    with pytest.raises(ValueError, match="both children and the 'content' attribute"):
+        renderer.render('<PJXModal id="m2" content="x">y</PJXModal>')
