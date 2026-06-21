@@ -49,8 +49,11 @@ def test_dropdown_headless_mode():
 def test_nested_dropdown_ships_popover_js():
     # Regression: extra-asset JS must be collected for nested components,
     # not only for the outermost root (fix to apply_component_render_assets).
-    from pyjinhx.builtins import PJXCard
-    html = str(PJXCard(id="c", body=PJXDropdown(id="dd", trigger="t", items=["x"])).render())
+    from pyjinhx.builtins import PJXCard, PJXCardBody
+    html = str(PJXCard(
+        id="c",
+        content=PJXCardBody(id="cb", content=PJXDropdown(id="dd", trigger="t", items=["x"])).render(),
+    ).render())
     assert "pjx.popover" in html  # the extra-asset JS arrived despite nesting
 
 

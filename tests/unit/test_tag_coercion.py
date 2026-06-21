@@ -50,17 +50,17 @@ def test_instance_reuse_invalid_update_raises(tmp_path):
 
 
 def test_instance_reuse_preserves_nested_components(tmp_path):
-    from pyjinhx.builtins import PJXBadge, PJXCard
+    from pyjinhx.builtins import PJXBadge, PJXCardBody
 
     (tmp_path / "unused_probe.html").write_text("<i></i>")
     original_environment = Renderer.peek_default_environment()
     try:
         Renderer.set_default_environment(str(tmp_path))
         renderer = Renderer.get_default_renderer()
-        PJXCard(id="c1", body=PJXBadge(id="b1", label="hi"))
-        html = renderer.render('<PJXCard id="c1" title="X"/>')
+        PJXCardBody(id="cb1", content=PJXBadge(id="b1", label="hi"))
+        html = renderer.render('<PJXCardBody id="cb1" class_name="updated"/>')
         assert "hi" in html          # PJXBadge subclass state survived the reuse update
         assert "pjx-badge" in html    # it rendered as a PJXBadge, not a degraded BaseComponent
-        assert ">X<" in html         # the update itself applied
+        assert "updated" in html     # the update itself applied
     finally:
         Renderer.set_default_environment(original_environment)

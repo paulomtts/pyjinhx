@@ -7,6 +7,9 @@ from pyjinhx.builtins import (
     PJXBreadcrumb,
     PJXButton,
     PJXCard,
+    PJXCardBody,
+    PJXCardFooter,
+    PJXCardHeader,
     PJXDivider,
     PJXEmptyState,
     PJXIcon,
@@ -46,7 +49,11 @@ def badge():
 
 
 def card():
-    return PJXCard(title="Quarterly report", body="Revenue grew 12% over Q1.", footer="Updated today").render()
+    return PJXCard(
+        content=PJXCardHeader(title="Quarterly report").render()
+        + PJXCardBody(content="Revenue grew 12% over Q1.").render()
+        + PJXCardFooter(content="Updated today").render(),
+    ).render()
 
 
 def divider():

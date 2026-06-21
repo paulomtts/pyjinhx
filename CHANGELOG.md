@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+- **`PJXCard` is now composed of parts (breaking).** The slot-based monolith
+  (`title`, `header`, `body`, `footer`) is replaced by four `{{ content }}`-composed builtins:
+  `PJXCard` (the `<article>` shell), `PJXCardHeader` (with a `title` convenience that renders
+  `<h3 class="pjx-card__title">`, falling back to its content), `PJXCardBody`, and
+  `PJXCardFooter`. Migration: replace `<PJXCard title="T">body</PJXCard>` with
+  `<PJXCard><PJXCardHeader title="T"/><PJXCardBody>body</PJXCardBody></PJXCard>`.
+
 ## 0.25.1 — stale `{#def#}` header warning + type-checker cleanup (2026-06-21)
 
 ### Added
