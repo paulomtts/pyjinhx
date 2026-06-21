@@ -18,7 +18,7 @@ Every pyjinhx builtin follows the same contract, so knowing one means knowing al
    through to the root, but the dict-style `extra_attrs={...}` API is not available on them; use
    inline attributes or `class_name` instead.
 4. **All copy is props.** Every user-visible string, aria-labels included, has an English default
-   you can replace: `PJXModal(title="Excluir?", close_label="Fechar")`.
+   you can replace: `PJXModalHeader(title="Excluir?", close_label="Fechar")`.
 5. **JS is headless.** Builtin JavaScript never writes inline styles for state — visibility and variants are classes/attributes; computed positioning coordinates (tooltip/popover placement) are the one sanctioned inline-style use. Communication is through `pjx:*` DOM events and `data-pjx-*` attributes; programmatic APIs live under the single `window.pjx` namespace.
    Async-state JS follows the runtime's concurrency pattern: a ref-count per scope,
    release keyed to each request's `loadend` (terminal on load, error, abort, and
