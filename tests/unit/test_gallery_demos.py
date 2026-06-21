@@ -80,6 +80,25 @@ def test_registry_covers_all_builtins():
     assert set(DEMOS) == set(pyjinhx.builtins.__all__) - folded
 
 
+def test_gallery_page_features_every_demo():
+    """docs/gallery.md must feature every builtin that has a demo (DEMOS key).
+
+    The gallery page is hand-curated (one section + `<!-- demo: Name -->` per
+    builtin), so a new builtin's demo can render in the guide yet be missing from
+    the gallery — exactly what happened with PJXResizableGroup. This guards it.
+    """
+    import re
+
+    gallery = (DOCS / "gallery.md").read_text(encoding="utf-8")
+    featured = set(re.findall(r"<!--\s*demo:\s*([A-Za-z]+)\s*-->", gallery))
+    missing = sorted(set(DEMOS) - featured)
+    assert not missing, (
+        "docs/gallery.md is missing a section for these demo'd builtins — add a "
+        "`### [Name](guide/builtins.md#name)` + `<!-- demo: Name -->` for each: "
+        f"{missing}"
+    )
+
+
 def test_first_variation_source_picks_first_list_element():
     def f():
         return [
