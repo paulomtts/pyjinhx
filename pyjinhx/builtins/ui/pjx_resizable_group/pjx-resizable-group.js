@@ -1,4 +1,5 @@
 (function () {
+  window.pjx = window.pjx || {};
   var root = document.documentElement;
   if (root.dataset.pjxResizableBound) return;
   root.dataset.pjxResizableBound = "1";

@@ -54,6 +54,15 @@
   at runtime. Migration: replace `PJXTooltip(trigger="T", tip="Hint")` with
   `PJXTooltip(content=PJXTooltipTrigger(content="T").render() + PJXTooltipContent(content="Hint").render())`.
 
+### Added
+
+- **`PJXResizableGroup` / `PJXResizablePanel` / `PJXResizableHandle` — drag-to-resize split pane.**
+  Compose panels separated by draggable handles inside a `row`/`column` group; dragging a handle
+  trades space between its two neighbors (percentage sizing, responsive). Keyboard-resizable
+  (Arrow / Home / End on the focusable `role="separator"` handle), `min`/`max` per panel, a
+  `pjx:resize` event for app-side persistence, and nesting a perpendicular group for a resizable
+  grid. (#134)
+
 ## 0.25.1 — stale `{#def#}` header warning + type-checker cleanup (2026-06-21)
 
 ### Added

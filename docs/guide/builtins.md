@@ -97,6 +97,9 @@ from pyjinhx.builtins import (
 | PJXPanelTrigger | `pjx-panel-trigger.css` | *(pjx_panel.js from PJXPanel)* |
 | PJXPasswordInput | `pjx-password-input.css` | `pjx-password-input.js` |
 | PJXPopover | `pjx_popover.css` | `pjx_popover.js` |
+| PJXResizableGroup | `pjx-resizable-group.css` | `pjx-resizable-group.js` |
+| PJXResizablePanel | `pjx-resizable-panel.css` | — |
+| PJXResizableHandle | `pjx-resizable-handle.css` | — |
 | PJXPopoverPanel | *(from PJXPopover)* | *(from PJXPopover)* |
 | PJXPopoverTrigger | *(from PJXPopover)* | *(from PJXPopover)* |
 | PJXProgress | `pjx_progress.css` | — |
@@ -1212,6 +1215,91 @@ API: `pjx.loader.page.show()`, `pjx.loader.page.hide()`, `pjx.loader.page.reset(
 
 ---
 
+## PJXResizableGroup
+
+Drag-to-resize split-pane container. Compose `PJXResizablePanel` and `PJXResizableHandle` parts inside. **Assets:** `pjx-resizable-group.css`, `pjx-resizable-group.js`.
+
+<!-- demo: PJXResizableGroup -->
+
+| Field | Type | Default | Description |
+| --- | --- | --- | --- |
+| `direction` | `"row" \| "column"` | `"row"` | Flex direction for the group (`row` = side-by-side, `column` = stacked). Emits `pjx-resizable-group--row` / `--column` and `data-direction`. |
+| `class_name` | `AttrValue` | `""` | Extra CSS class(es) on the root element. |
+| `content` | `str \| BaseComponent` | `""` | Pre-rendered children: alternating `PJXResizablePanel` and `PJXResizableHandle` components. |
+
+```html
+<PJXResizableGroup direction="row">
+  <PJXResizablePanel size="25" min="15">sidebar</PJXResizablePanel>
+  <PJXResizableHandle/>
+  <PJXResizablePanel size="75">main</PJXResizablePanel>
+</PJXResizableGroup>
+```
+
+Python:
+
+```python
+PJXResizableGroup(
+    id="split",
+    direction="row",
+    content=(
+        PJXResizablePanel(id="split-l", size=25, min=15, content="sidebar").render()
+        + PJXResizableHandle(id="split-h").render()
+        + PJXResizablePanel(id="split-r", size=75, content="main").render()
+    ),
+)
+```
+
+**DOM contract.** Root `<div role="group" class="pjx-resizable-group pjx-resizable-group--{direction}" data-pjx-resizable-group data-direction="{direction}">` rendering `{{ content }}` verbatim. `pjx-resizable-group.js` initializes on `DOMContentLoaded` and `htmx:afterSettle` (bind-guarded per element), sets `flex-grow` on each panel from the panel's `data-size` attribute, and wires pointer/touch drag and keyboard events to the handles.
+
+**`pjx:resize` event.** Fires on the group root after every drag-end or keyboard step. `detail.sizes` is an ordered array of panel size percentages (one entry per `[data-pjx-resizable-panel]` direct child). Listen to persist the layout:
+
+```javascript
+document.addEventListener("pjx:resize", e => {
+    localStorage.setItem("panel-sizes", JSON.stringify(e.detail.sizes));
+});
+```
+
+**Nesting.** A `PJXResizablePanel` may contain a `PJXResizableGroup` of the perpendicular direction, giving a resizable grid. Each group initializes independently via `:scope` + direct-children traversal.
+
+**Classes:** `pjx-resizable-group`; direction modifiers `pjx-resizable-group--row`, `--column`; drag state `pjx-resizable-group--dragging`. Theming: see [PJXResizableGroup tokens](#pjxresizablegroup-tokens).
+
+---
+
+## PJXResizablePanel
+
+A resizable pane inside a `PJXResizableGroup`. Percentage-sized; `flex-grow` is set from `data-size` by JS. **Assets:** `pjx-resizable-panel.css`.
+
+| Field | Type | Default | Description |
+| --- | --- | --- | --- |
+| `size` | `float \| None` | `None` | Initial size as a percentage of the group (e.g. `40` = 40 %). `None` → `flex-grow: 1` (equal share). Rendered as `data-size` and inline `style="flex-grow: {size}"`. |
+| `min` | `float` | `0` | Minimum size percentage; clamps drag so the panel cannot shrink below this. Rendered as `data-min`. |
+| `max` | `float` | `100` | Maximum size percentage; clamps drag so the panel cannot grow beyond this. Rendered as `data-max`. |
+| `class_name` | `AttrValue` | `""` | Extra CSS class(es) on the root element. |
+| `content` | `str \| BaseComponent` | `""` | Panel body content. |
+
+**DOM contract.** Root `<div class="pjx-resizable-group__panel" data-pjx-resizable-panel [data-size] data-min data-max style="flex-grow: ...">`. Place inside a `PJXResizableGroup`; a `PJXResizableHandle` between two panels enables drag-to-resize. Each panel in the group must be a direct child.
+
+**Classes:** `pjx-resizable-group__panel`. No own theming tokens; layout is controlled by `flex-grow`.
+
+---
+
+## PJXResizableHandle
+
+The draggable divider between two `PJXResizablePanel` siblings. Keyboard-accessible (`role="separator"`, `tabindex="0"`). **Assets:** `pjx-resizable-handle.css`.
+
+| Field | Type | Default | Description |
+| --- | --- | --- | --- |
+| `label` | `str` | `"Resize"` | `aria-label` for the `role="separator"` element. |
+| `class_name` | `AttrValue` | `""` | Extra CSS class(es) on the root element. |
+
+**DOM contract.** Root `<div role="separator" class="pjx-resizable-group__handle" data-pjx-resizable-handle tabindex="0" aria-label="{label}" aria-valuemin="0" aria-valuemax="100">`. Place between two `PJXResizablePanel`s inside a `PJXResizableGroup`. `pjx-resizable-group.js` sets `aria-valuenow` on the preceding panel's size at every update.
+
+**Keyboard controls.** When the handle is focused: `ArrowRight`/`ArrowDown` grows the preceding panel by 5 %; `ArrowLeft`/`ArrowUp` shrinks it by 5 %; `Home` collapses the preceding panel to its `min`; `End` expands it to the remaining group space (clamped to `max`). `min`/`max` constraints from both neighbors are respected.
+
+**Classes:** `pjx-resizable-group__handle`. Theming: see [PJXResizableGroup tokens](#pjxresizablegroup-tokens) (handle appearance is controlled by group-level tokens).
+
+---
+
 ## Form controls
 
 ---
@@ -1804,3 +1892,12 @@ Content uses `var(--font-size-sm)`, `var(--text)`; close hover uses `var(--surfa
 | `--pjx-password-input-focus` | `var(--border-focus, var(--brand))` |
 | `--pjx-password-input-toggle-color` | `var(--text-muted)` |
 | `--pjx-password-input-eye-size` | `1.25rem` |
+
+### PJXResizableGroup tokens
+
+| Token | Default |
+| --- | --- |
+| `--pjx-resizable-handle-size` | `0.5rem` |
+| `--pjx-resizable-handle-color` | `transparent` |
+| `--pjx-resizable-grip-color` | `var(--border)` |
+| `--pjx-resizable-handle-color-active` | `var(--brand-muted)` |

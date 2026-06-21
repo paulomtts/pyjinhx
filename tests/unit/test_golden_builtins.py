@@ -83,6 +83,9 @@ CASES = [
     ("accordion_group_multi", lambda: b.PJXAccordionGroup(id="g", content=str(b.PJXAccordion(id="g-a", content=str(b.PJXAccordionTrigger(id="g-at", content="A").render()) + str(b.PJXAccordionContent(id="g-ac", content="<p>x</p>").render())).render()) + str(b.PJXAccordion(id="g-b", open=False, content=str(b.PJXAccordionTrigger(id="g-bt", content="B").render()) + str(b.PJXAccordionContent(id="g-bc", content="<p>y</p>").render())).render()))),
     ("accordion_group_exclusive", lambda: b.PJXAccordionGroup(id="g", mode="exclusive", gap="0.5rem", content=str(b.PJXAccordion(id="g-a", content=str(b.PJXAccordionTrigger(id="g-at", content="A").render()) + str(b.PJXAccordionContent(id="g-ac", content="<p>x</p>").render())).render()) + str(b.PJXAccordion(id="g-b", open=False, content=str(b.PJXAccordionTrigger(id="g-bt", content="B").render()) + str(b.PJXAccordionContent(id="g-bc", content="<p>y</p>").render())).render()))),
     ("accordion_group_default_open_first", lambda: b.PJXAccordionGroup(id="g", default_open="first", content=str(b.PJXAccordion(id="g-a", open=False, content=str(b.PJXAccordionTrigger(id="g-at", content="A").render()) + str(b.PJXAccordionContent(id="g-ac", content="<p>x</p>").render())).render()) + str(b.PJXAccordion(id="g-b", open=False, content=str(b.PJXAccordionTrigger(id="g-bt", content="B").render()) + str(b.PJXAccordionContent(id="g-bc", content="<p>y</p>").render())).render()))),
+    ("resizable_group", lambda: b.PJXResizableGroup(id="g", content=str(b.PJXResizablePanel(id="g-l", size=40, min=20, content="L").render()) + str(b.PJXResizableHandle(id="g-h").render()) + str(b.PJXResizablePanel(id="g-r", size=60, content="R").render()))),
+    ("resizable_panel", lambda: b.PJXResizablePanel(id="g", size=30, min=10, content="body")),
+    ("resizable_handle", lambda: b.PJXResizableHandle(id="g", label="Resize")),
 ]
 
 
