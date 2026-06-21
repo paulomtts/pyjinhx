@@ -43,6 +43,9 @@ The builtins, rendered by pyjinhx at docs build time (PJXLazyPanel needs a backe
 ### [PJXAccordion](guide/builtins.md#pjxaccordion)
 <!-- demo: PJXAccordion -->
 
+### [PJXAccordionGroup](guide/builtins.md#pjxaccordiongroup)
+<!-- demo: PJXAccordionGroup -->
+
 ## Overlays & dialogs
 
 ### [PJXModal](guide/builtins.md#pjxmodal)
@@ -79,6 +82,9 @@ The builtins, rendered by pyjinhx at docs build time (PJXLazyPanel needs a backe
 
 ### [PJXPanel](guide/builtins.md#pjxpanel)
 <!-- demo: PJXPanel -->
+
+### [PJXResizableGroup](guide/builtins.md#pjxresizablegroup)
+<!-- demo: PJXResizableGroup -->
 
 ### [PJXToastHost](guide/builtins.md#pjxtoasthost)
 <!-- demo: PJXToastHost -->
