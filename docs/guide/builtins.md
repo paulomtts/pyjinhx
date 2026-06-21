@@ -372,7 +372,7 @@ Groups a set of `PJXAccordion`s into a shared layout/behavior container. Handles
 ```
 
 ```python
-PJXAccordionGroup(mode="exclusive", gap="0.25rem", content=item("Section A", "<p>Content A.</p>") + item("Section B", "<p>Content B.</p>", open=False) + item("Section C", "<p>Content C.</p>", open=False))
+PJXAccordionGroup(mode="exclusive", gap="0.25rem", content=PJXAccordion(content=PJXAccordionTrigger(content="Section A").render() + PJXAccordionContent(content="<p>Content A.</p>").render()).render() + PJXAccordion(open=False, content=PJXAccordionTrigger(content="Section B").render() + PJXAccordionContent(content="<p>Content B.</p>").render()).render())
 ```
 
 ---
@@ -846,6 +846,8 @@ Centered, vertically-stacked empty-view container. Compose whatever you like ins
 
 **DOM contract.** Root `.pjx-empty-state`; no JS API (suggestion chips require Alpine for `$dispatch`).
 
+**Classes:** `pjx-empty-state`, `pjx-empty-state__suggestions`, `pjx-empty-state__chip`.
+
 **Suggestion chips** (`suggestions`) provide a first-class "click a chip → dispatch an event" pattern — the common use case of filling an input or triggering a quick action without navigation.
 
 Each item in `suggestions` is a dict with:
@@ -862,8 +864,6 @@ The rendered chip uses Alpine's `$dispatch`, so any parent can listen with `@pjx
 <!-- Listener in a parent template -->
 <textarea @pjx:suggestion.window="$el.value = $event.detail.value"></textarea>
 ```
-
-**Classes:** `pjx-empty-state`, `pjx-empty-state__suggestions`, `pjx-empty-state__chip`.
 
 **Style tokens.**
 
