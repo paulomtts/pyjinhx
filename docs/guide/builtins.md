@@ -126,8 +126,6 @@ from pyjinhx.builtins import (
 
 Small status label. **Assets:** `pjx_badge.css` only.
 
-<!-- demo: PJXBadge -->
-
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
 | `label` | `str` | `""` | Inner text. |
@@ -136,15 +134,44 @@ Small status label. **Assets:** `pjx_badge.css` only.
 
 **DOM contract.** Root `.pjx-badge`; no JS API.
 
-**Classes:** `pjx-badge`; color modifiers `pjx-badge--brand`, `--error`, `--neutral`, `--muted`; shape `pjx-badge--square`, `--sm`, `--md`, `--full`. Theming: see [PJXBadge tokens](#pjxbadge-tokens).
+**Classes:** `pjx-badge`; color modifiers `pjx-badge--brand`, `--error`, `--neutral`, `--muted`; shape `pjx-badge--square`, `--sm`, `--md`, `--full`.
+
+**Style tokens.**
+
+| Token | Default (maps to) |
+| --- | --- |
+| `--pjx-badge-font-size` | `var(--font-size-xs)` |
+| `--pjx-badge-radius-sm` | `var(--radius-sm)` |
+| `--pjx-badge-radius-md` | `var(--radius-md)` |
+| `--pjx-badge-radius-full` | `var(--radius-full)` |
+| `--pjx-badge-brand-bg` | `var(--brand-subtle)` |
+| `--pjx-badge-brand-fg` | `var(--brand-muted)` |
+| `--pjx-badge-brand-accent` | `var(--brand)` |
+| `--pjx-badge-error-bg` | `var(--error-bg)` |
+| `--pjx-badge-error-fg` | `var(--error)` |
+| `--pjx-badge-error-border` | `var(--error-border)` |
+| `--pjx-badge-neutral-bg` | `var(--surface-alt)` |
+| `--pjx-badge-neutral-fg` | `var(--text)` |
+| `--pjx-badge-neutral-border` | `var(--border)` |
+| `--pjx-badge-muted-bg` | `var(--surface)` |
+| `--pjx-badge-muted-fg` | `var(--text-muted)` |
+| `--pjx-badge-muted-border` | `var(--border)` |
+
+<!-- demo: PJXBadge -->
+
+```html
+<PJXBadge label="Active" color="brand"/>
+```
+
+```python
+PJXBadge(label="Active", color="brand")
+```
 
 ---
 
 ## PJXIcon
 
 Inline SVG icon from a vendored [Lucide](https://lucide.dev) set (ISC). **Assets:** `pjx-icon.css` only.
-
-<!-- demo: PJXIcon -->
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
@@ -155,15 +182,23 @@ Inline SVG icon from a vendored [Lucide](https://lucide.dev) set (ISC). **Assets
 
 **DOM contract.** Root `<svg>` with `stroke="currentColor"` and `fill="none"`; no JS API. It inherits text color, so it themes for free — set `color` on the icon or any ancestor. Compose into `content`, e.g. `<PJXButton variant="primary"><PJXIcon name="plus"/> Add</PJXButton>`.
 
-**Classes:** `pjx-icon`. Theming: no `--pjx-icon-*` tokens — size comes from the `size`/`stroke_width` props and color from `currentColor`.
+**Classes:** `pjx-icon`. No `--pjx-icon-*` tokens — size comes from the `size`/`stroke_width` props and color from `currentColor`.
+
+<!-- demo: PJXIcon -->
+
+```html
+<PJXIcon name="plus" size="24" label="Add"/>
+```
+
+```python
+PJXIcon(name="plus", size=24, label="Add")
+```
 
 ---
 
 ## PJXButton
 
 Structural, themeable button. Composes [`PJXRegionLoader`](#pjxregionloader) for the inline loading state. **Assets:** `pjx-button.css` only.
-
-<!-- demo: PJXButton -->
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
@@ -174,23 +209,40 @@ Structural, themeable button. Composes [`PJXRegionLoader`](#pjxregionloader) for
 | `disabled` | `bool` | `False` | Sets the `disabled` attribute. |
 | `type` | literal | `"button"` | `button`, `submit`, or `reset`. |
 
-```html
-<PJXButton variant="primary"><PJXIcon name="plus"/> Add item</PJXButton>
-```
-
-Python: `PJXButton(content="Save")` or `PJXButton(variant="primary", content="<icon> Add")`.
-
 **DOM contract.** Root `<button>` rendering `{{ content }}` verbatim. No JS API — pass `hx-*`/`@click` inline (they pass through to the root). The default `.pjx-button` is visually neutral so it never fights your design system; paint variants via `.pjx-button--<variant>`.
 
-**Classes:** `pjx-button`; `pjx-button--block`; variant seams `pjx-button--<variant>`. Theming: see [PJXButton tokens](#pjxbutton-tokens).
+**Classes:** `pjx-button`; `pjx-button--block`; variant seams `pjx-button--<variant>`.
+
+**Style tokens.**
+
+| Token | Default |
+| --- | --- |
+| `--pjx-button-bg` | `transparent` |
+| `--pjx-button-color` | `inherit` |
+| `--pjx-button-border` | `1px solid currentColor` |
+| `--pjx-button-radius` | `0.375rem` |
+| `--pjx-button-padding` | `0.5rem 0.875rem` |
+| `--pjx-button-gap` | `0.5rem` |
+| `--pjx-button-font-size` | `inherit` |
+| `--pjx-button-font-weight` | `500` |
+| `--pjx-button-bg-hover` | `var(--pjx-button-bg)` |
+| `--pjx-button-border-hover` | `currentColor` |
+
+<!-- demo: PJXButton -->
+
+```html
+<PJXButton content="Save" variant="primary"/>
+```
+
+```python
+PJXButton(content="Save", variant="primary")
+```
 
 ---
 
 ## PJXAccordion
 
 Collapsible section built on native `<details>`. Composed with `PJXAccordionTrigger` (the `<summary>`, with the auto chevron) and `PJXAccordionContent` (the body). **Assets:** `pjx-accordion.css` (shell radius only — trigger and chevron CSS ship with `PJXAccordionTrigger`). No JS.
-
-<!-- demo: PJXAccordion -->
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
@@ -200,7 +252,33 @@ Collapsible section built on native `<details>`. Composed with `PJXAccordionTrig
 
 **DOM contract.** Root `<details class="pjx-accordion">` rendering `{{ content }}` verbatim. Place a `PJXAccordionTrigger` and a `PJXAccordionContent` inside `content` to form a complete accordion.
 
-**Classes:** `pjx-accordion`. Theming: see [PJXAccordion tokens](#pjxaccordion-tokens).
+**Classes:** `pjx-accordion`.
+
+**Style tokens.**
+
+| Token | Default |
+| --- | --- |
+| `--pjx-accordion-radius` | `0` |
+| `--pjx-accordion-trigger-bg` | `transparent` |
+| `--pjx-accordion-trigger-color` | `inherit` |
+| `--pjx-accordion-trigger-padding` | `0.5rem 0.75rem` |
+| `--pjx-accordion-trigger-font-size` | `inherit` |
+| `--pjx-accordion-trigger-font-weight` | `500` |
+| `--pjx-accordion-trigger-bg-hover` | `var(--pjx-accordion-trigger-bg)` |
+| `--pjx-accordion-chevron-size` | `1em` |
+
+<!-- demo: PJXAccordion -->
+
+```html
+<PJXAccordion>
+  <PJXAccordionTrigger>What is pyjinhx?</PJXAccordionTrigger>
+  <PJXAccordionContent><p>A Python/Jinja HTML component framework.</p></PJXAccordionContent>
+</PJXAccordion>
+```
+
+```python
+PJXAccordion(content=PJXAccordionTrigger(content="What is pyjinhx?").render() + PJXAccordionContent(content="<p>A Python/Jinja HTML component framework.</p>").render())
+```
 
 ---
 
@@ -218,7 +296,14 @@ The `<summary>` part of a composed accordion. Composes [`PJXIcon`](#pjxicon) for
 
 **Actions (opt-in).** To add non-toggling action buttons, wrap them in `<div class="pjx-accordion__actions">` inside `content`. `pjx-accordion-trigger.js` registers a single capture-phase `click` listener that calls `preventDefault()` (only — deliberately **not** `stopPropagation()`) for any click inside `.pjx-accordion__actions`. This cancels the native `<summary>` toggle while leaving htmx and other handlers intact.
 
-**Classes:** `pjx-accordion__trigger`, `pjx-accordion__chevron`, `pjx-accordion__actions`. Theming: see [PJXAccordion tokens](#pjxaccordion-tokens).
+**Classes:** `pjx-accordion__trigger`, `pjx-accordion__chevron`, `pjx-accordion__actions`.
+
+```html
+<PJXAccordion>
+  <PJXAccordionTrigger>What is pyjinhx?</PJXAccordionTrigger>
+  <PJXAccordionContent>…</PJXAccordionContent>
+</PJXAccordion>
+```
 
 ---
 
@@ -235,45 +320,18 @@ The body part of a composed accordion. **Assets:** none (unstyled wrapper; use y
 
 **Classes:** `pjx-accordion__content`. No theming tokens — style via the parent `pjx-accordion` or your own rules.
 
+```html
+<PJXAccordion>
+  <PJXAccordionTrigger>What is pyjinhx?</PJXAccordionTrigger>
+  <PJXAccordionContent><p>A Python/Jinja HTML component framework.</p></PJXAccordionContent>
+</PJXAccordion>
+```
+
 ---
 
 ## PJXAccordionGroup
 
 Groups a set of `PJXAccordion`s into a shared layout/behavior container. Handles exclusive-open coordination in JS so you don't need to stamp a `group=` on every child. **Assets:** `pjx-accordion-group.css`, `pjx-accordion-group.js`.
-
-<!-- demo: PJXAccordionGroup -->
-
-```python
-def item(title, body, **kw):
-    return PJXAccordion(
-        content=PJXAccordionTrigger(content=title).render()
-        + PJXAccordionContent(content=body).render(),
-        **kw,
-    ).render()
-
-PJXAccordionGroup(
-    id="faq",
-    mode="exclusive",
-    gap="0.25rem",
-    content=item("What is it?", "<p>A framework.</p>")
-    + item("How to install?", "<p>pip install pyjinhx</p>", open=False),
-)
-```
-
-Or with PascalCase tags:
-
-```html
-<PJXAccordionGroup mode="exclusive" gap="0.25rem">
-  <PJXAccordion id="faq-a">
-    <PJXAccordionTrigger>What is pyjinhx?</PJXAccordionTrigger>
-    <PJXAccordionContent><p>A Python/Jinja HTML component framework.</p></PJXAccordionContent>
-  </PJXAccordion>
-  <PJXAccordion id="faq-b" open="False">
-    <PJXAccordionTrigger>How do I install it?</PJXAccordionTrigger>
-    <PJXAccordionContent>pip install pyjinhx</PJXAccordionContent>
-  </PJXAccordion>
-</PJXAccordionGroup>
-```
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
@@ -290,7 +348,32 @@ Or with PascalCase tags:
 
 **Design decision — JS vs native `<details name>`.** Native `<details name="...">` provides exclusive-open without JS, but requires stamping the same `name` on every child element. `PJXAccordion.group=` exposes this as an explicit per-child opt-in (still supported, not deprecated). `PJXAccordionGroup(mode="exclusive")` is the composition-friendly alternative: the group's capture-phase `toggle` listener handles exclusive-open so callers don't set `group=` on every child. The two approaches are independent and can coexist.
 
-**Classes:** `pjx-accordion-group`. Theming: see [PJXAccordionGroup tokens](#pjxaccordiongroup-tokens).
+**Classes:** `pjx-accordion-group`.
+
+**Style tokens.**
+
+| Token | Default |
+| --- | --- |
+| `--pjx-accordion-group-gap` | `0` |
+
+<!-- demo: PJXAccordionGroup -->
+
+```html
+<PJXAccordionGroup mode="exclusive" gap="0.25rem">
+  <PJXAccordion>
+    <PJXAccordionTrigger>Section A</PJXAccordionTrigger>
+    <PJXAccordionContent><p>Content A.</p></PJXAccordionContent>
+  </PJXAccordion>
+  <PJXAccordion open="False">
+    <PJXAccordionTrigger>Section B</PJXAccordionTrigger>
+    <PJXAccordionContent><p>Content B.</p></PJXAccordionContent>
+  </PJXAccordion>
+</PJXAccordionGroup>
+```
+
+```python
+PJXAccordionGroup(mode="exclusive", gap="0.25rem", content=item("Section A", "<p>Content A.</p>") + item("Section B", "<p>Content B.</p>", open=False) + item("Section C", "<p>Content C.</p>", open=False))
+```
 
 ---
 
@@ -680,8 +763,6 @@ Footer strip for a `PJXDrawer`. **Assets:** `pjx-drawer-footer.css`.
 
 Determinate or indeterminate meter. **Assets:** `pjx_progress.css` only.
 
-<!-- demo: PJXProgress -->
-
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
 | `value` | `float \| None` | `None` | Omit or `None` for indeterminate `<progress>`. |
@@ -691,15 +772,33 @@ Determinate or indeterminate meter. **Assets:** `pjx_progress.css` only.
 
 **DOM contract.** Root `.pjx-progress`; no JS API.
 
-**Classes:** `pjx-progress`, `pjx-progress__label`, `pjx-progress__bar`. Theming: see [PJXProgress tokens](#pjxprogress-tokens).
+**Classes:** `pjx-progress`, `pjx-progress__label`, `pjx-progress__bar`.
+
+**Style tokens.**
+
+| Token | Default |
+| --- | --- |
+| `--pjx-progress-height` | `0.5rem` |
+| `--pjx-progress-radius` | `var(--radius-full)` |
+| `--pjx-progress-track` | `var(--surface-alt)` |
+| `--pjx-progress-fill` | `var(--brand)` |
+| `--pjx-progress-indeterminate-speed` | `1.2s` |
+
+<!-- demo: PJXProgress -->
+
+```html
+<PJXProgress value="65" max="100" label="Upload progress"/>
+```
+
+```python
+PJXProgress(value=65, max=100, label="Upload progress")
+```
 
 ---
 
 ## PJXSkeleton
 
 Placeholder shimmer blocks. **Assets:** `pjx_skeleton.css` only.
-
-<!-- demo: PJXSkeleton -->
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
@@ -708,7 +807,30 @@ Placeholder shimmer blocks. **Assets:** `pjx_skeleton.css` only.
 
 **DOM contract.** Root `.pjx-skeleton`; no JS API.
 
-**Classes:** `pjx-skeleton`; variant modifiers `pjx-skeleton--text`, `--circle`, `--rect`; `pjx-skeleton__line`, `pjx-skeleton__circle`, `pjx-skeleton__rect`. Theming: see [PJXSkeleton tokens](#pjxskeleton-tokens).
+**Classes:** `pjx-skeleton`; variant modifiers `pjx-skeleton--text`, `--circle`, `--rect`; `pjx-skeleton__line`, `pjx-skeleton__circle`, `pjx-skeleton__rect`.
+
+**Style tokens.**
+
+| Token | Default |
+| --- | --- |
+| `--pjx-skeleton-bg` | `var(--surface-alt)` |
+| `--pjx-skeleton-shine` | `color-mix(in srgb, var(--text) 8%, var(--surface-alt))` |
+| `--pjx-skeleton-line-height` | `0.65rem` |
+| `--pjx-skeleton-line-gap` | `0.5rem` |
+| `--pjx-skeleton-circle-size` | `2.5rem` |
+| `--pjx-skeleton-rect-height` | `6rem` |
+| `--pjx-skeleton-rect-radius` | `var(--radius-md)` |
+| `--pjx-skeleton-duration` | `1.2s` |
+
+<!-- demo: PJXSkeleton -->
+
+```html
+<PJXSkeleton variant="text" lines="3"/>
+```
+
+```python
+PJXSkeleton(variant="text", lines=3)
+```
 
 ---
 
@@ -716,34 +838,13 @@ Placeholder shimmer blocks. **Assets:** `pjx_skeleton.css` only.
 
 Centered, vertically-stacked empty-view container. Compose whatever you like inside via `content`. **Assets:** `pjx-empty-state.css` only (template file **`pjx-empty-state.html`** next to `pjx_empty_state.py`).
 
-<!-- demo: PJXEmptyState -->
-
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
 | `content` | `str \| BaseComponent` | `""` | Freeform inner content (rendered as-is). |
 | `suggestions` | `list[dict]` | `[]` | Interactive suggestion chips; each dict dispatches a custom event on click. See below. |
 | `class_name` | `str` | `""` | Extra CSS class(es) appended to the root element. |
 
-```python
-PJXEmptyState(
-    id="inbox-empty",
-    content="<h3>No results</h3><p>Adjust filters or create a new item.</p><button>Create</button>",
-    suggestions=[
-        {"label": "Draft a message", "value": "Draft a message"},
-        {"label": "Summarise a thread", "event": "fill-input"},
-    ],
-)
-```
-
-```html
-<!-- Tag form: nest content between the tags -->
-<PJXEmptyState id="inbox-empty">
-  <PJXIcon name="inbox"/>
-  <h3>No results</h3>
-  <p>Adjust filters or create a new item.</p>
-  <PJXButton>Create</PJXButton>
-</PJXEmptyState>
-```
+**DOM contract.** Root `.pjx-empty-state`; no JS API (suggestion chips require Alpine for `$dispatch`).
 
 **Suggestion chips** (`suggestions`) provide a first-class "click a chip → dispatch an event" pattern — the common use case of filling an input or triggering a quick action without navigation.
 
@@ -762,9 +863,32 @@ The rendered chip uses Alpine's `$dispatch`, so any parent can listen with `@pjx
 <textarea @pjx:suggestion.window="$el.value = $event.detail.value"></textarea>
 ```
 
-**DOM contract.** Root `.pjx-empty-state`; no JS API (suggestion chips require Alpine for `$dispatch`).
+**Classes:** `pjx-empty-state`, `pjx-empty-state__suggestions`, `pjx-empty-state__chip`.
 
-**Classes:** `pjx-empty-state`, `pjx-empty-state__suggestions`, `pjx-empty-state__chip`. Theming: see [PJXEmptyState tokens](#pjxemptystate-tokens).
+**Style tokens.**
+
+| Token | Default |
+| --- | --- |
+| `--pjx-empty-state-padding` | `2rem 1.5rem` |
+| `--pjx-empty-state-max-width` | `28rem` |
+| `--pjx-empty-state-gap` | `0.5rem` |
+| `--pjx-empty-state-actions-gap` | `0.5rem` (chip row gap) |
+| `--pjx-empty-state-chip-bg` | `var(--surface-alt)` |
+| `--pjx-empty-state-chip-color` | `var(--text-muted)` |
+| `--pjx-empty-state-chip-border` | `var(--border)` |
+
+<!-- demo: PJXEmptyState -->
+
+```html
+<PJXEmptyState>
+  <h3>No results</h3>
+  <p>Try a different search term.</p>
+</PJXEmptyState>
+```
+
+```python
+PJXEmptyState(content="<h3>No results</h3><p>Try a different search term.</p>", suggestions=[{"label": "Draft a message"}, {"label": "Summarise a thread"}])
+```
 
 ---
 
@@ -802,8 +926,6 @@ PJXLazyPanel(id="comments", url="/posts/42/comments", content=PJXSkeleton(id="co
 
 Separator line. **Assets:** `pjx_divider.css` only.
 
-<!-- demo: PJXDivider -->
-
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
 | `orientation` | literal | `"horizontal"` | `horizontal` (default `hr`) or `vertical` (bar). |
@@ -811,15 +933,33 @@ Separator line. **Assets:** `pjx_divider.css` only.
 
 **DOM contract.** Root `.pjx-divider`; no JS API.
 
-**Classes:** `pjx-divider--horizontal`, `pjx-divider--vertical`, `pjx-divider--labeled`, `pjx-divider__line`, `pjx-divider__label`. Theming: see [PJXDivider tokens](#pjxdivider-tokens).
+**Classes:** `pjx-divider--horizontal`, `pjx-divider--vertical`, `pjx-divider--labeled`, `pjx-divider__line`, `pjx-divider__label`.
+
+**Style tokens.**
+
+| Token | Default |
+| --- | --- |
+| `--pjx-divider-color` | `var(--border)` |
+| `--pjx-divider-thickness` | `1px` |
+| `--pjx-divider-gap` | `0.75rem` |
+| `--pjx-divider-label-color` | `var(--text-muted)` |
+| `--pjx-divider-label-size` | `var(--font-size-sm)` |
+
+<!-- demo: PJXDivider -->
+
+```html
+<PJXDivider orientation="horizontal" label="or continue with"/>
+```
+
+```python
+PJXDivider(orientation="horizontal", label="or continue with")
+```
 
 ---
 
 ## PJXSpinner
 
 Inline loading indicator. **Assets:** `pjx_spinner.css` only.
-
-<!-- demo: PJXSpinner -->
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
@@ -828,15 +968,33 @@ Inline loading indicator. **Assets:** `pjx_spinner.css` only.
 
 **DOM contract.** Root `.pjx-spinner`; no JS API.
 
-**Classes:** `pjx-spinner`, `pjx-spinner--sm|md|lg`, `pjx-spinner__ring`, `pjx-spinner__label` (screen-reader-only). Theming: see [PJXSpinner tokens](#pjxspinner-tokens).
+**Classes:** `pjx-spinner`, `pjx-spinner--sm|md|lg`, `pjx-spinner__ring`, `pjx-spinner__label` (screen-reader-only).
+
+**Style tokens.**
+
+| Token | Default |
+| --- | --- |
+| `--pjx-spinner-sm` | `1.25rem` |
+| `--pjx-spinner-md` | `2rem` |
+| `--pjx-spinner-lg` | `2.75rem` |
+| `--pjx-spinner-track` | `color-mix(in srgb, var(--text-muted) 35%, transparent)` |
+| `--pjx-spinner-accent` | `var(--brand)` |
+
+<!-- demo: PJXSpinner -->
+
+```html
+<PJXSpinner size="sm" label="Loading data"/>
+```
+
+```python
+PJXSpinner(size="sm", label="Loading data")
+```
 
 ---
 
 ## PJXAvatar
 
 Image or initials in a circle. **Assets:** `pjx_avatar.css` only.
-
-<!-- demo: PJXAvatar -->
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
@@ -848,20 +1006,30 @@ Image or initials in a circle. **Assets:** `pjx_avatar.css` only.
 
 **Arbitrary pixel sizing:** pass an `int` for a pixel size or any CSS length string for a custom size. This bypasses the named-token classes so the avatar can be sized by data rather than the three design-system tokens.
 
-```python
-# Named token (emits .pjx-avatar--md)
-PJXAvatar(id="a1", initials="AB")
-
-# Pixel size — 36 px circle, no BEM modifier
-PJXAvatar(id="a2", initials="AB", size=36)
-
-# Arbitrary CSS length
-PJXAvatar(id="a3", initials="AB", size="2.5rem")
-```
-
 **DOM contract.** Root `.pjx-avatar`; no JS API.
 
-**Classes:** `pjx-avatar`, `pjx-avatar--sm|md|lg` (named tokens only), `pjx-avatar__img`, `pjx-avatar__initials`. Theming: see [PJXAvatar tokens](#pjxavatar-tokens).
+**Classes:** `pjx-avatar`, `pjx-avatar--sm|md|lg` (named tokens only), `pjx-avatar__img`, `pjx-avatar__initials`.
+
+**Style tokens.**
+
+| Token | Default |
+| --- | --- |
+| `--pjx-avatar-sm` | `2rem` |
+| `--pjx-avatar-md` | `2.5rem` |
+| `--pjx-avatar-lg` | `3.25rem` |
+| `--pjx-avatar-bg` | `var(--surface-alt)` |
+| `--pjx-avatar-fg` | `var(--text-muted)` |
+| `--pjx-avatar-border` | `var(--border)` |
+
+<!-- demo: PJXAvatar -->
+
+```html
+<PJXAvatar initials="JD" size="sm" alt="Jane Doe"/>
+```
+
+```python
+PJXAvatar(initials="JD", size="sm", alt="Jane Doe")
+```
 
 ---
 
@@ -869,24 +1037,38 @@ PJXAvatar(id="a3", initials="AB", size="2.5rem")
 
 `<article>` shell for composed card layouts. Compose with `PJXCardHeader`, `PJXCardBody`, and `PJXCardFooter` parts. **Assets:** `pjx-card.css` only.
 
-<!-- demo: PJXCard -->
-
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
 | `class_name` | `str` | `""` | Extra CSS class(es) on the root element. |
 | `content` | `str \| BaseComponent` | `""` | Pre-rendered children (header + body + footer parts). |
 
+**DOM contract.** Root `article.pjx-card`; no JS API.
+
+**Classes:** `pjx-card`.
+
+**Style tokens.**
+
+| Token | Default |
+| --- | --- |
+| `--pjx-card-bg` | `var(--surface-alt)` |
+| `--pjx-card-border` | `var(--border)` |
+| `--pjx-card-radius` | `var(--radius-md)` |
+| `--pjx-card-title-color` | `var(--text)` |
+| `--pjx-card-padding` | `var(--space-4, 1rem)` |
+
+<!-- demo: PJXCard -->
+
 ```html
 <PJXCard>
-  <PJXCardHeader title="Q3 report"/>
+  <PJXCardHeader title="Quarterly report"/>
   <PJXCardBody>Revenue grew 12% over Q1.</PJXCardBody>
   <PJXCardFooter>Updated today</PJXCardFooter>
 </PJXCard>
 ```
 
-**DOM contract.** Root `article.pjx-card`; no JS API.
-
-**Classes:** `pjx-card`. Theming: see [PJXCard tokens](#pjxcard-tokens).
+```python
+PJXCard(content=PJXCardHeader(title="Quarterly report").render() + PJXCardBody(content="Revenue grew 12% over Q1.").render() + PJXCardFooter(content="Updated today").render())
+```
 
 ---
 
@@ -902,7 +1084,15 @@ Card header region. When `title` is set it renders `<h3 class="pjx-card__title">
 
 **DOM contract.** Root `header.pjx-card__header`; no JS API.
 
-**Classes:** `pjx-card__header`, `pjx-card__title`. Theming: see [PJXCard tokens](#pjxcard-tokens).
+**Classes:** `pjx-card__header`, `pjx-card__title`.
+
+```html
+<PJXCard>
+  <PJXCardHeader title="Quarterly report"/>
+  <PJXCardBody>…</PJXCardBody>
+  <PJXCardFooter>…</PJXCardFooter>
+</PJXCard>
+```
 
 ---
 
@@ -917,7 +1107,15 @@ Card body region. **Assets:** `pjx-card-body.css` only.
 
 **DOM contract.** Root `div.pjx-card__body`; no JS API.
 
-**Classes:** `pjx-card__body`. Theming: see [PJXCard tokens](#pjxcard-tokens).
+**Classes:** `pjx-card__body`.
+
+```html
+<PJXCard>
+  <PJXCardHeader title="Quarterly report"/>
+  <PJXCardBody>Revenue grew 12% over Q1.</PJXCardBody>
+  <PJXCardFooter>…</PJXCardFooter>
+</PJXCard>
+```
 
 ---
 
@@ -932,15 +1130,21 @@ Card footer region. **Assets:** `pjx-card-footer.css` only.
 
 **DOM contract.** Root `footer.pjx-card__footer`; no JS API.
 
-**Classes:** `pjx-card__footer`. Theming: see [PJXCard tokens](#pjxcard-tokens).
+**Classes:** `pjx-card__footer`.
+
+```html
+<PJXCard>
+  <PJXCardHeader title="Quarterly report"/>
+  <PJXCardBody>…</PJXCardBody>
+  <PJXCardFooter>Updated today</PJXCardFooter>
+</PJXCard>
+```
 
 ---
 
 ## PJXBreadcrumb
 
 Ordered trail of links. **Assets:** `pjx_breadcrumb.css` only.
-
-<!-- demo: PJXBreadcrumb -->
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
@@ -951,7 +1155,25 @@ Ordered trail of links. **Assets:** `pjx_breadcrumb.css` only.
 
 **DOM contract.** Root `.pjx-breadcrumb`; no JS API.
 
-**Classes:** `pjx-breadcrumb`, `pjx-breadcrumb__list`, `pjx-breadcrumb__item`, `pjx-breadcrumb__link`, `pjx-breadcrumb__current`. Separators via `::after` on items except the last. Theming: see [PJXBreadcrumb tokens](#pjxbreadcrumb-tokens).
+**Classes:** `pjx-breadcrumb`, `pjx-breadcrumb__list`, `pjx-breadcrumb__item`, `pjx-breadcrumb__link`, `pjx-breadcrumb__current`. Separators via `::after` on items except the last.
+
+**Style tokens.**
+
+| Token | Default |
+| --- | --- |
+| `--pjx-breadcrumb-sep` | `"/"` |
+| `--pjx-breadcrumb-link-color` | `var(--brand)` |
+| `--pjx-breadcrumb-current-color` | `var(--text)` |
+
+<!-- demo: PJXBreadcrumb -->
+
+```html
+<PJXBreadcrumb items='[["Home","/"],["Projects","/projects"],["Dashboard",null]]'/>
+```
+
+```python
+PJXBreadcrumb(items=[("Home", "/"), ("Projects", "/projects"), ("Dashboard", None)])
+```
 
 ---
 
@@ -1133,8 +1355,6 @@ Individual toasts: `div.pjx-toast.pjx-toast--<level>` > `.pjx-toast__message` + 
 
 Overlapping row of avatars with optional overflow count. **Assets:** `pjx-avatar-stack.css` only.
 
-<!-- demo: PJXAvatarStack -->
-
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
 | `avatars` | `list[dict \| str \| BaseComponent]` | `[]` | Per-avatar items — see below for the two accepted shapes. |
@@ -1154,31 +1374,30 @@ Overlapping row of avatars with optional overflow count. **Assets:** `pjx-avatar
 
 2. **Pre-built item** — an HTML string or any `BaseComponent` instance (original interface, still fully supported).
 
-```python
-# Structured data — stack owns rendering; no PJXAvatar required
-PJXAvatarStack(
-    id="team",
-    avatars=[
-        {"initials": "AB", "color": "#4f46e5", "name": "Alice"},
-        {"initials": "CD", "color": "#16a34a", "name": "Charlie"},
-    ],
-    extra_count=3,
-)
-
-# Pre-built components (original interface)
-PJXAvatarStack(
-    id="team",
-    avatars=[
-        PJXAvatar(id="a1", initials="AB", size="sm"),
-        PJXAvatar(id="a2", initials="CD", size="sm"),
-    ],
-    extra_count=3,
-)
-```
-
 **DOM contract.** Root `.pjx-avatar-stack`; no JS API.
 
-**Classes:** `pjx-avatar-stack`, `pjx-avatar-stack__pill` (dict-rendered pills), `pjx-avatar-stack__more`, `pjx-avatar-stack__empty`. Theming: see [PJXAvatarStack tokens](#pjxavatarstack-tokens).
+**Classes:** `pjx-avatar-stack`, `pjx-avatar-stack__pill` (dict-rendered pills), `pjx-avatar-stack__more`, `pjx-avatar-stack__empty`.
+
+**Style tokens.**
+
+| Token | Default |
+| --- | --- |
+| `--pjx-avatar-stack-overlap` | `-0.5rem` |
+| `--pjx-avatar-stack-ring` | `var(--surface)` |
+
+<!-- demo: PJXAvatarStack -->
+
+```html
+<PJXAvatarStack extra_count="4">
+  <PJXAvatar initials="AB" size="sm" alt="Alice Brown"/>
+  <PJXAvatar initials="CD" size="sm" alt="Carol Davis"/>
+  <PJXAvatar initials="EF" size="sm" alt="Eve Foster"/>
+</PJXAvatarStack>
+```
+
+```python
+PJXAvatarStack(avatars=[PJXAvatar(initials="AB", size="sm", alt="Alice Brown"), PJXAvatar(initials="CD", size="sm", alt="Carol Davis"), PJXAvatar(initials="EF", size="sm", alt="Eve Foster")], extra_count=4)
+```
 
 ---
 
