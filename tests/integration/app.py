@@ -16,6 +16,8 @@ from pyjinhx.builtins import (
     PJXBadge,
     PJXBreadcrumb,
     PJXCard,
+    PJXCardBody,
+    PJXCardHeader,
     PJXDivider,
     PJXDrawer,
     PJXDropdown,
@@ -284,8 +286,8 @@ def _gallery_inner_html() -> str:
         avatar_initials=PJXAvatar(id="g-av-in", initials="PJ", size="md"),
         card=PJXCard(
             id="g-card",
-            title="Card title",
-            body="Card body copy.",
+            content=PJXCardHeader(id="g-card-h", title="Card title").render()
+            + PJXCardBody(id="g-card-b", content="Card body copy.").render(),
         ),
         breadcrumb=PJXBreadcrumb(
             id="g-crumb",

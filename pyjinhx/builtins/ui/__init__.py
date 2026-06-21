@@ -1,5 +1,7 @@
 from pyjinhx.builtins.ui.pjx_accordion import PJXAccordion
 from pyjinhx.builtins.ui.pjx_accordion_group import PJXAccordionGroup
+from pyjinhx.builtins.ui.pjx_accordion_content import PJXAccordionContent
+from pyjinhx.builtins.ui.pjx_accordion_trigger import PJXAccordionTrigger
 from pyjinhx.builtins.ui.pjx_alert import PJXAlert
 from pyjinhx.builtins.ui.pjx_button import PJXButton
 from pyjinhx.builtins.ui.pjx_avatar import PJXAvatar
@@ -7,6 +9,9 @@ from pyjinhx.builtins.ui.pjx_avatar_stack import PJXAvatarStack
 from pyjinhx.builtins.ui.pjx_badge import PJXBadge
 from pyjinhx.builtins.ui.pjx_breadcrumb import PJXBreadcrumb
 from pyjinhx.builtins.ui.pjx_card import PJXCard
+from pyjinhx.builtins.ui.pjx_card_body import PJXCardBody
+from pyjinhx.builtins.ui.pjx_card_footer import PJXCardFooter
+from pyjinhx.builtins.ui.pjx_card_header import PJXCardHeader
 from pyjinhx.builtins.ui.pjx_chip_input import PJXChipInput
 from pyjinhx.builtins.ui.pjx_confirm_dialog import PJXConfirmDialog
 from pyjinhx.builtins.ui.pjx_divider import PJXDivider
@@ -39,6 +44,8 @@ from pyjinhx.builtins.ui.pjx_tooltip import PJXTooltip
 __all__ = [
     "PJXAccordion",
     "PJXAccordionGroup",
+    "PJXAccordionContent",
+    "PJXAccordionTrigger",
     "PJXAlert",
     "PJXButton",
     "PJXAvatar",
@@ -46,6 +53,9 @@ __all__ = [
     "PJXBadge",
     "PJXBreadcrumb",
     "PJXCard",
+    "PJXCardBody",
+    "PJXCardFooter",
+    "PJXCardHeader",
     "PJXChipInput",
     "PJXConfirmDialog",
     "PJXDivider",
