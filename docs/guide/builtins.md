@@ -430,9 +430,9 @@ Close control hover uses `var(--surface)`, `var(--text)`, `var(--radius-sm)`, `v
 PJXModal(
     id="demo-modal",
     content=(
-        str(PJXModalHeader(id="demo-modal-h", title="Confirm changes").render())
-        + str(PJXModalBody(id="demo-modal-b", content="Your draft will be published immediately. This action cannot be undone.").render())
-        + str(PJXModalFooter(id="demo-modal-f", content='<button class="pjx-demo-btn" data-pjx-close>Cancel</button>').render())
+        PJXModalHeader(id="demo-modal-h", title="Confirm changes").render()
+        + PJXModalBody(id="demo-modal-b", content="Your draft will be published immediately. This action cannot be undone.").render()
+        + PJXModalFooter(id="demo-modal-f", content='<button class="pjx-demo-btn" data-pjx-close>Cancel</button>').render()
     ),
 )
 ```
@@ -733,8 +733,8 @@ PJXTooltip(
     id="demo-tooltip",
     placement="top",
     content=(
-        str(PJXTooltipTrigger(id="demo-tooltip-tr", content="Hover over me").render())
-        + str(PJXTooltipContent(id="demo-tooltip-tc", content="This is additional context shown on hover or focus.").render())
+        PJXTooltipTrigger(id="demo-tooltip-tr", content="Hover over me").render()
+        + PJXTooltipContent(id="demo-tooltip-tc", content="This is additional context shown on hover or focus.").render()
     ),
 )
 ```
