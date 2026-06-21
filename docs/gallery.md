@@ -130,26 +130,76 @@ The builtins, rendered by pyjinhx at docs build time (PJXLazyPanel needs a backe
 ### [PJXModal](guide/builtins.md#pjxmodal)
 <!-- demo: PJXModal -->
 
+```html
+<PJXModal id="demo-modal">
+  <PJXModalHeader id="demo-modal-h" title="Confirm changes"/>
+  <PJXModalBody id="demo-modal-b">Your draft will be published immediately. This action cannot be undone.</PJXModalBody>
+  <PJXModalFooter id="demo-modal-f"><button class="pjx-demo-btn" data-pjx-close>Cancel</button></PJXModalFooter>
+</PJXModal>
+```
+
 ### [PJXDrawer](guide/builtins.md#pjxdrawer)
 <!-- demo: PJXDrawer -->
+
+```html
+<PJXDrawer id="demo-drawer" side="right">
+  <PJXDrawerHeader id="demo-drawer-h" title="Filter results"/>
+  <PJXDrawerBody id="demo-drawer-b"><p>Adjust filters to narrow down your results.</p></PJXDrawerBody>
+  <PJXDrawerFooter id="demo-drawer-f"><button class="pjx-demo-btn" data-pjx-close>Done</button></PJXDrawerFooter>
+</PJXDrawer>
+```
 
 ### [PJXConfirmDialog](guide/builtins.md#pjxconfirmdialog)
 <!-- demo: PJXConfirmDialog -->
 
+```html
+<PJXConfirmDialog id="demo-confirm"/>
+```
+
 ### [PJXPromptDialog](guide/builtins.md#pjxpromptdialog)
 <!-- demo: PJXPromptDialog -->
+
+```html
+<PJXPromptDialog id="demo-prompt"/>
+```
 
 ### [PJXNotification](guide/builtins.md#pjxnotification)
 <!-- demo: PJXNotification -->
 
+```html
+<PJXNotification
+  id="demo-notification"
+  content="Your changes have been saved."
+  corner="top-right"
+  timeout="4000"/>
+```
+
 ### [PJXAlert](guide/builtins.md#pjxalert)
 <!-- demo: PJXAlert -->
+
+```html
+<PJXAlert variant="info" title="Heads up" body="A new version is available."/>
+```
 
 ### [PJXTooltip](guide/builtins.md#pjxtooltip)
 <!-- demo: PJXTooltip -->
 
+```html
+<PJXTooltip id="demo-tooltip" placement="top">
+  <PJXTooltipTrigger id="demo-tooltip-tr">Hover over me</PJXTooltipTrigger>
+  <PJXTooltipContent id="demo-tooltip-tc">This is additional context shown on hover or focus.</PJXTooltipContent>
+</PJXTooltip>
+```
+
 ### [PJXPopover](guide/builtins.md#pjxpopover)
 <!-- demo: PJXPopover -->
+
+```html
+<PJXPopover id="demo-popover">
+  <PJXPopoverTrigger id="demo-popover-t" role="dialog">Show info</PJXPopoverTrigger>
+  <PJXPopoverPanel id="demo-popover-p" role="dialog"><strong>Keyboard shortcuts</strong><p style="margin:.35rem 0 0">Press <kbd>?</kbd> anytime to reopen this panel.</p></PJXPopoverPanel>
+</PJXPopover>
+```
 
 ## Interaction & loading
 

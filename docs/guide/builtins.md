@@ -381,23 +381,12 @@ PJXAccordionGroup(mode="exclusive", gap="0.25rem", content=PJXAccordion(content=
 
 Native `<dialog>` shell. Compose with `PJXModalHeader`, `PJXModalBody`, and `PJXModalFooter` for structured layouts. **Assets:** `pjx-modal.css`, `pjx-modal.js`.
 
-<!-- demo: PJXModal -->
-
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
 | `content` | `str \| BaseComponent` | `""` | Inner content (part components or arbitrary markup). |
 | `open_on_mount` | `bool` | `False` | When `True`, adds `data-pjx-open-on-mount`; JS opens the dialog as soon as it mounts (e.g. via `hx-swap="beforeend"`). |
 | `remove_on_close` | `bool` | `False` | When `True`, adds `data-pjx-remove-on-close`; JS removes the element from the DOM on close. |
 | `class_name` | `str` | `""` | Extra CSS classes on the root `<dialog>`. |
-
-```html
-<button data-pjx-open="confirm">Open</button>
-<PJXModal id="confirm">
-  <PJXModalHeader title="Delete file?"/>
-  <PJXModalBody>This cannot be undone.</PJXModalBody>
-  <PJXModalFooter><PJXButton content="Delete"/></PJXModalFooter>
-</PJXModal>
-```
 
 **DOM contract.** Root `dialog.pjx-modal` (state: `[open]`, `.pjx-modal--closing`).
 Attributes: `data-pjx-open="<id>"` on any element opens it on click; `data-pjx-close` inside closes it;
@@ -406,7 +395,49 @@ Events (bubble from the root): `pjx:modal:before-open`*, `pjx:modal:open`,
 `pjx:modal:before-close`*, `pjx:modal:close` — `*` = cancelable, `detail = {reason, trigger}`,
 `reason ∈ escape|backdrop|api|trigger`. API: `pjx.modal.open(id)`, `pjx.modal.close(id)`.
 
-**Classes:** `pjx-modal`; closing state `pjx-modal--closing`; `pjx-modal__box`. Part-component classes (`__header`, `__title`, `__close`, `__body`, `__footer`) belong to the respective part components below. Theming: see [PJXModal tokens](#pjxmodal-tokens).
+**Classes:** `pjx-modal`; closing state `pjx-modal--closing`; `pjx-modal__box`. Part-component classes (`__header`, `__title`, `__close`, `__body`, `__footer`) belong to the respective part components below.
+
+**Style tokens.**
+
+| Token | Default |
+| --- | --- |
+| `--pjx-modal-width` | `52rem` |
+| `--pjx-modal-min-height` | `28rem` |
+| `--pjx-modal-bg` | `var(--surface)` |
+| `--pjx-modal-border` | `var(--border)` |
+| `--pjx-modal-radius` | `var(--radius-lg)` |
+| `--pjx-modal-shadow` | `var(--shadow-md)` |
+| `--pjx-modal-header-bg` | `var(--surface-alt)` |
+| `--pjx-modal-header-sep` | `var(--border)` |
+| `--pjx-modal-footer-bg` | `var(--surface-alt)` |
+| `--pjx-modal-footer-sep` | `var(--border)` |
+| `--pjx-modal-title-color` | `var(--text)` |
+| `--pjx-modal-close-color` | `var(--text-muted)` |
+| `--pjx-modal-backdrop` | `rgb(0 0 0 / 0.6)` |
+| `--pjx-modal-padding` | `1.5rem` |
+
+Close control hover uses `var(--surface)`, `var(--text)`, `var(--radius-sm)`, `var(--transition)` from your theme.
+
+<!-- demo: PJXModal -->
+
+```html
+<PJXModal id="demo-modal">
+  <PJXModalHeader id="demo-modal-h" title="Confirm changes"/>
+  <PJXModalBody id="demo-modal-b">Your draft will be published immediately. This action cannot be undone.</PJXModalBody>
+  <PJXModalFooter id="demo-modal-f"><button class="pjx-demo-btn" data-pjx-close>Cancel</button></PJXModalFooter>
+</PJXModal>
+```
+
+```python
+PJXModal(
+    id="demo-modal",
+    content=(
+        str(PJXModalHeader(id="demo-modal-h", title="Confirm changes").render())
+        + str(PJXModalBody(id="demo-modal-b", content="Your draft will be published immediately. This action cannot be undone.").render())
+        + str(PJXModalFooter(id="demo-modal-f", content='<button class="pjx-demo-btn" data-pjx-close>Cancel</button>').render())
+    ),
+)
+```
 
 ---
 
@@ -468,8 +499,6 @@ Footer part for `PJXModal`. Renders a `<footer class="pjx-modal__footer">`. **As
 
 Fixed-position toast. **Assets:** `pjx_notification.css`, `pjx_notification.js`.
 
-<!-- demo: PJXNotification -->
-
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
 | `content` | `str \| BaseComponent` | `""` | Message body. |
@@ -485,7 +514,42 @@ API: `pjx.notification.show(id)`, `pjx.notification.hide(id)`.
 
 Maps children to `content`; see the [children-vs-`content` note](#built-in-ui-components).
 
-**Classes:** `pjx-notification`; placement `pjx-notification--top-right`, `--top-left`, `--bottom-right`, `--bottom-left`; JS state `pjx-notification--visible`, `pjx-notification--hiding`; `pjx-notification__content`, `pjx-notification__close`. Theming: see [PJXNotification tokens](#pjxnotification-tokens).
+**Classes:** `pjx-notification`; placement `pjx-notification--top-right`, `--top-left`, `--bottom-right`, `--bottom-left`; JS state `pjx-notification--visible`, `pjx-notification--hiding`; `pjx-notification__content`, `pjx-notification__close`.
+
+**Style tokens.**
+
+| Token | Default |
+| --- | --- |
+| `--pjx-notification-width` | `22rem` |
+| `--pjx-notification-gap` | `1.25rem` (viewport inset; used in slide animations) |
+| `--pjx-notification-bg` | `var(--surface-alt)` |
+| `--pjx-notification-border` | `var(--border)` |
+| `--pjx-notification-radius` | `var(--radius-md)` |
+| `--pjx-notification-shadow` | `var(--shadow-md)` |
+| `--pjx-notification-padding` | `1rem 1rem 1rem 1.25rem` |
+| `--pjx-notification-close-color` | `var(--text-muted)` |
+| `--pjx-notification-z` | `500` |
+
+Content uses `var(--font-size-sm)`, `var(--text)`; close hover uses `var(--surface)`, `var(--text)`, `var(--radius-sm)`, `var(--transition)`.
+
+<!-- demo: PJXNotification -->
+
+```html
+<PJXNotification
+  id="demo-notification"
+  content="Your changes have been saved."
+  corner="top-right"
+  timeout="4000"/>
+```
+
+```python
+PJXNotification(
+    id="demo-notification",
+    content="Your changes have been saved.",
+    corner="top-right",
+    timeout=4000,
+)
+```
 
 ---
 
@@ -493,38 +557,61 @@ Maps children to `content`; see the [children-vs-`content` note](#built-in-ui-co
 
 Click-toggle compound. Three separate components; compose them by placing `PJXPopoverTrigger` and `PJXPopoverPanel` **as children inside `PJXPopover`**. **Assets:** `pjx_popover.css`, `pjx_popover.js` (IIFE under `pjx.popover`).
 
-<!-- demo: PJXPopover -->
-
-```python
-PJXPopover(
-    id="menu",
-    content=(
-        PJXPopoverTrigger(id="menu-t", content="Open").render()
-        + PJXPopoverPanel(id="menu-p", role="menu", content="…").render()
-    ),
-)
-```
-
-Or with PascalCase tags:
-
-```html
-<PJXPopover id="menu">
-  <PJXPopoverTrigger id="menu-t">Open</PJXPopoverTrigger>
-  <PJXPopoverPanel id="menu-p" role="menu">…</PJXPopoverPanel>
-</PJXPopover>
-```
-
-### PJXPopover
-
-Root wrapper — sets up the `data-pjx-popover` attribute scope.
-
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
 | `content` | `str \| BaseComponent` | `""` | Children (trigger + panel). |
 | `align` | literal | `"start"` | `start` or `end` (panel alignment) → `pjx-popover--align-end`. |
 | `behavior` | `bool` | `True` | When `True`, adds `data-pjx-popover` (JS picks it up). |
 
-### PJXPopoverTrigger
+**DOM contract.** Root `[data-pjx-popover]` (the PJXPopover wrapper). Trigger: `[data-pjx-toggle]` on the trigger element; `aria-expanded` synced by JS. Panel: `[data-pjx-popover-panel]` element, `hidden` when closed. `data-pjx-close` inside the panel closes it. `data-pjx-toggle="<panel-id>"` on any element opens/closes a named panel.
+Events (bubble from `[data-pjx-popover]`): `pjx:popover:before-open`*, `pjx:popover:open`, `pjx:popover:before-close`*, `pjx:popover:close` — `detail = {reason, trigger}`.
+API: `pjx.popover.open(idOrEl)`, `pjx.popover.close(idOrEl)`, `pjx.popover.toggle(idOrEl)`.
+
+**Classes:** `pjx-popover`, `pjx-popover--align-end`, `pjx-popover__trigger`, `pjx-popover__panel`.
+
+**Style tokens.**
+
+| Token | Default |
+| --- | --- |
+| `--pjx-popover-max-width` | `28ch` |
+| `--pjx-popover-bg` | `var(--surface-alt)` |
+| `--pjx-popover-border` | `var(--border)` |
+| `--pjx-popover-radius` | `var(--radius-md)` |
+| `--pjx-popover-shadow` | `var(--shadow-md)` |
+| `--pjx-popover-padding` | `var(--space-3, 0.75rem) var(--space-4, 1rem)` |
+| `--pjx-popover-z` | `300` |
+
+<!-- demo: PJXPopover -->
+
+```html
+<PJXPopover id="demo-popover">
+  <PJXPopoverTrigger id="demo-popover-t" role="dialog">Show info</PJXPopoverTrigger>
+  <PJXPopoverPanel id="demo-popover-p" role="dialog"><strong>Keyboard shortcuts</strong><p style="margin:.35rem 0 0">Press <kbd>?</kbd> anytime to reopen this panel.</p></PJXPopoverPanel>
+</PJXPopover>
+```
+
+```python
+PJXPopover(
+    id="demo-popover",
+    content=(
+        PJXPopoverTrigger(id="demo-popover-t", content="Show info", role="dialog").render()
+        + PJXPopoverPanel(
+            id="demo-popover-p",
+            role="dialog",
+            content=(
+                "<strong>Keyboard shortcuts</strong>"
+                '<p style="margin:.35rem 0 0">Press <kbd>?</kbd> anytime to reopen this panel.</p>'
+            ),
+        ).render()
+    ),
+)
+```
+
+---
+
+## PJXPopoverTrigger
+
+Trigger button for a `PJXPopover`. **Assets:** bundled in `pjx_popover.css`.
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
@@ -533,7 +620,19 @@ Root wrapper — sets up the `data-pjx-popover` attribute scope.
 | `role` | literal | `""` | `aria-haspopup` value: `menu`, `listbox`, `dialog`, or `""`. |
 | `behavior` | `bool` | `True` | When `True`, adds `data-pjx-toggle`. |
 
-### PJXPopoverPanel
+**DOM contract.** `[data-pjx-toggle]` element; `aria-expanded` synced by JS.
+
+```html
+<PJXPopoverTrigger id="t">Open</PJXPopoverTrigger>
+```
+
+**Classes:** `pjx-popover__trigger`.
+
+---
+
+## PJXPopoverPanel
+
+Floating panel for a `PJXPopover`. **Assets:** bundled in `pjx_popover.css`.
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
@@ -542,11 +641,13 @@ Root wrapper — sets up the `data-pjx-popover` attribute scope.
 | `role` | literal | `""` | ARIA `role` attribute (`menu`, `listbox`, `dialog`, or `""`). |
 | `behavior` | `bool` | `True` | When `True`, adds `data-pjx-popover-panel` (hidden by default). |
 
-**DOM contract.** Root `[data-pjx-popover]` (the PJXPopover wrapper). Trigger: `[data-pjx-toggle]` on the trigger element; `aria-expanded` synced by JS. Panel: `[data-pjx-popover-panel]` element, `hidden` when closed. `data-pjx-close` inside the panel closes it. `data-pjx-toggle="<panel-id>"` on any element opens/closes a named panel.
-Events (bubble from `[data-pjx-popover]`): `pjx:popover:before-open`*, `pjx:popover:open`, `pjx:popover:before-close`*, `pjx:popover:close` — `detail = {reason, trigger}`.
-API: `pjx.popover.open(idOrEl)`, `pjx.popover.close(idOrEl)`, `pjx.popover.toggle(idOrEl)`.
+**DOM contract.** `[data-pjx-popover-panel]` element, `hidden` when closed.
 
-**Classes:** `pjx-popover`, `pjx-popover--align-end`, `pjx-popover__trigger`, `pjx-popover__panel`. Theming: see [PJXPopover tokens](#pjxpopover-tokens).
+```html
+<PJXPopoverPanel id="p" role="menu">…</PJXPopoverPanel>
+```
+
+**Classes:** `pjx-popover__panel`.
 
 ---
 
@@ -576,8 +677,6 @@ API: `pjx.loader.region.show/hide/reset(id)` and `pjx.loader.region.wrap(id, pro
 
 Composable tooltip shell. Compose with `PJXTooltipTrigger` and `PJXTooltipContent`. **Assets:** `pjx-tooltip.css`, `pjx-tooltip.js` (IIFE — no API, behavior only).
 
-<!-- demo: PJXTooltip -->
-
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
 | `placement` | literal | `"top"` | `top`, `bottom`, `start`, `end` → `data-pjx-tooltip-placement`. |
@@ -585,17 +684,42 @@ Composable tooltip shell. Compose with `PJXTooltipTrigger` and `PJXTooltipConten
 
 **DOM contract.** Root `.pjx-tooltip` `<span>`. `data-pjx-tooltip-placement` drives JS positioning. Tip shows on `mouseover` anywhere inside `.pjx-tooltip` root, or on `focusin` of `.pjx-tooltip__trigger`; hides on `mouseout`/`focusout`; repositions on `scroll`. The JS sets `aria-describedby` at runtime when the tip is shown. No JS API (`pjx._tooltipWired` guard only).
 
-**Usage:**
+**Classes:** `pjx-tooltip`.
+
+**Style tokens.**
+
+| Token | Default |
+| --- | --- |
+| `--pjx-tooltip-gap` | `6px` |
+| `--pjx-tooltip-bg` | `var(--surface-alt)` |
+| `--pjx-tooltip-border` | `var(--border)` |
+| `--pjx-tooltip-radius` | `var(--radius-sm)` |
+| `--pjx-tooltip-shadow` | `var(--shadow-md)` |
+| `--pjx-tooltip-padding` | `0.35rem 0.5rem` |
+| `--pjx-tooltip-max-width` | `20ch` |
+| `--pjx-tooltip-fg` | `var(--text)` |
+| `--pjx-tooltip-font-size` | `var(--font-size-xs)` |
+| `--pjx-tooltip-z` | `400` |
+
+<!-- demo: PJXTooltip -->
+
+```html
+<PJXTooltip id="demo-tooltip" placement="top">
+  <PJXTooltipTrigger id="demo-tooltip-tr">Hover over me</PJXTooltipTrigger>
+  <PJXTooltipContent id="demo-tooltip-tc">This is additional context shown on hover or focus.</PJXTooltipContent>
+</PJXTooltip>
+```
 
 ```python
 PJXTooltip(
+    id="demo-tooltip",
     placement="top",
-    content=PJXTooltipTrigger(content="Hover me").render()
-    + PJXTooltipContent(content="Helpful tooltip text").render(),
-).render()
+    content=(
+        str(PJXTooltipTrigger(id="demo-tooltip-tr", content="Hover over me").render())
+        + str(PJXTooltipContent(id="demo-tooltip-tc", content="This is additional context shown on hover or focus.").render())
+    ),
+)
 ```
-
-**Classes:** `pjx-tooltip`. Theming: see [PJXTooltip tokens](#pjxtooltip-tokens).
 
 ---
 
@@ -609,6 +733,12 @@ The focusable trigger part of a tooltip. **Assets:** `pjx-tooltip-trigger.css`.
 
 **DOM contract.** `<span class="pjx-tooltip__trigger" tabindex="0">`. The JS sets `aria-describedby` to the tip's id at show time. Place inside a `PJXTooltip` shell.
 
+```html
+<PJXTooltipTrigger>Hover over me</PJXTooltipTrigger>
+```
+
+**Classes:** `pjx-tooltip__trigger`.
+
 ---
 
 ## PJXTooltipContent
@@ -621,13 +751,17 @@ The floating tip body. **Assets:** `pjx-tooltip-content.css`.
 
 **DOM contract.** `<span class="pjx-tooltip__tip" role="tooltip" hidden>`. The JS removes `hidden` and adds `.pjx-tooltip__tip--visible` on show. Place inside a `PJXTooltip` shell.
 
+```html
+<PJXTooltipContent>This is additional context shown on hover or focus.</PJXTooltipContent>
+```
+
+**Classes:** `pjx-tooltip__tip`.
+
 ---
 
 ## PJXAlert
 
 Inline status banner. **Assets:** `pjx_alert.css`, `pjx_alert.js`.
-
-<!-- demo: PJXAlert -->
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
@@ -641,7 +775,29 @@ Inline status banner. **Assets:** `pjx_alert.css`, `pjx_alert.js`.
 `data-pjx-close` inside triggers dismissal.
 Events: `pjx:alert:before-dismiss`* (cancelable), `pjx:alert:dismiss` — `detail = {reason: 'trigger', trigger}`.
 
-**Classes:** `pjx-alert`; variant modifiers `pjx-alert--info`, `--success`, `--warning`, `--error`; dismissed state `pjx-alert--dismissed`; `pjx-alert__inner`, `__text`, `__title`, `__body`, `__dismiss`. Variants use `color-mix` with `--brand`, `--success`, `--warning`, or `--error` / `--error-bg` / `--error-border` where applicable. Theming: see [PJXAlert tokens](#pjxalert-tokens).
+**Classes:** `pjx-alert`; variant modifiers `pjx-alert--info`, `--success`, `--warning`, `--error`; dismissed state `pjx-alert--dismissed`; `pjx-alert__inner`, `__text`, `__title`, `__body`, `__dismiss`. Variants use `color-mix` with `--brand`, `--success`, `--warning`, or `--error` / `--error-bg` / `--error-border` where applicable.
+
+**Style tokens.**
+
+| Token | Default |
+| --- | --- |
+| `--pjx-alert-radius` | `var(--radius-md)` |
+| `--pjx-alert-padding` | `0.875rem 1rem` |
+| `--pjx-alert-border` | `var(--border)` |
+| `--pjx-alert-shadow` | `var(--shadow-md)` |
+| `--pjx-alert-title-size` | `var(--font-size-sm)` |
+| `--pjx-alert-body-size` | `var(--font-size-sm)` |
+| `--pjx-alert-dismiss-color` | `var(--text-muted)` |
+
+<!-- demo: PJXAlert -->
+
+```html
+<PJXAlert variant="info" title="Heads up" body="A new version is available."/>
+```
+
+```python
+PJXAlert(variant="info", title="Heads up", body="A new version is available.")
+```
 
 ---
 
@@ -671,16 +827,6 @@ Trigger id is `{{ id }}-trigger`, menu is `{{ id }}-menu`.
 
 `<dialog>` shell sheet from an edge. **Assets:** `pjx-drawer.css`, `pjx-drawer.js` (JS stays on the shell; each part ships its own CSS — see [PJXDrawerHeader](#pjxdrawerheader), [PJXDrawerBody](#pjxdrawerbody), [PJXDrawerFooter](#pjxdrawerfooter)).
 
-<!-- demo: PJXDrawer -->
-
-```html
-<PJXDrawer id="nav" side="left">
-  <PJXDrawerHeader title="Menu"/>
-  <PJXDrawerBody>…links…</PJXDrawerBody>
-  <PJXDrawerFooter>v1.0</PJXDrawerFooter>
-</PJXDrawer>
-```
-
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
 | `side` | literal | `"right"` | `left`, `right`, or `bottom` → `pjx-drawer--{side}`. |
@@ -695,7 +841,52 @@ Trigger id is `{{ id }}-trigger`, menu is `{{ id }}-menu`.
 Events: `pjx:drawer:before-open`*, `pjx:drawer:open`, `pjx:drawer:before-close`*, `pjx:drawer:close` — `*` = cancelable, `detail = {reason, trigger}`, `reason ∈ escape|backdrop|api|trigger`.
 API: `pjx.drawer.open(id)`, `pjx.drawer.close(id)`.
 
-**Classes:** `pjx-drawer`; side modifiers `pjx-drawer--left`, `--right`, `--bottom`; closing state `pjx-drawer--closing`. The inner layout classes (`__header`, `__title`, `__close`, `__body`, `__footer`) belong to the part components — see below. Backdrop click closes the dialog (see [intro note](#built-in-ui-components)). Theming: see [PJXDrawer tokens](#pjxdrawer-tokens).
+**Classes:** `pjx-drawer`; side modifiers `pjx-drawer--left`, `--right`, `--bottom`; closing state `pjx-drawer--closing`. The inner layout classes (`__header`, `__title`, `__close`, `__body`, `__footer`) belong to the part components — see below. Backdrop click closes the dialog (see [intro note](#built-in-ui-components)).
+
+**Style tokens.**
+
+| Token | Default |
+| --- | --- |
+| `--pjx-drawer-width` | `min(24rem, 100vw)` |
+| `--pjx-drawer-height-bottom` | `min(50dvh, 28rem)` |
+| `--pjx-drawer-bg` | `var(--surface)` |
+| `--pjx-drawer-border` | `var(--border)` |
+| `--pjx-drawer-shadow` | `var(--shadow-md)` |
+| `--pjx-drawer-backdrop` | `rgb(0 0 0 / 0.45)` |
+| `--pjx-drawer-header-bg` | `var(--surface-alt)` |
+| `--pjx-drawer-header-sep` | `var(--border)` |
+| `--pjx-drawer-footer-bg` | `var(--surface-alt)` |
+| `--pjx-drawer-footer-sep` | `var(--border)` |
+| `--pjx-drawer-padding` | `1rem` |
+| `--pjx-drawer-z` | `250` |
+
+<!-- demo: PJXDrawer -->
+
+```html
+<PJXDrawer id="demo-drawer" side="right">
+  <PJXDrawerHeader id="demo-drawer-h" title="Filter results"/>
+  <PJXDrawerBody id="demo-drawer-b"><p>Adjust filters to narrow down your results.</p></PJXDrawerBody>
+  <PJXDrawerFooter id="demo-drawer-f"><button class="pjx-demo-btn" data-pjx-close>Done</button></PJXDrawerFooter>
+</PJXDrawer>
+```
+
+```python
+PJXDrawer(
+    id="demo-drawer",
+    side="right",
+    content=(
+        PJXDrawerHeader(id="demo-drawer-h", title="Filter results").render()
+        + PJXDrawerBody(
+            id="demo-drawer-b",
+            content="<p>Adjust filters to narrow down your results.</p>",
+        ).render()
+        + PJXDrawerFooter(
+            id="demo-drawer-f",
+            content='<button class="pjx-demo-btn" data-pjx-close>Done</button>',
+        ).render()
+    ),
+)
+```
 
 ---
 
@@ -717,7 +908,7 @@ Header bar for a `PJXDrawer`. Automatically includes a close button. **Assets:**
 
 **DOM contract.** Root `<header class="pjx-drawer__header">`. When `title` is set renders `<span class="pjx-drawer__title">`. Always renders a `<button class="pjx-drawer__close" data-pjx-close aria-label="...">`.
 
-**Classes:** `pjx-drawer__header`, `pjx-drawer__title`, `pjx-drawer__close`. Theming: see [PJXDrawer tokens](#pjxdrawer-tokens).
+**Classes:** `pjx-drawer__header`, `pjx-drawer__title`, `pjx-drawer__close`.
 
 ---
 
@@ -736,7 +927,7 @@ Scrollable body region for a `PJXDrawer`. **Assets:** `pjx-drawer-body.css`.
 
 **DOM contract.** Root `<div class="pjx-drawer__body">`.
 
-**Classes:** `pjx-drawer__body`. Theming: see [PJXDrawer tokens](#pjxdrawer-tokens).
+**Classes:** `pjx-drawer__body`.
 
 ---
 
@@ -755,7 +946,7 @@ Footer strip for a `PJXDrawer`. **Assets:** `pjx-drawer-footer.css`.
 
 **DOM contract.** Root `<footer class="pjx-drawer__footer">`.
 
-**Classes:** `pjx-drawer__footer`. Theming: see [PJXDrawer tokens](#pjxdrawer-tokens).
+**Classes:** `pjx-drawer__footer`.
 
 ---
 
@@ -1236,16 +1427,10 @@ Maps children to `content`; see the [children-vs-`content` note](#built-in-ui-co
 
 Accessible `<dialog>` singleton that replaces `window.confirm`. Mount once in the layout; `pjx.confirm()` is available everywhere. **Assets:** `pjx-confirm-dialog.css`, `pjx-confirm-dialog.js`.
 
-<!-- demo: PJXConfirmDialog -->
-
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
 | `confirm_label` | `str` | `"Confirm"` | Default OK button text. |
 | `cancel_label` | `str` | `"Cancel"` | Default cancel button text. |
-
-```python
-PJXConfirmDialog(id="app-confirm")
-```
 
 Intercepts every `hx-confirm="…"` automatically (via `htmx:confirm` event):
 
@@ -1272,7 +1457,28 @@ if (ok) { /* proceed */ }
 API: `pjx.confirm(message, {okLabel?, cancelLabel?, danger?}) → Promise<boolean>`.
 Falls back to `window.confirm` if no `PJXConfirmDialog` is mounted.
 
-**Classes:** `pjx-confirm-dialog`, `pjx-confirm-dialog__card`, `pjx-confirm-dialog__message`, `pjx-confirm-dialog__actions`, `pjx-confirm-dialog__ok`, `pjx-confirm-dialog__ok--danger`, `pjx-confirm-dialog__cancel`. Theming: see [PJXConfirmDialog tokens](#pjxconfirmdialog-tokens).
+**Classes:** `pjx-confirm-dialog`, `pjx-confirm-dialog__card`, `pjx-confirm-dialog__message`, `pjx-confirm-dialog__actions`, `pjx-confirm-dialog__ok`, `pjx-confirm-dialog__ok--danger`, `pjx-confirm-dialog__cancel`.
+
+**Style tokens.**
+
+| Token | Default |
+| --- | --- |
+| `--pjx-confirm-dialog-bg` | `var(--surface)` |
+| `--pjx-confirm-dialog-border` | `var(--border)` |
+| `--pjx-confirm-dialog-radius` | `var(--radius-md)` |
+| `--pjx-confirm-dialog-shadow` | `var(--shadow-md)` |
+| `--pjx-confirm-dialog-backdrop` | `rgb(0 0 0 / 0.5)` |
+| `--pjx-confirm-dialog-danger` | `#b3261e` |
+
+<!-- demo: PJXConfirmDialog -->
+
+```html
+<PJXConfirmDialog id="demo-confirm"/>
+```
+
+```python
+PJXConfirmDialog(id="demo-confirm")
+```
 
 ---
 
@@ -1280,17 +1486,11 @@ Falls back to `window.confirm` if no `PJXConfirmDialog` is mounted.
 
 Accessible `<dialog>` singleton that replaces `window.prompt`. Mount once in the layout; `pjx.prompt()` is available everywhere. **Assets:** `pjx-prompt-dialog.css`, `pjx-prompt-dialog.js`.
 
-<!-- demo: PJXPromptDialog -->
-
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
 | `input_label` | `str` | `""` | Default label text above the input. |
 | `submit_label` | `str` | `"OK"` | Submit button text. |
 | `cancel_label` | `str` | `"Cancel"` | Cancel button text. |
-
-```python
-PJXPromptDialog(id="app-prompt")
-```
 
 ```javascript
 const name = await pjx.prompt("Enter your name", {
@@ -1305,7 +1505,27 @@ if (name !== null) { /* user submitted */ }
 API: `pjx.prompt(title, {initial?, placeholder?, okLabel?, cancelLabel?}) → Promise<string | null>`.
 Returns `null` on cancel/Escape/backdrop close. Falls back to `window.prompt` if no `PJXPromptDialog` is mounted.
 
-**Classes:** `pjx-prompt-dialog`, `pjx-prompt-dialog__card`, `pjx-prompt-dialog__label`, `pjx-prompt-dialog__input`, `pjx-prompt-dialog__actions`, `pjx-prompt-dialog__ok`, `pjx-prompt-dialog__cancel`. Theming: see [PJXPromptDialog tokens](#pjxpromptdialog-tokens).
+**Classes:** `pjx-prompt-dialog`, `pjx-prompt-dialog__card`, `pjx-prompt-dialog__label`, `pjx-prompt-dialog__input`, `pjx-prompt-dialog__actions`, `pjx-prompt-dialog__ok`, `pjx-prompt-dialog__cancel`.
+
+**Style tokens.**
+
+| Token | Default |
+| --- | --- |
+| `--pjx-prompt-dialog-bg` | `var(--surface)` |
+| `--pjx-prompt-dialog-border` | `var(--border)` |
+| `--pjx-prompt-dialog-radius` | `var(--radius-md)` |
+| `--pjx-prompt-dialog-shadow` | `var(--shadow-md)` |
+| `--pjx-prompt-dialog-backdrop` | `rgb(0 0 0 / 0.5)` |
+
+<!-- demo: PJXPromptDialog -->
+
+```html
+<PJXPromptDialog id="demo-prompt"/>
+```
+
+```python
+PJXPromptDialog(id="demo-prompt")
+```
 
 ---
 
