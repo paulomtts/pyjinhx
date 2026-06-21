@@ -62,12 +62,13 @@ CASES = [
     ("icon_labeled", lambda: b.PJXIcon(id="g", name="search", label="Search", size=20)),
     ("button_default", lambda: b.PJXButton(id="g", center="Save")),
     ("button_loading", lambda: b.PJXButton(id="g", center="Save", loading=True, variant="primary")),
-    ("accordion_open", lambda: b.PJXAccordion(id="g", label="Today", content="<p>x</p>")),
-    ("accordion_grouped_closed", lambda: b.PJXAccordion(id="g", label="Older", open=False, group="nav", content="<p>y</p>")),
-    ("accordion_group_multi", lambda: b.PJXAccordionGroup(id="g", content=str(b.PJXAccordion(id="g-a", label="A", content="<p>x</p>").render()) + str(b.PJXAccordion(id="g-b", label="B", open=False, content="<p>y</p>").render()))),
-    ("accordion_group_exclusive", lambda: b.PJXAccordionGroup(id="g", mode="exclusive", gap="0.5rem", content=str(b.PJXAccordion(id="g-a", label="A", content="<p>x</p>").render()) + str(b.PJXAccordion(id="g-b", label="B", open=False, content="<p>y</p>").render()))),
-    ("accordion_group_default_open_first", lambda: b.PJXAccordionGroup(id="g", default_open="first", content=str(b.PJXAccordion(id="g-a", label="A", open=False, content="<p>x</p>").render()) + str(b.PJXAccordion(id="g-b", label="B", open=False, content="<p>y</p>").render()))),
-    ("accordion_group_default_open_all", lambda: b.PJXAccordionGroup(id="g", default_open="all", content=str(b.PJXAccordion(id="g-a", label="A", open=False, content="<p>x</p>").render()) + str(b.PJXAccordion(id="g-b", label="B", open=False, content="<p>y</p>").render()))),
+    ("accordion_open", lambda: b.PJXAccordion(id="g", content=str(b.PJXAccordionTrigger(id="g-t", content="Today").render()) + str(b.PJXAccordionContent(id="g-c", content="<p>x</p>").render()))),
+    ("accordion_grouped_closed", lambda: b.PJXAccordion(id="g", open=False, group="nav", content=str(b.PJXAccordionTrigger(id="g-t", content="Older").render()) + str(b.PJXAccordionContent(id="g-c", content="<p>y</p>").render()))),
+    ("accordion_trigger", lambda: b.PJXAccordionTrigger(id="g", content="Section")),
+    ("accordion_content", lambda: b.PJXAccordionContent(id="g", content="<p>body</p>")),
+    ("accordion_group_multi", lambda: b.PJXAccordionGroup(id="g", content=str(b.PJXAccordion(id="g-a", content=str(b.PJXAccordionTrigger(id="g-at", content="A").render()) + str(b.PJXAccordionContent(id="g-ac", content="<p>x</p>").render())).render()) + str(b.PJXAccordion(id="g-b", open=False, content=str(b.PJXAccordionTrigger(id="g-bt", content="B").render()) + str(b.PJXAccordionContent(id="g-bc", content="<p>y</p>").render())).render()))),
+    ("accordion_group_exclusive", lambda: b.PJXAccordionGroup(id="g", mode="exclusive", gap="0.5rem", content=str(b.PJXAccordion(id="g-a", content=str(b.PJXAccordionTrigger(id="g-at", content="A").render()) + str(b.PJXAccordionContent(id="g-ac", content="<p>x</p>").render())).render()) + str(b.PJXAccordion(id="g-b", open=False, content=str(b.PJXAccordionTrigger(id="g-bt", content="B").render()) + str(b.PJXAccordionContent(id="g-bc", content="<p>y</p>").render())).render()))),
+    ("accordion_group_default_open_first", lambda: b.PJXAccordionGroup(id="g", default_open="first", content=str(b.PJXAccordion(id="g-a", open=False, content=str(b.PJXAccordionTrigger(id="g-at", content="A").render()) + str(b.PJXAccordionContent(id="g-ac", content="<p>x</p>").render())).render()) + str(b.PJXAccordion(id="g-b", open=False, content=str(b.PJXAccordionTrigger(id="g-bt", content="B").render()) + str(b.PJXAccordionContent(id="g-bc", content="<p>y</p>").render())).render()))),
 ]
 
 
