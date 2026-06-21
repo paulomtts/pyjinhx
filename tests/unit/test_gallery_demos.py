@@ -5,7 +5,6 @@ from pathlib import Path
 
 import pytest
 import pyjinhx.builtins
-from pyjinhx.builtins import PJXBadge  # noqa: E402
 
 DOCS = Path(__file__).resolve().parents[2] / "docs"
 sys.path.insert(0, str(DOCS))
@@ -23,16 +22,12 @@ class FakePage:
     url = "guide/builtins/"
 
 
-def test_marker_becomes_iframe_and_source():
+def test_marker_becomes_iframe():
     out = hooks.on_page_markdown(
         "intro\n\n<!-- demo: PJXBadge -->\n\nafter", page=FakePage(), config={}, files=None
     )
     assert '<iframe src="../../demos/pjx-badge.html"' in out
-    assert "```python" in out
-    assert 'PJXBadge(label="Active"' in out
-    assert "def " not in out
-    assert "return " not in out
-    assert "<!-- demo:" not in out
+    assert "```python" not in out  # the marker no longer emits a code block
 
 
 def test_unknown_demo_fails_build():
@@ -97,21 +92,6 @@ def test_gallery_page_features_every_demo():
         "`### [Name](guide/builtins.md#name)` + `<!-- demo: Name -->` for each: "
         f"{missing}"
     )
-
-
-def test_first_variation_source_picks_first_list_element():
-    def f():
-        return [
-            PJXBadge(label="A", color="brand").render(),
-            PJXBadge(label="B", color="error").render(),
-        ]
-    assert hooks.first_variation_source(f) == 'PJXBadge(label="A", color="brand").render()'
-
-
-def test_first_variation_source_single_expression():
-    def f():
-        return PJXBadge(label="A").render()
-    assert hooks.first_variation_source(f) == 'PJXBadge(label="A").render()'
 
 
 def test_demo_markup_wraps_in_stage():
