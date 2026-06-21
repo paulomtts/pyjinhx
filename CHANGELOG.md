@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased — stale `{#def#}` header warning
+## 0.25.1 — stale `{#def#}` header warning + type-checker cleanup (2026-06-21)
 
 ### Added
 
@@ -16,6 +16,14 @@
   <Card>: a {#def#} header is present but a Python class is registered —
   the header is ignored. Remove the header (or the class).
   ```
+
+### Changed
+
+- **Type-checker clean across the package.** pyright/basedpyright (standard mode) now report zero
+  errors for `pyjinhx`. The changes are behavior-preserving, and two improve the editor experience
+  for library code: the class-form `ReactiveComponent.render()` / instance-form `render()` are now
+  typed via a descriptor, and a keyed component's `load(cls, key)` no longer trips an
+  incompatible-override error against the zero-arg abstract `load`.
 
 ## 0.25.0 — slot-escaping consistency (2026-06-19)
 
