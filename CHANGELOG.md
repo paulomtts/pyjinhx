@@ -39,6 +39,13 @@
   `PJXDrawerBody`, and `PJXDrawerFooter`. The dialog JS and behavior stay on the shell.
   Migration: replace `<PJXDrawer title="T">body</PJXDrawer>` with
   `<PJXDrawer><PJXDrawerHeader title="T"/><PJXDrawerBody>body</PJXDrawerBody></PJXDrawer>`.
+- **`PJXEmptyState` collapses presentational slots into `content` (breaking).** The
+  prescriptive slots (`image`, `title`, `description`, `action`, `actions`) are removed; a
+  single freeform `content` field replaces them — compose whatever markup you need inside.
+  `suggestions` (interactive chips) and `class_name` are unchanged. CSS tokens for the
+  removed per-element rules (`--pjx-empty-state-title-size`, etc.) are also removed.
+  Migration: replace `PJXEmptyState(title="No results", description="…", action="<button>…</button>")` with
+  `PJXEmptyState(content="<h3>No results</h3><p>…</p><button>…</button>")`.
 
 ## 0.25.1 — stale `{#def#}` header warning + type-checker cleanup (2026-06-21)
 

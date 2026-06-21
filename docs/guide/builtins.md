@@ -680,18 +680,36 @@ Placeholder shimmer blocks. **Assets:** `pjx_skeleton.css` only.
 
 ## PJXEmptyState
 
-Centered empty view. **Assets:** `pjx-empty-state.css` only (template file **`pjx-empty-state.html`** next to `pjx_empty_state.py`).
+Centered, vertically-stacked empty-view container. Compose whatever you like inside via `content`. **Assets:** `pjx-empty-state.css` only (template file **`pjx-empty-state.html`** next to `pjx_empty_state.py`).
 
 <!-- demo: PJXEmptyState -->
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
-| `image` | `str \| BaseComponent` | `""` | Optional slot above the heading (e.g. illustration markup). |
-| `title` | `str` | `""` | Heading (text, escaped). |
-| `description` | `str` | `""` | Supporting text (escaped). |
-| `action` | `str \| BaseComponent` | `""` | Optional slot (e.g. button markup). |
-| `actions` | `list[str \| BaseComponent]` | `[]` | Optional flex row of slots; renders after `action` when both are set. |
+| `content` | `str \| BaseComponent` | `""` | Freeform inner content (rendered as-is). |
 | `suggestions` | `list[dict]` | `[]` | Interactive suggestion chips; each dict dispatches a custom event on click. See below. |
+| `class_name` | `str` | `""` | Extra CSS class(es) appended to the root element. |
+
+```python
+PJXEmptyState(
+    id="inbox-empty",
+    content="<h3>No results</h3><p>Adjust filters or create a new item.</p><button>Create</button>",
+    suggestions=[
+        {"label": "Draft a message", "value": "Draft a message"},
+        {"label": "Summarise a thread", "event": "fill-input"},
+    ],
+)
+```
+
+```html
+<!-- Tag form: nest content between the tags -->
+<PJXEmptyState id="inbox-empty">
+  <PJXIcon name="inbox"/>
+  <h3>No results</h3>
+  <p>Adjust filters or create a new item.</p>
+  <PJXButton>Create</PJXButton>
+</PJXEmptyState>
+```
 
 **Suggestion chips** (`suggestions`) provide a first-class "click a chip → dispatch an event" pattern — the common use case of filling an input or triggering a quick action without navigation.
 
@@ -705,17 +723,6 @@ Each item in `suggestions` is a dict with:
 
 The rendered chip uses Alpine's `$dispatch`, so any parent can listen with `@pjx:suggestion.window="..."` (or the custom event name). The dispatched detail is `{ value: "<chip value>" }`.
 
-```python
-PJXEmptyState(
-    id="chat-empty",
-    title="What would you like to do?",
-    suggestions=[
-        {"label": "Draft a message", "value": "Draft a message"},
-        {"label": "Summarise a thread", "event": "fill-input"},
-    ],
-)
-```
-
 ```html
 <!-- Listener in a parent template -->
 <textarea @pjx:suggestion.window="$el.value = $event.detail.value"></textarea>
@@ -723,7 +730,7 @@ PJXEmptyState(
 
 **DOM contract.** Root `.pjx-empty-state`; no JS API (suggestion chips require Alpine for `$dispatch`).
 
-**Classes:** `pjx-empty-state`, `pjx-empty-state__image`, `pjx-empty-state__title`, `pjx-empty-state__desc`, `pjx-empty-state__action`, `pjx-empty-state__actions`, `pjx-empty-state__suggestions`, `pjx-empty-state__chip`. Theming: see [PJXEmptyState tokens](#pjxemptystate-tokens).
+**Classes:** `pjx-empty-state`, `pjx-empty-state__suggestions`, `pjx-empty-state__chip`. Theming: see [PJXEmptyState tokens](#pjxemptystate-tokens).
 
 ---
 
@@ -1583,12 +1590,11 @@ Content uses `var(--font-size-sm)`, `var(--text)`; close hover uses `var(--surfa
 | --- | --- |
 | `--pjx-empty-state-padding` | `2rem 1.5rem` |
 | `--pjx-empty-state-max-width` | `28rem` |
-| `--pjx-empty-state-title-size` | `var(--font-size-md)` |
-| `--pjx-empty-state-desc-size` | `var(--font-size-sm)` |
-| `--pjx-empty-state-title-color` | `var(--text)` |
-| `--pjx-empty-state-desc-color` | `var(--text-muted)` |
 | `--pjx-empty-state-gap` | `0.5rem` |
-| `--pjx-empty-state-actions-gap` | `0.5rem` |
+| `--pjx-empty-state-actions-gap` | `0.5rem` (chip row gap) |
+| `--pjx-empty-state-chip-bg` | `var(--surface-alt)` |
+| `--pjx-empty-state-chip-color` | `var(--text-muted)` |
+| `--pjx-empty-state-chip-border` | `var(--border)` |
 
 ### PJXDivider tokens
 

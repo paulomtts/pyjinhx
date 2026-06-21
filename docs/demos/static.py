@@ -115,9 +115,7 @@ def progress():
 
 def empty_state():
     return PJXEmptyState(
-        title="No results",
-        description="Try a different search term.",
-        actions=['<button class="pjx-demo-btn">Clear filters</button>'],
+        content='<h3>No results</h3><p>Try a different search term.</p><button class="pjx-demo-btn">Clear filters</button>',
         suggestions=[
             {"label": "Draft a message"},
             {"label": "Summarise a thread"},

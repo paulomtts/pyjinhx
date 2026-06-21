@@ -41,7 +41,7 @@ CASES = [
     ("drawer_body", lambda: b.PJXDrawerBody(id="g", content="<p>Body content</p>")),
     ("drawer_footer", lambda: b.PJXDrawerFooter(id="g", content="<button>Save</button>")),
     ("dropdown", lambda: b.PJXDropdown(id="g", trigger="Menu", items=["<a href='/x'>X</a>"])),
-    ("empty_state", lambda: b.PJXEmptyState(id="g", title="Nothing", description="D", action="<button>A</button>")),
+    ("empty_state", lambda: b.PJXEmptyState(id="g", content="<h3>Nothing</h3><p>D</p><button>A</button>")),
     ("lazy_panel", lambda: b.PJXLazyPanel(id="g", url="/load")),
     ("region_loader", lambda: b.PJXRegionLoader(id="g")),
     ("modal_shell", lambda: b.PJXModal(id="g", content=str(b.PJXModalHeader(id="g-h", title="T").render()) + str(b.PJXModalBody(id="g-b", content="B").render()) + str(b.PJXModalFooter(id="g-f", content="F").render()))),
