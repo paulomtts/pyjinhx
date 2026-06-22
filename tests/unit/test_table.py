@@ -15,7 +15,7 @@ def _env(tmp_path):
 def test_table_root_element_and_class():
     html = str(PJXTable(id="t", content="x").render())
     assert "<table" in html and 'id="t"' in html
-    assert 'class="pjx-table"' in html or 'class="pjx-table ' in html or 'class="pjx-table"' in html
+    assert 'class="pjx-table"' in html or 'class="pjx-table ' in html
 
 
 def test_table_caption_rendered_only_when_set_and_escaped():

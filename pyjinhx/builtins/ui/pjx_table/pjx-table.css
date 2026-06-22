@@ -77,7 +77,7 @@
   cursor: pointer;
 }
 
-.pjx-table__sort-caret::before {
+.pjx-table__th--sortable .pjx-table__sort-caret::before {
   content: "\2195";
   opacity: 0.4;
   font-size: 0.85em;

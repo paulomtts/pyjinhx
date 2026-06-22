@@ -2170,21 +2170,21 @@ PJXPasswordInput(
 
 ## PJXTable
 
-Accessible data table shell. Compose with `PJXTableHead`, `PJXTableBody`, `PJXTableRow`, `PJXTableHeaderCell`, and `PJXTableCell` parts. **Assets:** `pjx-table.css`, `pjx-table.js`.
+Accessible data table shell. Compose with `PJXTableHead`, `PJXTableBody`, `PJXTableRow`, `PJXTableHeaderCell`, and `PJXTableCell` parts. **Assets:** `pjx-table.css`.
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
 | `caption` | `str` | `""` | `<caption>` text; suppressed when empty. |
 | `striped` | `bool` | `False` | Alternating row shading via `pjx-table--striped`. |
-| `sticky_header` | `bool` | `False` | Keeps the `<thead>` visible on scroll via `pjx-table--sticky-header`. |
-| `density` | `"comfortable" \| "compact"` | `"comfortable"` | Cell padding scale → `pjx-table--{density}`. |
+| `sticky_header` | `bool` | `False` | Keeps the `<thead>` visible on scroll via `pjx-table--sticky`. |
+| `density` | `"comfortable" \| "compact"` | `"comfortable"` | Cell padding scale → `pjx-table--density-compact` when `"compact"`; no class for `"comfortable"` or `"none"`. |
 | `bordered` | `"none" \| "horizontal" \| "all"` | `"none"` | Border style → `pjx-table--bordered-{bordered}` (omitted when `"none"`). |
 | `class_name` | `AttrValue` | `""` | Extra CSS class(es) on the root element. |
 | `content` | `str \| BaseComponent` | `""` | Pre-rendered children (`PJXTableHead` + `PJXTableBody`). |
 
-**DOM contract.** Root `div.pjx-table-wrapper` > `table.pjx-table`; optional `<caption>`. No JS public API — sort state is reflected via `aria-sort` on `<th>` cells and driven by your own htmx/Alpine handlers on `PJXTableHeaderCell`.
+**DOM contract.** Root `<table class="pjx-table">` with an optional `<caption class="pjx-table__caption">` as its first child. No JS public API — sort state is reflected via `aria-sort` on `<th>` cells and driven by your own htmx/Alpine handlers on `PJXTableHeaderCell`.
 
-**Classes:** `pjx-table-wrapper`, `pjx-table`, `pjx-table--striped`, `pjx-table--sticky-header`, `pjx-table--comfortable`, `pjx-table--compact`, `pjx-table--bordered-horizontal`, `pjx-table--bordered-all`.
+**Classes:** `pjx-table`, `pjx-table--striped`, `pjx-table--sticky`, `pjx-table--density-compact`, `pjx-table--bordered-horizontal`, `pjx-table--bordered-all`.
 
 **Style tokens.**
 
@@ -2297,7 +2297,7 @@ PJXTable(
 
 ## PJXTableRow
 
-A `<tr>` for either the head or body section. When `selectable=True` a checkbox is auto-prepended. **Assets:** none (styled via `pjx-table.css`).
+A `<tr>` for either the head or body section. When `selectable=True`, a checkbox cell is auto-prepended on the body row. **Assets:** none (styled via `pjx-table.css`).
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
@@ -2352,9 +2352,9 @@ A `<td>` for use inside `PJXTableRow` in the body section. **Assets:** none (sty
 | `class_name` | `AttrValue` | `""` | Extra CSS class(es) on the root element. |
 | `content` | `str \| BaseComponent` | `""` | Cell content. |
 
-**DOM contract.** Root `<td class="pjx-table__td">` rendering `{{ content }}` verbatim.
+**DOM contract.** Root `<td class="pjx-table__cell">` rendering `{{ content }}` verbatim.
 
-**Classes:** `pjx-table__td`.
+**Classes:** `pjx-table__cell`.
 
 ```html
 <PJXTableCell>Ada Lovelace</PJXTableCell>
