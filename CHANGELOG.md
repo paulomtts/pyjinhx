@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+- **Breaking:** removed `PJXPanel`/`PJXPanelTrigger`. The panel pattern is now a
+  `PJXTab` used outside a `PJXTabList` — a standalone trigger (button semantics,
+  `aria-current` active state) that drives a `PJXTabGroup`'s panels from anywhere
+  on the page. One engine now powers both tabs and panels.
+
 ## 0.27.1 — tab group width + CSS fixes (2026-06-22)
 
 ### Fixed
