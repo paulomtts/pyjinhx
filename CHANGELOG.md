@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.27.0 — resizable px/content floors + compound tabs (2026-06-22)
 
 ### Added
 
@@ -8,8 +8,6 @@
   bound can be `"120px"` (pixels) or — for `min` — `"content"`, which floors the panel at its intrinsic
   min-content so a fixed child (e.g. a header strip) stays visible at any viewport size. Enforced via
   CSS (robust on resize) and honored exactly by drag/keyboard. (#148)
-
-## 0.26.0 — composable builtin parts + resizable split pane (2026-06-21)
 
 ### Changed
 
@@ -20,6 +18,11 @@
   explicit `id`/`panel`/`tab` or, when omitted, by order. Roving-tabindex keyboard (Arrows / Home /
   End / Enter / Delete) and the `pjx:reveal` lazy-panel integration are kept. Migration:
   `PJXTabGroup(tabs={"Home": home})` → `<PJXTabGroup><PJXTabList><PJXTab selected>Home</PJXTab></PJXTabList><PJXTabPanel>…</PJXTabPanel></PJXTabGroup>`. (#135)
+
+## 0.26.0 — composable builtin parts + resizable split pane (2026-06-21)
+
+### Changed
+
 - **`PJXButton` collapses `start`/`center`/`end` into a single `{{ content }}` slot (breaking).**
   The prescriptive icon-text-icon layout via `start`/`center`/`end` slots is replaced by a single
   freeform `content` field — put an icon, text, or any markup there however you like.
