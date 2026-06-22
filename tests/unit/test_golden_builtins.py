@@ -88,6 +88,21 @@ CASES = [
     ("resizable_panel_px", lambda: b.PJXResizablePanel(id="g", size=40, min="120px", max="400px", content="body")),
     ("resizable_panel_content", lambda: b.PJXResizablePanel(id="g", size=40, min="content", content="body")),
     ("resizable_handle", lambda: b.PJXResizableHandle(id="g", label="Resize")),
+    ("table", lambda: b.PJXTable(id="g", caption="Users", striped=True, bordered="horizontal", content=(
+        str(b.PJXTableHead(id="g-h", content=str(b.PJXTableRow(id="g-hr", content=(
+            str(b.PJXTableHeaderCell(id="g-hc0", content="Name").render())
+            + str(b.PJXTableHeaderCell(id="g-hc1", content="Role").render())
+        )).render())).render())
+        + str(b.PJXTableBody(id="g-b", content=str(b.PJXTableRow(id="g-r", content=(
+            str(b.PJXTableCell(id="g-c0", content="Ada").render())
+            + str(b.PJXTableCell(id="g-c1", content="Eng").render())
+        )).render())).render())
+    ))),
+    ("table_head", lambda: b.PJXTableHead(id="g", content="<tr></tr>")),
+    ("table_body", lambda: b.PJXTableBody(id="g", content="<tr></tr>")),
+    ("table_row", lambda: b.PJXTableRow(id="g", content="<td>x</td>")),
+    ("table_header_cell", lambda: b.PJXTableHeaderCell(id="g", content="Name")),
+    ("table_cell", lambda: b.PJXTableCell(id="g", content="x")),
 ]
 
 

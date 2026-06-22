@@ -41,6 +41,12 @@ from pyjinhx.builtins.ui.pjx_resizable_group import PJXResizableGroup
 from pyjinhx.builtins.ui.pjx_password_input import PJXPasswordInput
 from pyjinhx.builtins.ui.pjx_skeleton import PJXSkeleton
 from pyjinhx.builtins.ui.pjx_spinner import PJXSpinner
+from pyjinhx.builtins.ui.pjx_table import PJXTable
+from pyjinhx.builtins.ui.pjx_table_head import PJXTableHead
+from pyjinhx.builtins.ui.pjx_table_body import PJXTableBody
+from pyjinhx.builtins.ui.pjx_table_row import PJXTableRow
+from pyjinhx.builtins.ui.pjx_table_header_cell import PJXTableHeaderCell
+from pyjinhx.builtins.ui.pjx_table_cell import PJXTableCell
 from pyjinhx.builtins.ui.pjx_tab import PJXTab
 from pyjinhx.builtins.ui.pjx_tab_group import PJXTabGroup
 from pyjinhx.builtins.ui.pjx_tab_list import PJXTabList
@@ -97,6 +103,12 @@ __all__ = [
     "PJXPasswordInput",
     "PJXSkeleton",
     "PJXSpinner",
+    "PJXTable",
+    "PJXTableHead",
+    "PJXTableBody",
+    "PJXTableRow",
+    "PJXTableHeaderCell",
+    "PJXTableCell",
     "PJXTab",
     "PJXTabGroup",
     "PJXTabList",
