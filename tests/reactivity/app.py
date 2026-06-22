@@ -105,6 +105,12 @@ Fetch notification
 {{ resizable }}
 </div>
 </section>
+
+<section>
+<div id="rx-floor-box" style="width:300px;height:200px;border:1px solid #ccc;">
+{{ floor_box | safe }}
+</div>
+</section>
 </div>
 """
 
@@ -126,6 +132,7 @@ class KitchenSinkPage(BaseComponent):
     password: PJXPasswordInput
     tabs: PJXTabGroup
     resizable: PJXResizableGroup
+    floor_box: str
 
     def render(self) -> Markup:
         return self._render(source=_PAGE_TEMPLATE.strip())
@@ -220,6 +227,11 @@ def render_page() -> str:
                 + str(PJXResizablePanel(id="rx-resize-right", size=50, content="<div>right</div>").render())
             ),
         ),
+        floor_box=str(PJXResizableGroup(id="rx-floor-group", direction="column", content=(
+            str(PJXResizablePanel(id="rx-floor-top", size=60, content="<div>top</div>").render())
+            + str(PJXResizableHandle(id="rx-floor-handle").render())
+            + str(PJXResizablePanel(id="rx-floor-bottom", size=40, min="content", content='<div id="rx-floor-strip" style="height:36px;flex-shrink:0">strip</div><div>body</div>').render())
+        )).render()),
     )
     return f"""<!DOCTYPE html>
 <html lang="en">

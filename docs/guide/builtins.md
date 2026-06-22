@@ -1849,8 +1849,8 @@ A resizable pane inside a `PJXResizableGroup`. Percentage-sized; `flex-grow` is 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
 | `size` | `float \| None` | `None` | Initial size as a percentage of the group (e.g. `40` = 40 %). `None` → `flex-grow: 1` (equal share). Rendered as `data-size` and inline `style="flex-grow: {size}"`. |
-| `min` | `float` | `0` | Minimum size percentage; clamps drag so the panel cannot shrink below this. Rendered as `data-min`. |
-| `max` | `float` | `100` | Maximum size percentage; clamps drag so the panel cannot grow beyond this. Rendered as `data-max`. |
+| `min` | `str \| float` | `0` | Minimum size. A number = percent of the group; `"120px"` = pixels; `"content"` = the panel's intrinsic min-content (so a fixed child stays visible at any viewport). |
+| `max` | `str \| float` | `100` | Maximum size. A number = percent; `"120px"` = pixels. (`"content"` is not valid for max.) |
 | `class_name` | `AttrValue` | `""` | Extra CSS class(es) on the root element. |
 | `content` | `str \| BaseComponent` | `""` | Panel body content. |
 
@@ -1863,6 +1863,16 @@ A resizable pane inside a `PJXResizableGroup`. Percentage-sized; `flex-grow` is 
   <PJXResizablePanel size="40" min="20">Left panel</PJXResizablePanel>
   <PJXResizableHandle/>
   <PJXResizablePanel size="60">Right panel</PJXResizablePanel>
+</PJXResizableGroup>
+```
+
+Content floor — keeps the bottom strip visible regardless of viewport height:
+
+```html
+<PJXResizableGroup direction="column">
+  <PJXResizablePanel size="70">messages</PJXResizablePanel>
+  <PJXResizableHandle/>
+  <PJXResizablePanel size="30" min="content">workspace strip</PJXResizablePanel>
 </PJXResizableGroup>
 ```
 

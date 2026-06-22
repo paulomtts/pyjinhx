@@ -5,3 +5,11 @@
   min-height: 0;
   overflow: auto;
 }
+.pjx-resizable-group--column > .pjx-resizable-group__panel {
+  min-height: var(--pjx-resizable-min, 0);
+  max-height: var(--pjx-resizable-max, none);
+}
+.pjx-resizable-group--row > .pjx-resizable-group__panel {
+  min-width: var(--pjx-resizable-min, 0);
+  max-width: var(--pjx-resizable-max, none);
+}
