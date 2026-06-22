@@ -55,7 +55,6 @@ def test_registry_covers_all_builtins():
         "PJXAccordionContent",
         "PJXAccordionTrigger",
         "PJXLazyPanel",
-        "PJXPanelTrigger",
         "PJXPopoverTrigger",
         "PJXPopoverPanel",
         "PJXCardHeader",
