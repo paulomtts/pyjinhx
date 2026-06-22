@@ -1,5 +1,5 @@
-"""Browser contracts for PJXPanel/PJXPanelTrigger reveal events, PJXLazyPanel(when="reveal"),
-and PJXTabGroup panel switching."""
+"""Browser contracts for standalone PJXTab triggers driving PJXTabGroup panels,
+PJXLazyPanel(when="reveal"), and PJXTabGroup tab switching."""
 
 import pytest
 

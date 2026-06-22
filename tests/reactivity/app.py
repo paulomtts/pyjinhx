@@ -28,8 +28,6 @@ from pyjinhx.builtins import (
     PJXModalHeader,
     PJXNotification,
     PJXPageLoader,
-    PJXPanel,
-    PJXPanelTrigger,
     PJXPasswordInput,
     PJXPopover,
     PJXPopoverPanel,
@@ -135,9 +133,9 @@ class KitchenSinkPage(BaseComponent):
     toast_host: PJXToastHost
     region_loader: PJXRegionLoader
     page_loader: PJXPageLoader
-    panel_trigger_a: PJXPanelTrigger
-    panel_trigger_b: PJXPanelTrigger
-    panel: PJXPanel
+    panel_trigger_a: PJXTab
+    panel_trigger_b: PJXTab
+    panel: PJXTabGroup
     detached_trigger_0: PJXTab
     detached_trigger_1: PJXTab
     detached_group: PJXTabGroup
@@ -199,31 +197,28 @@ def render_page() -> str:
         toast_host=PJXToastHost(id="rx-toasts", position="bottom-right", timeout=0),
         region_loader=PJXRegionLoader(id="rx-region"),
         page_loader=PJXPageLoader(id="rx-page-loader", nav_targets="app-content", active_on_load=False),
-        panel_trigger_a=PJXPanelTrigger(
-            id="rx-trig-a",
-            panel_id="rx-panel",
-            panel="a",
+        panel_trigger_a=PJXTab(
+            id="rx-trig-a", panel="rx-panel-panel-a", selected=True,
             content='<button type="button" id="trig-a-btn">Panel A</button>',
         ),
-        panel_trigger_b=PJXPanelTrigger(
-            id="rx-trig-b",
-            panel_id="rx-panel",
-            panel="b",
+        panel_trigger_b=PJXTab(
+            id="rx-trig-b", panel="rx-panel-panel-b",
             content='<button type="button" id="trig-b-btn">Panel B</button>',
         ),
-        panel=PJXPanel(
+        panel=PJXTabGroup(
             id="rx-panel",
-            panels={
-                "a": "<p>Panel A body</p>",
-                "b": str(
-                    PJXLazyPanel(
+            content=(
+                str(PJXTabPanel(id="rx-panel-panel-a", content="<p>Panel A body</p>").render())
+                + str(PJXTabPanel(
+                    id="rx-panel-panel-b",
+                    content=str(PJXLazyPanel(
                         id="rx-lazy",
-                        url="/fragments/lazy",
                         when="reveal",
+                        url="/fragments/lazy",
                         content='<p id="lazy-placeholder">Loading…</p>',
-                    ).render()
-                ),
-            },
+                    ).render()),
+                ).render())
+            ),
         ),
         detached_trigger_0=PJXTab(
             id="rx-detached-trigger-0", panel="rx-detached-p0", selected=True,
