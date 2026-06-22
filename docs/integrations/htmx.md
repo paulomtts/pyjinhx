@@ -204,6 +204,37 @@ Use Jinja conditionals to control HTMX behavior:
 
 A [`PJXTabGroup`](../guide/builtins.md#pjxtabgroup) holds multiple panels (e.g. chat vs. other tools) while standalone [`PJXTab`](../guide/builtins.md#pjxtab) triggers can live in a navbar or sidebar. To **keep in-DOM state** (messages, inputs) when other UI updates, mount the **`PJXTabGroup` root outside** the element you pass to `hx-target` for those swaps. Only swap inner fragments that should reload; avoid replacing the entire `PJXTabGroup` wrapper unless you intend to reset that state.
 
+### Wiring builtins (pure passthrough)
+
+Builtins never require htmx and degrade to plain HTML on their own. To add htmx
+behaviour, attach `hx-*` attributes directly to the element you author in your
+template. For a builtin's root element the framework's attribute passthrough
+carries them onto the rendered HTML element — no wrapper `<div>` needed.
+
+**Worked example — server-driven sortable table header**
+
+A `PJXTableHeaderCell` already renders a `<th>` with an inner `<button>` for
+keyboard operability. Add `hx-*` attributes and the builtin becomes a live sort
+control with no custom JS:
+
+```html
+<PJXTableHeaderCell sortable="true" sort="asc"
+    hx-get="/users?sort=name&dir=desc" hx-target="#users-table" hx-swap="outerHTML">
+  Name
+</PJXTableHeaderCell>
+```
+
+How it works:
+
+- The `hx-*` attributes land on the rendered `<th>`.
+- The inner `<button>` makes the cell keyboard-operable; a click bubbles up to
+  the `<th>`, where htmx intercepts and fires the request.
+- The server responds with a re-sorted table fragment carrying updated `sort` /
+  `aria-sort` values — no JS ships with the component.
+
+The same passthrough applies to any builtin: for example, add `hx-post="/action"`
+to a `PJXButton` and htmx picks it up on the rendered `<button>` element.
+
 ### Loading states
 
 For ad-hoc cases you can use htmx's own [`hx-indicator`](https://htmx.org/attributes/hx-indicator/)
