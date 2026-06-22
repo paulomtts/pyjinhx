@@ -71,6 +71,9 @@ def test_registry_covers_all_builtins():
         "PJXResizablePanel",
         "PJXTooltipContent",
         "PJXTooltipTrigger",
+        "PJXTab",
+        "PJXTabList",
+        "PJXTabPanel",
     }
     assert set(DEMOS) == set(pyjinhx.builtins.__all__) - folded
 

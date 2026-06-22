@@ -42,7 +42,10 @@ from pyjinhx.builtins.ui.pjx_resizable_group import PJXResizableGroup
 from pyjinhx.builtins.ui.pjx_password_input import PJXPasswordInput
 from pyjinhx.builtins.ui.pjx_skeleton import PJXSkeleton
 from pyjinhx.builtins.ui.pjx_spinner import PJXSpinner
+from pyjinhx.builtins.ui.pjx_tab import PJXTab
 from pyjinhx.builtins.ui.pjx_tab_group import PJXTabGroup
+from pyjinhx.builtins.ui.pjx_tab_list import PJXTabList
+from pyjinhx.builtins.ui.pjx_tab_panel import PJXTabPanel
 from pyjinhx.builtins.ui.pjx_toast_host import PJXToastHost
 from pyjinhx.builtins.ui.pjx_toggle_switch import PJXToggleSwitch
 from pyjinhx.builtins.ui.pjx_tooltip import PJXTooltip
@@ -97,7 +100,10 @@ __all__ = [
     "PJXPasswordInput",
     "PJXSkeleton",
     "PJXSpinner",
+    "PJXTab",
     "PJXTabGroup",
+    "PJXTabList",
+    "PJXTabPanel",
     "PJXToastHost",
     "PJXToggleSwitch",
     "PJXTooltip",
