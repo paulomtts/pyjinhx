@@ -92,3 +92,10 @@
   content: "\25BC";
   opacity: 1;
 }
+
+.pjx-table__select {
+  width: 1px;
+  padding: var(--pjx-table-cell-pad-y) var(--pjx-table-cell-pad-x);
+  text-align: center;
+  vertical-align: middle;
+}

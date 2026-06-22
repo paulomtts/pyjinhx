@@ -89,3 +89,27 @@ def test_sort_without_sortable_is_inert():
     # sort set but sortable False → no aria-sort, no button (sortable is the gate)
     html = str(PJXTableHeaderCell(id="hc", sort="asc", content="N").render())
     assert "aria-sort" not in html and "<button" not in html
+
+
+def test_row_non_selectable_has_no_checkbox_cell():
+    html = str(PJXTableRow(id="r", content="<td>x</td>").render())
+    assert "pjx-table__select" not in html and "checkbox" not in html
+
+
+def test_row_selectable_prepends_checkbox_cell():
+    html = str(PJXTableRow(id="r", selectable=True, value="42", content="<td>x</td>").render())
+    assert "pjx-table__row--selectable" in html
+    assert '<td class="pjx-table__select">' in html
+    assert 'type="checkbox"' in html
+    assert 'name="selected"' in html
+    assert 'value="42"' in html
+    assert 'aria-label="Select row"' in html
+    # the checkbox cell comes before the authored content
+    assert html.index("pjx-table__select") < html.index("<td>x</td>")
+
+
+def test_row_select_label_override_and_value_escaped():
+    html = str(PJXTableRow(id="r", selectable=True, value='a"b', select_label="Pick", content="").render())
+    assert 'aria-label="Pick"' in html
+    assert 'value="a"b"' not in html  # the raw unescaped form must not appear
+    assert "a&#34;b" in html or "a&quot;b" in html  # escaped
