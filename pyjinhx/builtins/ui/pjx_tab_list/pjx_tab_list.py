@@ -2,6 +2,7 @@ from pyjinhx import BaseComponent
 from pyjinhx.base import AttrValue
 
 
-class PJXTabGroup(BaseComponent):
+class PJXTabList(BaseComponent):
+    label: str = "Tabs"
     class_name: AttrValue = ""
     content: str | BaseComponent = ""

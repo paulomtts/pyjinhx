@@ -4,7 +4,10 @@ from pyjinhx.builtins import (
     PJXPanel,
     PJXPanelTrigger,
     PJXRegionLoader,
+    PJXTab,
     PJXTabGroup,
+    PJXTabList,
+    PJXTabPanel,
     PJXToastHost,
 )
 
@@ -23,12 +26,16 @@ def dropdown():
 
 def tab_group():
     return PJXTabGroup(
-        tabs={
-            "Overview": "<p>Project summary and key metrics.</p>",
-            "Activity": "<p>Recent commits and deploys.</p>",
-            "Settings": "<p>Repository configuration.</p>",
-        },
-        tabs_label="Project tabs",
+        content=(
+            PJXTabList(content=(
+                PJXTab(id="tg-t0", panel="tg-p0", selected=True, content="Overview").render()
+                + PJXTab(id="tg-t1", panel="tg-p1", content="Activity").render()
+                + PJXTab(id="tg-t2", panel="tg-p2", closeable=True, content="Settings").render()
+            )).render()
+            + PJXTabPanel(id="tg-p0", tab="tg-t0", content="<p>Project summary and key metrics.</p>").render()
+            + PJXTabPanel(id="tg-p1", tab="tg-t1", content="<p>Recent commits and deploys.</p>").render()
+            + PJXTabPanel(id="tg-p2", tab="tg-t2", content="<p>Repository configuration.</p>").render()
+        ),
     ).render()
 
 

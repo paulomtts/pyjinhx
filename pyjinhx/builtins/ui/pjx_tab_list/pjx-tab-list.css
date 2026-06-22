@@ -1,0 +1,1 @@
+.pjx-tab-group__list { display: flex; gap: var(--pjx-tab-gap, 0.25rem); border-bottom: 1px solid var(--border); }

@@ -158,7 +158,7 @@ PJXCardHeader(id="c", title="<script>alert(1)</script>")
 - Any field declared `Slot` (`from pyjinhx import Slot`). A `Slot` field is
   `str | BaseComponent`; its string value renders raw. `Slot` collections work
   too — string elements inside a `Slot`-annotated `list`/`dict` (e.g.
-  `PJXTabGroup.tabs`, `PJXDropdown.items`) render raw.
+  `PJXDropdown.items`) render raw.
 - Any **`BaseComponent`** value — a nested component always renders its own HTML
   raw via the `__html__` protocol, whether passed directly or inside a list/dict.
 

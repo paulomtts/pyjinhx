@@ -1,6 +1,6 @@
 # Built-in UI components
 
-Optional package **`pyjinhx.builtins`** registers thirty-seven [`BaseComponent`](../api/base-component.md) subclasses. Import:
+Optional package **`pyjinhx.builtins`** registers forty [`BaseComponent`](../api/base-component.md) subclasses. Import:
 
 ```python
 from pyjinhx.builtins import (
@@ -37,7 +37,10 @@ from pyjinhx.builtins import (
     PJXSegmentedControl,
     PJXSkeleton,
     PJXSpinner,
+    PJXTab,
     PJXTabGroup,
+    PJXTabList,
+    PJXTabPanel,
     PJXToastHost,
     PJXToggleSwitch,
     PJXTooltip,
@@ -46,7 +49,7 @@ from pyjinhx.builtins import (
 )
 ```
 
-`__all__` matches that set of thirty-nine names.
+`__all__` matches that set of forty-two names.
 
 **Conventions:** Markup classes use the **`pjx-`** prefix; overrides use **`--pjx-`** custom properties. Builtin CSS also references **theme variables** (`--surface`, `--border`, `--text`, `--radius-md`, `--shadow-md`, `--transition`, `--brand`, …)—define those in your global CSS or map them to your design system. See [builtin-conventions.md](./builtin-conventions.md) for the full per-component contract (auto-id, `class_name`, `extra_attrs`, `js`/`css`, headless IIFE JS under `window.pjx`, cancelable `pjx:*:before-*` events).
 
@@ -105,7 +108,10 @@ from pyjinhx.builtins import (
 | PJXSegmentedControl | `pjx-segmented-control.css` | — |
 | PJXSkeleton | `pjx_skeleton.css` | — |
 | PJXSpinner | `pjx_spinner.css` | — |
+| PJXTab | `pjx-tab.css` | — |
 | PJXTabGroup | `pjx-tab-group.css` | `pjx-tab-group.js` |
+| PJXTabList | `pjx-tab-list.css` | — |
+| PJXTabPanel | `pjx-tab-panel.css` | — |
 | PJXToastHost | `pjx-toast-host.css` | `pjx-toast-host.js` |
 | PJXToggleSwitch | `pjx-toggle-switch.css` | — |
 | PJXTooltip | `pjx-tooltip.css` | `pjx-tooltip.js` (IIFE, no API) |
@@ -1423,18 +1429,16 @@ PJXBreadcrumb(items=[("Home", "/"), ("Projects", "/projects"), ("Dashboard", Non
 
 ## PJXTabGroup
 
-Tab buttons and panels. **Assets:** `pjx-tab-group.css`, `pjx-tab-group.js`.
+Thin shell that wraps a composed tab layout. Compose with [`PJXTabList`](#pjxtablist), [`PJXTab`](#pjxtab), and [`PJXTabPanel`](#pjxtabpanel). **Assets:** `pjx-tab-group.css`, `pjx-tab-group.js`.
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
-| `tabs` | `dict[str, str \| BaseComponent]` | `{}` | **Insertion order** is tab order; keys are labels, values are panel bodies. |
-| `tabs_label` | `str` | `"Tabs"` | `aria-label` for the tab list. |
+| `class_name` | `str` | `""` | Extra CSS class(es) appended to the root element. |
+| `content` | `str \| BaseComponent` | `""` | Composed interior — typically a `PJXTabList` followed by one or more `PJXTabPanel`s. |
 
-`tabs` may also be a **JSON object** string from markup tags (values are HTML strings).
+**DOM contract.** Root `div.pjx-tab-group[data-pjx-tab-group]`. The interior is authored by the caller via `content`. `pjx-tab-group.js` delegates events on `.pjx-tab-group[data-pjx-tab-group]`.
 
-**DOM contract.** Root `.pjx-tab-group` (no `data-pjx-region` on the root). Tab elements: `.pjx-tab-group__tab` (no `data-pjx-panel-key` — tabs match panels by insertion-order index); panel elements: `.pjx-tab-group__panel[data-pjx-region]` (each panel carries `data-pjx-region`). `pjx:before-reveal` (cancelable) fires before switching; `pjx:reveal` fires after; `data-pjx-revealed` is set on the visible panel. `pjx-tab-group.js` delegates `click` document-wide on `.pjx-tab-group__tab` (not scoped to `.pjx-tab-group__list`), updates `aria-selected`, `tabindex`, and `hidden`. On `DOMContentLoaded`, `htmx:afterSwap`, and `htmx:afterSettle`, `pxTabGroupInit` announces the initially visible panel once (`pjx:reveal`, reason `"api"`) so `PJXLazyPanel(when="reveal")` works in default tabs.
-
-**Classes:** `pjx-tab-group`, `pjx-tab-group__list`, `pjx-tab-group__tab`, `pjx-tab-group__panel`.
+**Classes:** `pjx-tab-group`.
 
 **Style tokens.**
 
@@ -1450,19 +1454,95 @@ Tab buttons and panels. **Assets:** `pjx-tab-group.css`, `pjx-tab-group.js`.
 <!-- demo: PJXTabGroup -->
 
 ```html
-<PJXTabGroup tabs_label="Project tabs" tabs='{"Overview": "<p>Project summary and key metrics.</p>", "Activity": "<p>Recent commits and deploys.</p>", "Settings": "<p>Repository configuration.</p>"}' />
+<PJXTabGroup>
+  <PJXTabList>
+    <PJXTab id="tg-t0" panel="tg-p0" selected="true">Overview</PJXTab>
+    <PJXTab id="tg-t1" panel="tg-p1">Activity</PJXTab>
+    <PJXTab id="tg-t2" panel="tg-p2" closeable="true">Settings</PJXTab>
+  </PJXTabList>
+  <PJXTabPanel id="tg-p0" tab="tg-t0"><p>Project summary and key metrics.</p></PJXTabPanel>
+  <PJXTabPanel id="tg-p1" tab="tg-t1"><p>Recent commits and deploys.</p></PJXTabPanel>
+  <PJXTabPanel id="tg-p2" tab="tg-t2"><p>Repository configuration.</p></PJXTabPanel>
+</PJXTabGroup>
 ```
 
 ```python
 PJXTabGroup(
-    tabs={
-        "Overview": "<p>Project summary and key metrics.</p>",
-        "Activity": "<p>Recent commits and deploys.</p>",
-        "Settings": "<p>Repository configuration.</p>",
-    },
-    tabs_label="Project tabs",
+    content=(
+        PJXTabList(content=(
+            PJXTab(id="tg-t0", panel="tg-p0", selected=True, content="Overview").render()
+            + PJXTab(id="tg-t1", panel="tg-p1", content="Activity").render()
+            + PJXTab(id="tg-t2", panel="tg-p2", closeable=True, content="Settings").render()
+        )).render()
+        + PJXTabPanel(id="tg-p0", tab="tg-t0", content="<p>Project summary and key metrics.</p>").render()
+        + PJXTabPanel(id="tg-p1", tab="tg-t1", content="<p>Recent commits and deploys.</p>").render()
+        + PJXTabPanel(id="tg-p2", tab="tg-t2", content="<p>Repository configuration.</p>").render()
+    ),
 )
 ```
+
+??? info "PJXTabList"
+
+    ## PJXTabList
+
+    Tab button list (the `role="tablist"` container). **Assets:** `pjx-tab-list.css`.
+
+    | Field | Type | Default | Description |
+    | --- | --- | --- | --- |
+    | `label` | `str` | `"Tabs"` | `aria-label` for the tab list — describes the set of tabs. |
+    | `class_name` | `str` | `""` | Extra CSS class(es) appended to the root element. |
+    | `content` | `str \| BaseComponent` | `""` | One or more `PJXTab` rendered strings. |
+
+    **DOM contract.** Root `div[role="tablist"][aria-label][aria-orientation="horizontal"].pjx-tab-group__list`.
+
+    ```html
+    <PJXTabList label="Project tabs">
+      <PJXTab id="t0" panel="p0" selected="true">Overview</PJXTab>
+      <PJXTab id="t1" panel="p1">Activity</PJXTab>
+    </PJXTabList>
+    ```
+
+??? info "PJXTab"
+
+    ## PJXTab
+
+    Single tab button. **Assets:** `pjx-tab.css`.
+
+    | Field | Type | Default | Description |
+    | --- | --- | --- | --- |
+    | `panel` | `str` | `""` | `id` of the associated `PJXTabPanel` (`aria-controls`). |
+    | `icon` | `str` | `""` | Icon name passed to `PJXIcon`; shown before the label. |
+    | `closeable` | `bool` | `False` | Renders a close button (`data-pjx-tab-close`). |
+    | `pinned` | `bool` | `False` | Marks the tab as pinned; suppresses close button. |
+    | `selected` | `bool` | `False` | Initially selected state (`aria-selected`, `tabindex=0`). |
+    | `close_label` | `str` | `"Close"` | `aria-label` for the close button. |
+    | `class_name` | `str` | `""` | Extra CSS class(es) appended to the root element. |
+    | `content` | `str \| BaseComponent` | `""` | Tab label text or markup. |
+
+    **DOM contract.** Root `div[role="tab"][data-pjx-tab].pjx-tab`. Selected state adds `pjx-tab--selected`; closeable adds `pjx-tab--closeable`; pinned adds `pjx-tab--pinned`. The `id` here must match the `tab` field on the corresponding `PJXTabPanel`.
+
+    ```html
+    <PJXTab id="t0" panel="p0" selected="true" icon="file">Overview</PJXTab>
+    <PJXTab id="t1" panel="p1" closeable="true">Activity</PJXTab>
+    ```
+
+??? info "PJXTabPanel"
+
+    ## PJXTabPanel
+
+    Panel body associated with one tab. **Assets:** `pjx-tab-panel.css`.
+
+    | Field | Type | Default | Description |
+    | --- | --- | --- | --- |
+    | `tab` | `str` | `""` | `id` of the owning `PJXTab` (`aria-labelledby`). |
+    | `class_name` | `str` | `""` | Extra CSS class(es) appended to the root element. |
+    | `content` | `str \| BaseComponent` | `""` | Panel body HTML or component. |
+
+    **DOM contract.** Root `div[role="tabpanel"][data-pjx-region][hidden].pjx-tab-group__panel`. `hidden` is present on all panels; JS removes it from the selected one. `aria-labelledby` points to the owning tab's `id`.
+
+    ```html
+    <PJXTabPanel id="p0" tab="t0"><p>Panel content.</p></PJXTabPanel>
+    ```
 
 ---
 
@@ -2155,7 +2235,10 @@ from pyjinhx.builtins import (
     PJXPageLoader,
     PJXPanel,
     PJXPanelTrigger,
+    PJXTab,
     PJXTabGroup,
+    PJXTabList,
+    PJXTabPanel,
     PJXToastHost,
     PJXTooltip,
     PJXTooltipContent,
@@ -2185,7 +2268,14 @@ card = PJXCard(id="summary", content=PJXCardHeader(title="Summary").render() + P
 crumb = PJXBreadcrumb(id="crumb", items=[("App", "/"), ("Page", None)])
 tabs = PJXTabGroup(
     id="main-tabs",
-    tabs={"A": "<p>First</p>", "B": "<p>Second</p>"},
+    content=(
+        PJXTabList(content=(
+            PJXTab(id="main-t0", panel="main-p0", selected=True, content="A").render()
+            + PJXTab(id="main-t1", panel="main-p1", content="B").render()
+        )).render()
+        + PJXTabPanel(id="main-p0", tab="main-t0", content="<p>First</p>").render()
+        + PJXTabPanel(id="main-p1", tab="main-t1", content="<p>Second</p>").render()
+    ),
 )
 main_panel = PJXPanel(
     id="app-panels",

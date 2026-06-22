@@ -218,7 +218,16 @@ The builtins, rendered by pyjinhx at docs build time (PJXLazyPanel needs a backe
 <!-- demo: PJXTabGroup -->
 
 ```html
-<PJXTabGroup tabs_label="Project tabs" tabs='{"Overview": "<p>Project summary and key metrics.</p>", "Activity": "<p>Recent commits and deploys.</p>", "Settings": "<p>Repository configuration.</p>"}' />
+<PJXTabGroup>
+  <PJXTabList>
+    <PJXTab id="tg-t0" panel="tg-p0" selected="true">Overview</PJXTab>
+    <PJXTab id="tg-t1" panel="tg-p1">Activity</PJXTab>
+    <PJXTab id="tg-t2" panel="tg-p2" closeable="true">Settings</PJXTab>
+  </PJXTabList>
+  <PJXTabPanel id="tg-p0" tab="tg-t0"><p>Project summary and key metrics.</p></PJXTabPanel>
+  <PJXTabPanel id="tg-p1" tab="tg-t1"><p>Recent commits and deploys.</p></PJXTabPanel>
+  <PJXTabPanel id="tg-p2" tab="tg-t2"><p>Repository configuration.</p></PJXTabPanel>
+</PJXTabGroup>
 ```
 
 ### [PJXPanel](guide/builtins.md#pjxpanel)

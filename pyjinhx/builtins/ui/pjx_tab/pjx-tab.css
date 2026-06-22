@@ -1,0 +1,5 @@
+.pjx-tab { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.4rem 0.75rem; cursor: pointer; border: none; background: none; color: var(--text-muted); border-bottom: 2px solid transparent; user-select: none; }
+.pjx-tab--selected { color: var(--text); border-bottom-color: var(--brand); }
+.pjx-tab:focus-visible { outline: 2px solid var(--brand-muted); outline-offset: -2px; }
+.pjx-tab__close { display: inline-flex; border: none; background: none; cursor: pointer; color: inherit; padding: 0 0.15rem; border-radius: var(--radius-sm, 4px); line-height: 1; }
+.pjx-tab__close:hover { background: var(--surface-alt); }
