@@ -25,7 +25,7 @@ def dropdown():
 
 
 def tab_group():
-    return PJXTabGroup(
+    group = PJXTabGroup(
         content=(
             PJXTabList(content=(
                 PJXTab(id="tg-t0", panel="tg-p0", selected=True, content="Overview").render()
@@ -37,6 +37,9 @@ def tab_group():
             + PJXTabPanel(id="tg-p2", tab="tg-t2", content="<p>Repository configuration.</p>").render()
         ),
     ).render()
+    # The group fills its container (width:100%); the centering demo page would
+    # otherwise shrink-wrap it, so give it a definite width to render against.
+    return f'<div style="width: 340px; max-width: 100%;">{group}</div>'
 
 
 def panel():

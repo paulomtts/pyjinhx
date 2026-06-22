@@ -10,6 +10,34 @@ def _env(tmp_path):
     Renderer.set_default_environment(str(tmp_path))
 
 
+from pathlib import Path  # noqa: E402
+
+_UI = Path(__file__).resolve().parents[2] / "pyjinhx" / "builtins" / "ui"
+_TAB_CSS = {
+    "group": _UI / "pjx_tab_group" / "pjx-tab-group.css",
+    "tab": _UI / "pjx_tab" / "pjx-tab.css",
+    "list": _UI / "pjx_tab_list" / "pjx-tab-list.css",
+    "panel": _UI / "pjx_tab_panel" / "pjx-tab-panel.css",
+}
+
+
+def test_tab_group_fills_width_so_it_does_not_jump():
+    # Without an explicit width the group shrink-wraps to content and visibly
+    # resizes/shifts when a tab is closed or a different panel is shown (#bug).
+    assert "width: 100%" in _TAB_CSS["group"].read_text()
+
+
+def test_tab_css_is_consolidated_no_duplicate_or_dead_rules():
+    texts = {k: p.read_text() for k, p in _TAB_CSS.items()}
+    # the dict-era `.pjx-tab-group__tab` selector is dead (tabs are `.pjx-tab`)
+    for k, t in texts.items():
+        assert ".pjx-tab-group__tab" not in t, f"dead selector left in {k} css"
+    # each shared selector is owned by exactly one file (no conflicting dupes)
+    for sel in (".pjx-tab-group__list {", ".pjx-tab-group__panel {"):
+        owners = [k for k, t in texts.items() if sel in t]
+        assert len(owners) == 1, f"{sel} defined in {owners}, expected one owner"
+
+
 def test_tablist_role_and_label():
     html = str(PJXTabList(id="l", label="Project tabs", content="x").render())
     assert 'role="tablist"' in html
