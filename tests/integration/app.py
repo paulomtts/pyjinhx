@@ -314,11 +314,11 @@ def _gallery_inner_html() -> str:
         ),
         panel_trigger_alpha=PJXTab(
             id="g-panel-tr-a", panel="g-panel-panel-alpha", selected=True,
-            content='<button type="button">Alpha</button>',
+            content='<span>Alpha</span>',
         ),
         panel_trigger_beta=PJXTab(
             id="g-panel-tr-b", panel="g-panel-panel-beta",
-            content='<button type="button">Beta</button>',
+            content='<span>Beta</span>',
         ),
         panel_host=PJXTabGroup(
             id="g-panel",

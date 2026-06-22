@@ -1540,11 +1540,11 @@ PJXTabGroup(
     <PJXTabPanel id="p0" tab="t0"><p>Panel content.</p></PJXTabPanel>
     ```
 
-**Panel mode (standalone triggers).** A `PJXTab` rendered *outside* a `PJXTabList` becomes a free-standing trigger: it gets button semantics and an `aria-current` active state instead of the tab strip, and it can live anywhere on the page. It pairs with its region by `panel=` (→ `aria-controls`); the engine resolves the trigger's group through the panel it controls. This replaces the former `PJXPanel`/`PJXPanelTrigger` pair.
+**Panel mode (standalone triggers).** A `PJXTab` rendered *outside* a `PJXTabList` becomes a free-standing trigger: it gets button semantics and an `aria-current` active state instead of the tab strip, and it can live anywhere on the page. It pairs with its region by `panel=` (→ `aria-controls`); the engine resolves the trigger's group through the panel it controls. This replaces the former `PJXPanel`/`PJXPanelTrigger` pair. The `PJXTab` wrapper itself is the interactive element (`role="button"`, `tabindex="0"`), so its content should be inert — plain text or a `<span>` — exactly like list-mode tabs. The engine also backfills `aria-labelledby` on each panel at init from its controlling trigger, so `tab=` on `PJXTabPanel` is not required in panel mode.
 
 ```html
-<PJXTab panel="files-panel" selected="true"><button>Files</button></PJXTab>
-<PJXTab panel="chat-panel"><button>Chat</button></PJXTab>
+<PJXTab panel="files-panel" selected="true">Files</PJXTab>
+<PJXTab panel="chat-panel">Chat</PJXTab>
 
 <PJXTabGroup id="workspace">
   <PJXTabPanel id="files-panel"><p>Uploaded assets.</p></PJXTabPanel>

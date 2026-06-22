@@ -199,11 +199,11 @@ def render_page() -> str:
         page_loader=PJXPageLoader(id="rx-page-loader", nav_targets="app-content", active_on_load=False),
         panel_trigger_a=PJXTab(
             id="rx-trig-a", panel="rx-panel-panel-a", selected=True,
-            content='<button type="button" id="trig-a-btn">Panel A</button>',
+            content='<span id="trig-a-btn">Panel A</span>',
         ),
         panel_trigger_b=PJXTab(
             id="rx-trig-b", panel="rx-panel-panel-b",
-            content='<button type="button" id="trig-b-btn">Panel B</button>',
+            content='<span id="trig-b-btn">Panel B</span>',
         ),
         panel=PJXTabGroup(
             id="rx-panel",
@@ -222,11 +222,11 @@ def render_page() -> str:
         ),
         detached_trigger_0=PJXTab(
             id="rx-detached-trigger-0", panel="rx-detached-p0", selected=True,
-            content='<button type="button" id="rx-detached-btn-0">Show 0</button>',
+            content='<span id="rx-detached-btn-0">Show 0</span>',
         ),
         detached_trigger_1=PJXTab(
             id="rx-detached-trigger-1", panel="rx-detached-p1",
-            content='<button type="button" id="rx-detached-btn-1">Show 1</button>',
+            content='<span id="rx-detached-btn-1">Show 1</span>',
         ),
         detached_group=PJXTabGroup(
             id="rx-detached-group",
