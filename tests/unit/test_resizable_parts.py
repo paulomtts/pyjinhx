@@ -43,9 +43,6 @@ def test_handle_renders_separator():
     assert 'aria-label="Resize sidebar"' in html
 
 
-import pytest as _pytest
-
-
 def test_panel_px_min_emits_data_and_css_var():
     html = str(PJXResizablePanel(id="p", min="120px").render())
     assert 'data-min="120px"' in html
@@ -75,10 +72,10 @@ def test_panel_percentage_min_emits_no_css_var():
 
 
 def test_panel_rejects_content_max():
-    with _pytest.raises(ValueError):
+    with pytest.raises(ValueError):
         PJXResizablePanel(id="p", max="content")
 
 
 def test_panel_rejects_bad_unit():
-    with _pytest.raises(ValueError):
+    with pytest.raises(ValueError):
         PJXResizablePanel(id="p", min="120em")

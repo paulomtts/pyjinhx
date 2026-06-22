@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- **`PJXResizablePanel.min`/`max` accept pixel and content floors.** In addition to a percentage, a
+  bound can be `"120px"` (pixels) or — for `min` — `"content"`, which floors the panel at its intrinsic
+  min-content so a fixed child (e.g. a header strip) stays visible at any viewport size. Enforced via
+  CSS (robust on resize) and honored exactly by drag/keyboard. (#148)
+
 ## 0.26.0 — composable builtin parts + resizable split pane (2026-06-21)
 
 ### Changed
