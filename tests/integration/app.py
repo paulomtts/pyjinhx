@@ -37,7 +37,10 @@ from pyjinhx.builtins import (
     PJXProgress,
     PJXSkeleton,
     PJXSpinner,
+    PJXTab,
     PJXTabGroup,
+    PJXTabList,
+    PJXTabPanel,
     PJXTooltip,
     PJXTooltipContent,
     PJXTooltipTrigger,
@@ -302,10 +305,14 @@ def _gallery_inner_html() -> str:
         ),
         tab_group=PJXTabGroup(
             id="g-tabs",
-            tabs={
-                "Overview": "<p>First panel content.</p>",
-                "Details": "<p>Second panel content.</p>",
-            },
+            content=(
+                str(PJXTabList(content=(
+                    str(PJXTab(id="g-tabs-t0", panel="g-tabs-p0", selected=True, content="Overview").render())
+                    + str(PJXTab(id="g-tabs-t1", panel="g-tabs-p1", content="Details").render())
+                )).render())
+                + str(PJXTabPanel(id="g-tabs-p0", tab="g-tabs-t0", content="<p>First panel content.</p>").render())
+                + str(PJXTabPanel(id="g-tabs-p1", tab="g-tabs-t1", content="<p>Second panel content.</p>").render())
+            ),
         ),
         panel_trigger_alpha=PJXPanelTrigger(
             id="g-panel-tr-a",

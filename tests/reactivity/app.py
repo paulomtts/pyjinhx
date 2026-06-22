@@ -38,7 +38,10 @@ from pyjinhx.builtins import (
     PJXResizableGroup,
     PJXResizableHandle,
     PJXResizablePanel,
+    PJXTab,
     PJXTabGroup,
+    PJXTabList,
+    PJXTabPanel,
     PJXToastHost,
 )
 
@@ -216,7 +219,14 @@ def render_page() -> str:
         password=PJXPasswordInput(id="rx-pw"),
         tabs=PJXTabGroup(
             id="rx-tabs",
-            tabs={"One": "<p>Tab one body</p>", "Two": "<p>Tab two body</p>"},
+            content=(
+                str(PJXTabList(content=(
+                    str(PJXTab(id="rx-tab-one", panel="rx-tabp-one", selected=True, content="One").render())
+                    + str(PJXTab(id="rx-tab-two", panel="rx-tabp-two", closeable=True, content="Two").render())
+                )).render())
+                + str(PJXTabPanel(id="rx-tabp-one", tab="rx-tab-one", content="<p>Tab one body</p>").render())
+                + str(PJXTabPanel(id="rx-tabp-two", tab="rx-tab-two", content="<p>Tab two body</p>").render())
+            ),
         ),
         resizable=PJXResizableGroup(
             id="rx-resize-group",

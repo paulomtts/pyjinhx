@@ -40,12 +40,10 @@ def test_nested_component_renders_raw():
     assert "pjx-badge" in html and "&lt;span" not in html
 
 
-def test_collection_slot_text_key_is_escaped():
-    from pyjinhx.builtins import PJXTabGroup
-    html = str(PJXTabGroup(id="t", tabs={"<script>alert(1)</script>": "<b>panel</b>"}).render())
-    assert "<script>alert(1)</script>" not in html      # label (dict key) escaped
-    assert "&lt;script&gt;" in html
-    assert "<b>panel</b>" in html                          # panel (dict value) raw
+def test_tab_group_label_attr_is_escaped():
+    from pyjinhx.builtins import PJXTabList
+    html = str(PJXTabList(id="l", label='" onmouseover="x', content="body").render())
+    assert 'onmouseover="x' not in html.split('aria-label=')[1][:40]  # attribute value escaped
 
 
 def test_markup_value_on_scalar_field_is_still_escaped():

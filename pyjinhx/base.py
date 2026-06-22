@@ -76,7 +76,7 @@ def _is_slot_field(cls: type, field_name: str) -> bool:
 def _wrap_slot_value(value: Any) -> Any:
     """Wrap a slot field's string value(s) as ``markupsafe.Markup`` so they
     pass through Jinja unescaped. Recurses into list/dict slot collections
-    (e.g. ``PJXTabGroup.tabs``); non-string elements (nested components) are
+    (e.g. ``PJXDropdown.items``); non-string elements (nested components) are
     left untouched and render raw via their own ``__html__``."""
     if isinstance(value, str):
         return Markup(value)
