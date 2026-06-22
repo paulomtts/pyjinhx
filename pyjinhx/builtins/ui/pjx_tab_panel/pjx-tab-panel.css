@@ -1,1 +1,9 @@
-.pjx-tab-group__panel { padding: 0.75rem 0; }
+.pjx-tab-group__panel {
+  padding: var(--pjx-tab-group-padding, 1rem);
+  min-height: 0;
+  background: var(--pjx-tab-group-panel-bg);
+}
+
+.pjx-tab-group__panel[hidden] {
+  display: none;
+}

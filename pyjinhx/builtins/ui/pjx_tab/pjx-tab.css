@@ -1,5 +1,60 @@
-.pjx-tab { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.4rem 0.75rem; cursor: pointer; border: none; background: none; color: var(--text-muted); border-bottom: 2px solid transparent; user-select: none; }
-.pjx-tab--selected { color: var(--text); border-bottom-color: var(--brand); }
-.pjx-tab:focus-visible { outline: 2px solid var(--brand-muted); outline-offset: -2px; }
-.pjx-tab__close { display: inline-flex; border: none; background: none; cursor: pointer; color: inherit; padding: 0 0.15rem; border-radius: var(--radius-sm, 4px); line-height: 1; }
-.pjx-tab__close:hover { background: var(--surface-alt); }
+.pjx-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0.55rem 1.1rem;
+  font: inherit;
+  font-size: var(--font-size-sm, 0.875rem);
+  line-height: 1.4;
+  color: var(--pjx-tab-group-tab-fg);
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  user-select: none;
+  transition:
+    color var(--transition, 0.15s ease),
+    border-color var(--transition, 0.15s ease),
+    background var(--transition, 0.15s ease);
+}
+
+.pjx-tab:hover {
+  color: var(--pjx-tab-group-tab-active-fg);
+  background: color-mix(in srgb, var(--surface) 35%, var(--pjx-tab-group-bg));
+}
+
+.pjx-tab--selected {
+  color: var(--pjx-tab-group-tab-active-fg);
+  border-bottom-color: var(--pjx-tab-group-tab-active-border);
+}
+
+.pjx-tab:focus-visible {
+  outline: 2px solid var(--pjx-tab-group-tab-active-border);
+  outline-offset: -2px;
+}
+
+.pjx-tab__icon {
+  flex: 0 0 auto;
+}
+
+.pjx-tab__close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 0.15rem;
+  padding: 0 0.2rem;
+  border: none;
+  background: none;
+  color: inherit;
+  font-size: 1.15em;
+  line-height: 1;
+  cursor: pointer;
+  border-radius: var(--radius-sm, 4px);
+  opacity: 0.65;
+}
+
+.pjx-tab__close:hover {
+  opacity: 1;
+  background: color-mix(in srgb, var(--text) 12%, transparent);
+}

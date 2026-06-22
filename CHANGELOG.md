@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- **`PJXTabGroup` no longer jumps around / leaves stale space.** The group now fills its container
+  (`width: 100%`) instead of shrink-wrapping to content, so it stays put when a tab is closed or a
+  different panel is shown. The tab CSS was also consolidated — the dead dict-era `.pjx-tab-group__tab`
+  rules were removed and the duplicate `.pjx-tab-group__list`/`__panel` rules (one of which left the
+  panel body without horizontal padding) now live in a single file each, giving the panel body
+  deterministic styling. (#135)
+
 ## 0.27.0 — resizable px/content floors + compound tabs (2026-06-22)
 
 ### Added
