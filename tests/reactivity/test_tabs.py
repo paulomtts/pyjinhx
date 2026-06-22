@@ -64,3 +64,13 @@ def test_delete_on_non_closeable_tab_is_noop(sink_page):
     sink_page.focus("#rx-tab-one")
     sink_page.keyboard.press("Delete")
     expect(sink_page.locator("#rx-tab-one")).to_have_count(1)  # not closeable → survives
+
+
+def test_detached_trigger_switches_group_panel(sink_page):
+    # A PJXTab rendered OUTSIDE its PJXTabGroup still drives the group's panels,
+    # resolved through aria-controls -> panel -> group (Approach A).
+    expect(sink_page.locator("#rx-detached-p0")).to_be_visible()
+    expect(sink_page.locator("#rx-detached-p1")).not_to_be_visible()
+    sink_page.click("#rx-detached-trigger-1")
+    expect(sink_page.locator("#rx-detached-p1")).to_be_visible()
+    expect(sink_page.locator("#rx-detached-p0")).not_to_be_visible()

@@ -99,6 +99,12 @@ Fetch notification
 </section>
 
 <section>
+{{ detached_trigger_0 }}
+{{ detached_trigger_1 }}
+{{ detached_group }}
+</section>
+
+<section>
 {{ password }}
 {{ tabs }}
 </section>
@@ -132,6 +138,9 @@ class KitchenSinkPage(BaseComponent):
     panel_trigger_a: PJXPanelTrigger
     panel_trigger_b: PJXPanelTrigger
     panel: PJXPanel
+    detached_trigger_0: PJXTab
+    detached_trigger_1: PJXTab
+    detached_group: PJXTabGroup
     password: PJXPasswordInput
     tabs: PJXTabGroup
     resizable: PJXResizableGroup
@@ -215,6 +224,21 @@ def render_page() -> str:
                     ).render()
                 ),
             },
+        ),
+        detached_trigger_0=PJXTab(
+            id="rx-detached-trigger-0", panel="rx-detached-p0", selected=True,
+            content='<button type="button" id="rx-detached-btn-0">Show 0</button>',
+        ),
+        detached_trigger_1=PJXTab(
+            id="rx-detached-trigger-1", panel="rx-detached-p1",
+            content='<button type="button" id="rx-detached-btn-1">Show 1</button>',
+        ),
+        detached_group=PJXTabGroup(
+            id="rx-detached-group",
+            content=(
+                str(PJXTabPanel(id="rx-detached-p0", content="<p>Detached body 0</p>").render())
+                + str(PJXTabPanel(id="rx-detached-p1", content="<p>Detached body 1</p>").render())
+            ),
         ),
         password=PJXPasswordInput(id="rx-pw"),
         tabs=PJXTabGroup(
