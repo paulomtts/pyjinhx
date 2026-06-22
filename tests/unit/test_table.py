@@ -61,3 +61,31 @@ def test_header_cell_is_th_with_scope_col():
 def test_class_name_appends_on_each_part():
     assert "mine" in str(PJXTableCell(id="c", class_name="mine", content="x").render())
     assert "mine" in str(PJXTableRow(id="r", class_name="mine", content="x").render())
+
+
+def test_header_cell_non_sortable_is_plain_th_no_button():
+    html = str(PJXTableHeaderCell(id="hc", content="Name").render())
+    assert "<button" not in html
+    assert "aria-sort" not in html
+
+
+def test_header_cell_sortable_renders_button_and_aria_sort_none():
+    html = str(PJXTableHeaderCell(id="hc", sortable=True, content="Name").render())
+    assert "pjx-table__th--sortable" in html
+    assert 'aria-sort="none"' in html
+    assert '<button type="button" class="pjx-table__sort">' in html
+    assert '<span class="pjx-table__sort-caret" aria-hidden="true"></span>' in html
+    assert "Name" in html
+
+
+def test_header_cell_sort_direction_maps_to_aria_sort():
+    asc = str(PJXTableHeaderCell(id="hc", sortable=True, sort="asc", content="N").render())
+    assert 'aria-sort="ascending"' in asc
+    desc = str(PJXTableHeaderCell(id="hc", sortable=True, sort="desc", content="N").render())
+    assert 'aria-sort="descending"' in desc
+
+
+def test_sort_without_sortable_is_inert():
+    # sort set but sortable False → no aria-sort, no button (sortable is the gate)
+    html = str(PJXTableHeaderCell(id="hc", sort="asc", content="N").render())
+    assert "aria-sort" not in html and "<button" not in html

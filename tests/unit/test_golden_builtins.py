@@ -102,6 +102,7 @@ CASES = [
     ("table_body", lambda: b.PJXTableBody(id="g", content="<tr></tr>")),
     ("table_row", lambda: b.PJXTableRow(id="g", content="<td>x</td>")),
     ("table_header_cell", lambda: b.PJXTableHeaderCell(id="g", content="Name")),
+    ("table_header_cell_sortable", lambda: b.PJXTableHeaderCell(id="g", sortable=True, sort="asc", content="Name")),
     ("table_cell", lambda: b.PJXTableCell(id="g", content="x")),
 ]
 
