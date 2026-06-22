@@ -74,3 +74,29 @@ def test_detached_trigger_switches_group_panel(sink_page):
     sink_page.click("#rx-detached-trigger-1")
     expect(sink_page.locator("#rx-detached-p1")).to_be_visible()
     expect(sink_page.locator("#rx-detached-p0")).not_to_be_visible()
+
+
+def test_detached_trigger_has_button_semantics(sink_page):
+    trigger = sink_page.locator("#rx-detached-trigger-1")
+    expect(trigger).to_have_attribute("role", "button")
+    expect(trigger).to_have_attribute("tabindex", "0")
+    # standalone triggers never carry aria-selected (that's a tablist-only attr)
+    assert sink_page.evaluate(
+        "document.getElementById('rx-detached-trigger-1').hasAttribute('aria-selected')"
+    ) is False
+
+
+def test_detached_trigger_active_uses_aria_current(sink_page):
+    sink_page.click("#rx-detached-trigger-1")
+    expect(sink_page.locator("#rx-detached-trigger-1")).to_have_attribute("aria-current", "true")
+    # the previously-active trigger drops aria-current
+    assert sink_page.evaluate(
+        "document.getElementById('rx-detached-trigger-0').hasAttribute('aria-current')"
+    ) is False
+
+
+def test_arrow_keys_do_not_rove_detached_triggers(sink_page):
+    sink_page.focus("#rx-detached-trigger-0")
+    sink_page.keyboard.press("ArrowRight")
+    # focus stays put: detached triggers are not a roving group
+    assert sink_page.evaluate("document.activeElement.id") == "rx-detached-trigger-0"
