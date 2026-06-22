@@ -13,6 +13,13 @@
 
 ### Changed
 
+- **`PJXTabGroup` becomes compound (breaking).** The `tabs={label: panel}` dict is replaced by
+  composable parts — `PJXTabGroup` / `PJXTabList` / `PJXTab` / `PJXTabPanel` — enabling per-tab icons
+  (`icon`), a close affordance (`closeable` → cancelable `pjx:tab:close` / `pjx:tab:closed`), pinned
+  tabs (`pinned`), dynamic add/remove, and decoupled (inline or lazy) panels. Tabs and panels pair by
+  explicit `id`/`panel`/`tab` or, when omitted, by order. Roving-tabindex keyboard (Arrows / Home /
+  End / Enter / Delete) and the `pjx:reveal` lazy-panel integration are kept. Migration:
+  `PJXTabGroup(tabs={"Home": home})` → `<PJXTabGroup><PJXTabList><PJXTab selected>Home</PJXTab></PJXTabList><PJXTabPanel>…</PJXTabPanel></PJXTabGroup>`. (#135)
 - **`PJXButton` collapses `start`/`center`/`end` into a single `{{ content }}` slot (breaking).**
   The prescriptive icon-text-icon layout via `start`/`center`/`end` slots is replaced by a single
   freeform `content` field — put an icon, text, or any markup there however you like.
