@@ -26,6 +26,15 @@
   ```
   Standalone trigger content must be inert (plain text or `<span>`) — the `PJXTab` wrapper is itself the interactive control.
 
+### Added
+- **Table builtins:** `PJXTable` + `PJXTableHead` / `PJXTableBody` / `PJXTableRow` /
+  `PJXTableHeaderCell` / `PJXTableCell` — thin semantic wrappers over a real
+  `<table>` with style tokens (`striped`, `sticky_header`, `density`, `bordered`),
+  a `caption`, an opt-in sortable header (focusable button + `aria-sort`, you wire
+  `hx-get`), and selectable rows (leading checkbox cell for plain-form submission).
+  htmx-aware by passthrough; ships no client JS. New "pure passthrough" wiring guide
+  in the htmx integration docs.
+
 ## 0.27.1 — tab group width + CSS fixes (2026-06-22)
 
 ### Fixed
