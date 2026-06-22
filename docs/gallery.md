@@ -230,13 +230,6 @@ The builtins, rendered by pyjinhx at docs build time (PJXLazyPanel needs a backe
 </PJXTabGroup>
 ```
 
-### [PJXPanel](guide/builtins.md#pjxpanel)
-<!-- demo: PJXPanel -->
-
-```html
-<PJXPanel id="demo-panel" panels='{"chat": "<p>Active conversations with your team.</p>", "files": "<p>Uploaded assets and project documents.</p>", "settings": "<p>Notification preferences and integrations.</p>"}' />
-```
-
 ### [PJXResizableGroup](guide/builtins.md#pjxresizablegroup)
 <!-- demo: PJXResizableGroup -->
 
