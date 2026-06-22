@@ -244,8 +244,6 @@ _BUILTIN_TAG_NAMES = frozenset(
         "PJXResizablePanel",
         "PJXResizableGroup",
         "PJXSegmentedControl",
-        "PJXPanel",
-        "PJXPanelTrigger",
         "PJXPasswordInput",
         "PJXSkeleton",
         "PJXSpinner",

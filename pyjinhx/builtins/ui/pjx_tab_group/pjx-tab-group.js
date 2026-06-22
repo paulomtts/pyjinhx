@@ -8,17 +8,49 @@
   function fire(el, name, detail, cancelable) {
     return el.dispatchEvent(new CustomEvent(name, { bubbles: true, cancelable: !!cancelable, detail: detail || {} }));
   }
-  function groupOf(el) { return el.closest("[data-pjx-tab-group]"); }
-  function inGroup(group) { return function (el) { return groupOf(el) === group; }; }
+  function byId(id) { return id ? document.getElementById(id) : null; }
+  function controlledPanel(tab) { return byId(tab.getAttribute("aria-controls")); }
+
+  // A tab's group: its containing group, else the group of the panel it controls.
+  function groupOf(el) {
+    var g = el.closest("[data-pjx-tab-group]");
+    if (g) return g;
+    var panel = controlledPanel(el);
+    return panel ? panel.closest("[data-pjx-tab-group]") : null;
+  }
+  function isListTab(tab) { return !!tab.closest('[role="tablist"]'); }
+
+  // All tabs bound to this group (list tabs + detached triggers), document order.
   function tabsOf(group) {
-    return Array.prototype.filter.call(group.querySelectorAll('[role="tab"]'), inGroup(group));
+    return Array.prototype.filter.call(
+      document.querySelectorAll("[data-pjx-tab]"),
+      function (t) { return groupOf(t) === group; }
+    );
   }
   function panelsOf(group) {
-    return Array.prototype.filter.call(group.querySelectorAll('[role="tabpanel"]'), inGroup(group));
+    return Array.prototype.filter.call(
+      group.querySelectorAll('[role="tabpanel"]'),
+      function (p) { return p.closest("[data-pjx-tab-group]") === group; }
+    );
   }
-  function panelFor(group, tab) {
-    var id = tab.getAttribute("aria-controls");
-    return id ? group.querySelector("#" + (window.CSS && CSS.escape ? CSS.escape(id) : id)) : null;
+  // Tabs participating in roving focus: only those inside the same tablist.
+  function listTabsOf(tablist) {
+    return Array.prototype.filter.call(
+      tablist.querySelectorAll("[data-pjx-tab]"),
+      function (t) { return t.closest('[role="tablist"]') === tablist; }
+    );
+  }
+
+  function setActiveState(tab, on) {
+    tab.classList.toggle("pjx-tab--selected", on);
+    if (isListTab(tab)) {
+      tab.setAttribute("aria-selected", on ? "true" : "false");
+      tab.tabIndex = on ? 0 : -1;
+    } else if (on) {
+      tab.setAttribute("aria-current", "true");
+    } else {
+      tab.removeAttribute("aria-current");
+    }
   }
 
   function initGroup(group) {
@@ -32,27 +64,29 @@
     var qi = 0;
     tabs.forEach(function (tab, i) {
       if (!tab.id) tab.id = group.id + "-tab-" + i;
-      var panel = panelFor(group, tab);
+      var panel = controlledPanel(tab);
       if (!panel) panel = queue[qi++] || null;
       if (panel) {
         if (!panel.id) panel.id = group.id + "-panel-" + i;
         tab.setAttribute("aria-controls", panel.id);
         if (!panel.getAttribute("aria-labelledby")) panel.setAttribute("aria-labelledby", tab.id);
       }
+      // Detached triggers can't carry role="tab" (invalid outside a tablist):
+      // downgrade to button semantics; list tabs keep their server-rendered roles.
+      if (!isListTab(tab)) {
+        tab.setAttribute("role", "button");
+        tab.tabIndex = 0;
+        tab.removeAttribute("aria-selected");
+      }
     });
-    var selected = tabs.filter(function (t) { return t.getAttribute("aria-selected") === "true"; })[0] || tabs[0];
+    var selected = tabs.filter(function (t) { return t.classList.contains("pjx-tab--selected"); })[0] || tabs[0];
     if (selected) select(group, selected, { reason: "api", trigger: null }, true);
   }
 
   function select(group, tab, detail, silent) {
-    var panel = panelFor(group, tab);
+    var panel = controlledPanel(tab);
     if (panel && !silent && !fire(panel, "pjx:before-reveal", detail, true)) return false;
-    tabsOf(group).forEach(function (t) {
-      var on = t === tab;
-      t.setAttribute("aria-selected", on ? "true" : "false");
-      t.tabIndex = on ? 0 : -1;
-      t.classList.toggle("pjx-tab--selected", on);
-    });
+    tabsOf(group).forEach(function (t) { setActiveState(t, t === tab); });
     panelsOf(group).forEach(function (p) {
       var on = p === panel;
       p.hidden = !on;
@@ -65,8 +99,8 @@
   function closeTab(group, tab) {
     if (tab.getAttribute("data-pjx-tab-pinned") != null) return;
     if (!fire(group, "pjx:tab:close", { id: tab.id, tab: tab }, true)) return;
-    var tabs = tabsOf(group), idx = tabs.indexOf(tab), panel = panelFor(group, tab);
-    var wasSelected = tab.getAttribute("aria-selected") === "true";
+    var tabs = tabsOf(group), idx = tabs.indexOf(tab), panel = controlledPanel(tab);
+    var wasSelected = tab.classList.contains("pjx-tab--selected");
     var nb = tabs[idx + 1] || tabs[idx - 1] || null;
     var id = tab.id;
     if (panel && panel.parentNode) panel.parentNode.removeChild(panel);
@@ -78,36 +112,41 @@
   document.addEventListener("click", function (e) {
     var closeBtn = e.target.closest("[data-pjx-tab-close]");
     if (closeBtn) {
-      var g = groupOf(closeBtn), t = closeBtn.closest('[role="tab"]');
-      if (g && t) { e.preventDefault(); closeTab(g, t); }
+      var t0 = closeBtn.closest("[data-pjx-tab]"), g0 = t0 && groupOf(t0);
+      if (g0 && t0) { e.preventDefault(); closeTab(g0, t0); }
       return;
     }
-    var tab = e.target.closest('[role="tab"]');
+    var tab = e.target.closest("[data-pjx-tab]");
     if (!tab) return;
     var group = groupOf(tab);
     if (!group) return;
     e.preventDefault();
-    if (tab.getAttribute("aria-selected") !== "true") select(group, tab, { reason: "trigger", trigger: tab });
+    if (!tab.classList.contains("pjx-tab--selected")) select(group, tab, { reason: "trigger", trigger: tab });
   });
 
   document.addEventListener("keydown", function (e) {
-    var tab = e.target.closest && e.target.closest('[role="tab"]');
+    var tab = e.target.closest && e.target.closest("[data-pjx-tab]");
     if (!tab) return;
     var group = groupOf(tab);
     if (!group) return;
-    var tabs = tabsOf(group), idx = tabs.indexOf(tab), next = null;
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      if (!tab.classList.contains("pjx-tab--selected")) select(group, tab, { reason: "trigger", trigger: tab });
+      return;
+    }
+    if (e.key === "Delete" || e.key === "Backspace") {
+      if (tab.classList.contains("pjx-tab--closeable")) { e.preventDefault(); closeTab(group, tab); }
+      return;
+    }
+    // Arrow roving only within a tablist; standalone triggers don't rove.
+    var tablist = tab.closest('[role="tablist"]');
+    if (!tablist) return;
+    var tabs = listTabsOf(tablist), idx = tabs.indexOf(tab), next = null;
     if (e.key === "ArrowRight") next = tabs[(idx + 1) % tabs.length];
     else if (e.key === "ArrowLeft") next = tabs[(idx - 1 + tabs.length) % tabs.length];
     else if (e.key === "Home") next = tabs[0];
     else if (e.key === "End") next = tabs[tabs.length - 1];
-    else if (e.key === "Enter" || e.key === " ") {
-      e.preventDefault();
-      if (tab.getAttribute("aria-selected") !== "true") select(group, tab, { reason: "trigger", trigger: tab });
-      return;
-    } else if (e.key === "Delete" || e.key === "Backspace") {
-      if (tab.classList.contains("pjx-tab--closeable")) { e.preventDefault(); closeTab(group, tab); }
-      return;
-    } else return;
+    else return;
     if (next) { e.preventDefault(); tab.tabIndex = -1; next.tabIndex = 0; next.focus(); }
   });
 

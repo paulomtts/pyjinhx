@@ -29,8 +29,6 @@ from pyjinhx.builtins import (
     PJXModalBody,
     PJXModalHeader,
     PJXNotification,
-    PJXPanel,
-    PJXPanelTrigger,
     PJXPopover,
     PJXPopoverPanel,
     PJXPopoverTrigger,
@@ -199,9 +197,9 @@ class BuiltinsGalleryPage(BaseComponent):
     card: PJXCard
     breadcrumb: PJXBreadcrumb
     tab_group: PJXTabGroup
-    panel_trigger_alpha: PJXPanelTrigger
-    panel_trigger_beta: PJXPanelTrigger
-    panel_host: PJXPanel
+    panel_trigger_alpha: PJXTab
+    panel_trigger_beta: PJXTab
+    panel_host: PJXTabGroup
 
     def render(self) -> Markup:
         return self._render(source=_SHOWCASE_TEMPLATE.strip())
@@ -314,27 +312,29 @@ def _gallery_inner_html() -> str:
                 + str(PJXTabPanel(id="g-tabs-p1", tab="g-tabs-t1", content="<p>Second panel content.</p>").render())
             ),
         ),
-        panel_trigger_alpha=PJXPanelTrigger(
-            id="g-panel-tr-a",
-            panel_id="g-panel",
-            panel="alpha",
-            content='<button type="button" class="demo-btn">Alpha</button>',
+        panel_trigger_alpha=PJXTab(
+            id="g-panel-tr-a", panel="g-panel-panel-alpha", selected=True,
+            content='<span>Alpha</span>',
         ),
-        panel_trigger_beta=PJXPanelTrigger(
-            id="g-panel-tr-b",
-            panel_id="g-panel",
-            panel="beta",
-            content='<button type="button" class="demo-btn">Beta</button>',
+        panel_trigger_beta=PJXTab(
+            id="g-panel-tr-b", panel="g-panel-panel-beta",
+            content='<span>Beta</span>',
         ),
-        panel_host=PJXPanel(
+        panel_host=PJXTabGroup(
             id="g-panel",
-            panels={
-                "alpha": "<p>Panel alpha (default). Beta is hidden but still connected to SSE.</p>",
-                "beta": (
-                    '<div id="g-panel-sse-live" hx-ext="sse" sse-connect="/sse/panel-demo" '
-                    'sse-swap="message" style="font-family:monospace;font-size:1.1rem;">waiting…</div>'
-                ),
-            },
+            content=(
+                str(PJXTabPanel(
+                    id="g-panel-panel-alpha",
+                    content="<p>Panel alpha (default). Beta is hidden but still connected to SSE.</p>",
+                ).render())
+                + str(PJXTabPanel(
+                    id="g-panel-panel-beta",
+                    content=(
+                        '<div id="g-panel-sse-live" hx-ext="sse" sse-connect="/sse/panel-demo" '
+                        'sse-swap="message" style="font-family:monospace;font-size:1.1rem;">waiting…</div>'
+                    ),
+                ).render())
+            ),
         ),
     )
     return gallery_page.render()

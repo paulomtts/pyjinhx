@@ -1,4 +1,6 @@
 """PJXTab / PJXTabList / PJXTabPanel — compound tab parts."""
+import re
+
 import pytest
 
 from pyjinhx import Renderer
@@ -91,3 +93,15 @@ def test_tab_panel_hidden_region():
     assert "data-pjx-region" in html
     assert "hidden" in html
     assert 'aria-labelledby="t1"' in html
+
+
+def test_tab_css_strip_look_is_scoped_to_the_tablist():
+    css = _TAB_CSS["tab"].read_text()
+    # the base .pjx-tab rule must NOT carry the strip underline track...
+    base = re.search(r"^\.pjx-tab \{(.*?)\}", css, re.S | re.M)
+    assert base and "border-bottom" not in base.group(1), "base .pjx-tab must be neutral"
+    # ...the underline lives under the tablist scope only
+    assert ".pjx-tab-group__list .pjx-tab" in css
+    assert ".pjx-tab-group__list .pjx-tab--selected" in css
+    # standalone active styling keys off aria-current (the non-tablist discriminator)
+    assert '.pjx-tab[aria-current="true"]' in css

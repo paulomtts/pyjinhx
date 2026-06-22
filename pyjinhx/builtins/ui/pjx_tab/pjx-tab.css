@@ -10,7 +10,6 @@
   color: var(--pjx-tab-group-tab-fg);
   background: transparent;
   border: none;
-  border-bottom: 2px solid transparent;
   cursor: pointer;
   user-select: none;
   transition:
@@ -26,12 +25,26 @@
 
 .pjx-tab--selected {
   color: var(--pjx-tab-group-tab-active-fg);
-  border-bottom-color: var(--pjx-tab-group-tab-active-border);
 }
 
 .pjx-tab:focus-visible {
   outline: 2px solid var(--pjx-tab-group-tab-active-border);
   outline-offset: -2px;
+}
+
+/* Tab-strip underline applies only inside a tablist. */
+.pjx-tab-group__list .pjx-tab {
+  border-bottom: 2px solid transparent;
+}
+
+.pjx-tab-group__list .pjx-tab--selected {
+  border-bottom-color: var(--pjx-tab-group-tab-active-border);
+}
+
+/* Standalone trigger (panel mode): active = subtle pressed background, no underline. */
+.pjx-tab[aria-current="true"] {
+  background: color-mix(in srgb, var(--surface) 35%, var(--pjx-tab-group-bg));
+  border-radius: var(--radius-sm, 4px);
 }
 
 .pjx-tab__icon {

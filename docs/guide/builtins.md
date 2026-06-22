@@ -94,8 +94,6 @@ from pyjinhx.builtins import (
 | PJXModalFooter | `pjx-modal-footer.css` | — |
 | PJXNotification | `pjx_notification.css` | `pjx_notification.js` |
 | PJXPageLoader | `pjx-page-loader.css` | `pjx-page-loader.js` |
-| PJXPanel | `pjx_panel.css` | `pjx_panel.js` |
-| PJXPanelTrigger | `pjx-panel-trigger.css` | *(pjx_panel.js from PJXPanel)* |
 | PJXPasswordInput | `pjx-password-input.css` | `pjx-password-input.js` |
 | PJXPopover | `pjx_popover.css` | `pjx_popover.js` |
 | PJXPopoverPanel | *(from PJXPopover)* | *(from PJXPopover)* |
@@ -118,11 +116,9 @@ from pyjinhx.builtins import (
 | PJXTooltipTrigger | `pjx-tooltip-trigger.css` | — |
 | PJXTooltipContent | `pjx-tooltip-content.css` | — |
 
-**Children-vs-`content` tag gotcha (children-mapping components):** Several components map children to a single attribute (e.g. PJXNotification `content`, PJXPanelTrigger `content`, PJXTooltip `content`). If you use `Renderer.render()` with PascalCase tags, do **not** supply both child text and the corresponding attribute on the same tag—use body text as the child *or* the attribute, not both.
+**Children-vs-`content` tag gotcha (children-mapping components):** Several components map children to a single attribute (e.g. PJXNotification `content`, PJXTooltip `content`). If you use `Renderer.render()` with PascalCase tags, do **not** supply both child text and the corresponding attribute on the same tag—use body text as the child *or* the attribute, not both.
 
 **Backdrop click (PJXModal and PJXDrawer):** Both render a native `<dialog>`; a document `click` listener treats a click whose target is the `<dialog>` root itself (the backdrop) as a close. Any native `<dialog>` clicked directly is affected—use unique ids and avoid stacking multiple dialogs unless you adjust this.
-
-**`pjx_panel.js` loading:** `pjx_panel.js` is included only when a [`PJXPanel`](#pjxpanel) is rendered on the page. [`PJXPanelTrigger`](#pjxpaneltrigger) does **not** load `pjx_panel.js` by asset name, so render a `PJXPanel` on the same page (or add the script yourself) for triggers to work.
 
 ---
 
@@ -1160,7 +1156,7 @@ HTMX lazy-load wrapper: a single `div` that fetches `url` on a computed trigger 
 | `reveal` | `pjx:reveal from:closest [data-pjx-region] once` |
 | `load` | `load` |
 
-**DOM contract.** Root `.pjx-lazy-panel`; no JS (pure HTMX). `data-pjx-region` on a PJXPanel or PJXPanelTrigger host fires `pjx:reveal`/`pjx:before-reveal` events that `when="reveal"` listens for.
+**DOM contract.** Root `.pjx-lazy-panel`; no JS (pure HTMX). `data-pjx-region` on a `PJXTabPanel` host fires `pjx:reveal`/`pjx:before-reveal` events that `when="reveal"` listens for.
 
 **Classes:** `pjx-lazy-panel` (unstyled hook). No theming tokens.
 
@@ -1544,61 +1540,16 @@ PJXTabGroup(
     <PJXTabPanel id="p0" tab="t0"><p>Panel content.</p></PJXTabPanel>
     ```
 
----
-
-## PJXPanel
-
-Host for **distributed** tab-like switching: all bodies render here; controls are separate [`PJXPanelTrigger`](#pjxpaneltrigger) components. **Unstyled** aside from `hidden` panels. **Assets:** `pjx_panel.css`, `pjx_panel.js`.
-
-| Field | Type | Default | Description |
-| --- | --- | --- | --- |
-| `panels` | `dict[str, str \| BaseComponent]` | `{}` | **Insertion order** sets the initially visible slot (first is shown). Keys must match `[a-zA-Z0-9_-]+`. |
-
-`panels` may be a **JSON object** string from PascalCase tags. Keys are used in HTML `id` attributes and `data-pjx-panel-key`. Slot element ids are `{{ id }}-panel-{{ key }}`. The `id` must match `PJXPanelTrigger.panel_id`.
-
-**DOM contract.** Root `.pjx-panel` with `id`. Panels: `.pjx-panel__panel[data-pjx-panel-key][data-pjx-region]`. Events (bubble from the active panel): `pjx:before-reveal`* (cancelable, `detail = {reason, trigger}`), `pjx:reveal`; `data-pjx-revealed` on the visible panel. `pjx_panel.js` click delegation on `.pjx-panel-trigger`; `pxPanelInit` runs on `DOMContentLoaded`, `htmx:afterSwap`, `htmx:afterSettle`.
-
-**Classes:** `pjx-panel`, `pjx-panel__panel`. No theme tokens; minimal rules for `[hidden]` panels.
-
-<!-- demo: PJXPanel -->
+**Panel mode (standalone triggers).** A `PJXTab` rendered *outside* a `PJXTabList` becomes a free-standing trigger: it gets button semantics and an `aria-current` active state instead of the tab strip, and it can live anywhere on the page. It pairs with its region by `panel=` (→ `aria-controls`); the engine resolves the trigger's group through the panel it controls. This replaces the former `PJXPanel`/`PJXPanelTrigger` pair. The `PJXTab` wrapper itself is the interactive element (`role="button"`, `tabindex="0"`), so its content should be inert — plain text or a `<span>` — exactly like list-mode tabs. The engine also backfills `aria-labelledby` on each panel at init from its controlling trigger, so `tab=` on `PJXTabPanel` is not required in panel mode.
 
 ```html
-<PJXPanel id="demo-panel" panels='{"chat": "<p>Active conversations with your team.</p>", "files": "<p>Uploaded assets and project documents.</p>", "settings": "<p>Notification preferences and integrations.</p>"}' />
-```
+<PJXTab panel="files-panel" selected="true">Files</PJXTab>
+<PJXTab panel="chat-panel">Chat</PJXTab>
 
-```python
-PJXPanel(
-    id="demo-panel",
-    panels={
-        "chat": "<p>Active conversations with your team.</p>",
-        "files": "<p>Uploaded assets and project documents.</p>",
-        "settings": "<p>Notification preferences and integrations.</p>",
-    },
-)
-```
-
----
-
-## PJXPanelTrigger
-
-Invisible wrapper that wires clicks to a [`PJXPanel`](#pjxpanel) slot. **Assets:** `pjx-panel-trigger.css`. See the [`pjx_panel.js` loading note](#built-in-ui-components)—render a `PJXPanel` on the same page so the script is included.
-
-| Field | Type | Default | Description |
-| --- | --- | --- | --- |
-| `panel_id` | `str` | (required) | Must equal the target `PJXPanel.id`. |
-| `panel` | `str` | (required) | Key matching a key in `PJXPanel.panels`; `[a-zA-Z0-9_-]+`. |
-| `content` | `str \| BaseComponent` | `""` | Inner HTML / nested components (your visible control). |
-
-Maps children to `content`; see the [children-vs-`content` note](#built-in-ui-components).
-
-**DOM contract.** Root `.pjx-panel-trigger[data-pjx-panel-id][data-pjx-panel-key]`; no own JS (wired by `pjx_panel.js`). `display: contents` so no layout box. On every panel switch, `pjx_panel.js` syncs `aria-selected` and `tabindex` on every `.pjx-panel-trigger[data-pjx-panel-id]` matching the host PJXPanel.
-
-**Classes:** `pjx-panel-trigger`. No theming tokens.
-
-```html
-<PJXPanelTrigger panel_id="demo-panel" panel="chat">
-  <button>Chat</button>
-</PJXPanelTrigger>
+<PJXTabGroup id="workspace">
+  <PJXTabPanel id="files-panel"><p>Uploaded assets.</p></PJXTabPanel>
+  <PJXTabPanel id="chat-panel"><p>Team conversations.</p></PJXTabPanel>
+</PJXTabGroup>
 ```
 
 ---
@@ -2233,8 +2184,6 @@ from pyjinhx.builtins import (
     PJXModal,
     PJXNotification,
     PJXPageLoader,
-    PJXPanel,
-    PJXPanelTrigger,
     PJXTab,
     PJXTabGroup,
     PJXTabList,
@@ -2276,13 +2225,6 @@ tabs = PJXTabGroup(
         + PJXTabPanel(id="main-p0", tab="main-t0", content="<p>First</p>").render()
         + PJXTabPanel(id="main-p1", tab="main-t1", content="<p>Second</p>").render()
     ),
-)
-main_panel = PJXPanel(
-    id="app-panels",
-    panels={"chat": "<p>Chat UI</p>", "other": "<p>Other</p>"},
-)
-open_chat = PJXPanelTrigger(
-    id="open-chat", panel_id="app-panels", panel="chat", content="Chat"
 )
 confirm = PJXConfirmDialog(id="app-confirm")
 toasts = PJXToastHost(id="app-toasts", position="bottom-right")

@@ -51,8 +51,6 @@ CASES = [
     ("modal_footer", lambda: b.PJXModalFooter(id="g", content="<button>OK</button>")),
     ("notification", lambda: b.PJXNotification(id="g", content="Hi", corner="bottom-right", timeout=0)),
     ("page_loader", lambda: b.PJXPageLoader(id="g")),
-    ("panel", lambda: b.PJXPanel(id="g", panels={"a": "<p>A</p>", "b": "<p>B</p>"})),
-    ("panel_trigger", lambda: b.PJXPanelTrigger(id="g", panel_id="host", panel="a", content="Tab A")),
     ("popover_compound", lambda: b.PJXPopover(id="g", content=(
         str(b.PJXPopoverTrigger(id="g-t", content="Open", role="menu").render())
         + str(b.PJXPopoverPanel(id="g-p", content="Items", role="menu").render())

@@ -20,6 +20,8 @@ def _drag(page, handle_id, dx, dy=0):
 
 
 def test_drag_trades_space_between_neighbors(sink_page):
+    sink_page.locator("#rx-resize-handle").scroll_into_view_if_needed()
+    sink_page.wait_for_timeout(50)
     left0, right0 = _grow(sink_page, "rx-resize-left"), _grow(sink_page, "rx-resize-right")
     _drag(sink_page, "rx-resize-handle", 80)  # box is 400px wide → ~+20%
     left1, right1 = _grow(sink_page, "rx-resize-left"), _grow(sink_page, "rx-resize-right")
@@ -34,6 +36,8 @@ def test_min_clamps_the_drag(sink_page):
 
 
 def test_resize_event_fires_with_sizes(sink_page):
+    sink_page.locator("#rx-resize-handle").scroll_into_view_if_needed()
+    sink_page.wait_for_timeout(50)
     sink_page.evaluate(
         "window.__rs = null;"
         "document.getElementById('rx-resize-group')"

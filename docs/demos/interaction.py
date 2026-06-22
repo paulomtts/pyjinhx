@@ -1,8 +1,6 @@
 from pyjinhx.builtins import (
     PJXDropdown,
     PJXPageLoader,
-    PJXPanel,
-    PJXPanelTrigger,
     PJXRegionLoader,
     PJXTab,
     PJXTabGroup,
@@ -42,36 +40,6 @@ def tab_group():
     return f'<div style="width: 340px; max-width: 100%;">{group}</div>'
 
 
-def panel():
-    return [
-        '<div style="display:flex;gap:0.5rem;margin-bottom:1rem">',
-        PJXPanelTrigger(
-            panel_id="demo-panel",
-            panel="chat",
-            content='<button class="pjx-demo-btn">Chat</button>',
-        ).render(),
-        PJXPanelTrigger(
-            panel_id="demo-panel",
-            panel="files",
-            content='<button class="pjx-demo-btn">Files</button>',
-        ).render(),
-        PJXPanelTrigger(
-            panel_id="demo-panel",
-            panel="settings",
-            content='<button class="pjx-demo-btn">Settings</button>',
-        ).render(),
-        "</div>",
-        PJXPanel(
-            id="demo-panel",
-            panels={
-                "chat": "<p>Active conversations with your team.</p>",
-                "files": "<p>Uploaded assets and project documents.</p>",
-                "settings": "<p>Notification preferences and integrations.</p>",
-            },
-        ).render(),
-    ]
-
-
 def toast_host():
     return [
         '<button class="pjx-demo-btn" onclick="pjx.toast(\'Saved.\')">Show toast</button>',
@@ -103,7 +71,6 @@ def page_loader():
 DEMOS = {
     "PJXDropdown": (dropdown, 200),
     "PJXTabGroup": (tab_group, 320),
-    "PJXPanel": (panel, 300),
     "PJXToastHost": (toast_host, 160),
     "PJXRegionLoader": (region_loader, 220),
     "PJXPageLoader": (page_loader, 160),

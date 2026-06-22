@@ -1,5 +1,31 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+- **Breaking:** removed `PJXPanel`/`PJXPanelTrigger`. The panel pattern is now a
+  `PJXTab` used outside a `PJXTabList` — a standalone trigger (button semantics,
+  `aria-current` active state) that drives a `PJXTabGroup`'s panels from anywhere
+  on the page. One engine now powers both tabs and panels.
+
+  **Migration — before:**
+  ```python
+  PJXPanel(id="workspace", panels={"files": "<p>Uploaded assets.</p>", "chat": "<p>Team conversations.</p>"})
+  PJXPanelTrigger(panel_id="workspace", panel="files", content="Files")
+  PJXPanelTrigger(panel_id="workspace", panel="chat", content="Chat")
+  ```
+  **After:**
+  ```python
+  PJXTab(id="trig-files", panel="workspace-files", selected=True, content="Files")
+  PJXTab(id="trig-chat", panel="workspace-chat", content="Chat")
+
+  PJXTabGroup(id="workspace", content=(
+      PJXTabPanel(id="workspace-files", content="<p>Uploaded assets.</p>").render()
+      + PJXTabPanel(id="workspace-chat", content="<p>Team conversations.</p>").render()
+  ))
+  ```
+  Standalone trigger content must be inert (plain text or `<span>`) — the `PJXTab` wrapper is itself the interactive control.
+
 ## 0.27.1 — tab group width + CSS fixes (2026-06-22)
 
 ### Fixed
