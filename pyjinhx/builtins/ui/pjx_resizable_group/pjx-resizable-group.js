@@ -16,6 +16,28 @@
     var v = parseFloat(el.getAttribute(attr));
     return isNaN(v) ? dflt : v;
   }
+  // A bound counts as a percentage ONLY if it is a bare number; "120px"/"content"
+  // impose no percentage bound (the CSS floor + reconciliation own them).
+  function pctBound(el, attr, dflt) {
+    var raw = el.getAttribute(attr);
+    if (raw == null || !/^[\d.]+$/.test(raw)) return dflt;
+    return parseFloat(raw);
+  }
+  function mainSize(p, horiz) {
+    var r = p.getBoundingClientRect();
+    return horiz ? r.width : r.height;
+  }
+  // Redistribute the dragged pair's grow weights in proportion to their rendered
+  // main-axis sizes, so the JS model matches the CSS-enforced floor exactly.
+  function reconcile(nb, horiz) {
+    var total = grow(nb.prev) + grow(nb.next);
+    var ppx = mainSize(nb.prev, horiz), npx = mainSize(nb.next, horiz);
+    var denom = ppx + npx;
+    if (denom > 0) {
+      nb.prev.style.flexGrow = String(total * ppx / denom);
+      nb.next.style.flexGrow = String(total * npx / denom);
+    }
+  }
   function horizontal(group) { return group.dataset.direction !== "column"; }
   function grow(p) { return parseFloat(p.style.flexGrow) || 0; }
   function sizesOf(group) { return panels(group).map(grow); }
@@ -35,16 +57,17 @@
     return { prev: prev, next: next };
   }
 
-  // Move the boundary so the previous panel becomes `prevTarget` (% of the
-  // pair), clamped by BOTH panels' min/max; write both grows + aria.
-  function apply(handle, nb, prevTarget) {
+  // Move the boundary so the previous panel becomes `prevTarget` (% of the pair),
+  // clamped by the percentage bounds, then reconciled to the CSS-enforced render.
+  function apply(group, handle, nb, prevTarget) {
     var total = grow(nb.prev) + grow(nb.next);
-    var lo = Math.max(num(nb.prev, "data-min", 0), total - num(nb.next, "data-max", 100));
-    var hi = Math.min(num(nb.prev, "data-max", 100), total - num(nb.next, "data-min", 0));
+    var lo = Math.max(pctBound(nb.prev, "data-min", 0), total - pctBound(nb.next, "data-max", 100));
+    var hi = Math.min(pctBound(nb.prev, "data-max", 100), total - pctBound(nb.next, "data-min", 0));
     var prev = Math.min(hi, Math.max(lo, prevTarget));
     nb.prev.style.flexGrow = String(prev);
     nb.next.style.flexGrow = String(total - prev);
-    handle.setAttribute("aria-valuenow", String(Math.round(prev)));
+    reconcile(nb, horizontal(group));
+    handle.setAttribute("aria-valuenow", String(Math.round(grow(nb.prev))));
   }
 
   function initGroup(group) {
@@ -86,6 +109,7 @@
     var group = groupOf(handle), nb = group && neighbors(handle);
     if (!nb) return;
     e.preventDefault();
+    reconcile(nb, horizontal(group));
     active = {
       group: group, handle: handle, nb: nb,
       startPos: axisPos(group, e), startPrev: grow(nb.prev), px: groupPx(group) || 1,
@@ -96,7 +120,7 @@
     if (!active) return;
     e.preventDefault();
     var deltaPct = (axisPos(active.group, e) - active.startPos) / active.px * 100;
-    apply(active.handle, active.nb, active.startPrev + deltaPct);
+    apply(active.group, active.handle, active.nb, active.startPrev + deltaPct);
   }
   function end() {
     if (!active) return;
@@ -118,6 +142,7 @@
     if (!handle) return;
     var group = groupOf(handle), nb = group && neighbors(handle);
     if (!nb) return;
+    reconcile(nb, horizontal(group));
     var h = horizontal(group), cur = grow(nb.prev), total = cur + grow(nb.next), target = null;
     if ((h && e.key === "ArrowLeft") || (!h && e.key === "ArrowUp")) target = cur - STEP;
     else if ((h && e.key === "ArrowRight") || (!h && e.key === "ArrowDown")) target = cur + STEP;
@@ -125,7 +150,7 @@
     else if (e.key === "End") target = total;
     if (target === null) return;
     e.preventDefault();
-    apply(handle, nb, target);
+    apply(group, handle, nb, target);
     emit(group);
   });
 

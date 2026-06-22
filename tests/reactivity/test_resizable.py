@@ -49,3 +49,32 @@ def test_keyboard_resizes(sink_page):
     sink_page.focus("#rx-resize-handle")
     sink_page.keyboard.press("ArrowRight")
     assert _grow(sink_page, "rx-resize-left") > left0
+
+
+def _h(page, el_id):
+    return page.eval_on_selector(f"#{el_id}", "el => el.getBoundingClientRect().height")
+
+
+def test_content_floor_keeps_strip_visible_on_drag(sink_page):
+    # drag the handle all the way down; the bottom panel must not shrink below its 36px strip
+    box = sink_page.locator("#rx-floor-handle").bounding_box()
+    cx, cy = box["x"] + box["width"] / 2, box["y"] + box["height"] / 2
+    sink_page.mouse.move(cx, cy)
+    sink_page.mouse.down()
+    sink_page.mouse.move(cx, cy + 400, steps=6)  # drag far down
+    sink_page.mouse.up()
+    assert _h(sink_page, "rx-floor-bottom") >= 35   # floored at the ~36px strip
+    assert _h(sink_page, "rx-floor-strip") >= 35    # strip fully visible
+
+
+def test_content_floor_survives_shorter_viewport(sink_page):
+    # shrink the box well below where a percentage min would keep the strip; strip stays visible
+    sink_page.eval_on_selector("#rx-floor-box", "el => { el.style.height = '90px'; }")
+    sink_page.wait_for_timeout(50)
+    assert _h(sink_page, "rx-floor-strip") >= 35
+
+
+def test_percentage_min_still_clamps(sink_page):
+    # the original row group (rx-resize-left has min=20) still clamps at 20%
+    _drag(sink_page, "rx-resize-handle", -400)
+    assert _grow(sink_page, "rx-resize-left") >= 19.5
