@@ -26,9 +26,14 @@
     group.dataset.pjxTabsInit = "1";
     if (!group.id) group.id = "pjx-tabs-" + (++uid);
     var tabs = tabsOf(group), panels = panelsOf(group);
+    var explicit = {};
+    tabs.forEach(function (t) { var c = t.getAttribute("aria-controls"); if (c) explicit[c] = true; });
+    var queue = panels.filter(function (p) { return !(p.id && explicit[p.id]); });
+    var qi = 0;
     tabs.forEach(function (tab, i) {
       if (!tab.id) tab.id = group.id + "-tab-" + i;
-      var panel = panelFor(group, tab) || panels[i] || null;
+      var panel = panelFor(group, tab);
+      if (!panel) panel = queue[qi++] || null;
       if (panel) {
         if (!panel.id) panel.id = group.id + "-panel-" + i;
         tab.setAttribute("aria-controls", panel.id);

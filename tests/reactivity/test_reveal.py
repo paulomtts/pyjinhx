@@ -41,13 +41,13 @@ def test_lazy_panel_loads_on_first_reveal(sink_page):
 
 
 def test_tab_group_switch_reveals_panel(sink_page):
-    second_tab = sink_page.locator("#rx-tabs-tab-1")
-    second_panel = sink_page.locator("#rx-tabs-panel-1")
+    second_tab = sink_page.locator("#rx-tab-two")
+    second_panel = sink_page.locator("#rx-tabp-two")
     expect(second_panel).to_be_hidden()
 
     second_tab.click()
     expect(second_panel).to_be_visible()
     expect(second_panel).to_have_attribute("data-pjx-revealed", "")
     expect(second_tab).to_have_attribute("aria-selected", "true")
-    expect(sink_page.locator("#rx-tabs-tab-0")).to_have_attribute("aria-selected", "false")
-    expect(sink_page.locator("#rx-tabs-panel-0")).to_be_hidden()
+    expect(sink_page.locator("#rx-tab-one")).to_have_attribute("aria-selected", "false")
+    expect(sink_page.locator("#rx-tabp-one")).to_be_hidden()

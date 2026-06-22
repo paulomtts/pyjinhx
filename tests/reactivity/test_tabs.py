@@ -42,3 +42,25 @@ def test_close_can_be_vetoed(sink_page):
     )
     sink_page.click("#rx-tab-two [data-pjx-tab-close]")
     expect(sink_page.locator("#rx-tab-two")).to_have_count(1)  # survived the veto
+
+
+def test_closing_selected_tab_activates_and_focuses_neighbor(sink_page):
+    sink_page.click("#rx-tab-two")  # select the closeable tab
+    expect(sink_page.locator("#rx-tab-two")).to_have_attribute("aria-selected", "true")
+    sink_page.click("#rx-tab-two [data-pjx-tab-close]")  # close the SELECTED tab
+    expect(sink_page.locator("#rx-tab-two")).to_have_count(0)
+    expect(sink_page.locator("#rx-tab-one")).to_have_attribute("aria-selected", "true")
+    expect(sink_page.locator("#rx-tabp-one")).to_be_visible()
+    assert sink_page.evaluate("document.activeElement && document.activeElement.id") == "rx-tab-one"
+
+
+def test_delete_key_closes_closeable_tab(sink_page):
+    sink_page.focus("#rx-tab-two")
+    sink_page.keyboard.press("Delete")
+    expect(sink_page.locator("#rx-tab-two")).to_have_count(0)
+
+
+def test_delete_on_non_closeable_tab_is_noop(sink_page):
+    sink_page.focus("#rx-tab-one")
+    sink_page.keyboard.press("Delete")
+    expect(sink_page.locator("#rx-tab-one")).to_have_count(1)  # not closeable → survives
