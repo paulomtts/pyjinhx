@@ -21,6 +21,12 @@ from pyjinhx.builtins import (
     PJXResizablePanel,
     PJXSkeleton,
     PJXSpinner,
+    PJXTable,
+    PJXTableBody,
+    PJXTableCell,
+    PJXTableHead,
+    PJXTableHeaderCell,
+    PJXTableRow,
 )
 
 
@@ -156,6 +162,28 @@ def resizable_group():
     ).render()
 
 
+def table():
+    return PJXTable(
+        caption="Team members",
+        striped=True,
+        bordered="horizontal",
+        content=(
+            PJXTableHead(content=PJXTableRow(content=(
+                PJXTableHeaderCell(sortable=True, sort="asc", content="Name").render()
+                + PJXTableHeaderCell(content="Role").render()
+            )).render()).render()
+            + PJXTableBody(content=(
+                PJXTableRow(selectable=True, value="1", content=(
+                    PJXTableCell(content="Ada Lovelace").render() + PJXTableCell(content="Engineer").render()
+                )).render()
+                + PJXTableRow(selectable=True, value="2", content=(
+                    PJXTableCell(content="Alan Turing").render() + PJXTableCell(content="Researcher").render()
+                )).render()
+            )).render()
+        ),
+    ).render()
+
+
 DEMOS = {
     "PJXAccordion": (accordion, 160),
     "PJXAccordionGroup": (accordion_group, 260),
@@ -172,4 +200,5 @@ DEMOS = {
     "PJXIcon": (icon, 140),
     "PJXButton": (button, 140),
     "PJXResizableGroup": (resizable_group, 160),
+    "PJXTable": (table, 260),
 }

@@ -73,8 +73,6 @@ def test_registry_covers_all_builtins():
         "PJXTab",
         "PJXTabList",
         "PJXTabPanel",
-        # PJXTable un-folded in Build 2 docs task once it has a gallery demo
-        "PJXTable",
         "PJXTableHead",
         "PJXTableBody",
         "PJXTableRow",

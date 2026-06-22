@@ -125,6 +125,24 @@ The builtins, rendered by pyjinhx at docs build time (PJXLazyPanel needs a backe
 </PJXAccordionGroup>
 ```
 
+### [PJXTable](guide/builtins.md#pjxtable)
+<!-- demo: PJXTable -->
+
+```html
+<PJXTable caption="Team members" striped="true" bordered="horizontal">
+  <PJXTableHead>
+    <PJXTableRow>
+      <PJXTableHeaderCell sortable="true" sort="asc">Name</PJXTableHeaderCell>
+      <PJXTableHeaderCell>Role</PJXTableHeaderCell>
+    </PJXTableRow>
+  </PJXTableHead>
+  <PJXTableBody>
+    <PJXTableRow selectable="true" value="1"><PJXTableCell>Ada Lovelace</PJXTableCell><PJXTableCell>Engineer</PJXTableCell></PJXTableRow>
+    <PJXTableRow selectable="true" value="2"><PJXTableCell>Alan Turing</PJXTableCell><PJXTableCell>Researcher</PJXTableCell></PJXTableRow>
+  </PJXTableBody>
+</PJXTable>
+```
+
 ## Overlays & dialogs
 
 ### [PJXModal](guide/builtins.md#pjxmodal)
