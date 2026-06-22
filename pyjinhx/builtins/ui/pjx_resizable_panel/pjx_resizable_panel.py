@@ -1,3 +1,4 @@
+import math
 import re
 
 from pydantic import ValidationInfo, computed_field, field_validator
@@ -6,18 +7,17 @@ from pyjinhx import BaseComponent
 from pyjinhx.base import AttrValue
 
 _PX = re.compile(r"^\d+(\.\d+)?px$")
+_NUM = re.compile(r"\d+(\.\d+)?")
 
 
 def _is_pct(v: object) -> bool:
     if isinstance(v, bool):
         return False
     if isinstance(v, (int, float)):
-        return True
-    try:
-        float(v)  # type: ignore[arg-type]
-        return True
-    except (TypeError, ValueError):
-        return False
+        return math.isfinite(v) and v >= 0 and _NUM.fullmatch(str(v)) is not None
+    if isinstance(v, str):
+        return _NUM.fullmatch(v) is not None
+    return False
 
 
 def _floor_css(v: object) -> str | None:

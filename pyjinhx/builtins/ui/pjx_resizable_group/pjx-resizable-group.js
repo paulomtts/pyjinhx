@@ -84,10 +84,10 @@
       group.querySelectorAll(":scope > [data-pjx-resizable-handle]"),
       function (h) {
         h.setAttribute("aria-orientation", horizontal(group) ? "vertical" : "horizontal");
-        var hp = h.previousElementSibling;
-        while (hp && !isPanel(hp)) hp = hp.previousElementSibling;
-        if (isPanel(hp)) {
-          h.setAttribute("aria-valuenow", String(Math.round(grow(hp))));
+        var nb = neighbors(h);
+        if (nb) {
+          reconcile(nb, horizontal(group));
+          h.setAttribute("aria-valuenow", String(Math.round(grow(nb.prev))));
         }
       }
     );

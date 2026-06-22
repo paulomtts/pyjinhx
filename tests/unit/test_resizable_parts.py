@@ -79,3 +79,15 @@ def test_panel_rejects_content_max():
 def test_panel_rejects_bad_unit():
     with pytest.raises(ValueError):
         PJXResizablePanel(id="p", min="120em")
+
+
+def test_panel_rejects_negative_and_nonfinite_and_scientific():
+    import math as _m
+    for bad in (-5, -5.0, _m.inf, float("nan"), "1e3", "1.5e20"):
+        with pytest.raises(ValueError):
+            PJXResizablePanel(id="p", min=bad)
+
+
+def test_panel_accepts_plain_numbers_and_numeric_strings():
+    assert 'data-min="25' in str(PJXResizablePanel(id="p", min=25).render())
+    assert 'data-min="25.5' in str(PJXResizablePanel(id="p", min=25.5).render())
