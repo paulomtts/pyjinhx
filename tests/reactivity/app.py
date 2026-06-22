@@ -227,13 +227,11 @@ def render_page() -> str:
                 + str(PJXResizablePanel(id="rx-resize-right", size=50, content="<div>right</div>").render())
             ),
         ),
-        floor_box=Markup(
-            str(PJXResizableGroup(id="rx-floor-group", direction="column", content=(
-                str(PJXResizablePanel(id="rx-floor-top", size=60, content="<div>top</div>").render())
-                + str(PJXResizableHandle(id="rx-floor-handle").render())
-                + str(PJXResizablePanel(id="rx-floor-bottom", size=40, min="content", content='<div id="rx-floor-strip" style="height:36px;flex-shrink:0">strip</div><div>body</div>').render())
-            )).render())
-        ),
+        floor_box=str(PJXResizableGroup(id="rx-floor-group", direction="column", content=(
+            str(PJXResizablePanel(id="rx-floor-top", size=60, content="<div>top</div>").render())
+            + str(PJXResizableHandle(id="rx-floor-handle").render())
+            + str(PJXResizablePanel(id="rx-floor-bottom", size=40, min="content", content='<div id="rx-floor-strip" style="height:36px;flex-shrink:0">strip</div><div>body</div>').render())
+        )).render()),
     )
     return f"""<!DOCTYPE html>
 <html lang="en">

@@ -78,3 +78,28 @@ def test_percentage_min_still_clamps(sink_page):
     # the original row group (rx-resize-left has min=20) still clamps at 20%
     _drag(sink_page, "rx-resize-handle", -400)
     assert _grow(sink_page, "rx-resize-left") >= 19.5
+
+
+def test_content_floor_no_dead_zone_on_reversal(sink_page):
+    # Scroll the floor handle into view so clientY coordinates are within the viewport
+    sink_page.locator("#rx-floor-handle").scroll_into_view_if_needed()
+    sink_page.wait_for_timeout(50)
+    # drag handle far DOWN to pin rx-floor-bottom at its content floor (~36px strip)
+    b = sink_page.locator("#rx-floor-handle").bounding_box()
+    cx, cy = b["x"] + b["width"] / 2, b["y"] + b["height"] / 2
+    sink_page.mouse.move(cx, cy)
+    sink_page.mouse.down()
+    sink_page.mouse.move(cx, cy + 400, steps=6)
+    sink_page.mouse.up()
+    floored = _h(sink_page, "rx-floor-bottom")
+    # grab the handle at its new (lower) position and drag a TINY amount UP
+    # without reconciliation the JS model still thinks the floor-bottom has a large
+    # grow value so a small upward drag does nothing — the panel stays pinned
+    b2 = sink_page.locator("#rx-floor-handle").bounding_box()
+    cx2, cy2 = b2["x"] + b2["width"] / 2, b2["y"] + b2["height"] / 2
+    sink_page.mouse.move(cx2, cy2)
+    sink_page.mouse.down()
+    sink_page.mouse.move(cx2, cy2 - 15, steps=2)
+    sink_page.mouse.up()
+    # without JS reconciliation there is a dead-zone and the panel does not grow
+    assert _h(sink_page, "rx-floor-bottom") > floored + 5
