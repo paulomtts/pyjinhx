@@ -37,4 +37,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  /* A button is small: the veil masks the label; shrink the spinner so it fits
+     inside the button instead of overflowing it. */
+  --pjx-region-loader-spinner-size: 1.1em;
+  --pjx-region-loader-spinner-width: 2px;
 }
