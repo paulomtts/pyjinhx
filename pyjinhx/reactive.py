@@ -22,7 +22,6 @@ from pyjinhx.renderer import Renderer
 from pyjinhx.utils import (
     css_attribute_selector_attr_value,
     pascal_case_to_kebab_case,
-    stamp_root_attributes,
 )
 
 from .assets import render_missing_assets_oob
@@ -475,7 +474,15 @@ def oob_swaps(
             continue
         # Pass shared_session so assets are collected (is_root=False → no inline
         # injection into the fragment HTML, but collect_component_asset still runs).
-        html = str(instance._render(_renderer=renderer, _session=shared_session))
+        # hx-swap-oob is folded into the same root-tag splice as data-pjx-* via
+        # _extra_root_attrs, so the root tag is located exactly once.
+        html = str(
+            instance._render(
+                _renderer=renderer,
+                _session=shared_session,
+                _extra_root_attrs={"hx-swap-oob": _oob_swap_selector(component_id)},
+            )
+        )
         candidates.append(
             _Candidate(
                 id=component_id,
@@ -496,11 +503,7 @@ def oob_swaps(
                 f'<div hx-swap-oob="{_oob_delete_selector(candidate.id)}"></div>'
             )
         else:
-            fragments.append(
-                stamp_root_attributes(
-                    candidate.html, {"hx-swap-oob": _oob_swap_selector(candidate.id)}
-                )
-            )
+            fragments.append(candidate.html)
 
     loaded = LoadedAssets.parse(ClientBackend.current())
     head = render_missing_assets_oob(shared_session, loaded)

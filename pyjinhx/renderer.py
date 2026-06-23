@@ -308,6 +308,7 @@ class Renderer:
         *,
         emit_assets: bool = True,
         client: object | None = None,
+        extra_root_attrs: dict[str, str] | None = None,
     ) -> Markup:
         template = load_template_for_component(
             self, component, template_source=template_source, template_path=template_path
@@ -327,7 +328,11 @@ class Renderer:
         from .base import collect_extra_attrs
         from .root_attrs import apply_root_attrs
 
-        attrs = {**collect_extra_attrs(component), **reactive_root_attrs(component)}
+        attrs = {
+            **collect_extra_attrs(component),
+            **reactive_root_attrs(component),
+            **(extra_root_attrs or {}),
+        }
         rendered_markup = Markup(
             apply_root_attrs(
                 str(rendered_markup),

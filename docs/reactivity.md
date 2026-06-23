@@ -546,9 +546,48 @@ a swap, not its cause).
 
 A mutation route returns `Cls.render()`. That invalidates the `load()` cache for the
 dirtied keys, renders the primary as the main response, then runs the `oob_swaps` walk
-(with `exclude_ids = {primary.id}`) over the mounted manifest. Every region runs this
-gauntlet — and ordering matters: **hash-gate before nesting-dedup**, so an unchanged
-parent never suppresses a changed child.
+(with `exclude_ids = {primary.id}`) over the mounted manifest — sending the primary plus
+every dependent swap back in one response:
+
+```mermaid
+sequenceDiagram
+    participant B as Browser (htmx)
+    participant S as Server
+    participant C as load cache
+
+    B->>S: Mutation request + X-PJX-Mounted (regions in the DOM)
+    Note over S: open request scope; @mutates recorded the dirtied keys
+    S->>C: invalidate dirtied keys
+
+    Note over S: render the primary (Cls.render)
+    S->>C: load() primary
+    C-->>S: state (a cache miss hits the DB, then caches)
+    S->>S: render primary HTML
+
+    Note over S: fan out OOB swaps over the mounted manifest
+    loop each mounted region whose react keys match a dirtied key (primary excluded)
+        S->>C: load() region
+        alt region no longer exists
+            Note over S: emit a delete swap
+        else loaded
+            C-->>S: state
+            S->>S: render fragment, compute fresh hash
+            alt fresh hash == reported hash
+                Note over S: skip, value unchanged (hash-gated)
+            else changed
+                Note over S: keep it, stamped with hx-swap-oob
+            end
+        end
+    end
+    Note over S: drop regions nested in another survivor; collect missing assets
+
+    S-->>B: primary HTML + OOB fragments + any missing CSS/JS
+    Note over B: htmx applies each fragment out-of-band
+```
+
+Every region in that fan-out runs the same gauntlet — and ordering matters:
+**hash-gate before nesting-dedup**, so an unchanged parent never suppresses a changed
+child:
 
 ```mermaid
 flowchart TD
