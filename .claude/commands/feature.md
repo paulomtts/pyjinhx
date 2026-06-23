@@ -37,10 +37,11 @@ This is the critical gate. Do NOT declare the feature done until it PASSES or HA
 
 ### 6a. Compute the baseline diff
 - `BASE=$(git merge-base HEAD master)`
-- A "test file" matches `tests/**`, `test_*.py`, or `*_test.py`.
-- `git diff --name-status "$BASE" -- 'tests/**' 'test_*.py' '*_test.py'`
-- Classify by status: **M → modified**, **D → deleted**, **A → new**.
-- For each file capture its diff: `git diff "$BASE" -- <path>` (deleted → the removed content; new → the full added content).
+- List every changed file. Pass `--no-renames` so a renamed test decomposes into a delete + an add and BOTH halves are judged (otherwise an `R` status would slip the gate):
+  `git diff --no-renames --name-status "$BASE"`
+- A "test file" is a changed `.py` file whose BASENAME matches pytest discovery — `test_*.py` or `*_test.py` (these typically live under `tests/`). EXCLUDE non-test files even under `tests/`: fixtures and assets (`.html`, `.css`, `.js`, data files), `__init__.py`, `conftest.py`, and helper/app modules with no test functions. If unsure whether a changed file is a real test, open it and check for test functions before including it.
+- Keep only the test files and classify by status: **M → modified**, **D → deleted**, **A → new** (with `--no-renames`, only these three occur).
+- For each kept file capture its diff: `git diff "$BASE" -- <path>` (deleted → the removal hunk; modified/new → the change hunk with its `+`/`-` lines).
 
 ### 6b. Run the judge
 - Build `items = [{ id, category, path, diff }, ...]` and dispatch:
