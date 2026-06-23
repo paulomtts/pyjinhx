@@ -100,3 +100,62 @@ def test_enabled_control_has_href_to_target_page():
 def test_url_without_placeholder_raises():
     with pytest.raises(ValueError):
         PJXPaginator(url="/users", page=1, total_pages=3)
+
+
+from pyjinhx.builtins import PJXPaginator as RegisteredPaginator  # noqa: E402
+
+
+def _render(**kw):
+    base = dict(url=URL, page=3, total_pages=10)
+    base.update(kw)
+    return str(PJXPaginator(**base).render())
+
+
+def test_renders_nav_with_aria_label_and_list():
+    html = _render()
+    assert 'aria-label="Pagination"' in html and "pjx-paginator__list" in html
+    assert "<nav" in html and "<ul" in html
+
+
+def test_current_page_is_span_with_aria_current_not_link():
+    html = _render(page=3, total_pages=10)
+    assert 'aria-current="page"' in html
+    assert '<span class="pjx-paginator__link pjx-paginator__link--current" aria-current="page">3</span>' in html
+
+
+def test_other_pages_are_links_with_resolved_href():
+    html = _render(page=3, total_pages=10)
+    assert 'href="/u?page=4"' in html
+
+
+def test_no_hx_attrs_without_target():
+    assert "hx-get" not in _render(target="")
+
+
+def test_hx_attrs_present_with_target():
+    html = _render(target="#tbl", swap="outerHTML")
+    assert 'hx-get="/u?page=4"' in html
+    assert 'hx-target="#tbl"' in html
+    assert 'hx-swap="outerHTML"' in html
+    assert "hx-push-url" not in html  # off by default
+
+
+def test_push_url_adds_hx_push_url_when_target_set():
+    assert 'hx-push-url="true"' in _render(target="#tbl", push_url=True)
+
+
+def test_ellipsis_is_aria_hidden_span():
+    html = _render(page=5, total_pages=20)
+    assert '<span class="pjx-paginator__ellipsis" aria-hidden="true">' in html
+
+
+def test_disabled_control_is_span_aria_disabled_no_href():
+    html = _render(page=1, total_pages=10)  # prev disabled
+    assert 'pjx-paginator__control--prev pjx-paginator__control--disabled' in html
+    assert 'aria-disabled="true"' in html
+
+
+def test_registered_in_public_api():
+    import pyjinhx.builtins as b
+    assert "PJXPaginator" in b.__all__
+    assert RegisteredPaginator is PJXPaginator

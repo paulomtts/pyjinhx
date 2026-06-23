@@ -15,6 +15,7 @@ from pyjinhx.builtins import (
     PJXDivider,
     PJXEmptyState,
     PJXIcon,
+    PJXPaginator,
     PJXProgress,
     PJXResizableGroup,
     PJXResizableHandle,
@@ -162,6 +163,10 @@ def resizable_group():
     ).render()
 
 
+def paginator():
+    return PJXPaginator(page=4, total_pages=12, url="/items?page={page}").render()
+
+
 def table():
     return PJXTable(
         caption="Team members",
@@ -201,4 +206,5 @@ DEMOS = {
     "PJXButton": (button, 140),
     "PJXResizableGroup": (resizable_group, 160),
     "PJXTable": (table, 260),
+    "PJXPaginator": (paginator, 130),
 }
