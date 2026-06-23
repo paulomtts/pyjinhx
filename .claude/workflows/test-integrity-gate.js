@@ -7,14 +7,16 @@ export const meta = {
   ],
 }
 
-if (args && args.selfTest) {
+const ARGS = typeof args === 'string' ? JSON.parse(args || '{}') : (args || {})
+
+if (ARGS.selfTest) {
   log('test-integrity-gate: self-test OK')
   return { ok: true, name: 'test-integrity-gate' }
 }
 
-const SPEC = args && args.specPath
-const PLAN = args && args.planPath
-const ITEMS = (args && args.items) || []
+const SPEC = ARGS.specPath
+const PLAN = ARGS.planPath
+const ITEMS = ARGS.items || []
 if (!SPEC) throw new Error('test-integrity-gate: args.specPath is required')
 if (!ITEMS.length) {
   log('test-integrity-gate: no flagged test items — PASS')

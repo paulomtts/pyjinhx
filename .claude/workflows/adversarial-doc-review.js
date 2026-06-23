@@ -9,14 +9,16 @@ export const meta = {
   ],
 }
 
-if (args && args.selfTest) {
+const ARGS = typeof args === 'string' ? JSON.parse(args || '{}') : (args || {})
+
+if (ARGS.selfTest) {
   log('adversarial-doc-review: self-test OK')
   return { ok: true, name: 'adversarial-doc-review' }
 }
 
-const KIND = (args && args.kind) || 'spec'
-const DOC = args && args.docPath
-const SPEC = (args && args.specPath) || DOC
+const KIND = ARGS.kind || 'spec'
+const DOC = ARGS.docPath
+const SPEC = ARGS.specPath || DOC
 if (!DOC) throw new Error('adversarial-doc-review: args.docPath is required')
 
 const DIMENSIONS = {
