@@ -71,3 +71,14 @@ def test_nested_child_is_deduplicated():
     assert "outerHTML:[data-pjx-id='panel']" in out
     assert "outerHTML:[data-pjx-id='counter']" not in out
     assert "3 left" in out
+
+
+def test_swap_oob_attr_is_single_pass_on_root_tag():
+    # hx-swap-oob is folded into the same root-tag splice as data-pjx-id, so it
+    # appears exactly once and lives in the fragment's root opening tag.
+    store.state["remaining"] = 1
+    out = str(oob_swaps({"todos"}, [_counter_entry()]))
+    assert out.count("hx-swap-oob=\"outerHTML:[data-pjx-id='counter']\"") == 1
+    first_tag = out[: out.index(">") + 1]
+    assert 'data-pjx-id="counter"' in first_tag
+    assert "hx-swap-oob=" in first_tag

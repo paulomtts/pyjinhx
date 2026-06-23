@@ -390,6 +390,7 @@ class BaseComponent(BaseModel):
         _template_path: str | None = None,
         emit_assets: bool = True,
         client: object | None = None,
+        _extra_root_attrs: dict[str, str] | None = None,
     ) -> Markup:
         renderer = _renderer or Renderer.get_default_renderer()
 
@@ -427,6 +428,7 @@ class BaseComponent(BaseModel):
                 collect_component_js=source is None,
                 emit_assets=emit_assets,
                 client=resolved_client,
+                extra_root_attrs=_extra_root_attrs,
             )
         finally:
             session.rendering.discard(_guard_key)
