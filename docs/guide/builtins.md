@@ -2362,6 +2362,61 @@ A `<td>` for use inside `PJXTableRow` in the body section. **Assets:** none (sty
 
 ---
 
+## PJXPaginator
+
+Accessible page-navigation bar. **Assets:** `pjx-paginator.css` only.
+
+Pairs naturally with [`PJXTable`](#pjxtable): point `target` at the table body or its wrapper and return the re-paged fragment from your view to update both the rows and the paginator in one swap.
+
+| Field | Type | Default | Description |
+| --- | --- | --- | --- |
+| `page` | `int` | *(required)* | Current page number (clamped to `[1, total_pages]` internally). |
+| `total_pages` | `int` | *(required)* | Total number of pages (must be ≥ 1). |
+| `url` | `str` | *(required)* | URL template; **must contain `{page}`** (e.g. `/items?page={page}`). |
+| `target` | `str` | `""` | CSS selector for the htmx swap target. When set, every link gets `hx-get`/`hx-target`/`hx-swap` (and `hx-push-url` when `push_url=True`); when empty, links render as plain `<a href>`. |
+| `swap` | `str` | `"innerHTML"` | htmx `hx-swap` strategy; only used when `target` is set. |
+| `push_url` | `bool` | `False` | When `True` and `target` is set, adds `hx-push-url="true"` to each link. |
+| `siblings` | `int` | `1` | Pages shown on each side of the current page (≥ 0). |
+| `boundaries` | `int` | `1` | Pages shown at each end of the range (≥ 0). |
+| `prev_next` | `bool` | `True` | Render Prev / Next controls. |
+| `first_last` | `bool` | `False` | Render First / Last controls. |
+| `prev_label` | `str` | `"Prev"` | Label for the Prev control. |
+| `next_label` | `str` | `"Next"` | Label for the Next control. |
+| `first_label` | `str` | `"First"` | Label for the First control. |
+| `last_label` | `str` | `"Last"` | Label for the Last control. |
+| `aria_label` | `str` | `"Pagination"` | `aria-label` on the root `<nav>`. |
+| `class_name` | `AttrValue` | `""` | Extra CSS class(es) on the root element. |
+
+**DOM contract.** Root `<nav class="pjx-paginator" aria-label="...">` containing `<ul class="pjx-paginator__list">` → `<li class="pjx-paginator__item">` per entry. The current page renders as `<span class="pjx-paginator__link pjx-paginator__link--current" aria-current="page">`. Ellipsis gaps render as `<span class="pjx-paginator__ellipsis" aria-hidden="true">`. Disabled controls (Prev on page 1, Next on the last page, etc.) render as `<span class="pjx-paginator__control pjx-paginator__control--{variant} pjx-paginator__control--disabled" aria-disabled="true">`. Each active page link and enabled control renders as `<a href="...">` when `target` is empty, or as `<a hx-get="..." hx-target="..." hx-swap="...">` when `target` is set. No JS.
+
+**Classes:** `pjx-paginator`, `pjx-paginator__list`, `pjx-paginator__item`, `pjx-paginator__link`, `pjx-paginator__link--current`, `pjx-paginator__ellipsis`, `pjx-paginator__control`, `pjx-paginator__control--first`, `pjx-paginator__control--prev`, `pjx-paginator__control--next`, `pjx-paginator__control--last`, `pjx-paginator__control--disabled`.
+
+**Style tokens.**
+
+| Token | Default |
+| --- | --- |
+| `--pjx-paginator-gap` | `0.25rem` |
+| `--pjx-paginator-link-fg` | `var(--text)` |
+| `--pjx-paginator-link-bg` | `transparent` |
+| `--pjx-paginator-link-hover-bg` | `var(--surface-alt)` |
+| `--pjx-paginator-current-fg` | `var(--brand)` |
+| `--pjx-paginator-current-bg` | `var(--brand-subtle)` |
+| `--pjx-paginator-border` | `var(--border)` |
+| `--pjx-paginator-radius` | `var(--radius-sm)` |
+| `--pjx-paginator-disabled-opacity` | `0.4` |
+
+<!-- demo: PJXPaginator -->
+
+```html
+<PJXPaginator page="4" total_pages="12" url="/items?page={page}" target="#list"/>
+```
+
+```python
+PJXPaginator(page=4, total_pages=12, url="/items?page={page}", target="#list")
+```
+
+---
+
 ## Example
 
 ```python
