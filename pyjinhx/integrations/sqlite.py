@@ -26,8 +26,6 @@ from pyjinhx.cache import InvalidationBackend
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_CHANNEL = "pyjinhx:invalidate"
-
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS pjx_invalidation (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -57,7 +55,7 @@ class SqliteInvalidationBackend(InvalidationBackend):
         self,
         db_path: str,
         *,
-        channel: str = DEFAULT_CHANNEL,
+        channel: str = InvalidationBackend.DEFAULT_CHANNEL,
         poll_interval: float = 0.5,
         retention: float = 5.0,
     ) -> None:
@@ -162,15 +160,8 @@ class SqliteInvalidationBackend(InvalidationBackend):
                         cursor = row_id
                         if self._handler is None:
                             continue
-                        try:
-                            parsed = json.loads(keys_json)
-                        except json.JSONDecodeError:
-                            logger.warning(
-                                "Ignoring invalid invalidation payload: %r", keys_json
-                            )
-                            continue
-                        if not isinstance(parsed, list):
-                            continue
-                        self._handler(frozenset(str(key) for key in parsed))
+                        keys = self._decode_keys(keys_json)
+                        if keys is not None:
+                            self._handler(keys)
                 except Exception:
                     logger.exception("Error in SQLite invalidation poll loop")

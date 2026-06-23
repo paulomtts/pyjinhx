@@ -17,7 +17,6 @@ from pyjinhx.cache import InvalidationBackend
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_CHANNEL = "pyjinhx:invalidate"
 MEMORY_REDIS_URL = "memory://"
 
 
@@ -53,7 +52,7 @@ class RedisInvalidationBackend(InvalidationBackend):
         self,
         redis_url: str,
         *,
-        channel: str = DEFAULT_CHANNEL,
+        channel: str = InvalidationBackend.DEFAULT_CHANNEL,
     ) -> None:
         self._redis_url = redis_url
         self._channel = channel
@@ -115,14 +114,9 @@ class RedisInvalidationBackend(InvalidationBackend):
                 data = message.get("data")
                 if not data or self._handler is None:
                     continue
-                try:
-                    parsed = json.loads(data)
-                except json.JSONDecodeError:
-                    logger.warning("Ignoring invalid invalidation payload: %r", data)
-                    continue
-                if not isinstance(parsed, list):
-                    continue
-                self._handler(frozenset(str(key) for key in parsed))
+                keys = self._decode_keys(data)
+                if keys is not None:
+                    self._handler(keys)
         finally:
             try:
                 pubsub.unsubscribe(self._channel)

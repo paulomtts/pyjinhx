@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import logging
 import threading
 from abc import ABC, abstractmethod
@@ -243,6 +244,8 @@ class LoadCache:
 class InvalidationBackend(ABC):
     """Base class for cross-process load-cache invalidation fan-out."""
 
+    DEFAULT_CHANNEL: ClassVar[str] = "pyjinhx:invalidate"
+
     @abstractmethod
     def publish(self, keys: frozenset[str]) -> None: ...
 
@@ -251,6 +254,22 @@ class InvalidationBackend(ABC):
 
     @abstractmethod
     def stop(self) -> None: ...
+
+    def _decode_keys(self, raw: str) -> frozenset[str] | None:
+        """Parse a published payload into invalidation keys, or None if malformed.
+
+        Shared by every backend's listen/poll loop: a JSON array of keys becomes
+        a ``frozenset[str]``; malformed JSON is logged and dropped; a non-list
+        payload is silently ignored.
+        """
+        try:
+            parsed = json.loads(raw)
+        except json.JSONDecodeError:
+            logger.warning("Ignoring invalid invalidation payload: %r", raw)
+            return None
+        if not isinstance(parsed, list):
+            return None
+        return frozenset(str(key) for key in parsed)
 
 
 class InvalidationHub:
