@@ -13,6 +13,8 @@ html = renderer.render('<UserCard name="Ada"/>')
 
 You can also use PascalCase tags **inside component templates** to compose components declaratively.
 
+> A PascalCase tag resolves only after its component class has been registered (importing the class registers it). For per-request isolation in a web app, see [Component Registry](registry.md) (Advanced).
+
 !!! warning "Recognized tag names are strict PascalCase"
     A tag is treated as a component only if its name matches `^[A-Z](?:[a-z]+(?:[A-Z][a-z]+)*)?$` — a capital letter followed by alternating lowercase/Capitalized words. This **rejects acronyms and trailing digits**: `UI`, `APIKey`, `HTMLBlock`, `Button2`, and `H2` are NOT recognized and pass through as raw HTML. Name components like `Api`, `ApiKey`, or `HtmlBlock` instead.
 
