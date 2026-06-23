@@ -551,35 +551,35 @@ every dependent swap back in one response:
 
 ```mermaid
 sequenceDiagram
-    participant B as Browser (htmx)
+    participant B as Browser
     participant S as Server
-    participant C as load cache
+    participant C as Load cache
 
-    B->>S: Mutation request + X-PJX-Mounted (regions in the DOM)
-    Note over S: open request scope; @mutates recorded the dirtied keys
+    B->>S: htmx mutation request + X-PJX-Mounted header
+    Note over S: open request scope, @mutates recorded the dirtied keys
     S->>C: invalidate dirtied keys
 
-    Note over S: render the primary (Cls.render)
-    S->>C: load() primary
-    C-->>S: state (a cache miss hits the DB, then caches)
+    Note over S: render the primary via Cls.render
+    S->>C: load primary
+    C-->>S: state, a cache miss hits the DB then caches
     S->>S: render primary HTML
 
     Note over S: fan out OOB swaps over the mounted manifest
-    loop each mounted region whose react keys match a dirtied key (primary excluded)
-        S->>C: load() region
+    loop each other mounted region whose react keys match a dirtied key
+        S->>C: load region
         alt region no longer exists
             Note over S: emit a delete swap
         else loaded
             C-->>S: state
             S->>S: render fragment, compute fresh hash
-            alt fresh hash == reported hash
-                Note over S: skip, value unchanged (hash-gated)
+            alt fresh hash matches the reported hash
+                Note over S: skip, value unchanged, hash-gated
             else changed
                 Note over S: keep it, stamped with hx-swap-oob
             end
         end
     end
-    Note over S: drop regions nested in another survivor; collect missing assets
+    Note over S: drop regions nested in another survivor, collect missing assets
 
     S-->>B: primary HTML + OOB fragments + any missing CSS/JS
     Note over B: htmx applies each fragment out-of-band
