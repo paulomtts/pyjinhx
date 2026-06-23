@@ -1,8 +1,9 @@
 """Structural guards for the component-centric docs layout.
 
-Every demo'd component's guide section must carry an HTML tag example and a
-Python constructor example; every gallery entry must carry an HTML example; and
-the old per-component theming appendix must be gone (tokens live in-section).
+Every demo'd component's section on ``components.md`` must carry an HTML tag
+example and a Python constructor example; every component section must carry an
+HTML example; and the old per-component theming appendix must be gone (tokens
+live in-section, inside the per-component accordions).
 """
 import re
 import sys
@@ -13,13 +14,19 @@ sys.path.insert(0, str(DOCS))
 from demos import DEMOS  # noqa: E402
 
 
-def _h2_sections(text):
-    parts = re.split(r"^## (PJX\w+)\s*$", text, flags=re.M)
-    return {parts[i]: parts[i + 1] for i in range(1, len(parts), 2)}
+def _component_sections(text):
+    """``### PJXName`` body up to the next ``##``/``###`` heading."""
+    parts = re.split(r"^### (PJX\w+)\s*$", text, flags=re.M)
+    sections = {}
+    for i in range(1, len(parts), 2):
+        body = parts[i + 1]
+        # stop the body at the next group (``## ``) heading if one slipped in
+        sections[parts[i]] = re.split(r"^## ", body, flags=re.M)[0]
+    return sections
 
 
-def test_guide_sections_have_html_and_python():
-    sections = _h2_sections((DOCS / "guide" / "builtins.md").read_text(encoding="utf-8"))
+def test_component_sections_have_html_and_python():
+    sections = _component_sections((DOCS / "components.md").read_text(encoding="utf-8"))
     missing = []
     for name in DEMOS:
         sec = sections.get(name, "")
@@ -31,13 +38,17 @@ def test_guide_sections_have_html_and_python():
 
 
 def test_theming_appendix_removed():
-    text = (DOCS / "guide" / "builtins.md").read_text(encoding="utf-8")
+    text = (DOCS / "components.md").read_text(encoding="utf-8")
     assert "## Theming tokens" not in text
     assert "tokens](#" not in text  # no "see [PJXFoo tokens](#...)" cross-refs remain
 
 
-def test_gallery_entries_have_html():
-    text = (DOCS / "gallery.md").read_text(encoding="utf-8")
-    entries = re.split(r"^### \[", text, flags=re.M)
-    missing = [e.split("]")[0] for e in entries[1:] if "```html" not in e]
-    assert not missing, f"gallery entries missing an HTML block: {missing}"
+def test_component_entries_have_html():
+    text = (DOCS / "components.md").read_text(encoding="utf-8")
+    entries = re.split(r"^### (PJX\w+)\s*$", text, flags=re.M)
+    missing = [
+        entries[i]
+        for i in range(1, len(entries), 2)
+        if "```html" not in re.split(r"^## ", entries[i + 1], flags=re.M)[0]
+    ]
+    assert not missing, f"component entries missing an HTML block: {missing}"

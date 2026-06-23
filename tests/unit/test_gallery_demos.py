@@ -14,19 +14,19 @@ import hooks  # noqa: E402
 
 
 class FakeFile:
-    src_path = "guide/builtins.md"
+    src_path = "components.md"
 
 
 class FakePage:
     file = FakeFile()
-    url = "guide/builtins/"
+    url = "components/"
 
 
 def test_marker_becomes_iframe():
     out = hooks.on_page_markdown(
         "intro\n\n<!-- demo: PJXBadge -->\n\nafter", page=FakePage(), config={}, files=None
     )
-    assert '<iframe src="../../demos/pjx-badge.html"' in out
+    assert '<iframe src="../demos/pjx-badge.html"' in out
     assert "```python" not in out  # the marker no longer emits a code block
 
 
@@ -83,21 +83,19 @@ def test_registry_covers_all_builtins():
 
 
 def test_gallery_page_features_every_demo():
-    """docs/gallery.md must feature every builtin that has a demo (DEMOS key).
+    """components.md must feature every builtin that has a demo (DEMOS key).
 
-    The gallery page is hand-curated (one section + `<!-- demo: Name -->` per
-    builtin), so a new builtin's demo can render in the guide yet be missing from
-    the gallery — exactly what happened with PJXResizableGroup. This guards it.
+    The page is hand-curated (one `## Name` section + `<!-- demo: Name -->` per
+    builtin), so a new builtin's demo could be missing from it. This guards it.
     """
     import re
 
-    gallery = (DOCS / "gallery.md").read_text(encoding="utf-8")
-    featured = set(re.findall(r"<!--\s*demo:\s*([A-Za-z]+)\s*-->", gallery))
+    page = (DOCS / "components.md").read_text(encoding="utf-8")
+    featured = set(re.findall(r"<!--\s*demo:\s*([A-Za-z]+)\s*-->", page))
     missing = sorted(set(DEMOS) - featured)
     assert not missing, (
-        "docs/gallery.md is missing a section for these demo'd builtins — add a "
-        "`### [Name](guide/builtins.md#name)` + `<!-- demo: Name -->` for each: "
-        f"{missing}"
+        "docs/components.md is missing a `<!-- demo: Name -->` for these demo'd "
+        f"builtins: {missing}"
     )
 
 

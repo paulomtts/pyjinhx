@@ -70,11 +70,11 @@ markdown_extensions:
 
 nav:
   - Home: index.md
-  - Gallery: gallery.md
   - Getting Started:
       - Installation: getting-started/installation.md
       - Quick Start: getting-started/quickstart.md
       - Build an App: getting-started/build-an-app.md
+  - Components: components.md
   - Migration guide: migration.md
   - Guide:
       - Usage tiers: guide/usage-tiers.md
@@ -83,7 +83,6 @@ nav:
       - PascalCase Tags: guide/tags.md
       - Nesting: guide/nesting.md
       - Asset Collection: guide/assets.md
-      - Built-in UI components: guide/builtins.md
       - Builtin conventions: guide/builtin-conventions.md
       - Loading states: guide/loading.md
       - Configuration: guide/configuration.md
