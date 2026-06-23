@@ -576,7 +576,7 @@ from pyjinhx.builtins import PJXAlert, PJXCard, PJXModal
 ```
 
 ???+ question "Why builtins?"
-    Optional ready-made components (PJXAlert, PJXCard, PJXModal, PJXPanel, …) with co-located CSS/JS. Use when you want a consistent kit without building every primitive. Your app components follow the same `BaseComponent` rules.
+    Optional ready-made components (PJXAlert, PJXCard, PJXModal, PJXTable, …) with co-located CSS/JS. Use when you want a consistent kit without building every primitive. Your app components follow the same `BaseComponent` rules.
 
     See: [Built-in UI components](../guide/builtins.md).
 

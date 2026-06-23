@@ -1,6 +1,6 @@
 # Built-in UI components
 
-Optional package **`pyjinhx.builtins`** registers forty [`BaseComponent`](../api/base-component.md) subclasses. Import:
+Optional package **`pyjinhx.builtins`** registers a family of [`BaseComponent`](../api/base-component.md) subclasses (the authoritative list is `pyjinhx.builtins.__all__`). A representative import:
 
 ```python
 from pyjinhx.builtins import (
@@ -26,6 +26,7 @@ from pyjinhx.builtins import (
     PJXModal,
     PJXNotification,
     PJXPageLoader,
+    PJXPaginator,
     PJXPasswordInput,
     PJXPopover,
     PJXPopoverPanel,
@@ -39,6 +40,12 @@ from pyjinhx.builtins import (
     PJXTabGroup,
     PJXTabList,
     PJXTabPanel,
+    PJXTable,
+    PJXTableHead,
+    PJXTableBody,
+    PJXTableRow,
+    PJXTableHeaderCell,
+    PJXTableCell,
     PJXToastHost,
     PJXToggleSwitch,
     PJXTooltip,
@@ -47,7 +54,7 @@ from pyjinhx.builtins import (
 )
 ```
 
-`__all__` matches that set of forty-two names.
+The full registered set is `pyjinhx.builtins.__all__` (the import above is a representative selection, omitting some compound parts).
 
 **Conventions:** Markup classes use the **`pjx-`** prefix; overrides use **`--pjx-`** custom properties. Builtin CSS also references **theme variables** (`--surface`, `--border`, `--text`, `--radius-md`, `--shadow-md`, `--transition`, `--brand`, …)—define those in your global CSS or map them to your design system. See [builtin-conventions.md](./builtin-conventions.md) for the full per-component contract (auto-id, `class_name`, `extra_attrs`, `js`/`css`, headless IIFE JS under `window.pjx`, cancelable `pjx:*:before-*` events).
 
@@ -92,6 +99,7 @@ from pyjinhx.builtins import (
 | PJXModalFooter | `pjx-modal-footer.css` | — |
 | PJXNotification | `pjx_notification.css` | `pjx_notification.js` |
 | PJXPageLoader | `pjx-page-loader.css` | `pjx-page-loader.js` |
+| PJXPaginator | `pjx-paginator.css` | — |
 | PJXPasswordInput | `pjx-password-input.css` | `pjx-password-input.js` |
 | PJXPopover | `pjx_popover.css` | `pjx_popover.js` |
 | PJXPopoverPanel | *(from PJXPopover)* | *(from PJXPopover)* |
@@ -108,6 +116,12 @@ from pyjinhx.builtins import (
 | PJXTabGroup | `pjx-tab-group.css` | `pjx-tab-group.js` |
 | PJXTabList | `pjx-tab-list.css` | — |
 | PJXTabPanel | `pjx-tab-panel.css` | — |
+| PJXTable | `pjx-table.css` | — |
+| PJXTableHead | *(from PJXTable)* | — |
+| PJXTableBody | *(from PJXTable)* | — |
+| PJXTableRow | *(from PJXTable)* | — |
+| PJXTableHeaderCell | *(from PJXTable)* | — |
+| PJXTableCell | *(from PJXTable)* | — |
 | PJXToastHost | `pjx-toast-host.css` | `pjx-toast-host.js` |
 | PJXToggleSwitch | `pjx-toggle-switch.css` | — |
 | PJXTooltip | `pjx-tooltip.css` | `pjx-tooltip.js` (IIFE, no API) |
@@ -849,6 +863,11 @@ Trigger id is `{{ id }}-trigger`, menu is `{{ id }}-menu`.
 | `--pjx-dropdown-menu-min-w` | `10rem` |
 | `--pjx-dropdown-menu-max-h` | `min(70dvh, 24rem)` |
 | `--pjx-dropdown-z` | `350` |
+| `--pjx-dropdown-trigger-bg` | `var(--surface-alt)` |
+| `--pjx-dropdown-trigger-border` | `var(--border)` |
+| `--pjx-dropdown-trigger-radius` | `var(--radius-md)` |
+| `--pjx-dropdown-trigger-padding` | `0.5rem 0.85rem` |
+| `--pjx-dropdown-trigger-bg-hover` | `color-mix(in srgb, var(--text) 6%, var(--surface-alt))` |
 
 <!-- demo: PJXDropdown -->
 

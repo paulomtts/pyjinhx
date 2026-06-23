@@ -523,7 +523,7 @@ To keep migration cheap, these 0.4.x idioms are untouched:
 - The `_update_context_(self, context, field_name, field_value, *, renderer, session)`
   context-injection hook and `RenderSession`.
 - `Registry.request_scope()` for per-request component isolation.
-- `pyjinhx.builtins` components — though as of 0.12 they carry a `PJX` prefix (`PJXCard`, `PJXTooltip`, `PJXPanel`, …).
+- `pyjinhx.builtins` components — though as of 0.12 they carry a `PJX` prefix (`PJXCard`, `PJXTooltip`, `PJXTable`, …).
 - Child components as rendered strings, `id`-based addressing, and manual `hx-swap-oob`
   strings — still valid if you are not ready to adopt `ReactiveComponent` for a given region.
 

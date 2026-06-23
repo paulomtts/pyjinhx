@@ -43,8 +43,8 @@ Interactive builtins fire a two-tier event vocabulary on their root element (all
   `detail = {reason, trigger}` with `reason ∈ {"escape","backdrop","api","trigger"}`.
 - `pjx:<component>:<verb>` — fired after the DOM change. Not cancelable.
 
-Shared vocabulary: `pjx:before-reveal` / `pjx:reveal` fire on any `[data-pjx-region]` (PJXPanel panels,
-PJXTabGroup bodies) when it is shown — `PJXLazyLoad(when="reveal")` builds on it; `pjx:toast` is the
+Shared vocabulary: `pjx:before-reveal` / `pjx:reveal` fire on any `[data-pjx-region]`
+(PJXTabPanel bodies) when it is shown — `PJXLazyLoad(when="reveal")` builds on it; `pjx:toast` is the
 input event PJXToastHost listens for (htmx fires it from `HX-Trigger` response headers).
 
 ```js
