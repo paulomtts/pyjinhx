@@ -109,11 +109,18 @@ def breadcrumb():
 
 
 def skeleton():
-    return [
-        PJXSkeleton(variant="text", lines=3).render(),
-        PJXSkeleton(variant="circle").render(),
-        PJXSkeleton(variant="rect").render(),
-    ]
+    # A horizontal "avatar + lines" loading row — compact, fits a short box.
+    # Build via f-string over str()-wrapped renders: concatenating a plain str
+    # with a Markup via `+` would trigger Markup.__radd__ and escape the str.
+    circle = str(PJXSkeleton(variant="circle").render())
+    lines = str(PJXSkeleton(variant="text", lines=2).render())
+    # The circle's own .pjx-skeleton is width:100%, so cap it in a fixed box;
+    # the lines take the remaining space.
+    return (
+        '<div style="display:flex;align-items:center;gap:0.85rem;width:280px;max-width:100%">'
+        f'<div style="width:2.5rem;flex:none">{circle}</div>'
+        f'<div style="flex:1;min-width:0">{lines}</div></div>'
+    )
 
 
 def progress():
@@ -174,7 +181,10 @@ def table():
         bordered="horizontal",
         content=(
             PJXTableHead(content=PJXTableRow(content=(
-                PJXTableHeaderCell(sortable=True, sort="asc", content="Name").render()
+                # Leading header cell aligns the column with the body rows'
+                # auto-prepended selection checkbox (see the select-all rule).
+                PJXTableHeaderCell(content="").render()
+                + PJXTableHeaderCell(sortable=True, sort="asc", content="Name").render()
                 + PJXTableHeaderCell(content="Role").render()
             )).render()).render()
             + PJXTableBody(content=(
@@ -199,9 +209,9 @@ DEMOS = {
     "PJXAvatar": (avatar, 140),
     "PJXAvatarStack": (avatar_stack, 120),
     "PJXBreadcrumb": (breadcrumb, 120),
-    "PJXSkeleton": (skeleton, 220),
+    "PJXSkeleton": (skeleton, 150),
     "PJXProgress": (progress, 170),
-    "PJXEmptyState": (empty_state, 260),
+    "PJXEmptyState": (empty_state, 340),
     "PJXIcon": (icon, 140),
     "PJXButton": (button, 140),
     "PJXResizableGroup": (resizable_group, 160),

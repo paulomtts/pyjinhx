@@ -18,7 +18,20 @@
 }
 
 .pjx-dropdown__trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: var(--pjx-dropdown-trigger-padding, 0.5rem 0.85rem);
+  font: inherit;
+  color: var(--text);
+  background: var(--pjx-dropdown-trigger-bg, var(--surface-alt));
+  border: 1px solid var(--pjx-dropdown-trigger-border, var(--border));
+  border-radius: var(--pjx-dropdown-trigger-radius, var(--radius-md));
   cursor: pointer;
+}
+
+.pjx-dropdown__trigger:hover {
+  background: var(--pjx-dropdown-trigger-bg-hover, color-mix(in srgb, var(--text) 6%, var(--surface-alt)));
 }
 
 .pjx-dropdown__menu {

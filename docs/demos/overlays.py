@@ -125,11 +125,11 @@ def popover():
 
 DEMOS = {
     "PJXModal": (modal, 520),
-    "PJXDrawer": (drawer, 360),
+    "PJXDrawer": (drawer, 420),
     "PJXConfirmDialog": (confirm_dialog, 360),
     "PJXPromptDialog": (prompt_dialog, 360),
     "PJXNotification": (notification, 140),
     "PJXAlert": (alert, 280),
     "PJXTooltip": (tooltip, 160),
-    "PJXPopover": (popover, 200),
+    "PJXPopover": (popover, 320),
 }

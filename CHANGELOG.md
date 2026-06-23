@@ -40,6 +40,15 @@
   (+`hx-push-url`) only when a `target` is set, so it degrades to plain navigation. Ships no JS.
   Pairs with `PJXTable`.
 
+### Fixed
+- **`PJXButton` loading state:** the embedded region loader no longer renders an oversized
+  spinner that overflows the button — the spinner is now sized to the button (the veil still
+  masks the label).
+- **`PJXDropdown` trigger:** the trigger button is now themed (surface/border, like the menu)
+  instead of rendering as an unstyled browser button.
+- **`PJXDrawer`:** the open dialog now clips its sliding box (`overflow: hidden`), so the page
+  no longer shows a transient horizontal scrollbar during the open/close animation.
+
 ## 0.27.1 — tab group width + CSS fixes (2026-06-22)
 
 ### Fixed

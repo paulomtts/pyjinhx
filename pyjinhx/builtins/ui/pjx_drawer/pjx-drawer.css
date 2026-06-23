@@ -30,6 +30,9 @@
   max-height: 100dvh;
   background: transparent;
   z-index: var(--pjx-drawer-z);
+  /* Clip the box while it slides in from off-screen so the page never gets a
+     transient scrollbar during the open/close animation. */
+  overflow: hidden;
   animation: pjx-drawer-root-in 200ms ease forwards;
 }
 

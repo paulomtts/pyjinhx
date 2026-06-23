@@ -35,9 +35,23 @@ def tab_group():
             + PJXTabPanel(id="tg-p2", tab="tg-t2", content="<p>Repository configuration.</p>").render()
         ),
     ).render()
+    # A PJXTab used OUTSIDE a PJXTabList becomes a standalone "panel mode"
+    # trigger: it drives the group's panels from anywhere (resolved via the
+    # panel its `panel=` points at). Wrap inert content — the PJXTab is itself
+    # the control.
+    standalone = PJXTab(
+        panel="tg-p2", content='<span class="pjx-demo-btn">Jump to Settings &darr;</span>'
+    ).render()
     # The group fills its container (width:100%); the centering demo page would
     # otherwise shrink-wrap it, so give it a definite width to render against.
-    return f'<div style="width: 340px; max-width: 100%;">{group}</div>'
+    return (
+        '<div style="width: 340px; max-width: 100%;">'
+        f"{group}"
+        '<p style="margin:0.75rem 0 0.35rem;font-size:0.8rem;opacity:0.7">'
+        "Standalone trigger (outside the tab list):</p>"
+        f"{standalone}"
+        "</div>"
+    )
 
 
 def toast_host():
@@ -69,8 +83,8 @@ def page_loader():
 
 
 DEMOS = {
-    "PJXDropdown": (dropdown, 200),
-    "PJXTabGroup": (tab_group, 320),
+    "PJXDropdown": (dropdown, 320),
+    "PJXTabGroup": (tab_group, 440),
     "PJXToastHost": (toast_host, 160),
     "PJXRegionLoader": (region_loader, 220),
     "PJXPageLoader": (page_loader, 160),
