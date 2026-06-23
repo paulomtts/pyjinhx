@@ -105,6 +105,9 @@ CASES = [
     ("table_header_cell_sortable", lambda: b.PJXTableHeaderCell(id="g", sortable=True, sort="asc", content="Name")),
     ("table_cell", lambda: b.PJXTableCell(id="g", content="x")),
     ("table_row_selectable", lambda: b.PJXTableRow(id="g", selectable=True, value="42", content=str(b.PJXTableCell(id="g-c", content="Ada").render()))),
+    ("paginator_windowed_htmx", lambda: b.PJXPaginator(id="g", page=5, total_pages=20, url="/items?page={page}", target="#list", first_last=True)),
+    ("paginator_all_pages", lambda: b.PJXPaginator(id="g", page=2, total_pages=5, url="/items?page={page}")),
+    ("paginator_single_page", lambda: b.PJXPaginator(id="g", page=1, total_pages=1, url="/items?page={page}")),
 ]
 
 

@@ -1,4 +1,5 @@
 from pyjinhx.builtins.ui.pjx_accordion import PJXAccordion
+from pyjinhx.builtins.ui.pjx_paginator import PJXPaginator
 from pyjinhx.builtins.ui.pjx_accordion_group import PJXAccordionGroup
 from pyjinhx.builtins.ui.pjx_accordion_content import PJXAccordionContent
 from pyjinhx.builtins.ui.pjx_accordion_trigger import PJXAccordionTrigger
@@ -118,4 +119,5 @@ __all__ = [
     "PJXTooltip",
     "PJXTooltipContent",
     "PJXTooltipTrigger",
+    "PJXPaginator",
 ]

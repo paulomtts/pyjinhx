@@ -318,3 +318,10 @@ The builtins, rendered by pyjinhx at docs build time (PJXLazyPanel needs a backe
 ```html
 <PJXPasswordInput name="password" placeholder="Enter your password" autocomplete="current-password" required="true"/>
 ```
+
+### [PJXPaginator](guide/builtins.md#pjxpaginator)
+<!-- demo: PJXPaginator -->
+
+```html
+<PJXPaginator page="4" total_pages="12" url="/items?page={page}"/>
+```

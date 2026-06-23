@@ -59,6 +59,7 @@ from .ui import (
     PJXTooltip,
     PJXTooltipContent,
     PJXTooltipTrigger,
+    PJXPaginator,
 )
 
 __all__ = [
@@ -122,4 +123,5 @@ __all__ = [
     "PJXTooltip",
     "PJXTooltipContent",
     "PJXTooltipTrigger",
+    "PJXPaginator",
 ]

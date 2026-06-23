@@ -34,6 +34,11 @@
   `hx-get`), and selectable rows (leading checkbox cell for plain-form submission).
   htmx-aware by passthrough; ships no client JS. New "pure passthrough" wiring guide
   in the htmx integration docs.
+- **`PJXPaginator`:** a generated, htmx-aware pagination control — windowed page
+  links (`first/prev · 1 … 4 5 6 … 20 · next/last`) driven by `page`/`total_pages`/`url`
+  (a `{page}` template). Each link is a real `<a href>` and gains `hx-get`/`hx-target`/`hx-swap`
+  (+`hx-push-url`) only when a `target` is set, so it degrades to plain navigation. Ships no JS.
+  Pairs with `PJXTable`.
 
 ## 0.27.1 — tab group width + CSS fixes (2026-06-22)
 
