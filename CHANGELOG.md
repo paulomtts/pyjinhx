@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.28.1 — Engine dedup & internals cleanup (2026-06-23)
+
+### Changed
+- Internal refactor removing three confirmed code duplications in the core engine
+  (no behavior change):
+  - A single root-tag attribute splice now handles both `data-pjx-*` and the
+    OOB `hx-swap-oob` stamp — the duplicate `utils.stamp_root_attributes`
+    (and its helpers) was removed, leaving `root_attrs.apply_root_attrs` as the
+    sole splicer.
+  - The redis and sqlite invalidation backends now share a `_decode_keys`
+    payload parser and a `DEFAULT_CHANNEL` constant on `InvalidationBackend`.
+  - The redundant render-cycle guard in `BaseComponent._wrap_component_value`
+    was removed; `_render`'s own guard already covers every nested render.
+- The invalidation channel constant is now `InvalidationBackend.DEFAULT_CHANNEL`
+  (the module-level `pyjinhx.integrations.redis`/`sqlite` `DEFAULT_CHANNEL`
+  constants were removed).
+
+### Docs
+- Added a mermaid sequence diagram of the reactive request → primary + OOB-swap
+  round-trip to the Reactivity guide.
+
 ## 0.28.0 — HTMX data & navigation builtins (2026-06-23)
 
 ### Changed
