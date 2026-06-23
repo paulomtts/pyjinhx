@@ -227,7 +227,7 @@ _BUILTIN_TAG_NAMES = frozenset(
         "PJXEmptyState",
         "PJXFormField",
         "PJXIcon",
-        "PJXLazyPanel",
+        "PJXLazyLoad",
         "PJXModal",
         "PJXModalBody",
         "PJXModalFooter",

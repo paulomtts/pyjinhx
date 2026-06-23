@@ -24,7 +24,7 @@ from pyjinhx.builtins.ui.pjx_drawer_header import PJXDrawerHeader
 from pyjinhx.builtins.ui.pjx_empty_state import PJXEmptyState
 from pyjinhx.builtins.ui.pjx_form_field import PJXFormField
 from pyjinhx.builtins.ui.pjx_icon import PJXIcon
-from pyjinhx.builtins.ui.pjx_lazy_panel import PJXLazyPanel
+from pyjinhx.builtins.ui.pjx_lazy_load import PJXLazyLoad
 from pyjinhx.builtins.ui.pjx_region_loader import PJXRegionLoader
 from pyjinhx.builtins.ui.pjx_segmented_control import PJXSegmentedControl
 from pyjinhx.builtins.ui.pjx_modal import PJXModal
@@ -84,7 +84,7 @@ __all__ = [
     "PJXEmptyState",
     "PJXFormField",
     "PJXIcon",
-    "PJXLazyPanel",
+    "PJXLazyLoad",
     "PJXModal",
     "PJXModalBody",
     "PJXModalFooter",

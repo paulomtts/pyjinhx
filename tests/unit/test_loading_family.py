@@ -1,23 +1,23 @@
-from pyjinhx.builtins import PJXLazyPanel, PJXRegionLoader, PJXSpinner
+from pyjinhx.builtins import PJXLazyLoad, PJXRegionLoader, PJXSpinner
 
 
-def test_lazy_panel_when_viewport_default():
-    html = str(PJXLazyPanel(id="lp", url="/x").render())
+def test_lazy_load_when_viewport_default():
+    html = str(PJXLazyLoad(id="lp", url="/x").render())
     assert 'hx-trigger="revealed"' in html
 
 
-def test_lazy_panel_when_reveal():
-    html = str(PJXLazyPanel(id="lp", url="/x", when="reveal").render())
+def test_lazy_load_when_reveal():
+    html = str(PJXLazyLoad(id="lp", url="/x", when="reveal").render())
     assert 'hx-trigger="pjx:reveal from:closest [data-pjx-region] once"' in html
 
 
-def test_lazy_panel_when_load():
-    html = str(PJXLazyPanel(id="lp", url="/x", when="load").render())
+def test_lazy_load_when_load():
+    html = str(PJXLazyLoad(id="lp", url="/x", when="load").render())
     assert 'hx-trigger="load"' in html
 
 
-def test_lazy_panel_raw_trigger_wins():
-    html = str(PJXLazyPanel(id="lp", url="/x", when="reveal", trigger="click once").render())
+def test_lazy_load_raw_trigger_wins():
+    html = str(PJXLazyLoad(id="lp", url="/x", when="reveal", trigger="click once").render())
     assert 'hx-trigger="click once"' in html
 
 
