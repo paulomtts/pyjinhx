@@ -258,16 +258,6 @@ class BaseComponent(BaseModel):
         session: RenderSession,
     ) -> Any:
         if isinstance(field_value, BaseComponent):
-            _guard_key = (type(field_value).__name__, field_value.id)
-            if _guard_key in session.rendering:
-                # Already on the render stack: rendering it here would recurse
-                # forever, so the cyclic reference renders empty instead.
-                logger.warning(
-                    "render cycle suppressed: <%s id=%s> is already being rendered",
-                    type(field_value).__name__,
-                    field_value.id,
-                )
-                return NestedComponentWrapper(html="", props=field_value)
             return NestedComponentWrapper(
                 html=field_value._render(
                     base_context=context,
