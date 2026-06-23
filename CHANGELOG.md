@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.28.0 — HTMX data & navigation builtins (2026-06-23)
 
 ### Changed
 - **Breaking:** removed `PJXPanel`/`PJXPanelTrigger`. The panel pattern is now a
