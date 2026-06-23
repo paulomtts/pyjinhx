@@ -75,7 +75,6 @@ nav:
       - Quick Start: getting-started/quickstart.md
       - Build an App: getting-started/build-an-app.md
   - Components: components.md
-  - Migration guide: migration.md
   - Guide:
       - Overview: guide/usage-tiers.md
       - Basic:
@@ -111,6 +110,7 @@ nav:
           - Cache & Invalidation: api/cache-invalidation.md
           - Redis integration: api/integrations-redis.md
           - SQLite integration: api/integrations-sqlite.md
+  - Migration guide: migration.md
 
 extra_css:
   - stylesheets/toc-collapse.css
