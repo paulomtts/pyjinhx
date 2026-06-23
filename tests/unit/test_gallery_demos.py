@@ -73,6 +73,11 @@ def test_registry_covers_all_builtins():
         "PJXTab",
         "PJXTabList",
         "PJXTabPanel",
+        "PJXTableHead",
+        "PJXTableBody",
+        "PJXTableRow",
+        "PJXTableHeaderCell",
+        "PJXTableCell",
     }
     assert set(DEMOS) == set(pyjinhx.builtins.__all__) - folded
 

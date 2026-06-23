@@ -2168,6 +2168,200 @@ PJXPasswordInput(
 
 ---
 
+## PJXTable
+
+Accessible data table shell. Compose with `PJXTableHead`, `PJXTableBody`, `PJXTableRow`, `PJXTableHeaderCell`, and `PJXTableCell` parts. **Assets:** `pjx-table.css`.
+
+| Field | Type | Default | Description |
+| --- | --- | --- | --- |
+| `caption` | `str` | `""` | `<caption>` text; suppressed when empty. |
+| `striped` | `bool` | `False` | Alternating row shading via `pjx-table--striped`. |
+| `sticky_header` | `bool` | `False` | Keeps the `<thead>` visible on scroll via `pjx-table--sticky`. |
+| `density` | `"comfortable" \| "compact"` | `"comfortable"` | Cell padding scale → `pjx-table--density-compact` when `"compact"`; no class for `"comfortable"` or `"none"`. |
+| `bordered` | `"none" \| "horizontal" \| "all"` | `"none"` | Border style → `pjx-table--bordered-{bordered}` (omitted when `"none"`). |
+| `class_name` | `AttrValue` | `""` | Extra CSS class(es) on the root element. |
+| `content` | `str \| BaseComponent` | `""` | Pre-rendered children (`PJXTableHead` + `PJXTableBody`). |
+
+**DOM contract.** Root `<table class="pjx-table">` with an optional `<caption class="pjx-table__caption">` as its first child. No JS public API — sort state is reflected via `aria-sort` on `<th>` cells and driven by your own htmx/Alpine handlers on `PJXTableHeaderCell`.
+
+**Classes:** `pjx-table`, `pjx-table--striped`, `pjx-table--sticky`, `pjx-table--density-compact`, `pjx-table--bordered-horizontal`, `pjx-table--bordered-all`.
+
+**Style tokens.**
+
+| Token | Default |
+| --- | --- |
+| `--pjx-table-border` | `var(--border)` |
+| `--pjx-table-header-bg` | `var(--surface-alt)` |
+| `--pjx-table-header-fg` | `var(--text)` |
+| `--pjx-table-stripe-bg` | `var(--surface-alt)` |
+| `--pjx-table-row-hover-bg` | `var(--surface-alt)` |
+| `--pjx-table-cell-pad-y` | `0.5rem` |
+| `--pjx-table-cell-pad-x` | `0.75rem` |
+
+<!-- demo: PJXTable -->
+
+```html
+<PJXTable caption="Team members" striped="true" bordered="horizontal">
+  <PJXTableHead>
+    <PJXTableRow>
+      <PJXTableHeaderCell sortable="true" sort="asc">Name</PJXTableHeaderCell>
+      <PJXTableHeaderCell>Role</PJXTableHeaderCell>
+    </PJXTableRow>
+  </PJXTableHead>
+  <PJXTableBody>
+    <PJXTableRow selectable="true" value="1">
+      <PJXTableCell>Ada Lovelace</PJXTableCell>
+      <PJXTableCell>Engineer</PJXTableCell>
+    </PJXTableRow>
+    <PJXTableRow selectable="true" value="2">
+      <PJXTableCell>Alan Turing</PJXTableCell>
+      <PJXTableCell>Researcher</PJXTableCell>
+    </PJXTableRow>
+  </PJXTableBody>
+</PJXTable>
+```
+
+```python
+PJXTable(
+    caption="Team members",
+    striped=True,
+    bordered="horizontal",
+    content=(
+        PJXTableHead(content=PJXTableRow(content=(
+            PJXTableHeaderCell(sortable=True, sort="asc", content="Name").render()
+            + PJXTableHeaderCell(content="Role").render()
+        )).render()).render()
+        + PJXTableBody(content=(
+            PJXTableRow(selectable=True, value="1", content=(
+                PJXTableCell(content="Ada Lovelace").render()
+                + PJXTableCell(content="Engineer").render()
+            )).render()
+            + PJXTableRow(selectable=True, value="2", content=(
+                PJXTableCell(content="Alan Turing").render()
+                + PJXTableCell(content="Researcher").render()
+            )).render()
+        )).render()
+    ),
+)
+```
+
+---
+
+## PJXTableHead
+
+`<thead>` wrapper for a composed table. **Assets:** none (styled via `pjx-table.css`).
+
+| Field | Type | Default | Description |
+| --- | --- | --- | --- |
+| `class_name` | `AttrValue` | `""` | Extra CSS class(es) on the root element. |
+| `content` | `str \| BaseComponent` | `""` | Pre-rendered `PJXTableRow` children. |
+
+**DOM contract.** Root `<thead class="pjx-table__head">` rendering `{{ content }}` verbatim.
+
+**Classes:** `pjx-table__head`.
+
+```html
+<PJXTable>
+  <PJXTableHead>
+    <PJXTableRow>
+      <PJXTableHeaderCell>Name</PJXTableHeaderCell>
+    </PJXTableRow>
+  </PJXTableHead>
+</PJXTable>
+```
+
+---
+
+## PJXTableBody
+
+`<tbody>` wrapper for a composed table. **Assets:** none (styled via `pjx-table.css`).
+
+| Field | Type | Default | Description |
+| --- | --- | --- | --- |
+| `class_name` | `AttrValue` | `""` | Extra CSS class(es) on the root element. |
+| `content` | `str \| BaseComponent` | `""` | Pre-rendered `PJXTableRow` children. |
+
+**DOM contract.** Root `<tbody class="pjx-table__body">` rendering `{{ content }}` verbatim.
+
+**Classes:** `pjx-table__body`.
+
+```html
+<PJXTable>
+  <PJXTableBody>
+    <PJXTableRow><PJXTableCell>Ada Lovelace</PJXTableCell></PJXTableRow>
+  </PJXTableBody>
+</PJXTable>
+```
+
+---
+
+## PJXTableRow
+
+A `<tr>` for either the head or body section. When `selectable=True`, a checkbox cell is auto-prepended on the body row. **Assets:** none (styled via `pjx-table.css`).
+
+| Field | Type | Default | Description |
+| --- | --- | --- | --- |
+| `selectable` | `bool` | `False` | Auto-prepends a checkbox `<td>` with `name="selected"` and `value="{{ value }}"`. |
+| `value` | `str` | `""` | Checkbox value emitted when the row is selected. |
+| `select_label` | `str` | `"Select row"` | `aria-label` on the auto-prepended checkbox. |
+| `class_name` | `AttrValue` | `""` | Extra CSS class(es) on the root element. |
+| `content` | `str \| BaseComponent` | `""` | Pre-rendered cell children. |
+
+**DOM contract.** Root `<tr class="pjx-table__row">`; `pjx-table__row--selectable` added when `selectable=True`.
+
+**Classes:** `pjx-table__row`, `pjx-table__row--selectable`.
+
+**Select-all alignment.** When using `selectable` rows, add a leading `PJXTableHeaderCell` to the head row (empty, or a select-all checkbox you wire with htmx/Alpine) so the columns align — `selectable` only auto-prepends a checkbox on body rows.
+
+```html
+<PJXTableRow selectable="true" value="1">
+  <PJXTableCell>Ada Lovelace</PJXTableCell>
+  <PJXTableCell>Engineer</PJXTableCell>
+</PJXTableRow>
+```
+
+---
+
+## PJXTableHeaderCell
+
+A `<th>` for use inside `PJXTableRow` in the head section. Reflects sort direction via `aria-sort`. **Assets:** none (styled via `pjx-table.css`).
+
+| Field | Type | Default | Description |
+| --- | --- | --- | --- |
+| `sortable` | `bool` | `False` | Adds `pjx-table__th--sortable` and a sort-direction indicator. |
+| `sort` | `"none" \| "asc" \| "desc"` | `"none"` | Current sort direction → `aria-sort` attribute; `"none"` omits `aria-sort`. |
+| `class_name` | `AttrValue` | `""` | Extra CSS class(es) on the root element. |
+| `content` | `str \| BaseComponent` | `""` | Column header label. |
+
+**DOM contract.** Root `<th class="pjx-table__th" scope="col">`. When `sortable=True`: `pjx-table__th--sortable` is added and `aria-sort` is set when `sort` is `"asc"` or `"desc"`.
+
+**Classes:** `pjx-table__th`, `pjx-table__th--sortable`.
+
+```html
+<PJXTableHeaderCell sortable="true" sort="asc">Name</PJXTableHeaderCell>
+```
+
+---
+
+## PJXTableCell
+
+A `<td>` for use inside `PJXTableRow` in the body section. **Assets:** none (styled via `pjx-table.css`).
+
+| Field | Type | Default | Description |
+| --- | --- | --- | --- |
+| `class_name` | `AttrValue` | `""` | Extra CSS class(es) on the root element. |
+| `content` | `str \| BaseComponent` | `""` | Cell content. |
+
+**DOM contract.** Root `<td class="pjx-table__cell">` rendering `{{ content }}` verbatim.
+
+**Classes:** `pjx-table__cell`.
+
+```html
+<PJXTableCell>Ada Lovelace</PJXTableCell>
+```
+
+---
+
 ## Example
 
 ```python
