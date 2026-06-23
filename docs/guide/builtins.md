@@ -21,7 +21,7 @@ from pyjinhx.builtins import (
     PJXEmptyState,
     PJXFormField,
     PJXIcon,
-    PJXLazyPanel,
+    PJXLazyLoad,
     PJXRegionLoader,
     PJXModal,
     PJXNotification,
@@ -32,8 +32,6 @@ from pyjinhx.builtins import (
     PJXPopoverTrigger,
     PJXProgress,
     PJXPromptDialog,
-    PJXPanel,
-    PJXPanelTrigger,
     PJXSegmentedControl,
     PJXSkeleton,
     PJXSpinner,
@@ -86,7 +84,7 @@ from pyjinhx.builtins import (
 | PJXEmptyState | `pjx-empty-state.css` | — |
 | PJXFormField | `pjx-form-field.css` | — |
 | PJXIcon | `pjx-icon.css` | — |
-| PJXLazyPanel | — | — |
+| PJXLazyLoad | — | — |
 | PJXRegionLoader | `pjx-region-loader.css` | `pjx-region-loader.js` |
 | PJXModal | `pjx-modal.css` | `pjx-modal.js` |
 | PJXModalHeader | `pjx-modal-header.css` | — |
@@ -1136,17 +1134,18 @@ PJXEmptyState(content="<h3>No results</h3><p>Try a different search term.</p>", 
 
 ---
 
-## PJXLazyPanel
+## PJXLazyLoad
 
-HTMX lazy-load wrapper: a single `div` that fetches `url` on a computed trigger and swaps itself with the response. **Assets:** none.
+HTMX deferred-content loader: an element that fetches `url` on a computed trigger and swaps itself with the response. Use it three ways — a **lazy panel** (load a section's content on first reveal), **load-on-mount**, or an **infinite-scroll sentinel** at the end of a list/table. **Assets:** none.
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
 | `url` | `str` | required | Endpoint for the deferred content (`hx-get`). |
 | `when` | literal | `"viewport"` | `viewport` (scroll-revealed), `reveal` (`pjx:reveal` from nearest `[data-pjx-region]`), `load` (immediately). Overridden by `trigger`. |
 | `trigger` | `str` | `""` | Explicit `hx-trigger` value; overrides `when` entirely when set. |
-| `swap` | `str` | `"outerHTML"` | `hx-swap` strategy. |
-| `content` | `str \| BaseComponent` | `""` | Placeholder shown until the fetch lands (e.g. a [`PJXSkeleton`](#pjxskeleton)). |
+| `swap` | `str` | `"outerHTML"` | `hx-swap` strategy. The default self-replaces the element. |
+| `tag` | literal | `"div"` | Rendered root element: `div`, `li` (inside a `<ul>`/`<ol>`), or `tr` (inside a `<tbody>`). Lets the loader sit directly in a list or table. |
+| `content` | `str \| BaseComponent` | `""` | Placeholder / loading indicator shown until the fetch lands (e.g. a [`PJXSkeleton`](#pjxskeleton) or "Loading…"). |
 
 `when` preset mapping:
 
@@ -1156,14 +1155,27 @@ HTMX lazy-load wrapper: a single `div` that fetches `url` on a computed trigger 
 | `reveal` | `pjx:reveal from:closest [data-pjx-region] once` |
 | `load` | `load` |
 
-**DOM contract.** Root `.pjx-lazy-panel`; no JS (pure HTMX). `data-pjx-region` on a `PJXTabPanel` host fires `pjx:reveal`/`pjx:before-reveal` events that `when="reveal"` listens for.
+**DOM contract.** Root `.pjx-lazy-load` (element chosen by `tag`); no JS (pure HTMX). `data-pjx-region` on a `PJXTabPanel` host fires `pjx:reveal`/`pjx:before-reveal` events that `when="reveal"` listens for.
 
-**Classes:** `pjx-lazy-panel` (unstyled hook). No theming tokens.
+**Classes:** `pjx-lazy-load` (unstyled hook). No theming tokens.
 
 ```html
-<PJXLazyPanel id="comments" url="/posts/42/comments">
+<PJXLazyLoad id="comments" url="/posts/42/comments">
   <PJXSkeleton id="comments-skel"/>
-</PJXLazyPanel>
+</PJXLazyLoad>
+```
+
+```python
+PJXLazyLoad(id="comments", url="/posts/42/comments", content=PJXSkeleton(id="comments-skel"))
+```
+
+**Load more on scroll (infinite-scroll sentinel).** Drop a `PJXLazyLoad` at the end of a list or `<tbody>` with `when="viewport"` and the matching `tag`. When it scrolls into view it `hx-get`s `url` and `outerHTML`-replaces itself with the server's next batch **plus a fresh `PJXLazyLoad`** carrying the next cursor; the loop ends when the server stops emitting a sentinel. The scroll container is just a `max-height; overflow:auto` wrapper (or the page) — no extra component needed. Ships no JS (htmx's `revealed` does the visibility detection).
+
+```html
+<tbody id="rows">
+  <!-- … rendered rows … -->
+  <PJXLazyLoad url="/rows?cursor=20" tag="tr" content="Loading…"/>
+</tbody>
 ```
 
 ---

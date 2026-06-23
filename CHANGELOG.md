@@ -25,6 +25,13 @@
   ))
   ```
   Standalone trigger content must be inert (plain text or `<span>`) — the `PJXTab` wrapper is itself the interactive control.
+- **Breaking:** renamed `PJXLazyPanel` → `PJXLazyLoad` and added a `tag` field
+  (`"div"` / `"li"` / `"tr"`). It's no longer just a panel — it's deferred content
+  that loads on a trigger (viewport reveal / region reveal / load) and swaps itself
+  in. With `tag="li"`/`"tr"` it works as an **infinite-scroll sentinel** at the end
+  of a `<ul>`/`<tbody>`: on reveal it `outerHTML`-replaces itself with the next batch
+  plus a fresh `PJXLazyLoad`. Migration: `PJXLazyPanel(...)` → `PJXLazyLoad(...)` (same
+  fields). Ships no JS.
 
 ### Added
 - **Table builtins:** `PJXTable` + `PJXTableHead` / `PJXTableBody` / `PJXTableRow` /

@@ -4,7 +4,7 @@ Six loading niches, one decision rule: *what is missing?*
 
 | What's missing | Builtin | Activation |
 |---|---|---|
-| Content not loaded yet | `PJXSkeleton` | None — it IS the placeholder; the swap replaces it (`PJXLazyPanel(content=PJXSkeleton())`) |
+| Content not loaded yet | `PJXSkeleton` | None — it IS the placeholder; the swap replaces it (`PJXLazyLoad(content=PJXSkeleton())`) |
 | Reactive region refreshing | *runtime state* (`data-pjx-loading`) | Automatic — add `data-pjx-loading="skeleton"` or `data-pjx-loading="spinner"` directly in the `ReactiveComponent` template (on the root element or an inner element); the `pjx.js` runtime shimmer-skeletonizes or overlays the EXISTING content while predicted mutations are in flight |
 | Request in flight, inline | `PJXSpinner` | `PJXSpinner(class_name="htmx-indicator")` + `hx-indicator="#its-id"` — htmx toggles it, zero JS |
 | Request in flight, region-blocking | `PJXRegionLoader` | `hx-indicator` pointing at it, **or** `pjx.loader.region.show/hide/reset(id)` for non-htmx work (pick one mechanism per element), or `pjx.loader.region.wrap(id, promise)` |
@@ -12,7 +12,7 @@ Six loading niches, one decision rule: *what is missing?*
 | Determinate progress | `PJXProgress` | `value`/`max` props |
 
 **PJXSkeleton component vs skeleton state.** The `PJXSkeleton` *component* is placeholder DOM for
-content that doesn't exist yet (first paint, `PJXLazyPanel` placeholders). The runtime's
+content that doesn't exist yet (first paint, `PJXLazyLoad` placeholders). The runtime's
 `pjx-loading--skeleton` *state* shimmer-masks content that already exists while it refreshes.
 Same look, different jobs — and different theming tokens (the component's `--pjx-skeleton-bg`/`--pjx-skeleton-shine` vs the runtime's `--pjx-skeleton-color`/`--pjx-skeleton-highlight`).
 

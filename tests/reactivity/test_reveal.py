@@ -1,5 +1,5 @@
 """Browser contracts for standalone PJXTab triggers driving PJXTabGroup panels,
-PJXLazyPanel(when="reveal"), and PJXTabGroup tab switching."""
+PJXLazyLoad(when="reveal"), and PJXTabGroup tab switching."""
 
 import pytest
 
@@ -31,7 +31,7 @@ def test_trigger_reveals_panel_exactly_once(sink_page):
     assert sink_page.evaluate("window.__revealsB") == 1
 
 
-def test_lazy_panel_loads_on_first_reveal(sink_page):
+def test_lazy_load_loads_on_first_reveal(sink_page):
     expect(sink_page.locator("#lazy-placeholder")).to_have_count(1)
     expect(sink_page.locator("#rx-lazy-loaded")).to_have_count(0)
 

@@ -22,7 +22,7 @@ from pyjinhx.builtins import (
     PJXDrawerBody,
     PJXDrawerHeader,
     PJXDropdown,
-    PJXLazyPanel,
+    PJXLazyLoad,
     PJXModal,
     PJXModalBody,
     PJXModalHeader,
@@ -211,7 +211,7 @@ def render_page() -> str:
                 str(PJXTabPanel(id="rx-panel-panel-a", content="<p>Panel A body</p>").render())
                 + str(PJXTabPanel(
                     id="rx-panel-panel-b",
-                    content=str(PJXLazyPanel(
+                    content=str(PJXLazyLoad(
                         id="rx-lazy",
                         when="reveal",
                         url="/fragments/lazy",

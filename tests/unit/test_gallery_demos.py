@@ -54,7 +54,7 @@ def test_registry_covers_all_builtins():
     folded = {
         "PJXAccordionContent",
         "PJXAccordionTrigger",
-        "PJXLazyPanel",
+        "PJXLazyLoad",
         "PJXPopoverTrigger",
         "PJXPopoverPanel",
         "PJXCardHeader",
