@@ -70,44 +70,47 @@ markdown_extensions:
 
 nav:
   - Home: index.md
-  - Gallery: gallery.md
   - Getting Started:
       - Installation: getting-started/installation.md
       - Quick Start: getting-started/quickstart.md
       - Build an App: getting-started/build-an-app.md
-  - Migration guide: migration.md
+  - Components: components.md
   - Guide:
-      - Usage tiers: guide/usage-tiers.md
-      - Creating Components: guide/components.md
-      - Component Registry: guide/registry.md
-      - PascalCase Tags: guide/tags.md
-      - Nesting: guide/nesting.md
-      - Asset Collection: guide/assets.md
-      - Built-in UI components: guide/builtins.md
-      - Builtin conventions: guide/builtin-conventions.md
-      - Loading states: guide/loading.md
-      - Configuration: guide/configuration.md
-      - Reactivity: reactivity.md
-  - Integrations:
-      - FastAPI: integrations/fastapi.md
-      - HTMX: integrations/htmx.md
-      - WebAwesome: integrations/webawesome.md
-      - Claude Code: integrations/claude-code.md
+      - Overview: guide/usage-tiers.md
+      - Basic:
+          - Creating Components: guide/components.md
+          - PascalCase Tags: guide/tags.md
+          - Nesting: guide/nesting.md
+          - Asset Collection: guide/assets.md
+      - Advanced:
+          - Component Registry: guide/registry.md
+          - Loading States: guide/loading.md
+          - Reactivity: reactivity.md
+          - Configuration: guide/configuration.md
+          - Builtin Conventions: guide/builtin-conventions.md
+          - Integrations:
+              - FastAPI: integrations/fastapi.md
+              - HTMX: integrations/htmx.md
+              - WebAwesome: integrations/webawesome.md
+              - Claude Code: integrations/claude-code.md
   - API Reference:
-      - Public API Index: reference/public-api.md
-      - BaseComponent: api/base-component.md
-      - Reactive API: api/reactive-api.md
-      - Configuration: api/config.md
-      - Client Backend: api/client-backend.md
-      - Cache & Invalidation: api/cache-invalidation.md
-      - Redis integration: api/integrations-redis.md
-      - SQLite integration: api/integrations-sqlite.md
-      - Mutations, Keys & PjxContext: api/mutations-keys-context.md
-      - Parser & Tag: api/parser.md
-      - Assets API: api/assets-api.md
-      - Finder: api/finder.md
-      - Registry: api/registry.md
-      - Renderer: api/renderer.md
+      - Public API:
+          - Index: reference/public-api.md
+          - BaseComponent: api/base-component.md
+          - Reactive API: api/reactive-api.md
+          - Renderer: api/renderer.md
+          - Registry: api/registry.md
+          - Configuration: api/config.md
+          - Mutations, Keys & PjxContext: api/mutations-keys-context.md
+      - Internals:
+          - Parser & Tag: api/parser.md
+          - Finder: api/finder.md
+          - Assets API: api/assets-api.md
+          - Client Backend: api/client-backend.md
+          - Cache & Invalidation: api/cache-invalidation.md
+          - Redis integration: api/integrations-redis.md
+          - SQLite integration: api/integrations-sqlite.md
+  - Migration guide: migration.md
 
 extra_css:
   - stylesheets/toc-collapse.css

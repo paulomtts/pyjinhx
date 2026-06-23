@@ -202,7 +202,7 @@ Use Jinja conditionals to control HTMX behavior:
 
 ### `PJXTabGroup` outside the swap target
 
-A [`PJXTabGroup`](../guide/builtins.md#pjxtabgroup) holds multiple panels (e.g. chat vs. other tools) while standalone [`PJXTab`](../guide/builtins.md#pjxtab) triggers can live in a navbar or sidebar. To **keep in-DOM state** (messages, inputs) when other UI updates, mount the **`PJXTabGroup` root outside** the element you pass to `hx-target` for those swaps. Only swap inner fragments that should reload; avoid replacing the entire `PJXTabGroup` wrapper unless you intend to reset that state.
+A [`PJXTabGroup`](../components.md#pjxtabgroup) holds multiple panels (e.g. chat vs. other tools) while standalone [`PJXTab`](../components.md#pjxtab) triggers can live in a navbar or sidebar. To **keep in-DOM state** (messages, inputs) when other UI updates, mount the **`PJXTabGroup` root outside** the element you pass to `hx-target` for those swaps. Only swap inner fragments that should reload; avoid replacing the entire `PJXTabGroup` wrapper unless you intend to reset that state.
 
 ### Wiring builtins (pure passthrough)
 

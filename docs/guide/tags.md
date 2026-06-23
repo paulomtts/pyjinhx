@@ -13,6 +13,8 @@ html = renderer.render('<UserCard name="Ada"/>')
 
 You can also use PascalCase tags **inside component templates** to compose components declaratively.
 
+> A PascalCase tag resolves only after its component class has been registered (importing the class registers it). For per-request isolation in a web app, see [Component Registry](registry.md) (Advanced).
+
 !!! warning "Recognized tag names are strict PascalCase"
     A tag is treated as a component only if its name matches `^[A-Z](?:[a-z]+(?:[A-Z][a-z]+)*)?$` — a capital letter followed by alternating lowercase/Capitalized words. This **rejects acronyms and trailing digits**: `UI`, `APIKey`, `HTMLBlock`, `Button2`, and `H2` are NOT recognized and pass through as raw HTML. Name components like `Api`, `ApiKey`, or `HtmlBlock` instead.
 
@@ -119,7 +121,7 @@ html = renderer.render('<Hint kind="warning">Be careful</Hint>')
 ```
 
 !!! note "Builtins are not auto-discovered"
-    The fallback only searches under your Jinja loader root, so it does **not** cover [built-in components](builtins.md) — their templates ship inside the pyjinhx package. Using `<PJXTooltip/>` (or any builtin) as a tag requires importing it once at startup (`from pyjinhx.builtins import PJXTooltip` or `import pyjinhx.builtins`), which registers the class. Otherwise rendering raises a `FileNotFoundError` telling you which import to add.
+    The fallback only searches under your Jinja loader root, so it does **not** cover [built-in components](../components.md) — their templates ship inside the pyjinhx package. Using `<PJXTooltip/>` (or any builtin) as a tag requires importing it once at startup (`from pyjinhx.builtins import PJXTooltip` or `import pyjinhx.builtins`), which registers the class. Otherwise rendering raises a `FileNotFoundError` telling you which import to add.
 
 The generic-fallback instance is **removed from the registry** after rendering, so it cannot be cross-referenced by other templates (unlike a registered-class instance).
 

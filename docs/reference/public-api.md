@@ -4,6 +4,8 @@ Every symbol exported from `pyjinhx` (`__all__`) is listed below with a one-line
 
 These 11 symbols are the entire top-level public API; advanced/internal building blocks (e.g. `oob_swaps`, `LoadCache`, `ClientBackend`, the asset-resolver helpers, dev tooling) remain importable from their submodules — e.g. `from pyjinhx.cache import LoadCache`.
 
+The deeper machinery behind these symbols — the parser, finder, asset resolver, client backend, cache/invalidation, and the Redis/SQLite backends — is documented under **API Reference → Internals**.
+
 ## Components & rendering
 
 | Symbol | Description | Documentation |

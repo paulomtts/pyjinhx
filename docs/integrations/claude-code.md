@@ -164,7 +164,7 @@ Full guide: [docs/reactivity.md](../reactivity.md).
 - **Classes** are BEM: `pjx-<widget>`, `pjx-<widget>__element`, `pjx-<widget>--modifier`. Every builtin accepts `class_name` (appended on the root) and `extra_attrs` (validated dict rendered on the root).
 - **PascalCase tag quirks:** `PJXBreadcrumb.items` accepts a JSON-string attribute in tag strings (the dict/list equivalent). JS components use `window.pjx.*` APIs (`pjx.modal.open/close`, `pjx.drawer.open/close`, `pjx.popover.open/close/toggle`, `pjx.notification.show/hide`, `pjx.loader.region.show/hide/reset/wrap`, `pjx.confirm`, `pjx.prompt`, `pjx.toast`, `pjx.loader.page.*`); `PJXTabGroup`, `PJXTooltip` use delegated events with no exported API.
 
-Full reference (props, classes, `--pjx-*` tokens, JS helpers per component): [../guide/builtins.md](../guide/builtins.md).
+Full reference (props, classes, `--pjx-*` tokens, JS helpers per component): [Components](../components.md).
 
 ## Registry & configuration
 

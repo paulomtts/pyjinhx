@@ -57,6 +57,6 @@ Within Tier 1, PyJinHx offers two complementary approaches:
 - [Build an App](getting-started/build-an-app.md) - Step-by-step tutorial with **Why?** panels (recommended for new users)
 - [Quick Start](getting-started/quickstart.md) - Minimal first component
 - [Guide](guide/components.md) - Feature reference
-- [Built-in UI components](guide/builtins.md) - Optional `pyjinhx.builtins` package
+- [Components](components.md) - Optional `pyjinhx.builtins` package
 - [Public API Index](reference/public-api.md) - Every symbol exported from `pyjinhx`
 - [Migration guide](migration.md) — 0.8 → 0.9 breaking changes and upgrading from 0.4.x

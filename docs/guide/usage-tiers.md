@@ -2,6 +2,11 @@
 
 PyJinHx is one library with optional layers. Adopt each tier only when you need it.
 
+The Guide is organized in two halves that map onto these tiers:
+
+- **Basic** (Tier 1) — declare components, compose them with PascalCase tags and nesting, and let asset collection bundle their CSS/JS. No framework wiring. This is all you need for templating and server-rendered HTML.
+- **Advanced** (Tiers 2–4) — request scoping, reactive HTMX, configuration, loading states, and integrations (FastAPI, HTMX, …). Everything where the framework wires behavior for you.
+
 **Source layout:** the engine is a flat package — modules live directly under `pyjinhx/` (e.g. `base`, `renderer`, `reactive`, `cache`, `config`). Public imports stay on `from pyjinhx import ...`.
 
 ## Tier 1 — Components
