@@ -1,6 +1,17 @@
 # Changelog
 
-## 0.28.2 — Fix inline `<script>`/`<style>` escaping (2026-06-24)
+## 0.28.3 — Fix lazy-load asset stripping on swap (2026-06-24)
+
+### Fixed
+- `PJXLazyLoad` (and any root render delivered on a swap) no longer renders
+  unstyled when it introduces a builtin whose CSS/JS was never collected at page
+  render. Such assets were emitted as inline `<style|script data-pjx-asset>` tags
+  in the swapped body, where they were stripped on the htmx swap. On a swap —
+  signalled by the `X-PJX-Mounted` header `pjx.js` attaches to every request — the
+  render now ships missing assets through the same OOB `<head>` channel reactive
+  swaps already use (`hx-swap-oob="beforeend:head"`, deduped against `X-PJX-Assets`),
+  so `pjx.js` promotes them to `<head>` and dedups against the live document. Cold
+  full-page renders are unchanged: assets stay inline (#182).
 
 ### Fixed
 - Inline `<script>` and `<style>` bodies are no longer HTML-escaped during
