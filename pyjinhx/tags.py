@@ -115,7 +115,16 @@ class Parser(HTMLParser):
         # tag-expansion round-trip (e.g. &lt;script&gt; → decoded <script> →
         # &lt;script&gt;). Slot tags/attributes go through get_starttag_text()
         # (raw), not here, so HTML structure is preserved untouched (#120).
-        self._append_child(str(escape(data)))
+        #
+        # Exception: <script>/<style> are raw-text (CDATA) elements. HTMLParser
+        # delivers their bodies here verbatim (entities are NOT decoded), so
+        # escaping would corrupt the JS/CSS — `"` → `&#34;`, `&&` → `&amp;&amp;`
+        # (#177). `cdata_elem` is the open raw-text element while inside one, and
+        # None otherwise, so append those bodies untouched.
+        if self.cdata_elem in self.CDATA_CONTENT_ELEMENTS:
+            self._append_child(data)
+        else:
+            self._append_child(str(escape(data)))
 
     def handle_comment(self, data: str) -> None:
         self._append_child(f"<!--{data}-->")

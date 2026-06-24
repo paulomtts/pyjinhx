@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.28.2 — Fix inline `<script>`/`<style>` escaping (2026-06-24)
+
+### Fixed
+- Inline `<script>` and `<style>` bodies are no longer HTML-escaped during
+  PascalCase tag expansion. Python's `HTMLParser` delivers raw-text (CDATA)
+  element bodies through `handle_data`, where the #120 round-trip re-escaping
+  was corrupting the JS/CSS (`"` → `&#34;`, `&&` → `&amp;&amp;`, `<` → `&lt;`)
+  and breaking the script in the browser. Raw-text element bodies now pass
+  through untouched; ordinary text is still escaped (#177).
+
 ## 0.28.1 — Engine dedup & internals cleanup (2026-06-23)
 
 ### Changed
