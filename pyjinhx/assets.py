@@ -423,10 +423,31 @@ def apply_component_render_assets(
     if policy.css_mode == AssetMode.NONE and policy.js_mode == AssetMode.NONE:
         return rendered_markup
 
-    return inject_assets(rendered_markup, session, policy=policy)
+    return inject_assets(rendered_markup, session, policy=policy, client=client)
 
 
-def inject_assets(markup: str, session: RenderSession, *, policy: AssetPolicy) -> str:
+def inject_assets(
+    markup: str,
+    session: RenderSession,
+    *,
+    policy: AssetPolicy,
+    client: object | None = None,
+) -> str:
+    # On a swap the page already carries the runtime and every asset its eagerly
+    # rendered tree collected, so emit this render's not-yet-loaded INLINE assets
+    # as OOB ``<head>`` injections instead of inline tags in the swapped body.
+    # htmx core drops head-targeted OOB swaps, so ``pjx.js`` promotes them to
+    # ``<head>`` itself, deduping against the live document. This keeps swapped-in
+    # content (e.g. a ``PJXLazyLoad`` fragment) styled even when it introduces a
+    # builtin whose CSS/JS was never collected at page render — emitting it inline
+    # left it to be stripped on swap, rendering the content unstyled (#182).
+    from pyjinhx.client import ClientBackend, LoadedAssets, MountedManifest
+
+    resolved = ClientBackend.resolve_client(client)
+    if MountedManifest.is_present(resolved):
+        head = render_missing_assets_oob(session, LoadedAssets.parse(resolved))
+        return f"{markup}\n{head}" if head else markup
+
     css_markup = render_assets(session, "css", policy=policy)
     js_markup = render_assets(session, "js", policy=policy)
     if css_markup:
