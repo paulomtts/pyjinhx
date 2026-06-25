@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.28.5 — Reactive lazy fragments deliver their own assets (2026-06-25)
+
+### Fixed
+- A reactive component rendered as a **lazy fragment** in a reactive context (a
+  non-empty mounted manifest) with no pending mutations delivered its nested
+  builtin CSS/JS **neither inline nor OOB**, so the content rendered unstyled.
+  The reactive primary render passed `emit_assets=False` and relied on the OOB
+  tail (`_finish_with_oob`) for asset delivery — but that tail only emits assets
+  for dirtied *non-primary* regions (the primary is excluded), so the primary's
+  own not-yet-loaded assets fell through. `emit_assets=False` predated the
+  `0.28.3` OOB-`<head>` path in `inject_assets` and is now obsolete; the primary
+  renders normally and routes its missing assets through `inject_assets`, which
+  emits OOB-to-`<head>` when a manifest is present (never inline) and inline only
+  on a truly cold render — matching the non-reactive lazy path. Surfaced by
+  nori's reactive `TableWorkbench` lazy preview (the #184 reopen).
+
 ## 0.28.4 — Fix eager asset durability across region swaps (2026-06-24)
 
 ### Fixed

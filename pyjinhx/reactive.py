@@ -134,11 +134,11 @@ class _ReactiveRender:
 
         if not _reactive_context_active():
             instance = cls.load(*args, **kwargs) if keyed else cls.load(**kwargs)
-            return Markup(instance._render(emit_assets=False))
+            return Markup(instance._render())
 
         def build_primary() -> str:
             instance = cls.load(*args, **kwargs) if keyed else cls.load(**kwargs)
-            return instance._render(emit_assets=False)
+            return instance._render()
 
         return reactive_render_bundle(
             primary_html=build_primary,
@@ -165,7 +165,7 @@ class _ReactiveRender:
             if not _reactive_context_active():
                 return instance._render()
             return reactive_render_bundle(
-                primary_html=lambda: instance._render(emit_assets=False),
+                primary_html=lambda: instance._render(),
                 invalidate_before_primary=False,
             )
 
