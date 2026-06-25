@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.28.4 — Fix eager asset durability across region swaps (2026-06-24)
+
+### Fixed
+- A builtin's CSS that was eagerly rendered on the cold page *inside* a region
+  that later re-renders (e.g. a `PJXBreadcrumb` inside a reactive panel) no longer
+  disappears on the swap, leaving the content unstyled. Cold full-page renders
+  emit component assets as inline `<style data-pjx-asset>` in the body; when that
+  style lives inside a swappable region, the swap deletes it and the server —
+  seeing its token in `X-PJX-Assets` — correctly dedups it away, so it was never
+  re-delivered. `pjx.js` now promotes the initial document's inline
+  `<style data-pjx-asset>` into `<head>` on load (styles only), the durable home
+  swap-delivered assets already use — making the asset survive any later swap.
+  This also corrects the misdiagnosis in #184: plain `component.render()` lazy
+  routes were never the problem (the client backend resolves fine through
+  `BaseHTTPMiddleware` on all supported Starlette versions) (#184).
+
 ## 0.28.3 — Fix lazy-load asset stripping on swap (2026-06-24)
 
 ### Fixed

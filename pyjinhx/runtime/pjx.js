@@ -243,6 +243,28 @@
     pjxApplyHeadAssets(xhr && xhr.responseText);
   }
 
+  // On initial load, relocate the document's inline component styles into <head>
+  // so they survive region swaps.  Cold (full-page) renders emit
+  // <style data-pjx-asset> inline in the body; when that style lives inside a
+  // region that later re-renders, the swap deletes it and the server (seeing its
+  // token in X-PJX-Assets) won't resend it — leaving the content unstyled (#184).
+  // <head> is the durable home, symmetric with pjxApplyHeadAssets for swaps.
+  // Styles only: a <script>'s effect persists after node removal, and re-appending
+  // it would re-execute it.
+  function pjxPromoteInlineAssets() {
+    Array.prototype.forEach.call(
+      document.body.querySelectorAll('style[data-pjx-asset]'),
+      function (node) {
+        var token = node.getAttribute('data-pjx-asset');
+        if (document.head.querySelector('[data-pjx-asset="' + token + '"]')) {
+          node.parentNode.removeChild(node); // duplicate token already durable; drop
+          return;
+        }
+        document.head.appendChild(node); // appendChild relocates body -> head
+      }
+    );
+  }
+
   if (!window.htmx) {
     console.error(
       "[pyjinhx] htmx not found — reactivity (OOB swaps) will not work. " +
@@ -251,6 +273,7 @@
   }
 
   pjxInjectStyle();
+  pjxPromoteInlineAssets();
   document.body.addEventListener("htmx:beforeRequest", pjxBeginLoading);
   document.body.addEventListener("htmx:afterSettle", pjxReapplyLoading);
   document.body.addEventListener("htmx:afterOnLoad", pjxEndLoading);
