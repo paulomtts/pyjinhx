@@ -296,3 +296,46 @@ This is the path to reach for when **one mutation updates multiple regions**
 - Wire [ClientBackend](../api/client-backend.md) via `setup()` so routes call `Cls.render()` with no framework kwargs
 
 See [Reactivity](../reactivity.md), [Usage tiers](../guide/usage-tiers.md), and the [reactive todo example](https://github.com/paulomtts/pyjinhx/tree/master/examples/reactive_todo).
+
+## Response edges pyjinhx smooths
+
+### Reactive triggers don't need `hx-swap="none"`
+
+A `ReactiveResponse` with no primary HTML is OOB-only: htmx applies the
+out-of-band swaps, then swaps the empty leftover into the trigger's target —
+clearing it. pyjinhx removes this footgun automatically: when a request produces
+an OOB-only `ReactiveResponse`, the middleware emits `HX-Reswap: none`, so the
+trigger keeps its content with no extra attribute:
+
+```html
+<!-- no hx-swap="none" needed -->
+<button hx-get="/nav?route=chat">Chat</button>
+```
+
+This is always on and requires the pyjinhx middleware (installed by
+`setup(app)`).
+
+### Opt-in: make redirects navigate (`htmx_redirects=True`)
+
+htmx AJAX-follows a `3xx` and swaps the destination page into a fragment instead
+of navigating. Enable `setup(app, htmx_redirects=True)` and pyjinhx rewrites
+`3xx → 204 + HX-Redirect` for htmx requests, so handlers stay transport-agnostic:
+
+```python
+setup(app, htmx_redirects=True)
+
+@app.post("/logout")
+def logout():
+    return RedirectResponse("/login", status_code=303)  # browser navigates under htmx
+```
+
+`Set-Cookie` and other headers are preserved; `304 Not Modified` is left alone.
+Defaults off so it never surprises apps that want htmx's swap behavior. You can
+also set it via the `PJX_HTMX_REDIRECTS` environment variable.
+
+### Custom client backends
+
+Both behaviors are emitted via `ClientBackend.apply_response_directives(response)`.
+The default applies the implied `HX-*` headers to any response with a mutable
+`.headers` mapping, so a custom backend inherits the reactive `HX-Reswap`
+behavior for free; override it only if your framework's response differs.
