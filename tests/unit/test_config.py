@@ -128,3 +128,19 @@ def test_from_env_reads_inject_htmx():
     assert settings.inject_htmx is False
     with patch.dict(os.environ, {}, clear=True):
         assert PjxSettings.from_env().inject_htmx is True
+
+
+def test_htmx_redirects_defaults_false():
+    assert PjxSettings().htmx_redirects is False
+
+
+def test_configure_pyjinhx_resolves_htmx_redirects():
+    resolved = configure_pyjinhx(htmx_redirects=True)
+    assert resolved.htmx_redirects is True
+
+
+def test_from_env_reads_htmx_redirects():
+    with patch.dict(os.environ, {"PJX_HTMX_REDIRECTS": "true"}, clear=True):
+        assert PjxSettings.from_env().htmx_redirects is True
+    with patch.dict(os.environ, {}, clear=True):
+        assert PjxSettings.from_env().htmx_redirects is False
