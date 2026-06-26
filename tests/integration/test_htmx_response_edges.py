@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.testclient import TestClient
 
 from pyjinhx import setup
@@ -45,9 +45,6 @@ def test_plain_response_has_no_reswap_header():
         resp = client.get("/plain")
     assert resp.status_code == 200
     assert "HX-Reswap" not in resp.headers
-
-
-from fastapi.responses import RedirectResponse, Response
 
 
 def _redirect_app(*, htmx_redirects: bool) -> FastAPI:
