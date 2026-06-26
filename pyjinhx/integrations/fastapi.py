@@ -84,10 +84,13 @@ def _registry_middleware_class(
             load_context = (
                 context_factory(request) if context_factory is not None else None
             )
+            backend = FastAPIClientBackend(request)
             with Registry.request_scope(
                 load_context=load_context,
-                client_backend=FastAPIClientBackend(request),
+                client_backend=backend,
             ):
-                return await call_next(request)
+                response = await call_next(request)
+                backend.apply_response_directives(response)
+                return response
 
     return RegistryScopeMiddleware
