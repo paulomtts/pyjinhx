@@ -1,7 +1,9 @@
+from types import SimpleNamespace
+
 import pytest
 
 from pyjinhx import Registry
-from pyjinhx.client import ResponseDirectives, current_directives
+from pyjinhx.client import ClientBackend, ResponseDirectives, current_directives
 
 
 @pytest.mark.no_request_scope
@@ -26,11 +28,6 @@ def test_directives_reset_after_request_scope():
 def test_directives_headers_maps_reswap_none():
     assert ResponseDirectives().headers() == {}
     assert ResponseDirectives(reswap_none=True).headers() == {"HX-Reswap": "none"}
-
-
-from types import SimpleNamespace
-
-from pyjinhx.client import ClientBackend
 
 
 class _StubBackend(ClientBackend):
