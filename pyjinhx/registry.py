@@ -174,7 +174,7 @@ class Registry:
         from contextlib import ExitStack
 
         from pyjinhx.assets import _runtime_injected
-        from pyjinhx.client import ClientBackend
+        from pyjinhx.client import ClientBackend, ResponseDirectives, _response_directives
         from pyjinhx.cache import LoadCache
         from pyjinhx.context import PjxContext
         from pyjinhx.dev import warn_mutations_without_render
@@ -184,6 +184,7 @@ class Registry:
         LoadCache.init_request()
         token = _registry_context.set({})
         runtime_token = _runtime_injected.set(False)
+        directives_token = _response_directives.set(ResponseDirectives())
         try:
             with ExitStack() as stack:
                 if load_context is not None:
@@ -195,5 +196,6 @@ class Registry:
             warn_mutations_without_render()
             MutationTracker.clear()
             LoadCache.reset_request()
+            _response_directives.reset(directives_token)
             _runtime_injected.reset(runtime_token)
             _registry_context.reset(token)

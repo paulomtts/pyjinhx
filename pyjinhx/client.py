@@ -8,6 +8,7 @@ from abc import ABC, abstractmethod
 from collections.abc import Generator
 from contextlib import contextmanager
 from contextvars import ContextVar
+from dataclasses import dataclass
 from typing import Any, ClassVar
 
 from markupsafe import Markup
@@ -15,6 +16,32 @@ from markupsafe import Markup
 from pyjinhx.utils import read_client_runtime
 
 logger = logging.getLogger("pyjinhx")
+
+
+@dataclass
+class ResponseDirectives:
+    """Per-request directives the integration applies to the outgoing response.
+
+    Set on the request scope, mutated during the request (e.g. by
+    ``ReactiveResponse``), and read by the integration when finalizing the
+    response. Framework-agnostic: ``headers()`` is the wire form.
+    """
+
+    reswap_none: bool = False
+
+    def headers(self) -> dict[str, str]:
+        """The ``HX-*`` response headers implied by these directives."""
+        return {"HX-Reswap": "none"} if self.reswap_none else {}
+
+
+_response_directives: ContextVar[ResponseDirectives | None] = ContextVar(
+    "pjx_response_directives", default=None
+)
+
+
+def current_directives() -> ResponseDirectives | None:
+    """This request's :class:`ResponseDirectives`, or ``None`` outside a request scope."""
+    return _response_directives.get()
 
 
 class ClientBackend(ABC):
