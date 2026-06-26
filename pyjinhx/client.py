@@ -8,6 +8,7 @@ from abc import ABC, abstractmethod
 from collections.abc import Generator
 from contextlib import contextmanager
 from contextvars import ContextVar
+from dataclasses import dataclass
 from typing import Any, ClassVar
 
 from markupsafe import Markup
@@ -15,6 +16,32 @@ from markupsafe import Markup
 from pyjinhx.utils import read_client_runtime
 
 logger = logging.getLogger("pyjinhx")
+
+
+@dataclass
+class ResponseDirectives:
+    """Per-request directives the integration applies to the outgoing response.
+
+    Set on the request scope, mutated during the request (e.g. by
+    ``ReactiveResponse``), and read by the integration when finalizing the
+    response. Framework-agnostic: ``headers()`` is the wire form.
+    """
+
+    reswap_none: bool = False
+
+    def headers(self) -> dict[str, str]:
+        """The ``HX-*`` response headers implied by these directives."""
+        return {"HX-Reswap": "none"} if self.reswap_none else {}
+
+
+_response_directives: ContextVar[ResponseDirectives | None] = ContextVar(
+    "pjx_response_directives", default=None
+)
+
+
+def current_directives() -> ResponseDirectives | None:
+    """This request's :class:`ResponseDirectives`, or ``None`` outside a request scope."""
+    return _response_directives.get()
 
 
 class ClientBackend(ABC):
@@ -26,6 +53,22 @@ class ClientBackend(ABC):
 
     @abstractmethod
     def get_header(self, name: str) -> str | None: ...
+
+    def apply_response_directives(self, response: Any) -> None:
+        """Apply this request's pyjinhx response directives to *response*.
+
+        Integrations call this when finalizing the response — e.g. to emit
+        ``HX-Reswap: none`` for an OOB-only
+        :class:`~pyjinhx.reactive.ReactiveResponse`, so reactive triggers don't
+        need ``hx-swap="none"``. The default works for any response whose
+        ``.headers`` is a mutable mapping (Starlette / Flask / Django /
+        aiohttp); override only if your framework's response differs.
+        """
+        directives = current_directives()
+        if directives is None:
+            return
+        for name, value in directives.headers().items():
+            response.headers[name] = value
 
     @classmethod
     def current(cls) -> ClientBackend | None:

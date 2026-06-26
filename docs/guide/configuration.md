@@ -87,10 +87,12 @@ from pyjinhx import setup
 setup(app, context_factory=lambda req: AppLoadContext(db=get_db(req)))
 ```
 
-`PjxSettings` has two fields:
+`PjxSettings` has these fields:
 
 - `invalidation_backend` — cross-worker invalidation backend (default `None`)
 - `reactive_dev` — enable reactive dev guardrails (default `False`)
+- `inject_htmx` — inline the vendored htmx runtime on reactive root renders (default `True`)
+- `htmx_redirects` — adapt `3xx` redirects to `204 + HX-Redirect` for htmx requests (default `False`); the browser navigates instead of swapping the destination into a fragment, `Set-Cookie` is preserved, and `304` is left alone
 
 The load-cache scope is **derived** from `invalidation_backend`: a backend (e.g. Redis) makes cross-request caching safe across workers, so `load()` results are cached per worker process; without one, they are cached per request only — the only multi-worker-safe default.
 
@@ -103,6 +105,7 @@ Pass a settings object via `settings=`, or override individual fields with expli
 - `REDIS_URL` — wires a `RedisInvalidationBackend` (which derives cross-request caching)
 - `PJX_INVALIDATION_DB` — wires a `SqliteInvalidationBackend` with the given path (used when `REDIS_URL` is not set)
 - `PJX_REACTIVE_DEV` — enables reactive dev mode when set to `1`, `true`, or `yes`
+- `PJX_HTMX_REDIRECTS` — enables htmx redirect adaptation when set to `1`, `true`, or `yes`
 
 ```python
 from pyjinhx import PjxSettings, setup

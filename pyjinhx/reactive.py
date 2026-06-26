@@ -26,7 +26,7 @@ from pyjinhx.utils import (
 
 from .assets import render_missing_assets_oob
 from .cache import LoadCache
-from .client import ClientBackend, LoadedAssets, MountedManifest
+from .client import ClientBackend, LoadedAssets, MountedManifest, current_directives
 from .dev import warn_reactive_render_without_client
 from .keys import MutationKey, ReactiveKey, coerce_load_key_str, coerce_reactive_keys
 from .mutations import MutationTracker, _require_mutation_keys
@@ -561,4 +561,11 @@ class ReactiveResponse(Markup):
     def __new__(cls, *keys: MutationKey, html: str | Markup = "") -> "ReactiveResponse":
         _require_mutation_keys(keys, "ReactiveResponse()")
         MutationTracker.record(keys)  # no-op when keys is empty
+        if not str(html).strip():
+            # OOB-only body: htmx would swap the empty leftover into the trigger
+            # and clear it. Flag the request so the integration emits
+            # HX-Reswap: none instead of requiring hx-swap="none" on the trigger.
+            directives = current_directives()
+            if directives is not None:
+                directives.reswap_none = True
         return super().__new__(cls, _finish_with_oob(html))

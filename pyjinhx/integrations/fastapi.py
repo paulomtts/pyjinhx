@@ -15,6 +15,8 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger("pyjinhx")
 
+_REDIRECT_STATUS = frozenset({301, 302, 303, 307, 308})
+
 
 class FastAPIClientBackend(ClientBackend):
     """
@@ -47,7 +49,9 @@ def apply_setup(
         )
         return
     _chain_lifespan(app, settings)
-    app.add_middleware(_registry_middleware_class(context_factory))
+    app.add_middleware(
+        _registry_middleware_class(context_factory, settings.htmx_redirects)
+    )
     if static_root is not None:
         from starlette.staticfiles import StaticFiles
 
@@ -76,6 +80,7 @@ def _chain_lifespan(app: Starlette, settings: PjxSettings) -> None:
 
 def _registry_middleware_class(
     context_factory: Callable[[Any], object | None] | None,
+    htmx_redirects: bool,
 ) -> type:
     from starlette.middleware.base import BaseHTTPMiddleware
 
@@ -84,10 +89,28 @@ def _registry_middleware_class(
             load_context = (
                 context_factory(request) if context_factory is not None else None
             )
+            backend = FastAPIClientBackend(request)
             with Registry.request_scope(
                 load_context=load_context,
-                client_backend=FastAPIClientBackend(request),
+                client_backend=backend,
             ):
-                return await call_next(request)
+                response = await call_next(request)
+                backend.apply_response_directives(response)
+                if (
+                    htmx_redirects
+                    and request.headers.get("HX-Request") == "true"
+                    and response.status_code in _REDIRECT_STATUS
+                    and "location" in response.headers
+                ):
+                    # htmx would AJAX-follow a 3xx and swap the page into a
+                    # fragment; rewrite to a 204 + HX-Redirect so the browser
+                    # navigates. Mutate in place to preserve Set-Cookie (and any
+                    # other headers); only drop Location + Content-Length.
+                    response.status_code = 204
+                    response.headers["HX-Redirect"] = response.headers["location"]
+                    del response.headers["location"]
+                    if "content-length" in response.headers:
+                        del response.headers["content-length"]
+                return response
 
     return RegistryScopeMiddleware

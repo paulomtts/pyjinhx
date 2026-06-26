@@ -57,3 +57,14 @@ Without a `ClientBackend`, reactive OOB is skipped even when mutations are pendi
 ## Non-FastAPI frameworks
 
 Subclass `ClientBackend` and implement `get_header()`. Pass the instance to `Registry.request_scope(client_backend=...)`.
+
+## `apply_response_directives(response)`
+
+Called by the integration when finalizing a response. The default applies the
+`HX-*` headers implied by the request's `ResponseDirectives` (e.g.
+`HX-Reswap: none` for an OOB-only `ReactiveResponse`) to any response whose
+`.headers` is a mutable mapping. Override only if your framework's response
+header API differs. This is how a custom `ClientBackend` inherits pyjinhx's
+reactive response behavior.
+
+See the [htmx integration guide](../integrations/htmx.md) for when a custom backend needs this.

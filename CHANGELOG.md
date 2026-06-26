@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.29.0 — Reactive HX-Reswap and opt-in htmx redirect adaptation (2026-06-26)
+
+### Fixed
+- Reactive triggers no longer need `hx-swap="none"`: pyjinhx emits `HX-Reswap: none`
+  for OOB-only `ReactiveResponse`s automatically (#188).
+
+### Added
+- `setup(htmx_redirects=True)` (env `PJX_HTMX_REDIRECTS`) adapts `3xx` redirects to
+  `204 + HX-Redirect` for htmx requests, preserving `Set-Cookie` (#189).
+- `ClientBackend.apply_response_directives()` exposes the response-header seam to
+  custom backends.
+
 ## 0.28.5 — Reactive lazy fragments deliver their own assets (2026-06-25)
 
 ### Fixed

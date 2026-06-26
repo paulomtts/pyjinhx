@@ -33,6 +33,7 @@ Homepage = "https://github.com/paulomtts/pyjinhx"
 markers = [
     "pjx_runtime: enable pjx.js auto-injection in tests (disabled by default via conftest)",
     "reactivity: browser-based tests for the builtin JS contracts (needs playwright chromium)",
+    "no_request_scope: run the test outside the global reactive request scope (state still reset)",
 ]
 
 [tool.pyright]

@@ -21,6 +21,7 @@ class PjxSettings:
     invalidation_backend: InvalidationBackend | None = None
     reactive_dev: bool = False
     inject_htmx: bool = True
+    htmx_redirects: bool = False
 
     @classmethod
     def from_env(cls) -> PjxSettings:
@@ -33,6 +34,11 @@ class PjxSettings:
             "0",
             "false",
             "no",
+        }
+        htmx_redirects = os.environ.get("PJX_HTMX_REDIRECTS", "").lower() in {
+            "1",
+            "true",
+            "yes",
         }
         invalidation_backend: InvalidationBackend | None = None
         redis_url = os.environ.get("REDIS_URL")
@@ -49,6 +55,7 @@ class PjxSettings:
             invalidation_backend=invalidation_backend,
             reactive_dev=reactive_dev,
             inject_htmx=inject_htmx,
+            htmx_redirects=htmx_redirects,
         )
 
     def merge(self, **overrides: Any) -> PjxSettings:
@@ -69,12 +76,14 @@ def _merge_settings(
     invalidation_backend: Any,
     reactive_dev: Any,
     inject_htmx: Any,
+    htmx_redirects: Any,
     extra: dict[str, Any],
 ) -> PjxSettings:
     return (settings or PjxSettings()).merge(
         invalidation_backend=invalidation_backend,
         reactive_dev=reactive_dev,
         inject_htmx=inject_htmx,
+        htmx_redirects=htmx_redirects,
         **extra,
     )
 
@@ -90,6 +99,7 @@ def configure_pyjinhx(
             invalidation_backend=kwargs.pop("invalidation_backend", _UNSET),
             reactive_dev=kwargs.pop("reactive_dev", _UNSET),
             inject_htmx=kwargs.pop("inject_htmx", _UNSET),
+            htmx_redirects=kwargs.pop("htmx_redirects", _UNSET),
             extra=kwargs,
         )
     else:
@@ -137,6 +147,7 @@ def setup(
     invalidation_backend: InvalidationBackend | None = _UNSET,
     reactive_dev: bool = _UNSET,
     inject_htmx: bool = _UNSET,
+    htmx_redirects: bool = _UNSET,
     components_root: str | os.PathLike[str] | None = None,
     static_root: str | os.PathLike[str] | None = None,
     **kwargs: Any,
@@ -173,6 +184,7 @@ def setup(
         invalidation_backend=invalidation_backend,
         reactive_dev=reactive_dev,
         inject_htmx=inject_htmx,
+        htmx_redirects=htmx_redirects,
         extra=kwargs,
     )
     if app is None:
