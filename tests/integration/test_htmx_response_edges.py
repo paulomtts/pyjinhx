@@ -100,3 +100,25 @@ def test_redirect_passes_through_when_flag_off():
     assert resp.status_code == 303
     assert resp.headers["location"] == "/login"
     assert "HX-Redirect" not in resp.headers
+
+
+def test_htmx_redirect_preserves_multiple_set_cookies():
+    # Guards the in-place rewrite against a dict-based rebuild, which would
+    # collapse duplicate Set-Cookie headers into one.
+    app = FastAPI()
+    setup(app, htmx_redirects=True)
+
+    @app.post("/logout-all")
+    def logout_all():
+        resp = RedirectResponse("/login", status_code=303)
+        resp.set_cookie("session", "", max_age=0)
+        resp.set_cookie("csrf", "", max_age=0)
+        return resp
+
+    with TestClient(app) as client:
+        resp = client.post(
+            "/logout-all", headers={"HX-Request": "true"}, follow_redirects=False
+        )
+    assert resp.status_code == 204
+    assert resp.headers["HX-Redirect"] == "/login"
+    assert len(resp.headers.get_list("set-cookie")) == 2
