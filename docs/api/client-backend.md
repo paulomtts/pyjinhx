@@ -66,3 +66,5 @@ Called by the integration when finalizing a response. The default applies the
 `.headers` is a mutable mapping. Override only if your framework's response
 header API differs. This is how a custom `ClientBackend` inherits pyjinhx's
 reactive response behavior.
+
+See the [htmx integration guide](../integrations/htmx.md) for when a custom backend needs this.

@@ -335,7 +335,10 @@ also set it via the `PJX_HTMX_REDIRECTS` environment variable.
 
 ### Custom client backends
 
-Both behaviors are emitted via `ClientBackend.apply_response_directives(response)`.
-The default applies the implied `HX-*` headers to any response with a mutable
-`.headers` mapping, so a custom backend inherits the reactive `HX-Reswap`
-behavior for free; override it only if your framework's response differs.
+The automatic `HX-Reswap: none` (#188) is emitted via
+`ClientBackend.apply_response_directives(response)`. The default applies the
+`HX-*` headers implied by the request's `ResponseDirectives` to any response
+whose `.headers` is a mutable mapping, so a custom backend inherits that
+behavior for free; override it only if your framework's response differs. The
+opt-in redirect adaptation (#189) is applied directly by the FastAPI middleware,
+not through this seam.

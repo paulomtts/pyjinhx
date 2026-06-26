@@ -92,7 +92,7 @@ setup(app, context_factory=lambda req: AppLoadContext(db=get_db(req)))
 - `invalidation_backend` — cross-worker invalidation backend (default `None`)
 - `reactive_dev` — enable reactive dev guardrails (default `False`)
 - `inject_htmx` — inline the vendored htmx runtime on reactive root renders (default `True`)
-- `htmx_redirects` — rewrite `3xx` redirects to `204 + HX-Redirect` for htmx requests so the browser navigates instead of swapping the destination into a fragment; `Set-Cookie` preserved, `304` left alone (default `False`)
+- `htmx_redirects` — adapt `3xx` redirects to `204 + HX-Redirect` for htmx requests (default `False`); the browser navigates instead of swapping the destination into a fragment, `Set-Cookie` is preserved, and `304` is left alone
 
 The load-cache scope is **derived** from `invalidation_backend`: a backend (e.g. Redis) makes cross-request caching safe across workers, so `load()` results are cached per worker process; without one, they are cached per request only — the only multi-worker-safe default.
 
