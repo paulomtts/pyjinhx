@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.29.0 — Reactive HX-Reswap and opt-in htmx redirect adaptation (2026-06-26)
 
 ### Fixed
 - Reactive triggers no longer need `hx-swap="none"`: pyjinhx emits `HX-Reswap: none`
