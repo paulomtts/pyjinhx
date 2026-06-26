@@ -54,6 +54,22 @@ class ClientBackend(ABC):
     @abstractmethod
     def get_header(self, name: str) -> str | None: ...
 
+    def apply_response_directives(self, response: Any) -> None:
+        """Apply this request's pyjinhx response directives to *response*.
+
+        Integrations call this when finalizing the response — e.g. to emit
+        ``HX-Reswap: none`` for an OOB-only
+        :class:`~pyjinhx.reactive.ReactiveResponse`, so reactive triggers don't
+        need ``hx-swap="none"``. The default works for any response whose
+        ``.headers`` is a mutable mapping (Starlette / Flask / Django /
+        aiohttp); override only if your framework's response differs.
+        """
+        directives = current_directives()
+        if directives is None:
+            return
+        for name, value in directives.headers().items():
+            response.headers[name] = value
+
     @classmethod
     def current(cls) -> ClientBackend | None:
         return cls._context.get()
