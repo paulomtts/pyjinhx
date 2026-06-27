@@ -181,11 +181,21 @@ def _asset_count(page: Page) -> int:
     return page.evaluate("document.querySelectorAll('style[data-pjx-asset]').length")
 
 
+def _has_widget_css(page: Page) -> bool:
+    """Whether any promoted style carries the widget's own rule. The eagerly
+    rendered ``PJXLazyLoad`` ships its co-located CSS as a baseline asset, so a
+    total count is no longer a clean proxy for 'the widget's CSS is present'."""
+    return page.evaluate(
+        "Array.from(document.querySelectorAll('style[data-pjx-asset]'))"
+        ".some(function (s) { return s.textContent.indexOf('lazy-widget') !== -1; })"
+    )
+
+
 def test_cold_load_has_no_widget_css(lazy_page: Page) -> None:
     """Guard: the widget's CSS is absent until the lazy swap delivers it."""
     expect(lazy_page.locator("#lazy-placeholder")).to_be_visible()
     expect(lazy_page.locator("#lazy-widget")).to_have_count(0)
-    assert _asset_count(lazy_page) == 0
+    assert not _has_widget_css(lazy_page)
 
 
 def test_lazy_swap_promotes_css_and_styles_content(lazy_page: Page) -> None:

@@ -1,0 +1,13 @@
+/* ── PJXLazyLoad error affordance ───────────────────────────── */
+/* Shown by pjx-lazy-load.js when a lazy region's own request fails
+   terminally and htmx leaves the placeholder un-swapped. */
+:where(:root) {
+  --pjx-lazy-load-error-color: var(--danger, #b91c1c);
+  --pjx-lazy-load-error-pad:   0.75rem 1rem;
+}
+
+.pjx-lazy-load__error {
+  padding: var(--pjx-lazy-load-error-pad);
+  color: var(--pjx-lazy-load-error-color);
+  font-size: 0.875rem;
+}

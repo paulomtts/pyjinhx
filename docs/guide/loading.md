@@ -1,10 +1,11 @@
 # Loading states
 
-Six loading niches, one decision rule: *what is missing?*
+Seven loading niches, one decision rule: *what is missing?*
 
 | What's missing | Builtin | Activation |
 |---|---|---|
 | Content not loaded yet | `PJXSkeleton` | None — it IS the placeholder; the swap replaces it (`PJXLazyLoad(content=PJXSkeleton())`) |
+| Lazy load failed | `PJXLazyLoad` error path | Automatic — on the element's own terminal failure (non-2xx/timeout/network) the placeholder is replaced by its `error` slot, or a default `role="alert"` message (`error_text`); no retry is issued |
 | Reactive region refreshing | *runtime state* (`data-pjx-loading`) | Automatic — add `data-pjx-loading="skeleton"` or `data-pjx-loading="spinner"` directly in the `ReactiveComponent` template (on the root element or an inner element); the `pjx.js` runtime shimmer-skeletonizes or overlays the EXISTING content while predicted mutations are in flight |
 | Request in flight, inline | `PJXSpinner` | `PJXSpinner(class_name="htmx-indicator")` + `hx-indicator="#its-id"` — htmx toggles it, zero JS |
 | Request in flight, region-blocking | `PJXRegionLoader` | `hx-indicator` pointing at it, **or** `pjx.loader.region.show/hide/reset(id)` for non-htmx work (pick one mechanism per element), or `pjx.loader.region.wrap(id, promise)` |

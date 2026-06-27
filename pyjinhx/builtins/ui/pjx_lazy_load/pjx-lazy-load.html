@@ -1,5 +1,7 @@
 <{{ tag }} id="{{ id }}"
      class="pjx-lazy-load{% if class_name %} {{ class_name }}{% endif %}"
+     data-pjx-lazy-load
      hx-get="{{ url }}"
      hx-trigger="{% if trigger %}{{ trigger }}{% elif when == 'reveal' %}pjx:reveal from:closest [data-pjx-region] once{% elif when == 'load' %}load{% else %}revealed{% endif %}"
-     hx-swap="{{ swap }}">{{ content }}</{{ tag }}>
+     hx-swap="{{ swap }}"
+     data-pjx-error-text="{{ error_text }}">{{ content }}{% if error %}<template data-pjx-lazy-error>{{ error }}</template>{% endif %}</{{ tag }}>
