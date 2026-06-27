@@ -79,6 +79,48 @@ def _is_slot_field(cls: type, field_name: str) -> bool:
     return bool(field) and any(isinstance(m, PjxSlot) for m in field.metadata)
 
 
+def _resolve_children_field(cls: type["BaseComponent"]) -> str | None:
+    """Resolve a component's effective children target (see the children-slot
+    spec for the precedence). Returns a field name, or ``None`` when the target
+    is ambiguous (>=2 slot fields, none flagged, no ``content`` field)."""
+    fields = cls.model_fields
+    flagged = [
+        name
+        for name, field in fields.items()
+        if any(isinstance(m, PjxSlot) and m.children for m in field.metadata)
+    ]
+    if len(flagged) > 1:
+        raise ValueError(
+            f"{cls.__name__}: multiple fields flagged PjxSlot(children=True) "
+            f"({', '.join(flagged)}); only one may receive tag children"
+        )
+
+    override = cls._pjx_children_field  # inherited via the MRO
+    if override != "content":
+        if flagged and flagged[0] != override:
+            raise ValueError(
+                f"{cls.__name__}: _pjx_children_field={override!r} conflicts with "
+                f"PjxSlot(children=True) on {flagged[0]!r}; declare only one"
+            )
+        return override
+
+    if flagged:
+        return flagged[0]
+    if "content" in fields:
+        return "content"
+
+    slots = [
+        name
+        for name, field in fields.items()
+        if any(isinstance(m, PjxSlot) for m in field.metadata)
+    ]
+    if len(slots) == 1:
+        return slots[0]
+    if len(slots) >= 2:
+        return None
+    return "content"
+
+
 def _wrap_slot_value(value: Any) -> Any:
     """Wrap a slot field's string value(s) as ``markupsafe.Markup`` so they
     pass through Jinja unescaped. Recurses into list/dict slot collections
@@ -192,6 +234,10 @@ class BaseComponent(BaseModel):
     # Components without a `content` field can point this at their text slot.
     _pjx_children_field: ClassVar[str] = "content"
 
+    # Resolved effective children target (see _resolve_children_field). `None`
+    # marks an ambiguous target that errors only when children are nested.
+    _pjx_children_target: ClassVar[str | None] = "content"
+
     # Tag name for html-only components synthesized via `component(name)`. When
     # set, the template is resolved by scanning the default env at render time.
     _pjx_template: ClassVar[str | None] = None
@@ -239,6 +285,11 @@ class BaseComponent(BaseModel):
             )
         Registry.register_class(cls, replace=pjx_replace)
         wrap_context_methods(cls)
+
+    @classmethod
+    def __pydantic_init_subclass__(cls, **kwargs: Any) -> None:
+        super().__pydantic_init_subclass__(**kwargs)
+        cls._pjx_children_target = _resolve_children_field(cls)
 
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
