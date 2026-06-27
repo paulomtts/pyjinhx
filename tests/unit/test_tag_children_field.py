@@ -181,3 +181,19 @@ def test_ambiguous_component_props_only_does_not_crash(tmp_path):
     rendered = renderer.render('<Menu2Tag id="m2" trigger="go"/>')
 
     assert "go" in rendered
+
+
+def test_subclass_of_override_component_routes_children_to_inherited_field(tmp_path):
+    class BoxedTag(BaseComponent):
+        _pjx_children_field = "kids"
+        kids: str = ""
+
+    class SubBoxedTag(BoxedTag):
+        extra: str = ""
+
+    (tmp_path / "sub_boxed_tag.html").write_text('<div id="{{ id }}">{{ kids }}</div>')
+    renderer = Renderer(Environment(loader=FileSystemLoader(str(tmp_path))))
+
+    rendered = renderer.render('<SubBoxedTag id="sb">inherited</SubBoxedTag>')
+
+    assert '<div id="sb">inherited</div>' in rendered
