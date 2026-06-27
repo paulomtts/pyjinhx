@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.30.0 — PJXLazyLoad terminal failure path (2026-06-27)
+
+### Added
+- `PJXLazyLoad` now has a terminal **failure** path. htmx never swaps on a
+  non-2xx/timeout/network error and the lazy trigger is usually consumed
+  (`once`), so a failed lazy load used to strand its placeholder
+  (`PJXSkeleton`/`PJXSpinner`) reading "loading…" forever. A co-located
+  `pjx-lazy-load.js` driver now listens for the element's own terminal
+  `htmx:afterRequest` (`!detail.successful`) and replaces the placeholder with
+  an inline error affordance — either the author's `error` slot or a default
+  `role="alert"` message. Two new props: `error` (a raw-HTML `Slot` for custom
+  error markup) and `error_text` (the default message, localizable). No retry
+  is issued (#191).
+
 ## 0.29.0 — Reactive HX-Reswap and opt-in htmx redirect adaptation (2026-06-26)
 
 ### Fixed
