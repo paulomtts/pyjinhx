@@ -13,7 +13,6 @@ from __future__ import annotations
 import socket
 import threading
 import time
-from pathlib import Path
 
 import httpx
 import pytest
@@ -87,7 +86,7 @@ def _make_app() -> FastAPI:
 
 
 @pytest.fixture(scope="module")
-def error_server(tmp_path_factory):
+def error_server():
     import uvicorn
 
     app = _make_app()
