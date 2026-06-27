@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.31.0 — Infer children slot from PjxSlot field (2026-06-27)
+
+### Added
+- Components now infer their nested-children target from their `PjxSlot()`
+  fields, so routing a PascalCase tag's children into a non-`content` slot no
+  longer needs the `_pjx_children_field` ClassVar override. A component with a
+  single `PjxSlot()` field receives tag children there automatically; multi-slot
+  components disambiguate locally with `PjxSlot(children=True)` (or the new
+  `Children` alias). Nesting children into a component whose target is ambiguous
+  (≥2 slots, none flagged, no `content`) now raises a clear `ValueError` naming
+  the candidate slots, instead of silently dropping them. Existing
+  `_pjx_children_field` overrides keep working, including across subclasses. New
+  public export: `Children` (#194).
+
 ## 0.30.0 — PJXLazyLoad terminal failure path (2026-06-27)
 
 ### Added

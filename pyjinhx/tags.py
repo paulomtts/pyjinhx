@@ -276,6 +276,22 @@ _BUILTIN_TAG_NAMES = frozenset(
 )
 
 
+def _ambiguous_children_error(tag_name: str, component_class: type) -> ValueError:
+    from .base import PjxSlot
+
+    slots = [
+        name
+        for name, field in component_class.model_fields.items()
+        if any(isinstance(m, PjxSlot) for m in field.metadata)
+    ]
+    return ValueError(
+        f"<{tag_name}> has multiple slot fields ({', '.join(slots)}) and no "
+        f"'content' field, so the target for nested children is ambiguous. "
+        f"Mark the intended field with PjxSlot(children=True) (or the Children "
+        f"alias)."
+    )
+
+
 def _missing_template_error(tag_name: str) -> FileNotFoundError:
     if tag_name in _BUILTIN_TAG_NAMES:
         return FileNotFoundError(
@@ -341,7 +357,10 @@ def render_tag_node(
 
         updates: dict[str, Any] = dict(attrs_without_id)
         if rendered_children:
-            updates[type(existing_instance)._pjx_children_field] = rendered_children
+            target = type(existing_instance)._pjx_children_target
+            if target is None:
+                raise _ambiguous_children_error(node.name, type(existing_instance))
+            updates[target] = rendered_children
         if updates:
             updated_instance = existing_instance.model_copy()
             validator = type(existing_instance).__pydantic_validator__
@@ -375,14 +394,17 @@ def render_tag_node(
     component_class = Registry.get_class(node.name)
     if component_class is not None:
         init_kwargs: dict[str, Any] = dict(attrs_without_id)
-        children_field = component_class._pjx_children_field
-        if rendered_children and children_field in init_kwargs:
-            raise ValueError(
-                f"<{node.name}> received both children and the "
-                f"'{children_field}' attribute; supply one"
-            )
-        if rendered_children or children_field not in init_kwargs:
-            init_kwargs[children_field] = rendered_children
+        children_field = component_class._pjx_children_target
+        if rendered_children and children_field is None:
+            raise _ambiguous_children_error(node.name, component_class)
+        if children_field is not None:
+            if rendered_children and children_field in init_kwargs:
+                raise ValueError(
+                    f"<{node.name}> received both children and the "
+                    f"'{children_field}' attribute; supply one"
+                )
+            if rendered_children or children_field not in init_kwargs:
+                init_kwargs[children_field] = rendered_children
         component = component_class(id=component_id, **init_kwargs)
     else:
         if template_path is None:
