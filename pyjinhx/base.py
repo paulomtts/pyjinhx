@@ -60,7 +60,13 @@ ExtraAttrs = Annotated[dict[str, str], AfterValidator(validate_extra_attrs)]
 
 class PjxSlot:
     """Marker (in a field's Annotated metadata) for a raw-HTML slot field —
-    its string value is emitted unescaped. Use via the ``Slot`` alias."""
+    its string value is emitted unescaped. Use via the ``Slot`` alias.
+
+    ``children=True`` additionally flags the field as the target for a
+    PascalCase tag's nested children (use via the ``Children`` alias)."""
+
+    def __init__(self, children: bool = False) -> None:
+        self.children = children
 
 
 # Slot is defined after BaseComponent (forward-ref resolved at class definition time)
@@ -452,6 +458,7 @@ class BaseComponent(BaseModel):
 
 
 Slot = Annotated[str | BaseComponent, PjxSlot()]
+Children = Annotated[str | BaseComponent, PjxSlot(children=True)]
 
 
 def component(name: str) -> type[BaseComponent]:

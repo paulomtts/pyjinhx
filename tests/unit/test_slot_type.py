@@ -61,3 +61,18 @@ def test_undeclared_children_field_becomes_markup_in_context(tmp_path):
     assert "content" not in type(inst).model_fields  # sanity: it's an extra
     built = inst._build_template_context()
     assert isinstance(built["content"], Markup)
+
+
+def test_pjxslot_children_flag_defaults_false_and_opts_in():
+    assert PjxSlot().children is False
+    assert PjxSlot(children=True).children is True
+
+
+def test_children_alias_carries_flagged_marker():
+    from typing import get_args
+    from pyjinhx import Children
+
+    # Children == Annotated[str | BaseComponent, PjxSlot(children=True)]
+    markers = [m for m in get_args(Children) if isinstance(m, PjxSlot)]
+    assert len(markers) == 1
+    assert markers[0].children is True

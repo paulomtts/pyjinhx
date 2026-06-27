@@ -2,6 +2,7 @@ import pyjinhx
 from pyjinhx import (
     AssetMode,
     BaseComponent,
+    Children,  # noqa: F401
     MutationKey,
     PjxContext,
     PjxKey,
@@ -19,6 +20,7 @@ from pyjinhx import (
 PUBLIC_API = {
     "BaseComponent",
     "Slot",
+    "Children",
     "component",
     "ReactiveComponent",
     "Renderer",
