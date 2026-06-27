@@ -1789,11 +1789,8 @@ Button + anchored panel backed by the shared popover engine. **Assets:** `pjx_dr
 <!-- demo: PJXDropdown -->
 
 ```html
-<PJXDropdown trigger="Actions" menu_label="Actions menu">
-  <button>Edit</button>
-  <button>Duplicate</button>
-  <button>Delete</button>
-</PJXDropdown>
+<!-- Menu entries are supplied via the `items` prop (a list); see the Python example below. -->
+<PJXDropdown trigger="Actions" menu_label="Actions menu" />
 ```
 
 ??? note "Props & API"
