@@ -335,6 +335,13 @@ def _mount_reactive_instance(
     if explicit_id:
         instance.id = explicit_id
 
+    if instance.id in session.reactive_mount_ids:
+        raise ValueError(
+            f"<{tag_name}> mount resolved to data-pjx-id '{instance.id}', which is "
+            f"already used in this render; give one an explicit id."
+        )
+    session.reactive_mount_ids.add(instance.id)
+
     overrides = {
         field_name: value
         for field_name, value in attrs_without_id.items()

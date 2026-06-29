@@ -132,3 +132,47 @@ def test_children_override_loaded_target_field():
 
     assert "from-children" in rendered
     assert "loaded" not in rendered
+
+
+def test_duplicate_keyed_mount_id_raises():
+    """Two keyed mounts deriving the same id raise a clear collision error."""
+    from pyjinhx import PjxKey
+    import pytest
+
+    class RowCard(ReactiveComponent, react={Keys.SHELL}):
+        row_id: Annotated[str, PjxKey()]
+
+        @classmethod
+        def load(cls, key: str) -> "RowCard":
+            return cls(row_id=str(key))
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        with open(os.path.join(temp_dir, "row_card.html"), "w") as f:
+            f.write("<div id='{{ id }}'></div>")
+        with open(os.path.join(temp_dir, "page.html"), "w") as f:
+            f.write('<div id="{{ id }}"><RowCard row_id="1"/><RowCard row_id="1"/></div>')
+        with Registry.request_scope():
+            with pytest.raises(ValueError, match="already used in this render"):
+                _renderer(temp_dir).render('<Page id="page"/>')
+
+
+def test_distinct_keyed_mounts_coexist():
+    from pyjinhx import PjxKey
+
+    class CellCard(ReactiveComponent, react={Keys.SHELL}):
+        cell_id: Annotated[str, PjxKey()]
+
+        @classmethod
+        def load(cls, key: str) -> "CellCard":
+            return cls(cell_id=str(key))
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        with open(os.path.join(temp_dir, "cell_card.html"), "w") as f:
+            f.write("<div id='{{ id }}'>{{ cell_id }}</div>")
+        with open(os.path.join(temp_dir, "grid.html"), "w") as f:
+            f.write('<div id="{{ id }}"><CellCard cell_id="1"/><CellCard cell_id="2"/></div>')
+        with Registry.request_scope():
+            rendered = str(_renderer(temp_dir).render('<Grid id="grid"/>'))
+
+    assert 'data-pjx-id="cell-card-1"' in rendered
+    assert 'data-pjx-id="cell-card-2"' in rendered
