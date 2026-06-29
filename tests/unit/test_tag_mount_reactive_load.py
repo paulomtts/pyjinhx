@@ -109,7 +109,8 @@ def test_scalar_attr_overrides_load_result():
                 _renderer(temp_dir).render('<PanelShell highlight="on"/>')
             )
 
-    assert ">on<" in rendered  # tag attr won over load()'s "off"
+    assert ">on<" in rendered   # tag attr won over load()'s "off"
+    assert ">off<" not in rendered  # loaded default was replaced
 
 
 def test_children_override_loaded_target_field():

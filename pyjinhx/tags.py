@@ -470,6 +470,7 @@ def render_tag_node(
             )
 
     if is_reactive:
+        assert component_class is not None  # is_reactive implies a registered ReactiveComponent
         component = _mount_reactive_instance(
             component_class,
             attrs_without_id,
@@ -479,6 +480,7 @@ def render_tag_node(
             tag_name=node.name,
         )
     elif component_class is not None:
+        assert component_id is not None  # non-reactive path always has a concrete id (explicit or auto)
         init_kwargs: dict[str, Any] = dict(attrs_without_id)
         children_field = component_class._pjx_children_target
         if rendered_children and children_field is None:
@@ -493,6 +495,7 @@ def render_tag_node(
                 init_kwargs[children_field] = rendered_children
         component = component_class(id=component_id, **init_kwargs)
     else:
+        assert component_id is not None  # non-reactive path always has a concrete id (explicit or auto)
         if template_path is None:
             raise _missing_template_error(node.name)
         from .base import BaseComponent
