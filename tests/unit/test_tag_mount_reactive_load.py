@@ -47,3 +47,45 @@ def test_singleton_reactive_tag_runs_load():
 
     assert "acme" in rendered  # load() ran; org_host rendered
     assert 'data-pjx-id="sidebar-shell"' in rendered
+
+
+def test_keyed_reactive_tag_loads_from_key_attr():
+    """A keyed tag passes its PjxKey-named attr to load() and derives kebab-key id."""
+    from pyjinhx import PjxKey
+
+    class UserCard(ReactiveComponent, react={Keys.SHELL}):
+        user_id: Annotated[str, PjxKey()]
+        name: str = ""
+
+        @classmethod
+        def load(cls, key: str) -> "UserCard":
+            return cls(user_id=str(key), name=f"user {key}")
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        with open(os.path.join(temp_dir, "user_card.html"), "w") as f:
+            f.write("<div id='{{ id }}'>{{ name }}</div>")
+        with Registry.request_scope():
+            rendered = str(_renderer(temp_dir).render('<UserCard user_id="42"/>'))
+
+    assert "user 42" in rendered
+    assert 'data-pjx-id="user-card-42"' in rendered
+    assert 'data-pjx-load="42"' in rendered
+
+
+def test_keyed_reactive_tag_missing_key_attr_raises():
+    from pyjinhx import PjxKey
+    import pytest
+
+    class WidgetCard(ReactiveComponent, react={Keys.SHELL}):
+        widget_id: Annotated[str, PjxKey()]
+
+        @classmethod
+        def load(cls, key: str) -> "WidgetCard":
+            return cls(widget_id=str(key))
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        with open(os.path.join(temp_dir, "widget_card.html"), "w") as f:
+            f.write("<div id='{{ id }}'></div>")
+        with Registry.request_scope():
+            with pytest.raises(ValueError, match="instance-keyed"):
+                _renderer(temp_dir).render("<WidgetCard/>")

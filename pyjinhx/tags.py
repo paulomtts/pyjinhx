@@ -319,7 +319,18 @@ def _mount_reactive_instance(
     The keyed id (``f"{kebab}-{key}"``) is produced by ``LoadCache`` inside
     ``load()``; an explicit ``id`` attr overrides it.
     """
-    instance = component_class.load()
+    keyed = getattr(component_class, "_pjx_keyed", False)
+    load_field = getattr(component_class, "_pjx_load_field", None)
+
+    if keyed:
+        if load_field is None or load_field not in attrs_without_id:
+            raise ValueError(
+                f"<{tag_name}> is instance-keyed; mounting it as a tag requires "
+                f"the key attr '{load_field}=...'."
+            )
+        instance = component_class.load(attrs_without_id[load_field])
+    else:
+        instance = component_class.load()
 
     if explicit_id:
         instance.id = explicit_id
