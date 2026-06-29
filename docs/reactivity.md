@@ -122,6 +122,21 @@ from pyjinhx.client import client_script
 </body>
 ```
 
+## Mounting a reactive component by tag
+
+A reactive component placed as a bare PascalCase tag runs `load()` automatically
+on cold render, so state that can't ride scalar tag attributes (e.g. a nested
+child built in `load()`) is populated:
+
+```html
+<SidebarShell/>            <!-- type-singleton: runs load() -->
+<UserCard user_id="42"/>   <!-- keyed: runs load("42"), id "user-card-42" -->
+```
+
+Remaining scalar attrs override the loaded values (`<UserCard user_id="42"
+highlight="on"/>`). The pre-load-into-the-registry pattern still works and takes
+precedence, but is no longer required for the common case.
+
 The runtime attaches these headers to htmx requests:
 
 | Header | Purpose |

@@ -74,6 +74,9 @@ class RenderSession:
             currently on the render stack, used to break cross-reference
             cycles (a same-type-and-id reference renders empty and logs a
             warning).
+        reactive_mount_ids: data-pjx-ids assigned to reactive components
+            auto-mounted by tag in this render pass, used to detect id
+            collisions between mounts.
     """
 
     assets: list[CollectedAsset] = field(default_factory=list)
@@ -82,6 +85,7 @@ class RenderSession:
     styles: list[str] = field(default_factory=list)
     runtime_injected: bool = False
     rendering: set[tuple[str, str]] = field(default_factory=set)
+    reactive_mount_ids: set[str] = field(default_factory=set)
 
     def manifest(self, *, resolver: AssetUrlResolver) -> AssetManifest:
         stylesheets: list[str] = []

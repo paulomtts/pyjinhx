@@ -305,6 +305,65 @@ def _missing_template_error(tag_name: str) -> FileNotFoundError:
     )
 
 
+def _mount_reactive_instance(
+    component_class: type,
+    attrs_without_id: dict[str, Any],
+    *,
+    explicit_id: str | None,
+    rendered_children: str,
+    session: RenderSession,
+    tag_name: str,
+) -> Any:
+    """Build a reactive instance for a tag mount by running ``load()``.
+
+    The keyed id (``f"{kebab}-{key}"``) is produced by ``LoadCache`` inside
+    ``load()``; an explicit ``id`` attr overrides it.
+    """
+    keyed = getattr(component_class, "_pjx_keyed", False)
+    load_field = getattr(component_class, "_pjx_load_field", None)
+
+    if keyed:
+        if load_field is None or load_field not in attrs_without_id:
+            raise ValueError(
+                f"<{tag_name}> is instance-keyed; mounting it as a tag requires "
+                f"the key attr '{load_field}=...'."
+            )
+        instance = component_class.load(attrs_without_id[load_field])
+    else:
+        instance = component_class.load()
+
+    if explicit_id:
+        instance.id = explicit_id
+
+    if instance.id in session.reactive_mount_ids:
+        raise ValueError(
+            f"<{tag_name}> mount resolved to data-pjx-id '{instance.id}', which is "
+            f"already used in this render; give one an explicit id."
+        )
+    session.reactive_mount_ids.add(instance.id)
+
+    overrides = {
+        field_name: value
+        for field_name, value in attrs_without_id.items()
+        if field_name != load_field
+    }
+    children_field = component_class._pjx_children_target
+    if rendered_children:
+        if children_field is None:
+            raise _ambiguous_children_error(tag_name, component_class)
+        overrides[children_field] = rendered_children
+    if overrides:
+        instance = instance.model_copy()
+        validator = component_class.__pydantic_validator__
+        for field_name, value in overrides.items():
+            validator.validate_assignment(instance, field_name, value)
+
+    Registry.get_instances()[
+        Registry.make_key(tag_name, instance.id)
+    ] = instance
+    return instance
+
+
 def render_tag_node(
     renderer: Renderer,
     node: Tag | str,
@@ -327,72 +386,101 @@ def render_tag_node(
         for child in node.children
     ).strip()
 
-    component_id = node.attrs.get("id")
-    if not component_id:
-        if not renderer._auto_id:
-            raise ValueError(
-                f'Missing required "id" for <{node.name}> and auto_id=False'
-            )
-        from .base import _auto_id
-
-        component_id = _auto_id()
-
+    explicit_id = node.attrs.get("id")
     attrs_without_id = {k: v for k, v in node.attrs.items() if k != "id"}
 
-    registry_key = Registry.make_key(node.name, component_id)
-    existing_instance = Registry.get_instances().get(registry_key)
     template_path: str | None = None
     try:
         template_path = renderer._find_template_for_tag(node.name)
     except FileNotFoundError:
         pass
 
-    if existing_instance is not None:
-        instance_class_name = type(existing_instance).__name__
-        if instance_class_name != node.name:
-            raise TypeError(
-                f"Tag <{node.name}> references instance '{component_id}' "
-                f"which is of type {instance_class_name}"
-            )
-
-        updates: dict[str, Any] = dict(attrs_without_id)
-        if rendered_children:
-            target = type(existing_instance)._pjx_children_target
-            if target is None:
-                raise _ambiguous_children_error(node.name, type(existing_instance))
-            updates[target] = rendered_children
-        if updates:
-            updated_instance = existing_instance.model_copy()
-            validator = type(existing_instance).__pydantic_validator__
-            for field_name, field_value in updates.items():
-                validator.validate_assignment(updated_instance, field_name, field_value)
-            existing_instance = updated_instance
-            Registry.get_instances()[registry_key] = existing_instance
-
-        return str(
-            existing_instance._render(
-                base_context=base_context,
-                _renderer=renderer,
-                _session=session,
-                _template_path=template_path,
-                emit_assets=emit_assets,
-            )
-        )
-
+    # Resolve the class up front so we can tell a reactive tag from a plain one
+    # before assigning its id. Autodiscovery and {#def#} model-building are
+    # idempotent and deduplicated, so running them here is safe.
     if not Registry.has_class(node.name):
         ComponentAutodiscover.try_for_tag(node.name, template_path)
-
     if not Registry.has_class(node.name) and template_path is not None:
         from .props_header import build_component_model
 
         with open(template_path, encoding="utf-8") as template_file:
             build_component_model(node.name, template_file.read())
-        # build_component_model auto-registers the generated class via
-        # BaseComponent.__init_subclass__; if there's no header it returns None
-        # and we fall through to the bare-BaseComponent path below.
 
     component_class = Registry.get_class(node.name)
-    if component_class is not None:
+
+    from .reactive import ReactiveComponent
+
+    is_reactive = component_class is not None and issubclass(
+        component_class, ReactiveComponent
+    )
+
+    # A reactive tag derives its id from load() (or an explicit id attr), never a
+    # random auto_id. Non-reactive tags keep the existing id rules.
+    if explicit_id:
+        component_id: str | None = explicit_id
+    elif is_reactive:
+        component_id = None
+    elif renderer._auto_id:
+        from .base import _auto_id
+
+        component_id = _auto_id()
+    else:
+        raise ValueError(
+            f'Missing required "id" for <{node.name}> and auto_id=False'
+        )
+
+    # Reuse an already-registered instance when we have a concrete id to look up.
+    # Bare reactive tags skip this and go straight to load(), whose LoadCache
+    # already dedupes per request.
+    if component_id is not None:
+        registry_key = Registry.make_key(node.name, component_id)
+        existing_instance = Registry.get_instances().get(registry_key)
+        if existing_instance is not None:
+            instance_class_name = type(existing_instance).__name__
+            if instance_class_name != node.name:
+                raise TypeError(
+                    f"Tag <{node.name}> references instance '{component_id}' "
+                    f"which is of type {instance_class_name}"
+                )
+
+            updates: dict[str, Any] = dict(attrs_without_id)
+            if rendered_children:
+                target = type(existing_instance)._pjx_children_target
+                if target is None:
+                    raise _ambiguous_children_error(node.name, type(existing_instance))
+                updates[target] = rendered_children
+            if updates:
+                updated_instance = existing_instance.model_copy()
+                validator = type(existing_instance).__pydantic_validator__
+                for field_name, field_value in updates.items():
+                    validator.validate_assignment(
+                        updated_instance, field_name, field_value
+                    )
+                existing_instance = updated_instance
+                Registry.get_instances()[registry_key] = existing_instance
+
+            return str(
+                existing_instance._render(
+                    base_context=base_context,
+                    _renderer=renderer,
+                    _session=session,
+                    _template_path=template_path,
+                    emit_assets=emit_assets,
+                )
+            )
+
+    if is_reactive:
+        assert component_class is not None  # is_reactive implies a registered ReactiveComponent
+        component = _mount_reactive_instance(
+            component_class,
+            attrs_without_id,
+            explicit_id=explicit_id,
+            rendered_children=rendered_children,
+            session=session,
+            tag_name=node.name,
+        )
+    elif component_class is not None:
+        assert component_id is not None  # non-reactive path always has a concrete id (explicit or auto)
         init_kwargs: dict[str, Any] = dict(attrs_without_id)
         children_field = component_class._pjx_children_target
         if rendered_children and children_field is None:
@@ -407,6 +495,7 @@ def render_tag_node(
                 init_kwargs[children_field] = rendered_children
         component = component_class(id=component_id, **init_kwargs)
     else:
+        assert component_id is not None  # non-reactive path always has a concrete id (explicit or auto)
         if template_path is None:
             raise _missing_template_error(node.name)
         from .base import BaseComponent
