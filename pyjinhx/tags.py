@@ -335,6 +335,22 @@ def _mount_reactive_instance(
     if explicit_id:
         instance.id = explicit_id
 
+    overrides = {
+        field_name: value
+        for field_name, value in attrs_without_id.items()
+        if field_name != load_field
+    }
+    children_field = component_class._pjx_children_target
+    if rendered_children:
+        if children_field is None:
+            raise _ambiguous_children_error(tag_name, component_class)
+        overrides[children_field] = rendered_children
+    if overrides:
+        instance = instance.model_copy()
+        validator = component_class.__pydantic_validator__
+        for field_name, value in overrides.items():
+            validator.validate_assignment(instance, field_name, value)
+
     Registry.get_instances()[
         Registry.make_key(tag_name, instance.id)
     ] = instance

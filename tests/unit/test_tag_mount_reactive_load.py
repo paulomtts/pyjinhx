@@ -89,3 +89,46 @@ def test_keyed_reactive_tag_missing_key_attr_raises():
         with Registry.request_scope():
             with pytest.raises(ValueError, match="instance-keyed"):
                 _renderer(temp_dir).render("<WidgetCard/>")
+
+
+def test_scalar_attr_overrides_load_result():
+    """A non-key scalar attr overrides the loaded value via validated assignment."""
+
+    class PanelShell(ReactiveComponent, react={Keys.SHELL}):
+        highlight: str = "off"
+
+        @classmethod
+        def load(cls) -> "PanelShell":
+            return cls(highlight="off")
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        with open(os.path.join(temp_dir, "panel_shell.html"), "w") as f:
+            f.write("<div id='{{ id }}'>{{ highlight }}</div>")
+        with Registry.request_scope():
+            rendered = str(
+                _renderer(temp_dir).render('<PanelShell highlight="on"/>')
+            )
+
+    assert ">on<" in rendered  # tag attr won over load()'s "off"
+
+
+def test_children_override_loaded_target_field():
+    """Tag children override the _pjx_children_target field after load()."""
+
+    class CardShell(ReactiveComponent, react={Keys.SHELL}):
+        content: str = ""
+
+        @classmethod
+        def load(cls) -> "CardShell":
+            return cls(content="loaded")
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        with open(os.path.join(temp_dir, "card_shell.html"), "w") as f:
+            f.write("<section id='{{ id }}'>{{ content }}</section>")
+        with Registry.request_scope():
+            rendered = str(
+                _renderer(temp_dir).render("<CardShell>from-children</CardShell>")
+            )
+
+    assert "from-children" in rendered
+    assert "loaded" not in rendered
