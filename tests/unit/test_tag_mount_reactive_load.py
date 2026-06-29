@@ -176,3 +176,116 @@ def test_distinct_keyed_mounts_coexist():
 
     assert 'data-pjx-id="cell-card-1"' in rendered
     assert 'data-pjx-id="cell-card-2"' in rendered
+
+
+def test_preloaded_instance_is_reused_without_reloading():
+    """REUSE precedence: a route pre-load means the tag does NOT re-run load()."""
+    calls = {"n": 0}
+
+    class PreShell(ReactiveComponent, react={Keys.SHELL}):
+        label: str = ""
+
+        @classmethod
+        def load(cls) -> "PreShell":
+            calls["n"] += 1
+            return cls(label=f"load-{calls['n']}")
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        with open(os.path.join(temp_dir, "pre_shell.html"), "w") as f:
+            f.write("<div id='{{ id }}'>{{ label }}</div>")
+        with Registry.request_scope():
+            PreShell.load()  # pre-load: seeds the registry under "pre-shell"
+            assert calls["n"] == 1
+            rendered = str(
+                _renderer(temp_dir).render('<PreShell id="pre-shell"/>')
+            )
+
+    assert "load-1" in rendered
+    assert calls["n"] == 1  # tag reused the pre-loaded instance, no second load
+
+
+def test_same_singleton_tag_loads_once_via_cache():
+    """LoadCache: the same singleton mounted twice triggers one real load()."""
+    calls = {"n": 0}
+
+    class CacheShell(ReactiveComponent, react={Keys.SHELL}):
+        label: str = ""
+
+        @classmethod
+        def load(cls) -> "CacheShell":
+            calls["n"] += 1
+            return cls(label="x")
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        with open(os.path.join(temp_dir, "cache_shell.html"), "w") as f:
+            f.write("<div id='{{ id }}'>{{ label }}</div>")
+        with open(os.path.join(temp_dir, "wrap.html"), "w") as f:
+            # Two mounts: first bare (auto id), second explicit id to avoid collision.
+            f.write('<div id="{{ id }}"><CacheShell/><CacheShell id="cache-2"/></div>')
+        with Registry.request_scope():
+            str(_renderer(temp_dir).render('<Wrap id="wrap"/>'))
+
+    assert calls["n"] == 1  # LoadCache deduped the second load
+
+
+def test_nested_reactive_child_auto_loads():
+    """A reactive tag nested inside another component auto-loads too."""
+
+    class NestChild(ReactiveComponent, react={Keys.SHELL}):
+        msg: str = ""
+
+        @classmethod
+        def load(cls) -> "NestChild":
+            return cls(msg="nested-loaded")
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        with open(os.path.join(temp_dir, "nest_child.html"), "w") as f:
+            f.write("<span id='{{ id }}'>{{ msg }}</span>")
+        with open(os.path.join(temp_dir, "host.html"), "w") as f:
+            f.write("<div id='{{ id }}'><NestChild/></div>")
+        with Registry.request_scope():
+            rendered = str(_renderer(temp_dir).render('<Host id="host"/>'))
+
+    assert "nested-loaded" in rendered
+
+
+def test_non_reactive_tag_path_unchanged():
+    """A plain BaseComponent tag still constructs from attrs (no load())."""
+
+    class NonReactivePlain(BaseComponent):
+        text: str = ""
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        with open(os.path.join(temp_dir, "non_reactive_plain.html"), "w") as f:
+            f.write("<div id='{{ id }}'>{{ text }}</div>")
+        with Registry.request_scope():
+            rendered = str(
+                _renderer(temp_dir).render('<NonReactivePlain id="p" text="hi"/>')
+            )
+
+    assert ">hi<" in rendered
+
+
+def test_keyed_tag_key_excluded_non_key_attr_overridden():
+    """Keyed path: key field is excluded from overrides; a non-key attr IS applied."""
+    from pyjinhx import PjxKey
+
+    class WidgetX(ReactiveComponent, react={Keys.SHELL}):
+        widget_id: Annotated[str, PjxKey()]
+        tone: str = "muted"
+
+        @classmethod
+        def load(cls, key: str) -> "WidgetX":
+            return cls(widget_id=str(key), tone="muted")
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        with open(os.path.join(temp_dir, "widget_x.html"), "w") as f:
+            f.write("<div id='{{ id }}'>{{ tone }}</div>")
+        with Registry.request_scope():
+            rendered = str(
+                _renderer(temp_dir).render('<WidgetX widget_id="k1" tone="loud"/>')
+            )
+
+    assert "loud" in rendered          # non-key attr override applied
+    assert "muted" not in rendered     # loaded default was replaced
+    assert 'data-pjx-load="k1"' in rendered  # key is preserved in output
