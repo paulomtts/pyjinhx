@@ -1,5 +1,29 @@
 # Changelog
 
+## 0.32.1 — Defer remove_on_close removal until htmx requests settle (2026-07-04)
+
+### Fixed
+- A submit button carrying `data-pjx-close` inside a `remove_on_close` modal or
+  drawer raced its own htmx request against the dialog's removal. When the
+  response arrived after removal, htmx dispatched its `HX-Trigger` events (e.g.
+  `pjx:toast`) on the now-detached requesting element — where they can't bubble
+  to `PJXToastHost`'s window listener — and the response's OOB swaps were
+  dropped with them, with zero client-side errors. `close()` in `pjx-modal.js`
+  and `pjx-drawer.js` now defers the actual `remove()` until no descendant
+  carries the `htmx-request` class; the dialog is already closed at that point,
+  so the deferral is invisible (#198).
+
+## 0.32.0 — Tag-mounted reactive components run load() on cold render (2026-06-29)
+
+### Added
+- A reactive component placed as a bare PascalCase tag is now hydrated
+  automatically — no route pre-load required. `<SidebarShell/>` runs `load()`;
+  keyed components like `<UserCard user_id="42"/>` run `load("42")`, with
+  remaining scalar attrs overriding the loaded values. The pre-load-into-the-
+  registry pattern still works and takes precedence. Mounting the same
+  singleton bare twice on one page now raises a per-render id-collision error
+  by design (#196).
+
 ## 0.31.0 — Infer children slot from PjxSlot field (2026-06-27)
 
 ### Added
