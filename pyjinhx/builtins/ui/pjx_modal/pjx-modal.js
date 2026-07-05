@@ -20,6 +20,25 @@
         return true;
     }
 
+    // Removing a dialog while an htmx request fired from inside it is still in
+    // flight would detach the requesting element — HX-Trigger events dispatch on
+    // the requester (a detached node's events can't bubble to window listeners
+    // like PJXToastHost's) and the response's OOB swaps are dropped with them.
+    // The dialog is already close()d, so deferring removal is invisible.
+    function removeWhenSettled(el) {
+        function attempt() {
+            if (el.querySelector('.htmx-request')) return false;
+            el.remove();
+            return true;
+        }
+        if (attempt()) return;
+        el.addEventListener('htmx:afterRequest', function onAfter() {
+            setTimeout(function () {
+                if (attempt()) el.removeEventListener('htmx:afterRequest', onAfter);
+            }, 0);
+        });
+    }
+
     function close(id, reason, trigger) {
         const modal = document.getElementById(id);
         if (!modal || !modal.open) return false;
@@ -36,7 +55,7 @@
             modal.classList.remove('pjx-modal--closing');
             modal.close();
             fire(modal, 'pjx:modal:close', detail);
-            if (modal.hasAttribute('data-pjx-remove-on-close')) modal.remove();
+            if (modal.hasAttribute('data-pjx-remove-on-close')) removeWhenSettled(modal);
         }
         function onAnimationEnd(e) {
             if (e.target !== modal) return; // ignore bubbled descendant animations

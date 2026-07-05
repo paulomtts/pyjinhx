@@ -50,6 +50,8 @@ _PAGE_TEMPLATE = """
 <section>
 {{ modal }}
 <button type="button" id="modal-open-btn" data-pjx-open="rx-modal">Open modal</button>
+{{ remove_modal }}
+<button type="button" id="remove-modal-open-btn" data-pjx-open="rx-remove-modal">Open remove-on-close modal</button>
 </section>
 
 <section>
@@ -124,6 +126,7 @@ Fetch notification
 
 class KitchenSinkPage(BaseComponent):
     modal: PJXModal
+    remove_modal: PJXModal
     drawer: PJXDrawer
     popover_a: PJXPopover
     popover_b: PJXPopover
@@ -167,6 +170,18 @@ def render_page() -> str:
                 str(PJXModalHeader(id="rx-modal-h", title="Demo modal").render())
                 + str(PJXModalBody(id="rx-modal-b", content="Modal body.").render())
             ),
+        ),
+        remove_modal=PJXModal(
+            id="rx-remove-modal",
+            remove_on_close=True,
+            content=str(PJXModalBody(
+                id="rx-remove-modal-b",
+                content=(
+                    '<form id="rx-remove-form" hx-post="/actions/slow-save" hx-swap="none">'
+                    '<button type="submit" id="rx-remove-submit" data-pjx-close>Send</button>'
+                    "</form>"
+                ),
+            ).render()),
         ),
         drawer=PJXDrawer(
             id="rx-drawer",
@@ -309,6 +324,15 @@ def create_app() -> FastAPI:
     @app.post("/actions/save")
     def save() -> Response:
         headers = {"HX-Trigger": json.dumps({"pjx:toast": {"message": "Saved!", "level": "success"}})}
+        return Response(status_code=200, headers=headers)
+
+    @app.post("/actions/slow-save")
+    def slow_save() -> Response:
+        # Slower than the modal-close animation/fallback (~250ms), so the
+        # response lands after a remove_on_close dialog would have removed
+        # itself — the race the deferred-removal fix covers.
+        time.sleep(0.6)
+        headers = {"HX-Trigger": json.dumps({"pjx:toast": {"message": "Slow saved!", "level": "success"}})}
         return Response(status_code=200, headers=headers)
 
     @app.get("/slow-content", response_class=HTMLResponse)

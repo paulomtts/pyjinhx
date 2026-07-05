@@ -20,6 +20,24 @@
         return true;
     }
 
+    // Same deferral as pjx-modal.js: never remove the dialog while an htmx
+    // request from inside it is in flight — HX-Trigger events dispatch on the
+    // requester and OOB swaps ride the same response; a detached requester
+    // silently drops both. The dialog is already close()d, so this is invisible.
+    function removeWhenSettled(el) {
+        function attempt() {
+            if (el.querySelector('.htmx-request')) return false;
+            el.remove();
+            return true;
+        }
+        if (attempt()) return;
+        el.addEventListener('htmx:afterRequest', function onAfter() {
+            setTimeout(function () {
+                if (attempt()) el.removeEventListener('htmx:afterRequest', onAfter);
+            }, 0);
+        });
+    }
+
     function close(id, reason, trigger) {
         const drawer = document.getElementById(id);
         if (!drawer || !drawer.open) return false;
@@ -36,7 +54,7 @@
             drawer.classList.remove('pjx-drawer--closing');
             drawer.close();
             fire(drawer, 'pjx:drawer:close', detail);
-            if (drawer.hasAttribute('data-pjx-remove-on-close')) drawer.remove();
+            if (drawer.hasAttribute('data-pjx-remove-on-close')) removeWhenSettled(drawer);
         }
         function onAnimationEnd(e) {
             if (e.target !== drawer) return; // ignore bubbled descendant animations
