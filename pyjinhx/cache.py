@@ -126,10 +126,6 @@ class LoadCache:
         )
         result = cls._with_key(result, key)
 
-        from .dev import validate_depends_on
-
-        validate_depends_on(result)
-
         if key is not None:
             from .utils import pascal_case_to_kebab_case
 
@@ -166,10 +162,11 @@ class LoadCache:
 
     @classmethod
     def _indexed_keys(cls, instance: BaseComponent) -> set[str]:
-        from .reactive import ReactiveComponent
+        from .reactive import ReactiveComponent, _keyed_derived_keys
 
         if isinstance(instance, ReactiveComponent):
-            return instance.depends_on()
+            static = frozenset(getattr(type(instance), "_pjx_reacts_to", frozenset()))
+            return set(static) | _keyed_derived_keys(static, instance._pjx_key)
         return set(getattr(instance.__class__, "_pjx_reacts_to", frozenset()))
 
     @classmethod

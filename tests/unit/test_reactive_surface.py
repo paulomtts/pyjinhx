@@ -66,11 +66,6 @@ def test_state_hash_exclude_omits_fields():
     assert a.state_hash() == b.state_hash()
 
 
-def test_depends_on_defaults_to_static_interpolation():
-    counter = GoodCounter(id="counter", remaining=0)
-    assert counter.depends_on() == {"todos"}
-
-
 def test_reactive_component_is_detected():
     assert GoodCounter._pjx_reactive is True
     assert GoodCounter._pjx_reacts_to == frozenset({"todos"})
