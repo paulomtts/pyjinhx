@@ -81,7 +81,61 @@
     });
     var selected = tabs.filter(function (t) { return t.classList.contains("pjx-tab--selected"); })[0] || tabs[0];
     if (selected) select(group, selected, { reason: "api", trigger: null }, true);
+    initReorder(group);
   }
+
+  function reorderableTablists(group) {
+    return Array.prototype.filter.call(
+      group.querySelectorAll('[role="tablist"][data-pjx-tab-reorderable]'),
+      function (tl) { return tl.closest("[data-pjx-tab-group]") === group; }
+    );
+  }
+
+  function initReorder(group) {
+    reorderableTablists(group).forEach(function (tablist) {
+      listTabsOf(tablist).forEach(function (tab) {
+        if (tab.getAttribute("data-pjx-tab-pinned") == null) tab.draggable = true;
+      });
+    });
+  }
+
+  // Moves `tab` to `toIndex` among its tablist's list tabs, firing the
+  // cancelable pjx:tab:before-reorder / pjx:tab:reorder pair either way (drag
+  // or keyboard) drives it through.
+  function moveTab(group, tablist, tab, toIndex) {
+    var tabs = listTabsOf(tablist), fromIndex = tabs.indexOf(tab);
+    if (fromIndex < 0 || toIndex < 0 || toIndex >= tabs.length || toIndex === fromIndex) return;
+    var detail = { id: tab.id, from: fromIndex, to: toIndex };
+    if (!fire(group, "pjx:tab:before-reorder", detail, true)) return;
+    var ref = tabs[toIndex];
+    tablist.insertBefore(tab, fromIndex < toIndex ? ref.nextSibling : ref);
+    fire(group, "pjx:tab:reorder", detail);
+  }
+
+  var dragTab = null;
+  document.addEventListener("dragstart", function (e) {
+    var tab = e.target.closest && e.target.closest("[draggable='true'][data-pjx-tab]");
+    if (!tab) return;
+    dragTab = tab;
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", tab.id);
+  });
+  document.addEventListener("dragover", function (e) {
+    if (!dragTab) return;
+    var tablist = dragTab.closest('[role="tablist"][data-pjx-tab-reorderable]');
+    if (tablist && tablist.contains(e.target)) e.preventDefault();
+  });
+  document.addEventListener("drop", function (e) {
+    if (!dragTab) return;
+    var tablist = dragTab.closest('[role="tablist"][data-pjx-tab-reorderable]');
+    var over = tablist && e.target.closest("[data-pjx-tab]");
+    if (tablist && over && over !== dragTab && tablist.contains(over)) {
+      e.preventDefault();
+      var group = groupOf(dragTab);
+      if (group) moveTab(group, tablist, dragTab, listTabsOf(tablist).indexOf(over));
+    }
+  });
+  document.addEventListener("dragend", function () { dragTab = null; });
 
   function select(group, tab, detail, silent) {
     var panel = controlledPanel(tab);
@@ -141,6 +195,14 @@
     // Arrow roving only within a tablist; standalone triggers don't rove.
     var tablist = tab.closest('[role="tablist"]');
     if (!tablist) return;
+    if (e.ctrlKey && tablist.hasAttribute("data-pjx-tab-reorderable") &&
+        (e.key === "ArrowRight" || e.key === "ArrowLeft")) {
+      e.preventDefault();
+      var idx0 = listTabsOf(tablist).indexOf(tab);
+      moveTab(group, tablist, tab, idx0 + (e.key === "ArrowRight" ? 1 : -1));
+      tab.focus();
+      return;
+    }
     var tabs = listTabsOf(tablist), idx = tabs.indexOf(tab), next = null;
     if (e.key === "ArrowRight") next = tabs[(idx + 1) % tabs.length];
     else if (e.key === "ArrowLeft") next = tabs[(idx - 1 + tabs.length) % tabs.length];

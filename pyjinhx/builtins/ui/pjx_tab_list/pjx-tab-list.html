@@ -1,1 +1,1 @@
-<div id="{{ id }}" role="tablist" aria-label="{{ label }}" aria-orientation="horizontal" class="pjx-tab-group__list{% if class_name %} {{ class_name }}{% endif %}">{{ content }}</div>
+<div id="{{ id }}" role="tablist" aria-label="{{ label }}" aria-orientation="horizontal" class="pjx-tab-group__list{% if class_name %} {{ class_name }}{% endif %}"{% if reorderable %} data-pjx-tab-reorderable{% endif %}>{{ content }}</div>

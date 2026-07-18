@@ -48,6 +48,13 @@ def test_tablist_role_and_label():
     assert "pjx-tab-group__list" in html
 
 
+def test_tablist_reorderable_attr():
+    html = str(PJXTabList(id="l", content="x").render())
+    assert "data-pjx-tab-reorderable" not in html
+    html = str(PJXTabList(id="l", reorderable=True, content="x").render())
+    assert "data-pjx-tab-reorderable" in html
+
+
 def test_tab_basic_roving_and_label():
     html = str(PJXTab(id="t", content="Home").render())
     assert 'role="tab"' in html
