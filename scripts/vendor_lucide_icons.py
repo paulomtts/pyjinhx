@@ -18,7 +18,7 @@ CURATED: tuple[str, ...] = (
     "chevron-right", "chevron-left", "chevron-up", "chevron-down",
     "chevrons-left", "chevrons-right", "chevrons-up-down",
     "arrow-right", "arrow-left", "arrow-up", "arrow-down", "arrow-up-right",
-    "corner-down-right", "menu", "more-horizontal", "more-vertical",
+    "corner-down-right", "menu",
     "panel-left", "panel-right", "sidebar", "external-link",
     "maximize", "minimize", "expand",
     # actions / editing
@@ -53,6 +53,8 @@ CURATED: tuple[str, ...] = (
     "building", "brain",
     # issue-204: pin/unpin toggle
     "pin", "pin-off",
+    # issue-200: overflow/kebab menu trigger
+    "ellipsis", "ellipsis-vertical",
 )
 
 INNER_RE = re.compile(r"<svg[^>]*>(.*)</svg>", re.DOTALL)
