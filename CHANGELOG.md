@@ -16,6 +16,15 @@
   `@mutates(ChatKeys.MESSAGE, key=lambda message_id: message_id)` derives the key fresh
   on every call, using the decorated function's own arguments (#201).
 
+### Removed
+- `ReactiveComponent.depends_on()` removed as an overridable extension point (breaking).
+  It had no callers anywhere in this codebase; cache-indexing behavior for keyed
+  components is unchanged — the same computation (static `react` keys plus the
+  per-instance [derived key](reactivity.md#parametric-per-instance-keys)) now runs
+  internally with no override point. If you were overriding it to narrow load-cache
+  indexing for a *non-keyed* component with multiple `react` keys, that capability has
+  no replacement — open an issue if you need it back.
+
 ## 0.34.0 — Drag-to-reorder tabs (2026-07-18)
 
 ### Added
