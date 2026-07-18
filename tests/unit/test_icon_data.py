@@ -34,3 +34,12 @@ def test_issue_204_pin_icons_present():
         inner = ICONS[name]
         assert inner, f"icon {name!r} has empty inner markup"
         assert "<svg" not in inner, f"icon {name!r}: must be inner markup only, not a full <svg>"
+
+
+def test_issue_200_ellipsis_icons_present():
+    """ellipsis/ellipsis-vertical were missing from the vendored set (issue #200)."""
+    for name in ("ellipsis", "ellipsis-vertical"):
+        assert name in ICONS, f"icon {name!r} missing from ICONS"
+        inner = ICONS[name]
+        assert inner, f"icon {name!r} has empty inner markup"
+        assert "<svg" not in inner, f"icon {name!r}: must be inner markup only, not a full <svg>"

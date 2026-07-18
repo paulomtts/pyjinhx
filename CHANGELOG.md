@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+### Added
+- Vendored Lucide's `ellipsis`/`ellipsis-vertical` icons into `PJXIcon`'s icon
+  set, for `…`/kebab overflow-menu triggers (e.g. a `PJXDropdown` actions
+  trigger) (#200).
+
 ## 0.32.2 — Add pin/pin-off icons to PJXIcon set (2026-07-18)
 
 ### Added
