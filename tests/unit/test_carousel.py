@@ -138,3 +138,14 @@ def test_carousel_inline_attrs_pass_through():
 def test_carousel_empty_content_renders_shell():
     html = _carousel(content="")
     assert 'class="pjx-carousel__track"' in html
+
+
+def test_carousel_js_asset_exists():
+    js_path = _UI / "pjx_carousel" / "pjx-carousel.js"
+    assert js_path.exists()
+    assert "data-pjx-carousel" in js_path.read_text()
+
+
+def test_carousel_css_asset_exists():
+    css_path = _UI / "pjx_carousel" / "pjx-carousel.css"
+    assert css_path.exists()
