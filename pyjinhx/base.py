@@ -1,11 +1,12 @@
 import itertools
+import json
 import logging
 import re
 from functools import cached_property
-from typing import Annotated, Any, ClassVar, Optional
+from typing import Annotated, Any, ClassVar, Optional, Union, get_args, get_origin
 
 from markupsafe import Markup
-from pydantic import AfterValidator, BaseModel, ConfigDict, Field, field_validator
+from pydantic import AfterValidator, BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from .context import wrap_context_methods
 from .registry import Registry
@@ -133,6 +134,22 @@ def _wrap_slot_value(value: Any) -> Any:
     if isinstance(value, dict):
         return {key: _wrap_slot_value(item) for key, item in value.items()}
     return value
+
+
+def _is_json_coercible_annotation(annotation: Any) -> bool:
+    """A field is a JSON-coercion candidate if, once ``None`` is stripped from
+    a ``T | None`` union, exactly one type remains and it's ``list``, ``dict``,
+    or a ``BaseModel`` subclass. Unions with ``str`` (e.g. ``str | list``,
+    ``Slot``) are left alone — a JSON-looking string there is ambiguous."""
+    if get_origin(annotation) is Union:
+        args = [a for a in get_args(annotation) if a is not type(None)]
+        if len(args) != 1:
+            return False
+        annotation = args[0]
+    origin = get_origin(annotation) or annotation
+    if origin in (list, dict):
+        return True
+    return isinstance(origin, type) and issubclass(origin, BaseModel)
 
 
 def collect_extra_attrs(component: "BaseComponent") -> dict[str, str]:
@@ -264,6 +281,31 @@ class BaseComponent(BaseModel):
         if not v:
             return _auto_id()
         return str(v)
+
+    @model_validator(mode="before")
+    @classmethod
+    def _coerce_json_string_attrs(cls, data: Any) -> Any:
+        """A tag attribute always arrives as a string (Jinja renders the tag
+        before it's parsed). For a field typed ``list``/``dict``/a ``BaseModel``,
+        a JSON-looking string (``{...}``/``[...]``) is parsed before Pydantic
+        sees it, so ``<Child sources="{{ sources | tojson }}"/>`` just works
+        instead of every such component hand-rolling the same ``BeforeValidator``."""
+        if not isinstance(data, dict):
+            return data
+        for name, field in cls.model_fields.items():
+            value = data.get(name)
+            if not isinstance(value, str):
+                continue
+            text = value.strip()
+            if not text or text[0] not in "{[":
+                continue
+            if not _is_json_coercible_annotation(field.annotation):
+                continue
+            try:
+                data[name] = json.loads(text)
+            except json.JSONDecodeError as exc:
+                raise ValueError(f"{cls.__name__}.{name}: invalid JSON attribute value") from exc
+        return data
 
     def __init_subclass__(cls, pjx_replace: bool = False, **kwargs: Any) -> None:
         """

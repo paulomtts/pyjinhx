@@ -2,7 +2,7 @@ import re
 
 import pytest
 from jinja2 import Environment, FileSystemLoader
-from pydantic import ValidationError
+from pydantic import Field, ValidationError
 
 from pyjinhx import BaseComponent, Renderer
 
@@ -13,6 +13,48 @@ class CoercionProbe(BaseComponent):
 
 
 PROBE_TEMPLATE = '<span id="{{ id }}">{{ count }}|{{ enabled }}</span>'
+
+
+class StructuralProbe(BaseComponent):
+    sources: list = Field(default_factory=list)
+    meta: dict = Field(default_factory=dict)
+    label: str | list = ""
+
+
+STRUCTURAL_PROBE_TEMPLATE = '<span id="{{ id }}">{{ sources }}|{{ meta }}|{{ label }}</span>'
+
+
+def test_json_string_attr_coerces_to_list(tmp_path):
+    (tmp_path / "structural_probe.html").write_text(STRUCTURAL_PROBE_TEMPLATE)
+    env = Environment(loader=FileSystemLoader(str(tmp_path)))
+    renderer = Renderer(env)
+    html = renderer.render(
+        '<StructuralProbe id="s1" sources=\'[{"id": "a"}]\'/>'
+    )
+    assert "[{&#39;id&#39;: &#39;a&#39;}]" in html or "[{'id': 'a'}]" in html
+
+
+def test_json_string_attr_coerces_to_dict(tmp_path):
+    (tmp_path / "structural_probe.html").write_text(STRUCTURAL_PROBE_TEMPLATE)
+    env = Environment(loader=FileSystemLoader(str(tmp_path)))
+    renderer = Renderer(env)
+    html = renderer.render('<StructuralProbe id="s2" meta=\'{"k": "v"}\'/>')
+    assert "'k': 'v'" in html
+
+
+def test_invalid_json_raises_clear_error():
+    with pytest.raises(ValidationError):
+        StructuralProbe(sources="[not json")
+
+
+def test_union_with_str_is_not_coerced():
+    probe = StructuralProbe(label="[1, 2, 3]")
+    assert probe.label == "[1, 2, 3]"
+
+
+def test_non_json_looking_string_left_alone():
+    with pytest.raises(ValidationError):
+        StructuralProbe(sources="plain text")
 
 
 def test_tag_attrs_coerce_to_int_and_bool(tmp_path):
