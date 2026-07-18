@@ -450,7 +450,8 @@ def oob_swaps(
             load_arg = None
 
         static_keys = set(getattr(component_class, "_pjx_reacts_to", frozenset()))
-        if not (static_keys & dirtied_keys):
+        derived_keys = _keyed_derived_keys(frozenset(static_keys), load_arg) if keyed else set()
+        if not ((static_keys | derived_keys) & dirtied_keys):
             continue
 
         dedup_key = (component_type, load_arg)
