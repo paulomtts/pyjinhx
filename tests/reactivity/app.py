@@ -111,6 +111,7 @@ Fetch notification
 <section>
 {{ password }}
 {{ tabs }}
+{{ reorder_tabs }}
 </section>
 
 <section>
@@ -152,6 +153,7 @@ class KitchenSinkPage(BaseComponent):
     detached_group: PJXTabGroup
     password: PJXPasswordInput
     tabs: PJXTabGroup
+    reorder_tabs: PJXTabGroup
     resizable: PJXResizableGroup
     floor_box: str
     accordion_box: str
@@ -269,6 +271,19 @@ def render_page() -> str:
                 )).render())
                 + str(PJXTabPanel(id="rx-tabp-one", tab="rx-tab-one", content="<p>Tab one body</p>").render())
                 + str(PJXTabPanel(id="rx-tabp-two", tab="rx-tab-two", content="<p>Tab two body</p>").render())
+            ),
+        ),
+        reorder_tabs=PJXTabGroup(
+            id="rx-reorder-tabs",
+            content=(
+                str(PJXTabList(reorderable=True, content=(
+                    str(PJXTab(id="rx-reorder-a", panel="rx-reorder-pa", selected=True, content="A").render())
+                    + str(PJXTab(id="rx-reorder-b", panel="rx-reorder-pb", content="B").render())
+                    + str(PJXTab(id="rx-reorder-c", panel="rx-reorder-pc", content="C").render())
+                )).render())
+                + str(PJXTabPanel(id="rx-reorder-pa", tab="rx-reorder-a", content="A body").render())
+                + str(PJXTabPanel(id="rx-reorder-pb", tab="rx-reorder-b", content="B body").render())
+                + str(PJXTabPanel(id="rx-reorder-pc", tab="rx-reorder-c", content="C body").render())
             ),
         ),
         resizable=PJXResizableGroup(

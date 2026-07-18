@@ -1937,12 +1937,17 @@ Tab button list (the `role="tablist"` container). **Assets:** `pjx-tab-list.css`
     | Field | Type | Default | Description |
     | --- | --- | --- | --- |
     | `label` | `str` | `"Tabs"` | `aria-label` for the tab list — describes the set of tabs. |
+    | `reorderable` | `bool` | `False` | Adds `data-pjx-tab-reorderable`; non-pinned tabs become drag-reorderable, and a focused tab can be moved with `Ctrl+ArrowLeft`/`Ctrl+ArrowRight`. |
     | `class_name` | `str` | `""` | Extra CSS class(es) appended to the root element. |
     | `content` | `str \| BaseComponent` | `""` | One or more `PJXTab` rendered strings. |
 
 ??? note "DOM & classes"
 
-    Root `div[role="tablist"][aria-label][aria-orientation="horizontal"].pjx-tab-group__list`.
+    Root `div[role="tablist"][aria-label][aria-orientation="horizontal"].pjx-tab-group__list` (reorderable: `[data-pjx-tab-reorderable]`).
+
+    Reordering (drag, or `Ctrl+Arrow` on a focused tab) fires `pjx:tab:before-reorder`* then
+    `pjx:tab:reorder` on the group root — `*` = cancelable, `detail = {id, from, to}` (indices
+    among the tablist's own tabs). A `PJXTab(pinned=true)` is excluded from reordering.
 
 ??? note "Python"
 

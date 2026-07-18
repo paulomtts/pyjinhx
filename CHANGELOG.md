@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+### Added
+- `PJXTabList(reorderable=True)`: non-pinned tabs can now be drag-reordered, or moved with
+  `Ctrl+ArrowLeft`/`Ctrl+ArrowRight` on a focused tab. Reordering fires a cancelable
+  `pjx:tab:before-reorder` then `pjx:tab:reorder` on the group root, `detail = {id, from, to}`,
+  so the consuming app can persist the new order (#180).
+
 ## 0.33.0 — Auto-coerce JSON-string tag attrs for structural props (2026-07-18)
 
 ### Added
