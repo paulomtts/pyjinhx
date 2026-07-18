@@ -99,12 +99,20 @@ def test_carousel_loop_default_true():
 
 def test_carousel_loop_false_omits_attr():
     html = _carousel(loop=False)
-    assert "data-pjx-carousel-loop" not in html
+    # The inlined pjx-carousel.js controller (auto-appended by the real
+    # Renderer environment) contains this literal string in its own source,
+    # so scope the check to the root element's opening tag rather than the
+    # full rendered output (which includes trailing <style>/<script> assets).
+    root_tag = html.split(">", 1)[0]
+    assert "data-pjx-carousel-loop" not in root_tag
 
 
 def test_carousel_autoplay_default_false_no_toggle():
     html = _carousel()
-    assert "data-pjx-carousel-autoplay" not in html
+    # Same reasoning as above: pjx-carousel.js references this attribute name
+    # in its own source, so only inspect the root tag's attributes.
+    root_tag = html.split(">", 1)[0]
+    assert "data-pjx-carousel-autoplay" not in root_tag
     # The stylesheet unconditionally styles .pjx-carousel__autoplay-toggle (it's
     # always shipped as a static asset), so check for the button markup itself
     # rather than the bare class-name substring, which would also match CSS text.
