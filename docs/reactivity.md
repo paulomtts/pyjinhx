@@ -288,6 +288,44 @@ after **clear completed**), `oob_swaps` catches `LookupError` from `load(manifes
 and emits a delete OOB swap (`delete:[data-pjx-id='…']`) so stale row regions are removed
 from the DOM without a server error.
 
+### Parametric per-instance keys
+
+A keyed component's `react={...}` still declares the shared "family" key(s) — dirtying
+one reloads and hash-checks *every* mounted instance of that type (unchanged, and still
+useful for "refresh everything"). For the common case of "only this one instance
+changed," `reactive_key()` derives a per-instance key from that same `MutationKey` and
+the instance's own load-key, so only the matching mounted instance is reloaded:
+
+```python
+from pyjinhx import MutationKey, PjxKey, ReactiveComponent, dirty
+from pyjinhx.keys import reactive_key
+from typing import Annotated
+
+class ChatKeys(MutationKey):
+    MESSAGE = "chat.message"
+
+class MessageBubble(ReactiveComponent, react={ChatKeys.MESSAGE}):
+    message_id: Annotated[str, PjxKey()]
+    text: str = ""
+
+    @classmethod
+    def load(cls, message_id: str) -> "MessageBubble":
+        msg = store.get(message_id)
+        return cls(id=f"bubble-{message_id}", message_id=message_id, text=msg.text)
+
+# on settle, after finalizing one message:
+dirty(reactive_key(ChatKeys.MESSAGE, message_id))
+```
+
+`reactive_key(key, arg)` builds the fixed-format string `f"{key}:{arg}"` — the same
+convention `depends_on()`'s default and the OOB dispatch loop both already understand for
+any keyed component, with **no override needed**. Dirtying `ChatKeys.MESSAGE` directly
+still reloads every mounted `MessageBubble`; dirtying `reactive_key(ChatKeys.MESSAGE,
+"42")` reloads only the bubble whose `message_id` is `"42"`.
+
+Avoid declaring a `MutationKey` member whose value itself contains a `:` if you use keyed
+reactive components — it could collide with an auto-derived key from a different member.
+
 ## State keys
 
 Centralize reactive key strings in a `MutationKey` enum so `react=`, `dirtied`, and
@@ -303,9 +341,10 @@ class TodoCounter(ReactiveComponent, react={Keys.TODOS}):
     ...
 ```
 
-Both `react=` and `@mutates` **only accept `MutationKey` members** — passing a bare
-string raises `TypeError` at class-definition time (for `react=`) or at decoration time
-(for `@mutates`).
+`react=` only accepts `MutationKey` members — passing a bare string raises `TypeError`
+at class-definition time. `@mutates` and `dirty()` accept `MutationKey` members or a
+`reactive_key()` value (see [Parametric per-instance keys](#parametric-per-instance-keys)
+below) — a bare string still raises `TypeError` at decoration/call time.
 
 ## Runtime dependencies (`depends_on`)
 
@@ -331,7 +370,11 @@ class AdminPanel(ReactiveComponent, react={Keys.USER, Keys.SETTINGS}):
         return {Keys.SETTINGS}
 ```
 
-`depends_on()` narrows load-cache reverse indexing; `oob_swaps` and `dependency_graph()` always use the static `react` superset, and dev mode warns (or raises) when `depends_on()` returns keys outside it.
+`depends_on()` narrows or widens load-cache reverse indexing (for a keyed component, its
+default already widens to include the per-instance [derived key](#parametric-per-instance-keys)).
+`oob_swaps` matches against the static `react` superset *plus* that same per-instance derived
+key for keyed components; `dependency_graph()` still shows the static superset only. Dev mode
+warns (or raises) when `depends_on()` returns keys outside that widened superset.
 
 ## Mutation tracking (`@mutates`)
 

@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+### Added
+- `reactive_key(key, arg)` builds a per-instance reactive key (`f"{key}:{arg}"`) from a
+  declared `MutationKey` and a keyed component's own load-key. `dirty()`/`@mutates()` now
+  accept it alongside `MutationKey` members. A keyed `ReactiveComponent`'s default
+  `depends_on()` and the OOB dispatch loop both already understand this convention with no
+  override needed, so dirtying one instance's derived key reloads only that mounted
+  instance instead of every instance of that type — the family-wide `MutationKey` dirty
+  still reloads everything, unchanged (#201).
+
 ## 0.34.0 — Drag-to-reorder tabs (2026-07-18)
 
 ### Added
