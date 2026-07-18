@@ -1,5 +1,32 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+- `PJXAccordionTrigger`'s `disabled` state only set `aria-disabled` + `tabindex="-1"` — visually
+  inert, but a native `<summary>` still toggles on Enter/Space (the browser translates both into
+  the same click event `pointer-events: none` doesn't block). The trigger JS now cancels that
+  default action too, so a disabled item is truly non-operable (#163).
+- `prefers-reduced-motion` was honored nowhere in the builtins. Open/close transitions on
+  `PJXModal`, `PJXDrawer`, `PJXNotification`, `PJXToastHost`, `PJXRegionLoader`, and
+  `PJXAccordionTrigger`'s chevron/`PJXEmptyState`'s chip hover now clamp to near-zero duration
+  under the media query (kept as a real, near-instant animation rather than removed, since some of
+  these swaps rely on `animationend` to complete their lifecycle). Continuous progress indicators
+  (`PJXSpinner`, `PJXSkeleton`, `PJXPageLoader`) are intentionally left alone — they convey ongoing
+  state, which WCAG 2.3.3 treats as essential motion (#163).
+- `PJXAvatarStack`'s structured-dict pills used `title` alone for their name, and the `+N`
+  overflow chip had no accessible name at all — `title` isn't reliable for touch/AT. Pills now also
+  set `aria-label`; the overflow chip gets `aria-label="N more"` (#163).
+
+### Added
+- `PJXModalHeader`/`PJXDrawerHeader`'s title `<span>` now has a predictable `id`
+  (`"{header-id}-title"`), so `PJXModal`/`PJXDrawer` can be given
+  `aria-labelledby="<header-id>-title"` for an accessible name — both dialogs already get an
+  implicit `role="dialog"`/`aria-modal="true"` from native `showModal()` (#163).
+- Documented that icon-only `PJXButton`s need an explicit `aria-label` (passed through like any
+  other attribute — no dedicated prop), and added an "Accessibility" section to the builtin
+  authoring guide covering the conventions above (#163).
+
 ## 0.32.3 — Ellipsis icons + themeable PJXRegionLoader (2026-07-18)
 
 ### Added

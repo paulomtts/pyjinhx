@@ -40,7 +40,7 @@ def test_modal_header_class_name_passthrough():
 
 def test_modal_header_title_renders_span():
     html = str(PJXModalHeader(id="h4", title="Hello").render())
-    assert '<span class="pjx-modal__title">Hello</span>' in html
+    assert '<span id="h4-title" class="pjx-modal__title">Hello</span>' in html
 
 
 def test_modal_header_no_title_renders_content():

@@ -17,6 +17,10 @@ from markupsafe import Markup
 
 from pyjinhx import BaseComponent, PjxSettings, setup
 from pyjinhx.builtins import (
+    PJXAccordion,
+    PJXAccordionContent,
+    PJXAccordionGroup,
+    PJXAccordionTrigger,
     PJXChipInput,
     PJXDrawer,
     PJXDrawerBody,
@@ -120,6 +124,10 @@ Fetch notification
 {{ floor_box | safe }}
 </div>
 </section>
+
+<section>
+{{ accordion_box | safe }}
+</section>
 </div>
 """
 
@@ -146,6 +154,7 @@ class KitchenSinkPage(BaseComponent):
     tabs: PJXTabGroup
     resizable: PJXResizableGroup
     floor_box: str
+    accordion_box: str
 
     def render(self) -> Markup:
         return self._render(source=_PAGE_TEMPLATE.strip())
@@ -275,6 +284,16 @@ def render_page() -> str:
             str(PJXResizablePanel(id="rx-floor-top", size=60, content="<div>top</div>").render())
             + str(PJXResizableHandle(id="rx-floor-handle").render())
             + str(PJXResizablePanel(id="rx-floor-bottom", size=40, min="content", content='<div id="rx-floor-strip" style="height:36px;flex-shrink:0">strip</div><div>body</div>').render())
+        )).render()),
+        accordion_box=str(PJXAccordionGroup(id="rx-accordion-group", content=(
+            str(PJXAccordion(id="rx-accordion-open", open=False, content=(
+                str(PJXAccordionTrigger(id="rx-accordion-trigger-open", content="Open item").render())
+                + str(PJXAccordionContent(content="Open item body").render())
+            )).render())
+            + str(PJXAccordion(id="rx-accordion-disabled", open=False, content=(
+                str(PJXAccordionTrigger(id="rx-accordion-trigger-disabled", disabled=True, content="Disabled item").render())
+                + str(PJXAccordionContent(content="Disabled item body").render())
+            )).render())
         )).render()),
     )
     return f"""<!DOCTYPE html>

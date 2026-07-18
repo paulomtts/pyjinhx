@@ -1,5 +1,5 @@
 <div id="{{ id }}" class="pjx-avatar-stack{% if class_name %} {{ class_name }}{% endif %}">
-  {% for avatar in avatars %}{% if avatar is mapping %}{% set tooltip = avatar.alt or avatar.name or "" %}<span class="pjx-avatar pjx-avatar-stack__pill"{% if avatar.color %} style="background:{{ avatar.color }};"{% endif %}{% if tooltip %} title="{{ tooltip }}"{% endif %}>{{ (avatar.initials or "?")[:2] }}</span>{% else %}{{ avatar }}{% endif %}{% endfor %}
-  {% if extra_count > 0 %}<span class="pjx-avatar-stack__more">+{{ extra_count }}</span>{% endif %}
+  {% for avatar in avatars %}{% if avatar is mapping %}{% set tooltip = avatar.alt or avatar.name or "" %}<span class="pjx-avatar pjx-avatar-stack__pill"{% if avatar.color %} style="background:{{ avatar.color }};"{% endif %}{% if tooltip %} title="{{ tooltip }}" aria-label="{{ tooltip }}"{% endif %}>{{ (avatar.initials or "?")[:2] }}</span>{% else %}{{ avatar }}{% endif %}{% endfor %}
+  {% if extra_count > 0 %}<span class="pjx-avatar-stack__more" aria-label="{{ extra_count }} more">+{{ extra_count }}</span>{% endif %}
   {% if not avatars and empty_label %}<span class="pjx-avatar-stack__empty">{{ empty_label }}</span>{% endif %}
 </div>

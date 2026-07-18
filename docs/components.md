@@ -351,8 +351,8 @@ Overlapping row of avatars with optional overflow count. **Assets:** `pjx-avatar
        | --- | --- | --- | --- |
        | `initials` | `str` | yes | Up to two characters shown in the pill. |
        | `color` | `str` | no | Inline `background` color. |
-       | `alt` | `str` | no | `title` tooltip (takes precedence over `name`). |
-       | `name` | `str` | no | Fallback tooltip when `alt` is not set. |
+       | `alt` | `str` | no | `title`/`aria-label` (takes precedence over `name`). |
+       | `name` | `str` | no | Fallback `title`/`aria-label` when `alt` is not set. |
 
     2. **Pre-built item** — an HTML string or any `BaseComponent` instance (original interface, still fully supported).
 
@@ -365,7 +365,7 @@ Overlapping row of avatars with optional overflow count. **Assets:** `pjx-avatar
 
 ??? note "DOM & classes"
 
-    Root `.pjx-avatar-stack`; no JS API.
+    Root `.pjx-avatar-stack`; no JS API. A structured-dict pill's `alt`/`name` sets `aria-label`, not just `title`, so screen readers get a name too; the `+N` overflow chip carries `aria-label="N more"`.
 
     **Classes:** `pjx-avatar-stack`, `pjx-avatar-stack__pill` (dict-rendered pills), `pjx-avatar-stack__more`, `pjx-avatar-stack__empty`.
 
@@ -631,6 +631,8 @@ Structural, themeable button. Composes [`PJXRegionLoader`](#pjxregionloader) for
     Root `<button>` rendering `{{ content }}` verbatim. No JS API — pass `hx-*`/`@click` inline (they pass through to the root). The default `.pjx-button` is visually neutral so it never fights your design system; paint variants via `.pjx-button--<variant>`.
 
     **Classes:** `pjx-button`; `pjx-button--block`; variant seams `pjx-button--<variant>`.
+
+    An icon-only button (`content` is just a `PJXIcon`, which renders `aria-hidden`) has no accessible name on its own — pass `aria-label` (it passes through to the root like any other attribute): `<PJXButton aria-label="Delete"><PJXIcon name="trash"/></PJXButton>`.
 
 ??? note "Python"
 
@@ -1088,6 +1090,8 @@ Native `<dialog>` shell. Compose with `PJXModalHeader`, `PJXModalBody`, and `PJX
 
     **Classes:** `pjx-modal`; closing state `pjx-modal--closing`; `pjx-modal__box`. Part-component classes (`__header`, `__title`, `__close`, `__body`, `__footer`) belong to the respective part components below.
 
+    `showModal()` gives the dialog an implicit `role="dialog"` and `aria-modal="true"` — no extra markup needed. Content is arbitrary, so there's no automatic accessible name; pass `aria-label`, or `aria-labelledby="<header-id>-title"` pointing at your `PJXModalHeader`'s title — both pass through to the root like any other attribute: `<PJXModal aria-labelledby="demo-modal-h-title">`.
+
 ??? note "Python"
 
     ```python
@@ -1113,7 +1117,7 @@ Header part for `PJXModal`. Renders a `<header>` inside the modal box; always in
 
     | Field | Type | Default | Description |
     | --- | --- | --- | --- |
-    | `title` | `str` | `""` | When set, renders `<span class="pjx-modal__title">` with this text (escaped); when empty, `{{ content }}` is used instead. |
+    | `title` | `str` | `""` | When set, renders `<span id="{id}-title" class="pjx-modal__title">` with this text (escaped); when empty, `{{ content }}` is used instead. The `id` gives `PJXModal`'s `aria-labelledby` something to point at. |
     | `close_label` | `str` | `"Close"` | `aria-label` for the auto-included close button. |
     | `close_content` | `str` | `"✕"` | Inner markup/text of the close button. |
     | `class_name` | `str` | `""` | Extra CSS classes on the `<header>`. |
@@ -1230,6 +1234,8 @@ Footer part for `PJXModal`. Renders a `<footer class="pjx-modal__footer">`. **As
 
     **Classes:** `pjx-drawer`; side modifiers `pjx-drawer--left`, `--right`, `--bottom`; closing state `pjx-drawer--closing`. The inner layout classes (`__header`, `__title`, `__close`, `__body`, `__footer`) belong to the part components — see below.
 
+    `showModal()` gives the dialog an implicit `role="dialog"` and `aria-modal="true"`. Pass `aria-label`, or `aria-labelledby="<header-id>-title"` pointing at your `PJXDrawerHeader`'s title — both pass through to the root: `<PJXDrawer aria-labelledby="demo-drawer-h-title">`.
+
 ??? note "Python"
 
     ```python
@@ -1262,7 +1268,7 @@ Header bar for a `PJXDrawer`. Automatically includes a close button. **Assets:**
 
     | Field | Type | Default | Description |
     | --- | --- | --- | --- |
-    | `title` | `str` | `""` | Renders `<span class="pjx-drawer__title">` when set; omit to use `content` for a fully custom header. |
+    | `title` | `str` | `""` | Renders `<span id="{id}-title" class="pjx-drawer__title">` when set; omit to use `content` for a fully custom header. The `id` gives `PJXDrawer`'s `aria-labelledby` something to point at. |
     | `close_label` | `str` | `"Close"` | `aria-label` for the auto-included close button. |
     | `close_content` | `str` | `"✕"` | Inner HTML/text of the close button. |
     | `class_name` | `str` | `""` | Extra CSS classes on the root `<header>`. |

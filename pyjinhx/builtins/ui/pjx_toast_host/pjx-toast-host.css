@@ -58,3 +58,10 @@
 
 @keyframes pjx-toast-in  { from { opacity: 0; transform: translateY(0.4rem); } to { opacity: 1; transform: none; } }
 @keyframes pjx-toast-out { from { opacity: 1; } to { opacity: 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .pjx-toast,
+  .pjx-toast--hiding {
+    animation-duration: 0.01ms !important;
+  }
+}
