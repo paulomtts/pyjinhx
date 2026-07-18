@@ -111,6 +111,9 @@ nav:
           - Redis integration: api/integrations-redis.md
           - SQLite integration: api/integrations-sqlite.md
   - Migration guide: migration.md
+  - Decisions:
+      - Index: decisions/index.md
+      - "0001: outerHTML-only OOB swaps": decisions/0001-outerhtml-only-oob-swaps.md
 
 extra_css:
   - stylesheets/toc-collapse.css
