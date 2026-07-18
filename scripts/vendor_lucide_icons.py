@@ -51,6 +51,8 @@ CURATED: tuple[str, ...] = (
     "log-in", "log-out", "power",
     # issue-99: new additions
     "building", "brain",
+    # issue-204: pin/unpin toggle
+    "pin", "pin-off",
 )
 
 INNER_RE = re.compile(r"<svg[^>]*>(.*)</svg>", re.DOTALL)

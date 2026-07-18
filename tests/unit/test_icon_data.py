@@ -25,3 +25,12 @@ def test_issue_99_icons_present():
         inner = ICONS[name]
         assert inner, f"icon {name!r} has empty inner markup"
         assert "<svg" not in inner, f"icon {name!r}: must be inner markup only, not a full <svg>"
+
+
+def test_issue_204_pin_icons_present():
+    """pin/pin-off were missing from the vendored set (issue #204)."""
+    for name in ("pin", "pin-off"):
+        assert name in ICONS, f"icon {name!r} missing from ICONS"
+        inner = ICONS[name]
+        assert inner, f"icon {name!r} has empty inner markup"
+        assert "<svg" not in inner, f"icon {name!r}: must be inner markup only, not a full <svg>"
