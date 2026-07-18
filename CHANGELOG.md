@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.33.0 — Auto-coerce JSON-string tag attrs for structural props (2026-07-18)
 
 ### Added
 - A tag attribute typed `list`/`dict`/a nested `BaseModel` (or one of those unioned with `None`)
