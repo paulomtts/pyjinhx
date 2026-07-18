@@ -323,10 +323,17 @@ any keyed component, with **no override needed**. Dirtying `ChatKeys.MESSAGE` di
 still reloads every mounted `MessageBubble`; dirtying `reactive_key(ChatKeys.MESSAGE,
 "42")` reloads only the bubble whose `message_id` is `"42"`.
 
-`ReactiveResponse` takes the same per-instance key as a `key=` keyword instead of calling
-`reactive_key()` yourself — `ReactiveResponse(ChatKeys.MESSAGE, key=message_id)` is
-equivalent to `dirty(reactive_key(ChatKeys.MESSAGE, message_id))`, and applies to every
-positional key passed alongside it.
+`ReactiveResponse` and `@mutates` take the same idea as a `key=` keyword instead of
+calling `reactive_key()` yourself:
+
+- `ReactiveResponse(ChatKeys.MESSAGE, key=message_id)` is equivalent to
+  `dirty(reactive_key(ChatKeys.MESSAGE, message_id))` — `key=` is a plain value here,
+  since the caller already has it.
+- `@mutates(ChatKeys.MESSAGE, key=lambda message_id: message_id)` is `key=` as a
+  *callable* instead, since `@mutates` runs at decoration time, before any call
+  arguments exist — see [Mutation tracking](#mutation-tracking-mutates) below.
+
+Both apply to every positional key passed alongside them.
 
 Avoid declaring a `MutationKey` member whose value itself contains a `:` if you use keyed
 reactive components — it could collide with an auto-derived key from a different member.
@@ -404,6 +411,20 @@ def toggle_row(todo_id):
     store.toggle(todo_id)
     return TodoItemRow.render(todo_id)
 ```
+
+This dirties `Keys.TODOS` on every call, so it reloads every mounted `TodoItemRow`
+regardless of which one changed. `key=` derives a [per-instance
+key](#parametric-per-instance-keys) instead — it's called with the wrapped function's
+own arguments, and its return value feeds `reactive_key()` for every key passed to
+`@mutates`:
+
+```python
+@mutates(Keys.TODOS, key=lambda todo_id: todo_id)
+def toggle(todo_id: int) -> Todo:
+    ...
+```
+
+Now only the mounted `TodoItemRow` whose load-key matches `todo_id` reloads.
 
 Use `Registry.request_scope()` on every request when relying on `@mutates` — it
 resets mutation tracking per request.

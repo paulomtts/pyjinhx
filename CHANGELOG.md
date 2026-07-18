@@ -11,7 +11,10 @@
   key reloads only that mounted instance instead of every instance of that type — the
   family-wide `MutationKey` dirty still reloads everything, unchanged. `ReactiveResponse`
   also takes a `key=` keyword that derives the per-instance key for you:
-  `ReactiveResponse(ChatKeys.MESSAGE, key=message_id)` (#201).
+  `ReactiveResponse(ChatKeys.MESSAGE, key=message_id)`. `@mutates` takes the same idea as
+  a `key=` *callable*, since it runs at decoration time before any call arguments exist:
+  `@mutates(ChatKeys.MESSAGE, key=lambda message_id: message_id)` derives the key fresh
+  on every call, using the decorated function's own arguments (#201).
 
 ## 0.34.0 — Drag-to-reorder tabs (2026-07-18)
 
