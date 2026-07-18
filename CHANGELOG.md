@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.32.3 — Ellipsis icons + themeable PJXRegionLoader (2026-07-18)
 
 ### Added
 - Vendored Lucide's `ellipsis`/`ellipsis-vertical` icons into `PJXIcon`'s icon
