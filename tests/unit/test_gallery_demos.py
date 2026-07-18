@@ -60,6 +60,7 @@ def test_registry_covers_all_builtins():
         "PJXCardHeader",
         "PJXCardBody",
         "PJXCardFooter",
+        "PJXCarouselSlide",
         "PJXModalHeader",
         "PJXModalBody",
         "PJXModalFooter",
