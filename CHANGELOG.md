@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.32.2 — Add pin/pin-off icons to PJXIcon set (2026-07-18)
+
+### Added
+- Vendored Lucide's `pin`/`pin-off` icons into `PJXIcon`'s icon set, for
+  pin/unpin toggle controls (`map-pin` is a location marker, wrong semantic
+  for this idiom) (#204).
+
 ## 0.32.1 — Defer remove_on_close removal until htmx requests settle (2026-07-04)
 
 ### Fixed
