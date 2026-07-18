@@ -14,6 +14,7 @@ from pyjinhx import (
     component,
     dirty,
     mutates,
+    reactive_key,  # noqa: F401
     setup,
 )
 
@@ -29,6 +30,7 @@ PUBLIC_API = {
     "mutates",
     "dirty",
     "MutationKey",
+    "reactive_key",
     "PjxKey",
     "PjxContext",
     "PjxSettings",
@@ -56,7 +58,7 @@ def test_internals_are_not_in_the_public_surface():
     # advanced/internal building blocks must NOT leak into the top-level API
     for name in (
         "CacheScope", "client_script", "oob_swaps", "LoadCache", "InvalidationHub",
-        "InvalidationBackend", "MutationTracker", "Finder", "Parser", "Tag",
+        "InvalidationBackend", "MutationTracker", "DynamicReactiveKey", "Finder", "Parser", "Tag",
         "ClientBackend", "FastAPIClientBackend", "MountedManifest", "TriggerManifest",
         "LoadedAssets", "PJX_MOUNTED_HEADER", "PJX_TRIGGER_HEADER", "PJX_ASSETS_HEADER",
         "configure_pyjinhx", "shutdown_pyjinhx",

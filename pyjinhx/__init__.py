@@ -10,7 +10,7 @@ from pyjinhx.assets import AssetMode
 from pyjinhx.base import BaseComponent, Children, Slot, component
 from pyjinhx.config import PjxSettings, setup
 from pyjinhx.context import PjxContext
-from pyjinhx.keys import MutationKey
+from pyjinhx.keys import MutationKey, reactive_key
 from pyjinhx.mutations import dirty, mutates
 from pyjinhx.reactive import PjxKey, ReactiveComponent
 from pyjinhx.registry import Registry
@@ -31,6 +31,7 @@ __all__ = [
     "mutates",
     "dirty",
     "MutationKey",
+    "reactive_key",
     "PjxKey",
     "PjxContext",
     # Configuration
