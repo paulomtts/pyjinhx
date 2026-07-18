@@ -323,6 +323,11 @@ any keyed component, with **no override needed**. Dirtying `ChatKeys.MESSAGE` di
 still reloads every mounted `MessageBubble`; dirtying `reactive_key(ChatKeys.MESSAGE,
 "42")` reloads only the bubble whose `message_id` is `"42"`.
 
+`ReactiveResponse` takes the same per-instance key as a `key=` keyword instead of calling
+`reactive_key()` yourself — `ReactiveResponse(ChatKeys.MESSAGE, key=message_id)` is
+equivalent to `dirty(reactive_key(ChatKeys.MESSAGE, message_id))`, and applies to every
+positional key passed alongside it.
+
 Avoid declaring a `MutationKey` member whose value itself contains a `:` if you use keyed
 reactive components — it could collide with an auto-derived key from a different member.
 

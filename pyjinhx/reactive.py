@@ -28,7 +28,7 @@ from .assets import render_missing_assets_oob
 from .cache import LoadCache
 from .client import ClientBackend, LoadedAssets, MountedManifest, current_directives
 from .dev import warn_reactive_render_without_client
-from .keys import MutationKey, ReactiveKey, coerce_load_key_str, coerce_reactive_keys
+from .keys import MutationKey, ReactiveKey, coerce_load_key_str, coerce_reactive_keys, reactive_key
 from .mutations import MutationTracker, _require_mutation_keys
 
 
@@ -567,9 +567,16 @@ class ReactiveResponse(Markup):
 
     Pass mutation keys positionally to dirty them and fan out in one call, e.g.
     ``ReactiveResponse(Keys.TODOS)`` — no separate ``dirty()``/``@mutates`` needed.
+    Pass ``key=`` to dirty a per-instance key instead, e.g.
+    ``ReactiveResponse(Keys.MESSAGE, key=message_id)`` — equivalent to
+    ``dirty(reactive_key(Keys.MESSAGE, message_id))``.
     """
 
-    def __new__(cls, *keys: MutationKey, html: str | Markup = "") -> "ReactiveResponse":
+    def __new__(
+        cls, *keys: MutationKey, key: object | None = None, html: str | Markup = ""
+    ) -> "ReactiveResponse":
+        if key is not None:
+            keys = tuple(reactive_key(k, key) for k in keys)
         _require_mutation_keys(keys, "ReactiveResponse()")
         MutationTracker.record(keys)  # no-op when keys is empty
         if not str(html).strip():
