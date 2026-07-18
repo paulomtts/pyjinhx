@@ -1,8 +1,9 @@
 from pathlib import Path
+from typing import Annotated
 
 import pytest
 
-from pyjinhx import MutationKey, ReactiveComponent, Registry, Renderer
+from pyjinhx import MutationKey, PjxKey, ReactiveComponent, Registry, Renderer
 from pyjinhx.cache import LoadCache
 from pyjinhx.dev import disable_reactive_dev, enable_reactive_dev
 from pyjinhx.reactive import oob_swaps
@@ -24,6 +25,14 @@ class OverBroad(ReactiveComponent, react={_Keys.ALPHA}):
 
     def depends_on(self) -> set[str]:
         return {"alpha", "extra"}
+
+
+class KeyedProbe(ReactiveComponent, react={_Keys.ALPHA}):
+    probe_key: Annotated[str, PjxKey()]
+
+    @classmethod
+    def load(cls, key: str) -> "KeyedProbe":
+        return cls(id=f"probe-{key}", probe_key=key)
 
 
 def setup_function():
@@ -83,3 +92,8 @@ def test_depends_on_exceeding_superset_raises_in_strict_dev():
     enable_reactive_dev(strict=True)
     with pytest.raises(RuntimeError, match="depends_on"):
         OverBroad.load()
+
+
+def test_keyed_component_default_depends_on_includes_derived_key():
+    instance = KeyedProbe.load("7")
+    assert instance.depends_on() == {"alpha", "alpha:7"}

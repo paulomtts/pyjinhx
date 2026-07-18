@@ -32,6 +32,15 @@ from .keys import MutationKey, ReactiveKey, coerce_load_key_str, coerce_reactive
 from .mutations import MutationTracker, _require_mutation_keys
 
 
+def _keyed_derived_keys(static_keys: frozenset[str], key: str | None) -> set[str]:
+    """Per-instance reactive keys implied by a keyed component's own load-key,
+    one per declared static key: ``f"{static_key}:{key}"``. Empty when the
+    component isn't keyed (``key`` is ``None``)."""
+    if key is None:
+        return set()
+    return {f"{k}:{key}" for k in static_keys}
+
+
 class PjxKey:
     """Marker for ``Annotated[..., PjxKey()]`` fields stamped as ``data-pjx-load``."""
 
@@ -249,7 +258,8 @@ class ReactiveComponent(BaseComponent):
 
     def depends_on(self) -> set[str]:
         """Reactive state keys this loaded instance currently depends on."""
-        return set(getattr(type(self), "_pjx_reacts_to", frozenset()))
+        static = frozenset(getattr(type(self), "_pjx_reacts_to", frozenset()))
+        return set(static) | _keyed_derived_keys(static, self._pjx_key)
 
     def state_hash(self) -> str:
         """
