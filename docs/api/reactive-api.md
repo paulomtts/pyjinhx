@@ -48,14 +48,6 @@ instance.render() -> Markup
 
 Render an already-built instance as the primary without re-loading from the world.
 
-### depends_on()
-
-```python
-def depends_on(self) -> set[str]
-```
-
-Reactive state keys this loaded instance depends on. Defaults to the static `react` set. Override to narrow for load-cache indexing (the static `react` set must remain a superset). `oob_swaps` matches on the static `react` set only.
-
 ### state_hash()
 
 ```python

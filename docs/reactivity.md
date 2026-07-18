@@ -57,7 +57,6 @@ class Counter(ReactiveComponent, react={Keys.TODOS}):
 - `state_hash()` — canonical SHA-256 of sorted JSON from `model_dump(mode="json")`
   with `state_hash_exclude` applied (`id` is excluded by default). Override for custom
   hashing or add fields to `state_hash_exclude` for ephemeral UI-only state.
-- `depends_on()` — optional runtime narrowing for load-cache indexing; the static `react` set must remain a superset. See [Runtime dependencies](#runtime-dependencies-depends_on).
 
 Reactive components are stamped with `data-pjx-id`, `data-pjx-type` (the class
 name), and `data-pjx-hash` on their root element automatically.
@@ -318,10 +317,10 @@ dirty(reactive_key(ChatKeys.MESSAGE, message_id))
 ```
 
 `reactive_key(key, arg)` builds the fixed-format string `f"{key}:{arg}"` — the same
-convention `depends_on()`'s default and the OOB dispatch loop both already understand for
-any keyed component, with **no override needed**. Dirtying `ChatKeys.MESSAGE` directly
-still reloads every mounted `MessageBubble`; dirtying `reactive_key(ChatKeys.MESSAGE,
-"42")` reloads only the bubble whose `message_id` is `"42"`.
+convention the OOB dispatch loop already understands for any keyed component, with
+**no override needed**. Dirtying `ChatKeys.MESSAGE` directly still reloads every mounted
+`MessageBubble`; dirtying `reactive_key(ChatKeys.MESSAGE, "42")` reloads only the bubble
+whose `message_id` is `"42"`.
 
 `ReactiveResponse` and `@mutates` take the same idea as a `key=` keyword instead of
 calling `reactive_key()` yourself:
@@ -357,41 +356,6 @@ class TodoCounter(ReactiveComponent, react={Keys.TODOS}):
 at class-definition time. `@mutates` and `dirty()` accept `MutationKey` members or a
 `reactive_key()` value (see [Parametric per-instance keys](#parametric-per-instance-keys)
 below) — a bare string still raises `TypeError` at decoration/call time.
-
-## Runtime dependencies (`depends_on`)
-
-When a component's dependencies depend on loaded state, declare a static **superset**
-via `react=` and override `depends_on()` to narrow at runtime:
-
-```python
-class Keys(MutationKey):
-    USER = "user"
-    SETTINGS = "settings"
-
-class AdminPanel(ReactiveComponent, react={Keys.USER, Keys.SETTINGS}):
-    is_admin: bool = False
-
-    @classmethod
-    def load(cls) -> "AdminPanel":
-        user = get_current_user()
-        return cls(is_admin=user.is_admin)
-
-    def depends_on(self) -> set[str]:
-        if self.is_admin:
-            return {Keys.USER, Keys.SETTINGS}
-        return {Keys.SETTINGS}
-```
-
-`depends_on()` narrows or widens load-cache reverse indexing (for a keyed component, its
-default already widens to include the per-instance [derived key](#parametric-per-instance-keys)).
-`oob_swaps` matches against the static `react` superset *plus* that same per-instance derived
-key for keyed components; `dependency_graph()` still shows the static superset only. Dev mode
-warns (or raises) when `depends_on()` returns keys outside that widened superset.
-
-If you override `depends_on()` on a *keyed* component, include the derived key yourself (e.g.
-`return super().depends_on() | {...}`) — `oob_swaps` still matches it independently of your
-override, so omitting it from cache indexing leaves `LoadCache` unaware a per-instance dirty
-should evict that instance's cached `load()` result.
 
 ## Mutation tracking (`@mutates`)
 
@@ -470,7 +434,6 @@ Checks include:
 
 - mutations recorded via `@mutates` but no reactive `render()` in the same request scope
 - mutations pending but no `ClientBackend` active (OOB swaps skipped)
-- `depends_on()` keys outside the static `react` superset
 
 Inspect the dependency graph at startup:
 

@@ -564,7 +564,7 @@ print(format_dependency_graph())
 ```
 
 ???+ question "Why enable_reactive_dev?"
-    Reactivity bugs are often silent (missing `ClientBackend`, wrong `react` keys, `depends_on()` outside the `react` superset). Dev mode turns those into log warnings or strict exceptions during development.
+    Reactivity bugs are often silent (missing `ClientBackend`, wrong `react` keys). Dev mode turns those into log warnings or strict exceptions during development.
 
 ---
 
