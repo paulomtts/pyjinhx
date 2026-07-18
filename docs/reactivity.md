@@ -376,6 +376,11 @@ default already widens to include the per-instance [derived key](#parametric-per
 key for keyed components; `dependency_graph()` still shows the static superset only. Dev mode
 warns (or raises) when `depends_on()` returns keys outside that widened superset.
 
+If you override `depends_on()` on a *keyed* component, include the derived key yourself (e.g.
+`return super().depends_on() | {...}`) — `oob_swaps` still matches it independently of your
+override, so omitting it from cache indexing leaves `LoadCache` unaware a per-instance dirty
+should evict that instance's cached `load()` result.
+
 ## Mutation tracking (`@mutates`)
 
 Decorate store mutation methods to invalidate the `load()` cache and accumulate
