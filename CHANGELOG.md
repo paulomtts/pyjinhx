@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.32.4 — Accessibility baseline pass (2026-07-18)
 
 ### Fixed
 - `PJXAccordionTrigger`'s `disabled` state only set `aria-disabled` + `tabindex="-1"` — visually
