@@ -7,6 +7,15 @@
   set, for `…`/kebab overflow-menu triggers (e.g. a `PJXDropdown` actions
   trigger) (#200).
 
+### Fixed
+- `PJXRegionLoader`'s overlay backdrop and spinner track were hardcoded dark
+  (`rgb(0 0 0 / 0.55)` / `rgb(255 255 255 / 0.1)`), reading like an error scrim
+  on light surfaces and requiring every light-theme consumer to override both
+  tokens by hand. Both now derive from `--text` via `color-mix`, matching the
+  pattern every other builtin already uses (`PJXSkeleton`, `PJXDropdown`,
+  etc.), so the overlay auto-adapts to the app's theme with no override
+  needed (#179).
+
 ## 0.32.2 — Add pin/pin-off icons to PJXIcon set (2026-07-18)
 
 ### Added
