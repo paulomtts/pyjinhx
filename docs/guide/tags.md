@@ -41,6 +41,27 @@ on the root element of that component with **override semantics** — an inline 
 replaces any same-named attribute the template hardcodes, including `class` and `style`.
 See [Creating Components](components.md#attribute-pass-through) for the full rules.
 
+### Passing lists and dicts
+
+A tag attribute is always a plain string — the template is fully rendered before the tag is
+parsed out of it. For a field typed `list`, `dict`, or a nested `BaseModel`, a JSON-looking
+attribute value (starts with `{` or `[`) is parsed automatically before Pydantic sees it, so a
+structured prop just works with `| tojson`:
+
+```python
+class Sources(BaseComponent):
+    items: list = Field(default_factory=list)
+```
+
+```html
+<Sources items='{{ items | tojson }}'/>
+```
+
+Use single quotes around the attribute — `tojson` is HTML-safe but leaves `"` unescaped. This
+coercion only fires when the field's annotation is unambiguous (`list`, `dict`, a `BaseModel`
+subclass, or one of those unioned with `None`); a field typed `str | list` is left as a literal
+string, since a JSON-looking string there is ambiguous.
+
 ## The `content` Variable
 
 Inner content of a tag becomes the `{{ content }}` template variable:

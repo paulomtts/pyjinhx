@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+### Added
+- A tag attribute typed `list`/`dict`/a nested `BaseModel` (or one of those unioned with `None`)
+  now auto-parses a JSON-looking string value (`{...}`/`[...]`) before Pydantic validates it, so
+  `<Child sources="{{ sources | tojson }}"/>` just works instead of every component hand-rolling
+  the same `BeforeValidator`. Fields typed as a union with `str` (e.g. `str | list`, `Slot`) are
+  left untouched — a JSON-looking string there is ambiguous (#187).
+
 ## 0.32.4 — Accessibility baseline pass (2026-07-18)
 
 ### Fixed
