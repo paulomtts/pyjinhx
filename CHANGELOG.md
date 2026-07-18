@@ -5,9 +5,8 @@
 ### Added
 - `reactive_key(key, arg)` builds a per-instance reactive key (`f"{key}:{arg}"`) from a
   declared `MutationKey` and a keyed component's own load-key. `dirty()`/`@mutates()`/
-  `ReactiveResponse()` now accept it alongside `MutationKey` members. A keyed
-  `ReactiveComponent`'s default `depends_on()` and the OOB dispatch loop both already
-  understand this convention with no override needed, so dirtying one instance's derived
+  `ReactiveResponse()` now accept it alongside `MutationKey` members. The OOB dispatch loop
+  already understands this convention with no override needed, so dirtying one instance's derived
   key reloads only that mounted instance instead of every instance of that type — the
   family-wide `MutationKey` dirty still reloads everything, unchanged. `ReactiveResponse`
   also takes a `key=` keyword that derives the per-instance key for you:
