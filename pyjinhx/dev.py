@@ -59,15 +59,17 @@ def warn_reactive_render_without_client(*, backend: ClientBackend | None) -> Non
 
 
 def validate_depends_on(instance: object) -> None:
-    """Ensure ``depends_on()`` is a subset of the static ``react`` superset."""
+    """Ensure ``depends_on()`` is a subset of the static ``react`` superset
+    (widened by the same per-instance derived keys ``depends_on()`` itself may report)."""
     if not _dev_config.enabled:
         return
-    from .reactive import ReactiveComponent
+    from .reactive import ReactiveComponent, _keyed_derived_keys
 
     if not isinstance(instance, ReactiveComponent):
         return
     component_class = type(instance)
-    superset = set(getattr(component_class, "_pjx_reacts_to", frozenset()))
+    static = frozenset(getattr(component_class, "_pjx_reacts_to", frozenset()))
+    superset = set(static) | _keyed_derived_keys(static, instance._pjx_key)
     runtime = instance.depends_on()
     extra = runtime - superset
     if extra:

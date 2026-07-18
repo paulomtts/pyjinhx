@@ -1,5 +1,21 @@
 # Changelog
 
+## Unreleased
+
+### Added
+- `reactive_key(key, arg)` builds a per-instance reactive key (`f"{key}:{arg}"`) from a
+  declared `MutationKey` and a keyed component's own load-key. `dirty()`/`@mutates()`/
+  `ReactiveResponse()` now accept it alongside `MutationKey` members. A keyed
+  `ReactiveComponent`'s default `depends_on()` and the OOB dispatch loop both already
+  understand this convention with no override needed, so dirtying one instance's derived
+  key reloads only that mounted instance instead of every instance of that type — the
+  family-wide `MutationKey` dirty still reloads everything, unchanged. `ReactiveResponse`
+  also takes a `key=` keyword that derives the per-instance key for you:
+  `ReactiveResponse(ChatKeys.MESSAGE, key=message_id)`. `@mutates` takes the same idea as
+  a `key=` *callable*, since it runs at decoration time before any call arguments exist:
+  `@mutates(ChatKeys.MESSAGE, key=lambda message_id: message_id)` derives the key fresh
+  on every call, using the decorated function's own arguments (#201).
+
 ## 0.34.0 — Drag-to-reorder tabs (2026-07-18)
 
 ### Added

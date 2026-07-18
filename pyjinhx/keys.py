@@ -32,3 +32,20 @@ class MutationKey(StrEnum):
     Subclass and declare members; use the members in ``react={...}`` and ``@mutates`` —
     all normalize to their string values.
     """
+
+
+class DynamicReactiveKey(str):
+    """A key produced by ``reactive_key()`` — accepted by ``dirty()``/``@mutates()``
+    alongside ``MutationKey`` members. Not constructed directly."""
+
+
+def reactive_key(key: MutationKey, arg: object) -> DynamicReactiveKey:
+    """
+    Build a per-instance reactive key from a static ``MutationKey`` and an
+    instance's own load-key, e.g. ``reactive_key(ChatKeys.MESSAGE, message_id)``.
+
+    Use the result with ``dirty()``/``@mutates()`` to invalidate/reload only the
+    one mounted instance whose load-key matches ``arg``, instead of every
+    instance reacting to ``key``.
+    """
+    return DynamicReactiveKey(f"{coerce_reactive_key(key)}:{arg}")

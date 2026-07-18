@@ -5,7 +5,7 @@ from collections.abc import Callable, Iterable
 from contextvars import ContextVar
 from typing import Any, ClassVar, TypeVar
 
-from .keys import MutationKey, ReactiveKey, coerce_reactive_keys
+from .keys import DynamicReactiveKey, MutationKey, ReactiveKey, coerce_reactive_keys, reactive_key
 from .cache import LoadCache
 
 F = TypeVar("F", bound=Callable[..., Any])
@@ -56,18 +56,28 @@ class MutationTracker:
 
 
 def _require_mutation_keys(keys: tuple[Any, ...], caller: str) -> None:
-    invalid = sorted(repr(key) for key in keys if not isinstance(key, MutationKey))
+    invalid = sorted(
+        repr(key) for key in keys if not isinstance(key, (MutationKey, DynamicReactiveKey))
+    )
     if invalid:
-        raise TypeError(f"{caller} only accepts MutationKey members; got {', '.join(invalid)}")
+        raise TypeError(
+            f"{caller} only accepts MutationKey members or reactive_key() values; "
+            f"got {', '.join(invalid)}"
+        )
 
 
-def mutates(*keys: MutationKey) -> Callable[[F], F]:
+def mutates(*keys: MutationKey, key: Callable[..., object] | None = None) -> Callable[[F], F]:
     """
     Decorator for store mutation methods.
 
     Invalidates the load cache for ``keys`` and accumulates them as pending
     dirtied for the next reactive ``render()``. Keys must be ``MutationKey``
-    members.
+    members or ``reactive_key()`` values.
+
+    Pass ``key=`` to derive a per-instance key instead of dirtying ``keys``
+    directly — it's called with the wrapped function's own arguments and its
+    return value feeds ``reactive_key()`` for every key in ``keys``, e.g.
+    ``@mutates(Keys.TODO, key=lambda todo_id: todo_id)``.
     """
     _require_mutation_keys(keys, "@mutates")
 
@@ -75,7 +85,11 @@ def mutates(*keys: MutationKey) -> Callable[[F], F]:
         @functools.wraps(func)
         def wrapper(*args: Any, **kwargs: Any) -> Any:
             result = func(*args, **kwargs)
-            MutationTracker.record(keys)
+            active_keys = keys
+            if key is not None:
+                arg = key(*args, **kwargs)
+                active_keys = tuple(reactive_key(k, arg) for k in keys)
+            MutationTracker.record(active_keys)
             return result
 
         return wrapper  # type: ignore[return-value]
@@ -89,7 +103,7 @@ def dirty(*keys: MutationKey) -> None:
 
     Invalidates the load cache for ``keys`` and accumulates them as pending
     dirtied for the next reactive ``render()``. Keys must be ``MutationKey``
-    members.
+    members or ``reactive_key()`` values.
     """
     _require_mutation_keys(keys, "dirty()")
     MutationTracker.record(keys)

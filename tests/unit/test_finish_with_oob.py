@@ -180,6 +180,47 @@ def test_reactive_response_records_multiple_keys():
     assert MutationTracker.pending() == {"todos", "quota"}
 
 
+def test_reactive_response_key_kwarg_derives_per_instance_key():
+    from pyjinhx.mutations import MutationTracker
+    from pyjinhx.reactive import ReactiveResponse
+    from tests.reactive_test_support import Keys
+
+    ReactiveResponse(Keys.TODOS, key="42")
+    assert MutationTracker.pending() == {"todos:42"}
+
+
+def test_reactive_response_key_kwarg_applies_to_every_key():
+    from pyjinhx import MutationKey
+    from pyjinhx.mutations import MutationTracker
+    from pyjinhx.reactive import ReactiveResponse
+    from tests.reactive_test_support import Keys
+
+    class OtherKeys(MutationKey):
+        QUOTA = "quota"
+
+    ReactiveResponse(Keys.TODOS, OtherKeys.QUOTA, key="42")
+    assert MutationTracker.pending() == {"todos:42", "quota:42"}
+
+
+def test_reactive_response_key_kwarg_reloads_only_the_matching_instance():
+    from pyjinhx.cache import LoadCache
+    from pyjinhx.reactive import ReactiveResponse
+
+    from tests.ui.reactive.counted_row import CountedRow, Keys as RowKeys  # noqa: F401
+
+    LoadCache.clear()
+    CountedRow.load_calls.clear()
+    manifest = [
+        {"id": "row-1", "type": "CountedRow", "load": "1", "hash": "stale"},
+        {"id": "row-2", "type": "CountedRow", "load": "2", "hash": "stale"},
+    ]
+    with reactive_client(manifest):
+        out = str(ReactiveResponse(RowKeys.ROW, key="2"))
+    assert CountedRow.load_calls == ["2"]
+    assert "outerHTML:[data-pjx-id='row-2']" in out
+    assert "outerHTML:[data-pjx-id='row-1']" not in out
+
+
 def test_reactive_response_html_keyword_keeps_primary_and_fans_out():
     from pyjinhx.reactive import ReactiveResponse
 

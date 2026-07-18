@@ -28,8 +28,17 @@ from .assets import render_missing_assets_oob
 from .cache import LoadCache
 from .client import ClientBackend, LoadedAssets, MountedManifest, current_directives
 from .dev import warn_reactive_render_without_client
-from .keys import MutationKey, ReactiveKey, coerce_load_key_str, coerce_reactive_keys
+from .keys import MutationKey, ReactiveKey, coerce_load_key_str, coerce_reactive_keys, reactive_key
 from .mutations import MutationTracker, _require_mutation_keys
+
+
+def _keyed_derived_keys(static_keys: frozenset[str], key: str | None) -> set[str]:
+    """Per-instance reactive keys implied by a keyed component's own load-key,
+    one per declared static key: ``f"{static_key}:{key}"``. Empty when the
+    component isn't keyed (``key`` is ``None``)."""
+    if key is None:
+        return set()
+    return {f"{k}:{key}" for k in static_keys}
 
 
 class PjxKey:
@@ -249,7 +258,8 @@ class ReactiveComponent(BaseComponent):
 
     def depends_on(self) -> set[str]:
         """Reactive state keys this loaded instance currently depends on."""
-        return set(getattr(type(self), "_pjx_reacts_to", frozenset()))
+        static = frozenset(getattr(type(self), "_pjx_reacts_to", frozenset()))
+        return set(static) | _keyed_derived_keys(static, self._pjx_key)
 
     def state_hash(self) -> str:
         """
@@ -440,7 +450,8 @@ def oob_swaps(
             load_arg = None
 
         static_keys = set(getattr(component_class, "_pjx_reacts_to", frozenset()))
-        if not (static_keys & dirtied_keys):
+        derived_keys = _keyed_derived_keys(frozenset(static_keys), load_arg) if keyed else set()
+        if not ((static_keys | derived_keys) & dirtied_keys):
             continue
 
         dedup_key = (component_type, load_arg)
@@ -556,9 +567,16 @@ class ReactiveResponse(Markup):
 
     Pass mutation keys positionally to dirty them and fan out in one call, e.g.
     ``ReactiveResponse(Keys.TODOS)`` — no separate ``dirty()``/``@mutates`` needed.
+    Pass ``key=`` to dirty a per-instance key instead, e.g.
+    ``ReactiveResponse(Keys.MESSAGE, key=message_id)`` — equivalent to
+    ``dirty(reactive_key(Keys.MESSAGE, message_id))``.
     """
 
-    def __new__(cls, *keys: MutationKey, html: str | Markup = "") -> "ReactiveResponse":
+    def __new__(
+        cls, *keys: MutationKey, key: object | None = None, html: str | Markup = ""
+    ) -> "ReactiveResponse":
+        if key is not None:
+            keys = tuple(reactive_key(k, key) for k in keys)
         _require_mutation_keys(keys, "ReactiveResponse()")
         MutationTracker.record(keys)  # no-op when keys is empty
         if not str(html).strip():
