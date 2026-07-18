@@ -97,3 +97,8 @@ def test_depends_on_exceeding_superset_raises_in_strict_dev():
 def test_keyed_component_default_depends_on_includes_derived_key():
     instance = KeyedProbe.load("7")
     assert instance.depends_on() == {"alpha", "alpha:7"}
+
+
+def test_keyed_component_default_depends_on_does_not_trip_strict_dev():
+    enable_reactive_dev(strict=True)
+    KeyedProbe.load("9")  # must not raise — the derived key is expected, not "extra"
