@@ -41,3 +41,9 @@
   margin-left: auto;
   /* Clicks are stopped by the trigger JS so the summary does not toggle. */
 }
+
+@media (prefers-reduced-motion: reduce) {
+  .pjx-accordion__chevron {
+    transition: none;
+  }
+}

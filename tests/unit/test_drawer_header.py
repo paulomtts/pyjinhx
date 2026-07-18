@@ -21,7 +21,7 @@ def test_header_with_class_name():
 
 def test_header_title_renders_span():
     html = str(PJXDrawerHeader(id="h3", title="Menu").render())
-    assert '<span class="pjx-drawer__title">Menu</span>' in html
+    assert '<span id="h3-title" class="pjx-drawer__title">Menu</span>' in html
 
 
 def test_header_without_title_renders_content():

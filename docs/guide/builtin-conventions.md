@@ -97,6 +97,31 @@ For builtins specifically, `class_name` is the right way to append CSS classes (
 template's root class). Use inline `class="..."` or `extra_attrs={"class": "..."}` only when
 you want to **replace** the root class entirely.
 
+## Accessibility
+
+pyjinhx builtins replace a third-party component library, so they own the WAI-ARIA baseline a
+library would otherwise amortize across its users. The contract, by pattern (see the
+[WAI-ARIA APG](https://www.w3.org/WAI/ARIA/apg/patterns/) for the authoritative spec per widget):
+
+- **Native elements first.** `PJXAccordion` (`<details>/<summary>`) and `PJXModal`/`PJXDrawer`
+  (`<dialog>` + `showModal()`) get keyboard interaction, focus trapping, and — for
+  dialogs — an implicit `role="dialog"`/`aria-modal="true"` for free from the browser. Prefer a
+  native element over hand-rolled ARIA state whenever one fits the pattern.
+- **Disabled means non-operable, not just inert.** `aria-disabled` + `tabindex="-1"` alone doesn't
+  stop a native element's default action (e.g. a `<summary>` still toggles on Enter/Space); cancel
+  the default action explicitly, as `PJXAccordionTrigger`'s JS does.
+- **Accessible names for icon-only/non-text content** go through the same [attribute
+  pass-through](#attribute-pass-through) as everything else — `aria-label`/`aria-labelledby` need
+  no dedicated prop. Where a template composes two builtins that need to reference each other
+  (e.g. `PJXModal` + `PJXModalHeader`'s title), the referenced part exposes a predictable `id`
+  (`"{id}-title"`) rather than the pair auto-wiring a hidden dependency.
+- **`prefers-reduced-motion`** is honored on any transform/opacity transition tied to open/close
+  state (modal, drawer, notification, toast, region-loader, accordion chevron) by clamping
+  `animation-duration`/`transition` under the media query — not by removing the animation, since
+  some of that lifecycle is driven by `animationend`. Continuous progress indicators (`PJXSpinner`,
+  `PJXSkeleton`, `PJXPageLoader`) are exempt: they convey ongoing state, which WCAG 2.3.3 treats as
+  essential motion.
+
 ## Single-root rule
 
 Every component template must render exactly **one** top-level HTML element. Rendering a

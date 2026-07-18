@@ -9,6 +9,7 @@ def test_stack_renders_avatars_and_overflow():
     ).render())
     assert 'id="a1"' in html and 'id="a2"' in html
     assert ">+3<" in html
+    assert 'aria-label="3 more"' in html
     assert html.index('id="a1"') < html.index('id="a2"')
 
 
@@ -69,6 +70,7 @@ def test_stack_dict_avatars_renders_pills():
     assert "CD" in html
     assert 'style="background:#f00;"' in html
     assert 'title="Alice"' in html
+    assert 'aria-label="Alice"' in html
     assert 'class="pjx-avatar pjx-avatar-stack__pill"' in html
 
 
@@ -78,6 +80,7 @@ def test_stack_dict_avatar_alt_takes_precedence_over_name():
         avatars=[{"initials": "XY", "color": "", "alt": "Explicit", "name": "Fallback"}],
     ).render())
     assert 'title="Explicit"' in html
+    assert 'aria-label="Explicit"' in html
     assert "Fallback" not in html
 
 

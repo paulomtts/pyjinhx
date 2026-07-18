@@ -134,3 +134,15 @@
 .pjx-drawer--right .pjx-drawer__box {
   --pjx-drawer-slide-from: 100%;
 }
+
+@media (prefers-reduced-motion: reduce) {
+  .pjx-drawer::backdrop,
+  .pjx-drawer[open],
+  .pjx-drawer.pjx-drawer--closing,
+  .pjx-drawer.pjx-drawer--closing::backdrop,
+  .pjx-drawer--left .pjx-drawer__box,
+  .pjx-drawer--right .pjx-drawer__box,
+  .pjx-drawer--bottom .pjx-drawer__box {
+    animation-duration: 0.01ms !important;
+  }
+}

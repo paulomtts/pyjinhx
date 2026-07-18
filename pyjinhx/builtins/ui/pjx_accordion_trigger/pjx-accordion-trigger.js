@@ -13,4 +13,11 @@
         if (!actions) return;
         e.preventDefault();
     }, true); // capture phase: runs before the summary's default toggle
+
+    // aria-disabled doesn't stop a <summary>'s native toggle; cancel it too.
+    document.addEventListener('click', function (e) {
+        var trigger = e.target.closest('.pjx-accordion__trigger[aria-disabled="true"]');
+        if (!trigger) return;
+        e.preventDefault();
+    }, true);
 })();

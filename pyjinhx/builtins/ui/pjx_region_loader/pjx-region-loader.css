@@ -63,3 +63,11 @@
 @keyframes region-loader-spin {
   to { transform: rotate(360deg); }
 }
+
+@media (prefers-reduced-motion: reduce) {
+  .pjx-region-loader--visible,
+  .pjx-region-loader.htmx-request,
+  .pjx-region-loader--hiding {
+    animation-duration: 0.01ms !important;
+  }
+}

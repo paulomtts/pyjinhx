@@ -110,3 +110,10 @@
   from { opacity: 1; transform: translateX(0); }
   to   { opacity: 0; transform: translateX(calc(-100% - var(--pjx-notification-gap))); }
 }
+
+@media (prefers-reduced-motion: reduce) {
+  .pjx-notification--visible,
+  .pjx-notification--hiding {
+    animation-duration: 0.01ms !important;
+  }
+}
