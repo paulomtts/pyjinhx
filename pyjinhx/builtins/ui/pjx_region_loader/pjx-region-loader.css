@@ -1,12 +1,12 @@
 /* ── PJXRegionLoader tokens ──────────────────────────────────── */
 :where(:root) {
-  --pjx-region-loader-bg:            rgb(0 0 0 / 0.55);
+  --pjx-region-loader-bg:            color-mix(in srgb, var(--text) 55%, transparent);
   --pjx-region-loader-backdrop:      blur(2px);
   --pjx-region-loader-z:             100;
   --pjx-region-loader-spinner-size:  2.5rem;
   --pjx-region-loader-spinner-width: 3px;
   --pjx-region-loader-spinner-color: var(--brand);
-  --pjx-region-loader-spinner-track: rgb(255 255 255 / 0.1);
+  --pjx-region-loader-spinner-track: color-mix(in srgb, var(--text) 12%, transparent);
 }
 
 /* ── Overlay ────────────────────────────────────────────────── */
