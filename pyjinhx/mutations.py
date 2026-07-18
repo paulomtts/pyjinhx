@@ -5,7 +5,7 @@ from collections.abc import Callable, Iterable
 from contextvars import ContextVar
 from typing import Any, ClassVar, TypeVar
 
-from .keys import MutationKey, ReactiveKey, coerce_reactive_keys
+from .keys import DynamicReactiveKey, MutationKey, ReactiveKey, coerce_reactive_keys
 from .cache import LoadCache
 
 F = TypeVar("F", bound=Callable[..., Any])
@@ -56,9 +56,14 @@ class MutationTracker:
 
 
 def _require_mutation_keys(keys: tuple[Any, ...], caller: str) -> None:
-    invalid = sorted(repr(key) for key in keys if not isinstance(key, MutationKey))
+    invalid = sorted(
+        repr(key) for key in keys if not isinstance(key, (MutationKey, DynamicReactiveKey))
+    )
     if invalid:
-        raise TypeError(f"{caller} only accepts MutationKey members; got {', '.join(invalid)}")
+        raise TypeError(
+            f"{caller} only accepts MutationKey members or reactive_key() values; "
+            f"got {', '.join(invalid)}"
+        )
 
 
 def mutates(*keys: MutationKey) -> Callable[[F], F]:
@@ -67,7 +72,7 @@ def mutates(*keys: MutationKey) -> Callable[[F], F]:
 
     Invalidates the load cache for ``keys`` and accumulates them as pending
     dirtied for the next reactive ``render()``. Keys must be ``MutationKey``
-    members.
+    members or ``reactive_key()`` values.
     """
     _require_mutation_keys(keys, "@mutates")
 
@@ -89,7 +94,7 @@ def dirty(*keys: MutationKey) -> None:
 
     Invalidates the load cache for ``keys`` and accumulates them as pending
     dirtied for the next reactive ``render()``. Keys must be ``MutationKey``
-    members.
+    members or ``reactive_key()`` values.
     """
     _require_mutation_keys(keys, "dirty()")
     MutationTracker.record(keys)

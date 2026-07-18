@@ -4,6 +4,7 @@ import pytest
 
 from pyjinhx import MutationKey, Registry, Renderer, dirty, mutates
 from pyjinhx.cache import LoadCache
+from pyjinhx.keys import reactive_key
 from pyjinhx.mutations import MutationTracker
 from tests.reactive_test_support import Keys, reactive_client
 from tests.ui.reactive.reactive_clear_button import ReactiveClearButton
@@ -87,6 +88,23 @@ def test_dirty_rejects_bare_strings():
     with pytest.raises(TypeError) as excinfo:
         dirty("todos")  # type: ignore[arg-type]  # deliberately passes a bare string
     assert str(excinfo.value).startswith("dirty()")
+
+
+def test_dirty_accepts_reactive_key():
+    MutationTracker.clear()
+    dirty(reactive_key(Keys.TODOS, "row-1"))
+    assert MutationTracker.pending() == {"todos:row-1"}
+
+
+def test_mutates_accepts_reactive_key():
+    MutationTracker.clear()
+
+    @mutates(reactive_key(Keys.TODOS, "row-2"))
+    def _mutate_one_row() -> None:
+        pass
+
+    _mutate_one_row()
+    assert MutationTracker.pending() == {"todos:row-2"}
 
 
 def test_dirty_without_args_is_noop():
