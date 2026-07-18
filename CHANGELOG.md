@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.34.0 — Drag-to-reorder tabs (2026-07-18)
 
 ### Added
 - `PJXTabList(reorderable=True)`: non-pinned tabs can now be drag-reordered, or moved with
