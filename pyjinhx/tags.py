@@ -225,6 +225,7 @@ _BUILTIN_TAG_NAMES = frozenset(
         "PJXCardBody",
         "PJXCardFooter",
         "PJXCardHeader",
+        "PJXCarousel",
         "PJXCarouselSlide",
         "PJXChipInput",
         "PJXConfirmDialog",

@@ -13,6 +13,7 @@ from pyjinhx.builtins.ui.pjx_card import PJXCard
 from pyjinhx.builtins.ui.pjx_card_body import PJXCardBody
 from pyjinhx.builtins.ui.pjx_card_footer import PJXCardFooter
 from pyjinhx.builtins.ui.pjx_card_header import PJXCardHeader
+from pyjinhx.builtins.ui.pjx_carousel import PJXCarousel
 from pyjinhx.builtins.ui.pjx_carousel_slide import PJXCarouselSlide
 from pyjinhx.builtins.ui.pjx_chip_input import PJXChipInput
 from pyjinhx.builtins.ui.pjx_confirm_dialog import PJXConfirmDialog
@@ -74,6 +75,7 @@ __all__ = [
     "PJXCardBody",
     "PJXCardFooter",
     "PJXCardHeader",
+    "PJXCarousel",
     "PJXCarouselSlide",
     "PJXChipInput",
     "PJXConfirmDialog",
