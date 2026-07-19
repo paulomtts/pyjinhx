@@ -97,6 +97,15 @@
   animation: pjx-drawer-slide-bottom-in 200ms ease forwards;
 }
 
+.pjx-drawer--closing.pjx-drawer--left .pjx-drawer__box,
+.pjx-drawer--closing.pjx-drawer--right .pjx-drawer__box {
+  animation: pjx-drawer-slide-side-out 150ms ease forwards;
+}
+
+.pjx-drawer--closing.pjx-drawer--bottom .pjx-drawer__box {
+  animation: pjx-drawer-slide-bottom-out 150ms ease forwards;
+}
+
 @keyframes pjx-drawer-backdrop-in {
   from { opacity: 0; }
   to { opacity: 1; }
@@ -127,6 +136,16 @@
   to { transform: translateY(0); }
 }
 
+@keyframes pjx-drawer-slide-side-out {
+  from { transform: translateX(0); }
+  to { transform: translateX(var(--pjx-drawer-slide-from, 100%)); }
+}
+
+@keyframes pjx-drawer-slide-bottom-out {
+  from { transform: translateY(0); }
+  to { transform: translateY(100%); }
+}
+
 .pjx-drawer--left .pjx-drawer__box {
   --pjx-drawer-slide-from: -100%;
 }
@@ -142,7 +161,10 @@
   .pjx-drawer.pjx-drawer--closing::backdrop,
   .pjx-drawer--left .pjx-drawer__box,
   .pjx-drawer--right .pjx-drawer__box,
-  .pjx-drawer--bottom .pjx-drawer__box {
+  .pjx-drawer--bottom .pjx-drawer__box,
+  .pjx-drawer--closing.pjx-drawer--left .pjx-drawer__box,
+  .pjx-drawer--closing.pjx-drawer--right .pjx-drawer__box,
+  .pjx-drawer--closing.pjx-drawer--bottom .pjx-drawer__box {
     animation-duration: 0.01ms !important;
   }
 }
