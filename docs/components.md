@@ -198,6 +198,97 @@ Card footer region. **Assets:** `pjx-card-footer.css` only.
     PJXCardFooter(content="Updated today")
     ```
 
+### PJXCarousel
+
+Compound image/content carousel with arrows, dots, keyboard nav, swipe, and opt-in autoplay. Compose with [`PJXCarouselSlide`](#pjxcarouselslide). **Assets:** `pjx-carousel.css`, `pjx-carousel.js`.
+
+<!-- demo: PJXCarousel -->
+
+```html
+<PJXCarousel label="Product photos">
+  <PJXCarouselSlide><img src="/photo-1.jpg" alt="Front view"></PJXCarouselSlide>
+  <PJXCarouselSlide><img src="/photo-2.jpg" alt="Side view"></PJXCarouselSlide>
+  <PJXCarouselSlide><img src="/photo-3.jpg" alt="Back view"></PJXCarouselSlide>
+</PJXCarousel>
+```
+
+??? note "Props & API"
+
+    | Field | Type | Default | Description |
+    | --- | --- | --- | --- |
+    | `label` | `str` | `"Carousel"` | `aria-label` on the root region. |
+    | `loop` | `bool` | `True` | Wrap at the ends. When `False`, the prev/next arrows disable (`aria-disabled`) at the first/last slide. |
+    | `autoplay` | `bool` | `False` | Auto-advance on a timer. Always ships a play/pause toggle button when enabled, and pauses on hover/focus/pointer interaction — never a silent, unpausable auto-advance. |
+    | `interval_ms` | `int` | `5000` | Autoplay interval in milliseconds. Ignored when `autoplay=False`. |
+    | `prev_label` | `str` | `"Previous slide"` | aria-label on the previous-slide arrow button. |
+    | `next_label` | `str` | `"Next slide"` | aria-label on the next-slide arrow button. |
+    | `autoplay_toggle_label` | `str` | `"Pause autoplay"` | aria-label on the autoplay pause/play toggle button (only rendered when autoplay=True). |
+    | `class_name` | `str` | `""` | Extra CSS class(es) appended to the root element. |
+    | `content` | `str \| BaseComponent` | `""` | Composed interior — one or more `PJXCarouselSlide`s. |
+
+    Respects `prefers-reduced-motion: reduce`: disables the slide transition and disables autoplay outright.
+
+??? note "Style tokens"
+
+    | Token | Default |
+    | --- | --- |
+    | `--pjx-carousel-border` | `var(--border)` |
+    | `--pjx-carousel-bg` | `var(--surface)` |
+    | `--pjx-carousel-radius` | `var(--radius-md)` |
+    | `--pjx-carousel-arrow-bg` | `color-mix(in srgb, var(--surface) 70%, transparent)` |
+    | `--pjx-carousel-arrow-fg` | `var(--text)` |
+    | `--pjx-carousel-dot-bg` | `var(--border)` |
+    | `--pjx-carousel-dot-active-bg` | `var(--brand)` |
+
+??? note "DOM & classes"
+
+    Root `div.pjx-carousel[role="region"][data-pjx-carousel]`. `pjx-carousel.js` discovers `[data-pjx-carousel-slide]` descendants at init, builds dots, and delegates click/keyboard/pointer events on `[data-pjx-carousel]`. Fires a cancelable `pjx:carousel:before-change` then `pjx:carousel:change` on the root, `detail = {index, reason}`.
+
+    **Classes:** `pjx-carousel`, `pjx-carousel__track`, `pjx-carousel__arrow`, `pjx-carousel__dots`, `pjx-carousel__dot`, `pjx-carousel__autoplay-toggle`.
+
+??? note "Python"
+
+    ```python
+    PJXCarousel(
+        label="Product photos",
+        content=(
+            PJXCarouselSlide(content='<img src="/photo-1.jpg" alt="Front view">').render()
+            + PJXCarouselSlide(content='<img src="/photo-2.jpg" alt="Side view">').render()
+            + PJXCarouselSlide(content='<img src="/photo-3.jpg" alt="Back view">').render()
+        ),
+    )
+    ```
+
+### PJXCarouselSlide
+
+Single carousel slide (any content, not just images). **Assets:** `pjx-carousel-slide.css`.
+
+```html
+<PJXCarouselSlide label="Front view">
+  <img src="/photo-1.jpg" alt="Front view">
+</PJXCarouselSlide>
+```
+
+??? note "Props & API"
+
+    | Field | Type | Default | Description |
+    | --- | --- | --- | --- |
+    | `label` | `str` | `""` | Optional per-slide `aria-label` prefix (e.g. "Front view"). The engine appends "— N of M" at init regardless of whether `label` is set. |
+    | `class_name` | `str` | `""` | Extra CSS class(es) appended to the root element. |
+    | `content` | `str \| BaseComponent` | `""` | Slide content — typically an `<img>`, but any markup is valid. |
+
+??? note "DOM & classes"
+
+    Root `div.pjx-carousel__slide[role="group"][data-pjx-carousel-slide]`.
+
+    **Classes:** `pjx-carousel__slide`.
+
+??? note "Python"
+
+    ```python
+    PJXCarouselSlide(label="Front view", content='<img src="/photo-1.jpg" alt="Front view">')
+    ```
+
 ### PJXDivider
 
 Separator line. **Assets:** `pjx_divider.css` only.

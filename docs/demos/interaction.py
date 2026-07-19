@@ -1,4 +1,6 @@
 from pyjinhx.builtins import (
+    PJXCarousel,
+    PJXCarouselSlide,
     PJXDropdown,
     PJXPageLoader,
     PJXRegionLoader,
@@ -82,10 +84,29 @@ def page_loader():
     ]
 
 
+def carousel():
+    def slide(color: str, text: str) -> str:
+        return (
+            f'<div style="display:flex;align-items:center;justify-content:center;'
+            f'height:200px;background:{color};color:#fff;font-size:1.1rem;'
+            f'font-weight:600">{text}</div>'
+        )
+
+    return PJXCarousel(
+        label="Demo photos",
+        content=(
+            PJXCarouselSlide(label="Slide one", content=slide("#6366f1", "Slide 1")).render()
+            + PJXCarouselSlide(label="Slide two", content=slide("#0ea5e9", "Slide 2")).render()
+            + PJXCarouselSlide(label="Slide three", content=slide("#22c55e", "Slide 3")).render()
+        ),
+    ).render()
+
+
 DEMOS = {
     "PJXDropdown": (dropdown, 320),
     "PJXTabGroup": (tab_group, 440),
     "PJXToastHost": (toast_host, 160),
     "PJXRegionLoader": (region_loader, 220),
     "PJXPageLoader": (page_loader, 160),
+    "PJXCarousel": (carousel, 320),
 }
