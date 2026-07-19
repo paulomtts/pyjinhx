@@ -12,8 +12,6 @@
     return Array.prototype.slice.call(carousel.querySelectorAll("[data-pjx-carousel-slide]"));
   }
 
-  function trackOf(carousel) { return carousel.querySelector(".pjx-carousel__track"); }
-
   function currentIndex(carousel) {
     var slides = slidesOf(carousel);
     for (var i = 0; i < slides.length; i++) {
@@ -47,8 +45,10 @@
   function updateArrows(carousel, index, count, loop) {
     var prev = carousel.querySelector("[data-pjx-carousel-prev]");
     var next = carousel.querySelector("[data-pjx-carousel-next]");
-    if (prev) prev.toggleAttribute("aria-disabled", !loop && index === 0);
-    if (next) next.toggleAttribute("aria-disabled", !loop && index === count - 1);
+    var prevDisabled = !loop && index === 0;
+    var nextDisabled = !loop && index === count - 1;
+    if (prev) { if (prevDisabled) prev.setAttribute("aria-disabled", "true"); else prev.removeAttribute("aria-disabled"); }
+    if (next) { if (nextDisabled) next.setAttribute("aria-disabled", "true"); else next.removeAttribute("aria-disabled"); }
   }
 
   function buildDots(carousel) {
@@ -68,10 +68,16 @@
 
   function updateDots(carousel, index) {
     var dots = carousel.querySelectorAll("[data-pjx-carousel-dot]");
-    dots.forEach(function (dot, i) { dot.toggleAttribute("aria-current", i === index) || dot.setAttribute("aria-current", i === index ? "true" : "false"); });
+    dots.forEach(function (dot, i) { dot.setAttribute("aria-current", i === index ? "true" : "false"); });
   }
 
   var timers = new WeakMap();
+
+  function updateAutoplayToggle(carousel) {
+    var toggle = carousel.querySelector("[data-pjx-carousel-autoplay-toggle]");
+    if (!toggle) return;
+    toggle.setAttribute("aria-pressed", timers.get(carousel) ? "false" : "true");
+  }
 
   function stopAutoplay(carousel) {
     var t = timers.get(carousel);
@@ -81,7 +87,10 @@
 
   function startAutoplay(carousel) {
     if (!carousel.hasAttribute("data-pjx-carousel-autoplay")) return;
-    if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      carousel.setAttribute("data-pjx-carousel-paused", "");
+      return;
+    }
     if (timers.get(carousel)) return;
     var interval = parseInt(carousel.getAttribute("data-pjx-carousel-interval"), 10) || 5000;
     var t = setInterval(function () {
@@ -98,10 +107,11 @@
     select(carousel, 0, "api", true);
     if (carousel.hasAttribute("data-pjx-carousel-autoplay")) {
       startAutoplay(carousel);
+      updateAutoplayToggle(carousel);
       ["mouseenter", "focusin", "pointerdown"].forEach(function (evt) {
         carousel.addEventListener(evt, function () { stopAutoplay(carousel); });
       });
-      ["mouseleave", "focusout"].forEach(function (evt) {
+      ["mouseleave", "focusout", "pointerup"].forEach(function (evt) {
         carousel.addEventListener(evt, function () {
           if (!carousel.dataset.pjxCarouselUserPaused) startAutoplay(carousel);
         });
@@ -120,6 +130,7 @@
     if (e.target.closest("[data-pjx-carousel-autoplay-toggle]")) {
       if (timers.get(carousel)) { carousel.dataset.pjxCarouselUserPaused = "1"; stopAutoplay(carousel); }
       else { delete carousel.dataset.pjxCarouselUserPaused; startAutoplay(carousel); }
+      updateAutoplayToggle(carousel);
     }
   });
 

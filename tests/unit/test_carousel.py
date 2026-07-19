@@ -94,24 +94,29 @@ def test_carousel_data_attr():
 
 def test_carousel_loop_default_true():
     html = _carousel()
-    assert "data-pjx-carousel-loop" in html
+    root_tag = html[html.index('<div id="c"'):].split(">", 1)[0]
+    assert "data-pjx-carousel-loop" in root_tag
 
 
 def test_carousel_loop_false_omits_attr():
     html = _carousel(loop=False)
     # The inlined pjx-carousel.js controller (auto-appended by the real
     # Renderer environment) contains this literal string in its own source,
-    # so scope the check to the root element's opening tag rather than the
-    # full rendered output (which includes trailing <style>/<script> assets).
-    root_tag = html.split(">", 1)[0]
+    # and asset inlining puts a <style>/<script> block *before* the carousel
+    # markup, so locate the carousel's own root <div> rather than assuming
+    # it's the first tag in the rendered output.
+    root_tag = html[html.index('<div id="c"'):].split(">", 1)[0]
+    assert root_tag.startswith('<div id="c"')
     assert "data-pjx-carousel-loop" not in root_tag
 
 
 def test_carousel_autoplay_default_false_no_toggle():
     html = _carousel()
     # Same reasoning as above: pjx-carousel.js references this attribute name
-    # in its own source, so only inspect the root tag's attributes.
-    root_tag = html.split(">", 1)[0]
+    # in its own source, and asset inlining precedes the carousel markup, so
+    # locate the real root tag rather than assuming it's first in the output.
+    root_tag = html[html.index('<div id="c"'):].split(">", 1)[0]
+    assert root_tag.startswith('<div id="c"')
     assert "data-pjx-carousel-autoplay" not in root_tag
     # The stylesheet unconditionally styles .pjx-carousel__autoplay-toggle (it's
     # always shipped as a static asset), so check for the button markup itself
@@ -121,9 +126,11 @@ def test_carousel_autoplay_default_false_no_toggle():
 
 def test_carousel_autoplay_true_emits_attrs_and_toggle():
     html = _carousel(autoplay=True, interval_ms=3000)
-    assert "data-pjx-carousel-autoplay" in html
+    root_tag = html[html.index('<div id="c"'):].split(">", 1)[0]
+    assert root_tag.startswith('<div id="c"')
+    assert "data-pjx-carousel-autoplay" in root_tag
     assert 'data-pjx-carousel-interval="3000"' in html
-    assert "pjx-carousel__autoplay-toggle" in html
+    assert 'class="pjx-carousel__autoplay-toggle"' in html
 
 
 def test_carousel_track_wraps_content():
