@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.36.1 — Drawer close animation fix (2026-07-19)
+
+### Fixed
+- `PJXDrawer`: close animation now slides the box back toward the side it opened from
+  (mirroring the open animation in reverse), instead of leaving it pinned at center while
+  only the backdrop/root faded out.
+
 ## 0.36.0 — Image/content carousel (2026-07-19)
 
 ### Added
