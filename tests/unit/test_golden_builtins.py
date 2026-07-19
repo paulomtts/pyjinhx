@@ -24,26 +24,26 @@ CASES = [
     ("avatar_stack", lambda: b.PJXAvatarStack(id="g", avatars=[b.PJXAvatar(id="g-a", initials="AB")], extra_count=2)),
     ("badge_default", lambda: b.PJXBadge(id="g", label="New")),
     ("breadcrumb", lambda: b.PJXBreadcrumb(id="g", items=[("Home", "/"), ("Here", None)])),
-    ("card_full", lambda: b.PJXCard(id="g", content=str(b.PJXCardHeader(id="g-h", title="T").render()) + str(b.PJXCardBody(id="g-b", content="B").render()) + str(b.PJXCardFooter(id="g-f", content="F").render()))),
+    ("card_full", lambda: b.PJXCard(id="g", content=b.PJXCardHeader(id="g-h", title="T").render() + b.PJXCardBody(id="g-b", content="B").render() + b.PJXCardFooter(id="g-f", content="F").render())),
     ("card_header_title", lambda: b.PJXCardHeader(id="g", title="Title")),
     ("card_header_content", lambda: b.PJXCardHeader(id="g", content="<span>Rich</span>")),
     ("card_body", lambda: b.PJXCardBody(id="g", content="<p>body</p>")),
     ("card_footer", lambda: b.PJXCardFooter(id="g", content="Footer")),
     ("carousel_multi", lambda: b.PJXCarousel(id="g", content=(
-        str(b.PJXCarouselSlide(id="g-s0", content="<img src='/a.png'>").render())
-        + str(b.PJXCarouselSlide(id="g-s1", label="Second photo", content="<img src='/b.png'>").render())
+        b.PJXCarouselSlide(id="g-s0", content="<img src='/a.png'>").render()
+        + b.PJXCarouselSlide(id="g-s1", label="Second photo", content="<img src='/b.png'>").render()
     ))),
-    ("carousel_single", lambda: b.PJXCarousel(id="g", content=str(b.PJXCarouselSlide(id="g-s0", content="<img src='/a.png'>").render()))),
+    ("carousel_single", lambda: b.PJXCarousel(id="g", content=b.PJXCarouselSlide(id="g-s0", content="<img src='/a.png'>").render())),
     ("carousel_empty", lambda: b.PJXCarousel(id="g")),
-    ("carousel_autoplay", lambda: b.PJXCarousel(id="g", autoplay=True, interval_ms=3000, content=str(b.PJXCarouselSlide(id="g-s0", content="<img src='/a.png'>").render()))),
-    ("carousel_no_loop", lambda: b.PJXCarousel(id="g", loop=False, content=str(b.PJXCarouselSlide(id="g-s0", content="<img src='/a.png'>").render()))),
+    ("carousel_autoplay", lambda: b.PJXCarousel(id="g", autoplay=True, interval_ms=3000, content=b.PJXCarouselSlide(id="g-s0", content="<img src='/a.png'>").render())),
+    ("carousel_no_loop", lambda: b.PJXCarousel(id="g", loop=False, content=b.PJXCarouselSlide(id="g-s0", content="<img src='/a.png'>").render())),
     ("carousel_slide", lambda: b.PJXCarouselSlide(id="g", label="Bridge at sunset", content="<img src='/photo.jpg'>")),
     ("confirm_dialog", lambda: b.PJXConfirmDialog(id="g")),
     ("divider_labeled", lambda: b.PJXDivider(id="g", label="or")),
     ("drawer", lambda: b.PJXDrawer(id="g", side="left", content=(
-        str(b.PJXDrawerHeader(id="g-h", title="Menu").render())
-        + str(b.PJXDrawerBody(id="g-b", content="Links").render())
-        + str(b.PJXDrawerFooter(id="g-f", content="v1.0").render())
+        b.PJXDrawerHeader(id="g-h", title="Menu").render()
+        + b.PJXDrawerBody(id="g-b", content="Links").render()
+        + b.PJXDrawerFooter(id="g-f", content="v1.0").render()
     ))),
     ("drawer_header_title", lambda: b.PJXDrawerHeader(id="g", title="Settings")),
     ("drawer_header_content", lambda: b.PJXDrawerHeader(id="g", content="<strong>Custom</strong>")),
@@ -54,7 +54,7 @@ CASES = [
     ("lazy_load", lambda: b.PJXLazyLoad(id="g", url="/load")),
     ("lazy_load_tr", lambda: b.PJXLazyLoad(id="g", url="/rows?cursor=20", tag="tr", content='<td colspan="3">Loading…</td>')),
     ("region_loader", lambda: b.PJXRegionLoader(id="g")),
-    ("modal_shell", lambda: b.PJXModal(id="g", content=str(b.PJXModalHeader(id="g-h", title="T").render()) + str(b.PJXModalBody(id="g-b", content="B").render()) + str(b.PJXModalFooter(id="g-f", content="F").render()))),
+    ("modal_shell", lambda: b.PJXModal(id="g", content=b.PJXModalHeader(id="g-h", title="T").render() + b.PJXModalBody(id="g-b", content="B").render() + b.PJXModalFooter(id="g-f", content="F").render())),
     ("modal_header", lambda: b.PJXModalHeader(id="g", title="T")),
     ("modal_header_content", lambda: b.PJXModalHeader(id="g", content="<b>Custom</b>")),
     ("modal_body", lambda: b.PJXModalBody(id="g", content="Body text")),
@@ -62,19 +62,19 @@ CASES = [
     ("notification", lambda: b.PJXNotification(id="g", content="Hi", corner="bottom-right", timeout=0)),
     ("page_loader", lambda: b.PJXPageLoader(id="g")),
     ("popover_compound", lambda: b.PJXPopover(id="g", content=(
-        str(b.PJXPopoverTrigger(id="g-t", content="Open", role="menu").render())
-        + str(b.PJXPopoverPanel(id="g-p", content="Items", role="menu").render())
+        b.PJXPopoverTrigger(id="g-t", content="Open", role="menu").render()
+        + b.PJXPopoverPanel(id="g-p", content="Items", role="menu").render()
     ))),
     ("progress_determinate", lambda: b.PJXProgress(id="g", value=40, label="Upload")),
     ("progress_indeterminate", lambda: b.PJXProgress(id="g")),
     ("prompt_dialog", lambda: b.PJXPromptDialog(id="g", input_label="Name")),
     ("skeleton_text", lambda: b.PJXSkeleton(id="g", lines=2)),
     ("spinner", lambda: b.PJXSpinner(id="g")),
-    ("tab_group", lambda: b.PJXTabGroup(id="g", content=str(b.PJXTabList(id="g-l", content=str(b.PJXTab(id="g-t0", panel="g-p0", selected=True, content="A").render()) + str(b.PJXTab(id="g-t1", panel="g-p1", closeable=True, content="B").render())).render()) + str(b.PJXTabPanel(id="g-p0", tab="g-t0", content="<p>First</p>").render()) + str(b.PJXTabPanel(id="g-p1", tab="g-t1", content="<p>Second</p>").render()))),
+    ("tab_group", lambda: b.PJXTabGroup(id="g", content=b.PJXTabList(id="g-l", content=b.PJXTab(id="g-t0", panel="g-p0", selected=True, content="A").render() + b.PJXTab(id="g-t1", panel="g-p1", closeable=True, content="B").render()).render() + b.PJXTabPanel(id="g-p0", tab="g-t0", content="<p>First</p>").render() + b.PJXTabPanel(id="g-p1", tab="g-t1", content="<p>Second</p>").render())),
     ("tab", lambda: b.PJXTab(id="g", panel="p", icon="file", closeable=True, content="Tab")),
     ("tab_panel", lambda: b.PJXTabPanel(id="g", tab="t", content="body")),
     ("toast_host", lambda: b.PJXToastHost(id="g")),
-    ("tooltip", lambda: b.PJXTooltip(id="g", content=str(b.PJXTooltipTrigger(id="g-t", content="?").render()) + str(b.PJXTooltipContent(id="g-c", content="Help").render()))),
+    ("tooltip", lambda: b.PJXTooltip(id="g", content=b.PJXTooltipTrigger(id="g-t", content="?").render() + b.PJXTooltipContent(id="g-c", content="Help").render())),
     ("tooltip_trigger", lambda: b.PJXTooltipTrigger(id="g", content="Hover me")),
     ("tooltip_content", lambda: b.PJXTooltipContent(id="g", content="Helpful text")),
     ("chip_input", lambda: b.PJXChipInput(id="g", name="tags", values=["alpha", "beta"])),
@@ -86,26 +86,26 @@ CASES = [
     ("icon_labeled", lambda: b.PJXIcon(id="g", name="search", label="Search", size=20)),
     ("button_default", lambda: b.PJXButton(id="g", content="Save")),
     ("button_loading", lambda: b.PJXButton(id="g", content="Save", loading=True, variant="primary")),
-    ("accordion_open", lambda: b.PJXAccordion(id="g", content=str(b.PJXAccordionTrigger(id="g-t", content="Today").render()) + str(b.PJXAccordionContent(id="g-c", content="<p>x</p>").render()))),
-    ("accordion_grouped_closed", lambda: b.PJXAccordion(id="g", open=False, group="nav", content=str(b.PJXAccordionTrigger(id="g-t", content="Older").render()) + str(b.PJXAccordionContent(id="g-c", content="<p>y</p>").render()))),
+    ("accordion_open", lambda: b.PJXAccordion(id="g", content=b.PJXAccordionTrigger(id="g-t", content="Today").render() + b.PJXAccordionContent(id="g-c", content="<p>x</p>").render())),
+    ("accordion_grouped_closed", lambda: b.PJXAccordion(id="g", open=False, group="nav", content=b.PJXAccordionTrigger(id="g-t", content="Older").render() + b.PJXAccordionContent(id="g-c", content="<p>y</p>").render())),
     ("accordion_trigger", lambda: b.PJXAccordionTrigger(id="g", content="Section")),
     ("accordion_content", lambda: b.PJXAccordionContent(id="g", content="<p>body</p>")),
-    ("accordion_group_multi", lambda: b.PJXAccordionGroup(id="g", content=str(b.PJXAccordion(id="g-a", content=str(b.PJXAccordionTrigger(id="g-at", content="A").render()) + str(b.PJXAccordionContent(id="g-ac", content="<p>x</p>").render())).render()) + str(b.PJXAccordion(id="g-b", open=False, content=str(b.PJXAccordionTrigger(id="g-bt", content="B").render()) + str(b.PJXAccordionContent(id="g-bc", content="<p>y</p>").render())).render()))),
-    ("accordion_group_exclusive", lambda: b.PJXAccordionGroup(id="g", mode="exclusive", gap="0.5rem", content=str(b.PJXAccordion(id="g-a", content=str(b.PJXAccordionTrigger(id="g-at", content="A").render()) + str(b.PJXAccordionContent(id="g-ac", content="<p>x</p>").render())).render()) + str(b.PJXAccordion(id="g-b", open=False, content=str(b.PJXAccordionTrigger(id="g-bt", content="B").render()) + str(b.PJXAccordionContent(id="g-bc", content="<p>y</p>").render())).render()))),
-    ("accordion_group_default_open_first", lambda: b.PJXAccordionGroup(id="g", default_open="first", content=str(b.PJXAccordion(id="g-a", open=False, content=str(b.PJXAccordionTrigger(id="g-at", content="A").render()) + str(b.PJXAccordionContent(id="g-ac", content="<p>x</p>").render())).render()) + str(b.PJXAccordion(id="g-b", open=False, content=str(b.PJXAccordionTrigger(id="g-bt", content="B").render()) + str(b.PJXAccordionContent(id="g-bc", content="<p>y</p>").render())).render()))),
-    ("resizable_group", lambda: b.PJXResizableGroup(id="g", content=str(b.PJXResizablePanel(id="g-l", size=40, min=20, content="L").render()) + str(b.PJXResizableHandle(id="g-h").render()) + str(b.PJXResizablePanel(id="g-r", size=60, content="R").render()))),
+    ("accordion_group_multi", lambda: b.PJXAccordionGroup(id="g", content=b.PJXAccordion(id="g-a", content=b.PJXAccordionTrigger(id="g-at", content="A").render() + b.PJXAccordionContent(id="g-ac", content="<p>x</p>").render()).render() + b.PJXAccordion(id="g-b", open=False, content=b.PJXAccordionTrigger(id="g-bt", content="B").render() + b.PJXAccordionContent(id="g-bc", content="<p>y</p>").render()).render())),
+    ("accordion_group_exclusive", lambda: b.PJXAccordionGroup(id="g", mode="exclusive", gap="0.5rem", content=b.PJXAccordion(id="g-a", content=b.PJXAccordionTrigger(id="g-at", content="A").render() + b.PJXAccordionContent(id="g-ac", content="<p>x</p>").render()).render() + b.PJXAccordion(id="g-b", open=False, content=b.PJXAccordionTrigger(id="g-bt", content="B").render() + b.PJXAccordionContent(id="g-bc", content="<p>y</p>").render()).render())),
+    ("accordion_group_default_open_first", lambda: b.PJXAccordionGroup(id="g", default_open="first", content=b.PJXAccordion(id="g-a", open=False, content=b.PJXAccordionTrigger(id="g-at", content="A").render() + b.PJXAccordionContent(id="g-ac", content="<p>x</p>").render()).render() + b.PJXAccordion(id="g-b", open=False, content=b.PJXAccordionTrigger(id="g-bt", content="B").render() + b.PJXAccordionContent(id="g-bc", content="<p>y</p>").render()).render())),
+    ("resizable_group", lambda: b.PJXResizableGroup(id="g", content=b.PJXResizablePanel(id="g-l", size=40, min=20, content="L").render() + b.PJXResizableHandle(id="g-h").render() + b.PJXResizablePanel(id="g-r", size=60, content="R").render())),
     ("resizable_panel", lambda: b.PJXResizablePanel(id="g", size=30, min=10, content="body")),
     ("resizable_panel_px", lambda: b.PJXResizablePanel(id="g", size=40, min="120px", max="400px", content="body")),
     ("resizable_panel_content", lambda: b.PJXResizablePanel(id="g", size=40, min="content", content="body")),
     ("resizable_handle", lambda: b.PJXResizableHandle(id="g", label="Resize")),
     ("table", lambda: b.PJXTable(id="g", caption="Users", striped=True, bordered="horizontal", content=(
-        str(b.PJXTableHead(id="g-h", content=str(b.PJXTableRow(id="g-hr", content=(
-            str(b.PJXTableHeaderCell(id="g-hc0", content="Name").render())
-            + str(b.PJXTableHeaderCell(id="g-hc1", content="Role").render())
+        (b.PJXTableHead(id="g-h", content=(b.PJXTableRow(id="g-hr", content=(
+            b.PJXTableHeaderCell(id="g-hc0", content="Name").render()
+            + b.PJXTableHeaderCell(id="g-hc1", content="Role").render()
         )).render())).render())
-        + str(b.PJXTableBody(id="g-b", content=str(b.PJXTableRow(id="g-r", content=(
-            str(b.PJXTableCell(id="g-c0", content="Ada").render())
-            + str(b.PJXTableCell(id="g-c1", content="Eng").render())
+        + (b.PJXTableBody(id="g-b", content=(b.PJXTableRow(id="g-r", content=(
+            b.PJXTableCell(id="g-c0", content="Ada").render()
+            + b.PJXTableCell(id="g-c1", content="Eng").render()
         )).render())).render())
     ))),
     ("table_head", lambda: b.PJXTableHead(id="g", content="<tr></tr>")),
@@ -114,7 +114,7 @@ CASES = [
     ("table_header_cell", lambda: b.PJXTableHeaderCell(id="g", content="Name")),
     ("table_header_cell_sortable", lambda: b.PJXTableHeaderCell(id="g", sortable=True, sort="asc", content="Name")),
     ("table_cell", lambda: b.PJXTableCell(id="g", content="x")),
-    ("table_row_selectable", lambda: b.PJXTableRow(id="g", selectable=True, value="42", content=str(b.PJXTableCell(id="g-c", content="Ada").render()))),
+    ("table_row_selectable", lambda: b.PJXTableRow(id="g", selectable=True, value="42", content=b.PJXTableCell(id="g-c", content="Ada").render())),
     ("paginator_windowed_htmx", lambda: b.PJXPaginator(id="g", page=5, total_pages=20, url="/items?page={page}", target="#list", first_last=True)),
     ("paginator_all_pages", lambda: b.PJXPaginator(id="g", page=2, total_pages=5, url="/items?page={page}")),
     ("paginator_single_page", lambda: b.PJXPaginator(id="g", page=1, total_pages=1, url="/items?page={page}")),
