@@ -29,6 +29,15 @@ CASES = [
     ("card_header_content", lambda: b.PJXCardHeader(id="g", content="<span>Rich</span>")),
     ("card_body", lambda: b.PJXCardBody(id="g", content="<p>body</p>")),
     ("card_footer", lambda: b.PJXCardFooter(id="g", content="Footer")),
+    ("carousel_multi", lambda: b.PJXCarousel(id="g", content=(
+        str(b.PJXCarouselSlide(id="g-s0", content="<img src='/a.png'>").render())
+        + str(b.PJXCarouselSlide(id="g-s1", label="Second photo", content="<img src='/b.png'>").render())
+    ))),
+    ("carousel_single", lambda: b.PJXCarousel(id="g", content=str(b.PJXCarouselSlide(id="g-s0", content="<img src='/a.png'>").render()))),
+    ("carousel_empty", lambda: b.PJXCarousel(id="g")),
+    ("carousel_autoplay", lambda: b.PJXCarousel(id="g", autoplay=True, interval_ms=3000, content=str(b.PJXCarouselSlide(id="g-s0", content="<img src='/a.png'>").render()))),
+    ("carousel_no_loop", lambda: b.PJXCarousel(id="g", loop=False, content=str(b.PJXCarouselSlide(id="g-s0", content="<img src='/a.png'>").render()))),
+    ("carousel_slide", lambda: b.PJXCarouselSlide(id="g", label="Bridge at sunset", content="<img src='/photo.jpg'>")),
     ("confirm_dialog", lambda: b.PJXConfirmDialog(id="g")),
     ("divider_labeled", lambda: b.PJXDivider(id="g", label="or")),
     ("drawer", lambda: b.PJXDrawer(id="g", side="left", content=(

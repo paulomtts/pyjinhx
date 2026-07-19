@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.36.0 — Image/content carousel (2026-07-19)
+
+### Added
+- `PJXCarousel` + `PJXCarouselSlide`: compound carousel for presenting a sequence of images or
+  arbitrary content, with prev/next arrows, dot indicators, `ArrowLeft`/`ArrowRight` keyboard nav,
+  pointer-based swipe, and opt-in `autoplay` (always pausable via a mandatory play/pause toggle,
+  pauses on hover/focus/pointer interaction, disabled under `prefers-reduced-motion`). Fires a
+  cancelable `pjx:carousel:before-change` then `pjx:carousel:change` on the root,
+  `detail = {index, reason}`.
+
 ## 0.35.0 — Parametric reactive keys + depends_on() removal (2026-07-18)
 
 ### Added
