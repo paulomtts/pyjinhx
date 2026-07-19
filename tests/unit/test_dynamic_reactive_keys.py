@@ -1,6 +1,7 @@
 from pyjinhx.cache import LoadCache
 from pyjinhx.keys import reactive_key
 from pyjinhx.reactive import oob_swaps
+from pyjinhx.registry import Registry
 
 from tests.ui.reactive.counted_row import CountedRow, Keys  # noqa: F401
 
@@ -37,3 +38,24 @@ def test_unrelated_dynamic_key_reloads_nothing():
     out = str(oob_swaps({reactive_key(Keys.ROW, "999")}, _manifest()))
     assert CountedRow.load_calls == []
     assert out == ""
+
+
+def test_keyed_cache_entry_indexed_by_static_and_derived_key():
+    with Registry.request_scope():
+        CountedRow.load("2")
+        assert CountedRow.load_calls == ["2"]
+
+        # Unrelated derived key: no eviction, cache hit, no reload.
+        LoadCache.invalidate({reactive_key(Keys.ROW, "3")})
+        CountedRow.load("2")
+        assert CountedRow.load_calls == ["2"]
+
+        # Matching derived key: eviction, reload.
+        LoadCache.invalidate({reactive_key(Keys.ROW, "2")})
+        CountedRow.load("2")
+        assert CountedRow.load_calls == ["2", "2"]
+
+        # Static key: eviction, reload.
+        LoadCache.invalidate({Keys.ROW})
+        CountedRow.load("2")
+        assert CountedRow.load_calls == ["2", "2", "2"]

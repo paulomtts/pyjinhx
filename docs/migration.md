@@ -1,5 +1,39 @@
 # Migration guide
 
+## 0.34.x → next (`depends_on()` removed)
+
+### `ReactiveComponent.depends_on()` removed (breaking)
+
+`depends_on()` is no longer a method you can override. Cache indexing for keyed
+components (a static `react` key plus the per-instance derived key) is computed
+internally now — nothing to do if you never overrode it, which is the case for every
+built-in component and, per a full-repo search, every user of this library found before
+this change shipped.
+
+If you *did* override it on a **keyed** component (one with a `PjxKey` field), your
+override was always redundant with the default and can simply be deleted:
+
+```python
+# BEFORE
+class TodoRow(ReactiveComponent, react={Keys.TODOS}):
+    todo_id: Annotated[str, PjxKey()]
+
+    def depends_on(self) -> set[str]:
+        return super().depends_on() | set()  # redundant — delete the whole method
+
+# AFTER
+class TodoRow(ReactiveComponent, react={Keys.TODOS}):
+    todo_id: Annotated[str, PjxKey()]
+    # no depends_on() override needed — the default already includes the derived key
+```
+
+If you overrode it on a **non-keyed** component to narrow cache indexing to a subset of
+its declared `react` keys based on loaded state (e.g. an admin-only panel that only
+cares about one of two declared keys for guest users), there is no replacement. The
+`react=` superset still governs correctness (dirtying any of its keys still triggers a
+reload check); you lose only the cache-indexing precision the override gave you. File an
+issue if you need this back — none of this library's own components used it.
+
 ## 0.22.x → next (autoescape by default)
 
 ### Template output is escaped by default (breaking)

@@ -134,7 +134,6 @@ Enable guardrails. When enabled:
 
 - Warns if `@mutates` recorded dirtied keys but no reactive `render()` consumed them in the request scope.
 - Warns if mutations are pending but no `ClientBackend` is active (OOB swaps skipped).
-- Validates that `depends_on()` is a subset of the static `react` superset on each `load()`.
 
 Set `strict=True` to raise `RuntimeError` instead of logging warnings.
 

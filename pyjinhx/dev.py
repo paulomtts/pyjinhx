@@ -58,33 +58,11 @@ def warn_reactive_render_without_client(*, backend: ClientBackend | None) -> Non
         )
 
 
-def validate_depends_on(instance: object) -> None:
-    """Ensure ``depends_on()`` is a subset of the static ``react`` superset
-    (widened by the same per-instance derived keys ``depends_on()`` itself may report)."""
-    if not _dev_config.enabled:
-        return
-    from .reactive import ReactiveComponent, _keyed_derived_keys
-
-    if not isinstance(instance, ReactiveComponent):
-        return
-    component_class = type(instance)
-    static = frozenset(getattr(component_class, "_pjx_reacts_to", frozenset()))
-    superset = set(static) | _keyed_derived_keys(static, instance._pjx_key)
-    runtime = instance.depends_on()
-    extra = runtime - superset
-    if extra:
-        _report(
-            f"{component_class.__name__}.depends_on() {extra!r} exceeds "
-            f"the static react superset {superset!r}."
-        )
-
-
 def dependency_graph() -> dict[str, list[str]]:
     """
     Map each declared reactive key to component class names that depend on it.
 
-    Shows the static ``react`` superset only — not per-instance narrowing
-    from ``depends_on()``.
+    Shows the static ``react`` superset only — not per-instance derived keys.
     """
     graph: dict[str, set[str]] = {}
     for class_name, component_class in Registry.get_classes().items():

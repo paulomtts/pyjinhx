@@ -256,11 +256,6 @@ class ReactiveComponent(BaseComponent):
             )
         )
 
-    def depends_on(self) -> set[str]:
-        """Reactive state keys this loaded instance currently depends on."""
-        static = frozenset(getattr(type(self), "_pjx_reacts_to", frozenset()))
-        return set(static) | _keyed_derived_keys(static, self._pjx_key)
-
     def state_hash(self) -> str:
         """
         Stable content hash of this component's state, used to gate OOB swaps so a

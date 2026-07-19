@@ -160,6 +160,6 @@ enable_reactive_dev(strict=True)  # raise RuntimeError instead
 disable_reactive_dev()
 ```
 
-Guardrails cover: mutations without a consuming `render()`, dirtied keys without `mounted`, and `depends_on()` outside the static `react` superset.
+Guardrails cover: mutations without a consuming `render()` and dirtied keys without `mounted`.
 
 Inspect the dependency graph with `dependency_graph()` or `format_dependency_graph()`. See [Mutations, Keys & PjxContext](../api/mutations-keys-context.md#reactive-dev).
