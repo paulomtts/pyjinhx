@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.35.0 — Parametric reactive keys + depends_on() removal (2026-07-18)
 
 ### Added
 - `reactive_key(key, arg)` builds a per-instance reactive key (`f"{key}:{arg}"`) from a
