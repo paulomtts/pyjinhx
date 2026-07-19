@@ -76,7 +76,7 @@
   function updateAutoplayToggle(carousel) {
     var toggle = carousel.querySelector("[data-pjx-carousel-autoplay-toggle]");
     if (!toggle) return;
-    toggle.setAttribute("aria-pressed", timers.get(carousel) ? "false" : "true");
+    toggle.setAttribute("aria-pressed", timers.get(carousel) ? "true" : "false");
   }
 
   function stopAutoplay(carousel) {
@@ -116,7 +116,10 @@
           if (!carousel.dataset.pjxCarouselUserPaused) startAutoplay(carousel);
         });
       });
-      window.addEventListener("blur", function () { stopAutoplay(carousel); });
+      window.addEventListener("blur", function () {
+        if (!document.contains(carousel)) return;
+        stopAutoplay(carousel);
+      });
     }
   }
 
