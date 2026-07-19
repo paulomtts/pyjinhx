@@ -216,8 +216,8 @@ def _gallery_inner_html() -> str:
         modal=PJXModal(
             id="g-modal",
             content=(
-                str(PJXModalHeader(id="g-modal-h", title="Demo modal").render())
-                + str(PJXModalBody(id="g-modal-b", content="Modal body content from the gallery.").render())
+                PJXModalHeader(id="g-modal-h", title="Demo modal").render()
+                + PJXModalBody(id="g-modal-b", content="Modal body content from the gallery.").render()
             ),
         ),
         notification=PJXNotification(
@@ -229,8 +229,8 @@ def _gallery_inner_html() -> str:
         popover=PJXPopover(
             id="g-pop",
             content=(
-                str(PJXPopoverTrigger(id="g-pop-t", content="Open popover").render())
-                + str(PJXPopoverPanel(id="g-pop-p", content="Popover details appear on click.").render())
+                PJXPopoverTrigger(id="g-pop-t", content="Open popover").render()
+                + PJXPopoverPanel(id="g-pop-p", content="Popover details appear on click.").render()
             ),
         ),
         region_loader=PJXRegionLoader(id="g-overlay"),
@@ -238,8 +238,8 @@ def _gallery_inner_html() -> str:
             id="g-tip",
             placement="top",
             content=(
-                str(PJXTooltipTrigger(id="g-tip-tr", content="Focus or hover").render())
-                + str(PJXTooltipContent(id="g-tip-tc", content="Tooltip copy").render())
+                PJXTooltipTrigger(id="g-tip-tr", content="Focus or hover").render()
+                + PJXTooltipContent(id="g-tip-tc", content="Tooltip copy").render()
             ),
         ),
         alert=PJXAlert(
@@ -257,8 +257,8 @@ def _gallery_inner_html() -> str:
             id="g-drawer",
             side="right",
             content=(
-                str(PJXDrawerHeader(id="g-drawer-h", title="Drawer").render())
-                + str(PJXDrawerBody(id="g-drawer-b", content="Side panel content.").render())
+                PJXDrawerHeader(id="g-drawer-h", title="Drawer").render()
+                + PJXDrawerBody(id="g-drawer-b", content="Side panel content.").render()
             ),
         ),
         progress_determinate=PJXProgress(
@@ -304,12 +304,12 @@ def _gallery_inner_html() -> str:
         tab_group=PJXTabGroup(
             id="g-tabs",
             content=(
-                str(PJXTabList(content=(
-                    str(PJXTab(id="g-tabs-t0", panel="g-tabs-p0", selected=True, content="Overview").render())
-                    + str(PJXTab(id="g-tabs-t1", panel="g-tabs-p1", content="Details").render())
+                (PJXTabList(content=(
+                    PJXTab(id="g-tabs-t0", panel="g-tabs-p0", selected=True, content="Overview").render()
+                    + PJXTab(id="g-tabs-t1", panel="g-tabs-p1", content="Details").render()
                 )).render())
-                + str(PJXTabPanel(id="g-tabs-p0", tab="g-tabs-t0", content="<p>First panel content.</p>").render())
-                + str(PJXTabPanel(id="g-tabs-p1", tab="g-tabs-t1", content="<p>Second panel content.</p>").render())
+                + PJXTabPanel(id="g-tabs-p0", tab="g-tabs-t0", content="<p>First panel content.</p>").render()
+                + PJXTabPanel(id="g-tabs-p1", tab="g-tabs-t1", content="<p>Second panel content.</p>").render()
             ),
         ),
         panel_trigger_alpha=PJXTab(
@@ -323,11 +323,11 @@ def _gallery_inner_html() -> str:
         panel_host=PJXTabGroup(
             id="g-panel",
             content=(
-                str(PJXTabPanel(
+                (PJXTabPanel(
                     id="g-panel-panel-alpha",
                     content="<p>Panel alpha (default). Beta is hidden but still connected to SSE.</p>",
                 ).render())
-                + str(PJXTabPanel(
+                + (PJXTabPanel(
                     id="g-panel-panel-beta",
                     content=(
                         '<div id="g-panel-sse-live" hx-ext="sse" sse-connect="/sse/panel-demo" '
