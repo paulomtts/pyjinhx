@@ -50,11 +50,13 @@ def isolate_renderer():
 
 @pytest.fixture(autouse=True)
 def clear_stale_warning_set():
-    """Reset the dedup set between tests so warnings are fresh."""
+    """Reset the dedup sets between tests so warnings are fresh."""
     from pyjinhx import renderer as renderer_mod
     renderer_mod._warned_stale_def_header.clear()
+    renderer_mod._checked_stale_def_header.clear()
     yield
     renderer_mod._warned_stale_def_header.clear()
+    renderer_mod._checked_stale_def_header.clear()
 
 
 # ---------------------------------------------------------------------------
@@ -126,4 +128,35 @@ def test_no_warning_for_hand_written_class_without_header(caplog):
     assert len(stale_warnings) == 0, (
         f"No warning expected for class without header, "
         f"got: {[r.message for r in stale_warnings]}"
+    )
+
+
+# ---------------------------------------------------------------------------
+# Test 4: The template source is only read once per class, even across many
+# renders with no stale header (the perf bug from issue #224).
+# ---------------------------------------------------------------------------
+
+def test_template_only_read_once_per_class_without_header():
+    from pyjinhx import renderer as renderer_mod
+
+    real_check = renderer_mod._warn_if_stale_def_header
+    check_calls = []
+
+    def counting_check(component, template):
+        was_checked = type(component).__name__ in renderer_mod._checked_stale_def_header
+        result = real_check(component, template)
+        if not was_checked:
+            check_calls.append(component)
+        return result
+
+    renderer_mod._warn_if_stale_def_header = counting_check
+    try:
+        for _ in range(5):
+            StaleBadge(text="Active").render()
+    finally:
+        renderer_mod._warn_if_stale_def_header = real_check
+
+    assert len(check_calls) == 1, (
+        f"Expected the stale-header file check to run exactly once, "
+        f"got {len(check_calls)} runs"
     )
