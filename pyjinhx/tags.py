@@ -537,8 +537,8 @@ def contains_custom_tag(markup: str) -> bool:
     """Cheap check: does ``markup`` contain any PascalCase-tag-looking
     substring? Used both to bail out of a full ``HTMLParser`` pass entirely
     (no tags anywhere) and, at slot-value granularity, to decide which
-    already-rendered slot values are safe to opacify before a render (see
-    ``renderer._opacify_expanded_slots``)."""
+    already-rendered slot values are safe to opacify against the rendered
+    output (see ``renderer._collect_opacifiable_slot_values``)."""
     if "<" not in markup:
         return False
     for match in re.finditer(r"<\s*([A-Za-z][A-Za-z0-9]*)", markup):

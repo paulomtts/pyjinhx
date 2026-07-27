@@ -195,68 +195,80 @@ def _warn_if_stale_def_header(component: "BaseComponent", template: Template) ->
 _SLOT_PLACEHOLDER_CHAR = ""
 
 
-def _opacify_expanded_slots(
-    render_context: dict[str, Any],
-) -> tuple[dict[str, Any], dict[str, str]]:
-    """Replace already-fully-expanded ``Markup`` slot values with short
-    opaque placeholder tokens, so the render-time ``expand_custom_tags``
-    call doesn't need to re-tokenize them with ``html.parser`` just because
-    some other value at this level still has a new tag to expand.
+def _collect_opacifiable_slot_values(render_context: dict[str, Any]) -> list[str]:
+    """Collect already-fully-expanded ``Markup`` slot values that are safe to
+    opacify in the *rendered output* (see ``_opacify_rendered_markup``).
 
-    Mirrors the shape ``base._wrap_slot_value`` produces (a scalar
-    ``Markup``, or a ``list``/``dict`` of ``Markup``). A value is replaced
-    only when it contains zero PascalCase-tag-looking substrings — anything
-    else (a plain non-``Markup`` string, or a ``Markup`` value that DOES
-    contain literal tag text) is left untouched, so a manually-supplied
-    literal custom tag (e.g. ``Card(content="<Icon/>")``) still gets
-    expanded exactly as before. An empty ``Markup("")`` is also left
-    untouched — swapping it for a non-empty placeholder token would flip
-    ``{% if slot %}`` truthiness checks in templates (e.g. an optional
-    error/icon slot) from falsy to truthy, and an empty string costs
-    nothing to scan anyway.
+    Mirrors the shape ``base._wrap_slot_value`` produces (a scalar ``Markup``,
+    or a ``list``/``dict`` of ``Markup``). A value qualifies only when it
+    contains zero PascalCase-tag-looking substrings — a value containing
+    literal tag text (e.g. ``Card(content="<Icon/>")``) must still go through
+    the full ``expand_custom_tags`` scan, so it's never a candidate here. An
+    empty ``Markup("")`` is also excluded — it can never appear as a
+    meaningful substring match anyway, and excluding it keeps this function's
+    contract simple (no candidate is ever falsy).
 
-    Tokens are call-local: generated and restored within one
+    This runs against ``render_context`` — the values a template *could*
+    embed — not against the rendered output itself; matching against the
+    actual output is ``_opacify_rendered_markup``'s job, and its two-step
+    split (collect candidates from context, then search-and-replace against
+    the real rendered string) is exactly what lets a template inspect
+    (``|length``, ``in``, ``|striptags``, slicing, ...) a slot value with its
+    real content during ``template.render()`` — the substitution never
+    touches the context, only the string handed to ``expand_custom_tags``
+    afterward, and only where the value was actually emitted unchanged.
+    """
+    candidates: list[str] = []
+
+    def visit(value: Any) -> None:
+        if isinstance(value, Markup):
+            if value and not contains_custom_tag(value):
+                candidates.append(str(value))
+        elif isinstance(value, list):
+            for item in value:
+                visit(item)
+        elif isinstance(value, dict):
+            for item in value.values():
+                visit(item)
+
+    for value in render_context.values():
+        visit(value)
+    return candidates
+
+
+def _opacify_rendered_markup(
+    markup: str, candidates: list[str]
+) -> tuple[str, dict[str, str]]:
+    """Replace verbatim occurrences of already-safe candidate values in
+    ``markup`` with short opaque placeholder tokens, so the following
+    ``expand_custom_tags`` call doesn't need to re-tokenize them with
+    ``html.parser`` just because some other part of ``markup`` still has a
+    new tag to expand.
+
+    A candidate that isn't found verbatim in ``markup`` (because the
+    template transformed it — ``|striptags``, concatenation, slicing, ...  —
+    before embedding it) is simply skipped: nothing to opacify there, and
+    ``expand_custom_tags`` scans that portion in full, exactly as it would
+    without this optimization. This is what makes output-substitution safe
+    for templates that inspect slot values, unlike substituting into the
+    render context before ``template.render()`` runs.
+
+    Longest candidates are tried first, so a short candidate that happens to
+    be a substring of a longer one never partially corrupts the longer
+    match. Tokens are call-local: generated and restored within one
     ``render_component_with_context`` invocation, so no cross-level
     bookkeeping or global uniqueness is needed.
-
-    KNOWN LIMITATION (accepted trade-off, not a bug): an opacified value is
-    only safe to *emit* by the component's own template (e.g. ``{{ content
-    }}``) — it must never be *inspected* there. Any Jinja construct that
-    looks AT the value rather than just outputting it (``|length``, ``in``,
-    ``|selectattr``, slicing, ``|striptags``, ...) sees the short placeholder
-    token, not the real HTML, because the substitution happens before
-    ``template.render()`` runs. This was a deliberate choice — the
-    alternative (restoring against the rendered *output* instead of the
-    input context) fully preserves template semantics but gives up most of
-    the perf win this mechanism exists for. Slot/content fields are
-    documented and, in practice, almost always only emitted directly, so
-    this trade-off was accepted rather than designed around.
     """
     placeholders: dict[str, str] = {}
-
-    def opacify(value: Any) -> Any:
-        if isinstance(value, Markup):
-            if not value or contains_custom_tag(value):
-                return value
-            token = f"{_SLOT_PLACEHOLDER_CHAR}{len(placeholders)}{_SLOT_PLACEHOLDER_CHAR}"
-            placeholders[token] = str(value)
-            return Markup(token)
-        if isinstance(value, list):
-            opacified_items = [opacify(item) for item in value]
-            if all(new is old for new, old in zip(opacified_items, value)):
-                return value
-            return opacified_items
-        if isinstance(value, dict):
-            opacified_items_dict = {key: opacify(item) for key, item in value.items()}
-            if all(
-                opacified_items_dict[key] is item for key, item in value.items()
-            ):
-                return value
-            return opacified_items_dict
-        return value
-
-    safe_context = {key: opacify(value) for key, value in render_context.items()}
-    return safe_context, placeholders
+    seen: set[str] = set()
+    for value in sorted(set(candidates), key=len, reverse=True):
+        if value in seen or value not in markup:
+            continue
+        seen.add(value)
+        token = f"{_SLOT_PLACEHOLDER_CHAR}{len(placeholders)}{_SLOT_PLACEHOLDER_CHAR}"
+        placeholders[token] = value
+        markup = markup.replace(value, token)
+    return markup, placeholders
 
 
 def _restore_opacified_slots(markup: str, placeholders: dict[str, str]) -> str:
@@ -395,12 +407,13 @@ class Renderer:
         _warn_if_stale_def_header(component, template)
 
         render_context = build_render_context(context)
-        safe_context, placeholders = _opacify_expanded_slots(render_context)
-        rendered_markup = template.render(safe_context)
+        rendered_markup = template.render(render_context)
+        candidates = _collect_opacifiable_slot_values(render_context)
+        safe_markup, placeholders = _opacify_rendered_markup(rendered_markup, candidates)
         rendered_markup = str(
             expand_custom_tags(
                 self,
-                rendered_markup,
+                safe_markup,
                 base_context=render_context,
                 session=session,
                 emit_assets=emit_assets,

@@ -146,13 +146,14 @@ def test_literal_custom_tag_in_python_supplied_content_still_expands():
 
 
 def test_empty_slot_stays_falsy_after_opacify_regression_guard():
-    """Regression guard for the `not value` guard inside
-    `_opacify_expanded_slots.opacify()`: an empty slot value must stay
-    falsy after passing through the opacify fast path, so a template's
-    `{% if slot %}` truthiness check isn't flipped from falsy to truthy by
-    a non-empty placeholder token. A prior implementer discovered this only
-    via golden-file tests (lazy_load, accordion, tabs, ...) not covered by
-    this diff; this test would fail if the `not value` guard were removed.
+    """Regression guard for the empty-value guard inside
+    `_collect_opacifiable_slot_values`: an empty slot value is never
+    collected as an opacify candidate, so a template's `{% if slot %}`
+    truthiness check isn't flipped from falsy to truthy by a non-empty
+    placeholder token appearing where the real (empty) value should be. A
+    prior implementer discovered this only via golden-file tests
+    (lazy_load, accordion, tabs, ...) not covered by this diff; this test
+    would fail if that guard were removed.
     """
     with tempfile.TemporaryDirectory() as temp_dir:
         with open(os.path.join(temp_dir, "card.html"), "w") as file:
@@ -170,48 +171,92 @@ def test_empty_slot_stays_falsy_after_opacify_regression_guard():
         assert "HAS" not in rendered
 
 
-def test_opacified_slot_length_check_sees_placeholder_not_real_content_known_limitation():
-    """Documents the emit-only invariant described in
-    `_opacify_expanded_slots`'s docstring (KNOWN LIMITATION): a template
-    that *inspects* an opacified slot value (here, via `|length`) sees the
-    short placeholder token, not the real already-expanded HTML, because
-    the opacify substitution happens before `template.render()` runs.
+def test_opacified_slot_length_check_sees_real_content_not_placeholder():
+    """Proves the old design's "emit-only" limitation is gone: a template
+    that *inspects* an already-opacifiable slot value (here, via `|length`)
+    now sees the REAL already-expanded HTML, not a short placeholder token.
 
-    This is the current, accepted, documented behavior -- NOT what a naive
-    reader would expect -- so this test asserts the observed (placeholder)
-    length, proving the trade-off is understood and pinning it so it can't
-    silently change without this test failing.
+    Output-substitution opacifies only against the *rendered* markup, after
+    `template.render()` has already run against the real, unmodified
+    context -- so `{{ content|length }}` observes the true length of the
+    real embedded HTML, exactly as it would without this perf optimization
+    at all.
     """
     with tempfile.TemporaryDirectory() as temp_dir:
-        with open(os.path.join(temp_dir, "child.html"), "w") as file:
+        # Distinct tag names ("LengthChild"/"LengthWrapper") avoid colliding
+        # with the "Child" Python class registered by another test in this
+        # module (BaseComponent subclasses resolve globally by name), which
+        # would otherwise make this test's outcome depend on test order.
+        with open(os.path.join(temp_dir, "length_child.html"), "w") as file:
             file.write('<span id="{{ id }}">{{ text }}</span>\n')
 
-        with open(os.path.join(temp_dir, "wrapper.html"), "w") as file:
+        with open(os.path.join(temp_dir, "length_wrapper.html"), "w") as file:
             file.write('<div id="{{ id }}">{{ content|length }}</div>\n')
 
         env = Environment(loader=FileSystemLoader(temp_dir))
         renderer = Renderer(env, auto_id=True)
 
         rendered = renderer.render(
-            '<Wrapper id="w1"><Child id="c1" text="Hello there"/></Wrapper>'
+            '<LengthWrapper id="w1">'
+            '<LengthChild id="c1" text="Hello there"/>'
+            "</LengthWrapper>"
         )
 
         real_child_html = '<span id="c1" text="Hello there">Hello there</span>'
-        # The real, already-expanded child HTML is far longer than the
-        # single-digit placeholder token length the template actually sees.
+        # The real, already-expanded child HTML is far longer than a
+        # single-digit placeholder token length would be.
         assert len(real_child_html) > 9
-        assert rendered == "<div id=\"w1\">3</div>"
+        assert rendered == f'<div id="w1">{len(real_child_html)}</div>'
+
+
+def test_opacified_slot_can_both_emit_and_inspect_the_same_value():
+    """The core improvement over the old design: a template that both
+    *emits* an already-opacifiable slot value (`{{ content }}`) AND
+    *inspects* that exact same value (`{{ content|length }}`) in the same
+    template now gets consistent, real results for both -- proving
+    output-substitution isn't just "inspecting no longer sees a stale
+    placeholder" in isolation, but that emit and inspect agree with each
+    other, exactly as they would without this perf optimization at all.
+
+    Under the old (context-substitution) design this would have emitted the
+    real HTML (since the placeholder gets restored in the final output) but
+    reported the placeholder token's short length -- an internally
+    inconsistent result a template author would find surprising.
+    """
+    with tempfile.TemporaryDirectory() as temp_dir:
+        with open(os.path.join(temp_dir, "emit_inspect_child.html"), "w") as file:
+            file.write('<span id="{{ id }}">{{ text }}</span>\n')
+
+        with open(os.path.join(temp_dir, "emit_inspect_wrapper.html"), "w") as file:
+            file.write(
+                '<div id="{{ id }}">{{ content }}|{{ content|length }}</div>\n'
+            )
+
+        env = Environment(loader=FileSystemLoader(temp_dir))
+        renderer = Renderer(env, auto_id=True)
+
+        rendered = renderer.render(
+            '<EmitInspectWrapper id="w1">'
+            '<EmitInspectChild id="c1" text="Hello there"/>'
+            "</EmitInspectWrapper>"
+        )
+
+        real_child_html = '<span id="c1" text="Hello there">Hello there</span>'
+        assert rendered == (
+            f'<div id="w1">{real_child_html}|{len(real_child_html)}</div>'
+        )
 
 
 def test_list_slot_values_recurse_through_opacify_and_restore_correctly():
-    """`_opacify_expanded_slots` recurses into list-shaped slot values (the
-    same shape `base._wrap_slot_value` produces for a field like
+    """`_collect_opacifiable_slot_values` recurses into list-shaped slot
+    values (the same shape `base._wrap_slot_value` produces for a field like
     `PJXDropdown.items: list[str | BaseComponent]`). Exercise a slot field
     that's a `list[str]` with a mix of:
     - an already-fully-expanded value containing no tag-looking substring
-      (opacified, then restored via its placeholder token), and
-    - a literal value containing a real custom tag (left alone by
-      `opacify`, so it still gets expanded via the full `expand_custom_tags`
+      (collected as a candidate, opacified in the rendered output, then
+      restored via its placeholder token), and
+    - a literal value containing a real custom tag (never collected as a
+      candidate, so it still gets expanded via the full `expand_custom_tags`
       scan, exactly as before this perf change).
     """
 
