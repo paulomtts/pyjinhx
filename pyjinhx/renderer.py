@@ -33,6 +33,11 @@ logger = logging.getLogger("pyjinhx")
 # Dedup set: component names for which the stale-def-header warning has fired.
 _warned_stale_def_header: set[str] = set()
 
+# Component names whose template has already been checked for a stale header,
+# whether or not it had one. Keeps the file read + regex check to at most once
+# per class per process instead of on every render.
+_checked_stale_def_header: set[str] = set()
+
 # Cheap regex — mirrors _HEADER_RE in props_header.py, without the full parse.
 _STALE_DEF_HEADER_RE = re.compile(r"\A\s*\{#\s*def\s", re.DOTALL)
 
@@ -156,8 +161,9 @@ def _warn_if_stale_def_header(component: "BaseComponent", template: Template) ->
         return
 
     component_name = type(component).__name__
-    if component_name in _warned_stale_def_header:
+    if component_name in _checked_stale_def_header:
         return
+    _checked_stale_def_header.add(component_name)
 
     # Read the template source cheaply: file-backed templates expose .filename;
     # in-memory (from_string) templates expose .source (Jinja2 >=3.1 sets it
