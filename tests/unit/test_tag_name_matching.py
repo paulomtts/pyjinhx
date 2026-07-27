@@ -31,3 +31,11 @@ def test_contains_custom_tag_false_for_lowercase_or_all_caps_tag():
     # lowercase tags, and all-caps (no lowercase letter), don't match the
     # PascalCase shape (mirrors RE_PASCAL_CASE_TAG_NAME's own constraints).
     assert contains_custom_tag("<div>5 < HTML </div>") is False
+
+
+def test_contains_custom_tag_true_for_less_than_comparison_false_positive():
+    # Deliberate false positive: "5 < Products" isn't a tag, but "Products"
+    # is PascalCase-shaped, so the cheap heuristic matches it. This just
+    # means such a value skips the opacify fast-path and falls back to the
+    # pre-existing full HTMLParser scan — degrades gracefully, not a bug.
+    assert contains_custom_tag("5 < Products") is True

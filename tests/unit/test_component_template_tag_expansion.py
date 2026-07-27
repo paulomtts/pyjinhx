@@ -1,9 +1,12 @@
 import os
 import tempfile
+from typing import Annotated
 
 from jinja2 import Environment, FileSystemLoader
+from pydantic import Field
 
-from pyjinhx import BaseComponent
+from pyjinhx import AssetMode, BaseComponent
+from pyjinhx.base import PjxSlot
 from pyjinhx.renderer import Renderer
 
 
@@ -140,3 +143,123 @@ def test_literal_custom_tag_in_python_supplied_content_still_expands():
         assert rendered == (
             '<article id="c1"><i id="i1" class="icon-star" name="star"></i></article>'
         )
+
+
+def test_empty_slot_stays_falsy_after_opacify_regression_guard():
+    """Regression guard for the `not value` guard inside
+    `_opacify_expanded_slots.opacify()`: an empty slot value must stay
+    falsy after passing through the opacify fast path, so a template's
+    `{% if slot %}` truthiness check isn't flipped from falsy to truthy by
+    a non-empty placeholder token. A prior implementer discovered this only
+    via golden-file tests (lazy_load, accordion, tabs, ...) not covered by
+    this diff; this test would fail if the `not value` guard were removed.
+    """
+    with tempfile.TemporaryDirectory() as temp_dir:
+        with open(os.path.join(temp_dir, "card.html"), "w") as file:
+            file.write(
+                '<div id="{{ id }}">{% if content %}HAS{% else %}NONE{% endif %}</div>\n'
+            )
+
+        env = Environment(loader=FileSystemLoader(temp_dir))
+        renderer = Renderer(env, auto_id=True)
+
+        # Bare tag, no children -> content is an empty string/Markup.
+        rendered = renderer.render('<Card id="card-1"/>')
+
+        assert "NONE" in rendered
+        assert "HAS" not in rendered
+
+
+def test_opacified_slot_length_check_sees_placeholder_not_real_content_known_limitation():
+    """Documents the emit-only invariant described in
+    `_opacify_expanded_slots`'s docstring (KNOWN LIMITATION): a template
+    that *inspects* an opacified slot value (here, via `|length`) sees the
+    short placeholder token, not the real already-expanded HTML, because
+    the opacify substitution happens before `template.render()` runs.
+
+    This is the current, accepted, documented behavior -- NOT what a naive
+    reader would expect -- so this test asserts the observed (placeholder)
+    length, proving the trade-off is understood and pinning it so it can't
+    silently change without this test failing.
+    """
+    with tempfile.TemporaryDirectory() as temp_dir:
+        with open(os.path.join(temp_dir, "child.html"), "w") as file:
+            file.write('<span id="{{ id }}">{{ text }}</span>\n')
+
+        with open(os.path.join(temp_dir, "wrapper.html"), "w") as file:
+            file.write('<div id="{{ id }}">{{ content|length }}</div>\n')
+
+        env = Environment(loader=FileSystemLoader(temp_dir))
+        renderer = Renderer(env, auto_id=True)
+
+        rendered = renderer.render(
+            '<Wrapper id="w1"><Child id="c1" text="Hello there"/></Wrapper>'
+        )
+
+        real_child_html = '<span id="c1" text="Hello there">Hello there</span>'
+        # The real, already-expanded child HTML is far longer than the
+        # single-digit placeholder token length the template actually sees.
+        assert len(real_child_html) > 9
+        assert rendered == "<div id=\"w1\">3</div>"
+
+
+def test_list_slot_values_recurse_through_opacify_and_restore_correctly():
+    """`_opacify_expanded_slots` recurses into list-shaped slot values (the
+    same shape `base._wrap_slot_value` produces for a field like
+    `PJXDropdown.items: list[str | BaseComponent]`). Exercise a slot field
+    that's a `list[str]` with a mix of:
+    - an already-fully-expanded value containing no tag-looking substring
+      (opacified, then restored via its placeholder token), and
+    - a literal value containing a real custom tag (left alone by
+      `opacify`, so it still gets expanded via the full `expand_custom_tags`
+      scan, exactly as before this perf change).
+    """
+
+    class Badge(BaseComponent):
+        text: str = ""
+
+    class Menu(BaseComponent):
+        items: Annotated[list[str], PjxSlot()] = Field(default_factory=list)
+
+    # Template resolution walks up from the *class's own module file* (here,
+    # this test module) to find its co-located template, so the fixture
+    # templates must live next to this test file rather than in an unrelated
+    # tempdir -- written here and removed in `finally`.
+    test_dir = os.path.dirname(__file__)
+    badge_path = os.path.join(test_dir, "badge.html")
+    menu_path = os.path.join(test_dir, "menu.html")
+    with open(badge_path, "w") as file:
+        file.write('<span id="{{ id }}" class="badge">{{ text }}</span>\n')
+    with open(menu_path, "w") as file:
+        file.write(
+            '<ul id="{{ id }}">{% for item in items %}<li>{{ item }}</li>'
+            "{% endfor %}</ul>\n"
+        )
+
+    env = Environment(loader=FileSystemLoader(test_dir))
+    Renderer.set_default_environment(env)
+    Renderer.set_default_js_mode(AssetMode.NONE)
+    Renderer.set_default_css_mode(AssetMode.NONE)
+    try:
+        rendered = str(
+            Menu(
+                id="m1",
+                items=[
+                    "<em>already expanded</em>",
+                    '<Badge id="b1" text="New"/>',
+                ],
+            ).render()
+        )
+    finally:
+        Renderer.set_default_environment(None)
+        Renderer.set_default_js_mode(AssetMode.INLINE)
+        Renderer.set_default_css_mode(AssetMode.INLINE)
+        os.remove(badge_path)
+        os.remove(menu_path)
+
+    assert rendered == (
+        '<ul id="m1">'
+        "<li><em>already expanded</em></li>"
+        '<li><span id="b1" class="badge">New</span></li>'
+        "</ul>"
+    )

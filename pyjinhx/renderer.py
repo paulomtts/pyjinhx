@@ -187,9 +187,10 @@ def _warn_if_stale_def_header(component: "BaseComponent", template: Template) ->
     )
 
 
-# Private-use-area marker: never appears in real HTML/text, never matches
-# the PascalCase tag regex (no literal "<"), safe inside both a text node
-# and an attribute value. Written as an explicit escape (not a literal
+# Private-use-area marker: vanishingly unlikely to appear in real HTML/text
+# (though not impossible for adversarial content -- see restore below), never
+# matches the PascalCase tag regex (no literal "<"), safe inside both a text
+# node and an attribute value. Written as an explicit escape (not a literal
 # glyph) so it can't be silently stripped by an editor/copy-paste pipeline.
 _SLOT_PLACEHOLDER_CHAR = ""
 
@@ -217,6 +218,19 @@ def _opacify_expanded_slots(
     Tokens are call-local: generated and restored within one
     ``render_component_with_context`` invocation, so no cross-level
     bookkeeping or global uniqueness is needed.
+
+    KNOWN LIMITATION (accepted trade-off, not a bug): an opacified value is
+    only safe to *emit* by the component's own template (e.g. ``{{ content
+    }}``) — it must never be *inspected* there. Any Jinja construct that
+    looks AT the value rather than just outputting it (``|length``, ``in``,
+    ``|selectattr``, slicing, ``|striptags``, ...) sees the short placeholder
+    token, not the real HTML, because the substitution happens before
+    ``template.render()`` runs. This was a deliberate choice — the
+    alternative (restoring against the rendered *output* instead of the
+    input context) fully preserves template semantics but gives up most of
+    the perf win this mechanism exists for. Slot/content fields are
+    documented and, in practice, almost always only emitted directly, so
+    this trade-off was accepted rather than designed around.
     """
     placeholders: dict[str, str] = {}
 
@@ -228,9 +242,17 @@ def _opacify_expanded_slots(
             placeholders[token] = str(value)
             return Markup(token)
         if isinstance(value, list):
-            return [opacify(item) for item in value]
+            opacified_items = [opacify(item) for item in value]
+            if all(new is old for new, old in zip(opacified_items, value)):
+                return value
+            return opacified_items
         if isinstance(value, dict):
-            return {key: opacify(item) for key, item in value.items()}
+            opacified_items_dict = {key: opacify(item) for key, item in value.items()}
+            if all(
+                opacified_items_dict[key] is item for key, item in value.items()
+            ):
+                return value
+            return opacified_items_dict
         return value
 
     safe_context = {key: opacify(value) for key, value in render_context.items()}
