@@ -33,12 +33,15 @@ def pascal_case_to_kebab_case(name: str) -> str:
     return pascal_case_to_snake_case(name).replace("_", "-")
 
 
+@lru_cache(maxsize=None)
 def component_resolution_classes(component_class: type) -> list[type]:
     """Concrete component classes of an MRO, nearest first.
 
     Framework classes (BaseComponent, ReactiveComponent) declare
     ``_pjx_framework`` in their own body and are skipped; concrete components
     inherit the attribute without owning it.
+
+    Cached per class since the result depends only on the class's MRO.
     """
     return [
         klass
