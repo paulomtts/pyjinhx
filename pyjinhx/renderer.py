@@ -18,7 +18,7 @@ from .assets import (
 )
 from .finder import Finder
 from .registry import Registry
-from .tags import Parser, expand_custom_tags, render_tag_node
+from .tags import Parser, contains_custom_tag, expand_custom_tags, render_tag_node
 from .utils import (
     component_resolution_classes,
     detect_root_directory,
@@ -187,6 +187,62 @@ def _warn_if_stale_def_header(component: "BaseComponent", template: Template) ->
     )
 
 
+# Private-use-area marker: never appears in real HTML/text, never matches
+# the PascalCase tag regex (no literal "<"), safe inside both a text node
+# and an attribute value. Written as an explicit escape (not a literal
+# glyph) so it can't be silently stripped by an editor/copy-paste pipeline.
+_SLOT_PLACEHOLDER_CHAR = ""
+
+
+def _opacify_expanded_slots(
+    render_context: dict[str, Any],
+) -> tuple[dict[str, Any], dict[str, str]]:
+    """Replace already-fully-expanded ``Markup`` slot values with short
+    opaque placeholder tokens, so the render-time ``expand_custom_tags``
+    call doesn't need to re-tokenize them with ``html.parser`` just because
+    some other value at this level still has a new tag to expand.
+
+    Mirrors the shape ``base._wrap_slot_value`` produces (a scalar
+    ``Markup``, or a ``list``/``dict`` of ``Markup``). A value is replaced
+    only when it contains zero PascalCase-tag-looking substrings — anything
+    else (a plain non-``Markup`` string, or a ``Markup`` value that DOES
+    contain literal tag text) is left untouched, so a manually-supplied
+    literal custom tag (e.g. ``Card(content="<Icon/>")``) still gets
+    expanded exactly as before. An empty ``Markup("")`` is also left
+    untouched — swapping it for a non-empty placeholder token would flip
+    ``{% if slot %}`` truthiness checks in templates (e.g. an optional
+    error/icon slot) from falsy to truthy, and an empty string costs
+    nothing to scan anyway.
+
+    Tokens are call-local: generated and restored within one
+    ``render_component_with_context`` invocation, so no cross-level
+    bookkeeping or global uniqueness is needed.
+    """
+    placeholders: dict[str, str] = {}
+
+    def opacify(value: Any) -> Any:
+        if isinstance(value, Markup):
+            if not value or contains_custom_tag(value):
+                return value
+            token = f"{_SLOT_PLACEHOLDER_CHAR}{len(placeholders)}{_SLOT_PLACEHOLDER_CHAR}"
+            placeholders[token] = str(value)
+            return Markup(token)
+        if isinstance(value, list):
+            return [opacify(item) for item in value]
+        if isinstance(value, dict):
+            return {key: opacify(item) for key, item in value.items()}
+        return value
+
+    safe_context = {key: opacify(value) for key, value in render_context.items()}
+    return safe_context, placeholders
+
+
+def _restore_opacified_slots(markup: str, placeholders: dict[str, str]) -> str:
+    for token, original in placeholders.items():
+        markup = markup.replace(token, original)
+    return markup
+
+
 class Renderer:
     """
     Shared rendering engine used by `BaseComponent` rendering and HTML-like custom-tag rendering.
@@ -317,14 +373,19 @@ class Renderer:
         _warn_if_stale_def_header(component, template)
 
         render_context = build_render_context(context)
-        rendered_markup = template.render(render_context)
-        rendered_markup = expand_custom_tags(
-            self,
-            rendered_markup,
-            base_context=render_context,
-            session=session,
-            emit_assets=emit_assets,
+        safe_context, placeholders = _opacify_expanded_slots(render_context)
+        rendered_markup = template.render(safe_context)
+        rendered_markup = str(
+            expand_custom_tags(
+                self,
+                rendered_markup,
+                base_context=render_context,
+                session=session,
+                emit_assets=emit_assets,
+            )
         )
+        if placeholders:
+            rendered_markup = _restore_opacified_slots(rendered_markup, placeholders)
         from .base import collect_extra_attrs
         from .root_attrs import apply_root_attrs
 

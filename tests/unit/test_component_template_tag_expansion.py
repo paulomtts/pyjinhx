@@ -51,3 +51,92 @@ def test_nested_custom_tags_in_renderer():
             rendered
             == '<section id="outer-1"><p id="inner-1" text="Nested content">Nested content</p></section>'
         )
+
+
+def test_sibling_tag_alongside_already_expanded_children_still_expands():
+    """A row-like component whose slot content is already-fully-expanded
+    child HTML, but whose OWN template has one further literal sibling
+    custom tag, must still expand that sibling correctly (this is the
+    opacify/restore path exercised end-to-end)."""
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        with open(os.path.join(temp_dir, "badge.html"), "w") as file:
+            file.write('<span id="{{ id }}" class="badge">{{ text }}</span>\n')
+
+        with open(os.path.join(temp_dir, "icon.html"), "w") as file:
+            file.write('<i id="{{ id }}" class="icon-{{ name }}"></i>\n')
+
+        with open(os.path.join(temp_dir, "table_row.html"), "w") as file:
+            # {{ content }} carries already-expanded Badge/Icon children;
+            # the trailing <Icon .../> is a NEW sibling tag the row's own
+            # template introduces, needing expansion at THIS level.
+            # Note: named "TableRow" (not "Row") to avoid colliding with the
+            # module-level `class Row(ReactiveComponent...)` registered
+            # globally by tests/unit/test_instance_key_cache.py.
+            file.write(
+                '<tr id="{{ id }}">{{ content }}<Icon id="trail-1" name="chevron"/></tr>\n'
+            )
+
+        env = Environment(loader=FileSystemLoader(temp_dir))
+        renderer = Renderer(env, auto_id=True)
+
+        rendered = renderer.render(
+            '<TableRow id="row-1">'
+            '<Badge id="b1" text="New"/><Icon id="i1" name="star"/>'
+            "</TableRow>"
+        )
+
+        # Note: "text"/"name" leak onto the leaf root tags as pass-through
+        # extra attrs — this is pre-existing, unrelated-to-Task-2 behavior
+        # (see test_nested_custom_tags_in_renderer above, where Inner's
+        # "text" attr leaks onto <p> the same way).
+        assert rendered == (
+            '<tr id="row-1">'
+            '<span id="b1" class="badge" text="New">New</span>'
+            '<i id="i1" class="icon-star" name="star"></i>'
+            '<i id="trail-1" class="icon-chevron" name="chevron"></i>'
+            "</tr>"
+        )
+
+
+def test_literal_custom_tag_in_python_supplied_content_still_expands():
+    """Regression guard: a component constructed directly in Python with a
+    literal PascalCase tag string in its content/slot field must still be
+    expanded by the parent's own expand_custom_tags call (case B — verified
+    manually during design; must not be broken by opacifying slot values).
+
+    Uses the classless ``component()`` factory (rather than hand-written
+    ``BaseComponent`` subclasses) so template lookup resolves against the
+    temp dir regardless of where this test module itself lives; asset
+    injection is suppressed so the root-level ``.render()`` call is directly
+    comparable by equality.
+    """
+    from pyjinhx import AssetMode, component
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        with open(os.path.join(temp_dir, "icon.html"), "w") as file:
+            file.write('<i id="{{ id }}" class="icon-{{ name }}"></i>\n')
+
+        with open(os.path.join(temp_dir, "card.html"), "w") as file:
+            file.write('<article id="{{ id }}">{{ content }}</article>\n')
+
+        env = Environment(loader=FileSystemLoader(temp_dir))
+        Renderer.set_default_environment(env)
+        Renderer.set_default_js_mode(AssetMode.NONE)
+        Renderer.set_default_css_mode(AssetMode.NONE)
+        try:
+            Card = component("Card")
+            rendered = str(
+                Card(id="c1", content='<Icon id="i1" name="star"/>').render()
+            )
+        finally:
+            Renderer.set_default_environment(None)
+            Renderer.set_default_js_mode(AssetMode.INLINE)
+            Renderer.set_default_css_mode(AssetMode.INLINE)
+
+        # Note: "name" leaks onto <i> as a pass-through extra attr — same
+        # pre-existing, Task-2-unrelated behavior noted in the sibling test
+        # above.
+        assert rendered == (
+            '<article id="c1"><i id="i1" class="icon-star" name="star"></i></article>'
+        )
