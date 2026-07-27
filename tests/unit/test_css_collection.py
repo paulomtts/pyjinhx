@@ -1,8 +1,8 @@
 import pytest
 
 from pyjinhx import AssetMode, Renderer
-from tests.ui.unified_component import UnifiedComponent
 from tests.ui.reactive.reactive_counter import ReactiveCounter
+from tests.ui.unified_component import UnifiedComponent
 
 
 @pytest.fixture(autouse=True)

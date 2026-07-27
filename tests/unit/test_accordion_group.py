@@ -4,7 +4,12 @@ from typing import Any
 import pytest
 
 from pyjinhx import Renderer
-from pyjinhx.builtins import PJXAccordion, PJXAccordionContent, PJXAccordionGroup, PJXAccordionTrigger
+from pyjinhx.builtins import (
+    PJXAccordion,
+    PJXAccordionContent,
+    PJXAccordionGroup,
+    PJXAccordionTrigger,
+)
 
 
 @pytest.fixture(autouse=True)

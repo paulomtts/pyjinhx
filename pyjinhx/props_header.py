@@ -10,7 +10,7 @@ builds a ``BaseComponent`` subclass whose declared props are validated fields.
 """
 import ast
 import re
-from typing import Any, Optional
+from typing import Any
 
 from pydantic import create_model
 
@@ -39,9 +39,9 @@ def _resolve_annotation(node: "ast.expr | None") -> Any:
         left = _resolve_annotation(node.left)
         right = _resolve_annotation(node.right)
         if right is type(None):
-            return Optional[left]
+            return left | None
         if left is type(None):
-            return Optional[right]
+            return right | None
         return Any
     # Optional[T]
     if (
@@ -49,7 +49,7 @@ def _resolve_annotation(node: "ast.expr | None") -> Any:
         and isinstance(node.value, ast.Name)
         and node.value.id == "Optional"
     ):
-        return Optional[_resolve_annotation(node.slice)]
+        return _resolve_annotation(node.slice) | None
     return Any
 
 

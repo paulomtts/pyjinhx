@@ -32,7 +32,7 @@ def _suppress_pjx_runtime_injection(request: pytest.FixtureRequest, monkeypatch:
 
 
 @pytest.fixture(autouse=True)
-def _clean_config_state() -> Generator[None, None, None]:
+def _clean_config_state() -> Generator[None]:
     shutdown_pyjinhx()
     InvalidationHub.reset()
     Renderer.set_default_environment(None)
@@ -45,7 +45,7 @@ def _clean_config_state() -> Generator[None, None, None]:
 @pytest.fixture(autouse=True)
 def _isolate_reactive_state(
     request: pytest.FixtureRequest,
-) -> Generator[None, None, None]:
+) -> Generator[None]:
     """
     Reset pyjinhx reactive state around every test inside a request scope.
 

@@ -119,7 +119,11 @@ def test_shell_no_trigger_tip_fields():
 
 def test_composed_tooltip(tmp_path):
     from pyjinhx import Renderer
-    from pyjinhx.builtins import PJXTooltip, PJXTooltipContent, PJXTooltipTrigger  # noqa: F401
+    from pyjinhx.builtins import (  # noqa: F401
+        PJXTooltip,
+        PJXTooltipContent,
+        PJXTooltipTrigger,
+    )
 
     Renderer.set_default_environment(str(tmp_path))
     renderer = Renderer.get_default_renderer()

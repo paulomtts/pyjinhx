@@ -23,7 +23,7 @@ def test_builtin_renders_single_root(cls, tmp_path):
     # that cannot be built id-only (its own dedicated test covers it).
     try:
         component = cls(id="x")
-    except Exception:
+    except Exception:  # noqa: BLE001 (intentionally broad — any construction failure means skip)
         pytest.skip(f"{cls.__name__} needs required fields; covered elsewhere")
     # render() raises ValueError if the template is not exactly one root.
     str(component.render())

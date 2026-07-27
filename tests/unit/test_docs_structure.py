@@ -11,17 +11,17 @@ from pathlib import Path
 
 DOCS = Path(__file__).resolve().parents[2] / "docs"
 sys.path.insert(0, str(DOCS))
-from demos import DEMOS  # noqa: E402
+from demos import DEMOS
 
 
 def _component_sections(text):
     """``### PJXName`` body up to the next ``##``/``###`` heading."""
-    parts = re.split(r"^### (PJX\w+)\s*$", text, flags=re.M)
+    parts = re.split(r"^### (PJX\w+)\s*$", text, flags=re.MULTILINE)
     sections = {}
     for i in range(1, len(parts), 2):
         body = parts[i + 1]
         # stop the body at the next group (``## ``) heading if one slipped in
-        sections[parts[i]] = re.split(r"^## ", body, flags=re.M)[0]
+        sections[parts[i]] = re.split(r"^## ", body, flags=re.MULTILINE)[0]
     return sections
 
 
@@ -45,10 +45,10 @@ def test_theming_appendix_removed():
 
 def test_component_entries_have_html():
     text = (DOCS / "components.md").read_text(encoding="utf-8")
-    entries = re.split(r"^### (PJX\w+)\s*$", text, flags=re.M)
+    entries = re.split(r"^### (PJX\w+)\s*$", text, flags=re.MULTILINE)
     missing = [
         entries[i]
         for i in range(1, len(entries), 2)
-        if "```html" not in re.split(r"^## ", entries[i + 1], flags=re.M)[0]
+        if "```html" not in re.split(r"^## ", entries[i + 1], flags=re.MULTILINE)[0]
     ]
     assert not missing, f"component entries missing an HTML block: {missing}"

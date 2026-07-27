@@ -5,7 +5,6 @@ from jinja2 import TemplateNotFound
 
 from pyjinhx import BaseComponent, MutationKey, ReactiveComponent
 from pyjinhx.builtins import PJXBadge, PJXCard
-
 from tests.ui.aliasing.custom_badge import CustomBadge
 from tests.ui.aliasing.fancy_badge import FancyBadge
 

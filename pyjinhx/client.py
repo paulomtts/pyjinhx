@@ -81,7 +81,7 @@ class ClientBackend(ABC):
 
     @classmethod
     @contextmanager
-    def scope(cls, backend: ClientBackend | None) -> Generator[None, None, None]:
+    def scope(cls, backend: ClientBackend | None) -> Generator[None]:
         token = cls._context.set(backend)
         try:
             yield

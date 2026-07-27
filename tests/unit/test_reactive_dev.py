@@ -41,17 +41,21 @@ def teardown_function():
 
 def test_warn_mutations_without_render(caplog):
     enable_reactive_dev()
-    with caplog.at_level(logging.WARNING, logger="pyjinhx"):
-        with Registry.request_scope():
-            _orphan_mutation()
+    with (
+        caplog.at_level(logging.WARNING, logger="pyjinhx"),
+        Registry.request_scope(),
+    ):
+        _orphan_mutation()
     assert "no reactive render" in caplog.text.lower()
 
 
 def test_strict_mutations_without_render_raises():
     enable_reactive_dev(strict=True)
-    with pytest.raises(RuntimeError, match="no reactive render"):
-        with Registry.request_scope():
-            _orphan_mutation()
+    with (
+        pytest.raises(RuntimeError, match="no reactive render"),
+        Registry.request_scope(),
+    ):
+        _orphan_mutation()
 
 
 def test_warn_render_without_client(caplog):

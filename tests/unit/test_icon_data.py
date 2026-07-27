@@ -1,5 +1,5 @@
 """The vendored Lucide icon map is well-formed."""
-from pyjinhx.builtins.ui.pjx_icon._icons import ICONS, ICON_NAMES
+from pyjinhx.builtins.ui.pjx_icon._icons import ICON_NAMES, ICONS
 
 
 def test_seed_icons_present():

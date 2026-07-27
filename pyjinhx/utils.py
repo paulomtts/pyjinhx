@@ -1,6 +1,6 @@
 import os
 import re
-from functools import lru_cache
+from functools import cache, lru_cache
 
 
 def pascal_case_to_snake_case(name: str) -> str:
@@ -33,12 +33,15 @@ def pascal_case_to_kebab_case(name: str) -> str:
     return pascal_case_to_snake_case(name).replace("_", "-")
 
 
+@cache
 def component_resolution_classes(component_class: type) -> list[type]:
     """Concrete component classes of an MRO, nearest first.
 
     Framework classes (BaseComponent, ReactiveComponent) declare
     ``_pjx_framework`` in their own body and are skipped; concrete components
     inherit the attribute without owning it.
+
+    Cached per class since the result depends only on the class's MRO.
     """
     return [
         klass
@@ -155,6 +158,7 @@ def read_client_runtime() -> str:
         return runtime_file.read()
 
 
+@lru_cache(maxsize=1)
 def read_vendored_htmx() -> str:
     """Return the bundled htmx source, guarded so it no-ops if htmx is present.
 

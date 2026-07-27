@@ -1,5 +1,5 @@
-from enum import Enum, StrEnum
 from collections.abc import Iterable
+from enum import Enum, StrEnum
 
 ReactiveKey = str | Enum
 

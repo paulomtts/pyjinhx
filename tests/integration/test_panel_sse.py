@@ -53,15 +53,15 @@ def test_gallery_page_includes_panel_sse_demo_markup(gallery_server_url: str) ->
 
 
 def test_panel_sse_stream_emits_first_tick(gallery_server_url: str) -> None:
-    with httpx.Client(timeout=httpx.Timeout(5.0, read=5.0)) as http_client:
-        with http_client.stream(
-            "GET", f"{gallery_server_url}/sse/panel-demo"
-        ) as response:
-            response.raise_for_status()
-            received = b""
-            for chunk in response.iter_bytes():
-                received += chunk
-                if b"\n\n" in received:
-                    break
+    with (
+        httpx.Client(timeout=httpx.Timeout(5.0, read=5.0)) as http_client,
+        http_client.stream("GET", f"{gallery_server_url}/sse/panel-demo") as response,
+    ):
+        response.raise_for_status()
+        received = b""
+        for chunk in response.iter_bytes():
+            received += chunk
+            if b"\n\n" in received:
+                break
     assert b"data:" in received
     assert b"1" in received

@@ -3,7 +3,12 @@ import pytest
 
 from pyjinhx import Renderer
 from pyjinhx.builtins import (
-    PJXTable, PJXTableHead, PJXTableBody, PJXTableRow, PJXTableHeaderCell, PJXTableCell,
+    PJXTable,
+    PJXTableBody,
+    PJXTableCell,
+    PJXTableHead,
+    PJXTableHeaderCell,
+    PJXTableRow,
 )
 
 

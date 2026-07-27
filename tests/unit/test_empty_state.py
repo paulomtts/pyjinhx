@@ -1,7 +1,6 @@
 """Unit tests for the refactored PJXEmptyState (content-slot API)."""
 from pyjinhx.builtins import PJXEmptyState
 
-
 # --- New content-slot API ---
 
 def test_empty_state_renders_root_div():

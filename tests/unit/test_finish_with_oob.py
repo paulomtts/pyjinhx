@@ -6,9 +6,9 @@ from pyjinhx.reactive import _finish_with_oob, _mounted_ids_in
 from pyjinhx.renderer import Renderer
 from tests.reactive_test_support import reactive_client, record_mutation
 from tests.ui.reactive import store
-from tests.ui.reactive.reactive_counter import ReactiveCounter  # noqa: F401 (registers)
 from tests.ui.reactive.reactive_clear_button import ReactiveClearButton  # noqa: F401
-from tests.ui.unified_component import UnifiedComponent  # noqa: F401 (registers)
+from tests.ui.reactive.reactive_counter import ReactiveCounter
+from tests.ui.unified_component import UnifiedComponent
 
 _UI_DIR = Path(__file__).resolve().parents[1] / "ui"
 
@@ -205,8 +205,8 @@ def test_reactive_response_key_kwarg_applies_to_every_key():
 def test_reactive_response_key_kwarg_reloads_only_the_matching_instance():
     from pyjinhx.cache import LoadCache
     from pyjinhx.reactive import ReactiveResponse
-
-    from tests.ui.reactive.counted_row import CountedRow, Keys as RowKeys  # noqa: F401
+    from tests.ui.reactive.counted_row import CountedRow
+    from tests.ui.reactive.counted_row import Keys as RowKeys
 
     LoadCache.clear()
     CountedRow.load_calls.clear()

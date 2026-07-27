@@ -17,6 +17,14 @@ _registry_context: ContextVar[dict[str, "BaseComponent"] | None] = ContextVar(
     "component_registry", default=None
 )
 
+# Insertion-ordered list mirroring `_registry_context`'s values, kept alongside
+# the dict so callers (e.g. the renderer's per-node registry-defaults scan)
+# can cheaply slice off just the instances registered since a checkpoint
+# instead of re-walking the whole dict every time — see issue #222.
+_registry_order: ContextVar[list["BaseComponent"] | None] = ContextVar(
+    "component_registry_order", default=None
+)
+
 
 class Registry:
     """
@@ -126,12 +134,17 @@ class Registry:
             )
             return
         key = cls.make_key(type(component).__name__, component.id)
-        if key in registry:
+        is_new = key not in registry
+        if not is_new:
             logger.warning(
                 f"While registering {type(component).__name__}(id={component.id}) "
                 f"found an existing component with key '{key}'. Overwriting..."
             )
         registry[key] = component
+        if is_new:
+            order = _registry_order.get()
+            if order is not None:
+                order.append(component)
 
     @classmethod
     def get_instances(cls) -> dict[str, "BaseComponent"]:
@@ -147,9 +160,26 @@ class Registry:
         return registry
 
     @classmethod
+    def get_instances_in_order(cls) -> list["BaseComponent"]:
+        """
+        Return newly-registered instances in registration order.
+
+        Unlike ``get_instances()``, overwritten keys (duplicate id
+        registrations) are not re-appended — this list is meant for cheap
+        incremental scanning (slicing off a tail), not as a source of truth
+        for lookups.
+        """
+        order = _registry_order.get()
+        if order is None:
+            return []
+        return order
+
+    @classmethod
     def clear_instances(cls) -> None:
         """Remove all registered component instances from the current context."""
         _registry_context.set({})
+        if _registry_order.get() is not None:
+            _registry_order.set([])
 
     @classmethod
     @contextmanager
@@ -158,7 +188,7 @@ class Registry:
         *,
         load_context: object | None = None,
         client_backend: "ClientBackend | None" = None,
-    ) -> Generator[None, None, None]:
+    ) -> Generator[None]:
         """
         Context manager for request-scoped component instances.
 
@@ -174,8 +204,12 @@ class Registry:
         from contextlib import ExitStack
 
         from pyjinhx.assets import _runtime_injected
-        from pyjinhx.client import ClientBackend, ResponseDirectives, _response_directives
         from pyjinhx.cache import LoadCache
+        from pyjinhx.client import (
+            ClientBackend,
+            ResponseDirectives,
+            _response_directives,
+        )
         from pyjinhx.context import PjxContext
         from pyjinhx.dev import warn_mutations_without_render
         from pyjinhx.mutations import MutationTracker
@@ -183,6 +217,7 @@ class Registry:
         MutationTracker.clear()
         LoadCache.init_request()
         token = _registry_context.set({})
+        order_token = _registry_order.set([])
         runtime_token = _runtime_injected.set(False)
         directives_token = _response_directives.set(ResponseDirectives())
         try:
@@ -199,3 +234,4 @@ class Registry:
             _response_directives.reset(directives_token)
             _runtime_injected.reset(runtime_token)
             _registry_context.reset(token)
+            _registry_order.reset(order_token)

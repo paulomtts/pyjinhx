@@ -53,9 +53,8 @@ def test_render_without_pending_skips_oob():
     Renderer.set_default_environment(UI_ROOT)
     try:
         manifest = [{"id": "counter", "type": "ReactiveCounter", "hash": "stale"}]
-        with Registry.request_scope():
-            with reactive_client(manifest):
-                out = str(ReactiveClearButton.render())
+        with Registry.request_scope(), reactive_client(manifest):
+            out = str(ReactiveClearButton.render())
         assert "outerHTML:[data-pjx-id='counter']" not in out
     finally:
         Renderer.set_default_environment(prev)
@@ -145,7 +144,8 @@ def test_mutates_key_kwarg_applies_to_every_key():
 
 def test_mutates_key_kwarg_reloads_only_the_matching_instance():
     from pyjinhx.reactive import oob_swaps
-    from tests.ui.reactive.counted_row import CountedRow, Keys as RowKeys  # noqa: F401
+    from tests.ui.reactive.counted_row import CountedRow
+    from tests.ui.reactive.counted_row import Keys as RowKeys
 
     LoadCache.clear()
     CountedRow.load_calls.clear()

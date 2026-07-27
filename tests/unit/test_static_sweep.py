@@ -1,7 +1,15 @@
 import pytest
 
 from pyjinhx.builtins import (
-    PJXAvatar, PJXBadge, PJXBreadcrumb, PJXCard, PJXDivider, PJXEmptyState, PJXProgress, PJXSkeleton, PJXTooltip,
+    PJXAvatar,
+    PJXBadge,
+    PJXBreadcrumb,
+    PJXCard,
+    PJXDivider,
+    PJXEmptyState,
+    PJXProgress,
+    PJXSkeleton,
+    PJXTooltip,
 )
 
 SWEPT = [PJXAvatar, PJXBadge, PJXBreadcrumb, PJXCard, PJXDivider, PJXEmptyState, PJXProgress, PJXSkeleton, PJXTooltip]

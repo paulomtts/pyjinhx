@@ -19,8 +19,8 @@ import pytest
 
 pytest.importorskip("playwright")
 
-from fastapi import FastAPI, Request  # noqa: E402
-from playwright.sync_api import Page, expect  # noqa: E402
+from fastapi import FastAPI, Request
+from playwright.sync_api import Page, expect
 
 pytestmark = [pytest.mark.pjx_runtime, pytest.mark.reactivity]
 

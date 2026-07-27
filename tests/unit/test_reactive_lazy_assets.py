@@ -14,9 +14,9 @@ OOB, so the breadcrumb rendered unstyled. The primary now emits via the same
 import os
 
 from pyjinhx.assets import asset_token
+from pyjinhx.builtins import PJXBreadcrumb
 from pyjinhx.client import PJX_ASSETS_HEADER
 from pyjinhx.finder import Finder
-from pyjinhx.builtins import PJXBreadcrumb
 from tests.reactive_test_support import reactive_client
 from tests.ui.reactive.breadcrumb_panel import BreadcrumbPanel
 

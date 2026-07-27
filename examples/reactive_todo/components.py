@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Annotated, Any, Optional
+from typing import Annotated, Any
 
 from pyjinhx import BaseComponent, PjxContext, PjxKey, ReactiveComponent
 
@@ -41,7 +41,7 @@ class ItemRow(ReactiveComponent, react={Keys.TODOS}):
 
 
 class ItemList(ReactiveComponent, react={Keys.TODO_LIST}):
-    items: list[ItemRow] = []
+    items: list[ItemRow] = []  # noqa: RUF012 (pydantic field, not a shared mutable default)
 
     @classmethod
     def load(cls) -> "ItemList":
@@ -77,7 +77,7 @@ class ClearButton(ReactiveComponent, react={Keys.TODOS}):
 
 
 class App(BaseComponent):
-    item_list: Optional[ItemList] = None
-    remaining: Optional[Counter] = None
-    total_count: Optional[Total] = None
-    clear_button: Optional[ClearButton] = None
+    item_list: ItemList | None = None
+    remaining: Counter | None = None
+    total_count: Total | None = None
+    clear_button: ClearButton | None = None

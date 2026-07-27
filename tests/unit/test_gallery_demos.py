@@ -4,13 +4,14 @@ import sys
 from pathlib import Path
 
 import pytest
+
 import pyjinhx.builtins
 
 DOCS = Path(__file__).resolve().parents[2] / "docs"
 sys.path.insert(0, str(DOCS))
 
-from demos import DEMOS  # noqa: E402
-import hooks  # noqa: E402
+import hooks
+from demos import DEMOS
 
 
 class FakeFile:

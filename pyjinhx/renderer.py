@@ -33,6 +33,11 @@ logger = logging.getLogger("pyjinhx")
 # Dedup set: component names for which the stale-def-header warning has fired.
 _warned_stale_def_header: set[str] = set()
 
+# Component names whose template has already been checked for a stale header,
+# whether or not it had one. Keeps the file read + regex check to at most once
+# per class per process instead of on every render.
+_checked_stale_def_header: set[str] = set()
+
 # Cheap regex — mirrors _HEADER_RE in props_header.py, without the full parse.
 _STALE_DEF_HEADER_RE = re.compile(r"\A\s*\{#\s*def\s", re.DOTALL)
 
@@ -40,7 +45,7 @@ _STALE_DEF_HEADER_RE = re.compile(r"\A\s*\{#\s*def\s", re.DOTALL)
 def get_loader_root(environment: Environment) -> str:
     loader = environment.loader
     if not isinstance(loader, FileSystemLoader):
-        raise ValueError("Jinja2 loader must be a FileSystemLoader")
+        raise ValueError("Jinja2 loader must be a FileSystemLoader")  # noqa: TRY004 (public API, documented ValueError)
     return Finder.get_loader_root(loader)
 
 
@@ -114,16 +119,33 @@ def load_template_for_component(
     raise TemplateNotFound(", ".join(attempted) if attempted else "unknown")
 
 
-def build_render_context(context: dict[str, Any]) -> dict[str, Any]:
-    render_context = dict(context)
-    for instance in Registry.get_instances().values():
-        render_context.setdefault(instance.id, instance)
-    return render_context
+def build_render_context(
+    context: dict[str, Any], session: RenderSession
+) -> dict[str, Any]:
+    ordered_instances = Registry.get_instances_in_order()
+    if len(ordered_instances) != session.registry_scanned:
+        # `ordered_instances` only ever grows within a render pass, so the
+        # entries already folded into `registry_defaults` are still valid —
+        # just fold in the tail that's new since the last node rendered.
+        for instance in ordered_instances[session.registry_scanned :]:
+            session.registry_defaults.setdefault(instance.id, instance)
+        session.registry_scanned = len(ordered_instances)
+
+    return {**session.registry_defaults, **context}
 
 
-def reactive_root_attrs(component: BaseComponent) -> dict[str, str]:
+def reactive_root_attrs(
+    component: BaseComponent, *, precomputed_hash: str | None = None
+) -> dict[str, str]:
     """The ``data-pjx-*`` attributes to stamp onto a reactive component's root
-    tag, or an empty dict for a non-reactive component."""
+    tag, or an empty dict for a non-reactive component.
+
+    ``precomputed_hash``, when given, is stamped verbatim instead of calling
+    ``component.state_hash()`` again. Callers that already computed the exact
+    same instance's hash moments earlier (e.g. the OOB dirty-check in
+    ``oob_swaps``) pass it through here to avoid paying for a second
+    ``model_dump`` + ``sha256`` pass over the same, unchanged state.
+    """
     from pyjinhx.reactive import ReactiveComponent
 
     if not isinstance(component, ReactiveComponent):
@@ -134,7 +156,7 @@ def reactive_root_attrs(component: BaseComponent) -> dict[str, str]:
     attrs = {
         "data-pjx-id": component.id,
         "data-pjx-type": type(component).__name__,
-        "data-pjx-hash": component.state_hash(),
+        "data-pjx-hash": precomputed_hash if precomputed_hash is not None else component.state_hash(),
     }
     load_value = pjx_load_value(component)
     if load_value is not None:
@@ -145,7 +167,7 @@ def reactive_root_attrs(component: BaseComponent) -> dict[str, str]:
     return attrs
 
 
-def _warn_if_stale_def_header(component: "BaseComponent", template: Template) -> None:
+def _warn_if_stale_def_header(component: BaseComponent, template: Template) -> None:
     """Emit a one-time warning when a hand-written class has a {#def#} header in its template.
 
     The header is silently ignored by the engine (the class's declared fields take over),
@@ -156,8 +178,9 @@ def _warn_if_stale_def_header(component: "BaseComponent", template: Template) ->
         return
 
     component_name = type(component).__name__
-    if component_name in _warned_stale_def_header:
+    if component_name in _checked_stale_def_header:
         return
+    _checked_stale_def_header.add(component_name)
 
     # Read the template source cheaply: file-backed templates expose .filename;
     # in-memory (from_string) templates expose .source (Jinja2 >=3.1 sets it
@@ -293,7 +316,7 @@ class Renderer:
     _default_js_mode: ClassVar[AssetMode] = AssetMode.INLINE
     _default_css_mode: ClassVar[AssetMode] = AssetMode.INLINE
     _default_renderers: ClassVar[
-        dict[tuple[int, bool, AssetMode, AssetMode], "Renderer"]
+        dict[tuple[int, bool, AssetMode, AssetMode], Renderer]
     ] = {}
 
     @classmethod
@@ -339,7 +362,7 @@ class Renderer:
         auto_id: bool = True,
         js_mode: AssetMode | None = None,
         css_mode: AssetMode | None = None,
-    ) -> "Renderer":
+    ) -> Renderer:
         environment = cls.get_default_environment()
         effective_js_mode = js_mode if js_mode is not None else cls._default_js_mode
         effective_css_mode = css_mode if css_mode is not None else cls._default_css_mode
@@ -406,7 +429,7 @@ class Renderer:
 
         _warn_if_stale_def_header(component, template)
 
-        render_context = build_render_context(context)
+        render_context = build_render_context(context, session)
         rendered_markup = template.render(render_context)
         candidates = _collect_opacifiable_slot_values(render_context)
         safe_markup, placeholders = _opacify_rendered_markup(rendered_markup, candidates)
@@ -424,10 +447,17 @@ class Renderer:
         from .base import collect_extra_attrs
         from .root_attrs import apply_root_attrs
 
+        extra_root_attrs = extra_root_attrs or {}
+        # A caller that already computed this exact instance's state_hash()
+        # moments earlier (the OOB dirty-check in oob_swaps) can pass it
+        # through as "data-pjx-hash" here to skip a redundant model_dump +
+        # sha256 pass over the same, unchanged state.
         attrs = {
             **collect_extra_attrs(component),
-            **reactive_root_attrs(component),
-            **(extra_root_attrs or {}),
+            **reactive_root_attrs(
+                component, precomputed_hash=extra_root_attrs.get("data-pjx-hash")
+            ),
+            **extra_root_attrs,
         }
         rendered_markup = Markup(
             apply_root_attrs(
