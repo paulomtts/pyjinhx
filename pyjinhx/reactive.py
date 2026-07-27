@@ -486,7 +486,13 @@ def oob_swaps(
             instance._render(
                 _renderer=renderer,
                 _session=shared_session,
-                _extra_root_attrs={"hx-swap-oob": _oob_swap_selector(component_id)},
+                # Pass the hash we just computed for the dirty-check above so the
+                # render pipeline doesn't pay for a second model_dump + sha256
+                # pass over the same instance's state (see #228).
+                _extra_root_attrs={
+                    "hx-swap-oob": _oob_swap_selector(component_id),
+                    "data-pjx-hash": fresh_hash,
+                },
             )
         )
         candidates.append(

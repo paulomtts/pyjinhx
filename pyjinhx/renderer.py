@@ -126,9 +126,18 @@ def build_render_context(context: dict[str, Any]) -> dict[str, Any]:
     return render_context
 
 
-def reactive_root_attrs(component: BaseComponent) -> dict[str, str]:
+def reactive_root_attrs(
+    component: BaseComponent, *, precomputed_hash: str | None = None
+) -> dict[str, str]:
     """The ``data-pjx-*`` attributes to stamp onto a reactive component's root
-    tag, or an empty dict for a non-reactive component."""
+    tag, or an empty dict for a non-reactive component.
+
+    ``precomputed_hash``, when given, is stamped verbatim instead of calling
+    ``component.state_hash()`` again. Callers that already computed the exact
+    same instance's hash moments earlier (e.g. the OOB dirty-check in
+    ``oob_swaps``) pass it through here to avoid paying for a second
+    ``model_dump`` + ``sha256`` pass over the same, unchanged state.
+    """
     from pyjinhx.reactive import ReactiveComponent
 
     if not isinstance(component, ReactiveComponent):
@@ -139,7 +148,7 @@ def reactive_root_attrs(component: BaseComponent) -> dict[str, str]:
     attrs = {
         "data-pjx-id": component.id,
         "data-pjx-type": type(component).__name__,
-        "data-pjx-hash": component.state_hash(),
+        "data-pjx-hash": precomputed_hash if precomputed_hash is not None else component.state_hash(),
     }
     load_value = pjx_load_value(component)
     if load_value is not None:
@@ -334,10 +343,17 @@ class Renderer:
         from .base import collect_extra_attrs
         from .root_attrs import apply_root_attrs
 
+        extra_root_attrs = extra_root_attrs or {}
+        # A caller that already computed this exact instance's state_hash()
+        # moments earlier (the OOB dirty-check in oob_swaps) can pass it
+        # through as "data-pjx-hash" here to skip a redundant model_dump +
+        # sha256 pass over the same, unchanged state.
         attrs = {
             **collect_extra_attrs(component),
-            **reactive_root_attrs(component),
-            **(extra_root_attrs or {}),
+            **reactive_root_attrs(
+                component, precomputed_hash=extra_root_attrs.get("data-pjx-hash")
+            ),
+            **extra_root_attrs,
         }
         rendered_markup = Markup(
             apply_root_attrs(

@@ -1,6 +1,8 @@
+from unittest.mock import patch
+
 from markupsafe import Markup
 
-from pyjinhx.reactive import oob_swaps
+from pyjinhx.reactive import ReactiveComponent, oob_swaps
 from tests.ui.reactive import store
 from tests.ui.reactive.reactive_counter import ReactiveCounter
 from tests.ui.reactive.reactive_clear_button import ReactiveClearButton  # noqa: F401
@@ -78,3 +80,32 @@ def test_changed_parent_still_dedups_changed_child():
     assert "outerHTML:[data-pjx-id='panel']" in out
     assert "outerHTML:[data-pjx-id='counter']" not in out
     assert "3 left" in out
+
+
+def test_dirty_swap_computes_state_hash_only_once(monkeypatch):
+    """
+    Regression test for #228: a dirty candidate used to have state_hash() called
+    twice on the very same instance — once for the manifest comparison in
+    oob_swaps, and again implicitly while stamping data-pjx-hash during render.
+    The render pipeline now reuses the hash already computed for the dirty
+    check instead of recomputing it, so this must call state_hash() exactly
+    once per dirty component.
+    """
+    store.state["remaining"] = 5
+    manifest = [{"id": "counter", "type": "ReactiveCounter", "hash": "stale-hash"}]
+
+    calls = []
+    original = ReactiveComponent.state_hash
+
+    def counting_state_hash(self):
+        result = original(self)
+        calls.append(result)
+        return result
+
+    with patch.object(ReactiveComponent, "state_hash", counting_state_hash):
+        out = str(oob_swaps({"todos"}, manifest))
+
+    assert len(calls) == 1
+    stamped_hash = calls[0]
+    assert f'data-pjx-hash="{stamped_hash}"' in out
+    assert "5 left" in out
