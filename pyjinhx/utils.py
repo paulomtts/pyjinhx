@@ -155,6 +155,7 @@ def read_client_runtime() -> str:
         return runtime_file.read()
 
 
+@lru_cache(maxsize=1)
 def read_vendored_htmx() -> str:
     """Return the bundled htmx source, guarded so it no-ops if htmx is present.
 
