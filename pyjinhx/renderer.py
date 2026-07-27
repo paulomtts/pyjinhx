@@ -119,11 +119,19 @@ def load_template_for_component(
     raise TemplateNotFound(", ".join(attempted) if attempted else "unknown")
 
 
-def build_render_context(context: dict[str, Any]) -> dict[str, Any]:
-    render_context = dict(context)
-    for instance in Registry.get_instances().values():
-        render_context.setdefault(instance.id, instance)
-    return render_context
+def build_render_context(
+    context: dict[str, Any], session: RenderSession
+) -> dict[str, Any]:
+    ordered_instances = Registry.get_instances_in_order()
+    if len(ordered_instances) != session.registry_scanned:
+        # `ordered_instances` only ever grows within a render pass, so the
+        # entries already folded into `registry_defaults` are still valid —
+        # just fold in the tail that's new since the last node rendered.
+        for instance in ordered_instances[session.registry_scanned :]:
+            session.registry_defaults.setdefault(instance.id, instance)
+        session.registry_scanned = len(ordered_instances)
+
+    return {**session.registry_defaults, **context}
 
 
 def reactive_root_attrs(
@@ -331,7 +339,7 @@ class Renderer:
 
         _warn_if_stale_def_header(component, template)
 
-        render_context = build_render_context(context)
+        render_context = build_render_context(context, session)
         rendered_markup = template.render(render_context)
         rendered_markup = expand_custom_tags(
             self,
