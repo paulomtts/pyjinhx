@@ -16,7 +16,7 @@ from pyjinhx.reactive import PjxKey, ReactiveComponent
 from pyjinhx.registry import Registry
 from pyjinhx.renderer import Renderer
 
-__all__ = [
+__all__ = [  # noqa: RUF022 (grouped by category, not alphabetical, on purpose)
     # Components & rendering
     "BaseComponent",
     "Slot",

@@ -5,8 +5,14 @@ from collections.abc import Callable, Iterable
 from contextvars import ContextVar
 from typing import Any, ClassVar, TypeVar
 
-from .keys import DynamicReactiveKey, MutationKey, ReactiveKey, coerce_reactive_keys, reactive_key
 from .cache import LoadCache
+from .keys import (
+    DynamicReactiveKey,
+    MutationKey,
+    ReactiveKey,
+    coerce_reactive_keys,
+    reactive_key,
+)
 
 F = TypeVar("F", bound=Callable[..., Any])
 

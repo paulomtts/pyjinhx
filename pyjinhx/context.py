@@ -189,7 +189,7 @@ class PjxContext:
 
     @staticmethod
     @contextmanager
-    def bind(ctx: Any) -> Generator[None, None, None]:
+    def bind(ctx: Any) -> Generator[None]:
         """Set the load context for the current scope."""
         token = _load_context.set(ctx)
         try:

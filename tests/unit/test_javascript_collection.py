@@ -6,7 +6,7 @@ from tests.ui.unified_component import UnifiedComponent
 
 def _extract_scripts(rendered: str) -> list[str]:
     """Return a list of script block contents (inner text of each <script>...</script>)."""
-    return re.findall(r"<script[^>]*>(.*?)</script>", rendered, re.S)
+    return re.findall(r"<script[^>]*>(.*?)</script>", rendered, re.DOTALL)
 
 
 def test_js_collection_order():

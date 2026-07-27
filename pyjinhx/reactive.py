@@ -10,7 +10,16 @@ from abc import abstractmethod
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from functools import partial
-from typing import Annotated, Any, ClassVar, get_args, get_origin, get_type_hints, overload
+from typing import (
+    Annotated,
+    Any,
+    ClassVar,
+    Self,
+    get_args,
+    get_origin,
+    get_type_hints,
+    overload,
+)
 
 from markupsafe import Markup
 from pydantic import ConfigDict, ModelWrapValidatorHandler, PrivateAttr, model_validator
@@ -28,7 +37,13 @@ from .assets import render_missing_assets_oob
 from .cache import LoadCache
 from .client import ClientBackend, LoadedAssets, MountedManifest, current_directives
 from .dev import warn_reactive_render_without_client
-from .keys import MutationKey, ReactiveKey, coerce_load_key_str, coerce_reactive_keys, reactive_key
+from .keys import (
+    MutationKey,
+    ReactiveKey,
+    coerce_load_key_str,
+    coerce_reactive_keys,
+    reactive_key,
+)
 from .mutations import MutationTracker, _require_mutation_keys
 
 
@@ -129,24 +144,30 @@ class _ReactiveRender:
     """
 
     @staticmethod
-    def _render_class(cls: type[ReactiveComponent], *args: Any, **kwargs: Any) -> Markup:
-        keyed = getattr(cls, "_pjx_keyed", False)
+    def _render_class(
+        component_cls: type[ReactiveComponent], *args: Any, **kwargs: Any
+    ) -> Markup:
+        keyed = getattr(component_cls, "_pjx_keyed", False)
         if keyed and not args:
             raise TypeError(
-                f"{cls.__name__} is instance-keyed; render() requires the load() "
-                f"resource argument, e.g. {cls.__name__}.render(<id>)."
+                f"{component_cls.__name__} is instance-keyed; render() requires the load() "
+                f"resource argument, e.g. {component_cls.__name__}.render(<id>)."
             )
         if not keyed and args:
             raise TypeError(
-                f"{cls.__name__} is a type-singleton; render() takes no arguments."
+                f"{component_cls.__name__} is a type-singleton; render() takes no arguments."
             )
 
         if not _reactive_context_active():
-            instance = cls.load(*args, **kwargs) if keyed else cls.load(**kwargs)
+            instance = (
+                component_cls.load(*args, **kwargs) if keyed else component_cls.load(**kwargs)
+            )
             return Markup(instance._render())
 
         def build_primary() -> str:
-            instance = cls.load(*args, **kwargs) if keyed else cls.load(**kwargs)
+            instance = (
+                component_cls.load(*args, **kwargs) if keyed else component_cls.load(**kwargs)
+            )
             return instance._render()
 
         return reactive_render_bundle(
@@ -575,7 +596,7 @@ class ReactiveResponse(Markup):
 
     def __new__(
         cls, *keys: MutationKey, key: object | None = None, html: str | Markup = ""
-    ) -> "ReactiveResponse":
+    ) -> Self:
         if key is not None:
             keys = tuple(reactive_key(k, key) for k in keys)
         _require_mutation_keys(keys, "ReactiveResponse()")

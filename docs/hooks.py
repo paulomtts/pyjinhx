@@ -8,10 +8,10 @@ import sys
 HERE = os.path.dirname(__file__)
 sys.path.insert(0, HERE)
 
-from demos import DEMOS  # noqa: E402
+from demos import DEMOS
 
-from pyjinhx import BaseComponent, Registry  # noqa: E402
-from pyjinhx.utils import pascal_case_to_kebab_case  # noqa: E402
+from pyjinhx import BaseComponent, Registry
+from pyjinhx.utils import pascal_case_to_kebab_case
 
 _MARKER = re.compile(r"<!--\s*demo:\s*([A-Za-z]+)\s*-->")
 

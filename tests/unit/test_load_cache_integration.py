@@ -1,7 +1,7 @@
 from pyjinhx.reactive import oob_swaps
 from tests.ui.reactive import store
+from tests.ui.reactive.reactive_clear_button import ReactiveClearButton
 from tests.ui.reactive.reactive_counter import ReactiveCounter
-from tests.ui.reactive.reactive_clear_button import ReactiveClearButton  # noqa: F401
 
 
 def test_oob_swaps_invalidates_dirtied_before_loading():

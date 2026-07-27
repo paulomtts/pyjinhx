@@ -2,8 +2,7 @@ from pyjinhx.cache import LoadCache
 from pyjinhx.keys import reactive_key
 from pyjinhx.reactive import oob_swaps
 from pyjinhx.registry import Registry
-
-from tests.ui.reactive.counted_row import CountedRow, Keys  # noqa: F401
+from tests.ui.reactive.counted_row import CountedRow, Keys
 
 
 def _manifest():

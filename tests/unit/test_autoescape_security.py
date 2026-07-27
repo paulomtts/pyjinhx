@@ -35,7 +35,7 @@ def test_slot_string_renders_raw():
 
 
 def test_nested_component_renders_raw():
-    from pyjinhx.builtins import PJXCardBody, PJXBadge
+    from pyjinhx.builtins import PJXBadge, PJXCardBody
     html = str(PJXCardBody(id="c", content=PJXBadge(id="b", label="New")).render())
     assert "pjx-badge" in html and "&lt;span" not in html
 
@@ -51,6 +51,7 @@ def test_markup_value_on_scalar_field_is_still_escaped():
     so the safe marker is lost before the context builder runs.  Markup is NOT
     a working escape hatch for scalar fields; use Slot or |safe instead."""
     from markupsafe import Markup
+
     from pyjinhx.builtins import PJXCardHeader
     html = str(PJXCardHeader(id="c", title=Markup("<b>x</b>")).render())
     assert "<b>x</b>" not in html   # still escaped — Markup hatch does NOT work here

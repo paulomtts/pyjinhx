@@ -1,12 +1,18 @@
 """Tag children map into each component's children field (PJXTooltip uses ``content``)."""
 
+from typing import Annotated
+
 import pytest
 from jinja2 import Environment, FileSystemLoader
-from typing import Annotated
 
 from pyjinhx import BaseComponent, Children, Renderer, Slot
 from pyjinhx.base import PjxSlot
-from pyjinhx.builtins import PJXModal, PJXTooltip, PJXTooltipContent, PJXTooltipTrigger  # noqa: F401  (importing registers the tags)
+from pyjinhx.builtins import (  # noqa: F401  (importing registers the tags)
+    PJXModal,
+    PJXTooltip,
+    PJXTooltipContent,
+    PJXTooltipTrigger,
+)
 
 
 def test_tooltip_tag_children_map_to_content(tmp_path):

@@ -6,12 +6,19 @@ from functools import cached_property
 from typing import Annotated, Any, ClassVar, Optional, Union, get_args, get_origin
 
 from markupsafe import Markup
-from pydantic import AfterValidator, BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import (
+    AfterValidator,
+    BaseModel,
+    ConfigDict,
+    Field,
+    field_validator,
+    model_validator,
+)
 
+from .assets import RenderSession
 from .context import wrap_context_methods
 from .registry import Registry
 from .renderer import Renderer
-from .assets import RenderSession
 
 logger = logging.getLogger("pyjinhx")
 logger.setLevel(logging.WARNING)
@@ -440,7 +447,7 @@ class BaseComponent(BaseModel):
         else:
             context = {**base_context, **self.model_dump()}
 
-        for field_name in type(self).model_fields.keys():
+        for field_name in type(self).model_fields:
             field_value = getattr(self, field_name)
             context = self._update_context_(
                 context,

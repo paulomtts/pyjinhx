@@ -53,7 +53,7 @@ def test_class_template_auto_lookup_supports_jinja_extension():
         sys.modules["components.jinja_component"] = module
         spec.loader.exec_module(module)
 
-        component_class = getattr(module, "JinjaAutoLookupComponent")
+        component_class = module.JinjaAutoLookupComponent
         component = component_class(id="cmp-1", text="Hello")
         rendered = str(component.render())
         assert rendered == '<div id="cmp-1">Hello</div>'
@@ -165,7 +165,7 @@ def test_python_instantiated_component_finds_hyphenated_template():
         sys.modules["components.hyphen_component"] = module
         spec.loader.exec_module(module)
 
-        component_class = getattr(module, "HyphenTemplateComponent")
+        component_class = module.HyphenTemplateComponent
         component = component_class(id="htc-1", text="Hyphen works!")
         rendered = str(component.render())
         assert rendered == '<div id="htc-1">Hyphen works!</div>'
@@ -213,8 +213,8 @@ def test_nested_python_component_finds_hyphenated_template():
         sys.modules["components.nested_hyphen"] = module
         spec.loader.exec_module(module)
 
-        NestedHyphenChild = getattr(module, "NestedHyphenChild")
-        NestedHyphenParent = getattr(module, "NestedHyphenParent")
+        NestedHyphenChild = module.NestedHyphenChild
+        NestedHyphenParent = module.NestedHyphenParent
 
         child = NestedHyphenChild(id="child-1", label="I am the child")
         parent = NestedHyphenParent(id="parent-1", title="Parent", child=child)
