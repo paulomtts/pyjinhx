@@ -77,6 +77,12 @@ class RenderSession:
         reactive_mount_ids: data-pjx-ids assigned to reactive components
             auto-mounted by tag in this render pass, used to detect id
             collisions between mounts.
+        registry_defaults: Cache of registry instances (keyed by instance id)
+            already folded into render contexts during this session, so each
+            node only has to scan the registry entries added since the last
+            node rendered instead of rescanning it from scratch.
+        registry_scanned: Number of registry entries already folded into
+            ``registry_defaults``.
     """
 
     assets: list[CollectedAsset] = field(default_factory=list)
@@ -86,6 +92,8 @@ class RenderSession:
     runtime_injected: bool = False
     rendering: set[tuple[str, str]] = field(default_factory=set)
     reactive_mount_ids: set[str] = field(default_factory=set)
+    registry_defaults: dict[str, "BaseComponent"] = field(default_factory=dict)
+    registry_scanned: int = 0
 
     def manifest(self, *, resolver: AssetUrlResolver) -> AssetManifest:
         stylesheets: list[str] = []
