@@ -188,7 +188,7 @@ class Registry:
         *,
         load_context: object | None = None,
         client_backend: "ClientBackend | None" = None,
-    ) -> Generator[None, None, None]:
+    ) -> Generator[None]:
         """
         Context manager for request-scoped component instances.
 
@@ -204,8 +204,12 @@ class Registry:
         from contextlib import ExitStack
 
         from pyjinhx.assets import _runtime_injected
-        from pyjinhx.client import ClientBackend, ResponseDirectives, _response_directives
         from pyjinhx.cache import LoadCache
+        from pyjinhx.client import (
+            ClientBackend,
+            ResponseDirectives,
+            _response_directives,
+        )
         from pyjinhx.context import PjxContext
         from pyjinhx.dev import warn_mutations_without_render
         from pyjinhx.mutations import MutationTracker

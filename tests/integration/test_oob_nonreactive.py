@@ -11,8 +11,8 @@ from pyjinhx.mutations import MutationTracker
 from pyjinhx.reactive import ReactiveResponse
 from pyjinhx.renderer import Renderer
 from tests.ui.reactive import store
-from tests.ui.reactive.reactive_counter import ReactiveCounter  # noqa: F401 (registers)
-from tests.ui.unified_component import UnifiedComponent  # noqa: F401 (registers)
+from tests.ui.reactive.reactive_counter import ReactiveCounter
+from tests.ui.unified_component import UnifiedComponent
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 

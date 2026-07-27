@@ -45,7 +45,7 @@ _STALE_DEF_HEADER_RE = re.compile(r"\A\s*\{#\s*def\s", re.DOTALL)
 def get_loader_root(environment: Environment) -> str:
     loader = environment.loader
     if not isinstance(loader, FileSystemLoader):
-        raise ValueError("Jinja2 loader must be a FileSystemLoader")
+        raise ValueError("Jinja2 loader must be a FileSystemLoader")  # noqa: TRY004 (public API, documented ValueError)
     return Finder.get_loader_root(loader)
 
 
@@ -167,7 +167,7 @@ def reactive_root_attrs(
     return attrs
 
 
-def _warn_if_stale_def_header(component: "BaseComponent", template: Template) -> None:
+def _warn_if_stale_def_header(component: BaseComponent, template: Template) -> None:
     """Emit a one-time warning when a hand-written class has a {#def#} header in its template.
 
     The header is silently ignored by the engine (the class's declared fields take over),
@@ -226,7 +226,7 @@ class Renderer:
     _default_js_mode: ClassVar[AssetMode] = AssetMode.INLINE
     _default_css_mode: ClassVar[AssetMode] = AssetMode.INLINE
     _default_renderers: ClassVar[
-        dict[tuple[int, bool, AssetMode, AssetMode], "Renderer"]
+        dict[tuple[int, bool, AssetMode, AssetMode], Renderer]
     ] = {}
 
     @classmethod
@@ -272,7 +272,7 @@ class Renderer:
         auto_id: bool = True,
         js_mode: AssetMode | None = None,
         css_mode: AssetMode | None = None,
-    ) -> "Renderer":
+    ) -> Renderer:
         environment = cls.get_default_environment()
         effective_js_mode = js_mode if js_mode is not None else cls._default_js_mode
         effective_css_mode = css_mode if css_mode is not None else cls._default_css_mode

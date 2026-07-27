@@ -3,12 +3,12 @@ from typing import Annotated
 
 from pyjinhx import MutationKey, PjxKey, ReactiveComponent
 from pyjinhx.cache import LoadCache
-from pyjinhx.reactive import oob_swaps
 from pyjinhx.keys import (
     coerce_load_key_str,
     coerce_reactive_key,
     coerce_reactive_keys,
 )
+from pyjinhx.reactive import oob_swaps
 
 
 class LegacyKey(str, Enum):

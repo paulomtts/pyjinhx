@@ -81,8 +81,10 @@ def notification():
             corner="top-right",
             timeout=4000,
         ).render(),
-        '<button class="pjx-demo-btn" onclick="pjx.notification.show(\'demo-notification\')">'
-        "Show notification</button>",
+        (
+            '<button class="pjx-demo-btn" onclick="pjx.notification.show(\'demo-notification\')">'
+            "Show notification</button>"
+        ),
     ]
 
 

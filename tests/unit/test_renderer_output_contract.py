@@ -38,7 +38,7 @@ def test_render_returns_markup():
         sys.modules["output_probe"] = module
         spec.loader.exec_module(module)
 
-        OutputProbe = getattr(module, "OutputProbe")
+        OutputProbe = module.OutputProbe
         component = OutputProbe(id="out-1", body="hello")
         render_result = component.render()
         html_result = component.__html__()
@@ -85,7 +85,7 @@ def test_renderer_escapes_scalar_values_by_default():
         sys.modules["output_probe2"] = module
         spec.loader.exec_module(module)
 
-        OutputProbe2 = getattr(module, "OutputProbe2")
+        OutputProbe2 = module.OutputProbe2
         component = OutputProbe2(id="out-2", body="<em>hi</em>")
         rendered = str(component.render())
 
@@ -130,7 +130,7 @@ def test_renderer_renders_slot_value_raw():
         sys.modules["output_probe3"] = module
         spec.loader.exec_module(module)
 
-        OutputProbe3 = getattr(module, "OutputProbe3")
+        OutputProbe3 = module.OutputProbe3
         component = OutputProbe3(id="out-3", body="<em>hi</em>")
         rendered = str(component.render())
 

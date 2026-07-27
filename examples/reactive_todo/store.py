@@ -10,7 +10,7 @@ from pyjinhx import mutates
 from .keys import Keys
 
 _ids = count(1)
-_todos: dict[int, "Todo"] = {}
+_todos: dict[int, Todo] = {}
 
 
 @dataclass

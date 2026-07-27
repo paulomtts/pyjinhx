@@ -2,7 +2,7 @@ import inspect
 import os
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from functools import lru_cache
+from functools import cache
 
 from jinja2 import FileSystemLoader
 from markupsafe import Markup
@@ -92,7 +92,7 @@ class Finder:
         return None
 
     @staticmethod
-    @lru_cache(maxsize=None)
+    @cache
     def get_class_directory(component_class: type) -> str:
         """
         Return the directory containing the given class's source file.

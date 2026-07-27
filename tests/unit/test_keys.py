@@ -1,4 +1,9 @@
-from pyjinhx.keys import DynamicReactiveKey, MutationKey, coerce_reactive_key, reactive_key
+from pyjinhx.keys import (
+    DynamicReactiveKey,
+    MutationKey,
+    coerce_reactive_key,
+    reactive_key,
+)
 
 
 class _Keys(MutationKey):

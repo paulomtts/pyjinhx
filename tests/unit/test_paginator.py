@@ -30,7 +30,7 @@ URL = "/u?page={page}"
 
 
 def _p(**kw):
-    base = dict(url=URL, prev_next=False, first_last=False)
+    base = {"url": URL, "prev_next": False, "first_last": False}
     base.update(kw)
     return PJXPaginator(**base)
 
@@ -102,11 +102,11 @@ def test_url_without_placeholder_raises():
         PJXPaginator(url="/users", page=1, total_pages=3)
 
 
-from pyjinhx.builtins import PJXPaginator as RegisteredPaginator  # noqa: E402
+from pyjinhx.builtins import PJXPaginator as RegisteredPaginator
 
 
 def _render(**kw):
-    base = dict(url=URL, page=3, total_pages=10)
+    base = {"url": URL, "page": 3, "total_pages": 10}
     base.update(kw)
     return str(PJXPaginator(**base).render())
 

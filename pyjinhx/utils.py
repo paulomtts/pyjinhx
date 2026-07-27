@@ -1,6 +1,6 @@
 import os
 import re
-from functools import lru_cache
+from functools import cache, lru_cache
 
 
 def pascal_case_to_snake_case(name: str) -> str:
@@ -33,7 +33,7 @@ def pascal_case_to_kebab_case(name: str) -> str:
     return pascal_case_to_snake_case(name).replace("_", "-")
 
 
-@lru_cache(maxsize=None)
+@cache
 def component_resolution_classes(component_class: type) -> list[type]:
     """Concrete component classes of an MRO, nearest first.
 

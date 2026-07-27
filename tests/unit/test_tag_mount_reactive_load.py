@@ -1,6 +1,5 @@
 import os
 import tempfile
-
 from typing import Annotated
 
 from jinja2 import Environment, FileSystemLoader
@@ -73,8 +72,9 @@ def test_keyed_reactive_tag_loads_from_key_attr():
 
 
 def test_keyed_reactive_tag_missing_key_attr_raises():
-    from pyjinhx import PjxKey
     import pytest
+
+    from pyjinhx import PjxKey
 
     class WidgetCard(ReactiveComponent, react={Keys.SHELL}):
         widget_id: Annotated[str, PjxKey()]
@@ -86,9 +86,11 @@ def test_keyed_reactive_tag_missing_key_attr_raises():
     with tempfile.TemporaryDirectory() as temp_dir:
         with open(os.path.join(temp_dir, "widget_card.html"), "w") as f:
             f.write("<div id='{{ id }}'></div>")
-        with Registry.request_scope():
-            with pytest.raises(ValueError, match="instance-keyed"):
-                _renderer(temp_dir).render("<WidgetCard/>")
+        with (
+            Registry.request_scope(),
+            pytest.raises(ValueError, match="instance-keyed"),
+        ):
+            _renderer(temp_dir).render("<WidgetCard/>")
 
 
 def test_scalar_attr_overrides_load_result():
@@ -137,8 +139,9 @@ def test_children_override_loaded_target_field():
 
 def test_duplicate_keyed_mount_id_raises():
     """Two keyed mounts deriving the same id raise a clear collision error."""
-    from pyjinhx import PjxKey
     import pytest
+
+    from pyjinhx import PjxKey
 
     class RowCard(ReactiveComponent, react={Keys.SHELL}):
         row_id: Annotated[str, PjxKey()]
@@ -152,9 +155,11 @@ def test_duplicate_keyed_mount_id_raises():
             f.write("<div id='{{ id }}'></div>")
         with open(os.path.join(temp_dir, "page.html"), "w") as f:
             f.write('<div id="{{ id }}"><RowCard row_id="1"/><RowCard row_id="1"/></div>')
-        with Registry.request_scope():
-            with pytest.raises(ValueError, match="already used in this render"):
-                _renderer(temp_dir).render('<Page id="page"/>')
+        with (
+            Registry.request_scope(),
+            pytest.raises(ValueError, match="already used in this render"),
+        ):
+            _renderer(temp_dir).render('<Page id="page"/>')
 
 
 def test_distinct_keyed_mounts_coexist():

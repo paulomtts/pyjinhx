@@ -114,7 +114,7 @@ def test_inject_htmx_defaults_true():
 
 
 def test_configure_pyjinhx_toggles_inject_htmx():
-    import pyjinhx.assets as assets
+    from pyjinhx import assets
 
     configure_pyjinhx(inject_htmx=False)
     assert assets._inject_htmx is False

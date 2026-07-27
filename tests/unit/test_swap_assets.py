@@ -6,11 +6,10 @@ from jinja2 import Environment, FileSystemLoader
 
 from pyjinhx import MutationKey, ReactiveComponent
 from pyjinhx.assets import asset_token, should_emit_asset
-from pyjinhx.client import ClientBackend, LoadedAssets, PJX_ASSETS_HEADER
+from pyjinhx.client import PJX_ASSETS_HEADER, ClientBackend, LoadedAssets
 from pyjinhx.integrations.fastapi import FastAPIClientBackend
 from pyjinhx.reactive import oob_swaps
 from pyjinhx.renderer import Renderer
-
 
 # ---------------------------------------------------------------------------
 # Unit-level token + dedup tests (Step 2 / 4)
@@ -123,7 +122,7 @@ def _make_swap_widget_css_only(asset_env):
 
 def test_oob_swap_delivers_css_when_absent(asset_env):
     """#96 repro: CSS is delivered via OOB head injection when client hasn't loaded it."""
-    _cls, css_path, js_path = _make_swap_widget(asset_env)
+    _cls, css_path, _js_path = _make_swap_widget(asset_env)
 
     manifest = [{"id": "swap-widget", "type": "SwapWidget", "hash": "stale"}]
     backend = _make_backend(manifest)  # no X-PJX-Assets → nothing loaded
@@ -139,7 +138,7 @@ def test_oob_swap_delivers_css_when_absent(asset_env):
 
 def test_oob_swap_delivers_js_when_absent(asset_env):
     """JS is delivered via OOB head injection when client hasn't loaded it."""
-    _cls, css_path, js_path = _make_swap_widget(asset_env)
+    _cls, _css_path, js_path = _make_swap_widget(asset_env)
 
     manifest = [{"id": "swap-widget", "type": "SwapWidget", "hash": "stale"}]
     backend = _make_backend(manifest)
@@ -188,7 +187,7 @@ def test_oob_swap_emits_nothing_when_all_loaded(asset_env):
 
 def test_two_regions_sharing_asset_emit_it_once(asset_env):
     """Two swapped regions that share a CSS asset emit that asset exactly once."""
-    _cls, css_path = _make_swap_widget_css_only(asset_env)
+    _cls, _css_path = _make_swap_widget_css_only(asset_env)
 
     manifest = [
         {"id": "swap-widget-css-a", "type": "SwapWidgetCss", "hash": "stale-a"},

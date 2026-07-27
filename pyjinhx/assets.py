@@ -92,7 +92,7 @@ class RenderSession:
     runtime_injected: bool = False
     rendering: set[tuple[str, str]] = field(default_factory=set)
     reactive_mount_ids: set[str] = field(default_factory=set)
-    registry_defaults: dict[str, "BaseComponent"] = field(default_factory=dict)
+    registry_defaults: dict[str, BaseComponent] = field(default_factory=dict)
     registry_scanned: int = 0
 
     def manifest(self, *, resolver: AssetUrlResolver) -> AssetManifest:

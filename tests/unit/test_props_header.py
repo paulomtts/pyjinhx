@@ -1,4 +1,4 @@
-from typing import Any, Optional
+from typing import Any
 
 import pytest
 from pydantic import ValidationError
@@ -25,9 +25,7 @@ def test_untyped_prop_is_any():
 
 
 def test_optional_via_union():
-    assert parse_props_header("{#def note: str | None = None #}") == [
-        ("note", Optional[str], None)
-    ]
+    assert parse_props_header("{#def note: str | None = None #}") == [("note", str | None, None)]
 
 
 def test_multiline_header():

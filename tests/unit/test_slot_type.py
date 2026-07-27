@@ -70,6 +70,7 @@ def test_pjxslot_children_flag_defaults_false_and_opts_in():
 
 def test_children_alias_carries_flagged_marker():
     from typing import get_args
+
     from pyjinhx import Children
 
     # Children == Annotated[str | BaseComponent, PjxSlot(children=True)]

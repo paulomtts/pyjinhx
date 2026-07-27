@@ -29,8 +29,8 @@ pytest.importorskip("playwright")
 
 # Module scope so FastAPI resolves the `request: Request` annotation under
 # `from __future__ import annotations`.
-from fastapi import FastAPI  # noqa: E402
-from playwright.sync_api import Page, expect  # noqa: E402
+from fastapi import FastAPI
+from playwright.sync_api import Page, expect
 
 pytestmark = [pytest.mark.pjx_runtime, pytest.mark.reactivity]
 

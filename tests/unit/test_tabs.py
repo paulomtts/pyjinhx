@@ -12,7 +12,7 @@ def _env(tmp_path):
     Renderer.set_default_environment(str(tmp_path))
 
 
-from pathlib import Path  # noqa: E402
+from pathlib import Path
 
 _UI = Path(__file__).resolve().parents[2] / "pyjinhx" / "builtins" / "ui"
 _TAB_CSS = {
@@ -105,7 +105,7 @@ def test_tab_panel_hidden_region():
 def test_tab_css_strip_look_is_scoped_to_the_tablist():
     css = _TAB_CSS["tab"].read_text()
     # the base .pjx-tab rule must NOT carry the strip underline track...
-    base = re.search(r"^\.pjx-tab \{(.*?)\}", css, re.S | re.M)
+    base = re.search(r"^\.pjx-tab \{(.*?)\}", css, re.DOTALL | re.MULTILINE)
     assert base and "border-bottom" not in base.group(1), "base .pjx-tab must be neutral"
     # ...the underline lives under the tablist scope only
     assert ".pjx-tab-group__list .pjx-tab" in css
