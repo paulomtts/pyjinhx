@@ -188,6 +188,43 @@ def test_autodiscovered_class_collects_js():
         assert "console.log('auto-js loaded');" in rendered
 
 
+def test_classless_no_header_tag_reads_template_once():
+    """A classless tag with no {#def#} header re-reads its template only once.
+
+    Regression test for #225: without caching, every render of a headerless
+    classless tag reran ComponentAutodiscover.try_for_tag and re-opened the
+    template file, since build_component_model keeps returning None.
+    """
+    Registry.clear_instances()
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        template_path = os.path.join(temp_dir, "no_header.html")
+        with open(template_path, "w") as f:
+            f.write("<p>{{ label }}</p>\n")
+
+        env = Environment(loader=FileSystemLoader(temp_dir))
+        renderer = Renderer(env)
+
+        real_open = open
+        open_calls = []
+
+        def counting_open(path, *args, **kwargs):
+            if os.path.abspath(str(path)) == os.path.abspath(template_path):
+                open_calls.append(path)
+            return real_open(path, *args, **kwargs)
+
+        import pyjinhx.tags as tags_module
+
+        with pytest.MonkeyPatch.context() as mp:
+            mp.setattr(tags_module, "open", counting_open, raising=False)
+            renderer.render('<NoHeader label="One"/>')
+            renderer.render('<NoHeader label="Two"/>')
+            renderer.render('<NoHeader label="Three"/>')
+
+        assert len(open_calls) == 1
+        assert "NoHeader" in tags_module._no_component_model_tags
+
+
 def test_autodiscovered_class_collects_css():
     """After auto-import, the component's co-located CSS is collected normally."""
     Registry.clear_instances()
