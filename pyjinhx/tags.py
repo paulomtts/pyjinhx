@@ -149,6 +149,7 @@ class ComponentAutodiscover:
         """Drop the deduplication sets. Mainly for tests."""
         cls._imported_files.clear()
         _warned_unregistered_tags.clear()
+        _no_component_model_tags.clear()
 
     @classmethod
     def import_from_file(cls, filepath: str) -> None:
@@ -206,6 +207,11 @@ if TYPE_CHECKING:
 
 
 _warned_unregistered_tags: set[str] = set()
+
+# Tags confirmed to have no {#def#} header (and thus no model to build). Without
+# this, a classless tag with no header reruns autodiscovery + a full template
+# read on every occurrence, every render, forever.
+_no_component_model_tags: set[str] = set()
 
 # Kept in sync with pyjinhx.builtins.__all__ by a test. Listed here instead of
 # imported so the error path doesn't register every builtin as a side effect.
@@ -400,13 +406,15 @@ def render_tag_node(
     # Resolve the class up front so we can tell a reactive tag from a plain one
     # before assigning its id. Autodiscovery and {#def#} model-building are
     # idempotent and deduplicated, so running them here is safe.
-    if not Registry.has_class(node.name):
+    if not Registry.has_class(node.name) and node.name not in _no_component_model_tags:
         ComponentAutodiscover.try_for_tag(node.name, template_path)
-    if not Registry.has_class(node.name) and template_path is not None:
-        from .props_header import build_component_model
+        if not Registry.has_class(node.name) and template_path is not None:
+            from .props_header import build_component_model
 
-        with open(template_path, encoding="utf-8") as template_file:
-            build_component_model(node.name, template_file.read())
+            with open(template_path, encoding="utf-8") as template_file:
+                built = build_component_model(node.name, template_file.read())
+            if built is None:
+                _no_component_model_tags.add(node.name)
 
     component_class = Registry.get_class(node.name)
 
