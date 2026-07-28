@@ -1,5 +1,30 @@
 # Changelog
 
+## 0.36.2 — Render pipeline performance sweep (2026-07-28)
+
+### Fixed
+- `expand_custom_tags` no longer re-tokenizes already-fully-rendered descendant HTML with
+  `html.parser` on every render — the dominant cost in a CPU-pinning report from a consuming
+  app (a table with many nested badge/icon/popover custom tags per row). Already-resolved
+  slot/content values are opacified (placeholder-substituted) in the rendered output, after
+  the template renders with its real, unmodified context — so a template that inspects a slot
+  value (`{{ content|length }}`, `in`, `|striptags`, ...) still observes real data, not a
+  placeholder token. Benchmarked ~1.5-1.6x faster on deeply nested component trees, with no
+  regression on shallow/wide trees (#221).
+- `build_render_context` no longer rescans the whole component instance registry on every
+  single render — the scan is now incremental per render session instead of O(page component
+  count) per node (#223).
+- `_warn_if_stale_def_header` no longer re-reads a component's template file from disk on
+  every render once it's confirmed clean — cached per component class (#224).
+- Classless/no-header custom tags no longer re-run autodiscovery and re-read their template
+  file from disk on every occurrence, every render — cached per tag name (#225).
+- `read_vendored_htmx()` is now `@lru_cache`'d, matching its sibling `read_client_runtime()`
+  (#226).
+- `Finder.get_class_directory`/component-resolution-class lookups are now memoized per class
+  instead of recomputed on every render (#227).
+- `ReactiveComponent.state_hash()` is no longer recomputed redundantly during an OOB dirty-check
+  swap that already computed it moments earlier (#228).
+
 ## 0.36.1 — Drawer close animation fix (2026-07-19)
 
 ### Fixed
