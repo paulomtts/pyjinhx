@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.36.3 — Builtin component template caching (2026-07-27)
+
+### Fixed
+- Builtin components (all `PJX*` classes under `pyjinhx.builtins`, e.g. icon, badge, button,
+  popover, table) were recompiled (Jinja lex/parse/codegen) from their template file on every
+  single render, since their template files live outside the app's loader root and always
+  missed the normal `environment.get_template()` cache. Now cached per builtin template file
+  after the first render, ~50% render CPU reduction on component-dense pages (#237).
+
 ## 0.36.2 — Render pipeline performance sweep (2026-07-28)
 
 ### Fixed

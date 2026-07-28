@@ -112,9 +112,14 @@ def load_template_for_component(
             component_dir = Finder.get_class_directory(klass)
             for filename in tag_name_to_template_filenames(klass.__name__):
                 candidate_path = os.path.join(component_dir, filename)
+                cached_template = renderer._builtin_template_cache.get(candidate_path)
+                if cached_template is not None:
+                    return cached_template
                 if os.path.isfile(candidate_path):
                     with open(candidate_path, encoding="utf-8") as template_file:
-                        return environment.from_string(template_file.read())
+                        template = environment.from_string(template_file.read())
+                    renderer._builtin_template_cache[candidate_path] = template
+                    return template
 
     raise TemplateNotFound(", ".join(attempted) if attempted else "unknown")
 
@@ -431,6 +436,7 @@ class Renderer:
         self._js_mode = js_mode if js_mode is not None else Renderer._default_js_mode
         self._css_mode = css_mode if css_mode is not None else Renderer._default_css_mode
         self._template_finder_cache: dict[str, Finder] = {}
+        self._builtin_template_cache: dict[str, Template] = {}
 
     @property
     def environment(self) -> Environment:
