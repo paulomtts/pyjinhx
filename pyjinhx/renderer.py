@@ -93,7 +93,12 @@ def load_template_for_component(
         relative_path = os.path.relpath(found_path, loader_root)
         return environment.get_template(relative_path)
 
-    resolution_classes = component_resolution_classes(type(component))
+    component_type = type(component)
+    cached_relative_path = renderer._template_path_cache.get(component_type)
+    if cached_relative_path is not None:
+        return environment.get_template(cached_relative_path)
+
+    resolution_classes = component_resolution_classes(component_type)
     if not resolution_classes:
         raise FileNotFoundError(
             "No template found. Use a BaseComponent subclass with an adjacent template file, "
@@ -111,9 +116,12 @@ def load_template_for_component(
         attempted.extend(relative_template_paths)
         for relative_template_path in relative_template_paths:
             try:
-                return environment.get_template(relative_template_path)
+                template = environment.get_template(relative_template_path)
             except TemplateNotFound:
                 continue
+            with renderer._cache_lock:
+                renderer._template_path_cache[component_type] = relative_template_path
+            return template
         if klass.__module__.startswith("pyjinhx.builtins"):
             component_dir = Finder.get_class_directory(klass)
             for filename in tag_name_to_template_filenames(klass.__name__):
@@ -446,6 +454,7 @@ class Renderer:
         self._css_mode = css_mode if css_mode is not None else Renderer._default_css_mode
         self._template_finder_cache: dict[str, Finder] = {}
         self._builtin_template_cache: dict[str, Template] = {}
+        self._template_path_cache: dict[type, str] = {}
         self._cache_lock = threading.Lock()
 
     @property
