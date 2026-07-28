@@ -8,6 +8,8 @@ from typing import TYPE_CHECKING, Any, ClassVar
 
 from jinja2 import Environment, FileSystemLoader, Template
 from jinja2.exceptions import TemplateNotFound
+from jinja2.runtime import Context
+from jinja2.utils import missing
 from markupsafe import Markup
 
 from .assets import (
@@ -142,9 +144,79 @@ def load_template_for_component(
     raise TemplateNotFound(", ".join(attempted) if attempted else "unknown")
 
 
+class _PjxContext(Context):
+    """Jinja context that resolves an unknown name against the registry peers.
+
+    Registry instances used to be merged into every component's render context
+    by id (``{**session.registry_defaults, **context}``), then copied again by
+    Jinja's ``new_context`` — O(registered instances) per node, O(N^2) per page
+    (#240). Templates only ever *look up* peers by name, so the lookup happens
+    here instead: one dict ``get`` on a genuine miss, no copying and no
+    iteration.
+
+    The handles this needs (``renderer``/``session``/the referencing
+    component's context) are plain instance attributes, set by
+    ``Renderer.render_component_with_context``, deliberately *not* context
+    entries: anything reachable from the render-context dict gets walked by
+    ``BaseComponent._build_template_context``, which must never see the live,
+    still-growing ``registry_defaults``.
+
+    Explicit context still wins — this only fires after normal resolution
+    misses, matching the old ``{**defaults, **context}`` precedence. Hits are
+    wrapped in ``LazyNestedComponentWrapper`` exactly as the old
+    undeclared-fields loop in ``_build_template_context`` did, so
+    ``{{ peer }}``, ``{{ peer.html }}`` and ``{{ peer.props.field }}`` behave
+    identically and peers still render only when referenced (#67).
+    """
+
+    _pjx_renderer: Renderer | None = None
+    _pjx_session: RenderSession | None = None
+    _pjx_own_context: dict[str, Any] | None = None
+
+    def resolve_or_missing(self, key: str) -> Any:
+        value = super().resolve_or_missing(key)
+        session = self._pjx_session
+        if value is not missing or session is None:
+            return value
+
+        instance = session.registry_defaults.get(key)
+        if instance is None:
+            return missing
+
+        from .base import LazyNestedComponentWrapper
+
+        peer = LazyNestedComponentWrapper(
+            instance,
+            self._pjx_own_context or {},
+            renderer=self._pjx_renderer or Renderer.get_default_renderer(),
+            session=session,
+        )
+        # Remember it so `{{ peer }}` and `{{ peer.html }}` in one template
+        # share a single deferred render, like the dict entry the old
+        # python-level merge left behind.
+        self.vars[key] = peer
+        return peer
+
+    def derived(self, locals: dict[str, Any] | None = None) -> Context:
+        # Jinja builds derived (loop/block-scoped) contexts through the plain
+        # constructor, so carry the peer-resolution handles across by hand.
+        context = super().derived(locals)
+        if isinstance(context, _PjxContext):
+            context._pjx_renderer = self._pjx_renderer
+            context._pjx_session = self._pjx_session
+            context._pjx_own_context = self._pjx_own_context
+        return context
+
+
 def build_render_context(
     context: dict[str, Any], session: RenderSession
 ) -> dict[str, Any]:
+    """Fold registry instances registered since the last node into the
+    session's peer cache and return the node's own render context.
+
+    The peers themselves are deliberately NOT merged into the returned dict —
+    ``_PjxContext`` resolves them lazily by name at the Jinja layer instead.
+    """
     ordered_instances = Registry.get_instances_in_order()
     if len(ordered_instances) != session.registry_scanned:
         # `ordered_instances` only ever grows within a render pass, so the
@@ -154,7 +226,7 @@ def build_render_context(
             session.registry_defaults.setdefault(instance.id, instance)
         session.registry_scanned = len(ordered_instances)
 
-    return {**session.registry_defaults, **context}
+    return {**context}
 
 
 def reactive_root_attrs(
@@ -256,13 +328,10 @@ def _collect_opacifiable_slot_values(context: dict[str, Any]) -> list[str]:
     meaningful substring match anyway, and excluding it keeps this function's
     contract simple (no candidate is ever falsy).
 
-    Takes the component's OWN ``context`` (its field values, before
-    ``build_render_context`` merges in ``session.registry_defaults``) —
-    never the merged ``render_context``. Registry-injected instances are
-    always ``BaseComponent`` objects, never ``Markup``, so they can never be
-    a candidate; walking them would just re-scan an ever-growing dict on
-    every render for no benefit (the exact registry-rescan cost
-    ``build_render_context``'s own incremental caching exists to avoid).
+    Takes the component's OWN ``context`` (its field values). Registry peers
+    never appear here — they are resolved lazily by name at the Jinja layer
+    (``_PjxContext``) and are always ``BaseComponent`` objects, never
+    ``Markup``, so they could never be a candidate anyway.
 
     This runs against the values a template *could* embed — not against the
     rendered output itself; matching against the actual output is
@@ -450,6 +519,10 @@ class Renderer:
         css_mode: AssetMode | None = None,
     ) -> None:
         self._environment = environment
+        # Deliberate (idempotent) mutation of a possibly caller-supplied
+        # environment: it only changes what happens when a name misses, and
+        # only to look the name up among the render session's registry peers.
+        environment.context_class = _PjxContext
         self._auto_id = auto_id
         self._js_mode = js_mode if js_mode is not None else Renderer._default_js_mode
         self._css_mode = css_mode if css_mode is not None else Renderer._default_css_mode
@@ -491,16 +564,21 @@ class Renderer:
         _warn_if_stale_def_header(component, template)
 
         render_context = build_render_context(context, session)
-        rendered_markup = template.render(render_context)
-        # Walk `context` (this component's own field values), not the merged
-        # `render_context` -- the merge folds in `session.registry_defaults`,
-        # which only ever holds BaseComponent instances (never Markup, so
-        # never a candidate) and grows across a render pass. Walking the
-        # merged dict here would re-scan that whole, ever-growing registry
-        # snapshot on every single render -- reintroducing the O(N^2)
-        # registry-rescan cost `build_render_context`'s own incremental
-        # caching (session.registry_scanned/registry_defaults) exists to
-        # eliminate.
+        # `template.render(dict)` inlined so the registry-peer handles can ride
+        # on the Context object itself rather than in the context dict (see
+        # `_PjxContext`).
+        jinja_context = template.new_context(render_context)
+        if isinstance(jinja_context, _PjxContext):
+            jinja_context._pjx_renderer = self
+            jinja_context._pjx_session = session
+            jinja_context._pjx_own_context = render_context
+        environment = template.environment
+        try:
+            rendered_markup = environment.concat(  # type: ignore[attr-defined]
+                template.root_render_func(jinja_context)  # type: ignore[attr-defined]
+            )
+        except Exception:
+            environment.handle_exception()
         candidates = _collect_opacifiable_slot_values(context)
         safe_markup, placeholders = _opacify_rendered_markup(rendered_markup, candidates)
         expanded_markup = str(

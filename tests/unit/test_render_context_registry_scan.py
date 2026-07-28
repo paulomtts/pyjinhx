@@ -6,6 +6,10 @@ node -- O(N^2) total. The fix caches the registry-derived defaults on the
 render session and only folds in instances registered since the last node
 rendered, so the total work across a whole render pass is O(N) instead of
 O(N^2).
+
+As of #240 the cache is no longer materialized into the returned context at
+all -- ``_PjxContext`` (renderer.py) resolves peers by name straight out of
+``session.registry_defaults`` -- so these tests assert on the cache itself.
 """
 
 from pyjinhx import Registry
@@ -39,19 +43,21 @@ def test_build_render_context_contents_match_registry_and_context_wins():
 
     with Registry.request_scope():
         first = UnifiedComponent(id="peer-a", text="a")
-        render_context = build_render_context({}, session)
-        assert render_context["peer-a"] is first
+        build_render_context({}, session)
+        assert session.registry_defaults["peer-a"] is first
 
         second = UnifiedComponent(id="peer-b", text="b")
-        render_context = build_render_context({}, session)
-        assert render_context["peer-a"] is first
-        assert render_context["peer-b"] is second
+        build_render_context({}, session)
+        assert session.registry_defaults["peer-a"] is first
+        assert session.registry_defaults["peer-b"] is second
 
-        # Per-node context values still take priority over registry peers.
+        # Peers stay out of the returned context entirely -- they are resolved
+        # lazily by name, and a per-node value with the same name still wins
+        # because the lazy lookup only runs after normal resolution misses.
         override = UnifiedComponent(id="override-noop", text="override")
         render_context = build_render_context({"peer-b": "explicit"}, session)
-        assert render_context["peer-b"] == "explicit"
-        assert render_context["override-noop"] is override
+        assert render_context == {"peer-b": "explicit"}
+        assert session.registry_defaults["override-noop"] is override
 
 
 def test_build_render_context_repeat_calls_dont_rescan_unchanged_registry():
