@@ -14,11 +14,11 @@ import sys
 import tempfile
 import time
 
-logging.getLogger("pyjinhx").setLevel(logging.ERROR)
-
 from pyjinhx import Renderer
 from pyjinhx.registry import Registry
 import pyjinhx.builtins.ui  # noqa: F401 — registers builtins
+
+logging.getLogger("pyjinhx").setLevel(logging.ERROR)
 
 ROW_COUNTS = (50, 100, 200, 438)
 
