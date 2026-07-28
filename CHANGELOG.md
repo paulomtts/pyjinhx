@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased — Render-scaling thread safety and perf sweep (#240)
+## 0.36.4 — Render-scaling thread safety and perf sweep (2026-07-28)
 
 ### Fixed
 - `Finder`'s per-directory index build and the renderer-level template/registry caches could
