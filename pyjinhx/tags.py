@@ -541,6 +541,20 @@ def render_tag_node(
     )
 
 
+def contains_custom_tag(markup: str) -> bool:
+    """Cheap check: does ``markup`` contain any PascalCase-tag-looking
+    substring? Used both to bail out of a full ``HTMLParser`` pass entirely
+    (no tags anywhere) and, at slot-value granularity, to decide which
+    already-rendered slot values are safe to opacify against the rendered
+    output (see ``renderer._collect_opacifiable_slot_values``)."""
+    if "<" not in markup:
+        return False
+    for match in re.finditer(r"<\s*([A-Za-z][A-Za-z0-9]*)", markup):
+        if RE_PASCAL_CASE_TAG_NAME.match(match.group(1)):
+            return True
+    return False
+
+
 def expand_custom_tags(
     renderer: Renderer,
     markup: str,
@@ -550,18 +564,10 @@ def expand_custom_tags(
     emit_assets: bool,
 ) -> str:
     """Expand PascalCase custom tags found inside ``markup``."""
-    if "<" not in markup:
+    if not contains_custom_tag(markup):
         return markup
 
     parser = Parser()
-    has_custom_tags = False
-    for match in re.finditer(r"<\s*([A-Za-z][A-Za-z0-9]*)", markup):
-        if parser._is_custom_component(match.group(1)):
-            has_custom_tags = True
-            break
-    if not has_custom_tags:
-        return markup
-
     parser.feed(markup)
     parser.close()
     return "".join(

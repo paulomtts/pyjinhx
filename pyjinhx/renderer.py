@@ -18,7 +18,7 @@ from .assets import (
 )
 from .finder import Finder
 from .registry import Registry
-from .tags import Parser, expand_custom_tags, render_tag_node
+from .tags import Parser, contains_custom_tag, expand_custom_tags, render_tag_node
 from .utils import (
     component_resolution_classes,
     detect_root_directory,
@@ -210,6 +210,131 @@ def _warn_if_stale_def_header(component: BaseComponent, template: Template) -> N
     )
 
 
+# Private-use-area marker: vanishingly unlikely to appear in real HTML/text,
+# never matches the PascalCase tag regex (no literal "<"), safe inside both a
+# text node and an attribute value. Written as an explicit escape (not a
+# literal glyph) so it can't be silently stripped by an editor/copy-paste
+# pipeline. If adversarial or round-tripped content already contains this
+# marker, `_opacify_rendered_markup` detects that and bails out (opacifying
+# nothing) rather than risk restoring a slot value into the wrong place.
+_SLOT_PLACEHOLDER_CHAR = "\ue000"
+
+
+def _collect_opacifiable_slot_values(context: dict[str, Any]) -> list[str]:
+    """Collect already-fully-expanded ``Markup`` slot values that are safe to
+    opacify in the *rendered output* (see ``_opacify_rendered_markup``).
+
+    Mirrors the shape ``base._wrap_slot_value`` produces (a scalar ``Markup``,
+    or a ``list``/``dict`` of ``Markup``). A value qualifies only when it
+    contains zero PascalCase-tag-looking substrings — a value containing
+    literal tag text (e.g. ``Card(content="<Icon/>")``) must still go through
+    the full ``expand_custom_tags`` scan, so it's never a candidate here. An
+    empty ``Markup("")`` is also excluded — it can never appear as a
+    meaningful substring match anyway, and excluding it keeps this function's
+    contract simple (no candidate is ever falsy).
+
+    Takes the component's OWN ``context`` (its field values, before
+    ``build_render_context`` merges in ``session.registry_defaults``) —
+    never the merged ``render_context``. Registry-injected instances are
+    always ``BaseComponent`` objects, never ``Markup``, so they can never be
+    a candidate; walking them would just re-scan an ever-growing dict on
+    every render for no benefit (the exact registry-rescan cost
+    ``build_render_context``'s own incremental caching exists to avoid).
+
+    This runs against the values a template *could* embed — not against the
+    rendered output itself; matching against the actual output is
+    ``_opacify_rendered_markup``'s job, and its two-step split (collect
+    candidates from context, then search-and-replace against the real
+    rendered string) is what lets a template inspect (``|length``, ``in``,
+    ``|striptags``, slicing, ...) a slot value with its real content during
+    ``template.render()`` — the substitution never touches the context, only
+    the string handed to ``expand_custom_tags`` afterward, and only where the
+    value was actually emitted unchanged.
+
+    This closes the gap for a component's own direct emit-and-inspect of its
+    own slot value. It does NOT close it for a value passed further into a
+    nested custom tag's own template: if this component emits the value
+    inside another PascalCase tag (e.g. ``<Wrapper>{{ content }}</Wrapper>``),
+    the child (``Wrapper``) receives the placeholder token — not the real
+    HTML — as its own slot field's rendered text, so an inspection inside
+    *its* template still sees the token. That narrower case is unaffected by
+    this function; see ``render_component_with_context``, where the
+    substitution and its restoration both happen at the level of the
+    component whose context originally held the value.
+    """
+    candidates: list[str] = []
+    visited_containers: set[int] = set()
+
+    def visit(value: Any) -> None:
+        if isinstance(value, Markup):
+            if value and not contains_custom_tag(value):
+                candidates.append(str(value))
+        elif isinstance(value, (list, dict)):
+            if id(value) in visited_containers:
+                return
+            visited_containers.add(id(value))
+            if isinstance(value, list):
+                for item in value:
+                    visit(item)
+            else:
+                for item in value.values():
+                    visit(item)
+
+    for value in context.values():
+        visit(value)
+    return candidates
+
+
+def _opacify_rendered_markup(
+    markup: str, candidates: list[str]
+) -> tuple[str, dict[str, str]]:
+    """Replace verbatim occurrences of already-safe candidate values in
+    ``markup`` with short opaque placeholder tokens, so the following
+    ``expand_custom_tags`` call doesn't need to re-tokenize them with
+    ``html.parser`` just because some other part of ``markup`` still has a
+    new tag to expand.
+
+    A candidate that isn't found verbatim in ``markup`` (because the
+    template transformed it — ``|striptags``, concatenation, slicing, ...  —
+    before embedding it) is simply skipped: nothing to opacify there, and
+    ``expand_custom_tags`` scans that portion in full, exactly as it would
+    without this optimization. This is what makes output-substitution safe
+    for templates that inspect slot values, unlike substituting into the
+    render context before ``template.render()`` runs.
+
+    Longest candidates are tried first, so a short candidate that happens to
+    be a substring of a longer one never partially corrupts the longer
+    match. Tokens are call-local: generated and restored within one
+    ``render_component_with_context`` invocation, so no cross-level
+    bookkeeping or global uniqueness is needed.
+
+    Adversarial or round-tripped content can already contain the marker
+    character; opacifying on top of that would let the restore pass splice
+    an unrelated slot's HTML into that location. So if the marker is already
+    present anywhere in ``markup``, this bails out entirely -- returning the
+    markup unchanged and no placeholders -- rather than risk that.
+    """
+    # Adversarial or round-tripped content can already contain the marker;
+    # opacifying then would restore a slot value into the wrong place.
+    if _SLOT_PLACEHOLDER_CHAR in markup:
+        return markup, {}
+
+    placeholders: dict[str, str] = {}
+    for value in sorted(set(candidates), key=len, reverse=True):
+        if value not in markup:
+            continue
+        token = f"{_SLOT_PLACEHOLDER_CHAR}{len(placeholders)}{_SLOT_PLACEHOLDER_CHAR}"
+        placeholders[token] = value
+        markup = markup.replace(value, token)
+    return markup, placeholders
+
+
+def _restore_opacified_slots(markup: str, placeholders: dict[str, str]) -> str:
+    for token, original in placeholders.items():
+        markup = markup.replace(token, original)
+    return markup
+
+
 class Renderer:
     """
     Shared rendering engine used by `BaseComponent` rendering and HTML-like custom-tag rendering.
@@ -341,13 +466,28 @@ class Renderer:
 
         render_context = build_render_context(context, session)
         rendered_markup = template.render(render_context)
-        rendered_markup = expand_custom_tags(
-            self,
-            rendered_markup,
-            base_context=render_context,
-            session=session,
-            emit_assets=emit_assets,
+        # Walk `context` (this component's own field values), not the merged
+        # `render_context` -- the merge folds in `session.registry_defaults`,
+        # which only ever holds BaseComponent instances (never Markup, so
+        # never a candidate) and grows across a render pass. Walking the
+        # merged dict here would re-scan that whole, ever-growing registry
+        # snapshot on every single render -- reintroducing the O(N^2)
+        # registry-rescan cost `build_render_context`'s own incremental
+        # caching (session.registry_scanned/registry_defaults) exists to
+        # eliminate.
+        candidates = _collect_opacifiable_slot_values(context)
+        safe_markup, placeholders = _opacify_rendered_markup(rendered_markup, candidates)
+        rendered_markup = str(
+            expand_custom_tags(
+                self,
+                safe_markup,
+                base_context=render_context,
+                session=session,
+                emit_assets=emit_assets,
+            )
         )
+        if placeholders:
+            rendered_markup = _restore_opacified_slots(rendered_markup, placeholders)
         from .base import collect_extra_attrs
         from .root_attrs import apply_root_attrs
 
