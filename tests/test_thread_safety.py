@@ -57,9 +57,9 @@ def test_renderer_concurrent_builtin_template_cache(tmp_path):
     so this test asserts the invariant rather than a crash: after N concurrent
     renders, rendering still works and the cache holds one entry per path.
     """
+    import pyjinhx.builtins.ui  # noqa: F401 — registers builtins
     from pyjinhx import Renderer
     from pyjinhx.registry import Registry
-    import pyjinhx.builtins.ui  # noqa: F401 — registers builtins
 
     Renderer.set_default_environment(str(tmp_path))
     renderer = Renderer.get_default_renderer()
