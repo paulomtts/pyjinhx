@@ -4,10 +4,13 @@ import logging
 import os
 import re
 import threading
+from contextvars import ContextVar
 from typing import TYPE_CHECKING, Any, ClassVar
 
 from jinja2 import Environment, FileSystemLoader, Template
 from jinja2.exceptions import TemplateNotFound
+from jinja2.runtime import Context
+from jinja2.utils import missing
 from markupsafe import Markup
 
 from .assets import (
@@ -19,6 +22,7 @@ from .assets import (
 )
 from .finder import Finder
 from .registry import Registry
+from .root_attrs import apply_root_attrs
 from .tags import Parser, contains_custom_tag, expand_custom_tags, render_tag_node
 from .utils import (
     component_resolution_classes,
@@ -93,7 +97,12 @@ def load_template_for_component(
         relative_path = os.path.relpath(found_path, loader_root)
         return environment.get_template(relative_path)
 
-    resolution_classes = component_resolution_classes(type(component))
+    component_type = type(component)
+    cached_relative_path = renderer._template_path_cache.get(component_type)
+    if cached_relative_path is not None:
+        return environment.get_template(cached_relative_path)
+
+    resolution_classes = component_resolution_classes(component_type)
     if not resolution_classes:
         raise FileNotFoundError(
             "No template found. Use a BaseComponent subclass with an adjacent template file, "
@@ -111,9 +120,12 @@ def load_template_for_component(
         attempted.extend(relative_template_paths)
         for relative_template_path in relative_template_paths:
             try:
-                return environment.get_template(relative_template_path)
+                template = environment.get_template(relative_template_path)
             except TemplateNotFound:
                 continue
+            with renderer._cache_lock:
+                renderer._template_path_cache[component_type] = relative_template_path
+            return template
         if klass.__module__.startswith("pyjinhx.builtins"):
             component_dir = Finder.get_class_directory(klass)
             for filename in tag_name_to_template_filenames(klass.__name__):
@@ -133,9 +145,96 @@ def load_template_for_component(
     raise TemplateNotFound(", ".join(attempted) if attempted else "unknown")
 
 
+_render_state: ContextVar[tuple[Renderer, RenderSession, dict[str, Any]] | None] = (
+    ContextVar("pyjinhx_render_state", default=None)
+)
+"""The renderer, session and render context of the component currently being
+rendered by ``Renderer.render_component_with_context``.
+
+A ContextVar rather than an attribute on the Jinja ``Context``: Jinja builds
+fresh ``Context`` objects for ``{% include %}``, ``{% import %}``, macros and
+loop-scoped blocks through paths we don't control, and they'd all lose an
+attribute we'd set by hand. They do all run inside the same call stack, so the
+ContextVar reaches them uniformly. Set/reset around the render call, so nested
+component renders push and pop their own state.
+"""
+
+
+class _PjxContext(Context):
+    """Jinja context that resolves an unknown name against the registry peers.
+
+    Registry instances used to be merged into every component's render context
+    by id (``{**session.registry_defaults, **context}``), then copied again by
+    Jinja's ``new_context`` — O(registered instances) per node, O(N^2) per page
+    (#240). Templates only ever *look up* peers by name, so the lookup happens
+    here instead: one dict ``get``, no copying and no iteration. Nothing about
+    the peers goes into the render-context dict, which matters because
+    ``BaseComponent._build_template_context`` walks that dict and must never
+    see the live, still-growing ``registry_defaults``.
+
+    Precedence matches the old ``{**defaults, **context}`` merge: an explicit
+    context value wins over a peer, and a peer wins over an environment global
+    of the same name. Hits are wrapped in ``LazyNestedComponentWrapper``
+    exactly as the old undeclared-fields loop in ``_build_template_context``
+    did, so ``{{ peer }}``, ``{{ peer.html }}`` and ``{{ peer.props.field }}``
+    behave identically and peers still render only when referenced (#67).
+
+    The ContextVar-backed peer resolution is scoped to the call stack rather
+    than to any one ``Context`` instance, so peers now also resolve inside
+    ``{% import %}`` and ``{% include ... without context %}`` — templates
+    the old per-render dict merge never reached.
+    """
+
+    def resolve_or_missing(self, key: str) -> Any:
+        value = super().resolve_or_missing(key)
+        state = _render_state.get()
+        if state is None:
+            return value
+
+        renderer, session, own_context = state
+        if value is not missing:
+            # A hit that could only have come from the environment globals
+            # still falls through to the registry: peers used to be merged
+            # into the context `vars`, which Jinja layers on top of the
+            # globals, so a peer has always shadowed a global of the same
+            # name. `self.environment.globals` (not `self.globals_keys`) is
+            # used here because `Context.derived()` (used for e.g.
+            # `{% block scoped %}`) builds derived contexts with
+            # `globals=None`, leaving `globals_keys` empty there even though
+            # the environment globals are still very much in effect.
+            from_globals = (
+                key in self.environment.globals
+                and key not in self.vars
+                and key not in own_context
+            )
+            if not from_globals:
+                return value
+
+        instance = session.registry_defaults.get(key)
+        if instance is None:
+            return value
+
+        from .base import LazyNestedComponentWrapper
+
+        peer = LazyNestedComponentWrapper(
+            instance, own_context, renderer=renderer, session=session
+        )
+        # Remember it so `{{ peer }}` and `{{ peer.html }}` in one template
+        # share a single deferred render, like the dict entry the old
+        # python-level merge left behind.
+        self.vars[key] = peer
+        return peer
+
+
 def build_render_context(
     context: dict[str, Any], session: RenderSession
 ) -> dict[str, Any]:
+    """Fold registry instances registered since the last node into the
+    session's peer cache and return the node's own render context.
+
+    The peers themselves are deliberately NOT merged into the returned dict —
+    ``_PjxContext`` resolves them lazily by name at the Jinja layer instead.
+    """
     ordered_instances = Registry.get_instances_in_order()
     if len(ordered_instances) != session.registry_scanned:
         # `ordered_instances` only ever grows within a render pass, so the
@@ -145,7 +244,7 @@ def build_render_context(
             session.registry_defaults.setdefault(instance.id, instance)
         session.registry_scanned = len(ordered_instances)
 
-    return {**session.registry_defaults, **context}
+    return context
 
 
 def reactive_root_attrs(
@@ -247,13 +346,10 @@ def _collect_opacifiable_slot_values(context: dict[str, Any]) -> list[str]:
     meaningful substring match anyway, and excluding it keeps this function's
     contract simple (no candidate is ever falsy).
 
-    Takes the component's OWN ``context`` (its field values, before
-    ``build_render_context`` merges in ``session.registry_defaults``) —
-    never the merged ``render_context``. Registry-injected instances are
-    always ``BaseComponent`` objects, never ``Markup``, so they can never be
-    a candidate; walking them would just re-scan an ever-growing dict on
-    every render for no benefit (the exact registry-rescan cost
-    ``build_render_context``'s own incremental caching exists to avoid).
+    Takes the component's OWN ``context`` (its field values). Registry peers
+    never appear here — they are resolved lazily by name at the Jinja layer
+    (``_PjxContext``) and are always ``BaseComponent`` objects, never
+    ``Markup``, so they could never be a candidate anyway.
 
     This runs against the values a template *could* embed — not against the
     rendered output itself; matching against the actual output is
@@ -441,11 +537,16 @@ class Renderer:
         css_mode: AssetMode | None = None,
     ) -> None:
         self._environment = environment
+        # Deliberate (idempotent) mutation of a possibly caller-supplied
+        # environment: it only changes what happens when a name misses, and
+        # only to look the name up among the render session's registry peers.
+        environment.context_class = _PjxContext
         self._auto_id = auto_id
         self._js_mode = js_mode if js_mode is not None else Renderer._default_js_mode
         self._css_mode = css_mode if css_mode is not None else Renderer._default_css_mode
         self._template_finder_cache: dict[str, Finder] = {}
         self._builtin_template_cache: dict[str, Template] = {}
+        self._template_path_cache: dict[type, str] = {}
         self._cache_lock = threading.Lock()
 
     @property
@@ -481,19 +582,16 @@ class Renderer:
         _warn_if_stale_def_header(component, template)
 
         render_context = build_render_context(context, session)
-        rendered_markup = template.render(render_context)
-        # Walk `context` (this component's own field values), not the merged
-        # `render_context` -- the merge folds in `session.registry_defaults`,
-        # which only ever holds BaseComponent instances (never Markup, so
-        # never a candidate) and grows across a render pass. Walking the
-        # merged dict here would re-scan that whole, ever-growing registry
-        # snapshot on every single render -- reintroducing the O(N^2)
-        # registry-rescan cost `build_render_context`'s own incremental
-        # caching (session.registry_scanned/registry_defaults) exists to
-        # eliminate.
+        # Registry peers are resolved by name during the render, out of the
+        # session rather than out of `render_context` (see `_PjxContext`).
+        state_token = _render_state.set((self, session, render_context))
+        try:
+            rendered_markup = template.render(render_context)
+        finally:
+            _render_state.reset(state_token)
         candidates = _collect_opacifiable_slot_values(context)
         safe_markup, placeholders = _opacify_rendered_markup(rendered_markup, candidates)
-        rendered_markup = str(
+        expanded_markup = str(
             expand_custom_tags(
                 self,
                 safe_markup,
@@ -502,10 +600,7 @@ class Renderer:
                 emit_assets=emit_assets,
             )
         )
-        if placeholders:
-            rendered_markup = _restore_opacified_slots(rendered_markup, placeholders)
         from .base import collect_extra_attrs
-        from .root_attrs import apply_root_attrs
 
         extra_root_attrs = extra_root_attrs or {}
         # A caller that already computed this exact instance's state_hash()
@@ -519,13 +614,29 @@ class Renderer:
             ),
             **extra_root_attrs,
         }
-        rendered_markup = Markup(
-            apply_root_attrs(
-                str(rendered_markup),
-                component_name=type(component).__name__,
-                attrs=attrs,
+        component_name = type(component).__name__
+        # Stamp root attrs while child slot values are still collapsed to
+        # opaque tokens: the root scanner then parses this component's own
+        # template output, not the accumulated markup of every descendant.
+        # If the root scan fails on the token form (e.g. the template's whole
+        # body is a slot, so no element is visible), restore and re-validate
+        # against the real document so error behavior matches the un-opacified
+        # path exactly.
+        try:
+            stamped_markup = apply_root_attrs(
+                expanded_markup, component_name=component_name, attrs=attrs
             )
-        )
+        except ValueError:
+            if not placeholders:
+                raise
+            expanded_markup = _restore_opacified_slots(expanded_markup, placeholders)
+            placeholders = {}
+            stamped_markup = apply_root_attrs(
+                expanded_markup, component_name=component_name, attrs=attrs
+            )
+        if placeholders:
+            stamped_markup = _restore_opacified_slots(stamped_markup, placeholders)
+        rendered_markup = Markup(stamped_markup)
 
         if not emit_assets:
             return Markup(rendered_markup)

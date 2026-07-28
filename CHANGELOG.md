@@ -1,5 +1,36 @@
 # Changelog
 
+## Unreleased — Render-scaling thread safety and perf sweep (#240)
+
+### Fixed
+- `Finder`'s per-directory index build and the renderer-level template/registry caches could
+  race under concurrent first access (e.g. multiple threads rendering the same app for the
+  first time), occasionally raising `FileNotFoundError` from a torn/partially-built index.
+  Both are now built under a lock so concurrent first access is safe.
+- Component-resolution class-to-template-path lookup is now memoized per class instead of
+  being re-resolved on every render.
+- `render_component_with_context` now stamps root attributes onto the already-opacified markup
+  instead of re-running attribute stamping against the full rendered document, cutting
+  redundant work on component-dense pages. This also relaxes an error case: a template whose
+  top-level output mixes a real root element with an element-bearing slot value (e.g.
+  `{{ content }}<div class="box"></div>`) used to raise `ValueError: <X> template must render
+  exactly one root element (found 2)`; it now silently stamps the `<div>` as the root instead,
+  leaving the slot's element content outside it. The template was already violating the
+  single-root contract either way, but this is a user-visible change in error reporting worth
+  calling out.
+- Registry component defaults are now resolved lazily through the Jinja rendering context
+  instead of being eagerly merged into every render's context up front, removing a per-render
+  cost that scaled with registry size regardless of how many defaults a given render actually
+  used. A follow-up fix restored correct peer-lookup precedence (include/import/macro/derived
+  contexts, `enable_async=True` environments, and registry-peer vs. environment-global
+  precedence) after the lazy-resolution change surfaced three regressions.
+
+### Added
+- Added `scripts/bench_render_scaling.py`, a manual (non-CI) benchmark that renders an N-row
+  `PJXTable` (3 cells/row, all-builtins) across a sweep of row counts to track render-time
+  scaling. Baseline before this work: 438 rows in 375.0 ms (0.86 ms/row). After: 438 rows in
+  239.6 ms (0.55 ms/row), with ms/row flat across the 50→438 row sweep (no superlinear drift).
+
 ## 0.36.3 — Builtin component template caching (2026-07-27)
 
 ### Fixed
