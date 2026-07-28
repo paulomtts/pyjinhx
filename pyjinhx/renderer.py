@@ -178,6 +178,11 @@ class _PjxContext(Context):
     exactly as the old undeclared-fields loop in ``_build_template_context``
     did, so ``{{ peer }}``, ``{{ peer.html }}`` and ``{{ peer.props.field }}``
     behave identically and peers still render only when referenced (#67).
+
+    The ContextVar-backed peer resolution is scoped to the call stack rather
+    than to any one ``Context`` instance, so peers now also resolve inside
+    ``{% import %}`` and ``{% include ... without context %}`` — templates
+    the old per-render dict merge never reached.
     """
 
     def resolve_or_missing(self, key: str) -> Any:
@@ -187,15 +192,23 @@ class _PjxContext(Context):
             return value
 
         renderer, session, own_context = state
-        # A hit that could only have come from the environment globals still
-        # falls through to the registry: peers used to be merged into the
-        # context `vars`, which Jinja layers on top of the globals, so a peer
-        # has always shadowed a global of the same name.
-        from_globals = (
-            key in self.globals_keys and key not in self.vars and key not in own_context
-        )
-        if value is not missing and not from_globals:
-            return value
+        if value is not missing:
+            # A hit that could only have come from the environment globals
+            # still falls through to the registry: peers used to be merged
+            # into the context `vars`, which Jinja layers on top of the
+            # globals, so a peer has always shadowed a global of the same
+            # name. `self.environment.globals` (not `self.globals_keys`) is
+            # used here because `Context.derived()` (used for e.g.
+            # `{% block scoped %}`) builds derived contexts with
+            # `globals=None`, leaving `globals_keys` empty there even though
+            # the environment globals are still very much in effect.
+            from_globals = (
+                key in self.environment.globals
+                and key not in self.vars
+                and key not in own_context
+            )
+            if not from_globals:
+                return value
 
         instance = session.registry_defaults.get(key)
         if instance is None:
@@ -231,7 +244,7 @@ def build_render_context(
             session.registry_defaults.setdefault(instance.id, instance)
         session.registry_scanned = len(ordered_instances)
 
-    return {**context}
+    return context
 
 
 def reactive_root_attrs(

@@ -177,6 +177,43 @@ def test_peer_shadows_environment_global_of_the_same_name(tmp_path):
     assert "class 'range'" not in rendered
 
 
+def test_peer_shadows_environment_global_inside_a_derived_context(tmp_path):
+    """`{% block ... scoped %}` (and other Jinja constructs, e.g. loop-scoped
+    blocks) render through a *derived* ``Context`` (``Context.derived()``),
+    built with ``globals=None``. Precedence must still match the non-derived
+    case: a registered peer beats an environment/template global of the same
+    name (#240)."""
+
+    (tmp_path / "scoped_base.html").write_text(
+        "{% for i in [1] %}{% block content scoped %}{% endblock %}{% endfor %}"
+    )
+    (tmp_path / "scoped_host.html").write_text(
+        '{% extends "scoped_base.html" %}'
+        "{% block content scoped %}"
+        '<section class="host-marker">[{{ range }}]</section>'
+        "{% endblock %}"
+    )
+    (tmp_path / "scoped_peer.html").write_text('<i class="peer-marker">peer</i>')
+    module = _load_module(
+        tmp_path,
+        "scoped_defaults_components",
+        "from pyjinhx import BaseComponent\n\n"
+        "class ScopedHost(BaseComponent):\n"
+        "    pass\n\n"
+        "class ScopedPeer(BaseComponent):\n"
+        "    pass\n",
+    )
+
+    Renderer.set_default_environment(str(tmp_path))
+
+    with Registry.request_scope():
+        module.ScopedPeer(id="range")
+        rendered = str(module.ScopedHost(id="scoped_host").render())
+
+    assert '[<i class="peer-marker">peer</i>]' in rendered
+    assert "class 'range'" not in rendered
+
+
 def test_async_environment_still_renders(tmp_path):
     """``enable_async=True`` environments are public API via
     ``Renderer(environment)``; rendering must not go down a sync-only path."""
