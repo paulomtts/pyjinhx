@@ -220,7 +220,7 @@ def _warn_if_stale_def_header(component: BaseComponent, template: Template) -> N
 _SLOT_PLACEHOLDER_CHAR = "\ue000"
 
 
-def _collect_opacifiable_slot_values(render_context: dict[str, Any]) -> list[str]:
+def _collect_opacifiable_slot_values(context: dict[str, Any]) -> list[str]:
     """Collect already-fully-expanded ``Markup`` slot values that are safe to
     opacify in the *rendered output* (see ``_opacify_rendered_markup``).
 
@@ -233,15 +233,23 @@ def _collect_opacifiable_slot_values(render_context: dict[str, Any]) -> list[str
     meaningful substring match anyway, and excluding it keeps this function's
     contract simple (no candidate is ever falsy).
 
-    This runs against ``render_context`` — the values a template *could*
-    embed — not against the rendered output itself; matching against the
-    actual output is ``_opacify_rendered_markup``'s job, and its two-step
-    split (collect candidates from context, then search-and-replace against
-    the real rendered string) is what lets a template inspect (``|length``,
-    ``in``, ``|striptags``, slicing, ...) a slot value with its real content
-    during ``template.render()`` — the substitution never touches the
-    context, only the string handed to ``expand_custom_tags`` afterward, and
-    only where the value was actually emitted unchanged.
+    Takes the component's OWN ``context`` (its field values, before
+    ``build_render_context`` merges in ``session.registry_defaults``) —
+    never the merged ``render_context``. Registry-injected instances are
+    always ``BaseComponent`` objects, never ``Markup``, so they can never be
+    a candidate; walking them would just re-scan an ever-growing dict on
+    every render for no benefit (the exact registry-rescan cost
+    ``build_render_context``'s own incremental caching exists to avoid).
+
+    This runs against the values a template *could* embed — not against the
+    rendered output itself; matching against the actual output is
+    ``_opacify_rendered_markup``'s job, and its two-step split (collect
+    candidates from context, then search-and-replace against the real
+    rendered string) is what lets a template inspect (``|length``, ``in``,
+    ``|striptags``, slicing, ...) a slot value with its real content during
+    ``template.render()`` — the substitution never touches the context, only
+    the string handed to ``expand_custom_tags`` afterward, and only where the
+    value was actually emitted unchanged.
 
     This closes the gap for a component's own direct emit-and-inspect of its
     own slot value. It does NOT close it for a value passed further into a
@@ -272,7 +280,7 @@ def _collect_opacifiable_slot_values(render_context: dict[str, Any]) -> list[str
                 for item in value.values():
                     visit(item)
 
-    for value in render_context.values():
+    for value in context.values():
         visit(value)
     return candidates
 
@@ -458,7 +466,16 @@ class Renderer:
 
         render_context = build_render_context(context, session)
         rendered_markup = template.render(render_context)
-        candidates = _collect_opacifiable_slot_values(render_context)
+        # Walk `context` (this component's own field values), not the merged
+        # `render_context` -- the merge folds in `session.registry_defaults`,
+        # which only ever holds BaseComponent instances (never Markup, so
+        # never a candidate) and grows across a render pass. Walking the
+        # merged dict here would re-scan that whole, ever-growing registry
+        # snapshot on every single render -- reintroducing the O(N^2)
+        # registry-rescan cost `build_render_context`'s own incremental
+        # caching (session.registry_scanned/registry_defaults) exists to
+        # eliminate.
+        candidates = _collect_opacifiable_slot_values(context)
         safe_markup, placeholders = _opacify_rendered_markup(rendered_markup, candidates)
         rendered_markup = str(
             expand_custom_tags(
