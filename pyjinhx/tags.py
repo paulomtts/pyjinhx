@@ -206,6 +206,8 @@ if TYPE_CHECKING:
     from .renderer import Renderer
 
 
+# Unlocked by choice: a lost race here means at most a duplicate warning /
+# repeated probe, never wrong output (issue #240 audit).
 _warned_unregistered_tags: set[str] = set()
 
 # Tags confirmed to have no {#def#} header (and thus no model to build). Without

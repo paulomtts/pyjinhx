@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 import os
 import re
+import threading
 from typing import TYPE_CHECKING, Any, ClassVar
 
 from jinja2 import Environment, FileSystemLoader, Template
@@ -30,6 +31,8 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger("pyjinhx")
 
+# Unlocked by choice: a lost race here means at most a duplicate warning /
+# repeated probe, never wrong output (issue #240 audit).
 # Dedup set: component names for which the stale-def-header warning has fired.
 _warned_stale_def_header: set[str] = set()
 
@@ -52,8 +55,11 @@ def get_loader_root(environment: Environment) -> str:
 def get_finder_for_root(renderer: Renderer, search_root: str) -> Finder:
     finder = renderer._template_finder_cache.get(search_root)
     if finder is None:
-        finder = Finder(search_root)
-        renderer._template_finder_cache[search_root] = finder
+        with renderer._cache_lock:
+            finder = renderer._template_finder_cache.get(search_root)
+            if finder is None:
+                finder = Finder(search_root)
+                renderer._template_finder_cache[search_root] = finder
     return finder
 
 
@@ -116,10 +122,13 @@ def load_template_for_component(
                 if cached_template is not None:
                     return cached_template
                 if os.path.isfile(candidate_path):
-                    with open(candidate_path, encoding="utf-8") as template_file:
-                        template = environment.from_string(template_file.read())
-                    renderer._builtin_template_cache[candidate_path] = template
-                    return template
+                    with renderer._cache_lock:
+                        cached_template = renderer._builtin_template_cache.get(candidate_path)
+                        if cached_template is None:
+                            with open(candidate_path, encoding="utf-8") as template_file:
+                                cached_template = environment.from_string(template_file.read())
+                            renderer._builtin_template_cache[candidate_path] = cached_template
+                    return cached_template
 
     raise TemplateNotFound(", ".join(attempted) if attempted else "unknown")
 
@@ -437,6 +446,7 @@ class Renderer:
         self._css_mode = css_mode if css_mode is not None else Renderer._default_css_mode
         self._template_finder_cache: dict[str, Finder] = {}
         self._builtin_template_cache: dict[str, Template] = {}
+        self._cache_lock = threading.Lock()
 
     @property
     def environment(self) -> Environment:
