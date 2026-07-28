@@ -19,6 +19,7 @@ from .assets import (
 )
 from .finder import Finder
 from .registry import Registry
+from .root_attrs import apply_root_attrs
 from .tags import Parser, contains_custom_tag, expand_custom_tags, render_tag_node
 from .utils import (
     component_resolution_classes,
@@ -502,7 +503,7 @@ class Renderer:
         # eliminate.
         candidates = _collect_opacifiable_slot_values(context)
         safe_markup, placeholders = _opacify_rendered_markup(rendered_markup, candidates)
-        rendered_markup = str(
+        expanded_markup = str(
             expand_custom_tags(
                 self,
                 safe_markup,
@@ -511,10 +512,7 @@ class Renderer:
                 emit_assets=emit_assets,
             )
         )
-        if placeholders:
-            rendered_markup = _restore_opacified_slots(rendered_markup, placeholders)
         from .base import collect_extra_attrs
-        from .root_attrs import apply_root_attrs
 
         extra_root_attrs = extra_root_attrs or {}
         # A caller that already computed this exact instance's state_hash()
@@ -528,13 +526,29 @@ class Renderer:
             ),
             **extra_root_attrs,
         }
-        rendered_markup = Markup(
-            apply_root_attrs(
-                str(rendered_markup),
-                component_name=type(component).__name__,
-                attrs=attrs,
+        component_name = type(component).__name__
+        # Stamp root attrs while child slot values are still collapsed to
+        # opaque tokens: the root scanner then parses this component's own
+        # template output, not the accumulated markup of every descendant.
+        # If the root scan fails on the token form (e.g. the template's whole
+        # body is a slot, so no element is visible), restore and re-validate
+        # against the real document so error behavior matches the un-opacified
+        # path exactly.
+        try:
+            stamped_markup = apply_root_attrs(
+                expanded_markup, component_name=component_name, attrs=attrs
             )
-        )
+        except ValueError:
+            if not placeholders:
+                raise
+            expanded_markup = _restore_opacified_slots(expanded_markup, placeholders)
+            placeholders = {}
+            stamped_markup = apply_root_attrs(
+                expanded_markup, component_name=component_name, attrs=attrs
+            )
+        if placeholders:
+            stamped_markup = _restore_opacified_slots(stamped_markup, placeholders)
+        rendered_markup = Markup(stamped_markup)
 
         if not emit_assets:
             return Markup(rendered_markup)
