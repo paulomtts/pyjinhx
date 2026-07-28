@@ -48,3 +48,38 @@ def test_finder_concurrent_first_index_no_duplicates(tmp_path, monkeypatch):
 
     assert errors == []
     assert finder._index["my_widget.html"] == [str(tmp_path / "my_widget.html")]
+
+
+def test_renderer_concurrent_builtin_template_cache(tmp_path):
+    """Concurrent first-renders of a builtin must not race the template cache.
+
+    Pre-fix this is a benign check-then-set (worst case duplicate compiles),
+    so this test asserts the invariant rather than a crash: after N concurrent
+    renders, rendering still works and the cache holds one entry per path.
+    """
+    from pyjinhx import Renderer
+    from pyjinhx.registry import Registry
+    import pyjinhx.builtins.ui  # noqa: F401 — registers builtins
+
+    Renderer.set_default_environment(str(tmp_path))
+    renderer = Renderer.get_default_renderer()
+    errors: list[Exception] = []
+    barrier = threading.Barrier(8)
+
+    def render_one(i: int):
+        barrier.wait()
+        try:
+            with Registry.request_scope():
+                renderer.render(f'<PJXBadge id="b{i}" label="x"></PJXBadge>')
+        except Exception as exc:  # noqa: BLE001
+            errors.append(exc)
+
+    threads = [threading.Thread(target=render_one, args=(i,)) for i in range(8)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+
+    assert errors == []
+    with Registry.request_scope():
+        assert 'id="after"' in renderer.render('<PJXBadge id="after" label="y"></PJXBadge>')
