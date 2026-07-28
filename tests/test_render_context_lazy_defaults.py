@@ -13,10 +13,10 @@ from concurrent.futures import ThreadPoolExecutor
 
 from jinja2 import Environment, FileSystemLoader
 
+import pyjinhx.renderer as renderer_module
 from pyjinhx import Renderer
 from pyjinhx.assets import RenderSession
 from pyjinhx.registry import Registry
-import pyjinhx.renderer as renderer_module
 
 
 def _load_module(tmp_path, name: str, source: str):

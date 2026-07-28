@@ -14,9 +14,9 @@ import sys
 import tempfile
 import time
 
+import pyjinhx.builtins.ui  # noqa: F401 — registers builtins
 from pyjinhx import Renderer
 from pyjinhx.registry import Registry
-import pyjinhx.builtins.ui  # noqa: F401 — registers builtins
 
 logging.getLogger("pyjinhx").setLevel(logging.ERROR)
 
