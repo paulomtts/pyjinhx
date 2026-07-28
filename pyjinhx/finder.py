@@ -1,5 +1,6 @@
 import inspect
 import os
+import threading
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from functools import cache
@@ -32,27 +33,42 @@ class Finder:
     _relative_index: dict[str, str] = field(default_factory=dict, init=False)
     _all_files: list[tuple[str, str]] = field(default_factory=list, init=False)
     _is_indexed: bool = field(default=False, init=False)
+    _index_lock: threading.Lock = field(default_factory=threading.Lock, init=False, repr=False)
 
     def _build_index(self) -> None:
         if self._is_indexed:
             return
 
-        for current_root, dir_names, file_names in os.walk(self.root):
-            dir_names.sort()
-            file_names.sort()
-            for file_name in file_names:
-                full_path = os.path.join(current_root, file_name)
-                self._index.setdefault(file_name, []).append(full_path)
-                relative_path = normalize_path_separators(
-                    os.path.relpath(full_path, self.root)
-                )
-                self._relative_index[relative_path] = full_path
-                self._all_files.append((file_name, full_path))
+        # Build into locals and swap at the end: a concurrent reader either
+        # sees _is_indexed False (and waits on the lock) or a complete index —
+        # never a half-built one. Two threads appending into the shared dicts
+        # used to double every entry and turn find() into "Ambiguous template".
+        with self._index_lock:
+            if self._is_indexed:
+                return
 
-        for file_name, paths in self._index.items():
-            paths.sort()
+            index: dict[str, list[str]] = {}
+            relative_index: dict[str, str] = {}
+            all_files: list[tuple[str, str]] = []
+            for current_root, dir_names, file_names in os.walk(self.root):
+                dir_names.sort()
+                file_names.sort()
+                for file_name in file_names:
+                    full_path = os.path.join(current_root, file_name)
+                    index.setdefault(file_name, []).append(full_path)
+                    relative_path = normalize_path_separators(
+                        os.path.relpath(full_path, self.root)
+                    )
+                    relative_index[relative_path] = full_path
+                    all_files.append((file_name, full_path))
 
-        self._is_indexed = True
+            for paths in index.values():
+                paths.sort()
+
+            self._index = index
+            self._relative_index = relative_index
+            self._all_files = all_files
+            self._is_indexed = True
 
     @staticmethod
     def get_loader_root(loader: FileSystemLoader) -> str:
