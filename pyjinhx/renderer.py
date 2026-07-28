@@ -4,6 +4,7 @@ import logging
 import os
 import re
 import threading
+from contextvars import ContextVar
 from typing import TYPE_CHECKING, Any, ClassVar
 
 from jinja2 import Environment, FileSystemLoader, Template
@@ -144,6 +145,21 @@ def load_template_for_component(
     raise TemplateNotFound(", ".join(attempted) if attempted else "unknown")
 
 
+_render_state: ContextVar[tuple[Renderer, RenderSession, dict[str, Any]] | None] = (
+    ContextVar("pyjinhx_render_state", default=None)
+)
+"""The renderer, session and render context of the component currently being
+rendered by ``Renderer.render_component_with_context``.
+
+A ContextVar rather than an attribute on the Jinja ``Context``: Jinja builds
+fresh ``Context`` objects for ``{% include %}``, ``{% import %}``, macros and
+loop-scoped blocks through paths we don't control, and they'd all lose an
+attribute we'd set by hand. They do all run inside the same call stack, so the
+ContextVar reaches them uniformly. Set/reset around the render call, so nested
+component renders push and pop their own state.
+"""
+
+
 class _PjxContext(Context):
     """Jinja context that resolves an unknown name against the registry peers.
 
@@ -151,61 +167,50 @@ class _PjxContext(Context):
     by id (``{**session.registry_defaults, **context}``), then copied again by
     Jinja's ``new_context`` — O(registered instances) per node, O(N^2) per page
     (#240). Templates only ever *look up* peers by name, so the lookup happens
-    here instead: one dict ``get`` on a genuine miss, no copying and no
-    iteration.
+    here instead: one dict ``get``, no copying and no iteration. Nothing about
+    the peers goes into the render-context dict, which matters because
+    ``BaseComponent._build_template_context`` walks that dict and must never
+    see the live, still-growing ``registry_defaults``.
 
-    The handles this needs (``renderer``/``session``/the referencing
-    component's context) are plain instance attributes, set by
-    ``Renderer.render_component_with_context``, deliberately *not* context
-    entries: anything reachable from the render-context dict gets walked by
-    ``BaseComponent._build_template_context``, which must never see the live,
-    still-growing ``registry_defaults``.
-
-    Explicit context still wins — this only fires after normal resolution
-    misses, matching the old ``{**defaults, **context}`` precedence. Hits are
-    wrapped in ``LazyNestedComponentWrapper`` exactly as the old
-    undeclared-fields loop in ``_build_template_context`` did, so
-    ``{{ peer }}``, ``{{ peer.html }}`` and ``{{ peer.props.field }}`` behave
-    identically and peers still render only when referenced (#67).
+    Precedence matches the old ``{**defaults, **context}`` merge: an explicit
+    context value wins over a peer, and a peer wins over an environment global
+    of the same name. Hits are wrapped in ``LazyNestedComponentWrapper``
+    exactly as the old undeclared-fields loop in ``_build_template_context``
+    did, so ``{{ peer }}``, ``{{ peer.html }}`` and ``{{ peer.props.field }}``
+    behave identically and peers still render only when referenced (#67).
     """
-
-    _pjx_renderer: Renderer | None = None
-    _pjx_session: RenderSession | None = None
-    _pjx_own_context: dict[str, Any] | None = None
 
     def resolve_or_missing(self, key: str) -> Any:
         value = super().resolve_or_missing(key)
-        session = self._pjx_session
-        if value is not missing or session is None:
+        state = _render_state.get()
+        if state is None:
+            return value
+
+        renderer, session, own_context = state
+        # A hit that could only have come from the environment globals still
+        # falls through to the registry: peers used to be merged into the
+        # context `vars`, which Jinja layers on top of the globals, so a peer
+        # has always shadowed a global of the same name.
+        from_globals = (
+            key in self.globals_keys and key not in self.vars and key not in own_context
+        )
+        if value is not missing and not from_globals:
             return value
 
         instance = session.registry_defaults.get(key)
         if instance is None:
-            return missing
+            return value
 
         from .base import LazyNestedComponentWrapper
 
         peer = LazyNestedComponentWrapper(
-            instance,
-            self._pjx_own_context or {},
-            renderer=self._pjx_renderer or Renderer.get_default_renderer(),
-            session=session,
+            instance, own_context, renderer=renderer, session=session
         )
         # Remember it so `{{ peer }}` and `{{ peer.html }}` in one template
         # share a single deferred render, like the dict entry the old
         # python-level merge left behind.
         self.vars[key] = peer
         return peer
-
-    def derived(self, locals: dict[str, Any] | None = None) -> Context:
-        # Jinja builds derived (loop/block-scoped) contexts through the plain
-        # constructor, so carry the peer-resolution handles across by hand.
-        context = super().derived(locals)
-        if isinstance(context, _PjxContext):
-            context._pjx_renderer = self._pjx_renderer
-            context._pjx_session = self._pjx_session
-            context._pjx_own_context = self._pjx_own_context
-        return context
 
 
 def build_render_context(
@@ -564,21 +569,13 @@ class Renderer:
         _warn_if_stale_def_header(component, template)
 
         render_context = build_render_context(context, session)
-        # `template.render(dict)` inlined so the registry-peer handles can ride
-        # on the Context object itself rather than in the context dict (see
-        # `_PjxContext`).
-        jinja_context = template.new_context(render_context)
-        if isinstance(jinja_context, _PjxContext):
-            jinja_context._pjx_renderer = self
-            jinja_context._pjx_session = session
-            jinja_context._pjx_own_context = render_context
-        environment = template.environment
+        # Registry peers are resolved by name during the render, out of the
+        # session rather than out of `render_context` (see `_PjxContext`).
+        state_token = _render_state.set((self, session, render_context))
         try:
-            rendered_markup = environment.concat(  # type: ignore[attr-defined]
-                template.root_render_func(jinja_context)  # type: ignore[attr-defined]
-            )
-        except Exception:
-            environment.handle_exception()
+            rendered_markup = template.render(render_context)
+        finally:
+            _render_state.reset(state_token)
         candidates = _collect_opacifiable_slot_values(context)
         safe_markup, placeholders = _opacify_rendered_markup(rendered_markup, candidates)
         expanded_markup = str(

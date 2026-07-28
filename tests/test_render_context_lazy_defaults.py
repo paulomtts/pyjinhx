@@ -9,6 +9,9 @@ peer contract itself (``{{ peer }}`` / ``{{ peer.html }}`` /
 
 import importlib.util
 import sys
+from concurrent.futures import ThreadPoolExecutor
+
+from jinja2 import Environment, FileSystemLoader
 
 from pyjinhx import Renderer
 from pyjinhx.assets import RenderSession
@@ -87,6 +90,123 @@ def test_unreferenced_peers_do_not_render(tmp_path):
 
     assert "quiet-marker" in rendered
     assert "loud-marker" not in rendered
+
+
+def test_peer_resolves_inside_an_included_partial(tmp_path):
+    """``{% include %}`` builds its own Jinja context; peers must still
+    resolve inside it."""
+
+    (tmp_path / "inc_partial.html").write_text("[{{ inc_peer }}]")
+    (tmp_path / "inc_host.html").write_text(
+        '<section class="host-marker">{% include "inc_partial.html" %}</section>'
+    )
+    (tmp_path / "inc_peer.html").write_text('<i class="peer-marker">{{ label }}</i>')
+    module = _load_module(
+        tmp_path,
+        "include_defaults_components",
+        "from pyjinhx import BaseComponent\n\n"
+        "class IncHost(BaseComponent):\n"
+        "    pass\n\n"
+        "class IncPeer(BaseComponent):\n"
+        "    label: str = ''\n",
+    )
+
+    Renderer.set_default_environment(str(tmp_path))
+
+    with Registry.request_scope():
+        module.IncPeer(id="inc_peer", label="hi")
+        rendered = str(module.IncHost(id="inc_host").render())
+
+    assert '[<i class="peer-marker">hi</i>]' in rendered
+
+
+def test_explicit_context_shadows_same_named_peer(tmp_path):
+    """A value the component actually declares still beats a registry peer of
+    the same name, end to end."""
+
+    (tmp_path / "shadow_host.html").write_text(
+        '<section class="host-marker">[{{ shadow_peer }}]</section>'
+    )
+    (tmp_path / "shadow_peer.html").write_text('<i class="peer-marker">peer</i>')
+    module = _load_module(
+        tmp_path,
+        "shadow_defaults_components",
+        "from pyjinhx import BaseComponent\n\n"
+        "class ShadowHost(BaseComponent):\n"
+        "    shadow_peer: str = ''\n\n"
+        "class ShadowPeer(BaseComponent):\n"
+        "    pass\n",
+    )
+
+    Renderer.set_default_environment(str(tmp_path))
+
+    with Registry.request_scope():
+        module.ShadowPeer(id="shadow_peer")
+        host = module.ShadowHost(id="shadow_host", shadow_peer="explicit")
+        rendered = str(host.render())
+
+    assert "[explicit]" in rendered
+    assert "peer-marker" not in rendered
+
+
+def test_peer_shadows_environment_global_of_the_same_name(tmp_path):
+    """Peers used to be merged into the context `vars`, which Jinja layers on
+    top of the globals -- so a peer named after a global still wins."""
+
+    (tmp_path / "global_host.html").write_text(
+        '<section class="host-marker">[{{ range }}]</section>'
+    )
+    (tmp_path / "global_peer.html").write_text('<i class="peer-marker">peer</i>')
+    module = _load_module(
+        tmp_path,
+        "global_defaults_components",
+        "from pyjinhx import BaseComponent\n\n"
+        "class GlobalHost(BaseComponent):\n"
+        "    pass\n\n"
+        "class GlobalPeer(BaseComponent):\n"
+        "    pass\n",
+    )
+
+    Renderer.set_default_environment(str(tmp_path))
+
+    with Registry.request_scope():
+        module.GlobalPeer(id="range")
+        rendered = str(module.GlobalHost(id="global_host").render())
+
+    assert '[<i class="peer-marker">peer</i>]' in rendered
+    assert "class 'range'" not in rendered
+
+
+def test_async_environment_still_renders(tmp_path):
+    """``enable_async=True`` environments are public API via
+    ``Renderer(environment)``; rendering must not go down a sync-only path."""
+
+    (tmp_path / "async_host.html").write_text('<b class="async-marker">{{ label }}</b>')
+    module = _load_module(
+        tmp_path,
+        "async_defaults_components",
+        "from pyjinhx import BaseComponent\n\n"
+        "class AsyncHost(BaseComponent):\n"
+        "    label: str = ''\n",
+    )
+
+    environment = Environment(
+        loader=FileSystemLoader(str(tmp_path)), autoescape=True, enable_async=True
+    )
+    renderer = Renderer(environment)
+
+    def render() -> str:
+        with Registry.request_scope():
+            host = module.AsyncHost(id="async_host", label="x")
+            return str(host._render(_renderer=renderer))
+
+    # In a worker thread: Jinja drives an async environment through
+    # `asyncio.run`, which refuses to run inside an already-running event loop,
+    # and other tests in the suite leave one on the main thread.
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        rendered = pool.submit(render).result()
+
+    assert '<b class="async-marker">x</b>' in rendered
 
 
 def test_build_render_context_does_not_copy_defaults():
