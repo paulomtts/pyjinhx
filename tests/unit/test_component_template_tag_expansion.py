@@ -172,7 +172,8 @@ def test_empty_slot_stays_falsy_after_opacify_regression_guard():
 
 
 def test_opacified_slot_length_check_sees_real_content_not_placeholder():
-    """Proves the old design's "emit-only" limitation is gone: a template
+    """Proves the old design's "emit-only" limitation is gone for a
+    component's own direct inspection of its own slot value: a template
     that *inspects* an already-opacifiable slot value (here, via `|length`)
     now sees the REAL already-expanded HTML, not a short placeholder token.
 
@@ -180,7 +181,11 @@ def test_opacified_slot_length_check_sees_real_content_not_placeholder():
     `template.render()` has already run against the real, unmodified
     context -- so `{{ content|length }}` observes the true length of the
     real embedded HTML, exactly as it would without this perf optimization
-    at all.
+    at all. (This guarantee is specifically about a component inspecting its
+    OWN slot value in its OWN template; see
+    test_nested_opacified_slot_seen_as_placeholder_by_own_template below for
+    the narrower, still-open case of a value passed further into a nested
+    custom tag's own template.)
     """
     with tempfile.TemporaryDirectory() as temp_dir:
         # Distinct tag names ("LengthChild"/"LengthWrapper") avoid colliding
@@ -222,6 +227,12 @@ def test_opacified_slot_can_both_emit_and_inspect_the_same_value():
     real HTML (since the placeholder gets restored in the final output) but
     reported the placeholder token's short length -- an internally
     inconsistent result a template author would find surprising.
+
+    Note: this consistency guarantee is specifically about a component
+    emitting and inspecting its OWN slot value within its OWN template. It
+    does not extend to a value passed further into a nested custom tag's own
+    template -- see
+    test_nested_opacified_slot_seen_as_placeholder_by_own_template below.
     """
     with tempfile.TemporaryDirectory() as temp_dir:
         with open(os.path.join(temp_dir, "emit_inspect_child.html"), "w") as file:
@@ -308,3 +319,129 @@ def test_list_slot_values_recurse_through_opacify_and_restore_correctly():
         '<li><span id="b1" class="badge">New</span></li>'
         "</ul>"
     )
+
+
+def test_marker_already_present_in_rendered_output_does_not_corrupt_render():
+    """Regression guard for the placeholder-marker-collision finding: if the
+    rendered markup already contains the ``_SLOT_PLACEHOLDER_CHAR`` marker
+    BEFORE opacification -- e.g. because a template embeds an attribute
+    value that happens to contain the same char sequence a real token would
+    take -- `_opacify_rendered_markup` must not opacify anything at that
+    level. Opacifying on top of pre-existing marker text would let the
+    restore pass splice an unrelated slot's HTML into the wrong location
+    (reproduced by the reviewer as both a crash and, more generally, an HTML
+    /attribute injection).
+
+    This exercises the guard end-to-end: a real already-expanded slot value
+    (`content`) sits alongside an attribute (`evil`) whose value is shaped
+    exactly like a placeholder token. The render must succeed and must
+    produce the same structure as an equivalent render where `evil` is an
+    ordinary, marker-free string -- i.e. the marker's mere presence must not
+    corrupt anything, crash anything, or skip real tag expansion (`Icon`
+    below still must expand normally).
+    """
+    from pyjinhx.renderer import _SLOT_PLACEHOLDER_CHAR
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        with open(os.path.join(temp_dir, "leaf.html"), "w") as file:
+            file.write('<span id="{{ id }}">{{ text }}</span>\n')
+
+        with open(os.path.join(temp_dir, "icon.html"), "w") as file:
+            file.write('<i id="{{ id }}" class="icon-{{ name }}"></i>\n')
+
+        with open(os.path.join(temp_dir, "guard_wrapper.html"), "w") as file:
+            file.write(
+                '<div id="{{ id }}" title="{{ evil }}">{{ content }}'
+                '<Icon id="tail-1" name="chevron"/></div>\n'
+            )
+
+        env = Environment(loader=FileSystemLoader(temp_dir))
+        renderer = Renderer(env, auto_id=True)
+
+        # Shaped exactly like a real placeholder token (marker, digit, marker).
+        adversarial_evil = f"{_SLOT_PLACEHOLDER_CHAR}0{_SLOT_PLACEHOLDER_CHAR}"
+        safe_evil = "SAFE"
+
+        adversarial_rendered = renderer.render(
+            f'<GuardWrapper id="w1" evil="{adversarial_evil}">'
+            '<Leaf id="c1" text="Hello there"/>'
+            "</GuardWrapper>"
+        )
+        baseline_rendered = renderer.render(
+            f'<GuardWrapper id="w1" evil="{safe_evil}">'
+            '<Leaf id="c1" text="Hello there"/>'
+            "</GuardWrapper>"
+        )
+
+        # The marker's presence must not corrupt or omit anything: swapping
+        # the adversarial value back out for the safe one must reproduce the
+        # baseline render exactly (real Leaf content intact, Icon expanded).
+        assert (
+            adversarial_rendered.replace(adversarial_evil, safe_evil)
+            == baseline_rendered
+        )
+        # And the marker-shaped attribute value must survive untouched, not
+        # be misinterpreted as (or replaced by) a restored slot value.
+        assert adversarial_evil in adversarial_rendered
+        assert '<span id="c1" text="Hello there">Hello there</span>' in adversarial_rendered
+        assert '<i id="tail-1" class="icon-chevron" name="chevron"></i>' in adversarial_rendered
+
+
+def test_nested_opacified_slot_seen_as_placeholder_by_own_template():
+    """Documents the known, accepted remaining gap in the opacify/restore
+    optimization (see the "emit-vs-inspect" note on
+    `_collect_opacifiable_slot_values`): the fix closes the gap for a
+    component's own direct emit-and-inspect of its own slot value, but NOT
+    for a value passed further into a nested custom tag's own template.
+
+    Here, the outer wrapper emits its `content` slot value straight into a
+    nested `<Inspector>` tag (`<Inspector>{{ content }}</Inspector>`).
+    Because substitution happens once, at the level of the component whose
+    context originally held the value (the outer wrapper), what actually
+    reaches `Inspector`'s own template is the short placeholder token, not
+    the real HTML -- so `Inspector`'s own `{{ content|length }}` sees the
+    token's length, not the real content's length.
+
+    This test pins that CURRENT, documented behavior. It is intentionally
+    narrower in scope than the fully-fixed direct case (see
+    test_opacified_slot_length_check_sees_real_content_not_placeholder and
+    test_opacified_slot_can_both_emit_and_inspect_the_same_value above,
+    which continue to guard against regressing to the old, fully-broken
+    behavior for that direct case). Per the reviewer's own recommendation,
+    this narrower gap is not being closed here -- doing so would require
+    detecting "value emitted inside a nested custom tag" during
+    substitution, adding real complexity for a rare case.
+    """
+    with tempfile.TemporaryDirectory() as temp_dir:
+        with open(os.path.join(temp_dir, "nested_gap_child.html"), "w") as file:
+            file.write('<span id="{{ id }}">{{ text }}</span>\n')
+
+        with open(os.path.join(temp_dir, "inspector.html"), "w") as file:
+            file.write('<b id="{{ id }}">{{ content }}|{{ content|length }}</b>\n')
+
+        with open(os.path.join(temp_dir, "nested_gap_wrapper.html"), "w") as file:
+            file.write(
+                '<div id="{{ id }}"><Inspector id="insp-1">{{ content }}'
+                "</Inspector></div>\n"
+            )
+
+        env = Environment(loader=FileSystemLoader(temp_dir))
+        renderer = Renderer(env, auto_id=True)
+
+        rendered = renderer.render(
+            '<NestedGapWrapper id="w1">'
+            '<NestedGapChild id="c1" text="Hello there"/>'
+            "</NestedGapWrapper>"
+        )
+
+        real_child_html = '<span id="c1" text="Hello there">Hello there</span>'
+        # The real HTML DOES eventually appear in the final output -- the
+        # placeholder token Inspector re-emits gets restored at the outer
+        # wrapper's own level, after Inspector's template has already
+        # rendered against it -- so emitting still works end-to-end.
+        assert real_child_html in rendered
+        # But Inspector's own `{{ content|length }}` saw the short
+        # placeholder token's length, not the real child HTML's length:
+        # this is the documented, accepted gap.
+        assert str(len(real_child_html)) not in rendered
+        assert f"{real_child_html}|3" in rendered

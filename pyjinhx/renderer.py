@@ -210,12 +210,14 @@ def _warn_if_stale_def_header(component: BaseComponent, template: Template) -> N
     )
 
 
-# Private-use-area marker: vanishingly unlikely to appear in real HTML/text
-# (though not impossible for adversarial content -- see restore below), never
-# matches the PascalCase tag regex (no literal "<"), safe inside both a text
-# node and an attribute value. Written as an explicit escape (not a literal
-# glyph) so it can't be silently stripped by an editor/copy-paste pipeline.
-_SLOT_PLACEHOLDER_CHAR = ""
+# Private-use-area marker: vanishingly unlikely to appear in real HTML/text,
+# never matches the PascalCase tag regex (no literal "<"), safe inside both a
+# text node and an attribute value. Written as an explicit escape (not a
+# literal glyph) so it can't be silently stripped by an editor/copy-paste
+# pipeline. If adversarial or round-tripped content already contains this
+# marker, `_opacify_rendered_markup` detects that and bails out (opacifying
+# nothing) rather than risk restoring a slot value into the wrong place.
+_SLOT_PLACEHOLDER_CHAR = "\ue000"
 
 
 def _collect_opacifiable_slot_values(render_context: dict[str, Any]) -> list[str]:
@@ -235,24 +237,40 @@ def _collect_opacifiable_slot_values(render_context: dict[str, Any]) -> list[str
     embed — not against the rendered output itself; matching against the
     actual output is ``_opacify_rendered_markup``'s job, and its two-step
     split (collect candidates from context, then search-and-replace against
-    the real rendered string) is exactly what lets a template inspect
-    (``|length``, ``in``, ``|striptags``, slicing, ...) a slot value with its
-    real content during ``template.render()`` — the substitution never
-    touches the context, only the string handed to ``expand_custom_tags``
-    afterward, and only where the value was actually emitted unchanged.
+    the real rendered string) is what lets a template inspect (``|length``,
+    ``in``, ``|striptags``, slicing, ...) a slot value with its real content
+    during ``template.render()`` — the substitution never touches the
+    context, only the string handed to ``expand_custom_tags`` afterward, and
+    only where the value was actually emitted unchanged.
+
+    This closes the gap for a component's own direct emit-and-inspect of its
+    own slot value. It does NOT close it for a value passed further into a
+    nested custom tag's own template: if this component emits the value
+    inside another PascalCase tag (e.g. ``<Wrapper>{{ content }}</Wrapper>``),
+    the child (``Wrapper``) receives the placeholder token — not the real
+    HTML — as its own slot field's rendered text, so an inspection inside
+    *its* template still sees the token. That narrower case is unaffected by
+    this function; see ``render_component_with_context``, where the
+    substitution and its restoration both happen at the level of the
+    component whose context originally held the value.
     """
     candidates: list[str] = []
+    visited_containers: set[int] = set()
 
     def visit(value: Any) -> None:
         if isinstance(value, Markup):
             if value and not contains_custom_tag(value):
                 candidates.append(str(value))
-        elif isinstance(value, list):
-            for item in value:
-                visit(item)
-        elif isinstance(value, dict):
-            for item in value.values():
-                visit(item)
+        elif isinstance(value, (list, dict)):
+            if id(value) in visited_containers:
+                return
+            visited_containers.add(id(value))
+            if isinstance(value, list):
+                for item in value:
+                    visit(item)
+            else:
+                for item in value.values():
+                    visit(item)
 
     for value in render_context.values():
         visit(value)
@@ -281,13 +299,22 @@ def _opacify_rendered_markup(
     match. Tokens are call-local: generated and restored within one
     ``render_component_with_context`` invocation, so no cross-level
     bookkeeping or global uniqueness is needed.
+
+    Adversarial or round-tripped content can already contain the marker
+    character; opacifying on top of that would let the restore pass splice
+    an unrelated slot's HTML into that location. So if the marker is already
+    present anywhere in ``markup``, this bails out entirely -- returning the
+    markup unchanged and no placeholders -- rather than risk that.
     """
+    # Adversarial or round-tripped content can already contain the marker;
+    # opacifying then would restore a slot value into the wrong place.
+    if _SLOT_PLACEHOLDER_CHAR in markup:
+        return markup, {}
+
     placeholders: dict[str, str] = {}
-    seen: set[str] = set()
     for value in sorted(set(candidates), key=len, reverse=True):
-        if value in seen or value not in markup:
+        if value not in markup:
             continue
-        seen.add(value)
         token = f"{_SLOT_PLACEHOLDER_CHAR}{len(placeholders)}{_SLOT_PLACEHOLDER_CHAR}"
         placeholders[token] = value
         markup = markup.replace(value, token)
