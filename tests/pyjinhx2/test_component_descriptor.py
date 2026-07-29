@@ -1778,3 +1778,30 @@ class TestDescriptorInheritanceMatrix:
             "css": FancyCard,
             "js": VeryFancyCard,
         }
+
+    def test_mixed_provenance_with_one_kind_resolved_to_none(self, mro_dir):
+        """An absent kind is an absent *key*, not a key mapped to None or to
+        whichever ancestor happened to win another kind. Asserted next to two
+        resolved kinds so a leak into the empty slot would show up."""
+
+        class Widget(BaseComponent):
+            pass
+
+        class Card(Widget):
+            pass
+
+        class FancyCard(Card):
+            pass
+
+        for klass in (Widget, Card, FancyCard):
+            klass.__module__ = _MRO_MODULE
+        (mro_dir / "card.pjx").write_text("<div>card</div>")
+        (mro_dir / "card.css").write_text(".card {}")
+
+        descriptor = _resolve_class_descriptor(FancyCard)
+
+        assert descriptor.template_path == mro_dir / "card.pjx"
+        assert descriptor.css_paths == (mro_dir / "card.css",)
+        assert descriptor.js_paths == ()
+        assert "js" not in descriptor.provenance
+        assert descriptor.provenance == {"template": Card, "css": Card}
