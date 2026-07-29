@@ -128,6 +128,20 @@ def _is_json_coercible_annotation(annotation: Any) -> bool:
     return isinstance(origin, type) and issubclass(origin, BaseModel)
 
 
+# ADR 0007's filename convention, applied to the class name to get the single
+# candidate filename. Consecutive capitals are one acronym (PJXButton ->
+# pjx_button), so components named after acronyms get the filename an author
+# would have written by hand. Same regex as v0.x's
+# pyjinhx/utils.py:pascal_case_to_snake_case, restated here because component.py
+# may not import the legacy package (see this module's docstring).
+_PASCAL_BOUNDARY_RE = re.compile(r"(?<=[a-z0-9])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])")
+
+
+def _pascal_to_snake(name: str) -> str:
+    """Convert a PascalCase/CamelCase identifier to snake_case."""
+    return _PASCAL_BOUNDARY_RE.sub("_", name).lower()
+
+
 def _defining_module_dir(cls: type) -> Path:
     """Directory of the module that defined ``cls`` — the root every co-located
     probe starts from (ADR 0007).

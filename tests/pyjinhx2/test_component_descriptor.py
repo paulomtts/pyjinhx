@@ -8,6 +8,7 @@ import pyjinhx2.component
 from pyjinhx2.component import (
     BaseComponent,
     _defining_module_dir,
+    _pascal_to_snake,
     _resolve_class_descriptor,
     _resolve_strict,
 )
@@ -250,3 +251,26 @@ class TestDevReloadReassignmentSmokeTest:
 
         assert Card._pjx_descriptor is replacement
         assert Card._pjx_descriptor is not original
+
+
+class TestPascalToSnake:
+    """The ADR 0007 filename convention: acronym-aware PascalCase -> snake_case,
+    matching v0.x's pyjinhx/utils.py:pascal_case_to_snake_case exactly, but
+    reimplemented locally because pyjinhx2 must not import the legacy package."""
+
+    @pytest.mark.parametrize(
+        ("name", "expected"),
+        [
+            ("Card", "card"),
+            ("ScrollSentinel", "scroll_sentinel"),
+            ("PJXButton", "pjx_button"),
+            ("HTMLParser", "html_parser"),
+            ("PJX", "pjx"),
+            ("TabPanelPJX", "tab_panel_pjx"),
+            ("Grid2Col", "grid2_col"),
+            ("A", "a"),
+            ("already_snake", "already_snake"),
+        ],
+    )
+    def test_converts_pascal_case_to_snake_case(self, name, expected):
+        assert _pascal_to_snake(name) == expected
