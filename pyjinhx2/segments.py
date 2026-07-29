@@ -379,3 +379,49 @@ class VerbatimParser(HTMLParser):
     def unknown_decl(self, data: str) -> None:
         # `<![CDATA[x]]>` arrives as `CDATA[x]`; the base class would drop it.
         self.segments.append(self._raw_at(RE_RAW_COMMENT) or f"<![{data}]>")
+
+
+def splice(level: RenderedLevel, offset: int, text: str) -> RenderedLevel:
+    """Insert ``text`` into ``level.segments[0]`` at ``offset``, keeping the span true.
+
+    The one generic string-insertion primitive of the segment model — pure
+    slice-and-concatenate, no re-parse (ADR 0002, invariant 1) and no attribute
+    semantics. Building the text to insert (quoting, ordering, which attrs even
+    apply) is the caller's job; ``splice`` only knows a position and a string.
+    That makes it deliberately dumber than v0.x's ``_override_tag``, which
+    search-and-replaced per attribute name over a re-scanned tag.
+
+    ``root_span`` is rewritten so it stays truthful after the insertion: an
+    endpoint at or past ``offset`` moves forward by ``len(text)``, one before it
+    does not. Callers stamp just inside the root tag's closing ``>`` — at
+    ``root_span[1] - 1`` — so in practice ``start`` holds still and ``end`` grows,
+    and a *second* splice reading the updated span lands just inside that same
+    ``>`` again. That is the whole point: the stamp mechanism splices pass-through
+    attrs at render time and fan-out splices ``hx-swap-oob`` at response time —
+    same offset, same primitive, two moments (architecture-overview.md §4). Get
+    this arithmetic wrong and the two silently corrupt each other's insertion
+    point.
+
+    ``segments[0]`` must be a ``str``. When a level's root is itself an unresolved
+    custom tag, ``segments[0]`` is a ``ChildRef``, which no offset can slice; a
+    level being stamped has already rendered its own root, so that combination is
+    a structural-contract violation, not user error — hence a bare ``assert``.
+
+    Nothing here validates ``offset`` against the tag structure or bounds it:
+    ordinary Python slicing semantics apply, and knowing what a sane insertion
+    point is belongs to the caller. Empty ``text`` is a legal no-op. Mutates
+    ``level`` in place (the dataclasses are slotted but not frozen) and returns it
+    so ``render.py`` can chain the stamp step.
+    """
+    root = level.segments[0]
+    assert isinstance(root, str), (
+        f"splice needs a str root segment, got {type(root).__name__}"
+    )
+    level.segments[0] = root[:offset] + text + root[offset:]
+    start, end = level.root_span
+    shift = len(text)
+    level.root_span = (
+        start + shift if offset <= start else start,
+        end + shift if offset <= end else end,
+    )
+    return level

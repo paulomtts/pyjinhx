@@ -11,6 +11,7 @@ from pyjinhx2.segments import (
     RenderedLevel,
     VerbatimParser,
     contains_custom_tag,
+    splice,
 )
 
 
@@ -658,3 +659,84 @@ class TestEnforceSingleRoot:
         # Invariant 3 / ADR 0002: single-root violations raise unconditionally.
         source = inspect.getsource(pyjinhx2.segments)
         assert "except" not in source
+
+
+class TestSplice:
+    def test_inserts_text_at_offset(self):
+        level = make_level(segments=['<div class="card">hi</div>'], root_span=(0, 18))
+        splice(level, 17, ' data-x="1"')
+        assert level.segments[0] == '<div class="card" data-x="1">hi</div>'
+
+    def test_root_span_end_shifts_by_inserted_length(self):
+        level = make_level(segments=['<div class="card">hi</div>'], root_span=(0, 18))
+        splice(level, level.root_span[1] - 1, ' data-x="1"')
+        assert level.root_span == (0, 29)
+
+    def test_returns_the_same_level_for_chaining(self):
+        level = make_level(segments=['<div class="card">hi</div>'], root_span=(0, 18))
+        assert splice(level, 17, ' data-x="1"') is level
+
+    def test_second_splice_after_first_lands_correctly(self):
+        # First splice = #247's root-attr stamp at render time.
+        level = make_level(segments=['<div class="card">hi</div>'], root_span=(0, 18))
+        splice(level, level.root_span[1] - 1, ' data-x="1"')
+        # Second splice = L3's OOB fan-out at response time, using the span the
+        # first call left behind.
+        splice(level, level.root_span[1] - 1, ' hx-swap-oob="true"')
+        assert (
+            level.segments[0]
+            == '<div class="card" data-x="1" hx-swap-oob="true">hi</div>'
+        )
+        assert level.root_span == (0, 48)
+        # The span still bounds exactly the root tag, closing `>` included.
+        markup = level.segments[0]
+        assert isinstance(markup, str)
+        assert markup[level.root_span[0] : level.root_span[1]] == (
+            '<div class="card" data-x="1" hx-swap-oob="true">'
+        )
+
+    def test_empty_text_is_a_no_op(self):
+        level = make_level(segments=['<div class="card">hi</div>'], root_span=(0, 18))
+        splice(level, 17, "")
+        assert level.segments[0] == '<div class="card">hi</div>'
+        assert level.root_span == (0, 18)
+
+    def test_unicode_text_offsets_are_character_based(self):
+        level = make_level(segments=['<div class="card">hi</div>'], root_span=(0, 18))
+        text = ' data-emoji="\U0001f389é"'
+        assert len(text) == 16  # code points, not the 20 bytes of its UTF-8 form
+        splice(level, 17, text)
+        markup = level.segments[0]
+        assert isinstance(markup, str)
+        assert markup == '<div class="card" data-emoji="\U0001f389é">hi</div>'
+        assert level.root_span == (0, 34)
+        assert len(markup) == 42
+
+    @pytest.mark.parametrize(
+        ("offset", "text", "expected_markup", "expected_span"),
+        [
+            (0, "X", 'X<div class="card">hi</div>', (1, 19)),
+            (26, "Y", '<div class="card">hi</div>Y', (0, 18)),
+        ],
+        ids=["prepend", "append"],
+    )
+    def test_insert_at_start_and_at_end(
+        self, offset, text, expected_markup, expected_span
+    ):
+        level = make_level(segments=['<div class="card">hi</div>'], root_span=(0, 18))
+        markup = level.segments[0]
+        assert isinstance(markup, str)
+        assert offset in (0, len(markup))
+        splice(level, offset, text)
+        assert level.segments[0] == expected_markup
+        assert level.root_span == expected_span
+
+    @pytest.mark.parametrize(
+        "root",
+        [make_child_ref(), make_level()],
+        ids=["child-ref", "nested-level"],
+    )
+    def test_raises_when_root_segment_is_not_a_str(self, root):
+        level = make_level(segments=[root, "</div>"], root_span=(0, 18))
+        with pytest.raises(AssertionError):
+            splice(level, 17, ' data-x="1"')
