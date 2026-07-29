@@ -692,3 +692,45 @@ class TestSplice:
         assert level.segments[0][level.root_span[0] : level.root_span[1]] == (
             '<div class="card" data-x="1" hx-swap-oob="true">'
         )
+
+    def test_empty_text_is_a_no_op(self):
+        level = make_level(segments=['<div class="card">hi</div>'], root_span=(0, 18))
+        splice(level, 17, "")
+        assert level.segments[0] == '<div class="card">hi</div>'
+        assert level.root_span == (0, 18)
+
+    def test_unicode_text_offsets_are_character_based(self):
+        level = make_level(segments=['<div class="card">hi</div>'], root_span=(0, 18))
+        text = ' data-emoji="\U0001f389é"'
+        assert len(text) == 16  # code points, not the 20 bytes of its UTF-8 form
+        splice(level, 17, text)
+        assert level.segments[0] == '<div class="card" data-emoji="\U0001f389é">hi</div>'
+        assert level.root_span == (0, 34)
+        assert len(level.segments[0]) == 42
+
+    @pytest.mark.parametrize(
+        ("offset", "text", "expected_markup", "expected_span"),
+        [
+            (0, "X", 'X<div class="card">hi</div>', (1, 19)),
+            (26, "Y", '<div class="card">hi</div>Y', (0, 18)),
+        ],
+        ids=["prepend", "append"],
+    )
+    def test_insert_at_start_and_at_end(
+        self, offset, text, expected_markup, expected_span
+    ):
+        level = make_level(segments=['<div class="card">hi</div>'], root_span=(0, 18))
+        assert offset in (0, len(level.segments[0]))
+        splice(level, offset, text)
+        assert level.segments[0] == expected_markup
+        assert level.root_span == expected_span
+
+    @pytest.mark.parametrize(
+        "root",
+        [make_child_ref(), make_level()],
+        ids=["child-ref", "nested-level"],
+    )
+    def test_raises_when_root_segment_is_not_a_str(self, root):
+        level = make_level(segments=[root, "</div>"], root_span=(0, 18))
+        with pytest.raises(AssertionError):
+            splice(level, 17, ' data-x="1"')
