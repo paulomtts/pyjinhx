@@ -11,6 +11,7 @@ from pyjinhx2.segments import (
     RenderedLevel,
     VerbatimParser,
     contains_custom_tag,
+    splice,
 )
 
 
@@ -658,3 +659,36 @@ class TestEnforceSingleRoot:
         # Invariant 3 / ADR 0002: single-root violations raise unconditionally.
         source = inspect.getsource(pyjinhx2.segments)
         assert "except" not in source
+
+
+class TestSplice:
+    def test_inserts_text_at_offset(self):
+        level = make_level(segments=['<div class="card">hi</div>'], root_span=(0, 18))
+        splice(level, 17, ' data-x="1"')
+        assert level.segments[0] == '<div class="card" data-x="1">hi</div>'
+
+    def test_root_span_end_shifts_by_inserted_length(self):
+        level = make_level(segments=['<div class="card">hi</div>'], root_span=(0, 18))
+        splice(level, level.root_span[1] - 1, ' data-x="1"')
+        assert level.root_span == (0, 29)
+
+    def test_returns_the_same_level_for_chaining(self):
+        level = make_level(segments=['<div class="card">hi</div>'], root_span=(0, 18))
+        assert splice(level, 17, ' data-x="1"') is level
+
+    def test_second_splice_after_first_lands_correctly(self):
+        # First splice = #247's root-attr stamp at render time.
+        level = make_level(segments=['<div class="card">hi</div>'], root_span=(0, 18))
+        splice(level, level.root_span[1] - 1, ' data-x="1"')
+        # Second splice = L3's OOB fan-out at response time, using the span the
+        # first call left behind.
+        splice(level, level.root_span[1] - 1, ' hx-swap-oob="true"')
+        assert (
+            level.segments[0]
+            == '<div class="card" data-x="1" hx-swap-oob="true">hi</div>'
+        )
+        assert level.root_span == (0, 48)
+        # The span still bounds exactly the root tag, closing `>` included.
+        assert level.segments[0][level.root_span[0] : level.root_span[1]] == (
+            '<div class="card" data-x="1" hx-swap-oob="true">'
+        )
