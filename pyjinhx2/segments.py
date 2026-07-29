@@ -159,16 +159,17 @@ class VerbatimParser(HTMLParser):
         self._source = ""
         self._line_starts: list[int] = [0]
         # One entry per currently-open PascalCase tag: (original-cased name, index
-        # of its open tag in `segments`). Entry [0] is the only *cut point* — the
-        # top-level span #256 will replace in place. Deeper entries exist purely so
-        # the matching close tag pops the right level; nothing nested is ever cut.
+        # of its open tag in `segments`, the attrs parsed off that open tag).
+        # Entry [0] is the only *cut point*: when it closes, handle_endtag replaces
+        # the whole run from its index onward with one ChildRef. Deeper entries
+        # exist purely so the matching close tag pops the right level; nothing
+        # nested is ever cut or collapsed.
         #
-        # NB for #256: an entry is popped (discarded) by handle_endtag the instant
-        # its close tag matches, so it is NOT available by reading `_custom_stack`
-        # after `close()` returns — only never-closed stragglers survive that long.
-        # The collapse must happen inside handle_endtag itself, using the top-of-
-        # stack entry *before* it is popped.
-        self._custom_stack: list[tuple[str, int]] = []
+        # An entry is popped by handle_endtag the instant its close tag matches, so
+        # it is not available by reading `_custom_stack` after `close()` returns —
+        # only never-closed stragglers survive that long. The collapse therefore
+        # happens inside handle_endtag, off the entry it just popped.
+        self._custom_stack: list[tuple[str, int, dict[str, str]]] = []
 
     def feed(self, data: str) -> None:
         """Parse ``data``. One feed per parser instance — the source is recorded
@@ -205,8 +206,12 @@ class VerbatimParser(HTMLParser):
         self._record_root_span(raw)
         name = self._custom_tag_name(raw)
         if name is not None:
-            self._custom_stack.append((name, len(self.segments)))
-        # Paired tags stay raw passthrough here — see the class docstring.
+            # The raw open tag is appended below and stays in `segments` until the
+            # matching close tag collapses the run; `attrs` is kept here because
+            # HTMLParser only offers it on this event.
+            self._custom_stack.append(
+                (name, len(self.segments), _attrs_to_dict(attrs))
+            )
         self.segments.append(raw)
 
     def handle_startendtag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
@@ -221,16 +226,28 @@ class VerbatimParser(HTMLParser):
         self.segments.append(raw)
 
     def handle_endtag(self, tag: str) -> None:
-        # HTMLParser lowercases `tag`, which would destroy `</DIV>` and, fatally
-        # for #254, `</PJXButton>`. Recover the source text instead.
+        # HTMLParser lowercases `tag`, which would destroy `</DIV>` and, fatally,
+        # `</PJXButton>`. Recover the source text instead.
         raw = self._raw_at(RE_RAW_END_TAG) or f"</{tag}>"
         name = self._custom_tag_name(raw)
-        if (
-            name is not None
-            and self._custom_stack
-            and self._custom_stack[-1][0] == name
-        ):
-            self._custom_stack.pop()
+        if name is not None and self._custom_stack and self._custom_stack[-1][0] == name:
+            open_name, index, attrs = self._custom_stack.pop()
+            if not self._custom_stack:
+                # The outermost component tag just closed: everything appended
+                # since its open tag is its body. Join it back into one raw
+                # string, drop the run, and leave a single ChildRef in its place.
+                # The isinstance filter is a type-narrowing no-op — nothing
+                # nested is ever cut, so these segments are all str.
+                inner = "".join(
+                    segment
+                    for segment in self.segments[index + 1 :]
+                    if isinstance(segment, str)
+                )
+                del self.segments[index:]
+                self.segments.append(
+                    ChildRef(tag=open_name, attrs=attrs, inner=inner)
+                )
+                return
         # Deliberate non-pop on a name mismatch: enforcement is #257's, and
         # popping on mismatch would silently reopen cutting inside a still-
         # unclosed component's span.

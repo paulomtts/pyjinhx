@@ -201,11 +201,9 @@ class TestVerbatimParser:
         "markup",
         [
             "<DIV>hi</DIV>",
-            '<PJXButton label="Go">text</PJXButton>',
             "<div>\n<p>a</p>\n</DIV>",
             "</DIV >",
             "<p>x</p >",
-            "<PJXButton\n  label='Go'\n>t</PJXButton>",
         ],
     )
     def test_round_trips_end_tag_casing_and_spacing(self, markup: str):
@@ -408,8 +406,14 @@ class TestVerbatimParser:
         segments = self.parse(
             "<PJXAccordion><PJXIcon name='a'/></PJXAccordion><PJXIcon name='b'/>"
         )
-        assert "<PJXIcon name='a'/>" in segments
-        assert ChildRef(tag="PJXIcon", attrs={"name": "b"}, inner=None) in segments
+        # The nested icon was never cut — it is raw text inside the accordion's
+        # body — but the sibling after the close tag is top-level again.
+        assert segments == [
+            ChildRef(
+                tag="PJXAccordion", attrs={}, inner="<PJXIcon name='a'/>"
+            ),
+            ChildRef(tag="PJXIcon", attrs={"name": "b"}, inner=None),
+        ]
 
     def test_plain_tags_do_not_disturb_the_custom_tag_stack(self):
         # <div> is not a component, so it neither pushes nor pops: the accordion is
@@ -423,8 +427,16 @@ class TestVerbatimParser:
             "<PJXAccordion><PJXPanel></PJXPanel><PJXIcon name='a'/></PJXAccordion>"
             "<PJXIcon name='b'/>"
         )
-        assert "<PJXIcon name='a'/>" in segments
-        assert ChildRef(tag="PJXIcon", attrs={"name": "b"}, inner=None) in segments
+        # </PJXPanel> pops its own entry but does not collapse: the stack is still
+        # non-empty, so the panel stays verbatim inside the accordion's body.
+        assert segments == [
+            ChildRef(
+                tag="PJXAccordion",
+                attrs={},
+                inner="<PJXPanel></PJXPanel><PJXIcon name='a'/>",
+            ),
+            ChildRef(tag="PJXIcon", attrs={"name": "b"}, inner=None),
+        ]
 
     def test_mismatched_close_tag_does_not_pop_or_raise(self):
         # No enforcement until #257: a stray close tag is passed through and the
@@ -433,11 +445,32 @@ class TestVerbatimParser:
         assert "</PJXOther>" in segments
         assert "<PJXIcon name='a'/>" in segments
 
-    def test_paired_custom_tags_stay_raw_passthrough(self):
-        # Open decision (b) for #254: paired tags are NOT collapsed here. #256 owns
-        # the collapse; #254 only records where it starts.
+    def test_paired_custom_tag_collapses_into_one_child_ref(self):
+        # #254 left the open tag, body and close tag as three raw strings; #256
+        # collapses that run into a single ChildRef carrying the raw body.
         assert self.parse('<PJXButton label="Go">text</PJXButton>') == [
-            '<PJXButton label="Go">',
-            "text",
-            "</PJXButton>",
+            ChildRef(tag="PJXButton", attrs={"label": "Go"}, inner="text"),
+        ]
+
+    def test_paired_custom_tag_with_empty_body_has_empty_inner(self):
+        assert self.parse("<PJXButton></PJXButton>") == [
+            ChildRef(tag="PJXButton", attrs={}, inner=""),
+        ]
+
+    def test_bare_attrs_on_a_paired_open_tag_become_empty_strings(self):
+        # Same _attrs_to_dict convention as the self-closing cut.
+        segments = self.parse('<PJXButton disabled label="Go">go</PJXButton>')
+        assert segments == [
+            ChildRef(
+                tag="PJXButton", attrs={"disabled": "", "label": "Go"}, inner="go"
+            ),
+        ]
+
+    def test_collapse_survives_casing_and_whitespace_in_the_open_tag(self):
+        # HTMLParser hands handle_starttag a lowercased `pjxbutton`; the name must
+        # come from the source text, and the newlines inside the open tag must not
+        # leak into `inner`.
+        segments = self.parse("<PJXButton\n  label='Go'\n>t</PJXButton>")
+        assert segments == [
+            ChildRef(tag="PJXButton", attrs={"label": "Go"}, inner="t"),
         ]
