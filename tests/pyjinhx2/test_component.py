@@ -1,5 +1,6 @@
 import ast
 import inspect
+from typing import ClassVar
 
 import pytest
 from pydantic import BaseModel, Field, ValidationError
@@ -283,6 +284,41 @@ class TestQuoteSafeFieldTypes:
 
     def test_extra_attrs_field_accepts_valid_mapping(self):
         assert Tagged(attrs={"@click": "go()"}).attrs == {"@click": "go()"}
+
+
+class TestReservedNameCollisions:
+    def test_auto_id_as_real_field_raises_at_class_definition(self):
+        with pytest.raises(TypeError) as excinfo:
+
+            class Bad(BaseComponent):
+                auto_id: bool = False  # pyright: ignore[reportIncompatibleVariableOverride]
+
+        message = str(excinfo.value)
+        assert "Bad" in message
+        assert "auto_id" in message
+        assert "ClassVar" in message
+
+    def test_auto_id_as_classvar_is_allowed(self):
+        class Good(BaseComponent):
+            auto_id: ClassVar[bool] = False
+
+        assert "auto_id" not in Good.model_fields
+        with pytest.raises(ValidationError):
+            Good()
+        assert Good(id="x").id == "x"
+
+    def test_bare_auto_id_assignment_is_still_allowed(self):
+        class Bare(BaseComponent):
+            auto_id = False
+
+        assert "auto_id" not in Bare.model_fields
+        assert Bare(id="x").id == "x"
+
+    def test_plain_subclass_is_unaffected(self):
+        class Plain(BaseComponent):
+            name: str = ""
+
+        assert Plain(name="a").id.startswith("pjx-")
 
 
 FORBIDDEN_IMPORTS = (
