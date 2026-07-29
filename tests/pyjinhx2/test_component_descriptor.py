@@ -1743,3 +1743,38 @@ class TestDescriptorInheritanceMatrix:
         assert descriptor.css_paths == (mro_dir / "card.css",)
         assert descriptor.js_paths == (mro_dir / "card.js",)
         assert descriptor.provenance == {"template": Card, "css": Card, "js": Card}
+
+    def test_mixed_provenance_across_three_ancestors(self, mro_dir):
+        """The case no single-resolver test can catch: three kinds resolving to
+        three different ancestors in one MRO. Each path field and its
+        provenance entry must agree pairwise, with no walk borrowing another's
+        winner."""
+
+        class Widget(BaseComponent):
+            pass
+
+        class Card(Widget):
+            pass
+
+        class FancyCard(Card):
+            pass
+
+        class VeryFancyCard(FancyCard):
+            pass
+
+        for klass in (Widget, Card, FancyCard, VeryFancyCard):
+            klass.__module__ = _MRO_MODULE
+        (mro_dir / "card.pjx").write_text("<div>card</div>")
+        (mro_dir / "fancy_card.css").write_text(".fancy {}")
+        (mro_dir / "very_fancy_card.js").write_text("//very")
+
+        descriptor = _resolve_class_descriptor(VeryFancyCard)
+
+        assert descriptor.template_path == mro_dir / "card.pjx"
+        assert descriptor.css_paths == (mro_dir / "fancy_card.css",)
+        assert descriptor.js_paths == (mro_dir / "very_fancy_card.js",)
+        assert descriptor.provenance == {
+            "template": Card,
+            "css": FancyCard,
+            "js": VeryFancyCard,
+        }
