@@ -907,3 +907,31 @@ class TestRoundTripThroughSerialize:
     )
     def test_round_trips_cdata_marked_sections_and_pis(self, markup: str):
         assert self.round_trip(markup) == markup
+
+    @pytest.mark.parametrize(
+        "markup",
+        [
+            '<div class="card">\n  <h2>Hi</h2>\n  <p>a &amp; b</p>\n</div>',
+            "  <div>  <span> x </span>  </div>  ",
+            "<ul><li>a<li>b</ul>",
+            "<div><!-- c --><br><hr/>t</div>",
+            "<my-el data-x>hi</my-el>",
+            "\n\n\t  \n",
+        ],
+    )
+    def test_round_trips_multi_segment_compositions(self, markup: str):
+        # Whitespace-heavy, deeply segmented and implicitly-closed markup: the
+        # cases where a lossy join would show up as collapsed or reordered text.
+        assert self.round_trip(markup) == markup
+
+    @pytest.mark.parametrize(
+        "markup",
+        ["<div", "<!-- unclosed"],
+    )
+    def test_markup_truncated_at_eof_is_a_documented_non_round_trip(self, markup: str):
+        # Pinned counter-example, not a gap: HTMLParser.close() drops or
+        # completes a construct cut off mid-source, so these cannot round-trip
+        # (VerbatimParser docstring, segments.py:166-169). Jinja never emits
+        # such output. Asserting the inequality here keeps the class's positive
+        # claim honest and makes the day this behaviour changes visible.
+        assert self.round_trip(markup) != markup
