@@ -4,7 +4,6 @@ import inspect
 
 import pytest
 
-
 import pyjinhx2.segments
 from pyjinhx2.segments import RenderedLevel
 
@@ -44,7 +43,7 @@ class TestRenderedLevel:
     def test_slots_reject_undeclared_attributes(self):
         level = make_level()
         with pytest.raises(AttributeError):
-            setattr(level, "markup", "nope")
+            level.markup = "nope"  # pyright: ignore[reportAttributeAccessIssue]
 
     def test_is_a_slotted_dataclass(self):
         fields = {f.name for f in dataclasses.fields(RenderedLevel)}
