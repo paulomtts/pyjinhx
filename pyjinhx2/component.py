@@ -192,8 +192,15 @@ def _resolve_template_path(cls: type) -> Path:
 
 
 def _resolve_slot_fields(cls: type) -> frozenset[str]:
-    """Resolve slot fields for ``cls``. Stub returns empty set."""
-    return frozenset()
+    """The declared fields of ``cls`` that are raw-HTML slots.
+
+    A type-level fact, resolved once per class at registration: which fields
+    are slots, not which one receives a tag's nested children (that precedence
+    is L1's). Declared fields only — ``model_extra`` is never walked, so the
+    strict core keeps its promise that undeclared keys stay untouched.
+    """
+    fields = getattr(cls, "model_fields", {})
+    return frozenset(name for name in fields if _is_slot_field(cls, name))
 
 
 def _resolve_asset_paths(cls: type) -> tuple[tuple[Path, ...], tuple[Path, ...]]:
