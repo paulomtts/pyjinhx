@@ -200,3 +200,33 @@ class TestVerbatimParser:
     )
     def test_round_trips_end_tag_casing_and_spacing(self, markup: str):
         assert self.round_trip(markup) == markup
+
+    @pytest.mark.parametrize(
+        "markup",
+        [
+            "a &amp; b &#65; c",
+            "&nbsp;&lt;div&gt;",
+            "<p>&unknown;</p>",
+            "text with & bare ampersand",
+            "<a href=/x?q=1&y=2>link</a>",
+            "<p title='a&amp;b'>t</p>",
+        ],
+    )
+    def test_round_trips_entities_without_decoding(self, markup: str):
+        assert self.round_trip(markup) == markup
+
+    @pytest.mark.parametrize(
+        "markup",
+        [
+            '<script>if (a < b && c) { x("q"); }</script>',
+            '<style>a[href="x"] > b { content: "&"; }</style>',
+            "<script>var s = '</p>';</script>",
+            "<SCRIPT>A < B</SCRIPT>",
+        ],
+    )
+    def test_cdata_bodies_are_never_re_escaped(self, markup: str):
+        # Regression guard for the deliberate deviation from pyjinhx/tags.py:127:
+        # v0.x re-escapes handle_data with markupsafe.escape and needs a CDATA
+        # exemption to stop `&&` becoming `&amp;&amp;`. v2 escapes nothing, so
+        # JS/CSS bodies survive by construction.
+        assert self.round_trip(markup) == markup

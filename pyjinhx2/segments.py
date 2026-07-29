@@ -89,7 +89,10 @@ class VerbatimParser(HTMLParser):
     """
 
     def __init__(self) -> None:
-        super().__init__()
+        # convert_charrefs would decode `&amp;` into `&` inside handle_data,
+        # silently unescaping markup Jinja escaped on purpose. Keep refs intact
+        # and reconstruct them below.
+        super().__init__(convert_charrefs=False)
         self.segments: list[str] = []
         self._source = ""
         self._line_starts: list[int] = [0]
@@ -124,6 +127,12 @@ class VerbatimParser(HTMLParser):
 
     def handle_data(self, data: str) -> None:
         self.segments.append(data)
+
+    def handle_entityref(self, name: str) -> None:
+        self.segments.append(f"&{name};")
+
+    def handle_charref(self, name: str) -> None:
+        self.segments.append(f"&#{name};")
 
     def handle_comment(self, data: str) -> None:
         self.segments.append(f"<!--{data}-->")
