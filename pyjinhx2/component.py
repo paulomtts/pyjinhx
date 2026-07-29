@@ -185,6 +185,30 @@ def _walk_template(cls: type) -> tuple[Path, type | None]:
     return _template_candidate(ancestors[-1]), None
 
 
+def _missing_template_error(cls: type) -> LookupError:
+    """The error for a component whose template is nowhere on disk.
+
+    Returns the exception rather than raising it: the resolvers deliberately
+    answer with an unprobed candidate path, and only the caller that tries to
+    load that file knows the answer was wrong. The message lists every class
+    the template could have come from next to the exact path it would have
+    been read from, nearest first, so the fix is either creating one of those
+    files or renaming the one that is misspelled.
+
+    Pure path arithmetic — no probes. Building this message costs nothing
+    beyond what `_template_candidate` already does for each ancestor.
+    """
+    probed = "\n".join(
+        f"  {ancestor.__name__} -> {_template_candidate(ancestor)}"
+        for ancestor in _resolution_ancestors(cls)
+    )
+    return LookupError(
+        f"{cls.__name__} has no template: no class it inherits from has a .pjx "
+        f"file beside the module that defines it, so there is nothing to "
+        f"render.\nPaths probed, nearest first:\n{probed}"
+    )
+
+
 def _walk_asset(cls: type, kind: str) -> tuple[Path | None, type | None]:
     """The MRO walk for one asset kind, run once and reported in full.
 

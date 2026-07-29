@@ -13,6 +13,7 @@ from pyjinhx2.component import (
     Slot,
     _asset_candidate,
     _defining_module_dir,
+    _missing_template_error,
     _pascal_to_snake,
     _resolution_ancestors,
     _resolve_asset_paths,
@@ -1502,3 +1503,144 @@ class TestPerKindIndependence:
 
         assert _resolve_template_path(FancyCard) == mro_dir / "fancy_card.pjx"
         assert _resolve_asset_paths(FancyCard)[0] == (mro_dir / "card.css",)
+
+
+class TestMissingTemplateError:
+    """The diagnostic a caller raises when no ancestor has a template file.
+    Returned, not raised: the raise site belongs to the renderer."""
+
+    def test_it_returns_a_lookup_error_instead_of_raising(self):
+        class Card(BaseComponent):
+            pass
+
+        error = _missing_template_error(Card)
+
+        assert isinstance(error, LookupError)
+
+    def test_a_bare_class_message_names_the_class_and_its_one_candidate(self):
+        class Card(BaseComponent):
+            pass
+
+        message = str(_missing_template_error(Card))
+
+        assert "Card" in message
+        assert str(Path(__file__).parent / "card.pjx") in message
+
+    def test_a_chain_lists_every_ancestors_candidate_nearest_first(self, mro_dir):
+        class Grandparent(BaseComponent):
+            pass
+
+        class Parent(Grandparent):
+            pass
+
+        class Child(Parent):
+            pass
+
+        for klass in (Grandparent, Parent, Child):
+            klass.__module__ = _MRO_MODULE
+
+        message = str(_missing_template_error(Child))
+
+        assert str(mro_dir / "child.pjx") in message
+        assert str(mro_dir / "parent.pjx") in message
+        assert str(mro_dir / "grandparent.pjx") in message
+        assert message.index("child.pjx") < message.index("parent.pjx")
+        assert message.index("parent.pjx") < message.index("grandparent.pjx")
+
+    def test_each_listed_line_pairs_an_ancestor_name_with_its_path(self, mro_dir):
+        """The point of the message: a subclass author can read off which class
+        was expected to own which file, not just that something is missing."""
+
+        class Card(BaseComponent):
+            pass
+
+        class FancyCard(Card):
+            pass
+
+        Card.__module__ = _MRO_MODULE
+        FancyCard.__module__ = _MRO_MODULE
+
+        message = str(_missing_template_error(FancyCard))
+
+        assert f"FancyCard -> {mro_dir / 'fancy_card.pjx'}" in message
+        assert f"Card -> {mro_dir / 'card.pjx'}" in message
+        assert "FancyCard" in message.splitlines()[0]
+
+    def test_the_message_states_plainly_that_no_ancestor_has_a_file(self):
+        class Card(BaseComponent):
+            pass
+
+        message = str(_missing_template_error(Card))
+
+        assert "no class it inherits from has a .pjx file" in message
+
+    def test_the_message_labels_the_probed_paths(self):
+        class Card(BaseComponent):
+            pass
+
+        message = str(_missing_template_error(Card))
+
+        assert "Paths probed, nearest first:" in message
+
+    def test_it_performs_no_filesystem_probes(self, mro_dir, monkeypatch):
+        """The builder is pure path arithmetic: the walk that already answered
+        `_resolve_template_path` spent the filesystem budget (ADR 0007); this
+        formatter must not spend any more, not even for the last ancestor.
+
+        Classes are defined and re-pointed at `mro_dir` *before* the spy is
+        installed: `__pydantic_init_subclass__` itself walks template and
+        asset candidates at class-definition time (against whatever module the
+        class has *then*), and installing the spy first would let those
+        registration-time probes (against the test file's own directory, since
+        `__module__` isn't reassigned yet) leak into the assertion below — the
+        same reason `TestTemplateWalkProbeBudget` defines its classes first."""
+
+        class Grandparent(BaseComponent):
+            pass
+
+        class Parent(Grandparent):
+            pass
+
+        class Child(Parent):
+            pass
+
+        for klass in (Grandparent, Parent, Child):
+            klass.__module__ = _MRO_MODULE
+
+        probed: list[Path] = []
+        real_is_file = Path.is_file
+        real_exists = Path.exists
+
+        def counting_is_file(self: Path, *args, **kwargs):
+            probed.append(self)
+            return real_is_file(self, *args, **kwargs)
+
+        def counting_exists(self: Path, *args, **kwargs):
+            probed.append(self)
+            return real_exists(self, *args, **kwargs)
+
+        monkeypatch.setattr(Path, "is_file", counting_is_file)
+        monkeypatch.setattr(Path, "exists", counting_exists)
+
+        assert isinstance(_missing_template_error(Child), LookupError)
+        assert probed == []
+
+    def test_the_resolvers_still_succeed_for_a_template_less_class(self, mro_dir):
+        """The error exists as a value only. Registration and resolution must
+        keep answering with the unprobed fallback for a class with no file, so
+        no resolver has quietly started raising it."""
+
+        class Card(BaseComponent):
+            pass
+
+        class FancyCard(Card):
+            pass
+
+        Card.__module__ = _MRO_MODULE
+        FancyCard.__module__ = _MRO_MODULE
+
+        rebuild_class_descriptor(FancyCard)
+
+        assert _resolve_template_path(FancyCard) == mro_dir / "card.pjx"
+        assert _resolve_provenance(FancyCard) == {}
+        assert FancyCard._pjx_descriptor.template_path == mro_dir / "card.pjx"
