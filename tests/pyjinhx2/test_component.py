@@ -162,6 +162,23 @@ class TestJsonCoercion:
 
         assert WithChildren(content="[1, 2]").content == "[1, 2]"
 
+    def test_invalid_json_raises_validation_error_naming_class_and_field(self):
+        with pytest.raises(ValidationError) as excinfo:
+            Structural(sources="[not json")  # pyright: ignore[reportArgumentType]
+        message = str(excinfo.value)
+        assert "Structural" in message
+        assert "sources" in message
+
+    def test_non_json_looking_string_is_left_for_pydantic_to_reject(self):
+        with pytest.raises(ValidationError) as excinfo:
+            Structural(sources="plain text")  # pyright: ignore[reportArgumentType]
+        assert "invalid JSON attribute value" not in str(excinfo.value)
+
+    def test_empty_string_is_left_for_pydantic_to_reject(self):
+        with pytest.raises(ValidationError) as excinfo:
+            Structural(meta="")  # pyright: ignore[reportArgumentType]
+        assert "invalid JSON attribute value" not in str(excinfo.value)
+
 
 FORBIDDEN_IMPORTS = (
     "pyjinhx2.render",
