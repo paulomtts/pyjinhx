@@ -8,8 +8,10 @@ import pyjinhx2.component
 from pyjinhx2.component import (
     BaseComponent,
     _defining_module_dir,
+    _pascal_to_snake,
     _resolve_class_descriptor,
     _resolve_strict,
+    _resolve_template_path,
 )
 from pyjinhx2.descriptor import ClassDescriptor
 
@@ -24,7 +26,7 @@ class TestResolveClassDescriptor:
         descriptor = _resolve_class_descriptor(Card)
 
         assert isinstance(descriptor, ClassDescriptor)
-        assert descriptor.template_path == Path(__file__).parent / "Card.pjx"
+        assert descriptor.template_path == Path(__file__).parent / "card.pjx"
         assert descriptor.slot_fields == frozenset()
         assert descriptor.css_paths == ()
         assert descriptor.js_paths == ()
@@ -250,3 +252,118 @@ class TestDevReloadReassignmentSmokeTest:
 
         assert Card._pjx_descriptor is replacement
         assert Card._pjx_descriptor is not original
+
+
+class TestPascalToSnake:
+    """The ADR 0007 filename convention: acronym-aware PascalCase -> snake_case,
+    matching v0.x's pyjinhx/utils.py:pascal_case_to_snake_case exactly, but
+    reimplemented locally because pyjinhx2 must not import the legacy package."""
+
+    @pytest.mark.parametrize(
+        ("name", "expected"),
+        [
+            ("Card", "card"),
+            ("ScrollSentinel", "scroll_sentinel"),
+            ("PJXButton", "pjx_button"),
+            ("HTMLParser", "html_parser"),
+            ("PJX", "pjx"),
+            ("TabPanelPJX", "tab_panel_pjx"),
+            ("Grid2Col", "grid2_col"),
+            ("A", "a"),
+            ("already_snake", "already_snake"),
+        ],
+    )
+    def test_converts_pascal_case_to_snake_case(self, name, expected):
+        assert _pascal_to_snake(name) == expected
+
+
+class TestResolveTemplatePath:
+    """ADR 0007: one candidate — snake_case(class name) + `.pjx`, in the
+    defining module's own directory. No MRO walk (#273), no existence check
+    (#277 owns the missing-template error)."""
+
+    def test_returns_snake_case_pjx_beside_the_defining_module(self):
+        class Card(BaseComponent):
+            pass
+
+        assert _resolve_template_path(Card) == Path(__file__).parent / "card.pjx"
+
+    def test_multi_word_class_names_are_snake_cased(self):
+        class ScrollSentinel(BaseComponent):
+            pass
+
+        assert (
+            _resolve_template_path(ScrollSentinel)
+            == Path(__file__).parent / "scroll_sentinel.pjx"
+        )
+
+    def test_acronym_leading_class_names_are_snake_cased(self):
+        class PJXButton(BaseComponent):
+            pass
+
+        assert (
+            _resolve_template_path(PJXButton)
+            == Path(__file__).parent / "pjx_button.pjx"
+        )
+
+    def test_the_directory_is_exactly_the_defining_module_dir(self):
+        class Card(BaseComponent):
+            pass
+
+        assert _resolve_template_path(Card).parent == _defining_module_dir(Card)
+
+    def test_the_only_extension_attempted_is_pjx(self):
+        class Card(BaseComponent):
+            pass
+
+        path = _resolve_template_path(Card)
+
+        assert path.suffix == ".pjx"
+        assert path.name == "card.pjx"
+
+    def test_the_path_is_returned_even_when_no_file_exists(self):
+        """This subtask computes the path; it does not validate existence.
+        Turning 'file absent' into an error is #277's job."""
+
+        class NoSuchTemplateAnywhere(BaseComponent):
+            pass
+
+        path = _resolve_template_path(NoSuchTemplateAnywhere)
+
+        assert not path.exists()
+        assert path == Path(__file__).parent / "no_such_template_anywhere.pjx"
+
+    def test_a_fileless_module_still_raises_not_implemented(self):
+        """Regression guard: #272 must not catch or reword #271's guard."""
+        module = types.ModuleType("pyjinhx2_test_fileless_template_module")
+        sys.modules["pyjinhx2_test_fileless_template_module"] = module
+        try:
+
+            class Card(BaseComponent):
+                pass
+
+            Card.__module__ = "pyjinhx2_test_fileless_template_module"
+            with pytest.raises(NotImplementedError, match="no file on disk"):
+                _resolve_template_path(Card)
+        finally:
+            del sys.modules["pyjinhx2_test_fileless_template_module"]
+
+    def test_it_never_touches_the_filesystem(self, monkeypatch):
+        """ADR 0007 allows at most one probe; #272 needs zero, because it does
+        not validate existence. Counting Path.exists calls pins that down so a
+        later 'helpful' existence check has to be a deliberate change."""
+        calls: list[Path] = []
+        real_exists = Path.exists
+
+        def counting(self, *args, **kwargs):
+            calls.append(self)
+            return real_exists(self, *args, **kwargs)
+
+        monkeypatch.setattr(Path, "exists", counting)
+
+        class Card(BaseComponent):
+            pass
+
+        _resolve_template_path(Card)
+
+        assert calls == []

@@ -128,6 +128,20 @@ def _is_json_coercible_annotation(annotation: Any) -> bool:
     return isinstance(origin, type) and issubclass(origin, BaseModel)
 
 
+# ADR 0007's filename convention, applied to the class name to get the single
+# candidate filename. Consecutive capitals are one acronym (PJXButton ->
+# pjx_button), so components named after acronyms get the filename an author
+# would have written by hand. Same regex as v0.x's
+# pyjinhx/utils.py:pascal_case_to_snake_case, restated here because component.py
+# may not import the legacy package (see this module's docstring).
+_PASCAL_BOUNDARY_RE = re.compile(r"(?<=[a-z0-9])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])")
+
+
+def _pascal_to_snake(name: str) -> str:
+    """Convert a PascalCase/CamelCase identifier to snake_case."""
+    return _PASCAL_BOUNDARY_RE.sub("_", name).lower()
+
+
 def _defining_module_dir(cls: type) -> Path:
     """Directory of the module that defined ``cls`` — the root every co-located
     probe starts from (ADR 0007).
@@ -149,14 +163,21 @@ def _defining_module_dir(cls: type) -> Path:
 
 
 def _resolve_template_path(cls: type) -> Path:
-    """STUB — #272 (single probe) and #273 (MRO walk) replace this in place.
+    """The single ADR 0007 template candidate for ``cls``: snake_case of the
+    class name plus ``.pjx``, in the directory of the module that defined it.
 
-    Returns the naive co-located path: it does not touch the filesystem and does
-    not walk the MRO. The real ADR 0007 probe is #272's, the per-kind ancestor
-    walk is #273's, and the missing-template message is #277's. Nothing at L0
-    reads this value yet, so a not-yet-probed path cannot mislead anything.
+    One candidate, not v0.x's six (three extensions x two case conventions) —
+    which is why v2 needs none of ``Finder``'s per-tag probe caches.
+
+    Deliberately does not touch the filesystem: this computes *where* the
+    template goes, and #277 owns turning "no file there" into a user-facing
+    error, after #273's MRO walk has had its chance to find one on an ancestor.
+    Returning the path unconditionally keeps those two concerns out of here.
+
+    ``_defining_module_dir``'s ``NotImplementedError`` for a fileless module
+    propagates unchanged — a class with no directory has no template path.
     """
-    return _defining_module_dir(cls) / f"{cls.__name__}.pjx"
+    return _defining_module_dir(cls) / f"{_pascal_to_snake(cls.__name__)}.pjx"
 
 
 def _resolve_slot_fields(cls: type) -> frozenset[str]:
