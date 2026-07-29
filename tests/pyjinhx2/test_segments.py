@@ -409,9 +409,7 @@ class TestVerbatimParser:
         # The nested icon was never cut — it is raw text inside the accordion's
         # body — but the sibling after the close tag is top-level again.
         assert segments == [
-            ChildRef(
-                tag="PJXAccordion", attrs={}, inner="<PJXIcon name='a'/>"
-            ),
+            ChildRef(tag="PJXAccordion", attrs={}, inner="<PJXIcon name='a'/>"),
             ChildRef(tag="PJXIcon", attrs={"name": "b"}, inner=None),
         ]
 
@@ -473,4 +471,31 @@ class TestVerbatimParser:
         segments = self.parse("<PJXButton\n  label='Go'\n>t</PJXButton>")
         assert segments == [
             ChildRef(tag="PJXButton", attrs={"label": "Go"}, inner="t"),
+        ]
+
+    def test_nested_paired_tag_is_captured_wholesale_into_inner(self):
+        # ADR 0002: a component's body is opaque here. </PJXPanel> must not
+        # produce its own ChildRef, and must not truncate the accordion's run.
+        segments = self.parse("<PJXAccordion><PJXPanel>body</PJXPanel></PJXAccordion>")
+        assert segments == [
+            ChildRef(
+                tag="PJXAccordion",
+                attrs={},
+                inner="<PJXPanel>body</PJXPanel>",
+            ),
+        ]
+
+    def test_nested_self_closing_tag_stays_raw_inside_inner(self):
+        segments = self.parse("<PJXAccordion><PJXIcon name='a'/></PJXAccordion>")
+        assert segments == [
+            ChildRef(tag="PJXAccordion", attrs={}, inner="<PJXIcon name='a'/>"),
+        ]
+
+    def test_sibling_paired_and_self_closing_tags_resolve_independently(self):
+        assert self.parse(
+            '<PJXButton label="Go">text</PJXButton> and <PJXIcon name="gear"/>'
+        ) == [
+            ChildRef(tag="PJXButton", attrs={"label": "Go"}, inner="text"),
+            " and ",
+            ChildRef(tag="PJXIcon", attrs={"name": "gear"}, inner=None),
         ]

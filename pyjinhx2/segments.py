@@ -19,8 +19,9 @@ class ChildRef:
 
     ``tag`` and ``attrs`` are exactly what the parse saw — no registry lookup, no
     value coercion. ``inner`` is the raw markup between a paired tag's open and
-    close, or None for a self-closing tag; it is filled by the paired-tag capture
-    pass (#256), not by anything here.
+    close, captured verbatim by that same parse, or None for a self-closing tag.
+    It is never re-parsed, resolved or escaped here: expanding the components
+    inside it is L1's job (ADR 0002, ADR 0005).
     """
 
     tag: str
@@ -82,10 +83,11 @@ class VerbatimParser(HTMLParser):
     ``segments`` list, so ``"".join(parser.segments)`` reproduces the input
     exactly — attribute quoting, attribute order, unknown and boolean attrs,
     odd casing and intentionally malformed HTML all survive untouched. There is
-    no tag tree. Top-level PascalCase tags are cut out (#254, below) and the
-    first tag event's raw span is recorded as ``root_span`` (#255, below);
-    capturing paired-tag ``inner`` (#256) and enforcing a single root (#257)
-    still layer onto this harness later.
+    no tag tree. Top-level PascalCase tags are cut out (#254, below), the first
+    tag event's raw span is recorded as ``root_span`` (#255, below), and a
+    paired top-level tag's body is captured into ``ChildRef.inner`` on close
+    (below); enforcing a single root (#257) still layers onto this harness
+    later.
 
     ``root_span`` (#255) is the ``(start, end)`` offset of the very first tag
     event into the *original source string*, not an index into ``segments``.
@@ -108,24 +110,19 @@ class VerbatimParser(HTMLParser):
     must always be read against the original markup passed to the parser,
     never against ``segments[0]`` directly.
 
-    Cutting (#254) covers **self-closing** top-level component tags only: they
-    become ``ChildRef(tag, attrs, inner=None)`` at their exact position, so
-    ``segments`` is ``[str, ..., ChildRef, ..., str]`` in document order. A
-    *paired* top-level tag (``<PJXButton>body</PJXButton>``) is deliberately left
-    as raw passthrough — open tag, body and close tag remain separate strings.
-    Collapsing that run into one ``ChildRef`` with ``inner`` populated is #256's
-    job, and emitting a ``ChildRef(inner=None)`` here would falsely claim the tag
-    has no body. What #254 leaves behind for #256 is ``_custom_stack``: the index
-    of each open tag in ``segments``, enough to replace the run in place later.
-    That index is only available while the tag is still open — ``handle_endtag``
-    pops (and discards) an entry the instant its close tag matches, so #256 must
-    read the top of the stack *before* the pop, from inside its own
-    ``handle_endtag`` handling, not by inspecting ``_custom_stack`` after
-    ``close()`` returns (by then only never-closed stragglers remain there).
+    A **self-closing** top-level component tag becomes
+    ``ChildRef(tag, attrs, inner=None)`` at its exact position. A **paired**
+    top-level tag (``<PJXButton>body</PJXButton>``) collapses on its close tag:
+    ``handle_endtag`` joins every segment appended since the open tag into one
+    raw ``inner`` string, drops that run from ``segments``, and appends a single
+    ``ChildRef(tag, attrs, inner)``. Either way ``segments`` stays
+    ``[str, ..., ChildRef, ..., str]`` in document order.
 
-    A tag nested inside a still-open component tag is never cut and never
-    re-scanned (ADR 0002, opaque children): it stays raw inside the ancestor's
-    span, for #256 to capture wholesale.
+    Only the *outermost* open component tag is a cut point. A tag nested inside a
+    still-open component tag is never cut and never re-scanned (ADR 0002, opaque
+    children): its close tag pops its own ``_custom_stack`` entry but, with the
+    stack still non-empty, collapses nothing, so it survives verbatim inside the
+    ancestor's ``inner`` for a later level's parse to deal with.
 
     Deliberate deviation from v0.x's ``pyjinhx/tags.py`` ``Parser``: ``handle_data``
     does **not** re-escape with ``markupsafe.escape``. That dependency is
@@ -209,9 +206,7 @@ class VerbatimParser(HTMLParser):
             # The raw open tag is appended below and stays in `segments` until the
             # matching close tag collapses the run; `attrs` is kept here because
             # HTMLParser only offers it on this event.
-            self._custom_stack.append(
-                (name, len(self.segments), _attrs_to_dict(attrs))
-            )
+            self._custom_stack.append((name, len(self.segments), _attrs_to_dict(attrs)))
         self.segments.append(raw)
 
     def handle_startendtag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
@@ -230,7 +225,11 @@ class VerbatimParser(HTMLParser):
         # `</PJXButton>`. Recover the source text instead.
         raw = self._raw_at(RE_RAW_END_TAG) or f"</{tag}>"
         name = self._custom_tag_name(raw)
-        if name is not None and self._custom_stack and self._custom_stack[-1][0] == name:
+        if (
+            name is not None
+            and self._custom_stack
+            and self._custom_stack[-1][0] == name
+        ):
             open_name, index, attrs = self._custom_stack.pop()
             if not self._custom_stack:
                 # The outermost component tag just closed: everything appended
@@ -244,9 +243,7 @@ class VerbatimParser(HTMLParser):
                     if isinstance(segment, str)
                 )
                 del self.segments[index:]
-                self.segments.append(
-                    ChildRef(tag=open_name, attrs=attrs, inner=inner)
-                )
+                self.segments.append(ChildRef(tag=open_name, attrs=attrs, inner=inner))
                 return
         # Deliberate non-pop on a name mismatch: enforcement is #257's, and
         # popping on mismatch would silently reopen cutting inside a still-
