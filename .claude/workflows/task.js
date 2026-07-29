@@ -154,6 +154,8 @@ Skip any finding that is wrong — say why instead. Return what was fixed vs ski
     { label: `fix:#${issue}`, phase: 'Review', model: 'sonnet' })
 }
 
+await board('testing')
+
 // ── 6. tests ─────────────────────────────────────────────────────────────────
 phase('Tests')
 const tests = await agent(`Full verification in ${WORKTREE} (branch ${BRANCH}):
