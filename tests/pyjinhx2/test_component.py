@@ -1,6 +1,10 @@
+import ast
+import inspect
+
 import pytest
 from pydantic import BaseModel, ValidationError
 
+import pyjinhx2.component
 from pyjinhx2.component import BaseComponent
 
 
@@ -51,3 +55,33 @@ class TestSubclassing:
     def test_still_validates_declared_field_types(self):
         with pytest.raises(ValidationError):
             Card(name="x", count="not-an-int")  # pyright: ignore[reportArgumentType]
+
+
+FORBIDDEN_IMPORTS = (
+    "pyjinhx2.render",
+    "pyjinhx2.descriptor",
+    "pyjinhx2.session",
+    "pyjinhx2.reactive",
+    "pyjinhx",
+)
+
+
+def test_component_module_does_not_import_above_itself():
+    """component.py sits below descriptor/render in the import graph, so it must
+    not reach up into them (nor into session.py, reactive/, or v0.x pyjinhx)."""
+    tree = ast.parse(inspect.getsource(pyjinhx2.component))
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            names = [alias.name for alias in node.names]
+        elif isinstance(node, ast.ImportFrom):
+            assert node.level == 0, "component.py must not use relative imports"
+            names = [node.module or ""]
+        else:
+            continue
+        for name in names:
+            assert name not in FORBIDDEN_IMPORTS, (
+                f"component.py must not import {name}"
+            )
+            assert not any(name.startswith(f"{f}.") for f in FORBIDDEN_IMPORTS), (
+                f"component.py must not import {name}"
+            )
