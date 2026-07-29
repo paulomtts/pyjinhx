@@ -11,6 +11,7 @@ from pyjinhx2.component import (
     _defining_module_dir,
     _pascal_to_snake,
     _resolution_ancestors,
+    _resolve_asset_paths,
     _resolve_class_descriptor,
     _resolve_strict,
     _resolve_template_path,
@@ -510,3 +511,134 @@ class TestTemplateMroWalk:
 
         assert _resolve_template_path(FancyCard) == mro_dir / "card.pjx"
         assert _resolve_template_path(PlainCard) == mro_dir / "card.pjx"
+
+
+class TestTemplateWalkProbeBudget:
+    """ADR 0007's probe budget survives the walk: at most one `is_file` per
+    ancestor, and none at all for the final fallback."""
+
+    @staticmethod
+    def _count_is_file(monkeypatch) -> list[Path]:
+        probed: list[Path] = []
+        real_is_file = Path.is_file
+
+        def counting(self, *args, **kwargs):
+            probed.append(self)
+            return real_is_file(self, *args, **kwargs)
+
+        monkeypatch.setattr(Path, "is_file", counting)
+        return probed
+
+    def test_a_direct_subclass_is_never_probed(self, monkeypatch):
+        """The pinned zero-probe property from #272, restated for `is_file`:
+        for `[cls]` the only ancestor is also the last one."""
+        probed = self._count_is_file(monkeypatch)
+
+        class Card(BaseComponent):
+            pass
+
+        _resolve_template_path(Card)
+
+        assert probed == []
+
+    def test_the_last_ancestors_candidate_is_never_probed(self, mro_dir, monkeypatch):
+        class Card(BaseComponent):
+            pass
+
+        class FancyCard(Card):
+            pass
+
+        Card.__module__ = _MRO_MODULE
+        FancyCard.__module__ = _MRO_MODULE
+        probed = self._count_is_file(monkeypatch)
+
+        path = _resolve_template_path(FancyCard)
+
+        assert path == mro_dir / "card.pjx"
+        assert probed == [mro_dir / "fancy_card.pjx"]
+
+    def test_the_walk_stops_at_the_first_hit(self, mro_dir, monkeypatch):
+        class Card(BaseComponent):
+            pass
+
+        class FancyCard(Card):
+            pass
+
+        class VeryFancyCard(FancyCard):
+            pass
+
+        for klass in (Card, FancyCard, VeryFancyCard):
+            klass.__module__ = _MRO_MODULE
+        (mro_dir / "fancy_card.pjx").write_text("<div>fancy</div>")
+        probed = self._count_is_file(monkeypatch)
+
+        path = _resolve_template_path(VeryFancyCard)
+
+        assert path == mro_dir / "fancy_card.pjx"
+        assert probed == [mro_dir / "very_fancy_card.pjx", mro_dir / "fancy_card.pjx"]
+
+
+class TestTemplateWalkStopsAtBaseComponent:
+    def test_base_component_is_never_considered(self, monkeypatch):
+        """BaseComponent has no descriptor and no template; the walk must never
+        ask for its directory, let alone probe `base_component.pjx`.
+
+        The spy is installed *after* both classes are defined, not before:
+        `__pydantic_init_subclass__` calls `_resolve_class_descriptor` (and so
+        `_resolve_template_path`) for every class at its own definition, so a
+        spy installed earlier also captures Card's and FancyCard's own
+        registration-time walks and the assertion below would see several more
+        entries than the one explicit call this test means to observe.
+        """
+
+        class Card(BaseComponent):
+            pass
+
+        class FancyCard(Card):
+            pass
+
+        considered: list[type] = []
+        real = pyjinhx2.component._defining_module_dir
+
+        def spying(cls):
+            considered.append(cls)
+            return real(cls)
+
+        monkeypatch.setattr(pyjinhx2.component, "_defining_module_dir", spying)
+
+        _resolve_template_path(FancyCard)
+
+        assert BaseComponent not in considered
+        assert considered == [FancyCard, Card]
+
+
+class TestPerKindIndependence:
+    """ADR 0010: template and assets resolve through separate walks. #273 gave
+    template one; css/js keep the stub until #276. If this test starts failing
+    because `_resolve_asset_paths` grew behavior, that behavior belongs in #276
+    with its own tests — not smuggled in through the template walk."""
+
+    def test_asset_resolution_is_still_the_untouched_stub(self):
+        class Card(BaseComponent):
+            pass
+
+        class FancyCard(Card):
+            pass
+
+        assert _resolve_asset_paths(Card) == ((), ())
+        assert _resolve_asset_paths(FancyCard) == ((), ())
+
+    def test_inheriting_a_template_does_not_inherit_assets(self, mro_dir):
+        class Card(BaseComponent):
+            pass
+
+        class FancyCard(Card):
+            pass
+
+        Card.__module__ = _MRO_MODULE
+        FancyCard.__module__ = _MRO_MODULE
+        (mro_dir / "card.pjx").write_text("<div>card</div>")
+        (mro_dir / "card.css").write_text(".card {}")
+
+        assert _resolve_template_path(FancyCard) == mro_dir / "card.pjx"
+        assert _resolve_asset_paths(FancyCard) == ((), ())
