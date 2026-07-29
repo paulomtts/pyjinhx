@@ -162,6 +162,16 @@ def _defining_module_dir(cls: type) -> Path:
     return Path(file).parent
 
 
+def _template_candidate(cls: type) -> Path:
+    """The one ADR 0007 template candidate for a single class: snake_case of the
+    class name plus ``.pjx``, in the directory of the module that defined it.
+
+    One candidate, not v0.x's six (three extensions x two case conventions) —
+    which is why v2 needs none of ``Finder``'s per-tag probe caches.
+    """
+    return _defining_module_dir(cls) / f"{_pascal_to_snake(cls.__name__)}.pjx"
+
+
 def _resolution_ancestors(cls: type) -> list[type]:
     """``cls``'s MRO, nearest first, truncated before ``BaseComponent``.
 
@@ -181,21 +191,29 @@ def _resolution_ancestors(cls: type) -> list[type]:
 
 
 def _resolve_template_path(cls: type) -> Path:
-    """The single ADR 0007 template candidate for ``cls``: snake_case of the
-    class name plus ``.pjx``, in the directory of the module that defined it.
+    """The template ``cls`` renders with: the nearest ancestor's candidate that
+    exists on disk (ADR 0010), or the root ancestor's candidate as a fallback.
 
-    One candidate, not v0.x's six (three extensions x two case conventions) —
-    which is why v2 needs none of ``Finder``'s per-tag probe caches.
+    Walking is what makes ``class DangerButton(PJXButton)`` a three-line class
+    instead of a copied template that drifts. The walk is template-only: css and
+    js resolve through their own walk in ``_resolve_asset_paths`` (#276), so a
+    subclass can override CSS while inheriting this template.
 
-    Deliberately does not touch the filesystem: this computes *where* the
-    template goes, and #277 owns turning "no file there" into a user-facing
-    error, after #273's MRO walk has had its chance to find one on an ancestor.
-    Returning the path unconditionally keeps those two concerns out of here.
+    The last ancestor's candidate is returned **without** a probe: it is the
+    answer whether or not the file is there, so checking it would buy nothing
+    and would cost a direct ``BaseComponent`` subclass its zero-probe property.
+    Turning "no file at that path" into a user-facing error is #277's job.
 
     ``_defining_module_dir``'s ``NotImplementedError`` for a fileless module
-    propagates unchanged — a class with no directory has no template path.
+    propagates unchanged. It can only fire for ``cls`` itself: any other
+    ancestor already survived this guard when its own ``class`` statement ran.
     """
-    return _defining_module_dir(cls) / f"{_pascal_to_snake(cls.__name__)}.pjx"
+    ancestors = _resolution_ancestors(cls)
+    for ancestor in ancestors[:-1]:
+        candidate = _template_candidate(ancestor)
+        if candidate.is_file():
+            return candidate
+    return _template_candidate(ancestors[-1])
 
 
 def _resolve_slot_fields(cls: type) -> frozenset[str]:

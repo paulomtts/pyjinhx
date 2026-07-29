@@ -1,5 +1,6 @@
 import sys
 import types
+from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
@@ -406,3 +407,106 @@ class TestResolutionAncestors:
             pass
 
         assert all(issubclass(a, BaseComponent) for a in _resolution_ancestors(Card))
+
+
+_MRO_MODULE = "pyjinhx2_test_mro_module"
+
+
+@pytest.fixture
+def mro_dir(tmp_path: Path) -> Iterator[Path]:
+    """A real, file-backed module registered in sys.modules, plus its directory.
+
+    Classes re-pointed at it with ``Cls.__module__ = _MRO_MODULE`` resolve their
+    template candidates inside ``tmp_path``, so a test controls exactly which
+    ancestors have a file on disk.
+    """
+    module = types.ModuleType(_MRO_MODULE)
+    module.__file__ = str(tmp_path / f"{_MRO_MODULE}.py")
+    sys.modules[_MRO_MODULE] = module
+    try:
+        yield tmp_path
+    finally:
+        del sys.modules[_MRO_MODULE]
+
+
+class TestTemplateMroWalk:
+    """ADR 0010: the nearest ancestor that actually has a `.pjx` on disk wins.
+    One candidate per ancestor (ADR 0007), template kind only."""
+
+    def test_an_own_file_wins_over_an_ancestors(self, mro_dir):
+        class Card(BaseComponent):
+            pass
+
+        class FancyCard(Card):
+            pass
+
+        Card.__module__ = _MRO_MODULE
+        FancyCard.__module__ = _MRO_MODULE
+        (mro_dir / "card.pjx").write_text("<div>card</div>")
+        (mro_dir / "fancy_card.pjx").write_text("<div>fancy</div>")
+
+        assert _resolve_template_path(FancyCard) == mro_dir / "fancy_card.pjx"
+
+    def test_a_parents_file_is_used_when_the_child_has_none(self, mro_dir):
+        class Card(BaseComponent):
+            pass
+
+        class FancyCard(Card):
+            pass
+
+        Card.__module__ = _MRO_MODULE
+        FancyCard.__module__ = _MRO_MODULE
+        (mro_dir / "card.pjx").write_text("<div>card</div>")
+
+        assert _resolve_template_path(FancyCard) == mro_dir / "card.pjx"
+
+    def test_the_walk_hops_over_an_ancestor_with_no_file(self, mro_dir):
+        class Card(BaseComponent):
+            pass
+
+        class FancyCard(Card):
+            pass
+
+        class VeryFancyCard(FancyCard):
+            pass
+
+        for klass in (Card, FancyCard, VeryFancyCard):
+            klass.__module__ = _MRO_MODULE
+        (mro_dir / "card.pjx").write_text("<div>card</div>")
+
+        assert _resolve_template_path(VeryFancyCard) == mro_dir / "card.pjx"
+
+    def test_it_falls_back_to_the_root_ancestors_candidate(self, mro_dir):
+        """No ancestor has a file: the root concrete ancestor's path is returned
+        anyway. Whether that is an error is #277's call, not this walk's."""
+
+        class Card(BaseComponent):
+            pass
+
+        class FancyCard(Card):
+            pass
+
+        Card.__module__ = _MRO_MODULE
+        FancyCard.__module__ = _MRO_MODULE
+
+        path = _resolve_template_path(FancyCard)
+
+        assert path == mro_dir / "card.pjx"
+        assert not path.exists()
+
+    def test_siblings_resolve_independently_to_the_same_parent(self, mro_dir):
+        class Card(BaseComponent):
+            pass
+
+        class FancyCard(Card):
+            pass
+
+        class PlainCard(Card):
+            pass
+
+        for klass in (Card, FancyCard, PlainCard):
+            klass.__module__ = _MRO_MODULE
+        (mro_dir / "card.pjx").write_text("<div>card</div>")
+
+        assert _resolve_template_path(FancyCard) == mro_dir / "card.pjx"
+        assert _resolve_template_path(PlainCard) == mro_dir / "card.pjx"
