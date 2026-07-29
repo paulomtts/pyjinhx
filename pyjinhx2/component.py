@@ -1,18 +1,11 @@
-"""The component base class: a strict Pydantic model, and nothing more (ADR 0006).
+"""The component base class: a strict Pydantic model with mandatory field declaration.
 
-v0.x's BaseComponent was ``extra="allow"``, so every render had to walk the
-undeclared keys of every instance — the walk that caused the #240 crash. Here the
-core is closed: an undeclared kwarg is a ValidationError at construction, and the
-renderer never has to look. Extra-field ergonomics belong on a separate open
-opt-in subclass (L1), not on this class.
+All components reject undeclared kwargs at construction time. This keeps the core
+lightweight and lets the renderer avoid walking arbitrary instance attributes.
 
-Imports pydantic, plus the one sanctioned edge this issue (#271) adds: importing
-``ClassDescriptor`` from descriptor.py to build and attach it in
-``__pydantic_init_subclass__``. component.py still sits below descriptor.py and
-render.py in the import graph and must never reach into render.py, session.py, or
-reactive/ — the ClassDescriptor import is the sole declared exception, enforced
-statically by tests/pyjinhx2/test_import_graph.py rather than left as a comment
-nobody checks.
+Imports pydantic and ClassDescriptor from descriptor.py (sole sanctioned import
+from a higher-level module). The import graph is enforced statically by
+tests/pyjinhx2/test_import_graph.py.
 """
 
 import itertools
@@ -128,12 +121,6 @@ def _is_json_coercible_annotation(annotation: Any) -> bool:
     return isinstance(origin, type) and issubclass(origin, BaseModel)
 
 
-# ADR 0007's filename convention, applied to the class name to get the single
-# candidate filename. Consecutive capitals are one acronym (PJXButton ->
-# pjx_button), so components named after acronyms get the filename an author
-# would have written by hand. Same regex as v0.x's
-# pyjinhx/utils.py:pascal_case_to_snake_case, restated here because component.py
-# may not import the legacy package (see this module's docstring).
 _PASCAL_BOUNDARY_RE = re.compile(r"(?<=[a-z0-9])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])")
 
 
@@ -143,14 +130,7 @@ def _pascal_to_snake(name: str) -> str:
 
 
 def _defining_module_dir(cls: type) -> Path:
-    """Directory of the module that defined ``cls`` — the root every co-located
-    probe starts from (ADR 0007).
-
-    Raises for a class whose module has no file on disk (exec'd, REPL-defined,
-    synthesised). There is genuinely no directory to probe from, so #271 fails
-    at class-definition time rather than inventing one; #272 and #276 inherit
-    this guard when they replace the stubs that call it.
-    """
+    """Directory of the module that defined ``cls``."""
     module = sys.modules.get(cls.__module__)
     file = getattr(module, "__file__", None)
     if file is None:
@@ -163,37 +143,17 @@ def _defining_module_dir(cls: type) -> Path:
 
 
 def _resolve_template_path(cls: type) -> Path:
-    """The single ADR 0007 template candidate for ``cls``: snake_case of the
-    class name plus ``.pjx``, in the directory of the module that defined it.
-
-    One candidate, not v0.x's six (three extensions x two case conventions) —
-    which is why v2 needs none of ``Finder``'s per-tag probe caches.
-
-    Deliberately does not touch the filesystem: this computes *where* the
-    template goes, and #277 owns turning "no file there" into a user-facing
-    error, after #273's MRO walk has had its chance to find one on an ancestor.
-    Returning the path unconditionally keeps those two concerns out of here.
-
-    ``_defining_module_dir``'s ``NotImplementedError`` for a fileless module
-    propagates unchanged — a class with no directory has no template path.
-    """
+    """Compute the expected template path for ``cls``: class_name.pjx in its module directory."""
     return _defining_module_dir(cls) / f"{_pascal_to_snake(cls.__name__)}.pjx"
 
 
 def _resolve_slot_fields(cls: type) -> frozenset[str]:
-    """STUB — #275 replaces this in place with real slot-field detection
-    (``_is_slot_field`` over ``model_fields``). Empty until then."""
+    """Resolve slot fields for ``cls``. Stub returns empty set."""
     return frozenset()
 
 
 def _resolve_asset_paths(cls: type) -> tuple[tuple[Path, ...], tuple[Path, ...]]:
-    """STUB — #276 replaces this in place with co-located css/js discovery,
-    resolved per-kind up the MRO (ADR 0010). Returns ``(css_paths, js_paths)``
-    as one call because both kinds probe the same directory.
-
-    Calls :func:`_defining_module_dir` for its side effect only: a class with no
-    module file must fail here too, not silently report "no assets".
-    """
+    """Resolve CSS and JS asset paths for ``cls``. Stub returns empty tuples."""
     _defining_module_dir(cls)
     return ((), ())
 
@@ -210,26 +170,12 @@ def _resolve_strict(cls: type[BaseModel]) -> bool:
 
 
 def _resolve_provenance(cls: type) -> Mapping[str, type]:
-    """STUB — #274 replaces this in place, mapping each kind (``"template"``,
-    ``"css"``, ``"js"``) to the ancestor class that supplied it. Empty until
-    then; the kinds are #274's to choose, not this stub's to predict."""
+    """Resolve provenance (kind → ancestor class) for ``cls``. Stub returns empty dict."""
     return {}
 
 
 def _resolve_class_descriptor(cls: type[BaseModel]) -> ClassDescriptor:
-    """Build the one :class:`ClassDescriptor` for ``cls`` (invariant 5).
-
-    The single seam behind which #272-#276 land. They replace the ``_resolve_*``
-    helpers above **in place**; this function's name, signature and its one call
-    site in ``BaseComponent.__pydantic_init_subclass__`` are the contract that
-    does not move. Exceptions from any helper propagate unchanged, so a failure
-    surfaces at the ``class Foo(BaseComponent): ...`` statement exactly like a
-    pydantic model-build error does.
-
-    Returns a whole object. Nothing partially constructs a descriptor or edits
-    one after the fact — that is what ``frozen=True`` is there to enforce, and
-    what lets #278's dev-reload rebuild simply reassign the class attribute.
-    """
+    """Build the ClassDescriptor for ``cls`` by invoking all resolver helpers."""
     css_paths, js_paths = _resolve_asset_paths(cls)
     return ClassDescriptor(
         template_path=_resolve_template_path(cls),
@@ -242,27 +188,12 @@ def _resolve_class_descriptor(cls: type[BaseModel]) -> ClassDescriptor:
 
 
 class BaseComponent(BaseModel):
-    """Base for all components: declared fields only, undeclared kwargs rejected.
-
-    Deliberately minimal otherwise. Slot, attribute coercion and quote-safety are
-    separate concerns and land as their own changes. The auto-id counter is the
-    single chartered construction-time side effect (ADR 0004/0009); nothing else
-    here runs one.
-    """
+    """Base for all components: strict field validation with auto-id support."""
 
     model_config = ConfigDict(extra="forbid")
 
-    # Construction-time control, not model data: a ClassVar is invisible to
-    # model_fields, so it never collides with extra="forbid" or serialization.
-    # Opt out per component class with ``class Foo(BaseComponent): auto_id = False``.
     auto_id: ClassVar[bool] = True
 
-    # The per-class fact sheet (invariant 5), built once by the hook below and
-    # never mutated: #278's dev-reload replaces the whole object. Declared
-    # without a value because Pydantic does not fire __pydantic_init_subclass__
-    # for the class that defines it, so BaseComponent itself has no descriptor —
-    # relied on rather than special-cased. ClassVar keeps it out of model_fields
-    # and out of Pydantic's private-attribute machinery.
     _pjx_descriptor: ClassVar[ClassDescriptor]
 
     id: str = Field(
@@ -272,14 +203,7 @@ class BaseComponent(BaseModel):
 
     @classmethod
     def __pydantic_init_subclass__(cls, **kwargs: Any) -> None:
-        """Reject subclasses that shadow a reserved name, then resolve and
-        attach this class's ClassDescriptor (invariant 5: once per class, at
-        definition time — never per instance, never per render).
-
-        Pydantic calls this after ``model_fields`` is built, so the checks are
-        plain reads of already-computed class facts and the descriptor seam sees
-        a fully-built class.
-        """
+        """Validate reserved fields and build the ClassDescriptor."""
         super().__pydantic_init_subclass__(**kwargs)
         if "auto_id" in cls.model_fields:
             raise TypeError(
@@ -300,10 +224,6 @@ class BaseComponent(BaseModel):
                 f"{id_field.annotation}; id must remain typed str so "
                 f"_validate_id and _require_explicit_id keep their meaning."
             )
-        # One function, one call, one whole-object assignment — the same shape as
-        # v0.x's `cls._pjx_children_target = _resolve_children_field(cls)`.
-        # Anything the seam raises propagates to the `class Foo(BaseComponent)`
-        # statement; nothing here catches or logs it.
         cls._pjx_descriptor = _resolve_class_descriptor(cls)
 
     @model_validator(mode="before")
