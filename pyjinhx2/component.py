@@ -6,15 +6,22 @@ core is closed: an undeclared kwarg is a ValidationError at construction, and th
 renderer never has to look. Extra-field ergonomics belong on a separate open
 opt-in subclass (L1), not on this class.
 
-Imports pydantic and nothing else. component.py sits below descriptor.py and
-render.py in the import graph and must never reach up into them, nor into
-session.py or reactive/.
+Imports pydantic, plus the one sanctioned edge this issue (#271) adds: importing
+``ClassDescriptor`` from descriptor.py to build and attach it in
+``__pydantic_init_subclass__``. component.py still sits below descriptor.py and
+render.py in the import graph and must never reach into render.py, session.py, or
+reactive/ — the ClassDescriptor import is the sole declared exception, enforced
+statically by tests/pyjinhx2/test_import_graph.py rather than left as a comment
+nobody checks.
 """
 
 import itertools
 import json
 import re
+import sys
 import types
+from collections.abc import Mapping
+from pathlib import Path
 from typing import Annotated, Any, ClassVar, Union, get_args, get_origin
 
 from pydantic import (
@@ -25,6 +32,8 @@ from pydantic import (
     field_validator,
     model_validator,
 )
+
+from pyjinhx2.descriptor import ClassDescriptor
 
 # Process-wide, never per-class: ids must be unique across every subclass, since
 # they end up as HTML ids on the same page. ``count.__next__`` is atomic under
@@ -117,6 +126,98 @@ def _is_json_coercible_annotation(annotation: Any) -> bool:
     if origin in (list, dict):
         return True
     return isinstance(origin, type) and issubclass(origin, BaseModel)
+
+
+def _defining_module_dir(cls: type) -> Path:
+    """Directory of the module that defined ``cls`` — the root every co-located
+    probe starts from (ADR 0007).
+
+    Raises for a class whose module has no file on disk (exec'd, REPL-defined,
+    synthesised). There is genuinely no directory to probe from, so #271 fails
+    at class-definition time rather than inventing one; #272 and #276 inherit
+    this guard when they replace the stubs that call it.
+    """
+    module = sys.modules.get(cls.__module__)
+    file = getattr(module, "__file__", None)
+    if file is None:
+        raise NotImplementedError(
+            f"{cls.__name__} is defined in module {cls.__module__!r}, which has "
+            f"no file on disk; template and asset resolution have no directory "
+            f"to probe from."
+        )
+    return Path(file).parent
+
+
+def _resolve_template_path(cls: type) -> Path:
+    """STUB — #272 (single probe) and #273 (MRO walk) replace this in place.
+
+    Returns the naive co-located path: it does not touch the filesystem and does
+    not walk the MRO. The real ADR 0007 probe is #272's, the per-kind ancestor
+    walk is #273's, and the missing-template message is #277's. Nothing at L0
+    reads this value yet, so a not-yet-probed path cannot mislead anything.
+    """
+    return _defining_module_dir(cls) / f"{cls.__name__}.pjx"
+
+
+def _resolve_slot_fields(cls: type) -> frozenset[str]:
+    """STUB — #275 replaces this in place with real slot-field detection
+    (``_is_slot_field`` over ``model_fields``). Empty until then."""
+    return frozenset()
+
+
+def _resolve_asset_paths(cls: type) -> tuple[tuple[Path, ...], tuple[Path, ...]]:
+    """STUB — #276 replaces this in place with co-located css/js discovery,
+    resolved per-kind up the MRO (ADR 0010). Returns ``(css_paths, js_paths)``
+    as one call because both kinds probe the same directory.
+
+    Calls :func:`_defining_module_dir` for its side effect only: a class with no
+    module file must fail here too, not silently report "no assets".
+    """
+    _defining_module_dir(cls)
+    return ((), ())
+
+
+def _resolve_strict(cls: type[BaseModel]) -> bool:
+    """The ADR 0006 mode, recorded once per class so render.py branches per
+    class instead of per render.
+
+    Not a stub: this is real data available today. Reading the class's own
+    pydantic config means L1's open opt-in subclass flips this to ``False`` with
+    no further wiring.
+    """
+    return cls.model_config.get("extra") == "forbid"
+
+
+def _resolve_provenance(cls: type) -> Mapping[str, type]:
+    """STUB — #274 replaces this in place, mapping each kind (``"template"``,
+    ``"css"``, ``"js"``) to the ancestor class that supplied it. Empty until
+    then; the kinds are #274's to choose, not this stub's to predict."""
+    return {}
+
+
+def _resolve_class_descriptor(cls: type[BaseModel]) -> ClassDescriptor:
+    """Build the one :class:`ClassDescriptor` for ``cls`` (invariant 5).
+
+    The single seam behind which #272-#276 land. They replace the ``_resolve_*``
+    helpers above **in place**; this function's name, signature and its one call
+    site in ``BaseComponent.__pydantic_init_subclass__`` are the contract that
+    does not move. Exceptions from any helper propagate unchanged, so a failure
+    surfaces at the ``class Foo(BaseComponent): ...`` statement exactly like a
+    pydantic model-build error does.
+
+    Returns a whole object. Nothing partially constructs a descriptor or edits
+    one after the fact — that is what ``frozen=True`` is there to enforce, and
+    what lets #278's dev-reload rebuild simply reassign the class attribute.
+    """
+    css_paths, js_paths = _resolve_asset_paths(cls)
+    return ClassDescriptor(
+        template_path=_resolve_template_path(cls),
+        slot_fields=_resolve_slot_fields(cls),
+        css_paths=css_paths,
+        js_paths=js_paths,
+        strict=_resolve_strict(cls),
+        provenance=_resolve_provenance(cls),
+    )
 
 
 class BaseComponent(BaseModel):
