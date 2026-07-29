@@ -15,6 +15,7 @@ from pyjinhx2.component import (
     _resolve_class_descriptor,
     _resolve_strict,
     _resolve_template_path,
+    _walk_template,
 )
 from pyjinhx2.descriptor import ClassDescriptor
 
@@ -511,6 +512,64 @@ class TestTemplateMroWalk:
 
         assert _resolve_template_path(FancyCard) == mro_dir / "card.pjx"
         assert _resolve_template_path(PlainCard) == mro_dir / "card.pjx"
+
+
+class TestWalkTemplate:
+    """The single shared MRO walk both `_resolve_template_path` and
+    `_resolve_provenance` consume: it returns the resolved path *and* the
+    ancestor a probe proved owns it. The final fallback candidate is never
+    probed (ADR 0007), so it can never be named as a winner."""
+
+    def test_reports_the_owning_ancestor_when_a_probe_finds_a_file(self, mro_dir):
+        class Card(BaseComponent):
+            pass
+
+        class FancyCard(Card):
+            pass
+
+        Card.__module__ = _MRO_MODULE
+        FancyCard.__module__ = _MRO_MODULE
+        (mro_dir / "fancy_card.pjx").write_text("<div>fancy</div>")
+
+        assert _walk_template(FancyCard) == (mro_dir / "fancy_card.pjx", FancyCard)
+
+    def test_reports_the_nearest_ancestor_with_a_file(self, mro_dir):
+        class Card(BaseComponent):
+            pass
+
+        class FancyCard(Card):
+            pass
+
+        class VeryFancyCard(FancyCard):
+            pass
+
+        for klass in (Card, FancyCard, VeryFancyCard):
+            klass.__module__ = _MRO_MODULE
+        (mro_dir / "fancy_card.pjx").write_text("<div>fancy</div>")
+
+        assert _walk_template(VeryFancyCard) == (mro_dir / "fancy_card.pjx", FancyCard)
+
+    def test_reports_no_winner_for_the_unprobed_fallback(self, mro_dir):
+        class Card(BaseComponent):
+            pass
+
+        class FancyCard(Card):
+            pass
+
+        Card.__module__ = _MRO_MODULE
+        FancyCard.__module__ = _MRO_MODULE
+
+        assert _walk_template(FancyCard) == (mro_dir / "card.pjx", None)
+
+    def test_a_direct_subclass_has_no_winner_because_nothing_is_probed(self):
+        """`[cls]`'s only ancestor is also the last one, so it is returned
+        unprobed — the walk never learns whether the file is there and so
+        cannot name a winner."""
+
+        class Card(BaseComponent):
+            pass
+
+        assert _walk_template(Card) == (Path(__file__).parent / "card.pjx", None)
 
 
 class TestTemplateWalkProbeBudget:
