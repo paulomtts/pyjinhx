@@ -26,3 +26,4 @@ docs/superpowers/*
 
 # /task pipeline state (hook-consumed, ephemeral)
 .claude/board-state.json
+.worktrees/
