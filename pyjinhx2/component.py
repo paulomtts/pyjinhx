@@ -144,6 +144,11 @@ def _template_candidate(cls: type) -> Path:
     return _defining_module_dir(cls) / f"{_pascal_to_snake(cls.__name__)}.pjx"
 
 
+def _asset_candidate(cls: type, kind: str) -> Path:
+    """Compute the expected asset path for ``cls``: class_name.<kind> in its module directory."""
+    return _defining_module_dir(cls) / f"{_pascal_to_snake(cls.__name__)}.{kind}"
+
+
 def _resolution_ancestors(cls: type) -> list[type]:
     """``cls``'s MRO, nearest first, truncated before ``BaseComponent``.
 
@@ -180,6 +185,25 @@ def _walk_template(cls: type) -> tuple[Path, type | None]:
     return _template_candidate(ancestors[-1]), None
 
 
+def _walk_asset(cls: type, kind: str) -> tuple[Path | None, type | None]:
+    """The MRO walk for one asset kind, run once and reported in full.
+
+    Returns ``(path, owner)``: the nearest ancestor's co-located ``.<kind>``
+    file and the ancestor that owns it, or ``(None, None)`` when no ancestor
+    has one.
+
+    Every ancestor is probed, including the last. The template walk can return
+    its final candidate unprobed because a component must render *something*,
+    so a path is the answer either way; an asset is optional, so claiming an
+    unprobed path would attach a stylesheet that is not there.
+    """
+    for ancestor in _resolution_ancestors(cls):
+        candidate = _asset_candidate(ancestor, kind)
+        if candidate.is_file():
+            return candidate, ancestor
+    return None, None
+
+
 def _resolve_template_path(cls: type) -> Path:
     """The template ``cls`` renders with: the nearest ancestor's candidate that exists on disk.
 
@@ -204,9 +228,19 @@ def _resolve_slot_fields(cls: type) -> frozenset[str]:
 
 
 def _resolve_asset_paths(cls: type) -> tuple[tuple[Path, ...], tuple[Path, ...]]:
-    """Resolve CSS and JS asset paths for ``cls``. Stub returns empty tuples."""
-    _defining_module_dir(cls)
-    return ((), ())
+    """The co-located stylesheet and script ``cls`` ships with, each resolved by
+    its own nearest-ancestor walk.
+
+    Each kind yields a one-element tuple when a file was found and an empty one
+    when it was not. The walks are independent: a subclass can keep its parent's
+    stylesheet while defining its own script, or have neither.
+    """
+    css_path, _ = _walk_asset(cls, "css")
+    js_path, _ = _walk_asset(cls, "js")
+    return (
+        () if css_path is None else (css_path,),
+        () if js_path is None else (js_path,),
+    )
 
 
 def _resolve_strict(cls: type[BaseModel]) -> bool:

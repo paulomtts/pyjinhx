@@ -11,6 +11,7 @@ from pyjinhx2.component import (
     BaseComponent,
     Children,
     Slot,
+    _asset_candidate,
     _defining_module_dir,
     _pascal_to_snake,
     _resolution_ancestors,
@@ -20,6 +21,7 @@ from pyjinhx2.component import (
     _resolve_slot_fields,
     _resolve_strict,
     _resolve_template_path,
+    _template_candidate,
     _walk_template,
 )
 from pyjinhx2.descriptor import ClassDescriptor
@@ -393,6 +395,29 @@ class TestPascalToSnake:
         assert _pascal_to_snake(name) == expected
 
 
+class TestAssetCandidate:
+    """ADR 0007's one convention, asset half: snake_case class name plus the
+    kind's extension, beside the defining module. No kebab-case fallback."""
+
+    def test_it_uses_the_snake_case_class_name_and_the_kind_extension(self):
+        class FancyCard(BaseComponent):
+            pass
+
+        here = Path(__file__).parent
+
+        assert _asset_candidate(FancyCard, "css") == here / "fancy_card.css"
+        assert _asset_candidate(FancyCard, "js") == here / "fancy_card.js"
+
+    def test_it_sits_beside_the_template_candidate(self):
+        class Card(BaseComponent):
+            pass
+
+        assert (
+            _asset_candidate(Card, "css").parent
+            == _template_candidate(Card).parent
+        )
+
+
 class TestResolveTemplatePath:
     """ADR 0007: one candidate — snake_case(class name) + `.pjx`, in the
     defining module's own directory. No MRO walk (#273), no existence check
@@ -701,12 +726,18 @@ class TestTemplateWalkProbeBudget:
         return probed
 
     def test_a_direct_subclass_is_never_probed(self, monkeypatch):
-        """The pinned zero-probe property from #272, restated for `is_file`:
-        for `[cls]` the only ancestor is also the last one."""
-        probed = self._count_is_file(monkeypatch)
+        """The pinned zero-probe property, restated for `is_file`: for `[cls]`
+        the only ancestor is also the last one.
+
+        `Card` is defined before the spy is installed: registration's own
+        `_resolve_class_descriptor` call now also walks css/js for `Card`
+        (the asset walk probes every ancestor, unlike the template walk), and
+        this test only wants to pin the *template* walk's zero-probe count."""
 
         class Card(BaseComponent):
             pass
+
+        probed = self._count_is_file(monkeypatch)
 
         _resolve_template_path(Card)
 
@@ -1033,23 +1064,170 @@ class TestProvenanceProbeBudget:
         assert probed == []
 
 
-class TestPerKindIndependence:
-    """ADR 0010: template and assets resolve through separate walks. #273 gave
-    template one; css/js keep the stub until #276. If this test starts failing
-    because `_resolve_asset_paths` grew behavior, that behavior belongs in #276
-    with its own tests — not smuggled in through the template walk."""
+class TestAssetMroWalk:
+    """ADR 0010, asset half: css and js each get their own nearest-ancestor
+    walk. Assets are optional, so unlike the template walk every ancestor is
+    probed and "nowhere in the MRO" is an empty result, not a guessed path."""
 
-    def test_asset_resolution_is_still_the_untouched_stub(self):
+    def test_an_own_css_wins_over_an_ancestors(self, mro_dir):
         class Card(BaseComponent):
             pass
 
         class FancyCard(Card):
             pass
 
-        assert _resolve_asset_paths(Card) == ((), ())
+        Card.__module__ = _MRO_MODULE
+        FancyCard.__module__ = _MRO_MODULE
+        (mro_dir / "card.css").write_text(".card {}")
+        (mro_dir / "fancy_card.css").write_text(".fancy {}")
+
+        css_paths, js_paths = _resolve_asset_paths(FancyCard)
+
+        assert css_paths == (mro_dir / "fancy_card.css",)
+        assert js_paths == ()
+
+    def test_a_parents_css_is_used_when_the_child_has_none(self, mro_dir):
+        class Card(BaseComponent):
+            pass
+
+        class FancyCard(Card):
+            pass
+
+        Card.__module__ = _MRO_MODULE
+        FancyCard.__module__ = _MRO_MODULE
+        (mro_dir / "card.css").write_text(".card {}")
+
+        assert _resolve_asset_paths(FancyCard)[0] == (mro_dir / "card.css",)
+
+    def test_a_parents_js_is_used_when_the_child_has_none(self, mro_dir):
+        class Card(BaseComponent):
+            pass
+
+        class FancyCard(Card):
+            pass
+
+        Card.__module__ = _MRO_MODULE
+        FancyCard.__module__ = _MRO_MODULE
+        (mro_dir / "card.js").write_text("//card")
+
+        assert _resolve_asset_paths(FancyCard)[1] == (mro_dir / "card.js",)
+
+    def test_the_walk_hops_over_an_ancestor_with_no_file(self, mro_dir):
+        class Card(BaseComponent):
+            pass
+
+        class FancyCard(Card):
+            pass
+
+        class VeryFancyCard(FancyCard):
+            pass
+
+        for klass in (Card, FancyCard, VeryFancyCard):
+            klass.__module__ = _MRO_MODULE
+        (mro_dir / "card.css").write_text(".card {}")
+
+        assert _resolve_asset_paths(VeryFancyCard)[0] == (mro_dir / "card.css",)
+
+    def test_the_last_ancestor_is_probed_not_assumed(self, mro_dir):
+        """The one place the asset walk deliberately diverges from the template
+        walk: the template walk returns the root candidate unprobed, so it
+        always yields a path. An asset must actually be on disk to be claimed."""
+
+        class Card(BaseComponent):
+            pass
+
+        class FancyCard(Card):
+            pass
+
+        Card.__module__ = _MRO_MODULE
+        FancyCard.__module__ = _MRO_MODULE
+        (mro_dir / "card.css").write_text(".card {}")
+
+        assert _resolve_asset_paths(FancyCard)[0] == (mro_dir / "card.css",)
+
+    def test_nothing_anywhere_is_an_empty_result_not_an_error(self, mro_dir):
+        class Card(BaseComponent):
+            pass
+
+        class FancyCard(Card):
+            pass
+
+        Card.__module__ = _MRO_MODULE
+        FancyCard.__module__ = _MRO_MODULE
+
         assert _resolve_asset_paths(FancyCard) == ((), ())
 
-    def test_inheriting_a_template_does_not_inherit_assets(self, mro_dir):
+    def test_css_and_js_resolve_to_different_ancestors(self, mro_dir):
+        """The kinds do not share a walk or short-circuit each other: the js
+        winner is two levels up while the css winner is one."""
+
+        class Card(BaseComponent):
+            pass
+
+        class FancyCard(Card):
+            pass
+
+        class VeryFancyCard(FancyCard):
+            pass
+
+        for klass in (Card, FancyCard, VeryFancyCard):
+            klass.__module__ = _MRO_MODULE
+        (mro_dir / "card.js").write_text("//card")
+        (mro_dir / "fancy_card.css").write_text(".fancy {}")
+
+        css_paths, js_paths = _resolve_asset_paths(VeryFancyCard)
+
+        assert css_paths == (mro_dir / "fancy_card.css",)
+        assert js_paths == (mro_dir / "card.js",)
+
+    def test_siblings_resolve_independently_to_the_same_parent(self, mro_dir):
+        class Card(BaseComponent):
+            pass
+
+        class FancyCard(Card):
+            pass
+
+        class PlainCard(Card):
+            pass
+
+        for klass in (Card, FancyCard, PlainCard):
+            klass.__module__ = _MRO_MODULE
+        (mro_dir / "card.css").write_text(".card {}")
+
+        assert _resolve_asset_paths(FancyCard)[0] == (mro_dir / "card.css",)
+        assert _resolve_asset_paths(PlainCard)[0] == (mro_dir / "card.css",)
+
+
+class TestPerKindIndependence:
+    """ADR 0010: template, css and js resolve through three separate walks.
+    Resolving one kind from an ancestor must never drag another kind along."""
+
+    def test_inheriting_a_template_does_not_inherit_an_unrelated_asset(
+        self, mro_dir
+    ):
+        """The parent lends its template. Its css belongs to a *differently
+        named* class, so nothing in the child's css walk matches and css stays
+        empty — template inheritance did not pull an asset in behind it."""
+
+        class Card(BaseComponent):
+            pass
+
+        class FancyCard(Card):
+            pass
+
+        Card.__module__ = _MRO_MODULE
+        FancyCard.__module__ = _MRO_MODULE
+        (mro_dir / "card.pjx").write_text("<div>card</div>")
+        (mro_dir / "unrelated.css").write_text(".unrelated {}")
+
+        assert _resolve_template_path(FancyCard) == mro_dir / "card.pjx"
+        assert _resolve_asset_paths(FancyCard) == ((), ())
+
+    def test_a_co_located_asset_resolves_on_its_own_merits(self, mro_dir):
+        """The other half of the distinction: when the ancestor's own
+        `card.css` exists, the child gets it — because the css walk found it,
+        not because the template walk landed on the same ancestor."""
+
         class Card(BaseComponent):
             pass
 
@@ -1062,4 +1240,34 @@ class TestPerKindIndependence:
         (mro_dir / "card.css").write_text(".card {}")
 
         assert _resolve_template_path(FancyCard) == mro_dir / "card.pjx"
-        assert _resolve_asset_paths(FancyCard) == ((), ())
+        assert _resolve_asset_paths(FancyCard)[0] == (mro_dir / "card.css",)
+
+    def test_an_own_asset_survives_an_inherited_template(self, mro_dir):
+        class Card(BaseComponent):
+            pass
+
+        class FancyCard(Card):
+            pass
+
+        Card.__module__ = _MRO_MODULE
+        FancyCard.__module__ = _MRO_MODULE
+        (mro_dir / "card.pjx").write_text("<div>card</div>")
+        (mro_dir / "fancy_card.css").write_text(".fancy {}")
+
+        assert _resolve_template_path(FancyCard) == mro_dir / "card.pjx"
+        assert _resolve_asset_paths(FancyCard)[0] == (mro_dir / "fancy_card.css",)
+
+    def test_an_own_template_does_not_block_an_inherited_asset(self, mro_dir):
+        class Card(BaseComponent):
+            pass
+
+        class FancyCard(Card):
+            pass
+
+        Card.__module__ = _MRO_MODULE
+        FancyCard.__module__ = _MRO_MODULE
+        (mro_dir / "fancy_card.pjx").write_text("<div>fancy</div>")
+        (mro_dir / "card.css").write_text(".card {}")
+
+        assert _resolve_template_path(FancyCard) == mro_dir / "fancy_card.pjx"
+        assert _resolve_asset_paths(FancyCard)[0] == (mro_dir / "card.css",)
