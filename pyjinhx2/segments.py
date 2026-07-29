@@ -130,6 +130,10 @@ class VerbatimParser(HTMLParser):
         # and reconstruct them below.
         super().__init__(convert_charrefs=False)
         self.segments: list[str | ChildRef] = []
+        # The (start, end) absolute offsets of the first tag event's raw opening-tag
+        # text; None until that event fires. See the class docstring. Recording only
+        # — no root validation happens here (#257 owns that).
+        self.root_span: tuple[int, int] | None = None
         self._source = ""
         self._line_starts: list[int] = [0]
         # One entry per currently-open PascalCase tag: (original-cased name, index

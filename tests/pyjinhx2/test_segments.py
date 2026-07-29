@@ -274,6 +274,19 @@ class TestVerbatimParser:
         parser.close()
         return parser.segments
 
+    @staticmethod
+    def parsed(markup: str) -> "VerbatimParser":
+        parser = VerbatimParser()
+        parser.feed(markup)
+        parser.close()
+        return parser
+
+    def test_root_span_starts_none_and_stays_none_without_a_root(self):
+        assert VerbatimParser().root_span is None
+        assert self.parsed("plain text, no markup at all").root_span is None
+        assert self.parsed("").root_span is None
+        assert self.parsed("&amp; just an entity").root_span is None
+
     def test_top_level_self_closing_tag_becomes_a_child_ref(self):
         assert self.parse('<div><PJXIcon name="gear"/></div>') == [
             "<div>",
