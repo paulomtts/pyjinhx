@@ -52,6 +52,29 @@ RE_RAW_END_TAG = re.compile(r"</[^>]*>")
 RE_RAW_END_TAG_NAME = re.compile(r"</\s*([A-Za-z][A-Za-z0-9]*)")
 RE_RAW_COMMENT = re.compile(r"<!--.*?-->|<!\[.*?\]\]?>", re.DOTALL)
 
+# HTML void elements have no closing tag, so they never open a nesting level —
+# `<img>` without a trailing slash arrives through handle_starttag but must not
+# push depth. Duplicated from v0.x's pyjinhx/root_attrs.py rather than imported:
+# this module is import-pure and may not reach into pyjinhx (ADR 0002).
+_VOID_ELEMENTS = frozenset(
+    {
+        "area",
+        "base",
+        "br",
+        "col",
+        "embed",
+        "hr",
+        "img",
+        "input",
+        "link",
+        "meta",
+        "param",
+        "source",
+        "track",
+        "wbr",
+    }
+)
+
 
 def _attrs_to_dict(attrs: "list[tuple[str, str | None]]") -> dict[str, str]:
     """HTMLParser reports a bare/boolean attr with a value of None; ChildRef.attrs
@@ -84,10 +107,11 @@ class VerbatimParser(HTMLParser):
     exactly — attribute quoting, attribute order, unknown and boolean attrs,
     odd casing and intentionally malformed HTML all survive untouched. There is
     no tag tree. Top-level PascalCase tags are cut out (#254, below), the first
-    tag event's raw span is recorded as ``root_span`` (#255, below), and a
-    paired top-level tag's body is captured into ``ChildRef.inner`` on close
-    (below); enforcing a single root (#257) still layers onto this harness
-    later.
+    tag event's raw span is recorded as ``root_span`` (#255, below), a paired
+    top-level tag's body is captured into ``ChildRef.inner`` on close (below),
+    and every tag event that fires at nesting depth 0 is counted so
+    ``enforce_single_root`` (#257, below) can reject zero- and multi-root
+    markup without a second pass.
 
     ``root_span`` (#255) is the ``(start, end)`` offset of the very first tag
     event into the *original source string*, not an index into ``segments``.
@@ -135,7 +159,9 @@ class VerbatimParser(HTMLParser):
     Also unlike v0.x, ``close()`` is not overridden and never raises on unclosed
     tags: a non-empty ``_custom_stack`` at EOF is fine here, and a mismatched
     close tag is passed through without popping. The stack is bookkeeping, not
-    validation — enforcement is #257's.
+    validation. Single-root validation lives in ``enforce_single_root``, which
+    callers invoke explicitly after ``close()`` — parsing itself never raises, so
+    an unclosed root tag at EOF is still exactly one root and stays valid.
 
     Known limitation: markup truncated mid-construct at EOF (``"<div"``,
     ``"<!-- unclosed"``) does not round-trip — ``HTMLParser`` drops or completes
@@ -151,7 +177,8 @@ class VerbatimParser(HTMLParser):
         self.segments: list[str | ChildRef] = []
         # The (start, end) absolute offsets of the first tag event's raw opening-tag
         # text; None until that event fires. See the class docstring. Recording only
-        # — no root validation happens here (#257 owns that).
+        # — no root validation happens here; enforce_single_root() does that,
+        # only when a caller asks for it.
         self.root_span: tuple[int, int] | None = None
         self._source = ""
         self._line_starts: list[int] = [0]
@@ -167,6 +194,17 @@ class VerbatimParser(HTMLParser):
         # only never-closed stragglers survive that long. The collapse therefore
         # happens inside handle_endtag, off the entry it just popped.
         self._custom_stack: list[tuple[str, int, dict[str, str]]] = []
+        # Single-root enforcement (#257) bookkeeping, deliberately separate from
+        # `_custom_stack`: that stack only tracks PascalCase nesting for cut-gating,
+        # while root counting must see plain tags too. Nothing here ever raises
+        # during the feed — `enforce_single_root()` is opt-in, called after close().
+        # Names of the currently-open non-void elements, outermost first. A stack
+        # rather than a counter so a stray `</span>` pops nothing and an ancestor's
+        # close tag pops every level it swallows — consistent with handle_endtag's
+        # existing no-op-on-mismatch rule.
+        self._open_elements: list[str] = []
+        self._top_level_count = 0
+        self._extra_root_texts: list[str] = []
 
     def feed(self, data: str) -> None:
         """Parse ``data``. One feed per parser instance — the source is recorded
@@ -198,9 +236,60 @@ class VerbatimParser(HTMLParser):
         start = self._line_starts[line - 1] + column
         self.root_span = (start, start + len(raw))
 
+    def _count_root_candidate(self, raw: str) -> None:
+        """Count a tag event that fired at nesting depth 0 as a root candidate.
+
+        Mirrors v0.x's ``_RootScanner._record_top_level`` (pyjinhx/root_attrs.py),
+        but rides this parser's existing single feed instead of a second pass
+        (ADR 0005). The raw text of every root past the first is kept so the
+        error can name the offending markup rather than only count it.
+        """
+        if self._open_elements:
+            return
+        self._top_level_count += 1
+        if self._top_level_count > 1:
+            self._extra_root_texts.append(raw)
+
+    def _close_open_element(self, tag: str) -> None:
+        """Pop the innermost open element named ``tag``, and everything under it.
+
+        A close tag naming nothing on the stack (``</span>`` with no open span) is
+        a no-op, so stray close tags can neither invent a top level nor consume a
+        real one. A close tag naming an ancestor (``<div><p>hi</div>``) pops the
+        levels it swallows, so the next tag is correctly seen as top-level again.
+        """
+        if tag not in self._open_elements:
+            return
+        index = len(self._open_elements) - 1 - self._open_elements[::-1].index(tag)
+        del self._open_elements[index:]
+
+    def enforce_single_root(self) -> None:
+        """Raise unless the parsed markup had exactly one top-level element.
+
+        Opt-in on purpose: the feed itself never validates, so every round-trip
+        and ``root_span`` test can parse malformed markup without a raise. Call
+        this after ``close()`` when the single-root guarantee is actually needed
+        (render.py wires it in under #247). Raises unconditionally — there is no
+        fallback and nothing is swallowed (ADR 0002 consequences, invariant 3).
+        """
+        if self._top_level_count == 0:
+            raise ValueError(
+                "template must render exactly one root element, but it renders "
+                f"no element at all: {self._source!r}"
+            )
+        if self._top_level_count > 1:
+            extras = ", ".join(repr(raw) for raw in self._extra_root_texts)
+            raise ValueError(
+                "template must render exactly one root element, but it renders "
+                f"{self._top_level_count}; the extra top-level tags are: {extras}"
+            )
+
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         raw = self.get_starttag_text() or f"<{tag}>"
         self._record_root_span(raw)
+        self._count_root_candidate(raw)
+        if tag not in _VOID_ELEMENTS:
+            self._open_elements.append(tag)
         name = self._custom_tag_name(raw)
         if name is not None:
             # The raw open tag is appended below and stays in `segments` until the
@@ -212,6 +301,7 @@ class VerbatimParser(HTMLParser):
     def handle_startendtag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         raw = self.get_starttag_text() or f"<{tag}/>"
         self._record_root_span(raw)
+        self._count_root_candidate(raw)
         name = self._custom_tag_name(raw)
         if name is not None and not self._custom_stack:
             self.segments.append(
@@ -224,6 +314,7 @@ class VerbatimParser(HTMLParser):
         # HTMLParser lowercases `tag`, which would destroy `</DIV>` and, fatally,
         # `</PJXButton>`. Recover the source text instead.
         raw = self._raw_at(RE_RAW_END_TAG) or f"</{tag}>"
+        self._close_open_element(tag)
         name = self._custom_tag_name(raw)
         if (
             name is not None
@@ -245,9 +336,10 @@ class VerbatimParser(HTMLParser):
                 del self.segments[index:]
                 self.segments.append(ChildRef(tag=open_name, attrs=attrs, inner=inner))
                 return
-        # Deliberate non-pop on a name mismatch: enforcement is #257's, and
-        # popping on mismatch would silently reopen cutting inside a still-
-        # unclosed component's span.
+        # Deliberate non-pop on a name mismatch: popping would silently reopen
+        # cutting inside a still-unclosed component's span. Root counting handles
+        # mismatches on its own stack (`_close_open_element`); this one is only
+        # about cut-gating and stays deliberately forgiving.
         self.segments.append(raw)
 
     def _custom_tag_name(self, raw: str) -> "str | None":

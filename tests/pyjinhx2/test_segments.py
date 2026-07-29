@@ -499,3 +499,162 @@ class TestVerbatimParser:
             " and ",
             ChildRef(tag="PJXIcon", attrs={"name": "gear"}, inner=None),
         ]
+
+
+class TestEnforceSingleRoot:
+    @staticmethod
+    def parsed(markup: str) -> "VerbatimParser":
+        parser = VerbatimParser()
+        parser.feed(markup)
+        parser.close()
+        return parser
+
+    @pytest.mark.parametrize(
+        "markup",
+        [
+            "<div>hi</div>",
+            "<div><p>a</p><p>b</p></div>",
+            '<PJXIcon name="gear"/>',
+            '<PJXButton label="Go">text</PJXButton>',
+            "<PJXAccordion><PJXIcon name='gear'/></PJXAccordion>",
+            "<div>\n  <PJXButton label='Save'/>\n  <p>hi</p>\n</div>",
+        ],
+    )
+    def test_single_root_does_not_raise(self, markup: str):
+        assert self.parsed(markup).enforce_single_root() is None
+
+    def test_two_plain_siblings_raise_naming_the_extra_markup(self):
+        parser = self.parsed("<p>a</p><p>b</p>")
+        with pytest.raises(ValueError) as excinfo:
+            parser.enforce_single_root()
+        assert "<p>" in str(excinfo.value)
+
+    def test_two_custom_siblings_raise_naming_the_extra_markup(self):
+        parser = self.parsed('<PJXButton label="Go"/> and <PJXIcon name="gear"/>')
+        with pytest.raises(ValueError) as excinfo:
+            parser.enforce_single_root()
+        assert '<PJXIcon name="gear"/>' in str(excinfo.value)
+
+    def test_three_siblings_report_every_extra_root(self):
+        parser = self.parsed("<p>a</p><span>b</span><b>c</b>")
+        with pytest.raises(ValueError) as excinfo:
+            parser.enforce_single_root()
+        message = str(excinfo.value)
+        assert "<span>" in message
+        assert "<b>" in message
+
+    def test_zero_roots_raise_naming_the_markup(self):
+        parser = self.parsed("plain text, no markup at all")
+        assert parser.root_span is None
+        with pytest.raises(ValueError) as excinfo:
+            parser.enforce_single_root()
+        assert "plain text, no markup at all" in str(excinfo.value)
+
+    def test_unclosed_root_tag_at_eof_is_still_one_root(self):
+        assert self.parsed("<PJXButton>go").enforce_single_root() is None
+        assert self.parsed("<div><p>hi").enforce_single_root() is None
+
+    @pytest.mark.parametrize(
+        "markup",
+        [
+            '<img src="x.png"/>',
+            '<img src="x.png">',
+            "<br>",
+            "<input disabled value=bare>",
+        ],
+    )
+    def test_void_element_as_sole_root_does_not_raise(self, markup: str):
+        assert self.parsed(markup).enforce_single_root() is None
+
+    @pytest.mark.parametrize(
+        "markup",
+        [
+            '<img src="a"/><img src="b"/>',
+            '<img src="a"><img src="b">',
+            '<img src="a"><p>b</p>',
+            "<br><br>",
+        ],
+    )
+    def test_void_elements_still_count_as_separate_roots(self, markup: str):
+        with pytest.raises(ValueError):
+            self.parsed(markup).enforce_single_root()
+
+    def test_void_element_inside_a_single_root_does_not_trip_the_counter(self):
+        markup = '<div><img src="a"><br>text<hr></div>'
+        assert self.parsed(markup).enforce_single_root() is None
+
+    def test_leading_stray_close_tag_does_not_hide_a_multi_root_violation(self):
+        # `</span>` closes nothing; the two <p> siblings are still two roots.
+        with pytest.raises(ValueError):
+            self.parsed("</span><p>a</p><p>b</p>").enforce_single_root()
+
+    def test_leading_stray_close_tag_leaves_a_single_root_valid(self):
+        assert self.parsed("</span><div>hi</div>").enforce_single_root() is None
+
+    def test_mismatched_close_tag_does_not_reopen_the_top_level(self):
+        # `</span>` inside <div> matches no open element, so <p> is still nested.
+        assert self.parsed("<div></span><p>a</p></div>").enforce_single_root() is None
+
+    def test_close_tag_for_an_ancestor_closes_the_levels_below_it(self):
+        # `</div>` closes both <p> and <div>, so the trailing <p> is a second root.
+        with pytest.raises(ValueError):
+            self.parsed("<div><p>hi</div><p>x</p>").enforce_single_root()
+
+    def test_nested_custom_tags_do_not_trip_the_counter(self):
+        markup = "<PJXAccordion><PJXPanel></PJXPanel><PJXIcon name='a'/></PJXAccordion>"
+        assert self.parsed(markup).enforce_single_root() is None
+
+    @pytest.mark.parametrize(
+        "markup",
+        [
+            "",
+            "plain text, no markup at all",
+            "&amp; just an entity",
+            "<p>a</p><p>b</p>",
+            '<img src="a"/><img src="b"/>',
+            "</span>hi",
+            "<PJXAccordion><PJXIcon name='gear'/>",
+        ],
+    )
+    def test_parsing_alone_never_raises(self, markup: str):
+        # Enforcement is opt-in: feed()/close() must stay validation-free so every
+        # round-trip and root_span test can parse malformed markup unharmed.
+        parser = VerbatimParser()
+        parser.feed(markup)
+        parser.close()
+        assert isinstance(parser.segments, list)
+
+    def test_enforce_is_not_called_from_feed_or_close(self):
+        # AST-based, not a source-text split: `enforce_single_root` is defined
+        # *before* handle_starttag/handle_startendtag/handle_endtag in the file
+        # (Step 5 inserts it right after `_record_root_span`), so a naive
+        # `source.split("def enforce_single_root", 1)[0]` check only inspects
+        # __init__/feed/_raw_at/_record_root_span/_count_root_candidate — it
+        # would silently miss a call added inside any handle_* method, which is
+        # exactly the case this guard exists to catch. Walk every method of the
+        # class instead (skipping enforce_single_root's own body) and assert
+        # none of them calls it.
+        tree = ast.parse(inspect.getsource(VerbatimParser))
+        (cls,) = [n for n in tree.body if isinstance(n, ast.ClassDef)]
+        for method in cls.body:
+            if not isinstance(method, ast.FunctionDef):
+                continue
+            if method.name == "enforce_single_root":
+                continue
+            for node in ast.walk(method):
+                if not isinstance(node, ast.Call):
+                    continue
+                func = node.func
+                name = (
+                    func.attr
+                    if isinstance(func, ast.Attribute)
+                    else getattr(func, "id", None)
+                )
+                assert name != "enforce_single_root", (
+                    f"{method.name} must not call enforce_single_root()"
+                )
+
+    def test_enforcement_path_never_swallows(self):
+        # Invariant 3 / ADR 0002: single-root violations raise unconditionally.
+        source = inspect.getsource(pyjinhx2.segments)
+        assert "except" not in source
