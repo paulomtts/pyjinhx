@@ -43,8 +43,11 @@ class Structural(BaseComponent):
     typed_items: list[str] = Field(default_factory=list)
     typed_map: dict[str, int] = Field(default_factory=dict)
     address: Address | None = None
+    owner: Address = Field(default_factory=lambda: Address(city="unset"))
     maybe_items: list[str] | None = None
+    maybe_map: dict[str, int] | None = None
     label: str | list = ""
+    either: list | dict = Field(default_factory=list)
 
 
 class Slotted(BaseComponent):
@@ -150,7 +153,7 @@ class TestJsonCoercion:
             typed_map='{"a": 1}'  # pyright: ignore[reportArgumentType]
         ).typed_map == {"a": 1}
 
-    def test_json_object_string_coerces_to_base_model_field(self):
+    def test_json_object_string_coerces_to_optional_base_model_field(self):
         assert Structural(
             address='{"city": "Lisbon"}'  # pyright: ignore[reportArgumentType]
         ).address == Address(city="Lisbon")
@@ -218,6 +221,37 @@ class TestJsonCoercion:
         assert Structural(
             typed_items='["a"]'  # pyright: ignore[reportArgumentType]
         ).id.startswith("pjx-")
+
+    def test_json_string_coerces_to_bare_list(self):
+        assert Structural(
+            sources='[1, 2]'  # pyright: ignore[reportArgumentType]
+        ).sources == [1, 2]
+
+    def test_json_string_coerces_to_bare_dict(self):
+        assert Structural(
+            meta='{"a": 1}'  # pyright: ignore[reportArgumentType]
+        ).meta == {"a": 1}
+
+    def test_json_string_coerces_to_non_optional_base_model_field(self):
+        # The plain-BaseModel cell: no `| None` to strip, so the union branch of
+        # _is_json_coercible_annotation is skipped entirely.
+        assert Structural(
+            owner='{"city": "Lisbon"}'  # pyright: ignore[reportArgumentType]
+        ).owner == Address(city="Lisbon")
+
+    def test_optional_dict_annotation_still_coerces(self):
+        assert Structural(
+            maybe_map='{"a": 1}'  # pyright: ignore[reportArgumentType]
+        ).maybe_map == {"a": 1}
+
+    def test_two_arg_non_none_union_is_not_coerced(self):
+        # `list | dict` keeps two non-None members, so the len(args) != 1 branch
+        # bails out and the JSON-looking string reaches Pydantic as a raw str.
+        with pytest.raises(ValidationError) as excinfo:
+            Structural(either='[1, 2]')  # pyright: ignore[reportArgumentType]
+        error_types = {error["type"] for error in excinfo.value.errors()}
+        assert error_types == {"list_type", "dict_type"}
+        assert "invalid JSON attribute value" not in str(excinfo.value)
 
 
 class Anchor(BaseComponent):
