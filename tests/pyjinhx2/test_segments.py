@@ -58,6 +58,7 @@ def test_segments_module_is_import_pure():
         if isinstance(node, ast.Import):
             names = [alias.name for alias in node.names]
         elif isinstance(node, ast.ImportFrom):
+            assert node.level == 0, "segments.py must not use relative imports"
             names = [node.module or ""]
         else:
             continue
