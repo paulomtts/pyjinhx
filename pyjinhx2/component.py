@@ -28,9 +28,6 @@ from pydantic import (
 
 from pyjinhx2.descriptor import ClassDescriptor
 
-# Process-wide, never per-class: ids must be unique across every subclass, since
-# they end up as HTML ids on the same page. ``count.__next__`` is atomic under
-# the GIL, so concurrent construction needs no extra locking.
 _auto_id_counter = itertools.count(1)
 
 
@@ -142,9 +139,41 @@ def _defining_module_dir(cls: type) -> Path:
     return Path(file).parent
 
 
-def _resolve_template_path(cls: type) -> Path:
+def _template_candidate(cls: type) -> Path:
     """Compute the expected template path for ``cls``: class_name.pjx in its module directory."""
     return _defining_module_dir(cls) / f"{_pascal_to_snake(cls.__name__)}.pjx"
+
+
+def _resolution_ancestors(cls: type) -> list[type]:
+    """``cls``'s MRO, nearest first, truncated before ``BaseComponent``.
+
+    The classes willing to inherit a template (or, per-kind, an asset) from.
+    ``BaseComponent`` itself is excluded: it never gets a descriptor — pydantic
+    does not fire ``__pydantic_init_subclass__`` for the class that declares the
+    hook — so it has no template to lend.
+    """
+    ancestors: list[type] = []
+    for klass in cls.__mro__:
+        if klass is BaseComponent:
+            break
+        ancestors.append(klass)
+    return ancestors
+
+
+def _resolve_template_path(cls: type) -> Path:
+    """The template ``cls`` renders with: the nearest ancestor's candidate that exists on disk.
+
+    Walking supports subclasses: ``class DangerButton(PJXButton)`` becomes a
+    three-line class instead of a copied template that drifts. The last ancestor's
+    candidate is returned without a probe — it is the answer whether or not the
+    file is there.
+    """
+    ancestors = _resolution_ancestors(cls)
+    for ancestor in ancestors[:-1]:
+        candidate = _template_candidate(ancestor)
+        if candidate.is_file():
+            return candidate
+    return _template_candidate(ancestors[-1])
 
 
 def _resolve_slot_fields(cls: type) -> frozenset[str]:
@@ -159,13 +188,7 @@ def _resolve_asset_paths(cls: type) -> tuple[tuple[Path, ...], tuple[Path, ...]]
 
 
 def _resolve_strict(cls: type[BaseModel]) -> bool:
-    """The ADR 0006 mode, recorded once per class so render.py branches per
-    class instead of per render.
-
-    Not a stub: this is real data available today. Reading the class's own
-    pydantic config means L1's open opt-in subclass flips this to ``False`` with
-    no further wiring.
-    """
+    """The ADR 0006 mode, recorded once per class so render.py branches per class instead of per render."""
     return cls.model_config.get("extra") == "forbid"
 
 
@@ -275,9 +298,5 @@ class BaseComponent(BaseModel):
         return str(value)
 
 
-# Defined after BaseComponent so the union member resolves at definition time.
-# The full ``str | BaseComponent`` union is kept at L0 even though only the
-# ``str`` half gets behavior here, so the type does not change under callers
-# when L1 lands opaque component nodes (ADR 0003).
 Slot = Annotated[str | BaseComponent, PjxSlot()]
 Children = Annotated[str | BaseComponent, PjxSlot(children=True)]
