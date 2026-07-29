@@ -3,6 +3,7 @@
 Import-pure — stdlib only. Nothing in pyjinhx2 may be imported here.
 """
 
+import re
 from dataclasses import dataclass
 
 
@@ -41,3 +42,22 @@ class RenderedLevel:
     descriptor: (
         object  # ClassDescriptor once #246 lands; typed loosely to stay import-pure
     )
+
+
+RE_PASCAL_CASE_TAG_NAME = re.compile(r"^[A-Z](?=[A-Za-z0-9]*[a-z])[A-Za-z0-9]*$")
+RE_TAG_OPENER = re.compile(r"<\s*([A-Za-z][A-Za-z0-9]*)")
+
+
+def contains_custom_tag(markup: str) -> bool:
+    """Cheap check: does ``markup`` contain any PascalCase-tag-looking substring?
+
+    The gate in front of the single parse (ADR 0005): output with no component
+    tag in it never pays for a parser feed. Regex-only and O(n) — it must
+    never itself parse.
+    """
+    if "<" not in markup:
+        return False
+    for match in RE_TAG_OPENER.finditer(markup):
+        if RE_PASCAL_CASE_TAG_NAME.match(match.group(1)):
+            return True
+    return False

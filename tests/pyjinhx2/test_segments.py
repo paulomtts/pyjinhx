@@ -5,7 +5,12 @@ import inspect
 import pytest
 
 import pyjinhx2.segments
-from pyjinhx2.segments import ChildRef, RenderedLevel
+from pyjinhx2.segments import (
+    RE_PASCAL_CASE_TAG_NAME,
+    ChildRef,
+    RenderedLevel,
+    contains_custom_tag,
+)
 
 
 def make_level(
@@ -113,3 +118,36 @@ def test_segments_module_is_import_pure():
             continue
         internal = [n for n in names if n.startswith("pyjinhx")]
         assert not internal, f"segments.py must not import internal modules: {internal}"
+
+
+class TestContainsCustomTag:
+    @pytest.mark.parametrize(
+        ("markup", "expected"),
+        [
+            ("", False),
+            ("just some plain text, no angle brackets", False),
+            ("<div>hi</div>", False),
+            ("<my-el>hi</my-el>", False),
+            ("<ABC>hi</ABC>", False),
+            ("<3 and 2 < 4", False),
+            ('<PJXButton label="Go">', True),
+            ('<div><PJXIcon name="gear"/></div>', True),
+            ('<PJXIcon name="gear"/>', True),
+            ("< PJXButton>", True),
+            ("<div>text</div><PJXButton>Go</PJXButton>", True),
+        ],
+    )
+    def test_detects_pascal_case_tags(self, markup: str, expected: bool):
+        assert contains_custom_tag(markup) is expected
+
+    def test_pascal_case_regex_matches_bare_tag_names(self):
+        assert RE_PASCAL_CASE_TAG_NAME.match("PJXButton")
+        assert RE_PASCAL_CASE_TAG_NAME.match("Button2")
+        assert not RE_PASCAL_CASE_TAG_NAME.match("PJX")
+        assert not RE_PASCAL_CASE_TAG_NAME.match("div")
+        assert not RE_PASCAL_CASE_TAG_NAME.match("My-El")
+
+    def test_does_not_instantiate_a_parser(self):
+        source = inspect.getsource(contains_custom_tag)
+        assert "HTMLParser" not in source
+        assert "html.parser" not in source
