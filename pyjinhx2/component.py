@@ -163,14 +163,21 @@ def _defining_module_dir(cls: type) -> Path:
 
 
 def _resolve_template_path(cls: type) -> Path:
-    """STUB — #272 (single probe) and #273 (MRO walk) replace this in place.
+    """The single ADR 0007 template candidate for ``cls``: snake_case of the
+    class name plus ``.pjx``, in the directory of the module that defined it.
 
-    Returns the naive co-located path: it does not touch the filesystem and does
-    not walk the MRO. The real ADR 0007 probe is #272's, the per-kind ancestor
-    walk is #273's, and the missing-template message is #277's. Nothing at L0
-    reads this value yet, so a not-yet-probed path cannot mislead anything.
+    One candidate, not v0.x's six (three extensions x two case conventions) —
+    which is why v2 needs none of ``Finder``'s per-tag probe caches.
+
+    Deliberately does not touch the filesystem: this computes *where* the
+    template goes, and #277 owns turning "no file there" into a user-facing
+    error, after #273's MRO walk has had its chance to find one on an ancestor.
+    Returning the path unconditionally keeps those two concerns out of here.
+
+    ``_defining_module_dir``'s ``NotImplementedError`` for a fileless module
+    propagates unchanged — a class with no directory has no template path.
     """
-    return _defining_module_dir(cls) / f"{cls.__name__}.pjx"
+    return _defining_module_dir(cls) / f"{_pascal_to_snake(cls.__name__)}.pjx"
 
 
 def _resolve_slot_fields(cls: type) -> frozenset[str]:
