@@ -179,6 +179,36 @@ class TestJsonCoercion:
             Structural(meta="")  # pyright: ignore[reportArgumentType]
         assert "invalid JSON attribute value" not in str(excinfo.value)
 
+    def test_real_values_pass_through_untouched(self):
+        address = Address(city="Porto")
+        component = Structural(
+            sources=[1, 2], meta={"a": 1}, typed_items=["x"], address=address
+        )
+        assert component.sources == [1, 2]
+        assert component.meta == {"a": 1}
+        assert component.typed_items == ["x"]
+        assert component.address == address
+
+    def test_non_dict_input_is_passed_through(self):
+        assert Structural.model_validate(Structural(typed_items=["a"])).typed_items == [
+            "a"
+        ]
+
+    def test_coercion_does_not_disturb_auto_id_opt_out(self):
+        with pytest.raises(ValidationError):
+            StrictStructural(sources='["a"]')  # pyright: ignore[reportArgumentType]
+        component = StrictStructural(
+            id="fixed",
+            sources='["a"]',  # pyright: ignore[reportArgumentType]
+        )
+        assert component.id == "fixed"
+        assert component.sources == ["a"]
+
+    def test_coercion_does_not_disturb_auto_id_generation(self):
+        assert Structural(
+            typed_items='["a"]'  # pyright: ignore[reportArgumentType]
+        ).id.startswith("pjx-")
+
 
 FORBIDDEN_IMPORTS = (
     "pyjinhx2.render",
