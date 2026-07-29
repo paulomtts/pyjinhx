@@ -28,8 +28,8 @@ const WORKTREE = `${REPO_DIR}/.claude/worktrees/task-${issue}`
 const BRANCH = `task-${issue}`
 
 // ── board (Project 12) — Haiku stages, sole board writers ────────────────────
-const OPTION_IDS = { backlog: 'a4448373', spec: '07356194', ready: '5d5646cc', implementing: '20e71636', 'in-review': '6554ad50', testing: 'f397e470', done: 'ce6ea6d1' }
-const OPTION_NAMES = { backlog: 'Backlog', spec: 'Spec', ready: 'Ready', implementing: 'In progress', 'in-review': 'In review', testing: 'Testing', done: 'Done' }
+const OPTION_IDS = { backlog: 'a4448373', spec: '07356194', implementing: '20e71636', 'in-review': '6554ad50', done: 'ce6ea6d1' }
+const OPTION_NAMES = { backlog: 'Backlog', spec: 'Spec & Plan', implementing: 'In progress', 'in-review': 'In review', done: 'Done' }
 
 function board(stage) {
   return agent(`Move the Project 12 card for pyjinhx issue #${issue} to Status "${OPTION_NAMES[stage]}", then mirror its parent story. Use ONLY the Status-setting mutations below — never create, close, edit, or delete anything.
@@ -44,7 +44,7 @@ gh api graphql -f query='mutation($i:ID!,$o:String!){updateProjectV2ItemFieldVal
 
 3. Mirror the parent story to the least-advanced of its sub-issues. Fetch:
 gh api graphql -f query='query($n:Int!){repository(owner:"paulomtts",name:"pyjinhx"){issue(number:$n){parent{number subIssues(first:50){nodes{projectItems(first:10){nodes{project{id} fieldValueByName(name:"Status"){... on ProjectV2ItemFieldSingleSelectValue{name}}}}}}}}}}' -F n=${issue}
-If there is no parent, stop here. Otherwise, among the sub-issues' Status names on project PVT_kwHOBZmM8c4BewiO (missing value counts as "Backlog"), find the MINIMUM by this order: Backlog < Spec < Ready < In progress < In review < Testing < Done. Then find the parent's card with the step-1 query (its issue number) and set its Status with the step-2 mutation using this option-id map: Backlog=a4448373 Spec=07356194 Ready=5d5646cc "In progress"=20e71636 "In review"=6554ad50 Testing=f397e470 Done=ce6ea6d1.
+If there is no parent, stop here. Otherwise, among the sub-issues' Status names on project PVT_kwHOBZmM8c4BewiO (missing value counts as "Backlog"), find the MINIMUM by this order: Backlog < "Spec & Plan" < In progress < In review < Done. Then find the parent's card with the step-1 query (its issue number) and set its Status with the step-2 mutation using this option-id map: Backlog=a4448373 "Spec & Plan"=07356194 "In progress"=20e71636 "In review"=6554ad50 Done=ce6ea6d1.
 
 Return one line: "#${issue} -> ${OPTION_NAMES[stage]}; story #<P> -> <Name>" (or "no parent" / the exact error).`,
     { label: `board:${stage}`, phase: 'Board', model: 'haiku', effort: 'low' })
@@ -120,7 +120,6 @@ if (!verdict || verdict.blockers) {
   return { issue, blocked: 'validation', reason: verdict ? verdict.reason : 'validator died' }
 }
 
-await board('ready')
 await board('implementing')
 
 // ── 4. implement (Sonnet, TDD) ───────────────────────────────────────────────
@@ -153,8 +152,6 @@ ${review.findings.join('\n')}
 Skip any finding that is wrong — say why instead. Return what was fixed vs skipped.`,
     { label: `fix:#${issue}`, phase: 'Review', model: 'sonnet' })
 }
-
-await board('testing')
 
 // ── 6. tests ─────────────────────────────────────────────────────────────────
 phase('Tests')
