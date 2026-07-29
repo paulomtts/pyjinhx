@@ -23,6 +23,7 @@ from pyjinhx2.component import (
     _resolve_template_path,
     _template_candidate,
     _walk_template,
+    rebuild_class_descriptor,
 )
 from pyjinhx2.descriptor import ClassDescriptor
 
@@ -370,6 +371,145 @@ class TestDevReloadReassignmentSmokeTest:
 
         assert Card._pjx_descriptor is replacement
         assert Card._pjx_descriptor is not original
+
+
+class TestRebuildClassDescriptor:
+    """The single post-registration recomputation point (invariant 5). It swaps
+    a whole new descriptor in; it watches nothing and triggers nothing itself."""
+
+    def test_an_unchanged_class_rebuilds_to_an_equal_descriptor(self):
+        class Card(BaseComponent):
+            pass
+
+        original = Card._pjx_descriptor
+
+        rebuild_class_descriptor(Card)
+
+        assert Card._pjx_descriptor == original
+
+    def test_the_rebuilt_descriptor_is_a_new_object(self):
+        """Frozen dataclass: the only way to rebuild is build-then-swap, so an
+        equal descriptor must still be a different object."""
+
+        class Card(BaseComponent):
+            pass
+
+        original = Card._pjx_descriptor
+
+        rebuild_class_descriptor(Card)
+
+        assert Card._pjx_descriptor is not original
+
+    def test_the_previous_descriptor_is_left_untouched(self):
+        class Card(BaseComponent):
+            pass
+
+        original = Card._pjx_descriptor
+        snapshot = (
+            original.template_path,
+            original.slot_fields,
+            original.css_paths,
+            original.js_paths,
+            original.strict,
+            dict(original.provenance),
+        )
+
+        rebuild_class_descriptor(Card)
+
+        assert (
+            original.template_path,
+            original.slot_fields,
+            original.css_paths,
+            original.js_paths,
+            original.strict,
+            dict(original.provenance),
+        ) == snapshot
+
+    def test_rebuilding_twice_does_not_drift(self):
+        class Card(BaseComponent):
+            pass
+
+        original = Card._pjx_descriptor
+
+        rebuild_class_descriptor(Card)
+        first = Card._pjx_descriptor
+        rebuild_class_descriptor(Card)
+        second = Card._pjx_descriptor
+
+        assert first == original
+        assert second == original
+        assert second is not first
+
+    def test_it_returns_none(self):
+        class Card(BaseComponent):
+            pass
+
+        assert rebuild_class_descriptor(Card) is None
+
+    def test_a_template_that_appeared_on_disk_is_picked_up(self, mro_dir):
+        """Same resolver, fresh inputs: with no file present the walk falls back
+        to the last ancestor's unprobed candidate; once `fancy_card.pjx` exists
+        the nearest ancestor wins and is named in provenance."""
+
+        class Card(BaseComponent):
+            pass
+
+        class FancyCard(Card):
+            pass
+
+        Card.__module__ = _MRO_MODULE
+        FancyCard.__module__ = _MRO_MODULE
+
+        rebuild_class_descriptor(FancyCard)
+        before = FancyCard._pjx_descriptor
+
+        (mro_dir / "fancy_card.pjx").write_text("<div></div>", encoding="utf-8")
+        rebuild_class_descriptor(FancyCard)
+        after = FancyCard._pjx_descriptor
+
+        assert before.template_path == mro_dir / "card.pjx"
+        assert before.provenance == {}
+        assert after.template_path == mro_dir / "fancy_card.pjx"
+        assert after.provenance == {"template": FancyCard}
+        assert after != before
+
+    def test_an_asset_that_appeared_on_disk_is_picked_up(self, mro_dir):
+        class Card(BaseComponent):
+            pass
+
+        Card.__module__ = _MRO_MODULE
+
+        rebuild_class_descriptor(Card)
+        assert Card._pjx_descriptor.css_paths == ()
+
+        (mro_dir / "card.css").write_text("a{}", encoding="utf-8")
+        rebuild_class_descriptor(Card)
+
+        assert Card._pjx_descriptor.css_paths == (mro_dir / "card.css",)
+        assert Card._pjx_descriptor.provenance["css"] is Card
+
+    def test_it_delegates_to_the_shared_resolver(self, monkeypatch):
+        """No parallel resolution logic: whatever `_resolve_class_descriptor`
+        returns is exactly what lands on the class."""
+
+        class Card(BaseComponent):
+            pass
+
+        sentinel = ClassDescriptor(
+            template_path=Path("sentinel/card.pjx"),
+            slot_fields=frozenset(),
+            css_paths=(),
+            js_paths=(),
+            strict=True,
+            provenance={},
+        )
+        monkeypatch.setattr(
+            pyjinhx2.component, "_resolve_class_descriptor", lambda cls: sentinel
+        )
+
+        rebuild_class_descriptor(Card)
+
+        assert Card._pjx_descriptor is sentinel
 
 
 class TestPascalToSnake:
