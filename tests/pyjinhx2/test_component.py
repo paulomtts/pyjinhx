@@ -57,6 +57,9 @@ class Slotted(BaseComponent):
 class StrictStructural(BaseComponent):
     auto_id = False
     sources: list = Field(default_factory=list)
+    count: int = 0
+    meta: dict = Field(default_factory=dict)
+    address: Address | None = None
 
 
 class TestStrictConfig:
@@ -140,6 +143,24 @@ class TestAutoIdOptOut:
     def test_auto_id_is_not_a_model_field(self):
         assert "auto_id" not in BaseComponent.model_fields
         assert "auto_id" not in Named.model_fields
+
+    def test_declared_defaults_apply_under_auto_id_opt_out(self):
+        # _require_explicit_id is a mode="before" validator; it must gate the id
+        # without disturbing default application for any field kind.
+        component = StrictStructural(id="fixed")
+        assert component.id == "fixed"
+        assert component.sources == []
+        assert component.count == 0
+        assert component.meta == {}
+        assert component.address is None
+
+    def test_defaults_do_not_satisfy_the_required_id(self):
+        # Every other field defaults, so a bare construction must still fail on
+        # the id alone — defaults never stand in for the explicit id.
+        with pytest.raises(ValidationError) as excinfo:
+            StrictStructural()
+        assert "auto_id = False" in str(excinfo.value)
+        assert "StrictStructural" in str(excinfo.value)
 
 
 class TestJsonCoercion:
