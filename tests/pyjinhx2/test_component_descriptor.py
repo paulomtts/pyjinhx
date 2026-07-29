@@ -53,7 +53,7 @@ class TestResolveStrict:
 
     def test_false_when_a_subclass_reopens_extras(self):
         class Open(BaseComponent):
-            model_config = {"extra": "allow"}
+            model_config = {"extra": "allow"}  # noqa: RUF012 — pydantic's own ConfigDict pattern
 
         assert _resolve_strict(Open) is False
 
@@ -130,7 +130,9 @@ class TestDescriptorAttachedAtClassDefinition:
             pass
 
         assert Card._pjx_descriptor is not Banner._pjx_descriptor
-        assert Card._pjx_descriptor.template_path != Banner._pjx_descriptor.template_path
+        assert (
+            Card._pjx_descriptor.template_path != Banner._pjx_descriptor.template_path
+        )
 
     def test_a_subclass_of_a_subclass_gets_its_own_descriptor(self):
         class Card(BaseComponent):
@@ -154,13 +156,13 @@ class TestHookOrdering:
         with pytest.raises(TypeError, match="auto_id must remain a ClassVar"):
 
             class Bad(BaseComponent):
-                auto_id: bool = True
+                auto_id: bool = True  # pyright: ignore[reportIncompatibleVariableOverride]
 
     def test_redeclaring_id_with_a_non_str_type_still_raises(self):
         with pytest.raises(TypeError, match="redeclares the reserved id field"):
 
             class Bad(BaseComponent):
-                id: int = 0
+                id: int = 0  # pyright: ignore[reportIncompatibleVariableOverride]
 
     def test_the_seam_does_not_run_when_reserved_name_validation_fails(
         self, monkeypatch
@@ -177,7 +179,7 @@ class TestHookOrdering:
         with pytest.raises(TypeError):
 
             class Bad(BaseComponent):
-                auto_id: bool = True
+                auto_id: bool = True  # pyright: ignore[reportIncompatibleVariableOverride]
 
         assert calls == []
 
@@ -213,11 +215,11 @@ class TestSeamFailurePropagates:
 
     def test_a_class_defined_in_a_fileless_module_fails_at_definition_time(self):
         module = types.ModuleType("pyjinhx2_test_fileless_defining_module")
-        module.BaseComponent = BaseComponent
+        module.BaseComponent = BaseComponent  # pyright: ignore[reportAttributeAccessIssue]
         sys.modules["pyjinhx2_test_fileless_defining_module"] = module
         try:
             with pytest.raises(NotImplementedError, match="no file on disk"):
-                exec(
+                exec(  # noqa: S102 — only way to define a class in a fileless module
                     "class Card(BaseComponent):\n    pass\n",
                     module.__dict__,
                 )
