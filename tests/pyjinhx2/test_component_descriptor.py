@@ -2,18 +2,22 @@ import sys
 import types
 from collections.abc import Iterator
 from pathlib import Path
+from typing import ClassVar
 
 import pytest
 
 import pyjinhx2.component
 from pyjinhx2.component import (
     BaseComponent,
+    Children,
+    Slot,
     _defining_module_dir,
     _pascal_to_snake,
     _resolution_ancestors,
     _resolve_asset_paths,
     _resolve_class_descriptor,
     _resolve_provenance,
+    _resolve_slot_fields,
     _resolve_strict,
     _resolve_template_path,
     _walk_template,
@@ -53,6 +57,106 @@ class TestResolveClassDescriptor:
             pass
 
         assert _resolve_class_descriptor(Card) is not _resolve_class_descriptor(Card)
+
+
+class TestResolveSlotFields:
+    """#275: `slot_fields` is the set of declared fields that are slots — a
+    type-level fact computed once at registration. Which single field receives
+    a PascalCase tag's children (the precedence rules) is L1's job, not this
+    one; per-field marker mechanics are covered in test_slot_type_v2.py."""
+
+    def test_no_fields_means_no_slots(self):
+        class Card(BaseComponent):
+            pass
+
+        assert _resolve_slot_fields(Card) == frozenset()
+
+    def test_single_slot_typed_field(self):
+        class Panel(BaseComponent):
+            body: Slot = ""
+
+        assert _resolve_slot_fields(Panel) == frozenset({"body"})
+
+    def test_children_alias_counts_as_a_slot(self):
+        class Wrapper(BaseComponent):
+            inner: Children = ""
+
+        assert _resolve_slot_fields(Wrapper) == frozenset({"inner"})
+
+    def test_multiple_slot_typed_fields(self):
+        class Layout(BaseComponent):
+            header: Slot = ""
+            body: Children = ""
+            footer: Slot = ""
+
+        assert _resolve_slot_fields(Layout) == frozenset({"header", "body", "footer"})
+
+    def test_designated_children_field_without_a_slot_type(self):
+        """`_pjx_children_field` names a plain `str` field: it is a slot anyway.
+        The `ClassVar[str]` annotation is mandatory — `BaseComponent` does not
+        declare `_pjx_children_field`, so an unannotated assignment becomes a
+        pydantic private attribute and the name comparison silently fails."""
+
+        class Designated(BaseComponent):
+            _pjx_children_field: ClassVar[str] = "kids"
+            kids: str = ""
+
+        assert _resolve_slot_fields(Designated) == frozenset({"kids"})
+
+    def test_slot_typed_and_designated_field_union(self):
+        class Both(BaseComponent):
+            _pjx_children_field: ClassVar[str] = "kids"
+            kids: str = ""
+            body: Slot = ""
+
+        assert _resolve_slot_fields(Both) == frozenset({"kids", "body"})
+
+    def test_inherited_slot_field_is_included(self):
+        class Base(BaseComponent):
+            body: Slot = ""
+
+        class Child(Base):
+            title: str = ""
+
+        assert _resolve_slot_fields(Child) == frozenset({"body"})
+
+    def test_only_slot_names_not_every_field(self):
+        """Guards against over-inclusion: `id` and the plain scalars must not
+        leak into the set."""
+
+        class Mixed(BaseComponent):
+            label: str = ""
+            count: int = 0
+            body: Slot = ""
+
+        assert _resolve_slot_fields(Mixed) == frozenset({"body"})
+        assert "id" not in _resolve_slot_fields(Mixed)
+
+    def test_extra_keys_are_never_walked(self):
+        """ADR 0006: detection reads `model_fields` only. An open subclass that
+        accepts undeclared kwargs still reports only its declared slot."""
+
+        class Open(BaseComponent):
+            model_config = {"extra": "allow"}  # noqa: RUF012 — pydantic's own ConfigDict pattern
+            body: Slot = ""
+
+        instance = Open(
+            body="<b>hi</b>",
+            surprise="<i>x</i>",  # pyright: ignore[reportCallIssue]
+        )
+
+        assert instance.model_extra == {"surprise": "<i>x</i>"}
+        assert _resolve_slot_fields(Open) == frozenset({"body"})
+
+    def test_descriptor_carries_the_resolved_set(self):
+        """End-to-end through the registration seam, not just the helper."""
+
+        class Panel(BaseComponent):
+            body: Slot = ""
+            title: str = ""
+
+        assert _resolve_class_descriptor(Panel).slot_fields == frozenset({"body"})
+        assert Panel._pjx_descriptor.slot_fields == frozenset({"body"})
 
 
 class TestResolveStrict:
