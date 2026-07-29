@@ -11,6 +11,7 @@ from pyjinhx2.component import (
     BaseComponent,
     Children,
     Slot,
+    TemplateNotFoundError,
     _asset_candidate,
     _defining_module_dir,
     _pascal_to_snake,
@@ -465,9 +466,13 @@ class TestRebuildClassDescriptor:
         assert rebuild_class_descriptor(Card) is None
 
     def test_a_template_that_appeared_on_disk_is_picked_up(self, mro_dir):
-        """Same resolver, fresh inputs: with no file present the walk falls back
-        to the last ancestor's unprobed candidate; once `fancy_card.pjx` exists
-        the nearest ancestor wins and is named in provenance."""
+        """Same resolver, fresh inputs: with no ancestor file present the walk
+        falls back to the root ancestor's candidate; once `fancy_card.pjx`
+        exists the nearest ancestor wins and is named in provenance. `Card`
+        gets its own template up front — a component must have one to
+        register at all — so the only thing that changes across the two
+        rebuilds is whether `FancyCard`'s own candidate exists."""
+        (mro_dir / "card.pjx").write_text("<div></div>", encoding="utf-8")
 
         class Card(BaseComponent):
             pass
@@ -492,6 +497,10 @@ class TestRebuildClassDescriptor:
         assert after != before
 
     def test_an_asset_that_appeared_on_disk_is_picked_up(self, mro_dir):
+        """`Card` gets its own template up front so it can register at all;
+        the CSS candidate is unrelated to that guard and stays optional."""
+        (mro_dir / "card.pjx").write_text("<div></div>", encoding="utf-8")
+
         class Card(BaseComponent):
             pass
 
@@ -557,14 +566,16 @@ class TestAssetCandidate:
     """ADR 0007's one convention, asset half: snake_case class name plus the
     kind's extension, beside the defining module. No kebab-case fallback."""
 
-    def test_it_uses_the_snake_case_class_name_and_the_kind_extension(self):
+    def test_it_uses_the_snake_case_class_name_and_the_kind_extension(self, mro_dir):
+        """`FancyCard` needs its own template to register at all; the asset
+        candidate path arithmetic under test here is independent of that."""
+        (mro_dir / "fancy_card.pjx").write_text("<div></div>", encoding="utf-8")
+
         class FancyCard(BaseComponent):
-            pass
+            __module__ = _MRO_MODULE
 
-        here = Path(__file__).parent
-
-        assert _asset_candidate(FancyCard, "css") == here / "fancy_card.css"
-        assert _asset_candidate(FancyCard, "js") == here / "fancy_card.js"
+        assert _asset_candidate(FancyCard, "css") == mro_dir / "fancy_card.css"
+        assert _asset_candidate(FancyCard, "js") == mro_dir / "fancy_card.js"
 
     def test_it_sits_beside_the_template_candidate(self):
         class Card(BaseComponent):
@@ -1204,9 +1215,10 @@ class TestResolveProvenance:
 
 class TestProvenanceProbeBudget:
     """ADR 0007's budget survives provenance: at most one `is_file` per
-    ancestor per kind, none for the template walk's final fallback, and
-    building a whole descriptor walks each kind once — not once for the path
-    and again for the owner."""
+    ancestor per kind, and building a whole descriptor walks each kind once —
+    not once for the path and again for the owner. The template walk's final
+    fallback is unprobed by the walk itself, but registration's missing-template
+    guard confirms it once to decide whether to raise."""
 
     @staticmethod
     def _count_is_file(monkeypatch) -> list[Path]:
@@ -1276,9 +1288,14 @@ class TestProvenanceProbeBudget:
         assert descriptor.provenance == {"template": FancyCard, "css": Card}
         assert probed == list(dict.fromkeys(probed))
 
-    def test_a_direct_subclasss_descriptor_probes_only_its_assets(self, monkeypatch):
-        """One ancestor, so the template candidate is the unprobed terminal and
-        the only probes left are the two optional asset candidates.
+    def test_a_direct_subclasss_descriptor_probes_only_its_asset_and_its_own_template(
+        self, monkeypatch
+    ):
+        """One ancestor, so the template candidate is the unprobed terminal — the
+        walk itself never probes it. But that terminal is exactly the candidate
+        the missing-template guard confirms before deciding not to raise, so it
+        picks up the one probe the walk skipped; the two optional asset
+        candidates are unaffected.
 
         `Card` is defined before the spy is installed: `__pydantic_init_subclass__`
         already ran `_resolve_class_descriptor` once for its own registration, so
@@ -1294,7 +1311,7 @@ class TestProvenanceProbeBudget:
 
         here = Path(__file__).parent
 
-        assert probed == [here / "card.css", here / "card.js"]
+        assert probed == [here / "card.pjx", here / "card.css", here / "card.js"]
 
 
 class TestAssetMroWalk:
@@ -1502,4 +1519,107 @@ class TestPerKindIndependence:
 
         assert _resolve_template_path(FancyCard) == mro_dir / "fancy_card.pjx"
         assert _resolve_asset_paths(FancyCard)[0] == (mro_dir / "card.css",)
+
+
+class TestMissingTemplateError:
+    """A component must have a template. When no ancestor's candidate exists,
+    registration fails on the spot instead of handing back a descriptor whose
+    `template_path` points at nothing."""
+
+    def test_defining_a_class_with_no_template_raises(self, mro_dir):
+        with pytest.raises(TemplateNotFoundError):
+
+            class Ghost(BaseComponent):
+                __module__ = _MRO_MODULE
+
+    def test_it_raises_while_the_class_body_runs_not_at_render(self, mro_dir):
+        """Invariant 5: the class statement alone triggers it. Nothing is
+        instantiated and nothing is rendered, and the class never becomes a
+        usable name — the `NameError` proves the statement did not complete."""
+
+        with pytest.raises(TemplateNotFoundError):
+
+            class Ghost(BaseComponent):
+                __module__ = _MRO_MODULE
+
+        with pytest.raises(NameError):
+            Ghost  # noqa: B018
+
+    def test_the_message_lists_every_ancestor_and_its_candidate(self, mro_dir):
+        """One entry per MRO level, nearest first — the whole chain the walk
+        considered, not just where it landed. `Base` and `Middle` register
+        against this test directory (stub templates), then get re-pointed so the
+        chain resolves into the empty fixture directory."""
+
+        class Base(BaseComponent):
+            pass
+
+        class Middle(Base):
+            pass
+
+        Base.__module__ = _MRO_MODULE
+        Middle.__module__ = _MRO_MODULE
+
+        with pytest.raises(TemplateNotFoundError) as excinfo:
+
+            class Leaf(Middle):
+                __module__ = _MRO_MODULE
+
+        message = str(excinfo.value)
+        assert "Leaf" in message
+        assert "Middle" in message
+        assert "Base" in message
+        assert str(mro_dir / "leaf.pjx") in message
+        assert str(mro_dir / "middle.pjx") in message
+        assert str(mro_dir / "base.pjx") in message
+
+    def test_the_message_names_the_class_being_defined(self, mro_dir):
+        with pytest.raises(TemplateNotFoundError, match="Ghost has no template"):
+
+            class Ghost(BaseComponent):
+                __module__ = _MRO_MODULE
+
+    def test_an_existing_fallback_registers_cleanly(self, mro_dir):
+        """The success path is untouched: the fallback file exists, so the
+        descriptor is built — and provenance stays empty, because confirming a
+        fallback is not the same as the walk proving an owner."""
+        (mro_dir / "solo.pjx").write_text("<div></div>", encoding="utf-8")
+
+        class Solo(BaseComponent):
+            __module__ = _MRO_MODULE
+
+        assert Solo._pjx_descriptor.template_path == mro_dir / "solo.pjx"
+        assert Solo._pjx_descriptor.provenance == {}
+
+    def test_a_probed_winner_is_not_probed_twice(self, monkeypatch, mro_dir):
+        """When the walk already proved an owner there is nothing to confirm, so
+        the guard must not run: exactly one `is_file` per template candidate, and
+        none after the winner."""
+
+        class Base(BaseComponent):
+            pass
+
+        class Middle(Base):
+            pass
+
+        Base.__module__ = _MRO_MODULE
+        Middle.__module__ = _MRO_MODULE
+        (mro_dir / "middle.pjx").write_text("<div></div>", encoding="utf-8")
+
+        probes: list[Path] = []
+        real_is_file = Path.is_file
+
+        def counting(self, *args, **kwargs):
+            probes.append(self)
+            return real_is_file(self, *args, **kwargs)
+
+        monkeypatch.setattr(Path, "is_file", counting)
+
+        class Leaf(Middle):
+            __module__ = _MRO_MODULE
+
+        assert [p for p in probes if p.suffix == ".pjx"] == [
+            mro_dir / "leaf.pjx",
+            mro_dir / "middle.pjx",
+        ]
 

@@ -36,6 +36,10 @@ def _auto_id() -> str:
     return f"pjx-{next(_auto_id_counter)}"
 
 
+class TemplateNotFoundError(Exception):
+    """No class on a component's MRO chain has a template file on disk."""
+
+
 _ATTR_NAME_RE = re.compile(r"[A-Za-z@:][A-Za-z0-9_.:@-]*")
 
 
@@ -185,6 +189,25 @@ def _walk_template(cls: type) -> tuple[Path, type | None]:
     return _template_candidate(ancestors[-1]), None
 
 
+def _missing_template_error(cls: type) -> TemplateNotFoundError:
+    """The error for a component whose chain has no template, listing every
+    candidate the walk considered.
+
+    Built from the same per-ancestor candidates the walk and provenance use, so
+    the message can never disagree with where the code actually looked.
+    """
+    chain = "\n".join(
+        f"  {ancestor.__name__}: {_template_candidate(ancestor)}"
+        for ancestor in _resolution_ancestors(cls)
+    )
+    return TemplateNotFoundError(
+        f"{cls.__name__} has no template. Looked for, nearest ancestor first:\n"
+        f"{chain}\n"
+        f"None of these exist. Add one of these files, or inherit from a "
+        f"component that has a template."
+    )
+
+
 def _walk_asset(cls: type, kind: str) -> tuple[Path | None, type | None]:
     """The MRO walk for one asset kind, run once and reported in full.
 
@@ -274,8 +297,16 @@ def _resolve_class_descriptor(cls: type[BaseModel]) -> ClassDescriptor:
     Each kind's walk runs exactly once here and feeds both the path field and
     its provenance entry; calling the single-purpose resolvers side by side
     would probe the same ancestors twice.
+
+    Also where a missing template becomes an error instead of a descriptor
+    pointing at a file that is not there. The walk hands back its last
+    ancestor's candidate unprobed, so this is the one place that candidate is
+    checked — and the only candidate that needs it: a walk that found an owner
+    already proved that file exists.
     """
     template_path, template_owner = _walk_template(cls)
+    if template_owner is None and not template_path.is_file():
+        raise _missing_template_error(cls)
     css_path, css_owner = _walk_asset(cls, "css")
     js_path, js_owner = _walk_asset(cls, "js")
     provenance = {
