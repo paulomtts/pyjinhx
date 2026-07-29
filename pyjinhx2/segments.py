@@ -18,4 +18,6 @@ class RenderedLevel:
 
     segments: list["str | RenderedLevel"]
     root_span: tuple[int, int]
-    descriptor: object  # ClassDescriptor once #246 lands; typed loosely to stay import-pure
+    descriptor: (
+        object  # ClassDescriptor once #246 lands; typed loosely to stay import-pure
+    )
