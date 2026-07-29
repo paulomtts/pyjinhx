@@ -1548,7 +1548,7 @@ class TestMissingTemplateError:
                 __module__ = _MRO_MODULE
 
         with pytest.raises(NameError):
-            Ghost  # noqa: B018
+            Ghost  # noqa: B018  # pyright: ignore[reportPossiblyUnboundVariable, reportUnusedExpression]
 
     def test_the_message_lists_every_ancestor_and_its_candidate(self, mro_dir):
         """One entry per MRO level, nearest first — the whole chain the walk
