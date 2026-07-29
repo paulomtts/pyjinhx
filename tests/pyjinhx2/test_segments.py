@@ -160,7 +160,18 @@ class TestVerbatimParser:
         parser = VerbatimParser()
         parser.feed(markup)
         parser.close()
-        return "".join(parser.segments)
+        # #254 makes `segments` heterogeneous: a top-level self-closing custom tag
+        # is cut into a ChildRef, which has no lossless text form here (attribute
+        # quoting and order are not preserved on the dataclass). Markup that cuts
+        # is asserted structurally instead — see the ChildRef tests below.
+        assert all(isinstance(segment, str) for segment in parser.segments), (
+            "round_trip only handles all-string segment lists; "
+            "assert cut markup structurally instead"
+        )
+        # str() is a no-op on the str elements the assert above just verified;
+        # it exists so basedpyright sees a `str` return type without the assert
+        # narrowing `list[str | ChildRef]` (which it does not do through `all()`).
+        return "".join(str(segment) for segment in parser.segments)
 
     @pytest.mark.parametrize(
         "markup",
@@ -173,7 +184,6 @@ class TestVerbatimParser:
             "<div><p>hi</div>",
             "</span>hi",
             "<3 and 2 < 4",
-            '<PJXIcon name="gear"/>',
             "plain text, no markup at all",
             "",
         ],
@@ -253,13 +263,87 @@ class TestVerbatimParser:
     )
     def test_unclosed_component_tags_do_not_raise(self, markup: str):
         # Deliberate difference from v0.x pyjinhx/tags.py, whose Parser.close()
-        # raises ValueError on an unclosed component stack. There is no stack
-        # here; enforcement arrives with #254/#257.
+        # raises ValueError on an unclosed component stack. #254 added a stack,
+        # but purely as cut-gating bookkeeping — enforcement arrives with #257.
         assert self.round_trip(markup) == markup
 
-    def test_pascal_case_tags_get_no_special_treatment(self):
+    @staticmethod
+    def parse(markup: str) -> "list[str | ChildRef]":
         parser = VerbatimParser()
-        parser.feed('<div><PJXButton label="Go">text</PJXButton></div>')
+        parser.feed(markup)
         parser.close()
-        assert all(isinstance(segment, str) for segment in parser.segments)
-        assert '<PJXButton label="Go">' in parser.segments
+        return parser.segments
+
+    def test_top_level_self_closing_tag_becomes_a_child_ref(self):
+        assert self.parse('<div><PJXIcon name="gear"/></div>') == [
+            "<div>",
+            ChildRef(tag="PJXIcon", attrs={"name": "gear"}, inner=None),
+            "</div>",
+        ]
+
+    def test_cut_preserves_original_tag_casing(self):
+        # HTMLParser hands handle_startendtag a lowercased `pjxbutton`; the cut
+        # must come from the source text instead.
+        segments = self.parse('<PJXButton label="Go"/>')
+        assert isinstance(segments[0], ChildRef)
+        assert segments[0].tag == "PJXButton"
+
+    def test_bare_attrs_become_empty_strings(self):
+        segments = self.parse('<PJXButton disabled label="Go"/>')
+        assert isinstance(segments[0], ChildRef)
+        assert segments[0].attrs == {"disabled": "", "label": "Go"}
+
+    def test_sibling_self_closing_tags_cut_in_document_order(self):
+        assert self.parse('<PJXButton label="Go"/> and <PJXIcon name="gear"/>') == [
+            ChildRef(tag="PJXButton", attrs={"label": "Go"}, inner=None),
+            " and ",
+            ChildRef(tag="PJXIcon", attrs={"name": "gear"}, inner=None),
+        ]
+
+    def test_plain_self_closing_tags_are_not_cut(self):
+        assert self.parse('<img src="x.png"/>') == ['<img src="x.png"/>']
+
+    def test_self_closing_tag_inside_open_custom_tag_is_not_cut(self):
+        segments = self.parse("<PJXAccordion><PJXIcon name='gear'/>")
+        # Only the ancestor's span matters here; the nested icon stays raw text so
+        # #256 can capture it wholesale into PJXAccordion's `inner`.
+        assert "<PJXIcon name='gear'/>" in segments
+        assert not any(isinstance(segment, ChildRef) for segment in segments)
+
+    def test_cut_resumes_after_the_custom_tag_closes(self):
+        segments = self.parse(
+            "<PJXAccordion><PJXIcon name='a'/></PJXAccordion><PJXIcon name='b'/>"
+        )
+        assert "<PJXIcon name='a'/>" in segments
+        assert ChildRef(tag="PJXIcon", attrs={"name": "b"}, inner=None) in segments
+
+    def test_plain_tags_do_not_disturb_the_custom_tag_stack(self):
+        # <div> is not a component, so it neither pushes nor pops: the accordion is
+        # still open across it, and the icon inside is still not cut.
+        segments = self.parse("<PJXAccordion><div></div><PJXIcon name='a'/>")
+        assert "<PJXIcon name='a'/>" in segments
+        assert not any(isinstance(segment, ChildRef) for segment in segments)
+
+    def test_nested_custom_tags_pop_at_the_right_level(self):
+        segments = self.parse(
+            "<PJXAccordion><PJXPanel></PJXPanel><PJXIcon name='a'/></PJXAccordion>"
+            "<PJXIcon name='b'/>"
+        )
+        assert "<PJXIcon name='a'/>" in segments
+        assert ChildRef(tag="PJXIcon", attrs={"name": "b"}, inner=None) in segments
+
+    def test_mismatched_close_tag_does_not_pop_or_raise(self):
+        # No enforcement until #257: a stray close tag is passed through and the
+        # stack is left alone, so the icon is still inside the accordion's span.
+        segments = self.parse("<PJXAccordion></PJXOther><PJXIcon name='a'/>")
+        assert "</PJXOther>" in segments
+        assert "<PJXIcon name='a'/>" in segments
+
+    def test_paired_custom_tags_stay_raw_passthrough(self):
+        # Open decision (b) for #254: paired tags are NOT collapsed here. #256 owns
+        # the collapse; #254 only records where it starts.
+        assert self.parse('<PJXButton label="Go">text</PJXButton>') == [
+            '<PJXButton label="Go">',
+            "text",
+            "</PJXButton>",
+        ]

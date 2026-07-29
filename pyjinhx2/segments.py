@@ -48,7 +48,16 @@ class RenderedLevel:
 RE_PASCAL_CASE_TAG_NAME = re.compile(r"^[A-Z](?=[A-Za-z0-9]*[a-z])[A-Za-z0-9]*$")
 RE_TAG_OPENER = re.compile(r"<\s*([A-Za-z][A-Za-z0-9]*)")
 RE_RAW_END_TAG = re.compile(r"</[^>]*>")
+RE_RAW_END_TAG_NAME = re.compile(r"</\s*([A-Za-z][A-Za-z0-9]*)")
 RE_RAW_COMMENT = re.compile(r"<!--.*?-->|<!\[.*?\]\]?>", re.DOTALL)
+
+
+def _attrs_to_dict(attrs: "list[tuple[str, str | None]]") -> dict[str, str]:
+    """HTMLParser reports a bare/boolean attr with a value of None; ChildRef.attrs
+    is dict[str, str], so those become "" — same convention as v0.x's
+    ``Parser._attrs_to_dict`` at pyjinhx/tags.py:68-69. Values are otherwise passed
+    through exactly as parsed: no coercion, no registry lookup (ADR 0002)."""
+    return {name: value or "" for name, value in attrs}
 
 
 def contains_custom_tag(markup: str) -> bool:
@@ -73,9 +82,28 @@ class VerbatimParser(HTMLParser):
     ``segments`` list, so ``"".join(parser.segments)`` reproduces the input
     exactly — attribute quoting, attribute order, unknown and boolean attrs,
     odd casing and intentionally malformed HTML all survive untouched. There is
-    no tag tree and no stack: cutting at PascalCase tags (#254), recording
+    no tag tree. Top-level PascalCase tags are cut out (#254, below); recording
     ``root_span`` (#255), capturing paired-tag ``inner`` (#256) and enforcing a
     single root (#257) all layer onto this harness later.
+
+    Cutting (#254) covers **self-closing** top-level component tags only: they
+    become ``ChildRef(tag, attrs, inner=None)`` at their exact position, so
+    ``segments`` is ``[str, ..., ChildRef, ..., str]`` in document order. A
+    *paired* top-level tag (``<PJXButton>body</PJXButton>``) is deliberately left
+    as raw passthrough — open tag, body and close tag remain separate strings.
+    Collapsing that run into one ``ChildRef`` with ``inner`` populated is #256's
+    job, and emitting a ``ChildRef(inner=None)`` here would falsely claim the tag
+    has no body. What #254 leaves behind for #256 is ``_custom_stack``: the index
+    of each open tag in ``segments``, enough to replace the run in place later.
+    That index is only available while the tag is still open — ``handle_endtag``
+    pops (and discards) an entry the instant its close tag matches, so #256 must
+    read the top of the stack *before* the pop, from inside its own
+    ``handle_endtag`` handling, not by inspecting ``_custom_stack`` after
+    ``close()`` returns (by then only never-closed stragglers remain there).
+
+    A tag nested inside a still-open component tag is never cut and never
+    re-scanned (ADR 0002, opaque children): it stays raw inside the ancestor's
+    span, for #256 to capture wholesale.
 
     Deliberate deviation from v0.x's ``pyjinhx/tags.py`` ``Parser``: ``handle_data``
     does **not** re-escape with ``markupsafe.escape``. That dependency is
@@ -86,7 +114,9 @@ class VerbatimParser(HTMLParser):
     delivers CDATA content undecoded, and passthrough never touches it.
 
     Also unlike v0.x, ``close()`` is not overridden and never raises on unclosed
-    tags — there is no component stack yet to validate against.
+    tags: a non-empty ``_custom_stack`` at EOF is fine here, and a mismatched
+    close tag is passed through without popping. The stack is bookkeeping, not
+    validation — enforcement is #257's.
 
     Known limitation: markup truncated mid-construct at EOF (``"<div"``,
     ``"<!-- unclosed"``) does not round-trip — ``HTMLParser`` drops or completes
@@ -99,9 +129,20 @@ class VerbatimParser(HTMLParser):
         # silently unescaping markup Jinja escaped on purpose. Keep refs intact
         # and reconstruct them below.
         super().__init__(convert_charrefs=False)
-        self.segments: list[str] = []
+        self.segments: list[str | ChildRef] = []
         self._source = ""
         self._line_starts: list[int] = [0]
+        # One entry per currently-open PascalCase tag: (original-cased name, index
+        # of its open tag in `segments`). Entry [0] is the only *cut point* — the
+        # top-level span #256 will replace in place. Deeper entries exist purely so
+        # the matching close tag pops the right level; nothing nested is ever cut.
+        #
+        # NB for #256: an entry is popped (discarded) by handle_endtag the instant
+        # its close tag matches, so it is NOT available by reading `_custom_stack`
+        # after `close()` returns — only never-closed stragglers survive that long.
+        # The collapse must happen inside handle_endtag itself, using the top-of-
+        # stack entry *before* it is popped.
+        self._custom_stack: list[tuple[str, int]] = []
 
     def feed(self, data: str) -> None:
         """Parse ``data``. One feed per parser instance — the source is recorded
@@ -121,15 +162,52 @@ class VerbatimParser(HTMLParser):
         return match.group(0) if match else None
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
-        self.segments.append(self.get_starttag_text() or f"<{tag}>")
+        raw = self.get_starttag_text() or f"<{tag}>"
+        name = self._custom_tag_name(raw)
+        if name is not None:
+            self._custom_stack.append((name, len(self.segments)))
+        # Paired tags stay raw passthrough here — see the class docstring.
+        self.segments.append(raw)
 
     def handle_startendtag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
-        self.segments.append(self.get_starttag_text() or f"<{tag}/>")
+        raw = self.get_starttag_text() or f"<{tag}/>"
+        name = self._custom_tag_name(raw)
+        if name is not None and not self._custom_stack:
+            self.segments.append(
+                ChildRef(tag=name, attrs=_attrs_to_dict(attrs), inner=None)
+            )
+            return
+        self.segments.append(raw)
 
     def handle_endtag(self, tag: str) -> None:
         # HTMLParser lowercases `tag`, which would destroy `</DIV>` and, fatally
         # for #254, `</PJXButton>`. Recover the source text instead.
-        self.segments.append(self._raw_at(RE_RAW_END_TAG) or f"</{tag}>")
+        raw = self._raw_at(RE_RAW_END_TAG) or f"</{tag}>"
+        name = self._custom_tag_name(raw)
+        if (
+            name is not None
+            and self._custom_stack
+            and self._custom_stack[-1][0] == name
+        ):
+            self._custom_stack.pop()
+        # Deliberate non-pop on a name mismatch: enforcement is #257's, and
+        # popping on mismatch would silently reopen cutting inside a still-
+        # unclosed component's span.
+        self.segments.append(raw)
+
+    def _custom_tag_name(self, raw: str) -> "str | None":
+        """The original-cased tag name in ``raw`` if it names a custom component.
+
+        ``HTMLParser`` lowercases the ``tag`` argument it passes to the handlers,
+        which would make ``PJXButton`` unmatchable, so PascalCase detection always
+        goes through the source text. ``RE_TAG_OPENER`` matches an open tag
+        (``<PJXIcon ...``) and deliberately does not match a close tag, which is
+        why ``RE_RAW_END_TAG_NAME`` handles ``</PJXIcon>``.
+        """
+        match = RE_TAG_OPENER.match(raw) or RE_RAW_END_TAG_NAME.match(raw)
+        if match is not None and RE_PASCAL_CASE_TAG_NAME.match(match.group(1)):
+            return match.group(1)
+        return None
 
     def handle_data(self, data: str) -> None:
         self.segments.append(data)
