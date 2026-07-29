@@ -1,16 +1,17 @@
 export const meta = {
   name: 'task',
-  description: 'Drive one v2 subtask issue: explore, spec+plan, adversarial validation, TDD implementation, review, tests, PR. Haiku stages move the board cards. Stops at PR — never merges.',
+  description: 'Drive one v2 subtask issue: explore, spec+plan, adversarial validation, TDD implementation, review, tests, PR. Haiku moves the board cards, runs verification, and opens the PR. Stops at PR — never merges.',
   whenToUse: 'User asks to work a subtask card from the v2 board: "/task 251", "pick up #252", "run the task workflow on 253"',
   phases: [
     { title: 'Intake', detail: 'issue + story + rebuild docs context', model: 'sonnet' },
     { title: 'Board', detail: 'card moves (subtask + story mirror)', model: 'haiku' },
-    { title: 'Spec+Plan', detail: 'spec and TDD plan' },
-    { title: 'Validate', detail: 'adversarial plan review, fixes folded in' },
+    { title: 'Spec', detail: 'scope, behavior, error paths, test list', model: 'sonnet' },
+    { title: 'Plan', detail: 'TDD implementation plan from the spec', model: 'opus' },
+    { title: 'Validate', detail: 'adversarial plan review, fixes folded in', model: 'sonnet' },
     { title: 'Implement', detail: 'worktree + strict TDD, granular commits', model: 'sonnet' },
-    { title: 'Review', detail: 'branch diff review + fixes' },
-    { title: 'Tests', detail: 'full suite + basedpyright + CI-version ruff + integrity gate', model: 'sonnet' },
-    { title: 'PR', detail: 'push + open PR (no merge)', model: 'sonnet' },
+    { title: 'Review', detail: 'branch diff review + fixes', model: 'sonnet' },
+    { title: 'Tests', detail: 'full suite + basedpyright + CI-version ruff + integrity gate', model: 'haiku' },
+    { title: 'PR', detail: 'push + open PR (no merge)', model: 'haiku' },
   ],
 }
 
@@ -67,22 +68,40 @@ if (!intake || intake.refused) return { issue, refused: true, reason: intake ? i
 
 await board('spec')
 
-// ── 2. spec + plan (Fable) ───────────────────────────────────────────────────
-phase('Spec+Plan')
-const planPath = await agent(`Write the spec + TDD implementation plan for pyjinhx v2 subtask #${issue} in ${REPO_DIR}.
+// ── 2a. spec (Sonnet) ────────────────────────────────────────────────────────
+phase('Spec')
+const spec = await agent(`Write the spec for pyjinhx v2 subtask #${issue} in ${REPO_DIR}.
 
 Intake findings:
 ${intake.summary}
 
 Rules:
-- Spec first (scope, observable behavior, error paths, test list — half a page for most subtasks), then the plan in the superpowers:writing-plans format: bite-sized tasks, each step one action with real code blocks, RED before GREEN, no placeholders.
-- Scale to subtask size. One subtask = usually one module/function + its tests.
+- Scope, observable behavior, error paths, test list — half a page for most subtasks. Scale to subtask size: one subtask = usually one module/function + its tests.
+- No hard-wrapped prose. No implementation plan yet — that's the next stage.
+
+Return the spec as plain text (not saved to a file yet).`,
+  { label: `spec:#${issue}`, phase: 'Spec', model: 'sonnet' })
+if (!spec) throw new Error('spec agent died')
+
+// ── 2b. plan (Opus) ──────────────────────────────────────────────────────────
+phase('Plan')
+const planPath = await agent(`Write the TDD implementation plan for pyjinhx v2 subtask #${issue} in ${REPO_DIR}, from the spec below.
+
+Spec:
+${spec}
+
+Intake findings:
+${intake.summary}
+
+Rules:
+- superpowers:writing-plans format: bite-sized tasks, each step one action with real code blocks, RED before GREEN, no placeholders.
+- Prepend the spec verbatim to the top of the saved file, then the plan.
 - Branch will be ${BRANCH}, worktree ${WORKTREE}. Full suite is \`uv run pytest tests/\`; typecheck \`uvx basedpyright\` (standard mode); lint gate is ruff 0.16.0 (CI pins it — check locally with \`uvx ruff@0.16.0\`).
 - Save to docs/superpowers/plans/$(date +%Y-%m-%d)-issue-${issue}.md (compute the date with bash). No hard-wrapped prose.
 
 Return ONLY the absolute path of the saved plan file.`,
-  { label: `plan:#${issue}`, phase: 'Spec+Plan', model: 'fable' })
-if (!planPath) throw new Error('spec+plan agent died')
+  { label: `plan:#${issue}`, phase: 'Plan', model: 'opus' })
+if (!planPath) throw new Error('plan agent died')
 const plan = planPath.trim()
 
 // ── 3. adversarial validation (Fable) ────────────────────────────────────────
@@ -92,7 +111,7 @@ const verdict = await agent(`Adversarial review (kind:spec) of ${plan} — spec+
 Try to BREAK it before implementation: contradictions with docs/superpowers/rebuild/ (architecture-overview invariants, implementation-overview, ADRs), decisions that bite sibling subtasks, dishonest or tautological tests, config side-effects, steps not executable verbatim. Verify every suspicion against the actual files/tools before reporting (run commands if needed).
 
 Fold every CONFIRMED fix directly into the plan file (edit it), keeping its structure. Return blockers=true only if something unresolvable remains (spec contradiction needing a human decision) with the reason.`,
-  { label: `validate:#${issue}`, phase: 'Validate', model: 'fable', schema: {
+  { label: `validate:#${issue}`, phase: 'Validate', model: 'sonnet', schema: {
     type: 'object', required: ['blockers', 'summary'],
     properties: { blockers: { type: 'boolean' }, reason: { type: 'string' }, summary: { type: 'string' } },
   } })
@@ -123,7 +142,7 @@ const review = await agent(`Review the branch diff in ${WORKTREE}: \`git diff or
 ${impl}
 
 One line per finding, severity-tagged (blocker/major/minor), no praise, no scope creep. Verify each finding against the actual code before reporting. Return findings=[] if clean.`,
-  { label: `review:#${issue}`, phase: 'Review', model: 'fable', schema: {
+  { label: `review:#${issue}`, phase: 'Review', model: 'sonnet', schema: {
     type: 'object', required: ['findings'],
     properties: { findings: { type: 'array', items: { type: 'string' } } },
   } })
@@ -145,7 +164,7 @@ const tests = await agent(`Full verification in ${WORKTREE} (branch ${BRANCH}):
 4. Test-integrity gate on \`git diff origin/master...HEAD -- tests/\`: no weakened/deleted assertions, no tautologies, no tests that merely mirror the implementation, every new behavior has a test that would fail without its code. Report violations honestly — fix them, don't argue.
 
 Return passed=true only if ALL of 1-4 are green after your fixes (commit any fixes).`,
-  { label: `verify:#${issue}`, phase: 'Tests', model: 'sonnet', schema: {
+  { label: `verify:#${issue}`, phase: 'Tests', model: 'haiku', schema: {
     type: 'object', required: ['passed', 'detail'],
     properties: { passed: { type: 'boolean' }, detail: { type: 'string' } },
   } })
@@ -157,7 +176,7 @@ const pr = await agent(`From ${WORKTREE}: push branch ${BRANCH} (\`git push -u o
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
 
 Do NOT merge. Do NOT enable auto-merge. Return ONLY the PR URL.`,
-  { label: `pr:#${issue}`, phase: 'PR', model: 'sonnet' })
+  { label: `pr:#${issue}`, phase: 'PR', model: 'haiku' })
 if (!pr) throw new Error('pr agent died')
 
 await board('in-review')
