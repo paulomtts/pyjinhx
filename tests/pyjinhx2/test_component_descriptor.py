@@ -1566,3 +1566,69 @@ class TestMissingTemplateError:
         assert f"FancyCard -> {mro_dir / 'fancy_card.pjx'}" in message
         assert f"Card -> {mro_dir / 'card.pjx'}" in message
         assert "FancyCard" in message.splitlines()[0]
+
+    def test_it_probes_nothing_beyond_the_walk_itself(self, mro_dir, monkeypatch):
+        """The formatter adds zero filesystem cost: the only `is_file` calls are
+        the walk's own, one per ancestor except the unprobed fallback. A future
+        'let me double-check each path' edit has to be deliberate.
+
+        Classes are defined and re-pointed at `mro_dir` *before* the spy is
+        installed: `__pydantic_init_subclass__` itself walks template and
+        asset candidates at class-definition time (against whatever module the
+        class has *then*), and installing the spy first would let those
+        registration-time probes (against the test file's own directory, since
+        `__module__` isn't reassigned yet) leak into the counts below — the
+        same reason `TestTemplateWalkProbeBudget` defines its classes first."""
+
+        class Grandparent(BaseComponent):
+            pass
+
+        class Parent(Grandparent):
+            pass
+
+        class Child(Parent):
+            pass
+
+        for klass in (Grandparent, Parent, Child):
+            klass.__module__ = _MRO_MODULE
+
+        is_file_calls: list[Path] = []
+        exists_calls: list[Path] = []
+        real_is_file = Path.is_file
+        real_exists = Path.exists
+
+        def counting_is_file(self: Path, *args, **kwargs):
+            is_file_calls.append(self)
+            return real_is_file(self, *args, **kwargs)
+
+        def counting_exists(self: Path, *args, **kwargs):
+            exists_calls.append(self)
+            return real_exists(self, *args, **kwargs)
+
+        monkeypatch.setattr(Path, "is_file", counting_is_file)
+        monkeypatch.setattr(Path, "exists", counting_exists)
+
+        _missing_template_error(Child)
+
+        assert is_file_calls == [mro_dir / "child.pjx", mro_dir / "parent.pjx"]
+        assert exists_calls == []
+
+    def test_the_resolvers_still_succeed_for_a_template_less_class(self, mro_dir):
+        """The error exists as a value only. Registration and resolution must
+        keep answering with the unprobed fallback for a class with no file, so
+        no resolver has quietly started raising it."""
+
+        class Card(BaseComponent):
+            pass
+
+        class FancyCard(Card):
+            pass
+
+        Card.__module__ = _MRO_MODULE
+        FancyCard.__module__ = _MRO_MODULE
+
+        rebuild_class_descriptor(FancyCard)
+
+        assert _resolve_template_path(FancyCard) == mro_dir / "card.pjx"
+        assert _resolve_provenance(FancyCard) == {}
+        assert FancyCard._pjx_descriptor.template_path == mro_dir / "card.pjx"
