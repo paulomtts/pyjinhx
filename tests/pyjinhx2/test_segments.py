@@ -274,6 +274,100 @@ class TestVerbatimParser:
         parser.close()
         return parser.segments
 
+    @staticmethod
+    def parsed(markup: str) -> "VerbatimParser":
+        parser = VerbatimParser()
+        parser.feed(markup)
+        parser.close()
+        return parser
+
+    def test_root_span_starts_none_and_stays_none_without_a_root(self):
+        assert VerbatimParser().root_span is None
+        assert self.parsed("plain text, no markup at all").root_span is None
+        assert self.parsed("").root_span is None
+        assert self.parsed("&amp; just an entity").root_span is None
+
+    def test_root_span_covers_a_plain_opening_tag(self):
+        assert self.parsed("<div><p>hi</p></div>").root_span == (0, len("<div>"))
+
+    def test_root_span_matches_the_architecture_overview_example(self):
+        markup = (
+            '<div class="card">\n  <h2>Hello</h2>\n  <PJXButton label="Save"/>\n'
+            '  <p>hi</p>\n  <PJXIcon name="gear"/>\n</div>'
+        )
+        parser = self.parsed(markup)
+        assert parser.root_span == (0, 18)
+        span = parser.root_span
+        assert span is not None
+        start, end = span
+        assert markup[start:end] == '<div class="card">'
+
+    def test_root_span_covers_a_cut_top_level_self_closing_tag(self):
+        markup = '<PJXIcon name="gear"/>'
+        parser = self.parsed(markup)
+        # The cut into a ChildRef (#254) and the span capture (#255) are orthogonal:
+        # both come off the same raw tag text.
+        assert parser.segments == [
+            ChildRef(tag="PJXIcon", attrs={"name": "gear"}, inner=None)
+        ]
+        assert parser.root_span == (0, len(markup))
+
+    def test_root_span_covers_a_plain_self_closing_tag(self):
+        markup = '<img src="x.png"/>'
+        assert self.parsed(markup).root_span == (0, len(markup))
+
+    def test_root_span_covers_only_the_opening_tag_of_a_paired_custom_tag(self):
+        markup = '<PJXButton label="Go">text</PJXButton>'
+        parser = self.parsed(markup)
+        span = parser.root_span
+        assert span is not None
+        start, end = span
+        assert (start, end) == (0, len('<PJXButton label="Go">'))
+        assert markup[start:end] == '<PJXButton label="Go">'
+
+    def test_root_span_records_only_the_first_of_several_top_level_siblings(self):
+        # Multi-root rejection is #257's; #255 just must not get confused by it.
+        markup = '<PJXButton label="Go"/> and <PJXIcon name="gear"/>'
+        parser = self.parsed(markup)
+        span = parser.root_span
+        assert span is not None
+        start, end = span
+        assert markup[start:end] == '<PJXButton label="Go"/>'
+        assert (start, end) == (0, 23)
+
+    def test_root_span_records_the_outer_tag_not_a_nested_one(self):
+        markup = "<PJXAccordion><PJXIcon name='gear'/></PJXAccordion>"
+        parser = self.parsed(markup)
+        span = parser.root_span
+        assert span is not None
+        start, end = span
+        assert markup[start:end] == "<PJXAccordion>"
+        assert (start, end) == (0, len("<PJXAccordion>"))
+
+    def test_root_span_ignores_tag_name_casing(self):
+        # Unlike _custom_tag_name, span capture makes no PascalCase distinction.
+        assert self.parsed("<DIV>hi</DIV>").root_span == (0, len("<DIV>"))
+
+    def test_root_span_end_is_start_plus_raw_length_for_irregular_tag_text(self):
+        markup = "<PJXButton\n  label='Go'\n>t</PJXButton>"
+        parser = self.parsed(markup)
+        span = parser.root_span
+        assert span is not None
+        start, end = span
+        raw = "<PJXButton\n  label='Go'\n>"
+        assert markup[start:end] == raw
+        assert end - start == len(raw)
+
+    def test_root_span_is_absolute_across_leading_newlines(self):
+        # Offsets are into the whole fed source, resolved through _line_starts, so a
+        # tag on a later line still slices back to its own raw text.
+        markup = "\n\n  <div class='card'>hi</div>"
+        parser = self.parsed(markup)
+        span = parser.root_span
+        assert span is not None
+        start, end = span
+        assert markup[start:end] == "<div class='card'>"
+
     def test_top_level_self_closing_tag_becomes_a_child_ref(self):
         assert self.parse('<div><PJXIcon name="gear"/></div>') == [
             "<div>",

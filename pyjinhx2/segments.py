@@ -82,9 +82,31 @@ class VerbatimParser(HTMLParser):
     ``segments`` list, so ``"".join(parser.segments)`` reproduces the input
     exactly — attribute quoting, attribute order, unknown and boolean attrs,
     odd casing and intentionally malformed HTML all survive untouched. There is
-    no tag tree. Top-level PascalCase tags are cut out (#254, below); recording
-    ``root_span`` (#255), capturing paired-tag ``inner`` (#256) and enforcing a
-    single root (#257) all layer onto this harness later.
+    no tag tree. Top-level PascalCase tags are cut out (#254, below) and the
+    first tag event's raw span is recorded as ``root_span`` (#255, below);
+    capturing paired-tag ``inner`` (#256) and enforcing a single root (#257)
+    still layer onto this harness later.
+
+    ``root_span`` (#255) is the ``(start, end)`` offset of the very first tag
+    event into the *original source string*, not an index into ``segments``.
+    ``_record_root_span`` fires from both ``handle_starttag`` and
+    ``handle_startendtag`` before any cutting happens, and is a no-op after the
+    first call, so the outermost tag always wins even when a top-level custom
+    tag wraps other tags (``test_root_span_records_the_outer_tag_not_a_nested_one``).
+    ``end`` lands exactly one character past that tag's closing ``>`` — for a
+    plain tag (``<div class="card">``) and for a top-level self-closing or
+    paired custom tag alike (``<PJXButton label="Go">``) — enough for #258's
+    attribute splice to slice and re-stitch at those offsets without a
+    re-parse.
+
+    Despite the ``RenderedLevel`` docstring's shorthand ("the offset of the
+    root tag inside ``segments[0]``"), ``root_span`` is never an offset *into*
+    ``segments[0]`` — it is an offset into the raw source text, recorded before
+    ``segments[0]`` even exists in the self-closing top-level case. When the
+    root is itself a cut custom tag, ``segments[0]`` is a ``ChildRef`` object,
+    not a string, so it cannot be sliced by any offset at all; ``root_span``
+    must always be read against the original markup passed to the parser,
+    never against ``segments[0]`` directly.
 
     Cutting (#254) covers **self-closing** top-level component tags only: they
     become ``ChildRef(tag, attrs, inner=None)`` at their exact position, so
@@ -130,6 +152,10 @@ class VerbatimParser(HTMLParser):
         # and reconstruct them below.
         super().__init__(convert_charrefs=False)
         self.segments: list[str | ChildRef] = []
+        # The (start, end) absolute offsets of the first tag event's raw opening-tag
+        # text; None until that event fires. See the class docstring. Recording only
+        # — no root validation happens here (#257 owns that).
+        self.root_span: tuple[int, int] | None = None
         self._source = ""
         self._line_starts: list[int] = [0]
         # One entry per currently-open PascalCase tag: (original-cased name, index
@@ -161,8 +187,22 @@ class VerbatimParser(HTMLParser):
         match = pattern.match(self._source, self._line_starts[line - 1] + column)
         return match.group(0) if match else None
 
+    def _record_root_span(self, raw: str) -> None:
+        """Record the first tag event's raw text span; a no-op after that.
+
+        Same ``getpos()`` → ``_line_starts`` conversion as ``_raw_at``. ``raw`` is
+        whatever ``get_starttag_text()`` returned, so ``end`` lands just past the
+        tag's closing ``>`` — the offsets #258's splice stamps attributes at.
+        """
+        if self.root_span is not None:
+            return
+        line, column = self.getpos()
+        start = self._line_starts[line - 1] + column
+        self.root_span = (start, start + len(raw))
+
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         raw = self.get_starttag_text() or f"<{tag}>"
+        self._record_root_span(raw)
         name = self._custom_tag_name(raw)
         if name is not None:
             self._custom_stack.append((name, len(self.segments)))
@@ -171,6 +211,7 @@ class VerbatimParser(HTMLParser):
 
     def handle_startendtag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         raw = self.get_starttag_text() or f"<{tag}/>"
+        self._record_root_span(raw)
         name = self._custom_tag_name(raw)
         if name is not None and not self._custom_stack:
             self.segments.append(
