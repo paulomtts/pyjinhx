@@ -253,6 +253,25 @@ class TestJsonCoercion:
         assert error_types == {"list_type", "dict_type"}
         assert "invalid JSON attribute value" not in str(excinfo.value)
 
+    @pytest.mark.parametrize(
+        ("field_name", "error_type"),
+        [
+            ("sources", "list_type"),
+            ("meta", "dict_type"),
+            ("owner", "model_type"),
+            ("maybe_map", "dict_type"),
+        ],
+    )
+    def test_non_string_bad_type_on_coercible_field_still_raises_validation_error(
+        self, field_name, error_type
+    ):
+        # _coerce_json_string_attrs skips non-str values outright, so Pydantic's
+        # own type check must still fire — the bypass must not swallow it.
+        with pytest.raises(ValidationError) as excinfo:
+            Structural(**{field_name: 123})
+        assert [error["type"] for error in excinfo.value.errors()] == [error_type]
+        assert "invalid JSON attribute value" not in str(excinfo.value)
+
 
 class Anchor(BaseComponent):
     href: AttrValue = ""
