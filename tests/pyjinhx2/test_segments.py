@@ -502,6 +502,209 @@ class TestVerbatimParser:
             ChildRef(tag="PJXIcon", attrs={"name": "gear"}, inner=None),
         ]
 
+    # --- adversarial markup shapes (#261) -------------------------------------
+    # Everything below feeds the parser markup engineered to *look* like a cut
+    # point without being one, or to be a cut point in a shape the naive reader
+    # of `_custom_tag_name` would get wrong. `segments.py` is not touched by this
+    # subtask: these are characterization tests that pin behaviour already shipped
+    # by #252-#259 so a later refactor cannot quietly lose it.
+
+    @pytest.mark.parametrize(
+        "markup",
+        [
+            '<!-- <PJXButton label="x"/> -->',
+            '<div><!-- <PJXButton label="x"/> --></div>',
+            "<div><!-- <PJXAccordion>body</PJXAccordion> --></div>",
+        ],
+    )
+    def test_pascalcase_inside_comment_is_not_cut(self, markup: str):
+        # A commented-out component tag is inert markup, never a cut point.
+        # `contains_custom_tag` is a regex prepass and *does* fire on this input,
+        # which is fine — it only gates whether a parse happens, so a false
+        # positive costs one parse and nothing else. The parse itself must not be
+        # fooled: HTMLParser hands the whole `<!-- ... -->` run to handle_comment
+        # as a single event, so no start/end tag handler ever sees the pseudo-tag
+        # and no ChildRef can be produced.
+        segments = self.parse(markup)
+        assert not any(isinstance(segment, ChildRef) for segment in segments)
+        assert self.round_trip(markup) == markup
+
+    def test_fake_close_tag_inside_a_comment_does_not_collapse_early(self):
+        # The mirror risk: a commented-out *close* tag inside a real, open
+        # component. If handle_comment ever routed through the endtag path, the
+        # accordion would collapse here and the outer `</PJXAccordion>` would be
+        # left dangling as raw text.
+        markup = "<PJXAccordion><!-- </PJXAccordion> --></PJXAccordion>"
+        assert self.parse(markup) == [
+            ChildRef(tag="PJXAccordion", attrs={}, inner="<!-- </PJXAccordion> -->"),
+        ]
+
+    @pytest.mark.parametrize(
+        "markup",
+        [
+            '<script>var s = "<PJXButton>";</script>',
+            '<script>var s = "<PJXButton label=1>";</script>',
+            '<div><script>var s = "<PJXButton label=1>";</script></div>',
+            "<SCRIPT>var s = \"<PJXIcon name='gear'/>\";</SCRIPT>",
+        ],
+    )
+    def test_pascalcase_inside_script_string_is_not_cut(self, markup: str):
+        # HTMLParser puts itself in CDATA mode on `<script>`, so the body arrives
+        # as one handle_data event and a component-tag-shaped string literal is
+        # just text. Two things must hold at once: no cut (no ChildRef), and no
+        # escaping — the `<` in the literal stays a `<`. The second half is the
+        # documented deviation from v0.x's pyjinhx/tags.py, which re-escapes in
+        # handle_data and needs a CDATA exemption to survive this input.
+        segments = self.parse(markup)
+        assert not any(isinstance(segment, ChildRef) for segment in segments)
+        assert self.round_trip(markup) == markup
+        assert "&lt;" not in self.round_trip(markup)
+
+    @pytest.mark.parametrize(
+        "markup",
+        [
+            '<style>a { content: "<PJXIcon/>"; }</style>',
+            '<div><style>a::before { content: "<PJXButton>"; }</style></div>',
+        ],
+    )
+    def test_pascalcase_inside_style_is_not_cut(self, markup: str):
+        # `<style>` is the other member of HTMLParser.CDATA_CONTENT_ELEMENTS, so
+        # it gets the same treatment as `<script>` for free. Asserted separately
+        # rather than folded in, because that membership is a stdlib detail this
+        # module leans on without restating.
+        segments = self.parse(markup)
+        assert not any(isinstance(segment, ChildRef) for segment in segments)
+        assert self.round_trip(markup) == markup
+        assert "&lt;" not in self.round_trip(markup)
+
+    def test_fake_close_tag_inside_a_script_does_not_collapse_early(self):
+        # Same shape as the comment case: a component close tag spelled out
+        # inside a JS string literal, nested in a really-open component.
+        markup = (
+            '<PJXAccordion><script>var s = "</PJXAccordion>";</script></PJXAccordion>'
+        )
+        assert self.parse(markup) == [
+            ChildRef(
+                tag="PJXAccordion",
+                attrs={},
+                inner='<script>var s = "</PJXAccordion>";</script>',
+            ),
+        ]
+
+    def test_mismatched_quote_attribute_on_cut_component_tag(self):
+        # A tag that *is* cut, wearing the nastiest legal attribute value: single
+        # quotes wrapping embedded double quotes. The cut must still happen, and
+        # the value must reach ChildRef.attrs with the inner quotes intact — no
+        # stripping, no re-quoting, no coercion (ADR 0002).
+        markup = "<PJXButton label='He said \"hi\"'>go</PJXButton>"
+        segments = self.parse(markup)
+        assert segments == [
+            ChildRef(tag="PJXButton", attrs={"label": 'He said "hi"'}, inner="go"),
+        ]
+        # Incidental root_span check only — exhaustive span correctness is #262.
+        # It is here because the odd quoting is exactly what would make a naive
+        # span computation slice the wrong text.
+        parser = self.parsed(markup)
+        span = parser.root_span
+        assert span is not None
+        assert markup[span[0] : span[1]] == "<PJXButton label='He said \"hi\"'>"
+
+    @pytest.mark.parametrize(
+        ("markup", "expected"),
+        [
+            (
+                "<PJXIcon title='a \"b\" c'/>",
+                ChildRef(tag="PJXIcon", attrs={"title": 'a "b" c'}, inner=None),
+            ),
+            (
+                "<PJXButton label='a > b'>go</PJXButton>",
+                ChildRef(tag="PJXButton", attrs={"label": "a > b"}, inner="go"),
+            ),
+        ],
+        ids=["self-closing-embedded-doubles", "gt-inside-quoted-value"],
+    )
+    def test_quote_variants_survive_the_cut(self, markup: str, expected: ChildRef):
+        # Two more shapes on the cut path: the self-closing branch
+        # (handle_startendtag) with embedded double quotes, and a `>` living
+        # inside a quoted value — the character that would end the tag early if
+        # anything here scanned for `>` by hand instead of trusting HTMLParser.
+        assert self.parse(markup) == [expected]
+
+    @pytest.mark.parametrize(
+        ("markup", "expected_inner"),
+        [
+            (
+                "<PJXAccordion><PJXAccordion>x</PJXAccordion></PJXAccordion>",
+                "<PJXAccordion>x</PJXAccordion>",
+            ),
+            (
+                (
+                    "<PJXAccordion><PJXAccordion><PJXAccordion>x</PJXAccordion>"
+                    "</PJXAccordion></PJXAccordion>"
+                ),
+                "<PJXAccordion><PJXAccordion>x</PJXAccordion></PJXAccordion>",
+            ),
+        ],
+        ids=["two-levels", "three-levels"],
+    )
+    def test_self_nested_same_name_custom_tag_tracks_depth(
+        self, markup: str, expected_inner: str
+    ):
+        # `_custom_stack` is a stack of frames, not a set of names: a component
+        # nested inside another instance of *itself* must pop one frame per close
+        # tag. The existing nesting tests all use two different names
+        # (PJXAccordion/PJXPanel), so a name-identity implementation would pass
+        # them and collapse on the first inner `</PJXAccordion>` here — leaving
+        # the outer close tag as dangling raw text.
+        segments = self.parse(markup)
+        assert segments == [
+            ChildRef(tag="PJXAccordion", attrs={}, inner=expected_inner),
+        ]
+        ref = segments[0]
+        assert isinstance(ref, ChildRef)
+        assert ref.inner is not None
+        # Round-trip for a cut tag: the ChildRef plus its own tag text rebuilds
+        # the source exactly, so nothing was dropped, split or reordered.
+        assert "<PJXAccordion>" + ref.inner + "</PJXAccordion>" == markup
+
+    def test_self_nested_tag_keeps_the_inner_open_tag_verbatim(self):
+        # The inner instance carries attributes with adversarial quoting; they
+        # live on inside `inner` as untouched source text, because a child's body
+        # is opaque here and is never parsed by its parent (ADR 0002).
+        markup = (
+            "<PJXAccordion><PJXAccordion label='He said \"hi\"'>x</PJXAccordion>"
+            "</PJXAccordion>"
+        )
+        assert self.parse(markup) == [
+            ChildRef(
+                tag="PJXAccordion",
+                attrs={},
+                inner="<PJXAccordion label='He said \"hi\"'>x</PJXAccordion>",
+            ),
+        ]
+
+    @pytest.mark.parametrize(
+        "markup",
+        [
+            '<div><!-- <PJXButton label="x"/> --></div>',
+            '<script>var s = "<PJXButton>";</script>',
+            '<style>a { content: "<PJXIcon/>"; }</style>',
+            "<PJXButton label='He said \"hi\"'>go</PJXButton>",
+            "<PJXAccordion><PJXAccordion>x</PJXAccordion></PJXAccordion>",
+            "<PJXAccordion><!-- </PJXAccordion> --></PJXAccordion>",
+        ],
+    )
+    def test_adversarial_markup_never_raises_on_parse(self, markup: str):
+        # Same contract as TestEnforceSingleRoot.test_parsing_alone_never_raises,
+        # restated over the adversarial corpus: feed()/close() are
+        # validation-free, and none of these shapes is a single-root violation
+        # anyway, so enforce_single_root() stays quiet too.
+        parser = VerbatimParser()
+        parser.feed(markup)
+        parser.close()
+        assert isinstance(parser.segments, list)
+        assert parser.enforce_single_root() is None
+
 
 class TestEnforceSingleRoot:
     @staticmethod
