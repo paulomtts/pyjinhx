@@ -185,30 +185,27 @@ def _walk_template(cls: type) -> tuple[Path, type | None]:
     return _template_candidate(ancestors[-1]), None
 
 
-def _missing_template_error(cls: type) -> FileNotFoundError:
-    """The error for a class whose template file exists nowhere up its MRO.
+def _missing_template_error(cls: type) -> LookupError:
+    """The error for a component whose template is nowhere on disk.
 
-    Lists one candidate per ancestor, nearest first, so a subclass author sees
-    every path that was tried instead of only the fallback the walk ended on.
+    Returns the exception rather than raising it: the resolvers deliberately
+    answer with an unprobed candidate path, and only the caller that tries to
+    load that file knows the answer was wrong. The message lists every class
+    the template could have come from next to the exact path it would have
+    been read from, nearest first, so the fix is either creating one of those
+    files or renaming the one that is misspelled.
 
-    Returned rather than raised so the raise site stays with the caller that
-    checked the file is absent; this function only formats, and reuses the
-    walk's own result instead of probing the filesystem again.
+    Pure path arithmetic — no probes. Building this message costs nothing
+    beyond what `_template_candidate` already does for each ancestor.
     """
-    ancestors = _resolution_ancestors(cls)
-    resolved, _ = _walk_template(cls)
-    if len(ancestors) == 1:
-        return FileNotFoundError(
-            f"No template found for {cls.__name__}. Expected a file at {resolved}."
-        )
-    candidates = [_template_candidate(ancestor) for ancestor in ancestors[:-1]]
-    candidates.append(resolved)
-    listing = "\n".join(
-        f"  {ancestor.__name__} -> {candidate}"
-        for ancestor, candidate in zip(ancestors, candidates, strict=True)
+    probed = "\n".join(
+        f"  {ancestor.__name__} -> {_template_candidate(ancestor)}"
+        for ancestor in _resolution_ancestors(cls)
     )
-    return FileNotFoundError(
-        f"No template found for {cls.__name__}. Checked, nearest ancestor first:\n{listing}"
+    return LookupError(
+        f"{cls.__name__} has no template: no class it inherits from has a .pjx "
+        f"file beside the module that defines it, so there is nothing to "
+        f"render.\nPaths probed, nearest first:\n{probed}"
     )
 
 
