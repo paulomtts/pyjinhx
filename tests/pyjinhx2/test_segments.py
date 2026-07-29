@@ -9,7 +9,7 @@ from pyjinhx2.segments import ChildRef, RenderedLevel
 
 
 def make_level(
-    segments: "list[str | RenderedLevel] | None" = None,
+    segments: "list[str | ChildRef | RenderedLevel] | None" = None,
     root_span: tuple[int, int] = (0, 5),
     descriptor: object = None,
 ) -> "RenderedLevel":
@@ -45,6 +45,14 @@ class TestRenderedLevel:
         child = make_level()
         parent = make_level(segments=["<div>", child, "</div>"])
         assert parent.segments[1] is child
+
+    def test_child_ref_holds_position_in_segments(self):
+        child = make_level()
+        ref = make_child_ref()
+        parent = make_level(segments=["<div>", ref, child, "</div>"])
+        assert parent.segments == ["<div>", ref, child, "</div>"]
+        assert parent.segments[1] is ref
+        assert parent.segments[2] is child
 
     def test_equality_by_value(self):
         assert make_level() == make_level()

@@ -36,7 +36,7 @@ class RenderedLevel:
     at that offset, never a re-parse.
     """
 
-    segments: list["str | RenderedLevel"]
+    segments: list["str | ChildRef | RenderedLevel"]
     root_span: tuple[int, int]
     descriptor: (
         object  # ClassDescriptor once #246 lands; typed loosely to stay import-pure
