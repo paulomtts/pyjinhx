@@ -18,7 +18,8 @@ wheels/
 site/
 
 # Superpowers planning artifacts
-docs/superpowers/
+docs/superpowers/*
+!docs/superpowers/rebuild/
 
 # .claude
 .claude/worktrees/
