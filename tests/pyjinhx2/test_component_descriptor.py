@@ -9,6 +9,7 @@ from pyjinhx2.component import (
     BaseComponent,
     _defining_module_dir,
     _pascal_to_snake,
+    _resolution_ancestors,
     _resolve_class_descriptor,
     _resolve_strict,
     _resolve_template_path,
@@ -367,3 +368,41 @@ class TestResolveTemplatePath:
         _resolve_template_path(Card)
 
         assert calls == []
+
+
+class TestResolutionAncestors:
+    """ADR 0010's walk order: nearest first, stopping before BaseComponent —
+    BaseComponent has no descriptor and is never probed for a template."""
+
+    def test_a_direct_subclass_is_its_own_only_ancestor(self):
+        class Card(BaseComponent):
+            pass
+
+        assert _resolution_ancestors(Card) == [Card]
+
+    def test_a_chain_is_listed_nearest_first(self):
+        class Card(BaseComponent):
+            pass
+
+        class FancyCard(Card):
+            pass
+
+        class VeryFancyCard(FancyCard):
+            pass
+
+        assert _resolution_ancestors(VeryFancyCard) == [VeryFancyCard, FancyCard, Card]
+
+    def test_base_component_is_excluded(self):
+        class Card(BaseComponent):
+            pass
+
+        assert BaseComponent not in _resolution_ancestors(Card)
+
+    def test_nothing_below_base_component_is_included(self):
+        """object and BaseModel sit after BaseComponent in the MRO, so the
+        truncation drops them too."""
+
+        class Card(BaseComponent):
+            pass
+
+        assert all(issubclass(a, BaseComponent) for a in _resolution_ancestors(Card))

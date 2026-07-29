@@ -162,6 +162,24 @@ def _defining_module_dir(cls: type) -> Path:
     return Path(file).parent
 
 
+def _resolution_ancestors(cls: type) -> list[type]:
+    """``cls``'s MRO, nearest first, truncated before ``BaseComponent``.
+
+    The classes ADR 0010 is willing to inherit a template (or, per-kind, an
+    asset) from. ``BaseComponent`` itself is excluded: it never gets a
+    descriptor — pydantic does not fire ``__pydantic_init_subclass__`` for the
+    class that declares the hook — so it has no template to lend, and
+    everything after it in the MRO (``BaseModel``, ``object``) is framework,
+    not component.
+    """
+    ancestors: list[type] = []
+    for klass in cls.__mro__:
+        if klass is BaseComponent:
+            break
+        ancestors.append(klass)
+    return ancestors
+
+
 def _resolve_template_path(cls: type) -> Path:
     """The single ADR 0007 template candidate for ``cls``: snake_case of the
     class name plus ``.pjx``, in the directory of the module that defined it.
