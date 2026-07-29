@@ -1,5 +1,8 @@
 from typing import Annotated, ClassVar
 
+import pytest
+from pydantic import ValidationError
+
 from pyjinhx2.component import BaseComponent, Children, PjxSlot, Slot, _is_slot_field
 
 
@@ -86,3 +89,43 @@ class TestIsSlotField:
         # `Slot | None` drops PjxSlot at the field level, so the marker must sit
         # on the OUTER Annotated. This asserts the outer form keeps working.
         assert _is_slot_field(_Demo, "nullable_slot") is True
+
+
+class _Leaf(BaseComponent):
+    text: str = ""
+
+
+class TestSlotFieldValidation:
+    def test_accepts_a_plain_string(self):
+        demo = _Demo(body="<b>bold</b>")
+        assert demo.body == "<b>bold</b>"
+        assert isinstance(demo.body, str)
+
+    def test_does_not_escape_or_wrap_the_string_at_construction(self):
+        # L0 is marker-only: no Markup, no escaping, no side effects. The
+        # value round-trips byte-for-byte as the plain str that was passed in.
+        raw = "<script>alert(1)</script>"
+        assert _Demo(body=raw).body == raw
+        assert type(_Demo(body=raw).body) is str
+
+    def test_accepts_a_basecomponent_instance(self):
+        # Type-level acceptance only; render-time behavior is L1 (ADR 0003).
+        leaf = _Leaf(text="hi")
+        assert _Demo(body=leaf).body is leaf
+
+    def test_rejects_an_int(self):
+        with pytest.raises(ValidationError):
+            _Demo(body=1)  # pyright: ignore[reportArgumentType]
+
+    def test_rejects_a_list(self):
+        with pytest.raises(ValidationError):
+            _Demo(body=["a"])  # pyright: ignore[reportArgumentType]
+
+    def test_slot_field_does_not_weaken_extra_forbid(self):
+        assert _Demo.model_config.get("extra") == "forbid"
+        with pytest.raises(ValidationError):
+            _Demo(body="x", undeclared="y")  # pyright: ignore[reportCallIssue]
+
+    def test_slot_field_default_applies(self):
+        assert _Demo().body == ""
+        assert _Demo().inner == ""
