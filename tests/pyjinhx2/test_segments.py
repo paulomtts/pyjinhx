@@ -689,7 +689,9 @@ class TestSplice:
         )
         assert level.root_span == (0, 48)
         # The span still bounds exactly the root tag, closing `>` included.
-        assert level.segments[0][level.root_span[0] : level.root_span[1]] == (
+        markup = level.segments[0]
+        assert isinstance(markup, str)
+        assert markup[level.root_span[0] : level.root_span[1]] == (
             '<div class="card" data-x="1" hx-swap-oob="true">'
         )
 
@@ -704,9 +706,11 @@ class TestSplice:
         text = ' data-emoji="\U0001f389é"'
         assert len(text) == 16  # code points, not the 20 bytes of its UTF-8 form
         splice(level, 17, text)
-        assert level.segments[0] == '<div class="card" data-emoji="\U0001f389é">hi</div>'
+        markup = level.segments[0]
+        assert isinstance(markup, str)
+        assert markup == '<div class="card" data-emoji="\U0001f389é">hi</div>'
         assert level.root_span == (0, 34)
-        assert len(level.segments[0]) == 42
+        assert len(markup) == 42
 
     @pytest.mark.parametrize(
         ("offset", "text", "expected_markup", "expected_span"),
@@ -720,7 +724,9 @@ class TestSplice:
         self, offset, text, expected_markup, expected_span
     ):
         level = make_level(segments=['<div class="card">hi</div>'], root_span=(0, 18))
-        assert offset in (0, len(level.segments[0]))
+        markup = level.segments[0]
+        assert isinstance(markup, str)
+        assert offset in (0, len(markup))
         splice(level, offset, text)
         assert level.segments[0] == expected_markup
         assert level.root_span == expected_span
