@@ -36,6 +36,17 @@ def make_child_ref(
     return ChildRef(tag=tag, attrs=attrs, inner=inner)
 
 
+def parsed_level(markup: str) -> "RenderedLevel":
+    """A RenderedLevel whose root_span came from a real parse, not a hand-written
+    tuple — the whole point of TestSpliceRootSpanCorrectness below."""
+    parser = VerbatimParser()
+    parser.feed(markup)
+    parser.close()
+    assert parser.root_span is not None, f"fixture has no tag event: {markup!r}"
+    segments: list[str | ChildRef | RenderedLevel] = list(parser.segments)
+    return RenderedLevel(segments=segments, root_span=parser.root_span, descriptor=None)
+
+
 class TestRenderedLevel:
     def test_holds_its_three_fields(self):
         level = make_level()
@@ -944,6 +955,134 @@ class TestSplice:
         level = make_level(segments=[root, "</div>"], root_span=(0, 18))
         with pytest.raises(AssertionError):
             splice(level, 17, ' data-x="1"')
+
+
+class TestSpliceRootSpanCorrectness:
+    """The stamp offset (`root_span[1] - 1`) lands just inside the root tag's
+    closing `>` for every markup shape — with root_span recorded by a real
+    VerbatimParser, not supplied by hand as every other TestSplice test does.
+    """
+
+    STAMP = ' data-x="1"'
+    FAN_OUT = ' hx-swap-oob="true"'
+
+    @pytest.mark.parametrize(
+        ("markup", "open_tag"),
+        [
+            ("<div>hi</div>", "<div>"),
+            ('<div class="card">hi</div>', '<div class="card">'),
+            (
+                '<div class="card" id="x" data-y="1">hi</div>',
+                '<div class="card" id="x" data-y="1">',
+            ),
+            ('<DIV class="card">hi</DIV>', '<DIV class="card">'),
+            (
+                '<div\n  class="card"\n  id="x">hi</div>',
+                '<div\n  class="card"\n  id="x">',
+            ),
+            # `<input type="text"/>`: the stamp lands before the `>` as specified,
+            # which puts it after the `/` (`<input type="text"/ data-x="1">`).
+            # root_span and splice are both correct here; deciding whether a
+            # self-closing root should be stamped at all belongs to #247.
+            ('<input type="text"/>', '<input type="text"/>'),
+            ('<img src="x.png">', '<img src="x.png">'),
+            (
+                '<div title="héllo \U0001f389">hi</div>',
+                '<div title="héllo \U0001f389">',
+            ),
+            ("<div hidden>hi</div>", "<div hidden>"),
+        ],
+        ids=[
+            "no-attrs",
+            "one-attr",
+            "many-attrs",
+            "upper-case-tag",
+            "newlines-in-open-tag",
+            "self-closing-void",
+            "bare-void",
+            "unicode-attr",
+            "boolean-attr",
+        ],
+    )
+    def test_first_splice_lands_before_the_closing_bracket(
+        self, markup: str, open_tag: str
+    ):
+        level = parsed_level(markup)
+        # The parse, not the test, decides where the root tag ends.
+        assert level.root_span == (0, len(open_tag))
+        original_first = level.segments[0]
+        assert isinstance(original_first, str)
+        splice(level, level.root_span[1] - 1, self.STAMP)
+        first = level.segments[0]
+        assert isinstance(first, str)
+        # The stamp goes in just before the open tag's `>`; nothing after the open
+        # tag inside segments[0] (void elements have no separate segments) moves.
+        assert (
+            first
+            == original_first[: len(open_tag) - 1]
+            + self.STAMP
+            + original_first[len(open_tag) - 1 :]
+        )
+        assert level.root_span == (0, len(open_tag) + len(self.STAMP))
+        assert first[level.root_span[0] : level.root_span[1]] == (
+            open_tag[:-1] + self.STAMP + ">"
+        )
+
+    @pytest.mark.parametrize(
+        ("markup", "open_tag"),
+        [
+            ("<div>hi</div>", "<div>"),
+            ('<div class="card">hi</div>', '<div class="card">'),
+            (
+                '<div class="card" id="x" data-y="1">hi</div>',
+                '<div class="card" id="x" data-y="1">',
+            ),
+            ('<DIV class="card">hi</DIV>', '<DIV class="card">'),
+            (
+                '<div\n  class="card"\n  id="x">hi</div>',
+                '<div\n  class="card"\n  id="x">',
+            ),
+            # `<input type="text"/>`: the stamp lands before the `>` as specified,
+            # which puts it after the `/` (`<input type="text"/ data-x="1">`).
+            # root_span and splice are both correct here; deciding whether a
+            # self-closing root should be stamped at all belongs to #247.
+            ('<input type="text"/>', '<input type="text"/>'),
+            ('<img src="x.png">', '<img src="x.png">'),
+            (
+                '<div title="héllo \U0001f389">hi</div>',
+                '<div title="héllo \U0001f389">',
+            ),
+            ("<div hidden>hi</div>", "<div hidden>"),
+        ],
+        ids=[
+            "no-attrs",
+            "one-attr",
+            "many-attrs",
+            "upper-case-tag",
+            "newlines-in-open-tag",
+            "self-closing-void",
+            "bare-void",
+            "unicode-attr",
+            "boolean-attr",
+        ],
+    )
+    def test_second_splice_still_lands_before_the_closing_bracket(
+        self, markup: str, open_tag: str
+    ):
+        # First splice = #247's root-attr stamp at render time; second = L3's OOB
+        # fan-out at response time, reading the span the first call left behind
+        # (architecture-overview.md §4: written twice, parsed never).
+        level = parsed_level(markup)
+        original_first = level.segments[0]
+        assert isinstance(original_first, str)
+        splice(level, level.root_span[1] - 1, self.STAMP)
+        splice(level, level.root_span[1] - 1, self.FAN_OUT)
+        first = level.segments[0]
+        assert isinstance(first, str)
+        expected_open = open_tag[:-1] + self.STAMP + self.FAN_OUT + ">"
+        assert first == expected_open + original_first[len(open_tag) :]
+        assert level.root_span == (0, len(expected_open))
+        assert first[level.root_span[0] : level.root_span[1]] == expected_open
 
 
 class TestSerialize:
