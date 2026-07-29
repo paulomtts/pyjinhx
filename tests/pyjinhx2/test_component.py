@@ -4,6 +4,7 @@ from typing import ClassVar
 
 import pytest
 from pydantic import BaseModel, Field, ValidationError
+from pydantic.errors import PydanticUserError
 
 import pyjinhx2.component
 from pyjinhx2.component import (
@@ -319,6 +320,35 @@ class TestReservedNameCollisions:
             name: str = ""
 
         assert Plain(name="a").id.startswith("pjx-")
+
+    def test_id_retyped_to_non_str_raises_at_class_definition(self):
+        with pytest.raises(TypeError) as excinfo:
+
+            class BadId(BaseComponent):
+                id: int = 0  # pyright: ignore[reportIncompatibleVariableOverride]
+
+        message = str(excinfo.value)
+        assert "BadId" in message
+        assert "id" in message
+        assert "str" in message
+
+    def test_id_as_classvar_raises_at_class_definition(self):
+        # pydantic itself rejects this first (the inherited `_validate_id`
+        # decorator no longer matches a field), so accept either error type —
+        # what matters is that it blows up at class-definition time.
+        with pytest.raises((TypeError, PydanticUserError)):
+
+            class ClassVarId(BaseComponent):
+                id: ClassVar[str] = "x"  # pyright: ignore[reportIncompatibleVariableOverride]
+
+    def test_id_default_and_metadata_may_be_overridden(self):
+        class FixedId(BaseComponent):
+            id: str = Field(default="fixed", description="a fixed id")
+
+        assert FixedId().id == "fixed"
+        assert FixedId(id="custom").id == "custom"
+        # the inherited _validate_id lineage still applies
+        assert FixedId(id="").id.startswith("pjx-")
 
 
 FORBIDDEN_IMPORTS = (

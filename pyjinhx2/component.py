@@ -156,6 +156,18 @@ class BaseComponent(BaseModel):
                 f"`auto_id: ClassVar[bool] = False` — an unqualified annotation "
                 f"turns it into a model field and silently disables the opt-out."
             )
+        id_field = cls.model_fields.get("id")
+        if id_field is None:
+            raise TypeError(
+                f"{cls.__name__} removes the reserved id field; id must stay a "
+                f"str model field so auto-id and id validation keep working."
+            )
+        if id_field.annotation is not str:
+            raise TypeError(
+                f"{cls.__name__} redeclares the reserved id field as "
+                f"{id_field.annotation}; id must remain typed str so "
+                f"_validate_id and _require_explicit_id keep their meaning."
+            )
 
     @model_validator(mode="before")
     @classmethod
