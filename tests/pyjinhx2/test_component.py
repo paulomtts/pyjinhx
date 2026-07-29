@@ -19,12 +19,16 @@ class Card(BaseComponent):
     address: Address | None = None
 
 
+class Panel(BaseComponent):
+    title: str = ""
+
+
 class TestStrictConfig:
     def test_forbids_extra_fields(self):
         assert BaseComponent.model_config.get("extra") == "forbid"
 
-    def test_declares_no_fields_of_its_own(self):
-        assert BaseComponent.model_fields == {}
+    def test_declares_only_the_id_field(self):
+        assert set(BaseComponent.model_fields) == {"id"}
 
     def test_bare_base_instantiates(self):
         assert BaseComponent() is not None
@@ -55,6 +59,30 @@ class TestSubclassing:
     def test_still_validates_declared_field_types(self):
         with pytest.raises(ValidationError):
             Card(name="x", count="not-an-int")  # pyright: ignore[reportArgumentType]
+
+
+class TestAutoId:
+    def test_omitting_id_auto_generates_pjx_prefixed_id(self):
+        first = Card(name="a")
+        second = Card(name="b")
+        assert first.id.startswith("pjx-")
+        assert second.id.startswith("pjx-")
+        assert first.id != second.id
+
+    def test_auto_generated_ids_are_monotonic_and_unique_across_subclasses(self):
+        ids = [Card(name="a").id, Panel().id, Card(name="b").id, Panel().id]
+        suffixes = [int(component_id.removeprefix("pjx-")) for component_id in ids]
+        assert suffixes == sorted(suffixes)
+        assert len(set(suffixes)) == len(suffixes)
+
+    def test_explicit_id_is_used_as_given(self):
+        assert Card(name="a", id="custom-id").id == "custom-id"
+
+    def test_empty_string_id_falls_back_to_auto_id(self):
+        assert Card(name="a", id="").id.startswith("pjx-")
+
+    def test_none_id_falls_back_to_auto_id(self):
+        assert Card(name="a", id=None).id.startswith("pjx-")  # pyright: ignore[reportArgumentType]
 
 
 FORBIDDEN_IMPORTS = (

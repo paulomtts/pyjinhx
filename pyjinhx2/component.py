@@ -11,9 +11,20 @@ render.py in the import graph and must never reach up into them, nor into
 session.py or reactive/.
 """
 
+import itertools
 from typing import Annotated
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+# Process-wide, never per-class: ids must be unique across every subclass, since
+# they end up as HTML ids on the same page. ``count.__next__`` is atomic under
+# the GIL, so concurrent construction needs no extra locking.
+_auto_id_counter = itertools.count(1)
+
+
+def _auto_id() -> str:
+    """Generate a process-unique component id (``pjx-<n>``)."""
+    return f"pjx-{next(_auto_id_counter)}"
 
 
 class PjxSlot:
@@ -50,12 +61,25 @@ def _is_slot_field(cls: type, field_name: str) -> bool:
 class BaseComponent(BaseModel):
     """Base for all components: declared fields only, undeclared kwargs rejected.
 
-    Deliberately empty otherwise. Auto-ids, Slot, attribute coercion and
-    quote-safety are separate concerns and land as their own changes; nothing
-    here runs a side effect at construction time (ADR 0004/0009).
+    Deliberately minimal otherwise. Slot, attribute coercion and quote-safety are
+    separate concerns and land as their own changes. The auto-id counter is the
+    single chartered construction-time side effect (ADR 0004/0009); nothing else
+    here runs one.
     """
 
     model_config = ConfigDict(extra="forbid")
+
+    id: str = Field(
+        default_factory=_auto_id,
+        description="The unique ID for this component. Auto-generated when omitted.",
+    )
+
+    @field_validator("id", mode="before")
+    @classmethod
+    def _validate_id(cls, value: object) -> str:
+        if not value:
+            return _auto_id()
+        return str(value)
 
 
 # Defined after BaseComponent so the union member resolves at definition time.
