@@ -5,7 +5,7 @@ import pytest
 from pydantic import BaseModel, Field, ValidationError
 
 import pyjinhx2.component
-from pyjinhx2.component import BaseComponent, Slot
+from pyjinhx2.component import BaseComponent, Children, Slot
 
 
 class Address(BaseModel):
@@ -149,6 +149,18 @@ class TestJsonCoercion:
         assert Structural(
             maybe_items='["a"]'  # pyright: ignore[reportArgumentType]
         ).maybe_items == ["a"]
+
+    def test_union_with_str_is_not_coerced(self):
+        assert Structural(label="[1, 2, 3]").label == "[1, 2, 3]"
+
+    def test_slot_field_is_never_coerced(self):
+        assert Slotted(body='{"not": "json-here"}').body == '{"not": "json-here"}'
+
+    def test_children_slot_field_is_never_coerced(self):
+        class WithChildren(BaseComponent):
+            content: Children = ""
+
+        assert WithChildren(content="[1, 2]").content == "[1, 2]"
 
 
 FORBIDDEN_IMPORTS = (
