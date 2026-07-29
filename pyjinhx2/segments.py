@@ -5,6 +5,7 @@ Import-pure — stdlib only. Nothing in pyjinhx2 may be imported here.
 
 import re
 from dataclasses import dataclass
+from html.parser import HTMLParser
 
 
 @dataclass(slots=True)
@@ -61,3 +62,52 @@ def contains_custom_tag(markup: str) -> bool:
         if RE_PASCAL_CASE_TAG_NAME.match(match.group(1)):
             return True
     return False
+
+
+class VerbatimParser(HTMLParser):
+    """The one parse (ADR 0005), in its lossless form: markup in, same markup out.
+
+    Every event handler appends the *raw source text* for that event to a flat
+    ``segments`` list, so ``"".join(parser.segments)`` reproduces the input
+    exactly — attribute quoting, attribute order, unknown and boolean attrs,
+    odd casing and intentionally malformed HTML all survive untouched. There is
+    no tag tree and no stack: cutting at PascalCase tags (#254), recording
+    ``root_span`` (#255), capturing paired-tag ``inner`` (#256) and enforcing a
+    single root (#257) all layer onto this harness later.
+
+    Deliberate deviation from v0.x's ``pyjinhx/tags.py`` ``Parser``: ``handle_data``
+    does **not** re-escape with ``markupsafe.escape``. That dependency is
+    unavailable here (this module is import-pure, stdlib only) and unnecessary —
+    v2 parses markup Jinja already rendered with autoescape on, not a decode /
+    re-encode boundary, so escaping would double-encode. For the same reason
+    ``<script>``/``<style>`` bodies need no special case: ``HTMLParser`` already
+    delivers CDATA content undecoded, and passthrough never touches it.
+
+    Also unlike v0.x, ``close()`` is not overridden and never raises on unclosed
+    tags — there is no component stack yet to validate against.
+    """
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.segments: list[str] = []
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        self.segments.append(self.get_starttag_text() or f"<{tag}>")
+
+    def handle_startendtag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        self.segments.append(self.get_starttag_text() or f"<{tag}/>")
+
+    def handle_endtag(self, tag: str) -> None:
+        self.segments.append(f"</{tag}>")
+
+    def handle_data(self, data: str) -> None:
+        self.segments.append(data)
+
+    def handle_comment(self, data: str) -> None:
+        self.segments.append(f"<!--{data}-->")
+
+    def handle_decl(self, decl: str) -> None:
+        self.segments.append(f"<!{decl}>")
+
+    def handle_pi(self, data: str) -> None:
+        self.segments.append(f"<?{data}>")

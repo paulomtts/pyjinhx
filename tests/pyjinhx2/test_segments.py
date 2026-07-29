@@ -9,6 +9,7 @@ from pyjinhx2.segments import (
     RE_PASCAL_CASE_TAG_NAME,
     ChildRef,
     RenderedLevel,
+    VerbatimParser,
     contains_custom_tag,
 )
 
@@ -151,3 +152,37 @@ class TestContainsCustomTag:
         source = inspect.getsource(contains_custom_tag)
         assert "HTMLParser" not in source
         assert "html.parser" not in source
+
+
+class TestVerbatimParser:
+    @staticmethod
+    def round_trip(markup: str) -> str:
+        parser = VerbatimParser()
+        parser.feed(markup)
+        parser.close()
+        return "".join(parser.segments)
+
+    @pytest.mark.parametrize(
+        "markup",
+        [
+            "<div><p>hi</p></div>",
+            '<img src="x.png"/>',
+            "<input disabled value=bare data-x='single' data-y=\"double\">",
+            "<!-- note -->",
+            "<!DOCTYPE html>",
+            "<div><p>hi</div>",
+            "</span>hi",
+            "<3 and 2 < 4",
+            '<PJXIcon name="gear"/>',
+            "plain text, no markup at all",
+            "",
+        ],
+    )
+    def test_round_trips_verbatim(self, markup: str):
+        assert self.round_trip(markup) == markup
+
+    def test_segments_is_a_flat_list_of_strings(self):
+        parser = VerbatimParser()
+        parser.feed("<div>hi</div>")
+        parser.close()
+        assert parser.segments == ["<div>", "hi", "</div>"]
