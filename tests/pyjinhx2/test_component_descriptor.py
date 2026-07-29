@@ -412,10 +412,7 @@ class TestAssetCandidate:
         class Card(BaseComponent):
             pass
 
-        assert (
-            _asset_candidate(Card, "css").parent
-            == _template_candidate(Card).parent
-        )
+        assert _asset_candidate(Card, "css").parent == _template_candidate(Card).parent
 
 
 class TestResolveTemplatePath:
@@ -1065,9 +1062,7 @@ class TestProvenanceProbeBudget:
         monkeypatch.setattr(Path, "is_file", counting)
         return probed
 
-    def test_provenance_probes_each_ancestor_once_per_kind(
-        self, mro_dir, monkeypatch
-    ):
+    def test_provenance_probes_each_ancestor_once_per_kind(self, mro_dir, monkeypatch):
         class Card(BaseComponent):
             pass
 
@@ -1096,9 +1091,7 @@ class TestProvenanceProbeBudget:
         ]
         assert len(probed) == len(set(probed))
 
-    def test_building_a_descriptor_probes_no_path_twice(
-        self, mro_dir, monkeypatch
-    ):
+    def test_building_a_descriptor_probes_no_path_twice(self, mro_dir, monkeypatch):
         """Path and owner come out of one shared walk per kind, so a full
         descriptor build never asks the filesystem the same question twice."""
 
@@ -1125,9 +1118,7 @@ class TestProvenanceProbeBudget:
         assert descriptor.provenance == {"template": FancyCard, "css": Card}
         assert probed == list(dict.fromkeys(probed))
 
-    def test_a_direct_subclasss_descriptor_probes_only_its_assets(
-        self, monkeypatch
-    ):
+    def test_a_direct_subclasss_descriptor_probes_only_its_assets(self, monkeypatch):
         """One ancestor, so the template candidate is the unprobed terminal and
         the only probes left are the two optional asset candidates.
 
@@ -1286,9 +1277,7 @@ class TestPerKindIndependence:
     """ADR 0010: template, css and js resolve through three separate walks.
     Resolving one kind from an ancestor must never drag another kind along."""
 
-    def test_inheriting_a_template_does_not_inherit_an_unrelated_asset(
-        self, mro_dir
-    ):
+    def test_inheriting_a_template_does_not_inherit_an_unrelated_asset(self, mro_dir):
         """The parent lends its template. Its css belongs to a *differently
         named* class, so nothing in the child's css walk matches and css stays
         empty — template inheritance did not pull an asset in behind it."""
