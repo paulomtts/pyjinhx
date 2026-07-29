@@ -48,7 +48,16 @@ class RenderedLevel:
 RE_PASCAL_CASE_TAG_NAME = re.compile(r"^[A-Z](?=[A-Za-z0-9]*[a-z])[A-Za-z0-9]*$")
 RE_TAG_OPENER = re.compile(r"<\s*([A-Za-z][A-Za-z0-9]*)")
 RE_RAW_END_TAG = re.compile(r"</[^>]*>")
+RE_RAW_END_TAG_NAME = re.compile(r"</\s*([A-Za-z][A-Za-z0-9]*)")
 RE_RAW_COMMENT = re.compile(r"<!--.*?-->|<!\[.*?\]\]?>", re.DOTALL)
+
+
+def _attrs_to_dict(attrs: "list[tuple[str, str | None]]") -> dict[str, str]:
+    """HTMLParser reports a bare/boolean attr with a value of None; ChildRef.attrs
+    is dict[str, str], so those become "" — same convention as v0.x's
+    ``Parser._attrs_to_dict`` at pyjinhx/tags.py:68-69. Values are otherwise passed
+    through exactly as parsed: no coercion, no registry lookup (ADR 0002)."""
+    return {name: value or "" for name, value in attrs}
 
 
 def contains_custom_tag(markup: str) -> bool:
@@ -99,7 +108,7 @@ class VerbatimParser(HTMLParser):
         # silently unescaping markup Jinja escaped on purpose. Keep refs intact
         # and reconstruct them below.
         super().__init__(convert_charrefs=False)
-        self.segments: list[str] = []
+        self.segments: "list[str | ChildRef]" = []
         self._source = ""
         self._line_starts: list[int] = [0]
 
@@ -124,12 +133,31 @@ class VerbatimParser(HTMLParser):
         self.segments.append(self.get_starttag_text() or f"<{tag}>")
 
     def handle_startendtag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
-        self.segments.append(self.get_starttag_text() or f"<{tag}/>")
+        raw = self.get_starttag_text() or f"<{tag}/>"
+        name = self._custom_tag_name(raw)
+        if name is not None:
+            self.segments.append(ChildRef(tag=name, attrs=_attrs_to_dict(attrs), inner=None))
+            return
+        self.segments.append(raw)
 
     def handle_endtag(self, tag: str) -> None:
         # HTMLParser lowercases `tag`, which would destroy `</DIV>` and, fatally
         # for #254, `</PJXButton>`. Recover the source text instead.
         self.segments.append(self._raw_at(RE_RAW_END_TAG) or f"</{tag}>")
+
+    def _custom_tag_name(self, raw: str) -> "str | None":
+        """The original-cased tag name in ``raw`` if it names a custom component.
+
+        ``HTMLParser`` lowercases the ``tag`` argument it passes to the handlers,
+        which would make ``PJXButton`` unmatchable, so PascalCase detection always
+        goes through the source text. ``RE_TAG_OPENER`` matches an open tag
+        (``<PJXIcon ...``) and deliberately does not match a close tag, which is
+        why ``RE_RAW_END_TAG_NAME`` handles ``</PJXIcon>``.
+        """
+        match = RE_TAG_OPENER.match(raw) or RE_RAW_END_TAG_NAME.match(raw)
+        if match is not None and RE_PASCAL_CASE_TAG_NAME.match(match.group(1)):
+            return match.group(1)
+        return None
 
     def handle_data(self, data: str) -> None:
         self.segments.append(data)

@@ -160,6 +160,14 @@ class TestVerbatimParser:
         parser = VerbatimParser()
         parser.feed(markup)
         parser.close()
+        # #254 makes `segments` heterogeneous: a top-level self-closing custom tag
+        # is cut into a ChildRef, which has no lossless text form here (attribute
+        # quoting and order are not preserved on the dataclass). Markup that cuts
+        # is asserted structurally instead — see the ChildRef tests below.
+        assert all(isinstance(segment, str) for segment in parser.segments), (
+            "round_trip only handles all-string segment lists; "
+            "assert cut markup structurally instead"
+        )
         return "".join(parser.segments)
 
     @pytest.mark.parametrize(
@@ -173,7 +181,6 @@ class TestVerbatimParser:
             "<div><p>hi</div>",
             "</span>hi",
             "<3 and 2 < 4",
-            '<PJXIcon name="gear"/>',
             "plain text, no markup at all",
             "",
         ],
@@ -257,9 +264,38 @@ class TestVerbatimParser:
         # here; enforcement arrives with #254/#257.
         assert self.round_trip(markup) == markup
 
-    def test_pascal_case_tags_get_no_special_treatment(self):
+    @staticmethod
+    def parse(markup: str) -> "list[str | ChildRef]":
         parser = VerbatimParser()
-        parser.feed('<div><PJXButton label="Go">text</PJXButton></div>')
+        parser.feed(markup)
         parser.close()
-        assert all(isinstance(segment, str) for segment in parser.segments)
-        assert '<PJXButton label="Go">' in parser.segments
+        return parser.segments
+
+    def test_top_level_self_closing_tag_becomes_a_child_ref(self):
+        assert self.parse('<div><PJXIcon name="gear"/></div>') == [
+            "<div>",
+            ChildRef(tag="PJXIcon", attrs={"name": "gear"}, inner=None),
+            "</div>",
+        ]
+
+    def test_cut_preserves_original_tag_casing(self):
+        # HTMLParser hands handle_startendtag a lowercased `pjxbutton`; the cut
+        # must come from the source text instead.
+        segments = self.parse('<PJXButton label="Go"/>')
+        assert isinstance(segments[0], ChildRef)
+        assert segments[0].tag == "PJXButton"
+
+    def test_bare_attrs_become_empty_strings(self):
+        segments = self.parse('<PJXButton disabled label="Go"/>')
+        assert isinstance(segments[0], ChildRef)
+        assert segments[0].attrs == {"disabled": "", "label": "Go"}
+
+    def test_sibling_self_closing_tags_cut_in_document_order(self):
+        assert self.parse('<PJXButton label="Go"/> and <PJXIcon name="gear"/>') == [
+            ChildRef(tag="PJXButton", attrs={"label": "Go"}, inner=None),
+            " and ",
+            ChildRef(tag="PJXIcon", attrs={"name": "gear"}, inner=None),
+        ]
+
+    def test_plain_self_closing_tags_are_not_cut(self):
+        assert self.parse('<img src="x.png"/>') == ['<img src="x.png"/>']
