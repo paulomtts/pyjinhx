@@ -186,3 +186,17 @@ class TestVerbatimParser:
         parser.feed("<div>hi</div>")
         parser.close()
         assert parser.segments == ["<div>", "hi", "</div>"]
+
+    @pytest.mark.parametrize(
+        "markup",
+        [
+            "<DIV>hi</DIV>",
+            '<PJXButton label="Go">text</PJXButton>',
+            "<div>\n<p>a</p>\n</DIV>",
+            "</DIV >",
+            "<p>x</p >",
+            "<PJXButton\n  label='Go'\n>t</PJXButton>",
+        ],
+    )
+    def test_round_trips_end_tag_casing_and_spacing(self, markup: str):
+        assert self.round_trip(markup) == markup

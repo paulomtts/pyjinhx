@@ -47,6 +47,7 @@ class RenderedLevel:
 
 RE_PASCAL_CASE_TAG_NAME = re.compile(r"^[A-Z](?=[A-Za-z0-9]*[a-z])[A-Za-z0-9]*$")
 RE_TAG_OPENER = re.compile(r"<\s*([A-Za-z][A-Za-z0-9]*)")
+RE_RAW_END_TAG = re.compile(r"</[^>]*>")
 
 
 def contains_custom_tag(markup: str) -> bool:
@@ -90,6 +91,25 @@ class VerbatimParser(HTMLParser):
     def __init__(self) -> None:
         super().__init__()
         self.segments: list[str] = []
+        self._source = ""
+        self._line_starts: list[int] = [0]
+
+    def feed(self, data: str) -> None:
+        """Parse ``data``. One feed per parser instance — the source is recorded
+        whole so handlers can recover raw text ``HTMLParser`` does not hand back."""
+        self._source = data
+        self._line_starts = [0] + [i + 1 for i, char in enumerate(data) if char == "\n"]
+        super().feed(data)
+
+    def _raw_at(self, pattern: "re.Pattern[str]") -> "str | None":
+        """The source text matching ``pattern`` at the current event's offset.
+
+        ``getpos()`` is line/column, so the line-start index converts it back to
+        an absolute offset into ``_source``.
+        """
+        line, column = self.getpos()
+        match = pattern.match(self._source, self._line_starts[line - 1] + column)
+        return match.group(0) if match else None
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         self.segments.append(self.get_starttag_text() or f"<{tag}>")
@@ -98,7 +118,9 @@ class VerbatimParser(HTMLParser):
         self.segments.append(self.get_starttag_text() or f"<{tag}/>")
 
     def handle_endtag(self, tag: str) -> None:
-        self.segments.append(f"</{tag}>")
+        # HTMLParser lowercases `tag`, which would destroy `</DIV>` and, fatally
+        # for #254, `</PJXButton>`. Recover the source text instead.
+        self.segments.append(self._raw_at(RE_RAW_END_TAG) or f"</{tag}>")
 
     def handle_data(self, data: str) -> None:
         self.segments.append(data)
