@@ -29,6 +29,11 @@ dependencies = [
 [project.urls]
 Homepage = "https://github.com/paulomtts/pyjinhx"
 
+[tool.hatch.build.targets.wheel]
+# Auto-discovery only picks the name-matching `pyjinhx/`; `pyjinhx2/` (the v2
+# rebuild, ADR 0011) must be listed or wheels ship without it.
+packages = ["pyjinhx", "pyjinhx2"]
+
 [tool.pytest.ini_options]
 markers = [
     "pjx_runtime: enable pjx.js auto-injection in tests (disabled by default via conftest)",
@@ -37,6 +42,7 @@ markers = [
 ]
 
 [tool.pyright]
+typeCheckingMode = "standard"
 # `docs/` holds the mkdocs demo registry (`demos/`) and `hooks.py`, which the
 # gallery tests add to sys.path at runtime. Put it on the type-checker's import
 # roots so those imports resolve in the editor.

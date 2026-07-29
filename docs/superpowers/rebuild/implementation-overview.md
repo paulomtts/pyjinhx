@@ -25,7 +25,7 @@ One test asserts the import graph. Cheap, catches spine violations forever.
 ## Folder / file structure
 
 ```text
-src/pyjinhx2/
+pyjinhx2/
 ├── __init__.py          public API, curated exports
 ├── component.py         BaseComponent (strict), OpenComponent, Slot, children inference
 ├── descriptor.py        ClassDescriptor: MRO walk, slot fields, asset paths — frozen at registration
