@@ -803,3 +803,62 @@ class TestSerialize:
         parent = make_level(segments=["<div>", child, "</div>"])
         with pytest.raises(AssertionError, match="ChildRef"):
             serialize(parent)
+
+
+class TestRoundTripThroughSerialize:
+    """The composed pipeline: parse -> RenderedLevel -> serialize -> same string.
+
+    Invariant 1 (architecture-overview.md §1, ADR 0002): pyjinhx never re-parses
+    its own output, so a level's segments must carry the source text losslessly
+    all the way to the single join. TestVerbatimParser.round_trip proves the cut
+    is lossless at the parser boundary and TestSerialize proves the join is
+    lossless over hand-built levels; this class is the only place a real string
+    travels the whole way through both.
+
+    Domain is markup *without* custom tags: no fixture here holds a PascalCase
+    tag, so nothing is cut into a ChildRef and every segment stays a str.
+    Adversarial markup is #261; root_span correctness is #262.
+    """
+
+    @staticmethod
+    def round_trip(markup: str) -> str:
+        parser = VerbatimParser()
+        parser.feed(markup)
+        parser.close()
+        # No fixture in this class contains a PascalCase tag, so #254's cutting
+        # never fires and every segment is raw source text. enforce_single_root
+        # is deliberately not called: several fixtures are zero-root (plain text)
+        # or multi-root by design, and lossless passthrough is orthogonal to
+        # single-root validation (#257 owns that).
+        assert all(isinstance(segment, str) for segment in parser.segments), (
+            "fixtures for this class must be custom-tag-free; "
+            "a ChildRef appeared, so something got cut"
+        )
+        segments: list[str | ChildRef | RenderedLevel] = list(parser.segments)
+        level = RenderedLevel(
+            segments=segments,
+            # serialize never reads root_span (segments.py:448); a rootless
+            # fixture parses to None, so substitute a harmless span rather than
+            # widening RenderedLevel's type. #262 owns root_span's real value.
+            root_span=parser.root_span or (0, 0),
+            descriptor=None,
+        )
+        return serialize(level)
+
+    @pytest.mark.parametrize(
+        "markup",
+        [
+            "<div><p>hi</p></div>",
+            '<img src="x.png"/>',
+            "<input disabled value=bare data-x='single' data-y=\"double\">",
+            "<!-- note -->",
+            "<!DOCTYPE html>",
+            "<div><p>hi</div>",
+            "</span>hi",
+            "<3 and 2 < 4",
+            "plain text, no markup at all",
+            "",
+        ],
+    )
+    def test_round_trips_core_markup(self, markup: str):
+        assert self.round_trip(markup) == markup
