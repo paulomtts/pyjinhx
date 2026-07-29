@@ -5,7 +5,7 @@ import pytest
 from pydantic import BaseModel, Field, ValidationError
 
 import pyjinhx2.component
-from pyjinhx2.component import BaseComponent
+from pyjinhx2.component import BaseComponent, Children, Slot
 
 
 class Address(BaseModel):
@@ -25,6 +25,25 @@ class Panel(BaseComponent):
 
 class Named(BaseComponent):
     auto_id = False
+
+
+class Structural(BaseComponent):
+    sources: list = Field(default_factory=list)
+    meta: dict = Field(default_factory=dict)
+    typed_items: list[str] = Field(default_factory=list)
+    typed_map: dict[str, int] = Field(default_factory=dict)
+    address: Address | None = None
+    maybe_items: list[str] | None = None
+    label: str | list = ""
+
+
+class Slotted(BaseComponent):
+    body: Slot = ""
+
+
+class StrictStructural(BaseComponent):
+    auto_id = False
+    sources: list = Field(default_factory=list)
 
 
 class TestStrictConfig:
@@ -108,6 +127,87 @@ class TestAutoIdOptOut:
     def test_auto_id_is_not_a_model_field(self):
         assert "auto_id" not in BaseComponent.model_fields
         assert "auto_id" not in Named.model_fields
+
+
+class TestJsonCoercion:
+    def test_json_string_coerces_to_list(self):
+        assert Structural(
+            typed_items='["a", "b"]'  # pyright: ignore[reportArgumentType]
+        ).typed_items == ["a", "b"]
+
+    def test_json_string_coerces_to_dict(self):
+        assert Structural(
+            typed_map='{"a": 1}'  # pyright: ignore[reportArgumentType]
+        ).typed_map == {"a": 1}
+
+    def test_json_object_string_coerces_to_base_model_field(self):
+        assert Structural(
+            address='{"city": "Lisbon"}'  # pyright: ignore[reportArgumentType]
+        ).address == Address(city="Lisbon")
+
+    def test_optional_annotation_still_coerces(self):
+        assert Structural(
+            maybe_items='["a"]'  # pyright: ignore[reportArgumentType]
+        ).maybe_items == ["a"]
+
+    def test_union_with_str_is_not_coerced(self):
+        assert Structural(label="[1, 2, 3]").label == "[1, 2, 3]"
+
+    def test_slot_field_is_never_coerced(self):
+        assert Slotted(body='{"not": "json-here"}').body == '{"not": "json-here"}'
+
+    def test_children_slot_field_is_never_coerced(self):
+        class WithChildren(BaseComponent):
+            content: Children = ""
+
+        assert WithChildren(content="[1, 2]").content == "[1, 2]"
+
+    def test_invalid_json_raises_validation_error_naming_class_and_field(self):
+        with pytest.raises(ValidationError) as excinfo:
+            Structural(sources="[not json")  # pyright: ignore[reportArgumentType]
+        message = str(excinfo.value)
+        assert "Structural" in message
+        assert "sources" in message
+
+    def test_non_json_looking_string_is_left_for_pydantic_to_reject(self):
+        with pytest.raises(ValidationError) as excinfo:
+            Structural(sources="plain text")  # pyright: ignore[reportArgumentType]
+        assert "invalid JSON attribute value" not in str(excinfo.value)
+
+    def test_empty_string_is_left_for_pydantic_to_reject(self):
+        with pytest.raises(ValidationError) as excinfo:
+            Structural(meta="")  # pyright: ignore[reportArgumentType]
+        assert "invalid JSON attribute value" not in str(excinfo.value)
+
+    def test_real_values_pass_through_untouched(self):
+        address = Address(city="Porto")
+        component = Structural(
+            sources=[1, 2], meta={"a": 1}, typed_items=["x"], address=address
+        )
+        assert component.sources == [1, 2]
+        assert component.meta == {"a": 1}
+        assert component.typed_items == ["x"]
+        assert component.address == address
+
+    def test_non_dict_input_is_passed_through(self):
+        assert Structural.model_validate(Structural(typed_items=["a"])).typed_items == [
+            "a"
+        ]
+
+    def test_coercion_does_not_disturb_auto_id_opt_out(self):
+        with pytest.raises(ValidationError):
+            StrictStructural(sources='["a"]')  # pyright: ignore[reportArgumentType]
+        component = StrictStructural(
+            id="fixed",
+            sources='["a"]',  # pyright: ignore[reportArgumentType]
+        )
+        assert component.id == "fixed"
+        assert component.sources == ["a"]
+
+    def test_coercion_does_not_disturb_auto_id_generation(self):
+        assert Structural(
+            typed_items='["a"]'  # pyright: ignore[reportArgumentType]
+        ).id.startswith("pjx-")
 
 
 FORBIDDEN_IMPORTS = (

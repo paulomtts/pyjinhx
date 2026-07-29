@@ -12,7 +12,9 @@ session.py or reactive/.
 """
 
 import itertools
-from typing import Annotated, ClassVar
+import json
+import types
+from typing import Annotated, Any, ClassVar, Union, get_args, get_origin
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
@@ -58,6 +60,23 @@ def _is_slot_field(cls: type, field_name: str) -> bool:
     return field is not None and any(isinstance(m, PjxSlot) for m in field.metadata)
 
 
+def _is_json_coercible_annotation(annotation: Any) -> bool:
+    """A field is a JSON-coercion candidate if, once ``None`` is stripped from
+    a ``T | None`` union, exactly one type remains and it's ``list``, ``dict``,
+    or a ``BaseModel`` subclass. Unions that keep ``str`` (e.g. ``str | list``,
+    and ``Slot``/``Children``) are left alone — a JSON-looking string there is
+    ambiguous, and for a slot it is almost certainly literal markup."""
+    if get_origin(annotation) in (Union, types.UnionType):
+        args = [a for a in get_args(annotation) if a is not type(None)]
+        if len(args) != 1:
+            return False
+        annotation = args[0]
+    origin = get_origin(annotation) or annotation
+    if origin in (list, dict):
+        return True
+    return isinstance(origin, type) and issubclass(origin, BaseModel)
+
+
 class BaseComponent(BaseModel):
     """Base for all components: declared fields only, undeclared kwargs rejected.
 
@@ -89,6 +108,36 @@ class BaseComponent(BaseModel):
         if isinstance(data, dict) and data.get("id"):
             return data
         raise ValueError(f"{cls.__name__} sets auto_id = False, so id is required")
+
+    @model_validator(mode="before")
+    @classmethod
+    def _coerce_json_string_attrs(cls, data: object) -> object:
+        """A tag attribute always arrives as a string (Jinja renders the tag
+        before it's parsed). For a field typed ``list``/``dict``/a ``BaseModel``,
+        a JSON-looking string (``{...}``/``[...]``) is parsed before Pydantic
+        sees it, so ``<Child sources="{{ sources | tojson }}"/>`` just works
+        instead of every such component hand-rolling the same ``BeforeValidator``.
+
+        Declared fields only: this never reads or writes ``model_extra``, so the
+        strict core keeps its promise that undeclared keys are never walked."""
+        if not isinstance(data, dict):
+            return data
+        for name, field in cls.model_fields.items():
+            value = data.get(name)
+            if not isinstance(value, str):
+                continue
+            text = value.strip()
+            if not text or text[0] not in "{[":
+                continue
+            if not _is_json_coercible_annotation(field.annotation):
+                continue
+            try:
+                data[name] = json.loads(text)
+            except json.JSONDecodeError as exc:
+                raise ValueError(
+                    f"{cls.__name__}.{name}: invalid JSON attribute value"
+                ) from exc
+        return data
 
     @field_validator("id", mode="before")
     @classmethod
