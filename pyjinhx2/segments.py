@@ -48,6 +48,7 @@ class RenderedLevel:
 RE_PASCAL_CASE_TAG_NAME = re.compile(r"^[A-Z](?=[A-Za-z0-9]*[a-z])[A-Za-z0-9]*$")
 RE_TAG_OPENER = re.compile(r"<\s*([A-Za-z][A-Za-z0-9]*)")
 RE_RAW_END_TAG = re.compile(r"</[^>]*>")
+RE_RAW_COMMENT = re.compile(r"<!--.*?-->|<!\[.*?\]\]?>", re.DOTALL)
 
 
 def contains_custom_tag(markup: str) -> bool:
@@ -86,6 +87,11 @@ class VerbatimParser(HTMLParser):
 
     Also unlike v0.x, ``close()`` is not overridden and never raises on unclosed
     tags — there is no component stack yet to validate against.
+
+    Known limitation: markup truncated mid-construct at EOF (``"<div"``,
+    ``"<!-- unclosed"``) does not round-trip — ``HTMLParser`` drops or completes
+    the fragment on ``close()``. Jinja never emits such output, and the
+    exhaustive round-trip and adversarial suites are #260/#261.
     """
 
     def __init__(self) -> None:
@@ -135,10 +141,16 @@ class VerbatimParser(HTMLParser):
         self.segments.append(f"&#{name};")
 
     def handle_comment(self, data: str) -> None:
-        self.segments.append(f"<!--{data}-->")
+        # HTMLParser routes marked sections like `<![if IE]>` here too, having
+        # already rewritten them into comment form, so recover the source text.
+        self.segments.append(self._raw_at(RE_RAW_COMMENT) or f"<!--{data}-->")
 
     def handle_decl(self, decl: str) -> None:
         self.segments.append(f"<!{decl}>")
 
     def handle_pi(self, data: str) -> None:
         self.segments.append(f"<?{data}>")
+
+    def unknown_decl(self, data: str) -> None:
+        # `<![CDATA[x]]>` arrives as `CDATA[x]`; the base class would drop it.
+        self.segments.append(self._raw_at(RE_RAW_COMMENT) or f"<![{data}]>")

@@ -230,3 +230,36 @@ class TestVerbatimParser:
         # exemption to stop `&&` becoming `&amp;&amp;`. v2 escapes nothing, so
         # JS/CSS bodies survive by construction.
         assert self.round_trip(markup) == markup
+
+    @pytest.mark.parametrize(
+        "markup",
+        [
+            "<![CDATA[x]]>",
+            "<![if IE]>a<![endif]>",
+            "<!--[if IE]>x<![endif]-->",
+            "<?php echo 1 ?>",
+        ],
+    )
+    def test_round_trips_marked_sections_and_processing_instructions(self, markup: str):
+        assert self.round_trip(markup) == markup
+
+    @pytest.mark.parametrize(
+        "markup",
+        [
+            "<PJXAccordion><PJXIcon name='gear'/>",
+            "<PJXButton>go",
+            "<div><PJXButton>go</div>",
+        ],
+    )
+    def test_unclosed_component_tags_do_not_raise(self, markup: str):
+        # Deliberate difference from v0.x pyjinhx/tags.py, whose Parser.close()
+        # raises ValueError on an unclosed component stack. There is no stack
+        # here; enforcement arrives with #254/#257.
+        assert self.round_trip(markup) == markup
+
+    def test_pascal_case_tags_get_no_special_treatment(self):
+        parser = VerbatimParser()
+        parser.feed('<div><PJXButton label="Go">text</PJXButton></div>')
+        parser.close()
+        assert all(isinstance(segment, str) for segment in parser.segments)
+        assert '<PJXButton label="Go">' in parser.segments
