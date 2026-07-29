@@ -586,8 +586,8 @@ class TestAssetCandidate:
 
 class TestResolveTemplatePath:
     """ADR 0007: one candidate — snake_case(class name) + `.pjx`, in the
-    defining module's own directory. No MRO walk (#273), no existence check
-    (#277 owns the missing-template error)."""
+    defining module's own directory. No MRO walk, and no existence
+    check: an absent template is caught at registration, not here."""
 
     def test_returns_snake_case_pjx_beside_the_defining_module(self):
         class Card(BaseComponent):
@@ -628,17 +628,21 @@ class TestResolveTemplatePath:
         assert path.suffix == ".pjx"
         assert path.name == "card.pjx"
 
-    def test_the_path_is_returned_even_when_no_file_exists(self):
-        """This subtask computes the path; it does not validate existence.
-        Turning 'file absent' into an error is #277's job."""
+    def test_the_path_is_returned_even_when_no_file_exists(self, mro_dir):
+        """This resolver computes a path; it does not validate existence.
+        Registration is where an absent template becomes an error, so the class
+        registers against its own directory and is only then re-pointed at the
+        empty one."""
 
-        class NoSuchTemplateAnywhere(BaseComponent):
+        class Card(BaseComponent):
             pass
 
-        path = _resolve_template_path(NoSuchTemplateAnywhere)
+        Card.__module__ = _MRO_MODULE
+
+        path = _resolve_template_path(Card)
 
         assert not path.exists()
-        assert path == Path(__file__).parent / "no_such_template_anywhere.pjx"
+        assert path == mro_dir / "card.pjx"
 
     def test_a_fileless_module_still_raises_not_implemented(self):
         """Regression guard: #272 must not catch or reword #271's guard."""
@@ -783,7 +787,8 @@ class TestTemplateMroWalk:
 
     def test_it_falls_back_to_the_root_ancestors_candidate(self, mro_dir):
         """No ancestor has a file: the root concrete ancestor's path is returned
-        anyway. Whether that is an error is #277's call, not this walk's."""
+        anyway. Turning that into an error is registration's job, not this
+        walk's."""
 
         class Card(BaseComponent):
             pass
@@ -1047,9 +1052,9 @@ class TestResolveProvenance:
 
     def test_no_template_key_when_no_ancestor_has_a_file(self, mro_dir):
         """`_resolve_template_path` still answers with the root ancestor's
-        candidate (whether that is an error is #277's call), but that candidate
-        is never probed — there is no ancestor proven to own a file, so naming
-        one would be provenance for a file that does not exist."""
+        candidate, but that candidate is never probed by the walk — no ancestor
+        is proven to own a file, so naming one would be provenance for a file
+        that does not exist."""
 
         class Card(BaseComponent):
             pass
