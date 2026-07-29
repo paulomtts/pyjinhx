@@ -245,7 +245,7 @@ class TestJsonCoercion:
 
     def test_json_string_coerces_to_bare_list(self):
         assert Structural(
-            sources='[1, 2]'  # pyright: ignore[reportArgumentType]
+            sources="[1, 2]"  # pyright: ignore[reportArgumentType]
         ).sources == [1, 2]
 
     def test_json_string_coerces_to_bare_dict(self):
@@ -269,7 +269,7 @@ class TestJsonCoercion:
         # `list | dict` keeps two non-None members, so the len(args) != 1 branch
         # bails out and the JSON-looking string reaches Pydantic as a raw str.
         with pytest.raises(ValidationError) as excinfo:
-            Structural(either='[1, 2]')  # pyright: ignore[reportArgumentType]
+            Structural(either="[1, 2]")  # pyright: ignore[reportArgumentType]
         error_types = {error["type"] for error in excinfo.value.errors()}
         assert error_types == {"list_type", "dict_type"}
         assert "invalid JSON attribute value" not in str(excinfo.value)
@@ -289,7 +289,7 @@ class TestJsonCoercion:
         # _coerce_json_string_attrs skips non-str values outright, so Pydantic's
         # own type check must still fire — the bypass must not swallow it.
         with pytest.raises(ValidationError) as excinfo:
-            Structural(**{field_name: 123})
+            Structural(**{field_name: 123})  # pyright: ignore[reportArgumentType]
         assert [error["type"] for error in excinfo.value.errors()] == [error_type]
         assert "invalid JSON attribute value" not in str(excinfo.value)
 
