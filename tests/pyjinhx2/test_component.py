@@ -23,6 +23,10 @@ class Panel(BaseComponent):
     title: str = ""
 
 
+class Named(BaseComponent):
+    auto_id = False
+
+
 class TestStrictConfig:
     def test_forbids_extra_fields(self):
         assert BaseComponent.model_config.get("extra") == "forbid"
@@ -83,6 +87,27 @@ class TestAutoId:
 
     def test_none_id_falls_back_to_auto_id(self):
         assert Card(name="a", id=None).id.startswith("pjx-")  # pyright: ignore[reportArgumentType]
+
+
+class TestAutoIdOptOut:
+    def test_auto_id_false_without_explicit_id_raises(self):
+        with pytest.raises(ValidationError):
+            Named()
+
+    def test_auto_id_false_with_falsy_id_raises(self):
+        with pytest.raises(ValidationError):
+            Named(id="")
+
+    def test_auto_id_false_with_explicit_id_succeeds(self):
+        assert Named(id="x").id == "x"
+
+    def test_auto_id_defaults_to_on(self):
+        assert BaseComponent.auto_id is True
+        assert Card(name="a").id.startswith("pjx-")
+
+    def test_auto_id_is_not_a_model_field(self):
+        assert "auto_id" not in BaseComponent.model_fields
+        assert "auto_id" not in Named.model_fields
 
 
 FORBIDDEN_IMPORTS = (

@@ -12,9 +12,9 @@ session.py or reactive/.
 """
 
 import itertools
-from typing import Annotated
+from typing import Annotated, ClassVar
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 # Process-wide, never per-class: ids must be unique across every subclass, since
 # they end up as HTML ids on the same page. ``count.__next__`` is atomic under
@@ -69,10 +69,26 @@ class BaseComponent(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
+    # Construction-time control, not model data: a ClassVar is invisible to
+    # model_fields, so it never collides with extra="forbid" or serialization.
+    # Opt out per component class with ``class Foo(BaseComponent): auto_id = False``.
+    auto_id: ClassVar[bool] = True
+
     id: str = Field(
         default_factory=_auto_id,
         description="The unique ID for this component. Auto-generated when omitted.",
     )
+
+    @model_validator(mode="before")
+    @classmethod
+    def _require_explicit_id(cls, data: object) -> object:
+        """Runs before field defaults, so it is the only hook that can see an
+        omitted ``id`` and stop ``default_factory`` from silently filling it."""
+        if cls.auto_id:
+            return data
+        if isinstance(data, dict) and data.get("id"):
+            return data
+        raise ValueError(f"{cls.__name__} sets auto_id = False, so id is required")
 
     @field_validator("id", mode="before")
     @classmethod
