@@ -165,8 +165,22 @@ class VerbatimParser(HTMLParser):
         match = pattern.match(self._source, self._line_starts[line - 1] + column)
         return match.group(0) if match else None
 
+    def _record_root_span(self, raw: str) -> None:
+        """Record the first tag event's raw text span; a no-op after that.
+
+        Same ``getpos()`` → ``_line_starts`` conversion as ``_raw_at``. ``raw`` is
+        whatever ``get_starttag_text()`` returned, so ``end`` lands just past the
+        tag's closing ``>`` — the offsets #258's splice stamps attributes at.
+        """
+        if self.root_span is not None:
+            return
+        line, column = self.getpos()
+        start = self._line_starts[line - 1] + column
+        self.root_span = (start, start + len(raw))
+
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         raw = self.get_starttag_text() or f"<{tag}>"
+        self._record_root_span(raw)
         name = self._custom_tag_name(raw)
         if name is not None:
             self._custom_stack.append((name, len(self.segments)))
@@ -175,6 +189,7 @@ class VerbatimParser(HTMLParser):
 
     def handle_startendtag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         raw = self.get_starttag_text() or f"<{tag}/>"
+        self._record_root_span(raw)
         name = self._custom_tag_name(raw)
         if name is not None and not self._custom_stack:
             self.segments.append(

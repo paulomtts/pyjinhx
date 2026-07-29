@@ -287,6 +287,40 @@ class TestVerbatimParser:
         assert self.parsed("").root_span is None
         assert self.parsed("&amp; just an entity").root_span is None
 
+    def test_root_span_covers_a_plain_opening_tag(self):
+        assert self.parsed("<div><p>hi</p></div>").root_span == (0, len("<div>"))
+
+    def test_root_span_matches_the_architecture_overview_example(self):
+        markup = (
+            '<div class="card">\n  <h2>Hello</h2>\n  <PJXButton label="Save"/>\n'
+            '  <p>hi</p>\n  <PJXIcon name="gear"/>\n</div>'
+        )
+        parser = self.parsed(markup)
+        assert parser.root_span == (0, 18)
+        start, end = parser.root_span
+        assert markup[start:end] == '<div class="card">'
+
+    def test_root_span_covers_a_cut_top_level_self_closing_tag(self):
+        markup = '<PJXIcon name="gear"/>'
+        parser = self.parsed(markup)
+        # The cut into a ChildRef (#254) and the span capture (#255) are orthogonal:
+        # both come off the same raw tag text.
+        assert parser.segments == [
+            ChildRef(tag="PJXIcon", attrs={"name": "gear"}, inner=None)
+        ]
+        assert parser.root_span == (0, len(markup))
+
+    def test_root_span_covers_a_plain_self_closing_tag(self):
+        markup = '<img src="x.png"/>'
+        assert self.parsed(markup).root_span == (0, len(markup))
+
+    def test_root_span_covers_only_the_opening_tag_of_a_paired_custom_tag(self):
+        markup = '<PJXButton label="Go">text</PJXButton>'
+        parser = self.parsed(markup)
+        start, end = parser.root_span
+        assert (start, end) == (0, len('<PJXButton label="Go">'))
+        assert markup[start:end] == '<PJXButton label="Go">'
+
     def test_top_level_self_closing_tag_becomes_a_child_ref(self):
         assert self.parse('<div><PJXIcon name="gear"/></div>') == [
             "<div>",
