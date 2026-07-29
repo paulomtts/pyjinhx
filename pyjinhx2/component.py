@@ -252,31 +252,48 @@ def _resolve_provenance(cls: type) -> Mapping[str, type]:
     """Which ancestor supplied each resolved kind — ADR 0010's free provenance,
     for error messages and the dependency graph.
 
-    Template kind only: `css`/`js` keys stay absent until #276 gives assets real
-    resolution, because a stub that resolves nothing has no owner to name. The
-    key is omitted entirely when the walk ended on the unprobed fallback — no
-    file was proven to exist, so no ancestor is named.
+    A kind appears only when a probe proved a file exists. The template key is
+    omitted when the walk ended on the unprobed fallback, and the css/js keys
+    when no ancestor had the file at all — in both cases no ancestor was proven
+    to own anything, so naming one would be a guess.
     """
-    _, owner = _walk_template(cls)
-    return {} if owner is None else {"template": owner}
+    owners: dict[str, type] = {}
+    _, template_owner = _walk_template(cls)
+    if template_owner is not None:
+        owners["template"] = template_owner
+    for kind in ("css", "js"):
+        _, owner = _walk_asset(cls, kind)
+        if owner is not None:
+            owners[kind] = owner
+    return owners
 
 
 def _resolve_class_descriptor(cls: type[BaseModel]) -> ClassDescriptor:
     """Build the ClassDescriptor for ``cls`` by invoking all resolver helpers.
 
-    The template walk runs once here and feeds both ``template_path`` and the
-    template entry of ``provenance``; calling the two single-purpose resolvers
-    separately would probe the same ancestors twice.
+    Each kind's walk runs exactly once here and feeds both the path field and
+    its provenance entry; calling the single-purpose resolvers side by side
+    would probe the same ancestors twice.
     """
-    css_paths, js_paths = _resolve_asset_paths(cls)
     template_path, template_owner = _walk_template(cls)
+    css_path, css_owner = _walk_asset(cls, "css")
+    js_path, js_owner = _walk_asset(cls, "js")
+    provenance = {
+        kind: owner
+        for kind, owner in (
+            ("template", template_owner),
+            ("css", css_owner),
+            ("js", js_owner),
+        )
+        if owner is not None
+    }
     return ClassDescriptor(
         template_path=template_path,
         slot_fields=_resolve_slot_fields(cls),
-        css_paths=css_paths,
-        js_paths=js_paths,
+        css_paths=() if css_path is None else (css_path,),
+        js_paths=() if js_path is None else (js_path,),
         strict=_resolve_strict(cls),
-        provenance={} if template_owner is None else {"template": template_owner},
+        provenance=provenance,
     )
 
 

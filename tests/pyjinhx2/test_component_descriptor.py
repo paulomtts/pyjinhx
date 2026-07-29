@@ -28,15 +28,14 @@ from pyjinhx2.descriptor import ClassDescriptor
 
 
 class TestResolveClassDescriptor:
-    """The seam #275-#276 land behind: one call, one whole ClassDescriptor."""
+    """The seam every resolver lands behind: one call, one whole ClassDescriptor."""
 
     def test_returns_a_fully_constructed_descriptor(self):
-        """`provenance` is empty here on purpose, and no longer because #274 is
-        unimplemented: `Card` is a direct subclass, so its sole candidate is the
-        last ancestor's — returned unprobed per ADR 0007 — and no `card.pjx`
-        sits beside this test file anyway. No file was proven to exist, so no
-        ancestor is named. `slot_fields`/`css_paths`/`js_paths` are still the
-        #275/#276 stubs."""
+        """`provenance` is empty here, and every path field is empty or
+        unproven for the same reason: `Card` is a direct subclass whose sole
+        template candidate is the last ancestor's — returned unprobed per
+        ADR 0007 — and no `card.pjx`, `card.css` or `card.js` sits beside this
+        test file. Nothing was proven to exist, so no ancestor is named."""
 
         class Card(BaseComponent):
             pass
@@ -186,9 +185,10 @@ class TestDefiningModuleDir:
         assert _defining_module_dir(Card) == Path(__file__).parent
 
     def test_raises_not_implemented_when_the_module_has_no_file(self):
-        """A class with no module on disk has no directory to probe from. #271
-        fails loudly here rather than inventing a path; #272/#276 inherit the
-        guard when they replace the stubs."""
+        """A class with no module on disk has no directory to probe from: this
+        fails loudly here rather than inventing a path. The template and asset
+        candidate builders both route through this guard rather than
+        inventing a path of their own."""
         module = types.ModuleType("pyjinhx2_test_fileless_module")
         sys.modules["pyjinhx2_test_fileless_module"] = module
         try:
@@ -816,8 +816,9 @@ class TestTemplateWalkStopsAtBaseComponent:
 
 class TestResolveProvenance:
     """ADR 0010: the descriptor records *which ancestor* supplied each kind —
-    free provenance for error messages and the dependency graph. Template kind
-    only; css/js stay absent until #276 gives assets real resolution."""
+    free provenance for error messages and the dependency graph. One entry per
+    kind that actually resolved to a proven file; kinds that resolved to
+    nothing name nobody."""
 
     def test_an_own_file_names_the_class_itself(self, mro_dir):
         class Card(BaseComponent):
@@ -958,10 +959,10 @@ class TestResolveProvenance:
         assert BaseComponent not in _resolve_provenance(FancyCard).values()
         assert BaseComponent not in _resolve_provenance(Card).values()
 
-    def test_it_never_records_css_or_js_kinds(self, mro_dir):
-        """Per-kind independence at the resolver level: assets are still #276's
-        stub, so provenance must not invent owners for kinds nothing resolved.
-        Same terminal-slot caveat as the other tests above."""
+    def test_it_records_the_ancestor_that_supplied_each_kind(self, mro_dir):
+        """All three kinds happen to live on the same ancestor here; each was
+        still found by its own walk. Same terminal-slot caveat as above: the
+        template's owner must not be the walk's unprobed last ancestor."""
 
         class Base(BaseComponent):
             pass
@@ -979,17 +980,78 @@ class TestResolveProvenance:
         (mro_dir / "card.css").write_text(".card {}")
         (mro_dir / "card.js").write_text("//card")
 
+        assert _resolve_provenance(FancyCard) == {
+            "template": Card,
+            "css": Card,
+            "js": Card,
+        }
+
+    def test_each_kind_names_its_own_ancestor(self, mro_dir):
+        class Base(BaseComponent):
+            pass
+
+        class Card(Base):
+            pass
+
+        class FancyCard(Card):
+            pass
+
+        Base.__module__ = _MRO_MODULE
+        Card.__module__ = _MRO_MODULE
+        FancyCard.__module__ = _MRO_MODULE
+        (mro_dir / "card.pjx").write_text("<div>card</div>")
+        (mro_dir / "card.js").write_text("//card")
+        (mro_dir / "fancy_card.css").write_text(".fancy {}")
+
+        assert _resolve_provenance(FancyCard) == {
+            "template": Card,
+            "css": FancyCard,
+            "js": Card,
+        }
+
+    def test_a_kind_that_resolved_to_nothing_is_absent(self, mro_dir):
+        class Base(BaseComponent):
+            pass
+
+        class Card(Base):
+            pass
+
+        class FancyCard(Card):
+            pass
+
+        Base.__module__ = _MRO_MODULE
+        Card.__module__ = _MRO_MODULE
+        FancyCard.__module__ = _MRO_MODULE
+        (mro_dir / "card.css").write_text(".card {}")
+
         provenance = _resolve_provenance(FancyCard)
 
-        assert provenance == {"template": Card}
-        assert "css" not in provenance
+        assert provenance == {"css": Card}
         assert "js" not in provenance
+        assert "template" not in provenance
+
+    def test_an_asset_on_the_last_ancestor_is_still_named(self, mro_dir):
+        """The template walk leaves its last ancestor unprobed and so cannot
+        name it. The asset walk probes it, so it can."""
+
+        class Card(BaseComponent):
+            pass
+
+        class FancyCard(Card):
+            pass
+
+        Card.__module__ = _MRO_MODULE
+        FancyCard.__module__ = _MRO_MODULE
+        (mro_dir / "card.css").write_text(".card {}")
+
+        assert _resolve_provenance(FancyCard) == {"css": Card}
 
 
 class TestProvenanceProbeBudget:
     """ADR 0007's budget survives provenance: at most one `is_file` per
-    ancestor, none for the final fallback, and building a whole descriptor
-    walks once — not once for the path and again for the owner."""
+    ancestor per kind, none for the template walk's final fallback, and
+    building a whole descriptor walks each kind once — not once for the path
+    and again for the owner."""
 
     @staticmethod
     def _count_is_file(monkeypatch) -> list[Path]:
@@ -1003,7 +1065,7 @@ class TestProvenanceProbeBudget:
         monkeypatch.setattr(Path, "is_file", counting)
         return probed
 
-    def test_provenance_alone_probes_exactly_what_the_path_walk_probes(
+    def test_provenance_probes_each_ancestor_once_per_kind(
         self, mro_dir, monkeypatch
     ):
         class Card(BaseComponent):
@@ -1022,12 +1084,23 @@ class TestProvenanceProbeBudget:
 
         _resolve_provenance(VeryFancyCard)
 
-        assert probed == [mro_dir / "very_fancy_card.pjx", mro_dir / "fancy_card.pjx"]
+        assert probed == [
+            mro_dir / "very_fancy_card.pjx",
+            mro_dir / "fancy_card.pjx",
+            mro_dir / "very_fancy_card.css",
+            mro_dir / "fancy_card.css",
+            mro_dir / "card.css",
+            mro_dir / "very_fancy_card.js",
+            mro_dir / "fancy_card.js",
+            mro_dir / "card.js",
+        ]
+        assert len(probed) == len(set(probed))
 
-    def test_building_a_descriptor_walks_only_once(self, mro_dir, monkeypatch):
-        """The path and the owner come out of one shared walk, so a full
-        descriptor build costs the same probes as `_resolve_template_path`
-        alone — no doubling."""
+    def test_building_a_descriptor_probes_no_path_twice(
+        self, mro_dir, monkeypatch
+    ):
+        """Path and owner come out of one shared walk per kind, so a full
+        descriptor build never asks the filesystem the same question twice."""
 
         class Card(BaseComponent):
             pass
@@ -1041,27 +1114,38 @@ class TestProvenanceProbeBudget:
         for klass in (Card, FancyCard, VeryFancyCard):
             klass.__module__ = _MRO_MODULE
         (mro_dir / "fancy_card.pjx").write_text("<div>fancy</div>")
+        (mro_dir / "card.css").write_text(".card {}")
+        probed = self._count_is_file(monkeypatch)
 
-        path_only = self._count_is_file(monkeypatch)
-        _resolve_template_path(VeryFancyCard)
-        expected = list(path_only)
-
-        descriptor_probes = self._count_is_file(monkeypatch)
         descriptor = _resolve_class_descriptor(VeryFancyCard)
 
         assert descriptor.template_path == mro_dir / "fancy_card.pjx"
-        assert descriptor.provenance == {"template": FancyCard}
-        assert descriptor_probes == expected
+        assert descriptor.css_paths == (mro_dir / "card.css",)
+        assert descriptor.js_paths == ()
+        assert descriptor.provenance == {"template": FancyCard, "css": Card}
+        assert probed == list(dict.fromkeys(probed))
 
-    def test_a_direct_subclasss_descriptor_probes_nothing(self, monkeypatch):
-        probed = self._count_is_file(monkeypatch)
+    def test_a_direct_subclasss_descriptor_probes_only_its_assets(
+        self, monkeypatch
+    ):
+        """One ancestor, so the template candidate is the unprobed terminal and
+        the only probes left are the two optional asset candidates.
+
+        `Card` is defined before the spy is installed: `__pydantic_init_subclass__`
+        already ran `_resolve_class_descriptor` once for its own registration, so
+        a spy installed earlier would double every probe (registration's pass
+        plus this test's explicit call)."""
 
         class Card(BaseComponent):
             pass
 
+        probed = self._count_is_file(monkeypatch)
+
         _resolve_class_descriptor(Card)
 
-        assert probed == []
+        here = Path(__file__).parent
+
+        assert probed == [here / "card.css", here / "card.js"]
 
 
 class TestAssetMroWalk:
