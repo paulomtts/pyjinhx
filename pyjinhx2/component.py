@@ -185,6 +185,18 @@ def _walk_template(cls: type) -> tuple[Path, type | None]:
     return _template_candidate(ancestors[-1]), None
 
 
+def _missing_template_error(cls: type) -> FileNotFoundError:
+    """The error for a class whose template file exists nowhere up its MRO.
+
+    Returned rather than raised so the raise site stays with the caller that
+    checked the file is absent; this function only formats.
+    """
+    resolved, _ = _walk_template(cls)
+    return FileNotFoundError(
+        f"No template found for {cls.__name__}. Expected a file at {resolved}."
+    )
+
+
 def _walk_asset(cls: type, kind: str) -> tuple[Path | None, type | None]:
     """The MRO walk for one asset kind, run once and reported in full.
 

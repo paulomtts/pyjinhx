@@ -13,6 +13,7 @@ from pyjinhx2.component import (
     Slot,
     _asset_candidate,
     _defining_module_dir,
+    _missing_template_error,
     _pascal_to_snake,
     _resolution_ancestors,
     _resolve_asset_paths,
@@ -1502,3 +1503,26 @@ class TestPerKindIndependence:
 
         assert _resolve_template_path(FancyCard) == mro_dir / "fancy_card.pjx"
         assert _resolve_asset_paths(FancyCard)[0] == (mro_dir / "card.css",)
+
+
+class TestMissingTemplateError:
+    """The diagnostic a caller raises when no ancestor has a template file.
+    Returned, not raised: the raise site belongs to the renderer, matching
+    `pyjinhx.tags._missing_template_error`."""
+
+    def test_it_returns_a_file_not_found_error_instead_of_raising(self):
+        class Card(BaseComponent):
+            pass
+
+        error = _missing_template_error(Card)
+
+        assert isinstance(error, FileNotFoundError)
+
+    def test_a_bare_class_message_names_the_class_and_its_one_candidate(self):
+        class Card(BaseComponent):
+            pass
+
+        message = str(_missing_template_error(Card))
+
+        assert "Card" in message
+        assert str(Path(__file__).parent / "card.pjx") in message
