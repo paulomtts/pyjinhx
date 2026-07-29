@@ -99,8 +99,10 @@ class TestClassDescriptorIsFrozen:
 
 class TestClassDescriptorEquality:
     def test_equal_field_values_compare_equal(self):
-        # #278 rebuilds by replacing the whole object; equality is how a test
-        # asserts a no-op rebuild produced an equivalent descriptor.
+        # rebuild_class_descriptor replaces the whole object; equality is how a
+        # test asserts a no-op rebuild produced an equivalent descriptor. The
+        # rebuild itself is exercised in test_component_descriptor.py, which may
+        # import component.py — this module may not.
         assert make_descriptor() == make_descriptor()
 
     def test_differing_field_values_compare_unequal(self):

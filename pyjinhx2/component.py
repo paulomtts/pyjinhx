@@ -297,6 +297,20 @@ def _resolve_class_descriptor(cls: type[BaseModel]) -> ClassDescriptor:
     )
 
 
+def rebuild_class_descriptor(cls: type[BaseModel]) -> None:
+    """Recompute ``cls``'s ClassDescriptor from scratch and swap it in.
+
+    The one place a descriptor is recomputed after registration. Because the
+    descriptor is frozen, refreshing it means building a new one and rebinding
+    the class attribute — nothing is ever edited in place, so a render holding
+    the old object keeps a coherent view of the class it started with.
+
+    Callable only: dev-reload machinery decides *when* to invalidate, and this
+    watches nothing.
+    """
+    cls._pjx_descriptor = _resolve_class_descriptor(cls)  # pyright: ignore[reportAttributeAccessIssue]
+
+
 class BaseComponent(BaseModel):
     """Base for all components: strict field validation with auto-id support."""
 
@@ -334,7 +348,7 @@ class BaseComponent(BaseModel):
                 f"{id_field.annotation}; id must remain typed str so "
                 f"_validate_id and _require_explicit_id keep their meaning."
             )
-        cls._pjx_descriptor = _resolve_class_descriptor(cls)
+        rebuild_class_descriptor(cls)
 
     @model_validator(mode="before")
     @classmethod
