@@ -160,6 +160,26 @@ def _resolution_ancestors(cls: type) -> list[type]:
     return ancestors
 
 
+def _walk_template(cls: type) -> tuple[Path, type | None]:
+    """The template MRO walk, run once and reported in full.
+
+    Returns ``(path, owner)``: the template ``cls`` renders with, and the
+    ancestor a probe proved owns it — or ``None`` when the answer came from the
+    last ancestor's candidate, which is returned *without* a probe (ADR 0007's
+    budget). An unprobed candidate has no proven owner, so it names none.
+
+    Single source of truth for the walk: `_resolve_template_path` and
+    `_resolve_provenance` both read this one result, so adding provenance costs
+    zero extra `is_file` calls.
+    """
+    ancestors = _resolution_ancestors(cls)
+    for ancestor in ancestors[:-1]:
+        candidate = _template_candidate(ancestor)
+        if candidate.is_file():
+            return candidate, ancestor
+    return _template_candidate(ancestors[-1]), None
+
+
 def _resolve_template_path(cls: type) -> Path:
     """The template ``cls`` renders with: the nearest ancestor's candidate that exists on disk.
 
@@ -168,12 +188,7 @@ def _resolve_template_path(cls: type) -> Path:
     candidate is returned without a probe — it is the answer whether or not the
     file is there.
     """
-    ancestors = _resolution_ancestors(cls)
-    for ancestor in ancestors[:-1]:
-        candidate = _template_candidate(ancestor)
-        if candidate.is_file():
-            return candidate
-    return _template_candidate(ancestors[-1])
+    return _walk_template(cls)[0]
 
 
 def _resolve_slot_fields(cls: type) -> frozenset[str]:
@@ -193,20 +208,34 @@ def _resolve_strict(cls: type[BaseModel]) -> bool:
 
 
 def _resolve_provenance(cls: type) -> Mapping[str, type]:
-    """Resolve provenance (kind → ancestor class) for ``cls``. Stub returns empty dict."""
-    return {}
+    """Which ancestor supplied each resolved kind — ADR 0010's free provenance,
+    for error messages and the dependency graph.
+
+    Template kind only: `css`/`js` keys stay absent until #276 gives assets real
+    resolution, because a stub that resolves nothing has no owner to name. The
+    key is omitted entirely when the walk ended on the unprobed fallback — no
+    file was proven to exist, so no ancestor is named.
+    """
+    _, owner = _walk_template(cls)
+    return {} if owner is None else {"template": owner}
 
 
 def _resolve_class_descriptor(cls: type[BaseModel]) -> ClassDescriptor:
-    """Build the ClassDescriptor for ``cls`` by invoking all resolver helpers."""
+    """Build the ClassDescriptor for ``cls`` by invoking all resolver helpers.
+
+    The template walk runs once here and feeds both ``template_path`` and the
+    template entry of ``provenance``; calling the two single-purpose resolvers
+    separately would probe the same ancestors twice.
+    """
     css_paths, js_paths = _resolve_asset_paths(cls)
+    template_path, template_owner = _walk_template(cls)
     return ClassDescriptor(
-        template_path=_resolve_template_path(cls),
+        template_path=template_path,
         slot_fields=_resolve_slot_fields(cls),
         css_paths=css_paths,
         js_paths=js_paths,
         strict=_resolve_strict(cls),
-        provenance=_resolve_provenance(cls),
+        provenance={} if template_owner is None else {"template": template_owner},
     )
 
 
