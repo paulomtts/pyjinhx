@@ -1526,3 +1526,43 @@ class TestMissingTemplateError:
 
         assert "Card" in message
         assert str(Path(__file__).parent / "card.pjx") in message
+
+    def test_a_chain_lists_every_ancestors_candidate_nearest_first(self, mro_dir):
+        class Grandparent(BaseComponent):
+            pass
+
+        class Parent(Grandparent):
+            pass
+
+        class Child(Parent):
+            pass
+
+        for klass in (Grandparent, Parent, Child):
+            klass.__module__ = _MRO_MODULE
+
+        message = str(_missing_template_error(Child))
+
+        assert str(mro_dir / "child.pjx") in message
+        assert str(mro_dir / "parent.pjx") in message
+        assert str(mro_dir / "grandparent.pjx") in message
+        assert message.index("child.pjx") < message.index("parent.pjx")
+        assert message.index("parent.pjx") < message.index("grandparent.pjx")
+
+    def test_each_listed_line_pairs_an_ancestor_name_with_its_path(self, mro_dir):
+        """The point of the message: a subclass author can read off which class
+        was expected to own which file, not just that something is missing."""
+
+        class Card(BaseComponent):
+            pass
+
+        class FancyCard(Card):
+            pass
+
+        Card.__module__ = _MRO_MODULE
+        FancyCard.__module__ = _MRO_MODULE
+
+        message = str(_missing_template_error(FancyCard))
+
+        assert f"FancyCard -> {mro_dir / 'fancy_card.pjx'}" in message
+        assert f"Card -> {mro_dir / 'card.pjx'}" in message
+        assert "FancyCard" in message.splitlines()[0]

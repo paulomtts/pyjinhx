@@ -188,12 +188,27 @@ def _walk_template(cls: type) -> tuple[Path, type | None]:
 def _missing_template_error(cls: type) -> FileNotFoundError:
     """The error for a class whose template file exists nowhere up its MRO.
 
+    Lists one candidate per ancestor, nearest first, so a subclass author sees
+    every path that was tried instead of only the fallback the walk ended on.
+
     Returned rather than raised so the raise site stays with the caller that
-    checked the file is absent; this function only formats.
+    checked the file is absent; this function only formats, and reuses the
+    walk's own result instead of probing the filesystem again.
     """
+    ancestors = _resolution_ancestors(cls)
     resolved, _ = _walk_template(cls)
+    if len(ancestors) == 1:
+        return FileNotFoundError(
+            f"No template found for {cls.__name__}. Expected a file at {resolved}."
+        )
+    candidates = [_template_candidate(ancestor) for ancestor in ancestors[:-1]]
+    candidates.append(resolved)
+    listing = "\n".join(
+        f"  {ancestor.__name__} -> {candidate}"
+        for ancestor, candidate in zip(ancestors, candidates, strict=True)
+    )
     return FileNotFoundError(
-        f"No template found for {cls.__name__}. Expected a file at {resolved}."
+        f"No template found for {cls.__name__}. Checked, nearest ancestor first:\n{listing}"
     )
 
 
