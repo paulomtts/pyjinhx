@@ -1644,3 +1644,237 @@ class TestMissingTemplateError:
         assert _resolve_template_path(FancyCard) == mro_dir / "card.pjx"
         assert _resolve_provenance(FancyCard) == {}
         assert FancyCard._pjx_descriptor.template_path == mro_dir / "card.pjx"
+
+
+class TestDescriptorInheritanceMatrix:
+    """One `_resolve_class_descriptor` call, every field checked together.
+
+    The rest of this file checks one resolver at a time; nothing checks that
+    the three independent walks land in the *same* descriptor consistently —
+    that the path a kind resolved to and the ancestor `provenance` credits for
+    it always agree, even when the three kinds come from three different
+    ancestors.
+
+    Every chain here carries a `Widget` tail that owns no files. The template
+    walk returns the last ancestor's candidate unprobed, so an unproven
+    ancestor can never be named in provenance; the tail absorbs that slot and
+    lets the class that really owns the template be probed and credited.
+    """
+
+    def test_own_files_are_named_as_their_own_provenance(self, mro_dir):
+        """The base case the mixed scenarios are read against: when one class
+        owns all three files, every path is its own and it is credited for
+        every kind."""
+
+        class Widget(BaseComponent):
+            pass
+
+        class Card(Widget):
+            pass
+
+        for klass in (Widget, Card):
+            klass.__module__ = _MRO_MODULE
+        (mro_dir / "card.pjx").write_text("<div>card</div>")
+        (mro_dir / "card.css").write_text(".card {}")
+        (mro_dir / "card.js").write_text("//card")
+
+        descriptor = _resolve_class_descriptor(Card)
+
+        assert descriptor.template_path == mro_dir / "card.pjx"
+        assert descriptor.css_paths == (mro_dir / "card.css",)
+        assert descriptor.js_paths == (mro_dir / "card.js",)
+        assert descriptor.provenance == {"template": Card, "css": Card, "js": Card}
+
+    def test_all_kinds_inherited_from_the_same_ancestor(self, mro_dir):
+        """A leaf with nothing of its own gets the parent's three files and
+        credits the parent for all three — the descriptor must not silently
+        credit the class it was built for."""
+
+        class Widget(BaseComponent):
+            pass
+
+        class Card(Widget):
+            pass
+
+        class FancyCard(Card):
+            pass
+
+        for klass in (Widget, Card, FancyCard):
+            klass.__module__ = _MRO_MODULE
+        (mro_dir / "card.pjx").write_text("<div>card</div>")
+        (mro_dir / "card.css").write_text(".card {}")
+        (mro_dir / "card.js").write_text("//card")
+
+        descriptor = _resolve_class_descriptor(FancyCard)
+
+        assert descriptor.template_path == mro_dir / "card.pjx"
+        assert descriptor.css_paths == (mro_dir / "card.css",)
+        assert descriptor.js_paths == (mro_dir / "card.js",)
+        assert descriptor.provenance == {"template": Card, "css": Card, "js": Card}
+
+    def test_all_kinds_inherited_from_a_grandparent_through_an_empty_parent(
+        self, mro_dir
+    ):
+        """An intermediate class that contributes nothing must be transparent
+        to all three walks at once: the descriptor names the grandparent for
+        every kind, never the empty class standing between."""
+
+        class Widget(BaseComponent):
+            pass
+
+        class Card(Widget):
+            pass
+
+        class FancyCard(Card):
+            pass
+
+        class VeryFancyCard(FancyCard):
+            pass
+
+        for klass in (Widget, Card, FancyCard, VeryFancyCard):
+            klass.__module__ = _MRO_MODULE
+        (mro_dir / "card.pjx").write_text("<div>card</div>")
+        (mro_dir / "card.css").write_text(".card {}")
+        (mro_dir / "card.js").write_text("//card")
+
+        descriptor = _resolve_class_descriptor(VeryFancyCard)
+
+        assert descriptor.template_path == mro_dir / "card.pjx"
+        assert descriptor.css_paths == (mro_dir / "card.css",)
+        assert descriptor.js_paths == (mro_dir / "card.js",)
+        assert descriptor.provenance == {"template": Card, "css": Card, "js": Card}
+
+    def test_mixed_provenance_across_three_ancestors(self, mro_dir):
+        """The case no single-resolver test can catch: three kinds resolving to
+        three different ancestors in one MRO. Each path field and its
+        provenance entry must agree pairwise, with no walk borrowing another's
+        winner."""
+
+        class Widget(BaseComponent):
+            pass
+
+        class Card(Widget):
+            pass
+
+        class FancyCard(Card):
+            pass
+
+        class VeryFancyCard(FancyCard):
+            pass
+
+        for klass in (Widget, Card, FancyCard, VeryFancyCard):
+            klass.__module__ = _MRO_MODULE
+        (mro_dir / "card.pjx").write_text("<div>card</div>")
+        (mro_dir / "fancy_card.css").write_text(".fancy {}")
+        (mro_dir / "very_fancy_card.js").write_text("//very")
+
+        descriptor = _resolve_class_descriptor(VeryFancyCard)
+
+        assert descriptor.template_path == mro_dir / "card.pjx"
+        assert descriptor.css_paths == (mro_dir / "fancy_card.css",)
+        assert descriptor.js_paths == (mro_dir / "very_fancy_card.js",)
+        assert descriptor.provenance == {
+            "template": Card,
+            "css": FancyCard,
+            "js": VeryFancyCard,
+        }
+
+    def test_mixed_provenance_with_one_kind_resolved_to_none(self, mro_dir):
+        """An absent kind is an absent *key*, not a key mapped to None or to
+        whichever ancestor happened to win another kind. Asserted next to two
+        resolved kinds so a leak into the empty slot would show up."""
+
+        class Widget(BaseComponent):
+            pass
+
+        class Card(Widget):
+            pass
+
+        class FancyCard(Card):
+            pass
+
+        for klass in (Widget, Card, FancyCard):
+            klass.__module__ = _MRO_MODULE
+        (mro_dir / "card.pjx").write_text("<div>card</div>")
+        (mro_dir / "card.css").write_text(".card {}")
+
+        descriptor = _resolve_class_descriptor(FancyCard)
+
+        assert descriptor.template_path == mro_dir / "card.pjx"
+        assert descriptor.css_paths == (mro_dir / "card.css",)
+        assert descriptor.js_paths == ()
+        assert "js" not in descriptor.provenance
+        assert descriptor.provenance == {"template": Card, "css": Card}
+
+    def test_siblings_with_a_shared_ancestor_get_independent_mixed_descriptors(
+        self, mro_dir
+    ):
+        """Two subclasses of one parent, each owning a different kind. Both
+        descriptors are built from the same directory, so a shared or leaked
+        result would show up as one sibling claiming the other's file."""
+
+        class Widget(BaseComponent):
+            pass
+
+        class Card(Widget):
+            pass
+
+        class FancyCard(Card):
+            pass
+
+        class PlainCard(Card):
+            pass
+
+        for klass in (Widget, Card, FancyCard, PlainCard):
+            klass.__module__ = _MRO_MODULE
+        (mro_dir / "card.pjx").write_text("<div>card</div>")
+        (mro_dir / "fancy_card.css").write_text(".fancy {}")
+        (mro_dir / "plain_card.js").write_text("//plain")
+
+        fancy = _resolve_class_descriptor(FancyCard)
+        plain = _resolve_class_descriptor(PlainCard)
+
+        assert fancy.template_path == mro_dir / "card.pjx"
+        assert fancy.css_paths == (mro_dir / "fancy_card.css",)
+        assert fancy.js_paths == ()
+        assert fancy.provenance == {"template": Card, "css": FancyCard}
+
+        assert plain.template_path == mro_dir / "card.pjx"
+        assert plain.css_paths == ()
+        assert plain.js_paths == (mro_dir / "plain_card.js",)
+        assert plain.provenance == {"template": Card, "js": PlainCard}
+
+    def test_missing_template_error_message_in_a_mixed_asset_chain(self, mro_dir):
+        """The diagnostic is built from path arithmetic over the whole MRO, so
+        it must stay complete and correctly paired even when the css and js
+        walks *did* find owners in that same chain — a resolved asset must not
+        stand in for, reorder or drop a template candidate."""
+
+        class Card(BaseComponent):
+            pass
+
+        class FancyCard(Card):
+            pass
+
+        class VeryFancyCard(FancyCard):
+            pass
+
+        for klass in (Card, FancyCard, VeryFancyCard):
+            klass.__module__ = _MRO_MODULE
+        (mro_dir / "card.css").write_text(".card {}")
+        (mro_dir / "fancy_card.js").write_text("//fancy")
+
+        descriptor = _resolve_class_descriptor(VeryFancyCard)
+        message = str(_missing_template_error(VeryFancyCard))
+
+        assert descriptor.css_paths == (mro_dir / "card.css",)
+        assert descriptor.js_paths == (mro_dir / "fancy_card.js",)
+        assert descriptor.provenance == {"css": Card, "js": FancyCard}
+
+        assert f"VeryFancyCard -> {mro_dir / 'very_fancy_card.pjx'}" in message
+        assert f"FancyCard -> {mro_dir / 'fancy_card.pjx'}" in message
+        assert f"Card -> {mro_dir / 'card.pjx'}" in message
+        assert message.index("very_fancy_card.pjx") < message.index("fancy_card.pjx")
+        assert message.index("fancy_card.pjx") < message.index("card.pjx")
+        assert ".css" not in message
+        assert ".js" not in message
