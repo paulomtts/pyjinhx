@@ -5,7 +5,7 @@ import pytest
 from pydantic import BaseModel, Field, ValidationError
 
 import pyjinhx2.component
-from pyjinhx2.component import BaseComponent
+from pyjinhx2.component import BaseComponent, Slot
 
 
 class Address(BaseModel):
@@ -25,6 +25,25 @@ class Panel(BaseComponent):
 
 class Named(BaseComponent):
     auto_id = False
+
+
+class Structural(BaseComponent):
+    sources: list = Field(default_factory=list)
+    meta: dict = Field(default_factory=dict)
+    typed_items: list[str] = Field(default_factory=list)
+    typed_map: dict[str, int] = Field(default_factory=dict)
+    address: Address | None = None
+    maybe_items: list[str] | None = None
+    label: str | list = ""
+
+
+class Slotted(BaseComponent):
+    body: Slot = ""
+
+
+class StrictStructural(BaseComponent):
+    auto_id = False
+    sources: list = Field(default_factory=list)
 
 
 class TestStrictConfig:
@@ -108,6 +127,28 @@ class TestAutoIdOptOut:
     def test_auto_id_is_not_a_model_field(self):
         assert "auto_id" not in BaseComponent.model_fields
         assert "auto_id" not in Named.model_fields
+
+
+class TestJsonCoercion:
+    def test_json_string_coerces_to_list(self):
+        assert Structural(
+            typed_items='["a", "b"]'  # pyright: ignore[reportArgumentType]
+        ).typed_items == ["a", "b"]
+
+    def test_json_string_coerces_to_dict(self):
+        assert Structural(
+            typed_map='{"a": 1}'  # pyright: ignore[reportArgumentType]
+        ).typed_map == {"a": 1}
+
+    def test_json_object_string_coerces_to_base_model_field(self):
+        assert Structural(
+            address='{"city": "Lisbon"}'  # pyright: ignore[reportArgumentType]
+        ).address == Address(city="Lisbon")
+
+    def test_optional_annotation_still_coerces(self):
+        assert Structural(
+            maybe_items='["a"]'  # pyright: ignore[reportArgumentType]
+        ).maybe_items == ["a"]
 
 
 FORBIDDEN_IMPORTS = (
