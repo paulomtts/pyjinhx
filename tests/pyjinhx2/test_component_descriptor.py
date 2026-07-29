@@ -1507,16 +1507,15 @@ class TestPerKindIndependence:
 
 class TestMissingTemplateError:
     """The diagnostic a caller raises when no ancestor has a template file.
-    Returned, not raised: the raise site belongs to the renderer, matching
-    `pyjinhx.tags._missing_template_error`."""
+    Returned, not raised: the raise site belongs to the renderer."""
 
-    def test_it_returns_a_file_not_found_error_instead_of_raising(self):
+    def test_it_returns_a_lookup_error_instead_of_raising(self):
         class Card(BaseComponent):
             pass
 
         error = _missing_template_error(Card)
 
-        assert isinstance(error, FileNotFoundError)
+        assert isinstance(error, LookupError)
 
     def test_a_bare_class_message_names_the_class_and_its_one_candidate(self):
         class Card(BaseComponent):
@@ -1567,17 +1566,33 @@ class TestMissingTemplateError:
         assert f"Card -> {mro_dir / 'card.pjx'}" in message
         assert "FancyCard" in message.splitlines()[0]
 
-    def test_it_probes_nothing_beyond_the_walk_itself(self, mro_dir, monkeypatch):
-        """The formatter adds zero filesystem cost: the only `is_file` calls are
-        the walk's own, one per ancestor except the unprobed fallback. A future
-        'let me double-check each path' edit has to be deliberate.
+    def test_the_message_states_plainly_that_no_ancestor_has_a_file(self):
+        class Card(BaseComponent):
+            pass
+
+        message = str(_missing_template_error(Card))
+
+        assert "no class it inherits from has a .pjx file" in message
+
+    def test_the_message_labels_the_probed_paths(self):
+        class Card(BaseComponent):
+            pass
+
+        message = str(_missing_template_error(Card))
+
+        assert "Paths probed, nearest first:" in message
+
+    def test_it_performs_no_filesystem_probes(self, mro_dir, monkeypatch):
+        """The builder is pure path arithmetic: the walk that already answered
+        `_resolve_template_path` spent the filesystem budget (ADR 0007); this
+        formatter must not spend any more, not even for the last ancestor.
 
         Classes are defined and re-pointed at `mro_dir` *before* the spy is
         installed: `__pydantic_init_subclass__` itself walks template and
         asset candidates at class-definition time (against whatever module the
         class has *then*), and installing the spy first would let those
         registration-time probes (against the test file's own directory, since
-        `__module__` isn't reassigned yet) leak into the counts below — the
+        `__module__` isn't reassigned yet) leak into the assertion below — the
         same reason `TestTemplateWalkProbeBudget` defines its classes first."""
 
         class Grandparent(BaseComponent):
@@ -1592,26 +1607,23 @@ class TestMissingTemplateError:
         for klass in (Grandparent, Parent, Child):
             klass.__module__ = _MRO_MODULE
 
-        is_file_calls: list[Path] = []
-        exists_calls: list[Path] = []
+        probed: list[Path] = []
         real_is_file = Path.is_file
         real_exists = Path.exists
 
         def counting_is_file(self: Path, *args, **kwargs):
-            is_file_calls.append(self)
+            probed.append(self)
             return real_is_file(self, *args, **kwargs)
 
         def counting_exists(self: Path, *args, **kwargs):
-            exists_calls.append(self)
+            probed.append(self)
             return real_exists(self, *args, **kwargs)
 
         monkeypatch.setattr(Path, "is_file", counting_is_file)
         monkeypatch.setattr(Path, "exists", counting_exists)
 
-        _missing_template_error(Child)
-
-        assert is_file_calls == [mro_dir / "child.pjx", mro_dir / "parent.pjx"]
-        assert exists_calls == []
+        assert isinstance(_missing_template_error(Child), LookupError)
+        assert probed == []
 
     def test_the_resolvers_still_succeed_for_a_template_less_class(self, mro_dir):
         """The error exists as a value only. Registration and resolution must
