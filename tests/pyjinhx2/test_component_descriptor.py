@@ -22,9 +22,16 @@ from pyjinhx2.descriptor import ClassDescriptor
 
 
 class TestResolveClassDescriptor:
-    """The seam #272-#276 land behind: one call, one whole ClassDescriptor."""
+    """The seam #275-#276 land behind: one call, one whole ClassDescriptor."""
 
     def test_returns_a_fully_constructed_descriptor(self):
+        """`provenance` is empty here on purpose, and no longer because #274 is
+        unimplemented: `Card` is a direct subclass, so its sole candidate is the
+        last ancestor's — returned unprobed per ADR 0007 — and no `card.pjx`
+        sits beside this test file anyway. No file was proven to exist, so no
+        ancestor is named. `slot_fields`/`css_paths`/`js_paths` are still the
+        #275/#276 stubs."""
+
         class Card(BaseComponent):
             pass
 
