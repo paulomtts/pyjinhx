@@ -82,9 +82,28 @@ class VerbatimParser(HTMLParser):
     ``segments`` list, so ``"".join(parser.segments)`` reproduces the input
     exactly — attribute quoting, attribute order, unknown and boolean attrs,
     odd casing and intentionally malformed HTML all survive untouched. There is
-    no tag tree and no stack: cutting at PascalCase tags (#254), recording
+    no tag tree. Top-level PascalCase tags are cut out (#254, below); recording
     ``root_span`` (#255), capturing paired-tag ``inner`` (#256) and enforcing a
     single root (#257) all layer onto this harness later.
+
+    Cutting (#254) covers **self-closing** top-level component tags only: they
+    become ``ChildRef(tag, attrs, inner=None)`` at their exact position, so
+    ``segments`` is ``[str, ..., ChildRef, ..., str]`` in document order. A
+    *paired* top-level tag (``<PJXButton>body</PJXButton>``) is deliberately left
+    as raw passthrough — open tag, body and close tag remain separate strings.
+    Collapsing that run into one ``ChildRef`` with ``inner`` populated is #256's
+    job, and emitting a ``ChildRef(inner=None)`` here would falsely claim the tag
+    has no body. What #254 leaves behind for #256 is ``_custom_stack``: the index
+    of each open tag in ``segments``, enough to replace the run in place later.
+    That index is only available while the tag is still open — ``handle_endtag``
+    pops (and discards) an entry the instant its close tag matches, so #256 must
+    read the top of the stack *before* the pop, from inside its own
+    ``handle_endtag`` handling, not by inspecting ``_custom_stack`` after
+    ``close()`` returns (by then only never-closed stragglers remain there).
+
+    A tag nested inside a still-open component tag is never cut and never
+    re-scanned (ADR 0002, opaque children): it stays raw inside the ancestor's
+    span, for #256 to capture wholesale.
 
     Deliberate deviation from v0.x's ``pyjinhx/tags.py`` ``Parser``: ``handle_data``
     does **not** re-escape with ``markupsafe.escape``. That dependency is
@@ -95,7 +114,9 @@ class VerbatimParser(HTMLParser):
     delivers CDATA content undecoded, and passthrough never touches it.
 
     Also unlike v0.x, ``close()`` is not overridden and never raises on unclosed
-    tags — there is no component stack yet to validate against.
+    tags: a non-empty ``_custom_stack`` at EOF is fine here, and a mismatched
+    close tag is passed through without popping. The stack is bookkeeping, not
+    validation — enforcement is #257's.
 
     Known limitation: markup truncated mid-construct at EOF (``"<div"``,
     ``"<!-- unclosed"``) does not round-trip — ``HTMLParser`` drops or completes
@@ -108,7 +129,7 @@ class VerbatimParser(HTMLParser):
         # silently unescaping markup Jinja escaped on purpose. Keep refs intact
         # and reconstruct them below.
         super().__init__(convert_charrefs=False)
-        self.segments: "list[str | ChildRef]" = []
+        self.segments: list[str | ChildRef] = []
         self._source = ""
         self._line_starts: list[int] = [0]
         # One entry per currently-open PascalCase tag: (original-cased name, index
@@ -152,7 +173,9 @@ class VerbatimParser(HTMLParser):
         raw = self.get_starttag_text() or f"<{tag}/>"
         name = self._custom_tag_name(raw)
         if name is not None and not self._custom_stack:
-            self.segments.append(ChildRef(tag=name, attrs=_attrs_to_dict(attrs), inner=None))
+            self.segments.append(
+                ChildRef(tag=name, attrs=_attrs_to_dict(attrs), inner=None)
+            )
             return
         self.segments.append(raw)
 
@@ -161,7 +184,11 @@ class VerbatimParser(HTMLParser):
         # for #254, `</PJXButton>`. Recover the source text instead.
         raw = self._raw_at(RE_RAW_END_TAG) or f"</{tag}>"
         name = self._custom_tag_name(raw)
-        if name is not None and self._custom_stack and self._custom_stack[-1][0] == name:
+        if (
+            name is not None
+            and self._custom_stack
+            and self._custom_stack[-1][0] == name
+        ):
             self._custom_stack.pop()
         # Deliberate non-pop on a name mismatch: enforcement is #257's, and
         # popping on mismatch would silently reopen cutting inside a still-

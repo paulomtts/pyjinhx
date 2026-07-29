@@ -168,7 +168,10 @@ class TestVerbatimParser:
             "round_trip only handles all-string segment lists; "
             "assert cut markup structurally instead"
         )
-        return "".join(parser.segments)
+        # str() is a no-op on the str elements the assert above just verified;
+        # it exists so basedpyright sees a `str` return type without the assert
+        # narrowing `list[str | ChildRef]` (which it does not do through `all()`).
+        return "".join(str(segment) for segment in parser.segments)
 
     @pytest.mark.parametrize(
         "markup",
@@ -260,8 +263,8 @@ class TestVerbatimParser:
     )
     def test_unclosed_component_tags_do_not_raise(self, markup: str):
         # Deliberate difference from v0.x pyjinhx/tags.py, whose Parser.close()
-        # raises ValueError on an unclosed component stack. There is no stack
-        # here; enforcement arrives with #254/#257.
+        # raises ValueError on an unclosed component stack. #254 added a stack,
+        # but purely as cut-gating bookkeeping — enforcement arrives with #257.
         assert self.round_trip(markup) == markup
 
     @staticmethod
