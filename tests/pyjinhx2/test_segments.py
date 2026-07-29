@@ -321,6 +321,41 @@ class TestVerbatimParser:
         assert (start, end) == (0, len('<PJXButton label="Go">'))
         assert markup[start:end] == '<PJXButton label="Go">'
 
+    def test_root_span_records_only_the_first_of_several_top_level_siblings(self):
+        # Multi-root rejection is #257's; #255 just must not get confused by it.
+        markup = '<PJXButton label="Go"/> and <PJXIcon name="gear"/>'
+        parser = self.parsed(markup)
+        start, end = parser.root_span
+        assert markup[start:end] == '<PJXButton label="Go"/>'
+        assert (start, end) == (0, 23)
+
+    def test_root_span_records_the_outer_tag_not_a_nested_one(self):
+        markup = "<PJXAccordion><PJXIcon name='gear'/></PJXAccordion>"
+        parser = self.parsed(markup)
+        start, end = parser.root_span
+        assert markup[start:end] == "<PJXAccordion>"
+        assert (start, end) == (0, len("<PJXAccordion>"))
+
+    def test_root_span_ignores_tag_name_casing(self):
+        # Unlike _custom_tag_name, span capture makes no PascalCase distinction.
+        assert self.parsed("<DIV>hi</DIV>").root_span == (0, len("<DIV>"))
+
+    def test_root_span_end_is_start_plus_raw_length_for_irregular_tag_text(self):
+        markup = "<PJXButton\n  label='Go'\n>t</PJXButton>"
+        parser = self.parsed(markup)
+        start, end = parser.root_span
+        raw = "<PJXButton\n  label='Go'\n>"
+        assert markup[start:end] == raw
+        assert end - start == len(raw)
+
+    def test_root_span_is_absolute_across_leading_newlines(self):
+        # Offsets are into the whole fed source, resolved through _line_starts, so a
+        # tag on a later line still slices back to its own raw text.
+        markup = "\n\n  <div class='card'>hi</div>"
+        parser = self.parsed(markup)
+        start, end = parser.root_span
+        assert markup[start:end] == "<div class='card'>"
+
     def test_top_level_self_closing_tag_becomes_a_child_ref(self):
         assert self.parse('<div><PJXIcon name="gear"/></div>') == [
             "<div>",
