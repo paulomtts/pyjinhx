@@ -1,4 +1,5 @@
 """PJXCard: the <article> shell that composes header/body/footer parts."""
+
 import pytest
 
 from pyjinhx import Renderer
@@ -33,7 +34,11 @@ def test_class_name_appends():
 
 def test_composition_order_header_body_footer():
     html = _card()
-    assert html.index("pjx-card__header") < html.index("pjx-card__body") < html.index("pjx-card__footer")
+    assert (
+        html.index("pjx-card__header")
+        < html.index("pjx-card__body")
+        < html.index("pjx-card__footer")
+    )
     assert "Q3 report" in html
     assert "Revenue grew 12%." in html
     assert "Updated today" in html

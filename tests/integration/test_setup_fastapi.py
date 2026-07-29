@@ -26,7 +26,9 @@ def _static_mounts(app):
     return [
         route
         for route in app.routes
-        if isinstance(route, Mount) and route.path == "/static" and route.name == "static"
+        if isinstance(route, Mount)
+        and route.path == "/static"
+        and route.name == "static"
     ]
 
 

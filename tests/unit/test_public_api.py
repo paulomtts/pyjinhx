@@ -48,24 +48,56 @@ def test_public_symbols_are_correct():
     assert issubclass(MutationKey, str)
     assert AssetMode.INLINE is not None
     assert PjxKey.__name__ == "PjxKey"
-    for fn in (setup, mutates, component, dirty, PjxSettings.from_env,
-               Renderer.set_default_environment, Registry.request_scope,
-               PjxContext.current):
+    for fn in (
+        setup,
+        mutates,
+        component,
+        dirty,
+        PjxSettings.from_env,
+        Renderer.set_default_environment,
+        Registry.request_scope,
+        PjxContext.current,
+    ):
         assert callable(fn)
 
 
 def test_internals_are_not_in_the_public_surface():
     # advanced/internal building blocks must NOT leak into the top-level API
     for name in (
-        "CacheScope", "client_script", "oob_swaps", "LoadCache", "InvalidationHub",
-        "InvalidationBackend", "MutationTracker", "DynamicReactiveKey", "Finder", "Parser", "Tag",
-        "ClientBackend", "FastAPIClientBackend", "MountedManifest", "TriggerManifest",
-        "LoadedAssets", "PJX_MOUNTED_HEADER", "PJX_TRIGGER_HEADER", "PJX_ASSETS_HEADER",
-        "configure_pyjinhx", "shutdown_pyjinhx",
-        "enable_reactive_dev", "disable_reactive_dev", "dependency_graph",
-        "format_dependency_graph", "AssetManifest", "RenderSession", "asset_manifest",
-        "default_asset_url", "hashed_filename", "make_default_asset_url_resolver",
-        "resolver_with_hash", "runtime_asset_path", "DEFAULT_RUNTIME_URL",
+        "CacheScope",
+        "client_script",
+        "oob_swaps",
+        "LoadCache",
+        "InvalidationHub",
+        "InvalidationBackend",
+        "MutationTracker",
+        "DynamicReactiveKey",
+        "Finder",
+        "Parser",
+        "Tag",
+        "ClientBackend",
+        "FastAPIClientBackend",
+        "MountedManifest",
+        "TriggerManifest",
+        "LoadedAssets",
+        "PJX_MOUNTED_HEADER",
+        "PJX_TRIGGER_HEADER",
+        "PJX_ASSETS_HEADER",
+        "configure_pyjinhx",
+        "shutdown_pyjinhx",
+        "enable_reactive_dev",
+        "disable_reactive_dev",
+        "dependency_graph",
+        "format_dependency_graph",
+        "AssetManifest",
+        "RenderSession",
+        "asset_manifest",
+        "default_asset_url",
+        "hashed_filename",
+        "make_default_asset_url_resolver",
+        "resolver_with_hash",
+        "runtime_asset_path",
+        "DEFAULT_RUNTIME_URL",
     ):
         assert name not in pyjinhx.__all__
         assert not hasattr(pyjinhx, name)

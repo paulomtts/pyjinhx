@@ -12,10 +12,13 @@ Components are automatically registered at **two points** in their lifecycle:
    ```python
    from pyjinhx import BaseComponent
 
+
    # When you define the class, it's registered in the class registry
    class Button(BaseComponent):
        id: str
        text: str
+
+
    # Button is now in Registry.get_classes()
    ```
 
@@ -55,6 +58,7 @@ Use `Registry.request_scope()` to isolate components per request:
 
 ```python
 from pyjinhx import Registry
+
 
 @app.get("/")
 def index():
@@ -127,9 +131,11 @@ class Card(BaseComponent):
     id: str
     title: str
 
+
 class Modal(BaseComponent):
     id: str
     title: str
+
 
 # Both can use id="main" without collision
 card = Card(id="main", title="Card Title")
@@ -161,6 +167,7 @@ During render, registered instances are injected into the Jinja context by `id` 
 # Class registry (automatic when you define a class)
 class MyButton(BaseComponent):
     id: str
+
 
 assert "MyButton" in Registry.get_classes()
 

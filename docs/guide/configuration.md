@@ -155,7 +155,7 @@ Enable development guardrails to catch common reactive mistakes:
 ```python
 from pyjinhx.dev import enable_reactive_dev, disable_reactive_dev
 
-enable_reactive_dev()           # log warnings
+enable_reactive_dev()  # log warnings
 enable_reactive_dev(strict=True)  # raise RuntimeError instead
 disable_reactive_dev()
 ```

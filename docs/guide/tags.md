@@ -26,14 +26,14 @@ template). Non-declared ("stray") attributes are injected onto the component's r
 element automatically — no template token needed.
 
 ```python
-html = renderer.render('''
+html = renderer.render("""
     <Input
         type="email"
         name="user_email"
         placeholder="Enter your email"
         required="true"
     />
-''')
+""")
 ```
 
 Stray attributes like `hx-*`, `data-*`, or `aria-*` passed on any PascalCase tag land
@@ -102,10 +102,12 @@ If the tag's `id` matches a pre-registered component instance, that instance is 
 ```python
 from pyjinhx import BaseComponent, Renderer
 
+
 class Button(BaseComponent):
     id: str
     text: str = "default"
     variant: str = "primary"
+
 
 # Create and register an instance
 btn = Button(id="my-btn", text="Original", variant="danger")
@@ -128,6 +130,7 @@ class Button(BaseComponent):
     id: str
     text: str
     variant: str = "default"
+
 
 renderer = Renderer.get_default_renderer()
 html = renderer.render('<Button text="Save"/>')  # Validated using Button

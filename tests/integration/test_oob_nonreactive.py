@@ -46,7 +46,9 @@ def _app() -> FastAPI:
 
 def test_nonreactive_response_carries_oob_swaps():
     Renderer.set_default_environment(REPO_ROOT)
-    manifest = json.dumps([{"id": "counter", "type": "ReactiveCounter", "hash": "stale"}])
+    manifest = json.dumps(
+        [{"id": "counter", "type": "ReactiveCounter", "hash": "stale"}]
+    )
     with TestClient(_app()) as client:
         resp = client.post("/act", headers={PJX_MOUNTED_HEADER: manifest})
     body = resp.text
@@ -59,7 +61,9 @@ def test_nonreactive_response_carries_oob_swaps():
 
 def test_reactive_response_emits_single_swap_set():
     Renderer.set_default_environment(REPO_ROOT)
-    manifest = json.dumps([{"id": "counter", "type": "ReactiveCounter", "hash": "stale"}])
+    manifest = json.dumps(
+        [{"id": "counter", "type": "ReactiveCounter", "hash": "stale"}]
+    )
     with TestClient(_app()) as client:
         resp = client.post("/reactive", headers={PJX_MOUNTED_HEADER: manifest})
     body = resp.text
@@ -69,7 +73,9 @@ def test_reactive_response_emits_single_swap_set():
 
 def test_dismiss_keeps_primary_and_appends_single_swap_set():
     Renderer.set_default_environment(REPO_ROOT)
-    manifest = json.dumps([{"id": "counter", "type": "ReactiveCounter", "hash": "stale"}])
+    manifest = json.dumps(
+        [{"id": "counter", "type": "ReactiveCounter", "hash": "stale"}]
+    )
     with TestClient(_app()) as client:
         resp = client.post("/dismiss", headers={PJX_MOUNTED_HEADER: manifest})
     body = resp.text

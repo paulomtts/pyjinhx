@@ -18,7 +18,9 @@ pip install pyjinhx[redis]
 
 ```python
 class RedisInvalidationBackend(InvalidationBackend):
-    def __init__(self, redis_url: str, *, channel: str = "pyjinhx:invalidate") -> None: ...
+    def __init__(
+        self, redis_url: str, *, channel: str = "pyjinhx:invalidate"
+    ) -> None: ...
 ```
 
 Publishes dirtied keys over Redis pub/sub so every worker evicts its local `load()` cache.

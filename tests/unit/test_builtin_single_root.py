@@ -11,7 +11,11 @@ def _builtin_classes():
     seen = []
     for name in dir(builtins_pkg):
         obj = getattr(builtins_pkg, name)
-        if isinstance(obj, type) and issubclass(obj, BaseComponent) and obj is not BaseComponent:
+        if (
+            isinstance(obj, type)
+            and issubclass(obj, BaseComponent)
+            and obj is not BaseComponent
+        ):
             seen.append(obj)
     return seen
 

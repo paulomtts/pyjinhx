@@ -107,11 +107,9 @@ def test_scalar_attr_overrides_load_result():
         with open(os.path.join(temp_dir, "panel_shell.html"), "w") as f:
             f.write("<div id='{{ id }}'>{{ highlight }}</div>")
         with Registry.request_scope():
-            rendered = str(
-                _renderer(temp_dir).render('<PanelShell highlight="on"/>')
-            )
+            rendered = str(_renderer(temp_dir).render('<PanelShell highlight="on"/>'))
 
-    assert ">on<" in rendered   # tag attr won over load()'s "off"
+    assert ">on<" in rendered  # tag attr won over load()'s "off"
     assert ">off<" not in rendered  # loaded default was replaced
 
 
@@ -154,7 +152,9 @@ def test_duplicate_keyed_mount_id_raises():
         with open(os.path.join(temp_dir, "row_card.html"), "w") as f:
             f.write("<div id='{{ id }}'></div>")
         with open(os.path.join(temp_dir, "page.html"), "w") as f:
-            f.write('<div id="{{ id }}"><RowCard row_id="1"/><RowCard row_id="1"/></div>')
+            f.write(
+                '<div id="{{ id }}"><RowCard row_id="1"/><RowCard row_id="1"/></div>'
+            )
         with (
             Registry.request_scope(),
             pytest.raises(ValueError, match="already used in this render"),
@@ -176,7 +176,9 @@ def test_distinct_keyed_mounts_coexist():
         with open(os.path.join(temp_dir, "cell_card.html"), "w") as f:
             f.write("<div id='{{ id }}'>{{ cell_id }}</div>")
         with open(os.path.join(temp_dir, "grid.html"), "w") as f:
-            f.write('<div id="{{ id }}"><CellCard cell_id="1"/><CellCard cell_id="2"/></div>')
+            f.write(
+                '<div id="{{ id }}"><CellCard cell_id="1"/><CellCard cell_id="2"/></div>'
+            )
         with Registry.request_scope():
             rendered = str(_renderer(temp_dir).render('<Grid id="grid"/>'))
 
@@ -202,9 +204,7 @@ def test_preloaded_instance_is_reused_without_reloading():
         with Registry.request_scope():
             PreShell.load()  # pre-load: seeds the registry under "pre-shell"
             assert calls["n"] == 1
-            rendered = str(
-                _renderer(temp_dir).render('<PreShell id="pre-shell"/>')
-            )
+            rendered = str(_renderer(temp_dir).render('<PreShell id="pre-shell"/>'))
 
     assert "load-1" in rendered
     assert calls["n"] == 1  # tag reused the pre-loaded instance, no second load
@@ -292,6 +292,6 @@ def test_keyed_tag_key_excluded_non_key_attr_overridden():
                 _renderer(temp_dir).render('<WidgetX widget_id="k1" tone="loud"/>')
             )
 
-    assert "loud" in rendered          # non-key attr override applied
-    assert "muted" not in rendered     # loaded default was replaced
+    assert "loud" in rendered  # non-key attr override applied
+    assert "muted" not in rendered  # loaded default was replaced
     assert 'data-pjx-load="k1"' in rendered  # key is preserved in output

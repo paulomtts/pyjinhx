@@ -26,7 +26,9 @@ def form_field():
 
 
 def toggle_switch():
-    return PJXToggleSwitch(name="notifications", checked=True, label="Email notifications").render()
+    return PJXToggleSwitch(
+        name="notifications", checked=True, label="Email notifications"
+    ).render()
 
 
 def segmented_control():

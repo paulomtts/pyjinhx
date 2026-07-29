@@ -41,7 +41,9 @@ def test_cross_reference_still_resolves(tmp_path):
         "[{{ lazy_peer }}][{{ lazy_peer.html }}][{{ lazy_peer.props.label }}]"
         "</section>"
     )
-    (tmp_path / "lazy_peer.html").write_text('<span class="peer-marker">{{ label }}</span>')
+    (tmp_path / "lazy_peer.html").write_text(
+        '<span class="peer-marker">{{ label }}</span>'
+    )
     module = _load_module(
         tmp_path,
         "lazy_defaults_components",

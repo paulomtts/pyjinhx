@@ -20,7 +20,9 @@ You don't choose where cached `load()` results are stored — it is **derived** 
 ```python
 class LoadCache:
     @classmethod
-    def invalidate(cls, dirtied: Iterable[object], *, propagate: bool = True) -> None: ...
+    def invalidate(
+        cls, dirtied: Iterable[object], *, propagate: bool = True
+    ) -> None: ...
     @classmethod
     def clear(cls) -> None: ...
 ```
@@ -30,7 +32,7 @@ Memoizes reactive `load()` results keyed by `(class, load_arg)`. The scope is se
 ```python
 from pyjinhx import setup
 
-setup(app)                      # default — per-request, multi-worker safe
+setup(app)  # default — per-request, multi-worker safe
 setup(app, invalidation_backend=...)  # cross-request per worker; fans out evictions
 ```
 

@@ -24,7 +24,9 @@ def test_api_show_and_hide(sink_page):
     note = sink_page.locator("#rx-note")
     assert sink_page.evaluate("pjx.notification.show('rx-note')") is True
     expect(note).to_contain_class("pjx-notification--visible")
-    assert sink_page.evaluate("pjx.notification.show('rx-note')") is False  # already visible
+    assert (
+        sink_page.evaluate("pjx.notification.show('rx-note')") is False
+    )  # already visible
 
     assert sink_page.evaluate("pjx.notification.hide('rx-note')") is True
     expect(note).not_to_contain_class("pjx-notification--visible")

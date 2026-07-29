@@ -7,14 +7,14 @@ See [Reactivity](../reactivity.md) for conceptual documentation.
 ## MutationKey
 
 ```python
-class MutationKey(StrEnum):
-    ...
+class MutationKey(StrEnum): ...
 ```
 
 Base class for app-level reactive key constants. Subclass and declare members; use the members in `react={...}` and `@mutates` — all normalize to their string values. Both `react=` and `@mutates` only accept `MutationKey` members; passing a bare string raises `TypeError`.
 
 ```python
 from pyjinhx import MutationKey
+
 
 class Keys(MutationKey):
     TODOS = "todos"
@@ -23,8 +23,7 @@ class Keys(MutationKey):
 ## PjxKey
 
 ```python
-class PjxKey:
-    ...
+class PjxKey: ...
 ```
 
 Marker for `Annotated[..., PjxKey()]`. Keyed components declare exactly one `PjxKey` field; its value is stamped as `data-pjx-load` on render and returned in the client manifest as `load` for OOB `load()` round-trip.
@@ -33,8 +32,10 @@ Marker for `Annotated[..., PjxKey()]`. Keyed components declare exactly one `Pjx
 from typing import Annotated
 from pyjinhx import MutationKey, PjxKey, ReactiveComponent
 
+
 class Keys(MutationKey):
     TODOS = "todos"
+
 
 class ItemRow(ReactiveComponent, react={Keys.TODOS}):
     todo_id: Annotated[int, PjxKey()]
@@ -57,13 +58,14 @@ Decorator for store mutation methods. Each arg must be a **`MutationKey` member*
 ```python
 from pyjinhx import MutationKey, mutates
 
+
 class Keys(MutationKey):
     TODOS = "todos"
 
+
 class Store:
     @mutates(Keys.TODOS)
-    def add(self, text: str) -> None:
-        ...
+    def add(self, text: str) -> None: ...
 ```
 
 ## dirty
@@ -77,8 +79,10 @@ Imperatively dirty reactive keys — the same effect `@mutates` has, but without
 ```python
 from pyjinhx import MutationKey, dirty
 
+
 class Keys(MutationKey):
     TODOS = "todos"
+
 
 store.add_without_decorator(text)
 dirty(Keys.TODOS)
@@ -88,8 +92,7 @@ dirty(Keys.TODOS)
 
 ```python
 @dataclass(frozen=True)
-class PjxContext:
-    ...
+class PjxContext: ...
 ```
 
 Opaque base for request-scoped data available inside reactive `load()` and any component method that declares a `PjxContext` parameter. Subclass with your own frozen dataclass fields (database session, user id, feature flags).
@@ -109,9 +112,11 @@ Prefer `Registry.request_scope(load_context=ctx)` in web apps — it combines re
 from pyjinhx import PjxContext, Registry
 from pyjinhx.integrations.fastapi import FastAPIClientBackend
 
+
 @dataclass(frozen=True)
 class AppLoadContext(PjxContext):
     db: Session
+
 
 with Registry.request_scope(
     load_context=AppLoadContext(db=session),

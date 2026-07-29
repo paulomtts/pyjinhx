@@ -1,4 +1,5 @@
 """PJXAccordionGroup: wraps PJXAccordions in a shared layout/behavior container."""
+
 from typing import Any
 
 import pytest

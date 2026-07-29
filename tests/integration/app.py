@@ -217,7 +217,9 @@ def _gallery_inner_html() -> str:
             id="g-modal",
             content=(
                 PJXModalHeader(id="g-modal-h", title="Demo modal").render()
-                + PJXModalBody(id="g-modal-b", content="Modal body content from the gallery.").render()
+                + PJXModalBody(
+                    id="g-modal-b", content="Modal body content from the gallery."
+                ).render()
             ),
         ),
         notification=PJXNotification(
@@ -230,7 +232,9 @@ def _gallery_inner_html() -> str:
             id="g-pop",
             content=(
                 PJXPopoverTrigger(id="g-pop-t", content="Open popover").render()
-                + PJXPopoverPanel(id="g-pop-p", content="Popover details appear on click.").render()
+                + PJXPopoverPanel(
+                    id="g-pop-p", content="Popover details appear on click."
+                ).render()
             ),
         ),
         region_loader=PJXRegionLoader(id="g-overlay"),
@@ -251,7 +255,10 @@ def _gallery_inner_html() -> str:
         dropdown=PJXDropdown(
             id="g-drop",
             trigger="Options",
-            items=['<a role="menuitem" href="#">First</a>', '<a role="menuitem" href="#">Second</a>'],
+            items=[
+                '<a role="menuitem" href="#">First</a>',
+                '<a role="menuitem" href="#">Second</a>',
+            ],
         ),
         drawer=PJXDrawer(
             id="g-drawer",
@@ -304,36 +311,62 @@ def _gallery_inner_html() -> str:
         tab_group=PJXTabGroup(
             id="g-tabs",
             content=(
-                (PJXTabList(content=(
-                    PJXTab(id="g-tabs-t0", panel="g-tabs-p0", selected=True, content="Overview").render()
-                    + PJXTab(id="g-tabs-t1", panel="g-tabs-p1", content="Details").render()
-                )).render())
-                + PJXTabPanel(id="g-tabs-p0", tab="g-tabs-t0", content="<p>First panel content.</p>").render()
-                + PJXTabPanel(id="g-tabs-p1", tab="g-tabs-t1", content="<p>Second panel content.</p>").render()
+                (
+                    PJXTabList(
+                        content=(
+                            PJXTab(
+                                id="g-tabs-t0",
+                                panel="g-tabs-p0",
+                                selected=True,
+                                content="Overview",
+                            ).render()
+                            + PJXTab(
+                                id="g-tabs-t1", panel="g-tabs-p1", content="Details"
+                            ).render()
+                        )
+                    ).render()
+                )
+                + PJXTabPanel(
+                    id="g-tabs-p0",
+                    tab="g-tabs-t0",
+                    content="<p>First panel content.</p>",
+                ).render()
+                + PJXTabPanel(
+                    id="g-tabs-p1",
+                    tab="g-tabs-t1",
+                    content="<p>Second panel content.</p>",
+                ).render()
             ),
         ),
         panel_trigger_alpha=PJXTab(
-            id="g-panel-tr-a", panel="g-panel-panel-alpha", selected=True,
-            content='<span>Alpha</span>',
+            id="g-panel-tr-a",
+            panel="g-panel-panel-alpha",
+            selected=True,
+            content="<span>Alpha</span>",
         ),
         panel_trigger_beta=PJXTab(
-            id="g-panel-tr-b", panel="g-panel-panel-beta",
-            content='<span>Beta</span>',
+            id="g-panel-tr-b",
+            panel="g-panel-panel-beta",
+            content="<span>Beta</span>",
         ),
         panel_host=PJXTabGroup(
             id="g-panel",
             content=(
-                (PJXTabPanel(
-                    id="g-panel-panel-alpha",
-                    content="<p>Panel alpha (default). Beta is hidden but still connected to SSE.</p>",
-                ).render())
-                + (PJXTabPanel(
-                    id="g-panel-panel-beta",
-                    content=(
-                        '<div id="g-panel-sse-live" hx-ext="sse" sse-connect="/sse/panel-demo" '
-                        'sse-swap="message" style="font-family:monospace;font-size:1.1rem;">waiting…</div>'
-                    ),
-                ).render())
+                (
+                    PJXTabPanel(
+                        id="g-panel-panel-alpha",
+                        content="<p>Panel alpha (default). Beta is hidden but still connected to SSE.</p>",
+                    ).render()
+                )
+                + (
+                    PJXTabPanel(
+                        id="g-panel-panel-beta",
+                        content=(
+                            '<div id="g-panel-sse-live" hx-ext="sse" sse-connect="/sse/panel-demo" '
+                            'sse-swap="message" style="font-family:monospace;font-size:1.1rem;">waiting…</div>'
+                        ),
+                    ).render()
+                )
             ),
         ),
     )

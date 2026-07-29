@@ -38,13 +38,13 @@ pytestmark = [pytest.mark.pjx_runtime, pytest.mark.reactivity]
 # Component module written to a temp components root
 # ---------------------------------------------------------------------------
 
-_COMPONENT_MODULE = '''\
+_COMPONENT_MODULE = """\
 from pyjinhx import BaseComponent
 
 
 class LazyWidget(BaseComponent):
     label: str = ""
-'''
+"""
 
 _WIDGET_TEMPLATE = '<div id="{{ id }}" class="lazy-widget">{{ label }}</div>'
 

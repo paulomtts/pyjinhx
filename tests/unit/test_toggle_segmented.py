@@ -1,5 +1,6 @@
 # tests/87_toggle_segmented_test.py
 """Tests for PJXToggleSwitch and PJXSegmentedControl builtins."""
+
 import os
 import re
 
@@ -63,6 +64,7 @@ def test_toggle_switch_no_js_file():
     import inspect
 
     from pyjinhx.builtins import PJXToggleSwitch as _TS
+
     component_dir = os.path.dirname(inspect.getfile(_TS))
     js_files = [f for f in os.listdir(component_dir) if f.endswith(".js")]
     assert js_files == [], f"Unexpected JS files in PJXToggleSwitch: {js_files}"
@@ -90,52 +92,67 @@ def _seg_root(html: str) -> str:
 
 
 def test_segmented_control_renders_radios():
-    html = str(PJXSegmentedControl(
-        id="sc1", name="view",
-        options=[("list", "List"), ("grid", "Grid")],
-    ).render())
+    html = str(
+        PJXSegmentedControl(
+            id="sc1",
+            name="view",
+            options=[("list", "List"), ("grid", "Grid")],
+        ).render()
+    )
     assert html.count('type="radio"') == 2
 
 
 def test_segmented_control_radio_names():
-    html = str(PJXSegmentedControl(
-        id="sc2", name="mode",
-        options=[("a", "A"), ("b", "B")],
-    ).render())
+    html = str(
+        PJXSegmentedControl(
+            id="sc2",
+            name="mode",
+            options=[("a", "A"), ("b", "B")],
+        ).render()
+    )
     assert html.count('name="mode"') == 2
 
 
 def test_segmented_control_selected_checked():
-    html = str(PJXSegmentedControl(
-        id="sc3", name="view",
-        options=[("list", "List"), ("grid", "Grid")],
-        selected="list",
-    ).render())
+    html = str(
+        PJXSegmentedControl(
+            id="sc3",
+            name="view",
+            options=[("list", "List"), ("grid", "Grid")],
+            selected="list",
+        ).render()
+    )
     # The "list" radio should be checked, grid should not
     assert 'value="list"' in html
     # The checked attr follows the value attr in the same input; check ordering
     list_pos = html.find('value="list"')
     grid_pos = html.find('value="grid"')
-    checked_pos = html.find(' checked', list_pos)
+    checked_pos = html.find(" checked", list_pos)
     # checked appears after value="list" and before next input
     assert list_pos < checked_pos < grid_pos
 
 
 def test_segmented_control_role_radiogroup():
-    html = str(PJXSegmentedControl(
-        id="sc4", name="x",
-        options=[("a", "A")],
-    ).render())
+    html = str(
+        PJXSegmentedControl(
+            id="sc4",
+            name="x",
+            options=[("a", "A")],
+        ).render()
+    )
     root = _seg_root(html)
     assert 'role="radiogroup"' in root
 
 
 def test_segmented_control_disabled():
-    html = str(PJXSegmentedControl(
-        id="sc5", name="x",
-        options=[("a", "A"), ("b", "B")],
-        disabled=True,
-    ).render())
+    html = str(
+        PJXSegmentedControl(
+            id="sc5",
+            name="x",
+            options=[("a", "A"), ("b", "B")],
+            disabled=True,
+        ).render()
+    )
     assert html.count(" disabled") == 2
 
 
@@ -145,10 +162,13 @@ def test_segmented_control_json_string_coercion():
 
 
 def test_segmented_control_text_labels():
-    html = str(PJXSegmentedControl(
-        id="sc7", name="view",
-        options=[("list", "List"), ("grid", "Grid")],
-    ).render())
+    html = str(
+        PJXSegmentedControl(
+            id="sc7",
+            name="view",
+            options=[("list", "List"), ("grid", "Grid")],
+        ).render()
+    )
     assert "List" in html
     assert "Grid" in html
     assert "pjx-segmented-control__text" in html
@@ -159,6 +179,7 @@ def test_segmented_control_no_js_file():
     import inspect
 
     from pyjinhx.builtins import PJXSegmentedControl as _SC
+
     component_dir = os.path.dirname(inspect.getfile(_SC))
     js_files = [f for f in os.listdir(component_dir) if f.endswith(".js")]
     assert js_files == [], f"Unexpected JS files in PJXSegmentedControl: {js_files}"
@@ -171,10 +192,13 @@ def test_segmented_control_contract_fields():
 
 
 def test_segmented_control_class_name_appended():
-    html = str(PJXSegmentedControl(
-        id="sc9", name="x",
-        options=[("a", "A")],
-        class_name="pill",
-    ).render())
+    html = str(
+        PJXSegmentedControl(
+            id="sc9",
+            name="x",
+            options=[("a", "A")],
+            class_name="pill",
+        ).render()
+    )
     root = _seg_root(html)
     assert "pill" in root

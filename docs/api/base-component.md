@@ -57,7 +57,7 @@ Reference an **html-only** component — a template that has no hand-written Pyt
 ```python
 from pyjinhx import component
 
-Card = component("Card")                  # finds card.html under the default environment
+Card = component("Card")  # finds card.html under the default environment
 Card(title="Hi", content="body").render()
 ```
 

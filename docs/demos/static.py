@@ -34,7 +34,9 @@ from pyjinhx.builtins import (
 def accordion():
     return PJXAccordion(
         content=PJXAccordionTrigger(content="What is pyjinhx?").render()
-        + PJXAccordionContent(content="<p>A Python/Jinja HTML component framework.</p>").render(),
+        + PJXAccordionContent(
+            content="<p>A Python/Jinja HTML component framework.</p>"
+        ).render(),
     ).render()
 
 
@@ -105,7 +107,9 @@ def avatar_stack():
 
 
 def breadcrumb():
-    return PJXBreadcrumb(items=[("Home", "/"), ("Projects", "/projects"), ("Dashboard", None)]).render()
+    return PJXBreadcrumb(
+        items=[("Home", "/"), ("Projects", "/projects"), ("Dashboard", None)]
+    ).render()
 
 
 def skeleton():
@@ -163,9 +167,14 @@ def resizable_group():
     return PJXResizableGroup(
         direction="row",
         content=(
-            PJXResizablePanel(size=40, min=20, content="<div style='padding:0.75rem'>Left</div>").render()
+            PJXResizablePanel(
+                size=40, min=20, content="<div style='padding:0.75rem'>Left</div>"
+            ).render()
             + PJXResizableHandle().render()
-            + PJXResizablePanel(size=60, content="<div style='padding:0.75rem'>Right (drag the divider)</div>").render()
+            + PJXResizablePanel(
+                size=60,
+                content="<div style='padding:0.75rem'>Right (drag the divider)</div>",
+            ).render()
         ),
     ).render()
 
@@ -180,21 +189,39 @@ def table():
         striped=True,
         bordered="horizontal",
         content=(
-            PJXTableHead(content=PJXTableRow(content=(
-                # Leading header cell aligns the column with the body rows'
-                # auto-prepended selection checkbox (see the select-all rule).
-                PJXTableHeaderCell(content="").render()
-                + PJXTableHeaderCell(sortable=True, sort="asc", content="Name").render()
-                + PJXTableHeaderCell(content="Role").render()
-            )).render()).render()
-            + PJXTableBody(content=(
-                PJXTableRow(selectable=True, value="1", content=(
-                    PJXTableCell(content="Ada Lovelace").render() + PJXTableCell(content="Engineer").render()
-                )).render()
-                + PJXTableRow(selectable=True, value="2", content=(
-                    PJXTableCell(content="Alan Turing").render() + PJXTableCell(content="Researcher").render()
-                )).render()
-            )).render()
+            PJXTableHead(
+                content=PJXTableRow(
+                    content=(
+                        # Leading header cell aligns the column with the body rows'
+                        # auto-prepended selection checkbox (see the select-all rule).
+                        PJXTableHeaderCell(content="").render()
+                        + PJXTableHeaderCell(
+                            sortable=True, sort="asc", content="Name"
+                        ).render()
+                        + PJXTableHeaderCell(content="Role").render()
+                    )
+                ).render()
+            ).render()
+            + PJXTableBody(
+                content=(
+                    PJXTableRow(
+                        selectable=True,
+                        value="1",
+                        content=(
+                            PJXTableCell(content="Ada Lovelace").render()
+                            + PJXTableCell(content="Engineer").render()
+                        ),
+                    ).render()
+                    + PJXTableRow(
+                        selectable=True,
+                        value="2",
+                        content=(
+                            PJXTableCell(content="Alan Turing").render()
+                            + PJXTableCell(content="Researcher").render()
+                        ),
+                    ).render()
+                )
+            ).render()
         ),
     ).render()
 

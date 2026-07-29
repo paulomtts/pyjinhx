@@ -8,6 +8,7 @@ first non-whitespace in the file::
 The header is a valid (inert) Jinja comment; pyjinhx parses it out-of-band and
 builds a ``BaseComponent`` subclass whose declared props are validated fields.
 """
+
 import ast
 import re
 from typing import Any
@@ -66,7 +67,9 @@ def parse_props_header(source: str) -> "list[tuple[str, Any, Any]] | None":
     try:
         tree = ast.parse(f"def __pjx_props__({signature}): pass")
     except SyntaxError as exc:
-        raise ValueError(f"invalid {{#def#}} header signature {signature!r}: {exc.msg}") from exc
+        raise ValueError(
+            f"invalid {{#def#}} header signature {signature!r}: {exc.msg}"
+        ) from exc
     func = tree.body[0]
     assert isinstance(func, ast.FunctionDef)
     arguments = func.args
@@ -76,7 +79,9 @@ def parse_props_header(source: str) -> "list[tuple[str, Any, Any]] | None":
         or arguments.kwonlyargs
         or arguments.posonlyargs
     ):
-        raise ValueError(f"{{#def#}} header may only use simple named props: {signature!r}")
+        raise ValueError(
+            f"{{#def#}} header may only use simple named props: {signature!r}"
+        )
     args = arguments.args
     defaults = arguments.defaults
     offset = len(args) - len(defaults)

@@ -14,7 +14,10 @@ def test_import_failure_warns(tmp_path, caplog):
         renderer = Renderer.get_default_renderer()
         with caplog.at_level(logging.WARNING, logger="pyjinhx"):
             renderer.render('<BrokenProbe id="b1"/>')
-        assert any("broken_probe.py" in r.message or "broken_probe.py" in r.getMessage() for r in caplog.records)
+        assert any(
+            "broken_probe.py" in r.message or "broken_probe.py" in r.getMessage()
+            for r in caplog.records
+        )
     finally:
         Renderer.set_default_environment(original_environment)
 
@@ -30,7 +33,11 @@ def test_unregistered_fallback_warns_once(tmp_path, caplog):
         with caplog.at_level(logging.WARNING, logger="pyjinhx"):
             renderer.render('<GhostProbe id="g1"/>')
             renderer.render('<GhostProbe id="g2"/>')
-        hits = [r for r in caplog.records if "GhostProbe" in r.getMessage() and "not registered" in r.getMessage()]
+        hits = [
+            r
+            for r in caplog.records
+            if "GhostProbe" in r.getMessage() and "not registered" in r.getMessage()
+        ]
         assert len(hits) == 1
     finally:
         Renderer.set_default_environment(original_environment)

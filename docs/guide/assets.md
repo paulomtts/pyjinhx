@@ -166,10 +166,13 @@ from fastapi.staticfiles import StaticFiles
 from pyjinhx import AssetMode, Renderer
 
 app = FastAPI()
-app.mount("/static/pyjinhx", StaticFiles(directory="path/to/pyjinhx/runtime"), name="pyjinhx")
+app.mount(
+    "/static/pyjinhx", StaticFiles(directory="path/to/pyjinhx/runtime"), name="pyjinhx"
+)
 
 Renderer.set_default_js_mode(AssetMode.NONE)
 Renderer.set_default_css_mode(AssetMode.NONE)
+
 
 @app.get("/")
 def index():
@@ -225,8 +228,11 @@ JS_BUNDLE, JS_ETAG = _build(JS_PATHS, "// === {path} ===\n")
 def _bundle(request: Request, body: bytes, etag: str, media_type: str) -> Response:
     if request.headers.get("if-none-match") == etag:
         return Response(status_code=304, headers={"ETag": etag})
-    return Response(body, media_type=media_type,
-                    headers={"ETag": etag, "Cache-Control": "public, max-age=300"})
+    return Response(
+        body,
+        media_type=media_type,
+        headers={"ETag": etag, "Cache-Control": "public, max-age=300"},
+    )
 
 
 @app.get("/assets/bundle.css", include_in_schema=False)
@@ -246,7 +252,9 @@ if your app's cascade needs a specific sheet first, prepend it to the list befor
 To include the pyjinhx builtins, add `import pyjinhx.builtins` and build a second `Finder`:
 
 ```python
-CSS_B, JS_B = Finder(os.path.join(os.path.dirname(pyjinhx.builtins.__file__), "ui")).all_assets()
+CSS_B, JS_B = Finder(
+    os.path.join(os.path.dirname(pyjinhx.builtins.__file__), "ui")
+).all_assets()
 ```
 
 Concatenate both lists before building the bundles.

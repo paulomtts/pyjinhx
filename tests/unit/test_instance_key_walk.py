@@ -29,4 +29,3 @@ def test_missing_keyed_entity_emits_delete_oob():
     out = str(oob_swaps({"users"}, manifest))
     assert "delete:[data-pjx-id='user-row-9']" in out
     assert "outerHTML:[data-pjx-id='user-row-9']" not in out
-

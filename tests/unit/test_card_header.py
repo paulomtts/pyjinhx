@@ -1,4 +1,5 @@
 """PJXCardHeader: <header> with a title convenience falling back to content."""
+
 import pytest
 
 from pyjinhx import Renderer

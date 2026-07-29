@@ -1,4 +1,5 @@
 """Tests for the new composable PJXModal shell."""
+
 import re
 
 import pytest
@@ -19,6 +20,7 @@ def _dialog(html: str) -> str:
 
 
 # ── Shell contract ────────────────────────────────────────────────────────────
+
 
 def test_modal_shell_single_dialog():
     html = str(PJXModal(id="m1").render())
@@ -63,10 +65,13 @@ def test_modal_remove_on_close_absent_by_default():
 def test_modal_old_api_fields_gone():
     """title/header/body/footer/close_label/close_content must not exist on PJXModal."""
     for field in ("title", "header", "body", "footer", "close_label", "close_content"):
-        assert field not in PJXModal.model_fields, f"Unexpected field '{field}' on PJXModal"
+        assert field not in PJXModal.model_fields, (
+            f"Unexpected field '{field}' on PJXModal"
+        )
 
 
 # ── Composed modal ────────────────────────────────────────────────────────────
+
 
 def _composed(tmp_path=None) -> str:
     header = str(PJXModalHeader(id="cm-h", title="Delete file?").render())

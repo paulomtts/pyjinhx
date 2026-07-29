@@ -10,8 +10,11 @@ def _root(html: str) -> str:
 
 
 def test_page_loader_config_attrs():
-    html = str(PJXPageLoader(id="pl", nav_targets="app-content,org-pane",
-                          loading_label="Carregando").render())
+    html = str(
+        PJXPageLoader(
+            id="pl", nav_targets="app-content,org-pane", loading_label="Carregando"
+        ).render()
+    )
     assert 'data-nav-targets="app-content,org-pane"' in html
     assert "pjx-page-loader--active" in _root(html)
     assert 'aria-label="Carregando"' in html

@@ -17,15 +17,23 @@ def test_lazy_load_when_load():
 
 
 def test_lazy_load_raw_trigger_wins():
-    html = str(PJXLazyLoad(id="lp", url="/x", when="reveal", trigger="click once").render())
+    html = str(
+        PJXLazyLoad(id="lp", url="/x", when="reveal", trigger="click once").render()
+    )
     assert 'hx-trigger="click once"' in html
 
 
 def test_region_loader_props():
-    html = str(PJXRegionLoader(id="lo", aria_label="Carregando", class_name="mine").render())
+    html = str(
+        PJXRegionLoader(id="lo", aria_label="Carregando", class_name="mine").render()
+    )
     assert 'aria-label="Carregando"' in html and "pjx-region-loader mine" in html
 
 
 def test_spinner_contract():
-    html = str(PJXSpinner(id="s", class_name="htmx-indicator", extra_attrs={"data-k": "v"}).render())
+    html = str(
+        PJXSpinner(
+            id="s", class_name="htmx-indicator", extra_attrs={"data-k": "v"}
+        ).render()
+    )
     assert "htmx-indicator" in html and 'data-k="v"' in html

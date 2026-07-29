@@ -1,4 +1,5 @@
 """Dropdown menu items and popover panels carry sensible default styling."""
+
 import pytest
 
 from pyjinhx import Renderer
@@ -12,7 +13,9 @@ def _env(tmp_path):
 
 def test_dropdown_inlines_menu_item_styling():
     html = str(PJXDropdown(trigger="Actions", items=["<button>Edit</button>"]).render())
-    assert ".pjx-dropdown__menu button" in html  # default item rule is shipped + inlined
+    assert (
+        ".pjx-dropdown__menu button" in html
+    )  # default item rule is shipped + inlined
 
 
 def test_popover_panel_has_padding_token():

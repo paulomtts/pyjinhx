@@ -63,7 +63,9 @@ class MutationTracker:
 
 def _require_mutation_keys(keys: tuple[Any, ...], caller: str) -> None:
     invalid = sorted(
-        repr(key) for key in keys if not isinstance(key, (MutationKey, DynamicReactiveKey))
+        repr(key)
+        for key in keys
+        if not isinstance(key, (MutationKey, DynamicReactiveKey))
     )
     if invalid:
         raise TypeError(
@@ -72,7 +74,9 @@ def _require_mutation_keys(keys: tuple[Any, ...], caller: str) -> None:
         )
 
 
-def mutates(*keys: MutationKey, key: Callable[..., object] | None = None) -> Callable[[F], F]:
+def mutates(
+    *keys: MutationKey, key: Callable[..., object] | None = None
+) -> Callable[[F], F]:
     """
     Decorator for store mutation methods.
 

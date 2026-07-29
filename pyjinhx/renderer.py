@@ -135,11 +135,19 @@ def load_template_for_component(
                     return cached_template
                 if os.path.isfile(candidate_path):
                     with renderer._cache_lock:
-                        cached_template = renderer._builtin_template_cache.get(candidate_path)
+                        cached_template = renderer._builtin_template_cache.get(
+                            candidate_path
+                        )
                         if cached_template is None:
-                            with open(candidate_path, encoding="utf-8") as template_file:
-                                cached_template = environment.from_string(template_file.read())
-                            renderer._builtin_template_cache[candidate_path] = cached_template
+                            with open(
+                                candidate_path, encoding="utf-8"
+                            ) as template_file:
+                                cached_template = environment.from_string(
+                                    template_file.read()
+                                )
+                            renderer._builtin_template_cache[candidate_path] = (
+                                cached_template
+                            )
                     return cached_template
 
     raise TemplateNotFound(", ".join(attempted) if attempted else "unknown")
@@ -269,7 +277,9 @@ def reactive_root_attrs(
     attrs = {
         "data-pjx-id": component.id,
         "data-pjx-type": type(component).__name__,
-        "data-pjx-hash": precomputed_hash if precomputed_hash is not None else component.state_hash(),
+        "data-pjx-hash": precomputed_hash
+        if precomputed_hash is not None
+        else component.state_hash(),
     }
     load_value = pjx_load_value(component)
     if load_value is not None:
@@ -543,7 +553,9 @@ class Renderer:
         environment.context_class = _PjxContext
         self._auto_id = auto_id
         self._js_mode = js_mode if js_mode is not None else Renderer._default_js_mode
-        self._css_mode = css_mode if css_mode is not None else Renderer._default_css_mode
+        self._css_mode = (
+            css_mode if css_mode is not None else Renderer._default_css_mode
+        )
         self._template_finder_cache: dict[str, Finder] = {}
         self._builtin_template_cache: dict[str, Template] = {}
         self._template_path_cache: dict[type, str] = {}
@@ -576,7 +588,10 @@ class Renderer:
         extra_root_attrs: dict[str, str] | None = None,
     ) -> Markup:
         template = load_template_for_component(
-            self, component, template_source=template_source, template_path=template_path
+            self,
+            component,
+            template_source=template_source,
+            template_path=template_path,
         )
 
         _warn_if_stale_def_header(component, template)
@@ -590,7 +605,9 @@ class Renderer:
         finally:
             _render_state.reset(state_token)
         candidates = _collect_opacifiable_slot_values(context)
-        safe_markup, placeholders = _opacify_rendered_markup(rendered_markup, candidates)
+        safe_markup, placeholders = _opacify_rendered_markup(
+            rendered_markup, candidates
+        )
         expanded_markup = str(
             expand_custom_tags(
                 self,
@@ -650,7 +667,9 @@ class Renderer:
         # Compute the effective asset path so apply_component_render_assets can
         # find co-located CSS/JS next to the template file.
         asset_template_path = template_path
-        if asset_template_path is None and getattr(type(component), "_pjx_classless", False):
+        if asset_template_path is None and getattr(
+            type(component), "_pjx_classless", False
+        ):
             pjx_template = getattr(type(component), "_pjx_template", None)
             if pjx_template is not None:
                 try:

@@ -33,7 +33,9 @@ class Finder:
     _relative_index: dict[str, str] = field(default_factory=dict, init=False)
     _all_files: list[tuple[str, str]] = field(default_factory=list, init=False)
     _is_indexed: bool = field(default=False, init=False)
-    _index_lock: threading.Lock = field(default_factory=threading.Lock, init=False, repr=False)
+    _index_lock: threading.Lock = field(
+        default_factory=threading.Lock, init=False, repr=False
+    )
 
     def _build_index(self) -> None:
         if self._is_indexed:

@@ -7,9 +7,9 @@
 v0.x resolves a component class with no template of its own by walking its MRO (Python inheritance chain) and using the nearest ancestor's template; template, CSS, and JS resolve independently per kind. This is what makes extending a builtin a three-line class:
 
 ```python
-class DangerButton(PJXButton):     # no danger_button.pjx anywhere
-    variant: str = "danger"       # inherits pjx_button.pjx + its JS,
-                                   # may ship only danger_button.css
+class DangerButton(PJXButton):  # no danger_button.pjx anywhere
+    variant: str = "danger"  # inherits pjx_button.pjx + its JS,
+    # may ship only danger_button.css
 ```
 
 Without it, every subclass duplicates the parent's template file, which then drifts when the parent's template changes. The cost in v0.x was extra probes through the six-candidate matrix; under ADR 0007 the matrix is 1×1.

@@ -1,5 +1,6 @@
 # tests/86_form_field_test.py
 """Tests for the PJXFormField builtin component."""
+
 import re
 
 from pyjinhx.builtins import PJXFormField
@@ -24,7 +25,7 @@ def test_form_field_for_wires_label_to_input():
 
 def test_form_field_no_for_when_empty():
     html = str(PJXFormField(id="ff3", label="Name").render())
-    assert ' for=' not in html
+    assert " for=" not in html
 
 
 def test_form_field_error_adds_modifier_class():
@@ -46,7 +47,9 @@ def test_form_field_error_has_stable_id():
 
 
 def test_form_field_error_replaces_help():
-    html = str(PJXFormField(id="ff7", help="Enter your name", error="Required").render())
+    html = str(
+        PJXFormField(id="ff7", help="Enter your name", error="Required").render()
+    )
     # Strip inlined CSS/JS before negative assertions — class names appear in the stylesheet.
     markup = re.split(r"<style", html, maxsplit=1)[0]
     assert "pjx-form-field__error" in html

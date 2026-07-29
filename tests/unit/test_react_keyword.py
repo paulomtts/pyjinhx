@@ -23,6 +23,7 @@ def test_react_keyword_populates_reacts_to():
 
 def test_react_rejects_bare_strings():
     with pytest.raises(TypeError, match="MutationKey"):
+
         class Bad(ReactiveComponent, react={"navbar"}):
             @classmethod
             def load(cls) -> "Bad":
@@ -31,6 +32,7 @@ def test_react_rejects_bare_strings():
 
 def test_react_rejects_bare_member_without_set():
     with pytest.raises(TypeError, match="set of MutationKey members"):
+
         class Bare(ReactiveComponent, react=Keys.NAVBAR):
             @classmethod
             def load(cls) -> "Bare":
@@ -39,6 +41,7 @@ def test_react_rejects_bare_member_without_set():
 
 def test_react_rejects_mixed_valid_and_invalid():
     with pytest.raises(TypeError, match="'navbar'"):
+
         class Mixed(ReactiveComponent, react={Keys.TODOS, "navbar"}):
             @classmethod
             def load(cls) -> "Mixed":
@@ -47,6 +50,7 @@ def test_react_rejects_mixed_valid_and_invalid():
 
 def test_reacts_to_classvar_rejected():
     with pytest.raises(TypeError, match="react class keyword"):
+
         class OldKeyword(ReactiveComponent):
             reacts_to: ClassVar[set] = {Keys.NAVBAR}
 
@@ -71,6 +75,7 @@ def test_subclass_inherits_react_keys():
 
 def test_load_without_react_keys_rejected():
     with pytest.raises(TypeError, match="no react keys"):
+
         class NoKeys(ReactiveComponent):
             @classmethod
             def load(cls) -> "NoKeys":
@@ -79,6 +84,7 @@ def test_load_without_react_keys_rejected():
 
 def test_mutates_rejects_bare_strings():
     with pytest.raises(TypeError, match="MutationKey"):
+
         @mutates("todos")  # type: ignore[arg-type]  # deliberately passes a bare string
         def save():
             pass

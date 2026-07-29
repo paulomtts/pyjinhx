@@ -20,9 +20,11 @@ from pyjinhx import BaseComponent, Renderer
 
 Renderer.set_default_environment("./components")
 
+
 class Button(BaseComponent):
     id: str
     text: str
+
 
 html = Button(id="cta", text="Click").render()
 ```

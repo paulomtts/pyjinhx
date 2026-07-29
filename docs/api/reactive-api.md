@@ -7,8 +7,7 @@ See [Reactivity](../reactivity.md) for conceptual documentation and usage patter
 ## ReactiveComponent
 
 ```python
-class ReactiveComponent(BaseComponent):
-    ...
+class ReactiveComponent(BaseComponent): ...
 ```
 
 Base class for components that reload from application state via a `load()` classmethod and participate in out-of-band HTMX swaps.
@@ -65,8 +64,7 @@ state_hash_exclude: ClassVar[frozenset[str]] = frozenset({"id"})
 ## PjxKey
 
 ```python
-class PjxKey:
-    ...
+class PjxKey: ...
 ```
 
 Marker for `Annotated[..., PjxKey()]`. The field value is stamped as `data-pjx-load` and returned in the client manifest as `load`.
@@ -84,7 +82,9 @@ Return the pyjinhx client runtime as a `<script>` tag (`from pyjinhx.client impo
 ```python
 class MountedManifest:
     @staticmethod
-    def parse(mounted: str | list[dict[str, Any]] | object | None) -> list[dict[str, Any]]: ...
+    def parse(
+        mounted: str | list[dict[str, Any]] | object | None,
+    ) -> list[dict[str, Any]]: ...
 
     @staticmethod
     def is_present(client: str | list[dict[str, Any]] | object | None) -> bool: ...
@@ -99,7 +99,9 @@ class MountedManifest:
 ```python
 class TriggerManifest:
     @staticmethod
-    def parse(client: str | dict[str, Any] | object | None) -> dict[str, Any] | None: ...
+    def parse(
+        client: str | dict[str, Any] | object | None,
+    ) -> dict[str, Any] | None: ...
 ```
 
 Parse `X-PJX-Trigger` — the `data-pjx-id` of the element that started the HTMX request.

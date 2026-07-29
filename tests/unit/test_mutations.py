@@ -70,7 +70,9 @@ def test_request_scope_isolates_mutations():
 
 def test_dirty_records_and_invalidates(monkeypatch):
     invalidated: list[set[str]] = []
-    monkeypatch.setattr(LoadCache, "invalidate", lambda keys: invalidated.append(set(keys)))
+    monkeypatch.setattr(
+        LoadCache, "invalidate", lambda keys: invalidated.append(set(keys))
+    )
     MutationTracker.clear()
     dirty(Keys.TODOS)
     assert MutationTracker.pending() == {"todos"}

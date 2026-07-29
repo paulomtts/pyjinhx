@@ -9,9 +9,7 @@ from tests.ui.unified_component import UnifiedComponent
 def test_pending_mutations_drive_oob_swaps():
     store.state["completed"] = 4
     primary = ReactiveCounter(id="counter", remaining=0)
-    manifest = [
-        {"id": "clear-btn", "type": "ReactiveClearButton", "hash": "stale"}
-    ]
+    manifest = [{"id": "clear-btn", "type": "ReactiveClearButton", "hash": "stale"}]
     with reactive_client(manifest):
         record_mutation("todos")
         out = str(primary.render())
@@ -22,9 +20,7 @@ def test_pending_mutations_drive_oob_swaps():
 def test_no_pending_mutations_skips_oob():
     store.state["completed"] = 4
     primary = ReactiveCounter(id="counter", remaining=0)
-    manifest = [
-        {"id": "clear-btn", "type": "ReactiveClearButton", "hash": "stale"}
-    ]
+    manifest = [{"id": "clear-btn", "type": "ReactiveClearButton", "hash": "stale"}]
     with reactive_client(manifest):
         out = str(primary.render())
     assert "outerHTML:[data-pjx-id='clear-btn']" not in out
@@ -33,9 +29,7 @@ def test_no_pending_mutations_skips_oob():
 def test_non_reactive_primary_fans_out_swaps():
     store.state["completed"] = 4
     primary = UnifiedComponent(id="u1", text="hi")
-    manifest = [
-        {"id": "clear-btn", "type": "ReactiveClearButton", "hash": "stale"}
-    ]
+    manifest = [{"id": "clear-btn", "type": "ReactiveClearButton", "hash": "stale"}]
     with reactive_client(manifest):
         record_mutation("todos")
         out = str(primary.render())

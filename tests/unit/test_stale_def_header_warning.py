@@ -12,6 +12,7 @@ resolves them correctly):
   - stale_card.html    — has a {#def#} header (triggers warning for StaleCard)
   - stale_badge.html   — no header (silent for StaleBadge)
 """
+
 import logging
 import os
 
@@ -31,11 +32,13 @@ _HERE = os.path.dirname(__file__)
 
 class StaleCard(BaseComponent):
     """Hand-written class whose template has a {#def#} header."""
+
     title: str = "default"
 
 
 class StaleBadge(BaseComponent):
     """Hand-written class whose template has NO {#def#} header."""
+
     text: str = "OK"
 
 
@@ -52,6 +55,7 @@ def isolate_renderer():
 def clear_stale_warning_set():
     """Reset the dedup sets between tests so warnings are fresh."""
     from pyjinhx import renderer as renderer_mod
+
     renderer_mod._warned_stale_def_header.clear()
     renderer_mod._checked_stale_def_header.clear()
     yield
@@ -62,6 +66,7 @@ def clear_stale_warning_set():
 # ---------------------------------------------------------------------------
 # Test 1: Hand-written class + {#def#} header → warns once, then deduplicates
 # ---------------------------------------------------------------------------
+
 
 def test_warns_once_for_hand_written_class_with_header(caplog):
     with caplog.at_level(logging.WARNING, logger="pyjinhx"):
@@ -90,13 +95,14 @@ def test_warns_once_for_hand_written_class_with_header(caplog):
 # Test 2: Classless component (header-only, _pjx_classless=True) → silent
 # ---------------------------------------------------------------------------
 
+
 def test_no_warning_for_classless_component(tmp_path, caplog):
     from pyjinhx.base import component
 
     comp_dir = tmp_path / "staleclassless"
     comp_dir.mkdir()
     (comp_dir / "staleclassless.html").write_text(
-        "{#def label: str #}\n<span class=\"staleclassless\">{{ label }}</span>",
+        '{#def label: str #}\n<span class="staleclassless">{{ label }}</span>',
         encoding="utf-8",
     )
 
@@ -120,6 +126,7 @@ def test_no_warning_for_classless_component(tmp_path, caplog):
 # Test 3: Hand-written class WITHOUT a {#def#} header → silent
 # ---------------------------------------------------------------------------
 
+
 def test_no_warning_for_hand_written_class_without_header(caplog):
     with caplog.at_level(logging.WARNING, logger="pyjinhx"):
         StaleBadge(text="Active").render()
@@ -135,6 +142,7 @@ def test_no_warning_for_hand_written_class_without_header(caplog):
 # Test 4: The template source is only read once per class, even across many
 # renders with no stale header (the perf bug from issue #224).
 # ---------------------------------------------------------------------------
+
 
 def test_template_only_read_once_per_class_without_header():
     from pyjinhx import renderer as renderer_mod

@@ -101,7 +101,11 @@ Small status label. **Assets:** `pjx_badge.css` only.
 ??? note "Python"
 
     ```python
-    PJXCard(content=PJXCardHeader(title="Quarterly report").render() + PJXCardBody(content="Revenue grew 12% over Q1.").render() + PJXCardFooter(content="Updated today").render())
+    PJXCard(
+        content=PJXCardHeader(title="Quarterly report").render()
+        + PJXCardBody(content="Revenue grew 12% over Q1.").render()
+        + PJXCardFooter(content="Updated today").render()
+    )
     ```
 
 ### PJXCardHeader
@@ -286,7 +290,9 @@ Single carousel slide (any content, not just images). **Assets:** `pjx-carousel-
 ??? note "Python"
 
     ```python
-    PJXCarouselSlide(label="Front view", content='<img src="/photo-1.jpg" alt="Front view">')
+    PJXCarouselSlide(
+        label="Front view", content='<img src="/photo-1.jpg" alt="Front view">'
+    )
     ```
 
 ### PJXDivider
@@ -463,7 +469,14 @@ Overlapping row of avatars with optional overflow count. **Assets:** `pjx-avatar
 ??? note "Python"
 
     ```python
-    PJXAvatarStack(avatars=[PJXAvatar(initials="AB", size="sm", alt="Alice Brown"), PJXAvatar(initials="CD", size="sm", alt="Carol Davis"), PJXAvatar(initials="EF", size="sm", alt="Eve Foster")], extra_count=4)
+    PJXAvatarStack(
+        avatars=[
+            PJXAvatar(initials="AB", size="sm", alt="Alice Brown"),
+            PJXAvatar(initials="CD", size="sm", alt="Carol Davis"),
+            PJXAvatar(initials="EF", size="sm", alt="Eve Foster"),
+        ],
+        extra_count=4,
+    )
     ```
 
 ### PJXBreadcrumb
@@ -647,7 +660,10 @@ Centered, vertically-stacked empty-view container. Compose whatever you like ins
 ??? note "Python"
 
     ```python
-    PJXEmptyState(content="<h3>No results</h3><p>Try a different search term.</p>", suggestions=[{"label": "Draft a message"}, {"label": "Summarise a thread"}])
+    PJXEmptyState(
+        content="<h3>No results</h3><p>Try a different search term.</p>",
+        suggestions=[{"label": "Draft a message"}, {"label": "Summarise a thread"}],
+    )
     ```
 
 ### PJXIcon
@@ -774,7 +790,12 @@ Collapsible section built on native `<details>`. Composed with `PJXAccordionTrig
 ??? note "Python"
 
     ```python
-    PJXAccordion(content=PJXAccordionTrigger(content="What is pyjinhx?").render() + PJXAccordionContent(content="<p>A Python/Jinja HTML component framework.</p>").render())
+    PJXAccordion(
+        content=PJXAccordionTrigger(content="What is pyjinhx?").render()
+        + PJXAccordionContent(
+            content="<p>A Python/Jinja HTML component framework.</p>"
+        ).render()
+    )
     ```
 
 ### PJXAccordionTrigger
@@ -889,7 +910,19 @@ Groups a set of `PJXAccordion`s into a shared layout/behavior container. Handles
 ??? note "Python"
 
     ```python
-    PJXAccordionGroup(mode="exclusive", gap="0.25rem", content=PJXAccordion(content=PJXAccordionTrigger(content="Section A").render() + PJXAccordionContent(content="<p>Content A.</p>").render()).render() + PJXAccordion(open=False, content=PJXAccordionTrigger(content="Section B").render() + PJXAccordionContent(content="<p>Content B.</p>").render()).render())
+    PJXAccordionGroup(
+        mode="exclusive",
+        gap="0.25rem",
+        content=PJXAccordion(
+            content=PJXAccordionTrigger(content="Section A").render()
+            + PJXAccordionContent(content="<p>Content A.</p>").render()
+        ).render()
+        + PJXAccordion(
+            open=False,
+            content=PJXAccordionTrigger(content="Section B").render()
+            + PJXAccordionContent(content="<p>Content B.</p>").render(),
+        ).render(),
+    )
     ```
 
 ### PJXTable
@@ -951,20 +984,36 @@ Accessible data table shell. Compose with `PJXTableHead`, `PJXTableBody`, `PJXTa
         striped=True,
         bordered="horizontal",
         content=(
-            PJXTableHead(content=PJXTableRow(content=(
-                PJXTableHeaderCell(sortable=True, sort="asc", content="Name").render()
-                + PJXTableHeaderCell(content="Role").render()
-            )).render()).render()
-            + PJXTableBody(content=(
-                PJXTableRow(selectable=True, value="1", content=(
-                    PJXTableCell(content="Ada Lovelace").render()
-                    + PJXTableCell(content="Engineer").render()
-                )).render()
-                + PJXTableRow(selectable=True, value="2", content=(
-                    PJXTableCell(content="Alan Turing").render()
-                    + PJXTableCell(content="Researcher").render()
-                )).render()
-            )).render()
+            PJXTableHead(
+                content=PJXTableRow(
+                    content=(
+                        PJXTableHeaderCell(
+                            sortable=True, sort="asc", content="Name"
+                        ).render()
+                        + PJXTableHeaderCell(content="Role").render()
+                    )
+                ).render()
+            ).render()
+            + PJXTableBody(
+                content=(
+                    PJXTableRow(
+                        selectable=True,
+                        value="1",
+                        content=(
+                            PJXTableCell(content="Ada Lovelace").render()
+                            + PJXTableCell(content="Engineer").render()
+                        ),
+                    ).render()
+                    + PJXTableRow(
+                        selectable=True,
+                        value="2",
+                        content=(
+                            PJXTableCell(content="Alan Turing").render()
+                            + PJXTableCell(content="Researcher").render()
+                        ),
+                    ).render()
+                )
+            ).render()
         ),
     )
     ```
@@ -999,7 +1048,9 @@ Accessible data table shell. Compose with `PJXTableHead`, `PJXTableBody`, `PJXTa
 ??? note "Python"
 
     ```python
-    PJXTableHead(content=PJXTableRow(content=PJXTableHeaderCell(content="Name").render()).render())
+    PJXTableHead(
+        content=PJXTableRow(content=PJXTableHeaderCell(content="Name").render()).render()
+    )
     ```
 
 ### PJXTableBody
@@ -1030,7 +1081,9 @@ Accessible data table shell. Compose with `PJXTableHead`, `PJXTableBody`, `PJXTa
 ??? note "Python"
 
     ```python
-    PJXTableBody(content=PJXTableRow(content=PJXTableCell(content="Ada Lovelace").render()).render())
+    PJXTableBody(
+        content=PJXTableRow(content=PJXTableCell(content="Ada Lovelace").render()).render()
+    )
     ```
 
 ### PJXTableRow
@@ -1065,7 +1118,12 @@ A `<tr>` for either the head or body section. When `selectable=True`, a checkbox
 ??? note "Python"
 
     ```python
-    PJXTableRow(selectable=True, value="1", content=PJXTableCell(content="Ada Lovelace").render() + PJXTableCell(content="Engineer").render())
+    PJXTableRow(
+        selectable=True,
+        value="1",
+        content=PJXTableCell(content="Ada Lovelace").render()
+        + PJXTableCell(content="Engineer").render(),
+    )
     ```
 
 ### PJXTableHeaderCell
@@ -1190,8 +1248,14 @@ Native `<dialog>` shell. Compose with `PJXModalHeader`, `PJXModalBody`, and `PJX
         id="demo-modal",
         content=(
             PJXModalHeader(id="demo-modal-h", title="Confirm changes").render()
-            + PJXModalBody(id="demo-modal-b", content="Your draft will be published immediately. This action cannot be undone.").render()
-            + PJXModalFooter(id="demo-modal-f", content='<button class="pjx-demo-btn" data-pjx-close>Cancel</button>').render()
+            + PJXModalBody(
+                id="demo-modal-b",
+                content="Your draft will be published immediately. This action cannot be undone.",
+            ).render()
+            + PJXModalFooter(
+                id="demo-modal-f",
+                content='<button class="pjx-demo-btn" data-pjx-close>Cancel</button>',
+            ).render()
         ),
     )
     ```
@@ -1702,7 +1766,10 @@ Composable tooltip shell. Compose with `PJXTooltipTrigger` and `PJXTooltipConten
         placement="top",
         content=(
             PJXTooltipTrigger(id="demo-tooltip-tr", content="Hover over me").render()
-            + PJXTooltipContent(id="demo-tooltip-tc", content="This is additional context shown on hover or focus.").render()
+            + PJXTooltipContent(
+                id="demo-tooltip-tc",
+                content="This is additional context shown on hover or focus.",
+            ).render()
         ),
     )
     ```
@@ -1806,7 +1873,9 @@ Click-toggle compound. Three separate components; compose them by placing `PJXPo
     PJXPopover(
         id="demo-popover",
         content=(
-            PJXPopoverTrigger(id="demo-popover-t", content="Show info", role="dialog").render()
+            PJXPopoverTrigger(
+                id="demo-popover-t", content="Show info", role="dialog"
+            ).render()
             + PJXPopoverPanel(
                 id="demo-popover-p",
                 role="dialog",
@@ -2000,14 +2069,26 @@ Thin shell that wraps a composed tab layout. Compose with [`PJXTabList`](#pjxtab
     ```python
     PJXTabGroup(
         content=(
-            PJXTabList(content=(
-                PJXTab(id="tg-t0", panel="tg-p0", selected=True, content="Overview").render()
-                + PJXTab(id="tg-t1", panel="tg-p1", content="Activity").render()
-                + PJXTab(id="tg-t2", panel="tg-p2", closeable=True, content="Settings").render()
-            )).render()
-            + PJXTabPanel(id="tg-p0", tab="tg-t0", content="<p>Project summary and key metrics.</p>").render()
-            + PJXTabPanel(id="tg-p1", tab="tg-t1", content="<p>Recent commits and deploys.</p>").render()
-            + PJXTabPanel(id="tg-p2", tab="tg-t2", content="<p>Repository configuration.</p>").render()
+            PJXTabList(
+                content=(
+                    PJXTab(
+                        id="tg-t0", panel="tg-p0", selected=True, content="Overview"
+                    ).render()
+                    + PJXTab(id="tg-t1", panel="tg-p1", content="Activity").render()
+                    + PJXTab(
+                        id="tg-t2", panel="tg-p2", closeable=True, content="Settings"
+                    ).render()
+                )
+            ).render()
+            + PJXTabPanel(
+                id="tg-p0", tab="tg-t0", content="<p>Project summary and key metrics.</p>"
+            ).render()
+            + PJXTabPanel(
+                id="tg-p1", tab="tg-t1", content="<p>Recent commits and deploys.</p>"
+            ).render()
+            + PJXTabPanel(
+                id="tg-p2", tab="tg-t2", content="<p>Repository configuration.</p>"
+            ).render()
         ),
     )
     ```
@@ -2043,7 +2124,11 @@ Tab button list (the `role="tablist"` container). **Assets:** `pjx-tab-list.css`
 ??? note "Python"
 
     ```python
-    PJXTabList(label="Project tabs", content=PJXTab(id="t0", panel="p0", selected=True, content="Overview").render() + PJXTab(id="t1", panel="p1", content="Activity").render())
+    PJXTabList(
+        label="Project tabs",
+        content=PJXTab(id="t0", panel="p0", selected=True, content="Overview").render()
+        + PJXTab(id="t1", panel="p1", content="Activity").render(),
+    )
     ```
 
 ### PJXTab
@@ -2266,7 +2351,9 @@ HX-Trigger-driven toast container singleton. Mount once in the layout. **Assets:
     ```python
     import json
 
-    response.headers["HX-Trigger"] = json.dumps({"pjx:toast": {"message": "Saved.", "level": "success"}})
+    response.headers["HX-Trigger"] = json.dumps(
+        {"pjx:toast": {"message": "Saved.", "level": "success"}}
+    )
     ```
 
     Or from JS:
@@ -2449,7 +2536,9 @@ HTMX deferred-content loader: an element that fetches `url` on a computed trigge
 ??? note "Python"
 
     ```python
-    PJXLazyLoad(id="comments", url="/posts/42/comments", content=PJXSkeleton(id="comments-skel"))
+    PJXLazyLoad(
+        id="comments", url="/posts/42/comments", content=PJXSkeleton(id="comments-skel")
+    )
     ```
 
 ## Form controls

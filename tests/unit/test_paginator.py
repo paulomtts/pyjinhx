@@ -1,4 +1,5 @@
 """PJXPaginator — windowing logic + markup."""
+
 import pytest
 
 from pyjinhx import Renderer
@@ -65,11 +66,23 @@ def test_page_clamped_below_range():
 
 def test_controls_prev_next_enabled_and_disabled():
     # page 1 of 10: prev disabled, next enabled
-    assert _shape(PJXPaginator(url=URL, page=1, total_pages=10)) == \
-        ["!prev", "[1]", "2", "…", "10", "next"]
+    assert _shape(PJXPaginator(url=URL, page=1, total_pages=10)) == [
+        "!prev",
+        "[1]",
+        "2",
+        "…",
+        "10",
+        "next",
+    ]
     # page 10 of 10: next disabled
-    assert _shape(PJXPaginator(url=URL, page=10, total_pages=10)) == \
-        ["prev", "1", "…", "9", "[10]", "!next"]
+    assert _shape(PJXPaginator(url=URL, page=10, total_pages=10)) == [
+        "prev",
+        "1",
+        "…",
+        "9",
+        "[10]",
+        "!next",
+    ]
 
 
 def test_controls_first_last_when_enabled():
@@ -79,8 +92,12 @@ def test_controls_first_last_when_enabled():
 
 
 def test_href_substitution_keeps_other_query_params():
-    pag = PJXPaginator(url="/u?page={page}&sort=name", page=2, total_pages=5, prev_next=False)
-    page1 = next(it for it in pag.items if it.get("number") == 1 and it["kind"] == "page")
+    pag = PJXPaginator(
+        url="/u?page={page}&sort=name", page=2, total_pages=5, prev_next=False
+    )
+    page1 = next(
+        it for it in pag.items if it.get("number") == 1 and it["kind"] == "page"
+    )
     assert page1["href"] == "/u?page=1&sort=name"
 
 
@@ -120,7 +137,10 @@ def test_renders_nav_with_aria_label_and_list():
 def test_current_page_is_span_with_aria_current_not_link():
     html = _render(page=3, total_pages=10)
     assert 'aria-current="page"' in html
-    assert '<span class="pjx-paginator__link pjx-paginator__link--current" aria-current="page">3</span>' in html
+    assert (
+        '<span class="pjx-paginator__link pjx-paginator__link--current" aria-current="page">3</span>'
+        in html
+    )
 
 
 def test_other_pages_are_links_with_resolved_href():
@@ -151,11 +171,12 @@ def test_ellipsis_is_aria_hidden_span():
 
 def test_disabled_control_is_span_aria_disabled_no_href():
     html = _render(page=1, total_pages=10)  # prev disabled
-    assert 'pjx-paginator__control--prev pjx-paginator__control--disabled' in html
+    assert "pjx-paginator__control--prev pjx-paginator__control--disabled" in html
     assert 'aria-disabled="true"' in html
 
 
 def test_registered_in_public_api():
     import pyjinhx.builtins as b
+
     assert "PJXPaginator" in b.__all__
     assert RegisteredPaginator is PJXPaginator

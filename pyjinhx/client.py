@@ -150,7 +150,9 @@ class MountedManifest:
             try:
                 parsed = json.loads(mounted)
             except json.JSONDecodeError:
-                logger.warning("Could not parse %s as JSON; ignoring.", PJX_MOUNTED_HEADER)
+                logger.warning(
+                    "Could not parse %s as JSON; ignoring.", PJX_MOUNTED_HEADER
+                )
                 return []
             return parsed if isinstance(parsed, list) else []
         try:
@@ -194,7 +196,9 @@ class TriggerManifest:
             try:
                 parsed = json.loads(client)
             except json.JSONDecodeError:
-                logger.warning("Could not parse %s as JSON; ignoring.", PJX_TRIGGER_HEADER)
+                logger.warning(
+                    "Could not parse %s as JSON; ignoring.", PJX_TRIGGER_HEADER
+                )
                 return None
             return parsed if isinstance(parsed, dict) and parsed.get("id") else None
         try:

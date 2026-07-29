@@ -13,13 +13,17 @@ REGION = "#rx-region"
 
 
 def test_region_show_is_reference_counted(sink_page):
-    sink_page.evaluate("pjx.loader.region.show('rx-region'); pjx.loader.region.show('rx-region')")
+    sink_page.evaluate(
+        "pjx.loader.region.show('rx-region'); pjx.loader.region.show('rx-region')"
+    )
     region = sink_page.locator(REGION)
     expect(region).to_contain_class("pjx-region-loader--visible")
 
     sink_page.evaluate("pjx.loader.region.hide('rx-region')")
     sink_page.wait_for_timeout(400)  # outlive the 250ms hide fallback
-    expect(region).to_contain_class("pjx-region-loader--visible")  # one source still active
+    expect(region).to_contain_class(
+        "pjx-region-loader--visible"
+    )  # one source still active
 
     sink_page.evaluate("pjx.loader.region.hide('rx-region')")
     expect(region).not_to_contain_class("pjx-region-loader--visible", timeout=2000)
@@ -36,7 +40,9 @@ def test_resurrecting_show_fires_one_show_event(sink_page):
         pjx.loader.region.show('rx-region');
         """
     )
-    sink_page.wait_for_timeout(600)  # past the hide fallback: any stale finalize would have run
+    sink_page.wait_for_timeout(
+        600
+    )  # past the hide fallback: any stale finalize would have run
     assert sink_page.evaluate("window.__rlShows") == 1
     expect(sink_page.locator(REGION)).to_contain_class("pjx-region-loader--visible")
 
@@ -50,8 +56,12 @@ def test_reduced_motion_hide_uses_timer_fallback(browser, server_url):
         expect(page.locator(REGION)).to_contain_class("pjx-region-loader--visible")
 
         page.evaluate("pjx.loader.region.hide('rx-region')")
-        page.wait_for_timeout(500)  # no animationend here; the 250ms fallback must finalize
-        assert "pjx-region-loader--visible" not in page.locator(REGION).get_attribute("class")
+        page.wait_for_timeout(
+            500
+        )  # no animationend here; the 250ms fallback must finalize
+        assert "pjx-region-loader--visible" not in page.locator(REGION).get_attribute(
+            "class"
+        )
     finally:
         context.close()
 
@@ -61,7 +71,9 @@ def test_page_loader_tracks_htmx_navigation(sink_page):
     expect(loader).not_to_contain_class("pjx-page-loader--active")
 
     sink_page.click("#nav-btn")
-    expect(loader).to_contain_class("pjx-page-loader--active")  # in flight (endpoint sleeps 0.3s)
+    expect(loader).to_contain_class(
+        "pjx-page-loader--active"
+    )  # in flight (endpoint sleeps 0.3s)
 
     expect(sink_page.locator("#slow-loaded")).to_be_visible()
     expect(loader).not_to_contain_class("pjx-page-loader--active", timeout=2000)

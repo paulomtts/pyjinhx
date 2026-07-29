@@ -19,6 +19,8 @@ class PJXDropdown(BaseComponent):
     # shipped via the extra-asset mechanism whenever a PJXDropdown renders.
     js: list[str] = Field(
         default_factory=lambda: [
-            os.path.join(os.path.dirname(__file__), "..", "pjx_popover", "pjx-popover.js")
+            os.path.join(
+                os.path.dirname(__file__), "..", "pjx_popover", "pjx-popover.js"
+            )
         ]
     )

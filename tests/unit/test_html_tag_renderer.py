@@ -145,9 +145,9 @@ def test_empty_component():
             auto_id=True,
         ).render(index_html)
 
-        assert re.match(
-            r'^<div id=pjx-\d+ class="spacer"></div>$', rendered
-        ), f"Output does not match expected pattern. Got: {rendered!r}"
+        assert re.match(r'^<div id=pjx-\d+ class="spacer"></div>$', rendered), (
+            f"Output does not match expected pattern. Got: {rendered!r}"
+        )
 
 
 def test_auto_id_false_requires_manual_id():

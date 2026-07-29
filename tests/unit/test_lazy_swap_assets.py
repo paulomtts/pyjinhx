@@ -70,10 +70,12 @@ def test_swap_render_emits_missing_assets_as_head_oob():
 
     # CSS + JS arrive as head-targeted OOB swaps, carrying their content...
     assert (
-        f'<style data-pjx-asset="{_CSS_TOKEN}" hx-swap-oob="beforeend:head">' in rendered
+        f'<style data-pjx-asset="{_CSS_TOKEN}" hx-swap-oob="beforeend:head">'
+        in rendered
     )
     assert (
-        f'<script data-pjx-asset="{_JS_TOKEN}" hx-swap-oob="beforeend:head">' in rendered
+        f'<script data-pjx-asset="{_JS_TOKEN}" hx-swap-oob="beforeend:head">'
+        in rendered
     )
     assert _CSS_CONTENT in rendered
     assert _JS_CONTENT in rendered
@@ -99,5 +101,6 @@ def test_swap_render_delivers_only_the_missing_asset():
     # CSS already on the page → skipped; JS still missing → delivered via head OOB.
     assert f'data-pjx-asset="{_CSS_TOKEN}"' not in rendered
     assert (
-        f'<script data-pjx-asset="{_JS_TOKEN}" hx-swap-oob="beforeend:head">' in rendered
+        f'<script data-pjx-asset="{_JS_TOKEN}" hx-swap-oob="beforeend:head">'
+        in rendered
     )

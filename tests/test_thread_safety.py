@@ -16,7 +16,7 @@ def test_finder_concurrent_first_index_no_duplicates(tmp_path, monkeypatch):
     (e.g., my_widget.html), but find_template_for_tag masks it by trying
     subsequent candidates and raising the last candidate's 'Template not found'.
     """
-    (tmp_path / "my_widget.html").write_text("<div id=\"{{ id }}\"></div>")
+    (tmp_path / "my_widget.html").write_text('<div id="{{ id }}"></div>')
 
     real_walk = os.walk
 
@@ -82,4 +82,6 @@ def test_renderer_concurrent_builtin_template_cache(tmp_path):
 
     assert errors == []
     with Registry.request_scope():
-        assert 'id="after"' in renderer.render('<PJXBadge id="after" label="y"></PJXBadge>')
+        assert 'id="after"' in renderer.render(
+            '<PJXBadge id="after" label="y"></PJXBadge>'
+        )

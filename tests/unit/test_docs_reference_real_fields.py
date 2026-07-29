@@ -17,6 +17,7 @@ Intentional HTML pass-through attrs are skipped: anything hyphenated (``data-*``
 ``HTML_GLOBALS`` below. If a real builtin field ever collides with one of those
 names, the collision is documented inline.
 """
+
 import re
 from pathlib import Path
 
@@ -30,7 +31,8 @@ _DOCS = _ROOT / "docs"
 _BUILTINS: dict[str, type] = {
     name: getattr(b, name)
     for name in b.__all__
-    if isinstance(getattr(b, name), type) and issubclass(getattr(b, name), BaseComponent)
+    if isinstance(getattr(b, name), type)
+    and issubclass(getattr(b, name), BaseComponent)
 }
 
 # Bare-word HTML attributes that legitimately pass through to a builtin's root
@@ -196,7 +198,12 @@ def _collect_violations() -> list[str]:
             if cls is None:
                 continue
             for attr in _tag_attr_names(text, m.end()):
-                if "-" in attr or ":" in attr or attr in HTML_GLOBALS or attr in cls.model_fields:
+                if (
+                    "-" in attr
+                    or ":" in attr
+                    or attr in HTML_GLOBALS
+                    or attr in cls.model_fields
+                ):
                     continue
                 violations.append(
                     f"{rel}:{_line_of(text, m.start())}: <{comp} {attr}=...> — "

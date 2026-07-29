@@ -8,7 +8,7 @@ def test_serialize_attr_prefers_double_quotes():
 
 
 def test_serialize_attr_falls_back_to_single_quotes():
-    assert serialize_attr("hx-headers", '{"a": "b"}') == "hx-headers='{\"a\": \"b\"}'"
+    assert serialize_attr("hx-headers", '{"a": "b"}') == 'hx-headers=\'{"a": "b"}\''
 
 
 def test_serialize_attr_both_quote_types_raises():
@@ -17,7 +17,7 @@ def test_serialize_attr_both_quote_types_raises():
 
 
 def test_find_single_root_returns_span_of_opening_tag():
-    html = "  <article class=\"c\">body</article>"
+    html = '  <article class="c">body</article>'
     start, end = find_single_root(html, component_name="X")
     assert html[start:end] == '<article class="c">'
 
@@ -88,7 +88,7 @@ def test_apply_root_attrs_handles_multiline_root_tag():
     out = apply_root_attrs(html, component_name="X", attrs={"data-y": "1"})
     assert 'data-y="1"' in out
     # injected attr lands inside the opening tag, before the closing '>'
-    assert out.index('data-y="1"') < out.index('>')
+    assert out.index('data-y="1"') < out.index(">")
     assert "body</div>" in out
 
 

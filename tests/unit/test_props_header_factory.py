@@ -9,7 +9,7 @@ from pyjinhx.base import BaseComponent, component
 @pytest.fixture()
 def env(tmp_path):
     (tmp_path / "widget_fac.html").write_text(
-        '{#def title: str, count: int = 0 #}\n<div>{{ title }}-{{ count }}</div>',
+        "{#def title: str, count: int = 0 #}\n<div>{{ title }}-{{ count }}</div>",
         encoding="utf-8",
     )
     (tmp_path / "bare_fac.html").write_text("<div>{{ foo }}</div>", encoding="utf-8")

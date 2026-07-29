@@ -22,7 +22,9 @@ def _noop_inject_runtime(
 
 
 @pytest.fixture(autouse=True)
-def _suppress_pjx_runtime_injection(request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPatch) -> None:
+def _suppress_pjx_runtime_injection(
+    request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPatch
+) -> None:
     if request.node.get_closest_marker("pjx_runtime"):
         return
     monkeypatch.setattr(

@@ -23,14 +23,20 @@ def test_lazy_load_default_render():
 
 def test_lazy_load_custom_trigger_and_swap():
     html = str(
-        PJXLazyLoad(id="lp-tab", url="/tabs/activity", trigger="click once", swap="innerHTML").render()
+        PJXLazyLoad(
+            id="lp-tab", url="/tabs/activity", trigger="click once", swap="innerHTML"
+        ).render()
     )
     assert 'hx-trigger="click once"' in html
     assert 'hx-swap="innerHTML"' in html
 
 
 def test_lazy_load_children_render_as_placeholder():
-    html = str(PJXLazyLoad(id="lp-feed", url="/feed", content=PJXSkeleton(id="lp-feed-skel")).render())
+    html = str(
+        PJXLazyLoad(
+            id="lp-feed", url="/feed", content=PJXSkeleton(id="lp-feed-skel")
+        ).render()
+    )
     assert 'hx-get="/feed"' in html
     assert 'id="lp-feed-skel"' in html
     assert html.index('hx-get="/feed"') < html.index('id="lp-feed-skel"')
@@ -44,7 +50,9 @@ def test_lazy_load_tag_tr_renders_tr_root():
 
 
 def test_lazy_load_tag_li_renders_li_root():
-    assert _root(str(PJXLazyLoad(id="s", url="/x", tag="li").render())).startswith("<li")
+    assert _root(str(PJXLazyLoad(id="s", url="/x", tag="li").render())).startswith(
+        "<li"
+    )
 
 
 def test_lazy_load_default_tag_is_div():
@@ -52,7 +60,9 @@ def test_lazy_load_default_tag_is_div():
 
 
 def test_lazy_load_extra_attrs_inject_on_dynamic_root():
-    html = str(PJXLazyLoad(id="s", url="/x", tag="tr", extra_attrs={"data-k": "v"}).render())
+    html = str(
+        PJXLazyLoad(id="s", url="/x", tag="tr", extra_attrs={"data-k": "v"}).render()
+    )
     assert _root(html).startswith("<tr")
     assert 'data-k="v"' in _root(html)
 
@@ -69,7 +79,9 @@ def test_lazy_load_carries_error_marker_and_default_text():
 
 
 def test_lazy_load_custom_error_text():
-    html = str(PJXLazyLoad(id="s", url="/x", error_text="Could not load comments").render())
+    html = str(
+        PJXLazyLoad(id="s", url="/x", error_text="Could not load comments").render()
+    )
     assert 'data-pjx-error-text="Could not load comments"' in html
 
 

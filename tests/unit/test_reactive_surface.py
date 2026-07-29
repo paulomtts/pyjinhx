@@ -48,7 +48,10 @@ def test_state_hash_field_order_invariant():
         def load(cls) -> "FieldsB":
             return cls(alpha=1, zebra="z")
 
-    assert FieldsA(zebra="z", alpha=1).state_hash() == FieldsB(alpha=1, zebra="z").state_hash()
+    assert (
+        FieldsA(zebra="z", alpha=1).state_hash()
+        == FieldsB(alpha=1, zebra="z").state_hash()
+    )
 
 
 def test_state_hash_exclude_omits_fields():

@@ -14,8 +14,20 @@ from html.parser import HTMLParser
 # HTML void elements have no closing tag, so they never open a nesting level.
 _VOID_ELEMENTS = frozenset(
     {
-        "area", "base", "br", "col", "embed", "hr", "img", "input",
-        "link", "meta", "param", "source", "track", "wbr",
+        "area",
+        "base",
+        "br",
+        "col",
+        "embed",
+        "hr",
+        "img",
+        "input",
+        "link",
+        "meta",
+        "param",
+        "source",
+        "track",
+        "wbr",
     }
 )
 
@@ -83,7 +95,11 @@ def find_single_root(html: str, *, component_name: str) -> tuple[int, int]:
     scanner = _RootScanner()
     scanner.feed(html)
     scanner.close()
-    if scanner.root_count != 1 or scanner.root_start is None or scanner.root_tag_text is None:
+    if (
+        scanner.root_count != 1
+        or scanner.root_start is None
+        or scanner.root_tag_text is None
+    ):
         raise ValueError(
             f"<{component_name}> template must render exactly one root element "
             f"(found {scanner.root_count})"
@@ -104,7 +120,9 @@ def _override_tag(tag_text: str, attrs: dict[str, str]) -> str:
             body = pattern.sub(" " + pair, body, count=1)
         elif body.rstrip().endswith("/>"):
             idx = body.rindex("/>")
-            body = body[:idx].rstrip() + " " + pair + body[idx:]  # rstrip intentional: prevents extra space before '/>' (e.g. '<br data-y="1"/>' not '<br  data-y="1"/>')
+            body = (
+                body[:idx].rstrip() + " " + pair + body[idx:]
+            )  # rstrip intentional: prevents extra space before '/>' (e.g. '<br data-y="1"/>' not '<br  data-y="1"/>')
         else:
             idx = body.rindex(">")
             body = body[:idx] + " " + pair + body[idx:]

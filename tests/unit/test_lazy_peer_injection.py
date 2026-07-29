@@ -38,7 +38,9 @@ def test_many_registered_peers_render_bounded(tmp_path, monkeypatch):
     (tmp_path / "explosion_shell.html").write_text(
         '<div class="shell-marker"><ExplosionInner/></div>'
     )
-    (tmp_path / "explosion_inner.html").write_text('<span class="inner-marker">inner</span>')
+    (tmp_path / "explosion_inner.html").write_text(
+        '<span class="inner-marker">inner</span>'
+    )
     module = _load_module(
         tmp_path,
         "explosion_components",
@@ -84,7 +86,9 @@ def test_lazy_peer_renders_when_template_references_it(tmp_path):
     (tmp_path / "ref_child.html").write_text(
         '<div class="child-marker">{{ ref_peer }}|{{ ref_peer.html }}|{{ ref_peer.props.label }}</div>'
     )
-    (tmp_path / "ref_peer.html").write_text('<span class="peer-marker">{{ label }}</span>')
+    (tmp_path / "ref_peer.html").write_text(
+        '<span class="peer-marker">{{ label }}</span>'
+    )
     module = _load_module(
         tmp_path,
         "ref_components",

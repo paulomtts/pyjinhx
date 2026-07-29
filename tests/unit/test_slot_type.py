@@ -7,11 +7,11 @@ from pyjinhx.base import PjxSlot, _is_slot_field
 
 
 class _Demo(BaseComponent):
-    label: str = ""               # scalar
-    body: Slot = ""               # explicit slot
+    label: str = ""  # scalar
+    body: Slot = ""  # explicit slot
     nullable_slot: Annotated[str | BaseComponent | None, PjxSlot()] = None
     _pjx_children_field = "kids"
-    kids: str = ""                # children field (auto-slot)
+    kids: str = ""  # children field (auto-slot)
 
 
 def test_is_slot_field_detects_annotation_and_children_field():
@@ -36,6 +36,7 @@ def test_accordion_content_slot_is_detected():
 
 def test_slot_string_value_becomes_markup_in_context(tmp_path):
     from pyjinhx import Renderer
+
     Renderer.set_default_environment(str(tmp_path))
     inst = _Demo(id="d", label="<x>", body="<b>", kids="<k>")
     ctx = inst.model_dump()  # sanity: model_dump gives plain str
@@ -52,6 +53,7 @@ def test_undeclared_children_field_becomes_markup_in_context(tmp_path):
     # undeclared `content`) must still be slot-wrapped, not autoescaped — the same
     # as a declared children field. Otherwise `{{ content }}` forces `| safe`.
     from pyjinhx import Renderer
+
     Renderer.set_default_environment(str(tmp_path))
 
     class _Classless(BaseComponent):

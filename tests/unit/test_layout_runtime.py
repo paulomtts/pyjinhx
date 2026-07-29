@@ -36,13 +36,14 @@ def test_mounted_manifest_is_present():
     assert MountedManifest.is_present("[]") is True
     assert MountedManifest.is_present("not-json") is False
     assert MountedManifest.is_present([]) is True
-    assert MountedManifest.is_present(
-        [{"id": "counter", "type": "Counter", "hash": "abc"}]
-    ) is True
+    assert (
+        MountedManifest.is_present(
+            [{"id": "counter", "type": "Counter", "hash": "abc"}]
+        )
+        is True
+    )
     assert MountedManifest.is_present(_Request({})) is False
-    assert MountedManifest.is_present(
-        _Request({PJX_MOUNTED_HEADER: "[]"})
-    ) is True
+    assert MountedManifest.is_present(_Request({PJX_MOUNTED_HEADER: "[]"})) is True
 
 
 def test_root_render_injects_runtime_without_client():
@@ -79,9 +80,7 @@ def test_root_render_skips_runtime_when_manifest_header_present():
 
 
 def test_root_render_skips_runtime_for_valid_manifest():
-    manifest = json.dumps(
-        [{"id": "page", "type": "RuntimePage", "hash": "abc123"}]
-    )
+    manifest = json.dumps([{"id": "page", "type": "RuntimePage", "hash": "abc123"}])
     request = _Request({PJX_MOUNTED_HEADER: manifest})
     html = str(
         RuntimePage(id="page")._render(

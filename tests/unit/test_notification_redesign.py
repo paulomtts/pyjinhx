@@ -10,7 +10,9 @@ def _root(html: str) -> str:
 
 
 def test_notification_autoshow_default_and_props():
-    html = str(PJXNotification(id="n1", content="Saved", dismiss_label="Fechar").render())
+    html = str(
+        PJXNotification(id="n1", content="Saved", dismiss_label="Fechar").render()
+    )
     assert "data-pjx-autoshow" in _root(html)
     assert 'aria-label="Fechar"' in html
     assert "data-pjx-close" in html

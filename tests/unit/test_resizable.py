@@ -1,4 +1,5 @@
 """PJXResizableGroup: the split-pane container that composes panels + handles."""
+
 import pytest
 
 from pyjinhx import Renderer
@@ -24,7 +25,7 @@ def test_group_single_root_with_role_and_direction():
     html = _group()
     assert '<div id="g"' in html and 'role="group"' in html
     assert "pjx-resizable-group--row" in html
-    assert 'data-pjx-resizable-group' in html
+    assert "data-pjx-resizable-group" in html
     assert 'data-direction="row"' in html
 
 
@@ -36,7 +37,11 @@ def test_direction_column():
 
 def test_composition_order_panel_handle_panel():
     html = _group()
-    assert html.index("data-pjx-resizable-panel") < html.index("data-pjx-resizable-handle") < html.rindex("data-pjx-resizable-panel")
+    assert (
+        html.index("data-pjx-resizable-panel")
+        < html.index("data-pjx-resizable-handle")
+        < html.rindex("data-pjx-resizable-panel")
+    )
     assert "left" in html and "right" in html
 
 

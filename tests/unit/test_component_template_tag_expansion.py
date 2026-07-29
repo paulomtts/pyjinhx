@@ -30,7 +30,10 @@ def test_component_template_can_expand_custom_tags():
 
         rendered = renderer.render('<Parent id="parent-1" child_text="Hello"/>')
 
-        assert rendered == '<div id="parent-1" child_text="Hello"><span id="child-1">Hello</span></div>'
+        assert (
+            rendered
+            == '<div id="parent-1" child_text="Hello"><span id="child-1">Hello</span></div>'
+        )
 
 
 def test_nested_custom_tags_in_renderer():
@@ -239,9 +242,7 @@ def test_opacified_slot_can_both_emit_and_inspect_the_same_value():
             file.write('<span id="{{ id }}">{{ text }}</span>\n')
 
         with open(os.path.join(temp_dir, "emit_inspect_wrapper.html"), "w") as file:
-            file.write(
-                '<div id="{{ id }}">{{ content }}|{{ content|length }}</div>\n'
-            )
+            file.write('<div id="{{ id }}">{{ content }}|{{ content|length }}</div>\n')
 
         env = Environment(loader=FileSystemLoader(temp_dir))
         renderer = Renderer(env, auto_id=True)
@@ -383,8 +384,14 @@ def test_marker_already_present_in_rendered_output_does_not_corrupt_render():
         # And the marker-shaped attribute value must survive untouched, not
         # be misinterpreted as (or replaced by) a restored slot value.
         assert adversarial_evil in adversarial_rendered
-        assert '<span id="c1" text="Hello there">Hello there</span>' in adversarial_rendered
-        assert '<i id="tail-1" class="icon-chevron" name="chevron"></i>' in adversarial_rendered
+        assert (
+            '<span id="c1" text="Hello there">Hello there</span>'
+            in adversarial_rendered
+        )
+        assert (
+            '<i id="tail-1" class="icon-chevron" name="chevron"></i>'
+            in adversarial_rendered
+        )
 
 
 def test_nested_opacified_slot_seen_as_placeholder_by_own_template():

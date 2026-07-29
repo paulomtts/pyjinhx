@@ -62,7 +62,9 @@ def on_page_markdown(markdown, *, page, config, files):
 def on_post_build(config):
     out = os.path.join(config["site_dir"], "demos")
     os.makedirs(out, exist_ok=True)
-    shutil.copy(os.path.join(HERE, "demos", "base.css"), os.path.join(out, "demo-base.css"))
+    shutil.copy(
+        os.path.join(HERE, "demos", "base.css"), os.path.join(out, "demo-base.css")
+    )
     for name, (factory, _height) in DEMOS.items():
         path = os.path.join(out, f"{pascal_case_to_kebab_case(name)}.html")
         with open(path, "w", encoding="utf-8") as fh, Registry.request_scope():

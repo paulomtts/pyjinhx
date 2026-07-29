@@ -1,5 +1,6 @@
 # tests/88_password_input_test.py
 """Tests for the PJXPasswordInput builtin component."""
+
 import re
 
 from pyjinhx.builtins import PJXPasswordInput
@@ -58,7 +59,7 @@ def test_password_input_placeholder():
 
 def test_password_input_toggle_button_present():
     html = str(PJXPasswordInput(id="pi10").render())
-    assert 'data-pjx-password-toggle' in html
+    assert "data-pjx-password-toggle" in html
     assert 'type="button"' in html
 
 
@@ -70,7 +71,6 @@ def test_password_input_toggle_aria_label_show():
 def test_password_input_toggle_aria_pressed_false():
     html = str(PJXPasswordInput(id="pi12").render())
     assert 'aria-pressed="false"' in html
-
 
 
 def test_password_input_data_px_password_on_root():

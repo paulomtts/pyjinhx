@@ -181,16 +181,18 @@ What "segment list", "opaque child", and "recorded root span" mean in practice. 
 @dataclass
 class RenderedLevel:
     segments: list[str | ChildRef | RenderedLevel]  # own markup, in order
-    root_span: tuple[int, int]      # where in segments[0] the root tag sits
-    descriptor: ClassDescriptor     # computed once at registration
+    root_span: tuple[int, int]  # where in segments[0] the root tag sits
+    descriptor: ClassDescriptor  # computed once at registration
+
 
 @dataclass
-class ChildRef:                     # a <PJXButton .../> found during the one parse
+class ChildRef:  # a <PJXButton .../> found during the one parse
     tag: str
     attrs: dict[str, str]
 
+
 @dataclass(frozen=True)
-class ClassDescriptor:              # per-class facts, never recomputed
+class ClassDescriptor:  # per-class facts, never recomputed
     template_path: Path
     slot_fields: frozenset[str]
     asset_paths: tuple[Path, ...]
@@ -270,22 +272,22 @@ Each layer is one function taking lower layers' outputs as plain arguments:
 
 ```python
 def render(component, session: RenderSession) -> RenderedLevel:
-    desc = type(component).__pjx_descriptor__          # L0: read, not compute
+    desc = type(component).__pjx_descriptor__  # L0: read, not compute
 
-    level = render_own_template(component, desc)       # L0: Jinja + ONE parse
+    level = render_own_template(component, desc)  # L0: Jinja + ONE parse
     #        └─► RenderedLevel(segments, root_span, desc)
 
-    for i, seg in enumerate(level.segments):           # L1: expand children
+    for i, seg in enumerate(level.segments):  # L1: expand children
         if isinstance(seg, ChildRef):
             child = instantiate(seg.tag, seg.attrs)
             level.segments[i] = render(child, session)  # opaque node. done.
 
-    session.on_rendered(component, desc)               # L2: accumulate assets
+    session.on_rendered(component, desc)  # L2: accumulate assets
 
-    if is_reactive(component):                         # L3: stamp at known span
+    if is_reactive(component):  # L3: stamp at known span
         stamp_at(level, level.root_span, oob_attrs(component, desc))
 
-    return level   # serialize() joins the tree once, at the very top
+    return level  # serialize() joins the tree once, at the very top
 ```
 
 The abstraction stack this code embodies:

@@ -19,21 +19,21 @@ class TaskBadge(PJXBadge):
 
 def test_subclass_renders_base_template_and_assets():
     html = str(TaskBadge(label="3 open", color="brand").render())
-    assert 'class="pjx-badge' in html              # PJXBadge's template
+    assert 'class="pjx-badge' in html  # PJXBadge's template
     assert "<style" in html
-    assert "--pjx-badge-radius-sm" in html         # PJXBadge's badge.css inlined
+    assert "--pjx-badge-radius-sm" in html  # PJXBadge's badge.css inlined
 
 
 def test_css_only_override_replaces_just_the_css():
     html = str(FancyBadge(label="hi").render())
-    assert 'class="pjx-badge' in html              # still PJXBadge's template
-    assert "fancy-badge-marker" in html           # subclass css collected
-    assert "--pjx-badge-radius-sm" not in html     # base badge.css NOT collected
+    assert 'class="pjx-badge' in html  # still PJXBadge's template
+    assert "fancy-badge-marker" in html  # subclass css collected
+    assert "--pjx-badge-radius-sm" not in html  # base badge.css NOT collected
 
 
 def test_own_template_wins():
     html = str(CustomBadge(label="hi").render())
-    assert "custom-badge-marker" in html          # subclass template used
+    assert "custom-badge-marker" in html  # subclass template used
     assert 'class="pjx-badge' not in html
 
 
@@ -50,6 +50,7 @@ def test_reactive_builtin_subclass_renders_and_stamps():
 
 def test_two_component_bases_rejected():
     with pytest.raises(TypeError, match="one component at a time"):
+
         class Both(PJXBadge, PJXCard):
             pass
 

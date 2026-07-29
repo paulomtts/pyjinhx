@@ -1,4 +1,5 @@
 """PJXButton: freeform {{ content }} slot, themeable, structural button."""
+
 from typing import Any
 
 import pytest

@@ -25,7 +25,11 @@ def _write(dir_path, filename, content):
 
 
 def test_component_renders_html_only_template(default_env):
-    _write(default_env, "cf_card.html", '<div class="card"><h1>{{ title }}</h1>{{ content }}</div>')
+    _write(
+        default_env,
+        "cf_card.html",
+        '<div class="card"><h1>{{ title }}</h1>{{ content }}</div>',
+    )
 
     CfCard = component("CfCard")
     rendered = str(CfCard(title="Hi", content="body").render())

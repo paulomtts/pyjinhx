@@ -42,7 +42,10 @@ class PJXPaginator(BaseComponent):
     def _window(self) -> list[int]:
         """Sorted page numbers to show, before gap handling."""
         total, bound, sib, page = (
-            self.total_pages, self.boundaries, self.siblings, self._clamped_page,
+            self.total_pages,
+            self.boundaries,
+            self.siblings,
+            self._clamped_page,
         )
         shown: set[int] = set()
         for n in range(1, min(bound, total) + 1):
@@ -59,8 +62,15 @@ class PJXPaginator(BaseComponent):
             return {"kind": "current", "number": n}
         return {"kind": "page", "number": n, "href": self._href(n)}
 
-    def _control(self, variant: str, label: str, target_page: int, *, disabled: bool) -> dict[str, Any]:
-        item: dict[str, Any] = {"kind": "control", "variant": variant, "label": label, "disabled": disabled}
+    def _control(
+        self, variant: str, label: str, target_page: int, *, disabled: bool
+    ) -> dict[str, Any]:
+        item: dict[str, Any] = {
+            "kind": "control",
+            "variant": variant,
+            "label": label,
+            "disabled": disabled,
+        }
         if not disabled:
             item["href"] = self._href(target_page)
         return item
@@ -73,7 +83,9 @@ class PJXPaginator(BaseComponent):
         if self.first_last:
             out.append(self._control("first", self.first_label, 1, disabled=page == 1))
         if self.prev_next:
-            out.append(self._control("prev", self.prev_label, page - 1, disabled=page == 1))
+            out.append(
+                self._control("prev", self.prev_label, page - 1, disabled=page == 1)
+            )
         prev_n: int | None = None
         for n in self._window():
             if prev_n is not None:
@@ -84,7 +96,11 @@ class PJXPaginator(BaseComponent):
             out.append(self._page_item(n, page))
             prev_n = n
         if self.prev_next:
-            out.append(self._control("next", self.next_label, page + 1, disabled=page == total))
+            out.append(
+                self._control("next", self.next_label, page + 1, disabled=page == total)
+            )
         if self.first_last:
-            out.append(self._control("last", self.last_label, total, disabled=page == total))
+            out.append(
+                self._control("last", self.last_label, total, disabled=page == total)
+            )
         return out

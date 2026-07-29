@@ -27,7 +27,9 @@ def _require_chromium() -> None:
     with sync_playwright() as playwright:
         executable = Path(playwright.chromium.executable_path)
     if not executable.exists():
-        pytest.skip("chromium is not installed (run: uv run playwright install chromium)")
+        pytest.skip(
+            "chromium is not installed (run: uv run playwright install chromium)"
+        )
 
 
 @pytest.fixture(scope="session")
@@ -38,7 +40,9 @@ def server_url() -> Iterator[str]:
         sock.bind(("127.0.0.1", 0))
         port = sock.getsockname()[1]
 
-    config = uvicorn.Config(create_app(), host="127.0.0.1", port=port, log_level="warning")
+    config = uvicorn.Config(
+        create_app(), host="127.0.0.1", port=port, log_level="warning"
+    )
     server = uvicorn.Server(config)
     thread = threading.Thread(target=server.run, name="reactivity-app", daemon=True)
     thread.start()

@@ -110,9 +110,12 @@ def test_publish_prunes_rows_older_than_retention(tmp_path):
     conn.close()
     backend.publish(frozenset({"trigger"}))
     conn = sqlite3.connect(db)
-    payloads = [r[0] for r in conn.execute(
-        "SELECT keys_json FROM pjx_invalidation ORDER BY id"
-    ).fetchall()]
+    payloads = [
+        r[0]
+        for r in conn.execute(
+            "SELECT keys_json FROM pjx_invalidation ORDER BY id"
+        ).fetchall()
+    ]
     conn.close()
     assert '["stale"]' not in payloads
     assert '["fresh"]' in payloads

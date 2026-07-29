@@ -38,11 +38,7 @@ class Card(BaseComponent):
 ```
 
 ```python
-card = Card(
-    id="hero",
-    title="Welcome",
-    action=Button(id="cta", text="Get Started")
-)
+card = Card(id="hero", title="Welcome", action=Button(id="cta", text="Get Started"))
 html = card.render()
 ```
 
@@ -93,7 +89,7 @@ group = ButtonGroup(
         Button(id="save", text="Save"),
         Button(id="cancel", text="Cancel"),
         Button(id="delete", text="Delete"),
-    ]
+    ],
 )
 ```
 
@@ -156,7 +152,7 @@ dashboard = Dashboard(
         "sidebar": Widget(id="nav", content="Navigation"),
         "main": Widget(id="content", content="Main content"),
         "footer": Widget(id="foot", content="Footer"),
-    }
+    },
 )
 ```
 
@@ -176,10 +172,8 @@ page = Page(
     id="home",
     title="Welcome",
     main_card=Card(
-        id="hero",
-        title="Get Started",
-        action=Button(id="cta", text="Sign Up")
-    )
+        id="hero", title="Get Started", action=Button(id="cta", text="Sign Up")
+    ),
 )
 
 html = page.render()

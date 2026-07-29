@@ -28,7 +28,7 @@ The inlined copy self-guards (`if (!window.htmx)`), so it never double-loads
 when your page already provides HTMX. To turn auto-injection off entirely:
 
 ```python
-setup(app, inject_htmx=False)   # or env: PJX_INJECT_HTMX=false
+setup(app, inject_htmx=False)  # or env: PJX_INJECT_HTMX=false
 ```
 
 If HTMX ends up missing at runtime, `pjx.js` logs a clear `console.error`
@@ -323,6 +323,7 @@ of navigating. Enable `setup(app, htmx_redirects=True)` and pyjinhx rewrites
 
 ```python
 setup(app, htmx_redirects=True)
+
 
 @app.post("/logout")
 def logout():

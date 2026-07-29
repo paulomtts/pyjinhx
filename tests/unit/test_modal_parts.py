@@ -1,4 +1,5 @@
 """Tests for PJXModalBody and PJXModalFooter composable parts."""
+
 import pytest
 
 from pyjinhx import Renderer
@@ -11,6 +12,7 @@ def _env(tmp_path):
 
 
 # ── PJXModalBody ──────────────────────────────────────────────────────────────
+
 
 def test_modal_body_single_root():
     html = str(PJXModalBody(id="b1", content="Hello").render())
@@ -38,6 +40,7 @@ def test_modal_body_content_rendered():
 
 
 # ── PJXModalFooter ────────────────────────────────────────────────────────────
+
 
 def test_modal_footer_single_root():
     html = str(PJXModalFooter(id="f1", content="Footer").render())

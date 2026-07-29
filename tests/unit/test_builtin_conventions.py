@@ -1,5 +1,6 @@
 # tests/unit/test_builtin_conventions.py
 """Mechanical enforcement of docs/guide/builtin-conventions.md."""
+
 import os
 import re
 
@@ -14,6 +15,7 @@ UI_ROOT = os.path.join(os.path.dirname(b.__file__), "ui")
 
 def _component_dir(cls: type) -> str:
     import inspect
+
     return os.path.dirname(inspect.getfile(cls))
 
 
@@ -65,7 +67,9 @@ def test_swept_js_files_are_guarded_iifes():
             if not name.endswith(".js"):
                 continue
             content = _read(os.path.join(directory, name)).lstrip()
-            assert content.startswith("(function ()"), f"{cls.__name__}/{name}: not an IIFE"
-            assert "window.pjx = window.pjx || {}" in content, f"{cls.__name__}/{name}: missing pjx guard"
-
-
+            assert content.startswith("(function ()"), (
+                f"{cls.__name__}/{name}: not an IIFE"
+            )
+            assert "window.pjx = window.pjx || {}" in content, (
+                f"{cls.__name__}/{name}: missing pjx guard"
+            )

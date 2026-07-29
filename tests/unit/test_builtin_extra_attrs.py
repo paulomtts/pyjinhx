@@ -32,7 +32,7 @@ def test_extra_attrs_with_double_quotes_render_single_quoted(tmp_path):
         ).render()
     )
 
-    assert "hx-headers='{\"X-CSRF-Token\": \"t\"}'" in html
+    assert 'hx-headers=\'{"X-CSRF-Token": "t"}\'' in html
 
 
 def test_tag_attr_with_double_quotes_survives_full_render(tmp_path):
@@ -43,7 +43,7 @@ def test_tag_attr_with_double_quotes_survives_full_render(tmp_path):
         """<PJXPopoverPanel id="pp" hx-headers='{"X-CSRF-Token": "t"}'>x</PJXPopoverPanel>"""
     )
 
-    assert "hx-headers='{\"X-CSRF-Token\": \"t\"}'" in rendered
+    assert 'hx-headers=\'{"X-CSRF-Token": "t"}\'' in rendered
 
 
 def test_extra_attrs_value_with_both_quote_types_raises():
