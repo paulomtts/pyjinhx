@@ -1805,3 +1805,41 @@ class TestDescriptorInheritanceMatrix:
         assert descriptor.js_paths == ()
         assert "js" not in descriptor.provenance
         assert descriptor.provenance == {"template": Card, "css": Card}
+
+    def test_siblings_with_a_shared_ancestor_get_independent_mixed_descriptors(
+        self, mro_dir
+    ):
+        """Two subclasses of one parent, each owning a different kind. Both
+        descriptors are built from the same directory, so a shared or leaked
+        result would show up as one sibling claiming the other's file."""
+
+        class Widget(BaseComponent):
+            pass
+
+        class Card(Widget):
+            pass
+
+        class FancyCard(Card):
+            pass
+
+        class PlainCard(Card):
+            pass
+
+        for klass in (Widget, Card, FancyCard, PlainCard):
+            klass.__module__ = _MRO_MODULE
+        (mro_dir / "card.pjx").write_text("<div>card</div>")
+        (mro_dir / "fancy_card.css").write_text(".fancy {}")
+        (mro_dir / "plain_card.js").write_text("//plain")
+
+        fancy = _resolve_class_descriptor(FancyCard)
+        plain = _resolve_class_descriptor(PlainCard)
+
+        assert fancy.template_path == mro_dir / "card.pjx"
+        assert fancy.css_paths == (mro_dir / "fancy_card.css",)
+        assert fancy.js_paths == ()
+        assert fancy.provenance == {"template": Card, "css": FancyCard}
+
+        assert plain.template_path == mro_dir / "card.pjx"
+        assert plain.css_paths == ()
+        assert plain.js_paths == (mro_dir / "plain_card.js",)
+        assert plain.provenance == {"template": Card, "js": PlainCard}
