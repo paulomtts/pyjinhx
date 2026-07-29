@@ -11,6 +11,7 @@ from pyjinhx2.segments import (
     RenderedLevel,
     VerbatimParser,
     contains_custom_tag,
+    serialize,
     splice,
 )
 
@@ -740,3 +741,65 @@ class TestSplice:
         level = make_level(segments=[root, "</div>"], root_span=(0, 18))
         with pytest.raises(AssertionError):
             splice(level, 17, ' data-x="1"')
+
+
+class TestSerialize:
+    def test_joins_flat_string_segments_in_order(self):
+        level = make_level(segments=["<div>", "hi", "</div>"])
+        assert serialize(level) == "<div>hi</div>"
+
+    def test_returns_a_str(self):
+        level = make_level(segments=["<div>", "hi", "</div>"])
+        assert type(serialize(level)) is str
+
+    def test_single_string_segment_passes_through_verbatim(self):
+        level = make_level(segments=['<div class="card">hi &amp; bye</div>'])
+        assert serialize(level) == '<div class="card">hi &amp; bye</div>'
+
+    def test_nested_level_is_spliced_in_at_its_position(self):
+        child = make_level(segments=["<button>go</button>"])
+        parent = make_level(segments=["<div>", child, "</div>"])
+        assert serialize(parent) == "<div><button>go</button></div>"
+
+    def test_only_a_nested_level_serializes_to_that_child(self):
+        child = make_level(segments=["<button>go</button>"])
+        parent = make_level(segments=[child])
+        assert serialize(parent) == "<button>go</button>"
+
+    def test_recurses_depth_two_and_deeper(self):
+        grandchild = make_level(segments=["<i>", "deep", "</i>"])
+        child = make_level(segments=["<span>", grandchild, "</span>"])
+        parent = make_level(segments=["<div>", child, "</div>"])
+        assert serialize(parent) == "<div><span><i>deep</i></span></div>"
+
+    def test_multiple_sibling_levels_keep_their_order(self):
+        first = make_level(segments=["<b>1</b>"])
+        second = make_level(segments=["<b>2</b>"])
+        parent = make_level(segments=["<div>", first, "|", second, "</div>"])
+        assert serialize(parent) == "<div><b>1</b>|<b>2</b></div>"
+
+    def test_empty_segments_serialize_to_empty_string(self):
+        assert serialize(make_level(segments=[])) == ""
+
+    def test_empty_nested_level_contributes_nothing(self):
+        child = make_level(segments=[])
+        parent = make_level(segments=["<div>", child, "</div>"])
+        assert serialize(parent) == "<div></div>"
+
+    def test_ignores_root_span(self):
+        # serialize never reads root_span; a nonsense span changes nothing.
+        level = make_level(segments=["<div>hi</div>"], root_span=(99, 999))
+        assert serialize(level) == "<div>hi</div>"
+
+    def test_raises_when_a_segment_is_a_live_child_ref(self):
+        # Mirrors TestSplice.test_raises_when_root_segment_is_not_a_str:
+        # an L1-expanded tree has no live ChildRef left by join time.
+        level = make_level(segments=["<div>", make_child_ref(), "</div>"])
+        with pytest.raises(AssertionError, match="ChildRef"):
+            serialize(level)
+
+    def test_raises_when_a_nested_level_holds_a_live_child_ref(self):
+        child = make_level(segments=[make_child_ref()])
+        parent = make_level(segments=["<div>", child, "</div>"])
+        with pytest.raises(AssertionError, match="ChildRef"):
+            serialize(parent)
