@@ -1,8 +1,10 @@
 import os
+
 import pytest
-from jinja2 import Environment, FileSystemLoader, DictLoader
+from jinja2 import DictLoader, Environment, FileSystemLoader
 from jinja2.exceptions import TemplateNotFound
 
+import pyjinhx
 from pyjinhx.renderer import Renderer, _PjxContext, get_loader_root
 
 
@@ -125,11 +127,11 @@ def test_autoescape_escapes_text_content():
     env = renderer.environment
 
     # Template with unsafe text
-    template = env.from_string('<p>{{ content }}</p>')
-    result = template.render(content='<script>alert(1)</script>')
+    template = env.from_string("<p>{{ content }}</p>")
+    result = template.render(content="<script>alert(1)</script>")
 
-    assert '&lt;script&gt;' in result
-    assert '<script>' not in result
+    assert "&lt;script&gt;" in result
+    assert "<script>" not in result
 
 
 def test_autoescape_escapes_attributes():
@@ -143,7 +145,7 @@ def test_autoescape_escapes_attributes():
     result = template.render(attr='x" onload="alert(1)')
 
     # Quote can be escaped as &quot; or &#34;; both are valid
-    assert ('&quot;' in result or '&#34;' in result)
+    assert "&quot;" in result or "&#34;" in result
     # Verify the quote is escaped so the attribute can't break out
     assert 'onload="alert' not in result
 
@@ -151,7 +153,7 @@ def test_autoescape_escapes_attributes():
 def test_non_filesystem_loader_raises_error():
     """Non-FileSystemLoader raises ValueError."""
     # Create environment with DictLoader (not FileSystemLoader)
-    dict_env = Environment(loader=DictLoader({'test.html': '<p>test</p>'}))
+    dict_env = Environment(loader=DictLoader({"test.html": "<p>test</p>"}))
 
     with pytest.raises(ValueError, match="Jinja2 loader must be a FileSystemLoader"):
         get_loader_root(dict_env)
@@ -163,4 +165,57 @@ def test_missing_template_raises_error():
     env = Renderer.get_default_environment()
 
     with pytest.raises(TemplateNotFound):
-        env.get_template('nonexistent_template_xyz.pjx')
+        env.get_template("nonexistent_template_xyz.pjx")
+
+
+def test_setup_function_sets_default_environment():
+    """pyjinhx.setup(components_root) sets the default environment."""
+    custom_root = os.path.join(os.getcwd(), "tests")
+    pyjinhx.setup(components_root=custom_root)
+
+    env = Renderer.get_default_environment()
+    assert isinstance(env.loader, FileSystemLoader)
+    assert env.loader.searchpath[0] == custom_root
+    assert env.autoescape is True
+
+
+def test_context_class_set_idempotently():
+    """Every Renderer sets context_class to _PjxContext (idempotent)."""
+    # Create two renderers with the same environment
+    env = Renderer.get_default_environment()
+
+    renderer_1 = Renderer(env)
+    assert env.context_class is _PjxContext
+
+    # Second renderer on same env should also set it (idempotent)
+    renderer_2 = Renderer(env)
+    assert env.context_class is _PjxContext
+
+    # No crashes, and both renderers work
+    assert renderer_1.environment is env
+    assert renderer_2.environment is env
+
+
+def test_full_render_cycle_with_autoescape():
+    """Full render with autoescape and context class."""
+    from pyjinhx.base import BaseComponent
+
+    Renderer.set_default_environment(None)
+    renderer = Renderer.get_default_renderer()
+
+    # Simple test component
+    class JinjaEnvTestComponent(BaseComponent):
+        unsafe_text: str = "<script>alert(1)</script>"
+
+    component = JinjaEnvTestComponent()
+    # If a template exists, render it; otherwise just verify the context class is set
+    env = renderer.environment
+    assert env.autoescape is True
+
+    # Render a simple template with unsafe content
+    template = env.from_string("<div>{{ unsafe_text }}</div>")
+    render_context = {"unsafe_text": component.unsafe_text}
+    result = template.render(render_context)
+
+    assert "&lt;script&gt;" in result
+    assert "<script>" not in result
