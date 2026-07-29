@@ -425,3 +425,37 @@ def splice(level: RenderedLevel, offset: int, text: str) -> RenderedLevel:
         end + shift if offset <= end else end,
     )
     return level
+
+
+def serialize(level: RenderedLevel) -> str:
+    """Join a segment tree back into one string — depth-first, in order.
+
+    The read-side counterpart to ``splice``: where ``splice`` writes into a
+    single segment, this walks the whole tree once and produces the output.
+    It is *the* join — called once, at the top of the outermost render, so each
+    output character is produced exactly once (architecture-overview.md §3/§5).
+    Levels do not join themselves as they finish; joining early would mean a
+    parent holds its child as text, and every enclosing level would then copy
+    that text again on its way up.
+
+    A nested ``RenderedLevel`` recurses rather than being flattened or re-read:
+    a child is opaque by construction (ADR 0002, invariant 2), so its segments
+    are its own business and only its serialized text enters the parent's output
+    stream. Nothing here parses, scans or rewrites the text it passes through
+    (invariant 1) — ``str`` segments go out verbatim, byte for byte as the single
+    parse cut them.
+
+    ``root_span`` is not read, and neither are ``ChildRef.attrs`` or ``inner``.
+    A live ``ChildRef`` reaching this function means L1 tag expansion never
+    turned that hole into a rendered child, which is a structural-contract
+    violation in the caller rather than user error — hence a bare ``assert``,
+    same posture as ``splice``'s ``str``-root check. Empty ``segments`` is a
+    legal no-op and serializes to ``""``.
+    """
+    parts: list[str] = []
+    for seg in level.segments:
+        assert isinstance(seg, (str, RenderedLevel)), (
+            f"serialize needs str or RenderedLevel segments, got {type(seg).__name__}"
+        )
+        parts.append(seg if isinstance(seg, str) else serialize(seg))
+    return "".join(parts)
