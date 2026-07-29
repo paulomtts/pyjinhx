@@ -862,3 +862,48 @@ class TestRoundTripThroughSerialize:
     )
     def test_round_trips_core_markup(self, markup: str):
         assert self.round_trip(markup) == markup
+
+    @pytest.mark.parametrize(
+        "markup",
+        [
+            "<DIV>hi</DIV>",
+            "<div>\n<p>a</p>\n</DIV>",
+            "</DIV >",
+            "<p>x</p >",
+            "<div\n  id='a'\n  class='b'\n>x</div>",
+        ],
+    )
+    def test_round_trips_casing_and_intra_tag_whitespace(self, markup: str):
+        assert self.round_trip(markup) == markup
+
+    @pytest.mark.parametrize(
+        "markup",
+        [
+            "a &amp; b &#65; c",
+            "&nbsp;&lt;div&gt;",
+            "<p>&unknown;</p>",
+            "text with & bare ampersand",
+            "<a href=/x?q=1&y=2>link</a>",
+            "<p title='a&amp;b'>t</p>",
+        ],
+    )
+    def test_round_trips_entities_undecoded_through_the_join(self, markup: str):
+        # convert_charrefs=False at the parser plus a verbatim join means no
+        # decode/re-encode boundary exists anywhere in the pipeline.
+        assert self.round_trip(markup) == markup
+
+    @pytest.mark.parametrize(
+        "markup",
+        [
+            '<script>if (a < b && c) { x("q"); }</script>',
+            '<style>a[href="x"] > b { content: "&"; }</style>',
+            "<script>var s = '</p>';</script>",
+            "<SCRIPT>A < B</SCRIPT>",
+            "<![CDATA[x]]>",
+            "<![if IE]>a<![endif]>",
+            "<!--[if IE]>x<![endif]-->",
+            "<?php echo 1 ?>",
+        ],
+    )
+    def test_round_trips_cdata_marked_sections_and_pis(self, markup: str):
+        assert self.round_trip(markup) == markup
