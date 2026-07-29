@@ -591,6 +591,45 @@ class TestVerbatimParser:
             ),
         ]
 
+    def test_mismatched_quote_attribute_on_cut_component_tag(self):
+        # A tag that *is* cut, wearing the nastiest legal attribute value: single
+        # quotes wrapping embedded double quotes. The cut must still happen, and
+        # the value must reach ChildRef.attrs with the inner quotes intact — no
+        # stripping, no re-quoting, no coercion (ADR 0002).
+        markup = "<PJXButton label='He said \"hi\"'>go</PJXButton>"
+        segments = self.parse(markup)
+        assert segments == [
+            ChildRef(tag="PJXButton", attrs={"label": 'He said "hi"'}, inner="go"),
+        ]
+        # Incidental root_span check only — exhaustive span correctness is #262.
+        # It is here because the odd quoting is exactly what would make a naive
+        # span computation slice the wrong text.
+        parser = self.parsed(markup)
+        span = parser.root_span
+        assert span is not None
+        assert markup[span[0] : span[1]] == "<PJXButton label='He said \"hi\"'>"
+
+    @pytest.mark.parametrize(
+        ("markup", "expected"),
+        [
+            (
+                "<PJXIcon title='a \"b\" c'/>",
+                ChildRef(tag="PJXIcon", attrs={"title": 'a "b" c'}, inner=None),
+            ),
+            (
+                "<PJXButton label='a > b'>go</PJXButton>",
+                ChildRef(tag="PJXButton", attrs={"label": "a > b"}, inner="go"),
+            ),
+        ],
+        ids=["self-closing-embedded-doubles", "gt-inside-quoted-value"],
+    )
+    def test_quote_variants_survive_the_cut(self, markup: str, expected: ChildRef):
+        # Two more shapes on the cut path: the self-closing branch
+        # (handle_startendtag) with embedded double quotes, and a `>` living
+        # inside a quoted value — the character that would end the tag early if
+        # anything here scanned for `>` by hand instead of trusting HTMLParser.
+        assert self.parse(markup) == [expected]
+
 
 class TestEnforceSingleRoot:
     @staticmethod
