@@ -1684,3 +1684,62 @@ class TestDescriptorInheritanceMatrix:
         assert descriptor.css_paths == (mro_dir / "card.css",)
         assert descriptor.js_paths == (mro_dir / "card.js",)
         assert descriptor.provenance == {"template": Card, "css": Card, "js": Card}
+
+    def test_all_kinds_inherited_from_the_same_ancestor(self, mro_dir):
+        """A leaf with nothing of its own gets the parent's three files and
+        credits the parent for all three — the descriptor must not silently
+        credit the class it was built for."""
+
+        class Widget(BaseComponent):
+            pass
+
+        class Card(Widget):
+            pass
+
+        class FancyCard(Card):
+            pass
+
+        for klass in (Widget, Card, FancyCard):
+            klass.__module__ = _MRO_MODULE
+        (mro_dir / "card.pjx").write_text("<div>card</div>")
+        (mro_dir / "card.css").write_text(".card {}")
+        (mro_dir / "card.js").write_text("//card")
+
+        descriptor = _resolve_class_descriptor(FancyCard)
+
+        assert descriptor.template_path == mro_dir / "card.pjx"
+        assert descriptor.css_paths == (mro_dir / "card.css",)
+        assert descriptor.js_paths == (mro_dir / "card.js",)
+        assert descriptor.provenance == {"template": Card, "css": Card, "js": Card}
+
+    def test_all_kinds_inherited_from_a_grandparent_through_an_empty_parent(
+        self, mro_dir
+    ):
+        """An intermediate class that contributes nothing must be transparent
+        to all three walks at once: the descriptor names the grandparent for
+        every kind, never the empty class standing between."""
+
+        class Widget(BaseComponent):
+            pass
+
+        class Card(Widget):
+            pass
+
+        class FancyCard(Card):
+            pass
+
+        class VeryFancyCard(FancyCard):
+            pass
+
+        for klass in (Widget, Card, FancyCard, VeryFancyCard):
+            klass.__module__ = _MRO_MODULE
+        (mro_dir / "card.pjx").write_text("<div>card</div>")
+        (mro_dir / "card.css").write_text(".card {}")
+        (mro_dir / "card.js").write_text("//card")
+
+        descriptor = _resolve_class_descriptor(VeryFancyCard)
+
+        assert descriptor.template_path == mro_dir / "card.pjx"
+        assert descriptor.css_paths == (mro_dir / "card.css",)
+        assert descriptor.js_paths == (mro_dir / "card.js",)
+        assert descriptor.provenance == {"template": Card, "css": Card, "js": Card}
