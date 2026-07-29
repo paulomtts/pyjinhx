@@ -129,3 +129,26 @@ class TestSlotFieldValidation:
     def test_slot_field_default_applies(self):
         assert _Demo().body == ""
         assert _Demo().inner == ""
+
+    def test_children_field_accepts_a_basecomponent_instance_untouched(self):
+        # Same guarantee as the Slot case, on the children-flagged alias: the
+        # instance passes through by identity, unwrapped and unconverted.
+        leaf = _Leaf(text="hi")
+        demo = _Demo(inner=leaf)
+        assert demo.inner is leaf
+        assert type(demo.inner) is _Leaf
+
+    def test_json_looking_string_round_trips_on_slot_and_children(self):
+        # Slot/Children are excluded from JSON coercion: a JSON-looking string
+        # is almost certainly literal markup, so it survives as a plain str.
+        raw = '{"looks": "like json"}'
+        assert _Demo(body=raw).body == raw
+        assert _Demo(inner=raw).inner == raw
+        assert type(_Demo(body=raw).body) is str
+
+    def test_quote_containing_string_round_trips_byte_for_byte(self):
+        # No quote-safety validator and no escaping at L0 (ADR 0003): both quote
+        # kinds survive verbatim.
+        raw = 'he said "hi" and it\'s fine'
+        assert _Demo(body=raw).body == raw
+        assert type(_Demo(body=raw).body) is str

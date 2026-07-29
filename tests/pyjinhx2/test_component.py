@@ -43,8 +43,11 @@ class Structural(BaseComponent):
     typed_items: list[str] = Field(default_factory=list)
     typed_map: dict[str, int] = Field(default_factory=dict)
     address: Address | None = None
+    owner: Address = Field(default_factory=lambda: Address(city="unset"))
     maybe_items: list[str] | None = None
+    maybe_map: dict[str, int] | None = None
     label: str | list = ""
+    either: list | dict = Field(default_factory=list)
 
 
 class Slotted(BaseComponent):
@@ -54,6 +57,9 @@ class Slotted(BaseComponent):
 class StrictStructural(BaseComponent):
     auto_id = False
     sources: list = Field(default_factory=list)
+    count: int = 0
+    meta: dict = Field(default_factory=dict)
+    address: Address | None = None
 
 
 class TestStrictConfig:
@@ -138,6 +144,24 @@ class TestAutoIdOptOut:
         assert "auto_id" not in BaseComponent.model_fields
         assert "auto_id" not in Named.model_fields
 
+    def test_declared_defaults_apply_under_auto_id_opt_out(self):
+        # _require_explicit_id is a mode="before" validator; it must gate the id
+        # without disturbing default application for any field kind.
+        component = StrictStructural(id="fixed")
+        assert component.id == "fixed"
+        assert component.sources == []
+        assert component.count == 0
+        assert component.meta == {}
+        assert component.address is None
+
+    def test_defaults_do_not_satisfy_the_required_id(self):
+        # Every other field defaults, so a bare construction must still fail on
+        # the id alone — defaults never stand in for the explicit id.
+        with pytest.raises(ValidationError) as excinfo:
+            StrictStructural()
+        assert "auto_id = False" in str(excinfo.value)
+        assert "StrictStructural" in str(excinfo.value)
+
 
 class TestJsonCoercion:
     def test_json_string_coerces_to_list(self):
@@ -150,7 +174,7 @@ class TestJsonCoercion:
             typed_map='{"a": 1}'  # pyright: ignore[reportArgumentType]
         ).typed_map == {"a": 1}
 
-    def test_json_object_string_coerces_to_base_model_field(self):
+    def test_json_object_string_coerces_to_optional_base_model_field(self):
         assert Structural(
             address='{"city": "Lisbon"}'  # pyright: ignore[reportArgumentType]
         ).address == Address(city="Lisbon")
@@ -218,6 +242,56 @@ class TestJsonCoercion:
         assert Structural(
             typed_items='["a"]'  # pyright: ignore[reportArgumentType]
         ).id.startswith("pjx-")
+
+    def test_json_string_coerces_to_bare_list(self):
+        assert Structural(
+            sources="[1, 2]"  # pyright: ignore[reportArgumentType]
+        ).sources == [1, 2]
+
+    def test_json_string_coerces_to_bare_dict(self):
+        assert Structural(
+            meta='{"a": 1}'  # pyright: ignore[reportArgumentType]
+        ).meta == {"a": 1}
+
+    def test_json_string_coerces_to_non_optional_base_model_field(self):
+        # The plain-BaseModel cell: no `| None` to strip, so the union branch of
+        # _is_json_coercible_annotation is skipped entirely.
+        assert Structural(
+            owner='{"city": "Lisbon"}'  # pyright: ignore[reportArgumentType]
+        ).owner == Address(city="Lisbon")
+
+    def test_optional_dict_annotation_still_coerces(self):
+        assert Structural(
+            maybe_map='{"a": 1}'  # pyright: ignore[reportArgumentType]
+        ).maybe_map == {"a": 1}
+
+    def test_two_arg_non_none_union_is_not_coerced(self):
+        # `list | dict` keeps two non-None members, so the len(args) != 1 branch
+        # bails out and the JSON-looking string reaches Pydantic as a raw str.
+        with pytest.raises(ValidationError) as excinfo:
+            Structural(either="[1, 2]")  # pyright: ignore[reportArgumentType]
+        error_types = {error["type"] for error in excinfo.value.errors()}
+        assert error_types == {"list_type", "dict_type"}
+        assert "invalid JSON attribute value" not in str(excinfo.value)
+
+    @pytest.mark.parametrize(
+        ("field_name", "error_type"),
+        [
+            ("sources", "list_type"),
+            ("meta", "dict_type"),
+            ("owner", "model_type"),
+            ("maybe_map", "dict_type"),
+        ],
+    )
+    def test_non_string_bad_type_on_coercible_field_still_raises_validation_error(
+        self, field_name, error_type
+    ):
+        # _coerce_json_string_attrs skips non-str values outright, so Pydantic's
+        # own type check must still fire — the bypass must not swallow it.
+        with pytest.raises(ValidationError) as excinfo:
+            Structural(**{field_name: 123})  # pyright: ignore[reportArgumentType]
+        assert [error["type"] for error in excinfo.value.errors()] == [error_type]
+        assert "invalid JSON attribute value" not in str(excinfo.value)
 
 
 class Anchor(BaseComponent):
