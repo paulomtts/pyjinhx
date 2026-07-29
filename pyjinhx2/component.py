@@ -236,6 +236,14 @@ class BaseComponent(BaseModel):
     # Opt out per component class with ``class Foo(BaseComponent): auto_id = False``.
     auto_id: ClassVar[bool] = True
 
+    # The per-class fact sheet (invariant 5), built once by the hook below and
+    # never mutated: #278's dev-reload replaces the whole object. Declared
+    # without a value because Pydantic does not fire __pydantic_init_subclass__
+    # for the class that defines it, so BaseComponent itself has no descriptor —
+    # relied on rather than special-cased. ClassVar keeps it out of model_fields
+    # and out of Pydantic's private-attribute machinery.
+    _pjx_descriptor: ClassVar[ClassDescriptor]
+
     id: str = Field(
         default_factory=_auto_id,
         description="The unique ID for this component. Auto-generated when omitted.",
@@ -243,11 +251,13 @@ class BaseComponent(BaseModel):
 
     @classmethod
     def __pydantic_init_subclass__(cls, **kwargs: Any) -> None:
-        """Reject subclasses that shadow a reserved name (invariant 5: once per
-        class, at definition time — never per instance, never per render).
+        """Reject subclasses that shadow a reserved name, then resolve and
+        attach this class's ClassDescriptor (invariant 5: once per class, at
+        definition time — never per instance, never per render).
 
-        Pydantic calls this after ``model_fields`` is built, so both checks are
-        plain reads of already-computed class facts.
+        Pydantic calls this after ``model_fields`` is built, so the checks are
+        plain reads of already-computed class facts and the descriptor seam sees
+        a fully-built class.
         """
         super().__pydantic_init_subclass__(**kwargs)
         if "auto_id" in cls.model_fields:
@@ -269,6 +279,11 @@ class BaseComponent(BaseModel):
                 f"{id_field.annotation}; id must remain typed str so "
                 f"_validate_id and _require_explicit_id keep their meaning."
             )
+        # One function, one call, one whole-object assignment — the same shape as
+        # v0.x's `cls._pjx_children_target = _resolve_children_field(cls)`.
+        # Anything the seam raises propagates to the `class Foo(BaseComponent)`
+        # statement; nothing here catches or logs it.
+        cls._pjx_descriptor = _resolve_class_descriptor(cls)
 
     @model_validator(mode="before")
     @classmethod
