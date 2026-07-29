@@ -1843,3 +1843,38 @@ class TestDescriptorInheritanceMatrix:
         assert plain.css_paths == ()
         assert plain.js_paths == (mro_dir / "plain_card.js",)
         assert plain.provenance == {"template": Card, "js": PlainCard}
+
+    def test_missing_template_error_message_in_a_mixed_asset_chain(self, mro_dir):
+        """The diagnostic is built from path arithmetic over the whole MRO, so
+        it must stay complete and correctly paired even when the css and js
+        walks *did* find owners in that same chain — a resolved asset must not
+        stand in for, reorder or drop a template candidate."""
+
+        class Card(BaseComponent):
+            pass
+
+        class FancyCard(Card):
+            pass
+
+        class VeryFancyCard(FancyCard):
+            pass
+
+        for klass in (Card, FancyCard, VeryFancyCard):
+            klass.__module__ = _MRO_MODULE
+        (mro_dir / "card.css").write_text(".card {}")
+        (mro_dir / "fancy_card.js").write_text("//fancy")
+
+        descriptor = _resolve_class_descriptor(VeryFancyCard)
+        message = str(_missing_template_error(VeryFancyCard))
+
+        assert descriptor.css_paths == (mro_dir / "card.css",)
+        assert descriptor.js_paths == (mro_dir / "fancy_card.js",)
+        assert descriptor.provenance == {"css": Card, "js": FancyCard}
+
+        assert f"VeryFancyCard -> {mro_dir / 'very_fancy_card.pjx'}" in message
+        assert f"FancyCard -> {mro_dir / 'fancy_card.pjx'}" in message
+        assert f"Card -> {mro_dir / 'card.pjx'}" in message
+        assert message.index("very_fancy_card.pjx") < message.index("fancy_card.pjx")
+        assert message.index("fancy_card.pjx") < message.index("card.pjx")
+        assert ".css" not in message
+        assert ".js" not in message
