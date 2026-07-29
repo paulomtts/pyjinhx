@@ -208,8 +208,16 @@ def _resolve_strict(cls: type[BaseModel]) -> bool:
 
 
 def _resolve_provenance(cls: type) -> Mapping[str, type]:
-    """Resolve provenance (kind → ancestor class) for ``cls``. Stub returns empty dict."""
-    return {}
+    """Which ancestor supplied each resolved kind — ADR 0010's free provenance,
+    for error messages and the dependency graph.
+
+    Template kind only: `css`/`js` keys stay absent until #276 gives assets real
+    resolution, because a stub that resolves nothing has no owner to name. The
+    key is omitted entirely when the walk ended on the unprobed fallback — no
+    file was proven to exist, so no ancestor is named.
+    """
+    _, owner = _walk_template(cls)
+    return {} if owner is None else {"template": owner}
 
 
 def _resolve_class_descriptor(cls: type[BaseModel]) -> ClassDescriptor:

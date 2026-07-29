@@ -13,6 +13,7 @@ from pyjinhx2.component import (
     _resolution_ancestors,
     _resolve_asset_paths,
     _resolve_class_descriptor,
+    _resolve_provenance,
     _resolve_strict,
     _resolve_template_path,
     _walk_template,
@@ -669,6 +670,178 @@ class TestTemplateWalkStopsAtBaseComponent:
 
         assert BaseComponent not in considered
         assert considered == [FancyCard, Card]
+
+
+class TestResolveProvenance:
+    """ADR 0010: the descriptor records *which ancestor* supplied each kind —
+    free provenance for error messages and the dependency graph. Template kind
+    only; css/js stay absent until #276 gives assets real resolution."""
+
+    def test_an_own_file_names_the_class_itself(self, mro_dir):
+        class Card(BaseComponent):
+            pass
+
+        class FancyCard(Card):
+            pass
+
+        Card.__module__ = _MRO_MODULE
+        FancyCard.__module__ = _MRO_MODULE
+        (mro_dir / "card.pjx").write_text("<div>card</div>")
+        (mro_dir / "fancy_card.pjx").write_text("<div>fancy</div>")
+
+        assert _resolve_provenance(FancyCard) == {"template": FancyCard}
+
+    def test_an_inherited_file_names_the_parent(self, mro_dir):
+        """The found ancestor (`Card`) must not be the walk's own terminal
+        candidate, or it would never get probed (see "Key design consequence"
+        above). `Base` supplies the never-probed terminal slot instead."""
+
+        class Base(BaseComponent):
+            pass
+
+        class Card(Base):
+            pass
+
+        class FancyCard(Card):
+            pass
+
+        Base.__module__ = _MRO_MODULE
+        Card.__module__ = _MRO_MODULE
+        FancyCard.__module__ = _MRO_MODULE
+        (mro_dir / "card.pjx").write_text("<div>card</div>")
+
+        assert _resolve_provenance(FancyCard) == {"template": Card}
+
+    def test_it_names_the_grandparent_over_a_fileless_parent(self, mro_dir):
+        """Same terminal-slot caveat as above, one generation deeper: `Base`
+        is the unprobed terminal, `Card` is the grandparent whose file a
+        probe actually proves, `FancyCard` is the fileless middle ancestor
+        that gets skipped."""
+
+        class Base(BaseComponent):
+            pass
+
+        class Card(Base):
+            pass
+
+        class FancyCard(Card):
+            pass
+
+        class VeryFancyCard(FancyCard):
+            pass
+
+        for klass in (Base, Card, FancyCard, VeryFancyCard):
+            klass.__module__ = _MRO_MODULE
+        (mro_dir / "card.pjx").write_text("<div>card</div>")
+
+        assert _resolve_provenance(VeryFancyCard) == {"template": Card}
+
+    def test_no_template_key_when_no_ancestor_has_a_file(self, mro_dir):
+        """`_resolve_template_path` still answers with the root ancestor's
+        candidate (whether that is an error is #277's call), but that candidate
+        is never probed — there is no ancestor proven to own a file, so naming
+        one would be provenance for a file that does not exist."""
+
+        class Card(BaseComponent):
+            pass
+
+        class FancyCard(Card):
+            pass
+
+        Card.__module__ = _MRO_MODULE
+        FancyCard.__module__ = _MRO_MODULE
+
+        provenance = _resolve_provenance(FancyCard)
+
+        assert provenance == {}
+        assert "template" not in provenance
+
+    def test_a_direct_subclass_gets_no_template_key(self):
+        """Consequence of the ADR 0007 budget, stated outright: for `[cls]` the
+        sole candidate is the unprobed fallback, so provenance is empty even
+        when the file happens to exist."""
+
+        class Card(BaseComponent):
+            pass
+
+        assert _resolve_provenance(Card) == {}
+
+    def test_siblings_resolve_independently_to_the_same_parent(self, mro_dir):
+        """Same terminal-slot caveat: `Base` is the unprobed terminal so that
+        `Card`'s file is actually probed and can be named for both siblings."""
+
+        class Base(BaseComponent):
+            pass
+
+        class Card(Base):
+            pass
+
+        class FancyCard(Card):
+            pass
+
+        class PlainCard(Card):
+            pass
+
+        for klass in (Base, Card, FancyCard, PlainCard):
+            klass.__module__ = _MRO_MODULE
+        (mro_dir / "card.pjx").write_text("<div>card</div>")
+
+        assert _resolve_provenance(FancyCard) == {"template": Card}
+        assert _resolve_provenance(PlainCard) == {"template": Card}
+
+    def test_base_component_is_never_named(self, mro_dir):
+        """`_resolution_ancestors` truncates before BaseComponent, so it is out
+        of the list before the walk starts — it can never be a provenance value
+        even when nothing else on the chain has a file.
+
+        Uses a real winning ancestor (`Card`, via the `Base` terminal-slot
+        pattern above) rather than checking against an always-empty mapping:
+        `BaseComponent not in {}` would hold trivially and prove nothing."""
+
+        class Base(BaseComponent):
+            pass
+
+        class Card(Base):
+            pass
+
+        class FancyCard(Card):
+            pass
+
+        Base.__module__ = _MRO_MODULE
+        Card.__module__ = _MRO_MODULE
+        FancyCard.__module__ = _MRO_MODULE
+        (mro_dir / "card.pjx").write_text("<div>card</div>")
+
+        assert _resolve_provenance(FancyCard) == {"template": Card}
+        assert BaseComponent not in _resolve_provenance(FancyCard).values()
+        assert BaseComponent not in _resolve_provenance(Card).values()
+
+    def test_it_never_records_css_or_js_kinds(self, mro_dir):
+        """Per-kind independence at the resolver level: assets are still #276's
+        stub, so provenance must not invent owners for kinds nothing resolved.
+        Same terminal-slot caveat as the other tests above."""
+
+        class Base(BaseComponent):
+            pass
+
+        class Card(Base):
+            pass
+
+        class FancyCard(Card):
+            pass
+
+        Base.__module__ = _MRO_MODULE
+        Card.__module__ = _MRO_MODULE
+        FancyCard.__module__ = _MRO_MODULE
+        (mro_dir / "card.pjx").write_text("<div>card</div>")
+        (mro_dir / "card.css").write_text(".card {}")
+        (mro_dir / "card.js").write_text("//card")
+
+        provenance = _resolve_provenance(FancyCard)
+
+        assert provenance == {"template": Card}
+        assert "css" not in provenance
+        assert "js" not in provenance
 
 
 class TestPerKindIndependence:
