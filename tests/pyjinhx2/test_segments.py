@@ -502,6 +502,43 @@ class TestVerbatimParser:
             ChildRef(tag="PJXIcon", attrs={"name": "gear"}, inner=None),
         ]
 
+    # --- adversarial markup shapes (#261) -------------------------------------
+    # Everything below feeds the parser markup engineered to *look* like a cut
+    # point without being one, or to be a cut point in a shape the naive reader
+    # of `_custom_tag_name` would get wrong. `segments.py` is not touched by this
+    # subtask: these are characterization tests that pin behaviour already shipped
+    # by #252-#259 so a later refactor cannot quietly lose it.
+
+    @pytest.mark.parametrize(
+        "markup",
+        [
+            '<!-- <PJXButton label="x"/> -->',
+            '<div><!-- <PJXButton label="x"/> --></div>',
+            "<div><!-- <PJXAccordion>body</PJXAccordion> --></div>",
+        ],
+    )
+    def test_pascalcase_inside_comment_is_not_cut(self, markup: str):
+        # A commented-out component tag is inert markup, never a cut point.
+        # `contains_custom_tag` is a regex prepass and *does* fire on this input,
+        # which is fine — it only gates whether a parse happens, so a false
+        # positive costs one parse and nothing else. The parse itself must not be
+        # fooled: HTMLParser hands the whole `<!-- ... -->` run to handle_comment
+        # as a single event, so no start/end tag handler ever sees the pseudo-tag
+        # and no ChildRef can be produced.
+        segments = self.parse(markup)
+        assert not any(isinstance(segment, ChildRef) for segment in segments)
+        assert self.round_trip(markup) == markup
+
+    def test_fake_close_tag_inside_a_comment_does_not_collapse_early(self):
+        # The mirror risk: a commented-out *close* tag inside a real, open
+        # component. If handle_comment ever routed through the endtag path, the
+        # accordion would collapse here and the outer `</PJXAccordion>` would be
+        # left dangling as raw text.
+        markup = "<PJXAccordion><!-- </PJXAccordion> --></PJXAccordion>"
+        assert self.parse(markup) == [
+            ChildRef(tag="PJXAccordion", attrs={}, inner="<!-- </PJXAccordion> -->"),
+        ]
+
 
 class TestEnforceSingleRoot:
     @staticmethod
