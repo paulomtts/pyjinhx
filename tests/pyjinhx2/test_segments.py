@@ -630,6 +630,81 @@ class TestVerbatimParser:
         # anything here scanned for `>` by hand instead of trusting HTMLParser.
         assert self.parse(markup) == [expected]
 
+    @pytest.mark.parametrize(
+        ("markup", "expected_inner"),
+        [
+            (
+                "<PJXAccordion><PJXAccordion>x</PJXAccordion></PJXAccordion>",
+                "<PJXAccordion>x</PJXAccordion>",
+            ),
+            (
+                (
+                    "<PJXAccordion><PJXAccordion><PJXAccordion>x</PJXAccordion>"
+                    "</PJXAccordion></PJXAccordion>"
+                ),
+                "<PJXAccordion><PJXAccordion>x</PJXAccordion></PJXAccordion>",
+            ),
+        ],
+        ids=["two-levels", "three-levels"],
+    )
+    def test_self_nested_same_name_custom_tag_tracks_depth(
+        self, markup: str, expected_inner: str
+    ):
+        # `_custom_stack` is a stack of frames, not a set of names: a component
+        # nested inside another instance of *itself* must pop one frame per close
+        # tag. The existing nesting tests all use two different names
+        # (PJXAccordion/PJXPanel), so a name-identity implementation would pass
+        # them and collapse on the first inner `</PJXAccordion>` here — leaving
+        # the outer close tag as dangling raw text.
+        segments = self.parse(markup)
+        assert segments == [
+            ChildRef(tag="PJXAccordion", attrs={}, inner=expected_inner),
+        ]
+        ref = segments[0]
+        assert isinstance(ref, ChildRef)
+        assert ref.inner is not None
+        # Round-trip for a cut tag: the ChildRef plus its own tag text rebuilds
+        # the source exactly, so nothing was dropped, split or reordered.
+        assert "<PJXAccordion>" + ref.inner + "</PJXAccordion>" == markup
+
+    def test_self_nested_tag_keeps_the_inner_open_tag_verbatim(self):
+        # The inner instance carries attributes with adversarial quoting; they
+        # live on inside `inner` as untouched source text, because a child's body
+        # is opaque here and is never parsed by its parent (ADR 0002).
+        markup = (
+            "<PJXAccordion><PJXAccordion label='He said \"hi\"'>x</PJXAccordion>"
+            "</PJXAccordion>"
+        )
+        assert self.parse(markup) == [
+            ChildRef(
+                tag="PJXAccordion",
+                attrs={},
+                inner="<PJXAccordion label='He said \"hi\"'>x</PJXAccordion>",
+            ),
+        ]
+
+    @pytest.mark.parametrize(
+        "markup",
+        [
+            '<div><!-- <PJXButton label="x"/> --></div>',
+            '<script>var s = "<PJXButton>";</script>',
+            '<style>a { content: "<PJXIcon/>"; }</style>',
+            "<PJXButton label='He said \"hi\"'>go</PJXButton>",
+            "<PJXAccordion><PJXAccordion>x</PJXAccordion></PJXAccordion>",
+            "<PJXAccordion><!-- </PJXAccordion> --></PJXAccordion>",
+        ],
+    )
+    def test_adversarial_markup_never_raises_on_parse(self, markup: str):
+        # Same contract as TestEnforceSingleRoot.test_parsing_alone_never_raises,
+        # restated over the adversarial corpus: feed()/close() are
+        # validation-free, and none of these shapes is a single-root violation
+        # anyway, so enforce_single_root() stays quiet too.
+        parser = VerbatimParser()
+        parser.feed(markup)
+        parser.close()
+        assert isinstance(parser.segments, list)
+        assert parser.enforce_single_root() is None
+
 
 class TestEnforceSingleRoot:
     @staticmethod
