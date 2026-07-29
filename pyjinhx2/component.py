@@ -221,15 +221,21 @@ def _resolve_provenance(cls: type) -> Mapping[str, type]:
 
 
 def _resolve_class_descriptor(cls: type[BaseModel]) -> ClassDescriptor:
-    """Build the ClassDescriptor for ``cls`` by invoking all resolver helpers."""
+    """Build the ClassDescriptor for ``cls`` by invoking all resolver helpers.
+
+    The template walk runs once here and feeds both ``template_path`` and the
+    template entry of ``provenance``; calling the two single-purpose resolvers
+    separately would probe the same ancestors twice.
+    """
     css_paths, js_paths = _resolve_asset_paths(cls)
+    template_path, template_owner = _walk_template(cls)
     return ClassDescriptor(
-        template_path=_resolve_template_path(cls),
+        template_path=template_path,
         slot_fields=_resolve_slot_fields(cls),
         css_paths=css_paths,
         js_paths=js_paths,
         strict=_resolve_strict(cls),
-        provenance=_resolve_provenance(cls),
+        provenance={} if template_owner is None else {"template": template_owner},
     )
 
 

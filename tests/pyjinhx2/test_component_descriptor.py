@@ -844,6 +844,84 @@ class TestResolveProvenance:
         assert "js" not in provenance
 
 
+class TestProvenanceProbeBudget:
+    """ADR 0007's budget survives provenance: at most one `is_file` per
+    ancestor, none for the final fallback, and building a whole descriptor
+    walks once — not once for the path and again for the owner."""
+
+    @staticmethod
+    def _count_is_file(monkeypatch) -> list[Path]:
+        probed: list[Path] = []
+        real_is_file = Path.is_file
+
+        def counting(self, *args, **kwargs):
+            probed.append(self)
+            return real_is_file(self, *args, **kwargs)
+
+        monkeypatch.setattr(Path, "is_file", counting)
+        return probed
+
+    def test_provenance_alone_probes_exactly_what_the_path_walk_probes(
+        self, mro_dir, monkeypatch
+    ):
+        class Card(BaseComponent):
+            pass
+
+        class FancyCard(Card):
+            pass
+
+        class VeryFancyCard(FancyCard):
+            pass
+
+        for klass in (Card, FancyCard, VeryFancyCard):
+            klass.__module__ = _MRO_MODULE
+        (mro_dir / "fancy_card.pjx").write_text("<div>fancy</div>")
+        probed = self._count_is_file(monkeypatch)
+
+        _resolve_provenance(VeryFancyCard)
+
+        assert probed == [mro_dir / "very_fancy_card.pjx", mro_dir / "fancy_card.pjx"]
+
+    def test_building_a_descriptor_walks_only_once(self, mro_dir, monkeypatch):
+        """The path and the owner come out of one shared walk, so a full
+        descriptor build costs the same probes as `_resolve_template_path`
+        alone — no doubling."""
+
+        class Card(BaseComponent):
+            pass
+
+        class FancyCard(Card):
+            pass
+
+        class VeryFancyCard(FancyCard):
+            pass
+
+        for klass in (Card, FancyCard, VeryFancyCard):
+            klass.__module__ = _MRO_MODULE
+        (mro_dir / "fancy_card.pjx").write_text("<div>fancy</div>")
+
+        path_only = self._count_is_file(monkeypatch)
+        _resolve_template_path(VeryFancyCard)
+        expected = list(path_only)
+
+        descriptor_probes = self._count_is_file(monkeypatch)
+        descriptor = _resolve_class_descriptor(VeryFancyCard)
+
+        assert descriptor.template_path == mro_dir / "fancy_card.pjx"
+        assert descriptor.provenance == {"template": FancyCard}
+        assert descriptor_probes == expected
+
+    def test_a_direct_subclasss_descriptor_probes_nothing(self, monkeypatch):
+        probed = self._count_is_file(monkeypatch)
+
+        class Card(BaseComponent):
+            pass
+
+        _resolve_class_descriptor(Card)
+
+        assert probed == []
+
+
 class TestPerKindIndependence:
     """ADR 0010: template and assets resolve through separate walks. #273 gave
     template one; css/js keep the stub until #276. If this test starts failing
