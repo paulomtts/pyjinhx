@@ -539,6 +539,58 @@ class TestVerbatimParser:
             ChildRef(tag="PJXAccordion", attrs={}, inner="<!-- </PJXAccordion> -->"),
         ]
 
+    @pytest.mark.parametrize(
+        "markup",
+        [
+            '<script>var s = "<PJXButton>";</script>',
+            '<script>var s = "<PJXButton label=1>";</script>',
+            '<div><script>var s = "<PJXButton label=1>";</script></div>',
+            "<SCRIPT>var s = \"<PJXIcon name='gear'/>\";</SCRIPT>",
+        ],
+    )
+    def test_pascalcase_inside_script_string_is_not_cut(self, markup: str):
+        # HTMLParser puts itself in CDATA mode on `<script>`, so the body arrives
+        # as one handle_data event and a component-tag-shaped string literal is
+        # just text. Two things must hold at once: no cut (no ChildRef), and no
+        # escaping — the `<` in the literal stays a `<`. The second half is the
+        # documented deviation from v0.x's pyjinhx/tags.py, which re-escapes in
+        # handle_data and needs a CDATA exemption to survive this input.
+        segments = self.parse(markup)
+        assert not any(isinstance(segment, ChildRef) for segment in segments)
+        assert self.round_trip(markup) == markup
+        assert "&lt;" not in self.round_trip(markup)
+
+    @pytest.mark.parametrize(
+        "markup",
+        [
+            '<style>a { content: "<PJXIcon/>"; }</style>',
+            '<div><style>a::before { content: "<PJXButton>"; }</style></div>',
+        ],
+    )
+    def test_pascalcase_inside_style_is_not_cut(self, markup: str):
+        # `<style>` is the other member of HTMLParser.CDATA_CONTENT_ELEMENTS, so
+        # it gets the same treatment as `<script>` for free. Asserted separately
+        # rather than folded in, because that membership is a stdlib detail this
+        # module leans on without restating.
+        segments = self.parse(markup)
+        assert not any(isinstance(segment, ChildRef) for segment in segments)
+        assert self.round_trip(markup) == markup
+        assert "&lt;" not in self.round_trip(markup)
+
+    def test_fake_close_tag_inside_a_script_does_not_collapse_early(self):
+        # Same shape as the comment case: a component close tag spelled out
+        # inside a JS string literal, nested in a really-open component.
+        markup = (
+            '<PJXAccordion><script>var s = "</PJXAccordion>";</script></PJXAccordion>'
+        )
+        assert self.parse(markup) == [
+            ChildRef(
+                tag="PJXAccordion",
+                attrs={},
+                inner='<script>var s = "</PJXAccordion>";</script>',
+            ),
+        ]
+
 
 class TestEnforceSingleRoot:
     @staticmethod
