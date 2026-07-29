@@ -5,7 +5,15 @@ import pytest
 from pydantic import BaseModel, Field, ValidationError
 
 import pyjinhx2.component
-from pyjinhx2.component import BaseComponent, Children, Slot
+from pyjinhx2.component import (
+    AttrValue,
+    BaseComponent,
+    Children,
+    ExtraAttrs,
+    Slot,
+    validate_attr_value,
+    validate_extra_attrs,
+)
 
 
 class Address(BaseModel):
@@ -208,6 +216,73 @@ class TestJsonCoercion:
         assert Structural(
             typed_items='["a"]'  # pyright: ignore[reportArgumentType]
         ).id.startswith("pjx-")
+
+
+class Anchor(BaseComponent):
+    href: AttrValue = ""
+
+
+class Tagged(BaseComponent):
+    attrs: ExtraAttrs = Field(default_factory=dict)
+
+
+class TestValidateAttrValue:
+    def test_rejects_double_quote(self):
+        with pytest.raises(ValueError):
+            validate_attr_value('has "quote')
+
+    def test_accepts_single_quote_alone(self):
+        assert validate_attr_value("it's fine") == "it's fine"
+
+    def test_returns_plain_value_unchanged(self):
+        assert validate_attr_value("safe") == "safe"
+
+
+class TestValidateExtraAttrs:
+    def test_accepts_plain_name(self):
+        value = {"data-foo": "bar"}
+        assert validate_extra_attrs(value) == value
+
+    @pytest.mark.parametrize("name", ["@click", ":bind", "data-x", "x:y", "hx-get"])
+    def test_accepts_valid_names(self, name):
+        assert validate_extra_attrs({name: "v"}) == {name: "v"}
+
+    @pytest.mark.parametrize("name", ["1bad", "", "-lead", "has space", "a<b"])
+    def test_rejects_invalid_names(self, name):
+        with pytest.raises(ValueError):
+            validate_extra_attrs({name: "v"})
+
+    def test_rejects_value_with_both_quote_types(self):
+        with pytest.raises(ValueError):
+            validate_extra_attrs({"data-x": 'it\'s "bad"'})
+
+    def test_accepts_value_with_only_double_quotes(self):
+        value = {"data-x": 'say "hi"'}
+        assert validate_extra_attrs(value) == value
+
+    def test_accepts_value_with_only_single_quotes(self):
+        value = {"data-x": "it's fine"}
+        assert validate_extra_attrs(value) == value
+
+
+class TestQuoteSafeFieldTypes:
+    def test_attr_value_field_rejects_double_quote_at_construction(self):
+        with pytest.raises(ValidationError):
+            Anchor(href='/a?x="y"')
+
+    def test_attr_value_field_accepts_safe_value(self):
+        assert Anchor(href="/a?x=y").href == "/a?x=y"
+
+    def test_extra_attrs_field_rejects_bad_name_at_construction(self):
+        with pytest.raises(ValidationError):
+            Tagged(attrs={"1bad": "x"})
+
+    def test_extra_attrs_field_rejects_bad_value_at_construction(self):
+        with pytest.raises(ValidationError):
+            Tagged(attrs={"data-x": 'it\'s "bad"'})
+
+    def test_extra_attrs_field_accepts_valid_mapping(self):
+        assert Tagged(attrs={"@click": "go()"}).attrs == {"@click": "go()"}
 
 
 FORBIDDEN_IMPORTS = (

@@ -13,10 +13,18 @@ session.py or reactive/.
 
 import itertools
 import json
+import re
 import types
 from typing import Annotated, Any, ClassVar, Union, get_args, get_origin
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import (
+    AfterValidator,
+    BaseModel,
+    ConfigDict,
+    Field,
+    field_validator,
+    model_validator,
+)
 
 # Process-wide, never per-class: ids must be unique across every subclass, since
 # they end up as HTML ids on the same page. ``count.__next__`` is atomic under
@@ -27,6 +35,40 @@ _auto_id_counter = itertools.count(1)
 def _auto_id() -> str:
     """Generate a process-unique component id (``pjx-<n>``)."""
     return f"pjx-{next(_auto_id_counter)}"
+
+
+_ATTR_NAME_RE = re.compile(r"[A-Za-z@:][A-Za-z0-9_.:@-]*")
+
+
+def validate_attr_value(value: str) -> str:
+    """Reject values that could break out of a double-quoted HTML attribute.
+
+    Belt-and-suspenders construction-time guard complementing autoescape:
+    autoescape handles text content, but attribute quoting is structural and
+    must be caught before the value reaches the template.
+    Post-construction mutation bypasses this check.
+    """
+    if '"' in value:
+        raise ValueError("attribute values must not contain '\"'")
+    return value
+
+
+def validate_extra_attrs(value: dict[str, str]) -> dict[str, str]:
+    """Reject attribute names/values that could break out of an HTML attribute.
+
+    Values with one quote type are fine: emission picks the other quote.
+    Values with both are inexpressible.
+    """
+    for name, attr_value in value.items():
+        if not _ATTR_NAME_RE.fullmatch(name):
+            raise ValueError(f"extra_attrs name {name!r} is not a valid attribute name")
+        if '"' in attr_value and "'" in attr_value:
+            raise ValueError("attribute values must not contain both '\"' and \"'\"")
+    return value
+
+
+AttrValue = Annotated[str, AfterValidator(validate_attr_value)]
+ExtraAttrs = Annotated[dict[str, str], AfterValidator(validate_extra_attrs)]
 
 
 class PjxSlot:
