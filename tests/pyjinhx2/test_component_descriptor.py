@@ -332,3 +332,38 @@ class TestResolveTemplatePath:
 
         assert not path.exists()
         assert path == Path(__file__).parent / "no_such_template_anywhere.pjx"
+
+    def test_a_fileless_module_still_raises_not_implemented(self):
+        """Regression guard: #272 must not catch or reword #271's guard."""
+        module = types.ModuleType("pyjinhx2_test_fileless_template_module")
+        sys.modules["pyjinhx2_test_fileless_template_module"] = module
+        try:
+
+            class Card(BaseComponent):
+                pass
+
+            Card.__module__ = "pyjinhx2_test_fileless_template_module"
+            with pytest.raises(NotImplementedError, match="no file on disk"):
+                _resolve_template_path(Card)
+        finally:
+            del sys.modules["pyjinhx2_test_fileless_template_module"]
+
+    def test_it_never_touches_the_filesystem(self, monkeypatch):
+        """ADR 0007 allows at most one probe; #272 needs zero, because it does
+        not validate existence. Counting Path.exists calls pins that down so a
+        later 'helpful' existence check has to be a deliberate change."""
+        calls: list[Path] = []
+        real_exists = Path.exists
+
+        def counting(self, *args, **kwargs):
+            calls.append(self)
+            return real_exists(self, *args, **kwargs)
+
+        monkeypatch.setattr(Path, "exists", counting)
+
+        class Card(BaseComponent):
+            pass
+
+        _resolve_template_path(Card)
+
+        assert calls == []
