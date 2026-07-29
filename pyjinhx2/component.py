@@ -11,6 +11,8 @@ render.py in the import graph and must never reach up into them, nor into
 session.py or reactive/.
 """
 
+from typing import Annotated
+
 from pydantic import BaseModel, ConfigDict
 
 
@@ -40,3 +42,11 @@ class BaseComponent(BaseModel):
     """
 
     model_config = ConfigDict(extra="forbid")
+
+
+# Defined after BaseComponent so the union member resolves at definition time.
+# The full ``str | BaseComponent`` union is kept at L0 even though only the
+# ``str`` half gets behavior here, so the type does not change under callers
+# when L1 lands opaque component nodes (ADR 0003).
+Slot = Annotated[str | BaseComponent, PjxSlot()]
+Children = Annotated[str | BaseComponent, PjxSlot(children=True)]
