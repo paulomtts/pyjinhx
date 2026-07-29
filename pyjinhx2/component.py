@@ -33,6 +33,20 @@ class PjxSlot:
         self.children = children
 
 
+def _is_slot_field(cls: type, field_name: str) -> bool:
+    """True when ``field_name`` is a raw-HTML slot on ``cls``.
+
+    A field qualifies either by being the model's designated children field, or
+    by carrying a :class:`PjxSlot` marker in its ``Annotated`` metadata. Unknown
+    field names are not slots.
+    """
+    if field_name == getattr(cls, "_pjx_children_field", None):
+        return True
+    fields = getattr(cls, "model_fields", {})
+    field = fields.get(field_name)
+    return field is not None and any(isinstance(m, PjxSlot) for m in field.metadata)
+
+
 class BaseComponent(BaseModel):
     """Base for all components: declared fields only, undeclared kwargs rejected.
 
