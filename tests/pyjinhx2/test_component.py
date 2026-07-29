@@ -1,8 +1,10 @@
 import ast
 import inspect
+from typing import ClassVar
 
 import pytest
 from pydantic import BaseModel, Field, ValidationError
+from pydantic.errors import PydanticUserError
 
 import pyjinhx2.component
 from pyjinhx2.component import (
@@ -283,6 +285,70 @@ class TestQuoteSafeFieldTypes:
 
     def test_extra_attrs_field_accepts_valid_mapping(self):
         assert Tagged(attrs={"@click": "go()"}).attrs == {"@click": "go()"}
+
+
+class TestReservedNameCollisions:
+    def test_auto_id_as_real_field_raises_at_class_definition(self):
+        with pytest.raises(TypeError) as excinfo:
+
+            class Bad(BaseComponent):
+                auto_id: bool = False  # pyright: ignore[reportIncompatibleVariableOverride]
+
+        message = str(excinfo.value)
+        assert "Bad" in message
+        assert "auto_id" in message
+        assert "ClassVar" in message
+
+    def test_auto_id_as_classvar_is_allowed(self):
+        class Good(BaseComponent):
+            auto_id: ClassVar[bool] = False
+
+        assert "auto_id" not in Good.model_fields
+        with pytest.raises(ValidationError):
+            Good()
+        assert Good(id="x").id == "x"
+
+    def test_bare_auto_id_assignment_is_still_allowed(self):
+        class Bare(BaseComponent):
+            auto_id = False
+
+        assert "auto_id" not in Bare.model_fields
+        assert Bare(id="x").id == "x"
+
+    def test_plain_subclass_is_unaffected(self):
+        class Plain(BaseComponent):
+            name: str = ""
+
+        assert Plain(name="a").id.startswith("pjx-")
+
+    def test_id_retyped_to_non_str_raises_at_class_definition(self):
+        with pytest.raises(TypeError) as excinfo:
+
+            class BadId(BaseComponent):
+                id: int = 0  # pyright: ignore[reportIncompatibleVariableOverride]
+
+        message = str(excinfo.value)
+        assert "BadId" in message
+        assert "id" in message
+        assert "str" in message
+
+    def test_id_as_classvar_raises_at_class_definition(self):
+        # pydantic itself rejects this first (the inherited `_validate_id`
+        # decorator no longer matches a field), so accept either error type —
+        # what matters is that it blows up at class-definition time.
+        with pytest.raises((TypeError, PydanticUserError)):
+
+            class ClassVarId(BaseComponent):
+                id: ClassVar[str] = "x"  # pyright: ignore[reportIncompatibleVariableOverride]
+
+    def test_id_default_and_metadata_may_be_overridden(self):
+        class FixedId(BaseComponent):
+            id: str = Field(default="fixed", description="a fixed id")
+
+        assert FixedId().id == "fixed"
+        assert FixedId(id="custom").id == "custom"
+        # the inherited _validate_id lineage still applies
+        assert FixedId(id="").id.startswith("pjx-")
 
 
 FORBIDDEN_IMPORTS = (

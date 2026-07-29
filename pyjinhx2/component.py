@@ -140,6 +140,35 @@ class BaseComponent(BaseModel):
         description="The unique ID for this component. Auto-generated when omitted.",
     )
 
+    @classmethod
+    def __pydantic_init_subclass__(cls, **kwargs: Any) -> None:
+        """Reject subclasses that shadow a reserved name (invariant 5: once per
+        class, at definition time — never per instance, never per render).
+
+        Pydantic calls this after ``model_fields`` is built, so both checks are
+        plain reads of already-computed class facts.
+        """
+        super().__pydantic_init_subclass__(**kwargs)
+        if "auto_id" in cls.model_fields:
+            raise TypeError(
+                f"auto_id must remain a ClassVar[bool]; found instance field on "
+                f"{cls.__name__}. Write `auto_id = False` or "
+                f"`auto_id: ClassVar[bool] = False` — an unqualified annotation "
+                f"turns it into a model field and silently disables the opt-out."
+            )
+        id_field = cls.model_fields.get("id")
+        if id_field is None:
+            raise TypeError(
+                f"{cls.__name__} removes the reserved id field; id must stay a "
+                f"str model field so auto-id and id validation keep working."
+            )
+        if id_field.annotation is not str:
+            raise TypeError(
+                f"{cls.__name__} redeclares the reserved id field as "
+                f"{id_field.annotation}; id must remain typed str so "
+                f"_validate_id and _require_explicit_id keep their meaning."
+            )
+
     @model_validator(mode="before")
     @classmethod
     def _require_explicit_id(cls, data: object) -> object:
