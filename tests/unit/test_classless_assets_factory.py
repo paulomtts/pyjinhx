@@ -31,6 +31,7 @@ def isolate_renderer(tmp_path):
 # Factory path — {#def#} header with co-located assets
 # ---------------------------------------------------------------------------
 
+
 def test_header_classless_factory_css_collected(isolate_renderer):
     """CSS co-located with a {#def#}-header template IS inlined via factory path."""
     tmp_path = isolate_renderer
@@ -88,6 +89,7 @@ def test_header_classless_factory_both_assets_collected(isolate_renderer):
 # Factory path — no {#def#} header (bare classless) with co-located assets
 # ---------------------------------------------------------------------------
 
+
 def test_bare_classless_factory_css_collected(isolate_renderer):
     """CSS co-located with a bare (no-header) template IS inlined via factory path."""
     tmp_path = isolate_renderer
@@ -102,12 +104,15 @@ def test_bare_classless_factory_css_collected(isolate_renderer):
     Renderer.set_default_environment(str(tmp_path))
     html = str(component("Baz")(content="hello").render())
 
-    assert ".baz { font-size: 2em }" in html, "CSS not inlined for bare classless factory path"
+    assert ".baz { font-size: 2em }" in html, (
+        "CSS not inlined for bare classless factory path"
+    )
 
 
 # ---------------------------------------------------------------------------
 # Tag path — {#def#} header with co-located assets
 # ---------------------------------------------------------------------------
+
 
 def test_header_classless_tag_css_collected(isolate_renderer):
     """CSS co-located with a {#def#}-header template IS inlined via tag path."""
@@ -149,6 +154,7 @@ def test_header_classless_tag_js_collected(isolate_renderer):
 # Regression: file-backed class-based components still collect their assets
 # ---------------------------------------------------------------------------
 
+
 def test_class_based_builtin_still_collects_assets():
     """PJXButton (a real class-based builtin) still inlines its own CSS.
 
@@ -165,6 +171,7 @@ def test_class_based_builtin_still_collects_assets():
 # ---------------------------------------------------------------------------
 # Marker check: _pjx_classless is set correctly
 # ---------------------------------------------------------------------------
+
 
 def test_pjx_classless_marker_set_on_header_model(isolate_renderer):
     """{#def#} header path sets _pjx_classless = True on the dynamic subclass."""

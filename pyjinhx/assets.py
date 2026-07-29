@@ -41,6 +41,7 @@ def set_inject_htmx(enabled: bool) -> None:
     global _inject_htmx
     _inject_htmx = enabled
 
+
 # Request-scoped "runtime already injected" flag, set by Registry.request_scope.
 # ``None`` means no request scope is active and per-session dedup applies alone.
 _runtime_injected: ContextVar[bool | None] = ContextVar(
@@ -268,7 +269,10 @@ def collect_component_asset(
         ]
     else:
         candidates = [
-            (Finder.get_class_directory(klass), pascal_case_to_kebab_case(klass.__name__))
+            (
+                Finder.get_class_directory(klass),
+                pascal_case_to_kebab_case(klass.__name__),
+            )
             for klass in component_resolution_classes(type(component))
         ]
 
@@ -346,7 +350,9 @@ def _inline_items(
     return list(zip(assets, payloads))
 
 
-def render_assets(session: RenderSession, kind: AssetKind, *, policy: AssetPolicy) -> str:
+def render_assets(
+    session: RenderSession, kind: AssetKind, *, policy: AssetPolicy
+) -> str:
     mode = policy.mode(kind)
     if mode == AssetMode.INLINE:
         items = _inline_items(session, kind)
@@ -364,9 +370,7 @@ def render_assets(session: RenderSession, kind: AssetKind, *, policy: AssetPolic
     return ""
 
 
-def render_missing_assets_oob(
-    session: RenderSession, loaded: frozenset[str]
-) -> str:
+def render_missing_assets_oob(session: RenderSession, loaded: frozenset[str]) -> str:
     """
     Build an OOB head-injection for INLINE assets not yet in the client's page.
 
@@ -400,7 +404,9 @@ def apply_component_render_assets(
     client: object | None,
 ) -> str:
     cls = type(component)
-    is_classless = cls.__name__ == "BaseComponent" or getattr(cls, "_pjx_classless", False)
+    is_classless = cls.__name__ == "BaseComponent" or getattr(
+        cls, "_pjx_classless", False
+    )
     if template_path is not None and is_classless:
         asset_dir: str | None = os.path.dirname(template_path)
         asset_name: str | None = os.path.splitext(os.path.basename(template_path))[
@@ -412,12 +418,20 @@ def apply_component_render_assets(
 
     if collect_component_js:
         collect_component_asset(
-            component, session, "js",
-            policy=policy, component_dir=asset_dir, asset_name=asset_name,
+            component,
+            session,
+            "js",
+            policy=policy,
+            component_dir=asset_dir,
+            asset_name=asset_name,
         )
         collect_component_asset(
-            component, session, "css",
-            policy=policy, component_dir=asset_dir, asset_name=asset_name,
+            component,
+            session,
+            "css",
+            policy=policy,
+            component_dir=asset_dir,
+            asset_name=asset_name,
         )
 
     # Extra assets (e.g. PJXDropdown.js = [pjx_popover.js]) must be collected for

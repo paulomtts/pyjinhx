@@ -160,13 +160,17 @@ class _ReactiveRender:
 
         if not _reactive_context_active():
             instance = (
-                component_cls.load(*args, **kwargs) if keyed else component_cls.load(**kwargs)
+                component_cls.load(*args, **kwargs)
+                if keyed
+                else component_cls.load(**kwargs)
             )
             return Markup(instance._render())
 
         def build_primary() -> str:
             instance = (
-                component_cls.load(*args, **kwargs) if keyed else component_cls.load(**kwargs)
+                component_cls.load(*args, **kwargs)
+                if keyed
+                else component_cls.load(**kwargs)
             )
             return instance._render()
 
@@ -290,7 +294,9 @@ class ReactiveComponent(BaseComponent):
         canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"))
         return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
-    def __init_subclass__(cls, react: set[MutationKey] | None = None, **kwargs: Any) -> None:
+    def __init_subclass__(
+        cls, react: set[MutationKey] | None = None, **kwargs: Any
+    ) -> None:
         super().__init_subclass__(**kwargs)
         if "reacts_to" in cls.__dict__:
             raise TypeError(
@@ -304,7 +310,9 @@ class ReactiveComponent(BaseComponent):
                     f"{cls.__name__}: react must be a set of MutationKey members, "
                     f"not a single key: react={{{react!r}}}"
                 )
-            invalid = sorted(repr(key) for key in react if not isinstance(key, MutationKey))
+            invalid = sorted(
+                repr(key) for key in react if not isinstance(key, MutationKey)
+            )
             if invalid:
                 raise TypeError(
                     f"{cls.__name__}: react only accepts MutationKey members; "
@@ -466,7 +474,9 @@ def oob_swaps(
             load_arg = None
 
         static_keys = set(getattr(component_class, "_pjx_reacts_to", frozenset()))
-        derived_keys = _keyed_derived_keys(frozenset(static_keys), load_arg) if keyed else set()
+        derived_keys = (
+            _keyed_derived_keys(frozenset(static_keys), load_arg) if keyed else set()
+        )
         if not ((static_keys | derived_keys) & dirtied_keys):
             continue
 
@@ -572,7 +582,10 @@ def _finish_with_oob(html: str | Markup, *, skip_invalidate: bool = False) -> Ma
     if backend is None or not pending:
         return Markup(html)
     swaps = oob_swaps(
-        pending, backend, exclude_ids=_mounted_ids_in(html), skip_invalidate=skip_invalidate
+        pending,
+        backend,
+        exclude_ids=_mounted_ids_in(html),
+        skip_invalidate=skip_invalidate,
     )
     MutationTracker.mark_render_consumed()
     return Markup(html) + swaps

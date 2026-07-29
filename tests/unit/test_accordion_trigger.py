@@ -1,4 +1,5 @@
 """PJXAccordionTrigger: the accordion <summary> with auto chevron."""
+
 import pytest
 
 from pyjinhx import Renderer

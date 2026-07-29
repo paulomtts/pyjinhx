@@ -27,8 +27,18 @@ def modal():
             id="demo-modal",
             content=(
                 str(PJXModalHeader(id="demo-modal-h", title="Confirm changes").render())
-                + str(PJXModalBody(id="demo-modal-b", content="Your draft will be published immediately. This action cannot be undone.").render())
-                + str(PJXModalFooter(id="demo-modal-f", content='<button class="pjx-demo-btn" data-pjx-close>Cancel</button>').render())
+                + str(
+                    PJXModalBody(
+                        id="demo-modal-b",
+                        content="Your draft will be published immediately. This action cannot be undone.",
+                    ).render()
+                )
+                + str(
+                    PJXModalFooter(
+                        id="demo-modal-f",
+                        content='<button class="pjx-demo-btn" data-pjx-close>Cancel</button>',
+                    ).render()
+                )
             ),
         ).render(),
     ]
@@ -90,10 +100,14 @@ def notification():
 
 def alert():
     return [
-        PJXAlert(variant="info", title="Heads up", body="A new version is available.").render(),
+        PJXAlert(
+            variant="info", title="Heads up", body="A new version is available."
+        ).render(),
         PJXAlert(variant="success", body="Your changes were saved.").render(),
         PJXAlert(variant="warning", body="Your session expires in 5 minutes.").render(),
-        PJXAlert(variant="error", body="Could not reach the server.", dismissible=True).render(),
+        PJXAlert(
+            variant="error", body="Could not reach the server.", dismissible=True
+        ).render(),
     ]
 
 
@@ -102,8 +116,17 @@ def tooltip():
         id="demo-tooltip",
         placement="top",
         content=(
-            str(PJXTooltipTrigger(id="demo-tooltip-tr", content="Hover over me").render())
-            + str(PJXTooltipContent(id="demo-tooltip-tc", content="This is additional context shown on hover or focus.").render())
+            str(
+                PJXTooltipTrigger(
+                    id="demo-tooltip-tr", content="Hover over me"
+                ).render()
+            )
+            + str(
+                PJXTooltipContent(
+                    id="demo-tooltip-tc",
+                    content="This is additional context shown on hover or focus.",
+                ).render()
+            )
         ),
     ).render()
 
@@ -112,7 +135,9 @@ def popover():
     return PJXPopover(
         id="demo-popover",
         content=(
-            PJXPopoverTrigger(id="demo-popover-t", content="Show info", role="dialog").render()
+            PJXPopoverTrigger(
+                id="demo-popover-t", content="Show info", role="dialog"
+            ).render()
             + PJXPopoverPanel(
                 id="demo-popover-p",
                 role="dialog",

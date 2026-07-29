@@ -6,7 +6,9 @@ from pyjinhx.registry import Registry
 
 
 def _setup_container(tmp_path):
-    (tmp_path / "box.html").write_text('<div id="{{ id }}" class="box">{{ content }}</div>')
+    (tmp_path / "box.html").write_text(
+        '<div id="{{ id }}" class="box">{{ content }}</div>'
+    )
     (tmp_path / "leaf.html").write_text('<span id="{{ id }}">{{ text }}</span>')
     Renderer.set_default_environment(str(tmp_path))
     return Renderer.get_default_renderer()
@@ -24,9 +26,7 @@ def test_container_root_scan_sees_opacified_markup(tmp_path, monkeypatch):
 
     monkeypatch.setattr(renderer_module, "apply_root_attrs", spying_apply)
 
-    leaves = "".join(
-        f'<Leaf id="l{i}" text="{"x" * 200}"></Leaf>' for i in range(50)
-    )
+    leaves = "".join(f'<Leaf id="l{i}" text="{"x" * 200}"></Leaf>' for i in range(50))
     with Registry.request_scope():
         out = renderer.render(f'<Box id="b">{leaves}</Box>')
 

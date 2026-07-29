@@ -1,4 +1,3 @@
-
 from pyjinhx import ReactiveComponent
 from tests.reactive_test_support import Keys
 

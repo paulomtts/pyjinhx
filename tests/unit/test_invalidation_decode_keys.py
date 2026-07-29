@@ -28,7 +28,9 @@ def test_decode_keys_bad_json_warns_and_returns_none(caplog):
     with caplog.at_level(logging.WARNING, logger="pyjinhx"):
         result = _StubBackend()._decode_keys("{not valid json")
     assert result is None
-    assert any("Ignoring invalid invalidation payload" in r.message for r in caplog.records)
+    assert any(
+        "Ignoring invalid invalidation payload" in r.message for r in caplog.records
+    )
 
 
 def test_decode_keys_non_list_returns_none():

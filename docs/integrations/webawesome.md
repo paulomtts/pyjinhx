@@ -154,7 +154,7 @@ task_card = TaskCard(
     id="1",
     title="Learn PyJinHx",
     description="Understand how to build reusable components",
-    completed=False
+    completed=False,
 ).render()
 
 form = AddTaskForm(id="add-task-form").render()

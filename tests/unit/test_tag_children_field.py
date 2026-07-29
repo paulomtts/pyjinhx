@@ -23,7 +23,7 @@ def test_tooltip_tag_children_map_to_content(tmp_path):
         '<PJXTooltip id="t">'
         '<PJXTooltipTrigger id="t-tr">hover me</PJXTooltipTrigger>'
         '<PJXTooltipContent id="t-tc">helpful text</PJXTooltipContent>'
-        '</PJXTooltip>'
+        "</PJXTooltip>"
     )
 
     assert '<span id="t-tc" class="pjx-tooltip__tip"' in rendered
@@ -52,7 +52,7 @@ def test_preregistered_tooltip_instance_update_maps_children_to_content(tmp_path
     rendered = renderer.render(
         '<PJXTooltip id="t2">'
         '<PJXTooltipContent id="t2-tc">updated tip</PJXTooltipContent>'
-        '</PJXTooltip>'
+        "</PJXTooltip>"
     )
 
     assert '<span id="t2-tc" class="pjx-tooltip__tip"' in rendered
@@ -70,7 +70,7 @@ def test_both_children_and_content_attr_raises(tmp_path):
     class ContentPane(BaseComponent):
         content: str = ""
 
-    (tmp_path / "content_pane.html").write_text('<div>{{ content }}</div>')
+    (tmp_path / "content_pane.html").write_text("<div>{{ content }}</div>")
     renderer = Renderer(Environment(loader=FileSystemLoader(str(tmp_path))))
 
     with pytest.raises(ValueError, match="both children and the 'content' attribute"):
@@ -128,13 +128,13 @@ def test_children_alias_field_receives_children(tmp_path):
         body: Children = ""
 
     (tmp_path / "panel_tag.html").write_text(
-        '<div>{{ head }}|<section>{{ body }}</section></div>'
+        "<div>{{ head }}|<section>{{ body }}</section></div>"
     )
     renderer = Renderer(Environment(loader=FileSystemLoader(str(tmp_path))))
 
     rendered = renderer.render('<PanelTag id="p"><b>kid</b></PanelTag>')
 
-    assert '<section><b>kid</b></section>' in rendered
+    assert "<section><b>kid</b></section>" in rendered
 
 
 def test_ambiguous_component_with_children_raises_clear_error(tmp_path):
@@ -142,7 +142,7 @@ def test_ambiguous_component_with_children_raises_clear_error(tmp_path):
         trigger: Slot = ""
         items: Annotated[str | BaseComponent, PjxSlot()] = ""
 
-    (tmp_path / "menu_tag.html").write_text('<div>{{ trigger }}{{ items }}</div>')
+    (tmp_path / "menu_tag.html").write_text("<div>{{ trigger }}{{ items }}</div>")
     renderer = Renderer(Environment(loader=FileSystemLoader(str(tmp_path))))
 
     with pytest.raises(ValueError) as exc:
@@ -161,7 +161,7 @@ def test_ambiguous_existing_instance_with_children_raises_clear_error(tmp_path):
         trigger: Slot = ""
         items: Annotated[str | BaseComponent, PjxSlot()] = ""
 
-    (tmp_path / "menu3_tag.html").write_text('<div>{{ trigger }}{{ items }}</div>')
+    (tmp_path / "menu3_tag.html").write_text("<div>{{ trigger }}{{ items }}</div>")
     Renderer.set_default_environment(str(tmp_path))
     renderer = Renderer.get_default_renderer()
 
@@ -181,7 +181,7 @@ def test_ambiguous_component_props_only_does_not_crash(tmp_path):
         trigger: Slot = ""
         items: Annotated[str | BaseComponent, PjxSlot()] = ""
 
-    (tmp_path / "menu2_tag.html").write_text('<div>{{ trigger }}{{ items }}</div>')
+    (tmp_path / "menu2_tag.html").write_text("<div>{{ trigger }}{{ items }}</div>")
     renderer = Renderer(Environment(loader=FileSystemLoader(str(tmp_path))))
 
     rendered = renderer.render('<Menu2Tag id="m2" trigger="go"/>')

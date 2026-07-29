@@ -10,7 +10,7 @@ _CSS_TOKEN = asset_token(os.path.join(_UI_DIR, "unified-component.css"))
 _JS_TOKEN = asset_token(os.path.join(_UI_DIR, "unified-component.js"))
 
 CSS = f'<style data-pjx-asset="{_CSS_TOKEN}">.test-component {{ color: red; }}\n</style>\n'
-JS = f'\n<script data-pjx-asset="{_JS_TOKEN}">console.log(\'Button loaded\');</script>'
+JS = f"\n<script data-pjx-asset=\"{_JS_TOKEN}\">console.log('Button loaded');</script>"
 
 
 def test_simple_nesting():
@@ -53,6 +53,6 @@ def test_component_reuse():
     # Count structural occurrences: id="shared-1" in element attributes, not text or scripts
     id_occurrences = re.findall(r'id="shared-1"', rendered)
     assert len(id_occurrences) == 3, (
-        f"Expected exactly 3 id=\"shared-1\" element attributes, got {len(id_occurrences)}"
+        f'Expected exactly 3 id="shared-1" element attributes, got {len(id_occurrences)}'
     )
     assert "Shared Component" in rendered

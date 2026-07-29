@@ -15,9 +15,7 @@ def pascal_case_to_snake_case(name: str) -> str:
     Returns:
         The snake_case version of the identifier.
     """
-    return re.sub(
-        r"(?<=[a-z0-9])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])", "_", name
-    ).lower()
+    return re.sub(r"(?<=[a-z0-9])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])", "_", name).lower()
 
 
 def pascal_case_to_kebab_case(name: str) -> str:

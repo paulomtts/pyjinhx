@@ -65,11 +65,7 @@ Renderer.set_default_environment("./components")
 from components.ui.button import Button
 
 # Create and render
-button = Button(
-    id="submit-btn",
-    text="Submit",
-    variant="primary"
-)
+button = Button(id="submit-btn", text="Submit", variant="primary")
 
 html = button.render()
 print(html)

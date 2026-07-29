@@ -1,4 +1,5 @@
 """PJXAccordionContent: the accordion body <div>."""
+
 import pytest
 
 from pyjinhx import Renderer

@@ -1,4 +1,5 @@
 """PJXResizablePanel / PJXResizableHandle: the leaf parts of the split pane."""
+
 import pytest
 
 from pyjinhx import Renderer
@@ -66,6 +67,7 @@ def test_panel_percentage_min_emits_no_css_var():
     assert 'data-min="25' in html
     # percentages stay on the JS clamp path; no inline CSS var, only CSS rules reference the var name
     import re as _re
+
     style_attr = _re.search(r'style="([^"]*)"', html)
     assert style_attr is not None
     assert "--pjx-resizable-min" not in style_attr.group(1)
@@ -83,6 +85,7 @@ def test_panel_rejects_bad_unit():
 
 def test_panel_rejects_negative_and_nonfinite_and_scientific():
     import math as _m
+
     for bad in (-5, -5.0, _m.inf, float("nan"), "1e3", "1.5e20"):
         with pytest.raises(ValueError):
             PJXResizablePanel(id="p", min=bad)

@@ -33,15 +33,17 @@ instantiated; a missing `react` is a definition-time error):
 ```python
 from pyjinhx import ReactiveComponent, MutationKey
 
+
 class Keys(MutationKey):
     TODOS = "todos"
+
 
 class Counter(ReactiveComponent, react={Keys.TODOS}):
     remaining: int
 
     @classmethod
     def load(cls) -> "Counter":
-        return cls(remaining=db.remaining())   # id defaults to "counter"
+        return cls(remaining=db.remaining())  # id defaults to "counter"
 ```
 
 - `react` — the **state keys** this component derives from, as a set of `MutationKey`
@@ -70,8 +72,10 @@ inherits its ancestor's template and assets through the MRO:
 from pyjinhx import MutationKey, ReactiveComponent
 from pyjinhx.builtins import PJXBadge
 
+
 class Keys(MutationKey):
     TASKS = "tasks"
+
 
 class LiveBadge(ReactiveComponent, PJXBadge, react={Keys.TASKS}):
     @classmethod
@@ -102,8 +106,8 @@ requests from a page that already loaded it do not.
 ```python
 from pyjinhx import BaseComponent
 
-class AppShell(BaseComponent):
-    ...  # app_shell.html is your full page template
+
+class AppShell(BaseComponent): ...  # app_shell.html is your full page template
 ```
 
 For a raw Jinja layout (outside the component render path), drop in `client_script()`:
@@ -192,8 +196,8 @@ region already present in the response body.
 ```python
 @app.post("/generate")
 def generate():
-    report = controller.generate()      # @mutates dirties "reports", "quota"
-    return ReportSummary(report=report).render()   # non-reactive; counters fan out OOB
+    report = controller.generate()  # @mutates dirties "reports", "quota"
+    return ReportSummary(report=report).render()  # non-reactive; counters fan out OOB
 ```
 
 For a response that renders no component at all (a raw string, a `204`), use
@@ -202,10 +206,11 @@ For a response that renders no component at all (a raw string, a `204`), use
 ```python
 from pyjinhx.reactive import ReactiveResponse
 
+
 @app.post("/dismiss")
 def dismiss():
-    controller.dismiss()                # @mutates dirties mounted regions
-    return ReactiveResponse()           # no primary; dependents still fan out OOB
+    controller.dismiss()  # @mutates dirties mounted regions
+    return ReactiveResponse()  # no primary; dependents still fan out OOB
 ```
 
 `ReactiveResponse` can also dirty keys and fan out in one call — pass the
@@ -214,8 +219,8 @@ mutation keys positionally, folding the `dirty()` into the response:
 ```python
 @app.post("/dismiss")
 def dismiss():
-    controller.dismiss()                # plain mutation, no @mutates
-    return ReactiveResponse(Keys.TODOS) # dirty TODOS + fan out dependents OOB
+    controller.dismiss()  # plain mutation, no @mutates
+    return ReactiveResponse(Keys.TODOS)  # dirty TODOS + fan out dependents OOB
 ```
 
 Pass `html=` for a primary body alongside the keys, e.g.
@@ -242,8 +247,10 @@ A component is **instance-keyed iff its `load()` takes one resource parameter af
 from typing import Annotated
 from pyjinhx import MutationKey, PjxKey, ReactiveComponent
 
+
 class Keys(MutationKey):
     TODOS = "todos"
+
 
 class TodoItemRow(ReactiveComponent, react={Keys.TODOS}):
     todo_id: Annotated[int, PjxKey()]
@@ -273,8 +280,8 @@ The `load()` key arrives as a **string** from the cache wrapper (the manifest se
 
 ```python
 @mutates(Keys.TODOS)
-def toggle(todo_id: int) -> Todo:
-    ...
+def toggle(todo_id: int) -> Todo: ...
+
 
 @app.post("/rows/{todo_id}/toggle")
 def toggle_row(todo_id: int):
@@ -300,8 +307,10 @@ from pyjinhx import MutationKey, PjxKey, ReactiveComponent, dirty
 from pyjinhx.keys import reactive_key
 from typing import Annotated
 
+
 class ChatKeys(MutationKey):
     MESSAGE = "chat.message"
+
 
 class MessageBubble(ReactiveComponent, react={ChatKeys.MESSAGE}):
     message_id: Annotated[str, PjxKey()]
@@ -311,6 +320,7 @@ class MessageBubble(ReactiveComponent, react={ChatKeys.MESSAGE}):
     def load(cls, message_id: str) -> "MessageBubble":
         msg = store.get(message_id)
         return cls(id=f"bubble-{message_id}", message_id=message_id, text=msg.text)
+
 
 # on settle, after finalizing one message:
 dirty(reactive_key(ChatKeys.MESSAGE, message_id))
@@ -345,11 +355,12 @@ Centralize reactive key strings in a `MutationKey` enum so `react=`, `dirtied`, 
 ```python
 from pyjinhx import MutationKey, ReactiveComponent
 
+
 class Keys(MutationKey):
     TODOS = "todos"
 
-class TodoCounter(ReactiveComponent, react={Keys.TODOS}):
-    ...
+
+class TodoCounter(ReactiveComponent, react={Keys.TODOS}): ...
 ```
 
 `react=` only accepts `MutationKey` members — passing a bare string raises `TypeError`
@@ -366,9 +377,10 @@ from `@mutates` for OOB pub-sub:
 ```python
 from pyjinhx import mutates
 
+
 @mutates(Keys.TODOS)
-def toggle(todo_id: int) -> Todo:
-    ...
+def toggle(todo_id: int) -> Todo: ...
+
 
 @app.post("/rows/{todo_id}/toggle")
 def toggle_row(todo_id):
@@ -384,8 +396,7 @@ own arguments, and its return value feeds `reactive_key()` for every key passed 
 
 ```python
 @mutates(Keys.TODOS, key=lambda todo_id: todo_id)
-def toggle(todo_id: int) -> Todo:
-    ...
+def toggle(todo_id: int) -> Todo: ...
 ```
 
 Now only the mounted `TodoItemRow` whose load-key matches `todo_id` reloads.
@@ -401,12 +412,15 @@ Pass request-scoped dependencies into `load()` without global imports:
 from dataclasses import dataclass
 from pyjinhx import MutationKey, PjxContext, ReactiveComponent
 
+
 class Keys(MutationKey):
     TODOS = "todos"
+
 
 @dataclass(frozen=True)
 class AppContext(PjxContext):
     db: Database
+
 
 class Counter(ReactiveComponent, react={Keys.TODOS}):
     @classmethod
@@ -426,7 +440,7 @@ Enable guardrails during local development:
 ```python
 from pyjinhx.dev import enable_reactive_dev
 
-enable_reactive_dev()          # warnings
+enable_reactive_dev()  # warnings
 enable_reactive_dev(strict=True)  # raise instead
 ```
 
@@ -451,8 +465,8 @@ Repeated reads within the same request return the cached result and skip the dat
 until the relevant keys are dirtied:
 
 ```python
-Counter.load()   # first call hits the DB
-Counter.load()   # cached: no DB, returns an independent copy
+Counter.load()  # first call hits the DB
+Counter.load()  # cached: no DB, returns an independent copy
 ```
 
 ### Cache scope
@@ -486,6 +500,7 @@ dependents. For mutations outside a render — a background job, a webhook — c
 
 ```python
 from pyjinhx.cache import LoadCache
+
 
 def nightly_recalc():
     db.rebuild_todos()

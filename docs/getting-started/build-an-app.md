@@ -217,7 +217,9 @@ app = FastAPI()
 
 @app.get("/", response_class=HTMLResponse)
 def index():
-    return TodoPanel(id="panel", counter=TodoCounter(id="counter", remaining=3)).render()
+    return TodoPanel(
+        id="panel", counter=TodoCounter(id="counter", remaining=3)
+    ).render()
 ```
 
 Run: `uvicorn app:app --reload`
@@ -240,7 +242,9 @@ from pyjinhx import Registry
 @app.get("/", response_class=HTMLResponse)
 def index():
     with Registry.request_scope():
-        return TodoPanel(id="panel", counter=TodoCounter(id="counter", remaining=3)).render()
+        return TodoPanel(
+            id="panel", counter=TodoCounter(id="counter", remaining=3)
+        ).render()
 ```
 
 For a real app, use **`setup(app, ...)`** so lifespan and middleware are wired automatically:
@@ -249,7 +253,9 @@ For a real app, use **`setup(app, ...)`** so lifespan and middleware are wired a
 from pyjinhx import setup
 
 app = FastAPI()
-setup(app, context_factory=lambda request: AppLoadContext(store=store))  # AppLoadContext defined in Step 12
+setup(
+    app, context_factory=lambda request: AppLoadContext(store=store)
+)  # AppLoadContext defined in Step 12
 ```
 
 See [Configuration API](../api/config.md) and [FastAPI integration](../integrations/fastapi.md).
@@ -319,8 +325,7 @@ class TodoCounter(ReactiveComponent, react={Keys.TODOS}):
 Define the page shell as a normal `BaseComponent` — no special marker required:
 
 ```python
-class TodoApp(BaseComponent):
-    ...
+class TodoApp(BaseComponent): ...
 ```
 
 ???+ question "Why ReactiveComponent?"
@@ -398,6 +403,7 @@ def toggle_row(todo_id: int):
 ```python
 from typing import Annotated
 from pyjinhx import PjxKey
+
 
 class TodoItemRow(ReactiveComponent, react={Keys.TODOS}):
     todo_id: Annotated[int, PjxKey()]

@@ -21,16 +21,16 @@ class StructuralProbe(BaseComponent):
     label: str | list = ""
 
 
-STRUCTURAL_PROBE_TEMPLATE = '<span id="{{ id }}">{{ sources }}|{{ meta }}|{{ label }}</span>'
+STRUCTURAL_PROBE_TEMPLATE = (
+    '<span id="{{ id }}">{{ sources }}|{{ meta }}|{{ label }}</span>'
+)
 
 
 def test_json_string_attr_coerces_to_list(tmp_path):
     (tmp_path / "structural_probe.html").write_text(STRUCTURAL_PROBE_TEMPLATE)
     env = Environment(loader=FileSystemLoader(str(tmp_path)))
     renderer = Renderer(env)
-    html = renderer.render(
-        '<StructuralProbe id="s1" sources=\'[{"id": "a"}]\'/>'
-    )
+    html = renderer.render('<StructuralProbe id="s1" sources=\'[{"id": "a"}]\'/>')
     assert "[{&#39;id&#39;: &#39;a&#39;}]" in html or "[{'id': 'a'}]" in html
 
 
@@ -101,8 +101,10 @@ def test_instance_reuse_preserves_nested_components(tmp_path):
         renderer = Renderer.get_default_renderer()
         PJXCardBody(id="cb1", content=PJXBadge(id="b1", label="hi"))
         html = renderer.render('<PJXCardBody id="cb1" class_name="updated"/>')
-        assert "hi" in html          # PJXBadge subclass state survived the reuse update
-        assert "pjx-badge" in html    # it rendered as a PJXBadge, not a degraded BaseComponent
-        assert "updated" in html     # the update itself applied
+        assert "hi" in html  # PJXBadge subclass state survived the reuse update
+        assert (
+            "pjx-badge" in html
+        )  # it rendered as a PJXBadge, not a degraded BaseComponent
+        assert "updated" in html  # the update itself applied
     finally:
         Renderer.set_default_environment(original_environment)

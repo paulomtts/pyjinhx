@@ -1,7 +1,9 @@
 """Unit tests for the refactored PJXEmptyState (content-slot API)."""
+
 from pyjinhx.builtins import PJXEmptyState
 
 # --- New content-slot API ---
+
 
 def test_empty_state_renders_root_div():
     html = str(PJXEmptyState(id="es-root").render())
@@ -49,6 +51,7 @@ def test_empty_state_new_fields_present():
 
 # --- Suggestion chips (preserved behavior, issue #77) ---
 
+
 def test_empty_state_suggestions_renders_chips():
     html = str(
         PJXEmptyState(
@@ -81,7 +84,13 @@ def test_empty_state_chip_custom_event_and_value():
     html = str(
         PJXEmptyState(
             id="es-chip-custom",
-            suggestions=[{"label": "Click me", "value": "fill-input-value", "event": "fill-input"}],
+            suggestions=[
+                {
+                    "label": "Click me",
+                    "value": "fill-input-value",
+                    "event": "fill-input",
+                }
+            ],
         ).render()
     )
     assert 'data-pjx-suggestion="fill-input-value"' in html

@@ -27,14 +27,28 @@ def dropdown():
 def tab_group():
     group = PJXTabGroup(
         content=(
-            PJXTabList(content=(
-                PJXTab(id="tg-t0", panel="tg-p0", selected=True, content="Overview").render()
-                + PJXTab(id="tg-t1", panel="tg-p1", content="Activity").render()
-                + PJXTab(id="tg-t2", panel="tg-p2", closeable=True, content="Settings").render()
-            )).render()
-            + PJXTabPanel(id="tg-p0", tab="tg-t0", content="<p>Project summary and key metrics.</p>").render()
-            + PJXTabPanel(id="tg-p1", tab="tg-t1", content="<p>Recent commits and deploys.</p>").render()
-            + PJXTabPanel(id="tg-p2", tab="tg-t2", content="<p>Repository configuration.</p>").render()
+            PJXTabList(
+                content=(
+                    PJXTab(
+                        id="tg-t0", panel="tg-p0", selected=True, content="Overview"
+                    ).render()
+                    + PJXTab(id="tg-t1", panel="tg-p1", content="Activity").render()
+                    + PJXTab(
+                        id="tg-t2", panel="tg-p2", closeable=True, content="Settings"
+                    ).render()
+                )
+            ).render()
+            + PJXTabPanel(
+                id="tg-p0",
+                tab="tg-t0",
+                content="<p>Project summary and key metrics.</p>",
+            ).render()
+            + PJXTabPanel(
+                id="tg-p1", tab="tg-t1", content="<p>Recent commits and deploys.</p>"
+            ).render()
+            + PJXTabPanel(
+                id="tg-p2", tab="tg-t2", content="<p>Repository configuration.</p>"
+            ).render()
         ),
     ).render()
     # A PJXTab used OUTSIDE a PJXTabList becomes a standalone "panel mode"
@@ -42,7 +56,8 @@ def tab_group():
     # panel its `panel=` points at). Wrap inert content — the PJXTab is itself
     # the control.
     standalone = PJXTab(
-        panel="tg-p2", content='<span class="pjx-demo-btn">Jump to Settings &darr;</span>'
+        panel="tg-p2",
+        content='<span class="pjx-demo-btn">Jump to Settings &darr;</span>',
     ).render()
     # The group fills its container (width:100%); the centering demo page would
     # otherwise shrink-wrap it, so give it a definite width to render against.
@@ -88,16 +103,22 @@ def carousel():
     def slide(color: str, text: str) -> str:
         return (
             f'<div style="display:flex;align-items:center;justify-content:center;'
-            f'height:200px;background:{color};color:#fff;font-size:1.1rem;'
+            f"height:200px;background:{color};color:#fff;font-size:1.1rem;"
             f'font-weight:600">{text}</div>'
         )
 
     return PJXCarousel(
         label="Demo photos",
         content=(
-            PJXCarouselSlide(label="Slide one", content=slide("#6366f1", "Slide 1")).render()
-            + PJXCarouselSlide(label="Slide two", content=slide("#0ea5e9", "Slide 2")).render()
-            + PJXCarouselSlide(label="Slide three", content=slide("#22c55e", "Slide 3")).render()
+            PJXCarouselSlide(
+                label="Slide one", content=slide("#6366f1", "Slide 1")
+            ).render()
+            + PJXCarouselSlide(
+                label="Slide two", content=slide("#0ea5e9", "Slide 2")
+            ).render()
+            + PJXCarouselSlide(
+                label="Slide three", content=slide("#22c55e", "Slide 3")
+            ).render()
         ),
     ).render()
 

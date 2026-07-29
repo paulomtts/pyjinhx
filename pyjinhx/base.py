@@ -42,7 +42,7 @@ def validate_attr_value(value: str) -> str:
     Post-construction mutation bypasses this check.
     """
     if '"' in value:
-        raise ValueError('attribute values must not contain \'"\'')
+        raise ValueError("attribute values must not contain '\"'")
     return value
 
 
@@ -56,9 +56,7 @@ def validate_extra_attrs(value: dict[str, str]) -> dict[str, str]:
         if not _ATTR_NAME_RE.fullmatch(name):
             raise ValueError(f"extra_attrs name {name!r} is not a valid attribute name")
         if '"' in attr_value and "'" in attr_value:
-            raise ValueError(
-                "attribute values must not contain both '\"' and \"'\""
-            )
+            raise ValueError("attribute values must not contain both '\"' and \"'\"")
     return value
 
 
@@ -311,7 +309,9 @@ class BaseComponent(BaseModel):
             try:
                 data[name] = json.loads(text)
             except json.JSONDecodeError as exc:
-                raise ValueError(f"{cls.__name__}.{name}: invalid JSON attribute value") from exc
+                raise ValueError(
+                    f"{cls.__name__}.{name}: invalid JSON attribute value"
+                ) from exc
         return data
 
     def __init_subclass__(cls, pjx_replace: bool = False, **kwargs: Any) -> None:

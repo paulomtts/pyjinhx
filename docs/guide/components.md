@@ -13,9 +13,9 @@ from pyjinhx import BaseComponent
 
 
 class Card(BaseComponent):
-    id: str              # Required - unique identifier
-    title: str           # Required field
-    subtitle: str = ""   # Optional with default
+    id: str  # Required - unique identifier
+    title: str  # Required field
+    subtitle: str = ""  # Optional with default
 ```
 
 `BaseComponent` also provides `js` and `css` fields (lists of extra asset paths) — see [Asset Collection](assets.md).
@@ -44,7 +44,7 @@ PyJinHX uses **Jinja2** templates for its components:
 
 ```python
 button = Button(id="submit", text="Submit")  # explicit — stable hook
-button = Button(text="Submit")               # auto-generated pjx-<n>
+button = Button(text="Submit")  # auto-generated pjx-<n>
 ```
 
 !!! tip "Using your own id scheme"
@@ -54,6 +54,7 @@ button = Button(text="Submit")               # auto-generated pjx-<n>
     import uuid
     from pyjinhx import BaseComponent
     from pydantic import Field
+
 
     class MyComponent(BaseComponent):
         id: str = Field(default_factory=lambda: str(uuid.uuid4()))
@@ -119,7 +120,7 @@ don't place any special token in the template.
 ```python
 class Card(BaseComponent):
     id: str
-    title: str          # declared field — consumed as a prop, NOT injected
+    title: str  # declared field — consumed as a prop, NOT injected
     subtitle: str = ""  # declared field — consumed as a prop, NOT injected
 ```
 
@@ -192,7 +193,7 @@ the `component()` factory instead of hand-writing a `BaseComponent` subclass:
 ```python
 from pyjinhx import component
 
-Card = component("Card")                   # finds card.html under the default environment
+Card = component("Card")  # finds card.html under the default environment
 Card(title="Hi", content="body").render()
 ```
 
@@ -242,8 +243,10 @@ A plain Pydantic `BaseModel` rejects unknown fields with a `ValidationError`. Wi
 ```python
 from pyjinhx import BaseComponent
 
+
 class Example(BaseComponent):
     foo: int
+
 
 ex = Example(foo=1, bar=2)  # No error! 'bar' is just ignored
 ```

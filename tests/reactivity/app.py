@@ -167,7 +167,9 @@ def _popover(prefix: str, label: str) -> PJXPopover:
         id=prefix,
         content=(
             PJXPopoverTrigger(id=f"{prefix}-t", content=label).render()
-            + PJXPopoverPanel(id=f"{prefix}-p", content=f"{label} panel content").render()
+            + PJXPopoverPanel(
+                id=f"{prefix}-p", content=f"{label} panel content"
+            ).render()
         ),
     )
 
@@ -185,14 +187,16 @@ def render_page() -> str:
         remove_modal=PJXModal(
             id="rx-remove-modal",
             remove_on_close=True,
-            content=(PJXModalBody(
-                id="rx-remove-modal-b",
-                content=(
-                    '<form id="rx-remove-form" hx-post="/actions/slow-save" hx-swap="none">'
-                    '<button type="submit" id="rx-remove-submit" data-pjx-close>Send</button>'
-                    "</form>"
-                ),
-            ).render()),
+            content=(
+                PJXModalBody(
+                    id="rx-remove-modal-b",
+                    content=(
+                        '<form id="rx-remove-form" hx-post="/actions/slow-save" hx-swap="none">'
+                        '<button type="submit" id="rx-remove-submit" data-pjx-close>Send</button>'
+                        "</form>"
+                    ),
+                ).render()
+            ),
         ),
         drawer=PJXDrawer(
             id="rx-drawer",
@@ -222,94 +226,192 @@ def render_page() -> str:
         ),
         toast_host=PJXToastHost(id="rx-toasts", position="bottom-right", timeout=0),
         region_loader=PJXRegionLoader(id="rx-region"),
-        page_loader=PJXPageLoader(id="rx-page-loader", nav_targets="app-content", active_on_load=False),
+        page_loader=PJXPageLoader(
+            id="rx-page-loader", nav_targets="app-content", active_on_load=False
+        ),
         panel_trigger_a=PJXTab(
-            id="rx-trig-a", panel="rx-panel-panel-a", selected=True,
+            id="rx-trig-a",
+            panel="rx-panel-panel-a",
+            selected=True,
             content='<span id="trig-a-btn">Panel A</span>',
         ),
         panel_trigger_b=PJXTab(
-            id="rx-trig-b", panel="rx-panel-panel-b",
+            id="rx-trig-b",
+            panel="rx-panel-panel-b",
             content='<span id="trig-b-btn">Panel B</span>',
         ),
         panel=PJXTabGroup(
             id="rx-panel",
             content=(
-                PJXTabPanel(id="rx-panel-panel-a", content="<p>Panel A body</p>").render()
-                + (PJXTabPanel(
-                    id="rx-panel-panel-b",
-                    content=(PJXLazyLoad(
-                        id="rx-lazy",
-                        when="reveal",
-                        url="/fragments/lazy",
-                        content='<p id="lazy-placeholder">Loading…</p>',
-                    ).render()),
-                ).render())
+                PJXTabPanel(
+                    id="rx-panel-panel-a", content="<p>Panel A body</p>"
+                ).render()
+                + (
+                    PJXTabPanel(
+                        id="rx-panel-panel-b",
+                        content=(
+                            PJXLazyLoad(
+                                id="rx-lazy",
+                                when="reveal",
+                                url="/fragments/lazy",
+                                content='<p id="lazy-placeholder">Loading…</p>',
+                            ).render()
+                        ),
+                    ).render()
+                )
             ),
         ),
         detached_trigger_0=PJXTab(
-            id="rx-detached-trigger-0", panel="rx-detached-p0", selected=True,
+            id="rx-detached-trigger-0",
+            panel="rx-detached-p0",
+            selected=True,
             content='<span id="rx-detached-btn-0">Show 0</span>',
         ),
         detached_trigger_1=PJXTab(
-            id="rx-detached-trigger-1", panel="rx-detached-p1",
+            id="rx-detached-trigger-1",
+            panel="rx-detached-p1",
             content='<span id="rx-detached-btn-1">Show 1</span>',
         ),
         detached_group=PJXTabGroup(
             id="rx-detached-group",
             content=(
-                PJXTabPanel(id="rx-detached-p0", content="<p>Detached body 0</p>").render()
-                + PJXTabPanel(id="rx-detached-p1", content="<p>Detached body 1</p>").render()
+                PJXTabPanel(
+                    id="rx-detached-p0", content="<p>Detached body 0</p>"
+                ).render()
+                + PJXTabPanel(
+                    id="rx-detached-p1", content="<p>Detached body 1</p>"
+                ).render()
             ),
         ),
         password=PJXPasswordInput(id="rx-pw"),
         tabs=PJXTabGroup(
             id="rx-tabs",
             content=(
-                (PJXTabList(content=(
-                    PJXTab(id="rx-tab-one", panel="rx-tabp-one", selected=True, content="One").render()
-                    + PJXTab(id="rx-tab-two", panel="rx-tabp-two", closeable=True, content="Two").render()
-                )).render())
-                + PJXTabPanel(id="rx-tabp-one", tab="rx-tab-one", content="<p>Tab one body</p>").render()
-                + PJXTabPanel(id="rx-tabp-two", tab="rx-tab-two", content="<p>Tab two body</p>").render()
+                (
+                    PJXTabList(
+                        content=(
+                            PJXTab(
+                                id="rx-tab-one",
+                                panel="rx-tabp-one",
+                                selected=True,
+                                content="One",
+                            ).render()
+                            + PJXTab(
+                                id="rx-tab-two",
+                                panel="rx-tabp-two",
+                                closeable=True,
+                                content="Two",
+                            ).render()
+                        )
+                    ).render()
+                )
+                + PJXTabPanel(
+                    id="rx-tabp-one", tab="rx-tab-one", content="<p>Tab one body</p>"
+                ).render()
+                + PJXTabPanel(
+                    id="rx-tabp-two", tab="rx-tab-two", content="<p>Tab two body</p>"
+                ).render()
             ),
         ),
         reorder_tabs=PJXTabGroup(
             id="rx-reorder-tabs",
             content=(
-                (PJXTabList(reorderable=True, content=(
-                    PJXTab(id="rx-reorder-a", panel="rx-reorder-pa", selected=True, content="A").render()
-                    + PJXTab(id="rx-reorder-b", panel="rx-reorder-pb", content="B").render()
-                    + PJXTab(id="rx-reorder-c", panel="rx-reorder-pc", content="C").render()
-                )).render())
-                + PJXTabPanel(id="rx-reorder-pa", tab="rx-reorder-a", content="A body").render()
-                + PJXTabPanel(id="rx-reorder-pb", tab="rx-reorder-b", content="B body").render()
-                + PJXTabPanel(id="rx-reorder-pc", tab="rx-reorder-c", content="C body").render()
+                (
+                    PJXTabList(
+                        reorderable=True,
+                        content=(
+                            PJXTab(
+                                id="rx-reorder-a",
+                                panel="rx-reorder-pa",
+                                selected=True,
+                                content="A",
+                            ).render()
+                            + PJXTab(
+                                id="rx-reorder-b", panel="rx-reorder-pb", content="B"
+                            ).render()
+                            + PJXTab(
+                                id="rx-reorder-c", panel="rx-reorder-pc", content="C"
+                            ).render()
+                        ),
+                    ).render()
+                )
+                + PJXTabPanel(
+                    id="rx-reorder-pa", tab="rx-reorder-a", content="A body"
+                ).render()
+                + PJXTabPanel(
+                    id="rx-reorder-pb", tab="rx-reorder-b", content="B body"
+                ).render()
+                + PJXTabPanel(
+                    id="rx-reorder-pc", tab="rx-reorder-c", content="C body"
+                ).render()
             ),
         ),
         resizable=PJXResizableGroup(
             id="rx-resize-group",
             direction="row",
             content=(
-                PJXResizablePanel(id="rx-resize-left", size=50, min=20, content="<div>left</div>").render()
+                PJXResizablePanel(
+                    id="rx-resize-left", size=50, min=20, content="<div>left</div>"
+                ).render()
                 + PJXResizableHandle(id="rx-resize-handle").render()
-                + PJXResizablePanel(id="rx-resize-right", size=50, content="<div>right</div>").render()
+                + PJXResizablePanel(
+                    id="rx-resize-right", size=50, content="<div>right</div>"
+                ).render()
             ),
         ),
-        floor_box=(PJXResizableGroup(id="rx-floor-group", direction="column", content=(
-            PJXResizablePanel(id="rx-floor-top", size=60, content="<div>top</div>").render()
-            + PJXResizableHandle(id="rx-floor-handle").render()
-            + PJXResizablePanel(id="rx-floor-bottom", size=40, min="content", content='<div id="rx-floor-strip" style="height:36px;flex-shrink:0">strip</div><div>body</div>').render()
-        )).render()),
-        accordion_box=(PJXAccordionGroup(id="rx-accordion-group", content=(
-            (PJXAccordion(id="rx-accordion-open", open=False, content=(
-                PJXAccordionTrigger(id="rx-accordion-trigger-open", content="Open item").render()
-                + PJXAccordionContent(content="Open item body").render()
-            )).render())
-            + (PJXAccordion(id="rx-accordion-disabled", open=False, content=(
-                PJXAccordionTrigger(id="rx-accordion-trigger-disabled", disabled=True, content="Disabled item").render()
-                + PJXAccordionContent(content="Disabled item body").render()
-            )).render())
-        )).render()),
+        floor_box=(
+            PJXResizableGroup(
+                id="rx-floor-group",
+                direction="column",
+                content=(
+                    PJXResizablePanel(
+                        id="rx-floor-top", size=60, content="<div>top</div>"
+                    ).render()
+                    + PJXResizableHandle(id="rx-floor-handle").render()
+                    + PJXResizablePanel(
+                        id="rx-floor-bottom",
+                        size=40,
+                        min="content",
+                        content='<div id="rx-floor-strip" style="height:36px;flex-shrink:0">strip</div><div>body</div>',
+                    ).render()
+                ),
+            ).render()
+        ),
+        accordion_box=(
+            PJXAccordionGroup(
+                id="rx-accordion-group",
+                content=(
+                    (
+                        PJXAccordion(
+                            id="rx-accordion-open",
+                            open=False,
+                            content=(
+                                PJXAccordionTrigger(
+                                    id="rx-accordion-trigger-open", content="Open item"
+                                ).render()
+                                + PJXAccordionContent(content="Open item body").render()
+                            ),
+                        ).render()
+                    )
+                    + (
+                        PJXAccordion(
+                            id="rx-accordion-disabled",
+                            open=False,
+                            content=(
+                                PJXAccordionTrigger(
+                                    id="rx-accordion-trigger-disabled",
+                                    disabled=True,
+                                    content="Disabled item",
+                                ).render()
+                                + PJXAccordionContent(
+                                    content="Disabled item body"
+                                ).render()
+                            ),
+                        ).render()
+                    )
+                ),
+            ).render()
+        ),
     )
     return f"""<!DOCTYPE html>
 <html lang="en">
@@ -345,19 +447,21 @@ def create_app() -> FastAPI:
 
     @app.get("/fragments/notification", response_class=HTMLResponse)
     def notification_fragment() -> str:
-        return (
-            PJXNotification(
-                id="rx-note-frag",
-                content="Fragment note",
-                corner="bottom-left",
-                timeout=600,
-                autoshow=True,
-            ).render()
-        )
+        return PJXNotification(
+            id="rx-note-frag",
+            content="Fragment note",
+            corner="bottom-left",
+            timeout=600,
+            autoshow=True,
+        ).render()
 
     @app.post("/actions/save")
     def save() -> Response:
-        headers = {"HX-Trigger": json.dumps({"pjx:toast": {"message": "Saved!", "level": "success"}})}
+        headers = {
+            "HX-Trigger": json.dumps(
+                {"pjx:toast": {"message": "Saved!", "level": "success"}}
+            )
+        }
         return Response(status_code=200, headers=headers)
 
     @app.post("/actions/slow-save")
@@ -366,7 +470,11 @@ def create_app() -> FastAPI:
         # response lands after a remove_on_close dialog would have removed
         # itself — the race the deferred-removal fix covers.
         time.sleep(0.6)
-        headers = {"HX-Trigger": json.dumps({"pjx:toast": {"message": "Slow saved!", "level": "success"}})}
+        headers = {
+            "HX-Trigger": json.dumps(
+                {"pjx:toast": {"message": "Slow saved!", "level": "success"}}
+            )
+        }
         return Response(status_code=200, headers=headers)
 
     @app.get("/slow-content", response_class=HTMLResponse)

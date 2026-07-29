@@ -21,6 +21,7 @@ class TodoRow(ReactiveComponent, react={Keys.TODOS}):
     def depends_on(self) -> set[str]:
         return super().depends_on() | set()  # redundant — delete the whole method
 
+
 # AFTER
 class TodoRow(ReactiveComponent, react={Keys.TODOS}):
     todo_id: Annotated[str, PjxKey()]
@@ -61,9 +62,11 @@ escaped — `& < > " '` become entities — which closes the default XSS hole.
 ```python
 from pyjinhx import BaseComponent, Slot
 
+
 class Card(BaseComponent):
-    title: str = ""      # escaped
-    body: Slot = ""      # raw HTML
+    title: str = ""  # escaped
+    body: Slot = ""  # raw HTML
+
 
 Card(title="<b>x</b>", body="<p>ok</p>")
 # title → &lt;b&gt;x&lt;/b&gt;   body → <p>ok</p>
@@ -188,8 +191,8 @@ route now updates mounted read-models with no wrapper:
 ```python
 @app.post("/generate")
 def generate():
-    report = controller.generate()      # @mutates dirties "reports", "quota"
-    return ReportSummary(report=report).render()   # non-reactive; counters fan out OOB
+    report = controller.generate()  # @mutates dirties "reports", "quota"
+    return ReportSummary(report=report).render()  # non-reactive; counters fan out OOB
 ```
 
 Fan-out happens once per request scope and never double-swaps a region already
@@ -210,10 +213,12 @@ Every builtin component is renamed with a `PJX` prefix, in Python and in tag for
 ```python
 # BEFORE (0.11)
 from pyjinhx.builtins import Avatar, Modal
+
 html = renderer.render('<Modal id="m"/>')
 
 # AFTER (0.12)
 from pyjinhx.builtins import PJXAvatar, PJXModal
+
 html = renderer.render('<PJXModal id="m"/>')
 ```
 
@@ -238,8 +243,10 @@ The `reacts_to: ClassVar[set[str]]` attribute is removed. Declare state keys as 
 from typing import ClassVar
 from pyjinhx import ReactiveComponent, MutationKey
 
+
 class Keys(MutationKey):
     TODOS = "todos"
+
 
 class Counter(ReactiveComponent):
     remaining: int
@@ -249,11 +256,14 @@ class Counter(ReactiveComponent):
     def load(cls) -> "Counter":
         return cls(remaining=db.remaining())
 
+
 # AFTER (0.9)
 from pyjinhx import ReactiveComponent, MutationKey
 
+
 class Keys(MutationKey):
     TODOS = "todos"
+
 
 class Counter(ReactiveComponent, react={Keys.TODOS}):
     remaining: int
@@ -276,13 +286,18 @@ Both `react=` and `@mutates` now **only accept `MutationKey` members**. Bare str
 
 ```python
 # Raises at class-definition time:
-class Bad(ReactiveComponent, react={"todos"}):   # bare string
+class Bad(ReactiveComponent, react={"todos"}):  # bare string
     ...
+
+
 # TypeError: Bad: react only accepts MutationKey members; got 'todos'
 
+
 # Raises at decoration time:
-@mutates("todos")   # bare string
+@mutates("todos")  # bare string
 def save(): ...
+
+
 # TypeError: @mutates only accepts MutationKey members; got 'todos'
 ```
 
@@ -366,7 +381,9 @@ from pyjinhx import AssetMode, Renderer
 renderer = Renderer.get_default_renderer(inline_css=False)
 
 # NEW: choose a CSS mode explicitly
-renderer = Renderer.get_default_renderer(css_mode=AssetMode.NONE)  # skip emitting CSS entirely
+renderer = Renderer.get_default_renderer(
+    css_mode=AssetMode.NONE
+)  # skip emitting CSS entirely
 # or AssetMode.INLINE (the old default, inline_css=True)
 ```
 
@@ -422,13 +439,13 @@ from pathlib import Path
 from fastapi import FastAPI
 from pyjinhx import setup, PjxSettings, Renderer
 
-Renderer.set_default_environment(Path(__file__).parent)   # template root
+Renderer.set_default_environment(Path(__file__).parent)  # template root
 
 app = FastAPI()
 
 setup(
     app,
-    settings=PjxSettings.from_env(),   # REDIS_URL / PJX_INVALIDATION_DB / PJX_REACTIVE_DEV
+    settings=PjxSettings.from_env(),  # REDIS_URL / PJX_INVALIDATION_DB / PJX_REACTIVE_DEV
     # Inject per-request data reachable inside reactive load():
     context_factory=lambda request: AppLoadContext(db=get_db(request)),
 )
@@ -453,10 +470,11 @@ HTML by hand in the route:
 def render_member_count_oob(*, members_count: int, members_total: int) -> str:
     return (
         f'<span id="members-counter" hx-swap-oob="outerHTML:#members-counter">'
-        f'{members_count} of {members_total}</span>'
+        f"{members_count} of {members_total}</span>"
         f'<span id="nav-members-badge" hx-swap-oob="outerHTML:#nav-members-badge">'
-        f'{members_total}</span>'
+        f"{members_total}</span>"
     )
+
 
 @app.post("/orgs/{slug}/members/{mid}/remove")
 def remove_member(slug: str, mid: str):
@@ -474,13 +492,15 @@ rebuild itself**, and the framework computes and emits the OOB swaps:
 # AFTER (latest): declare dependencies once; OOB fan-out is automatic
 from pyjinhx import ReactiveComponent, MutationKey, mutates
 
+
 class Keys(MutationKey):
     MEMBERS = "members"
 
+
 # 1. The store marks which state it dirties
 @mutates(Keys.MEMBERS)
-def remove_member(slug: str, mid: str) -> None:
-    ...
+def remove_member(slug: str, mid: str) -> None: ...
+
 
 # 2. Each region rebuilds itself from the current world and lists its triggers
 class MembersCounter(ReactiveComponent, react={Keys.MEMBERS}):
@@ -491,6 +511,7 @@ class MembersCounter(ReactiveComponent, react={Keys.MEMBERS}):
     def load(cls) -> "MembersCounter":
         return cls(count=org.active_count(), total=org.total())
 
+
 class NavMembersBadge(ReactiveComponent, react={Keys.MEMBERS}):
     total: int = 0
 
@@ -498,13 +519,14 @@ class NavMembersBadge(ReactiveComponent, react={Keys.MEMBERS}):
     def load(cls) -> "NavMembersBadge":
         return cls(total=org.total())
 
+
 # 3. The route renders only the primary; dependents swap themselves
 @app.post("/orgs/{slug}/members/{mid}/remove")
 def remove_member_route(slug: str, mid: str):
-    remove_member(slug, mid)          # @mutates records Keys.MEMBERS as dirtied
-    return MembersCounter.render()    # framework reloads every mounted region whose
-                                      # react keys ∩ {MEMBERS} ≠ ∅, hashes them, and
-                                      # appends an hx-swap-oob fragment for each *changed* one
+    remove_member(slug, mid)  # @mutates records Keys.MEMBERS as dirtied
+    return MembersCounter.render()  # framework reloads every mounted region whose
+    # react keys ∩ {MEMBERS} ≠ ∅, hashes them, and
+    # appends an hx-swap-oob fragment for each *changed* one
 ```
 
 What you delete: the bespoke `render_*_oob()` string builders and the route's burden of

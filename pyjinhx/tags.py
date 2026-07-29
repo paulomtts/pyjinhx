@@ -106,7 +106,8 @@ class Parser(HTMLParser):
         if any(t.name.lower() == tag.lower() for t in self._stack):
             logger.warning(
                 "Closing tag </%s> interleaves with an open component tag; "
-                "emitting as raw HTML", tag,
+                "emitting as raw HTML",
+                tag,
             )
         self._append_child(f"</{tag}>")
 
@@ -158,9 +159,7 @@ class ComponentAutodiscover:
             return
         cls._imported_files.add(filepath)
         try:
-            module_name = (
-                f"_pyjinhx_autodiscovered_{os.path.splitext(os.path.basename(filepath))[0]}"
-            )
+            module_name = f"_pyjinhx_autodiscovered_{os.path.splitext(os.path.basename(filepath))[0]}"
             spec = importlib.util.spec_from_file_location(module_name, filepath)
             if spec is None or spec.loader is None:
                 return
@@ -368,9 +367,7 @@ def _mount_reactive_instance(
         for field_name, value in overrides.items():
             validator.validate_assignment(instance, field_name, value)
 
-    Registry.get_instances()[
-        Registry.make_key(tag_name, instance.id)
-    ] = instance
+    Registry.get_instances()[Registry.make_key(tag_name, instance.id)] = instance
     return instance
 
 
@@ -437,9 +434,7 @@ def render_tag_node(
 
         component_id = _auto_id()
     else:
-        raise ValueError(
-            f'Missing required "id" for <{node.name}> and auto_id=False'
-        )
+        raise ValueError(f'Missing required "id" for <{node.name}> and auto_id=False')
 
     # Reuse an already-registered instance when we have a concrete id to look up.
     # Bare reactive tags skip this and go straight to load(), whose LoadCache
@@ -482,7 +477,9 @@ def render_tag_node(
             )
 
     if is_reactive:
-        assert component_class is not None  # is_reactive implies a registered ReactiveComponent
+        assert (
+            component_class is not None
+        )  # is_reactive implies a registered ReactiveComponent
         component = _mount_reactive_instance(
             component_class,
             attrs_without_id,
@@ -492,7 +489,9 @@ def render_tag_node(
             tag_name=node.name,
         )
     elif component_class is not None:
-        assert component_id is not None  # non-reactive path always has a concrete id (explicit or auto)
+        assert (
+            component_id is not None
+        )  # non-reactive path always has a concrete id (explicit or auto)
         init_kwargs: dict[str, Any] = dict(attrs_without_id)
         children_field = component_class._pjx_children_target
         if rendered_children and children_field is None:
@@ -507,7 +506,9 @@ def render_tag_node(
                 init_kwargs[children_field] = rendered_children
         component = component_class(id=component_id, **init_kwargs)
     else:
-        assert component_id is not None  # non-reactive path always has a concrete id (explicit or auto)
+        assert (
+            component_id is not None
+        )  # non-reactive path always has a concrete id (explicit or auto)
         if template_path is None:
             raise _missing_template_error(node.name)
         from .base import BaseComponent
@@ -520,7 +521,9 @@ def render_tag_node(
             logger.warning(
                 "Template found for <%s> but class %s is not registered — "
                 "defaults won't apply. Import the module defining %s at app startup.",
-                node.name, node.name, node.name,
+                node.name,
+                node.name,
+                node.name,
             )
 
         component = BaseComponent(

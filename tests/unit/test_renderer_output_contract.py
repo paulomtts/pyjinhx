@@ -1,4 +1,5 @@
 """The renderer's output contract: Markup objects, escaped by default."""
+
 import importlib.util
 import os
 import sys
@@ -141,6 +142,4 @@ def test_renderer_renders_slot_value_raw():
     assert "<em>hi</em>" in rendered, (
         "Slot field should render its string value as raw HTML"
     )
-    assert "&lt;em&gt;" not in rendered, (
-        "Slot field must not HTML-escape its value"
-    )
+    assert "&lt;em&gt;" not in rendered, "Slot field must not HTML-escape its value"

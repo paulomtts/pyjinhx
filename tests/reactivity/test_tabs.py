@@ -1,4 +1,5 @@
 """Browser contracts for the compound PJXTabGroup."""
+
 import pytest
 
 pytest.importorskip("playwright")
@@ -51,7 +52,10 @@ def test_closing_selected_tab_activates_and_focuses_neighbor(sink_page):
     expect(sink_page.locator("#rx-tab-two")).to_have_count(0)
     expect(sink_page.locator("#rx-tab-one")).to_have_attribute("aria-selected", "true")
     expect(sink_page.locator("#rx-tabp-one")).to_be_visible()
-    assert sink_page.evaluate("document.activeElement && document.activeElement.id") == "rx-tab-one"
+    assert (
+        sink_page.evaluate("document.activeElement && document.activeElement.id")
+        == "rx-tab-one"
+    )
 
 
 def test_delete_key_closes_closeable_tab(sink_page):
@@ -63,7 +67,9 @@ def test_delete_key_closes_closeable_tab(sink_page):
 def test_delete_on_non_closeable_tab_is_noop(sink_page):
     sink_page.focus("#rx-tab-one")
     sink_page.keyboard.press("Delete")
-    expect(sink_page.locator("#rx-tab-one")).to_have_count(1)  # not closeable → survives
+    expect(sink_page.locator("#rx-tab-one")).to_have_count(
+        1
+    )  # not closeable → survives
 
 
 def test_detached_trigger_switches_group_panel(sink_page):
@@ -81,18 +87,26 @@ def test_detached_trigger_has_button_semantics(sink_page):
     expect(trigger).to_have_attribute("role", "button")
     expect(trigger).to_have_attribute("tabindex", "0")
     # standalone triggers never carry aria-selected (that's a tablist-only attr)
-    assert sink_page.evaluate(
-        "document.getElementById('rx-detached-trigger-1').hasAttribute('aria-selected')"
-    ) is False
+    assert (
+        sink_page.evaluate(
+            "document.getElementById('rx-detached-trigger-1').hasAttribute('aria-selected')"
+        )
+        is False
+    )
 
 
 def test_detached_trigger_active_uses_aria_current(sink_page):
     sink_page.click("#rx-detached-trigger-1")
-    expect(sink_page.locator("#rx-detached-trigger-1")).to_have_attribute("aria-current", "true")
+    expect(sink_page.locator("#rx-detached-trigger-1")).to_have_attribute(
+        "aria-current", "true"
+    )
     # the previously-active trigger drops aria-current
-    assert sink_page.evaluate(
-        "document.getElementById('rx-detached-trigger-0').hasAttribute('aria-current')"
-    ) is False
+    assert (
+        sink_page.evaluate(
+            "document.getElementById('rx-detached-trigger-0').hasAttribute('aria-current')"
+        )
+        is False
+    )
 
 
 def test_arrow_keys_do_not_rove_detached_triggers(sink_page):

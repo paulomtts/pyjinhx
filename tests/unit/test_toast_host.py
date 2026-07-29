@@ -2,8 +2,15 @@ from pyjinhx.builtins import PJXToastHost
 
 
 def test_toast_host_markers_and_config():
-    html = str(PJXToastHost(id="th", position="top-right", timeout=2500,
-                         dismiss_label="Fechar", event_name="toast").render())
+    html = str(
+        PJXToastHost(
+            id="th",
+            position="top-right",
+            timeout=2500,
+            dismiss_label="Fechar",
+            event_name="toast",
+        ).render()
+    )
     assert "data-pjx-toast-host" in html
     assert 'data-event-name="toast"' in html
     assert 'data-timeout="2500"' in html

@@ -1,4 +1,5 @@
 """PJXAccordion: the <details> shell that composes trigger + content."""
+
 import pytest
 
 from pyjinhx import Renderer
@@ -66,9 +67,10 @@ def test_plain_string_content_passes_through():
 
 def test_composed_render_collects_trigger_assets():
     html = str(
-        PJXAccordion(id="a", content=
-            PJXAccordionTrigger(content="Title").render()
-            + PJXAccordionContent(content="<p>body</p>").render()
+        PJXAccordion(
+            id="a",
+            content=PJXAccordionTrigger(content="Title").render()
+            + PJXAccordionContent(content="<p>body</p>").render(),
         ).render()
     )
     # trigger CSS rule + actions-suppression JS are inlined by asset collection

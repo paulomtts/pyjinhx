@@ -9,7 +9,7 @@ _CSS_TOKEN = asset_token(os.path.join(_UI_DIR, "unified-component.css"))
 _JS_TOKEN = asset_token(os.path.join(_UI_DIR, "unified-component.js"))
 
 CSS = f'<style data-pjx-asset="{_CSS_TOKEN}">.test-component {{ color: red; }}\n</style>\n'
-JS = f'\n<script data-pjx-asset="{_JS_TOKEN}">console.log(\'Button loaded\');</script>'
+JS = f"\n<script data-pjx-asset=\"{_JS_TOKEN}\">console.log('Button loaded');</script>"
 
 
 def test_3_level_deep_nesting():

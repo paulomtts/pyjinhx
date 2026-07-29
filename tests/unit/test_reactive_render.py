@@ -91,9 +91,7 @@ def test_reactive_render_returns_primary_plus_dependents():
 def test_reactive_render_with_backend():
     store.state["completed"] = 6
     primary = ReactiveCounter(id="counter", remaining=1)
-    manifest = [
-        {"id": "clear-btn", "type": "ReactiveClearButton", "hash": "stale"}
-    ]
+    manifest = [{"id": "clear-btn", "type": "ReactiveClearButton", "hash": "stale"}]
     with reactive_client(manifest):
         record_mutation("todos")
         out = str(primary.render())
@@ -112,9 +110,7 @@ def test_reactive_render_returns_markup():
 def test_reactive_render_does_not_escape_primary_html():
     store.state["completed"] = 1
     primary = ReactiveCounter(id="counter", remaining=2)
-    manifest = [
-        {"id": "clear-btn", "type": "ReactiveClearButton", "hash": "stale"}
-    ]
+    manifest = [{"id": "clear-btn", "type": "ReactiveClearButton", "hash": "stale"}]
     with reactive_client(manifest):
         record_mutation("todos")
         out = str(primary.render())

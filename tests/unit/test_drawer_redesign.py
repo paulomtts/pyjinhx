@@ -18,13 +18,15 @@ def _dialog(html: str) -> str:
 def test_drawer_contract_and_lifecycle_attrs():
     header = str(PJXDrawerHeader(id="d1-h", title="T", close_label="Fechar").render())
     body = str(PJXDrawerBody(id="d1-b", content="B").render())
-    html = str(PJXDrawer(
-        id="d1",
-        class_name="wide",
-        open_on_mount=True,
-        remove_on_close=True,
-        content=header + body,
-    ).render())
+    html = str(
+        PJXDrawer(
+            id="d1",
+            class_name="wide",
+            open_on_mount=True,
+            remove_on_close=True,
+            content=header + body,
+        ).render()
+    )
     assert 'class="pjx-drawer pjx-drawer--right wide"' in html
     assert 'aria-label="Fechar"' in html
     assert "data-pjx-open-on-mount" in html

@@ -321,7 +321,10 @@
 
   **Migration — before:**
   ```python
-  PJXPanel(id="workspace", panels={"files": "<p>Uploaded assets.</p>", "chat": "<p>Team conversations.</p>"})
+  PJXPanel(
+      id="workspace",
+      panels={"files": "<p>Uploaded assets.</p>", "chat": "<p>Team conversations.</p>"},
+  )
   PJXPanelTrigger(panel_id="workspace", panel="files", content="Files")
   PJXPanelTrigger(panel_id="workspace", panel="chat", content="Chat")
   ```
@@ -330,10 +333,15 @@
   PJXTab(id="trig-files", panel="workspace-files", selected=True, content="Files")
   PJXTab(id="trig-chat", panel="workspace-chat", content="Chat")
 
-  PJXTabGroup(id="workspace", content=(
-      PJXTabPanel(id="workspace-files", content="<p>Uploaded assets.</p>").render()
-      + PJXTabPanel(id="workspace-chat", content="<p>Team conversations.</p>").render()
-  ))
+  PJXTabGroup(
+      id="workspace",
+      content=(
+          PJXTabPanel(id="workspace-files", content="<p>Uploaded assets.</p>").render()
+          + PJXTabPanel(
+              id="workspace-chat", content="<p>Team conversations.</p>"
+          ).render()
+      ),
+  )
   ```
   Standalone trigger content must be inert (plain text or `<span>`) — the `PJXTab` wrapper is itself the interactive control.
 - **Breaking:** renamed `PJXLazyPanel` → `PJXLazyLoad` and added a `tag` field

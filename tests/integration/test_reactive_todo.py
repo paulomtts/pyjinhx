@@ -43,9 +43,7 @@ def test_toggle_swaps_changed_dependents(client):
     body = client.post("/rows/1/toggle", headers=headers).text
     assert 'data-pjx-id="row-1"' in body and "done" in body
     assert "outerHTML:[data-pjx-id='counter']" in body and "2 left" in body
-    assert (
-        "outerHTML:[data-pjx-id='clear']" in body and "Clear completed (1)" in body
-    )
+    assert "outerHTML:[data-pjx-id='clear']" in body and "Clear completed (1)" in body
 
 
 def test_toggle_does_not_reswap_whole_list(client):

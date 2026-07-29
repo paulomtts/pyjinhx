@@ -25,7 +25,10 @@ class FakePage:
 
 def test_marker_becomes_iframe():
     out = hooks.on_page_markdown(
-        "intro\n\n<!-- demo: PJXBadge -->\n\nafter", page=FakePage(), config={}, files=None
+        "intro\n\n<!-- demo: PJXBadge -->\n\nafter",
+        page=FakePage(),
+        config={},
+        files=None,
     )
     assert '<iframe src="../demos/pjx-badge.html"' in out
     assert "```python" not in out  # the marker no longer emits a code block
@@ -33,7 +36,9 @@ def test_marker_becomes_iframe():
 
 def test_unknown_demo_fails_build():
     with pytest.raises(ValueError, match="Nope"):
-        hooks.on_page_markdown("<!-- demo: Nope -->", page=FakePage(), config={}, files=None)
+        hooks.on_page_markdown(
+            "<!-- demo: Nope -->", page=FakePage(), config={}, files=None
+        )
 
 
 def test_post_build_writes_selfcontained_pages(tmp_path):
@@ -110,6 +115,7 @@ def test_demo_markup_wraps_in_stage():
 
 def test_all_demo_factories_render(tmp_path):
     from pyjinhx import Registry, Renderer
+
     Renderer.set_default_environment(str(tmp_path))
     for name, (factory, _h) in DEMOS.items():
         with Registry.request_scope():

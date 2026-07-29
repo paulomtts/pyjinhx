@@ -44,7 +44,7 @@ pytestmark = [pytest.mark.pjx_runtime, pytest.mark.reactivity]
 # Component module written to a temp components root
 # ---------------------------------------------------------------------------
 
-_COMPONENT_MODULE = '''\
+_COMPONENT_MODULE = """\
 from pyjinhx import MutationKey, ReactiveComponent
 
 
@@ -62,7 +62,7 @@ class SwapBadge(ReactiveComponent, react={BadgeKey.BADGE}, pjx_replace=True):
     @classmethod
     def load(cls) -> "SwapBadge":
         return cls(id="swap-badge", count=COUNT["value"])
-'''
+"""
 
 _BADGE_TEMPLATE = '<span id="{{ id }}" class="swap-badge">{{ count }}</span>'
 
@@ -140,9 +140,7 @@ def _make_swap_app(tmp_path: Path) -> FastAPI:
         # Strip the badge's inline asset tags: the region is on the page but its
         # CSS/JS are not, so the swap is the only path that can deliver them.
         badge_markup = _ASSET_TAG_RE.sub("", SwapBadge.load().render())
-        return _PAGE_HTML.format(
-            badge_markup=badge_markup, runtime=client_script()
-        )
+        return _PAGE_HTML.format(badge_markup=badge_markup, runtime=client_script())
 
     @app.post("/increment", response_class=HTMLResponse)
     async def increment(request: Request) -> str:
@@ -213,9 +211,7 @@ def swap_page(page: Page, swap_server: str) -> Page:
 def test_cold_load_has_no_badge_assets(swap_page: Page) -> None:
     """Guard: the badge's CSS/JS must be absent at cold load (only the swap delivers them)."""
     expect(swap_page.locator("#swap-badge")).to_be_visible()
-    present = swap_page.evaluate(
-        "document.querySelectorAll('[data-pjx-asset]').length"
-    )
+    present = swap_page.evaluate("document.querySelectorAll('[data-pjx-asset]').length")
     assert present == 0, f"expected no badge assets on cold load, found {present}"
     # And the badge is unstyled (default color), proving the CSS has not arrived.
     color = swap_page.evaluate(

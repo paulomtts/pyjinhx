@@ -5,6 +5,7 @@ example and a Python constructor example; every component section must carry an
 HTML example; and the old per-component theming appendix must be gone (tokens
 live in-section, inside the per-component accordions).
 """
+
 import re
 import sys
 from pathlib import Path

@@ -85,8 +85,8 @@ def from_env(cls) -> PjxSettings
 Lower-level process hooks used by `setup()` and tests:
 
 ```python
-configure_pyjinhx(settings)   # startup
-shutdown_pyjinhx()            # shutdown
+configure_pyjinhx(settings)  # startup
+shutdown_pyjinhx()  # shutdown
 ```
 
 When an `invalidation_backend` is configured, its listener starts and cross-request (process-wide) caching is enabled; otherwise caching is per-request.

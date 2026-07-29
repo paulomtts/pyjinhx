@@ -1,4 +1,5 @@
 """Browser contracts for the PJXResizable* split pane."""
+
 import pytest
 
 pytest.importorskip("playwright")
@@ -22,9 +23,15 @@ def _drag(page, handle_id, dx, dy=0):
 def test_drag_trades_space_between_neighbors(sink_page):
     sink_page.locator("#rx-resize-handle").scroll_into_view_if_needed()
     sink_page.wait_for_timeout(50)
-    left0, right0 = _grow(sink_page, "rx-resize-left"), _grow(sink_page, "rx-resize-right")
+    left0, right0 = (
+        _grow(sink_page, "rx-resize-left"),
+        _grow(sink_page, "rx-resize-right"),
+    )
     _drag(sink_page, "rx-resize-handle", 80)  # box is 400px wide → ~+20%
-    left1, right1 = _grow(sink_page, "rx-resize-left"), _grow(sink_page, "rx-resize-right")
+    left1, right1 = (
+        _grow(sink_page, "rx-resize-left"),
+        _grow(sink_page, "rx-resize-right"),
+    )
     assert left1 > left0 + 10
     assert right1 < right0 - 10
     assert abs((left1 + right1) - (left0 + right0)) < 0.5  # sum preserved
@@ -67,8 +74,8 @@ def test_content_floor_keeps_strip_visible_on_drag(sink_page):
     sink_page.mouse.down()
     sink_page.mouse.move(cx, cy + 400, steps=6)  # drag far down
     sink_page.mouse.up()
-    assert _h(sink_page, "rx-floor-bottom") >= 35   # floored at the ~36px strip
-    assert _h(sink_page, "rx-floor-strip") >= 35    # strip fully visible
+    assert _h(sink_page, "rx-floor-bottom") >= 35  # floored at the ~36px strip
+    assert _h(sink_page, "rx-floor-strip") >= 35  # strip fully visible
 
 
 def test_content_floor_survives_shorter_viewport(sink_page):

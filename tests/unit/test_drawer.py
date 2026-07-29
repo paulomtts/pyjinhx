@@ -65,8 +65,17 @@ def test_drawer_stamps_id():
 
 def test_drawer_removed_fields_not_in_model():
     fields = PJXDrawer.model_fields
-    for removed in ("title", "body", "footer", "close_label", "close_content", "extra_attrs"):
-        assert removed not in fields, f"removed field '{removed}' still in PJXDrawer.model_fields"
+    for removed in (
+        "title",
+        "body",
+        "footer",
+        "close_label",
+        "close_content",
+        "extra_attrs",
+    ):
+        assert removed not in fields, (
+            f"removed field '{removed}' still in PJXDrawer.model_fields"
+        )
 
 
 def test_drawer_composition_order():
@@ -76,7 +85,11 @@ def test_drawer_composition_order():
     composed = header + body + footer
     html = str(PJXDrawer(id="d10", content=composed).render())
     dialog = _dialog(html)
-    assert dialog.index("pjx-drawer__header") < dialog.index("pjx-drawer__body") < dialog.index("pjx-drawer__footer")
+    assert (
+        dialog.index("pjx-drawer__header")
+        < dialog.index("pjx-drawer__body")
+        < dialog.index("pjx-drawer__footer")
+    )
 
 
 def test_drawer_close_button_in_composed_drawer():

@@ -8,6 +8,7 @@ renders). Not imported by the package; run manually:
 
 htmx is distributed under the 0BSD license.
 """
+
 import urllib.request
 from pathlib import Path
 

@@ -22,7 +22,9 @@ class PJXIcon(BaseComponent):
     def svg_inner(self) -> str:
         inner = ICONS.get(self.name)
         if inner is None:
-            logger.warning("PJXIcon: unknown icon name %r; rendering nothing", self.name)
+            logger.warning(
+                "PJXIcon: unknown icon name %r; rendering nothing", self.name
+            )
             return ""
         return inner
 

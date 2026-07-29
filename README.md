@@ -18,6 +18,7 @@ A `Card` that renders a `Button` — the tag's attributes become validated Pydan
 # components/button.py
 from pyjinhx import BaseComponent
 
+
 class Button(BaseComponent):
     id: str
     text: str
@@ -41,10 +42,12 @@ class Button(BaseComponent):
 # components/card.py
 from pyjinhx import BaseComponent, Renderer
 
+
 class Card(BaseComponent):
     id: str
     title: str
     button_text: str = "Sign up"
+
 
 Renderer.set_default_environment("./components")
 html = Card(id="hero", title="Get Started").render()
@@ -59,8 +62,10 @@ Components declare what state they depend on. Return one component from a mutati
 ```python
 from pyjinhx import ReactiveComponent, MutationKey, mutates, setup
 
+
 class Keys(MutationKey):
     TODOS = "todos"
+
 
 class Counter(ReactiveComponent, react={Keys.TODOS}):
     remaining: int
@@ -69,11 +74,14 @@ class Counter(ReactiveComponent, react={Keys.TODOS}):
     def load(cls) -> "Counter":
         return cls(remaining=db.remaining())
 
+
 @mutates(Keys.TODOS)
 def toggle_all():
     db.toggle_all()
 
+
 setup(app)  # FastAPI: lifespan + middleware, done
+
 
 @app.post("/todos/toggle")
 def toggle():

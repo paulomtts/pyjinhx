@@ -25,7 +25,9 @@ def test_untyped_prop_is_any():
 
 
 def test_optional_via_union():
-    assert parse_props_header("{#def note: str | None = None #}") == [("note", str | None, None)]
+    assert parse_props_header("{#def note: str | None = None #}") == [
+        ("note", str | None, None)
+    ]
 
 
 def test_multiline_header():
@@ -49,7 +51,7 @@ def test_duplicate_prop_errors():
 
 
 def test_build_model_validates_required_and_coerces():
-    src = '{#def title: str, count: int = 0 #}\n<div>{{ title }}</div>'
+    src = "{#def title: str, count: int = 0 #}\n<div>{{ title }}</div>"
     model = build_component_model("CardBuildA", src)
     assert model is not None
     assert issubclass(model, BaseComponent)

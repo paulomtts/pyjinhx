@@ -1,4 +1,5 @@
 """PJXCardBody / PJXCardFooter: trivial card region wrappers."""
+
 import pytest
 
 from pyjinhx import Renderer

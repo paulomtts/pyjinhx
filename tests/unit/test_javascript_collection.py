@@ -18,15 +18,25 @@ def test_js_collection_order():
     scripts = _extract_scripts(rendered)
 
     # Both payloads must appear inside script blocks
-    button_script = next((s for s in scripts if "console.log('Button loaded');" in s), None)
-    extra_script = next((s for s in scripts if "console.log('Extra script loaded');" in s), None)
-    assert button_script is not None, "Button JS payload not found inside any <script> block"
-    assert extra_script is not None, "Extra JS payload not found inside any <script> block"
+    button_script = next(
+        (s for s in scripts if "console.log('Button loaded');" in s), None
+    )
+    extra_script = next(
+        (s for s in scripts if "console.log('Extra script loaded');" in s), None
+    )
+    assert button_script is not None, (
+        "Button JS payload not found inside any <script> block"
+    )
+    assert extra_script is not None, (
+        "Extra JS payload not found inside any <script> block"
+    )
 
     # Auto JS (button) block must appear before the extra JS block in document order
     button_block_index = rendered.index(button_script)
     extra_block_index = rendered.index(extra_script)
-    assert button_block_index < extra_block_index, "Auto JS block should come before extra JS block"
+    assert button_block_index < extra_block_index, (
+        "Auto JS block should come before extra JS block"
+    )
 
 
 def test_js_collection_from_nested_components():

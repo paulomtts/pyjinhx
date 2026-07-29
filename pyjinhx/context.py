@@ -13,7 +13,9 @@ from typing import Any, Union, get_args, get_origin, get_type_hints
 _load_context: ContextVar[Any | None] = ContextVar("load_context", default=None)
 
 
-def _hint_namespace(owner: type[Any] | None, func: Callable[..., Any]) -> dict[str, Any]:
+def _hint_namespace(
+    owner: type[Any] | None, func: Callable[..., Any]
+) -> dict[str, Any]:
     module = sys.modules.get(func.__module__)
     globalns = dict(vars(module)) if module is not None else {}
     if owner is not None:
@@ -22,7 +24,9 @@ def _hint_namespace(owner: type[Any] | None, func: Callable[..., Any]) -> dict[s
     return globalns
 
 
-def _resolved_hints(func: Callable[..., Any], owner: type[Any] | None = None) -> dict[str, Any]:
+def _resolved_hints(
+    func: Callable[..., Any], owner: type[Any] | None = None
+) -> dict[str, Any]:
     try:
         return get_type_hints(func, globalns=_hint_namespace(owner, func), localns=None)
     except (NameError, TypeError, AttributeError):
@@ -36,9 +40,7 @@ def _is_load_context(annotation: Any) -> bool:
     origin = get_origin(annotation)
     if origin in (Union, UnionType):
         return any(
-            _is_load_context(arg)
-            for arg in get_args(annotation)
-            if arg is not NoneType
+            _is_load_context(arg) for arg in get_args(annotation) if arg is not NoneType
         )
     if origin is not None:
         return False
@@ -125,7 +127,9 @@ def invoke_raw_load(
     return raw_func(*bound.args, **bound.kwargs)
 
 
-def _make_context_wrapper(func: Callable[..., Any], ctx_name: str) -> Callable[..., Any]:
+def _make_context_wrapper(
+    func: Callable[..., Any], ctx_name: str
+) -> Callable[..., Any]:
     """Wrap ``func`` so ``ctx_name`` is filled from ``PjxContext.current()`` when
     the caller leaves it unbound."""
     signature = inspect.signature(func)

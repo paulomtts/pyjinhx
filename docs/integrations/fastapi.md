@@ -88,6 +88,7 @@ from pyjinhx import Renderer
 env = Environment(loader=FileSystemLoader("./templates"))
 Renderer.set_default_environment(env)
 
+
 @app.get("/", response_class=HTMLResponse)
 def index():
     template = env.get_template("index.html")
@@ -124,6 +125,7 @@ setup(app, context_factory=lambda req: AppLoadContext(db=get_db(req)))
 
 ```python
 from pyjinhx import Registry
+
 
 @app.get("/", response_class=HTMLResponse)
 def index() -> str:

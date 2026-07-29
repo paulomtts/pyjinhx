@@ -25,8 +25,8 @@ def test_multiple_extra_js_files():
         CSS + '<div id="multi-js-1" class="test-component">\n'
         '    <div class="text">Multiple JS</div>\n'
         "</div>\n"
-        f'\n<script data-pjx-asset="{_JS_TOKEN}">console.log(\'Button loaded\');</script>\n'
-        f'<script data-pjx-asset="{_EXTRA_JS_TOKEN}">console.log(\'Extra script loaded\');\n'
+        f"\n<script data-pjx-asset=\"{_JS_TOKEN}\">console.log('Button loaded');</script>\n"
+        f"<script data-pjx-asset=\"{_EXTRA_JS_TOKEN}\">console.log('Extra script loaded');\n"
         "\n"
         "</script>"
     )

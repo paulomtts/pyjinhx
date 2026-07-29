@@ -7,7 +7,7 @@ from pyjinhx import Renderer
 @pytest.fixture()
 def env(tmp_path):
     (tmp_path / "card_hdr.html").write_text(
-        '{#def title: str, count: int = 0 #}\n'
+        "{#def title: str, count: int = 0 #}\n"
         '<div class="card">{{ title }}-{{ count }}</div>',
         encoding="utf-8",
     )

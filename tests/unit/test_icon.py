@@ -1,4 +1,5 @@
 """PJXIcon renders a themeable inline SVG from the vendored set."""
+
 from typing import Any
 
 import pytest
@@ -39,7 +40,7 @@ def test_label_sets_role_and_title():
     html = _html(name="search", label="Buscar")
     assert 'role="img"' in html
     assert "<title>Buscar</title>" in html
-    assert 'aria-hidden' not in html
+    assert "aria-hidden" not in html
 
 
 def test_no_label_is_aria_hidden():
@@ -50,6 +51,7 @@ def test_no_label_is_aria_hidden():
 
 def test_unknown_name_renders_nothing_and_warns(caplog):
     import logging
+
     with caplog.at_level(logging.WARNING):
         html = _html(name="definitely-not-an-icon")
     assert "<svg" not in html

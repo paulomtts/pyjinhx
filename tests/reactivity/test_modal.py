@@ -42,7 +42,9 @@ def test_api_round_trip_returns_booleans(sink_page):
     assert sink_page.evaluate("pjx.modal.open('rx-modal')") is False  # already open
 
     # First close starts the closing animation; a second close mid-flight is refused.
-    assert sink_page.evaluate("[pjx.modal.close('rx-modal'), pjx.modal.close('rx-modal')]") == [True, False]
+    assert sink_page.evaluate(
+        "[pjx.modal.close('rx-modal'), pjx.modal.close('rx-modal')]"
+    ) == [True, False]
     expect(sink_page.locator("#rx-modal")).not_to_be_visible()
     assert sink_page.evaluate("pjx.modal.close('rx-modal')") is False  # already closed
 
@@ -60,7 +62,9 @@ def test_remove_on_close_defers_removal_until_request_settles(sink_page):
 
     sink_page.click("#rx-remove-submit")
     toast = sink_page.locator("#rx-toasts .pjx-toast")
-    expect(toast.locator(".pjx-toast__message")).to_have_text("Slow saved!", timeout=5000)
+    expect(toast.locator(".pjx-toast__message")).to_have_text(
+        "Slow saved!", timeout=5000
+    )
     # And the dialog still honors remove_on_close once the request settles.
     expect(sink_page.locator("#rx-remove-modal")).to_have_count(0)
 

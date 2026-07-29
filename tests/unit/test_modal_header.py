@@ -1,4 +1,5 @@
 """Tests for PJXModalHeader composable part."""
+
 import re
 
 import pytest

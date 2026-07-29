@@ -1,4 +1,5 @@
 """Browser contracts for PJXTabList(reorderable=True)."""
+
 import pytest
 
 pytest.importorskip("playwright")
