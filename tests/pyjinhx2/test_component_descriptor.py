@@ -1627,4 +1627,3 @@ class TestMissingTemplateError:
             mro_dir / "leaf.pjx",
             mro_dir / "middle.pjx",
         ]
-
