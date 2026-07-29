@@ -2,7 +2,7 @@ import ast
 import inspect
 
 import pytest
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel, Field, ValidationError
 
 import pyjinhx2.component
 from pyjinhx2.component import BaseComponent
@@ -15,7 +15,7 @@ class Address(BaseModel):
 class Card(BaseComponent):
     name: str
     count: int = 0
-    tags: list[str] = []
+    tags: list[str] = Field(default_factory=list)
     address: Address | None = None
 
 
@@ -79,9 +79,7 @@ def test_component_module_does_not_import_above_itself():
         else:
             continue
         for name in names:
-            assert name not in FORBIDDEN_IMPORTS, (
-                f"component.py must not import {name}"
-            )
+            assert name not in FORBIDDEN_IMPORTS, f"component.py must not import {name}"
             assert not any(name.startswith(f"{f}.") for f in FORBIDDEN_IMPORTS), (
                 f"component.py must not import {name}"
             )
