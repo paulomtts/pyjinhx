@@ -9,6 +9,7 @@ from pyjinhx2.segments import (
     RE_PASCAL_CASE_TAG_NAME,
     ChildRef,
     RenderedLevel,
+    VerbatimParser,
     contains_custom_tag,
 )
 
@@ -151,3 +152,114 @@ class TestContainsCustomTag:
         source = inspect.getsource(contains_custom_tag)
         assert "HTMLParser" not in source
         assert "html.parser" not in source
+
+
+class TestVerbatimParser:
+    @staticmethod
+    def round_trip(markup: str) -> str:
+        parser = VerbatimParser()
+        parser.feed(markup)
+        parser.close()
+        return "".join(parser.segments)
+
+    @pytest.mark.parametrize(
+        "markup",
+        [
+            "<div><p>hi</p></div>",
+            '<img src="x.png"/>',
+            "<input disabled value=bare data-x='single' data-y=\"double\">",
+            "<!-- note -->",
+            "<!DOCTYPE html>",
+            "<div><p>hi</div>",
+            "</span>hi",
+            "<3 and 2 < 4",
+            '<PJXIcon name="gear"/>',
+            "plain text, no markup at all",
+            "",
+        ],
+    )
+    def test_round_trips_verbatim(self, markup: str):
+        assert self.round_trip(markup) == markup
+
+    def test_segments_is_a_flat_list_of_strings(self):
+        parser = VerbatimParser()
+        parser.feed("<div>hi</div>")
+        parser.close()
+        assert parser.segments == ["<div>", "hi", "</div>"]
+
+    @pytest.mark.parametrize(
+        "markup",
+        [
+            "<DIV>hi</DIV>",
+            '<PJXButton label="Go">text</PJXButton>',
+            "<div>\n<p>a</p>\n</DIV>",
+            "</DIV >",
+            "<p>x</p >",
+            "<PJXButton\n  label='Go'\n>t</PJXButton>",
+        ],
+    )
+    def test_round_trips_end_tag_casing_and_spacing(self, markup: str):
+        assert self.round_trip(markup) == markup
+
+    @pytest.mark.parametrize(
+        "markup",
+        [
+            "a &amp; b &#65; c",
+            "&nbsp;&lt;div&gt;",
+            "<p>&unknown;</p>",
+            "text with & bare ampersand",
+            "<a href=/x?q=1&y=2>link</a>",
+            "<p title='a&amp;b'>t</p>",
+        ],
+    )
+    def test_round_trips_entities_without_decoding(self, markup: str):
+        assert self.round_trip(markup) == markup
+
+    @pytest.mark.parametrize(
+        "markup",
+        [
+            '<script>if (a < b && c) { x("q"); }</script>',
+            '<style>a[href="x"] > b { content: "&"; }</style>',
+            "<script>var s = '</p>';</script>",
+            "<SCRIPT>A < B</SCRIPT>",
+        ],
+    )
+    def test_cdata_bodies_are_never_re_escaped(self, markup: str):
+        # Regression guard for the deliberate deviation from pyjinhx/tags.py:127:
+        # v0.x re-escapes handle_data with markupsafe.escape and needs a CDATA
+        # exemption to stop `&&` becoming `&amp;&amp;`. v2 escapes nothing, so
+        # JS/CSS bodies survive by construction.
+        assert self.round_trip(markup) == markup
+
+    @pytest.mark.parametrize(
+        "markup",
+        [
+            "<![CDATA[x]]>",
+            "<![if IE]>a<![endif]>",
+            "<!--[if IE]>x<![endif]-->",
+            "<?php echo 1 ?>",
+        ],
+    )
+    def test_round_trips_marked_sections_and_processing_instructions(self, markup: str):
+        assert self.round_trip(markup) == markup
+
+    @pytest.mark.parametrize(
+        "markup",
+        [
+            "<PJXAccordion><PJXIcon name='gear'/>",
+            "<PJXButton>go",
+            "<div><PJXButton>go</div>",
+        ],
+    )
+    def test_unclosed_component_tags_do_not_raise(self, markup: str):
+        # Deliberate difference from v0.x pyjinhx/tags.py, whose Parser.close()
+        # raises ValueError on an unclosed component stack. There is no stack
+        # here; enforcement arrives with #254/#257.
+        assert self.round_trip(markup) == markup
+
+    def test_pascal_case_tags_get_no_special_treatment(self):
+        parser = VerbatimParser()
+        parser.feed('<div><PJXButton label="Go">text</PJXButton></div>')
+        parser.close()
+        assert all(isinstance(segment, str) for segment in parser.segments)
+        assert '<PJXButton label="Go">' in parser.segments

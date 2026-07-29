@@ -5,6 +5,7 @@ Import-pure — stdlib only. Nothing in pyjinhx2 may be imported here.
 
 import re
 from dataclasses import dataclass
+from html.parser import HTMLParser
 
 
 @dataclass(slots=True)
@@ -46,6 +47,8 @@ class RenderedLevel:
 
 RE_PASCAL_CASE_TAG_NAME = re.compile(r"^[A-Z](?=[A-Za-z0-9]*[a-z])[A-Za-z0-9]*$")
 RE_TAG_OPENER = re.compile(r"<\s*([A-Za-z][A-Za-z0-9]*)")
+RE_RAW_END_TAG = re.compile(r"</[^>]*>")
+RE_RAW_COMMENT = re.compile(r"<!--.*?-->|<!\[.*?\]\]?>", re.DOTALL)
 
 
 def contains_custom_tag(markup: str) -> bool:
@@ -61,3 +64,93 @@ def contains_custom_tag(markup: str) -> bool:
         if RE_PASCAL_CASE_TAG_NAME.match(match.group(1)):
             return True
     return False
+
+
+class VerbatimParser(HTMLParser):
+    """The one parse (ADR 0005), in its lossless form: markup in, same markup out.
+
+    Every event handler appends the *raw source text* for that event to a flat
+    ``segments`` list, so ``"".join(parser.segments)`` reproduces the input
+    exactly — attribute quoting, attribute order, unknown and boolean attrs,
+    odd casing and intentionally malformed HTML all survive untouched. There is
+    no tag tree and no stack: cutting at PascalCase tags (#254), recording
+    ``root_span`` (#255), capturing paired-tag ``inner`` (#256) and enforcing a
+    single root (#257) all layer onto this harness later.
+
+    Deliberate deviation from v0.x's ``pyjinhx/tags.py`` ``Parser``: ``handle_data``
+    does **not** re-escape with ``markupsafe.escape``. That dependency is
+    unavailable here (this module is import-pure, stdlib only) and unnecessary —
+    v2 parses markup Jinja already rendered with autoescape on, not a decode /
+    re-encode boundary, so escaping would double-encode. For the same reason
+    ``<script>``/``<style>`` bodies need no special case: ``HTMLParser`` already
+    delivers CDATA content undecoded, and passthrough never touches it.
+
+    Also unlike v0.x, ``close()`` is not overridden and never raises on unclosed
+    tags — there is no component stack yet to validate against.
+
+    Known limitation: markup truncated mid-construct at EOF (``"<div"``,
+    ``"<!-- unclosed"``) does not round-trip — ``HTMLParser`` drops or completes
+    the fragment on ``close()``. Jinja never emits such output, and the
+    exhaustive round-trip and adversarial suites are #260/#261.
+    """
+
+    def __init__(self) -> None:
+        # convert_charrefs would decode `&amp;` into `&` inside handle_data,
+        # silently unescaping markup Jinja escaped on purpose. Keep refs intact
+        # and reconstruct them below.
+        super().__init__(convert_charrefs=False)
+        self.segments: list[str] = []
+        self._source = ""
+        self._line_starts: list[int] = [0]
+
+    def feed(self, data: str) -> None:
+        """Parse ``data``. One feed per parser instance — the source is recorded
+        whole so handlers can recover raw text ``HTMLParser`` does not hand back."""
+        self._source = data
+        self._line_starts = [0] + [i + 1 for i, char in enumerate(data) if char == "\n"]
+        super().feed(data)
+
+    def _raw_at(self, pattern: "re.Pattern[str]") -> "str | None":
+        """The source text matching ``pattern`` at the current event's offset.
+
+        ``getpos()`` is line/column, so the line-start index converts it back to
+        an absolute offset into ``_source``.
+        """
+        line, column = self.getpos()
+        match = pattern.match(self._source, self._line_starts[line - 1] + column)
+        return match.group(0) if match else None
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        self.segments.append(self.get_starttag_text() or f"<{tag}>")
+
+    def handle_startendtag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        self.segments.append(self.get_starttag_text() or f"<{tag}/>")
+
+    def handle_endtag(self, tag: str) -> None:
+        # HTMLParser lowercases `tag`, which would destroy `</DIV>` and, fatally
+        # for #254, `</PJXButton>`. Recover the source text instead.
+        self.segments.append(self._raw_at(RE_RAW_END_TAG) or f"</{tag}>")
+
+    def handle_data(self, data: str) -> None:
+        self.segments.append(data)
+
+    def handle_entityref(self, name: str) -> None:
+        self.segments.append(f"&{name};")
+
+    def handle_charref(self, name: str) -> None:
+        self.segments.append(f"&#{name};")
+
+    def handle_comment(self, data: str) -> None:
+        # HTMLParser routes marked sections like `<![if IE]>` here too, having
+        # already rewritten them into comment form, so recover the source text.
+        self.segments.append(self._raw_at(RE_RAW_COMMENT) or f"<!--{data}-->")
+
+    def handle_decl(self, decl: str) -> None:
+        self.segments.append(f"<!{decl}>")
+
+    def handle_pi(self, data: str) -> None:
+        self.segments.append(f"<?{data}>")
+
+    def unknown_decl(self, data: str) -> None:
+        # `<![CDATA[x]]>` arrives as `CDATA[x]`; the base class would drop it.
+        self.segments.append(self._raw_at(RE_RAW_COMMENT) or f"<![{data}]>")
