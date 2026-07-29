@@ -14,6 +14,23 @@ session.py or reactive/.
 from pydantic import BaseModel, ConfigDict
 
 
+class PjxSlot:
+    """Marker (in a field's ``Annotated`` metadata) for a raw-HTML slot field —
+    its string value is emitted unescaped (invariant 6, the autoescape exemption).
+    Use via the ``Slot`` alias.
+
+    ``children=True`` additionally flags the field as the target for a
+    PascalCase tag's nested children (use via the ``Children`` alias).
+
+    Purely descriptive at this layer: nothing here escapes, wraps or renders.
+    The render-time half (Markup-wrapping strings, opaque component nodes) is
+    L1 work and lives above component.py in the import graph.
+    """
+
+    def __init__(self, children: bool = False) -> None:
+        self.children = children
+
+
 class BaseComponent(BaseModel):
     """Base for all components: declared fields only, undeclared kwargs rejected.
 
