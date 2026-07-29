@@ -348,7 +348,7 @@ class BaseComponent(BaseModel):
                 f"{id_field.annotation}; id must remain typed str so "
                 f"_validate_id and _require_explicit_id keep their meaning."
             )
-        cls._pjx_descriptor = _resolve_class_descriptor(cls)
+        rebuild_class_descriptor(cls)
 
     @model_validator(mode="before")
     @classmethod

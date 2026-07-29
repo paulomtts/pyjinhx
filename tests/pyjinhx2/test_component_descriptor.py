@@ -271,6 +271,24 @@ class TestDescriptorAttachedAtClassDefinition:
 
         assert "_pjx_descriptor" not in Card.model_fields
 
+    def test_registration_goes_through_the_rebuild_entry_point(self, monkeypatch):
+        """One assignment site for `_pjx_descriptor`: registration and
+        dev-reload cannot drift apart because they are the same call."""
+        seen: list[type] = []
+        real = pyjinhx2.component.rebuild_class_descriptor
+
+        def spying(cls):
+            seen.append(cls)
+            real(cls)
+
+        monkeypatch.setattr(pyjinhx2.component, "rebuild_class_descriptor", spying)
+
+        class Card(BaseComponent):
+            pass
+
+        assert seen == [Card]
+        assert isinstance(Card._pjx_descriptor, ClassDescriptor)
+
 
 class TestHookOrdering:
     def test_reserved_auto_id_field_still_raises(self):
