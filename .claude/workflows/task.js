@@ -11,7 +11,7 @@ export const meta = {
     { title: 'Implement', detail: 'worktree + strict TDD, granular commits', model: 'sonnet' },
     { title: 'Review', detail: 'branch diff review + fixes', model: 'sonnet' },
     { title: 'Tests', detail: 'full suite + basedpyright + CI-version ruff + integrity gate', model: 'haiku' },
-    { title: 'PR', detail: 'push + open PR (no merge)', model: 'haiku' },
+    { title: 'PR', detail: 'ruff check+format, push, open PR (no merge)', model: 'haiku' },
   ],
 }
 
@@ -172,7 +172,10 @@ if (!tests || !tests.passed) return { issue, blocked: 'tests', detail: tests ? t
 
 // ── 7. PR — no merge ─────────────────────────────────────────────────────────
 phase('PR')
-const pr = await agent(`From ${WORKTREE}: push branch ${BRANCH} (\`git push -u origin ${BRANCH}\`) and open a PR with \`gh pr create\` — title from the branch's main commit, body summarizing the change (what + why, test count), containing the line "Closes #${issue}", ending with:
+const pr = await agent(`From ${WORKTREE}, branch ${BRANCH}:
+
+1. Ruff first: \`uvx ruff@0.16.0 check .\` and \`uvx ruff@0.16.0 format --check .\` (CI pins 0.16.0 — must match exactly). If either finds anything, run \`uvx ruff@0.16.0 check --fix .\` and \`uvx ruff@0.16.0 format .\`, then re-run both check commands clean, then commit the fix (conventional commit, reference #${issue}, end with the Co-Authored-By line for Claude Fable 5 <noreply@anthropic.com>). Do not push or open the PR until both are clean.
+2. Push the branch (\`git push -u origin ${BRANCH}\`) and open a PR with \`gh pr create\` — title from the branch's main commit, body summarizing the change (what + why, test count), containing the line "Closes #${issue}", ending with:
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
 
 Do NOT merge. Do NOT enable auto-merge. Return ONLY the PR URL.`,
