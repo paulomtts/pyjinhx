@@ -24,7 +24,14 @@ Inner order (each step testable before the next starts):
 - [ ] **4. `render.py` (single level)** ([#247](https://github.com/paulomtts/pyjinhx/issues/247)) — Jinja environment (autoescape on, default-env project-root detection), context build from validated fields, `template.render` → the one parse → root-attr stamp → serialize. T1 steps 3-4 for a childless component.
 - [ ] **5. Guards + bench** ([#248](https://github.com/paulomtts/pyjinhx/issues/248)) — `test_import_graph.py` (spine rule live from day one), `scripts/bench_render_scaling_v2.py`, baseline number recorded in this file.
 
-Baseline: _(record here when step 5 lands)_
+Baseline (2026-07-30, `uv run python scripts/bench_render_scaling_v2.py`, N childless components):
+
+```
+n=  50       1.0 ms    0.02 ms/component
+n= 100       1.8 ms    0.02 ms/component
+n= 200       3.7 ms    0.02 ms/component
+n= 438       7.9 ms    0.02 ms/component
+```
 
 **Gate before L1** ([#249](https://github.com/paulomtts/pyjinhx/issues/249))**:** slot-filter survey — grep v0.x builtins + docs for string operations on component-slot values (ADR 0003). Hits → migration notes; widespread → revisit ADR 0003 first.
 
