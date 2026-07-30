@@ -115,3 +115,40 @@ def test_slot_field_raw_vs_scalar_escaped():
 
     assert '<span class="label">&lt;b&gt;hi&lt;/b&gt;</span>' in output
     assert '<span class="markup"><b>hi</b></span>' in output
+
+
+def test_stamped_attrs_land_in_root_tag():
+    """Attrs passed to stamp_root_attrs land inside the root tag's opening
+    tag, correctly quoted; a colliding attr name overrides in place instead
+    of duplicating."""
+
+    class SectionComp(BaseComponent):
+        title: str = "Body"
+
+    descriptor = ClassDescriptor(
+        template_path=Path("integration_attrs.html"),
+        slot_fields=frozenset(),
+        css_paths=(),
+        js_paths=(),
+        strict=True,
+        provenance={"template": SectionComp},
+    )
+    SectionComp.__pjx_descriptor__ = descriptor
+
+    session = RenderSession(template_dir="tests/templates")
+    component = SectionComp()
+
+    level = render_level(component, session)
+    stamp_root_attrs(level, {"class": "card highlighted", "data-x": "1"})
+    output = serialize(level)
+
+    opening_tag_end = output.index(">") + 1
+    opening_tag = output[:opening_tag_end]
+
+    assert 'id="original-id"' in opening_tag
+    assert 'class="card highlighted"' in opening_tag
+    assert opening_tag.count("class=") == 1
+    assert 'data-x="1"' in opening_tag
+    assert output == (
+        '<section id="original-id" class="card highlighted" data-x="1">Body</section>'
+    )
