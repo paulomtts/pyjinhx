@@ -72,3 +72,79 @@ def test_message_survives_unresolved_template():
         len(node)
 
     assert "Card (template: <unresolved>): slot 'content'" in str(excinfo.value)
+
+
+def test_indexing_raises():
+    """Subscripting a component slot is forbidden."""
+    node = make_node()
+
+    with pytest.raises(TypeError, match=r"`\[0\]` is not supported"):
+        node[0]
+
+
+def test_slicing_raises():
+    """Slicing a component slot reports the slice syntax that was written."""
+    node = make_node()
+
+    with pytest.raises(TypeError, match=r"`\[0:3\]` is not supported"):
+        node[0:3]
+
+
+def test_membership_raises():
+    """`in` against a component slot is forbidden."""
+    node = make_node()
+
+    with pytest.raises(TypeError, match=r"`in` is not supported"):
+        "x" in node
+
+
+def test_iteration_raises():
+    """Iterating a component slot is forbidden."""
+    node = make_node()
+
+    with pytest.raises(TypeError, match=r"`for` is not supported"):
+        list(node)
+
+
+def test_equality_raises():
+    """`==` against a component slot is forbidden, whatever the other side."""
+    node = make_node()
+
+    with pytest.raises(TypeError, match=r"`==` is not supported"):
+        node == "x"
+
+
+def test_inequality_raises():
+    """`!=` is forbidden too - Python routes it through __ne__, not __eq__."""
+    node = make_node()
+
+    with pytest.raises(TypeError, match=r"`!=` is not supported"):
+        node != "x"
+
+
+@pytest.mark.parametrize(
+    ("operation", "call"),
+    [
+        ("<", lambda node: node < "x"),
+        ("<=", lambda node: node <= "x"),
+        (">", lambda node: node > "x"),
+        (">=", lambda node: node >= "x"),
+    ],
+)
+def test_ordering_comparisons_raise(operation, call):
+    """Ordering comparisons name the exact operator that was written."""
+    node = make_node()
+
+    with pytest.raises(TypeError) as excinfo:
+        call(node)
+
+    assert f"`{operation}` is not supported" in str(excinfo.value)
+
+
+def test_identity_still_works():
+    """`is` bypasses __eq__, so internal identity checks stay usable."""
+    node = make_node()
+    other = make_node()
+
+    assert node is node
+    assert node is not other

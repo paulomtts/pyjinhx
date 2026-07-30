@@ -77,6 +77,39 @@ class ComponentNode:
     def __len__(self) -> int:
         raise self._opaque_error("|length")
 
+    def __getitem__(self, key: object) -> object:
+        if isinstance(key, slice):
+            start = "" if key.start is None else key.start
+            stop = "" if key.stop is None else key.stop
+            written = f"[{start}:{stop}]"
+        else:
+            written = f"[{key!r}]" if isinstance(key, str) else f"[{key}]"
+        raise self._opaque_error(written)
+
+    def __contains__(self, item: object) -> bool:
+        raise self._opaque_error("in")
+
+    def __iter__(self) -> object:
+        raise self._opaque_error("for")
+
+    def __eq__(self, other: object) -> bool:
+        raise self._opaque_error("==")
+
+    def __ne__(self, other: object) -> bool:
+        raise self._opaque_error("!=")
+
+    def __lt__(self, other: object) -> bool:
+        raise self._opaque_error("<")
+
+    def __le__(self, other: object) -> bool:
+        raise self._opaque_error("<=")
+
+    def __gt__(self, other: object) -> bool:
+        raise self._opaque_error(">")
+
+    def __ge__(self, other: object) -> bool:
+        raise self._opaque_error(">=")
+
 
 SLOT_TOKEN_RE = re.compile(r"pjx-slot-[0-9a-f]{32}")
 
