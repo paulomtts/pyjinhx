@@ -31,3 +31,14 @@ def test_override_tag_appends_new_attr_on_self_closing_tag_no_double_space():
 def test_override_tag_appends_multiple_attrs_in_order():
     result = _override_tag("<div>", {"data-a": "1", "data-b": "2"})
     assert result == '<div data-a="1" data-b="2">'
+
+
+def test_override_tag_replaces_existing_attr_wholesale_not_merged():
+    result = _override_tag('<div class="a">', {"class": "b"})
+    assert result == '<div class="b">'
+    assert "a" not in result.split('"')[1]
+
+
+def test_override_tag_replaces_existing_attr_single_quoted():
+    result = _override_tag("<div class='a'>", {"class": "b"})
+    assert result == '<div class="b">'
