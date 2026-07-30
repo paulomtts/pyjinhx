@@ -8,6 +8,7 @@ production code change was needed to make them pass.
 from pathlib import Path
 
 import pytest
+from pydantic import Field
 
 from pyjinhx2 import discovery
 from pyjinhx2.component import BaseComponent
@@ -80,8 +81,7 @@ def test_three_levels_nest_as_rendered_levels(session):
 
 def test_three_levels_serialize_nested_in_order(session):
     assert render(PJXNestedRoot(), session) == (
-        '<div class="root"><span class="mid">m'
-        '<em class="leaf">deep</em></span></div>'
+        '<div class="root"><span class="mid">m<em class="leaf">deep</em></span></div>'
     )
 
 
@@ -175,7 +175,7 @@ def test_passthrough_reescapes_attr_values(session):
 
 
 class PJXLoopRoot(BaseComponent):
-    items: list[str] = []
+    items: list[str] = Field(default_factory=list)
 
 
 PJXLoopRoot.__pjx_descriptor__ = descriptor_for(PJXLoopRoot, "nested_loop.html")
@@ -221,7 +221,7 @@ PJXFullMid.__pjx_descriptor__ = descriptor_for(PJXFullMid, "nested_full_mid.html
 
 
 class PJXFullRoot(BaseComponent):
-    rows: list[str] = []
+    rows: list[str] = Field(default_factory=list)
 
 
 PJXFullRoot.__pjx_descriptor__ = descriptor_for(PJXFullRoot, "nested_full_root.html")
@@ -254,13 +254,43 @@ def test_generated_mid_levels_each_own_their_generated_leaf(session):
     mids = [seg for seg in level.segments if isinstance(seg, RenderedLevel)]
     assert len(mids) == 2
     leaves = [
-        seg
-        for mid in mids
-        for seg in mid.segments
-        if isinstance(seg, RenderedLevel)
+        seg for mid in mids for seg in mid.segments if isinstance(seg, RenderedLevel)
     ]
     assert len(leaves) == 2
     assert leaves[0] is not leaves[1]
     assert leaves[0].segments is not leaves[1].segments
     assert serialize(leaves[0]) == '<em class="leaf">x</em>'
     assert serialize(leaves[1]) == '<em class="leaf">y</em>'
+
+
+class PJXBadLeaf(BaseComponent):
+    pass
+
+
+PJXBadLeaf.__pjx_descriptor__ = descriptor_for(PJXBadLeaf, "nested_bad_leaf.html")
+
+
+class PJXBadMid(BaseComponent):
+    pass
+
+
+PJXBadMid.__pjx_descriptor__ = descriptor_for(PJXBadMid, "nested_bad_mid.html")
+
+
+class PJXBadRoot(BaseComponent):
+    pass
+
+
+PJXBadRoot.__pjx_descriptor__ = descriptor_for(PJXBadRoot, "nested_bad_root.html")
+
+
+def test_grandchild_render_failure_propagates_unchanged(session):
+    """Two hops down, the error still names the failing class and its template."""
+    discovery._registry.mapping["pjx_bad_leaf"] = PJXBadLeaf
+    discovery._registry.mapping["pjx_bad_mid"] = PJXBadMid
+    with pytest.raises(ValueError) as excinfo:
+        render_level(PJXBadRoot(), session)
+    message = str(excinfo.value)
+    assert "PJXBadLeaf" in message
+    assert "nested_bad_leaf.html" in message
+    assert "PJXBadMid" not in message
