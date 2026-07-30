@@ -508,6 +508,7 @@ class Renderer:
             cls._default_environment = Environment(
                 loader=FileSystemLoader(root_dir), autoescape=True
             )
+        cls._default_environment.context_class = _PjxContext
         return cls._default_environment
 
     @classmethod
