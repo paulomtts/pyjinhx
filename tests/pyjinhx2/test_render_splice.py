@@ -7,7 +7,7 @@ import pytest
 from pyjinhx2 import discovery
 from pyjinhx2.component import BaseComponent
 from pyjinhx2.descriptor import ClassDescriptor
-from pyjinhx2.render import render_level
+from pyjinhx2.render import render, render_level
 from pyjinhx2.segments import ChildRef, RenderedLevel, serialize
 from pyjinhx2.session import RenderSession
 
@@ -116,3 +116,38 @@ def test_passthrough_string_is_untouched_next_to_a_splice(session):
     level = render_level(PJXMixed(), session)
     assert isinstance(level.segments[1], RenderedLevel)
     assert level.segments[2] == '<WebThing id="w"/>'
+
+
+class PJXBadChild(BaseComponent):
+    pass
+
+
+PJXBadChild.__pjx_descriptor__ = descriptor_for(PJXBadChild, "splice_bad_child.html")
+
+
+class PJXBadParent(BaseComponent):
+    pass
+
+
+PJXBadParent.__pjx_descriptor__ = descriptor_for(PJXBadParent, "splice_bad_parent.html")
+
+
+def test_serialize_nests_the_spliced_child_in_the_parent_output(session):
+    assert render(PJXParent(), session) == (
+        '<div class="parent"><span class="child">a</span></div>'
+    )
+
+
+def test_serialize_nests_both_siblings_in_order(session):
+    assert render(PJXSiblings(), session) == (
+        '<div class="parent"><span class="child">a</span><hr/>'
+        '<span class="child">b</span></div>'
+    )
+
+
+def test_child_render_failure_propagates_unchanged(session):
+    discovery._registry.mapping["pjx_bad_child"] = PJXBadChild
+    with pytest.raises(ValueError) as excinfo:
+        render_level(PJXBadParent(), session)
+    assert "PJXBadChild" in str(excinfo.value)
+    assert "splice_bad_child.html" in str(excinfo.value)
