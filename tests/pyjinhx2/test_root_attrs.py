@@ -1,6 +1,11 @@
 import pytest
 
-from pyjinhx2.root_attrs import _override_tag, serialize_attr
+from pyjinhx2.root_attrs import _override_tag, serialize_attr, stamp_root_attrs
+from pyjinhx2.segments import RenderedLevel
+
+
+def _level(markup: str, root_span: tuple[int, int]) -> RenderedLevel:
+    return RenderedLevel(segments=[markup], root_span=root_span, descriptor=None)
 
 
 def test_serialize_attr_double_quotes_by_default():
@@ -42,3 +47,45 @@ def test_override_tag_replaces_existing_attr_wholesale_not_merged():
 def test_override_tag_replaces_existing_attr_single_quoted():
     result = _override_tag("<div class='a'>", {"class": "b"})
     assert result == '<div class="b">'
+
+
+def test_stamp_root_attrs_no_attrs_is_identity_noop():
+    level = _level('<div class="root">hi</div>', (0, 18))
+    original_segments_id = id(level.segments[0])
+    result = stamp_root_attrs(level, {})
+    assert result is level
+    assert result.segments[0] == '<div class="root">hi</div>'
+    assert result.root_span == (0, 18)
+    # identity no-op: same string object, not a re-built equal one
+    assert id(result.segments[0]) == original_segments_id
+
+
+def test_stamp_root_attrs_only_touches_opening_tag_span():
+    markup = '<div class="root"><span>child text</span></div>'
+    # root_span covers exactly `<div class="root">`
+    level = _level(markup, (0, 18))
+    stamp_root_attrs(level, {"data-x": "1"})
+    stamped = level.segments[0]
+    assert stamped.startswith('<div class="root" data-x="1">')
+    # everything after the original root tag is untouched
+    assert stamped[len('<div class="root" data-x="1">') :] == (markup[18:])
+
+
+def test_stamp_root_attrs_updates_root_span_to_new_tag_length():
+    markup = '<div class="root">hi</div>'
+    level = _level(markup, (0, 18))
+    stamp_root_attrs(level, {"data-x": "1"})
+    start, end = level.root_span
+    assert start == 0
+    assert level.segments[0][start:end] == '<div class="root" data-x="1">'
+
+
+def test_stamp_root_attrs_idempotent_no_duplicate_attrs():
+    level = _level('<div class="root">hi</div>', (0, 18))
+    stamp_root_attrs(level, {"class": "stamped"})
+    first = level.segments[0]
+    # stamp the same attrs again onto the already-stamped tag
+    stamp_root_attrs(level, {"class": "stamped"})
+    second = level.segments[0]
+    assert first == second
+    assert second.count("class=") == 1

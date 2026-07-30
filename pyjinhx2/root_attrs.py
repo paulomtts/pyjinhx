@@ -48,3 +48,25 @@ def _override_tag(tag_text: str, attrs: dict[str, str]) -> str:
             idx = body.rindex(">")
             body = body[:idx] + " " + pair + body[idx:]
     return body
+
+
+def stamp_root_attrs(level: RenderedLevel, attrs: dict[str, str]) -> RenderedLevel:
+    """Splice ``attrs`` into ``level``'s root opening tag at ``level.root_span``.
+
+    No-op (identity) when ``attrs`` is empty. Otherwise replaces the
+    ``root_span`` substring of ``level.segments[0]`` with the stamped tag
+    text and updates ``root_span`` to match the new tag's length. Mutates
+    ``level`` in place and returns it, matching the ``splice()`` convention
+    in ``pyjinhx2.segments``.
+    """
+    if not attrs:
+        return level
+    root = level.segments[0]
+    assert isinstance(root, str), (
+        f"stamp_root_attrs needs a str root segment, got {type(root).__name__}"
+    )
+    start, end = level.root_span
+    new_tag = _override_tag(root[start:end], attrs)
+    level.segments[0] = root[:start] + new_tag + root[end:]
+    level.root_span = (start, start + len(new_tag))
+    return level
