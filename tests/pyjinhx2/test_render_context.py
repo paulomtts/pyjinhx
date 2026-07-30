@@ -131,3 +131,51 @@ def test_non_slot_component_valued_field():
     assert "child" in context
     # The exact structure depends on model_dump behavior
     # At minimum, it should be in the context
+
+
+def test_nested_basemodel_fields():
+    """Nested BaseModel (non-component) fields pass through as dicts."""
+
+    class Metadata(BaseModel):
+        version: str
+
+    class Form(BaseComponent):
+        meta: Metadata
+
+    form = Form(meta=Metadata(version="1.0"))
+    descriptor = ClassDescriptor(
+        template_path=Path("form.pjx"),
+        slot_fields=frozenset(),
+        css_paths=(),
+        js_paths=(),
+        strict=True,
+        provenance={},
+    )
+
+    context = build_context(form, descriptor)
+
+    # model_dump() recurses, so meta is a dict
+    assert "meta" in context
+    assert isinstance(context["meta"], dict)
+    assert context["meta"]["version"] == "1.0"
+
+
+def test_json_coerced_list_dict_fields():
+    """List/dict fields pass through for Jinja iteration."""
+
+    class Panel(BaseComponent):
+        items: list[int]
+
+    panel = Panel(items=[1, 2, 3])
+    descriptor = ClassDescriptor(
+        template_path=Path("panel.pjx"),
+        slot_fields=frozenset(),
+        css_paths=(),
+        js_paths=(),
+        strict=True,
+        provenance={},
+    )
+
+    context = build_context(panel, descriptor)
+
+    assert context["items"] == [1, 2, 3]
