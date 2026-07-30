@@ -18,7 +18,7 @@ def test_serialize_attr_falls_back_to_single_quotes_when_value_has_double_quote(
 
 def test_serialize_attr_raises_when_value_has_both_quote_kinds():
     with pytest.raises(ValueError):
-        serialize_attr("title", "He said \"hi\", it's me")
+        serialize_attr("title", 'He said "hi", it\'s me')
 
 
 def test_override_tag_appends_new_attr_before_closing_angle_bracket():
@@ -89,3 +89,11 @@ def test_stamp_root_attrs_idempotent_no_duplicate_attrs():
     second = level.segments[0]
     assert first == second
     assert second.count("class=") == 1
+
+
+def test_stamp_root_attrs_multiple_attrs_via_rendered_level():
+    level = _level('<div class="root">hi</div>', (0, 18))
+    stamp_root_attrs(level, {"data-a": "1", "data-b": "2"})
+    start, end = level.root_span
+    assert level.segments[0][start:end] == ('<div class="root" data-a="1" data-b="2">')
+    assert level.segments[0][end:] == "hi</div>"
