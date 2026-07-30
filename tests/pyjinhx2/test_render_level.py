@@ -594,3 +594,59 @@ def test_multi_root_names_component_and_path():
     assert "BadComp2" in message
     assert "bad.html" in message
     assert "the extra top-level tags are" in message
+
+
+# Test 21: Valid childless component still renders without exception (no over-eager try/except)
+def test_valid_component_unaffected_by_error_wrapping():
+    """Success path is unaffected: valid single-root template still renders cleanly."""
+
+    class HappyComp(BaseComponent):
+        title: str = "Fine"
+
+    descriptor = ClassDescriptor(
+        template_path=Path("div.html"),
+        slot_fields=frozenset(),
+        css_paths=(),
+        js_paths=(),
+        strict=True,
+        provenance={"template": HappyComp},
+    )
+    HappyComp.__pjx_descriptor__ = descriptor
+
+    session = RenderSession(template_dir="tests/templates")
+    component = HappyComp()
+
+    result = render_level(component, session)
+
+    assert isinstance(result, RenderedLevel)
+    output = "".join(str(s) for s in result.segments)
+    assert '<div class="root">' in output
+
+
+# Test 22: jinja2.TemplateAssertionError from a broken template body propagates unmodified
+def test_template_assertion_error_not_wrapped():
+    """TemplateAssertionError (template-authoring error) is out of scope: message untouched."""
+    import jinja2
+
+    class BrokenSyntaxComp(BaseComponent):
+        pass
+
+    descriptor = ClassDescriptor(
+        template_path=Path("broken_assertion.html"),
+        slot_fields=frozenset(),
+        css_paths=(),
+        js_paths=(),
+        strict=True,
+        provenance={"template": BrokenSyntaxComp},
+    )
+    BrokenSyntaxComp.__pjx_descriptor__ = descriptor
+
+    session = RenderSession(template_dir="tests/templates")
+    component = BrokenSyntaxComp()
+
+    with pytest.raises(jinja2.TemplateSyntaxError) as exc_info:
+        render_level(component, session)
+
+    message = str(exc_info.value)
+    assert "BrokenSyntaxComp" not in message
+    assert "template:" not in message
