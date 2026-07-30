@@ -18,10 +18,10 @@ L0 kernel ──► L1 composition ──► L2 registry+assets ──► L3 rea
 
 Inner order (each step testable before the next starts):
 
-- [ ] **1. `segments.py`** ([#244](https://github.com/paulomtts/pyjinhx/issues/244)) — `RenderedLevel`, `ChildRef`, the one parse (segment cuts + root_span + single-root), splice, serialize. Import-pure, all pure functions: build and test it against raw strings before any component exists.
-- [ ] **2. `component.py`** ([#245](https://github.com/paulomtts/pyjinhx/issues/245)) — strict `BaseComponent`, `Slot` type, auto-`pjx-<n>` IDs, JSON-string attr coercion. No rendering yet; pure model behavior.
-- [ ] **3. `descriptor.py`** ([#246](https://github.com/paulomtts/pyjinhx/issues/246)) — `ClassDescriptor` frozen in `__pydantic_init_subclass__`: single-probe template resolution (`.pjx` + snake_case), MRO walk per kind with provenance, slot-field set, asset paths, strict/open mode flag.
-- [ ] **4. `render.py` (single level)** ([#247](https://github.com/paulomtts/pyjinhx/issues/247)) — Jinja environment (autoescape on, default-env project-root detection), context build from validated fields, `template.render` → the one parse → root-attr stamp → serialize. T1 steps 3-4 for a childless component.
+- [x] **1. `segments.py`** ([#244](https://github.com/paulomtts/pyjinhx/issues/244)) — `RenderedLevel`, `ChildRef`, the one parse (segment cuts + root_span + single-root), splice, serialize. Import-pure, all pure functions: build and test it against raw strings before any component exists.
+- [x] **2. `component.py`** ([#245](https://github.com/paulomtts/pyjinhx/issues/245)) — strict `BaseComponent`, `Slot` type, auto-`pjx-<n>` IDs, JSON-string attr coercion. No rendering yet; pure model behavior.
+- [x] **3. `descriptor.py`** ([#246](https://github.com/paulomtts/pyjinhx/issues/246)) — `ClassDescriptor` frozen in `__pydantic_init_subclass__`: single-probe template resolution (`.pjx` + snake_case), MRO walk per kind with provenance, slot-field set, asset paths, strict/open mode flag.
+- [x] **4. `render.py` (single level)** ([#247](https://github.com/paulomtts/pyjinhx/issues/247)) — Jinja environment (autoescape on, default-env project-root detection), context build from validated fields, `template.render` → the one parse → root-attr stamp → serialize. T1 steps 3-4 for a childless component.
 - [x] **5. Guards + bench** ([#248](https://github.com/paulomtts/pyjinhx/issues/248)) — `test_import_graph.py` (spine rule live from day one), `scripts/bench_render_scaling_v2.py`, baseline number recorded in this file.
 
 Baseline (2026-07-30, `uv run python scripts/bench_render_scaling_v2.py`, N childless components):
@@ -33,7 +33,7 @@ n= 200       3.7 ms    0.02 ms/component
 n= 438       7.9 ms    0.02 ms/component
 ```
 
-**Gate before L1** ([#249](https://github.com/paulomtts/pyjinhx/issues/249))**:** slot-filter survey — grep v0.x builtins + docs for string operations on component-slot values (ADR 0003). Hits → migration notes; widespread → revisit ADR 0003 first.
+**Gate before L1** ([#249](https://github.com/paulomtts/pyjinhx/issues/249)) — ✅ **passed, 2026-07-30.** Slot-filter survey (#293 builtins, #294 docs+demos) found zero occurrences of string filters/slicing/membership/comparisons on component-slot values. #295 classified this as rare-path; #296 recorded the rare-path outcome — error contract and migration note — directly in [ADR 0003](adr/0003-slot-opacity.md#survey-outcome-2026-07-30). #297 (widespread-path) closed not-applicable. ADR 0003's decision (opaque + truthiness/interpolation only) stands unchanged; L1's RFC can proceed against the recorded error contract with no further mitigation needed.
 
 ---
 
