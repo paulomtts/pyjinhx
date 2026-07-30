@@ -381,6 +381,7 @@ class TestDevReloadReassignmentSmokeTest:
         replacement = ClassDescriptor(
             template_path=Path("rebuilt/card.pjx"),
             slot_fields=frozenset({"body"}),
+            children_field=None,
             css_paths=(Path("rebuilt/card.css"),),
             js_paths=(),
             strict=True,
@@ -518,6 +519,7 @@ class TestRebuildClassDescriptor:
         sentinel = ClassDescriptor(
             template_path=Path("sentinel/card.pjx"),
             slot_fields=frozenset(),
+            children_field=None,
             css_paths=(),
             js_paths=(),
             strict=True,

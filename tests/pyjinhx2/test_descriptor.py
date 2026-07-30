@@ -21,6 +21,7 @@ class Child(Base):
 def make_descriptor(
     template_path: Path = Path("cards/card.pjx"),
     slot_fields: frozenset[str] = frozenset({"header", "body"}),
+    children_field: str | None = None,
     css_paths: tuple[Path, ...] = (Path("cards/card.css"),),
     js_paths: tuple[Path, ...] = (Path("cards/card.js"),),
     strict: bool = True,
@@ -31,6 +32,7 @@ def make_descriptor(
     return ClassDescriptor(
         template_path=template_path,
         slot_fields=slot_fields,
+        children_field=children_field,
         css_paths=css_paths,
         js_paths=js_paths,
         strict=strict,
@@ -43,6 +45,7 @@ class TestClassDescriptorShape:
         descriptor = ClassDescriptor(
             template_path=Path("cards/card.pjx"),
             slot_fields=frozenset({"header", "body"}),
+            children_field=None,
             css_paths=(Path("cards/card.css"),),
             js_paths=(Path("cards/card.js"),),
             strict=True,
@@ -55,11 +58,12 @@ class TestClassDescriptorShape:
         assert descriptor.strict is True
         assert descriptor.provenance == {"template": Child, "css": Base, "js": Base}
 
-    def test_exposes_exactly_the_six_declared_fields(self):
+    def test_exposes_exactly_the_seven_declared_fields(self):
         names = [field.name for field in dataclasses.fields(ClassDescriptor)]
         assert names == [
             "template_path",
             "slot_fields",
+            "children_field",
             "css_paths",
             "js_paths",
             "strict",
@@ -85,6 +89,7 @@ class TestClassDescriptorIsFrozen:
         [
             ("template_path", Path("other.pjx")),
             ("slot_fields", frozenset()),
+            ("children_field", "other"),
             ("css_paths", ()),
             ("js_paths", ()),
             ("strict", False),
@@ -121,6 +126,7 @@ class TestClassDescriptorEmptyCollections:
         descriptor = ClassDescriptor(
             template_path=Path("plain.pjx"),
             slot_fields=frozenset(),
+            children_field=None,
             css_paths=(),
             js_paths=(),
             strict=False,

@@ -118,6 +118,7 @@ def test_render_level_passes_unknown_tags_through():
     UnknownHost.__pjx_descriptor__ = ClassDescriptor(
         template_path=Path("unknown_host.html"),
         slot_fields=frozenset(),
+        children_field=None,
         css_paths=(),
         js_paths=(),
         strict=True,

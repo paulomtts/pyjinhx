@@ -47,6 +47,7 @@ def test_basic_field_passthrough():
     descriptor = ClassDescriptor(
         template_path=Path("card.pjx"),
         slot_fields=frozenset(),
+        children_field=None,
         css_paths=(),
         js_paths=(),
         strict=True,
@@ -75,6 +76,7 @@ def test_slot_field_wrapping_component_valued():
     descriptor = ClassDescriptor(
         template_path=Path("card.pjx"),
         slot_fields=frozenset(["content"]),
+        children_field=None,
         css_paths=(),
         js_paths=(),
         strict=True,
@@ -99,6 +101,7 @@ def test_slot_field_passthrough_string_valued():
     descriptor = ClassDescriptor(
         template_path=Path("card.pjx"),
         slot_fields=frozenset(["html_content"]),
+        children_field=None,
         css_paths=(),
         js_paths=(),
         strict=True,
@@ -127,6 +130,7 @@ def test_non_slot_component_valued_field():
     descriptor = ClassDescriptor(
         template_path=Path("parent.pjx"),
         slot_fields=frozenset(),  # child is NOT a slot
+        children_field=None,
         css_paths=(),
         js_paths=(),
         strict=True,
@@ -155,6 +159,7 @@ def test_nested_basemodel_fields():
     descriptor = ClassDescriptor(
         template_path=Path("form.pjx"),
         slot_fields=frozenset(),
+        children_field=None,
         css_paths=(),
         js_paths=(),
         strict=True,
@@ -179,6 +184,7 @@ def test_json_coerced_list_dict_fields():
     descriptor = ClassDescriptor(
         template_path=Path("panel.pjx"),
         slot_fields=frozenset(),
+        children_field=None,
         css_paths=(),
         js_paths=(),
         strict=True,
@@ -200,6 +206,7 @@ def test_auto_id_in_context():
     descriptor = ClassDescriptor(
         template_path=Path("some.pjx"),
         slot_fields=frozenset(),
+        children_field=None,
         css_paths=(),
         js_paths=(),
         strict=True,
@@ -221,6 +228,7 @@ def test_empty_component():
     descriptor = ClassDescriptor(
         template_path=Path("empty.pjx"),
         slot_fields=frozenset(),
+        children_field=None,
         css_paths=(),
         js_paths=(),
         strict=True,
@@ -244,6 +252,7 @@ def test_jinja_filters_on_regular_fields():
     descriptor = ClassDescriptor(
         template_path=Path("label.pjx"),
         slot_fields=frozenset(),
+        children_field=None,
         css_paths=(),
         js_paths=(),
         strict=True,
@@ -282,6 +291,7 @@ def test_forbidden_operations_fail_through_jinja(source):
     descriptor = ClassDescriptor(
         template_path=Path("card.pjx"),
         slot_fields=frozenset(["content"]),
+        children_field=None,
         css_paths=(),
         js_paths=(),
         strict=True,
@@ -319,6 +329,7 @@ def test_str_routed_filters_do_not_raise(source):
     descriptor = ClassDescriptor(
         template_path=Path("card.pjx"),
         slot_fields=frozenset(["content"]),
+        children_field=None,
         css_paths=(),
         js_paths=(),
         strict=True,
@@ -341,6 +352,7 @@ def test_string_slot_is_unaffected_by_opacity():
     descriptor = ClassDescriptor(
         template_path=Path("note.pjx"),
         slot_fields=frozenset(["text_field"]),
+        children_field=None,
         css_paths=(),
         js_paths=(),
         strict=True,
@@ -367,6 +379,7 @@ def test_interpolation_and_truthiness_still_work():
     descriptor = ClassDescriptor(
         template_path=Path("card.pjx"),
         slot_fields=frozenset(["content"]),
+        children_field=None,
         css_paths=(),
         js_paths=(),
         strict=True,

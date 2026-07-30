@@ -251,6 +251,59 @@ def _resolve_slot_fields(cls: type) -> frozenset[str]:
     return frozenset(name for name in fields if _is_slot_field(cls, name))
 
 
+def _resolve_children_field(cls: type) -> str | None:
+    """The declared field a PascalCase tag's body content lands on, or ``None``.
+
+    Precedence, highest first:
+    1. the single field flagged ``PjxSlot(children=True)`` (the ``Children`` alias);
+    2. the ``_pjx_children_field`` class override, when set (MRO-inherited);
+    3. a field literally named ``content``;
+    4. the single field carrying a bare ``PjxSlot()`` marker.
+    Anything else — no slots, or two-plus unflagged slots with no ``content``
+    and no override — is ambiguous and resolves to ``None``. Ambiguity is not an
+    error here: no caller has asked for a target yet, so whoever eventually needs
+    one raises when it gets ``None``.
+
+    An override naming a field that is not declared resolves to that name as
+    written, matching v0.x, which does not validate existence either.
+
+    Declared fields only — ``model_extra`` is never walked, matching
+    :func:`_resolve_slot_fields`.
+    """
+    fields = getattr(cls, "model_fields", {})
+    flagged = [
+        name
+        for name, field in fields.items()
+        if any(isinstance(m, PjxSlot) and m.children for m in field.metadata)
+    ]
+    if len(flagged) > 1:
+        raise ValueError(
+            f"{cls.__name__}: multiple fields flagged PjxSlot(children=True) "
+            f"({', '.join(flagged)}); only one may receive tag children"
+        )
+
+    override = getattr(cls, "_pjx_children_field", None)
+    if override is not None:
+        if flagged and flagged[0] != override:
+            raise ValueError(
+                f"{cls.__name__}: _pjx_children_field={override!r} conflicts with "
+                f"PjxSlot(children=True) on {flagged[0]!r}; declare only one"
+            )
+        return override
+
+    if flagged:
+        return flagged[0]
+    if "content" in fields:
+        return "content"
+
+    slots = [
+        name
+        for name, field in fields.items()
+        if any(isinstance(m, PjxSlot) for m in field.metadata)
+    ]
+    return slots[0] if len(slots) == 1 else None
+
+
 def _resolve_asset_paths(cls: type) -> tuple[tuple[Path, ...], tuple[Path, ...]]:
     """The co-located stylesheet and script ``cls`` ships with, each resolved by
     its own nearest-ancestor walk.
@@ -311,9 +364,18 @@ def _resolve_class_descriptor(cls: type[BaseModel]) -> ClassDescriptor:
         )
         if owner is not None
     }
+    slot_fields = _resolve_slot_fields(cls)
+    children_field = _resolve_children_field(cls)
+    declared_fields = getattr(cls, "model_fields", {})
+    assert (
+        children_field is None
+        or children_field not in declared_fields
+        or children_field in slot_fields
+    ), f"{cls.__name__}: children_field {children_field!r} is not a slot field"
     return ClassDescriptor(
         template_path=template_path,
-        slot_fields=_resolve_slot_fields(cls),
+        slot_fields=slot_fields,
+        children_field=children_field,
         css_paths=() if css_path is None else (css_path,),
         js_paths=() if js_path is None else (js_path,),
         strict=_resolve_strict(cls),
@@ -345,6 +407,10 @@ class BaseComponent(BaseModel):
     __pjx_descriptor__: ClassVar[ClassDescriptor]
 
     _pjx_replace: ClassVar[bool] = False
+
+    _pjx_children_field: ClassVar[str | None] = None
+    """Explicit children-target override. ``None`` means "infer" — see
+    :func:`_resolve_children_field`."""
 
     id: str = Field(
         default_factory=_auto_id,

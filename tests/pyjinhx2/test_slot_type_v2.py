@@ -166,6 +166,7 @@ class TestSlotTruthinessInTemplates:
         component_cls.__pjx_descriptor__ = ClassDescriptor(
             template_path=Path(template),
             slot_fields=frozenset(slots),
+            children_field=None,
             css_paths=(),
             js_paths=(),
             strict=True,
@@ -213,6 +214,7 @@ class TestSlotInterpolation:
         component_cls.__pjx_descriptor__ = ClassDescriptor(
             template_path=Path(template),
             slot_fields=frozenset(slots),
+            children_field=None,
             css_paths=(),
             js_paths=(),
             strict=True,
@@ -327,6 +329,7 @@ class TestSlotSpliceGuards:
         component_cls.__pjx_descriptor__ = ClassDescriptor(
             template_path=Path(template),
             slot_fields=frozenset(slots),
+            children_field=None,
             css_paths=(),
             js_paths=(),
             strict=True,
@@ -366,6 +369,7 @@ class TestSlotSpliceGuards:
         descriptor = ClassDescriptor(
             template_path=Path("slot_leaf.html"),
             slot_fields=frozenset({"absent"}),
+            children_field=None,
             css_paths=(),
             js_paths=(),
             strict=True,

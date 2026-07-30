@@ -10,7 +10,7 @@ from typing import cast
 
 import jinja2
 
-from pyjinhx2.component import BaseComponent, PjxSlot, _pascal_to_snake
+from pyjinhx2.component import BaseComponent, _pascal_to_snake
 from pyjinhx2.discovery import get_class
 from pyjinhx2.markers import SLOT_TOKEN_RE, collect_slot_tokens
 from pyjinhx2.render_context import build_context
@@ -40,32 +40,6 @@ def _passthrough_markup(ref: ChildRef) -> str:
     return f"<{ref.tag}{attrs}>{ref.inner}</{ref.tag}>"
 
 
-def _children_field(cls: type[BaseComponent]) -> str | None:
-    """The declared field a paired tag's body text is assigned to, if any.
-
-    Which fields are slots is a type-level fact frozen in the descriptor; which
-    single one receives nested children is decided here, at expansion time, so
-    a class can carry several raw-HTML slots and still name one target.
-    """
-    fields = getattr(cls, "model_fields", {})
-    marked = [
-        name
-        for name, field in fields.items()
-        if any(isinstance(m, PjxSlot) and m.children for m in field.metadata)
-    ]
-    if len(marked) > 1:
-        raise ValueError(
-            f"{cls.__name__} marks {len(marked)} fields as the children target "
-            f"({', '.join(sorted(marked))}); exactly one field may use Children."
-        )
-    if marked:
-        return marked[0]
-    named = getattr(cls, "_pjx_children_field", None)
-    if isinstance(named, str) and named in fields:
-        return named
-    return None
-
-
 def _instantiate_child(ref: ChildRef, cls: type[BaseComponent]) -> BaseComponent:
     """Construct ``cls`` from a resolved ChildRef's attrs and body text.
 
@@ -79,7 +53,7 @@ def _instantiate_child(ref: ChildRef, cls: type[BaseComponent]) -> BaseComponent
     """
     kwargs: dict[str, str] = dict(ref.attrs)
     if ref.inner is not None and ref.inner.strip():
-        field = _children_field(cls)
+        field = cls.__pjx_descriptor__.children_field
         if field is None:
             raise ValueError(
                 f"<{ref.tag}> was given body text, but {cls.__name__} names no "

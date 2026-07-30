@@ -24,6 +24,7 @@ def _make_component(template_path: str):
     descriptor = ClassDescriptor(
         template_path=Path(template_path),
         slot_fields=frozenset(),
+        children_field=None,
         css_paths=(),
         js_paths=(),
         strict=True,
@@ -55,6 +56,7 @@ def test_render_roundtrips_template_output(render_session):
     descriptor = ClassDescriptor(
         template_path=Path("roundtrip.html"),
         slot_fields=frozenset(),
+        children_field=None,
         css_paths=(),
         js_paths=(),
         strict=True,
@@ -82,6 +84,7 @@ def test_render_uses_explicit_session(tmp_path):
     descriptor = ClassDescriptor(
         template_path=Path("custom.html"),
         slot_fields=frozenset(),
+        children_field=None,
         css_paths=(),
         js_paths=(),
         strict=True,
@@ -112,6 +115,7 @@ def test_render_without_session_uses_default(monkeypatch, tmp_path):
     descriptor = ClassDescriptor(
         template_path=Path("default.html"),
         slot_fields=frozenset(),
+        children_field=None,
         css_paths=(),
         js_paths=(),
         strict=True,
@@ -136,6 +140,7 @@ def test_render_missing_template_raises(render_session):
     descriptor = ClassDescriptor(
         template_path=Path("does_not_exist.html"),
         slot_fields=frozenset(),
+        children_field=None,
         css_paths=(),
         js_paths=(),
         strict=True,

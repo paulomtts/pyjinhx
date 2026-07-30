@@ -23,6 +23,7 @@ def descriptor_for(cls: type[BaseComponent], template: str) -> ClassDescriptor:
     return ClassDescriptor(
         template_path=Path(template),
         slot_fields=frozenset(),
+        children_field=None,
         css_paths=(),
         js_paths=(),
         strict=True,
