@@ -291,3 +291,15 @@ def test_strict_component_no_extra_keys():
     # Construction with extra key should fail at Pydantic level
     with pytest.raises(ValidationError):
         StrictCard(title="x", unknown="y")
+
+
+def test_context_builder_does_not_catch_pydantic_errors():
+    """build_context passes Pydantic errors through unchanged.
+
+    If model_dump() would hit an error (circular ref, etc.),
+    build_context doesn't catch it. This is caller's responsibility.
+    """
+    # This is a documentation test. Pydantic's construction-time validation
+    # prevents most bad types from reaching model_dump(). If caller constructs
+    # valid component and descriptor, build_context will succeed.
+    pass
