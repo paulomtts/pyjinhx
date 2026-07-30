@@ -148,3 +148,15 @@ def test_identity_still_works():
 
     assert node is node
     assert node is not other
+
+
+def test_node_is_truthy():
+    """A slot holding a component tests true under `{% if %}`."""
+    assert bool(make_node()) is True
+
+
+def test_str_renders_placeholder_not_object_repr():
+    """str() must not fall through to object's default repr-ish output."""
+    text = str(make_node())
+
+    assert "<pyjinhx2.markers.ComponentNode object at" not in text
