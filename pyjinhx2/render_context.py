@@ -1,4 +1,5 @@
 """Build Jinja2 template context from component instances."""
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
@@ -6,6 +7,7 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     from pyjinhx2.component import BaseComponent
 
+from pyjinhx2.descriptor import ClassDescriptor
 from pyjinhx2.markers import ComponentNode
 
 
@@ -31,12 +33,12 @@ def build_context(
     # Wrap component-valued Slot fields with ComponentNode
     for slot_field_name in descriptor.slot_fields:
         if slot_field_name in context:
-            value = context[slot_field_name]
             # Get the actual component value from the component instance
             # (not from the serialized dict)
             actual_value = getattr(component, slot_field_name)
             # Only wrap BaseComponent instances; strings pass through
             from pyjinhx2.component import BaseComponent
+
             if isinstance(actual_value, BaseComponent):
                 context[slot_field_name] = ComponentNode(actual_value)
 

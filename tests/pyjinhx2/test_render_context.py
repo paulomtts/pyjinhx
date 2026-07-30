@@ -1,4 +1,5 @@
 """Tests for render_context module."""
+
 import pytest
 from pathlib import Path
 from pydantic import BaseModel, ValidationError
