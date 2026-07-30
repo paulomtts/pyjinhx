@@ -22,7 +22,7 @@ Inner order (each step testable before the next starts):
 - [ ] **2. `component.py`** ([#245](https://github.com/paulomtts/pyjinhx/issues/245)) — strict `BaseComponent`, `Slot` type, auto-`pjx-<n>` IDs, JSON-string attr coercion. No rendering yet; pure model behavior.
 - [ ] **3. `descriptor.py`** ([#246](https://github.com/paulomtts/pyjinhx/issues/246)) — `ClassDescriptor` frozen in `__pydantic_init_subclass__`: single-probe template resolution (`.pjx` + snake_case), MRO walk per kind with provenance, slot-field set, asset paths, strict/open mode flag.
 - [ ] **4. `render.py` (single level)** ([#247](https://github.com/paulomtts/pyjinhx/issues/247)) — Jinja environment (autoescape on, default-env project-root detection), context build from validated fields, `template.render` → the one parse → root-attr stamp → serialize. T1 steps 3-4 for a childless component.
-- [ ] **5. Guards + bench** ([#248](https://github.com/paulomtts/pyjinhx/issues/248)) — `test_import_graph.py` (spine rule live from day one), `scripts/bench_render_scaling_v2.py`, baseline number recorded in this file.
+- [x] **5. Guards + bench** ([#248](https://github.com/paulomtts/pyjinhx/issues/248)) — `test_import_graph.py` (spine rule live from day one), `scripts/bench_render_scaling_v2.py`, baseline number recorded in this file.
 
 Baseline (2026-07-30, `uv run python scripts/bench_render_scaling_v2.py`, N childless components):
 
