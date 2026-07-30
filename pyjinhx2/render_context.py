@@ -7,13 +7,12 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     from pyjinhx2.component import BaseComponent
 
-from pyjinhx2.descriptor import ClassDescriptor
 from pyjinhx2.markers import ComponentNode
 
 
 def build_context(
     component: BaseComponent,
-    descriptor: ClassDescriptor,
+    descriptor: Any,
 ) -> dict[str, Any]:
     """Build Jinja2 template context from a component instance.
 
@@ -23,7 +22,7 @@ def build_context(
 
     Args:
         component: Validated BaseComponent instance (strict mode only)
-        descriptor: ClassDescriptor for this component class
+        descriptor: ClassDescriptor for this component (has slot_fields attr)
 
     Returns:
         dict[str, Any] with all fields ready for Jinja rendering
