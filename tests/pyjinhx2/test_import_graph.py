@@ -90,3 +90,49 @@ def test_component_is_the_only_importer_of_class_descriptor():
         if "pyjinhx2.descriptor" in internal_imports(path)
     }
     assert importers == {"component"}
+
+
+def test_no_render_spine_module_declares_a_reactive_import():
+    """FORBIDDEN per architecture-overview.md: anything in the render spine
+    importing reactive/. pyjinhx2/reactive/ doesn't exist yet (#288), so this
+    guards the allowlist table itself — it must fail the moment someone adds
+    a pyjinhx2.reactive entry to any spine module's allowed set, before a
+    single file under reactive/ is ever written."""
+    for module, allowed in ALLOWED_INTERNAL_IMPORTS.items():
+        reactive_edges = {
+            name
+            for name in allowed
+            if name == "pyjinhx2.reactive" or name.startswith("pyjinhx2.reactive.")
+        }
+        assert not reactive_edges, (
+            f"{module} declares forbidden reactive import(s): {sorted(reactive_edges)}"
+        )
+
+
+RENDER_SPINE_MODULES = (
+    "component",
+    "descriptor",
+    "markers",
+    "render",
+    "render_context",
+    "segments",
+    "session",
+)
+
+
+@pytest.mark.parametrize("stem", RENDER_SPINE_MODULES)
+def test_render_spine_modules_do_not_import_reactive_on_disk(stem: str):
+    """Redundant with test_no_render_spine_module_declares_a_reactive_import
+    while ALLOWED_INTERNAL_IMPORTS is the source of truth, but catches drift
+    if a spine file imports pyjinhx2.reactive directly without the allowlist
+    table being updated to match (e.g. a bypass that skips declaring the
+    edge)."""
+    path = PACKAGE_ROOT / f"{stem}.py"
+    reactive_imports = {
+        name
+        for name in internal_imports(path)
+        if name == "pyjinhx2.reactive" or name.startswith("pyjinhx2.reactive.")
+    }
+    assert not reactive_imports, (
+        f"{path.name} imports forbidden reactive module(s): {sorted(reactive_imports)}"
+    )
