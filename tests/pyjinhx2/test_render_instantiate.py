@@ -1,7 +1,7 @@
-from typing import ClassVar
+from typing import ClassVar, cast
 
 import pytest
-from pydantic import ValidationError
+from pydantic import Field, ValidationError
 
 from pyjinhx2 import discovery
 from pyjinhx2.component import BaseComponent, Children, Slot, _pascal_to_snake
@@ -50,7 +50,7 @@ class Scalars(BaseComponent):
 
 
 class Structured(BaseComponent):
-    rows: list[dict[str, str]] = []
+    rows: list[dict[str, str]] = Field(default_factory=list)
 
 
 class NoAutoId(BaseComponent):
@@ -58,7 +58,9 @@ class NoAutoId(BaseComponent):
 
 
 def test_instantiate_passes_scalar_attrs_through():
-    ref = ChildRef(tag="Scalars", attrs={"label": "Save", "variant": "danger"}, inner=None)
+    ref = ChildRef(
+        tag="Scalars", attrs={"label": "Save", "variant": "danger"}, inner=None
+    )
     instance = _instantiate_child(ref, Scalars)
     assert isinstance(instance, Scalars)
     assert instance.label == "Save"
@@ -67,7 +69,7 @@ def test_instantiate_passes_scalar_attrs_through():
 
 def test_instantiate_reaches_the_json_coercion_path():
     ref = ChildRef(tag="Structured", attrs={"rows": '[{"a": "1"}]'}, inner=None)
-    instance = _instantiate_child(ref, Structured)
+    instance = cast(Structured, _instantiate_child(ref, Structured))
     assert instance.rows == [{"a": "1"}]
 
 
@@ -96,13 +98,14 @@ def test_instantiate_propagates_validation_error_for_unknown_attr():
 
 def test_instantiate_merges_inner_into_the_children_field():
     ref = ChildRef(tag="WithChildren", attrs={}, inner="<em>hi</em>")
-    instance = _instantiate_child(ref, WithChildren)
+    instance = cast(WithChildren, _instantiate_child(ref, WithChildren))
     assert instance.body == "<em>hi</em>"
 
 
 def test_instantiate_ignores_blank_inner_when_no_children_field():
     ref = ChildRef(tag="Scalars", attrs={"label": "Save"}, inner="\n  ")
-    assert _instantiate_child(ref, Scalars).label == "Save"
+    instance = cast(Scalars, _instantiate_child(ref, Scalars))
+    assert instance.label == "Save"
 
 
 def test_instantiate_raises_when_inner_has_no_target_field():
@@ -131,7 +134,9 @@ def _registered():
 
 
 def test_fill_children_returns_instances_for_resolved_tags(_registered):
-    level = _level("<div>", ChildRef(tag="Scalars", attrs={"label": "Save"}, inner=None), "</div>")
+    level = _level(
+        "<div>", ChildRef(tag="Scalars", attrs={"label": "Save"}, inner=None), "</div>"
+    )
     pending = _fill_children(level)
     assert len(pending) == 1
     index, instance = pending[0]

@@ -75,7 +75,7 @@ def _instantiate_child(ref: ChildRef, cls: type[BaseComponent]) -> BaseComponent
     that the child's own template re-emits, so the tags inside it are cut out by
     the child's own parse and this level still parses exactly once.
     """
-    kwargs: dict[str, object] = dict(ref.attrs)
+    kwargs: dict[str, str] = dict(ref.attrs)
     if ref.inner is not None and ref.inner.strip():
         field = _children_field(cls)
         if field is None:
@@ -109,7 +109,9 @@ def _fill_children(level: RenderedLevel) -> list[tuple[int, BaseComponent]]:
         if cls is None:
             level.segments[index] = _passthrough_markup(segment)
             continue
-        pending.append((index, _instantiate_child(segment, cast(type[BaseComponent], cls))))
+        pending.append(
+            (index, _instantiate_child(segment, cast(type[BaseComponent], cls)))
+        )
     return pending
 
 
