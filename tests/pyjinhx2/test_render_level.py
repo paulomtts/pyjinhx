@@ -536,3 +536,61 @@ def test_missing_template_preserves_exception_type():
     except jinja2.TemplateNotFound as err:
         assert isinstance(err, jinja2.TemplateNotFound)
         assert err.__cause__ is not None, "original error must be chained via `from err`"
+
+
+# Test 19: Zero-root template → ValueError names component, path, and original detail
+def test_zero_root_names_component_and_path():
+    """Zero-root ValueError message contains class name, template_path, and original text."""
+
+    class EmptyComp2(BaseComponent):
+        pass
+
+    descriptor = ClassDescriptor(
+        template_path=Path("empty.html"),
+        slot_fields=frozenset(),
+        css_paths=(),
+        js_paths=(),
+        strict=True,
+        provenance={"template": EmptyComp2},
+    )
+    EmptyComp2.__pjx_descriptor__ = descriptor
+
+    session = RenderSession(template_dir="tests/templates")
+    component = EmptyComp2()
+
+    with pytest.raises(ValueError) as exc_info:
+        render_level(component, session)
+
+    message = str(exc_info.value)
+    assert "EmptyComp2" in message
+    assert "empty.html" in message
+    assert "renders no element at all" in message
+
+
+# Test 20: Multi-root template → ValueError names component, path, and original detail
+def test_multi_root_names_component_and_path():
+    """Multi-root ValueError message contains class name, template_path, and original text."""
+
+    class BadComp2(BaseComponent):
+        pass
+
+    descriptor = ClassDescriptor(
+        template_path=Path("bad.html"),
+        slot_fields=frozenset(),
+        css_paths=(),
+        js_paths=(),
+        strict=True,
+        provenance={"template": BadComp2},
+    )
+    BadComp2.__pjx_descriptor__ = descriptor
+
+    session = RenderSession(template_dir="tests/templates")
+    component = BadComp2()
+
+    with pytest.raises(ValueError) as exc_info:
+        render_level(component, session)
+
+    message = str(exc_info.value)
+    assert "BadComp2" in message
+    assert "bad.html" in message
+    assert "the extra top-level tags are" in message

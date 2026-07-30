@@ -53,7 +53,10 @@ def render_level(component: BaseComponent, session: "RenderSession") -> Rendered
     parser.close()
 
     # Validate single-root rule
-    parser.enforce_single_root()
+    try:
+        parser.enforce_single_root()
+    except ValueError as err:
+        raise ValueError(f"{prefix}{err}") from err
 
     # Return RenderedLevel
     return RenderedLevel(
