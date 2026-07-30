@@ -27,3 +27,24 @@ def serialize_attr(name: str, value: str) -> str:
             )
         return f"{name}='{value}'"
     return f'{name}="{value}"'
+
+
+def _override_tag(tag_text: str, attrs: dict[str, str]) -> str:
+    """Apply ``attrs`` onto a single opening-tag string with override semantics."""
+    body = tag_text
+    for name, value in attrs.items():
+        pair = serialize_attr(name, value)
+        pattern = re.compile(
+            r"\s" + re.escape(name) + r"\s*=\s*(\"[^\"]*\"|'[^']*'|[^\s/>]*)"
+        )
+        if pattern.search(body):
+            body = pattern.sub(" " + pair, body, count=1)
+        elif body.rstrip().endswith("/>"):
+            idx = body.rindex("/>")
+            # rstrip intentional: prevents extra space before '/>'
+            # (e.g. '<br data-y="1"/>' not '<br  data-y="1"/>')
+            body = body[:idx].rstrip() + " " + pair + body[idx:]
+        else:
+            idx = body.rindex(">")
+            body = body[:idx] + " " + pair + body[idx:]
+    return body
