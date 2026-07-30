@@ -18,7 +18,7 @@ class WithChildren(BaseComponent):
 
 
 class WithChildrenVar(BaseComponent):
-    _pjx_children_field: ClassVar[str] = "content"
+    _pjx_children_field: ClassVar[str | None] = "content"
     content: Slot = ""
 
 

@@ -27,7 +27,9 @@ def _descriptor_for(
 ) -> ClassDescriptor:
     return ClassDescriptor(
         template_path=Path(template),
-        slot_fields=frozenset() if children_field is None else frozenset({children_field}),
+        slot_fields=frozenset()
+        if children_field is None
+        else frozenset({children_field}),
         children_field=children_field,
         css_paths=(),
         js_paths=(),

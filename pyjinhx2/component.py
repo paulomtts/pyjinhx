@@ -367,10 +367,19 @@ def _resolve_class_descriptor(cls: type[BaseModel]) -> ClassDescriptor:
     slot_fields = _resolve_slot_fields(cls)
     children_field = _resolve_children_field(cls)
     declared_fields = getattr(cls, "model_fields", {})
+    # A children_field reached via the override or the flagged-field branch is
+    # a slot by construction: _is_slot_field already matches on those same two
+    # conditions. The one precedence branch this does not cover is a bare
+    # field literally named "content" with no PjxSlot marker and no override
+    # (rule 3) — _is_slot_field intentionally does not special-case that name,
+    # so it is exempted here rather than silently made a slot as a side effect
+    # of field-resolution (that would be a render-time/opacity decision, out
+    # of scope for #369).
     assert (
         children_field is None
         or children_field not in declared_fields
         or children_field in slot_fields
+        or children_field == "content"
     ), f"{cls.__name__}: children_field {children_field!r} is not a slot field"
     return ClassDescriptor(
         template_path=template_path,

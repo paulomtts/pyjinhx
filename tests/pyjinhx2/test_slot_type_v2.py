@@ -62,7 +62,7 @@ class _DesignatedChildren(BaseComponent):
     # string "kids", and the `==` check in `_is_slot_field` silently returns False.
     # The explicit `ClassVar[str]` annotation on this subclass sidesteps that
     # without touching `BaseComponent` itself. Verified: without it, this test fails.
-    _pjx_children_field: ClassVar[str] = "kids"
+    _pjx_children_field: ClassVar[str | None] = "kids"
     kids: str = ""  # designated children field, no PjxSlot metadata
 
 

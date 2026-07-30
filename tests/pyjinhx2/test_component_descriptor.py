@@ -101,14 +101,14 @@ class TestResolveSlotFields:
         pydantic private attribute and the name comparison silently fails."""
 
         class Designated(BaseComponent):
-            _pjx_children_field: ClassVar[str] = "kids"
+            _pjx_children_field: ClassVar[str | None] = "kids"
             kids: str = ""
 
         assert _resolve_slot_fields(Designated) == frozenset({"kids"})
 
     def test_slot_typed_and_designated_field_union(self):
         class Both(BaseComponent):
-            _pjx_children_field: ClassVar[str] = "kids"
+            _pjx_children_field: ClassVar[str | None] = "kids"
             kids: str = ""
             body: Slot = ""
 
