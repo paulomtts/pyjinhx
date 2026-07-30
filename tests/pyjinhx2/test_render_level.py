@@ -3,7 +3,7 @@ from pathlib import Path
 import pytest
 
 from pyjinhx2 import discovery
-from pyjinhx2.component import BaseComponent
+from pyjinhx2.component import BaseComponent, _pascal_to_snake
 from pyjinhx2.descriptor import ClassDescriptor
 from pyjinhx2.render import render_level
 from pyjinhx2.segments import ChildRef, RenderedLevel
@@ -31,9 +31,8 @@ def _registered_child_tags():
     ChildRef fields, so their tags must resolve (hit) to stay ChildRefs.
     """
     discovery._registry.mapping = {
-        "pjx_button": _PJXButton,
-        "pjx_card": _PJXCard,
-        "pjx_icon": _PJXIcon,
+        _pascal_to_snake(cls.__name__.lstrip("_")): cls
+        for cls in (_PJXButton, _PJXCard, _PJXIcon)
     }
     yield
     discovery._registry.mapping = {}
