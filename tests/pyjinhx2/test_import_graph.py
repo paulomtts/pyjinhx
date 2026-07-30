@@ -24,8 +24,12 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
     "component": frozenset({"pyjinhx2.descriptor"}),
     "descriptor": frozenset(),
     "markers": frozenset({"pyjinhx2.component"}),
+    "render": frozenset(
+        {"pyjinhx2.component", "pyjinhx2.segments", "pyjinhx2.session"}
+    ),
     "render_context": frozenset({"pyjinhx2.markers", "pyjinhx2.component"}),
     "segments": frozenset(),
+    "session": frozenset(),
 }
 
 
