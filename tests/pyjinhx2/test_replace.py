@@ -59,3 +59,51 @@ def test_replace_kwarg_does_not_become_a_model_field():
 
     assert "pjx_replace" not in FlaggedThing.model_fields
     assert "_pjx_replace" not in FlaggedThing.model_fields
+
+
+def test_explicit_replace_wins_the_tag():
+    class AlphaCard(BaseComponent):
+        pass
+
+    class ZzzOriginalAlphaCard(BaseComponent):
+        pass
+
+    ZzzOriginalAlphaCard.__name__ = "AlphaCard"
+
+    build_registry(DISCOVERY_DIR, [AlphaCard, ZzzOriginalAlphaCard])
+    assert get_class("alpha_card") is ZzzOriginalAlphaCard
+
+    class ReplacingAlphaCard(BaseComponent, pjx_replace=True):
+        pass
+
+    ReplacingAlphaCard.__name__ = "AlphaCard"
+
+    build_registry(DISCOVERY_DIR, [AlphaCard, ZzzOriginalAlphaCard, ReplacingAlphaCard])
+    assert get_class("alpha_card") is ReplacingAlphaCard
+
+
+def test_explicit_replace_does_not_warn(caplog):
+    class AlphaCard(BaseComponent):
+        pass
+
+    class ReplacingAlphaCard(BaseComponent, pjx_replace=True):
+        pass
+
+    ReplacingAlphaCard.__name__ = "AlphaCard"
+
+    with caplog.at_level(logging.WARNING, logger="pyjinhx2"):
+        build_registry(DISCOVERY_DIR, [AlphaCard, ReplacingAlphaCard])
+
+    assert caplog.records == []
+    assert get_class("alpha_card") is ReplacingAlphaCard
+
+
+def test_replace_with_no_collision_is_a_no_op(caplog):
+    class NestedWidget(BaseComponent, pjx_replace=True):
+        pass
+
+    with caplog.at_level(logging.WARNING, logger="pyjinhx2"):
+        build_registry(DISCOVERY_DIR, [NestedWidget])
+
+    assert caplog.records == []
+    assert get_class("nested_widget") is NestedWidget
