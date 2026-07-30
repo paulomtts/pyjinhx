@@ -112,17 +112,17 @@ class TestLoaderValidation:
     """Test FileSystemLoader requirement enforcement."""
 
     def test_non_filesystem_loader_set_default_raises_error(self):
-        """Pass non-FileSystemLoader environment to set_default_environment(); raise ValueError."""
+        """Pass non-FileSystemLoader environment to set_default_environment(); raise TypeError."""
         dict_env = Environment(loader=DictLoader({"test.html": "content"}))
 
-        with pytest.raises(ValueError, match="FileSystemLoader"):
+        with pytest.raises(TypeError, match="FileSystemLoader"):
             set_default_environment(dict_env)
 
     def test_non_filesystem_loader_get_root_raises_error(self):
-        """Read root from non-FileSystemLoader environment; raise ValueError."""
+        """Read root from non-FileSystemLoader environment; raise TypeError."""
         dict_env = Environment(loader=DictLoader({"test.html": "content"}))
 
-        with pytest.raises(ValueError, match="FileSystemLoader"):
+        with pytest.raises(TypeError, match="FileSystemLoader"):
             get_loader_root(dict_env)
 
 
