@@ -1,7 +1,7 @@
 """Tests for render_context module."""
 import pytest
 from pathlib import Path
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 from jinja2 import Environment, TemplateError
 
 from pyjinhx2.component import BaseComponent, Slot
@@ -279,3 +279,15 @@ def test_component_slot_filter_fails():
 
     with pytest.raises((TemplateError, TypeError)):
         template.render(context)
+
+
+def test_strict_component_no_extra_keys():
+    """Strict components reject extra keys at construction (Pydantic level)."""
+
+    class StrictCard(BaseComponent):
+        model_config = {"extra": "forbid"}
+        title: str
+
+    # Construction with extra key should fail at Pydantic level
+    with pytest.raises(ValidationError):
+        StrictCard(title="x", unknown="y")
