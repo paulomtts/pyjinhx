@@ -32,3 +32,6 @@ jobs:
 
     - name: Run tests
       run: uv run pytest tests/
+
+    - name: Typecheck pyjinhx2 (basedpyright, standard mode)
+      run: uvx "basedpyright==1.39.9" pyjinhx2/
