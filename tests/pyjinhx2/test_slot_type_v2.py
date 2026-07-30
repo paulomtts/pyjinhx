@@ -199,3 +199,120 @@ class TestSlotTruthinessInTemplates:
         self._describe(Box2, "slot_if.html", {"content"})
         session = RenderSession(template_dir="tests/templates")
         assert "NONE" in render(Box2(content=""), session)
+
+
+class TestSlotInterpolation:
+    """`{{ slot }}` splices the child's rendered markup (ADR 0003)."""
+
+    @staticmethod
+    def _describe(cls, template, slots):
+        from pathlib import Path
+
+        from pyjinhx2.descriptor import ClassDescriptor
+
+        cls.__pjx_descriptor__ = ClassDescriptor(
+            template_path=Path(template),
+            slot_fields=frozenset(slots),
+            css_paths=(),
+            js_paths=(),
+            strict=True,
+            provenance={"template": cls},
+        )
+        return cls
+
+    def test_component_slot_renders_the_childs_markup_in_position(self):
+        from pyjinhx2.render import render
+        from pyjinhx2.session import RenderSession
+
+        class InterpLeaf(BaseComponent):
+            title: str = "hello"
+
+        class InterpBox(BaseComponent):
+            content: Slot = ""
+
+        self._describe(InterpLeaf, "slot_leaf.html", ())
+        self._describe(InterpBox, "slot_interp.html", {"content"})
+
+        session = RenderSession(template_dir="tests/templates")
+        html = render(InterpBox(content=InterpLeaf(title="hello")), session)
+
+        assert html == (
+            '<div class="box">before <span class="leaf">hello</span> after</div>'
+        )
+        assert "ComponentNode" not in html
+        assert "pjx-slot-" not in html
+
+    def test_string_slot_still_interpolates_escaped(self):
+        from pyjinhx2.render import render
+        from pyjinhx2.session import RenderSession
+
+        class StringBox(BaseComponent):
+            content: Slot = ""
+
+        self._describe(StringBox, "slot_interp.html", {"content"})
+        session = RenderSession(template_dir="tests/templates")
+        html = render(StringBox(content="<b>x</b>"), session)
+
+        assert html == '<div class="box">before &lt;b&gt;x&lt;/b&gt; after</div>'
+
+    def test_component_slot_is_rendered_exactly_once(self):
+        from pyjinhx2.render import render
+        from pyjinhx2.session import RenderSession
+
+        renders: list[str] = []
+
+        class CountingLeaf(BaseComponent):
+            title: str = "once"
+
+            @property
+            def _spy(self) -> None:
+                return None
+
+        class CountingBox(BaseComponent):
+            content: Slot = ""
+
+        self._describe(CountingLeaf, "slot_leaf.html", ())
+        self._describe(CountingBox, "slot_interp.html", {"content"})
+
+        import pyjinhx2.render as render_module
+
+        original = render_module.render_level
+
+        def spy(component, session, chain=()):
+            renders.append(type(component).__name__)
+            return original(component, session, chain)
+
+        render_module.render_level = spy
+        try:
+            html = spy(
+                CountingBox(content=CountingLeaf()),
+                RenderSession(template_dir="tests/templates"),
+            )
+        finally:
+            render_module.render_level = original
+
+        assert renders.count("CountingLeaf") == 1
+        assert html.segments  # sanity: a level came back
+
+    def test_len_on_a_component_node_still_raises(self):
+        from pyjinhx2.markers import ComponentNode
+
+        class LenLeaf(BaseComponent):
+            pass
+
+        with pytest.raises(TypeError):
+            len(ComponentNode(LenLeaf()))
+
+    def test_length_filter_on_a_component_slot_still_fails(self):
+        """#368 will turn this into a targeted message; here it only must not silently work."""
+        from jinja2 import Environment
+
+        from pyjinhx2.markers import ComponentNode, finalize_slot_node
+
+        class FilterLeaf(BaseComponent):
+            pass
+
+        env = Environment(autoescape=True, finalize=finalize_slot_node)
+        template = env.from_string("{{ content|length }}")
+        with pytest.raises(TypeError):
+            template.render(content=ComponentNode(FilterLeaf()))
