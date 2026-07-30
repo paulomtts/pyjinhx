@@ -107,3 +107,58 @@ def test_replace_with_no_collision_is_a_no_op(caplog):
 
     assert caplog.records == []
     assert get_class("nested_widget") is NestedWidget
+
+
+def test_two_competing_replacers_resolve_deterministically(caplog):
+    class AaaAlphaCard(BaseComponent, pjx_replace=True):
+        pass
+
+    class BbbAlphaCard(BaseComponent, pjx_replace=True):
+        pass
+
+    AaaAlphaCard.__name__ = "AlphaCard"
+    BbbAlphaCard.__name__ = "AlphaCard"
+
+    with caplog.at_level(logging.WARNING, logger="pyjinhx2"):
+        build_registry(DISCOVERY_DIR, [AaaAlphaCard, BbbAlphaCard])
+    first = get_class("alpha_card")
+    assert len(caplog.records) == 1
+    assert "alpha_card" in caplog.records[0].getMessage()
+    caplog.clear()
+
+    # `pyjinhx2` already sits at the default WARNING level (verified: a
+    # `logger.warning` call is captured by caplog whether or not it runs
+    # inside an `at_level` block), so the second build's own warning would
+    # also land in caplog.records if not cleared above — clear first, then
+    # this call only needs to prove the winner is order-independent.
+    build_registry(DISCOVERY_DIR, [BbbAlphaCard, AaaAlphaCard])
+    second = get_class("alpha_card")
+
+    assert first is second is BbbAlphaCard
+
+
+def test_non_replace_collision_still_warns_and_sorts(caplog):
+    class AaaAlphaCard(BaseComponent):
+        pass
+
+    class BbbAlphaCard(BaseComponent):
+        pass
+
+    AaaAlphaCard.__name__ = "AlphaCard"
+    BbbAlphaCard.__name__ = "AlphaCard"
+
+    with caplog.at_level(logging.WARNING, logger="pyjinhx2"):
+        build_registry(DISCOVERY_DIR, [BbbAlphaCard, AaaAlphaCard])
+
+    assert get_class("alpha_card") is BbbAlphaCard
+    assert len(caplog.records) == 1
+    assert caplog.records[0].levelno == logging.WARNING
+
+
+def test_replace_adds_no_module_level_mutable_state():
+    mutable = [
+        name
+        for name, value in vars(discovery).items()
+        if isinstance(value, (dict, list, set)) and not name.startswith("__")
+    ]
+    assert mutable == []
