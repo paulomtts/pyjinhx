@@ -17,7 +17,7 @@ wiring gap this file works around rather than fixes).
 
 from pathlib import Path
 
-from pyjinhx2.component import BaseComponent
+from pyjinhx2.component import BaseComponent, Slot
 from pyjinhx2.descriptor import ClassDescriptor
 from pyjinhx2.render import render_level
 from pyjinhx2.root_attrs import stamp_root_attrs
@@ -84,3 +84,34 @@ def test_autoescape_scalar_survives_pipeline():
     assert "&#34;" in output or "&quot;" in output
     assert output.startswith('<div class="note">')
     assert output.endswith("</div>")
+
+
+def test_slot_field_raw_vs_scalar_escaped():
+    """A Slot field marked `| safe` in its template comes out unescaped and
+    byte-for-byte unchanged, contrasted in the same test against a plain
+    scalar field carrying the same markup (escaped), proving the distinction
+    is driven by the template's explicit `| safe`, not accidental."""
+
+    class PanelComp(BaseComponent):
+        label: str = "<b>hi</b>"
+        markup: Slot = "<b>hi</b>"
+
+    descriptor = ClassDescriptor(
+        template_path=Path("integration_slot.html"),
+        slot_fields=frozenset({"markup"}),
+        css_paths=(),
+        js_paths=(),
+        strict=True,
+        provenance={"template": PanelComp},
+    )
+    PanelComp.__pjx_descriptor__ = descriptor
+
+    session = RenderSession(template_dir="tests/templates")
+    component = PanelComp()
+
+    level = render_level(component, session)
+    stamp_root_attrs(level, {})
+    output = serialize(level)
+
+    assert '<span class="label">&lt;b&gt;hi&lt;/b&gt;</span>' in output
+    assert '<span class="markup"><b>hi</b></span>' in output
