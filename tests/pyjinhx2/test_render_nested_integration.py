@@ -171,3 +171,42 @@ def test_passthrough_reescapes_attr_values(session):
     mid = level.segments[1]
     assert isinstance(mid, RenderedLevel)
     assert mid.segments[4] == '<OtherThing note="a &amp; b"/>'
+
+
+class PJXLoopRoot(BaseComponent):
+    items: list[str] = []
+
+
+PJXLoopRoot.__pjx_descriptor__ = descriptor_for(PJXLoopRoot, "nested_loop.html")
+
+
+def test_loop_generated_tags_become_rendered_levels(session):
+    """ADR 0005: a tag's origin (static markup vs loop output) changes nothing —
+    both are cut by the same post-render parse."""
+    level = render_level(PJXLoopRoot(items=["a", "b", "c"]), session)
+    generated = [seg for seg in level.segments if isinstance(seg, RenderedLevel)]
+    assert len(generated) == 3
+    assert [serialize(seg) for seg in generated] == [
+        '<em class="leaf">a</em>',
+        '<em class="leaf">b</em>',
+        '<em class="leaf">c</em>',
+    ]
+
+
+def test_loop_generated_levels_are_distinct_objects(session):
+    level = render_level(PJXLoopRoot(items=["a", "b"]), session)
+    first, second = [seg for seg in level.segments if isinstance(seg, RenderedLevel)]
+    assert first is not second
+    assert first.segments is not second.segments
+
+
+def test_loop_with_no_items_produces_no_childrefs(session):
+    level = render_level(PJXLoopRoot(items=[]), session)
+    assert not any(isinstance(seg, ChildRef) for seg in level.segments)
+    assert render(PJXLoopRoot(items=[]), session) == '<ul class="loop"></ul>'
+
+
+def test_loop_generated_tree_serializes_in_source_order(session):
+    assert render(PJXLoopRoot(items=["a", "b"]), session) == (
+        '<ul class="loop"><em class="leaf">a</em><em class="leaf">b</em></ul>'
+    )
