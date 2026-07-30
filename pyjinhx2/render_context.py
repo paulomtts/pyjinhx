@@ -34,6 +34,11 @@ def build_context(
             # (not from the serialized dict)
             actual_value = getattr(component, slot_field_name)
             if isinstance(actual_value, BaseComponent):
-                context[slot_field_name] = ComponentNode(actual_value)
+                context[slot_field_name] = ComponentNode(
+                    actual_value,
+                    owner_name=type(component).__name__,
+                    owner_template=getattr(descriptor, "template_path", None),
+                    field_name=slot_field_name,
+                )
 
     return context

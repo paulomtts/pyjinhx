@@ -7,6 +7,7 @@ import uuid
 from collections.abc import Iterator
 from contextlib import contextmanager
 from contextvars import ContextVar
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -16,14 +17,44 @@ if TYPE_CHECKING:
 class ComponentNode:
     """Opaque marker wrapping a component-valued Slot field.
 
-    Not a string, so Jinja's string filters (|length, |upper, etc.) fail fast.
-    Holds enough info for L1 to skip it during child expansion.
+    Not a string, so Jinja filters routed through a dunder (e.g. |length) fail
+    fast. Filters that stringify first (|upper, |trim, |striptags) fall
+    through to __str__ instead - a documented gap, see ADR 0003 / #368 PR
+    notes. Holds enough info for L1 to skip it during child expansion, and
+    enough about the component that declared the slot to name it in an error.
+
+    ``owner_name``/``owner_template``/``field_name`` default to placeholders
+    so call sites that only care about the wrapped component (e.g. token-table
+    plumbing tests) don't need to supply owner identity they don't have.
+
+    NOTE for reviewers: several pre-existing bare ``ComponentNode(x)`` call
+    sites (tests/pyjinhx2/test_slot_type_v2.py, tests/pyjinhx2/
+    test_render_context.py) rely on these placeholder defaults rather than
+    being updated to pass real owner identity. Those tests only assert
+    ``pytest.raises(TypeError)`` / opacity behavior, not error-message
+    content, so the placeholders don't currently weaken any assertion - but
+    if a future test starts asserting on ``_opaque_error`` message text, it
+    will see ``"<unknown>"`` instead of a real component/template name unless
+    those call sites are updated too.
     """
 
-    __slots__ = ("component",)
+    __slots__ = ("component", "field_name", "owner_name", "owner_template")
 
-    def __init__(self, component: BaseComponent) -> None:
+    # Defining __eq__ blanks __hash__; restore object identity hashing so the
+    # node stays usable as a dict key even though comparisons are forbidden.
+    __hash__ = object.__hash__
+
+    def __init__(
+        self,
+        component: BaseComponent,
+        owner_name: str = "<unknown>",
+        owner_template: Path | None = None,
+        field_name: str = "<unknown>",
+    ) -> None:
         self.component = component
+        self.owner_name = owner_name
+        self.owner_template = owner_template
+        self.field_name = field_name
 
     def __bool__(self) -> bool:
         # Stated explicitly so `{% if slot %}` can never fall through to
@@ -33,6 +64,63 @@ class ComponentNode:
 
     def __repr__(self) -> str:
         return f"ComponentNode({self.component!r})"
+
+    def _opaque_error(self, operation: str) -> TypeError:
+        """The error for any operation ADR 0003 forbids on a component slot.
+
+        One builder for every forbidden dunder so the wording cannot drift
+        between them; each caller supplies only the literal syntax the author
+        wrote, so the message reads back what was attempted.
+        """
+        template = (
+            self.owner_template if self.owner_template is not None else "<unresolved>"
+        )
+        field = self.field_name
+        return TypeError(
+            f"{self.owner_name} (template: {template}): slot '{field}' holds a "
+            f"rendered component, so `{operation}` is not supported on it. "
+            f"Component slots are opaque outside `{{% if %}}` and `{{{{ }}}}`: "
+            f"use `{{% if {field} %}}` to test for presence, or "
+            f"`{{{{ {field} }}}}` to render it directly. String filters, "
+            f"slicing, membership tests, and comparisons are not available on "
+            f"component slots."
+        )
+
+    def __len__(self) -> int:
+        raise self._opaque_error("|length")
+
+    def __getitem__(self, key: object) -> object:
+        if isinstance(key, slice):
+            start = "" if key.start is None else key.start
+            stop = "" if key.stop is None else key.stop
+            written = f"[{start}:{stop}]"
+        else:
+            written = f"[{key!r}]" if isinstance(key, str) else f"[{key}]"
+        raise self._opaque_error(written)
+
+    def __contains__(self, item: object) -> bool:
+        raise self._opaque_error("in")
+
+    def __iter__(self) -> Iterator[object]:
+        raise self._opaque_error("for")
+
+    def __eq__(self, other: object) -> bool:
+        raise self._opaque_error("==")
+
+    def __ne__(self, other: object) -> bool:
+        raise self._opaque_error("!=")
+
+    def __lt__(self, other: object) -> bool:
+        raise self._opaque_error("<")
+
+    def __le__(self, other: object) -> bool:
+        raise self._opaque_error("<=")
+
+    def __gt__(self, other: object) -> bool:
+        raise self._opaque_error(">")
+
+    def __ge__(self, other: object) -> bool:
+        raise self._opaque_error(">=")
 
 
 SLOT_TOKEN_RE = re.compile(r"pjx-slot-[0-9a-f]{32}")
