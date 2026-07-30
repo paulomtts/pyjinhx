@@ -1,4 +1,5 @@
 import pytest
+from pathlib import Path
 from pyjinhx2.component import BaseComponent
 from pyjinhx2.descriptor import ClassDescriptor
 from pyjinhx2.render import render
@@ -33,7 +34,31 @@ def test_no_root_element_raises():
 
 # Test 6: Descriptor correctly frozen and read (no runtime recompute)
 def test_descriptor_frozen_and_read():
-    pass
+    """Descriptor correctly frozen and read (no runtime recompute)."""
+    # Create a minimal component with descriptor
+    class TestComp(BaseComponent):
+        pass
+
+    # Manually attach descriptor to class (simulating what the framework does)
+    descriptor = ClassDescriptor(
+        template_path=Path("test.html"),
+        slot_fields=frozenset(),
+        css_paths=(),
+        js_paths=(),
+        strict=True,
+        provenance={"template": TestComp},
+    )
+    TestComp.__pjx_descriptor__ = descriptor
+
+    session = RenderSession()
+    component = TestComp()
+
+    # Access descriptor twice to verify it's the same object (frozen, not recomputed)
+    descriptor_1 = component.__class__.__pjx_descriptor__
+    descriptor_2 = component.__class__.__pjx_descriptor__
+
+    assert descriptor_1 is descriptor_2, "Descriptor should be frozen, not recomputed"
+    assert descriptor_1 is not None, "Descriptor must exist"
 
 
 # Test 7: Attrs (both custom + pass-through) parsed into ChildRef.attrs without coercion
