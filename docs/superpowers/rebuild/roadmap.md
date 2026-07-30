@@ -33,7 +33,7 @@ n= 200       3.7 ms    0.02 ms/component
 n= 438       7.9 ms    0.02 ms/component
 ```
 
-**Gate before L1** ([#249](https://github.com/paulomtts/pyjinhx/issues/249))**:** slot-filter survey — grep v0.x builtins + docs for string operations on component-slot values (ADR 0003). Hits → migration notes; widespread → revisit ADR 0003 first.
+**Gate before L1** ([#249](https://github.com/paulomtts/pyjinhx/issues/249)) — ✅ **passed, 2026-07-30.** Slot-filter survey (#293 builtins, #294 docs+demos) found zero occurrences of string filters/slicing/membership/comparisons on component-slot values. #295 classified this as rare-path; #296 recorded the rare-path outcome — error contract and migration note — directly in [ADR 0003](adr/0003-slot-opacity.md#survey-outcome-2026-07-30). #297 (widespread-path) closed not-applicable. ADR 0003's decision (opaque + truthiness/interpolation only) stands unchanged; L1's RFC can proceed against the recorded error contract with no further mitigation needed.
 
 ---
 
