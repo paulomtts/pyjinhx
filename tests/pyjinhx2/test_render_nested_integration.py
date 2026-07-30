@@ -93,3 +93,36 @@ def test_no_childref_survives_the_fill_at_any_depth(session):
                 walk(seg)
 
     walk(level)
+
+
+class PJXNestedBranches(BaseComponent):
+    pass
+
+
+PJXNestedBranches.__pjx_descriptor__ = descriptor_for(
+    PJXNestedBranches, "nested_branches.html"
+)
+
+
+def test_sibling_branches_get_their_own_levels_all_the_way_down(session):
+    level = render_level(PJXNestedBranches(), session)
+    left, right = level.segments[1], level.segments[3]
+    assert isinstance(left, RenderedLevel)
+    assert isinstance(right, RenderedLevel)
+    assert left is not right
+    assert serialize(left) == '<span class="mid">l<em class="leaf">deep</em></span>'
+    assert serialize(right) == '<span class="mid">r<em class="leaf">deep</em></span>'
+
+
+def test_sibling_branches_do_not_share_segment_lists_at_any_depth(session):
+    """A shared parse or reused level would make one branch's edit hit both."""
+    level = render_level(PJXNestedBranches(), session)
+    left, right = level.segments[1], level.segments[3]
+    assert isinstance(left, RenderedLevel)
+    assert isinstance(right, RenderedLevel)
+    assert left.segments is not right.segments
+    left_leaf, right_leaf = left.segments[2], right.segments[2]
+    assert isinstance(left_leaf, RenderedLevel)
+    assert isinstance(right_leaf, RenderedLevel)
+    assert left_leaf is not right_leaf
+    assert left_leaf.segments is not right_leaf.segments
