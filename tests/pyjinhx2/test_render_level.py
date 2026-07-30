@@ -2,11 +2,41 @@ from pathlib import Path
 
 import pytest
 
+from pyjinhx2 import discovery
 from pyjinhx2.component import BaseComponent
 from pyjinhx2.descriptor import ClassDescriptor
 from pyjinhx2.render import render_level
 from pyjinhx2.segments import ChildRef, RenderedLevel
 from pyjinhx2.session import RenderSession
+
+
+class _PJXButton(BaseComponent):
+    pass
+
+
+class _PJXCard(BaseComponent):
+    pass
+
+
+class _PJXIcon(BaseComponent):
+    pass
+
+
+@pytest.fixture(autouse=True)
+def _registered_child_tags():
+    """Register the PJXButton/PJXCard/PJXIcon tags these tests reference.
+
+    render_level (#362) now resolves ChildRef tags against the registry and
+    passes unregistered ones through as plain markup. These tests assert on
+    ChildRef fields, so their tags must resolve (hit) to stay ChildRefs.
+    """
+    discovery._registry.mapping = {
+        "pjx_button": _PJXButton,
+        "pjx_card": _PJXCard,
+        "pjx_icon": _PJXIcon,
+    }
+    yield
+    discovery._registry.mapping = {}
 
 
 # Test 1: Single div renders → segments[0] is markup, root_span points to <div

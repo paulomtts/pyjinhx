@@ -30,7 +30,8 @@ def _passthrough_markup(ref: ChildRef) -> str:
     re-escaped because they arrive from the parse already unescaped.
     """
     attrs = "".join(
-        f' {name}="{html.escape(value, quote=True)}"' for name, value in ref.attrs.items()
+        f' {name}="{html.escape(value, quote=True)}"'
+        for name, value in ref.attrs.items()
     )
     if ref.inner is None:
         return f"<{ref.tag}{attrs}/>"
@@ -98,11 +99,15 @@ def render_level(component: BaseComponent, session: "RenderSession") -> Rendered
         raise ValueError(f"{prefix}{err}") from err
 
     # Return RenderedLevel
-    return RenderedLevel(
+    level = RenderedLevel(
         segments=cast(list[str | ChildRef | RenderedLevel], parser.segments),
         root_span=parser.root_span or (0, 0),
         descriptor=descriptor,
     )
+    # Unregistered tags stop being holes here, one pass per level (ADR 0005);
+    # the ones that do resolve stay ChildRefs for the recursive step.
+    _fill_children(level)
+    return level
 
 
 def render(component: BaseComponent, session: "RenderSession | None" = None) -> str:

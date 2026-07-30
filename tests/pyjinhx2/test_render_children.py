@@ -1,9 +1,12 @@
 """Tests for ChildRef registry lookup and unknown-tag passthrough (issue #362)."""
 
+from pathlib import Path
+
 import pytest
 
 from pyjinhx2 import discovery
 from pyjinhx2.component import BaseComponent
+from pyjinhx2.descriptor import ClassDescriptor
 from pyjinhx2.render import _fill_children, _passthrough_markup
 from pyjinhx2.segments import ChildRef, RenderedLevel
 
@@ -103,3 +106,25 @@ def test_unknown_tag_raises_nothing():
     lvl = level(ChildRef(tag="TotallyUnknown", attrs={"a": "b"}, inner=None))
     _fill_children(lvl)
     assert lvl.segments == ['<TotallyUnknown a="b"/>']
+
+
+def test_render_level_passes_unknown_tags_through():
+    from pyjinhx2.render import render, render_level
+    from pyjinhx2.session import RenderSession
+
+    class UnknownHost(BaseComponent):
+        pass
+
+    UnknownHost.__pjx_descriptor__ = ClassDescriptor(
+        template_path=Path("unknown_host.html"),
+        slot_fields=frozenset(),
+        css_paths=(),
+        js_paths=(),
+        strict=True,
+        provenance={"template": UnknownHost},
+    )
+
+    session = RenderSession(template_dir="tests/templates")
+    lvl = render_level(UnknownHost(), session)
+    assert all(isinstance(seg, str) for seg in lvl.segments)
+    assert render(UnknownHost(), session) == '<div><WebThing id="a"/></div>'
