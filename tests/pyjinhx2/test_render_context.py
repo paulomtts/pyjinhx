@@ -28,7 +28,7 @@ def test_component_node_marker_identity():
     assert node.component is comp
     # Verify len() fails (as Jinja would try)
     with pytest.raises(TypeError):
-        len(node)  # type: ignore[arg-type]
+        len(node)
 
 
 def test_basic_field_passthrough():
@@ -293,7 +293,7 @@ def test_strict_component_no_extra_keys():
 
     # Construction with extra key should fail at Pydantic level
     with pytest.raises(ValidationError):
-        StrictCard(title="x", unknown="y")  # type: ignore[call-arg]
+        StrictCard(title="x", unknown="y")
 
 
 def test_context_builder_does_not_catch_pydantic_errors():

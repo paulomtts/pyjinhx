@@ -479,7 +479,7 @@ def test_performance_100plus_fields():
     assert elapsed < 0.1, (
         f"Rendering 100 times took {elapsed:.3f}s (expected <0.1s for linear performance)"
     )
-    assert isinstance(result, RenderedLevel)  # type: ignore[name-defined]
+    assert isinstance(result, RenderedLevel)
 
 
 # Test 17: Missing template file → jinja2.TemplateNotFound names component + template_path
