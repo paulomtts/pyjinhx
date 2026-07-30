@@ -115,6 +115,7 @@ RENDER_SPINE_MODULES = (
     "markers",
     "render",
     "render_context",
+    "root_attrs",
     "segments",
     "session",
 )
