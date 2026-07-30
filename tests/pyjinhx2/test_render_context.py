@@ -330,3 +330,59 @@ def test_component_node_truthiness_does_not_use_len():
         len(node)
     assert not hasattr(node, "__str__") or type(node).__str__ is object.__str__
     assert not hasattr(node, "__html__")
+
+
+def test_finalize_passes_non_component_values_through_unchanged():
+    from pyjinhx2.markers import collect_slot_tokens, finalize_slot_node
+
+    with collect_slot_tokens():
+        assert finalize_slot_node("plain") == "plain"
+        assert finalize_slot_node(7) == 7
+        assert finalize_slot_node(None) is None
+
+
+def test_finalize_registers_a_component_node_under_a_unique_token():
+    from pyjinhx2.markers import SLOT_TOKEN_RE, collect_slot_tokens, finalize_slot_node
+
+    class Dummy(BaseComponent):
+        pass
+
+    first, second = Dummy(), Dummy()
+    with collect_slot_tokens() as table:
+        token_a = finalize_slot_node(ComponentNode(first))
+        token_b = finalize_slot_node(ComponentNode(second))
+
+        assert isinstance(token_a, str)
+        assert SLOT_TOKEN_RE.fullmatch(token_a)
+        assert token_a != token_b
+        assert table[token_a] is first
+        assert table[token_b] is second
+
+
+def test_token_tables_do_not_leak_between_scopes():
+    from pyjinhx2.markers import collect_slot_tokens, finalize_slot_node
+
+    class Dummy(BaseComponent):
+        pass
+
+    with collect_slot_tokens() as outer:
+        outer_token = finalize_slot_node(ComponentNode(Dummy()))
+        with collect_slot_tokens() as inner:
+            inner_token = finalize_slot_node(ComponentNode(Dummy()))
+            assert outer_token not in inner
+        assert inner_token not in outer
+        assert outer_token in outer
+
+
+def test_token_is_autoescape_inert():
+    """The token must survive Markup escaping byte-for-byte."""
+    from markupsafe import escape
+
+    from pyjinhx2.markers import collect_slot_tokens, finalize_slot_node
+
+    class Dummy(BaseComponent):
+        pass
+
+    with collect_slot_tokens():
+        token = finalize_slot_node(ComponentNode(Dummy()))
+    assert str(escape(token)) == token
