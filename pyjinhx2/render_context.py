@@ -3,11 +3,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from pydantic import BaseModel
-
 if TYPE_CHECKING:
     from pyjinhx2.component import BaseComponent
-    from pyjinhx2.descriptor import ClassDescriptor
 
 from pyjinhx2.markers import ComponentNode
 
