@@ -7,10 +7,10 @@ from jinja2 import Environment, FileSystemLoader, DictLoader
 import pytest
 
 from pyjinhx.render import (
-    _detect_project_root,
-    set_default_environment,
-    get_loader_root,
     _default_environment,
+    _detect_project_root,
+    get_loader_root,
+    set_default_environment,
 )
 
 
