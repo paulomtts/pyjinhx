@@ -1,9 +1,11 @@
-import pytest
 from pathlib import Path
+
+import pytest
+
 from pyjinhx2.component import BaseComponent
 from pyjinhx2.descriptor import ClassDescriptor
 from pyjinhx2.render import render_level
-from pyjinhx2.segments import RenderedLevel, ChildRef
+from pyjinhx2.segments import ChildRef, RenderedLevel
 from pyjinhx2.session import RenderSession
 
 
