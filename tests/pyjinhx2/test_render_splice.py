@@ -109,6 +109,8 @@ def test_siblings_do_not_share_segment_lists(session):
     """A shared parse or a reused level would make one sibling's edit hit both."""
     level = render_level(PJXSiblings(), session)
     first, second = level.segments[1], level.segments[3]
+    assert isinstance(first, RenderedLevel)
+    assert isinstance(second, RenderedLevel)
     assert first.segments is not second.segments
 
 
