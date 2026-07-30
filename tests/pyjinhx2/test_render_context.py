@@ -1,11 +1,9 @@
 """Tests for render_context module."""
 
-from pathlib import Path
-from typing import ClassVar
-
 import pytest
-from jinja2 import Environment, TemplateError
+from pathlib import Path
 from pydantic import BaseModel, ValidationError
+from jinja2 import Environment, TemplateError
 
 from pyjinhx2.component import BaseComponent, Slot
 from pyjinhx2.descriptor import ClassDescriptor
@@ -28,7 +26,7 @@ def test_component_node_marker_identity():
     assert node.component is comp
     # Verify len() fails (as Jinja would try)
     with pytest.raises(TypeError):
-        len(node)  # type: ignore[arg-type]
+        len(node)
 
 
 def test_basic_field_passthrough():
@@ -288,12 +286,12 @@ def test_strict_component_no_extra_keys():
     """Strict components reject extra keys at construction (Pydantic level)."""
 
     class StrictCard(BaseComponent):
-        model_config: ClassVar = {"extra": "forbid"}  # type: ignore[misc]
+        model_config = {"extra": "forbid"}
         title: str
 
     # Construction with extra key should fail at Pydantic level
     with pytest.raises(ValidationError):
-        StrictCard(title="x", unknown="y")  # type: ignore[call-arg]
+        StrictCard(title="x", unknown="y")
 
 
 def test_context_builder_does_not_catch_pydantic_errors():
@@ -305,3 +303,4 @@ def test_context_builder_does_not_catch_pydantic_errors():
     # This is a documentation test. Pydantic's construction-time validation
     # prevents most bad types from reaching model_dump(). If caller constructs
     # valid component and descriptor, build_context will succeed.
+    pass

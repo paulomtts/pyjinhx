@@ -66,9 +66,9 @@ def test_stamp_root_attrs_only_touches_opening_tag_span():
     level = _level(markup, (0, 18))
     stamp_root_attrs(level, {"data-x": "1"})
     stamped = level.segments[0]
-    assert stamped.startswith('<div class="root" data-x="1">')  # type: ignore[union-attr]
+    assert stamped.startswith('<div class="root" data-x="1">')
     # everything after the original root tag is untouched
-    assert stamped[len('<div class="root" data-x="1">') :] == (markup[18:])  # type: ignore[index]
+    assert stamped[len('<div class="root" data-x="1">') :] == (markup[18:])
 
 
 def test_stamp_root_attrs_updates_root_span_to_new_tag_length():
@@ -77,7 +77,7 @@ def test_stamp_root_attrs_updates_root_span_to_new_tag_length():
     stamp_root_attrs(level, {"data-x": "1"})
     start, end = level.root_span
     assert start == 0
-    assert level.segments[0][start:end] == '<div class="root" data-x="1">'  # type: ignore[index]
+    assert level.segments[0][start:end] == '<div class="root" data-x="1">'
 
 
 def test_stamp_root_attrs_idempotent_no_duplicate_attrs():
@@ -88,12 +88,12 @@ def test_stamp_root_attrs_idempotent_no_duplicate_attrs():
     stamp_root_attrs(level, {"class": "stamped"})
     second = level.segments[0]
     assert first == second
-    assert second.count("class=") == 1  # type: ignore[union-attr]
+    assert second.count("class=") == 1
 
 
 def test_stamp_root_attrs_multiple_attrs_via_rendered_level():
     level = _level('<div class="root">hi</div>', (0, 18))
     stamp_root_attrs(level, {"data-a": "1", "data-b": "2"})
     start, end = level.root_span
-    assert level.segments[0][start:end] == ('<div class="root" data-a="1" data-b="2">')  # type: ignore[index]
-    assert level.segments[0][end:] == "hi</div>"  # type: ignore[index]
+    assert level.segments[0][start:end] == ('<div class="root" data-a="1" data-b="2">')
+    assert level.segments[0][end:] == "hi</div>"

@@ -1,11 +1,9 @@
-from pathlib import Path
-
 import pytest
-
+from pathlib import Path
 from pyjinhx2.component import BaseComponent
 from pyjinhx2.descriptor import ClassDescriptor
 from pyjinhx2.render import render_level
-from pyjinhx2.segments import ChildRef, RenderedLevel
+from pyjinhx2.segments import RenderedLevel, ChildRef
 from pyjinhx2.session import RenderSession
 
 
@@ -479,7 +477,7 @@ def test_performance_100plus_fields():
     assert elapsed < 0.1, (
         f"Rendering 100 times took {elapsed:.3f}s (expected <0.1s for linear performance)"
     )
-    assert isinstance(result, RenderedLevel)  # type: ignore[name-defined]
+    assert isinstance(result, RenderedLevel)
 
 
 # Test 17: Missing template file → jinja2.TemplateNotFound names component + template_path

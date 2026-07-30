@@ -5,9 +5,8 @@ Descriptor read → context build → Jinja render → single parse → Rendered
 finished HTML string for a childless component (render, public API).
 """
 
-from typing import cast
-
 import jinja2
+from typing import cast
 
 from pyjinhx2.component import BaseComponent
 from pyjinhx2.segments import ChildRef, RenderedLevel, VerbatimParser, serialize

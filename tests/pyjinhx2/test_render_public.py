@@ -4,10 +4,9 @@ Tests the public render() wrapper: render_level() + serialize() behind a
 single str-returning call, with a default RenderSession when none is passed.
 """
 
-from pathlib import Path
-
 import jinja2
 import pytest
+from pathlib import Path
 
 from pyjinhx2.component import BaseComponent
 from pyjinhx2.descriptor import ClassDescriptor

@@ -1,7 +1,5 @@
-from pathlib import Path
-
 import pytest
-
+from pathlib import Path
 from pyjinhx2.session import RenderSession
 
 
