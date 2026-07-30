@@ -6,9 +6,10 @@ finished HTML string for a childless component (render, public API).
 """
 
 import jinja2
+from typing import cast
 
 from pyjinhx2.component import BaseComponent
-from pyjinhx2.segments import RenderedLevel, VerbatimParser, serialize
+from pyjinhx2.segments import ChildRef, RenderedLevel, VerbatimParser, serialize
 from pyjinhx2.session import RenderSession
 
 
@@ -60,7 +61,7 @@ def render_level(component: BaseComponent, session: "RenderSession") -> Rendered
 
     # Return RenderedLevel
     return RenderedLevel(
-        segments=parser.segments,
+        segments=cast(list[str | ChildRef | RenderedLevel], parser.segments),
         root_span=parser.root_span or (0, 0),
         descriptor=descriptor,
     )

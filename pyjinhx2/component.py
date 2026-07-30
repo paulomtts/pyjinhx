@@ -332,7 +332,7 @@ def rebuild_class_descriptor(cls: type[BaseModel]) -> None:
     Callable only: dev-reload machinery decides *when* to invalidate, and this
     watches nothing.
     """
-    cls._pjx_descriptor = _resolve_class_descriptor(cls)  # pyright: ignore[reportAttributeAccessIssue]
+    cls.__pjx_descriptor__ = _resolve_class_descriptor(cls)  # pyright: ignore[reportAttributeAccessIssue]
 
 
 class BaseComponent(BaseModel):
@@ -342,7 +342,7 @@ class BaseComponent(BaseModel):
 
     auto_id: ClassVar[bool] = True
 
-    _pjx_descriptor: ClassVar[ClassDescriptor]
+    __pjx_descriptor__: ClassVar[ClassDescriptor]
 
     id: str = Field(
         default_factory=_auto_id,

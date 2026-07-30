@@ -159,7 +159,7 @@ class TestResolveSlotFields:
             title: str = ""
 
         assert _resolve_class_descriptor(Panel).slot_fields == frozenset({"body"})
-        assert Panel._pjx_descriptor.slot_fields == frozenset({"body"})
+        assert Panel.__pjx_descriptor__.slot_fields == frozenset({"body"})
 
 
 class TestResolveStrict:
@@ -210,12 +210,12 @@ class TestDescriptorAttachedAtClassDefinition:
         class Card(BaseComponent):
             pass
 
-        assert isinstance(Card._pjx_descriptor, ClassDescriptor)
+        assert isinstance(Card.__pjx_descriptor__, ClassDescriptor)
 
     def test_base_component_itself_has_no_descriptor(self):
         """Pydantic does not fire __pydantic_init_subclass__ for the class that
         defines it. Relied on, not special-cased."""
-        assert "_pjx_descriptor" not in vars(BaseComponent)
+        assert "__pjx_descriptor__" not in vars(BaseComponent)
 
     def test_the_seam_is_called_exactly_once_per_class_definition(self, monkeypatch):
         calls: list[type] = []
@@ -241,8 +241,8 @@ class TestDescriptorAttachedAtClassDefinition:
 
         first, second = Card(), Card()
 
-        assert first._pjx_descriptor is second._pjx_descriptor
-        assert first._pjx_descriptor is Card._pjx_descriptor
+        assert first.__pjx_descriptor__ is second.__pjx_descriptor__
+        assert first.__pjx_descriptor__ is Card.__pjx_descriptor__
 
     def test_sibling_subclasses_get_distinct_descriptors(self):
         class Card(BaseComponent):
@@ -251,9 +251,10 @@ class TestDescriptorAttachedAtClassDefinition:
         class Banner(BaseComponent):
             pass
 
-        assert Card._pjx_descriptor is not Banner._pjx_descriptor
+        assert Card.__pjx_descriptor__ is not Banner.__pjx_descriptor__
         assert (
-            Card._pjx_descriptor.template_path != Banner._pjx_descriptor.template_path
+            Card.__pjx_descriptor__.template_path
+            != Banner.__pjx_descriptor__.template_path
         )
 
     def test_a_subclass_of_a_subclass_gets_its_own_descriptor(self):
@@ -263,17 +264,17 @@ class TestDescriptorAttachedAtClassDefinition:
         class FancyCard(Card):
             pass
 
-        assert FancyCard._pjx_descriptor is not Card._pjx_descriptor
-        assert "_pjx_descriptor" in vars(FancyCard)
+        assert FancyCard.__pjx_descriptor__ is not Card.__pjx_descriptor__
+        assert "__pjx_descriptor__" in vars(FancyCard)
 
     def test_the_descriptor_is_not_a_model_field(self):
         class Card(BaseComponent):
             pass
 
-        assert "_pjx_descriptor" not in Card.model_fields
+        assert "__pjx_descriptor__" not in Card.model_fields
 
     def test_registration_goes_through_the_rebuild_entry_point(self, monkeypatch):
-        """One assignment site for `_pjx_descriptor`: registration and
+        """One assignment site for `__pjx_descriptor__`: registration and
         dev-reload cannot drift apart because they are the same call."""
         seen: list[type] = []
         real = pyjinhx2.component.rebuild_class_descriptor
@@ -288,7 +289,7 @@ class TestDescriptorAttachedAtClassDefinition:
             pass
 
         assert seen == [Card]
-        assert isinstance(Card._pjx_descriptor, ClassDescriptor)
+        assert isinstance(Card.__pjx_descriptor__, ClassDescriptor)
 
 
 class TestHookOrdering:
@@ -376,7 +377,7 @@ class TestDevReloadReassignmentSmokeTest:
         class Card(BaseComponent):
             pass
 
-        original = Card._pjx_descriptor
+        original = Card.__pjx_descriptor__
         replacement = ClassDescriptor(
             template_path=Path("rebuilt/card.pjx"),
             slot_fields=frozenset({"body"}),
@@ -386,10 +387,10 @@ class TestDevReloadReassignmentSmokeTest:
             provenance={"template": Card},
         )
 
-        Card._pjx_descriptor = replacement
+        Card.__pjx_descriptor__ = replacement
 
-        assert Card._pjx_descriptor is replacement
-        assert Card._pjx_descriptor is not original
+        assert Card.__pjx_descriptor__ is replacement
+        assert Card.__pjx_descriptor__ is not original
 
 
 class TestRebuildClassDescriptor:
@@ -400,11 +401,11 @@ class TestRebuildClassDescriptor:
         class Card(BaseComponent):
             pass
 
-        original = Card._pjx_descriptor
+        original = Card.__pjx_descriptor__
 
         rebuild_class_descriptor(Card)
 
-        assert Card._pjx_descriptor == original
+        assert Card.__pjx_descriptor__ == original
 
     def test_the_rebuilt_descriptor_is_a_new_object(self):
         """Frozen dataclass: the only way to rebuild is build-then-swap, so an
@@ -413,17 +414,17 @@ class TestRebuildClassDescriptor:
         class Card(BaseComponent):
             pass
 
-        original = Card._pjx_descriptor
+        original = Card.__pjx_descriptor__
 
         rebuild_class_descriptor(Card)
 
-        assert Card._pjx_descriptor is not original
+        assert Card.__pjx_descriptor__ is not original
 
     def test_the_previous_descriptor_is_left_untouched(self):
         class Card(BaseComponent):
             pass
 
-        original = Card._pjx_descriptor
+        original = Card.__pjx_descriptor__
         snapshot = (
             original.template_path,
             original.slot_fields,
@@ -448,12 +449,12 @@ class TestRebuildClassDescriptor:
         class Card(BaseComponent):
             pass
 
-        original = Card._pjx_descriptor
+        original = Card.__pjx_descriptor__
 
         rebuild_class_descriptor(Card)
-        first = Card._pjx_descriptor
+        first = Card.__pjx_descriptor__
         rebuild_class_descriptor(Card)
-        second = Card._pjx_descriptor
+        second = Card.__pjx_descriptor__
 
         assert first == original
         assert second == original
@@ -480,11 +481,11 @@ class TestRebuildClassDescriptor:
         FancyCard.__module__ = _MRO_MODULE
 
         rebuild_class_descriptor(FancyCard)
-        before = FancyCard._pjx_descriptor
+        before = FancyCard.__pjx_descriptor__
 
         (mro_dir / "fancy_card.pjx").write_text("<div></div>", encoding="utf-8")
         rebuild_class_descriptor(FancyCard)
-        after = FancyCard._pjx_descriptor
+        after = FancyCard.__pjx_descriptor__
 
         assert before.template_path == mro_dir / "card.pjx"
         assert before.provenance == {}
@@ -499,13 +500,13 @@ class TestRebuildClassDescriptor:
         Card.__module__ = _MRO_MODULE
 
         rebuild_class_descriptor(Card)
-        assert Card._pjx_descriptor.css_paths == ()
+        assert Card.__pjx_descriptor__.css_paths == ()
 
         (mro_dir / "card.css").write_text("a{}", encoding="utf-8")
         rebuild_class_descriptor(Card)
 
-        assert Card._pjx_descriptor.css_paths == (mro_dir / "card.css",)
-        assert Card._pjx_descriptor.provenance["css"] is Card
+        assert Card.__pjx_descriptor__.css_paths == (mro_dir / "card.css",)
+        assert Card.__pjx_descriptor__.provenance["css"] is Card
 
     def test_it_delegates_to_the_shared_resolver(self, monkeypatch):
         """No parallel resolution logic: whatever `_resolve_class_descriptor`
@@ -528,7 +529,7 @@ class TestRebuildClassDescriptor:
 
         rebuild_class_descriptor(Card)
 
-        assert Card._pjx_descriptor is sentinel
+        assert Card.__pjx_descriptor__ is sentinel
 
 
 class TestPascalToSnake:
@@ -1643,7 +1644,7 @@ class TestMissingTemplateError:
 
         assert _resolve_template_path(FancyCard) == mro_dir / "card.pjx"
         assert _resolve_provenance(FancyCard) == {}
-        assert FancyCard._pjx_descriptor.template_path == mro_dir / "card.pjx"
+        assert FancyCard.__pjx_descriptor__.template_path == mro_dir / "card.pjx"
 
 
 class TestDescriptorInheritanceMatrix:
