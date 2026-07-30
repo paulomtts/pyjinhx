@@ -5,13 +5,51 @@ Descriptor read → context build → Jinja render → single parse → Rendered
 finished HTML string for a childless component (render, public API).
 """
 
+import html
 from typing import cast
 
 import jinja2
 
-from pyjinhx2.component import BaseComponent
+from pyjinhx2.component import BaseComponent, _pascal_to_snake
+from pyjinhx2.discovery import get_class
 from pyjinhx2.segments import ChildRef, RenderedLevel, VerbatimParser, serialize
 from pyjinhx2.session import RenderSession
+
+
+def _passthrough_markup(ref: ChildRef) -> str:
+    """Markup for a ChildRef whose tag no component class claims.
+
+    An unregistered PascalCase tag is ordinary markup — a web component, or a
+    tag someone meant to ship as-is — so it goes back into the stream instead of
+    raising (architecture-overview: a registry miss is an answer, not an error).
+
+    Reconstructed from the ChildRef's own fields, not echoed: the parse that
+    produced it kept the tag, the attrs and the inner text, and dropped the raw
+    source, so the original quoting style and spacing are not recoverable here.
+    ``inner`` was captured verbatim and is emitted raw; attr values are
+    re-escaped because they arrive from the parse already unescaped.
+    """
+    attrs = "".join(
+        f' {name}="{html.escape(value, quote=True)}"'
+        for name, value in ref.attrs.items()
+    )
+    if ref.inner is None:
+        return f"<{ref.tag}{attrs}/>"
+    return f"<{ref.tag}{attrs}>{ref.inner}</{ref.tag}>"
+
+
+def _fill_children(level: RenderedLevel) -> None:
+    """Resolve each ChildRef in ``level`` against the class registry, in place.
+
+    Tags no class claims stop being holes here and go back to being markup.
+    Tags that do resolve are left as ChildRefs for the instantiate-and-recurse
+    step to consume, so this pass only ever decides which holes are real.
+    """
+    for index, segment in enumerate(level.segments):
+        if not isinstance(segment, ChildRef):
+            continue
+        if get_class(_pascal_to_snake(segment.tag)) is None:
+            level.segments[index] = _passthrough_markup(segment)
 
 
 def render_level(component: BaseComponent, session: "RenderSession") -> RenderedLevel:
@@ -61,11 +99,15 @@ def render_level(component: BaseComponent, session: "RenderSession") -> Rendered
         raise ValueError(f"{prefix}{err}") from err
 
     # Return RenderedLevel
-    return RenderedLevel(
+    level = RenderedLevel(
         segments=cast(list[str | ChildRef | RenderedLevel], parser.segments),
         root_span=parser.root_span or (0, 0),
         descriptor=descriptor,
     )
+    # Unregistered tags stop being holes here, one pass per level (ADR 0005);
+    # the ones that do resolve stay ChildRefs for the recursive step.
+    _fill_children(level)
+    return level
 
 
 def render(component: BaseComponent, session: "RenderSession | None" = None) -> str:
