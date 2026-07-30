@@ -52,3 +52,35 @@ def test_childless_end_to_end_pipeline():
     assert output == '<article class="card">Hello</article>'
     assert output.count("<article") == 1
     assert output.count("</article>") == 1
+
+
+def test_autoescape_scalar_survives_pipeline():
+    """A scalar field containing <script>, &, and " comes out entity-escaped
+    in the final serialized string, through the whole render pipeline."""
+
+    class NoteComp(BaseComponent):
+        body: str = """<script>alert("xss")</script> & co"""
+
+    descriptor = ClassDescriptor(
+        template_path=Path("integration_escape.html"),
+        slot_fields=frozenset(),
+        css_paths=(),
+        js_paths=(),
+        strict=True,
+        provenance={"template": NoteComp},
+    )
+    NoteComp.__pjx_descriptor__ = descriptor
+
+    session = RenderSession(template_dir="tests/templates")
+    component = NoteComp()
+
+    level = render_level(component, session)
+    stamp_root_attrs(level, {})
+    output = serialize(level)
+
+    assert "<script>" not in output
+    assert "&lt;script&gt;" in output
+    assert "&amp;" in output
+    assert "&#34;" in output or "&quot;" in output
+    assert output.startswith('<div class="note">')
+    assert output.endswith("</div>")
