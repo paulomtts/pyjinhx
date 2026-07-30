@@ -52,5 +52,5 @@ def render(component: BaseComponent, session: "RenderSession") -> RenderedLevel:
     return RenderedLevel(
         segments=parser.segments,
         root_span=parser.root_span or (0, 0),
-        descriptor=descriptor
+        descriptor=descriptor,
     )

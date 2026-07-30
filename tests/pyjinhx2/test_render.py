@@ -10,6 +10,7 @@ from pyjinhx2.session import RenderSession
 # Test 1: Single div renders → segments[0] is markup, root_span points to <div
 def test_single_div_renders():
     """Single div renders → segments[0] is markup, root_span points to <div."""
+
     class DivComp(BaseComponent):
         title: str = "Hello"
 
@@ -32,8 +33,8 @@ def test_single_div_renders():
     assert len(result.segments) > 0
     output = "".join(str(s) for s in result.segments)
     assert '<div class="root">' in output
-    assert 'Hello' in output
-    assert '</div>' in output
+    assert "Hello" in output
+    assert "</div>" in output
     assert result.root_span is not None
     assert result.root_span[0] == 0  # Points to <div
     assert result.descriptor is component.__class__.__pjx_descriptor__
@@ -42,6 +43,7 @@ def test_single_div_renders():
 # Test 2: Child tag <PJXButton /> → segments contains ChildRef, not raw tag text
 def test_child_tag_becomes_childref():
     """Child tag <PJXButton /> → segments contains ChildRef, not raw tag text."""
+
     class ContainerComp(BaseComponent):
         pass
 
@@ -69,6 +71,7 @@ def test_child_tag_becomes_childref():
 # Test 3: Nested PascalCase <PJXCard><PJXButton /></PJXCard> → outer is ChildRef, inner stays in ChildRef.inner
 def test_nested_pascalcase_preserved():
     """Nested PascalCase <PJXCard><PJXButton /></PJXCard> → outer is ChildRef, inner stays in ChildRef.inner."""
+
     class NestedComp(BaseComponent):
         pass
 
@@ -87,18 +90,23 @@ def test_nested_pascalcase_preserved():
     result = render(component, session)
 
     # Outer PJXCard should be ChildRef
-    card_refs = [s for s in result.segments if isinstance(s, ChildRef) and s.tag == "PJXCard"]
+    card_refs = [
+        s for s in result.segments if isinstance(s, ChildRef) and s.tag == "PJXCard"
+    ]
     assert len(card_refs) > 0, "Should extract <PJXCard /> as ChildRef"
     card = card_refs[0]
 
     # Inner <PJXButton /> should stay in card.inner verbatim (not extracted)
     assert card.inner is not None
-    assert "<PJXButton" in card.inner, "Inner PascalCase should remain verbatim in ChildRef.inner"
+    assert "<PJXButton" in card.inner, (
+        "Inner PascalCase should remain verbatim in ChildRef.inner"
+    )
 
 
 # Test 4: Multiple siblings <div><p/></div> → raises (single-root)
 def test_multiple_siblings_raises():
     """Multiple siblings <div><p/></div> → raises (single-root)."""
+
     class BadComp(BaseComponent):
         pass
 
@@ -122,6 +130,7 @@ def test_multiple_siblings_raises():
 # Test 5: No root element (whitespace only) → raises
 def test_no_root_element_raises():
     """No root element (whitespace only) → raises."""
+
     class EmptyComp(BaseComponent):
         pass
 
@@ -145,6 +154,7 @@ def test_no_root_element_raises():
 # Test 6: Descriptor correctly frozen and read (no runtime recompute)
 def test_descriptor_frozen_and_read():
     """Descriptor correctly frozen and read (no runtime recompute)."""
+
     # Create a minimal component with descriptor
     class TestComp(BaseComponent):
         pass
@@ -179,6 +189,7 @@ def test_childref_attrs_parsed():
 # Test 8: Self-closing tag <PJXIcon /> → ChildRef(inner=None)
 def test_self_closing_tag():
     """Self-closing tag <PJXIcon /> → ChildRef(inner=None)."""
+
     class IconComp(BaseComponent):
         pass
 
@@ -196,7 +207,9 @@ def test_self_closing_tag():
     component = IconComp()
     result = render(component, session)
 
-    icon_refs = [s for s in result.segments if isinstance(s, ChildRef) and s.tag == "PJXIcon"]
+    icon_refs = [
+        s for s in result.segments if isinstance(s, ChildRef) and s.tag == "PJXIcon"
+    ]
     assert len(icon_refs) > 0
     assert icon_refs[0].inner is None, "Self-closing tag should have inner=None"
 
@@ -204,6 +217,7 @@ def test_self_closing_tag():
 # Test 9: Paired tag <PJXCard>body</PJXCard> → ChildRef(inner="body")
 def test_paired_tag():
     """Paired tag <PJXCard>body</PJXCard> → ChildRef(inner="body")."""
+
     class CardComp(BaseComponent):
         pass
 
@@ -221,7 +235,9 @@ def test_paired_tag():
     component = CardComp()
     result = render(component, session)
 
-    card_refs = [s for s in result.segments if isinstance(s, ChildRef) and s.tag == "PJXCard"]
+    card_refs = [
+        s for s in result.segments if isinstance(s, ChildRef) and s.tag == "PJXCard"
+    ]
     assert len(card_refs) > 0
     assert card_refs[0].inner == "Hello World"
 
@@ -229,6 +245,7 @@ def test_paired_tag():
 # Test 10: Autoescape active (e.g., {{ var }} with < → &lt; in output, survives parse)
 def test_autoescape_active():
     """Autoescape active (e.g., {{ var }} with < → &lt; in output, survives parse)."""
+
     class UnsafeComp(BaseComponent):
         unsafe_text: str = "<script>alert('xss')</script>"
 
@@ -255,6 +272,7 @@ def test_autoescape_active():
 # Test 11: Unknown casing <pjxbutton /> (lowercase) → passes through as plain markup
 def test_lowercase_passes_through():
     """Unknown casing <pjxbutton /> (lowercase) → passes through as plain markup."""
+
     class LowercaseComp(BaseComponent):
         pass
 
@@ -285,6 +303,7 @@ def test_lowercase_passes_through():
 # Test 12: Mixed-case <PjxButton /> (invalid PascalCase) → passes through as plain markup
 def test_mixedcase_passes_through():
     """Mixed-case <PjxButton /> (invalid PascalCase) → passes through as plain markup."""
+
     class MixedcaseComp(BaseComponent):
         pass
 
@@ -343,6 +362,7 @@ def test_slot_fields_wrapped():
 # Test 14: round-trip: serialize(render(component)) == output_string
 def test_roundtrip_serialize():
     """round-trip: serialize(render(component)) == output_string."""
+
     class RoundtripComp(BaseComponent):
         title: str = "Test"
 
@@ -391,6 +411,7 @@ def test_roundtrip_serialize():
 # Test 15: Descriptors with no assets, no slot fields → minimal descriptor accepted
 def test_minimal_descriptor():
     """Descriptors with no assets, no slot fields → minimal descriptor accepted."""
+
     class MinimalComp(BaseComponent):
         pass
 
@@ -418,7 +439,6 @@ def test_minimal_descriptor():
 def test_performance_100plus_fields():
     """Component with 100+ fields → no performance regression (linear in field count)."""
     import time
-    from pydantic import Field
 
     # Create a component with 100+ fields using type hints
     class LargeComp(BaseComponent):
@@ -455,5 +475,7 @@ def test_performance_100plus_fields():
     elapsed = time.time() - start
 
     # Should complete in reasonable time (< 100ms for 100 renders)
-    assert elapsed < 0.1, f"Rendering 100 times took {elapsed:.3f}s (expected <0.1s for linear performance)"
+    assert elapsed < 0.1, (
+        f"Rendering 100 times took {elapsed:.3f}s (expected <0.1s for linear performance)"
+    )
     assert isinstance(result, RenderedLevel)
