@@ -478,3 +478,177 @@ def test_performance_100plus_fields():
         f"Rendering 100 times took {elapsed:.3f}s (expected <0.1s for linear performance)"
     )
     assert isinstance(result, RenderedLevel)
+
+
+# Test 17: Missing template file → jinja2.TemplateNotFound names component + template_path
+def test_missing_template_names_component_and_path():
+    """Missing template → TemplateNotFound message contains class name and template_path."""
+    import jinja2
+
+    class MissingTemplateComp(BaseComponent):
+        pass
+
+    descriptor = ClassDescriptor(
+        template_path=Path("does_not_exist.html"),
+        slot_fields=frozenset(),
+        css_paths=(),
+        js_paths=(),
+        strict=True,
+        provenance={"template": MissingTemplateComp},
+    )
+    MissingTemplateComp.__pjx_descriptor__ = descriptor
+
+    session = RenderSession(template_dir="tests/templates")
+    component = MissingTemplateComp()
+
+    with pytest.raises(jinja2.TemplateNotFound) as exc_info:
+        render_level(component, session)
+
+    message = str(exc_info.value)
+    assert "MissingTemplateComp" in message
+    assert "does_not_exist.html" in message
+
+
+# Test 18: Missing template error type is still jinja2.TemplateNotFound, not swallowed
+def test_missing_template_preserves_exception_type():
+    """Missing template exception is still isinstance of jinja2.TemplateNotFound."""
+    import jinja2
+
+    class MissingTemplateComp2(BaseComponent):
+        pass
+
+    descriptor = ClassDescriptor(
+        template_path=Path("also_missing.html"),
+        slot_fields=frozenset(),
+        css_paths=(),
+        js_paths=(),
+        strict=True,
+        provenance={"template": MissingTemplateComp2},
+    )
+    MissingTemplateComp2.__pjx_descriptor__ = descriptor
+
+    session = RenderSession(template_dir="tests/templates")
+    component = MissingTemplateComp2()
+
+    try:
+        render_level(component, session)
+        assert False, "expected jinja2.TemplateNotFound"
+    except jinja2.TemplateNotFound as err:
+        assert isinstance(err, jinja2.TemplateNotFound)
+        assert err.__cause__ is not None, (
+            "original error must be chained via `from err`"
+        )
+
+
+# Test 19: Zero-root template → ValueError names component, path, and original detail
+def test_zero_root_names_component_and_path():
+    """Zero-root ValueError message contains class name, template_path, and original text."""
+
+    class EmptyComp2(BaseComponent):
+        pass
+
+    descriptor = ClassDescriptor(
+        template_path=Path("empty.html"),
+        slot_fields=frozenset(),
+        css_paths=(),
+        js_paths=(),
+        strict=True,
+        provenance={"template": EmptyComp2},
+    )
+    EmptyComp2.__pjx_descriptor__ = descriptor
+
+    session = RenderSession(template_dir="tests/templates")
+    component = EmptyComp2()
+
+    with pytest.raises(ValueError) as exc_info:
+        render_level(component, session)
+
+    message = str(exc_info.value)
+    assert "EmptyComp2" in message
+    assert "empty.html" in message
+    assert "renders no element at all" in message
+
+
+# Test 20: Multi-root template → ValueError names component, path, and original detail
+def test_multi_root_names_component_and_path():
+    """Multi-root ValueError message contains class name, template_path, and original text."""
+
+    class BadComp2(BaseComponent):
+        pass
+
+    descriptor = ClassDescriptor(
+        template_path=Path("bad.html"),
+        slot_fields=frozenset(),
+        css_paths=(),
+        js_paths=(),
+        strict=True,
+        provenance={"template": BadComp2},
+    )
+    BadComp2.__pjx_descriptor__ = descriptor
+
+    session = RenderSession(template_dir="tests/templates")
+    component = BadComp2()
+
+    with pytest.raises(ValueError) as exc_info:
+        render_level(component, session)
+
+    message = str(exc_info.value)
+    assert "BadComp2" in message
+    assert "bad.html" in message
+    assert "the extra top-level tags are" in message
+
+
+# Test 21: Valid childless component still renders without exception (no over-eager try/except)
+def test_valid_component_unaffected_by_error_wrapping():
+    """Success path is unaffected: valid single-root template still renders cleanly."""
+
+    class HappyComp(BaseComponent):
+        title: str = "Fine"
+
+    descriptor = ClassDescriptor(
+        template_path=Path("div.html"),
+        slot_fields=frozenset(),
+        css_paths=(),
+        js_paths=(),
+        strict=True,
+        provenance={"template": HappyComp},
+    )
+    HappyComp.__pjx_descriptor__ = descriptor
+
+    session = RenderSession(template_dir="tests/templates")
+    component = HappyComp()
+
+    result = render_level(component, session)
+
+    assert isinstance(result, RenderedLevel)
+    output = "".join(str(s) for s in result.segments)
+    assert '<div class="root">' in output
+
+
+# Test 22: jinja2.TemplateAssertionError from a broken template body propagates unmodified
+def test_template_assertion_error_not_wrapped():
+    """TemplateAssertionError (template-authoring error) is out of scope: message untouched."""
+    import jinja2
+
+    class BrokenSyntaxComp(BaseComponent):
+        pass
+
+    descriptor = ClassDescriptor(
+        template_path=Path("broken_assertion.html"),
+        slot_fields=frozenset(),
+        css_paths=(),
+        js_paths=(),
+        strict=True,
+        provenance={"template": BrokenSyntaxComp},
+    )
+    BrokenSyntaxComp.__pjx_descriptor__ = descriptor
+
+    session = RenderSession(template_dir="tests/templates")
+    component = BrokenSyntaxComp()
+
+    with pytest.raises(jinja2.TemplateSyntaxError) as exc_info:
+        render_level(component, session)
+
+    message = str(exc_info.value)
+    assert "BrokenSyntaxComp" not in message
+    assert "template:" not in message
