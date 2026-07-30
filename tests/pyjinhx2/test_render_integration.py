@@ -152,3 +152,48 @@ def test_stamped_attrs_land_in_root_tag():
     assert output == (
         '<section id="original-id" class="card highlighted" data-x="1">Body</section>'
     )
+
+
+def test_full_pipeline_regression():
+    """All four properties verified together against one component: single
+    root element, scalar autoescape, Slot-field-raw-via-safe, and stamped
+    attrs landing inside the root tag with override-in-place semantics."""
+
+    class ArticleComp(BaseComponent):
+        heading: str = '<script>alert("x")</script>'
+        body: Slot = "<b>bold body</b>"
+
+    descriptor = ClassDescriptor(
+        template_path=Path("integration_full.html"),
+        slot_fields=frozenset({"body"}),
+        css_paths=(),
+        js_paths=(),
+        strict=True,
+        provenance={"template": ArticleComp},
+    )
+    ArticleComp.__pjx_descriptor__ = descriptor
+
+    session = RenderSession(template_dir="tests/templates")
+    component = ArticleComp()
+
+    level = render_level(component, session)
+    stamp_root_attrs(level, {"class": "card active", "data-controller": "x"})
+    output = serialize(level)
+
+    # Single root element.
+    assert output.count("<article") == 1
+    assert output.count("</article>") == 1
+
+    # Scalar field escaped.
+    assert "<script>" not in output
+    assert "&lt;script&gt;" in output
+
+    # Slot field marked `| safe` stays raw.
+    assert '<div class="body"><b>bold body</b></div>' in output
+
+    # Stamped attrs land in the root tag, override in place, no duplication.
+    opening_tag = output[: output.index(">") + 1]
+    assert 'id="orig"' in opening_tag
+    assert 'class="card active"' in opening_tag
+    assert opening_tag.count("class=") == 1
+    assert 'data-controller="x"' in opening_tag
