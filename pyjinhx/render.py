@@ -78,12 +78,12 @@ def set_default_environment(env: Environment) -> None:
         env: Environment with FileSystemLoader.
 
     Raises:
-        ValueError: If env does not use FileSystemLoader.
+        TypeError: If env does not use FileSystemLoader.
     """
     global _default_environment
 
     if not isinstance(env.loader, FileSystemLoader):
-        raise ValueError(
+        raise TypeError(
             f"Environment must use FileSystemLoader, got {type(env.loader).__name__}"
         )
 
@@ -101,13 +101,13 @@ def get_loader_root(env: Environment | None = None) -> Path:
         Path to the FileSystemLoader root.
 
     Raises:
-        ValueError: If loader is not FileSystemLoader.
+        TypeError: If loader is not FileSystemLoader.
     """
     if env is None:
         env = _default_environment
 
     if not isinstance(env.loader, FileSystemLoader):
-        raise ValueError(
+        raise TypeError(
             f"Environment must use FileSystemLoader, got {type(env.loader).__name__}"
         )
 
