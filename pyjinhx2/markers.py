@@ -101,7 +101,7 @@ class ComponentNode:
     def __contains__(self, item: object) -> bool:
         raise self._opaque_error("in")
 
-    def __iter__(self) -> object:
+    def __iter__(self) -> Iterator[object]:
         raise self._opaque_error("for")
 
     def __eq__(self, other: object) -> bool:
