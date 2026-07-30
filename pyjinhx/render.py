@@ -1,7 +1,6 @@
 """Render module: Jinja Environment initialization with project-root detection."""
 
 from pathlib import Path
-
 from jinja2 import Environment, FileSystemLoader
 
 
