@@ -79,3 +79,40 @@ def test_no_childref_survives_the_fill(session):
 def test_level_without_childrefs_is_all_strings(session):
     level = render_level(PJXPlain(), session)
     assert level.segments == ['<div class="plain">', "hello", "</div>"]
+
+
+class PJXSiblings(BaseComponent):
+    pass
+
+
+PJXSiblings.__pjx_descriptor__ = descriptor_for(PJXSiblings, "splice_siblings.html")
+
+
+class PJXMixed(BaseComponent):
+    pass
+
+
+PJXMixed.__pjx_descriptor__ = descriptor_for(PJXMixed, "splice_mixed.html")
+
+
+def test_each_sibling_childref_gets_its_own_rendered_level(session):
+    level = render_level(PJXSiblings(), session)
+    first, second = level.segments[1], level.segments[3]
+    assert isinstance(first, RenderedLevel)
+    assert isinstance(second, RenderedLevel)
+    assert first is not second
+    assert serialize(first) == '<span class="child">a</span>'
+    assert serialize(second) == '<span class="child">b</span>'
+
+
+def test_siblings_do_not_share_segment_lists(session):
+    """A shared parse or a reused level would make one sibling's edit hit both."""
+    level = render_level(PJXSiblings(), session)
+    first, second = level.segments[1], level.segments[3]
+    assert first.segments is not second.segments
+
+
+def test_passthrough_string_is_untouched_next_to_a_splice(session):
+    level = render_level(PJXMixed(), session)
+    assert isinstance(level.segments[1], RenderedLevel)
+    assert level.segments[2] == '<WebThing id="w"/>'
