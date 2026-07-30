@@ -169,7 +169,11 @@ def render_level(component: BaseComponent, session: "RenderSession") -> Rendered
     )
     # Unregistered tags stop being holes here, one pass per level (ADR 0005);
     # the ones that do resolve become instances the recursive step consumes.
-    _ = _fill_children(level)
+    for index, child in _fill_children(level):
+        # Each child gets its own render_level call, so it does its own single
+        # parse and enters this list as a whole object — never text spliced into
+        # text, which is what keeps a child's markup un-reparsed and un-escaped.
+        level.segments[index] = render_level(child, session)
     return level
 
 
