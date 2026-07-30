@@ -93,22 +93,40 @@ def _qualified_name(cls: type) -> str:
     return f"{cls.__module__}.{cls.__qualname__}"
 
 
+def _wants_replace(cls: type) -> bool:
+    """Whether ``cls`` declared itself the replacement for its tag.
+
+    Read with a default rather than an attribute access so discovery keeps
+    working on any class that resolves a tag, including ones that never went
+    through `BaseComponent`.
+    """
+    return bool(getattr(cls, "_pjx_replace", False))
+
+
 def _resolve_tag_owner(
     tag_name: str, by_tag: Mapping[str, list[type]], warned: set[str]
 ) -> type | None:
     """Which class, if any, claims ``tag_name``.
 
     The single decision point for "who owns this tag", kept apart from the
-    swap mechanism so richer answers (explicit replacement) can change this
-    without touching how the result is published. ``by_tag`` carries every
-    class that resolved to ``tag_name``, not just one, so a collision can be
-    reported in full rather than silently narrowed by the caller. When several
-    classes claim a tag the answer must not depend on the order the caller
-    iterated them in, so candidates are ordered by fully qualified name and the
-    last one alphabetically wins — an arbitrary end of a total order, but the
-    same end on every run. Such a collision is a mistake upstream, so it is
-    warned about; ``warned`` keeps that to one warning per tag per build, since
-    this runs once per walked template and one stem can sit in two
+    swap mechanism so richer answers can change this without touching how the
+    result is published. ``by_tag`` carries every class that resolved to
+    ``tag_name``, not just one, so a collision can be reported in full rather
+    than silently narrowed by the caller.
+
+    Two rules decide a collision. A class declared with ``pjx_replace=True``
+    has said out loud that it means to take the tag over, so it wins and
+    nothing is logged — shadowing a component is a supported move, not a
+    mistake to be reported. Otherwise the collision is unintended, and the
+    answer must still not depend on the order the caller iterated its classes
+    in: candidates are ordered by fully qualified name and the last one
+    alphabetically wins — an arbitrary end of a total order, but the same end
+    on every run — and a warning names the tag and everyone claiming it.
+
+    Several classes all claiming to be the replacement is itself unintended,
+    so those go through the same sort and the same warning, narrowed to the
+    competing replacers. ``warned`` keeps warnings to one per tag per build,
+    since this runs once per walked template and one stem can sit in two
     directories. A tag no class claims is not an error: an orphan template is
     a normal thing to find on disk.
     """
@@ -117,7 +135,11 @@ def _resolve_tag_owner(
         return None
     if len(candidates) == 1:
         return candidates[0]
-    ordered = sorted(candidates, key=_qualified_name)
+    replacers = [cls for cls in candidates if _wants_replace(cls)]
+    if len(replacers) == 1:
+        return replacers[0]
+    contenders = replacers or candidates
+    ordered = sorted(contenders, key=_qualified_name)
     winner = ordered[-1]
     if tag_name not in warned:
         warned.add(tag_name)

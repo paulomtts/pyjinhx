@@ -344,10 +344,23 @@ class BaseComponent(BaseModel):
 
     __pjx_descriptor__: ClassVar[ClassDescriptor]
 
+    _pjx_replace: ClassVar[bool] = False
+
     id: str = Field(
         default_factory=_auto_id,
         description="The unique ID for this component. Auto-generated when omitted.",
     )
+
+    def __init_subclass__(cls, *, pjx_replace: bool = False, **kwargs: Any) -> None:
+        """Consume the ``pjx_replace`` class kwarg before it reaches
+        ``object.__init_subclass__``, which accepts no keyword arguments.
+
+        Assigned on every subclass, never merely inherited: a subclass of a
+        replacing component is a new class that has not asked to replace
+        anything, and a leaked ``True`` would hand it someone else's tag.
+        """
+        cls._pjx_replace = bool(pjx_replace)
+        super().__init_subclass__(**kwargs)
 
     @classmethod
     def __pydantic_init_subclass__(cls, **kwargs: Any) -> None:
