@@ -115,18 +115,26 @@ def _fill_children(level: RenderedLevel) -> list[tuple[int, BaseComponent]]:
     return pending
 
 
-def render_level(component: BaseComponent, session: "RenderSession") -> RenderedLevel:
+def render_level(
+    component: BaseComponent,
+    session: "RenderSession",
+    chain: tuple[str, ...] = (),
+) -> RenderedLevel:
     """Render one component level: template → one parse → RenderedLevel.
 
     Args:
         component: A valid BaseComponent instance (construction-time validation passed).
         session: RenderSession providing Jinja environment and hooks.
+        chain: Class names of the components already being rendered on this
+            call path, outermost first. Passed by value down the recursion so
+            each branch sees its own ancestors and nothing else.
 
     Returns:
         RenderedLevel with segments (str | ChildRef), root_span, descriptor.
 
     Raises:
         ValueError: If template renders zero or 2+ root elements.
+        ValueError: If a component re-enters its own render chain (cycle).
         jinja2.TemplateNotFound: If template file missing.
         jinja2.TemplateAssertionError: If Jinja evaluation fails.
     """
@@ -142,6 +150,17 @@ def render_level(component: BaseComponent, session: "RenderSession") -> Rendered
     # Phase 3: Jinja render with autoescape ON
     jinja_env = session.jinja_env
     prefix = f"{component.__class__.__name__} (template: {descriptor.template_path}): "
+
+    # A component whose subtree instantiates itself or an ancestor would recurse
+    # forever; the chain is the current call path only, so the same class on two
+    # sibling branches is fine (ADR 0004: nesting/load chains are the only cycle
+    # vector left in v2).
+    name = component.__class__.__name__
+    if name in chain:
+        cycle = chain[chain.index(name) :]
+        raise ValueError(f"{prefix}cycle detected: {' -> '.join((*cycle, name))}")
+    chain = (*chain, name)
+
     try:
         template = jinja_env.get_template(str(descriptor.template_path))
     except jinja2.TemplateNotFound as err:
@@ -173,7 +192,7 @@ def render_level(component: BaseComponent, session: "RenderSession") -> Rendered
         # Each child gets its own render_level call, so it does its own single
         # parse and enters this list as a whole object — never text spliced into
         # text, which is what keeps a child's markup un-reparsed and un-escaped.
-        level.segments[index] = render_level(child, session)
+        level.segments[index] = render_level(child, session, chain)
     return level
 
 
