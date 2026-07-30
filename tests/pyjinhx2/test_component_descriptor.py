@@ -1878,4 +1878,3 @@ class TestDescriptorInheritanceMatrix:
         assert message.index("fancy_card.pjx") < message.index("card.pjx")
         assert ".css" not in message
         assert ".js" not in message
->>>>>>> origin/master
