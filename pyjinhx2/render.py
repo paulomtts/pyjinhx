@@ -93,18 +93,24 @@ def _instantiate_child(ref: ChildRef, cls: type[BaseComponent]) -> BaseComponent
     return cls(**kwargs)
 
 
-def _fill_children(level: RenderedLevel) -> None:
+def _fill_children(level: RenderedLevel) -> list[tuple[int, BaseComponent]]:
     """Resolve each ChildRef in ``level`` against the class registry, in place.
 
     Tags no class claims stop being holes here and go back to being markup.
-    Tags that do resolve are left as ChildRefs for the instantiate-and-recurse
-    step to consume, so this pass only ever decides which holes are real.
+    Tags that do resolve are instantiated once, in document order, and returned
+    with their segment index so the recursive step can render each one and
+    splice it back where its ChildRef still sits.
     """
+    pending: list[tuple[int, BaseComponent]] = []
     for index, segment in enumerate(level.segments):
         if not isinstance(segment, ChildRef):
             continue
-        if get_class(_pascal_to_snake(segment.tag)) is None:
+        cls = get_class(_pascal_to_snake(segment.tag))
+        if cls is None:
             level.segments[index] = _passthrough_markup(segment)
+            continue
+        pending.append((index, _instantiate_child(segment, cast(type[BaseComponent], cls))))
+    return pending
 
 
 def render_level(component: BaseComponent, session: "RenderSession") -> RenderedLevel:
@@ -160,8 +166,8 @@ def render_level(component: BaseComponent, session: "RenderSession") -> Rendered
         descriptor=descriptor,
     )
     # Unregistered tags stop being holes here, one pass per level (ADR 0005);
-    # the ones that do resolve stay ChildRefs for the recursive step.
-    _fill_children(level)
+    # the ones that do resolve become instances the recursive step consumes.
+    _ = _fill_children(level)
     return level
 
 

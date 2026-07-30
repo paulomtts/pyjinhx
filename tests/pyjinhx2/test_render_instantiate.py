@@ -115,3 +115,45 @@ def test_instantiate_raises_when_inner_and_attr_both_supply_the_field():
     ref = ChildRef(tag="WithChildren", attrs={"body": "attr"}, inner="<em>hi</em>")
     with pytest.raises(ValueError, match="body"):
         _instantiate_child(ref, WithChildren)
+
+
+def _level(*segments):
+    return RenderedLevel(segments=list(segments), root_span=(0, 0), descriptor=None)
+
+
+@pytest.fixture
+def _registered():
+    discovery._registry.mapping = {
+        _pascal_to_snake(cls.__name__): cls for cls in (Scalars, WithChildren)
+    }
+    yield
+    discovery._registry.mapping = {}
+
+
+def test_fill_children_returns_instances_for_resolved_tags(_registered):
+    level = _level("<div>", ChildRef(tag="Scalars", attrs={"label": "Save"}, inner=None), "</div>")
+    pending = _fill_children(level)
+    assert len(pending) == 1
+    index, instance = pending[0]
+    assert index == 1
+    assert isinstance(instance, Scalars)
+    assert instance.label == "Save"
+    assert level.segments[1] is level.segments[1]
+    assert isinstance(level.segments[1], ChildRef)
+
+
+def test_fill_children_reports_document_order(_registered):
+    level = _level(
+        ChildRef(tag="Scalars", attrs={"label": "one"}, inner=None),
+        "mid",
+        ChildRef(tag="WithChildren", attrs={}, inner="body"),
+    )
+    pending = _fill_children(level)
+    assert [index for index, _ in pending] == [0, 2]
+    assert [type(instance) for _, instance in pending] == [Scalars, WithChildren]
+
+
+def test_fill_children_never_instantiates_an_unresolved_tag(_registered):
+    level = _level(ChildRef(tag="MyWidget", attrs={"nope": "x"}, inner=None))
+    assert _fill_children(level) == []
+    assert level.segments[0] == '<MyWidget nope="x"/>'
