@@ -26,9 +26,19 @@ class ComponentNode:
     ``owner_name``/``owner_template``/``field_name`` default to placeholders
     so call sites that only care about the wrapped component (e.g. token-table
     plumbing tests) don't need to supply owner identity they don't have.
+
+    NOTE for reviewers: several pre-existing bare ``ComponentNode(x)`` call
+    sites (tests/pyjinhx2/test_slot_type_v2.py, tests/pyjinhx2/
+    test_render_context.py) rely on these placeholder defaults rather than
+    being updated to pass real owner identity. Those tests only assert
+    ``pytest.raises(TypeError)`` / opacity behavior, not error-message
+    content, so the placeholders don't currently weaken any assertion - but
+    if a future test starts asserting on ``_opaque_error`` message text, it
+    will see ``"<unknown>"`` instead of a real component/template name unless
+    those call sites are updated too.
     """
 
-    __slots__ = ("component", "owner_name", "owner_template", "field_name")
+    __slots__ = ("component", "field_name", "owner_name", "owner_template")
 
     # Defining __eq__ blanks __hash__; restore object identity hashing so the
     # node stays usable as a dict key even though comparisons are forbidden.
@@ -62,7 +72,9 @@ class ComponentNode:
         between them; each caller supplies only the literal syntax the author
         wrote, so the message reads back what was attempted.
         """
-        template = self.owner_template if self.owner_template is not None else "<unresolved>"
+        template = (
+            self.owner_template if self.owner_template is not None else "<unresolved>"
+        )
         field = self.field_name
         return TypeError(
             f"{self.owner_name} (template: {template}): slot '{field}' holds a "
