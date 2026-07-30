@@ -300,7 +300,7 @@ class TestSlotInterpolation:
             pass
 
         with pytest.raises(TypeError):
-            len(ComponentNode(LenLeaf()))
+            len(ComponentNode(LenLeaf()))  # type: ignore[arg-type]
 
     def test_length_filter_on_a_component_slot_still_fails(self):
         """#368 will turn this into a targeted message; here it only must not silently work."""

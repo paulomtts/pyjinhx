@@ -327,7 +327,7 @@ def test_component_node_truthiness_does_not_use_len():
     if node:
         pass
     with pytest.raises(TypeError):
-        len(node)
+        len(node)  # type: ignore[arg-type]
     assert not hasattr(node, "__str__") or type(node).__str__ is object.__str__
     assert not hasattr(node, "__html__")
 
@@ -355,8 +355,8 @@ def test_finalize_registers_a_component_node_under_a_unique_token():
         assert isinstance(token_a, str)
         assert SLOT_TOKEN_RE.fullmatch(token_a)
         assert token_a != token_b
-        assert table[token_a] is first
-        assert table[token_b] is second
+        assert table[token_a] is first  # type: ignore[index]
+        assert table[token_b] is second  # type: ignore[index]
 
 
 def test_token_tables_do_not_leak_between_scopes():
