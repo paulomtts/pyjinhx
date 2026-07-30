@@ -22,13 +22,31 @@ class _PJXIcon(BaseComponent):
     pass
 
 
+def _descriptor_for(cls: type[BaseComponent], template: str) -> ClassDescriptor:
+    return ClassDescriptor(
+        template_path=Path(template),
+        slot_fields=frozenset(),
+        css_paths=(),
+        js_paths=(),
+        strict=True,
+        provenance={"template": cls},
+    )
+
+
+_PJXButton.__pjx_descriptor__ = _descriptor_for(_PJXButton, "child_button.html")
+_PJXCard.__pjx_descriptor__ = _descriptor_for(_PJXCard, "child_card.html")
+_PJXIcon.__pjx_descriptor__ = _descriptor_for(_PJXIcon, "child_icon.html")
+
+
 @pytest.fixture(autouse=True)
 def _registered_child_tags():
     """Register the PJXButton/PJXCard/PJXIcon tags these tests reference.
 
-    render_level (#362) now resolves ChildRef tags against the registry and
-    passes unregistered ones through as plain markup. These tests assert on
-    ChildRef fields, so their tags must resolve (hit) to stay ChildRefs.
+    render_level (#362) resolves ChildRef tags against the registry and passes
+    unregistered ones through as plain markup; render_level (#364) then
+    recursively renders a resolved tag and splices the RenderedLevel back in
+    place of its ChildRef. These tests assert on that spliced result, so their
+    tags must resolve (hit) and carry a real (non-recursive) template.
     """
     discovery._registry.mapping = {
         _pascal_to_snake(cls.__name__.lstrip("_")): cls
@@ -92,11 +110,12 @@ def test_child_tag_becomes_childref():
     component = ContainerComp()
     result = render_level(component, session)
 
-    # Should find ChildRef in segments, not raw "<PJXButton" string
-    child_refs = [s for s in result.segments if isinstance(s, ChildRef)]
-    assert len(child_refs) > 0, "Should have extracted <PJXButton /> as ChildRef"
-    button_ref = child_refs[0]
-    assert button_ref.tag == "PJXButton"
+    # <PJXButton /> resolves and gets spliced in as its own RenderedLevel,
+    # not left as a ChildRef and not stringified into raw tag text.
+    assert not any(isinstance(s, ChildRef) for s in result.segments)
+    rendered = [s for s in result.segments if isinstance(s, RenderedLevel)]
+    assert len(rendered) > 0, "Should have spliced <PJXButton /> as a RenderedLevel"
+    assert rendered[0].descriptor is _PJXButton.__pjx_descriptor__
 
 
 # Test 3: Nested PascalCase <PJXCard><PJXButton /></PJXCard> → outer is ChildRef, inner stays in ChildRef.inner
@@ -120,18 +139,16 @@ def test_nested_pascalcase_preserved():
     component = NestedComp()
     result = render_level(component, session)
 
-    # Outer PJXCard should be ChildRef
-    card_refs = [
-        s for s in result.segments if isinstance(s, ChildRef) and s.tag == "PJXCard"
+    # Outer PJXCard resolves and is spliced as its own RenderedLevel, taking
+    # the inner <PJXButton /> text with it (as PJXCard's own body context) —
+    # it never surfaces as a sibling ChildRef in the parent's segments.
+    assert not any(isinstance(s, ChildRef) for s in result.segments)
+    card_levels = [
+        s
+        for s in result.segments
+        if isinstance(s, RenderedLevel) and s.descriptor is _PJXCard.__pjx_descriptor__
     ]
-    assert len(card_refs) > 0, "Should extract <PJXCard /> as ChildRef"
-    card = card_refs[0]
-
-    # Inner <PJXButton /> should stay in card.inner verbatim (not extracted)
-    assert card.inner is not None
-    assert "<PJXButton" in card.inner, (
-        "Inner PascalCase should remain verbatim in ChildRef.inner"
-    )
+    assert len(card_levels) > 0, "Should have spliced <PJXCard /> as a RenderedLevel"
 
 
 # Test 4: Multiple siblings <div><p/></div> → raises (single-root)
@@ -237,11 +254,15 @@ def test_self_closing_tag():
     component = IconComp()
     result = render_level(component, session)
 
-    icon_refs = [
-        s for s in result.segments if isinstance(s, ChildRef) and s.tag == "PJXIcon"
+    # Self-closing <PJXIcon /> resolves and is spliced as its own RenderedLevel;
+    # inner=None never gets a chance to matter once the tag is spliced away.
+    assert not any(isinstance(s, ChildRef) for s in result.segments)
+    icon_levels = [
+        s
+        for s in result.segments
+        if isinstance(s, RenderedLevel) and s.descriptor is _PJXIcon.__pjx_descriptor__
     ]
-    assert len(icon_refs) > 0
-    assert icon_refs[0].inner is None, "Self-closing tag should have inner=None"
+    assert len(icon_levels) > 0
 
 
 # Test 9: Paired tag <PJXCard>body</PJXCard> → ChildRef(inner="body")
@@ -265,11 +286,18 @@ def test_paired_tag():
     component = CardComp()
     result = render_level(component, session)
 
-    card_refs = [
-        s for s in result.segments if isinstance(s, ChildRef) and s.tag == "PJXCard"
+    # Paired <PJXCard>Hello World</PJXCard> resolves and is spliced as its own
+    # RenderedLevel, carrying the inner text into its own body field.
+    assert not any(isinstance(s, ChildRef) for s in result.segments)
+    card_levels = [
+        s
+        for s in result.segments
+        if isinstance(s, RenderedLevel) and s.descriptor is _PJXCard.__pjx_descriptor__
     ]
-    assert len(card_refs) > 0
-    assert card_refs[0].inner == "Hello World"
+    assert len(card_levels) > 0
+    assert "Hello World" in "".join(
+        s for s in card_levels[0].segments if isinstance(s, str)
+    )
 
 
 # Test 10: Autoescape active (e.g., {{ var }} with < → &lt; in output, survives parse)
