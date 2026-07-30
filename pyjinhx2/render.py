@@ -1,17 +1,16 @@
-"""L0.4.4 render — single-level pipeline.
+"""L0.4.4/L0.4.6 render — single-level pipeline and public API.
 
-Descriptor read → context build → Jinja render → single parse → RenderedLevel.
+Descriptor read → context build → Jinja render → single parse → RenderedLevel
+(render_level, internal). serialize(render_level(...)) closes the loop into a
+finished HTML string for a childless component (render, public API).
 """
 
-from typing import TYPE_CHECKING
 from pyjinhx2.component import BaseComponent
-from pyjinhx2.segments import RenderedLevel, VerbatimParser
-
-if TYPE_CHECKING:
-    from pyjinhx2.session import RenderSession
+from pyjinhx2.segments import RenderedLevel, VerbatimParser, serialize
+from pyjinhx2.session import RenderSession
 
 
-def render(component: BaseComponent, session: "RenderSession") -> RenderedLevel:
+def render_level(component: BaseComponent, session: "RenderSession") -> RenderedLevel:
     """Render one component level: template → one parse → RenderedLevel.
 
     Args:
@@ -54,3 +53,33 @@ def render(component: BaseComponent, session: "RenderSession") -> RenderedLevel:
         root_span=parser.root_span or (0, 0),
         descriptor=descriptor,
     )
+
+
+def render(component: BaseComponent, session: "RenderSession | None" = None) -> str:
+    """Render a component to a final HTML string (public API).
+
+    Thin wrapper closing the loop for a childless component: render_level()
+    produces one component's RenderedLevel, serialize() joins its segments
+    back into markup. Internal/recursive callers (L1) call render_level()
+    directly instead, since they need the RenderedLevel, not a string.
+
+    Args:
+        component: A valid BaseComponent instance.
+        session: RenderSession providing the Jinja environment. Defaults to
+            a fresh RenderSession() when omitted, so callers outside the
+            kernel don't need to construct one by hand.
+
+    Returns:
+        The component's rendered markup as a finished HTML string.
+
+    Raises:
+        ValueError: If template renders zero or 2+ root elements.
+        jinja2.TemplateNotFound: If template file missing.
+        jinja2.TemplateAssertionError: If Jinja evaluation fails.
+        AssertionError: If a segment reaching serialize() is neither str
+            nor RenderedLevel (unresolved ChildRef reaching the boundary).
+    """
+    if session is None:
+        session = RenderSession()
+    level = render_level(component, session)
+    return serialize(level)

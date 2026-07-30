@@ -2,7 +2,7 @@ import pytest
 from pathlib import Path
 from pyjinhx2.component import BaseComponent
 from pyjinhx2.descriptor import ClassDescriptor
-from pyjinhx2.render import render
+from pyjinhx2.render import render_level
 from pyjinhx2.segments import RenderedLevel, ChildRef
 from pyjinhx2.session import RenderSession
 
@@ -26,7 +26,7 @@ def test_single_div_renders():
 
     session = RenderSession(template_dir="tests/templates")
     component = DivComp()
-    result = render(component, session)
+    result = render_level(component, session)
 
     # Verify RenderedLevel structure
     assert isinstance(result, RenderedLevel)
@@ -59,7 +59,7 @@ def test_child_tag_becomes_childref():
 
     session = RenderSession(template_dir="tests/templates")
     component = ContainerComp()
-    result = render(component, session)
+    result = render_level(component, session)
 
     # Should find ChildRef in segments, not raw "<PJXButton" string
     child_refs = [s for s in result.segments if isinstance(s, ChildRef)]
@@ -87,7 +87,7 @@ def test_nested_pascalcase_preserved():
 
     session = RenderSession(template_dir="tests/templates")
     component = NestedComp()
-    result = render(component, session)
+    result = render_level(component, session)
 
     # Outer PJXCard should be ChildRef
     card_refs = [
@@ -124,7 +124,7 @@ def test_multiple_siblings_raises():
     component = BadComp()
 
     with pytest.raises(ValueError, match="must render exactly one root element"):
-        render(component, session)
+        render_level(component, session)
 
 
 # Test 5: No root element (whitespace only) → raises
@@ -148,7 +148,7 @@ def test_no_root_element_raises():
     component = EmptyComp()
 
     with pytest.raises(ValueError, match="must render exactly one root element"):
-        render(component, session)
+        render_level(component, session)
 
 
 # Test 6: Descriptor correctly frozen and read (no runtime recompute)
@@ -204,7 +204,7 @@ def test_self_closing_tag():
 
     session = RenderSession(template_dir="tests/templates")
     component = IconComp()
-    result = render(component, session)
+    result = render_level(component, session)
 
     icon_refs = [
         s for s in result.segments if isinstance(s, ChildRef) and s.tag == "PJXIcon"
@@ -232,7 +232,7 @@ def test_paired_tag():
 
     session = RenderSession(template_dir="tests/templates")
     component = CardComp()
-    result = render(component, session)
+    result = render_level(component, session)
 
     card_refs = [
         s for s in result.segments if isinstance(s, ChildRef) and s.tag == "PJXCard"
@@ -260,7 +260,7 @@ def test_autoescape_active():
 
     session = RenderSession(template_dir="tests/templates")
     component = UnsafeComp()
-    result = render(component, session)
+    result = render_level(component, session)
 
     # Autoescape should convert < to &lt; in output
     output_str = "".join(s for s in result.segments if isinstance(s, str))
@@ -287,7 +287,7 @@ def test_lowercase_passes_through():
 
     session = RenderSession(template_dir="tests/templates")
     component = LowercaseComp()
-    result = render(component, session)
+    result = render_level(component, session)
 
     # Lowercase should not be extracted as ChildRef
     child_refs = [s for s in result.segments if isinstance(s, ChildRef)]
@@ -318,7 +318,7 @@ def test_mixedcase_passes_through():
 
     session = RenderSession(template_dir="tests/templates")
     component = MixedcaseComp()
-    result = render(component, session)
+    result = render_level(component, session)
 
     # Mixed-case (starts with lowercase) should not be extracted
     child_refs = [s for s in result.segments if isinstance(s, ChildRef)]
@@ -350,7 +350,7 @@ def test_slot_fields_wrapped():
 
     session = RenderSession(template_dir="tests/templates")
     component = ContainerComp(content="test content")
-    result = render(component, session)
+    result = render_level(component, session)
 
     # Slot should be rendered without issues
     # The template context has slot as a value, not a special node for now
@@ -358,9 +358,9 @@ def test_slot_fields_wrapped():
     assert len(result.segments) > 0
 
 
-# Test 14: round-trip: serialize(render(component)) == output_string
+# Test 14: round-trip: serialize(render_level(component)) == output_string
 def test_roundtrip_serialize():
-    """round-trip: serialize(render(component)) == output_string."""
+    """round-trip: serialize(render_level(component)) == output_string."""
 
     class RoundtripComp(BaseComponent):
         title: str = "Test"
@@ -377,7 +377,7 @@ def test_roundtrip_serialize():
 
     session = RenderSession(template_dir="tests/templates")
     component = RoundtripComp()
-    result = render(component, session)
+    result = render_level(component, session)
 
     # Serialize segments back to string
     def serialize_rendered_level(rendered: RenderedLevel) -> str:
@@ -426,7 +426,7 @@ def test_minimal_descriptor():
 
     session = RenderSession(template_dir="tests/templates")
     component = MinimalComp()
-    result = render(component, session)
+    result = render_level(component, session)
 
     # Should produce valid RenderedLevel even with minimal descriptor
     assert isinstance(result, RenderedLevel)
@@ -470,7 +470,7 @@ def test_performance_100plus_fields():
     # Render and measure time
     start = time.time()
     for _ in range(100):  # Render multiple times to measure performance
-        result = render(component, session)
+        result = render_level(component, session)
     elapsed = time.time() - start
 
     # Should complete in reasonable time (< 100ms for 100 renders)
