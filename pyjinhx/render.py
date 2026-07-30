@@ -1,7 +1,7 @@
 """Render module: Jinja Environment initialization with project-root detection."""
 
 from pathlib import Path
-from typing import Optional
+
 from jinja2 import Environment, FileSystemLoader
 
 
@@ -15,7 +15,7 @@ MARKER_LIST = [
 ]
 
 
-def _detect_project_root(start_dir: Optional[str | Path] = None) -> Path:
+def _detect_project_root(start_dir: str | Path | None = None) -> Path:
     """
     Walk upward from start_dir probing marker list in order.
 
@@ -68,7 +68,7 @@ def _get_or_create_default_environment() -> Environment:
 
 
 # Initialize default environment at module import time
-_default_environment: Optional[Environment] = _get_or_create_default_environment()
+_default_environment: Environment | None = _get_or_create_default_environment()
 
 
 def set_default_environment(env: Environment) -> None:
@@ -91,7 +91,7 @@ def set_default_environment(env: Environment) -> None:
     _default_environment = env
 
 
-def get_loader_root(env: Optional[Environment] = None) -> Path:
+def get_loader_root(env: Environment | None = None) -> Path:
     """
     Read the FileSystemLoader root path from an Environment.
 
