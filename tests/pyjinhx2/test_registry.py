@@ -1,5 +1,6 @@
 """Tests for the discovery class registry and its built-then-swap publish."""
 
+import threading
 from pathlib import Path
 
 import pytest
@@ -79,3 +80,51 @@ def test_rebuild_replaces_the_previous_mapping_entirely():
     build_registry(DISCOVERY_DIR, [NestedWidget])
     assert get_class("nested_widget") is NestedWidget
     assert get_class("alpha_card") is None
+
+
+def test_failed_walk_leaves_the_published_registry_untouched(tmp_path):
+    build_registry(DISCOVERY_DIR, [AlphaCard])
+    with pytest.raises(NotADirectoryError):
+        build_registry(tmp_path / "nope", [NestedWidget])
+    assert get_class("alpha_card") is AlphaCard
+    assert get_class("nested_widget") is None
+
+
+def test_publish_is_a_single_rebind_not_incremental_mutation():
+    """A reader that grabbed the live mapping before a rebuild keeps seeing the
+    complete old mapping — the build never writes into the published dict."""
+    build_registry(DISCOVERY_DIR, [AlphaCard])
+    before = discovery._registry.mapping
+    build_registry(DISCOVERY_DIR, [NestedWidget])
+    assert before == {"alpha_card": AlphaCard}
+    assert discovery._registry.mapping is not before
+
+
+def test_concurrent_builds_never_expose_a_partial_mapping():
+    complete = ({"alpha_card": AlphaCard}, {"nested_widget": NestedWidget})
+    observed: list[dict[str, type]] = []
+    stop = threading.Event()
+
+    def read():
+        while not stop.is_set():
+            observed.append(discovery._registry.mapping)
+
+    def build(classes):
+        for _ in range(20):
+            build_registry(DISCOVERY_DIR, classes)
+
+    reader = threading.Thread(target=read)
+    reader.start()
+    builders = [
+        threading.Thread(target=build, args=([AlphaCard],)),
+        threading.Thread(target=build, args=([NestedWidget],)),
+    ]
+    for thread in builders:
+        thread.start()
+    for thread in builders:
+        thread.join()
+    stop.set()
+    reader.join()
+
+    assert observed
+    assert all(mapping in ({},) + complete for mapping in observed)
