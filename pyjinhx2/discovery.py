@@ -1,6 +1,7 @@
 """Discovery — the startup walk that finds .pjx component templates on disk."""
 
 import re
+import threading
 from collections.abc import Iterator
 from pathlib import Path
 from typing import NamedTuple
@@ -43,3 +44,32 @@ def walk_templates(template_dir: Path | str) -> Iterator[TemplateCandidate]:
     for path in sorted(root.rglob("*.pjx")):
         if path.is_file() and _is_candidate_name(path.stem):
             yield TemplateCandidate(path.stem, path)
+
+
+class _Registry:
+    """Holder for the published tag -> class mapping.
+
+    A holder rather than a bare module-level dict: the mapping is replaced
+    wholesale on every build, so what module state actually means here is "one
+    rebindable reference", and keeping it off the module namespace makes it
+    obvious the walk above never touches it.
+    """
+
+    __slots__ = ("mapping",)
+
+    def __init__(self) -> None:
+        self.mapping: dict[str, type] = {}
+
+
+_registry = _Registry()
+_registry_lock = threading.Lock()
+
+
+def get_class(tag_name: str) -> type | None:
+    """The component class registered for ``tag_name``, or ``None``.
+
+    Never raises on a miss: the renderer treats an unknown tag as ordinary
+    markup and leaves it verbatim, so a miss is an answer, not an error.
+    Unlocked — the published mapping is read-only once swapped in.
+    """
+    return _registry.mapping.get(tag_name)
