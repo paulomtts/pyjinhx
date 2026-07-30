@@ -23,7 +23,10 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
     "__init__": frozenset(),
     "component": frozenset({"pyjinhx2.descriptor"}),
     "descriptor": frozenset(),
-    "discovery": frozenset(),
+    # discovery keys the registry by each class's own resolved tag, so it reads
+    # component.py's snake-case helper rather than inventing a second naming
+    # scheme that could drift from the one templates are probed with.
+    "discovery": frozenset({"pyjinhx2.component"}),
     "markers": frozenset({"pyjinhx2.component"}),
     "render": frozenset(
         {"pyjinhx2.component", "pyjinhx2.segments", "pyjinhx2.session"}
