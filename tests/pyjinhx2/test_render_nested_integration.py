@@ -56,6 +56,7 @@ def registry():
     discovery._registry.mapping = {
         "pjx_nested_leaf": PJXNestedLeaf,
         "pjx_nested_mid": PJXNestedMid,
+        "pjx_mixed_mid": PJXMixedMid,
     }
     yield
     discovery._registry.mapping = {}
@@ -126,3 +127,47 @@ def test_sibling_branches_do_not_share_segment_lists_at_any_depth(session):
     assert isinstance(right_leaf, RenderedLevel)
     assert left_leaf is not right_leaf
     assert left_leaf.segments is not right_leaf.segments
+
+
+class PJXMixedMid(BaseComponent):
+    label: str = ""
+
+
+PJXMixedMid.__pjx_descriptor__ = descriptor_for(PJXMixedMid, "nested_mixed_mid.html")
+
+
+class PJXMixedRoot(BaseComponent):
+    pass
+
+
+PJXMixedRoot.__pjx_descriptor__ = descriptor_for(PJXMixedRoot, "nested_mixed_root.html")
+
+
+def test_registered_and_unregistered_tags_coexist_at_the_root(session):
+    level = render_level(PJXMixedRoot(), session)
+    assert isinstance(level.segments[1], RenderedLevel)
+    assert level.segments[2] == '<WebThing id="top"/>'
+
+
+def test_unregistered_tag_inside_a_child_level_also_passes_through(session):
+    level = render_level(PJXMixedRoot(), session)
+    mid = level.segments[1]
+    assert isinstance(mid, RenderedLevel)
+    assert isinstance(mid.segments[2], RenderedLevel)
+    assert mid.segments[3] == '<OtherThing data-k="v"/>'
+
+
+def test_mixed_tree_serializes_known_expanded_and_unknown_verbatim(session):
+    assert render(PJXMixedRoot(), session) == (
+        '<div class="root"><span class="mid">m<em class="leaf">deep</em>'
+        '<OtherThing data-k="v"/><OtherThing note="a &amp; b"/></span>'
+        '<WebThing id="top"/></div>'
+    )
+
+
+def test_passthrough_reescapes_attr_values(session):
+    """Attrs arrive unescaped from the parse, so passthrough must re-escape them."""
+    level = render_level(PJXMixedRoot(), session)
+    mid = level.segments[1]
+    assert isinstance(mid, RenderedLevel)
+    assert mid.segments[4] == '<OtherThing note="a &amp; b"/>'
