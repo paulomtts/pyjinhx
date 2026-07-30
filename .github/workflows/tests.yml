@@ -27,5 +27,8 @@ jobs:
     - name: Install chromium for reactivity tests
       run: uv run playwright install --with-deps chromium
 
+    - name: Run pyjinhx2 tests
+      run: uv run pytest tests/pyjinhx2/
+
     - name: Run tests
-      run: uv run pytest tests/ 
+      run: uv run pytest tests/
