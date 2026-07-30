@@ -179,3 +179,47 @@ def test_json_coerced_list_dict_fields():
     context = build_context(panel, descriptor)
 
     assert context["items"] == [1, 2, 3]
+
+
+def test_auto_id_in_context():
+    """Auto-generated id is present in context."""
+
+    class SomeComponent(BaseComponent):
+        title: str = "test"
+
+    comp = SomeComponent(id="custom-id")
+    descriptor = ClassDescriptor(
+        template_path=Path("some.pjx"),
+        slot_fields=frozenset(),
+        css_paths=(),
+        js_paths=(),
+        strict=True,
+        provenance={},
+    )
+
+    context = build_context(comp, descriptor)
+
+    assert context["id"] == "custom-id"
+
+
+def test_empty_component():
+    """Empty component (only id) renders context correctly."""
+
+    class Empty(BaseComponent):
+        pass
+
+    empty = Empty()
+    descriptor = ClassDescriptor(
+        template_path=Path("empty.pjx"),
+        slot_fields=frozenset(),
+        css_paths=(),
+        js_paths=(),
+        strict=True,
+        provenance={},
+    )
+
+    context = build_context(empty, descriptor)
+
+    # Should have at least the auto-generated id
+    assert "id" in context
+    assert context["id"].startswith("pjx-")
