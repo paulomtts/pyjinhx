@@ -1,0 +1,54 @@
+"""L0.4.8 integration tests — full render_level() -> stamp_root_attrs() ->
+serialize() pipeline, exercised through the public API only (issue #287,
+final subtask of #247).
+
+Note: the plan for this issue described the pipeline as
+`render() -> stamp_root_attrs() -> serialize()`, but `render()` already
+returns a finished string (it calls `render_level()` then `serialize()`
+internally) — passing its output to `stamp_root_attrs()` (which needs a
+`RenderedLevel`) would fail immediately. These tests use `render_level()`
+instead, which is the actual `RenderedLevel`-returning step in the pipeline
+and the same function `test_render_level.py` exercises.
+
+No production code changes are expected here (see docs/superpowers/plans/
+2026-07-30-issue-287.md's Global Constraints for the one known, deliberate
+wiring gap this file works around rather than fixes).
+"""
+
+from pathlib import Path
+
+from pyjinhx2.component import BaseComponent
+from pyjinhx2.descriptor import ClassDescriptor
+from pyjinhx2.render import render_level
+from pyjinhx2.root_attrs import stamp_root_attrs
+from pyjinhx2.segments import serialize
+from pyjinhx2.session import RenderSession
+
+
+def test_childless_end_to_end_pipeline():
+    """render -> stamp_root_attrs -> serialize on a childless component yields
+    one string containing exactly one root element matching the template."""
+
+    class CardComp(BaseComponent):
+        title: str = "Hello"
+
+    descriptor = ClassDescriptor(
+        template_path=Path("integration_childless.html"),
+        slot_fields=frozenset(),
+        css_paths=(),
+        js_paths=(),
+        strict=True,
+        provenance={"template": CardComp},
+    )
+    CardComp.__pjx_descriptor__ = descriptor
+
+    session = RenderSession(template_dir="tests/templates")
+    component = CardComp()
+
+    level = render_level(component, session)
+    stamp_root_attrs(level, {})  # no-op stamp; still exercises the call
+    output = serialize(level)
+
+    assert output == '<article class="card">Hello</article>'
+    assert output.count("<article") == 1
+    assert output.count("</article>") == 1
