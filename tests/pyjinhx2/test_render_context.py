@@ -77,3 +77,27 @@ def test_slot_field_wrapping_component_valued():
     # content should be wrapped, not a string
     assert isinstance(context["content"], ComponentNode)
     assert context["content"].component is inner
+
+
+def test_slot_field_passthrough_string_valued():
+    """String-valued Slot fields pass as-is (will be wrapped in Markup by L1)."""
+
+    class CardWithHTML(BaseComponent):
+        title: str
+        html_content: Slot
+
+    card = CardWithHTML(title="x", html_content="<p>Safe markup</p>")
+    descriptor = ClassDescriptor(
+        template_path=Path("card.pjx"),
+        slot_fields=frozenset(["html_content"]),
+        css_paths=(),
+        js_paths=(),
+        strict=True,
+        provenance={},
+    )
+
+    context = build_context(card, descriptor)
+
+    # String-valued slot should pass through as a string
+    assert isinstance(context["html_content"], str)
+    assert context["html_content"] == "<p>Safe markup</p>"
