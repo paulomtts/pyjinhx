@@ -12,6 +12,7 @@ import jinja2
 
 from pyjinhx2.component import BaseComponent, PjxSlot, _pascal_to_snake
 from pyjinhx2.discovery import get_class
+from pyjinhx2.render_context import build_context
 from pyjinhx2.segments import ChildRef, RenderedLevel, VerbatimParser, serialize
 from pyjinhx2.session import RenderSession
 
@@ -141,11 +142,9 @@ def render_level(
     # Phase 1: Descriptor read
     descriptor = component.__class__.__pjx_descriptor__
 
-    # Phase 2: Context build
-    context = {}
-    for field_name in component.__class__.model_fields:
-        field_value = getattr(component, field_name)
-        context[field_name] = field_value
+    # Phase 2: Context build — component-valued slots arrive as ComponentNode,
+    # string-valued slots stay plain strings.
+    context = build_context(component, descriptor)
 
     # Phase 3: Jinja render with autoescape ON
     jinja_env = session.jinja_env

@@ -34,6 +34,8 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
         {
             "pyjinhx2.component",
             "pyjinhx2.discovery",
+            "pyjinhx2.markers",
+            "pyjinhx2.render_context",
             "pyjinhx2.segments",
             "pyjinhx2.session",
         }
@@ -41,7 +43,7 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
     "render_context": frozenset({"pyjinhx2.markers", "pyjinhx2.component"}),
     "root_attrs": frozenset({"pyjinhx2.segments"}),
     "segments": frozenset(),
-    "session": frozenset(),
+    "session": frozenset({"pyjinhx2.markers"}),
 }
 
 

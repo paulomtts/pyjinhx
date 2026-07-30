@@ -152,3 +152,50 @@ class TestSlotFieldValidation:
         raw = 'he said "hi" and it\'s fine'
         assert _Demo(body=raw).body == raw
         assert type(_Demo(body=raw).body) is str
+
+
+class TestSlotTruthinessInTemplates:
+    """`{% if slot %}` under the real render pipeline (ADR 0003)."""
+
+    @staticmethod
+    def _describe(cls, template, slots):
+        from pathlib import Path
+
+        from pyjinhx2.descriptor import ClassDescriptor
+
+        cls.__pjx_descriptor__ = ClassDescriptor(
+            template_path=Path(template),
+            slot_fields=frozenset(slots),
+            css_paths=(),
+            js_paths=(),
+            strict=True,
+            provenance={"template": cls},
+        )
+        return cls
+
+    def test_component_valued_slot_takes_the_truthy_branch(self):
+        from pyjinhx2.render import render
+        from pyjinhx2.session import RenderSession
+
+        class Leaf(BaseComponent):
+            title: str = "Leaf"
+
+        class Box(BaseComponent):
+            content: Slot = ""
+
+        self._describe(Leaf, "div.html", ())
+        self._describe(Box, "slot_if.html", {"content"})
+
+        session = RenderSession(template_dir="tests/templates")
+        assert "HAS" in render(Box(content=Leaf()), session)
+
+    def test_empty_string_slot_takes_the_falsy_branch(self):
+        from pyjinhx2.render import render
+        from pyjinhx2.session import RenderSession
+
+        class Box2(BaseComponent):
+            content: Slot = ""
+
+        self._describe(Box2, "slot_if.html", {"content"})
+        session = RenderSession(template_dir="tests/templates")
+        assert "NONE" in render(Box2(content=""), session)
