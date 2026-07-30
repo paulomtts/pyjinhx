@@ -5,7 +5,7 @@ Descriptor read → context build → Jinja render → single parse → Rendered
 
 from typing import TYPE_CHECKING
 from pyjinhx2.component import BaseComponent
-from pyjinhx2.segments import RenderedLevel
+from pyjinhx2.segments import RenderedLevel, VerbatimParser
 
 if TYPE_CHECKING:
     from pyjinhx2.session import RenderSession
@@ -29,5 +29,28 @@ def render(component: BaseComponent, session: "RenderSession") -> RenderedLevel:
     # Phase 1: Descriptor read
     descriptor = component.__class__.__pjx_descriptor__
 
-    # Placeholder for phases 2-4
-    raise NotImplementedError("render pipeline not yet complete")
+    # Phase 2: Context build
+    context = {}
+    for field_name in component.__class__.model_fields:
+        field_value = getattr(component, field_name)
+        context[field_name] = field_value
+
+    # Phase 3: Jinja render with autoescape ON
+    jinja_env = session.jinja_env
+    template = jinja_env.get_template(str(descriptor.template_path))
+    output_string = template.render(context)
+
+    # Phase 4: Single parse via VerbatimParser
+    parser = VerbatimParser()
+    parser.feed(output_string)
+    parser.close()
+
+    # Validate single-root rule
+    parser.enforce_single_root()
+
+    # Return RenderedLevel
+    return RenderedLevel(
+        segments=parser.segments,
+        root_span=parser.root_span or (0, 0),
+        descriptor=descriptor
+    )
