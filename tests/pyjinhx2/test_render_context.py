@@ -305,3 +305,28 @@ def test_context_builder_does_not_catch_pydantic_errors():
     # This is a documentation test. Pydantic's construction-time validation
     # prevents most bad types from reaching model_dump(). If caller constructs
     # valid component and descriptor, build_context will succeed.
+
+
+def test_component_node_is_always_truthy():
+    """A wrapped component is truthy without any render being forced."""
+
+    class Dummy(BaseComponent):
+        pass
+
+    node = ComponentNode(Dummy())
+    assert bool(node) is True
+
+
+def test_component_node_truthiness_does_not_use_len():
+    """__bool__ must answer directly; len() stays broken (ADR 0003)."""
+
+    class Dummy(BaseComponent):
+        pass
+
+    node = ComponentNode(Dummy())
+    if node:
+        pass
+    with pytest.raises(TypeError):
+        len(node)
+    assert not hasattr(node, "__str__") or type(node).__str__ is object.__str__
+    assert not hasattr(node, "__html__")

@@ -20,5 +20,11 @@ class ComponentNode:
     def __init__(self, component: BaseComponent) -> None:
         self.component = component
 
+    def __bool__(self) -> bool:
+        # Stated explicitly so `{% if slot %}` can never fall through to
+        # __len__ (which must keep raising) or to a stringification that
+        # would force the child's render (ADR 0003).
+        return True
+
     def __repr__(self) -> str:
         return f"ComponentNode({self.component!r})"
