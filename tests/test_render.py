@@ -3,8 +3,8 @@
 import tempfile
 from pathlib import Path
 
-from jinja2 import DictLoader, Environment, FileSystemLoader
 import pytest
+from jinja2 import DictLoader, Environment, FileSystemLoader
 
 from pyjinhx.render import (
     _default_environment,
