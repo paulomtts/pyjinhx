@@ -25,3 +25,27 @@ def test_component_node_marker_identity():
     # Verify len() fails (as Jinja would try)
     with pytest.raises(TypeError):
         len(node)
+
+
+def test_basic_field_passthrough():
+    """Non-slot fields pass to Jinja as-is."""
+
+    class Card(BaseComponent):
+        title: str
+        count: int
+
+    card = Card(title="Hello", count=5)
+    descriptor = ClassDescriptor(
+        template_path=Path("card.pjx"),
+        slot_fields=frozenset(),
+        css_paths=(),
+        js_paths=(),
+        strict=True,
+        provenance={},
+    )
+
+    context = build_context(card, descriptor)
+
+    assert context["title"] == "Hello"
+    assert context["count"] == 5
+    assert "id" in context  # auto-id should be present
