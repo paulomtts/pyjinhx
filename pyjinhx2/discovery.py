@@ -1,4 +1,12 @@
-"""Discovery — the startup walk that finds .pjx component templates on disk."""
+"""Discovery — the startup walk that finds .pjx component templates on disk,
+and the tag -> class registry built from it.
+
+Two halves with different natures. The walk is pure over the filesystem. The
+registry is the process's one mutable name map: assembled complete off to the
+side, published in a single locked rebind, and read-only from then on, so no
+render ever sees a half-built map. Discovery is the only writer; everyone else
+reads through `get_class`, and a miss there is `None`, never an exception.
+"""
 
 import re
 import threading
