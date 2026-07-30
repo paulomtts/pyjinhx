@@ -2,6 +2,7 @@
 import pytest
 from pathlib import Path
 from pydantic import BaseModel
+from jinja2 import Environment, TemplateError
 
 from pyjinhx2.component import BaseComponent, Slot
 from pyjinhx2.descriptor import ClassDescriptor
@@ -223,3 +224,58 @@ def test_empty_component():
     # Should have at least the auto-generated id
     assert "id" in context
     assert context["id"].startswith("pjx-")
+
+
+def test_jinja_filters_on_regular_fields():
+    """Jinja filters work on regular (non-Slot) fields."""
+
+    class Label(BaseComponent):
+        text: str
+
+    label = Label(text="Hello")
+    descriptor = ClassDescriptor(
+        template_path=Path("label.pjx"),
+        slot_fields=frozenset(),
+        css_paths=(),
+        js_paths=(),
+        strict=True,
+        provenance={},
+    )
+
+    context = build_context(label, descriptor)
+
+    # Simulate Jinja filter application
+    env = Environment(autoescape=True)
+    template = env.from_string("{{ text|upper }}")
+    result = template.render(context)
+
+    assert "HELLO" in result
+
+
+def test_component_slot_filter_fails():
+    """Template filter on component Slot fails fast (non-string type)."""
+
+    class Inner(BaseComponent):
+        pass
+
+    class Outer(BaseComponent):
+        content: Slot
+
+    outer = Outer(content=Inner())
+    descriptor = ClassDescriptor(
+        template_path=Path("outer.pjx"),
+        slot_fields=frozenset(["content"]),
+        css_paths=(),
+        js_paths=(),
+        strict=True,
+        provenance={},
+    )
+
+    context = build_context(outer, descriptor)
+
+    # Template filter on component Slot should fail
+    env = Environment(autoescape=True)
+    template = env.from_string("{{ content|length }}")
+
+    with pytest.raises((TemplateError, TypeError)):
+        template.render(context)
