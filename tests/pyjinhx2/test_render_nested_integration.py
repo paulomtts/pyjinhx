@@ -57,6 +57,7 @@ def registry():
         "pjx_nested_leaf": PJXNestedLeaf,
         "pjx_nested_mid": PJXNestedMid,
         "pjx_mixed_mid": PJXMixedMid,
+        "pjx_full_mid": PJXFullMid,
     }
     yield
     discovery._registry.mapping = {}
@@ -210,3 +211,56 @@ def test_loop_generated_tree_serializes_in_source_order(session):
     assert render(PJXLoopRoot(items=["a", "b"]), session) == (
         '<ul class="loop"><em class="leaf">a</em><em class="leaf">b</em></ul>'
     )
+
+
+class PJXFullMid(BaseComponent):
+    item: str = ""
+
+
+PJXFullMid.__pjx_descriptor__ = descriptor_for(PJXFullMid, "nested_full_mid.html")
+
+
+class PJXFullRoot(BaseComponent):
+    rows: list[str] = []
+
+
+PJXFullRoot.__pjx_descriptor__ = descriptor_for(PJXFullRoot, "nested_full_root.html")
+
+
+def test_generated_mixed_three_level_tree_serializes_end_to_end(session):
+    assert render(PJXFullRoot(rows=["x", "y"]), session) == (
+        '<div class="root">'
+        '<section class="mid"><em class="leaf">x</em><Widget row="x"/></section>'
+        '<section class="mid"><em class="leaf">y</em><Widget row="y"/></section>'
+        '<WebThing id="top"/>'
+        "</div>"
+    )
+
+
+def test_generated_mixed_tree_has_no_surviving_childrefs(session):
+    level = render_level(PJXFullRoot(rows=["x", "y"]), session)
+
+    def walk(node: RenderedLevel) -> None:
+        for seg in node.segments:
+            assert not isinstance(seg, ChildRef)
+            if isinstance(seg, RenderedLevel):
+                walk(seg)
+
+    walk(level)
+
+
+def test_generated_mid_levels_each_own_their_generated_leaf(session):
+    level = render_level(PJXFullRoot(rows=["x", "y"]), session)
+    mids = [seg for seg in level.segments if isinstance(seg, RenderedLevel)]
+    assert len(mids) == 2
+    leaves = [
+        seg
+        for mid in mids
+        for seg in mid.segments
+        if isinstance(seg, RenderedLevel)
+    ]
+    assert len(leaves) == 2
+    assert leaves[0] is not leaves[1]
+    assert leaves[0].segments is not leaves[1].segments
+    assert serialize(leaves[0]) == '<em class="leaf">x</em>'
+    assert serialize(leaves[1]) == '<em class="leaf">y</em>'
