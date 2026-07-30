@@ -10,7 +10,7 @@ from typing import cast
 
 import jinja2
 
-from pyjinhx2.component import BaseComponent, _pascal_to_snake
+from pyjinhx2.component import BaseComponent, PjxSlot, _pascal_to_snake
 from pyjinhx2.discovery import get_class
 from pyjinhx2.segments import ChildRef, RenderedLevel, VerbatimParser, serialize
 from pyjinhx2.session import RenderSession
@@ -38,18 +38,81 @@ def _passthrough_markup(ref: ChildRef) -> str:
     return f"<{ref.tag}{attrs}>{ref.inner}</{ref.tag}>"
 
 
-def _fill_children(level: RenderedLevel) -> None:
+def _children_field(cls: type[BaseComponent]) -> str | None:
+    """The declared field a paired tag's body text is assigned to, if any.
+
+    Which fields are slots is a type-level fact frozen in the descriptor; which
+    single one receives nested children is decided here, at expansion time, so
+    a class can carry several raw-HTML slots and still name one target.
+    """
+    fields = getattr(cls, "model_fields", {})
+    marked = [
+        name
+        for name, field in fields.items()
+        if any(isinstance(m, PjxSlot) and m.children for m in field.metadata)
+    ]
+    if len(marked) > 1:
+        raise ValueError(
+            f"{cls.__name__} marks {len(marked)} fields as the children target "
+            f"({', '.join(sorted(marked))}); exactly one field may use Children."
+        )
+    if marked:
+        return marked[0]
+    named = getattr(cls, "_pjx_children_field", None)
+    if isinstance(named, str) and named in fields:
+        return named
+    return None
+
+
+def _instantiate_child(ref: ChildRef, cls: type[BaseComponent]) -> BaseComponent:
+    """Construct ``cls`` from a resolved ChildRef's attrs and body text.
+
+    Construction is the whole coercion step: the class's own validators turn
+    JSON-looking attr strings into lists/dicts/models and fill an omitted id, so
+    nothing here re-implements them and their errors reach the caller unchanged.
+
+    A paired tag's ``inner`` is merged raw, not parsed: it becomes a field value
+    that the child's own template re-emits, so the tags inside it are cut out by
+    the child's own parse and this level still parses exactly once.
+    """
+    kwargs: dict[str, str] = dict(ref.attrs)
+    if ref.inner is not None and ref.inner.strip():
+        field = _children_field(cls)
+        if field is None:
+            raise ValueError(
+                f"<{ref.tag}> was given body text, but {cls.__name__} names no "
+                f"children field; mark one field Children or write the tag "
+                f"self-closing."
+            )
+        if field in kwargs:
+            raise ValueError(
+                f"<{ref.tag}> received both body text and a {field!r} attribute; "
+                f"supply one."
+            )
+        kwargs[field] = ref.inner
+    return cls(**kwargs)
+
+
+def _fill_children(level: RenderedLevel) -> list[tuple[int, BaseComponent]]:
     """Resolve each ChildRef in ``level`` against the class registry, in place.
 
     Tags no class claims stop being holes here and go back to being markup.
-    Tags that do resolve are left as ChildRefs for the instantiate-and-recurse
-    step to consume, so this pass only ever decides which holes are real.
+    Tags that do resolve are instantiated once, in document order, and returned
+    with their segment index so the recursive step can render each one and
+    splice it back where its ChildRef still sits.
     """
+    pending: list[tuple[int, BaseComponent]] = []
     for index, segment in enumerate(level.segments):
         if not isinstance(segment, ChildRef):
             continue
-        if get_class(_pascal_to_snake(segment.tag)) is None:
+        cls = get_class(_pascal_to_snake(segment.tag))
+        if cls is None:
             level.segments[index] = _passthrough_markup(segment)
+            continue
+        pending.append(
+            (index, _instantiate_child(segment, cast(type[BaseComponent], cls)))
+        )
+    return pending
 
 
 def render_level(component: BaseComponent, session: "RenderSession") -> RenderedLevel:
@@ -105,8 +168,8 @@ def render_level(component: BaseComponent, session: "RenderSession") -> Rendered
         descriptor=descriptor,
     )
     # Unregistered tags stop being holes here, one pass per level (ADR 0005);
-    # the ones that do resolve stay ChildRefs for the recursive step.
-    _fill_children(level)
+    # the ones that do resolve become instances the recursive step consumes.
+    _ = _fill_children(level)
     return level
 
 
