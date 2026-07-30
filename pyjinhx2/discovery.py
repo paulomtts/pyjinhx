@@ -2,9 +2,11 @@
 
 import re
 import threading
-from collections.abc import Iterator
+from collections.abc import Iterable, Iterator, Mapping
 from pathlib import Path
 from typing import NamedTuple
+
+from pyjinhx2.component import _pascal_to_snake
 
 
 class TemplateCandidate(NamedTuple):
@@ -63,6 +65,49 @@ class _Registry:
 
 _registry = _Registry()
 _registry_lock = threading.Lock()
+
+
+def _tag_for(cls: type) -> str:
+    """The tag name ``cls`` answers to — the same snake_case name its template
+    is probed under, so a class and its file can never disagree."""
+    return _pascal_to_snake(cls.__name__)
+
+
+def _resolve_tag_owner(tag_name: str, by_tag: Mapping[str, list[type]]) -> type | None:
+    """Which class, if any, claims ``tag_name``.
+
+    The single decision point for "who owns this tag", kept apart from the
+    swap mechanism so richer answers (duplicate arbitration, explicit
+    replacement) can change this without touching how the result is published.
+    ``by_tag`` carries every class that resolved to ``tag_name``, not just one,
+    so a future duplicate-tag warning has the full collision to inspect rather
+    than one this function's caller already discarded. Plain matching here:
+    last class in the list wins, mirroring dict-building order. A tag no class
+    claims is not an error: an orphan template is a normal thing to find on
+    disk.
+    """
+    candidates = by_tag.get(tag_name)
+    return candidates[-1] if candidates else None
+
+
+def build_registry(template_dir: Path | str, classes: Iterable[type]) -> None:
+    """Walk ``template_dir`` and publish a fresh tag -> class registry.
+
+    The new mapping is assembled complete in a local before anything is
+    published, so a reader sees either the whole previous registry or the whole
+    new one. Raises ``NotADirectoryError`` (from the walk) before any publish
+    happens, leaving the live registry untouched.
+    """
+    by_tag: dict[str, list[type]] = {}
+    for cls in classes:
+        by_tag.setdefault(_tag_for(cls), []).append(cls)
+    fresh: dict[str, type] = {}
+    for candidate in walk_templates(template_dir):
+        owner = _resolve_tag_owner(candidate.tag_name, by_tag)
+        if owner is not None:
+            fresh[candidate.tag_name] = owner
+    with _registry_lock:
+        _registry.mapping = fresh
 
 
 def get_class(tag_name: str) -> type | None:
