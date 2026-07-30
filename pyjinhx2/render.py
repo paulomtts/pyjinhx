@@ -10,7 +10,7 @@ from typing import cast
 
 import jinja2
 
-from pyjinhx2.component import BaseComponent, _pascal_to_snake
+from pyjinhx2.component import BaseComponent, PjxSlot, _pascal_to_snake
 from pyjinhx2.discovery import get_class
 from pyjinhx2.segments import ChildRef, RenderedLevel, VerbatimParser, serialize
 from pyjinhx2.session import RenderSession
@@ -36,6 +36,32 @@ def _passthrough_markup(ref: ChildRef) -> str:
     if ref.inner is None:
         return f"<{ref.tag}{attrs}/>"
     return f"<{ref.tag}{attrs}>{ref.inner}</{ref.tag}>"
+
+
+def _children_field(cls: type[BaseComponent]) -> str | None:
+    """The declared field a paired tag's body text is assigned to, if any.
+
+    Which fields are slots is a type-level fact frozen in the descriptor; which
+    single one receives nested children is decided here, at expansion time, so
+    a class can carry several raw-HTML slots and still name one target.
+    """
+    fields = getattr(cls, "model_fields", {})
+    marked = [
+        name
+        for name, field in fields.items()
+        if any(isinstance(m, PjxSlot) and m.children for m in field.metadata)
+    ]
+    if len(marked) > 1:
+        raise ValueError(
+            f"{cls.__name__} marks {len(marked)} fields as the children target "
+            f"({', '.join(sorted(marked))}); exactly one field may use Children."
+        )
+    if marked:
+        return marked[0]
+    named = getattr(cls, "_pjx_children_field", None)
+    if isinstance(named, str) and named in fields:
+        return named
+    return None
 
 
 def _fill_children(level: RenderedLevel) -> None:
