@@ -143,7 +143,6 @@ def test_fill_children_returns_instances_for_resolved_tags(_registered):
     assert index == 1
     assert isinstance(instance, Scalars)
     assert instance.label == "Save"
-    assert level.segments[1] is level.segments[1]
     assert isinstance(level.segments[1], ChildRef)
 
 

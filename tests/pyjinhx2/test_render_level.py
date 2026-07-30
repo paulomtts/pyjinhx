@@ -3,7 +3,7 @@ from pathlib import Path
 import pytest
 
 from pyjinhx2 import discovery
-from pyjinhx2.component import BaseComponent, _pascal_to_snake
+from pyjinhx2.component import BaseComponent, Children, _pascal_to_snake
 from pyjinhx2.descriptor import ClassDescriptor
 from pyjinhx2.render import render_level
 from pyjinhx2.segments import ChildRef, RenderedLevel
@@ -15,7 +15,7 @@ class _PJXButton(BaseComponent):
 
 
 class _PJXCard(BaseComponent):
-    pass
+    body: Children = ""
 
 
 class _PJXIcon(BaseComponent):

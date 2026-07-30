@@ -66,7 +66,7 @@ def test_unresolved_tag_becomes_passthrough_string():
 
 def test_resolved_tag_is_left_as_a_childref():
     discovery._registry.mapping = {"pjx_button": PJXButton}
-    ref = ChildRef(tag="PJXButton", attrs={"label": "ok"}, inner=None)
+    ref = ChildRef(tag="PJXButton", attrs={}, inner=None)
     lvl = level(ref)
     _fill_children(lvl)
     assert lvl.segments == [ref]
