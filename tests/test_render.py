@@ -2,8 +2,8 @@
 
 import tempfile
 from pathlib import Path
-from jinja2 import Environment, FileSystemLoader, DictLoader
 
+from jinja2 import DictLoader, Environment, FileSystemLoader
 import pytest
 
 from pyjinhx.render import (
