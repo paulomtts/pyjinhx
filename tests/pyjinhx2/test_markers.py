@@ -95,7 +95,7 @@ def test_membership_raises():
     node = make_node()
 
     with pytest.raises(TypeError, match=r"`in` is not supported"):
-        "x" in node
+        assert "x" in node
 
 
 def test_iteration_raises():
@@ -111,7 +111,7 @@ def test_equality_raises():
     node = make_node()
 
     with pytest.raises(TypeError, match=r"`==` is not supported"):
-        node == "x"
+        _ = node == "x"
 
 
 def test_inequality_raises():
@@ -119,7 +119,7 @@ def test_inequality_raises():
     node = make_node()
 
     with pytest.raises(TypeError, match=r"`!=` is not supported"):
-        node != "x"
+        _ = node != "x"
 
 
 @pytest.mark.parametrize(
@@ -146,7 +146,6 @@ def test_identity_still_works():
     node = make_node()
     other = make_node()
 
-    assert node is node
     assert node is not other
 
 

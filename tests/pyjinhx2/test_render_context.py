@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import ClassVar
 
 import pytest
-from jinja2 import Environment, TemplateError
+from jinja2 import Environment
 from pydantic import BaseModel, ValidationError
 
 from pyjinhx2.component import BaseComponent, Slot
@@ -260,33 +260,125 @@ def test_jinja_filters_on_regular_fields():
     assert "HELLO" in result
 
 
-def test_component_slot_filter_fails():
-    """Template filter on component Slot fails fast (non-string type)."""
+@pytest.mark.parametrize(
+    "source",
+    [
+        "{{ content|length }}",
+        "{{ content[0:3] }}",
+        "{{ 'x' in content }}",
+        "{{ content == 'x' }}",
+    ],
+)
+def test_forbidden_operations_fail_through_jinja(source):
+    """Every forbidden op raises the opacity TypeError via a real render."""
 
     class Inner(BaseComponent):
         pass
 
-    class Outer(BaseComponent):
+    class Card(BaseComponent):
         content: Slot
 
-    outer = Outer(content=Inner())
+    card = Card(content=Inner())
     descriptor = ClassDescriptor(
-        template_path=Path("outer.pjx"),
+        template_path=Path("card.pjx"),
         slot_fields=frozenset(["content"]),
         css_paths=(),
         js_paths=(),
         strict=True,
         provenance={},
     )
+    context = build_context(card, descriptor)
 
-    context = build_context(outer, descriptor)
-
-    # Template filter on component Slot should fail
     env = Environment(autoescape=True)
-    template = env.from_string("{{ content|length }}")
 
-    with pytest.raises((TemplateError, TypeError)):
+    with pytest.raises(TypeError) as excinfo:
+        template = env.from_string(source)
         template.render(context)
+
+    assert "Card (template: card.pjx): slot 'content'" in str(excinfo.value)
+
+
+@pytest.mark.parametrize(
+    "source", ["{{ content|striptags }}", "{{ content|trim }}", "{{ content|upper }}"]
+)
+def test_str_routed_filters_do_not_raise(source):
+    """`|striptags`/`|trim`/`|upper` call str() first, so they render __str__'s
+    output instead of raising. This is a documented gap (see PR description),
+    not a bug: the ADR's opacity guarantee is delivered by raising from the
+    dunder each operation actually reaches, and these three filters never
+    reach one. Locking this in as a regression test rather than a TODO.
+    """
+
+    class Inner(BaseComponent):
+        pass
+
+    class Card(BaseComponent):
+        content: Slot
+
+    card = Card(content=Inner())
+    descriptor = ClassDescriptor(
+        template_path=Path("card.pjx"),
+        slot_fields=frozenset(["content"]),
+        css_paths=(),
+        js_paths=(),
+        strict=True,
+        provenance={},
+    )
+    context = build_context(card, descriptor)
+
+    env = Environment(autoescape=True)
+    # Must not raise; exact output is __str__'s business, not this test's.
+    env.from_string(source).render(context)
+
+
+def test_string_slot_is_unaffected_by_opacity():
+    """A plain-str Slot keeps working with string filters and slicing."""
+
+    class Note(BaseComponent):
+        text_field: Slot
+
+    note = Note(text_field="hello world")
+    descriptor = ClassDescriptor(
+        template_path=Path("note.pjx"),
+        slot_fields=frozenset(["text_field"]),
+        css_paths=(),
+        js_paths=(),
+        strict=True,
+        provenance={},
+    )
+    context = build_context(note, descriptor)
+
+    env = Environment(autoescape=True)
+
+    assert env.from_string("{{ text_field|length }}").render(context) == "11"
+    assert env.from_string("{{ text_field[0:5] }}").render(context) == "hello"
+
+
+def test_interpolation_and_truthiness_still_work():
+    """`{{ content }}` and `{% if content %}` remain the two allowed forms."""
+
+    class Inner(BaseComponent):
+        pass
+
+    class Card(BaseComponent):
+        content: Slot
+
+    card = Card(content=Inner())
+    descriptor = ClassDescriptor(
+        template_path=Path("card.pjx"),
+        slot_fields=frozenset(["content"]),
+        css_paths=(),
+        js_paths=(),
+        strict=True,
+        provenance={},
+    )
+    context = build_context(card, descriptor)
+
+    env = Environment(autoescape=True)
+
+    assert env.from_string("{% if content %}yes{% endif %}").render(context) == "yes"
+    # Interpolation must not raise; its exact output is L1 child-expansion work.
+    env.from_string("{{ content }}").render(context)
 
 
 def test_strict_component_no_extra_keys():
