@@ -20,7 +20,12 @@ def test_component_node_marker_identity():
         pass
 
     comp = DummyComponent()
-    node = ComponentNode(comp)
+    node = ComponentNode(
+        comp,
+        owner_name="DummyComponent",
+        owner_template=Path("dummy.pjx"),
+        field_name="content",
+    )
 
     # Verify it's not a string
     assert not isinstance(node, str)

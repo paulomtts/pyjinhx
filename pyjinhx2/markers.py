@@ -7,6 +7,7 @@ import uuid
 from collections.abc import Iterator
 from contextlib import contextmanager
 from contextvars import ContextVar
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -16,14 +17,34 @@ if TYPE_CHECKING:
 class ComponentNode:
     """Opaque marker wrapping a component-valued Slot field.
 
-    Not a string, so Jinja's string filters (|length, |upper, etc.) fail fast.
-    Holds enough info for L1 to skip it during child expansion.
+    Not a string, so Jinja filters routed through a dunder (e.g. |length) fail
+    fast. Filters that stringify first (|upper, |trim, |striptags) fall
+    through to __str__ instead - a documented gap, see ADR 0003 / #368 PR
+    notes. Holds enough info for L1 to skip it during child expansion, and
+    enough about the component that declared the slot to name it in an error.
+
+    ``owner_name``/``owner_template``/``field_name`` default to placeholders
+    so call sites that only care about the wrapped component (e.g. token-table
+    plumbing tests) don't need to supply owner identity they don't have.
     """
 
-    __slots__ = ("component",)
+    __slots__ = ("component", "owner_name", "owner_template", "field_name")
 
-    def __init__(self, component: BaseComponent) -> None:
+    # Defining __eq__ blanks __hash__; restore object identity hashing so the
+    # node stays usable as a dict key even though comparisons are forbidden.
+    __hash__ = object.__hash__
+
+    def __init__(
+        self,
+        component: BaseComponent,
+        owner_name: str = "<unknown>",
+        owner_template: Path | None = None,
+        field_name: str = "<unknown>",
+    ) -> None:
         self.component = component
+        self.owner_name = owner_name
+        self.owner_template = owner_template
+        self.field_name = field_name
 
     def __bool__(self) -> bool:
         # Stated explicitly so `{% if slot %}` can never fall through to
