@@ -68,6 +68,7 @@ def test_resolved_childref_is_replaced_by_a_rendered_level(session):
 def test_spliced_child_carries_its_own_rendered_segments(session):
     level = render_level(PJXParent(), session)
     child = level.segments[1]
+    assert isinstance(child, RenderedLevel)
     assert serialize(child) == '<span class="child">a</span>'
 
 
