@@ -535,7 +535,9 @@ def test_missing_template_preserves_exception_type():
         assert False, "expected jinja2.TemplateNotFound"
     except jinja2.TemplateNotFound as err:
         assert isinstance(err, jinja2.TemplateNotFound)
-        assert err.__cause__ is not None, "original error must be chained via `from err`"
+        assert err.__cause__ is not None, (
+            "original error must be chained via `from err`"
+        )
 
 
 # Test 19: Zero-root template → ValueError names component, path, and original detail
