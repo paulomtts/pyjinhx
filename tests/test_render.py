@@ -67,7 +67,14 @@ class TestAutoDetectMarkers:
 
     def test_marker_probing_all_six_markers(self):
         """Verify each marker in the list is recognized."""
-        markers = ["pyproject.toml", "main.py", ".git", ".gitignore", "package.json", "uv.lock"]
+        markers = [
+            "pyproject.toml",
+            "main.py",
+            ".git",
+            ".gitignore",
+            "package.json",
+            "uv.lock",
+        ]
         for marker in markers:
             with tempfile.TemporaryDirectory() as tmpdir:
                 root = Path(tmpdir)
@@ -147,5 +154,6 @@ class TestIntegration:
 
             # Attempting to render non-existent template should raise TemplateNotFound
             from jinja2 import TemplateNotFound
+
             with pytest.raises(TemplateNotFound):
                 custom_env.get_template("nonexistent.html")
