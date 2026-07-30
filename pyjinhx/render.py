@@ -1,8 +1,8 @@
 """Render module: Jinja Environment initialization with project-root detection."""
 
 from pathlib import Path
-from jinja2 import Environment, FileSystemLoader
 
+from jinja2 import Environment, FileSystemLoader
 
 MARKER_LIST = [
     "pyproject.toml",
