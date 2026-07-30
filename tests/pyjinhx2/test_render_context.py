@@ -49,3 +49,31 @@ def test_basic_field_passthrough():
     assert context["title"] == "Hello"
     assert context["count"] == 5
     assert "id" in context  # auto-id should be present
+
+
+def test_slot_field_wrapping_component_valued():
+    """Component-valued Slot fields are wrapped with ComponentNode."""
+
+    class InnerComponent(BaseComponent):
+        name: str = "inner"
+
+    class CardWithContent(BaseComponent):
+        title: str
+        content: Slot
+
+    inner = InnerComponent()
+    card = CardWithContent(title="x", content=inner)
+    descriptor = ClassDescriptor(
+        template_path=Path("card.pjx"),
+        slot_fields=frozenset(["content"]),
+        css_paths=(),
+        js_paths=(),
+        strict=True,
+        provenance={},
+    )
+
+    context = build_context(card, descriptor)
+
+    # content should be wrapped, not a string
+    assert isinstance(context["content"], ComponentNode)
+    assert context["content"].component is inner
