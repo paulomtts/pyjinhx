@@ -31,8 +31,8 @@ def test_component_node_marker_identity():
     assert not isinstance(node, str)
     # Verify it holds the component reference
     assert node.component is comp
-    # Verify len() fails (as Jinja would try)
-    with pytest.raises(TypeError):
+    # Verify len() fails with the targeted opacity error (as Jinja would try)
+    with pytest.raises(TypeError, match=r"slot 'content' holds a rendered component"):
         len(node)  # type: ignore[arg-type]
 
 

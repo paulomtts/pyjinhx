@@ -55,6 +55,28 @@ class ComponentNode:
     def __repr__(self) -> str:
         return f"ComponentNode({self.component!r})"
 
+    def _opaque_error(self, operation: str) -> TypeError:
+        """The error for any operation ADR 0003 forbids on a component slot.
+
+        One builder for every forbidden dunder so the wording cannot drift
+        between them; each caller supplies only the literal syntax the author
+        wrote, so the message reads back what was attempted.
+        """
+        template = self.owner_template if self.owner_template is not None else "<unresolved>"
+        field = self.field_name
+        return TypeError(
+            f"{self.owner_name} (template: {template}): slot '{field}' holds a "
+            f"rendered component, so `{operation}` is not supported on it. "
+            f"Component slots are opaque outside `{{% if %}}` and `{{{{ }}}}`: "
+            f"use `{{% if {field} %}}` to test for presence, or "
+            f"`{{{{ {field} }}}}` to render it directly. String filters, "
+            f"slicing, membership tests, and comparisons are not available on "
+            f"component slots."
+        )
+
+    def __len__(self) -> int:
+        raise self._opaque_error("|length")
+
 
 SLOT_TOKEN_RE = re.compile(r"pjx-slot-[0-9a-f]{32}")
 
