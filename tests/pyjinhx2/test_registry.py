@@ -1,5 +1,6 @@
 """Tests for the discovery class registry and its built-then-swap publish."""
 
+import logging
 import threading
 from pathlib import Path
 
@@ -7,7 +8,7 @@ import pytest
 
 from pyjinhx2 import discovery
 from pyjinhx2.component import BaseComponent
-from pyjinhx2.discovery import build_registry, get_class
+from pyjinhx2.discovery import build_registry, get_class, walk_templates
 
 DISCOVERY_DIR = Path(__file__).parent.parent / "templates" / "discovery"
 
@@ -128,3 +129,106 @@ def test_concurrent_builds_never_expose_a_partial_mapping():
 
     assert observed
     assert all(mapping in ({},) + complete for mapping in observed)
+
+
+class PkgA:
+    class AlphaCard(BaseComponent):
+        pass
+
+
+class PkgB:
+    class AlphaCard(BaseComponent):
+        pass
+
+
+class PkgC:
+    class AlphaCard(BaseComponent):
+        pass
+
+
+def warnings_in(caplog):
+    """The WARNING records captured so far."""
+    return [record for record in caplog.records if record.levelno == logging.WARNING]
+
+
+def test_colliding_tags_warn_naming_the_tag(caplog):
+    with caplog.at_level(logging.WARNING, logger="pyjinhx2"):
+        build_registry(DISCOVERY_DIR, [PkgA.AlphaCard, PkgB.AlphaCard])
+    assert len(warnings_in(caplog)) == 1
+    assert "alpha_card" in warnings_in(caplog)[0].getMessage()
+
+
+def test_collision_warning_names_the_colliding_classes(caplog):
+    with caplog.at_level(logging.WARNING, logger="pyjinhx2"):
+        build_registry(DISCOVERY_DIR, [PkgA.AlphaCard, PkgB.AlphaCard])
+    message = warnings_in(caplog)[0].getMessage()
+    assert f"{__name__}.PkgA.AlphaCard" in message
+    assert f"{__name__}.PkgB.AlphaCard" in message
+
+
+def test_collision_warning_uses_lazy_percent_formatting(caplog):
+    """The record still carries its args, so the message was never pre-formatted."""
+    with caplog.at_level(logging.WARNING, logger="pyjinhx2"):
+        build_registry(DISCOVERY_DIR, [PkgA.AlphaCard, PkgB.AlphaCard])
+    record = warnings_in(caplog)[0]
+    assert record.args
+    assert "%s" in record.msg
+
+
+def test_collision_warns_once_even_though_the_stem_is_on_disk_twice(caplog):
+    """`alpha_card.pjx` exists at the root and under `forms/`; the walk yields
+    both, but the collision is one problem and gets one warning."""
+    found = [c for c in walk_templates(DISCOVERY_DIR) if c.tag_name == "alpha_card"]
+    assert len(found) == 2
+    with caplog.at_level(logging.WARNING, logger="pyjinhx2"):
+        build_registry(DISCOVERY_DIR, [PkgA.AlphaCard, PkgB.AlphaCard])
+    assert len(warnings_in(caplog)) == 1
+
+
+def test_collision_winner_is_last_by_qualified_name(caplog):
+    with caplog.at_level(logging.WARNING, logger="pyjinhx2"):
+        build_registry(DISCOVERY_DIR, [PkgA.AlphaCard, PkgB.AlphaCard])
+    assert get_class("alpha_card") is PkgB.AlphaCard
+
+
+def test_collision_winner_does_not_depend_on_input_order(caplog):
+    with caplog.at_level(logging.WARNING, logger="pyjinhx2"):
+        build_registry(DISCOVERY_DIR, [PkgA.AlphaCard, PkgB.AlphaCard])
+        forward = get_class("alpha_card")
+        build_registry(DISCOVERY_DIR, [PkgB.AlphaCard, PkgA.AlphaCard])
+        backward = get_class("alpha_card")
+    assert forward is backward
+    assert forward is PkgB.AlphaCard
+
+
+def test_three_way_collision_has_one_winner_and_one_warning(caplog):
+    with caplog.at_level(logging.WARNING, logger="pyjinhx2"):
+        build_registry(DISCOVERY_DIR, [PkgC.AlphaCard, PkgA.AlphaCard, PkgB.AlphaCard])
+    assert get_class("alpha_card") is PkgC.AlphaCard
+    assert len(warnings_in(caplog)) == 1
+
+
+def test_three_way_collision_winner_survives_reordering(caplog):
+    with caplog.at_level(logging.WARNING, logger="pyjinhx2"):
+        build_registry(DISCOVERY_DIR, [PkgA.AlphaCard, PkgB.AlphaCard, PkgC.AlphaCard])
+        forward = get_class("alpha_card")
+        build_registry(DISCOVERY_DIR, [PkgC.AlphaCard, PkgB.AlphaCard, PkgA.AlphaCard])
+        backward = get_class("alpha_card")
+    assert forward is backward
+    assert forward is PkgC.AlphaCard
+
+
+def test_distinct_tags_never_warn(caplog):
+    with caplog.at_level(logging.WARNING, logger="pyjinhx2"):
+        build_registry(DISCOVERY_DIR, [AlphaCard, NestedWidget, Unrelated])
+    assert warnings_in(caplog) == []
+    assert get_class("alpha_card") is AlphaCard
+    assert get_class("nested_widget") is NestedWidget
+
+
+def test_orphan_template_never_warns(caplog):
+    """`beta.pjx` sits on disk with no class claiming it — normal, not a collision."""
+    with caplog.at_level(logging.WARNING, logger="pyjinhx2"):
+        build_registry(DISCOVERY_DIR, [AlphaCard])
+    assert warnings_in(caplog) == []
+    assert get_class("beta") is None

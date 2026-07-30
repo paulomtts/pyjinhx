@@ -8,6 +8,7 @@ render ever sees a half-built map. Discovery is the only writer; everyone else
 reads through `get_class`, and a miss there is `None`, never an exception.
 """
 
+import logging
 import re
 import threading
 from collections.abc import Iterable, Iterator, Mapping
@@ -15,6 +16,8 @@ from pathlib import Path
 from typing import NamedTuple
 
 from pyjinhx2.component import _pascal_to_snake
+
+logger = logging.getLogger("pyjinhx2")
 
 
 class TemplateCandidate(NamedTuple):
@@ -81,21 +84,51 @@ def _tag_for(cls: type) -> str:
     return _pascal_to_snake(cls.__name__)
 
 
-def _resolve_tag_owner(tag_name: str, by_tag: Mapping[str, list[type]]) -> type | None:
+def _qualified_name(cls: type) -> str:
+    """``cls``'s fully qualified name — the tie-break key for tag collisions.
+
+    Total and stable across runs, unlike the order a caller happens to hand
+    its classes over in.
+    """
+    return f"{cls.__module__}.{cls.__qualname__}"
+
+
+def _resolve_tag_owner(
+    tag_name: str, by_tag: Mapping[str, list[type]], warned: set[str]
+) -> type | None:
     """Which class, if any, claims ``tag_name``.
 
     The single decision point for "who owns this tag", kept apart from the
-    swap mechanism so richer answers (duplicate arbitration, explicit
-    replacement) can change this without touching how the result is published.
-    ``by_tag`` carries every class that resolved to ``tag_name``, not just one,
-    so a future duplicate-tag warning has the full collision to inspect rather
-    than one this function's caller already discarded. Plain matching here:
-    last class in the list wins, mirroring dict-building order. A tag no class
-    claims is not an error: an orphan template is a normal thing to find on
-    disk.
+    swap mechanism so richer answers (explicit replacement) can change this
+    without touching how the result is published. ``by_tag`` carries every
+    class that resolved to ``tag_name``, not just one, so a collision can be
+    reported in full rather than silently narrowed by the caller. When several
+    classes claim a tag the answer must not depend on the order the caller
+    iterated them in, so candidates are ordered by fully qualified name and the
+    last one alphabetically wins — an arbitrary end of a total order, but the
+    same end on every run. Such a collision is a mistake upstream, so it is
+    warned about; ``warned`` keeps that to one warning per tag per build, since
+    this runs once per walked template and one stem can sit in two
+    directories. A tag no class claims is not an error: an orphan template is
+    a normal thing to find on disk.
     """
     candidates = by_tag.get(tag_name)
-    return candidates[-1] if candidates else None
+    if not candidates:
+        return None
+    if len(candidates) == 1:
+        return candidates[0]
+    ordered = sorted(candidates, key=_qualified_name)
+    winner = ordered[-1]
+    if tag_name not in warned:
+        warned.add(tag_name)
+        logger.warning(
+            "Duplicate component tag %r claimed by %s; %s wins. Rename all but "
+            "one of these classes so each tag has a single owner.",
+            tag_name,
+            ", ".join(_qualified_name(cls) for cls in ordered),
+            _qualified_name(winner),
+        )
+    return winner
 
 
 def build_registry(template_dir: Path | str, classes: Iterable[type]) -> None:
@@ -110,8 +143,9 @@ def build_registry(template_dir: Path | str, classes: Iterable[type]) -> None:
     for cls in classes:
         by_tag.setdefault(_tag_for(cls), []).append(cls)
     fresh: dict[str, type] = {}
+    warned: set[str] = set()
     for candidate in walk_templates(template_dir):
-        owner = _resolve_tag_owner(candidate.tag_name, by_tag)
+        owner = _resolve_tag_owner(candidate.tag_name, by_tag, warned)
         if owner is not None:
             fresh[candidate.tag_name] = owner
     with _registry_lock:
