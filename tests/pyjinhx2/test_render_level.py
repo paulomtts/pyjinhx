@@ -170,7 +170,6 @@ def test_descriptor_frozen_and_read():
     )
     TestComp.__pjx_descriptor__ = descriptor
 
-    session = RenderSession()
     component = TestComp()
 
     # Access descriptor twice to verify it's the same object (frozen, not recomputed)
