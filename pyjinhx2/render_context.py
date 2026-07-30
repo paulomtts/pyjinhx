@@ -2,11 +2,9 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
-if TYPE_CHECKING:
-    from pyjinhx2.component import BaseComponent
-
+from pyjinhx2.component import BaseComponent
 from pyjinhx2.markers import ComponentNode
 
 
@@ -35,9 +33,6 @@ def build_context(
             # Get the actual component value from the component instance
             # (not from the serialized dict)
             actual_value = getattr(component, slot_field_name)
-            # Only wrap BaseComponent instances; strings pass through
-            from pyjinhx2.component import BaseComponent
-
             if isinstance(actual_value, BaseComponent):
                 context[slot_field_name] = ComponentNode(actual_value)
 
