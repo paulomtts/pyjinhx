@@ -10,7 +10,8 @@ from typing import cast
 
 import jinja2
 
-from pyjinhx2.component import BaseComponent
+from pyjinhx2.component import BaseComponent, _pascal_to_snake
+from pyjinhx2.discovery import get_class
 from pyjinhx2.segments import ChildRef, RenderedLevel, VerbatimParser, serialize
 from pyjinhx2.session import RenderSession
 
@@ -34,6 +35,20 @@ def _passthrough_markup(ref: ChildRef) -> str:
     if ref.inner is None:
         return f"<{ref.tag}{attrs}/>"
     return f"<{ref.tag}{attrs}>{ref.inner}</{ref.tag}>"
+
+
+def _fill_children(level: RenderedLevel) -> None:
+    """Resolve each ChildRef in ``level`` against the class registry, in place.
+
+    Tags no class claims stop being holes here and go back to being markup.
+    Tags that do resolve are left as ChildRefs for the instantiate-and-recurse
+    step to consume, so this pass only ever decides which holes are real.
+    """
+    for index, segment in enumerate(level.segments):
+        if not isinstance(segment, ChildRef):
+            continue
+        if get_class(_pascal_to_snake(segment.tag)) is None:
+            level.segments[index] = _passthrough_markup(segment)
 
 
 def render_level(component: BaseComponent, session: "RenderSession") -> RenderedLevel:

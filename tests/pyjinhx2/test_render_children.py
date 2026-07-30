@@ -4,7 +4,7 @@ import pytest
 
 from pyjinhx2 import discovery
 from pyjinhx2.component import BaseComponent
-from pyjinhx2.render import _passthrough_markup
+from pyjinhx2.render import _fill_children, _passthrough_markup
 from pyjinhx2.segments import ChildRef, RenderedLevel
 
 
@@ -53,3 +53,53 @@ def test_passthrough_escapes_quotes_in_attr_values():
 def test_passthrough_keeps_boolean_attr_as_empty_value():
     ref = ChildRef(tag="WebThing", attrs={"disabled": ""}, inner=None)
     assert _passthrough_markup(ref) == '<WebThing disabled=""/>'
+
+
+def test_unresolved_tag_becomes_passthrough_string():
+    lvl = level("<div>", ChildRef(tag="WebThing", attrs={}, inner=None), "</div>")
+    _fill_children(lvl)
+    assert lvl.segments == ["<div>", "<WebThing/>", "</div>"]
+
+
+def test_resolved_tag_is_left_as_a_childref():
+    discovery._registry.mapping = {"pjx_button": PJXButton}
+    ref = ChildRef(tag="PJXButton", attrs={"label": "ok"}, inner=None)
+    lvl = level(ref)
+    _fill_children(lvl)
+    assert lvl.segments == [ref]
+    assert isinstance(lvl.segments[0], ChildRef)
+
+
+def test_pascal_tag_is_converted_to_snake_before_lookup():
+    """The registry is keyed snake_case; skipping the conversion would always miss."""
+    discovery._registry.mapping = {"pjx_button": PJXButton}
+    lvl = level(ChildRef(tag="PJXButton", attrs={}, inner=None))
+    _fill_children(lvl)
+    assert isinstance(lvl.segments[0], ChildRef)
+
+
+def test_tag_whose_snake_form_is_unregistered_still_passes_through():
+    discovery._registry.mapping = {"pjx_button": PJXButton}
+    lvl = level(ChildRef(tag="PJXButtons", attrs={}, inner=None))
+    _fill_children(lvl)
+    assert lvl.segments == ["<PJXButtons/>"]
+
+
+def test_mixed_segments_replace_only_the_miss_and_keep_order():
+    discovery._registry.mapping = {"pjx_button": PJXButton}
+    hit = ChildRef(tag="PJXButton", attrs={}, inner=None)
+    lvl = level("<div>", hit, ChildRef(tag="WebThing", attrs={}, inner="x"), "</div>")
+    _fill_children(lvl)
+    assert lvl.segments == ["<div>", hit, "<WebThing>x</WebThing>", "</div>"]
+
+
+def test_level_without_childrefs_is_untouched():
+    lvl = level("<div>", "hello", "</div>")
+    _fill_children(lvl)
+    assert lvl.segments == ["<div>", "hello", "</div>"]
+
+
+def test_unknown_tag_raises_nothing():
+    lvl = level(ChildRef(tag="TotallyUnknown", attrs={"a": "b"}, inner=None))
+    _fill_children(lvl)
+    assert lvl.segments == ['<TotallyUnknown a="b"/>']

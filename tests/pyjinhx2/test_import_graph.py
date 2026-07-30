@@ -28,8 +28,15 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
     # scheme that could drift from the one templates are probed with.
     "discovery": frozenset({"pyjinhx2.component"}),
     "markers": frozenset({"pyjinhx2.component"}),
+    # render resolves each ChildRef tag against the published class registry;
+    # an unregistered tag is emitted verbatim, so this is a read-only edge.
     "render": frozenset(
-        {"pyjinhx2.component", "pyjinhx2.segments", "pyjinhx2.session"}
+        {
+            "pyjinhx2.component",
+            "pyjinhx2.discovery",
+            "pyjinhx2.segments",
+            "pyjinhx2.session",
+        }
     ),
     "render_context": frozenset({"pyjinhx2.markers", "pyjinhx2.component"}),
     "root_attrs": frozenset({"pyjinhx2.segments"}),
