@@ -11,7 +11,7 @@ if TYPE_CHECKING:
     from pyjinhx2.session import RenderSession
 
 
-def render(component: BaseComponent, session: "RenderSession") -> RenderedLevel:
+def render_level(component: BaseComponent, session: "RenderSession") -> RenderedLevel:
     """Render one component level: template → one parse → RenderedLevel.
 
     Args:
