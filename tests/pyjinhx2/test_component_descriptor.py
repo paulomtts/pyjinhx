@@ -101,14 +101,14 @@ class TestResolveSlotFields:
         pydantic private attribute and the name comparison silently fails."""
 
         class Designated(BaseComponent):
-            _pjx_children_field: ClassVar[str] = "kids"
+            _pjx_children_field: ClassVar[str | None] = "kids"
             kids: str = ""
 
         assert _resolve_slot_fields(Designated) == frozenset({"kids"})
 
     def test_slot_typed_and_designated_field_union(self):
         class Both(BaseComponent):
-            _pjx_children_field: ClassVar[str] = "kids"
+            _pjx_children_field: ClassVar[str | None] = "kids"
             kids: str = ""
             body: Slot = ""
 
@@ -381,6 +381,7 @@ class TestDevReloadReassignmentSmokeTest:
         replacement = ClassDescriptor(
             template_path=Path("rebuilt/card.pjx"),
             slot_fields=frozenset({"body"}),
+            children_field=None,
             css_paths=(Path("rebuilt/card.css"),),
             js_paths=(),
             strict=True,
@@ -518,6 +519,7 @@ class TestRebuildClassDescriptor:
         sentinel = ClassDescriptor(
             template_path=Path("sentinel/card.pjx"),
             slot_fields=frozenset(),
+            children_field=None,
             css_paths=(),
             js_paths=(),
             strict=True,

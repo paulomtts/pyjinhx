@@ -35,6 +35,7 @@ def test_childless_end_to_end_pipeline():
     descriptor = ClassDescriptor(
         template_path=Path("integration_childless.html"),
         slot_fields=frozenset(),
+        children_field=None,
         css_paths=(),
         js_paths=(),
         strict=True,
@@ -64,6 +65,7 @@ def test_autoescape_scalar_survives_pipeline():
     descriptor = ClassDescriptor(
         template_path=Path("integration_escape.html"),
         slot_fields=frozenset(),
+        children_field=None,
         css_paths=(),
         js_paths=(),
         strict=True,
@@ -99,6 +101,7 @@ def test_slot_field_raw_vs_scalar_escaped():
     descriptor = ClassDescriptor(
         template_path=Path("integration_slot.html"),
         slot_fields=frozenset({"markup"}),
+        children_field=None,
         css_paths=(),
         js_paths=(),
         strict=True,
@@ -128,6 +131,7 @@ def test_stamped_attrs_land_in_root_tag():
     descriptor = ClassDescriptor(
         template_path=Path("integration_attrs.html"),
         slot_fields=frozenset(),
+        children_field=None,
         css_paths=(),
         js_paths=(),
         strict=True,
@@ -166,6 +170,7 @@ def test_full_pipeline_regression():
     descriptor = ClassDescriptor(
         template_path=Path("integration_full.html"),
         slot_fields=frozenset({"body"}),
+        children_field=None,
         css_paths=(),
         js_paths=(),
         strict=True,

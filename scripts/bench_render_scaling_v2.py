@@ -42,6 +42,7 @@ def setup_session() -> RenderSession:
     BenchComponent.__pjx_descriptor__ = ClassDescriptor(
         template_path=Path(TEMPLATE_NAME),
         slot_fields=frozenset(),
+        children_field=None,
         css_paths=(),
         js_paths=(),
         strict=True,

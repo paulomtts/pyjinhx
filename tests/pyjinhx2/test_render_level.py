@@ -22,10 +22,15 @@ class _PJXIcon(BaseComponent):
     pass
 
 
-def _descriptor_for(cls: type[BaseComponent], template: str) -> ClassDescriptor:
+def _descriptor_for(
+    cls: type[BaseComponent], template: str, children_field: str | None = None
+) -> ClassDescriptor:
     return ClassDescriptor(
         template_path=Path(template),
-        slot_fields=frozenset(),
+        slot_fields=frozenset()
+        if children_field is None
+        else frozenset({children_field}),
+        children_field=children_field,
         css_paths=(),
         js_paths=(),
         strict=True,
@@ -34,7 +39,9 @@ def _descriptor_for(cls: type[BaseComponent], template: str) -> ClassDescriptor:
 
 
 _PJXButton.__pjx_descriptor__ = _descriptor_for(_PJXButton, "child_button.html")
-_PJXCard.__pjx_descriptor__ = _descriptor_for(_PJXCard, "child_card.html")
+_PJXCard.__pjx_descriptor__ = _descriptor_for(
+    _PJXCard, "child_card.html", children_field="body"
+)
 _PJXIcon.__pjx_descriptor__ = _descriptor_for(_PJXIcon, "child_icon.html")
 
 
@@ -66,6 +73,7 @@ def test_single_div_renders():
     descriptor = ClassDescriptor(
         template_path=Path("div.html"),
         slot_fields=frozenset(),
+        children_field=None,
         css_paths=(),
         js_paths=(),
         strict=True,
@@ -99,6 +107,7 @@ def test_child_tag_becomes_childref():
     descriptor = ClassDescriptor(
         template_path=Path("container.html"),
         slot_fields=frozenset(),
+        children_field=None,
         css_paths=(),
         js_paths=(),
         strict=True,
@@ -128,6 +137,7 @@ def test_nested_pascalcase_preserved():
     descriptor = ClassDescriptor(
         template_path=Path("nested.html"),
         slot_fields=frozenset(),
+        children_field=None,
         css_paths=(),
         js_paths=(),
         strict=True,
@@ -161,6 +171,7 @@ def test_multiple_siblings_raises():
     descriptor = ClassDescriptor(
         template_path=Path("bad.html"),
         slot_fields=frozenset(),
+        children_field=None,
         css_paths=(),
         js_paths=(),
         strict=True,
@@ -185,6 +196,7 @@ def test_no_root_element_raises():
     descriptor = ClassDescriptor(
         template_path=Path("empty.html"),
         slot_fields=frozenset(),
+        children_field=None,
         css_paths=(),
         js_paths=(),
         strict=True,
@@ -211,6 +223,7 @@ def test_descriptor_frozen_and_read():
     descriptor = ClassDescriptor(
         template_path=Path("test.html"),
         slot_fields=frozenset(),
+        children_field=None,
         css_paths=(),
         js_paths=(),
         strict=True,
@@ -243,6 +256,7 @@ def test_self_closing_tag():
     descriptor = ClassDescriptor(
         template_path=Path("icon.html"),
         slot_fields=frozenset(),
+        children_field=None,
         css_paths=(),
         js_paths=(),
         strict=True,
@@ -275,6 +289,7 @@ def test_paired_tag():
     descriptor = ClassDescriptor(
         template_path=Path("card.html"),
         slot_fields=frozenset(),
+        children_field=None,
         css_paths=(),
         js_paths=(),
         strict=True,
@@ -310,6 +325,7 @@ def test_autoescape_active():
     descriptor = ClassDescriptor(
         template_path=Path("unsafe.html"),
         slot_fields=frozenset(),
+        children_field=None,
         css_paths=(),
         js_paths=(),
         strict=True,
@@ -337,6 +353,7 @@ def test_lowercase_passes_through():
     descriptor = ClassDescriptor(
         template_path=Path("lowercase.html"),
         slot_fields=frozenset(),
+        children_field=None,
         css_paths=(),
         js_paths=(),
         strict=True,
@@ -368,6 +385,7 @@ def test_mixedcase_passes_through():
     descriptor = ClassDescriptor(
         template_path=Path("mixedcase.html"),
         slot_fields=frozenset(),
+        children_field=None,
         css_paths=(),
         js_paths=(),
         strict=True,
@@ -400,6 +418,7 @@ def test_slot_fields_wrapped():
     descriptor = ClassDescriptor(
         template_path=Path("slotted.html"),
         slot_fields=frozenset({"content"}),
+        children_field=None,
         css_paths=(),
         js_paths=(),
         strict=True,
@@ -427,6 +446,7 @@ def test_roundtrip_serialize():
     descriptor = ClassDescriptor(
         template_path=Path("roundtrip.html"),
         slot_fields=frozenset(),
+        children_field=None,
         css_paths=(),
         js_paths=(),
         strict=True,
@@ -476,6 +496,7 @@ def test_minimal_descriptor():
     descriptor = ClassDescriptor(
         template_path=Path("minimal.html"),
         slot_fields=frozenset(),
+        children_field=None,
         css_paths=(),
         js_paths=(),
         strict=True,
@@ -515,6 +536,7 @@ def test_performance_100plus_fields():
     descriptor = ClassDescriptor(
         template_path=Path("minimal.html"),
         slot_fields=frozenset(),
+        children_field=None,
         css_paths=(),
         js_paths=(),
         strict=True,
@@ -550,6 +572,7 @@ def test_missing_template_names_component_and_path():
     descriptor = ClassDescriptor(
         template_path=Path("does_not_exist.html"),
         slot_fields=frozenset(),
+        children_field=None,
         css_paths=(),
         js_paths=(),
         strict=True,
@@ -579,6 +602,7 @@ def test_missing_template_preserves_exception_type():
     descriptor = ClassDescriptor(
         template_path=Path("also_missing.html"),
         slot_fields=frozenset(),
+        children_field=None,
         css_paths=(),
         js_paths=(),
         strict=True,
@@ -609,6 +633,7 @@ def test_zero_root_names_component_and_path():
     descriptor = ClassDescriptor(
         template_path=Path("empty.html"),
         slot_fields=frozenset(),
+        children_field=None,
         css_paths=(),
         js_paths=(),
         strict=True,
@@ -638,6 +663,7 @@ def test_multi_root_names_component_and_path():
     descriptor = ClassDescriptor(
         template_path=Path("bad.html"),
         slot_fields=frozenset(),
+        children_field=None,
         css_paths=(),
         js_paths=(),
         strict=True,
@@ -667,6 +693,7 @@ def test_valid_component_unaffected_by_error_wrapping():
     descriptor = ClassDescriptor(
         template_path=Path("div.html"),
         slot_fields=frozenset(),
+        children_field=None,
         css_paths=(),
         js_paths=(),
         strict=True,
@@ -695,6 +722,7 @@ def test_template_assertion_error_not_wrapped():
     descriptor = ClassDescriptor(
         template_path=Path("broken_assertion.html"),
         slot_fields=frozenset(),
+        children_field=None,
         css_paths=(),
         js_paths=(),
         strict=True,
@@ -729,6 +757,7 @@ def test_interpolated_component_slot_becomes_a_nested_level():
     SpliceLeaf.__pjx_descriptor__ = ClassDescriptor(
         template_path=Path("slot_leaf.html"),
         slot_fields=frozenset(),
+        children_field=None,
         css_paths=(),
         js_paths=(),
         strict=True,
@@ -737,6 +766,7 @@ def test_interpolated_component_slot_becomes_a_nested_level():
     SpliceBox.__pjx_descriptor__ = ClassDescriptor(
         template_path=Path("slot_interp.html"),
         slot_fields=frozenset({"content"}),
+        children_field=None,
         css_paths=(),
         js_paths=(),
         strict=True,
