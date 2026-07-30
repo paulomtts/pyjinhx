@@ -5,6 +5,8 @@ Descriptor read → context build → Jinja render → single parse → Rendered
 finished HTML string for a childless component (render, public API).
 """
 
+import jinja2
+
 from pyjinhx2.component import BaseComponent
 from pyjinhx2.segments import RenderedLevel, VerbatimParser, serialize
 from pyjinhx2.session import RenderSession
@@ -36,7 +38,13 @@ def render_level(component: BaseComponent, session: "RenderSession") -> Rendered
 
     # Phase 3: Jinja render with autoescape ON
     jinja_env = session.jinja_env
-    template = jinja_env.get_template(str(descriptor.template_path))
+    prefix = f"{component.__class__.__name__} (template: {descriptor.template_path}): "
+    try:
+        template = jinja_env.get_template(str(descriptor.template_path))
+    except jinja2.TemplateNotFound as err:
+        raise jinja2.TemplateNotFound(
+            err.name, message=f"{prefix}template file not found"
+        ) from err
     output_string = template.render(context)
 
     # Phase 4: Single parse via VerbatimParser

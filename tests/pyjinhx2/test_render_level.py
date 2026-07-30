@@ -478,3 +478,61 @@ def test_performance_100plus_fields():
         f"Rendering 100 times took {elapsed:.3f}s (expected <0.1s for linear performance)"
     )
     assert isinstance(result, RenderedLevel)
+
+
+# Test 17: Missing template file → jinja2.TemplateNotFound names component + template_path
+def test_missing_template_names_component_and_path():
+    """Missing template → TemplateNotFound message contains class name and template_path."""
+    import jinja2
+
+    class MissingTemplateComp(BaseComponent):
+        pass
+
+    descriptor = ClassDescriptor(
+        template_path=Path("does_not_exist.html"),
+        slot_fields=frozenset(),
+        css_paths=(),
+        js_paths=(),
+        strict=True,
+        provenance={"template": MissingTemplateComp},
+    )
+    MissingTemplateComp.__pjx_descriptor__ = descriptor
+
+    session = RenderSession(template_dir="tests/templates")
+    component = MissingTemplateComp()
+
+    with pytest.raises(jinja2.TemplateNotFound) as exc_info:
+        render_level(component, session)
+
+    message = str(exc_info.value)
+    assert "MissingTemplateComp" in message
+    assert "does_not_exist.html" in message
+
+
+# Test 18: Missing template error type is still jinja2.TemplateNotFound, not swallowed
+def test_missing_template_preserves_exception_type():
+    """Missing template exception is still isinstance of jinja2.TemplateNotFound."""
+    import jinja2
+
+    class MissingTemplateComp2(BaseComponent):
+        pass
+
+    descriptor = ClassDescriptor(
+        template_path=Path("also_missing.html"),
+        slot_fields=frozenset(),
+        css_paths=(),
+        js_paths=(),
+        strict=True,
+        provenance={"template": MissingTemplateComp2},
+    )
+    MissingTemplateComp2.__pjx_descriptor__ = descriptor
+
+    session = RenderSession(template_dir="tests/templates")
+    component = MissingTemplateComp2()
+
+    try:
+        render_level(component, session)
+        assert False, "expected jinja2.TemplateNotFound"
+    except jinja2.TemplateNotFound as err:
+        assert isinstance(err, jinja2.TemplateNotFound)
+        assert err.__cause__ is not None, "original error must be chained via `from err`"
