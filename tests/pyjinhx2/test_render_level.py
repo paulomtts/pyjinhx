@@ -711,3 +711,45 @@ def test_template_assertion_error_not_wrapped():
     message = str(exc_info.value)
     assert "BrokenSyntaxComp" not in message
     assert "template:" not in message
+
+
+# Test: `{{ content }}` holding a component becomes a nested RenderedLevel segment
+def test_interpolated_component_slot_becomes_a_nested_level():
+    """A component-valued slot enters segments as a RenderedLevel, not as text."""
+    from pyjinhx2.component import Slot
+    from pyjinhx2.render import render_level
+    from pyjinhx2.segments import serialize
+
+    class SpliceLeaf(BaseComponent):
+        title: str = "inner"
+
+    class SpliceBox(BaseComponent):
+        content: Slot = ""
+
+    SpliceLeaf.__pjx_descriptor__ = ClassDescriptor(
+        template_path=Path("slot_leaf.html"),
+        slot_fields=frozenset(),
+        css_paths=(),
+        js_paths=(),
+        strict=True,
+        provenance={"template": SpliceLeaf},
+    )
+    SpliceBox.__pjx_descriptor__ = ClassDescriptor(
+        template_path=Path("slot_interp.html"),
+        slot_fields=frozenset({"content"}),
+        css_paths=(),
+        js_paths=(),
+        strict=True,
+        provenance={"template": SpliceBox},
+    )
+
+    session = RenderSession(template_dir="tests/templates")
+    level = render_level(SpliceBox(content=SpliceLeaf(title="inner")), session)
+
+    nested = [s for s in level.segments if isinstance(s, RenderedLevel)]
+    assert len(nested) == 1
+    assert nested[0].descriptor is SpliceLeaf.__pjx_descriptor__
+    assert not any(isinstance(s, ChildRef) for s in level.segments)
+    assert serialize(level) == (
+        '<div class="box">before <span class="leaf">inner</span> after</div>'
+    )

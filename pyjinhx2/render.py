@@ -12,6 +12,8 @@ import jinja2
 
 from pyjinhx2.component import BaseComponent, PjxSlot, _pascal_to_snake
 from pyjinhx2.discovery import get_class
+from pyjinhx2.markers import SLOT_TOKEN_RE, collect_slot_tokens
+from pyjinhx2.render_context import build_context
 from pyjinhx2.segments import ChildRef, RenderedLevel, VerbatimParser, serialize
 from pyjinhx2.session import RenderSession
 
@@ -115,6 +117,63 @@ def _fill_children(level: RenderedLevel) -> list[tuple[int, BaseComponent]]:
     return pending
 
 
+def _splice_slot_nodes(
+    level: RenderedLevel,
+    table: dict[str, BaseComponent],
+    session: "RenderSession",
+    chain: tuple[str, ...],
+) -> None:
+    """Replace each slot placeholder token in ``level`` with the child's RenderedLevel.
+
+    The tokens were emitted by the finalize hook during this level's template
+    render and came through the level's single parse as ordinary character data,
+    so resolving them is string splitting over segments already cut — never a
+    second parse (ADR 0005). Each token's component is rendered here and nowhere
+    else, which is what keeps truthiness and context building render-free.
+
+    Raises:
+        ValueError: If a token lands inside a tag's raw text (a slot
+            interpolated into an attribute), or if a token appears more than
+            once in the output.
+    """
+    if not table:
+        return
+    seen: dict[str, int] = {}
+    spliced: list[str | ChildRef | RenderedLevel] = []
+    for segment in level.segments:
+        if not isinstance(segment, str) or "pjx-slot-" not in segment:
+            spliced.append(segment)
+            continue
+        if segment.startswith("<"):
+            raise ValueError(
+                "a component-valued slot was interpolated inside a tag "
+                f"({segment!r}); slots may only be interpolated as element content."
+            )
+        position = 0
+        for match in SLOT_TOKEN_RE.finditer(segment):
+            token = match.group(0)
+            child = table.get(token)
+            if child is None:
+                continue
+            seen[token] = seen.get(token, 0) + 1
+            if seen[token] > 1:
+                raise ValueError(
+                    f"slot placeholder {token} appears more than once in the "
+                    "rendered output; the token collided with literal text."
+                )
+            head = segment[position : match.start()]
+            if head:
+                spliced.append(head)
+            # Each child gets its own render_level call, so it does its own
+            # single parse and enters segments as a whole object.
+            spliced.append(render_level(child, session, chain))
+            position = match.end()
+        tail = segment[position:]
+        if tail:
+            spliced.append(tail)
+    level.segments = spliced
+
+
 def render_level(
     component: BaseComponent,
     session: "RenderSession",
@@ -141,11 +200,9 @@ def render_level(
     # Phase 1: Descriptor read
     descriptor = component.__class__.__pjx_descriptor__
 
-    # Phase 2: Context build
-    context = {}
-    for field_name in component.__class__.model_fields:
-        field_value = getattr(component, field_name)
-        context[field_name] = field_value
+    # Phase 2: Context build — component-valued slots arrive as ComponentNode,
+    # string-valued slots stay plain strings.
+    context = build_context(component, descriptor)
 
     # Phase 3: Jinja render with autoescape ON
     jinja_env = session.jinja_env
@@ -167,7 +224,8 @@ def render_level(
         raise jinja2.TemplateNotFound(
             err.name, message=f"{prefix}template file not found"
         ) from err
-    output_string = template.render(context)
+    with collect_slot_tokens() as slot_table:
+        output_string = template.render(context)
 
     # Phase 4: Single parse via VerbatimParser
     parser = VerbatimParser()
@@ -193,6 +251,9 @@ def render_level(
         # parse and enters this list as a whole object — never text spliced into
         # text, which is what keeps a child's markup un-reparsed and un-escaped.
         level.segments[index] = render_level(child, session, chain)
+    # Runs after tag-shaped holes are resolved, so the indexes above stay valid
+    # while this step rebuilds the list.
+    _splice_slot_nodes(level, slot_table, session, chain)
     return level
 
 

@@ -152,3 +152,225 @@ class TestSlotFieldValidation:
         raw = 'he said "hi" and it\'s fine'
         assert _Demo(body=raw).body == raw
         assert type(_Demo(body=raw).body) is str
+
+
+class TestSlotTruthinessInTemplates:
+    """`{% if slot %}` under the real render pipeline (ADR 0003)."""
+
+    @staticmethod
+    def _describe(component_cls, template, slots):
+        from pathlib import Path
+
+        from pyjinhx2.descriptor import ClassDescriptor
+
+        component_cls.__pjx_descriptor__ = ClassDescriptor(
+            template_path=Path(template),
+            slot_fields=frozenset(slots),
+            css_paths=(),
+            js_paths=(),
+            strict=True,
+            provenance={"template": component_cls},
+        )
+        return component_cls
+
+    def test_component_valued_slot_takes_the_truthy_branch(self):
+        from pyjinhx2.render import render
+        from pyjinhx2.session import RenderSession
+
+        class Leaf(BaseComponent):
+            title: str = "Leaf"
+
+        class Box(BaseComponent):
+            content: Slot = ""
+
+        self._describe(Leaf, "div.html", ())
+        self._describe(Box, "slot_if.html", {"content"})
+
+        session = RenderSession(template_dir="tests/templates")
+        assert "HAS" in render(Box(content=Leaf()), session)
+
+    def test_empty_string_slot_takes_the_falsy_branch(self):
+        from pyjinhx2.render import render
+        from pyjinhx2.session import RenderSession
+
+        class Box2(BaseComponent):
+            content: Slot = ""
+
+        self._describe(Box2, "slot_if.html", {"content"})
+        session = RenderSession(template_dir="tests/templates")
+        assert "NONE" in render(Box2(content=""), session)
+
+
+class TestSlotInterpolation:
+    """`{{ slot }}` splices the child's rendered markup (ADR 0003)."""
+
+    @staticmethod
+    def _describe(component_cls, template, slots):
+        from pathlib import Path
+
+        from pyjinhx2.descriptor import ClassDescriptor
+
+        component_cls.__pjx_descriptor__ = ClassDescriptor(
+            template_path=Path(template),
+            slot_fields=frozenset(slots),
+            css_paths=(),
+            js_paths=(),
+            strict=True,
+            provenance={"template": component_cls},
+        )
+        return component_cls
+
+    def test_component_slot_renders_the_childs_markup_in_position(self):
+        from pyjinhx2.render import render
+        from pyjinhx2.session import RenderSession
+
+        class InterpLeaf(BaseComponent):
+            title: str = "hello"
+
+        class InterpBox(BaseComponent):
+            content: Slot = ""
+
+        self._describe(InterpLeaf, "slot_leaf.html", ())
+        self._describe(InterpBox, "slot_interp.html", {"content"})
+
+        session = RenderSession(template_dir="tests/templates")
+        html = render(InterpBox(content=InterpLeaf(title="hello")), session)
+
+        assert html == (
+            '<div class="box">before <span class="leaf">hello</span> after</div>'
+        )
+        assert "ComponentNode" not in html
+        assert "pjx-slot-" not in html
+
+    def test_string_slot_still_interpolates_escaped(self):
+        from pyjinhx2.render import render
+        from pyjinhx2.session import RenderSession
+
+        class StringBox(BaseComponent):
+            content: Slot = ""
+
+        self._describe(StringBox, "slot_interp.html", {"content"})
+        session = RenderSession(template_dir="tests/templates")
+        html = render(StringBox(content="<b>x</b>"), session)
+
+        assert html == '<div class="box">before &lt;b&gt;x&lt;/b&gt; after</div>'
+
+    def test_component_slot_is_rendered_exactly_once(self):
+        from pyjinhx2.session import RenderSession
+
+        renders: list[str] = []
+
+        class CountingLeaf(BaseComponent):
+            title: str = "once"
+
+            @property
+            def _spy(self) -> None:
+                return None
+
+        class CountingBox(BaseComponent):
+            content: Slot = ""
+
+        self._describe(CountingLeaf, "slot_leaf.html", ())
+        self._describe(CountingBox, "slot_interp.html", {"content"})
+
+        import pyjinhx2.render as render_module
+
+        original = render_module.render_level
+
+        def spy(component, session, chain=()):
+            renders.append(type(component).__name__)
+            return original(component, session, chain)
+
+        render_module.render_level = spy
+        try:
+            html = spy(
+                CountingBox(content=CountingLeaf()),
+                RenderSession(template_dir="tests/templates"),
+            )
+        finally:
+            render_module.render_level = original
+
+        assert renders.count("CountingLeaf") == 1
+        assert html.segments  # sanity: a level came back
+
+    def test_len_on_a_component_node_still_raises(self):
+        from pyjinhx2.markers import ComponentNode
+
+        class LenLeaf(BaseComponent):
+            pass
+
+        with pytest.raises(TypeError):
+            len(ComponentNode(LenLeaf()))  # type: ignore[arg-type]
+
+    def test_length_filter_on_a_component_slot_still_fails(self):
+        """#368 will turn this into a targeted message; here it only must not silently work."""
+        from jinja2 import Environment
+
+        from pyjinhx2.markers import ComponentNode, finalize_slot_node
+
+        class FilterLeaf(BaseComponent):
+            pass
+
+        env = Environment(autoescape=True, finalize=finalize_slot_node)
+        template = env.from_string("{{ content|length }}")
+        with pytest.raises(TypeError):
+            template.render(content=ComponentNode(FilterLeaf()))
+
+
+class TestSlotSpliceGuards:
+    @staticmethod
+    def _describe(component_cls, template, slots):
+        from pathlib import Path
+
+        from pyjinhx2.descriptor import ClassDescriptor
+
+        component_cls.__pjx_descriptor__ = ClassDescriptor(
+            template_path=Path(template),
+            slot_fields=frozenset(slots),
+            css_paths=(),
+            js_paths=(),
+            strict=True,
+            provenance={"template": component_cls},
+        )
+        return component_cls
+
+    def test_slot_interpolated_into_an_attribute_fails_loudly(self, tmp_path):
+        from pyjinhx2.render import render
+        from pyjinhx2.session import RenderSession
+
+        (tmp_path / "attr_leaf.html").write_text('<span class="leaf">x</span>')
+        (tmp_path / "attr_box.html").write_text('<div title="{{ content }}">b</div>')
+
+        class AttrLeaf(BaseComponent):
+            pass
+
+        class AttrBox(BaseComponent):
+            content: Slot = ""
+
+        self._describe(AttrLeaf, "attr_leaf.html", ())
+        self._describe(AttrBox, "attr_box.html", {"content"})
+
+        session = RenderSession(template_dir=str(tmp_path))
+        with pytest.raises(ValueError, match="inside a tag"):
+            render(AttrBox(content=AttrLeaf()), session)
+
+    def test_missing_slot_field_in_context_does_not_crash(self):
+        from pyjinhx2.descriptor import ClassDescriptor
+        from pyjinhx2.render_context import build_context
+
+        class NoSuchField(BaseComponent):
+            title: str = "t"
+
+        from pathlib import Path
+
+        descriptor = ClassDescriptor(
+            template_path=Path("slot_leaf.html"),
+            slot_fields=frozenset({"absent"}),
+            css_paths=(),
+            js_paths=(),
+            strict=True,
+            provenance={"template": NoSuchField},
+        )
+        context = build_context(NoSuchField(), descriptor)
+        assert "absent" not in context
+        assert context["title"] == "t"
