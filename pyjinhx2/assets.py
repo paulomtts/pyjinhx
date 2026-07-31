@@ -1,5 +1,7 @@
-"""L2.2.2 assets — delivery modes and emission of a request's accumulated assets."""
+"""L2.2 assets — delivery modes, emission, and the manifest of a request's assets."""
 
+from collections.abc import Callable
+from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -49,3 +51,52 @@ def emit_assets(session: "RenderSession") -> str:
     if session.js_mode is AssetMode.INLINE:
         tags += _inline_tags(session.js_assets, "<script>", "</script>")
     return "\n".join(tags)
+
+
+@dataclass(frozen=True)
+class AssetManifest:
+    """The resolved asset URLs for one render, split by kind.
+
+    Attributes:
+        stylesheets: URLs of the render's CSS assets, in path order.
+        scripts: URLs of the render's JS assets, in path order.
+    """
+
+    stylesheets: tuple[str, ...]
+    scripts: tuple[str, ...]
+
+
+def _resolved_urls(
+    paths: set[Path], resolver: Callable[[Path], str]
+) -> tuple[str, ...]:
+    """Resolve each path to a URL, sorted by path for a stable order.
+
+    Sorted for the same reason _inline_tags sorts: the accumulator is a set,
+    and two renders of the same tree must produce the same manifest. A
+    resolver that raises is left to raise — a manifest missing one asset is a
+    page missing one stylesheet, which fails silently in the browser.
+    """
+    return tuple(resolver(path) for path in sorted(paths, key=str))
+
+
+def asset_manifest(
+    session: "RenderSession", *, resolver: Callable[[Path], str]
+) -> AssetManifest:
+    """Return the resolved URLs of this session's accumulated assets.
+
+    Kinds stay in separate tuples so a caller builds <link> and <script src>
+    tags without re-inspecting file extensions. Independent of css_mode/
+    js_mode: those govern emit_assets, not what the render used.
+
+    Args:
+        session: The RenderSession whose css_assets/js_assets were populated
+            by accumulate_assets during the render.
+        resolver: Maps an asset path to the URL it is served from.
+
+    Returns:
+        An AssetManifest of CSS then JS URLs, each in path-sorted order.
+    """
+    return AssetManifest(
+        stylesheets=_resolved_urls(session.css_assets, resolver),
+        scripts=_resolved_urls(session.js_assets, resolver),
+    )
