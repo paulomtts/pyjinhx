@@ -384,3 +384,25 @@ def test_link_mode_js_resolver_raise_propagates(tmp_path):
 
     with pytest.raises(FileNotFoundError):
         emit_assets(session, resolver=boom)
+
+
+def test_link_mode_repeated_calls_are_byte_identical(tmp_path):
+    session = _session(tmp_path)
+    # Enough members that a set's iteration order would plausibly differ from
+    # sorted order, so an unsorted implementation cannot pass by luck.
+    session.css_assets.update(
+        {tmp_path / name for name in ("z.css", "a.css", "m.css", "b.css", "q.css")}
+    )
+    session.js_assets.update(
+        {tmp_path / name for name in ("z.js", "a.js", "m.js", "b.js", "q.js")}
+    )
+    session.css_mode = AssetMode.LINK
+    session.js_mode = AssetMode.LINK
+
+    first = emit_assets(session, resolver=_stub_resolver)
+    second = emit_assets(session, resolver=_stub_resolver)
+
+    assert first == second
+    assert first.index("/static/a.css") < first.index("/static/m.css")
+    assert first.index("/static/m.css") < first.index("/static/z.css")
+    assert first.index("/static/q.css") < first.index("/static/a.js")
