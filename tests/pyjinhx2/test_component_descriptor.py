@@ -2,14 +2,16 @@ import sys
 import types
 from collections.abc import Iterator
 from pathlib import Path
-from typing import ClassVar
+from typing import Annotated, ClassVar, Optional
 
 import pytest
+from pydantic import ConfigDict
 
 import pyjinhx2.component
 from pyjinhx2.component import (
     BaseComponent,
     Children,
+    PjxSlot,
     Slot,
     _asset_candidate,
     _defining_module_dir,
@@ -160,6 +162,94 @@ class TestResolveSlotFields:
 
         assert _resolve_class_descriptor(Panel).slot_fields == frozenset({"body"})
         assert Panel.__pjx_descriptor__.slot_fields == frozenset({"body"})
+
+    def test_bare_component_field_is_auto_detected(self):
+        class Leaf(BaseComponent):
+            pass
+
+        class Card(BaseComponent):
+            child: Leaf | None = None
+
+        assert _resolve_slot_fields(Card) == frozenset({"child"})
+
+    def test_optional_component_field_is_auto_detected(self):
+        class Leaf(BaseComponent):
+            pass
+
+        class Card(BaseComponent):
+            child: Optional[Leaf] = None
+
+        assert _resolve_slot_fields(Card) == frozenset({"child"})
+
+    def test_component_list_field_is_auto_detected(self):
+        class Badge(BaseComponent):
+            pass
+
+        class Card(BaseComponent):
+            badges: list[Badge] = []
+
+        assert _resolve_slot_fields(Card) == frozenset({"badges"})
+
+    def test_component_dict_field_is_auto_detected(self):
+        class Badge(BaseComponent):
+            pass
+
+        class Card(BaseComponent):
+            named: dict[str, Badge] = {}
+
+        assert _resolve_slot_fields(Card) == frozenset({"named"})
+
+    def test_plain_string_field_needs_an_explicit_marker(self):
+        class Card(BaseComponent):
+            caption: str = ""
+
+        assert _resolve_slot_fields(Card) == frozenset()
+
+    def test_mixed_union_field_is_not_auto_detected(self):
+        class Leaf(BaseComponent):
+            pass
+
+        class Card(BaseComponent):
+            either: str | Leaf = ""
+
+        assert _resolve_slot_fields(Card) == frozenset()
+
+    def test_explicit_marker_on_a_component_field_still_counts(self):
+        class Leaf(BaseComponent):
+            pass
+
+        class Card(BaseComponent):
+            child: Annotated[Leaf | None, PjxSlot()] = None
+
+        assert _resolve_slot_fields(Card) == frozenset({"child"})
+
+    def test_auto_detected_and_explicit_fields_are_unioned(self):
+        class Leaf(BaseComponent):
+            pass
+
+        class Card(BaseComponent):
+            child: Leaf | None = None  # auto-detected
+            html: Slot = ""  # explicit string slot
+            caption: str = ""  # neither
+
+        assert _resolve_slot_fields(Card) == frozenset({"child", "html"})
+
+    def test_plain_string_children_field_is_unaffected(self):
+        class Card(BaseComponent):
+            _pjx_children_field: ClassVar[str] = "kids"
+            kids: str = ""
+
+        assert _resolve_slot_fields(Card) == frozenset({"kids"})
+
+    def test_only_declared_fields_are_considered(self):
+        class Leaf(BaseComponent):
+            pass
+
+        class Card(BaseComponent):
+            model_config = ConfigDict(extra="allow")
+            child: Leaf | None = None
+
+        assert _resolve_slot_fields(Card) <= frozenset(Card.model_fields)
 
 
 class TestResolveStrict:
