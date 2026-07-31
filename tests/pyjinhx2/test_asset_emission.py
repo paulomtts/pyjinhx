@@ -6,10 +6,11 @@ from pyjinhx2.assets import AssetMode
 from pyjinhx2.session import RenderSession
 
 
-def test_asset_mode_has_exactly_inline_and_none():
+def test_asset_mode_members_are_inline_none_and_link():
     assert AssetMode.INLINE.value == "inline"
     assert AssetMode.NONE.value == "none"
-    assert set(AssetMode) == {AssetMode.INLINE, AssetMode.NONE}
+    assert AssetMode.LINK.value == "link"
+    assert set(AssetMode) == {AssetMode.INLINE, AssetMode.NONE, AssetMode.LINK}
 
 
 def test_session_defaults_both_kinds_to_inline():

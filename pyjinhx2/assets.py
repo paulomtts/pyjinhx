@@ -16,6 +16,10 @@ class AssetMode(str, Enum):
 
     INLINE = "inline"
     NONE = "none"
+    # One member for both kinds: the asset kind already decides the tag shape
+    # (<link rel="stylesheet"> vs <script src>), so a separate SRC member would
+    # only create a way to set the wrong one on the wrong kind.
+    LINK = "link"
 
 
 def _inline_tags(paths: set[Path], open_tag: str, close_tag: str) -> list[str]:
