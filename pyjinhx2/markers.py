@@ -8,10 +8,7 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 from contextvars import ContextVar
 from pathlib import Path
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from pyjinhx2.component import BaseComponent
+from pyjinhx2.component import BaseComponent
 
 
 class SlotProps:
@@ -31,11 +28,30 @@ class SlotProps:
         object.__setattr__(self, "_values", values)
         object.__setattr__(self, "_node", node)
 
+    def _wrap(self, name: str, value: object) -> object:
+        """Give a component-valued prop the same opacity as a top-level slot.
+
+        Without this a component-typed prop would come back as the live
+        instance and hit pydantic's own __str__/__iter__, so `.props.x` would
+        be a hole in ADR 0003's boundary rather than the narrow escape hatch
+        it is meant to be. The field label records the path the author wrote
+        so the error names `.props.<name>`, not the outer slot alone.
+        """
+        if not isinstance(value, BaseComponent):
+            return value
+        node: ComponentNode = object.__getattribute__(self, "_node")
+        return ComponentNode(
+            value,
+            owner_name=node.owner_name,
+            owner_template=node.owner_template,
+            field_name=f"{node.field_name}.props.{name}",
+        )
+
     def __getattr__(self, name: str) -> object:
         values: dict[str, object] = object.__getattribute__(self, "_values")
         if name not in values:
             raise AttributeError(name)
-        return values[name]
+        return self._wrap(name, values[name])
 
     def __getitem__(self, key: str) -> object:
         # Guards against Python's legacy iteration protocol, which probes
@@ -45,7 +61,7 @@ class SlotProps:
         if not isinstance(key, str):
             raise TypeError(f"slot props keys must be str, got {type(key).__name__}")
         values: dict[str, object] = object.__getattribute__(self, "_values")
-        return values[key]
+        return self._wrap(key, values[key])
 
     def __setattr__(self, name: str, value: object) -> None:
         raise AttributeError("slot props are read-only")
