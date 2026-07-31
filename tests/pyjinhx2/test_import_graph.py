@@ -21,6 +21,13 @@ PACKAGE_ROOT = Path(__file__).resolve().parents[2] / "pyjinhx2"
 # failing test go green.
 ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
     "__init__": frozenset(),
+    # The TYPE_CHECKING-only RenderSession import mirrors session's own
+    # component/segments entries below, for the same reason: the enum/function
+    # signature names the type, runtime never touches it.
+    # component is a real runtime edge: all_assets() reads
+    # BaseComponent.__subclasses__() and each class's descriptor, imported
+    # locally to avoid a module-level cycle (session imports assets).
+    "assets": frozenset({"pyjinhx2.session", "pyjinhx2.component"}),
     # The classless factory is a consumer: it validates a tag name, reads the
     # template discovery found, hands the header to props_header and publishes
     # the result through discovery's own write path. Nothing imports it back.
@@ -49,6 +56,7 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
     # an unregistered tag is emitted verbatim, so this is a read-only edge.
     "render": frozenset(
         {
+            "pyjinhx2.assets",
             "pyjinhx2.component",
             "pyjinhx2.discovery",
             "pyjinhx2.markers",
@@ -59,9 +67,24 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
         }
     ),
     "render_context": frozenset({"pyjinhx2.markers", "pyjinhx2.component"}),
+    # The instance registry (ADR 0009) is read-only over session's ContextVar
+    # store; it consumes get_instances() and nothing else in pyjinhx2. The
+    # register_rendered_instance signature also names RenderedLevel, but that
+    # import is TYPE_CHECKING-only (see registry.py) — never a runtime edge.
+    "registry": frozenset({"pyjinhx2.session", "pyjinhx2.segments"}),
     "root_attrs": frozenset({"pyjinhx2.segments"}),
     "segments": frozenset(),
-    "session": frozenset({"pyjinhx2.markers"}),
+    # The on_rendered hook's signature names BaseComponent and RenderedLevel, but
+    # both imports are TYPE_CHECKING-only. At runtime session also imports
+    # AssetMode from assets, a real edge alongside markers.
+    "session": frozenset(
+        {
+            "pyjinhx2.markers",
+            "pyjinhx2.component",
+            "pyjinhx2.segments",
+            "pyjinhx2.assets",
+        }
+    ),
 }
 
 
@@ -121,6 +144,19 @@ def test_component_is_the_only_importer_of_class_descriptor():
         if "pyjinhx2.descriptor" in internal_imports(path)
     }
     assert importers == {"component"}
+
+
+def test_session_never_reaches_into_reactive():
+    """session.py owns the per-request ContextVars; reactive/ imports them from
+    here. The reverse edge would invert the spine."""
+    imports = internal_imports(PACKAGE_ROOT / "session.py")
+    assert not any(name.startswith("pyjinhx2.reactive") for name in imports)
+    assert imports <= {
+        "pyjinhx2.markers",
+        "pyjinhx2.component",
+        "pyjinhx2.segments",
+        "pyjinhx2.assets",
+    }
 
 
 def test_no_render_spine_module_declares_a_reactive_import():
