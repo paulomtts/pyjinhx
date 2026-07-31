@@ -223,3 +223,35 @@ def test_a_class_built_under_concurrency_is_not_reported_as_stale(tmp_path, capl
     assert results[0] is results[1]
     assert results[0].__pjx_descriptor__.has_stale_def_header is False
     assert stale_records(caplog) == []
+
+
+def test_the_two_paths_do_not_borrow_each_others_header_state(tmp_path, caplog):
+    """One classless class and one hand-written stale class, same session.
+
+    The classless class stays silent and the hand-written one warns: the
+    "built from this header" fact is per class, so neither can flip the other.
+    """
+
+    class StaleCard(BaseComponent):
+        """Its co-located template (stale_card.pjx) still carries a header."""
+
+        title: str = "default"
+
+    # Named "Widget", not "Card": the warning message embeds the class name
+    # verbatim, and "Card" is a substring of "StaleCard" — a same-named (or
+    # substring-named) generated class would make the "did not leak into the
+    # other's message" assertion below pass by accident even if it actually did.
+    write_template(tmp_path, "widget", '{#def title: str = "hi" #}<div>{{ title }}</div>')
+    generated = component("Widget", template_dir=tmp_path)
+
+    assert generated.__pjx_descriptor__.has_stale_def_header is False
+    assert StaleCard.__pjx_descriptor__.has_stale_def_header is True
+
+    with caplog.at_level(logging.WARNING, logger="pyjinhx2"):
+        render_level(generated(), absolute_session())
+        render_level(StaleCard(), RenderSession(template_dir="/"))
+
+    messages = stale_records(caplog)
+    assert len(messages) == 1, messages
+    assert "StaleCard" in messages[0]
+    assert generated.__name__ not in messages[0]
