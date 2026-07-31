@@ -238,7 +238,9 @@ def run_concurrent_requests(
     return observations, errors
 
 
-def assert_no_bleed(observations: dict[int, Observation], workers: int = WORKERS) -> None:
+def assert_no_bleed(
+    observations: dict[int, Observation], workers: int = WORKERS
+) -> None:
     """Assert every worker saw its own state and nothing any sibling produced."""
     assert set(observations) == set(range(workers)), (
         f"missing observations from workers {sorted(set(range(workers)) - set(observations))}"
@@ -287,8 +289,9 @@ def test_concurrent_renders_no_filenotfound_races(monkeypatch):
     because each render finishes before the next thread starts - the same
     reason the v0.x Finder thread-safety test monkeypatches a slow os.walk.
     """
-    import pyjinhx2.assets as assets_module
     from jinja2 import FileSystemLoader
+
+    import pyjinhx2.assets as assets_module
 
     monkeypatch.setattr(
         FileSystemLoader, "get_source", _slow(FileSystemLoader.get_source, 0.02)
@@ -306,6 +309,46 @@ def test_concurrent_renders_no_filenotfound_races(monkeypatch):
     )
     fail_on_errors(errors)
     assert_no_bleed(observations)
-    for index, observed in observations.items():
+    for observed in observations.values():
         assert "<style>" in observed.html
         assert "<script>" in observed.html
+
+
+def test_harness_barrier_actually_synchronizes():
+    """The start barrier must release all workers together, or the other two
+    tests prove nothing: serialised 'concurrent' renders never contend."""
+    observations, errors = run_concurrent_requests(render_shared_components)
+
+    fail_on_errors(errors)
+    release_times = [o.released_at for o in observations.values()]
+    spread = max(release_times) - min(release_times)
+    assert spread < 1.0, (
+        f"workers were released {spread:.3f}s apart; the barrier is not "
+        "synchronising them, so the renders may never have overlapped"
+    )
+    thread_names = {o.thread_name for o in observations.values()}
+    assert len(thread_names) == WORKERS, (
+        f"expected {WORKERS} distinct worker threads, saw {sorted(thread_names)}"
+    )
+
+
+def test_inspect_hook_runs_inside_the_live_scope():
+    """#437 plugs its invariant-4 census in here, so the hook must see live
+    per-request state - not a scope already torn down."""
+    seen: dict[int, object] = {}
+
+    def census_probe(index: int, session: RenderSession, observed: Observation) -> None:
+        # get_instances() always returns a dict (never None, even outside a
+        # scope), so the meaningful check is that it's non-empty and matches
+        # this worker's own observation - proof the hook sees live, populated
+        # per-request state rather than a torn-down or throwaway container.
+        assert get_instances(), "hook ran outside an active request_scope()"
+        assert set(get_instances()) == observed.instance_keys
+        seen[index] = observed.instance_keys
+
+    observations, errors = run_concurrent_requests(
+        render_shared_components, inspect=census_probe
+    )
+
+    fail_on_errors(errors)
+    assert set(seen) == set(observations) == set(range(WORKERS))
