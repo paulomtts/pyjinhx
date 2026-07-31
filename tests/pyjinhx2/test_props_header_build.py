@@ -111,3 +111,36 @@ def test_parse_and_build_compose_end_to_end():
     assert fields is not None
     cls = build_component_class(fields, "Card")
     assert cls(title="hi").variant == "primary"  # pyright: ignore[reportCallIssue,reportAttributeAccessIssue]
+
+
+def test_descriptor_template_path_is_provisional_until_relocated(tmp_path, monkeypatch):
+    """A generated class has no module file of its own, so its first descriptor
+    resolves against this package's directory (``OpenComponent``'s own template
+    candidate, since ``Card`` has none there and the walk's unprobed fallback is
+    the nearest ancestor that does have a defining module). Discovery must
+    re-point ``__module__`` at the template's real package and rebuild before
+    the path means anything — proven here by only then getting a real template
+    file on disk to resolve to."""
+    import sys
+    import types
+    from pathlib import Path
+
+    import pyjinhx2.props_header as props_header_module
+    from pyjinhx2.component import rebuild_class_descriptor
+
+    cls = build_component_class([("title", str, ...)], "Card")
+    assert cls.__module__ == props_header_module.__name__
+    assert cls.__pjx_descriptor__.template_path == (
+        Path(props_header_module.__file__).parent / "open_component.pjx"
+    )
+
+    # Simulate discovery relocating the class beside its real template: a
+    # throwaway module whose __file__ lives next to an actual card.pjx.
+    (tmp_path / "card.pjx").write_text("<div></div>")
+    fake_module = types.ModuleType("pjx_generated.card_module")
+    fake_module.__file__ = str(tmp_path / "__init__.py")
+    monkeypatch.setitem(sys.modules, fake_module.__name__, fake_module)
+
+    cls.__module__ = fake_module.__name__
+    rebuild_class_descriptor(cls)
+    assert cls.__pjx_descriptor__.template_path == tmp_path / "card.pjx"

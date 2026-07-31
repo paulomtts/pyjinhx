@@ -130,7 +130,11 @@ def build_component_class(
     definitions: dict[str, Any] = {
         name: (annotation, default) for name, annotation, default in fields
     }
-    cls = create_model(tag, __base__=OpenComponent, **definitions)
+    # create_model otherwise reads __module__ off the calling frame, which would
+    # make a generated class's template and asset probing depend on which module
+    # happened to call in. Pin it here; discovery repoints it at the template's
+    # own package and calls rebuild_class_descriptor once the class is placed.
+    cls = create_model(tag, __base__=OpenComponent, __module__=__name__, **definitions)
     # Set after creation, not as a create_model field: a leading underscore is a
     # pydantic private attribute, and this is a plain class-level marker that
     # downstream code reads off the type, never off an instance.
