@@ -1,5 +1,6 @@
 """L2.2 assets — delivery modes, emission, and the manifest of a request's assets."""
 
+import hashlib
 from collections.abc import Callable
 from dataclasses import dataclass
 from enum import Enum
@@ -100,3 +101,61 @@ def asset_manifest(
         stylesheets=_resolved_urls(session.css_assets, resolver),
         scripts=_resolved_urls(session.js_assets, resolver),
     )
+
+
+_hash_filename_cache: dict[tuple[str, float, int], str] = {}
+
+
+def hashed_filename(path: Path, *, hash_len: int = 8) -> str:
+    """Return a cache-busted filename such as ``button.a1b2c3d4.js``.
+
+    Args:
+        path: The asset file on disk to hash.
+        hash_len: How many hex characters of the SHA-256 digest to keep.
+
+    Returns:
+        The file's stem, the truncated digest, and its suffix, dot-joined.
+
+    Raises:
+        OSError: If the file is missing or unreadable.
+    """
+    # Keyed on mtime as well as path so an edited asset re-hashes, while a
+    # repeated render of an untouched tree never re-reads the file.
+    key = (str(path.resolve()), path.stat().st_mtime, hash_len)
+    cached = _hash_filename_cache.get(key)
+    if cached is not None:
+        return cached
+    digest = hashlib.sha256(path.read_bytes()).hexdigest()[:hash_len]
+    result = f"{path.stem}.{digest}{path.suffix}"
+    _hash_filename_cache[key] = result
+    return result
+
+
+def resolver_with_hash(base_url: str, root: str) -> Callable[[Path], str]:
+    """Build an asset resolver that embeds a content hash in each filename.
+
+    The returned callable has the shape asset_manifest expects for its
+    resolver, so a caller wires cache-busted URLs in with one argument.
+
+    Args:
+        base_url: URL prefix the asset tree is served from; a trailing slash
+            is ignored.
+        root: Directory the asset paths are laid out under; the part of a
+            path below it is preserved in the URL.
+
+    Returns:
+        A callable mapping an asset path to its hashed URL, which raises
+        OSError if the file is missing.
+    """
+
+    def resolve(path: Path) -> str:
+        relative_dir = path.parent.relative_to(root)
+        hashed = hashed_filename(path)
+        prefix = base_url.rstrip("/")
+        # relative_to returns Path(".") for a file sitting directly in root,
+        # which would otherwise render as a "/./" segment in the URL.
+        if relative_dir == Path("."):
+            return f"{prefix}/{hashed}"
+        return f"{prefix}/{relative_dir.as_posix()}/{hashed}"
+
+    return resolve
