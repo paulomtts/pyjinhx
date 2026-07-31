@@ -52,3 +52,145 @@ def test_default_getters_hand_back_throwaway_containers():
     assert session_module.get_instances() == {}
     assert session_module.get_dirtied() == set()
     assert session_module.get_cache_store() == {}
+
+
+def test_exit_clears_all_four_at_top_level():
+    with session_module.request_scope():
+        session_module.get_instances()["Card_a"] = "instance"
+        session_module.get_dirtied().add("Card.title")
+        session_module.get_cache_store()["k"] = "v"
+
+    assert session_module.current_session() is None
+    assert session_module.get_instances() == {}
+    assert session_module.get_dirtied() == set()
+    assert session_module.get_cache_store() == {}
+
+
+def test_nested_scope_restores_the_outer_scope_not_the_global_default():
+    with session_module.request_scope() as outer:
+        session_module.get_instances()["outer"] = "o"
+        session_module.get_dirtied().add("outer")
+        session_module.get_cache_store()["outer"] = "o"
+        outer.asset_paths.add("outer.css")
+
+        with session_module.request_scope() as inner:
+            assert inner is not outer
+            assert session_module.current_session() is inner
+            assert session_module.get_instances() == {}
+            assert session_module.get_dirtied() == set()
+            assert session_module.get_cache_store() == {}
+
+            session_module.get_instances()["inner"] = "i"
+            session_module.get_dirtied().add("inner")
+            session_module.get_cache_store()["inner"] = "i"
+            inner.asset_paths.add("inner.css")
+
+        assert session_module.current_session() is outer
+        assert session_module.get_instances() == {"outer": "o"}
+        assert session_module.get_dirtied() == {"outer"}
+        assert session_module.get_cache_store() == {"outer": "o"}
+        assert outer.asset_paths == {"outer.css"}
+
+
+def test_two_sequential_top_level_scopes_share_nothing():
+    with session_module.request_scope() as first:
+        session_module.get_instances()["first"] = "1"
+        session_module.get_dirtied().add("first")
+        session_module.get_cache_store()["first"] = "1"
+        first.asset_paths.add("first.css")
+
+    with session_module.request_scope() as second:
+        assert second is not first
+        assert second.asset_paths == set()
+        assert session_module.get_instances() == {}
+        assert session_module.get_dirtied() == set()
+        assert session_module.get_cache_store() == {}
+
+
+def test_exception_inside_the_block_still_resets_all_four():
+    class Boom(Exception):
+        pass
+
+    try:
+        with session_module.request_scope():
+            session_module.get_instances()["Card_a"] = "instance"
+            session_module.get_dirtied().add("Card.title")
+            session_module.get_cache_store()["k"] = "v"
+            raise Boom
+    except Boom:
+        pass
+
+    assert session_module.current_session() is None
+    assert session_module.get_instances() == {}
+    assert session_module.get_dirtied() == set()
+    assert session_module.get_cache_store() == {}
+
+
+def test_exception_in_a_nested_scope_leaves_the_outer_scope_intact():
+    class Boom(Exception):
+        pass
+
+    with session_module.request_scope() as outer:
+        session_module.get_instances()["outer"] = "o"
+
+        try:
+            with session_module.request_scope():
+                session_module.get_instances()["inner"] = "i"
+                raise Boom
+        except Boom:
+            pass
+
+        assert session_module.current_session() is outer
+        assert session_module.get_instances() == {"outer": "o"}
+
+
+def test_two_threads_do_not_see_each_others_scope_state():
+    """ContextVars give each thread its own binding. Two concurrent scopes writing
+    the same keys must each read back only their own writes."""
+    start = threading.Barrier(2)
+    mid = threading.Barrier(2)
+    observed: dict[str, tuple[dict[str, object], dict[object, object]]] = {}
+    errors: list[BaseException] = []
+
+    def worker(name: str) -> None:
+        try:
+            with session_module.request_scope():
+                start.wait(timeout=5)
+                session_module.get_instances()[name] = name
+                session_module.get_cache_store()[name] = name
+                mid.wait(timeout=5)
+                observed[name] = (
+                    dict(session_module.get_instances()),
+                    dict(session_module.get_cache_store()),
+                )
+        except BaseException as exc:  # surfaced on the main thread below
+            errors.append(exc)
+
+    threads = [
+        threading.Thread(target=worker, args=("a",)),
+        threading.Thread(target=worker, args=("b",)),
+    ]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join(timeout=10)
+
+    assert not errors, errors
+    assert observed == {"a": ({"a": "a"}, {"a": "a"}), "b": ({"b": "b"}, {"b": "b"})}
+    assert session_module.get_instances() == {}
+    assert session_module.get_cache_store() == {}
+
+
+def test_render_session_is_still_directly_constructible_with_autoescape_on():
+    """render.py constructs a RenderSession directly and reads .jinja_env; growing
+    the module must not force callers through request_scope."""
+    session = session_module.RenderSession(template_dir="tests/templates")
+
+    assert session.jinja_env.autoescape is True
+    assert session.jinja_env.from_string("{{ v }}").render(v="<b>") == "&lt;b&gt;"
+    assert session.asset_paths == set()
+
+
+def test_scope_passes_template_dir_through_to_the_session():
+    with session_module.request_scope(template_dir="tests/templates") as s:
+        assert s.jinja_env.autoescape is True
