@@ -123,6 +123,14 @@ def test_component_is_the_only_importer_of_class_descriptor():
     assert importers == {"component"}
 
 
+def test_session_never_reaches_into_reactive():
+    """session.py owns the per-request ContextVars; reactive/ imports them from
+    here. The reverse edge would invert the spine."""
+    imports = internal_imports(PACKAGE_ROOT / "session.py")
+    assert not any(name.startswith("pyjinhx2.reactive") for name in imports)
+    assert imports <= {"pyjinhx2.markers"}
+
+
 def test_no_render_spine_module_declares_a_reactive_import():
     """FORBIDDEN per architecture-overview.md: anything in the render spine
     importing reactive/. pyjinhx2/reactive/ doesn't exist yet (#288), so this
