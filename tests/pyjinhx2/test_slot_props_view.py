@@ -245,7 +245,7 @@ class TestSlotPropsView:
 
         nested = self.node(Card(content=Leaf(title="inner"))).props.content
 
-        assert nested.props.title == "inner"
+        assert nested.props.title == "inner"  # pyright: ignore[reportAttributeAccessIssue]
 
     def test_the_nodes_own_forbidden_ops_are_unchanged(self):
         node = self.node(Leaf(title="hello"))

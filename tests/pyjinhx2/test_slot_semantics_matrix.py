@@ -515,6 +515,57 @@ class TestPropsBoundaries:
         with pytest.raises(TypeError, match=r"`\.props`"):
             str(node.props)
 
+
+class TestNestedPropsOpacity:
+    """A component-typed prop reached through `.props` is opaque too (#419)."""
+
+    def wrapper_card(self) -> BaseComponent:
+        class Inner(BaseComponent):
+            content: Slot = ""
+
+        Inner.__pjx_descriptor__ = descriptor(
+            "nest_content.html", frozenset({"content"})
+        )
+
+        class Card(BaseComponent):
+            content: Slot = ""
+
+        Card.__pjx_descriptor__ = descriptor(
+            "nest_content.html", frozenset({"content"})
+        )
+        return Card(content=Inner(content=Leaf(text="deep")))
+
+    @pytest.mark.parametrize(
+        ("expr", "syntax"),
+        [
+            ("{{ content.props.content|length }}", "|length"),
+            ("{{ content.props.content|upper }}", "str()"),
+            (
+                "{% for x in content.props.content %}{{ x }}{% endfor %}",
+                "for",
+            ),
+        ],
+    )
+    def test_a_nested_component_prop_raises_the_opacity_error(self, expr, syntax):
+        with pytest.raises(TypeError) as excinfo:
+            render_expr(expr, self.wrapper_card())
+
+        message = str(excinfo.value)
+        assert "slot 'content.props.content'" in message
+        assert f"`{syntax}`" in message
+
+    def test_a_nested_component_prop_still_interpolates_through_the_token(self):
+        output = render_expr("{{ content.props.content }}", self.wrapper_card())
+
+        assert output.startswith("pjx-slot-")
+
+    def test_a_nested_scalar_prop_is_untouched(self):
+        output = render_expr(
+            "{{ content.props.content.props.text }}", self.wrapper_card()
+        )
+
+        assert output == "deep"
+
     def test_an_unknown_props_name_is_an_ordinary_lookup_failure(self):
         # A typo in `.props.x` must read as a typo, not as an opacity
         # violation, so it never raises the opaque TypeError.
