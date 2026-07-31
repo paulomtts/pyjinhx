@@ -154,8 +154,23 @@ def test_node_is_truthy():
     assert bool(make_node()) is True
 
 
-def test_str_renders_placeholder_not_object_repr():
-    """str() must not fall through to object's default repr-ish output."""
-    text = str(make_node())
+def test_str_raises_the_opacity_error():
+    """str() is a forbidden operation, not a silent repr leak (#419 gap 1)."""
+    node = make_node()
 
-    assert "<pyjinhx2.markers.ComponentNode object at" not in text
+    with pytest.raises(TypeError) as excinfo:
+        str(node)
+
+    message = str(excinfo.value)
+    assert "slot 'content' holds a rendered component" in message
+    assert "`str()`" in message
+
+
+def test_str_does_not_leak_the_component_repr():
+    """No path stringifies the node into HTML-visible text."""
+    node = make_node()
+
+    with pytest.raises(TypeError) as excinfo:
+        f"{node}"
+
+    assert "ComponentNode(" not in str(excinfo.value)

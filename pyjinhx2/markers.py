@@ -63,10 +63,10 @@ class ComponentNode:
     """Opaque marker wrapping a component-valued Slot field.
 
     Not a string, so Jinja filters routed through a dunder (e.g. |length) fail
-    fast. Filters that stringify first (|upper, |trim, |striptags) fall
-    through to __str__ instead - a documented gap, see ADR 0003 / #368 PR
-    notes. Holds enough info for L1 to skip it during child expansion, and
-    enough about the component that declared the slot to name it in an error.
+    fast. Filters that stringify first (|upper, |trim, |striptags) reach
+    __str__, which raises the same opaque error. Holds enough info for L1 to
+    skip it during child expansion, and enough about the component that
+    declared the slot to name it in an error.
 
     ``owner_name``/``owner_template``/``field_name`` default to placeholders
     so call sites that only care about the wrapped component (e.g. token-table
@@ -109,6 +109,15 @@ class ComponentNode:
 
     def __repr__(self) -> str:
         return f"ComponentNode({self.component!r})"
+
+    def __str__(self) -> str:
+        # Filters that stringify before doing their work (|upper, |trim,
+        # |striptags) reach the node here rather than through a dunder the
+        # opaque errors already cover; without this they would fall through
+        # to __repr__ and leak "ComponentNode(...)" into rendered HTML.
+        # Bare `{{ field }}` never lands here: finalize_slot_node swaps the
+        # node for a placeholder token before Jinja stringifies anything.
+        raise self._opaque_error("str()")
 
     @property
     def props(self) -> SlotProps:
