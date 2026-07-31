@@ -121,6 +121,20 @@ def test_link_mode_emits_stylesheet_links_sorted_by_path(tmp_path):
     )
 
 
+def test_link_mode_emits_script_src_tags_sorted_by_path(tmp_path):
+    session = _session(tmp_path)
+    session.js_assets.update({tmp_path / "z.js", tmp_path / "a.js"})
+    session.css_mode = AssetMode.NONE
+    session.js_mode = AssetMode.LINK
+
+    out = emit_assets(session, resolver=_stub_resolver)
+
+    assert out == (
+        '<script src="/static/a.js"></script>\n'
+        '<script src="/static/z.js"></script>'
+    )
+
+
 from dataclasses import replace
 
 from pyjinhx2.component import BaseComponent

@@ -92,6 +92,12 @@ def emit_assets(
         )
     if session.js_mode is AssetMode.INLINE:
         tags += _inline_tags(session.js_assets, "<script>", "</script>")
+    elif session.js_mode is AssetMode.LINK:
+        tags += _url_tags(
+            session.js_assets,
+            _require_resolver(resolver),
+            '<script src="{url}"></script>',
+        )
     return "\n".join(tags)
 
 
