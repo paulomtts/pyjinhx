@@ -56,3 +56,18 @@ N3. No custom per-component hash override mechanism is mandated. v0.x's `state_h
 N4. No template-visible cache or hash API. Same boundary as ADR 0004/#382 N1 — this surface is fan-out/reactivity-internal, never reachable from template code.
 
 N5. No second cache keyed by manifest `{type, id}`. The registry (composite `name+id`, #382) and the LoadCache (`(class, load_arg)`, R6) are two different keyings for two different questions ("what's mounted" vs. "does load() need to rerun") and must not be merged into one map — conflating them was not a v0.x behavior and is not requested here.
+
+## T2 per-branch mapping
+
+| T2 branch | Manifest/hash/cache-specific need |
+| --- | --- |
+| clean-key resolve | R2 predicate (b) fails (no dirtied-key intersection) → entry is filtered out before load/hash work; registry (#382 R1) supplies the cached render. |
+| dirty-key re-render | R2 predicate (b) passes → R3 dedup → `load()` reruns; R8 must have evicted the relevant cache slot when the key was dirtied, or the rerun would return stale cached state. |
+| gone/LookupError-delete | R11: cache and manifest resolution must agree an entry is gone; not a hash-gate or dedup concern. |
+| hash-gate-drop | R5: fresh hash equals reported hash (R4 composition) → candidate dropped. Only reached after R2/R3 already selected the entry. |
+| nesting-dedup-drop | Not this surface's concern (#382 N5 territory). |
+| survivor-splice-at-root_span | Not this surface's concern (#382 R4); this surface's job ends once a fresh render + hash exist for a surviving candidate. |
+
+## Open question for #384
+
+Whether cache scope in v2 is a single fixed request-scope (simplest, satisfies Invariant 4 with no extra machinery) or whether v0.x's three-way `CacheScope` (request/process/none) plus cross-worker propagation is carried forward as a configurable surface. This enumeration only requires that request scope exist and satisfy R6-R8; the scope-selection API, if any, is left to #384's ADR wording and L2's implementation.
