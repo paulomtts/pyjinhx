@@ -159,3 +159,51 @@ def resolver_with_hash(base_url: str, root: str) -> Callable[[Path], str]:
         return f"{prefix}/{relative_dir.as_posix()}/{hashed}"
 
     return resolve
+
+
+def _all_component_classes(root: type) -> set[type]:
+    """Every class below root in the subclass tree, root excluded.
+
+    Recursive rather than one level deep: a component that subclasses another
+    component is a distinct class with its own descriptor, and only leaves of
+    a deep hierarchy would be seen otherwise. Returned as a set because
+    multiple inheritance makes a class reachable by more than one path.
+    """
+    found: set[type] = set()
+    for subclass in root.__subclasses__():
+        found.add(subclass)
+        found |= _all_component_classes(subclass)
+    return found
+
+
+def all_assets() -> tuple[tuple[Path, ...], tuple[Path, ...]]:
+    """Return every CSS and JS path declared by any component class.
+
+    Registry-wide rather than session-scoped: a class contributes its assets
+    whether or not it was rendered, which is what a build step bundling the
+    whole asset tree needs, as opposed to asset_manifest's per-request view.
+
+    Only classes imported by the time of the call are visible, since Python
+    discovers subclasses as their modules execute — import the component
+    package before calling this from a build script.
+
+    Returns:
+        The CSS paths then the JS paths, each deduped and in path-sorted
+        order so repeated calls and repeated builds agree byte for byte.
+    """
+    # Imported here rather than at module scope: session imports this module
+    # and component imports session, so a top-level import would cycle.
+    from pyjinhx2.component import BaseComponent
+
+    css: set[Path] = set()
+    js: set[Path] = set()
+    for cls in _all_component_classes(BaseComponent):
+        # A class that never went through descriptor resolution — an abstract
+        # mixin, say — has no descriptor attribute at all, and contributes
+        # nothing rather than failing the whole enumeration.
+        descriptor = getattr(cls, "__pjx_descriptor__", None)
+        if descriptor is None:
+            continue
+        css.update(descriptor.css_paths)
+        js.update(descriptor.js_paths)
+    return tuple(sorted(css, key=str)), tuple(sorted(js, key=str))

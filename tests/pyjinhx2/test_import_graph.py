@@ -24,7 +24,10 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
     # The TYPE_CHECKING-only RenderSession import mirrors session's own
     # component/segments entries below, for the same reason: the enum/function
     # signature names the type, runtime never touches it.
-    "assets": frozenset({"pyjinhx2.session"}),
+    # component is a real runtime edge: all_assets() reads
+    # BaseComponent.__subclasses__() and each class's descriptor, imported
+    # locally to avoid a module-level cycle (session imports assets).
+    "assets": frozenset({"pyjinhx2.session", "pyjinhx2.component"}),
     # The classless factory is a consumer: it validates a tag name, reads the
     # template discovery found, hands the header to props_header and publishes
     # the result through discovery's own write path. Nothing imports it back.
