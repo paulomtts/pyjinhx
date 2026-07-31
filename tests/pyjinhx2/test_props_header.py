@@ -96,3 +96,34 @@ def test_required_and_defaulted_props_mix_in_declared_order():
         ("count", int, 0),
         ("variant", str, "primary"),
     ]
+
+
+def test_duplicate_prop_name_is_rejected():
+    with pytest.raises(ValueError, match="duplicate prop 'title'"):
+        parse_props_header("{#def title: str, title: int #}")
+
+
+@pytest.mark.parametrize(
+    "signature",
+    ["*args", "**kwargs", "*, x: int", "x, /", "title: str, *rest"],
+)
+def test_non_simple_parameters_are_rejected(signature: str):
+    """Props are plain named keywords — varargs and slot markers have no meaning."""
+    with pytest.raises(ValueError, match="simple named props"):
+        parse_props_header(f"{{#def {signature} #}}")
+
+
+def test_non_literal_default_is_rejected():
+    with pytest.raises(ValueError, match="default for 'x' must be a literal"):
+        parse_props_header("{#def x: int = some_call() #}")
+
+
+def test_name_reference_default_is_rejected():
+    """A bare name would need evaluation; the parser never executes header code."""
+    with pytest.raises(ValueError, match="default for 'x' must be a literal"):
+        parse_props_header("{#def x: int = DEFAULT_X #}")
+
+
+def test_malformed_signature_is_rejected():
+    with pytest.raises(ValueError, match="invalid"):
+        parse_props_header("{#def title: str = ( #}")

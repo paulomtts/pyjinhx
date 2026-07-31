@@ -63,20 +63,46 @@ def parse_props_header(source: str) -> list[tuple[str, Any, Any]] | None:
     if match is None:
         return None
     signature = match.group("sig")
-    tree = ast.parse(f"def __pjx_props__({signature}): pass")
+    try:
+        tree = ast.parse(f"def __pjx_props__({signature}): pass")
+    except SyntaxError as exc:
+        raise ValueError(
+            f"invalid {{#def#}} header signature {signature!r}: {exc.msg}"
+        ) from exc
     func = tree.body[0]
     assert isinstance(func, ast.FunctionDef)
     arguments = func.args
+    if (
+        arguments.vararg
+        or arguments.kwarg
+        or arguments.kwonlyargs
+        or arguments.posonlyargs
+    ):
+        raise ValueError(
+            f"{{#def#}} header may only use simple named props: {signature!r}"
+        )
     args = arguments.args
     defaults = arguments.defaults
     # Defaults bind to the *last* N params, so this offset maps index -> default.
     offset = len(args) - len(defaults)
+    seen: set[str] = set()
     fields: list[tuple[str, Any, Any]] = []
     for index, arg in enumerate(args):
+        name = arg.arg
+        if name in seen:
+            raise ValueError(f"{{#def#}} header has duplicate prop {name!r}")
+        seen.add(name)
         annotation = _resolve_annotation(arg.annotation)
         if index >= offset:
-            default = ast.literal_eval(defaults[index - offset])
+            default_node = defaults[index - offset]
+            try:
+                default = ast.literal_eval(default_node)
+            except (ValueError, SyntaxError) as exc:
+                raise ValueError(
+                    f"{{#def#}} header default for {name!r} must be a literal: "
+                    f"{ast.unparse(default_node)!r}"
+                ) from exc
         else:
             default = ...
-        fields.append((arg.arg, annotation, default))
+        fields.append((name, annotation, default))
     return fields
