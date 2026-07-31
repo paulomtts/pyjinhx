@@ -257,3 +257,72 @@ class TestStringifyingFilterGap:
         assert "COMPONENTNODE(" in output
         assert "LEAF" in output
         assert "<span" not in output
+
+
+class TestInferenceWithDirectNesting:
+    def card_class(self):
+        """A Card whose children target is inferred, with a second slot beside it.
+
+        `content` wins children inference by name; `header` is filled by a
+        direct Python assignment. The inferred name is read off the auto-built
+        descriptor and fed back into the fixture-pointing one, so inference
+        stays load-bearing here.
+        """
+
+        class Card(BaseComponent):
+            content: Slot = ""
+            header: Slot = ""
+
+        inferred = Card.__pjx_descriptor__.children_field
+        Card.__pjx_descriptor__ = descriptor(
+            "slot_header_content.html",
+            frozenset({"content", "header"}),
+            inferred,
+        )
+        return Card
+
+    def test_content_is_the_inferred_children_field(self):
+        assert self.card_class().__pjx_descriptor__.children_field == "content"
+
+    def test_both_slots_resolve_in_one_render_pass(self):
+        Card = self.card_class()
+
+        output = render(
+            Card(header=Leaf(text="h"), content=Leaf(text="c")), session()
+        )
+
+        assert output == (
+            '<div class="card"><header><span class="leaf">h</span></header>'
+            '<span class="leaf">c</span></div>'
+        )
+
+    def test_each_slot_enters_segments_as_its_own_nested_level(self):
+        from pyjinhx2.segments import RenderedLevel
+
+        Card = self.card_class()
+
+        level = render_level(
+            Card(header=Leaf(text="h"), content=Leaf(text="c")), session()
+        )
+
+        assert len([s for s in level.segments if isinstance(s, RenderedLevel)]) == 2
+
+    def test_the_inferred_field_is_opaque(self):
+        Card = self.card_class()
+        card = Card(header=Leaf(text="h"), content=Leaf(text="c"))
+
+        with pytest.raises(TypeError, match=r"slot 'content' holds a rendered"):
+            render_expr("{{ content|length }}", card)
+
+    def test_the_directly_nested_field_is_opaque(self):
+        Card = self.card_class()
+        card = Card(header=Leaf(text="h"), content=Leaf(text="c"))
+
+        with pytest.raises(TypeError, match=r"slot 'header' holds a rendered"):
+            render_expr("{{ header|length }}", card)
+
+    def test_both_fields_stay_truthy_and_interpolable(self):
+        Card = self.card_class()
+        card = Card(header=Leaf(text="h"), content=Leaf(text="c"))
+
+        assert render_expr("{% if header and content %}both{% endif %}", card) == "both"
