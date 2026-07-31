@@ -55,9 +55,7 @@ class RenderSession:
         # append. Per-session so subscriptions die with the request.
         self.on_rendered: list[Callable[[BaseComponent, RenderedLevel], None]] = []
 
-    def emit_rendered(
-        self, component: "BaseComponent", level: "RenderedLevel"
-    ) -> None:
+    def emit_rendered(self, component: "BaseComponent", level: "RenderedLevel") -> None:
         """Notify subscribers that ``component``'s subtree finished rendering.
 
         Args:
