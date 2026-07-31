@@ -237,7 +237,7 @@ def render_level(
     # Fired after every child has already rendered and spliced in above, so a
     # nested tree fires depth-first, post-order, once per component.
     for hook in session.on_rendered:
-        hook(component, level)
+        hook(component, level, session)
     return level
 
 
@@ -258,8 +258,11 @@ def render(component: BaseComponent, session: "RenderSession | None" = None) -> 
     Returns:
         The component's rendered markup as a finished HTML string.
 
-    Fires each ``session.on_rendered`` callback with ``(component, level)``
-    after each component's level is built, depth-first post-order.
+    Fires each ``session.on_rendered`` callback with ``(component, level,
+    session)`` after each component's level is built, depth-first post-order.
+    ``session`` is always the one passed to (or defaulted inside) this call,
+    never read off any ContextVar, so hooks work whether or not ``session``
+    is also the active request_scope().
 
     Raises:
         ValueError: If template renders zero or 2+ root elements.

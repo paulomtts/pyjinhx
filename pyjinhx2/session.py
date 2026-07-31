@@ -49,8 +49,10 @@ class RenderSession:
             # hook swaps in a placeholder the render pipeline resolves later.
             finalize=finalize_slot_node,
         )
-        # Asset paths accumulate here as on_rendered fires bottom-up; a set because
-        # the same component class contributes the same paths on every occurrence.
+        # Generic per-request asset slot from the #423 ContextVar model
+        # (predates L2.2.1's descriptor accumulator below); no producer in
+        # this codebase writes to it yet, so it stays as-is for whatever
+        # future non-descriptor asset source needs a request-scoped set.
         self.asset_paths: set[str] = set()
         # css_assets/js_assets are the L2.2.1 accumulator: descriptor paths
         # set-added by accumulate_assets as on_rendered fires, kept separate
@@ -60,9 +62,11 @@ class RenderSession:
         self.js_assets: set[Path] = set()
         # Callbacks fired once per component render, after that level's
         # RenderedLevel is built (depth-first post-order once nested renders
-        # exist). Subscribers read the finished descriptor/level; they never
-        # trigger a second render.
-        self.on_rendered: list[Callable[[Any, RenderedLevel], None]] = []
+        # exist). Subscribers read the finished descriptor/level and the
+        # RenderSession that drove this render — never the request_scope
+        # ContextVar, which the render() caller may not have entered at all.
+        # Subscribers never trigger a second render.
+        self.on_rendered: list[Callable[[Any, RenderedLevel, RenderSession], None]] = []
 
 
 def current_session() -> RenderSession | None:
@@ -70,27 +74,27 @@ def current_session() -> RenderSession | None:
     return _render_session.get()
 
 
-def accumulate_assets(component: Any, level: "RenderedLevel") -> None:
-    """Set-add the rendered class's descriptor asset paths into the request store.
+def accumulate_assets(
+    component: Any, level: "RenderedLevel", session: "RenderSession"
+) -> None:
+    """Set-add the rendered class's descriptor asset paths into the session.
 
     Meant to be subscribed onto ``RenderSession.on_rendered``. Paths are read
     straight from the frozen descriptor and never re-probed; duplicates across
     instances or classes collapse because the store is a set keyed by path.
 
+    Writes into ``session`` — the RenderSession that actually drove this
+    render, passed through by render_level() — rather than reading
+    ``current_session()``. render(component, session) is the dominant calling
+    convention in this codebase and never requires the session to also be the
+    active request_scope(), so accumulate_assets must not either.
+
     Args:
         component: The component that was just rendered (unused; on_rendered's
             callback shape always passes it).
         level: The RenderedLevel carrying the class descriptor.
-
-    Raises:
-        NoActiveRequestScope: If fired outside an active request_scope().
+        session: The RenderSession this render ran against.
     """
-    session = current_session()
-    if session is None:
-        raise NoActiveRequestScope(
-            "accumulate_assets fired outside an active request_scope(); wrap "
-            "rendering in request_scope()"
-        )
     # RenderedLevel.descriptor is typed as `object` to keep segments.py
     # import-pure; read structurally here rather than importing ClassDescriptor.
     descriptor: Any = level.descriptor
@@ -134,7 +138,7 @@ def request_scope(
         session: An existing RenderSession to bind as this scope's current
             session, instead of constructing a fresh one. Lets a caller wire
             hooks (e.g. ``on_rendered``) onto a session before it becomes the
-            one ``current_session()``/``accumulate_assets`` see as active.
+            one ``current_session()`` sees as active.
 
     Yields:
         The RenderSession bound for this scope.

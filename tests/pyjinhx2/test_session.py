@@ -222,7 +222,9 @@ PlainBox.__pjx_descriptor__ = ClassDescriptor(
 
 def test_on_rendered_fires_once_per_render(render_session):
     seen = []
-    render_session.on_rendered.append(lambda component, level: seen.append(component))
+    render_session.on_rendered.append(
+        lambda component, level, session: seen.append(component)
+    )
     box = PlainBox()
     render(box, render_session)
     assert seen == [box]
@@ -230,6 +232,8 @@ def test_on_rendered_fires_once_per_render(render_session):
 
 def test_on_rendered_receives_the_rendered_level(render_session):
     captured = []
-    render_session.on_rendered.append(lambda component, level: captured.append(level))
+    render_session.on_rendered.append(
+        lambda component, level, session: captured.append(level)
+    )
     render(PlainBox(), render_session)
     assert captured[0].descriptor is PlainBox.__pjx_descriptor__
