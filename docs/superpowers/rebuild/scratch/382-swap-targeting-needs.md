@@ -45,3 +45,20 @@ N3. No second HTML parse and no string search to relocate roots. The recorded `r
 N4. No manifest-hash comparison, no hash-input composition, no cache-keying scheme. This document names only the clean / dirty / miss branches that need *a* lookup; how cleanliness is decided is #383's half.
 
 N5. No registry state for nesting dedup. Structural containment lives in `segments.py` (see R5).
+
+## T2 per-branch mapping
+
+Each fan-out branch in implementation-overview.md T2, reduced to what it needs from the registry alone.
+
+| T2 branch | Registry-specific need |
+| --- | --- |
+| clean-key resolve | R1 + R4: return the cached render and its recorded `root_span`; no re-render. How "clean" was decided is LoadCache/hash mechanics (#383). |
+| dirty-key re-render | R1 + R4: still resolve `{type, id}` so the freshly rendered result is routed to the right `root_span`. |
+| LookupError-delete | R3: a miss is a defined non-error path returning "gone", which drives a delete-swap selector (R2). |
+| hash-gate-drop | Not a registry concern. Hash mechanism is #383; the registry participates only if asked to resolve the key at all. |
+| nesting-dedup-drop | Not a registry concern. Structural containment in `segments.py` (R5 / N5). Fan-out runs after the primary render and must exclude regions the primary response already contains — that exclusion is segment containment, not new registry state. |
+| survivor-splice-at-root_span | R4: the registry-resolved `root_span` is the splice target; no re-parse (N3). |
+
+## Open question for #384/L2
+
+Whether the miss is expressed as an exception (v0.x's `LookupError`) or as an explicit sentinel/variant in the return type. The enumeration requires only that the distinction be observable from a single lookup (R3); the representation is left to #384's ADR wording and L2's implementation and is deliberately not resolved here.
