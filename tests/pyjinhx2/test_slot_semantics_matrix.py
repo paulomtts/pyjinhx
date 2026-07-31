@@ -326,3 +326,113 @@ class TestInferenceWithDirectNesting:
         card = Card(header=Leaf(text="h"), content=Leaf(text="c"))
 
         assert render_expr("{% if header and content %}both{% endif %}", card) == "both"
+
+
+class Titled(BaseComponent):
+    title: str = "x"
+
+
+Titled.__pjx_descriptor__ = descriptor("slot_leaf.html", frozenset())
+
+
+class TestCollectionsMatrix:
+    def card_class(self, template: str):
+        class Card(BaseComponent):
+            content: Slot = ""
+
+        Card.__pjx_descriptor__ = descriptor(template, frozenset({"content"}))
+        return Card
+
+    def test_a_list_slot_interpolates_every_entry(self):
+        Card = self.card_class("slot_list.html")
+
+        output = render(
+            Card(content=[Titled(title="a"), Titled(title="b")]), session()
+        )
+
+        assert output == (
+            '<div class="list"><span class="leaf">a</span>'
+            '<span class="leaf">b</span></div>'
+        )
+
+    def test_a_dict_slot_interpolates_every_value_with_its_key(self):
+        Card = self.card_class("slot_dict.html")
+
+        output = render(
+            Card(content={"one": Titled(title="a"), "two": Titled(title="b")}),
+            session(),
+        )
+
+        assert output == (
+            '<div class="map"><b>one</b><span class="leaf">a</span>'
+            '<b>two</b><span class="leaf">b</span></div>'
+        )
+
+    def test_the_list_container_itself_stays_iterable_and_measurable(self):
+        # Constraint 4: opacity is per entry; wrapping the container would
+        # make `{% for %}` and `|length` over it impossible.
+        Card = self.card_class("slot_list.html")
+        card = Card(content=[Titled(title="a"), Titled(title="b")])
+
+        assert render_expr("{{ content|length }}", card) == "2"
+
+    def test_the_dict_container_supports_values_iteration(self):
+        Card = self.card_class("slot_dict.html")
+        card = Card(content={"one": Titled(title="a")})
+
+        rendered = render_expr(
+            "{% for v in content.values() %}{% if v %}hit{% endif %}{% endfor %}", card
+        )
+
+        assert rendered == "hit"
+
+    def test_a_single_list_entry_is_as_opaque_as_a_scalar_slot(self):
+        Card = self.card_class("slot_list_len.html")
+
+        with pytest.raises(TypeError, match=r"slot 'content' holds a rendered"):
+            render(Card(content=[Titled(title="a")]), session())
+
+    def test_a_single_dict_entry_is_as_opaque_as_a_scalar_slot(self):
+        Card = self.card_class("slot_dict.html")
+        card = Card(content={"one": Titled(title="a")})
+
+        with pytest.raises(TypeError, match=r"`\|length`"):
+            render_expr(
+                "{% for v in content.values() %}{{ v|length }}{% endfor %}", card
+            )
+
+    def test_each_entry_is_its_own_node_carrying_the_owner_field_name(self):
+        Card = self.card_class("slot_list.html")
+        a, b = Titled(title="a"), Titled(title="b")
+
+        value = build_context(Card(content=[a, b]), Card.__pjx_descriptor__)["content"]
+
+        assert type(value) is list
+        assert [type(v) for v in value] == [ComponentNode, ComponentNode]
+        assert {v.field_name for v in value} == {"content"}
+        assert [v.component for v in value] == [a, b]
+
+    def test_props_on_list_entries_expose_only_their_own_fields(self):
+        Card = self.card_class("slot_props_list.html")
+
+        output = render(
+            Card(content=[Titled(title="a"), Titled(title="b")]), session()
+        )
+
+        assert output == '<div class="list"><i>a</i><i>b</i></div>'
+
+    def test_props_on_dict_entries_expose_only_their_own_fields(self):
+        Card = self.card_class("slot_props_dict.html")
+
+        output = render(Card(content={"one": Titled(title="a")}), session())
+
+        assert output == '<div class="map"><b>one</b><i>a</i></div>'
+
+    def test_an_entrys_props_do_not_leak_a_sibling_entrys_values(self):
+        Card = self.card_class("slot_props_list.html")
+        a, b = Titled(title="a"), Titled(title="b")
+
+        value = build_context(Card(content=[a, b]), Card.__pjx_descriptor__)["content"]
+
+        assert value[0].props.title == "a"
+        assert value[1].props.title == "b"
