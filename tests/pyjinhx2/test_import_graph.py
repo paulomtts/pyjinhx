@@ -65,8 +65,10 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
     ),
     "render_context": frozenset({"pyjinhx2.markers", "pyjinhx2.component"}),
     # The instance registry (ADR 0009) is read-only over session's ContextVar
-    # store; it consumes get_instances() and nothing else in pyjinhx2.
-    "registry": frozenset({"pyjinhx2.session"}),
+    # store; it consumes get_instances() and nothing else in pyjinhx2. The
+    # register_rendered_instance signature also names RenderedLevel, but that
+    # import is TYPE_CHECKING-only (see registry.py) — never a runtime edge.
+    "registry": frozenset({"pyjinhx2.session", "pyjinhx2.segments"}),
     "root_attrs": frozenset({"pyjinhx2.segments"}),
     "segments": frozenset(),
     # The on_rendered hook's signature names BaseComponent and RenderedLevel, but

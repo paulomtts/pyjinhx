@@ -4,9 +4,14 @@ import logging
 
 import pytest
 
-from pyjinhx2.registry import make_key, register_instance, resolve
+from pyjinhx2.registry import (
+    make_key,
+    register_instance,
+    register_rendered_instance,
+    resolve,
+)
 from pyjinhx2.segments import RenderedLevel
-from pyjinhx2.session import _instances, get_instances, request_scope
+from pyjinhx2.session import RenderSession, _instances, get_instances, request_scope
 
 
 def test_make_key_joins_type_and_id_with_underscore():
@@ -155,3 +160,36 @@ def test_registered_then_removed_entry_raises_instead_of_returning_stale_data():
         del get_instances()[make_key("Widget", "w1")]
         with pytest.raises(LookupError, match="Widget_w1"):
             resolve("Widget", "w1")
+
+
+class FakeComponent:
+    """Stand-in with the two attributes the subscriber reads off a component."""
+
+    def __init__(self, id: str):
+        self.id = id
+
+
+def test_register_rendered_instance_stores_the_level_under_type_and_id():
+    level = RenderedLevel(segments=["<p>x</p>"], root_span=(0, 3), descriptor=None)
+    component = FakeComponent("f1")
+    session = RenderSession()
+    with request_scope(session=session):
+        register_rendered_instance(component, level, session)
+        assert resolve("FakeComponent", "f1") is level
+
+
+def test_render_session_does_not_subscribe_the_registry_writer_by_default():
+    session = RenderSession()
+    assert register_rendered_instance not in session.on_rendered
+
+
+def test_emit_rendered_registers_nothing_until_the_writer_is_subscribed():
+    level = RenderedLevel(segments=["<p>x</p>"], root_span=(0, 3), descriptor=None)
+    component = FakeComponent("f1")
+    session = RenderSession()
+    with request_scope(session=session):
+        session.emit_rendered(component, level)  # type: ignore[arg-type]
+        assert get_instances() == {}
+        session.on_rendered.append(register_rendered_instance)
+        session.emit_rendered(component, level)  # type: ignore[arg-type]
+        assert resolve("FakeComponent", "f1") is level
