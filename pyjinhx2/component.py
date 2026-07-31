@@ -429,6 +429,10 @@ class BaseComponent(BaseModel):
 
     _pjx_replace: ClassVar[bool] = False
 
+    _pjx_stale_header_warned: ClassVar[bool] = False
+    """Set the first time this class's stale ``{#def#}`` header is reported, so
+    the complaint is made once and not once per render."""
+
     _pjx_children_field: ClassVar[str | None] = None
     """Explicit children-target override. ``None`` means "infer" — see
     :func:`_resolve_children_field`."""

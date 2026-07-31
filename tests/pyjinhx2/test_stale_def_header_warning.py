@@ -13,9 +13,12 @@ them from the class name:
   - ``stale_badge.pjx`` — has none
 """
 
+import logging
 from pathlib import Path
 
 from pyjinhx2.component import BaseComponent
+from pyjinhx2.descriptor import ClassDescriptor
+from pyjinhx2.render import render_level
 
 
 class StaleCard(BaseComponent):
@@ -50,3 +53,72 @@ def test_unreadable_template_leaves_flag_false():
         pass
 
     assert NoTemplateAtAll.__pjx_descriptor__.has_stale_def_header is False
+
+
+def _wire(cls: type[BaseComponent], *, stale: bool) -> None:
+    """Point ``cls`` at a loadable template and pin its stale-header flag.
+
+    The real descriptor's template_path is an absolute path to a ``.pjx``
+    file, which the test session's FileSystemLoader cannot load by name; the
+    render-path tests care only about the flag, so they swap in a descriptor
+    naming a template the loader can find.
+    """
+    cls.__pjx_descriptor__ = ClassDescriptor(
+        template_path=Path("stale_render.html"),
+        slot_fields=frozenset(),
+        children_field=None,
+        css_paths=(),
+        js_paths=(),
+        strict=True,
+        provenance={"template": cls},
+        has_stale_def_header=stale,
+    )
+    cls._pjx_stale_header_warned = False
+
+
+def test_render_warns_once_for_stale_header(render_session, caplog):
+    """First render of a flagged class emits exactly one naming WARNING."""
+
+    class WarnOnce(BaseComponent):
+        title: str = "Hi"
+
+    _wire(WarnOnce, stale=True)
+
+    with caplog.at_level(logging.WARNING, logger="pyjinhx2"):
+        render_level(WarnOnce(), render_session)
+
+    stale = [r for r in caplog.records if "{#def#}" in r.getMessage()]
+    assert len(stale) == 1, [r.getMessage() for r in stale]
+    assert stale[0].levelno == logging.WARNING
+    assert "WarnOnce" in stale[0].getMessage()
+
+
+def test_second_render_does_not_warn_again(render_session, caplog):
+    """The warning is once per class, not once per render."""
+
+    class WarnOnlyOnce(BaseComponent):
+        title: str = "Hi"
+
+    _wire(WarnOnlyOnce, stale=True)
+
+    with caplog.at_level(logging.WARNING, logger="pyjinhx2"):
+        render_level(WarnOnlyOnce(), render_session)
+        render_level(WarnOnlyOnce(), render_session)
+
+    stale = [r for r in caplog.records if "{#def#}" in r.getMessage()]
+    assert len(stale) == 1, [r.getMessage() for r in stale]
+
+
+def test_no_header_never_warns(render_session, caplog):
+    """A class whose template has no header stays silent across renders."""
+
+    class NeverWarns(BaseComponent):
+        title: str = "Hi"
+
+    _wire(NeverWarns, stale=False)
+
+    with caplog.at_level(logging.WARNING, logger="pyjinhx2"):
+        render_level(NeverWarns(), render_session)
+        render_level(NeverWarns(), render_session)
+
+    assert [r for r in caplog.records if "{#def#}" in r.getMessage()] == []
