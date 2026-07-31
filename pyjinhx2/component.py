@@ -426,6 +426,29 @@ class BaseComponent(BaseModel):
         description="The unique ID for this component. Auto-generated when omitted.",
     )
 
+    def pjx_props(self) -> dict[str, Any]:
+        """This component's own validated field values, one shallow snapshot.
+
+        Component-valued fields keep their live instances instead of being
+        dumped: dumping them would walk into a child's slots and eventually
+        stringify markup, which is exactly what ADR 0003's opacity rule
+        forbids. Any other nested model is a plain data value, so it dumps.
+        """
+        props: dict[str, Any] = {}
+        for name in type(self).model_fields:
+            value = getattr(self, name)
+            if isinstance(value, BaseComponent):
+                props[name] = value
+            elif isinstance(value, list):
+                props[name] = list(value)
+            elif isinstance(value, dict):
+                props[name] = dict(value)
+            elif isinstance(value, BaseModel):
+                props[name] = value.model_dump()
+            else:
+                props[name] = value
+        return props
+
     def __init_subclass__(cls, *, pjx_replace: bool = False, **kwargs: Any) -> None:
         """Consume the ``pjx_replace`` class kwarg before it reaches
         ``object.__init_subclass__``, which accepts no keyword arguments.

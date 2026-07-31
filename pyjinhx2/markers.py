@@ -14,6 +14,51 @@ if TYPE_CHECKING:
     from pyjinhx2.component import BaseComponent
 
 
+class SlotProps:
+    """Read-only view over a slotted child's own validated field values.
+
+    ADR 0003's single sanctioned escape hatch. Attribute and key access are
+    the whole surface: a MappingProxyType would also hand back __str__,
+    __len__ and iteration, reopening exactly the stringification hole the
+    opaque node exists to close. Unknown names fail as ordinary lookups, so
+    a typo in `{{ field.props.x }}` reads as a typo and not as an opacity
+    violation.
+    """
+
+    __slots__ = ("_node", "_values")
+
+    def __init__(self, values: dict[str, object], node: ComponentNode) -> None:
+        object.__setattr__(self, "_values", values)
+        object.__setattr__(self, "_node", node)
+
+    def __getattr__(self, name: str) -> object:
+        values: dict[str, object] = object.__getattribute__(self, "_values")
+        if name not in values:
+            raise AttributeError(name)
+        return values[name]
+
+    def __getitem__(self, key: str) -> object:
+        # Guards against Python's legacy iteration protocol, which probes
+        # __getitem__ with integer indices when no __iter__ is defined;
+        # rejecting non-str keys keeps `list(props)` a TypeError, not a
+        # KeyError that leaks internal dict iteration as a side door.
+        if not isinstance(key, str):
+            raise TypeError(f"slot props keys must be str, got {type(key).__name__}")
+        values: dict[str, object] = object.__getattribute__(self, "_values")
+        return values[key]
+
+    def __setattr__(self, name: str, value: object) -> None:
+        raise AttributeError("slot props are read-only")
+
+    def __str__(self) -> str:
+        node: ComponentNode = object.__getattribute__(self, "_node")
+        raise node._opaque_error(".props")
+
+    def __repr__(self) -> str:
+        node: ComponentNode = object.__getattribute__(self, "_node")
+        return f"SlotProps({type(node.component).__name__})"
+
+
 class ComponentNode:
     """Opaque marker wrapping a component-valued Slot field.
 
@@ -64,6 +109,16 @@ class ComponentNode:
 
     def __repr__(self) -> str:
         return f"ComponentNode({self.component!r})"
+
+    @property
+    def props(self) -> SlotProps:
+        """The wrapped child's validated field values, read-only.
+
+        Built on each access from the child's current field values; reading
+        them never touches the child's rendered output, so `{{ field.props.x }}`
+        cannot force a render the way stringifying the node would.
+        """
+        return SlotProps(self.component.pjx_props(), self)
 
     def _opaque_error(self, operation: str) -> TypeError:
         """The error for any operation ADR 0003 forbids on a component slot.
