@@ -61,7 +61,12 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
     "render_context": frozenset({"pyjinhx2.markers", "pyjinhx2.component"}),
     "root_attrs": frozenset({"pyjinhx2.segments"}),
     "segments": frozenset(),
-    "session": frozenset({"pyjinhx2.markers"}),
+    # The on_rendered hook's signature names BaseComponent and RenderedLevel.
+    # Both imports are TYPE_CHECKING-only — at runtime session still depends on
+    # nothing but markers, so the spine's direction is unchanged.
+    "session": frozenset(
+        {"pyjinhx2.markers", "pyjinhx2.component", "pyjinhx2.segments"}
+    ),
 }
 
 
@@ -128,7 +133,7 @@ def test_session_never_reaches_into_reactive():
     here. The reverse edge would invert the spine."""
     imports = internal_imports(PACKAGE_ROOT / "session.py")
     assert not any(name.startswith("pyjinhx2.reactive") for name in imports)
-    assert imports <= {"pyjinhx2.markers"}
+    assert imports <= {"pyjinhx2.markers", "pyjinhx2.component", "pyjinhx2.segments"}
 
 
 def test_no_render_spine_module_declares_a_reactive_import():

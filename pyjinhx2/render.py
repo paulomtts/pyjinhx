@@ -171,6 +171,8 @@ def render_level(
         ValueError: If a component re-enters its own render chain (cycle).
         jinja2.TemplateNotFound: If template file missing.
         jinja2.TemplateAssertionError: If Jinja evaluation fails.
+        Exception: Whatever a session.on_rendered subscriber raises; the hook
+            does not isolate subscribers from the render.
     """
     # Phase 1: Descriptor read
     descriptor = component.__class__.__pjx_descriptor__
@@ -234,6 +236,11 @@ def render_level(
     # Runs after tag-shaped holes are resolved, so the indexes above stay valid
     # while this step rebuilds the list.
     _splice_slot_nodes(level, slot_table, session, chain)
+    # Last statement on purpose: children and slots already fired their own hooks
+    # from their own render_level calls, so subscribers see a finished subtree and
+    # session state accumulates bottom-up. Fired for every component, subscribers
+    # or not — an empty list is the zero-cost case, not a branch to skip.
+    session.emit_rendered(component, level)
     return level
 
 
