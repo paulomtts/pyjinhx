@@ -11,6 +11,7 @@ Not a CI test (timing-sensitive). Run manually before/after render-path work:
 
 import cProfile
 import io
+import math
 import pstats
 import sys
 import tempfile
@@ -23,6 +24,25 @@ from pyjinhx2.render import render
 from pyjinhx2.session import RenderSession
 
 COMPONENT_COUNTS = (50, 100, 200, 500, 1000, 2000, 5000, 10000)
+
+
+def tree_shape(n: int) -> tuple[int, int]:
+    """Breadth at each level for a 3-level tree of roughly ``n`` components.
+
+    Breadth is split evenly between the two non-root levels so neither depth
+    dominates the reading. An exact ``n`` is not always reachable with integer
+    breadths, so the shape rounds and the caller prints the count it actually
+    built.
+    """
+    mids = max(1, math.isqrt(max(n - 1, 1)))
+    leaves = max(0, round((n - 1 - mids) / mids))
+    return mids, leaves
+
+
+def tree_size(mids: int, leaves: int) -> int:
+    """Total component count for a shape: root + mids + leaves under each mid."""
+    return 1 + mids + mids * leaves
+
 
 TEMPLATE_NAME = "bench_component.pjx"
 TEMPLATE_SOURCE = '<div class="bench">{{ label }}</div>'
