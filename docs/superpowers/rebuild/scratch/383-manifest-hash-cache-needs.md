@@ -71,3 +71,27 @@ N5. No second cache keyed by manifest `{type, id}`. The registry (composite `nam
 ## Open question for #384
 
 Whether cache scope in v2 is a single fixed request-scope (simplest, satisfies Invariant 4 with no extra machinery) or whether v0.x's three-way `CacheScope` (request/process/none) plus cross-worker propagation is carried forward as a configurable surface. This enumeration only requires that request scope exist and satisfy R6-R8; the scope-selection API, if any, is left to #384's ADR wording and L2's implementation.
+
+## Traceability
+
+| Item | v0.x reference | ADR | Invariant |
+| --- | --- | --- | --- |
+| R1 manifest entry shape | `MountedManifest.parse` (`client.py:140-165`, called at `reactive.py:443`), `_manifest_load_arg` (`reactive.py:421-425`) | ADR 0009:13-24 | — |
+| R2 manifest-to-candidate filter | `reactive.py:455-481` | ADR 0009:24 | — |
+| R3 dedup by (type, load_arg) | `reactive.py:483-486` | ADR 0009:24 | — |
+| R4 hash-input composition | `state_hash()` (`reactive.py:284-295`) | ADR 0009:24 | 1 |
+| R5 hash gate equality | `reactive.py:509-511` | architecture-overview.md:160-162 | — |
+| R6 cache key shape | `cache.py:106-110` | ADR 0009:13-17 | — |
+| R7 cache scope and lifetime | `CacheScope`, `_request_cache` (`cache.py:23-61`) | ADR 0009:13-17 | 4 |
+| R8 invalidation by reactive key | `_reverse` index, `_evict_from_state` (`cache.py:163-210`) | architecture-overview.md:160-162 | — |
+| R9 keyed derived-key computation | `_indexed_keys` (`cache.py:164-170`), `_keyed_derived_keys` | ADR 0009:24 | — |
+| R10 shared key coercion | `keys.py` (`coerce_reactive_key(s)`, `coerce_load_key_str`, `reactive_key`) | — | — |
+| R11 miss composes with cache | `LookupError` path (`reactive.py:496`) + cache lookup | ADR 0001 (delete swaps) | — |
+| R12 no re-parsing | manifest = header parse, hash = model_dump, cache = typed keys | — | 1 |
+| N1 no selector/splice/nesting | (owned by #382) | ADR 0009:24 (split) | — |
+| N2 no process-scope requirement | `InvalidationHub.publish` (called at `cache.py:86-87`, defined at `cache.py:288`) | — | — |
+| N3 no pluggable hash-fn API | `state_hash_exclude` override point only | — | — |
+| N4 no template-visible API | — | ADR 0004 | — |
+| N5 no merged registry/cache keying | composite `name+id` (#382) vs `(class, load_arg)` (R6) | ADR 0009:13-17 | — |
+
+Invariants exercised: 1 (never re-derive structure by re-parsing — applies to manifest parsing, hash computation, and cache lookups alike) and 4 (request-scoped `ContextVar` state reset by `request_scope`, for the LoadCache request store). Invariants 2 and 3 are untouched. ADR 0009's "manifest membership, hash inputs, cache keying" clause (line 24) is the mandate this half of the split enumerates.
