@@ -1,10 +1,17 @@
 """Tests for the minimal request-scoped instance registry (ADR 0009)."""
 
+import logging
+
 import pytest
 
-from pyjinhx2.registry import make_key, resolve
+from pyjinhx2.registry import (
+    make_key,
+    register_instance,
+    register_rendered_instance,
+    resolve,
+)
 from pyjinhx2.segments import RenderedLevel
-from pyjinhx2.session import _instances, get_instances, request_scope
+from pyjinhx2.session import RenderSession, _instances, get_instances, request_scope
 
 
 def test_make_key_joins_type_and_id_with_underscore():
@@ -85,3 +92,104 @@ def test_entry_removed_mid_scope_raises_instead_of_returning_stale_data():
         del instances[make_key("Widget", "w1")]
         with pytest.raises(LookupError, match="Widget_w1"):
             resolve("Widget", "w1")
+
+
+def test_register_instance_makes_the_entry_resolvable():
+    widget = Widget("written")
+    with request_scope():
+        register_instance("Widget", "w1", widget)
+        assert resolve("Widget", "w1") is widget
+
+
+def test_register_instance_stores_under_the_composite_key():
+    widget = Widget("written")
+    with request_scope():
+        register_instance("Widget", "w1", widget)
+        assert get_instances()["Widget_w1"] is widget
+
+
+def test_register_instance_accepts_a_cached_rendered_level():
+    level = RenderedLevel(segments=["<div>hi</div>"], root_span=(0, 5), descriptor=None)
+    with request_scope():
+        register_instance("Card", "c1", level)
+        resolved = resolve("Card", "c1")
+    assert resolved is level
+    assert isinstance(resolved, RenderedLevel)
+    assert resolved.root_span == (0, 5)
+
+
+def test_register_instance_duplicate_key_overwrites_last_write_wins():
+    first = Widget("first")
+    second = Widget("second")
+    with request_scope():
+        register_instance("Widget", "w1", first)
+        register_instance("Widget", "w1", second)
+        assert resolve("Widget", "w1") is second
+
+
+def test_register_instance_duplicate_key_warns_naming_the_key(caplog):
+    with request_scope(), caplog.at_level(logging.WARNING, logger="pyjinhx2"):
+        register_instance("Widget", "w1", Widget("first"))
+        assert caplog.records == []
+        register_instance("Widget", "w1", Widget("second"))
+    assert len(caplog.records) == 1
+    assert "Widget_w1" in caplog.records[0].getMessage()
+
+
+def test_register_instance_outside_request_scope_is_a_logged_no_op(caplog):
+    assert _instances.get() is None
+    with caplog.at_level(logging.WARNING, logger="pyjinhx2"):
+        register_instance("Widget", "w1", Widget("orphan"))
+    assert len(caplog.records) == 1
+    assert "Widget_w1" in caplog.records[0].getMessage()
+    with pytest.raises(LookupError, match="Widget_w1"):
+        resolve("Widget", "w1")
+
+
+def test_registered_entry_does_not_survive_the_scope_reset():
+    with request_scope():
+        register_instance("Widget", "w1", Widget("old"))
+        assert resolve("Widget", "w1") is not None
+    with request_scope(), pytest.raises(LookupError, match="Widget_w1"):
+        resolve("Widget", "w1")
+
+
+def test_registered_then_removed_entry_raises_instead_of_returning_stale_data():
+    with request_scope():
+        register_instance("Widget", "w1", Widget("doomed"))
+        del get_instances()[make_key("Widget", "w1")]
+        with pytest.raises(LookupError, match="Widget_w1"):
+            resolve("Widget", "w1")
+
+
+class FakeComponent:
+    """Stand-in with the two attributes the subscriber reads off a component."""
+
+    def __init__(self, id: str):
+        self.id = id
+
+
+def test_register_rendered_instance_stores_the_level_under_type_and_id():
+    level = RenderedLevel(segments=["<p>x</p>"], root_span=(0, 3), descriptor=None)
+    component = FakeComponent("f1")
+    session = RenderSession()
+    with request_scope(session=session):
+        register_rendered_instance(component, level, session)
+        assert resolve("FakeComponent", "f1") is level
+
+
+def test_render_session_does_not_subscribe_the_registry_writer_by_default():
+    session = RenderSession()
+    assert register_rendered_instance not in session.on_rendered
+
+
+def test_emit_rendered_registers_nothing_until_the_writer_is_subscribed():
+    level = RenderedLevel(segments=["<p>x</p>"], root_span=(0, 3), descriptor=None)
+    component = FakeComponent("f1")
+    session = RenderSession()
+    with request_scope(session=session):
+        session.emit_rendered(component, level)  # type: ignore[arg-type]
+        assert get_instances() == {}
+        session.on_rendered.append(register_rendered_instance)
+        session.emit_rendered(component, level)  # type: ignore[arg-type]
+        assert resolve("FakeComponent", "f1") is level
