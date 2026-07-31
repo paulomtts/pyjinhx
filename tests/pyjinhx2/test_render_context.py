@@ -4,12 +4,12 @@ from pathlib import Path
 from typing import ClassVar
 
 import pytest
-from jinja2 import Environment, TemplateError
+from jinja2 import Environment
 from pydantic import BaseModel, ValidationError
 
-from pyjinhx2.component import BaseComponent, Slot
+from pyjinhx2.component import BaseComponent, Slot, _resolve_slot_fields
 from pyjinhx2.descriptor import ClassDescriptor
-from pyjinhx2.markers import ComponentNode
+from pyjinhx2.markers import ComponentNode, collect_slot_tokens, finalize_slot_node
 from pyjinhx2.render_context import build_context
 
 
@@ -20,15 +20,20 @@ def test_component_node_marker_identity():
         pass
 
     comp = DummyComponent()
-    node = ComponentNode(comp)
+    node = ComponentNode(
+        comp,
+        owner_name="DummyComponent",
+        owner_template=Path("dummy.pjx"),
+        field_name="content",
+    )
 
     # Verify it's not a string
     assert not isinstance(node, str)
     # Verify it holds the component reference
     assert node.component is comp
-    # Verify len() fails (as Jinja would try)
-    with pytest.raises(TypeError):
-        len(node)
+    # Verify len() fails with the targeted opacity error (as Jinja would try)
+    with pytest.raises(TypeError, match=r"slot 'content' holds a rendered component"):
+        len(node)  # type: ignore[arg-type]
 
 
 def test_basic_field_passthrough():
@@ -42,6 +47,7 @@ def test_basic_field_passthrough():
     descriptor = ClassDescriptor(
         template_path=Path("card.pjx"),
         slot_fields=frozenset(),
+        children_field=None,
         css_paths=(),
         js_paths=(),
         strict=True,
@@ -70,6 +76,7 @@ def test_slot_field_wrapping_component_valued():
     descriptor = ClassDescriptor(
         template_path=Path("card.pjx"),
         slot_fields=frozenset(["content"]),
+        children_field=None,
         css_paths=(),
         js_paths=(),
         strict=True,
@@ -94,6 +101,7 @@ def test_slot_field_passthrough_string_valued():
     descriptor = ClassDescriptor(
         template_path=Path("card.pjx"),
         slot_fields=frozenset(["html_content"]),
+        children_field=None,
         css_paths=(),
         js_paths=(),
         strict=True,
@@ -107,34 +115,66 @@ def test_slot_field_passthrough_string_valued():
     assert context["html_content"] == "<p>Safe markup</p>"
 
 
-def test_non_slot_component_valued_field():
-    """Non-Slot component-valued fields pass as component objects (not wrapped)."""
+def test_auto_slot_component_valued_field():
+    """A bare component-typed field is a slot without any annotation, so its
+    value is wrapped in ComponentNode like an explicit Slot would be."""
 
     class Child(BaseComponent):
         name: str
 
     class Parent(BaseComponent):
-        # child is NOT a Slot, so it's a regular composed field
+        # No Slot annotation: the component-typed annotation is enough.
         child: Child
 
     child = Child(name="x")
     parent = Parent(child=child)
     descriptor = ClassDescriptor(
         template_path=Path("parent.pjx"),
-        slot_fields=frozenset(),  # child is NOT a slot
+        slot_fields=_resolve_slot_fields(Parent),
+        children_field=None,
         css_paths=(),
         js_paths=(),
         strict=True,
         provenance={},
     )
 
+    assert descriptor.slot_fields == frozenset({"child"})
+
     context = build_context(parent, descriptor)
 
-    # Non-slot component fields pass as component objects
-    # (model_dump recurses, so it will be a dict representation)
-    assert "child" in context
-    # The exact structure depends on model_dump behavior
-    # At minimum, it should be in the context
+    assert isinstance(context["child"], ComponentNode)
+    assert context["child"].component is child
+
+
+def test_component_collection_slot_entries_are_not_wrapped_yet():
+    """Auto-detection makes list/dict component fields slots at registration
+    time; per-entry ComponentNode wrapping in build_context is a separate,
+    unclosed gap (list/dict slot semantics, #371) and is not in #418's scope."""
+
+    class Badge(BaseComponent):
+        label: str = ""
+
+    class Card(BaseComponent):
+        badges: list[Badge] = []  # noqa: RUF012 — pydantic's own default-factory handling
+
+    card = Card(badges=[Badge(label="a")])
+    descriptor = ClassDescriptor(
+        template_path=Path("card.pjx"),
+        slot_fields=_resolve_slot_fields(Card),
+        children_field=None,
+        css_paths=(),
+        js_paths=(),
+        strict=True,
+        provenance={},
+    )
+
+    assert descriptor.slot_fields == frozenset({"badges"})
+
+    context = build_context(card, descriptor)
+
+    # Documents current behaviour, not desired behaviour: model_dump() already
+    # flattened the entries and build_context does not iterate collections.
+    assert not isinstance(context["badges"], ComponentNode)
 
 
 def test_nested_basemodel_fields():
@@ -150,6 +190,7 @@ def test_nested_basemodel_fields():
     descriptor = ClassDescriptor(
         template_path=Path("form.pjx"),
         slot_fields=frozenset(),
+        children_field=None,
         css_paths=(),
         js_paths=(),
         strict=True,
@@ -174,6 +215,7 @@ def test_json_coerced_list_dict_fields():
     descriptor = ClassDescriptor(
         template_path=Path("panel.pjx"),
         slot_fields=frozenset(),
+        children_field=None,
         css_paths=(),
         js_paths=(),
         strict=True,
@@ -195,6 +237,7 @@ def test_auto_id_in_context():
     descriptor = ClassDescriptor(
         template_path=Path("some.pjx"),
         slot_fields=frozenset(),
+        children_field=None,
         css_paths=(),
         js_paths=(),
         strict=True,
@@ -216,6 +259,7 @@ def test_empty_component():
     descriptor = ClassDescriptor(
         template_path=Path("empty.pjx"),
         slot_fields=frozenset(),
+        children_field=None,
         css_paths=(),
         js_paths=(),
         strict=True,
@@ -239,6 +283,7 @@ def test_jinja_filters_on_regular_fields():
     descriptor = ClassDescriptor(
         template_path=Path("label.pjx"),
         slot_fields=frozenset(),
+        children_field=None,
         css_paths=(),
         js_paths=(),
         strict=True,
@@ -255,33 +300,134 @@ def test_jinja_filters_on_regular_fields():
     assert "HELLO" in result
 
 
-def test_component_slot_filter_fails():
-    """Template filter on component Slot fails fast (non-string type)."""
+@pytest.mark.parametrize(
+    "source",
+    [
+        "{{ content|length }}",
+        "{{ content[0:3] }}",
+        "{{ 'x' in content }}",
+        "{{ content == 'x' }}",
+    ],
+)
+def test_forbidden_operations_fail_through_jinja(source):
+    """Every forbidden op raises the opacity TypeError via a real render."""
 
     class Inner(BaseComponent):
         pass
 
-    class Outer(BaseComponent):
+    class Card(BaseComponent):
         content: Slot
 
-    outer = Outer(content=Inner())
+    card = Card(content=Inner())
     descriptor = ClassDescriptor(
-        template_path=Path("outer.pjx"),
+        template_path=Path("card.pjx"),
         slot_fields=frozenset(["content"]),
+        children_field=None,
         css_paths=(),
         js_paths=(),
         strict=True,
         provenance={},
     )
+    context = build_context(card, descriptor)
 
-    context = build_context(outer, descriptor)
-
-    # Template filter on component Slot should fail
     env = Environment(autoescape=True)
-    template = env.from_string("{{ content|length }}")
 
-    with pytest.raises((TemplateError, TypeError)):
+    with pytest.raises(TypeError) as excinfo:
+        template = env.from_string(source)
         template.render(context)
+
+    assert "Card (template: card.pjx): slot 'content'" in str(excinfo.value)
+
+
+@pytest.mark.parametrize(
+    "source", ["{{ content|striptags }}", "{{ content|trim }}", "{{ content|upper }}"]
+)
+def test_str_routed_filters_raise_the_opacity_error(source):
+    """`|striptags`/`|trim`/`|upper` call str() first, so they now raise the
+    same opaque TypeError as the other forbidden operations (#419 gap 1),
+    rather than falling through to a leaked component repr.
+    """
+
+    class Inner(BaseComponent):
+        pass
+
+    class Card(BaseComponent):
+        content: Slot
+
+    card = Card(content=Inner())
+    descriptor = ClassDescriptor(
+        template_path=Path("card.pjx"),
+        slot_fields=frozenset(["content"]),
+        children_field=None,
+        css_paths=(),
+        js_paths=(),
+        strict=True,
+        provenance={},
+    )
+    context = build_context(card, descriptor)
+
+    env = Environment(autoescape=True)
+    with pytest.raises(TypeError) as excinfo:
+        env.from_string(source).render(context)
+
+    assert "Card (template: card.pjx): slot 'content'" in str(excinfo.value)
+
+
+def test_string_slot_is_unaffected_by_opacity():
+    """A plain-str Slot keeps working with string filters and slicing."""
+
+    class Note(BaseComponent):
+        text_field: Slot
+
+    note = Note(text_field="hello world")
+    descriptor = ClassDescriptor(
+        template_path=Path("note.pjx"),
+        slot_fields=frozenset(["text_field"]),
+        children_field=None,
+        css_paths=(),
+        js_paths=(),
+        strict=True,
+        provenance={},
+    )
+    context = build_context(note, descriptor)
+
+    env = Environment(autoescape=True)
+
+    assert env.from_string("{{ text_field|length }}").render(context) == "11"
+    assert env.from_string("{{ text_field[0:5] }}").render(context) == "hello"
+
+
+def test_interpolation_and_truthiness_still_work():
+    """`{{ content }}` and `{% if content %}` remain the two allowed forms."""
+
+    class Inner(BaseComponent):
+        pass
+
+    class Card(BaseComponent):
+        content: Slot
+
+    card = Card(content=Inner())
+    descriptor = ClassDescriptor(
+        template_path=Path("card.pjx"),
+        slot_fields=frozenset(["content"]),
+        children_field=None,
+        css_paths=(),
+        js_paths=(),
+        strict=True,
+        provenance={},
+    )
+    context = build_context(card, descriptor)
+
+    env = Environment(autoescape=True)
+
+    assert env.from_string("{% if content %}yes{% endif %}").render(context) == "yes"
+
+    # Interpolation goes through the finalize hook in real renders, which
+    # intercepts the node before Jinja would stringify it.
+    env_with_finalize = Environment(autoescape=True, finalize=finalize_slot_node)
+    with collect_slot_tokens():
+        output = env_with_finalize.from_string("{{ content }}").render(context)
+    assert output.startswith("pjx-slot-")
 
 
 def test_strict_component_no_extra_keys():
@@ -293,7 +439,7 @@ def test_strict_component_no_extra_keys():
 
     # Construction with extra key should fail at Pydantic level
     with pytest.raises(ValidationError):
-        StrictCard(title="x", unknown="y")
+        StrictCard(title="x", unknown="y")  # type: ignore[call-arg]
 
 
 def test_context_builder_does_not_catch_pydantic_errors():
@@ -305,3 +451,85 @@ def test_context_builder_does_not_catch_pydantic_errors():
     # This is a documentation test. Pydantic's construction-time validation
     # prevents most bad types from reaching model_dump(). If caller constructs
     # valid component and descriptor, build_context will succeed.
+
+
+def test_component_node_is_always_truthy():
+    """A wrapped component is truthy without any render being forced."""
+
+    class Dummy(BaseComponent):
+        pass
+
+    node = ComponentNode(Dummy())
+    assert bool(node) is True
+
+
+def test_component_node_truthiness_does_not_use_len():
+    """__bool__ must answer directly; len() stays broken (ADR 0003)."""
+
+    class Dummy(BaseComponent):
+        pass
+
+    node = ComponentNode(Dummy())
+    if node:
+        pass
+    with pytest.raises(TypeError):
+        len(node)  # type: ignore[arg-type]
+    with pytest.raises(TypeError):
+        str(node)
+    assert not hasattr(node, "__html__")
+
+
+def test_finalize_passes_non_component_values_through_unchanged():
+    from pyjinhx2.markers import collect_slot_tokens, finalize_slot_node
+
+    with collect_slot_tokens():
+        assert finalize_slot_node("plain") == "plain"
+        assert finalize_slot_node(7) == 7
+        assert finalize_slot_node(None) is None
+
+
+def test_finalize_registers_a_component_node_under_a_unique_token():
+    from pyjinhx2.markers import SLOT_TOKEN_RE, collect_slot_tokens, finalize_slot_node
+
+    class Dummy(BaseComponent):
+        pass
+
+    first, second = Dummy(), Dummy()
+    with collect_slot_tokens() as table:
+        token_a = finalize_slot_node(ComponentNode(first))
+        token_b = finalize_slot_node(ComponentNode(second))
+
+        assert isinstance(token_a, str)
+        assert SLOT_TOKEN_RE.fullmatch(token_a)
+        assert token_a != token_b
+        assert table[token_a] is first  # type: ignore[index]
+        assert table[token_b] is second  # type: ignore[index]
+
+
+def test_token_tables_do_not_leak_between_scopes():
+    from pyjinhx2.markers import collect_slot_tokens, finalize_slot_node
+
+    class Dummy(BaseComponent):
+        pass
+
+    with collect_slot_tokens() as outer:
+        outer_token = finalize_slot_node(ComponentNode(Dummy()))
+        with collect_slot_tokens() as inner:
+            inner_token = finalize_slot_node(ComponentNode(Dummy()))
+            assert outer_token not in inner
+        assert inner_token not in outer
+        assert outer_token in outer
+
+
+def test_token_is_autoescape_inert():
+    """The token must survive Markup escaping byte-for-byte."""
+    from markupsafe import escape
+
+    from pyjinhx2.markers import collect_slot_tokens, finalize_slot_node
+
+    class Dummy(BaseComponent):
+        pass
+
+    with collect_slot_tokens():
+        token = finalize_slot_node(ComponentNode(Dummy()))
+    assert str(escape(token)) == token

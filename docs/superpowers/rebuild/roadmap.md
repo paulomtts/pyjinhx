@@ -45,11 +45,22 @@ n= 438       7.9 ms    0.02 ms/component
 - [ ] **2. ChildRef fill in `render.py`** — resolve tag against registry (unknown → verbatim passthrough), instantiate with coerced attrs, recurse, splice opaque node, cycle guard. This is the step that turns T1's loop real.
 - [ ] **3. Slots & children** — opaque-node semantics (truthiness + interpolation; string filters raise the clear error), children/`content` inference, direct nesting, lists & dicts, `NestedComponentWrapper` (`{{ field.props.x }}` / `{{ field }}`).
 - [ ] **4. Classless surface** — open opt-in subclass, `props_header.py` ({#def#} parse + class generation, stale-header warning), `component()`.
-- [ ] **5. Scaling proof** — bench sweep to 10k components; ms/component flat. Record the number.
+- [x] **5. Scaling proof** — bench sweep to 10k components; ms/component flat. Record the number.
 
-Linear-scaling number: _(record here)_
+Linear-scaling number (2026-07-31, `uv run python scripts/bench_render_scaling_v2.py`, nested 3-level trees to 10k components):
 
-**Gate before L2:** instance-registry enumeration — list exactly what reactivity needs from it (swap targeting, manifest membership, hash inputs, cache keying) per ADR 0009. L2 builds only what's listed.
+```
+n=    50       1.5 ms   0.030 ms/component
+n=   100       2.8 ms   0.028 ms/component
+n=   197       5.3 ms   0.027 ms/component
+n=   507      13.2 ms   0.026 ms/component
+n=   993      25.5 ms   0.026 ms/component
+n=  1981      50.7 ms   0.026 ms/component
+n=  4971     124.5 ms   0.025 ms/component
+n= 10000     254.0 ms   0.025 ms/component
+```
+
+**Gate before L2: cleared.** The instance-registry enumeration (swap targeting, manifest membership, hash inputs, cache keying) is recorded in [ADR 0009 → Enumerated Surface](adr/0009-minimal-instance-registry.md#enumerated-surface) as E1-E18, with the ruled-out non-requirements as N1-N6 and both open questions (miss representation, cache scope) resolved there. That section is the source of truth: L2 builds only what it lists.
 
 ---
 
@@ -57,9 +68,9 @@ Linear-scaling number: _(record here)_
 
 **Deliverable:** full static pages with correct deduped assets, safe under concurrent requests (PRD G6 tests land here and stay in CI).
 
-- [ ] **1. `session.py`** — `request_scope` ContextVars (session, instance registry, dirtied-keys store, cache store — all reset on exit), `on_rendered` hook plumbing from `render.py`.
+- [ ] **1. `session.py`** — `request_scope` ContextVars (session, instance registry, dirtied-keys store, cache store — all reset on exit; request scope is the only cache scope in L2, per ADR 0009), `on_rendered` hook plumbing from `render.py`.
 - [ ] **2. `assets.py`** — accumulation off descriptors, per-session dedup, INLINE/NONE emission at top-level serialize, `asset_manifest()`, hashed filenames + `resolver_with_hash()`, `all_assets()`.
-- [ ] **3. Instance registry (minimal)** — exactly the enumerated surface from the L2 gate; composite keys; written only by reactive paths (stub-consumed until L3).
+- [ ] **3. Instance registry (minimal)** — exactly the enumerated surface from the L2 gate, [ADR 0009 E1-E18](adr/0009-minimal-instance-registry.md#enumerated-surface), and nothing outside it (N1-N6 are out of scope); composite keys; written only by reactive paths (stub-consumed until L3).
 - [ ] **4. Concurrency tests** — FastAPI-threadpool-shaped test: parallel renders, no state bleed, no `FileNotFoundError`-class races. The invariant-4 census gets asserted here.
 
 ---

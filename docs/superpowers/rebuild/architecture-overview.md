@@ -120,7 +120,7 @@ Edge semantics, restated for this map: **solid** — the consumer cannot produce
 ### L1 — composition
 
 - **Tag expansion** — walks `ChildRef` holes in order; resolves tag name against the class registry (unknown tags pass through verbatim); instantiates with coerced attrs; recurses `render()`; splices the result back as an opaque node. The cycle guard (nesting/`load()` chains only, post-ADR 0004) lives here.
-- **Slots / children** — component-valued fields enter templates as opaque nodes: truthiness + interpolation only, string filters raise (ADR 0003). String-valued `Slot` fields remain raw-capable strings.
+- **Slots / children** — component-valued fields enter templates as opaque nodes: truthiness + interpolation only, string filters raise (ADR 0003). A component-typed field annotation is a slot by default (#418); `Slot`/`Children` are the escape hatch for raw-capable string fields and for tag-body routing, not required for component-valued fields.
 - **`{#def#}` / `component()`** — classless surface; builds on the open subclass and discovery. Stale-header warning lives here.
 
 *Ships when:* nested trees render with linear parse cost (benchmark shows it); generated tags work; classless components work; slot semantics tested including the clear-error path for string filters.

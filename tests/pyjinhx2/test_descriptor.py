@@ -21,6 +21,7 @@ class Child(Base):
 def make_descriptor(
     template_path: Path = Path("cards/card.pjx"),
     slot_fields: frozenset[str] = frozenset({"header", "body"}),
+    children_field: str | None = None,
     css_paths: tuple[Path, ...] = (Path("cards/card.css"),),
     js_paths: tuple[Path, ...] = (Path("cards/card.js"),),
     strict: bool = True,
@@ -31,6 +32,7 @@ def make_descriptor(
     return ClassDescriptor(
         template_path=template_path,
         slot_fields=slot_fields,
+        children_field=children_field,
         css_paths=css_paths,
         js_paths=js_paths,
         strict=strict,
@@ -43,6 +45,7 @@ class TestClassDescriptorShape:
         descriptor = ClassDescriptor(
             template_path=Path("cards/card.pjx"),
             slot_fields=frozenset({"header", "body"}),
+            children_field=None,
             css_paths=(Path("cards/card.css"),),
             js_paths=(Path("cards/card.js"),),
             strict=True,
@@ -55,21 +58,29 @@ class TestClassDescriptorShape:
         assert descriptor.strict is True
         assert descriptor.provenance == {"template": Child, "css": Base, "js": Base}
 
-    def test_exposes_exactly_the_six_declared_fields(self):
+    def test_exposes_exactly_the_eight_declared_fields(self):
         names = [field.name for field in dataclasses.fields(ClassDescriptor)]
         assert names == [
             "template_path",
             "slot_fields",
+            "children_field",
             "css_paths",
             "js_paths",
             "strict",
             "provenance",
+            "has_stale_def_header",
         ]
 
-    def test_no_field_has_a_default(self):
+    def test_no_field_has_a_default_except_the_stale_header_flag(self):
         # Construction is always a resolver's job (#272-#276); a bare
-        # ClassDescriptor() must never be a legal call.
+        # ClassDescriptor() must never be a legal call. has_stale_def_header is
+        # the sole deliberate exception: it is a defaulted, keyword-friendly
+        # field appended last so every existing call site keeps constructing
+        # without edits.
         for field in dataclasses.fields(ClassDescriptor):
+            if field.name == "has_stale_def_header":
+                assert field.default is False
+                continue
             assert field.default is dataclasses.MISSING
             assert field.default_factory is dataclasses.MISSING
         with pytest.raises(TypeError):
@@ -85,6 +96,7 @@ class TestClassDescriptorIsFrozen:
         [
             ("template_path", Path("other.pjx")),
             ("slot_fields", frozenset()),
+            ("children_field", "other"),
             ("css_paths", ()),
             ("js_paths", ()),
             ("strict", False),
@@ -121,6 +133,7 @@ class TestClassDescriptorEmptyCollections:
         descriptor = ClassDescriptor(
             template_path=Path("plain.pjx"),
             slot_fields=frozenset(),
+            children_field=None,
             css_paths=(),
             js_paths=(),
             strict=False,

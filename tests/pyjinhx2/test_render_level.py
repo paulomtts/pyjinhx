@@ -2,11 +2,65 @@ from pathlib import Path
 
 import pytest
 
-from pyjinhx2.component import BaseComponent
+from pyjinhx2 import discovery
+from pyjinhx2.component import BaseComponent, Children, _pascal_to_snake
 from pyjinhx2.descriptor import ClassDescriptor
 from pyjinhx2.render import render_level
 from pyjinhx2.segments import ChildRef, RenderedLevel
 from pyjinhx2.session import RenderSession
+
+
+class _PJXButton(BaseComponent):
+    pass
+
+
+class _PJXCard(BaseComponent):
+    body: Children = ""
+
+
+class _PJXIcon(BaseComponent):
+    pass
+
+
+def _descriptor_for(
+    cls: type[BaseComponent], template: str, children_field: str | None = None
+) -> ClassDescriptor:
+    return ClassDescriptor(
+        template_path=Path(template),
+        slot_fields=frozenset()
+        if children_field is None
+        else frozenset({children_field}),
+        children_field=children_field,
+        css_paths=(),
+        js_paths=(),
+        strict=True,
+        provenance={"template": cls},
+    )
+
+
+_PJXButton.__pjx_descriptor__ = _descriptor_for(_PJXButton, "child_button.html")
+_PJXCard.__pjx_descriptor__ = _descriptor_for(
+    _PJXCard, "child_card.html", children_field="body"
+)
+_PJXIcon.__pjx_descriptor__ = _descriptor_for(_PJXIcon, "child_icon.html")
+
+
+@pytest.fixture(autouse=True)
+def _registered_child_tags():
+    """Register the PJXButton/PJXCard/PJXIcon tags these tests reference.
+
+    render_level (#362) resolves ChildRef tags against the registry and passes
+    unregistered ones through as plain markup; render_level (#364) then
+    recursively renders a resolved tag and splices the RenderedLevel back in
+    place of its ChildRef. These tests assert on that spliced result, so their
+    tags must resolve (hit) and carry a real (non-recursive) template.
+    """
+    discovery._registry.mapping = {
+        _pascal_to_snake(cls.__name__.lstrip("_")): cls
+        for cls in (_PJXButton, _PJXCard, _PJXIcon)
+    }
+    yield
+    discovery._registry.mapping = {}
 
 
 # Test 1: Single div renders → segments[0] is markup, root_span points to <div
@@ -19,6 +73,7 @@ def test_single_div_renders():
     descriptor = ClassDescriptor(
         template_path=Path("div.html"),
         slot_fields=frozenset(),
+        children_field=None,
         css_paths=(),
         js_paths=(),
         strict=True,
@@ -52,6 +107,7 @@ def test_child_tag_becomes_childref():
     descriptor = ClassDescriptor(
         template_path=Path("container.html"),
         slot_fields=frozenset(),
+        children_field=None,
         css_paths=(),
         js_paths=(),
         strict=True,
@@ -63,11 +119,12 @@ def test_child_tag_becomes_childref():
     component = ContainerComp()
     result = render_level(component, session)
 
-    # Should find ChildRef in segments, not raw "<PJXButton" string
-    child_refs = [s for s in result.segments if isinstance(s, ChildRef)]
-    assert len(child_refs) > 0, "Should have extracted <PJXButton /> as ChildRef"
-    button_ref = child_refs[0]
-    assert button_ref.tag == "PJXButton"
+    # <PJXButton /> resolves and gets spliced in as its own RenderedLevel,
+    # not left as a ChildRef and not stringified into raw tag text.
+    assert not any(isinstance(s, ChildRef) for s in result.segments)
+    rendered = [s for s in result.segments if isinstance(s, RenderedLevel)]
+    assert len(rendered) > 0, "Should have spliced <PJXButton /> as a RenderedLevel"
+    assert rendered[0].descriptor is _PJXButton.__pjx_descriptor__
 
 
 # Test 3: Nested PascalCase <PJXCard><PJXButton /></PJXCard> → outer is ChildRef, inner stays in ChildRef.inner
@@ -80,6 +137,7 @@ def test_nested_pascalcase_preserved():
     descriptor = ClassDescriptor(
         template_path=Path("nested.html"),
         slot_fields=frozenset(),
+        children_field=None,
         css_paths=(),
         js_paths=(),
         strict=True,
@@ -91,18 +149,16 @@ def test_nested_pascalcase_preserved():
     component = NestedComp()
     result = render_level(component, session)
 
-    # Outer PJXCard should be ChildRef
-    card_refs = [
-        s for s in result.segments if isinstance(s, ChildRef) and s.tag == "PJXCard"
+    # Outer PJXCard resolves and is spliced as its own RenderedLevel, taking
+    # the inner <PJXButton /> text with it (as PJXCard's own body context) —
+    # it never surfaces as a sibling ChildRef in the parent's segments.
+    assert not any(isinstance(s, ChildRef) for s in result.segments)
+    card_levels = [
+        s
+        for s in result.segments
+        if isinstance(s, RenderedLevel) and s.descriptor is _PJXCard.__pjx_descriptor__
     ]
-    assert len(card_refs) > 0, "Should extract <PJXCard /> as ChildRef"
-    card = card_refs[0]
-
-    # Inner <PJXButton /> should stay in card.inner verbatim (not extracted)
-    assert card.inner is not None
-    assert "<PJXButton" in card.inner, (
-        "Inner PascalCase should remain verbatim in ChildRef.inner"
-    )
+    assert len(card_levels) > 0, "Should have spliced <PJXCard /> as a RenderedLevel"
 
 
 # Test 4: Multiple siblings <div><p/></div> → raises (single-root)
@@ -115,6 +171,7 @@ def test_multiple_siblings_raises():
     descriptor = ClassDescriptor(
         template_path=Path("bad.html"),
         slot_fields=frozenset(),
+        children_field=None,
         css_paths=(),
         js_paths=(),
         strict=True,
@@ -139,6 +196,7 @@ def test_no_root_element_raises():
     descriptor = ClassDescriptor(
         template_path=Path("empty.html"),
         slot_fields=frozenset(),
+        children_field=None,
         css_paths=(),
         js_paths=(),
         strict=True,
@@ -165,6 +223,7 @@ def test_descriptor_frozen_and_read():
     descriptor = ClassDescriptor(
         template_path=Path("test.html"),
         slot_fields=frozenset(),
+        children_field=None,
         css_paths=(),
         js_paths=(),
         strict=True,
@@ -197,6 +256,7 @@ def test_self_closing_tag():
     descriptor = ClassDescriptor(
         template_path=Path("icon.html"),
         slot_fields=frozenset(),
+        children_field=None,
         css_paths=(),
         js_paths=(),
         strict=True,
@@ -208,11 +268,15 @@ def test_self_closing_tag():
     component = IconComp()
     result = render_level(component, session)
 
-    icon_refs = [
-        s for s in result.segments if isinstance(s, ChildRef) and s.tag == "PJXIcon"
+    # Self-closing <PJXIcon /> resolves and is spliced as its own RenderedLevel;
+    # inner=None never gets a chance to matter once the tag is spliced away.
+    assert not any(isinstance(s, ChildRef) for s in result.segments)
+    icon_levels = [
+        s
+        for s in result.segments
+        if isinstance(s, RenderedLevel) and s.descriptor is _PJXIcon.__pjx_descriptor__
     ]
-    assert len(icon_refs) > 0
-    assert icon_refs[0].inner is None, "Self-closing tag should have inner=None"
+    assert len(icon_levels) > 0
 
 
 # Test 9: Paired tag <PJXCard>body</PJXCard> → ChildRef(inner="body")
@@ -225,6 +289,7 @@ def test_paired_tag():
     descriptor = ClassDescriptor(
         template_path=Path("card.html"),
         slot_fields=frozenset(),
+        children_field=None,
         css_paths=(),
         js_paths=(),
         strict=True,
@@ -236,11 +301,18 @@ def test_paired_tag():
     component = CardComp()
     result = render_level(component, session)
 
-    card_refs = [
-        s for s in result.segments if isinstance(s, ChildRef) and s.tag == "PJXCard"
+    # Paired <PJXCard>Hello World</PJXCard> resolves and is spliced as its own
+    # RenderedLevel, carrying the inner text into its own body field.
+    assert not any(isinstance(s, ChildRef) for s in result.segments)
+    card_levels = [
+        s
+        for s in result.segments
+        if isinstance(s, RenderedLevel) and s.descriptor is _PJXCard.__pjx_descriptor__
     ]
-    assert len(card_refs) > 0
-    assert card_refs[0].inner == "Hello World"
+    assert len(card_levels) > 0
+    assert "Hello World" in "".join(
+        s for s in card_levels[0].segments if isinstance(s, str)
+    )
 
 
 # Test 10: Autoescape active (e.g., {{ var }} with < → &lt; in output, survives parse)
@@ -253,6 +325,7 @@ def test_autoescape_active():
     descriptor = ClassDescriptor(
         template_path=Path("unsafe.html"),
         slot_fields=frozenset(),
+        children_field=None,
         css_paths=(),
         js_paths=(),
         strict=True,
@@ -280,6 +353,7 @@ def test_lowercase_passes_through():
     descriptor = ClassDescriptor(
         template_path=Path("lowercase.html"),
         slot_fields=frozenset(),
+        children_field=None,
         css_paths=(),
         js_paths=(),
         strict=True,
@@ -311,6 +385,7 @@ def test_mixedcase_passes_through():
     descriptor = ClassDescriptor(
         template_path=Path("mixedcase.html"),
         slot_fields=frozenset(),
+        children_field=None,
         css_paths=(),
         js_paths=(),
         strict=True,
@@ -343,6 +418,7 @@ def test_slot_fields_wrapped():
     descriptor = ClassDescriptor(
         template_path=Path("slotted.html"),
         slot_fields=frozenset({"content"}),
+        children_field=None,
         css_paths=(),
         js_paths=(),
         strict=True,
@@ -370,6 +446,7 @@ def test_roundtrip_serialize():
     descriptor = ClassDescriptor(
         template_path=Path("roundtrip.html"),
         slot_fields=frozenset(),
+        children_field=None,
         css_paths=(),
         js_paths=(),
         strict=True,
@@ -419,6 +496,7 @@ def test_minimal_descriptor():
     descriptor = ClassDescriptor(
         template_path=Path("minimal.html"),
         slot_fields=frozenset(),
+        children_field=None,
         css_paths=(),
         js_paths=(),
         strict=True,
@@ -458,6 +536,7 @@ def test_performance_100plus_fields():
     descriptor = ClassDescriptor(
         template_path=Path("minimal.html"),
         slot_fields=frozenset(),
+        children_field=None,
         css_paths=(),
         js_paths=(),
         strict=True,
@@ -479,7 +558,7 @@ def test_performance_100plus_fields():
     assert elapsed < 0.1, (
         f"Rendering 100 times took {elapsed:.3f}s (expected <0.1s for linear performance)"
     )
-    assert isinstance(result, RenderedLevel)
+    assert isinstance(result, RenderedLevel)  # type: ignore[name-defined]
 
 
 # Test 17: Missing template file → jinja2.TemplateNotFound names component + template_path
@@ -493,6 +572,7 @@ def test_missing_template_names_component_and_path():
     descriptor = ClassDescriptor(
         template_path=Path("does_not_exist.html"),
         slot_fields=frozenset(),
+        children_field=None,
         css_paths=(),
         js_paths=(),
         strict=True,
@@ -522,6 +602,7 @@ def test_missing_template_preserves_exception_type():
     descriptor = ClassDescriptor(
         template_path=Path("also_missing.html"),
         slot_fields=frozenset(),
+        children_field=None,
         css_paths=(),
         js_paths=(),
         strict=True,
@@ -552,6 +633,7 @@ def test_zero_root_names_component_and_path():
     descriptor = ClassDescriptor(
         template_path=Path("empty.html"),
         slot_fields=frozenset(),
+        children_field=None,
         css_paths=(),
         js_paths=(),
         strict=True,
@@ -581,6 +663,7 @@ def test_multi_root_names_component_and_path():
     descriptor = ClassDescriptor(
         template_path=Path("bad.html"),
         slot_fields=frozenset(),
+        children_field=None,
         css_paths=(),
         js_paths=(),
         strict=True,
@@ -610,6 +693,7 @@ def test_valid_component_unaffected_by_error_wrapping():
     descriptor = ClassDescriptor(
         template_path=Path("div.html"),
         slot_fields=frozenset(),
+        children_field=None,
         css_paths=(),
         js_paths=(),
         strict=True,
@@ -638,6 +722,7 @@ def test_template_assertion_error_not_wrapped():
     descriptor = ClassDescriptor(
         template_path=Path("broken_assertion.html"),
         slot_fields=frozenset(),
+        children_field=None,
         css_paths=(),
         js_paths=(),
         strict=True,
@@ -654,3 +739,47 @@ def test_template_assertion_error_not_wrapped():
     message = str(exc_info.value)
     assert "BrokenSyntaxComp" not in message
     assert "template:" not in message
+
+
+# Test: `{{ content }}` holding a component becomes a nested RenderedLevel segment
+def test_interpolated_component_slot_becomes_a_nested_level():
+    """A component-valued slot enters segments as a RenderedLevel, not as text."""
+    from pyjinhx2.component import Slot
+    from pyjinhx2.render import render_level
+    from pyjinhx2.segments import serialize
+
+    class SpliceLeaf(BaseComponent):
+        title: str = "inner"
+
+    class SpliceBox(BaseComponent):
+        content: Slot = ""
+
+    SpliceLeaf.__pjx_descriptor__ = ClassDescriptor(
+        template_path=Path("slot_leaf.html"),
+        slot_fields=frozenset(),
+        children_field=None,
+        css_paths=(),
+        js_paths=(),
+        strict=True,
+        provenance={"template": SpliceLeaf},
+    )
+    SpliceBox.__pjx_descriptor__ = ClassDescriptor(
+        template_path=Path("slot_interp.html"),
+        slot_fields=frozenset({"content"}),
+        children_field=None,
+        css_paths=(),
+        js_paths=(),
+        strict=True,
+        provenance={"template": SpliceBox},
+    )
+
+    session = RenderSession(template_dir="tests/templates")
+    level = render_level(SpliceBox(content=SpliceLeaf(title="inner")), session)
+
+    nested = [s for s in level.segments if isinstance(s, RenderedLevel)]
+    assert len(nested) == 1
+    assert nested[0].descriptor is SpliceLeaf.__pjx_descriptor__
+    assert not any(isinstance(s, ChildRef) for s in level.segments)
+    assert serialize(level) == (
+        '<div class="box">before <span class="leaf">inner</span> after</div>'
+    )

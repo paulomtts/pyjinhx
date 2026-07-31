@@ -21,16 +21,47 @@ PACKAGE_ROOT = Path(__file__).resolve().parents[2] / "pyjinhx2"
 # failing test go green.
 ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
     "__init__": frozenset(),
-    "component": frozenset({"pyjinhx2.descriptor"}),
+    # The classless factory is a consumer: it validates a tag name, reads the
+    # template discovery found, hands the header to props_header and publishes
+    # the result through discovery's own write path. Nothing imports it back.
+    "classless": frozenset(
+        {
+            "pyjinhx2",
+            "pyjinhx2.component",
+            "pyjinhx2.discovery",
+            "pyjinhx2.props_header",
+            "pyjinhx2.segments",
+        }
+    ),
+    "component": frozenset(
+        {"pyjinhx2.descriptor", "pyjinhx2.props_header"}
+    ),  # the stale-header probe needs template_has_props_header
     "descriptor": frozenset(),
+    # discovery keys the registry by each class's own resolved tag, so it reads
+    # component.py's snake-case helper rather than inventing a second naming
+    # scheme that could drift from the one templates are probed with.
+    "discovery": frozenset({"pyjinhx2.component"}),
     "markers": frozenset({"pyjinhx2.component"}),
+    # Generating a class from a {#def #} header needs the open-model base to
+    # subclass; parsing itself stays pure.
+    "props_header": frozenset({"pyjinhx2.component"}),
+    # render resolves each ChildRef tag against the published class registry;
+    # an unregistered tag is emitted verbatim, so this is a read-only edge.
     "render": frozenset(
-        {"pyjinhx2.component", "pyjinhx2.segments", "pyjinhx2.session"}
+        {
+            "pyjinhx2.component",
+            "pyjinhx2.discovery",
+            "pyjinhx2.markers",
+            "pyjinhx2.props_header",
+            "pyjinhx2.render_context",
+            "pyjinhx2.segments",
+            "pyjinhx2.session",
+        }
     ),
     "render_context": frozenset({"pyjinhx2.markers", "pyjinhx2.component"}),
     "root_attrs": frozenset({"pyjinhx2.segments"}),
     "segments": frozenset(),
-    "session": frozenset(),
+    "session": frozenset({"pyjinhx2.markers"}),
 }
 
 

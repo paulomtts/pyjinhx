@@ -71,12 +71,18 @@ ExtraAttrs = Annotated[dict[str, str], AfterValidator(validate_extra_attrs)]
 
 
 class PjxSlot:
-    """Marker (in a field's ``Annotated`` metadata) for a raw-HTML slot field —
-    its string value is emitted unescaped (invariant 6, the autoescape exemption).
-    Use via the ``Slot`` alias.
+    """Escape-hatch marker (in a field's ``Annotated`` metadata) forcing a field
+    to be a raw-HTML slot — its string value is emitted unescaped (invariant 6,
+    the autoescape exemption). Use via the ``Slot`` alias.
+
+    Rarely needed: a field annotated with a component type is a slot already,
+    with no marker. Reach for this when the field is a plain ``str`` that should
+    still be emitted as markup, or when a union is too ambiguous to detect.
 
     ``children=True`` additionally flags the field as the target for a
-    PascalCase tag's nested children (use via the ``Children`` alias).
+    PascalCase tag's nested children (use via the ``Children`` alias) — a
+    routing decision about which field receives nested markup, independent of
+    whether the field is a slot.
 
     Purely descriptive at this layer: nothing here escapes, wraps or renders.
     The render-time half (Markup-wrapping strings, opaque component nodes) is
@@ -90,15 +96,20 @@ class PjxSlot:
 def _is_slot_field(cls: type, field_name: str) -> bool:
     """True when ``field_name`` is a raw-HTML slot on ``cls``.
 
-    A field qualifies either by being the model's designated children field, or
-    by carrying a :class:`PjxSlot` marker in its ``Annotated`` metadata. Unknown
-    field names are not slots.
+    Three independent qualifications, OR'd: the field is the model's designated
+    children field, it carries a :class:`PjxSlot` marker in its ``Annotated``
+    metadata, or its annotation names a component (see
+    :func:`_is_component_typed_annotation`). Unknown field names are not slots.
     """
     if field_name == getattr(cls, "_pjx_children_field", None):
         return True
     fields = getattr(cls, "model_fields", {})
     field = fields.get(field_name)
-    return field is not None and any(isinstance(m, PjxSlot) for m in field.metadata)
+    if field is None:
+        return False
+    if any(isinstance(m, PjxSlot) for m in field.metadata):
+        return True
+    return _is_component_typed_annotation(field.annotation)
 
 
 def _is_json_coercible_annotation(annotation: Any) -> bool:
@@ -116,6 +127,30 @@ def _is_json_coercible_annotation(annotation: Any) -> bool:
     if origin in (list, dict):
         return True
     return isinstance(origin, type) and issubclass(origin, BaseModel)
+
+
+def _is_component_typed_annotation(annotation: Any) -> bool:
+    """True when ``annotation`` names a component — bare, nullable, or as the
+    element type of a ``list``/``dict``.
+
+    Unwrapping mirrors :func:`_is_json_coercible_annotation`: ``None`` is
+    stripped from a union, and a union that still holds more than one type is
+    ambiguous and declines. ``str | Component`` therefore does not count — the
+    string half has its own opt-in through :class:`PjxSlot`.
+    """
+    if get_origin(annotation) in (Union, types.UnionType):
+        args = [a for a in get_args(annotation) if a is not type(None)]
+        if len(args) != 1:
+            return False
+        annotation = args[0]
+    origin = get_origin(annotation)
+    if origin is list:
+        type_args = get_args(annotation)
+        return bool(type_args) and _is_component_typed_annotation(type_args[0])
+    if origin is dict:
+        type_args = get_args(annotation)
+        return len(type_args) == 2 and _is_component_typed_annotation(type_args[1])
+    return isinstance(annotation, type) and issubclass(annotation, BaseComponent)
 
 
 _PASCAL_BOUNDARY_RE = re.compile(r"(?<=[a-z0-9])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])")
@@ -251,6 +286,59 @@ def _resolve_slot_fields(cls: type) -> frozenset[str]:
     return frozenset(name for name in fields if _is_slot_field(cls, name))
 
 
+def _resolve_children_field(cls: type) -> str | None:
+    """The declared field a PascalCase tag's body content lands on, or ``None``.
+
+    Precedence, highest first:
+    1. the single field flagged ``PjxSlot(children=True)`` (the ``Children`` alias);
+    2. the ``_pjx_children_field`` class override, when set (MRO-inherited);
+    3. a field literally named ``content``;
+    4. the single field carrying a bare ``PjxSlot()`` marker.
+    Anything else — no slots, or two-plus unflagged slots with no ``content``
+    and no override — is ambiguous and resolves to ``None``. Ambiguity is not an
+    error here: no caller has asked for a target yet, so whoever eventually needs
+    one raises when it gets ``None``.
+
+    An override naming a field that is not declared resolves to that name as
+    written, matching v0.x, which does not validate existence either.
+
+    Declared fields only — ``model_extra`` is never walked, matching
+    :func:`_resolve_slot_fields`.
+    """
+    fields = getattr(cls, "model_fields", {})
+    flagged = [
+        name
+        for name, field in fields.items()
+        if any(isinstance(m, PjxSlot) and m.children for m in field.metadata)
+    ]
+    if len(flagged) > 1:
+        raise ValueError(
+            f"{cls.__name__}: multiple fields flagged PjxSlot(children=True) "
+            f"({', '.join(flagged)}); only one may receive tag children"
+        )
+
+    override = getattr(cls, "_pjx_children_field", None)
+    if override is not None:
+        if flagged and flagged[0] != override:
+            raise ValueError(
+                f"{cls.__name__}: _pjx_children_field={override!r} conflicts with "
+                f"PjxSlot(children=True) on {flagged[0]!r}; declare only one"
+            )
+        return override
+
+    if flagged:
+        return flagged[0]
+    if "content" in fields:
+        return "content"
+
+    slots = [
+        name
+        for name, field in fields.items()
+        if any(isinstance(m, PjxSlot) for m in field.metadata)
+    ]
+    return slots[0] if len(slots) == 1 else None
+
+
 def _resolve_asset_paths(cls: type) -> tuple[tuple[Path, ...], tuple[Path, ...]]:
     """The co-located stylesheet and script ``cls`` ships with, each resolved by
     its own nearest-ancestor walk.
@@ -300,6 +388,17 @@ def _resolve_class_descriptor(cls: type[BaseModel]) -> ClassDescriptor:
     would probe the same ancestors twice.
     """
     template_path, template_owner = _walk_template(cls)
+
+    # Imported here, not at module scope: props_header imports OpenComponent
+    # from this module, so a top-level import would close the cycle.
+    from pyjinhx2.props_header import template_has_props_header
+
+    # A classless class was *built from* its header, so its header is not
+    # stale — only hand-written classes can be carrying a leftover one.
+    has_stale_def_header = not getattr(
+        cls, "_pjx_classless", False
+    ) and template_has_props_header(template_path)
+
     css_path, css_owner = _walk_asset(cls, "css")
     js_path, js_owner = _walk_asset(cls, "js")
     provenance = {
@@ -311,13 +410,32 @@ def _resolve_class_descriptor(cls: type[BaseModel]) -> ClassDescriptor:
         )
         if owner is not None
     }
+    slot_fields = _resolve_slot_fields(cls)
+    children_field = _resolve_children_field(cls)
+    declared_fields = getattr(cls, "model_fields", {})
+    # A children_field reached via the override or the flagged-field branch is
+    # a slot by construction: _is_slot_field already matches on those same two
+    # conditions. The one precedence branch this does not cover is a bare
+    # field literally named "content" with no PjxSlot marker and no override
+    # (rule 3) — _is_slot_field intentionally does not special-case that name,
+    # so it is exempted here rather than silently made a slot as a side effect
+    # of field-resolution (that would be a render-time/opacity decision, out
+    # of scope for #369).
+    assert (
+        children_field is None
+        or children_field not in declared_fields
+        or children_field in slot_fields
+        or children_field == "content"
+    ), f"{cls.__name__}: children_field {children_field!r} is not a slot field"
     return ClassDescriptor(
         template_path=template_path,
-        slot_fields=_resolve_slot_fields(cls),
+        slot_fields=slot_fields,
+        children_field=children_field,
         css_paths=() if css_path is None else (css_path,),
         js_paths=() if js_path is None else (js_path,),
         strict=_resolve_strict(cls),
         provenance=provenance,
+        has_stale_def_header=has_stale_def_header,
     )
 
 
@@ -344,10 +462,54 @@ class BaseComponent(BaseModel):
 
     __pjx_descriptor__: ClassVar[ClassDescriptor]
 
+    _pjx_replace: ClassVar[bool] = False
+
+    _pjx_stale_header_warned: ClassVar[bool] = False
+    """Set the first time this class's stale ``{#def#}`` header is reported, so
+    the complaint is made once and not once per render."""
+
+    _pjx_children_field: ClassVar[str | None] = None
+    """Explicit children-target override. ``None`` means "infer" — see
+    :func:`_resolve_children_field`."""
+
     id: str = Field(
         default_factory=_auto_id,
         description="The unique ID for this component. Auto-generated when omitted.",
     )
+
+    def pjx_props(self) -> dict[str, Any]:
+        """This component's own validated field values, one shallow snapshot.
+
+        Component-valued fields keep their live instances instead of being
+        dumped: dumping them would walk into a child's slots and eventually
+        stringify markup, which is exactly what ADR 0003's opacity rule
+        forbids. Any other nested model is a plain data value, so it dumps.
+        """
+        props: dict[str, Any] = {}
+        for name in type(self).model_fields:
+            value = getattr(self, name)
+            if isinstance(value, BaseComponent):
+                props[name] = value
+            elif isinstance(value, list):
+                props[name] = list(value)
+            elif isinstance(value, dict):
+                props[name] = dict(value)
+            elif isinstance(value, BaseModel):
+                props[name] = value.model_dump()
+            else:
+                props[name] = value
+        return props
+
+    def __init_subclass__(cls, *, pjx_replace: bool = False, **kwargs: Any) -> None:
+        """Consume the ``pjx_replace`` class kwarg before it reaches
+        ``object.__init_subclass__``, which accepts no keyword arguments.
+
+        Assigned on every subclass, never merely inherited: a subclass of a
+        replacing component is a new class that has not asked to replace
+        anything, and a leaked ``True`` would hand it someone else's tag.
+        """
+        cls._pjx_replace = bool(pjx_replace)
+        super().__init_subclass__(**kwargs)
 
     @classmethod
     def __pydantic_init_subclass__(cls, **kwargs: Any) -> None:
@@ -423,5 +585,28 @@ class BaseComponent(BaseModel):
         return str(value)
 
 
-Slot = Annotated[str | BaseComponent, PjxSlot()]
-Children = Annotated[str | BaseComponent, PjxSlot(children=True)]
+class OpenComponent(BaseComponent):
+    """A BaseComponent variant that accepts undeclared keyword arguments.
+
+    Extra keys pass validation and land in model_extra instead of raising.
+    Classless components (built by {#def#} headers and component()) subclass
+    this to allow pass-through attributes their generated schema doesn't
+    declare.
+    """
+
+    model_config = ConfigDict(extra="allow")
+
+
+# A slot holds literal markup, one component, or a homogeneous collection of
+# components. Collection members are components only: a bare string inside a
+# list has no slot semantics of its own, so it fails validation here rather
+# than reaching a template that cannot say anything useful about it.
+_SlotValue = str | BaseComponent | list[BaseComponent] | dict[str, BaseComponent]
+
+# Escape hatch for a string field that must be emitted as raw markup. A
+# component-typed annotation is a slot without any of this.
+Slot = Annotated[_SlotValue, PjxSlot()]
+
+# Tag-body routing: names the field that receives a PascalCase tag's nested
+# markup. Orthogonal to slot-ness.
+Children = Annotated[_SlotValue, PjxSlot(children=True)]

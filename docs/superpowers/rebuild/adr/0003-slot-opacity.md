@@ -1,6 +1,6 @@
-# ADR 0003: Slots are opaque — truthiness and interpolation only
+# ADR 0003: Slots are opaque — truthiness, interpolation, and `.props` access only
 
-**Status:** Accepted, 2026-07-28. Consequence of ADR 0002.
+**Status:** Accepted, 2026-07-28. Amended 2026-07-30 to sanction `NestedComponentWrapper`; amended 2026-07-31 to make component-typed fields slots by default; amended 2026-07-31 to close the two remaining opacity leaks (#419). Consequence of ADR 0002.
 
 ## Context
 
@@ -23,6 +23,23 @@ String-valued slots (a `Slot` field assigned a plain string) are unaffected — 
 - Child opacity stays absolute; no hidden render forcing; layer 0 stays simple.
 - `{% if content %}`, `{{ content }}` work; `{{ content|length }}` on a component slot raises a targeted error instead of silently misbehaving.
 - Migration note required for any v0.x template using string filters over component slots (expected rare; verified by the survey).
+
+## Amendment (2026-07-30): `NestedComponentWrapper`
+
+L1.3 (roadmap item 3) calls for `{{ field.props.x }}` alongside bare `{{ field }}` — reading a nested child's *validated field values* from the parent template, without breaking opacity. This is narrower than general attribute delegation: the wrapper exposes exactly `.props` (a read-only view over the child component's own fields, not arbitrary Python attributes/methods), plus interpolation and truthiness. It does not expose `__str__`/`__len__`/iteration or any other implicit stringification hook — those still raise the ADR's targeted opacity error. This keeps the "no hidden render forcing" guarantee: reading `.props.x` touches the child's *already-validated* field data, not its rendered output.
+
+**Implementation note (L1.3.6).** `.props` landed as a property on the
+existing `ComponentNode` rather than a separate `NestedComponentWrapper`
+type — the amendment's surface is props-only, so a second class would add
+no invariant. The view is a purpose-built `SlotProps` object, not a
+`MappingProxyType`: a mapping proxy would supply `__str__`, `__len__` and
+iteration, reopening the stringification hole this ADR closes. `SlotProps`
+exposes attribute and key access only; `str()` raises the same targeted
+opacity error as the node, and `len()`/iteration/comparison are simply not
+implemented. Unknown names raise `AttributeError`/`KeyError`, since a typo
+in the sanctioned escape hatch is a lookup failure, not an opacity
+violation. Component-valued props stay live child instances — dumping them
+would eventually stringify markup.
 
 ## Survey outcome (2026-07-30)
 
@@ -96,3 +113,36 @@ the template to use one of those two forms instead; if you need the child's
 *text content* (e.g. for a length check), read it from the underlying data
 your component passed into the slot, before it becomes a rendered component —
 not by inspecting the rendered slot after the fact.
+
+## Amendment (2026-07-31): component-typed fields are slots by default
+
+Slot-ness is now structural, not opt-in. A field whose annotation names a component — bare (`child: Card`), nullable (`Card | None`, `Optional[Card]`), or as the element type of a collection (`list[Card]`, `dict[str, Card]`) — is a slot at registration time with no annotation metadata required. A union that keeps more than one live type after `None` is stripped (`str | Card`) stays ambiguous and is not auto-detected.
+
+This changes *which* fields receive the opaque treatment, not the treatment itself: truthiness and interpolation only, `.props` via `NestedComponentWrapper`, string filters raise the targeted error. Everything this ADR and its first amendment decided about opacity semantics is unchanged.
+
+Two consequences worth stating plainly:
+
+- `PjxSlot`/`Slot` is now an escape hatch, needed only for a *string* field that should be emitted as raw HTML. Component-valued fields do not need it.
+- Tag-body routing is a separate, orthogonal concern. `_pjx_children_field` (and its `Children` alias) decides *which* field receives a PascalCase tag's nested markup, following the `content` convention. It says nothing about slot-ness, and slot-ness says nothing about it: a field can be one, the other, or both.
+
+## Amendment (2026-07-31): closing the two remaining opacity leaks (#419)
+
+Two gaps survived the L1.3 landing, both fixed in `pyjinhx2/markers.py`:
+
+- `ComponentNode.__str__` now raises the same opaque `TypeError` as the other
+  forbidden dunders. Filters that stringify before doing their own work
+  (`|upper`, `|trim`, `|striptags`) previously fell through to `__repr__` and
+  leaked `"ComponentNode(<component repr>)"` into rendered HTML instead of
+  failing loudly. Bare `{{ field }}` interpolation is unaffected —
+  `finalize_slot_node` still intercepts the node and substitutes a splice
+  token before Jinja would ever call `str()` on it.
+- `SlotProps.__getattr__`/`__getitem__` now wrap a component-valued prop in a
+  `ComponentNode` before returning it, labelled `<field>.props.<name>`.
+  Previously a component-typed prop (a nested component-typed field reached
+  through `.props`) came back as the live `BaseComponent` instance, bypassing
+  `ComponentNode` and hitting pydantic's own `__str__`/`__iter__` on failure —
+  a plain, unhelpful `TypeError` rather than the ADR's targeted message.
+  Non-component prop values are unaffected; they still return raw.
+
+`.props` remains the sole sanctioned escape hatch and is unchanged in kind:
+this closes a data-access hole in it, not a new capability.
