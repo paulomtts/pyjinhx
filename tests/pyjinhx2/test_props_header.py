@@ -127,3 +127,24 @@ def test_name_reference_default_is_rejected():
 def test_malformed_signature_is_rejected():
     with pytest.raises(ValueError, match="invalid"):
         parse_props_header("{#def title: str = ( #}")
+
+
+def test_header_may_span_multiple_lines_and_carry_extra_whitespace():
+    source = """
+
+    {#def
+        title: str,
+        count: int = 0
+    #}
+    <div>{{ title }}</div>
+    """
+    assert parse_props_header(source) == [("title", str, ...), ("count", int, 0)]
+
+
+def test_header_after_leading_content_is_not_a_header():
+    """Only a leading header is out-of-band config; later ones are plain comments."""
+    assert parse_props_header("<div></div>{#def title: str #}") is None
+
+
+def test_a_plain_jinja_comment_is_not_a_header():
+    assert parse_props_header("{# just a comment #}<div></div>") is None
