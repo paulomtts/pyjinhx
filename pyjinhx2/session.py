@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, Any
 
 from jinja2 import Environment, FileSystemLoader
 
+from pyjinhx2.assets import AssetMode
 from pyjinhx2.markers import finalize_slot_node
 
 if TYPE_CHECKING:
@@ -63,6 +64,11 @@ class RenderSession:
         # <script> sources without re-inspecting any descriptor.
         self.css_assets: set[Path] = set()
         self.js_assets: set[Path] = set()
+        # Per-kind delivery mode for this render. INLINE by default so a cold
+        # render works with no configuration; NONE is how a caller that ships
+        # assets some other way (a build step, a CDN) suppresses emission.
+        self.css_mode: AssetMode = AssetMode.INLINE
+        self.js_mode: AssetMode = AssetMode.INLINE
         # A plain list, not an event bus: render fires it once per component and
         # subscribers (asset accumulation, the reactive instance registry) just
         # append. Per-session so subscriptions die with the request. Callbacks

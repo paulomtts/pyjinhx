@@ -21,6 +21,10 @@ PACKAGE_ROOT = Path(__file__).resolve().parents[2] / "pyjinhx2"
 # failing test go green.
 ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
     "__init__": frozenset(),
+    # The TYPE_CHECKING-only RenderSession import mirrors session's own
+    # component/segments entries below, for the same reason: the enum/function
+    # signature names the type, runtime never touches it.
+    "assets": frozenset({"pyjinhx2.session"}),
     # The classless factory is a consumer: it validates a tag name, reads the
     # template discovery found, hands the header to props_header and publishes
     # the result through discovery's own write path. Nothing imports it back.
@@ -49,6 +53,7 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
     # an unregistered tag is emitted verbatim, so this is a read-only edge.
     "render": frozenset(
         {
+            "pyjinhx2.assets",
             "pyjinhx2.component",
             "pyjinhx2.discovery",
             "pyjinhx2.markers",
@@ -64,11 +69,16 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
     "registry": frozenset({"pyjinhx2.session"}),
     "root_attrs": frozenset({"pyjinhx2.segments"}),
     "segments": frozenset(),
-    # The on_rendered hook's signature names BaseComponent and RenderedLevel.
-    # Both imports are TYPE_CHECKING-only — at runtime session still depends on
-    # nothing but markers, so the spine's direction is unchanged.
+    # The on_rendered hook's signature names BaseComponent and RenderedLevel, but
+    # both imports are TYPE_CHECKING-only. At runtime session also imports
+    # AssetMode from assets, a real edge alongside markers.
     "session": frozenset(
-        {"pyjinhx2.markers", "pyjinhx2.component", "pyjinhx2.segments"}
+        {
+            "pyjinhx2.markers",
+            "pyjinhx2.component",
+            "pyjinhx2.segments",
+            "pyjinhx2.assets",
+        }
     ),
 }
 
@@ -136,7 +146,12 @@ def test_session_never_reaches_into_reactive():
     here. The reverse edge would invert the spine."""
     imports = internal_imports(PACKAGE_ROOT / "session.py")
     assert not any(name.startswith("pyjinhx2.reactive") for name in imports)
-    assert imports <= {"pyjinhx2.markers", "pyjinhx2.component", "pyjinhx2.segments"}
+    assert imports <= {
+        "pyjinhx2.markers",
+        "pyjinhx2.component",
+        "pyjinhx2.segments",
+        "pyjinhx2.assets",
+    }
 
 
 def test_no_render_spine_module_declares_a_reactive_import():
