@@ -255,3 +255,37 @@ def test_the_two_paths_do_not_borrow_each_others_header_state(tmp_path, caplog):
     assert len(messages) == 1, messages
     assert "StaleCard" in messages[0]
     assert generated.__name__ not in messages[0]
+
+
+def test_concurrent_calls_for_two_different_headers_stay_unmixed(tmp_path, caplog):
+    """Two tags, two headers, one lock: each class must get its own fields."""
+    write_template(tmp_path, "card", '{#def title: str = "hi" #}<div>{{ title }}</div>')
+    write_template(tmp_path, "badge", "{#def count: int = 7 #}<span>{{ count }}</span>")
+
+    results: dict[str, type] = {}
+    barrier = threading.Barrier(2)
+
+    def call(name: str):
+        barrier.wait()
+        results[name] = component(name, template_dir=tmp_path)
+
+    modules_before = set(sys.modules)
+    threads = [threading.Thread(target=call, args=(n,)) for n in ("Card", "Badge")]
+    with caplog.at_level(logging.WARNING, logger="pyjinhx2"):
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+
+    assert set(results["Card"].model_fields) >= {"title"}
+    assert "count" not in results["Card"].model_fields
+    assert set(results["Badge"].model_fields) >= {"count"}
+    assert "title" not in results["Badge"].model_fields
+    assert discovery.get_class("card") is results["Card"]
+    assert discovery.get_class("badge") is results["Badge"]
+    assert stale_records(caplog) == []
+    synthetic = {
+        m for m in set(sys.modules) - modules_before
+        if m.startswith("pyjinhx2._classless_")
+    }
+    assert len(synthetic) <= 1
