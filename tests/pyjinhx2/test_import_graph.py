@@ -21,7 +21,9 @@ PACKAGE_ROOT = Path(__file__).resolve().parents[2] / "pyjinhx2"
 # failing test go green.
 ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
     "__init__": frozenset(),
-    "component": frozenset({"pyjinhx2.descriptor"}),
+    "component": frozenset(
+        {"pyjinhx2.descriptor", "pyjinhx2.props_header"}
+    ),  # the stale-header probe needs template_has_props_header
     "descriptor": frozenset(),
     # discovery keys the registry by each class's own resolved tag, so it reads
     # component.py's snake-case helper rather than inventing a second naming
@@ -38,6 +40,7 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
             "pyjinhx2.component",
             "pyjinhx2.discovery",
             "pyjinhx2.markers",
+            "pyjinhx2.props_header",
             "pyjinhx2.render_context",
             "pyjinhx2.segments",
             "pyjinhx2.session",

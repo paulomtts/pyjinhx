@@ -58,7 +58,7 @@ class TestClassDescriptorShape:
         assert descriptor.strict is True
         assert descriptor.provenance == {"template": Child, "css": Base, "js": Base}
 
-    def test_exposes_exactly_the_seven_declared_fields(self):
+    def test_exposes_exactly_the_eight_declared_fields(self):
         names = [field.name for field in dataclasses.fields(ClassDescriptor)]
         assert names == [
             "template_path",
@@ -68,12 +68,19 @@ class TestClassDescriptorShape:
             "js_paths",
             "strict",
             "provenance",
+            "has_stale_def_header",
         ]
 
-    def test_no_field_has_a_default(self):
+    def test_no_field_has_a_default_except_the_stale_header_flag(self):
         # Construction is always a resolver's job (#272-#276); a bare
-        # ClassDescriptor() must never be a legal call.
+        # ClassDescriptor() must never be a legal call. has_stale_def_header is
+        # the sole deliberate exception: it is a defaulted, keyword-friendly
+        # field appended last so every existing call site keeps constructing
+        # without edits.
         for field in dataclasses.fields(ClassDescriptor):
+            if field.name == "has_stale_def_header":
+                assert field.default is False
+                continue
             assert field.default is dataclasses.MISSING
             assert field.default_factory is dataclasses.MISSING
         with pytest.raises(TypeError):
