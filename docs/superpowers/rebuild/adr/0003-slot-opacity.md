@@ -28,6 +28,19 @@ String-valued slots (a `Slot` field assigned a plain string) are unaffected — 
 
 L1.3 (roadmap item 3) calls for `{{ field.props.x }}` alongside bare `{{ field }}` — reading a nested child's *validated field values* from the parent template, without breaking opacity. This is narrower than general attribute delegation: the wrapper exposes exactly `.props` (a read-only view over the child component's own fields, not arbitrary Python attributes/methods), plus interpolation and truthiness. It does not expose `__str__`/`__len__`/iteration or any other implicit stringification hook — those still raise the ADR's targeted opacity error. This keeps the "no hidden render forcing" guarantee: reading `.props.x` touches the child's *already-validated* field data, not its rendered output.
 
+**Implementation note (L1.3.6).** `.props` landed as a property on the
+existing `ComponentNode` rather than a separate `NestedComponentWrapper`
+type — the amendment's surface is props-only, so a second class would add
+no invariant. The view is a purpose-built `SlotProps` object, not a
+`MappingProxyType`: a mapping proxy would supply `__str__`, `__len__` and
+iteration, reopening the stringification hole this ADR closes. `SlotProps`
+exposes attribute and key access only; `str()` raises the same targeted
+opacity error as the node, and `len()`/iteration/comparison are simply not
+implemented. Unknown names raise `AttributeError`/`KeyError`, since a typo
+in the sanctioned escape hatch is a lookup failure, not an opacity
+violation. Component-valued props stay live child instances — dumping them
+would eventually stringify markup.
+
 ## Survey outcome (2026-07-30)
 
 L0.G ran the pre-RFC-1 survey this ADR calls for, split across three gate subtasks:
