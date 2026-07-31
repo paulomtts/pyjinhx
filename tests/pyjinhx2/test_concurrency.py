@@ -9,8 +9,8 @@ descriptors, a shared Jinja template cache and shared asset files on disk.
 What is proven here is the ContextVar half of invariant 4 - that per-request
 state never crosses threads - and that concurrent real file reads (template
 loads, emit_assets' INLINE reads) never produce FileNotFoundError-class races.
-The census enumeration itself belongs to #437, which plugs its assertion into
-this harness through run_concurrent_requests' `inspect` hook.
+The census enumeration itself is test_invariant_4_census below, which plugs
+into this harness through run_concurrent_requests' `inspect` hook.
 """
 
 import threading
@@ -208,9 +208,9 @@ def run_concurrent_requests(
         workers: How many threads/requests to run.
         template_dir: Template directory the per-worker RenderSession loads from.
         inspect: Optional callback run inside the still-open scope, after the
-            snapshot is taken. This is the extension point for #437's
-            invariant-4 census assertion; anything it raises is collected into
-            the returned errors list like any other worker failure.
+            snapshot is taken. This is where the invariant-4 census assertion
+            plugs in; anything it raises is collected into the returned errors
+            list like any other worker failure.
 
     Returns:
         A (observations by worker index, collected exceptions) pair. Callers
