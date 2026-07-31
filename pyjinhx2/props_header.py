@@ -14,6 +14,10 @@ import ast
 import re
 from typing import Any
 
+from pydantic import create_model
+
+from pyjinhx2.component import OpenComponent
+
 _HEADER_RE = re.compile(r"\A\s*\{#\s*def\s+(?P<sig>.*?)\s*#\}", re.DOTALL)
 
 _TYPES: dict[str, Any] = {
@@ -106,3 +110,29 @@ def parse_props_header(source: str) -> list[tuple[str, Any, Any]] | None:
             default = ...
         fields.append((name, annotation, default))
     return fields
+
+
+def build_component_class(
+    fields: list[tuple[str, Any, Any]], tag: str
+) -> type[OpenComponent]:
+    """Build an open-model component class named ``tag`` from parsed header fields.
+
+    ``fields`` is ``parse_props_header``'s output verbatim: ``(name, annotation,
+    default)``, with ``Ellipsis`` as the default for a required prop — which is
+    already pydantic's own required sentinel, so each tuple maps straight onto a
+    ``create_model`` field definition with no translation.
+
+    The base is ``OpenComponent`` rather than ``BaseComponent``: a header
+    declares the props a template reads, not the full set of attributes a caller
+    may pass through, so undeclared keys must land in ``model_extra`` instead of
+    raising.
+    """
+    definitions: dict[str, Any] = {
+        name: (annotation, default) for name, annotation, default in fields
+    }
+    cls = create_model(tag, __base__=OpenComponent, **definitions)
+    # Set after creation, not as a create_model field: a leading underscore is a
+    # pydantic private attribute, and this is a plain class-level marker that
+    # downstream code reads off the type, never off an instance.
+    cls._pjx_classless = True  # pyright: ignore[reportAttributeAccessIssue]
+    return cls
