@@ -11,6 +11,9 @@ from jinja2 import Environment, FileSystemLoader
 from pyjinhx2.markers import finalize_slot_node
 
 if TYPE_CHECKING:
+    # Type-only: the hook's signature names the spine's own types, but importing
+    # them at runtime would point session at its own consumers.
+    from pyjinhx2.component import BaseComponent
     from pyjinhx2.segments import RenderedLevel
 
 # The four pieces of per-request mutable state. They live here rather than beside
@@ -60,13 +63,29 @@ class RenderSession:
         # <script> sources without re-inspecting any descriptor.
         self.css_assets: set[Path] = set()
         self.js_assets: set[Path] = set()
-        # Callbacks fired once per component render, after that level's
-        # RenderedLevel is built (depth-first post-order once nested renders
-        # exist). Subscribers read the finished descriptor/level and the
-        # RenderSession that drove this render — never the request_scope
-        # ContextVar, which the render() caller may not have entered at all.
-        # Subscribers never trigger a second render.
-        self.on_rendered: list[Callable[[Any, RenderedLevel, RenderSession], None]] = []
+        # A plain list, not an event bus: render fires it once per component and
+        # subscribers (asset accumulation, the reactive instance registry) just
+        # append. Per-session so subscriptions die with the request. Callbacks
+        # take the session itself as a third argument — never the request_scope
+        # ContextVar, which the render() caller may not have entered at all —
+        # since accumulate_assets is registered directly (not via a closure)
+        # and needs a session reference to write into.
+        self.on_rendered: list[
+            Callable[[BaseComponent, RenderedLevel, RenderSession], None]
+        ] = []
+
+    def emit_rendered(self, component: "BaseComponent", level: "RenderedLevel") -> None:
+        """Notify subscribers that ``component``'s subtree finished rendering.
+
+        Args:
+            component: The instance whose level just completed.
+            level: That component's RenderedLevel, children and slots spliced in.
+        """
+        # Exceptions propagate: a subscriber that fails has left session state
+        # half-written, and a render that silently drops an asset or a registry
+        # entry is worse than one that stops.
+        for callback in self.on_rendered:
+            callback(component, level, self)
 
 
 def current_session() -> RenderSession | None:

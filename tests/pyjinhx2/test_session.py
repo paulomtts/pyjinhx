@@ -9,6 +9,9 @@ which land with the modules that consume them.
 
 import threading
 from pathlib import Path
+from typing import Any, cast
+
+import pytest
 
 from pyjinhx2 import session as session_module
 from pyjinhx2.component import BaseComponent
@@ -237,3 +240,68 @@ def test_on_rendered_receives_the_rendered_level(render_session):
     )
     render(PlainBox(), render_session)
     assert captured[0].descriptor is PlainBox.__pjx_descriptor__
+
+
+def test_on_rendered_starts_empty_on_a_fresh_session():
+    session = session_module.RenderSession(template_dir="tests/templates")
+
+    assert session.on_rendered == []
+
+
+def test_emit_rendered_calls_each_subscriber_in_registration_order():
+    session = session_module.RenderSession(template_dir="tests/templates")
+    calls: list[tuple[str, object, object]] = []
+    # Plumbing only cares that emit_rendered forwards its args unchanged, so a
+    # sentinel object stands in for a real BaseComponent/RenderedLevel here;
+    # emit_rendered is typed against the real classes, so the sentinel needs
+    # the cast to satisfy basedpyright.
+    component = cast(Any, object())
+    level = cast(Any, object())
+
+    session.on_rendered.append(lambda c, lv, s: calls.append(("first", c, lv)))
+    session.on_rendered.append(lambda c, lv, s: calls.append(("second", c, lv)))
+    session.emit_rendered(component, level)
+
+    assert calls == [("first", component, level), ("second", component, level)]
+
+
+def test_emit_rendered_with_no_subscribers_is_a_no_op():
+    session = session_module.RenderSession(template_dir="tests/templates")
+
+    assert session.emit_rendered(cast(Any, object()), cast(Any, object())) is None
+
+
+def test_emit_rendered_lets_a_subscriber_exception_propagate():
+    """A broken subscriber is a bug in the subscriber, not something the spine
+    hides; swallowing it would make a missing asset or a missing registry write
+    look like a successful render."""
+
+    class Boom(Exception):
+        pass
+
+    session = session_module.RenderSession(template_dir="tests/templates")
+    reached: list[str] = []
+
+    def explode(component: object, level: object, session: object) -> None:
+        raise Boom
+
+    session.on_rendered.append(explode)
+    session.on_rendered.append(lambda c, lv, s: reached.append("after"))
+
+    with pytest.raises(Boom):
+        session.emit_rendered(cast(Any, object()), cast(Any, object()))
+    assert reached == []
+
+
+def test_each_scope_gets_its_own_subscriber_list():
+    with session_module.request_scope(template_dir="tests/templates") as outer:
+        outer.on_rendered.append(lambda c, lv, s: None)
+
+        with session_module.request_scope(template_dir="tests/templates") as inner:
+            assert inner.on_rendered == []
+            inner.on_rendered.append(lambda c, lv, s: None)
+
+        assert len(outer.on_rendered) == 1
+
+    with session_module.request_scope(template_dir="tests/templates") as later:
+        assert later.on_rendered == []
