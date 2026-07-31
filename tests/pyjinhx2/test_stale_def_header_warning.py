@@ -16,8 +16,10 @@ them from the class name:
 import logging
 from pathlib import Path
 
+from pyjinhx2 import props_header
 from pyjinhx2.component import BaseComponent
 from pyjinhx2.descriptor import ClassDescriptor
+from pyjinhx2.props_header import build_component_class, parse_props_header
 from pyjinhx2.render import render_level
 
 
@@ -122,3 +124,70 @@ def test_no_header_never_warns(render_session, caplog):
         render_level(NeverWarns(), render_session)
 
     assert [r for r in caplog.records if "{#def#}" in r.getMessage()] == []
+
+
+def test_classless_component_never_warns(render_session, caplog):
+    """A class built *from* a header is not carrying a stale one."""
+    fields = parse_props_header('{#def title: str = "x" #}\n<div>{{ title }}</div>')
+    assert fields is not None
+    cls = build_component_class(fields, "StaleClassless")
+
+    assert cls.__pjx_descriptor__.has_stale_def_header is False
+
+    cls.__pjx_descriptor__ = ClassDescriptor(
+        template_path=Path("stale_render.html"),
+        slot_fields=frozenset(),
+        children_field=None,
+        css_paths=(),
+        js_paths=(),
+        strict=False,
+        provenance={"template": cls},
+        has_stale_def_header=cls.__pjx_descriptor__.has_stale_def_header,
+    )
+
+    with caplog.at_level(logging.WARNING, logger="pyjinhx2"):
+        render_level(cls(), render_session)
+        render_level(cls(), render_session)
+
+    assert [r for r in caplog.records if "{#def#}" in r.getMessage()] == []
+
+
+def test_header_is_parsed_once_per_class_not_per_render(
+    render_session, monkeypatch
+):
+    """N renders of a class cost zero header parses: the probe ran at build."""
+
+    class ProbeOnce(BaseComponent):
+        title: str = "Hi"
+
+    _wire(ProbeOnce, stale=False)
+
+    calls: list[str] = []
+
+    def _spy(source: str):
+        calls.append(source)
+        return parse_props_header(source)
+
+    monkeypatch.setattr(props_header, "parse_props_header", _spy)
+
+    for _ in range(5):
+        render_level(ProbeOnce(), render_session)
+
+    assert calls == []
+
+
+def test_probe_runs_exactly_once_at_class_definition(monkeypatch):
+    """Defining a class parses its template header once, and only once."""
+    calls: list[str] = []
+
+    def _spy(source: str):
+        calls.append(source)
+        return parse_props_header(source)
+
+    monkeypatch.setattr(props_header, "parse_props_header", _spy)
+
+    class ProbedOnce(StaleCard):
+        """Inherits StaleCard's header-bearing template via the MRO walk."""
+
+    assert ProbedOnce.__pjx_descriptor__.has_stale_def_header is True
+    assert len(calls) == 1
