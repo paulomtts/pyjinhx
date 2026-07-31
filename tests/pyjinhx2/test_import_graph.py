@@ -70,7 +70,12 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
     # Both imports are TYPE_CHECKING-only — at runtime session still depends on
     # nothing but markers, so the spine's direction is unchanged.
     "session": frozenset(
-        {"pyjinhx2.markers", "pyjinhx2.component", "pyjinhx2.segments", "pyjinhx2.assets"}
+        {
+            "pyjinhx2.markers",
+            "pyjinhx2.component",
+            "pyjinhx2.segments",
+            "pyjinhx2.assets",
+        }
     ),
 }
 

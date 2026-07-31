@@ -23,7 +23,9 @@ def _inline_tags(paths: set[Path], open_tag: str, close_tag: str) -> list[str]:
     output. A path that cannot be read raises: an asset silently dropped from
     the page is a styling bug nobody can see in the response.
     """
-    return [f"{open_tag}{path.read_text()}{close_tag}" for path in sorted(paths, key=str)]
+    return [
+        f"{open_tag}{path.read_text()}{close_tag}" for path in sorted(paths, key=str)
+    ]
 
 
 def emit_assets(session: "RenderSession") -> str:
