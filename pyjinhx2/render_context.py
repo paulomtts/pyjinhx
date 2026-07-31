@@ -35,7 +35,9 @@ def _wrap_slot_value(
     if isinstance(value, BaseComponent):
         return node(value)
     if isinstance(value, list):
-        return [node(item) if isinstance(item, BaseComponent) else item for item in value]
+        return [
+            node(item) if isinstance(item, BaseComponent) else item for item in value
+        ]
     if isinstance(value, dict):
         return {
             key: node(item) if isinstance(item, BaseComponent) else item

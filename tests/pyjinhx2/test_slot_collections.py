@@ -71,7 +71,7 @@ class TestConstruction:
         card = Card(content=[a, b])
 
         assert card.content == [a, b]
-        assert card.content[0] is a  # pyright: ignore[reportIndexIssue]
+        assert card.content[0] is a  # pyright: ignore[reportIndexIssue, reportArgumentType]
 
     def test_a_dict_of_components_is_accepted_by_identity(self):
         class Card(BaseComponent):
@@ -108,21 +108,21 @@ class TestConstruction:
             content: Slot = ""
 
         with pytest.raises(ValidationError):
-            Card(content=[Leaf(title="a"), "raw"])  # pyright: ignore[reportArgumentType]
+            Card(content=[Leaf(title="a"), "raw"])  # pyright: ignore[reportIndexIssue, reportArgumentType]
 
     def test_a_string_entry_inside_a_dict_is_rejected(self):
         class Card(BaseComponent):
             content: Slot = ""
 
         with pytest.raises(ValidationError):
-            Card(content={"k": "raw"})  # pyright: ignore[reportArgumentType]
+            Card(content={"k": "raw"})  # pyright: ignore[reportIndexIssue, reportArgumentType]
 
     def test_a_non_string_dict_key_is_rejected_at_construction(self):
         class Card(BaseComponent):
             content: Slot = ""
 
         with pytest.raises(ValidationError):
-            Card(content={1: Leaf(title="a")})  # pyright: ignore[reportArgumentType]
+            Card(content={1: Leaf(title="a")})  # pyright: ignore[reportIndexIssue, reportArgumentType]
 
     def test_a_json_looking_string_still_stays_a_plain_string(self):
         # The list/dict members must not open a JSON-coercion path: a union that
@@ -172,7 +172,9 @@ class TestBuildContext:
 
         Card.__pjx_descriptor__ = descriptor("slot_list.html", frozenset({"content"}))
 
-        context = build_context(Card(content=[Leaf(title="a")]), Card.__pjx_descriptor__)
+        context = build_context(
+            Card(content=[Leaf(title="a")]), Card.__pjx_descriptor__
+        )
         node = context["content"][0]
 
         assert node.owner_name == "Card"
@@ -232,7 +234,7 @@ class TestBuildContext:
         build_context(card, Card.__pjx_descriptor__)
 
         assert card.content == [a]
-        assert card.content[0] is a  # pyright: ignore[reportIndexIssue]
+        assert card.content[0] is a  # pyright: ignore[reportIndexIssue, reportArgumentType]
 
 
 class TestListRendering:
@@ -278,7 +280,9 @@ class TestListRendering:
 
         Card.__pjx_descriptor__ = descriptor("slot_list.html", frozenset({"content"}))
 
-        level = render_level(Card(content=[Leaf(title="a"), Leaf(title="b")]), session())
+        level = render_level(
+            Card(content=[Leaf(title="a"), Leaf(title="b")]), session()
+        )
 
         nested = [s for s in level.segments if isinstance(s, RenderedLevel)]
         assert len(nested) == 2
@@ -330,7 +334,9 @@ class TestListRendering:
         class Wrap(BaseComponent):
             inner: Slot = ""
 
-        Wrap.__pjx_descriptor__ = descriptor("nest_wrap.html", frozenset({"inner"}), "inner")
+        Wrap.__pjx_descriptor__ = descriptor(
+            "nest_wrap.html", frozenset({"inner"}), "inner"
+        )
 
         class Card(BaseComponent):
             content: Slot = ""
@@ -404,7 +410,9 @@ class TestEntryOpacity:
         class Card(BaseComponent):
             content: Slot = ""
 
-        Card.__pjx_descriptor__ = descriptor("slot_list_len.html", frozenset({"content"}))
+        Card.__pjx_descriptor__ = descriptor(
+            "slot_list_len.html", frozenset({"content"})
+        )
 
         with pytest.raises(
             TypeError, match=r"slot 'content' holds a rendered component"
@@ -415,7 +423,9 @@ class TestEntryOpacity:
         class Card(BaseComponent):
             content: Slot = ""
 
-        Card.__pjx_descriptor__ = descriptor("slot_list_len.html", frozenset({"content"}))
+        Card.__pjx_descriptor__ = descriptor(
+            "slot_list_len.html", frozenset({"content"})
+        )
 
         with pytest.raises(TypeError) as excinfo:
             render(Card(content=[Leaf(title="a")]), session())
@@ -430,7 +440,9 @@ class TestEntryOpacity:
 
         Card.__pjx_descriptor__ = descriptor("slot_dict.html", frozenset({"content"}))
 
-        context = build_context(Card(content={"k": Leaf(title="a")}), Card.__pjx_descriptor__)
+        context = build_context(
+            Card(content={"k": Leaf(title="a")}), Card.__pjx_descriptor__
+        )
 
         with pytest.raises(
             TypeError, match=r"slot 'content' holds a rendered component"
@@ -476,7 +488,9 @@ class TestCollectionTruthiness:
 
         Card.__pjx_descriptor__ = descriptor("slot_if.html", frozenset({"content"}))
 
-        assert render(Card(content={"k": Leaf(title="a")}), session()) == "<div>HAS</div>"
+        assert (
+            render(Card(content={"k": Leaf(title="a")}), session()) == "<div>HAS</div>"
+        )
 
     def test_an_empty_dict_takes_the_falsy_branch(self):
         class Card(BaseComponent):
