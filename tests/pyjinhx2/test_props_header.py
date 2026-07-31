@@ -148,3 +148,23 @@ def test_header_after_leading_content_is_not_a_header():
 
 def test_a_plain_jinja_comment_is_not_a_header():
     assert parse_props_header("{# just a comment #}<div></div>") is None
+
+
+def test_props_header_is_import_pure():
+    """Parsing must not drag pydantic or the component spine into discovery."""
+    import ast as ast_module
+    from pathlib import Path
+
+    source = Path(__file__).resolve().parents[2] / "pyjinhx2" / "props_header.py"
+    tree = ast_module.parse(source.read_text(encoding="utf-8"))
+    imported = {
+        node.module or ""
+        for node in ast_module.walk(tree)
+        if isinstance(node, ast_module.ImportFrom)
+    } | {
+        alias.name
+        for node in ast_module.walk(tree)
+        if isinstance(node, ast_module.Import)
+        for alias in node.names
+    }
+    assert imported == {"ast", "re", "typing"}
