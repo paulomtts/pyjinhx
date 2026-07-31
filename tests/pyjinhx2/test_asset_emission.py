@@ -342,3 +342,12 @@ def test_sorted_resolved_lets_a_raising_resolver_propagate():
 
     with pytest.raises(OSError):
         _sorted_resolved({Path("/a/b.css")}, resolver)
+
+
+def test_link_mode_without_resolver_raises_value_error(tmp_path):
+    session = _session(tmp_path)
+    session.css_assets.add(tmp_path / "box.css")
+    session.css_mode = AssetMode.LINK
+
+    with pytest.raises(ValueError, match="LINK mode needs a resolver"):
+        emit_assets(session)
