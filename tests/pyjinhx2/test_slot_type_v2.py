@@ -36,13 +36,18 @@ class TestSlotAliases:
         assert len(markers) == 1
         assert markers[0].children is True
 
-    def test_slot_alias_underlying_type_is_the_str_component_union(self):
+    def test_slot_alias_underlying_type_is_the_slot_value_union(self):
         from typing import get_args
 
         from pyjinhx2.component import BaseComponent, Slot
 
         underlying = get_args(Slot)[0]
-        assert set(get_args(underlying)) == {str, BaseComponent}
+        assert set(get_args(underlying)) == {
+            str,
+            BaseComponent,
+            list[BaseComponent],
+            dict[str, BaseComponent],
+        }
 
 
 class _Demo(BaseComponent):

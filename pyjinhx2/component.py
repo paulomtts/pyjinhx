@@ -511,5 +511,11 @@ class BaseComponent(BaseModel):
         return str(value)
 
 
-Slot = Annotated[str | BaseComponent, PjxSlot()]
-Children = Annotated[str | BaseComponent, PjxSlot(children=True)]
+# A slot holds literal markup, one component, or a homogeneous collection of
+# components. Collection members are components only: a bare string inside a
+# list has no slot semantics of its own, so it fails validation here rather
+# than reaching a template that cannot say anything useful about it.
+_SlotValue = str | BaseComponent | list[BaseComponent] | dict[str, BaseComponent]
+
+Slot = Annotated[_SlotValue, PjxSlot()]
+Children = Annotated[_SlotValue, PjxSlot(children=True)]
