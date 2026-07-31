@@ -65,3 +65,34 @@ def test_optional_subscript_becomes_the_same_union():
     assert parse_props_header("{#def value: Optional[int] #}") == [
         ("value", int | None, ...)
     ]
+
+
+@pytest.mark.parametrize(
+    "source_default, expected",
+    [
+        ('"primary"', "primary"),
+        ("0", 0),
+        ("1.5", 1.5),
+        ("True", True),
+        ("None", None),
+        ("[1, 2]", [1, 2]),
+        ('{"a": 1}', {"a": 1}),
+    ],
+)
+def test_literal_default_is_captured_instead_of_ellipsis(
+    source_default: str, expected: Any
+):
+    fields = parse_props_header(f"{{#def value = {source_default} #}}")
+    assert fields is not None
+    name, _annotation, default = fields[0]
+    assert (name, default) == ("value", expected)
+
+
+def test_required_and_defaulted_props_mix_in_declared_order():
+    assert parse_props_header(
+        '{#def title: str, count: int = 0, variant: str = "primary" #}'
+    ) == [
+        ("title", str, ...),
+        ("count", int, 0),
+        ("variant", str, "primary"),
+    ]

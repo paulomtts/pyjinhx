@@ -66,7 +66,17 @@ def parse_props_header(source: str) -> list[tuple[str, Any, Any]] | None:
     tree = ast.parse(f"def __pjx_props__({signature}): pass")
     func = tree.body[0]
     assert isinstance(func, ast.FunctionDef)
+    arguments = func.args
+    args = arguments.args
+    defaults = arguments.defaults
+    # Defaults bind to the *last* N params, so this offset maps index -> default.
+    offset = len(args) - len(defaults)
     fields: list[tuple[str, Any, Any]] = []
-    for arg in func.args.args:
-        fields.append((arg.arg, _resolve_annotation(arg.annotation), ...))
+    for index, arg in enumerate(args):
+        annotation = _resolve_annotation(arg.annotation)
+        if index >= offset:
+            default = ast.literal_eval(defaults[index - offset])
+        else:
+            default = ...
+        fields.append((arg.arg, annotation, default))
     return fields
