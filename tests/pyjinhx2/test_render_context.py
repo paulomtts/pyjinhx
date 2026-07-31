@@ -9,7 +9,7 @@ from pydantic import BaseModel, ValidationError
 
 from pyjinhx2.component import BaseComponent, Slot, _resolve_slot_fields
 from pyjinhx2.descriptor import ClassDescriptor
-from pyjinhx2.markers import ComponentNode
+from pyjinhx2.markers import ComponentNode, collect_slot_tokens, finalize_slot_node
 from pyjinhx2.render_context import build_context
 
 
@@ -342,12 +342,10 @@ def test_forbidden_operations_fail_through_jinja(source):
 @pytest.mark.parametrize(
     "source", ["{{ content|striptags }}", "{{ content|trim }}", "{{ content|upper }}"]
 )
-def test_str_routed_filters_do_not_raise(source):
-    """`|striptags`/`|trim`/`|upper` call str() first, so they render __str__'s
-    output instead of raising. This is a documented gap (see PR description),
-    not a bug: the ADR's opacity guarantee is delivered by raising from the
-    dunder each operation actually reaches, and these three filters never
-    reach one. Locking this in as a regression test rather than a TODO.
+def test_str_routed_filters_raise_the_opacity_error(source):
+    """`|striptags`/`|trim`/`|upper` call str() first, so they now raise the
+    same opaque TypeError as the other forbidden operations (#419 gap 1),
+    rather than falling through to a leaked component repr.
     """
 
     class Inner(BaseComponent):
@@ -369,8 +367,10 @@ def test_str_routed_filters_do_not_raise(source):
     context = build_context(card, descriptor)
 
     env = Environment(autoescape=True)
-    # Must not raise; exact output is __str__'s business, not this test's.
-    env.from_string(source).render(context)
+    with pytest.raises(TypeError) as excinfo:
+        env.from_string(source).render(context)
+
+    assert "Card (template: card.pjx): slot 'content'" in str(excinfo.value)
 
 
 def test_string_slot_is_unaffected_by_opacity():
@@ -421,8 +421,13 @@ def test_interpolation_and_truthiness_still_work():
     env = Environment(autoescape=True)
 
     assert env.from_string("{% if content %}yes{% endif %}").render(context) == "yes"
-    # Interpolation must not raise; its exact output is L1 child-expansion work.
-    env.from_string("{{ content }}").render(context)
+
+    # Interpolation goes through the finalize hook in real renders, which
+    # intercepts the node before Jinja would stringify it.
+    env_with_finalize = Environment(autoescape=True, finalize=finalize_slot_node)
+    with collect_slot_tokens():
+        output = env_with_finalize.from_string("{{ content }}").render(context)
+    assert output.startswith("pjx-slot-")
 
 
 def test_strict_component_no_extra_keys():
@@ -469,7 +474,8 @@ def test_component_node_truthiness_does_not_use_len():
         pass
     with pytest.raises(TypeError):
         len(node)  # type: ignore[arg-type]
-    assert not hasattr(node, "__str__") or type(node).__str__ is object.__str__
+    with pytest.raises(TypeError):
+        str(node)
     assert not hasattr(node, "__html__")
 
 

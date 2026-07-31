@@ -238,27 +238,32 @@ class TestHashingSurvivesForbiddenEquality:
         assert len({first, second}) == 2
 
 
-class TestStringifyingFilterGap:
-    """Filters that call str() before failing bypass the dunder path.
+class TestStringifyingFilters:
+    """Filters that call str() before doing their work raise, not leak (#419).
 
-    ADR 0003 asks these to raise the same targeted error; today they fall
-    through to the default object repr instead. Pinned as-is here — see the
-    gap note in docs/superpowers/rebuild/adr/0003-slot-opacity.md and the
-    ComponentNode docstring. Fixing it is not this subtask's job.
+    These route through ComponentNode.__str__ rather than through a dunder
+    the operation matrix above already covers, so they get their own row.
     """
 
     @pytest.mark.parametrize("filter_name", ["upper", "trim", "striptags"])
-    def test_a_stringifying_filter_does_not_raise_today(self, filter_name):
-        output = render_expr(f"{{{{ content|{filter_name} }}}}", opaque_card())
+    def test_a_stringifying_filter_raises_the_opacity_error(self, filter_name):
+        with pytest.raises(TypeError) as excinfo:
+            render_expr(f"{{{{ content|{filter_name} }}}}", opaque_card())
 
-        assert "ComponentNode" in output.replace("COMPONENTNODE", "ComponentNode")
+        message = str(excinfo.value)
+        assert "slot 'content' holds a rendered component" in message
+        assert "`str()`" in message
 
-    def test_the_stringified_output_is_the_repr_not_the_childs_markup(self):
-        output = render_expr("{{ content|upper }}", opaque_card())
+    def test_no_component_repr_reaches_the_output(self):
+        with pytest.raises(TypeError):
+            render_expr("{{ content|upper }}", opaque_card())
 
-        assert "COMPONENTNODE(" in output
-        assert "LEAF" in output
-        assert "<span" not in output
+    def test_bare_interpolation_is_unaffected_by_the_str_ban(self):
+        # finalize_slot_node intercepts the node before Jinja stringifies it,
+        # so the sanctioned `{{ field }}` form still yields a splice token.
+        output = render_expr("{{ content }}", opaque_card())
+
+        assert output.startswith("pjx-slot-")
 
 
 class TestInferenceWithDirectNesting:
