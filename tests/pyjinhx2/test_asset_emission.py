@@ -313,3 +313,32 @@ def test_concurrent_scopes_do_not_leak_emitted_assets(tmp_path):
     assert ".red {}" in results["a"]
     assert ".blue {}" not in results["a"]
     assert "<style>" not in results["b"]
+
+
+def test_sorted_resolved_sorts_paths_by_str_before_resolving():
+    from pyjinhx2.assets import _sorted_resolved
+
+    seen: list[Path] = []
+
+    def resolver(path: Path) -> str:
+        seen.append(path)
+        return f"/static/{path.name}"
+
+    paths = {Path("/a/z.css"), Path("/a/b.css"), Path("/a/m.css")}
+
+    assert _sorted_resolved(paths, resolver) == (
+        "/static/b.css",
+        "/static/m.css",
+        "/static/z.css",
+    )
+    assert seen == [Path("/a/b.css"), Path("/a/m.css"), Path("/a/z.css")]
+
+
+def test_sorted_resolved_lets_a_raising_resolver_propagate():
+    from pyjinhx2.assets import _sorted_resolved
+
+    def resolver(path: Path) -> str:
+        raise OSError("gone")
+
+    with pytest.raises(OSError):
+        _sorted_resolved({Path("/a/b.css")}, resolver)

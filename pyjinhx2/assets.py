@@ -1,7 +1,7 @@
 """L2.2 assets — delivery modes, emission, and the manifest of a request's assets."""
 
 import hashlib
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
@@ -35,17 +35,24 @@ def _inline_tags(paths: set[Path], open_tag: str, close_tag: str) -> list[str]:
     ]
 
 
+def _sorted_resolved(
+    paths: Iterable[Path], resolver: Callable[[Path], str]
+) -> tuple[str, ...]:
+    """Return the URLs for the given asset paths, in path-sorted order.
+
+    Sorted before resolving because the accumulator stores paths in a set,
+    which has no stable iteration order, and two renders of the same tree must
+    produce byte-identical output. A resolver that raises is left to raise — an
+    asset silently dropped from the page fails invisibly in the browser.
+    """
+    return tuple(resolver(path) for path in sorted(paths, key=str))
+
+
 def _url_tags(
     paths: set[Path], resolver: Callable[[Path], str], template: str
 ) -> list[str]:
-    """Resolve each path to a URL and format it into the given tag, sorted by path.
-
-    Sorted for the same reason _inline_tags sorts: the accumulator is a set with
-    no stable iteration order, and two renders of the same tree must produce
-    byte-identical output. A resolver that raises is left to raise — an asset
-    silently dropped from the page fails invisibly in the browser.
-    """
-    return [template.format(url=resolver(path)) for path in sorted(paths, key=str)]
+    """Format each resolved asset URL into the given tag, in path-sorted order."""
+    return [template.format(url=url) for url in _sorted_resolved(paths, resolver)]
 
 
 def _require_resolver(
@@ -114,19 +121,6 @@ class AssetManifest:
     scripts: tuple[str, ...]
 
 
-def _resolved_urls(
-    paths: set[Path], resolver: Callable[[Path], str]
-) -> tuple[str, ...]:
-    """Resolve each path to a URL, sorted by path for a stable order.
-
-    Sorted for the same reason _inline_tags sorts: the accumulator is a set,
-    and two renders of the same tree must produce the same manifest. A
-    resolver that raises is left to raise — a manifest missing one asset is a
-    page missing one stylesheet, which fails silently in the browser.
-    """
-    return tuple(resolver(path) for path in sorted(paths, key=str))
-
-
 def asset_manifest(
     session: "RenderSession", *, resolver: Callable[[Path], str]
 ) -> AssetManifest:
@@ -145,8 +139,8 @@ def asset_manifest(
         An AssetManifest of CSS then JS URLs, each in path-sorted order.
     """
     return AssetManifest(
-        stylesheets=_resolved_urls(session.css_assets, resolver),
-        scripts=_resolved_urls(session.js_assets, resolver),
+        stylesheets=_sorted_resolved(session.css_assets, resolver),
+        scripts=_sorted_resolved(session.js_assets, resolver),
     )
 
 
