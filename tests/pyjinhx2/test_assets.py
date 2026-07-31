@@ -4,7 +4,7 @@ import threading
 from dataclasses import replace
 from pathlib import Path
 
-from pyjinhx2.assets import AssetMode
+from pyjinhx2.assets import AssetMode, all_assets
 from pyjinhx2.component import BaseComponent
 from pyjinhx2.descriptor import ClassDescriptor
 from pyjinhx2.render import render
@@ -196,3 +196,67 @@ def test_css_and_js_paths_tracked_distinguishably():
         assert session.js_assets == {JS}
         assert CSS not in session.js_assets
         assert JS not in session.css_assets
+
+
+class UnrenderedWidget(BaseComponent):
+    """Never instantiated in any test — proves all_assets() is registry-wide."""
+
+
+class EmptyAssetComponent(BaseComponent):
+    """Declares no assets — must contribute nothing to all_assets()."""
+
+
+UnrenderedWidget.__pjx_descriptor__ = _plain_descriptor(UnrenderedWidget)
+EmptyAssetComponent.__pjx_descriptor__ = _plain_descriptor(EmptyAssetComponent)
+
+WIDGET_CSS = Path("/app/components/widget.css")
+WIDGET_JS = Path("/app/components/widget.js")
+
+
+def test_all_assets_returns_sorted_deduped_pairs():
+    with_assets(PlainBox, css=[CSS, WIDGET_CSS], js=[JS])
+    with_assets(PlainSibling, css=[CSS], js=[JS, WIDGET_JS])
+    css, js = all_assets()
+    assert css == tuple(sorted(css, key=str))
+    assert js == tuple(sorted(js, key=str))
+    assert list(css).count(CSS) == 1
+    assert list(js).count(JS) == 1
+    assert WIDGET_CSS in css
+    assert WIDGET_JS in js
+
+
+def test_all_assets_includes_unrendered_classes():
+    with_assets(UnrenderedWidget, css=[WIDGET_CSS], js=[WIDGET_JS])
+    css, js = all_assets()
+    assert WIDGET_CSS in css
+    assert WIDGET_JS in js
+
+
+def test_all_assets_excludes_classes_without_assets():
+    with_assets(PlainBox)
+    with_assets(PlainSibling)
+    with_assets(UnrenderedWidget)
+    with_assets(EmptyAssetComponent)
+    css, js = all_assets()
+    for path in (CSS, WIDGET_CSS):
+        assert path not in css
+    for path in (JS, WIDGET_JS):
+        assert path not in js
+
+
+def test_all_assets_does_not_mutate_session_state():
+    with_assets(PlainBox, css=[CSS])
+    with_assets(PlainSibling, css=[WIDGET_CSS])
+    session = _accumulating_session()
+    all_assets()
+    render(PlainBox(), session)
+    all_assets()
+    assert session.css_assets == {CSS}
+    assert session.js_assets == set()
+
+
+def test_all_assets_returns_paths_not_strings():
+    with_assets(PlainBox, css=[CSS], js=[JS])
+    css, js = all_assets()
+    assert all(isinstance(path, Path) for path in css)
+    assert all(isinstance(path, Path) for path in js)
