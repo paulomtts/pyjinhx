@@ -351,3 +351,20 @@ def test_link_mode_without_resolver_raises_value_error(tmp_path):
 
     with pytest.raises(ValueError, match="LINK mode needs a resolver"):
         emit_assets(session)
+
+
+def test_link_mode_css_and_js_together_sorted_independently_and_css_first(tmp_path):
+    session = _session(tmp_path)
+    session.css_assets.update({tmp_path / "z.css", tmp_path / "a.css"})
+    session.js_assets.update({tmp_path / "z.js", tmp_path / "a.js"})
+    session.css_mode = AssetMode.LINK
+    session.js_mode = AssetMode.LINK
+
+    out = emit_assets(session, resolver=_stub_resolver)
+
+    assert out == (
+        '<link rel="stylesheet" href="/static/a.css">\n'
+        '<link rel="stylesheet" href="/static/z.css">\n'
+        '<script src="/static/a.js"></script>\n'
+        '<script src="/static/z.js"></script>'
+    )
