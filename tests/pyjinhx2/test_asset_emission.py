@@ -99,6 +99,28 @@ def test_no_assets_emits_empty_string(tmp_path):
     assert emit_assets(_session(tmp_path)) == ""
 
 
+def _stub_resolver(path: Path) -> str:
+    """Resolver of the shape #552 will thread in: path -> served URL."""
+    return f"/static/{path.name}"
+
+
+def test_link_mode_emits_stylesheet_links_sorted_by_path(tmp_path):
+    session = _session(tmp_path)
+    session.css_assets.update(
+        {tmp_path / "z.css", tmp_path / "a.css", tmp_path / "m.css"}
+    )
+    session.css_mode = AssetMode.LINK
+    session.js_mode = AssetMode.NONE
+
+    out = emit_assets(session, resolver=_stub_resolver)
+
+    assert out == (
+        '<link rel="stylesheet" href="/static/a.css">\n'
+        '<link rel="stylesheet" href="/static/m.css">\n'
+        '<link rel="stylesheet" href="/static/z.css">'
+    )
+
+
 from dataclasses import replace
 
 from pyjinhx2.component import BaseComponent
