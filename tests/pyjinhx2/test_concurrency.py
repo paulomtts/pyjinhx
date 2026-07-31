@@ -9,8 +9,8 @@ descriptors, a shared Jinja template cache and shared asset files on disk.
 What is proven here is the ContextVar half of invariant 4 - that per-request
 state never crosses threads - and that concurrent real file reads (template
 loads, emit_assets' INLINE reads) never produce FileNotFoundError-class races.
-The census enumeration itself belongs to #437, which plugs its assertion into
-this harness through run_concurrent_requests' `inspect` hook.
+The census enumeration itself is test_invariant_4_census below, which plugs
+into this harness through run_concurrent_requests' `inspect` hook.
 """
 
 import threading
@@ -22,6 +22,7 @@ from pathlib import Path
 
 import pytest
 
+from pyjinhx2 import discovery
 from pyjinhx2.component import BaseComponent
 from pyjinhx2.descriptor import ClassDescriptor
 from pyjinhx2.registry import register_rendered_instance
@@ -29,6 +30,8 @@ from pyjinhx2.render import render
 from pyjinhx2.session import (
     RenderSession,
     accumulate_assets,
+    current_session,
+    get_cache_store,
     get_dirtied,
     get_instances,
     request_scope,
@@ -141,6 +144,25 @@ def render_shared_components(index: int, session: RenderSession) -> str:
     return render(_component_for(index), session)
 
 
+def cache_marker_for(index: int) -> str:
+    """The key worker `index` stamps into its own LoadCache request store."""
+    return f"cache-{index}"
+
+
+def census_job(index: int, session: RenderSession) -> str:
+    """Render as usual, but first stamp this worker's LoadCache store.
+
+    Nothing in the render path writes to the cache store yet (LoadCache lands
+    later), so the store would otherwise be empty in every worker and an
+    isolation assertion over it would hold vacuously. Writing the marker inside
+    the job puts it in before the mid barrier, so by the time the probe runs
+    every worker has written - which is the only arrangement where one worker
+    seeing a sibling's marker is actually observable.
+    """
+    get_cache_store()[cache_marker_for(index)] = index
+    return render_shared_components(index, session)
+
+
 def expected_for(
     index: int,
 ) -> tuple[frozenset[Path], frozenset[Path], frozenset[str], frozenset[str]]:
@@ -186,9 +208,9 @@ def run_concurrent_requests(
         workers: How many threads/requests to run.
         template_dir: Template directory the per-worker RenderSession loads from.
         inspect: Optional callback run inside the still-open scope, after the
-            snapshot is taken. This is the extension point for #437's
-            invariant-4 census assertion; anything it raises is collected into
-            the returned errors list like any other worker failure.
+            snapshot is taken. This is where the invariant-4 census assertion
+            plugs in; anything it raises is collected into the returned errors
+            list like any other worker failure.
 
     Returns:
         A (observations by worker index, collected exceptions) pair. Callers
@@ -333,8 +355,8 @@ def test_harness_barrier_actually_synchronizes():
 
 
 def test_inspect_hook_runs_inside_the_live_scope():
-    """#437 plugs its invariant-4 census in here, so the hook must see live
-    per-request state - not a scope already torn down."""
+    """test_invariant_4_census below plugs into this hook, so the hook must see
+    live per-request state - not a scope already torn down."""
     seen: dict[int, object] = {}
 
     def census_probe(index: int, session: RenderSession, observed: Observation) -> None:
@@ -352,3 +374,81 @@ def test_inspect_hook_runs_inside_the_live_scope():
 
     fail_on_errors(errors)
     assert set(seen) == set(observations) == set(range(WORKERS))
+
+
+def test_invariant_4_census():
+    """Every member of the invariant-4 census, asserted under real concurrency.
+
+    Invariant 4 (architecture-overview.md:107, :168) names exactly what mutable
+    state pyjinhx has: a class registry + descriptors built once and swapped in
+    at import/registration time, and four ContextVar-held per-request stores -
+    instance registry, RenderSession, dirtied keys, LoadCache request store.
+    The two halves get opposite assertions. The four request stores must differ
+    per worker; the registry and descriptors must be the *same objects* in every
+    worker, since a per-thread copy would mean the build-then-swap discipline
+    had quietly become per-request rebuilding.
+    """
+    shared_sightings: dict[int, tuple[int, int, int]] = {}
+    sessions_seen: dict[int, int] = {}
+
+    def census_probe(index: int, session: RenderSession, observed: Observation) -> None:
+        _, _, expected_keys, expected_dirtied = expected_for(index)
+
+        # 1. Instance registry: this worker's keys, nothing a sibling made.
+        assert set(get_instances()) == set(expected_keys), (
+            f"worker {index} instance registry bled: {sorted(get_instances())}"
+        )
+        # 2. Dirtied keys: likewise.
+        assert get_dirtied() == set(expected_dirtied), (
+            f"worker {index} dirtied set bled: {sorted(get_dirtied())}"
+        )
+        # 3. RenderSession: identity, not equality - a sibling's session would
+        # compare unequal only by accident, but must never be the same object.
+        assert current_session() is session, (
+            f"worker {index} current_session() is not its own session object"
+        )
+        # 4. LoadCache request store: only this worker's marker, and it is a
+        # distinct dict object per request.
+        store = get_cache_store()
+        assert set(store) == {cache_marker_for(index)}, (
+            f"worker {index} cache store bled: {sorted(map(str, store))}"
+        )
+        sessions_seen[index] = id(store)
+
+        # 5. The shared, read-only half: descriptors and the class registry are
+        # recorded here and compared across workers after the run.
+        component = _component_for(index)
+        shared_sightings[index] = (
+            id(type(component).__pjx_descriptor__),
+            # Private module attribute accessed deliberately: asserting the
+            # built-then-swap holder's identity is precisely what census point
+            # 5 requires, and no public wrapper exposes it.
+            id(discovery._registry),
+            id(discovery._registry.mapping),
+        )
+
+    observations, errors = run_concurrent_requests(census_job, inspect=census_probe)
+
+    fail_on_errors(errors)
+    assert set(observations) == set(range(WORKERS))
+
+    # Every worker's cache store was a distinct object, not one dict shared by
+    # reference that merely happened to hold one key at snapshot time.
+    assert len(set(sessions_seen.values())) == WORKERS, (
+        "cache stores were not distinct objects per request"
+    )
+
+    # Workers rendering the same class must have seen one descriptor object;
+    # every worker must have seen one class registry and one mapping object.
+    alpha = {shared_sightings[i][0] for i in range(0, WORKERS, 2)}
+    beta = {shared_sightings[i][0] for i in range(1, WORKERS, 2)}
+    assert len(alpha) == 1 and len(beta) == 1, (
+        "descriptors were duplicated per thread instead of shared read-only"
+    )
+    assert alpha != beta, "the two classes' descriptors collapsed into one object"
+    assert len({s[1] for s in shared_sightings.values()}) == 1, (
+        "the class registry holder differed per thread"
+    )
+    assert len({s[2] for s in shared_sightings.values()}) == 1, (
+        "the class registry mapping was rebuilt per thread"
+    )
