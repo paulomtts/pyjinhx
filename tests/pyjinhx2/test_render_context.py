@@ -7,7 +7,7 @@ import pytest
 from jinja2 import Environment
 from pydantic import BaseModel, ValidationError
 
-from pyjinhx2.component import BaseComponent, Slot
+from pyjinhx2.component import BaseComponent, Slot, _resolve_slot_fields
 from pyjinhx2.descriptor import ClassDescriptor
 from pyjinhx2.markers import ComponentNode
 from pyjinhx2.render_context import build_context
@@ -115,21 +115,22 @@ def test_slot_field_passthrough_string_valued():
     assert context["html_content"] == "<p>Safe markup</p>"
 
 
-def test_non_slot_component_valued_field():
-    """Non-Slot component-valued fields pass as component objects (not wrapped)."""
+def test_auto_slot_component_valued_field():
+    """A bare component-typed field is a slot without any annotation, so its
+    value is wrapped in ComponentNode like an explicit Slot would be."""
 
     class Child(BaseComponent):
         name: str
 
     class Parent(BaseComponent):
-        # child is NOT a Slot, so it's a regular composed field
+        # No Slot annotation: the component-typed annotation is enough.
         child: Child
 
     child = Child(name="x")
     parent = Parent(child=child)
     descriptor = ClassDescriptor(
         template_path=Path("parent.pjx"),
-        slot_fields=frozenset(),  # child is NOT a slot
+        slot_fields=_resolve_slot_fields(Parent),
         children_field=None,
         css_paths=(),
         js_paths=(),
@@ -137,13 +138,12 @@ def test_non_slot_component_valued_field():
         provenance={},
     )
 
+    assert descriptor.slot_fields == frozenset({"child"})
+
     context = build_context(parent, descriptor)
 
-    # Non-slot component fields pass as component objects
-    # (model_dump recurses, so it will be a dict representation)
-    assert "child" in context
-    # The exact structure depends on model_dump behavior
-    # At minimum, it should be in the context
+    assert isinstance(context["child"], ComponentNode)
+    assert context["child"].component is child
 
 
 def test_nested_basemodel_fields():
