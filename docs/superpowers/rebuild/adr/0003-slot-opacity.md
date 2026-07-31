@@ -1,6 +1,6 @@
 # ADR 0003: Slots are opaque — truthiness, interpolation, and `.props` access only
 
-**Status:** Accepted, 2026-07-28. Amended 2026-07-30 to sanction `NestedComponentWrapper`; amended 2026-07-31 to make component-typed fields slots by default. Consequence of ADR 0002.
+**Status:** Accepted, 2026-07-28. Amended 2026-07-30 to sanction `NestedComponentWrapper`; amended 2026-07-31 to make component-typed fields slots by default; amended 2026-07-31 to close the two remaining opacity leaks (#419). Consequence of ADR 0002.
 
 ## Context
 
@@ -124,3 +124,25 @@ Two consequences worth stating plainly:
 
 - `PjxSlot`/`Slot` is now an escape hatch, needed only for a *string* field that should be emitted as raw HTML. Component-valued fields do not need it.
 - Tag-body routing is a separate, orthogonal concern. `_pjx_children_field` (and its `Children` alias) decides *which* field receives a PascalCase tag's nested markup, following the `content` convention. It says nothing about slot-ness, and slot-ness says nothing about it: a field can be one, the other, or both.
+
+## Amendment (2026-07-31): closing the two remaining opacity leaks (#419)
+
+Two gaps survived the L1.3 landing, both fixed in `pyjinhx2/markers.py`:
+
+- `ComponentNode.__str__` now raises the same opaque `TypeError` as the other
+  forbidden dunders. Filters that stringify before doing their own work
+  (`|upper`, `|trim`, `|striptags`) previously fell through to `__repr__` and
+  leaked `"ComponentNode(<component repr>)"` into rendered HTML instead of
+  failing loudly. Bare `{{ field }}` interpolation is unaffected —
+  `finalize_slot_node` still intercepts the node and substitutes a splice
+  token before Jinja would ever call `str()` on it.
+- `SlotProps.__getattr__`/`__getitem__` now wrap a component-valued prop in a
+  `ComponentNode` before returning it, labelled `<field>.props.<name>`.
+  Previously a component-typed prop (a nested component-typed field reached
+  through `.props`) came back as the live `BaseComponent` instance, bypassing
+  `ComponentNode` and hitting pydantic's own `__str__`/`__iter__` on failure —
+  a plain, unhelpful `TypeError` rather than the ADR's targeted message.
+  Non-component prop values are unaffected; they still return raw.
+
+`.props` remains the sole sanctioned escape hatch and is unchanged in kind:
+this closes a data-access hole in it, not a new capability.

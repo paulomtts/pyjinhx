@@ -183,13 +183,69 @@ class TestSlotPropsView:
 
         assert "SlotProps" in repr(props)
 
-    def test_a_component_valued_prop_stays_the_live_child(self):
+    def test_a_component_valued_prop_comes_back_wrapped(self):
+        from pyjinhx2.markers import ComponentNode
+
         class Card(BaseComponent):
             content: Slot = ""
 
         leaf = Leaf(title="inner")
 
-        assert self.node(Card(content=leaf)).props.content is leaf
+        nested = self.node(Card(content=leaf)).props.content
+
+        assert type(nested) is ComponentNode
+        assert nested.component is leaf
+
+    def test_a_component_valued_prop_is_wrapped_through_subscript_too(self):
+        from pyjinhx2.markers import ComponentNode
+
+        class Card(BaseComponent):
+            content: Slot = ""
+
+        leaf = Leaf(title="inner")
+
+        assert type(self.node(Card(content=leaf)).props["content"]) is ComponentNode
+
+    def test_the_nested_node_names_the_props_path_in_its_error(self):
+        class Card(BaseComponent):
+            content: Slot = ""
+
+        nested = self.node(Card(content=Leaf(title="inner"))).props.content
+
+        with pytest.raises(TypeError) as excinfo:
+            str(nested)
+
+        assert "slot 'content.props.content'" in str(excinfo.value)
+
+    def test_the_nested_node_is_opaque_to_every_forbidden_operation(self):
+        class Card(BaseComponent):
+            content: Slot = ""
+
+        nested = self.node(Card(content=Leaf(title="inner"))).props.content
+
+        with pytest.raises(TypeError, match=r"\.props\.content"):
+            str(nested)
+        with pytest.raises(TypeError, match=r"\.props\.content"):
+            len(nested)  # pyright: ignore[reportArgumentType]
+        with pytest.raises(TypeError, match=r"\.props\.content"):
+            list(nested)  # pyright: ignore[reportCallIssue, reportArgumentType]
+        with pytest.raises(TypeError, match=r"\.props\.content"):
+            nested[1:2]  # pyright: ignore[reportIndexIssue]
+
+    def test_a_non_component_prop_is_still_returned_raw(self):
+        props = self.node(Leaf(title="hello", count=3)).props
+
+        assert props.title == "hello"
+        assert type(props.title) is str
+        assert type(props.count) is int
+
+    def test_a_nested_props_hop_keeps_working(self):
+        class Card(BaseComponent):
+            content: Slot = ""
+
+        nested = self.node(Card(content=Leaf(title="inner"))).props.content
+
+        assert nested.props.title == "inner"  # pyright: ignore[reportAttributeAccessIssue]
 
     def test_the_nodes_own_forbidden_ops_are_unchanged(self):
         node = self.node(Leaf(title="hello"))
@@ -359,7 +415,7 @@ class TestPropsRegressions:
         assert context["content"].component is leaf
         assert context["content"].props.title == "hello"
 
-    def test_a_nested_component_valued_prop_is_not_stringified(self):
+    def test_a_nested_component_valued_prop_is_opaque_not_raw(self):
         from pyjinhx2.markers import ComponentNode
         from pyjinhx2.render_context import build_context
 
@@ -375,6 +431,7 @@ class TestPropsRegressions:
         context = build_context(Card(content=Wrap(inner=leaf)), Card.__pjx_descriptor__)
         nested = context["content"].props.inner
 
-        assert nested is leaf
-        assert not isinstance(nested, str)
-        assert not isinstance(nested, ComponentNode)
+        assert type(nested) is ComponentNode
+        assert nested.component is leaf
+        with pytest.raises(TypeError, match=r"slot 'content\.props\.inner'"):
+            str(nested)
