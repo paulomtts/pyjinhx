@@ -130,8 +130,7 @@ def test_link_mode_emits_script_src_tags_sorted_by_path(tmp_path):
     out = emit_assets(session, resolver=_stub_resolver)
 
     assert out == (
-        '<script src="/static/a.js"></script>\n'
-        '<script src="/static/z.js"></script>'
+        '<script src="/static/a.js"></script>\n<script src="/static/z.js"></script>'
     )
 
 
