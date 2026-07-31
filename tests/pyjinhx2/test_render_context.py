@@ -146,6 +146,37 @@ def test_auto_slot_component_valued_field():
     assert context["child"].component is child
 
 
+def test_component_collection_slot_entries_are_not_wrapped_yet():
+    """Auto-detection makes list/dict component fields slots at registration
+    time; per-entry ComponentNode wrapping in build_context is a separate,
+    unclosed gap (list/dict slot semantics, #371) and is not in #418's scope."""
+
+    class Badge(BaseComponent):
+        label: str = ""
+
+    class Card(BaseComponent):
+        badges: list[Badge] = []
+
+    card = Card(badges=[Badge(label="a")])
+    descriptor = ClassDescriptor(
+        template_path=Path("card.pjx"),
+        slot_fields=_resolve_slot_fields(Card),
+        children_field=None,
+        css_paths=(),
+        js_paths=(),
+        strict=True,
+        provenance={},
+    )
+
+    assert descriptor.slot_fields == frozenset({"badges"})
+
+    context = build_context(card, descriptor)
+
+    # Documents current behaviour, not desired behaviour: model_dump() already
+    # flattened the entries and build_context does not iterate collections.
+    assert not isinstance(context["badges"], ComponentNode)
+
+
 def test_nested_basemodel_fields():
     """Nested BaseModel (non-component) fields pass through as dicts."""
 
