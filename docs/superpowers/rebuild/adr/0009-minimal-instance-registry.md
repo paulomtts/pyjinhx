@@ -58,3 +58,15 @@ These are named so a future reader can tell "absent because unneeded" from "abse
 4. N4. A pluggable custom-hash-function API — hash composition is fixed, with field exclusion as the only knob. (E11)
 5. N5. Merged registry/cache keying, or any single "universal key." (E13)
 6. N6. A process-wide cache as a mandate. (See the cache-scope decision below.)
+
+## Resolved open questions
+
+#382 and #383 each deferred one representation choice to this record. Both are settled here.
+
+### Miss representation: raise, as v0.x does
+
+A registry lookup that resolves nothing raises a `LookupError`-style exception rather than returning a sentinel or a result variant. E4 only demands that the miss be observable from a single lookup, and both shapes satisfy it; raising is chosen because it keeps the registry's surface to one method with one return type, which is the smallest API consistent with this ADR's Option 3 framing, and because it matches v0.x's fan-out miss path so the L3 port carries no translation layer.
+
+### Cache scope: request scope only, in L2
+
+L2 exposes exactly one cache scope — request scope, stored in the `ContextVar` that `request_scope` resets — and no scope-selection API. That is all E6-E8 and Invariant 4 require, and it keeps the per-request mutable-state census unchanged. v0.x's three-way `CacheScope` (request/process/none) and its cross-worker invalidation propagation are **deferred, not forbidden**: nothing in this ADR relies on request scope being the only possible scope, so a later ADR can add process scope or cross-worker propagation as an additive change without reopening the enumeration. Until then, N6 stands: a process-wide cache is not a mandate and L2 must not build one.
