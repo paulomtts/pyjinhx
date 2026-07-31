@@ -289,3 +289,35 @@ def test_concurrent_calls_for_two_different_headers_stay_unmixed(tmp_path, caplo
         if m.startswith("pyjinhx2._classless_")
     }
     assert len(synthetic) <= 1
+
+
+def test_a_header_built_class_renders_its_declared_fields_end_to_end(tmp_path):
+    """Parse -> class -> descriptor -> render, with nothing swapped in between."""
+    write_template(
+        tmp_path,
+        "card",
+        '{#def title: str, count: int = 0 #}'
+        '<article class="card">{{ title }} ({{ count }})</article>',
+    )
+
+    cls = component("Card", template_dir=tmp_path)
+    output = serialize(render_level(cls(title="Hello", count=3), absolute_session()))
+
+    assert issubclass(cls, OpenComponent)
+    assert output == '<article class="card">Hello (3)</article>'
+
+
+def test_an_extra_attribute_reaches_the_template_through_the_render_path(tmp_path):
+    """Extras are part of the dumped context, so an open class can read one."""
+    write_template(
+        tmp_path,
+        "card",
+        '{#def title: str #}<article>{{ title }}/{{ subtitle }}</article>',
+    )
+
+    cls = component("Card", template_dir=tmp_path)
+    instance = cls(title="Hello", subtitle="World")  # pyright: ignore[reportCallIssue]
+    output = serialize(render_level(instance, absolute_session()))
+
+    assert instance.model_extra == {"subtitle": "World"}
+    assert output == "<article>Hello/World</article>"
