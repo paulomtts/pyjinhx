@@ -129,3 +129,41 @@ def test_an_unrecognized_annotation_falls_back_to_any_end_to_end(tmp_path):
     assert cls.model_fields["weird"].annotation is Any
     instance = cls(title="hi", weird=object())  # pyright: ignore[reportCallIssue]
     assert instance.weird is not None
+
+
+def test_the_descriptor_is_one_frozen_object_not_a_per_read_computation(tmp_path):
+    """Invariant 5: descriptor facts are resolved once, at class placement."""
+    path = write_template(tmp_path, "card", '{#def title: str = "hi" #}<div>{{ title }}</div>')
+
+    cls = component("Card", template_dir=tmp_path)
+    first = cls.__pjx_descriptor__
+    second = cls.__pjx_descriptor__
+
+    assert first is second
+    assert first.template_path == path
+    assert first.strict is False
+    assert first.has_stale_def_header is False
+
+
+def test_rendering_never_recomputes_the_descriptor(tmp_path, monkeypatch):
+    """N renders cost zero header parses: the probe ran at build time."""
+    from pyjinhx2 import props_header
+
+    write_template(tmp_path, "card", '{#def title: str = "hi" #}<div>{{ title }}</div>')
+    cls = component("Card", template_dir=tmp_path)
+    before = cls.__pjx_descriptor__
+
+    calls: list[str] = []
+
+    def spy(source: str):
+        calls.append(source)
+        return parse_props_header(source)
+
+    monkeypatch.setattr(props_header, "parse_props_header", spy)
+
+    session = absolute_session()
+    for _ in range(3):
+        render_level(cls(), session)
+
+    assert calls == []
+    assert cls.__pjx_descriptor__ is before
