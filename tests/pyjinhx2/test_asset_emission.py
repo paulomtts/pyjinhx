@@ -96,3 +96,119 @@ def test_missing_asset_file_raises(tmp_path):
 
 def test_no_assets_emits_empty_string(tmp_path):
     assert emit_assets(_session(tmp_path)) == ""
+
+
+from dataclasses import replace
+
+from pyjinhx2.component import BaseComponent
+from pyjinhx2.descriptor import ClassDescriptor
+from pyjinhx2.render import render, render_level
+from pyjinhx2.segments import serialize
+from pyjinhx2.session import accumulate_assets, request_scope
+
+TEMPLATES = str(Path(__file__).parent.parent / "templates")
+
+
+def _plain_descriptor(owner: type) -> ClassDescriptor:
+    """Hand-built descriptor pointed at the shared plain_div.html fixture."""
+    return ClassDescriptor(
+        template_path=Path("plain_div.html"),
+        slot_fields=frozenset(),
+        children_field=None,
+        css_paths=(),
+        js_paths=(),
+        strict=True,
+        provenance={"template": owner},
+    )
+
+
+class EmitBox(BaseComponent):
+    """Component rendered against a hand-built descriptor, not MRO discovery."""
+
+
+class EmitSibling(BaseComponent):
+    """Second class used to prove a shared asset inlines exactly once."""
+
+
+EmitBox.__pjx_descriptor__ = _plain_descriptor(EmitBox)
+EmitSibling.__pjx_descriptor__ = _plain_descriptor(EmitSibling)
+
+
+def _with_assets(cls, *, css=(), js=()):
+    cls.__pjx_descriptor__ = replace(
+        cls.__pjx_descriptor__, css_paths=tuple(css), js_paths=tuple(js)
+    )
+    return cls
+
+
+def _accumulating_session() -> RenderSession:
+    session = RenderSession(template_dir=TEMPLATES)
+    session.on_rendered.append(accumulate_assets)
+    return session
+
+
+def test_render_inlines_accumulated_css_and_js(tmp_path):
+    css = tmp_path / "box.css"
+    css.write_text(".box { color: red; }")
+    js = tmp_path / "box.js"
+    js.write_text("console.log('box');")
+    _with_assets(EmitBox, css=[css], js=[js])
+    session = _accumulating_session()
+
+    out = render(EmitBox(), session)
+
+    assert "<style>.box { color: red; }</style>" in out
+    assert "<script>console.log('box');</script>" in out
+
+
+def test_render_with_none_modes_returns_plain_markup(tmp_path):
+    css = tmp_path / "box.css"
+    css.write_text(".box { color: red; }")
+    _with_assets(EmitBox, css=[css])
+    session = _accumulating_session()
+    session.css_mode = AssetMode.NONE
+    session.js_mode = AssetMode.NONE
+
+    out = render(EmitBox(), session)
+
+    assert "<style>" not in out
+    assert "<script>" not in out
+
+
+def test_shared_asset_inlined_exactly_once(tmp_path):
+    css = tmp_path / "shared.css"
+    css.write_text(".shared { color: blue; }")
+    _with_assets(EmitBox, css=[css])
+    _with_assets(EmitSibling, css=[css])
+    session = _accumulating_session()
+
+    render(EmitBox(), session)
+    out = render(EmitSibling(), session)
+
+    assert out.count(".shared { color: blue; }") == 1
+
+
+def test_render_without_assets_equals_plain_serialize():
+    """With nothing accumulated, render()'s output is exactly serialize(level).
+    Reuses one component instance across both calls: auto_id is minted once at
+    construction (a process-wide counter), so two separate instances would
+    differ by id regardless of asset emission."""
+    _with_assets(EmitBox)
+    component = EmitBox()
+
+    out = render(component, _accumulating_session())
+    expected = serialize(render_level(component, _accumulating_session()))
+
+    assert out == expected
+
+
+def test_render_level_alone_carries_no_inlined_tags(tmp_path):
+    css = tmp_path / "box.css"
+    css.write_text(".box { color: red; }")
+    _with_assets(EmitBox, css=[css])
+    session = _accumulating_session()
+
+    level = render_level(EmitBox(), session)
+
+    assert "<style>" not in serialize(level)
+    assert session.css_assets == {css}

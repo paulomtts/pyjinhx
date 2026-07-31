@@ -4,6 +4,7 @@ import threading
 from dataclasses import replace
 from pathlib import Path
 
+from pyjinhx2.assets import AssetMode
 from pyjinhx2.component import BaseComponent
 from pyjinhx2.descriptor import ClassDescriptor
 from pyjinhx2.render import render
@@ -62,10 +63,19 @@ def _accumulating_session() -> RenderSession:
     the session render_level() passes to it, not the request_scope ContextVar,
     so a plain render(component, session) call — the convention used
     throughout the rest of the suite — must accumulate on its own.
+
+    Modes set to NONE: this file exercises accumulation into css_assets/
+    js_assets (#429), not #430's emission. The CSS/JS constants above point at
+    paths that don't exist on disk on purpose (accumulation never reads the
+    file); #430 wired render() to inline-read accumulated paths by default,
+    so leaving these sessions on INLINE would make render() raise on a path
+    that was never meant to be readable.
     """
     template_dir = str(Path(__file__).parent.parent / "templates")
     session = RenderSession(template_dir=template_dir)
     session.on_rendered.append(accumulate_assets)
+    session.css_mode = AssetMode.NONE
+    session.js_mode = AssetMode.NONE
     return session
 
 

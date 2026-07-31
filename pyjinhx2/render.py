@@ -10,6 +10,7 @@ from typing import cast
 
 import jinja2
 
+from pyjinhx2.assets import emit_assets
 from pyjinhx2.component import BaseComponent, _pascal_to_snake
 from pyjinhx2.discovery import get_class
 from pyjinhx2.markers import SLOT_TOKEN_RE, collect_slot_tokens
@@ -259,7 +260,8 @@ def render(component: BaseComponent, session: "RenderSession | None" = None) -> 
             kernel don't need to construct one by hand.
 
     Returns:
-        The component's rendered markup as a finished HTML string.
+        The component's rendered markup as a finished HTML string, with the
+        session's accumulated assets appended per their delivery mode.
 
     Fires each ``session.on_rendered`` callback with ``(component, level,
     session)`` after each component's level is built, depth-first post-order.
@@ -277,4 +279,7 @@ def render(component: BaseComponent, session: "RenderSession | None" = None) -> 
     if session is None:
         session = RenderSession()
     level = render_level(component, session)
-    return serialize(level)
+    # The one join at the top, and the one place assets are emitted: every
+    # component in the tree has already fired on_rendered by now, so the
+    # session's asset sets are complete. render_level() never lands here.
+    return serialize(level) + emit_assets(session)

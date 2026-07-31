@@ -53,6 +53,7 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
     # an unregistered tag is emitted verbatim, so this is a read-only edge.
     "render": frozenset(
         {
+            "pyjinhx2.assets",
             "pyjinhx2.component",
             "pyjinhx2.discovery",
             "pyjinhx2.markers",
