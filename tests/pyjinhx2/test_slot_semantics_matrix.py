@@ -145,3 +145,115 @@ class TestTruthinessWithInterpolation:
 
         assert render_expr("{{ note|length }}", card) == "12"
         assert render_expr("{{ 'em' in note }}", card) == "True"
+
+
+def opaque_card() -> BaseComponent:
+    """A Card whose `content` slot holds a component, for the op matrix."""
+
+    class Card(BaseComponent):
+        content: Slot = ""
+
+    Card.__pjx_descriptor__ = descriptor("nest_content.html", frozenset({"content"}))
+    return Card(content=Leaf(text="c"))
+
+
+class TestForbiddenOperations:
+    @pytest.mark.parametrize(
+        ("expr", "syntax"),
+        [
+            ("{{ content|length }}", "|length"),
+            ("{{ 'x' in content }}", "in"),
+            ("{% for x in content %}{{ x }}{% endfor %}", "for"),
+            ("{{ content == 1 }}", "=="),
+            ("{{ content != 1 }}", "!="),
+            ("{{ content < 1 }}", "<"),
+            ("{{ content <= 1 }}", "<="),
+            ("{{ content > 1 }}", ">"),
+            ("{{ content >= 1 }}", ">="),
+        ],
+    )
+    def test_each_forbidden_operation_raises_the_opacity_error(self, expr, syntax):
+        with pytest.raises(TypeError) as excinfo:
+            render_expr(expr, opaque_card())
+
+        message = str(excinfo.value)
+        assert "slot 'content' holds a rendered component" in message
+        assert f"`{syntax}`" in message
+
+    def test_the_error_names_the_owner_component_and_template(self):
+        with pytest.raises(TypeError) as excinfo:
+            render_expr("{{ content|length }}", opaque_card())
+
+        message = str(excinfo.value)
+        assert message.startswith("Card (template: nest_content.html):")
+
+    def test_the_error_points_at_the_two_supported_forms(self):
+        with pytest.raises(TypeError) as excinfo:
+            render_expr("{{ content|length }}", opaque_card())
+
+        message = str(excinfo.value)
+        assert "{% if content %}" in message
+        assert "{{ content }}" in message
+
+    def test_slicing_reports_the_slice_syntax(self):
+        with pytest.raises(TypeError, match=r"`\[1:2\]`"):
+            render_expr("{{ content[1:2] }}", opaque_card())
+
+    def test_integer_indexing_raises_when_called_directly(self):
+        # ComponentNode.__getitem__ itself raises the opaque error...
+        node = ComponentNode(Leaf(text="c"), field_name="content")
+
+        with pytest.raises(TypeError, match=r"`\[0\]`"):
+            node[0]
+
+    def test_integer_indexing_through_jinja_subscript_syntax_is_a_gap(self):
+        # ...but `content[0]` inside a template does not raise it. Jinja's
+        # `Environment.getitem` (dynamic subscript path) catches TypeError
+        # and LookupError from `obj[argument]` and falls back to Undefined
+        # instead of re-raising, so the opaque error never surfaces here —
+        # unlike the slice case above, which the compiler routes through a
+        # direct `__getitem__` call. Production gap: pin current behavior,
+        # do not patch (test-only subtask, see ADR 0003 gap notes).
+        assert render_expr("{{ content[0] }}", opaque_card()) == ""
+
+
+class TestHashingSurvivesForbiddenEquality:
+    def test_a_node_is_usable_as_a_dict_key(self):
+        # __eq__ raises, which blanks __hash__ unless restored; identity
+        # hashing is deliberate (ADR 0003) so nodes stay dict-keyable.
+        node = ComponentNode(Leaf(text="c"), field_name="content")
+
+        table = {node: "value"}
+
+        assert table[node] == "value"
+
+    def test_two_nodes_wrapping_the_same_child_hash_apart(self):
+        leaf = Leaf(text="c")
+        first = ComponentNode(leaf, field_name="content")
+        second = ComponentNode(leaf, field_name="content")
+
+        assert hash(first) != hash(second)
+        assert len({first, second}) == 2
+
+
+class TestStringifyingFilterGap:
+    """Filters that call str() before failing bypass the dunder path.
+
+    ADR 0003 asks these to raise the same targeted error; today they fall
+    through to the default object repr instead. Pinned as-is here — see the
+    gap note in docs/superpowers/rebuild/adr/0003-slot-opacity.md and the
+    ComponentNode docstring. Fixing it is not this subtask's job.
+    """
+
+    @pytest.mark.parametrize("filter_name", ["upper", "trim", "striptags"])
+    def test_a_stringifying_filter_does_not_raise_today(self, filter_name):
+        output = render_expr("{{ content|%s }}" % filter_name, opaque_card())
+
+        assert "ComponentNode" in output.replace("COMPONENTNODE", "ComponentNode")
+
+    def test_the_stringified_output_is_the_repr_not_the_childs_markup(self):
+        output = render_expr("{{ content|upper }}", opaque_card())
+
+        assert "COMPONENTNODE(" in output
+        assert "LEAF" in output
+        assert "<span" not in output
