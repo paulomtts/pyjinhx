@@ -26,3 +26,7 @@ class ClassDescriptor:
     js_paths: tuple[Path, ...]
     strict: bool
     provenance: Mapping[str, type]
+    has_stale_def_header: bool = False
+    """Whether the resolved template still carries a ``{#def#}`` header this
+    class-based component ignores. Answered once, when ``template_path`` is
+    resolved, so no render pays for the probe."""

@@ -353,6 +353,17 @@ def _resolve_class_descriptor(cls: type[BaseModel]) -> ClassDescriptor:
     would probe the same ancestors twice.
     """
     template_path, template_owner = _walk_template(cls)
+
+    # Imported here, not at module scope: props_header imports OpenComponent
+    # from this module, so a top-level import would close the cycle.
+    from pyjinhx2.props_header import template_has_props_header
+
+    # A classless class was *built from* its header, so its header is not
+    # stale — only hand-written classes can be carrying a leftover one.
+    has_stale_def_header = not getattr(
+        cls, "_pjx_classless", False
+    ) and template_has_props_header(template_path)
+
     css_path, css_owner = _walk_asset(cls, "css")
     js_path, js_owner = _walk_asset(cls, "js")
     provenance = {
@@ -389,6 +400,7 @@ def _resolve_class_descriptor(cls: type[BaseModel]) -> ClassDescriptor:
         js_paths=() if js_path is None else (js_path,),
         strict=_resolve_strict(cls),
         provenance=provenance,
+        has_stale_def_header=has_stale_def_header,
     )
 
 

@@ -11,12 +11,15 @@ caller.
 """
 
 import ast
+import logging
 import re
-from typing import Any
+from pathlib import Path
+from typing import TYPE_CHECKING, Any
 
 from pydantic import create_model
 
-from pyjinhx2.component import OpenComponent
+if TYPE_CHECKING:
+    from pyjinhx2.component import OpenComponent
 
 _HEADER_RE = re.compile(r"\A\s*\{#\s*def\s+(?P<sig>.*?)\s*#\}", re.DOTALL)
 
@@ -114,7 +117,7 @@ def parse_props_header(source: str) -> list[tuple[str, Any, Any]] | None:
 
 def build_component_class(
     fields: list[tuple[str, Any, Any]], tag: str
-) -> type[OpenComponent]:
+) -> "type[OpenComponent]":
     """Build an open-model component class named ``tag`` from parsed header fields.
 
     ``fields`` is ``parse_props_header``'s output verbatim: ``(name, annotation,
@@ -127,6 +130,8 @@ def build_component_class(
     may pass through, so undeclared keys must land in ``model_extra`` instead of
     raising.
     """
+    from pyjinhx2.component import OpenComponent
+
     definitions: dict[str, Any] = {
         name: (annotation, default) for name, annotation, default in fields
     }
@@ -140,3 +145,47 @@ def build_component_class(
     # downstream code reads off the type, never off an instance.
     cls._pjx_classless = True  # pyright: ignore[reportAttributeAccessIssue]
     return cls
+
+
+logger = logging.getLogger("pyjinhx2")
+
+
+def template_has_props_header(template_path: Path) -> bool:
+    """Whether the template at ``template_path`` opens with a ``{#def#}`` header.
+
+    Answers False for anything it cannot read or parse. This runs at class
+    registration, where the template path is a candidate that nothing has
+    proven exists yet, and a diagnostic must never be the thing that breaks an
+    import — the caller that actually loads the template still raises its own
+    error if the file is missing.
+    """
+    try:
+        source = template_path.read_text(encoding="utf-8")
+    except OSError:
+        return False
+    try:
+        return parse_props_header(source) is not None
+    except ValueError:
+        # A malformed header is still a header, but header-parse correctness
+        # belongs to the classless path; staying silent here keeps a broken
+        # header from producing two unrelated complaints.
+        return False
+
+
+_STALE_DEF_HEADER_WARNING = (
+    "<%s>: a {#def#} header is present but a Python class is registered — "
+    "the header is ignored. Remove the header (or the class)."
+)
+
+
+def warn_stale_def_header(cls: type) -> None:
+    """Report ``cls``'s ignored ``{#def#}`` header, at most once per class.
+
+    The "already reported" bit lives on the class rather than in a module-level
+    set: the fact is per-class, so the class is where it belongs, and the render
+    path gains no shared mutable state.
+    """
+    if getattr(cls, "_pjx_stale_header_warned", False):
+        return
+    cls._pjx_stale_header_warned = True  # pyright: ignore[reportAttributeAccessIssue]
+    logger.warning(_STALE_DEF_HEADER_WARNING, cls.__name__)
