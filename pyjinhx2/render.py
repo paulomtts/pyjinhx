@@ -234,6 +234,10 @@ def render_level(
     # Runs after tag-shaped holes are resolved, so the indexes above stay valid
     # while this step rebuilds the list.
     _splice_slot_nodes(level, slot_table, session, chain)
+    # Fired after every child has already rendered and spliced in above, so a
+    # nested tree fires depth-first, post-order, once per component.
+    for hook in session.on_rendered:
+        hook(component, level)
     return level
 
 
@@ -253,6 +257,9 @@ def render(component: BaseComponent, session: "RenderSession | None" = None) -> 
 
     Returns:
         The component's rendered markup as a finished HTML string.
+
+    Fires each ``session.on_rendered`` callback with ``(component, level)``
+    after each component's level is built, depth-first post-order.
 
     Raises:
         ValueError: If template renders zero or 2+ root elements.

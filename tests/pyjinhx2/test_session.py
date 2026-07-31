@@ -8,8 +8,12 @@ which land with the modules that consume them.
 """
 
 import threading
+from pathlib import Path
 
 from pyjinhx2 import session as session_module
+from pyjinhx2.component import BaseComponent
+from pyjinhx2.descriptor import ClassDescriptor
+from pyjinhx2.render import render
 
 
 def test_getters_return_empty_defaults_outside_any_scope():
@@ -194,3 +198,38 @@ def test_render_session_is_still_directly_constructible_with_autoescape_on():
 def test_scope_passes_template_dir_through_to_the_session():
     with session_module.request_scope(template_dir="tests/templates") as s:
         assert s.jinja_env.autoescape is True
+
+
+class PlainBox(BaseComponent):
+    """Component rendered against a hand-built descriptor, not MRO discovery."""
+
+
+# There is no `__pjx_template__` override attribute anywhere in pyjinhx2 —
+# template resolution is a pure MRO/filesystem walk (`class_name.pjx` beside
+# the defining module; see component.py's `_walk_template`). This test needs a
+# specific template, so it bypasses that walk entirely, the same way
+# test_render_level.py does: build a ClassDescriptor by hand and assign it.
+PlainBox.__pjx_descriptor__ = ClassDescriptor(
+    template_path=Path("plain_div.html"),
+    slot_fields=frozenset(),
+    children_field=None,
+    css_paths=(),
+    js_paths=(),
+    strict=True,
+    provenance={"template": PlainBox},
+)
+
+
+def test_on_rendered_fires_once_per_render(render_session):
+    seen = []
+    render_session.on_rendered.append(lambda component, level: seen.append(component))
+    box = PlainBox()
+    render(box, render_session)
+    assert seen == [box]
+
+
+def test_on_rendered_receives_the_rendered_level(render_session):
+    captured = []
+    render_session.on_rendered.append(lambda component, level: captured.append(level))
+    render(PlainBox(), render_session)
+    assert captured[0].descriptor is PlainBox.__pjx_descriptor__

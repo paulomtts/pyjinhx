@@ -1,12 +1,16 @@
 """RenderSession, the per-request ContextVars, and the request_scope that owns them."""
 
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from contextvars import ContextVar
+from typing import TYPE_CHECKING, Any
 
 from jinja2 import Environment, FileSystemLoader
 
 from pyjinhx2.markers import finalize_slot_node
+
+if TYPE_CHECKING:
+    from pyjinhx2.segments import RenderedLevel
 
 # The four pieces of per-request mutable state. They live here rather than beside
 # their eventual consumers because the import rule runs one way only: reactive/
@@ -43,6 +47,11 @@ class RenderSession:
         # Asset paths accumulate here as on_rendered fires bottom-up; a set because
         # the same component class contributes the same paths on every occurrence.
         self.asset_paths: set[str] = set()
+        # Callbacks fired once per component render, after that level's
+        # RenderedLevel is built (depth-first post-order once nested renders
+        # exist). Subscribers read the finished descriptor/level; they never
+        # trigger a second render.
+        self.on_rendered: list[Callable[[Any, RenderedLevel], None]] = []
 
 
 def current_session() -> RenderSession | None:
