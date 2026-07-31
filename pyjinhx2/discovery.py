@@ -205,8 +205,20 @@ def register_class(tag_name: str, cls: type) -> None:
     alone: a class registered on demand must never shadow a declared one.
     The mapping is copied and rebound rather than mutated, matching the build,
     so a concurrent reader sees a whole mapping either way.
+    The loser is named in a warning rather than dropped silently, since a
+    template that never becomes its own component is otherwise invisible.
     """
     with _registry_lock:
-        if tag_name in _registry.mapping:
+        existing = _registry.mapping.get(tag_name)
+        if existing is not None:
+            logger.warning(
+                "Tag %r was built without a class, but %s already declares it; "
+                "the declared class keeps the tag and %s is discarded. Give the "
+                "classless template a different name if it meant to be its own "
+                "component.",
+                tag_name,
+                _qualified_name(existing),
+                _qualified_name(cls),
+            )
             return
         _registry.mapping = {**_registry.mapping, tag_name: cls}

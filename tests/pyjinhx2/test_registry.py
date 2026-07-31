@@ -265,6 +265,28 @@ def test_register_class_never_overwrites_an_existing_owner():
     assert get_class("owner") is Owner
 
 
+def test_register_class_warns_when_the_tag_is_already_owned(caplog):
+    """Losing the tag is not silent: the classless build says who kept it."""
+
+    class Owner(BaseComponent):
+        pass
+
+    class Intruder(BaseComponent):
+        pass
+
+    discovery.register_class("owner", Owner)
+
+    with caplog.at_level(logging.WARNING, logger="pyjinhx2"):
+        discovery.register_class("owner", Intruder)
+
+    assert len(caplog.records) == 1
+    message = caplog.records[0].getMessage()
+    assert "owner" in message
+    assert Owner.__qualname__ in message
+    assert Intruder.__qualname__ in message
+    assert get_class("owner") is Owner
+
+
 def test_build_registry_remembers_the_directory_it_walked():
     discovery.build_registry(DISCOVERY_DIR, [])
 
