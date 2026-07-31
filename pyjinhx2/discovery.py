@@ -68,10 +68,11 @@ class _Registry:
     obvious the walk above never touches it.
     """
 
-    __slots__ = ("mapping",)
+    __slots__ = ("mapping", "template_dir")
 
     def __init__(self) -> None:
         self.mapping: dict[str, type] = {}
+        self.template_dir: Path | None = None
 
 
 _registry = _Registry()
@@ -161,17 +162,19 @@ def build_registry(template_dir: Path | str, classes: Iterable[type]) -> None:
     new one. Raises ``NotADirectoryError`` (from the walk) before any publish
     happens, leaving the live registry untouched.
     """
+    root = Path(template_dir)
     by_tag: dict[str, list[type]] = {}
     for cls in classes:
         by_tag.setdefault(_tag_for(cls), []).append(cls)
     fresh: dict[str, type] = {}
     warned: set[str] = set()
-    for candidate in walk_templates(template_dir):
+    for candidate in walk_templates(root):
         owner = _resolve_tag_owner(candidate.tag_name, by_tag, warned)
         if owner is not None:
             fresh[candidate.tag_name] = owner
     with _registry_lock:
         _registry.mapping = fresh
+        _registry.template_dir = root
 
 
 def get_class(tag_name: str) -> type | None:
@@ -182,3 +185,28 @@ def get_class(tag_name: str) -> type | None:
     Unlocked — the published mapping is read-only once swapped in.
     """
     return _registry.mapping.get(tag_name)
+
+
+def get_template_dir() -> Path | None:
+    """The directory the last successful ``build_registry`` walked, or ``None``.
+
+    The lazy classless factory has no renderer to ask where templates live, and
+    the answer discovery already used is the only one that can agree with the
+    published mapping.
+    """
+    return _registry.template_dir
+
+
+def register_class(tag_name: str, cls: type) -> None:
+    """Publish ``cls`` under ``tag_name`` unless the tag already has an owner.
+
+    The one way a tag is claimed after the import-time build, so discovery
+    stays the only writer of the mapping. A tag that is already owned is left
+    alone: a class registered on demand must never shadow a declared one.
+    The mapping is copied and rebound rather than mutated, matching the build,
+    so a concurrent reader sees a whole mapping either way.
+    """
+    with _registry_lock:
+        if tag_name in _registry.mapping:
+            return
+        _registry.mapping = {**_registry.mapping, tag_name: cls}

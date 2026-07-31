@@ -29,8 +29,10 @@ class Unrelated(BaseComponent):
 def reset_registry():
     """Each test starts from an empty published mapping."""
     discovery._registry.mapping = {}
+    discovery._registry.template_dir = None
     yield
     discovery._registry.mapping = {}
+    discovery._registry.template_dir = None
 
 
 def test_registry_is_empty_before_any_build():
@@ -232,3 +234,42 @@ def test_orphan_template_never_warns(caplog):
         build_registry(DISCOVERY_DIR, [AlphaCard])
     assert warnings_in(caplog) == []
     assert get_class("beta") is None
+
+
+def test_register_class_publishes_a_tag_after_the_build():
+    """component() registers on demand, after import-time discovery has run."""
+
+    class Late(BaseComponent):
+        pass
+
+    discovery.build_registry(DISCOVERY_DIR, [])
+    assert get_class("late") is None
+
+    discovery.register_class("late", Late)
+
+    assert get_class("late") is Late
+
+
+def test_register_class_never_overwrites_an_existing_owner():
+    """A hand-declared component keeps its tag; the factory must not shadow it."""
+
+    class Owner(BaseComponent):
+        pass
+
+    class Intruder(BaseComponent):
+        pass
+
+    discovery.register_class("owner", Owner)
+    discovery.register_class("owner", Intruder)
+
+    assert get_class("owner") is Owner
+
+
+def test_build_registry_remembers_the_directory_it_walked():
+    discovery.build_registry(DISCOVERY_DIR, [])
+
+    assert discovery.get_template_dir() == DISCOVERY_DIR
+
+
+def test_template_dir_is_none_before_any_build():
+    assert discovery.get_template_dir() is None

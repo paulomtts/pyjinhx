@@ -21,6 +21,18 @@ PACKAGE_ROOT = Path(__file__).resolve().parents[2] / "pyjinhx2"
 # failing test go green.
 ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
     "__init__": frozenset(),
+    # The classless factory is a consumer: it validates a tag name, reads the
+    # template discovery found, hands the header to props_header and publishes
+    # the result through discovery's own write path. Nothing imports it back.
+    "classless": frozenset(
+        {
+            "pyjinhx2",
+            "pyjinhx2.component",
+            "pyjinhx2.discovery",
+            "pyjinhx2.props_header",
+            "pyjinhx2.segments",
+        }
+    ),
     "component": frozenset(
         {"pyjinhx2.descriptor", "pyjinhx2.props_header"}
     ),  # the stale-header probe needs template_has_props_header
