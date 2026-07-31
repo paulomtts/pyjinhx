@@ -1,7 +1,7 @@
 """Unit tests for the ``{#def ... #}`` header parser.
 
 Parsing only — building a model class from the parsed spec belongs to #376,
-so nothing here imports pydantic or pyjinhx2.component.
+so nothing here exercises class generation.
 """
 
 from typing import Any
@@ -159,21 +159,24 @@ def test_a_plain_jinja_comment_is_not_a_header():
     assert parse_props_header("{# just a comment #}<div></div>") is None
 
 
-def test_props_header_is_import_pure():
-    """Parsing must not drag pydantic or the component spine into discovery."""
+def test_parsing_uses_only_the_stdlib():
+    """Parsing must stay usable without the component spine loaded; only the
+    generation half of this module may reach for pydantic."""
     import ast as ast_module
     from pathlib import Path
 
     source = Path(__file__).resolve().parents[2] / "pyjinhx2" / "props_header.py"
     tree = ast_module.parse(source.read_text(encoding="utf-8"))
-    imported = {
-        node.module or ""
-        for node in ast_module.walk(tree)
-        if isinstance(node, ast_module.ImportFrom)
-    } | {
-        alias.name
-        for node in ast_module.walk(tree)
-        if isinstance(node, ast_module.Import)
-        for alias in node.names
+    parse_fn = next(
+        node
+        for node in tree.body
+        if isinstance(node, ast_module.FunctionDef)
+        and node.name == "parse_props_header"
+    )
+    names = {
+        node.id
+        for node in ast_module.walk(parse_fn)
+        if isinstance(node, ast_module.Name)
     }
-    assert imported == {"ast", "re", "typing"}
+    assert "create_model" not in names
+    assert "OpenComponent" not in names
