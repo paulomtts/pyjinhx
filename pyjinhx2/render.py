@@ -261,6 +261,12 @@ def render(component: BaseComponent, session: "RenderSession | None" = None) -> 
     Returns:
         The component's rendered markup as a finished HTML string.
 
+    Fires each ``session.on_rendered`` callback with ``(component, level,
+    session)`` after each component's level is built, depth-first post-order.
+    ``session`` is always the one passed to (or defaulted inside) this call,
+    never read off any ContextVar, so hooks work whether or not ``session``
+    is also the active request_scope().
+
     Raises:
         ValueError: If template renders zero or 2+ root elements.
         jinja2.TemplateNotFound: If template file missing.

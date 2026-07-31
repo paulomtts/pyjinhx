@@ -69,7 +69,7 @@ def test_hook_fires_children_before_parents(session):
     """nested_root -> nested_mid -> nested_leaf, so the leaf must be first."""
     order: list[str] = []
     session.on_rendered.append(
-        lambda component, level: order.append(type(component).__name__)
+        lambda component, level, session: order.append(type(component).__name__)
     )
 
     render_level(PJXNestedRoot(), session)
@@ -79,7 +79,7 @@ def test_hook_fires_children_before_parents(session):
 
 def test_hook_fires_exactly_once_per_component(session):
     seen: list[BaseComponent] = []
-    session.on_rendered.append(lambda component, level: seen.append(component))
+    session.on_rendered.append(lambda component, level, session: seen.append(component))
 
     render_level(PJXNestedRoot(), session)
 
@@ -91,7 +91,9 @@ def test_hook_receives_the_components_own_completed_level(session):
     """Each callback must get the level whose subtree just finished, not the root's."""
     pairs: list[tuple[str, RenderedLevel]] = []
     session.on_rendered.append(
-        lambda component, level: pairs.append((type(component).__name__, level))
+        lambda component, level, session: pairs.append(
+            (type(component).__name__, level)
+        )
     )
 
     root_level = render_level(PJXNestedRoot(), session)
@@ -110,7 +112,9 @@ def test_leaf_level_is_complete_when_its_own_hook_fires(session):
 
     holes: list[str] = []
 
-    def check(component: BaseComponent, level: RenderedLevel) -> None:
+    def check(
+        component: BaseComponent, level: RenderedLevel, session: RenderSession
+    ) -> None:
         if any(isinstance(segment, ChildRef) for segment in level.segments):
             holes.append(type(component).__name__)
 
@@ -123,7 +127,7 @@ def test_leaf_level_is_complete_when_its_own_hook_fires(session):
 def test_render_public_api_fires_the_hook_too(session):
     order: list[str] = []
     session.on_rendered.append(
-        lambda component, level: order.append(type(component).__name__)
+        lambda component, level, session: order.append(type(component).__name__)
     )
 
     render(PJXNestedRoot(), session)

@@ -8,11 +8,15 @@ which land with the modules that consume them.
 """
 
 import threading
+from pathlib import Path
 from typing import Any, cast
 
 import pytest
 
 from pyjinhx2 import session as session_module
+from pyjinhx2.component import BaseComponent
+from pyjinhx2.descriptor import ClassDescriptor
+from pyjinhx2.render import render
 
 
 def test_getters_return_empty_defaults_outside_any_scope():
@@ -199,6 +203,45 @@ def test_scope_passes_template_dir_through_to_the_session():
         assert s.jinja_env.autoescape is True
 
 
+class PlainBox(BaseComponent):
+    """Component rendered against a hand-built descriptor, not MRO discovery."""
+
+
+# There is no `__pjx_template__` override attribute anywhere in pyjinhx2 —
+# template resolution is a pure MRO/filesystem walk (`class_name.pjx` beside
+# the defining module; see component.py's `_walk_template`). This test needs a
+# specific template, so it bypasses that walk entirely, the same way
+# test_render_level.py does: build a ClassDescriptor by hand and assign it.
+PlainBox.__pjx_descriptor__ = ClassDescriptor(
+    template_path=Path("plain_div.html"),
+    slot_fields=frozenset(),
+    children_field=None,
+    css_paths=(),
+    js_paths=(),
+    strict=True,
+    provenance={"template": PlainBox},
+)
+
+
+def test_on_rendered_fires_once_per_render(render_session):
+    seen = []
+    render_session.on_rendered.append(
+        lambda component, level, session: seen.append(component)
+    )
+    box = PlainBox()
+    render(box, render_session)
+    assert seen == [box]
+
+
+def test_on_rendered_receives_the_rendered_level(render_session):
+    captured = []
+    render_session.on_rendered.append(
+        lambda component, level, session: captured.append(level)
+    )
+    render(PlainBox(), render_session)
+    assert captured[0].descriptor is PlainBox.__pjx_descriptor__
+
+
 def test_on_rendered_starts_empty_on_a_fresh_session():
     session = session_module.RenderSession(template_dir="tests/templates")
 
@@ -215,8 +258,8 @@ def test_emit_rendered_calls_each_subscriber_in_registration_order():
     component = cast(Any, object())
     level = cast(Any, object())
 
-    session.on_rendered.append(lambda c, lv: calls.append(("first", c, lv)))
-    session.on_rendered.append(lambda c, lv: calls.append(("second", c, lv)))
+    session.on_rendered.append(lambda c, lv, s: calls.append(("first", c, lv)))
+    session.on_rendered.append(lambda c, lv, s: calls.append(("second", c, lv)))
     session.emit_rendered(component, level)
 
     assert calls == [("first", component, level), ("second", component, level)]
@@ -239,11 +282,11 @@ def test_emit_rendered_lets_a_subscriber_exception_propagate():
     session = session_module.RenderSession(template_dir="tests/templates")
     reached: list[str] = []
 
-    def explode(component: object, level: object) -> None:
+    def explode(component: object, level: object, session: object) -> None:
         raise Boom
 
     session.on_rendered.append(explode)
-    session.on_rendered.append(lambda c, lv: reached.append("after"))
+    session.on_rendered.append(lambda c, lv, s: reached.append("after"))
 
     with pytest.raises(Boom):
         session.emit_rendered(cast(Any, object()), cast(Any, object()))
@@ -252,11 +295,11 @@ def test_emit_rendered_lets_a_subscriber_exception_propagate():
 
 def test_each_scope_gets_its_own_subscriber_list():
     with session_module.request_scope(template_dir="tests/templates") as outer:
-        outer.on_rendered.append(lambda c, lv: None)
+        outer.on_rendered.append(lambda c, lv, s: None)
 
         with session_module.request_scope(template_dir="tests/templates") as inner:
             assert inner.on_rendered == []
-            inner.on_rendered.append(lambda c, lv: None)
+            inner.on_rendered.append(lambda c, lv, s: None)
 
         assert len(outer.on_rendered) == 1
 

@@ -3,7 +3,8 @@
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from contextvars import ContextVar
-from typing import TYPE_CHECKING
+from pathlib import Path
+from typing import TYPE_CHECKING, Any
 
 from jinja2 import Environment, FileSystemLoader
 
@@ -31,6 +32,10 @@ _cache_store: ContextVar[dict[object, object] | None] = ContextVar(
 )
 
 
+class NoActiveRequestScope(RuntimeError):
+    """Raised when per-request state is touched outside an active request_scope()."""
+
+
 class RenderSession:
     """Session providing Jinja environment with autoescape enabled."""
 
@@ -47,13 +52,27 @@ class RenderSession:
             # hook swaps in a placeholder the render pipeline resolves later.
             finalize=finalize_slot_node,
         )
-        # Asset paths accumulate here as on_rendered fires bottom-up; a set because
-        # the same component class contributes the same paths on every occurrence.
+        # Generic per-request asset slot from the #423 ContextVar model
+        # (predates L2.2.1's descriptor accumulator below); no producer in
+        # this codebase writes to it yet, so it stays as-is for whatever
+        # future non-descriptor asset source needs a request-scoped set.
         self.asset_paths: set[str] = set()
+        # css_assets/js_assets are the L2.2.1 accumulator: descriptor paths
+        # set-added by accumulate_assets as on_rendered fires, kept separate
+        # from each other so later emission (#430) can tell <style> from
+        # <script> sources without re-inspecting any descriptor.
+        self.css_assets: set[Path] = set()
+        self.js_assets: set[Path] = set()
         # A plain list, not an event bus: render fires it once per component and
         # subscribers (asset accumulation, the reactive instance registry) just
-        # append. Per-session so subscriptions die with the request.
-        self.on_rendered: list[Callable[[BaseComponent, RenderedLevel], None]] = []
+        # append. Per-session so subscriptions die with the request. Callbacks
+        # take the session itself as a third argument — never the request_scope
+        # ContextVar, which the render() caller may not have entered at all —
+        # since accumulate_assets is registered directly (not via a closure)
+        # and needs a session reference to write into.
+        self.on_rendered: list[
+            Callable[[BaseComponent, RenderedLevel, RenderSession], None]
+        ] = []
 
     def emit_rendered(self, component: "BaseComponent", level: "RenderedLevel") -> None:
         """Notify subscribers that ``component``'s subtree finished rendering.
@@ -66,12 +85,40 @@ class RenderSession:
         # half-written, and a render that silently drops an asset or a registry
         # entry is worse than one that stops.
         for callback in self.on_rendered:
-            callback(component, level)
+            callback(component, level, self)
 
 
 def current_session() -> RenderSession | None:
     """Return the RenderSession bound to this request, or None outside a scope."""
     return _render_session.get()
+
+
+def accumulate_assets(
+    component: Any, level: "RenderedLevel", session: "RenderSession"
+) -> None:
+    """Set-add the rendered class's descriptor asset paths into the session.
+
+    Meant to be subscribed onto ``RenderSession.on_rendered``. Paths are read
+    straight from the frozen descriptor and never re-probed; duplicates across
+    instances or classes collapse because the store is a set keyed by path.
+
+    Writes into ``session`` — the RenderSession that actually drove this
+    render, passed through by render_level() — rather than reading
+    ``current_session()``. render(component, session) is the dominant calling
+    convention in this codebase and never requires the session to also be the
+    active request_scope(), so accumulate_assets must not either.
+
+    Args:
+        component: The component that was just rendered (unused; on_rendered's
+            callback shape always passes it).
+        level: The RenderedLevel carrying the class descriptor.
+        session: The RenderSession this render ran against.
+    """
+    # RenderedLevel.descriptor is typed as `object` to keep segments.py
+    # import-pure; read structurally here rather than importing ClassDescriptor.
+    descriptor: Any = level.descriptor
+    session.css_assets.update(descriptor.css_paths)
+    session.js_assets.update(descriptor.js_paths)
 
 
 def get_instances() -> dict[str, object]:
@@ -99,16 +146,24 @@ def get_cache_store() -> dict[object, object]:
 
 
 @contextmanager
-def request_scope(template_dir: str = "templates") -> Iterator[RenderSession]:
+def request_scope(
+    template_dir: str = "templates", session: "RenderSession | None" = None
+) -> Iterator[RenderSession]:
     """Bind fresh per-request state for the duration of the block.
 
     Args:
-        template_dir: Directory the new RenderSession loads templates from.
+        template_dir: Directory a newly-constructed RenderSession loads
+            templates from. Ignored when ``session`` is given.
+        session: An existing RenderSession to bind as this scope's current
+            session, instead of constructing a fresh one. Lets a caller wire
+            hooks (e.g. ``on_rendered``) onto a session before it becomes the
+            one ``current_session()`` sees as active.
 
     Yields:
         The RenderSession bound for this scope.
     """
-    session = RenderSession(template_dir)
+    if session is None:
+        session = RenderSession(template_dir)
     session_token = _render_session.set(session)
     instances_token = _instances.set({})
     dirtied_token = _dirtied.set(set())
