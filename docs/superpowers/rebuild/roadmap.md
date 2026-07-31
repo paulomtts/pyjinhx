@@ -45,9 +45,20 @@ n= 438       7.9 ms    0.02 ms/component
 - [ ] **2. ChildRef fill in `render.py`** — resolve tag against registry (unknown → verbatim passthrough), instantiate with coerced attrs, recurse, splice opaque node, cycle guard. This is the step that turns T1's loop real.
 - [ ] **3. Slots & children** — opaque-node semantics (truthiness + interpolation; string filters raise the clear error), children/`content` inference, direct nesting, lists & dicts, `NestedComponentWrapper` (`{{ field.props.x }}` / `{{ field }}`).
 - [ ] **4. Classless surface** — open opt-in subclass, `props_header.py` ({#def#} parse + class generation, stale-header warning), `component()`.
-- [ ] **5. Scaling proof** — bench sweep to 10k components; ms/component flat. Record the number.
+- [x] **5. Scaling proof** — bench sweep to 10k components; ms/component flat. Record the number.
 
-Linear-scaling number: _(record here)_
+Linear-scaling number (2026-07-31, `uv run python scripts/bench_render_scaling_v2.py`, nested 3-level trees to 10k components):
+
+```
+n=    50       1.5 ms   0.030 ms/component
+n=   100       2.8 ms   0.028 ms/component
+n=   197       5.3 ms   0.027 ms/component
+n=   507      13.2 ms   0.026 ms/component
+n=   993      25.5 ms   0.026 ms/component
+n=  1981      50.7 ms   0.026 ms/component
+n=  4971     124.5 ms   0.025 ms/component
+n= 10000     254.0 ms   0.025 ms/component
+```
 
 **Gate before L2:** instance-registry enumeration — list exactly what reactivity needs from it (swap targeting, manifest membership, hash inputs, cache keying) per ADR 0009. L2 builds only what's listed.
 
