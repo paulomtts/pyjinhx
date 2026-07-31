@@ -155,7 +155,7 @@ def test_component_collection_slot_entries_are_not_wrapped_yet():
         label: str = ""
 
     class Card(BaseComponent):
-        badges: list[Badge] = []
+        badges: list[Badge] = []  # noqa: RUF012 — pydantic's own default-factory handling
 
     card = Card(badges=[Badge(label="a")])
     descriptor = ClassDescriptor(

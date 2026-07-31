@@ -177,7 +177,7 @@ class TestResolveSlotFields:
             pass
 
         class Card(BaseComponent):
-            child: Optional[Leaf] = None
+            child: Optional[Leaf] = None  # noqa: UP045 — exercising Optional[], not just X | None
 
         assert _resolve_slot_fields(Card) == frozenset({"child"})
 
@@ -186,7 +186,7 @@ class TestResolveSlotFields:
             pass
 
         class Card(BaseComponent):
-            badges: list[Badge] = []
+            badges: list[Badge] = []  # noqa: RUF012 — pydantic's own default-factory handling
 
         assert _resolve_slot_fields(Card) == frozenset({"badges"})
 
@@ -195,7 +195,7 @@ class TestResolveSlotFields:
             pass
 
         class Card(BaseComponent):
-            named: dict[str, Badge] = {}
+            named: dict[str, Badge] = {}  # noqa: RUF012 — pydantic's own default-factory handling
 
         assert _resolve_slot_fields(Card) == frozenset({"named"})
 
@@ -236,7 +236,7 @@ class TestResolveSlotFields:
 
     def test_plain_string_children_field_is_unaffected(self):
         class Card(BaseComponent):
-            _pjx_children_field: ClassVar[str] = "kids"
+            _pjx_children_field: ClassVar[str | None] = "kids"
             kids: str = ""
 
         assert _resolve_slot_fields(Card) == frozenset({"kids"})

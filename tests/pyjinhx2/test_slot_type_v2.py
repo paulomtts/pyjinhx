@@ -419,7 +419,7 @@ class TestIsComponentTypedAnnotation:
         assert _is_component_typed_annotation(BaseComponent) is True
 
     def test_optional_component(self):
-        assert _is_component_typed_annotation(Optional[_Card]) is True
+        assert _is_component_typed_annotation(Optional[_Card]) is True  # noqa: UP045 — exercising Optional[], not just X | None
 
     def test_pep604_nullable_component(self):
         assert _is_component_typed_annotation(_Card | None) is True
@@ -472,8 +472,8 @@ class TestIsComponentTypedAnnotation:
 class _AutoSlots(BaseComponent):
     caption: str = ""  # plain string, no marker: NOT a slot
     child: _Card | None = None  # bare component: auto-slot
-    badges: list[_Card] = []  # component list: auto-slot
-    named: dict[str, _Card] = {}  # component dict: auto-slot
+    badges: list[_Card] = []  # noqa: RUF012 — component list: auto-slot
+    named: dict[str, _Card] = {}  # noqa: RUF012 — component dict: auto-slot
     either: str | _Card = ""  # mixed union: ambiguous, NOT a slot
     marked: Annotated[str, PjxSlot()] = ""  # explicit string slot
 
