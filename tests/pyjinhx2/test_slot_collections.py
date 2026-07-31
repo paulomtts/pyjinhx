@@ -282,8 +282,11 @@ class TestListRendering:
 
         nested = [s for s in level.segments if isinstance(s, RenderedLevel)]
         assert len(nested) == 2
+        # Only the surrounding markup text (which incidentally contains the
+        # letters "a"/"b" via class="list") should land in string segments;
+        # the actual leaf titles must come from the nested RenderedLevels.
         text = "".join(s for s in level.segments if isinstance(s, str))
-        assert "a" not in text and "b" not in text
+        assert ">a<" not in text and ">b<" not in text
 
     def test_each_entry_is_rendered_exactly_once(self, monkeypatch):
         import pyjinhx2.render as render_module
