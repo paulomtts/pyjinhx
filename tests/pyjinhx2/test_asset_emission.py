@@ -135,6 +135,36 @@ def test_link_mode_emits_script_src_tags_sorted_by_path(tmp_path):
     )
 
 
+def test_resolver_that_raises_propagates_out_of_emit_assets(tmp_path):
+    def boom(path: Path) -> str:
+        raise FileNotFoundError(path)
+
+    session = _session(tmp_path)
+    session.css_assets.add(tmp_path / "gone.css")
+    session.css_mode = AssetMode.LINK
+
+    with pytest.raises(FileNotFoundError):
+        emit_assets(session, resolver=boom)
+
+
+def test_link_css_with_inline_js_emits_both_css_first(tmp_path):
+    css = tmp_path / "box.css"
+    css.write_text(".box { color: red; }")
+    js = tmp_path / "box.js"
+    js.write_text("console.log('box');")
+    session = _session(tmp_path)
+    session.css_assets.add(css)
+    session.js_assets.add(js)
+    session.css_mode = AssetMode.LINK
+
+    out = emit_assets(session, resolver=_stub_resolver)
+
+    assert out == (
+        '<link rel="stylesheet" href="/static/box.css">\n'
+        "<script>console.log('box');</script>"
+    )
+
+
 from dataclasses import replace
 
 from pyjinhx2.component import BaseComponent
