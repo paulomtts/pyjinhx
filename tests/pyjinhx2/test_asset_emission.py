@@ -212,3 +212,38 @@ def test_render_level_alone_carries_no_inlined_tags(tmp_path):
 
     assert "<style>" not in serialize(level)
     assert session.css_assets == {css}
+
+
+import threading
+
+
+def test_concurrent_scopes_do_not_leak_emitted_assets(tmp_path):
+    red = tmp_path / "red.css"
+    red.write_text(".red {}")
+    blue = tmp_path / "blue.css"
+    blue.write_text(".blue {}")
+    results: dict[str, str] = {}
+    barrier = threading.Barrier(2)
+
+    def run(name: str, asset: Path, mode: AssetMode) -> None:
+        session = RenderSession(template_dir=TEMPLATES)
+        session.on_rendered.append(accumulate_assets)
+        session.css_mode = mode
+        with request_scope(session=session):
+            session.css_assets.add(asset)
+            barrier.wait()
+            results[name] = render(EmitSibling(), session)
+
+    _with_assets(EmitSibling)
+    threads = [
+        threading.Thread(target=run, args=("a", red, AssetMode.INLINE)),
+        threading.Thread(target=run, args=("b", blue, AssetMode.NONE)),
+    ]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+
+    assert ".red {}" in results["a"]
+    assert ".blue {}" not in results["a"]
+    assert "<style>" not in results["b"]
