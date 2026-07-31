@@ -68,3 +68,80 @@ class TestHarness:
         Card.__pjx_descriptor__ = descriptor("nest_content.html", frozenset({"content"}))
 
         assert render_expr("{% if content %}yes{% endif %}", Card(content=Leaf())) == "yes"
+
+
+class TestTruthinessWithInterpolation:
+    def card(self, template: str, slots: frozenset[str]):
+        class Card(BaseComponent):
+            content: Slot = ""
+            note: Slot = ""
+
+        Card.__pjx_descriptor__ = descriptor(template, slots)
+        return Card
+
+    def test_guarded_interpolation_renders_the_child_exactly_once(self):
+        Card = self.card("nest_if.html", frozenset({"content"}))
+
+        output = render(Card(content=Leaf(text="c")), session())
+
+        assert output == (
+            '<div class="card"><b>filled</b><span class="leaf">c</span></div>'
+        )
+        assert output.count('<span class="leaf">') == 1
+
+    def test_the_guarded_branch_produces_one_nested_level(self):
+        # A second render of the same child would show up as a second
+        # RenderedLevel; the count is the double-render check.
+        from pyjinhx2.segments import RenderedLevel
+
+        Card = self.card("nest_if.html", frozenset({"content"}))
+
+        level = render_level(Card(content=Leaf(text="c")), session())
+
+        assert len([s for s in level.segments if isinstance(s, RenderedLevel)]) == 1
+
+    def test_an_empty_slot_takes_the_else_branch_without_interpolating(self):
+        Card = self.card("nest_if.html", frozenset({"content"}))
+
+        output = render(Card(content=""), session())
+
+        assert output == '<div class="card"><i>empty</i></div>'
+        assert "pjx-slot-" not in output
+
+    def test_a_string_slot_beside_a_component_slot_stays_raw_html(self):
+        # Production gap, not a fixture bug: ADR 0003 constraint 2 says
+        # plain-string Slot fields stay raw-HTML-capable, but with
+        # autoescape ON (shipped after #367-#372) a bare string slot value
+        # is escaped like any other Jinja variable — nothing in the render
+        # pipeline currently marks Slot-typed strings as Markup. Pinned as
+        # observed; flagged for follow-up rather than patched here.
+        Card = self.card("slot_mixed_kinds.html", frozenset({"content", "note"}))
+
+        output = render(
+            Card(content=Leaf(text="c"), note="<em>raw</em>"), session()
+        )
+
+        assert output == (
+            '<div class="card"><span class="leaf">c</span>&lt;em&gt;raw&lt;/em&gt;</div>'
+        )
+
+    def test_a_string_slot_is_not_wrapped_in_a_component_node(self):
+        Card = self.card("slot_mixed_kinds.html", frozenset({"content", "note"}))
+
+        context = build_context(
+            Card(content=Leaf(text="c"), note="<em>raw</em>"),
+            Card.__pjx_descriptor__,
+        )
+
+        assert type(context["content"]) is ComponentNode
+        assert context["note"] == "<em>raw</em>"
+        assert not isinstance(context["note"], ComponentNode)
+
+    def test_string_slot_operations_are_not_forbidden(self):
+        # Constraint 2: this ADR does not touch string-valued slots, so the
+        # ops that are errors on a component slot stay legal here.
+        Card = self.card("slot_mixed_kinds.html", frozenset({"content", "note"}))
+        card = Card(content=Leaf(text="c"), note="<em>raw</em>")
+
+        assert render_expr("{{ note|length }}", card) == "12"
+        assert render_expr("{{ 'em' in note }}", card) == "True"
