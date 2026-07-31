@@ -4,13 +4,10 @@ import threading
 from dataclasses import replace
 from pathlib import Path
 
-import pytest
-
 from pyjinhx2.component import BaseComponent
 from pyjinhx2.descriptor import ClassDescriptor
 from pyjinhx2.render import render
 from pyjinhx2.session import (
-    NoActiveRequestScope,
     RenderSession,
     accumulate_assets,
     request_scope,
@@ -61,9 +58,10 @@ def with_assets(cls, *, css=(), js=()):
 def _accumulating_session() -> RenderSession:
     """A fresh RenderSession with the asset accumulator wired to on_rendered.
 
-    Not entered into a request_scope() by itself: tests bind it explicitly via
-    ``request_scope(session=...)`` so the scope and the session under test are
-    the same object, matching how accumulate_assets reads current_session().
+    Deliberately not entered into a request_scope(): accumulate_assets reads
+    the session render_level() passes to it, not the request_scope ContextVar,
+    so a plain render(component, session) call — the convention used
+    throughout the rest of the suite — must accumulate on its own.
     """
     template_dir = str(Path(__file__).parent.parent / "templates")
     session = RenderSession(template_dir=template_dir)
@@ -155,10 +153,29 @@ def test_on_rendered_fires_once_per_component_not_per_reactive_update():
         assert session.js_assets == {JS}
 
 
-def test_raises_or_asserts_when_accumulating_outside_active_request_scope():
+def test_accumulates_without_any_active_request_scope():
+    """render(component, session) — the convention every other pyjinhx2 test
+    uses (see the shared render_session fixture) — must accumulate assets on
+    its own, since accumulate_assets reads the session passed to render_level
+    rather than the request_scope ContextVar. A session is a valid render
+    target whether or not it was ever entered into request_scope()."""
     with_assets(PlainBox, css=[CSS])
-    with pytest.raises(NoActiveRequestScope):
-        render(PlainBox(), _accumulating_session())
+    session = _accumulating_session()
+    render(PlainBox(), session)
+    assert session.css_assets == {CSS}
+
+
+def test_accumulates_into_the_render_session_even_when_a_different_session_is_the_active_scope():
+    """A caller who calls render(component, session_a) while some unrelated
+    session_b happens to be the active request_scope must still accumulate
+    into session_a — never into whichever session the ContextVar points at."""
+    with_assets(PlainBox, css=[CSS])
+    target = _accumulating_session()
+    other = _accumulating_session()
+    with request_scope(session=other):
+        render(PlainBox(), target)
+    assert target.css_assets == {CSS}
+    assert other.css_assets == set()
 
 
 def test_css_and_js_paths_tracked_distinguishably():
