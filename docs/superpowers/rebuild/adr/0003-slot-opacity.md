@@ -1,6 +1,6 @@
 # ADR 0003: Slots are opaque — truthiness, interpolation, and `.props` access only
 
-**Status:** Accepted, 2026-07-28. Amended 2026-07-30 to sanction `NestedComponentWrapper`. Consequence of ADR 0002.
+**Status:** Accepted, 2026-07-28. Amended 2026-07-30 to sanction `NestedComponentWrapper`; amended 2026-07-31 to make component-typed fields slots by default. Consequence of ADR 0002.
 
 ## Context
 
@@ -113,3 +113,14 @@ the template to use one of those two forms instead; if you need the child's
 *text content* (e.g. for a length check), read it from the underlying data
 your component passed into the slot, before it becomes a rendered component —
 not by inspecting the rendered slot after the fact.
+
+## Amendment (2026-07-31): component-typed fields are slots by default
+
+Slot-ness is now structural, not opt-in. A field whose annotation names a component — bare (`child: Card`), nullable (`Card | None`, `Optional[Card]`), or as the element type of a collection (`list[Card]`, `dict[str, Card]`) — is a slot at registration time with no annotation metadata required. A union that keeps more than one live type after `None` is stripped (`str | Card`) stays ambiguous and is not auto-detected.
+
+This changes *which* fields receive the opaque treatment, not the treatment itself: truthiness and interpolation only, `.props` via `NestedComponentWrapper`, string filters raise the targeted error. Everything this ADR and its first amendment decided about opacity semantics is unchanged.
+
+Two consequences worth stating plainly:
+
+- `PjxSlot`/`Slot` is now an escape hatch, needed only for a *string* field that should be emitted as raw HTML. Component-valued fields do not need it.
+- Tag-body routing is a separate, orthogonal concern. `_pjx_children_field` (and its `Children` alias) decides *which* field receives a PascalCase tag's nested markup, following the `content` convention. It says nothing about slot-ness, and slot-ness says nothing about it: a field can be one, the other, or both.

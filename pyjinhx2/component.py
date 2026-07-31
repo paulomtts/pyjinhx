@@ -71,12 +71,18 @@ ExtraAttrs = Annotated[dict[str, str], AfterValidator(validate_extra_attrs)]
 
 
 class PjxSlot:
-    """Marker (in a field's ``Annotated`` metadata) for a raw-HTML slot field —
-    its string value is emitted unescaped (invariant 6, the autoescape exemption).
-    Use via the ``Slot`` alias.
+    """Escape-hatch marker (in a field's ``Annotated`` metadata) forcing a field
+    to be a raw-HTML slot — its string value is emitted unescaped (invariant 6,
+    the autoescape exemption). Use via the ``Slot`` alias.
+
+    Rarely needed: a field annotated with a component type is a slot already,
+    with no marker. Reach for this when the field is a plain ``str`` that should
+    still be emitted as markup, or when a union is too ambiguous to detect.
 
     ``children=True`` additionally flags the field as the target for a
-    PascalCase tag's nested children (use via the ``Children`` alias).
+    PascalCase tag's nested children (use via the ``Children`` alias) — a
+    routing decision about which field receives nested markup, independent of
+    whether the field is a slot.
 
     Purely descriptive at this layer: nothing here escapes, wraps or renders.
     The render-time half (Markup-wrapping strings, opaque component nodes) is
@@ -90,15 +96,20 @@ class PjxSlot:
 def _is_slot_field(cls: type, field_name: str) -> bool:
     """True when ``field_name`` is a raw-HTML slot on ``cls``.
 
-    A field qualifies either by being the model's designated children field, or
-    by carrying a :class:`PjxSlot` marker in its ``Annotated`` metadata. Unknown
-    field names are not slots.
+    Three independent qualifications, OR'd: the field is the model's designated
+    children field, it carries a :class:`PjxSlot` marker in its ``Annotated``
+    metadata, or its annotation names a component (see
+    :func:`_is_component_typed_annotation`). Unknown field names are not slots.
     """
     if field_name == getattr(cls, "_pjx_children_field", None):
         return True
     fields = getattr(cls, "model_fields", {})
     field = fields.get(field_name)
-    return field is not None and any(isinstance(m, PjxSlot) for m in field.metadata)
+    if field is None:
+        return False
+    if any(isinstance(m, PjxSlot) for m in field.metadata):
+        return True
+    return _is_component_typed_annotation(field.annotation)
 
 
 def _is_json_coercible_annotation(annotation: Any) -> bool:
@@ -116,6 +127,30 @@ def _is_json_coercible_annotation(annotation: Any) -> bool:
     if origin in (list, dict):
         return True
     return isinstance(origin, type) and issubclass(origin, BaseModel)
+
+
+def _is_component_typed_annotation(annotation: Any) -> bool:
+    """True when ``annotation`` names a component — bare, nullable, or as the
+    element type of a ``list``/``dict``.
+
+    Unwrapping mirrors :func:`_is_json_coercible_annotation`: ``None`` is
+    stripped from a union, and a union that still holds more than one type is
+    ambiguous and declines. ``str | Component`` therefore does not count — the
+    string half has its own opt-in through :class:`PjxSlot`.
+    """
+    if get_origin(annotation) in (Union, types.UnionType):
+        args = [a for a in get_args(annotation) if a is not type(None)]
+        if len(args) != 1:
+            return False
+        annotation = args[0]
+    origin = get_origin(annotation)
+    if origin is list:
+        type_args = get_args(annotation)
+        return bool(type_args) and _is_component_typed_annotation(type_args[0])
+    if origin is dict:
+        type_args = get_args(annotation)
+        return len(type_args) == 2 and _is_component_typed_annotation(type_args[1])
+    return isinstance(annotation, type) and issubclass(annotation, BaseComponent)
 
 
 _PASCAL_BOUNDARY_RE = re.compile(r"(?<=[a-z0-9])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])")
@@ -568,5 +603,10 @@ class OpenComponent(BaseComponent):
 # than reaching a template that cannot say anything useful about it.
 _SlotValue = str | BaseComponent | list[BaseComponent] | dict[str, BaseComponent]
 
+# Escape hatch for a string field that must be emitted as raw markup. A
+# component-typed annotation is a slot without any of this.
 Slot = Annotated[_SlotValue, PjxSlot()]
+
+# Tag-body routing: names the field that receives a PascalCase tag's nested
+# markup. Orthogonal to slot-ness.
 Children = Annotated[_SlotValue, PjxSlot(children=True)]
