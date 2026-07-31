@@ -436,3 +436,147 @@ class TestCollectionsMatrix:
 
         assert value[0].props.title == "a"
         assert value[1].props.title == "b"
+
+
+class TestPropsBoundaries:
+    def card_class(self, template: str):
+        class Card(BaseComponent):
+            content: Slot = ""
+
+        Card.__pjx_descriptor__ = descriptor(template, frozenset({"content"}))
+        return Card
+
+    def test_reading_props_renders_only_the_owner(self):
+        import pyjinhx2.render as render_module
+
+        Card = self.card_class("slot_props.html")
+        seen: list[str] = []
+        original = render_module.render_level
+
+        def spy(component, session_, chain=()):
+            seen.append(type(component).__name__)
+            return original(component, session_, chain)
+
+        render_module.render_level = spy
+        try:
+            render_module.render_level(Card(content=Titled(title="a")), session())
+        finally:
+            render_module.render_level = original
+
+        assert seen == ["Card"]
+
+    def test_reading_props_leaves_no_slot_token_behind(self):
+        Card = self.card_class("slot_props.html")
+
+        level = render_level(Card(content=Titled(title="a")), session())
+        text = "".join(s for s in level.segments if isinstance(s, str))
+
+        assert "pjx-slot-" not in text
+
+    def test_stringifying_the_props_view_raises_the_opacity_error(self):
+        Card = self.card_class("slot_props.html")
+
+        with pytest.raises(TypeError, match=r"slot 'content' holds a rendered"):
+            render_expr("{{ content.props }}", Card(content=Titled(title="a")))
+
+    @pytest.mark.parametrize(
+        ("expr", "match"),
+        [
+            # SlotProps (markers.py) only overrides __getattr__/__getitem__/
+            # __str__ — not __len__ or __iter__ — so these two raise plain
+            # TypeErrors instead of being routed through _opaque_error.
+            # Constraint 3 ("does NOT expose __len__/iteration") is honored
+            # in that both still fail, just not with the targeted message;
+            # pinned as observed rather than patched (test-only subtask).
+            ("{{ content.props|length }}", "has no len()"),
+            (
+                "{% for x in content.props %}{{ x }}{% endfor %}",
+                "slot props keys must be str",
+            ),
+        ],
+    )
+    def test_len_and_iteration_on_props_raise_a_different_typeerror_than_str(
+        self, expr, match
+    ):
+        Card = self.card_class("slot_props.html")
+
+        with pytest.raises(TypeError, match=match):
+            render_expr(expr, Card(content=Titled(title="a")))
+
+    def test_the_props_error_names_the_escape_hatch_as_the_operation(self):
+        Card = self.card_class("slot_props.html")
+        node = ComponentNode(
+            Titled(title="a"),
+            owner_name="Card",
+            owner_template=Path("slot_props.html"),
+            field_name="content",
+        )
+
+        with pytest.raises(TypeError, match=r"`\.props`"):
+            str(node.props)
+
+    def test_an_unknown_props_name_is_an_ordinary_lookup_failure(self):
+        # A typo in `.props.x` must read as a typo, not as an opacity
+        # violation, so it never raises the opaque TypeError.
+        Card = self.card_class("slot_props.html")
+        node = ComponentNode(
+            Titled(title="a"),
+            owner_name="Card",
+            owner_template=Path("slot_props.html"),
+            field_name="content",
+        )
+
+        with pytest.raises(AttributeError):
+            _ = node.props.nope
+
+
+class TestCrossRenderIsolation:
+    def card_class(self):
+        class Card(BaseComponent):
+            content: Slot = ""
+
+        Card.__pjx_descriptor__ = descriptor(
+            "nest_content.html", frozenset({"content"}), "content"
+        )
+        return Card
+
+    def test_the_token_table_is_unavailable_outside_a_render(self):
+        from pyjinhx2.markers import slot_token_table
+
+        with pytest.raises(RuntimeError, match="outside a collect_slot_tokens"):
+            slot_token_table()
+
+    def test_a_finished_render_leaves_no_table_behind(self):
+        from pyjinhx2.markers import slot_token_table
+
+        Card = self.card_class()
+        render_level(Card(content=Leaf(text="a")), session())
+
+        with pytest.raises(RuntimeError):
+            slot_token_table()
+
+    def test_two_scopes_get_different_tables(self):
+        with collect_slot_tokens() as first:
+            first["pjx-slot-a"] = Leaf(text="a")
+            with collect_slot_tokens() as second:
+                assert second == {}
+                assert second is not first
+
+    def test_a_token_from_one_render_does_not_resolve_in_the_next(self):
+        from pyjinhx2.markers import finalize_slot_node
+
+        node = ComponentNode(Leaf(text="a"), field_name="content")
+        with collect_slot_tokens() as first:
+            token = finalize_slot_node(node)
+            assert token in first
+        with collect_slot_tokens() as second:
+            assert token not in second
+
+    def test_sequential_renders_produce_identical_output_and_no_leftover_tokens(self):
+        Card = self.card_class()
+
+        first = render(Card(content=Leaf(text="a")), session())
+        second = render(Card(content=Leaf(text="a")), session())
+
+        assert first == second == '<div class="card"><span class="leaf">a</span></div>'
+        assert "pjx-slot-" not in first + second
