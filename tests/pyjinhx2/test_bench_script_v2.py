@@ -1,6 +1,7 @@
 """The v2 benchmark script is not timed in CI, but it must keep importing and rendering."""
 
 import importlib.util
+import itertools
 import sys
 from pathlib import Path
 
@@ -27,6 +28,9 @@ def test_bench_script_renders_one_component():
     assert '<div class="bench">' in out
 
 
-def test_bench_sweep_sizes_match_v1():
+def test_bench_sweep_tops_out_at_ten_thousand():
     bench = load_bench_module()
-    assert bench.COMPONENT_COUNTS == (50, 100, 200, 438)
+    counts = bench.COMPONENT_COUNTS
+    assert counts[-1] == 10_000
+    assert max(counts) == 10_000
+    assert all(a < b for a, b in itertools.pairwise(counts))

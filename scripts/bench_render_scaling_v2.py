@@ -22,7 +22,7 @@ from pyjinhx2.descriptor import ClassDescriptor
 from pyjinhx2.render import render
 from pyjinhx2.session import RenderSession
 
-COMPONENT_COUNTS = (50, 100, 200, 438)
+COMPONENT_COUNTS = (50, 100, 200, 500, 1000, 2000, 5000, 10000)
 
 TEMPLATE_NAME = "bench_component.pjx"
 TEMPLATE_SOURCE = '<div class="bench">{{ label }}</div>'
