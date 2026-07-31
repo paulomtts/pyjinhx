@@ -27,9 +27,18 @@ def test_unannotated_prop_is_any_and_required():
 
 @pytest.mark.parametrize(
     "annotation, expected",
-    [("str", str), ("int", int), ("float", float), ("bool", bool), ("list", list), ("dict", dict)],
+    [
+        ("str", str),
+        ("int", int),
+        ("float", float),
+        ("bool", bool),
+        ("list", list),
+        ("dict", dict),
+    ],
 )
-def test_each_supported_annotation_resolves_to_its_type(annotation: str, expected: type):
+def test_each_supported_annotation_resolves_to_its_type(
+    annotation: str, expected: type
+):
     assert parse_props_header(f"{{#def value: {annotation} #}}") == [
         ("value", expected, ...)
     ]
