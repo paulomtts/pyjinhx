@@ -71,12 +71,18 @@ ExtraAttrs = Annotated[dict[str, str], AfterValidator(validate_extra_attrs)]
 
 
 class PjxSlot:
-    """Marker (in a field's ``Annotated`` metadata) for a raw-HTML slot field —
-    its string value is emitted unescaped (invariant 6, the autoescape exemption).
-    Use via the ``Slot`` alias.
+    """Escape-hatch marker (in a field's ``Annotated`` metadata) forcing a field
+    to be a raw-HTML slot — its string value is emitted unescaped (invariant 6,
+    the autoescape exemption). Use via the ``Slot`` alias.
+
+    Rarely needed: a field annotated with a component type is a slot already,
+    with no marker. Reach for this when the field is a plain ``str`` that should
+    still be emitted as markup, or when a union is too ambiguous to detect.
 
     ``children=True`` additionally flags the field as the target for a
-    PascalCase tag's nested children (use via the ``Children`` alias).
+    PascalCase tag's nested children (use via the ``Children`` alias) — a
+    routing decision about which field receives nested markup, independent of
+    whether the field is a slot.
 
     Purely descriptive at this layer: nothing here escapes, wraps or renders.
     The render-time half (Markup-wrapping strings, opaque component nodes) is
@@ -597,5 +603,10 @@ class OpenComponent(BaseComponent):
 # than reaching a template that cannot say anything useful about it.
 _SlotValue = str | BaseComponent | list[BaseComponent] | dict[str, BaseComponent]
 
+# Escape hatch for a string field that must be emitted as raw markup. A
+# component-typed annotation is a slot without any of this.
 Slot = Annotated[_SlotValue, PjxSlot()]
+
+# Tag-body routing: names the field that receives a PascalCase tag's nested
+# markup. Orthogonal to slot-ness.
 Children = Annotated[_SlotValue, PjxSlot(children=True)]
