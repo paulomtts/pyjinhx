@@ -62,3 +62,24 @@ Each fan-out branch in implementation-overview.md T2, reduced to what it needs f
 ## Open question for #384/L2
 
 Whether the miss is expressed as an exception (v0.x's `LookupError`) or as an explicit sentinel/variant in the return type. The enumeration requires only that the distinction be observable from a single lookup (R3); the representation is left to #384's ADR wording and L2's implementation and is deliberately not resolved here.
+
+## Traceability
+
+Every item above, back to its authority.
+
+| Item | v0.x reference | ADR | Invariant |
+| --- | --- | --- | --- |
+| R1 composite-key resolve | `reactive.py:447,493,495` | ADR 0009:13-17 | — |
+| R2 swap-target identity | `reactive.py:411-413` | ADR 0001 | — |
+| R3 observable miss | `reactive.py:496` | ADR 0001 (delete swaps) | 1 (no second parse to classify) |
+| R4 root-span routing | `_extra_root_attrs` splice (`reactive.py:523`) | ADR 0009:24 | 1 |
+| R5 no containment API | `reactive.py:388-408` (`_drop_nested`) | ADR 0009:24 | 1 |
+| R6 request-scoped storage | v0.x `request_scope` ContextVar | ADR 0009:13-17 | 4 |
+| R7 consumer boundary | — | architecture-overview.md map edge semantics + ADR 0009:13-17 | — |
+| N1 no template visibility | — | ADR 0004, ADR 0009:13-17 | — |
+| N2 no append/prepend | — | ADR 0001 | — |
+| N3 no re-parse | — | — | 1 |
+| N4 no hash/cache content | — | ADR 0009:24 (split; #383 owns it) | — |
+| N5 no nesting state | `reactive.py:388-408` | ADR 0009:24 | 1 |
+
+Invariants exercised: 1 (never re-derive structure by re-parsing) and 4 (request-scoped ContextVar state reset by `request_scope`). Invariants 2 and 3 are untouched by this enumeration. ADR 0009 decision lines 13-24 are the mandate every requirement narrows: the registry builds these seven items and nothing else.
