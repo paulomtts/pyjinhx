@@ -12,6 +12,7 @@ from pyjinhx2.component import (
     BaseComponent,
     Children,
     ExtraAttrs,
+    OpenComponent,
     Slot,
     validate_attr_value,
     validate_extra_attrs,
@@ -454,3 +455,41 @@ def test_component_module_does_not_import_above_itself():
             assert not any(name.startswith(f"{f}.") for f in FORBIDDEN_IMPORTS), (
                 f"component.py must not import {name}"
             )
+
+
+class OpenCard(OpenComponent):
+    name: str
+
+
+class StrictCard(BaseComponent):
+    name: str
+
+
+def test_open_component_declared_fields_behave_like_base_component():
+    card = OpenCard(name="hello")
+    assert card.name == "hello"
+    assert card.id
+    assert card.model_extra == {}
+
+
+def test_open_component_accepts_undeclared_kwarg_into_model_extra():
+    card = OpenCard(name="hello", data_testid="card-1")  # pyright: ignore[reportCallIssue]
+    assert card.model_extra == {"data_testid": "card-1"}
+    assert card.model_dump()["data_testid"] == "card-1"
+
+
+def test_base_component_still_rejects_undeclared_kwarg():
+    with pytest.raises(ValidationError):
+        StrictCard(name="hello", data_testid="card-1")  # pyright: ignore[reportCallIssue]
+
+
+def test_open_subclass_is_not_strict_and_base_subclass_is():
+    assert OpenCard.__pjx_descriptor__.strict is False
+    assert StrictCard.__pjx_descriptor__.strict is True
+
+
+def test_open_subclass_still_enforces_reserved_id_field():
+    with pytest.raises(TypeError, match="redeclares the reserved id field"):
+
+        class BadOpen(OpenComponent):
+            id: int = 0  # pyright: ignore[reportIncompatibleVariableOverride]

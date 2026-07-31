@@ -534,6 +534,18 @@ class BaseComponent(BaseModel):
         return str(value)
 
 
+class OpenComponent(BaseComponent):
+    """A BaseComponent variant that accepts undeclared keyword arguments.
+
+    Extra keys pass validation and land in model_extra instead of raising.
+    Classless components (built by {#def#} headers and component()) subclass
+    this to allow pass-through attributes their generated schema doesn't
+    declare.
+    """
+
+    model_config = ConfigDict(extra="allow")
+
+
 # A slot holds literal markup, one component, or a homogeneous collection of
 # components. Collection members are components only: a bare string inside a
 # list has no slot semantics of its own, so it fails validation here rather
