@@ -44,3 +44,15 @@ R10. Reactive-key normalization is one shared coercion. `MutationKey` enum membe
 R11. Miss handling composes with the cache, not around it. A "gone" resolve (registry miss, #382's R3) must also be a defined outcome for LoadCache — attempting to re-run `load()` for a key whose entry no longer exists raises the same miss signal fan-out already handles; the cache must not silently return a stale cached instance for a key that no longer resolves to a mounted region.
 
 R12. No re-parsing anywhere in this surface. Manifest parsing consumes a structured header value (`X-PJX-Mounted`), never rendered HTML body content. Hash computation consumes model state, never rendered markup. Cache lookups consume typed keys, never string-scan rendered output. This is Invariant 1 applied to all three (manifest, hash, cache) rather than just the registry half already covered by #382.
+
+## Non-requirements
+
+N1. No swap-selector construction, no root-span splicing, no delete-swap selector, no nesting dedup — all owned by #382, already settled.
+
+N2. No process-wide cross-instance cache sharing as a v2 requirement. Process scope and multi-worker invalidation propagation (`InvalidationHub.publish`, called at `cache.py:86-87`, defined at `cache.py:288`) are recorded as a v0.x-only capability; carrying it into v2 is a decision for #384, not assumed here.
+
+N3. No custom per-component hash override mechanism is mandated. v0.x's `state_hash_exclude` override point is worth preserving (R4), but a fully pluggable custom-hash-function API is not required by this enumeration — only that the default composition be specified precisely enough to implement.
+
+N4. No template-visible cache or hash API. Same boundary as ADR 0004/#382 N1 — this surface is fan-out/reactivity-internal, never reachable from template code.
+
+N5. No second cache keyed by manifest `{type, id}`. The registry (composite `name+id`, #382) and the LoadCache (`(class, load_arg)`, R6) are two different keyings for two different questions ("what's mounted" vs. "does load() need to rerun") and must not be merged into one map — conflating them was not a v0.x behavior and is not requested here.
