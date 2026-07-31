@@ -163,7 +163,7 @@ def test_two_threads_do_not_see_each_others_scope_state():
                     dict(session_module.get_instances()),
                     dict(session_module.get_cache_store()),
                 )
-        except BaseException as exc:  # surfaced on the main thread below
+        except BaseException as exc:  # noqa: BLE001 - surfaced on the main thread below
             errors.append(exc)
 
     threads = [
