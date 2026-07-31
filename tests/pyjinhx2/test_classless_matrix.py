@@ -17,7 +17,7 @@ import pytest
 from pyjinhx2 import discovery
 from pyjinhx2.classless import component
 from pyjinhx2.component import BaseComponent, OpenComponent
-from pyjinhx2.props_header import build_component_class, parse_props_header
+from pyjinhx2.props_header import parse_props_header
 from pyjinhx2.render import render_level
 from pyjinhx2.segments import serialize
 from pyjinhx2.session import RenderSession
@@ -93,9 +93,9 @@ def test_every_construction_path_takes_an_undeclared_attribute(tmp_path):
 
 
 MULTI_FIELD_TEMPLATE = (
-    '{#def title: str, count: int = 0, active: bool = False, '
-    'tags: list = [], meta: dict = {}, note: Optional[str] = None, '
-    'weird: SomeUnknownType = None #}'
+    "{#def title: str, count: int = 0, active: bool = False, "
+    "tags: list = [], meta: dict = {}, note: Optional[str] = None, "
+    "weird: SomeUnknownType = None #}"
     "<div>{{ title }}:{{ count }}</div>"
 )
 
@@ -128,12 +128,14 @@ def test_an_unrecognized_annotation_falls_back_to_any_end_to_end(tmp_path):
 
     assert cls.model_fields["weird"].annotation is Any
     instance = cls(title="hi", weird=object())  # pyright: ignore[reportCallIssue]
-    assert instance.weird is not None
+    assert instance.weird is not None  # pyright: ignore[reportAttributeAccessIssue]
 
 
 def test_the_descriptor_is_one_frozen_object_not_a_per_read_computation(tmp_path):
     """Invariant 5: descriptor facts are resolved once, at class placement."""
-    path = write_template(tmp_path, "card", '{#def title: str = "hi" #}<div>{{ title }}</div>')
+    path = write_template(
+        tmp_path, "card", '{#def title: str = "hi" #}<div>{{ title }}</div>'
+    )
 
     cls = component("Card", template_dir=tmp_path)
     first = cls.__pjx_descriptor__
@@ -189,13 +191,17 @@ def test_a_nested_headed_template_is_not_reported_as_stale(tmp_path, caplog):
     assert stale_records(caplog) == []
 
 
-def test_a_malformed_header_warns_about_nothing_because_nothing_is_built(tmp_path, caplog):
+def test_a_malformed_header_warns_about_nothing_because_nothing_is_built(
+    tmp_path, caplog
+):
     """The parse error is the whole outcome; no class, so no stale report."""
     write_template(tmp_path, "card", "{#def title: str, *args #}<div></div>")
 
-    with caplog.at_level(logging.WARNING, logger="pyjinhx2"):
-        with pytest.raises(ValueError):
-            component("Card", template_dir=tmp_path)
+    with (
+        caplog.at_level(logging.WARNING, logger="pyjinhx2"),
+        pytest.raises(ValueError),
+    ):
+        component("Card", template_dir=tmp_path)
 
     assert discovery.get_class("card") is None
     assert stale_records(caplog) == []
@@ -241,7 +247,9 @@ def test_the_two_paths_do_not_borrow_each_others_header_state(tmp_path, caplog):
     # verbatim, and "Card" is a substring of "StaleCard" — a same-named (or
     # substring-named) generated class would make the "did not leak into the
     # other's message" assertion below pass by accident even if it actually did.
-    write_template(tmp_path, "widget", '{#def title: str = "hi" #}<div>{{ title }}</div>')
+    write_template(
+        tmp_path, "widget", '{#def title: str = "hi" #}<div>{{ title }}</div>'
+    )
     generated = component("Widget", template_dir=tmp_path)
 
     assert generated.__pjx_descriptor__.has_stale_def_header is False
@@ -285,7 +293,8 @@ def test_concurrent_calls_for_two_different_headers_stay_unmixed(tmp_path, caplo
     assert discovery.get_class("badge") is results["Badge"]
     assert stale_records(caplog) == []
     synthetic = {
-        m for m in set(sys.modules) - modules_before
+        m
+        for m in set(sys.modules) - modules_before
         if m.startswith("pyjinhx2._classless_")
     }
     assert len(synthetic) <= 1
@@ -296,12 +305,13 @@ def test_a_header_built_class_renders_its_declared_fields_end_to_end(tmp_path):
     write_template(
         tmp_path,
         "card",
-        '{#def title: str, count: int = 0 #}'
+        "{#def title: str, count: int = 0 #}"
         '<article class="card">{{ title }} ({{ count }})</article>',
     )
 
     cls = component("Card", template_dir=tmp_path)
-    output = serialize(render_level(cls(title="Hello", count=3), absolute_session()))
+    instance = cls(title="Hello", count=3)  # pyright: ignore[reportCallIssue]
+    output = serialize(render_level(instance, absolute_session()))
 
     assert issubclass(cls, OpenComponent)
     assert output == '<article class="card">Hello (3)</article>'
@@ -312,7 +322,7 @@ def test_an_extra_attribute_reaches_the_template_through_the_render_path(tmp_pat
     write_template(
         tmp_path,
         "card",
-        '{#def title: str #}<article>{{ title }}/{{ subtitle }}</article>',
+        "{#def title: str #}<article>{{ title }}/{{ subtitle }}</article>",
     )
 
     cls = component("Card", template_dir=tmp_path)
