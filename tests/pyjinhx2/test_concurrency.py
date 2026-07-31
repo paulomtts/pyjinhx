@@ -266,3 +266,46 @@ def test_concurrent_renders_no_state_bleed():
     assert_no_bleed(observations)
     for index, observed in observations.items():
         assert f"worker-{index}" in observed.html
+
+
+def _slow(original, delay: float):
+    """Wrap `original` so it yields the GIL mid-call, widening the race window."""
+
+    def wrapper(*args, **kwargs):
+        time.sleep(delay)
+        return original(*args, **kwargs)
+
+    return wrapper
+
+
+def test_concurrent_renders_no_filenotfound_races(monkeypatch):
+    """Slowed-down real disk I/O must not turn into missing-file failures.
+
+    Both file-touching surfaces are widened: the Jinja FileSystemLoader's
+    get_source (template loads) and emit_assets' INLINE reads via
+    pyjinhx2.assets._inline_tags. Without this the test could pass simply
+    because each render finishes before the next thread starts - the same
+    reason the v0.x Finder thread-safety test monkeypatches a slow os.walk.
+    """
+    import pyjinhx2.assets as assets_module
+    from jinja2 import FileSystemLoader
+
+    monkeypatch.setattr(
+        FileSystemLoader, "get_source", _slow(FileSystemLoader.get_source, 0.02)
+    )
+    monkeypatch.setattr(
+        assets_module, "_inline_tags", _slow(assets_module._inline_tags, 0.02)
+    )
+
+    observations, errors = run_concurrent_requests(render_shared_components)
+
+    missing = [e for e in errors if isinstance(e, FileNotFoundError | OSError)]
+    assert not missing, (
+        "concurrent file reads raised missing-file errors:\n"
+        + "\n".join(f"  {type(e).__name__}: {e}" for e in missing)
+    )
+    fail_on_errors(errors)
+    assert_no_bleed(observations)
+    for index, observed in observations.items():
+        assert "<style>" in observed.html
+        assert "<script>" in observed.html
