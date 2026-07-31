@@ -7,6 +7,7 @@ classless surface is a separate file.
 """
 
 import sys
+import threading
 from pathlib import Path
 
 import pytest
@@ -222,6 +223,36 @@ def test_calling_twice_returns_the_same_class(tmp_path):
 
     assert first is second
     assert first.__pjx_descriptor__ is second.__pjx_descriptor__
+
+
+def test_concurrent_calls_for_the_same_undeclared_tag_register_one_class(tmp_path):
+    """Two threads racing on the same tag must not both win the registry.
+
+    The loser's build must not leak a synthetic module into sys.modules: the
+    check-then-register in component() has to be atomic with respect to other
+    callers of the same tag.
+    """
+    write_template(tmp_path, "card", "<div></div>")
+
+    results: list[type] = []
+    barrier = threading.Barrier(2)
+
+    def call():
+        barrier.wait()
+        results.append(component("Card", template_dir=tmp_path))
+
+    threads = [threading.Thread(target=call) for _ in range(2)]
+    modules_before = set(sys.modules)
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+
+    assert results[0] is results[1]
+    assert discovery.get_class("card") is results[0]
+    new_modules = set(sys.modules) - modules_before
+    synthetic = {m for m in new_modules if m.startswith("pyjinhx2._classless_")}
+    assert len(synthetic) == 1
 
 
 def test_a_classless_class_is_not_reported_as_carrying_a_stale_header(tmp_path):

@@ -12,6 +12,7 @@ to write, and nothing here re-implements either.
 """
 
 import sys
+import threading
 import types
 from pathlib import Path
 
@@ -25,6 +26,8 @@ from pyjinhx2.props_header import build_component_class, parse_props_header
 from pyjinhx2.segments import RE_PASCAL_CASE_TAG_NAME
 
 _synthetic_modules: dict[Path, str] = {}
+_synthetic_modules_lock = threading.Lock()
+_build_lock = threading.Lock()
 
 
 def _find_template(tag: str, template_dir: Path | str | None) -> Path:
@@ -63,13 +66,14 @@ def _module_for_directory(directory: Path) -> str:
     the same directory shares it.
     """
     key = directory.resolve()
-    name = _synthetic_modules.get(key)
-    if name is None:
-        name = f"pyjinhx2._classless_{len(_synthetic_modules)}"
-        module = types.ModuleType(name)
-        module.__file__ = str(key / "__init__.py")
-        sys.modules[name] = module
-        _synthetic_modules[key] = name
+    with _synthetic_modules_lock:
+        name = _synthetic_modules.get(key)
+        if name is None:
+            name = f"pyjinhx2._classless_{len(_synthetic_modules)}"
+            module = types.ModuleType(name)
+            module.__file__ = str(key / "__init__.py")
+            sys.modules[name] = module
+            _synthetic_modules[key] = name
     return name
 
 
@@ -105,15 +109,25 @@ def component(name: str, template_dir: Path | str | None = None) -> type[OpenCom
     registered = discovery.get_class(tag)
     if registered is not None:
         return registered  # pyright: ignore[reportReturnType]
-    template_path = _find_template(tag, template_dir)
-    fields = parse_props_header(template_path.read_text(encoding="utf-8"))
-    if fields is None:
-        cls = _placeholder_class(name, tag)
-    else:
-        cls = build_component_class(fields, name)
-    cls.__module__ = _module_for_directory(template_path.parent)
-    # The class was built with a provisional descriptor pointing at whichever
-    # module generated it; only now does it sit beside its own template.
-    rebuild_class_descriptor(cls)
-    discovery.register_class(tag, cls)
-    return cls
+    # Building spans a check (get_class) and a later write (register_class);
+    # without a lock two threads racing on the same undeclared tag would both
+    # build a class and both plant a synthetic module before either registers,
+    # leaking the loser's module into sys.modules permanently. Holding this
+    # lock across the whole build makes the span atomic per process.
+    with _build_lock:
+        registered = discovery.get_class(tag)
+        if registered is not None:
+            return registered  # pyright: ignore[reportReturnType]
+        template_path = _find_template(tag, template_dir)
+        fields = parse_props_header(template_path.read_text(encoding="utf-8"))
+        if fields is None:
+            cls = _placeholder_class(name, tag)
+        else:
+            cls = build_component_class(fields, name)
+        cls.__module__ = _module_for_directory(template_path.parent)
+        # The class was built with a provisional descriptor pointing at
+        # whichever module generated it; only now does it sit beside its own
+        # template.
+        rebuild_class_descriptor(cls)
+        discovery.register_class(tag, cls)
+        return cls
