@@ -1,9 +1,16 @@
-from typing import Annotated, ClassVar
+from typing import Annotated, ClassVar, Optional
 
 import pytest
-from pydantic import ValidationError
+from pydantic import BaseModel, ValidationError
 
-from pyjinhx2.component import BaseComponent, Children, PjxSlot, Slot, _is_slot_field
+from pyjinhx2.component import (
+    BaseComponent,
+    Children,
+    PjxSlot,
+    Slot,
+    _is_component_typed_annotation,
+    _is_slot_field,
+)
 
 
 class TestPjxSlotMarker:
@@ -383,3 +390,80 @@ class TestSlotSpliceGuards:
         context = build_context(NoSuchField(), descriptor)
         assert "absent" not in context
         assert context["title"] == "t"
+
+
+class _Card(BaseComponent):
+    title: str = ""
+
+
+class _FancyCard(_Card):
+    pass
+
+
+class _PlainModel(BaseModel):
+    x: int = 0
+
+
+class TestIsComponentTypedAnnotation:
+    """#418: a bare component-typed annotation is structurally a slot. The
+    unwrap rules mirror `_is_json_coercible_annotation`: strip `None` from a
+    union, and a union that keeps more than one live type stays ambiguous."""
+
+    def test_bare_component_class(self):
+        assert _is_component_typed_annotation(_Card) is True
+
+    def test_component_subclass(self):
+        assert _is_component_typed_annotation(_FancyCard) is True
+
+    def test_base_component_itself(self):
+        assert _is_component_typed_annotation(BaseComponent) is True
+
+    def test_optional_component(self):
+        assert _is_component_typed_annotation(Optional[_Card]) is True
+
+    def test_pep604_nullable_component(self):
+        assert _is_component_typed_annotation(_Card | None) is True
+
+    def test_list_of_components(self):
+        assert _is_component_typed_annotation(list[_Card]) is True
+
+    def test_dict_of_components(self):
+        assert _is_component_typed_annotation(dict[str, _Card]) is True
+
+    def test_optional_list_of_components(self):
+        assert _is_component_typed_annotation(list[_Card] | None) is True
+
+    def test_mixed_union_is_ambiguous(self):
+        assert _is_component_typed_annotation(str | _Card) is False
+
+    def test_union_of_two_components_is_ambiguous(self):
+        assert _is_component_typed_annotation(_Card | _FancyCard) is False
+
+    def test_plain_str(self):
+        assert _is_component_typed_annotation(str) is False
+
+    def test_plain_int(self):
+        assert _is_component_typed_annotation(int) is False
+
+    def test_list_of_strings(self):
+        assert _is_component_typed_annotation(list[str]) is False
+
+    def test_dict_of_strings(self):
+        assert _is_component_typed_annotation(dict[str, str]) is False
+
+    def test_dict_keyed_by_component_is_not_a_slot(self):
+        # Only the value type carries slot content; a component-keyed dict is
+        # not a slot collection.
+        assert _is_component_typed_annotation(dict[_Card, str]) is False
+
+    def test_unparameterized_list(self):
+        assert _is_component_typed_annotation(list) is False
+
+    def test_unparameterized_dict(self):
+        assert _is_component_typed_annotation(dict) is False
+
+    def test_non_component_basemodel(self):
+        assert _is_component_typed_annotation(_PlainModel) is False
+
+    def test_none_type(self):
+        assert _is_component_typed_annotation(type(None)) is False

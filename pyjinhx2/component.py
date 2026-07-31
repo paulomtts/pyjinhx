@@ -118,6 +118,30 @@ def _is_json_coercible_annotation(annotation: Any) -> bool:
     return isinstance(origin, type) and issubclass(origin, BaseModel)
 
 
+def _is_component_typed_annotation(annotation: Any) -> bool:
+    """True when ``annotation`` names a component — bare, nullable, or as the
+    element type of a ``list``/``dict``.
+
+    Unwrapping mirrors :func:`_is_json_coercible_annotation`: ``None`` is
+    stripped from a union, and a union that still holds more than one type is
+    ambiguous and declines. ``str | Component`` therefore does not count — the
+    string half has its own opt-in through :class:`PjxSlot`.
+    """
+    if get_origin(annotation) in (Union, types.UnionType):
+        args = [a for a in get_args(annotation) if a is not type(None)]
+        if len(args) != 1:
+            return False
+        annotation = args[0]
+    origin = get_origin(annotation)
+    if origin is list:
+        type_args = get_args(annotation)
+        return bool(type_args) and _is_component_typed_annotation(type_args[0])
+    if origin is dict:
+        type_args = get_args(annotation)
+        return len(type_args) == 2 and _is_component_typed_annotation(type_args[1])
+    return isinstance(annotation, type) and issubclass(annotation, BaseComponent)
+
+
 _PASCAL_BOUNDARY_RE = re.compile(r"(?<=[a-z0-9])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])")
 
 
