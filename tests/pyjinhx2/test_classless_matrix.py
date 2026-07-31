@@ -167,3 +167,59 @@ def test_rendering_never_recomputes_the_descriptor(tmp_path, monkeypatch):
 
     assert calls == []
     assert cls.__pjx_descriptor__ is before
+
+
+def stale_records(caplog) -> list[str]:
+    """The stale-{#def#} warnings caplog saw, as messages."""
+    return [r.getMessage() for r in caplog.records if "{#def#}" in r.getMessage()]
+
+
+def test_a_nested_headed_template_is_not_reported_as_stale(tmp_path, caplog):
+    """Subdirectory resolution must not lose the "built from this header" fact."""
+    nested = tmp_path / "widgets"
+    nested.mkdir()
+    write_template(nested, "card", '{#def title: str = "hi" #}<div>{{ title }}</div>')
+
+    with caplog.at_level(logging.WARNING, logger="pyjinhx2"):
+        cls = component("Card", template_dir=tmp_path)
+        render_level(cls(), absolute_session())
+
+    assert issubclass(cls, OpenComponent)
+    assert cls.__pjx_descriptor__.has_stale_def_header is False
+    assert stale_records(caplog) == []
+
+
+def test_a_malformed_header_warns_about_nothing_because_nothing_is_built(tmp_path, caplog):
+    """The parse error is the whole outcome; no class, so no stale report."""
+    write_template(tmp_path, "card", "{#def title: str, *args #}<div></div>")
+
+    with caplog.at_level(logging.WARNING, logger="pyjinhx2"):
+        with pytest.raises(ValueError):
+            component("Card", template_dir=tmp_path)
+
+    assert discovery.get_class("card") is None
+    assert stale_records(caplog) == []
+
+
+def test_a_class_built_under_concurrency_is_not_reported_as_stale(tmp_path, caplog):
+    """The one class two racing callers agree on still owns its header."""
+    write_template(tmp_path, "card", '{#def title: str = "hi" #}<div>{{ title }}</div>')
+
+    results: list[type] = []
+    barrier = threading.Barrier(2)
+
+    def call():
+        barrier.wait()
+        results.append(component("Card", template_dir=tmp_path))
+
+    threads = [threading.Thread(target=call) for _ in range(2)]
+    with caplog.at_level(logging.WARNING, logger="pyjinhx2"):
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        render_level(results[0](), absolute_session())
+
+    assert results[0] is results[1]
+    assert results[0].__pjx_descriptor__.has_stale_def_header is False
+    assert stale_records(caplog) == []
