@@ -1,12 +1,19 @@
 """RenderSession, the per-request ContextVars, and the request_scope that owns them."""
 
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from contextvars import ContextVar
+from typing import TYPE_CHECKING
 
 from jinja2 import Environment, FileSystemLoader
 
 from pyjinhx2.markers import finalize_slot_node
+
+if TYPE_CHECKING:
+    # Type-only: the hook's signature names the spine's own types, but importing
+    # them at runtime would point session at its own consumers.
+    from pyjinhx2.component import BaseComponent
+    from pyjinhx2.segments import RenderedLevel
 
 # The four pieces of per-request mutable state. They live here rather than beside
 # their eventual consumers because the import rule runs one way only: reactive/
@@ -43,6 +50,25 @@ class RenderSession:
         # Asset paths accumulate here as on_rendered fires bottom-up; a set because
         # the same component class contributes the same paths on every occurrence.
         self.asset_paths: set[str] = set()
+        # A plain list, not an event bus: render fires it once per component and
+        # subscribers (asset accumulation, the reactive instance registry) just
+        # append. Per-session so subscriptions die with the request.
+        self.on_rendered: list[Callable[[BaseComponent, RenderedLevel], None]] = []
+
+    def emit_rendered(
+        self, component: "BaseComponent", level: "RenderedLevel"
+    ) -> None:
+        """Notify subscribers that ``component``'s subtree finished rendering.
+
+        Args:
+            component: The instance whose level just completed.
+            level: That component's RenderedLevel, children and slots spliced in.
+        """
+        # Exceptions propagate: a subscriber that fails has left session state
+        # half-written, and a render that silently drops an asset or a registry
+        # entry is worse than one that stops.
+        for callback in self.on_rendered:
+            callback(component, level)
 
 
 def current_session() -> RenderSession | None:
