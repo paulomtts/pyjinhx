@@ -66,9 +66,9 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
     "render_context": frozenset({"pyjinhx2.markers", "pyjinhx2.component"}),
     "root_attrs": frozenset({"pyjinhx2.segments"}),
     "segments": frozenset(),
-    # The on_rendered hook's signature names BaseComponent and RenderedLevel.
-    # Both imports are TYPE_CHECKING-only — at runtime session still depends on
-    # nothing but markers, so the spine's direction is unchanged.
+    # The on_rendered hook's signature names BaseComponent and RenderedLevel, but
+    # both imports are TYPE_CHECKING-only. At runtime session also imports
+    # AssetMode from assets, a real edge alongside markers.
     "session": frozenset(
         {
             "pyjinhx2.markers",
