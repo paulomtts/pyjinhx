@@ -90,3 +90,42 @@ def test_every_construction_path_takes_an_undeclared_attribute(tmp_path):
     for label, cls in _three_classes(tmp_path).items():
         instance = cls(data_role="banner")  # pyright: ignore[reportCallIssue]
         assert instance.model_extra == {"data_role": "banner"}, label
+
+
+MULTI_FIELD_TEMPLATE = (
+    '{#def title: str, count: int = 0, active: bool = False, '
+    'tags: list = [], meta: dict = {}, note: Optional[str] = None, '
+    'weird: SomeUnknownType = None #}'
+    "<div>{{ title }}:{{ count }}</div>"
+)
+
+
+def test_a_multi_field_header_survives_parse_build_and_placement(tmp_path):
+    """Parse -> build -> register, on a header wide enough to be realistic."""
+    write_template(tmp_path, "card", MULTI_FIELD_TEMPLATE)
+
+    cls = component("Card", template_dir=tmp_path)
+    fields = cls.model_fields
+
+    assert issubclass(cls, OpenComponent)
+    assert fields["title"].annotation is str
+    assert fields["title"].is_required()
+    assert fields["count"].annotation is int
+    assert fields["count"].default == 0
+    assert fields["active"].annotation is bool
+    assert fields["active"].default is False
+    assert fields["tags"].annotation is list
+    assert fields["meta"].annotation is dict
+    assert fields["note"].annotation == (str | None)
+    assert discovery.get_class("card") is cls
+
+
+def test_an_unrecognized_annotation_falls_back_to_any_end_to_end(tmp_path):
+    """The header vocabulary is closed; anything outside it degrades to Any."""
+    write_template(tmp_path, "card", MULTI_FIELD_TEMPLATE)
+
+    cls = component("Card", template_dir=tmp_path)
+
+    assert cls.model_fields["weird"].annotation is Any
+    instance = cls(title="hi", weird=object())  # pyright: ignore[reportCallIssue]
+    assert instance.weird is not None
