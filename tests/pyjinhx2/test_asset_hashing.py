@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from pyjinhx2.assets import hashed_filename
+from pyjinhx2.assets import hashed_filename, resolver_with_hash
 
 HEX8 = re.compile(r"^button\.[0-9a-f]{8}\.js$")
 
@@ -62,3 +62,27 @@ def test_hashed_filename_handles_a_file_without_a_suffix(tmp_path):
     path = _write(tmp_path / "LICENSE", "text")
     digest = hashlib.sha256(b"text").hexdigest()[:8]
     assert hashed_filename(path) == f"LICENSE.{digest}"
+
+
+def test_resolver_puts_a_top_level_file_directly_under_base_url(tmp_path):
+    path = _write(tmp_path / "button.js", "console.log(1)")
+    resolve = resolver_with_hash("/static", str(tmp_path))
+    assert resolve(path) == f"/static/{hashed_filename(path)}"
+
+
+def test_resolver_keeps_the_directory_relative_to_root(tmp_path):
+    path = _write(tmp_path / "components" / "ui" / "button.js", "console.log(1)")
+    resolve = resolver_with_hash("/static", str(tmp_path))
+    assert resolve(path) == f"/static/components/ui/{hashed_filename(path)}"
+
+
+def test_resolver_strips_a_trailing_slash_from_base_url(tmp_path):
+    path = _write(tmp_path / "button.js", "console.log(1)")
+    resolve = resolver_with_hash("https://cdn.example.com/", str(tmp_path))
+    assert resolve(path) == f"https://cdn.example.com/{hashed_filename(path)}"
+
+
+def test_resolver_raises_for_a_missing_file(tmp_path):
+    resolve = resolver_with_hash("/static", str(tmp_path))
+    with pytest.raises(OSError):
+        resolve(tmp_path / "nope.js")
