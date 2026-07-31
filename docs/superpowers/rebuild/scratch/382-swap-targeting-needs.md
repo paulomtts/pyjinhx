@@ -15,3 +15,19 @@ This document answers exactly one question: what must the request-scoped instanc
 - ADR 0009:13-24 — Option 3: request-scoped ContextVar map, composite key (`name + id`) -> instance/cached render, used exclusively by OOB fan-out and load-cache lookups, not template-visible; the pre-RFC-2 enumeration is the gate.
 - architecture-overview.md Invariant 1 — never re-derive structure by re-parsing rendered HTML.
 - architecture-overview.md Invariant 4 — registry storage is per-request ContextVar state reset by `request_scope`; not process-wide, not built-then-swap.
+
+## Registry requirements (swap targeting only)
+
+R1. Composite-key resolve. Given `{type, id}` from a mounted region, one lookup returns either a live instance, or a cached `RenderedLevel` carrying its `root_span`, or a miss. Mirrors `reactive.py:447,493,495`, except v2 routes to a recorded `root_span` instead of re-deriving one.
+
+R2. Swap-target identity. The resolved entry must carry enough identity to name a stable `data-pjx-id`-equivalent selector target and to splice at the recorded `root_span`. outerHTML only (ADR 0001; `reactive.py:411-413`). No delta, append, or prepend machinery.
+
+R3. Observable miss. The lookup distinguishes "gone" (drives a delete swap) from "present-but-clean" (drives skip). That distinction must be readable by fan-out from the lookup result alone — never by re-parsing HTML or by a second pass. v0.x expressed "gone" as `LookupError` (`reactive.py:496`).
+
+R4. Root-span routing, not root relocation. For a resolved key the registry hands back the already-recorded `root_span`. It must never trigger, require, or imply a re-parse or string scan of rendered HTML to find a root tag (Invariant 1). This replaces v0.x's implicit `_extra_root_attrs` splice (`reactive.py:523`).
+
+R5. No containment/nesting API. Fan-out's nesting dedup is served by the segment tree's structural containment, not by registry state. Recorded here as a deliberate non-requirement so L2 does not port `_drop_nested` (`reactive.py:388-408`) into the registry.
+
+R6. Storage and lifetime. A request-scoped `ContextVar` map from composite key (`name + id`) to instance/cached render, reset by `request_scope`. Not process-wide, not built-then-swapped (Invariant 4; ADR 0009:13-17).
+
+R7. Consumer boundary. The registry is written only by Load (single-writer, thick edge in architecture-overview.md: "`Load` is the only writer of `InstReg` entries") and read-only from fan-out's perspective — the `InstReg -> Fanout` edge in architecture-overview.md's mermaid map is a solid labeled edge ("resolve name+id; cached render if clean"), not dotted (verified against the map's own edge-semantics legend: solid = consumer cannot produce output without this input, dotted = keyed lookup/hook whose miss is a defined non-error path). Fan-out never mutates the registry, and no third writer exists.
