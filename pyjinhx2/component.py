@@ -90,15 +90,20 @@ class PjxSlot:
 def _is_slot_field(cls: type, field_name: str) -> bool:
     """True when ``field_name`` is a raw-HTML slot on ``cls``.
 
-    A field qualifies either by being the model's designated children field, or
-    by carrying a :class:`PjxSlot` marker in its ``Annotated`` metadata. Unknown
-    field names are not slots.
+    Three independent qualifications, OR'd: the field is the model's designated
+    children field, it carries a :class:`PjxSlot` marker in its ``Annotated``
+    metadata, or its annotation names a component (see
+    :func:`_is_component_typed_annotation`). Unknown field names are not slots.
     """
     if field_name == getattr(cls, "_pjx_children_field", None):
         return True
     fields = getattr(cls, "model_fields", {})
     field = fields.get(field_name)
-    return field is not None and any(isinstance(m, PjxSlot) for m in field.metadata)
+    if field is None:
+        return False
+    if any(isinstance(m, PjxSlot) for m in field.metadata):
+        return True
+    return _is_component_typed_annotation(field.annotation)
 
 
 def _is_json_coercible_annotation(annotation: Any) -> bool:

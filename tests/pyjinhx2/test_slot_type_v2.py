@@ -467,3 +467,38 @@ class TestIsComponentTypedAnnotation:
 
     def test_none_type(self):
         assert _is_component_typed_annotation(type(None)) is False
+
+
+class _AutoSlots(BaseComponent):
+    caption: str = ""  # plain string, no marker: NOT a slot
+    child: _Card | None = None  # bare component: auto-slot
+    badges: list[_Card] = []  # component list: auto-slot
+    named: dict[str, _Card] = {}  # component dict: auto-slot
+    either: str | _Card = ""  # mixed union: ambiguous, NOT a slot
+    marked: Annotated[str, PjxSlot()] = ""  # explicit string slot
+
+
+class TestIsSlotFieldStructuralCondition:
+    """#418: the three conditions are OR'd — a bare component annotation is a
+    slot, and explicit markers keep working alongside it."""
+
+    def test_bare_component_field_is_a_slot(self):
+        assert _is_slot_field(_AutoSlots, "child") is True
+
+    def test_component_list_field_is_a_slot(self):
+        assert _is_slot_field(_AutoSlots, "badges") is True
+
+    def test_component_dict_field_is_a_slot(self):
+        assert _is_slot_field(_AutoSlots, "named") is True
+
+    def test_plain_string_field_is_not_a_slot(self):
+        assert _is_slot_field(_AutoSlots, "caption") is False
+
+    def test_mixed_union_field_is_not_a_slot(self):
+        assert _is_slot_field(_AutoSlots, "either") is False
+
+    def test_explicitly_marked_string_field_is_still_a_slot(self):
+        assert _is_slot_field(_AutoSlots, "marked") is True
+
+    def test_unknown_field_name_is_still_not_a_slot(self):
+        assert _is_slot_field(_AutoSlots, "not_a_field") is False
