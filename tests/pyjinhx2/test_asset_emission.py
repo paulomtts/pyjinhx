@@ -368,3 +368,19 @@ def test_link_mode_css_and_js_together_sorted_independently_and_css_first(tmp_pa
         '<script src="/static/a.js"></script>\n'
         '<script src="/static/z.js"></script>'
     )
+
+
+def test_link_mode_js_resolver_raise_propagates(tmp_path):
+    """A resolver raising on the JS branch is not swallowed by the CSS branch
+    having already succeeded."""
+
+    def boom(path: Path) -> str:
+        raise FileNotFoundError(path)
+
+    session = _session(tmp_path)
+    session.js_assets.add(tmp_path / "gone.js")
+    session.css_mode = AssetMode.NONE
+    session.js_mode = AssetMode.LINK
+
+    with pytest.raises(FileNotFoundError):
+        emit_assets(session, resolver=boom)
