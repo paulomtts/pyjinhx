@@ -342,3 +342,67 @@ def test_sorted_resolved_lets_a_raising_resolver_propagate():
 
     with pytest.raises(OSError):
         _sorted_resolved({Path("/a/b.css")}, resolver)
+
+
+def test_link_mode_without_resolver_raises_value_error(tmp_path):
+    session = _session(tmp_path)
+    session.css_assets.add(tmp_path / "box.css")
+    session.css_mode = AssetMode.LINK
+
+    with pytest.raises(ValueError, match="LINK mode needs a resolver"):
+        emit_assets(session)
+
+
+def test_link_mode_css_and_js_together_sorted_independently_and_css_first(tmp_path):
+    session = _session(tmp_path)
+    session.css_assets.update({tmp_path / "z.css", tmp_path / "a.css"})
+    session.js_assets.update({tmp_path / "z.js", tmp_path / "a.js"})
+    session.css_mode = AssetMode.LINK
+    session.js_mode = AssetMode.LINK
+
+    out = emit_assets(session, resolver=_stub_resolver)
+
+    assert out == (
+        '<link rel="stylesheet" href="/static/a.css">\n'
+        '<link rel="stylesheet" href="/static/z.css">\n'
+        '<script src="/static/a.js"></script>\n'
+        '<script src="/static/z.js"></script>'
+    )
+
+
+def test_link_mode_js_resolver_raise_propagates(tmp_path):
+    """A resolver raising on the JS branch is not swallowed by the CSS branch
+    having already succeeded."""
+
+    def boom(path: Path) -> str:
+        raise FileNotFoundError(path)
+
+    session = _session(tmp_path)
+    session.js_assets.add(tmp_path / "gone.js")
+    session.css_mode = AssetMode.NONE
+    session.js_mode = AssetMode.LINK
+
+    with pytest.raises(FileNotFoundError):
+        emit_assets(session, resolver=boom)
+
+
+def test_link_mode_repeated_calls_are_byte_identical(tmp_path):
+    session = _session(tmp_path)
+    # Enough members that a set's iteration order would plausibly differ from
+    # sorted order, so an unsorted implementation cannot pass by luck.
+    session.css_assets.update(
+        {tmp_path / name for name in ("z.css", "a.css", "m.css", "b.css", "q.css")}
+    )
+    session.js_assets.update(
+        {tmp_path / name for name in ("z.js", "a.js", "m.js", "b.js", "q.js")}
+    )
+    session.css_mode = AssetMode.LINK
+    session.js_mode = AssetMode.LINK
+
+    first = emit_assets(session, resolver=_stub_resolver)
+    second = emit_assets(session, resolver=_stub_resolver)
+
+    assert first == second
+    assert first.index("/static/a.css") < first.index("/static/m.css")
+    assert first.index("/static/m.css") < first.index("/static/z.css")
+    assert first.index("/static/q.css") < first.index("/static/a.js")
