@@ -321,3 +321,17 @@ def test_an_extra_attribute_reaches_the_template_through_the_render_path(tmp_pat
 
     assert instance.model_extra == {"subtitle": "World"}
     assert output == "<article>Hello/World</article>"
+
+
+def test_a_placeholder_class_renders_the_same_way(tmp_path):
+    """No header means no declared props, and the render path does not care."""
+    write_template(tmp_path, "badge", "<span>{{ text }}</span>")
+
+    cls = component("Badge", template_dir=tmp_path)
+    instance = cls(text="OK")  # pyright: ignore[reportCallIssue]
+    output = serialize(render_level(instance, absolute_session()))
+
+    assert issubclass(cls, OpenComponent)
+    assert set(cls.model_fields) == {"id"}
+    assert instance.model_extra == {"text": "OK"}
+    assert output == "<span>OK</span>"
