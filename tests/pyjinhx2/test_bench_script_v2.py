@@ -20,12 +20,14 @@ def load_bench_module():
     return module
 
 
-def test_bench_script_renders_one_component():
+def test_bench_renders_a_nested_tree_at_every_level():
     bench = load_bench_module()
     session = bench.setup_session()
-    out = bench.render_one(session, 7)
-    assert "item 7" in out
-    assert '<div class="bench">' in out
+    mids, leaves = bench.tree_shape(bench.COMPONENT_COUNTS[0])
+    out = bench.render_tree(session, mids, leaves)
+    assert '<div class="bench-root">' in out
+    assert out.count('<section class="bench-mid">') == mids
+    assert out.count('<em class="bench-leaf">') == mids * leaves
 
 
 def test_tree_shape_is_deterministic_and_close_to_requested_size():
