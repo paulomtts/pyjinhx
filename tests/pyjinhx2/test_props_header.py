@@ -46,3 +46,22 @@ def test_required_props_keep_their_declared_order():
         ("count", int, ...),
         ("flag", bool, ...),
     ]
+
+
+def test_pipe_none_annotation_becomes_optional():
+    assert parse_props_header("{#def value: str | None #}") == [
+        ("value", str | None, ...)
+    ]
+
+
+def test_none_pipe_t_annotation_becomes_optional():
+    """Order does not matter: ``None | str`` is the same type as ``str | None``."""
+    assert parse_props_header("{#def value: None | str #}") == [
+        ("value", str | None, ...)
+    ]
+
+
+def test_optional_subscript_becomes_the_same_union():
+    assert parse_props_header("{#def value: Optional[int] #}") == [
+        ("value", int | None, ...)
+    ]

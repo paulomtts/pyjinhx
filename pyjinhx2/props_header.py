@@ -32,6 +32,24 @@ def _resolve_annotation(node: ast.expr | None) -> Any:
         return Any
     if isinstance(node, ast.Name):
         return _TYPES.get(node.id, Any)
+    if isinstance(node, ast.Constant) and node.value is None:
+        return type(None)
+    # T | None  ->  Optional[T]
+    if isinstance(node, ast.BinOp) and isinstance(node.op, ast.BitOr):
+        left = _resolve_annotation(node.left)
+        right = _resolve_annotation(node.right)
+        if right is type(None):
+            return left | None
+        if left is type(None):
+            return right | None
+        return Any
+    # Optional[T]
+    if (
+        isinstance(node, ast.Subscript)
+        and isinstance(node.value, ast.Name)
+        and node.value.id == "Optional"
+    ):
+        return _resolve_annotation(node.slice) | None
     return Any
 
 
