@@ -6,10 +6,11 @@ from pyjinhx2.assets import AssetMode
 from pyjinhx2.session import RenderSession
 
 
-def test_asset_mode_has_exactly_inline_and_none():
+def test_asset_mode_members_are_inline_none_and_link():
     assert AssetMode.INLINE.value == "inline"
     assert AssetMode.NONE.value == "none"
-    assert set(AssetMode) == {AssetMode.INLINE, AssetMode.NONE}
+    assert AssetMode.LINK.value == "link"
+    assert set(AssetMode) == {AssetMode.INLINE, AssetMode.NONE, AssetMode.LINK}
 
 
 def test_session_defaults_both_kinds_to_inline():
@@ -96,6 +97,71 @@ def test_missing_asset_file_raises(tmp_path):
 
 def test_no_assets_emits_empty_string(tmp_path):
     assert emit_assets(_session(tmp_path)) == ""
+
+
+def _stub_resolver(path: Path) -> str:
+    """Resolver of the shape #552 will thread in: path -> served URL."""
+    return f"/static/{path.name}"
+
+
+def test_link_mode_emits_stylesheet_links_sorted_by_path(tmp_path):
+    session = _session(tmp_path)
+    session.css_assets.update(
+        {tmp_path / "z.css", tmp_path / "a.css", tmp_path / "m.css"}
+    )
+    session.css_mode = AssetMode.LINK
+    session.js_mode = AssetMode.NONE
+
+    out = emit_assets(session, resolver=_stub_resolver)
+
+    assert out == (
+        '<link rel="stylesheet" href="/static/a.css">\n'
+        '<link rel="stylesheet" href="/static/m.css">\n'
+        '<link rel="stylesheet" href="/static/z.css">'
+    )
+
+
+def test_link_mode_emits_script_src_tags_sorted_by_path(tmp_path):
+    session = _session(tmp_path)
+    session.js_assets.update({tmp_path / "z.js", tmp_path / "a.js"})
+    session.css_mode = AssetMode.NONE
+    session.js_mode = AssetMode.LINK
+
+    out = emit_assets(session, resolver=_stub_resolver)
+
+    assert out == (
+        '<script src="/static/a.js"></script>\n<script src="/static/z.js"></script>'
+    )
+
+
+def test_resolver_that_raises_propagates_out_of_emit_assets(tmp_path):
+    def boom(path: Path) -> str:
+        raise FileNotFoundError(path)
+
+    session = _session(tmp_path)
+    session.css_assets.add(tmp_path / "gone.css")
+    session.css_mode = AssetMode.LINK
+
+    with pytest.raises(FileNotFoundError):
+        emit_assets(session, resolver=boom)
+
+
+def test_link_css_with_inline_js_emits_both_css_first(tmp_path):
+    css = tmp_path / "box.css"
+    css.write_text(".box { color: red; }")
+    js = tmp_path / "box.js"
+    js.write_text("console.log('box');")
+    session = _session(tmp_path)
+    session.css_assets.add(css)
+    session.js_assets.add(js)
+    session.css_mode = AssetMode.LINK
+
+    out = emit_assets(session, resolver=_stub_resolver)
+
+    assert out == (
+        '<link rel="stylesheet" href="/static/box.css">\n'
+        "<script>console.log('box');</script>"
+    )
 
 
 from dataclasses import replace

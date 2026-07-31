@@ -16,6 +16,10 @@ class AssetMode(str, Enum):
 
     INLINE = "inline"
     NONE = "none"
+    # One member for both kinds: the asset kind already decides the tag shape
+    # (<link rel="stylesheet"> vs <script src>), so a separate SRC member would
+    # only create a way to set the wrong one on the wrong kind.
+    LINK = "link"
 
 
 def _inline_tags(paths: set[Path], open_tag: str, close_tag: str) -> list[str]:
@@ -31,26 +35,69 @@ def _inline_tags(paths: set[Path], open_tag: str, close_tag: str) -> list[str]:
     ]
 
 
-def emit_assets(session: "RenderSession") -> str:
+def _url_tags(
+    paths: set[Path], resolver: Callable[[Path], str], template: str
+) -> list[str]:
+    """Resolve each path to a URL and format it into the given tag, sorted by path.
+
+    Sorted for the same reason _inline_tags sorts: the accumulator is a set with
+    no stable iteration order, and two renders of the same tree must produce
+    byte-identical output. A resolver that raises is left to raise — an asset
+    silently dropped from the page fails invisibly in the browser.
+    """
+    return [template.format(url=resolver(path)) for path in sorted(paths, key=str)]
+
+
+def _require_resolver(
+    resolver: Callable[[Path], str] | None,
+) -> Callable[[Path], str]:
+    """Return the resolver, refusing to emit LINK tags without one.
+
+    Raising rather than skipping the kind: a page quietly missing its
+    stylesheets is harder to diagnose than a failed render.
+    """
+    if resolver is None:
+        raise ValueError("LINK mode needs a resolver to build asset URLs")
+    return resolver
+
+
+def emit_assets(
+    session: "RenderSession", *, resolver: Callable[[Path], str] | None = None
+) -> str:
     """Return the markup for this session's accumulated assets, per delivery mode.
 
     Args:
         session: The RenderSession whose css_assets/js_assets were populated by
             accumulate_assets during the render, and whose css_mode/js_mode say
             how each kind is delivered.
+        resolver: Maps an asset path to the URL it is served from, in the shape
+            asset_manifest() takes. Required only when a kind is in LINK mode.
 
     Returns:
-        Concatenated <style> tags then <script> tags, newline-joined. Empty
-        string when both kinds are NONE or nothing was accumulated.
+        Concatenated CSS tags then JS tags, newline-joined. Empty string when
+        both kinds are NONE or nothing was accumulated.
 
     Raises:
         OSError: If an asset file is missing or unreadable under INLINE mode.
+        ValueError: If a kind is in LINK mode and no resolver was given.
     """
     tags: list[str] = []
     if session.css_mode is AssetMode.INLINE:
         tags += _inline_tags(session.css_assets, "<style>", "</style>")
+    elif session.css_mode is AssetMode.LINK:
+        tags += _url_tags(
+            session.css_assets,
+            _require_resolver(resolver),
+            '<link rel="stylesheet" href="{url}">',
+        )
     if session.js_mode is AssetMode.INLINE:
         tags += _inline_tags(session.js_assets, "<script>", "</script>")
+    elif session.js_mode is AssetMode.LINK:
+        tags += _url_tags(
+            session.js_assets,
+            _require_resolver(resolver),
+            '<script src="{url}"></script>',
+        )
     return "\n".join(tags)
 
 
