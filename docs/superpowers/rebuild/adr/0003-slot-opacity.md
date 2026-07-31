@@ -1,6 +1,6 @@
-# ADR 0003: Slots are opaque — truthiness and interpolation only
+# ADR 0003: Slots are opaque — truthiness, interpolation, and `.props` access only
 
-**Status:** Accepted, 2026-07-28. Consequence of ADR 0002.
+**Status:** Accepted, 2026-07-28. Amended 2026-07-30 to sanction `NestedComponentWrapper`. Consequence of ADR 0002.
 
 ## Context
 
@@ -23,6 +23,10 @@ String-valued slots (a `Slot` field assigned a plain string) are unaffected — 
 - Child opacity stays absolute; no hidden render forcing; layer 0 stays simple.
 - `{% if content %}`, `{{ content }}` work; `{{ content|length }}` on a component slot raises a targeted error instead of silently misbehaving.
 - Migration note required for any v0.x template using string filters over component slots (expected rare; verified by the survey).
+
+## Amendment (2026-07-30): `NestedComponentWrapper`
+
+L1.3 (roadmap item 3) calls for `{{ field.props.x }}` alongside bare `{{ field }}` — reading a nested child's *validated field values* from the parent template, without breaking opacity. This is narrower than general attribute delegation: the wrapper exposes exactly `.props` (a read-only view over the child component's own fields, not arbitrary Python attributes/methods), plus interpolation and truthiness. It does not expose `__str__`/`__len__`/iteration or any other implicit stringification hook — those still raise the ADR's targeted opacity error. This keeps the "no hidden render forcing" guarantee: reading `.props.x` touches the child's *already-validated* field data, not its rendered output.
 
 ## Survey outcome (2026-07-30)
 
