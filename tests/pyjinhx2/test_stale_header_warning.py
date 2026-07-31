@@ -152,9 +152,7 @@ def test_classless_component_never_warns(render_session, caplog):
     assert [r for r in caplog.records if "{#def#}" in r.getMessage()] == []
 
 
-def test_header_is_parsed_once_per_class_not_per_render(
-    render_session, monkeypatch
-):
+def test_header_is_parsed_once_per_class_not_per_render(render_session, monkeypatch):
     """N renders of a class cost zero header parses: the probe ran at build."""
 
     class ProbeOnce(BaseComponent):
