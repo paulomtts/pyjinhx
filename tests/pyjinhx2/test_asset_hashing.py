@@ -7,7 +7,8 @@ from pathlib import Path
 
 import pytest
 
-from pyjinhx2.assets import hashed_filename, resolver_with_hash
+from pyjinhx2.assets import asset_manifest, hashed_filename, resolver_with_hash
+from pyjinhx2.session import RenderSession
 
 HEX8 = re.compile(r"^button\.[0-9a-f]{8}\.js$")
 
@@ -86,3 +87,32 @@ def test_resolver_raises_for_a_missing_file(tmp_path):
     resolve = resolver_with_hash("/static", str(tmp_path))
     with pytest.raises(OSError):
         resolve(tmp_path / "nope.js")
+
+
+def _session() -> RenderSession:
+    """A bare session; assets are set-added directly, no render needed."""
+    return RenderSession(template_dir=str(Path(__file__).parent.parent / "templates"))
+
+
+def test_manifest_with_hashing_resolver_hashes_both_kinds_in_path_order(tmp_path):
+    a_css = _write(tmp_path / "a.css", "a{}")
+    b_css = _write(tmp_path / "nested" / "b.css", "b{}")
+    y_js = _write(tmp_path / "y.js", "y")
+    z_js = _write(tmp_path / "nested" / "z.js", "z")
+
+    session = _session()
+    session.css_assets.update({b_css, a_css})
+    session.js_assets.update({z_js, y_js})
+
+    manifest = asset_manifest(
+        session, resolver=resolver_with_hash("/static", str(tmp_path))
+    )
+
+    assert manifest.stylesheets == (
+        f"/static/{hashed_filename(a_css)}",
+        f"/static/nested/{hashed_filename(b_css)}",
+    )
+    assert manifest.scripts == (
+        f"/static/nested/{hashed_filename(z_js)}",
+        f"/static/{hashed_filename(y_js)}",
+    )
