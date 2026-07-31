@@ -31,3 +31,17 @@ R5. No containment/nesting API. Fan-out's nesting dedup is served by the segment
 R6. Storage and lifetime. A request-scoped `ContextVar` map from composite key (`name + id`) to instance/cached render, reset by `request_scope`. Not process-wide, not built-then-swapped (Invariant 4; ADR 0009:13-17).
 
 R7. Consumer boundary. The registry is written only by Load (single-writer, thick edge in architecture-overview.md: "`Load` is the only writer of `InstReg` entries") and read-only from fan-out's perspective — the `InstReg -> Fanout` edge in architecture-overview.md's mermaid map is a solid labeled edge ("resolve name+id; cached render if clean"), not dotted (verified against the map's own edge-semantics legend: solid = consumer cannot produce output without this input, dotted = keyed lookup/hook whose miss is a defined non-error path). Fan-out never mutates the registry, and no third writer exists.
+
+## Non-requirements
+
+Recorded so L2 does not over-build. Each is a thing the registry explicitly does not do.
+
+N1. No template-visible lookups. Templates cannot reach the registry; peer cross-reference died with ADR 0004.
+
+N2. No append/prepend/delta swap modes. outerHTML swaps plus delete swaps are the entire surface (ADR 0001).
+
+N3. No second HTML parse and no string search to relocate roots. The recorded `root_span` is the only route to a splice point (Invariant 1).
+
+N4. No manifest-hash comparison, no hash-input composition, no cache-keying scheme. This document names only the clean / dirty / miss branches that need *a* lookup; how cleanliness is decided is #383's half.
+
+N5. No registry state for nesting dedup. Structural containment lives in `segments.py` (see R5).
