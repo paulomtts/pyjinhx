@@ -65,9 +65,13 @@ class TestHarness:
         class Card(BaseComponent):
             content: Slot = ""
 
-        Card.__pjx_descriptor__ = descriptor("nest_content.html", frozenset({"content"}))
+        Card.__pjx_descriptor__ = descriptor(
+            "nest_content.html", frozenset({"content"})
+        )
 
-        assert render_expr("{% if content %}yes{% endif %}", Card(content=Leaf())) == "yes"
+        assert (
+            render_expr("{% if content %}yes{% endif %}", Card(content=Leaf())) == "yes"
+        )
 
 
 class TestTruthinessWithInterpolation:
@@ -117,9 +121,7 @@ class TestTruthinessWithInterpolation:
         # observed; flagged for follow-up rather than patched here.
         Card = self.card("slot_mixed_kinds.html", frozenset({"content", "note"}))
 
-        output = render(
-            Card(content=Leaf(text="c"), note="<em>raw</em>"), session()
-        )
+        output = render(Card(content=Leaf(text="c"), note="<em>raw</em>"), session())
 
         assert output == (
             '<div class="card"><span class="leaf">c</span>&lt;em&gt;raw&lt;/em&gt;</div>'
@@ -247,7 +249,7 @@ class TestStringifyingFilterGap:
 
     @pytest.mark.parametrize("filter_name", ["upper", "trim", "striptags"])
     def test_a_stringifying_filter_does_not_raise_today(self, filter_name):
-        output = render_expr("{{ content|%s }}" % filter_name, opaque_card())
+        output = render_expr(f"{{{{ content|{filter_name} }}}}", opaque_card())
 
         assert "ComponentNode" in output.replace("COMPONENTNODE", "ComponentNode")
 
@@ -287,9 +289,7 @@ class TestInferenceWithDirectNesting:
     def test_both_slots_resolve_in_one_render_pass(self):
         Card = self.card_class()
 
-        output = render(
-            Card(header=Leaf(text="h"), content=Leaf(text="c")), session()
-        )
+        output = render(Card(header=Leaf(text="h"), content=Leaf(text="c")), session())
 
         assert output == (
             '<div class="card"><header><span class="leaf">h</span></header>'
@@ -346,9 +346,7 @@ class TestCollectionsMatrix:
     def test_a_list_slot_interpolates_every_entry(self):
         Card = self.card_class("slot_list.html")
 
-        output = render(
-            Card(content=[Titled(title="a"), Titled(title="b")]), session()
-        )
+        output = render(Card(content=[Titled(title="a"), Titled(title="b")]), session())
 
         assert output == (
             '<div class="list"><span class="leaf">a</span>'
@@ -415,9 +413,7 @@ class TestCollectionsMatrix:
     def test_props_on_list_entries_expose_only_their_own_fields(self):
         Card = self.card_class("slot_props_list.html")
 
-        output = render(
-            Card(content=[Titled(title="a"), Titled(title="b")]), session()
-        )
+        output = render(Card(content=[Titled(title="a"), Titled(title="b")]), session())
 
         assert output == '<div class="list"><i>a</i><i>b</i></div>'
 
@@ -504,7 +500,6 @@ class TestPropsBoundaries:
             render_expr(expr, Card(content=Titled(title="a")))
 
     def test_the_props_error_names_the_escape_hatch_as_the_operation(self):
-        Card = self.card_class("slot_props.html")
         node = ComponentNode(
             Titled(title="a"),
             owner_name="Card",
@@ -518,7 +513,6 @@ class TestPropsBoundaries:
     def test_an_unknown_props_name_is_an_ordinary_lookup_failure(self):
         # A typo in `.props.x` must read as a typo, not as an opacity
         # violation, so it never raises the opaque TypeError.
-        Card = self.card_class("slot_props.html")
         node = ComponentNode(
             Titled(title="a"),
             owner_name="Card",
