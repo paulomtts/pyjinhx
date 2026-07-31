@@ -137,7 +137,7 @@ class TestSlotPropsView:
         props = self.node(Leaf(title="hello")).props
 
         with pytest.raises(AttributeError):
-            props.nope
+            _ = props.nope
 
     def test_an_unknown_key_raises_key_error(self):
         props = self.node(Leaf(title="hello")).props
@@ -151,7 +151,7 @@ class TestSlotPropsView:
         props = self.node(Leaf(title="hello")).props
 
         with pytest.raises(AttributeError) as excinfo:
-            props.nope
+            _ = props.nope
         assert not isinstance(excinfo.value, TypeError)
 
     def test_str_raises_the_opacity_error(self):
