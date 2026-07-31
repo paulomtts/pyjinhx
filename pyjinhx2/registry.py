@@ -1,12 +1,16 @@
-"""The request-scoped instance registry: composite keys and read-only resolve.
+"""The request-scoped instance registry: composite keys, resolve, and the writer.
 
-Read side only (ADR 0009). Entries are written by the Load path (#435); nothing
-here mutates the store. Callers on the Load path are expected to dedup by
-(type, load_arg) before loading — that is a Load-path concern, not this
-module's, and resolve() deduplicates nothing.
+Entries are written by the Load path through register_instance(), the module's
+single mutator; make_key() and resolve() only read. Callers on the Load path are
+expected to dedup by (type, load_arg) before loading — that is a Load-path
+concern, not this module's, and resolve() deduplicates nothing.
 """
 
-from pyjinhx2.session import get_instances
+import logging
+
+from pyjinhx2.session import _instances, get_instances
+
+logger = logging.getLogger("pyjinhx2")
 
 
 def make_key(type_name: str, instance_id: str) -> str:
@@ -44,3 +48,29 @@ def resolve(type_name: str, instance_id: str) -> object:
     if key not in instances:
         raise LookupError(f"No instance registered under key {key!r}")
     return instances[key]
+
+
+def register_instance(type_name: str, instance_id: str, entry: object) -> None:
+    """Store an entry in this request's registry under its composite key.
+
+    The only function that mutates the registry: resolve() and every other
+    reader leaves the store untouched.
+
+    Args:
+        type_name: The component type's name.
+        instance_id: The instance's id, unique within one request.
+        entry: What resolve() should hand back — a live instance or a cached
+            RenderedLevel, stored as-is.
+    """
+    key = make_key(type_name, instance_id)
+    # get_instances() answers a throwaway {} outside a scope, so writing there
+    # would silently vanish; say so instead of pretending the entry landed.
+    instances = get_instances()
+    if not instances and _instances.get() is None:
+        logger.warning(
+            "Entry for key %r registered outside request_scope(); dropped.", key
+        )
+        return
+    if key in instances:
+        logger.warning("Key %r is already registered; overwriting.", key)
+    instances[key] = entry
