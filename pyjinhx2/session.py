@@ -3,6 +3,7 @@
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from contextvars import ContextVar
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from jinja2 import Environment, FileSystemLoader
@@ -28,6 +29,10 @@ _cache_store: ContextVar[dict[object, object] | None] = ContextVar(
 )
 
 
+class NoActiveRequestScope(RuntimeError):
+    """Raised when per-request state is touched outside an active request_scope()."""
+
+
 class RenderSession:
     """Session providing Jinja environment with autoescape enabled."""
 
@@ -47,6 +52,12 @@ class RenderSession:
         # Asset paths accumulate here as on_rendered fires bottom-up; a set because
         # the same component class contributes the same paths on every occurrence.
         self.asset_paths: set[str] = set()
+        # css_assets/js_assets are the L2.2.1 accumulator: descriptor paths
+        # set-added by accumulate_assets as on_rendered fires, kept separate
+        # from each other so later emission (#430) can tell <style> from
+        # <script> sources without re-inspecting any descriptor.
+        self.css_assets: set[Path] = set()
+        self.js_assets: set[Path] = set()
         # Callbacks fired once per component render, after that level's
         # RenderedLevel is built (depth-first post-order once nested renders
         # exist). Subscribers read the finished descriptor/level; they never
@@ -57,6 +68,34 @@ class RenderSession:
 def current_session() -> RenderSession | None:
     """Return the RenderSession bound to this request, or None outside a scope."""
     return _render_session.get()
+
+
+def accumulate_assets(component: Any, level: "RenderedLevel") -> None:
+    """Set-add the rendered class's descriptor asset paths into the request store.
+
+    Meant to be subscribed onto ``RenderSession.on_rendered``. Paths are read
+    straight from the frozen descriptor and never re-probed; duplicates across
+    instances or classes collapse because the store is a set keyed by path.
+
+    Args:
+        component: The component that was just rendered (unused; on_rendered's
+            callback shape always passes it).
+        level: The RenderedLevel carrying the class descriptor.
+
+    Raises:
+        NoActiveRequestScope: If fired outside an active request_scope().
+    """
+    session = current_session()
+    if session is None:
+        raise NoActiveRequestScope(
+            "accumulate_assets fired outside an active request_scope(); wrap "
+            "rendering in request_scope()"
+        )
+    # RenderedLevel.descriptor is typed as `object` to keep segments.py
+    # import-pure; read structurally here rather than importing ClassDescriptor.
+    descriptor: Any = level.descriptor
+    session.css_assets.update(descriptor.css_paths)
+    session.js_assets.update(descriptor.js_paths)
 
 
 def get_instances() -> dict[str, object]:
@@ -84,16 +123,24 @@ def get_cache_store() -> dict[object, object]:
 
 
 @contextmanager
-def request_scope(template_dir: str = "templates") -> Iterator[RenderSession]:
+def request_scope(
+    template_dir: str = "templates", session: "RenderSession | None" = None
+) -> Iterator[RenderSession]:
     """Bind fresh per-request state for the duration of the block.
 
     Args:
-        template_dir: Directory the new RenderSession loads templates from.
+        template_dir: Directory a newly-constructed RenderSession loads
+            templates from. Ignored when ``session`` is given.
+        session: An existing RenderSession to bind as this scope's current
+            session, instead of constructing a fresh one. Lets a caller wire
+            hooks (e.g. ``on_rendered``) onto a session before it becomes the
+            one ``current_session()``/``accumulate_assets`` see as active.
 
     Yields:
         The RenderSession bound for this scope.
     """
-    session = RenderSession(template_dir)
+    if session is None:
+        session = RenderSession(template_dir)
     session_token = _render_session.set(session)
     instances_token = _instances.set({})
     dirtied_token = _dirtied.set(set())
