@@ -54,10 +54,50 @@
     }
   }
 
+  // htmx core silently drops hx-swap-oob swaps that target <head>, so the
+  // component assets the server carries alongside OOB fragments have to be
+  // parsed out of the raw response and appended here. Fresh nodes: a parsed
+  // <script> clone never executes. Dedup is per token, not per node, because
+  // swaps replace the nodes that carried the previous copy.
+  function pjxApplyHeadAssets(html) {
+    if (!html || html.indexOf('hx-swap-oob="beforeend:head"') === -1) {
+      return;
+    }
+    var doc = new DOMParser().parseFromString(html, "text/html");
+    Array.prototype.forEach.call(
+      doc.querySelectorAll("[data-pjx-asset]"),
+      function (node) {
+        var tag = node.tagName.toLowerCase();
+        if (tag !== "style" && tag !== "script") {
+          return;
+        }
+        var token = node.getAttribute("data-pjx-asset");
+        if (document.head.querySelector('[data-pjx-asset="' + token + '"]')) {
+          return;
+        }
+        var fresh = document.createElement(tag);
+        fresh.setAttribute("data-pjx-asset", token);
+        if (tag === "script" && node.src) {
+          fresh.src = node.src;
+        } else {
+          fresh.textContent = node.textContent;
+        }
+        document.head.appendChild(fresh);
+      }
+    );
+  }
+
+  function pjxApplyHeadAssetsFromRequest(evt) {
+    var xhr = evt.detail && evt.detail.xhr;
+    pjxApplyHeadAssets(xhr && xhr.responseText);
+  }
+
   pjx.manifest = pjxManifest;
   pjx.loadedAssets = pjxLoadedAssets;
   pjx.trigger = pjxTrigger;
+  pjx.applyHeadAssets = pjxApplyHeadAssets;
   window.pjx = pjx;
 
   document.body.addEventListener("htmx:configRequest", pjxConfigRequest);
+  document.body.addEventListener("htmx:afterRequest", pjxApplyHeadAssetsFromRequest);
 })();
