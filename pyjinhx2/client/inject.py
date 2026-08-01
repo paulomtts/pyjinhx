@@ -93,3 +93,31 @@ def inject_runtime(session: RenderSession, request: Any = None) -> None:
         f"<script>{read_vendored_htmx()}{read_pjx_runtime()}</script>"
     )
     session.runtime_injected = True
+
+
+class LoadedAssets:
+    """Parser for the ``X-PJX-Assets`` header."""
+
+    @staticmethod
+    def parse(client: str | list[str] | object | None) -> frozenset[str]:
+        """Return the asset tokens the browser reports it already has.
+
+        Accepts a raw header string, a pre-parsed list, a request-like object,
+        or None. Anything unreadable yields an empty set: re-sending an asset
+        the client already has is wasteful but harmless, while raising on a
+        browser-supplied header would take the whole response down.
+        """
+        if client is None or client == "":
+            return frozenset()
+        if isinstance(client, list):
+            return frozenset(str(token) for token in client)
+        if isinstance(client, str):
+            try:
+                parsed = json.loads(client)
+            except json.JSONDecodeError:
+                logger.warning("Could not parse %s as JSON; ignoring.", PJX_ASSETS_HEADER)
+                return frozenset()
+            if not isinstance(parsed, list):
+                return frozenset()
+            return frozenset(str(token) for token in parsed)  # pyright: ignore[reportUnknownVariableType]
+        return LoadedAssets.parse(_header_value(client, PJX_ASSETS_HEADER))

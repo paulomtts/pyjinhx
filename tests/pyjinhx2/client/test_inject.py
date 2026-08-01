@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import logging
+
 import pytest
 
 from pyjinhx2.assets import AssetMode
@@ -131,3 +133,46 @@ def test_header_value_returns_none_for_unusable_sources():
     assert _header_value(FakeRequest({"Accept": "text/html"}), PJX_ASSETS_HEADER) is None
     assert _header_value(object(), PJX_ASSETS_HEADER) is None
     assert _header_value(None, PJX_ASSETS_HEADER) is None
+
+
+def test_loaded_assets_parses_a_json_string_list():
+    from pyjinhx2.client.inject import LoadedAssets
+
+    assert LoadedAssets.parse('["card.css", "chart.js"]') == frozenset(
+        {"card.css", "chart.js"}
+    )
+
+
+def test_loaded_assets_accepts_a_pre_parsed_list():
+    from pyjinhx2.client.inject import LoadedAssets
+
+    assert LoadedAssets.parse(["card.css", "card.css"]) == frozenset({"card.css"})
+
+
+def test_loaded_assets_reads_the_header_off_a_request():
+    from pyjinhx2.client.inject import PJX_ASSETS_HEADER, LoadedAssets
+
+    exact = FakeRequest({PJX_ASSETS_HEADER: '["card.css"]'})
+    lower = FakeRequest({PJX_ASSETS_HEADER.lower(): '["card.css"]'})
+
+    assert LoadedAssets.parse(exact) == frozenset({"card.css"})
+    assert LoadedAssets.parse(lower) == frozenset({"card.css"})
+
+
+@pytest.mark.parametrize(
+    "client",
+    [None, "", FakeRequest({"Accept": "text/html"}), object(), '{"a": 1}', "[]"],
+)
+def test_loaded_assets_empty_inputs_yield_an_empty_frozenset(client: object):
+    from pyjinhx2.client.inject import LoadedAssets
+
+    assert LoadedAssets.parse(client) == frozenset()
+
+
+def test_loaded_assets_warns_and_falls_open_on_malformed_json(caplog):
+    from pyjinhx2.client.inject import PJX_ASSETS_HEADER, LoadedAssets
+
+    with caplog.at_level(logging.WARNING, logger="pyjinhx2.client.inject"):
+        assert LoadedAssets.parse("not json") == frozenset()
+
+    assert PJX_ASSETS_HEADER in caplog.text
