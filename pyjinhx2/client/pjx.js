@@ -32,9 +32,19 @@
     return tokens;
   }
 
+  function pjxRoot(el) {
+    return el && el.closest ? el.closest("[data-pjx-id]") : null;
+  }
+
+  function pjxTrigger(elt) {
+    var root = pjxRoot(elt);
+    return root ? { id: root.dataset.pjxId } : null;
+  }
+
   document.body.addEventListener("htmx:configRequest", function () {});
 
   pjx.manifest = pjxManifest;
   pjx.loadedAssets = pjxLoadedAssets;
+  pjx.trigger = pjxTrigger;
   window.pjx = pjx;
 })();
