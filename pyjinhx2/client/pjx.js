@@ -118,6 +118,13 @@
   pjx.promoteInlineAssets = pjxPromoteInlineAssets;
   window.pjx = pjx;
 
+  if (!window.htmx) {
+    console.error(
+      "[pyjinhx] htmx not found — reactivity (OOB swaps) will not work. " +
+        "Load htmx before pjx.js."
+    );
+  }
+
   pjxPromoteInlineAssets();
   document.body.addEventListener("htmx:configRequest", pjxConfigRequest);
   document.body.addEventListener("htmx:afterRequest", pjxApplyHeadAssetsFromRequest);
