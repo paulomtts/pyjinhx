@@ -165,7 +165,7 @@ All 60+ components. Pure consumers of everything above — no engine edges of th
 
 **Assets flow through two doors.** Cold render: RenderSession → inline tags at serialize. Reactive swap: fan-out compares session accumulation against `X-PJX-Assets` and ships only the delta as OOB fragments. Same accumulator, two emission paths — which is why RenderSession lives in L2 but has a dotted edge into L3.
 
-**Discovery and `{#def#}` are the only writers at import time; everything per-request is ContextVar.** The full mutable-state census (invariant 4): class registry + descriptors (built-then-swap, import/registration time), instance registry + RenderSession + dirtied keys + LoadCache request store (ContextVar, reset by `request_scope`). Nothing else. A mechanism needing mutable state not in this census amends this census first.
+**Discovery and `{#def#}` are the only writers at import time; everything per-request is ContextVar.** The full mutable-state census (invariant 4): class registry + descriptors (built-then-swap, import/registration time), instance registry + RenderSession + dirtied keys + LoadCache request store + LoadCache reverse index (ContextVar, reset by `request_scope`). Nothing else. A mechanism needing mutable state not in this census amends this census first.
 
 **Unknown PascalCase passes through.** `Expand`'s dotted edge to the class registry: a miss is not an error — the tag is emitted verbatim (it may be a web component or intentional markup). Only registered names become renders. This is unchanged from v0.x and load-bearing for the builtins' composed families.
 

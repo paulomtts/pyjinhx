@@ -1,10 +1,10 @@
-"""request_scope's four ContextVars: fresh in, prior state out.
+"""request_scope's five ContextVars: fresh in, prior state out.
 
-The four pieces of per-request mutable state (RenderSession asset slot, instance
-registry, dirtied keys, cache store) are the entire ContextVar half of the
-mutable-state census. These tests pin the container lifecycle - creation,
-nesting, exception cleanup, thread isolation - not any read/write semantics,
-which land with the modules that consume them.
+The five pieces of per-request mutable state (RenderSession asset slot, instance
+registry, dirtied keys, cache store, cache reverse index) are the entire
+ContextVar half of the mutable-state census. These tests pin the container
+lifecycle - creation, nesting, exception cleanup, thread isolation - not any
+read/write semantics, which land with the modules that consume them.
 """
 
 import threading
@@ -323,3 +323,19 @@ def test_session_starts_with_no_runtime_injected():
     session = session_module.RenderSession()
     assert session.runtime_injected is False
     assert session.runtime_script is None
+
+
+def test_cache_reverse_is_empty_outside_a_request_scope():
+    from pyjinhx2.session import get_cache_reverse
+
+    assert get_cache_reverse() == {}
+
+
+def test_cache_reverse_is_fresh_per_request_scope():
+    from pyjinhx2.session import get_cache_reverse, request_scope
+
+    with request_scope():
+        get_cache_reverse()["todos"] = {(int, 1)}
+        assert get_cache_reverse() == {"todos": {(int, 1)}}
+    with request_scope():
+        assert get_cache_reverse() == {}

@@ -1,4 +1,10 @@
-from pyjinhx2.reactive.cache import cache_get, cache_has, cache_put, make_key
+from pyjinhx2.reactive.cache import (
+    cache_get,
+    cache_has,
+    cache_put,
+    invalidate,
+    make_key,
+)
 from pyjinhx2.session import get_cache_store, request_scope
 
 
@@ -88,3 +94,28 @@ def test_any_hashable_key_is_accepted():
         cache_put(Widget, ("todo", 7), "tuple key")
         assert cache_get(Widget, 42) == "int key"
         assert cache_get(Widget, ("todo", 7)) == "tuple key"
+
+
+def test_invalidate_evicts_an_entry_registered_under_the_dirtied_key():
+    with request_scope():
+        cache_put(Widget, "todos", "loaded", react_keys=["todos"])
+        assert cache_has(Widget, "todos") is True
+        invalidate(["todos"])
+        assert cache_has(Widget, "todos") is False
+        assert cache_get(Widget, "todos") is None
+
+
+def test_invalidate_leaves_entries_registered_under_other_keys_alone():
+    with request_scope():
+        cache_put(Widget, "todos", "todo value", react_keys=["todos"])
+        cache_put(OtherWidget, "users", "user value", react_keys=["users"])
+        invalidate(["todos"])
+        assert cache_has(Widget, "todos") is False
+        assert cache_get(OtherWidget, "users") == "user value"
+
+
+def test_invalidate_on_a_key_with_no_entries_is_a_no_op():
+    with request_scope():
+        cache_put(Widget, "todos", "loaded", react_keys=["todos"])
+        invalidate(["nothing-depends-on-this"])
+        assert cache_get(Widget, "todos") == "loaded"
