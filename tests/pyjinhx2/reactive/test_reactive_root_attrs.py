@@ -40,7 +40,9 @@ def _descriptor_for(cls: type[BaseComponent], template: str) -> ClassDescriptor:
     )
 
 
-ReactiveWidget.__pjx_descriptor__ = _descriptor_for(ReactiveWidget, "reactive_widget.html")
+ReactiveWidget.__pjx_descriptor__ = _descriptor_for(
+    ReactiveWidget, "reactive_widget.html"
+)
 PlainWidget.__pjx_descriptor__ = _descriptor_for(PlainWidget, "plain_widget.html")
 
 
