@@ -230,6 +230,10 @@ def render_level(
     # Unregistered tags stop being holes here, one pass per level (ADR 0005);
     # the ones that do resolve become instances the recursive step consumes.
     for index, child in _fill_children(level):
+        # A reactive child's pjx_mount() routes its load() through the request
+        # cache before it renders; a plain component's is a no-op, so this
+        # fires for every child and never needs a reactive/ import here.
+        child.pjx_mount()
         # Each child gets its own render_level call, so it does its own single
         # parse and enters this list as a whole object — never text spliced into
         # text, which is what keeps a child's markup un-reparsed and un-escaped.
