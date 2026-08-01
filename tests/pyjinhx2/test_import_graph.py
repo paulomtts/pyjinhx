@@ -110,6 +110,24 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
             "pyjinhx2.session",
         }
     ),
+    # The L3.5.1 manifest walk (#466): read-only against discovery (tag ->
+    # class), the registry (resolve() only, never register_instance - E7),
+    # and the load cache (a separate key space, E13). It re-renders a dirty
+    # candidate through render_level(), the same primitive root_attrs.py
+    # uses, and falls back to current_session() rather than ever building an
+    # unscoped RenderSession with the wrong template_dir.
+    "reactive.fanout": frozenset(
+        {
+            "pyjinhx2",
+            "pyjinhx2.discovery",
+            "pyjinhx2.registry",
+            "pyjinhx2.reactive.cache",
+            "pyjinhx2.reactive.component",
+            "pyjinhx2.reactive.keys",
+            "pyjinhx2.render",
+            "pyjinhx2.session",
+        }
+    ),
     # The instance registry (ADR 0009) is read-only over session's ContextVar
     # store; it consumes get_instances() and nothing else in pyjinhx2. The
     # register_rendered_instance signature also names RenderedLevel, but that
