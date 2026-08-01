@@ -14,6 +14,7 @@ from pyjinhx2.reactive.fanout import (
     _drop_nested,
     _mounted_ids_in,
     delete_swap,
+    oob_swaps,
     walk_manifest,
 )
 from pyjinhx2.segments import ChildRef, RenderedLevel
@@ -584,6 +585,38 @@ def test_a_gone_region_walks_to_a_delete_fragment_without_loading_anything(
     assert LOAD_CALLS == []
     assert candidate_.level is None
     assert calls == []
+
+
+def _dirty_candidate(instance_id: str) -> FanoutCandidate:
+    """A real dirty FanoutCandidate, built the same way the walk builds one."""
+    with scope():
+        registry.register_instance(FanoutWidget.__name__, instance_id, "resolved-entry")
+        [c] = walk_manifest(
+            [entry("fanout_widget", instance_id, load="todo-1")], {"todos"}
+        )
+    return c
+
+
+def _missing_candidate(instance_id: str) -> FanoutCandidate:
+    return missing_candidate(instance_id)
+
+
+def _clean_candidate(instance_id: str) -> FanoutCandidate:
+    return candidate(instance_id, status="clean")
+
+
+def test_oob_swaps_mixes_dirty_missing_and_clean():
+    dirty = _dirty_candidate("a")
+    missing = _missing_candidate("b")
+    clean = _clean_candidate("c")
+
+    body = oob_swaps([dirty, missing, clean])
+
+    fragments = body.split("\n")
+    assert len(fragments) == 2
+    assert "hx-swap-oob=\"outerHTML:[data-pjx-id='a']\"" in fragments[0]
+    assert "data-pjx-hash=" in fragments[0]
+    assert fragments[1] == "<div hx-swap-oob=\"delete:[data-pjx-id='b']\"></div>"
 
 
 def test_walk_manifest_runs_the_nesting_dedup_on_its_survivors(monkeypatch):

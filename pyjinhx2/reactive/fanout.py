@@ -32,7 +32,8 @@ from pyjinhx2.reactive.cache import cache_get, cache_has
 from pyjinhx2.reactive.component import ReactiveComponent
 from pyjinhx2.reactive.keys import coerce_load_key_str
 from pyjinhx2.render import render_level
-from pyjinhx2.segments import ChildRef, RenderedLevel
+from pyjinhx2.root_attrs import stamp_root_attrs
+from pyjinhx2.segments import ChildRef, RenderedLevel, serialize
 from pyjinhx2.session import RenderSession, current_session
 
 
@@ -70,8 +71,10 @@ class FanoutCandidate:
     fresh_hash: str | None = None
     """The dirty path's freshly computed state hash; None on clean/missing.
 
-    #471 stamps this back onto the swapped region's ``data-pjx-hash``, so the
-    next manifest reports the hash the client is actually showing.
+    ``oob_swaps()`` stamps this onto the swapped region's ``data-pjx-hash``
+    (``stamp_reactive_root_attrs`` is not wired onto the dirty path's session,
+    so nothing else does it first), so the next manifest reports the hash the
+    client is actually showing.
     """
 
 
@@ -129,8 +132,8 @@ def _build_dirty(
     ``instance.load()`` goes through the L3.2 memo wrap, which is what writes
     the fresh entry to the cache — fanout never calls ``cache_put`` itself, so
     the key derivation stays in exactly one place. ``render_level()`` rather
-    than ``render()``: #471 splices at a root_span, and only the level carries
-    one.
+    than ``render()``: ``oob_swaps()`` splices at a root_span, and only the
+    level carries one.
     """
     fields: dict[str, Any] = {"id": instance_id}
     if cls._pjx_key_field is not None:
@@ -308,7 +311,7 @@ def walk_manifest(
 
     Turning a ``"missing"`` candidate into a delete swap is ``delete_swap()``
     below; assembling those fragments with the real swaps into one response
-    body is #471's, and is deliberately not done here.
+    body is ``oob_swaps()``, and is deliberately not done here.
     """
     dirty = set(dirtied_keys)
     excluded = _mounted_ids_in(primary_html)
@@ -404,8 +407,8 @@ def delete_swap(candidate: FanoutCandidate) -> Markup:
 
     Raises:
         ValueError: The candidate is not ``"missing"``. Rendering real content
-            for a clean or dirty candidate belongs to #471; answering an empty
-            string here would hide that caller bug.
+            for a clean or dirty candidate belongs to ``oob_swaps()``;
+            answering an empty string here would hide that caller bug.
     """
     if candidate.status != "missing":
         raise ValueError(
@@ -413,6 +416,56 @@ def delete_swap(candidate: FanoutCandidate) -> Markup:
         )
     selector = f"delete:[data-pjx-id='{_css_attr_value(candidate.instance_id)}']"
     return Markup(f'<div hx-swap-oob="{selector}"></div>')
+
+
+def oob_swaps(candidates: list[FanoutCandidate]) -> Markup:
+    """The whole OOB response body for one walk's candidates, in candidate order.
+
+    Each dirty candidate's already-built level is stamped with its own
+    ``outerHTML`` swap and its ``data-pjx-hash`` at the root_span the original
+    parse recorded, in one ``stamp_root_attrs`` splice — never a re-parse of
+    rendered markup. ``stamp_reactive_root_attrs`` (the ``on_rendered``
+    subscriber that stamps ``data-pjx-hash`` on a normal render) is not wired
+    onto the session ``_build_dirty`` uses, so this function stamps the hash
+    itself from ``candidate.fresh_hash`` rather than assuming it's already
+    there.
+
+    Only two swap values ever leave this function, ``outerHTML:`` here and
+    ``delete:`` from ``delete_swap`` (ADR 0001). A clean candidate emits
+    nothing: its region is byte-identical to what the client already shows.
+
+    Args:
+        candidates: ``walk_manifest()`` output. Every filter — hash gate, dedup,
+            nesting, primary-region exclusion — has already been applied; this
+            function re-decides none of them.
+
+    Returns:
+        The surviving fragments joined by newlines, or ``Markup("")`` when no
+        candidate is dirty or missing.
+    """
+    fragments: list[str] = []
+    for candidate in candidates:
+        if candidate.status == "dirty":
+            level = candidate.level
+            # walk_manifest never produces a dirty candidate without a level
+            # and a fresh_hash; failing here surfaces that contract break
+            # instead of quietly shipping a response that is missing one
+            # region's swap or its hash.
+            assert isinstance(level, RenderedLevel), (
+                f"dirty candidate {candidate.instance_id!r} carries "
+                f"{type(level).__name__}, not a RenderedLevel"
+            )
+            assert candidate.fresh_hash is not None, (
+                f"dirty candidate {candidate.instance_id!r} carries no fresh_hash"
+            )
+            selector = (
+                f"outerHTML:[data-pjx-id='{_css_attr_value(candidate.instance_id)}']"
+            )
+            attrs = {"hx-swap-oob": selector, "data-pjx-hash": candidate.fresh_hash}
+            fragments.append(serialize(stamp_root_attrs(level, attrs)))
+        elif candidate.status == "missing":
+            fragments.append(delete_swap(candidate))
+    return Markup("\n".join(fragments))
 
 
 # TODO(#449): registry.register_rendered_instance is exported but subscribed by
