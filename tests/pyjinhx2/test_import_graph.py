@@ -69,6 +69,9 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
     "render_context": frozenset({"pyjinhx2.markers", "pyjinhx2.component"}),
     "reactive.__init__": frozenset(),
     "reactive.keys": frozenset(),
+    # mutations.py records dirtied keys through session's public writer; it owns
+    # no ContextVar of its own and never reaches sideways into cache.py.
+    "reactive.mutations": frozenset({"pyjinhx2.session", "pyjinhx2.reactive.keys"}),
     # The instance registry (ADR 0009) is read-only over session's ContextVar
     # store; it consumes get_instances() and nothing else in pyjinhx2. The
     # register_rendered_instance signature also names RenderedLevel, but that
@@ -172,7 +175,8 @@ def test_no_render_spine_module_declares_a_reactive_import():
     guards the allowlist table itself — it must fail the moment someone adds
     a pyjinhx2.reactive entry to any spine module's allowed set, before a
     single file under reactive/ is ever written."""
-    for module, allowed in ALLOWED_INTERNAL_IMPORTS.items():
+    for module in RENDER_SPINE_MODULES:
+        allowed = ALLOWED_INTERNAL_IMPORTS.get(module, frozenset())
         reactive_edges = {
             name
             for name in allowed
