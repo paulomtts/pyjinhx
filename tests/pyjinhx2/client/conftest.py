@@ -42,14 +42,14 @@ def _require_chromium(request: pytest.FixtureRequest) -> None:
 
 
 @pytest.fixture
-def pjx_page(page: "Page") -> Iterator[Callable[..., "Page"]]:
+def pjx_page(page: Page) -> Iterator[Callable[..., Page]]:
     """Load `body` into the page, then run pjx.js against it.
 
     `head` seeds pre-existing <head> assets; `with_htmx` stubs window.htmx so the
     runtime takes its normal path (the missing-htmx case opts out).
     """
 
-    def load(body: str, head: str = "", with_htmx: bool = True) -> "Page":
+    def load(body: str, head: str = "", with_htmx: bool = True) -> Page:
         page.set_content(f"<head>{head}</head><body>{body}</body>")
         if with_htmx:
             page.evaluate("window.htmx = {}")

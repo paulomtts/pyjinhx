@@ -86,6 +86,7 @@ def test_second_call_on_the_same_session_is_a_no_op():
     # just leave it unchanged, so this catches concatenation-on-top-of-itself
     # bugs that `== first` alone would still pass if both calls produced
     # identical (but doubled) output by coincidence.
+    assert first is not None
     assert len(session.runtime_script) == len(first)
     assert session.runtime_injected is True
 
