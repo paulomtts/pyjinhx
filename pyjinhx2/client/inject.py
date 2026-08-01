@@ -1,14 +1,44 @@
-"""Cold-render injection of the pjx.js runtime into a session's output."""
+"""Cold-render injection of the pjx.js runtime, and pjx request header parsing."""
 
 from __future__ import annotations
 
+import json
+import logging
 from typing import Any
 
 from pyjinhx2.assets import AssetMode
 from pyjinhx2.client import read_pjx_runtime, read_vendored_htmx
 from pyjinhx2.session import RenderSession
 
+logger = logging.getLogger(__name__)
+
 PJX_MOUNTED_HEADER = "X-PJX-Mounted"
+"""Header carrying the client's mounted-region manifest."""
+
+PJX_TRIGGER_HEADER = "X-PJX-Trigger"
+"""Header carrying the data-pjx-id of the element that started the request."""
+
+PJX_ASSETS_HEADER = "X-PJX-Assets"
+"""Header carrying the client's already-loaded asset token set."""
+
+
+def _header_value(source: Any, name: str) -> str | None:
+    """Read header *name* off a request-like *source*, or None if unavailable.
+
+    Checks the exact name then the lowercase one: a real ASGI request's
+    headers are case-insensitive, but a plain dict from a test or a
+    hand-rolled client is not.
+    """
+    headers = getattr(source, "headers", None)
+    if headers is None:
+        return None
+    try:
+        value = headers.get(name)
+        if value is None:
+            value = headers.get(name.lower())
+    except AttributeError:
+        return None
+    return value
 
 
 def _is_mounted_request(request: Any) -> bool:
@@ -63,3 +93,90 @@ def inject_runtime(session: RenderSession, request: Any = None) -> None:
         f"<script>{read_vendored_htmx()}{read_pjx_runtime()}</script>"
     )
     session.runtime_injected = True
+
+
+class LoadedAssets:
+    """Parser for the ``X-PJX-Assets`` header."""
+
+    @staticmethod
+    def parse(client: str | list[str] | object | None) -> frozenset[str]:
+        """Return the asset tokens the browser reports it already has.
+
+        Accepts a raw header string, a pre-parsed list, a request-like object,
+        or None. Anything unreadable yields an empty set: re-sending an asset
+        the client already has is wasteful but harmless, while raising on a
+        browser-supplied header would take the whole response down.
+        """
+        if client is None or client == "":
+            return frozenset()
+        if isinstance(client, list):
+            return frozenset(str(token) for token in client)
+        if isinstance(client, str):
+            try:
+                parsed = json.loads(client)
+            except json.JSONDecodeError:
+                logger.warning(
+                    "Could not parse %s as JSON; ignoring.", PJX_ASSETS_HEADER
+                )
+                return frozenset()
+            if not isinstance(parsed, list):
+                return frozenset()
+            return frozenset(str(token) for token in parsed)  # pyright: ignore[reportUnknownVariableType]
+        return LoadedAssets.parse(_header_value(client, PJX_ASSETS_HEADER))
+
+
+class MountedManifest:
+    """Parser for the ``X-PJX-Mounted`` header."""
+
+    @staticmethod
+    def parse(
+        mounted: str | list[dict[str, Any]] | object | None,
+    ) -> list[dict[str, Any]]:
+        """Return the regions the browser reports it currently has mounted.
+
+        Each entry is ``{id, type, load, hash}``. Accepts a raw header string,
+        a pre-parsed list, a request-like object, or None. Anything unreadable
+        yields an empty list, which downstream fanout reads as "nothing is
+        mounted" — a full render rather than a failed one.
+        """
+        if mounted is None or mounted == "":
+            return []
+        if isinstance(mounted, list):
+            return mounted
+        if isinstance(mounted, str):
+            try:
+                parsed = json.loads(mounted)
+            except json.JSONDecodeError:
+                logger.warning(
+                    "Could not parse %s as JSON; ignoring.", PJX_MOUNTED_HEADER
+                )
+                return []
+            return parsed if isinstance(parsed, list) else []
+        return MountedManifest.parse(_header_value(mounted, PJX_MOUNTED_HEADER))
+
+
+class TriggerManifest:
+    """Parser for the ``X-PJX-Trigger`` header."""
+
+    @staticmethod
+    def parse(client: str | dict[str, Any] | object | None) -> dict[str, Any] | None:
+        """Return the descriptor of the element that started the request.
+
+        Accepts a raw header string, a pre-parsed dict, a request-like object,
+        or None. A descriptor without a truthy ``id`` is useless to callers
+        that key off it, so it collapses to None rather than a half-empty dict.
+        """
+        if client is None or client == "":
+            return None
+        if isinstance(client, dict):
+            return client if client.get("id") else None  # pyright: ignore[reportUnknownArgumentType]
+        if isinstance(client, str):
+            try:
+                parsed = json.loads(client)
+            except json.JSONDecodeError:
+                logger.warning(
+                    "Could not parse %s as JSON; ignoring.", PJX_TRIGGER_HEADER
+                )
+                return None
+            return parsed if isinstance(parsed, dict) and parsed.get("id") else None
+        return TriggerManifest.parse(_header_value(client, PJX_TRIGGER_HEADER))
