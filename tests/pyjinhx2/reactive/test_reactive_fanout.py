@@ -528,6 +528,26 @@ def test_delete_swap_for_a_plain_id_is_a_bare_oob_delete_div():
     )
 
 
+def test_delete_swap_escapes_a_single_quote_in_the_id():
+    fragment = delete_swap(missing_candidate("it's-here"))
+    assert "delete:[data-pjx-id='it\\'s-here']" in fragment
+    # The selector's quoting stays balanced: exactly the opening and closing
+    # quote are unescaped, so nothing after the id leaks into the selector.
+    assert fragment.count("'") - fragment.count("\\'") == 2
+
+
+def test_delete_swap_escapes_a_backslash_in_the_id():
+    fragment = delete_swap(missing_candidate("back\\slash"))
+    assert "delete:[data-pjx-id='back\\\\slash']" in fragment
+
+
+def test_delete_swap_escapes_a_backslash_before_a_quote_without_unescaping_it():
+    # The order-sensitive case: "\\'" must become "\\\\\\'", never "\\\\'",
+    # which would end the selector's quoted value early.
+    fragment = delete_swap(missing_candidate("a\\'b"))
+    assert "delete:[data-pjx-id='a\\\\\\'b']" in fragment
+
+
 def test_walk_manifest_runs_the_nesting_dedup_on_its_survivors(monkeypatch):
     """The pass is wired into the walk, not just importable."""
     seen_calls: list[int] = []
