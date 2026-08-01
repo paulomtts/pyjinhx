@@ -428,7 +428,7 @@ def test_drop_nested_is_a_no_op_on_empty_and_singleton_lists():
 
 
 def test_mounted_ids_in_extracts_both_quote_styles():
-    html = '<div data-pjx-id="alpha"><span data-pjx-id=\'beta\'>x</span></div>'
+    html = "<div data-pjx-id=\"alpha\"><span data-pjx-id='beta'>x</span></div>"
     assert _mounted_ids_in(html) == {"alpha", "beta"}
 
 
