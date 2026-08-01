@@ -92,12 +92,33 @@
     pjxApplyHeadAssets(xhr && xhr.responseText);
   }
 
+  // A cold render emits <style data-pjx-asset> inline in the body. If that style
+  // sits inside a region that later re-renders, the swap deletes it and the
+  // server -- seeing its token in X-PJX-Assets -- won't resend it, leaving the
+  // content unstyled. <head> is the durable home. Styles only: a <script>'s
+  // effect outlives its node, and re-appending it would re-execute it.
+  function pjxPromoteInlineAssets() {
+    Array.prototype.forEach.call(
+      document.body.querySelectorAll("style[data-pjx-asset]"),
+      function (node) {
+        var token = node.getAttribute("data-pjx-asset");
+        if (document.head.querySelector('[data-pjx-asset="' + token + '"]')) {
+          node.remove();
+          return;
+        }
+        document.head.appendChild(node); // appendChild relocates body -> head
+      }
+    );
+  }
+
   pjx.manifest = pjxManifest;
   pjx.loadedAssets = pjxLoadedAssets;
   pjx.trigger = pjxTrigger;
   pjx.applyHeadAssets = pjxApplyHeadAssets;
+  pjx.promoteInlineAssets = pjxPromoteInlineAssets;
   window.pjx = pjx;
 
+  pjxPromoteInlineAssets();
   document.body.addEventListener("htmx:configRequest", pjxConfigRequest);
   document.body.addEventListener("htmx:afterRequest", pjxApplyHeadAssetsFromRequest);
 })();
