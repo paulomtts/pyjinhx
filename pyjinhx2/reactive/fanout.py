@@ -26,6 +26,7 @@ from typing import Any
 
 from pyjinhx2 import discovery
 from pyjinhx2.reactive.component import ReactiveComponent
+from pyjinhx2.reactive.keys import coerce_load_key_str
 
 
 @dataclass(frozen=True)
@@ -74,6 +75,19 @@ def _candidate_class(entry: dict[str, Any], dirtied_keys: set[str]) -> type[Reac
     return cls
 
 
+def _load_key(cls: type[ReactiveComponent], load: object) -> str | None:
+    """The load-cache key this class would build for this load arg.
+
+    The exact key ``ReactiveComponent``'s memo wrap derives, so a clean/dirty
+    answer here and a cache hit inside ``load()`` can never disagree. A class
+    with no PjxKey field keys every instance under None, exactly as the wrap
+    does.
+    """
+    if cls._pjx_key_field is None:
+        return None
+    return coerce_load_key_str(load)
+
+
 def walk_manifest(
     manifest_entries: Sequence[dict[str, Any]],
     dirtied_keys: Iterable[str],
@@ -91,11 +105,18 @@ def walk_manifest(
         dropped silently — it is not this request's concern.
     """
     dirty = set(dirtied_keys)
+    seen: set[tuple[str, str | None]] = set()
     candidates: list[FanoutCandidate] = []
     for entry in manifest_entries:
         cls = _candidate_class(entry, dirty)
         if cls is None:
             continue
+        # E10: dedup before any resolve/load/render runs, so two mounted
+        # regions standing for the same (class, load arg) cost one of each.
+        dedup_key = (str(entry["type"]), _load_key(cls, entry.get("load")))
+        if dedup_key in seen:
+            continue
+        seen.add(dedup_key)
         candidates.append(
             FanoutCandidate(
                 type_name=str(entry["type"]),

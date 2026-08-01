@@ -84,3 +84,14 @@ def test_empty_manifest_and_empty_dirtied_keys_answer_empty():
     with scope():
         assert walk_manifest([], {"todos"}) == []
         assert walk_manifest([entry("fanout_widget", "a")], set()) == []
+
+
+def test_duplicate_type_and_load_pairs_collapse_to_one_candidate():
+    manifest = [
+        entry("fanout_widget", "a", load="todo-1"),
+        entry("fanout_widget", "b", load="todo-1"),
+        entry("fanout_widget", "c", load="todo-2"),
+    ]
+    with scope():
+        candidates = walk_manifest(manifest, {"todos"})
+        assert [c.instance_id for c in candidates] == ["a", "c"]
