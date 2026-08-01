@@ -79,3 +79,73 @@ def test_loading_extra_selector_lights_regions_that_do_not_react(pjx_page):
     )
     fire(page, "#btn")
     assert classes(page, ".row") == ["row pjx-loading--spinner"]
+
+
+END_EVENTS = [
+    "htmx:afterOnLoad",
+    "htmx:responseError",
+    "htmx:timeout",
+    "htmx:sendError",
+    "htmx:abort",
+]
+
+END = """
+(arg) => {
+  const xhr = window.__xhrs[arg.name];
+  document.body.dispatchEvent(new CustomEvent(arg.event,
+    { bubbles: true, detail: { xhr: xhr } }));
+}
+"""
+
+BODY = (
+    '<div data-pjx-id="t" data-pjx-reacts="count" data-pjx-loading="skeleton">'
+    '<button id="btn"></button></div>'
+)
+
+
+def end(page, event, name="a"):
+    page.evaluate(END, {"event": event, "name": name})
+
+
+import pytest
+
+
+@pytest.mark.parametrize("event", END_EVENTS)
+def test_each_completion_event_strips_the_loading_class(pjx_page, event):
+    page = pjx_page(BODY)
+    fire(page, "#btn")
+    end(page, event)
+    assert classes(page, '[data-pjx-id="t"]') == [""]
+
+
+def test_xhr_loadend_releases_the_region(pjx_page):
+    page = pjx_page(BODY)
+    fire(page, "#btn")
+    page.evaluate("window.__xhrs.a.loadend()")
+    assert classes(page, '[data-pjx-id="t"]') == [""]
+
+
+def test_overlapping_requests_keep_the_region_lit_until_the_last_resolves(pjx_page):
+    page = pjx_page(BODY)
+    fire(page, "#btn", name="a")
+    fire(page, "#btn", name="b")
+    end(page, "htmx:afterOnLoad", name="a")
+    assert classes(page, '[data-pjx-id="t"]') == ["pjx-loading--skeleton"]
+    end(page, "htmx:afterOnLoad", name="b")
+    assert classes(page, '[data-pjx-id="t"]') == [""]
+
+
+def test_cancelled_request_neither_lights_nor_registers_a_loadend_listener(pjx_page):
+    page = pjx_page(BODY)
+    fire(page, "#btn", cancel=True)
+    assert classes(page, '[data-pjx-id="t"]') == [""]
+    assert page.evaluate("window.__xhrs.a.handlers.length") == 0
+
+
+def test_duplicate_completion_events_are_a_no_op(pjx_page):
+    page = pjx_page(BODY)
+    fire(page, "#btn")
+    end(page, "htmx:afterOnLoad")
+    end(page, "htmx:afterOnLoad")
+    assert classes(page, '[data-pjx-id="t"]') == [""]
+    assert page.evaluate("pjx.loadingCount('t')") == 0

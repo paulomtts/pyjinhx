@@ -253,7 +253,31 @@
   }
 
   function pjxEndLoading(xhrOrEvt) {
-    void xhrOrEvt; // implemented in the end-loading step
+    var xhr = xhrOrEvt && xhrOrEvt.detail ? xhrOrEvt.detail.xhr : xhrOrEvt;
+    var ids = xhr && pjxLoadingByXhr.get(xhr);
+    if (!ids) {
+      return; // already released (loadend and the htmx event both fire)
+    }
+    pjxLoadingByXhr.delete(xhr);
+    ids.forEach(function (id) {
+      pjxRelease(id);
+    });
+  }
+
+  // one ref released; at zero the region goes dark. Clamped so a duplicate
+  // release can never drive the count negative and strand a region "lit".
+  function pjxRelease(id) {
+    pjxLoading[id] = (pjxLoading[id] || 0) - 1;
+    if (pjxLoading[id] > 0) {
+      return;
+    }
+    delete pjxLoading[id];
+    var region = pjxRegion(id);
+    if (region) {
+      pjxLoadingTargets(region).forEach(function (t) {
+        t.classList.remove(pjxLoadingClass(t));
+      });
+    }
   }
 
   pjx.manifest = pjxManifest;
@@ -262,6 +286,9 @@
   pjx.applyHeadAssets = pjxApplyHeadAssets;
   pjx.promoteInlineAssets = pjxPromoteInlineAssets;
   pjx.injectStyle = pjxInjectStyle;
+  pjx.loadingCount = function (id) {
+    return pjxLoading[id] || 0;
+  };
   window.pjx = pjx;
 
   if (!window.htmx) {
@@ -276,4 +303,9 @@
   document.body.addEventListener("htmx:configRequest", pjxConfigRequest);
   document.body.addEventListener("htmx:afterRequest", pjxApplyHeadAssetsFromRequest);
   document.body.addEventListener("htmx:beforeRequest", pjxBeginLoading);
+  document.body.addEventListener("htmx:afterOnLoad", pjxEndLoading);
+  document.body.addEventListener("htmx:responseError", pjxEndLoading);
+  document.body.addEventListener("htmx:timeout", pjxEndLoading);
+  document.body.addEventListener("htmx:sendError", pjxEndLoading);
+  document.body.addEventListener("htmx:abort", pjxEndLoading);
 })();
