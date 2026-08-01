@@ -13,6 +13,7 @@ from pyjinhx2.reactive.fanout import (
     FanoutCandidate,
     _drop_nested,
     _mounted_ids_in,
+    delete_swap,
     walk_manifest,
 )
 from pyjinhx2.segments import ChildRef, RenderedLevel
@@ -506,6 +507,83 @@ def test_primary_exclusion_and_nesting_dedup_compose_in_one_walk(monkeypatch):
             primary_html='<section data-pjx-id="in-primary"></section>',
         )
     assert [c.instance_id for c in candidates] == ["parent"]
+
+
+def missing_candidate(instance_id: str, status: str = "missing") -> FanoutCandidate:
+    """A FanoutCandidate shaped exactly as walk_manifest builds one for a gone region."""
+    return FanoutCandidate(
+        type_name="fanout_widget",
+        component_class=FanoutWidget,
+        instance_id=instance_id,
+        load="todo-1",
+        status=status,
+        entry=entry("fanout_widget", instance_id, load="todo-1"),
+    )
+
+
+def test_delete_swap_for_a_plain_id_is_a_bare_oob_delete_div():
+    assert (
+        delete_swap(missing_candidate("todo-list"))
+        == "<div hx-swap-oob=\"delete:[data-pjx-id='todo-list']\"></div>"
+    )
+
+
+def test_delete_swap_escapes_a_single_quote_in_the_id():
+    fragment = delete_swap(missing_candidate("it's-here"))
+    assert "delete:[data-pjx-id='it\\'s-here']" in fragment
+    # The selector's quoting stays balanced: exactly the opening and closing
+    # quote are unescaped, so nothing after the id leaks into the selector.
+    assert fragment.count("'") - fragment.count("\\'") == 2
+
+
+def test_delete_swap_escapes_a_backslash_in_the_id():
+    fragment = delete_swap(missing_candidate("back\\slash"))
+    assert "delete:[data-pjx-id='back\\\\slash']" in fragment
+
+
+def test_delete_swap_escapes_a_backslash_before_a_quote_without_unescaping_it():
+    # The order-sensitive case: "\\'" must become "\\\\\\'", never "\\\\'",
+    # which would end the selector's quoted value early.
+    fragment = delete_swap(missing_candidate("a\\'b"))
+    assert "delete:[data-pjx-id='a\\\\\\'b']" in fragment
+
+
+@pytest.mark.parametrize("status", ["clean", "dirty"])
+def test_delete_swap_rejects_a_non_missing_candidate(status):
+    with pytest.raises(ValueError, match=status):
+        delete_swap(missing_candidate("a", status=status))
+
+
+def test_delete_swap_of_an_empty_id_is_still_a_fragment():
+    # walk_manifest coerces an entry with no id to "", and that is not this
+    # function's problem to diagnose — it emits the selector it was given.
+    assert (
+        delete_swap(missing_candidate(""))
+        == "<div hx-swap-oob=\"delete:[data-pjx-id='']\"></div>"
+    )
+
+
+def test_a_gone_region_walks_to_a_delete_fragment_without_loading_anything(
+    monkeypatch,
+):
+    calls: list[tuple] = []
+    monkeypatch.setattr(
+        registry, "register_instance", lambda *a, **kw: calls.append((a, kw))
+    )
+    with scope():
+        [candidate_] = walk_manifest(
+            [entry("fanout_widget", "gone-1", load="todo-1")], {"todos"}
+        )
+    assert candidate_.status == "missing"
+    assert (
+        delete_swap(candidate_)
+        == "<div hx-swap-oob=\"delete:[data-pjx-id='gone-1']\"></div>"
+    )
+    # A missing region costs no load, no render and no registry write on the
+    # whole path from manifest entry to delete fragment.
+    assert LOAD_CALLS == []
+    assert candidate_.level is None
+    assert calls == []
 
 
 def test_walk_manifest_runs_the_nesting_dedup_on_its_survivors(monkeypatch):
