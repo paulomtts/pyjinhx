@@ -41,10 +41,23 @@
     return root ? { id: root.dataset.pjxId } : null;
   }
 
-  document.body.addEventListener("htmx:configRequest", function () {});
+  function pjxConfigRequest(evt) {
+    var headers = evt.detail && evt.detail.headers;
+    if (!headers) {
+      return;
+    }
+    headers["X-PJX-Mounted"] = JSON.stringify(pjxManifest());
+    headers["X-PJX-Assets"] = JSON.stringify(pjxLoadedAssets());
+    var trigger = pjxTrigger(evt.detail.elt);
+    if (trigger) {
+      headers["X-PJX-Trigger"] = JSON.stringify(trigger);
+    }
+  }
 
   pjx.manifest = pjxManifest;
   pjx.loadedAssets = pjxLoadedAssets;
   pjx.trigger = pjxTrigger;
   window.pjx = pjx;
+
+  document.body.addEventListener("htmx:configRequest", pjxConfigRequest);
 })();
