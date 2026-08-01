@@ -154,3 +154,23 @@ def test_re_putting_an_entry_drops_its_previous_reactive_keys():
         assert cache_get(Widget, "todos") == "second"
         invalidate(["users"])
         assert cache_has(Widget, "todos") is False
+
+
+def test_the_reverse_index_maps_each_reactive_key_to_its_entries():
+    with request_scope():
+        cache_put(Widget, "todos", "widget value", react_keys=["todos"])
+        cache_put(OtherWidget, "todos", "other value", react_keys=["todos"])
+        cache_put(Widget, "users", "user value", react_keys=["users"])
+        assert get_cache_reverse() == {
+            "todos": {(Widget, "todos"), (OtherWidget, "todos")},
+            "users": {(Widget, "users")},
+        }
+
+
+def test_an_entry_with_no_reactive_keys_survives_any_invalidation():
+    with request_scope():
+        cache_put(Widget, "todos", "memoized")
+        invalidate(["todos"])
+        invalidate(["users", "anything-else"])
+        assert cache_get(Widget, "todos") == "memoized"
+        assert get_cache_reverse() == {}
