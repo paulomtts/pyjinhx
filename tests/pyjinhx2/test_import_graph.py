@@ -87,6 +87,17 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
     # mutations.py records dirtied keys through session's public writer; it owns
     # no ContextVar of its own and never reaches sideways into cache.py.
     "reactive.mutations": frozenset({"pyjinhx2.session", "pyjinhx2.reactive.keys"}),
+    # ReactiveResponse (L3.6.1) composes one body out of the primary render and
+    # fanout.py's OOB candidates; it reads the manifest parser, the fanout walk
+    # and session's request-scoped dirtied-key/session accessors, and nothing
+    # else. No registry edge (ADR 0009): fanout.py already owns registry reads.
+    "reactive.response": frozenset(
+        {
+            "pyjinhx2.client.inject",
+            "pyjinhx2.reactive.fanout",
+            "pyjinhx2.session",
+        }
+    ),
     # ReactiveComponent subclasses BaseComponent and routes load() through the
     # cache: the two edges below are the whole design. The reverse - anything in
     # the render spine importing reactive/ - stays forbidden.
