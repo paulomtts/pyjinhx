@@ -126,3 +126,10 @@ def test_an_entry_registered_under_two_keys_is_evicted_by_either_one():
         cache_put(Widget, "todos", "loaded", react_keys={"todos", "users"})
         invalidate(["users"])
         assert cache_has(Widget, "todos") is False
+
+
+def test_eviction_clears_the_entry_from_every_key_it_was_registered_under():
+    with request_scope():
+        cache_put(Widget, "todos", "loaded", react_keys={"todos", "users"})
+        invalidate(["users"])
+        assert get_cache_reverse() == {"todos": set(), "users": set()}
