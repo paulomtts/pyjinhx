@@ -33,7 +33,8 @@ pyjinhx2/
 ├── props_header.py      {#def#} parsing + open-class generation
 ├── segments.py          RenderedLevel, ChildRef, the ONE parse, root_span, splice, serialize
 ├── render.py            engine loop: render(), ChildRef fill, cycle guard, on_rendered hook
-├── session.py           request_scope, RenderSession, minimal instance registry
+├── session.py           request_scope, RenderSession, instance-registry ContextVar storage
+├── registry.py          composite keys, resolve, register_instance, on_rendered writer
 ├── assets.py            INLINE/NONE, manifest, hashed filenames, all_assets()
 ├── context.py           PjxContext
 ├── config.py            setup(), PjxSettings
@@ -53,7 +54,7 @@ pyjinhx2/
 └── builtins/            L4, mirrors v0.x layout
 ```
 
-Judgment calls: `segments.py` is deliberately import-pure — the type layer everything trusts. The instance registry lives in `session.py`, not `reactive/` — storage is L2, consumer is L3, matching the map. `props_header.py` stays separate from `discovery.py` — parsing vs walking, both feed the registry.
+Judgment calls: `segments.py` is deliberately import-pure — the type layer everything trusts. The instance registry's storage lives in `session.py` and its keys/reader/writer live in `registry.py`, not `reactive/` — storage and access are L2, consumer is L3, matching the map. `props_header.py` stays separate from `discovery.py` — parsing vs walking, both feed the registry.
 
 Tests mirror the package: `tests/pyjinhx2/test_<module>.py` per module, `tests/pyjinhx2/reactive/` for the cluster, plus `test_import_graph.py` (the spine rule) and the benchmark under `scripts/`.
 
