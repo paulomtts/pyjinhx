@@ -115,7 +115,9 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
     # and the load cache (a separate key space, E13). It re-renders a dirty
     # candidate through render_level(), the same primitive root_attrs.py
     # uses, and falls back to current_session() rather than ever building an
-    # unscoped RenderSession with the wrong template_dir.
+    # unscoped RenderSession with the wrong template_dir. #468 adds the
+    # structural nesting dedup pass, which walks segments/ChildRef directly
+    # rather than re-parsing or substring-matching rendered markup.
     "reactive.fanout": frozenset(
         {
             "pyjinhx2",
@@ -125,6 +127,7 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
             "pyjinhx2.reactive.component",
             "pyjinhx2.reactive.keys",
             "pyjinhx2.render",
+            "pyjinhx2.segments",
             "pyjinhx2.session",
         }
     ),

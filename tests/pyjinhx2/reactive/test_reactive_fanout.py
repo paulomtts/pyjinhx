@@ -9,8 +9,8 @@ import pytest
 from pyjinhx2 import discovery, registry
 from pyjinhx2.reactive.cache import cache_has, cache_put
 from pyjinhx2.reactive.component import PjxKey, ReactiveComponent
-from pyjinhx2.reactive.fanout import walk_manifest
-from pyjinhx2.segments import RenderedLevel
+from pyjinhx2.reactive.fanout import FanoutCandidate, _drop_nested, walk_manifest
+from pyjinhx2.segments import ChildRef, RenderedLevel
 from pyjinhx2.session import request_scope
 
 LOAD_CALLS: list[str | None] = []
@@ -318,3 +318,126 @@ def test_mixed_manifest_produces_the_expected_ordered_candidate_list():
         # Only the dirty candidate ran its body; the clean one was never loaded
         # and the missing one was never built.
         assert LOAD_CALLS == ["todo-2"]
+
+
+def candidate(instance_id: str, level=None, resolved=None, status: str = "dirty"):
+    """Build one FanoutCandidate carrying only the fields _drop_nested reads."""
+    return FanoutCandidate(
+        type_name="fanout_widget",
+        component_class=FanoutWidget,
+        instance_id=instance_id,
+        load=None,
+        status=status,
+        entry=entry("fanout_widget", instance_id),
+        resolved=resolved,
+        level=level,
+    )
+
+
+def stamped_level(instance_id: str, *children) -> RenderedLevel:
+    """A RenderedLevel whose root tag carries data-pjx-id, with children nested."""
+    root = f'<div data-pjx-id="{instance_id}">'
+    return RenderedLevel(
+        segments=[root, *children, "</div>"],
+        root_span=(0, len(root)),
+        descriptor=FanoutWidget.__pjx_descriptor__,
+    )
+
+
+def test_drop_nested_drops_a_child_level_nested_in_a_parent_level():
+    child = stamped_level("child")
+    parent = stamped_level("parent", child)
+    with scope():
+        survivors = _drop_nested(
+            [candidate("parent", level=parent), candidate("child", level=child)]
+        )
+    assert [c.instance_id for c in survivors] == ["parent"]
+
+
+def test_drop_nested_keeps_siblings_that_contain_neither_other():
+    with scope():
+        survivors = _drop_nested(
+            [
+                candidate("a", level=stamped_level("a")),
+                candidate("b", level=stamped_level("b")),
+            ]
+        )
+    assert [c.instance_id for c in survivors] == ["a", "b"]
+
+
+def test_drop_nested_drops_a_clean_child_whose_resolved_is_a_nested_level():
+    child = stamped_level("child")
+    parent = stamped_level("parent", child)
+    with scope():
+        survivors = _drop_nested(
+            [
+                candidate("parent", level=parent),
+                candidate("child", resolved=child, status="clean"),
+            ]
+        )
+    assert [c.instance_id for c in survivors] == ["parent"]
+
+
+def test_drop_nested_keeps_a_live_instance_candidate_not_found_in_any_tree():
+    with scope():
+        survivors = _drop_nested(
+            [
+                candidate("parent", level=stamped_level("parent")),
+                candidate("other", resolved=FanoutWidget(id="other"), status="clean"),
+            ]
+        )
+    assert [c.instance_id for c in survivors] == ["parent", "other"]
+
+
+def test_drop_nested_finds_a_child_declared_as_an_unfilled_child_ref():
+    parent = stamped_level(
+        "parent", ChildRef(tag="FanoutWidget", attrs={"id": "child"}, inner=None)
+    )
+    with scope():
+        survivors = _drop_nested(
+            [candidate("parent", level=parent), candidate("child")]
+        )
+    assert [c.instance_id for c in survivors] == ["parent"]
+
+
+def test_drop_nested_collapses_three_levels_to_the_outermost():
+    child = stamped_level("child")
+    parent = stamped_level("parent", child)
+    grandparent = stamped_level("grandparent", parent)
+    with scope():
+        survivors = _drop_nested(
+            [
+                candidate("grandparent", level=grandparent),
+                candidate("parent", level=parent),
+                candidate("child", level=child),
+            ]
+        )
+    assert [c.instance_id for c in survivors] == ["grandparent"]
+
+
+def test_drop_nested_is_a_no_op_on_empty_and_singleton_lists():
+    only = [candidate("a", level=stamped_level("a"))]
+    with scope():
+        assert _drop_nested([]) == []
+        assert _drop_nested(only) == only
+
+
+def test_walk_manifest_runs_the_nesting_dedup_on_its_survivors(monkeypatch):
+    """The pass is wired into the walk, not just importable."""
+    seen_calls: list[int] = []
+    original = _drop_nested
+
+    def spy(candidates):
+        seen_calls.append(len(candidates))
+        return original(candidates)
+
+    monkeypatch.setattr("pyjinhx2.reactive.fanout._drop_nested", spy)
+    with scope():
+        walk_manifest(
+            [
+                entry("fanout_widget", "a", load="t1"),
+                entry("fanout_widget", "b", load="t2"),
+            ],
+            {"todos"},
+        )
+    assert seen_calls == [2]

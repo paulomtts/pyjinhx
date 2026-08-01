@@ -20,6 +20,7 @@ TODO(#446 owner): nothing server-side stamps ``data-pjx-type`` or
 touches L3.4 (#445), which this subtask does not own.
 """
 
+import re
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from typing import Any
@@ -29,6 +30,7 @@ from pyjinhx2.reactive.cache import cache_get, cache_has
 from pyjinhx2.reactive.component import ReactiveComponent
 from pyjinhx2.reactive.keys import coerce_load_key_str
 from pyjinhx2.render import render_level
+from pyjinhx2.segments import ChildRef, RenderedLevel
 from pyjinhx2.session import RenderSession, current_session
 
 
@@ -148,6 +150,109 @@ def _hash_gate_drops(fresh_hash: str, entry: dict[str, Any]) -> bool:
     return fresh_hash == entry.get("hash")
 
 
+RE_ROOT_PJX_ID = re.compile(
+    r'data-pjx-id\s*=\s*"([^"]*)"|data-pjx-id\s*=\s*\'([^\']*)\''
+)
+
+
+def _level_of(candidate: FanoutCandidate) -> RenderedLevel | None:
+    """The candidate's own segment tree, from either field, or None.
+
+    A dirty candidate carries a fresh ``level``; a clean one carries only
+    whatever ``registry.resolve()`` handed back, which is a RenderedLevel for a
+    cached region and a live instance otherwise. A live instance has no tree, so
+    it answers None — a side with no tree is never walked and never guessed at.
+    """
+    if isinstance(candidate.level, RenderedLevel):
+        return candidate.level
+    if isinstance(candidate.resolved, RenderedLevel):
+        return candidate.resolved
+    return None
+
+
+def _root_instance_id(level: RenderedLevel) -> str | None:
+    """The ``data-pjx-id`` on this level's root tag, or None if unstamped.
+
+    The exact inverse of ``stamp_root_attrs``: one read of the single tag whose
+    offsets the original parse recorded, never a re-parse and never a scan of
+    the rendered markup. ``_fill_children`` replaces a child's ChildRef with its
+    RenderedLevel and the authored ``id`` attr goes with it, so the stamped root
+    tag is the only place a nested level's instance identity still lives.
+    """
+    root = level.segments[0] if level.segments else ""
+    if not isinstance(root, str):
+        return None
+    start, end = level.root_span
+    match = RE_ROOT_PJX_ID.search(root[start:end])
+    if match is None:
+        return None
+    return match.group(1) if match.group(1) is not None else match.group(2)
+
+
+def _contained(level: RenderedLevel) -> tuple[set[str], set[int]]:
+    """Every id and every level object nested *strictly inside* this level.
+
+    Two identity channels, because a descendant can be either shape: an
+    unfilled ChildRef still carries the authored ``id`` attr, while a filled
+    RenderedLevel carries its stamped root id — plus object identity, which
+    settles the case where a survivor's own level object is literally the node
+    sitting in another survivor's tree.
+    """
+    ids: set[str] = set()
+    objects: set[int] = set()
+    stack: list[object] = list(level.segments)
+    while stack:
+        node = stack.pop()
+        if isinstance(node, ChildRef):
+            nested_id = node.attrs.get("id")
+            if nested_id:
+                ids.add(nested_id)
+        elif isinstance(node, RenderedLevel):
+            objects.add(id(node))
+            nested_id = _root_instance_id(node)
+            if nested_id:
+                ids.add(nested_id)
+            stack.extend(node.segments)
+    return ids, objects
+
+
+def _drop_nested(candidates: list[FanoutCandidate]) -> list[FanoutCandidate]:
+    """Drop every candidate whose region sits inside another survivor's region.
+
+    The v0.x behavior (a parent's swap already carries its children, so a child
+    swap is redundant and would fight the parent's) reached through the segment
+    tree instead of a substring search over rendered HTML: the tree already
+    records containment, so nothing here re-parses or re-serializes markup.
+
+    A drop needs positive proof — a concrete containing RenderedLevel on some
+    *other* survivor whose tree holds this candidate's id or level object. A
+    candidate whose only structural data is a live instance, and a container
+    side with no tree at all, both simply fail to produce that proof and the
+    candidate survives; absence of a check is never a drop. Order is preserved
+    and nothing is duplicated.
+    """
+    if len(candidates) < 2:
+        return candidates
+    trees = {
+        id(other): _contained(level)
+        for other in candidates
+        if (level := _level_of(other)) is not None
+    }
+    surviving: list[FanoutCandidate] = []
+    for candidate in candidates:
+        own_level = _level_of(candidate)
+        nested = any(
+            candidate.instance_id in ids
+            or (own_level is not None and id(own_level) in objects)
+            for other in candidates
+            if other is not candidate
+            for ids, objects in (trees.get(id(other), (frozenset(), frozenset())),)
+        )
+        if not nested:
+            surviving.append(candidate)
+    return surviving
+
+
 def walk_manifest(
     manifest_entries: Sequence[dict[str, Any]],
     dirtied_keys: Iterable[str],
@@ -169,12 +274,13 @@ def walk_manifest(
         ``status`` is one of ``"clean"``, ``"dirty"``, or ``"missing"``.
         A dirty entry whose freshly rendered state hash equals the hash the
         client reported is dropped too: the region changed keys but not output.
+        A candidate whose region is structurally nested inside another
+        survivor's region is dropped: the parent's swap already carries it.
 
     Deliberately not done here, each owned by the next subtask in L3.5:
-    structural nesting dedup of survivors (#468); excluding regions already
-    inside the primary response (#469); turning a ``"missing"`` candidate into
-    a delete swap (#470); splicing ``hx-swap-oob`` at a level's root_span
-    (#471).
+    excluding regions already inside the primary response (#469); turning a
+    ``"missing"`` candidate into a delete swap (#470); splicing
+    ``hx-swap-oob`` at a level's root_span (#471).
     """
     dirty = set(dirtied_keys)
     seen: set[tuple[str, str | None]] = set()
@@ -230,7 +336,7 @@ def walk_manifest(
                 fresh_hash=fresh_hash,
             )
         )
-    return candidates
+    return _drop_nested(candidates)
 
 
 # TODO(#449): registry.register_rendered_instance is exported but subscribed by
