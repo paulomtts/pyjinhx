@@ -548,6 +548,21 @@ def test_delete_swap_escapes_a_backslash_before_a_quote_without_unescaping_it():
     assert "delete:[data-pjx-id='a\\\\\\'b']" in fragment
 
 
+@pytest.mark.parametrize("status", ["clean", "dirty"])
+def test_delete_swap_rejects_a_non_missing_candidate(status):
+    with pytest.raises(ValueError, match=status):
+        delete_swap(missing_candidate("a", status=status))
+
+
+def test_delete_swap_of_an_empty_id_is_still_a_fragment():
+    # walk_manifest coerces an entry with no id to "", and that is not this
+    # function's problem to diagnose — it emits the selector it was given.
+    assert (
+        delete_swap(missing_candidate(""))
+        == "<div hx-swap-oob=\"delete:[data-pjx-id='']\"></div>"
+    )
+
+
 def test_walk_manifest_runs_the_nesting_dedup_on_its_survivors(monkeypatch):
     """The pass is wired into the walk, not just importable."""
     seen_calls: list[int] = []
