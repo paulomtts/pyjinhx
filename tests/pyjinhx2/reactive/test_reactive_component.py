@@ -44,7 +44,7 @@ def test_a_cached_none_is_not_reloaded():
     class Widget(ReactiveComponent):
         def load(self) -> None:
             calls.append(1)
-            return None
+            return None  # noqa: RET501, PLR1711 -- explicit for readability of the assertion below
 
     widget = Widget()
     with request_scope():
@@ -155,7 +155,7 @@ def test_base_component_registration_still_fires():
     with pytest.raises(TypeError, match="auto_id"):
 
         class Widget(ReactiveComponent):
-            auto_id: bool = False
+            auto_id: bool = False  # pyright: ignore[reportIncompatibleVariableOverride]
 
 
 def test_the_descriptor_is_attached_to_reactive_subclasses():
