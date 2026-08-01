@@ -563,6 +563,29 @@ def test_delete_swap_of_an_empty_id_is_still_a_fragment():
     )
 
 
+def test_a_gone_region_walks_to_a_delete_fragment_without_loading_anything(
+    monkeypatch,
+):
+    calls: list[tuple] = []
+    monkeypatch.setattr(
+        registry, "register_instance", lambda *a, **kw: calls.append((a, kw))
+    )
+    with scope():
+        [candidate_] = walk_manifest(
+            [entry("fanout_widget", "gone-1", load="todo-1")], {"todos"}
+        )
+    assert candidate_.status == "missing"
+    assert (
+        delete_swap(candidate_)
+        == "<div hx-swap-oob=\"delete:[data-pjx-id='gone-1']\"></div>"
+    )
+    # A missing region costs no load, no render and no registry write on the
+    # whole path from manifest entry to delete fragment.
+    assert LOAD_CALLS == []
+    assert candidate_.level is None
+    assert calls == []
+
+
 def test_walk_manifest_runs_the_nesting_dedup_on_its_survivors(monkeypatch):
     """The pass is wired into the walk, not just importable."""
     seen_calls: list[int] = []
