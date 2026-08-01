@@ -119,3 +119,10 @@ def test_invalidate_on_a_key_with_no_entries_is_a_no_op():
         cache_put(Widget, "todos", "loaded", react_keys=["todos"])
         invalidate(["nothing-depends-on-this"])
         assert cache_get(Widget, "todos") == "loaded"
+
+
+def test_an_entry_registered_under_two_keys_is_evicted_by_either_one():
+    with request_scope():
+        cache_put(Widget, "todos", "loaded", react_keys={"todos", "users"})
+        invalidate(["users"])
+        assert cache_has(Widget, "todos") is False
