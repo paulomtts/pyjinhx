@@ -155,6 +155,26 @@ RE_ROOT_PJX_ID = re.compile(
 )
 
 
+def _mounted_ids_in(primary_html: object) -> set[str]:
+    """Every ``data-pjx-id`` the primary response's markup already carries.
+
+    A string scan rather than a segment-tree walk, unlike ``_drop_nested``: by
+    the time fan-out runs (T2 step 5) the primary render has already been
+    through render.py's single top-level serialize join at step 4, so what
+    reaches here is a serialized str/Markup with no tree left to walk. Markup
+    and str are read identically — the regex sees ``str(primary_html)`` either
+    way. Best-effort by design: a truncated or malformed fragment simply yields
+    the ids the regex can still see.
+    """
+    if not primary_html:
+        return set()
+    return {
+        double or single
+        for double, single in RE_ROOT_PJX_ID.findall(str(primary_html))
+        if double or single
+    }
+
+
 def _level_of(candidate: FanoutCandidate) -> RenderedLevel | None:
     """The candidate's own segment tree, from either field, or None.
 
@@ -257,6 +277,7 @@ def walk_manifest(
     manifest_entries: Sequence[dict[str, Any]],
     dirtied_keys: Iterable[str],
     session: RenderSession | None = None,
+    primary_html: object = None,
 ) -> list[FanoutCandidate]:
     """The candidates this request's dirtied keys make out of a mounted manifest.
 
@@ -266,6 +287,11 @@ def walk_manifest(
         dirtied_keys: This request's normalized dirtied reactive keys.
         session: the RenderSession a dirty candidate's re-render runs against;
             a fresh one is built per call when omitted.
+        primary_html: this request's already-serialized primary response, when
+            there is one. Every region it already contains is excluded from the
+            fan-out — otherwise that region swaps twice, once as primary content
+            and once OOB (the T2 ordering fact). Omitted or None means no
+            exclusion, so a caller with no primary body is unaffected.
 
     Returns:
         One FanoutCandidate per surviving, deduped entry, in manifest order.
@@ -275,17 +301,23 @@ def walk_manifest(
         A dirty entry whose freshly rendered state hash equals the hash the
         client reported is dropped too: the region changed keys but not output.
         A candidate whose region is structurally nested inside another
-        survivor's region is dropped: the parent's swap already carries it.
+        survivor's region is dropped: the parent's swap already carries it, and
+        so is one whose id the primary response already carries.
 
-    Deliberately not done here, each owned by the next subtask in L3.5:
-    excluding regions already inside the primary response (#469); turning a
-    ``"missing"`` candidate into a delete swap (#470); splicing
+    Deliberately not done here, each owned by the next subtask in L3.5: turning
+    a ``"missing"`` candidate into a delete swap (#470); splicing
     ``hx-swap-oob`` at a level's root_span (#471).
     """
     dirty = set(dirtied_keys)
+    excluded = _mounted_ids_in(primary_html)
     seen: set[tuple[str, str | None]] = set()
     candidates: list[FanoutCandidate] = []
     for entry in manifest_entries:
+        # Cheapest filter first, ahead of the two E9 ones: one set membership
+        # against a string id, before any class lookup, dedup bookkeeping,
+        # resolve, load or render is paid for.
+        if excluded and str(entry.get("id") or "") in excluded:
+            continue
         cls = _candidate_class(entry, dirty)
         if cls is None:
             continue

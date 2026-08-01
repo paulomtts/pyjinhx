@@ -9,7 +9,12 @@ import pytest
 from pyjinhx2 import discovery, registry
 from pyjinhx2.reactive.cache import cache_has, cache_put
 from pyjinhx2.reactive.component import PjxKey, ReactiveComponent
-from pyjinhx2.reactive.fanout import FanoutCandidate, _drop_nested, walk_manifest
+from pyjinhx2.reactive.fanout import (
+    FanoutCandidate,
+    _drop_nested,
+    _mounted_ids_in,
+    walk_manifest,
+)
 from pyjinhx2.segments import ChildRef, RenderedLevel
 from pyjinhx2.session import request_scope
 
@@ -420,6 +425,87 @@ def test_drop_nested_is_a_no_op_on_empty_and_singleton_lists():
     with scope():
         assert _drop_nested([]) == []
         assert _drop_nested(only) == only
+
+
+def test_mounted_ids_in_extracts_both_quote_styles():
+    html = "<div data-pjx-id=\"alpha\"><span data-pjx-id='beta'>x</span></div>"
+    assert _mounted_ids_in(html) == {"alpha", "beta"}
+
+
+def test_mounted_ids_in_answers_empty_for_markup_without_ids_and_for_none():
+    assert _mounted_ids_in("<div>plain</div>") == set()
+    assert _mounted_ids_in("") == set()
+    assert _mounted_ids_in(None) == set()
+
+
+def test_entry_whose_id_is_in_the_primary_response_is_excluded_before_any_load():
+    with scope():
+        candidates = walk_manifest(
+            [entry("fanout_widget", "a", load="todo-1")],
+            {"todos"},
+            primary_html='<div data-pjx-id="a">already swapped</div>',
+        )
+    assert candidates == []
+    # The exclusion is the first filter, not a late one: the entry never paid
+    # for a load or a render.
+    assert LOAD_CALLS == []
+
+
+def test_entry_absent_from_the_primary_response_resolves_normally():
+    with scope():
+        [candidate_] = walk_manifest(
+            [entry("fanout_widget", "a", load="todo-1")],
+            {"todos"},
+            primary_html='<div data-pjx-id="somewhere-else">x</div>',
+        )
+    assert candidate_.instance_id == "a"
+    assert candidate_.status == "missing"
+    assert LOAD_CALLS == []
+
+
+def test_walk_manifest_without_primary_html_is_unchanged():
+    manifest = [
+        entry("fanout_widget", "a", load="todo-1"),
+        entry("fanout_widget", "b", load="todo-2"),
+    ]
+    with scope():
+        omitted = [
+            (c.instance_id, c.status) for c in walk_manifest(manifest, {"todos"})
+        ]
+    LOAD_CALLS.clear()
+    with scope():
+        explicit_none = [
+            (c.instance_id, c.status)
+            for c in walk_manifest(manifest, {"todos"}, primary_html=None)
+        ]
+    assert omitted == explicit_none == [("a", "missing"), ("b", "missing")]
+
+
+def test_primary_exclusion_and_nesting_dedup_compose_in_one_walk(monkeypatch):
+    """One entry dropped by the primary, a separate pair still deduped by nesting."""
+    child = stamped_level("child")
+    parent = stamped_level("parent", child)
+    levels = {"parent": parent, "child": child}
+
+    def fake_build_dirty(cls, instance_id, load, session):
+        return cls(id=instance_id), levels[instance_id]
+
+    monkeypatch.setattr("pyjinhx2.reactive.fanout._build_dirty", fake_build_dirty)
+    manifest = [
+        entry("fanout_widget", "in-primary", load="todo-0"),
+        entry("fanout_widget", "parent", load="todo-1"),
+        entry("fanout_widget", "child", load="todo-2"),
+    ]
+    with scope():
+        registry.register_instance(FanoutWidget.__name__, "in-primary", "e0")
+        registry.register_instance(FanoutWidget.__name__, "parent", "e1")
+        registry.register_instance(FanoutWidget.__name__, "child", "e2")
+        candidates = walk_manifest(
+            manifest,
+            {"todos"},
+            primary_html='<section data-pjx-id="in-primary"></section>',
+        )
+    assert [c.instance_id for c in candidates] == ["parent"]
 
 
 def test_walk_manifest_runs_the_nesting_dedup_on_its_survivors(monkeypatch):
