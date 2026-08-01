@@ -72,3 +72,22 @@ def test_reactive_key_distinguishes_args_for_the_same_key():
 
 def test_reactive_key_distinguishes_keys_for_the_same_arg():
     assert reactive_key(Keys.TODOS, 7) != reactive_key(Keys.USER, 7)
+
+
+def test_coerce_load_key_str_passes_none_through():
+    from pyjinhx2.reactive.keys import coerce_load_key_str
+
+    assert coerce_load_key_str(None) is None
+
+
+def test_coerce_load_key_str_stringifies_scalars_and_enums():
+    from enum import Enum
+
+    from pyjinhx2.reactive.keys import coerce_load_key_str
+
+    class Color(Enum):
+        RED = "red"
+
+    assert coerce_load_key_str(7) == "7"
+    assert coerce_load_key_str("7") == "7"
+    assert coerce_load_key_str(Color.RED) == "red"

@@ -18,6 +18,18 @@ def coerce_reactive_key(key: object) -> str:
     return str(key)
 
 
+def coerce_load_key_str(value: object) -> str | None:
+    """Normalize a component's load key to a string; ``None`` stays ``None``.
+
+    A component with no PjxKey field has no load key at all, and that absence
+    is itself the cache key every instance of the class shares - so ``None``
+    passes through rather than becoming the string ``"None"``.
+    """
+    if value is None:
+        return None
+    return coerce_reactive_key(value)
+
+
 def coerce_reactive_keys(keys: Iterable[object] | None) -> set[str]:
     """Normalize a collection of reactive dependency keys."""
     if not keys:
