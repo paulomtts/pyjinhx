@@ -317,3 +317,9 @@ def test_add_dirtied_updates_the_active_scopes_set():
 def test_add_dirtied_outside_a_scope_is_a_no_op():
     session_module.add_dirtied({"todos"})
     assert session_module.get_dirtied() == set()
+
+
+def test_session_starts_with_no_runtime_injected():
+    session = session_module.RenderSession()
+    assert session.runtime_injected is False
+    assert session.runtime_script is None

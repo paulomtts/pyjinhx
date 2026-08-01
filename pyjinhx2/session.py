@@ -69,6 +69,13 @@ class RenderSession:
         # assets some other way (a build step, a CDN) suppresses emission.
         self.css_mode: AssetMode = AssetMode.INLINE
         self.js_mode: AssetMode = AssetMode.INLINE
+        # The pjx.js + htmx payload for this render, set by client/inject.py and
+        # read by emit_assets. Kept off css_assets/js_assets because those hold
+        # file paths from component descriptors, while this is source text with
+        # no path of its own. The flag is what makes a nested render — or a
+        # second inject_runtime call on the same session — a no-op.
+        self.runtime_script: str | None = None
+        self.runtime_injected: bool = False
         # A plain list, not an event bus: render fires it once per component and
         # subscribers (asset accumulation, the reactive instance registry) just
         # append. Per-session so subscriptions die with the request. Callbacks

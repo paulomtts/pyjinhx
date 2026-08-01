@@ -81,7 +81,8 @@ def emit_assets(
             asset_manifest() takes. Required only when a kind is in LINK mode.
 
     Returns:
-        Concatenated CSS tags then JS tags, newline-joined. Empty string when
+        Concatenated CSS tags then JS tags, newline-joined, with the session's
+        inline runtime script (if any) leading the JS tags. Empty string when
         both kinds are NONE or nothing was accumulated.
 
     Raises:
@@ -98,6 +99,10 @@ def emit_assets(
             '<link rel="stylesheet" href="{url}">',
         )
     if session.js_mode is AssetMode.INLINE:
+        # Runtime first: component scripts may call into pjx/htmx as soon as
+        # they execute, so the tag that defines them has to precede them.
+        if session.runtime_script is not None:
+            tags.append(session.runtime_script)
         tags += _inline_tags(session.js_assets, "<script>", "</script>")
     elif session.js_mode is AssetMode.LINK:
         tags += _url_tags(
