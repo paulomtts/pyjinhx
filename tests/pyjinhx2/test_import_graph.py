@@ -67,6 +67,8 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
         }
     ),
     "render_context": frozenset({"pyjinhx2.markers", "pyjinhx2.component"}),
+    "reactive.__init__": frozenset(),
+    "reactive.keys": frozenset(),
     # The instance registry (ADR 0009) is read-only over session's ContextVar
     # store; it consumes get_instances() and nothing else in pyjinhx2. The
     # register_rendered_instance signature also names RenderedLevel, but that
@@ -89,7 +91,12 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
 
 
 def module_paths() -> list[Path]:
-    return sorted(PACKAGE_ROOT.glob("*.py"))
+    return sorted(PACKAGE_ROOT.rglob("*.py"))
+
+
+def module_name(path: Path) -> str:
+    """Dotted name relative to the package root, e.g. ``reactive.keys``."""
+    return ".".join(path.relative_to(PACKAGE_ROOT).with_suffix("").parts)
 
 
 def internal_imports(path: Path) -> set[str]:
@@ -113,13 +120,13 @@ def internal_imports(path: Path) -> set[str]:
 def test_every_module_is_covered_by_the_declared_edge_table():
     """A new module must declare its edges here before it can be imported
     anywhere — otherwise the table silently stops being a whole-package view."""
-    on_disk = {path.stem for path in module_paths()}
+    on_disk = {module_name(path) for path in module_paths()}
     assert on_disk == set(ALLOWED_INTERNAL_IMPORTS)
 
 
-@pytest.mark.parametrize("path", module_paths(), ids=lambda p: p.stem)
+@pytest.mark.parametrize("path", module_paths(), ids=module_name)
 def test_module_imports_only_declared_internal_modules(path: Path):
-    allowed = ALLOWED_INTERNAL_IMPORTS[path.stem]
+    allowed = ALLOWED_INTERNAL_IMPORTS[module_name(path)]
     unexpected = internal_imports(path) - allowed
     assert not unexpected, (
         f"{path.name} imports undeclared internal modules: {sorted(unexpected)}"
@@ -139,7 +146,7 @@ def test_component_is_the_only_importer_of_class_descriptor():
     importing ClassDescriptor means the fact sheet is being rebuilt somewhere it
     should be read from the class instead."""
     importers = {
-        path.stem
+        module_name(path)
         for path in module_paths()
         if "pyjinhx2.descriptor" in internal_imports(path)
     }
