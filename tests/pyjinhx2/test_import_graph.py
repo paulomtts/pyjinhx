@@ -40,6 +40,10 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
             "pyjinhx2.segments",
         }
     ),
+    # The client tier is the bottom of the stack: it ships pjx.js and reads it
+    # off disk. Nothing in pyjinhx2 may be imported from here, or the browser
+    # runtime's delivery would depend on the server tier that serves it.
+    "client.__init__": frozenset(),
     "component": frozenset(
         {"pyjinhx2.descriptor", "pyjinhx2.props_header"}
     ),  # the stale-header probe needs template_has_props_header
