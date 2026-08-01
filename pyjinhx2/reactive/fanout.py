@@ -63,6 +63,13 @@ class FanoutCandidate:
     instance: ReactiveComponent | None = None
     """The instance built on the dirty path, else None."""
 
+    fresh_hash: str | None = None
+    """The dirty path's freshly computed state hash; None on clean/missing.
+
+    #471 stamps this back onto the swapped region's ``data-pjx-hash``, so the
+    next manifest reports the hash the client is actually showing.
+    """
+
 
 def _candidate_class(
     entry: dict[str, Any], dirtied_keys: set[str]
@@ -129,6 +136,18 @@ def _build_dirty(
     return instance, render_level(instance, session)
 
 
+def _hash_gate_drops(fresh_hash: str, entry: dict[str, Any]) -> bool:
+    """Whether this re-rendered instance is byte-identical to what the client shows.
+
+    A dirtied key only says the *data* may have moved, never that the *output*
+    did. When the fresh state hash equals the one the client reported for this
+    region, the swap would replace the region with itself, so it is dropped.
+    A manifest entry with no ``hash`` at all can never match a real digest and
+    therefore always survives — an unstamped region is refreshed, not skipped.
+    """
+    return fresh_hash == entry.get("hash")
+
+
 def walk_manifest(
     manifest_entries: Sequence[dict[str, Any]],
     dirtied_keys: Iterable[str],
@@ -148,12 +167,14 @@ def walk_manifest(
         An entry naming an unknown tag, or a class no dirtied key touches, is
         dropped silently — it is not this request's concern. A candidate's
         ``status`` is one of ``"clean"``, ``"dirty"``, or ``"missing"``.
+        A dirty entry whose freshly rendered state hash equals the hash the
+        client reported is dropped too: the region changed keys but not output.
 
     Deliberately not done here, each owned by the next subtask in L3.5:
-    the ``entry["hash"]`` vs fresh ``state_hash()`` gate (#467); structural
-    nesting dedup of survivors (#468); excluding regions already inside the
-    primary response (#469); turning a ``"missing"`` candidate into a delete
-    swap (#470); splicing ``hx-swap-oob`` at a level's root_span (#471).
+    structural nesting dedup of survivors (#468); excluding regions already
+    inside the primary response (#469); turning a ``"missing"`` candidate into
+    a delete swap (#470); splicing ``hx-swap-oob`` at a level's root_span
+    (#471).
     """
     dirty = set(dirtied_keys)
     seen: set[tuple[str, str | None]] = set()
@@ -172,11 +193,11 @@ def walk_manifest(
         load = entry.get("load")
         resolved, found = _resolve_registry_entry(cls, instance_id)
         if not found:
-            status, instance, level = "missing", None, None
+            status, instance, level, fresh_hash = "missing", None, None, None
         elif cache_has(cls, dedup_key[1]):
             # E13: the clean answer comes from the load cache's own key space,
             # never from the registry key that resolved above.
-            status, instance, level = "clean", None, None
+            status, instance, level, fresh_hash = "clean", None, None, None
             resolved = (
                 resolved if resolved is not None else cache_get(cls, dedup_key[1])
             )
@@ -188,6 +209,12 @@ def walk_manifest(
             # its dirty-path render silently point at the wrong template dir.
             render_session = session or current_session() or RenderSession()
             instance, level = _build_dirty(cls, instance_id, load, render_session)
+            fresh_hash = instance.state_hash()
+            if _hash_gate_drops(fresh_hash, entry):
+                # The dedup slot above is deliberately kept: a later duplicate
+                # of this (type, load-key) pair would gate out identically, so
+                # dropping here must not buy it a second load/render.
+                continue
             status = "dirty"
         candidates.append(
             FanoutCandidate(
@@ -200,6 +227,7 @@ def walk_manifest(
                 resolved=resolved,
                 level=level,
                 instance=instance,
+                fresh_hash=fresh_hash,
             )
         )
     return candidates

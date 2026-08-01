@@ -180,6 +180,122 @@ def test_the_walk_never_writes_to_the_instance_registry(monkeypatch):
         assert calls == []
 
 
+def fresh_hash_for(load: object) -> str:
+    """The state hash `walk_manifest`'s dirty path will compute for this load arg.
+
+    Built from an instance shaped exactly like `_build_dirty` builds one, so a
+    test can seed a manifest entry with the *matching* hash without hardcoding
+    a digest that changes whenever the model's fields do.
+    """
+    return FanoutWidget(id="probe", pjx_key=str(load)).state_hash()
+
+
+def test_dirty_candidate_whose_fresh_hash_matches_the_manifest_hash_is_dropped():
+    with scope():
+        registry.register_instance(FanoutWidget.__name__, "a", "resolved-entry")
+        manifest = [
+            entry("fanout_widget", "a", load="todo-1", hash_=fresh_hash_for("todo-1"))
+        ]
+        assert walk_manifest(manifest, {"todos"}) == []
+
+
+def test_dirty_candidate_whose_fresh_hash_differs_survives_carrying_that_hash():
+    with scope():
+        registry.register_instance(FanoutWidget.__name__, "a", "resolved-entry")
+        manifest = [entry("fanout_widget", "a", load="todo-1", hash_="stale-hash")]
+        [candidate] = walk_manifest(manifest, {"todos"})
+        assert candidate.status == "dirty"
+        assert candidate.fresh_hash == fresh_hash_for("todo-1")
+        assert candidate.fresh_hash != "stale-hash"
+
+
+def test_dirty_candidate_whose_manifest_entry_has_no_hash_key_survives():
+    with scope():
+        registry.register_instance(FanoutWidget.__name__, "a", "resolved-entry")
+        # A manifest entry that never carried a `hash` field — `entry.get("hash")`
+        # answers None, which must read as "unknown", never as "unchanged".
+        manifest = [{"type": "fanout_widget", "id": "a", "load": "todo-1"}]
+        [candidate] = walk_manifest(manifest, {"todos"})
+        assert candidate.status == "dirty"
+        assert candidate.fresh_hash == fresh_hash_for("todo-1")
+
+
+def test_clean_candidate_is_not_hash_gated_and_carries_no_fresh_hash(monkeypatch):
+    calls: list[str] = []
+    monkeypatch.setattr(
+        FanoutWidget,
+        "state_hash",
+        lambda self: calls.append(self.id) or "computed",
+        raising=False,
+    )
+    with scope():
+        cache_put(FanoutWidget, "todo-1", "cached-payload", react_keys=("todos",))
+        registry.register_instance(FanoutWidget.__name__, "a", "resolved-entry")
+        # The manifest reports the very hash the patched state_hash() would
+        # answer: a clean candidate must survive anyway, because no fresh
+        # render exists for the gate to compare against.
+        manifest = [entry("fanout_widget", "a", load="todo-1", hash_="computed")]
+        [candidate] = walk_manifest(manifest, {"todos"})
+        assert candidate.status == "clean"
+        assert candidate.fresh_hash is None
+        assert calls == []
+
+
+def test_missing_candidate_is_not_hash_gated_and_carries_no_fresh_hash():
+    with scope():
+        # Nothing registered under this id, so registry.resolve() raises and the
+        # entry is "missing" — #470's delete-swap input, which this gate must
+        # not consume even when the reported hash is the matching one.
+        manifest = [
+            entry(
+                "fanout_widget", "gone", load="todo-1", hash_=fresh_hash_for("todo-1")
+            )
+        ]
+        [candidate] = walk_manifest(manifest, {"todos"})
+        assert candidate.status == "missing"
+        assert candidate.fresh_hash is None
+
+
+def test_mixed_manifest_gates_only_the_dirty_entries():
+    with scope():
+        cache_put(FanoutWidget, "todo-1", "cached-payload", react_keys=("todos",))
+        registry.register_instance(FanoutWidget.__name__, "a", "level-a")
+        registry.register_instance(FanoutWidget.__name__, "same", "level-same")
+        registry.register_instance(FanoutWidget.__name__, "moved", "level-moved")
+        manifest = [
+            # clean: cached, reports the hash its own fresh render would have
+            entry("fanout_widget", "a", load="todo-1", hash_=fresh_hash_for("todo-1")),
+            # dirty + gated out: fresh hash equals the reported one
+            entry(
+                "fanout_widget", "same", load="todo-2", hash_=fresh_hash_for("todo-2")
+            ),
+            # dirty + survives: reported hash is stale
+            entry("fanout_widget", "moved", load="todo-3", hash_="stale"),
+            # missing: never resolved, gate must not touch it
+            entry(
+                "fanout_widget", "gone", load="todo-4", hash_=fresh_hash_for("todo-4")
+            ),
+        ]
+        candidates = walk_manifest(manifest, {"todos"})
+        assert [(c.instance_id, c.status) for c in candidates] == [
+            ("a", "clean"),
+            ("moved", "dirty"),
+            ("gone", "missing"),
+        ]
+        assert [c.fresh_hash for c in candidates] == [
+            None,
+            fresh_hash_for("todo-3"),
+            None,
+        ]
+        # The gated-out entry still ran its load — the gate decides *after* the
+        # re-render, which is the whole point: it compares fresh output, not
+        # a guess about the data. The "gone" entry never loads: in
+        # `walk_manifest`, `_resolve_registry_entry`'s LookupError sets
+        # status="missing" before `_build_dirty` (and therefore `load()`) is
+        # ever reached, so only the two dirty entries appear here.
+        assert LOAD_CALLS == ["todo-2", "todo-3"]
+
+
 def test_mixed_manifest_produces_the_expected_ordered_candidate_list():
     with scope():
         cache_put(FanoutWidget, "todo-1", "cached-payload", react_keys=("todos",))
