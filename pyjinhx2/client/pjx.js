@@ -292,12 +292,21 @@
     });
   }
 
+  // The dispatch half of the toast API. Rendering belongs to an L4 toast-host
+  // builtin listening for this event, so core stays DOM-template-free.
+  function pjxToast(payload) {
+    document.dispatchEvent(
+      new CustomEvent("pjx:toast", { detail: payload || {}, bubbles: false })
+    );
+  }
+
   pjx.manifest = pjxManifest;
   pjx.loadedAssets = pjxLoadedAssets;
   pjx.trigger = pjxTrigger;
   pjx.applyHeadAssets = pjxApplyHeadAssets;
   pjx.promoteInlineAssets = pjxPromoteInlineAssets;
   pjx.injectStyle = pjxInjectStyle;
+  pjx.toast = pjxToast;
   pjx.loadingCount = function (id) {
     return pjxLoading[id] || 0;
   };
