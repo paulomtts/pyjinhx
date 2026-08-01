@@ -17,7 +17,7 @@ if TYPE_CHECKING:
     from pyjinhx2.component import BaseComponent
     from pyjinhx2.segments import RenderedLevel
 
-# The four pieces of per-request mutable state. They live here rather than beside
+# The five pieces of per-request mutable state. They live here rather than beside
 # their eventual consumers because the import rule runs one way only: reactive/
 # imports session, never the reverse. Each defaults to None so that reading one
 # outside a request is a miss, not a LookupError.
@@ -30,6 +30,9 @@ _instances: ContextVar[dict[str, object] | None] = ContextVar(
 _dirtied: ContextVar[set[str] | None] = ContextVar("pjx_dirtied", default=None)
 _cache_store: ContextVar[dict[object, object] | None] = ContextVar(
     "pjx_cache_store", default=None
+)
+_cache_reverse: ContextVar[dict[str, set[tuple[type, object]]] | None] = ContextVar(
+    "pjx_cache_reverse", default=None
 )
 
 
@@ -172,6 +175,18 @@ def get_cache_store() -> dict[object, object]:
     return store
 
 
+def get_cache_reverse() -> dict[str, set[tuple[type, object]]]:
+    """Return this request's reactive-key -> cache-entry index, empty outside a scope.
+
+    Maps a normalized reactive key to the set of ``(cls, key)`` cache entries
+    whose load depended on it, so dirtying a key can find exactly what to evict.
+    """
+    reverse = _cache_reverse.get()
+    if reverse is None:
+        return {}
+    return reverse
+
+
 @contextmanager
 def request_scope(
     template_dir: str = "templates", session: "RenderSession | None" = None
@@ -195,11 +210,13 @@ def request_scope(
     instances_token = _instances.set({})
     dirtied_token = _dirtied.set(set())
     cache_token = _cache_store.set({})
+    cache_reverse_token = _cache_reverse.set({})
     try:
         yield session
     finally:
         # Reset by token rather than assigning None: a nested scope must hand the
         # outer scope its own state back, not clear the variable outright.
+        _cache_reverse.reset(cache_reverse_token)
         _cache_store.reset(cache_token)
         _dirtied.reset(dirtied_token)
         _instances.reset(instances_token)
