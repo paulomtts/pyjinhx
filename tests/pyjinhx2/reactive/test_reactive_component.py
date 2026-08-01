@@ -266,3 +266,44 @@ def test_equal_pjx_key_values_share_one_cache_entry():
         Row(row_id=1).load()
 
     assert len(calls) == 1
+
+
+def test_pjx_key_equal_values_share_object_identity():
+    """Equal PjxKey values hit the same cache entry, so the second load() gets
+    back the very same object — not an equal copy from a re-run body."""
+    from typing import Annotated
+
+    from pyjinhx2.reactive.component import PjxKey
+
+    class Row(ReactiveComponent):
+        row_id: Annotated[int, PjxKey()] = 0
+
+        def load(self) -> dict[str, int]:
+            return {"row_id": self.row_id}
+
+    with request_scope():
+        result_a = Row(row_id=1).load()
+        result_b = Row(row_id=1).load()
+
+    assert result_a is result_b
+
+
+def test_pjx_key_distinct_values_differ_in_identity():
+    """Distinct PjxKey values are distinct cache entries, so each load() body
+    runs and yields its own object — even when the two results compare equal."""
+    from typing import Annotated
+
+    from pyjinhx2.reactive.component import PjxKey
+
+    class Row(ReactiveComponent):
+        row_id: Annotated[int, PjxKey()] = 0
+
+        def load(self) -> dict[str, str]:
+            return {"shape": "same"}
+
+    with request_scope():
+        result_a = Row(row_id=1).load()
+        result_b = Row(row_id=2).load()
+
+    assert result_a == result_b
+    assert result_a is not result_b
