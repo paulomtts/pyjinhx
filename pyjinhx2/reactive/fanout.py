@@ -64,7 +64,9 @@ class FanoutCandidate:
     """The instance built on the dirty path, else None."""
 
 
-def _candidate_class(entry: dict[str, Any], dirtied_keys: set[str]) -> type[ReactiveComponent] | None:
+def _candidate_class(
+    entry: dict[str, Any], dirtied_keys: set[str]
+) -> type[ReactiveComponent] | None:
     """The reactive class this entry names, when it is dirty; else None.
 
     The two E9 filters, in the cheap-first order: an unknown tag costs one dict
@@ -91,7 +93,9 @@ def _load_key(cls: type[ReactiveComponent], load: object) -> str | None:
     return coerce_load_key_str(load)
 
 
-def _resolve_registry_entry(cls: type[ReactiveComponent], instance_id: str) -> tuple[object, bool]:
+def _resolve_registry_entry(
+    cls: type[ReactiveComponent], instance_id: str
+) -> tuple[object, bool]:
     """This id's registry entry, and whether it resolved at all.
 
     The one place the snake_case tag name is traded for the PascalCase class
@@ -173,7 +177,9 @@ def walk_manifest(
             # E13: the clean answer comes from the load cache's own key space,
             # never from the registry key that resolved above.
             status, instance, level = "clean", None, None
-            resolved = resolved if resolved is not None else cache_get(cls, dedup_key[1])
+            resolved = (
+                resolved if resolved is not None else cache_get(cls, dedup_key[1])
+            )
         else:
             # A bare `RenderSession()` defaults to template_dir="templates" —
             # the wrong templates outside a test with that literal directory.

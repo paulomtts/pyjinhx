@@ -2,6 +2,7 @@
 
 import dataclasses
 from pathlib import Path
+from typing import Annotated
 
 import pytest
 
@@ -9,10 +10,8 @@ from pyjinhx2 import discovery, registry
 from pyjinhx2.reactive.cache import cache_has, cache_put
 from pyjinhx2.reactive.component import PjxKey, ReactiveComponent
 from pyjinhx2.reactive.fanout import walk_manifest
-from pyjinhx2.session import RenderSession, request_scope
-
-from typing import Annotated
-
+from pyjinhx2.segments import RenderedLevel
+from pyjinhx2.session import request_scope
 
 LOAD_CALLS: list[str | None] = []
 
@@ -69,7 +68,9 @@ def _clean_registries(tmp_path, monkeypatch):
     yield
 
 
-def entry(type_name: str, instance_id: str, load: object = None, hash_: str = "h") -> dict:
+def entry(
+    type_name: str, instance_id: str, load: object = None, hash_: str = "h"
+) -> dict:
     """Build one synthetic X-PJX-Mounted manifest entry."""
     return {"type": type_name, "id": instance_id, "load": load, "hash": hash_}
 
@@ -124,7 +125,9 @@ def test_cache_hit_answers_clean_without_calling_load():
     with scope():
         cache_put(FanoutWidget, "todo-1", "cached-payload", react_keys=("todos",))
         registry.register_instance(FanoutWidget.__name__, "a", "resolved-entry")
-        [candidate] = walk_manifest([entry("fanout_widget", "a", load="todo-1")], {"todos"})
+        [candidate] = walk_manifest(
+            [entry("fanout_widget", "a", load="todo-1")], {"todos"}
+        )
         assert candidate.status == "clean"
         assert candidate.resolved == "resolved-entry"
         assert candidate.level is None
@@ -134,11 +137,14 @@ def test_cache_hit_answers_clean_without_calling_load():
 def test_cache_miss_loads_once_renders_and_caches():
     with scope():
         registry.register_instance(FanoutWidget.__name__, "a", "resolved-entry")
-        [candidate] = walk_manifest([entry("fanout_widget", "a", load="todo-1")], {"todos"})
+        [candidate] = walk_manifest(
+            [entry("fanout_widget", "a", load="todo-1")], {"todos"}
+        )
         assert candidate.status == "dirty"
         assert LOAD_CALLS == ["todo-1"]
         assert cache_has(FanoutWidget, "todo-1") is True
         assert candidate.level is not None
+        assert isinstance(candidate.level, RenderedLevel)
         assert candidate.level.root_span is not None
         assert candidate.instance is not None
 
