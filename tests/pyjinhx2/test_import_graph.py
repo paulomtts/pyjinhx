@@ -97,6 +97,19 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
             "pyjinhx2.reactive.keys",
         }
     ),
+    # The reactive on_rendered branch (#463): it reads ReactiveComponent to
+    # decide whether to act and reuses the spine's one splice primitive. Every
+    # edge points downward into the spine — root_attrs/segments/session know
+    # nothing about this module, and render.py never imports it.
+    "reactive.root_attrs": frozenset(
+        {
+            "pyjinhx2.component",
+            "pyjinhx2.reactive.component",
+            "pyjinhx2.root_attrs",
+            "pyjinhx2.segments",
+            "pyjinhx2.session",
+        }
+    ),
     # The instance registry (ADR 0009) is read-only over session's ContextVar
     # store; it consumes get_instances() and nothing else in pyjinhx2. The
     # register_rendered_instance signature also names RenderedLevel, but that
