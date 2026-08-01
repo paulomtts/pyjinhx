@@ -115,7 +115,9 @@ class LoadedAssets:
             try:
                 parsed = json.loads(client)
             except json.JSONDecodeError:
-                logger.warning("Could not parse %s as JSON; ignoring.", PJX_ASSETS_HEADER)
+                logger.warning(
+                    "Could not parse %s as JSON; ignoring.", PJX_ASSETS_HEADER
+                )
                 return frozenset()
             if not isinstance(parsed, list):
                 return frozenset()

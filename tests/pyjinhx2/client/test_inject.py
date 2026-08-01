@@ -131,7 +131,9 @@ def test_header_value_finds_exact_and_lowercase_keys():
 def test_header_value_returns_none_for_unusable_sources():
     from pyjinhx2.client.inject import PJX_ASSETS_HEADER, _header_value
 
-    assert _header_value(FakeRequest({"Accept": "text/html"}), PJX_ASSETS_HEADER) is None
+    assert (
+        _header_value(FakeRequest({"Accept": "text/html"}), PJX_ASSETS_HEADER) is None
+    )
     assert _header_value(object(), PJX_ASSETS_HEADER) is None
     assert _header_value(None, PJX_ASSETS_HEADER) is None
 
