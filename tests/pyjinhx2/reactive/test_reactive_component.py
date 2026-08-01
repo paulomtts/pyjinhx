@@ -164,3 +164,105 @@ def test_the_descriptor_is_attached_to_reactive_subclasses():
             return "loaded"
 
     assert Widget.__pjx_descriptor__ is not None
+
+
+def test_resolve_pjx_key_field_returns_none_when_unmarked():
+    from pyjinhx2.reactive.component import resolve_pjx_key_field
+
+    class Widget(ReactiveComponent):
+        name: str = ""
+
+    assert resolve_pjx_key_field(Widget) is None
+
+
+def test_resolve_pjx_key_field_finds_an_annotated_field():
+    from typing import Annotated
+
+    from pyjinhx2.reactive.component import PjxKey, resolve_pjx_key_field
+
+    class Widget(ReactiveComponent):
+        row_id: Annotated[int, PjxKey()] = 0
+
+    assert resolve_pjx_key_field(Widget) == "row_id"
+
+
+def test_resolve_pjx_key_field_finds_a_field_wrapped_marker():
+    from typing import Annotated
+
+    from pydantic import Field
+
+    from pyjinhx2.reactive.component import PjxKey, resolve_pjx_key_field
+
+    class Widget(ReactiveComponent):
+        row_id: Annotated[int, PjxKey(), Field(default=0)]
+
+    assert resolve_pjx_key_field(Widget) == "row_id"
+
+
+def test_two_pjx_key_fields_raise_at_class_definition():
+    from typing import Annotated
+
+    from pyjinhx2.reactive.component import PjxKey
+
+    with pytest.raises(TypeError, match="PjxKey"):
+
+        class Widget(ReactiveComponent):
+            a: Annotated[int, PjxKey()] = 0
+            b: Annotated[int, PjxKey()] = 0
+
+
+def test_unmarked_instances_share_one_cache_entry():
+    calls: list[int] = []
+
+    class Widget(ReactiveComponent):
+        def load(self) -> str:
+            calls.append(1)
+            return "loaded"
+
+    with request_scope():
+        Widget().load()
+        Widget().load()
+
+    assert len(calls) == 1
+
+
+def test_distinct_pjx_key_values_load_independently():
+    from typing import Annotated
+
+    from pyjinhx2.reactive.component import PjxKey
+
+    calls: list[int] = []
+
+    class Row(ReactiveComponent):
+        row_id: Annotated[int, PjxKey()] = 0
+
+        def load(self) -> int:
+            calls.append(self.row_id)
+            return self.row_id * 10
+
+    with request_scope():
+        assert Row(row_id=1).load() == 10
+        assert Row(row_id=2).load() == 20
+
+    assert calls == [1, 2]
+
+
+def test_equal_pjx_key_values_share_one_cache_entry():
+    from typing import Annotated
+
+    from pyjinhx2.reactive.component import PjxKey
+
+    calls: list[int] = []
+
+    class Row(ReactiveComponent):
+        row_id: Annotated[int, PjxKey()] = 0
+
+        def load(self) -> str:
+            calls.append(self.row_id)
+            return "loaded"
+
+    with request_scope():
+        Row(row_id=1).load()
+        Row(row_id=1).load()
+
+    assert len(calls) == 1
