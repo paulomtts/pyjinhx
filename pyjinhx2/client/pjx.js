@@ -18,8 +18,23 @@
     );
   }
 
+  function pjxLoadedAssets() {
+    var tokens = [];
+    Array.prototype.forEach.call(
+      document.querySelectorAll("[data-pjx-asset]"),
+      function (el) {
+        var token = el.getAttribute("data-pjx-asset");
+        if (token && tokens.indexOf(token) === -1) {
+          tokens.push(token);
+        }
+      }
+    );
+    return tokens;
+  }
+
   document.body.addEventListener("htmx:configRequest", function () {});
 
   pjx.manifest = pjxManifest;
+  pjx.loadedAssets = pjxLoadedAssets;
   window.pjx = pjx;
 })();
