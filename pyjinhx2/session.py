@@ -1,6 +1,6 @@
 """RenderSession, the per-request ContextVars, and the request_scope that owns them."""
 
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Iterable, Iterator
 from contextlib import contextmanager
 from contextvars import ContextVar
 from pathlib import Path
@@ -141,6 +141,20 @@ def get_dirtied() -> set[str]:
     if dirtied is None:
         return set()
     return dirtied
+
+
+def add_dirtied(keys: Iterable[str]) -> None:
+    """Add already-normalized reactive keys to this request's dirtied set.
+
+    Args:
+        keys: Normalized string keys, as produced by coerce_reactive_keys().
+    """
+    dirtied = _dirtied.get()
+    # Outside a request_scope() there is nothing to dirty and nothing that will
+    # read it back; mirror get_dirtied()'s tolerance instead of raising.
+    if dirtied is None:
+        return
+    dirtied.update(keys)
 
 
 def get_cache_store() -> dict[object, object]:
