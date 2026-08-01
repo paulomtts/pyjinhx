@@ -44,6 +44,13 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
     # off disk. Nothing in pyjinhx2 may be imported from here, or the browser
     # runtime's delivery would depend on the server tier that serves it.
     "client.__init__": frozenset(),
+    # The one sanctioned edge out of the client tier: inject.py writes the
+    # runtime payload onto RenderSession and gates on js_mode, mirroring the
+    # "dotted edge" architecture-overview.md calls out between L2's
+    # RenderSession and L3 (cold render's assets flow through the session).
+    "client.inject": frozenset(
+        {"pyjinhx2.assets", "pyjinhx2.client", "pyjinhx2.session"}
+    ),
     "component": frozenset(
         {"pyjinhx2.descriptor", "pyjinhx2.props_header"}
     ),  # the stale-header probe needs template_has_props_header
