@@ -1,3 +1,7 @@
+// pjx.js: scans the DOM for mounted [data-pjx-id] regions and stamps
+// X-PJX-Mounted/X-PJX-Assets/X-PJX-Trigger request headers on every htmx
+// request, and applies the one swap mechanic htmx core can't do natively --
+// relocating [data-pjx-asset] head assets that arrive via OOB or cold render.
 (function () {
   var pjx = {};
 
