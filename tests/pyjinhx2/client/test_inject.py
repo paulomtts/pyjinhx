@@ -106,3 +106,28 @@ def test_lowercase_header_key_also_skips_injection():
     inject_runtime(session, FakeRequest({PJX_MOUNTED_HEADER.lower(): '["btn-1"]'}))
 
     assert session.runtime_script is None
+
+
+def test_header_constants_match_the_wire_names():
+    from pyjinhx2.client.inject import PJX_ASSETS_HEADER, PJX_TRIGGER_HEADER
+
+    assert PJX_TRIGGER_HEADER == "X-PJX-Trigger"
+    assert PJX_ASSETS_HEADER == "X-PJX-Assets"
+
+
+def test_header_value_finds_exact_and_lowercase_keys():
+    from pyjinhx2.client.inject import PJX_ASSETS_HEADER, _header_value
+
+    exact = FakeRequest({PJX_ASSETS_HEADER: '["a"]'})
+    lower = FakeRequest({PJX_ASSETS_HEADER.lower(): '["a"]'})
+
+    assert _header_value(exact, PJX_ASSETS_HEADER) == '["a"]'
+    assert _header_value(lower, PJX_ASSETS_HEADER) == '["a"]'
+
+
+def test_header_value_returns_none_for_unusable_sources():
+    from pyjinhx2.client.inject import PJX_ASSETS_HEADER, _header_value
+
+    assert _header_value(FakeRequest({"Accept": "text/html"}), PJX_ASSETS_HEADER) is None
+    assert _header_value(object(), PJX_ASSETS_HEADER) is None
+    assert _header_value(None, PJX_ASSETS_HEADER) is None

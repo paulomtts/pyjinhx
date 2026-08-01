@@ -1,14 +1,44 @@
-"""Cold-render injection of the pjx.js runtime into a session's output."""
+"""Cold-render injection of the pjx.js runtime, and pjx request header parsing."""
 
 from __future__ import annotations
 
+import json
+import logging
 from typing import Any
 
 from pyjinhx2.assets import AssetMode
 from pyjinhx2.client import read_pjx_runtime, read_vendored_htmx
 from pyjinhx2.session import RenderSession
 
+logger = logging.getLogger(__name__)
+
 PJX_MOUNTED_HEADER = "X-PJX-Mounted"
+"""Header carrying the client's mounted-region manifest."""
+
+PJX_TRIGGER_HEADER = "X-PJX-Trigger"
+"""Header carrying the data-pjx-id of the element that started the request."""
+
+PJX_ASSETS_HEADER = "X-PJX-Assets"
+"""Header carrying the client's already-loaded asset token set."""
+
+
+def _header_value(source: Any, name: str) -> str | None:
+    """Read header *name* off a request-like *source*, or None if unavailable.
+
+    Checks the exact name then the lowercase one: a real ASGI request's
+    headers are case-insensitive, but a plain dict from a test or a
+    hand-rolled client is not.
+    """
+    headers = getattr(source, "headers", None)
+    if headers is None:
+        return None
+    try:
+        value = headers.get(name)
+        if value is None:
+            value = headers.get(name.lower())
+    except AttributeError:
+        return None
+    return value
 
 
 def _is_mounted_request(request: Any) -> bool:
