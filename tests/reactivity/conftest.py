@@ -17,15 +17,18 @@ import httpx
 import pytest
 import uvicorn
 
+pytest.importorskip("playwright")
+
 
 @pytest.fixture(scope="session", autouse=True)
-def _require_chromium() -> None:
-    try:
-        from playwright.sync_api import sync_playwright
-    except ImportError:
-        pytest.skip("playwright is not installed")
-    with sync_playwright() as playwright:
-        executable = Path(playwright.chromium.executable_path)
+def _require_chromium(browser_type) -> None:  # noqa: ANN001
+    # Check via pytest-playwright's own `browser_type` fixture rather than
+    # opening a second `sync_playwright()` context here: two independent
+    # sync_playwright instances in one process race and break every
+    # subsequent browser test in the suite ("using Playwright Sync API
+    # inside the asyncio event loop") once another browser-test package
+    # (e.g. tests/pyjinhx2/client) runs earlier in the same session.
+    executable = Path(browser_type.executable_path)
     if not executable.exists():
         pytest.skip(
             "chromium is not installed (run: uv run playwright install chromium)"

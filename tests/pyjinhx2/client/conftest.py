@@ -16,13 +16,17 @@ from pyjinhx2.client import read_pjx_runtime
 
 pytest.importorskip("playwright")
 
-from playwright.sync_api import Page, sync_playwright  # noqa: E402
+from playwright.sync_api import Page  # noqa: E402
 
 
 @pytest.fixture(scope="session", autouse=True)
-def _require_chromium() -> None:
-    with sync_playwright() as playwright:
-        executable = Path(playwright.chromium.executable_path)
+def _require_chromium(browser_type) -> None:  # noqa: ANN001
+    # Check via pytest-playwright's own `browser_type` fixture rather than
+    # opening a second `sync_playwright()` context here: two independent
+    # sync_playwright instances in one process race and break every
+    # subsequent browser test in the suite ("using Playwright Sync API
+    # inside the asyncio event loop").
+    executable = Path(browser_type.executable_path)
     if not executable.exists():
         pytest.skip(
             "chromium is not installed (run: uv run playwright install chromium)"
