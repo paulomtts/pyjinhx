@@ -149,6 +149,113 @@
     document.head.appendChild(style);
   }
 
+  var pjxLoadingByXhr = new Map(); // xhr -> [region id, ...]
+  var pjxLoading = {}; // region id -> in-flight request count (ref-count)
+
+  function pjxReacts(el) {
+    var value = el.getAttribute("data-pjx-reacts");
+    return value ? value.split(" ").filter(Boolean) : [];
+  }
+
+  function pjxLoadingClass(el) {
+    return "pjx-loading--" + (el.getAttribute("data-pjx-loading") || "skeleton");
+  }
+
+  function pjxRegion(id) {
+    var key = window.CSS && CSS.escape ? CSS.escape(id) : id;
+    return document.querySelector('[data-pjx-id="' + key + '"]');
+  }
+
+  // the [data-pjx-loading] elements belonging to a region (itself and/or inner
+  // elements, but not those owned by a nested reactive region)
+  function pjxLoadingTargets(region) {
+    var targets = [];
+    if (region.getAttribute("data-pjx-loading")) {
+      targets.push(region);
+    }
+    Array.prototype.forEach.call(
+      region.querySelectorAll("[data-pjx-loading]"),
+      function (el) {
+        if (el.closest("[data-pjx-id][data-pjx-reacts]") === region) {
+          targets.push(el);
+        }
+      }
+    );
+    return targets;
+  }
+
+  function pjxLight(region, ids) {
+    var id = region.getAttribute("data-pjx-id");
+    if (!id || ids.indexOf(id) !== -1) {
+      return;
+    }
+    var targets = pjxLoadingTargets(region);
+    if (!targets.length) {
+      return;
+    }
+    targets.forEach(function (t) {
+      t.classList.add(pjxLoadingClass(t));
+    });
+    pjxLoading[id] = (pjxLoading[id] || 0) + 1;
+    ids.push(id);
+  }
+
+  function pjxBeginLoading(evt) {
+    if (evt.defaultPrevented) {
+      return; // cancelled request: its xhr is never sent, so loadend never fires
+    }
+    var xhr = evt.detail && evt.detail.xhr;
+    var elt = evt.detail && evt.detail.elt;
+    var root = elt && elt.closest ? elt.closest("[data-pjx-id][data-pjx-reacts]") : null;
+    if (!xhr || !root) {
+      return;
+    }
+    var dirty = {};
+    pjxReacts(root).forEach(function (key) {
+      dirty[key] = true;
+    });
+    var triggerLoad = root.getAttribute("data-pjx-load");
+    var ids = [];
+    Array.prototype.forEach.call(
+      document.querySelectorAll("[data-pjx-id][data-pjx-reacts]"),
+      function (region) {
+        var reacts = pjxReacts(region).some(function (key) {
+          return dirty[key];
+        });
+        if (!reacts) {
+          return;
+        }
+        // keyed regions: light only the instance matching the trigger's load key
+        var regionLoad = region.getAttribute("data-pjx-load");
+        if (regionLoad === null || regionLoad === triggerLoad) {
+          pjxLight(region, ids);
+        }
+      }
+    );
+    // a trigger may name extra regions to light (e.g. rows a bulk action removes)
+    var extra = root.getAttribute("data-pjx-loading-extra");
+    if (extra) {
+      Array.prototype.forEach.call(
+        document.querySelectorAll(extra),
+        function (region) {
+          pjxLight(region, ids);
+        }
+      );
+    }
+    if (ids.length) {
+      pjxLoadingByXhr.set(xhr, ids);
+      // loadend always fires (load/error/abort), even when htmx discards the
+      // response of a superseded request -- a reliable cue to release the refs
+      xhr.addEventListener("loadend", function () {
+        pjxEndLoading(xhr);
+      });
+    }
+  }
+
+  function pjxEndLoading(xhrOrEvt) {
+    void xhrOrEvt; // implemented in the end-loading step
+  }
+
   pjx.manifest = pjxManifest;
   pjx.loadedAssets = pjxLoadedAssets;
   pjx.trigger = pjxTrigger;
@@ -168,4 +275,5 @@
   pjxPromoteInlineAssets();
   document.body.addEventListener("htmx:configRequest", pjxConfigRequest);
   document.body.addEventListener("htmx:afterRequest", pjxApplyHeadAssetsFromRequest);
+  document.body.addEventListener("htmx:beforeRequest", pjxBeginLoading);
 })();
