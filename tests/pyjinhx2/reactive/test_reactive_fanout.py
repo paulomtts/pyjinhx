@@ -1,8 +1,12 @@
 """Unit tests for the manifest walk: filter, dedup, and clean/dirty resolution."""
 
+import dataclasses
+from pathlib import Path
+
 import pytest
 
 from pyjinhx2 import discovery, registry
+from pyjinhx2.reactive.cache import cache_has, cache_put
 from pyjinhx2.reactive.component import PjxKey, ReactiveComponent
 from pyjinhx2.reactive.fanout import walk_manifest
 from pyjinhx2.session import RenderSession, request_scope
@@ -39,9 +43,28 @@ def _clean_registries(tmp_path, monkeypatch):
     """Publish a tag -> class map for the two test classes and reset call spies."""
     global _TEMPLATE_DIR
     LOAD_CALLS.clear()
-    (tmp_path / "fanout_widget.pjx").write_text("<div>{{ pjx_key }}</div>")
-    (tmp_path / "quiet_widget.pjx").write_text("<div>quiet</div>")
+    fanout_path = tmp_path / "fanout_widget.pjx"
+    quiet_path = tmp_path / "quiet_widget.pjx"
+    fanout_path.write_text("<div>{{ pjx_key }}</div>")
+    quiet_path.write_text("<div>quiet</div>")
     discovery.build_registry(tmp_path, [FanoutWidget, QuietWidget])
+    # `_resolve_template_path` walks the class's *defining module's* directory
+    # (this test file's dir), not `template_dir` passed to `build_registry` —
+    # the two are deliberately different concerns (tag lookup vs. file probe).
+    # Point each descriptor's `template_path` at this test's tmp_path file, the
+    # same way tests/pyjinhx2/test_render_integration.py does, so render_level()
+    # finds a real file instead of falling back to an ancestor's unprobed guess.
+    # `RenderSession(template_dir=tmp_path)` (below, via `scope()`) resolves a
+    # template name relative to that dir, so the descriptor's `template_path`
+    # must be the bare filename, not `fanout_path` itself (an absolute path
+    # jinja's FileSystemLoader would join *under* the search dir, not open
+    # directly, and never find).
+    FanoutWidget.__pjx_descriptor__ = dataclasses.replace(
+        FanoutWidget.__pjx_descriptor__, template_path=Path(fanout_path.name)
+    )
+    QuietWidget.__pjx_descriptor__ = dataclasses.replace(
+        QuietWidget.__pjx_descriptor__, template_path=Path(quiet_path.name)
+    )
     _TEMPLATE_DIR = str(tmp_path)
     yield
 
@@ -95,3 +118,57 @@ def test_duplicate_type_and_load_pairs_collapse_to_one_candidate():
     with scope():
         candidates = walk_manifest(manifest, {"todos"})
         assert [c.instance_id for c in candidates] == ["a", "c"]
+
+
+def test_cache_hit_answers_clean_without_calling_load():
+    with scope():
+        cache_put(FanoutWidget, "todo-1", "cached-payload", react_keys=("todos",))
+        registry.register_instance(FanoutWidget.__name__, "a", "resolved-entry")
+        [candidate] = walk_manifest([entry("fanout_widget", "a", load="todo-1")], {"todos"})
+        assert candidate.status == "clean"
+        assert candidate.resolved == "resolved-entry"
+        assert candidate.level is None
+        assert LOAD_CALLS == []
+
+
+def test_cache_miss_loads_once_renders_and_caches():
+    with scope():
+        registry.register_instance(FanoutWidget.__name__, "a", "resolved-entry")
+        [candidate] = walk_manifest([entry("fanout_widget", "a", load="todo-1")], {"todos"})
+        assert candidate.status == "dirty"
+        assert LOAD_CALLS == ["todo-1"]
+        assert cache_has(FanoutWidget, "todo-1") is True
+        assert candidate.level is not None
+        assert candidate.level.root_span is not None
+        assert candidate.instance is not None
+
+
+def test_unregistered_entry_is_a_miss_and_does_not_abort_the_walk():
+    with scope():
+        registry.register_instance(FanoutWidget.__name__, "b", "resolved-entry")
+        manifest = [
+            entry("fanout_widget", "gone", load="todo-1"),
+            entry("fanout_widget", "b", load="todo-2"),
+        ]
+        gone, alive = walk_manifest(manifest, {"todos"})
+        assert gone.status == "missing"
+        assert gone.resolved is None
+        assert alive.status == "dirty"
+
+
+def test_the_walk_never_writes_to_the_instance_registry(monkeypatch):
+    # Deviation from the plan's literal test: the plan seeds the registry
+    # entry *after* patching `register_instance`, so that setup call is
+    # itself captured and `assert calls == []` fails regardless of
+    # walk_manifest's behavior. Seed first, patch second, so the spy only
+    # sees calls walk_manifest itself makes.
+    calls: list[tuple] = []
+    with scope():
+        registry.register_instance(FanoutWidget.__name__, "a", "resolved-entry")
+        monkeypatch.setattr(
+            "pyjinhx2.reactive.fanout.registry.register_instance",
+            lambda *args: calls.append(args),
+            raising=False,
+        )
+        walk_manifest([entry("fanout_widget", "a", load="todo-1")], {"todos"})
+        assert calls == []

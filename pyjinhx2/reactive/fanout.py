@@ -24,9 +24,12 @@ from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from typing import Any
 
-from pyjinhx2 import discovery
+from pyjinhx2 import discovery, registry
+from pyjinhx2.reactive.cache import cache_get, cache_has
 from pyjinhx2.reactive.component import ReactiveComponent
 from pyjinhx2.reactive.keys import coerce_load_key_str
+from pyjinhx2.render import render_level
+from pyjinhx2.session import RenderSession, current_session
 
 
 @dataclass(frozen=True)
@@ -88,9 +91,44 @@ def _load_key(cls: type[ReactiveComponent], load: object) -> str | None:
     return coerce_load_key_str(load)
 
 
+def _resolve_registry_entry(cls: type[ReactiveComponent], instance_id: str) -> tuple[object, bool]:
+    """This id's registry entry, and whether it resolved at all.
+
+    The one place the snake_case tag name is traded for the PascalCase class
+    name the registry is keyed by. A LookupError is caught rather than allowed
+    out: one region the client still shows but the server no longer knows about
+    must not take the whole walk down — it becomes a "missing" candidate, which
+    is #470's hook point for a delete swap.
+    """
+    try:
+        return registry.resolve(cls.__name__, instance_id), True
+    except LookupError:
+        return None, False
+
+
+def _build_dirty(
+    cls: type[ReactiveComponent], instance_id: str, load: object, session: RenderSession
+) -> tuple[ReactiveComponent, object]:
+    """Re-run this candidate's load and render, and hand back both.
+
+    ``instance.load()`` goes through the L3.2 memo wrap, which is what writes
+    the fresh entry to the cache — fanout never calls ``cache_put`` itself, so
+    the key derivation stays in exactly one place. ``render_level()`` rather
+    than ``render()``: #471 splices at a root_span, and only the level carries
+    one.
+    """
+    fields: dict[str, Any] = {"id": instance_id}
+    if cls._pjx_key_field is not None:
+        fields[cls._pjx_key_field] = load
+    instance = cls(**fields)
+    instance.load()
+    return instance, render_level(instance, session)
+
+
 def walk_manifest(
     manifest_entries: Sequence[dict[str, Any]],
     dirtied_keys: Iterable[str],
+    session: RenderSession | None = None,
 ) -> list[FanoutCandidate]:
     """The candidates this request's dirtied keys make out of a mounted manifest.
 
@@ -98,11 +136,20 @@ def walk_manifest(
         manifest_entries: ``MountedManifest.parse()`` output — dicts shaped
             ``{id, type, load, hash}``, where ``type`` is a snake_case tag name.
         dirtied_keys: This request's normalized dirtied reactive keys.
+        session: the RenderSession a dirty candidate's re-render runs against;
+            a fresh one is built per call when omitted.
 
     Returns:
         One FanoutCandidate per surviving, deduped entry, in manifest order.
         An entry naming an unknown tag, or a class no dirtied key touches, is
-        dropped silently — it is not this request's concern.
+        dropped silently — it is not this request's concern. A candidate's
+        ``status`` is one of ``"clean"``, ``"dirty"``, or ``"missing"``.
+
+    Deliberately not done here, each owned by the next subtask in L3.5:
+    the ``entry["hash"]`` vs fresh ``state_hash()`` gate (#467); structural
+    nesting dedup of survivors (#468); excluding regions already inside the
+    primary response (#469); turning a ``"missing"`` candidate into a delete
+    swap (#470); splicing ``hx-swap-oob`` at a level's root_span (#471).
     """
     dirty = set(dirtied_keys)
     seen: set[tuple[str, str | None]] = set()
@@ -117,14 +164,42 @@ def walk_manifest(
         if dedup_key in seen:
             continue
         seen.add(dedup_key)
+        instance_id = str(entry.get("id") or "")
+        load = entry.get("load")
+        resolved, found = _resolve_registry_entry(cls, instance_id)
+        if not found:
+            status, instance, level = "missing", None, None
+        elif cache_has(cls, dedup_key[1]):
+            # E13: the clean answer comes from the load cache's own key space,
+            # never from the registry key that resolved above.
+            status, instance, level = "clean", None, None
+            resolved = resolved if resolved is not None else cache_get(cls, dedup_key[1])
+        else:
+            # A bare `RenderSession()` defaults to template_dir="templates" —
+            # the wrong templates outside a test with that literal directory.
+            # Fall back to the active request_scope()'s session before ever
+            # constructing a fresh one, so a caller inside a request never has
+            # its dirty-path render silently point at the wrong template dir.
+            render_session = session or current_session() or RenderSession()
+            instance, level = _build_dirty(cls, instance_id, load, render_session)
+            status = "dirty"
         candidates.append(
             FanoutCandidate(
                 type_name=str(entry["type"]),
                 component_class=cls,
-                instance_id=str(entry.get("id") or ""),
-                load=entry.get("load"),
-                status="dirty",
+                instance_id=instance_id,
+                load=load,
+                status=status,
                 entry=entry,
+                resolved=resolved,
+                level=level,
+                instance=instance,
             )
         )
     return candidates
+
+
+# TODO(#449): registry.register_rendered_instance is exported but subscribed by
+# no production code, so a dirty candidate's fresh RenderedLevel is not visible
+# to a later resolve(). Wiring it belongs to whoever owns the re-render/Load
+# path, not to this read-only consumer (E7).
