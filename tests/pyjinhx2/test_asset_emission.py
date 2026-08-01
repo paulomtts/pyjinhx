@@ -406,3 +406,23 @@ def test_link_mode_repeated_calls_are_byte_identical(tmp_path):
     assert first.index("/static/a.css") < first.index("/static/m.css")
     assert first.index("/static/m.css") < first.index("/static/z.css")
     assert first.index("/static/q.css") < first.index("/static/a.js")
+
+
+def test_emit_assets_puts_runtime_script_before_component_scripts(tmp_path):
+    script = tmp_path / "widget.js"
+    script.write_text("widget();")
+    session = _session(tmp_path)
+    session.js_assets = {script}
+    session.runtime_script = "<script>RUNTIME</script>"
+
+    html = emit_assets(session)
+
+    assert html.index("RUNTIME") < html.index("widget();")
+
+
+def test_emit_assets_skips_runtime_script_when_js_mode_is_not_inline(tmp_path):
+    session = _session(tmp_path)
+    session.js_mode = AssetMode.NONE
+    session.runtime_script = "<script>RUNTIME</script>"
+
+    assert emit_assets(session) == ""
