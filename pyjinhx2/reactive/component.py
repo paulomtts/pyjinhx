@@ -5,6 +5,8 @@ class exactly like the ClassDescriptor is - per-class derived facts are computed
 at registration, never per render.
 """
 
+import hashlib
+import json
 from collections.abc import Callable, Iterable
 from typing import Annotated, Any, ClassVar, get_args, get_origin, get_type_hints
 
@@ -30,6 +32,10 @@ class ReactiveComponent(BaseComponent):
     _pjx_key_field: ClassVar[str | None] = None
     """Name of this class's PjxKey-marked field, or None when it has none."""
 
+    state_hash_exclude: ClassVar[frozenset[str]] = frozenset({"id"})
+    """Field names left out of the state hash. A subclass's value replaces this
+    one outright rather than adding to it."""
+
     def load(self) -> Any:
         """Fetch this component's data. Override in subclasses.
 
@@ -37,6 +43,19 @@ class ReactiveComponent(BaseComponent):
         fetch stays valid and the wrap always has a body to call.
         """
         return None
+
+    def state_hash(self) -> str:
+        """Return a SHA-256 hex digest of this instance's output-relevant field values.
+
+        Reads nothing but the instance's own fields: no cache lookup and no
+        ``load()`` call, so it is safe to call at any point in a render.
+        """
+        exclude = getattr(type(self), "state_hash_exclude", frozenset({"id"}))
+        payload = self.model_dump(mode="json", exclude=set(exclude))
+        # JSON-mode dump plus sorted, separator-pinned encoding so that dict
+        # ordering and non-JSON-native types can't perturb an unchanged state.
+        canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"))
+        return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
     def pjx_mount(self) -> None:
         """Run the cache-routed ``load()`` before this instance's recursive render.
