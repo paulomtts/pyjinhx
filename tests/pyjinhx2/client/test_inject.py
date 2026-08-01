@@ -230,3 +230,57 @@ def test_mounted_manifest_warns_and_falls_open_on_malformed_json(caplog):
         assert MountedManifest.parse("not json") == []
 
     assert PJX_MOUNTED_HEADER in caplog.text
+
+
+TRIGGER = {"id": "btn-1", "type": "Button"}
+
+
+def test_trigger_manifest_parses_a_json_string_with_a_truthy_id():
+    from pyjinhx2.client.inject import TriggerManifest
+
+    assert TriggerManifest.parse(json.dumps(TRIGGER)) == TRIGGER
+
+
+def test_trigger_manifest_accepts_a_pre_parsed_dict():
+    from pyjinhx2.client.inject import TriggerManifest
+
+    assert TriggerManifest.parse(dict(TRIGGER)) == TRIGGER
+
+
+def test_trigger_manifest_reads_the_header_off_a_request():
+    from pyjinhx2.client.inject import PJX_TRIGGER_HEADER, TriggerManifest
+
+    payload = json.dumps(TRIGGER)
+    exact = FakeRequest({PJX_TRIGGER_HEADER: payload})
+    lower = FakeRequest({PJX_TRIGGER_HEADER.lower(): payload})
+
+    assert TriggerManifest.parse(exact) == TRIGGER
+    assert TriggerManifest.parse(lower) == TRIGGER
+
+
+@pytest.mark.parametrize(
+    "client",
+    [
+        None,
+        "",
+        FakeRequest({"Accept": "text/html"}),
+        object(),
+        '{"type": "Button"}',
+        '{"id": ""}',
+        {"id": ""},
+        "[1, 2]",
+    ],
+)
+def test_trigger_manifest_without_a_truthy_id_is_none(client: object):
+    from pyjinhx2.client.inject import TriggerManifest
+
+    assert TriggerManifest.parse(client) is None
+
+
+def test_trigger_manifest_warns_and_falls_open_on_malformed_json(caplog):
+    from pyjinhx2.client.inject import PJX_TRIGGER_HEADER, TriggerManifest
+
+    with caplog.at_level(logging.WARNING, logger="pyjinhx2.client.inject"):
+        assert TriggerManifest.parse("not json") is None
+
+    assert PJX_TRIGGER_HEADER in caplog.text

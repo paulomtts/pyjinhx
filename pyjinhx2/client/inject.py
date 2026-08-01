@@ -151,3 +151,30 @@ class MountedManifest:
                 return []
             return parsed if isinstance(parsed, list) else []
         return MountedManifest.parse(_header_value(mounted, PJX_MOUNTED_HEADER))
+
+
+class TriggerManifest:
+    """Parser for the ``X-PJX-Trigger`` header."""
+
+    @staticmethod
+    def parse(client: str | dict[str, Any] | object | None) -> dict[str, Any] | None:
+        """Return the descriptor of the element that started the request.
+
+        Accepts a raw header string, a pre-parsed dict, a request-like object,
+        or None. A descriptor without a truthy ``id`` is useless to callers
+        that key off it, so it collapses to None rather than a half-empty dict.
+        """
+        if client is None or client == "":
+            return None
+        if isinstance(client, dict):
+            return client if client.get("id") else None  # pyright: ignore[reportUnknownArgumentType]
+        if isinstance(client, str):
+            try:
+                parsed = json.loads(client)
+            except json.JSONDecodeError:
+                logger.warning(
+                    "Could not parse %s as JSON; ignoring.", PJX_TRIGGER_HEADER
+                )
+                return None
+            return parsed if isinstance(parsed, dict) and parsed.get("id") else None
+        return TriggerManifest.parse(_header_value(client, PJX_TRIGGER_HEADER))
