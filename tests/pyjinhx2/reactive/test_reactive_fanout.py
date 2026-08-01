@@ -66,3 +66,21 @@ def scope():
 def test_unknown_type_is_dropped():
     with scope():
         assert walk_manifest([entry("no_such_widget", "a")], {"todos"}) == []
+
+
+def test_entry_whose_keys_miss_the_dirtied_set_is_dropped():
+    with scope():
+        assert walk_manifest([entry("quiet_widget", "a")], {"todos"}) == []
+
+
+def test_entry_whose_keys_hit_the_dirtied_set_is_kept():
+    with scope():
+        [candidate] = walk_manifest([entry("fanout_widget", "a")], {"todos"})
+        assert candidate.component_class is FanoutWidget
+        assert candidate.instance_id == "a"
+
+
+def test_empty_manifest_and_empty_dirtied_keys_answer_empty():
+    with scope():
+        assert walk_manifest([], {"todos"}) == []
+        assert walk_manifest([entry("fanout_widget", "a")], set()) == []
