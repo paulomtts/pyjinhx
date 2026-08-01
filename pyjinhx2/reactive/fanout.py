@@ -112,8 +112,8 @@ def _resolve_registry_entry(
     The one place the snake_case tag name is traded for the PascalCase class
     name the registry is keyed by. A LookupError is caught rather than allowed
     out: one region the client still shows but the server no longer knows about
-    must not take the whole walk down — it becomes a "missing" candidate, which
-    is #470's hook point for a delete swap.
+    must not take the whole walk down — it becomes a "missing" candidate,
+    which ``delete_swap()`` turns into a delete swap.
     """
     try:
         return registry.resolve(cls.__name__, instance_id), True
@@ -306,9 +306,9 @@ def walk_manifest(
         survivor's region is dropped: the parent's swap already carries it, and
         so is one whose id the primary response already carries.
 
-    Deliberately not done here, each owned by the next subtask in L3.5: turning
-    a ``"missing"`` candidate into a delete swap (#470); splicing
-    ``hx-swap-oob`` at a level's root_span (#471).
+    Turning a ``"missing"`` candidate into a delete swap is ``delete_swap()``
+    below; assembling those fragments with the real swaps into one response
+    body is #471's, and is deliberately not done here.
     """
     dirty = set(dirtied_keys)
     excluded = _mounted_ids_in(primary_html)
