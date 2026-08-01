@@ -33,6 +33,16 @@ class ReactiveComponent(BaseComponent):
         """
         return None
 
+    def pjx_mount(self) -> None:
+        """Run the cache-routed ``load()`` before this instance's recursive render.
+
+        Overrides BaseComponent's no-op: render.py calls this hook on every
+        child it instantiates from a ChildRef without knowing anything about
+        ReactiveComponent, so mounting a reactive child never needs a manual
+        ``load()`` call from the template author.
+        """
+        self.load()
+
     def __init_subclass__(cls, *, react: Iterable[object] = (), **kwargs: Any) -> None:
         """Consume the ``react`` class kwarg and record it as normalized keys.
 
