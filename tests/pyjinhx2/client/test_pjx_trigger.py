@@ -10,11 +10,15 @@ def test_trigger_returns_nearest_mounted_ancestor(pjx_page):
         '<button id="btn">go</button>'
         "</div></div>"
     )
-    assert page.evaluate("pjx.trigger(document.getElementById('btn'))") == {"id": "inner"}
+    assert page.evaluate("pjx.trigger(document.getElementById('btn'))") == {
+        "id": "inner"
+    }
 
 
 def test_trigger_matches_the_element_itself(pjx_page):
-    page = pjx_page('<div id="btn" data-pjx-id="a1" data-pjx-type="Row" data-pjx-hash="h"></div>')
+    page = pjx_page(
+        '<div id="btn" data-pjx-id="a1" data-pjx-type="Row" data-pjx-hash="h"></div>'
+    )
     assert page.evaluate("pjx.trigger(document.getElementById('btn'))") == {"id": "a1"}
 
 

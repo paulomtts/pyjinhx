@@ -9,7 +9,9 @@ from pyjinhx2.client import read_pjx_runtime
 
 def test_missing_htmx_logs_a_console_error(page: Page):
     errors = []
-    page.on("console", lambda msg: errors.append(msg.text) if msg.type == "error" else None)
+    page.on(
+        "console", lambda msg: errors.append(msg.text) if msg.type == "error" else None
+    )
     page.set_content("<body><div></div></body>")
     page.add_script_tag(content=read_pjx_runtime())
     assert any("htmx" in text for text in errors)
@@ -27,7 +29,9 @@ def test_runtime_still_loads_and_scans_without_htmx(pjx_page):
 
 def test_no_console_error_when_htmx_is_present(page: Page):
     errors = []
-    page.on("console", lambda msg: errors.append(msg.text) if msg.type == "error" else None)
+    page.on(
+        "console", lambda msg: errors.append(msg.text) if msg.type == "error" else None
+    )
     page.set_content("<body><div></div></body>")
     page.evaluate("window.htmx = {}")
     page.add_script_tag(content=read_pjx_runtime())

@@ -16,11 +16,11 @@ from pyjinhx2.client import read_pjx_runtime
 
 pytest.importorskip("playwright")
 
-from playwright.sync_api import Page  # noqa: E402
+from playwright.sync_api import Page
 
 
 @pytest.fixture(scope="session", autouse=True)
-def _require_chromium(browser_type) -> None:  # noqa: ANN001
+def _require_chromium(browser_type) -> None:
     # Check via pytest-playwright's own `browser_type` fixture rather than
     # opening a second `sync_playwright()` context here: two independent
     # sync_playwright instances in one process race and break every

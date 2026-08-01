@@ -52,6 +52,8 @@ def test_manifest_omits_undefined_type_and_hash_over_the_wire(pjx_page):
 
 
 def test_manifest_reflects_the_dom_at_call_time(pjx_page):
-    page = pjx_page('<div data-pjx-id="a1" data-pjx-type="Card" data-pjx-hash="h1"></div>')
+    page = pjx_page(
+        '<div data-pjx-id="a1" data-pjx-type="Card" data-pjx-hash="h1"></div>'
+    )
     page.evaluate("document.querySelector('[data-pjx-id]').remove()")
     assert page.evaluate("pjx.manifest()") == []

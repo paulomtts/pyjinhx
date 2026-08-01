@@ -21,7 +21,9 @@ def test_body_style_is_promoted_on_load(pjx_page):
 
 
 def test_promoted_style_keeps_its_css(pjx_page):
-    page = pjx_page('<style data-pjx-asset="card.css">.c{color:rgb(255, 0, 0)}</style><p class="c">x</p>')
+    page = pjx_page(
+        '<style data-pjx-asset="card.css">.c{color:rgb(255, 0, 0)}</style><p class="c">x</p>'
+    )
     color = page.evaluate("() => getComputedStyle(document.querySelector('.c')).color")
     assert color == "rgb(255, 0, 0)"
 
