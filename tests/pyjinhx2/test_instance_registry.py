@@ -1,16 +1,20 @@
 """Tests for the minimal request-scoped instance registry (ADR 0009)."""
 
 import logging
+from pathlib import Path
 
 import pytest
 
+from pyjinhx2.descriptor import ClassDescriptor
+from pyjinhx2.reactive.component import ReactiveComponent
 from pyjinhx2.registry import (
     make_key,
     register_instance,
     register_rendered_instance,
     resolve,
 )
-from pyjinhx2.segments import RenderedLevel
+from pyjinhx2.render import render_level
+from pyjinhx2.segments import RenderedLevel, serialize
 from pyjinhx2.session import RenderSession, _instances, get_instances, request_scope
 
 
@@ -193,3 +197,84 @@ def test_emit_rendered_registers_nothing_until_the_writer_is_subscribed():
         session.on_rendered.append(register_rendered_instance)
         session.emit_rendered(component, level)  # type: ignore[arg-type]
         assert resolve("FakeComponent", "f1") is level
+
+
+class RegisteredWidget(ReactiveComponent):
+    """A real component rendered through the real pipeline for these tests."""
+
+
+RegisteredWidget.__pjx_descriptor__ = ClassDescriptor(
+    template_path=Path("reactive_widget.html"),
+    slot_fields=frozenset(),
+    children_field=None,
+    css_paths=(),
+    js_paths=(),
+    strict=True,
+    provenance={"template": RegisteredWidget},
+)
+
+
+def _wired_session() -> RenderSession:
+    """A session whose on_rendered carries the registry writer, as the Load path wires it."""
+    session = RenderSession(template_dir="tests/templates")
+    session.on_rendered.append(register_rendered_instance)
+    return session
+
+
+def test_real_render_with_the_writer_subscribed_registers_a_resolvable_entry():
+    session = _wired_session()
+    component = RegisteredWidget(id="r1")
+
+    with request_scope(session=session):
+        level = render_level(component, session)
+        assert resolve("RegisteredWidget", "r1") is level
+
+
+def test_the_registered_entry_is_the_rendered_level_not_a_copy():
+    session = _wired_session()
+    component = RegisteredWidget(id="r2")
+
+    with request_scope(session=session):
+        level = render_level(component, session)
+        resolved = resolve("RegisteredWidget", "r2")
+        assert isinstance(resolved, RenderedLevel)
+        assert serialize(resolved) == serialize(level)
+
+
+def test_the_real_render_stores_under_the_composite_key():
+    session = _wired_session()
+
+    with request_scope(session=session):
+        render_level(RegisteredWidget(id="r3"), session)
+        assert make_key("RegisteredWidget", "r3") in get_instances()
+
+
+def test_a_real_render_entry_does_not_survive_the_request_scope():
+    session = _wired_session()
+
+    with request_scope(session=session):
+        render_level(RegisteredWidget(id="r4"), session)
+        assert resolve("RegisteredWidget", "r4") is not None
+
+    with pytest.raises(LookupError, match="RegisteredWidget_r4"):
+        resolve("RegisteredWidget", "r4")
+
+
+def test_a_real_render_registers_nothing_when_the_writer_is_not_wired():
+    session = RenderSession(template_dir="tests/templates")
+
+    with request_scope(session=session):
+        render_level(RegisteredWidget(id="r5"), session)
+        assert get_instances() == {}
+        with pytest.raises(LookupError, match="RegisteredWidget_r5"):
+            resolve("RegisteredWidget", "r5")
+
+
+def test_two_instances_of_one_class_register_under_their_own_ids():
+    session = _wired_session()
+
+    with request_scope(session=session):
+        first = render_level(RegisteredWidget(id="r6"), session)
+        second = render_level(RegisteredWidget(id="r7"), session)
+        assert resolve("RegisteredWidget", "r6") is first
+        assert resolve("RegisteredWidget", "r7") is second
