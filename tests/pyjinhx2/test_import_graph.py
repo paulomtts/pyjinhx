@@ -87,6 +87,16 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
     # mutations.py records dirtied keys through session's public writer; it owns
     # no ContextVar of its own and never reaches sideways into cache.py.
     "reactive.mutations": frozenset({"pyjinhx2.session", "pyjinhx2.reactive.keys"}),
+    # ReactiveComponent subclasses BaseComponent and routes load() through the
+    # cache: the two edges below are the whole design. The reverse - anything in
+    # the render spine importing reactive/ - stays forbidden.
+    "reactive.component": frozenset(
+        {
+            "pyjinhx2.component",
+            "pyjinhx2.reactive.cache",
+            "pyjinhx2.reactive.keys",
+        }
+    ),
     # The instance registry (ADR 0009) is read-only over session's ContextVar
     # store; it consumes get_instances() and nothing else in pyjinhx2. The
     # register_rendered_instance signature also names RenderedLevel, but that
