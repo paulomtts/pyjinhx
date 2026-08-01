@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import logging
 
 import pytest
@@ -176,3 +177,56 @@ def test_loaded_assets_warns_and_falls_open_on_malformed_json(caplog):
         assert LoadedAssets.parse("not json") == frozenset()
 
     assert PJX_ASSETS_HEADER in caplog.text
+
+
+MANIFEST_ENTRY = {
+    "id": "card-1",
+    "type": "Card",
+    "load": "eager",
+    "hash": "abc123",
+}
+
+
+def test_mounted_manifest_parses_a_json_string_and_keeps_every_field():
+    from pyjinhx2.client.inject import MountedManifest
+
+    parsed = MountedManifest.parse(json.dumps([MANIFEST_ENTRY]))
+
+    assert parsed == [MANIFEST_ENTRY]
+    assert set(parsed[0]) == {"id", "type", "load", "hash"}
+
+
+def test_mounted_manifest_accepts_a_pre_parsed_list():
+    from pyjinhx2.client.inject import MountedManifest
+
+    assert MountedManifest.parse([MANIFEST_ENTRY]) == [MANIFEST_ENTRY]
+
+
+def test_mounted_manifest_reads_the_header_off_a_request():
+    from pyjinhx2.client.inject import PJX_MOUNTED_HEADER, MountedManifest
+
+    payload = json.dumps([MANIFEST_ENTRY])
+    exact = FakeRequest({PJX_MOUNTED_HEADER: payload})
+    lower = FakeRequest({PJX_MOUNTED_HEADER.lower(): payload})
+
+    assert MountedManifest.parse(exact) == [MANIFEST_ENTRY]
+    assert MountedManifest.parse(lower) == [MANIFEST_ENTRY]
+
+
+@pytest.mark.parametrize(
+    "mounted",
+    [None, "", FakeRequest({"Accept": "text/html"}), object(), '{"id": "card-1"}'],
+)
+def test_mounted_manifest_empty_inputs_yield_an_empty_list(mounted: object):
+    from pyjinhx2.client.inject import MountedManifest
+
+    assert MountedManifest.parse(mounted) == []
+
+
+def test_mounted_manifest_warns_and_falls_open_on_malformed_json(caplog):
+    from pyjinhx2.client.inject import PJX_MOUNTED_HEADER, MountedManifest
+
+    with caplog.at_level(logging.WARNING, logger="pyjinhx2.client.inject"):
+        assert MountedManifest.parse("not json") == []
+
+    assert PJX_MOUNTED_HEADER in caplog.text

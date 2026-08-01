@@ -121,3 +121,33 @@ class LoadedAssets:
                 return frozenset()
             return frozenset(str(token) for token in parsed)  # pyright: ignore[reportUnknownVariableType]
         return LoadedAssets.parse(_header_value(client, PJX_ASSETS_HEADER))
+
+
+class MountedManifest:
+    """Parser for the ``X-PJX-Mounted`` header."""
+
+    @staticmethod
+    def parse(
+        mounted: str | list[dict[str, Any]] | object | None,
+    ) -> list[dict[str, Any]]:
+        """Return the regions the browser reports it currently has mounted.
+
+        Each entry is ``{id, type, load, hash}``. Accepts a raw header string,
+        a pre-parsed list, a request-like object, or None. Anything unreadable
+        yields an empty list, which downstream fanout reads as "nothing is
+        mounted" — a full render rather than a failed one.
+        """
+        if mounted is None or mounted == "":
+            return []
+        if isinstance(mounted, list):
+            return mounted
+        if isinstance(mounted, str):
+            try:
+                parsed = json.loads(mounted)
+            except json.JSONDecodeError:
+                logger.warning(
+                    "Could not parse %s as JSON; ignoring.", PJX_MOUNTED_HEADER
+                )
+                return []
+            return parsed if isinstance(parsed, list) else []
+        return MountedManifest.parse(_header_value(mounted, PJX_MOUNTED_HEADER))
