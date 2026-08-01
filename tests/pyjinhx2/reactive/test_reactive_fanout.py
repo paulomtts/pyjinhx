@@ -9,7 +9,12 @@ import pytest
 from pyjinhx2 import discovery, registry
 from pyjinhx2.reactive.cache import cache_has, cache_put
 from pyjinhx2.reactive.component import PjxKey, ReactiveComponent
-from pyjinhx2.reactive.fanout import FanoutCandidate, _drop_nested, walk_manifest
+from pyjinhx2.reactive.fanout import (
+    FanoutCandidate,
+    _drop_nested,
+    _mounted_ids_in,
+    walk_manifest,
+)
 from pyjinhx2.segments import ChildRef, RenderedLevel
 from pyjinhx2.session import request_scope
 
@@ -420,6 +425,17 @@ def test_drop_nested_is_a_no_op_on_empty_and_singleton_lists():
     with scope():
         assert _drop_nested([]) == []
         assert _drop_nested(only) == only
+
+
+def test_mounted_ids_in_extracts_both_quote_styles():
+    html = '<div data-pjx-id="alpha"><span data-pjx-id=\'beta\'>x</span></div>'
+    assert _mounted_ids_in(html) == {"alpha", "beta"}
+
+
+def test_mounted_ids_in_answers_empty_for_markup_without_ids_and_for_none():
+    assert _mounted_ids_in("<div>plain</div>") == set()
+    assert _mounted_ids_in("") == set()
+    assert _mounted_ids_in(None) == set()
 
 
 def test_walk_manifest_runs_the_nesting_dedup_on_its_survivors(monkeypatch):
