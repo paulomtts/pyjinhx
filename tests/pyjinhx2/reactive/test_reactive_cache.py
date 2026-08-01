@@ -144,3 +144,13 @@ def test_one_dirtied_key_evicts_every_entry_registered_under_it():
         assert cache_has(Widget, "todos") is False
         assert cache_has(OtherWidget, "todos") is False
         assert cache_get(Widget, "users") == "user value"
+
+
+def test_re_putting_an_entry_drops_its_previous_reactive_keys():
+    with request_scope():
+        cache_put(Widget, "todos", "first", react_keys=["todos"])
+        cache_put(Widget, "todos", "second", react_keys=["users"])
+        invalidate(["todos"])
+        assert cache_get(Widget, "todos") == "second"
+        invalidate(["users"])
+        assert cache_has(Widget, "todos") is False
