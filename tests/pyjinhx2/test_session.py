@@ -305,3 +305,15 @@ def test_each_scope_gets_its_own_subscriber_list():
 
     with session_module.request_scope(template_dir="tests/templates") as later:
         assert later.on_rendered == []
+
+
+def test_add_dirtied_updates_the_active_scopes_set():
+    with session_module.request_scope():
+        session_module.add_dirtied({"todos"})
+        session_module.add_dirtied(["todos", "user"])
+        assert session_module.get_dirtied() == {"todos", "user"}
+
+
+def test_add_dirtied_outside_a_scope_is_a_no_op():
+    session_module.add_dirtied({"todos"})
+    assert session_module.get_dirtied() == set()
