@@ -36,3 +36,25 @@ def test_no_console_error_when_htmx_is_present(page: Page):
     page.evaluate("window.htmx = {}")
     page.add_script_tag(content=read_pjx_runtime())
     assert errors == []
+
+
+def test_loading_and_toast_apis_exist_without_htmx(pjx_page):
+    page = pjx_page("<div></div>", with_htmx=False)
+    assert page.evaluate("typeof pjx.toast") == "function"
+    assert page.evaluate("typeof pjx.loader.page") == "function"
+    assert page.evaluate("typeof pjx.loader.region") == "function"
+
+
+def test_style_is_injected_even_without_htmx(pjx_page):
+    page = pjx_page("<div></div>", with_htmx=False)
+    assert page.evaluate("document.querySelectorAll('#pjx-style').length") == 1
+
+
+def test_loader_and_toast_do_not_throw_without_htmx(pjx_page):
+    page = pjx_page("<div></div>", with_htmx=False)
+    assert (
+        page.evaluate(
+            "pjx.toast({message: 'x'}), pjx.loader.page(true), pjx.loader.page(false), 'ok'"
+        )
+        == "ok"
+    )
