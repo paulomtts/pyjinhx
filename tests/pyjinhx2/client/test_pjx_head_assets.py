@@ -72,3 +72,29 @@ def test_after_request_without_an_xhr_is_a_no_op(pjx_page):
            )"""
     )
     assert page.evaluate(HEAD_TOKENS) == []
+
+
+def test_asset_tagged_link_is_not_applied(pjx_page):
+    page = pjx_page("<div></div>")
+    page.evaluate(
+        APPLY,
+        '<link data-pjx-asset="card.css" rel="stylesheet" href="/card.css"'
+        ' hx-swap-oob="beforeend:head">',
+    )
+    assert page.evaluate(HEAD_TOKENS) == []
+
+
+def test_external_script_keeps_its_src(pjx_page):
+    page = pjx_page("<div></div>")
+    page.evaluate(
+        APPLY,
+        '<script data-pjx-asset="card.js" src="/card.js"'
+        ' hx-swap-oob="beforeend:head"></script>',
+    )
+    assert (
+        page.evaluate(
+            "() => document.head.querySelector('script[data-pjx-asset]')"
+            ".getAttribute('src')"
+        )
+        == "/card.js"
+    )
