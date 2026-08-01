@@ -5,7 +5,7 @@ from pyjinhx2.reactive.cache import (
     invalidate,
     make_key,
 )
-from pyjinhx2.session import get_cache_store, request_scope
+from pyjinhx2.session import get_cache_reverse, get_cache_store, request_scope
 
 
 class Widget:
