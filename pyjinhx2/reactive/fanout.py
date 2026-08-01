@@ -155,6 +155,26 @@ RE_ROOT_PJX_ID = re.compile(
 )
 
 
+def _mounted_ids_in(primary_html: object) -> set[str]:
+    """Every ``data-pjx-id`` the primary response's markup already carries.
+
+    A string scan rather than a segment-tree walk, unlike ``_drop_nested``: by
+    the time fan-out runs (T2 step 5) the primary render has already been
+    through render.py's single top-level serialize join at step 4, so what
+    reaches here is a serialized str/Markup with no tree left to walk. Markup
+    and str are read identically — the regex sees ``str(primary_html)`` either
+    way. Best-effort by design: a truncated or malformed fragment simply yields
+    the ids the regex can still see.
+    """
+    if not primary_html:
+        return set()
+    return {
+        double or single
+        for double, single in RE_ROOT_PJX_ID.findall(str(primary_html))
+        if double or single
+    }
+
+
 def _level_of(candidate: FanoutCandidate) -> RenderedLevel | None:
     """The candidate's own segment tree, from either field, or None.
 
