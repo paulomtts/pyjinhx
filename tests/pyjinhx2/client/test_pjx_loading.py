@@ -57,3 +57,25 @@ def test_keyed_regions_light_only_the_instance_matching_the_trigger_load(pjx_pag
     fire(page, "#btn")
     assert classes(page, '[data-pjx-id="r7"]') == ["pjx-loading--skeleton"]
     assert classes(page, '[data-pjx-id="r8"]') == [""]
+
+
+def test_nested_reactive_region_targets_are_not_owned_by_the_parent(pjx_page):
+    page = pjx_page(
+        '<div data-pjx-id="p" data-pjx-reacts="count"><button id="btn"></button>'
+        '<span id="own" data-pjx-loading="skeleton"></span>'
+        '<div data-pjx-id="c" data-pjx-reacts="other">'
+        '<span id="inner" data-pjx-loading="skeleton"></span></div></div>'
+    )
+    fire(page, "#btn")
+    assert classes(page, "#own") == ["pjx-loading--skeleton"]
+    assert classes(page, "#inner") == [""]
+
+
+def test_loading_extra_selector_lights_regions_that_do_not_react(pjx_page):
+    page = pjx_page(
+        '<div data-pjx-id="t" data-pjx-reacts="count" data-pjx-loading-extra=".row">'
+        '<button id="btn"></button></div>'
+        '<div class="row" data-pjx-id="r1" data-pjx-reacts="name" data-pjx-loading="spinner"></div>'
+    )
+    fire(page, "#btn")
+    assert classes(page, ".row") == ["row pjx-loading--spinner"]
