@@ -1,12 +1,14 @@
 """Unit tests for the manifest walk: filter, dedup, and clean/dirty resolution."""
 
 import dataclasses
+import re
 from pathlib import Path
 from typing import Annotated
 
 import pytest
 
 from pyjinhx2 import discovery, registry
+from pyjinhx2.reactive import fanout
 from pyjinhx2.reactive.cache import cache_has, cache_put
 from pyjinhx2.reactive.component import PjxKey, ReactiveComponent
 from pyjinhx2.reactive.fanout import (
@@ -18,7 +20,7 @@ from pyjinhx2.reactive.fanout import (
     walk_manifest,
 )
 from pyjinhx2.segments import ChildRef, RenderedLevel
-from pyjinhx2.session import request_scope
+from pyjinhx2.session import RenderSession, request_scope
 
 LOAD_CALLS: list[str | None] = []
 
@@ -638,3 +640,138 @@ def test_walk_manifest_runs_the_nesting_dedup_on_its_survivors(monkeypatch):
             {"todos"},
         )
     assert seen_calls == [2]
+
+
+def test_one_walk_composes_every_status_gate_and_nesting_drop(monkeypatch):
+    """The whole decision matrix, in a single manifest and a single walk.
+
+    Every prior test isolates one filter; this one is the composed contract:
+    clean, dirty-survives, dirty-gated-out, missing, nested-child-dropped and
+    a no-tree survivor all decided in one pass, asserted as one ordered list.
+    """
+    child = stamped_level("child")
+    parent = stamped_level("parent", child)
+    real_build = fanout._build_dirty
+
+    def build(cls, instance_id, load, session):
+        instance, level = real_build(cls, instance_id, load, session)
+        # Only the parent/child pair needs a hand-shaped tree; every other
+        # dirty entry keeps its real render, so the hash gate stays honest.
+        return instance, {"parent": parent, "child": child}.get(instance_id, level)
+
+    monkeypatch.setattr(fanout, "_build_dirty", build)
+    with scope():
+        cache_put(FanoutWidget, "todo-1", "cached-payload", react_keys=("todos",))
+        for instance_id in ("a", "same", "moved", "parent", "child", "lonely"):
+            registry.register_instance(FanoutWidget.__name__, instance_id, "entry")
+        manifest = [
+            entry("fanout_widget", "a", load="todo-1"),  # clean: cache hit
+            entry(
+                "fanout_widget", "same", load="todo-2", hash_=fresh_hash_for("todo-2")
+            ),  # dirty, gated out
+            entry(
+                "fanout_widget", "moved", load="todo-3", hash_="stale"
+            ),  # dirty, survives
+            entry("fanout_widget", "gone", load="todo-4"),  # missing
+            entry(
+                "fanout_widget", "parent", load="todo-5", hash_="stale"
+            ),  # dirty ancestor
+            entry(
+                "fanout_widget", "child", load="todo-6", hash_="stale"
+            ),  # nested, dropped
+            entry(
+                "fanout_widget", "lonely", load="todo-7", hash_="stale"
+            ),  # no containing tree
+        ]
+        candidates = walk_manifest(manifest, {"todos"})
+
+    assert [(c.instance_id, c.status) for c in candidates] == [
+        ("a", "clean"),
+        ("moved", "dirty"),
+        ("gone", "missing"),
+        ("parent", "dirty"),
+        ("lonely", "dirty"),
+    ]
+    # "same" is dropped by the gate, not relabelled clean; "child" is dropped
+    # by the nesting pass, not by the gate — both absences are load-bearing.
+    assert "same" not in {c.instance_id for c in candidates}
+    assert "child" not in {c.instance_id for c in candidates}
+
+
+def test_oob_swaps_over_a_real_walk_emits_only_outerhtml_and_delete(monkeypatch):
+    """ADR 0001: outerHTML for each dirty survivor, delete for each missing, nothing else."""
+    with scope():
+        cache_put(FanoutWidget, "todo-1", "cached-payload", react_keys=("todos",))
+        registry.register_instance(FanoutWidget.__name__, "a", "entry-a")
+        registry.register_instance(FanoutWidget.__name__, "moved", "entry-moved")
+        candidates = walk_manifest(
+            [
+                entry("fanout_widget", "a", load="todo-1"),
+                entry("fanout_widget", "moved", load="todo-2", hash_="stale"),
+                entry("fanout_widget", "gone", load="todo-3"),
+            ],
+            {"todos"},
+        )
+        body = oob_swaps(candidates)
+
+    swaps = re.findall(r'hx-swap-oob="([^:]+):', body)
+    assert swaps == ["outerHTML", "delete"]
+    assert "[data-pjx-id='moved']" in body
+    assert "[data-pjx-id='gone']" in body
+    # The clean region emits nothing at all — not an empty fragment, not a
+    # no-op swap; its id must not appear anywhere in the body.
+    assert "'a'" not in body
+
+
+def test_primary_exclusion_skips_the_entry_before_any_registry_resolve(monkeypatch):
+    """The cheapest filter runs first: an excluded id costs no resolve, no load."""
+    resolved_ids: list[str] = []
+    real_resolve = registry.resolve
+
+    def spy(class_name, instance_id):
+        resolved_ids.append(instance_id)
+        return real_resolve(class_name, instance_id)
+
+    monkeypatch.setattr(registry, "resolve", spy)
+    with scope():
+        registry.register_instance(FanoutWidget.__name__, "in-primary", "entry-0")
+        registry.register_instance(FanoutWidget.__name__, "elsewhere", "entry-1")
+        candidates = walk_manifest(
+            [
+                entry("fanout_widget", "in-primary", load="todo-1"),
+                entry("fanout_widget", "elsewhere", load="todo-2", hash_="stale"),
+            ],
+            {"todos"},
+            primary_html='<section data-pjx-id="in-primary"></section>',
+        )
+
+    assert [c.instance_id for c in candidates] == ["elsewhere"]
+    assert resolved_ids == ["elsewhere"]
+    assert LOAD_CALLS == ["todo-2"]
+
+
+def test_dirty_path_uses_an_explicit_session_and_the_ambient_one_alike():
+    """state_hash depends on the render, so both session resolution paths must work."""
+    manifest = [entry("fanout_widget", "s", load="todo-1", hash_="stale")]
+    with scope():
+        registry.register_instance(FanoutWidget.__name__, "s", "entry-s")
+        [ambient] = walk_manifest(manifest, {"todos"})
+
+    # `registry.resolve`/`register_instance` are backed by a ContextVar that
+    # only exists inside `request_scope()` — calling them with no scope at all
+    # doesn't skip the ambient session, it silently drops the registration and
+    # then fails to resolve, so there's no way to exercise the "explicit
+    # session, no scope" path literally. Instead: a *bogus* ambient scope
+    # (bare `request_scope()` defaults `template_dir="templates"`, which does
+    # not exist relative to the test process's cwd) proves the explicit
+    # `session=` argument is actually taken and not merely tolerated alongside
+    # a correct ambient one — if it were ignored in favor of
+    # `current_session()`, this would raise `TemplateNotFound`.
+    with request_scope():
+        registry.register_instance(FanoutWidget.__name__, "s", "entry-s")
+        [explicit] = walk_manifest(
+            manifest, {"todos"}, session=RenderSession(template_dir=_TEMPLATE_DIR)
+        )
+
+    assert ambient.status == explicit.status == "dirty"
+    assert ambient.fresh_hash == explicit.fresh_hash == fresh_hash_for("todo-1")
