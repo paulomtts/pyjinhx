@@ -25,6 +25,8 @@ from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from typing import Any
 
+from markupsafe import Markup
+
 from pyjinhx2 import discovery, registry
 from pyjinhx2.reactive.cache import cache_get, cache_has
 from pyjinhx2.reactive.component import ReactiveComponent
@@ -369,6 +371,48 @@ def walk_manifest(
             )
         )
     return _drop_nested(candidates)
+
+
+def _css_attr_value(value: str) -> str:
+    """Escape a string for use inside a single-quoted CSS attribute selector.
+
+    Backslash first, then quote: escaping the quote first would leave the
+    backslash pass turning its own escape into a literal backslash and letting
+    the quote out of the selector.
+    """
+    return value.replace("\\", "\\\\").replace("'", "\\'")
+
+
+def delete_swap(candidate: FanoutCandidate) -> Markup:
+    """The OOB fragment that removes a gone region from the client's DOM.
+
+    A region whose instance the registry no longer knows about cannot be
+    re-rendered — there is nothing left to render. htmx's ``delete`` swap takes
+    the element out instead, so the client stops reporting it in the next
+    manifest and the pair converges.
+
+    The id is the one the *client* reported, verbatim from the manifest: the
+    server has no record of this instance, so there is nothing to re-derive it
+    from, and a lookup would only fail again.
+
+    Args:
+        candidate: A ``"missing"`` candidate from ``walk_manifest``.
+
+    Returns:
+        ``<div hx-swap-oob="delete:[data-pjx-id='ID']"></div>`` — content-free,
+        because the swap is the whole instruction.
+
+    Raises:
+        ValueError: The candidate is not ``"missing"``. Rendering real content
+            for a clean or dirty candidate belongs to #471; answering an empty
+            string here would hide that caller bug.
+    """
+    if candidate.status != "missing":
+        raise ValueError(
+            f"delete_swap expects a 'missing' candidate, got {candidate.status!r}"
+        )
+    selector = f"delete:[data-pjx-id='{_css_attr_value(candidate.instance_id)}']"
+    return Markup(f'<div hx-swap-oob="{selector}"></div>')
 
 
 # TODO(#449): registry.register_rendered_instance is exported but subscribed by

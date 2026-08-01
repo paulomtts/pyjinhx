@@ -13,6 +13,7 @@ from pyjinhx2.reactive.fanout import (
     FanoutCandidate,
     _drop_nested,
     _mounted_ids_in,
+    delete_swap,
     walk_manifest,
 )
 from pyjinhx2.segments import ChildRef, RenderedLevel
@@ -506,6 +507,25 @@ def test_primary_exclusion_and_nesting_dedup_compose_in_one_walk(monkeypatch):
             primary_html='<section data-pjx-id="in-primary"></section>',
         )
     assert [c.instance_id for c in candidates] == ["parent"]
+
+
+def missing_candidate(instance_id: str, status: str = "missing") -> FanoutCandidate:
+    """A FanoutCandidate shaped exactly as walk_manifest builds one for a gone region."""
+    return FanoutCandidate(
+        type_name="fanout_widget",
+        component_class=FanoutWidget,
+        instance_id=instance_id,
+        load="todo-1",
+        status=status,
+        entry=entry("fanout_widget", instance_id, load="todo-1"),
+    )
+
+
+def test_delete_swap_for_a_plain_id_is_a_bare_oob_delete_div():
+    assert (
+        delete_swap(missing_candidate("todo-list"))
+        == "<div hx-swap-oob=\"delete:[data-pjx-id='todo-list']\"></div>"
+    )
 
 
 def test_walk_manifest_runs_the_nesting_dedup_on_its_survivors(monkeypatch):
