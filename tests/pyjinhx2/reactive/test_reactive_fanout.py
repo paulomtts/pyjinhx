@@ -172,3 +172,27 @@ def test_the_walk_never_writes_to_the_instance_registry(monkeypatch):
         )
         walk_manifest([entry("fanout_widget", "a", load="todo-1")], {"todos"})
         assert calls == []
+
+
+def test_mixed_manifest_produces_the_expected_ordered_candidate_list():
+    with scope():
+        cache_put(FanoutWidget, "todo-1", "cached-payload", react_keys=("todos",))
+        registry.register_instance(FanoutWidget.__name__, "a", "level-a")
+        registry.register_instance(FanoutWidget.__name__, "c", "level-c")
+        manifest = [
+            entry("no_such_widget", "x"),
+            entry("quiet_widget", "y"),
+            entry("fanout_widget", "a", load="todo-1"),
+            entry("fanout_widget", "dup", load="todo-1"),
+            entry("fanout_widget", "c", load="todo-2"),
+            entry("fanout_widget", "gone", load="todo-3"),
+        ]
+        candidates = walk_manifest(manifest, {"todos"})
+        assert [(c.instance_id, c.status) for c in candidates] == [
+            ("a", "clean"),
+            ("c", "dirty"),
+            ("gone", "missing"),
+        ]
+        # Only the dirty candidate ran its body; the clean one was never loaded
+        # and the missing one was never built.
+        assert LOAD_CALLS == ["todo-2"]
