@@ -80,6 +80,10 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
     "render_context": frozenset({"pyjinhx2.markers", "pyjinhx2.component"}),
     "reactive.__init__": frozenset(),
     "reactive.keys": frozenset(),
+    # cache.py is a store over session's cache ContextVar and nothing else: it
+    # owns no state, and it must not reach sideways into keys.py or up into the
+    # render spine to key or evict anything.
+    "reactive.cache": frozenset({"pyjinhx2.session"}),
     # mutations.py records dirtied keys through session's public writer; it owns
     # no ContextVar of its own and never reaches sideways into cache.py.
     "reactive.mutations": frozenset({"pyjinhx2.session", "pyjinhx2.reactive.keys"}),
