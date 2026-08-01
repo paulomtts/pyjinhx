@@ -133,3 +133,14 @@ def test_eviction_clears_the_entry_from_every_key_it_was_registered_under():
         cache_put(Widget, "todos", "loaded", react_keys={"todos", "users"})
         invalidate(["users"])
         assert get_cache_reverse() == {"todos": set(), "users": set()}
+
+
+def test_one_dirtied_key_evicts_every_entry_registered_under_it():
+    with request_scope():
+        cache_put(Widget, "todos", "widget value", react_keys=["todos"])
+        cache_put(OtherWidget, "todos", "other value", react_keys=["todos"])
+        cache_put(Widget, "users", "user value", react_keys=["users"])
+        invalidate(["todos"])
+        assert cache_has(Widget, "todos") is False
+        assert cache_has(OtherWidget, "todos") is False
+        assert cache_get(Widget, "users") == "user value"
