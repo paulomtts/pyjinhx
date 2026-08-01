@@ -23,7 +23,9 @@ def test_loader_page_on_sets_the_documented_css_hook(pjx_page):
 
 def test_loader_page_ref_counts_before_clearing(pjx_page):
     page = pjx_page("<div></div>")
-    page.evaluate("pjx.loader.page(true); pjx.loader.page(true); pjx.loader.page(false)")
+    page.evaluate(
+        "pjx.loader.page(true); pjx.loader.page(true); pjx.loader.page(false)"
+    )
     assert html_classes(page) == "pjx-loading--page"
     page.evaluate("pjx.loader.page(false)")
     assert html_classes(page) == ""
