@@ -149,3 +149,29 @@ def test_duplicate_completion_events_are_a_no_op(pjx_page):
     end(page, "htmx:afterOnLoad")
     assert classes(page, '[data-pjx-id="t"]') == [""]
     assert page.evaluate("pjx.loadingCount('t')") == 0
+
+
+SWAP = """
+() => {
+  const old = document.querySelector('[data-pjx-id="t"]');
+  const fresh = document.createElement('div');
+  fresh.setAttribute('data-pjx-id', 't');
+  fresh.setAttribute('data-pjx-reacts', 'count');
+  fresh.setAttribute('data-pjx-loading', 'skeleton');
+  old.replaceWith(fresh);
+  document.body.dispatchEvent(new CustomEvent('htmx:afterSettle', { bubbles: true }));
+}
+"""
+
+
+def test_aftersettle_relights_a_region_swapped_while_in_flight(pjx_page):
+    page = pjx_page(BODY)
+    fire(page, "#btn")
+    page.evaluate(SWAP)
+    assert classes(page, '[data-pjx-id="t"]') == ["pjx-loading--skeleton"]
+
+
+def test_aftersettle_leaves_idle_regions_dark(pjx_page):
+    page = pjx_page(BODY)
+    page.evaluate(SWAP)
+    assert classes(page, '[data-pjx-id="t"]') == [""]

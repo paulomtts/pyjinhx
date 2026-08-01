@@ -280,6 +280,18 @@
     }
   }
 
+  // a swap can replace a region another in-flight request still needs lit
+  function pjxReapplyLoading() {
+    Object.keys(pjxLoading).forEach(function (id) {
+      var region = pjxRegion(id);
+      if (region) {
+        pjxLoadingTargets(region).forEach(function (t) {
+          t.classList.add(pjxLoadingClass(t));
+        });
+      }
+    });
+  }
+
   pjx.manifest = pjxManifest;
   pjx.loadedAssets = pjxLoadedAssets;
   pjx.trigger = pjxTrigger;
@@ -308,4 +320,5 @@
   document.body.addEventListener("htmx:timeout", pjxEndLoading);
   document.body.addEventListener("htmx:sendError", pjxEndLoading);
   document.body.addEventListener("htmx:abort", pjxEndLoading);
+  document.body.addEventListener("htmx:afterSettle", pjxReapplyLoading);
 })();
