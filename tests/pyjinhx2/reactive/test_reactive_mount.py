@@ -96,3 +96,18 @@ def test_plain_child_mounted_via_childref_is_unaffected():
 
     assert "plain" in "".join(str(s) for s in result.segments)
     assert _load_calls == []
+
+
+def test_base_component_pjx_mount_is_noop():
+    """The base hook must do nothing at all: render.py calls it on every child,
+    so any side effect here would leak into every plain component's render."""
+
+    class Plain(BaseComponent):
+        pass
+
+    component = Plain()
+    before = component.model_dump()
+
+    assert component.pjx_mount() is None
+    assert component.model_dump() == before
+    assert _load_calls == []
