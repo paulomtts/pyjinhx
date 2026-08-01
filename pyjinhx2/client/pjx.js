@@ -300,6 +300,38 @@
     );
   }
 
+  var pjxPageLoading = 0;
+
+  // Toggle the page-level CSS hook. Only a class is set: the overlay markup is
+  // an L4 page-loader builtin's business, this is the state it hangs off.
+  function pjxLoaderPage(on) {
+    if (on) {
+      pjxPageLoading += 1;
+      document.documentElement.classList.add("pjx-loading--page");
+      return;
+    }
+    pjxPageLoading = Math.max(0, pjxPageLoading - 1);
+    if (pjxPageLoading === 0) {
+      document.documentElement.classList.remove("pjx-loading--page");
+    }
+  }
+
+  // Same ref-count the htmx wiring uses, so a manual show and an in-flight
+  // request over the same region can't switch each other off.
+  function pjxLoaderRegion(id, on) {
+    var region = pjxRegion(id);
+    if (!region) {
+      return;
+    }
+    if (on) {
+      pjxLight(region, []);
+      return;
+    }
+    if (pjxLoading[id]) {
+      pjxRelease(id);
+    }
+  }
+
   pjx.manifest = pjxManifest;
   pjx.loadedAssets = pjxLoadedAssets;
   pjx.trigger = pjxTrigger;
@@ -307,6 +339,7 @@
   pjx.promoteInlineAssets = pjxPromoteInlineAssets;
   pjx.injectStyle = pjxInjectStyle;
   pjx.toast = pjxToast;
+  pjx.loader = { page: pjxLoaderPage, region: pjxLoaderRegion };
   pjx.loadingCount = function (id) {
     return pjxLoading[id] || 0;
   };
