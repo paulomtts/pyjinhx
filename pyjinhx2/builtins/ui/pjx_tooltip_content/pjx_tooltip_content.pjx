@@ -1,0 +1,1 @@
+<span id="{{ id }}" class="pjx-tooltip__tip{% if class_name %} {{ class_name }}{% endif %}" role="tooltip" hidden>{{ content }}</span>

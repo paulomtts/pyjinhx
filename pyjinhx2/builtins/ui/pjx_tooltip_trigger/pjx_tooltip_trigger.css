@@ -1,0 +1,8 @@
+.pjx-tooltip__trigger {
+  outline: none;
+}
+
+.pjx-tooltip__trigger:focus-visible {
+  outline: 2px solid var(--brand, currentColor);
+  outline-offset: 2px;
+}
