@@ -1,0 +1,60 @@
+:where(:root) {
+  --pjx-progress-height:     0.5rem;
+  --pjx-progress-radius:     var(--radius-full);
+  --pjx-progress-track:      var(--surface-alt);
+  --pjx-progress-fill:       var(--brand);
+  --pjx-progress-indeterminate-speed: 1.2s;
+}
+
+.pjx-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  width: 100%;
+  max-width: 24rem;
+}
+
+.pjx-progress__label {
+  font-size: var(--font-size-sm);
+  color: var(--text-muted);
+}
+
+.pjx-progress__bar {
+  width: 100%;
+  height: var(--pjx-progress-height);
+  border-radius: var(--pjx-progress-radius);
+  border: 1px solid var(--border);
+  background: var(--pjx-progress-track);
+  overflow: hidden;
+}
+
+.pjx-progress__bar::-webkit-progress-bar {
+  background: var(--pjx-progress-track);
+  border-radius: var(--pjx-progress-radius);
+}
+
+.pjx-progress__bar::-webkit-progress-value {
+  background: var(--pjx-progress-fill);
+  border-radius: var(--pjx-progress-radius);
+}
+
+.pjx-progress__bar::-moz-progress-bar {
+  background: var(--pjx-progress-fill);
+  border-radius: var(--pjx-progress-radius);
+}
+
+.pjx-progress__bar:indeterminate {
+  background: linear-gradient(
+    90deg,
+    var(--pjx-progress-track) 0%,
+    var(--pjx-progress-fill) 50%,
+    var(--pjx-progress-track) 100%
+  );
+  background-size: 200% 100%;
+  animation: pjx-progress-indeterminate var(--pjx-progress-indeterminate-speed) ease infinite;
+}
+
+@keyframes pjx-progress-indeterminate {
+  0% { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
+}
