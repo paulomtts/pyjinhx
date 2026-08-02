@@ -119,6 +119,30 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
         {"pyjinhx2.builtins.ui.pjx_modal_footer.pjx_modal_footer"}
     ),
     "builtins.ui.pjx_modal_footer.pjx_modal_footer": frozenset({"pyjinhx2.component"}),
+    # pjx_drawer family (#518): the slide-in dialog shell plus its
+    # header/body/footer regions. Same shape as the modal family — each
+    # component module reaches down into component.py only; each __init__ just
+    # re-exports its class from its co-located module.
+    "builtins.ui.pjx_drawer.__init__": frozenset(
+        {"pyjinhx2.builtins.ui.pjx_drawer.pjx_drawer"}
+    ),
+    "builtins.ui.pjx_drawer.pjx_drawer": frozenset({"pyjinhx2.component"}),
+    "builtins.ui.pjx_drawer_header.__init__": frozenset(
+        {"pyjinhx2.builtins.ui.pjx_drawer_header.pjx_drawer_header"}
+    ),
+    "builtins.ui.pjx_drawer_header.pjx_drawer_header": frozenset(
+        {"pyjinhx2.component"}
+    ),
+    "builtins.ui.pjx_drawer_body.__init__": frozenset(
+        {"pyjinhx2.builtins.ui.pjx_drawer_body.pjx_drawer_body"}
+    ),
+    "builtins.ui.pjx_drawer_body.pjx_drawer_body": frozenset({"pyjinhx2.component"}),
+    "builtins.ui.pjx_drawer_footer.__init__": frozenset(
+        {"pyjinhx2.builtins.ui.pjx_drawer_footer.pjx_drawer_footer"}
+    ),
+    "builtins.ui.pjx_drawer_footer.pjx_drawer_footer": frozenset(
+        {"pyjinhx2.component"}
+    ),
     "builtins.ui.pjx_notification.__init__": frozenset(
         {"pyjinhx2.builtins.ui.pjx_notification.pjx_notification"}
     ),
