@@ -91,8 +91,7 @@ graph LR
     InstReg -- "resolve name+id;<br/>cached render if clean" --> Fanout
     Hash -- "fresh hash vs<br/>manifest hash: gate" --> Fanout
     Fanout -- "OOB swaps<br/>(stamped at root_span)" --> Pjx
-    Session -. "missing assets<br/>(X-PJX-Assets dedup)" .-> Fanout
-    Fanout -. "swap-in assets" .-> Pjx
+    Fanout -. "missing assets<br/>(candidates' descriptors vs<br/>X-PJX-Assets dedup)" .-> Pjx
 ```
 
 Edge semantics, restated for this map: **solid** — the consumer cannot produce its output without this input (`Parse` cannot exist without Jinja's string). **Dotted** — keyed lookup or hook; a miss is a defined, non-error path (`Expand` on an unknown tag passes it through verbatim; a non-reactive component never touches `InstReg`). **Thick** — single-writer ownership (`Discovery` is the only writer of `ClassReg`; `Load` is the only writer of `InstReg` entries; `Expand` is the only caller that splices children).
@@ -163,7 +162,7 @@ All 60+ components. Pure consumers of everything above — no engine edges of th
 
 **Root span is written twice, parsed never.** The stamp mechanism splices pass-through attrs at render time; fan-out splices `hx-swap-oob` at response time. Same offset, same splice primitive, two moments. In v0.36 each of these was a separate document parse.
 
-**Assets flow through two doors.** Cold render: RenderSession → inline tags at serialize. Reactive swap: fan-out compares session accumulation against `X-PJX-Assets` and ships only the delta as OOB fragments. Same accumulator, two emission paths — which is why RenderSession lives in L2 but has a dotted edge into L3.
+**Assets flow through two doors.** Cold render: RenderSession → inline tags at serialize. Reactive swap (#490): fan-out compares the surviving candidates' frozen class descriptors — not session accumulation — against `X-PJX-Assets` and ships only the delta as OOB fragments (`pyjinhx2/reactive/assets.py`). Nothing subscribes `accumulate_assets` onto the fan-out render's session, so that accumulator is empty on the dirty path; descriptors are already frozen, already carry the paths, and cover clean candidates too (a clean region still needs its CSS if the client never got it). INLINE mode only today — LINK-mode delivery and cold-render `data-pjx-asset` stamping are open follow-ups (`TODO(#490 follow-up)` in `assets.py`).
 
 **Discovery and `{#def#}` are the only writers at import time; everything per-request is ContextVar.** The full mutable-state census (invariant 4): class registry + descriptors (built-then-swap, import/registration time), instance registry + RenderSession + dirtied keys + LoadCache request store + LoadCache reverse index (ContextVar, reset by `request_scope`). Nothing else. A mechanism needing mutable state not in this census amends this census first.
 
