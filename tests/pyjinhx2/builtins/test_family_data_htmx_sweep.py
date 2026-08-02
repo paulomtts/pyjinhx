@@ -453,3 +453,22 @@ def test_a_nested_scope_hands_state_back_to_the_outer_scope():
             render(PaginatorRegion(id="p-main", pjx_key="main"), inner)
         assert get_dirtied() == {ROWS}
         assert registry.resolve("TableRegion", "t-main") is not None
+
+
+def test_a_failing_region_does_not_corrupt_its_siblings():
+    with scope() as session:
+        render(PageShell(id="shell"), session)
+        # BoomRegion.load() is called directly rather than through render():
+        # only a ChildRef-mounted child gets pjx_mount()'d automatically (see
+        # render.py's render_level loop), so a bare render(BoomRegion(...))
+        # at the top level would never call load() at all and never raise.
+        with pytest.raises(RuntimeError):
+            BoomRegion(id="boom").load()
+
+        assert registry.resolve("TableRegion", "t-main") is not None
+        assert cache_has(TableRegion, "main")
+        invalidate({ROWS})
+        candidates = walk_manifest(
+            [entry("table_region", "t-main", "main")], {ROWS}, session=session
+        )
+        assert [c.instance_id for c in candidates] == ["t-main"]
