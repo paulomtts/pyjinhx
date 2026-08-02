@@ -1,0 +1,59 @@
+:where(:root) {
+  --pjx-spinner-sm: 1.25rem;
+  --pjx-spinner-md: 2rem;
+  --pjx-spinner-lg: 2.75rem;
+  --pjx-spinner-track: color-mix(in srgb, var(--text-muted) 35%, transparent);
+  --pjx-spinner-accent: var(--brand);
+}
+
+.pjx-spinner {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  vertical-align: middle;
+}
+
+.pjx-spinner__ring {
+  display: inline-block;
+  border-radius: 50%;
+  border-style: solid;
+  border-color: var(--pjx-spinner-track);
+  border-top-color: var(--pjx-spinner-accent);
+  animation: pjx-spinner-rotate 0.7s linear infinite;
+  flex-shrink: 0;
+}
+
+.pjx-spinner--sm .pjx-spinner__ring {
+  width: var(--pjx-spinner-sm);
+  height: var(--pjx-spinner-sm);
+  border-width: 2px;
+}
+
+.pjx-spinner--md .pjx-spinner__ring {
+  width: var(--pjx-spinner-md);
+  height: var(--pjx-spinner-md);
+  border-width: 3px;
+}
+
+.pjx-spinner--lg .pjx-spinner__ring {
+  width: var(--pjx-spinner-lg);
+  height: var(--pjx-spinner-lg);
+  border-width: 4px;
+}
+
+.pjx-spinner__label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@keyframes pjx-spinner-rotate {
+  to { transform: rotate(360deg); }
+}
