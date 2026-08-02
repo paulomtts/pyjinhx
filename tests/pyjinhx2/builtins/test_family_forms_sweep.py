@@ -134,3 +134,30 @@ def test_form_field_wraps_a_toggle_switch_in_its_control_region(family_dir, sess
     assert "pjx-toggle-switch__track" in html
 
 
+CONTROLS = (
+    (PJXButton(id="ctl", content="Save"), "pjx-button"),
+    (PJXChipInput(id="ctl", name="tags", values=["a"]), "pjx-chip-input__chip"),
+    (PJXPasswordInput(id="ctl", name="pw"), "pjx-password-input__toggle"),
+    (
+        PJXSegmentedControl(id="ctl", name="mode", options=[("a", "A"), ("b", "B")]),
+        "pjx-segmented-control__segment",
+    ),
+    (PJXToggleSwitch(id="ctl", name="on"), "pjx-toggle-switch__track"),
+)
+"""Each of the five controls FormField is expected to wrap, with a marker string."""
+
+
+@pytest.mark.parametrize(
+    ("control", "marker"), CONTROLS, ids=lambda v: getattr(v, "id", None) or str(v)
+)
+def test_each_control_renders_once_inside_the_control_region(
+    family_dir, session, control, marker
+):
+    """Every family control composes through content and appears exactly once."""
+    html = render(PJXFormField(id="ff", label="Field", content=control), session)
+
+    assert html.count('id="ctl"') == 1
+    assert marker in html
+    assert marker in _control_region(html)
+    assert html.count('class="pjx-form-field__control"') == 1
+
