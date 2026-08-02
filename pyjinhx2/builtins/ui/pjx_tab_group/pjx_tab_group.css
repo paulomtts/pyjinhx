@@ -1,0 +1,24 @@
+:where(:root) {
+  --pjx-tab-group-border: var(--border);
+  --pjx-tab-group-bg: var(--surface-alt);
+  --pjx-tab-group-tab-fg: var(--text-muted);
+  --pjx-tab-group-tab-active-fg: var(--text);
+  --pjx-tab-group-tab-active-border: var(--brand);
+  --pjx-tab-group-panel-bg: var(--surface);
+  --pjx-tab-group-radius: var(--radius-md);
+  --pjx-tab-group-padding: var(--space-4, 1rem);
+}
+
+/* The group fills its container so its width stays stable as tabs/panels
+   change — without this it shrink-wraps to content and visibly jumps when a
+   tab is closed or a different (wider/narrower) panel is shown. */
+.pjx-tab-group {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-width: 0;
+  border: 1px solid var(--pjx-tab-group-border);
+  border-radius: var(--pjx-tab-group-radius);
+  overflow: hidden;
+  background: var(--pjx-tab-group-panel-bg);
+}

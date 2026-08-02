@@ -181,6 +181,24 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
     "builtins.ui.pjx_accordion_trigger.pjx_accordion_trigger": frozenset(
         {"pyjinhx2.component"}
     ),
+    # pjx_tab family (#520): the group shell, its tablist, the tab triggers
+    # and the panels they reveal. Only the group carries JS; the tab template
+    # reaches PJXIcon through discovery's tag map, not a Python import, so no
+    # leaf gains an edge beyond component.py.
+    "builtins.ui.pjx_tab_group.__init__": frozenset(
+        {"pyjinhx2.builtins.ui.pjx_tab_group.pjx_tab_group"}
+    ),
+    "builtins.ui.pjx_tab_group.pjx_tab_group": frozenset({"pyjinhx2.component"}),
+    "builtins.ui.pjx_tab_list.__init__": frozenset(
+        {"pyjinhx2.builtins.ui.pjx_tab_list.pjx_tab_list"}
+    ),
+    "builtins.ui.pjx_tab_list.pjx_tab_list": frozenset({"pyjinhx2.component"}),
+    "builtins.ui.pjx_tab.__init__": frozenset({"pyjinhx2.builtins.ui.pjx_tab.pjx_tab"}),
+    "builtins.ui.pjx_tab.pjx_tab": frozenset({"pyjinhx2.component"}),
+    "builtins.ui.pjx_tab_panel.__init__": frozenset(
+        {"pyjinhx2.builtins.ui.pjx_tab_panel.pjx_tab_panel"}
+    ),
+    "builtins.ui.pjx_tab_panel.pjx_tab_panel": frozenset({"pyjinhx2.component"}),
     "builtins.ui.pjx_notification.__init__": frozenset(
         {"pyjinhx2.builtins.ui.pjx_notification.pjx_notification"}
     ),
