@@ -168,3 +168,16 @@ class TestAssets:
         _html(session)
         assert {p.name for p in session.css_assets} == {"pjx_lazy_load.css"}
         assert {p.name for p in session.js_assets} == {"pjx_lazy_load.js"}
+
+
+class TestScrollSentinel:
+    def test_sentinel_row_carries_the_next_cursor_and_replaces_itself(self, session):
+        """Infinite scroll is a usage pattern, not a component: the server emits
+        a ``tag="tr"`` lazy load as the last row, carrying the next cursor."""
+        html = render(
+            PJXLazyLoad(id="sentinel", url="/rows?cursor=20", tag="tr"), session
+        )
+        assert html.startswith('<tr id="sentinel"')
+        assert 'hx-get="/rows?cursor=20"' in html
+        assert 'hx-trigger="revealed"' in html
+        assert 'hx-swap="outerHTML"' in html
