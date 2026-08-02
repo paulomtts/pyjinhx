@@ -30,6 +30,7 @@ from pyjinhx2.builtins.pjx_table_head import PJXTableHead
 from pyjinhx2.builtins.pjx_table_header_cell import PJXTableHeaderCell
 from pyjinhx2.builtins.pjx_table_row import PJXTableRow
 from pyjinhx2.component import Slot, _pascal_to_snake
+from pyjinhx2.reactive.cache import cache_has, invalidate
 from pyjinhx2.reactive.component import PjxKey, ReactiveComponent
 from pyjinhx2.reactive.fanout import walk_manifest
 from pyjinhx2.reactive.root_attrs import stamp_reactive_root_attrs
@@ -275,3 +276,37 @@ def test_paginator_mutation_swaps_only_the_page_keyed_regions():
     assert swapped == {"shell"}
     assert "t-main" not in swapped
     assert "p-main" not in swapped
+
+
+def test_untouched_region_is_a_cache_hit_not_a_recompute():
+    with scope() as session:
+        render(PageShell(id="shell"), session)
+        assert "table:main" in LOAD_CALLS
+        before = list(LOAD_CALLS)
+
+        walk_manifest(
+            [entry("table_region", "t-main", "main")],
+            {PAGE},
+            session=session,
+        )
+
+        assert LOAD_CALLS == before
+        assert cache_has(TableRegion, "main")
+        assert registry.resolve("TableRegion", "t-main") is not None
+
+
+def test_identical_content_is_hash_gated_out_of_the_swap():
+    with scope() as session:
+        html = render(PageShell(id="shell"), session)
+        current = _hash_of(html, "p-main")
+        # The real Load path (ReactiveResponse.candidates()) always calls
+        # invalidate() before walk_manifest(): otherwise the still-cached
+        # entry answers "clean" and the hash gate never runs at all.
+        invalidate({PAGE})
+        candidates = walk_manifest(
+            [entry("paginator_region", "p-main", "main", hash_=current)],
+            {PAGE},
+            session=session,
+        )
+
+    assert [c.instance_id for c in candidates] == []
