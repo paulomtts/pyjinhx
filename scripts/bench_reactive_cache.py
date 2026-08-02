@@ -48,7 +48,9 @@ def bench_repurs(n: int) -> float:
             cache_put(BenchWidget, i, f"value {i}", react_keys=(f"key:{i}", SHARED_KEY))
         t0 = time.perf_counter()
         for i in range(n):
-            cache_put(BenchWidget, i, f"redone {i}", react_keys=(f"key:{i}", SHARED_KEY))
+            cache_put(
+                BenchWidget, i, f"redone {i}", react_keys=(f"key:{i}", SHARED_KEY)
+            )
         return time.perf_counter() - t0
 
 
