@@ -5,7 +5,12 @@ from pyjinhx2.reactive.cache import (
     invalidate,
     make_key,
 )
-from pyjinhx2.session import get_cache_reverse, get_cache_store, request_scope
+from pyjinhx2.session import (
+    get_cache_forward,
+    get_cache_reverse,
+    get_cache_store,
+    request_scope,
+)
 
 
 class Widget:
@@ -174,3 +179,20 @@ def test_an_entry_with_no_reactive_keys_survives_any_invalidation():
         invalidate(["users", "anything-else"])
         assert cache_get(Widget, "todos") == "memoized"
         assert get_cache_reverse() == {}
+
+
+def test_the_forward_index_starts_empty_inside_a_fresh_request_scope():
+    with request_scope():
+        assert get_cache_forward() == {}
+
+
+def test_the_forward_index_does_not_leak_across_requests():
+    with request_scope():
+        get_cache_forward()[(Widget, "todos")] = {"todos"}
+    with request_scope():
+        assert get_cache_forward() == {}
+
+
+def test_the_forward_index_is_a_throwaway_dict_outside_a_request_scope():
+    get_cache_forward()[(Widget, "todos")] = {"todos"}
+    assert get_cache_forward() == {}

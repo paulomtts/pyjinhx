@@ -17,7 +17,7 @@ if TYPE_CHECKING:
     from pyjinhx2.component import BaseComponent
     from pyjinhx2.segments import RenderedLevel
 
-# The five pieces of per-request mutable state. They live here rather than beside
+# The six pieces of per-request mutable state. They live here rather than beside
 # their eventual consumers because the import rule runs one way only: reactive/
 # imports session, never the reverse. Each defaults to None so that reading one
 # outside a request is a miss, not a LookupError.
@@ -33,6 +33,9 @@ _cache_store: ContextVar[dict[object, object] | None] = ContextVar(
 )
 _cache_reverse: ContextVar[dict[str, set[tuple[type, object]]] | None] = ContextVar(
     "pjx_cache_reverse", default=None
+)
+_cache_forward: ContextVar[dict[tuple[type, object], set[str]] | None] = ContextVar(
+    "pjx_cache_forward", default=None
 )
 
 
@@ -190,6 +193,19 @@ def get_cache_reverse() -> dict[str, set[tuple[type, object]]]:
     return reverse
 
 
+def get_cache_forward() -> dict[tuple[type, object], set[str]]:
+    """Return this request's cache-entry -> reactive-key index, empty outside a scope.
+
+    The mirror of get_cache_reverse(): maps a ``(cls, key)`` cache entry to the
+    set of reactive keys it was registered under, so un-indexing an entry can go
+    straight to the buckets that hold it instead of scanning every bucket.
+    """
+    forward = _cache_forward.get()
+    if forward is None:
+        return {}
+    return forward
+
+
 @contextmanager
 def request_scope(
     template_dir: str = "templates", session: "RenderSession | None" = None
@@ -214,11 +230,13 @@ def request_scope(
     dirtied_token = _dirtied.set(set())
     cache_token = _cache_store.set({})
     cache_reverse_token = _cache_reverse.set({})
+    cache_forward_token = _cache_forward.set({})
     try:
         yield session
     finally:
         # Reset by token rather than assigning None: a nested scope must hand the
         # outer scope its own state back, not clear the variable outright.
+        _cache_forward.reset(cache_forward_token)
         _cache_reverse.reset(cache_reverse_token)
         _cache_store.reset(cache_token)
         _dirtied.reset(dirtied_token)
