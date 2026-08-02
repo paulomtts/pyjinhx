@@ -65,7 +65,9 @@ class TestFields:
 
     def test_json_string_options_coercion(self):
         control = PJXSegmentedControl(
-            id="sc", name="plan", options='[["a","A"],["b","B"]]'
+            id="sc",
+            name="plan",
+            options='[["a","A"],["b","B"]]',  # type: ignore[arg-type]
         )
         assert control.options == [("a", "A"), ("b", "B")]
 
@@ -111,7 +113,9 @@ class TestRender:
         assert "<script>" not in html
 
     def test_class_name_is_appended_without_clobbering_base_classes(self, session):
-        assert 'class="pjx-segmented-control my-sc"' in _html(session, class_name="my-sc")
+        assert 'class="pjx-segmented-control my-sc"' in _html(
+            session, class_name="my-sc"
+        )
 
     def test_empty_class_name_adds_nothing(self, session):
         assert 'class="pjx-segmented-control"' in _html(session)
