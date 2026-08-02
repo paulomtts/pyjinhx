@@ -56,3 +56,18 @@ def test_format_dependency_graph_empty(monkeypatch):
     monkeypatch.setattr(dev, "dependency_graph", dict)
     assert dev.format_dependency_graph() == "(no reactive components registered)"
     assert dev.format_dependency_graph(as_mermaid=True) == "flowchart LR"
+
+
+@pytest.fixture(autouse=True)
+def _reset_dev_mode():
+    """Leave dev mode off after every test, whatever the test turned on."""
+    yield
+    dev.disable_reactive_dev()
+
+
+def test_unconsumed_mutation_warns_when_not_strict(caplog):
+    dev.enable_reactive_dev()
+    with request_scope(), caplog.at_level(logging.WARNING, logger="pyjinhx"):
+        add_dirtied({"ghost"})
+        dev.warn_unconsumed_mutations()
+    assert "ghost" in caplog.text

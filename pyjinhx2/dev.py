@@ -15,6 +15,7 @@ import logging
 from dataclasses import dataclass
 
 from pyjinhx2.component import BaseComponent
+from pyjinhx2.session import get_cache_reverse, get_dirtied
 
 logger = logging.getLogger("pyjinhx")
 
@@ -119,3 +120,30 @@ def format_dependency_graph(*, as_mermaid: bool = False) -> str:
     for key, names in graph.items():
         lines.append(f"  {key!r} -> {', '.join(names)}")
     return "\n".join(lines)
+
+
+def warn_unconsumed_mutations() -> None:
+    """Report dirtied reactive keys that nothing in this request depends on.
+
+    A key is unconsumed when the load cache's reverse index holds no entry
+    under it: no ``load()`` in this request declared a dependency on that key,
+    so dirtying it evicts nothing. That usually means a typo in the key, a key
+    nothing reads any more, or a ``dirty()`` that fired before the load which
+    would have registered the dependency.
+
+    Observational only: it reads the reverse index other modules populate and
+    never evicts, dirties or re-renders anything. A no-op when dev mode is off
+    or nothing was dirtied.
+    """
+    if not _dev_config.enabled:
+        return
+    reverse = get_cache_reverse()
+    # An empty membership set is as unconsumed as a missing key: invalidate()
+    # prunes sets in place rather than deleting them.
+    unconsumed = sorted(key for key in get_dirtied() if not reverse.get(key))
+    if not unconsumed:
+        return
+    _report(
+        f"Reactive keys {unconsumed} were dirtied but nothing in this request "
+        f"loaded under them, so dirtying them evicted nothing."
+    )
