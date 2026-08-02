@@ -1,0 +1,1 @@
+window.badge=1;

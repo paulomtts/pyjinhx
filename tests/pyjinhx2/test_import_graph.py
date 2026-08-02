@@ -133,10 +133,23 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
     # #489/#488: `candidates()` also evicts the load cache for this request's
     # dirtied keys before walking, so cache.py's `invalidate()` is a direct edge
     # too, not just fanout.py's own transitive one.
+    # #490: the asset-delta leg reads assets.py's fragment builder alongside
+    # everything the region-swap leg already reads.
     "reactive.response": frozenset(
         {
             "pyjinhx2.client.inject",
+            "pyjinhx2.reactive.assets",
             "pyjinhx2.reactive.cache",
+            "pyjinhx2.reactive.fanout",
+            "pyjinhx2.session",
+        }
+    ),
+    # #490: which of a fan-out's required assets the client is missing, read
+    # from the candidates' frozen descriptors (not session accumulation - see
+    # the module docstring) and diffed against asset_token()'s identity.
+    "reactive.assets": frozenset(
+        {
+            "pyjinhx2.assets",
             "pyjinhx2.reactive.fanout",
             "pyjinhx2.session",
         }

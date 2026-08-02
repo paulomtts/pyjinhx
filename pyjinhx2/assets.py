@@ -1,6 +1,7 @@
 """L2.2 assets — delivery modes, emission, and the manifest of a request's assets."""
 
 import hashlib
+import os
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from enum import Enum
@@ -175,6 +176,20 @@ def hashed_filename(path: Path, *, hash_len: int = 8) -> str:
     result = f"{path.stem}.{digest}{path.suffix}"
     _hash_filename_cache[key] = result
     return result
+
+
+def asset_token(path: Path) -> str:
+    """Return the opaque dedup token the client reports for this asset.
+
+    The identity the ``data-pjx-asset`` attribute carries and ``X-PJX-Assets``
+    reports back, so the server can tell an asset the browser already has from
+    one it does not. Derived from the normalized path rather than the file's
+    contents: an edited asset must keep the same identity, or every reactive
+    response after an edit would append a second copy to the head instead of
+    recognizing the one already there.
+    """
+    normalized = os.path.normpath(str(path)).replace("\\", "/")
+    return hashlib.sha1(normalized.encode("utf-8")).hexdigest()[:16]
 
 
 def resolver_with_hash(base_url: str, root: str) -> Callable[[Path], str]:

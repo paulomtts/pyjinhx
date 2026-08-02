@@ -17,6 +17,7 @@ from fastapi import FastAPI, Request
 from fastapi.testclient import TestClient
 
 from pyjinhx2 import discovery, registry
+from pyjinhx2.assets import asset_token
 from pyjinhx2.config import PjxSettings
 from pyjinhx2.context import PjxContext
 from pyjinhx2.dev import warn_unconsumed_mutations
@@ -63,6 +64,19 @@ class CycleCard(ReactiveComponent, react=(Keys.CYCLE,)):
         return STORE.get(self.pjx_key, 0)
 
 
+class CycleBadge(ReactiveComponent, react=(Keys.CYCLE,)):
+    """A second reactive region, this one carrying CSS and JS assets."""
+
+    pjx_key: Annotated[str, PjxKey()] = ""
+
+    def load(self) -> int:
+        LOAD_CALLS.append(f"badge:{self.pjx_key}")
+        return STORE.get(self.pjx_key, 0)
+
+
+ASSET_DIR = Path(__file__).parent.parent.parent / "templates"
+
+
 class Counter:
     """An app object whose mutation method dirties the ``cycle`` key."""
 
@@ -77,13 +91,19 @@ def _publish_registry():
     STORE.clear()
     LOAD_CALLS.clear()
     template_dir = Path(__file__).parent.parent.parent / "templates"
-    discovery.build_registry(template_dir, [CycleCard])
+    discovery.build_registry(template_dir, [CycleCard, CycleBadge])
     # `_resolve_template_path` probes the class's *defining module* directory
     # (this test file's), not the dir handed to build_registry, so the
     # descriptor is repointed at the bare template name the middleware's
     # FileSystemLoader will join under tests/templates.
     CycleCard.__pjx_descriptor__ = dataclasses.replace(
         CycleCard.__pjx_descriptor__, template_path=Path("cycle_card.pjx")
+    )
+    CycleBadge.__pjx_descriptor__ = dataclasses.replace(
+        CycleBadge.__pjx_descriptor__,
+        template_path=Path("cycle_badge.pjx"),
+        css_paths=(ASSET_DIR / "cycle_badge.css",),
+        js_paths=(ASSET_DIR / "cycle_badge.js",),
     )
     yield
 
@@ -98,6 +118,11 @@ def make_app(**settings_kwargs) -> FastAPI:
 def entry(instance_id: str, load: object, hash_: str = "stale") -> dict:
     """One synthetic X-PJX-Mounted entry naming a mounted CycleCard region."""
     return {"type": "cycle_card", "id": instance_id, "load": load, "hash": hash_}
+
+
+def badge_entry(instance_id: str, load: object, hash_: str = "stale") -> dict:
+    """One synthetic X-PJX-Mounted entry naming a mounted CycleBadge region."""
+    return {"type": "cycle_badge", "id": instance_id, "load": load, "hash": hash_}
 
 
 def test_apply_setup_idempotent_on_repeat_calls():
@@ -241,6 +266,116 @@ def test_unchanged_region_is_gated_out_of_the_oob_swap():
     # Dirty says the data may have moved; the hash says this region's output
     # did not, so the swap that would replace it with itself is dropped.
     assert "hx-swap-oob" not in response.text
+
+
+def test_mutation_round_trip_demo_swaps_dirty_regions_and_ships_missing_assets():
+    """One request through every leg: dirty -> evict -> fan-out -> gate -> assets."""
+    app = make_app()
+    STORE["card-1"] = 0
+    STORE["card-2"] = 41
+    unchanged_hash = CycleCard(id="b", pjx_key="card-2").state_hash()
+
+    @app.post("/bump")
+    def bump(request: Request):
+        for instance_id, cls, key in (
+            ("a", CycleCard, "card-1"),
+            ("b", CycleCard, "card-2"),
+            ("c", CycleBadge, "card-1"),
+        ):
+            registry.register_instance(
+                cls.__name__, instance_id, cls(id=instance_id, pjx_key=key)
+            )
+        Counter().bump("card-1")
+        return ReactiveResponse(primary="", mounted=request, assets=request)
+
+    with TestClient(app) as client:
+        response = client.post(
+            "/bump",
+            headers={
+                "X-PJX-Mounted": json.dumps(
+                    [
+                        entry("a", load="card-1"),
+                        entry("b", load="card-2", hash_=unchanged_hash),
+                        badge_entry("c", load="card-1"),
+                        # A region the registry no longer knows about: gone.
+                        badge_entry("gone", load="card-9"),
+                    ]
+                ),
+                "X-PJX-Assets": "[]",
+            },
+        )
+
+    body = response.text
+    # 1-3: the mutation moved the store, eviction let the swap re-read it.
+    assert STORE["card-1"] == 1
+    # 4a: the dirty+changed region swaps.
+    assert "hx-swap-oob=\"outerHTML:[data-pjx-id='a']\"" in body
+    # 4b: dirty but byte-identical output — gated out.
+    assert "[data-pjx-id='b']" not in body
+    # 4c: a region the registry lost is deleted rather than re-rendered.
+    assert "hx-swap-oob=\"delete:[data-pjx-id='gone']\"" in body
+    # 5: the asset-bearing region's CSS and JS ride along, head-targeted.
+    css_token = asset_token(ASSET_DIR / "cycle_badge.css")
+    js_token = asset_token(ASSET_DIR / "cycle_badge.js")
+    assert f'<style data-pjx-asset="{css_token}" hx-swap-oob="beforeend:head">' in body
+    assert f'<script data-pjx-asset="{js_token}" hx-swap-oob="beforeend:head">' in body
+    # 6: nothing for htmx's default swap to place.
+    assert response.headers["HX-Reswap"] == "none"
+
+
+def test_round_trip_does_not_resend_assets_the_client_already_reports():
+    app = make_app()
+    STORE["card-1"] = 0
+    css_token = asset_token(ASSET_DIR / "cycle_badge.css")
+    js_token = asset_token(ASSET_DIR / "cycle_badge.js")
+
+    @app.post("/bump")
+    def bump(request: Request):
+        registry.register_instance(
+            CycleBadge.__name__, "c", CycleBadge(id="c", pjx_key="card-1")
+        )
+        Counter().bump("card-1")
+        return ReactiveResponse(primary="", mounted=request, assets=request)
+
+    with TestClient(app) as client:
+        response = client.post(
+            "/bump",
+            headers={
+                "X-PJX-Mounted": json.dumps([badge_entry("c", load="card-1")]),
+                "X-PJX-Assets": json.dumps([css_token, js_token]),
+            },
+        )
+
+    assert "hx-swap-oob=\"outerHTML:[data-pjx-id='c']\"" in response.text
+    assert "data-pjx-asset" not in response.text
+
+
+def test_a_malformed_assets_header_means_the_client_has_nothing():
+    app = make_app()
+    STORE["card-1"] = 0
+
+    @app.post("/bump")
+    def bump(request: Request):
+        registry.register_instance(
+            CycleBadge.__name__, "c", CycleBadge(id="c", pjx_key="card-1")
+        )
+        Counter().bump("card-1")
+        return ReactiveResponse(primary="", mounted=request, assets=request)
+
+    with TestClient(app) as client:
+        response = client.post(
+            "/bump",
+            headers={
+                "X-PJX-Mounted": json.dumps([badge_entry("c", load="card-1")]),
+                "X-PJX-Assets": "{not json",
+            },
+        )
+
+    # An unreadable browser-supplied header re-delivers rather than raising.
+    assert (
+        f'data-pjx-asset="{asset_token(ASSET_DIR / "cycle_badge.css")}"'
+        in response.text
+    )
 
 
 def test_pjx_context_current_populated_inside_live_handler():

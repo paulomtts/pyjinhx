@@ -260,3 +260,18 @@ def test_all_assets_returns_paths_not_strings():
     css, js = all_assets()
     assert all(isinstance(path, Path) for path in css)
     assert all(isinstance(path, Path) for path in js)
+
+
+def test_asset_token_is_a_stable_short_digest_of_the_normalized_path():
+    from pyjinhx2.assets import asset_token
+
+    token = asset_token(Path("a/../a/style.css"))
+    assert token == asset_token(Path("a/style.css"))
+    assert len(token) == 16
+    assert token.isalnum()
+
+
+def test_asset_token_differs_per_path():
+    from pyjinhx2.assets import asset_token
+
+    assert asset_token(Path("a/style.css")) != asset_token(Path("b/style.css"))
