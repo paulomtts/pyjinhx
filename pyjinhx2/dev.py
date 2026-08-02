@@ -89,3 +89,33 @@ def dependency_graph() -> dict[str, list[str]]:
         for key in react_keys:
             graph.setdefault(key, set()).add(cls.__name__)
     return {key: sorted(names) for key, names in sorted(graph.items())}
+
+
+def format_dependency_graph(*, as_mermaid: bool = False) -> str:
+    """Render the dependency graph for a human or for mermaid.
+
+    Args:
+        as_mermaid: When True, emit a ``flowchart LR`` graph with one edge per
+            key -> component pair. Otherwise emit an indented text listing.
+
+    Returns:
+        The rendered graph; a placeholder line when no class declares a key.
+    """
+    graph = dependency_graph()
+    if as_mermaid:
+        lines = ["flowchart LR"]
+        for key, names in graph.items():
+            # ':' separates a reactive key's namespace from its id but is not
+            # legal in a mermaid node id, so the id is sanitized and the label
+            # carries the real key.
+            node = f"key_{key.replace(':', '_')}"
+            lines.append(f'  {node}["{key}"]')
+            for name in names:
+                lines.append(f"  {node} --> {name}")
+        return "\n".join(lines)
+    if not graph:
+        return "(no reactive components registered)"
+    lines = ["Reactive dependency graph:", ""]
+    for key, names in graph.items():
+        lines.append(f"  {key!r} -> {', '.join(names)}")
+    return "\n".join(lines)

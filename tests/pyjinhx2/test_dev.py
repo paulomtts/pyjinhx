@@ -35,3 +35,24 @@ def test_dependency_graph_includes_reactive_components():
 def test_dependency_graph_excludes_non_reactive_components():
     graph = dev.dependency_graph()
     assert all("PlainWidget" not in names for names in graph.values())
+
+
+def test_format_dependency_graph_plain_text():
+    text = dev.format_dependency_graph()
+    assert text.startswith("Reactive dependency graph:")
+    assert "'todo' -> TodoBadge, TodoList" in text
+
+
+def test_format_dependency_graph_as_mermaid():
+    text = dev.format_dependency_graph(as_mermaid=True)
+    lines = text.splitlines()
+    assert lines[0] == "flowchart LR"
+    assert '  key_todo["todo"]' in lines
+    assert "  key_todo --> TodoList" in lines
+    assert "  key_todo --> TodoBadge" in lines
+
+
+def test_format_dependency_graph_empty(monkeypatch):
+    monkeypatch.setattr(dev, "dependency_graph", dict)
+    assert dev.format_dependency_graph() == "(no reactive components registered)"
+    assert dev.format_dependency_graph(as_mermaid=True) == "flowchart LR"
