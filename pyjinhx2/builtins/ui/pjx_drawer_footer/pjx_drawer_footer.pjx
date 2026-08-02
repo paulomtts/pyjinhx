@@ -1,0 +1,1 @@
+<footer id="{{ id }}" class="pjx-drawer__footer{% if class_name %} {{ class_name }}{% endif %}">{{ content }}</footer>

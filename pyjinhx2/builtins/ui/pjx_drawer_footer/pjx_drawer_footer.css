@@ -1,0 +1,9 @@
+.pjx-drawer__footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  padding: 0.75rem var(--pjx-drawer-padding);
+  background: var(--pjx-drawer-footer-bg);
+  border-top: 1px solid var(--pjx-drawer-footer-sep);
+  flex-shrink: 0;
+}
