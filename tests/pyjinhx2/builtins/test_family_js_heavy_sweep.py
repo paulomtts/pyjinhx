@@ -17,6 +17,7 @@ this file asserts only the server half (the host's ``data-event-name``).
 """
 
 import dataclasses
+import re
 from pathlib import Path
 
 import pytest
@@ -201,3 +202,72 @@ def test_nested_family_tree_places_each_child_in_its_own_slot(family_dir, sessio
     first_panel = body.split('id="p1"')[1].split('id="handle"')[0]
     assert 'id="car"' in first_panel
     assert 'id="s1"' in first_panel and 'id="s2"' in first_panel
+
+
+def _roots(html: str) -> list[str]:
+    """Tag names of the top-level elements in ``html`` (nesting-aware, no parser dep)."""
+    depth = 0
+    roots: list[str] = []
+    for token in re.finditer(r"<(/?)([a-zA-Z][\w-]*)([^>]*?)(/?)>", html):
+        closing, name, _attrs, self_closing = token.groups()
+        void = name.lower() in {"hr", "img", "br", "input", "path", "circle", "line"}
+        if closing:
+            depth -= 1
+            continue
+        if depth == 0:
+            roots.append(name)
+        if not self_closing and not void:
+            depth += 1
+    return roots
+
+
+def test_single_root_invariant_holds_four_levels_deep(family_dir, session):
+    """Wrapper -> ResizablePanel -> Carousel -> Slide still emits one root element.
+
+    ADR 0001 makes outerHTML the only OOB swap shape, so every composed node in
+    this family has to stay single-root however deeply it is nested.
+    """
+    html = render(
+        Wrapper(
+            id="l1",
+            content=PJXResizablePanel(
+                id="l2",
+                content=PJXCarousel(
+                    id="l3",
+                    content=[PJXCarouselSlide(id="l4", label="One", content="x")],
+                ),
+            ),
+        ),
+        session,
+    )
+
+    assert _roots(html) == ["div"]
+    for element_id in ("l1", "l2", "l3", "l4"):
+        assert html.count(f'id="{element_id}"') == 1, element_id
+
+
+@pytest.mark.parametrize(
+    "child",
+    [
+        PJXAlert(id="c", body="x"),
+        PJXAlert(id="c", body="x", dismissible=True, title="T"),
+        PJXNotification(id="c", content="x"),
+        PJXNotification(id="c", content="x", autoshow=False),
+        PJXToastHost(id="c"),
+        PJXCarousel(id="c", content=[PJXCarouselSlide(id="s", content="x")]),
+        PJXCarousel(id="c", content="x", autoplay=True),
+        PJXCarouselSlide(id="c", content="x"),
+        PJXResizableGroup(id="c", content=[PJXResizablePanel(id="p", content="x")]),
+        PJXResizableGroup(id="c", direction="column", content="x"),
+        PJXResizableHandle(id="c"),
+        PJXResizablePanel(id="c", content="x"),
+        PJXResizablePanel(id="c", content="x", min="120px", max="80"),
+    ],
+    ids=lambda c: type(c).__name__,
+)
+def test_every_js_heavy_builtin_emits_one_root_when_nested(family_dir, session, child):
+    """Each member, in each of its template branches, stays single-root."""
+    html = render(Wrapper(id="host", content=child), session)
+
+    inner = html.split('class="wrapper">', 1)[1].rsplit("</div>", 1)[0]
+    assert len(_roots(inner)) == 1, inner
