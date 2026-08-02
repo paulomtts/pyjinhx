@@ -1,0 +1,1 @@
+<thead id="{{ id }}" class="pjx-table__head{% if class_name %} {{ class_name }}{% endif %}">{{ content }}</thead>
