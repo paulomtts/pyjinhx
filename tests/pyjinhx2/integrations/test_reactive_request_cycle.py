@@ -150,3 +150,30 @@ def test_request_scope_contextvars_reset_after_response():
     assert second["mounted"] == []
     assert current_session() is None
     assert get_dirtied() == set()
+
+
+def test_cold_mount_returns_t1_response_via_testclient():
+    app = make_app()
+    STORE["card-1"] = 7
+
+    @app.get("/card")
+    def card() -> CycleCard:
+        # render_level() only auto-mounts children discovered via ChildRef; a
+        # component returned as the request's own root has no parent to do
+        # that for it, so the handler mounts it itself before the render.
+        component = CycleCard(id="a", pjx_key="card-1")
+        component.pjx_mount()
+        return component
+
+    with TestClient(app) as client:
+        response = client.get("/card")
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/html")
+    assert "cycle card-1" in response.text
+    # A cold mount is T1: the runtime is inlined because the client sent no
+    # X-PJX-Mounted header.
+    assert "<script>" in response.text
+    assert "pjx" in response.text
+    # The render mounted the component, so its load() ran exactly once.
+    assert LOAD_CALLS == ["card-1"]
