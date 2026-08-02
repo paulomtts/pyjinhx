@@ -72,7 +72,7 @@ TEMPLATES = {
 
 
 @pytest.fixture
-def family_dir(tmp_path: Path) -> Path:
+def family_dir(tmp_path: Path):
     """Publish the family tag map under tmp_path and repoint the host descriptors.
 
     build_registry claims a tag only when a file named <tag>.pjx exists under the
@@ -205,7 +205,7 @@ def test_classless_composition_of_two_or_more_primitives(family_dir, session):
     )
     cls = component("Banner", template_dir=family_dir)
 
-    html = render(cls(id="bn", title="Ready"), session)
+    html = render(cls(id="bn", title="Ready"), session)  # pyright: ignore[reportCallIssue]
 
     assert html.index('id="b-bn"') < html.index('id="d-bn"')
     assert html.count('id="b-bn"') == 1
