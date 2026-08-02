@@ -6,6 +6,7 @@ returned, or on state read from inside a handler the middleware called.
 """
 
 import dataclasses
+import importlib
 import json
 import logging
 from pathlib import Path
@@ -190,7 +191,9 @@ def test_mutation_round_trip_returns_gated_oob_swap():
     def bump(request: Request):
         # Stands in for the Load path in this request: the region the client
         # reports as mounted has to be resolvable before fan-out can swap it.
-        registry.register_instance(CycleCard.__name__, "a", CycleCard(id="a", pjx_key="card-1"))
+        registry.register_instance(
+            CycleCard.__name__, "a", CycleCard(id="a", pjx_key="card-1")
+        )
         Counter().bump("card-1")
         invalidate(get_dirtied())
         return ReactiveResponse(primary="", mounted=request)
@@ -218,7 +221,9 @@ def test_unchanged_region_is_gated_out_of_the_oob_swap():
 
     @app.post("/bump")
     def bump(request: Request):
-        registry.register_instance(CycleCard.__name__, "a", CycleCard(id="a", pjx_key="card-1"))
+        registry.register_instance(
+            CycleCard.__name__, "a", CycleCard(id="a", pjx_key="card-1")
+        )
         dirty(Keys.CYCLE)
         invalidate(get_dirtied())
         return ReactiveResponse(primary="", mounted=request)
@@ -227,7 +232,9 @@ def test_unchanged_region_is_gated_out_of_the_oob_swap():
         response = client.post(
             "/bump",
             headers={
-                "X-PJX-Mounted": json.dumps([entry("a", load="card-1", hash_=fresh_hash)])
+                "X-PJX-Mounted": json.dumps(
+                    [entry("a", load="card-1", hash_=fresh_hash)]
+                )
             },
         )
 
@@ -274,7 +281,8 @@ def test_pjx_context_current_populated_inside_live_handler():
     assert seen["trigger"] == {"id": "a"}
     assert seen["dirtied"] == {"cycle"}
     assert seen["app_context"] == {"user": "ada"}
-    assert seen["request_url"] is not None and seen["request_url"].endswith("/ctx")
+    request_url = seen["request_url"]
+    assert isinstance(request_url, str) and request_url.endswith("/ctx")
 
 
 def test_pjx_context_current_raises_outside_request_scope():
@@ -309,9 +317,8 @@ def _unconsumed_app(**settings_kwargs) -> FastAPI:
 def test_reactive_dev_warns_on_unconsumed_mutation_live_request(caplog):
     app = _unconsumed_app(reactive_dev=True)
 
-    with caplog.at_level(logging.WARNING, logger="pyjinhx"):
-        with TestClient(app) as client:
-            assert client.post("/orphan").json() == {"ok": True}
+    with caplog.at_level(logging.WARNING, logger="pyjinhx"), TestClient(app) as client:
+        assert client.post("/orphan").json() == {"ok": True}
 
     warnings = [record.getMessage() for record in caplog.records]
     assert any("nobody-reads-this" in message for message in warnings)
@@ -320,9 +327,56 @@ def test_reactive_dev_warns_on_unconsumed_mutation_live_request(caplog):
 def test_reactive_dev_silent_when_disabled_live_request(caplog):
     app = _unconsumed_app()
 
-    with caplog.at_level(logging.WARNING, logger="pyjinhx"):
-        with TestClient(app) as client:
-            assert client.post("/orphan").json() == {"ok": True}
+    with caplog.at_level(logging.WARNING, logger="pyjinhx"), TestClient(app) as client:
+        assert client.post("/orphan").json() == {"ok": True}
 
     warnings = [record.getMessage() for record in caplog.records]
     assert not any("nobody-reads-this" in message for message in warnings)
+
+
+def test_lower_layers_do_not_import_the_wiring_layer():
+    """The reactive package and the session spine never reach back up."""
+    import ast
+    import pkgutil
+
+    def imported_module_names(source: str) -> set[str]:
+        """Every dotted module name a real ``import``/``from`` statement names.
+
+        AST-based rather than a substring scan: ``from pyjinhx2 import
+        discovery, registry`` never spells the substring "pyjinhx2.registry",
+        so a text search over the source would silently miss exactly the
+        import shape this codebase's lower layers use.
+        """
+        names: set[str] = set()
+        for node in ast.walk(ast.parse(source)):
+            if isinstance(node, ast.Import):
+                names.update(alias.name for alias in node.names)
+            elif isinstance(node, ast.ImportFrom) and node.module:
+                names.add(node.module)
+                names.update(f"{node.module}.{alias.name}" for alias in node.names)
+        return names
+
+    upper = {
+        "pyjinhx2.config",
+        "pyjinhx2.context",
+        "pyjinhx2.dev",
+        "pyjinhx2.integrations",
+    }
+    lower = ["pyjinhx2.session"] + [
+        f"pyjinhx2.reactive.{module.name}"
+        for module in pkgutil.iter_modules(
+            importlib.import_module("pyjinhx2.reactive").__path__
+        )
+    ]
+
+    offenders: list[tuple[str, str]] = []
+    for name in lower:
+        source = Path(importlib.import_module(name).__file__ or "").read_text()
+        imported = imported_module_names(source)
+        for upper_name in upper:
+            if upper_name in imported or any(
+                mod.startswith(f"{upper_name}.") for mod in imported
+            ):
+                offenders.append((name, upper_name))
+
+    assert offenders == []
