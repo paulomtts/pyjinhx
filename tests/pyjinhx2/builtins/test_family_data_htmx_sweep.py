@@ -31,6 +31,7 @@ from pyjinhx2.builtins.pjx_table_header_cell import PJXTableHeaderCell
 from pyjinhx2.builtins.pjx_table_row import PJXTableRow
 from pyjinhx2.component import Slot, _pascal_to_snake
 from pyjinhx2.reactive.component import PjxKey, ReactiveComponent
+from pyjinhx2.reactive.fanout import walk_manifest
 from pyjinhx2.reactive.root_attrs import stamp_reactive_root_attrs
 from pyjinhx2.render import render
 from pyjinhx2.session import RenderSession, request_scope
@@ -252,3 +253,25 @@ def test_full_family_combo_renders_single_pass_no_error():
     assert 'data-pjx-id="shell"' in html
     assert 'data-pjx-id="t-main"' in html
     assert 'data-pjx-id="p-main"' in html
+
+
+def test_paginator_mutation_swaps_only_the_page_keyed_regions():
+    with scope() as session:
+        render(PageShell(id="shell"), session)
+        mounted = [
+            entry("page_shell", "shell", "shell"),
+            entry("table_region", "t-main", "main"),
+            entry("paginator_region", "p-main", "main"),
+        ]
+        candidates = walk_manifest(mounted, {PAGE}, session=session)
+
+    swapped = {c.instance_id for c in candidates}
+    # "shell" never had its own load() cached (only a ChildRef-mounted
+    # component gets pjx_mount()'d; the top-level render(PageShell(...))
+    # call in this test does not), so it always resolves "dirty" here and
+    # its fresh re-render recurses into PaginatorRegion — "p-main" ends up
+    # nested inside "shell"'s own freshly-built tree and _drop_nested drops
+    # it as a redundant swap, exactly like a primary-response exclusion.
+    assert swapped == {"shell"}
+    assert "t-main" not in swapped
+    assert "p-main" not in swapped
