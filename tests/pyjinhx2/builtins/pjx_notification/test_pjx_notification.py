@@ -10,8 +10,8 @@ does not currently honor; tracked as a pre-existing gap, not fixed by #532.
 import pytest
 from pydantic import ValidationError
 
-from pyjinhx2.builtins.ui.pjx_notification import PJXNotification
 from pyjinhx2.builtins.ui.pjx_divider import PJXDivider
+from pyjinhx2.builtins.ui.pjx_notification import PJXNotification
 from pyjinhx2.render import render
 from pyjinhx2.session import RenderSession
 
@@ -103,9 +103,8 @@ class TestRender:
         assert "&lt;c" in html
 
     def test_class_name_is_appended_to_the_root_class(self, session):
-        assert (
-            'class="pjx-notification pjx-notification--top-right compact"'
-            in _html(session, class_name="compact")
+        assert 'class="pjx-notification pjx-notification--top-right compact"' in _html(
+            session, class_name="compact"
         )
 
     def test_extra_attrs_surface_on_the_root(self, session):

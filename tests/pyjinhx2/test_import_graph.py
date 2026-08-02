@@ -66,6 +66,14 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
         {"pyjinhx2.builtins.ui.pjx_empty_state.pjx_empty_state"}
     ),
     "builtins.ui.pjx_empty_state.pjx_empty_state": frozenset({"pyjinhx2.component"}),
+    "builtins.ui.pjx_notification.__init__": frozenset(
+        {"pyjinhx2.builtins.ui.pjx_notification.pjx_notification"}
+    ),
+    "builtins.ui.pjx_notification.pjx_notification": frozenset({"pyjinhx2.component"}),
+    "builtins.ui.pjx_toast_host.__init__": frozenset(
+        {"pyjinhx2.builtins.ui.pjx_toast_host.pjx_toast_host"}
+    ),
+    "builtins.ui.pjx_toast_host.pjx_toast_host": frozenset({"pyjinhx2.component"}),
     "builtins.ui.pjx_icon.__init__": frozenset(
         {"pyjinhx2.builtins.ui.pjx_icon.pjx_icon"}
     ),
