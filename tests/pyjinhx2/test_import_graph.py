@@ -237,7 +237,6 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
     # pjx_table family (#526): each component module imports only the core
     # component surface (AttrValue, BaseComponent, Slot); each __init__ just
     # re-exports its class from its co-located module.
-    "builtins.__init__": frozenset(),
     "builtins.pjx_table.__init__": frozenset({"pyjinhx2.builtins.pjx_table.pjx_table"}),
     "builtins.pjx_table.pjx_table": frozenset({"pyjinhx2.component"}),
     "builtins.pjx_table_head.__init__": frozenset(
