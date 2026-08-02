@@ -36,7 +36,13 @@ from pyjinhx2.reactive.fanout import walk_manifest
 from pyjinhx2.reactive.response import ReactiveResponse
 from pyjinhx2.reactive.root_attrs import stamp_reactive_root_attrs
 from pyjinhx2.render import render
-from pyjinhx2.session import RenderSession, add_dirtied, request_scope
+from pyjinhx2.session import (
+    RenderSession,
+    add_dirtied,
+    get_dirtied,
+    get_instances,
+    request_scope,
+)
 
 PAGE = "page"
 ROWS = "rows"
@@ -422,3 +428,28 @@ def test_overlay_markup_is_not_duplicated_across_sibling_regions():
     # cross-contaminate the other's markup.
     assert body.count("pjx-region-loader__spinner") == 1
     assert body.count("pjx-page-loader") == 0
+
+
+def test_request_scopes_do_not_share_registry_cache_or_dirtied_state():
+    with scope() as first:
+        render(PageShell(id="shell"), first)
+        assert cache_has(TableRegion, "main")
+        first_ids = set(get_instances())
+
+    with scope() as second:
+        assert not cache_has(TableRegion, "main")
+        assert get_instances() == {}
+        assert get_dirtied() == set()
+        render(PageShell(id="shell"), second)
+        assert set(get_instances()) == first_ids
+
+
+def test_a_nested_scope_hands_state_back_to_the_outer_scope():
+    with scope() as outer:
+        render(TableRegion(id="t-main", pjx_key="main"), outer)
+        add_dirtied({ROWS})
+        with scope() as inner:
+            assert get_dirtied() == set()
+            render(PaginatorRegion(id="p-main", pjx_key="main"), inner)
+        assert get_dirtied() == {ROWS}
+        assert registry.resolve("TableRegion", "t-main") is not None
