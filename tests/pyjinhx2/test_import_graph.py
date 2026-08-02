@@ -66,6 +66,12 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
         {"pyjinhx2.builtins.ui.pjx_form_field.pjx_form_field"}
     ),
     "builtins.ui.pjx_form_field.pjx_form_field": frozenset({"pyjinhx2.component"}),
+    "builtins.ui.pjx_password_input.__init__": frozenset(
+        {"pyjinhx2.builtins.ui.pjx_password_input.pjx_password_input"}
+    ),
+    "builtins.ui.pjx_password_input.pjx_password_input": frozenset(
+        {"pyjinhx2.component"}
+    ),
     "builtins.ui.pjx_spinner.__init__": frozenset(
         {"pyjinhx2.builtins.ui.pjx_spinner.pjx_spinner"}
     ),
