@@ -183,3 +183,21 @@ def test_nested_family_tree_renders_all_components_once(family_dir, session):
         "toast",
     ):
         assert html.count(f'id="{element_id}"') == 1, element_id
+
+
+def test_nested_family_tree_places_each_child_in_its_own_slot(family_dir, session):
+    """Slot content lands inside the host region named by its field."""
+    html = _tree(session)
+    head = html.split('class="panel__head"')[1].split("</header>")[0]
+    body = html.split('class="panel__body"')[1].split("<footer")[0]
+    foot = html.split("<footer", 1)[1]
+
+    assert 'id="alert"' in head
+    assert 'id="group"' in body and 'id="handle"' in body
+    assert 'id="note"' in foot and 'id="toast"' in foot
+    # Group children keep their declared order: panel, handle, panel.
+    assert body.index('id="p1"') < body.index('id="handle"') < body.index('id="p2"')
+    # The carousel and its slides live inside the *first* panel, not the second.
+    first_panel = body.split('id="p1"')[1].split('id="handle"')[0]
+    assert 'id="car"' in first_panel
+    assert 'id="s1"' in first_panel and 'id="s2"' in first_panel
