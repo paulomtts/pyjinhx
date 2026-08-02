@@ -139,3 +139,32 @@ class TestErrorAffordance:
 
     def test_no_error_slot_omits_the_template_entirely(self, session):
         assert "<template data-pjx-lazy-error" not in _html(session)
+
+
+class TestAssets:
+    def test_stylesheet_is_frozen_on_the_descriptor(self):
+        css = PJXLazyLoad.__pjx_descriptor__.css_paths
+        assert len(css) == 1
+        assert css[0].name == "pjx_lazy_load.css"
+        assert css[0].is_file()
+
+    def test_script_is_frozen_on_the_descriptor(self):
+        """First v2 builtin shipping a co-located ``.js``: the stem walk must
+        find it beside the ``.pjx``/``.py`` exactly as it finds the ``.css``."""
+        js = PJXLazyLoad.__pjx_descriptor__.js_paths
+        assert len(js) == 1
+        assert js[0].name == "pjx_lazy_load.js"
+        assert js[0].is_file()
+
+    def test_render_accumulates_both_assets_into_the_session(self, session):
+        # RenderSession does not auto-subscribe accumulate_assets — verified
+        # against tests/pyjinhx2/test_asset_emission.py, which always does
+        # `session.on_rendered.append(accumulate_assets)` explicitly before
+        # asserting on css_assets/js_assets. A bare render() leaves both sets
+        # empty regardless of the descriptor's asset paths.
+        from pyjinhx2.session import accumulate_assets
+
+        session.on_rendered.append(accumulate_assets)
+        _html(session)
+        assert {p.name for p in session.css_assets} == {"pjx_lazy_load.css"}
+        assert {p.name for p in session.js_assets} == {"pjx_lazy_load.js"}
