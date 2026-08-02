@@ -90,6 +90,25 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
         {"pyjinhx2.builtins.ui.pjx_card_footer.pjx_card_footer"}
     ),
     "builtins.ui.pjx_card_footer.pjx_card_footer": frozenset({"pyjinhx2.component"}),
+    # pjx_modal family (#517): the dialog shell plus its header/body/footer
+    # regions. Each component module reaches down into component.py only; each
+    # __init__ just re-exports its class from its co-located module.
+    "builtins.ui.pjx_modal.__init__": frozenset(
+        {"pyjinhx2.builtins.ui.pjx_modal.pjx_modal"}
+    ),
+    "builtins.ui.pjx_modal.pjx_modal": frozenset({"pyjinhx2.component"}),
+    "builtins.ui.pjx_modal_header.__init__": frozenset(
+        {"pyjinhx2.builtins.ui.pjx_modal_header.pjx_modal_header"}
+    ),
+    "builtins.ui.pjx_modal_header.pjx_modal_header": frozenset({"pyjinhx2.component"}),
+    "builtins.ui.pjx_modal_body.__init__": frozenset(
+        {"pyjinhx2.builtins.ui.pjx_modal_body.pjx_modal_body"}
+    ),
+    "builtins.ui.pjx_modal_body.pjx_modal_body": frozenset({"pyjinhx2.component"}),
+    "builtins.ui.pjx_modal_footer.__init__": frozenset(
+        {"pyjinhx2.builtins.ui.pjx_modal_footer.pjx_modal_footer"}
+    ),
+    "builtins.ui.pjx_modal_footer.pjx_modal_footer": frozenset({"pyjinhx2.component"}),
     "builtins.ui.pjx_notification.__init__": frozenset(
         {"pyjinhx2.builtins.ui.pjx_notification.pjx_notification"}
     ),

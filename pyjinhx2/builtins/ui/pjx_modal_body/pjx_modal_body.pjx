@@ -1,0 +1,1 @@
+<div id="{{ id }}" class="pjx-modal__body{% if class_name %} {{ class_name }}{% endif %}">{{ content }}</div>
