@@ -641,6 +641,17 @@ def test_oob_swaps_mixes_dirty_missing_and_clean():
     assert fragments[1] == "<div hx-swap-oob=\"delete:[data-pjx-id='b']\"></div>"
 
 
+def test_oob_swap_attr_lands_once_in_the_root_tag_beside_the_id_and_hash():
+    """v0.x parity: hx-swap-oob is folded into the same root-tag splice, not appended."""
+    with scope():
+        candidate = _dirty_candidate("a")
+        out = str(oob_swaps([candidate]))
+    assert out.count("hx-swap-oob=\"outerHTML:[data-pjx-id='a']\"") == 1
+    first_tag = out[: out.index(">") + 1]
+    assert "hx-swap-oob=" in first_tag
+    assert f'data-pjx-hash="{candidate.fresh_hash}"' in first_tag
+
+
 def test_walk_manifest_runs_the_nesting_dedup_on_its_survivors(monkeypatch):
     """The pass is wired into the walk, not just importable."""
     seen_calls: list[int] = []
