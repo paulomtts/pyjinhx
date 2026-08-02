@@ -292,10 +292,18 @@ def test_a_dynamic_dirty_key_evicts_the_instance_it_names():
     composite ``"todos:1"`` form (see `mutations.py`) — never the bare static key
     alongside it. Task 5 taught `_matches_dirtied` to read that form; this proves
     the cache's reverse index also understands it, not just the fan-out walk.
+
+    Deviation from the plan's literal test: the plan seeds the cache via a bare
+    `cache_put(..., react_keys=("todos",))`, which bypasses `_wrap_load`
+    entirely and so can never observe the `_wrap_load` reverse-index fix no
+    matter what production code does. Populate the cache through a real
+    `.load()` call instead, so the entry is indexed exactly the way
+    `_wrap_load` indexes it in production — under both the bare and the
+    composite form — which is the one path this test is meant to exercise.
     """
     with scope():
-        cache_put(ResponseWidget, "1", "stale-payload", react_keys=("todos",))
         registry.register_instance(ResponseWidget.__name__, "a", "entry")
+        ResponseWidget(pjx_key="1").load()
         add_dirtied(["todos:1"])
         [candidate] = ReactiveResponse(
             primary="", mounted=[mounted_entry("a", load="1")]

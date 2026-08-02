@@ -180,7 +180,10 @@ def test_a_static_key_still_matches_every_instance_of_the_class():
 def test_a_dynamic_key_naming_an_unmounted_load_matches_nothing():
     with scope():
         registry.register_instance(FanoutWidget.__name__, "row-1", "e1")
-        assert walk_manifest([entry("fanout_widget", "row-1", load="1")], {"todos:9"}) == []
+        assert (
+            walk_manifest([entry("fanout_widget", "row-1", load="1")], {"todos:9"})
+            == []
+        )
         assert LOAD_CALLS == []
 
 
