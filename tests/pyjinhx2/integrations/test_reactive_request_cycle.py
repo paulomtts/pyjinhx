@@ -232,3 +232,60 @@ def test_unchanged_region_is_gated_out_of_the_oob_swap():
     # Dirty says the data may have moved; the hash says this region's output
     # did not, so the swap that would replace it with itself is dropped.
     assert "hx-swap-oob" not in response.text
+
+
+def test_pjx_context_current_populated_inside_live_handler():
+    app = FastAPI()
+    apply_setup(
+        app,
+        PjxSettings(),
+        context_factory=lambda request: {"user": "ada"},
+    )
+    seen: dict[str, object] = {}
+
+    @app.post("/ctx")
+    def ctx():
+        dirty(Keys.CYCLE)
+        context = PjxContext.current()
+        seen["session"] = context.session
+        seen["mounted"] = context.mounted
+        seen["assets"] = context.assets
+        seen["trigger"] = context.trigger
+        seen["dirtied"] = set(context.dirtied)
+        seen["app_context"] = context.app_context
+        seen["request_url"] = str(context.request.url) if context.request else None
+        return {"ok": True}
+
+    with TestClient(app) as client:
+        client.post(
+            "/ctx",
+            headers={
+                "X-PJX-Mounted": json.dumps([entry("a", load="card-1")]),
+                "X-PJX-Assets": '["tok"]',
+                "X-PJX-Trigger": '{"id": "a"}',
+            },
+        )
+
+    assert seen["session"] is not None
+    assert seen["mounted"] == [entry("a", load="card-1")]
+    assert seen["assets"] == frozenset({"tok"})
+    assert seen["trigger"] == {"id": "a"}
+    assert seen["dirtied"] == {"cycle"}
+    assert seen["app_context"] == {"user": "ada"}
+    assert seen["request_url"] is not None and seen["request_url"].endswith("/ctx")
+
+
+def test_pjx_context_current_raises_outside_request_scope():
+    app = make_app()
+
+    @app.get("/ping")
+    def ping():
+        return {"ok": True}
+
+    with TestClient(app) as client:
+        assert client.get("/ping").json() == {"ok": True}
+
+    # Setup is app-wide but the scope is per-request: outside one, no amount of
+    # prior wiring makes a context available.
+    with pytest.raises(NoActiveRequestScope):
+        PjxContext.current()
