@@ -366,3 +366,163 @@ def test_classless_and_componentized_composition_agree(family_dir, session):
 
     assert render(PJXToastHost(id="t"), session).strip() in classless
     assert render(PJXResizableHandle(id="h"), session).strip() in classless
+
+
+def test_alert_dismiss_marker_survives_composition(family_dir, session):
+    """pjx_alert.js wires dismissal off data-pjx-close; nesting must not drop it."""
+    html = _tree(session)
+
+    assert "data-pjx-close" in html
+    assert 'class="pjx-alert__dismiss"' in html
+    assert 'role="status"' in html
+
+
+def test_alert_without_dismissible_emits_no_dismiss_marker(family_dir, session):
+    """The marker is the only dismissal contract, so it must be opt-in."""
+    html = render(Wrapper(id="w", content=PJXAlert(id="a", body="x")), session)
+
+    assert "data-pjx-close" not in html
+
+
+def test_notification_client_attributes_survive_composition(family_dir, session):
+    """pjx_notification.js reads data-timeout and data-pjx-autoshow off the root."""
+    html = render(
+        Wrapper(
+            id="w",
+            content=PJXNotification(
+                id="note", content="done", corner="bottom-left", timeout=1200
+            ),
+        ),
+        session,
+    )
+
+    # Corner is a class modifier, not a data attribute — asserted as shipped.
+    assert "pjx-notification--bottom-left" in html
+    assert 'data-timeout="1200"' in html
+    assert "data-pjx-autoshow" in html
+    assert "data-pjx-close" in html
+
+
+def test_notification_autoshow_off_drops_only_that_marker(family_dir, session):
+    html = render(
+        Wrapper(id="w", content=PJXNotification(id="n", content="x", autoshow=False)),
+        session,
+    )
+
+    assert "data-pjx-autoshow" not in html
+    assert 'data-timeout="5000"' in html
+
+
+def test_toast_host_renders_an_empty_configured_host(family_dir, session):
+    """The server half of the toast contract: a configured, empty host.
+
+    Toasts themselves are created client-side by pjx_toast_host.js, which reads
+    data-event-name to know which document event to listen for; the dispatch
+    half (pjx.toast fires that event on document) is covered by
+    tests/pyjinhx2/client/test_pjx_toast.py and is not duplicated here.
+    """
+    html = render(
+        Wrapper(
+            id="w",
+            content=PJXToastHost(id="toast", position="top-left", timeout=2500),
+        ),
+        session,
+    ).split('class="wrapper">', 1)[1].rsplit("</div>", 1)[0]
+
+    assert "data-pjx-toast-host" in html
+    assert 'data-event-name="pjx:toast"' in html
+    assert 'data-timeout="2500"' in html
+    assert "pjx-toast-host--top-left" in html
+    # Empty by design: no toast DOM is ever rendered server-side.
+    assert html.strip().endswith("></div>")
+
+
+def test_toast_host_custom_event_name_reaches_the_host(family_dir, session):
+    html = render(PJXToastHost(id="t", event_name="app:flash"), session)
+
+    assert 'data-event-name="app:flash"' in html
+
+
+def test_carousel_markers_survive_nesting(family_dir, session):
+    """The carousel controller finds every affordance through data-pjx-carousel*."""
+    html = _tree(session)
+
+    assert "data-pjx-carousel " in html or "data-pjx-carousel>" in html
+    assert "data-pjx-carousel-loop" in html
+    assert "data-pjx-carousel-prev" in html
+    assert "data-pjx-carousel-next" in html
+    assert "data-pjx-carousel-dots" in html
+    # One slide marker per slide, even nested inside a resizable panel.
+    assert html.count("data-pjx-carousel-slide") == 2
+    assert html.count('data-pjx-carousel-label="One"') == 1
+
+
+def test_carousel_autoplay_markers_are_opt_in(family_dir, session):
+    """Autoplay stays opt-in: an unrequested moving region is an a11y hazard."""
+    off = render(PJXCarousel(id="c", content="x"), session)
+    on = render(PJXCarousel(id="c", content="x", autoplay=True, interval_ms=800), session)
+
+    assert "data-pjx-carousel-autoplay" not in off
+    assert "data-pjx-carousel-autoplay" in on
+    assert 'data-pjx-carousel-interval="800"' in on
+    assert "data-pjx-carousel-autoplay-toggle" in on
+
+
+def test_resizable_markers_survive_composition(family_dir, session):
+    """Group, handle and panel markers all survive nesting inside the family tree."""
+    html = _tree(session)
+
+    assert "data-pjx-resizable-group" in html
+    assert 'data-direction="row"' in html
+    assert html.count("data-pjx-resizable-panel") == 2
+    assert html.count("data-pjx-resizable-handle") == 1
+    assert 'role="separator"' in html
+    assert 'aria-valuemin="0"' in html and 'aria-valuemax="100"' in html
+    # aria-valuenow is *not* server-rendered: the controller sets it as the
+    # boundary moves, so its absence here is the contract, not a gap.
+    assert "aria-valuenow" not in html
+
+
+def test_resizable_panel_bounds_reach_the_client_as_data_and_css(family_dir, session):
+    """Percentage bounds stay data attributes; pixel floors become CSS variables."""
+    html = render(
+        Wrapper(
+            id="w",
+            content=PJXResizablePanel(id="p", size=40.0, min="120px", max=80),
+        ),
+        session,
+    )
+
+    assert 'data-size="40.0"' in html
+    assert 'data-min="120px"' in html
+    assert 'data-max="80.0"' in html
+    assert "--pjx-resizable-min: 120px;" in html
+    assert "--pjx-resizable-max" not in html
+
+
+def test_resizable_group_inside_a_carousel_keeps_both_marker_sets(family_dir, session):
+    """Cross-family composition does not let one controller's markers shadow another's."""
+    html = render(
+        PJXCarousel(
+            id="car",
+            content=[
+                PJXCarouselSlide(
+                    id="s",
+                    content=PJXResizableGroup(
+                        id="g",
+                        content=[
+                            PJXResizablePanel(id="p1", content="a"),
+                            PJXResizableHandle(id="h"),
+                            PJXResizablePanel(id="p2", content="b"),
+                        ],
+                    ),
+                )
+            ],
+        ),
+        session,
+    )
+
+    assert "data-pjx-carousel-slide" in html
+    assert "data-pjx-resizable-group" in html
+    assert html.count("data-pjx-resizable-panel") == 2
+    assert "data-pjx-resizable-handle" in html
