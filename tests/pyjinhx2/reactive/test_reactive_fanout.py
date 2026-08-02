@@ -510,7 +510,7 @@ def test_drop_nested_scales_over_a_large_mixed_candidate_set():
     # Manifest order is parent0, child0, parent1, child1, ... then the loners;
     # dropping the children leaves the parents in that same relative order.
     assert [c.instance_id for c in survivors] == expected
-    assert len(survivors) == len(set(id(c) for c in survivors))
+    assert len(survivors) == len({id(c) for c in survivors})
 
 
 def test_drop_nested_keeps_independent_nesting_groups_isolated():
@@ -564,6 +564,34 @@ def test_drop_nested_collapses_a_four_level_chain():
             ]
         )
     assert [x.instance_id for x in survivors] == ["a"]
+
+
+def test_drop_nested_walks_each_candidate_tree_exactly_once(monkeypatch):
+    """One `_contained` call per candidate with a level — never one per pair.
+
+    The linear rewrite unions every tree once, then filters; a nested-loop
+    implementation would walk trees a quadratic number of times.
+    """
+    calls: list[int] = []
+    real_contained = fanout._contained
+
+    def counting_contained(level):
+        calls.append(id(level))
+        return real_contained(level)
+
+    monkeypatch.setattr(fanout, "_contained", counting_contained)
+
+    levels = [stamped_level(f"n{i}") for i in range(10)]
+    candidates = [candidate(f"n{i}", level=levels[i]) for i in range(10)]
+    candidates.append(candidate("no-structure"))
+    with scope():
+        survivors = _drop_nested(candidates)
+
+    assert len(calls) == 10
+    assert len(set(calls)) == 10
+    assert [c.instance_id for c in survivors] == [f"n{i}" for i in range(10)] + [
+        "no-structure"
+    ]
 
 
 def test_mounted_ids_in_extracts_both_quote_styles():

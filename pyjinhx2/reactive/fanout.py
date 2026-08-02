@@ -269,29 +269,35 @@ def _drop_nested(candidates: list[FanoutCandidate]) -> list[FanoutCandidate]:
     tree instead of a substring search over rendered HTML: the tree already
     records containment, so nothing here re-parses or re-serializes markup.
 
-    A drop needs positive proof — a concrete containing RenderedLevel on some
-    *other* survivor whose tree holds this candidate's id or level object. A
-    candidate whose only structural data is a live instance, and a container
-    side with no tree at all, both simply fail to produce that proof and the
-    candidate survives; absence of a check is never a drop. Order is preserved
-    and nothing is duplicated.
+    Two passes, not a pairwise scan. The first unions every candidate's tree
+    into one id set and one object-identity set; the second keeps a candidate
+    unless it appears in either. No `other is not candidate` guard is needed:
+    `_contained` reports strict descendants only, so a level contributes
+    neither its own root id nor its own object identity to the union and a
+    candidate can never match itself.
+
+    A drop needs positive proof — this candidate's id or level object sitting
+    inside some tree. A candidate whose only structural data is a live
+    instance, and a container side with no tree at all, both simply fail to
+    produce that proof and the candidate survives; absence of a check is never
+    a drop. Order is preserved and nothing is duplicated.
     """
     if len(candidates) < 2:
         return candidates
-    trees = {
-        id(other): _contained(level)
-        for other in candidates
-        if (level := _level_of(other)) is not None
-    }
+    all_ids: set[str] = set()
+    all_objects: set[int] = set()
+    for other in candidates:
+        level = _level_of(other)
+        if level is None:
+            continue
+        ids, objects = _contained(level)
+        all_ids |= ids
+        all_objects |= objects
     surviving: list[FanoutCandidate] = []
     for candidate in candidates:
         own_level = _level_of(candidate)
-        nested = any(
-            candidate.instance_id in ids
-            or (own_level is not None and id(own_level) in objects)
-            for other in candidates
-            if other is not candidate
-            for ids, objects in (trees.get(id(other), (frozenset(), frozenset())),)
+        nested = candidate.instance_id in all_ids or (
+            own_level is not None and id(own_level) in all_objects
         )
         if not nested:
             surviving.append(candidate)
