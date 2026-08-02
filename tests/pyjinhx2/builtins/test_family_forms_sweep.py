@@ -330,3 +330,60 @@ def test_each_field_lands_in_its_own_host_slot(family_dir, session):
     assert 'id="ff-mode"' not in first
 
 
+XSS = "<script>alert(1)</script>"
+
+
+def test_label_error_and_help_are_escaped_through_the_composition(family_dir, session):
+    """Hostile label/error text is data, not markup, even with a live child in content."""
+    html = render(
+        PJXFormField(
+            id="ff",
+            label=XSS,
+            error="Tom & Jerry <bad>",
+            content=PJXToggleSwitch(id="ctl", name="on"),
+        ),
+        session,
+    )
+
+    assert XSS not in html
+    assert "&lt;script&gt;alert(1)&lt;/script&gt;" in html
+    assert "Tom &amp; Jerry &lt;bad&gt;" in html
+    assert html.count('id="ctl"') == 1
+
+
+def test_help_text_is_escaped_when_the_field_is_nested_two_levels_deep(
+    family_dir, session
+):
+    """Escaping is not bypassed by an extra host between the field and the root."""
+    html = render(
+        Wrapper(
+            id="wrap",
+            content=PJXFormField(
+                id="ff",
+                label="Tags",
+                help=XSS,
+                content=PJXChipInput(id="ctl", name="tags"),
+            ),
+        ),
+        session,
+    )
+
+    assert "<script>" not in html
+    assert "&lt;script&gt;alert(1)&lt;/script&gt;" in html
+
+
+def test_composed_child_markup_is_not_double_escaped(family_dir, session):
+    """The Slot exemption still applies: the child's own tags survive as markup."""
+    html = render(
+        PJXFormField(
+            id="ff",
+            label="Notify",
+            content=PJXToggleSwitch(id="ctl", name="on", label="On"),
+        ),
+        session,
+    )
+
+    assert "&lt;label" not in html
+    assert "&lt;input" not in html
+    assert '<label id="ctl"' in html
+
