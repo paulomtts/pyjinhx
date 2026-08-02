@@ -236,3 +236,97 @@ def test_help_renders_when_there_is_no_error(family_dir, session):
     assert "pjx-form-field--error" not in html
 
 
+def _roots(html: str) -> list[str]:
+    """Tag names of the top-level elements in ``html`` (nesting-aware, no parser dep)."""
+    depth = 0
+    roots: list[str] = []
+    for token in re.finditer(r"<(/?)([a-zA-Z][\w-]*)([^>]*?)(/?)>", html):
+        closing, name, _attrs, self_closing = token.groups()
+        void = name.lower() in {"hr", "img", "br", "input", "path", "circle", "line"}
+        if closing:
+            depth -= 1
+            continue
+        if depth == 0:
+            roots.append(name)
+        if not self_closing and not void:
+            depth += 1
+    return roots
+
+
+@pytest.mark.parametrize(
+    ("control", "marker"), CONTROLS, ids=lambda v: getattr(v, "id", None) or str(v)
+)
+def test_form_field_stays_single_root_around_each_control(
+    family_dir, session, control, marker
+):
+    """Wrapping any of the five controls still yields exactly one root element."""
+    html = render(PJXFormField(id="ff", label="Field", content=control), session)
+
+    assert _roots(html) == ["div"]
+
+
+def _form(session) -> str:
+    """A FormPanel holding three FormField-wrapped controls, one per slot."""
+    return render(
+        FormPanel(
+            id="form",
+            first=PJXFormField(
+                id="ff-pw",
+                label="Password",
+                for_id="pw-field",
+                content=PJXPasswordInput(id="pw", name="pw"),
+            ),
+            second=PJXFormField(
+                id="ff-tags",
+                label="Tags",
+                content=PJXChipInput(id="tags", name="tags", values=["a", "b"]),
+            ),
+            third=PJXFormField(
+                id="ff-mode",
+                label="Mode",
+                for_id="mode",
+                content=PJXSegmentedControl(
+                    id="mode", name="mode", options=[("a", "A"), ("b", "B")]
+                ),
+            ),
+        ),
+        session,
+    )
+
+
+def test_multi_control_form_is_single_root(family_dir, session):
+    """Three composed fields under one host still collapse to one root element."""
+    assert _roots(_form(session)) == ["form"]
+
+
+def test_multi_control_form_has_no_duplicate_ids(family_dir, session):
+    """Every id in a three-field form is emitted exactly once — no collisions."""
+    html = _form(session)
+    ids = re.findall(r'\bid="([^"]+)"', html)
+
+    assert sorted(ids) == sorted(set(ids)), ids
+    for element_id in (
+        "form",
+        "ff-pw",
+        "pw",
+        "pw-field",
+        "ff-tags",
+        "tags",
+        "ff-mode",
+        "mode",
+    ):
+        assert html.count(f'id="{element_id}"') == 1, element_id
+
+
+def test_each_field_lands_in_its_own_host_slot(family_dir, session):
+    """Composed fields are not shuffled between the host's slots."""
+    html = _form(session)
+    first = html.split('class="form-panel__first"', 1)[1].split(
+        'class="form-panel__second"', 1
+    )[0]
+
+    assert 'id="ff-pw"' in first
+    assert 'id="ff-tags"' not in first
+    assert 'id="ff-mode"' not in first
+
+
