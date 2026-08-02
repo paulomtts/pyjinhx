@@ -109,6 +109,16 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
     "builtins.ui.pjx_icon.pjx_icon": frozenset(
         {"pyjinhx2.component", "pyjinhx2.builtins.ui.pjx_icon._icons"}
     ),
+    "builtins.ui.pjx_carousel.__init__": frozenset(
+        {"pyjinhx2.builtins.ui.pjx_carousel.pjx_carousel"}
+    ),
+    "builtins.ui.pjx_carousel.pjx_carousel": frozenset({"pyjinhx2.component"}),
+    "builtins.ui.pjx_carousel_slide.__init__": frozenset(
+        {"pyjinhx2.builtins.ui.pjx_carousel_slide.pjx_carousel_slide"}
+    ),
+    "builtins.ui.pjx_carousel_slide.pjx_carousel_slide": frozenset(
+        {"pyjinhx2.component"}
+    ),
     # The classless factory is a consumer: it validates a tag name, reads the
     # template discovery found, hands the header to props_header and publishes
     # the result through discovery's own write path. Nothing imports it back.
