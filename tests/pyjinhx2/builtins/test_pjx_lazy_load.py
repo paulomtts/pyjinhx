@@ -48,7 +48,7 @@ def session():
 def _html(session, **kwargs) -> str:
     base = {"id": "lz", "url": "/x"}
     base.update(kwargs)
-    return render(PJXLazyLoad(**base), session)
+    return render(PJXLazyLoad(**base), session)  # type: ignore[arg-type]
 
 
 class TestRender:
