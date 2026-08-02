@@ -281,6 +281,10 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
         {"pyjinhx2.builtins.pjx_lazy_load.pjx_lazy_load"}
     ),
     "builtins.pjx_lazy_load.pjx_lazy_load": frozenset({"pyjinhx2.component"}),
+    "builtins.pjx_region_loader.__init__": frozenset(
+        {"pyjinhx2.builtins.pjx_region_loader.pjx_region_loader"}
+    ),
+    "builtins.pjx_region_loader.pjx_region_loader": frozenset({"pyjinhx2.component"}),
 }
 
 
