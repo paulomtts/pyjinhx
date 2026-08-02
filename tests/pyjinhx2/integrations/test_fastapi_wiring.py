@@ -3,7 +3,7 @@
 from pathlib import Path
 
 import pytest
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.testclient import TestClient
 
 from pyjinhx2.component import BaseComponent
@@ -76,3 +76,67 @@ def test_lifespan_wraps_an_app_provided_lifespan():
     with TestClient(app):
         pass
     assert seen == [False]
+
+
+def test_scope_is_entered_per_request_and_reset_after():
+    from pyjinhx2.session import current_session
+
+    app = FastAPI()
+    apply_setup(app, _settings())
+    seen: list[object] = []
+
+    @app.get("/ping")
+    def ping():
+        seen.append(current_session())
+        return {"ok": True}
+
+    with TestClient(app) as client:
+        assert client.get("/ping").json() == {"ok": True}
+        assert client.get("/ping").json() == {"ok": True}
+
+    assert len(seen) == 2
+    assert all(session is not None for session in seen)
+    assert seen[0] is not seen[1]
+    assert current_session() is None
+
+
+def test_scope_exits_when_the_handler_raises():
+    from pyjinhx2.session import current_session
+
+    app = FastAPI()
+    apply_setup(app, _settings())
+
+    @app.get("/boom")
+    def boom():
+        raise RuntimeError("handler exploded")
+
+    with TestClient(app, raise_server_exceptions=False) as client:
+        assert client.get("/boom").status_code == 500
+    assert current_session() is None
+
+
+def test_manifests_are_parsed_onto_request_state():
+    app = FastAPI()
+    apply_setup(app, _settings())
+    captured: dict[str, object] = {}
+
+    @app.get("/state")
+    def state(request: Request):
+        captured["mounted"] = request.state.pjx_mounted
+        captured["assets"] = request.state.pjx_assets
+        captured["trigger"] = request.state.pjx_trigger
+        return {"ok": True}
+
+    with TestClient(app) as client:
+        client.get(
+            "/state",
+            headers={
+                "X-PJX-Mounted": '[{"id": "a", "type": "Card", "load": {}, "hash": "h"}]',
+                "X-PJX-Assets": '["tok"]',
+                "X-PJX-Trigger": '{"id": "a"}',
+            },
+        )
+
+    assert captured["mounted"] == [{"id": "a", "type": "Card", "load": {}, "hash": "h"}]
+    assert captured["assets"] == frozenset({"tok"})
+    assert captured["trigger"] == {"id": "a"}
