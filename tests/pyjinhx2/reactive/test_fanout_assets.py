@@ -59,9 +59,7 @@ def test_a_missing_candidate_requires_nothing(asset_files):
 def test_missing_asset_oob_emits_only_the_tokens_the_client_lacks(asset_files):
     css, js = asset_files
     session = RenderSession()
-    fragment = missing_asset_oob(
-        [candidate()], frozenset({asset_token(css)}), session
-    )
+    fragment = missing_asset_oob([candidate()], frozenset({asset_token(css)}), session)
 
     assert asset_token(css) not in fragment
     assert (
@@ -123,7 +121,9 @@ def test_reactive_response_appends_the_asset_fragment_after_the_swaps(
     # or oob_swaps() asserts (walk_manifest's contract), and this test only
     # exercises the asset leg, not the swap markup.
     monkeypatch.setattr(
-        response_module.ReactiveResponse, "candidates", lambda self: [candidate("clean")]
+        response_module.ReactiveResponse,
+        "candidates",
+        lambda self: [candidate("clean")],
     )
     body = str(
         response_module.ReactiveResponse(
@@ -141,13 +141,13 @@ def test_reactive_response_omits_the_asset_fragment_when_the_client_has_it(
 
     css, js = asset_files
     monkeypatch.setattr(
-        response_module.ReactiveResponse, "candidates", lambda self: [candidate("clean")]
+        response_module.ReactiveResponse,
+        "candidates",
+        lambda self: [candidate("clean")],
     )
     loaded = [asset_token(css), asset_token(js)]
     body = str(
-        response_module.ReactiveResponse(
-            primary="", mounted=None, assets=loaded
-        ).body
+        response_module.ReactiveResponse(primary="", mounted=None, assets=loaded).body
     )
 
     assert "data-pjx-asset" not in body
@@ -157,7 +157,9 @@ def test_an_assets_only_body_still_says_do_not_swap(asset_files, monkeypatch):
     from pyjinhx2.reactive import response as response_module
 
     monkeypatch.setattr(
-        response_module.ReactiveResponse, "candidates", lambda self: [candidate("clean")]
+        response_module.ReactiveResponse,
+        "candidates",
+        lambda self: [candidate("clean")],
     )
     reactive = response_module.ReactiveResponse(primary="", mounted=None, assets=None)
 
