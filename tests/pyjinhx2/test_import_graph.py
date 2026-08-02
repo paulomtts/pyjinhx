@@ -143,6 +143,32 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
     "builtins.ui.pjx_drawer_footer.pjx_drawer_footer": frozenset(
         {"pyjinhx2.component"}
     ),
+    # pjx_accordion family (#519): the details/summary shell plus its
+    # group/trigger/content parts. Same shape as the modal/drawer families —
+    # each component module reaches down into component.py only; each
+    # __init__ just re-exports its class from its co-located module.
+    "builtins.ui.pjx_accordion.__init__": frozenset(
+        {"pyjinhx2.builtins.ui.pjx_accordion.pjx_accordion"}
+    ),
+    "builtins.ui.pjx_accordion.pjx_accordion": frozenset({"pyjinhx2.component"}),
+    "builtins.ui.pjx_accordion_content.__init__": frozenset(
+        {"pyjinhx2.builtins.ui.pjx_accordion_content.pjx_accordion_content"}
+    ),
+    "builtins.ui.pjx_accordion_content.pjx_accordion_content": frozenset(
+        {"pyjinhx2.component"}
+    ),
+    "builtins.ui.pjx_accordion_group.__init__": frozenset(
+        {"pyjinhx2.builtins.ui.pjx_accordion_group.pjx_accordion_group"}
+    ),
+    "builtins.ui.pjx_accordion_group.pjx_accordion_group": frozenset(
+        {"pyjinhx2.component"}
+    ),
+    "builtins.ui.pjx_accordion_trigger.__init__": frozenset(
+        {"pyjinhx2.builtins.ui.pjx_accordion_trigger.pjx_accordion_trigger"}
+    ),
+    "builtins.ui.pjx_accordion_trigger.pjx_accordion_trigger": frozenset(
+        {"pyjinhx2.component"}
+    ),
     "builtins.ui.pjx_notification.__init__": frozenset(
         {"pyjinhx2.builtins.ui.pjx_notification.pjx_notification"}
     ),
