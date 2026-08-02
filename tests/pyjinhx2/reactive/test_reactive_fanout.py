@@ -8,6 +8,7 @@ from typing import Annotated
 import pytest
 
 from pyjinhx2 import discovery, registry
+from pyjinhx2.component import BaseComponent
 from pyjinhx2.reactive import fanout
 from pyjinhx2.reactive.cache import cache_has, cache_put
 from pyjinhx2.reactive.component import PjxKey, ReactiveComponent
@@ -39,6 +40,14 @@ class QuietWidget(ReactiveComponent, react=("other",)):
     """A reactive component that no test's dirtied keys ever touch."""
 
 
+class PlainWidget(BaseComponent):
+    """A discovery-registered component that is NOT a ReactiveComponent.
+
+    A manifest naming a real tag whose class is non-reactive must be dropped by
+    the `issubclass` half of `_candidate_class`, not by the unknown-tag half.
+    """
+
+
 _TEMPLATE_DIR = "templates"
 """Set by `_clean_registries` to this test's tmp_path. `RenderSession(template_dir="templates")`
 (the class default) does not exist relative to the test's cwd — every test must enter
@@ -55,7 +64,12 @@ def _clean_registries(tmp_path, monkeypatch):
     quiet_path = tmp_path / "quiet_widget.pjx"
     fanout_path.write_text("<div>{{ pjx_key }}</div>")
     quiet_path.write_text("<div>quiet</div>")
-    discovery.build_registry(tmp_path, [FanoutWidget, QuietWidget])
+    plain_path = tmp_path / "plain_widget.pjx"
+    plain_path.write_text("<div>plain</div>")
+    discovery.build_registry(tmp_path, [FanoutWidget, QuietWidget, PlainWidget])
+    PlainWidget.__pjx_descriptor__ = dataclasses.replace(
+        PlainWidget.__pjx_descriptor__, template_path=Path(plain_path.name)
+    )
     # `_resolve_template_path` walks the class's *defining module's* directory
     # (this test file's dir), not `template_dir` passed to `build_registry` —
     # the two are deliberately different concerns (tag lookup vs. file probe).
@@ -99,6 +113,12 @@ def scope():
 def test_unknown_type_is_dropped():
     with scope():
         assert walk_manifest([entry("no_such_widget", "a")], {"todos"}) == []
+
+
+def test_registered_but_non_reactive_type_is_dropped():
+    with scope():
+        assert walk_manifest([entry("plain_widget", "a")], {"todos"}) == []
+        assert discovery.get_class("plain_widget") is PlainWidget
 
 
 def test_entry_whose_keys_miss_the_dirtied_set_is_dropped():
