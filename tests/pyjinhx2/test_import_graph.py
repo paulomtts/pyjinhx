@@ -265,6 +265,10 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
         {"pyjinhx2.builtins.pjx_paginator.pjx_paginator"}
     ),
     "builtins.pjx_paginator.pjx_paginator": frozenset({"pyjinhx2.component"}),
+    "builtins.pjx_lazy_load.__init__": frozenset(
+        {"pyjinhx2.builtins.pjx_lazy_load.pjx_lazy_load"}
+    ),
+    "builtins.pjx_lazy_load.pjx_lazy_load": frozenset({"pyjinhx2.component"}),
 }
 
 
