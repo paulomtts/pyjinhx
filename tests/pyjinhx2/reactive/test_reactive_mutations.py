@@ -129,6 +129,13 @@ def test_dirty_and_mutates_accumulate_across_calls_in_one_scope():
         assert get_dirtied() == {"todos", "user", "todos:7"}
 
 
+def test_dirty_with_no_keys_leaves_the_dirtied_set_untouched():
+    with request_scope():
+        dirty(Keys.TODOS)
+        dirty()
+        assert get_dirtied() == {"todos"}
+
+
 def test_get_dirtied_outside_a_scope_is_empty():
     assert get_dirtied() == set()
 
