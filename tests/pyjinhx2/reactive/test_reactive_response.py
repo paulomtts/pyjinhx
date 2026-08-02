@@ -268,8 +268,8 @@ def test_an_undirtied_cache_entry_survives_the_fan_out():
         assert cache_get(ResponseWidget, "1") == "payload"
 
 
-def test_reading_candidates_twice_evicts_once_and_loads_once(monkeypatch):
-    """v0.x parity: the OOB tail must not re-invalidate what it already dropped."""
+def test_reading_candidates_twice_reinvalidates_and_reloads_each_time(monkeypatch):
+    """Each `candidates()` call re-runs invalidation and reload for dirtied keys."""
     calls: list[set[str]] = []
     original = cache.invalidate
     monkeypatch.setattr(
