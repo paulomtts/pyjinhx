@@ -218,6 +218,25 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
     "builtins.ui.pjx_popover_panel.pjx_popover_panel": frozenset(
         {"pyjinhx2.component"}
     ),
+    # pjx_tooltip family (#522): the positioned root shell, its focusable
+    # trigger, and the hidden tip. JS/CSS live only on the root; each leaf
+    # reaches component.py only.
+    "builtins.ui.pjx_tooltip.__init__": frozenset(
+        {"pyjinhx2.builtins.ui.pjx_tooltip.pjx_tooltip"}
+    ),
+    "builtins.ui.pjx_tooltip.pjx_tooltip": frozenset({"pyjinhx2.component"}),
+    "builtins.ui.pjx_tooltip_trigger.__init__": frozenset(
+        {"pyjinhx2.builtins.ui.pjx_tooltip_trigger.pjx_tooltip_trigger"}
+    ),
+    "builtins.ui.pjx_tooltip_trigger.pjx_tooltip_trigger": frozenset(
+        {"pyjinhx2.component"}
+    ),
+    "builtins.ui.pjx_tooltip_content.__init__": frozenset(
+        {"pyjinhx2.builtins.ui.pjx_tooltip_content.pjx_tooltip_content"}
+    ),
+    "builtins.ui.pjx_tooltip_content.pjx_tooltip_content": frozenset(
+        {"pyjinhx2.component"}
+    ),
     "builtins.ui.pjx_notification.__init__": frozenset(
         {"pyjinhx2.builtins.ui.pjx_notification.pjx_notification"}
     ),
