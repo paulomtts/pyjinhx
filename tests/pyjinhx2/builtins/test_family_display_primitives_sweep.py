@@ -248,3 +248,75 @@ def test_classless_host_nesting_a_classless_host(family_dir, session):
     assert html.count('id="in"') == 1
     assert html.count('id="sp-in"') == 1
     assert html.count('id="bg"') == 1
+
+
+XSS = "<script>alert(1)</script>"
+
+
+def test_string_slot_value_escaped_across_nested_components(family_dir, session):
+    """A hostile string reaching a slot two levels down is escaped, not executed."""
+    html = render(
+        Wrapper(id="wrap", content=PJXEmptyState(id="empty", content=XSS)), session
+    )
+
+    assert XSS not in html
+    assert "&lt;script&gt;alert(1)&lt;/script&gt;" in html
+
+
+def test_string_fields_escaped_when_the_component_is_a_nested_child(
+    family_dir, session
+):
+    """Nesting does not bypass a child's own field escaping (badge label, chip label)."""
+    html = render(
+        Panel(
+            id="panel",
+            head=PJXBadge(id="badge", label=XSS),
+            body=PJXEmptyState(id="empty", suggestions=[{"label": XSS}]),
+            foot=PJXDivider(id="div", label=XSS),
+        ),
+        session,
+    )
+
+    assert "<script>" not in html
+    # 4, not 3: EmptyState's chip template renders chip.label twice on purpose
+    # (once as the visible button text, once as the data-pjx-suggestion attribute
+    # value when chip.value is absent) — badge(1) + divider(1) + chip(2) = 4.
+    assert html.count("&lt;script&gt;alert(1)&lt;/script&gt;") == 4
+
+
+def test_avatar_stack_string_item_is_escaped_inside_a_nested_host(family_dir, session):
+    """A raw HTML string in avatars is data, not markup, even nested two deep."""
+    html = render(
+        Wrapper(
+            id="wrap",
+            content=PJXAvatarStack(id="stack", avatars=["<b>raw</b>"]),
+        ),
+        session,
+    )
+
+    assert "<b>raw</b>" not in html
+    assert "&lt;b&gt;raw&lt;/b&gt;" in html
+
+
+def test_component_slot_value_not_double_escaped_across_nested_components(
+    family_dir, session
+):
+    """Component-valued slots keep their markup through three hosts (Slot exemption)."""
+    html = render(
+        Wrapper(
+            id="outer",
+            content=PJXEmptyState(
+                id="empty",
+                content=PJXAvatarStack(
+                    id="stack", avatars=[PJXAvatar(id="av", initials="AL")]
+                ),
+            ),
+        ),
+        session,
+    )
+
+    assert "&lt;div" not in html
+    assert "&lt;span" not in html
+    assert '<div id="av"' in html
+    assert 'class="pjx-avatar__initials"' in html
+    assert html.count('id="av"') == 1
