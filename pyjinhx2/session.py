@@ -89,6 +89,9 @@ class RenderSession:
         self.on_rendered: list[
             Callable[[BaseComponent, RenderedLevel, RenderSession], None]
         ] = []
+        # The Starlette request object for this render, set by middleware and
+        # read by PjxContext to expose request.state manifests and app context.
+        self.pjx_request: Any = None
 
     def emit_rendered(self, component: "BaseComponent", level: "RenderedLevel") -> None:
         """Notify subscribers that ``component``'s subtree finished rendering.
