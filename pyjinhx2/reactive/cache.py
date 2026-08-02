@@ -10,17 +10,19 @@ would be indistinguishable from - ``cache_has()`` is the way to tell the two
 apart, and the reason a private sentinel does the lookup internally rather than
 a plain ``.get()``.
 
-``cache_put()`` is the only mutator, and the only writer of the reverse index -
+``cache_put()`` is the only mutator, and the only writer of the two indexes -
 the ``reactive key -> {(cls, key)}`` map ``session.get_cache_reverse()`` hands
 out, which ``invalidate()`` reads to evict exactly the entries a dirtied key
-touched. Outside a request scope every function is a no-op: ``get_cache_store()``
-and ``get_cache_reverse()`` answer throwaway containers, so writes vanish and
-reads miss. A cache that does nothing is a correct cache, so nothing raises.
+touched, and its mirror ``session.get_cache_forward()``, which names the keys a
+single entry sits under so un-indexing costs that entry's own key count instead
+of a walk over every bucket. Outside a request scope every function is a no-op:
+the session getters answer throwaway containers, so writes vanish and reads
+miss. A cache that does nothing is a correct cache, so nothing raises.
 """
 
 from collections.abc import Iterable
 
-from pyjinhx2.session import get_cache_reverse, get_cache_store
+from pyjinhx2.session import get_cache_forward, get_cache_reverse, get_cache_store
 
 # Distinguishes "no entry" from an entry whose value happens to be None.
 _MISS = object()
@@ -90,11 +92,13 @@ def cache_put(
     """
     cache_key = make_key(cls, key)
     reverse = get_cache_reverse()
+    forward = get_cache_forward()
     # A re-put may depend on a different set of keys than the entry it replaces,
     # so drop every old membership before re-indexing rather than adding to it.
-    _unindex(reverse, cache_key)
+    _unindex(reverse, forward, cache_key)
     for react_key in react_keys:
         reverse.setdefault(react_key, set()).add(cache_key)
+        forward.setdefault(cache_key, set()).add(react_key)
     get_cache_store()[cache_key] = value
 
 
@@ -109,6 +113,7 @@ def invalidate(dirtied_keys: Iterable[str]) -> None:
             coerce_reactive_keys() and collected by session.add_dirtied().
     """
     reverse = get_cache_reverse()
+    forward = get_cache_forward()
     store = get_cache_store()
     evicted: set[tuple[type, object]] = set()
     for react_key in dirtied_keys:
@@ -120,12 +125,16 @@ def invalidate(dirtied_keys: Iterable[str]) -> None:
         # Clean every key the entry was registered under, not just the dirtied
         # ones that matched: the entry is gone from the store, so any surviving
         # membership would name a cache_key nothing can look up.
-        _unindex(reverse, cache_key)
+        _unindex(reverse, forward, cache_key)
 
 
 def _unindex(
-    reverse: dict[str, set[tuple[type, object]]], cache_key: tuple[type, object]
+    reverse: dict[str, set[tuple[type, object]]],
+    forward: dict[tuple[type, object], set[str]],
+    cache_key: tuple[type, object],
 ) -> None:
     """Remove a cache key from every reverse-index set that holds it."""
-    for entries in reverse.values():
-        entries.discard(cache_key)
+    # The forward index names exactly the buckets this entry sits in, so the
+    # cost is the entry's own key count rather than the whole reverse index.
+    for react_key in forward.pop(cache_key, ()):
+        reverse[react_key].discard(cache_key)
