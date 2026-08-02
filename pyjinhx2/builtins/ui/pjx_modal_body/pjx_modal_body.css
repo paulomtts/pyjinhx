@@ -1,0 +1,9 @@
+/* ── Body ──────────────────────────────────────────────────── */
+.pjx-modal__body {
+  padding: var(--pjx-modal-padding);
+  overflow-y: auto;
+  flex: 1;
+  color: var(--text);
+  font-size: var(--font-size-md);
+  line-height: 1.6;
+}

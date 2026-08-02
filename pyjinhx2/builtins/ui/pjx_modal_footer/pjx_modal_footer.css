@@ -1,0 +1,11 @@
+/* ── Footer ────────────────────────────────────────────────── */
+.pjx-modal__footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  padding: 0.875rem var(--pjx-modal-padding);
+  background: var(--pjx-modal-footer-bg);
+  border-top: 1px solid var(--pjx-modal-footer-sep);
+  flex-shrink: 0;
+}
