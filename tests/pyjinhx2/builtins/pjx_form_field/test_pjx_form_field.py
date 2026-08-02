@@ -142,7 +142,9 @@ class TestRender:
         assert "pjx-spinner" in html[start:]
 
     def test_class_name_is_appended_without_clobbering_base_classes(self, session):
-        assert 'class="pjx-form-field my-field"' in _html(session, class_name="my-field")
+        assert 'class="pjx-form-field my-field"' in _html(
+            session, class_name="my-field"
+        )
 
     def test_empty_class_name_adds_nothing(self, session):
         assert 'class="pjx-form-field"' in _html(session)
