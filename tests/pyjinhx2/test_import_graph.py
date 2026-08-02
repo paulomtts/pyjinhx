@@ -38,6 +38,14 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
         {"pyjinhx2.builtins.ui.pjx_badge.pjx_badge"}
     ),
     "builtins.ui.pjx_badge.pjx_badge": frozenset({"pyjinhx2.component"}),
+    "builtins.ui.pjx_avatar.__init__": frozenset(
+        {"pyjinhx2.builtins.ui.pjx_avatar.pjx_avatar"}
+    ),
+    "builtins.ui.pjx_avatar.pjx_avatar": frozenset({"pyjinhx2.component"}),
+    "builtins.ui.pjx_avatar_stack.__init__": frozenset(
+        {"pyjinhx2.builtins.ui.pjx_avatar_stack.pjx_avatar_stack"}
+    ),
+    "builtins.ui.pjx_avatar_stack.pjx_avatar_stack": frozenset({"pyjinhx2.component"}),
     "builtins.ui.pjx_icon.__init__": frozenset(
         {"pyjinhx2.builtins.ui.pjx_icon.pjx_icon"}
     ),
