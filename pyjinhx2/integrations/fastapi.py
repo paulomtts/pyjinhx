@@ -117,6 +117,9 @@ def _to_response(result: object, request: Any) -> object:
         return HTMLResponse(str(result.body), headers=result.headers)
     if isinstance(result, BaseComponent):
         session = current_session()
+        # Always set: _to_response only runs from inside PjxScopeMiddleware's
+        # request_scope(), which is the sole entry point for a pjx endpoint.
+        assert session is not None, "component return outside a request_scope()"
         inject_runtime(session, request or getattr(session, "pjx_request", None))
         return HTMLResponse(render(result, session=session))
     return result
@@ -177,6 +180,6 @@ def _install_route_adaptation(app: Starlette) -> None:
 
     app.router.route_class = PjxRoute  # pyright: ignore[reportAttributeAccessIssue]
     for route in app.router.routes:
-        if isinstance(route, APIRoute):
+        if isinstance(route, APIRoute) and route.dependant.call is not None:
             route.dependant.call = _adapt_endpoint(route.dependant.call)
             route.app = request_response(route.get_route_handler())

@@ -2,16 +2,14 @@
 
 from pathlib import Path
 
-import pytest
 from fastapi import FastAPI, Request
 from fastapi.testclient import TestClient
-
 from starlette.responses import PlainTextResponse
 
 from pyjinhx2.component import BaseComponent
+from pyjinhx2.config import PjxSettings
 from pyjinhx2.descriptor import ClassDescriptor
 from pyjinhx2.integrations.fastapi import apply_setup
-from pyjinhx2.config import PjxSettings
 from pyjinhx2.reactive.response import ReactiveResponse
 
 
@@ -42,7 +40,8 @@ def test_apply_setup_registers_the_scope_middleware():
     app = FastAPI()
     apply_setup(app, _settings())
     assert any(
-        middleware.cls.__name__ == "PjxScopeMiddleware"
+        middleware.cls.__name__  # pyright: ignore[reportAttributeAccessIssue]
+        == "PjxScopeMiddleware"
         for middleware in app.user_middleware
     )
 
@@ -51,7 +50,10 @@ def test_apply_setup_is_idempotent():
     app = FastAPI()
     apply_setup(app, _settings())
     apply_setup(app, _settings())
-    names = [m.cls.__name__ for m in app.user_middleware]
+    names = [
+        m.cls.__name__  # pyright: ignore[reportAttributeAccessIssue]
+        for m in app.user_middleware
+    ]
     assert names.count("PjxScopeMiddleware") == 1
 
 
