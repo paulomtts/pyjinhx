@@ -59,4 +59,4 @@ class TestRender:
 class TestValidation:
     def test_class_name_rejects_a_non_string(self):
         with pytest.raises(ValidationError):
-            PJXTableHead(id="h1", class_name=object())
+            PJXTableHead(id="h1", class_name=object())  # type: ignore[arg-type]

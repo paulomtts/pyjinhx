@@ -68,4 +68,4 @@ class TestSelectable:
 
     def test_selectable_rejects_a_non_bool(self):
         with pytest.raises(ValidationError):
-            PJXTableRow(id="r1", selectable="maybe")
+            PJXTableRow(id="r1", selectable="maybe")  # type: ignore[arg-type]

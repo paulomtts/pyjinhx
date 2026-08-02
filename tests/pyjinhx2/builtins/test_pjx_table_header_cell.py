@@ -64,10 +64,10 @@ class TestSortable:
 
     def test_unknown_sort_value_raises(self):
         with pytest.raises(ValidationError):
-            PJXTableHeaderCell(id="h1", sort="sideways")
+            PJXTableHeaderCell(id="h1", sort="sideways")  # type: ignore[arg-type]
 
 
 class TestValidation:
     def test_class_name_rejects_a_non_string(self):
         with pytest.raises(ValidationError):
-            PJXTableHeaderCell(id="h1", class_name=object())
+            PJXTableHeaderCell(id="h1", class_name=object())  # type: ignore[arg-type]
