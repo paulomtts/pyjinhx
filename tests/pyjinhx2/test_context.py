@@ -55,3 +55,48 @@ def test_current_outside_a_request_scope_raises_no_active_request_scope():
     assert current_session() is None
     with pytest.raises(NoActiveRequestScope):
         PjxContext.current()
+
+
+def test_manifest_accessors_read_request_state():
+    request = FakeRequest(
+        pjx_mounted="mounted-manifest",
+        pjx_assets="loaded-assets",
+        pjx_trigger="trigger-manifest",
+        pjx_context=None,
+    )
+    with request_scope() as session:
+        session.pjx_request = request
+        ctx = PjxContext.current()
+        assert ctx.request is request
+        assert ctx.mounted == "mounted-manifest"
+        assert ctx.assets == "loaded-assets"
+        assert ctx.trigger == "trigger-manifest"
+
+
+def test_manifest_accessors_are_none_without_a_request():
+    with request_scope():
+        ctx = PjxContext.current()
+        assert ctx.request is None
+        assert ctx.mounted is None
+        assert ctx.assets is None
+        assert ctx.trigger is None
+
+
+def test_app_context_is_none_when_no_factory_was_configured():
+    request = FakeRequest(pjx_context=None)
+    with request_scope() as session:
+        session.pjx_request = request
+        assert PjxContext.current().app_context is None
+
+
+def test_app_context_is_the_factory_result_when_one_was_configured():
+    sentinel = object()
+    request = FakeRequest(pjx_context=sentinel)
+    with request_scope() as session:
+        session.pjx_request = request
+        assert PjxContext.current().app_context is sentinel
+
+
+def test_app_context_is_none_without_a_request():
+    with request_scope():
+        assert PjxContext.current().app_context is None

@@ -82,6 +82,26 @@ class PjxContext:
         """This request's reactive-key -> cache-entry index."""
         return get_cache_reverse()
 
+    @property
+    def mounted(self) -> Any:
+        """The MountedManifest the middleware parsed onto this request."""
+        return self._state("pjx_mounted")
+
+    @property
+    def assets(self) -> Any:
+        """The LoadedAssets manifest the middleware parsed onto this request."""
+        return self._state("pjx_assets")
+
+    @property
+    def trigger(self) -> Any:
+        """The TriggerManifest the middleware parsed onto this request."""
+        return self._state("pjx_trigger")
+
+    @property
+    def app_context(self) -> Any:
+        """Whatever the app's configured ``context_factory`` returned, or None."""
+        return self._state("pjx_context")
+
     def _state(self, name: str) -> Any:
         """The named ``request.state`` attribute, or None when unset."""
         if self.request is None:
