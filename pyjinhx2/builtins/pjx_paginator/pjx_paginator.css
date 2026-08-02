@@ -1,0 +1,68 @@
+:where(:root) {
+  --pjx-paginator-gap: 0.25rem;
+  --pjx-paginator-link-fg: var(--text);
+  --pjx-paginator-link-bg: transparent;
+  --pjx-paginator-link-hover-bg: color-mix(in srgb, var(--surface) 40%, var(--surface-alt));
+  --pjx-paginator-current-fg: var(--surface, #fff);
+  --pjx-paginator-current-bg: var(--brand);
+  --pjx-paginator-border: var(--border);
+  --pjx-paginator-radius: var(--radius-sm, 4px);
+  --pjx-paginator-disabled-opacity: 0.45;
+}
+
+.pjx-paginator {
+  display: block;
+  font-size: var(--font-size-sm, 0.875rem);
+}
+
+.pjx-paginator__list {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--pjx-paginator-gap);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pjx-paginator__link,
+.pjx-paginator__control {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2rem;
+  padding: 0.35rem 0.6rem;
+  color: var(--pjx-paginator-link-fg);
+  background: var(--pjx-paginator-link-bg);
+  border: 1px solid var(--pjx-paginator-border);
+  border-radius: var(--pjx-paginator-radius);
+  text-decoration: none;
+  cursor: pointer;
+  transition: background var(--transition, 0.15s ease);
+}
+
+.pjx-paginator__link:hover,
+.pjx-paginator__control:hover {
+  background: var(--pjx-paginator-link-hover-bg);
+}
+
+.pjx-paginator__link--current {
+  color: var(--pjx-paginator-current-fg);
+  background: var(--pjx-paginator-current-bg);
+  border-color: var(--pjx-paginator-current-bg);
+  cursor: default;
+}
+
+.pjx-paginator__control--disabled {
+  opacity: var(--pjx-paginator-disabled-opacity);
+  cursor: not-allowed;
+}
+
+.pjx-paginator__ellipsis {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2rem;
+  padding: 0.35rem 0.3rem;
+  color: var(--text-muted, var(--text));
+}
