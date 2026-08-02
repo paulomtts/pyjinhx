@@ -320,3 +320,72 @@ def test_component_slot_value_not_double_escaped_across_nested_components(
     assert '<div id="av"' in html
     assert 'class="pjx-avatar__initials"' in html
     assert html.count('id="av"') == 1
+
+
+ROOT_TAG = re.compile(r"<(?!/)([a-zA-Z][\w-]*)")
+
+
+def _roots(html: str) -> list[str]:
+    """Tag names of the top-level elements in ``html`` (nesting-aware, no parser dep)."""
+    depth = 0
+    roots: list[str] = []
+    for token in re.finditer(r"<(/?)([a-zA-Z][\w-]*)([^>]*?)(/?)>", html):
+        closing, name, _attrs, self_closing = token.groups()
+        void = name.lower() in {"hr", "img", "br", "input", "path", "circle", "line"}
+        if closing:
+            depth -= 1
+            continue
+        if depth == 0:
+            roots.append(name)
+        if not self_closing and not void:
+            depth += 1
+    return roots
+
+
+def test_single_root_invariant_holds_three_levels_deep(family_dir, session):
+    """Wrapper -> EmptyState -> AvatarStack -> Avatar still emits one root element."""
+    html = render(
+        Wrapper(
+            id="l1",
+            content=PJXEmptyState(
+                id="l2",
+                content=PJXAvatarStack(
+                    id="l3", avatars=[PJXAvatar(id="l4", initials="AL")]
+                ),
+            ),
+        ),
+        session,
+    )
+
+    roots = _roots(html)
+    assert roots == ["div"]
+    for element_id in ("l1", "l2", "l3", "l4"):
+        assert html.count(f'id="{element_id}"') == 1, element_id
+
+
+@pytest.mark.parametrize(
+    "child",
+    [
+        PJXBadge(id="c", label="x"),
+        PJXDivider(id="c"),
+        PJXDivider(id="c", orientation="vertical"),
+        PJXDivider(id="c", label="Or"),
+        PJXProgress(id="c", value=10),
+        PJXProgress(id="c"),
+        PJXSpinner(id="c"),
+        PJXSkeleton(id="c", variant="circle"),
+        PJXSkeleton(id="c", variant="text", lines=3),
+        PJXAvatar(id="c", initials="AL"),
+        PJXAvatar(id="c", src="/a.png"),
+        PJXAvatarStack(id="c", avatars=[{"initials": "AL"}]),
+        PJXEmptyState(id="c", content="text"),
+        PJXIcon(id="c", name="check"),
+    ],
+    ids=lambda c: f"{type(c).__name__}",
+)
+def test_every_primitive_emits_one_root_when_nested(family_dir, session, child):
+    """Each family member, in each of its template branches, stays single-root."""
+    html = render(Wrapper(id="host", content=child), session)
+
+    inner = html.split('class="wrapper">', 1)[1].rsplit("</div>", 1)[0]
+    assert len(_roots(inner)) == 1, inner
