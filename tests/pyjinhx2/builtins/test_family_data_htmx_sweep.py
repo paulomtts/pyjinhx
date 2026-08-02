@@ -33,9 +33,10 @@ from pyjinhx2.component import Slot, _pascal_to_snake
 from pyjinhx2.reactive.cache import cache_has, invalidate
 from pyjinhx2.reactive.component import PjxKey, ReactiveComponent
 from pyjinhx2.reactive.fanout import walk_manifest
+from pyjinhx2.reactive.response import ReactiveResponse
 from pyjinhx2.reactive.root_attrs import stamp_reactive_root_attrs
 from pyjinhx2.render import render
-from pyjinhx2.session import RenderSession, request_scope
+from pyjinhx2.session import RenderSession, add_dirtied, request_scope
 
 PAGE = "page"
 ROWS = "rows"
@@ -310,3 +311,57 @@ def test_identical_content_is_hash_gated_out_of_the_swap():
         )
 
     assert [c.instance_id for c in candidates] == []
+
+
+def test_table_region_in_primary_is_not_also_swapped_oob():
+    with scope() as session:
+        primary = render(TableRegion(id="t-main", pjx_key="main"), session)
+        invalidate({ROWS})
+        candidates = walk_manifest(
+            [entry("table_region", "t-main", "main")],
+            {ROWS},
+            session=session,
+            primary_html=primary,
+        )
+
+    assert [c.instance_id for c in candidates] == []
+    # The lazyload sentinel is nested inside the region already excluded by
+    # primary_html — one region, one appearance, not a second copy from a
+    # would-be independent sentinel swap.
+    assert primary.count("data-pjx-lazy-load") == 1
+
+
+def test_dropping_primary_html_makes_the_excluded_region_swap_again():
+    """RED proof: without primary_html threaded through, the exclusion above
+    does not fire and the region reappears as a candidate."""
+    with scope() as session:
+        primary = render(TableRegion(id="t-main", pjx_key="main"), session)
+        invalidate({ROWS})
+        candidates = walk_manifest(
+            [entry("table_region", "t-main", "main")],
+            {ROWS},
+            session=session,
+        )
+
+    assert [c.instance_id for c in candidates] == ["t-main"]
+    assert primary  # only read to avoid an unused-variable lint complaint
+
+
+def test_table_inside_pageloader_shell_is_not_double_swapped():
+    with scope() as session:
+        primary = render(PageShell(id="shell"), session)
+        # ReactiveResponse.candidates() reads this request's dirtied set off
+        # the ContextVar (get_dirtied()), not a parameter, and calls
+        # invalidate() itself — add_dirtied() is the one call this needs.
+        add_dirtied({ROWS})
+        body = str(
+            ReactiveResponse(
+                primary=primary,
+                mounted=[
+                    entry("page_shell", "shell", "shell"),
+                    entry("table_region", "t-main", "main"),
+                ],
+            ).body
+        )
+
+    assert str(body).count('data-pjx-id="t-main"') == 1
