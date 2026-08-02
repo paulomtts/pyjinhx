@@ -161,3 +161,78 @@ def test_each_control_renders_once_inside_the_control_region(
     assert marker in _control_region(html)
     assert html.count('class="pjx-form-field__control"') == 1
 
+
+def test_for_id_points_at_the_composed_controls_own_id(family_dir, session):
+    """The label's for= names an id that the composed control actually emits."""
+    html = render(
+        PJXFormField(
+            id="ff",
+            label="Mode",
+            for_id="ctl",
+            content=PJXSegmentedControl(
+                id="ctl", name="mode", options=[("a", "A"), ("b", "B")]
+            ),
+        ),
+        session,
+    )
+
+    assert 'for="ctl"' in html
+    assert html.count('id="ctl"') == 1
+
+
+def test_for_id_can_target_an_id_derived_inside_the_child(family_dir, session):
+    """PasswordInput's focusable field is <id>-field; for_id reaches it unchanged."""
+    html = render(
+        PJXFormField(
+            id="ff",
+            label="Password",
+            for_id="pw-field",
+            content=PJXPasswordInput(id="pw", name="pw"),
+        ),
+        session,
+    )
+
+    assert 'for="pw-field"' in html
+    assert 'id="pw-field"' in html
+    assert 'id="pw-field"' in _control_region(html)
+
+
+def test_error_replaces_help_around_a_composed_control(family_dir, session):
+    """error and help are exclusive; error also flags the field root."""
+    html = render(
+        PJXFormField(
+            id="ff",
+            label="Tags",
+            help="Comma separated",
+            error="At least one tag",
+            content=PJXChipInput(id="ctl", name="tags"),
+        ),
+        session,
+    )
+
+    assert "At least one tag" in html
+    assert "Comma separated" not in html
+    assert 'class="pjx-form-field__help"' not in html
+    assert 'id="ff-error"' in html
+    assert "pjx-form-field--error" in html
+    assert html.count('id="ctl"') == 1
+
+
+def test_help_renders_when_there_is_no_error(family_dir, session):
+    """The other side of the exclusivity: help survives composition intact."""
+    html = render(
+        PJXFormField(
+            id="ff",
+            label="Tags",
+            help="Comma separated",
+            content=PJXChipInput(id="ctl", name="tags"),
+        ),
+        session,
+    )
+
+    assert "Comma separated" in html
+    assert 'id="ff-help"' in html
+    assert 'class="pjx-form-field__error"' not in html
+    assert "pjx-form-field--error" not in html
+
+
