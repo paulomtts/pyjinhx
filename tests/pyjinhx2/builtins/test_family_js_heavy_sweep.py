@@ -271,3 +271,58 @@ def test_every_js_heavy_builtin_emits_one_root_when_nested(family_dir, session, 
 
     inner = html.split('class="wrapper">', 1)[1].rsplit("</div>", 1)[0]
     assert len(_roots(inner)) == 1, inner
+
+
+XSS = '<script>alert("1") & more</script>'
+
+
+def test_string_slot_value_escaped_across_nested_components(family_dir, session):
+    """A hostile string reaching a slot two levels down is escaped, not executed.
+
+    This asserts the behavior that ships today. ADR 0003 describes slots as
+    opaque raw HTML, but string-valued Slot fields are not Markup-exempted
+    anywhere in the L0/L1 pipeline yet (see the note in
+    tests/pyjinhx2/test_render_context.py) — a known, deferred gap, not
+    something this sweep fixes.
+    """
+    html = render(Wrapper(id="wrap", content=PJXAlert(id="alert", body=XSS)), session)
+
+    assert "<script>" not in html
+    assert "&lt;script&gt;" in html
+    assert "&amp;" in html
+
+
+def test_string_fields_escaped_when_the_component_is_a_nested_child(family_dir, session):
+    """Nesting does not bypass a child's own field escaping."""
+    html = render(
+        Panel(
+            id="panel",
+            head=PJXAlert(id="alert", title=XSS, body="ok"),
+            body=PJXResizablePanel(id="p", content=XSS),
+            foot=PJXCarouselSlide(id="s", label=XSS, content="ok"),
+        ),
+        session,
+    )
+
+    assert "<script>" not in html
+    assert html.count("&lt;script&gt;") == 4  # title, panel body, label x2 (aria + data)
+
+
+def test_component_slot_value_not_double_escaped_across_nested_components(
+    family_dir, session
+):
+    """Component-valued slots keep their markup through three hosts (Slot exemption)."""
+    html = render(
+        Wrapper(
+            id="outer",
+            content=PJXResizableGroup(
+                id="group",
+                content=[PJXResizablePanel(id="p", content=PJXAlert(id="a", body="x"))],
+            ),
+        ),
+        session,
+    )
+
+    assert "&lt;div" not in html
+    assert '<div class="pjx-alert' in html
+    assert html.count('id="a"') == 1
