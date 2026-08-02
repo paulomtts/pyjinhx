@@ -8,6 +8,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
+import pyjinhx2
 from pyjinhx2.config import PjxSettings
 
 
@@ -99,6 +100,10 @@ def test_configure_then_shutdown_round_trip():
 
 def test_reactive_dev_survives_a_missing_dev_module(monkeypatch: pytest.MonkeyPatch):
     """pyjinhx2.dev does not exist yet; configure must store the flag anyway."""
+    # `from pyjinhx2 import dev` resolves via getattr(pyjinhx2, "dev") first, so
+    # the real module (imported elsewhere in this suite) must also be unbound
+    # from the package object, not just removed from sys.modules.
+    monkeypatch.delattr(pyjinhx2, "dev", raising=False)
     monkeypatch.setitem(sys.modules, "pyjinhx2.dev", None)
     from pyjinhx2.config import configure_pyjinhx, current_settings
 
@@ -109,6 +114,7 @@ def test_reactive_dev_survives_a_missing_dev_module(monkeypatch: pytest.MonkeyPa
 def test_reactive_dev_calls_the_dev_hooks_when_available(
     monkeypatch: pytest.MonkeyPatch,
 ):
+    monkeypatch.delattr(pyjinhx2, "dev", raising=False)
     dev = types.ModuleType("pyjinhx2.dev")
     dev.enable_reactive_dev = MagicMock()  # type: ignore[attr-defined]
     dev.disable_reactive_dev = MagicMock()  # type: ignore[attr-defined]

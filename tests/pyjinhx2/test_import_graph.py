@@ -74,6 +74,11 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
     # below it. Nothing in the spine may import context back.
     "context": frozenset({"pyjinhx2.session"}),
     "descriptor": frozenset(),
+    # dev sits above the spine, next to config and context: it walks
+    # BaseComponent's subclass tree for the dependency graph and reads the
+    # request-scoped dirtied set and cache reverse index for its checks. config
+    # imports it (deferred); nothing below may import it back.
+    "dev": frozenset({"pyjinhx2.component", "pyjinhx2.session"}),
     # discovery keys the registry by each class's own resolved tag, so it reads
     # component.py's snake-case helper rather than inventing a second naming
     # scheme that could drift from the one templates are probed with.
