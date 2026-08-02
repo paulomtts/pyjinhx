@@ -8,6 +8,7 @@ from typing import Annotated
 import pytest
 
 from pyjinhx2 import discovery, registry
+from pyjinhx2.component import BaseComponent
 from pyjinhx2.reactive import fanout
 from pyjinhx2.reactive.cache import cache_has, cache_put
 from pyjinhx2.reactive.component import PjxKey, ReactiveComponent
@@ -39,6 +40,14 @@ class QuietWidget(ReactiveComponent, react=("other",)):
     """A reactive component that no test's dirtied keys ever touch."""
 
 
+class PlainWidget(BaseComponent):
+    """A discovery-registered component that is NOT a ReactiveComponent.
+
+    A manifest naming a real tag whose class is non-reactive must be dropped by
+    the `issubclass` half of `_candidate_class`, not by the unknown-tag half.
+    """
+
+
 _TEMPLATE_DIR = "templates"
 """Set by `_clean_registries` to this test's tmp_path. `RenderSession(template_dir="templates")`
 (the class default) does not exist relative to the test's cwd — every test must enter
@@ -55,7 +64,12 @@ def _clean_registries(tmp_path, monkeypatch):
     quiet_path = tmp_path / "quiet_widget.pjx"
     fanout_path.write_text("<div>{{ pjx_key }}</div>")
     quiet_path.write_text("<div>quiet</div>")
-    discovery.build_registry(tmp_path, [FanoutWidget, QuietWidget])
+    plain_path = tmp_path / "plain_widget.pjx"
+    plain_path.write_text("<div>plain</div>")
+    discovery.build_registry(tmp_path, [FanoutWidget, QuietWidget, PlainWidget])
+    PlainWidget.__pjx_descriptor__ = dataclasses.replace(
+        PlainWidget.__pjx_descriptor__, template_path=Path(plain_path.name)
+    )
     # `_resolve_template_path` walks the class's *defining module's* directory
     # (this test file's dir), not `template_dir` passed to `build_registry` —
     # the two are deliberately different concerns (tag lookup vs. file probe).
@@ -101,6 +115,12 @@ def test_unknown_type_is_dropped():
         assert walk_manifest([entry("no_such_widget", "a")], {"todos"}) == []
 
 
+def test_registered_but_non_reactive_type_is_dropped():
+    with scope():
+        assert walk_manifest([entry("plain_widget", "a")], {"todos"}) == []
+        assert discovery.get_class("plain_widget") is PlainWidget
+
+
 def test_entry_whose_keys_miss_the_dirtied_set_is_dropped():
     with scope():
         assert walk_manifest([entry("quiet_widget", "a")], {"todos"}) == []
@@ -128,6 +148,43 @@ def test_duplicate_type_and_load_pairs_collapse_to_one_candidate():
     with scope():
         candidates = walk_manifest(manifest, {"todos"})
         assert [c.instance_id for c in candidates] == ["a", "c"]
+
+
+def test_a_dynamic_key_matches_only_the_instance_whose_load_key_it_names():
+    """`dirty(reactive_key(TODOS, "2"))` reloads row 2 and leaves row 1 alone."""
+    manifest = [
+        entry("fanout_widget", "row-1", load="1"),
+        entry("fanout_widget", "row-2", load="2"),
+    ]
+    with scope():
+        registry.register_instance(FanoutWidget.__name__, "row-1", "e1")
+        registry.register_instance(FanoutWidget.__name__, "row-2", "e2")
+        candidates = walk_manifest(manifest, {"todos:2"})
+    assert [c.instance_id for c in candidates] == ["row-2"]
+    assert LOAD_CALLS == ["2"]
+
+
+def test_a_static_key_still_matches_every_instance_of_the_class():
+    """The dynamic match narrows; it must not shadow the plain static match."""
+    manifest = [
+        entry("fanout_widget", "row-1", load="1"),
+        entry("fanout_widget", "row-2", load="2"),
+    ]
+    with scope():
+        registry.register_instance(FanoutWidget.__name__, "row-1", "e1")
+        registry.register_instance(FanoutWidget.__name__, "row-2", "e2")
+        candidates = walk_manifest(manifest, {"todos"})
+    assert [c.instance_id for c in candidates] == ["row-1", "row-2"]
+
+
+def test_a_dynamic_key_naming_an_unmounted_load_matches_nothing():
+    with scope():
+        registry.register_instance(FanoutWidget.__name__, "row-1", "e1")
+        assert (
+            walk_manifest([entry("fanout_widget", "row-1", load="1")], {"todos:9"})
+            == []
+        )
+        assert LOAD_CALLS == []
 
 
 def test_cache_hit_answers_clean_without_calling_load():
@@ -619,6 +676,17 @@ def test_oob_swaps_mixes_dirty_missing_and_clean():
     assert "hx-swap-oob=\"outerHTML:[data-pjx-id='a']\"" in fragments[0]
     assert "data-pjx-hash=" in fragments[0]
     assert fragments[1] == "<div hx-swap-oob=\"delete:[data-pjx-id='b']\"></div>"
+
+
+def test_oob_swap_attr_lands_once_in_the_root_tag_beside_the_id_and_hash():
+    """v0.x parity: hx-swap-oob is folded into the same root-tag splice, not appended."""
+    with scope():
+        candidate = _dirty_candidate("a")
+        out = str(oob_swaps([candidate]))
+    assert out.count("hx-swap-oob=\"outerHTML:[data-pjx-id='a']\"") == 1
+    first_tag = out[: out.index(">") + 1]
+    assert "hx-swap-oob=" in first_tag
+    assert f'data-pjx-hash="{candidate.fresh_hash}"' in first_tag
 
 
 def test_walk_manifest_runs_the_nesting_dedup_on_its_survivors(monkeypatch):

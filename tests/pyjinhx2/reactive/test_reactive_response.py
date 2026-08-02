@@ -8,9 +8,13 @@ import pytest
 from markupsafe import Markup
 
 from pyjinhx2 import discovery, registry
+from pyjinhx2.reactive import cache
+from pyjinhx2.reactive.cache import cache_get, cache_has, cache_put
 from pyjinhx2.reactive.component import PjxKey, ReactiveComponent
 from pyjinhx2.reactive.response import ReactiveResponse
 from pyjinhx2.session import add_dirtied, request_scope
+
+LOAD_CALLS: list[str | None] = []
 
 
 class ResponseWidget(ReactiveComponent, react=("todos",)):
@@ -19,6 +23,7 @@ class ResponseWidget(ReactiveComponent, react=("todos",)):
     pjx_key: Annotated[str, PjxKey()] = ""
 
     def load(self) -> str:
+        LOAD_CALLS.append(self.pjx_key)
         return f"data:{self.pjx_key}"
 
 
@@ -36,6 +41,7 @@ exercising the code under test.
 def _publish_registry(tmp_path, monkeypatch):
     """Publish a tag -> class map for ResponseWidget and point it at a real template."""
     global _TEMPLATE_DIR
+    LOAD_CALLS.clear()
     template = tmp_path / "response_widget.pjx"
     template.write_text("<div>{{ pjx_key }}</div>")
     discovery.build_registry(tmp_path, [ResponseWidget])
@@ -63,6 +69,11 @@ def entry(instance_id: str, load: object = None, hash_: str = "stale") -> dict:
         "load": load,
         "hash": hash_,
     }
+
+
+def mounted_entry(instance_id: str, load: object = None, hash_: str = "stale") -> dict:
+    """Alias for `entry()`, named to match the plan's Task 6 test bodies."""
+    return entry(instance_id, load=load, hash_=hash_)
 
 
 def test_no_dirtied_and_no_mounted_leaves_primary_untouched():
@@ -112,6 +123,25 @@ def test_malformed_mounted_header_degrades_to_primary_only():
         add_dirtied(["todos"])
         response = ReactiveResponse(primary=Markup("<p>hello</p>"), mounted="{not json")
         assert response.body == Markup("<p>hello</p>")
+
+
+def test_raw_json_string_manifest_is_parsed_and_fans_out():
+    """The header arrives as a JSON string on the wire, not a pre-parsed list."""
+    with scope():
+        add_dirtied(["todos"])
+        registry.register_instance(ResponseWidget.__name__, "a", "resolved-entry")
+        mounted = '[{"id":"a","type":"response_widget","load":"1","hash":"stale"}]'
+        body = str(ReactiveResponse(primary="", mounted=mounted).body)
+    assert "outerHTML:[data-pjx-id='a']" in body
+
+
+@pytest.mark.parametrize("mounted", [None, ""])
+def test_absent_manifest_leaves_the_primary_untouched(mounted):
+    with scope():
+        add_dirtied(["todos"])
+        response = ReactiveResponse(primary="<p>x</p>", mounted=mounted)
+        assert response.candidates() == []
+        assert str(response.body) == "<p>x</p>"
 
 
 def test_primary_only_response_sets_no_headers():
@@ -214,6 +244,71 @@ def test_redirect_does_not_change_the_body():
     response = ReactiveResponse(primary="<div>x</div>", redirect="/login")
 
     assert str(response.body) == "<div>x</div>"
+
+
+def test_a_dirtied_key_evicts_its_cache_entry_so_the_region_re_renders():
+    """A cached load result for a dirtied key must not answer "clean"."""
+    with scope():
+        cache_put(ResponseWidget, "1", "stale-payload", react_keys=("todos",))
+        registry.register_instance(ResponseWidget.__name__, "a", "entry")
+        add_dirtied(["todos"])
+        [candidate] = ReactiveResponse(
+            primary="", mounted=[mounted_entry("a", load="1")]
+        ).candidates()
+        assert candidate.status == "dirty"
+        assert cache_has(ResponseWidget, "1") is True  # re-loaded, not left evicted
+
+
+def test_an_undirtied_cache_entry_survives_the_fan_out():
+    """Eviction is scoped to the dirtied keys; unrelated entries stay cached."""
+    with scope():
+        cache_put(ResponseWidget, "1", "payload", react_keys=("other",))
+        add_dirtied(["todos"])
+        ReactiveResponse(primary="", mounted=[]).candidates()
+        assert cache_get(ResponseWidget, "1") == "payload"
+
+
+def test_reading_candidates_twice_reinvalidates_and_reloads_each_time(monkeypatch):
+    """Each `candidates()` call re-runs invalidation and reload for dirtied keys."""
+    calls: list[set[str]] = []
+    original = cache.invalidate
+    monkeypatch.setattr(
+        cache, "invalidate", lambda keys: (calls.append(set(keys)), original(keys))[1]
+    )
+    with scope():
+        registry.register_instance(ResponseWidget.__name__, "a", "entry")
+        add_dirtied(["todos"])
+        response = ReactiveResponse(primary="", mounted=[mounted_entry("a", load="1")])
+        response.candidates()
+        response.candidates()
+    assert all("todos" in seen for seen in calls)
+    assert LOAD_CALLS == ["1", "1"]
+
+
+def test_a_dynamic_dirty_key_evicts_the_instance_it_names():
+    """#488's other deferred half: dynamic keys must reach the cache, not just fan-out.
+
+    `@mutates(..., key=...)` / `dirty(reactive_key(KEY, arg))` dirty *only* the
+    composite ``"todos:1"`` form (see `mutations.py`) — never the bare static key
+    alongside it. Task 5 taught `_matches_dirtied` to read that form; this proves
+    the cache's reverse index also understands it, not just the fan-out walk.
+
+    Deviation from the plan's literal test: the plan seeds the cache via a bare
+    `cache_put(..., react_keys=("todos",))`, which bypasses `_wrap_load`
+    entirely and so can never observe the `_wrap_load` reverse-index fix no
+    matter what production code does. Populate the cache through a real
+    `.load()` call instead, so the entry is indexed exactly the way
+    `_wrap_load` indexes it in production — under both the bare and the
+    composite form — which is the one path this test is meant to exercise.
+    """
+    with scope():
+        registry.register_instance(ResponseWidget.__name__, "a", "entry")
+        ResponseWidget(pjx_key="1").load()
+        add_dirtied(["todos:1"])
+        [candidate] = ReactiveResponse(
+            primary="", mounted=[mounted_entry("a", load="1")]
+        ).candidates()
+        assert candidate.status == "dirty"
 
 
 def test_candidates_is_empty_without_mounted_or_dirtied():

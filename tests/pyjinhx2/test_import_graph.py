@@ -130,9 +130,13 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
     # fanout.py's OOB candidates; it reads the manifest parser, the fanout walk
     # and session's request-scoped dirtied-key/session accessors, and nothing
     # else. No registry edge (ADR 0009): fanout.py already owns registry reads.
+    # #489/#488: `candidates()` also evicts the load cache for this request's
+    # dirtied keys before walking, so cache.py's `invalidate()` is a direct edge
+    # too, not just fanout.py's own transitive one.
     "reactive.response": frozenset(
         {
             "pyjinhx2.client.inject",
+            "pyjinhx2.reactive.cache",
             "pyjinhx2.reactive.fanout",
             "pyjinhx2.session",
         }

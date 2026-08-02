@@ -183,7 +183,15 @@ def _wrap_load(
         if cache_has(cls, key):
             return cache_get(cls, key)
         result = real_load(self)
-        cache_put(cls, key, result, react_keys=cls._pjx_react_keys)
+        # Index under both the static react keys (a bare "todos" dirties every
+        # instance) and, when this instance has a load key, the per-instance
+        # "todos:1" composite form reactive_key() produces — @mutates(key=...)
+        # and dirty(reactive_key(...)) dirty only the composite, never the bare
+        # key alongside it, so invalidate() needs both forms to find this entry.
+        react_keys = cls._pjx_react_keys
+        if key is not None:
+            react_keys = (*react_keys, *(f"{rk}:{key}" for rk in cls._pjx_react_keys))
+        cache_put(cls, key, result, react_keys=react_keys)
         return result
 
     return wrapped_load
