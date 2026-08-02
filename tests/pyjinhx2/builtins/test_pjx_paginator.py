@@ -161,9 +161,7 @@ class TestControls:
 class TestHref:
     def test_substitution_keeps_other_query_params(self):
         pag = _bare(url="/u?page={page}&sort=name", page=2, total_pages=5)
-        page1 = next(
-            i for i in pag.items if i["kind"] == "page" and i["number"] == 1
-        )
+        page1 = next(i for i in pag.items if i["kind"] == "page" and i["number"] == 1)
         assert page1["href"] == "/u?page=1&sort=name"
 
 
@@ -219,9 +217,7 @@ class TestRender:
 
     def test_disabled_control_is_a_span_with_aria_disabled_and_no_href(self, session):
         html = _html(session, page=1, total_pages=10)
-        assert (
-            "pjx-paginator__control--prev pjx-paginator__control--disabled"
-        ) in html
+        assert ("pjx-paginator__control--prev pjx-paginator__control--disabled") in html
         assert 'aria-disabled="true"' in html
 
     def test_class_name_is_appended_to_the_root_class(self, session):
@@ -262,16 +258,16 @@ class TestHtmx:
         assert "hx-push-url" not in _html(session, target="#tbl")
 
     def test_push_url_adds_hx_push_url_when_target_is_set(self, session):
-        assert 'hx-push-url="true"' in _html(
-            session, target="#tbl", push_url=True
-        )
+        assert 'hx-push-url="true"' in _html(session, target="#tbl", push_url=True)
 
     def test_push_url_alone_emits_nothing_without_a_target(self, session):
         assert "hx-push-url" not in _html(session, push_url=True)
 
     def test_enabled_controls_also_get_hx_attributes(self, session):
         html = _html(session, target="#tbl")
-        assert 'hx-get="/u?page=2" hx-target="#tbl" hx-swap="innerHTML">Prev</a>' in html
+        assert (
+            'hx-get="/u?page=2" hx-target="#tbl" hx-swap="innerHTML">Prev</a>' in html
+        )
 
     def test_disabled_controls_get_no_hx_attributes(self, session):
         html = _html(session, page=1, total_pages=10, target="#tbl")
