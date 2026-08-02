@@ -114,6 +114,25 @@ def test_malformed_mounted_header_degrades_to_primary_only():
         assert response.body == Markup("<p>hello</p>")
 
 
+def test_raw_json_string_manifest_is_parsed_and_fans_out():
+    """The header arrives as a JSON string on the wire, not a pre-parsed list."""
+    with scope():
+        add_dirtied(["todos"])
+        registry.register_instance(ResponseWidget.__name__, "a", "resolved-entry")
+        mounted = '[{"id":"a","type":"response_widget","load":"1","hash":"stale"}]'
+        body = str(ReactiveResponse(primary="", mounted=mounted).body)
+    assert "outerHTML:[data-pjx-id='a']" in body
+
+
+@pytest.mark.parametrize("mounted", [None, ""])
+def test_absent_manifest_leaves_the_primary_untouched(mounted):
+    with scope():
+        add_dirtied(["todos"])
+        response = ReactiveResponse(primary="<p>x</p>", mounted=mounted)
+        assert response.candidates() == []
+        assert str(response.body) == "<p>x</p>"
+
+
 def test_primary_only_response_sets_no_headers():
     with scope():
         response = ReactiveResponse(primary=Markup("<p>hello</p>"))
