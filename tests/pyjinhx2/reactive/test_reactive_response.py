@@ -375,7 +375,10 @@ def test_malformed_mounted_with_empty_primary_still_sets_both_headers():
     with scope():
         add_dirtied(["todos"])
         response = ReactiveResponse(
-            primary=None, mounted="{not json", redirect="/login", redirect_mode="location"
+            primary=None,
+            mounted="{not json",
+            redirect="/login",
+            redirect_mode="location",
         )
 
         assert str(response.body) == ""
