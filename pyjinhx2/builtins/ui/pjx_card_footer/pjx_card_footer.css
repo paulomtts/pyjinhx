@@ -1,0 +1,5 @@
+.pjx-card__footer {
+  padding: var(--pjx-card-padding);
+  border-top: 1px solid var(--pjx-card-footer-sep);
+  background: var(--pjx-card-footer-bg);
+}
