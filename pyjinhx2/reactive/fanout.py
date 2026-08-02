@@ -78,22 +78,6 @@ class FanoutCandidate:
     """
 
 
-def _candidate_class(
-    entry: dict[str, Any], dirtied_keys: set[str]
-) -> type[ReactiveComponent] | None:
-    """The reactive class this entry names, when it is dirty; else None.
-
-    The two E9 filters, in the cheap-first order: an unknown tag costs one dict
-    lookup, and only a known one pays the key intersection.
-    """
-    cls = discovery.get_class(str(entry.get("type") or ""))
-    if cls is None or not issubclass(cls, ReactiveComponent):
-        return None
-    if not set(cls._pjx_react_keys) & dirtied_keys:
-        return None
-    return cls
-
-
 def _load_key(cls: type[ReactiveComponent], load: object) -> str | None:
     """The load-cache key this class would build for this load arg.
 
@@ -105,6 +89,42 @@ def _load_key(cls: type[ReactiveComponent], load: object) -> str | None:
     if cls._pjx_key_field is None:
         return None
     return coerce_load_key_str(load)
+
+
+def _matches_dirtied(
+    cls: type[ReactiveComponent], load_key: str | None, dirtied_keys: set[str]
+) -> bool:
+    """Whether any dirtied key names this class, or this exact instance of it.
+
+    Two shapes reach here. A plain static key (``"todos"``) names every mounted
+    instance of a class that declares it. A dynamic key (``reactive_key(TODOS,
+    "2")`` -> ``"todos:2"``) names one instance: the mounted region whose own
+    load key is ``"2"``. Narrowing lives here rather than in the caller so the
+    two shapes are decided in one place and a class with no PjxKey field —
+    whose load key is None — simply never matches a dynamic key.
+    """
+    static = set(cls._pjx_react_keys)
+    if static & dirtied_keys:
+        return True
+    if load_key is None:
+        return False
+    return bool({f"{key}:{load_key}" for key in static} & dirtied_keys)
+
+
+def _candidate_class(
+    entry: dict[str, Any], dirtied_keys: set[str]
+) -> type[ReactiveComponent] | None:
+    """The reactive class this entry names, when it is dirty; else None.
+
+    The two E9 filters, in the cheap-first order: an unknown tag costs one dict
+    lookup, and only a known one pays the key intersection.
+    """
+    cls = discovery.get_class(str(entry.get("type") or ""))
+    if cls is None or not issubclass(cls, ReactiveComponent):
+        return None
+    if not _matches_dirtied(cls, _load_key(cls, entry.get("load")), dirtied_keys):
+        return None
+    return cls
 
 
 def _resolve_registry_entry(
@@ -308,6 +328,9 @@ def walk_manifest(
         A candidate whose region is structurally nested inside another
         survivor's region is dropped: the parent's swap already carries it, and
         so is one whose id the primary response already carries.
+        A dirtied key of the form ``"todos:2"`` (``reactive_key()``) narrows to
+        the one entry whose own load key is ``"2"``; the bare ``"todos"`` still
+        matches every mounted instance of the class.
 
     Turning a ``"missing"`` candidate into a delete swap is ``delete_swap()``
     below; assembling those fragments with the real swaps into one response

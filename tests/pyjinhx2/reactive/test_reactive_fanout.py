@@ -150,6 +150,40 @@ def test_duplicate_type_and_load_pairs_collapse_to_one_candidate():
         assert [c.instance_id for c in candidates] == ["a", "c"]
 
 
+def test_a_dynamic_key_matches_only_the_instance_whose_load_key_it_names():
+    """`dirty(reactive_key(TODOS, "2"))` reloads row 2 and leaves row 1 alone."""
+    manifest = [
+        entry("fanout_widget", "row-1", load="1"),
+        entry("fanout_widget", "row-2", load="2"),
+    ]
+    with scope():
+        registry.register_instance(FanoutWidget.__name__, "row-1", "e1")
+        registry.register_instance(FanoutWidget.__name__, "row-2", "e2")
+        candidates = walk_manifest(manifest, {"todos:2"})
+    assert [c.instance_id for c in candidates] == ["row-2"]
+    assert LOAD_CALLS == ["2"]
+
+
+def test_a_static_key_still_matches_every_instance_of_the_class():
+    """The dynamic match narrows; it must not shadow the plain static match."""
+    manifest = [
+        entry("fanout_widget", "row-1", load="1"),
+        entry("fanout_widget", "row-2", load="2"),
+    ]
+    with scope():
+        registry.register_instance(FanoutWidget.__name__, "row-1", "e1")
+        registry.register_instance(FanoutWidget.__name__, "row-2", "e2")
+        candidates = walk_manifest(manifest, {"todos"})
+    assert [c.instance_id for c in candidates] == ["row-1", "row-2"]
+
+
+def test_a_dynamic_key_naming_an_unmounted_load_matches_nothing():
+    with scope():
+        registry.register_instance(FanoutWidget.__name__, "row-1", "e1")
+        assert walk_manifest([entry("fanout_widget", "row-1", load="1")], {"todos:9"}) == []
+        assert LOAD_CALLS == []
+
+
 def test_cache_hit_answers_clean_without_calling_load():
     with scope():
         cache_put(FanoutWidget, "todo-1", "cached-payload", react_keys=("todos",))
