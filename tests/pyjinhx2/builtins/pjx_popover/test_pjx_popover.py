@@ -71,19 +71,19 @@ def test_component_content_renders_inside_the_root(
 
 def test_invalid_align_is_rejected():
     with pytest.raises(ValidationError):
-        PJXPopover(id="p", align="middle")
+        PJXPopover(id="p", align="middle")  # type: ignore[arg-type]
 
 
 def test_dropped_behavior_field_is_rejected():
     """`behavior` did not survive the v2 port; extra="forbid" turns it into an error."""
     with pytest.raises(ValidationError):
-        PJXPopover(id="p", behavior=True)
+        PJXPopover(id="p", behavior=True)  # type: ignore[call-arg]
 
 
 def test_dropped_extra_attrs_field_is_rejected():
     """`extra_attrs` did not survive the v2 port either (ADR 0006, strict core)."""
     with pytest.raises(ValidationError):
-        PJXPopover(id="p", extra_attrs={"data-x": "1"})
+        PJXPopover(id="p", extra_attrs={"data-x": "1"})  # type: ignore[call-arg]
 
 
 def test_assets_are_discovered_from_the_component_directory():

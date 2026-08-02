@@ -55,21 +55,21 @@ def test_string_content_is_interpolated(trigger_session):
 
 def test_invalid_tag_is_rejected():
     with pytest.raises(ValidationError):
-        PJXPopoverTrigger(id="t", tag="span")
+        PJXPopoverTrigger(id="t", tag="span")  # type: ignore[arg-type]
 
 
 def test_invalid_role_is_rejected():
     with pytest.raises(ValidationError):
-        PJXPopoverTrigger(id="t", role="banner")
+        PJXPopoverTrigger(id="t", role="banner")  # type: ignore[arg-type]
 
 
 def test_dropped_behavior_field_is_rejected():
     """`behavior` did not survive the v2 port; extra="forbid" turns it into an error."""
     with pytest.raises(ValidationError):
-        PJXPopoverTrigger(id="t", behavior=True)
+        PJXPopoverTrigger(id="t", behavior=True)  # type: ignore[call-arg]
 
 
 def test_dropped_extra_attrs_field_is_rejected():
     """`extra_attrs` did not survive the v2 port either (ADR 0006, strict core)."""
     with pytest.raises(ValidationError):
-        PJXPopoverTrigger(id="t", extra_attrs={"data-x": "1"})
+        PJXPopoverTrigger(id="t", extra_attrs={"data-x": "1"})  # type: ignore[call-arg]

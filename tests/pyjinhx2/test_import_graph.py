@@ -199,6 +199,25 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
         {"pyjinhx2.builtins.ui.pjx_tab_panel.pjx_tab_panel"}
     ),
     "builtins.ui.pjx_tab_panel.pjx_tab_panel": frozenset({"pyjinhx2.component"}),
+    # pjx_popover family (#521): the positioned root shell, its trigger, and
+    # the panel it reveals. JS/CSS live only on the root; each leaf reaches
+    # component.py only.
+    "builtins.ui.pjx_popover.__init__": frozenset(
+        {"pyjinhx2.builtins.ui.pjx_popover.pjx_popover"}
+    ),
+    "builtins.ui.pjx_popover.pjx_popover": frozenset({"pyjinhx2.component"}),
+    "builtins.ui.pjx_popover_trigger.__init__": frozenset(
+        {"pyjinhx2.builtins.ui.pjx_popover_trigger.pjx_popover_trigger"}
+    ),
+    "builtins.ui.pjx_popover_trigger.pjx_popover_trigger": frozenset(
+        {"pyjinhx2.component"}
+    ),
+    "builtins.ui.pjx_popover_panel.__init__": frozenset(
+        {"pyjinhx2.builtins.ui.pjx_popover_panel.pjx_popover_panel"}
+    ),
+    "builtins.ui.pjx_popover_panel.pjx_popover_panel": frozenset(
+        {"pyjinhx2.component"}
+    ),
     "builtins.ui.pjx_notification.__init__": frozenset(
         {"pyjinhx2.builtins.ui.pjx_notification.pjx_notification"}
     ),

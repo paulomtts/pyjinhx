@@ -58,16 +58,16 @@ def test_string_content_is_interpolated(panel_session):
 
 def test_invalid_role_is_rejected():
     with pytest.raises(ValidationError):
-        PJXPopoverPanel(id="pl", role="banner")
+        PJXPopoverPanel(id="pl", role="banner")  # type: ignore[arg-type]
 
 
 def test_dropped_behavior_field_is_rejected():
     """`behavior` did not survive the v2 port; extra="forbid" turns it into an error."""
     with pytest.raises(ValidationError):
-        PJXPopoverPanel(id="pl", behavior=True)
+        PJXPopoverPanel(id="pl", behavior=True)  # type: ignore[call-arg]
 
 
 def test_dropped_extra_attrs_field_is_rejected():
     """`extra_attrs` did not survive the v2 port either (ADR 0006, strict core)."""
     with pytest.raises(ValidationError):
-        PJXPopoverPanel(id="pl", extra_attrs={"data-x": "1"})
+        PJXPopoverPanel(id="pl", extra_attrs={"data-x": "1"})  # type: ignore[call-arg]
