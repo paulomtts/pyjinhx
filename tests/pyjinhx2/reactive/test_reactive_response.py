@@ -112,3 +112,60 @@ def test_malformed_mounted_header_degrades_to_primary_only():
         add_dirtied(["todos"])
         response = ReactiveResponse(primary=Markup("<p>hello</p>"), mounted="{not json")
         assert response.body == Markup("<p>hello</p>")
+
+
+def test_primary_only_response_sets_no_headers():
+    with scope():
+        response = ReactiveResponse(primary=Markup("<p>hello</p>"))
+        assert response.headers == {}
+
+
+def test_primary_plus_oob_fragments_sets_no_headers():
+    with scope():
+        registry.register_instance(ResponseWidget.__name__, "a", "resolved-entry")
+        add_dirtied(["todos"])
+        response = ReactiveResponse(
+            primary=Markup("<p>hello</p>"), mounted=[entry("a", load="todo-1")]
+        )
+        assert "hx-swap-oob" in str(response)
+        assert response.headers == {}
+
+
+def test_oob_only_response_sets_reswap_none():
+    with scope():
+        registry.register_instance(ResponseWidget.__name__, "a", "resolved-entry")
+        add_dirtied(["todos"])
+        response = ReactiveResponse(primary=None, mounted=[entry("a", load="todo-1")])
+        assert "hx-swap-oob" in str(response)
+        assert response.headers == {"HX-Reswap": "none"}
+
+
+def test_empty_response_sets_reswap_none():
+    with scope():
+        response = ReactiveResponse()
+        assert str(response) == ""
+        assert response.headers == {"HX-Reswap": "none"}
+
+
+def test_whitespace_only_primary_counts_as_no_primary():
+    with scope():
+        response = ReactiveResponse(primary=Markup("   \n\t "))
+        assert response.headers == {"HX-Reswap": "none"}
+
+
+def test_reading_headers_does_not_mutate_the_response():
+    with scope():
+        registry.register_instance(ResponseWidget.__name__, "a", "resolved-entry")
+        add_dirtied(["todos"])
+        response = ReactiveResponse(primary=None, mounted=[entry("a", load="todo-1")])
+        primary_before = response.primary
+        mounted_before = response.mounted
+
+        assert response.headers == {"HX-Reswap": "none"}
+
+        # `headers` only reads `self.primary` — it must not touch the raw inputs
+        # (`candidates()`/`body` re-run the load path and are not idempotent across
+        # repeated calls, which is a pre-existing, unrelated engine property).
+        assert response.primary is primary_before
+        assert response.mounted is mounted_before
+        assert "hx-swap-oob" in str(response.body)

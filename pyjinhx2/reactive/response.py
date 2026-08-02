@@ -14,8 +14,9 @@ class ReactiveResponse:
     answers the single body that goes on the wire: the primary markup followed by
     one OOB fragment per region this request's dirtied keys invalidated.
 
-    Body only. Response headers, htmx redirect adaptation and framework glue are
-    each owned elsewhere, so this object stays usable by all of them.
+    Owns the body and the one htmx header the body itself implies (``HX-Reswap:
+    none`` for an OOB-only response). htmx redirect adaptation and framework glue
+    are owned elsewhere, so this object stays usable by all of them.
     """
 
     def __init__(self, primary: object = None, mounted: object = None) -> None:
@@ -57,6 +58,20 @@ class ReactiveResponse:
             nothing here re-parses either side.
         """
         return Markup(self.primary or "") + oob_swaps(self.candidates())
+
+    @property
+    def headers(self) -> dict[str, str]:
+        """The htmx response headers this body needs.
+
+        Returns:
+            ``{"HX-Reswap": "none"}`` when there is no primary markup, else ``{}``.
+        """
+        # An OOB-only body has nothing for htmx's default swap to place, so htmx would
+        # swap the empty primary into the triggering element and wipe it. Telling htmx
+        # not to swap at all leaves the trigger alone and lets the OOB fragments land.
+        if str(self.primary or "").strip():
+            return {}
+        return {"HX-Reswap": "none"}
 
     def __html__(self) -> Markup:
         """Return the composed body, so templates interpolate it without escaping."""
