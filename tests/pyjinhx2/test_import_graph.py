@@ -72,6 +72,21 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
     # component.py's snake-case helper rather than inventing a second naming
     # scheme that could drift from the one templates are probed with.
     "discovery": frozenset({"pyjinhx2.component"}),
+    # The framework adapter sits at the very top with config: it orchestrates
+    # the request cycle by calling published entry points (request_scope,
+    # render, inject_runtime, ReactiveResponse) and nothing imports it back
+    # except config's deferred setup() edge.
+    "integrations.__init__": frozenset(),
+    "integrations.fastapi": frozenset(
+        {
+            "pyjinhx2.client.inject",
+            "pyjinhx2.component",
+            "pyjinhx2.config",
+            "pyjinhx2.reactive.response",
+            "pyjinhx2.render",
+            "pyjinhx2.session",
+        }
+    ),
     "markers": frozenset({"pyjinhx2.component"}),
     # Generating a class from a {#def #} header needs the open-model base to
     # subclass; parsing itself stays pure.
@@ -255,13 +270,20 @@ def test_session_never_reaches_into_reactive():
 
 def test_nothing_below_config_imports_config():
     """config is the top of the stack: it reads the spine, reactive/ and
-    client/, and none of them may reach back up into it."""
+    client/, and none of them may reach back up into it.
+
+    integrations.fastapi is the one declared exception: it sits alongside
+    config, not below it, and calls configure_pyjinhx/shutdown_pyjinhx to
+    chain the app's lifespan — the two modules' mutual edges are each lazy
+    (config imports integrations.fastapi inside setup(), see its own entry
+    above) so the runtime cycle never actually executes at import time.
+    """
     importers = {
         module_name(path)
         for path in module_paths()
         if "pyjinhx2.config" in internal_imports(path)
     }
-    assert importers == set()
+    assert importers == {"integrations.fastapi"}
 
 
 def test_no_render_spine_module_declares_a_reactive_import():
