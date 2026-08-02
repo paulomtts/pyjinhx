@@ -67,6 +67,12 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
             "pyjinhx2.integrations.fastapi",
         }
     ),
+    # context sits above the spine with config and integrations.fastapi: it is a
+    # read-only view over session's ContextVars plus the pjx state the FastAPI
+    # middleware parsed onto the request. Request is typed from starlette, never
+    # imported from integrations.fastapi, so the adapter keeps zero importers
+    # below it. Nothing in the spine may import context back.
+    "context": frozenset({"pyjinhx2.session"}),
     "descriptor": frozenset(),
     # discovery keys the registry by each class's own resolved tag, so it reads
     # component.py's snake-case helper rather than inventing a second naming
@@ -284,6 +290,18 @@ def test_nothing_below_config_imports_config():
         if "pyjinhx2.config" in internal_imports(path)
     }
     assert importers == {"integrations.fastapi"}
+
+
+def test_nothing_imports_context():
+    """context.py is a leaf consumer. The spine, reactive/ and client/ expose
+    state through session.py's accessors; importing the facade back would make
+    the view a dependency of the thing it views."""
+    importers = {
+        module_name(path)
+        for path in module_paths()
+        if "pyjinhx2.context" in internal_imports(path)
+    }
+    assert importers == set()
 
 
 def test_no_render_spine_module_declares_a_reactive_import():
