@@ -488,6 +488,84 @@ def test_drop_nested_is_a_no_op_on_empty_and_singleton_lists():
         assert _drop_nested(only) == only
 
 
+def test_drop_nested_scales_over_a_large_mixed_candidate_set():
+    """60 candidates: 20 parent/child pairs plus 20 loners, order preserved.
+
+    Large enough that a per-candidate rescan and a two-pass union would
+    disagree if the union ever lost or over-collected a tree.
+    """
+    candidates = []
+    expected = []
+    for i in range(20):
+        child = stamped_level(f"child{i}")
+        parent = stamped_level(f"parent{i}", child)
+        candidates.append(candidate(f"parent{i}", level=parent))
+        candidates.append(candidate(f"child{i}", level=child))
+        expected.append(f"parent{i}")
+    for i in range(20):
+        candidates.append(candidate(f"loner{i}", level=stamped_level(f"loner{i}")))
+        expected.append(f"loner{i}")
+    with scope():
+        survivors = _drop_nested(candidates)
+    # Manifest order is parent0, child0, parent1, child1, ... then the loners;
+    # dropping the children leaves the parents in that same relative order.
+    assert [c.instance_id for c in survivors] == expected
+    assert len(survivors) == len(set(id(c) for c in survivors))
+
+
+def test_drop_nested_keeps_independent_nesting_groups_isolated():
+    """Two unrelated families in one call; neither group's union touches the other."""
+    b = stamped_level("b")
+    c = stamped_level("c")
+    a = stamped_level("a", b, c)
+    e = stamped_level("e")
+    d = stamped_level("d", e)
+    with scope():
+        survivors = _drop_nested(
+            [
+                candidate("a", level=a),
+                candidate("b", level=b),
+                candidate("c", level=c),
+                candidate("d", level=d),
+                candidate("e", level=e),
+            ]
+        )
+    assert [c.instance_id for c in survivors] == ["a", "d"]
+
+
+def test_drop_nested_keeps_a_structureless_candidate_among_large_trees():
+    """Absence of a check is never a drop, no matter how much tree surrounds it."""
+    deep = stamped_level("deep0")
+    for i in range(1, 30):
+        deep = stamped_level(f"deep{i}", deep)
+    with scope():
+        survivors = _drop_nested(
+            [
+                candidate("deep29", level=deep),
+                candidate("no-structure"),
+            ]
+        )
+    assert [c.instance_id for c in survivors] == ["deep29", "no-structure"]
+
+
+def test_drop_nested_collapses_a_four_level_chain():
+    """A > B > C > D, all four candidates: only A survives."""
+    d = stamped_level("d")
+    c = stamped_level("c", d)
+    b = stamped_level("b", c)
+    a = stamped_level("a", b)
+    with scope():
+        survivors = _drop_nested(
+            [
+                candidate("a", level=a),
+                candidate("b", level=b),
+                candidate("c", level=c),
+                candidate("d", level=d),
+            ]
+        )
+    assert [x.instance_id for x in survivors] == ["a"]
+
+
 def test_mounted_ids_in_extracts_both_quote_styles():
     html = "<div data-pjx-id=\"alpha\"><span data-pjx-id='beta'>x</span></div>"
     assert _mounted_ids_in(html) == {"alpha", "beta"}
