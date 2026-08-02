@@ -231,6 +231,12 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
     "builtins.ui.pjx_tooltip_trigger.pjx_tooltip_trigger": frozenset(
         {"pyjinhx2.component"}
     ),
+    # pjx_dropdown family (#523): a single trigger+menu component reusing
+    # the pjx_popover JS runtime via the data-pjx-popover markup contract.
+    "builtins.ui.pjx_dropdown.__init__": frozenset(
+        {"pyjinhx2.builtins.ui.pjx_dropdown.pjx_dropdown"}
+    ),
+    "builtins.ui.pjx_dropdown.pjx_dropdown": frozenset({"pyjinhx2.component"}),
     "builtins.ui.pjx_tooltip_content.__init__": frozenset(
         {"pyjinhx2.builtins.ui.pjx_tooltip_content.pjx_tooltip_content"}
     ),
