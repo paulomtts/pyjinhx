@@ -6,6 +6,7 @@ returned, or on state read from inside a handler the middleware called.
 """
 
 import dataclasses
+import json
 from pathlib import Path
 from typing import Annotated
 
@@ -177,3 +178,57 @@ def test_cold_mount_returns_t1_response_via_testclient():
     assert "pjx" in response.text
     # The render mounted the component, so its load() ran exactly once.
     assert LOAD_CALLS == ["card-1"]
+
+
+def test_mutation_round_trip_returns_gated_oob_swap():
+    app = make_app()
+    STORE["card-1"] = 0
+
+    @app.post("/bump")
+    def bump(request: Request):
+        # Stands in for the Load path in this request: the region the client
+        # reports as mounted has to be resolvable before fan-out can swap it.
+        registry.register_instance(CycleCard.__name__, "a", CycleCard(id="a", pjx_key="card-1"))
+        Counter().bump("card-1")
+        invalidate(get_dirtied())
+        return ReactiveResponse(primary="", mounted=request)
+
+    with TestClient(app) as client:
+        response = client.post(
+            "/bump",
+            headers={"X-PJX-Mounted": json.dumps([entry("a", load="card-1")])},
+        )
+
+    assert response.status_code == 200
+    # An OOB-only body: htmx is told not to swap the trigger.
+    assert response.headers["HX-Reswap"] == "none"
+    assert "hx-swap-oob=\"outerHTML:[data-pjx-id='a']\"" in response.text
+    assert "cycle card-1" in response.text
+    # The mutation moved the store and the swap re-ran load() against it.
+    assert STORE["card-1"] == 1
+    assert LOAD_CALLS == ["card-1"]
+
+
+def test_unchanged_region_is_gated_out_of_the_oob_swap():
+    app = make_app()
+    STORE["card-1"] = 0
+    fresh_hash = CycleCard(id="a", pjx_key="card-1").state_hash()
+
+    @app.post("/bump")
+    def bump(request: Request):
+        registry.register_instance(CycleCard.__name__, "a", CycleCard(id="a", pjx_key="card-1"))
+        dirty(Keys.CYCLE)
+        invalidate(get_dirtied())
+        return ReactiveResponse(primary="", mounted=request)
+
+    with TestClient(app) as client:
+        response = client.post(
+            "/bump",
+            headers={
+                "X-PJX-Mounted": json.dumps([entry("a", load="card-1", hash_=fresh_hash)])
+            },
+        )
+
+    # Dirty says the data may have moved; the hash says this region's output
+    # did not, so the swap that would replace it with itself is dropped.
+    assert "hx-swap-oob" not in response.text
