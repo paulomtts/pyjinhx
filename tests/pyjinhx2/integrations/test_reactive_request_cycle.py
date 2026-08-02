@@ -7,6 +7,7 @@ returned, or on state read from inside a handler the middleware called.
 
 import dataclasses
 import json
+import logging
 from pathlib import Path
 from typing import Annotated
 
@@ -17,6 +18,7 @@ from fastapi.testclient import TestClient
 from pyjinhx2 import discovery, registry
 from pyjinhx2.config import PjxSettings
 from pyjinhx2.context import PjxContext
+from pyjinhx2.dev import warn_unconsumed_mutations
 from pyjinhx2.integrations.fastapi import apply_setup
 from pyjinhx2.reactive.cache import invalidate
 from pyjinhx2.reactive.component import PjxKey, ReactiveComponent
@@ -289,3 +291,38 @@ def test_pjx_context_current_raises_outside_request_scope():
     # prior wiring makes a context available.
     with pytest.raises(NoActiveRequestScope):
         PjxContext.current()
+
+
+def _unconsumed_app(**settings_kwargs) -> FastAPI:
+    """An app whose endpoint dirties a key nothing in the request loaded under."""
+    app = make_app(**settings_kwargs)
+
+    @app.post("/orphan")
+    def orphan():
+        dirty(Keys.ORPHAN)
+        warn_unconsumed_mutations()
+        return {"ok": True}
+
+    return app
+
+
+def test_reactive_dev_warns_on_unconsumed_mutation_live_request(caplog):
+    app = _unconsumed_app(reactive_dev=True)
+
+    with caplog.at_level(logging.WARNING, logger="pyjinhx"):
+        with TestClient(app) as client:
+            assert client.post("/orphan").json() == {"ok": True}
+
+    warnings = [record.getMessage() for record in caplog.records]
+    assert any("nobody-reads-this" in message for message in warnings)
+
+
+def test_reactive_dev_silent_when_disabled_live_request(caplog):
+    app = _unconsumed_app()
+
+    with caplog.at_level(logging.WARNING, logger="pyjinhx"):
+        with TestClient(app) as client:
+            assert client.post("/orphan").json() == {"ok": True}
+
+    warnings = [record.getMessage() for record in caplog.records]
+    assert not any("nobody-reads-this" in message for message in warnings)
