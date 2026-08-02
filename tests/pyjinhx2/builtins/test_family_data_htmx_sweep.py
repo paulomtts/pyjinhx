@@ -365,3 +365,60 @@ def test_table_inside_pageloader_shell_is_not_double_swapped():
         )
 
     assert str(body).count('data-pjx-id="t-main"') == 1
+
+
+def test_region_loader_overlay_rides_along_with_a_dirty_table_swap():
+    STORE["rows"] = ["a", "b", "c"]
+    with scope() as session:
+        render(PageShell(id="shell"), session)
+        add_dirtied({ROWS})
+        body = str(
+            ReactiveResponse(
+                primary="",
+                mounted=[entry("table_region", "t-main", "main")],
+            ).body
+        )
+
+    assert 'class="pjx-region-loader"' in body
+    assert 'role="status"' in body
+    assert 'aria-live="polite"' in body
+    assert body.count('class="pjx-region-loader__spinner"') == 1
+
+
+def test_page_loader_overlay_survives_a_page_level_swap():
+    with scope() as session:
+        render(PageShell(id="shell"), session)
+        add_dirtied({PAGE})
+        body = str(
+            ReactiveResponse(
+                primary="",
+                mounted=[entry("page_shell", "shell", "shell")],
+            ).body
+        )
+
+    assert "data-pjx-page-loader" in body
+    assert 'data-nav-targets="app-content"' in body
+    assert body.count('class="pjx-page-loader__spinner"') == 1
+
+
+def test_overlay_markup_is_not_duplicated_across_sibling_regions():
+    STORE["rows"] = ["a", "b", "c"]
+    STORE["page"] = 2
+    with scope() as session:
+        render(PageShell(id="shell"), session)
+        add_dirtied({ROWS, PAGE})
+        body = str(
+            ReactiveResponse(
+                primary="",
+                mounted=[
+                    entry("table_region", "t-main", "main"),
+                    entry("paginator_region", "p-main", "main"),
+                ],
+            ).body
+        )
+
+    # Only the table region carries a region-loader overlay; the paginator
+    # region carries none, so one dirty swap of each must not multiply or
+    # cross-contaminate the other's markup.
+    assert body.count("pjx-region-loader__spinner") == 1
+    assert body.count("pjx-page-loader") == 0
