@@ -6,10 +6,13 @@ import pytest
 from fastapi import FastAPI, Request
 from fastapi.testclient import TestClient
 
+from starlette.responses import PlainTextResponse
+
 from pyjinhx2.component import BaseComponent
 from pyjinhx2.descriptor import ClassDescriptor
 from pyjinhx2.integrations.fastapi import apply_setup
 from pyjinhx2.config import PjxSettings
+from pyjinhx2.reactive.response import ReactiveResponse
 
 
 class Greeting(BaseComponent):
@@ -201,3 +204,53 @@ def test_mounted_request_is_honoured_without_a_request_parameter():
 
     with TestClient(app) as client:
         assert "htmx" not in client.get("/page", headers={"X-PJX-Mounted": "[]"}).text
+
+
+def test_reactive_response_body_and_headers_reach_the_client():
+    app = FastAPI()
+    apply_setup(app, _settings())
+
+    @app.post("/act")
+    def act():
+        return ReactiveResponse(primary="", mounted=[], redirect="/next")
+
+    with TestClient(app) as client:
+        response = client.post("/act", headers={"X-PJX-Mounted": "[]"})
+
+    assert response.headers["HX-Reswap"] == "none"
+    assert response.headers["HX-Redirect"] == "/next"
+    assert "htmx" not in response.text
+
+
+def test_reactive_response_never_reinjects_the_runtime():
+    app = FastAPI()
+    apply_setup(app, _settings())
+
+    @app.post("/act")
+    def act():
+        return ReactiveResponse(primary="<p>ok</p>", mounted=[])
+
+    with TestClient(app) as client:
+        response = client.post("/act")
+
+    assert response.text == "<p>ok</p>"
+    assert "<script>" not in response.text
+
+
+def test_non_pjx_returns_pass_through_untouched():
+    app = FastAPI()
+    apply_setup(app, _settings())
+
+    @app.get("/json")
+    def as_json():
+        return {"ok": True}
+
+    @app.get("/plain")
+    def as_response():
+        return PlainTextResponse("raw")
+
+    with TestClient(app) as client:
+        assert client.get("/json").json() == {"ok": True}
+        plain = client.get("/plain")
+        assert plain.text == "raw"
+        assert plain.headers["content-type"].startswith("text/plain")
