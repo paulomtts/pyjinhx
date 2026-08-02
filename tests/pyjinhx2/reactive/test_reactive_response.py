@@ -169,3 +169,48 @@ def test_reading_headers_does_not_mutate_the_response():
         assert response.primary is primary_before
         assert response.mounted is mounted_before
         assert "hx-swap-oob" in str(response.body)
+
+
+def test_redirect_mode_emits_hx_redirect_header():
+    """A redirect-mode response asks the browser for a full navigation."""
+    response = ReactiveResponse(primary="<div>x</div>", redirect="/login")
+
+    assert response.headers["HX-Redirect"] == "/login"
+    assert "HX-Location" not in response.headers
+
+
+def test_location_mode_emits_hx_location_header():
+    """A location-mode response asks htmx for a client-side navigation."""
+    response = ReactiveResponse(
+        primary="<div>x</div>", redirect="/login", redirect_mode="location"
+    )
+
+    assert response.headers["HX-Location"] == "/login"
+    assert "HX-Redirect" not in response.headers
+
+
+def test_headers_without_redirect_are_unchanged():
+    """Non-redirect responses keep the HX-Reswap-only behavior."""
+    assert ReactiveResponse(primary="<div>x</div>").headers == {}
+    assert ReactiveResponse(primary="").headers == {"HX-Reswap": "none"}
+
+
+def test_redirect_and_reswap_both_appear_on_an_empty_body():
+    """The redirect key is added on top of whatever HX-Reswap already decided."""
+    response = ReactiveResponse(primary="", redirect="/login")
+
+    assert response.headers == {"HX-Reswap": "none", "HX-Redirect": "/login"}
+
+
+@pytest.mark.parametrize("mode", ["redirect", "location"])
+def test_empty_redirect_url_raises(mode):
+    """An empty URL would emit a meaningless header, so it is rejected up front."""
+    with pytest.raises(ValueError):
+        ReactiveResponse(redirect="", redirect_mode=mode)
+
+
+def test_redirect_does_not_change_the_body():
+    """Redirect state is header-only; body composition is untouched."""
+    response = ReactiveResponse(primary="<div>x</div>", redirect="/login")
+
+    assert str(response.body) == "<div>x</div>"
