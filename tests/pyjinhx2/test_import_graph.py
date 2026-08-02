@@ -34,6 +34,10 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
     # data module; nothing above the leaf imports back.
     "builtins.__init__": frozenset(),
     "builtins.ui.__init__": frozenset(),
+    "builtins.ui.pjx_badge.__init__": frozenset(
+        {"pyjinhx2.builtins.ui.pjx_badge.pjx_badge"}
+    ),
+    "builtins.ui.pjx_badge.pjx_badge": frozenset({"pyjinhx2.component"}),
     "builtins.ui.pjx_icon.__init__": frozenset(
         {"pyjinhx2.builtins.ui.pjx_icon.pjx_icon"}
     ),
