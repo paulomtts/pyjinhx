@@ -74,6 +74,22 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
         {"pyjinhx2.builtins.ui.pjx_empty_state.pjx_empty_state"}
     ),
     "builtins.ui.pjx_empty_state.pjx_empty_state": frozenset({"pyjinhx2.component"}),
+    "builtins.ui.pjx_card.__init__": frozenset(
+        {"pyjinhx2.builtins.ui.pjx_card.pjx_card"}
+    ),
+    "builtins.ui.pjx_card.pjx_card": frozenset({"pyjinhx2.component"}),
+    "builtins.ui.pjx_card_header.__init__": frozenset(
+        {"pyjinhx2.builtins.ui.pjx_card_header.pjx_card_header"}
+    ),
+    "builtins.ui.pjx_card_header.pjx_card_header": frozenset({"pyjinhx2.component"}),
+    "builtins.ui.pjx_card_body.__init__": frozenset(
+        {"pyjinhx2.builtins.ui.pjx_card_body.pjx_card_body"}
+    ),
+    "builtins.ui.pjx_card_body.pjx_card_body": frozenset({"pyjinhx2.component"}),
+    "builtins.ui.pjx_card_footer.__init__": frozenset(
+        {"pyjinhx2.builtins.ui.pjx_card_footer.pjx_card_footer"}
+    ),
+    "builtins.ui.pjx_card_footer.pjx_card_footer": frozenset({"pyjinhx2.component"}),
     "builtins.ui.pjx_notification.__init__": frozenset(
         {"pyjinhx2.builtins.ui.pjx_notification.pjx_notification"}
     ),
