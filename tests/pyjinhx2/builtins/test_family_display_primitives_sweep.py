@@ -192,3 +192,59 @@ def test_icon_nested_under_a_host_keeps_its_inline_svg(family_dir, session):
     assert '<svg id="ic"' in html
     assert "&lt;path" not in html
     assert html.count("<svg") == 1
+
+
+def test_classless_composition_of_two_or_more_primitives(family_dir, session):
+    """A {#def#} template mounting two builtins by tag renders both, in order."""
+    (family_dir / "banner.pjx").write_text(
+        '{#def title: str = "hi" #}'
+        '<div id="{{ id }}" class="banner">'
+        '<PJXBadge id="b-{{ id }}" label="{{ title }}"/>'
+        '<PJXDivider id="d-{{ id }}"/>'
+        "</div>"
+    )
+    cls = component("Banner", template_dir=family_dir)
+
+    html = render(cls(id="bn", title="Ready"), session)
+
+    assert html.index('id="b-bn"') < html.index('id="d-bn"')
+    assert html.count('id="b-bn"') == 1
+    assert html.count('id="d-bn"') == 1
+    assert ">Ready<" in html
+
+
+def test_classless_and_componentized_composition_agree(family_dir, session):
+    """Tag-mounted children produce the same child markup as Python-nested ones."""
+    (family_dir / "duo.pjx").write_text(
+        '<div id="{{ id }}" class="duo">'
+        '<PJXBadge id="b" label="Ready"/>'
+        '<PJXDivider id="d"/>'
+        "</div>"
+    )
+    cls = component("Duo", template_dir=family_dir)
+
+    classless = render(cls(id="duo"), session)
+    badge_alone = render(PJXBadge(id="b", label="Ready"), session)
+    divider_alone = render(PJXDivider(id="d"), session)
+
+    assert badge_alone.strip() in classless
+    assert divider_alone.strip() in classless
+
+
+def test_classless_host_nesting_a_classless_host(family_dir, session):
+    """Two generated classes compose without either losing its own root."""
+    (family_dir / "inner_box.pjx").write_text(
+        '<div id="{{ id }}" class="inner"><PJXSpinner id="sp-{{ id }}"/></div>'
+    )
+    (family_dir / "outer_box.pjx").write_text(
+        '<div id="{{ id }}" class="outer"><InnerBox id="in"/><PJXBadge id="bg" label="x"/></div>'
+    )
+    component("InnerBox", template_dir=family_dir)
+    outer = component("OuterBox", template_dir=family_dir)
+
+    html = render(outer(id="out"), session)
+
+    assert html.count('id="out"') == 1
+    assert html.count('id="in"') == 1
+    assert html.count('id="sp-in"') == 1
+    assert html.count('id="bg"') == 1
