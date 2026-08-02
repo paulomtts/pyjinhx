@@ -214,3 +214,172 @@ def test_redirect_does_not_change_the_body():
     response = ReactiveResponse(primary="<div>x</div>", redirect="/login")
 
     assert str(response.body) == "<div>x</div>"
+
+
+def test_candidates_is_empty_without_mounted_or_dirtied():
+    """Nothing mounted and nothing dirtied means there is nothing to fan out to."""
+    with scope():
+        assert ReactiveResponse(primary=Markup("<p>hello</p>")).candidates() == []
+
+
+def test_candidates_is_empty_when_mounted_but_nothing_dirtied():
+    """A mounted region only becomes a candidate once a key it reacts to is dirtied."""
+    with scope():
+        registry.register_instance(ResponseWidget.__name__, "a", "resolved-entry")
+        response = ReactiveResponse(
+            primary=Markup("<p>hello</p>"), mounted=[entry("a", load="todo-1")]
+        )
+        assert response.candidates() == []
+
+
+def test_candidates_is_empty_when_dirtied_but_nothing_mounted():
+    """A dirtied key with an empty manifest has no region to swap."""
+    with scope():
+        add_dirtied(["todos"])
+        assert ReactiveResponse(primary=Markup("<p>hello</p>")).candidates() == []
+
+
+def test_two_dirty_regions_each_get_exactly_one_fragment_in_manifest_order():
+    """Every dirtied, mounted region is swapped once, in the order the client sent."""
+    with scope():
+        registry.register_instance(ResponseWidget.__name__, "a", "resolved-entry")
+        registry.register_instance(ResponseWidget.__name__, "b", "resolved-entry")
+        add_dirtied(["todos"])
+        response = ReactiveResponse(
+            primary=Markup("<p>hello</p>"),
+            mounted=[entry("a", load="todo-1"), entry("b", load="todo-2")],
+        )
+        body = str(response)
+
+        first = "hx-swap-oob=\"outerHTML:[data-pjx-id='a']\""
+        second = "hx-swap-oob=\"outerHTML:[data-pjx-id='b']\""
+        assert body.count(first) == 1
+        assert body.count(second) == 1
+        assert body.index(first) < body.index(second)
+        assert body.index("<p>hello</p>") < body.index(first)
+
+
+def test_candidates_follows_manifest_order():
+    """`candidates()` mirrors manifest order, which is what fixes fragment order."""
+    with scope():
+        registry.register_instance(ResponseWidget.__name__, "a", "resolved-entry")
+        registry.register_instance(ResponseWidget.__name__, "b", "resolved-entry")
+        add_dirtied(["todos"])
+        response = ReactiveResponse(
+            mounted=[entry("b", load="todo-2"), entry("a", load="todo-1")]
+        )
+        assert [c.instance_id for c in response.candidates()] == ["b", "a"]
+
+
+def test_html_returns_markup_and_str_returns_plain_text():
+    """`__html__` keeps Markup so templates do not re-escape; `__str__` is plain.
+
+    Uses a primary-only response (no mounted/dirtied) because `body` re-walks the
+    manifest on every access and `get_dirtied()` is consumed on read — a mounted
+    response would render different content on each of the two calls below.
+    """
+    with scope():
+        response = ReactiveResponse(primary=Markup("<p>hello</p>"))
+        rendered = response.__html__()
+
+        assert isinstance(rendered, Markup)
+        assert type(str(response)) is str
+        assert str(rendered) == str(response)
+
+
+def test_html_is_not_escaped_when_interpolated_into_markup():
+    """The whole point of `__html__`: Markup.format leaves the body as live HTML."""
+    with scope():
+        response = ReactiveResponse(primary=Markup("<p>hello</p>"))
+        assert Markup("<main>{}</main>").format(response) == Markup(
+            "<main><p>hello</p></main>"
+        )
+
+
+def test_unknown_redirect_mode_falls_through_to_hx_location():
+    """`redirect_mode` is not validated at runtime; only "redirect" selects HX-Redirect.
+
+    Documents current behavior — the Literal type is the contract, and anything the
+    type checker would have rejected takes the else branch rather than raising.
+    """
+    response = ReactiveResponse(
+        primary="<div>x</div>",
+        redirect="/login",
+        redirect_mode="bogus",  # pyright: ignore[reportArgumentType]
+    )
+
+    assert response.headers["HX-Location"] == "/login"
+    assert "HX-Redirect" not in response.headers
+
+
+def test_construction_touches_nothing_outside_a_request_scope():
+    """Constructing is inert: no session read, no manifest parse, no render."""
+    response = ReactiveResponse(
+        primary=Markup("<p>hello</p>"), mounted=[entry("a", load="todo-1")]
+    )
+
+    # Inputs are stored verbatim — not parsed, not normalized, not walked.
+    assert response.primary == Markup("<p>hello</p>")
+    assert response.mounted == [entry("a", load="todo-1")]
+
+
+def test_candidates_outside_a_request_scope_returns_empty():
+    """The session lookup degrades to empty rather than raising with no scope entered."""
+    response = ReactiveResponse(
+        primary=Markup("<p>hello</p>"), mounted=[entry("a", load="todo-1")]
+    )
+    assert response.candidates() == []
+
+
+def test_none_and_empty_string_primary_compose_the_same_empty_body():
+    """`Markup(self.primary or "")` collapses both falsy inputs to an empty body."""
+    with scope():
+        assert ReactiveResponse(primary=None).body == Markup("")
+        assert ReactiveResponse(primary="").body == Markup("")
+        assert str(ReactiveResponse(primary=None)) == ""
+        assert str(ReactiveResponse(primary="")) == ""
+
+
+def test_plain_string_and_markup_primary_compose_identically():
+    """`Markup()` adopts a plain str as-is (no escaping); handlers must escape upstream."""
+    with scope():
+        assert ReactiveResponse(primary="<p>hi</p>").body == Markup("<p>hi</p>")
+        assert ReactiveResponse(primary=Markup("<p>hi</p>")).body == Markup("<p>hi</p>")
+
+
+def test_primary_with_dunder_html_is_used_as_markup():
+    """An object exposing `__html__` is adopted by `Markup()` without escaping."""
+
+    class Fragment:
+        def __html__(self) -> str:
+            return "<p>hi</p>"
+
+    with scope():
+        assert str(ReactiveResponse(primary=Fragment()).body) == "<p>hi</p>"
+
+
+def test_redirect_headers_survive_a_malformed_mounted_header():
+    """Manifest degradation is body-side; it must not drop the redirect header."""
+    with scope():
+        add_dirtied(["todos"])
+        response = ReactiveResponse(
+            primary=Markup("<p>hello</p>"), mounted="{not json", redirect="/login"
+        )
+
+        assert response.body == Markup("<p>hello</p>")
+        assert response.headers == {"HX-Redirect": "/login"}
+
+
+def test_malformed_mounted_with_empty_primary_still_sets_both_headers():
+    """The degraded body is empty, so HX-Reswap and the redirect both apply."""
+    with scope():
+        add_dirtied(["todos"])
+        response = ReactiveResponse(
+            primary=None,
+            mounted="{not json",
+            redirect="/login",
+            redirect_mode="location",
+        )
+
+        assert str(response.body) == ""
+        assert response.headers == {"HX-Reswap": "none", "HX-Location": "/login"}
