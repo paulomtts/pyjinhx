@@ -1,0 +1,86 @@
+:where(:root) {
+  --pjx-alert-radius:     var(--radius-md);
+  --pjx-alert-padding:    0.875rem 1rem;
+  --pjx-alert-border:     var(--border);
+  --pjx-alert-shadow:     var(--shadow-md);
+  --pjx-alert-title-size: var(--font-size-sm);
+  --pjx-alert-body-size:  var(--font-size-sm);
+  --pjx-alert-dismiss-color: var(--text-muted);
+}
+
+.pjx-alert {
+  border-radius: var(--pjx-alert-radius);
+  border: 1px solid var(--pjx-alert-border);
+  box-shadow: var(--pjx-alert-shadow);
+}
+
+.pjx-alert__inner {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: var(--pjx-alert-padding);
+}
+
+.pjx-alert__text {
+  flex: 1;
+  min-width: 0;
+}
+
+.pjx-alert__title {
+  font-size: var(--pjx-alert-title-size);
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+}
+
+.pjx-alert__body {
+  font-size: var(--pjx-alert-body-size);
+  line-height: 1.5;
+}
+
+.pjx-alert__dismiss {
+  flex-shrink: 0;
+  width: 1.5rem;
+  height: 1.5rem;
+  padding: 0;
+  font-size: 0.75rem;
+  line-height: 1;
+  background: transparent;
+  color: var(--pjx-alert-dismiss-color);
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background var(--transition), color var(--transition);
+}
+
+.pjx-alert__dismiss:hover {
+  background: var(--surface-alt);
+  color: var(--text);
+}
+
+.pjx-alert--info {
+  background: color-mix(in srgb, var(--brand, #3b82f6) 12%, var(--surface));
+  color: var(--text);
+  border-color: color-mix(in srgb, var(--brand, #3b82f6) 35%, var(--border));
+}
+
+.pjx-alert--success {
+  background: color-mix(in srgb, var(--success, #22c55e) 12%, var(--surface));
+  color: var(--text);
+  border-color: color-mix(in srgb, var(--success, #22c55e) 35%, var(--border));
+}
+
+.pjx-alert--warning {
+  background: color-mix(in srgb, var(--warning, #eab308) 14%, var(--surface));
+  color: var(--text);
+  border-color: color-mix(in srgb, var(--warning, #eab308) 40%, var(--border));
+}
+
+.pjx-alert--error {
+  background: var(--error-bg, color-mix(in srgb, var(--error) 12%, var(--surface)));
+  color: var(--text);
+  border-color: var(--error-border, var(--error));
+}
+
+.pjx-alert.pjx-alert--dismissed {
+  display: none;
+}
