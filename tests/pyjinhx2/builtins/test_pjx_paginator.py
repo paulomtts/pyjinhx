@@ -174,3 +174,68 @@ class TestComputedFieldVisibility:
         dumped = PJXPaginator(id="p1", url=URL, page=1, total_pages=3).model_dump()
         assert "items" in dumped
         assert dumped["items"][1]["kind"] == "current"
+
+
+from pyjinhx2.render import render
+from pyjinhx2.session import RenderSession
+
+
+@pytest.fixture
+def session():
+    return RenderSession(template_dir="/")
+
+
+def _html(session, **kwargs) -> str:
+    base = {"id": "p1", "url": URL, "page": 3, "total_pages": 10}
+    base.update(kwargs)
+    return render(PJXPaginator(**base), session)
+
+
+class TestRender:
+    def test_root_is_a_nav_with_the_aria_label_and_a_list(self, session):
+        html = _html(session)
+        assert html.startswith('<nav id="p1" class="pjx-paginator"')
+        assert 'aria-label="Pagination"' in html
+        assert '<ul class="pjx-paginator__list">' in html
+        assert html.endswith("</ul></nav>")
+
+    def test_custom_aria_label_is_used(self, session):
+        assert 'aria-label="Pages"' in _html(session, aria_label="Pages")
+
+    def test_current_page_is_a_span_with_aria_current(self, session):
+        assert (
+            '<span class="pjx-paginator__link pjx-paginator__link--current"'
+            ' aria-current="page">3</span>'
+        ) in _html(session)
+
+    def test_other_pages_are_links_with_resolved_hrefs(self, session):
+        assert 'href="/u?page=4"' in _html(session)
+
+    def test_ellipsis_is_an_aria_hidden_span_with_the_entity_intact(self, session):
+        html = _html(session, page=5, total_pages=20)
+        assert (
+            '<span class="pjx-paginator__ellipsis" aria-hidden="true">&hellip;</span>'
+        ) in html
+
+    def test_disabled_control_is_a_span_with_aria_disabled_and_no_href(self, session):
+        html = _html(session, page=1, total_pages=10)
+        assert (
+            "pjx-paginator__control--prev pjx-paginator__control--disabled"
+        ) in html
+        assert 'aria-disabled="true"' in html
+
+    def test_class_name_is_appended_to_the_root_class(self, session):
+        assert 'class="pjx-paginator compact"' in _html(session, class_name="compact")
+
+    def test_extra_attrs_surface_on_the_root_nav(self, session):
+        html = _html(session, extra_attrs={"data-testid": "pager"})
+        assert 'data-testid="pager"' in html
+        assert html.index('data-testid="pager"') < html.index("<ul")
+
+
+class TestAssets:
+    def test_stylesheet_is_frozen_on_the_descriptor(self):
+        css = PJXPaginator.__pjx_descriptor__.css_paths
+        assert len(css) == 1
+        assert css[0].name == "pjx_paginator.css"
+        assert css[0].is_file()
