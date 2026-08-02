@@ -5,7 +5,12 @@ from pyjinhx2.reactive.cache import (
     invalidate,
     make_key,
 )
-from pyjinhx2.session import get_cache_reverse, get_cache_store, request_scope
+from pyjinhx2.session import (
+    get_cache_forward,
+    get_cache_reverse,
+    get_cache_store,
+    request_scope,
+)
 
 
 class Widget:
@@ -174,3 +179,98 @@ def test_an_entry_with_no_reactive_keys_survives_any_invalidation():
         invalidate(["users", "anything-else"])
         assert cache_get(Widget, "todos") == "memoized"
         assert get_cache_reverse() == {}
+
+
+def test_the_forward_index_starts_empty_inside_a_fresh_request_scope():
+    with request_scope():
+        assert get_cache_forward() == {}
+
+
+def test_the_forward_index_does_not_leak_across_requests():
+    with request_scope():
+        get_cache_forward()[(Widget, "todos")] = {"todos"}
+    with request_scope():
+        assert get_cache_forward() == {}
+
+
+def test_the_forward_index_is_a_throwaway_dict_outside_a_request_scope():
+    get_cache_forward()[(Widget, "todos")] = {"todos"}
+    assert get_cache_forward() == {}
+
+
+def test_put_records_the_entrys_reactive_keys_in_the_forward_index():
+    with request_scope():
+        cache_put(Widget, "todos", "loaded", react_keys={"todos", "users"})
+        assert get_cache_forward() == {(Widget, "todos"): {"todos", "users"}}
+
+
+def test_re_putting_replaces_the_forward_entry_rather_than_growing_it():
+    with request_scope():
+        cache_put(Widget, "todos", "first", react_keys=["todos"])
+        cache_put(Widget, "todos", "second", react_keys=["users"])
+        assert get_cache_forward() == {(Widget, "todos"): {"users"}}
+
+
+def test_eviction_drops_the_entry_from_the_forward_index():
+    with request_scope():
+        cache_put(Widget, "todos", "loaded", react_keys={"todos", "users"})
+        invalidate(["users"])
+        assert get_cache_forward() == {}
+
+
+def test_putting_an_entry_with_no_reactive_keys_leaves_both_indexes_empty():
+    with request_scope():
+        cache_put(Widget, "todos", "memoized")
+        assert get_cache_forward() == {}
+        assert get_cache_reverse() == {}
+
+
+class CountingSet(set):
+    """A set that records how many times discard() was called on it."""
+
+    def __init__(self, *args):
+        super().__init__(*args)
+        self.discard_calls = 0
+
+    def discard(self, value):
+        self.discard_calls += 1
+        super().discard(value)
+
+
+def test_eviction_only_touches_the_buckets_that_held_the_entry():
+    with request_scope():
+        for i in range(500):
+            cache_put(Widget, i, f"value {i}", react_keys={f"key:{i}"})
+        reverse = get_cache_reverse()
+        for react_key, entries in reverse.items():
+            reverse[react_key] = CountingSet(entries)  # type: ignore[assignment]
+
+        invalidate(["key:7"])
+
+        touched = {
+            react_key
+            for react_key, entries in reverse.items()
+            if entries.discard_calls > 0  # type: ignore[attr-defined]
+        }
+        assert touched == {"key:7"}
+
+
+def test_eviction_work_does_not_grow_with_the_number_of_unrelated_entries():
+    """A quadratic _unindex would scale total discard() calls with N."""
+
+    def total_discards(n: int) -> int:
+        with request_scope():
+            for i in range(n):
+                cache_put(Widget, i, f"value {i}", react_keys={f"key:{i}", "all"})
+            reverse = get_cache_reverse()
+            for react_key, entries in reverse.items():
+                reverse[react_key] = CountingSet(entries)  # type: ignore[assignment]
+
+            invalidate(["key:3"])
+
+            return sum(entries.discard_calls for entries in reverse.values())  # type: ignore[attr-defined]
+
+    # The evicted entry sits in exactly two buckets ("key:3" and "all"), whatever
+    # N is; a scan over reverse.values() would answer N + 1 instead.
+    assert total_discards(100) == 2
+    assert total_discards(1000) == 2
