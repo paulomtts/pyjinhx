@@ -50,6 +50,10 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
         {"pyjinhx2.builtins.ui.pjx_divider.pjx_divider"}
     ),
     "builtins.ui.pjx_divider.pjx_divider": frozenset({"pyjinhx2.component"}),
+    "builtins.ui.pjx_progress.__init__": frozenset(
+        {"pyjinhx2.builtins.ui.pjx_progress.pjx_progress"}
+    ),
+    "builtins.ui.pjx_progress.pjx_progress": frozenset({"pyjinhx2.component"}),
     "builtins.ui.pjx_icon.__init__": frozenset(
         {"pyjinhx2.builtins.ui.pjx_icon.pjx_icon"}
     ),
