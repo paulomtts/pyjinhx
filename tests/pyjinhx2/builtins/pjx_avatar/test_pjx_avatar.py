@@ -119,3 +119,16 @@ def test_undeclared_attr_is_rejected():
     """
     with pytest.raises(ValidationError):
         PJXAvatar(id="a", **{"data-x": "y"})  # pyright: ignore[reportCallIssue, reportArgumentType]
+
+
+def test_stylesheet_is_auto_discovered_by_snake_case_filename():
+    """The descriptor probes "<snake_case class name>.css" next to the module,
+    so the v0.x kebab-case filename had to be renamed on the way in.
+
+    ``ClassDescriptor.css_paths`` is a tuple (0 or 1 entries — one probe per
+    class, per ADR 0007), not a singular ``css_path``; see descriptor.py.
+    """
+    css_paths = PJXAvatar.__pjx_descriptor__.css_paths
+    assert len(css_paths) == 1
+    assert css_paths[0].name == "pjx_avatar.css"
+    assert ".pjx-avatar__initials" in css_paths[0].read_text(encoding="utf-8")
