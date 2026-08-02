@@ -322,9 +322,6 @@ def test_component_slot_value_not_double_escaped_across_nested_components(
     assert html.count('id="av"') == 1
 
 
-ROOT_TAG = re.compile(r"<(?!/)([a-zA-Z][\w-]*)")
-
-
 def _roots(html: str) -> list[str]:
     """Tag names of the top-level elements in ``html`` (nesting-aware, no parser dep)."""
     depth = 0
