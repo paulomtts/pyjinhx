@@ -387,3 +387,47 @@ def test_composed_child_markup_is_not_double_escaped(family_dir, session):
     assert "&lt;input" not in html
     assert '<label id="ctl"' in html
 
+
+def test_loading_button_embeds_a_region_loader(family_dir, session):
+    """loading=True mounts PJXRegionLoader by tag and disables the button."""
+    html = render(PJXButton(id="save", loading=True, content="Save"), session)
+
+    assert 'class="pjx-region-loader"' in html
+    assert 'id="save-loader"' in html
+    assert 'role="status"' in html
+    assert "disabled" in html
+    assert 'aria-busy="true"' in html
+    assert _roots(html) == ["button"]
+
+
+def test_loading_button_beside_a_composed_field_keeps_tree_invariants(
+    family_dir, session
+):
+    """A loading submit button next to a wrapped control: one root, unique ids."""
+    html = render(
+        FormPanel(
+            id="form",
+            first=PJXFormField(
+                id="ff-pw",
+                label="Password",
+                for_id="pw-field",
+                content=PJXPasswordInput(id="pw", name="pw"),
+            ),
+            second=PJXFormField(
+                id="ff-on",
+                label="Notify",
+                for_id="on",
+                content=PJXToggleSwitch(id="on", name="notify"),
+            ),
+            third=PJXButton(id="save", type="submit", loading=True, content="Save"),
+        ),
+        session,
+    )
+    ids = re.findall(r'\bid="([^"]+)"', html)
+
+    assert _roots(html) == ["form"]
+    assert sorted(ids) == sorted(set(ids)), ids
+    assert html.count('id="save-loader"') == 1
+    assert html.count('class="pjx-region-loader"') == 1
+    for element_id in ("form", "ff-pw", "pw", "pw-field", "ff-on", "on", "save"):
+        assert html.count(f'id="{element_id}"') == 1, element_id
