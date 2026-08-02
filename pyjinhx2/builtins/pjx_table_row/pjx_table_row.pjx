@@ -1,0 +1,1 @@
+<tr id="{{ id }}" class="pjx-table__row{% if selectable %} pjx-table__row--selectable{% endif %}{% if class_name %} {{ class_name }}{% endif %}">{% if selectable %}<td class="pjx-table__select"><input type="checkbox" name="selected" value="{{ value }}" aria-label="{{ select_label }}"></td>{% endif %}{{ content }}</tr>
