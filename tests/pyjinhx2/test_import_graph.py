@@ -54,6 +54,19 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
     "component": frozenset(
         {"pyjinhx2.descriptor", "pyjinhx2.props_header"}
     ),  # the stale-header probe needs template_has_props_header
+    # config sits above everything: it may read the spine to register
+    # components and it defers to siblings that own the app wiring and dev
+    # tooling. The reverse edge — any spine, reactive/ or client/ module
+    # importing config — stays forbidden and is asserted below.
+    "config": frozenset(
+        {
+            "pyjinhx2",
+            "pyjinhx2.component",
+            "pyjinhx2.discovery",
+            "pyjinhx2.dev",
+            "pyjinhx2.integrations.fastapi",
+        }
+    ),
     "descriptor": frozenset(),
     # discovery keys the registry by each class's own resolved tag, so it reads
     # component.py's snake-case helper rather than inventing a second naming
@@ -238,6 +251,17 @@ def test_session_never_reaches_into_reactive():
         "pyjinhx2.segments",
         "pyjinhx2.assets",
     }
+
+
+def test_nothing_below_config_imports_config():
+    """config is the top of the stack: it reads the spine, reactive/ and
+    client/, and none of them may reach back up into it."""
+    importers = {
+        module_name(path)
+        for path in module_paths()
+        if "pyjinhx2.config" in internal_imports(path)
+    }
+    assert importers == set()
 
 
 def test_no_render_spine_module_declares_a_reactive_import():
