@@ -239,3 +239,41 @@ class TestAssets:
         assert len(css) == 1
         assert css[0].name == "pjx_paginator.css"
         assert css[0].is_file()
+
+
+class TestHtmx:
+    def test_no_hx_attributes_when_target_is_unset(self, session):
+        html = _html(session)
+        assert "hx-get" not in html
+        assert "hx-target" not in html
+        assert "hx-swap" not in html
+        assert "hx-push-url" not in html
+
+    def test_target_adds_hx_get_target_and_swap_to_page_links(self, session):
+        html = _html(session, target="#tbl", swap="outerHTML")
+        assert 'hx-get="/u?page=4"' in html
+        assert 'hx-target="#tbl"' in html
+        assert 'hx-swap="outerHTML"' in html
+
+    def test_default_swap_is_inner_html(self, session):
+        assert 'hx-swap="innerHTML"' in _html(session, target="#tbl")
+
+    def test_push_url_is_off_by_default(self, session):
+        assert "hx-push-url" not in _html(session, target="#tbl")
+
+    def test_push_url_adds_hx_push_url_when_target_is_set(self, session):
+        assert 'hx-push-url="true"' in _html(
+            session, target="#tbl", push_url=True
+        )
+
+    def test_push_url_alone_emits_nothing_without_a_target(self, session):
+        assert "hx-push-url" not in _html(session, push_url=True)
+
+    def test_enabled_controls_also_get_hx_attributes(self, session):
+        html = _html(session, target="#tbl")
+        assert 'hx-get="/u?page=2" hx-target="#tbl" hx-swap="innerHTML">Prev</a>' in html
+
+    def test_disabled_controls_get_no_hx_attributes(self, session):
+        html = _html(session, page=1, total_pages=10, target="#tbl")
+        disabled_span = html[html.index("pjx-paginator__control--disabled") :]
+        assert "hx-get" not in disabled_span[: disabled_span.index("</span>")]
