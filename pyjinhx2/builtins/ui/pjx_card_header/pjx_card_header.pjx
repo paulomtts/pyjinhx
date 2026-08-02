@@ -1,0 +1,1 @@
+<header id="{{ id }}" class="pjx-card__header{% if class_name %} {{ class_name }}{% endif %}">{% if title %}<h3 class="pjx-card__title">{{ title }}</h3>{% else %}{{ content }}{% endif %}</header>
