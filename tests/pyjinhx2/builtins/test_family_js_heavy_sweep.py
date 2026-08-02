@@ -293,7 +293,9 @@ def test_string_slot_value_escaped_across_nested_components(family_dir, session)
     assert "&amp;" in html
 
 
-def test_string_fields_escaped_when_the_component_is_a_nested_child(family_dir, session):
+def test_string_fields_escaped_when_the_component_is_a_nested_child(
+    family_dir, session
+):
     """Nesting does not bypass a child's own field escaping."""
     html = render(
         Panel(
@@ -306,7 +308,9 @@ def test_string_fields_escaped_when_the_component_is_a_nested_child(family_dir, 
     )
 
     assert "<script>" not in html
-    assert html.count("&lt;script&gt;") == 4  # title, panel body, label x2 (aria + data)
+    assert (
+        html.count("&lt;script&gt;") == 4
+    )  # title, panel body, label x2 (aria + data)
 
 
 def test_component_slot_value_not_double_escaped_across_nested_components(
@@ -421,13 +425,17 @@ def test_toast_host_renders_an_empty_configured_host(family_dir, session):
     half (pjx.toast fires that event on document) is covered by
     tests/pyjinhx2/client/test_pjx_toast.py and is not duplicated here.
     """
-    html = render(
-        Wrapper(
-            id="w",
-            content=PJXToastHost(id="toast", position="top-left", timeout=2500),
-        ),
-        session,
-    ).split('class="wrapper">', 1)[1].rsplit("</div>", 1)[0]
+    html = (
+        render(
+            Wrapper(
+                id="w",
+                content=PJXToastHost(id="toast", position="top-left", timeout=2500),
+            ),
+            session,
+        )
+        .split('class="wrapper">', 1)[1]
+        .rsplit("</div>", 1)[0]
+    )
 
     assert "data-pjx-toast-host" in html
     assert 'data-event-name="pjx:toast"' in html
@@ -460,7 +468,9 @@ def test_carousel_markers_survive_nesting(family_dir, session):
 def test_carousel_autoplay_markers_are_opt_in(family_dir, session):
     """Autoplay stays opt-in: an unrequested moving region is an a11y hazard."""
     off = render(PJXCarousel(id="c", content="x"), session)
-    on = render(PJXCarousel(id="c", content="x", autoplay=True, interval_ms=800), session)
+    on = render(
+        PJXCarousel(id="c", content="x", autoplay=True, interval_ms=800), session
+    )
 
     assert "data-pjx-carousel-autoplay" not in off
     assert "data-pjx-carousel-autoplay" in on
