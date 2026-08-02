@@ -19,7 +19,10 @@ def _html(session, **kw) -> str:
 
 
 def test_default_render_is_single_empty_header(card_header_session):
-    assert _html(card_header_session) == '<header id="h" class="pjx-card__header"></header>'
+    assert (
+        _html(card_header_session)
+        == '<header id="h" class="pjx-card__header"></header>'
+    )
 
 
 def test_title_renders_styled_h3(card_header_session):

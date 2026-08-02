@@ -18,7 +18,10 @@ def _html(session, **kw) -> str:
 
 
 def test_default_render_is_single_empty_footer(card_footer_session):
-    assert _html(card_footer_session) == '<footer id="f" class="pjx-card__footer"></footer>'
+    assert (
+        _html(card_footer_session)
+        == '<footer id="f" class="pjx-card__footer"></footer>'
+    )
 
 
 def test_text_content_renders_inside_root(card_footer_session):
@@ -34,4 +37,6 @@ def test_string_content_renders_escaped(card_footer_session):
 
 
 def test_class_name_appended_to_root(card_footer_session):
-    assert 'class="pjx-card__footer bar"' in _html(card_footer_session, class_name="bar")
+    assert 'class="pjx-card__footer bar"' in _html(
+        card_footer_session, class_name="bar"
+    )
