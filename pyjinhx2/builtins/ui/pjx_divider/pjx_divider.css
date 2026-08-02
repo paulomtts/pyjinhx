@@ -1,0 +1,46 @@
+:where(:root) {
+  --pjx-divider-color: var(--border);
+  --pjx-divider-thickness: 1px;
+  --pjx-divider-gap: 0.75rem;
+  --pjx-divider-label-color: var(--text-muted);
+  --pjx-divider-label-size: var(--font-size-sm);
+}
+
+.pjx-divider--horizontal {
+  display: block;
+  width: 100%;
+  height: 0;
+  margin: var(--space-4, 1rem) 0;
+  border: none;
+  border-top: var(--pjx-divider-thickness) solid var(--pjx-divider-color);
+}
+
+.pjx-divider--vertical {
+  display: inline-block;
+  align-self: stretch;
+  width: var(--pjx-divider-thickness);
+  min-height: 1.5rem;
+  margin: 0 var(--space-3, 0.75rem);
+  flex-shrink: 0;
+  background: var(--pjx-divider-color);
+}
+
+.pjx-divider--labeled {
+  display: flex;
+  align-items: center;
+  gap: var(--pjx-divider-gap);
+  width: 100%;
+  margin: var(--space-4, 1rem) 0;
+}
+
+.pjx-divider__line {
+  flex: 1;
+  height: var(--pjx-divider-thickness);
+  background: var(--pjx-divider-color);
+}
+
+.pjx-divider__label {
+  flex-shrink: 0;
+  font-size: var(--pjx-divider-label-size);
+  color: var(--pjx-divider-label-color);
+}
