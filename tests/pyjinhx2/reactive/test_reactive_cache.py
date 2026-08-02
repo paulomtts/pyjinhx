@@ -243,14 +243,14 @@ def test_eviction_only_touches_the_buckets_that_held_the_entry():
             cache_put(Widget, i, f"value {i}", react_keys={f"key:{i}"})
         reverse = get_cache_reverse()
         for react_key, entries in reverse.items():
-            reverse[react_key] = CountingSet(entries)
+            reverse[react_key] = CountingSet(entries)  # type: ignore[assignment]
 
         invalidate(["key:7"])
 
         touched = {
             react_key
             for react_key, entries in reverse.items()
-            if entries.discard_calls > 0
+            if entries.discard_calls > 0  # type: ignore[attr-defined]
         }
         assert touched == {"key:7"}
 
@@ -264,11 +264,11 @@ def test_eviction_work_does_not_grow_with_the_number_of_unrelated_entries():
                 cache_put(Widget, i, f"value {i}", react_keys={f"key:{i}", "all"})
             reverse = get_cache_reverse()
             for react_key, entries in reverse.items():
-                reverse[react_key] = CountingSet(entries)
+                reverse[react_key] = CountingSet(entries)  # type: ignore[assignment]
 
             invalidate(["key:3"])
 
-            return sum(entries.discard_calls for entries in reverse.values())
+            return sum(entries.discard_calls for entries in reverse.values())  # type: ignore[attr-defined]
 
     # The evicted entry sits in exactly two buckets ("key:3" and "all"), whatever
     # N is; a scan over reverse.values() would answer N + 1 instead.
