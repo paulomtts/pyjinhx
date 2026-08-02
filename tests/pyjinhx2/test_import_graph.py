@@ -237,6 +237,10 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
         {"pyjinhx2.builtins.ui.pjx_dropdown.pjx_dropdown"}
     ),
     "builtins.ui.pjx_dropdown.pjx_dropdown": frozenset({"pyjinhx2.component"}),
+    "builtins.ui.pjx_breadcrumb.__init__": frozenset(
+        {"pyjinhx2.builtins.ui.pjx_breadcrumb.pjx_breadcrumb"}
+    ),
+    "builtins.ui.pjx_breadcrumb.pjx_breadcrumb": frozenset({"pyjinhx2.component"}),
     "builtins.ui.pjx_tooltip_content.__init__": frozenset(
         {"pyjinhx2.builtins.ui.pjx_tooltip_content.pjx_tooltip_content"}
     ),
