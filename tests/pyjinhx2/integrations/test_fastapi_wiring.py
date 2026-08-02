@@ -7,8 +7,24 @@ from fastapi import FastAPI, Request
 from fastapi.testclient import TestClient
 
 from pyjinhx2.component import BaseComponent
+from pyjinhx2.descriptor import ClassDescriptor
 from pyjinhx2.integrations.fastapi import apply_setup
 from pyjinhx2.config import PjxSettings
+
+
+class Greeting(BaseComponent):
+    name: str = "world"
+
+
+Greeting.__pjx_descriptor__ = ClassDescriptor(
+    template_path=Path("pjx_integrations_greeting.html"),
+    slot_fields=frozenset(),
+    children_field=None,
+    css_paths=(),
+    js_paths=(),
+    strict=True,
+    provenance={"template": Greeting},
+)
 
 
 def test_apply_setup_is_importable():
@@ -140,3 +156,48 @@ def test_manifests_are_parsed_onto_request_state():
     assert captured["mounted"] == [{"id": "a", "type": "Card", "load": {}, "hash": "h"}]
     assert captured["assets"] == frozenset({"tok"})
     assert captured["trigger"] == {"id": "a"}
+
+
+def test_cold_render_returns_html_with_the_runtime_inlined():
+    app = FastAPI()
+    apply_setup(app, _settings())
+
+    @app.get("/page")
+    def page():
+        return Greeting(name="ada")
+
+    with TestClient(app) as client:
+        response = client.get("/page")
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/html")
+    assert "hello ada" in response.text
+    assert response.text.count("<script>") >= 1
+    assert "pjx" in response.text
+
+
+def test_mounted_request_does_not_reinject_the_runtime():
+    app = FastAPI()
+    apply_setup(app, _settings())
+
+    @app.get("/page")
+    def page():
+        return Greeting(name="ada")
+
+    with TestClient(app) as client:
+        response = client.get("/page", headers={"X-PJX-Mounted": "[]"})
+
+    assert "hello ada" in response.text
+    assert "htmx" not in response.text
+
+
+def test_mounted_request_is_honoured_without_a_request_parameter():
+    app = FastAPI()
+    apply_setup(app, _settings())
+
+    @app.get("/page")
+    def page():
+        return Greeting(name="ada")
+
+    with TestClient(app) as client:
+        assert "htmx" not in client.get("/page", headers={"X-PJX-Mounted": "[]"}).text

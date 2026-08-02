@@ -2,16 +2,27 @@
 
 from __future__ import annotations
 
+import functools
+import inspect
 import logging
 from collections.abc import Callable
 from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING, Any
 
 from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.responses import HTMLResponse
 
-from pyjinhx2.client.inject import LoadedAssets, MountedManifest, TriggerManifest
+from pyjinhx2.client.inject import (
+    LoadedAssets,
+    MountedManifest,
+    TriggerManifest,
+    inject_runtime,
+)
+from pyjinhx2.component import BaseComponent
 from pyjinhx2.config import PjxSettings, configure_pyjinhx, shutdown_pyjinhx
-from pyjinhx2.session import request_scope
+from pyjinhx2.reactive.response import ReactiveResponse
+from pyjinhx2.render import render
+from pyjinhx2.session import current_session, request_scope
 
 if TYPE_CHECKING:
     from starlette.applications import Starlette
@@ -39,6 +50,7 @@ def apply_setup(
         from starlette.staticfiles import StaticFiles
 
         app.mount("/static", StaticFiles(directory=settings.static_root), name="static")
+    _install_route_adaptation(app)
     app.state.pyjinhx_setup = True
 
 
@@ -92,3 +104,79 @@ class PjxScopeMiddleware(BaseHTTPMiddleware):
         with request_scope() as session:
             session.pjx_request = request  # pyright: ignore[reportAttributeAccessIssue]
             return await call_next(request)
+
+
+def _to_response(result: object, request: Any) -> object:
+    """Adapt a pjx handler return into an HTML response, or pass it through.
+
+    A ReactiveResponse already carries its composed body and htmx headers (T2);
+    a bare component is this request's primary render, so the runtime is offered
+    to it and inlined only when the request is not already mounted (T1).
+    """
+    if isinstance(result, ReactiveResponse):
+        return HTMLResponse(str(result.body), headers=result.headers)
+    if isinstance(result, BaseComponent):
+        session = current_session()
+        inject_runtime(session, request or getattr(session, "pjx_request", None))
+        return HTMLResponse(render(result, session=session))
+    return result
+
+
+def _request_from(kwargs: dict[str, Any]) -> Any:
+    """The ``Request`` argument FastAPI injected, if the handler declared one."""
+    from starlette.requests import Request
+
+    for value in kwargs.values():
+        if isinstance(value, Request):
+            return value
+    return None
+
+
+def _adapt_endpoint(endpoint: Callable[..., Any]) -> Callable[..., Any]:
+    """Return a version of ``endpoint`` whose pjx returns become responses."""
+
+    @functools.wraps(endpoint)
+    async def adapted(*args: Any, **kwargs: Any) -> Any:
+        result = endpoint(*args, **kwargs)
+        if inspect.isawaitable(result):
+            result = await result
+        return _to_response(result, _request_from(kwargs))
+
+    return adapted
+
+
+def _returns_pjx(endpoint: Callable[..., Any]) -> bool:
+    """Whether ``endpoint``'s return annotation is a pyjinhx2 return type.
+
+    FastAPI would otherwise infer a response_model from a component class and
+    validate the component into JSON before the adapter ever sees it.
+    """
+    annotation = inspect.signature(endpoint).return_annotation
+    return isinstance(annotation, type) and issubclass(
+        annotation, (BaseComponent, ReactiveResponse)
+    )
+
+
+def _install_route_adaptation(app: Starlette) -> None:
+    """Adapt pjx returns for routes registered before and after setup().
+
+    A handler annotated ``-> ReactiveResponse`` on a route declared before
+    ``apply_setup()`` cannot be patched: FastAPI resolves that annotation into
+    a pydantic response_model inside ``APIRoute.__init__``, before this
+    function ever runs. Omit the return annotation, or annotate with a real
+    BaseComponent/pydantic subclass, on routes declared ahead of setup.
+    """
+    from fastapi.routing import APIRoute
+    from starlette.routing import request_response
+
+    class PjxRoute(APIRoute):
+        def __init__(self, path: str, endpoint: Callable[..., Any], **kwargs: Any):
+            if _returns_pjx(endpoint):
+                kwargs["response_model"] = None
+            super().__init__(path, _adapt_endpoint(endpoint), **kwargs)
+
+    app.router.route_class = PjxRoute  # pyright: ignore[reportAttributeAccessIssue]
+    for route in app.router.routes:
+        if isinstance(route, APIRoute):
+            route.dependant.call = _adapt_endpoint(route.dependant.call)
+            route.app = request_response(route.get_route_handler())
