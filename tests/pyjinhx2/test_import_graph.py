@@ -78,6 +78,12 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
     "builtins.ui.pjx_segmented_control.pjx_segmented_control": frozenset(
         {"pyjinhx2.component"}
     ),
+    "builtins.ui.pjx_toggle_switch.__init__": frozenset(
+        {"pyjinhx2.builtins.ui.pjx_toggle_switch.pjx_toggle_switch"}
+    ),
+    "builtins.ui.pjx_toggle_switch.pjx_toggle_switch": frozenset(
+        {"pyjinhx2.component"}
+    ),
     "builtins.ui.pjx_spinner.__init__": frozenset(
         {"pyjinhx2.builtins.ui.pjx_spinner.pjx_spinner"}
     ),

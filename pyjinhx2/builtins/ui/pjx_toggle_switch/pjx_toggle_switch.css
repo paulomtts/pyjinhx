@@ -1,0 +1,76 @@
+/* ── PJXToggleSwitch tokens ──────────────────────────────────────────────────── */
+:where(:root) {
+  --pjx-toggle-switch-width:    2.75rem;
+  --pjx-toggle-switch-height:   1.5rem;
+  --pjx-toggle-switch-track:    var(--border, #ccc);
+  --pjx-toggle-switch-track-on: var(--brand, #0d6efd);
+  --pjx-toggle-switch-thumb:    #fff;
+  --pjx-toggle-switch-radius:   var(--radius-full, 9999px);
+  --pjx-toggle-switch-gap:      0.5rem;
+}
+
+.pjx-toggle-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--pjx-toggle-switch-gap);
+  cursor: pointer;
+  user-select: none;
+}
+
+/* Visually-hidden input — keeps focus and click target intact */
+.pjx-toggle-switch__input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+.pjx-toggle-switch__track {
+  position: relative;
+  display: inline-block;
+  width: var(--pjx-toggle-switch-width);
+  height: var(--pjx-toggle-switch-height);
+  background: var(--pjx-toggle-switch-track);
+  border-radius: var(--pjx-toggle-switch-radius);
+  transition: background var(--transition, 0.2s ease);
+  flex-shrink: 0;
+}
+
+.pjx-toggle-switch__thumb {
+  position: absolute;
+  top: 50%;
+  left: 0.15rem;
+  transform: translateY(-50%);
+  width: calc(var(--pjx-toggle-switch-height) - 0.375rem);
+  height: calc(var(--pjx-toggle-switch-height) - 0.375rem);
+  background: var(--pjx-toggle-switch-thumb);
+  border-radius: 50%;
+  transition: transform var(--transition, 0.2s ease);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.2);
+}
+
+/* Checked state */
+.pjx-toggle-switch__input:checked + .pjx-toggle-switch__track {
+  background: var(--pjx-toggle-switch-track-on);
+}
+
+.pjx-toggle-switch__input:checked + .pjx-toggle-switch__track .pjx-toggle-switch__thumb {
+  transform: translateY(-50%) translateX(calc(var(--pjx-toggle-switch-width) - var(--pjx-toggle-switch-height) + 0.0625rem));
+}
+
+/* Focus-visible ring on the track */
+.pjx-toggle-switch__input:focus-visible + .pjx-toggle-switch__track {
+  outline: 2px solid var(--border-focus, var(--brand, #0d6efd));
+  outline-offset: 2px;
+}
+
+/* Disabled */
+.pjx-toggle-switch:has(.pjx-toggle-switch__input:disabled) {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

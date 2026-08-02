@@ -1,0 +1,5 @@
+<label id="{{ id }}" class="pjx-toggle-switch{% if class_name %} {{ class_name }}{% endif %}"{% for name_, value_ in extra_attrs.items() %} {{ name_ }}="{{ value_ }}"{% endfor %}>
+  <input type="checkbox" class="pjx-toggle-switch__input"{% if name %} name="{{ name }}"{% endif %} value="{{ value }}"{% if checked %} checked{% endif %}{% if disabled %} disabled{% endif %}>
+  <span class="pjx-toggle-switch__track" aria-hidden="true"><span class="pjx-toggle-switch__thumb"></span></span>
+  {% if label %}<span class="pjx-toggle-switch__label">{{ label }}</span>{% endif %}
+</label>
