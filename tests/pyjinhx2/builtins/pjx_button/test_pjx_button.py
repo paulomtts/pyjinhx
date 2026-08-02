@@ -48,3 +48,87 @@ class TestFields:
     def test_type_rejects_other_values(self):
         with pytest.raises(ValidationError):
             PJXButton(id="b", type="link")  # type: ignore[arg-type]
+
+
+from pyjinhx2.render import render
+from pyjinhx2.session import RenderSession
+
+
+@pytest.fixture
+def session():
+    """Loader rooted at "/" so absolute descriptor template paths resolve.
+
+    ClassDescriptor.template_path is absolute and render() feeds it straight to
+    the session's FileSystemLoader; Jinja only resolves an absolute path when
+    the loader root is "/". Same fixture shape as the sibling builtin tests.
+    """
+    return RenderSession(template_dir="/")
+
+
+def _html(session, **kwargs) -> str:
+    base = {"id": "b"}
+    base.update(kwargs)
+    return render(PJXButton(**base), session)  # type: ignore[arg-type]
+
+
+class TestRender:
+    def test_single_root_button_with_defaults(self, session):
+        html = _html(session, content="Save")
+        assert html.count("<button") == 1
+        assert html.count("</button>") == 1
+        assert html.startswith('<button id="b"')
+        assert html.endswith("</button>")
+        assert 'type="button"' in html
+        assert "pjx-button pjx-button--default" in html
+        assert "aria-busy" not in html
+        assert " disabled" not in html
+
+    def test_content_renders_directly_inside_the_button(self, session):
+        html = _html(session, content="Save")
+        assert ">Save</button>" in html
+        # no wrapper spans — content goes straight into <button>
+        assert "pjx-button__" not in html
+
+    def test_variant_class(self, session):
+        assert "pjx-button--primary" in _html(session, content="Go", variant="primary")
+
+    def test_block_class(self, session):
+        assert "pjx-button--block" in _html(session, content="Go", block=True)
+
+    def test_no_block_class_by_default(self, session):
+        assert "pjx-button--block" not in _html(session, content="Go")
+
+    def test_disabled_sets_the_attribute(self, session):
+        html = _html(session, content="X", disabled=True)
+        assert " disabled" in html[: html.index(">")]
+
+    @pytest.mark.parametrize("value", ["button", "submit", "reset"])
+    def test_type_renders(self, session, value):
+        assert f'type="{value}"' in _html(session, content="X", type=value)
+
+    def test_class_name_is_appended_without_clobbering_base_classes(self, session):
+        html = _html(session, content="X", class_name="my-btn")
+        assert 'class="pjx-button pjx-button--default my-btn"' in html
+
+    def test_empty_class_name_adds_nothing(self, session):
+        assert 'class="pjx-button pjx-button--default"' in _html(session, content="X")
+
+    def test_extra_attrs_surface_on_the_root(self, session):
+        html = _html(session, content="X", extra_attrs={"hx-post": "/save"})
+        assert 'hx-post="/save"' in html[: html.index(">")]
+
+    def test_content_is_escaped(self, session):
+        html = _html(session, content="<script>x</script>")
+        assert "&lt;script&gt;x&lt;/script&gt;" in html
+        assert "<script>" not in html
+
+
+class TestAssets:
+    def test_stylesheet_is_frozen_on_the_descriptor(self):
+        css = PJXButton.__pjx_descriptor__.css_paths
+        assert len(css) == 1
+        assert css[0].name == "pjx_button.css"
+        assert css[0].is_file()
+
+    def test_no_script_asset(self):
+        assert PJXButton.__pjx_descriptor__.js_paths == ()
