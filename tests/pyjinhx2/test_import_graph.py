@@ -28,6 +28,19 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
     # BaseComponent.__subclasses__() and each class's descriptor, imported
     # locally to avoid a module-level cycle (session imports assets).
     "assets": frozenset({"pyjinhx2.session", "pyjinhx2.component"}),
+    # builtins/ ports v0.x's component library onto the v2 stack, one leaf
+    # package per component (#500). Each leaf only reaches down into
+    # component.py for BaseComponent/Slot/AttrValue and its own vendored
+    # data module; nothing above the leaf imports back.
+    "builtins.__init__": frozenset(),
+    "builtins.ui.__init__": frozenset(),
+    "builtins.ui.pjx_icon.__init__": frozenset(
+        {"pyjinhx2.builtins.ui.pjx_icon.pjx_icon"}
+    ),
+    "builtins.ui.pjx_icon._icons": frozenset(),
+    "builtins.ui.pjx_icon.pjx_icon": frozenset(
+        {"pyjinhx2.component", "pyjinhx2.builtins.ui.pjx_icon._icons"}
+    ),
     # The classless factory is a consumer: it validates a tag name, reads the
     # template discovery found, hands the header to props_header and publishes
     # the result through discovery's own write path. Nothing imports it back.
