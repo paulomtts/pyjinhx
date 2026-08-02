@@ -34,7 +34,9 @@ def test_root_is_a_single_span(content_session):
 
 
 def test_class_name_appended_to_tip(content_session):
-    assert 'class="pjx-tooltip__tip extra"' in _html(content_session, class_name="extra")
+    assert 'class="pjx-tooltip__tip extra"' in _html(
+        content_session, class_name="extra"
+    )
 
 
 def test_string_content_is_interpolated(content_session):
