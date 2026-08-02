@@ -5,6 +5,7 @@ from typing import Literal
 from markupsafe import Markup
 
 from pyjinhx2.client.inject import MountedManifest
+from pyjinhx2.reactive.cache import invalidate
 from pyjinhx2.reactive.fanout import FanoutCandidate, oob_swaps, walk_manifest
 from pyjinhx2.session import current_session, get_dirtied
 
@@ -59,12 +60,18 @@ class ReactiveResponse:
             ``walk_manifest`` output, in manifest order. Empty when nothing is
             mounted, nothing is dirtied, or the header was unreadable.
         """
+        dirtied = get_dirtied()
+        # Evict before walking, never after: walk_manifest reads the load cache to
+        # decide clean vs dirty, so an entry a dirtied key already stale-ed would
+        # otherwise answer "clean" and the client would keep markup this request
+        # just invalidated.
+        invalidate(dirtied)
         # primary_html is passed so a region the primary body already carries is not
         # also swapped OOB: fan-out runs after the primary serialize, and without
         # this the client would swap that region twice in one response.
         return walk_manifest(
             MountedManifest.parse(self.mounted),
-            get_dirtied(),
+            dirtied,
             session=current_session(),
             primary_html=self.primary,
         )
