@@ -160,3 +160,35 @@ def test_nested_family_tree_keeps_each_components_own_classes(family_dir, sessio
     assert 'class="pjx-avatar-stack"' in html
     assert "pjx-avatar-stack__more" in html
     assert "pjx-empty-state__chip" in html
+
+
+def test_leaf_primitives_render_side_by_side_without_interfering(family_dir, session):
+    """Progress, Spinner, Skeleton and Icon in one host each keep their own root."""
+    html = render(
+        Panel(
+            id="panel",
+            head=PJXProgress(id="prog", value=40, label="Uploading"),
+            body=PJXSpinner(id="spin", label="Working"),
+            foot=Wrapper(id="wrap", content=PJXSkeleton(id="skel", lines=2)),
+        ),
+        session,
+    )
+
+    assert '<div id="prog"' in html
+    assert '<span id="spin"' in html
+    assert '<div id="skel"' in html
+    assert html.count('class="pjx-skeleton__line"') == 2
+    assert html.count('id="prog"') == 1
+    assert html.count('id="spin"') == 1
+    assert html.count('id="skel"') == 1
+    # Progress's label id is derived from its own id; a sibling must not shift it.
+    assert 'aria-labelledby="prog-label"' in html
+
+
+def test_icon_nested_under_a_host_keeps_its_inline_svg(family_dir, session):
+    """PJXIcon's derived svg_inner is a Slot, so it survives one nesting level raw."""
+    html = render(Wrapper(id="wrap", content=PJXIcon(id="ic", name="check")), session)
+
+    assert '<svg id="ic"' in html
+    assert "&lt;path" not in html
+    assert html.count("<svg") == 1
