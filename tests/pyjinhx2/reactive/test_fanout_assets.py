@@ -111,3 +111,55 @@ def test_non_inline_modes_emit_nothing(asset_files):
     session.js_mode = AssetMode.LINK
 
     assert missing_asset_oob([candidate()], frozenset(), session) == ""
+
+
+def test_reactive_response_appends_the_asset_fragment_after_the_swaps(
+    asset_files, monkeypatch
+):
+    from pyjinhx2.reactive import response as response_module
+
+    css, _ = asset_files
+    # status="clean": a "dirty" FanoutCandidate must carry a real RenderedLevel
+    # or oob_swaps() asserts (walk_manifest's contract), and this test only
+    # exercises the asset leg, not the swap markup.
+    monkeypatch.setattr(
+        response_module.ReactiveResponse, "candidates", lambda self: [candidate("clean")]
+    )
+    body = str(
+        response_module.ReactiveResponse(
+            primary="", mounted=None, assets='["nope"]'
+        ).body
+    )
+
+    assert asset_token(css) in body
+
+
+def test_reactive_response_omits_the_asset_fragment_when_the_client_has_it(
+    asset_files, monkeypatch
+):
+    from pyjinhx2.reactive import response as response_module
+
+    css, js = asset_files
+    monkeypatch.setattr(
+        response_module.ReactiveResponse, "candidates", lambda self: [candidate("clean")]
+    )
+    loaded = [asset_token(css), asset_token(js)]
+    body = str(
+        response_module.ReactiveResponse(
+            primary="", mounted=None, assets=loaded
+        ).body
+    )
+
+    assert "data-pjx-asset" not in body
+
+
+def test_an_assets_only_body_still_says_do_not_swap(asset_files, monkeypatch):
+    from pyjinhx2.reactive import response as response_module
+
+    monkeypatch.setattr(
+        response_module.ReactiveResponse, "candidates", lambda self: [candidate("clean")]
+    )
+    reactive = response_module.ReactiveResponse(primary="", mounted=None, assets=None)
+
+    assert "data-pjx-asset" in str(reactive.body)
+    assert reactive.headers["HX-Reswap"] == "none"

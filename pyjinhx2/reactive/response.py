@@ -4,10 +4,11 @@ from typing import Literal
 
 from markupsafe import Markup
 
-from pyjinhx2.client.inject import MountedManifest
+from pyjinhx2.client.inject import LoadedAssets, MountedManifest
+from pyjinhx2.reactive.assets import missing_asset_oob
 from pyjinhx2.reactive.cache import invalidate
 from pyjinhx2.reactive.fanout import FanoutCandidate, oob_swaps, walk_manifest
-from pyjinhx2.session import current_session, get_dirtied
+from pyjinhx2.session import RenderSession, current_session, get_dirtied
 
 
 class ReactiveResponse:
@@ -28,6 +29,7 @@ class ReactiveResponse:
         mounted: object = None,
         redirect: str | None = None,
         redirect_mode: Literal["redirect", "location"] = "redirect",
+        assets: object = None,
     ) -> None:
         """Store the inputs; nothing is walked or rendered until ``body`` is read.
 
@@ -40,6 +42,12 @@ class ReactiveResponse:
             redirect_mode: ``"redirect"`` for a full browser navigation
                 (``HX-Redirect``), ``"location"`` for htmx's client-side ajax
                 navigation (``HX-Location``). Ignored when ``redirect`` is None.
+            assets: The raw ``X-PJX-Assets`` header value, a pre-parsed token
+                list, a request-like object, or None. None falls back to
+                ``mounted`` when that is itself a request-like object, so a
+                handler passing ``mounted=request`` gets both headers for free;
+                anything unreadable means "the client has nothing", and every
+                required asset is delivered.
 
         Raises:
             ValueError: If ``redirect`` is given as an empty string.
@@ -52,6 +60,7 @@ class ReactiveResponse:
         self.mounted = mounted
         self.redirect = redirect
         self.redirect_mode: Literal["redirect", "location"] = redirect_mode
+        self.assets = assets
 
     def candidates(self) -> list[FanoutCandidate]:
         """The fan-out candidates this request's dirtied keys make of the manifest.
@@ -76,16 +85,47 @@ class ReactiveResponse:
             primary_html=self.primary,
         )
 
+    def _loaded_assets(self) -> frozenset[str]:
+        """The asset tokens the client reports, from whichever input carries them.
+
+        ``mounted`` is only consulted when it is a request-like object: a raw
+        manifest string or list holds region entries, and handing those to the
+        asset parser would invent tokens out of region ids.
+        """
+        if self.assets is not None:
+            return LoadedAssets.parse(self.assets)
+        if isinstance(self.mounted, (str, list)) or self.mounted is None:
+            return frozenset()
+        return LoadedAssets.parse(self.mounted)
+
     @property
     def body(self) -> Markup:
-        """The whole response body: primary markup, then the OOB fragments.
+        """The whole response body: primary markup, OOB fragments, missing assets.
 
         Returns:
-            ``Markup(primary or "") + oob_swaps(candidates)``. Concatenation only —
-            the fragments were already stamped by splicing at recorded offsets, so
+            The primary markup, then one OOB fragment per surviving candidate,
+            then the head-targeted fragments for assets those candidates need
+            and the client did not report. Concatenation only — the region
+            fragments were already stamped by splicing at recorded offsets, so
             nothing here re-parses either side.
         """
-        return Markup(self.primary or "") + oob_swaps(self.candidates())
+        # One walk, not two: candidates() re-renders every dirty region, so
+        # asking it again for the asset leg would double every load() and every
+        # render this response pays for.
+        candidates = self.candidates()
+        session = current_session() or RenderSession()
+        # Markup(self.primary or "") first, not str(self.primary or ""): a
+        # handler-supplied primary can be an object exposing only __html__
+        # (never __str__), and Markup() is what adopts that protocol without
+        # escaping. str()-ing the raw object first would silently fall through
+        # to object.__str__ and ship a Python repr instead of the markup
+        # (caught by test_primary_with_dunder_html_is_used_as_markup).
+        parts = [
+            str(Markup(self.primary or "")),
+            str(oob_swaps(candidates)),
+            missing_asset_oob(candidates, self._loaded_assets(), session),
+        ]
+        return Markup("\n".join(part for part in parts if part))
 
     @property
     def headers(self) -> dict[str, str]:
