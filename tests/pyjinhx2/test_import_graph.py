@@ -217,6 +217,34 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
             "pyjinhx2.assets",
         }
     ),
+    # pjx_table family (#526): each component module imports only the core
+    # component surface (AttrValue, BaseComponent, Slot); each __init__ just
+    # re-exports its class from its co-located module.
+    "builtins.__init__": frozenset(),
+    "builtins.pjx_table.__init__": frozenset({"pyjinhx2.builtins.pjx_table.pjx_table"}),
+    "builtins.pjx_table.pjx_table": frozenset({"pyjinhx2.component"}),
+    "builtins.pjx_table_head.__init__": frozenset(
+        {"pyjinhx2.builtins.pjx_table_head.pjx_table_head"}
+    ),
+    "builtins.pjx_table_head.pjx_table_head": frozenset({"pyjinhx2.component"}),
+    "builtins.pjx_table_body.__init__": frozenset(
+        {"pyjinhx2.builtins.pjx_table_body.pjx_table_body"}
+    ),
+    "builtins.pjx_table_body.pjx_table_body": frozenset({"pyjinhx2.component"}),
+    "builtins.pjx_table_row.__init__": frozenset(
+        {"pyjinhx2.builtins.pjx_table_row.pjx_table_row"}
+    ),
+    "builtins.pjx_table_row.pjx_table_row": frozenset({"pyjinhx2.component"}),
+    "builtins.pjx_table_header_cell.__init__": frozenset(
+        {"pyjinhx2.builtins.pjx_table_header_cell.pjx_table_header_cell"}
+    ),
+    "builtins.pjx_table_header_cell.pjx_table_header_cell": frozenset(
+        {"pyjinhx2.component"}
+    ),
+    "builtins.pjx_table_cell.__init__": frozenset(
+        {"pyjinhx2.builtins.pjx_table_cell.pjx_table_cell"}
+    ),
+    "builtins.pjx_table_cell.pjx_table_cell": frozenset({"pyjinhx2.component"}),
 }
 
 

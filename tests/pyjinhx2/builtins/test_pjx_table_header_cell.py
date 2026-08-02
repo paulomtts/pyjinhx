@@ -47,11 +47,13 @@ class TestSortable:
         )
 
     @pytest.mark.parametrize(
-        ("sort", "aria"), [("none", "none"), ("asc", "ascending"), ("desc", "descending")]
+        ("sort", "aria"),
+        [("none", "none"), ("asc", "ascending"), ("desc", "descending")],
     )
     def test_aria_sort_mapping(self, session, sort, aria):
         html = render(
-            PJXTableHeaderCell(id="h1", sortable=True, sort=sort, content="Name"), session
+            PJXTableHeaderCell(id="h1", sortable=True, sort=sort, content="Name"),
+            session,
         )
         assert f'aria-sort="{aria}"' in html
 

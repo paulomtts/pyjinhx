@@ -38,7 +38,8 @@ class TestFields:
 class TestRender:
     def test_bare_table(self, session):
         assert (
-            render(PJXTable(id="t1"), session) == '<table id="t1" class="pjx-table"></table>'
+            render(PJXTable(id="t1"), session)
+            == '<table id="t1" class="pjx-table"></table>'
         )
 
     @pytest.mark.parametrize(
