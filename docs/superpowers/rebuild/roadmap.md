@@ -87,7 +87,9 @@ n= 10000     254.0 ms   0.025 ms/component
 - [ ] **6. `reactive/response.py`** — ReactiveResponse, `HX-Reswap: none`, htmx redirect adaptation.
 - [ ] **7. `client/`** — port `pjx.js` (manifest scan, swap apply, loading indicators, toast/loader APIs, vendored htmx), `inject.py` cold-render injection + header parsing.
 - [ ] **8. Wiring** — `config.py` (`setup()`, PjxSettings), `integrations/fastapi.py`, `context.py` (PjxContext), `dev.py` (dev mode, `dependency_graph()`, unconsumed-mutation check).
-- [ ] **9. Parity suite** — port the v0.x reactive test suite; green = layer done.
+- [x] **9. Parity suite** ([#450](https://github.com/paulomtts/pyjinhx/issues/450)) — port the v0.x reactive test suite; green = layer done.
+
+**Gate before L4** ([#491](https://github.com/paulomtts/pyjinhx/issues/491)) — ✅ **passed, 2026-08-02.** Full `uv run pytest tests/pyjinhx2` green (`1593 passed in 19.33s`), including `reactive/`, `client/`, `integrations/` (the #490 mutation round-trip demo in `tests/pyjinhx2/integrations/test_reactive_request_cycle.py`) and the `test_import_graph.py` spine guard — the render spine still imports nothing from `reactive/`. Lint/type gates green: `ruff@0.16.0 format --check`, `ruff@0.16.0 check`, `basedpyright` (standard). This satisfies PRD **G4** — reactive behavior parity, [ADR 0001](adr/0001-outerhtml-only-oob-swaps.md) semantics preserved (outerHTML-only OOB swaps) and the v0.x reactive suite passing under v2. L4 may proceed.
 
 ---
 
