@@ -71,3 +71,42 @@ def test_unconsumed_mutation_warns_when_not_strict(caplog):
         add_dirtied({"ghost"})
         dev.warn_unconsumed_mutations()
     assert "ghost" in caplog.text
+
+
+def test_unconsumed_mutation_raises_when_strict():
+    dev.enable_reactive_dev(strict=True)
+    with request_scope():
+        add_dirtied({"ghost"})
+        with pytest.raises(RuntimeError, match="ghost"):
+            dev.warn_unconsumed_mutations()
+
+
+def test_consumed_mutation_is_not_reported():
+    dev.enable_reactive_dev(strict=True)
+    with request_scope():
+        cache_put(TodoList, None, ["a todo"], react_keys=("todo",))
+        add_dirtied({"todo"})
+        dev.warn_unconsumed_mutations()
+
+
+def test_no_dirtied_keys_is_a_no_op():
+    dev.enable_reactive_dev(strict=True)
+    with request_scope():
+        dev.warn_unconsumed_mutations()
+
+
+def test_disabled_dev_mode_suppresses_the_check():
+    dev.disable_reactive_dev()
+    with request_scope():
+        add_dirtied({"ghost"})
+        dev.warn_unconsumed_mutations()
+
+
+def test_dev_mode_toggles_back_on_after_disable():
+    dev.enable_reactive_dev(strict=True)
+    dev.disable_reactive_dev()
+    dev.enable_reactive_dev(strict=True)
+    with request_scope():
+        add_dirtied({"ghost"})
+        with pytest.raises(RuntimeError):
+            dev.warn_unconsumed_mutations()
