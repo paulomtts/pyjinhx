@@ -132,3 +132,48 @@ class TestAssets:
 
     def test_no_script_asset(self):
         assert PJXButton.__pjx_descriptor__.js_paths == ()
+
+
+from pyjinhx2 import discovery
+from pyjinhx2.builtins.pjx_region_loader import PJXRegionLoader
+
+
+@pytest.fixture
+def loader_registered():
+    """Publish the ``pjx_region_loader`` tag for this test only.
+
+    ``<PJXRegionLoader/>`` in pjx_button.pjx is resolved at render time through
+    discovery's tag map (render.py -> get_class), not through a Python import —
+    an unclaimed tag is emitted verbatim as passthrough markup instead. The map
+    is process-global, so it is snapshotted and restored rather than left
+    mutated for whatever test runs next.
+    """
+    before = discovery._registry.mapping
+    discovery.register_class("pjx_region_loader", PJXRegionLoader)
+    yield
+    discovery._registry.mapping = before
+
+
+class TestLoading:
+    def test_loading_composes_the_region_loader(self, session, loader_registered):
+        html = _html(session, content="X", loading=True)
+        assert 'aria-busy="true"' in html
+        assert 'class="pjx-region-loader"' in html
+        assert 'id="b-loader"' in html
+        assert 'role="status"' in html
+
+    def test_loading_disables_the_button(self, session, loader_registered):
+        html = _html(session, content="X", loading=True)
+        assert " disabled" in html[: html.index(">")]
+
+    def test_loader_is_appended_after_the_content(self, session, loader_registered):
+        html = _html(session, content="Save", loading=True)
+        start = html.index("<button")
+        assert html.index("Save", start) < html.index("pjx-region-loader", start)
+
+    def test_button_stays_the_only_button_element(self, session, loader_registered):
+        html = _html(session, content="Save", loading=True)
+        assert html.count("<button") == 1
+
+    def test_no_loader_when_not_loading(self, session, loader_registered):
+        assert "pjx-region-loader" not in _html(session, content="X")
