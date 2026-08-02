@@ -1,0 +1,31 @@
+:where(:root) {
+  --pjx-page-loader-backdrop: rgb(0 0 0 / 0.15);
+  --pjx-page-loader-z:        9999;
+  --pjx-page-loader-size:     2rem;
+}
+
+.pjx-page-loader {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: var(--pjx-page-loader-z);
+  background: var(--pjx-page-loader-backdrop);
+  backdrop-filter: blur(2px);
+  align-items: center;
+  justify-content: center;
+}
+
+.pjx-page-loader--active {
+  display: flex;
+}
+
+.pjx-page-loader__spinner {
+  width: var(--pjx-page-loader-size);
+  height: var(--pjx-page-loader-size);
+  border: 2px solid var(--border);
+  border-top-color: var(--brand, currentColor);
+  border-radius: 50%;
+  animation: pjx-page-loader-spin 0.7s linear infinite;
+}
+
+@keyframes pjx-page-loader-spin { to { transform: rotate(360deg); } }
