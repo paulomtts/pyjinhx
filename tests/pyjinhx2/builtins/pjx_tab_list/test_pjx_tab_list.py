@@ -38,7 +38,9 @@ def test_reorderable_default_omits_the_hook_attribute(tab_list_session):
 
 
 def test_class_name_appended_to_root(tab_list_session):
-    assert 'class="pjx-tab-group__list mine"' in _html(tab_list_session, class_name="mine")
+    assert 'class="pjx-tab-group__list mine"' in _html(
+        tab_list_session, class_name="mine"
+    )
 
 
 def test_string_content_renders_escaped_inside_root(tab_list_session):

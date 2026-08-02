@@ -1,6 +1,7 @@
 """PJXTabGroup renders the single-root group shell of the tab family (port of v0.x pyjinhx/builtins/ui/pjx_tab_group)."""
 
 import pytest
+from pydantic import ValidationError
 
 from pyjinhx2.builtins.ui.pjx_tab_group import PJXTabGroup
 from pyjinhx2.render import render
@@ -42,8 +43,8 @@ def test_string_content_renders_escaped_inside_root(tab_group_session):
 
 def test_undeclared_field_is_rejected(tab_group_session):
     """BaseComponent is strict: v0.x's **kwargs passthrough is gone."""
-    with pytest.raises(Exception):
-        PJXTabGroup(id="g", nope="x")
+    with pytest.raises(ValidationError):
+        PJXTabGroup(id="g", nope="x")  # pyright: ignore[reportCallIssue]
 
 
 def test_assets_are_discovered_from_the_component_directory():
