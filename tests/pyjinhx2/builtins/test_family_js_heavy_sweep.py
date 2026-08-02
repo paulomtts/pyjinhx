@@ -32,6 +32,7 @@ from pyjinhx2.builtins.ui.pjx_resizable_group import PJXResizableGroup
 from pyjinhx2.builtins.ui.pjx_resizable_handle import PJXResizableHandle
 from pyjinhx2.builtins.ui.pjx_resizable_panel import PJXResizablePanel
 from pyjinhx2.builtins.ui.pjx_toast_host import PJXToastHost
+from pyjinhx2.classless import component
 from pyjinhx2.component import BaseComponent, Slot, _pascal_to_snake
 from pyjinhx2.render import render
 from pyjinhx2.session import RenderSession
@@ -326,3 +327,42 @@ def test_component_slot_value_not_double_escaped_across_nested_components(
     assert "&lt;div" not in html
     assert '<div class="pjx-alert' in html
     assert html.count('id="a"') == 1
+
+
+def test_classless_composition_of_several_js_heavy_builtins(family_dir, session):
+    """A classless template mounting three family tags renders all three, in order."""
+    (family_dir / "shell.pjx").write_text(
+        '{#def note: str = "hi" #}'
+        '<div id="{{ id }}" class="shell">'
+        '<PJXAlert id="a-{{ id }}" title="{{ note }}" dismissible="true"/>'
+        '<PJXToastHost id="t-{{ id }}"/>'
+        '<PJXResizableHandle id="h-{{ id }}"/>'
+        "</div>"
+    )
+    cls = component("Shell", template_dir=family_dir)
+
+    html = render(cls(id="sh", note="Ready"), session)  # pyright: ignore[reportCallIssue]
+
+    assert html.index('id="a-sh"') < html.index('id="t-sh"') < html.index('id="h-sh"')
+    for element_id in ("a-sh", "t-sh", "h-sh"):
+        assert html.count(f'id="{element_id}"') == 1, element_id
+    assert ">Ready<" in html
+    assert "data-pjx-close" in html
+    assert "data-pjx-toast-host" in html
+    assert "data-pjx-resizable-handle" in html
+
+
+def test_classless_and_componentized_composition_agree(family_dir, session):
+    """Tag-mounted children produce the same child markup as Python-nested ones."""
+    (family_dir / "duo.pjx").write_text(
+        '<div id="{{ id }}" class="duo">'
+        '<PJXToastHost id="t"/>'
+        '<PJXResizableHandle id="h"/>'
+        "</div>"
+    )
+    cls = component("Duo", template_dir=family_dir)
+
+    classless = render(cls(id="duo"), session)
+
+    assert render(PJXToastHost(id="t"), session).strip() in classless
+    assert render(PJXResizableHandle(id="h"), session).strip() in classless
