@@ -58,6 +58,10 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
         {"pyjinhx2.builtins.ui.pjx_button.pjx_button"}
     ),
     "builtins.ui.pjx_button.pjx_button": frozenset({"pyjinhx2.component"}),
+    "builtins.ui.pjx_chip_input.__init__": frozenset(
+        {"pyjinhx2.builtins.ui.pjx_chip_input.pjx_chip_input"}
+    ),
+    "builtins.ui.pjx_chip_input.pjx_chip_input": frozenset({"pyjinhx2.component"}),
     "builtins.ui.pjx_spinner.__init__": frozenset(
         {"pyjinhx2.builtins.ui.pjx_spinner.pjx_spinner"}
     ),
