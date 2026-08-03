@@ -65,9 +65,9 @@ def toggle(todo_id: int):
     return TodoItemRow(todo_id=todo_id).render()  # OOB for dependents
 ```
 
-Every `ReactiveComponent` must declare the `react` class keyword (the state keys it derives from) — it is enforced at class-definition time alongside `load()`.
+A `ReactiveComponent` can optionally declare the `react=(...)` class keyword (the state keys it derives from); it defaults to no dependencies and is used alongside `load()`.
 
-OOB swaps require an **active `ClientBackend`** so the renderer can read the client's mounted-region manifest. Wire one via `setup(app)`. A `request_scope()` with no backend configured falls `render()` through to a plain single-region render with no OOB swaps.
+OOB swaps require a **registered `IntegrationBackend`** so the renderer can read the client's mounted-region manifest. Register one via `register_backend()` (wired automatically by `setup(app)` for supported frameworks). A `request_scope()` with no backend configured falls `render()` through to a plain single-region render with no OOB swaps.
 
 "Auto-dirtied" means a `@mutates`-decorated store method records the dirtied state keys it touched; the next reactive `render()` consumes them to decide which mounted regions to reload and swap.
 
@@ -82,9 +82,8 @@ OOB swaps require an **active `ClientBackend`** so the renderer can read the cli
 | Piece | Purpose |
 |-------|---------|
 | `load_context=` in `request_scope` | Pass DB/store into `load()` without globals |
-| `ClientBackend` (wired via `setup(app)`) | Auto `X-PJX-Mounted` / `X-PJX-Assets` in `render()` |
+| `IntegrationBackend` (registered via `register_backend()` / `setup(app)`) | Auto `X-PJX-Mounted` / `X-PJX-Assets` in `render()` |
 | Load cache + `invalidate()` | Cache `load()` results; evict on mutation |
-| `InvalidationBackend` | Cross-worker cache fan-out |
 | `enable_reactive_dev()` | Warnings for missing `mounted`, unconsumed `@mutates`, etc. |
 | `pyjinhx.builtins` | Optional pre-built UI kit |
 
