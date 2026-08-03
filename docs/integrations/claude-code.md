@@ -107,25 +107,36 @@ class Counter(ReactiveComponent, react={Keys.TODOS}):
 - `state_hash()` gates swaps: a region is re-sent only if its fresh hash differs from the one the client reported.
 - Roots are auto-stamped with `data-pjx-id` / `data-pjx-type` / `data-pjx-hash` / `data-pjx-reacts` (space-joined `react` keys, read by `pjx.js` to scope loading indicators) — plus `data-pjx-load` when keyed. A reactive component **must render a single root element**.
 
-### Mutation routes return `render()` — nothing else
+### Mutation routes
 
-A mutation route does exactly one thing: `return <component>.render(...)`. Never call `load()` or assemble swaps yourself. Decorate store methods with `@mutates` using **`MutationKey` members only**:
+`render()` is an **instance method** — `BaseComponent.render(self, session=None)`. There is no `Cls.render(*args)` classmethod; a route builds the component it wants to send and renders that instance. Dirtying happens *before* the response is built, via `@mutates` on store methods (`MutationKey` members only) or an imperative `dirty(...)`:
 
 ```python
+from pyjinhx import dirty, mutates
+from pyjinhx.reactive.response import ReactiveResponse
+
+
 @mutates(Keys.TODOS)
 def toggle_all():
     ...
 
+
 @app.post("/todos/toggle")
 def toggle():
-    store.toggle_all()
-    return Counter.render()
+    store.toggle_all()                       # @mutates dirties Keys.TODOS
+    return Counter.load().render()           # primary render; dependents fan out OOB
+
+
+@app.post("/todos/dismiss")
+def dismiss():
+    store.dismiss()
+    dirty(Keys.TODOS)                        # plain mutation, no @mutates
+    return ReactiveResponse(primary="")      # no primary; dependents still fan out OOB
 ```
 
-- **Class form (route entry)** — `Cls.render(*args)`: auto-`load()`s the primary, renders it as the HTMX main-target response, then appends OOB swaps for every *other* mounted reactive region whose `react` keys intersect the pending `@mutates` keys. **Only the primary is excluded** from OOB; the trigger region is not — a clicked region that depends on the dirtied keys updates itself OOB like any other dependent (e.g. a "Clear completed (N)" button refreshing its own count). `X-PJX-Trigger` is client-only (loading indicators); the server OOB walk reads the mounted manifest, never the trigger header.
-- **Instance form** — `instance.render()`: plain render of an already-built instance, no re-`load()`.
+`ReactiveResponse` is the explicit form of the same response, and its full signature is `ReactiveResponse(primary=None, mounted=None, redirect=None, redirect_mode="redirect", assets=None)` — every argument is a keyword, and none of them dirty anything. It composes the primary markup followed by one OOB fragment per mounted reactive region whose `react` keys intersect this request's dirtied keys. **Only the primary is excluded** from OOB; the trigger region is not — a clicked region that depends on the dirtied keys updates itself OOB like any other dependent (e.g. a "Clear completed (N)" button refreshing its own count). `X-PJX-Trigger` is client-only (loading indicators); the server OOB walk reads the mounted manifest, never the trigger header.
 
-Wire `setup(app, ...)` so the framework adapter (e.g. FastAPI) is installed as middleware — mutation routes need no `mounted`/`client` kwargs. `pjx.js` sends `X-PJX-Mounted`, `X-PJX-Assets`, and `X-PJX-Trigger` on every HTMX request. `oob_swaps(candidates)` is exported for tests/advanced use.
+Wire `setup(app, ...)` so the framework adapter (e.g. FastAPI) is installed as middleware — it supplies `mounted`/`assets` from the request headers, so routes need no extra kwargs. `pjx.js` sends `X-PJX-Mounted`, `X-PJX-Assets`, and `X-PJX-Trigger` on every HTMX request. `oob_swaps(candidates)` is exported for tests/advanced use.
 
 ### Instance-keyed regions (rows)
 
@@ -144,7 +155,7 @@ class TodoItemRow(ReactiveComponent, react={Keys.TODOS}):
 @app.post("/rows/{todo_id}/toggle")
 def toggle_row(todo_id: int):
     store.toggle(todo_id)
-    return TodoItemRow.render(todo_id)   # → load(todo_id) automatically
+    return TodoItemRow.load(todo_id).render()   # instance form: load() then render()
 ```
 
 Set an explicit `id` in `load()` for stable DOM targets; templates use the key field (`hx-post="/rows/{{ todo_id }}/toggle"`). Hash-gating skips unchanged regions. If a keyed `load(manifest.load)` raises `LookupError` during the OOB walk, a `delete:[data-pjx-id='…']` swap removes the stale region (e.g. after clear-completed removes rows still in the manifest).
@@ -153,7 +164,7 @@ Set an explicit `id` in `load()` for stable DOM targets; templates use the key f
 
 - Root full-page renders auto-inject `pjx.js` unless the request already carries `X-PJX-Mounted`. For a raw Jinja shell, call `read_pjx_runtime()` (from `pyjinhx.client`) Python-side and pass it into the template context (e.g. `{"pjx_runtime": read_pjx_runtime()}`), then render with `{{ pjx_runtime }}` in `<head>` or `<body>`.
 - **Loading indicators:** `data-pjx-loading="skeleton"` (or `"spinner"`) on any element inside a reactive root template flags it (matched via the enclosing reactive root) while an in-flight request dirties keys the region reacts to, until the swap lands. A trigger may add `data-pjx-loading-extra="<css-selector>"` to also flag regions a bulk action will touch. Style via `--pjx-*` CSS vars (`--pjx-skeleton-color`, `--pjx-spinner-color`, …).
-- Every `load()` is memoized in `LoadCache`, one entry per `(type, key)`. Scope follows the backend: per-request with no `invalidation_backend`; pass `setup(invalidation_backend=...)` (e.g. Redis) for process-wide caching plus eviction fan-out across workers.
+- Every `load()` is memoized in `LoadCache`, one entry per `(type, key)`. The cache is scoped to the enclosing `request_scope()` — each request gets a fresh store and it is discarded when the scope exits. There is no process-wide or cross-worker cache backend.
 
 Full guide: [docs/reactivity.md](../reactivity.md).
 
@@ -164,7 +175,7 @@ Full guide: [docs/reactivity.md](../reactivity.md).
 - **Host theme** (set on `:root` or a wrapper): builtin CSS reads shared tokens — define at least `--surface`, `--surface-alt`, `--text`, `--text-muted`, `--border`, `--brand`, `--brand-subtle`, `--brand-muted`, `--error`, `--success`, `--warning`, `--font-size-{xs,sm,md}`, `--radius-{sm,md,lg,full}`, `--shadow-md`, `--transition`, `--space-3`, `--space-4`. Optional `--error-bg` / `--error-border` for error surfaces (badge/alert fall back with `color-mix`).
 - **Per-component tokens:** each stylesheet declares `--pjx-<widget>-*` properties on `:root` — override to tune one component without editing package files (e.g. `--pjx-modal-width`, `--pjx-dropdown-z`, `--pjx-drawer-width`).
 - **Classes** are BEM: `pjx-<widget>`, `pjx-<widget>__element`, `pjx-<widget>--modifier`. Every builtin accepts `class_name` (appended on the root) and `extra_attrs` (validated dict rendered on the root).
-- **PascalCase tag quirks:** `PJXBreadcrumb.items` accepts a JSON-string attribute in tag strings (the dict/list equivalent). JS components use `window.pjx.*` APIs (`pjx.modal.open/close`, `pjx.drawer.open/close`, `pjx.popover.open/close/toggle`, `pjx.notification.show/hide`, `pjx.loader.region.show/hide/reset/wrap`, `pjx.confirm`, `pjx.prompt`, `pjx.toast`, `pjx.loader.page.*`); `PJXTabGroup`, `PJXTooltip` use delegated events with no exported API.
+- **PascalCase tag quirks:** `PJXBreadcrumb.items` accepts a JSON-string attribute in tag strings (the dict/list equivalent). JS components use `window.pjx.*` APIs (`pjx.modal.open/close`, `pjx.drawer.open/close`, `pjx.popover.open/close/toggle`, `pjx.notification.show/hide`, `pjx.loader.region.show/hide/reset/wrap`, `pjx.toast`, `pjx.loader.page.*`); `PJXTabGroup`, `PJXTooltip` use delegated events with no exported API.
 
 Full reference (props, classes, `--pjx-*` tokens, JS helpers per component): [Components](../components.md).
 
@@ -184,7 +195,7 @@ from pyjinhx import (
     Slot,               # field type for raw-HTML/icon/component values (opt out of escaping)
     Children,           # tag inner content field type
     component,          # classless-component decorator
-    ReactiveComponent,  # react={...} + load(); Cls.render(*args) is the route entry point
+    ReactiveComponent,  # react={...} + load(); routes render an instance: Cls.load(...).render()
     render,             # free-function render(component, session=None) -> str
     RenderSession,       # per-request render state
     setup,               # process config + optional framework middleware wiring
