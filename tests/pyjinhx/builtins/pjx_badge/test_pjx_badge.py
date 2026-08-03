@@ -73,3 +73,37 @@ def test_undeclared_attr_is_rejected():
     """
     with pytest.raises(ValidationError):
         PJXBadge(id="b", **{"data-x": "y"})  # pyright: ignore[reportCallIssue, reportArgumentType]
+
+
+def test_descriptor_finds_snake_case_css():
+    """The descriptor probes "<snake_case class name>.css" next to the module.
+
+    Mirrors tests/pyjinhx/builtins/pjx_avatar/test_pjx_avatar.py: css_paths is a
+    tuple with 0 or 1 entries (one probe per class, per ADR 0007).
+    """
+    css_paths = PJXBadge.__pjx_descriptor__.css_paths
+    assert len(css_paths) == 1
+    assert css_paths[0].name == "pjx_badge.css"
+
+
+@pytest.mark.parametrize("color", ["brand", "error", "neutral", "muted"])
+def test_css_styles_every_color_variant(color):
+    """Every value of the color Literal has a matching rule; none renders unstyled."""
+    css = PJXBadge.__pjx_descriptor__.css_paths[0].read_text(encoding="utf-8")
+    assert f".pjx-badge--{color}" in css
+
+
+@pytest.mark.parametrize("shape", ["square", "sm", "md", "full"])
+def test_css_styles_every_shape_variant(shape):
+    css = PJXBadge.__pjx_descriptor__.css_paths[0].read_text(encoding="utf-8")
+    assert f".pjx-badge--{shape}" in css
+
+
+def test_css_uses_shared_tokens_not_hardcoded_hex():
+    """Colors come from docs/demos/base.css tokens so light/dark repaint for free."""
+    css = PJXBadge.__pjx_descriptor__.css_paths[0].read_text(encoding="utf-8")
+    assert ":where(:root)" in css
+    assert "--pjx-badge-" in css
+    assert "var(--brand" in css
+    assert "var(--error" in css
+    assert "#" not in css
