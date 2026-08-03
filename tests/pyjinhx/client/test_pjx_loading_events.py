@@ -52,3 +52,30 @@ def test_completion_dispatches_region_loading_end(pjx_page):
     page.evaluate(RECORD)
     page.evaluate("window.__xhrs.a.loadend()")
     assert page.evaluate("window.__evts") == [["pjx:region-loading-end", "t"]]
+
+
+def test_loader_page_dispatches_start_and_end_with_ref_counting(pjx_page):
+    page = pjx_page("<div></div>")
+    page.evaluate(RECORD)
+    page.evaluate(
+        "pjx.loader.page(true); pjx.loader.page(true); pjx.loader.page(false)"
+    )
+    assert page.evaluate("window.__evts") == [
+        ["pjx:page-loading-start", None],
+        ["pjx:page-loading-start", None],
+    ]
+    page.evaluate("pjx.loader.page(false)")
+    assert page.evaluate("window.__evts")[-1] == ["pjx:page-loading-end", None]
+
+
+def test_core_alone_never_sets_the_page_loading_class(pjx_page):
+    page = pjx_page("<div></div>")
+    page.evaluate("pjx.loader.page(true)")
+    assert page.evaluate("document.documentElement.className") == ""
+
+
+def test_page_false_from_zero_never_dispatches_an_end_event(pjx_page):
+    page = pjx_page("<div></div>")
+    page.evaluate(RECORD)
+    page.evaluate("pjx.loader.page(false)")
+    assert page.evaluate("window.__evts") == []

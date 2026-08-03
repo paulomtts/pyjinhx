@@ -298,17 +298,18 @@
 
   var pjxPageLoading = 0;
 
-  // Toggle the page-level CSS hook. Only a class is set: the overlay markup is
-  // an L4 page-loader builtin's business, this is the state it hangs off.
+  // Toggle the page-level loading state. Only the state and the event are
+  // core's; the overlay class and its CSS belong to the page-loader artifact.
   function pjxLoaderPage(on) {
     if (on) {
       pjxPageLoading += 1;
-      document.documentElement.classList.add("pjx-loading--page");
+      pjxFire("pjx:page-loading-start", {});
       return;
     }
+    var was = pjxPageLoading;
     pjxPageLoading = Math.max(0, pjxPageLoading - 1);
-    if (pjxPageLoading === 0) {
-      document.documentElement.classList.remove("pjx-loading--page");
+    if (was > 0 && pjxPageLoading === 0) {
+      pjxFire("pjx:page-loading-end", {});
     }
   }
 
