@@ -48,16 +48,16 @@ def _passthrough_markup(ref: ChildRef) -> str:
     return f"<{ref.tag}{attrs}>{ref.inner}</{ref.tag}>"
 
 
-def _instantiate_child(ref: ChildRef, cls: type[BaseComponent]) -> BaseComponent:
-    """Construct ``cls`` from a resolved ChildRef's attrs and body text.
-
-    Construction is the whole coercion step: the class's own validators turn
-    JSON-looking attr strings into lists/dicts/models and fill an omitted id, so
-    nothing here re-implements them and their errors reach the caller unchanged.
+def _child_kwargs(ref: ChildRef, cls: type[BaseComponent]) -> dict[str, str]:
+    """Attr/body-text kwargs a resolved ChildRef contributes to its child.
 
     A paired tag's ``inner`` is merged raw, not parsed: it becomes a field value
     that the child's own template re-emits, so the tags inside it are cut out by
     the child's own parse and this level still parses exactly once.
+
+    Raises:
+        ValueError: The tag carries body text but the class names no children
+            field, or the same field also arrived as an explicit attribute.
     """
     kwargs: dict[str, str] = dict(ref.attrs)
     if ref.inner is not None and ref.inner.strip():
@@ -74,7 +74,17 @@ def _instantiate_child(ref: ChildRef, cls: type[BaseComponent]) -> BaseComponent
                 f"supply one."
             )
         kwargs[field] = ref.inner
-    return cls(**kwargs)
+    return kwargs
+
+
+def _instantiate_child(ref: ChildRef, cls: type[BaseComponent]) -> BaseComponent:
+    """Construct ``cls`` from a resolved ChildRef's attrs and body text.
+
+    Construction is the whole coercion step: the class's own validators turn
+    JSON-looking attr strings into lists/dicts/models and fill an omitted id, so
+    nothing here re-implements them and their errors reach the caller unchanged.
+    """
+    return cls(**_child_kwargs(ref, cls))
 
 
 def _fill_children(level: RenderedLevel) -> list[tuple[int, BaseComponent]]:
