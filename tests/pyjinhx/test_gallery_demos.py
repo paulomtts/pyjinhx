@@ -60,6 +60,22 @@ def test_every_factory_renders():
         assert isinstance(height, int), name
 
 
+def _descriptor_css_text(cls) -> list[str]:
+    """The on-disk text of every stylesheet the class's descriptor points at."""
+    return [Path(p).read_text() for p in cls.__pjx_descriptor__.css_paths]
+
+
+def test_post_build_inlines_component_css(tmp_path):
+    from pyjinhx.builtins.ui.pjx_button import PJXButton
+
+    hooks.on_post_build({"site_dir": str(tmp_path)})
+    page = (tmp_path / "demos" / "pjx-button.html").read_text()
+    css_texts = _descriptor_css_text(PJXButton)
+    assert css_texts, "PJXButton is expected to carry at least one stylesheet"
+    for text in css_texts:
+        assert f"<style>{text}</style>" in page
+
+
 def test_gallery_page_features_every_demo():
     """components.md must feature every builtin that has a demo (DEMOS key).
 
