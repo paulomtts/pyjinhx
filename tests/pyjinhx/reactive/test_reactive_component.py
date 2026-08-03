@@ -412,3 +412,44 @@ def test_two_app_context_params_are_rejected_at_class_definition():
         class Widget(ReactiveComponent):
             def load(self, first: DemoAppContext, second: OtherAppContext) -> None:  # pyright: ignore[reportIncompatibleMethodOverride]
                 return None
+
+
+def test_classmethod_load_is_accepted():
+    class Widget(ReactiveComponent):
+        @classmethod
+        def load(cls) -> "Widget":
+            return cls()
+
+    assert isinstance(Widget.load(), Widget)
+
+
+def test_instance_method_load_is_rejected_at_class_definition():
+    with pytest.raises(TypeError, match="@classmethod"):
+
+        class Widget(ReactiveComponent):
+            def load(self) -> None:  # pyright: ignore[reportIncompatibleMethodOverride]
+                return None
+
+
+def test_instance_method_rejection_names_the_migration():
+    with pytest.raises(TypeError, match=r"def load\(cls"):
+
+        class Widget(ReactiveComponent):
+            def load(self) -> None:  # pyright: ignore[reportIncompatibleMethodOverride]
+                return None
+
+
+def test_grandchild_that_does_not_override_load_is_not_rewrapped():
+    """A subclass of a subclass, with no load of its own, must not trip the
+    classmethod validator against its parent's already-wrapped function, and
+    must not silently mis-key its cache entries under the parent's identity."""
+
+    class Base(ReactiveComponent):
+        @classmethod
+        def load(cls) -> "Base":
+            return cls()
+
+    class Child(Base):
+        pass
+
+    assert isinstance(Child.load(), Child)
