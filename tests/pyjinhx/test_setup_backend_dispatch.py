@@ -8,6 +8,18 @@ from pyjinhx import config
 from pyjinhx.config import PjxSettings, setup
 
 
+@pytest.fixture(autouse=True)
+def _empty_backend_registry(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Start every test in this file with no backend registered.
+
+    Without this, whichever test in the full suite happens to import the
+    fastapi adapter first leaves the module-global registry populated for the
+    rest of the process, so tests here that expect the no-backend fall-through
+    path become order-dependent on what ran before them.
+    """
+    _reset_registry(monkeypatch)
+
+
 def test_setup_without_an_app_needs_no_backend(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(config, "_find_spec", lambda name: None)
     resolved = setup(settings=PjxSettings(inject_htmx=False))

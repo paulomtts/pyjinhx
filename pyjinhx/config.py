@@ -173,10 +173,18 @@ def setup(
 def _load_backend() -> IntegrationBackend:
     """The framework adapter ``setup(app=...)`` wires through.
 
+    An already-registered backend wins outright: importing an adapter is how a
+    backend normally gets registered, so a caller that registered its own would
+    otherwise be overruled by whatever the fastapi probe finds.
+
     The distribution is probed with find_spec rather than caught as an
     ImportError from the adapter: a genuine bug inside the adapter would
     otherwise be reported to the caller as a missing extra.
     """
+    registered = get_backend()
+    if registered is not None:
+        return registered
+
     if _find_spec("fastapi") is None:
         raise ImportError(
             "setup(app=...) needs a web framework adapter, and none is "
