@@ -1,1 +1,0 @@
-<div id="{{ id }}">{% for item in content %}{{ item }}{% endfor %}</div>
