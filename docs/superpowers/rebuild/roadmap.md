@@ -41,10 +41,10 @@ n= 438       7.9 ms    0.02 ms/component
 
 **Deliverable:** a builtin-shaped nested page renders — component trees, generated tags, classless components — with the benchmark showing linear scaling (PRD G1 evidence starts here).
 
-- [ ] **1. `discovery.py`** — `.pjx` walk, class registry (built-then-swap), duplicate warning, `pjx_replace`.
-- [ ] **2. ChildRef fill in `render.py`** — resolve tag against registry (unknown → verbatim passthrough), instantiate with coerced attrs, recurse, splice opaque node, cycle guard. This is the step that turns T1's loop real.
-- [ ] **3. Slots & children** — opaque-node semantics (truthiness + interpolation; string filters raise the clear error), children/`content` inference, direct nesting, lists & dicts, `NestedComponentWrapper` (`{{ field.props.x }}` / `{{ field }}`).
-- [ ] **4. Classless surface** — open opt-in subclass, `props_header.py` ({#def#} parse + class generation, stale-header warning), `component()`.
+- [x] **1. `discovery.py`** — `.pjx` walk, class registry (built-then-swap), duplicate warning, `pjx_replace`.
+- [x] **2. ChildRef fill in `render.py`** — resolve tag against registry (unknown → verbatim passthrough), instantiate with coerced attrs, recurse, splice opaque node, cycle guard. This is the step that turns T1's loop real.
+- [x] **3. Slots & children** — opaque-node semantics (truthiness + interpolation; string filters raise the clear error), children/`content` inference, direct nesting, lists & dicts, `NestedComponentWrapper` (`{{ field.props.x }}` / `{{ field }}`).
+- [x] **4. Classless surface** — open opt-in subclass, `props_header.py` ({#def#} parse + class generation, stale-header warning), `component()`.
 - [x] **5. Scaling proof** — bench sweep to 10k components; ms/component flat. Record the number.
 
 Linear-scaling number (2026-07-31, `uv run python scripts/bench_render_scaling_v2.py`, nested 3-level trees to 10k components):
@@ -68,10 +68,10 @@ n= 10000     254.0 ms   0.025 ms/component
 
 **Deliverable:** full static pages with correct deduped assets, safe under concurrent requests (PRD G6 tests land here and stay in CI).
 
-- [ ] **1. `session.py`** — `request_scope` ContextVars (session, instance registry, dirtied-keys store, cache store — all reset on exit; request scope is the only cache scope in L2, per ADR 0009), `on_rendered` hook plumbing from `render.py`.
-- [ ] **2. `assets.py`** — accumulation off descriptors, per-session dedup, INLINE/NONE emission at top-level serialize, `asset_manifest()`, hashed filenames + `resolver_with_hash()`, `all_assets()`.
-- [ ] **3. Instance registry (minimal)** — exactly the enumerated surface from the L2 gate, [ADR 0009 E1-E18](adr/0009-minimal-instance-registry.md#enumerated-surface), and nothing outside it (N1-N6 are out of scope); composite keys; written only by reactive paths (stub-consumed until L3).
-- [ ] **4. Concurrency tests** — FastAPI-threadpool-shaped test: parallel renders, no state bleed, no `FileNotFoundError`-class races. The invariant-4 census gets asserted here.
+- [x] **1. `session.py`** — `request_scope` ContextVars (session, instance registry, dirtied-keys store, cache store — all reset on exit; request scope is the only cache scope in L2, per ADR 0009), `on_rendered` hook plumbing from `render.py`.
+- [x] **2. `assets.py`** — accumulation off descriptors, per-session dedup, INLINE/NONE emission at top-level serialize, `asset_manifest()`, hashed filenames + `resolver_with_hash()`, `all_assets()`.
+- [x] **3. Instance registry (minimal)** — exactly the enumerated surface from the L2 gate, [ADR 0009 E1-E18](adr/0009-minimal-instance-registry.md#enumerated-surface), and nothing outside it (N1-N6 are out of scope); composite keys; written only by reactive paths (stub-consumed until L3).
+- [x] **4. Concurrency tests** — FastAPI-threadpool-shaped test: parallel renders, no state bleed, no `FileNotFoundError`-class races. The invariant-4 census gets asserted here.
 
 ---
 
@@ -79,14 +79,14 @@ n= 10000     254.0 ms   0.025 ms/component
 
 **Deliverable:** reactive behavior parity — a mutation round-trip demo (dirty → evict → fan-out → gated OOB swaps → swap-in assets) plus the ported v0.x reactive test suite green (PRD G4).
 
-- [ ] **1. `reactive/keys.py` + `mutations.py`** — MutationKey, `reactive_key(key, arg)`, `@mutates`, `dirty()`; dirtied-keys request state.
-- [ ] **2. `reactive/cache.py`** — LoadCache: `(class, key)` memoization, `react={}` reverse index, eviction by dirtied keys.
-- [ ] **3. `reactive/component.py`** — ReactiveComponent, `load()` wrap at class-definition time, tag-mounted `load()`, instance-keyed components (`PjxKey`).
-- [ ] **4. State hash + stamping** — SHA-256 over sorted `model_dump()` minus exclusions; `data-pjx-id`/`data-pjx-hash` spliced at root_span via the `on_rendered` reactive branch; instance-registry writes go live.
-- [ ] **5. `reactive/fanout.py`** — manifest walk, clean/dirty resolution (cached render vs re-`load()`), hash gate, structural nesting dedup, primary-region exclusion (the T2 ordering fact), delete swaps on `LookupError`, `hx-swap-oob` splice.
-- [ ] **6. `reactive/response.py`** — ReactiveResponse, `HX-Reswap: none`, htmx redirect adaptation.
-- [ ] **7. `client/`** — port `pjx.js` (manifest scan, swap apply, loading indicators, toast/loader APIs, vendored htmx), `inject.py` cold-render injection + header parsing.
-- [ ] **8. Wiring** — `config.py` (`setup()`, PjxSettings), `integrations/fastapi.py`, `context.py` (PjxContext), `dev.py` (dev mode, `dependency_graph()`, unconsumed-mutation check).
+- [x] **1. `reactive/keys.py` + `mutations.py`** — MutationKey, `reactive_key(key, arg)`, `@mutates`, `dirty()`; dirtied-keys request state.
+- [x] **2. `reactive/cache.py`** — LoadCache: `(class, key)` memoization, `react={}` reverse index, eviction by dirtied keys.
+- [x] **3. `reactive/component.py`** — ReactiveComponent, `load()` wrap at class-definition time, tag-mounted `load()`, instance-keyed components (`PjxKey`).
+- [x] **4. State hash + stamping** — SHA-256 over sorted `model_dump()` minus exclusions; `data-pjx-id`/`data-pjx-hash` spliced at root_span via the `on_rendered` reactive branch; instance-registry writes go live.
+- [x] **5. `reactive/fanout.py`** — manifest walk, clean/dirty resolution (cached render vs re-`load()`), hash gate, structural nesting dedup, primary-region exclusion (the T2 ordering fact), delete swaps on `LookupError`, `hx-swap-oob` splice.
+- [x] **6. `reactive/response.py`** — ReactiveResponse, `HX-Reswap: none`, htmx redirect adaptation.
+- [x] **7. `client/`** — port `pjx.js` (manifest scan, swap apply, loading indicators, toast/loader APIs, vendored htmx), `inject.py` cold-render injection + header parsing.
+- [x] **8. Wiring** — `config.py` (`setup()`, PjxSettings), `integrations/fastapi.py`, `context.py` (PjxContext), `dev.py` (dev mode, `dependency_graph()`, unconsumed-mutation check).
 - [x] **9. Parity suite** ([#450](https://github.com/paulomtts/pyjinhx/issues/450)) — port the v0.x reactive test suite; green = layer done.
 
 **Gate before L4** ([#491](https://github.com/paulomtts/pyjinhx/issues/491)) — ✅ **passed, 2026-08-02.** Full `uv run pytest tests/pyjinhx` (pre-#539 rename: `tests/pyjinhx` + `2`) green (`1593 passed in 19.33s`), including `reactive/`, `client/`, `integrations/` (the #490 mutation round-trip demo in `tests/pyjinhx/integrations/test_reactive_request_cycle.py`) and the `test_import_graph.py` spine guard — the render spine still imports nothing from `reactive/`. Lint/type gates green: `ruff@0.16.0 format --check`, `ruff@0.16.0 check`, `basedpyright` (standard). This satisfies PRD **G4** — reactive behavior parity, [ADR 0001](adr/0001-outerhtml-only-oob-swaps.md) semantics preserved (outerHTML-only OOB swaps) and the v0.x reactive suite passing under v2. L4 may proceed.
@@ -99,11 +99,11 @@ n= 10000     254.0 ms   0.025 ms/component
 
 Port order — dependency- and risk-sorted, tests ported alongside each family:
 
-- [ ] **1. Display primitives** — Icon, Badge, Avatar/Stack, Divider, Progress, Spinner, Skeleton, EmptyState. Simplest; smoke-tests L1's classless + slot semantics in volume.
-- [ ] **2. Forms** — Button, ChipInput, FormField, PasswordInput, SegmentedControl, ToggleSwitch.
-- [ ] **3. Composed shells** — Card, Modal, Drawer, Accordion, Tabs, Popover, Tooltip, Dropdown, Breadcrumb families. Heaviest users of slots/children composition and MRO subclassing.
-- [ ] **4. Data + HTMX-heavy** — Table family, Paginator, LazyLoad (+ infinite-scroll sentinel), RegionLoader, PageLoader. Exercises reactivity + loading indicators hard.
-- [ ] **5. JS-heavy tail** — Notification, ToastHost, Alert, Carousel, Resizable families.
+- [x] **1. Display primitives** — Icon, Badge, Avatar/Stack, Divider, Progress, Spinner, Skeleton, EmptyState. Simplest; smoke-tests L1's classless + slot semantics in volume.
+- [x] **2. Forms** — Button, ChipInput, FormField, PasswordInput, SegmentedControl, ToggleSwitch.
+- [x] **3. Composed shells** — Card, Modal, Drawer, Accordion, Tabs, Popover, Tooltip, Dropdown, Breadcrumb families. Heaviest users of slots/children composition and MRO subclassing.
+- [x] **4. Data + HTMX-heavy** — Table family, Paginator, LazyLoad (+ infinite-scroll sentinel), RegionLoader, PageLoader. Exercises reactivity + loading indicators hard.
+- [x] **5. JS-heavy tail** — Notification, ToastHost, Alert, Carousel, Resizable families.
 - [x] **6. Release train** — bench comparison on the builtin-heavy page (G2: never slower), migration guide written from the port list's mods/drops (G5), rename the temporary v2 import name → `pyjinhx` (done, #539), publish 1.0, remove v0.x (deleted in #540 — no external consumers, so a freeze was unnecessary).
 
 Bench comparison — v0.36.4 vs v2, same builtin-heavy page
