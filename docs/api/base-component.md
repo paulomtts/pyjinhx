@@ -6,15 +6,13 @@ Base class for defining reusable UI components with Pydantic validation and Jinj
 
 ### BaseComponent
 
-Subclasses are automatically registered and can be rendered using their corresponding HTML/Jinja templates. Components support nested composition, automatic JavaScript and CSS collection, and can be used directly in Jinja templates via the `__html__` protocol.
+Subclasses are automatically registered and can be rendered using their corresponding HTML/Jinja templates. Components support nested composition.
 
 #### Fields
 
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
 | `id` | `str` | No | auto-generated (`pjx-<n>`) when omitted | Unique identifier for the component instance |
-| `js` | `list[str]` | No | `[]` | Paths to additional JavaScript files to include when rendering |
-| `css` | `list[str]` | No | `[]` | Paths to additional CSS files to include when rendering |
 
 `BaseComponent` is strict by default (`model_config = ConfigDict(extra="forbid")`): passing an undeclared kwarg at construction time raises a validation error. Allow-extra is not a `BaseComponent` option — it's specific to `OpenComponent`, the base that `component()`-synthesized classless wrappers and `{#def#}`-less templates use (`extra="allow"`), so those alone accept pass-through attributes.
 
@@ -36,22 +34,10 @@ This is a plain, zero-argument-beyond-`session` render. The dependency-aware rea
 
 **Returns:** The component's rendered markup as a finished HTML string.
 
-##### __html__()
-
-```python
-def __html__() -> Markup
-```
-
-Render the component when used in a Jinja template context.
-
-Enables cleaner template syntax: `{{ component }}` instead of `{{ component.render() }}`.
-
-**Returns:** The rendered HTML as a Markup object.
-
 ## component
 
 ```python
-def component(name: str) -> type[BaseComponent]
+def component(name: str, template_dir: Path | str | None = None) -> type[OpenComponent]
 ```
 
 Reference an **html-only** component — a template that has no hand-written Python class — from Python. Returns a `BaseComponent` subclass bound to that template, so you can instantiate, nest, and render it like any declared component.
@@ -72,24 +58,3 @@ Arbitrary attributes are accepted (`extra="allow"`) and children map to the `con
 - A missing template raises `LookupError` when `component()` is called.
 
 Because the returned class is registered, it also resolves as `<Card/>` inside other templates.
-
-## NestedComponentWrapper
-
-A wrapper for nested components. Enables access to the component's properties and rendered HTML.
-
-### Fields
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `html` | `str` | The rendered HTML string of the nested component |
-| `props` | `BaseComponent \| None` | The original component instance, or None for template-only components |
-
-### Methods
-
-##### __str__()
-
-```python
-def __str__() -> str
-```
-
-Returns the wrapper's `html` field (a plain string) when used in a template context.

@@ -93,17 +93,18 @@ class Button(BaseComponent):
 </html>
 ```
 
-Use PyJinHx's `Renderer` to process the HTML:
+Render a component instance directly — there's no separate "process this HTML
+string" step. A route builds the component and calls `.render()`:
 
 ```python
-from pyjinhx import Renderer
+from pyjinhx import setup
 
-Renderer.set_default_environment("./components")
+setup(app, components_root="./components")
 
-with open("index.html", "r") as f:
-    source = f.read()
 
-html = Renderer.get_default_renderer().render(source)
+@app.get("/")
+def index():
+    return Button(id="click-me", text="Click Me", endpoint="/clicked").render()
 ```
 
 ## Counter Example
@@ -292,8 +293,8 @@ This is the path to reach for when **one mutation updates multiple regions**
 (counter, list, totals):
 
 - Declare `react={...}` + `load()` on `ReactiveComponent` subclasses
-- Return `Cls.render()` from mutation routes — dependent regions ride along as `hx-swap-oob` fragments
-- Wire [ClientBackend](../api/client-backend.md) via `setup()` so routes call `Cls.render()` with no framework kwargs
+- Construct the primary and `return <instance>.render()` from mutation routes — dependent regions ride along as `hx-swap-oob` fragments
+- Wire [IntegrationBackend](../api/client-backend.md) via `setup()` so routes call `.render()` with no framework kwargs
 
 See [Reactivity](../reactivity.md) and [Usage tiers](../guide/usage-tiers.md).
 
@@ -315,31 +316,32 @@ trigger keeps its content with no extra attribute:
 This is always on and requires the pyjinhx middleware (installed by
 `setup(app)`).
 
-### Opt-in: make redirects navigate (`htmx_redirects=True`)
+### Making redirects navigate under htmx
 
 htmx AJAX-follows a `3xx` and swaps the destination page into a fragment instead
-of navigating. Enable `setup(app, htmx_redirects=True)` and pyjinhx rewrites
-`3xx → 204 + HX-Redirect` for htmx requests, so handlers stay transport-agnostic:
+of navigating. To make a redirect trigger a real browser navigation, pass
+`redirect=` (and optionally `redirect_mode=`) to `ReactiveResponse` instead of
+returning a framework `RedirectResponse`:
 
 ```python
-setup(app, htmx_redirects=True)
+from pyjinhx.reactive import ReactiveResponse
 
 
 @app.post("/logout")
 def logout():
-    return RedirectResponse("/login", status_code=303)  # browser navigates under htmx
+    return ReactiveResponse(redirect="/login")  # emits HX-Redirect
 ```
 
-`Set-Cookie` and other headers are preserved; `304 Not Modified` is left alone.
-Defaults off so it never surprises apps that want htmx's swap behavior. You can
-also set it via the `PJX_HTMX_REDIRECTS` environment variable.
+`redirect_mode="location"` emits `HX-Location` instead, for htmx's client-side
+ajax navigation rather than a full browser redirect.
 
-### Custom client backends
+### The `HX-Reswap: none` mechanism
 
-The automatic `HX-Reswap: none` (#188) is emitted via
-`ClientBackend.apply_response_directives(response)`. The default applies the
-`HX-*` headers implied by the request's `ResponseDirectives` to any response
-whose `.headers` is a mutable mapping, so a custom backend inherits that
-behavior for free; override it only if your framework's response differs. The
-opt-in redirect adaptation (#189) is applied directly by the FastAPI middleware,
-not through this seam.
+The automatic `HX-Reswap: none` behavior described above is implemented on
+`ReactiveResponse.headers` (in `pyjinhx/reactive/response.py`): it's emitted
+whenever a response has no primary markup. There's no pluggable backend hook
+for this — it's a fixed property of `ReactiveResponse` itself. Framework glue
+(mounting static files, request scoping, adapting a pjx return into a native
+response) is the seam that *is* pluggable, via the
+[`IntegrationBackend`](../api/client-backend.md) protocol that `setup()` wires
+up per framework.

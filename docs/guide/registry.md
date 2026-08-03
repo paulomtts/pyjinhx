@@ -4,10 +4,11 @@ The registry is how PyJinHx tracks component instances, enabling cross-referenci
 
 ## How It Works
 
-Instances are registered at **instance creation** (`__init__`):
+The registry is a low-level primitive in `pyjinhx.registry`, backed by a per-request `ContextVar`. Instances are **not** registered automatically when you instantiate a component — you register them yourself with `register_instance()`:
 
 ```python
 from pyjinhx import BaseComponent
+from pyjinhx.registry import register_instance
 
 
 class Button(BaseComponent):
@@ -15,12 +16,13 @@ class Button(BaseComponent):
     text: str
 
 
-# When you instantiate, the instance is registered
 button = Button(id="submit-btn", text="Submit")
+register_instance("Button", button.id, button)
 # button is now resolvable via pyjinhx.registry.resolve("Button", "submit-btn")
 ```
 
-This happens transparently—you don't need to call any registration methods manually.
+!!! note "Not yet wired to instantiation"
+    `pyjinhx.registry` also exports `register_rendered_instance()`, meant to be subscribed to render events so instances register automatically. Nothing in pyjinhx currently subscribes it, so that automatic path does not run today (tracked by [#449](https://github.com/paulomtts/pyjinhx/issues/449)). Until it lands, call `register_instance()` explicitly wherever you want a component to be resolvable.
 
 ### Composite Keys
 
@@ -41,8 +43,8 @@ The registry stores components using a composite key of `ComponentName_id`. This
 In web applications, component instances from one request can persist and affect subsequent requests:
 
 ```python
-# Request 1: Creates Button(id="submit-btn")
-# Request 2: Creates Button(id="submit-btn") → Warning: "already registered; overwriting"
+# Request 1: register_instance("Button", "submit-btn", button)
+# Request 2: register_instance("Button", "submit-btn", button) → Warning: "already registered; overwriting"
 ```
 
 ### The Solution: Request Scope
@@ -51,13 +53,15 @@ Use `request_scope()` to isolate components per request:
 
 ```python
 from pyjinhx.session import request_scope
+from pyjinhx.registry import register_instance
 
 
 @app.get("/")
 def index():
     with request_scope():
-        # Components here are isolated to this request
+        # Components registered here are isolated to this request
         button = Button(id="submit-btn", text="Submit")
+        register_instance("Button", button.id, button)
         return button.render()
     # Registry automatically cleaned up
 ```
@@ -141,17 +145,13 @@ PyJinHx separates how component *classes* are found from how component *instance
 | **Template discovery** | Process-wide | Walks `.pjx` template files on disk to map tag names to component classes |
 | **Instance registry** | Context-local | Maps composite keys to instances (e.g., `"Button_submit"` → instance) |
 
-Discovery finds classes by scanning the filesystem for `.pjx` templates, not by any side effect of defining a class — a component only becomes tag-resolvable once it has a matching template file. The instance registry enables cross-referencing in templates.
-
-### Template context precedence
-
-During render, registered instances are injected into the Jinja context by `id` so templates can reference them by registry key. A component cannot cross-reference a component of the **same type and id** that is currently being rendered — such a reference renders empty and logs a warning. Different component types that share the same `id` are tracked independently, so nesting an `InnerChip(id="x")` inside an `OuterShell(id="x")` renders both in full. **Component field values from `model_dump()` take precedence** when a field name collides with an instance `id` (registry injection uses `setdefault`). Watch for this with `ReactiveComponent`, whose `id` defaults to the kebab-cased class name: a `Total` reactive component with a `total` field defaults its `id` to `"total"`, so the field would shadow the instance. (A plain `BaseComponent` defaults to `pjx-<n>` — not the kebab-class default that reactive components get.)
+Discovery finds classes by scanning the filesystem for `.pjx` templates, not by any side effect of defining a class — a component only becomes tag-resolvable once it has a matching template file. The instance registry enables cross-referencing in templates, once entries are registered explicitly (see [How It Works](#how-it-works) above).
 
 ```python
-from pyjinhx.registry import make_key, resolve
+from pyjinhx.registry import make_key, register_instance, resolve
 
-# Instance registry (automatic when you instantiate, inside a request_scope())
 btn = MyButton(id="test")
+register_instance("MyButton", btn.id, btn)  # inside a request_scope()
 key = make_key("MyButton", "test")
 assert resolve("MyButton", "test") is btn
 ```

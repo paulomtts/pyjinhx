@@ -2,9 +2,9 @@
 
 Every symbol exported from `pyjinhx` (`__all__`) is listed below with a one-line description and a link to detailed documentation.
 
-These 17 symbols are the entire top-level public API; advanced/internal building blocks (e.g. `oob_swaps`, `LoadCache`, `ClientBackend`, the asset-resolver helpers, dev tooling) remain importable from their submodules — e.g. `from pyjinhx.cache import LoadCache`.
+These 17 symbols are the entire top-level public API; advanced/internal building blocks (e.g. `oob_swaps`, the load cache, `IntegrationBackend`, the asset-resolver helpers, dev tooling) remain importable from their submodules — e.g. `from pyjinhx.reactive.cache import cache_get`.
 
-The deeper machinery behind these symbols — the parser, finder, asset resolver, client backend, cache/invalidation, and the Redis/SQLite backends — is documented under **API Reference → Internals**.
+The deeper machinery behind these symbols — the parser, finder, asset resolver, integration backend, cache/invalidation, and the Redis/SQLite backends — is documented under **API Reference → Internals**.
 
 ## Components & rendering
 
@@ -49,7 +49,7 @@ For usage patterns and tutorials, see:
 
 - [Usage tiers](../guide/usage-tiers.md) — bare components through full reactive wiring
 - [Reactivity](../reactivity.md) — reactive components, OOB swaps, cache scopes
-- [Client Backend](../api/client-backend.md) — per-request header access for `render()`
+- [Integration Backend](../api/client-backend.md) — the adapter Protocol a framework backend implements, plus request-scoped load context
 - [Asset Collection](../guide/assets.md) — delivery modes, dedup, static serving
 - [Build an App](../getting-started/build-an-app.md) — end-to-end tutorial
 - [FastAPI integration](../integrations/fastapi.md) — request scope, lifespan, headers

@@ -13,8 +13,8 @@ Every pyjinhx builtin follows the same contract, so knowing one means knowing al
    `PJXAlert(body="Prices may change.", extra_attrs={"hx-get": "/refresh", "hx-trigger": "every 30s"})`.
    Any attribute passed inline on a PascalCase tag is also injected onto the root automatically
    (see [Attribute pass-through](#attribute-pass-through) below).
-   The newer structural builtins (`PJXIcon`, `PJXButton`, `PJXAccordion`, `PJXCard`) intentionally **omit**
-   the `extra_attrs` field — inline tag attributes (`<PJXButton Hx-Post="/save"/>`) still pass
+   The newer structural builtins (`PJXIcon`, `PJXAccordion`) intentionally **omit**
+   the `extra_attrs` field — inline tag attributes (`<PJXIcon Hx-Post="/save"/>`) still pass
    through to the root, but the dict-style `extra_attrs={...}` API is not available on them; use
    inline attributes or `class_name` instead.
 4. **All copy is props.** Every user-visible string, aria-labels included, has an English default
@@ -33,7 +33,7 @@ Every pyjinhx builtin follows the same contract, so knowing one means knowing al
    fields (titles, labels, descriptions) are plain `str` and stay escaped; raw-HTML/icon/component
    fields are `Slot` (or the children field). A field is never typed `str | BaseComponent` unless
    it is a slot — otherwise a component renders raw while a string escapes, an inconsistency that
-   is also an XSS footgun. `test_swept_fields_holding_components_are_slots` enforces this.
+   is also an XSS footgun. `tests/pyjinhx/test_slot_type_v2.py` enforces this.
 
 ## Events and hooks
 
@@ -60,8 +60,6 @@ document.getElementById("confirm-del").addEventListener("pjx:modal:before-close"
 | `data-pjx-open="<id>"` | click opens that PJXModal / PJXDrawer |
 | `data-pjx-close` | click closes the nearest enclosing dismissible |
 | `data-pjx-toggle="<id>"` | click toggles that PJXPopover / PJXDropdown menu |
-| `data-pjx-confirm-danger` | `hx-confirm` on this element gets a danger-styled OK button |
-| `data-pjx-confirm-ok`, `data-pjx-confirm-cancel` | per-trigger confirm-dialog label overrides |
 | `data-pjx-loader` | requests from this subtree show the PJXPageLoader |
 | `data-pjx-region` | marks a show/hide region (emits `pjx:reveal`) |
 | `data-pjx-autoshow` | PJXNotification auto-shows when this attribute is present on mount |
@@ -69,7 +67,7 @@ document.getElementById("confirm-del").addEventListener("pjx:modal:before-close"
 ## The `window.pjx` namespace
 
 `pjx.modal` · `pjx.drawer` · `pjx.popover` · `pjx.notification` · `pjx.loader.region` (region busy-state) ·
-`pjx.loader.page` (page navigation) · `pjx.confirm` · `pjx.prompt` · `pjx.toast`. Open/close/show/hide
+`pjx.loader.page` (page navigation) · `pjx.toast`. Open/close/show/hide
 functions return `false` when a `before-*` hook canceled the action.
 
 ## Attribute pass-through

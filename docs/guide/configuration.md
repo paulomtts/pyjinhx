@@ -63,12 +63,10 @@ setup(app, context_factory=lambda req: AppLoadContext(db=get_db(req)))
 
 `PjxSettings` has these fields:
 
-- `invalidation_backend` — cross-worker invalidation backend (default `None`)
 - `reactive_dev` — enable reactive dev guardrails (default `False`)
 - `inject_htmx` — inline the vendored htmx runtime on reactive root renders (default `True`)
-- `htmx_redirects` — adapt `3xx` redirects to `204 + HX-Redirect` for htmx requests (default `False`); the browser navigates instead of swapping the destination into a fragment, `Set-Cookie` is preserved, and `304` is left alone
-
-The load-cache scope is **derived** from `invalidation_backend`: a backend (e.g. Redis) makes cross-request caching safe across workers, so `load()` results are cached per worker process; without one, they are cached per request only — the only multi-worker-safe default.
+- `components_root` — path to scan for classless components; setting it triggers component discovery (default `None`)
+- `static_root` — path to serve static assets from (default `None`)
 
 Pass a settings object via `settings=`, or override individual fields with explicit `setup()` keyword arguments. Explicit `setup()` kwargs take precedence over values from `settings=`.
 
@@ -76,10 +74,10 @@ Pass a settings object via `settings=`, or override individual fields with expli
 
 `PjxSettings.from_env()` builds settings from the environment:
 
-- `REDIS_URL` — wires a `RedisInvalidationBackend` (which derives cross-request caching)
-- `PJX_INVALIDATION_DB` — wires a `SqliteInvalidationBackend` with the given path (used when `REDIS_URL` is not set)
 - `PJX_REACTIVE_DEV` — enables reactive dev mode when set to `1`, `true`, or `yes`
-- `PJX_HTMX_REDIRECTS` — enables htmx redirect adaptation when set to `1`, `true`, or `yes`
+- `PJX_INJECT_HTMX` — controls htmx runtime injection when set to `1`, `true`, or `yes` (default `true`)
+- `PJX_COMPONENTS_ROOT` — path that triggers component discovery
+- `PJX_STATIC_ROOT` — path to serve static assets from
 
 ```python
 from pyjinhx import PjxSettings, setup
@@ -87,40 +85,13 @@ from pyjinhx import PjxSettings, setup
 setup(app, settings=PjxSettings.from_env())
 ```
 
-See [Configuration API](../api/config.md) for `PjxSettings`, lifespan chaining, and cache defaults.
+See [Configuration API](../api/config.md) for `PjxSettings` and lifespan chaining.
 
 ## Load cache scope
 
-You don't pick a scope — it follows the backend. By default (no `invalidation_backend`), `load()` results are cached **per request only**, the only multi-worker-safe behavior. Configure a cross-worker backend to opt into cross-request caching per worker process:
+Component `load()` results are cached in a request-scoped store: `request_scope()` initializes an empty cache on entry and clears it on exit, so a value loaded once is reused for the rest of that request — this is what dedups the repeated `load()` calls made during the reactive OOB walk. The cache never crosses requests or workers.
 
-```python
-from pyjinhx import setup
-
-setup(app)  # per-request caching (default, multi-worker safe)
-setup(app, invalidation_backend=...)  # cross-request per worker; see integrations.redis
-```
-
-`request_scope()` initializes a request-scoped cache on entry and clears it on exit. With a backend configured, reads also use the process-wide store; otherwise only the request store is used. Within-request caching always happens — it dedups the repeated `load()` calls of the reactive OOB walk.
-
-See [Cache & Invalidation](../api/cache-invalidation.md) and [Reactivity](../reactivity.md).
-
-## Invalidation fan-out
-
-For multi-worker production, set a cross-worker `invalidation_backend` so `invalidate()` fans out to every process (and enables cross-request caching):
-
-```python
-from pyjinhx import PjxSettings, setup
-from pyjinhx.integrations.redis import RedisInvalidationBackend
-
-setup(
-    app,
-    settings=PjxSettings(
-        invalidation_backend=RedisInvalidationBackend("redis://..."),
-    ),
-)
-```
-
-See [Cache & Invalidation](../api/cache-invalidation.md) and [Redis integration](../api/integrations-redis.md).
+See [Reactivity](../reactivity.md).
 
 ## Reactive dev mode
 

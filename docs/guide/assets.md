@@ -49,7 +49,12 @@ Configure how assets are delivered with `AssetMode`:
 | Mode | CSS | JS | Use case |
 |------|-----|----|----------|
 | `INLINE` (default) | `<style>` | inline `<script>` | Zero-config demos |
+| `LINK` | `<link rel="stylesheet">` | `<script src>` | Serve assets as static files, still per-render |
 | `NONE` | silence | silence | Production: serve a pre-built bundle |
+
+`LINK` mode requires a `resolver` (a `Callable[[Path], str]` mapping an asset path to the URL
+it's served from) — pass one to `emit_assets()`/`asset_manifest()`, or it raises `ValueError`.
+`resolver_with_hash` (see [Cache-Busting](#cache-busting)) is a ready-made resolver.
 
 ```python
 from pyjinhx import AssetMode
@@ -90,22 +95,6 @@ pjx_runtime = f"<script>{read_vendored_htmx()}{read_pjx_runtime()}</script>"
 ### CSP
 
 For strict `script-src` policies, use `AssetMode.NONE`, serve assets from a pre-built bundle, and add a nonce or hash for the single inline runtime script (or serve `pjx.js` as a static file and link it yourself).
-
-## Extra Asset Files
-
-Add additional files using the `js` and `css` fields:
-
-```python
-widget = MyWidget(
-    id="w1",
-    title="Hello",
-    js=["path/to/helper.js"],
-    css=["path/to/theme.css"],
-)
-```
-
-!!! warning
-    Missing files emit a warning via the `pyjinhx` logger. Check your logs if assets aren't appearing.
 
 ## Per-Render Manifest
 

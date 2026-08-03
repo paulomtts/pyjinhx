@@ -8,7 +8,7 @@ When you're done you will have used:
 - Template discovery and nesting via typed child fields
 - Co-located JS/CSS and asset delivery modes
 - `request_scope`, `@mutates`, and `AppContext`
-- Reactive `render()` with `ClientBackend` wired in middleware
+- Reactive `render()` with the framework adapter wired in middleware
 - Load-cache scopes and optional invalidation fan-out
 
 ---
@@ -59,7 +59,7 @@ my_app/
 ```
 
 ???+ question "Why this layout?"
-    PyJinHx discovers templates **next to** component classes. Keeping `components/` as the template root lets `Renderer.set_default_environment("./components")` resolve every `.html` file without manual paths. Separating `store.py` from components mirrors how a real app keeps domain logic out of UI classes.
+    PyJinHx discovers templates **next to** component classes. Keeping `components/` as the template root lets `setup(app, components_root="./components")` resolve every `.html` file without manual paths. Separating `store.py` from components mirrors how a real app keeps domain logic out of UI classes.
 
 ---
 
@@ -85,18 +85,18 @@ class TodoCounter(BaseComponent):
 Smoke test in a shell:
 
 ```python
-from pyjinhx import Renderer
+from pyjinhx import RenderSession
 from components.todo_counter import TodoCounter
 
-Renderer.set_default_environment("./components")
-print(TodoCounter(id="counter", remaining=3).render())
+session = RenderSession("./components")
+print(TodoCounter(id="counter", remaining=3).render(session))
 ```
 
 ???+ question "Why BaseComponent and a stable id?"
     `BaseComponent` is a **Pydantic model** — fields are validated at construction time. The `id` is the stable DOM identity: HTMX targets, registry lookups, and reactive `data-pjx-id` stamping all depend on it. Omitted ids auto-generate a `pjx-<n>` value; reactive components additionally default to the kebab-cased class name. Explicit ids matter when you need a stable swap target across requests.
 
-???+ question "Why set_default_environment?"
-    The renderer needs one search root for templates (and co-located assets). You set it once at startup (module import or app factory), not per render.
+???+ question "Why a RenderSession?"
+    The renderer needs one search root for templates (and co-located assets). A `RenderSession` roots discovery at that directory for the render call; inside a real app, `setup(app, components_root=...)` and its request-scoped middleware do this for you automatically (Step 6), so routes just call `.render()`.
 
 ---
 
@@ -204,20 +204,20 @@ TodoPanel(id="panel", counter=TodoCounter(id="counter", remaining=2)).render()
 ```python
 from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
-from pyjinhx import Renderer
+from pyjinhx import RenderSession
 
 from components.todo_counter import TodoCounter
 from components.todo_panel import TodoPanel
 
-Renderer.set_default_environment("./components")
 app = FastAPI()
+session = RenderSession("./components")
 
 
 @app.get("/", response_class=HTMLResponse)
 def index():
-    return TodoPanel(
-        id="panel", counter=TodoCounter(id="counter", remaining=3)
-    ).render()
+    return TodoPanel(id="panel", counter=TodoCounter(id="counter", remaining=3)).render(
+        session
+    )
 ```
 
 Run: `uvicorn app:app --reload`
@@ -315,9 +315,8 @@ import store
 class TodoCounter(ReactiveComponent, react={Keys.TODOS}):
     remaining: int = 0
 
-    @classmethod
-    def load(cls) -> "TodoCounter":
-        return cls(id="counter", remaining=store.remaining())
+    def load(self) -> None:
+        self.remaining = store.remaining()
 ```
 
 Define the page shell as a normal `BaseComponent` — no special marker required:
@@ -327,7 +326,7 @@ class TodoApp(BaseComponent): ...
 ```
 
 ???+ question "Why ReactiveComponent?"
-    Reactive components declare **what state they derive from** (the `react` class keyword) and **how to rebuild** (`load()`). After a mutation, you return one primary fragment; PyJinHx appends OOB swaps for other mounted regions whose dependencies overlap — you don't list every widget in every route.
+    Reactive components declare **what state they derive from** (the `react` class keyword) and **how to rebuild** (`load()`). `load()` is an ordinary instance method that populates `self`'s fields from the current world — it runs automatically right before a mounted instance renders, so you never call it by hand. After a mutation, you return one primary fragment; PyJinHx appends OOB swaps for other mounted regions whose dependencies overlap — you don't list every widget in every route.
 
     Root full-page renders inject `pjx.js` automatically unless the request already carries `X-PJX-Mounted`. That runtime sends the manifest on every HTMX request so the server knows what's on screen.
 
@@ -385,14 +384,14 @@ Route (the `TodoItemRow` it renders is the instance-keyed row **we define in Ste
 @app.post("/rows/{todo_id}/toggle", response_class=HTMLResponse)
 def toggle_row(todo_id: int):
     store.toggle(todo_id)
-    return TodoItemRow.render(todo_id)
+    return TodoItemRow(todo_id=todo_id).render()
 ```
 
-???+ question "Why @mutates and ClientBackend?"
+???+ question "Why @mutates and the framework adapter?"
     - **`@mutates`** — after a store change, invalidate the `load()` cache and accumulate pending state keys for the next reactive `render()`.
-    - **`ClientBackend`** (wired via `setup()`) — supplies `X-PJX-Mounted`, `X-PJX-Trigger`, and `X-PJX-Assets` so OOB swaps run without framework kwargs on `render()`.
+    - **The framework adapter** (`FastAPIBackend`, wired via `setup()`) — supplies `X-PJX-Mounted`, `X-PJX-Trigger`, and `X-PJX-Assets` so OOB swaps run without framework kwargs on `render()`.
 
-    `render()` on the **class** auto-calls `load()` — routes never call `load()` manually.
+    `pjx_mount()` auto-calls the instance's `load()` right before it renders — routes construct the instance and call `render()`, never `load()` directly.
 
 ---
 
@@ -408,19 +407,14 @@ class TodoItemRow(ReactiveComponent, react={Keys.TODOS}):
     title: str = ""
     done: bool = False
 
-    @classmethod
-    def load(cls, todo_id: int | str) -> "TodoItemRow":
-        resolved_id = int(todo_id)  # cache wrapper passes the key as a string
-        todo = store.get(resolved_id)
-        return cls(
-            id=f"row-{resolved_id}",
-            todo_id=resolved_id,
-            title=todo.text,
-            done=todo.done,
-        )
+    def load(self) -> None:
+        self.id = f"row-{self.todo_id}"
+        todo = store.get(self.todo_id)
+        self.title = todo.text
+        self.done = todo.done
 ```
 
-The `load()` key arrives as a **string** from the cache wrapper (the manifest serialises to JSON), so annotate `int | str` and convert inside `load()`.
+On the OOB reload path the key arrives as a **string** from the cache wrapper (the manifest serialises to JSON), so `self.todo_id` may need coercing to `int` before use if your `load()` compares it against non-string ids.
 
 Template (note `data-pjx-loading` — covered in Step 11):
 
@@ -432,8 +426,8 @@ Template (note `data-pjx-loading` — covered in Step 11):
 </li>
 ```
 
-???+ question "Why PjxKey and load(cls, todo_id)?"
-    A parameter after `cls` makes the type **instance-keyed**. `PjxKey` stamps `data-pjx-load` for OOB round-trip. Use the same field in templates (`{{ todo_id }}`). `react={Keys.TODOS}` is pub-sub — all mounted rows with matching state keys may OOB-reload when todos change.
+???+ question "Why PjxKey?"
+    A field annotated with `PjxKey()` makes the type **instance-keyed**: it stamps `data-pjx-load` for the OOB round-trip, and `load()` reads it straight off `self` instead of taking a parameter. Use the same field in templates (`{{ todo_id }}`). `react={Keys.TODOS}` is pub-sub — all mounted rows with matching state keys may OOB-reload when todos change.
 
 ---
 
@@ -499,32 +493,13 @@ setup(app, context_factory=lambda request: AppLoadContext(store=store))
 
 ## Step 13 — Load cache scope and invalidation
 
-You don't pick a cache scope — it follows the backend. By default (no `invalidation_backend`),
-`load()` results cache within each HTTP request, which is multi-worker safe.
-
-| Setup | Behavior |
-|-------|----------|
-| no backend (default) | Per-request caching — multi-worker safe without Redis |
-| `invalidation_backend` set | Cross-request caching per worker, with evictions fanned out across workers |
-
-Multi-worker fan-out (also enables cross-request caching):
-
-```python
-import os
-
-from pyjinhx import PjxSettings, setup
-from pyjinhx.integrations.redis import RedisInvalidationBackend
-
-setup(
-    app,
-    settings=PjxSettings(
-        invalidation_backend=RedisInvalidationBackend(os.environ["REDIS_URL"]),
-    ),
-)
-```
+`load()` results are cached **within a single HTTP request** — the cache lives on the
+request-scoped session middleware wires (Step 6) and is discarded when the request ends.
+That scope is what makes the cache multi-worker safe by default: nothing survives past
+one request, so there's nothing to keep consistent across workers.
 
 ???+ question "Why cache at all?"
-    A single page may call `TodoCounter.load()` many times during composition and OOB walks. Caching `(class, load_arg) → component snapshot` avoids repeated store/DB work. **Invalidation** (`@mutates` or `LoadCache.invalidate`) evicts entries when state changes — cache is a performance layer, not the source of truth.
+    A single page may call a component's `load()` many times during composition and OOB walks. Caching `(class, load_arg) → component snapshot` avoids repeated store/DB work. **Invalidation** (`@mutates`, which calls `pyjinhx.reactive.cache.invalidate()` under the hood) evicts entries when state changes — cache is a performance layer, not the source of truth.
 
     If toggles feel stale, check that `@mutates` dirtied a key your rows actually
     declare via `react=`. Rows here use **pub-sub** on `{Keys.TODOS}` — every mounted
@@ -537,23 +512,27 @@ setup(
 ## Step 14 — Production assets
 
 Build a single CSS and JS bundle from all component assets and serve them as static files. Set
-both modes to `NONE` so components don't duplicate what the bundle already ships.
+both `css_mode` and `js_mode` to `NONE` on the session so components don't duplicate what the
+bundle already ships.
 
 ```python
-from pyjinhx import AssetMode, Renderer
-from pyjinhx.finder import Finder
+from pyjinhx import AssetMode
+from pyjinhx.assets import all_assets
 
-# Build bundles at startup — see guide/assets.md "One-bundle deployment"
-CSS_PATHS, JS_PATHS = Finder("app/components").all_assets()
-Renderer.set_default_js_mode(AssetMode.NONE)
-Renderer.set_default_css_mode(AssetMode.NONE)
+# Build bundles at startup, after components are registered via setup() —
+# see guide/assets.md "One-bundle deployment"
+css_paths, js_paths = all_assets()
 ```
 
 Link `bundle.css` and `bundle.js` in your layout `<head>`. Full-page renders then emit only
-the HTML — no inline asset tags.
+the HTML — no inline asset tags:
 
 ```python
-TodoApp(...).render()  # assets come from the bundle, not inline tags
+session = RenderSession("./components")
+session.css_mode = AssetMode.NONE
+session.js_mode = AssetMode.NONE
+
+TodoApp(...).render(session)  # assets come from the bundle, not inline tags
 ```
 
 ---
@@ -568,15 +547,16 @@ print(format_dependency_graph())
 ```
 
 ???+ question "Why enable_reactive_dev?"
-    Reactivity bugs are often silent (missing `ClientBackend`, wrong `react` keys). Dev mode turns those into log warnings or strict exceptions during development.
+    Reactivity bugs are often silent (missing framework adapter, wrong `react` keys). Dev mode turns those into log warnings or strict exceptions during development.
 
 ---
 
 ## Step 16 — Built-in UI kit (optional)
 
 ```python
-import pyjinhx.builtins  # register templates
-from pyjinhx.builtins import PJXAlert, PJXCard, PJXModal
+from pyjinhx.builtins.ui.pjx_alert.pjx_alert import PJXAlert
+from pyjinhx.builtins.ui.pjx_card.pjx_card import PJXCard
+from pyjinhx.builtins.ui.pjx_modal.pjx_modal import PJXModal
 ```
 
 ???+ question "Why builtins?"
@@ -592,10 +572,10 @@ The per-step **Why?** panels above cover the *why*; this is the at-a-glance *wha
 
 | Tier | Pieces |
 |------|--------|
-| **Required** | `setup(components_root=...)` · `request_scope()` middleware · root full-page render · `ReactiveComponent` (`react={...}` + `load()`) · `@mutates(Keys.…)` on mutations · `setup()` (wires `FastAPIClientBackend`) · `PjxKey` on keyed rows |
+| **Required** | `setup(components_root=...)` · `request_scope()` middleware · root full-page render · `ReactiveComponent` (`react={...}` + `load()`) · `@mutates(Keys.…)` on mutations · `setup()` (wires `FastAPIBackend`) · `PjxKey` on keyed rows |
 | **Auto-provided** | HTMX (vendored, inlined on reactive root renders — disable with `setup(inject_htmx=False)`) |
 | **Recommended** | `AppContext` · `data-pjx-loading` indicators · `enable_reactive_dev()` in dev |
-| **Production** | `AssetMode.NONE` + pre-built bundle (`Finder.all_assets()`) · `InvalidationBackend` for multi-worker `PROCESS` cache |
+| **Production** | `AssetMode.NONE` + pre-built bundle (`pyjinhx.assets.all_assets()`) |
 
 ---
 

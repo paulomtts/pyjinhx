@@ -16,7 +16,7 @@ def setup(
 ) -> PjxSettings
 ```
 
-`invalidation_backend`, `reactive_dev`, and any other `PjxSettings` field are passed through `**kwargs`, not declared as their own keywords — an unrecognized keyword raises `TypeError`. `components_root` and `static_root` default to an unset sentinel rather than `None`, so a caller can pass every field through unconditionally without needing to say anything about the ones it was never given; explicitly passing `None` is a real value and does override.
+`reactive_dev`, `inject_htmx`, and any other `PjxSettings` field are passed through `**kwargs`, not declared as their own keywords — an unrecognized keyword raises `TypeError`. `components_root` and `static_root` default to an unset sentinel rather than `None`, so a caller can pass every field through unconditionally without needing to say anything about the ones it was never given; explicitly passing `None` is a real value and does override.
 
 `components_root` triggers component discovery (`build_registry()`) over that directory; it works with or without an `app`. `static_root` mounts a `StaticFiles` app at `/static` (name `"static"`) and therefore requires an `app` — passing it with `app=None` raises `TypeError`. When omitted, both are no-ops, and the static mount is covered by the idempotency guard, so a second `setup()` won't double-mount.
 
@@ -46,7 +46,7 @@ Idempotent: a second `setup(app, ...)` on the same app is a no-op.
 
 When `app` is provided, pyjinhx wraps `app.router.lifespan_context`:
 
-1. `configure_pyjinhx(settings)` — derive cache scope from the backend, optional invalidation listener, reactive dev
+1. `configure_pyjinhx(settings)` — publish settings for the process, apply reactive dev
 2. Your existing lifespan startup (if any)
 3. Serve traffic
 4. Your existing lifespan shutdown
@@ -59,11 +59,16 @@ Does **not** compose deprecated `@app.on_event("startup")` handlers — use the 
 ```python
 @dataclass(frozen=True)
 class PjxSettings:
-    invalidation_backend: InvalidationBackend | None = None
     reactive_dev: bool = False
+    inject_htmx: bool = True
+    components_root: Path | str | None = None
+    static_root: Path | str | None = None
 ```
 
-The load-cache scope is not a field — it is derived from `invalidation_backend`. A backend (kept consistent across workers) enables cross-request caching per worker process; without one, `load()` results are cached per request only.
+- `reactive_dev` — enables reactive dev guardrails when true.
+- `inject_htmx` — stored only; how it maps onto the session's asset modes is pending design.
+- `components_root` — directory walked for component discovery; `None` is a no-op.
+- `static_root` — directory mounted as static assets when `setup(app, ...)` is given an app; `None` is a no-op.
 
 ### from_env
 
@@ -74,9 +79,10 @@ def from_env(cls) -> PjxSettings
 
 | Variable | Default | Effect |
 |----------|---------|--------|
-| `REDIS_URL` | unset | Auto-wire `RedisInvalidationBackend` (derives cross-request caching) |
-| `PJX_INVALIDATION_DB` | unset | Auto-wire `SqliteInvalidationBackend` from a SQLite file path (single-host; ignored if `REDIS_URL` is also set) |
-| `PJX_REACTIVE_DEV` | off | Enable dev guardrails when `1`/`true`/`yes` |
+| `PJX_REACTIVE_DEV` | off | Sets `reactive_dev`; accepts `1`/`true`/`yes`/`on` (and `0`/`false`/`no`/`off`) |
+| `PJX_INJECT_HTMX` | on | Sets `inject_htmx`; same boolean parsing as above |
+| `PJX_COMPONENTS_ROOT` | unset | Sets `components_root` from a filesystem path |
+| `PJX_STATIC_ROOT` | unset | Sets `static_root` from a filesystem path |
 
 ## configure_pyjinhx / shutdown_pyjinhx
 
@@ -87,5 +93,5 @@ configure_pyjinhx(settings)  # startup
 shutdown_pyjinhx()  # shutdown
 ```
 
-When an `invalidation_backend` is configured, its listener starts and cross-request (process-wide) caching is enabled; otherwise caching is per-request.
+`configure_pyjinhx` publishes `settings` as the process's current configuration (readable via `current_settings()`) and applies `reactive_dev` by toggling `pyjinhx.dev`, if that module is importable. `shutdown_pyjinhx` resets the process back to default `PjxSettings()` and disables reactive dev the same way.
 
