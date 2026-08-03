@@ -18,7 +18,7 @@ class Card(BaseComponent):
     subtitle: str = ""  # Optional with default
 ```
 
-`BaseComponent` also provides `js` and `css` fields (lists of extra asset paths) — see [Asset Collection](assets.md).
+Extra CSS/JS assets are auto-discovered from adjacent `.css`/`.js` files named after the component (kebab-case) — see [Asset Collection](assets.md) — not declared as fields on the class.
 
 ### 2. HTML Template
 
