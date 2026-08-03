@@ -104,7 +104,7 @@ nav:
           - Mutations, Keys & PjxContext: api/mutations-keys-context.md
       - Internals:
           - Parser & Tag: api/parser.md
-          - Finder: api/finder.md
+          - Discovery & Assets: api/finder.md
           - Assets API: api/assets-api.md
           - Client Backend: api/client-backend.md
           - Cache & Invalidation: api/cache-invalidation.md
