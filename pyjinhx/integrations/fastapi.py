@@ -93,7 +93,7 @@ class PjxScopeMiddleware(BaseHTTPMiddleware):
         request.state.pjx_mounted = MountedManifest.parse(request)
         request.state.pjx_assets = LoadedAssets.parse(request)
         request.state.pjx_trigger = TriggerManifest.parse(request)
-        request.state.pjx_context = (
+        load_context = (
             self.context_factory(request) if self.context_factory is not None else None
         )
         # The `with` block, not a manual enter/exit: a handler exception must
@@ -101,7 +101,7 @@ class PjxScopeMiddleware(BaseHTTPMiddleware):
         # wrapper stashes the request on the session too, so inject_runtime()
         # can answer "is this mounted?" even when the handler's own signature
         # never declares a Request parameter.
-        with request_scope() as session:
+        with request_scope(load_context=load_context) as session:
             session.pjx_request = request  # pyright: ignore[reportAttributeAccessIssue]
             return await call_next(request)
 
