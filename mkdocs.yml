@@ -106,7 +106,7 @@ nav:
           - Template Discovery: api/parser.md
           - Discovery & Assets: api/finder.md
           - Assets API: api/assets-api.md
-          - Client Backend: api/client-backend.md
+          - Integration Backend: api/client-backend.md
           - Cache & Invalidation: api/cache-invalidation.md
   - Migration guide: migration.md
   - Decisions:
