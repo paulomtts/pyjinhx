@@ -17,7 +17,7 @@ from pyjinhx import discovery
 from pyjinhx.component import BaseComponent, _pascal_to_snake
 from pyjinhx.descriptor import ClassDescriptor
 from pyjinhx.reactive.component import PjxKey, ReactiveComponent
-from pyjinhx.rendering import render_level
+from pyjinhx.rendering import render, render_level
 from pyjinhx.segments import serialize
 from pyjinhx.session import RenderSession, request_scope
 
@@ -205,6 +205,20 @@ def test_zero_key_reactive_child_is_loaded_with_no_args():
         render_level(ContainerComp(), session)
 
     assert len(_load_calls) == 1
+
+
+def test_reactive_root_passed_straight_to_render_is_loaded_automatically():
+    """A component passed as the request's own root never goes through
+    _fill_children (only a ChildRef-discovered child does), so render() itself
+    must route it through load() before rendering — no manual pjx_mount()
+    call needed anywhere in this test."""
+    session = RenderSession(template_dir="tests/templates")
+
+    with request_scope():
+        html = render(PJXKeyedWidget(row_id=9), session=session)
+
+    assert _load_calls == [9]
+    assert "loaded-9" in html
 
 
 def test_json_string_non_key_attr_is_coerced_before_assignment():

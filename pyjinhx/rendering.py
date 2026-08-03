@@ -322,6 +322,37 @@ def render_level(
     return level
 
 
+def _mount_root(component: BaseComponent) -> BaseComponent:
+    """Route a request's root component through its own cache-routed ``load()``.
+
+    _fill_children/_load_reactive_child only ever see a component discovered
+    as a ChildRef inside some parent's template — the root passed straight
+    into render() has no parent to do that for it, so it never goes through
+    that path at all. This mirrors it for the one entry point that isn't a
+    ChildRef: a reactive class is recognised by ``_pjx_key_field`` (present,
+    possibly None, only on ReactiveComponent subclasses), loaded via its own
+    key field's current value, and every field but ``id`` is copied from the
+    loaded result onto the instance the caller already holds — so callers
+    that captured a reference to ``component`` keep seeing its final state.
+    A plain component carries no marker at all and passes through untouched.
+    """
+    cls = type(component)
+    key_field = getattr(cls, "_pjx_key_field", _NO_KEY_FIELD)
+    if key_field is _NO_KEY_FIELD:
+        return component
+    key_args = {}
+    if key_field is not None:
+        key_args[key_field] = getattr(component, key_field)
+    loaded = cast(Any, cls).load(**key_args)
+    if loaded is component:
+        return component
+    names = list(cls.model_fields) + list(loaded.__pydantic_extra__ or ())
+    for name in names:
+        if name != "id":
+            setattr(component, name, getattr(loaded, name))
+    return component
+
+
 def render(component: BaseComponent, session: "RenderSession | None" = None) -> str:
     """Render a component to a final HTML string (public API).
 
@@ -355,6 +386,7 @@ def render(component: BaseComponent, session: "RenderSession | None" = None) -> 
     """
     if session is None:
         session = RenderSession()
+    component = _mount_root(component)
     level = render_level(component, session)
     # The one join at the top, and the one place assets are emitted: every
     # component in the tree has already fired on_rendered by now, so the
