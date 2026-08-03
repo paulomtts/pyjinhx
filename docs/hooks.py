@@ -10,8 +10,9 @@ sys.path.insert(0, HERE)
 
 from demos import DEMOS
 
+from pyjinhx.assets import AssetMode, emit_assets
 from pyjinhx.component import BaseComponent, _pascal_to_snake
-from pyjinhx.session import request_scope
+from pyjinhx.session import RenderSession, accumulate_assets, request_scope
 
 
 def pascal_case_to_kebab_case(name: str) -> str:
@@ -27,6 +28,7 @@ _PAGE = """<!doctype html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="stylesheet" href="demo-base.css">
+{assets}
 </head>
 <body>
 {markup}
@@ -73,5 +75,31 @@ def on_post_build(config):
     )
     for name, (factory, _height) in DEMOS.items():
         path = os.path.join(out, f"{pascal_case_to_kebab_case(name)}.html")
-        with open(path, "w", encoding="utf-8") as fh, request_scope(template_dir="/"):
-            fh.write(_PAGE.format(markup=demo_markup(factory())))
+        # Build and hook the session before request_scope() binds it: demo
+        # factories call component.render() with no argument, which renders
+        # against whatever current_session() returns, so accumulate_assets
+        # must already be subscribed by then.
+        session = RenderSession(template_dir="/")
+        session.on_rendered.append(accumulate_assets)
+        # BaseComponent.render() (what every factory calls, with no argument)
+        # is the top-level rendering.render() API, which always appends its
+        # own emit_assets(session) call to whatever it returns. A demo whose
+        # factory renders N components against this one shared session would
+        # otherwise bake N (growing, duplicate) copies of the same assets
+        # into markup itself. NONE suppresses that per-call self-emission —
+        # accumulate_assets still fires and fills css_assets/js_assets either
+        # way, since it is wired to on_rendered, not gated by these modes —
+        # so the sets are complete once factory() returns and css_mode/js_mode
+        # flip back to INLINE for the single, real emit_assets call below.
+        session.css_mode = AssetMode.NONE
+        session.js_mode = AssetMode.NONE
+        with request_scope(template_dir="/", session=session):
+            markup = demo_markup(factory())
+        # No inject_runtime: these pages are static snapshots in an iframe
+        # and no demo needs htmx/pjx.js to paint. LINK mode is never used, so
+        # emit_assets needs no resolver.
+        session.css_mode = AssetMode.INLINE
+        session.js_mode = AssetMode.INLINE
+        assets = emit_assets(session)
+        with open(path, "w", encoding="utf-8") as fh:
+            fh.write(_PAGE.format(markup=markup, assets=assets))
