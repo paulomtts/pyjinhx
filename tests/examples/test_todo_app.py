@@ -58,3 +58,32 @@ class TestAdd:
 
     def test_missing_text_is_a_422(self, client):
         assert client.post("/todos", data={}).status_code == 422
+
+
+class TestToggle:
+    def test_flips_the_todo_in_the_store(self, client):
+        todo_id = todo_store.all_todos()[0].id
+
+        response = client.post(f"/rows/{todo_id}/toggle")
+
+        assert response.status_code == 200
+        assert todo_store.get(todo_id).done is True
+
+    def test_returns_the_row_in_its_new_state(self, client):
+        todo_id = todo_store.all_todos()[0].id
+
+        html = client.post(f"/rows/{todo_id}/toggle").text
+
+        assert 'class="todo done"' in html
+        assert f'data-pjx-id="row-{todo_id}"' in html
+
+    def test_toggling_twice_returns_to_open(self, client):
+        todo_id = todo_store.all_todos()[0].id
+
+        client.post(f"/rows/{todo_id}/toggle")
+        client.post(f"/rows/{todo_id}/toggle")
+
+        assert todo_store.get(todo_id).done is False
+
+    def test_an_unknown_id_is_a_404(self, client):
+        assert client.post("/rows/9999/toggle").status_code == 404
