@@ -1,4 +1,4 @@
-# Renderer
+# Render
 
 Rendering pipeline used by `BaseComponent.render()` and the free `render()` function: turns a component instance into a finished HTML string, expanding nested PascalCase tags and collecting JavaScript/CSS along the way.
 
