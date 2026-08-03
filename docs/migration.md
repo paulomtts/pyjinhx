@@ -1,5 +1,207 @@
 # Migration guide
 
+## 0.36.x → 1.0 (pyjinhx v2)
+
+pyjinhx 1.0 is a rebuild, not an increment. The component model, template syntax, props,
+slots, reactivity, and every builtin are the same as 0.36 — a v0.x app ports without a
+redesign. What changed is a short list of behaviors that the rebuild deliberately did not
+carry over, each one below with what to do instead.
+
+The v2 package currently imports as `pyjinhx2` while it ships alongside 0.36; renaming it
+back to `pyjinhx` for the 1.0 release is tracked separately (TODO(#539)). Examples below use
+the import path as it exists today.
+
+### SFC `{# python #}` blocks removed (breaking)
+
+Single-file components — a `{# python #}` block at the top of a template declaring the
+component class inline — do not exist in v2 and are not deferred (ADR 0008). There is no
+compatibility shim and no flag to re-enable them.
+
+**Migration:** split the block into a normal Python class next to the template. Discovery
+pairs them by name, so nothing else changes.
+
+```html
+<!-- BEFORE (0.36): card.html -->
+{# python
+class Card(BaseComponent):
+    title: str
+#}
+<div class="card"><h2>{{ title }}</h2></div>
+```
+
+```python
+# AFTER (1.0): card.py
+from pyjinhx2 import BaseComponent
+
+
+class Card(BaseComponent):
+    title: str
+```
+
+```html
+<!-- AFTER (1.0): card.pjx -->
+<div class="card"><h2>{{ title }}</h2></div>
+```
+
+### Public `Parser` / `Tag` API removed (breaking)
+
+The HTML parse-tree API (`Parser`, `Tag`, and the node-walking helpers around them) is not
+public in v2 and has no compat shim (ADR 0011). v2 does not build a parse tree at all — it
+composes a segment model, and exposes those types instead.
+
+```python
+# BEFORE (0.36)
+from pyjinhx.parser import Parser
+
+tags = Parser(html).parse()
+for tag in tags:
+    print(tag.name, tag.attrs)
+```
+
+```python
+# AFTER (1.0) — no equivalent public API.
+# If you were parsing rendered output to inspect it, parse it with an HTML library
+# you control (e.g. html.parser, lxml, BeautifulSoup) instead of pyjinhx internals.
+```
+
+If you used `Parser`/`Tag` for something the segment model should cover, open an issue —
+it is not a supported extension point today.
+
+### Stray fields require the open subclass (breaking)
+
+In 0.36, `BaseComponent` accepted extra fields — any attribute passed on a tag that was not
+a declared prop landed on the instance. In v2, `BaseComponent` is strict: undeclared fields
+raise a validation error. Accepting extras is opt-in via the open subclass (ADR 0006), which
+is what classless `component()` and `{#def#}` prop headers are built on, so those keep
+working unchanged.
+
+```python
+# BEFORE (0.36) — extras silently accepted on any component
+class Card(BaseComponent):
+    title: str
+
+
+Card(title="Hi", subtitle="stray")  # subtitle absorbed
+```
+
+```python
+# AFTER (1.0) — declare it, or subclass the open base
+class Card(BaseComponent):
+    title: str
+    subtitle: str | None = None  # declare what you actually pass
+```
+
+Undeclared tag attributes are still passed through to the rendered root element — that is
+unchanged. Only *fields on a strict component* are affected.
+
+### Component slots are opaque (breaking)
+
+A slot holding a component is an opaque node in v2 (ADR 0003). You can test it for
+truthiness and render it, and `{{ field.props.x }}` / `{{ field }}` still work — but string
+filters applied to it now raise a clear error instead of silently operating on rendered
+markup. Slots holding **strings** are unchanged and still render raw HTML.
+
+```html
+<!-- BEFORE (0.36): string filters happened to work on a component slot -->
+{% if header|trim %}<div class="hd">{{ header|upper }}</div>{% endif %}
+```
+
+```html
+<!-- AFTER (1.0): truthiness + render, or reach into props -->
+{% if header %}<div class="hd">{{ header }}</div>{% endif %}
+{{ header.props.title }}
+```
+
+### Single-root violations now raise (breaking)
+
+The single-root invariant is not new (it arrived in 0.18), but 0.36 still had a fallback
+path that silently stamped attributes somewhere reasonable when a template had zero or
+multiple top-level elements. v2 has no fallback: a template that is not exactly one root
+element raises at render time, always.
+
+```html
+<!-- BEFORE (0.36): sometimes tolerated, attributes landed on the first element -->
+<h2>{{ title }}</h2>
+<p>{{ body }}</p>
+```
+
+```html
+<!-- AFTER (1.0): one root, required -->
+<section>
+    <h2>{{ title }}</h2>
+    <p>{{ body }}</p>
+</section>
+```
+
+### Templates are `.pjx` + snake_case only (breaking)
+
+Template autodiscovery in v2 probes exactly one filename per component: the snake_case form
+of the class name with a `.pjx` extension (ADR 0007). The 0.36 probe list — `.html` and
+`.jinja` extensions, and kebab-case filenames — is gone.
+
+```text
+BEFORE (0.36): any of these resolved for class UserCard
+  user_card.html   user-card.html   user_card.jinja   user-card.jinja   user_card.pjx
+
+AFTER (1.0): exactly one
+  user_card.pjx
+```
+
+**Migration:** rename your component templates. An explicit `template=` path on the class
+still overrides discovery, unchanged.
+
+### Registry cross-reference in templates removed (breaking)
+
+Templates can no longer reach a *peer* component instance through the registry — the
+template-visible cross-reference lookup is gone with no replacement (ADR 0004, ADR 0009).
+The instance registry still exists, but it is reactivity-only now: it maps name+id to an
+instance and its cached render so OOB fan-out and not-dirtied cache hits work. It is not a
+template-visible lookup table.
+
+**Migration:** pass what you need. If component B rendered a value out of component A, make
+that value a prop on B (or read it from shared state in `load()` on a `ReactiveComponent`),
+rather than reaching across the tree at render time. There is no flag to restore the old
+behavior — this is the change most likely to require a small refactor, and it is the reason
+render cycles are now bounded by the nesting/`load()` chain alone.
+
+### OOB nesting dedup is structural now (no action needed)
+
+When a reactive update dirties both a parent and a child, only the outermost swap is sent.
+That behavior is unchanged. What changed is how it is computed: 0.36 used a heuristic over
+rendered markup, while v2 reads containment straight off the segment tree, which knows the
+nesting structure exactly. Anywhere the heuristic and the structure disagreed, the structure
+is right — so the only expected difference is fewer redundant swaps, never a missing one.
+Nothing to change in your code.
+
+### Cross-request `InvalidationBackend` is not in 1.0 yet (deferred)
+
+> **Deferred, not removed.** The cross-request invalidation backends (Redis, SQLite) are
+> not part of the 1.0 release and are planned for a post-1.0 version (ADR 0011).
+
+The **per-request** load cache ships in 1.0 and is unchanged — single-process apps see no
+difference. If you configured a Redis or SQLite backend to share invalidation across
+processes, that configuration has no 1.0 equivalent yet; stay on 0.36 until it lands if you
+depend on it.
+
+### Still removed from earlier versions
+
+`PJXPanel` and `PJXLazyPanel` were removed before v2 and stay removed — v2 does not
+resurrect them. Use `PJXTabPanel` / `PJXLazyLoad` as in later 0.x releases. Every other
+builtin ports to 1.0.
+
+### Internals with no migration
+
+Two mechanism changes are visible in the source but not in your app: root attributes are
+stamped by splicing at a recorded offset instead of reparsing the document (same override
+semantics), and the render cycle guard is simpler now that cross-reference resolution is
+gone. No action needed for either.
+
+Finally, `pjx-ls` (the language server) is out of scope for 1.0 and has not been updated for
+v2 yet.
+
+---
+
+
 ## 0.34.x → next (`depends_on()` removed)
 
 ### `ReactiveComponent.depends_on()` removed (breaking)
