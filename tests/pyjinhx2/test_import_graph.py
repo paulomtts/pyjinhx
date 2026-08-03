@@ -1,8 +1,11 @@
 """The declared import direction for pyjinhx2, enforced statically.
 
-component.py sits below descriptor.py and render.py and must never reach up into
-them for anything but the one sanctioned edge: the ClassDescriptor it builds and
-attaches in __pydantic_init_subclass__ (#271). descriptor.py and segments.py are
+component.py sits below descriptor.py and must never reach up into it for
+anything but the one sanctioned edge: the ClassDescriptor it builds and attaches
+in __pydantic_init_subclass__ (#271). It also reaches up into render.py and
+session.py, but only from inside BaseComponent.render()'s method body — never at
+module scope, since render.py imports BaseComponent at import time and a
+module-level edge back would be a real cycle (#643). descriptor.py and segments.py are
 import-pure — stdlib only. Per-module purity is also asserted in
 test_descriptor.py and test_segments.py; this file is the whole-package view, so
 a new module cannot quietly add an edge nobody declared.
@@ -317,9 +320,19 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
     "client.inject": frozenset(
         {"pyjinhx2.assets", "pyjinhx2.client", "pyjinhx2.session"}
     ),
+    # descriptor/props_header are ordinary upward reads. render and session are
+    # the reverse edges behind BaseComponent.render(): both are imported inside
+    # the method body, never at module scope, because render.py imports
+    # BaseComponent at import time and a module-level edge back would be a real
+    # cycle — the same local-import escape hatch assets.py already uses.
     "component": frozenset(
-        {"pyjinhx2.descriptor", "pyjinhx2.props_header"}
-    ),  # the stale-header probe needs template_has_props_header
+        {
+            "pyjinhx2.descriptor",
+            "pyjinhx2.props_header",
+            "pyjinhx2.render",
+            "pyjinhx2.session",
+        }
+    ),
     # config sits above everything: it may read the spine to register
     # components and it defers to siblings that own the app wiring and dev
     # tooling. The reverse edge — any spine, reactive/ or client/ module

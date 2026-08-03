@@ -3,9 +3,11 @@
 All components reject undeclared kwargs at construction time. This keeps the core
 lightweight and lets the renderer avoid walking arbitrary instance attributes.
 
-Imports pydantic and ClassDescriptor from descriptor.py (sole sanctioned import
-from a higher-level module). The import graph is enforced statically by
-tests/pyjinhx2/test_import_graph.py.
+Imports pydantic and ClassDescriptor from descriptor.py at module scope. The
+render() convenience method also reaches upward into render.py and session.py,
+but only from inside the method body — a module-level edge to render.py would
+be a circular import, since render.py imports BaseComponent at import time. The
+import graph is enforced statically by tests/pyjinhx2/test_import_graph.py.
 """
 
 import itertools
@@ -15,7 +17,7 @@ import sys
 import types
 from collections.abc import Mapping
 from pathlib import Path
-from typing import Annotated, Any, ClassVar, Union, get_args, get_origin
+from typing import TYPE_CHECKING, Annotated, Any, ClassVar, Union, get_args, get_origin
 
 from pydantic import (
     AfterValidator,
@@ -27,6 +29,11 @@ from pydantic import (
 )
 
 from pyjinhx2.descriptor import ClassDescriptor
+
+if TYPE_CHECKING:
+    # Type-only: the runtime import lives inside render() to avoid the cycle
+    # with render.py.
+    from pyjinhx2.session import RenderSession
 
 _auto_id_counter = itertools.count(1)
 
@@ -499,6 +506,25 @@ class BaseComponent(BaseModel):
             else:
                 props[name] = value
         return props
+
+    def render(self, session: "RenderSession | None" = None) -> str:
+        """Render this component to a finished HTML string.
+
+        Args:
+            session: RenderSession to render under. Defaults to the session
+                bound by the active request_scope(), or — outside any scope —
+                to the fresh RenderSession the free render() builds.
+
+        Returns:
+            The component's rendered markup.
+        """
+        # Imported here, not at module scope: render.py imports BaseComponent at
+        # import time, so a module-level edge back into it is a real circular
+        # import. session.py carries no cycle, but stays local for symmetry.
+        from pyjinhx2.render import render as _render
+        from pyjinhx2.session import current_session
+
+        return _render(self, session or current_session())
 
     def pjx_mount(self) -> None:
         """Fire once, on this instance, right before its recursive render.
