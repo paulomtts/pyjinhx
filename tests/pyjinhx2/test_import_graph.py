@@ -648,6 +648,38 @@ def test_nothing_imports_context():
     assert importers == set()
 
 
+def module_level_internal_imports(path: Path) -> set[str]:
+    """Every ``pyjinhx2.*`` module name imported at module scope by ``path`` —
+    i.e. only the file's top-level statements, never descending into a
+    function or class body. This is what distinguishes a real module-scope
+    edge (which can create an import cycle) from the local-import escape
+    hatch component.py uses for render.py/session.py inside render()'s body."""
+    tree = ast.parse(path.read_text(encoding="utf-8"))
+    found: set[str] = set()
+    for node in tree.body:
+        if isinstance(node, ast.Import):
+            names = [alias.name for alias in node.names]
+        elif isinstance(node, ast.ImportFrom):
+            names = [node.module or ""]
+        else:
+            continue
+        found.update(n for n in names if n == "pyjinhx2" or n.startswith("pyjinhx2."))
+    return found
+
+
+def test_component_only_imports_render_and_session_inside_a_method_body():
+    """The docstring above and the ALLOWED_INTERNAL_IMPORTS comment on
+    "component" both claim render.py/session.py are reached only from inside
+    BaseComponent.render()'s method body, never at module scope — because
+    render.py imports BaseComponent at import time, so a module-level edge
+    back would be a real cycle (#643). Assert that claim directly: the whole
+    file's edge table above passes even if the import moves to module scope,
+    since it doesn't distinguish where in the file the import lives."""
+    module_level = module_level_internal_imports(PACKAGE_ROOT / "component.py")
+    assert "pyjinhx2.render" not in module_level
+    assert "pyjinhx2.session" not in module_level
+
+
 def test_no_render_spine_module_declares_a_reactive_import():
     """FORBIDDEN per architecture-overview.md: anything in the render spine
     importing reactive/. pyjinhx2/reactive/ doesn't exist yet (#288), so this
