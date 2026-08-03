@@ -41,7 +41,7 @@ pip install fastapi uvicorn
 ## Verify Installation
 
 ```python
-from pyjinhx import BaseComponent, Renderer
+from pyjinhx import BaseComponent, render
 
 print("PyJinHx installed successfully!")
 ```

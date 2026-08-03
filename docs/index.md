@@ -18,9 +18,9 @@ PyJinHx layers optional features on top of a small core. You can stop at any tie
 | Tier | You get | Start here |
 |------|---------|------------|
 | **1 — Components** | `BaseComponent`, templates, assets | [Quick Start](getting-started/quickstart.md) |
-| **2 — Web app** | Per-request `Registry.request_scope()` | [Registry guide](guide/registry.md) |
+| **2 — Web app** | Per-request `request_scope()` | [Registry guide](guide/registry.md) |
 | **3 — Reactive** | HTMX OOB swaps, `@mutates`, `load()` | [Reactivity](reactivity.md) |
-| **4 — Full wiring** | `PjxContext`, `ClientBackend`, cache, invalidation | [Build an App](getting-started/build-an-app.md) |
+| **4 — Full wiring** | `AppContext`, `ClientBackend`, cache, invalidation | [Build an App](getting-started/build-an-app.md) |
 
 Details: [Usage tiers](guide/usage-tiers.md).
 
@@ -41,14 +41,14 @@ Within Tier 1, PyJinHx offers two complementary approaches:
 
 === "Template-side"
 
-    Use HTML-like syntax with the `Renderer`:
+    Configure template discovery once, then render with the free `render()` function:
 
     ```python
-    from pyjinhx import Renderer
+    from pyjinhx import setup, render
+    from components.ui.button import Button
 
-    Renderer.set_default_environment("./components")
-    renderer = Renderer.get_default_renderer()
-    html = renderer.render('<Button text="Submit" variant="primary"/>')
+    setup(components_root="./components")
+    html = render(Button(text="Submit", variant="primary"))
     ```
 
 ## Next Steps
