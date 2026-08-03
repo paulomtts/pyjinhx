@@ -8,7 +8,7 @@ When you're done you will have used:
 - Template discovery and nesting via typed child fields
 - Co-located JS/CSS and asset delivery modes
 - `request_scope`, `@mutates`, and `AppContext`
-- Reactive `render()` with the framework adapter wired in middleware
+- Reactive `render()` with an `IntegrationBackend` (`FastAPIBackend`) wired by `setup()`
 - Load-cache scopes and optional invalidation fan-out
 
 ---
@@ -85,18 +85,18 @@ class TodoCounter(BaseComponent):
 Smoke test in a shell:
 
 ```python
-from pyjinhx import RenderSession
+from pyjinhx.session import request_scope
 from components.todo_counter import TodoCounter
 
-session = RenderSession("./components")
-print(TodoCounter(id="counter", remaining=3).render(session))
+with request_scope("./components"):
+    print(TodoCounter(id="counter", remaining=3).render())
 ```
 
 ???+ question "Why BaseComponent and a stable id?"
     `BaseComponent` is a **Pydantic model** — fields are validated at construction time. The `id` is the stable DOM identity: HTMX targets, registry lookups, and reactive `data-pjx-id` stamping all depend on it. Omitted ids auto-generate a `pjx-<n>` value; reactive components additionally default to the kebab-cased class name. Explicit ids matter when you need a stable swap target across requests.
 
-???+ question "Why a RenderSession?"
-    The renderer needs one search root for templates (and co-located assets). A `RenderSession` roots discovery at that directory for the render call; inside a real app, `setup(app, components_root=...)` and its request-scoped middleware do this for you automatically (Step 6), so routes just call `.render()`.
+???+ question "Why a template root?"
+    The renderer needs one search root for templates (and co-located assets). In a shell you pass it to `request_scope("./components")` for the duration of the block; in an app you set it once at startup with `setup(app, components_root="./components")` — not per render.
 
 ---
 
@@ -204,20 +204,20 @@ TodoPanel(id="panel", counter=TodoCounter(id="counter", remaining=2)).render()
 ```python
 from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
-from pyjinhx import RenderSession
+from pyjinhx import setup
 
 from components.todo_counter import TodoCounter
 from components.todo_panel import TodoPanel
 
 app = FastAPI()
-session = RenderSession("./components")
+setup(app, components_root="./components")
 
 
 @app.get("/", response_class=HTMLResponse)
 def index():
-    return TodoPanel(id="panel", counter=TodoCounter(id="counter", remaining=3)).render(
-        session
-    )
+    return TodoPanel(
+        id="panel", counter=TodoCounter(id="counter", remaining=3)
+    ).render()
 ```
 
 Run: `uvicorn app:app --reload`
@@ -229,32 +229,45 @@ Run: `uvicorn app:app --reload`
 
 ---
 
-## Step 6 — Request scope (registry + cache hygiene)
+## Step 6 — `setup()` (registry + cache hygiene)
 
-Per-route wrapping works for demos:
-
-```python
-from pyjinhx.session import request_scope
-
-
-@app.get("/", response_class=HTMLResponse)
-def index():
-    with request_scope("./components"):
-        return TodoPanel(
-            id="panel", counter=TodoCounter(id="counter", remaining=3)
-        ).render()
-```
-
-For a real app, use **`setup(app, ...)`** so lifespan and middleware are wired automatically:
+`setup(app, ...)` is the production path. One call wires everything a reactive request needs:
 
 ```python
 from pyjinhx import setup
 
 app = FastAPI()
 setup(
-    app, context_factory=lambda request: AppLoadContext(store=store)
+    app,
+    components_root="./components",
+    context_factory=lambda request: AppLoadContext(store=store),
 )  # AppLoadContext defined in Step 12
 ```
+
+That single call:
+
+- registers the components under `components_root` and points template resolution at it,
+- chains a lifespan that configures pyjinhx at startup and tears it down at shutdown,
+- adds the scope middleware, which opens one `request_scope()` per request and parses the pjx headers,
+- installs the `IntegrationBackend` for your framework — `FastAPIBackend` here — so handlers can return components directly,
+- mounts `/static` when you pass `static_root`.
+
+???+ question "Manual alternative — `request_scope()`"
+    `request_scope()` is the low-level primitive `setup()`'s middleware calls for you. Reach for it directly only outside FastAPI, in custom wiring, or in a shell/test:
+
+    ```python
+    from pyjinhx.session import request_scope
+
+
+    @app.get("/", response_class=HTMLResponse)
+    def index():
+        with request_scope("./components"):
+            return TodoPanel(
+                id="panel", counter=TodoCounter(id="counter", remaining=3)
+            ).render()
+    ```
+
+    Doing this by hand means you also own the registry, load-cache, and header parsing that `setup()` would have wired.
 
 See [Configuration API](../api/config.md) and [FastAPI integration](../integrations/fastapi.md).
 
@@ -387,9 +400,9 @@ def toggle_row(todo_id: int):
     return TodoItemRow(todo_id=todo_id).render()
 ```
 
-???+ question "Why @mutates and the framework adapter?"
+???+ question "Why @mutates and IntegrationBackend?"
     - **`@mutates`** — after a store change, invalidate the `load()` cache and accumulate pending state keys for the next reactive `render()`.
-    - **The framework adapter** (`FastAPIBackend`, wired via `setup()`) — supplies `X-PJX-Mounted`, `X-PJX-Trigger`, and `X-PJX-Assets` so OOB swaps run without framework kwargs on `render()`.
+    - **`IntegrationBackend`** (`FastAPIBackend`, wired via `setup()`) — supplies `X-PJX-Mounted`, `X-PJX-Trigger`, and `X-PJX-Assets` so OOB swaps run without framework kwargs on `render()`.
 
     `pjx_mount()` auto-calls the instance's `load()` right before it renders — routes construct the instance and call `render()`, never `load()` directly.
 
@@ -511,8 +524,8 @@ one request, so there's nothing to keep consistent across workers.
 
 ## Step 14 — Production assets
 
-Build a single CSS and JS bundle from all component assets and serve them as static files. Set
-both `css_mode` and `js_mode` to `NONE` on the session so components don't duplicate what the
+Build a single CSS and JS bundle from all component assets and serve them as static files. Then
+put both asset modes on the request's `RenderSession` so components don't duplicate what the
 bundle already ships.
 
 ```python
@@ -524,16 +537,25 @@ from pyjinhx.assets import all_assets
 css_paths, js_paths = all_assets()
 ```
 
-Link `bundle.css` and `bundle.js` in your layout `<head>`. Full-page renders then emit only
-the HTML — no inline asset tags:
+`css_mode`/`js_mode` are per-`RenderSession` attributes (each defaults to `AssetMode.INLINE`), not
+a process-wide switch. Set them on the session bound to the current request — the one `setup()`'s
+middleware (or your own `request_scope()`) opened:
 
 ```python
-session = RenderSession("./components")
-session.css_mode = AssetMode.NONE
-session.js_mode = AssetMode.NONE
+from pyjinhx.session import current_session
 
-TodoApp(...).render(session)  # assets come from the bundle, not inline tags
+
+@app.get("/", response_class=HTMLResponse)
+def index():
+    session = current_session()
+    session.css_mode = AssetMode.NONE
+    session.js_mode = AssetMode.NONE
+    return TodoApp(...).render()  # assets come from the bundle, not inline tags
 ```
+
+Link `bundle.css` and `bundle.js` in your layout `<head>`. Full-page renders then emit only
+the HTML — no inline asset tags. See [Assets](../guide/assets.md#one-bundle-deployment) for the
+bundle-serving route with ETags.
 
 ---
 
@@ -547,7 +569,7 @@ print(format_dependency_graph())
 ```
 
 ???+ question "Why enable_reactive_dev?"
-    Reactivity bugs are often silent (missing framework adapter, wrong `react` keys). Dev mode turns those into log warnings or strict exceptions during development.
+    Reactivity bugs are often silent (missing `IntegrationBackend`, wrong `react` keys). Dev mode turns those into log warnings or strict exceptions during development.
 
 ---
 
@@ -584,4 +606,4 @@ The per-step **Why?** panels above cover the *why*; this is the at-a-glance *wha
 - [Quick Start](quickstart.md) — minimal single component
 - [Reactivity](../reactivity.md) — deep dive on OOB swaps and hash gating
 - [FastAPI](../integrations/fastapi.md) · [HTMX](../integrations/htmx.md)
-- [API: Renderer](../api/renderer.md) · [Registry](../api/registry.md)
+- [API: render()](../api/renderer.md) · [Registry](../api/registry.md)
