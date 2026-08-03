@@ -37,9 +37,7 @@ _cache_reverse: ContextVar[dict[str, set[tuple[type, object]]] | None] = Context
 _cache_forward: ContextVar[dict[tuple[type, object], set[str]] | None] = ContextVar(
     "pjx_cache_forward", default=None
 )
-_load_context: ContextVar[object | None] = ContextVar(
-    "pjx_load_context", default=None
-)
+_load_context: ContextVar[object | None] = ContextVar("pjx_load_context", default=None)
 
 
 class NoActiveRequestScope(RuntimeError):
