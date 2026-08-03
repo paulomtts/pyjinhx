@@ -67,8 +67,8 @@ def _param_hints(
             continue
         if isinstance(annotation, str):
             try:
-                annotation = eval(annotation, globalns, None)  # noqa: S307
-            except Exception:  # noqa: BLE001 -- an unevaluable annotation is simply not a context
+                annotation = eval(annotation, globalns, None)
+            except Exception:  # noqa: BLE001, S112 -- an unevaluable annotation is simply not a context
                 continue
         hints[name] = annotation
     return hints

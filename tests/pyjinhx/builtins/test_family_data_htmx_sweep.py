@@ -105,9 +105,7 @@ class TableRegion(ReactiveComponent, react=(ROWS,)):
                 id=f"tbody-{pjx_key}",
                 content=PJXTableRow(
                     id=f"row-{pjx_key}",
-                    content=PJXTableCell(
-                        id=f"cell-{pjx_key}", content=", ".join(rows)
-                    ),
+                    content=PJXTableCell(id=f"cell-{pjx_key}", content=", ".join(rows)),
                 ),
             ),
         )

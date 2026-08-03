@@ -210,7 +210,9 @@ def _unwrap_load(cls: type[Any]) -> tuple[Callable[..., Any], bool]:
     raise TypeError(f"{cls.__name__} has no load()")
 
 
-def _validate_load_is_classmethod(cls: type[Any], func: Callable[..., Any], is_cm: bool) -> None:
+def _validate_load_is_classmethod(
+    cls: type[Any], func: Callable[..., Any], is_cm: bool
+) -> None:
     """Reject an instance-method ``load``, pointing at the migration.
 
     Raises:
@@ -225,7 +227,9 @@ def _validate_load_is_classmethod(cls: type[Any], func: Callable[..., Any], is_c
         )
 
 
-def _load_value_params(func: Callable[..., Any], context_param: str | None) -> list[str]:
+def _load_value_params(
+    func: Callable[..., Any], context_param: str | None
+) -> list[str]:
     """``load``'s parameters minus ``cls`` and the app-context one.
 
     Uses ``inspect.signature`` and never ``get_type_hints``: this runs while the
@@ -277,7 +281,9 @@ def _validate_load_params(
 
 
 def _wrap_load(
-    cls: type["ReactiveComponent"], real_load: Callable[..., Any], context_param: str | None
+    cls: type["ReactiveComponent"],
+    real_load: Callable[..., Any],
+    context_param: str | None,
 ) -> Callable[[Any], Any]:
     """Build the memoizing wrapper around one class's ``load``.
 
