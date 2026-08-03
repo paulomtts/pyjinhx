@@ -21,20 +21,18 @@ Read: [CONVENTIONS.md](../code-audit-sweep/CONVENTIONS.md).
 ## Hunt targets
 
 1. **Parallel orchestration** — same step sequence in 2+ entrypoints.
-   - Fixed: `component.py` + `base.py` render → `reactive/render.py` `reactive_render_bundle`.
+   - Canonical: one render path through `pyjinhx/rendering.py`; the reactive route composes its result into `ReactiveResponse` (`pyjinhx/reactive/response.py:14`).
 2. **Duplicate parsing/validation** — two ways to answer the same question.
-   - Fixed: `client_has_mounted_manifest` vs manifest parse → `MountedManifest.is_present`.
-3. **Decorator ergonomics** — mutation recording must stay one code path.
-   - Canonical: `@mutates` → `MutationTracker.record` only (no parallel context manager).
+   - Canonical: each wire header is parsed exactly once, by its own type's `parse()` in `pyjinhx/client/inject.py` (`LoadedAssets`, `MountedManifest`, `TriggerManifest`).
+3. **Mutation recording** — must stay one code path.
+   - Canonical: `mutates()` and `dirty()` (`pyjinhx/reactive/mutations.py:31,65`) both funnel into `add_dirtied()` (`pyjinhx/session.py:166`). Any third route that writes dirtied keys is a merge candidate.
+4. **Key coercion** — `coerce_reactive_key` / `coerce_reactive_keys` (`pyjinhx/reactive/keys.py:14,33`) are the only normalizers; inline `str()`-ing of keys is duplication.
 
 ## Intentional asymmetry (document, don't merge blindly)
 
-| Path | Difference | Example |
-|------|------------|---------|
-| Class render | Pre-invalidate before primary | `invalidate_before_primary=True` |
-| Instance render | Invalidate inside `oob_swaps` | `invalidate_before_primary=False` |
+No invalidation-ordering asymmetry exists in this codebase: there is a single render path, and `invalidate()` (`pyjinhx/reactive/cache.py:105`) is called once per request against the dirtied set. Do not cite an `invalidate_before_primary` flag — it does not exist.
 
-Flag as **documented divergence** if asymmetry is required; **merge candidate** if behavior should match.
+Record real asymmetries here only when both branches are grep-confirmed. Flag as **documented divergence** when the difference is required and named in code or docs; **merge candidate** when the behavior should match.
 
 ## Process
 
@@ -43,14 +41,14 @@ Flag as **documented divergence** if asymmetry is required; **merge candidate** 
 3. Grep repeated 5+ line blocks:
 
 ```bash
-rg -n 'warn_reactive_render_without_client|mark_render_consumed|reactive_render_bundle' pyjinhx/
+rg -n 'add_dirtied|coerce_reactive_keys|cache_put|walk_manifest|oob_swaps' pyjinhx/
 ```
 
 4. Classify: merge candidate | documented divergence | unrelated.
 
 ## Checklist
 
-- [ ] No duplicated render/mutation orchestration across `core/` and `reactive/`
+- [ ] No duplicated render/mutation orchestration between the flat kernel modules and `reactive/`
 - [ ] Parsing logic has one canonical implementation per wire format
 - [ ] Shared mutation recording is one code path
 - [ ] Intentional behavioral differences are named in code or docs

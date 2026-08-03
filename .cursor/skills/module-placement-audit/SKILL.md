@@ -1,8 +1,8 @@
 ---
 name: module-placement-audit
 description: >-
-  Audit Python package layering—which modules belong in core, reactive, integrations,
-  or utils; framework-specific code in generic layers; forbidden upward imports.
+  Audit Python package layering—which modules belong in the flat top-level modules,
+  `reactive/`, `client/`, or `integrations/`; framework-specific code in generic layers; forbidden upward imports.
   Use when asking "should this live in this file", moving adapters, or reviewing
   integration boundaries. Read-only report.
 disable-model-invocation: true
@@ -21,37 +21,43 @@ Read: [CONVENTIONS.md](../code-audit-sweep/CONVENTIONS.md).
 ## Layer rules
 
 ```
-integrations/  →  reactive/  →  core/  →  utils.py
+integrations/  →  reactive/  →  flat top-level pyjinhx/*.py
+                      client/  ↗
 ```
 
 | Layer | Holds | Must not hold |
 |-------|-------|---------------|
-| `pyjinhx/integrations/` | FastAPI middleware, Redis backend, Starlette request adapters | Core render algorithms |
-| `pyjinhx/reactive/` | ABCs, hubs, reactive algorithms, payload parsing | FastAPI/Redis concrete types |
-| `pyjinhx/core/` | Renderer, finder, registry, parser | Framework middleware |
-| `pyjinhx/utils.py` | HTML splice, path helpers, client runtime read | Reactive key coercion |
+| `pyjinhx/integrations/` | `IntegrationBackend` Protocol (`base.py`), `FastAPIBackend` (`fastapi.py`), backend registration | render or fan-out algorithms |
+| `pyjinhx/reactive/` | `ReactiveComponent`, `PjxKey`, cache/mutation/fan-out functions, `ReactiveResponse` | concrete web-framework types |
+| `pyjinhx/client/` | runtime injection and wire-format parsing (`inject.py`, `pjx.js`, htmx bundle) | reactive invalidation policy |
+| flat `pyjinhx/*.py` | kernel: `component.py`, `rendering.py`, `session.py`, `registry.py`, `context.py`, `assets.py`, `config.py`, `dev.py`, … | anything importing `reactive/` or `integrations/` |
 
 ## Precedents (cite in findings)
 
-- `FastAPIClientBackend` → `integrations/fastapi.py` (not `reactive/backend.py`)
-- `RedisInvalidationBackend` → `integrations/redis.py` (not `reactive/invalidation.py`)
-- `InvalidationHub` + `InvalidationBackend` ABC stay in `reactive/invalidation.py`
-- `ClientBackend` ABC stays in `reactive/backend.py`
+- `FastAPIBackend` → `pyjinhx/integrations/fastapi.py` (not `reactive/`)
+- `IntegrationBackend` Protocol stays in `pyjinhx/integrations/base.py`; `register_backend()` / `get_backend()` live beside it
+- Fan-out and OOB swap emission stay in `pyjinhx/reactive/fanout.py`
+- Request-scoped stores stay in `pyjinhx/session.py`; `reactive/cache.py` reads them, it does not own them
+- Wire-format parsing (`LoadedAssets`, `MountedManifest`, `TriggerManifest`) stays in `pyjinhx/client/inject.py`
+- The renderer module is `pyjinhx/rendering.py` — the pre-rewrite name is stale and must not appear
 
 ## Checklist
 
-- [ ] No `from pyjinhx.integrations` inside `reactive/` or `core/`
-- [ ] Framework names (`FastAPI`, `Starlette`, `Redis`) only in `integrations/` or config wiring
-- [ ] Config (`config/__init__.py`) wires hubs at startup; does not embed integration logic
-- [ ] Domain reactive code not re-exported through `utils.py`
+- [ ] No `from pyjinhx.integrations` inside `reactive/`, `client/`, or the flat top-level modules
+- [ ] No `from pyjinhx.reactive` inside the flat top-level modules (`reactive/` sits above the kernel)
+- [ ] Framework names (`fastapi`, `starlette`) only under `pyjinhx/integrations/`
+- [ ] `config.py` wires backends at startup; it does not embed integration logic
 
 ## Import scan
 
 ```bash
-rg 'from pyjinhx\.integrations' pyjinhx/reactive pyjinhx/core
+rg 'from pyjinhx\.integrations' pyjinhx/reactive pyjinhx/client
 rg 'from pyjinhx\.reactive' pyjinhx/integrations
-rg 'fastapi|starlette|redis|fakeredis' pyjinhx/reactive pyjinhx/core --glob '*.py' -i
+rg 'from pyjinhx\.(reactive|integrations|client)' pyjinhx/*.py
+rg 'fastapi|starlette' pyjinhx/reactive pyjinhx/client --glob '*.py' -i
 ```
+
+The only currently-expected hit from these scans is `pyjinhx/integrations/fastapi.py:28: from pyjinhx.reactive.response import ReactiveResponse`, which follows the allowed direction.
 
 ## Report
 
