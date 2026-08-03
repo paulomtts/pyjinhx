@@ -201,7 +201,9 @@ def index():
     session = RenderSession(template_dir="./components")
     session.css_mode = AssetMode.NONE
     session.js_mode = AssetMode.NONE
-    return str(MyApp(id="app").render(session))  # bundle already linked in layout <head>
+    return str(
+        MyApp(id="app").render(session)
+    )  # bundle already linked in layout <head>
 ```
 
 ## Asset helpers reference
