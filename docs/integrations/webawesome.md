@@ -143,11 +143,8 @@ class AddTaskForm(BaseComponent):
 ### Usage
 
 ```python
-from pyjinhx import Renderer
 from components.ui.task_card import TaskCard
 from components.ui.add_task_form import AddTaskForm
-
-Renderer.set_default_environment("./components")
 
 # Render components
 task_card = TaskCard(
