@@ -91,6 +91,8 @@ def emit_assets(
         ValueError: If a kind is in LINK mode and no resolver was given.
     """
     tags: list[str] = []
+    if session.runtime_style is not None:
+        tags.append(session.runtime_style)
     if session.css_mode is AssetMode.INLINE:
         tags += _inline_tags(session.css_assets, "<style>", "</style>")
     elif session.css_mode is AssetMode.LINK:
