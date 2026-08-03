@@ -80,3 +80,15 @@ def toggle_todo(request: Request, todo_id: int):
     row = ItemRow(id=f"row-{todo_id}", todo_id=todo_id)
     row.load()
     return ReactiveResponse(primary=render(row, current_session()), mounted=request)
+
+
+@app.post("/todos/clear-completed")
+def clear_completed(request: Request):
+    """Delete every completed todo; the page updates entirely out of band.
+
+    No primary fragment: the clear button has nothing of its own to swap in, so
+    the response is the OOB fan-out that store.clear_completed's dirtied keys
+    imply, plus the HX-Reswap: none the empty primary carries.
+    """
+    store.clear_completed()
+    return ReactiveResponse(mounted=request)
