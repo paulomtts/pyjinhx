@@ -4,6 +4,7 @@ from typing import Any
 
 import pytest
 
+from pyjinhx.app_context import AppContext
 from pyjinhx.component import BaseComponent
 from pyjinhx.reactive.component import ReactiveComponent
 from pyjinhx.session import request_scope
@@ -307,3 +308,107 @@ def test_pjx_key_distinct_values_differ_in_identity():
 
     assert result_a == result_b
     assert result_a is not result_b
+
+
+class DemoAppContext(AppContext):
+    """The app-defined context these tests thread through request_scope()."""
+
+    def __init__(self, user: str) -> None:
+        self.user = user
+
+
+def test_load_receives_the_requests_app_context():
+    class Widget(ReactiveComponent):
+        def load(self, ctx: DemoAppContext) -> str:  # pyright: ignore[reportIncompatibleMethodOverride]
+            return ctx.user
+
+    widget = Widget()
+    with request_scope(load_context=DemoAppContext(user="ada")):
+        assert widget.load() == "ada"  # pyright: ignore[reportCallIssue]
+
+
+def test_each_request_gets_its_own_app_context():
+    class Widget(ReactiveComponent):
+        def load(self, ctx: DemoAppContext) -> str:  # pyright: ignore[reportIncompatibleMethodOverride]
+            return ctx.user
+
+    widget = Widget()
+    with request_scope(load_context=DemoAppContext(user="ada")):
+        first = widget.load()  # pyright: ignore[reportCallIssue]
+    with request_scope(load_context=DemoAppContext(user="grace")):
+        second = widget.load()  # pyright: ignore[reportCallIssue]
+
+    assert (first, second) == ("ada", "grace")
+
+
+def test_injection_is_by_annotation_not_by_parameter_name():
+    class Widget(ReactiveComponent):
+        def load(self, whatever: DemoAppContext) -> str:  # pyright: ignore[reportIncompatibleMethodOverride]
+            return whatever.user
+
+    widget = Widget()
+    with request_scope(load_context=DemoAppContext(user="ada")):
+        assert widget.load() == "ada"  # pyright: ignore[reportCallIssue]
+
+
+def test_optional_app_context_annotation_is_injected():
+    class Widget(ReactiveComponent):
+        def load(self, ctx: DemoAppContext | None) -> str:  # pyright: ignore[reportIncompatibleMethodOverride]
+            return "none" if ctx is None else ctx.user
+
+    widget = Widget()
+    with request_scope(load_context=DemoAppContext(user="ada")):
+        assert widget.load() == "ada"  # pyright: ignore[reportCallIssue]
+
+
+def test_no_context_bound_injects_none():
+    class Widget(ReactiveComponent):
+        def load(self, ctx: DemoAppContext | None) -> str:  # pyright: ignore[reportIncompatibleMethodOverride]
+            return "none" if ctx is None else ctx.user
+
+    widget = Widget()
+    with request_scope():
+        assert widget.load() == "none"  # pyright: ignore[reportCallIssue]
+
+
+def test_zero_arg_load_is_untouched_when_a_context_is_bound():
+    calls: list[int] = []
+
+    class Widget(ReactiveComponent):
+        def load(self) -> str:
+            calls.append(1)
+            return "loaded"
+
+    widget = Widget()
+    with request_scope(load_context=DemoAppContext(user="ada")):
+        assert widget.load() == "loaded"
+        assert widget.load() == "loaded"
+
+    assert len(calls) == 1
+
+
+def test_an_injected_load_is_still_cached_per_request():
+    calls: list[int] = []
+
+    class Widget(ReactiveComponent):
+        def load(self, ctx: DemoAppContext) -> str:  # pyright: ignore[reportIncompatibleMethodOverride]
+            calls.append(1)
+            return ctx.user
+
+    widget = Widget()
+    with request_scope(load_context=DemoAppContext(user="ada")):
+        assert widget.load() == "ada"  # pyright: ignore[reportCallIssue]
+        assert widget.load() == "ada"  # pyright: ignore[reportCallIssue]
+
+    assert len(calls) == 1
+
+
+def test_two_app_context_params_are_rejected_at_class_definition():
+    class OtherAppContext(AppContext):
+        """A second context class, so the two params differ in type too."""
+
+    with pytest.raises(TypeError, match="at most one"):
+
+        class Widget(ReactiveComponent):
+            def load(self, first: DemoAppContext, second: OtherAppContext) -> None:  # pyright: ignore[reportIncompatibleMethodOverride]
+                return None

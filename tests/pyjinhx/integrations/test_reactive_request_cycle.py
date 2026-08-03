@@ -17,6 +17,7 @@ from fastapi import FastAPI, Request
 from fastapi.testclient import TestClient
 
 from pyjinhx import discovery, registry
+from pyjinhx.app_context import AppContext
 from pyjinhx.assets import asset_token
 from pyjinhx.config import PjxSettings
 from pyjinhx.context import PjxContext
@@ -519,3 +520,51 @@ def test_lower_layers_do_not_import_the_wiring_layer():
                 offenders.append((name, upper_name))
 
     assert offenders == []
+
+
+class RequestAppContext(AppContext):
+    """What this module's context_factory hands each request."""
+
+    def __init__(self, path: str) -> None:
+        self.path = path
+
+
+class ContextCard(ReactiveComponent):
+    """A card whose load() declares the app context and echoes it back."""
+
+    def load(self, ctx: RequestAppContext | None) -> str:  # pyright: ignore[reportIncompatibleMethodOverride]
+        return "no-context" if ctx is None else ctx.path
+
+
+def test_load_receives_the_context_factory_result_over_a_real_request():
+    app = FastAPI()
+    apply_setup(
+        app,
+        PjxSettings(),
+        context_factory=lambda request: RequestAppContext(path=request.url.path),
+    )
+
+    @app.get("/ctx-echo")
+    def ctx_echo() -> dict[str, str]:
+        return {"loaded": ContextCard().load()}  # pyright: ignore[reportCallIssue]
+
+    with TestClient(app) as client:
+        response = client.get("/ctx-echo")
+
+    assert response.status_code == 200
+    assert response.json() == {"loaded": "/ctx-echo"}
+
+
+def test_without_a_context_factory_the_injected_context_is_none():
+    app = FastAPI()
+    apply_setup(app, PjxSettings())
+
+    @app.get("/ctx-none")
+    def ctx_none() -> dict[str, str]:
+        return {"loaded": ContextCard().load()}  # pyright: ignore[reportCallIssue]
+
+    with TestClient(app) as client:
+        response = client.get("/ctx-none")
+
+    assert response.status_code == 200
+    assert response.json() == {"loaded": "no-context"}

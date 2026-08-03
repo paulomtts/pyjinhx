@@ -31,6 +31,9 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
     # BaseComponent.__subclasses__() and each class's descriptor, imported
     # locally to avoid a module-level cycle (session imports assets).
     "assets": frozenset({"pyjinhx.session", "pyjinhx.component"}),
+    # app_context is import-pure - stdlib only - so the reactive load() wrap can
+    # import it at module scope without threading an edge back into the spine.
+    "app_context": frozenset(),
     # builtins/ ports v0.x's component library onto the v2 stack, one leaf
     # package per component (#500). Each leaf only reaches down into
     # component.py for BaseComponent/Slot/AttrValue and its own vendored
@@ -426,11 +429,16 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
     # ReactiveComponent subclasses BaseComponent and routes load() through the
     # cache: the two edges below are the whole design. The reverse - anything in
     # the render spine importing reactive/ - stays forbidden.
+    # The load() wrap resolves its app-context parameter through app_context and
+    # reads the bound value out of session's ContextVar; both are strictly below
+    # reactive/, so neither edge is a cycle.
     "reactive.component": frozenset(
         {
+            "pyjinhx.app_context",
             "pyjinhx.component",
             "pyjinhx.reactive.cache",
             "pyjinhx.reactive.keys",
+            "pyjinhx.session",
         }
     ),
     # The reactive on_rendered branch (#463): it reads ReactiveComponent to
