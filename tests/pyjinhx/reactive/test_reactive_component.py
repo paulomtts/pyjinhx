@@ -562,3 +562,100 @@ def test_self_referencing_return_annotation_keeps_context_injection():
 
     with request_scope(load_context=DemoAppContext(user="ada")):
         assert Row.load(1).user == "ada"
+
+
+def test_cache_hit_returns_the_same_populated_instance():
+    """#726: the second load() in one request hands back the cached instance,
+    not a second one whose fields were never filled."""
+    from typing import Annotated
+
+    from pyjinhx.reactive.component import PjxKey
+
+    calls: list[int] = []
+
+    class Row(ReactiveComponent):
+        row_id: Annotated[int, PjxKey()] = 0
+        title: str = ""
+
+        @classmethod
+        def load(cls, row_id: int) -> "Row":
+            calls.append(row_id)
+            return cls(row_id=row_id, title=f"row {row_id}")
+
+    with request_scope():
+        first = Row.load(1)
+        second = Row.load(1)
+
+    assert first is second
+    assert second.title == "row 1"
+    assert calls == [1]
+
+
+def test_distinct_keys_do_not_share_a_cache_entry():
+    from typing import Annotated
+
+    from pyjinhx.reactive.component import PjxKey
+
+    class Row(ReactiveComponent):
+        row_id: Annotated[int, PjxKey()] = 0
+
+        @classmethod
+        def load(cls, row_id: int) -> "Row":
+            return cls(row_id=row_id)
+
+    with request_scope():
+        assert Row.load(1) is not Row.load(2)
+
+
+def test_protocol_mode_cache_key_uses_the_full_bound_args():
+    from typing import Annotated
+
+    from pydantic import ConfigDict
+
+    from pyjinhx.reactive.component import PjxKey
+
+    class Row(ReactiveComponent):
+        model_config = ConfigDict(extra="allow")
+        row_id: Annotated[int, PjxKey()] = 0
+
+        @classmethod
+        def load(cls, row_id: int, flavor: str = "plain") -> "Row":
+            return cls(row_id=row_id, flavor=flavor)
+
+    with request_scope():
+        plain = Row.load(1)
+        spicy = Row.load(1, flavor="spicy")
+        again = Row.load(1, flavor="spicy")
+
+    assert plain is not spicy
+    assert spicy is again
+
+
+def test_load_returning_the_wrong_type_raises():
+    class Widget(ReactiveComponent):
+        @classmethod
+        def load(cls) -> "Widget":
+            return "not a widget"  # pyright: ignore[reportReturnType]
+
+    with request_scope(), pytest.raises(TypeError, match="Widget"):
+        Widget.load()
+
+
+def test_app_context_is_excluded_from_the_cache_key():
+    calls: list[int] = []
+
+    class Widget(ReactiveComponent):
+        user: str = ""
+
+        @classmethod
+        def load(cls, ctx: DemoAppContext) -> "Widget":
+            calls.append(1)
+            return cls(user=ctx.user)
+
+    with request_scope(load_context=DemoAppContext(user="ada")):
+        first = Widget.load()
+        second = Widget.load()
+
+    assert first is second
+    assert first.user == "ada"
+    assert len(calls) == 1
