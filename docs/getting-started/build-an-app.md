@@ -215,9 +215,9 @@ session = RenderSession("./components")
 
 @app.get("/", response_class=HTMLResponse)
 def index():
-    return TodoPanel(
-        id="panel", counter=TodoCounter(id="counter", remaining=3)
-    ).render(session)
+    return TodoPanel(id="panel", counter=TodoCounter(id="counter", remaining=3)).render(
+        session
+    )
 ```
 
 Run: `uvicorn app:app --reload`
