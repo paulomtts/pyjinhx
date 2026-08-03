@@ -15,6 +15,16 @@ touches ReactiveComponent. Two costs live outside that path entirely:
 This script sweeps manifest size at a few clean/dirty ratios to show how the
 walk's cost is driven by the dirty share, not the manifest size alone.
 
+  3. oob_swaps(), the response-body build that runs after the walk: per dirty
+     candidate it stamps hx-swap-oob + data-pjx-hash at the recorded root_span
+     and serializes the level. Only outerHTML and delete swaps are ever emitted
+     (ADR 0001). Swept over region count x per-region subtree size, with the
+     levels built before the clock starts so no render is in the frame.
+  4. _drop_nested()/_contained(), the containment walk. PR #619 (issue #600)
+     made the candidate-count axis linear; the sweep here moves the other axis,
+     per-candidate rendered-subtree size, which _contained walks segment by
+     segment and which the count sweep holds at a constant.
+
 Not a CI test (timing-sensitive). Run manually before/after reactive-path work:
 
     uv run python scripts/bench_reactive_fanout.py
@@ -29,17 +39,37 @@ from typing import Annotated
 from pyjinhx2 import discovery, registry
 from pyjinhx2.reactive.cache import cache_put
 from pyjinhx2.reactive.component import PjxKey, ReactiveComponent
-from pyjinhx2.reactive.fanout import walk_manifest
-from pyjinhx2.session import request_scope
+from pyjinhx2.reactive.fanout import (
+    FanoutCandidate,
+    _drop_nested,
+    oob_swaps,
+    walk_manifest,
+)
+from pyjinhx2.render import render_level
+from pyjinhx2.session import RenderSession, request_scope
 
 MANIFEST_SIZES = (50, 100, 200, 500, 1000, 2000, 5000)
 DIRTY_RATIOS = (0.0, 0.5, 1.0)  # all-clean, half-dirty, all-dirty
+OOB_REGION_COUNTS = (10, 50, 100, 200)
+OOB_SUBTREE_SIZES = (1, 10, 50)  # child spans inside each swapped region
+DROP_CANDIDATE_COUNTS = (50, 200)
+DROP_SUBTREE_SIZES = (1, 10, 50, 200)
 
 
 class BenchReactiveWidget(ReactiveComponent, react=("bench",)):
     """A reactive component keyed by ``pjx_key``; load() does real-ish work."""
 
     pjx_key: Annotated[str, PjxKey()] = ""
+
+    def load(self) -> str:
+        return f"data:{self.pjx_key}"
+
+
+class BenchOobWidget(ReactiveComponent, react=("bench",)):
+    """A reactive region whose rendered size is driven by ``spans``."""
+
+    pjx_key: Annotated[str, PjxKey()] = ""
+    spans: int = 1
 
     def load(self) -> str:
         return f"data:{self.pjx_key}"
@@ -53,10 +83,19 @@ def setup_registry() -> str:
     """
     template_dir = Path(tempfile.mkdtemp())
     (template_dir / "bench_reactive_widget.pjx").write_text("<div>{{ pjx_key }}</div>")
-    discovery.build_registry(template_dir, [BenchReactiveWidget])
+    (template_dir / "bench_oob_widget.pjx").write_text(
+        '<div class="oob">{% for i in range(spans) %}'
+        '<span class="cell">{{ pjx_key }}-{{ i }}</span>'
+        "{% endfor %}</div>"
+    )
+    discovery.build_registry(template_dir, [BenchReactiveWidget, BenchOobWidget])
     BenchReactiveWidget.__pjx_descriptor__ = dataclasses.replace(
         BenchReactiveWidget.__pjx_descriptor__,
         template_path=Path("bench_reactive_widget.pjx"),
+    )
+    BenchOobWidget.__pjx_descriptor__ = dataclasses.replace(
+        BenchOobWidget.__pjx_descriptor__,
+        template_path=Path("bench_oob_widget.pjx"),
     )
     return str(template_dir)
 
@@ -113,6 +152,71 @@ def bench_memoization(template_dir: str) -> tuple[float, float]:
     return cold, warm
 
 
+def make_dirty_candidate(
+    index: int, subtree: int, session: RenderSession
+) -> FanoutCandidate:
+    """One dirty candidate carrying a real RenderedLevel of ``subtree`` inner spans.
+
+    oob_swaps() asserts a dirty candidate has both a RenderedLevel and a
+    fresh_hash (it stamps data-pjx-hash itself, since the on_rendered stamper
+    is not wired onto the dirty path's session), so both are supplied here.
+    """
+    instance = BenchOobWidget(id=f"oob{index}", pjx_key=str(index), spans=subtree)
+    level = render_level(instance, session)
+    return FanoutCandidate(
+        type_name="bench_oob_widget",
+        component_class=BenchOobWidget,
+        instance_id=instance.id,
+        load=str(index),
+        status="dirty",
+        entry={},
+        level=level,
+        instance=instance,
+        fresh_hash=instance.state_hash(),
+    )
+
+
+def bench_oob_swaps(regions: int, subtree: int, template_dir: str) -> float:
+    """Time oob_swaps() alone: stamping + serializing ``regions`` built levels.
+
+    The levels are built *before* the clock starts, so this reading is pure
+    stamp_root_attrs + serialize per region (ADR 0001: outerHTML only, plus
+    delete for a missing candidate — no other swap value is ever emitted), with
+    no render or load in the frame.
+    """
+    with request_scope(template_dir):
+        session = RenderSession(template_dir=template_dir)
+        candidates = [make_dirty_candidate(i, subtree, session) for i in range(regions)]
+        t0 = time.perf_counter()
+        oob_swaps(candidates)
+        return time.perf_counter() - t0
+
+
+def bench_drop_nested(candidates_n: int, subtree: int, template_dir: str) -> float:
+    """Time _drop_nested() over ``candidates_n`` disjoint regions of ``subtree`` spans.
+
+    PR #619 (issue #600) already made the candidate-count axis linear by
+    replacing the pairwise scan with two passes over a unioned id/identity set;
+    that axis is not re-swept here. What this adds is the other axis: _contained
+    walks every segment of every candidate's tree to build the union, so the
+    per-candidate cost is driven by how big each rendered region is, which the
+    existing sweep holds at a tiny constant. The regions are disjoint siblings,
+    so nothing is actually dropped and the full two-pass walk is paid.
+    """
+    with request_scope(template_dir):
+        session = RenderSession(template_dir=template_dir)
+        candidates = [
+            make_dirty_candidate(i, subtree, session) for i in range(candidates_n)
+        ]
+        t0 = time.perf_counter()
+        survivors = _drop_nested(candidates)
+        dt = time.perf_counter() - t0
+        assert len(survivors) == candidates_n, (
+            f"disjoint regions must all survive, kept {len(survivors)}"
+        )
+        return dt
+
+
 def main() -> None:
     template_dir = setup_registry()
 
@@ -130,6 +234,30 @@ def main() -> None:
         row = [f"{n:6d}"]
         for ratio in DIRTY_RATIOS:
             dt = bench_walk(n, ratio, template_dir)
+            row.append(f"{dt * 1000:9.2f}ms")
+        print("  ".join(row))
+
+    print()
+    print("oob_swaps() alone: stamp + serialize per dirty region (levels prebuilt):")
+    header = f"{'regions':>8}  " + "  ".join(f"{s:>4} spans" for s in OOB_SUBTREE_SIZES)
+    print(header)
+    for regions in OOB_REGION_COUNTS:
+        row = [f"{regions:8d}"]
+        for subtree in OOB_SUBTREE_SIZES:
+            dt = bench_oob_swaps(regions, subtree, template_dir)
+            row.append(f"{dt * 1000:8.2f}ms")
+        print("  ".join(row))
+
+    print()
+    print("_drop_nested() containment walk, by per-candidate subtree size:")
+    header = f"{'subtree':>8}  " + "  ".join(
+        f"{n:>5} cands" for n in DROP_CANDIDATE_COUNTS
+    )
+    print(header)
+    for subtree in DROP_SUBTREE_SIZES:
+        row = [f"{subtree:8d}"]
+        for candidates_n in DROP_CANDIDATE_COUNTS:
+            dt = bench_drop_nested(candidates_n, subtree, template_dir)
             row.append(f"{dt * 1000:9.2f}ms")
         print("  ".join(row))
 
