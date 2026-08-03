@@ -543,3 +543,22 @@ def test_protocol_mode_still_requires_the_key_params():
             @classmethod
             def load(cls, flavor: str = "plain") -> "Row":
                 return cls()
+
+
+def test_self_referencing_return_annotation_keeps_context_injection():
+    """#713: `-> "Row"` is an unresolvable forward ref while the class is being
+    built; that must not silently drop the AppContext parameter."""
+    from typing import Annotated
+
+    from pyjinhx.reactive.component import PjxKey
+
+    class Row(ReactiveComponent):
+        row_id: Annotated[int, PjxKey()] = 0
+        user: str = ""
+
+        @classmethod
+        def load(cls, row_id: int, ctx: DemoAppContext) -> "Row":
+            return cls(row_id=row_id, user=ctx.user)
+
+    with request_scope(load_context=DemoAppContext(user="ada")):
+        assert Row.load(1).user == "ada"
