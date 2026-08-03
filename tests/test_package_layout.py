@@ -1,13 +1,63 @@
 """Guards the 1.0 package layout: `pyjinhx` is the v2 engine and v0.x is gone (#540)."""
 
 import importlib
+import inspect
 import subprocess
 import tomllib
 from pathlib import Path
 
 import pytest
 
+import pyjinhx
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
+
+EXPECTED_EXPORTS = {
+    # components & rendering
+    "BaseComponent",
+    "Slot",
+    "Children",
+    "component",
+    "ReactiveComponent",
+    "render",
+    "RenderSession",
+    # app wiring
+    "setup",
+    "PjxContext",
+    # reactive authoring
+    "mutates",
+    "dirty",
+    "MutationKey",
+    "reactive_key",
+    "PjxKey",
+    "AppContext",
+    # configuration
+    "PjxSettings",
+    "AssetMode",
+}
+
+
+def test_all_matches_expected_surface():
+    assert set(pyjinhx.__all__) == EXPECTED_EXPORTS
+
+
+def test_all_has_no_duplicates():
+    assert len(pyjinhx.__all__) == len(set(pyjinhx.__all__))
+
+
+def test_every_exported_name_is_importable():
+    missing = [name for name in pyjinhx.__all__ if not hasattr(pyjinhx, name)]
+    assert missing == []
+
+
+def test_render_is_a_free_function_not_a_class():
+    assert inspect.isfunction(pyjinhx.render)
+    assert not inspect.isclass(pyjinhx.render)
+
+
+def test_private_and_v1_symbols_are_not_exported():
+    for name in ("OpenComponent", "Renderer", "Registry", "render_level"):
+        assert name not in pyjinhx.__all__
 
 
 def test_the_v0_package_is_gone():
