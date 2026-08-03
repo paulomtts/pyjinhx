@@ -1,5 +1,6 @@
 """The docs demo registry stays complete and every demo renders (ported from v0.x for #540)."""
 
+import dataclasses
 import re
 import sys
 from pathlib import Path
@@ -13,6 +14,8 @@ sys.path.insert(0, str(DOCS))
 
 import hooks
 from demos import DEMOS
+
+from pyjinhx.component import BaseComponent
 
 
 class FakeFile:
@@ -118,6 +121,21 @@ def test_base_css_link_survives_and_output_is_stable(tmp_path):
     page_b = (second / "demos" / "pjx-button.html").read_text()
     assert '<link rel="stylesheet" href="demo-base.css">' in page_a
     assert page_a == page_b
+
+
+def test_missing_asset_file_fails_the_build(tmp_path, monkeypatch):
+    class BrokenDemo(BaseComponent):
+        content: str = "x"
+
+    # Point the frozen descriptor at a file that does not exist: emit_assets
+    # must raise rather than write an unstyled page.
+    descriptor = BrokenDemo.__pjx_descriptor__
+    broken = dataclasses.replace(descriptor, css_paths=(tmp_path / "nope.css",))
+    monkeypatch.setattr(BrokenDemo, "__pjx_descriptor__", broken)
+    monkeypatch.setitem(hooks.DEMOS, "BrokenDemo", (lambda: BrokenDemo().render(), 100))
+
+    with pytest.raises(OSError):
+        hooks.on_post_build({"site_dir": str(tmp_path / "site")})
 
 
 def test_gallery_page_features_every_demo():
