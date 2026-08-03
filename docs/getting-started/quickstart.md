@@ -11,7 +11,7 @@ my_project/
 └── components/
     └── ui/
         ├── button.py      # Component class
-        └── button.html    # Component template
+        └── button.pjx     # Component template
 ```
 
 ## Step 1: Create a Component Class
@@ -36,7 +36,7 @@ Every component:
 
 ## Step 2: Create the Template
 
-Create `components/ui/button.html` (same directory as the class):
+Create `components/ui/button.pjx` (same directory as the class):
 
 ```html
 <button id="{{ id }}" class="btn btn-{{ variant }}">
@@ -45,10 +45,11 @@ Create `components/ui/button.html` (same directory as the class):
 ```
 
 !!! info "Template Discovery"
-    PyJinHx automatically finds templates by converting the class name to snake_case.
-    `Button` → `button.html`, `ActionButton` → `action_button.html` — kebab-case
-    (`action-button.html`), `.pjx`, and `.jinja` candidates are also tried; see
-    [PascalCase tags](../guide/tags.md) for the full list.
+    PyJinHx finds a component's own template by converting the class name to
+    snake_case and appending `.pjx`, in the same directory as the class:
+    `Button` → `button.pjx`, `ActionButton` → `action_button.pjx`. This is
+    separate from how PascalCase tags *referenced inside* a template body are
+    resolved — see [PascalCase tags](../guide/tags.md) for that lookup.
 
 ## Step 3: Render the Component
 
