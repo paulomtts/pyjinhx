@@ -51,10 +51,7 @@ class Button(BaseComponent):
 from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
 
-from pyjinhx import Renderer
 from components.ui.button import Button
-
-Renderer.set_default_environment("./components")
 
 app = FastAPI()
 
@@ -83,10 +80,8 @@ For larger applications, combine PyJinHx components with Jinja2 page templates:
 
 ```python
 from jinja2 import Environment, FileSystemLoader
-from pyjinhx import Renderer
 
 env = Environment(loader=FileSystemLoader("./templates"))
-Renderer.set_default_environment(env)
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -119,17 +114,17 @@ app = FastAPI(lifespan=my_existing_lifespan)  # optional — chained, not replac
 setup(app, context_factory=lambda req: AppLoadContext(db=get_db(req)))
 ```
 
-`setup(app, ...)` chains your lifespan (if any), wires optional invalidation, and registers registry middleware with `ClientBackend` for header auto-resolution. By default (no `invalidation_backend`) the load cache is per-request — multi-worker safe; pass a backend to opt into cross-request caching. See [Configuration](../api/config.md) and [Reactivity → load() results are cached](../reactivity.md#load-results-are-cached).
+`setup(app, ...)` chains your lifespan (if any) and registers registry middleware with the `FastAPIBackend` (an `IntegrationBackend`) for header auto-resolution. See [Configuration](../api/config.md) and [Reactivity → load() results are cached](../reactivity.md#load-results-are-cached).
 
 ### Per-Route (manual)
 
 ```python
-from pyjinhx import Registry
+from pyjinhx.session import request_scope
 
 
 @app.get("/", response_class=HTMLResponse)
 def index() -> str:
-    with Registry.request_scope():
+    with request_scope():
         return f"""
         <!DOCTYPE html>
         <html>
@@ -154,10 +149,10 @@ Reactive mutation routes:
 @app.post("/rows/{todo_id}/toggle", response_class=HTMLResponse)
 def toggle_row(todo_id: int) -> str:
     store.toggle(todo_id)
-    return TodoItemRow.render(todo_id)  # headers from ClientBackend
+    return TodoItemRow(todo_id=todo_id).render()  # headers from FastAPIBackend
 ```
 
 ## Tips
 
 - **Component assets**: Components with adjacent `.js` and `.css` files have their assets auto-injected. See [Asset Collection](../guide/assets.md).
-- **Response types**: FastAPI's `HTMLResponse` works directly with `render()`, which returns `Markup` objects that convert to strings automatically.
+- **Response types**: FastAPI's `HTMLResponse` works directly with `render()`, which returns a plain `str`.
