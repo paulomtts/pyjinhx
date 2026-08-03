@@ -1,5 +1,6 @@
 from pyjinhx.builtins.pjx_page_loader import PJXPageLoader
 from pyjinhx.builtins.pjx_region_loader import PJXRegionLoader
+from pyjinhx.builtins.ui.pjx_button import PJXButton
 from pyjinhx.builtins.ui.pjx_carousel import PJXCarousel
 from pyjinhx.builtins.ui.pjx_carousel_slide import PJXCarouselSlide
 from pyjinhx.builtins.ui.pjx_dropdown import PJXDropdown
@@ -11,12 +12,14 @@ from pyjinhx.builtins.ui.pjx_toast_host import PJXToastHost
 
 
 def dropdown():
+    # Entries are components, not HTML strings: a str item in a list slot is
+    # plain text and gets escaped (#695). PJXButton carries the markup, and
+    # .pjx-dropdown__menu button in pjx_dropdown.css restyles it in place.
     return PJXDropdown(
         trigger="Actions",
         items=[
-            "<button>Edit</button>",
-            "<button>Duplicate</button>",
-            "<button>Delete</button>",
+            PJXButton(variant="ghost", content=label)
+            for label in ("Edit", "Duplicate", "Delete")
         ],
         menu_label="Actions menu",
     ).render()
