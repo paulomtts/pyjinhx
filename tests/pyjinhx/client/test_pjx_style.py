@@ -1,28 +1,36 @@
-"""pjxInjectStyle(): one <style id="pjx-style"> per page, no matter how often it runs."""
+"""The always-on runtime CSS: one server-emitted <style id="pjx-style"> per render."""
 
 from __future__ import annotations
 
+from pyjinhx.assets import emit_assets
+from pyjinhx.client.inject import inject_runtime
+from pyjinhx.session import RenderSession
 
-def test_style_tag_is_injected_on_load(pjx_page):
-    page = pjx_page("<div></div>")
-    assert page.evaluate("!!document.getElementById('pjx-style')")
+
+def emitted() -> str:
+    session = RenderSession()
+    inject_runtime(session)
+    return emit_assets(session)
 
 
-def test_style_defines_the_skeleton_and_spinner_classes(pjx_page):
-    page = pjx_page("<div></div>")
-    css = page.evaluate("document.getElementById('pjx-style').textContent")
+def test_the_style_block_is_emitted_once():
+    assert emitted().count('<style id="pjx-style">') == 1
+
+
+def test_the_style_block_defines_the_skeleton_and_spinner_classes():
+    css = emitted()
     assert ".pjx-loading--skeleton" in css
     assert ".pjx-loading--spinner" in css
 
 
-def test_style_rules_read_overridable_custom_properties(pjx_page):
-    page = pjx_page("<div></div>")
-    css = page.evaluate("document.getElementById('pjx-style').textContent")
+def test_the_style_rules_read_overridable_custom_properties():
+    css = emitted()
     assert "--pjx-skeleton-color" in css
     assert "--pjx-spinner-size" in css
 
 
-def test_reinjecting_keeps_a_single_style_tag(pjx_page):
-    page = pjx_page("<div></div>")
-    page.evaluate("pjx.injectStyle(); pjx.injectStyle()")
-    assert page.evaluate("document.querySelectorAll('#pjx-style').length") == 1
+def test_a_second_inject_on_the_same_session_does_not_duplicate_it():
+    session = RenderSession()
+    inject_runtime(session)
+    inject_runtime(session)
+    assert emit_assets(session).count('<style id="pjx-style">') == 1

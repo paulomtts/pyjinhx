@@ -15,7 +15,12 @@ from typing import TYPE_CHECKING, Any
 
 import pytest
 
-from pyjinhx.client import read_pjx_runtime
+from pyjinhx.client import (
+    read_loading_indicator_js,
+    read_page_loader_js,
+    read_pjx_runtime,
+    read_pjx_style_css,
+)
 
 if TYPE_CHECKING:
     from playwright.sync_api import Page
@@ -30,7 +35,7 @@ def _require_chromium(request: pytest.FixtureRequest) -> None:
     # hit a raw Playwright launch failure instead of a clean skip. Only the
     # browser tests need chromium, so still avoid resolving `browser_type`
     # (or importing playwright) for a test that never asked for a page.
-    if "pjx_page" not in request.fixturenames:
+    if not {"pjx_page", "pjx_full_page", "page"} & set(request.fixturenames):
         return
     pytest.importorskip("playwright")
     browser_type: Any = request.getfixturevalue("browser_type")
@@ -54,6 +59,27 @@ def pjx_page(page: Page) -> Iterator[Callable[..., Page]]:
         if with_htmx:
             page.evaluate("window.htmx = {}")
         page.add_script_tag(content=read_pjx_runtime())
+        return page
+
+    yield load
+
+
+@pytest.fixture
+def pjx_full_page(page: Page) -> Iterator[Callable[..., Page]]:
+    """`pjx_page` plus everything `inject_runtime` ships: artifacts and CSS.
+
+    Separate from `pjx_page` so the core tests keep proving pjx.js alone never
+    touches classList.
+    """
+
+    def load(body: str, head: str = "", with_htmx: bool = True) -> Page:
+        page.set_content(f"<head>{head}</head><body>{body}</body>")
+        if with_htmx:
+            page.evaluate("window.htmx = {}")
+        page.add_script_tag(content=read_pjx_runtime())
+        page.add_script_tag(content=read_loading_indicator_js())
+        page.add_script_tag(content=read_page_loader_js())
+        page.add_style_tag(content=read_pjx_style_css())
         return page
 
     yield load

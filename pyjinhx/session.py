@@ -82,6 +82,9 @@ class RenderSession:
         # no path of its own. The flag is what makes a nested render — or a
         # second inject_runtime call on the same session — a no-op.
         self.runtime_script: str | None = None
+        # The always-on runtime CSS block, emitted with the other <style> tags
+        # so runtime_script stays a single pure <script>.
+        self.runtime_style: str | None = None
         self.runtime_injected: bool = False
         # A plain list, not an event bus: render fires it once per component and
         # subscribers (asset accumulation, the reactive instance registry) just

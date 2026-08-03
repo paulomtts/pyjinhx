@@ -1,4 +1,8 @@
-"""Loading indicators: which regions light on htmx:beforeRequest, and why."""
+"""Loading indicators: which regions light on htmx:beforeRequest, and why.
+
+Exercises core (event dispatch) and the loading-indicator artifact
+(class application) together, via pjx_full_page.
+"""
 
 from __future__ import annotations
 
@@ -29,8 +33,8 @@ def classes(page, selector):
     return page.evaluate(CLASSES, selector)
 
 
-def test_beforerequest_lights_a_region_reacting_to_the_dirtied_keys(pjx_page):
-    page = pjx_page(
+def test_beforerequest_lights_a_region_reacting_to_the_dirtied_keys(pjx_full_page):
+    page = pjx_full_page(
         '<div data-pjx-id="t" data-pjx-reacts="count" data-pjx-loading="skeleton">'
         '<button id="btn"></button></div>'
     )
@@ -38,8 +42,8 @@ def test_beforerequest_lights_a_region_reacting_to_the_dirtied_keys(pjx_page):
     assert classes(page, '[data-pjx-id="t"]') == ["pjx-loading--skeleton"]
 
 
-def test_beforerequest_leaves_regions_reacting_to_other_keys_dark(pjx_page):
-    page = pjx_page(
+def test_beforerequest_leaves_regions_reacting_to_other_keys_dark(pjx_full_page):
+    page = pjx_full_page(
         '<div data-pjx-id="t" data-pjx-reacts="count"><button id="btn"></button></div>'
         '<div data-pjx-id="o" data-pjx-reacts="name" data-pjx-loading="skeleton"></div>'
     )
@@ -47,8 +51,8 @@ def test_beforerequest_leaves_regions_reacting_to_other_keys_dark(pjx_page):
     assert classes(page, '[data-pjx-id="o"]') == [""]
 
 
-def test_keyed_regions_light_only_the_instance_matching_the_trigger_load(pjx_page):
-    page = pjx_page(
+def test_keyed_regions_light_only_the_instance_matching_the_trigger_load(pjx_full_page):
+    page = pjx_full_page(
         '<div data-pjx-id="t" data-pjx-reacts="rows" data-pjx-load="7">'
         '<button id="btn"></button></div>'
         '<div data-pjx-id="r7" data-pjx-reacts="rows" data-pjx-load="7" data-pjx-loading="skeleton"></div>'
@@ -59,8 +63,8 @@ def test_keyed_regions_light_only_the_instance_matching_the_trigger_load(pjx_pag
     assert classes(page, '[data-pjx-id="r8"]') == [""]
 
 
-def test_nested_reactive_region_targets_are_not_owned_by_the_parent(pjx_page):
-    page = pjx_page(
+def test_nested_reactive_region_targets_are_not_owned_by_the_parent(pjx_full_page):
+    page = pjx_full_page(
         '<div data-pjx-id="p" data-pjx-reacts="count"><button id="btn"></button>'
         '<span id="own" data-pjx-loading="skeleton"></span>'
         '<div data-pjx-id="c" data-pjx-reacts="other">'
@@ -71,8 +75,8 @@ def test_nested_reactive_region_targets_are_not_owned_by_the_parent(pjx_page):
     assert classes(page, "#inner") == [""]
 
 
-def test_loading_extra_selector_lights_regions_that_do_not_react(pjx_page):
-    page = pjx_page(
+def test_loading_extra_selector_lights_regions_that_do_not_react(pjx_full_page):
+    page = pjx_full_page(
         '<div data-pjx-id="t" data-pjx-reacts="count" data-pjx-loading-extra=".row">'
         '<button id="btn"></button></div>'
         '<div class="row" data-pjx-id="r1" data-pjx-reacts="name" data-pjx-loading="spinner"></div>'
@@ -111,22 +115,24 @@ import pytest
 
 
 @pytest.mark.parametrize("event", END_EVENTS)
-def test_each_completion_event_strips_the_loading_class(pjx_page, event):
-    page = pjx_page(BODY)
+def test_each_completion_event_strips_the_loading_class(pjx_full_page, event):
+    page = pjx_full_page(BODY)
     fire(page, "#btn")
     end(page, event)
     assert classes(page, '[data-pjx-id="t"]') == [""]
 
 
-def test_xhr_loadend_releases_the_region(pjx_page):
-    page = pjx_page(BODY)
+def test_xhr_loadend_releases_the_region(pjx_full_page):
+    page = pjx_full_page(BODY)
     fire(page, "#btn")
     page.evaluate("window.__xhrs.a.loadend()")
     assert classes(page, '[data-pjx-id="t"]') == [""]
 
 
-def test_overlapping_requests_keep_the_region_lit_until_the_last_resolves(pjx_page):
-    page = pjx_page(BODY)
+def test_overlapping_requests_keep_the_region_lit_until_the_last_resolves(
+    pjx_full_page,
+):
+    page = pjx_full_page(BODY)
     fire(page, "#btn", name="a")
     fire(page, "#btn", name="b")
     end(page, "htmx:afterOnLoad", name="a")
@@ -135,15 +141,17 @@ def test_overlapping_requests_keep_the_region_lit_until_the_last_resolves(pjx_pa
     assert classes(page, '[data-pjx-id="t"]') == [""]
 
 
-def test_cancelled_request_neither_lights_nor_registers_a_loadend_listener(pjx_page):
-    page = pjx_page(BODY)
+def test_cancelled_request_neither_lights_nor_registers_a_loadend_listener(
+    pjx_full_page,
+):
+    page = pjx_full_page(BODY)
     fire(page, "#btn", cancel=True)
     assert classes(page, '[data-pjx-id="t"]') == [""]
     assert page.evaluate("window.__xhrs.a.handlers.length") == 0
 
 
-def test_duplicate_completion_events_are_a_no_op(pjx_page):
-    page = pjx_page(BODY)
+def test_duplicate_completion_events_are_a_no_op(pjx_full_page):
+    page = pjx_full_page(BODY)
     fire(page, "#btn")
     end(page, "htmx:afterOnLoad")
     end(page, "htmx:afterOnLoad")
@@ -164,14 +172,14 @@ SWAP = """
 """
 
 
-def test_aftersettle_relights_a_region_swapped_while_in_flight(pjx_page):
-    page = pjx_page(BODY)
+def test_aftersettle_relights_a_region_swapped_while_in_flight(pjx_full_page):
+    page = pjx_full_page(BODY)
     fire(page, "#btn")
     page.evaluate(SWAP)
     assert classes(page, '[data-pjx-id="t"]') == ["pjx-loading--skeleton"]
 
 
-def test_aftersettle_leaves_idle_regions_dark(pjx_page):
-    page = pjx_page(BODY)
+def test_aftersettle_leaves_idle_regions_dark(pjx_full_page):
+    page = pjx_full_page(BODY)
     page.evaluate(SWAP)
     assert classes(page, '[data-pjx-id="t"]') == [""]

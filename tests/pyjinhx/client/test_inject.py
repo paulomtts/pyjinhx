@@ -8,7 +8,13 @@ import logging
 import pytest
 
 from pyjinhx.assets import AssetMode
-from pyjinhx.client import read_pjx_runtime, read_vendored_htmx
+from pyjinhx.client import (
+    read_loading_indicator_js,
+    read_page_loader_js,
+    read_pjx_runtime,
+    read_pjx_style_css,
+    read_vendored_htmx,
+)
 from pyjinhx.client.inject import PJX_MOUNTED_HEADER, inject_runtime
 from pyjinhx.session import RenderSession
 
@@ -29,6 +35,42 @@ def test_cold_render_injects_htmx_then_pjx():
     assert script.index("if (!window.htmx)") < script.index(read_pjx_runtime())
     assert read_vendored_htmx() in script
     assert session.runtime_injected is True
+
+
+def test_cold_render_bundles_the_loading_artifacts_into_the_same_script():
+    session = RenderSession()
+
+    inject_runtime(session)
+
+    script = session.runtime_script
+    assert script is not None
+    assert script.startswith("<script>") and script.endswith("</script>")
+    assert read_loading_indicator_js() in script
+    assert read_page_loader_js() in script
+    assert script.index(read_pjx_runtime()) < script.index(read_loading_indicator_js())
+
+
+def test_cold_render_emits_the_pjx_style_block():
+    session = RenderSession()
+
+    inject_runtime(session)
+
+    style = session.runtime_style
+    assert style is not None
+    assert style.startswith('<style id="pjx-style">') and style.endswith("</style>")
+    assert read_pjx_style_css() in style
+
+
+def test_runtime_style_survives_a_non_inline_css_mode():
+    from pyjinhx.assets import emit_assets
+
+    session = RenderSession()
+    session.css_mode = AssetMode.LINK
+
+    inject_runtime(session)
+
+    assert session.runtime_style is not None
+    assert session.runtime_style in emit_assets(session, resolver=lambda p: str(p))
 
 
 def test_request_none_is_treated_as_cold():

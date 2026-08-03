@@ -2,6 +2,9 @@
 // X-PJX-Mounted/X-PJX-Assets/X-PJX-Trigger request headers on every htmx
 // request, and applies the one swap mechanic htmx core can't do natively --
 // relocating [data-pjx-asset] head assets that arrive via OOB or cold render.
+// Loading state is dispatch-only: core tracks region/page loading state and
+// fires pjx:region-loading-*/pjx:page-loading-* events, never touching
+// classList itself -- that's the loading-indicator/page-loader artifacts' job.
 (function () {
   var pjx = {};
 
@@ -115,40 +118,6 @@
     );
   }
 
-  // Injected once so loading indicators work with zero app CSS; every visual
-  // knob is a --pjx-* custom property the app can override in its own sheet.
-  function pjxInjectStyle() {
-    if (document.getElementById("pjx-style")) {
-      return;
-    }
-    var style = document.createElement("style");
-    style.id = "pjx-style";
-    style.textContent =
-      ".pjx-loading--skeleton,.pjx-loading--spinner{pointer-events:none}" +
-      ".pjx-loading--skeleton{color:transparent !important;" +
-      "border-radius:var(--pjx-skeleton-radius,6px);background-image:linear-gradient(90deg," +
-      "var(--pjx-skeleton-color,rgba(127,127,127,.12))," +
-      "var(--pjx-skeleton-highlight,rgba(127,127,127,.30)) 50%," +
-      "var(--pjx-skeleton-color,rgba(127,127,127,.12)));background-size:200% 100%;" +
-      "animation:pjx-shimmer var(--pjx-skeleton-speed,1.2s) ease-in-out infinite}" +
-      ".pjx-loading--skeleton *{visibility:hidden}" +
-      ".pjx-loading--spinner{position:relative}" +
-      ".pjx-loading--spinner::before{content:'';position:absolute;inset:0;" +
-      "background:var(--pjx-spinner-overlay,rgba(0,0,0,.45));" +
-      "backdrop-filter:blur(var(--pjx-spinner-blur,2px));" +
-      "-webkit-backdrop-filter:blur(var(--pjx-spinner-blur,2px));border-radius:inherit}" +
-      ".pjx-loading--spinner::after{content:'';position:absolute;top:50%;left:50%;" +
-      "width:var(--pjx-spinner-size,1.1em);height:var(--pjx-spinner-size,1.1em);" +
-      "margin:calc(var(--pjx-spinner-size,1.1em)/-2) 0 0 calc(var(--pjx-spinner-size,1.1em)/-2);" +
-      "box-sizing:border-box;border:var(--pjx-spinner-thickness,2px) solid " +
-      "var(--pjx-spinner-track,rgba(255,255,255,.4));" +
-      "border-top-color:var(--pjx-spinner-color,rgba(255,255,255,.95));" +
-      "border-radius:50%;animation:pjx-spin var(--pjx-spinner-speed,.6s) linear infinite}" +
-      "@keyframes pjx-shimmer{from{background-position:100% 0}to{background-position:-100% 0}}" +
-      "@keyframes pjx-spin{to{transform:rotate(360deg)}}";
-    document.head.appendChild(style);
-  }
-
   var pjxLoadingByXhr = new Map(); // xhr -> [region id, ...]
   var pjxLoading = {}; // region id -> in-flight request count (ref-count)
 
@@ -184,6 +153,14 @@
     return targets;
   }
 
+  // Dispatch-only, like pjxToast: applying the class is the loading-indicator
+  // artifact's job, so core stays a pure state machine over region ids.
+  function pjxFire(name, detail) {
+    document.dispatchEvent(
+      new CustomEvent(name, { detail: detail || {}, bubbles: false })
+    );
+  }
+
   function pjxLight(region, ids) {
     var id = region.getAttribute("data-pjx-id");
     if (!id || ids.indexOf(id) !== -1) {
@@ -193,11 +170,9 @@
     if (!targets.length) {
       return;
     }
-    targets.forEach(function (t) {
-      t.classList.add(pjxLoadingClass(t));
-    });
     pjxLoading[id] = (pjxLoading[id] || 0) + 1;
     ids.push(id);
+    pjxFire("pjx:region-loading-start", { id: id });
   }
 
   function pjxBeginLoading(evt) {
@@ -272,23 +247,13 @@
       return;
     }
     delete pjxLoading[id];
-    var region = pjxRegion(id);
-    if (region) {
-      pjxLoadingTargets(region).forEach(function (t) {
-        t.classList.remove(pjxLoadingClass(t));
-      });
-    }
+    pjxFire("pjx:region-loading-end", { id: id });
   }
 
   // a swap can replace a region another in-flight request still needs lit
   function pjxReapplyLoading() {
     Object.keys(pjxLoading).forEach(function (id) {
-      var region = pjxRegion(id);
-      if (region) {
-        pjxLoadingTargets(region).forEach(function (t) {
-          t.classList.add(pjxLoadingClass(t));
-        });
-      }
+      pjxFire("pjx:region-loading-start", { id: id });
     });
   }
 
@@ -302,17 +267,18 @@
 
   var pjxPageLoading = 0;
 
-  // Toggle the page-level CSS hook. Only a class is set: the overlay markup is
-  // an L4 page-loader builtin's business, this is the state it hangs off.
+  // Toggle the page-level loading state. Only the state and the event are
+  // core's; the overlay class and its CSS belong to the page-loader artifact.
   function pjxLoaderPage(on) {
     if (on) {
       pjxPageLoading += 1;
-      document.documentElement.classList.add("pjx-loading--page");
+      pjxFire("pjx:page-loading-start", {});
       return;
     }
+    var was = pjxPageLoading;
     pjxPageLoading = Math.max(0, pjxPageLoading - 1);
-    if (pjxPageLoading === 0) {
-      document.documentElement.classList.remove("pjx-loading--page");
+    if (was > 0 && pjxPageLoading === 0) {
+      pjxFire("pjx:page-loading-end", {});
     }
   }
 
@@ -337,12 +303,14 @@
   pjx.trigger = pjxTrigger;
   pjx.applyHeadAssets = pjxApplyHeadAssets;
   pjx.promoteInlineAssets = pjxPromoteInlineAssets;
-  pjx.injectStyle = pjxInjectStyle;
   pjx.toast = pjxToast;
   pjx.loader = { page: pjxLoaderPage, region: pjxLoaderRegion };
   pjx.loadingCount = function (id) {
     return pjxLoading[id] || 0;
   };
+  pjx.region = pjxRegion;
+  pjx.loadingTargets = pjxLoadingTargets;
+  pjx.loadingClass = pjxLoadingClass;
   window.pjx = pjx;
 
   if (!window.htmx) {
@@ -352,7 +320,6 @@
     );
   }
 
-  pjxInjectStyle();
   pjxPromoteInlineAssets();
   document.body.addEventListener("htmx:configRequest", pjxConfigRequest);
   document.body.addEventListener("htmx:afterRequest", pjxApplyHeadAssetsFromRequest);

@@ -7,7 +7,13 @@ import logging
 from typing import Any
 
 from pyjinhx.assets import AssetMode
-from pyjinhx.client import read_pjx_runtime, read_vendored_htmx
+from pyjinhx.client import (
+    read_loading_indicator_js,
+    read_page_loader_js,
+    read_pjx_runtime,
+    read_pjx_style_css,
+    read_vendored_htmx,
+)
 from pyjinhx.session import RenderSession
 
 logger = logging.getLogger(__name__)
@@ -79,7 +85,8 @@ def inject_runtime(session: RenderSession, request: Any = None) -> None:
             None outside a request.
 
     Raises:
-        OSError: If pjx.js or the vendored htmx source cannot be read.
+        OSError: If pjx.js, the vendored htmx source, or a loading artifact
+            cannot be read.
     """
     if _is_mounted_request(request):
         return
@@ -88,10 +95,13 @@ def inject_runtime(session: RenderSession, request: Any = None) -> None:
     if session.js_mode is not AssetMode.INLINE:
         return
     # htmx first, so window.htmx exists by the time pjx.js registers its
-    # listeners; its own guard makes re-defining a page's htmx a no-op.
+    # listeners; its own guard makes re-defining a page's htmx a no-op. The two
+    # loading artifacts come last: they call pjx.region/pjx.loadingTargets.
     session.runtime_script = (
-        f"<script>{read_vendored_htmx()}{read_pjx_runtime()}</script>"
+        f"<script>{read_vendored_htmx()}{read_pjx_runtime()}"
+        f"{read_loading_indicator_js()}{read_page_loader_js()}</script>"
     )
+    session.runtime_style = f'<style id="pjx-style">{read_pjx_style_css()}</style>'
     session.runtime_injected = True
 
 
