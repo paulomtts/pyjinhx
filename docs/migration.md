@@ -507,279 +507,106 @@ A subclass without `react=` inherits the parent's keys through the MRO. Re-decla
 
 ---
 
-## Migrating from 0.4.x to the latest
+## Migrating from pre-1.0 (v0.x) to 1.0 (pyjinhx v2)
 
-> **Audience:** humans and AI coding agents upgrading a codebase built against the
-> old (`~0.4.2`) render-only pyjinhx to the current release. It tells you what still
-> works untouched, the handful of things that must change, and how to adopt the new
-> reactive layer that did not exist in 0.4.x.
+> **Audience:** humans and AI coding agents on any v0.x release (0.4 through 0.36) moving
+> to 1.0. Everything above this section (0.36.x → 1.0, and the version-by-version notes
+> from 0.8 through 0.36) also applies — read those for the mechanical, template-level
+> breaks. This section covers the deeper break: v2 is a rebuild of the render/reactive
+> engine itself, so the *entry points* you call from Python changed shape even though the
+> component model (Pydantic fields, adjacent templates, slots, `react=`, `@mutates`)
+> carried over.
 
-### The one-paragraph mental model
+### `Renderer` / `Registry` are gone
 
-pyjinhx `0.4.x` was a **render-only** library: you defined `BaseComponent` subclasses
-(Pydantic models with an adjacent Jinja template) and called `.render()`. Reactivity —
-re-rendering parts of a page when state changed — was something **you** wired by hand:
-route handlers built `hx-swap-oob="..."` HTML strings (`render_*_oob()` functions) and
-returned them. The current release **keeps all of that working** and adds an **opt-in
-reactive layer** (`ReactiveComponent` + `@mutates` + `setup()`) that does the OOB fan-out
-for you. So migration is two separable jobs:
+v0.x centered on a `Renderer` object (`Renderer.get_default_renderer()`,
+`Renderer.set_default_environment()`, instance `.render()` returning `Markup`) plus a
+`Registry` with a `request_scope()` middleware for per-request isolation. Neither class
+exists in 1.0 — `pyjinhx/__init__.py` exports no `Renderer` and no `Registry`. In their
+place:
 
-1. **Mechanical fixes** — a small, fixed list of moved/renamed/changed APIs (below). Do
-   these and your existing app runs on the latest release unchanged in behavior.
-2. **Optional adoption** — replace hand-written OOB string-building with
-   `ReactiveComponent` where you want declarative reactivity. Incremental; do it one
-   region at a time.
-
-### Does my existing code still work? (compatibility matrix)
-
-| Area | Status | Action |
-|------|--------|--------|
-| `from pyjinhx import BaseComponent` + Pydantic fields + adjacent `*.html` | ✅ Unchanged | None |
-| `component.render()` → `Markup`, and `{{ component }}` in templates | ✅ Unchanged | None |
-| `_update_context_(self, context, field_name, field_value, *, renderer, session)` hook | ✅ Unchanged | None |
-| `from pyjinhx.renderer import Renderer, RenderSession` | ✅ Still re-exported | None |
-| `Registry`, `Registry.request_scope()` request isolation middleware | ✅ Unchanged | None |
-| `from pyjinhx.builtins import Card, Tooltip, Panel, PanelTrigger, Notification` | ⚠️ **Renamed in 0.12** | Add the `PJX` prefix: `PJXCard`, `PJXTooltip`, … (see 0.11 → 0.12 above) |
-| `from pyjinhx.parser import Parser` (and `Tag`) | ⚠️ **Moved** | Import from `pyjinhx.tags` |
-| `Renderer.get_default_renderer(inline_css=...)` | ⚠️ **Changed** | Use `css_mode=AssetMode.…` |
-| `Renderer.set_default_environment("some_package")` | ⚠️ **Behavior change** | Pass an explicit path/`Environment` |
-| Reactivity (`react={...}`, `@mutates`, OOB fan-out, `setup()`) | 🆕 **New since 0.4.x** | Opt in (see below) |
-| Pre-0.7 reactive names (`StateKey`, `PyJinhxSettings`, `LoadContext`, `PjxLoad`, `client_script`) | ⚠️ Renamed/removed | See cheat sheet — only if you used them |
-
-### Step 1 — Mechanical fixes
-
-These are the only changes required to keep a 0.4.x app running on the latest release.
-
-#### 1a. `pyjinhx.parser` → `pyjinhx.tags`
-
-The internal HTML/PascalCase-tag parser moved. `Parser` and `Tag` now live in
-`pyjinhx.tags`; the class API (including the `handle_decl` hook that 0.4.x apps sometimes
-monkey-patched to preserve `<!DOCTYPE>`) is unchanged.
+- **Rendering** is a free function: `pyjinhx.render(component, session=None)` returns a
+  finished HTML string. There is no renderer instance to configure or default.
+- **Request scoping** comes from `pyjinhx.RenderSession` plus the request-scope machinery
+  `setup()` installs on your app — you no longer hand-roll a `Registry.request_scope()`
+  middleware.
+- **Environment/template wiring** happens through `setup()`'s `components_root=` (and, for
+  a custom Jinja `Environment`, by constructing `RenderSession` yourself) instead of
+  `Renderer.set_default_environment()`.
 
 ```python
-# OLD
-from pyjinhx.parser import Parser
-
-# NEW
-from pyjinhx.tags import Parser, Tag
-```
-
-If you monkey-patched `Parser.handle_decl` for `<!DOCTYPE>` preservation, just re-point it
-at `pyjinhx.tags.Parser` — the method still exists.
-
-#### 1b. `inline_css=` → asset modes
-
-`Renderer.get_default_renderer()` no longer takes `inline_css`. Assets are now governed by
-`AssetMode` (`INLINE`, `NONE`) per asset kind.
-
-```python
-from pyjinhx import AssetMode, Renderer
-
-# OLD: inline_css=False meant "emit <link> tags instead of inlining CSS"
-renderer = Renderer.get_default_renderer(inline_css=False)
-
-# NEW: choose a CSS mode explicitly
-renderer = Renderer.get_default_renderer(
-    css_mode=AssetMode.NONE
-)  # skip emitting CSS entirely
-# or AssetMode.INLINE (the old default, inline_css=True)
-```
-
-Process-wide defaults moved to dedicated setters:
-
-```python
-Renderer.set_default_css_mode(AssetMode.NONE)
-Renderer.set_default_js_mode(AssetMode.INLINE)
-```
-
-#### 1c. `set_default_environment` is now path-based for strings
-
-`set_default_environment` accepts an `Environment`, a filesystem path, or `None`. A bare
-**string is now treated as a filesystem path** (`FileSystemLoader(os.fspath(value))`), not a
-Python package name. If you relied on package-name resolution, pass an explicit directory:
-
-```python
-from pathlib import Path
+# BEFORE (v0.x)
 from pyjinhx import Renderer
 
-# Safe across versions: hand it a concrete directory (or a prebuilt Environment)
 Renderer.set_default_environment(Path(__file__).parent)
+renderer = Renderer.get_default_renderer()
+html = renderer.render(MyComponent(...))
+
+# AFTER (1.0)
+from pyjinhx import render, setup
+
+setup(app, components_root=Path(__file__).parent)
+html = render(MyComponent(...))
 ```
 
-#### 1d. Pre-0.7 reactive renames (only if you touched them)
+### `pyjinhx.parser` / `pyjinhx.tags` are gone
 
-0.4.x predates reactivity, so most 0.4.x apps skip this. If your code passed through an
-intermediate `0.5`–`0.7` reactive API, apply these renames:
+The public HTML/PascalCase-tag parser (`Parser`, `Tag`, wherever your v0.x release had it
+— `pyjinhx.parser` or the later `pyjinhx.tags`) is not part of 1.0's public surface (ADR
+0011, see above). v2 does not build a parse tree at all; it composes a segment model
+internally and exposes no equivalent public type. If you were parsing rendered output to
+inspect it, parse it with an HTML library you control (`html.parser`, `lxml`,
+BeautifulSoup) instead of pyjinhx internals.
 
-| Old | New |
-|-----|-----|
-| `StateKey` | `MutationKey` |
-| `PyJinhxSettings` | `PjxSettings` |
-| `LoadContext` | `PjxContext` |
-| `PjxLoad` | `PjxKey` |
-| `client_script()` | no longer top-level — `from pyjinhx.client import client_script` |
+### `pyjinhx.builtins` today
 
-Also note the **public surface was curated from ~45 down to ~11 symbols**. Advanced/internal
-symbols are no longer top-level — import them from their submodule
-(e.g. `from pyjinhx.cache import LoadCache`, `from pyjinhx.tags import Parser`). The 11
-top-level exports are: `BaseComponent`, `ReactiveComponent`, `Renderer`, `setup`,
-`Registry`, `mutates`, `MutationKey`, `PjxKey`, `PjxContext`, `PjxSettings`, `AssetMode`.
+`pyjinhx.builtins` no longer ships the older component set (`Card`, `Tooltip`, `Panel`,
+`PanelTrigger`, `Notification`, `Avatar`, `Modal`, …). The current builtins are the HTMX
+data/nav family — `PJXTable` and its parts (`PJXTableHead`, `PJXTableBody`, `PJXTableRow`,
+`PJXTableHeaderCell`, `PJXTableCell`), `PJXPaginator`, `PJXRegionLoader`, `PJXPageLoader`,
+`PJXLazyLoad` — plus the `ui/` component set. Check `pyjinhx.builtins.__init__` for the
+current list rather than assuming a name from an older release survived.
 
-### Step 2 — Wire `setup()` (prerequisite for reactivity)
+### `PjxContext` is narrower
 
-Reactivity needs the client runtime, request scoping, and (optionally) a cross-worker
-invalidation backend. One call wires all of it into a FastAPI/Starlette app. This
-*replaces* a hand-rolled `Registry.request_scope()` middleware — `setup()` installs request
-scoping for you.
-
-```python
-from pathlib import Path
-from fastapi import FastAPI
-from pyjinhx import setup, PjxSettings, Renderer
-
-Renderer.set_default_environment(Path(__file__).parent)  # template root
-
-app = FastAPI()
-
-setup(
-    app,
-    settings=PjxSettings.from_env(),  # REDIS_URL / PJX_INVALIDATION_DB / PJX_REACTIVE_DEV
-    # Inject per-request data reachable inside reactive load():
-    context_factory=lambda request: AppLoadContext(db=get_db(request)),
-)
-```
-
-Cache scope is **derived from the settings**: with no invalidation backend you get
-per-request caching (safe for any number of workers); configuring a `RedisInvalidationBackend`
-(multi-host) or `SqliteInvalidationBackend` (single-host, zero-infra) switches to per-worker
-process caching with cross-worker invalidation fan-out.
-
-If you are not adopting reactivity yet, you can keep your existing
-`Registry.request_scope()` middleware and skip `setup()` entirely — render-only usage is
-unaffected.
-
-### Step 3 — Replace manual OOB with `ReactiveComponent`
-
-This is the heart of the upgrade. In 0.4.x you refreshed dependent regions by building OOB
-HTML by hand in the route:
+v0.x's `PjxContext` supported user-data injection and `load()`-parameter introspection. 1.0's
+`PjxContext` is a deliberately narrower, read-only facade over session and reactive
+state — no user-data injection, no mutation methods. To reach per-request app data inside
+`load()`, subclass `pyjinhx.AppContext` and pass an instance via `setup()`'s
+`context_factory=`:
 
 ```python
-# BEFORE (0.4.x): the route knows every dependent region and hand-builds its OOB swap
-def render_member_count_oob(*, members_count: int, members_total: int) -> str:
-    return (
-        f'<span id="members-counter" hx-swap-oob="outerHTML:#members-counter">'
-        f"{members_count} of {members_total}</span>"
-        f'<span id="nav-members-badge" hx-swap-oob="outerHTML:#nav-members-badge">'
-        f"{members_total}</span>"
-    )
+from pyjinhx import AppContext, ReactiveComponent, setup
 
 
-@app.post("/orgs/{slug}/members/{mid}/remove")
-def remove_member(slug: str, mid: str):
-    org.remove_member(slug, mid)
-    # You must remember to refresh the counter AND the badge AND the subtitle…
-    return render_member_row_removed(mid) + render_member_count_oob(
-        members_count=org.active_count(slug), members_total=org.total(slug)
-    )
-```
-
-In the current release, each region **declares what state it derives from** and **how to
-rebuild itself**, and the framework computes and emits the OOB swaps:
-
-```python
-# AFTER (latest): declare dependencies once; OOB fan-out is automatic
-from pyjinhx import ReactiveComponent, MutationKey, mutates
+class MyAppContext(AppContext):
+    def __init__(self, db, user):
+        self.db = db
+        self.user = user
 
 
-class Keys(MutationKey):
-    MEMBERS = "members"
+setup(app, context_factory=lambda request: MyAppContext(get_db(request), request.user))
 
 
-# 1. The store marks which state it dirties
-@mutates(Keys.MEMBERS)
-def remove_member(slug: str, mid: str) -> None: ...
-
-
-# 2. Each region rebuilds itself from the current world and lists its triggers
-class MembersCounter(ReactiveComponent, react={Keys.MEMBERS}):
-    count: int = 0
-    total: int = 0
-
+class TodoList(ReactiveComponent):
     @classmethod
-    def load(cls) -> "MembersCounter":
-        return cls(count=org.active_count(), total=org.total())
-
-
-class NavMembersBadge(ReactiveComponent, react={Keys.MEMBERS}):
-    total: int = 0
-
-    @classmethod
-    def load(cls) -> "NavMembersBadge":
-        return cls(total=org.total())
-
-
-# 3. The route renders only the primary; dependents swap themselves
-@app.post("/orgs/{slug}/members/{mid}/remove")
-def remove_member_route(slug: str, mid: str):
-    remove_member(slug, mid)  # @mutates records Keys.MEMBERS as dirtied
-    return MembersCounter.render()  # framework reloads every mounted region whose
-    # react keys ∩ {MEMBERS} ≠ ∅, hashes them, and
-    # appends an hx-swap-oob fragment for each *changed* one
+    def load(cls, ctx: MyAppContext) -> "TodoList":
+        return cls(items=ctx.db.todos_for(ctx.user))
 ```
 
-What you delete: the bespoke `render_*_oob()` string builders and the route's burden of
-remembering every dependent. What you gain: a region added later that reacts to `MEMBERS`
-updates automatically, with no route change, and unchanged regions are skipped via state
-hashing.
+### `pyjinhx.render` → `pyjinhx.rendering`
 
-**Migration recipe per region:**
+The render-pipeline submodule is `pyjinhx.rendering` in 1.0 (`render()`, `render_level()`
+internals). If you imported from a `pyjinhx.render` submodule directly rather than the
+top-level `pyjinhx.render` function, update the import path.
 
-1. Identify a piece of state and give it a `MutationKey` member.
-2. Decorate the store function that changes it with `@mutates(Keys.THAT_KEY)`.
-3. Turn the region's `render_*()` function into a `ReactiveComponent` with a
-   `classmethod load()` that rebuilds it from the current world, and a
-   `react={...}` class keyword listing the `MutationKey` members it depends on.
-4. For a multi-instance region (a row keyed by id), mark the key field
-   `Annotated[int, PjxKey()]` and give `load(cls, key)` that one parameter.
-5. Render the primary with `Cls.render(...)`; delete the manual OOB plumbing.
+### What still works unchanged
 
-See [Reactivity](reactivity.md) for the full model (state hashing, nested-region
-deduplication, keyed instances) and [Configuration](guide/configuration.md) for `setup()`
-and invalidation backends.
+- `BaseComponent` authoring: Pydantic fields + adjacent template, auto-registered.
+- `react=`, `@mutates`, `MutationKey`, and OOB fan-out for `ReactiveComponent`.
+- `RenderSession` as the per-request rendering handle (construction changed; the concept
+  did not).
 
-### Quick cheat sheet
-
-```text
-# Imports that move / change
-from pyjinhx.parser import Parser          →  from pyjinhx.tags import Parser, Tag
-Renderer.get_default_renderer(inline_css=False)
-                                           →  Renderer.get_default_renderer(css_mode=AssetMode.NONE)
-Renderer.set_default_environment("pkg")    →  Renderer.set_default_environment(Path(".../templates"))
-
-# Pre-0.7 reactive renames (skip if you never used them)
-StateKey         → MutationKey
-PyJinhxSettings  → PjxSettings
-LoadContext      → PjxContext
-PjxLoad          → PjxKey
-client_script()  → no longer top-level — from pyjinhx.client import client_script
-
-# Advanced symbols are no longer top-level — import from submodules
-from pyjinhx.cache import LoadCache, CacheScope
-from pyjinhx.tags import Parser, Tag
-```
-
-### What deliberately did **not** change
-
-To keep migration cheap, these 0.4.x idioms are untouched:
-
-- `BaseComponent` authoring: Pydantic models + adjacent `name.html` template, auto-registered.
-- `.render()` returning `Markup`, and `{{ component }}` rendering in templates.
-- The `_update_context_(self, context, field_name, field_value, *, renderer, session)`
-  context-injection hook and `RenderSession`.
-- `Registry.request_scope()` for per-request component isolation.
-- `pyjinhx.builtins` components — though as of 0.12 they carry a `PJX` prefix (`PJXCard`, `PJXTooltip`, `PJXTable`, …).
-- Child components as rendered strings, `id`-based addressing, and manual `hx-swap-oob`
-  strings — still valid if you are not ready to adopt `ReactiveComponent` for a given region.
-
-You can migrate the mechanical fixes today and adopt reactivity region-by-region later;
-the two layers coexist.
+See [Reactivity](reactivity.md) for the full reactive model and
+[Configuration](guide/configuration.md) for `setup()`, `PjxSettings`, and invalidation
+backends.
