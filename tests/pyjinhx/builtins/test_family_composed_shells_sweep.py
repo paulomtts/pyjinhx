@@ -45,7 +45,7 @@ from pyjinhx.builtins.ui.pjx_tooltip_content import PJXTooltipContent
 from pyjinhx.builtins.ui.pjx_tooltip_trigger import PJXTooltipTrigger
 from pyjinhx.classless import component
 from pyjinhx.component import BaseComponent, Slot, _pascal_to_snake
-from pyjinhx.render import render
+from pyjinhx.rendering import render
 from pyjinhx.session import RenderSession
 
 FAMILY = (

@@ -31,7 +31,7 @@ from pyjinhx.builtins.ui.pjx_password_input import PJXPasswordInput
 from pyjinhx.builtins.ui.pjx_segmented_control import PJXSegmentedControl
 from pyjinhx.builtins.ui.pjx_toggle_switch import PJXToggleSwitch
 from pyjinhx.component import BaseComponent, Slot, _pascal_to_snake
-from pyjinhx.render import render
+from pyjinhx.rendering import render
 from pyjinhx.session import RenderSession
 
 FAMILY = (

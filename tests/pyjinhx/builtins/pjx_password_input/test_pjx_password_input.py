@@ -11,7 +11,7 @@ import pytest
 from pydantic import ValidationError
 
 from pyjinhx.builtins.ui.pjx_password_input import PJXPasswordInput
-from pyjinhx.render import render
+from pyjinhx.rendering import render
 from pyjinhx.session import RenderSession
 
 

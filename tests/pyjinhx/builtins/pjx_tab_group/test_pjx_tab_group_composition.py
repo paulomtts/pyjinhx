@@ -8,7 +8,7 @@ from pyjinhx.builtins.ui.pjx_tab import PJXTab
 from pyjinhx.builtins.ui.pjx_tab_group import PJXTabGroup
 from pyjinhx.builtins.ui.pjx_tab_list import PJXTabList
 from pyjinhx.builtins.ui.pjx_tab_panel import PJXTabPanel
-from pyjinhx.render import render
+from pyjinhx.rendering import render
 from pyjinhx.session import RenderSession
 
 

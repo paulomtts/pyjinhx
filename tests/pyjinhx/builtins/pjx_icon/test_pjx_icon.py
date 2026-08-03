@@ -8,7 +8,7 @@ from pydantic import ValidationError
 
 from pyjinhx.builtins.ui.pjx_icon import PJXIcon
 from pyjinhx.component import BaseComponent
-from pyjinhx.render import render
+from pyjinhx.rendering import render
 from pyjinhx.session import RenderSession
 
 

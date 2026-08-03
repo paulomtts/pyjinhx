@@ -168,7 +168,7 @@ from dataclasses import replace
 
 from pyjinhx.component import BaseComponent
 from pyjinhx.descriptor import ClassDescriptor
-from pyjinhx.render import render, render_level
+from pyjinhx.rendering import render, render_level
 from pyjinhx.segments import serialize
 from pyjinhx.session import accumulate_assets, request_scope
 

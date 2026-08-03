@@ -35,7 +35,7 @@ from pyjinhx.reactive.component import PjxKey, ReactiveComponent
 from pyjinhx.reactive.fanout import walk_manifest
 from pyjinhx.reactive.response import ReactiveResponse
 from pyjinhx.reactive.root_attrs import stamp_reactive_root_attrs
-from pyjinhx.render import render
+from pyjinhx.rendering import render
 from pyjinhx.session import (
     RenderSession,
     add_dirtied,

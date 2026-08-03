@@ -18,7 +18,7 @@ import pytest
 from pyjinhx.component import BaseComponent, Slot
 from pyjinhx.descriptor import ClassDescriptor
 from pyjinhx.markers import ComponentNode, collect_slot_tokens
-from pyjinhx.render import render, render_level
+from pyjinhx.rendering import render, render_level
 from pyjinhx.render_context import build_context
 from pyjinhx.session import RenderSession
 
@@ -448,7 +448,7 @@ class TestPropsBoundaries:
         return Card
 
     def test_reading_props_renders_only_the_owner(self):
-        import pyjinhx.render as render_module
+        import pyjinhx.rendering as render_module
 
         Card = self.card_class("slot_props.html")
         seen: list[str] = []

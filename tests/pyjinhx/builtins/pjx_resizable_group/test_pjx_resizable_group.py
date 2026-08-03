@@ -12,7 +12,7 @@ from pydantic import ValidationError
 from pyjinhx.builtins.ui.pjx_resizable_group import PJXResizableGroup
 from pyjinhx.builtins.ui.pjx_resizable_handle import PJXResizableHandle
 from pyjinhx.builtins.ui.pjx_resizable_panel import PJXResizablePanel
-from pyjinhx.render import render
+from pyjinhx.rendering import render
 from pyjinhx.session import RenderSession
 
 

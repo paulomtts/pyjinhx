@@ -11,7 +11,7 @@ import pytest
 
 from pyjinhx.component import BaseComponent
 from pyjinhx.descriptor import ClassDescriptor
-from pyjinhx.render import render
+from pyjinhx.rendering import render
 from pyjinhx.session import RenderSession, request_scope
 
 

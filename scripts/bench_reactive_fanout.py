@@ -45,7 +45,7 @@ from pyjinhx.reactive.fanout import (
     oob_swaps,
     walk_manifest,
 )
-from pyjinhx.render import render_level
+from pyjinhx.rendering import render_level
 from pyjinhx.session import RenderSession, request_scope
 
 MANIFEST_SIZES = (50, 100, 200, 500, 1000, 2000, 5000)

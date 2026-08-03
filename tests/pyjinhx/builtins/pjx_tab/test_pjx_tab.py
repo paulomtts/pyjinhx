@@ -5,7 +5,7 @@ import pytest
 from pyjinhx import discovery
 from pyjinhx.builtins.ui.pjx_icon import PJXIcon
 from pyjinhx.builtins.ui.pjx_tab import PJXTab
-from pyjinhx.render import render
+from pyjinhx.rendering import render
 from pyjinhx.session import RenderSession
 
 

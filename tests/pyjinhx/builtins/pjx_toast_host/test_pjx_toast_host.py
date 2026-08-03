@@ -9,7 +9,7 @@ import pytest
 from pydantic import ValidationError
 
 from pyjinhx.builtins.ui.pjx_toast_host import PJXToastHost
-from pyjinhx.render import render
+from pyjinhx.rendering import render
 from pyjinhx.session import RenderSession
 
 

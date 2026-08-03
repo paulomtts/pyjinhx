@@ -4,7 +4,7 @@ import pytest
 from pydantic import ValidationError
 
 from pyjinhx.builtins.pjx_table_head import PJXTableHead
-from pyjinhx.render import render
+from pyjinhx.rendering import render
 from pyjinhx.session import RenderSession
 
 

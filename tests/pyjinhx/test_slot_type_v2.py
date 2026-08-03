@@ -187,7 +187,7 @@ class TestSlotTruthinessInTemplates:
         return component_cls
 
     def test_component_valued_slot_takes_the_truthy_branch(self):
-        from pyjinhx.render import render
+        from pyjinhx.rendering import render
         from pyjinhx.session import RenderSession
 
         class Leaf(BaseComponent):
@@ -203,7 +203,7 @@ class TestSlotTruthinessInTemplates:
         assert "HAS" in render(Box(content=Leaf()), session)
 
     def test_empty_string_slot_takes_the_falsy_branch(self):
-        from pyjinhx.render import render
+        from pyjinhx.rendering import render
         from pyjinhx.session import RenderSession
 
         class Box2(BaseComponent):
@@ -235,7 +235,7 @@ class TestSlotInterpolation:
         return component_cls
 
     def test_component_slot_renders_the_childs_markup_in_position(self):
-        from pyjinhx.render import render
+        from pyjinhx.rendering import render
         from pyjinhx.session import RenderSession
 
         class InterpLeaf(BaseComponent):
@@ -257,7 +257,7 @@ class TestSlotInterpolation:
         assert "pjx-slot-" not in html
 
     def test_string_slot_still_interpolates_escaped(self):
-        from pyjinhx.render import render
+        from pyjinhx.rendering import render
         from pyjinhx.session import RenderSession
 
         class StringBox(BaseComponent):
@@ -287,7 +287,7 @@ class TestSlotInterpolation:
         self._describe(CountingLeaf, "slot_leaf.html", ())
         self._describe(CountingBox, "slot_interp.html", {"content"})
 
-        import pyjinhx.render as render_module
+        import pyjinhx.rendering as render_module
 
         original = render_module.render_level
 
@@ -350,7 +350,7 @@ class TestSlotSpliceGuards:
         return component_cls
 
     def test_slot_interpolated_into_an_attribute_fails_loudly(self, tmp_path):
-        from pyjinhx.render import render
+        from pyjinhx.rendering import render
         from pyjinhx.session import RenderSession
 
         (tmp_path / "attr_leaf.html").write_text('<span class="leaf">x</span>')

@@ -4,7 +4,7 @@ import pytest
 
 from pyjinhx.builtins.ui.pjx_divider import PJXDivider
 from pyjinhx.builtins.ui.pjx_drawer_footer import PJXDrawerFooter
-from pyjinhx.render import render
+from pyjinhx.rendering import render
 from pyjinhx.session import RenderSession
 
 

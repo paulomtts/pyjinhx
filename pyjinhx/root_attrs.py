@@ -1,7 +1,7 @@
 """Root-attr stamp: splice a component's pass-through attrs into its
 RenderedLevel's root opening tag, at the already-recorded root_span.
 
-Import-pure (stdlib only) — this module may not import pyjinhx.render,
+Import-pure (stdlib only) — this module may not import pyjinhx.rendering,
 pyjinhx.component, or pyjinhx.session (same rule as pyjinhx.segments).
 Single-root detection is NOT this module's job: it trusts the root_span
 it is given, produced by an earlier L0 step (issue #247's detection pass

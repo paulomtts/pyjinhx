@@ -6,7 +6,7 @@ from pydantic import ValidationError
 from pyjinhx.builtins.ui.pjx_tooltip import PJXTooltip
 from pyjinhx.builtins.ui.pjx_tooltip_content import PJXTooltipContent
 from pyjinhx.builtins.ui.pjx_tooltip_trigger import PJXTooltipTrigger
-from pyjinhx.render import render
+from pyjinhx.rendering import render
 from pyjinhx.session import RenderSession
 
 

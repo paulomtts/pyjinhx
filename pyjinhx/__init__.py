@@ -2,7 +2,7 @@
 
 This module re-exports the public API; advanced or internal usage lives in the
 submodules (`pyjinhx.reactive.keys`, `pyjinhx.reactive.mutations`,
-`pyjinhx.registry`, `pyjinhx.render`).
+`pyjinhx.registry`, `pyjinhx.rendering`).
 """
 
 import sys
@@ -38,7 +38,7 @@ _lazy_imports = {
     "Slot": ("pyjinhx.component", "Slot"),
     "component": ("pyjinhx.classless", "component"),
     "ReactiveComponent": ("pyjinhx.reactive.component", "ReactiveComponent"),
-    "render": ("pyjinhx.render", "render"),
+    "render": ("pyjinhx.rendering", "render"),
     "RenderSession": ("pyjinhx.session", "RenderSession"),
     "setup": ("pyjinhx.config", "setup"),
     "PjxContext": ("pyjinhx.context", "PjxContext"),

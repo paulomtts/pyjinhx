@@ -271,7 +271,7 @@ class TestPropsThroughJinja:
         return Card
 
     def test_a_props_field_renders_its_validated_value(self):
-        from pyjinhx.render import render
+        from pyjinhx.rendering import render
 
         Card = self.card_class("slot_props.html")
 
@@ -282,7 +282,7 @@ class TestPropsThroughJinja:
     def test_a_props_value_is_escaped_like_ordinary_text(self):
         # `.props` hands back a plain str, so autoescape applies: only the
         # bare `{{ field }}` path is exempt from escaping.
-        from pyjinhx.render import render
+        from pyjinhx.rendering import render
 
         Card = self.card_class("slot_props.html")
 
@@ -291,7 +291,7 @@ class TestPropsThroughJinja:
         assert output == '<div class="box">&lt;b&gt;x&lt;/b&gt;</div>'
 
     def test_reading_props_does_not_render_the_child(self):
-        import pyjinhx.render as render_module
+        import pyjinhx.rendering as render_module
 
         Card = self.card_class("slot_props.html")
         seen: list[str] = []
@@ -312,7 +312,7 @@ class TestPropsThroughJinja:
         assert seen == ["Card"]
 
     def test_reading_props_produces_no_slot_token(self):
-        from pyjinhx.render import render_level
+        from pyjinhx.rendering import render_level
 
         Card = self.card_class("slot_props.html")
 
@@ -322,7 +322,7 @@ class TestPropsThroughJinja:
         assert "pjx-slot-" not in text
 
     def test_reading_props_creates_no_nested_rendered_level(self):
-        from pyjinhx.render import render_level
+        from pyjinhx.rendering import render_level
         from pyjinhx.segments import RenderedLevel
 
         Card = self.card_class("slot_props.html")
@@ -332,7 +332,7 @@ class TestPropsThroughJinja:
         assert [s for s in level.segments if isinstance(s, RenderedLevel)] == []
 
     def test_interpolating_the_view_itself_raises_the_opacity_error(self):
-        from pyjinhx.render import render
+        from pyjinhx.rendering import render
 
         Card = self.card_class("slot_props_bare_view.html")
 
@@ -356,7 +356,7 @@ class TestPropsRegressions:
         return Card
 
     def test_bare_interpolation_still_splices_the_child(self):
-        from pyjinhx.render import render
+        from pyjinhx.rendering import render
 
         Card = self.card_class("slot_interp.html")
 
@@ -367,21 +367,21 @@ class TestPropsRegressions:
         )
 
     def test_truthiness_still_takes_the_present_branch(self):
-        from pyjinhx.render import render
+        from pyjinhx.rendering import render
 
         Card = self.card_class("slot_if.html")
 
         assert render(Card(content=Leaf(title="a")), self.session()) == "<div>HAS</div>"
 
     def test_truthiness_still_takes_the_absent_branch(self):
-        from pyjinhx.render import render
+        from pyjinhx.rendering import render
 
         Card = self.card_class("slot_if.html")
 
         assert render(Card(content=""), self.session()) == "<div>NONE</div>"
 
     def test_props_works_on_a_list_wrapped_entry(self):
-        from pyjinhx.render import render
+        from pyjinhx.rendering import render
 
         Card = self.card_class("slot_props_list.html")
 
@@ -392,7 +392,7 @@ class TestPropsRegressions:
         assert output == '<div class="list"><i>a</i><i>b</i></div>'
 
     def test_props_works_on_a_dict_wrapped_entry(self):
-        from pyjinhx.render import render
+        from pyjinhx.rendering import render
 
         Card = self.card_class("slot_props_dict.html")
 

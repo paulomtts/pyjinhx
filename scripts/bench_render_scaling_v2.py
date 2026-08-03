@@ -26,7 +26,7 @@ from pathlib import Path
 from pyjinhx import discovery
 from pyjinhx.component import BaseComponent
 from pyjinhx.descriptor import ClassDescriptor
-from pyjinhx.render import render
+from pyjinhx.rendering import render
 from pyjinhx.session import RenderSession
 
 COMPONENT_COUNTS = (50, 100, 200, 500, 1000, 2000, 5000, 10000)
