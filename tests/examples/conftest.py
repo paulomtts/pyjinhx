@@ -29,7 +29,7 @@ def ctx():
 @pytest.fixture
 def session():
     """A RenderSession that inlines co-located component CSS, as a real page does."""
-    render_session = RenderSession(template_dir="/")
+    render_session = RenderSession()
     render_session.on_rendered.append(accumulate_assets)
     render_session.css_mode = AssetMode.INLINE
     render_session.js_mode = AssetMode.INLINE

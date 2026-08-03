@@ -14,7 +14,7 @@ def session():
     # FileSystemLoader reconstructs them by joining the search root with the
     # split pieces, so the root "/" is the only search root that round-trips
     # an absolute path back to itself.
-    return RenderSession(template_dir="/")
+    return RenderSession()
 
 
 class TestFields:

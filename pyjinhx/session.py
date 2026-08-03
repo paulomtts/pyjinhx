@@ -6,7 +6,7 @@ from contextvars import ContextVar
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from jinja2 import Environment, FileSystemLoader
+from jinja2 import BaseLoader, Environment, TemplateNotFound
 
 from pyjinhx.assets import AssetMode
 from pyjinhx.markers import finalize_slot_node
@@ -44,17 +44,43 @@ class NoActiveRequestScope(RuntimeError):
     """Raised when per-request state is touched outside an active request_scope()."""
 
 
+class AbsolutePathLoader(BaseLoader):
+    """Jinja loader that treats every template name as an absolute filesystem path."""
+
+    def get_source(
+        self, environment: Environment, template: str
+    ) -> tuple[str, str, Callable[[], bool]]:
+        # Absolute-only, with no search root and no relative fallback, because
+        # component template names are already fully resolved by
+        # _resolve_template_path - there is nothing left to search for. A
+        # fallback rooted at cwd would silently load whichever file happened to
+        # sit beside the process, which is how the old FileSystemLoader("templates")
+        # default turned every un-configured request into a TemplateNotFound (#728).
+        path = Path(template)
+        if not path.is_absolute() or not path.is_file():
+            raise TemplateNotFound(template)
+        source = path.read_text(encoding="utf-8")
+        mtime = path.stat().st_mtime
+
+        def uptodate() -> bool:
+            # Matches FileSystemLoader's cache-invalidation contract: a deleted
+            # or touched file must invalidate, so the missing case is stale
+            # rather than an exception escaping Jinja's cache check.
+            try:
+                return path.stat().st_mtime == mtime
+            except OSError:
+                return False
+
+        return source, str(path), uptodate
+
+
 class RenderSession:
     """Session providing Jinja environment with autoescape enabled."""
 
-    def __init__(self, template_dir: str = "templates"):
-        """Initialize render session.
-
-        Args:
-            template_dir: Directory to load templates from (default: "templates").
-        """
+    def __init__(self):
+        """Initialize render session."""
         self.jinja_env = Environment(
-            loader=FileSystemLoader(template_dir),
+            loader=AbsolutePathLoader(),
             autoescape=True,
             # Interpolating a component-valued slot must not stringify it; the
             # hook swaps in a placeholder the render pipeline resolves later.
@@ -222,7 +248,6 @@ def get_load_context() -> object | None:
 
 @contextmanager
 def request_scope(
-    template_dir: str = "templates",
     session: "RenderSession | None" = None,
     *,
     load_context: object | None = None,
@@ -230,8 +255,6 @@ def request_scope(
     """Bind fresh per-request state for the duration of the block.
 
     Args:
-        template_dir: Directory a newly-constructed RenderSession loads
-            templates from. Ignored when ``session`` is given.
         session: An existing RenderSession to bind as this scope's current
             session, instead of constructing a fresh one. Lets a caller wire
             hooks (e.g. ``on_rendered``) onto a session before it becomes the
@@ -245,7 +268,7 @@ def request_scope(
         The RenderSession bound for this scope.
     """
     if session is None:
-        session = RenderSession(template_dir)
+        session = RenderSession()
     session_token = _render_session.set(session)
     instances_token = _instances.set({})
     dirtied_token = _dirtied.set(set())

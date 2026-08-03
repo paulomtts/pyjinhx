@@ -101,7 +101,7 @@ def bench(root_cls: type[BaseComponent], session: RenderSession) -> float:
 def main() -> None:
     template_dir = Path(tempfile.mkdtemp())
     discovery._registry.mapping = {}
-    session = RenderSession(template_dir=str(template_dir))
+    session = RenderSession()
 
     print(f"field-count sweep at a fixed {FIXED_CHILDREN} children per tree:")
     print(f"{'fields':>7}  {'plain':>11}  {'json':>11}  {'us/child (json)':>17}")

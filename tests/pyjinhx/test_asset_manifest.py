@@ -27,7 +27,7 @@ def _session() -> RenderSession:
     is mode-independent, and nothing here reads a file off disk, so the
     non-existent paths above are safe.
     """
-    return RenderSession(template_dir=str(Path(__file__).parent.parent / "templates"))
+    return RenderSession()
 
 
 def test_manifest_empty_session_returns_empty_tuples():

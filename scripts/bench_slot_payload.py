@@ -183,7 +183,7 @@ def main() -> None:
     discovery._registry.mapping = {}
     children_root = build_children_arm(template_dir)
     slot_root, slot_leaf = build_slot_arm(template_dir)
-    session = RenderSession(template_dir=str(template_dir))
+    session = RenderSession()
 
     bench_children(children_root, session, 64)  # warmup + sanity
     bench_slot(slot_root, slot_leaf, session, 64)

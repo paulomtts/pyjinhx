@@ -68,7 +68,7 @@ def index():
 
 On entry, `request_scope()` binds a fresh `RenderSession`, clears pending mutations, and initializes the request-tier load cache. On exit — even when an exception occurs — it restores the previous state.
 
-`request_scope(template_dir="templates", session=None, *, load_context=None)` takes an optional `template_dir` for where a newly-constructed `RenderSession` loads templates from, an optional pre-built `session` to bind instead, and an optional `load_context` — the app's `context_factory` result for this request, readable via `get_load_context()`.
+`request_scope(session=None, *, load_context=None)` takes an optional `template_dir` for where a newly-constructed `RenderSession` loads templates from, an optional pre-built `session` to bind instead, and an optional `load_context` — the app's `context_factory` result for this request, readable via `get_load_context()`.
 
 For application-wide coverage, pyjinhx ships no middleware of its own. Prefer `setup(app, ...)`, which registers middleware that opens a `request_scope()` for you (see the [canonical FastAPI snippet](../integrations/fastapi.md#middleware-recommended)). To wire it by hand instead, open the scope yourself:
 

@@ -25,7 +25,7 @@ class Button(BaseComponent):
     text: str
 
 
-session = RenderSession(template_dir="./components")
+session = RenderSession()
 html = Button(id="cta", text="Click").render(session)
 ```
 

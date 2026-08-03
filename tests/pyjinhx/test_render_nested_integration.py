@@ -17,11 +17,13 @@ from pyjinhx.rendering import render, render_level
 from pyjinhx.segments import ChildRef, RenderedLevel, serialize
 from pyjinhx.session import RenderSession
 
+_TEMPLATE_DIR = Path(__file__).parent.parent / "templates"
+
 
 def descriptor_for(cls: type[BaseComponent], template: str) -> ClassDescriptor:
     """Attach a minimal descriptor pointing at a fixture template."""
     return ClassDescriptor(
-        template_path=Path(template),
+        template_path=_TEMPLATE_DIR / template,
         slot_fields=frozenset(),
         children_field=None,
         css_paths=(),
@@ -67,7 +69,7 @@ def registry():
 
 @pytest.fixture
 def session():
-    return RenderSession(template_dir="tests/templates")
+    return RenderSession()
 
 
 def test_three_levels_nest_as_rendered_levels(session):

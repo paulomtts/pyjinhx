@@ -16,7 +16,7 @@ def card_body_session():
     the session's FileSystemLoader; Jinja only resolves an absolute path when
     the loader root is "/". Same fixture shape as tests/pyjinhx/builtins/pjx_empty_state.
     """
-    return RenderSession(template_dir="/")
+    return RenderSession()
 
 
 def _html(session, **kw) -> str:

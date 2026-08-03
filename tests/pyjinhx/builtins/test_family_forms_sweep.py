@@ -105,7 +105,7 @@ def family_dir(tmp_path: Path):
 @pytest.fixture
 def session() -> RenderSession:
     """Loader rooted at "/" so absolute descriptor template paths resolve."""
-    return RenderSession(template_dir="/")
+    return RenderSession()
 
 
 def _control_region(html: str) -> str:

@@ -185,10 +185,9 @@ class PjxScopeMiddleware(BaseHTTPMiddleware):
         # can answer "is this mounted?" even when the handler's own signature
         # never declares a Request parameter.
         # The session is built here rather than defaulted inside request_scope():
-        # a ClassDescriptor's template_path is absolute, so only a loader rooted
-        # at "/" can find it, and the three render hooks below are exported
-        # unsubscribed — this is the one place production wiring attaches them.
-        session = RenderSession("/")
+        # the three render hooks below are exported unsubscribed, and this is
+        # the one place production wiring attaches them before the scope opens.
+        session = RenderSession()
         session.on_rendered.append(accumulate_assets)
         session.on_rendered.append(stamp_reactive_root_attrs)
         session.on_rendered.append(register_rendered_instance)

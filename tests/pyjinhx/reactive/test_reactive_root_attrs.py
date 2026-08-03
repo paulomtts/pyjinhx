@@ -20,6 +20,8 @@ from pyjinhx.root_attrs import serialize_attr, stamp_root_attrs
 from pyjinhx.segments import serialize
 from pyjinhx.session import RenderSession
 
+_TEMPLATE_DIR = Path(__file__).parent.parent.parent / "templates"
+
 
 class ReactiveWidget(ReactiveComponent):
     title: str = "hello"
@@ -31,7 +33,7 @@ class PlainWidget(BaseComponent):
 
 def _descriptor_for(cls: type[BaseComponent], template: str) -> ClassDescriptor:
     return ClassDescriptor(
-        template_path=Path(template),
+        template_path=_TEMPLATE_DIR / template,
         slot_fields=frozenset(),
         children_field=None,
         css_paths=(),
@@ -76,7 +78,7 @@ QuotingWidget.__pjx_descriptor__ = _descriptor_for(
     QuotingWidget, "reactive_widget.html"
 )
 ReactiveShell.__pjx_descriptor__ = ClassDescriptor(
-    template_path=Path("reactive_shell.html"),
+    template_path=_TEMPLATE_DIR / "reactive_shell.html",
     slot_fields=frozenset({"body"}),
     children_field=None,
     css_paths=(),
@@ -89,7 +91,7 @@ ReactiveShell.__pjx_descriptor__ = ClassDescriptor(
 @pytest.fixture
 def session() -> RenderSession:
     """A session with only the reactive root-attr subscriber attached."""
-    session = RenderSession(template_dir="tests/templates")
+    session = RenderSession()
     session.on_rendered.append(stamp_reactive_root_attrs)
     return session
 
@@ -247,7 +249,7 @@ def test_markup_outside_the_root_tag_is_byte_identical_after_stamping(
     session: RenderSession,
 ):
     """Everything the splice did not touch must survive unchanged."""
-    plain = RenderSession(template_dir="tests/templates")
+    plain = RenderSession()
     component = AttrsWidget(id="a3")
 
     level = render_level(component, plain)  # no subscriber attached

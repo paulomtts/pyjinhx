@@ -57,7 +57,7 @@ def test_every_factory_renders():
     from pyjinhx.session import request_scope
 
     for name, (factory, height) in DEMOS.items():
-        with request_scope(template_dir="/"):
+        with request_scope():
             markup = hooks.demo_markup(factory())
         assert markup.strip(), name
         assert isinstance(height, int), name
@@ -164,7 +164,7 @@ def test_all_demo_factories_render(tmp_path):
     from pyjinhx.session import request_scope
 
     for name, (factory, _h) in DEMOS.items():
-        with request_scope(template_dir="/"):
+        with request_scope():
             markup = hooks.demo_markup(factory())
         assert "pjx-demo-stage" in markup, name
         assert markup.strip(), name
@@ -176,7 +176,7 @@ def test_dropdown_demo_menu_entries_are_not_escaped():
 
     from pyjinhx.session import request_scope
 
-    with request_scope(template_dir="/"):
+    with request_scope():
         html = dropdown()
 
     assert "&lt;button&gt;" not in html

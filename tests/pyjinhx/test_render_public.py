@@ -14,6 +14,8 @@ from pyjinhx.descriptor import ClassDescriptor
 from pyjinhx.rendering import render
 from pyjinhx.session import RenderSession, request_scope
 
+_TEMPLATE_DIR = Path(__file__).parent.parent / "templates"
+
 
 def _make_component(template_path: str):
     """Build a childless component class wired to a template in tests/templates."""
@@ -22,7 +24,7 @@ def _make_component(template_path: str):
         title: str = "Hello"
 
     descriptor = ClassDescriptor(
-        template_path=Path(template_path),
+        template_path=_TEMPLATE_DIR / template_path,
         slot_fields=frozenset(),
         children_field=None,
         css_paths=(),
@@ -54,7 +56,7 @@ def test_render_roundtrips_template_output(render_session):
         title: str = "Test"
 
     descriptor = ClassDescriptor(
-        template_path=Path("roundtrip.html"),
+        template_path=_TEMPLATE_DIR / "roundtrip.html",
         slot_fields=frozenset(),
         children_field=None,
         css_paths=(),
@@ -82,7 +84,7 @@ def test_render_uses_explicit_session(tmp_path):
         title: str = "Custom"
 
     descriptor = ClassDescriptor(
-        template_path=Path("custom.html"),
+        template_path=template_dir / "custom.html",
         slot_fields=frozenset(),
         children_field=None,
         css_paths=(),
@@ -92,7 +94,7 @@ def test_render_uses_explicit_session(tmp_path):
     )
     CustomComp.__pjx_descriptor__ = descriptor
 
-    custom_session = RenderSession(template_dir=str(template_dir))
+    custom_session = RenderSession()
     component = CustomComp()
 
     result = render(component, custom_session)
@@ -113,7 +115,7 @@ def test_render_without_session_uses_default(monkeypatch, tmp_path):
         title: str = "Default"
 
     descriptor = ClassDescriptor(
-        template_path=Path("default.html"),
+        template_path=template_dir / "default.html",
         slot_fields=frozenset(),
         children_field=None,
         css_paths=(),
@@ -186,13 +188,12 @@ def test_component_render_with_explicit_session(render_session):
 # session up off the ContextVar.
 def test_component_render_uses_ambient_session(tmp_path):
     """Inside request_scope(), no-arg render() uses the scope's session."""
-    template_dir = str(Path(__file__).parent.parent / "templates")
     DivComp = _make_component("div.html")
 
-    with request_scope(template_dir=template_dir) as session:
+    with request_scope() as session:
         ambient = DivComp().render()
 
-    assert ambient == render(DivComp(), RenderSession(template_dir=template_dir))
+    assert ambient == render(DivComp(), RenderSession())
     assert ambient == render(DivComp(), session)
 
 

@@ -21,11 +21,13 @@ from pyjinhx.rendering import render, render_level
 from pyjinhx.segments import RenderedLevel
 from pyjinhx.session import RenderSession
 
+_TEMPLATE_DIR = Path(__file__).parent.parent / "templates"
+
 
 def descriptor(template: str, slots: frozenset[str], children: str | None = None):
     """A ClassDescriptor pointing at a fixture template under tests/templates."""
     return ClassDescriptor(
-        template_path=Path(template),
+        template_path=_TEMPLATE_DIR / template,
         slot_fields=slots,
         children_field=children,
         css_paths=(),
@@ -36,7 +38,7 @@ def descriptor(template: str, slots: frozenset[str], children: str | None = None
 
 
 def session() -> RenderSession:
-    return RenderSession(template_dir="tests/templates")
+    return RenderSession()
 
 
 class Leaf(BaseComponent):

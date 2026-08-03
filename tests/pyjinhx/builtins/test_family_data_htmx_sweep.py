@@ -235,7 +235,7 @@ def family(tmp_path: Path):
 
 def scope():
     """A request scope whose session stamps reactive root attrs and registers instances."""
-    session = RenderSession(template_dir="/")
+    session = RenderSession()
     session.on_rendered.append(stamp_reactive_root_attrs)
     session.on_rendered.append(registry.register_rendered_instance)
     return request_scope(session=session)

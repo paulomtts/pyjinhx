@@ -10,6 +10,8 @@ from pyjinhx.descriptor import ClassDescriptor
 from pyjinhx.rendering import _fill_children, _passthrough_markup
 from pyjinhx.segments import ChildRef, RenderedLevel
 
+_TEMPLATE_DIR = Path(__file__).parent.parent / "templates"
+
 
 class PJXButton(BaseComponent):
     pass
@@ -116,7 +118,7 @@ def test_render_level_passes_unknown_tags_through():
         pass
 
     UnknownHost.__pjx_descriptor__ = ClassDescriptor(
-        template_path=Path("unknown_host.html"),
+        template_path=_TEMPLATE_DIR / "unknown_host.html",
         slot_fields=frozenset(),
         children_field=None,
         css_paths=(),
@@ -125,7 +127,7 @@ def test_render_level_passes_unknown_tags_through():
         provenance={"template": UnknownHost},
     )
 
-    session = RenderSession(template_dir="tests/templates")
+    session = RenderSession()
     lvl = render_level(UnknownHost(), session)
     assert all(isinstance(seg, str) for seg in lvl.segments)
     assert render(UnknownHost(), session) == '<div><WebThing id="a"/></div>'

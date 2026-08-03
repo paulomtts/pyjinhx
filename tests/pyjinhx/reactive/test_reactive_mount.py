@@ -18,6 +18,8 @@ from pyjinhx.reactive.component import ReactiveComponent
 from pyjinhx.rendering import render_level
 from pyjinhx.session import RenderSession
 
+_TEMPLATE_DIR = Path(__file__).parent.parent.parent / "templates"
+
 _load_calls: list[int] = []
 
 
@@ -34,7 +36,7 @@ class PJXPlainWidget(BaseComponent):
 
 def _descriptor_for(cls: type[BaseComponent], template: str) -> ClassDescriptor:
     return ClassDescriptor(
-        template_path=Path(template),
+        template_path=_TEMPLATE_DIR / template,
         slot_fields=frozenset(),
         children_field=None,
         css_paths=(),
@@ -74,7 +76,7 @@ def _registered_tags():
 
 def test_reactive_child_mounted_via_childref_has_load_run_automatically():
     """No manual load() call anywhere in this test — mounting alone must trigger it."""
-    session = RenderSession(template_dir="tests/templates")
+    session = RenderSession()
     component = ContainerComp()
 
     render_level(component, session)
@@ -85,7 +87,7 @@ def test_reactive_child_mounted_via_childref_has_load_run_automatically():
 def test_plain_child_mounted_via_childref_is_unaffected():
     """A plain BaseComponent has no load() and no pjx_mount() override; mounting
     it must not raise and must not add anything to the reactive load-call log."""
-    session = RenderSession(template_dir="tests/templates")
+    session = RenderSession()
 
     class OnlyPlainContainer(BaseComponent):
         pass

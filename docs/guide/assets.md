@@ -60,7 +60,7 @@ it's served from) — pass one to `emit_assets()`/`asset_manifest()`, or it rais
 from pyjinhx import AssetMode
 from pyjinhx.session import RenderSession
 
-session = RenderSession(template_dir="./components")
+session = RenderSession()
 session.css_mode = AssetMode.NONE
 session.js_mode = AssetMode.NONE
 ```
@@ -149,7 +149,7 @@ resolver = resolver_with_hash("/static/components", root="./components")
 from pyjinhx import AssetMode
 from pyjinhx.session import RenderSession
 
-session = RenderSession(template_dir="./components")
+session = RenderSession()
 session.css_mode = AssetMode.NONE
 session.js_mode = AssetMode.NONE
 ```
@@ -187,7 +187,7 @@ app.mount(
 
 @app.get("/")
 def index():
-    session = RenderSession(template_dir="./components")
+    session = RenderSession()
     session.css_mode = AssetMode.NONE
     session.js_mode = AssetMode.NONE
     return str(

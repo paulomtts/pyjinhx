@@ -15,7 +15,7 @@ from pyjinhx.session import RenderSession
 @pytest.fixture
 def tabs_session():
     """Loader rooted at "/" so absolute descriptor template paths resolve."""
-    return RenderSession(template_dir="/")
+    return RenderSession()
 
 
 @pytest.fixture

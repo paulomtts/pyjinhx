@@ -55,7 +55,7 @@ def session():
     the session's FileSystemLoader; Jinja only resolves an absolute path when
     the loader root is "/". Same fixture shape as the sibling builtin tests.
     """
-    return RenderSession(template_dir="/")
+    return RenderSession()
 
 
 def _html(session, **kwargs) -> str:
