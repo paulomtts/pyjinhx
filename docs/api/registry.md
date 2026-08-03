@@ -1,44 +1,10 @@
 # Registry
 
-Two unrelated mechanisms, both informally called "the registry": the **class registry** (`pyjinhx.discovery`) maps a template's tag name to the `BaseComponent` subclass that renders it, process-wide; the **instance registry** (`pyjinhx.registry` + `pyjinhx.session`) maps a composite key to a request-scoped instance or rendered level. Neither is wrapped in a class — both are free functions.
+The **instance registry** (`pyjinhx.registry` + `pyjinhx.session`) maps a composite key to a request-scoped component instance or rendered level. It is not wrapped in a class — it is a set of free functions over per-request state.
+
+Not to be confused with the process-wide tag -> class registry, which is internal machinery documented under [Discovery & Assets](finder.md).
 
 See the [Component Registry guide](../guide/registry.md) for conceptual documentation and usage patterns.
-
-## Class registry (`pyjinhx.discovery`)
-
-The tag -> class mapping used to expand `<Card/>`-style tags and to resolve `component()` lookups. Assembled complete off to the side and published in a single locked swap, so no render ever sees a half-built map.
-
-### build_registry()
-
-```python
-def build_registry(template_dir: Path | str, classes: Iterable[type]) -> None
-```
-
-Walk `template_dir` for `.pjx` templates and publish a fresh tag -> class registry, matching each template to whichever `classes` claims its tag. `setup(components_root=...)` calls this at startup with every declared `BaseComponent` subclass; raises `NotADirectoryError` before any publish happens if the walk fails, leaving the live registry untouched.
-
-### get_class()
-
-```python
-def get_class(tag_name: str) -> type | None
-```
-
-The component class registered for `tag_name`, or `None`. Never raises on a miss: an unknown tag renders as ordinary markup, verbatim.
-
-### register_class()
-
-```python
-def register_class(tag_name: str, cls: type) -> None
-```
-
-Publish `cls` under `tag_name` unless the tag already has an owner. The one way a tag is claimed after the import-time build — used by `component()` to register a classless wrapper on demand. A tag that is already owned is left alone: a class registered this way never shadows a declared one; the loser is logged, not silently dropped.
-
-### get_template_dir()
-
-```python
-def get_template_dir() -> Path | None
-```
-
-The directory the last successful `build_registry()` walked, or `None`. Used by the classless factory (`component()`) to know where to search when no `template_dir` is given explicitly.
 
 ## Instance registry (`pyjinhx.registry` + `pyjinhx.session`)
 

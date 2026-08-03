@@ -145,7 +145,6 @@ def enable_reactive_dev(*, strict: bool = False) -> None
 Enable guardrails. When enabled:
 
 - Warns if `@mutates` recorded dirtied keys but no reactive `render()` consumed them in the request scope.
-- Warns if mutations are pending but no `ClientBackend` is active (OOB swaps skipped).
 
 Set `strict=True` to raise `RuntimeError` instead of logging warnings.
 
