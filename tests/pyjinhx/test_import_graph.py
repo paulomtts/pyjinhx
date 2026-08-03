@@ -360,6 +360,10 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
     # render, inject_runtime, ReactiveResponse) and nothing imports it back
     # except config's deferred setup() edge.
     "integrations.__init__": frozenset(),
+    # base defines the backend-agnostic Protocol other adapters implement; it
+    # only touches session.py's request_scope() by documented contract, never
+    # by import, so it has no internal edges of its own.
+    "integrations.base": frozenset(),
     "integrations.fastapi": frozenset(
         {
             "pyjinhx.client.inject",
