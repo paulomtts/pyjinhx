@@ -38,8 +38,8 @@ def test_component_content_renders_nested(modal_body_session):
     assert '<hr id="d"' in html
 
 
-def test_string_content_renders_escaped_inside_root(modal_body_session):
+def test_string_content_renders_raw_inside_root(modal_body_session):
+    # ADR 0003: a plain str in a Slot is authored markup, not escaped.
     html = _html(modal_body_session, content="<p>hi</p>")
     assert html.count("<div") == 1
-    assert "&lt;p&gt;hi&lt;/p&gt;" in html
-    assert "<p>hi</p>" not in html
+    assert "<p>hi</p>" in html

@@ -39,10 +39,11 @@ class TestRender:
             == '<thead id="h1" class="pjx-table__head sticky"></thead>'
         )
 
-    def test_string_content_is_escaped(self, session):
+    def test_string_content_stays_raw(self, session):
+        # ADR 0003: a plain str in a Slot field is authored markup.
         assert (
             render(PJXTableHead(id="h1", content="a & b"), session)
-            == '<thead id="h1" class="pjx-table__head">a &amp; b</thead>'
+            == '<thead id="h1" class="pjx-table__head">a & b</thead>'
         )
 
     def test_component_content_renders_as_an_opaque_child(self, session):

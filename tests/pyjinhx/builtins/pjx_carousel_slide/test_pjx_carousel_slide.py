@@ -75,10 +75,10 @@ class TestRender:
     def test_content_lands_inside_the_slide(self, session):
         assert ">Bridge</div>" in _html(session, content="Bridge")
 
-    def test_content_string_is_emitted_escaped(self, session):
+    def test_content_string_is_emitted_raw(self, session):
+        # ADR 0003: a plain str in a Slot is authored markup, not escaped.
         html = _html(session, content="<img src='/a.png'>")
-        assert "<img src='/a.png'>" not in html
-        assert "&lt;img" in html
+        assert "<img src='/a.png'>" in html
 
     def test_component_content_renders_nested(self, session):
         assert 'id="d"' in _html(session, content=PJXDivider(id="d"))

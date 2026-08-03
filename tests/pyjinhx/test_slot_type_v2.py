@@ -256,7 +256,7 @@ class TestSlotInterpolation:
         assert "ComponentNode" not in html
         assert "pjx-slot-" not in html
 
-    def test_string_slot_still_interpolates_escaped(self):
+    def test_string_slot_still_interpolates_raw(self):
         from pyjinhx.rendering import render
         from pyjinhx.session import RenderSession
 
@@ -267,7 +267,7 @@ class TestSlotInterpolation:
         session = RenderSession(template_dir="tests/templates")
         html = render(StringBox(content="<b>x</b>"), session)
 
-        assert html == '<div class="box">before &lt;b&gt;x&lt;/b&gt; after</div>'
+        assert html == '<div class="box">before <b>x</b> after</div>'
 
     def test_component_slot_is_rendered_exactly_once(self):
         from pyjinhx.session import RenderSession

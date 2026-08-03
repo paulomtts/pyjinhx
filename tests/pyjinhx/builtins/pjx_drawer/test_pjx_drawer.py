@@ -105,12 +105,11 @@ def test_component_content_renders_inside_the_box(drawer_session):
     assert "Links here" in html
 
 
-def test_string_content_renders_escaped_inside_root(drawer_session):
-    """v2 narrowing of v0.x: a plain str in a Slot is escaped; only components emit markup."""
+def test_string_content_renders_raw_inside_root(drawer_session):
+    """ADR 0003: a plain str in a Slot is authored markup, not escaped."""
     html = _html(drawer_session, content="<p>raw</p>")
     assert html.count("<dialog") == 1
-    assert "&lt;p&gt;raw&lt;/p&gt;" in html
-    assert "<p>raw</p>" not in html
+    assert "<p>raw</p>" in html
 
 
 def test_clean_break_removed_fields():

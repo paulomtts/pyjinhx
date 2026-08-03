@@ -143,10 +143,10 @@ class TestRender:
         assert "--pjx-resizable-min" not in style
         assert "--pjx-resizable-max" not in style
 
-    def test_content_string_is_emitted_escaped(self, session):
+    def test_content_string_is_emitted_raw(self, session):
+        # ADR 0003: a plain str in a Slot is authored markup, not escaped.
         html = _html(session, content="<b>x</b>")
-        assert "<b>x</b>" not in html
-        assert "&lt;b&gt;" in html
+        assert "<b>x</b>" in html
 
 
 class TestAssets:

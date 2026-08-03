@@ -129,11 +129,11 @@ class TestRender:
     def test_no_required_marker_without_a_label(self, session):
         assert "pjx-form-field__required" not in _html(session, required=True)
 
-    def test_string_content_lands_in_the_control_wrapper_escaped(self, session):
+    def test_string_content_lands_in_the_control_wrapper_raw(self, session):
+        # ADR 0003: a plain str in a Slot is authored markup, not escaped.
         html = _html(session, content="<script>x</script>")
         control = html[html.index("pjx-form-field__control") :]
-        assert "&lt;script&gt;x&lt;/script&gt;" in control
-        assert "<script>" not in html
+        assert "<script>x</script>" in control
 
     def test_component_content_renders_inside_the_control_wrapper(self, session):
         html = _html(session, content=PJXSpinner(id="ff-spin"))

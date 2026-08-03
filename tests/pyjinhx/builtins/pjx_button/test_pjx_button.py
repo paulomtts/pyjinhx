@@ -117,10 +117,10 @@ class TestRender:
         html = _html(session, content="X", extra_attrs={"hx-post": "/save"})
         assert 'hx-post="/save"' in html[: html.index(">")]
 
-    def test_content_is_escaped(self, session):
+    def test_content_stays_raw(self, session):
+        # ADR 0003: a plain str in a Slot is authored markup, not escaped.
         html = _html(session, content="<script>x</script>")
-        assert "&lt;script&gt;x&lt;/script&gt;" in html
-        assert "<script>" not in html
+        assert "<script>x</script>" in html
 
 
 class TestAssets:

@@ -87,10 +87,10 @@ class TestRender:
         html = _html(session, content="Saved")
         assert '<div class="pjx-notification__content">Saved</div>' in html
 
-    def test_content_string_is_emitted_escaped(self, session):
+    def test_content_string_is_emitted_raw(self, session):
+        # ADR 0003: a plain str in a Slot is authored markup, not escaped.
         html = _html(session, content="<b>x</b>")
-        assert "<b>x</b>" not in html
-        assert "&lt;b&gt;x&lt;/b&gt;" in html
+        assert "<b>x</b>" in html
 
     def test_component_content_renders_nested(self, session):
         html = _html(session, content=PJXDivider(id="d"))

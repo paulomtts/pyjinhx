@@ -5,6 +5,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+from markupsafe import Markup
+
 from pyjinhx.component import BaseComponent
 from pyjinhx.markers import ComponentNode
 
@@ -20,8 +22,9 @@ def _wrap_slot_value(
     A list or dict slot comes back as a plain list or dict so a template can
     walk it with ``{% for %}``: opacity is a per-child guarantee (ADR 0003),
     and a ComponentNode refuses to be iterated, so wrapping the container
-    itself would make the collection unusable. Anything that is not a
-    component — literal markup, an empty container — passes through untouched.
+    itself would make the collection unusable. A plain string comes back as
+    ``Markup`` — a slot's string value is authored markup. Anything else — an
+    empty container, a non-component item — passes through untouched.
     """
 
     def node(component: BaseComponent) -> ComponentNode:
@@ -32,6 +35,11 @@ def _wrap_slot_value(
             field_name=field_name,
         )
 
+    if isinstance(value, str):
+        # A string on a slot field is authored markup, not user data: ADR 0003
+        # exempts it from autoescape. Only slot fields reach this function, so
+        # ordinary str fields keep escaping.
+        return Markup(value)
     if isinstance(value, BaseComponent):
         return node(value)
     if isinstance(value, list):

@@ -35,10 +35,10 @@ def test_no_suggestions_block_when_suggestions_is_empty(empty_state_session):
     assert "pjx-empty-state__chip" not in html
 
 
-def test_string_content_renders_escaped_inside_root(empty_state_session):
+def test_string_content_renders_raw_inside_root(empty_state_session):
+    # ADR 0003: a plain str in a Slot is authored markup, not escaped.
     html = _html(empty_state_session, content="<script>x</script>")
-    assert "&lt;script&gt;x&lt;/script&gt;" in html
-    assert "<script>" not in html
+    assert "<script>x</script>" in html
 
 
 def test_component_content_renders_nested(empty_state_session):

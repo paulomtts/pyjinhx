@@ -253,14 +253,13 @@ def test_classless_host_nesting_a_classless_host(family_dir, session):
 XSS = "<script>alert(1)</script>"
 
 
-def test_string_slot_value_escaped_across_nested_components(family_dir, session):
-    """A hostile string reaching a slot two levels down is escaped, not executed."""
+def test_string_slot_value_stays_raw_across_nested_components(family_dir, session):
+    """A plain string reaching a slot two levels down is authored markup (ADR 0003), not escaped."""
     html = render(
         Wrapper(id="wrap", content=PJXEmptyState(id="empty", content=XSS)), session
     )
 
-    assert XSS not in html
-    assert "&lt;script&gt;alert(1)&lt;/script&gt;" in html
+    assert XSS in html
 
 
 def test_string_fields_escaped_when_the_component_is_a_nested_child(

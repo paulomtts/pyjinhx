@@ -79,10 +79,10 @@ class TestRender:
             session, body="Saved"
         )
 
-    def test_body_string_is_emitted_escaped(self, session):
+    def test_body_string_is_emitted_raw(self, session):
+        # ADR 0003: a plain str in a Slot is authored markup, not escaped.
         html = _html(session, body="<b>x</b>")
-        assert "<b>x</b>" not in html
-        assert "&lt;b&gt;x&lt;/b&gt;" in html
+        assert "<b>x</b>" in html
 
     def test_component_body_renders_nested(self, session):
         html = _html(session, body=PJXDivider(id="d"))

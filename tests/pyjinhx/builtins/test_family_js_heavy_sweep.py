@@ -277,26 +277,22 @@ def test_every_js_heavy_builtin_emits_one_root_when_nested(family_dir, session, 
 XSS = '<script>alert("1") & more</script>'
 
 
-def test_string_slot_value_escaped_across_nested_components(family_dir, session):
-    """A hostile string reaching a slot two levels down is escaped, not executed.
-
-    This asserts the behavior that ships today. ADR 0003 describes slots as
-    opaque raw HTML, but string-valued Slot fields are not Markup-exempted
-    anywhere in the L0/L1 pipeline yet (see the note in
-    tests/pyjinhx/test_render_context.py) — a known, deferred gap, not
-    something this sweep fixes.
-    """
+def test_string_slot_value_stays_raw_across_nested_components(family_dir, session):
+    """A plain string reaching a slot two levels down is authored markup (ADR 0003), not escaped."""
     html = render(Wrapper(id="wrap", content=PJXAlert(id="alert", body=XSS)), session)
 
-    assert "<script>" not in html
-    assert "&lt;script&gt;" in html
-    assert "&amp;" in html
+    assert XSS in html
 
 
 def test_string_fields_escaped_when_the_component_is_a_nested_child(
     family_dir, session
 ):
-    """Nesting does not bypass a child's own field escaping."""
+    """Nesting does not bypass a child's own field escaping for non-slot fields.
+
+    `PJXResizablePanel.content` is a Slot field, so its string value stays raw
+    (ADR 0003); the other three occurrences (title, label x2 aria+data) are
+    plain str fields and still escape.
+    """
     html = render(
         Panel(
             id="panel",
@@ -307,10 +303,8 @@ def test_string_fields_escaped_when_the_component_is_a_nested_child(
         session,
     )
 
-    assert "<script>" not in html
-    assert (
-        html.count("&lt;script&gt;") == 4
-    )  # title, panel body, label x2 (aria + data)
+    assert XSS in html  # PJXResizablePanel.content, a Slot field, stays raw
+    assert html.count("&lt;script&gt;") == 3  # title, label x2 (aria + data)
 
 
 def test_component_slot_value_not_double_escaped_across_nested_components(

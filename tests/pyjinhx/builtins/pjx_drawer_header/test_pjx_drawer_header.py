@@ -66,11 +66,10 @@ def test_title_wins_over_content(drawer_header_session):
     assert '<hr id="d"' not in html
 
 
-def test_string_content_renders_escaped(drawer_header_session):
-    """v2 narrowing of v0.x: golden drawer_header_content.html's raw <strong> is now escaped."""
+def test_string_content_renders_raw(drawer_header_session):
+    """ADR 0003: golden drawer_header_content.html's raw <strong> stays raw (Slot exemption)."""
     html = _html(drawer_header_session, content="<strong>Nav</strong>")
-    assert "&lt;strong&gt;Nav&lt;/strong&gt;" in html
-    assert "<strong>Nav</strong>" not in html
+    assert "<strong>Nav</strong>" in html
 
 
 def test_close_label_defaults_to_close(drawer_header_session):

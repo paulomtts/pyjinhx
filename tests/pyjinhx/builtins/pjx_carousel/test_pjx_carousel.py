@@ -164,10 +164,10 @@ class TestRender:
         html = _html(session, extra_attrs={"data-foo": "bar"})
         assert 'data-foo="bar"' in _root_tag(html)
 
-    def test_content_string_is_emitted_escaped(self, session):
+    def test_content_string_is_emitted_raw(self, session):
+        # ADR 0003: a plain str in a Slot is authored markup, not escaped.
         html = _html(session, content="<div data-pjx-carousel-slide>X</div>")
-        assert "<div data-pjx-carousel-slide>X</div>" not in html
-        assert "&lt;div" in html
+        assert "<div data-pjx-carousel-slide>X</div>" in html
 
 
 class TestIcons:

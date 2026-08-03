@@ -30,10 +30,10 @@ def test_text_content_renders_inside_root(card_footer_session):
     assert "Updated" in html
 
 
-def test_string_content_renders_escaped(card_footer_session):
+def test_string_content_renders_raw(card_footer_session):
+    # ADR 0003: a plain str in a Slot is authored markup, not escaped.
     html = _html(card_footer_session, content="<b>x</b>")
-    assert "&lt;b&gt;x&lt;/b&gt;" in html
-    assert "<b>x</b>" not in html
+    assert "<b>x</b>" in html
 
 
 def test_class_name_appended_to_root(card_footer_session):

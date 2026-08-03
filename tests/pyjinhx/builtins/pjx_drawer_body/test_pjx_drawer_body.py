@@ -48,9 +48,8 @@ def test_component_content_renders_nested(drawer_body_session):
     assert '<hr id="d"' in html
 
 
-def test_string_content_renders_escaped_inside_root(drawer_body_session):
-    """Golden drawer_body.html's raw <p> markup now arrives escaped (autoescape on)."""
+def test_string_content_renders_raw_inside_root(drawer_body_session):
+    """ADR 0003: golden drawer_body.html's raw <p> markup stays raw (Slot exemption)."""
     html = _html(drawer_body_session, content="<p>Body content</p>")
     assert html.count("<div") == 1
-    assert "&lt;p&gt;Body content&lt;/p&gt;" in html
-    assert "<p>Body content</p>" not in html
+    assert "<p>Body content</p>" in html
