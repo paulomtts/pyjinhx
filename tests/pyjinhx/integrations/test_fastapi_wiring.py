@@ -19,7 +19,9 @@ class Greeting(BaseComponent):
 
 
 Greeting.__pjx_descriptor__ = ClassDescriptor(
-    template_path=Path("pjx_integrations_greeting.html"),
+    template_path=Path(__file__).parent.parent.parent
+    / "templates"
+    / "pjx_integrations_greeting.html",
     slot_fields=frozenset(),
     children_field=None,
     css_paths=(),
@@ -311,6 +313,72 @@ def test_backend_to_response_adapts_reactive_and_passes_others_through():
     assert adapted.status_code == 200
     assert adapted.body == b"<div>hi</div>"
     assert backend.to_response({"json": True}, None) == {"json": True}
+
+
+def test_scope_session_resolves_an_absolute_template_path(tmp_path: Path):
+    """A descriptor's template_path is always absolute; the request session must find it."""
+    template = tmp_path / "abs_greeting.pjx"
+    template.write_text("<p>hi {{ name }}</p>")
+
+    class AbsGreeting(BaseComponent):
+        name: str = "world"
+
+    AbsGreeting.__pjx_descriptor__ = ClassDescriptor(
+        template_path=template,
+        slot_fields=frozenset(),
+        children_field=None,
+        css_paths=(),
+        js_paths=(),
+        strict=True,
+        provenance={"template": AbsGreeting},
+    )
+
+    app = FastAPI()
+    apply_setup(app, _settings(inject_htmx=False))
+
+    @app.get("/abs")
+    def abs_route():
+        return AbsGreeting(name="pjx")
+
+    with TestClient(app) as client:
+        response = client.get("/abs")
+
+    assert response.status_code == 200
+    assert "<p>hi pjx</p>" in response.text
+
+
+def test_scope_session_stamps_reactive_roots_and_inlines_css(tmp_path: Path):
+    """The request session carries the on_rendered hooks a reactive page needs."""
+    from pyjinhx.reactive.component import ReactiveComponent
+
+    (tmp_path / "abs_badge.pjx").write_text("<b>{{ label }}</b>")
+    (tmp_path / "abs_badge.css").write_text("b { color: rebeccapurple }")
+
+    class AbsBadge(ReactiveComponent):
+        label: str = "x"
+
+    AbsBadge.__pjx_descriptor__ = ClassDescriptor(
+        template_path=tmp_path / "abs_badge.pjx",
+        slot_fields=frozenset(),
+        children_field=None,
+        css_paths=(tmp_path / "abs_badge.css",),
+        js_paths=(),
+        strict=True,
+        provenance={"template": AbsBadge},
+    )
+
+    app = FastAPI()
+    apply_setup(app, _settings(inject_htmx=False))
+
+    @app.get("/badge")
+    def badge_route():
+        return AbsBadge(id="badge", label="hi")
+
+    with TestClient(app) as client:
+        response = client.get("/badge")
+
+    assert 'data-pjx-id="badge"' in response.text
+    assert "rebeccapurple" in response.text
 
 
 def test_registering_the_module_publishes_a_backend():

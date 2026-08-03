@@ -26,8 +26,15 @@ from pyjinhx.integrations.base import (
     register_backend,
 )
 from pyjinhx.reactive.response import ReactiveResponse
+from pyjinhx.reactive.root_attrs import stamp_reactive_root_attrs
+from pyjinhx.registry import register_rendered_instance
 from pyjinhx.rendering import render
-from pyjinhx.session import current_session, request_scope
+from pyjinhx.session import (
+    RenderSession,
+    accumulate_assets,
+    current_session,
+    request_scope,
+)
 
 if TYPE_CHECKING:
     from starlette.applications import Starlette
@@ -177,7 +184,15 @@ class PjxScopeMiddleware(BaseHTTPMiddleware):
         # wrapper stashes the request on the session too, so inject_runtime()
         # can answer "is this mounted?" even when the handler's own signature
         # never declares a Request parameter.
-        with request_scope(load_context=load_context) as session:
+        # The session is built here rather than defaulted inside request_scope():
+        # a ClassDescriptor's template_path is absolute, so only a loader rooted
+        # at "/" can find it, and the three render hooks below are exported
+        # unsubscribed — this is the one place production wiring attaches them.
+        session = RenderSession("/")
+        session.on_rendered.append(accumulate_assets)
+        session.on_rendered.append(stamp_reactive_root_attrs)
+        session.on_rendered.append(register_rendered_instance)
+        with request_scope(session=session, load_context=load_context) as session:
             session.pjx_request = request  # pyright: ignore[reportAttributeAccessIssue]
             return await call_next(request)
 
