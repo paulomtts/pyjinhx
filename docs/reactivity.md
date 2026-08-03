@@ -196,11 +196,10 @@ def generate():
     return ReportSummary(report=report).render()  # non-reactive; counters fan out OOB
 ```
 
-For a response that renders no component at all (a raw string, a `204`), use
-`from pyjinhx.reactive import ReactiveResponse` to attach the same fan-out:
+For a response that renders no component at all (a raw string, a `204`), use `from pyjinhx.reactive.response import ReactiveResponse` to attach the same fan-out:
 
 ```python
-from pyjinhx.reactive import ReactiveResponse
+from pyjinhx.reactive.response import ReactiveResponse
 
 
 @app.post("/dismiss")
@@ -209,18 +208,21 @@ def dismiss():
     return ReactiveResponse()  # no primary; dependents still fan out OOB
 ```
 
-`ReactiveResponse` can also dirty keys and fan out in one call — pass the
-mutation keys positionally, folding the `dirty()` into the response:
+`ReactiveResponse` never dirties anything itself. Its full signature is `ReactiveResponse(primary=None, mounted=None, redirect=None, redirect_mode="redirect", assets=None)` — all keyword arguments, all about *what to send*. Dirty the keys first with `dirty(...)` (or `@mutates` on the store method), then build the response:
 
 ```python
+from pyjinhx import dirty
+from pyjinhx.reactive.response import ReactiveResponse
+
+
 @app.post("/dismiss")
 def dismiss():
-    controller.dismiss()  # plain mutation, no @mutates
-    return ReactiveResponse(Keys.TODOS)  # dirty TODOS + fan out dependents OOB
+    controller.dismiss()                          # plain mutation, no @mutates
+    dirty(Keys.TODOS)                             # dirty TODOS
+    return ReactiveResponse(primary="")           # fan out dependents OOB
 ```
 
-Pass `html=` for a primary body alongside the keys, e.g.
-`ReactiveResponse(Keys.TODOS, html="<p>dismissed</p>")`.
+Pass a primary body through `primary=`, e.g. `ReactiveResponse(primary="<p>dismissed</p>")`.
 
 !!! note "Without an integration backend"
     Wire `IntegrationBackend` in middleware (via `setup()`) so `render()` reads manifest and asset headers automatically. Without a backend, reactive OOB is skipped when mutations are pending.
@@ -324,17 +326,14 @@ convention the OOB dispatch loop already understands for any keyed component, wi
 `MessageBubble`; dirtying `reactive_key(ChatKeys.MESSAGE, "42")` reloads only the bubble
 whose `message_id` is `"42"`.
 
-`ReactiveResponse` and `@mutates` take the same idea as a `key=` keyword instead of
-calling `reactive_key()` yourself:
+`@mutates` takes the same idea as a `key=` keyword instead of calling `reactive_key()` yourself:
 
-- `ReactiveResponse(ChatKeys.MESSAGE, key=message_id)` is equivalent to
-  `dirty(reactive_key(ChatKeys.MESSAGE, message_id))` — `key=` is a plain value here,
-  since the caller already has it.
+- `dirty(reactive_key(ChatKeys.MESSAGE, message_id))` dirties exactly one bubble; the caller already has the id, so no `key=` helper is needed. `ReactiveResponse` takes no keys at all — dirty first, then build the response.
 - `@mutates(ChatKeys.MESSAGE, key=lambda message_id: message_id)` is `key=` as a
   *callable* instead, since `@mutates` runs at decoration time, before any call
   arguments exist — see [Mutation tracking](#mutation-tracking-mutates) below.
 
-Both apply to every positional key passed alongside them.
+It applies to every positional key passed alongside it.
 
 Avoid declaring a `MutationKey` member whose value itself contains a `:` if you use keyed
 reactive components — it could collide with an auto-derived key from a different member.
