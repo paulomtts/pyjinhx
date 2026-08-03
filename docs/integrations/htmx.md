@@ -295,7 +295,7 @@ This is the path to reach for when **one mutation updates multiple regions**
 - Return `Cls.render()` from mutation routes — dependent regions ride along as `hx-swap-oob` fragments
 - Wire [ClientBackend](../api/client-backend.md) via `setup()` so routes call `Cls.render()` with no framework kwargs
 
-See [Reactivity](../reactivity.md), [Usage tiers](../guide/usage-tiers.md), and the [reactive todo example](https://github.com/paulomtts/pyjinhx/tree/master/examples/reactive_todo).
+See [Reactivity](../reactivity.md) and [Usage tiers](../guide/usage-tiers.md).
 
 ## Response edges pyjinhx smooths
 

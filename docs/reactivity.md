@@ -16,12 +16,6 @@ A region that depends on a dirtied key is reloaded and re-emitted **only when it
 value actually changed** — its freshly computed `state_hash()` is compared against
 the hash the client reported, and a matching hash is skipped.
 
-> **Runnable example:** a full FastAPI + htmx todo app lives in
-> [`examples/reactive_todo/`](https://github.com/paulomtts/pyjinhx/tree/master/examples/reactive_todo) —
-> run `uv run uvicorn examples.reactive_todo.app:app --reload` and watch the counter,
-> total, and clear button update out-of-band (and get skipped by hash-gating when their
-> value doesn't change).
-
 See the [Public API Index](reference/public-api.md) for every exported reactive symbol.
 
 ## Make a component reactive
