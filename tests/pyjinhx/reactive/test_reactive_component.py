@@ -342,7 +342,7 @@ def test_load_receives_the_requests_app_context():
             return cls(user=ctx.user)
 
     with request_scope(load_context=DemoAppContext(user="ada")):
-        assert Widget.load().user == "ada"
+        assert Widget.load().user == "ada"  # type: ignore[reportCallIssue]
 
 
 def test_each_request_gets_its_own_app_context():
@@ -354,9 +354,9 @@ def test_each_request_gets_its_own_app_context():
             return cls(user=ctx.user)
 
     with request_scope(load_context=DemoAppContext(user="ada")):
-        first = Widget.load()
+        first = Widget.load()  # type: ignore[reportCallIssue]
     with request_scope(load_context=DemoAppContext(user="grace")):
-        second = Widget.load()
+        second = Widget.load()  # type: ignore[reportCallIssue]
 
     assert (first.user, second.user) == ("ada", "grace")
 
@@ -370,7 +370,7 @@ def test_injection_is_by_annotation_not_by_parameter_name():
             return cls(user=whatever.user)
 
     with request_scope(load_context=DemoAppContext(user="ada")):
-        assert Widget.load().user == "ada"
+        assert Widget.load().user == "ada"  # type: ignore[reportCallIssue]
 
 
 def test_optional_app_context_annotation_is_injected():
@@ -382,7 +382,7 @@ def test_optional_app_context_annotation_is_injected():
             return cls(user="none" if ctx is None else ctx.user)
 
     with request_scope(load_context=DemoAppContext(user="ada")):
-        assert Widget.load().user == "ada"
+        assert Widget.load().user == "ada"  # type: ignore[reportCallIssue]
 
 
 def test_no_context_bound_injects_none():
@@ -394,7 +394,7 @@ def test_no_context_bound_injects_none():
             return cls(user="none" if ctx is None else ctx.user)
 
     with request_scope():
-        assert Widget.load().user == "none"
+        assert Widget.load().user == "none"  # type: ignore[reportCallIssue]
 
 
 def test_zero_arg_load_is_untouched_when_a_context_is_bound():
@@ -427,8 +427,8 @@ def test_an_injected_load_is_still_cached_per_request():
             return cls(user=ctx.user)
 
     with request_scope(load_context=DemoAppContext(user="ada")):
-        assert Widget.load().user == "ada"
-        assert Widget.load().user == "ada"
+        assert Widget.load().user == "ada"  # type: ignore[reportCallIssue]
+        assert Widget.load().user == "ada"  # type: ignore[reportCallIssue]
 
     assert len(calls) == 1
 
@@ -592,7 +592,7 @@ def test_self_referencing_return_annotation_keeps_context_injection():
             return cls(row_id=row_id, user=ctx.user)
 
     with request_scope(load_context=DemoAppContext(user="ada")):
-        assert Row.load(1).user == "ada"
+        assert Row.load(1).user == "ada"  # type: ignore[reportCallIssue]
 
 
 def test_cache_hit_returns_the_same_populated_instance():
@@ -651,11 +651,11 @@ def test_protocol_mode_cache_key_uses_the_full_bound_args():
 
         @classmethod
         def load(cls, row_id: int, flavor: str = "plain") -> "Row":
-            return cls(row_id=row_id, flavor=flavor)
+            return cls(row_id=row_id, flavor=flavor)  # type: ignore[reportCallIssue]
 
     with request_scope():
         plain = Row.load(1)
-        spicy = Row.load(1, flavor="spicy")
+        spicy = Row.load(1, flavor="spicy")  # type: ignore[reportCallIssue]
         again = Row.load(1, flavor="spicy")
 
     assert plain is not spicy
@@ -684,8 +684,8 @@ def test_app_context_is_excluded_from_the_cache_key():
             return cls(user=ctx.user)
 
     with request_scope(load_context=DemoAppContext(user="ada")):
-        first = Widget.load()
-        second = Widget.load()
+        first = Widget.load()  # type: ignore[reportCallIssue]
+        second = Widget.load()  # type: ignore[reportCallIssue]
 
     assert first is second
     assert first.user == "ada"

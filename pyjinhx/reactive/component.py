@@ -40,7 +40,7 @@ class ReactiveComponent(BaseComponent):
     one outright rather than adding to it."""
 
     @classmethod
-    def load(cls) -> "ReactiveComponent":
+    def load(cls, *args: Any, **kwargs: Any) -> "ReactiveComponent":  # type: ignore[misc]
         """Build this component for the current request. Override in subclasses.
 
         The default builds a field-default instance, so a reactive component

@@ -108,7 +108,7 @@ class PJXProtocolWidget(ReactiveComponent):
 
     @classmethod
     def load(cls, row_id: int = 0) -> "PJXProtocolWidget":
-        return cls(row_id=row_id, flavor="plain")
+        return cls(row_id=row_id, flavor="plain")  # type: ignore[reportCallIssue]
 
 
 def test_pjx_mount_copies_extra_fields_from_protocol_mode_load():

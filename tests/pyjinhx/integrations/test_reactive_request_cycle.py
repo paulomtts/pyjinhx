@@ -549,7 +549,7 @@ def test_load_receives_the_context_factory_result_over_a_real_request():
 
     @app.get("/ctx-echo")
     def ctx_echo() -> dict[str, str]:
-        return {"loaded": ContextCard.load().echoed}
+        return {"loaded": ContextCard.load().echoed}  # type: ignore[reportCallIssue]
 
     with TestClient(app) as client:
         response = client.get("/ctx-echo")
@@ -564,7 +564,7 @@ def test_without_a_context_factory_the_injected_context_is_none():
 
     @app.get("/ctx-none")
     def ctx_none() -> dict[str, str]:
-        return {"loaded": ContextCard.load().echoed}
+        return {"loaded": ContextCard.load().echoed}  # type: ignore[reportCallIssue]
 
     with TestClient(app) as client:
         response = client.get("/ctx-none")
