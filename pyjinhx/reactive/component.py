@@ -6,6 +6,7 @@ at registration, never per render.
 """
 
 import hashlib
+import inspect
 import json
 from collections.abc import Callable, Iterable
 from typing import Annotated, Any, ClassVar, get_args, get_origin, get_type_hints
@@ -38,13 +39,14 @@ class ReactiveComponent(BaseComponent):
     """Field names left out of the state hash. A subclass's value replaces this
     one outright rather than adding to it."""
 
-    def load(self) -> Any:
-        """Fetch this component's data. Override in subclasses.
+    @classmethod
+    def load(cls, *args: Any, **kwargs: Any) -> "ReactiveComponent":  # type: ignore[misc]
+        """Build this component for the current request. Override in subclasses.
 
-        The default does nothing, so a reactive component that has no data to
-        fetch stays valid and the wrap always has a body to call.
+        The default builds a field-default instance, so a reactive component
+        with nothing to fetch stays valid and the wrap always has a body.
         """
-        return None
+        return cls()
 
     def state_hash(self) -> str:
         """Return a SHA-256 hex digest of this instance's output-relevant field values.
@@ -60,14 +62,20 @@ class ReactiveComponent(BaseComponent):
         return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
     def pjx_mount(self) -> None:
-        """Run the cache-routed ``load()`` before this instance's recursive render.
+        """Populate this instance from the cache-routed ``load()`` factory.
 
-        Overrides BaseComponent's no-op: rendering.py calls this hook on every
-        child it instantiates from a ChildRef without knowing anything about
-        ReactiveComponent, so mounting a reactive child never needs a manual
-        ``load()`` call from the template author.
+        A shim: rendering.py still constructs a child and then mounts it, so
+        the factory's result is copied onto the instance that already exists.
+        #727 rewires ``_fill_children`` to call ``Cls.load(**key_args)``
+        directly and deletes this hook.
         """
-        self.load()
+        cls = type(self)
+        field = cls._pjx_key_field
+        loaded = cls.load(**({field: getattr(self, field)} if field else {}))
+        names = list(cls.model_fields) + list(loaded.__pydantic_extra__ or ())
+        for name in names:
+            if name != "id":
+                setattr(self, name, getattr(loaded, name))
 
     def __init_subclass__(cls, *, react: Iterable[object] = (), **kwargs: Any) -> None:
         """Consume the ``react`` class kwarg and record it as normalized keys.
@@ -84,7 +92,20 @@ class ReactiveComponent(BaseComponent):
         """Run BaseComponent's registration, resolve the key field, install the wrap."""
         super().__pydantic_init_subclass__(**kwargs)
         cls._pjx_key_field = resolve_pjx_key_field(cls)
-        cls.load = _wrap_load(cls, cls.load)  # pyright: ignore[reportAttributeAccessIssue]
+        if "load" not in cls.__dict__:
+            # cls inherits load unchanged: the ancestor that defines it already
+            # validated and wrapped it, closing over *that* ancestor's cls for
+            # cache-key derivation. Re-running _unwrap_load here would grab the
+            # already-wrapped function (not a raw user def) and either reject
+            # it outright or, worse, rewrap with the wrong cls closed in,
+            # silently mis-keying this subclass's cache entries under the
+            # ancestor's identity.
+            return
+        real_load, is_classmethod = _unwrap_load(cls)
+        _validate_load_is_classmethod(cls, real_load, is_classmethod)
+        context_param = resolve_load_context_param(real_load)
+        _validate_load_params(cls, real_load, context_param)
+        cls.load = classmethod(_wrap_load(cls, real_load, context_param))  # pyright: ignore[reportAttributeAccessIssue]
 
 
 class PjxKey:
@@ -166,8 +187,104 @@ def resolve_pjx_key_field(model_cls: type[Any]) -> str | None:
     return names[0]
 
 
+_MIGRATION_HINT = (
+    "load() is now a classmethod factory that returns an instance:\n"
+    "    @classmethod\n"
+    "    def load(cls, row_id: int) -> 'Row': return cls(row_id=row_id, ...)\n"
+    "instead of the old instance method `def load(self) -> None`."
+)
+
+
+def _unwrap_load(cls: type[Any]) -> tuple[Callable[..., Any], bool]:
+    """The raw function behind ``cls.load`` and whether it was a classmethod.
+
+    Read off ``__dict__`` rather than ``getattr``: a classmethod accessed
+    through the class is already bound, and the binding is exactly the fact
+    being tested.
+    """
+    for klass in cls.__mro__:
+        raw = klass.__dict__.get("load")
+        if raw is not None:
+            return (raw.__func__ if isinstance(raw, classmethod) else raw), isinstance(
+                raw, classmethod
+            )
+    raise TypeError(f"{cls.__name__} has no load()")
+
+
+def _validate_load_is_classmethod(
+    cls: type[Any], func: Callable[..., Any], is_cm: bool
+) -> None:
+    """Reject an instance-method ``load``, pointing at the migration.
+
+    Raises:
+        TypeError: ``load`` is not a classmethod, or its first parameter is not
+            ``cls``.
+    """
+    params = list(inspect.signature(func).parameters)
+    if not is_cm or not params or params[0] != "cls":
+        raise TypeError(
+            f"{cls.__name__}.load must be a @classmethod whose first parameter "
+            f"is `cls`. {_MIGRATION_HINT}"
+        )
+
+
+def _load_value_params(
+    func: Callable[..., Any], context_param: str | None
+) -> list[str]:
+    """``load``'s parameters minus ``cls`` and the app-context one.
+
+    Uses ``inspect.signature`` and never ``get_type_hints``: this runs while the
+    class is still being built, where a self-referencing return annotation is an
+    unresolvable forward ref (#713).
+    """
+    names = [name for name in inspect.signature(func).parameters if name != "cls"]
+    if context_param is not None and context_param in names:
+        names.remove(context_param)
+    return names
+
+
+def _validate_load_params(
+    cls: type[Any], func: Callable[..., Any], context_param: str | None
+) -> None:
+    """Check ``load``'s parameters against the class's PjxKey field names.
+
+    Strict by default: the parameter list must be exactly the key fields. Under
+    ``extra="allow"`` the key fields are a required minimum only — anything
+    beyond them is the class's own protocol, so it is not checked.
+
+    Raises:
+        TypeError: The parameters do not satisfy the class's key fields.
+    """
+    expected = pjx_key_field_names(cls)
+    given = _load_value_params(func, context_param)
+    if cls.model_config.get("extra") == "allow":
+        missing = [name for name in expected if name not in given]
+        if missing:
+            raise TypeError(
+                f"{cls.__name__}.load must accept its PjxKey field(s) {missing!r}; "
+                f"it declares {given!r}."
+            )
+        return
+    if not expected:
+        if given:
+            raise TypeError(
+                f"{cls.__name__} declares no PjxKey field, so load() must take no "
+                f"parameters beyond cls; it declares {given!r}."
+            )
+        return
+    if given != expected:
+        extra = [name for name in given if name not in expected]
+        missing = [name for name in expected if name not in given]
+        raise TypeError(
+            f"{cls.__name__}.load parameters must be exactly its PjxKey fields "
+            f"{expected!r}; got {given!r} (missing {missing!r}, extra {extra!r})."
+        )
+
+
 def _wrap_load(
-    cls: type["ReactiveComponent"], real_load: Callable[..., Any]
+    cls: type["ReactiveComponent"],
+    real_load: Callable[..., Any],
+    context_param: str | None,
 ) -> Callable[[Any], Any]:
     """Build the memoizing wrapper around one class's ``load``.
 
@@ -176,35 +293,80 @@ def _wrap_load(
     request scope the cache reads miss and the writes vanish, so the real body
     simply runs every time - no special case is needed here for that.
 
-    The app-context parameter, if the signature declares one, is resolved here
-    too and closed over: signature introspection is a per-class fact, and doing
-    it on every load() would put it on the hot render path.
-
-    Raises:
-        TypeError: ``load`` declares more than one app-context parameter.
+    Args:
+        cls: The subclass being defined.
+        real_load: The undecorated function behind ``load``.
+        context_param: The app-context parameter's name, pre-resolved by the
+            caller so this stays a pure per-call cache dance.
     """
-    context_param = resolve_load_context_param(real_load)
 
-    def wrapped_load(self: Any) -> Any:
-        # An unmarked class has no per-instance key, so all its instances keep
-        # sharing the one entry under the null key.
-        field = cls._pjx_key_field
-        key = coerce_load_key_str(getattr(self, field, None)) if field else None
+    full_signature = inspect.signature(real_load)
+    protocol_mode = cls.model_config.get("extra") == "allow"
+    # The public signature callers bind against excludes the context param:
+    # it is injected from the request scope, never passed in by a caller, so
+    # binding against the full signature would demand it as a required arg.
+    if context_param is not None:
+        signature = full_signature.replace(
+            parameters=[
+                param
+                for name, param in full_signature.parameters.items()
+                if name != context_param
+            ]
+        )
+    else:
+        signature = full_signature
+
+    def wrapped_load(bound_cls: type[Any], *args: Any, **kwargs: Any) -> Any:
+        bound = signature.bind(bound_cls, *args, **kwargs)
+        bound.apply_defaults()
+        supplied = dict(bound.arguments)
+        supplied.pop("cls", None)
+        if context_param is not None:
+            supplied.pop(context_param, None)
+        key = _cache_key(cls, supplied, protocol_mode=protocol_mode)
         if cache_has(cls, key):
             return cache_get(cls, key)
-        if context_param is None:
-            result = real_load(self)
-        else:
-            result = real_load(self, **{context_param: get_load_context()})
+        call_kwargs = dict(supplied)
+        if context_param is not None:
+            call_kwargs[context_param] = get_load_context()
+        result = real_load(bound_cls, **call_kwargs)
+        if not isinstance(result, cls):
+            raise TypeError(
+                f"{cls.__name__}.load must return an instance of {cls.__name__}; "
+                f"got {type(result).__name__}."
+            )
         # Index under both the static react keys (a bare "todos" dirties every
-        # instance) and, when this instance has a load key, the per-instance
-        # "todos:1" composite form reactive_key() produces — @mutates(key=...)
-        # and dirty(reactive_key(...)) dirty only the composite, never the bare
-        # key alongside it, so invalidate() needs both forms to find this entry.
+        # instance) and, when this call has a load key, the per-instance
+        # "todos:1" composite reactive_key() produces — @mutates(key=...) and
+        # dirty(reactive_key(...)) dirty only the composite, so invalidate()
+        # needs both forms to find this entry.
         react_keys = cls._pjx_react_keys
-        if key is not None:
-            react_keys = (*react_keys, *(f"{rk}:{key}" for rk in cls._pjx_react_keys))
+        field = cls._pjx_key_field
+        load_key = coerce_load_key_str(supplied.get(field)) if field else None
+        if load_key is not None:
+            react_keys = (
+                *react_keys,
+                *(f"{rk}:{load_key}" for rk in cls._pjx_react_keys),
+            )
         cache_put(cls, key, result, react_keys=react_keys)
         return result
 
     return wrapped_load
+
+
+def _cache_key(
+    cls: type["ReactiveComponent"], supplied: dict[str, Any], *, protocol_mode: bool
+) -> object:
+    """This call's cache key: the key-field value, or every bound argument.
+
+    Under ``extra="allow"`` the extra parameters are part of what was asked
+    for, so two calls that differ only there must not collide; strict mode has
+    nothing but the key field to distinguish calls by, and keeping its key the
+    plain coerced string leaves fanout's ``_load_key()`` derivation intact.
+    """
+    if protocol_mode:
+        return tuple(sorted((name, repr(value)) for name, value in supplied.items()))
+    field = cls._pjx_key_field
+    if field is None:
+        return None
+    return coerce_load_key_str(supplied.get(field))

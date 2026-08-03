@@ -29,10 +29,12 @@ class FanoutWidget(ReactiveComponent, react=("todos",)):
     """A reactive component keyed by ``pjx_key``, whose load() is counted."""
 
     pjx_key: Annotated[str, PjxKey()] = ""
+    data: str = ""
 
-    def load(self) -> str:
-        LOAD_CALLS.append(self.pjx_key)
-        return f"data:{self.pjx_key}"
+    @classmethod
+    def load(cls, pjx_key: str) -> "FanoutWidget":
+        LOAD_CALLS.append(pjx_key)
+        return cls(pjx_key=pjx_key, data=f"data:{pjx_key}")
 
 
 class QuietWidget(ReactiveComponent, react=("other",)):
@@ -233,7 +235,7 @@ def fresh_hash_for(load: object) -> str:
     test can seed a manifest entry with the *matching* hash without hardcoding
     a digest that changes whenever the model's fields do.
     """
-    return FanoutWidget(id="probe", pjx_key=str(load)).state_hash()
+    return FanoutWidget(id="probe", pjx_key=str(load), data=f"data:{load}").state_hash()
 
 
 def test_dirty_candidate_whose_fresh_hash_matches_the_manifest_hash_is_dropped():

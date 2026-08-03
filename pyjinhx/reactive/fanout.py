@@ -149,17 +149,18 @@ def _build_dirty(
 ) -> tuple[ReactiveComponent, object]:
     """Re-run this candidate's load and render, and hand back both.
 
-    ``instance.load()`` goes through the L3.2 memo wrap, which is what writes
-    the fresh entry to the cache — fanout never calls ``cache_put`` itself, so
-    the key derivation stays in exactly one place. ``render_level()`` rather
-    than ``render()``: ``oob_swaps()`` splices at a root_span, and only the
-    level carries one.
+    ``cls.load()`` goes through the L3.2 memo wrap, which is what writes the
+    fresh entry to the cache — fanout never calls ``cache_put`` itself, so the
+    key derivation stays in exactly one place. ``render_level()`` rather than
+    ``render()``: ``oob_swaps()`` splices at a root_span, and only the level
+    carries one. The id is stamped after: it identifies the mounted region, not
+    the loaded data, so it is never a load() parameter.
     """
-    fields: dict[str, Any] = {"id": instance_id}
+    key_args: dict[str, Any] = {}
     if cls._pjx_key_field is not None:
-        fields[cls._pjx_key_field] = load
-    instance = cls(**fields)
-    instance.load()
+        key_args[cls._pjx_key_field] = load
+    instance = cls.load(**key_args)
+    instance.id = instance_id
     return instance, render_level(instance, session)
 
 

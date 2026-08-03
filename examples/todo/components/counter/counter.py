@@ -8,6 +8,7 @@ class Counter(ReactiveComponent, react={Keys.TODOS}):
 
     remaining: int = 0
 
-    def load(self, ctx: TodoAppContext):
+    @classmethod
+    def load(cls, ctx: TodoAppContext) -> "Counter":
         """Read the open-todo count from the store."""
-        self.remaining = ctx.store.remaining()
+        return cls(remaining=ctx.store.remaining())

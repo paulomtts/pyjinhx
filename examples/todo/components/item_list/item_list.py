@@ -9,18 +9,21 @@ class ItemList(ReactiveComponent, react={Keys.TODO_LIST}):
 
     items: list[ItemRow] = []  # noqa: RUF012 -- pydantic field, not a shared mutable default
 
-    def load(self, ctx: TodoAppContext):
-        """Build one row per todo and load each one before keeping it.
+    @classmethod
+    def load(cls, ctx: TodoAppContext) -> "ItemList":
+        """Build one cache-routed row per todo.
 
-        The explicit row.load() is load-bearing: pjx_mount() only fires for
+        ``ItemRow.load(todo.id)`` is load-bearing: pjx_mount() only fires for
         children the renderer instantiates from a tag, never for instances
-        assigned to a field, so rows built here would otherwise render with
-        their defaults. It takes no argument — the load wrap injects the
-        request's app context.
+        assigned to a field, so rows built here go through the factory
+        directly instead. The dom id is stamped after: it identifies the
+        mounted region, not the loaded data, so it is never a load()
+        parameter, and the cached instance is shared across renders of the
+        same todo_id regardless of which row happens to touch it first.
         """
         rows = []
         for todo in ctx.store.all_todos():
-            row = ItemRow(id=f"row-{todo.id}", todo_id=todo.id)
-            row.load()
+            row = ItemRow.load(todo.id)
+            row.id = f"row-{todo.id}"
             rows.append(row)
-        self.items = rows
+        return cls(items=rows)

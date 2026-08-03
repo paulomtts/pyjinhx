@@ -9,6 +9,7 @@ BaseComponent child must be unaffected — it declares no load() at all.
 from pathlib import Path
 
 import pytest
+from pydantic import ConfigDict
 
 from pyjinhx import discovery
 from pyjinhx.component import BaseComponent, _pascal_to_snake
@@ -19,12 +20,14 @@ from pyjinhx.session import RenderSession
 
 _TEMPLATE_DIR = Path(__file__).parent.parent.parent / "templates"
 
-_load_calls: list[str] = []
+_load_calls: list[int] = []
 
 
 class PJXReactiveWidget(ReactiveComponent):
-    def load(self) -> None:
-        _load_calls.append(self.id)
+    @classmethod
+    def load(cls) -> "PJXReactiveWidget":
+        _load_calls.append(1)
+        return cls()
 
 
 class PJXPlainWidget(BaseComponent):
@@ -98,6 +101,27 @@ def test_plain_child_mounted_via_childref_is_unaffected():
 
     assert "plain" in "".join(str(s) for s in result.segments)
     assert _load_calls == []
+
+
+class PJXProtocolWidget(ReactiveComponent):
+    model_config = ConfigDict(extra="allow")
+
+    row_id: int = 0
+
+    @classmethod
+    def load(cls, row_id: int = 0) -> "PJXProtocolWidget":
+        return cls(row_id=row_id, flavor="plain")  # type: ignore[reportCallIssue]
+
+
+def test_pjx_mount_copies_extra_fields_from_protocol_mode_load():
+    """Under extra='allow', load() may set undeclared attributes (e.g. via a
+    protocol-style constructor call); pjx_mount() must copy those onto self
+    too, not just the declared model_fields."""
+    component = PJXProtocolWidget(row_id=1)
+
+    component.pjx_mount()
+
+    assert getattr(component, "flavor", "MISSING") == "plain"
 
 
 def test_base_component_pjx_mount_is_noop():
