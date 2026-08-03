@@ -6,6 +6,7 @@ at registration, never per render.
 """
 
 import hashlib
+import inspect
 import json
 from collections.abc import Callable, Iterable
 from typing import Annotated, Any, ClassVar, get_args, get_origin, get_type_hints
@@ -38,13 +39,14 @@ class ReactiveComponent(BaseComponent):
     """Field names left out of the state hash. A subclass's value replaces this
     one outright rather than adding to it."""
 
-    def load(self) -> Any:
-        """Fetch this component's data. Override in subclasses.
+    @classmethod
+    def load(cls) -> "ReactiveComponent":
+        """Build this component for the current request. Override in subclasses.
 
-        The default does nothing, so a reactive component that has no data to
-        fetch stays valid and the wrap always has a body to call.
+        The default builds a field-default instance, so a reactive component
+        with nothing to fetch stays valid and the wrap always has a body.
         """
-        return None
+        return cls()
 
     def state_hash(self) -> str:
         """Return a SHA-256 hex digest of this instance's output-relevant field values.
@@ -84,7 +86,18 @@ class ReactiveComponent(BaseComponent):
         """Run BaseComponent's registration, resolve the key field, install the wrap."""
         super().__pydantic_init_subclass__(**kwargs)
         cls._pjx_key_field = resolve_pjx_key_field(cls)
-        cls.load = _wrap_load(cls, cls.load)  # pyright: ignore[reportAttributeAccessIssue]
+        if "load" not in cls.__dict__:
+            # cls inherits load unchanged: the ancestor that defines it already
+            # validated and wrapped it, closing over *that* ancestor's cls for
+            # cache-key derivation. Re-running _unwrap_load here would grab the
+            # already-wrapped function (not a raw user def) and either reject
+            # it outright or, worse, rewrap with the wrong cls closed in,
+            # silently mis-keying this subclass's cache entries under the
+            # ancestor's identity.
+            return
+        real_load, is_classmethod = _unwrap_load(cls)
+        _validate_load_is_classmethod(cls, real_load, is_classmethod)
+        cls.load = classmethod(_wrap_load(cls, real_load))  # pyright: ignore[reportAttributeAccessIssue]
 
 
 class PjxKey:
@@ -164,6 +177,45 @@ def resolve_pjx_key_field(model_cls: type[Any]) -> str | None:
             f"at most one is allowed."
         )
     return names[0]
+
+
+_MIGRATION_HINT = (
+    "load() is now a classmethod factory that returns an instance:\n"
+    "    @classmethod\n"
+    "    def load(cls, row_id: int) -> 'Row': return cls(row_id=row_id, ...)\n"
+    "instead of the old instance method `def load(self) -> None`."
+)
+
+
+def _unwrap_load(cls: type[Any]) -> tuple[Callable[..., Any], bool]:
+    """The raw function behind ``cls.load`` and whether it was a classmethod.
+
+    Read off ``__dict__`` rather than ``getattr``: a classmethod accessed
+    through the class is already bound, and the binding is exactly the fact
+    being tested.
+    """
+    for klass in cls.__mro__:
+        raw = klass.__dict__.get("load")
+        if raw is not None:
+            return (raw.__func__ if isinstance(raw, classmethod) else raw), isinstance(
+                raw, classmethod
+            )
+    raise TypeError(f"{cls.__name__} has no load()")
+
+
+def _validate_load_is_classmethod(cls: type[Any], func: Callable[..., Any], is_cm: bool) -> None:
+    """Reject an instance-method ``load``, pointing at the migration.
+
+    Raises:
+        TypeError: ``load`` is not a classmethod, or its first parameter is not
+            ``cls``.
+    """
+    params = list(inspect.signature(func).parameters)
+    if not is_cm or not params or params[0] != "cls":
+        raise TypeError(
+            f"{cls.__name__}.load must be a @classmethod whose first parameter "
+            f"is `cls`. {_MIGRATION_HINT}"
+        )
 
 
 def _wrap_load(
