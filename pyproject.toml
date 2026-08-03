@@ -30,10 +30,7 @@ dependencies = [
 Homepage = "https://github.com/paulomtts/pyjinhx"
 
 [tool.hatch.build.targets.wheel]
-# Auto-discovery only picks the name-matching `pyjinhx/` (the v2 rebuild);
-# `pyjinhx_v0/` is the v0.x tree staged for deletion in #540 and must stay
-# listed or wheels ship without it.
-packages = ["pyjinhx", "pyjinhx_v0"]
+packages = ["pyjinhx"]
 
 [tool.pytest.ini_options]
 
