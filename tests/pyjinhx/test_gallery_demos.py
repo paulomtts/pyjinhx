@@ -172,9 +172,9 @@ def test_all_demo_factories_render(tmp_path):
 
 def test_dropdown_demo_menu_entries_are_not_escaped():
     """The gallery's dropdown showed literal &lt;button&gt; text: it passed markup as str items (#695)."""
-    from pyjinhx.session import request_scope
-
     from demos.interaction import dropdown
+
+    from pyjinhx.session import request_scope
 
     with request_scope(template_dir="/"):
         html = dropdown()
