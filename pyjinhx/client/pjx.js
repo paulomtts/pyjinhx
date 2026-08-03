@@ -184,6 +184,14 @@
     return targets;
   }
 
+  // Dispatch-only, like pjxToast: applying the class is the loading-indicator
+  // artifact's job, so core stays a pure state machine over region ids.
+  function pjxFire(name, detail) {
+    document.dispatchEvent(
+      new CustomEvent(name, { detail: detail || {}, bubbles: false })
+    );
+  }
+
   function pjxLight(region, ids) {
     var id = region.getAttribute("data-pjx-id");
     if (!id || ids.indexOf(id) !== -1) {
@@ -193,11 +201,9 @@
     if (!targets.length) {
       return;
     }
-    targets.forEach(function (t) {
-      t.classList.add(pjxLoadingClass(t));
-    });
     pjxLoading[id] = (pjxLoading[id] || 0) + 1;
     ids.push(id);
+    pjxFire("pjx:region-loading-start", { id: id });
   }
 
   function pjxBeginLoading(evt) {
@@ -272,23 +278,13 @@
       return;
     }
     delete pjxLoading[id];
-    var region = pjxRegion(id);
-    if (region) {
-      pjxLoadingTargets(region).forEach(function (t) {
-        t.classList.remove(pjxLoadingClass(t));
-      });
-    }
+    pjxFire("pjx:region-loading-end", { id: id });
   }
 
   // a swap can replace a region another in-flight request still needs lit
   function pjxReapplyLoading() {
     Object.keys(pjxLoading).forEach(function (id) {
-      var region = pjxRegion(id);
-      if (region) {
-        pjxLoadingTargets(region).forEach(function (t) {
-          t.classList.add(pjxLoadingClass(t));
-        });
-      }
+      pjxFire("pjx:region-loading-start", { id: id });
     });
   }
 
@@ -343,6 +339,9 @@
   pjx.loadingCount = function (id) {
     return pjxLoading[id] || 0;
   };
+  pjx.region = pjxRegion;
+  pjx.loadingTargets = pjxLoadingTargets;
+  pjx.loadingClass = pjxLoadingClass;
   window.pjx = pjx;
 
   if (!window.htmx) {
