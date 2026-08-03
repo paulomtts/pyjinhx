@@ -18,8 +18,8 @@ import pytest
 from pyjinhx.component import BaseComponent, Slot
 from pyjinhx.descriptor import ClassDescriptor
 from pyjinhx.markers import ComponentNode, collect_slot_tokens
-from pyjinhx.rendering import render, render_level
 from pyjinhx.render_context import build_context
+from pyjinhx.rendering import render, render_level
 from pyjinhx.session import RenderSession
 
 
