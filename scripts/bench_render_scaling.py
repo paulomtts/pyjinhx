@@ -11,54 +11,66 @@ import io
 import logging
 import pstats
 import sys
-import tempfile
 import time
 
-import pyjinhx_v0.builtins.ui  # noqa: F401 — registers builtins
-from pyjinhx_v0 import Renderer
-from pyjinhx_v0.registry import Registry
+import pyjinhx.builtins  # noqa: F401 — registers builtins
+from pyjinhx.builtins.pjx_table import PJXTable
+from pyjinhx.builtins.pjx_table_body import PJXTableBody
+from pyjinhx.builtins.pjx_table_cell import PJXTableCell
+from pyjinhx.builtins.pjx_table_row import PJXTableRow
+from pyjinhx.component import BaseComponent, Slot
+from pyjinhx.render import render
+from pyjinhx.session import RenderSession
 
-logging.getLogger("pyjinhx_v0").setLevel(logging.ERROR)
+logging.getLogger("pyjinhx").setLevel(logging.ERROR)
 
 ROW_COUNTS = (50, 100, 200, 438)
 
 
-def make_source(rows: int) -> str:
-    parts = ['<PJXTable id="t"><PJXTableBody id="tb">']
-    for r in range(rows):
-        parts.append(
-            f'<PJXTableRow id="r{r}">'
-            f'<PJXTableCell id="c{r}a"><select><option>choice {r}</option></select></PJXTableCell>'
-            f'<PJXTableCell id="c{r}b"><textarea>note {r}</textarea></PJXTableCell>'
-            f'<PJXTableCell id="c{r}c"><input type="text" value="v{r}"/></PJXTableCell>'
-            f"</PJXTableRow>"
+class _RowsHost(BaseComponent):
+    """Sibling-list wrapper so multiple child instances share one field."""
+
+    content: Slot = ""
+
+
+def make_table(rows: int) -> PJXTable:
+    row_items = [
+        PJXTableRow(
+            id=f"r{r}",
+            content=_RowsHost(
+                id=f"cells-r{r}",
+                content=[
+                    PJXTableCell(id=f"c{r}a", content=f"choice {r}"),
+                    PJXTableCell(id=f"c{r}b", content=f"note {r}"),
+                    PJXTableCell(id=f"c{r}c", content=f"v{r}"),
+                ],
+            ),
         )
-    parts.append("</PJXTableBody></PJXTable>")
-    return "".join(parts)
+        for r in range(rows)
+    ]
+    return PJXTable(
+        id="t", content=PJXTableBody(id="tb", content=_RowsHost(id="rows", content=row_items))
+    )
 
 
-def render(renderer: Renderer, rows: int) -> str:
-    with Registry.request_scope():
-        return renderer.render(make_source(rows))
+def render_rows(rows: int) -> str:
+    return render(make_table(rows), RenderSession(template_dir="/"))
 
 
 def main() -> None:
-    Renderer.set_default_environment(tempfile.mkdtemp())
-    renderer = Renderer.get_default_renderer()
-
-    out = render(renderer, 2)  # warmup + sanity
+    out = render_rows(2)  # warmup + sanity
     assert "note 1" in out
 
     for n in ROW_COUNTS:
         t0 = time.perf_counter()
-        render(renderer, n)
+        render_rows(n)
         dt = time.perf_counter() - t0
         print(f"rows={n:4d}  {dt * 1000:8.1f} ms  {dt * 1000 / n:6.2f} ms/row")
 
     if "--profile" in sys.argv:
         profiler = cProfile.Profile()
         profiler.enable()
-        render(renderer, 438)
+        render_rows(438)
         profiler.disable()
         for sort_key in ("cumulative", "tottime"):
             stream = io.StringIO()
