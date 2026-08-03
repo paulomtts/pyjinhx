@@ -8,6 +8,7 @@ class ClearButton(ReactiveComponent, react={Keys.TODOS}):
 
     completed: int = 0
 
-    def load(self, ctx: TodoAppContext):
+    @classmethod
+    def load(cls, ctx: TodoAppContext) -> "ClearButton":
         """Read the completed-todo count from the store."""
-        self.completed = ctx.store.completed()
+        return cls(completed=ctx.store.completed())

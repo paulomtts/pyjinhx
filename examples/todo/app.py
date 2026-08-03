@@ -34,14 +34,14 @@ def index():
     populates them for us: a child assigned to a field is never mounted by the
     renderer, and an unloaded one would render as its defaults.
     """
-    item_list = ItemList(id="list")
-    item_list.load()
-    remaining = Counter(id="counter")
-    remaining.load()
-    total_count = Total(id="total")
-    total_count.load()
-    clear_button = ClearButton(id="clear")
-    clear_button.load()
+    item_list = ItemList.load()
+    item_list.id = "list"
+    remaining = Counter.load()
+    remaining.id = "counter"
+    total_count = Total.load()
+    total_count.id = "total"
+    clear_button = ClearButton.load()
+    clear_button.id = "clear"
     return App(
         id="app",
         item_list=item_list,
@@ -60,8 +60,8 @@ def add_todo(request: Request, text: str = Form(...)):
     refreshes the mounted counters that store.add's @mutates just dirtied.
     """
     todo = store.add(text)
-    row = ItemRow(id=f"row-{todo.id}", todo_id=todo.id)
-    row.load()
+    row = ItemRow.load(todo.id)
+    row.id = f"row-{todo.id}"
     return ReactiveResponse(primary=render(row, current_session()), mounted=request)
 
 
@@ -77,8 +77,8 @@ def toggle_todo(request: Request, todo_id: int):
         store.toggle(todo_id)
     except KeyError:
         raise HTTPException(status_code=404, detail=f"no todo {todo_id}") from None
-    row = ItemRow(id=f"row-{todo_id}", todo_id=todo_id)
-    row.load()
+    row = ItemRow.load(todo_id)
+    row.id = f"row-{todo_id}"
     return ReactiveResponse(primary=render(row, current_session()), mounted=request)
 
 
