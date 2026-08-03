@@ -217,9 +217,9 @@ from pyjinhx.reactive.response import ReactiveResponse
 
 @app.post("/dismiss")
 def dismiss():
-    controller.dismiss()                          # plain mutation, no @mutates
-    dirty(Keys.TODOS)                             # dirty TODOS
-    return ReactiveResponse(primary="")           # fan out dependents OOB
+    controller.dismiss()  # plain mutation, no @mutates
+    dirty(Keys.TODOS)  # dirty TODOS
+    return ReactiveResponse(primary="")  # fan out dependents OOB
 ```
 
 Pass a primary body through `primary=`, e.g. `ReactiveResponse(primary="<p>dismissed</p>")`.
