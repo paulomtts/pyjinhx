@@ -427,8 +427,6 @@ class TestReservedNameCollisions:
 
 
 FORBIDDEN_IMPORTS = (
-    "pyjinhx2.render",
-    "pyjinhx2.session",
     "pyjinhx2.reactive",
     "pyjinhx",
 )
@@ -436,11 +434,14 @@ FORBIDDEN_IMPORTS = (
 
 def test_component_module_does_not_import_above_itself():
     """component.py sits below descriptor/render in the import graph, so it must
-    not reach up into them (nor into session.py, reactive/, or v0.x pyjinhx) —
-    except the one sanctioned edge #271 adds: importing ``ClassDescriptor`` from
-    descriptor.py to build and attach it in ``__pydantic_init_subclass__``.
-    tests/pyjinhx2/test_import_graph.py is the whole-package view that enforces
-    component.py is the *only* module allowed that edge."""
+    not reach up into them (nor into reactive/ or v0.x pyjinhx) — except the two
+    sanctioned edges: importing ``ClassDescriptor`` from descriptor.py (#271) to
+    build and attach it in ``__pydantic_init_subclass__``, and the local,
+    method-body-only imports of render.py/session.py inside
+    ``BaseComponent.render()`` (#643), which exist because render.py imports
+    BaseComponent at module scope and a module-level edge back would be a real
+    cycle. tests/pyjinhx2/test_import_graph.py is the whole-package view that
+    enforces component.py is the *only* module allowed those edges."""
     tree = ast.parse(inspect.getsource(pyjinhx2.component))
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):

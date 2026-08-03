@@ -179,9 +179,7 @@ def test_component_render_with_explicit_session(render_session):
     """component.render(session=s) matches render(component, s)."""
     DivComp = _make_component("div.html")
 
-    assert DivComp().render(session=render_session) == render(
-        DivComp(), render_session
-    )
+    assert DivComp().render(session=render_session) == render(DivComp(), render_session)
 
 
 # Test: no-arg component.render() inside a request_scope picks the ambient
