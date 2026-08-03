@@ -168,3 +168,17 @@ def test_all_demo_factories_render(tmp_path):
             markup = hooks.demo_markup(factory())
         assert "pjx-demo-stage" in markup, name
         assert markup.strip(), name
+
+
+def test_dropdown_demo_menu_entries_are_not_escaped():
+    """The gallery's dropdown showed literal &lt;button&gt; text: it passed markup as str items (#695)."""
+    from pyjinhx.session import request_scope
+
+    from demos.interaction import dropdown
+
+    with request_scope(template_dir="/"):
+        html = dropdown()
+
+    assert "&lt;button&gt;" not in html
+    assert "Edit" in html
+    assert html.count("<button") >= 4  # the trigger plus three menu entries

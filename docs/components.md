@@ -1946,7 +1946,7 @@ Floating panel for a `PJXPopover`. **Assets:** bundled in `pjx_popover.css`.
 
 ### PJXDropdown
 
-Button + anchored panel backed by the shared popover engine. **Assets:** `pjx_dropdown.css` only (ships no own JS — `pjx_popover.js` is included via the `js` extra-asset field whenever a PJXDropdown renders).
+Button + anchored panel backed by the shared popover engine. **Assets:** `pjx_dropdown.css` plus `pjx_popover.js`, inherited from the `PJXPopover` it extends — a rendered dropdown ships the runtime that reads its `data-pjx-popover` markup.
 
 <!-- demo: PJXDropdown -->
 
@@ -1960,10 +1960,9 @@ Button + anchored panel backed by the shared popover engine. **Assets:** `pjx_dr
     | Field | Type | Default | Description |
     | --- | --- | --- | --- |
     | `trigger` | `str \| BaseComponent` | `""` | Button label. |
-    | `items` | `list[str \| BaseComponent]` | `[]` | Menu items rendered inside the panel. |
+    | `items` | `list[str \| BaseComponent]` | `[]` | Menu items. A `str` entry is plain text and is HTML-escaped; pass a component for markup. |
     | `align` | literal | `"start"` | `start` or `end` → `pjx-dropdown--align-end`. |
     | `menu_label` | `str` | `"Submenu"` | `aria-label` on the menu panel. |
-    | `behavior` | `bool` | `True` | When `False`, removes all `data-pjx-*` wiring. |
 
     Trigger id is `{{ id }}-trigger`, menu is `{{ id }}-menu`.
 
@@ -1997,9 +1996,8 @@ Button + anchored panel backed by the shared popover engine. **Assets:** `pjx_dr
     PJXDropdown(
         trigger="Actions",
         items=[
-            "<button>Edit</button>",
-            "<button>Duplicate</button>",
-            "<button>Delete</button>",
+            PJXButton(variant="ghost", content=label)
+            for label in ("Edit", "Duplicate", "Delete")
         ],
         menu_label="Actions menu",
     )
