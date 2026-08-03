@@ -72,7 +72,8 @@ class ReactiveComponent(BaseComponent):
         cls = type(self)
         field = cls._pjx_key_field
         loaded = cls.load(**({field: getattr(self, field)} if field else {}))
-        for name in cls.model_fields:
+        names = list(cls.model_fields) + list(loaded.__pydantic_extra__ or ())
+        for name in names:
             if name != "id":
                 setattr(self, name, getattr(loaded, name))
 
