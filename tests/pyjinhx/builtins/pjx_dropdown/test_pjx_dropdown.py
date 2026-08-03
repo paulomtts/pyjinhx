@@ -147,3 +147,27 @@ def test_rendering_accumulates_the_popover_runtime_into_the_session():
 
     assert sorted(p.name for p in session.js_assets) == ["pjx_popover.js"]
     assert sorted(p.name for p in session.css_assets) == ["pjx_dropdown.css"]
+
+
+def test_a_component_item_renders_its_markup_unescaped(
+    dropdown_session, dropdown_child_template
+):
+    """Markup in the menu must arrive as a component: list-slot components are opaque nodes."""
+    html = _html(
+        dropdown_session, items=[DropdownChild(id="i1", content="<b>Edit</b>")]
+    )
+    assert '<span id="i1" class="child"><b>Edit</b></span>' in html
+    assert "&lt;span" not in html
+
+
+def test_a_str_item_is_escaped_plain_text_on_purpose(dropdown_session):
+    """A raw-HTML string item is data, not markup — it renders escaped, by design.
+
+    ADR 0003 makes the *slot's own* string form raw-HTML-capable, but a list
+    entry is a collection member, so render_context._wrap_slot_value leaves it
+    to Jinja's autoescape. This is the documented contract, not the #695 bug:
+    the bug was docs/demos/interaction.py passing markup where text is meant.
+    """
+    html = _html(dropdown_session, items=["<button>Edit</button>"])
+    assert "&lt;button&gt;Edit&lt;/button&gt;" in html
+    assert "<button>Edit</button>" not in html

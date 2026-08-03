@@ -18,5 +18,12 @@ class PJXDropdown(PJXPopover):
     """
 
     trigger: Slot = ""
-    items: Annotated[list[str | BaseComponent], PjxSlot()] = Field(default_factory=list)
+    items: Annotated[list[str | BaseComponent], PjxSlot()] = Field(
+        default_factory=list,
+        description=(
+            "Menu entries. A str entry is plain text and is HTML-escaped; pass "
+            "a component when the entry carries markup (a list entry is a "
+            "collection member, not author-declared markup)."
+        ),
+    )
     menu_label: str = "Submenu"
