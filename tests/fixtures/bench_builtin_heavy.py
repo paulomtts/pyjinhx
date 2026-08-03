@@ -1,8 +1,11 @@
-"""Shared "builtin-heavy page" used by scripts/bench_v0_vs_v2.py (issue #537).
+"""Shared "builtin-heavy page" originally used by scripts/bench_v0_vs_v2.py
+(issue #537; the v0.36.4-vs-v2 comparison script was deleted in #540 once
+1.0 shipped — its results live in docs/superpowers/rebuild/roadmap.md).
 
 One composition covering all five L4 builtin families, expressed twice — once
-against pyjinhx_v0 v0.36.4, once against pyjinhx — so the two renderers are
-timed on the same logical page.
+as the v0.36.4 engine (since removed from the tree) would have rendered it,
+once against pyjinhx — a frozen historical record of that comparison, not a
+live one.
 
 Excluded builtins (present in v0.36.4 but not ported to v2, so dropped from
 BOTH sides to keep the comparison 1:1 — confirmed via a v0.36.4-tag vs
@@ -12,8 +15,9 @@ v0.36.4 does not have; this fixture uses only the bare, self-closing
 PJXPopover root on both sides.
 
 **Why the two sides are built differently (deviation from the plan's original
-single-markup-string design):** v0.36 (`pyjinhx_v0.Renderer.render(source: str)`)
-expands PascalCase tags recursively at any nesting depth from one markup
+single-markup-string design):** v0.36 (`Renderer.render(source: str)`, the
+v0.36.4 engine's now-removed renderer) expands PascalCase tags recursively
+at any nesting depth from one markup
 string — a flat string works for the whole page. pyjinhx's tag scanner
 (`segments.VerbatimParser`) deliberately cuts only the *outermost* open
 component tag per parse and leaves what is nested inside it verbatim "for a

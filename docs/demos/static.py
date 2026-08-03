@@ -1,39 +1,37 @@
-from pyjinhx_v0.builtins import (
-    PJXAccordion,
-    PJXAccordionContent,
-    PJXAccordionGroup,
-    PJXAccordionTrigger,
-    PJXAvatar,
-    PJXAvatarStack,
-    PJXBadge,
-    PJXBreadcrumb,
-    PJXButton,
-    PJXCard,
-    PJXCardBody,
-    PJXCardFooter,
-    PJXCardHeader,
-    PJXDivider,
-    PJXEmptyState,
-    PJXIcon,
-    PJXPaginator,
-    PJXProgress,
-    PJXResizableGroup,
-    PJXResizableHandle,
-    PJXResizablePanel,
-    PJXSkeleton,
-    PJXSpinner,
-    PJXTable,
-    PJXTableBody,
-    PJXTableCell,
-    PJXTableHead,
-    PJXTableHeaderCell,
-    PJXTableRow,
-)
+from pyjinhx.builtins.pjx_paginator import PJXPaginator
+from pyjinhx.builtins.pjx_table import PJXTable
+from pyjinhx.builtins.pjx_table_body import PJXTableBody
+from pyjinhx.builtins.pjx_table_cell import PJXTableCell
+from pyjinhx.builtins.pjx_table_head import PJXTableHead
+from pyjinhx.builtins.pjx_table_header_cell import PJXTableHeaderCell
+from pyjinhx.builtins.pjx_table_row import PJXTableRow
+from pyjinhx.builtins.ui.pjx_accordion import PJXAccordion
+from pyjinhx.builtins.ui.pjx_accordion_content import PJXAccordionContent
+from pyjinhx.builtins.ui.pjx_accordion_group import PJXAccordionGroup
+from pyjinhx.builtins.ui.pjx_accordion_trigger import PJXAccordionTrigger
+from pyjinhx.builtins.ui.pjx_avatar import PJXAvatar
+from pyjinhx.builtins.ui.pjx_avatar_stack import PJXAvatarStack
+from pyjinhx.builtins.ui.pjx_badge import PJXBadge
+from pyjinhx.builtins.ui.pjx_breadcrumb import PJXBreadcrumb
+from pyjinhx.builtins.ui.pjx_button import PJXButton
+from pyjinhx.builtins.ui.pjx_card import PJXCard
+from pyjinhx.builtins.ui.pjx_card_body import PJXCardBody
+from pyjinhx.builtins.ui.pjx_card_footer import PJXCardFooter
+from pyjinhx.builtins.ui.pjx_card_header import PJXCardHeader
+from pyjinhx.builtins.ui.pjx_divider import PJXDivider
+from pyjinhx.builtins.ui.pjx_empty_state import PJXEmptyState
+from pyjinhx.builtins.ui.pjx_icon import PJXIcon
+from pyjinhx.builtins.ui.pjx_progress import PJXProgress
+from pyjinhx.builtins.ui.pjx_resizable_group import PJXResizableGroup
+from pyjinhx.builtins.ui.pjx_resizable_handle import PJXResizableHandle
+from pyjinhx.builtins.ui.pjx_resizable_panel import PJXResizablePanel
+from pyjinhx.builtins.ui.pjx_skeleton import PJXSkeleton
+from pyjinhx.builtins.ui.pjx_spinner import PJXSpinner
 
 
 def accordion():
     return PJXAccordion(
-        content=PJXAccordionTrigger(content="What is pyjinhx_v0?").render()
+        content=PJXAccordionTrigger(content="What is pyjinhx?").render()
         + PJXAccordionContent(
             content="<p>A Python/Jinja HTML component framework.</p>"
         ).render(),

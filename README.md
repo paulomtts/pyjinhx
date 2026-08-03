@@ -93,5 +93,5 @@ def toggle():
 
 - [Usage tiers](docs/guide/usage-tiers.md) — adopt only the layers you need
 - [Components](docs/guide/components.md) · [PascalCase tags](docs/guide/tags.md) · [Assets](docs/guide/assets.md)
-- [Reactivity guide](docs/reactivity.md) · [full todo example](examples/reactive_todo/)
+- [Reactivity guide](docs/reactivity.md)
 - [Built-in components](docs/components.md)

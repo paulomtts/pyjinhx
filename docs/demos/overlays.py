@@ -1,23 +1,19 @@
-from pyjinhx_v0.builtins import (
-    PJXAlert,
-    PJXConfirmDialog,
-    PJXDrawer,
-    PJXDrawerBody,
-    PJXDrawerFooter,
-    PJXDrawerHeader,
-    PJXModal,
-    PJXModalBody,
-    PJXModalFooter,
-    PJXModalHeader,
-    PJXNotification,
-    PJXPopover,
-    PJXPopoverPanel,
-    PJXPopoverTrigger,
-    PJXPromptDialog,
-    PJXTooltip,
-    PJXTooltipContent,
-    PJXTooltipTrigger,
-)
+from pyjinhx.builtins.ui.pjx_alert import PJXAlert
+from pyjinhx.builtins.ui.pjx_drawer import PJXDrawer
+from pyjinhx.builtins.ui.pjx_drawer_body import PJXDrawerBody
+from pyjinhx.builtins.ui.pjx_drawer_footer import PJXDrawerFooter
+from pyjinhx.builtins.ui.pjx_drawer_header import PJXDrawerHeader
+from pyjinhx.builtins.ui.pjx_modal import PJXModal
+from pyjinhx.builtins.ui.pjx_modal_body import PJXModalBody
+from pyjinhx.builtins.ui.pjx_modal_footer import PJXModalFooter
+from pyjinhx.builtins.ui.pjx_modal_header import PJXModalHeader
+from pyjinhx.builtins.ui.pjx_notification import PJXNotification
+from pyjinhx.builtins.ui.pjx_popover import PJXPopover
+from pyjinhx.builtins.ui.pjx_popover_panel import PJXPopoverPanel
+from pyjinhx.builtins.ui.pjx_popover_trigger import PJXPopoverTrigger
+from pyjinhx.builtins.ui.pjx_tooltip import PJXTooltip
+from pyjinhx.builtins.ui.pjx_tooltip_content import PJXTooltipContent
+from pyjinhx.builtins.ui.pjx_tooltip_trigger import PJXTooltipTrigger
 
 
 def modal():
@@ -62,24 +58,6 @@ def drawer():
                 ).render()
             ),
         ).render(),
-    ]
-
-
-def confirm_dialog():
-    return [
-        """<button class="pjx-demo-btn"
-            onclick="pjx.confirm('Delete this file?', { okLabel: 'Delete', danger: true })
-                .then(ok => { if (ok) alert('Deleted.') })">Delete file</button>""",
-        PJXConfirmDialog(id="demo-confirm").render(),
-    ]
-
-
-def prompt_dialog():
-    return [
-        """<button class="pjx-demo-btn"
-            onclick="pjx.prompt('Rename file', { initial: 'report.pdf', placeholder: 'New name' })
-                .then(name => { if (name !== null) alert('Renamed to: ' + name) })">Rename file</button>""",
-        PJXPromptDialog(id="demo-prompt").render(),
     ]
 
 
@@ -153,8 +131,6 @@ def popover():
 DEMOS = {
     "PJXModal": (modal, 520),
     "PJXDrawer": (drawer, 420),
-    "PJXConfirmDialog": (confirm_dialog, 360),
-    "PJXPromptDialog": (prompt_dialog, 360),
     "PJXNotification": (notification, 140),
     "PJXAlert": (alert, 280),
     "PJXTooltip": (tooltip, 160),

@@ -1499,8 +1499,6 @@ Footer strip for a `PJXDrawer`. **Assets:** `pjx-drawer-footer.css`.
 
 Accessible `<dialog>` singleton that replaces `window.confirm`. Mount once in the layout; `pjx.confirm()` is available everywhere. **Assets:** `pjx-confirm-dialog.css`, `pjx-confirm-dialog.js`.
 
-<!-- demo: PJXConfirmDialog -->
-
 ```html
 <PJXConfirmDialog id="demo-confirm"/>
 ```
@@ -1561,8 +1559,6 @@ Accessible `<dialog>` singleton that replaces `window.confirm`. Mount once in th
 ### PJXPromptDialog
 
 Accessible `<dialog>` singleton that replaces `window.prompt`. Mount once in the layout; `pjx.prompt()` is available everywhere. **Assets:** `pjx-prompt-dialog.css`, `pjx-prompt-dialog.js`.
-
-<!-- demo: PJXPromptDialog -->
 
 ```html
 <PJXPromptDialog id="demo-prompt"/>

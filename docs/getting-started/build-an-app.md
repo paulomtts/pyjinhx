@@ -11,8 +11,6 @@ When you're done you will have used:
 - Reactive `render()` with `ClientBackend` wired in middleware
 - Load-cache scopes and optional invalidation fan-out
 
-Runnable reference: [`examples/reactive_todo/`](https://github.com/paulomtts/pyjinhx/tree/master/examples/reactive_todo).
-
 ---
 
 ## What you are building
@@ -173,7 +171,7 @@ TodoPanel(id="panel", counter=TodoCounter(id="counter", remaining=3)).render()
 ```
 
 ???+ question "Why typed child fields?"
-    The panel declares **which child it holds** as a typed Pydantic field; the template owns **where it goes** — `{{ counter }}` renders the nested component in place. This is the same style the runnable `examples/reactive_todo` app uses. PyJinHx also supports `<PascalCase/>` tags for template-driven composition — see [PascalCase tags](../guide/tags.md).
+    The panel declares **which child it holds** as a typed Pydantic field; the template owns **where it goes** — `{{ counter }}` renders the nested component in place. PyJinHx also supports `<PascalCase/>` tags for template-driven composition — see [PascalCase tags](../guide/tags.md).
 
 ---
 
@@ -607,4 +605,3 @@ The per-step **Why?** panels above cover the *why*; this is the at-a-glance *wha
 - [Reactivity](../reactivity.md) — deep dive on OOB swaps and hash gating
 - [FastAPI](../integrations/fastapi.md) · [HTMX](../integrations/htmx.md)
 - [API: Renderer](../api/renderer.md) · [Registry](../api/registry.md)
-- Live demo: `uv run uvicorn examples.reactive_todo.app:app --reload`

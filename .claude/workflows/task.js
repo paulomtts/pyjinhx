@@ -57,7 +57,7 @@ const intake = await agent(`Intake for pyjinhx v2 subtask #${issue} in ${REPO_DI
 1. \`gh issue view ${issue} --json title,body,labels,milestone\` — if the labels do NOT include "subtask" (e.g. it is a story), set refused=true with the reason and stop.
 2. Read the parent story (\`gh api graphql\` on issue.parent or the "Subtask of #N" line in the body) and list its sibling sub-issues with states.
 3. Read docs/superpowers/rebuild/architecture-overview.md, docs/superpowers/rebuild/implementation-overview.md, and any ADRs the story or subtask cites (docs/superpowers/rebuild/adr/).
-4. Locate the code the subtask touches: existing pyjinhx/ modules, sibling tests, relevant v0.x reference code (pyjinhx_v0/).
+4. Locate the code the subtask touches: existing pyjinhx/ modules and sibling tests.
 
 Return: what #${issue} must deliver, exact constraints from the docs (invariants, types, conventions the subtask must obey), relevant file:line references, and what sibling subtasks own (so this one doesn't drift into them).`,
   { label: `intake:#${issue}`, phase: 'Intake', model: 'sonnet', schema: {

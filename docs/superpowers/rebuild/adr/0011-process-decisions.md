@@ -8,7 +8,7 @@ v2 was built under a temporary import name beside the current code. Shares tests
 
 ## Ships as pyjinhx 1.0
 
-At L4 close — parity proven (PRD G3/G4), benchmarks green (G1/G2), migration guide shipped (G5) — the package is renamed and published as pyjinhx 1.0. v0.x freezes to critical fixes. Rejected: separate PyPI package forever (two products to maintain), deciding at L4 (the PRD needs a release vehicle to define "done").
+At L4 close — parity proven (PRD G3/G4), benchmarks green (G1/G2), migration guide shipped (G5) — the package is renamed and published as pyjinhx 1.0. Rejected: separate PyPI package forever (two products to maintain), deciding at L4 (the PRD needs a release vehicle to define "done"). **Superseded by #540:** the freeze-v0.x plan above was never acted on — there are no external consumers of this repo, so v0.x is deleted outright rather than kept around frozen.
 
 ## Layer specs written just-in-time
 

@@ -426,15 +426,12 @@ class TestReservedNameCollisions:
         assert FixedId(id="").id.startswith("pjx-")
 
 
-FORBIDDEN_IMPORTS = (
-    "pyjinhx.reactive",
-    "pyjinhx_v0",
-)
+FORBIDDEN_IMPORTS = ("pyjinhx.reactive",)
 
 
 def test_component_module_does_not_import_above_itself():
     """component.py sits below descriptor/render in the import graph, so it must
-    not reach up into them (nor into reactive/ or pyjinhx_v0) — except the two
+    not reach up into them (nor into reactive/) — except the two
     sanctioned edges: importing ``ClassDescriptor`` from descriptor.py (#271) to
     build and attach it in ``__pydantic_init_subclass__``, and the local,
     method-body-only imports of render.py/session.py inside

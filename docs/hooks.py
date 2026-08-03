@@ -10,8 +10,14 @@ sys.path.insert(0, HERE)
 
 from demos import DEMOS
 
-from pyjinhx_v0 import BaseComponent, Registry
-from pyjinhx_v0.utils import pascal_case_to_kebab_case
+from pyjinhx.component import BaseComponent, _pascal_to_snake
+from pyjinhx.session import request_scope
+
+
+def pascal_case_to_kebab_case(name: str) -> str:
+    """Used only for demo output filenames (e.g. ``PJXButton`` -> ``pjx-button``)."""
+    return _pascal_to_snake(name).replace("_", "-")
+
 
 _MARKER = re.compile(r"<!--\s*demo:\s*([A-Za-z]+)\s*-->")
 
@@ -67,5 +73,5 @@ def on_post_build(config):
     )
     for name, (factory, _height) in DEMOS.items():
         path = os.path.join(out, f"{pascal_case_to_kebab_case(name)}.html")
-        with open(path, "w", encoding="utf-8") as fh, Registry.request_scope():
+        with open(path, "w", encoding="utf-8") as fh, request_scope(template_dir="/"):
             fh.write(_PAGE.format(markup=demo_markup(factory())))

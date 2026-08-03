@@ -1,15 +1,13 @@
-from pyjinhx_v0.builtins import (
-    PJXCarousel,
-    PJXCarouselSlide,
-    PJXDropdown,
-    PJXPageLoader,
-    PJXRegionLoader,
-    PJXTab,
-    PJXTabGroup,
-    PJXTabList,
-    PJXTabPanel,
-    PJXToastHost,
-)
+from pyjinhx.builtins.pjx_page_loader import PJXPageLoader
+from pyjinhx.builtins.pjx_region_loader import PJXRegionLoader
+from pyjinhx.builtins.ui.pjx_carousel import PJXCarousel
+from pyjinhx.builtins.ui.pjx_carousel_slide import PJXCarouselSlide
+from pyjinhx.builtins.ui.pjx_dropdown import PJXDropdown
+from pyjinhx.builtins.ui.pjx_tab import PJXTab
+from pyjinhx.builtins.ui.pjx_tab_group import PJXTabGroup
+from pyjinhx.builtins.ui.pjx_tab_list import PJXTabList
+from pyjinhx.builtins.ui.pjx_tab_panel import PJXTabPanel
+from pyjinhx.builtins.ui.pjx_toast_host import PJXToastHost
 
 
 def dropdown():
