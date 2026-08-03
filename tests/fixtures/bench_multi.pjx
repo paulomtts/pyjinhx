@@ -1,1 +1,1 @@
-<div id="{{ id }}" data-bench-multi>{% if items is string %}{{ items }}{% else %}{% for item in items %}{{ item }}{% endfor %}{% endif %}</div>
+<div id="{{ id }}" data-bench-multi>{% if items is iterable and items is not string %}{% for item in items %}{{ item }}{% endfor %}{% else %}{{ items }}{% endif %}</div>

@@ -1,1 +1,1 @@
-<div id="{{ id }}">{% if content is string %}{{ content }}{% else %}{% for item in content %}{{ item }}{% endfor %}{% endif %}</div>
+<div id="{{ id }}">{% if content is iterable and content is not string %}{% for item in content %}{{ item }}{% endfor %}{% else %}{{ content }}{% endif %}</div>
