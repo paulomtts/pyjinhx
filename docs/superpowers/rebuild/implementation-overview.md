@@ -25,7 +25,7 @@ One test asserts the import graph. Cheap, catches spine violations forever.
 ## Folder / file structure
 
 ```text
-pyjinhx2/
+pyjinhx/
 ├── __init__.py          public API, curated exports
 ├── component.py         BaseComponent (strict), OpenComponent, Slot, children inference
 ├── descriptor.py        ClassDescriptor: MRO walk, slot fields, asset paths — frozen at registration
@@ -56,7 +56,7 @@ pyjinhx2/
 
 Judgment calls: `segments.py` is deliberately import-pure — the type layer everything trusts. The instance registry's storage lives in `session.py` and its keys/reader/writer live in `registry.py`, not `reactive/` — storage and access are L2, consumer is L3, matching the map. `props_header.py` stays separate from `discovery.py` — parsing vs walking, both feed the registry.
 
-Tests mirror the package: `tests/pyjinhx2/test_<module>.py` per module, `tests/pyjinhx2/reactive/` for the cluster, plus `test_import_graph.py` (the spine rule) and the benchmark under `scripts/`.
+Tests mirror the package: `tests/pyjinhx/test_<module>.py` per module, `tests/pyjinhx/reactive/` for the cluster, plus `test_import_graph.py` (the spine rule) and the benchmark under `scripts/`.
 
 ## Render timelines
 

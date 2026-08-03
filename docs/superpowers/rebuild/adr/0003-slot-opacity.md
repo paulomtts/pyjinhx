@@ -59,7 +59,7 @@ L0.G ran the pre-RFC-1 survey this ADR calls for, split across three gate subtas
 
 ### Error contract for L1
 
-`ComponentNode` (`pyjinhx2/markers.py`) currently exposes only `__repr__`; it has
+`ComponentNode` (`pyjinhx/markers.py`) currently exposes only `__repr__`; it has
 no `__bool__`, `__str__`, `__len__`, `__iter__`, or comparison dunders. L1 is
 expected to add the two capabilities this ADR grants — truthiness and
 interpolation — and nothing else. Any other operation must fail fast with a
@@ -127,7 +127,7 @@ Two consequences worth stating plainly:
 
 ## Amendment (2026-07-31): closing the two remaining opacity leaks (#419)
 
-Two gaps survived the L1.3 landing, both fixed in `pyjinhx2/markers.py`:
+Two gaps survived the L1.3 landing, both fixed in `pyjinhx/markers.py`:
 
 - `ComponentNode.__str__` now raises the same opaque `TypeError` as the other
   forbidden dunders. Filters that stringify before doing their own work

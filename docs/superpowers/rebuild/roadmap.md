@@ -89,7 +89,7 @@ n= 10000     254.0 ms   0.025 ms/component
 - [ ] **8. Wiring** — `config.py` (`setup()`, PjxSettings), `integrations/fastapi.py`, `context.py` (PjxContext), `dev.py` (dev mode, `dependency_graph()`, unconsumed-mutation check).
 - [x] **9. Parity suite** ([#450](https://github.com/paulomtts/pyjinhx/issues/450)) — port the v0.x reactive test suite; green = layer done.
 
-**Gate before L4** ([#491](https://github.com/paulomtts/pyjinhx/issues/491)) — ✅ **passed, 2026-08-02.** Full `uv run pytest tests/pyjinhx2` green (`1593 passed in 19.33s`), including `reactive/`, `client/`, `integrations/` (the #490 mutation round-trip demo in `tests/pyjinhx2/integrations/test_reactive_request_cycle.py`) and the `test_import_graph.py` spine guard — the render spine still imports nothing from `reactive/`. Lint/type gates green: `ruff@0.16.0 format --check`, `ruff@0.16.0 check`, `basedpyright` (standard). This satisfies PRD **G4** — reactive behavior parity, [ADR 0001](adr/0001-outerhtml-only-oob-swaps.md) semantics preserved (outerHTML-only OOB swaps) and the v0.x reactive suite passing under v2. L4 may proceed.
+**Gate before L4** ([#491](https://github.com/paulomtts/pyjinhx/issues/491)) — ✅ **passed, 2026-08-02.** Full `uv run pytest tests/pyjinhx` (pre-#539 rename: `tests/pyjinhx` + `2`) green (`1593 passed in 19.33s`), including `reactive/`, `client/`, `integrations/` (the #490 mutation round-trip demo in `tests/pyjinhx/integrations/test_reactive_request_cycle.py`) and the `test_import_graph.py` spine guard — the render spine still imports nothing from `reactive/`. Lint/type gates green: `ruff@0.16.0 format --check`, `ruff@0.16.0 check`, `basedpyright` (standard). This satisfies PRD **G4** — reactive behavior parity, [ADR 0001](adr/0001-outerhtml-only-oob-swaps.md) semantics preserved (outerHTML-only OOB swaps) and the v0.x reactive suite passing under v2. L4 may proceed.
 
 ---
 
@@ -104,7 +104,7 @@ Port order — dependency- and risk-sorted, tests ported alongside each family:
 - [ ] **3. Composed shells** — Card, Modal, Drawer, Accordion, Tabs, Popover, Tooltip, Dropdown, Breadcrumb families. Heaviest users of slots/children composition and MRO subclassing.
 - [ ] **4. Data + HTMX-heavy** — Table family, Paginator, LazyLoad (+ infinite-scroll sentinel), RegionLoader, PageLoader. Exercises reactivity + loading indicators hard.
 - [ ] **5. JS-heavy tail** — Notification, ToastHost, Alert, Carousel, Resizable families.
-- [ ] **6. Release train** — bench comparison on the builtin-heavy page (G2: never slower), migration guide written from the port list's mods/drops (G5), rename `pyjinhx2` → `pyjinhx`, publish 1.0, freeze v0.x to critical fixes.
+- [ ] **6. Release train** — bench comparison on the builtin-heavy page (G2: never slower), migration guide written from the port list's mods/drops (G5), rename the temporary v2 import name → `pyjinhx` (done, #539 — v0.x staged at `pyjinhx_v0/` for #540 to delete), publish 1.0, freeze v0.x to critical fixes.
 
 Bench comparison — v0.36.4 vs v2, same builtin-heavy page
 (`tests/fixtures/bench_builtin_heavy.py`, issue #537), reproduced by

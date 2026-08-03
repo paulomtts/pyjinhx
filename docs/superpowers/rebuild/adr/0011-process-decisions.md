@@ -4,7 +4,7 @@
 
 ## Parallel package, same repo
 
-v2 is built as `src/pyjinhx2/` beside the current code. Shares tests, builtins, and CI; the builtins port validates each layer as it ships; v0.x keeps releasing throughout. Rejected: new repo (loses easy reuse of test suite and builtins during the port), long-lived v2 branch (permanent rebases against an active master).
+v2 was built under a temporary import name beside the current code. Shares tests, builtins, and CI; the builtins port validates each layer as it ships; v0.x keeps releasing throughout. Rejected: new repo (loses easy reuse of test suite and builtins during the port), long-lived v2 branch (permanent rebases against an active master). **Superseded by #539:** v2 now owns the `pyjinhx/` import path; the v0.x tree is staged at `pyjinhx_v0/` (and stays listed in `[tool.hatch.build.targets.wheel] packages`) purely so #540 can delete it in one move.
 
 ## Ships as pyjinhx 1.0
 

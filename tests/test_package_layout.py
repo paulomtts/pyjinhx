@@ -81,7 +81,7 @@ def test_no_tracked_file_mentions_pyjinhx2():
         text=True,
         check=True,
     ).stdout.split()
-    skip = {"CHANGELOG.md", "docs/superpowers/plans"}
+    skip = {"CHANGELOG.md", "docs/superpowers/plans", "tests/test_package_layout.py"}
     offenders = []
     for rel in tracked:
         if any(rel.startswith(s) for s in skip):

@@ -57,7 +57,7 @@ const intake = await agent(`Intake for pyjinhx v2 subtask #${issue} in ${REPO_DI
 1. \`gh issue view ${issue} --json title,body,labels,milestone\` — if the labels do NOT include "subtask" (e.g. it is a story), set refused=true with the reason and stop.
 2. Read the parent story (\`gh api graphql\` on issue.parent or the "Subtask of #N" line in the body) and list its sibling sub-issues with states.
 3. Read docs/superpowers/rebuild/architecture-overview.md, docs/superpowers/rebuild/implementation-overview.md, and any ADRs the story or subtask cites (docs/superpowers/rebuild/adr/).
-4. Locate the code the subtask touches: existing pyjinhx2/ modules, sibling tests, relevant v0.x reference code (pyjinhx/).
+4. Locate the code the subtask touches: existing pyjinhx/ modules, sibling tests, relevant v0.x reference code (pyjinhx_v0/).
 
 Return: what #${issue} must deliver, exact constraints from the docs (invariants, types, conventions the subtask must obey), relevant file:line references, and what sibling subtasks own (so this one doesn't drift into them).`,
   { label: `intake:#${issue}`, phase: 'Intake', model: 'sonnet', schema: {
@@ -158,7 +158,7 @@ phase('Tests')
 const tests = await agent(`Full verification in ${WORKTREE} (branch ${BRANCH}):
 
 1. \`uv run pytest tests/ -q\` — full suite.
-2. \`uvx basedpyright pyjinhx2/ tests/pyjinhx2/\` — 0 errors required.
+2. \`uvx basedpyright pyjinhx/ tests/pyjinhx/\` — 0 errors required.
 3. \`uvx ruff@0.16.0 check .\` and \`uvx ruff@0.16.0 format --check .\` (CI pins 0.16.0). Auto-fix + commit if needed.
 4. Test-integrity gate on \`git diff origin/master...HEAD -- tests/\`: no weakened/deleted assertions, no tautologies, no tests that merely mirror the implementation, every new behavior has a test that would fail without its code. Report violations honestly — fix them, don't argue.
 

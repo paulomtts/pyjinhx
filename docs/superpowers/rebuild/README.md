@@ -1,6 +1,6 @@
 # pyjinhx v2 rebuild — doc index
 
-The documentation set for rebuilding the pyjinhx engine as `src/pyjinhx2/`, shipping as pyjinhx 1.0. Everything here is local-only (gitignored with the rest of `docs/superpowers/`).
+The documentation set for rebuilding the pyjinhx engine as `src/pyjinhx/`, shipping as pyjinhx 1.0. Everything here is local-only (gitignored with the rest of `docs/superpowers/`).
 
 ## The set
 

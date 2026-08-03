@@ -46,7 +46,7 @@ v1.0   render child → opaque node in parent's segment list → join once at to
 
 ## Delivery
 
-`src/pyjinhx2/` parallel package, same repo. Five layers, each shippable, each gated by its layer spec and ship criteria ([feature-port-list.md](./feature-port-list.md) assigns every feature to its layer):
+`src/pyjinhx/` parallel package, same repo. Five layers, each shippable, each gated by its layer spec and ship criteria ([feature-port-list.md](./feature-port-list.md) assigns every feature to its layer):
 
 ```text
 L0 kernel ──► L1 composition ──► L2 registry+assets ──► L3 reactivity ──► L4 builtins
