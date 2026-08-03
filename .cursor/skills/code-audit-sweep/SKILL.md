@@ -44,10 +44,3 @@ Read shared rules: [CONVENTIONS.md](CONVENTIONS.md).
 ## Single-lens runs
 
 If the user names one lens only (e.g. "indirection audit on this PR"), run that child skill alone; skip merge step.
-
-## Expected baselines (post reactive refactor)
-
-- `pyjinhx/reactive/` — expect zero P1 if refactor landed; P3 doc nits OK.
-- `pyjinhx/core/` — likely P2/P3 backlog (renderer size, module-level autodiscover helpers).
-
-Use dry-run results to calibrate; do not suppress real findings to match baselines.

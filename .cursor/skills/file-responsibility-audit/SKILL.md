@@ -41,9 +41,11 @@ Read: [CONVENTIONS.md](../code-audit-sweep/CONVENTIONS.md).
 | Wire format / header parsing | `payload.py` |
 | HTMX OOB algorithm | `oob.py` |
 | Runtime `<script>` injection | `runtime.py` |
-| Shared render orchestration | `render.py` |
+| Shared render orchestration | `rendering.py` |
 
 Do not create nested packages until >12 modules in the directory.
+
+Avoid a target name that collides with a re-exported symbol: `pyjinhx/__init__.py` once did `from pyjinhx.render import render`, which shadowed the `pyjinhx.render` submodule and broke `import pyjinhx.render`; the module is now `rendering.py`.
 
 ## When NOT to split
 
@@ -61,7 +63,11 @@ For each file over threshold in scope, list public symbols and group by concern.
 
 ## pyjinhx reference layout
 
-See module map in `pyjinhx/reactive/__init__.py` docstring.
+There is no maintained module map document. Derive the layout from the tree itself:
+
+```bash
+ls pyjinhx/ pyjinhx/reactive/ pyjinhx/integrations/ pyjinhx/client/ pyjinhx/builtins/
+```
 
 ## Report
 
