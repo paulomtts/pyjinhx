@@ -2,10 +2,9 @@
 
 import pytest
 
-from pyjinhx.session import get_dirtied, request_scope
-
 from examples.todo import store
 from examples.todo.keys import Keys
+from pyjinhx.session import get_dirtied, request_scope
 
 
 @pytest.fixture(autouse=True)

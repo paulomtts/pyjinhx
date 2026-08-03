@@ -1,8 +1,7 @@
 """Keys for the todo example are real MutationKey members."""
 
-from pyjinhx import MutationKey, mutates
-
 from examples.todo.keys import Keys
+from pyjinhx import MutationKey, mutates
 
 
 def test_keys_subclasses_mutation_key():

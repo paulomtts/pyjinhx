@@ -4,10 +4,9 @@ import dataclasses
 
 import pytest
 
-from pyjinhx import AppContext
-
 from examples.todo import store
 from examples.todo.context import TodoAppContext
+from pyjinhx import AppContext
 
 
 def test_is_a_frozen_dataclass_subclass_of_app_context():
@@ -28,6 +27,6 @@ def test_rejects_mutation_after_construction():
 
 
 def test_works_as_a_context_factory_return_value():
-    factory = lambda request: TodoAppContext(store=store)  # noqa: E731
+    factory = lambda request: TodoAppContext(store=store)
     ctx = factory(object())
     assert ctx.store.total() == store.total()
