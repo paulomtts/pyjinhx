@@ -2,7 +2,7 @@ import os
 
 from jinja2 import Environment, FileSystemLoader
 
-from pyjinhx.renderer import Renderer
+from pyjinhx_v0.renderer import Renderer
 
 
 def test_set_default_environment():

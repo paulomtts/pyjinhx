@@ -3,8 +3,8 @@ from typing import Any
 import pytest
 from pydantic import ValidationError
 
-from pyjinhx.base import BaseComponent
-from pyjinhx.props_header import build_component_model, parse_props_header
+from pyjinhx_v0.base import BaseComponent
+from pyjinhx_v0.props_header import build_component_model, parse_props_header
 
 
 def test_no_header_returns_none():

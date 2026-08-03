@@ -1,7 +1,7 @@
 import pytest
 from pydantic import ValidationError
 
-from pyjinhx import Renderer
+from pyjinhx_v0 import Renderer
 
 
 @pytest.fixture()

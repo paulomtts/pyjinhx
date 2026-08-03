@@ -1,6 +1,6 @@
 import re
 
-from pyjinhx.builtins import PJXPopover, PJXPopoverPanel, PJXPopoverTrigger
+from pyjinhx_v0.builtins import PJXPopover, PJXPopoverPanel, PJXPopoverTrigger
 
 
 def _popover_el(html: str) -> str:

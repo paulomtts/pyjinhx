@@ -4,8 +4,8 @@ import pytest
 from jinja2 import DictLoader, Environment, FileSystemLoader
 from jinja2.exceptions import TemplateNotFound
 
-import pyjinhx
-from pyjinhx.renderer import Renderer, _PjxContext, get_loader_root
+import pyjinhx_v0
+from pyjinhx_v0.renderer import Renderer, _PjxContext, get_loader_root
 
 
 @pytest.fixture(autouse=True)
@@ -169,9 +169,9 @@ def test_missing_template_raises_error():
 
 
 def test_setup_function_sets_default_environment():
-    """pyjinhx.setup(components_root) sets the default environment."""
+    """pyjinhx_v0.setup(components_root) sets the default environment."""
     custom_root = os.path.join(os.getcwd(), "tests")
-    pyjinhx.setup(components_root=custom_root)
+    pyjinhx_v0.setup(components_root=custom_root)
 
     env = Renderer.get_default_environment()
     assert isinstance(env.loader, FileSystemLoader)
@@ -198,7 +198,7 @@ def test_context_class_set_idempotently():
 
 def test_full_render_cycle_with_autoescape():
     """Full render with autoescape and context class."""
-    from pyjinhx.base import BaseComponent
+    from pyjinhx_v0.base import BaseComponent
 
     Renderer.set_default_environment(None)
     renderer = Renderer.get_default_renderer()

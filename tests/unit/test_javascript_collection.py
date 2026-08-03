@@ -1,6 +1,6 @@
 import re
 
-from pyjinhx import AssetMode, Renderer
+from pyjinhx_v0 import AssetMode, Renderer
 from tests.ui.unified_component import UnifiedComponent
 
 

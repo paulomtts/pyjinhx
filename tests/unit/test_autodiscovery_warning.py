@@ -1,7 +1,7 @@
 import logging
 
-from pyjinhx import Renderer
-from pyjinhx.tags import ComponentAutodiscover
+from pyjinhx_v0 import Renderer
+from pyjinhx_v0.tags import ComponentAutodiscover
 
 
 def test_import_failure_warns(tmp_path, caplog):
@@ -12,7 +12,7 @@ def test_import_failure_warns(tmp_path, caplog):
     try:
         Renderer.set_default_environment(str(tmp_path))
         renderer = Renderer.get_default_renderer()
-        with caplog.at_level(logging.WARNING, logger="pyjinhx"):
+        with caplog.at_level(logging.WARNING, logger="pyjinhx_v0"):
             renderer.render('<BrokenProbe id="b1"/>')
         assert any(
             "broken_probe.py" in r.message or "broken_probe.py" in r.getMessage()
@@ -30,7 +30,7 @@ def test_unregistered_fallback_warns_once(tmp_path, caplog):
     try:
         Renderer.set_default_environment(str(tmp_path))
         renderer = Renderer.get_default_renderer()
-        with caplog.at_level(logging.WARNING, logger="pyjinhx"):
+        with caplog.at_level(logging.WARNING, logger="pyjinhx_v0"):
             renderer.render('<GhostProbe id="g1"/>')
             renderer.render('<GhostProbe id="g2"/>')
         hits = [

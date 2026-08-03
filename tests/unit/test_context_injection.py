@@ -2,9 +2,9 @@ from dataclasses import dataclass
 
 import pytest
 
-from pyjinhx import BaseComponent, MutationKey, ReactiveComponent
-from pyjinhx.cache import LoadCache
-from pyjinhx.context import PjxContext
+from pyjinhx_v0 import BaseComponent, MutationKey, ReactiveComponent
+from pyjinhx_v0.cache import LoadCache
+from pyjinhx_v0.context import PjxContext
 
 
 @dataclass(frozen=True)

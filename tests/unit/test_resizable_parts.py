@@ -2,8 +2,8 @@
 
 import pytest
 
-from pyjinhx import Renderer
-from pyjinhx.builtins import PJXResizableHandle, PJXResizablePanel
+from pyjinhx_v0 import Renderer
+from pyjinhx_v0.builtins import PJXResizableHandle, PJXResizablePanel
 
 
 @pytest.fixture(autouse=True)

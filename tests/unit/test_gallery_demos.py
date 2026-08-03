@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-import pyjinhx.builtins
+import pyjinhx_v0.builtins
 
 DOCS = Path(__file__).resolve().parents[2] / "docs"
 sys.path.insert(0, str(DOCS))
@@ -86,7 +86,7 @@ def test_registry_covers_all_builtins():
         "PJXTableHeaderCell",
         "PJXTableCell",
     }
-    assert set(DEMOS) == set(pyjinhx.builtins.__all__) - folded
+    assert set(DEMOS) == set(pyjinhx_v0.builtins.__all__) - folded
 
 
 def test_gallery_page_features_every_demo():
@@ -114,7 +114,7 @@ def test_demo_markup_wraps_in_stage():
 
 
 def test_all_demo_factories_render(tmp_path):
-    from pyjinhx import Registry, Renderer
+    from pyjinhx_v0 import Registry, Renderer
 
     Renderer.set_default_environment(str(tmp_path))
     for name, (factory, _h) in DEMOS.items():

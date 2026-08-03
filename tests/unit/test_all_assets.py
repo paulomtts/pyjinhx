@@ -1,13 +1,13 @@
 # tests/84_all_assets_test.py
 import os
 
-import pyjinhx.builtins
-from pyjinhx.assets import hashed_filename, resolver_with_hash
-from pyjinhx.finder import Finder
+import pyjinhx_v0.builtins
+from pyjinhx_v0.assets import hashed_filename, resolver_with_hash
+from pyjinhx_v0.finder import Finder
 
 
 def test_all_assets_returns_ordered_pairs():
-    root = os.path.join(os.path.dirname(pyjinhx.builtins.__file__), "ui")
+    root = os.path.join(os.path.dirname(pyjinhx_v0.builtins.__file__), "ui")
     css, js = Finder(root).all_assets()
     assert all(p.endswith(".css") for p in css)
     assert all(p.endswith(".js") for p in js)

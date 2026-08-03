@@ -1,4 +1,4 @@
-from pyjinhx.builtins import PJXTab, PJXTabGroup, PJXTabList, PJXTabPanel
+from pyjinhx_v0.builtins import PJXTab, PJXTabGroup, PJXTabList, PJXTabPanel
 
 
 def test_tab_group_regions_and_label():

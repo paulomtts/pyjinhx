@@ -4,7 +4,7 @@ import os
 import threading
 import time
 
-from pyjinhx.finder import Finder
+from pyjinhx_v0.finder import Finder
 
 
 def test_finder_concurrent_first_index_no_duplicates(tmp_path, monkeypatch):
@@ -57,9 +57,9 @@ def test_renderer_concurrent_builtin_template_cache(tmp_path):
     so this test asserts the invariant rather than a crash: after N concurrent
     renders, rendering still works and the cache holds one entry per path.
     """
-    import pyjinhx.builtins.ui  # noqa: F401 — registers builtins
-    from pyjinhx import Renderer
-    from pyjinhx.registry import Registry
+    import pyjinhx_v0.builtins.ui  # noqa: F401 — registers builtins
+    from pyjinhx_v0 import Renderer
+    from pyjinhx_v0.registry import Registry
 
     Renderer.set_default_environment(str(tmp_path))
     renderer = Renderer.get_default_renderer()

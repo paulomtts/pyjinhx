@@ -3,8 +3,8 @@ import sqlite3
 import threading
 import time
 
-from pyjinhx.cache import CacheScope, InvalidationBackend, InvalidationHub, LoadCache
-from pyjinhx.integrations.sqlite import SqliteInvalidationBackend
+from pyjinhx_v0.cache import CacheScope, InvalidationBackend, InvalidationHub, LoadCache
+from pyjinhx_v0.integrations.sqlite import SqliteInvalidationBackend
 from tests.ui.reactive.cached_widget import CachedWidget, load_calls
 
 DEFAULT_CHANNEL = InvalidationBackend.DEFAULT_CHANNEL

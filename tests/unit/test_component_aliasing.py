@@ -3,8 +3,8 @@
 import pytest
 from jinja2 import TemplateNotFound
 
-from pyjinhx import BaseComponent, MutationKey, ReactiveComponent
-from pyjinhx.builtins import PJXBadge, PJXCard
+from pyjinhx_v0 import BaseComponent, MutationKey, ReactiveComponent
+from pyjinhx_v0.builtins import PJXBadge, PJXCard
 from tests.ui.aliasing.custom_badge import CustomBadge
 from tests.ui.aliasing.fancy_badge import FancyBadge
 
@@ -79,7 +79,7 @@ def test_missing_template_lists_mro_candidates():
 
 
 def test_subclass_pascal_tag_renders():
-    from pyjinhx import Renderer
+    from pyjinhx_v0 import Renderer
 
     renderer = Renderer.get_default_renderer()
     html = str(renderer.render('<TaskBadge id="t1" label="hi"/>'))

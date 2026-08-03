@@ -1,4 +1,4 @@
-from pyjinhx.builtins import PJXAlert
+from pyjinhx_v0.builtins import PJXAlert
 
 
 def test_alert_dismiss_props_and_wiring():

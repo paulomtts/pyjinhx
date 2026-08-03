@@ -4,8 +4,8 @@ from typing import Annotated, ClassVar
 
 import pytest
 
-from pyjinhx import BaseComponent, Children, Slot
-from pyjinhx.base import PjxSlot, _is_slot_field
+from pyjinhx_v0 import BaseComponent, Children, Slot
+from pyjinhx_v0.base import PjxSlot, _is_slot_field
 
 
 def test_sole_slot_field_is_inferred_as_target():

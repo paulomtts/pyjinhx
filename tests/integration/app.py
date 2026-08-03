@@ -9,8 +9,8 @@ from pathlib import Path
 from jinja2 import Environment, FileSystemLoader
 from markupsafe import Markup
 
-from pyjinhx import BaseComponent, Renderer
-from pyjinhx.builtins import (
+from pyjinhx_v0 import BaseComponent, Renderer
+from pyjinhx_v0.builtins import (
     PJXAlert,
     PJXAvatar,
     PJXBadge,
@@ -207,7 +207,7 @@ class BuiltinsGalleryPage(BaseComponent):
 
 @lru_cache(maxsize=1)
 def _gallery_inner_html() -> str:
-    tmp = tempfile.mkdtemp(prefix="pyjinhx-gallery-")
+    tmp = tempfile.mkdtemp(prefix="pyjinhx_v0-gallery-")
     Renderer.set_default_environment(tmp)
     Renderer.get_default_renderer(auto_id=False)
     gallery_page = BuiltinsGalleryPage(

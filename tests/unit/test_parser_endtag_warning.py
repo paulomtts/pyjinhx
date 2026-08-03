@@ -6,13 +6,13 @@ import tempfile
 import pytest
 from jinja2 import Environment, FileSystemLoader
 
-from pyjinhx import Renderer
-from pyjinhx.tags import Parser
+from pyjinhx_v0 import Renderer
+from pyjinhx_v0.tags import Parser
 
 
 def test_plain_html_closing_tags_do_not_warn(caplog):
     html = "<div><span>hi</span><button>x</button></div>"
-    with caplog.at_level(logging.WARNING, logger="pyjinhx"):
+    with caplog.at_level(logging.WARNING, logger="pyjinhx_v0"):
         rendered = Renderer.get_default_renderer().render(html)
 
     assert rendered == html
@@ -25,7 +25,7 @@ def test_plain_html_wrapping_component_does_not_warn(caplog):
             file.write("<span id={{ id }}>{{ text }}</span>\n")
 
         index_html = '<div><Marker text="New"/></div>'
-        with caplog.at_level(logging.WARNING, logger="pyjinhx"):
+        with caplog.at_level(logging.WARNING, logger="pyjinhx_v0"):
             rendered = Renderer(
                 Environment(loader=FileSystemLoader(temp_dir)),
                 auto_id=True,
@@ -39,7 +39,7 @@ def test_plain_html_wrapping_component_does_not_warn(caplog):
 
 def test_interleaved_component_close_warns(caplog):
     parser = Parser()
-    with caplog.at_level(logging.WARNING, logger="pyjinhx"):
+    with caplog.at_level(logging.WARNING, logger="pyjinhx_v0"):
         parser.feed("<Foo><Bar></Foo>")
 
     assert any("</foo>" in r.getMessage().lower() for r in caplog.records)

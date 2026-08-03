@@ -10,9 +10,9 @@ from pathlib import Path
 
 import pytest
 
-import pyjinhx.builtins as b
-from pyjinhx.assets import AssetMode
-from pyjinhx.renderer import Renderer
+import pyjinhx_v0.builtins as b
+from pyjinhx_v0.assets import AssetMode
+from pyjinhx_v0.renderer import Renderer
 
 GOLDEN_DIR = Path(__file__).parent / "golden"
 

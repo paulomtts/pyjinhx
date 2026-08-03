@@ -1,7 +1,7 @@
 """Shared "builtin-heavy page" used by scripts/bench_v0_vs_v2.py (issue #537).
 
 One composition covering all five L4 builtin families, expressed twice — once
-against pyjinhx v0.36.4, once against pyjinhx2 — so the two renderers are
+against pyjinhx_v0 v0.36.4, once against pyjinhx2 — so the two renderers are
 timed on the same logical page.
 
 Excluded builtins (present in v0.36.4 but not ported to v2, so dropped from
@@ -12,7 +12,7 @@ v0.36.4 does not have; this fixture uses only the bare, self-closing
 PJXPopover root on both sides.
 
 **Why the two sides are built differently (deviation from the plan's original
-single-markup-string design):** v0.36 (`pyjinhx.Renderer.render(source: str)`)
+single-markup-string design):** v0.36 (`pyjinhx_v0.Renderer.render(source: str)`)
 expands PascalCase tags recursively at any nesting depth from one markup
 string — a flat string works for the whole page. pyjinhx2's tag scanner
 (`segments.VerbatimParser`) deliberately cuts only the *outermost* open

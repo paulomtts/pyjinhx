@@ -30,9 +30,10 @@ dependencies = [
 Homepage = "https://github.com/paulomtts/pyjinhx"
 
 [tool.hatch.build.targets.wheel]
-# Auto-discovery only picks the name-matching `pyjinhx/`; `pyjinhx2/` (the v2
-# rebuild, ADR 0011) must be listed or wheels ship without it.
-packages = ["pyjinhx", "pyjinhx2"]
+# Auto-discovery only picks the name-matching `pyjinhx/`; `pyjinhx_v0/` (the
+# v0.x tree, staged here until #540 deletes it) must be listed or wheels ship
+# without it.
+packages = ["pyjinhx_v0", "pyjinhx2"]
 
 [tool.pytest.ini_options]
 markers = [

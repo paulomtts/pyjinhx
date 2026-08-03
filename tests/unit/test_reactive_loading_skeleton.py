@@ -1,5 +1,5 @@
-from pyjinhx import MutationKey, ReactiveComponent
-from pyjinhx.utils import read_client_runtime
+from pyjinhx_v0 import MutationKey, ReactiveComponent
+from pyjinhx_v0.utils import read_client_runtime
 
 
 class Keys(MutationKey):

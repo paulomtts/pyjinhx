@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Annotated, Any
 
-from pyjinhx import BaseComponent, PjxContext, PjxKey, ReactiveComponent
+from pyjinhx_v0 import BaseComponent, PjxContext, PjxKey, ReactiveComponent
 
 from .keys import Keys
 

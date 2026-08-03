@@ -1,6 +1,6 @@
 import pytest
 
-from pyjinhx import AssetMode, Renderer
+from pyjinhx_v0 import AssetMode, Renderer
 from tests.ui.reactive.reactive_counter import ReactiveCounter
 from tests.ui.unified_component import UnifiedComponent
 
@@ -78,7 +78,7 @@ def test_missing_extra_css_warns(caplog):
         css=["tests/ui/nonexistent.css"],
     )
 
-    with caplog.at_level(logging.WARNING, logger="pyjinhx"):
+    with caplog.at_level(logging.WARNING, logger="pyjinhx_v0"):
         rendered = str(component.render())
 
     assert "<div" in rendered

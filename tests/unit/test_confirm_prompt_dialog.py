@@ -1,4 +1,4 @@
-from pyjinhx.builtins import PJXConfirmDialog, PJXPromptDialog
+from pyjinhx_v0.builtins import PJXConfirmDialog, PJXPromptDialog
 
 
 def test_confirm_dialog_markers_and_labels():

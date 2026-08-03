@@ -45,7 +45,7 @@ pytestmark = [pytest.mark.pjx_runtime, pytest.mark.reactivity]
 # ---------------------------------------------------------------------------
 
 _COMPONENT_MODULE = """\
-from pyjinhx import MutationKey, ReactiveComponent
+from pyjinhx_v0 import MutationKey, ReactiveComponent
 
 
 class BadgeKey(MutationKey):
@@ -73,7 +73,7 @@ _ASSET_TAG_RE = re.compile(
     r"<(style|script)\b[^>]*\bdata-pjx-asset=[^>]*>.*?</\1>", re.DOTALL
 )
 
-# htmx loads in <head>; the pyjinhx runtime is placed at the end of <body> (where
+# htmx loads in <head>; the pyjinhx_v0 runtime is placed at the end of <body> (where
 # it lands in production) because it binds listeners on document.body at load.
 _PAGE_HTML = """<!DOCTYPE html>
 <html lang="en">
@@ -96,9 +96,9 @@ def _make_swap_app(tmp_path: Path) -> FastAPI:
     from fastapi import FastAPI
     from fastapi.responses import HTMLResponse
 
-    from pyjinhx import PjxSettings, setup
-    from pyjinhx.client import client_script
-    from pyjinhx.renderer import Renderer
+    from pyjinhx_v0 import PjxSettings, setup
+    from pyjinhx_v0.client import client_script
+    from pyjinhx_v0.renderer import Renderer
 
     # --------------- component + co-located template & assets -------------
     (tmp_path / "swap_badge.html").write_text(_BADGE_TEMPLATE)
@@ -144,9 +144,9 @@ def _make_swap_app(tmp_path: Path) -> FastAPI:
 
     @app.post("/increment", response_class=HTMLResponse)
     async def increment(request: Request) -> str:
-        from pyjinhx.client import ClientBackend
-        from pyjinhx.integrations.fastapi import FastAPIClientBackend
-        from pyjinhx.reactive import oob_swaps
+        from pyjinhx_v0.client import ClientBackend
+        from pyjinhx_v0.integrations.fastapi import FastAPIClientBackend
+        from pyjinhx_v0.reactive import oob_swaps
 
         _use_components_root()
         module.COUNT["value"] += 1  # change state so the region is actually swapped

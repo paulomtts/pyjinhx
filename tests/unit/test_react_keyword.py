@@ -4,7 +4,7 @@ from typing import ClassVar
 
 import pytest
 
-from pyjinhx import MutationKey, ReactiveComponent, mutates
+from pyjinhx_v0 import MutationKey, ReactiveComponent, mutates
 
 
 class Keys(MutationKey):

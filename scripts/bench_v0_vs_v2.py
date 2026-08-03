@@ -5,12 +5,12 @@ Not a CI test (timing-sensitive). Run manually:
     uv run python scripts/bench_v0_vs_v2.py
     uv run python scripts/bench_v0_vs_v2.py --profile
 
-v0.36 side: the in-tree ``pyjinhx/`` package. It is *not* byte-identical to
+v0.36 side: the in-tree ``pyjinhx_v0/`` package. It is *not* byte-identical to
 the ``v0.36.4`` tag on this branch (`git diff --stat v0.36.4..origin/master --
-pyjinhx/` is non-empty at the time this was written), so the recorded run
+pyjinhx_v0/` is non-empty at the time this was written), so the recorded run
 was taken from a separate worktree checked out at the tag itself
-(`git worktree add /tmp/pyjinhx-v0364 v0.36.4`) with that path prepended to
-``sys.path`` ahead of the in-tree ``pyjinhx/`` package. ``pyjinhx/`` is
+(`git worktree add /tmp/pyjinhx_v0-v0364 v0.36.4`) with that path prepended to
+``sys.path`` ahead of the in-tree ``pyjinhx_v0/`` package. ``pyjinhx_v0/`` is
 deleted by #540, so the numbers this prints get captured into
 docs/superpowers/rebuild/roadmap.md rather than re-derived later.
 
@@ -33,18 +33,18 @@ import time
 from collections.abc import Callable
 from pathlib import Path
 
-_V0364_WORKTREE = Path("/tmp/pyjinhx-v0364")
+_V0364_WORKTREE = Path("/tmp/pyjinhx_v0-v0364")
 if _V0364_WORKTREE.is_dir():
     sys.path.insert(0, str(_V0364_WORKTREE))
 
-import pyjinhx.builtins.ui  # noqa: F401 — registers v0 builtins (import side effect)
 import pyjinhx2.builtins
-from pyjinhx import Renderer as V0Renderer
-from pyjinhx.registry import Registry as V0Registry
+import pyjinhx_v0.builtins.ui  # noqa: F401 — registers v0 builtins (import side effect)
 from pyjinhx2.component import BaseComponent
 from pyjinhx2.discovery import build_registry
 from pyjinhx2.render import render as v2_render
 from pyjinhx2.session import RenderSession
+from pyjinhx_v0 import Renderer as V0Renderer
+from pyjinhx_v0.registry import Registry as V0Registry
 from tests.fixtures.bench_builtin_heavy import (
     build_v0_page,
     build_v0_shells,
@@ -54,7 +54,7 @@ from tests.fixtures.bench_builtin_heavy import (
     build_v2_table,
 )
 
-logging.getLogger("pyjinhx").setLevel(logging.ERROR)
+logging.getLogger("pyjinhx_v0").setLevel(logging.ERROR)
 logging.getLogger("pyjinhx2").setLevel(logging.ERROR)
 
 ROWS = 200

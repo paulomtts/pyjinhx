@@ -1,4 +1,4 @@
-from pyjinhx.keys import MutationKey, coerce_reactive_key, coerce_reactive_keys
+from pyjinhx_v0.keys import MutationKey, coerce_reactive_key, coerce_reactive_keys
 
 
 class TodoKeys(MutationKey):

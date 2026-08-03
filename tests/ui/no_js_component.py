@@ -1,4 +1,4 @@
-from pyjinhx import BaseComponent
+from pyjinhx_v0 import BaseComponent
 
 
 class NoJsComponent(BaseComponent):

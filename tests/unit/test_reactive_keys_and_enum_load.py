@@ -1,14 +1,14 @@
 from enum import Enum
 from typing import Annotated
 
-from pyjinhx import MutationKey, PjxKey, ReactiveComponent
-from pyjinhx.cache import LoadCache
-from pyjinhx.keys import (
+from pyjinhx_v0 import MutationKey, PjxKey, ReactiveComponent
+from pyjinhx_v0.cache import LoadCache
+from pyjinhx_v0.keys import (
     coerce_load_key_str,
     coerce_reactive_key,
     coerce_reactive_keys,
 )
-from pyjinhx.reactive import oob_swaps
+from pyjinhx_v0.reactive import oob_swaps
 
 
 class LegacyKey(str, Enum):

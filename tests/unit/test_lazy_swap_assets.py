@@ -12,14 +12,14 @@ unchanged: assets stay inline.
 
 import os
 
-from pyjinhx.assets import asset_token
-from pyjinhx.client import (
+from pyjinhx_v0.assets import asset_token
+from pyjinhx_v0.client import (
     PJX_ASSETS_HEADER,
     PJX_MOUNTED_HEADER,
     ClientBackend,
 )
-from pyjinhx.finder import Finder
-from pyjinhx.integrations.fastapi import FastAPIClientBackend
+from pyjinhx_v0.finder import Finder
+from pyjinhx_v0.integrations.fastapi import FastAPIClientBackend
 from tests.ui.unified_component import UnifiedComponent
 
 _UI_DIR = Finder.get_class_directory(UnifiedComponent)

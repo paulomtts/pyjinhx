@@ -2,8 +2,8 @@ from fastapi import FastAPI
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.testclient import TestClient
 
-from pyjinhx import setup
-from pyjinhx.reactive import ReactiveResponse
+from pyjinhx_v0 import setup
+from pyjinhx_v0.reactive import ReactiveResponse
 from tests.reactive_test_support import Keys
 
 

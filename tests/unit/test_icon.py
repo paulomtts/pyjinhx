@@ -4,8 +4,8 @@ from typing import Any
 
 import pytest
 
-from pyjinhx import Renderer
-from pyjinhx.builtins import PJXIcon
+from pyjinhx_v0 import Renderer
+from pyjinhx_v0.builtins import PJXIcon
 
 
 @pytest.fixture(autouse=True)

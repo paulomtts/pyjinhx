@@ -6,10 +6,10 @@ from typing import Any
 
 import pytest
 
-from pyjinhx import Renderer
-from pyjinhx.builtins import PJXCarousel, PJXCarouselSlide
+from pyjinhx_v0 import Renderer
+from pyjinhx_v0.builtins import PJXCarousel, PJXCarouselSlide
 
-_UI = Path(__file__).resolve().parents[2] / "pyjinhx" / "builtins" / "ui"
+_UI = Path(__file__).resolve().parents[2] / "pyjinhx_v0" / "builtins" / "ui"
 
 
 @pytest.fixture(autouse=True)

@@ -4,8 +4,8 @@ from typing import Any
 
 import pytest
 
-from pyjinhx import Renderer
-from pyjinhx.builtins import PJXBadge, PJXPopoverPanel, PJXPopoverTrigger
+from pyjinhx_v0 import Renderer
+from pyjinhx_v0.builtins import PJXBadge, PJXPopoverPanel, PJXPopoverTrigger
 
 
 def test_tag_attrs_pass_through_to_builtin_root(tmp_path):

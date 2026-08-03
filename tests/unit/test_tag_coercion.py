@@ -4,7 +4,7 @@ import pytest
 from jinja2 import Environment, FileSystemLoader
 from pydantic import Field, ValidationError
 
-from pyjinhx import BaseComponent, Renderer
+from pyjinhx_v0 import BaseComponent, Renderer
 
 
 class CoercionProbe(BaseComponent):
@@ -92,7 +92,7 @@ def test_instance_reuse_invalid_update_raises(tmp_path):
 
 
 def test_instance_reuse_preserves_nested_components(tmp_path):
-    from pyjinhx.builtins import PJXBadge, PJXCardBody
+    from pyjinhx_v0.builtins import PJXBadge, PJXCardBody
 
     (tmp_path / "unused_probe.html").write_text("<i></i>")
     original_environment = Renderer.peek_default_environment()

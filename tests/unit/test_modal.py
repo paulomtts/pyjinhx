@@ -4,8 +4,8 @@ import re
 
 import pytest
 
-from pyjinhx import Renderer
-from pyjinhx.builtins import PJXModal, PJXModalBody, PJXModalFooter, PJXModalHeader
+from pyjinhx_v0 import Renderer
+from pyjinhx_v0.builtins import PJXModal, PJXModalBody, PJXModalFooter, PJXModalHeader
 
 
 @pytest.fixture(autouse=True)

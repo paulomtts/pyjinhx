@@ -1,4 +1,4 @@
-from pyjinhx.builtins import PJXLazyLoad, PJXRegionLoader, PJXSpinner
+from pyjinhx_v0.builtins import PJXLazyLoad, PJXRegionLoader, PJXSpinner
 
 
 def test_lazy_load_when_viewport_default():

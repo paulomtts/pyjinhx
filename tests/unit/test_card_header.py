@@ -2,8 +2,8 @@
 
 import pytest
 
-from pyjinhx import Renderer
-from pyjinhx.builtins import PJXCardHeader
+from pyjinhx_v0 import Renderer
+from pyjinhx_v0.builtins import PJXCardHeader
 
 
 @pytest.fixture(autouse=True)

@@ -1,6 +1,6 @@
 import logging
 
-from pyjinhx.cache import InvalidationBackend
+from pyjinhx_v0.cache import InvalidationBackend
 
 
 class _StubBackend(InvalidationBackend):
@@ -25,7 +25,7 @@ def test_decode_keys_coerces_non_str_elements():
 
 
 def test_decode_keys_bad_json_warns_and_returns_none(caplog):
-    with caplog.at_level(logging.WARNING, logger="pyjinhx"):
+    with caplog.at_level(logging.WARNING, logger="pyjinhx_v0"):
         result = _StubBackend()._decode_keys("{not valid json")
     assert result is None
     assert any(
@@ -39,4 +39,4 @@ def test_decode_keys_non_list_returns_none():
 
 
 def test_default_channel_is_single_source():
-    assert InvalidationBackend.DEFAULT_CHANNEL == "pyjinhx:invalidate"
+    assert InvalidationBackend.DEFAULT_CHANNEL == "pyjinhx_v0:invalidate"

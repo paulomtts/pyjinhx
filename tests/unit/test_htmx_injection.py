@@ -1,6 +1,6 @@
 import pytest
 
-from pyjinhx.assets import (
+from pyjinhx_v0.assets import (
     AssetMode,
     AssetPolicy,
     RenderSession,

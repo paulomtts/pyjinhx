@@ -1,4 +1,4 @@
-from pyjinhx import MutationKey, ReactiveComponent
+from pyjinhx_v0 import MutationKey, ReactiveComponent
 
 load_calls = {"count": 0}
 

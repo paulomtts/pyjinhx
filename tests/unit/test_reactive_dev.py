@@ -2,9 +2,9 @@ import logging
 
 import pytest
 
-from pyjinhx import MutationKey, ReactiveComponent, Registry, mutates
-from pyjinhx.cache import LoadCache
-from pyjinhx.dev import (
+from pyjinhx_v0 import MutationKey, ReactiveComponent, Registry, mutates
+from pyjinhx_v0.cache import LoadCache
+from pyjinhx_v0.dev import (
     dependency_graph,
     disable_reactive_dev,
     enable_reactive_dev,
@@ -42,7 +42,7 @@ def teardown_function():
 def test_warn_mutations_without_render(caplog):
     enable_reactive_dev()
     with (
-        caplog.at_level(logging.WARNING, logger="pyjinhx"),
+        caplog.at_level(logging.WARNING, logger="pyjinhx_v0"),
         Registry.request_scope(),
     ):
         _orphan_mutation()
@@ -59,13 +59,13 @@ def test_strict_mutations_without_render_raises():
 
 
 def test_warn_render_without_client(caplog):
-    from pyjinhx.dev import warn_reactive_render_without_client
-    from pyjinhx.mutations import MutationTracker
+    from pyjinhx_v0.dev import warn_reactive_render_without_client
+    from pyjinhx_v0.mutations import MutationTracker
 
     enable_reactive_dev()
     MutationTracker.clear()
     MutationTracker.record({"todos"})
-    with caplog.at_level(logging.WARNING, logger="pyjinhx"):
+    with caplog.at_level(logging.WARNING, logger="pyjinhx_v0"):
         warn_reactive_render_without_client(backend=None)
     assert "clientbackend" in caplog.text.lower()
 

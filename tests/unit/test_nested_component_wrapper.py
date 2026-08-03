@@ -1,4 +1,4 @@
-from pyjinhx.base import NestedComponentWrapper
+from pyjinhx_v0.base import NestedComponentWrapper
 from tests.ui.unified_component import UnifiedComponent
 
 

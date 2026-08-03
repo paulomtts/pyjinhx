@@ -7,7 +7,7 @@ import tempfile
 
 from markupsafe import Markup
 
-from pyjinhx.renderer import Renderer
+from pyjinhx_v0.renderer import Renderer
 
 
 def test_render_returns_markup():
@@ -22,7 +22,7 @@ def test_render_returns_markup():
         module_path = os.path.join(temp_dir, "output_probe.py")
         with open(module_path, "w", encoding="utf-8") as fh:
             fh.write(
-                "from pyjinhx import BaseComponent\n\n"
+                "from pyjinhx_v0 import BaseComponent\n\n"
                 "class OutputProbe(BaseComponent):\n"
                 "    body: str = ''\n"
             )
@@ -69,7 +69,7 @@ def test_renderer_escapes_scalar_values_by_default():
         module_path = os.path.join(temp_dir, "output_probe2.py")
         with open(module_path, "w", encoding="utf-8") as fh:
             fh.write(
-                "from pyjinhx import BaseComponent\n\n"
+                "from pyjinhx_v0 import BaseComponent\n\n"
                 "class OutputProbe2(BaseComponent):\n"
                 "    body: str = ''\n"
             )
@@ -114,7 +114,7 @@ def test_renderer_renders_slot_value_raw():
         module_path = os.path.join(temp_dir, "output_probe3.py")
         with open(module_path, "w", encoding="utf-8") as fh:
             fh.write(
-                "from pyjinhx import BaseComponent, Slot\n\n"
+                "from pyjinhx_v0 import BaseComponent, Slot\n\n"
                 "class OutputProbe3(BaseComponent):\n"
                 "    body: Slot = ''\n"
             )

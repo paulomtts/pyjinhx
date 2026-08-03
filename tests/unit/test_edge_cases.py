@@ -1,7 +1,7 @@
 import os
 
-from pyjinhx.assets import asset_token
-from pyjinhx.finder import Finder
+from pyjinhx_v0.assets import asset_token
+from pyjinhx_v0.finder import Finder
 from tests.ui.unified_component import UnifiedComponent
 
 _UI_DIR = Finder.get_class_directory(UnifiedComponent)

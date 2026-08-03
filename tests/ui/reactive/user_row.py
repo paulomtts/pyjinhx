@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from pyjinhx import MutationKey, PjxKey, ReactiveComponent
+from pyjinhx_v0 import MutationKey, PjxKey, ReactiveComponent
 
 names = {"1": "Alice", "2": "Bob", "3": "Carol"}
 

@@ -1,8 +1,8 @@
 import tempfile
 from pathlib import Path
 
-from pyjinhx import Renderer
-from pyjinhx.builtins import PJXModal, PJXModalBody, PJXModalHeader
+from pyjinhx_v0 import Renderer
+from pyjinhx_v0.builtins import PJXModal, PJXModalBody, PJXModalHeader
 
 
 def test_builtins_modal_loads_adjacent_template_outside_loader_root():

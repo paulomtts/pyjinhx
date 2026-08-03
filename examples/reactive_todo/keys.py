@@ -1,4 +1,4 @@
-from pyjinhx import MutationKey
+from pyjinhx_v0 import MutationKey
 
 
 class Keys(MutationKey):

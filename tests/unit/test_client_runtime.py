@@ -1,7 +1,7 @@
 from markupsafe import Markup
 
-from pyjinhx.client import PJX_MOUNTED_HEADER, client_script
-from pyjinhx.utils import read_client_runtime
+from pyjinhx_v0.client import PJX_MOUNTED_HEADER, client_script
+from pyjinhx_v0.utils import read_client_runtime
 
 
 def test_header_constant():

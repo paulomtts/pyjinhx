@@ -2,9 +2,9 @@
 
 import pytest
 
-import pyjinhx.builtins as builtins_pkg
-from pyjinhx import Renderer
-from pyjinhx.base import BaseComponent
+import pyjinhx_v0.builtins as builtins_pkg
+from pyjinhx_v0 import Renderer
+from pyjinhx_v0.base import BaseComponent
 
 
 def _builtin_classes():

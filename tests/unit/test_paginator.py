@@ -2,8 +2,8 @@
 
 import pytest
 
-from pyjinhx import Renderer
-from pyjinhx.builtins.ui.pjx_paginator.pjx_paginator import PJXPaginator
+from pyjinhx_v0 import Renderer
+from pyjinhx_v0.builtins.ui.pjx_paginator.pjx_paginator import PJXPaginator
 
 
 @pytest.fixture(autouse=True)
@@ -119,7 +119,7 @@ def test_url_without_placeholder_raises():
         PJXPaginator(url="/users", page=1, total_pages=3)
 
 
-from pyjinhx.builtins import PJXPaginator as RegisteredPaginator
+from pyjinhx_v0.builtins import PJXPaginator as RegisteredPaginator
 
 
 def _render(**kw):
@@ -176,7 +176,7 @@ def test_disabled_control_is_span_aria_disabled_no_href():
 
 
 def test_registered_in_public_api():
-    import pyjinhx.builtins as b
+    import pyjinhx_v0.builtins as b
 
     assert "PJXPaginator" in b.__all__
     assert RegisteredPaginator is PJXPaginator

@@ -1,4 +1,4 @@
-from pyjinhx.builtins import (
+from pyjinhx_v0.builtins import (
     PJXAccordion,
     PJXAccordionContent,
     PJXAccordionGroup,
@@ -33,7 +33,7 @@ from pyjinhx.builtins import (
 
 def accordion():
     return PJXAccordion(
-        content=PJXAccordionTrigger(content="What is pyjinhx?").render()
+        content=PJXAccordionTrigger(content="What is pyjinhx_v0?").render()
         + PJXAccordionContent(
             content="<p>A Python/Jinja HTML component framework.</p>"
         ).render(),

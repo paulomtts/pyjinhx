@@ -18,8 +18,8 @@ import tempfile
 
 from jinja2 import Environment, FileSystemLoader
 
-from pyjinhx import Renderer
-from pyjinhx.tags import Parser
+from pyjinhx_v0 import Renderer
+from pyjinhx_v0.tags import Parser
 
 
 def _render_with_marker(index_html: str) -> str:

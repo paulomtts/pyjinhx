@@ -1,5 +1,5 @@
-import pyjinhx
-from pyjinhx import (
+import pyjinhx_v0
+from pyjinhx_v0 import (
     AssetMode,
     BaseComponent,
     Children,  # noqa: F401
@@ -39,8 +39,8 @@ PUBLIC_API = {
 
 
 def test_public_api_is_exactly_the_curated_set():
-    assert set(pyjinhx.__all__) == PUBLIC_API
-    assert len(pyjinhx.__all__) == len(PUBLIC_API)  # no duplicates
+    assert set(pyjinhx_v0.__all__) == PUBLIC_API
+    assert len(pyjinhx_v0.__all__) == len(PUBLIC_API)  # no duplicates
 
 
 def test_public_symbols_are_correct():
@@ -99,14 +99,14 @@ def test_internals_are_not_in_the_public_surface():
         "runtime_asset_path",
         "DEFAULT_RUNTIME_URL",
     ):
-        assert name not in pyjinhx.__all__
-        assert not hasattr(pyjinhx, name)
+        assert name not in pyjinhx_v0.__all__
+        assert not hasattr(pyjinhx_v0, name)
 
 
 def test_internals_remain_importable_from_submodules():
     # still available for advanced use — just not on the curated surface
-    from pyjinhx.cache import CacheScope, InvalidationHub, LoadCache  # noqa: F401
-    from pyjinhx.client import (  # noqa: F401
+    from pyjinhx_v0.cache import CacheScope, InvalidationHub, LoadCache  # noqa: F401
+    from pyjinhx_v0.client import (  # noqa: F401
         PJX_ASSETS_HEADER,
         PJX_MOUNTED_HEADER,
         ClientBackend,
@@ -114,7 +114,7 @@ def test_internals_remain_importable_from_submodules():
         MountedManifest,
         client_script,
     )
-    from pyjinhx.config import configure_pyjinhx, shutdown_pyjinhx  # noqa: F401
-    from pyjinhx.dev import dependency_graph, enable_reactive_dev  # noqa: F401
-    from pyjinhx.integrations.fastapi import FastAPIClientBackend  # noqa: F401
-    from pyjinhx.reactive import ReactiveResponse, oob_swaps  # noqa: F401
+    from pyjinhx_v0.config import configure_pyjinhx, shutdown_pyjinhx  # noqa: F401
+    from pyjinhx_v0.dev import dependency_graph, enable_reactive_dev  # noqa: F401
+    from pyjinhx_v0.integrations.fastapi import FastAPIClientBackend  # noqa: F401
+    from pyjinhx_v0.reactive import ReactiveResponse, oob_swaps  # noqa: F401

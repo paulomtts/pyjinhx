@@ -4,9 +4,9 @@ from typing import Annotated
 
 from jinja2 import Environment, FileSystemLoader
 
-from pyjinhx import BaseComponent, MutationKey, ReactiveComponent
-from pyjinhx.registry import Registry
-from pyjinhx.renderer import Renderer
+from pyjinhx_v0 import BaseComponent, MutationKey, ReactiveComponent
+from pyjinhx_v0.registry import Registry
+from pyjinhx_v0.renderer import Renderer
 
 
 class Keys(MutationKey):
@@ -50,7 +50,7 @@ def test_singleton_reactive_tag_runs_load():
 
 def test_keyed_reactive_tag_loads_from_key_attr():
     """A keyed tag passes its PjxKey-named attr to load() and derives kebab-key id."""
-    from pyjinhx import PjxKey
+    from pyjinhx_v0 import PjxKey
 
     class UserCard(ReactiveComponent, react={Keys.SHELL}):
         user_id: Annotated[str, PjxKey()]
@@ -74,7 +74,7 @@ def test_keyed_reactive_tag_loads_from_key_attr():
 def test_keyed_reactive_tag_missing_key_attr_raises():
     import pytest
 
-    from pyjinhx import PjxKey
+    from pyjinhx_v0 import PjxKey
 
     class WidgetCard(ReactiveComponent, react={Keys.SHELL}):
         widget_id: Annotated[str, PjxKey()]
@@ -139,7 +139,7 @@ def test_duplicate_keyed_mount_id_raises():
     """Two keyed mounts deriving the same id raise a clear collision error."""
     import pytest
 
-    from pyjinhx import PjxKey
+    from pyjinhx_v0 import PjxKey
 
     class RowCard(ReactiveComponent, react={Keys.SHELL}):
         row_id: Annotated[str, PjxKey()]
@@ -163,7 +163,7 @@ def test_duplicate_keyed_mount_id_raises():
 
 
 def test_distinct_keyed_mounts_coexist():
-    from pyjinhx import PjxKey
+    from pyjinhx_v0 import PjxKey
 
     class CellCard(ReactiveComponent, react={Keys.SHELL}):
         cell_id: Annotated[str, PjxKey()]
@@ -274,7 +274,7 @@ def test_non_reactive_tag_path_unchanged():
 
 def test_keyed_tag_key_excluded_non_key_attr_overridden():
     """Keyed path: key field is excluded from overrides; a non-key attr IS applied."""
-    from pyjinhx import PjxKey
+    from pyjinhx_v0 import PjxKey
 
     class WidgetX(ReactiveComponent, react={Keys.SHELL}):
         widget_id: Annotated[str, PjxKey()]

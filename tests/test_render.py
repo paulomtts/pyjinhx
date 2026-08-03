@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 from jinja2 import DictLoader, Environment, FileSystemLoader
 
-from pyjinhx.render import (
+from pyjinhx_v0.render import (
     _default_environment,
     _detect_project_root,
     get_loader_root,

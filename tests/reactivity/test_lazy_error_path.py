@@ -24,7 +24,7 @@ from playwright.sync_api import Page, expect
 
 pytestmark = [pytest.mark.pjx_runtime, pytest.mark.reactivity]
 
-# htmx in <head>; the pyjinhx runtime at the end of <body> (binds on body).
+# htmx in <head>; the pyjinhx_v0 runtime at the end of <body> (binds on body).
 _PAGE_HTML = """<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -46,9 +46,9 @@ _PAGE_HTML = """<!DOCTYPE html>
 def _make_app() -> FastAPI:
     from fastapi.responses import HTMLResponse
 
-    from pyjinhx import PjxSettings, setup
-    from pyjinhx.builtins import PJXLazyLoad
-    from pyjinhx.client import client_script
+    from pyjinhx_v0 import PjxSettings, setup
+    from pyjinhx_v0.builtins import PJXLazyLoad
+    from pyjinhx_v0.client import client_script
 
     app = FastAPI()
     setup(app, settings=PjxSettings())

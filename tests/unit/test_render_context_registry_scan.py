@@ -1,4 +1,4 @@
-"""Regression for https://github.com/paulomtts/pyjinhx/issues/222.
+"""Regression for https://github.com/paulomtts/pyjinhx_v0/issues/222.
 
 ``build_render_context`` used to iterate every registered instance on every
 single node render, so a page with N registered components did O(N) work per
@@ -12,9 +12,9 @@ all -- ``_PjxContext`` (renderer.py) resolves peers by name straight out of
 ``session.registry_defaults`` -- so these tests assert on the cache itself.
 """
 
-from pyjinhx import Registry
-from pyjinhx.assets import RenderSession
-from pyjinhx.renderer import build_render_context
+from pyjinhx_v0 import Registry
+from pyjinhx_v0.assets import RenderSession
+from pyjinhx_v0.renderer import build_render_context
 from tests.ui.unified_component import UnifiedComponent
 
 

@@ -1,7 +1,7 @@
 from typing import Annotated
 
-from pyjinhx import MutationKey, PjxKey, ReactiveComponent
-from pyjinhx.cache import LoadCache
+from pyjinhx_v0 import MutationKey, PjxKey, ReactiveComponent
+from pyjinhx_v0.cache import LoadCache
 
 load_calls = {"n": 0}
 

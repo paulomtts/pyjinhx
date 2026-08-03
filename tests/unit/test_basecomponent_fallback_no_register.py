@@ -3,8 +3,8 @@ import tempfile
 
 from jinja2 import Environment, FileSystemLoader
 
-from pyjinhx import Registry
-from pyjinhx.renderer import Renderer
+from pyjinhx_v0 import Registry
+from pyjinhx_v0.renderer import Renderer
 
 
 def test_fallback_basecomponent_not_registered():
@@ -47,7 +47,7 @@ def test_repeated_renders_with_same_id_no_error():
 
 def test_registered_class_still_works():
     """Test that registered component classes still work correctly."""
-    from pyjinhx import BaseComponent
+    from pyjinhx_v0 import BaseComponent
 
     Registry.clear_instances()
 

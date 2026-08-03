@@ -2,7 +2,7 @@ from unittest.mock import patch
 
 from markupsafe import Markup
 
-from pyjinhx.reactive import ReactiveComponent, oob_swaps
+from pyjinhx_v0.reactive import ReactiveComponent, oob_swaps
 from tests.ui.reactive import store
 from tests.ui.reactive.reactive_clear_button import ReactiveClearButton
 from tests.ui.reactive.reactive_counter import ReactiveCounter

@@ -2,10 +2,10 @@ from pathlib import Path
 
 import pytest
 
-from pyjinhx import MutationKey, Registry, Renderer, dirty, mutates
-from pyjinhx.cache import LoadCache
-from pyjinhx.keys import reactive_key
-from pyjinhx.mutations import MutationTracker
+from pyjinhx_v0 import MutationKey, Registry, Renderer, dirty, mutates
+from pyjinhx_v0.cache import LoadCache
+from pyjinhx_v0.keys import reactive_key
+from pyjinhx_v0.mutations import MutationTracker
 from tests.reactive_test_support import Keys, reactive_client
 from tests.ui.reactive.reactive_clear_button import ReactiveClearButton
 from tests.ui.reactive.reactive_counter import ReactiveCounter  # noqa: F401
@@ -145,7 +145,7 @@ def test_mutates_key_kwarg_applies_to_every_key():
 
 
 def test_mutates_key_kwarg_reloads_only_the_matching_instance():
-    from pyjinhx.reactive import oob_swaps
+    from pyjinhx_v0.reactive import oob_swaps
     from tests.ui.reactive.counted_row import CountedRow
     from tests.ui.reactive.counted_row import Keys as RowKeys
 

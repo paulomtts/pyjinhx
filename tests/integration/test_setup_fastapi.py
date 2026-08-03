@@ -7,10 +7,10 @@ from jinja2 import FileSystemLoader
 from starlette.routing import Mount
 from starlette.staticfiles import StaticFiles
 
-from pyjinhx import setup
-from pyjinhx.cache import CacheScope, InvalidationBackend, LoadCache
-from pyjinhx.client import ClientBackend
-from pyjinhx.renderer import Renderer
+from pyjinhx_v0 import setup
+from pyjinhx_v0.cache import CacheScope, InvalidationBackend, LoadCache
+from pyjinhx_v0.client import ClientBackend
+from pyjinhx_v0.renderer import Renderer
 
 
 @pytest.fixture
@@ -103,7 +103,7 @@ def test_setup_rejects_non_asgi_app():
 
 
 def test_setup_context_factory_threads_context():
-    from pyjinhx.context import PjxContext
+    from pyjinhx_v0.context import PjxContext
 
     app = FastAPI()
     setup(app, context_factory=lambda _request: "CTX")

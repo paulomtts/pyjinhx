@@ -2,9 +2,9 @@ import json
 
 import pytest
 
-from pyjinhx import BaseComponent, Registry, Renderer
-from pyjinhx.assets import _runtime_injected
-from pyjinhx.client import PJX_MOUNTED_HEADER, MountedManifest
+from pyjinhx_v0 import BaseComponent, Registry, Renderer
+from pyjinhx_v0.assets import _runtime_injected
+from pyjinhx_v0.client import PJX_MOUNTED_HEADER, MountedManifest
 
 pytestmark = pytest.mark.pjx_runtime
 

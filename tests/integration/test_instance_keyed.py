@@ -5,8 +5,8 @@ import pytest
 
 from examples.reactive_todo import store
 from examples.reactive_todo.components import ItemRow
-from pyjinhx import Renderer
-from pyjinhx.client import PJX_MOUNTED_HEADER
+from pyjinhx_v0 import Renderer
+from pyjinhx_v0.client import PJX_MOUNTED_HEADER
 
 ROOT = Path(__file__).resolve().parents[2]
 

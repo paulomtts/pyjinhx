@@ -23,7 +23,7 @@ def test_missing_extra_js_file_warns(caplog):
         js=["tests/ui/nonexistent.js"],
     )
 
-    with caplog.at_level(logging.WARNING, logger="pyjinhx"):
+    with caplog.at_level(logging.WARNING, logger="pyjinhx_v0"):
         rendered = component.render()
 
     assert "<div" in str(rendered)
@@ -40,7 +40,7 @@ def test_missing_extra_css_file_warns(caplog):
         css=["tests/ui/nonexistent.css"],
     )
 
-    with caplog.at_level(logging.WARNING, logger="pyjinhx"):
+    with caplog.at_level(logging.WARNING, logger="pyjinhx_v0"):
         rendered = component.render()
 
     assert "<div" in str(rendered)

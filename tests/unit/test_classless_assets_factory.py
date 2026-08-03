@@ -14,8 +14,8 @@ built subclasses, and broadens the guard to include it.
 
 import pytest
 
-from pyjinhx import Renderer
-from pyjinhx.base import component
+from pyjinhx_v0 import Renderer
+from pyjinhx_v0.base import component
 
 
 @pytest.fixture(autouse=True)
@@ -160,7 +160,7 @@ def test_class_based_builtin_still_collects_assets():
 
     This guards against the fix accidentally breaking class-based components.
     """
-    from pyjinhx.builtins.ui.pjx_button.pjx_button import PJXButton
+    from pyjinhx_v0.builtins.ui.pjx_button.pjx_button import PJXButton
 
     html = str(PJXButton(content="Click me").render())
 
@@ -198,6 +198,6 @@ def test_pjx_classless_marker_set_on_bare_factory(isolate_renderer):
 
 def test_pjx_classless_marker_false_on_handwritten_class():
     """A hand-written BaseComponent subclass does NOT have _pjx_classless = True."""
-    from pyjinhx.builtins.ui.pjx_button.pjx_button import PJXButton
+    from pyjinhx_v0.builtins.ui.pjx_button.pjx_button import PJXButton
 
     assert getattr(PJXButton, "_pjx_classless", False) is False

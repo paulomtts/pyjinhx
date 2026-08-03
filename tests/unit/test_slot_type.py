@@ -2,8 +2,8 @@ from typing import Annotated
 
 from markupsafe import Markup
 
-from pyjinhx import BaseComponent, Slot
-from pyjinhx.base import PjxSlot, _is_slot_field
+from pyjinhx_v0 import BaseComponent, Slot
+from pyjinhx_v0.base import PjxSlot, _is_slot_field
 
 
 class _Demo(BaseComponent):
@@ -27,7 +27,11 @@ def test_nullable_slot_metadata_survives():
 
 
 def test_accordion_content_slot_is_detected():
-    from pyjinhx.builtins import PJXAccordion, PJXAccordionContent, PJXAccordionTrigger
+    from pyjinhx_v0.builtins import (
+        PJXAccordion,
+        PJXAccordionContent,
+        PJXAccordionTrigger,
+    )
 
     assert _is_slot_field(PJXAccordion, "content") is True
     assert _is_slot_field(PJXAccordionTrigger, "content") is True
@@ -35,7 +39,7 @@ def test_accordion_content_slot_is_detected():
 
 
 def test_slot_string_value_becomes_markup_in_context(tmp_path):
-    from pyjinhx import Renderer
+    from pyjinhx_v0 import Renderer
 
     Renderer.set_default_environment(str(tmp_path))
     inst = _Demo(id="d", label="<x>", body="<b>", kids="<k>")
@@ -52,7 +56,7 @@ def test_undeclared_children_field_becomes_markup_in_context(tmp_path):
     # Issue #125: the children field arriving as a pydantic *extra* (classless /
     # undeclared `content`) must still be slot-wrapped, not autoescaped — the same
     # as a declared children field. Otherwise `{{ content }}` forces `| safe`.
-    from pyjinhx import Renderer
+    from pyjinhx_v0 import Renderer
 
     Renderer.set_default_environment(str(tmp_path))
 
@@ -73,7 +77,7 @@ def test_pjxslot_children_flag_defaults_false_and_opts_in():
 def test_children_alias_carries_flagged_marker():
     from typing import get_args
 
-    from pyjinhx import Children
+    from pyjinhx_v0 import Children
 
     # Children == Annotated[str | BaseComponent, PjxSlot(children=True)]
     markers = [m for m in get_args(Children) if isinstance(m, PjxSlot)]

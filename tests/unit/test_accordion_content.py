@@ -2,8 +2,8 @@
 
 import pytest
 
-from pyjinhx import Renderer
-from pyjinhx.builtins import PJXAccordionContent
+from pyjinhx_v0 import Renderer
+from pyjinhx_v0.builtins import PJXAccordionContent
 
 
 @pytest.fixture(autouse=True)

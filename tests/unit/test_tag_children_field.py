@@ -5,9 +5,9 @@ from typing import Annotated
 import pytest
 from jinja2 import Environment, FileSystemLoader
 
-from pyjinhx import BaseComponent, Children, Renderer, Slot
-from pyjinhx.base import PjxSlot
-from pyjinhx.builtins import (  # noqa: F401  (importing registers the tags)
+from pyjinhx_v0 import BaseComponent, Children, Renderer, Slot
+from pyjinhx_v0.base import PjxSlot
+from pyjinhx_v0.builtins import (  # noqa: F401  (importing registers the tags)
     PJXModal,
     PJXTooltip,
     PJXTooltipContent,

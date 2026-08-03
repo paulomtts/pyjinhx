@@ -1,6 +1,6 @@
 import os
 
-from pyjinhx.utils import detect_root_directory
+from pyjinhx_v0.utils import detect_root_directory
 
 
 def test_detect_root_directory_finds_pyproject():

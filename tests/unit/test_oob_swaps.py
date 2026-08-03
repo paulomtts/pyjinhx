@@ -1,6 +1,6 @@
 from markupsafe import Markup
 
-from pyjinhx.reactive import oob_swaps
+from pyjinhx_v0.reactive import oob_swaps
 from tests.ui.reactive import store
 from tests.ui.reactive.reactive_clear_button import ReactiveClearButton  # noqa: F401
 from tests.ui.reactive.reactive_counter import (

@@ -1,6 +1,6 @@
 import pytest
 
-from pyjinhx.root_attrs import apply_root_attrs, find_single_root, serialize_attr
+from pyjinhx_v0.root_attrs import apply_root_attrs, find_single_root, serialize_attr
 
 
 def test_serialize_attr_prefers_double_quotes():

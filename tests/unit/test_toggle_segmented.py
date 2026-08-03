@@ -4,7 +4,7 @@
 import os
 import re
 
-from pyjinhx.builtins import PJXSegmentedControl, PJXToggleSwitch
+from pyjinhx_v0.builtins import PJXSegmentedControl, PJXToggleSwitch
 
 # ── PJXToggleSwitch ──────────────────────────────────────────────────────────────
 
@@ -63,7 +63,7 @@ def test_toggle_switch_no_js_file():
     """PJXToggleSwitch is CSS-only — no .js file should exist in the component folder."""
     import inspect
 
-    from pyjinhx.builtins import PJXToggleSwitch as _TS
+    from pyjinhx_v0.builtins import PJXToggleSwitch as _TS
 
     component_dir = os.path.dirname(inspect.getfile(_TS))
     js_files = [f for f in os.listdir(component_dir) if f.endswith(".js")]
@@ -178,7 +178,7 @@ def test_segmented_control_no_js_file():
     """PJXSegmentedControl is CSS-only — no .js file should exist in the component folder."""
     import inspect
 
-    from pyjinhx.builtins import PJXSegmentedControl as _SC
+    from pyjinhx_v0.builtins import PJXSegmentedControl as _SC
 
     component_dir = os.path.dirname(inspect.getfile(_SC))
     js_files = [f for f in os.listdir(component_dir) if f.endswith(".js")]
