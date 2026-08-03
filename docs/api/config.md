@@ -9,18 +9,16 @@ def setup(
     app: object | None = None,
     *,
     settings: PjxSettings | None = None,
-    invalidation_backend: InvalidationBackend | None = ...,  # unset sentinel
-    reactive_dev: bool = ...,  # unset sentinel
     context_factory: Callable[[Any], object | None] | None = None,
-    components_root: str | os.PathLike[str] | None = None,
-    static_root: str | os.PathLike[str] | None = None,
+    components_root: Path | str | None = ...,  # unset sentinel
+    static_root: Path | str | None = ...,  # unset sentinel
     **kwargs: Any,
 ) -> PjxSettings
 ```
 
-When omitted, `invalidation_backend` and `reactive_dev` never override a value already present in `settings` — their defaults are unset sentinels, so only explicitly passed values are applied.
+`invalidation_backend`, `reactive_dev`, and any other `PjxSettings` field are passed through `**kwargs`, not declared as their own keywords — an unrecognized keyword raises `TypeError`. `components_root` and `static_root` default to an unset sentinel rather than `None`, so a caller can pass every field through unconditionally without needing to say anything about the ones it was never given; explicitly passing `None` is a real value and does override.
 
-`components_root` sets the renderer's default environment to a `FileSystemLoader` rooted there; it works with or without an `app`. `static_root` mounts a `StaticFiles` app at `/static` (name `"static"`) and therefore requires an `app` — passing it with `app=None` raises `TypeError`. Both default to `None` (no-op), and the static mount is covered by the idempotency guard, so a second `setup()` won't double-mount.
+`components_root` triggers component discovery (`build_registry()`) over that directory; it works with or without an `app`. `static_root` mounts a `StaticFiles` app at `/static` (name `"static"`) and therefore requires an `app` — passing it with `app=None` raises `TypeError`. When omitted, both are no-ops, and the static mount is covered by the idempotency guard, so a second `setup()` won't double-mount.
 
 ```python
 app = FastAPI()

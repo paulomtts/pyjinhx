@@ -16,23 +16,25 @@ Subclasses are automatically registered and can be rendered using their correspo
 | `js` | `list[str]` | No | `[]` | Paths to additional JavaScript files to include when rendering |
 | `css` | `list[str]` | No | `[]` | Paths to additional CSS files to include when rendering |
 
-Components accept extra fields beyond those defined in the class (`extra="allow"`). Extra fields are included in the template context alongside declared fields.
+`BaseComponent` is strict by default (`model_config = ConfigDict(extra="forbid")`): passing an undeclared kwarg at construction time raises a validation error. Allow-extra is not a `BaseComponent` option — it's specific to `OpenComponent`, the base that `component()`-synthesized classless wrappers and `{#def#}`-less templates use (`extra="allow"`), so those alone accept pass-through attributes.
 
 #### Methods
 
 ##### render()
 
 ```python
-def render() -> Markup
+def render(self, session: RenderSession | None = None) -> str
 ```
 
-Render this component to HTML using its associated Jinja template.
+Render this component to a finished HTML string.
 
-The template is auto-discovered based on the component class name (e.g., `MyButton` looks for `my_button.html` or `my_button.jinja`). All component fields are available in the template context, and nested components are rendered recursively. Subclasses with no adjacent template inherit the nearest ancestor's template and assets through the MRO (first found per kind); a class may have at most one concrete component base — multiple concrete bases raise `TypeError` at definition time (see [Component guide](../guide/components.md)).
+The template is auto-discovered based on the component class name: a colocated `<snake_case_class_name>.pjx` file next to the module that defines the class (e.g. `MyButton` looks for `my_button.pjx`). All component fields are available in the template context, and nested components are rendered recursively. Subclasses with no adjacent template inherit the nearest ancestor's template and assets through the MRO (first found per kind); a class may have at most one concrete component base — multiple concrete bases raise `TypeError` at definition time (see [Component guide](../guide/components.md)).
 
-This is a plain, zero-argument render. The dependency-aware reactive behavior (`dirtied` / `mounted` / `client`) lives on `ReactiveComponent` — see [Reactive API](reactive-api.md).
+`session` defaults to the session bound by the active `request_scope()`, or — outside any scope — to a fresh `RenderSession` the free `render()` function builds.
 
-**Returns:** The rendered HTML as a Markup object (safe for direct use in templates).
+This is a plain, zero-argument-beyond-`session` render. The dependency-aware reactive behavior (`dirtied` / `mounted` / `client`) lives on `ReactiveComponent` — see [Reactive API](reactive-api.md).
+
+**Returns:** The component's rendered markup as a finished HTML string.
 
 ##### __html__()
 
@@ -57,17 +59,17 @@ Reference an **html-only** component — a template that has no hand-written Pyt
 ```python
 from pyjinhx import component
 
-Card = component("Card")  # finds card.html under the default environment
+Card = component("Card")  # finds card.pjx under the registered components root
 Card(title="Hi", content="body").render()
 ```
 
-The template is resolved by **scanning the default environment** by tag name (`card.html`/`card.jinja`), the same lookup used for `<Card/>` tags in templates — so set the default environment first (e.g. `setup(components_root=...)` or `Renderer.set_default_environment(...)`). Resolution is lazy: `component("Card")` works even before the environment is set; the template is located at render time.
+The template is resolved by the same tag -> class registry used for `<Card/>` tags in templates (`pyjinhx.discovery`): if `"Card"` is already registered (a hand-declared class, or a previous `component("Card")` call), that class is returned as-is. Otherwise `component()` walks the template directory for `card.pjx`, parses its `{#def#}` prop header if it has one (building a validated `BaseComponent` subclass), or falls back to a permissive `OpenComponent` placeholder when it doesn't, and registers the result under the tag. `setup(components_root=...)` (or a prior call to `discovery.build_registry(...)`) establishes the template directory that walk searches; pass `template_dir` explicitly to `component()` to search elsewhere instead.
 
 Arbitrary attributes are accepted (`extra="allow"`) and children map to the `content` slot, e.g. `component("Card")(title="Hi", content="body")`.
 
 - **`name`** must be PascalCase (so it round-trips as `<Name/>` in templates) — otherwise `ValueError`.
 - **Idempotent and non-shadowing:** if a class is already registered under `name` (previously synthesized, or a real declared component), that class is returned — `component("Card")` twice returns the same object, and it never replaces a declared component.
-- A missing template raises `FileNotFoundError` at render time.
+- A missing template raises `LookupError` when `component()` is called.
 
 Because the returned class is registered, it also resolves as `<Card/>` inside other templates.
 

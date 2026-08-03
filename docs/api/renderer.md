@@ -1,155 +1,71 @@
 # Renderer
 
-Shared rendering engine used by `BaseComponent` rendering and HTML-like custom-tag rendering.
+Rendering pipeline used by `BaseComponent.render()` and the free `render()` function: turns a component instance into a finished HTML string, expanding nested PascalCase tags and collecting JavaScript/CSS along the way.
 
-## Class
-
-### Renderer
-
-This renderer centralizes:
-- Jinja template loading (by component class or explicit file/source)
-- Expansion of PascalCase custom tags inside rendered markup
-- JavaScript and CSS collection/deduping and root-level asset injection
-- Rendering of HTML-like source strings into component output
-
-#### Constructor
-
-##### __init__()
+## render()
 
 ```python
-def __init__(
-    environment: Environment,
-    *,
-    auto_id: bool = True,
-    js_mode: AssetMode | None = None,
-    css_mode: AssetMode | None = None,
-) -> None
+def render(component: BaseComponent, session: RenderSession | None = None) -> str
 ```
 
-Initialize a Renderer with the given Jinja environment.
+Render a component to a final HTML string. Thin wrapper closing the loop for a top-level component: `render_level()` produces the component's `RenderedLevel`, which is then serialized back into markup.
 
-**Parameters:**
-- `environment` (Environment): The Jinja2 Environment to use for template rendering
-- `auto_id` (bool): If True (default), generate UUIDs for components without explicit IDs
-- `js_mode` (AssetMode | None): JavaScript delivery mode. Defaults to the class-level setting
-- `css_mode` (AssetMode | None): CSS delivery mode. Defaults to the class-level setting
+`session` defaults to a fresh `RenderSession()` when omitted, so callers outside the kernel don't need to construct one by hand.
 
-#### Class Methods
+Fires each `session.on_rendered` callback with `(component, level, session)` after each component's level is built, depth-first post-order.
 
-##### get_default_renderer()
+**Returns:** The component's rendered markup as a finished HTML string, with the session's accumulated assets appended per their delivery mode.
+
+**Raises:**
+
+- `ValueError` — if a template renders zero or 2+ root elements, or a call chain repeats the same class past the cycle limit.
+- `jinja2.TemplateNotFound` — if the template file is missing.
+- `jinja2.TemplateAssertionError` — if Jinja evaluation fails.
+
+## render_level()
 
 ```python
-@classmethod
-def get_default_renderer(
-    *,
-    auto_id: bool = True,
-    js_mode: AssetMode | None = None,
-    css_mode: AssetMode | None = None,
-) -> Renderer
+def render_level(
+    component: BaseComponent,
+    session: RenderSession,
+    chain: tuple[str, ...] = (),
+) -> RenderedLevel
 ```
 
-Return a cached default renderer instance.
+Render one component level: template → single parse → `RenderedLevel`. Internal/recursive callers use this directly (they need the `RenderedLevel`, not a string); `render()` is the public, string-returning wrapper for a childless call site.
 
-**Parameters:**
-- `auto_id` (bool): If True, generate UUIDs for components without explicit IDs
-- `js_mode` (AssetMode | None): JavaScript delivery mode
-- `css_mode` (AssetMode | None): CSS delivery mode
+`chain` carries the class names already being rendered on the current call path, outermost first — used to detect a call path that has stopped making progress (the same class recurring past a repeat limit), not merely reused at different depths.
 
-**Returns:** A Renderer instance cached by environment identity, `auto_id`, asset modes, and resolver identity.
+## RenderSession
 
-##### set_default_js_mode()
+Per-render state: the Jinja environment, asset accumulation, and render-completion hooks. Constructed with a `template_dir` (default `"templates"`) that backs its `FileSystemLoader`.
 
 ```python
-@classmethod
-def set_default_js_mode(mode: AssetMode) -> None
+def __init__(self, template_dir: str = "templates") -> None
 ```
 
-Set the process-wide default JavaScript asset delivery mode.
+### Fields
 
-##### set_default_css_mode()
+| Field | Type | Description |
+|-------|------|-------------|
+| `jinja_env` | `Environment` | The Jinja environment used for this render, autoescape enabled |
+| `asset_paths` | `set[str]` | Generic per-request asset slot; no producer writes to it yet |
+| `css_assets` | `set[Path]` | CSS descriptor paths accumulated as components render |
+| `js_assets` | `set[Path]` | JS descriptor paths accumulated as components render |
+| `css_mode` | `AssetMode` | CSS delivery mode for this render (`INLINE` by default) |
+| `js_mode` | `AssetMode` | JS delivery mode for this render (`INLINE` by default) |
+| `runtime_script` | `str \| None` | The pyjinhx client runtime payload, set by `client/inject.py` |
+| `runtime_injected` | `bool` | Whether the client runtime was already scheduled for this session |
+| `on_rendered` | `list[Callable[[BaseComponent, RenderedLevel, RenderSession], None]]` | Hooks fired once per component after its subtree finishes rendering |
+| `pjx_request` | `Any` | The Starlette request bound to this render, set by middleware |
+
+### emit_rendered()
 
 ```python
-@classmethod
-def set_default_css_mode(mode: AssetMode) -> None
+def emit_rendered(self, component: BaseComponent, level: RenderedLevel) -> None
 ```
 
-Set the process-wide default CSS asset delivery mode.
-
-##### get_default_environment()
-
-```python
-@classmethod
-def get_default_environment() -> Environment
-```
-
-Return the default Jinja environment, auto-initializing if needed.
-
-If no environment is configured, one is created using auto-detected project root.
-
-**Returns:** The default Jinja Environment instance.
-
-##### set_default_environment()
-
-```python
-@classmethod
-def set_default_environment(
-    environment: Environment | str | os.PathLike[str] | None
-) -> None
-```
-
-Set or clear the process-wide default Jinja environment.
-
-**Parameters:**
-- `environment` (Environment | str | os.PathLike[str] | None): A Jinja Environment instance, a path to a template directory, or None to clear the default and reset to auto-detection
-
-##### peek_default_environment()
-
-```python
-@classmethod
-def peek_default_environment() -> Environment | None
-```
-
-Return the currently configured default environment without auto-initializing.
-
-**Returns:** The default Jinja Environment, or None if not yet configured.
-
-#### Properties
-
-##### environment
-
-```python
-@property
-def environment() -> Environment
-```
-
-The Jinja Environment used by this renderer.
-
-**Returns:** The Jinja Environment instance.
-
-#### Instance Methods
-
-##### render()
-
-```python
-def render(source: str) -> str
-```
-
-Render an HTML-like source string, expanding PascalCase component tags into HTML.
-
-**Parameters:**
-- `source` (str): HTML-like string containing component tags to render
-
-**Returns:** The fully rendered HTML string with all components expanded.
-
-##### new_session()
-
-```python
-def new_session() -> RenderSession
-```
-
-Create a new render session for tracking assets during rendering.
-
-**Returns:** A fresh RenderSession instance.
+Notify subscribers (`on_rendered`) that `component`'s subtree finished rendering. Called once per component, bottom-up, as the last step of `render_level()`; exceptions from a subscriber propagate rather than being swallowed.
 
 ## AssetMode
 
@@ -159,26 +75,4 @@ class AssetMode(str, Enum):
     NONE = "none"
 ```
 
-## RenderSession
-
-Per-render state for asset aggregation and deduplication.
-
-### Fields
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `assets` | `list[CollectedAsset]` | Ordered, deduplicated asset paths collected during rendering |
-| `collected_paths` | `set[str]` | Normalized paths already processed |
-| `scripts` | `list[str]` | Inline JavaScript payloads (`AssetMode.INLINE` only) |
-| `styles` | `list[str]` | Inline CSS payloads (`AssetMode.INLINE` only) |
-| `runtime_injected` | `bool` | Whether the pyjinhx client runtime was scheduled |
-
-### Methods
-
-##### manifest()
-
-```python
-def manifest(*, resolver: AssetUrlResolver) -> AssetManifest
-```
-
-Return resolved stylesheet and script URLs for assets collected in this session.
+Per-kind (CSS/JS) delivery mode for a render. `INLINE` is the default so a cold render works with no configuration; `NONE` is how a caller shipping assets some other way (a build step, a CDN) suppresses emission.

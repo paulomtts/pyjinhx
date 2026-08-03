@@ -2,7 +2,7 @@
 
 Every symbol exported from `pyjinhx` (`__all__`) is listed below with a one-line description and a link to detailed documentation.
 
-These 11 symbols are the entire top-level public API; advanced/internal building blocks (e.g. `oob_swaps`, `LoadCache`, `ClientBackend`, the asset-resolver helpers, dev tooling) remain importable from their submodules — e.g. `from pyjinhx.cache import LoadCache`.
+These 17 symbols are the entire top-level public API; advanced/internal building blocks (e.g. `oob_swaps`, `LoadCache`, `ClientBackend`, the asset-resolver helpers, dev tooling) remain importable from their submodules — e.g. `from pyjinhx.cache import LoadCache`.
 
 The deeper machinery behind these symbols — the parser, finder, asset resolver, client backend, cache/invalidation, and the Redis/SQLite backends — is documented under **API Reference → Internals**.
 
@@ -11,24 +11,30 @@ The deeper machinery behind these symbols — the parser, finder, asset resolver
 | Symbol | Description | Documentation |
 |--------|-------------|---------------|
 | `BaseComponent` | Pydantic base class for UI components with Jinja templates | [BaseComponent](../api/base-component.md) |
+| `Slot` | Annotated type for a string/component/collection field rendered as raw markup | [BaseComponent](../api/base-component.md) |
+| `Children` | Annotated type for the field that receives a tag's nested markup | [BaseComponent](../api/base-component.md) |
+| `component()` | Reference an html-only template (no hand-written class) from Python | [BaseComponent](../api/base-component.md#component) |
 | `ReactiveComponent` | Base class for dependency-aware reactive components (`react={...}` class keyword + `load()`) | [Reactive API](../api/reactive-api.md) |
-| `Renderer` | Renders PascalCase tag strings and manages default Jinja environment | [Renderer](../api/renderer.md) |
+| `render()` | Render a component to a finished HTML string | [Renderer](../api/renderer.md) |
+| `RenderSession` | Per-render state: Jinja environment, asset accumulation, `on_rendered` hooks | [Renderer](../api/renderer.md) |
 
 ## App wiring
 
 | Symbol | Description | Documentation |
 |--------|-------------|---------------|
 | `setup()` | Single-call process + optional FastAPI wiring | [Configuration](../api/config.md#setup) |
-| `Registry` | Class and request-scoped instance registry | [Registry](../api/registry.md) |
+| `PjxContext` | Read-only, request-scoped view of session, dirtied keys, and cache state | [Mutations, Keys & PjxContext](../api/mutations-keys-context.md) |
 
 ## Reactive authoring
 
 | Symbol | Description | Documentation |
 |--------|-------------|---------------|
 | `mutates()` | Decorator: invalidate cache and accumulate dirtied keys after mutation | [Mutations, Keys & PjxContext](../api/mutations-keys-context.md#mutates) |
+| `dirty()` | Imperatively dirty reactive keys without decorating a function | [Mutations, Keys & PjxContext](../api/mutations-keys-context.md#dirty) |
 | `MutationKey` | Base `StrEnum` for app-level reactive key constants | [Mutations, Keys & PjxContext](../api/mutations-keys-context.md#mutationkey) |
+| `reactive_key()` | Build a reactive key from a type and an instance-key value | [Mutations, Keys & PjxContext](../api/mutations-keys-context.md) |
 | `PjxKey` | Marker for `Annotated[..., PjxKey()]` fields stamped as `data-pjx-load` | [Mutations, Keys & PjxContext](../api/mutations-keys-context.md#pjxkey) |
-| `PjxContext` | Opaque base dataclass for request-scoped `load()` data | [Mutations, Keys & PjxContext](../api/mutations-keys-context.md#pjxcontext) |
+| `AppContext` | Subclassable base for an app's per-request context, injected into `load()` | [Mutations, Keys & PjxContext](../api/mutations-keys-context.md) |
 
 ## Configuration
 
