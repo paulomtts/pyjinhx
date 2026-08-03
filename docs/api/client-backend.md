@@ -1,70 +1,64 @@
-# Client Backend
+# Integration Backend
 
-Per-request HTTP header access for reactive rendering. Wire once in your app's middleware; `render()` reads `X-PJX-Mounted` and `X-PJX-Assets` from the active backend. `X-PJX-Trigger` is client-only — consumed by pjx.js for loading indicators, not by the server render walk.
+The interface a framework adapter implements to wire pyjinhx into an app, and the per-request seam that carries request state into `render()`.
 
-PyJinHx does **not** ship middleware — you define a thin wrapper (see [FastAPI integration](../integrations/fastapi.md#middleware-recommended)) that calls `Registry.request_scope(client_backend=FastAPIClientBackend(request))`.
+PyJinHx ships one adapter, `pyjinhx.integrations.fastapi`, and this interface is what a Flask, bare-WSGI, or other adapter would implement to plug in the same way.
 
-## ClientBackend
-
-```python
-class ClientBackend(ABC):
-    def get_header(self, name: str) -> str | None: ...
-
-    @classmethod
-    def current(cls) -> ClientBackend | None: ...
-
-    @classmethod
-    def scope(cls, backend: ClientBackend | None) -> ContextManager[None]: ...
-
-    @classmethod
-    def reset(cls) -> None: ...
-
-    @classmethod
-    def resolve_client(cls, explicit: object | None) -> object | None: ...
-```
-
-Abstract base — implement for non-FastAPI frameworks if needed.
-
-| Class method | Purpose |
-|--------------|---------|
-| `current()` | Return the active backend for this request, or `None`. |
-| `scope(backend)` | Set the request-scoped backend (usually via `Registry.request_scope`). |
-| `reset()` | Clear the backend. Mainly for tests. |
-| `resolve_client(explicit)` | Return `explicit` if set, else `current()`. Used by `_render()` for asset dedup. |
-
-## FastAPIClientBackend
-
-Defined in `pyjinhx.integrations.fastapi`:
+## IntegrationBackend
 
 ```python
-class FastAPIClientBackend(ClientBackend):
-    def __init__(self, request: object) -> None: ...
+class IntegrationBackend(Protocol):
+    def is_installed(self, app: object) -> bool: ...
+    def mark_installed(self, app: object) -> None: ...
+    def mount_static(self, app: object, directory: str) -> None: ...
+    def on_startup(self, app: object) -> None: ...
+    def on_shutdown(self, app: object) -> None: ...
+    def to_response(self, result: object, request: object | None) -> object: ...
 ```
 
-Default implementation for FastAPI and Starlette. Wraps `request.headers`. `setup(app, ...)` wires this automatically in middleware.
+What a framework adapter provides so `setup()` can wire pyjinhx in.
 
-## Auto-resolution in render()
+| Method | Purpose |
+|--------|---------|
+| `is_installed(app)` | Whether setup has already been applied to `app`, so a re-entrant `setup()` doesn't stack two scopes or two lifespans on one request. |
+| `mark_installed(app)` | Record that setup has been applied to `app`. |
+| `mount_static(app, directory)` | Serve the files in `directory` at `/static` on `app`. |
+| `on_startup(app)` | Run pyjinhx's configure step as `app` starts. |
+| `on_shutdown(app)` | Run pyjinhx's shutdown step as `app` stops. |
+| `to_response(result, request)` | Adapt a pjx handler return into the framework's response type. Non-pjx results pass through untouched. |
 
-When a `ClientBackend` is active (via `setup()` middleware or `ClientBackend.scope()`):
+Route adaptation is deliberately absent from this interface — turning a handler's pjx return into a framework response is `to_response()`, but *wiring* that onto routes differs enough per framework (FastAPI swaps `APIRoute` subclasses, Flask would use an `after_request` hook) that each backend owns its own wiring.
 
-- Root renders use it for asset dedup (`X-PJX-Assets`) and runtime injection gating (`X-PJX-Mounted`).
-- Reactive class/instance `render()` reads the `X-PJX-Mounted` manifest for OOB swaps.
+## register_backend / get_backend
 
-Mutation routes call `Cls.render(*args)` with no framework kwargs — pending keys from `@mutates` drive the OOB walk.
+```python
+def register_backend(backend: IntegrationBackend) -> None
+def get_backend() -> IntegrationBackend | None
+```
 
-Without a `ClientBackend`, reactive OOB is skipped even when mutations are pending — only the primary is rendered.
+`register_backend()` publishes the adapter that `setup(app=...)` dispatches through — one slot, since a process wires pyjinhx into one app. `get_backend()` returns the registered adapter, or `None` when no adapter module was imported.
+
+## Request-scoped load context
+
+A backend binds one `request_scope(load_context=...)` (from `pyjinhx.session`) per request around its handler. The `load_context` is whatever the app's `context_factory` derives from the framework's native request object — headers, auth info, whatever a component's `load()` needs.
+
+```python
+from pyjinhx.integrations.base import load_context_for
+
+load_context = load_context_for(request, context_factory)
+with request_scope(load_context=load_context) as session:
+    ...
+```
+
+Inside the scope, `get_load_context()` returns that value for the life of the request:
+
+```python
+from pyjinhx.session import get_load_context
+
+def load(self):
+    request = get_load_context()
+```
 
 ## Non-FastAPI frameworks
 
-Subclass `ClientBackend` and implement `get_header()`. Pass the instance to `Registry.request_scope(client_backend=...)`.
-
-## `apply_response_directives(response)`
-
-Called by the integration when finalizing a response. The default applies the
-`HX-*` headers implied by the request's `ResponseDirectives` (e.g.
-`HX-Reswap: none` for an OOB-only `ReactiveResponse`) to any response whose
-`.headers` is a mutable mapping. Override only if your framework's response
-header API differs. This is how a custom `ClientBackend` inherits pyjinhx's
-reactive response behavior.
-
-See the [htmx integration guide](../integrations/htmx.md) for when a custom backend needs this.
+Implement `IntegrationBackend` for your framework and call `register_backend()` with an instance, mirroring `pyjinhx.integrations.fastapi`. See the [FastAPI integration](../integrations/fastapi.md) source for a complete example of wiring `request_scope()`, header parsing, and `to_response()`.

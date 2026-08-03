@@ -1,59 +1,62 @@
-# Parser & Tag
+# Template Discovery
 
-Public API for parsing HTML strings that contain PascalCase component tags.
+Public API for finding `.pjx` component templates on disk and resolving PascalCase tags to component classes.
 
-See [PascalCase Tags](../guide/tags.md) for usage patterns and [Renderer](renderer.md) for the high-level render API.
+See [PascalCase Tags](../guide/tags.md) for usage patterns.
 
-## Parser
+## walk_templates
 
 ```python
-class Parser(HTMLParser):
-    root_nodes: list[Tag | str]
+def walk_templates(template_dir: Path | str) -> Iterator[TemplateCandidate]
 ```
 
-HTML parser that identifies PascalCase component tags and builds a tree of `Tag` nodes. Standard HTML tags are passed through as raw strings.
+Walk `template_dir` for `.pjx` files, nested directories included, yielding them sorted by path. Pure over the filesystem: nothing is registered, cached, or deduplicated — the same tree always yields the same sequence.
 
 ### Usage
 
 ```python
-from pyjinhx.tags import Parser, Tag
+from pyjinhx.discovery import walk_templates
 
-parser = Parser()
-parser.feed('<Button text="OK"/><p>plain html</p>')
-for node in parser.root_nodes:
-    if isinstance(node, Tag):
-        print(node.name, node.attrs)
-    else:
-        print("raw:", node)
+for candidate in walk_templates("templates"):
+    print(candidate.tag_name, candidate.path)
 ```
 
-`Renderer.render()` uses `Parser` internally. Use `Parser` directly when you need the parse tree without rendering (custom tooling, linting, AST transforms).
+**Raises:** `NotADirectoryError` if `template_dir` is not a directory.
 
-### PascalCase detection
-
-Tags matching `^[A-Z](?:[a-z]+(?:[A-Z][a-z]+)*)?$` are treated as components (e.g. `Button`, `ActionButton`). All other tags pass through unchanged.
-
-## Tag
+## TemplateCandidate
 
 ```python
-@dataclass
-class Tag:
-    name: str
-    attrs: dict[str, str]
-    children: list[Tag | str]
+class TemplateCandidate(NamedTuple):
+    tag_name: str
+    path: Path
 ```
 
-Represents a parsed PascalCase component tag.
+One `.pjx` file the walk found, and the tag name it would answer to.
 
 | Field | Description |
 |-------|-------------|
-| `name` | Tag name (e.g. `"Button"`, `"UserCard"`) |
-| `attrs` | Attribute name → value mapping from the tag |
-| `children` | Nested `Tag` nodes or raw text/HTML strings |
+| `tag_name` | The snake_case name derived from the file's stem |
+| `path` | The file's path |
 
-Inner text between opening and closing tags becomes string children. Self-closing tags have an empty `children` list.
+## get_class
+
+```python
+def get_class(tag_name: str) -> type | None
+```
+
+Return the component class registered for `tag_name`, or `None` when nothing claims that tag. Never raises on a miss — an unknown tag is treated as ordinary markup and passed through verbatim during rendering.
 
 ```python
 # <PJXCard class_name="note">Hello</PJXCard>
-# Tag(name="PJXCard", attrs={"class_name": "note"}, children=["Hello"])
+from pyjinhx.discovery import get_class
+
+cls = get_class("pjx_card")
 ```
+
+## build_registry
+
+```python
+def build_registry(template_dir: Path | str, classes: Iterable[type]) -> None
+```
+
+Walk `template_dir` and publish a fresh tag → class registry, assembled complete before it is published so a reader never sees a half-built map. Called once at startup; a class with `pjx_replace=True` wins any tag collision, otherwise the collision is logged and resolved deterministically.

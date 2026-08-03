@@ -1,86 +1,56 @@
 # Cache & Invalidation
 
-Public API for the reactive `load()` cache and cross-process invalidation fan-out.
+Public API for the reactive `load()` cache and its cross-process fan-out.
 
-See [Reactivity](../reactivity.md) and [FastAPI integration](../integrations/fastapi.md) for usage patterns.
+See [Reactivity](../reactivity.md) for usage patterns.
 
 ## Cache scope
 
-You don't choose where cached `load()` results are stored — it is **derived** from whether an `invalidation_backend` is configured:
+The load cache is request-scoped: entries live in the dict `request_scope()` (in `pyjinhx.session`) hands out per request, and vanish when the scope exits. `pyjinhx.reactive.cache` owns no state of its own — it reads and writes through the session's store.
 
-| Backend | Behavior |
-|---------|----------|
-| none (default) | Per-request: isolated per `Registry.request_scope()`, cleared when the scope exits — the only multi-worker-safe default |
-| configured (e.g. Redis) | Per worker process: results survive across HTTP requests, with the backend keeping every worker's cache consistent on mutation |
-
-`Registry.request_scope()` always creates a request-scoped cache store, so the within-request dedup that the reactive OOB walk relies on always happens. With a backend configured, reads also fall through to the process store; otherwise only the request store is used.
-
-## LoadCache
+## make_key / cache_get / cache_has
 
 ```python
-class LoadCache:
-    @classmethod
-    def invalidate(
-        cls, dirtied: Iterable[object], *, propagate: bool = True
-    ) -> None: ...
-    @classmethod
-    def clear(cls) -> None: ...
+def make_key(cls: type, key: object) -> tuple[type, object]
+def cache_get(cls: type, key: object) -> object | None
+def cache_has(cls: type, key: object) -> bool
 ```
 
-Memoizes reactive `load()` results keyed by `(class, load_arg)`. The scope is set for you from the configured backend (see above) — use [`setup()`](config.md) at app startup:
+`make_key()` builds the composite `(cls, key)` cache key for a component class and a load key. `cache_get()` returns the cached value for a class and key, or `None` on a miss — including every lookup made outside an active request scope. Because a legitimately cached `None` is indistinguishable from a miss, use `cache_has()` when that distinction matters.
+
+## cache_put
 
 ```python
-from pyjinhx import setup
-
-setup(app)  # default — per-request, multi-worker safe
-setup(app, invalidation_backend=...)  # cross-request per worker; fans out evictions
+def cache_put(
+    cls: type, key: object, value: object, react_keys: Iterable[str] = ()
+) -> None
 ```
 
-**Propagation:** when an `InvalidationBackend` is configured (cross-request caching active) and `propagate=True` (default), dirtied keys are published to other workers after local eviction. Remote handlers call `LoadCache.invalidate(..., propagate=False)` to avoid publish loops.
+Cache a load result for this class and key, replacing any existing entry. `react_keys` are the normalized reactive keys this result depends on — dirtying any of them evicts the entry. The default of no keys makes the entry plain memoization that only a fresh request clears. This is the only function that mutates the cache store, and is called automatically by the reactive `load()` memo wrap — not by application code directly.
 
-Called automatically by `@mutates` after mutations complete.
-
-## InvalidationBackend
+## invalidate
 
 ```python
-class InvalidationBackend(ABC):
-    def publish(self, keys: frozenset[str]) -> None: ...
-    def start(self, handler: Callable[[frozenset[str]], None]) -> None: ...
-    def stop(self) -> None: ...
+def invalidate(dirtied_keys: Iterable[str]) -> None
 ```
 
-Abstract base class for cross-process invalidation. Implement `publish()` to broadcast dirtied keys and `start()`/`stop()` to manage a subscriber that invokes the handler on incoming messages.
+Evict every cache entry that depends on any of the given reactive keys. Called automatically by `@mutates` after a mutation completes. Outside a request scope this is a silent no-op, like the rest of the module.
 
-A reference Redis implementation lives in [`pyjinhx.integrations.redis`](integrations-redis.md).
+## Cross-process fan-out
 
-## InvalidationHub
+`pyjinhx.reactive.fanout` walks a client's `X-PJX-Mounted` manifest against a request's dirtied keys and decides, per mounted region, whether it is clean, dirty, or missing — driving the out-of-band (OOB) swaps a reactive response sends back. Its core entry points:
 
 ```python
-class InvalidationHub:
-    @classmethod
-    def set_backend(cls, backend: InvalidationBackend | None) -> None: ...
-    @classmethod
-    def start_listener(cls) -> None: ...
-    @classmethod
-    def stop_listener(cls) -> None: ...
+def walk_manifest(
+    manifest_entries: Sequence[dict[str, Any]],
+    dirtied_keys: Iterable[str],
+    session: RenderSession | None = None,
+    primary_html: object = None,
+) -> list[FanoutCandidate]
+
+def oob_swaps(candidates: list[FanoutCandidate]) -> Markup
 ```
 
-Runtime coordinator for cross-process invalidation. Passing a new backend stops the previous one if a listener was running.
+`walk_manifest()` resolves each manifest entry to a `FanoutCandidate`, re-rendering the ones a dirtied key touches; `oob_swaps()` assembles the surviving candidates' fragments into one response body (`outerHTML:` swaps for dirty regions, `delete:` swaps for regions the registry no longer knows about).
 
-`start_listener()` raises `RuntimeError` if no backend is configured. Idempotent — safe to call multiple times.
-
-**Typical FastAPI setup:**
-
-```python
-from pyjinhx import setup, PjxSettings
-from pyjinhx.integrations.redis import RedisInvalidationBackend
-
-setup(
-    app,
-    settings=PjxSettings(
-        invalidation_backend=RedisInvalidationBackend("redis://localhost:6379/0"),
-    ),
-)
-```
-
-See [Configuration](config.md).
+This fan-out is in-process only — there is currently no built-in mechanism for propagating invalidation across worker processes or machines. Each worker's cache and registry are independent.
