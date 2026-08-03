@@ -374,8 +374,8 @@ def walk_manifest(
                 resolved if resolved is not None else cache_get(cls, dedup_key[1])
             )
         else:
-            # A bare `RenderSession()` defaults to template_dir="templates" —
-            # the wrong templates outside a test with that literal directory.
+            # A bare `RenderSession()` installs an AbsolutePathLoader, losing
+            # any template roots the caller's real session was configured with.
             # Fall back to the active request_scope()'s session before ever
             # constructing a fresh one, so a caller inside a request never has
             # its dirty-path render silently point at the wrong template dir.
