@@ -108,8 +108,6 @@ nav:
           - Assets API: api/assets-api.md
           - Client Backend: api/client-backend.md
           - Cache & Invalidation: api/cache-invalidation.md
-          - Redis integration: api/integrations-redis.md
-          - SQLite integration: api/integrations-sqlite.md
   - Migration guide: migration.md
   - Decisions:
       - Index: decisions/index.md
