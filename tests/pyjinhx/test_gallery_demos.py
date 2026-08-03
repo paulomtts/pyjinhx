@@ -87,6 +87,17 @@ def test_post_build_inlines_component_js(tmp_path):
         assert f"<script>{Path(p).read_text()}</script>" in page
 
 
+def test_multi_component_demo_emits_each_asset_once(tmp_path):
+    from pyjinhx.builtins.ui.pjx_spinner import PJXSpinner
+
+    hooks.on_post_build({"site_dir": str(tmp_path)})
+    page = (tmp_path / "demos" / "pjx-spinner.html").read_text()
+    (css_path,) = PJXSpinner.__pjx_descriptor__.css_paths
+    text = Path(css_path).read_text()
+    assert page.count(text) == 1  # three spinners, one stylesheet
+    assert page.count("<style>") == len(set(PJXSpinner.__pjx_descriptor__.css_paths))
+
+
 def test_gallery_page_features_every_demo():
     """components.md must feature every builtin that has a demo (DEMOS key).
 
