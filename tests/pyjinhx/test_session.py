@@ -339,3 +339,60 @@ def test_cache_reverse_is_fresh_per_request_scope():
         assert get_cache_reverse() == {"todos": {(int, 1)}}
     with request_scope():
         assert get_cache_reverse() == {}
+
+
+def test_get_load_context_is_none_outside_any_scope():
+    """Reading the app context outside a request is a miss, not a LookupError."""
+    assert session_module.get_load_context() is None
+
+
+def test_request_scope_binds_the_load_context_it_was_given():
+    sentinel = object()
+    with session_module.request_scope(load_context=sentinel):
+        assert session_module.get_load_context() is sentinel
+
+    assert session_module.get_load_context() is None
+
+
+def test_request_scope_without_load_context_leaves_it_none():
+    """Existing non-DI callers must see no behaviour change."""
+    with session_module.request_scope():
+        assert session_module.get_load_context() is None
+
+    assert session_module.get_load_context() is None
+
+
+def test_explicit_none_load_context_does_not_shadow_an_outer_value():
+    """`load_context=None` means "not supplied", so a nested scope that omits it
+    keeps reading the enclosing request's value rather than blanking it."""
+    outer = object()
+    with session_module.request_scope(load_context=outer):
+        with session_module.request_scope(load_context=None):
+            assert session_module.get_load_context() is outer
+
+        assert session_module.get_load_context() is outer
+
+
+def test_nested_load_context_restores_the_outer_value_on_exit():
+    outer = object()
+    inner = object()
+    with session_module.request_scope(load_context=outer):
+        with session_module.request_scope(load_context=inner):
+            assert session_module.get_load_context() is inner
+
+        assert session_module.get_load_context() is outer
+
+    assert session_module.get_load_context() is None
+
+
+def test_exception_inside_the_block_still_resets_load_context():
+    class Boom(Exception):
+        pass
+
+    try:
+        with session_module.request_scope(load_context=object()):
+            raise Boom
+    except Boom:
+        pass
+
+    assert session_module.get_load_context() is None
