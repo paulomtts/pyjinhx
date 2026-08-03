@@ -288,26 +288,73 @@ def _wrap_load(
             caller so this stays a pure per-call cache dance.
     """
 
-    def wrapped_load(self: Any) -> Any:
-        # An unmarked class has no per-instance key, so all its instances keep
-        # sharing the one entry under the null key.
-        field = cls._pjx_key_field
-        key = coerce_load_key_str(getattr(self, field, None)) if field else None
+    full_signature = inspect.signature(real_load)
+    protocol_mode = cls.model_config.get("extra") == "allow"
+    # The public signature callers bind against excludes the context param:
+    # it is injected from the request scope, never passed in by a caller, so
+    # binding against the full signature would demand it as a required arg.
+    if context_param is not None:
+        signature = full_signature.replace(
+            parameters=[
+                param
+                for name, param in full_signature.parameters.items()
+                if name != context_param
+            ]
+        )
+    else:
+        signature = full_signature
+
+    def wrapped_load(bound_cls: type[Any], *args: Any, **kwargs: Any) -> Any:
+        bound = signature.bind(bound_cls, *args, **kwargs)
+        bound.apply_defaults()
+        supplied = dict(bound.arguments)
+        supplied.pop("cls", None)
+        if context_param is not None:
+            supplied.pop(context_param, None)
+        key = _cache_key(cls, supplied, protocol_mode=protocol_mode)
         if cache_has(cls, key):
             return cache_get(cls, key)
-        if context_param is None:
-            result = real_load(self)
-        else:
-            result = real_load(self, **{context_param: get_load_context()})
+        call_kwargs = dict(supplied)
+        if context_param is not None:
+            call_kwargs[context_param] = get_load_context()
+        result = real_load(bound_cls, **call_kwargs)
+        if not isinstance(result, cls):
+            raise TypeError(
+                f"{cls.__name__}.load must return an instance of {cls.__name__}; "
+                f"got {type(result).__name__}."
+            )
         # Index under both the static react keys (a bare "todos" dirties every
-        # instance) and, when this instance has a load key, the per-instance
-        # "todos:1" composite form reactive_key() produces — @mutates(key=...)
-        # and dirty(reactive_key(...)) dirty only the composite, never the bare
-        # key alongside it, so invalidate() needs both forms to find this entry.
+        # instance) and, when this call has a load key, the per-instance
+        # "todos:1" composite reactive_key() produces — @mutates(key=...) and
+        # dirty(reactive_key(...)) dirty only the composite, so invalidate()
+        # needs both forms to find this entry.
         react_keys = cls._pjx_react_keys
-        if key is not None:
-            react_keys = (*react_keys, *(f"{rk}:{key}" for rk in cls._pjx_react_keys))
+        field = cls._pjx_key_field
+        load_key = coerce_load_key_str(supplied.get(field)) if field else None
+        if load_key is not None:
+            react_keys = (
+                *react_keys,
+                *(f"{rk}:{load_key}" for rk in cls._pjx_react_keys),
+            )
         cache_put(cls, key, result, react_keys=react_keys)
         return result
 
     return wrapped_load
+
+
+def _cache_key(
+    cls: type["ReactiveComponent"], supplied: dict[str, Any], *, protocol_mode: bool
+) -> object:
+    """This call's cache key: the key-field value, or every bound argument.
+
+    Under ``extra="allow"`` the extra parameters are part of what was asked
+    for, so two calls that differ only there must not collide; strict mode has
+    nothing but the key field to distinguish calls by, and keeping its key the
+    plain coerced string leaves fanout's ``_load_key()`` derivation intact.
+    """
+    if protocol_mode:
+        return tuple(sorted((name, repr(value)) for name, value in supplied.items()))
+    field = cls._pjx_key_field
+    if field is None:
+        return None
+    return coerce_load_key_str(supplied.get(field))
