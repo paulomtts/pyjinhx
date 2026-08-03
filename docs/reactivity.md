@@ -45,7 +45,7 @@ class Counter(ReactiveComponent, react={Keys.TODOS}):
   server simply intersects a component's declared keys with the route's `dirtied` keys
   (and uses them to evict the `load()` cache): it's cache invalidation, not signals.
 - `load()` — populates the instance's fields from the current world. It runs
-  automatically right before a mounted instance's render (via `pjx_mount()`), memoized
+  automatically right before a mounted instance's render, memoized
   per request under the class + load key.
 - `id` — defaults to the **kebab-cased class name** (`Counter` → `"counter"`,
   `TodoCounter` → `"todo-counter"`), since a type-singleton's identity is its type, so
@@ -155,7 +155,7 @@ re-injecting `pjx.js` when `X-PJX-Mounted` is present.
 A mutation route does exactly one thing: **`return <component>.render()`**. You
 never call `load()` yourself and never assemble swaps by hand. For a **reactive**
 primary, construct the instance (its `PjxKey` field set, if it has one) and call
-`.render()` — `pjx_mount()` auto-`load()`s it for you before the render. The
+`.render()` — it auto-`load()`s the instance for you before the render. The
 dependent regions ride along as out-of-band swaps:
 
 ```python

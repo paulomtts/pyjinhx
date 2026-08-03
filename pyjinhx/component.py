@@ -532,15 +532,6 @@ class BaseComponent(BaseModel):
 
         return _render(self, session or current_session())
 
-    def pjx_mount(self) -> None:
-        """Fire once, on this instance, right before its recursive render.
-
-        The base no-op keeps every plain component free of the check; only
-        ReactiveComponent overrides it, to route its own ``load()`` through
-        the request cache without rendering.py ever importing reactive/.
-        """
-        return
-
     def __init_subclass__(cls, *, pjx_replace: bool = False, **kwargs: Any) -> None:
         """Consume the ``pjx_replace`` class kwarg before it reaches
         ``object.__init_subclass__``, which accepts no keyword arguments.

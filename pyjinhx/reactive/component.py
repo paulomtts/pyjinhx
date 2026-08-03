@@ -61,22 +61,6 @@ class ReactiveComponent(BaseComponent):
         canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"))
         return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
-    def pjx_mount(self) -> None:
-        """Populate this instance from the cache-routed ``load()`` factory.
-
-        A shim: rendering.py still constructs a child and then mounts it, so
-        the factory's result is copied onto the instance that already exists.
-        #727 rewires ``_fill_children`` to call ``Cls.load(**key_args)``
-        directly and deletes this hook.
-        """
-        cls = type(self)
-        field = cls._pjx_key_field
-        loaded = cls.load(**({field: getattr(self, field)} if field else {}))
-        names = list(cls.model_fields) + list(loaded.__pydantic_extra__ or ())
-        for name in names:
-            if name != "id":
-                setattr(self, name, getattr(loaded, name))
-
     def __init_subclass__(cls, *, react: Iterable[object] = (), **kwargs: Any) -> None:
         """Consume the ``react`` class kwarg and record it as normalized keys.
 

@@ -15,7 +15,7 @@ Base class for components that reload from application state via an instance `lo
 ### Requirements
 
 - Declare the `react` **class keyword** — a set of `MutationKey` members this component subscribes to: `class Counter(ReactiveComponent, react={Keys.TODOS})`.
-- Override `load(self)` to populate `self` from application state. It runs once per request — the first call is memoized in the request-scoped load cache, so later calls in the same request (e.g. from `pjx_mount()` on every recursive render) reuse the result instead of re-fetching.
+- Override `load(self)` to populate `self` from application state. It runs once per request — the first call is memoized in the request-scoped load cache, so later calls in the same request (e.g. from mounting the same instance again during recursive render) reuse the result instead of re-fetching.
 - For keyed types, declare exactly one `Annotated[..., PjxKey()]` field; its value becomes the load-cache key that identifies which instance `load()` is for.
 
 See [Making builtins reactive](../reactivity.md#making-builtins-reactive) for mixing a `ReactiveComponent` in with a builtin.
@@ -32,7 +32,7 @@ Singleton reactive components default `id` to the kebab-cased class name (`TodoC
 instance.render(session: RenderSession | None = None) -> str
 ```
 
-Renders this instance to a finished HTML string, calling `load()` (via `pjx_mount()`) first. This is `BaseComponent.render()` — `ReactiveComponent` adds no separate entry point.
+Renders this instance to a finished HTML string, calling `load()` first. This is `BaseComponent.render()` — `ReactiveComponent` adds no separate entry point.
 
 OOB swaps are not produced by `render()` itself. They're composed by `pyjinhx.reactive.response.ReactiveResponse`, which walks the client's `X-PJX-Mounted` manifest against this request's dirtied keys (`walk_manifest()`) and hands the resulting candidates to `oob_swaps()` to build the fan-out fragments appended after the primary markup.
 
