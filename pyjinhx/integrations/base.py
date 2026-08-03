@@ -83,3 +83,22 @@ class IntegrationBackend(Protocol):
         every handler return without inspecting it first.
         """
         ...
+
+
+_backend: IntegrationBackend | None = None
+
+
+def register_backend(backend: IntegrationBackend) -> None:
+    """Publish ``backend`` as the adapter ``setup(app=...)`` dispatches through.
+
+    One slot, not a dict keyed by framework: a process wires pyjinhx into one
+    app, and the adapter module that registers is only imported when the caller
+    already asked for that framework.
+    """
+    global _backend
+    _backend = backend
+
+
+def get_backend() -> IntegrationBackend | None:
+    """The registered adapter, or None when no adapter module was imported."""
+    return _backend
