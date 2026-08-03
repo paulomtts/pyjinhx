@@ -1,6 +1,8 @@
+from pathlib import Path
 from typing import Annotated, ClassVar, Optional
 
 import pytest
+from markupsafe import Markup
 from pydantic import BaseModel, ValidationError
 
 from pyjinhx.component import (
@@ -11,6 +13,10 @@ from pyjinhx.component import (
     _is_component_typed_annotation,
     _is_slot_field,
 )
+from pyjinhx.descriptor import ClassDescriptor
+from pyjinhx.render_context import build_context
+from pyjinhx.rendering import render
+from pyjinhx.session import RenderSession
 
 
 class TestPjxSlotMarker:
@@ -502,3 +508,54 @@ class TestIsSlotFieldStructuralCondition:
 
     def test_unknown_field_name_is_still_not_a_slot(self):
         assert _is_slot_field(_AutoSlots, "not_a_field") is False
+
+
+class TestMarkupExemptionIsScopedToSlots:
+    """The Slot exemption must not become global un-escaping."""
+
+    def descriptor(self, template: str, slots: frozenset[str]):
+        return ClassDescriptor(
+            template_path=Path(template),
+            slot_fields=slots,
+            children_field=None,
+            css_paths=(),
+            js_paths=(),
+            strict=True,
+            provenance={},
+        )
+
+    def test_a_non_slot_str_field_is_not_markup_in_the_context(self):
+        class Card(BaseComponent):
+            content: Slot = ""
+            label: str = ""
+
+        Card.__pjx_descriptor__ = self.descriptor(
+            "nest_content.html", frozenset({"content"})
+        )
+
+        context = build_context(
+            Card(content="<b>a</b>", label="<b>b</b>"), Card.__pjx_descriptor__
+        )
+
+        assert isinstance(context["content"], Markup)
+        assert not isinstance(context["label"], Markup)
+
+    def test_a_non_slot_str_field_still_autoescapes_when_rendered(self):
+        class Card(BaseComponent):
+            content: Slot = ""
+
+        Card.__pjx_descriptor__ = self.descriptor(
+            "nest_content.html", frozenset({"content"})
+        )
+        session = RenderSession(template_dir="tests/templates")
+        template = session.jinja_env.from_string("{{ label }}")
+        context = build_context(Card(content=""), Card.__pjx_descriptor__)
+        context["label"] = "<b>b</b>"
+
+        assert template.render(context) == "&lt;b&gt;b&lt;/b&gt;"
+
+    def test_is_slot_field_still_rejects_a_plain_str_field(self):
+        class Card(BaseComponent):
+            label: str = ""
+
+        assert _is_slot_field(Card, "label") is False
