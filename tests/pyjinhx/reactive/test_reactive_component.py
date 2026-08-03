@@ -453,3 +453,93 @@ def test_grandchild_that_does_not_override_load_is_not_rewrapped():
         pass
 
     assert isinstance(Child.load(), Child)
+
+
+def test_load_params_must_match_the_pjx_key_field():
+    from typing import Annotated
+
+    from pyjinhx.reactive.component import PjxKey
+
+    class Row(ReactiveComponent):
+        row_id: Annotated[int, PjxKey()] = 0
+
+        @classmethod
+        def load(cls, row_id: int) -> "Row":
+            return cls(row_id=row_id)
+
+    assert Row.load(1).row_id == 1
+
+
+def test_load_missing_the_key_param_is_rejected():
+    from typing import Annotated
+
+    from pyjinhx.reactive.component import PjxKey
+
+    with pytest.raises(TypeError, match="row_id"):
+
+        class Row(ReactiveComponent):
+            row_id: Annotated[int, PjxKey()] = 0
+
+            @classmethod
+            def load(cls) -> "Row":
+                return cls()
+
+
+def test_load_with_an_extra_param_is_rejected():
+    from typing import Annotated
+
+    from pyjinhx.reactive.component import PjxKey
+
+    with pytest.raises(TypeError, match="extra"):
+
+        class Row(ReactiveComponent):
+            row_id: Annotated[int, PjxKey()] = 0
+
+            @classmethod
+            def load(cls, row_id: int, extra: int) -> "Row":
+                return cls(row_id=row_id)
+
+
+def test_zero_key_class_load_must_take_no_params():
+    with pytest.raises(TypeError, match="no parameters"):
+
+        class Widget(ReactiveComponent):
+            @classmethod
+            def load(cls, stray: int) -> "Widget":
+                return cls()
+
+
+def test_protocol_mode_allows_extra_params():
+    from typing import Annotated
+
+    from pydantic import ConfigDict
+
+    from pyjinhx.reactive.component import PjxKey
+
+    class Row(ReactiveComponent):
+        model_config = ConfigDict(extra="allow")
+        row_id: Annotated[int, PjxKey()] = 0
+
+        @classmethod
+        def load(cls, row_id: int, flavor: str = "plain") -> "Row":
+            return cls(row_id=row_id)
+
+    assert Row.load(1, flavor="spicy").row_id == 1
+
+
+def test_protocol_mode_still_requires_the_key_params():
+    from typing import Annotated
+
+    from pydantic import ConfigDict
+
+    from pyjinhx.reactive.component import PjxKey
+
+    with pytest.raises(TypeError, match="row_id"):
+
+        class Row(ReactiveComponent):
+            model_config = ConfigDict(extra="allow")
+            row_id: Annotated[int, PjxKey()] = 0
+
+            @classmethod
+            def load(cls, flavor: str = "plain") -> "Row":
+                return cls()
