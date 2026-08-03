@@ -49,3 +49,17 @@ def index():
         total_count=total_count,
         clear_button=clear_button,
     )
+
+
+@app.post("/todos")
+def add_todo(request: Request, text: str = Form(...)):
+    """Add one todo and return its row, with the counters swapped out of band.
+
+    The primary fragment is the row alone because the composer form targets
+    #list with hx-swap="beforeend"; the ReactiveResponse wrapper is what also
+    refreshes the mounted counters that store.add's @mutates just dirtied.
+    """
+    todo = store.add(text)
+    row = ItemRow(id=f"row-{todo.id}", todo_id=todo.id)
+    row.load()
+    return ReactiveResponse(primary=render(row, current_session()), mounted=request)
