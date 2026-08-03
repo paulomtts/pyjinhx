@@ -230,11 +230,16 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
         {"pyjinhx.component"}
     ),
     # pjx_dropdown family (#523): a single trigger+menu component reusing
-    # the pjx_popover JS runtime via the data-pjx-popover markup contract.
+    # the pjx_popover JS runtime. #695 turned that reuse into a real MRO
+    # edge — PJXDropdown extends PJXPopover so the descriptor's asset walk
+    # inherits pjx_popover.js instead of shipping the markup contract with
+    # no script behind it.
     "builtins.ui.pjx_dropdown.__init__": frozenset(
         {"pyjinhx.builtins.ui.pjx_dropdown.pjx_dropdown"}
     ),
-    "builtins.ui.pjx_dropdown.pjx_dropdown": frozenset({"pyjinhx.component"}),
+    "builtins.ui.pjx_dropdown.pjx_dropdown": frozenset(
+        {"pyjinhx.component", "pyjinhx.builtins.ui.pjx_popover"}
+    ),
     "builtins.ui.pjx_breadcrumb.__init__": frozenset(
         {"pyjinhx.builtins.ui.pjx_breadcrumb.pjx_breadcrumb"}
     ),

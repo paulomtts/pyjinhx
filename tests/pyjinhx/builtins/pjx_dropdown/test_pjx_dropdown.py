@@ -8,7 +8,7 @@ from pydantic import ValidationError
 from pyjinhx.builtins.ui.pjx_dropdown import PJXDropdown
 from pyjinhx.component import BaseComponent, Slot
 from pyjinhx.rendering import render
-from pyjinhx.session import RenderSession
+from pyjinhx.session import RenderSession, accumulate_assets
 
 
 @pytest.fixture
@@ -120,8 +120,30 @@ def test_dropped_js_field_is_rejected():
         PJXDropdown(id="d", js=["x.js"])  # type: ignore[call-arg]
 
 
-def test_css_is_discovered_and_no_js_ships_with_the_component():
-    """The stylesheet sits next to the module; the popover runtime is reused by markup, not copied here."""
+def test_css_is_own_and_js_is_inherited_from_the_popover_ancestor():
+    """The stylesheet is the dropdown's own; the runtime comes from the PJXPopover it extends.
+
+    Replaces test_css_is_discovered_and_no_js_ships_with_the_component, whose
+    `js_paths == ()` assertion encoded the #695 bug: the popover runtime never
+    reached a session that rendered a dropdown.
+    """
     descriptor = PJXDropdown.__pjx_descriptor__
-    assert any(p.name == "pjx_dropdown.css" for p in descriptor.css_paths)
-    assert descriptor.js_paths == ()
+    assert [p.name for p in descriptor.css_paths] == ["pjx_dropdown.css"]
+    assert [p.name for p in descriptor.js_paths] == ["pjx_popover.js"]
+
+
+def test_rendering_accumulates_the_popover_runtime_into_the_session():
+    """A rendered dropdown puts pjx_popover.js into the session, which is what ships it to the page.
+
+    Session-scoped accumulation, not registry-wide all_assets(): only a
+    component that actually rendered may contribute an asset to a response.
+    RenderSession does not auto-subscribe accumulate_assets, so the test
+    subscribes it exactly as the framework's own callers do.
+    """
+    session = RenderSession(template_dir="/")
+    session.on_rendered.append(accumulate_assets)
+
+    render(PJXDropdown(id="d", trigger="Actions"), session)
+
+    assert sorted(p.name for p in session.js_assets) == ["pjx_popover.js"]
+    assert sorted(p.name for p in session.css_assets) == ["pjx_dropdown.css"]
