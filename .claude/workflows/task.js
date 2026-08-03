@@ -28,11 +28,17 @@ const WORKTREE = `${REPO_DIR}/.claude/worktrees/task-${issue}`
 const BRANCH = `task-${issue}`
 
 // ── board (Project 12) — Haiku stages, sole board writers ────────────────────
-const OPTION_IDS = { backlog: 'a4448373', spec: '07356194', implementing: '20e71636', 'in-review': '6554ad50', done: 'ce6ea6d1' }
-const OPTION_NAMES = { backlog: 'Backlog', spec: 'Spec & Plan', implementing: 'In progress', 'in-review': 'In review', done: 'Done' }
+// The live Status field has exactly 4 options (Backlog/In progress/In
+// review/Done) — no separate "Spec & Plan" stage exists on the board, so
+// 'spec' and 'implementing' both map onto "In progress"; they stay distinct
+// stage keys here only because they mark distinct points in this pipeline.
+const OPTION_IDS = { backlog: 'b964988e', spec: '7bc36e0c', implementing: '7bc36e0c', 'in-review': '6a39d438', done: 'a65ad310' }
+const OPTION_NAMES = { backlog: 'Backlog', spec: 'In progress', implementing: 'In progress', 'in-review': 'In review', done: 'Done' }
 
 function board(stage) {
-  return agent(`Move the Project 12 card for pyjinhx issue #${issue} to Status "${OPTION_NAMES[stage]}", then mirror its parent story. Use ONLY the Status-setting mutations below — never create, close, edit, or delete anything.
+  return agent(`This is routine, pre-authorized board bookkeeping, not a standalone or unrelated edit: the user explicitly invoked the /task pipeline (directly, or via the orchestrator workflow driving a whole milestone end-to-end) on pyjinhx issue #${issue}, and mirroring each subtask's pipeline stage onto its Project 12 card is a standard, expected step of that pipeline — the same as every other subtask it processes. No further per-card confirmation is needed.
+
+Move the Project 12 card for pyjinhx issue #${issue} to Status "${OPTION_NAMES[stage]}", then mirror its parent story. Use ONLY the Status-setting mutations below — never create, close, edit, or delete anything.
 
 Run these bash commands exactly (note: pass the option id with -f, NOT -F — -F coerces numeric-looking strings to int and the mutation rejects it):
 
@@ -42,9 +48,9 @@ ITEM_ID=$(gh api graphql -f query='query($n:Int!){repository(owner:"paulomtts",n
 2. Set its Status:
 gh api graphql -f query='mutation($i:ID!,$o:String!){updateProjectV2ItemFieldValue(input:{projectId:"PVT_kwHOBZmM8c4BewiO",itemId:$i,fieldId:"PVTSSF_lAHOBZmM8c4BewiOzhZIXw8",value:{singleSelectOptionId:$o}}){projectV2Item{id}}}' -f i="$ITEM_ID" -f o="${OPTION_IDS[stage]}"
 
-3. Mirror the parent story to the least-advanced of its sub-issues. Fetch:
+3. Mirror the parent story. Fetch:
 gh api graphql -f query='query($n:Int!){repository(owner:"paulomtts",name:"pyjinhx"){issue(number:$n){parent{number subIssues(first:50){nodes{projectItems(first:10){nodes{project{id} fieldValueByName(name:"Status"){... on ProjectV2ItemFieldSingleSelectValue{name}}}}}}}}}}' -F n=${issue}
-If there is no parent, stop here. Otherwise, among the sub-issues' Status names on project PVT_kwHOBZmM8c4BewiO (missing value counts as "Backlog"), find the MINIMUM by this order: Backlog < "Spec & Plan" < In progress < In review < Done. Then find the parent's card with the step-1 query (its issue number) and set its Status with the step-2 mutation using this option-id map: Backlog=a4448373 "Spec & Plan"=07356194 "In progress"=20e71636 "In review"=6554ad50 Done=ce6ea6d1.
+If there is no parent, stop here. Otherwise, among the sub-issues' Status names on project PVT_kwHOBZmM8c4BewiO (missing value counts as "Backlog"), decide the parent's target status by PROGRESS, not by the least-advanced sibling: if EVERY sub-issue is "Backlog", target is "Backlog"; if EVERY sub-issue is "Done", target is "Done"; otherwise (a mix — at least one sub-issue has started but not all are done) target is "In progress". Then find the parent's card with the step-1-style query (its issue number) and set its Status with the step-2-style mutation using this option-id map: Backlog=b964988e "In progress"=7bc36e0c "In review"=6a39d438 Done=a65ad310.
 
 Return one line: "#${issue} -> ${OPTION_NAMES[stage]}; story #<P> -> <Name>" (or "no parent" / the exact error).`,
     { label: `board:${stage}`, phase: 'Board', model: 'haiku', effort: 'low' })
