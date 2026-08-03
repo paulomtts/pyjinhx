@@ -12,7 +12,7 @@ the next time either page is edited.
 import inspect
 from pathlib import Path
 
-import pyjinhx.discovery as discovery
+from pyjinhx import discovery
 
 _ROOT = Path(__file__).resolve().parents[2]
 _DOCS = _ROOT / "docs"
