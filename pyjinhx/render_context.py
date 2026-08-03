@@ -8,7 +8,40 @@ from typing import Any
 from markupsafe import Markup
 
 from pyjinhx.component import BaseComponent
-from pyjinhx.markers import ComponentNode
+from pyjinhx.markers import ComponentNode, finalize_slot_node
+
+
+def _slot_item_html(item: object) -> str:
+    """The markup one collection entry contributes when the container itself
+    is interpolated bare (``{{ content }}``, no ``{% for %}``).
+
+    A ComponentNode is swapped for its placeholder token exactly the way a
+    lone component-valued slot already is, so the same post-render
+    substitution pass fills in its real markup. Anything else is escaped
+    like ordinary template data — a collection entry is not itself
+    author-declared markup the way the slot's own string form is.
+    """
+    if isinstance(item, ComponentNode):
+        return str(finalize_slot_node(item))
+    return str(Markup.escape(item))
+
+
+class _SlotList(list):
+    """A list of slot entries that also renders composed markup when
+    interpolated directly, so ``{{ content }}`` and ``{% for %}`` both work.
+    """
+
+    def __html__(self) -> str:
+        return "".join(_slot_item_html(item) for item in self)
+
+
+class _SlotDict(dict):
+    """A dict of slot entries that also renders composed markup when
+    interpolated directly, so ``{{ content }}`` and ``{% for %}`` both work.
+    """
+
+    def __html__(self) -> str:
+        return "".join(_slot_item_html(item) for item in self.values())
 
 
 def _wrap_slot_value(
@@ -19,12 +52,14 @@ def _wrap_slot_value(
 ) -> object:
     """Wrap the components inside a slot value, one opaque node each.
 
-    A list or dict slot comes back as a plain list or dict so a template can
-    walk it with ``{% for %}``: opacity is a per-child guarantee (ADR 0003),
-    and a ComponentNode refuses to be iterated, so wrapping the container
-    itself would make the collection unusable. A plain string comes back as
-    ``Markup`` — a slot's string value is authored markup. Anything else — an
-    empty container, a non-component item — passes through untouched.
+    A list or dict slot comes back as a list/dict subclass so a template can
+    still walk it with ``{% for %}`` (opacity is a per-child guarantee, ADR
+    0003, and a ComponentNode refuses to be iterated, so wrapping the
+    container itself would make the collection unusable) while also
+    composing correctly when interpolated bare (``{{ content }}``, no loop).
+    A plain string comes back as ``Markup`` — a slot's string value is
+    authored markup. Anything else — an empty container, a non-component
+    item — passes through untouched.
     """
 
     def node(component: BaseComponent) -> ComponentNode:
@@ -43,14 +78,14 @@ def _wrap_slot_value(
     if isinstance(value, BaseComponent):
         return node(value)
     if isinstance(value, list):
-        return [
+        return _SlotList(
             node(item) if isinstance(item, BaseComponent) else item for item in value
-        ]
+        )
     if isinstance(value, dict):
-        return {
-            key: node(item) if isinstance(item, BaseComponent) else item
+        return _SlotDict(
+            (key, node(item) if isinstance(item, BaseComponent) else item)
             for key, item in value.items()
-        }
+        )
     return value
 
 

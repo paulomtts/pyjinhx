@@ -146,7 +146,9 @@ class TestBuildContext:
         context = build_context(Card(content=[a, b]), Card.__pjx_descriptor__)
         value = context["content"]
 
-        assert type(value) is list
+        # A list subclass (so bare `{{ content }}` also composes markup), but
+        # an ordinary list for every purpose a template or test cares about.
+        assert isinstance(value, list)
         assert not isinstance(value, ComponentNode)
         assert [type(v) for v in value] == [ComponentNode, ComponentNode]
         assert [v.component for v in value] == [a, b]
@@ -161,7 +163,9 @@ class TestBuildContext:
         context = build_context(Card(content={"one": a}), Card.__pjx_descriptor__)
         value = context["content"]
 
-        assert type(value) is dict
+        # A dict subclass (so bare `{{ content }}` also composes markup), but
+        # an ordinary dict for every purpose a template or test cares about.
+        assert isinstance(value, dict)
         assert list(value.keys()) == ["one"]
         assert type(value["one"]) is ComponentNode
         assert value["one"].component is a
@@ -499,3 +503,31 @@ class TestCollectionTruthiness:
         Card.__pjx_descriptor__ = descriptor("slot_if.html", frozenset({"content"}))
 
         assert render(Card(content={}), session()) == "<div>NONE</div>"
+
+
+class TestBuiltinCardWithListContent:
+    """A list of components on a builtin's plain `Slot` field composes.
+
+    The container stays an ordinary list so `{{ content }}` and `{% for %}`
+    both work; each entry is its own opaque node, so nothing leaks a repr.
+    """
+
+    def test_a_card_with_a_list_of_regions_renders_composed_markup(self):
+        from pyjinhx.builtins.ui.pjx_card import PJXCard
+        from pyjinhx.builtins.ui.pjx_card_body import PJXCardBody
+        from pyjinhx.builtins.ui.pjx_card_header import PJXCardHeader
+
+        output = render(
+            PJXCard(
+                content=[
+                    PJXCardHeader(content="Title"),
+                    PJXCardBody(content="Body"),
+                ]
+            ),
+            RenderSession(template_dir="/"),
+        )
+
+        assert "Title" in output
+        assert "Body" in output
+        assert "ComponentNode(" not in output
+        assert output.index("Title") < output.index("Body")

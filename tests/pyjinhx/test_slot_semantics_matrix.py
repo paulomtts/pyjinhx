@@ -406,7 +406,9 @@ class TestCollectionsMatrix:
 
         value = build_context(Card(content=[a, b]), Card.__pjx_descriptor__)["content"]
 
-        assert type(value) is list
+        # A list subclass (so bare `{{ content }}` also composes markup), but
+        # an ordinary list for every purpose a template or test cares about.
+        assert isinstance(value, list)
         assert [type(v) for v in value] == [ComponentNode, ComponentNode]
         assert {v.field_name for v in value} == {"content"}
         assert [v.component for v in value] == [a, b]
