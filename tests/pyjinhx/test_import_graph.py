@@ -2,9 +2,9 @@
 
 component.py sits below descriptor.py and must never reach up into it for
 anything but the one sanctioned edge: the ClassDescriptor it builds and attaches
-in __pydantic_init_subclass__ (#271). It also reaches up into render.py and
+in __pydantic_init_subclass__ (#271). It also reaches up into rendering.py and
 session.py, but only from inside BaseComponent.render()'s method body — never at
-module scope, since render.py imports BaseComponent at import time and a
+module scope, since rendering.py imports BaseComponent at import time and a
 module-level edge back would be a real cycle (#643). descriptor.py and segments.py are
 import-pure — stdlib only. Per-module purity is also asserted in
 test_descriptor.py and test_segments.py; this file is the whole-package view, so
@@ -315,14 +315,14 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
     "client.inject": frozenset({"pyjinhx.assets", "pyjinhx.client", "pyjinhx.session"}),
     # descriptor/props_header are ordinary upward reads. render and session are
     # the reverse edges behind BaseComponent.render(): both are imported inside
-    # the method body, never at module scope, because render.py imports
+    # the method body, never at module scope, because rendering.py imports
     # BaseComponent at import time and a module-level edge back would be a real
     # cycle — the same local-import escape hatch assets.py already uses.
     "component": frozenset(
         {
             "pyjinhx.descriptor",
             "pyjinhx.props_header",
-            "pyjinhx.render",
+            "pyjinhx.rendering",
             "pyjinhx.session",
         }
     ),
@@ -373,7 +373,7 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
             "pyjinhx.config",
             "pyjinhx.integrations.base",
             "pyjinhx.reactive.response",
-            "pyjinhx.render",
+            "pyjinhx.rendering",
             "pyjinhx.session",
         }
     ),
@@ -381,9 +381,9 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
     # Generating a class from a {#def #} header needs the open-model base to
     # subclass; parsing itself stays pure.
     "props_header": frozenset({"pyjinhx.component"}),
-    # render resolves each ChildRef tag against the published class registry;
+    # rendering resolves each ChildRef tag against the published class registry;
     # an unregistered tag is emitted verbatim, so this is a read-only edge.
-    "render": frozenset(
+    "rendering": frozenset(
         {
             "pyjinhx.assets",
             "pyjinhx.component",
@@ -451,7 +451,7 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
     # The reactive on_rendered branch (#463): it reads ReactiveComponent to
     # decide whether to act and reuses the spine's one splice primitive. Every
     # edge points downward into the spine — root_attrs/segments/session know
-    # nothing about this module, and render.py never imports it.
+    # nothing about this module, and rendering.py never imports it.
     "reactive.root_attrs": frozenset(
         {
             "pyjinhx.component",
@@ -477,7 +477,7 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
             "pyjinhx.reactive.cache",
             "pyjinhx.reactive.component",
             "pyjinhx.reactive.keys",
-            "pyjinhx.render",
+            "pyjinhx.rendering",
             "pyjinhx.root_attrs",
             "pyjinhx.segments",
             "pyjinhx.session",
@@ -658,7 +658,7 @@ def module_level_internal_imports(path: Path) -> set[str]:
     i.e. only the file's top-level statements, never descending into a
     function or class body. This is what distinguishes a real module-scope
     edge (which can create an import cycle) from the local-import escape
-    hatch component.py uses for render.py/session.py inside render()'s body."""
+    hatch component.py uses for rendering.py/session.py inside render()'s body."""
     tree = ast.parse(path.read_text(encoding="utf-8"))
     found: set[str] = set()
     for node in tree.body:
@@ -674,14 +674,14 @@ def module_level_internal_imports(path: Path) -> set[str]:
 
 def test_component_only_imports_render_and_session_inside_a_method_body():
     """The docstring above and the ALLOWED_INTERNAL_IMPORTS comment on
-    "component" both claim render.py/session.py are reached only from inside
+    "component" both claim rendering.py/session.py are reached only from inside
     BaseComponent.render()'s method body, never at module scope — because
-    render.py imports BaseComponent at import time, so a module-level edge
+    rendering.py imports BaseComponent at import time, so a module-level edge
     back would be a real cycle (#643). Assert that claim directly: the whole
     file's edge table above passes even if the import moves to module scope,
     since it doesn't distinguish where in the file the import lives."""
     module_level = module_level_internal_imports(PACKAGE_ROOT / "component.py")
-    assert "pyjinhx.render" not in module_level
+    assert "pyjinhx.rendering" not in module_level
     assert "pyjinhx.session" not in module_level
 
 
@@ -707,7 +707,7 @@ RENDER_SPINE_MODULES = (
     "component",
     "descriptor",
     "markers",
-    "render",
+    "rendering",
     "render_context",
     "root_attrs",
     "segments",

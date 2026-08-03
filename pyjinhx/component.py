@@ -4,9 +4,9 @@ All components reject undeclared kwargs at construction time. This keeps the cor
 lightweight and lets the renderer avoid walking arbitrary instance attributes.
 
 Imports pydantic and ClassDescriptor from descriptor.py at module scope. The
-render() convenience method also reaches upward into render.py and session.py,
-but only from inside the method body — a module-level edge to render.py would
-be a circular import, since render.py imports BaseComponent at import time. The
+render() convenience method also reaches upward into rendering.py and session.py,
+but only from inside the method body — a module-level edge to rendering.py would
+be a circular import, since rendering.py imports BaseComponent at import time. The
 import graph is enforced statically by tests/pyjinhx/test_import_graph.py.
 """
 
@@ -32,7 +32,7 @@ from pyjinhx.descriptor import ClassDescriptor
 
 if TYPE_CHECKING:
     # Type-only: the runtime import lives inside render() to avoid the cycle
-    # with render.py.
+    # with rendering.py.
     from pyjinhx.session import RenderSession
 
 _auto_id_counter = itertools.count(1)
@@ -363,7 +363,7 @@ def _resolve_asset_paths(cls: type) -> tuple[tuple[Path, ...], tuple[Path, ...]]
 
 
 def _resolve_strict(cls: type[BaseModel]) -> bool:
-    """The ADR 0006 mode, recorded once per class so render.py branches per class instead of per render."""
+    """The ADR 0006 mode, recorded once per class so rendering.py branches per class instead of per render."""
     return cls.model_config.get("extra") == "forbid"
 
 
@@ -518,10 +518,10 @@ class BaseComponent(BaseModel):
         Returns:
             The component's rendered markup.
         """
-        # Imported here, not at module scope: render.py imports BaseComponent at
+        # Imported here, not at module scope: rendering.py imports BaseComponent at
         # import time, so a module-level edge back into it is a real circular
         # import. session.py carries no cycle, but stays local for symmetry.
-        from pyjinhx.render import render as _render
+        from pyjinhx.rendering import render as _render
         from pyjinhx.session import current_session
 
         return _render(self, session or current_session())
@@ -531,7 +531,7 @@ class BaseComponent(BaseModel):
 
         The base no-op keeps every plain component free of the check; only
         ReactiveComponent overrides it, to route its own ``load()`` through
-        the request cache without render.py ever importing reactive/.
+        the request cache without rendering.py ever importing reactive/.
         """
         return
 

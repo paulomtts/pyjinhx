@@ -1,7 +1,7 @@
 """The per-class fact sheet: what a component class resolved to, frozen once.
 
 Import-pure — stdlib only. Nothing in pyjinhx may be imported here.
-descriptor.py sits above component.py and below render.py in the import graph.
+descriptor.py sits above component.py and below rendering.py in the import graph.
 This module defines the data shape only; resolution of values happens elsewhere.
 """
 

@@ -7,7 +7,7 @@ import pytest
 from pyjinhx import discovery
 from pyjinhx.component import BaseComponent, _pascal_to_snake
 from pyjinhx.descriptor import ClassDescriptor
-from pyjinhx.render import render
+from pyjinhx.rendering import render
 from pyjinhx.session import RenderSession
 
 

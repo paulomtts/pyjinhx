@@ -62,7 +62,7 @@ class ReactiveComponent(BaseComponent):
     def pjx_mount(self) -> None:
         """Run the cache-routed ``load()`` before this instance's recursive render.
 
-        Overrides BaseComponent's no-op: render.py calls this hook on every
+        Overrides BaseComponent's no-op: rendering.py calls this hook on every
         child it instantiates from a ChildRef without knowing anything about
         ReactiveComponent, so mounting a reactive child never needs a manual
         ``load()`` call from the template author.

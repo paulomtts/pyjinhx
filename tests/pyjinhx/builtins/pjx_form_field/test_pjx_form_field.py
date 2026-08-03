@@ -46,7 +46,7 @@ class TestFields:
 
 
 from pyjinhx.builtins.ui.pjx_spinner import PJXSpinner
-from pyjinhx.render import render
+from pyjinhx.rendering import render
 from pyjinhx.session import RenderSession
 
 

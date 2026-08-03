@@ -13,7 +13,7 @@ from pyjinhx.registry import (
     register_rendered_instance,
     resolve,
 )
-from pyjinhx.render import render_level
+from pyjinhx.rendering import render_level
 from pyjinhx.segments import RenderedLevel, serialize
 from pyjinhx.session import RenderSession, _instances, get_instances, request_scope
 

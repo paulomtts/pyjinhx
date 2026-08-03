@@ -4,7 +4,7 @@ import pytest
 
 from pyjinhx.builtins.ui.pjx_divider import PJXDivider
 from pyjinhx.builtins.ui.pjx_modal_body import PJXModalBody
-from pyjinhx.render import render
+from pyjinhx.rendering import render
 from pyjinhx.session import RenderSession
 
 

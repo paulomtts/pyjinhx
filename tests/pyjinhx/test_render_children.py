@@ -7,7 +7,7 @@ import pytest
 from pyjinhx import discovery
 from pyjinhx.component import BaseComponent
 from pyjinhx.descriptor import ClassDescriptor
-from pyjinhx.render import _fill_children, _passthrough_markup
+from pyjinhx.rendering import _fill_children, _passthrough_markup
 from pyjinhx.segments import ChildRef, RenderedLevel
 
 
@@ -109,7 +109,7 @@ def test_unknown_tag_raises_nothing():
 
 
 def test_render_level_passes_unknown_tags_through():
-    from pyjinhx.render import render, render_level
+    from pyjinhx.rendering import render, render_level
     from pyjinhx.session import RenderSession
 
     class UnknownHost(BaseComponent):

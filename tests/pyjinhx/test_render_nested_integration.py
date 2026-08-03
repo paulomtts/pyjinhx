@@ -13,7 +13,7 @@ from pydantic import Field
 from pyjinhx import discovery
 from pyjinhx.component import BaseComponent
 from pyjinhx.descriptor import ClassDescriptor
-from pyjinhx.render import render, render_level
+from pyjinhx.rendering import render, render_level
 from pyjinhx.segments import ChildRef, RenderedLevel, serialize
 from pyjinhx.session import RenderSession
 

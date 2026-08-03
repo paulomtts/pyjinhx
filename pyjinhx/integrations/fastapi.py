@@ -26,7 +26,7 @@ from pyjinhx.integrations.base import (
     register_backend,
 )
 from pyjinhx.reactive.response import ReactiveResponse
-from pyjinhx.render import render
+from pyjinhx.rendering import render
 from pyjinhx.session import current_session, request_scope
 
 if TYPE_CHECKING:

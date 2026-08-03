@@ -32,7 +32,7 @@ from pyjinhx import discovery
 from pyjinhx.component import BaseComponent, _pascal_to_snake
 from pyjinhx.descriptor import ClassDescriptor
 from pyjinhx.reactive.component import PjxKey, ReactiveComponent
-from pyjinhx.render import render
+from pyjinhx.rendering import render
 from pyjinhx.session import RenderSession, request_scope
 
 SHAPES = ((5, 10), (10, 20), (20, 40), (30, 60))  # (mids, leaves per mid)

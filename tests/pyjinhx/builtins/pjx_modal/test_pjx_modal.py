@@ -10,7 +10,7 @@ from pyjinhx.builtins.ui.pjx_modal_body import PJXModalBody
 from pyjinhx.builtins.ui.pjx_modal_footer import PJXModalFooter
 from pyjinhx.builtins.ui.pjx_modal_header import PJXModalHeader
 from pyjinhx.component import BaseComponent, Slot
-from pyjinhx.render import render
+from pyjinhx.rendering import render
 from pyjinhx.session import RenderSession
 
 

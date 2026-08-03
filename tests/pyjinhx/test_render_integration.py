@@ -19,7 +19,7 @@ from pathlib import Path
 
 from pyjinhx.component import BaseComponent, Slot
 from pyjinhx.descriptor import ClassDescriptor
-from pyjinhx.render import render_level
+from pyjinhx.rendering import render_level
 from pyjinhx.root_attrs import stamp_root_attrs
 from pyjinhx.segments import serialize
 from pyjinhx.session import RenderSession

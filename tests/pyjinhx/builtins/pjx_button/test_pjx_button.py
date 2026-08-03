@@ -50,7 +50,7 @@ class TestFields:
             PJXButton(id="b", type="link")  # type: ignore[arg-type]
 
 
-from pyjinhx.render import render
+from pyjinhx.rendering import render
 from pyjinhx.session import RenderSession
 
 

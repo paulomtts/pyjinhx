@@ -31,7 +31,7 @@ from pyjinhx import discovery, registry
 from pyjinhx.reactive.cache import cache_get, cache_has
 from pyjinhx.reactive.component import ReactiveComponent
 from pyjinhx.reactive.keys import coerce_load_key_str
-from pyjinhx.render import render_level
+from pyjinhx.rendering import render_level
 from pyjinhx.root_attrs import stamp_root_attrs
 from pyjinhx.segments import ChildRef, RenderedLevel, serialize
 from pyjinhx.session import RenderSession, current_session
@@ -185,7 +185,7 @@ def _mounted_ids_in(primary_html: object) -> set[str]:
 
     A string scan rather than a segment-tree walk, unlike ``_drop_nested``: by
     the time fan-out runs (T2 step 5) the primary render has already been
-    through render.py's single top-level serialize join at step 4, so what
+    through rendering.py's single top-level serialize join at step 4, so what
     reaches here is a serialized str/Markup with no tree left to walk. Markup
     and str are read identically — the regex sees ``str(primary_html)`` either
     way. Best-effort by design: a truncated or malformed fragment simply yields

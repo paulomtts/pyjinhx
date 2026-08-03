@@ -12,7 +12,7 @@ from pydantic import ValidationError
 
 from pyjinhx.builtins.ui.pjx_divider import PJXDivider
 from pyjinhx.builtins.ui.pjx_notification import PJXNotification
-from pyjinhx.render import render
+from pyjinhx.rendering import render
 from pyjinhx.session import RenderSession
 
 

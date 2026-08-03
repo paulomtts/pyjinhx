@@ -12,7 +12,7 @@ import pkgutil
 import pyjinhx.builtins
 from pyjinhx.component import BaseComponent
 from pyjinhx.discovery import build_registry
-from pyjinhx.render import render as v2_render
+from pyjinhx.rendering import render as v2_render
 from pyjinhx.session import RenderSession
 from tests.fixtures.bench_builtin_heavy import (
     V0_MANIFEST,

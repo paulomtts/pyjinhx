@@ -10,7 +10,7 @@ from pyjinhx.builtins.ui.pjx_drawer_body import PJXDrawerBody
 from pyjinhx.builtins.ui.pjx_drawer_footer import PJXDrawerFooter
 from pyjinhx.builtins.ui.pjx_drawer_header import PJXDrawerHeader
 from pyjinhx.component import BaseComponent, Slot
-from pyjinhx.render import render
+from pyjinhx.rendering import render
 from pyjinhx.session import RenderSession
 
 

@@ -5,7 +5,7 @@ from pydantic import Field, ValidationError
 
 from pyjinhx import discovery
 from pyjinhx.component import BaseComponent, Children, Slot, _pascal_to_snake
-from pyjinhx.render import _fill_children, _instantiate_child
+from pyjinhx.rendering import _fill_children, _instantiate_child
 from pyjinhx.segments import ChildRef, RenderedLevel
 
 

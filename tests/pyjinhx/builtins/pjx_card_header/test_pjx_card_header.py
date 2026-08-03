@@ -4,7 +4,7 @@ import pytest
 
 from pyjinhx.builtins.ui.pjx_card_header import PJXCardHeader
 from pyjinhx.builtins.ui.pjx_divider import PJXDivider
-from pyjinhx.render import render
+from pyjinhx.rendering import render
 from pyjinhx.session import RenderSession
 
 

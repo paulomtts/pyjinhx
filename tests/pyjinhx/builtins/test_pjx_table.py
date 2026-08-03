@@ -8,7 +8,7 @@ from pydantic import ValidationError
 
 from pyjinhx.builtins.pjx_table import PJXTable
 from pyjinhx.builtins.pjx_table_body import PJXTableBody
-from pyjinhx.render import render
+from pyjinhx.rendering import render
 from pyjinhx.session import RenderSession
 
 

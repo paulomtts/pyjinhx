@@ -26,7 +26,7 @@ from pyjinhx import discovery
 from pyjinhx.component import BaseComponent
 from pyjinhx.descriptor import ClassDescriptor
 from pyjinhx.registry import register_rendered_instance
-from pyjinhx.render import render
+from pyjinhx.rendering import render
 from pyjinhx.session import (
     RenderSession,
     accumulate_assets,

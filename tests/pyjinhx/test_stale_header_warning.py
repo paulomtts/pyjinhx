@@ -20,7 +20,7 @@ from pyjinhx import props_header
 from pyjinhx.component import BaseComponent
 from pyjinhx.descriptor import ClassDescriptor
 from pyjinhx.props_header import build_component_class, parse_props_header
-from pyjinhx.render import render_level
+from pyjinhx.rendering import render_level
 
 
 class StaleCard(BaseComponent):

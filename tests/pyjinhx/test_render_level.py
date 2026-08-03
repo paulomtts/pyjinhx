@@ -5,7 +5,7 @@ import pytest
 from pyjinhx import discovery
 from pyjinhx.component import BaseComponent, Children, _pascal_to_snake
 from pyjinhx.descriptor import ClassDescriptor
-from pyjinhx.render import render_level
+from pyjinhx.rendering import render_level
 from pyjinhx.segments import ChildRef, RenderedLevel
 from pyjinhx.session import RenderSession
 
@@ -745,7 +745,7 @@ def test_template_assertion_error_not_wrapped():
 def test_interpolated_component_slot_becomes_a_nested_level():
     """A component-valued slot enters segments as a RenderedLevel, not as text."""
     from pyjinhx.component import Slot
-    from pyjinhx.render import render_level
+    from pyjinhx.rendering import render_level
     from pyjinhx.segments import serialize
 
     class SpliceLeaf(BaseComponent):

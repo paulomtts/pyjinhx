@@ -19,7 +19,7 @@ from pyjinhx.builtins.pjx_table_body import PJXTableBody
 from pyjinhx.builtins.pjx_table_cell import PJXTableCell
 from pyjinhx.builtins.pjx_table_row import PJXTableRow
 from pyjinhx.component import BaseComponent, Slot
-from pyjinhx.render import render
+from pyjinhx.rendering import render
 from pyjinhx.session import RenderSession
 
 logging.getLogger("pyjinhx").setLevel(logging.ERROR)

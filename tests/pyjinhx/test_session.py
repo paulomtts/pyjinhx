@@ -17,7 +17,7 @@ import pytest
 from pyjinhx import session as session_module
 from pyjinhx.component import BaseComponent
 from pyjinhx.descriptor import ClassDescriptor
-from pyjinhx.render import render
+from pyjinhx.rendering import render
 
 
 def test_getters_return_empty_defaults_outside_any_scope():

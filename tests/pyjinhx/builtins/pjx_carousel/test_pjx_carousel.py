@@ -13,7 +13,7 @@ from pyjinhx import discovery
 from pyjinhx.builtins.ui.pjx_carousel import PJXCarousel
 from pyjinhx.builtins.ui.pjx_carousel_slide import PJXCarouselSlide
 from pyjinhx.builtins.ui.pjx_icon import PJXIcon
-from pyjinhx.render import render
+from pyjinhx.rendering import render
 from pyjinhx.session import RenderSession
 
 
