@@ -63,3 +63,20 @@ def add_todo(request: Request, text: str = Form(...)):
     row = ItemRow(id=f"row-{todo.id}", todo_id=todo.id)
     row.load()
     return ReactiveResponse(primary=render(row, current_session()), mounted=request)
+
+
+@app.post("/rows/{todo_id}/toggle")
+def toggle_todo(request: Request, todo_id: int):
+    """Flip one todo and return its row.
+
+    store.toggle raises KeyError on an id it has never seen — a stale row in a
+    long-open tab is a client mistake, not a server fault, so it becomes a 404
+    rather than a 500.
+    """
+    try:
+        store.toggle(todo_id)
+    except KeyError:
+        raise HTTPException(status_code=404, detail=f"no todo {todo_id}") from None
+    row = ItemRow(id=f"row-{todo_id}", todo_id=todo_id)
+    row.load()
+    return ReactiveResponse(primary=render(row, current_session()), mounted=request)
