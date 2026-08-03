@@ -31,12 +31,14 @@ The template is auto-discovered from the class name: `Card` → `card.pjx`/`card
 
 ## Rendering
 
-- **Python-side:** `Card(id="c1", title="Hi").render()`
-- **String-side:** `Renderer.get_default_renderer().render('<Card id="c1" title="Hi"/>')`
+- **Instance method:** `Card(id="c1", title="Hi").render()`
+- **Free function:** `from pyjinhx import render; render(Card(id="c1", title="Hi"))`
+
+Both return a final HTML string for a rendered component tree.
 
 PascalCase tags resolve in order: registered instance with matching id (reused, props updated) → registered class with matching name (new instance, Pydantic-validated) → generic fallback (BaseComponent + discovered template, no validation). Tag inner content becomes `{{ content }}`.
 
-Templates receive all component fields as variables and support full Jinja2. PascalCase tags work inside **any** template — component, page, or string passed to `renderer.render()` — so components compose declaratively:
+Templates receive all component fields as variables and support full Jinja2. PascalCase tags work inside **any** template — component, page, or nested component — so components compose declaratively:
 
 ```html
 <div id="{{ id }}" class="card">
@@ -76,7 +78,7 @@ Fields typed as components — `action: Button`, `items: list[Button]`, `widgets
 
 **Kebab-case** `.js`/`.css` files next to the component (`PJXTabGroup` → `pjx-tab-group.js`; a snake_case stem like `pjx_tab_group.js` is **not** collected) are auto-collected, deduplicated per render session, and injected at the root render — CSS as `<style>` before the HTML, JS as `<script>` after, one tag per component so an error in one doesn't break others. Subclasses with no adjacent assets inherit the nearest ancestor's assets through the MRO (first found per kind).
 
-Add extra files via the `js=[...]` / `css=[...]` fields; missing files warn on the `pyjinhx` logger. For production, use `AssetMode.NONE` and serve assets from a pre-built bundle via `Finder.all_assets()`; see [One-bundle deployment](../guide/assets.md#one-bundle-deployment). For layout preload use `Finder(root).collect_javascript_files()` / `.collect_css_files()` or `layout_asset_tags()`.
+Add extra files via the `js=[...]` / `css=[...]` fields; missing files warn on the `pyjinhx` logger. For production, use `AssetMode.NONE` (from `pyjinhx`) and serve assets from a pre-built bundle via `pyjinhx.assets.all_assets()`, which walks every registered component class and returns its `(css_paths, js_paths)`.
 
 ## Reactivity (dependency-aware OOB swaps)
 
@@ -123,7 +125,7 @@ def toggle():
 - **Class form (route entry)** — `Cls.render(*args)`: auto-`load()`s the primary, renders it as the HTMX main-target response, then appends OOB swaps for every *other* mounted reactive region whose `react` keys intersect the pending `@mutates` keys. **Only the primary is excluded** from OOB; the trigger region is not — a clicked region that depends on the dirtied keys updates itself OOB like any other dependent (e.g. a "Clear completed (N)" button refreshing its own count). `X-PJX-Trigger` is client-only (loading indicators); the server OOB walk reads the mounted manifest, never the trigger header.
 - **Instance form** — `instance.render()`: plain render of an already-built instance, no re-`load()`.
 
-Wire `setup(app, ...)` so `ClientBackend` is active — mutation routes need no `mounted`/`client` kwargs. `pjx.js` sends `X-PJX-Mounted`, `X-PJX-Assets`, and `X-PJX-Trigger` on every HTMX request. `oob_swaps(dirtied, mounted)` is exported for tests/advanced use.
+Wire `setup(app, ...)` so the framework adapter (e.g. FastAPI) is installed as middleware — mutation routes need no `mounted`/`client` kwargs. `pjx.js` sends `X-PJX-Mounted`, `X-PJX-Assets`, and `X-PJX-Trigger` on every HTMX request. `oob_swaps(candidates)` is exported for tests/advanced use.
 
 ### Instance-keyed regions (rows)
 
@@ -149,7 +151,7 @@ Set an explicit `id` in `load()` for stable DOM targets; templates use the key f
 
 ### Client runtime & cache
 
-- Root full-page renders auto-inject `pjx.js` unless the request already carries `X-PJX-Mounted`. For a raw Jinja shell, call `client_script()` Python-side and pass it into the template context (e.g. `{"pjx_runtime": client_script()}`), then render with `{{ pjx_runtime }}` in `<head>` or `<body>`.
+- Root full-page renders auto-inject `pjx.js` unless the request already carries `X-PJX-Mounted`. For a raw Jinja shell, call `read_pjx_runtime()` (from `pyjinhx.client`) Python-side and pass it into the template context (e.g. `{"pjx_runtime": read_pjx_runtime()}`), then render with `{{ pjx_runtime }}` in `<head>` or `<body>`.
 - **Loading indicators:** `data-pjx-loading="skeleton"` (or `"spinner"`) on any element inside a reactive root template flags it (matched via the enclosing reactive root) while an in-flight request dirties keys the region reacts to, until the swap lands. A trigger may add `data-pjx-loading-extra="<css-selector>"` to also flag regions a bulk action will touch. Style via `--pjx-*` CSS vars (`--pjx-skeleton-color`, `--pjx-spinner-color`, …).
 - Every `load()` is memoized in `LoadCache`, one entry per `(type, key)`. Scope follows the backend: per-request with no `invalidation_backend`; pass `setup(invalidation_backend=...)` (e.g. Redis) for process-wide caching plus eviction fan-out across workers.
 
@@ -168,9 +170,9 @@ Full reference (props, classes, `--pjx-*` tokens, JS helpers per component): [Co
 
 ## Registry & configuration
 
-Components auto-register on definition (classes) and instantiation (instances) under the composite key `ClassName_id`, so different types can share an ID. In web apps isolate per request with `with Registry.request_scope(): ...` — `setup(app)` already wires this as middleware, or wrap requests yourself.
+Components auto-register on definition (classes) and instantiation (instances) under the composite key `ClassName_id`, so different types can share an ID. In web apps isolate per request with `from pyjinhx.session import request_scope; with request_scope(): ...` — `setup(app)` already wires this as middleware, or wrap requests yourself.
 
-Set the template root with `Renderer.set_default_environment(...)` — accepts a path string (`"./components"`) or a `jinja2.Environment`.
+Set the components/template root via `setup(components_root="./components")` (or `PjxSettings(components_root=...)`); see [Configuration](../guide/configuration.md) for the full settings surface.
 
 Keep each component's `.py`, template, and optional assets together, e.g. `components/ui/button.{py,html,js,css}`.
 
@@ -179,21 +181,29 @@ Keep each component's `.py`, template, and optional assets together, e.g. `compo
 ```python
 from pyjinhx import (
     BaseComponent,      # base class for all components
-    ReactiveComponent,  # react={...} + load(); Cls.render(*args) is the route entry point
-    Renderer, Registry,
     Slot,               # field type for raw-HTML/icon/component values (opt out of escaping)
-    PjxKey,             # Annotated[..., PjxKey()] marker for keyed regions
-    mutates,            # decorator on store methods; state keys only
-    setup,              # wires FastAPI middleware (request_scope, ClientBackend, PjxContext)
+    Children,           # tag inner content field type
+    component,          # classless-component decorator
+    ReactiveComponent,  # react={...} + load(); Cls.render(*args) is the route entry point
+    render,             # free-function render(component, session=None) -> str
+    RenderSession,       # per-request render state
+    setup,               # process config + optional framework middleware wiring
+    PjxContext,          # read-only per-request context (session, dirtied keys, load context)
+    mutates,             # decorator on store methods; state keys only
+    dirty,               # mark MutationKey members dirty outside a @mutates call
+    MutationKey,         # base class for declaring your own reactive keys
+    reactive_key,        # helper for defining MutationKey members
+    PjxKey,              # Annotated[..., PjxKey()] marker for keyed regions
+    AppContext,          # app-level context container
+    PjxSettings,         # process settings (components_root, static_root, ...)
+    AssetMode,           # INLINE / LINK / NONE asset delivery modes
 )
 # advanced/internal building blocks live in submodules:
-from pyjinhx.finder import Finder        # asset/template discovery
-from pyjinhx.utils import detect_root_directory  # locate project root
-from pyjinhx.tags import Parser, Tag     # HTML parsing internals (rarely needed)
-from pyjinhx.cache import LoadCache      # LoadCache.invalidate — manual cache eviction
-from pyjinhx.reactive import oob_swaps   # manual OOB walk (tests/advanced)
-from pyjinhx.client import PJX_MOUNTED_HEADER, PJX_TRIGGER_HEADER, client_script
-import pyjinhx.builtins                  # optional: registers all builtin classes
+from pyjinhx.assets import all_assets           # (css_paths, js_paths) for every registered class
+from pyjinhx.session import request_scope       # per-request isolation context manager
+from pyjinhx.reactive.fanout import oob_swaps   # manual OOB walk (tests/advanced)
+from pyjinhx.client.inject import PJX_MOUNTED_HEADER, PJX_TRIGGER_HEADER
+import pyjinhx.builtins                         # optional: registers all builtin classes
 ```
 ````
 
