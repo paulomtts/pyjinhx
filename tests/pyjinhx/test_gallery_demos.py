@@ -98,6 +98,28 @@ def test_multi_component_demo_emits_each_asset_once(tmp_path):
     assert page.count("<style>") == len(set(PJXSpinner.__pjx_descriptor__.css_paths))
 
 
+def test_base_css_link_survives_and_output_is_stable(tmp_path):
+    import itertools
+
+    import pyjinhx.component as component_mod
+
+    first = tmp_path / "a"
+    second = tmp_path / "b"
+    # auto_id draws from a process-wide counter, so it must be rewound
+    # between the two builds here to imitate two separate `mkdocs build`
+    # processes, each starting fresh — otherwise the second build's ids
+    # would trail the first's by however many components got rendered,
+    # which is a test-harness artifact, not the nondeterminism this guards.
+    component_mod._auto_id_counter = itertools.count(1)
+    hooks.on_post_build({"site_dir": str(first)})
+    component_mod._auto_id_counter = itertools.count(1)
+    hooks.on_post_build({"site_dir": str(second)})
+    page_a = (first / "demos" / "pjx-button.html").read_text()
+    page_b = (second / "demos" / "pjx-button.html").read_text()
+    assert '<link rel="stylesheet" href="demo-base.css">' in page_a
+    assert page_a == page_b
+
+
 def test_gallery_page_features_every_demo():
     """components.md must feature every builtin that has a demo (DEMOS key).
 
