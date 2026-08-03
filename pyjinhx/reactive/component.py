@@ -97,7 +97,9 @@ class ReactiveComponent(BaseComponent):
             return
         real_load, is_classmethod = _unwrap_load(cls)
         _validate_load_is_classmethod(cls, real_load, is_classmethod)
-        cls.load = classmethod(_wrap_load(cls, real_load))  # pyright: ignore[reportAttributeAccessIssue]
+        context_param = resolve_load_context_param(real_load)
+        _validate_load_params(cls, real_load, context_param)
+        cls.load = classmethod(_wrap_load(cls, real_load, context_param))  # pyright: ignore[reportAttributeAccessIssue]
 
 
 class PjxKey:
@@ -218,8 +220,59 @@ def _validate_load_is_classmethod(cls: type[Any], func: Callable[..., Any], is_c
         )
 
 
+def _load_value_params(func: Callable[..., Any], context_param: str | None) -> list[str]:
+    """``load``'s parameters minus ``cls`` and the app-context one.
+
+    Uses ``inspect.signature`` and never ``get_type_hints``: this runs while the
+    class is still being built, where a self-referencing return annotation is an
+    unresolvable forward ref (#713).
+    """
+    names = [name for name in inspect.signature(func).parameters if name != "cls"]
+    if context_param is not None and context_param in names:
+        names.remove(context_param)
+    return names
+
+
+def _validate_load_params(
+    cls: type[Any], func: Callable[..., Any], context_param: str | None
+) -> None:
+    """Check ``load``'s parameters against the class's PjxKey field names.
+
+    Strict by default: the parameter list must be exactly the key fields. Under
+    ``extra="allow"`` the key fields are a required minimum only — anything
+    beyond them is the class's own protocol, so it is not checked.
+
+    Raises:
+        TypeError: The parameters do not satisfy the class's key fields.
+    """
+    expected = pjx_key_field_names(cls)
+    given = _load_value_params(func, context_param)
+    if cls.model_config.get("extra") == "allow":
+        missing = [name for name in expected if name not in given]
+        if missing:
+            raise TypeError(
+                f"{cls.__name__}.load must accept its PjxKey field(s) {missing!r}; "
+                f"it declares {given!r}."
+            )
+        return
+    if not expected:
+        if given:
+            raise TypeError(
+                f"{cls.__name__} declares no PjxKey field, so load() must take no "
+                f"parameters beyond cls; it declares {given!r}."
+            )
+        return
+    if given != expected:
+        extra = [name for name in given if name not in expected]
+        missing = [name for name in expected if name not in given]
+        raise TypeError(
+            f"{cls.__name__}.load parameters must be exactly its PjxKey fields "
+            f"{expected!r}; got {given!r} (missing {missing!r}, extra {extra!r})."
+        )
+
+
 def _wrap_load(
-    cls: type["ReactiveComponent"], real_load: Callable[..., Any]
+    cls: type["ReactiveComponent"], real_load: Callable[..., Any], context_param: str | None
 ) -> Callable[[Any], Any]:
     """Build the memoizing wrapper around one class's ``load``.
 
@@ -228,14 +281,12 @@ def _wrap_load(
     request scope the cache reads miss and the writes vanish, so the real body
     simply runs every time - no special case is needed here for that.
 
-    The app-context parameter, if the signature declares one, is resolved here
-    too and closed over: signature introspection is a per-class fact, and doing
-    it on every load() would put it on the hot render path.
-
-    Raises:
-        TypeError: ``load`` declares more than one app-context parameter.
+    Args:
+        cls: The subclass being defined.
+        real_load: The undecorated function behind ``load``.
+        context_param: The app-context parameter's name, pre-resolved by the
+            caller so this stays a pure per-call cache dance.
     """
-    context_param = resolve_load_context_param(real_load)
 
     def wrapped_load(self: Any) -> Any:
         # An unmarked class has no per-instance key, so all its instances keep
