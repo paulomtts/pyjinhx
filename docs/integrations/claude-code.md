@@ -164,7 +164,7 @@ Set an explicit `id` in `load()` for stable DOM targets; templates use the key f
 
 - Root full-page renders auto-inject `pjx.js` unless the request already carries `X-PJX-Mounted`. For a raw Jinja shell, call `read_pjx_runtime()` (from `pyjinhx.client`) Python-side and pass it into the template context (e.g. `{"pjx_runtime": read_pjx_runtime()}`), then render with `{{ pjx_runtime }}` in `<head>` or `<body>`.
 - **Loading indicators:** `data-pjx-loading="skeleton"` (or `"spinner"`) on any element inside a reactive root template flags it (matched via the enclosing reactive root) while an in-flight request dirties keys the region reacts to, until the swap lands. A trigger may add `data-pjx-loading-extra="<css-selector>"` to also flag regions a bulk action will touch. Style via `--pjx-*` CSS vars (`--pjx-skeleton-color`, `--pjx-spinner-color`, …).
-- Every `load()` is memoized in `LoadCache`, one entry per `(type, key)`. Scope follows the backend: per-request with no `invalidation_backend`; pass `setup(invalidation_backend=...)` (e.g. Redis) for process-wide caching plus eviction fan-out across workers.
+- Every `load()` is memoized in `LoadCache`, one entry per `(type, key)`. The cache is scoped to the enclosing `request_scope()` — each request gets a fresh store and it is discarded when the scope exits. There is no process-wide or cross-worker cache backend.
 
 Full guide: [docs/reactivity.md](../reactivity.md).
 
