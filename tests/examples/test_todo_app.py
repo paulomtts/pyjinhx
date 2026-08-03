@@ -87,3 +87,29 @@ class TestToggle:
 
     def test_an_unknown_id_is_a_404(self, client):
         assert client.post("/rows/9999/toggle").status_code == 404
+
+
+class TestClearCompleted:
+    def test_drops_completed_and_keeps_the_rest(self, client):
+        todos = todo_store.all_todos()
+        client.post(f"/rows/{todos[0].id}/toggle")
+
+        response = client.post("/todos/clear-completed")
+
+        assert response.status_code == 200
+        assert [todo.text for todo in todo_store.all_todos()] == [
+            "Ship reactivity",
+            "Touch grass",
+        ]
+
+    def test_an_oob_only_response_tells_htmx_not_to_swap_the_primary(self, client):
+        client.post(f"/rows/{todo_store.all_todos()[0].id}/toggle")
+
+        response = client.post("/todos/clear-completed")
+
+        assert response.headers["hx-reswap"] == "none"
+
+    def test_nothing_completed_is_a_no_op(self, client):
+        client.post("/todos/clear-completed")
+
+        assert todo_store.total() == 3
