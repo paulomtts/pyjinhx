@@ -37,7 +37,7 @@ walking your template tree (see [Configuration](configuration.md)). For per-requ
 in a web app, see [Component Registry](registry.md) (Advanced).
 
 !!! warning "Recognized tag names are strict PascalCase"
-    A tag is treated as a component only if its name matches `^[A-Z](?:[a-z]+(?:[A-Z][a-z]+)*)?$` — a capital letter followed by alternating lowercase/Capitalized words. This **rejects acronyms and trailing digits**: `UI`, `APIKey`, `HTMLBlock`, `Button2`, and `H2` are NOT recognized and pass through as raw HTML. Name components like `Api`, `ApiKey`, or `HtmlBlock` instead.
+    A tag is treated as a component only if its name matches `^[A-Z](?=[A-Za-z0-9]*[a-z])[A-Za-z0-9]*$` — it must start with a capital letter and contain at least one lowercase letter somewhere after it. This **rejects all-caps names**: `UI`, `H2`, and `ID` are NOT recognized and pass through as raw HTML. Names like `APIKey`, `HTMLBlock`, and `Button2` ARE recognized — the lowercase letters later in the name are enough to satisfy the pattern.
 
 ## Attributes
 
@@ -95,18 +95,13 @@ Inner content of a tag becomes the `{{ content }}` template variable:
 
 ## Template Auto-Discovery
 
-PascalCase tag names are converted to candidate template filenames in this order:
+A PascalCase tag maps to exactly one candidate filename: its `snake_case` name with a
+`.pjx` extension. For example, `<ActionButton/>` resolves to `action_button.pjx`.
 
-1. `snake_case.pjx`
-2. `kebab-case.pjx`
-3. `snake_case.html`
-4. `kebab-case.html`
-5. `snake_case.jinja`
-6. `kebab-case.jinja`
-
-For example, `<ActionButton/>` searches for: `action_button.pjx`, `action-button.pjx`, `action_button.html`, `action-button.html`, `action_button.jinja`, `action-button.jinja`.
-
-Templates are searched under the root directory of your Jinja `FileSystemLoader` (see [Configuration](configuration.md)).
+For an imported class, that file lives next to the module that defines it. For classes
+discovered by `setup(components_root=...)`, the file is found by walking the
+`components_root` tree for `.pjx` files whose stem is a valid snake_case name (see
+[Configuration](configuration.md)).
 
 ## Component Resolution
 
