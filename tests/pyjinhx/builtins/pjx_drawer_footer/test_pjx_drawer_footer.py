@@ -51,9 +51,8 @@ def test_component_content_renders_nested(drawer_footer_session):
     assert '<hr id="d"' in html
 
 
-def test_string_content_renders_escaped_inside_root(drawer_footer_session):
-    """Golden drawer_footer.html's raw <button> markup now arrives escaped."""
+def test_string_content_renders_raw_inside_root(drawer_footer_session):
+    """ADR 0003: golden drawer_footer.html's raw <button> markup stays raw (Slot exemption)."""
     html = _html(drawer_footer_session, content="<button>Save</button>")
     assert html.count("<footer") == 1
-    assert "&lt;button&gt;Save&lt;/button&gt;" in html
-    assert "<button>Save</button>" not in html
+    assert "<button>Save</button>" in html

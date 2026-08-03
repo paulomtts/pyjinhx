@@ -1,10 +1,10 @@
 """Cheap CI guard: the v0.36 and v2 bench pages must reference the same components.
 
 Not timing-sensitive — no rendering happens here, only manifest comparison,
-except for `test_v2_table_cell_content_is_pinned_as_escaped_not_a_bug_to_fix_here`
-below, which does render (a single small table) to pin a known, out-of-scope
-str-Slot-escaping gap (see bench_builtin_heavy's module docstring) so a
-future accidental fix to the renderer doesn't slip by unnoticed here.
+except for `test_v2_table_cell_content_stays_raw_html` below, which does
+render (a single small table) to pin the fixed str-Slot behavior (see
+bench_builtin_heavy's module docstring) — #686 restored ADR 0003's
+raw-HTML-capable Slot invariant, so this now matches v0's rendering.
 """
 
 import pkgutil
@@ -69,19 +69,15 @@ def _v2_registry() -> None:
     build_registry("pyjinhx/builtins", found)
 
 
-def test_v2_table_cell_content_is_pinned_as_escaped_not_a_bug_to_fix_here() -> None:
-    """v2's table cell renders its raw-HTML Slot value escaped, unlike v0.
+def test_v2_table_cell_content_stays_raw_html() -> None:
+    """v2's table cell renders its raw-HTML Slot value raw, matching v0.
 
-    v0's equivalent page (`build_v0_table`) renders a live `<input>` element
-    inside this cell; v2 escapes the same markup string to inert text — a
-    pre-existing, out-of-scope-for-#537 str-Slot-escaping gap (see
-    bench_builtin_heavy's module docstring). Pinned as observed, same as
-    `test_a_string_slot_beside_a_component_slot_stays_raw_html` in
-    test_slot_semantics_matrix.py, rather than "fixed" here: wrapping the
-    value in `markupsafe.Markup` does not survive pydantic's plain-`str`
-    coercion on the Slot field, so there is no fixture-only fix available.
+    #686 restored ADR 0003's invariant that a plain-`str` Slot value is
+    raw-HTML-capable: `_wrap_slot_value` now wraps it in `markupsafe.Markup`
+    after retrieval, so pydantic's plain-`str` coercion on assignment (which
+    strips `Markup`'s `__html__` protocol) is no longer in the way.
     """
     _v2_registry()
     html = v2_render(build_v2_table(rows=1), RenderSession(template_dir="/"))
-    assert "&lt;input" in html
-    assert '<input type="text" value="v0"/>' not in html
+    assert '<input type="text" value="v0"/>' in html
+    assert "&lt;input" not in html

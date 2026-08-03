@@ -34,10 +34,10 @@ def test_empty_class_name_adds_nothing(content_session):
     assert 'class="pjx-accordion__content"' in _html(content_session, class_name="")
 
 
-def test_string_content_renders_escaped_inside_root(content_session):
+def test_string_content_renders_raw_inside_root(content_session):
+    # ADR 0003: a plain str in a Slot is authored markup, not escaped.
     html = _html(content_session, content="<p>raw</p>")
-    assert "&lt;p&gt;raw&lt;/p&gt;" in html
-    assert "<p>raw</p>" not in html
+    assert "<p>raw</p>" in html
 
 
 class ContentChild(BaseComponent):

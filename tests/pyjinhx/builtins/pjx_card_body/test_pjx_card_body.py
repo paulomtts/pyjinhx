@@ -27,11 +27,11 @@ def test_default_render_is_single_empty_div(card_body_session):
     assert _html(card_body_session) == '<div id="b" class="pjx-card__body"></div>'
 
 
-def test_string_content_renders_escaped_inside_root(card_body_session):
+def test_string_content_renders_raw_inside_root(card_body_session):
+    # ADR 0003: a plain str in a Slot is authored markup, not escaped.
     html = _html(card_body_session, content="<p>hi</p>")
     assert html.count("<div") == 1
-    assert "&lt;p&gt;hi&lt;/p&gt;" in html
-    assert "<p>hi</p>" not in html
+    assert "<p>hi</p>" in html
 
 
 def test_component_content_renders_nested(card_body_session):

@@ -194,7 +194,8 @@ def render_level(
         warn_stale_def_header(component.__class__)
 
     # Phase 2: Context build — component-valued slots arrive as ComponentNode,
-    # string-valued slots stay plain strings.
+    # string-valued slots arrive as Markup so authored markup survives
+    # autoescape.
     context = build_context(component, descriptor)
 
     # Phase 3: Jinja render with autoescape ON

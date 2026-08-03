@@ -19,6 +19,7 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, Any, ClassVar, Union, get_args, get_origin
 
+from markupsafe import Markup
 from pydantic import (
     AfterValidator,
     BaseModel,
@@ -497,6 +498,11 @@ class BaseComponent(BaseModel):
             value = getattr(self, name)
             if isinstance(value, BaseComponent):
                 props[name] = value
+            elif isinstance(value, str) and _is_slot_field(type(self), name):
+                # `.props.x` is the sanctioned read of a child's own values, so
+                # it must hand back the same raw-markup string the render
+                # context would; a non-slot str stays escapable.
+                props[name] = Markup(value)
             elif isinstance(value, list):
                 props[name] = list(value)
             elif isinstance(value, dict):

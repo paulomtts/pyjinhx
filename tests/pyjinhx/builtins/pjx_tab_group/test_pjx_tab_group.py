@@ -33,12 +33,11 @@ def test_empty_class_name_adds_nothing(tab_group_session):
     assert 'class="pjx-tab-group"' in _html(tab_group_session, class_name="")
 
 
-def test_string_content_renders_escaped_inside_root(tab_group_session):
-    """v2 narrowing of v0.x: a plain str in a Slot is escaped; only components emit markup."""
+def test_string_content_renders_raw_inside_root(tab_group_session):
+    """ADR 0003: a plain str in a Slot is authored markup, not escaped."""
     html = _html(tab_group_session, content="<p>raw</p>")
     assert html.count("<div") == 1
-    assert "&lt;p&gt;raw&lt;/p&gt;" in html
-    assert "<p>raw</p>" not in html
+    assert "<p>raw</p>" in html
 
 
 def test_undeclared_field_is_rejected(tab_group_session):

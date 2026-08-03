@@ -435,3 +435,59 @@ class TestPropsRegressions:
         assert nested.component is leaf
         with pytest.raises(TypeError, match=r"slot 'content\.props\.inner'"):
             str(nested)
+
+
+class TestStringSlotThroughProps:
+    """The `.props` escape hatch must not re-escape a slot's authored markup."""
+
+    def test_a_string_slot_field_comes_back_as_markup(self):
+        from markupsafe import Markup
+
+        class Card(BaseComponent):
+            body: Slot = ""
+
+        props = Card(body="<b>hi</b>").pjx_props()
+
+        assert isinstance(props["body"], Markup)
+        assert props["body"] == "<b>hi</b>"
+
+    def test_a_string_children_field_comes_back_as_markup(self):
+        from markupsafe import Markup
+
+        class Card(BaseComponent):
+            body: Children = ""
+
+        assert isinstance(Card(body="<b>hi</b>").pjx_props()["body"], Markup)
+
+    def test_a_non_slot_string_field_stays_a_plain_str(self):
+        from markupsafe import Markup
+
+        class Card(BaseComponent):
+            label: str = ""
+
+        value = Card(label="<b>hi</b>").pjx_props()["label"]
+
+        assert not isinstance(value, Markup)
+        assert value == "<b>hi</b>"
+
+    def test_props_reads_the_string_slot_unescaped_through_a_node(self):
+        from pyjinhx.render_context import build_context
+
+        class Inner(BaseComponent):
+            body: Slot = ""
+
+        Inner.__pjx_descriptor__ = descriptor("slot_leaf.html", frozenset({"body"}))
+
+        class Card(BaseComponent):
+            content: Slot = ""
+
+        Card.__pjx_descriptor__ = descriptor(
+            "nest_content.html", frozenset({"content"})
+        )
+
+        card = Card(content=Inner(body="<b>hi</b>"))
+        context = build_context(card, Card.__pjx_descriptor__)
+
+        body = context["content"].props.body
+        assert body == "<b>hi</b>"
+        assert body.__html__() == "<b>hi</b>"  # pyright: ignore[reportAttributeAccessIssue]

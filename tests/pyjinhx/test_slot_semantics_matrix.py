@@ -113,18 +113,14 @@ class TestTruthinessWithInterpolation:
         assert "pjx-slot-" not in output
 
     def test_a_string_slot_beside_a_component_slot_stays_raw_html(self):
-        # Production gap, not a fixture bug: ADR 0003 constraint 2 says
-        # plain-string Slot fields stay raw-HTML-capable, but with
-        # autoescape ON (shipped after #367-#372) a bare string slot value
-        # is escaped like any other Jinja variable — nothing in the render
-        # pipeline currently marks Slot-typed strings as Markup. Pinned as
-        # observed; flagged for follow-up rather than patched here.
+        # ADR 0003 constraint 2: plain-string Slot fields stay raw-HTML-capable.
+        # Fixed by wrapping str slot values in Markup (see _wrap_slot_value).
         Card = self.card("slot_mixed_kinds.html", frozenset({"content", "note"}))
 
         output = render(Card(content=Leaf(text="c"), note="<em>raw</em>"), session())
 
         assert output == (
-            '<div class="card"><span class="leaf">c</span>&lt;em&gt;raw&lt;/em&gt;</div>'
+            '<div class="card"><span class="leaf">c</span><em>raw</em></div>'
         )
 
     def test_a_string_slot_is_not_wrapped_in_a_component_node(self):
@@ -410,7 +406,9 @@ class TestCollectionsMatrix:
 
         value = build_context(Card(content=[a, b]), Card.__pjx_descriptor__)["content"]
 
-        assert type(value) is list
+        # A list subclass (so bare `{{ content }}` also composes markup), but
+        # an ordinary list for every purpose a template or test cares about.
+        assert isinstance(value, list)
         assert [type(v) for v in value] == [ComponentNode, ComponentNode]
         assert {v.field_name for v in value} == {"content"}
         assert [v.component for v in value] == [a, b]
@@ -630,3 +628,39 @@ class TestCrossRenderIsolation:
 
         assert first == second == '<div class="card"><span class="leaf">a</span></div>'
         assert "pjx-slot-" not in first + second
+
+
+class TestStringSlotStaysRawHtml:
+    """ADR 0003: a Slot field holding a plain string is raw-HTML-capable."""
+
+    def card(self):
+        class Card(BaseComponent):
+            content: Slot = ""
+
+        Card.__pjx_descriptor__ = descriptor(
+            "nest_content.html", frozenset({"content"})
+        )
+        return Card
+
+    def test_a_string_slot_renders_unescaped_through_render(self):
+        card = self.card()(content="<b>hi</b>")
+
+        assert render(card, session()) == '<div class="card"><b>hi</b></div>'
+
+    def test_a_string_slot_is_markup_in_the_built_context(self):
+        from markupsafe import Markup
+
+        card = self.card()(content="<b>hi</b>")
+
+        context = build_context(card, type(card).__pjx_descriptor__)
+
+        assert isinstance(context["content"], Markup)
+        assert context["content"] == "<b>hi</b>"
+
+    def test_an_empty_string_slot_still_renders_empty(self):
+        assert render(self.card()(content=""), session()) == '<div class="card"></div>'
+
+    def test_a_string_slot_interpolated_bare_is_not_escaped(self):
+        card = self.card()(content="<i>x</i>")
+
+        assert render_expr("{{ content }}", card) == "<i>x</i>"

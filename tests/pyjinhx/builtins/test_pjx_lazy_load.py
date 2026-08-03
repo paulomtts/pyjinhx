@@ -80,13 +80,10 @@ class TestRender:
         assert 'hx-swap="innerHTML"' in _html(session, swap="innerHTML")
 
     def test_string_content_renders_inside_the_root(self, session):
-        # pyjinhx's Slot exemption (unlike v0.x's) only makes BaseComponent
-        # values render raw via ComponentNode; a plain str in a Slot field
-        # still goes through Jinja's autoescape — verified against
-        # tests/pyjinhx/builtins/test_pjx_table_cell.py::test_string_content_is_escaped
-        # and by direct reproduction against build_context/render_level.
+        # ADR 0003: a plain str in a Slot field is authored markup, so it
+        # stays raw through render.
         assert _html(session, content="Loading&hellip;").endswith(
-            "Loading&amp;hellip;</div>"
+            "Loading&hellip;</div>"
         )
 
     def test_component_content_renders_inside_the_root(self, session):
@@ -119,13 +116,10 @@ class TestErrorAffordance:
         html = _html(session, error_text="Could not load comments")
         assert 'data-pjx-error-text="Could not load comments"' in html
 
-    def test_error_string_is_escaped_inside_the_template(self, session):
-        # A plain string in a Slot field still autoescapes in pyjinhx (only
-        # BaseComponent values render raw) — see the TestRender note above.
+    def test_error_string_renders_raw_inside_the_template(self, session):
+        # ADR 0003: a plain string in a Slot field is authored markup.
         html = _html(session, error="<p>Boom</p>")
-        assert (
-            "<template data-pjx-lazy-error>&lt;p&gt;Boom&lt;/p&gt;</template>" in html
-        )
+        assert "<template data-pjx-lazy-error><p>Boom</p></template>" in html
 
     def test_error_component_renders_raw_inside_the_template(self, session):
         from pyjinhx.builtins.ui.pjx_badge import PJXBadge
