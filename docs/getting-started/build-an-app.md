@@ -400,14 +400,14 @@ Route (the `TodoItemRow` it renders is the instance-keyed row **we define in Ste
 @app.post("/rows/{todo_id}/toggle", response_class=HTMLResponse)
 def toggle_row(todo_id: int):
     store.toggle(todo_id)
-    return TodoItemRow(todo_id=todo_id).render()
+    return TodoItemRow.load(todo_id).render()
 ```
 
 ???+ question "Why @mutates and IntegrationBackend?"
     - **`@mutates`** — after a store change, invalidate the `load()` cache and accumulate pending state keys for the next reactive `render()`.
     - **`IntegrationBackend`** (`FastAPIBackend`, wired via `setup()`) — supplies `X-PJX-Mounted`, `X-PJX-Trigger`, and `X-PJX-Assets` so OOB swaps run without framework kwargs on `render()`.
 
-    `render()` auto-calls the instance's `load()` right before it renders — routes construct the instance and call `render()`, never `load()` directly.
+    `render()` auto-calls the instance's `load()` right before it renders on mount — but for keyed components like `TodoItemRow`, routes call `load(key)` themselves to build the instance, then call `render()`.
 
 ---
 
