@@ -1,357 +1,597 @@
 """Shared "builtin-heavy page" used by scripts/bench_v0_vs_v2.py (issue #537).
 
-One composition covering all five L4 builtin families, expressed twice —
-once against pyjinhx v0.36.4 tags, once against pyjinhx2 tags — so the two
-renderers are timed on the same page. Both packages happen to spell every
-shared builtin's tag identically (PascalCase class name, e.g. ``PJXTable``),
-so ``TAGS`` maps every logical name to the *same* string on both sides today;
-the mapping still exists so a future rename during the port stays visible in
-one place instead of silently skewing the bench.
+One composition covering all five L4 builtin families, expressed twice — once
+against pyjinhx v0.36.4, once against pyjinhx2 — so the two renderers are
+timed on the same logical page.
 
 Excluded builtins (present in v0.36.4 but not ported to v2, so dropped from
-BOTH sides to keep the comparison 1:1 — confirmed via
-``diff <(ls pyjinhx/builtins/ui) <(ls pyjinhx2/builtins/ui)`` against the
-v0.36.4 tag, issue #537 Task 0): see EXCLUDED_FROM_BOTH below.
+BOTH sides to keep the comparison 1:1 — confirmed via a v0.36.4-tag vs
+pyjinhx2/builtins/ui diff, issue #537 Task 0): PJXConfirmDialog,
+PJXPromptDialog. v2 also splits PJXPopover into a trigger/panel pair that
+v0.36.4 does not have; this fixture uses only the bare, self-closing
+PJXPopover root on both sides.
 
-v2 also splits ``PJXPopover`` into a trigger/panel pair
-(``PJXPopoverTrigger``/``PJXPopoverPanel``) that v0.36.4 does not have; this
-fixture uses only the bare, self-closing ``PJXPopover`` root on both sides so
-the page stays expressible identically without inventing v0-side children
-that were never ported.
+**Why the two sides are built differently (deviation from the plan's original
+single-markup-string design):** v0.36 (`pyjinhx.Renderer.render(source: str)`)
+expands PascalCase tags recursively at any nesting depth from one markup
+string — a flat string works for the whole page. pyjinhx2's tag scanner
+(`segments.VerbatimParser`) deliberately cuts only the *outermost* open
+component tag per parse and leaves what is nested inside it verbatim "for a
+later level's parse to deal with" (see `segments.py`); that later level's
+parse only sees the nested tags if the string carrying them survives into the
+child's own template unescaped. As verified with a throwaway two-line
+repro (`<PJXCard><PJXCardBody>...` one level deep, run outside this fixture
+during Task 3's exploration) plain `str`-typed Slot content does *not* survive
+Jinja's `autoescape=True` unescaped, so a markup string nested more than one
+custom tag deep silently renders as escaped text on the v2 side — a
+pre-existing renderer gap, not something #537 is scoped to fix (its
+non-goals explicitly rule out changing either renderer to fix a finding).
+So: `build_v0_page`/`build_v0_table`/`build_v0_shells` return **markup
+strings** (v0's native shape); `build_v2_page`/`build_v2_table`/
+`build_v2_shells` return a **component instance tree** built by nesting real
+`pyjinhx2.builtins` classes directly in Python — the shape v2's own test
+suite (e.g. `test_family_composed_shells_sweep.py`) uses for multi-level
+composition, and the one that actually renders every builtin instead of
+escaping it into inert text.
 """
+
+from pyjinhx2.builtins.pjx_lazy_load import PJXLazyLoad
+from pyjinhx2.builtins.pjx_page_loader import PJXPageLoader
+from pyjinhx2.builtins.pjx_paginator import PJXPaginator
+from pyjinhx2.builtins.pjx_region_loader import PJXRegionLoader
+from pyjinhx2.builtins.pjx_table import PJXTable
+from pyjinhx2.builtins.pjx_table_body import PJXTableBody
+from pyjinhx2.builtins.pjx_table_cell import PJXTableCell
+from pyjinhx2.builtins.pjx_table_head import PJXTableHead
+from pyjinhx2.builtins.pjx_table_header_cell import PJXTableHeaderCell
+from pyjinhx2.builtins.pjx_table_row import PJXTableRow
+from pyjinhx2.builtins.ui.pjx_accordion import PJXAccordion
+from pyjinhx2.builtins.ui.pjx_accordion_content import PJXAccordionContent
+from pyjinhx2.builtins.ui.pjx_accordion_group import PJXAccordionGroup
+from pyjinhx2.builtins.ui.pjx_accordion_trigger import PJXAccordionTrigger
+from pyjinhx2.builtins.ui.pjx_alert import PJXAlert
+from pyjinhx2.builtins.ui.pjx_avatar import PJXAvatar
+from pyjinhx2.builtins.ui.pjx_avatar_stack import PJXAvatarStack
+from pyjinhx2.builtins.ui.pjx_badge import PJXBadge
+from pyjinhx2.builtins.ui.pjx_breadcrumb import PJXBreadcrumb
+from pyjinhx2.builtins.ui.pjx_button import PJXButton
+from pyjinhx2.builtins.ui.pjx_card import PJXCard
+from pyjinhx2.builtins.ui.pjx_card_body import PJXCardBody
+from pyjinhx2.builtins.ui.pjx_card_footer import PJXCardFooter
+from pyjinhx2.builtins.ui.pjx_card_header import PJXCardHeader
+from pyjinhx2.builtins.ui.pjx_carousel import PJXCarousel
+from pyjinhx2.builtins.ui.pjx_carousel_slide import PJXCarouselSlide
+from pyjinhx2.builtins.ui.pjx_chip_input import PJXChipInput
+from pyjinhx2.builtins.ui.pjx_divider import PJXDivider
+from pyjinhx2.builtins.ui.pjx_drawer import PJXDrawer
+from pyjinhx2.builtins.ui.pjx_drawer_body import PJXDrawerBody
+from pyjinhx2.builtins.ui.pjx_drawer_footer import PJXDrawerFooter
+from pyjinhx2.builtins.ui.pjx_drawer_header import PJXDrawerHeader
+from pyjinhx2.builtins.ui.pjx_dropdown import PJXDropdown
+from pyjinhx2.builtins.ui.pjx_form_field import PJXFormField
+from pyjinhx2.builtins.ui.pjx_icon import PJXIcon
+from pyjinhx2.builtins.ui.pjx_modal import PJXModal
+from pyjinhx2.builtins.ui.pjx_modal_body import PJXModalBody
+from pyjinhx2.builtins.ui.pjx_modal_footer import PJXModalFooter
+from pyjinhx2.builtins.ui.pjx_modal_header import PJXModalHeader
+from pyjinhx2.builtins.ui.pjx_notification import PJXNotification
+from pyjinhx2.builtins.ui.pjx_password_input import PJXPasswordInput
+from pyjinhx2.builtins.ui.pjx_popover import PJXPopover
+from pyjinhx2.builtins.ui.pjx_progress import PJXProgress
+from pyjinhx2.builtins.ui.pjx_resizable_group import PJXResizableGroup
+from pyjinhx2.builtins.ui.pjx_resizable_handle import PJXResizableHandle
+from pyjinhx2.builtins.ui.pjx_resizable_panel import PJXResizablePanel
+from pyjinhx2.builtins.ui.pjx_segmented_control import PJXSegmentedControl
+from pyjinhx2.builtins.ui.pjx_skeleton import PJXSkeleton
+from pyjinhx2.builtins.ui.pjx_spinner import PJXSpinner
+from pyjinhx2.builtins.ui.pjx_tab import PJXTab
+from pyjinhx2.builtins.ui.pjx_tab_group import PJXTabGroup
+from pyjinhx2.builtins.ui.pjx_tab_list import PJXTabList
+from pyjinhx2.builtins.ui.pjx_tab_panel import PJXTabPanel
+from pyjinhx2.builtins.ui.pjx_toast_host import PJXToastHost
+from pyjinhx2.builtins.ui.pjx_toggle_switch import PJXToggleSwitch
+from pyjinhx2.builtins.ui.pjx_tooltip import PJXTooltip
+from pyjinhx2.builtins.ui.pjx_tooltip_content import PJXTooltipContent
+from pyjinhx2.builtins.ui.pjx_tooltip_trigger import PJXTooltipTrigger
+from pyjinhx2.component import BaseComponent, Slot
 
 EXCLUDED_FROM_BOTH = (
     "PJXConfirmDialog",
     "PJXPromptDialog",
 )
 
-# Logical name -> (v0.36 tag, v2 tag). Identical today; the mapping exists so
-# a rename during the port stays visible instead of silently skewing the bench.
-TAGS: dict[str, tuple[str, str]] = {
-    # Display primitives (L4.1)
-    "icon": ("PJXIcon", "PJXIcon"),
-    "badge": ("PJXBadge", "PJXBadge"),
-    "avatar": ("PJXAvatar", "PJXAvatar"),
-    "avatar_stack": ("PJXAvatarStack", "PJXAvatarStack"),
-    "divider": ("PJXDivider", "PJXDivider"),
-    "progress": ("PJXProgress", "PJXProgress"),
-    "skeleton": ("PJXSkeleton", "PJXSkeleton"),
-    "spinner": ("PJXSpinner", "PJXSpinner"),
-    "breadcrumb": ("PJXBreadcrumb", "PJXBreadcrumb"),
-    # Forms (L4.2)
-    "button": ("PJXButton", "PJXButton"),
-    "form_field": ("PJXFormField", "PJXFormField"),
-    "password_input": ("PJXPasswordInput", "PJXPasswordInput"),
-    "chip_input": ("PJXChipInput", "PJXChipInput"),
-    "segmented_control": ("PJXSegmentedControl", "PJXSegmentedControl"),
-    "toggle_switch": ("PJXToggleSwitch", "PJXToggleSwitch"),
-    # Composed shells (L4.3)
-    "card": ("PJXCard", "PJXCard"),
-    "card_header": ("PJXCardHeader", "PJXCardHeader"),
-    "card_body": ("PJXCardBody", "PJXCardBody"),
-    "card_footer": ("PJXCardFooter", "PJXCardFooter"),
-    "modal": ("PJXModal", "PJXModal"),
-    "modal_header": ("PJXModalHeader", "PJXModalHeader"),
-    "modal_body": ("PJXModalBody", "PJXModalBody"),
-    "modal_footer": ("PJXModalFooter", "PJXModalFooter"),
-    "drawer": ("PJXDrawer", "PJXDrawer"),
-    "drawer_header": ("PJXDrawerHeader", "PJXDrawerHeader"),
-    "drawer_body": ("PJXDrawerBody", "PJXDrawerBody"),
-    "drawer_footer": ("PJXDrawerFooter", "PJXDrawerFooter"),
-    "accordion": ("PJXAccordion", "PJXAccordion"),
-    "accordion_group": ("PJXAccordionGroup", "PJXAccordionGroup"),
-    "accordion_trigger": ("PJXAccordionTrigger", "PJXAccordionTrigger"),
-    "accordion_content": ("PJXAccordionContent", "PJXAccordionContent"),
-    "tab": ("PJXTab", "PJXTab"),
-    "tab_group": ("PJXTabGroup", "PJXTabGroup"),
-    "tab_list": ("PJXTabList", "PJXTabList"),
-    "tab_panel": ("PJXTabPanel", "PJXTabPanel"),
-    "popover": ("PJXPopover", "PJXPopover"),
-    "dropdown": ("PJXDropdown", "PJXDropdown"),
-    "tooltip": ("PJXTooltip", "PJXTooltip"),
-    "tooltip_trigger": ("PJXTooltipTrigger", "PJXTooltipTrigger"),
-    "tooltip_content": ("PJXTooltipContent", "PJXTooltipContent"),
-    # Table / paginator / loaders (L4.4)
-    "table": ("PJXTable", "PJXTable"),
-    "table_body": ("PJXTableBody", "PJXTableBody"),
-    "table_head": ("PJXTableHead", "PJXTableHead"),
-    "table_header_cell": ("PJXTableHeaderCell", "PJXTableHeaderCell"),
-    "table_row": ("PJXTableRow", "PJXTableRow"),
-    "table_cell": ("PJXTableCell", "PJXTableCell"),
-    "paginator": ("PJXPaginator", "PJXPaginator"),
-    "region_loader": ("PJXRegionLoader", "PJXRegionLoader"),
-    "page_loader": ("PJXPageLoader", "PJXPageLoader"),
-    "lazy_load": ("PJXLazyLoad", "PJXLazyLoad"),
-    # JS-heavy tail (L4.5)
-    "carousel": ("PJXCarousel", "PJXCarousel"),
-    "carousel_slide": ("PJXCarouselSlide", "PJXCarouselSlide"),
-    "notification": ("PJXNotification", "PJXNotification"),
-    "toast_host": ("PJXToastHost", "PJXToastHost"),
-    "alert": ("PJXAlert", "PJXAlert"),
-    "resizable_group": ("PJXResizableGroup", "PJXResizableGroup"),
-    "resizable_handle": ("PJXResizableHandle", "PJXResizableHandle"),
-    "resizable_panel": ("PJXResizablePanel", "PJXResizablePanel"),
+# Logical name -> v0.36 tag string. v2's manifest (V2_MANIFEST, below) holds
+# the same names as the class __name__ values actually placed in the v2 tree
+# — both lists are the identical set of strings today; the split exists so a
+# future rename during the port stays visible in one place.
+V0_TAGS: dict[str, str] = {
+    "icon": "PJXIcon",
+    "badge": "PJXBadge",
+    "avatar": "PJXAvatar",
+    "avatar_stack": "PJXAvatarStack",
+    "divider": "PJXDivider",
+    "progress": "PJXProgress",
+    "skeleton": "PJXSkeleton",
+    "spinner": "PJXSpinner",
+    "breadcrumb": "PJXBreadcrumb",
+    "button": "PJXButton",
+    "form_field": "PJXFormField",
+    "password_input": "PJXPasswordInput",
+    "chip_input": "PJXChipInput",
+    "segmented_control": "PJXSegmentedControl",
+    "toggle_switch": "PJXToggleSwitch",
+    "card": "PJXCard",
+    "card_header": "PJXCardHeader",
+    "card_body": "PJXCardBody",
+    "card_footer": "PJXCardFooter",
+    "modal": "PJXModal",
+    "modal_header": "PJXModalHeader",
+    "modal_body": "PJXModalBody",
+    "modal_footer": "PJXModalFooter",
+    "drawer": "PJXDrawer",
+    "drawer_header": "PJXDrawerHeader",
+    "drawer_body": "PJXDrawerBody",
+    "drawer_footer": "PJXDrawerFooter",
+    "accordion": "PJXAccordion",
+    "accordion_group": "PJXAccordionGroup",
+    "accordion_trigger": "PJXAccordionTrigger",
+    "accordion_content": "PJXAccordionContent",
+    "tab": "PJXTab",
+    "tab_group": "PJXTabGroup",
+    "tab_list": "PJXTabList",
+    "tab_panel": "PJXTabPanel",
+    "popover": "PJXPopover",
+    "dropdown": "PJXDropdown",
+    "tooltip": "PJXTooltip",
+    "tooltip_trigger": "PJXTooltipTrigger",
+    "tooltip_content": "PJXTooltipContent",
+    "table": "PJXTable",
+    "table_body": "PJXTableBody",
+    "table_head": "PJXTableHead",
+    "table_header_cell": "PJXTableHeaderCell",
+    "table_row": "PJXTableRow",
+    "table_cell": "PJXTableCell",
+    "paginator": "PJXPaginator",
+    "region_loader": "PJXRegionLoader",
+    "page_loader": "PJXPageLoader",
+    "lazy_load": "PJXLazyLoad",
+    "carousel": "PJXCarousel",
+    "carousel_slide": "PJXCarouselSlide",
+    "notification": "PJXNotification",
+    "toast_host": "PJXToastHost",
+    "alert": "PJXAlert",
+    "resizable_group": "PJXResizableGroup",
+    "resizable_handle": "PJXResizableHandle",
+    "resizable_panel": "PJXResizablePanel",
 }
 
-V0_MANIFEST = [v0 for v0, _ in TAGS.values()]
-V2_MANIFEST = [v2 for _, v2 in TAGS.values()]
-
-V0_SIDE = 0
-V2_SIDE = 1
-
-
-def _tag(logical: str, side: int) -> str:
-    return TAGS[logical][side]
+V0_MANIFEST = list(V0_TAGS.values())
+# Same set of names today (see module docstring for why the v2 side is built
+# from real class instances instead of tags parsed out of markup).
+V2_MANIFEST = list(V0_TAGS.values())
 
 
-def _display_primitives(side: int) -> str:
+def component_names(component: BaseComponent) -> set[str]:
+    """Every component class name reachable from ``component``'s Slot fields.
+
+    Walks whatever the descriptor marks as slot fields, recursing into nested
+    components and the items of list/dict slot values. Used by the parity
+    test (and available to the bench script) to confirm the v2 tree actually
+    contains the manifest's components, since v2's tree is built in Python
+    rather than parsed back out of a markup string.
+    """
+    names = {type(component).__name__}
+    descriptor = component.__pjx_descriptor__
+    for field_name in descriptor.slot_fields:
+        value = getattr(component, field_name, None)
+        for item in value if isinstance(value, (list, tuple)) else (value,):
+            if isinstance(item, BaseComponent):
+                names |= component_names(item)
+    return names
+
+
+# ---------------------------------------------------------------------------
+# v0.36 side: markup strings, v0's native shape.
+# ---------------------------------------------------------------------------
+
+
+def _v0_display_primitives() -> str:
     return (
-        f'<{_tag("icon", side)} id="p-icon" name="gear"/>'
-        f'<{_tag("badge", side)} id="p-badge" label="new" color="brand"/>'
-        f'<{_tag("avatar", side)} id="p-avatar" initials="AB"/>'
-        f'<{_tag("avatar_stack", side)} id="p-avatar-stack"/>'
-        f'<{_tag("divider", side)} id="p-divider"/>'
-        f'<{_tag("progress", side)} id="p-progress" value="42"/>'
-        f'<{_tag("skeleton", side)} id="p-skeleton"/>'
-        f'<{_tag("spinner", side)} id="p-spinner"/>'
-        f'<{_tag("breadcrumb", side)} id="p-breadcrumb"/>'
+        '<PJXIcon id="p-icon" name="settings"/>'
+        '<PJXBadge id="p-badge" label="new" color="brand"/>'
+        '<PJXAvatar id="p-avatar" initials="AB"/>'
+        '<PJXAvatarStack id="p-avatar-stack"/>'
+        '<PJXDivider id="p-divider"/>'
+        '<PJXProgress id="p-progress" value="42"/>'
+        '<PJXSkeleton id="p-skeleton"/>'
+        '<PJXSpinner id="p-spinner"/>'
+        '<PJXBreadcrumb id="p-breadcrumb"/>'
     )
 
 
-def _form_block(side: int) -> str:
-    ff, pw, chip, seg, tog, btn = (
-        _tag("form_field", side),
-        _tag("password_input", side),
-        _tag("chip_input", side),
-        _tag("segmented_control", side),
-        _tag("toggle_switch", side),
-        _tag("button", side),
-    )
+def _v0_form_block() -> str:
     return (
-        f'<{ff} id="f-password"><{pw} id="pw-input" name="password"/></{ff}>'
-        f'<{ff} id="f-chip"><{chip} id="chip-input" name="tags"/></{ff}>'
-        f'<{seg} id="f-segmented" name="mode"/>'
-        f'<{tog} id="f-toggle" name="opt-in"/>'
-        f'<{btn} id="f-submit" type="submit">Save</{btn}>'
+        '<PJXFormField id="f-password"><PJXPasswordInput id="pw-input" name="password"/></PJXFormField>'
+        '<PJXFormField id="f-chip"><PJXChipInput id="chip-input" name="tags"/></PJXFormField>'
+        '<PJXSegmentedControl id="f-segmented" name="mode"/>'
+        '<PJXToggleSwitch id="f-toggle" name="opt-in"/>'
+        '<PJXButton id="f-submit" type="submit">Save</PJXButton>'
     )
 
 
-def _table(rows: int, side: int) -> str:
-    t, tb, th, thc, tr, td = (
-        _tag("table", side),
-        _tag("table_body", side),
-        _tag("table_head", side),
-        _tag("table_header_cell", side),
-        _tag("table_row", side),
-        _tag("table_cell", side),
-    )
+def _v0_table(rows: int) -> str:
     parts = [
-        f'<{t} id="bench-table">'
-        f'<{th} id="bench-thead"><{tr} id="head-row">'
-        f'<{thc} id="hc-name">Name</{thc}>'
-        f'<{thc} id="hc-value">Value</{thc}>'
-        f'<{thc} id="hc-score">Score</{thc}>'
-        f"</{tr}></{th}>"
-        f'<{tb} id="bench-tbody">'
+        (
+            '<PJXTable id="bench-table">'
+            '<PJXTableHead id="bench-thead"><PJXTableRow id="head-row">'
+            '<PJXTableHeaderCell id="hc-name">Name</PJXTableHeaderCell>'
+            '<PJXTableHeaderCell id="hc-value">Value</PJXTableHeaderCell>'
+            '<PJXTableHeaderCell id="hc-score">Score</PJXTableHeaderCell>'
+            "</PJXTableRow></PJXTableHead>"
+            '<PJXTableBody id="bench-tbody">'
+        )
     ]
     for r in range(rows):
         parts.append(
-            f'<{tr} id="r{r}">'
-            f'<{td} id="c{r}a">name {r}</{td}>'
-            f'<{td} id="c{r}b"><input type="text" value="v{r}"/></{td}>'
-            f'<{td} id="c{r}c">{r * 3}</{td}>'
-            f"</{tr}>"
+            f'<PJXTableRow id="r{r}">'
+            f'<PJXTableCell id="c{r}a">name {r}</PJXTableCell>'
+            f'<PJXTableCell id="c{r}b"><input type="text" value="v{r}"/></PJXTableCell>'
+            f'<PJXTableCell id="c{r}c">{r * 3}</PJXTableCell>'
+            f"</PJXTableRow>"
         )
-    parts.append(f"</{tb}></{t}>")
+    parts.append("</PJXTableBody></PJXTable>")
     return "".join(parts)
 
 
-def _shells(inner: str, side: int) -> str:
+def _v0_data_nav() -> str:
+    return (
+        '<PJXPaginator id="bench-paginator" page="2" total_pages="10" url="/bench?page={page}"/>'
+        '<PJXRegionLoader id="bench-region-loader"/>'
+        '<PJXPageLoader id="bench-page-loader"/>'
+        '<PJXLazyLoad id="bench-lazy-load" url="/bench/more"/>'
+    )
+
+
+def _v0_shells(inner: str) -> str:
     """Modal -> Accordion -> TabGroup shell nest, wrapping ``inner``."""
-    (
-        modal,
-        modal_header,
-        modal_body,
-        modal_footer,
-        acc_group,
-        acc,
-        acc_trigger,
-        acc_content,
-        tab_group,
-        tab_list,
-        tab,
-        tab_panel,
-    ) = (
-        _tag("modal", side),
-        _tag("modal_header", side),
-        _tag("modal_body", side),
-        _tag("modal_footer", side),
-        _tag("accordion_group", side),
-        _tag("accordion", side),
-        _tag("accordion_trigger", side),
-        _tag("accordion_content", side),
-        _tag("tab_group", side),
-        _tag("tab_list", side),
-        _tag("tab", side),
-        _tag("tab_panel", side),
-    )
     return (
-        f'<{modal} id="bench-modal">'
-        f'<{modal_header} id="bench-modal-header">Details</{modal_header}>'
-        f'<{modal_body} id="bench-modal-body">'
-        f'<{acc_group} id="bench-acc-group">'
-        f'<{acc} id="bench-acc">'
-        f'<{acc_trigger} id="bench-acc-trigger">Details</{acc_trigger}>'
-        f'<{acc_content} id="bench-acc-content">'
-        f'<{tab_group} id="bench-tabs">'
-        f'<{tab_list} id="bench-tab-list">'
-        f'<{tab} id="bench-tab-1" panel="bench-tab-panel-1">Data</{tab}>'
-        f"</{tab_list}>"
-        f'<{tab_panel} id="bench-tab-panel-1">{inner}</{tab_panel}>'
-        f"</{tab_group}>"
-        f"</{acc_content}>"
-        f"</{acc}>"
-        f"</{acc_group}>"
-        f"</{modal_body}>"
-        f'<{modal_footer} id="bench-modal-footer">Close</{modal_footer}>'
-        f"</{modal}>"
+        '<PJXModal id="bench-modal">'
+        '<PJXModalHeader id="bench-modal-header">Details</PJXModalHeader>'
+        '<PJXModalBody id="bench-modal-body">'
+        '<PJXAccordionGroup id="bench-acc-group">'
+        '<PJXAccordion id="bench-acc">'
+        '<PJXAccordionTrigger id="bench-acc-trigger">Details</PJXAccordionTrigger>'
+        '<PJXAccordionContent id="bench-acc-content">'
+        '<PJXTabGroup id="bench-tabs">'
+        '<PJXTabList id="bench-tab-list">'
+        '<PJXTab id="bench-tab-1" panel="bench-tab-panel-1">Data</PJXTab>'
+        "</PJXTabList>"
+        f'<PJXTabPanel id="bench-tab-panel-1">{inner}</PJXTabPanel>'
+        "</PJXTabGroup>"
+        "</PJXAccordionContent>"
+        "</PJXAccordion>"
+        "</PJXAccordionGroup>"
+        "</PJXModalBody>"
+        '<PJXModalFooter id="bench-modal-footer">Close</PJXModalFooter>'
+        "</PJXModal>"
     )
 
 
-def _cards_dropdown_popover_tooltip(side: int) -> str:
-    (
-        card,
-        card_header,
-        card_body,
-        card_footer,
-        drawer,
-        drawer_header,
-        drawer_body,
-        drawer_footer,
-        popover,
-        dropdown,
-        tooltip,
-        tooltip_trigger,
-        tooltip_content,
-    ) = (
-        _tag("card", side),
-        _tag("card_header", side),
-        _tag("card_body", side),
-        _tag("card_footer", side),
-        _tag("drawer", side),
-        _tag("drawer_header", side),
-        _tag("drawer_body", side),
-        _tag("drawer_footer", side),
-        _tag("popover", side),
-        _tag("dropdown", side),
-        _tag("tooltip", side),
-        _tag("tooltip_trigger", side),
-        _tag("tooltip_content", side),
-    )
+def _v0_cards_dropdown_popover_tooltip() -> str:
     return (
-        f'<{card} id="bench-card">'
-        f'<{card_header} id="bench-card-header">Overview</{card_header}>'
-        f'<{card_body} id="bench-card-body">Summary text.</{card_body}>'
-        f'<{card_footer} id="bench-card-footer">'
-        f'<{popover} id="bench-popover"/>'
-        f'<{dropdown} id="bench-dropdown" trigger="More"/>'
-        f'<{tooltip} id="bench-tooltip">'
-        f'<{tooltip_trigger} id="bench-tooltip-trigger">?</{tooltip_trigger}>'
-        f'<{tooltip_content} id="bench-tooltip-content">Help text</{tooltip_content}>'
-        f"</{tooltip}>"
-        f"</{card_footer}>"
-        f"</{card}>"
-        f'<{drawer} id="bench-drawer">'
-        f'<{drawer_header} id="bench-drawer-header">Filters</{drawer_header}>'
-        f'<{drawer_body} id="bench-drawer-body">Body</{drawer_body}>'
-        f'<{drawer_footer} id="bench-drawer-footer">Close</{drawer_footer}>'
-        f"</{drawer}>"
+        '<PJXCard id="bench-card">'
+        '<PJXCardHeader id="bench-card-header">Overview</PJXCardHeader>'
+        '<PJXCardBody id="bench-card-body">Summary text.</PJXCardBody>'
+        '<PJXCardFooter id="bench-card-footer">'
+        '<PJXPopover id="bench-popover"/>'
+        '<PJXDropdown id="bench-dropdown" trigger="More"/>'
+        '<PJXTooltip id="bench-tooltip">'
+        '<PJXTooltipTrigger id="bench-tooltip-trigger">?</PJXTooltipTrigger>'
+        '<PJXTooltipContent id="bench-tooltip-content">Help text</PJXTooltipContent>'
+        "</PJXTooltip>"
+        "</PJXCardFooter>"
+        "</PJXCard>"
+        '<PJXDrawer id="bench-drawer">'
+        '<PJXDrawerHeader id="bench-drawer-header">Filters</PJXDrawerHeader>'
+        '<PJXDrawerBody id="bench-drawer-body">Body</PJXDrawerBody>'
+        '<PJXDrawerFooter id="bench-drawer-footer">Close</PJXDrawerFooter>'
+        "</PJXDrawer>"
     )
 
 
-def _data_nav(side: int) -> str:
-    pag, region, page, lazy = (
-        _tag("paginator", side),
-        _tag("region_loader", side),
-        _tag("page_loader", side),
-        _tag("lazy_load", side),
-    )
+def _v0_js_heavy_tail() -> str:
     return (
-        f'<{pag} id="bench-paginator" page="2" total_pages="10" url="/bench"/>'
-        f'<{region} id="bench-region-loader"/>'
-        f'<{page} id="bench-page-loader"/>'
-        f'<{lazy} id="bench-lazy-load" url="/bench/more"/>'
+        '<PJXCarousel id="bench-carousel">'
+        '<PJXCarouselSlide id="bench-slide-1">One</PJXCarouselSlide>'
+        '<PJXCarouselSlide id="bench-slide-2">Two</PJXCarouselSlide>'
+        "</PJXCarousel>"
+        '<PJXNotification id="bench-notification">Saved</PJXNotification>'
+        '<PJXToastHost id="bench-toast-host"/>'
+        '<PJXAlert id="bench-alert">Heads up</PJXAlert>'
+        '<PJXResizableGroup id="bench-resizable">'
+        '<PJXResizablePanel id="bench-resizable-panel-1">Left</PJXResizablePanel>'
+        '<PJXResizableHandle id="bench-resizable-handle"/>'
+        '<PJXResizablePanel id="bench-resizable-panel-2">Right</PJXResizablePanel>'
+        "</PJXResizableGroup>"
     )
 
 
-def _js_heavy_tail(side: int) -> str:
-    (
-        carousel,
-        slide,
-        notification,
-        toast_host,
-        alert,
-        resizable_group,
-        resizable_handle,
-        resizable_panel,
-    ) = (
-        _tag("carousel", side),
-        _tag("carousel_slide", side),
-        _tag("notification", side),
-        _tag("toast_host", side),
-        _tag("alert", side),
-        _tag("resizable_group", side),
-        _tag("resizable_handle", side),
-        _tag("resizable_panel", side),
-    )
-    return (
-        f'<{carousel} id="bench-carousel">'
-        f'<{slide} id="bench-slide-1">One</{slide}>'
-        f'<{slide} id="bench-slide-2">Two</{slide}>'
-        f"</{carousel}>"
-        f'<{notification} id="bench-notification">Saved</{notification}>'
-        f'<{toast_host} id="bench-toast-host"/>'
-        f'<{alert} id="bench-alert">Heads up</{alert}>'
-        f'<{resizable_group} id="bench-resizable">'
-        f'<{resizable_panel} id="bench-resizable-panel-1">Left</{resizable_panel}>'
-        f'<{resizable_handle} id="bench-resizable-handle"/>'
-        f'<{resizable_panel} id="bench-resizable-panel-2">Right</{resizable_panel}>'
-        f"</{resizable_group}>"
-    )
-
-
-def _page(rows: int, side: int) -> str:
-    """The full builtin-heavy page: one composition spanning all five L4 families."""
-    table_and_data = _table(rows, side) + _data_nav(side)
+def build_v0_page(rows: int) -> str:
+    """The full builtin-heavy page (v0.36 markup string)."""
+    table_and_data = _v0_table(rows) + _v0_data_nav()
     body = (
-        _display_primitives(side)
-        + _form_block(side)
-        + _shells(table_and_data, side)
-        + _cards_dropdown_popover_tooltip(side)
-        + _js_heavy_tail(side)
+        _v0_display_primitives()
+        + _v0_form_block()
+        + _v0_shells(table_and_data)
+        + _v0_cards_dropdown_popover_tooltip()
+        + _v0_js_heavy_tail()
     )
     return f'<div id="bench-root">{body}</div>'
 
 
-def build_v0_page(rows: int) -> str:
-    return _page(rows, V0_SIDE)
-
-
-def build_v2_page(rows: int) -> str:
-    return _page(rows, V2_SIDE)
-
-
 def build_v0_table(rows: int) -> str:
-    return _table(rows, V0_SIDE) + _data_nav(V0_SIDE)
-
-
-def build_v2_table(rows: int) -> str:
-    return _table(rows, V2_SIDE) + _data_nav(V2_SIDE)
+    return _v0_table(rows) + _v0_data_nav()
 
 
 def build_v0_shells() -> str:
-    return _shells(_cards_dropdown_popover_tooltip(V0_SIDE), V0_SIDE)
+    return _v0_shells(_v0_cards_dropdown_popover_tooltip())
 
 
-def build_v2_shells() -> str:
-    return _shells(_cards_dropdown_popover_tooltip(V2_SIDE), V2_SIDE)
+# ---------------------------------------------------------------------------
+# v2 side: real component instances nested in Python (see module docstring).
+# ---------------------------------------------------------------------------
+
+
+class BenchPage(BaseComponent):
+    """Root wrapper for the v2 side. ``content`` carries the whole subtree."""
+
+    content: Slot = ""
+
+
+class BenchMulti(BaseComponent):
+    """Sibling-list wrapper for a real builtin whose own template does a bare
+    ``{{ content }}`` (no ``{% for %}``) — e.g. PJXCard's regions come from
+    PJXCardHeader/Body/Footer rendered as one field's value (see
+    pjx_card.py's own docstring), and the real test suite reaches for an
+    ad hoc multi-slot host in exactly this situation
+    (test_pjx_card.py's ``CardHost`` fixture). This is that host, generic and
+    reused everywhere this fixture needs more than one sibling under a field
+    whose template does not iterate its slot itself.
+    """
+
+    items: Slot = ""
+
+
+def _multi(id_: str, items: list[BaseComponent]) -> BaseComponent:
+    """``items[0]`` unwrapped when there is only one, else a BenchMulti host."""
+    return items[0] if len(items) == 1 else BenchMulti(id=id_, items=items)
+
+
+def _v2_display_primitives() -> list[BaseComponent]:
+    return [
+        PJXIcon(id="p-icon", name="settings"),
+        PJXBadge(id="p-badge", label="new", color="brand"),
+        PJXAvatar(id="p-avatar", initials="AB"),
+        PJXAvatarStack(id="p-avatar-stack"),
+        PJXDivider(id="p-divider"),
+        PJXProgress(id="p-progress", value=42),
+        PJXSkeleton(id="p-skeleton"),
+        PJXSpinner(id="p-spinner"),
+        PJXBreadcrumb(id="p-breadcrumb"),
+    ]
+
+
+def _v2_form_block() -> list[BaseComponent]:
+    return [
+        PJXFormField(
+            id="f-password",
+            content=PJXPasswordInput(id="pw-input", name="password"),
+        ),
+        PJXFormField(id="f-chip", content=PJXChipInput(id="chip-input", name="tags")),
+        PJXSegmentedControl(id="f-segmented", name="mode"),
+        PJXToggleSwitch(id="f-toggle", name="opt-in"),
+        PJXButton(id="f-submit", type="submit", content="Save"),
+    ]
+
+
+def _v2_table(rows: int) -> PJXTable:
+    header_cells = [
+        PJXTableHeaderCell(id="hc-name", content="Name"),
+        PJXTableHeaderCell(id="hc-value", content="Value"),
+        PJXTableHeaderCell(id="hc-score", content="Score"),
+    ]
+    row_items = [
+        PJXTableRow(
+            id=f"r{r}",
+            content=_multi(
+                f"cells-r{r}",
+                [
+                    PJXTableCell(id=f"c{r}a", content=f"name {r}"),
+                    PJXTableCell(
+                        id=f"c{r}b", content=f'<input type="text" value="v{r}"/>'
+                    ),
+                    PJXTableCell(id=f"c{r}c", content=str(r * 3)),
+                ],
+            ),
+        )
+        for r in range(rows)
+    ]
+    return PJXTable(
+        id="bench-table",
+        content=_multi(
+            "bench-table-sections",
+            [
+                PJXTableHead(
+                    id="bench-thead",
+                    content=PJXTableRow(
+                        id="head-row", content=_multi("head-row-cells", header_cells)
+                    ),
+                ),
+                PJXTableBody(
+                    id="bench-tbody", content=_multi("bench-tbody-rows", row_items)
+                ),
+            ],
+        ),
+    )
+
+
+def _v2_data_nav() -> list[BaseComponent]:
+    return [
+        PJXPaginator(
+            id="bench-paginator", page=2, total_pages=10, url="/bench?page={page}"
+        ),
+        PJXRegionLoader(id="bench-region-loader"),
+        PJXPageLoader(id="bench-page-loader"),
+        PJXLazyLoad(id="bench-lazy-load", url="/bench/more"),
+    ]
+
+
+def _v2_shells(inner: list[BaseComponent]) -> PJXModal:
+    """Modal -> Accordion -> TabGroup shell nest, wrapping ``inner``."""
+    return PJXModal(
+        id="bench-modal",
+        content=_multi(
+            "bench-modal-regions",
+            [
+                PJXModalHeader(id="bench-modal-header", content="Details"),
+                PJXModalBody(
+                    id="bench-modal-body",
+                    content=PJXAccordionGroup(
+                        id="bench-acc-group",
+                        content=PJXAccordion(
+                            id="bench-acc",
+                            content=_multi(
+                                "bench-acc-parts",
+                                [
+                                    PJXAccordionTrigger(
+                                        id="bench-acc-trigger", content="Details"
+                                    ),
+                                    PJXAccordionContent(
+                                        id="bench-acc-content",
+                                        content=PJXTabGroup(
+                                            id="bench-tabs",
+                                            content=_multi(
+                                                "bench-tabs-parts",
+                                                [
+                                                    PJXTabList(
+                                                        id="bench-tab-list",
+                                                        content=PJXTab(
+                                                            id="bench-tab-1",
+                                                            panel="bench-tab-panel-1",
+                                                            content="Data",
+                                                        ),
+                                                    ),
+                                                    PJXTabPanel(
+                                                        id="bench-tab-panel-1",
+                                                        content=_multi(
+                                                            "bench-tab-panel-1-content",
+                                                            inner,
+                                                        ),
+                                                    ),
+                                                ],
+                                            ),
+                                        ),
+                                    ),
+                                ],
+                            ),
+                        ),
+                    ),
+                ),
+                PJXModalFooter(id="bench-modal-footer", content="Close"),
+            ],
+        ),
+    )
+
+
+def _v2_cards_dropdown_popover_tooltip() -> list[BaseComponent]:
+    return [
+        PJXCard(
+            id="bench-card",
+            content=_multi(
+                "bench-card-regions",
+                [
+                    PJXCardHeader(id="bench-card-header", content="Overview"),
+                    PJXCardBody(id="bench-card-body", content="Summary text."),
+                    PJXCardFooter(
+                        id="bench-card-footer",
+                        content=_multi(
+                            "bench-card-footer-items",
+                            [
+                                PJXPopover(id="bench-popover"),
+                                PJXDropdown(id="bench-dropdown", trigger="More"),
+                                PJXTooltip(
+                                    id="bench-tooltip",
+                                    content=[
+                                        PJXTooltipTrigger(
+                                            id="bench-tooltip-trigger", content="?"
+                                        ),
+                                        PJXTooltipContent(
+                                            id="bench-tooltip-content",
+                                            content="Help text",
+                                        ),
+                                    ],
+                                ),
+                            ],
+                        ),
+                    ),
+                ],
+            ),
+        ),
+        PJXDrawer(
+            id="bench-drawer",
+            content=_multi(
+                "bench-drawer-regions",
+                [
+                    PJXDrawerHeader(id="bench-drawer-header", content="Filters"),
+                    PJXDrawerBody(id="bench-drawer-body", content="Body"),
+                    PJXDrawerFooter(id="bench-drawer-footer", content="Close"),
+                ],
+            ),
+        ),
+    ]
+
+
+def _v2_js_heavy_tail() -> list[BaseComponent]:
+    return [
+        PJXCarousel(
+            id="bench-carousel",
+            content=[
+                PJXCarouselSlide(id="bench-slide-1", content="One"),
+                PJXCarouselSlide(id="bench-slide-2", content="Two"),
+            ],
+        ),
+        PJXNotification(id="bench-notification", content="Saved"),
+        PJXToastHost(id="bench-toast-host"),
+        PJXAlert(id="bench-alert", body="Heads up"),
+        PJXResizableGroup(
+            id="bench-resizable",
+            content=[
+                PJXResizablePanel(id="bench-resizable-panel-1", content="Left"),
+                PJXResizableHandle(id="bench-resizable-handle"),
+                PJXResizablePanel(id="bench-resizable-panel-2", content="Right"),
+            ],
+        ),
+    ]
+
+
+def build_v2_page(rows: int) -> BenchPage:
+    """The full builtin-heavy page (v2 component tree, root: BenchPage)."""
+    table_and_data: list[BaseComponent] = [_v2_table(rows), *_v2_data_nav()]
+    body = [
+        *_v2_display_primitives(),
+        *_v2_form_block(),
+        _v2_shells(table_and_data),
+        *_v2_cards_dropdown_popover_tooltip(),
+        *_v2_js_heavy_tail(),
+    ]
+    return BenchPage(id="bench-root", content=body)
+
+
+def build_v2_table(rows: int) -> BenchPage:
+    return BenchPage(id="bench-root", content=[_v2_table(rows), *_v2_data_nav()])
+
+
+def build_v2_shells() -> BenchPage:
+    return BenchPage(
+        id="bench-root", content=_v2_shells(_v2_cards_dropdown_popover_tooltip())
+    )

@@ -1,0 +1,1 @@
+<div id="{{ id }}">{% if content is string %}{{ content }}{% else %}{% for item in content %}{{ item }}{% endfor %}{% endif %}</div>
