@@ -24,7 +24,7 @@ Read: [CONVENTIONS.md](../code-audit-sweep/CONVENTIONS.md).
 |--------|--------|
 | >250 LOC | Review for split |
 | 150–250 LOC | Review if multiple unrelated concerns |
-| 240–260 LOC, single cohesive class | Soft ceiling only; defer split (see VALIDATION.md) |
+| 240–260 LOC, single cohesive class | Soft ceiling only; defer split |
 | <80 LOC | Do not split unless concerns are clearly separable |
 
 ## Red flags
