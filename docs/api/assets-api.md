@@ -1,8 +1,19 @@
 # Assets API
 
-Public helpers for asset URL resolution, manifests, and layout preloading.
+Public helpers for asset delivery, manifests, and cache-busted URLs.
 
 See [Asset Collection](../guide/assets.md) for conceptual documentation and [Renderer](renderer.md) for `AssetMode` and `RenderSession`.
+
+## AssetMode
+
+```python
+class AssetMode(str, Enum):
+    INLINE = "inline"
+    NONE = "none"
+    LINK = "link"
+```
+
+How a kind of asset (CSS or JS) reaches the page for one render. `INLINE` writes the file's contents directly into the response, `LINK` emits a `<link>`/`<script src>` tag, `NONE` emits nothing.
 
 ## AssetManifest
 
@@ -13,105 +24,76 @@ class AssetManifest:
     scripts: tuple[str, ...]
 ```
 
-Resolved public URLs for assets collected during a render session. Built by `asset_manifest()` or `RenderSession.manifest()`.
+The resolved asset URLs for one render, split by kind, in path order.
 
-## DEFAULT_RUNTIME_URL
+## emit_assets
 
 ```python
-DEFAULT_RUNTIME_URL = "/static/pyjinhx/pjx.js"
+def emit_assets(
+    session: RenderSession, *, resolver: Callable[[Path], str] | None = None
+) -> str
 ```
 
-Default public URL for the pyjinhx client runtime (`/static/pyjinhx/pjx.js`). Use as a reference constant when building your own bundle or static-serving setup.
+Return the markup for a session's accumulated assets, per its `css_mode`/`js_mode` delivery mode. `resolver` maps an asset path to the URL it is served from, and is required only when a kind is in `LINK` mode.
 
-## runtime_asset_path
+**Raises:** `OSError` if an asset file is missing or unreadable under `INLINE` mode; `ValueError` if a kind is in `LINK` mode and no resolver was given.
+
+## asset_manifest
 
 ```python
-def runtime_asset_path() -> str
+def asset_manifest(
+    session: RenderSession, *, resolver: Callable[[Path], str]
+) -> AssetManifest
 ```
 
-Return the absolute filesystem path to the bundled `pjx.js` client runtime. Mount this directory as static files in production.
+Return the resolved URLs of a session's accumulated assets as an `AssetManifest`, independent of `css_mode`/`js_mode`.
 
 ```python
-from fastapi.staticfiles import StaticFiles
-from pyjinhx.assets import runtime_asset_path
-import os
+from pyjinhx.assets import asset_manifest, resolver_with_hash
 
-app.mount(
-    "/static/pyjinhx",
-    StaticFiles(directory=os.path.dirname(runtime_asset_path())),
-    name="pyjinhx",
-)
-```
-
-## default_asset_url
-
-```python
-def default_asset_url(path: str, *, root: str) -> str
-```
-
-Map an absolute asset path to a default public URL under `/static/components/`. The runtime path maps to `DEFAULT_RUNTIME_URL`.
-
-## make_default_asset_url_resolver
-
-```python
-def make_default_asset_url_resolver(root: str) -> AssetUrlResolver
-```
-
-Build a callable resolver using `default_asset_url()`. Pass to `asset_manifest()`, `Finder.layout_asset_tags()`, or `resolver_with_hash()`.
-
-```python
-from pyjinhx.assets import make_default_asset_url_resolver, asset_manifest
-
-resolver = make_default_asset_url_resolver("./components")
+resolver = resolver_with_hash("/static/components", root="./components")
 manifest = asset_manifest(session, resolver=resolver)
 ```
 
 ## hashed_filename
 
 ```python
-def hashed_filename(path: str, *, hash_len: int = 8) -> str
+def hashed_filename(path: Path, *, hash_len: int = 8) -> str
 ```
 
-Return a content-hash filename such as `button.a1b2c3d4.js`. Reads the file to compute a SHA-256 digest.
+Return a cache-busted filename such as `button.a1b2c3d4.js`: the file's stem, a truncated SHA-256 digest of its contents, and its suffix, dot-joined.
+
+**Raises:** `OSError` if the file is missing or unreadable.
+
+## asset_token
+
+```python
+def asset_token(path: Path) -> str
+```
+
+Return the opaque dedup token the client reports for this asset, derived from the normalized path. Used for the `data-pjx-asset` attribute and the `X-PJX-Assets` header so the server can tell an asset the browser already has from one it does not.
 
 ## resolver_with_hash
 
 ```python
-def resolver_with_hash(base_url: str, root: str) -> AssetUrlResolver
+def resolver_with_hash(base_url: str, root: str) -> Callable[[Path], str]
 ```
 
-Build an asset URL resolver that embeds a content hash in each filename. The runtime file is placed under `{base_url}/pyjinhx/{hashed}`.
+Build an asset resolver that embeds a content hash in each filename, in the shape `asset_manifest()` expects.
+
+- `base_url`: URL prefix the asset tree is served from; a trailing slash is ignored.
+- `root`: Directory the asset paths are laid out under; the part of a path below it is preserved in the URL.
 
 ```python
 from pyjinhx.assets import resolver_with_hash
-from pyjinhx.finder import Finder
 
-finder = Finder(root="./components")
 resolver = resolver_with_hash("/static/components", root="./components")
-head_tags = finder.layout_asset_tags(resolver=resolver)
 ```
 
-## asset_manifest
+## all_assets
 
 ```python
-def asset_manifest(session: RenderSession, *, resolver: AssetUrlResolver) -> AssetManifest
+def all_assets() -> tuple[tuple[Path, ...], tuple[Path, ...]]
 ```
 
-Build an `AssetManifest` from a `RenderSession` and a URL resolver. Equivalent to `session.manifest(resolver=resolver)`.
-
-## Finder.layout_asset_tags
-
-```python
-def layout_asset_tags(self, *, resolver: AssetUrlResolver) -> Markup
-```
-
-Instance method on [`Finder`](finder.md). Emit `<link>` and `<script src>` tags for every component asset discovered under the finder's root. Use in layout shells to preload all component assets instead of per-page discovery.
-
-```python
-from pyjinhx.assets import make_default_asset_url_resolver
-from pyjinhx.finder import Finder
-
-finder = Finder(root="./components")
-resolver = make_default_asset_url_resolver("./components")
-head_tags = finder.layout_asset_tags(resolver=resolver)
-```
+Every CSS and JS path declared by any component class, registry-wide rather than session-scoped. See [Discovery & Assets](finder.md#all_assets).

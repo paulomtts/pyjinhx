@@ -4,30 +4,21 @@ The registry is how PyJinHx tracks component instances, enabling cross-referenci
 
 ## How It Works
 
-Components are automatically registered at **two points** in their lifecycle:
+Instances are registered at **instance creation** (`__init__`):
 
-### Registration Lifecycle
-
-1. **Class Definition** (`__init_subclass__`)
-   ```python
-   from pyjinhx import BaseComponent
+```python
+from pyjinhx import BaseComponent
 
 
-   # When you define the class, it's registered in the class registry
-   class Button(BaseComponent):
-       id: str
-       text: str
+class Button(BaseComponent):
+    id: str
+    text: str
 
 
-   # Button is now in Registry.get_classes()
-   ```
-
-2. **Instance Creation** (`__init__`)
-   ```python
-   # When you instantiate, the instance is registered
-   button = Button(id="submit-btn", text="Submit")
-   # button is now in Registry.get_instances()
-   ```
+# When you instantiate, the instance is registered
+button = Button(id="submit-btn", text="Submit")
+# button is now resolvable via pyjinhx.registry.resolve("Button", "submit-btn")
+```
 
 This happens transparently—you don't need to call any registration methods manually.
 
@@ -37,6 +28,8 @@ The registry stores components using a composite key of `ComponentName_id`. This
 
 - A `Button` with `id="main"` is stored as `Button_main`
 - A `Card` with `id="main"` is stored as `Card_main`
+
+`pyjinhx.registry.make_key(type_name, instance_id)` builds this key.
 
 !!! tip
     **Different component types can share the same `id`** without collision.
@@ -49,39 +42,39 @@ In web applications, component instances from one request can persist and affect
 
 ```python
 # Request 1: Creates Button(id="submit-btn")
-# Request 2: Creates Button(id="submit-btn") → Warning: "Overwriting..."
+# Request 2: Creates Button(id="submit-btn") → Warning: "already registered; overwriting"
 ```
 
 ### The Solution: Request Scope
 
-Use `Registry.request_scope()` to isolate components per request:
+Use `request_scope()` to isolate components per request:
 
 ```python
-from pyjinhx import Registry
+from pyjinhx.session import request_scope
 
 
 @app.get("/")
 def index():
-    with Registry.request_scope():
+    with request_scope():
         # Components here are isolated to this request
         button = Button(id="submit-btn", text="Submit")
         return button.render()
     # Registry automatically cleaned up
 ```
 
-On entry, `request_scope()` also clears pending mutations, initializes the request-tier load cache, and optionally sets `load_context` and `client_backend`. On exit — even when an exception occurs — it restores the previous registry state, warns about unconsumed mutations (when reactive dev is enabled), clears mutations, and resets the request cache.
+On entry, `request_scope()` binds a fresh `RenderSession`, clears pending mutations, and initializes the request-tier load cache. On exit — even when an exception occurs — it restores the previous state.
 
-`load_context` and `client_backend` are **optional** — bare `Registry.request_scope()` is enough for instance isolation.
+`request_scope(template_dir="templates", session=None, *, load_context=None)` takes an optional `template_dir` for where a newly-constructed `RenderSession` loads templates from, an optional pre-built `session` to bind instead, and an optional `load_context` — the app's `context_factory` result for this request, readable via `get_load_context()`.
 
-For application-wide coverage, pyjinhx ships no middleware of its own. Prefer `setup(app, ...)`, which registers middleware that calls `Registry.request_scope(client_backend=FastAPIClientBackend(request))` for you (see the [canonical FastAPI snippet](../integrations/fastapi.md#middleware-recommended)). To wire it by hand instead, open the scope yourself:
+For application-wide coverage, pyjinhx ships no middleware of its own. Prefer `setup(app, ...)`, which registers middleware that opens a `request_scope()` for you (see the [canonical FastAPI snippet](../integrations/fastapi.md#middleware-recommended)). To wire it by hand instead, open the scope yourself:
 
 ```python
-from pyjinhx import Registry, setup
-from pyjinhx.integrations.fastapi import FastAPIClientBackend
+from pyjinhx import setup
+from pyjinhx.session import request_scope
 
 setup(app)  # recommended
 # or:
-with Registry.request_scope(client_backend=FastAPIClientBackend(request)):
+with request_scope():
     ...
 ```
 
@@ -90,10 +83,10 @@ with Registry.request_scope(client_backend=FastAPIClientBackend(request)):
 Scopes can be nested—each creates its own isolated registry:
 
 ```python
-with Registry.request_scope():
+with request_scope():
     outer = Button(id="outer", text="Outer")
 
-    with Registry.request_scope():
+    with request_scope():
         # "outer" is not visible here
         inner = Button(id="inner", text="Inner")
 
@@ -102,24 +95,14 @@ with Registry.request_scope():
 
 ## Common Patterns
 
-### Clearing the Registry
-
-For testing or resetting state:
-
-```python
-Registry.clear_instances()  # Remove all component instances
-```
-
 ### Checking Registration
 
 ```python
-# Get all registered instances
-instances = Registry.get_instances()
+from pyjinhx.registry import make_key, resolve
 
 # Check if a specific component exists (using the composite key)
-key = Registry.make_key("Button", "submit-btn")
-if key in instances:
-    button = instances[key]
+key = make_key("Button", "submit-btn")
+button = resolve("Button", "submit-btn")  # raises LookupError if not registered
 ```
 
 ### Same ID, Different Types
@@ -141,38 +124,34 @@ class Modal(BaseComponent):
 card = Card(id="main", title="Card Title")
 modal = Modal(id="main", title="Modal Title")
 
-# Both are in the registry
-assert len(Registry.get_instances()) == 2
+# Both are resolvable independently
+assert resolve("Card", "main") is card
+assert resolve("Modal", "main") is modal
 ```
 
 !!! note "HTML IDs"
     While the registry allows same IDs across types, remember that HTML `id` attributes must be unique in the DOM. Use distinct IDs if both components render on the same page.
 
-## Class Registry vs Instance Registry
+## Component Discovery vs Instance Registry
 
-PyJinHx maintains two separate registries:
+PyJinHx separates how component *classes* are found from how component *instances* are tracked:
 
-| Registry | Scope | Purpose |
-|----------|-------|---------|
-| **Class registry** | Process-wide | Maps class names to types (e.g., `"Button"` → `Button`) |
+| Mechanism | Scope | Purpose |
+|-----------|-------|---------|
+| **Template discovery** | Process-wide | Walks `.pjx` template files on disk to map tag names to component classes |
 | **Instance registry** | Context-local | Maps composite keys to instances (e.g., `"Button_submit"` → instance) |
 
-The class registry enables the `Renderer` to instantiate components from PascalCase tags. The instance registry enables cross-referencing in templates.
+Discovery finds classes by scanning the filesystem for `.pjx` templates, not by any side effect of defining a class — a component only becomes tag-resolvable once it has a matching template file. The instance registry enables cross-referencing in templates.
 
 ### Template context precedence
 
 During render, registered instances are injected into the Jinja context by `id` so templates can reference them by registry key. A component cannot cross-reference a component of the **same type and id** that is currently being rendered — such a reference renders empty and logs a warning. Different component types that share the same `id` are tracked independently, so nesting an `InnerChip(id="x")` inside an `OuterShell(id="x")` renders both in full. **Component field values from `model_dump()` take precedence** when a field name collides with an instance `id` (registry injection uses `setdefault`). Watch for this with `ReactiveComponent`, whose `id` defaults to the kebab-cased class name: a `Total` reactive component with a `total` field defaults its `id` to `"total"`, so the field would shadow the instance. (A plain `BaseComponent` defaults to `pjx-<n>` — not the kebab-class default that reactive components get.)
 
 ```python
-# Class registry (automatic when you define a class)
-class MyButton(BaseComponent):
-    id: str
+from pyjinhx.registry import make_key, resolve
 
-
-assert "MyButton" in Registry.get_classes()
-
-# Instance registry (automatic when you instantiate)
+# Instance registry (automatic when you instantiate, inside a request_scope())
 btn = MyButton(id="test")
-key = Registry.make_key("MyButton", "test")
-assert key in Registry.get_instances()
+key = make_key("MyButton", "test")
+assert resolve("MyButton", "test") is btn
 ```

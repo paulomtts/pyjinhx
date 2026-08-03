@@ -1,185 +1,98 @@
 # Registry
 
-Central registry for component classes and instances.
-
-## Class
-
-### Registry
-
-Provides two registries:
-
-- **Class registry**: Maps component class names to their types (process-wide)
-- **Instance registry**: Maps composite keys (`ComponentName_id`) to instances (context-local, thread-safe)
-
-Component classes are auto-registered when subclassing `BaseComponent`. Instances are registered upon instantiation using a composite key that combines the class name and instance ID. This allows different component types to share the same `id` without collision.
+Two unrelated mechanisms, both informally called "the registry": the **class registry** (`pyjinhx.discovery`) maps a template's tag name to the `BaseComponent` subclass that renders it, process-wide; the **instance registry** (`pyjinhx.registry` + `pyjinhx.session`) maps a composite key to a request-scoped instance or rendered level. Neither is wrapped in a class — both are free functions.
 
 See the [Component Registry guide](../guide/registry.md) for conceptual documentation and usage patterns.
 
-## Class Registry Methods
+## Class registry (`pyjinhx.discovery`)
 
-### register_class()
+The tag -> class mapping used to expand `<Card/>`-style tags and to resolve `component()` lookups. Assembled complete off to the side and published in a single locked swap, so no render ever sees a half-built map.
 
-```python
-@classmethod
-def register_class(cls, component_class: type[BaseComponent]) -> None
-```
-
-Register a component class by its name. Called automatically when subclassing `BaseComponent`.
-
-**Parameters:**
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `component_class` | `type[BaseComponent]` | The component class to register |
-
-### get_classes()
+### build_registry()
 
 ```python
-@classmethod
-def get_classes(cls) -> dict[str, type[BaseComponent]]
+def build_registry(template_dir: Path | str, classes: Iterable[type]) -> None
 ```
 
-Return a copy of all registered component classes.
-
-**Returns:** Dictionary mapping class names to component class types.
+Walk `template_dir` for `.pjx` templates and publish a fresh tag -> class registry, matching each template to whichever `classes` claims its tag. `setup(components_root=...)` calls this at startup with every declared `BaseComponent` subclass; raises `NotADirectoryError` before any publish happens if the walk fails, leaving the live registry untouched.
 
 ### get_class()
 
 ```python
-@classmethod
-def get_class(cls, name: str) -> type[BaseComponent] | None
+def get_class(tag_name: str) -> type | None
 ```
 
-Return a registered component class by name without copying the registry, or `None` if not registered.
+The component class registered for `tag_name`, or `None`. Never raises on a miss: an unknown tag renders as ordinary markup, verbatim.
 
-**Parameters:**
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `name` | `str` | The component class name (e.g., `"Button"`) |
-
-**Returns:** The component class, or `None`.
-
-### has_class()
+### register_class()
 
 ```python
-@classmethod
-def has_class(cls, name: str) -> bool
+def register_class(tag_name: str, cls: type) -> None
 ```
 
-Return whether a component class is registered under `name`.
+Publish `cls` under `tag_name` unless the tag already has an owner. The one way a tag is claimed after the import-time build — used by `component()` to register a classless wrapper on demand. A tag that is already owned is left alone: a class registered this way never shadows a declared one; the loser is logged, not silently dropped.
 
-**Parameters:**
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `name` | `str` | The component class name to check |
-
-**Returns:** `True` if registered, otherwise `False`.
-
-### clear_classes()
+### get_template_dir()
 
 ```python
-@classmethod
-def clear_classes(cls) -> None
+def get_template_dir() -> Path | None
 ```
 
-Remove all registered component classes. Useful for testing.
+The directory the last successful `build_registry()` walked, or `None`. Used by the classless factory (`component()`) to know where to search when no `template_dir` is given explicitly.
 
-## Instance Registry Methods
+## Instance registry (`pyjinhx.registry` + `pyjinhx.session`)
+
+Request-scoped: entries live only for the duration of a `request_scope()` block and are keyed by a composite of component type name and instance id, so different component types can share the same `id` without collision.
 
 ### make_key()
 
 ```python
-@classmethod
-def make_key(cls, class_name: str, instance_id: str) -> str
+def make_key(type_name: str, instance_id: str) -> str
 ```
 
-Generate a registry key from component class name and instance ID.
+Build the composite registry key for a component type and instance id, e.g. `"PJXButton_btn1"`.
 
-**Parameters:**
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `class_name` | `str` | The component class name (e.g., `"Button"`) |
-| `instance_id` | `str` | The component instance ID (e.g., `"submit-btn"`) |
-
-**Returns:** The composite key string (e.g., `"Button_submit-btn"`).
-
-**Example:**
+### resolve()
 
 ```python
-from pyjinhx import Registry
-
-key = Registry.make_key("Button", "submit-btn")
-# Returns: "Button_submit-btn"
-
-# Check if a component exists
-if key in Registry.get_instances():
-    button = Registry.get_instances()[key]
+def resolve(type_name: str, instance_id: str) -> object
 ```
+
+Return the entry registered under this request's composite key — a live instance or a cached `RenderedLevel`, returned as-is. Raises `LookupError` if the key is not registered in this request, including every key when called outside an active `request_scope()`.
 
 ### register_instance()
 
 ```python
-@classmethod
-def register_instance(cls, component: BaseComponent) -> None
+def register_instance(type_name: str, instance_id: str, entry: object) -> None
 ```
 
-Register a component instance by its ID. Called automatically on instantiation.
-
-**Parameters:**
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `component` | `BaseComponent` | The component instance to register |
-
-### get_instances()
-
-```python
-@classmethod
-def get_instances(cls) -> dict[str, BaseComponent]
-```
-
-Return all registered component instances in the current context.
-
-**Returns:** Dictionary mapping composite keys (`ComponentName_id`) to component instances. Use `make_key()` to construct keys for lookup.
-
-### clear_instances()
-
-```python
-@classmethod
-def clear_instances(cls) -> None
-```
-
-Remove all registered component instances from the current context.
+Store an entry in this request's registry under its composite key. The only function that mutates the registry. A call outside `request_scope()` is dropped with a logged warning rather than silently vanishing.
 
 ### request_scope()
 
 ```python
-@classmethod
-@contextmanager
-def request_scope(cls, *, load_context: object | None = None, client_backend: object | None = None)
+def request_scope(
+    template_dir: str = "templates",
+    session: RenderSession | None = None,
+    *,
+    load_context: object | None = None,
+) -> Iterator[RenderSession]
 ```
 
-Context manager for request-scoped component instances, load cache, mutation tracking, optional load context, and optional client backend for HTTP headers.
+Context manager (`pyjinhx.session.request_scope`) that binds fresh per-request state for the duration of the block: the instance registry, dirtied-key tracking, the load cache and its reverse index, and (when given) the app's `context_factory` result readable via `get_load_context()`.
 
-On entry: clears pending mutations, initializes the request-scoped load cache, and optionally sets a `PjxContext` for reactive `load()` methods and a `ClientBackend` for `render()` header auto-resolution. On exit: warns about unconsumed mutations (when reactive dev is enabled), clears mutations, and resets the request cache.
+`session` lets a caller wire hooks (e.g. `on_rendered`) onto an existing `RenderSession` before it becomes the one `current_session()` sees as active; when omitted, a fresh `RenderSession(template_dir)` is constructed.
 
 **Usage:**
 
 ```python
-from pyjinhx import Registry
-from pyjinhx.integrations.fastapi import FastAPIClientBackend
+from pyjinhx.session import request_scope
 
-with Registry.request_scope(
-    load_context=AppLoadContext(db=session),
-    client_backend=FastAPIClientBackend(request),
-):
-    # Components registered here are isolated to this scope
+with request_scope(load_context=my_app_context) as session:
+    # Instances registered here are isolated to this scope
     button = Button(id="submit-btn", text="Submit")
-    # ... render template
-# Registry, cache, and mutations automatically restored
+    button.render(session)
+# Instance registry, cache, and dirtied keys are automatically restored
 ```
 
-Scopes support nesting — each scope is independent. See the [Component Registry guide](../guide/registry.md) for conceptual documentation and the [FastAPI integration guide](../integrations/fastapi.md#middleware-recommended) for practical examples.
+Scopes support nesting — each scope is independent, and an inner scope that doesn't pass `load_context` leaves the outer scope's value visible. In a FastAPI app, `setup(app)` wires this scope around each request via middleware; see the [FastAPI integration guide](../integrations/fastapi.md#middleware-recommended) for practical examples.

@@ -65,7 +65,7 @@ button = Button(text="Submit")  # auto-generated pjx-<n>
 
 
 !!! tip "Auto-generated IDs apply to PascalCase tags only"
-    `auto_id` does **not** affect plain Python instances — omitting `id` on `BaseComponent(...)` falls back to the built-in `pjx-<n>` counter. The `Renderer`'s `auto_id=True` only generates an `id` when a PascalCase `<Tag/>` is expanded in a template without one (see [PascalCase Tags](tags.md)). Separately, `ReactiveComponent` (not `BaseComponent`) defaults its `id` to the kebab-cased class name (e.g. `TodoCounter` → `"todo-counter"`).
+    `auto_id` does **not** change how plain Python instances behave — omitting `id` on `BaseComponent(...)` always falls back to the built-in `pjx-<n>` counter. The `auto_id` class var only controls whether an `id` is generated when a PascalCase `<Tag/>` is expanded in a template without one (see [PascalCase Tags](tags.md)). Separately, `ReactiveComponent` (not `BaseComponent`) defaults its `id` to the kebab-cased class name (e.g. `TodoCounter` → `"todo-counter"`).
 
 
 ## Template Discovery
@@ -197,11 +197,12 @@ Card = component("Card")  # finds card.html under the default environment
 Card(title="Hi", content="body").render()
 ```
 
-`component("Card")` returns a registered `BaseComponent` subclass bound to
-`card.html`, resolved by scanning the default environment (set it via
-`setup(components_root=...)` or `Renderer.set_default_environment(...)`). The
-result is a first-class component: instantiate it, pass it as a field of another
-component, or use `<Card/>` in a template — they all resolve to the same class.
+`component(name, template_dir=None)` returns a registered `BaseComponent` subclass
+bound to the discovered template (`card.html` for `"Card"`). By default it resolves the
+template the same way tag rendering does — under the directory `setup(components_root=...)`
+last registered — but you can pass `template_dir` explicitly to point at a different
+directory instead. The result is a first-class component: instantiate it, pass it as a field
+of another component, or use `<Card/>` in a template — they all resolve to the same class.
 It's idempotent and never shadows a component you've actually declared. See
 [`component()`](../api/base-component.md#component).
 

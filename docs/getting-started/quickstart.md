@@ -55,19 +55,16 @@ Create `components/ui/button.html` (same directory as the class):
 Create `main.py`:
 
 ```python
-from pyjinhx import Renderer
-
-# Set the template search path
-Renderer.set_default_environment("./components")
-
-# Import components after setting the default environment so template
-# discovery is rooted at the path above.
+from pyjinhx import RenderSession
 from components.ui.button import Button
+
+# A RenderSession roots template discovery at the given directory.
+session = RenderSession("./components")
 
 # Create and render
 button = Button(id="submit-btn", text="Submit", variant="primary")
 
-html = button.render()
+html = button.render(session)
 print(html)
 ```
 

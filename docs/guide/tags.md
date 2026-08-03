@@ -2,18 +2,39 @@
 
 ## What are PascalCase tags?
 
-In PyJinHx, **PascalCase tags** are custom component tags used inside HTML strings or templates. They are identified by their tag name being PascalCase (e.g. `<Button/>`, `<UserCard/>`), and are rendered as components rather than plain HTML.
+In PyJinHx, **PascalCase tags** are custom component tags used inside a component's own
+template. They are identified by their tag name being PascalCase (e.g. `<Button/>`,
+`<UserCard/>`), and are expanded into the matching component's rendered HTML when the
+template that contains them is rendered.
 
 ```python
-from pyjinhx import Renderer
+from pyjinhx import BaseComponent, render
 
-renderer = Renderer.get_default_renderer()
-html = renderer.render('<UserCard name="Ada"/>')
+
+class UserCard(BaseComponent):
+    id: str
+    name: str
+
+
+class Page(BaseComponent):
+    id: str
 ```
 
-You can also use PascalCase tags **inside component templates** to compose components declaratively.
+```html
+<!-- page.html -->
+<div id="{{ id }}">
+    <UserCard name="Ada"/>
+</div>
+```
 
-> A PascalCase tag resolves only after its component class has been registered (importing the class registers it). For per-request isolation in a web app, see [Component Registry](registry.md) (Advanced).
+```python
+html = render(Page(id="home"))
+```
+
+A PascalCase tag resolves only after its component class has been registered — importing the
+class registers it, and `setup(components_root=...)` registers every class it finds while
+walking your template tree (see [Configuration](configuration.md)). For per-request isolation
+in a web app, see [Component Registry](registry.md) (Advanced).
 
 !!! warning "Recognized tag names are strict PascalCase"
     A tag is treated as a component only if its name matches `^[A-Z](?:[a-z]+(?:[A-Z][a-z]+)*)?$` — a capital letter followed by alternating lowercase/Capitalized words. This **rejects acronyms and trailing digits**: `UI`, `APIKey`, `HTMLBlock`, `Button2`, and `H2` are NOT recognized and pass through as raw HTML. Name components like `Api`, `ApiKey`, or `HtmlBlock` instead.
@@ -25,15 +46,13 @@ subclass, declared fields are consumed as props (Pydantic-validated and availabl
 template). Non-declared ("stray") attributes are injected onto the component's root
 element automatically — no template token needed.
 
-```python
-html = renderer.render("""
-    <Input
-        type="email"
-        name="user_email"
-        placeholder="Enter your email"
-        required="true"
-    />
-""")
+```html
+<Input
+    type="email"
+    name="user_email"
+    placeholder="Enter your email"
+    required="true"
+/>
 ```
 
 Stray attributes like `hx-*`, `data-*`, or `aria-*` passed on any PascalCase tag land
@@ -66,12 +85,10 @@ string, since a JSON-looking string there is ambiguous.
 
 Inner content of a tag becomes the `{{ content }}` template variable:
 
-```python
-html = renderer.render("""
-    <Card title="Note">
-        This text becomes the content variable.
-    </Card>
-""")
+```html
+<Card title="Note">
+    This text becomes the content variable.
+</Card>
 ```
 
 `content` is **always** passed to a tag-instantiated component, defaulting to `""` when the tag has no inner content. (A `BaseComponent` accepts it as an extra field; declare `content: str` on your class if you want validation.)
@@ -95,71 +112,51 @@ Templates are searched under the root directory of your Jinja `FileSystemLoader`
 
 When PyJinHx encounters a PascalCase tag, it resolves the component in this order:
 
-### 1. Registered instance (highest priority)
+### 1. Registered class
 
-If the tag's `id` matches a pre-registered component instance, that instance is reused and its properties are updated with the tag's attributes.
-
-```python
-from pyjinhx import BaseComponent, Renderer
-
-
-class Button(BaseComponent):
-    id: str
-    text: str = "default"
-    variant: str = "primary"
-
-
-# Create and register an instance
-btn = Button(id="my-btn", text="Original", variant="danger")
-
-# Render via tag — uses existing instance, updates 'text'
-renderer = Renderer.get_default_renderer()
-html = renderer.render('<Button id="my-btn" text="Updated"/>')
-# Result uses variant="danger" (from instance) and text="Updated" (from tag)
-```
-
-!!! warning "Type validation"
-    The tag name must match the instance's class name. A `TypeError` is raised if they don't match.
-
-### 2. Registered class
-
-If a `BaseComponent` subclass with a matching name exists, PyJinHx instantiates it — giving you Pydantic validation, defaults, and field types.
+If a `BaseComponent` subclass with a matching name has been registered (by import, or by
+`setup(components_root=...)` walking your template tree), PyJinHx builds a fresh instance of
+it from the tag's attributes and inner content — giving you Pydantic validation, defaults, and
+field types.
 
 ```python
 class Button(BaseComponent):
     id: str
     text: str
     variant: str = "default"
-
-
-renderer = Renderer.get_default_renderer()
-html = renderer.render('<Button text="Save"/>')  # Validated using Button
 ```
 
-### 3. Generic fallback
-
-If no class is registered, PyJinHx falls back to a generic `BaseComponent` and renders using the auto-discovered template. All tag attributes become template context variables. No Pydantic validation is applied.
-
-```python
-html = renderer.render('<Hint kind="warning">Be careful</Hint>')
+```html
+<Button text="Save"/>  <!-- validated using Button -->
 ```
+
+### 2. Unregistered tag — left as-is
+
+If no class is registered for the tag, PyJinHx does not raise and does not fall back to a
+generic component: the tag is written back out exactly as it was, as ordinary markup. A
+registry miss is treated as an answer, not an error — the tag may simply be a web component,
+or markup nobody meant to intercept.
 
 !!! note "Builtins are not auto-discovered"
-    The fallback only searches under your Jinja loader root, so it does **not** cover [built-in components](../components.md) — their templates ship inside the pyjinhx package. Using `<PJXTooltip/>` (or any builtin) as a tag requires importing it once at startup (`from pyjinhx.builtins import PJXTooltip` or `import pyjinhx.builtins`), which registers the class. Otherwise rendering raises a `FileNotFoundError` telling you which import to add.
-
-The generic-fallback instance is **removed from the registry** after rendering, so it cannot be cross-referenced by other templates (unlike a registered-class instance).
+    The registry only covers classes registered under your own template tree, so it does
+    **not** cover [built-in components](../components.md) — their templates ship inside the
+    pyjinhx package. Using `<PJXTooltip/>` (or any builtin) as a tag requires importing it
+    once at startup (`from pyjinhx.builtins import PJXTooltip` or `import pyjinhx.builtins`),
+    which registers the class. Without that import the tag is simply passed through
+    unrecognized rather than expanded.
 
 ## Auto-Generated IDs
 
-When `auto_id=True` (default), IDs are generated automatically if not provided in the tag. Disable this with:
+`auto_id` is a `ClassVar[bool]` on `BaseComponent`, defaulting to `True`. While true, an `id`
+is generated automatically (`pjx-<n>`) for a PascalCase tag that omits one. Override it per
+component class to require an explicit `id` instead:
 
 ```python
-renderer = Renderer.get_default_renderer(auto_id=False)
+class Button(BaseComponent):
+    auto_id = False
+    id: str  # now required — no default is generated
+    text: str
 ```
-
-## Parser API
-
-For programmatic access to the parse tree (without rendering), use `Parser` and `Tag` directly. See [Parser & Tag](../api/parser.md).
 
 ## See next
 

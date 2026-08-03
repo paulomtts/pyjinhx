@@ -8,12 +8,18 @@ PyJinHx makes it easy to compose components together. You can nest single compon
     - **Python field values** (this page) — you build child instances yourself; give each child an **explicit `id`** (auto-generated `pjx-<n>` ids are not stable hooks).
     - **PascalCase `<Tag/>` in templates** (see [PascalCase Tags](tags.md)) — the renderer instantiates children for you and can **auto-generate the `id`** when `auto_id=True` (the default).
 
+!!! info "A nested field must be declared `Slot`"
+    A field only renders a `BaseComponent` value's HTML in place when it is declared `Slot`
+    (or `Children`, for the component's children field — see
+    [Escaping and slots](components.md#escaping-and-slots)). A plain `Button` or
+    `list[Button]` annotation makes the field an ordinary Pydantic field, not a nesting point.
+
 ## Direct Nesting
 
 Pass a component as a field value:
 
 ```python
-from pyjinhx import BaseComponent
+from pyjinhx import BaseComponent, Slot
 
 
 class Button(BaseComponent):
@@ -24,7 +30,7 @@ class Button(BaseComponent):
 class Card(BaseComponent):
     id: str
     title: str
-    action: Button  # Nested component
+    action: Slot = ""  # nested component goes here
 ```
 
 ```html
@@ -42,35 +48,43 @@ card = Card(id="hero", title="Welcome", action=Button(id="cta", text="Get Starte
 html = card.render()
 ```
 
-## Accessing Nested Component Properties
+## Nested components are opaque
 
-Nested components are wrapped in `NestedComponentWrapper`, giving you access to both the rendered HTML and the original props:
+A `Slot`-typed field holding a `BaseComponent` is not exposed to the template as the
+component's props — only `{{ field }}` (its rendered HTML) is available. There is no
+`{{ action.text }}` or similar property access: the child's own template is the only place
+its fields are used, keeping the parent free to swap in whatever child it likes without the
+parent template depending on the child's shape.
 
 ```html
 <!-- card.html -->
 <div id="{{ id }}" class="card">
     <h2>{{ title }}</h2>
 
-    <!-- Render the component -->
+    <!-- Renders the component's own HTML -->
     {{ action }}
-
-    <!-- Access component properties -->
-    <p>Button text: {{ action.props.text }}</p>
-    <p>Button ID: {{ action.props.id }}</p>
 </div>
 ```
 
-!!! info "How it works"
-    When a field value is a `BaseComponent`, PyJinHx wraps it in a `NestedComponentWrapper` before rendering. Use `{{ field }}` to output the HTML, and `{{ field.props.X }}` to access the original component's properties. This also applies to components inside lists and dicts.
+If a template does need to know something about the child from the parent's side (a CSS
+class, a label), pass that as a separate scalar field on the parent instead of trying to reach
+into the nested component.
 
 ## Lists of Components
 
-Use a list to render multiple components:
+A list of nested components also needs a `Slot`-typed field — `Slot`'s string-or-component
+union works inside a `list` or `dict` too:
 
 ```python
+from typing import Annotated
+
+from pyjinhx import BaseComponent
+from pyjinhx.component import PjxSlot
+
+
 class ButtonGroup(BaseComponent):
     id: str
-    buttons: list[Button]
+    buttons: Annotated[list[str | Button], PjxSlot()] = []
 ```
 
 ```html
@@ -93,47 +107,28 @@ group = ButtonGroup(
 )
 ```
 
-### Accessing List Item Properties
+Each list element still only exposes its rendered HTML via `{{ button }}` — see
+[Nested components are opaque](#nested-components-are-opaque) above.
 
-```html
-<div id="{{ id }}" class="button-group">
-    {% for button in buttons %}
-        <div class="button-wrapper" data-text="{{ button.props.text }}">
-            {{ button }}
-        </div>
-    {% endfor %}
-</div>
-```
+## Dictionaries of Components
 
-### Mixed Collections
-
-Combine different types in lists and dicts:
+The same `Slot`-collection annotation works for a `dict`, for named component collections:
 
 ```python
+from typing import Annotated
+
+from pyjinhx import BaseComponent
+from pyjinhx.component import PjxSlot
+
+
 class Widget(BaseComponent):
     id: str
     content: str
 
 
-class Container(BaseComponent):
-    id: str
-    items: list[Button | Card | Widget]
-```
-
-```html
-{% for item in items %}
-    <div class="item">{{ item }}</div>
-{% endfor %}
-```
-
-## Dictionaries of Components
-
-Use dictionaries for named component collections:
-
-```python
 class Dashboard(BaseComponent):
     id: str
-    widgets: dict[str, Widget]
+    widgets: Annotated[dict[str, str | Widget], PjxSlot()] = {}
 ```
 
 ```html
@@ -164,7 +159,7 @@ Components can be nested to any depth. Reusing the `Button` and `Card` classes f
 class Page(BaseComponent):
     id: str
     title: str
-    main_card: Card
+    main_card: Slot = ""
 ```
 
 ```python

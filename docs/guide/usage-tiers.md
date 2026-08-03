@@ -11,14 +11,13 @@ The Guide is organized in two halves that map onto these tiers:
 
 ## Tier 1 — Components
 
-**What:** `BaseComponent` + co-located Jinja templates + `Renderer`.
+**What:** `BaseComponent` + co-located Jinja templates + a `RenderSession`.
 
 **Use when:** Scripts, static pages, or any server-rendered HTML without per-request state sharing.
 
 ```python
-from pyjinhx import BaseComponent, Renderer
-
-Renderer.set_default_environment("./components")
+from pyjinhx import BaseComponent
+from pyjinhx.session import RenderSession
 
 
 class Button(BaseComponent):
@@ -26,7 +25,8 @@ class Button(BaseComponent):
     text: str
 
 
-html = Button(id="cta", text="Click").render()
+session = RenderSession(template_dir="./components")
+html = Button(id="cta", text="Click").render(session)
 ```
 
 **Docs:** [Quick Start](../getting-started/quickstart.md), [Creating Components](components.md)
@@ -35,18 +35,18 @@ html = Button(id="cta", text="Click").render()
 
 ## Tier 2 — Web app scoping
 
-**What:** `Registry.request_scope()` per HTTP request.
+**What:** `request_scope()` per HTTP request.
 
 **Use when:** FastAPI, Starlette, or any multi-request server — isolates component instances so request A cannot leak into request B. Also initializes the request-tier load cache layer and resets mutation tracking.
 
 ```python
-from pyjinhx import Registry
+from pyjinhx.session import request_scope
 
-with Registry.request_scope():
+with request_scope():
     return MyPage(id="app").render()
 ```
 
-`load_context` and `client_backend` are **optional** — bare `request_scope()` is valid.
+`load_context` is **optional** — bare `request_scope()` is valid.
 
 **Docs:** [Component Registry](registry.md), [FastAPI integration](../integrations/fastapi.md)
 
@@ -62,12 +62,12 @@ with Registry.request_scope():
 @app.post("/todos/toggle")
 def toggle(todo_id: int):
     store.toggle(todo_id)
-    return TodoItemRow.render(todo_id)  # OOB for dependents
+    return TodoItemRow(todo_id=todo_id).render()  # OOB for dependents
 ```
 
 Every `ReactiveComponent` must declare the `react` class keyword (the state keys it derives from) — it is enforced at class-definition time alongside `load()`.
 
-OOB swaps require an **active `ClientBackend`** so the renderer can read the client's mounted-region manifest. Wire one via `setup(app)` or `Registry.request_scope(client_backend=...)`. A bare `Registry.request_scope()` has no backend, so `render()` falls through to a plain single-region render with no OOB swaps.
+OOB swaps require an **active `ClientBackend`** so the renderer can read the client's mounted-region manifest. Wire one via `setup(app)`. A `request_scope()` with no backend configured falls `render()` through to a plain single-region render with no OOB swaps.
 
 "Auto-dirtied" means a `@mutates`-decorated store method records the dirtied state keys it touched; the next reactive `render()` consumes them to decide which mounted regions to reload and swap.
 
@@ -82,7 +82,7 @@ OOB swaps require an **active `ClientBackend`** so the renderer can read the cli
 | Piece | Purpose |
 |-------|---------|
 | `load_context=` in `request_scope` | Pass DB/store into `load()` without globals |
-| `client_backend=` in `request_scope` | Auto `X-PJX-Mounted` / `X-PJX-Assets` in `render()` |
+| `ClientBackend` (wired via `setup(app)`) | Auto `X-PJX-Mounted` / `X-PJX-Assets` in `render()` |
 | Load cache + `invalidate()` | Cache `load()` results; evict on mutation |
 | `InvalidationBackend` | Cross-worker cache fan-out |
 | `enable_reactive_dev()` | Warnings for missing `mounted`, unconsumed `@mutates`, etc. |

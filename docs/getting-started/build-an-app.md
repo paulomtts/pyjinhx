@@ -7,7 +7,7 @@ When you're done you will have used:
 - `BaseComponent` and `ReactiveComponent`
 - Template discovery and nesting via typed child fields
 - Co-located JS/CSS and asset delivery modes
-- `Registry.request_scope`, `@mutates`, and `PjxContext`
+- `request_scope`, `@mutates`, and `AppContext`
 - Reactive `render()` with `ClientBackend` wired in middleware
 - Load-cache scopes and optional invalidation fan-out
 
@@ -234,12 +234,12 @@ Run: `uvicorn app:app --reload`
 Per-route wrapping works for demos:
 
 ```python
-from pyjinhx import Registry
+from pyjinhx.session import request_scope
 
 
 @app.get("/", response_class=HTMLResponse)
 def index():
-    with Registry.request_scope():
+    with request_scope("./components"):
         return TodoPanel(
             id="panel", counter=TodoCounter(id="counter", remaining=3)
         ).render()
@@ -467,23 +467,23 @@ mutation touches — the swap target *and* its OOB dependents.
 
 ---
 
-## Step 12 — PjxContext (avoid globals in load())
+## Step 12 — AppContext (avoid globals in load())
 
-The context is just a **plain frozen dataclass** — `PjxContext.current()` is duck-typed, so you don't need to subclass anything for this manual pattern (the annotation-injected `ctx:` parameter style does require a `PjxContext` subclass annotation):
+Subclass `AppContext` to declare the shape of your app's per-request context. Declare it
+as an annotated `ctx` parameter on `load()` and pyjinhx injects that request's value —
+no lookup call needed:
 
 ```python
-from dataclasses import dataclass
-from pyjinhx import PjxContext
+from pyjinhx import AppContext
 
 
-@dataclass(frozen=True)
-class AppLoadContext:
-    store: object
+class AppLoadContext(AppContext):
+    def __init__(self, store: object):
+        self.store = store
 
 
-def _store():
-    ctx = PjxContext.current()
-    return ctx.store if isinstance(ctx, AppLoadContext) else store
+def _store(ctx: AppLoadContext | None = None):
+    return ctx.store if ctx is not None else store
 ```
 
 Pass a factory to `setup()` (Step 6):
@@ -492,8 +492,8 @@ Pass a factory to `setup()` (Step 6):
 setup(app, context_factory=lambda request: AppLoadContext(store=store))
 ```
 
-???+ question "Why PjxContext?"
-    `load()` must rebuild components from the current world. Passing a database handle or store through a **request-scoped context** avoids hidden globals and makes tests inject a fake store. Optional `load(cls, *, ctx=...)` is supported if you prefer explicit parameters.
+???+ question "Why AppContext?"
+    `load()` must rebuild components from the current world. Passing a database handle or store through a **request-scoped context** avoids hidden globals and makes tests inject a fake store. `PjxContext` is the framework's own read-only view of the request — it isn't meant to be subclassed for app data; `AppContext` is.
 
 ---
 
@@ -592,9 +592,9 @@ The per-step **Why?** panels above cover the *why*; this is the at-a-glance *wha
 
 | Tier | Pieces |
 |------|--------|
-| **Required** | `set_default_environment` · `Registry.request_scope()` middleware · root full-page render · `ReactiveComponent` (`react={...}` + `load()`) · `@mutates(Keys.…)` on mutations · `setup()` (wires `FastAPIClientBackend`) · `PjxKey` on keyed rows |
+| **Required** | `setup(components_root=...)` · `request_scope()` middleware · root full-page render · `ReactiveComponent` (`react={...}` + `load()`) · `@mutates(Keys.…)` on mutations · `setup()` (wires `FastAPIClientBackend`) · `PjxKey` on keyed rows |
 | **Auto-provided** | HTMX (vendored, inlined on reactive root renders — disable with `setup(inject_htmx=False)`) |
-| **Recommended** | `PjxContext` · `data-pjx-loading` indicators · `enable_reactive_dev()` in dev |
+| **Recommended** | `AppContext` · `data-pjx-loading` indicators · `enable_reactive_dev()` in dev |
 | **Production** | `AssetMode.NONE` + pre-built bundle (`Finder.all_assets()`) · `InvalidationBackend` for multi-worker `PROCESS` cache |
 
 ---

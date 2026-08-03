@@ -4,7 +4,7 @@ Reactivity is **opt-in**. You can use PyJinHx with `BaseComponent` only — see 
 
 !!! info "Prerequisites"
     - HTMX for transport and swap
-    - `Registry.request_scope()` on every HTTP request
+    - `request_scope()` (from `pyjinhx.session`) on every HTTP request
     - [ClientBackend](api/client-backend.md) in middleware (recommended) so mutation routes need no framework kwargs on `render()`
 
 pyjinhx owns **composition**; HTMX owns **transport and swap**. Between them sits
@@ -21,8 +21,8 @@ See the [Public API Index](reference/public-api.md) for every exported reactive 
 ## Make a component reactive
 
 Subclass `ReactiveComponent` and declare **both** the `react` class keyword and a
-`load()` classmethod — `ReactiveComponent` enforces both (a missing `load()` can't be
-instantiated; a missing `react` is a definition-time error):
+`load()` instance method — `load()` overrides `ReactiveComponent`'s no-op default; a
+missing `react` is a definition-time error:
 
 ```python
 from pyjinhx import ReactiveComponent, MutationKey
@@ -33,11 +33,10 @@ class Keys(MutationKey):
 
 
 class Counter(ReactiveComponent, react={Keys.TODOS}):
-    remaining: int
+    remaining: int = 0  # id defaults to "counter"
 
-    @classmethod
-    def load(cls) -> "Counter":
-        return cls(remaining=db.remaining())  # id defaults to "counter"
+    def load(self) -> None:
+        self.remaining = db.remaining()
 ```
 
 - `react` — the **state keys** this component derives from, as a set of `MutationKey`
@@ -45,7 +44,9 @@ class Counter(ReactiveComponent, react={Keys.TODOS}):
   `Keys.USER`) — **not** component ids or types, and not client-side watchers. The
   server simply intersects a component's declared keys with the route's `dirtied` keys
   (and uses them to evict the `load()` cache): it's cache invalidation, not signals.
-- `load()` — rebuilds the component from the current world, independent of any route.
+- `load()` — populates the instance's fields from the current world. It runs
+  automatically right before a mounted instance's render (via `pjx_mount()`), memoized
+  per request under the class + load key.
 - `id` — defaults to the **kebab-cased class name** (`Counter` → `"counter"`,
   `TodoCounter` → `"todo-counter"`), since a type-singleton's identity is its type, so
   `load()` need not set one. Pass an explicit `id` only for instance-keyed regions —
@@ -72,9 +73,9 @@ class Keys(MutationKey):
 
 
 class LiveBadge(ReactiveComponent, PJXBadge, react={Keys.TASKS}):
-    @classmethod
-    def load(cls) -> "LiveBadge":
-        return cls(label=f"{db.open_tasks()} open", color="brand")
+    def load(self) -> None:
+        self.label = f"{db.open_tasks()} open"
+        self.color = "brand"
 ```
 
 No template or CSS needed: `LiveBadge` renders PJXBadge's `pjx_badge.html` and ships
@@ -144,29 +145,30 @@ The runtime attaches these headers to htmx requests:
 
 Wire `FastAPIClientBackend` via `setup(app, ...)` — see the
 [canonical snippet](integrations/fastapi.md#middleware-recommended) and
-[Client Backend](api/client-backend.md). Mutation routes then call
-`Cls.render(key)` with no extra kwargs — headers are read from the backend after
+[Client Backend](api/client-backend.md). Mutation routes then construct the primary
+and call `.render()` with no extra kwargs — headers are read from the backend after
 `@mutates`. Full-page routes call `.render()` plainly; boosted navigations skip
 re-injecting `pjx.js` when `X-PJX-Mounted` is present.
 
 ## Emit OOB swaps from your route
 
-A mutation route does exactly one thing: **`return <component>.render(...)`**. You
-never call `load()` and never assemble swaps yourself. For a **reactive** primary,
-call `render()` on the *class* — it auto-`load()`s the component for you. The
+A mutation route does exactly one thing: **`return <component>.render()`**. You
+never call `load()` yourself and never assemble swaps by hand. For a **reactive**
+primary, construct the instance (its `PjxKey` field set, if it has one) and call
+`.render()` — `pjx_mount()` auto-`load()`s it for you before the render. The
 dependent regions ride along as out-of-band swaps:
 
 ```python
 @app.post("/todos/toggle")
 def toggle():
     db.toggle_all()
-    return Counter.render()
+    return Counter().render()
 ```
 
 With `@mutates` on the store method, pending dirtied keys drive OOB swaps automatically.
 
-`Cls.render(*args)` loads the primary (`load(*args)` for keyed types, `load()` for
-singletons), renders it as the main-target response, then appends OOB swaps for every
+The primary's `.render()` runs its `load()` (populating `self` from the current
+world), renders it as the main-target response, then appends OOB swaps for every
 *other* mounted reactive region whose `react` keys intersect pending mutations from
 `@mutates`. Only the primary id is excluded (htmx swaps it as the main-target response);
 the region that *initiated* the request still updates out-of-band if it depends on the
@@ -234,8 +236,8 @@ declarations — not smeared across endpoints. Adding a progress bar that declar
 ### Instance-keyed regions (rows)
 
 A reactive type can have **many mounted instances** — table rows, cards, list items.
-A component is **instance-keyed iff its `load()` takes one resource parameter after
-`cls`**; declare exactly one `PjxKey` field on the model:
+A component is **instance-keyed** by declaring exactly one `PjxKey` field on the model;
+that field's value seeds both the instance's cache key and its `id`:
 
 ```python
 from typing import Annotated
@@ -251,19 +253,16 @@ class TodoItemRow(ReactiveComponent, react={Keys.TODOS}):
     title: str = ""
     done: bool = False
 
-    @classmethod
-    def load(cls, todo_id: int | str) -> "TodoItemRow":
-        resolved_id = int(todo_id)  # cache wrapper passes the key as a string
-        t = store.get(resolved_id)
-        return cls(
-            id=f"row-{resolved_id}",
-            todo_id=resolved_id,
-            title=t.text,
-            done=t.done,
-        )
+    def load(self) -> None:
+        self.id = f"row-{self.todo_id}"
+        t = store.get(self.todo_id)
+        self.title = t.text
+        self.done = t.done
 ```
 
-The `load()` key arrives as a **string** from the cache wrapper (the manifest serialises to JSON), so annotate `int | str` and convert inside `load()`.
+On the OOB reload path the key arrives as a **string** from the cache wrapper (the
+manifest serialises to JSON), so `self.todo_id` may need coercing to `int` before use
+if your `load()` compares it against non-string ids.
 
 - **`data-pjx-load`** is stamped from the `PjxKey` field and returned in the manifest
   so OOB reloads call `load(manifest.load)`.
@@ -280,7 +279,7 @@ def toggle(todo_id: int) -> Todo: ...
 @app.post("/rows/{todo_id}/toggle")
 def toggle_row(todo_id: int):
     store.toggle(todo_id)
-    return TodoItemRow.render(todo_id)
+    return TodoItemRow(todo_id=todo_id).render()
 ```
 
 When a keyed entity is removed but still listed in the client's mounted manifest (e.g.
@@ -310,10 +309,9 @@ class MessageBubble(ReactiveComponent, react={ChatKeys.MESSAGE}):
     message_id: Annotated[str, PjxKey()]
     text: str = ""
 
-    @classmethod
-    def load(cls, message_id: str) -> "MessageBubble":
-        msg = store.get(message_id)
-        return cls(id=f"bubble-{message_id}", message_id=message_id, text=msg.text)
+    def load(self) -> None:
+        self.id = f"bubble-{self.message_id}"
+        self.text = store.get(self.message_id).text
 
 
 # on settle, after finalizing one message:
@@ -379,7 +377,7 @@ def toggle(todo_id: int) -> Todo: ...
 @app.post("/rows/{todo_id}/toggle")
 def toggle_row(todo_id):
     store.toggle(todo_id)
-    return TodoItemRow.render(todo_id)
+    return TodoItemRow(todo_id=todo_id).render()
 ```
 
 This dirties `Keys.TODOS` on every call, so it reloads every mounted `TodoItemRow`
@@ -395,37 +393,39 @@ def toggle(todo_id: int) -> Todo: ...
 
 Now only the mounted `TodoItemRow` whose load-key matches `todo_id` reloads.
 
-Use `Registry.request_scope()` on every request when relying on `@mutates` — it
+Use `request_scope()` on every request when relying on `@mutates` — it
 resets mutation tracking per request.
 
 ## Load context
 
-Pass request-scoped dependencies into `load()` without global imports:
+Pass request-scoped dependencies into `load()` without global imports. Subclass
+`AppContext` (from `pyjinhx.app_context`) — not `PjxContext`, which is the
+framework's own read-only view of request state and is not meant to be
+subclassed by apps:
 
 ```python
-from dataclasses import dataclass
-from pyjinhx import MutationKey, PjxContext, ReactiveComponent
+from pyjinhx import AppContext, MutationKey, ReactiveComponent
 
 
 class Keys(MutationKey):
     TODOS = "todos"
 
 
-@dataclass(frozen=True)
-class AppContext(PjxContext):
-    db: Database
+class MyAppContext(AppContext):
+    def __init__(self, db: Database) -> None:
+        self.db = db
 
 
 class Counter(ReactiveComponent, react={Keys.TODOS}):
-    @classmethod
-    def load(cls, *, ctx: AppContext | None = None) -> "Counter":
-        ctx = ctx or PjxContext.current()
-        return cls(remaining=ctx.db.remaining())
+    def load(self, ctx: MyAppContext) -> None:
+        self.remaining = ctx.db.remaining()
 ```
 
-Set context per request via `setup(app, context_factory=...)` or
-`Registry.request_scope(load_context=AppContext(db=...))`. Cache keys remain
-`(class, load_arg)` — context is not part of the cache identity.
+`ctx` is injected by annotation, not by parameter name — declare it optional
+(`ctx: MyAppContext | None`) to keep `load()` valid when called outside a request
+scope or one with no context configured, in which case `ctx` is `None`. Set context
+per request via `setup(app, context_factory=...)` or `request_scope(load_context=MyAppContext(db=...))`.
+Cache keys remain `(class, load key)` — context is not part of the cache identity.
 
 ## Development mode
 
@@ -471,7 +471,7 @@ worker process.
 
 | Backend | Storage | Cross-request | Multi-worker safe |
 |---------|---------|---------------|-------------------|
-| none (default) | `ContextVar` inside `Registry.request_scope()` | no | yes |
+| none (default) | `ContextVar` inside `request_scope()` | no | yes |
 | configured | module-level dict per worker, fanned out on mutation | yes | yes (backend keeps workers consistent) |
 
 ```python
@@ -481,7 +481,7 @@ setup(app)  # per-request caching (default, multi-worker safe)
 setup(app, invalidation_backend=...)  # cross-request per worker
 ```
 
-Use `Registry.request_scope()` on every HTTP request (middleware) for instance registry
+Use `request_scope()` on every HTTP request (middleware) for instance registry
 isolation and the request-tier cache (which dedups the OOB walk regardless of backend).
 
 **Cache identity:** entries are keyed by `(component class, load key)` only. For per-user
