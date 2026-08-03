@@ -342,7 +342,8 @@ def _mount_root(component: BaseComponent) -> BaseComponent:
         return component
     key_args = {}
     if key_field is not None:
-        key_args[key_field] = getattr(component, key_field)
+        key_field_str = cast(str, key_field)
+        key_args[key_field_str] = getattr(component, key_field_str)
     loaded = cast(Any, cls).load(**key_args)
     if loaded is component:
         return component
