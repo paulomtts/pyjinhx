@@ -107,7 +107,7 @@ def end(page, event, name="a"):
     page.evaluate(END, {"event": event, "name": name})
 
 
-import pytest
+import pytest  # noqa: E402
 
 
 @pytest.mark.parametrize("event", END_EVENTS)

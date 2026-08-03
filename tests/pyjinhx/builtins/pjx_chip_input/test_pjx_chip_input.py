@@ -43,8 +43,8 @@ class TestFields:
             PJXChipInput(id="c", name="tags", **{"data-test": "yes"})  # type: ignore[arg-type]
 
 
-from pyjinhx.render import render
-from pyjinhx.session import RenderSession
+from pyjinhx.render import render  # noqa: E402
+from pyjinhx.session import RenderSession  # noqa: E402
 
 
 @pytest.fixture

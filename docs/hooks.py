@@ -8,10 +8,10 @@ import sys
 HERE = os.path.dirname(__file__)
 sys.path.insert(0, HERE)
 
-from demos import DEMOS
+from demos import DEMOS  # noqa: E402
 
-from pyjinhx.component import BaseComponent, _pascal_to_snake
-from pyjinhx.session import request_scope
+from pyjinhx.component import BaseComponent, _pascal_to_snake  # noqa: E402
+from pyjinhx.session import request_scope  # noqa: E402
 
 
 def pascal_case_to_kebab_case(name: str) -> str:

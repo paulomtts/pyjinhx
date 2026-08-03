@@ -50,8 +50,8 @@ class TestFields:
             PJXButton(id="b", type="link")  # type: ignore[arg-type]
 
 
-from pyjinhx.render import render
-from pyjinhx.session import RenderSession
+from pyjinhx.render import render  # noqa: E402
+from pyjinhx.session import RenderSession  # noqa: E402
 
 
 @pytest.fixture
@@ -134,8 +134,8 @@ class TestAssets:
         assert PJXButton.__pjx_descriptor__.js_paths == ()
 
 
-from pyjinhx import discovery
-from pyjinhx.builtins.pjx_region_loader import PJXRegionLoader
+from pyjinhx import discovery  # noqa: E402
+from pyjinhx.builtins.pjx_region_loader import PJXRegionLoader  # noqa: E402
 
 
 @pytest.fixture

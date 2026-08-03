@@ -19,9 +19,9 @@ def test_session_defaults_both_kinds_to_inline():
     assert session.js_mode is AssetMode.INLINE
 
 
-import pytest
+import pytest  # noqa: E402
 
-from pyjinhx.assets import emit_assets
+from pyjinhx.assets import emit_assets  # noqa: E402
 
 
 def _session(tmp_path: Path) -> RenderSession:
@@ -164,13 +164,13 @@ def test_link_css_with_inline_js_emits_both_css_first(tmp_path):
     )
 
 
-from dataclasses import replace
+from dataclasses import replace  # noqa: E402
 
-from pyjinhx.component import BaseComponent
-from pyjinhx.descriptor import ClassDescriptor
-from pyjinhx.render import render, render_level
-from pyjinhx.segments import serialize
-from pyjinhx.session import accumulate_assets, request_scope
+from pyjinhx.component import BaseComponent  # noqa: E402
+from pyjinhx.descriptor import ClassDescriptor  # noqa: E402
+from pyjinhx.render import render, render_level  # noqa: E402
+from pyjinhx.segments import serialize  # noqa: E402
+from pyjinhx.session import accumulate_assets, request_scope  # noqa: E402
 
 TEMPLATES = str(Path(__file__).parent.parent / "templates")
 
@@ -280,7 +280,7 @@ def test_render_level_alone_carries_no_inlined_tags(tmp_path):
     assert session.css_assets == {css}
 
 
-import threading
+import threading  # noqa: E402
 
 
 def test_concurrent_scopes_do_not_leak_emitted_assets(tmp_path):

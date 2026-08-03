@@ -45,9 +45,9 @@ class TestFields:
             PJXFormField(id="ff", **{"data-test": "1"})  # type: ignore[arg-type]
 
 
-from pyjinhx.builtins.ui.pjx_spinner import PJXSpinner
-from pyjinhx.render import render
-from pyjinhx.session import RenderSession
+from pyjinhx.builtins.ui.pjx_spinner import PJXSpinner  # noqa: E402
+from pyjinhx.render import render  # noqa: E402
+from pyjinhx.session import RenderSession  # noqa: E402
 
 
 @pytest.fixture

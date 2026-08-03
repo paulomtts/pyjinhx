@@ -11,8 +11,8 @@ import pyjinhx.builtins  # noqa: F401
 DOCS = Path(__file__).resolve().parents[2] / "docs"
 sys.path.insert(0, str(DOCS))
 
-import hooks
-from demos import DEMOS
+import hooks  # noqa: E402
+from demos import DEMOS  # noqa: E402
 
 
 class FakeFile:

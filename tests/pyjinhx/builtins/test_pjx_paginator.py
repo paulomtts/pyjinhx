@@ -174,8 +174,8 @@ class TestComputedFieldVisibility:
         assert dumped["items"][1]["kind"] == "current"
 
 
-from pyjinhx.render import render
-from pyjinhx.session import RenderSession
+from pyjinhx.render import render  # noqa: E402
+from pyjinhx.session import RenderSession  # noqa: E402
 
 
 @pytest.fixture
