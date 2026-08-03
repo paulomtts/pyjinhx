@@ -12,7 +12,7 @@ import pytest
 from pyjinhx2.component import BaseComponent
 from pyjinhx2.descriptor import ClassDescriptor
 from pyjinhx2.render import render
-from pyjinhx2.session import RenderSession
+from pyjinhx2.session import RenderSession, request_scope
 
 
 def _make_component(template_path: str):
@@ -171,3 +171,39 @@ def test_render_zeroroot_raises(render_session):
 
     with pytest.raises(ValueError, match="must render exactly one root element"):
         render(component, render_session)
+
+
+# Test: component.render(session=...) delegates to the free render() with that
+# exact session, ambient context or not.
+def test_component_render_with_explicit_session(render_session):
+    """component.render(session=s) matches render(component, s)."""
+    DivComp = _make_component("div.html")
+
+    assert DivComp().render(session=render_session) == render(
+        DivComp(), render_session
+    )
+
+
+# Test: no-arg component.render() inside a request_scope picks the ambient
+# session up off the ContextVar.
+def test_component_render_uses_ambient_session(tmp_path):
+    """Inside request_scope(), no-arg render() uses the scope's session."""
+    template_dir = str(Path(__file__).parent.parent / "templates")
+    DivComp = _make_component("div.html")
+
+    with request_scope(template_dir=template_dir) as session:
+        ambient = DivComp().render()
+
+    assert ambient == render(DivComp(), RenderSession(template_dir=template_dir))
+    assert ambient == render(DivComp(), session)
+
+
+# Test: outside any request_scope, no-arg render() behaves exactly like passing
+# session=None to the free function — a fresh default RenderSession, whose
+# loader is the cwd-relative "templates" dir.
+def test_component_render_without_session(monkeypatch):
+    """Outside a scope, no-arg render() matches render(component, None)."""
+    monkeypatch.chdir(Path(__file__).parent.parent)  # tests/, so "templates" resolves
+    DivComp = _make_component("div.html")
+
+    assert DivComp().render() == render(DivComp(), None)
