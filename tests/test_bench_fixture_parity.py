@@ -9,11 +9,11 @@ future accidental fix to the renderer doesn't slip by unnoticed here.
 
 import pkgutil
 
-import pyjinhx2.builtins
-from pyjinhx2.component import BaseComponent
-from pyjinhx2.discovery import build_registry
-from pyjinhx2.render import render as v2_render
-from pyjinhx2.session import RenderSession
+import pyjinhx.builtins
+from pyjinhx.component import BaseComponent
+from pyjinhx.discovery import build_registry
+from pyjinhx.render import render as v2_render
+from pyjinhx.session import RenderSession
 from tests.fixtures.bench_builtin_heavy import (
     V0_MANIFEST,
     V2_MANIFEST,
@@ -57,7 +57,7 @@ def _v2_registry() -> None:
     test actually renders, unlike the manifest-only tests above.
     """
     for module_info in pkgutil.walk_packages(
-        pyjinhx2.builtins.__path__, prefix="pyjinhx2.builtins."
+        pyjinhx.builtins.__path__, prefix="pyjinhx.builtins."
     ):
         __import__(module_info.name)
     found: list[type] = []
@@ -66,7 +66,7 @@ def _v2_registry() -> None:
         cls = stack.pop()
         found.append(cls)
         stack.extend(cls.__subclasses__())
-    build_registry("pyjinhx2/builtins", found)
+    build_registry("pyjinhx/builtins", found)
 
 
 def test_v2_table_cell_content_is_pinned_as_escaped_not_a_bug_to_fix_here() -> None:

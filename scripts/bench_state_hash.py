@@ -1,6 +1,6 @@
 """Benchmark: state_hash() on its own, off the render path.
 
-state_hash() (pyjinhx2/reactive/component.py) is three costs stacked —
+state_hash() (pyjinhx/reactive/component.py) is three costs stacked —
 model_dump(mode="json"), a sorted json.dumps, and a SHA-256 over the encoded
 result. Today it is only ever timed inside walk_manifest() in
 bench_reactive_fanout.py, where a load() call and a full render_level() dwarf
@@ -25,7 +25,7 @@ Not a CI test (timing-sensitive). Run manually before/after state-hash work:
 
 import time
 
-from pyjinhx2.reactive.component import ReactiveComponent
+from pyjinhx.reactive.component import ReactiveComponent
 
 FIELD_COUNTS = (5, 20, 50, 100)
 VALUE_SIZES = (16, 256, 4096, 65536)

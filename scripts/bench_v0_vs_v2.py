@@ -14,7 +14,7 @@ was taken from a separate worktree checked out at the tag itself
 deleted by #540, so the numbers this prints get captured into
 docs/superpowers/rebuild/roadmap.md rather than re-derived later.
 
-v2 side: the fixture page is a real ``pyjinhx2`` component instance tree
+v2 side: the fixture page is a real ``pyjinhx`` component instance tree
 (not a markup string) — see ``tests/fixtures/bench_builtin_heavy.py``'s
 module docstring for why a plain nested-tag markup string does not expand
 past one custom-tag boundary on this side.
@@ -37,12 +37,12 @@ _V0364_WORKTREE = Path("/tmp/pyjinhx_v0-v0364")
 if _V0364_WORKTREE.is_dir():
     sys.path.insert(0, str(_V0364_WORKTREE))
 
-import pyjinhx2.builtins
+import pyjinhx.builtins
 import pyjinhx_v0.builtins.ui  # noqa: F401 — registers v0 builtins (import side effect)
-from pyjinhx2.component import BaseComponent
-from pyjinhx2.discovery import build_registry
-from pyjinhx2.render import render as v2_render
-from pyjinhx2.session import RenderSession
+from pyjinhx.component import BaseComponent
+from pyjinhx.discovery import build_registry
+from pyjinhx.render import render as v2_render
+from pyjinhx.session import RenderSession
 from pyjinhx_v0 import Renderer as V0Renderer
 from pyjinhx_v0.registry import Registry as V0Registry
 from tests.fixtures.bench_builtin_heavy import (
@@ -55,18 +55,18 @@ from tests.fixtures.bench_builtin_heavy import (
 )
 
 logging.getLogger("pyjinhx_v0").setLevel(logging.ERROR)
-logging.getLogger("pyjinhx2").setLevel(logging.ERROR)
+logging.getLogger("pyjinhx").setLevel(logging.ERROR)
 
 ROWS = 200
 ITERATIONS = 20
 
 
 def _import_all_v2_builtins() -> None:
-    """Import every module under pyjinhx2.builtins so their classes exist to
-    be found by ``__subclasses__()`` — ``import pyjinhx2.builtins`` alone only
+    """Import every module under pyjinhx.builtins so their classes exist to
+    be found by ``__subclasses__()`` — ``import pyjinhx.builtins`` alone only
     imports the (empty) package ``__init__``, not each builtin submodule."""
     for module_info in pkgutil.walk_packages(
-        pyjinhx2.builtins.__path__, prefix="pyjinhx2.builtins."
+        pyjinhx.builtins.__path__, prefix="pyjinhx.builtins."
     ):
         importlib.import_module(module_info.name)
 
@@ -135,7 +135,7 @@ CASES: tuple[tuple[str, Callable[[], str], Callable[[], BaseComponent]], ...] = 
 
 def main() -> None:
     _import_all_v2_builtins()
-    build_registry("pyjinhx2/builtins", _v2_all_classes())
+    build_registry("pyjinhx/builtins", _v2_all_classes())
 
     print(
         f"{'case':<20} {'v0 med':>9} {'v2 med':>9} {'v0 mean':>9} {'v2 mean':>9} "

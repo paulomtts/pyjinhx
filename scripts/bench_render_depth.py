@@ -1,4 +1,4 @@
-"""Render-scaling benchmark for the pyjinhx2 kernel: depth held apart from breadth.
+"""Render-scaling benchmark for the pyjinhx kernel: depth held apart from breadth.
 
 bench_render_scaling_v2.py sweeps component *count* through a tree that is
 always exactly 3 levels deep; nothing there isolates depth from breadth, so a
@@ -25,11 +25,11 @@ import tempfile
 import time
 from pathlib import Path
 
-from pyjinhx2 import discovery
-from pyjinhx2.component import BaseComponent, _pascal_to_snake
-from pyjinhx2.descriptor import ClassDescriptor
-from pyjinhx2.render import render
-from pyjinhx2.session import RenderSession
+from pyjinhx import discovery
+from pyjinhx.component import BaseComponent, _pascal_to_snake
+from pyjinhx.descriptor import ClassDescriptor
+from pyjinhx.render import render
+from pyjinhx.session import RenderSession
 
 DEPTHS = (10, 20, 40, 80, 160)
 
@@ -57,7 +57,7 @@ def build_chain(depth: int, template_dir: Path) -> type[BaseComponent]:
     """
     classes: list[type[BaseComponent]] = []
     for i in range(depth):
-        # No underscores: RE_PASCAL_CASE_TAG_NAME (pyjinhx2/segments.py) only
+        # No underscores: RE_PASCAL_CASE_TAG_NAME (pyjinhx/segments.py) only
         # matches [A-Za-z0-9]* after the leading capital, so an underscore
         # would make the parser treat the tag as literal text, not a ChildRef.
         class_name = f"BenchDepthLevel{depth}Idx{i}"

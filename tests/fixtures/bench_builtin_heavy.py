@@ -1,12 +1,12 @@
 """Shared "builtin-heavy page" used by scripts/bench_v0_vs_v2.py (issue #537).
 
 One composition covering all five L4 builtin families, expressed twice — once
-against pyjinhx_v0 v0.36.4, once against pyjinhx2 — so the two renderers are
+against pyjinhx_v0 v0.36.4, once against pyjinhx — so the two renderers are
 timed on the same logical page.
 
 Excluded builtins (present in v0.36.4 but not ported to v2, so dropped from
 BOTH sides to keep the comparison 1:1 — confirmed via a v0.36.4-tag vs
-pyjinhx2/builtins/ui diff, issue #537 Task 0): PJXConfirmDialog,
+pyjinhx/builtins/ui diff, issue #537 Task 0): PJXConfirmDialog,
 PJXPromptDialog. v2 also splits PJXPopover into a trigger/panel pair that
 v0.36.4 does not have; this fixture uses only the bare, self-closing
 PJXPopover root on both sides.
@@ -14,7 +14,7 @@ PJXPopover root on both sides.
 **Why the two sides are built differently (deviation from the plan's original
 single-markup-string design):** v0.36 (`pyjinhx_v0.Renderer.render(source: str)`)
 expands PascalCase tags recursively at any nesting depth from one markup
-string — a flat string works for the whole page. pyjinhx2's tag scanner
+string — a flat string works for the whole page. pyjinhx's tag scanner
 (`segments.VerbatimParser`) deliberately cuts only the *outermost* open
 component tag per parse and leaves what is nested inside it verbatim "for a
 later level's parse to deal with" (see `segments.py`); that later level's
@@ -42,7 +42,7 @@ content, so `_sanity()` doesn't need to and does not check it).
 So: `build_v0_page`/`build_v0_table`/`build_v0_shells` return **markup
 strings** (v0's native shape); `build_v2_page`/`build_v2_table`/
 `build_v2_shells` return a **component instance tree** built by nesting real
-`pyjinhx2.builtins` classes directly in Python — the shape v2's own test
+`pyjinhx.builtins` classes directly in Python — the shape v2's own test
 suite (e.g. `test_family_composed_shells_sweep.py`) uses for multi-level
 composition, and the one that actually renders every builtin instead of
 escaping it into inert text.
@@ -50,65 +50,65 @@ escaping it into inert text.
 
 from collections.abc import Sequence
 
-from pyjinhx2.builtins.pjx_lazy_load import PJXLazyLoad
-from pyjinhx2.builtins.pjx_page_loader import PJXPageLoader
-from pyjinhx2.builtins.pjx_paginator import PJXPaginator
-from pyjinhx2.builtins.pjx_region_loader import PJXRegionLoader
-from pyjinhx2.builtins.pjx_table import PJXTable
-from pyjinhx2.builtins.pjx_table_body import PJXTableBody
-from pyjinhx2.builtins.pjx_table_cell import PJXTableCell
-from pyjinhx2.builtins.pjx_table_head import PJXTableHead
-from pyjinhx2.builtins.pjx_table_header_cell import PJXTableHeaderCell
-from pyjinhx2.builtins.pjx_table_row import PJXTableRow
-from pyjinhx2.builtins.ui.pjx_accordion import PJXAccordion
-from pyjinhx2.builtins.ui.pjx_accordion_content import PJXAccordionContent
-from pyjinhx2.builtins.ui.pjx_accordion_group import PJXAccordionGroup
-from pyjinhx2.builtins.ui.pjx_accordion_trigger import PJXAccordionTrigger
-from pyjinhx2.builtins.ui.pjx_alert import PJXAlert
-from pyjinhx2.builtins.ui.pjx_avatar import PJXAvatar
-from pyjinhx2.builtins.ui.pjx_avatar_stack import PJXAvatarStack
-from pyjinhx2.builtins.ui.pjx_badge import PJXBadge
-from pyjinhx2.builtins.ui.pjx_breadcrumb import PJXBreadcrumb
-from pyjinhx2.builtins.ui.pjx_button import PJXButton
-from pyjinhx2.builtins.ui.pjx_card import PJXCard
-from pyjinhx2.builtins.ui.pjx_card_body import PJXCardBody
-from pyjinhx2.builtins.ui.pjx_card_footer import PJXCardFooter
-from pyjinhx2.builtins.ui.pjx_card_header import PJXCardHeader
-from pyjinhx2.builtins.ui.pjx_carousel import PJXCarousel
-from pyjinhx2.builtins.ui.pjx_carousel_slide import PJXCarouselSlide
-from pyjinhx2.builtins.ui.pjx_chip_input import PJXChipInput
-from pyjinhx2.builtins.ui.pjx_divider import PJXDivider
-from pyjinhx2.builtins.ui.pjx_drawer import PJXDrawer
-from pyjinhx2.builtins.ui.pjx_drawer_body import PJXDrawerBody
-from pyjinhx2.builtins.ui.pjx_drawer_footer import PJXDrawerFooter
-from pyjinhx2.builtins.ui.pjx_drawer_header import PJXDrawerHeader
-from pyjinhx2.builtins.ui.pjx_dropdown import PJXDropdown
-from pyjinhx2.builtins.ui.pjx_form_field import PJXFormField
-from pyjinhx2.builtins.ui.pjx_icon import PJXIcon
-from pyjinhx2.builtins.ui.pjx_modal import PJXModal
-from pyjinhx2.builtins.ui.pjx_modal_body import PJXModalBody
-from pyjinhx2.builtins.ui.pjx_modal_footer import PJXModalFooter
-from pyjinhx2.builtins.ui.pjx_modal_header import PJXModalHeader
-from pyjinhx2.builtins.ui.pjx_notification import PJXNotification
-from pyjinhx2.builtins.ui.pjx_password_input import PJXPasswordInput
-from pyjinhx2.builtins.ui.pjx_popover import PJXPopover
-from pyjinhx2.builtins.ui.pjx_progress import PJXProgress
-from pyjinhx2.builtins.ui.pjx_resizable_group import PJXResizableGroup
-from pyjinhx2.builtins.ui.pjx_resizable_handle import PJXResizableHandle
-from pyjinhx2.builtins.ui.pjx_resizable_panel import PJXResizablePanel
-from pyjinhx2.builtins.ui.pjx_segmented_control import PJXSegmentedControl
-from pyjinhx2.builtins.ui.pjx_skeleton import PJXSkeleton
-from pyjinhx2.builtins.ui.pjx_spinner import PJXSpinner
-from pyjinhx2.builtins.ui.pjx_tab import PJXTab
-from pyjinhx2.builtins.ui.pjx_tab_group import PJXTabGroup
-from pyjinhx2.builtins.ui.pjx_tab_list import PJXTabList
-from pyjinhx2.builtins.ui.pjx_tab_panel import PJXTabPanel
-from pyjinhx2.builtins.ui.pjx_toast_host import PJXToastHost
-from pyjinhx2.builtins.ui.pjx_toggle_switch import PJXToggleSwitch
-from pyjinhx2.builtins.ui.pjx_tooltip import PJXTooltip
-from pyjinhx2.builtins.ui.pjx_tooltip_content import PJXTooltipContent
-from pyjinhx2.builtins.ui.pjx_tooltip_trigger import PJXTooltipTrigger
-from pyjinhx2.component import BaseComponent, Slot
+from pyjinhx.builtins.pjx_lazy_load import PJXLazyLoad
+from pyjinhx.builtins.pjx_page_loader import PJXPageLoader
+from pyjinhx.builtins.pjx_paginator import PJXPaginator
+from pyjinhx.builtins.pjx_region_loader import PJXRegionLoader
+from pyjinhx.builtins.pjx_table import PJXTable
+from pyjinhx.builtins.pjx_table_body import PJXTableBody
+from pyjinhx.builtins.pjx_table_cell import PJXTableCell
+from pyjinhx.builtins.pjx_table_head import PJXTableHead
+from pyjinhx.builtins.pjx_table_header_cell import PJXTableHeaderCell
+from pyjinhx.builtins.pjx_table_row import PJXTableRow
+from pyjinhx.builtins.ui.pjx_accordion import PJXAccordion
+from pyjinhx.builtins.ui.pjx_accordion_content import PJXAccordionContent
+from pyjinhx.builtins.ui.pjx_accordion_group import PJXAccordionGroup
+from pyjinhx.builtins.ui.pjx_accordion_trigger import PJXAccordionTrigger
+from pyjinhx.builtins.ui.pjx_alert import PJXAlert
+from pyjinhx.builtins.ui.pjx_avatar import PJXAvatar
+from pyjinhx.builtins.ui.pjx_avatar_stack import PJXAvatarStack
+from pyjinhx.builtins.ui.pjx_badge import PJXBadge
+from pyjinhx.builtins.ui.pjx_breadcrumb import PJXBreadcrumb
+from pyjinhx.builtins.ui.pjx_button import PJXButton
+from pyjinhx.builtins.ui.pjx_card import PJXCard
+from pyjinhx.builtins.ui.pjx_card_body import PJXCardBody
+from pyjinhx.builtins.ui.pjx_card_footer import PJXCardFooter
+from pyjinhx.builtins.ui.pjx_card_header import PJXCardHeader
+from pyjinhx.builtins.ui.pjx_carousel import PJXCarousel
+from pyjinhx.builtins.ui.pjx_carousel_slide import PJXCarouselSlide
+from pyjinhx.builtins.ui.pjx_chip_input import PJXChipInput
+from pyjinhx.builtins.ui.pjx_divider import PJXDivider
+from pyjinhx.builtins.ui.pjx_drawer import PJXDrawer
+from pyjinhx.builtins.ui.pjx_drawer_body import PJXDrawerBody
+from pyjinhx.builtins.ui.pjx_drawer_footer import PJXDrawerFooter
+from pyjinhx.builtins.ui.pjx_drawer_header import PJXDrawerHeader
+from pyjinhx.builtins.ui.pjx_dropdown import PJXDropdown
+from pyjinhx.builtins.ui.pjx_form_field import PJXFormField
+from pyjinhx.builtins.ui.pjx_icon import PJXIcon
+from pyjinhx.builtins.ui.pjx_modal import PJXModal
+from pyjinhx.builtins.ui.pjx_modal_body import PJXModalBody
+from pyjinhx.builtins.ui.pjx_modal_footer import PJXModalFooter
+from pyjinhx.builtins.ui.pjx_modal_header import PJXModalHeader
+from pyjinhx.builtins.ui.pjx_notification import PJXNotification
+from pyjinhx.builtins.ui.pjx_password_input import PJXPasswordInput
+from pyjinhx.builtins.ui.pjx_popover import PJXPopover
+from pyjinhx.builtins.ui.pjx_progress import PJXProgress
+from pyjinhx.builtins.ui.pjx_resizable_group import PJXResizableGroup
+from pyjinhx.builtins.ui.pjx_resizable_handle import PJXResizableHandle
+from pyjinhx.builtins.ui.pjx_resizable_panel import PJXResizablePanel
+from pyjinhx.builtins.ui.pjx_segmented_control import PJXSegmentedControl
+from pyjinhx.builtins.ui.pjx_skeleton import PJXSkeleton
+from pyjinhx.builtins.ui.pjx_spinner import PJXSpinner
+from pyjinhx.builtins.ui.pjx_tab import PJXTab
+from pyjinhx.builtins.ui.pjx_tab_group import PJXTabGroup
+from pyjinhx.builtins.ui.pjx_tab_list import PJXTabList
+from pyjinhx.builtins.ui.pjx_tab_panel import PJXTabPanel
+from pyjinhx.builtins.ui.pjx_toast_host import PJXToastHost
+from pyjinhx.builtins.ui.pjx_toggle_switch import PJXToggleSwitch
+from pyjinhx.builtins.ui.pjx_tooltip import PJXTooltip
+from pyjinhx.builtins.ui.pjx_tooltip_content import PJXTooltipContent
+from pyjinhx.builtins.ui.pjx_tooltip_trigger import PJXTooltipTrigger
+from pyjinhx.component import BaseComponent, Slot
 
 EXCLUDED_FROM_BOTH = (
     "PJXConfirmDialog",

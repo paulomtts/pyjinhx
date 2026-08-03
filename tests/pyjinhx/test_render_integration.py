@@ -1,0 +1,204 @@
+"""L0.4.8 integration tests — full render_level() -> stamp_root_attrs() ->
+serialize() pipeline, exercised through the public API only (issue #287,
+final subtask of #247).
+
+Note: the plan for this issue described the pipeline as
+`render() -> stamp_root_attrs() -> serialize()`, but `render()` already
+returns a finished string (it calls `render_level()` then `serialize()`
+internally) — passing its output to `stamp_root_attrs()` (which needs a
+`RenderedLevel`) would fail immediately. These tests use `render_level()`
+instead, which is the actual `RenderedLevel`-returning step in the pipeline
+and the same function `test_render_level.py` exercises.
+
+No production code changes are expected here (see docs/superpowers/plans/
+2026-07-30-issue-287.md's Global Constraints for the one known, deliberate
+wiring gap this file works around rather than fixes).
+"""
+
+from pathlib import Path
+
+from pyjinhx.component import BaseComponent, Slot
+from pyjinhx.descriptor import ClassDescriptor
+from pyjinhx.render import render_level
+from pyjinhx.root_attrs import stamp_root_attrs
+from pyjinhx.segments import serialize
+from pyjinhx.session import RenderSession
+
+
+def test_childless_end_to_end_pipeline():
+    """render -> stamp_root_attrs -> serialize on a childless component yields
+    one string containing exactly one root element matching the template."""
+
+    class CardComp(BaseComponent):
+        title: str = "Hello"
+
+    descriptor = ClassDescriptor(
+        template_path=Path("integration_childless.html"),
+        slot_fields=frozenset(),
+        children_field=None,
+        css_paths=(),
+        js_paths=(),
+        strict=True,
+        provenance={"template": CardComp},
+    )
+    CardComp.__pjx_descriptor__ = descriptor
+
+    session = RenderSession(template_dir="tests/templates")
+    component = CardComp()
+
+    level = render_level(component, session)
+    stamp_root_attrs(level, {})  # no-op stamp; still exercises the call
+    output = serialize(level)
+
+    assert output == '<article class="card">Hello</article>'
+    assert output.count("<article") == 1
+    assert output.count("</article>") == 1
+
+
+def test_autoescape_scalar_survives_pipeline():
+    """A scalar field containing <script>, &, and " comes out entity-escaped
+    in the final serialized string, through the whole render pipeline."""
+
+    class NoteComp(BaseComponent):
+        body: str = """<script>alert("xss")</script> & co"""
+
+    descriptor = ClassDescriptor(
+        template_path=Path("integration_escape.html"),
+        slot_fields=frozenset(),
+        children_field=None,
+        css_paths=(),
+        js_paths=(),
+        strict=True,
+        provenance={"template": NoteComp},
+    )
+    NoteComp.__pjx_descriptor__ = descriptor
+
+    session = RenderSession(template_dir="tests/templates")
+    component = NoteComp()
+
+    level = render_level(component, session)
+    stamp_root_attrs(level, {})
+    output = serialize(level)
+
+    assert "<script>" not in output
+    assert "&lt;script&gt;" in output
+    assert "&amp;" in output
+    assert "&#34;" in output or "&quot;" in output
+    assert output.startswith('<div class="note">')
+    assert output.endswith("</div>")
+
+
+def test_slot_field_raw_vs_scalar_escaped():
+    """A Slot field marked `| safe` in its template comes out unescaped and
+    byte-for-byte unchanged, contrasted in the same test against a plain
+    scalar field carrying the same markup (escaped), proving the distinction
+    is driven by the template's explicit `| safe`, not accidental."""
+
+    class PanelComp(BaseComponent):
+        label: str = "<b>hi</b>"
+        markup: Slot = "<b>hi</b>"
+
+    descriptor = ClassDescriptor(
+        template_path=Path("integration_slot.html"),
+        slot_fields=frozenset({"markup"}),
+        children_field=None,
+        css_paths=(),
+        js_paths=(),
+        strict=True,
+        provenance={"template": PanelComp},
+    )
+    PanelComp.__pjx_descriptor__ = descriptor
+
+    session = RenderSession(template_dir="tests/templates")
+    component = PanelComp()
+
+    level = render_level(component, session)
+    stamp_root_attrs(level, {})
+    output = serialize(level)
+
+    assert '<span class="label">&lt;b&gt;hi&lt;/b&gt;</span>' in output
+    assert '<span class="markup"><b>hi</b></span>' in output
+
+
+def test_stamped_attrs_land_in_root_tag():
+    """Attrs passed to stamp_root_attrs land inside the root tag's opening
+    tag, correctly quoted; a colliding attr name overrides in place instead
+    of duplicating."""
+
+    class SectionComp(BaseComponent):
+        title: str = "Body"
+
+    descriptor = ClassDescriptor(
+        template_path=Path("integration_attrs.html"),
+        slot_fields=frozenset(),
+        children_field=None,
+        css_paths=(),
+        js_paths=(),
+        strict=True,
+        provenance={"template": SectionComp},
+    )
+    SectionComp.__pjx_descriptor__ = descriptor
+
+    session = RenderSession(template_dir="tests/templates")
+    component = SectionComp()
+
+    level = render_level(component, session)
+    stamp_root_attrs(level, {"class": "card highlighted", "data-x": "1"})
+    output = serialize(level)
+
+    opening_tag_end = output.index(">") + 1
+    opening_tag = output[:opening_tag_end]
+
+    assert 'id="original-id"' in opening_tag
+    assert 'class="card highlighted"' in opening_tag
+    assert opening_tag.count("class=") == 1
+    assert 'data-x="1"' in opening_tag
+    assert output == (
+        '<section id="original-id" class="card highlighted" data-x="1">Body</section>'
+    )
+
+
+def test_full_pipeline_regression():
+    """All four properties verified together against one component: single
+    root element, scalar autoescape, Slot-field-raw-via-safe, and stamped
+    attrs landing inside the root tag with override-in-place semantics."""
+
+    class ArticleComp(BaseComponent):
+        heading: str = '<script>alert("x")</script>'
+        body: Slot = "<b>bold body</b>"
+
+    descriptor = ClassDescriptor(
+        template_path=Path("integration_full.html"),
+        slot_fields=frozenset({"body"}),
+        children_field=None,
+        css_paths=(),
+        js_paths=(),
+        strict=True,
+        provenance={"template": ArticleComp},
+    )
+    ArticleComp.__pjx_descriptor__ = descriptor
+
+    session = RenderSession(template_dir="tests/templates")
+    component = ArticleComp()
+
+    level = render_level(component, session)
+    stamp_root_attrs(level, {"class": "card active", "data-controller": "x"})
+    output = serialize(level)
+
+    # Single root element.
+    assert output.count("<article") == 1
+    assert output.count("</article>") == 1
+
+    # Scalar field escaped.
+    assert "<script>" not in output
+    assert "&lt;script&gt;" in output
+
+    # Slot field marked `| safe` stays raw.
+    assert '<div class="body"><b>bold body</b></div>' in output
+
+    # Stamped attrs land in the root tag, override in place, no duplication.
+    opening_tag = output[: output.index(">") + 1]
+    assert 'id="orig"' in opening_tag
+    assert 'class="card active"' in opening_tag
+    assert opening_tag.count("class=") == 1
+    assert 'data-controller="x"' in opening_tag

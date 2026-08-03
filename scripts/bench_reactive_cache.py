@@ -20,8 +20,8 @@ Not a CI test (timing-sensitive). Run manually before/after load-cache work:
 
 import time
 
-from pyjinhx2.reactive.cache import cache_put, invalidate
-from pyjinhx2.session import request_scope
+from pyjinhx.reactive.cache import cache_put, invalidate
+from pyjinhx.session import request_scope
 
 ENTRY_COUNTS = (500, 1000, 2000, 4000, 8000)
 # Every entry also carries a shared key, so one invalidate() evicts all of them.

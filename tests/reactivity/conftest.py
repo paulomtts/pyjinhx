@@ -27,7 +27,7 @@ def _require_chromium(browser_type) -> None:
     # sync_playwright instances in one process race and break every
     # subsequent browser test in the suite ("using Playwright Sync API
     # inside the asyncio event loop") once another browser-test package
-    # (e.g. tests/pyjinhx2/client) runs earlier in the same session.
+    # (e.g. tests/pyjinhx/client) runs earlier in the same session.
     executable = Path(browser_type.executable_path)
     if not executable.exists():
         pytest.skip(

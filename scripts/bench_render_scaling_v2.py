@@ -1,4 +1,4 @@
-"""Render-scaling benchmark for the pyjinhx2 kernel: one nested component tree per size.
+"""Render-scaling benchmark for the pyjinhx kernel: one nested component tree per size.
 
 L1 composition is in: a parent's rendered ChildRef holes are filled and recursed
 into, so the sweep renders a real tree rather than N independent root renders.
@@ -23,11 +23,11 @@ import tempfile
 import time
 from pathlib import Path
 
-from pyjinhx2 import discovery
-from pyjinhx2.component import BaseComponent
-from pyjinhx2.descriptor import ClassDescriptor
-from pyjinhx2.render import render
-from pyjinhx2.session import RenderSession
+from pyjinhx import discovery
+from pyjinhx.component import BaseComponent
+from pyjinhx.descriptor import ClassDescriptor
+from pyjinhx.render import render
+from pyjinhx.session import RenderSession
 
 COMPONENT_COUNTS = (50, 100, 200, 500, 1000, 2000, 5000, 10000)
 
