@@ -1,13 +1,25 @@
 """Cheap CI guard: the v0.36 and v2 bench pages must reference the same components.
 
-Not timing-sensitive — no rendering happens here, only manifest comparison.
+Not timing-sensitive — no rendering happens here, only manifest comparison,
+except for `test_v2_table_cell_content_is_pinned_as_escaped_not_a_bug_to_fix_here`
+below, which does render (a single small table) to pin a known, out-of-scope
+str-Slot-escaping gap (see bench_builtin_heavy's module docstring) so a
+future accidental fix to the renderer doesn't slip by unnoticed here.
 """
 
+import pkgutil
+
+import pyjinhx2.builtins
+from pyjinhx2.component import BaseComponent
+from pyjinhx2.discovery import build_registry
+from pyjinhx2.render import render as v2_render
+from pyjinhx2.session import RenderSession
 from tests.fixtures.bench_builtin_heavy import (
     V0_MANIFEST,
     V2_MANIFEST,
     build_v0_page,
     build_v2_page,
+    build_v2_table,
     component_names,
 )
 
@@ -35,3 +47,41 @@ def test_every_manifest_entry_appears_in_both_page_sources() -> None:
         assert logical in v0_src, f"{logical} missing from v0 page source"
     for logical in V2_MANIFEST:
         assert logical in v2_names, f"{logical} missing from v2 page tree"
+
+
+def _v2_registry() -> None:
+    """Import every builtin module and register the discovered classes.
+
+    Mirrors scripts/bench_v0_vs_v2.py's `_import_all_v2_builtins` /
+    `_v2_all_classes` / `build_registry` sequence — needed here because this
+    test actually renders, unlike the manifest-only tests above.
+    """
+    for module_info in pkgutil.walk_packages(
+        pyjinhx2.builtins.__path__, prefix="pyjinhx2.builtins."
+    ):
+        __import__(module_info.name)
+    found: list[type] = []
+    stack = list(BaseComponent.__subclasses__())
+    while stack:
+        cls = stack.pop()
+        found.append(cls)
+        stack.extend(cls.__subclasses__())
+    build_registry("pyjinhx2/builtins", found)
+
+
+def test_v2_table_cell_content_is_pinned_as_escaped_not_a_bug_to_fix_here() -> None:
+    """v2's table cell renders its raw-HTML Slot value escaped, unlike v0.
+
+    v0's equivalent page (`build_v0_table`) renders a live `<input>` element
+    inside this cell; v2 escapes the same markup string to inert text — a
+    pre-existing, out-of-scope-for-#537 str-Slot-escaping gap (see
+    bench_builtin_heavy's module docstring). Pinned as observed, same as
+    `test_a_string_slot_beside_a_component_slot_stays_raw_html` in
+    test_slot_semantics_matrix.py, rather than "fixed" here: wrapping the
+    value in `markupsafe.Markup` does not survive pydantic's plain-`str`
+    coercion on the Slot field, so there is no fixture-only fix available.
+    """
+    _v2_registry()
+    html = v2_render(build_v2_table(rows=1), RenderSession(template_dir="/"))
+    assert "&lt;input" in html
+    assert '<input type="text" value="v0"/>' not in html

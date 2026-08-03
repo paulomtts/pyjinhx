@@ -26,6 +26,19 @@ Jinja's `autoescape=True` unescaped, so a markup string nested more than one
 custom tag deep silently renders as escaped text on the v2 side — a
 pre-existing renderer gap, not something #537 is scoped to fix (its
 non-goals explicitly rule out changing either renderer to fix a finding).
+The same gap also bites a *single* Slot passed a raw-HTML string directly
+with no custom-tag nesting at all — `PJXTableCell.content` in `_v2_table`
+below is given a literal `<input .../>` string, which v0's markup-string
+page renders as a real `<input>` element but v2 renders as escaped text
+(`&lt;input .../&gt;`). Wrapping the value in `markupsafe.Markup` does
+*not* fix it: `PJXTableCell.content` is a plain-`str`-typed Slot field, and
+pydantic's `str` coercion strips `Markup`'s `__html__` protocol back down to
+a plain `str` on assignment (confirmed by direct construction), so the
+value re-enters the same unescaped-str code path either way. Same
+pre-existing, out-of-scope-for-#537 renderer gap as above; the two table
+cells at `c{r}b` are therefore not byte-identical across sides even though
+this doesn't affect timing (no markers or row counts depend on this cell's
+content, so `_sanity()` doesn't need to and does not check it).
 So: `build_v0_page`/`build_v0_table`/`build_v0_shells` return **markup
 strings** (v0's native shape); `build_v2_page`/`build_v2_table`/
 `build_v2_shells` return a **component instance tree** built by nesting real
