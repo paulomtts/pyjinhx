@@ -53,6 +53,22 @@ from pyjinhx.discovery import get_class
 cls = get_class("pjx_card")
 ```
 
+## register_class
+
+```python
+def register_class(tag_name: str, cls: type) -> None
+```
+
+Publish `cls` under `tag_name` unless the tag already has an owner. The one way a tag is claimed after the import-time build — used by `component()` to register a classless wrapper on demand. A tag that is already owned is left alone: a class registered this way never shadows a declared one; the loser is logged, not silently dropped.
+
+## get_template_dir
+
+```python
+def get_template_dir() -> Path | None
+```
+
+The directory the last successful `build_registry` walked, or `None` if it hasn't run yet.
+
 ## build_registry
 
 ```python

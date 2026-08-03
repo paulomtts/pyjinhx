@@ -103,7 +103,7 @@ nav:
           - Configuration: api/config.md
           - Mutations, Keys & PjxContext: api/mutations-keys-context.md
       - Internals:
-          - Parser & Tag: api/parser.md
+          - Template Discovery: api/parser.md
           - Discovery & Assets: api/finder.md
           - Assets API: api/assets-api.md
           - Client Backend: api/client-backend.md
