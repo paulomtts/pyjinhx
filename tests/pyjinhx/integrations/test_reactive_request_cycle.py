@@ -93,16 +93,14 @@ def _publish_registry():
     LOAD_CALLS.clear()
     template_dir = Path(__file__).parent.parent.parent / "templates"
     discovery.build_registry(template_dir, [CycleCard, CycleBadge])
-    # `_resolve_template_path` probes the class's *defining module* directory
-    # (this test file's), not the dir handed to build_registry, so the
-    # descriptor is repointed at the bare template name the middleware's
-    # FileSystemLoader will join under tests/templates.
+    # The middleware's request session roots its loader at "/", so the
+    # descriptor must carry the real absolute path rather than a bare name.
     CycleCard.__pjx_descriptor__ = dataclasses.replace(
-        CycleCard.__pjx_descriptor__, template_path=Path("cycle_card.pjx")
+        CycleCard.__pjx_descriptor__, template_path=template_dir / "cycle_card.pjx"
     )
     CycleBadge.__pjx_descriptor__ = dataclasses.replace(
         CycleBadge.__pjx_descriptor__,
-        template_path=Path("cycle_badge.pjx"),
+        template_path=template_dir / "cycle_badge.pjx",
         css_paths=(ASSET_DIR / "cycle_badge.css",),
         js_paths=(ASSET_DIR / "cycle_badge.js",),
     )
