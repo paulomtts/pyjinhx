@@ -1,10 +1,11 @@
 """The FastAPI adapter: request scope, header parsing, T1/T2 response adaptation."""
 
 from pathlib import Path
+from typing import cast
 
 from fastapi import FastAPI, Request
 from fastapi.testclient import TestClient
-from starlette.responses import PlainTextResponse
+from starlette.responses import HTMLResponse, PlainTextResponse
 
 from pyjinhx.component import BaseComponent
 from pyjinhx.config import PjxSettings
@@ -303,7 +304,10 @@ def test_backend_to_response_adapts_reactive_and_passes_others_through():
     from pyjinhx.integrations.fastapi import FastAPIBackend
 
     backend = FastAPIBackend(_settings())
-    adapted = backend.to_response(ReactiveResponse(primary="<div>hi</div>"), None)
+    adapted = cast(
+        HTMLResponse,
+        backend.to_response(ReactiveResponse(primary="<div>hi</div>"), None),
+    )
     assert adapted.status_code == 200
     assert adapted.body == b"<div>hi</div>"
     assert backend.to_response({"json": True}, None) == {"json": True}
