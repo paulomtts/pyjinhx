@@ -296,7 +296,7 @@ Plan for this subtask: ${t.plan}
 You have FULL autonomy in a scratch worktree (\`git worktree add ${REPO_DIR}/.claude/worktrees/resolve-${subtask.number} ...\`):
 - Read BOTH sides' intent — the subtask's plan/spec and the code the other branch landed — do not just diff and pick a side. Two branches can each be individually correct and still need a synthesized third design (see the da123cd merge on l2-registry-assets).
 - Edit code freely; you are NOT limited to deleting conflict markers. Change signatures, unify plumbing, update BOTH sides' call sites and tests if that is what the merged design needs.
-- Rerun \`uv run pytest tests/ -q\` until green, plus \`uvx basedpyright pyjinhx2/ tests/pyjinhx2/\` and \`uvx ruff@0.16.0 check .\` / \`format --check .\`.
+- Rerun \`uv run pytest tests/ -q\` until green, plus \`uvx basedpyright pyjinhx/ tests/pyjinhx/\` and \`uvx ruff@0.16.0 check .\` / \`format --check .\`.
 - Commit granularly, ending each message with:
 Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
 - Then complete the merge into ${baseBranch}, verify it the same way (\`gh pr view ${t.pr} --json state,mergeCommit\` must show MERGED + non-null mergeCommit, OR ${baseBranch} must contain your merge commit), re-run the full suite on ${baseBranch}, and only then \`gh issue close ${subtask.number} --comment "Merged via ${t.pr} into ${baseBranch}."\` and move its Project 12 card to Done (same project/field/option ids as the merge step above).
