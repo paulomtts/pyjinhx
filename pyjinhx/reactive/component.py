@@ -62,14 +62,19 @@ class ReactiveComponent(BaseComponent):
         return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
     def pjx_mount(self) -> None:
-        """Run the cache-routed ``load()`` before this instance's recursive render.
+        """Populate this instance from the cache-routed ``load()`` factory.
 
-        Overrides BaseComponent's no-op: rendering.py calls this hook on every
-        child it instantiates from a ChildRef without knowing anything about
-        ReactiveComponent, so mounting a reactive child never needs a manual
-        ``load()`` call from the template author.
+        A shim: rendering.py still constructs a child and then mounts it, so
+        the factory's result is copied onto the instance that already exists.
+        #727 rewires ``_fill_children`` to call ``Cls.load(**key_args)``
+        directly and deletes this hook.
         """
-        self.load()
+        cls = type(self)
+        field = cls._pjx_key_field
+        loaded = cls.load(**({field: getattr(self, field)} if field else {}))
+        for name in cls.model_fields:
+            if name != "id":
+                setattr(self, name, getattr(loaded, name))
 
     def __init_subclass__(cls, *, react: Iterable[object] = (), **kwargs: Any) -> None:
         """Consume the ``react`` class kwarg and record it as normalized keys.
