@@ -14,7 +14,7 @@ from pyjinhx.session import RenderSession, accumulate_assets
 @pytest.fixture
 def dropdown_session():
     """Loader rooted at "/" so absolute descriptor template paths resolve."""
-    return RenderSession(template_dir="/")
+    return RenderSession()
 
 
 def _html(session, **kw) -> str:
@@ -140,7 +140,7 @@ def test_rendering_accumulates_the_popover_runtime_into_the_session():
     RenderSession does not auto-subscribe accumulate_assets, so the test
     subscribes it exactly as the framework's own callers do.
     """
-    session = RenderSession(template_dir="/")
+    session = RenderSession()
     session.on_rendered.append(accumulate_assets)
 
     render(PJXDropdown(id="d", trigger="Actions"), session)

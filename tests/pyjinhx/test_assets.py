@@ -14,6 +14,8 @@ from pyjinhx.session import (
     request_scope,
 )
 
+_TEMPLATE_DIR = Path(__file__).parent.parent / "templates"
+
 CSS = Path("/app/components/box.css")
 JS = Path("/app/components/box.js")
 
@@ -26,7 +28,7 @@ def _plain_descriptor(owner: type) -> ClassDescriptor:
     test_render_level.py uses.
     """
     return ClassDescriptor(
-        template_path=Path("plain_div.html"),
+        template_path=_TEMPLATE_DIR / "plain_div.html",
         slot_fields=frozenset(),
         children_field=None,
         css_paths=(),
@@ -71,8 +73,7 @@ def _accumulating_session() -> RenderSession:
     so leaving these sessions on INLINE would make render() raise on a path
     that was never meant to be readable.
     """
-    template_dir = str(Path(__file__).parent.parent / "templates")
-    session = RenderSession(template_dir=template_dir)
+    session = RenderSession()
     session.on_rendered.append(accumulate_assets)
     session.css_mode = AssetMode.NONE
     session.js_mode = AssetMode.NONE

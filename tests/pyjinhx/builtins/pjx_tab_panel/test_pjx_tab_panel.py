@@ -10,7 +10,7 @@ from pyjinhx.session import RenderSession
 @pytest.fixture
 def tab_panel_session():
     """Loader rooted at "/" so absolute descriptor template paths resolve."""
-    return RenderSession(template_dir="/")
+    return RenderSession()
 
 
 def _html(session, **kw) -> str:

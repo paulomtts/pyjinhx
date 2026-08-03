@@ -13,11 +13,13 @@ from pydantic import BaseModel
 from pyjinhx.component import BaseComponent, Children, Slot
 from pyjinhx.descriptor import ClassDescriptor
 
+_TEMPLATE_DIR = Path(__file__).parent.parent / "templates"
+
 
 def descriptor(template: str, slots: frozenset[str], children: str | None = None):
     """A ClassDescriptor pointing at a fixture template under tests/templates."""
     return ClassDescriptor(
-        template_path=Path(template),
+        template_path=_TEMPLATE_DIR / template,
         slot_fields=slots,
         children_field=children,
         css_paths=(),
@@ -261,7 +263,7 @@ class TestPropsThroughJinja:
     def session(self):
         from pyjinhx.session import RenderSession
 
-        return RenderSession(template_dir="tests/templates")
+        return RenderSession()
 
     def card_class(self, template: str):
         class Card(BaseComponent):
@@ -346,7 +348,7 @@ class TestPropsRegressions:
     def session(self):
         from pyjinhx.session import RenderSession
 
-        return RenderSession(template_dir="tests/templates")
+        return RenderSession()
 
     def card_class(self, template: str):
         class Card(BaseComponent):

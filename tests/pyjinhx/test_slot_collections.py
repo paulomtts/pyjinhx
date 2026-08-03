@@ -17,11 +17,13 @@ from pyjinhx.render_context import build_context
 from pyjinhx.rendering import render
 from pyjinhx.session import RenderSession
 
+_TEMPLATE_DIR = Path(__file__).parent.parent / "templates"
+
 
 def descriptor(template: str, slots: frozenset[str], children: str | None = None):
     """A ClassDescriptor pointing at a fixture template under tests/templates."""
     return ClassDescriptor(
-        template_path=Path(template),
+        template_path=_TEMPLATE_DIR / template,
         slot_fields=slots,
         children_field=children,
         css_paths=(),
@@ -32,7 +34,7 @@ def descriptor(template: str, slots: frozenset[str], children: str | None = None
 
 
 def session() -> RenderSession:
-    return RenderSession(template_dir="tests/templates")
+    return RenderSession()
 
 
 class Leaf(BaseComponent):
@@ -182,7 +184,7 @@ class TestBuildContext:
         node = context["content"][0]
 
         assert node.owner_name == "Card"
-        assert node.owner_template == Path("slot_list.html")
+        assert node.owner_template == _TEMPLATE_DIR / "slot_list.html"
         assert node.field_name == "content"
 
     def test_an_empty_list_slot_stays_an_empty_list(self):
@@ -524,7 +526,7 @@ class TestBuiltinCardWithListContent:
                     PJXCardBody(content="Body"),
                 ]
             ),
-            RenderSession(template_dir="/"),
+            RenderSession(),
         )
 
         assert "Title" in output

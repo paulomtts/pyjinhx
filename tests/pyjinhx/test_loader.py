@@ -18,7 +18,9 @@ def template_file(tmp_path: Path) -> Path:
 
 def test_an_absolute_path_loads_its_contents_as_source(template_file: Path):
     loader = AbsolutePathLoader()
-    source, name, _uptodate = loader.get_source(jinja2.Environment(), str(template_file))
+    source, name, _uptodate = loader.get_source(
+        jinja2.Environment(), str(template_file)
+    )
     assert source == "<div>hello</div>"
     assert name == str(template_file)
 
@@ -39,13 +41,17 @@ def test_a_relative_name_is_not_resolved_against_cwd(tmp_path: Path, monkeypatch
 
 def test_uptodate_is_true_while_the_file_is_unchanged(template_file: Path):
     loader = AbsolutePathLoader()
-    _source, _name, uptodate = loader.get_source(jinja2.Environment(), str(template_file))
+    _source, _name, uptodate = loader.get_source(
+        jinja2.Environment(), str(template_file)
+    )
     assert uptodate() is True
 
 
 def test_uptodate_is_false_after_the_mtime_changes(template_file: Path):
     loader = AbsolutePathLoader()
-    _source, _name, uptodate = loader.get_source(jinja2.Environment(), str(template_file))
+    _source, _name, uptodate = loader.get_source(
+        jinja2.Environment(), str(template_file)
+    )
     stat = template_file.stat()
     os.utime(template_file, (stat.st_atime, stat.st_mtime + 10))
     assert uptodate() is False
@@ -53,7 +59,9 @@ def test_uptodate_is_false_after_the_mtime_changes(template_file: Path):
 
 def test_uptodate_is_false_after_the_file_is_deleted(template_file: Path):
     loader = AbsolutePathLoader()
-    _source, _name, uptodate = loader.get_source(jinja2.Environment(), str(template_file))
+    _source, _name, uptodate = loader.get_source(
+        jinja2.Environment(), str(template_file)
+    )
     template_file.unlink()
     assert uptodate() is False
 

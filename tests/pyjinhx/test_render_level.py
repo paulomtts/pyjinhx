@@ -9,6 +9,8 @@ from pyjinhx.rendering import render_level
 from pyjinhx.segments import ChildRef, RenderedLevel
 from pyjinhx.session import RenderSession
 
+_TEMPLATE_DIR = Path(__file__).parent.parent / "templates"
+
 
 class _PJXButton(BaseComponent):
     pass
@@ -26,7 +28,7 @@ def _descriptor_for(
     cls: type[BaseComponent], template: str, children_field: str | None = None
 ) -> ClassDescriptor:
     return ClassDescriptor(
-        template_path=Path(template),
+        template_path=_TEMPLATE_DIR / template,
         slot_fields=frozenset()
         if children_field is None
         else frozenset({children_field}),
@@ -71,7 +73,7 @@ def test_single_div_renders():
         title: str = "Hello"
 
     descriptor = ClassDescriptor(
-        template_path=Path("div.html"),
+        template_path=_TEMPLATE_DIR / "div.html",
         slot_fields=frozenset(),
         children_field=None,
         css_paths=(),
@@ -81,7 +83,7 @@ def test_single_div_renders():
     )
     DivComp.__pjx_descriptor__ = descriptor
 
-    session = RenderSession(template_dir="tests/templates")
+    session = RenderSession()
     component = DivComp()
     result = render_level(component, session)
 
@@ -105,7 +107,7 @@ def test_child_tag_becomes_childref():
         pass
 
     descriptor = ClassDescriptor(
-        template_path=Path("container.html"),
+        template_path=_TEMPLATE_DIR / "container.html",
         slot_fields=frozenset(),
         children_field=None,
         css_paths=(),
@@ -115,7 +117,7 @@ def test_child_tag_becomes_childref():
     )
     ContainerComp.__pjx_descriptor__ = descriptor
 
-    session = RenderSession(template_dir="tests/templates")
+    session = RenderSession()
     component = ContainerComp()
     result = render_level(component, session)
 
@@ -135,7 +137,7 @@ def test_nested_pascalcase_preserved():
         pass
 
     descriptor = ClassDescriptor(
-        template_path=Path("nested.html"),
+        template_path=_TEMPLATE_DIR / "nested.html",
         slot_fields=frozenset(),
         children_field=None,
         css_paths=(),
@@ -145,7 +147,7 @@ def test_nested_pascalcase_preserved():
     )
     NestedComp.__pjx_descriptor__ = descriptor
 
-    session = RenderSession(template_dir="tests/templates")
+    session = RenderSession()
     component = NestedComp()
     result = render_level(component, session)
 
@@ -169,7 +171,7 @@ def test_multiple_siblings_raises():
         pass
 
     descriptor = ClassDescriptor(
-        template_path=Path("bad.html"),
+        template_path=_TEMPLATE_DIR / "bad.html",
         slot_fields=frozenset(),
         children_field=None,
         css_paths=(),
@@ -179,7 +181,7 @@ def test_multiple_siblings_raises():
     )
     BadComp.__pjx_descriptor__ = descriptor
 
-    session = RenderSession(template_dir="tests/templates")
+    session = RenderSession()
     component = BadComp()
 
     with pytest.raises(ValueError, match="must render exactly one root element"):
@@ -194,7 +196,7 @@ def test_no_root_element_raises():
         pass
 
     descriptor = ClassDescriptor(
-        template_path=Path("empty.html"),
+        template_path=_TEMPLATE_DIR / "empty.html",
         slot_fields=frozenset(),
         children_field=None,
         css_paths=(),
@@ -204,7 +206,7 @@ def test_no_root_element_raises():
     )
     EmptyComp.__pjx_descriptor__ = descriptor
 
-    session = RenderSession(template_dir="tests/templates")
+    session = RenderSession()
     component = EmptyComp()
 
     with pytest.raises(ValueError, match="must render exactly one root element"):
@@ -221,7 +223,7 @@ def test_descriptor_frozen_and_read():
 
     # Manually attach descriptor to class (simulating what the framework does)
     descriptor = ClassDescriptor(
-        template_path=Path("test.html"),
+        template_path=_TEMPLATE_DIR / "test.html",
         slot_fields=frozenset(),
         children_field=None,
         css_paths=(),
@@ -254,7 +256,7 @@ def test_self_closing_tag():
         pass
 
     descriptor = ClassDescriptor(
-        template_path=Path("icon.html"),
+        template_path=_TEMPLATE_DIR / "icon.html",
         slot_fields=frozenset(),
         children_field=None,
         css_paths=(),
@@ -264,7 +266,7 @@ def test_self_closing_tag():
     )
     IconComp.__pjx_descriptor__ = descriptor
 
-    session = RenderSession(template_dir="tests/templates")
+    session = RenderSession()
     component = IconComp()
     result = render_level(component, session)
 
@@ -287,7 +289,7 @@ def test_paired_tag():
         pass
 
     descriptor = ClassDescriptor(
-        template_path=Path("card.html"),
+        template_path=_TEMPLATE_DIR / "card.html",
         slot_fields=frozenset(),
         children_field=None,
         css_paths=(),
@@ -297,7 +299,7 @@ def test_paired_tag():
     )
     CardComp.__pjx_descriptor__ = descriptor
 
-    session = RenderSession(template_dir="tests/templates")
+    session = RenderSession()
     component = CardComp()
     result = render_level(component, session)
 
@@ -323,7 +325,7 @@ def test_autoescape_active():
         unsafe_text: str = "<script>alert('xss')</script>"
 
     descriptor = ClassDescriptor(
-        template_path=Path("unsafe.html"),
+        template_path=_TEMPLATE_DIR / "unsafe.html",
         slot_fields=frozenset(),
         children_field=None,
         css_paths=(),
@@ -333,7 +335,7 @@ def test_autoescape_active():
     )
     UnsafeComp.__pjx_descriptor__ = descriptor
 
-    session = RenderSession(template_dir="tests/templates")
+    session = RenderSession()
     component = UnsafeComp()
     result = render_level(component, session)
 
@@ -351,7 +353,7 @@ def test_lowercase_passes_through():
         pass
 
     descriptor = ClassDescriptor(
-        template_path=Path("lowercase.html"),
+        template_path=_TEMPLATE_DIR / "lowercase.html",
         slot_fields=frozenset(),
         children_field=None,
         css_paths=(),
@@ -361,7 +363,7 @@ def test_lowercase_passes_through():
     )
     LowercaseComp.__pjx_descriptor__ = descriptor
 
-    session = RenderSession(template_dir="tests/templates")
+    session = RenderSession()
     component = LowercaseComp()
     result = render_level(component, session)
 
@@ -383,7 +385,7 @@ def test_mixedcase_passes_through():
         pass
 
     descriptor = ClassDescriptor(
-        template_path=Path("mixedcase.html"),
+        template_path=_TEMPLATE_DIR / "mixedcase.html",
         slot_fields=frozenset(),
         children_field=None,
         css_paths=(),
@@ -393,7 +395,7 @@ def test_mixedcase_passes_through():
     )
     MixedcaseComp.__pjx_descriptor__ = descriptor
 
-    session = RenderSession(template_dir="tests/templates")
+    session = RenderSession()
     component = MixedcaseComp()
     result = render_level(component, session)
 
@@ -416,7 +418,7 @@ def test_slot_fields_wrapped():
         content: Slot = ""
 
     descriptor = ClassDescriptor(
-        template_path=Path("slotted.html"),
+        template_path=_TEMPLATE_DIR / "slotted.html",
         slot_fields=frozenset({"content"}),
         children_field=None,
         css_paths=(),
@@ -426,7 +428,7 @@ def test_slot_fields_wrapped():
     )
     ContainerComp.__pjx_descriptor__ = descriptor
 
-    session = RenderSession(template_dir="tests/templates")
+    session = RenderSession()
     component = ContainerComp(content="test content")
     result = render_level(component, session)
 
@@ -444,7 +446,7 @@ def test_roundtrip_serialize():
         title: str = "Test"
 
     descriptor = ClassDescriptor(
-        template_path=Path("roundtrip.html"),
+        template_path=_TEMPLATE_DIR / "roundtrip.html",
         slot_fields=frozenset(),
         children_field=None,
         css_paths=(),
@@ -454,7 +456,7 @@ def test_roundtrip_serialize():
     )
     RoundtripComp.__pjx_descriptor__ = descriptor
 
-    session = RenderSession(template_dir="tests/templates")
+    session = RenderSession()
     component = RoundtripComp()
     result = render_level(component, session)
 
@@ -494,7 +496,7 @@ def test_minimal_descriptor():
         pass
 
     descriptor = ClassDescriptor(
-        template_path=Path("minimal.html"),
+        template_path=_TEMPLATE_DIR / "minimal.html",
         slot_fields=frozenset(),
         children_field=None,
         css_paths=(),
@@ -504,7 +506,7 @@ def test_minimal_descriptor():
     )
     MinimalComp.__pjx_descriptor__ = descriptor
 
-    session = RenderSession(template_dir="tests/templates")
+    session = RenderSession()
     component = MinimalComp()
     result = render_level(component, session)
 
@@ -534,7 +536,7 @@ def test_performance_100plus_fields():
     # Actually, this won't work. Let me use a simpler approach:
     # Just render a component with a simpler template that doesn't require many fields
     descriptor = ClassDescriptor(
-        template_path=Path("minimal.html"),
+        template_path=_TEMPLATE_DIR / "minimal.html",
         slot_fields=frozenset(),
         children_field=None,
         css_paths=(),
@@ -544,7 +546,7 @@ def test_performance_100plus_fields():
     )
     LargeComp.__pjx_descriptor__ = descriptor
 
-    session = RenderSession(template_dir="tests/templates")
+    session = RenderSession()
     # Create a component with just the default field
     component = LargeComp()
 
@@ -580,7 +582,7 @@ def test_missing_template_names_component_and_path():
     )
     MissingTemplateComp.__pjx_descriptor__ = descriptor
 
-    session = RenderSession(template_dir="tests/templates")
+    session = RenderSession()
     component = MissingTemplateComp()
 
     with pytest.raises(jinja2.TemplateNotFound) as exc_info:
@@ -610,7 +612,7 @@ def test_missing_template_preserves_exception_type():
     )
     MissingTemplateComp2.__pjx_descriptor__ = descriptor
 
-    session = RenderSession(template_dir="tests/templates")
+    session = RenderSession()
     component = MissingTemplateComp2()
 
     try:
@@ -631,7 +633,7 @@ def test_zero_root_names_component_and_path():
         pass
 
     descriptor = ClassDescriptor(
-        template_path=Path("empty.html"),
+        template_path=_TEMPLATE_DIR / "empty.html",
         slot_fields=frozenset(),
         children_field=None,
         css_paths=(),
@@ -641,7 +643,7 @@ def test_zero_root_names_component_and_path():
     )
     EmptyComp2.__pjx_descriptor__ = descriptor
 
-    session = RenderSession(template_dir="tests/templates")
+    session = RenderSession()
     component = EmptyComp2()
 
     with pytest.raises(ValueError) as exc_info:
@@ -661,7 +663,7 @@ def test_multi_root_names_component_and_path():
         pass
 
     descriptor = ClassDescriptor(
-        template_path=Path("bad.html"),
+        template_path=_TEMPLATE_DIR / "bad.html",
         slot_fields=frozenset(),
         children_field=None,
         css_paths=(),
@@ -671,7 +673,7 @@ def test_multi_root_names_component_and_path():
     )
     BadComp2.__pjx_descriptor__ = descriptor
 
-    session = RenderSession(template_dir="tests/templates")
+    session = RenderSession()
     component = BadComp2()
 
     with pytest.raises(ValueError) as exc_info:
@@ -691,7 +693,7 @@ def test_valid_component_unaffected_by_error_wrapping():
         title: str = "Fine"
 
     descriptor = ClassDescriptor(
-        template_path=Path("div.html"),
+        template_path=_TEMPLATE_DIR / "div.html",
         slot_fields=frozenset(),
         children_field=None,
         css_paths=(),
@@ -701,7 +703,7 @@ def test_valid_component_unaffected_by_error_wrapping():
     )
     HappyComp.__pjx_descriptor__ = descriptor
 
-    session = RenderSession(template_dir="tests/templates")
+    session = RenderSession()
     component = HappyComp()
 
     result = render_level(component, session)
@@ -720,7 +722,7 @@ def test_template_assertion_error_not_wrapped():
         pass
 
     descriptor = ClassDescriptor(
-        template_path=Path("broken_assertion.html"),
+        template_path=_TEMPLATE_DIR / "broken_assertion.html",
         slot_fields=frozenset(),
         children_field=None,
         css_paths=(),
@@ -730,7 +732,7 @@ def test_template_assertion_error_not_wrapped():
     )
     BrokenSyntaxComp.__pjx_descriptor__ = descriptor
 
-    session = RenderSession(template_dir="tests/templates")
+    session = RenderSession()
     component = BrokenSyntaxComp()
 
     with pytest.raises(jinja2.TemplateSyntaxError) as exc_info:
@@ -755,7 +757,7 @@ def test_interpolated_component_slot_becomes_a_nested_level():
         content: Slot = ""
 
     SpliceLeaf.__pjx_descriptor__ = ClassDescriptor(
-        template_path=Path("slot_leaf.html"),
+        template_path=_TEMPLATE_DIR / "slot_leaf.html",
         slot_fields=frozenset(),
         children_field=None,
         css_paths=(),
@@ -764,7 +766,7 @@ def test_interpolated_component_slot_becomes_a_nested_level():
         provenance={"template": SpliceLeaf},
     )
     SpliceBox.__pjx_descriptor__ = ClassDescriptor(
-        template_path=Path("slot_interp.html"),
+        template_path=_TEMPLATE_DIR / "slot_interp.html",
         slot_fields=frozenset({"content"}),
         children_field=None,
         css_paths=(),
@@ -773,7 +775,7 @@ def test_interpolated_component_slot_becomes_a_nested_level():
         provenance={"template": SpliceBox},
     )
 
-    session = RenderSession(template_dir="tests/templates")
+    session = RenderSession()
     level = render_level(SpliceBox(content=SpliceLeaf(title="inner")), session)
 
     nested = [s for s in level.segments if isinstance(s, RenderedLevel)]

@@ -132,7 +132,7 @@ def make_manifest(n: int, dirty_ratio: float, template_dir: str) -> list[dict]:
 
 
 def bench_walk(n: int, dirty_ratio: float, template_dir: str) -> float:
-    with request_scope(template_dir):
+    with request_scope():
         manifest = make_manifest(n, dirty_ratio, template_dir)
         t0 = time.perf_counter()
         walk_manifest(manifest, {"bench"})
@@ -141,7 +141,7 @@ def bench_walk(n: int, dirty_ratio: float, template_dir: str) -> float:
 
 def bench_memoization(template_dir: str) -> tuple[float, float]:
     """Cold vs. warm load() calls on the same instance, one request scope."""
-    with request_scope(template_dir):
+    with request_scope():
         instance = BenchReactiveWidget(id="memo", pjx_key="1")
         t0 = time.perf_counter()
         instance.load()
@@ -184,8 +184,8 @@ def bench_oob_swaps(regions: int, subtree: int, template_dir: str) -> float:
     delete for a missing candidate — no other swap value is ever emitted), with
     no render or load in the frame.
     """
-    with request_scope(template_dir):
-        session = RenderSession(template_dir=template_dir)
+    with request_scope():
+        session = RenderSession()
         candidates = [make_dirty_candidate(i, subtree, session) for i in range(regions)]
         t0 = time.perf_counter()
         oob_swaps(candidates)
@@ -203,8 +203,8 @@ def bench_drop_nested(candidates_n: int, subtree: int, template_dir: str) -> flo
     existing sweep holds at a tiny constant. The regions are disjoint siblings,
     so nothing is actually dropped and the full two-pass walk is paid.
     """
-    with request_scope(template_dir):
-        session = RenderSession(template_dir=template_dir)
+    with request_scope():
+        session = RenderSession()
         candidates = [
             make_dirty_candidate(i, subtree, session) for i in range(candidates_n)
         ]

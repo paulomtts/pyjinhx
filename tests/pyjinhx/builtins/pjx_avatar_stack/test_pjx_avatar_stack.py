@@ -14,7 +14,7 @@ def stack_session():
 
     Same fixture shape as tests/pyjinhx/builtins/pjx_badge.
     """
-    return RenderSession(template_dir="/")
+    return RenderSession()
 
 
 def _html(session, **kw) -> str:

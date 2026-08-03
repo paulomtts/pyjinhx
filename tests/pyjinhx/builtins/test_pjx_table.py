@@ -1,7 +1,6 @@
 """PJXTable — v0.x output parity on the v2 engine."""
 
 from dataclasses import replace
-from pathlib import Path
 
 import pytest
 from pydantic import ValidationError
@@ -14,7 +13,7 @@ from pyjinhx.session import RenderSession
 
 @pytest.fixture
 def session():
-    return RenderSession(template_dir="/")
+    return RenderSession()
 
 
 class TestFields:
@@ -105,13 +104,13 @@ class TestSlotOpacity:
         template.write_text(
             '<table id="{{ id }}" class="pjx-table">{{ content|striptags }}</table>'
         )
-        env_session = RenderSession(template_dir=str(tmp_path))
+        env_session = RenderSession()
 
         class Probe(PJXTable):
             pass
 
         Probe.__pjx_descriptor__ = replace(
-            PJXTable.__pjx_descriptor__, template_path=Path("bad_slot.pjx")
+            PJXTable.__pjx_descriptor__, template_path=template
         )
 
         with pytest.raises(TypeError):
@@ -127,8 +126,8 @@ class TestSingleRoot:
             pass
 
         Probe.__pjx_descriptor__ = replace(
-            PJXTable.__pjx_descriptor__, template_path=Path("two_roots.pjx")
+            PJXTable.__pjx_descriptor__, template_path=template
         )
 
         with pytest.raises(ValueError):
-            render(Probe(id="t1"), RenderSession(template_dir=str(tmp_path)))
+            render(Probe(id="t1"), RenderSession())

@@ -17,6 +17,8 @@ from pyjinhx.rendering import render_level
 from pyjinhx.segments import RenderedLevel, serialize
 from pyjinhx.session import RenderSession, _instances, get_instances, request_scope
 
+_TEMPLATE_DIR = Path(__file__).parent.parent / "templates"
+
 
 def test_make_key_joins_type_and_id_with_underscore():
     assert make_key("PJXButton", "btn1") == "PJXButton_btn1"
@@ -204,7 +206,7 @@ class RegisteredWidget(ReactiveComponent):
 
 
 RegisteredWidget.__pjx_descriptor__ = ClassDescriptor(
-    template_path=Path("reactive_widget.html"),
+    template_path=_TEMPLATE_DIR / "reactive_widget.html",
     slot_fields=frozenset(),
     children_field=None,
     css_paths=(),
@@ -216,7 +218,7 @@ RegisteredWidget.__pjx_descriptor__ = ClassDescriptor(
 
 def _wired_session() -> RenderSession:
     """A session whose on_rendered carries the registry writer, as the Load path wires it."""
-    session = RenderSession(template_dir="tests/templates")
+    session = RenderSession()
     session.on_rendered.append(register_rendered_instance)
     return session
 
@@ -261,7 +263,7 @@ def test_a_real_render_entry_does_not_survive_the_request_scope():
 
 
 def test_a_real_render_registers_nothing_when_the_writer_is_not_wired():
-    session = RenderSession(template_dir="tests/templates")
+    session = RenderSession()
 
     with request_scope(session=session):
         render_level(RegisteredWidget(id="r5"), session)

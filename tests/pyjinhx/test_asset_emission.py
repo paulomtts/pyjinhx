@@ -5,6 +5,8 @@ from pathlib import Path
 from pyjinhx.assets import AssetMode
 from pyjinhx.session import RenderSession
 
+_TEMPLATE_DIR = Path(__file__).parent.parent / "templates"
+
 
 def test_asset_mode_members_are_inline_none_and_link():
     assert AssetMode.INLINE.value == "inline"
@@ -14,7 +16,7 @@ def test_asset_mode_members_are_inline_none_and_link():
 
 
 def test_session_defaults_both_kinds_to_inline():
-    session = RenderSession(template_dir=str(Path("tests/templates")))
+    session = RenderSession()
     assert session.css_mode is AssetMode.INLINE
     assert session.js_mode is AssetMode.INLINE
 
@@ -25,7 +27,7 @@ from pyjinhx.assets import emit_assets
 
 
 def _session(tmp_path: Path) -> RenderSession:
-    return RenderSession(template_dir=str(tmp_path))
+    return RenderSession()
 
 
 def test_inline_emits_style_and_script_with_exact_file_contents(tmp_path):
@@ -178,7 +180,7 @@ TEMPLATES = str(Path(__file__).parent.parent / "templates")
 def _plain_descriptor(owner: type) -> ClassDescriptor:
     """Hand-built descriptor pointed at the shared plain_div.html fixture."""
     return ClassDescriptor(
-        template_path=Path("plain_div.html"),
+        template_path=_TEMPLATE_DIR / "plain_div.html",
         slot_fields=frozenset(),
         children_field=None,
         css_paths=(),
@@ -208,7 +210,7 @@ def _with_assets(cls, *, css=(), js=()):
 
 
 def _accumulating_session() -> RenderSession:
-    session = RenderSession(template_dir=TEMPLATES)
+    session = RenderSession()
     session.on_rendered.append(accumulate_assets)
     return session
 
@@ -292,7 +294,7 @@ def test_concurrent_scopes_do_not_leak_emitted_assets(tmp_path):
     barrier = threading.Barrier(2)
 
     def run(name: str, asset: Path, mode: AssetMode) -> None:
-        session = RenderSession(template_dir=TEMPLATES)
+        session = RenderSession()
         session.on_rendered.append(accumulate_assets)
         session.css_mode = mode
         with request_scope(session=session):

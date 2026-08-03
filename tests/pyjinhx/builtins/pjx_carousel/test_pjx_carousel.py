@@ -21,7 +21,7 @@ from pyjinhx.session import RenderSession
 def session():
     # template_dir="/" so the descriptor's absolute template path resolves,
     # same fixture shape as the sibling builtin tests.
-    return RenderSession(template_dir="/")
+    return RenderSession()
 
 
 @pytest.fixture
