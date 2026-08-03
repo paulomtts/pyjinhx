@@ -35,3 +35,36 @@ jobs:
 
     - name: Typecheck pyjinhx (basedpyright, standard mode)
       run: uvx "basedpyright==1.39.9" pyjinhx/
+
+  minimal-install:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Check out code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.13'
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v5
+
+    - name: Install pyjinhx without any extra
+      run: |
+        uv venv .venv-min
+        uv pip install --python .venv-min . pytest
+
+    - name: Importing pyjinhx must not need a web framework
+      run: .venv-min/bin/python -c "import pyjinhx; import pyjinhx.config"
+
+    - name: The fastapi extra must be absent on this leg
+      run: |
+        if .venv-min/bin/python -c "import fastapi" 2>/dev/null; then
+          echo "fastapi is installed; this leg is not testing what it claims"
+          exit 1
+        fi
+
+    - name: Run the minimal-install tests
+      run: .venv-min/bin/python -m pytest tests/minimal/ -q
