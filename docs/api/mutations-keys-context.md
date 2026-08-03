@@ -50,10 +50,10 @@ class ItemRow(ReactiveComponent, react={Keys.TODOS}):
 ## mutates
 
 ```python
-def mutates(*keys: MutationKey) -> Callable[[F], F]
+def mutates(*keys: MutationKey, key: Callable[..., object] | None = None) -> Callable[[F], F]
 ```
 
-Decorator for store mutation methods. Each arg must be a **`MutationKey` member** — bare strings raise `TypeError` at decoration time. After the wrapped function returns, invalidates the load cache and accumulates pending dirtied keys for the next reactive `render()`.
+Decorator for store mutation methods. Each arg must be a **`MutationKey` member** or a **`reactive_key()`** value — bare strings raise `TypeError` at decoration time. After the wrapped function returns, invalidates the load cache and accumulates pending dirtied keys for the next reactive `render()`.
 
 ```python
 from pyjinhx import MutationKey, mutates
@@ -68,13 +68,21 @@ class Store:
     def add(self, text: str) -> None: ...
 ```
 
+Pass `key=` to derive a per-instance key instead of dirtying `keys` directly. It's called with the wrapped function's own arguments, and its return value feeds `reactive_key()` for every key in `keys` — dirtying only the one mounted instance whose load key matches, instead of every instance reacting to `Keys.TODO`:
+
+```python
+class Store:
+    @mutates(Keys.TODO, key=lambda self, todo_id: todo_id)
+    def toggle(self, todo_id: int) -> None: ...
+```
+
 ## dirty
 
 ```python
-def dirty(*keys: MutationKey) -> None
+def dirty(*keys: MutationKey | DynamicReactiveKey) -> None
 ```
 
-Imperatively dirty reactive keys — the same effect `@mutates` has, but without decorating a function. Each arg must be a **`MutationKey` member** — bare strings raise `TypeError`. Invalidates the load cache and accumulates pending dirtied keys for the next reactive `render()`. A no-arg call is a no-op.
+Imperatively dirty reactive keys — the same effect `@mutates` has, but without decorating a function. Each arg must be a **`MutationKey` member** or a **`reactive_key()`** value — bare strings raise `TypeError`. Invalidates the load cache and accumulates pending dirtied keys for the next reactive `render()`. A no-arg call is a no-op.
 
 ```python
 from pyjinhx import MutationKey, dirty
@@ -86,6 +94,25 @@ class Keys(MutationKey):
 
 store.add_without_decorator(text)
 dirty(Keys.TODOS)
+```
+
+## reactive_key
+
+```python
+def reactive_key(key: MutationKey, arg: object) -> DynamicReactiveKey
+```
+
+Build a per-instance reactive key from a static `MutationKey` and an instance's own load key. Use the result with `dirty()` or `@mutates(key=...)` to invalidate/reload only the one mounted instance whose load key matches `arg`, instead of every instance reacting to `key`.
+
+```python
+from pyjinhx import MutationKey, dirty, reactive_key
+
+
+class Keys(MutationKey):
+    TODO = "todo"
+
+
+dirty(reactive_key(Keys.TODO, todo_id))
 ```
 
 ### Injecting an app context into `load()`
@@ -144,7 +171,7 @@ def enable_reactive_dev(*, strict: bool = False) -> None
 
 Enable guardrails. When enabled:
 
-- Warns if `@mutates` recorded dirtied keys but no reactive `render()` consumed them in the request scope.
+- Warns if `@mutates` or `dirty()` recorded dirtied keys that no reactive `render()` consumed by the end of the request scope.
 
 Set `strict=True` to raise `RuntimeError` instead of logging warnings.
 
