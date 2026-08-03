@@ -55,6 +55,7 @@ Inside the scope, `get_load_context()` returns that value for the life of the re
 ```python
 from pyjinhx.session import get_load_context
 
+
 def load(self):
     request = get_load_context()
 ```
