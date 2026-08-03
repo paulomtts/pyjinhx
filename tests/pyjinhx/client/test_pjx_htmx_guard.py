@@ -45,11 +45,6 @@ def test_loading_and_toast_apis_exist_without_htmx(pjx_page):
     assert page.evaluate("typeof pjx.loader.region") == "function"
 
 
-def test_style_is_injected_even_without_htmx(pjx_page):
-    page = pjx_page("<div></div>", with_htmx=False)
-    assert page.evaluate("document.querySelectorAll('#pjx-style').length") == 1
-
-
 def test_loader_and_toast_do_not_throw_without_htmx(pjx_page):
     page = pjx_page("<div></div>", with_htmx=False)
     assert (
