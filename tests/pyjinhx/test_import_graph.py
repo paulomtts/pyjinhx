@@ -31,6 +31,9 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
     # BaseComponent.__subclasses__() and each class's descriptor, imported
     # locally to avoid a module-level cycle (session imports assets).
     "assets": frozenset({"pyjinhx.session", "pyjinhx.component"}),
+    # app_context is import-pure - stdlib only - so the reactive load() wrap can
+    # import it at module scope without threading an edge back into the spine.
+    "app_context": frozenset(),
     # builtins/ ports v0.x's component library onto the v2 stack, one leaf
     # package per component (#500). Each leaf only reaches down into
     # component.py for BaseComponent/Slot/AttrValue and its own vendored
