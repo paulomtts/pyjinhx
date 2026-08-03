@@ -33,15 +33,21 @@ def test_inject_runtime_payload_alone_drives_the_loading_indicator(page):
     page.set_content(f"<body>{BODY}{emit_assets(session)}</body>")
 
     page.evaluate(FIRE)
-    assert page.evaluate(
-        "document.querySelector('[data-pjx-id=\"t\"]').className"
-    ) == "pjx-loading--skeleton"
-    assert page.evaluate(
-        "getComputedStyle(document.querySelector('[data-pjx-id=\"t\"]')).pointerEvents"
-    ) == "none"
+    assert (
+        page.evaluate("document.querySelector('[data-pjx-id=\"t\"]').className")
+        == "pjx-loading--skeleton"
+    )
+    assert (
+        page.evaluate(
+            "getComputedStyle(document.querySelector('[data-pjx-id=\"t\"]')).pointerEvents"
+        )
+        == "none"
+    )
 
     page.evaluate("window.__xhr.loadend()")
-    assert page.evaluate("document.querySelector('[data-pjx-id=\"t\"]').className") == ""
+    assert (
+        page.evaluate("document.querySelector('[data-pjx-id=\"t\"]').className") == ""
+    )
 
 
 def test_inject_runtime_payload_alone_drives_the_page_loader(page):

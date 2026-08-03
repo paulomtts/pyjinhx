@@ -43,7 +43,9 @@ def test_beforerequest_dispatches_region_loading_start(pjx_page):
 def test_core_alone_never_applies_the_loading_class(pjx_page):
     page = pjx_page(BODY)
     page.evaluate(FIRE, {"trigger": "#btn", "name": "a"})
-    assert page.evaluate('document.querySelector(\'[data-pjx-id="t"]\').className') == ""
+    assert (
+        page.evaluate("document.querySelector('[data-pjx-id=\"t\"]').className") == ""
+    )
 
 
 def test_completion_dispatches_region_loading_end(pjx_page):

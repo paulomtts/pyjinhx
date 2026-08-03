@@ -129,7 +129,9 @@ def test_xhr_loadend_releases_the_region(pjx_full_page):
     assert classes(page, '[data-pjx-id="t"]') == [""]
 
 
-def test_overlapping_requests_keep_the_region_lit_until_the_last_resolves(pjx_full_page):
+def test_overlapping_requests_keep_the_region_lit_until_the_last_resolves(
+    pjx_full_page,
+):
     page = pjx_full_page(BODY)
     fire(page, "#btn", name="a")
     fire(page, "#btn", name="b")
@@ -139,7 +141,9 @@ def test_overlapping_requests_keep_the_region_lit_until_the_last_resolves(pjx_fu
     assert classes(page, '[data-pjx-id="t"]') == [""]
 
 
-def test_cancelled_request_neither_lights_nor_registers_a_loadend_listener(pjx_full_page):
+def test_cancelled_request_neither_lights_nor_registers_a_loadend_listener(
+    pjx_full_page,
+):
     page = pjx_full_page(BODY)
     fire(page, "#btn", cancel=True)
     assert classes(page, '[data-pjx-id="t"]') == [""]

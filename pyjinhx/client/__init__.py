@@ -48,7 +48,6 @@ def read_page_loader_js() -> str:
 
 def read_pjx_style_css() -> str:
     """Return the always-on runtime CSS: loading-indicator then page-loader."""
-    return (
-        LOADING_INDICATOR_CSS_PATH.read_text(encoding="utf-8")
-        + PAGE_LOADER_CSS_PATH.read_text(encoding="utf-8")
-    )
+    return LOADING_INDICATOR_CSS_PATH.read_text(
+        encoding="utf-8"
+    ) + PAGE_LOADER_CSS_PATH.read_text(encoding="utf-8")
