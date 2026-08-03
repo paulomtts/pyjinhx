@@ -589,9 +589,8 @@ setup(app, context_factory=lambda request: MyAppContext(get_db(request), request
 
 
 class TodoList(ReactiveComponent):
-    @classmethod
-    def load(cls, ctx: MyAppContext) -> "TodoList":
-        return cls(items=ctx.db.todos_for(ctx.user))
+    def load(self, ctx: MyAppContext) -> None:
+        self.items = ctx.db.todos_for(ctx.user)
 ```
 
 ### `pyjinhx.render` → `pyjinhx.rendering`
