@@ -175,7 +175,7 @@ Full guide: [docs/reactivity.md](../reactivity.md).
 - **Host theme** (set on `:root` or a wrapper): builtin CSS reads shared tokens — define at least `--surface`, `--surface-alt`, `--text`, `--text-muted`, `--border`, `--brand`, `--brand-subtle`, `--brand-muted`, `--error`, `--success`, `--warning`, `--font-size-{xs,sm,md}`, `--radius-{sm,md,lg,full}`, `--shadow-md`, `--transition`, `--space-3`, `--space-4`. Optional `--error-bg` / `--error-border` for error surfaces (badge/alert fall back with `color-mix`).
 - **Per-component tokens:** each stylesheet declares `--pjx-<widget>-*` properties on `:root` — override to tune one component without editing package files (e.g. `--pjx-modal-width`, `--pjx-dropdown-z`, `--pjx-drawer-width`).
 - **Classes** are BEM: `pjx-<widget>`, `pjx-<widget>__element`, `pjx-<widget>--modifier`. Every builtin accepts `class_name` (appended on the root) and `extra_attrs` (validated dict rendered on the root).
-- **PascalCase tag quirks:** `PJXBreadcrumb.items` accepts a JSON-string attribute in tag strings (the dict/list equivalent). JS components use `window.pjx.*` APIs (`pjx.modal.open/close`, `pjx.drawer.open/close`, `pjx.popover.open/close/toggle`, `pjx.notification.show/hide`, `pjx.loader.region.show/hide/reset/wrap`, `pjx.confirm`, `pjx.prompt`, `pjx.toast`, `pjx.loader.page.*`); `PJXTabGroup`, `PJXTooltip` use delegated events with no exported API.
+- **PascalCase tag quirks:** `PJXBreadcrumb.items` accepts a JSON-string attribute in tag strings (the dict/list equivalent). JS components use `window.pjx.*` APIs (`pjx.modal.open/close`, `pjx.drawer.open/close`, `pjx.popover.open/close/toggle`, `pjx.notification.show/hide`, `pjx.loader.region.show/hide/reset/wrap`, `pjx.toast`, `pjx.loader.page.*`); `PJXTabGroup`, `PJXTooltip` use delegated events with no exported API.
 
 Full reference (props, classes, `--pjx-*` tokens, JS helpers per component): [Components](../components.md).
 
@@ -195,7 +195,7 @@ from pyjinhx import (
     Slot,               # field type for raw-HTML/icon/component values (opt out of escaping)
     Children,           # tag inner content field type
     component,          # classless-component decorator
-    ReactiveComponent,  # react={...} + load(); Cls.render(*args) is the route entry point
+    ReactiveComponent,  # react={...} + load(); routes render an instance: Cls.load(...).render()
     render,             # free-function render(component, session=None) -> str
     RenderSession,       # per-request render state
     setup,               # process config + optional framework middleware wiring
