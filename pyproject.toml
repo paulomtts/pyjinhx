@@ -43,6 +43,7 @@ extraPaths = ["docs"]
 
 [project.optional-dependencies]
 redis = ["redis>=5.0.0", "fakeredis>=2.26.0"]
+fastapi = ["fastapi>=0.115.0", "starlette>=0.40.0"]
 
 [dependency-groups]
 dev = [

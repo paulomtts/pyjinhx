@@ -20,6 +20,11 @@ from pyjinhx.client.inject import (
 )
 from pyjinhx.component import BaseComponent
 from pyjinhx.config import PjxSettings, configure_pyjinhx, shutdown_pyjinhx
+from pyjinhx.integrations.base import (
+    SETUP_FLAG,
+    ContextFactory,
+    register_backend,
+)
 from pyjinhx.reactive.response import ReactiveResponse
 from pyjinhx.render import render
 from pyjinhx.session import current_session, request_scope
@@ -30,47 +35,118 @@ if TYPE_CHECKING:
 logger = logging.getLogger("pyjinhx")
 
 
+class FastAPIBackend:
+    """The FastAPI adapter's Protocol surface: install flag, lifecycle, static, responses.
+
+    It holds the settings because ``on_startup`` takes only the app: chaining a
+    lifespan is where configure runs, and the settings resolved by ``setup()``
+    have to reach that call somehow.
+    """
+
+    def __init__(
+        self,
+        settings: PjxSettings | None = None,
+        *,
+        context_factory: ContextFactory | None = None,
+    ) -> None:
+        self.settings = settings if settings is not None else PjxSettings()
+        self.context_factory = context_factory
+
+    def accepts(self, app: object) -> bool:
+        """Whether ``app`` is an application this adapter can wire into.
+
+        Duck-typed rather than isinstance-checked so a caller passing a plain
+        Starlette app, a sub-application or a test double is not rejected for
+        the sake of a type name.
+        """
+        return hasattr(app, "add_middleware") and hasattr(app, "router")
+
+    def is_installed(self, app: object) -> bool:
+        return bool(getattr(getattr(app, "state", None), SETUP_FLAG, False))
+
+    def mark_installed(self, app: object) -> None:
+        setattr(app.state, SETUP_FLAG, True)  # pyright: ignore[reportAttributeAccessIssue]
+
+    def mount_static(self, app: object, directory: str) -> None:
+        from starlette.staticfiles import StaticFiles
+
+        app.mount(  # pyright: ignore[reportAttributeAccessIssue]
+            "/static", StaticFiles(directory=directory), name="static"
+        )
+
+    def on_startup(self, app: object) -> None:
+        configure_pyjinhx(self.settings)
+
+    def on_shutdown(self, app: object) -> None:
+        shutdown_pyjinhx()
+
+    def to_response(self, result: object, request: object | None) -> object:
+        """Adapt a pjx handler return into an HTML response, or pass it through.
+
+        A ReactiveResponse already carries its composed body and htmx headers
+        (T2); a bare component is this request's primary render, so the runtime
+        is offered to it and inlined only when the request is not already
+        mounted (T1).
+        """
+        if isinstance(result, ReactiveResponse):
+            return HTMLResponse(str(result.body), headers=result.headers)
+        if isinstance(result, BaseComponent):
+            session = current_session()
+            # Always set: to_response only runs from inside PjxScopeMiddleware's
+            # request_scope(), which is the sole entry point for a pjx endpoint.
+            assert session is not None, "component return outside a request_scope()"
+            inject_runtime(session, request or getattr(session, "pjx_request", None))
+            return HTMLResponse(render(result, session=session))
+        return result
+
+    def chain_lifespan(self, app: Starlette) -> None:
+        """Run the startup/shutdown hooks around whatever lifespan app has.
+
+        Chaining is spelled per framework, which is why the Protocol fixes only
+        the two call points and leaves this out of the interface.
+        """
+        original = app.router.lifespan_context
+
+        @asynccontextmanager
+        async def pyjinhx_lifespan(app_instance: object):
+            self.on_startup(app_instance)
+            try:
+                if original is not None:
+                    async with original(app_instance) as state:
+                        yield state
+                else:
+                    yield
+            finally:
+                self.on_shutdown(app_instance)
+
+        app.router.lifespan_context = pyjinhx_lifespan  # pyright: ignore[reportAttributeAccessIssue]
+
+
 def apply_setup(
     app: Starlette,
     settings: PjxSettings,
     *,
     context_factory: Callable[[Any], object | None] | None = None,
 ) -> None:
-    """Wire pyjinhx into ``app``: lifespan, request scope, static files.
+    """Wire pyjinhx into ``app``: lifespan, request scope, static files, routes.
 
     Applying setup a second time to the same app is a no-op, so a re-entrant
     ``setup()`` cannot stack two scopes or two lifespans on one request.
     """
-    if getattr(app.state, "pyjinhx_setup", False):
+    backend = FastAPIBackend(settings, context_factory=context_factory)
+    if backend.is_installed(app):
         logger.warning("pyjinhx setup already applied to this app; skipping")
         return
-    _chain_lifespan(app, settings)
+    backend.chain_lifespan(app)
     app.add_middleware(PjxScopeMiddleware, context_factory=context_factory)
     if settings.static_root is not None:
-        from starlette.staticfiles import StaticFiles
-
-        app.mount("/static", StaticFiles(directory=settings.static_root), name="static")
-    _install_route_adaptation(app)
-    app.state.pyjinhx_setup = True
+        backend.mount_static(app, str(settings.static_root))
+    _install_route_adaptation(backend, app)
+    backend.mark_installed(app)
 
 
-def _chain_lifespan(app: Starlette, settings: PjxSettings) -> None:
-    """Run configure/shutdown around whatever lifespan the app already has."""
-    original = app.router.lifespan_context
-
-    @asynccontextmanager
-    async def pyjinhx_lifespan(app_instance: object):
-        configure_pyjinhx(settings)
-        try:
-            if original is not None:
-                async with original(app_instance) as state:
-                    yield state
-            else:
-                yield
-        finally:
-            shutdown_pyjinhx()
-
-    app.router.lifespan_context = pyjinhx_lifespan  # pyright: ignore[reportAttributeAccessIssue]
+_BACKEND = FastAPIBackend()
+register_backend(_BACKEND)
 
 
 class PjxScopeMiddleware(BaseHTTPMiddleware):
@@ -106,25 +182,6 @@ class PjxScopeMiddleware(BaseHTTPMiddleware):
             return await call_next(request)
 
 
-def _to_response(result: object, request: Any) -> object:
-    """Adapt a pjx handler return into an HTML response, or pass it through.
-
-    A ReactiveResponse already carries its composed body and htmx headers (T2);
-    a bare component is this request's primary render, so the runtime is offered
-    to it and inlined only when the request is not already mounted (T1).
-    """
-    if isinstance(result, ReactiveResponse):
-        return HTMLResponse(str(result.body), headers=result.headers)
-    if isinstance(result, BaseComponent):
-        session = current_session()
-        # Always set: _to_response only runs from inside PjxScopeMiddleware's
-        # request_scope(), which is the sole entry point for a pjx endpoint.
-        assert session is not None, "component return outside a request_scope()"
-        inject_runtime(session, request or getattr(session, "pjx_request", None))
-        return HTMLResponse(render(result, session=session))
-    return result
-
-
 def _request_from(kwargs: dict[str, Any]) -> Any:
     """The ``Request`` argument FastAPI injected, if the handler declared one."""
     from starlette.requests import Request
@@ -135,7 +192,9 @@ def _request_from(kwargs: dict[str, Any]) -> Any:
     return None
 
 
-def _adapt_endpoint(endpoint: Callable[..., Any]) -> Callable[..., Any]:
+def _adapt_endpoint(
+    backend: FastAPIBackend, endpoint: Callable[..., Any]
+) -> Callable[..., Any]:
     """Return a version of ``endpoint`` whose pjx returns become responses."""
 
     @functools.wraps(endpoint)
@@ -143,7 +202,7 @@ def _adapt_endpoint(endpoint: Callable[..., Any]) -> Callable[..., Any]:
         result = endpoint(*args, **kwargs)
         if inspect.isawaitable(result):
             result = await result
-        return _to_response(result, _request_from(kwargs))
+        return backend.to_response(result, _request_from(kwargs))
 
     return adapted
 
@@ -160,7 +219,7 @@ def _returns_pjx(endpoint: Callable[..., Any]) -> bool:
     )
 
 
-def _install_route_adaptation(app: Starlette) -> None:
+def _install_route_adaptation(backend: FastAPIBackend, app: Starlette) -> None:
     """Adapt pjx returns for routes registered before and after setup().
 
     A handler annotated ``-> ReactiveResponse`` on a route declared before
@@ -176,10 +235,10 @@ def _install_route_adaptation(app: Starlette) -> None:
         def __init__(self, path: str, endpoint: Callable[..., Any], **kwargs: Any):
             if _returns_pjx(endpoint):
                 kwargs["response_model"] = None
-            super().__init__(path, _adapt_endpoint(endpoint), **kwargs)
+            super().__init__(path, _adapt_endpoint(backend, endpoint), **kwargs)
 
     app.router.route_class = PjxRoute  # pyright: ignore[reportAttributeAccessIssue]
     for route in app.router.routes:
         if isinstance(route, APIRoute) and route.dependant.call is not None:
-            route.dependant.call = _adapt_endpoint(route.dependant.call)
+            route.dependant.call = _adapt_endpoint(backend, route.dependant.call)
             route.app = request_response(route.get_route_handler())

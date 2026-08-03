@@ -336,6 +336,7 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
             "pyjinhx.component",
             "pyjinhx.discovery",
             "pyjinhx.dev",
+            "pyjinhx.integrations.base",
             "pyjinhx.integrations.fastapi",
         }
     ),
@@ -358,7 +359,8 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
     # The framework adapter sits at the very top with config: it orchestrates
     # the request cycle by calling published entry points (request_scope,
     # render, inject_runtime, ReactiveResponse) and nothing imports it back
-    # except config's deferred setup() edge.
+    # except config's deferred setup() edge. It reads integrations.base for the
+    # Protocol's shared names and to register itself at import time.
     "integrations.__init__": frozenset(),
     # base defines the backend-agnostic Protocol other adapters implement; it
     # only touches session.py's request_scope() by documented contract, never
@@ -369,6 +371,7 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
             "pyjinhx.client.inject",
             "pyjinhx.component",
             "pyjinhx.config",
+            "pyjinhx.integrations.base",
             "pyjinhx.reactive.response",
             "pyjinhx.render",
             "pyjinhx.session",

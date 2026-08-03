@@ -1,10 +1,11 @@
 """The FastAPI adapter: request scope, header parsing, T1/T2 response adaptation."""
 
 from pathlib import Path
+from typing import cast
 
 from fastapi import FastAPI, Request
 from fastapi.testclient import TestClient
-from starlette.responses import PlainTextResponse
+from starlette.responses import HTMLResponse, PlainTextResponse
 
 from pyjinhx.component import BaseComponent
 from pyjinhx.config import PjxSettings
@@ -256,3 +257,64 @@ def test_non_pjx_returns_pass_through_untouched():
         plain = client.get("/plain")
         assert plain.text == "raw"
         assert plain.headers["content-type"].startswith("text/plain")
+
+
+def test_backend_satisfies_the_integration_protocol():
+    from pyjinhx.integrations.base import IntegrationBackend
+    from pyjinhx.integrations.fastapi import FastAPIBackend
+
+    assert isinstance(FastAPIBackend(_settings()), IntegrationBackend)
+
+
+def test_backend_install_flag_uses_the_shared_setup_flag_name():
+    from pyjinhx.integrations.base import SETUP_FLAG
+    from pyjinhx.integrations.fastapi import FastAPIBackend
+
+    app = FastAPI()
+    backend = FastAPIBackend(_settings())
+    assert backend.is_installed(app) is False
+    backend.mark_installed(app)
+    assert getattr(app.state, SETUP_FLAG) is True
+    assert backend.is_installed(app) is True
+
+
+def test_backend_mount_static_serves_the_directory(tmp_path: Path):
+    from pyjinhx.integrations.fastapi import FastAPIBackend
+
+    (tmp_path / "app.css").write_text("body{}", encoding="utf-8")
+    app = FastAPI()
+    FastAPIBackend(_settings()).mount_static(app, str(tmp_path))
+    with TestClient(app) as client:
+        assert client.get("/static/app.css").status_code == 200
+
+
+def test_backend_startup_and_shutdown_move_the_process_settings(tmp_path: Path):
+    from pyjinhx.config import current_settings
+    from pyjinhx.integrations.fastapi import FastAPIBackend
+
+    app = FastAPI()
+    backend = FastAPIBackend(_settings(static_root=str(tmp_path)))
+    backend.on_startup(app)
+    assert current_settings().static_root == str(tmp_path)
+    backend.on_shutdown(app)
+    assert current_settings().static_root is None
+
+
+def test_backend_to_response_adapts_reactive_and_passes_others_through():
+    from pyjinhx.integrations.fastapi import FastAPIBackend
+
+    backend = FastAPIBackend(_settings())
+    adapted = cast(
+        HTMLResponse,
+        backend.to_response(ReactiveResponse(primary="<div>hi</div>"), None),
+    )
+    assert adapted.status_code == 200
+    assert adapted.body == b"<div>hi</div>"
+    assert backend.to_response({"json": True}, None) == {"json": True}
+
+
+def test_registering_the_module_publishes_a_backend():
+    import pyjinhx.integrations.fastapi  # noqa: F401
+    from pyjinhx.integrations.base import IntegrationBackend, get_backend
+
+    assert isinstance(get_backend(), IntegrationBackend)
