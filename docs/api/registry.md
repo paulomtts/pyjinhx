@@ -37,17 +37,12 @@ Store an entry in this request's registry under its composite key. The only func
 ### request_scope()
 
 ```python
-def request_scope(
-    template_dir: str = "templates",
-    session: RenderSession | None = None,
-    *,
-    load_context: object | None = None,
-) -> Iterator[RenderSession]
+def request_scope(session: RenderSession | None = None, *, load_context: object | None = None) -> Iterator[RenderSession]
 ```
 
 Context manager (`pyjinhx.session.request_scope`) that binds fresh per-request state for the duration of the block: the instance registry, dirtied-key tracking, the load cache and its reverse index, and (when given) the app's `context_factory` result readable via `get_load_context()`.
 
-`session` lets a caller wire hooks (e.g. `on_rendered`) onto an existing `RenderSession` before it becomes the one `current_session()` sees as active; when omitted, a fresh `RenderSession(template_dir)` is constructed.
+`session` lets a caller wire hooks (e.g. `on_rendered`) onto an existing `RenderSession` before it becomes the one `current_session()` sees as active; when omitted, a fresh `RenderSession()` is constructed.
 
 **Usage:**
 

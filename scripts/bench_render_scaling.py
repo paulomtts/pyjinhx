@@ -55,7 +55,7 @@ def make_table(rows: int) -> PJXTable:
 
 
 def render_rows(rows: int) -> str:
-    return render(make_table(rows), RenderSession(template_dir="/"))
+    return render(make_table(rows), RenderSession())
 
 
 def main() -> None:

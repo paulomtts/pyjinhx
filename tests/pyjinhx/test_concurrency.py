@@ -42,7 +42,7 @@ from pyjinhx.session import (
 # stay generous on a loaded CI box.
 WORKERS = 8
 
-TEMPLATE_DIR = str(Path(__file__).parent.parent / "templates")
+_TEMPLATE_DIR = Path(__file__).parent.parent / "templates"
 
 # Barrier waits carry a timeout so a genuine deadlock fails the suite instead of
 # hanging it; the value is a liveness backstop, not a performance assertion.
@@ -108,7 +108,7 @@ def concurrency_assets(tmp_path_factory: pytest.TempPathFactory) -> Path:
     beta_js.write_text("console.log('beta');")
 
     _ConcAlpha.__pjx_descriptor__ = ClassDescriptor(
-        template_path=Path("div.html"),
+        template_path=_TEMPLATE_DIR / "div.html",
         slot_fields=frozenset(),
         children_field=None,
         css_paths=(alpha_css,),
@@ -117,7 +117,7 @@ def concurrency_assets(tmp_path_factory: pytest.TempPathFactory) -> Path:
         provenance={"template": _ConcAlpha},
     )
     _ConcBeta.__pjx_descriptor__ = ClassDescriptor(
-        template_path=Path("div.html"),
+        template_path=_TEMPLATE_DIR / "div.html",
         slot_fields=frozenset(),
         children_field=None,
         css_paths=(beta_css,),
@@ -190,7 +190,6 @@ def run_concurrent_requests(
     job: Callable[[int, RenderSession], str],
     *,
     workers: int = WORKERS,
-    template_dir: str = TEMPLATE_DIR,
     inspect: Callable[[int, RenderSession, Observation], None] | None = None,
 ) -> tuple[dict[int, Observation], list[BaseException]]:
     """Run `job` in `workers` threads, each in its own request_scope().
@@ -206,7 +205,6 @@ def run_concurrent_requests(
         job: Called as job(index, session) inside the worker's live scope;
             returns the rendered HTML.
         workers: How many threads/requests to run.
-        template_dir: Template directory the per-worker RenderSession loads from.
         inspect: Optional callback run inside the still-open scope, after the
             snapshot is taken. This is where the invariant-4 census assertion
             plugs in; anything it raises is collected into the returned errors
@@ -223,7 +221,7 @@ def run_concurrent_requests(
 
     def worker(index: int) -> None:
         try:
-            with request_scope(template_dir=template_dir) as session:
+            with request_scope() as session:
                 # request_scope subscribes nothing by itself; a request that
                 # wants assets accumulated and instances registered wires its
                 # own hooks, exactly as an app's request middleware would.

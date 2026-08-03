@@ -10,11 +10,13 @@ from pyjinhx.descriptor import ClassDescriptor
 from pyjinhx.rendering import render
 from pyjinhx.session import RenderSession
 
+_TEMPLATE_DIR = Path(__file__).parent.parent / "templates"
+
 
 def descriptor_for(cls: type[BaseComponent], template: str) -> ClassDescriptor:
     """Attach a minimal descriptor pointing at a fixture template."""
     return ClassDescriptor(
-        template_path=Path(template),
+        template_path=_TEMPLATE_DIR / template,
         slot_fields=frozenset(),
         children_field=None,
         css_paths=(),
@@ -108,7 +110,7 @@ def registry():
 
 @pytest.fixture
 def session():
-    return RenderSession(template_dir="tests/templates")
+    return RenderSession()
 
 
 def test_direct_self_cycle_raises(session):
@@ -135,7 +137,9 @@ def test_longer_cycle_names_the_chain_in_order(session):
 def test_cycle_error_keeps_the_existing_prefix(session):
     with pytest.raises(ValueError) as err:
         render(PJXCycleA(), session)
-    assert str(err.value).startswith("PJXCycleA (template: cycle_a.html): ")
+    assert str(err.value).startswith(
+        f"PJXCycleA (template: {_TEMPLATE_DIR / 'cycle_a.html'}): "
+    )
 
 
 def test_acyclic_nesting_still_renders(session):

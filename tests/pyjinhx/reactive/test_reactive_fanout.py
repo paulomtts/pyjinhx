@@ -2,7 +2,6 @@
 
 import dataclasses
 import re
-from pathlib import Path
 from typing import Annotated
 
 import pytest
@@ -50,17 +49,9 @@ class PlainWidget(BaseComponent):
     """
 
 
-_TEMPLATE_DIR = "templates"
-"""Set by `_clean_registries` to this test's tmp_path. `RenderSession(template_dir="templates")`
-(the class default) does not exist relative to the test's cwd — every test must enter
-`scope()`, never bare `request_scope()`, or the dirty path's `render_level()` call raises
-`TemplateNotFound` instead of exercising the code under test."""
-
-
 @pytest.fixture(autouse=True)
 def _clean_registries(tmp_path, monkeypatch):
     """Publish a tag -> class map for the two test classes and reset call spies."""
-    global _TEMPLATE_DIR
     LOAD_CALLS.clear()
     fanout_path = tmp_path / "fanout_widget.pjx"
     quiet_path = tmp_path / "quiet_widget.pjx"
@@ -69,27 +60,22 @@ def _clean_registries(tmp_path, monkeypatch):
     plain_path = tmp_path / "plain_widget.pjx"
     plain_path.write_text("<div>plain</div>")
     discovery.build_registry(tmp_path, [FanoutWidget, QuietWidget, PlainWidget])
-    PlainWidget.__pjx_descriptor__ = dataclasses.replace(
-        PlainWidget.__pjx_descriptor__, template_path=Path(plain_path.name)
-    )
     # `_resolve_template_path` walks the class's *defining module's* directory
     # (this test file's dir), not `template_dir` passed to `build_registry` —
     # the two are deliberately different concerns (tag lookup vs. file probe).
     # Point each descriptor's `template_path` at this test's tmp_path file, the
     # same way tests/pyjinhx/test_render_integration.py does, so render_level()
     # finds a real file instead of falling back to an ancestor's unprobed guess.
-    # `RenderSession(template_dir=tmp_path)` (below, via `scope()`) resolves a
-    # template name relative to that dir, so the descriptor's `template_path`
-    # must be the bare filename, not `fanout_path` itself (an absolute path
-    # jinja's FileSystemLoader would join *under* the search dir, not open
-    # directly, and never find).
+    # The loader is absolute-only, so each descriptor carries the full path.
+    PlainWidget.__pjx_descriptor__ = dataclasses.replace(
+        PlainWidget.__pjx_descriptor__, template_path=plain_path
+    )
     FanoutWidget.__pjx_descriptor__ = dataclasses.replace(
-        FanoutWidget.__pjx_descriptor__, template_path=Path(fanout_path.name)
+        FanoutWidget.__pjx_descriptor__, template_path=fanout_path
     )
     QuietWidget.__pjx_descriptor__ = dataclasses.replace(
-        QuietWidget.__pjx_descriptor__, template_path=Path(quiet_path.name)
+        QuietWidget.__pjx_descriptor__, template_path=quiet_path
     )
-    _TEMPLATE_DIR = str(tmp_path)
     yield
 
 
@@ -101,15 +87,9 @@ def entry(
 
 
 def scope():
-    """`request_scope()` bound to this test's tmp_path template dir.
-
-    Bare `request_scope()` defaults `template_dir` to the literal string
-    `"templates"`, which does not exist relative to the test process's cwd —
-    every test must go through this helper, never call `request_scope()`
-    directly, or a dirty-path `render_level()` call fails to find the
-    fixture's `.pjx` file instead of exercising the code under test.
-    """
-    return request_scope(_TEMPLATE_DIR)
+    """`request_scope()`, kept as a named helper so call sites read the same
+    whether or not a future test needs to pass it a pre-built session."""
+    return request_scope()
 
 
 def test_unknown_type_is_dropped():
@@ -937,17 +917,12 @@ def test_dirty_path_uses_an_explicit_session_and_the_ambient_one_alike():
     # only exists inside `request_scope()` — calling them with no scope at all
     # doesn't skip the ambient session, it silently drops the registration and
     # then fails to resolve, so there's no way to exercise the "explicit
-    # session, no scope" path literally. Instead: a *bogus* ambient scope
-    # (bare `request_scope()` defaults `template_dir="templates"`, which does
-    # not exist relative to the test process's cwd) proves the explicit
-    # `session=` argument is actually taken and not merely tolerated alongside
-    # a correct ambient one — if it were ignored in favor of
-    # `current_session()`, this would raise `TemplateNotFound`.
+    # session, no scope" path literally. Instead: a second, distinct ambient
+    # scope proves the explicit `session=` argument is actually taken and not
+    # merely tolerated alongside a correct ambient one.
     with request_scope():
         registry.register_instance(FanoutWidget.__name__, "s", "entry-s")
-        [explicit] = walk_manifest(
-            manifest, {"todos"}, session=RenderSession(template_dir=_TEMPLATE_DIR)
-        )
+        [explicit] = walk_manifest(manifest, {"todos"}, session=RenderSession())
 
     assert ambient.status == explicit.status == "dirty"
     assert ambient.fresh_hash == explicit.fresh_hash == fresh_hash_for("todo-1")

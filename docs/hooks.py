@@ -79,7 +79,7 @@ def on_post_build(config):
         # factories call component.render() with no argument, which renders
         # against whatever current_session() returns, so accumulate_assets
         # must already be subscribed by then.
-        session = RenderSession(template_dir="/")
+        session = RenderSession()
         session.on_rendered.append(accumulate_assets)
         # BaseComponent.render() (what every factory calls, with no argument)
         # is the top-level rendering.render() API, which always appends its
@@ -93,7 +93,7 @@ def on_post_build(config):
         # flip back to INLINE for the single, real emit_assets call below.
         session.css_mode = AssetMode.NONE
         session.js_mode = AssetMode.NONE
-        with request_scope(template_dir="/", session=session):
+        with request_scope(session=session):
             markup = demo_markup(factory())
         # No inject_runtime: these pages are static snapshots in an iframe
         # and no demo needs htmx/pjx.js to paint. LINK mode is never used, so

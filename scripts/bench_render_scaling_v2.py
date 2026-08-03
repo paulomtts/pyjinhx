@@ -83,10 +83,12 @@ class BenchRoot(BaseComponent):
     leaves: int = 0
 
 
-def _descriptor(cls: type[BaseComponent], template: str) -> ClassDescriptor:
+def _descriptor(
+    cls: type[BaseComponent], template: str, template_dir: Path
+) -> ClassDescriptor:
     """Minimal descriptor pointing at a temp-dir template, no children field."""
     return ClassDescriptor(
-        template_path=Path(template),
+        template_path=template_dir / template,
         slot_fields=frozenset(),
         children_field=None,
         css_paths=(),
@@ -107,17 +109,21 @@ def setup_session() -> RenderSession:
     template_dir = Path(tempfile.mkdtemp())
     for name, source in TEMPLATES.items():
         (template_dir / name).write_text(source)
-    # render() hands template_path straight to the Jinja loader, which resolves
-    # names relative to template_dir — so these paths must stay relative.
-    BenchRoot.__pjx_descriptor__ = _descriptor(BenchRoot, "bench_root.pjx")
-    BenchMid.__pjx_descriptor__ = _descriptor(BenchMid, "bench_mid.pjx")
-    BenchLeaf.__pjx_descriptor__ = _descriptor(BenchLeaf, "bench_leaf.pjx")
+    # The loader is absolute-only, so each descriptor carries the full path
+    # into the temp dir rather than a bare filename.
+    BenchRoot.__pjx_descriptor__ = _descriptor(
+        BenchRoot, "bench_root.pjx", template_dir
+    )
+    BenchMid.__pjx_descriptor__ = _descriptor(BenchMid, "bench_mid.pjx", template_dir)
+    BenchLeaf.__pjx_descriptor__ = _descriptor(
+        BenchLeaf, "bench_leaf.pjx", template_dir
+    )
     discovery._registry.mapping = {
         "bench_root": BenchRoot,
         "bench_mid": BenchMid,
         "bench_leaf": BenchLeaf,
     }
-    return RenderSession(template_dir=str(template_dir))
+    return RenderSession()
 
 
 def render_tree(session: RenderSession, mids: int, leaves: int) -> str:

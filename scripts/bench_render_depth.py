@@ -85,7 +85,7 @@ def bench_depth(depth: int) -> float:
     template_dir = Path(tempfile.mkdtemp())
     discovery._registry.mapping = {}
     root_cls = build_chain(depth, template_dir)
-    session = RenderSession(template_dir=str(template_dir))
+    session = RenderSession()
     root = root_cls(label="root")
     t0 = time.perf_counter()
     out = render(root, session)

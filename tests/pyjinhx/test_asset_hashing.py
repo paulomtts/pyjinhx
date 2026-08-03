@@ -91,7 +91,7 @@ def test_resolver_raises_for_a_missing_file(tmp_path):
 
 def _session() -> RenderSession:
     """A bare session; assets are set-added directly, no render needed."""
-    return RenderSession(template_dir=str(Path(__file__).parent.parent / "templates"))
+    return RenderSession()
 
 
 def test_manifest_with_hashing_resolver_hashes_both_kinds_in_path_order(tmp_path):

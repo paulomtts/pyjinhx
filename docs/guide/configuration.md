@@ -11,7 +11,7 @@ Templates are resolved per-request through a `RenderSession`, bound for the dura
 ```python
 from pyjinhx.session import request_scope
 
-with request_scope(template_dir="./components"):
+with request_scope():
     # Components here look for templates under ./components
     ...
 ```
@@ -25,7 +25,7 @@ For full control over the underlying Jinja environment, construct a `RenderSessi
 ```python
 from pyjinhx.session import RenderSession, request_scope
 
-session = RenderSession(template_dir="./templates")
+session = RenderSession()
 # session.jinja_env is a standard jinja2.Environment (FileSystemLoader,
 # autoescape enabled) — attach hooks like on_rendered before binding it.
 

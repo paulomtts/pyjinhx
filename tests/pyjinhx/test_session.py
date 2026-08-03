@@ -19,6 +19,8 @@ from pyjinhx.component import BaseComponent
 from pyjinhx.descriptor import ClassDescriptor
 from pyjinhx.rendering import render
 
+_TEMPLATE_DIR = Path(__file__).parent.parent / "templates"
+
 
 def test_getters_return_empty_defaults_outside_any_scope():
     """An unset ContextVar must read as an empty container, never raise. Callers
@@ -192,16 +194,27 @@ def test_two_threads_do_not_see_each_others_scope_state():
 def test_render_session_is_still_directly_constructible_with_autoescape_on():
     """render.py constructs a RenderSession directly and reads .jinja_env; growing
     the module must not force callers through request_scope."""
-    session = session_module.RenderSession(template_dir="tests/templates")
+    session = session_module.RenderSession()
 
     assert session.jinja_env.autoescape is True
     assert session.jinja_env.from_string("{{ v }}").render(v="<b>") == "&lt;b&gt;"
     assert session.asset_paths == set()
 
 
-def test_scope_passes_template_dir_through_to_the_session():
-    with session_module.request_scope(template_dir="tests/templates") as s:
-        assert s.jinja_env.autoescape is True
+def test_scope_builds_a_session_with_the_absolute_path_loader():
+    with session_module.request_scope() as s:
+        assert isinstance(s.jinja_env.loader, session_module.AbsolutePathLoader)
+
+
+def test_passing_template_dir_is_now_a_type_error():
+    with pytest.raises(TypeError):
+        session_module.RenderSession(template_dir="tests/templates")  # type: ignore[call-arg]
+
+    with (
+        pytest.raises(TypeError),
+        session_module.request_scope(template_dir="tests/templates"),  # type: ignore[call-arg]
+    ):
+        pass
 
 
 class PlainBox(BaseComponent):
@@ -214,7 +227,7 @@ class PlainBox(BaseComponent):
 # specific template, so it bypasses that walk entirely, the same way
 # test_render_level.py does: build a ClassDescriptor by hand and assign it.
 PlainBox.__pjx_descriptor__ = ClassDescriptor(
-    template_path=Path("plain_div.html"),
+    template_path=_TEMPLATE_DIR / "plain_div.html",
     slot_fields=frozenset(),
     children_field=None,
     css_paths=(),
@@ -244,13 +257,13 @@ def test_on_rendered_receives_the_rendered_level(render_session):
 
 
 def test_on_rendered_starts_empty_on_a_fresh_session():
-    session = session_module.RenderSession(template_dir="tests/templates")
+    session = session_module.RenderSession()
 
     assert session.on_rendered == []
 
 
 def test_emit_rendered_calls_each_subscriber_in_registration_order():
-    session = session_module.RenderSession(template_dir="tests/templates")
+    session = session_module.RenderSession()
     calls: list[tuple[str, object, object]] = []
     # Plumbing only cares that emit_rendered forwards its args unchanged, so a
     # sentinel object stands in for a real BaseComponent/RenderedLevel here;
@@ -267,7 +280,7 @@ def test_emit_rendered_calls_each_subscriber_in_registration_order():
 
 
 def test_emit_rendered_with_no_subscribers_is_a_no_op():
-    session = session_module.RenderSession(template_dir="tests/templates")
+    session = session_module.RenderSession()
 
     assert session.emit_rendered(cast(Any, object()), cast(Any, object())) is None
 
@@ -280,7 +293,7 @@ def test_emit_rendered_lets_a_subscriber_exception_propagate():
     class Boom(Exception):
         pass
 
-    session = session_module.RenderSession(template_dir="tests/templates")
+    session = session_module.RenderSession()
     reached: list[str] = []
 
     def explode(component: object, level: object, session: object) -> None:
@@ -295,16 +308,16 @@ def test_emit_rendered_lets_a_subscriber_exception_propagate():
 
 
 def test_each_scope_gets_its_own_subscriber_list():
-    with session_module.request_scope(template_dir="tests/templates") as outer:
+    with session_module.request_scope() as outer:
         outer.on_rendered.append(lambda c, lv, s: None)
 
-        with session_module.request_scope(template_dir="tests/templates") as inner:
+        with session_module.request_scope() as inner:
             assert inner.on_rendered == []
             inner.on_rendered.append(lambda c, lv, s: None)
 
         assert len(outer.on_rendered) == 1
 
-    with session_module.request_scope(template_dir="tests/templates") as later:
+    with session_module.request_scope() as later:
         assert later.on_rendered == []
 
 

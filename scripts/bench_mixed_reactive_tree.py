@@ -126,7 +126,7 @@ def bench(
     attribute (it only feeds it straight into the Jinja FileSystemLoader), so
     ``session.template_dir`` does not exist and would raise AttributeError.
     """
-    with request_scope(template_dir):
+    with request_scope():
         root = root_cls(mids=mids, leaves=leaves)
         t0 = time.perf_counter()
         out = render(root, session)
@@ -140,7 +140,7 @@ def main() -> None:
     discovery._registry.mapping = {}
     mixed_root = build_arm("Mixed", {"leaf"}, template_dir)
     pure_root = build_arm("Pure", {"root", "mid", "leaf"}, template_dir)
-    session = RenderSession(template_dir=str(template_dir))
+    session = RenderSession()
     template_dir_str = str(template_dir)
 
     bench(mixed_root, session, template_dir_str, 2, 2)  # warmup + sanity

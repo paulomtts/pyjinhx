@@ -21,6 +21,8 @@ from pyjinhx.rendering import render, render_level
 from pyjinhx.segments import serialize
 from pyjinhx.session import RenderSession, request_scope
 
+_TEMPLATE_DIR = Path(__file__).parent.parent.parent / "templates"
+
 _load_calls: list[int] = []
 
 
@@ -37,7 +39,7 @@ class PJXPlainWidget(BaseComponent):
 
 def _descriptor_for(cls: type[BaseComponent], template: str) -> ClassDescriptor:
     return ClassDescriptor(
-        template_path=Path(template),
+        template_path=_TEMPLATE_DIR / template,
         slot_fields=frozenset(),
         children_field=None,
         css_paths=(),
@@ -143,7 +145,7 @@ def _registered_tags():
 
 def test_reactive_child_mounted_via_childref_has_load_run_automatically():
     """No manual load() call anywhere in this test — mounting alone must trigger it."""
-    session = RenderSession(template_dir="tests/templates")
+    session = RenderSession()
     component = ContainerComp()
 
     with request_scope():
@@ -155,7 +157,7 @@ def test_reactive_child_mounted_via_childref_has_load_run_automatically():
 def test_plain_child_mounted_via_childref_is_unaffected():
     """A plain BaseComponent has no load() and no reactive marker; mounting it
     must not raise and must not add anything to the reactive load-call log."""
-    session = RenderSession(template_dir="tests/templates")
+    session = RenderSession()
 
     class OnlyPlainContainer(BaseComponent):
         pass
@@ -174,7 +176,7 @@ def test_plain_child_mounted_via_childref_is_unaffected():
 def test_same_key_twice_in_one_render_runs_load_once():
     """Both tags name row_id=7, so the second _fill_children call must hit the
     request cache #726 installed and reuse the first instance's state."""
-    session = RenderSession(template_dir="tests/templates")
+    session = RenderSession()
 
     with request_scope():
         result = render_level(KeyedTwiceContainer(), session)
@@ -186,7 +188,7 @@ def test_same_key_twice_in_one_render_runs_load_once():
 def test_non_key_attrs_are_applied_onto_the_loaded_instance():
     """label is not the key field, so load() never sees it; _fill_children must
     set it on the returned instance, overriding what load() itself produced."""
-    session = RenderSession(template_dir="tests/templates")
+    session = RenderSession()
 
     with request_scope():
         result = render_level(KeyedOverrideContainer(), session)
@@ -199,7 +201,7 @@ def test_non_key_attrs_are_applied_onto_the_loaded_instance():
 def test_zero_key_reactive_child_is_loaded_with_no_args():
     """PJXReactiveWidget declares no PjxKey field, so the key-arg split must
     produce an empty kwargs dict rather than a KeyError or a stray positional."""
-    session = RenderSession(template_dir="tests/templates")
+    session = RenderSession()
 
     with request_scope():
         render_level(ContainerComp(), session)
@@ -212,7 +214,7 @@ def test_reactive_root_passed_straight_to_render_is_loaded_automatically():
     _fill_children (only a ChildRef-discovered child does), so render() itself
     must route it through load() before rendering — no manual pjx_mount()
     call needed anywhere in this test."""
-    session = RenderSession(template_dir="tests/templates")
+    session = RenderSession()
 
     with request_scope():
         html = render(PJXKeyedWidget(row_id=9), session=session)
@@ -225,7 +227,7 @@ def test_json_string_non_key_attr_is_coerced_before_assignment():
     """tags is typed list[str]; the tag passes it as a JSON-looking string, so
     _load_reactive_child must run the same JSON coercion _instantiate_child gets
     for free from construction, or validate_assignment rejects the raw string."""
-    session = RenderSession(template_dir="tests/templates")
+    session = RenderSession()
 
     with request_scope():
         result = render_level(KeyedJsonAttrContainer(), session)

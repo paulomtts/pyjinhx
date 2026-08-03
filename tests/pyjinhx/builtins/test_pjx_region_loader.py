@@ -22,7 +22,7 @@ class TestFields:
 
 @pytest.fixture
 def session():
-    return RenderSession(template_dir="/")
+    return RenderSession()
 
 
 def _html(session, **kwargs) -> str:

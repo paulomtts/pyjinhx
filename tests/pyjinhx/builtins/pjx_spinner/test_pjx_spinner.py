@@ -16,7 +16,7 @@ def spinner_session():
     the session's FileSystemLoader; Jinja only resolves an absolute path when
     the loader root is "/". Same fixture shape as tests/pyjinhx/builtins/pjx_progress.
     """
-    return RenderSession(template_dir="/")
+    return RenderSession()
 
 
 def _html(session, **kw) -> str:

@@ -17,6 +17,8 @@ from pyjinhx.descriptor import ClassDescriptor
 from pyjinhx.render_context import build_context
 from pyjinhx.session import RenderSession
 
+_TEMPLATE_DIR = Path(__file__).parent.parent / "templates"
+
 
 class TestPjxSlotMarker:
     def test_children_flag_defaults_to_false(self):
@@ -175,13 +177,11 @@ class TestSlotTruthinessInTemplates:
     """`{% if slot %}` under the real render pipeline (ADR 0003)."""
 
     @staticmethod
-    def _describe(component_cls, template, slots):
-        from pathlib import Path
-
+    def _describe(component_cls, template, slots, base=_TEMPLATE_DIR):
         from pyjinhx.descriptor import ClassDescriptor
 
         component_cls.__pjx_descriptor__ = ClassDescriptor(
-            template_path=Path(template),
+            template_path=Path(base) / template,
             slot_fields=frozenset(slots),
             children_field=None,
             css_paths=(),
@@ -204,7 +204,7 @@ class TestSlotTruthinessInTemplates:
         self._describe(Leaf, "div.html", ())
         self._describe(Box, "slot_if.html", {"content"})
 
-        session = RenderSession(template_dir="tests/templates")
+        session = RenderSession()
         assert "HAS" in render(Box(content=Leaf()), session)
 
     def test_empty_string_slot_takes_the_falsy_branch(self):
@@ -215,7 +215,7 @@ class TestSlotTruthinessInTemplates:
             content: Slot = ""
 
         self._describe(Box2, "slot_if.html", {"content"})
-        session = RenderSession(template_dir="tests/templates")
+        session = RenderSession()
         assert "NONE" in render(Box2(content=""), session)
 
 
@@ -223,13 +223,11 @@ class TestSlotInterpolation:
     """`{{ slot }}` splices the child's rendered markup (ADR 0003)."""
 
     @staticmethod
-    def _describe(component_cls, template, slots):
-        from pathlib import Path
-
+    def _describe(component_cls, template, slots, base=_TEMPLATE_DIR):
         from pyjinhx.descriptor import ClassDescriptor
 
         component_cls.__pjx_descriptor__ = ClassDescriptor(
-            template_path=Path(template),
+            template_path=Path(base) / template,
             slot_fields=frozenset(slots),
             children_field=None,
             css_paths=(),
@@ -252,7 +250,7 @@ class TestSlotInterpolation:
         self._describe(InterpLeaf, "slot_leaf.html", ())
         self._describe(InterpBox, "slot_interp.html", {"content"})
 
-        session = RenderSession(template_dir="tests/templates")
+        session = RenderSession()
         html = render(InterpBox(content=InterpLeaf(title="hello")), session)
 
         assert html == (
@@ -269,7 +267,7 @@ class TestSlotInterpolation:
             content: Slot = ""
 
         self._describe(StringBox, "slot_interp.html", {"content"})
-        session = RenderSession(template_dir="tests/templates")
+        session = RenderSession()
         html = render(StringBox(content="<b>x</b>"), session)
 
         assert html == '<div class="box">before <b>x</b> after</div>'
@@ -304,7 +302,7 @@ class TestSlotInterpolation:
         try:
             html = spy(
                 CountingBox(content=CountingLeaf()),
-                RenderSession(template_dir="tests/templates"),
+                RenderSession(),
             )
         finally:
             render_module.render_level = original
@@ -338,13 +336,11 @@ class TestSlotInterpolation:
 
 class TestSlotSpliceGuards:
     @staticmethod
-    def _describe(component_cls, template, slots):
-        from pathlib import Path
-
+    def _describe(component_cls, template, slots, base=_TEMPLATE_DIR):
         from pyjinhx.descriptor import ClassDescriptor
 
         component_cls.__pjx_descriptor__ = ClassDescriptor(
-            template_path=Path(template),
+            template_path=Path(base) / template,
             slot_fields=frozenset(slots),
             children_field=None,
             css_paths=(),
@@ -367,10 +363,10 @@ class TestSlotSpliceGuards:
         class AttrBox(BaseComponent):
             content: Slot = ""
 
-        self._describe(AttrLeaf, "attr_leaf.html", ())
-        self._describe(AttrBox, "attr_box.html", {"content"})
+        self._describe(AttrLeaf, "attr_leaf.html", (), base=tmp_path)
+        self._describe(AttrBox, "attr_box.html", {"content"}, base=tmp_path)
 
-        session = RenderSession(template_dir=str(tmp_path))
+        session = RenderSession()
         with pytest.raises(ValueError, match="inside a tag"):
             render(AttrBox(content=AttrLeaf()), session)
 
@@ -514,7 +510,7 @@ class TestMarkupExemptionIsScopedToSlots:
 
     def descriptor(self, template: str, slots: frozenset[str]):
         return ClassDescriptor(
-            template_path=Path(template),
+            template_path=_TEMPLATE_DIR / template,
             slot_fields=slots,
             children_field=None,
             css_paths=(),
@@ -546,7 +542,7 @@ class TestMarkupExemptionIsScopedToSlots:
         Card.__pjx_descriptor__ = self.descriptor(
             "nest_content.html", frozenset({"content"})
         )
-        session = RenderSession(template_dir="tests/templates")
+        session = RenderSession()
         template = session.jinja_env.from_string("{{ label }}")
         context = build_context(Card(content=""), Card.__pjx_descriptor__)
         context["label"] = "<b>b</b>"

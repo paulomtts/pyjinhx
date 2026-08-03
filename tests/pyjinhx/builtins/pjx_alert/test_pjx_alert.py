@@ -20,7 +20,7 @@ from pyjinhx.session import RenderSession
 def session():
     # template_dir="/" so the descriptor's absolute template path resolves,
     # same fixture shape as tests/pyjinhx/builtins/pjx_notification.
-    return RenderSession(template_dir="/")
+    return RenderSession()
 
 
 def _html(session, **kwargs) -> str:

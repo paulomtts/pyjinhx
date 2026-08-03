@@ -48,7 +48,7 @@ def absolute_session() -> RenderSession:
     render the real generated class against its real file on disk instead of
     swapping in a descriptor that points somewhere loadable.
     """
-    return RenderSession(template_dir="/")
+    return RenderSession()
 
 
 def _three_classes(tmp_path: Path) -> dict[str, type[OpenComponent]]:
@@ -257,7 +257,7 @@ def test_the_two_paths_do_not_borrow_each_others_header_state(tmp_path, caplog):
 
     with caplog.at_level(logging.WARNING, logger="pyjinhx"):
         render_level(generated(), absolute_session())
-        render_level(StaleCard(), RenderSession(template_dir="/"))
+        render_level(StaleCard(), RenderSession())
 
     messages = stale_records(caplog)
     assert len(messages) == 1, messages

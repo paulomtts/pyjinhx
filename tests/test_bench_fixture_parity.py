@@ -78,6 +78,6 @@ def test_v2_table_cell_content_stays_raw_html() -> None:
     strips `Markup`'s `__html__` protocol) is no longer in the way.
     """
     _v2_registry()
-    html = v2_render(build_v2_table(rows=1), RenderSession(template_dir="/"))
+    html = v2_render(build_v2_table(rows=1), RenderSession())
     assert '<input type="text" value="v0"/>' in html
     assert "&lt;input" not in html

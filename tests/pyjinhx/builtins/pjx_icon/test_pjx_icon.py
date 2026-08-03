@@ -22,7 +22,7 @@ def icon_session():
     resolves an absolute path when the loader root is "/". Engine gap, not
     Icon's — see the blocking questions in the #500 plan.
     """
-    return RenderSession(template_dir="/")
+    return RenderSession()
 
 
 def _html(session, **kw) -> str:

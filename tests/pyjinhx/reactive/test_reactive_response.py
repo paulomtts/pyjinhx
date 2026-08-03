@@ -1,7 +1,6 @@
 """Composition tests: ReactiveResponse joins the primary body with OOB fragments."""
 
 import dataclasses
-from pathlib import Path
 from typing import Annotated
 
 import pytest
@@ -29,38 +28,26 @@ class ResponseWidget(ReactiveComponent, react=("todos",)):
         return cls(pjx_key=pjx_key, data=f"data:{pjx_key}")
 
 
-_TEMPLATE_DIR = "templates"
-"""Set by `_publish_registry` to this test's tmp_path.
-
-`RenderSession(template_dir="templates")` (the class default) does not exist relative to
-the test process's cwd, so every test must enter `scope()` rather than bare
-`request_scope()` or the dirty path's `render_level()` raises TemplateNotFound instead of
-exercising the code under test.
-"""
-
-
 @pytest.fixture(autouse=True)
 def _publish_registry(tmp_path, monkeypatch):
     """Publish a tag -> class map for ResponseWidget and point it at a real template."""
-    global _TEMPLATE_DIR
     LOAD_CALLS.clear()
     template = tmp_path / "response_widget.pjx"
     template.write_text("<div>{{ pjx_key }}</div>")
     discovery.build_registry(tmp_path, [ResponseWidget])
     # `_resolve_template_path` probes the class's defining module directory, not the
-    # dir passed to build_registry; repoint the descriptor at the tmp_path file, using
-    # the bare filename because RenderSession's FileSystemLoader joins names under
-    # template_dir and would never open an absolute path.
+    # dir passed to build_registry; repoint the descriptor at the tmp_path file. The
+    # loader is absolute-only, so the descriptor carries the full path.
     ResponseWidget.__pjx_descriptor__ = dataclasses.replace(
-        ResponseWidget.__pjx_descriptor__, template_path=Path(template.name)
+        ResponseWidget.__pjx_descriptor__, template_path=template
     )
-    _TEMPLATE_DIR = str(tmp_path)
     yield
 
 
 def scope():
-    """`request_scope()` bound to this test's tmp_path template dir."""
-    return request_scope(_TEMPLATE_DIR)
+    """`request_scope()`, kept as a named helper so call sites read the same
+    whether or not a future test needs to pass it a pre-built session."""
+    return request_scope()
 
 
 def entry(instance_id: str, load: object = None, hash_: str = "stale") -> dict:
