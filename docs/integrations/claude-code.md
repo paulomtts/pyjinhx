@@ -107,25 +107,36 @@ class Counter(ReactiveComponent, react={Keys.TODOS}):
 - `state_hash()` gates swaps: a region is re-sent only if its fresh hash differs from the one the client reported.
 - Roots are auto-stamped with `data-pjx-id` / `data-pjx-type` / `data-pjx-hash` / `data-pjx-reacts` (space-joined `react` keys, read by `pjx.js` to scope loading indicators) — plus `data-pjx-load` when keyed. A reactive component **must render a single root element**.
 
-### Mutation routes return `render()` — nothing else
+### Mutation routes
 
-A mutation route does exactly one thing: `return <component>.render(...)`. Never call `load()` or assemble swaps yourself. Decorate store methods with `@mutates` using **`MutationKey` members only**:
+`render()` is an **instance method** — `BaseComponent.render(self, session=None)`. There is no `Cls.render(*args)` classmethod; a route builds the component it wants to send and renders that instance. Dirtying happens *before* the response is built, via `@mutates` on store methods (`MutationKey` members only) or an imperative `dirty(...)`:
 
 ```python
+from pyjinhx import dirty, mutates
+from pyjinhx.reactive.response import ReactiveResponse
+
+
 @mutates(Keys.TODOS)
 def toggle_all():
     ...
 
+
 @app.post("/todos/toggle")
 def toggle():
-    store.toggle_all()
-    return Counter.render()
+    store.toggle_all()                       # @mutates dirties Keys.TODOS
+    return Counter.load().render()           # primary render; dependents fan out OOB
+
+
+@app.post("/todos/dismiss")
+def dismiss():
+    store.dismiss()
+    dirty(Keys.TODOS)                        # plain mutation, no @mutates
+    return ReactiveResponse(primary="")      # no primary; dependents still fan out OOB
 ```
 
-- **Class form (route entry)** — `Cls.render(*args)`: auto-`load()`s the primary, renders it as the HTMX main-target response, then appends OOB swaps for every *other* mounted reactive region whose `react` keys intersect the pending `@mutates` keys. **Only the primary is excluded** from OOB; the trigger region is not — a clicked region that depends on the dirtied keys updates itself OOB like any other dependent (e.g. a "Clear completed (N)" button refreshing its own count). `X-PJX-Trigger` is client-only (loading indicators); the server OOB walk reads the mounted manifest, never the trigger header.
-- **Instance form** — `instance.render()`: plain render of an already-built instance, no re-`load()`.
+`ReactiveResponse` is the explicit form of the same response, and its full signature is `ReactiveResponse(primary=None, mounted=None, redirect=None, redirect_mode="redirect", assets=None)` — every argument is a keyword, and none of them dirty anything. It composes the primary markup followed by one OOB fragment per mounted reactive region whose `react` keys intersect this request's dirtied keys. **Only the primary is excluded** from OOB; the trigger region is not — a clicked region that depends on the dirtied keys updates itself OOB like any other dependent (e.g. a "Clear completed (N)" button refreshing its own count). `X-PJX-Trigger` is client-only (loading indicators); the server OOB walk reads the mounted manifest, never the trigger header.
 
-Wire `setup(app, ...)` so the framework adapter (e.g. FastAPI) is installed as middleware — mutation routes need no `mounted`/`client` kwargs. `pjx.js` sends `X-PJX-Mounted`, `X-PJX-Assets`, and `X-PJX-Trigger` on every HTMX request. `oob_swaps(candidates)` is exported for tests/advanced use.
+Wire `setup(app, ...)` so the framework adapter (e.g. FastAPI) is installed as middleware — it supplies `mounted`/`assets` from the request headers, so routes need no extra kwargs. `pjx.js` sends `X-PJX-Mounted`, `X-PJX-Assets`, and `X-PJX-Trigger` on every HTMX request. `oob_swaps(candidates)` is exported for tests/advanced use.
 
 ### Instance-keyed regions (rows)
 
@@ -144,7 +155,7 @@ class TodoItemRow(ReactiveComponent, react={Keys.TODOS}):
 @app.post("/rows/{todo_id}/toggle")
 def toggle_row(todo_id: int):
     store.toggle(todo_id)
-    return TodoItemRow.render(todo_id)   # → load(todo_id) automatically
+    return TodoItemRow.load(todo_id).render()   # instance form: load() then render()
 ```
 
 Set an explicit `id` in `load()` for stable DOM targets; templates use the key field (`hx-post="/rows/{{ todo_id }}/toggle"`). Hash-gating skips unchanged regions. If a keyed `load(manifest.load)` raises `LookupError` during the OOB walk, a `delete:[data-pjx-id='…']` swap removes the stale region (e.g. after clear-completed removes rows still in the manifest).
