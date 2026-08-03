@@ -11,6 +11,7 @@ from pyjinhx.session import (
     get_cache_store,
     get_dirtied,
     get_instances,
+    get_load_context,
     request_scope,
 )
 
@@ -62,7 +63,6 @@ def test_manifest_accessors_read_request_state():
         pjx_mounted="mounted-manifest",
         pjx_assets="loaded-assets",
         pjx_trigger="trigger-manifest",
-        pjx_context=None,
     )
     with request_scope() as session:
         session.pjx_request = request
@@ -82,21 +82,31 @@ def test_manifest_accessors_are_none_without_a_request():
         assert ctx.trigger is None
 
 
-def test_app_context_is_none_when_no_factory_was_configured():
-    request = FakeRequest(pjx_context=None)
-    with request_scope() as session:
-        session.pjx_request = request
+def test_app_context_is_none_when_no_load_context_was_bound():
+    with request_scope():
         assert PjxContext.current().app_context is None
 
 
-def test_app_context_is_the_factory_result_when_one_was_configured():
+def test_app_context_is_the_bound_load_context():
     sentinel = object()
-    request = FakeRequest(pjx_context=sentinel)
-    with request_scope() as session:
-        session.pjx_request = request
+    with request_scope(load_context=sentinel):
         assert PjxContext.current().app_context is sentinel
 
 
-def test_app_context_is_none_without_a_request():
-    with request_scope():
-        assert PjxContext.current().app_context is None
+def test_app_context_does_not_need_a_request():
+    """The value rides the ContextVar, so a scope entered without a Starlette
+    request - a test, a script, a background task - still reads it."""
+    sentinel = object()
+    with request_scope(load_context=sentinel) as session:
+        assert getattr(session, "pjx_request", None) is None
+        assert PjxContext.current().app_context is sentinel
+
+
+def test_app_context_is_none_with_no_active_scope():
+    assert PjxContext(request=None).app_context is None
+
+
+def test_app_context_is_the_same_object_the_session_accessor_returns():
+    sentinel = object()
+    with request_scope(load_context=sentinel):
+        assert PjxContext.current().app_context is get_load_context()

@@ -19,6 +19,7 @@ from pyjinhx.session import (
     get_cache_store,
     get_dirtied,
     get_instances,
+    get_load_context,
 )
 
 if TYPE_CHECKING:
@@ -31,9 +32,9 @@ class PjxContext:
 
     Exposes the session bound by ``request_scope()``, the dirtied reactive
     keys, the instance registry, the two load-cache stores, the pjx header
-    manifests parsed onto ``request.state``, and whatever an app's
-    ``context_factory`` returned. Read-only: dirtying and mutation stay with
-    ``reactive.mutations``.
+    manifests parsed onto ``request.state``, and the ``context_factory``
+    result bound by ``request_scope()``. Read-only: dirtying and mutation
+    stay with ``reactive.mutations``.
     """
 
     # A facade, not a holder: every accessor re-reads session.py's ContextVars
@@ -99,8 +100,13 @@ class PjxContext:
 
     @property
     def app_context(self) -> Any:
-        """Whatever the app's configured ``context_factory`` returned, or None."""
-        return self._state("pjx_context")
+        """Whatever the app's configured ``context_factory`` returned, or None.
+
+        Unlike the manifest accessors this one does not go through
+        ``request.state``: the value is bound on the scope itself, so it is
+        readable in a scope entered without a Starlette request at all.
+        """
+        return get_load_context()
 
     def _state(self, name: str) -> Any:
         """The named ``request.state`` attribute, or None when unset."""

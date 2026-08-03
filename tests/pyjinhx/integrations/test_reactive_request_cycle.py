@@ -397,6 +397,9 @@ def test_pjx_context_current_populated_inside_live_handler():
         seen["trigger"] = context.trigger
         seen["dirtied"] = set(context.dirtied)
         seen["app_context"] = context.app_context
+        seen["state_has_pjx_context"] = (
+            hasattr(context.request.state, "pjx_context") if context.request else None
+        )
         seen["request_url"] = str(context.request.url) if context.request else None
         return {"ok": True}
 
@@ -416,6 +419,7 @@ def test_pjx_context_current_populated_inside_live_handler():
     assert seen["trigger"] == {"id": "a"}
     assert seen["dirtied"] == {"cycle"}
     assert seen["app_context"] == {"user": "ada"}
+    assert seen["state_has_pjx_context"] is False
     request_url = seen["request_url"]
     assert isinstance(request_url, str) and request_url.endswith("/ctx")
 

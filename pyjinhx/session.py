@@ -17,10 +17,10 @@ if TYPE_CHECKING:
     from pyjinhx.component import BaseComponent
     from pyjinhx.segments import RenderedLevel
 
-# The six pieces of per-request mutable state. They live here rather than beside
-# their eventual consumers because the import rule runs one way only: reactive/
-# imports session, never the reverse. Each defaults to None so that reading one
-# outside a request is a miss, not a LookupError.
+# The seven pieces of per-request mutable state. They live here rather than
+# beside their eventual consumers because the import rule runs one way only:
+# reactive/ imports session, never the reverse. Each defaults to None so that
+# reading one outside a request is a miss, not a LookupError.
 _render_session: ContextVar["RenderSession | None"] = ContextVar(
     "pjx_render_session", default=None
 )
@@ -37,6 +37,7 @@ _cache_reverse: ContextVar[dict[str, set[tuple[type, object]]] | None] = Context
 _cache_forward: ContextVar[dict[tuple[type, object], set[str]] | None] = ContextVar(
     "pjx_cache_forward", default=None
 )
+_load_context: ContextVar[object | None] = ContextVar("pjx_load_context", default=None)
 
 
 class NoActiveRequestScope(RuntimeError):
@@ -206,9 +207,22 @@ def get_cache_forward() -> dict[tuple[type, object], set[str]]:
     return forward
 
 
+def get_load_context() -> object | None:
+    """Return whatever the app's ``context_factory`` produced for this request.
+
+    None outside a request_scope(), and None inside one that was entered
+    without a ``load_context`` - an app with no factory configured is the
+    normal case, not an error.
+    """
+    return _load_context.get()
+
+
 @contextmanager
 def request_scope(
-    template_dir: str = "templates", session: "RenderSession | None" = None
+    template_dir: str = "templates",
+    session: "RenderSession | None" = None,
+    *,
+    load_context: object | None = None,
 ) -> Iterator[RenderSession]:
     """Bind fresh per-request state for the duration of the block.
 
@@ -219,6 +233,10 @@ def request_scope(
             session, instead of constructing a fresh one. Lets a caller wire
             hooks (e.g. ``on_rendered``) onto a session before it becomes the
             one ``current_session()`` sees as active.
+        load_context: The app's ``context_factory`` result for this request,
+            readable for the life of the scope via ``get_load_context()``.
+            None means "not supplied": the enclosing scope's value, if any,
+            stays visible.
 
     Yields:
         The RenderSession bound for this scope.
@@ -231,11 +249,16 @@ def request_scope(
     cache_token = _cache_store.set({})
     cache_reverse_token = _cache_reverse.set({})
     cache_forward_token = _cache_forward.set({})
+    # Bound only when supplied, so an inner scope that knows nothing about the
+    # app context cannot blank out the request's value for the code below it.
+    load_token = _load_context.set(load_context) if load_context is not None else None
     try:
         yield session
     finally:
         # Reset by token rather than assigning None: a nested scope must hand the
         # outer scope its own state back, not clear the variable outright.
+        if load_token is not None:
+            _load_context.reset(load_token)
         _cache_forward.reset(cache_forward_token)
         _cache_reverse.reset(cache_reverse_token)
         _cache_store.reset(cache_token)
