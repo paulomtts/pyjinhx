@@ -190,9 +190,7 @@ def main() -> None:
             icons[name] = fetch_inner(name)
         except Exception as exc:  # noqa: BLE001
             print(f"WARN skipping {name}: {exc}", file=sys.stderr)
-    out = (
-        Path(__file__).resolve().parents[1] / "pyjinhx/builtins/ui/pjx_icon/_icons.py"
-    )
+    out = Path(__file__).resolve().parents[1] / "pyjinhx/builtins/ui/pjx_icon/_icons.py"
     lines = [
         '"""Vendored Lucide icon inner-SVG markup, keyed by name.',
         "",

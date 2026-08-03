@@ -104,7 +104,7 @@ Port order — dependency- and risk-sorted, tests ported alongside each family:
 - [ ] **3. Composed shells** — Card, Modal, Drawer, Accordion, Tabs, Popover, Tooltip, Dropdown, Breadcrumb families. Heaviest users of slots/children composition and MRO subclassing.
 - [ ] **4. Data + HTMX-heavy** — Table family, Paginator, LazyLoad (+ infinite-scroll sentinel), RegionLoader, PageLoader. Exercises reactivity + loading indicators hard.
 - [ ] **5. JS-heavy tail** — Notification, ToastHost, Alert, Carousel, Resizable families.
-- [ ] **6. Release train** — bench comparison on the builtin-heavy page (G2: never slower), migration guide written from the port list's mods/drops (G5), rename the temporary v2 import name → `pyjinhx` (done, #539 — v0.x staged at `pyjinhx_v0/` for #540 to delete), publish 1.0, freeze v0.x to critical fixes.
+- [x] **6. Release train** — bench comparison on the builtin-heavy page (G2: never slower), migration guide written from the port list's mods/drops (G5), rename the temporary v2 import name → `pyjinhx` (done, #539), publish 1.0, remove v0.x (deleted in #540 — no external consumers, so a freeze was unnecessary).
 
 Bench comparison — v0.36.4 vs v2, same builtin-heavy page
 (`tests/fixtures/bench_builtin_heavy.py`, issue #537), reproduced by

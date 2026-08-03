@@ -17,7 +17,9 @@ def test_the_v0_package_is_gone():
 
 
 def test_only_pyjinhx_is_packaged():
-    pyproject = tomllib.loads((REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+    pyproject = tomllib.loads(
+        (REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8")
+    )
     packages = pyproject["tool"]["hatch"]["build"]["targets"]["wheel"]["packages"]
     assert packages == ["pyjinhx"]
 
@@ -30,7 +32,12 @@ def test_no_tracked_file_mentions_the_v0_staging_package():
         text=True,
         check=True,
     ).stdout.split()
-    skip = {"CHANGELOG.md", "docs/migration.md", "docs/superpowers/", "tests/test_package_layout.py"}
+    skip = {
+        "CHANGELOG.md",
+        "docs/migration.md",
+        "docs/superpowers/",
+        "tests/test_package_layout.py",
+    }
     offenders = []
     for rel in tracked:
         if any(rel.startswith(s) for s in skip):

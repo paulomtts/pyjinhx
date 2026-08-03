@@ -49,7 +49,8 @@ def make_table(rows: int) -> PJXTable:
         for r in range(rows)
     ]
     return PJXTable(
-        id="t", content=PJXTableBody(id="tb", content=_RowsHost(id="rows", content=row_items))
+        id="t",
+        content=PJXTableBody(id="tb", content=_RowsHost(id="rows", content=row_items)),
     )
 
 
