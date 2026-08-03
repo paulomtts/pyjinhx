@@ -11,11 +11,13 @@ from __future__ import annotations
 import os
 from collections.abc import Callable
 from dataclasses import dataclass, fields, replace
+from importlib.util import find_spec as _find_spec
 from pathlib import Path
 from typing import Any
 
 from pyjinhx.component import BaseComponent
 from pyjinhx.discovery import build_registry
+from pyjinhx.integrations.base import IntegrationBackend, get_backend
 
 # Sentinel distinguishing "argument omitted" from None or a real value, so
 # setup()'s pass-through keywords never clobber an explicit settings object.
@@ -154,7 +156,8 @@ def setup(
     configure_pyjinhx(resolved)
     if app is None:
         return resolved
-    if not _is_asgi_app(app):
+    backend = _load_backend()
+    if not backend.accepts(app):  # pyright: ignore[reportAttributeAccessIssue]
         raise TypeError(
             "setup(app=...) needs a Starlette/FastAPI-like app with "
             "add_middleware and router attributes."
@@ -167,13 +170,23 @@ def setup(
     return resolved
 
 
-def _is_asgi_app(app: object) -> bool:
-    """Whether ``app`` looks like a Starlette/FastAPI application.
+def _load_backend() -> IntegrationBackend:
+    """The framework adapter ``setup(app=...)`` wires through.
 
-    Duck-typed rather than isinstance-checked so pyjinhx never imports
-    Starlette to answer a question about an object the caller already built.
+    The distribution is probed with find_spec rather than caught as an
+    ImportError from the adapter: a genuine bug inside the adapter would
+    otherwise be reported to the caller as a missing extra.
     """
-    return hasattr(app, "add_middleware") and hasattr(app, "router")
+    if _find_spec("fastapi") is None:
+        raise ImportError(
+            "setup(app=...) needs a web framework adapter, and none is "
+            "installed. Install the extra: pip install 'pyjinhx[fastapi]'."
+        )
+    import pyjinhx.integrations.fastapi  # noqa: F401  # registers the backend
+
+    backend = get_backend()
+    assert backend is not None, "importing the adapter must register a backend"
+    return backend
 
 
 def _register_components(components_root: Path | str) -> None:

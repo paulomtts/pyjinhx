@@ -336,6 +336,7 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
             "pyjinhx.component",
             "pyjinhx.discovery",
             "pyjinhx.dev",
+            "pyjinhx.integrations.base",
             "pyjinhx.integrations.fastapi",
         }
     ),
