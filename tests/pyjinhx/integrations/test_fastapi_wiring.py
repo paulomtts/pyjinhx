@@ -347,6 +347,40 @@ def test_scope_session_resolves_an_absolute_template_path(tmp_path: Path):
     assert "<p>hi pjx</p>" in response.text
 
 
+def test_scope_session_stamps_reactive_roots_and_inlines_css(tmp_path: Path):
+    """The request session carries the on_rendered hooks a reactive page needs."""
+    from pyjinhx.reactive.component import ReactiveComponent
+
+    (tmp_path / "abs_badge.pjx").write_text("<b>{{ label }}</b>")
+    (tmp_path / "abs_badge.css").write_text("b { color: rebeccapurple }")
+
+    class AbsBadge(ReactiveComponent):
+        label: str = "x"
+
+    AbsBadge.__pjx_descriptor__ = ClassDescriptor(
+        template_path=tmp_path / "abs_badge.pjx",
+        slot_fields=frozenset(),
+        children_field=None,
+        css_paths=(tmp_path / "abs_badge.css",),
+        js_paths=(),
+        strict=True,
+        provenance={"template": AbsBadge},
+    )
+
+    app = FastAPI()
+    apply_setup(app, _settings(inject_htmx=False))
+
+    @app.get("/badge")
+    def badge_route():
+        return AbsBadge(id="badge", label="hi")
+
+    with TestClient(app) as client:
+        response = client.get("/badge")
+
+    assert 'data-pjx-id="badge"' in response.text
+    assert "rebeccapurple" in response.text
+
+
 def test_registering_the_module_publishes_a_backend():
     import pyjinhx.integrations.fastapi  # noqa: F401
     from pyjinhx.integrations.base import IntegrationBackend, get_backend
