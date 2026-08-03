@@ -6,7 +6,7 @@ finished HTML string for a childless component (render, public API).
 """
 
 import html
-from typing import cast
+from typing import Any, cast
 
 import jinja2
 from pydantic import TypeAdapter
@@ -125,7 +125,7 @@ def _load_reactive_child(
         annotation = cls.model_fields[key_field].annotation
         key_args[key_field] = TypeAdapter(annotation).validate_python(raw_key)
     instance = cast(BaseComponent, cls.load(**key_args))  # pyright: ignore[reportAttributeAccessIssue]
-    coerced = cls._coerce_json_string_attrs(kwargs)  # pyright: ignore[reportAttributeAccessIssue]
+    coerced = cast(Any, cls)._coerce_json_string_attrs(kwargs)
     for name, value in cast(dict[str, object], coerced).items():
         cls.__pydantic_validator__.validate_assignment(instance, name, value)
     return instance

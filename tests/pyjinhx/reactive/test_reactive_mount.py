@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Annotated
 
 import pytest
+from pydantic import Field
 
 from pyjinhx import discovery
 from pyjinhx.component import BaseComponent, _pascal_to_snake
@@ -96,7 +97,7 @@ KeyedOverrideContainer.__pjx_descriptor__ = _descriptor_for(
 
 class PJXKeyedListWidget(ReactiveComponent):
     row_id: Annotated[int, PjxKey()] = 0
-    tags: list[str] = []
+    tags: list[str] = Field(default_factory=list)
 
     @classmethod
     def load(cls, row_id: int = 0) -> "PJXKeyedListWidget":
