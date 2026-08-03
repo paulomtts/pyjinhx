@@ -16,6 +16,7 @@ import pytest
 from pyjinhx.component import BaseComponent, Children, PjxSlot, Slot
 from pyjinhx.descriptor import ClassDescriptor
 from pyjinhx.markers import ComponentNode
+from pyjinhx.reactive.component import ReactiveComponent
 from pyjinhx.render_context import build_context
 from pyjinhx.rendering import render, render_level
 from pyjinhx.segments import RenderedLevel
@@ -60,6 +61,35 @@ class TestBareSlotField:
         output = render(Card(content=Leaf(text="hi")), session())
 
         assert output == '<div class="card"><span class="leaf">hi</span></div>'
+
+    def test_a_hand_built_reactive_instance_renders_its_own_field_unrefetched(self):
+        # #727 non-goal: _splice_slot_nodes stays untouched, so a
+        # ReactiveComponent built by hand and assigned straight to a slot
+        # field must render as-is — the slot path never calls load() at all,
+        # unlike a ChildRef-mounted reactive child.
+        load_calls: list[str] = []
+
+        class ReactiveLeaf(ReactiveComponent):
+            text: str = "x"
+
+            @classmethod
+            def load(cls) -> "ReactiveLeaf":
+                load_calls.append("called")
+                return cls(text="from-load")
+
+        ReactiveLeaf.__pjx_descriptor__ = descriptor("nest_leaf.html", frozenset())
+
+        class Card(BaseComponent):
+            content: Slot = ""
+
+        Card.__pjx_descriptor__ = descriptor(
+            "nest_content.html", frozenset({"content"}), "content"
+        )
+
+        output = render(Card(content=ReactiveLeaf(text="hand-set")), session())
+
+        assert output == '<div class="card"><span class="leaf">hand-set</span></div>'
+        assert load_calls == []
 
     def test_child_enters_segments_as_a_whole_rendered_level(self):
         class Card(BaseComponent):

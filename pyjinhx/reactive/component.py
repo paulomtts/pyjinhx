@@ -61,22 +61,6 @@ class ReactiveComponent(BaseComponent):
         canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"))
         return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
-    def pjx_mount(self) -> None:
-        """Populate this instance from the cache-routed ``load()`` factory.
-
-        A shim: rendering.py still constructs a child and then mounts it, so
-        the factory's result is copied onto the instance that already exists.
-        #727 rewires ``_fill_children`` to call ``Cls.load(**key_args)``
-        directly and deletes this hook.
-        """
-        cls = type(self)
-        field = cls._pjx_key_field
-        loaded = cls.load(**({field: getattr(self, field)} if field else {}))
-        names = list(cls.model_fields) + list(loaded.__pydantic_extra__ or ())
-        for name in names:
-            if name != "id":
-                setattr(self, name, getattr(loaded, name))
-
     def __init_subclass__(cls, *, react: Iterable[object] = (), **kwargs: Any) -> None:
         """Consume the ``react`` class kwarg and record it as normalized keys.
 
@@ -94,12 +78,14 @@ class ReactiveComponent(BaseComponent):
         cls._pjx_key_field = resolve_pjx_key_field(cls)
         if "load" not in cls.__dict__:
             # cls inherits load unchanged: the ancestor that defines it already
-            # validated and wrapped it, closing over *that* ancestor's cls for
-            # cache-key derivation. Re-running _unwrap_load here would grab the
-            # already-wrapped function (not a raw user def) and either reject
-            # it outright or, worse, rewrap with the wrong cls closed in,
-            # silently mis-keying this subclass's cache entries under the
-            # ancestor's identity.
+            # validated and wrapped it. Re-running _unwrap_load here would grab
+            # the already-wrapped function (not a raw user def) and reject it
+            # outright, so skip re-wrapping. This is still safe for cache
+            # identity: wrapped_load reads every per-subclass fact (cache key,
+            # cache_put, isinstance check, react keys) off the classmethod's
+            # bound cls at call time, not off a value closed in when the
+            # ancestor was wrapped, so cls.load(...) is correctly keyed to cls
+            # even though the wrapper object itself is the ancestor's.
             return
         real_load, is_classmethod = _unwrap_load(cls)
         _validate_load_is_classmethod(cls, real_load, is_classmethod)
@@ -301,7 +287,6 @@ def _wrap_load(
     """
 
     full_signature = inspect.signature(real_load)
-    protocol_mode = cls.model_config.get("extra") == "allow"
     # The public signature callers bind against excludes the context param:
     # it is injected from the request scope, never passed in by a caller, so
     # binding against the full signature would demand it as a required arg.
@@ -317,38 +302,45 @@ def _wrap_load(
         signature = full_signature
 
     def wrapped_load(bound_cls: type[Any], *args: Any, **kwargs: Any) -> Any:
+        # bound_cls, not the closed-over cls, drives every per-subclass fact
+        # below: a subclass that inherits load() unchanged reuses this same
+        # wrapper (attribute lookup rebinds bound_cls to it, since it's still
+        # a classmethod on the ancestor), so keying off the closed-over cls
+        # would silently attribute its cache entries and result type to the
+        # ancestor instead.
         bound = signature.bind(bound_cls, *args, **kwargs)
         bound.apply_defaults()
         supplied = dict(bound.arguments)
         supplied.pop("cls", None)
         if context_param is not None:
             supplied.pop(context_param, None)
-        key = _cache_key(cls, supplied, protocol_mode=protocol_mode)
-        if cache_has(cls, key):
-            return cache_get(cls, key)
+        cache_key_protocol_mode = bound_cls.model_config.get("extra") == "allow"
+        key = _cache_key(bound_cls, supplied, protocol_mode=cache_key_protocol_mode)
+        if cache_has(bound_cls, key):
+            return cache_get(bound_cls, key)
         call_kwargs = dict(supplied)
         if context_param is not None:
             call_kwargs[context_param] = get_load_context()
         result = real_load(bound_cls, **call_kwargs)
-        if not isinstance(result, cls):
+        if not isinstance(result, bound_cls):
             raise TypeError(
-                f"{cls.__name__}.load must return an instance of {cls.__name__}; "
-                f"got {type(result).__name__}."
+                f"{bound_cls.__name__}.load must return an instance of "
+                f"{bound_cls.__name__}; got {type(result).__name__}."
             )
         # Index under both the static react keys (a bare "todos" dirties every
         # instance) and, when this call has a load key, the per-instance
         # "todos:1" composite reactive_key() produces — @mutates(key=...) and
         # dirty(reactive_key(...)) dirty only the composite, so invalidate()
         # needs both forms to find this entry.
-        react_keys = cls._pjx_react_keys
-        field = cls._pjx_key_field
+        react_keys = bound_cls._pjx_react_keys
+        field = bound_cls._pjx_key_field
         load_key = coerce_load_key_str(supplied.get(field)) if field else None
         if load_key is not None:
             react_keys = (
                 *react_keys,
-                *(f"{rk}:{load_key}" for rk in cls._pjx_react_keys),
+                *(f"{rk}:{load_key}" for rk in bound_cls._pjx_react_keys),
             )
-        cache_put(cls, key, result, react_keys=react_keys)
+        cache_put(bound_cls, key, result, react_keys=react_keys)
         return result
 
     return wrapped_load

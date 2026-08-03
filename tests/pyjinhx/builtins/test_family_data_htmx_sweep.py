@@ -94,11 +94,11 @@ class TableRegion(ReactiveComponent, react=(ROWS,)):
         rows = list(STORE["rows"])
         instance = cls(pjx_key=pjx_key, rows=rows)
         # Nested ids are keyed off pjx_key, not instance.id: this instance is a
-        # throwaway the pjx_mount() shim copies fields out of (see #726), so
-        # its own auto-generated id is not the mounted region's final id and,
-        # worse, keeps incrementing across request scopes - deriving from it
-        # would make these nested ids leak that global counter instead of
-        # staying a pure function of which key was loaded.
+        # throwaway _load_reactive_child/_mount_root copy fields out of (see
+        # #726), so its own auto-generated id is not the mounted region's
+        # final id and, worse, keeps incrementing across request scopes -
+        # deriving from it would make these nested ids leak that global
+        # counter instead of staying a pure function of which key was loaded.
         instance.table = PJXTable(
             id=f"tbl-{pjx_key}",
             content=PJXTableBody(
@@ -285,12 +285,11 @@ def test_paginator_mutation_swaps_only_the_page_keyed_regions():
         candidates = walk_manifest(mounted, {PAGE}, session=session)
 
     swapped = {c.instance_id for c in candidates}
-    # "shell" never had its own load() cached (only a ChildRef-mounted
-    # component gets pjx_mount()'d; the top-level render(PageShell(...))
-    # call in this test does not), so it always resolves "dirty" here and
-    # its fresh re-render recurses into PaginatorRegion — "p-main" ends up
-    # nested inside "shell"'s own freshly-built tree and _drop_nested drops
-    # it as a redundant swap, exactly like a primary-response exclusion.
+    # "shell" reacts to PAGE, so it resolves "dirty" here regardless of its
+    # own cache state, and its fresh re-render recurses into PaginatorRegion —
+    # "p-main" ends up nested inside "shell"'s own freshly-built tree and
+    # _drop_nested drops it as a redundant swap, exactly like a
+    # primary-response exclusion.
     assert swapped == {"shell"}
     assert "t-main" not in swapped
     assert "p-main" not in swapped
@@ -469,10 +468,11 @@ def test_a_nested_scope_hands_state_back_to_the_outer_scope():
 def test_a_failing_region_does_not_corrupt_its_siblings():
     with scope() as session:
         render(PageShell(id="shell"), session)
-        # BoomRegion.load() is called directly rather than through render():
-        # only a ChildRef-mounted child gets pjx_mount()'d automatically (see
-        # render.py's render_level loop), so a bare render(BoomRegion(...))
-        # at the top level would never call load() at all and never raise.
+        # BoomRegion.load() is called directly here, not through render():
+        # render() would call load() too (it now mounts a reactive root the
+        # same way a ChildRef-discovered child is mounted), but this test
+        # wants the raised RuntimeError itself, not an HTTP-shaped failure
+        # from deeper in the render pipeline.
         with pytest.raises(RuntimeError):
             BoomRegion(id="boom").load()
 

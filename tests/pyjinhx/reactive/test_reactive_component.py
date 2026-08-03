@@ -1,12 +1,12 @@
 """ReactiveComponent: the load() wrap installed at class-definition time."""
 
-from typing import Any
+from typing import Annotated, Any
 
 import pytest
 
 from pyjinhx.app_context import AppContext
 from pyjinhx.component import BaseComponent
-from pyjinhx.reactive.component import ReactiveComponent
+from pyjinhx.reactive.component import PjxKey, ReactiveComponent
 from pyjinhx.session import request_scope
 
 
@@ -670,6 +670,30 @@ def test_load_returning_the_wrong_type_raises():
 
     with request_scope(), pytest.raises(TypeError, match="Widget"):
         Widget.load()
+
+
+def test_subclasses_inheriting_load_unchanged_get_their_own_identity_and_cache():
+    class Row(ReactiveComponent):
+        row_id: Annotated[int, PjxKey()] = 0
+
+        @classmethod
+        def load(cls, row_id: int) -> "Row":
+            return cls(row_id=row_id)  # type: ignore[reportCallIssue]
+
+    class RowB(Row):
+        pass
+
+    class RowC(Row):
+        pass
+
+    with request_scope():
+        a = Row.load(1)  # type: ignore[reportCallIssue]
+        b = RowB.load(1)  # type: ignore[reportCallIssue]
+        c = RowC.load(1)  # type: ignore[reportCallIssue]
+
+    assert type(a) is Row
+    assert type(b) is RowB
+    assert type(c) is RowC
 
 
 def test_app_context_is_excluded_from_the_cache_key():

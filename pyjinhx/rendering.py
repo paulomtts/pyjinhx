@@ -6,9 +6,10 @@ finished HTML string for a childless component (render, public API).
 """
 
 import html
-from typing import cast
+from typing import Any, cast
 
 import jinja2
+from pydantic import TypeAdapter
 
 from pyjinhx.assets import emit_assets
 from pyjinhx.component import BaseComponent, _pascal_to_snake
@@ -48,16 +49,16 @@ def _passthrough_markup(ref: ChildRef) -> str:
     return f"<{ref.tag}{attrs}>{ref.inner}</{ref.tag}>"
 
 
-def _instantiate_child(ref: ChildRef, cls: type[BaseComponent]) -> BaseComponent:
-    """Construct ``cls`` from a resolved ChildRef's attrs and body text.
-
-    Construction is the whole coercion step: the class's own validators turn
-    JSON-looking attr strings into lists/dicts/models and fill an omitted id, so
-    nothing here re-implements them and their errors reach the caller unchanged.
+def _child_kwargs(ref: ChildRef, cls: type[BaseComponent]) -> dict[str, str]:
+    """Attr/body-text kwargs a resolved ChildRef contributes to its child.
 
     A paired tag's ``inner`` is merged raw, not parsed: it becomes a field value
     that the child's own template re-emits, so the tags inside it are cut out by
     the child's own parse and this level still parses exactly once.
+
+    Raises:
+        ValueError: The tag carries body text but the class names no children
+            field, or the same field also arrived as an explicit attribute.
     """
     kwargs: dict[str, str] = dict(ref.attrs)
     if ref.inner is not None and ref.inner.strip():
@@ -74,16 +75,70 @@ def _instantiate_child(ref: ChildRef, cls: type[BaseComponent]) -> BaseComponent
                 f"supply one."
             )
         kwargs[field] = ref.inner
-    return cls(**kwargs)
+    return kwargs
+
+
+def _instantiate_child(ref: ChildRef, cls: type[BaseComponent]) -> BaseComponent:
+    """Construct ``cls`` from a resolved ChildRef's attrs and body text.
+
+    Construction is the whole coercion step: the class's own validators turn
+    JSON-looking attr strings into lists/dicts/models and fill an omitted id, so
+    nothing here re-implements them and their errors reach the caller unchanged.
+    """
+    return cls(**_child_kwargs(ref, cls))
+
+
+# Sentinel for the reactive duck-type: ReactiveComponent sets _pjx_key_field on
+# every subclass at __pydantic_init_subclass__ time and nothing else in the tree
+# defines it, so its mere presence identifies a reactive class without rendering
+# .py importing reactive/ (a plain component's value is never None — the
+# attribute is simply absent).
+_NO_KEY_FIELD = object()
+
+
+def _load_reactive_child(
+    ref: ChildRef, cls: type[BaseComponent], key_field: str | None
+) -> BaseComponent:
+    """Build a reactive child by calling its ``load()`` factory, then apply attrs.
+
+    ``load()`` owns construction, so the key attr goes in as its argument and
+    everything else is assigned onto whatever instance comes back — which, on a
+    repeat key inside one request, is the very instance an earlier tag already
+    got, cache hit and all.
+
+    ``validate_assignment`` only runs field-level validation, not the model's
+    ``mode="before"`` validators — a raw JSON-looking string assigned to a
+    ``list``/``dict``/``BaseModel`` field raises ``list_type`` instead of being
+    parsed. So the same JSON-string coercion ``_instantiate_child`` gets for
+    free from construction has to be run explicitly here, via the class's own
+    ``_coerce_json_string_attrs`` (the single source of truth for that
+    coercion, not a second implementation of it), before each field is
+    assigned and type-validated.
+    """
+    kwargs = _child_kwargs(ref, cls)
+    key_args: dict[str, object] = {}
+    if key_field is not None and key_field in kwargs:
+        raw_key = kwargs.pop(key_field)
+        # A tag attr always arrives as a string (Jinja renders the tag before
+        # it's parsed); load() is a plain method, not a pydantic constructor,
+        # so nothing coerces it on the way in unless this does.
+        annotation = cls.model_fields[key_field].annotation
+        key_args[key_field] = TypeAdapter(annotation).validate_python(raw_key)
+    instance = cast(BaseComponent, cls.load(**key_args))  # pyright: ignore[reportAttributeAccessIssue]
+    coerced = cast(Any, cls)._coerce_json_string_attrs(kwargs)
+    for name, value in cast(dict[str, object], coerced).items():
+        cls.__pydantic_validator__.validate_assignment(instance, name, value)
+    return instance
 
 
 def _fill_children(level: RenderedLevel) -> list[tuple[int, BaseComponent]]:
     """Resolve each ChildRef in ``level`` against the class registry, in place.
 
     Tags no class claims stop being holes here and go back to being markup.
-    Tags that do resolve are instantiated once, in document order, and returned
-    with their segment index so the recursive step can render each one and
-    splice it back where its ChildRef still sits.
+    Tags that do resolve are built once, in document order — a reactive class
+    through its cache-routed ``load()`` factory, a plain one through its
+    constructor — and returned with their segment index so the recursive step
+    can render each one and splice it back where its ChildRef still sits.
     """
     pending: list[tuple[int, BaseComponent]] = []
     for index, segment in enumerate(level.segments):
@@ -93,9 +148,13 @@ def _fill_children(level: RenderedLevel) -> list[tuple[int, BaseComponent]]:
         if cls is None:
             level.segments[index] = _passthrough_markup(segment)
             continue
-        pending.append(
-            (index, _instantiate_child(segment, cast(type[BaseComponent], cls)))
-        )
+        cls = cast(type[BaseComponent], cls)
+        key_field = getattr(cls, "_pjx_key_field", _NO_KEY_FIELD)
+        if key_field is _NO_KEY_FIELD:
+            child = _instantiate_child(segment, cls)
+        else:
+            child = _load_reactive_child(segment, cls, cast("str | None", key_field))
+        pending.append((index, child))
     return pending
 
 
@@ -245,12 +304,9 @@ def render_level(
         descriptor=descriptor,
     )
     # Unregistered tags stop being holes here, one pass per level (ADR 0005);
-    # the ones that do resolve become instances the recursive step consumes.
+    # the ones that do resolve arrive already built — a reactive child through
+    # its cache-routed load() factory, a plain one through its constructor.
     for index, child in _fill_children(level):
-        # A reactive child's pjx_mount() routes its load() through the request
-        # cache before it renders; a plain component's is a no-op, so this
-        # fires for every child and never needs a reactive/ import here.
-        child.pjx_mount()
         # Each child gets its own render_level call, so it does its own single
         # parse and enters this list as a whole object — never text spliced into
         # text, which is what keeps a child's markup un-reparsed and un-escaped.
@@ -264,6 +320,38 @@ def render_level(
     # or not — an empty list is the zero-cost case, not a branch to skip.
     session.emit_rendered(component, level)
     return level
+
+
+def _mount_root(component: BaseComponent) -> BaseComponent:
+    """Route a request's root component through its own cache-routed ``load()``.
+
+    _fill_children/_load_reactive_child only ever see a component discovered
+    as a ChildRef inside some parent's template — the root passed straight
+    into render() has no parent to do that for it, so it never goes through
+    that path at all. This mirrors it for the one entry point that isn't a
+    ChildRef: a reactive class is recognised by ``_pjx_key_field`` (present,
+    possibly None, only on ReactiveComponent subclasses), loaded via its own
+    key field's current value, and every field but ``id`` is copied from the
+    loaded result onto the instance the caller already holds — so callers
+    that captured a reference to ``component`` keep seeing its final state.
+    A plain component carries no marker at all and passes through untouched.
+    """
+    cls = type(component)
+    key_field = getattr(cls, "_pjx_key_field", _NO_KEY_FIELD)
+    if key_field is _NO_KEY_FIELD:
+        return component
+    key_args = {}
+    if key_field is not None:
+        key_field_str = cast(str, key_field)
+        key_args[key_field_str] = getattr(component, key_field_str)
+    loaded = cast(Any, cls).load(**key_args)
+    if loaded is component:
+        return component
+    names = list(cls.model_fields) + list(loaded.__pydantic_extra__ or ())
+    for name in names:
+        if name != "id":
+            setattr(component, name, getattr(loaded, name))
+    return component
 
 
 def render(component: BaseComponent, session: "RenderSession | None" = None) -> str:
@@ -299,6 +387,7 @@ def render(component: BaseComponent, session: "RenderSession | None" = None) -> 
     """
     if session is None:
         session = RenderSession()
+    component = _mount_root(component)
     level = render_level(component, session)
     # The one join at the top, and the one place assets are emitted: every
     # component in the tree has already fired on_rendered by now, so the

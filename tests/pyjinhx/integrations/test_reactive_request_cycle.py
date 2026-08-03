@@ -188,12 +188,10 @@ def test_cold_mount_returns_t1_response_via_testclient():
 
     @app.get("/card")
     def card() -> CycleCard:
-        # render_level() only auto-mounts children discovered via ChildRef; a
-        # component returned as the request's own root has no parent to do
-        # that for it, so the handler mounts it itself before the render.
-        component = CycleCard(id="a", pjx_key="card-1")
-        component.pjx_mount()
-        return component
+        # render() auto-mounts a root reactive component the same way
+        # _fill_children does for a ChildRef-discovered child, so the handler
+        # hands back an unloaded instance and its load() still runs once.
+        return CycleCard(id="a", pjx_key="card-1")
 
     with TestClient(app) as client:
         response = client.get("/card")

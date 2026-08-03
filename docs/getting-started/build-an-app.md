@@ -404,7 +404,7 @@ def toggle_row(todo_id: int):
     - **`@mutates`** — after a store change, invalidate the `load()` cache and accumulate pending state keys for the next reactive `render()`.
     - **`IntegrationBackend`** (`FastAPIBackend`, wired via `setup()`) — supplies `X-PJX-Mounted`, `X-PJX-Trigger`, and `X-PJX-Assets` so OOB swaps run without framework kwargs on `render()`.
 
-    `pjx_mount()` auto-calls the instance's `load()` right before it renders — routes construct the instance and call `render()`, never `load()` directly.
+    `render()` auto-calls the instance's `load()` right before it renders — routes construct the instance and call `render()`, never `load()` directly.
 
 ---
 

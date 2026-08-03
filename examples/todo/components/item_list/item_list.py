@@ -13,10 +13,10 @@ class ItemList(ReactiveComponent, react={Keys.TODO_LIST}):
     def load(cls, ctx: TodoAppContext) -> "ItemList":
         """Build one cache-routed row per todo.
 
-        ``ItemRow.load(todo.id)`` is load-bearing: pjx_mount() only fires for
-        children the renderer instantiates from a tag, never for instances
-        assigned to a field, so rows built here go through the factory
-        directly instead. The dom id is stamped after: it identifies the
+        ``ItemRow.load(todo.id)`` is load-bearing: the renderer only auto-loads
+        a child it instantiates itself from a tag, never an instance assigned
+        to a field, so rows built here go through the factory directly
+        instead. The dom id is stamped after: it identifies the
         mounted region, not the loaded data, so it is never a load()
         parameter, and the cached instance is shared across renders of the
         same todo_id regardless of which row happens to touch it first.
