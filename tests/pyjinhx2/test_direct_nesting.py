@@ -181,7 +181,11 @@ class TestNestedOfNested:
 
 
 class TestCycle:
-    def test_assigning_an_instance_of_the_same_class_raises(self):
+    def test_assigning_an_instance_of_the_same_class_terminates_and_renders(self):
+        # Reusing a class at a shallower and a deeper level of the same path is
+        # not a cycle by itself — this path terminates at Leaf, so it must
+        # render rather than raise (#645: same-class-anywhere was a false
+        # positive; only a path that stops making progress is a cycle).
         class Recur(BaseComponent):
             content: Slot = ""
 
@@ -189,8 +193,10 @@ class TestCycle:
             "nest_content.html", frozenset({"content"}), "content"
         )
 
-        with pytest.raises(ValueError, match="cycle detected"):
-            render(Recur(content=Recur(content=Leaf(text="z"))), session())
+        assert render(Recur(content=Recur(content=Leaf(text="z"))), session()) == (
+            '<div class="card"><div class="card">'
+            '<span class="leaf">z</span></div></div>'
+        )
 
 
 class TestBoundaries:

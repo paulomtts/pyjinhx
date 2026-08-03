@@ -68,6 +68,14 @@ class PJXPassthroughCycle(BaseComponent):
     pass
 
 
+class PJXCardL2(BaseComponent):
+    depth: str = ""
+
+
+class PJXRowL2(BaseComponent):
+    depth: str = ""
+
+
 TEMPLATES = {
     PJXCycleSelf: "cycle_self.html",
     PJXCycleA: "cycle_a.html",
@@ -80,6 +88,8 @@ TEMPLATES = {
     PJXAcyclicC: "cycle_acyclic_c.html",
     PJXDiamond: "cycle_diamond.html",
     PJXPassthroughCycle: "cycle_passthrough.html",
+    PJXCardL2: "cycle_card_l2.html",
+    PJXRowL2: "cycle_row_l2.html",
 }
 
 for _cls, _template in TEMPLATES.items():
@@ -144,4 +154,17 @@ def test_same_component_on_two_sibling_paths_is_not_a_cycle(session):
 def test_passthrough_sibling_does_not_mask_the_cycle(session):
     with pytest.raises(ValueError) as err:
         render(PJXPassthroughCycle(), session)
+    assert "cycle detected: PJXCycleSelf -> PJXCycleSelf" in str(err.value)
+
+
+def test_same_class_at_two_depths_on_one_path_is_not_a_cycle(session):
+    assert render(PJXCardL2(depth="1"), session) == (
+        '<div class="card"><div class="row"><div class="card"></div></div></div>'
+    )
+
+
+def test_unbounded_self_nesting_raises_before_the_recursion_limit(session):
+    # RecursionError is not a ValueError, so a stack blowup fails this outright.
+    with pytest.raises(ValueError) as err:
+        render(PJXCycleSelf(), session)
     assert "cycle detected: PJXCycleSelf -> PJXCycleSelf" in str(err.value)

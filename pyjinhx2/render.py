@@ -19,6 +19,12 @@ from pyjinhx2.render_context import build_context
 from pyjinhx2.segments import ChildRef, RenderedLevel, VerbatimParser, serialize
 from pyjinhx2.session import RenderSession
 
+# How many times one class may appear on a single nesting path before the path
+# is treated as a cycle. A terminating design reuses a class a handful of times
+# at most; a component that re-instantiates itself with no base case blows past
+# this, and does so well inside Python's recursion limit.
+MAX_CHAIN_REPEATS = 32
+
 
 def _passthrough_markup(ref: ChildRef) -> str:
     """Markup for a ChildRef whose tag no component class claims.
@@ -161,15 +167,19 @@ def render_level(
         component: A valid BaseComponent instance (construction-time validation passed).
         session: RenderSession providing Jinja environment and hooks.
         chain: Class names of the components already being rendered on this
-            call path, outermost first. Passed by value down the recursion so
-            each branch sees its own ancestors and nothing else.
+            call path, outermost first, one entry per level (a class may appear
+            more than once). Passed by value down the recursion so each branch
+            sees its own ancestors and nothing else.
 
     Returns:
         RenderedLevel with segments (str | ChildRef), root_span, descriptor.
 
     Raises:
         ValueError: If template renders zero or 2+ root elements.
-        ValueError: If a component re-enters its own render chain (cycle).
+        ValueError: If one class recurs MAX_CHAIN_REPEATS times on a single
+            call path — a path that has stopped making progress. Reusing a
+            class at a shallower and a deeper level of the same path is not a
+            cycle and does not raise.
         jinja2.TemplateNotFound: If template file missing.
         jinja2.TemplateAssertionError: If Jinja evaluation fails.
         Exception: Whatever a session.on_rendered subscriber raises; the hook
@@ -191,13 +201,19 @@ def render_level(
     jinja_env = session.jinja_env
     prefix = f"{component.__class__.__name__} (template: {descriptor.template_path}): "
 
-    # A component whose subtree instantiates itself or an ancestor would recurse
-    # forever; the chain is the current call path only, so the same class on two
-    # sibling branches is fine (ADR 0004: nesting/load chains are the only cycle
-    # vector left in v2).
+    # A class may legitimately reappear deeper on the same path — Card > Row >
+    # Card terminates — so mere presence in the chain proves nothing. What a
+    # real cycle looks like is a path that stops making progress: the same class
+    # recurring over and over. The chain is the current call path only, so the
+    # same class on two sibling branches is still fine (ADR 0004: nesting/load
+    # chains are the only cycle vector left in v2).
     name = component.__class__.__name__
-    if name in chain:
-        cycle = chain[chain.index(name) :]
+    if chain.count(name) >= MAX_CHAIN_REPEATS:
+        # `chain` is a tuple (no .rindex()); walk from the end to find the most
+        # recent occurrence, so the message names one turn of the loop rather
+        # than every repetition of it.
+        last = len(chain) - 1 - chain[::-1].index(name)
+        cycle = chain[last:]
         raise ValueError(f"{prefix}cycle detected: {' -> '.join((*cycle, name))}")
     chain = (*chain, name)
 
