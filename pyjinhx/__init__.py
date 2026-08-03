@@ -5,8 +5,11 @@ submodules (`pyjinhx.reactive.keys`, `pyjinhx.reactive.mutations`,
 `pyjinhx.registry`, `pyjinhx.rendering`).
 """
 
+from __future__ import annotations
+
 import sys
 import types
+from typing import Any
 
 __all__ = [  # noqa: RUF022
     # components & rendering
@@ -58,7 +61,7 @@ _cached_imports = {}
 class _PyjinhxModule(types.ModuleType):
     """Custom module that provides lazy-loaded public API."""
 
-    def __getattr__(self, name: str) -> object:
+    def __getattr__(self, name: str) -> Any:
         """Lazy-load public API exports on demand."""
         if name in _lazy_imports:
             # Check cache first
