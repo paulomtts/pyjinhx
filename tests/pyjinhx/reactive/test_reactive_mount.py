@@ -1,22 +1,24 @@
 """Automatic load() on ChildRef-mounted ReactiveComponent instances.
 
-render_level() instantiates each resolved ChildRef and recurses into it; a
-ReactiveComponent child must have its cache-routed load() run before that
-recursive render, with no manual call from the template author. A plain
-BaseComponent child must be unaffected — it declares no load() at all.
+_fill_children resolves each ChildRef against the registry; a reactive class is
+recognised by its ``_pjx_key_field`` marker and built by calling
+``cls.load(**key_args)`` there and then, so the instance that reaches
+render_level's recursion is already the memoized, fully populated one. A plain
+BaseComponent child must be unaffected — it carries no marker at all.
 """
 
 from pathlib import Path
+from typing import Annotated
 
 import pytest
-from pydantic import ConfigDict
 
 from pyjinhx import discovery
 from pyjinhx.component import BaseComponent, _pascal_to_snake
 from pyjinhx.descriptor import ClassDescriptor
-from pyjinhx.reactive.component import ReactiveComponent
+from pyjinhx.reactive.component import PjxKey, ReactiveComponent
 from pyjinhx.rendering import render_level
-from pyjinhx.session import RenderSession
+from pyjinhx.segments import serialize
+from pyjinhx.session import RenderSession, request_scope
 
 _load_calls: list[int] = []
 
@@ -59,12 +61,78 @@ ContainerComp.__pjx_descriptor__ = _descriptor_for(
 )
 
 
+class PJXKeyedWidget(ReactiveComponent):
+    row_id: Annotated[int, PjxKey()] = 0
+    label: str = "from-load"
+
+    @classmethod
+    def load(cls, row_id: int = 0) -> "PJXKeyedWidget":
+        _load_calls.append(row_id)
+        return cls(row_id=row_id, label=f"loaded-{row_id}")
+
+
+PJXKeyedWidget.__pjx_descriptor__ = _descriptor_for(
+    PJXKeyedWidget, "reactive_keyed_widget.html"
+)
+
+
+class KeyedTwiceContainer(BaseComponent):
+    pass
+
+
+KeyedTwiceContainer.__pjx_descriptor__ = _descriptor_for(
+    KeyedTwiceContainer, "reactive_keyed_twice.html"
+)
+
+
+class KeyedOverrideContainer(BaseComponent):
+    pass
+
+
+KeyedOverrideContainer.__pjx_descriptor__ = _descriptor_for(
+    KeyedOverrideContainer, "reactive_keyed_override.html"
+)
+
+
+class PJXKeyedListWidget(ReactiveComponent):
+    row_id: Annotated[int, PjxKey()] = 0
+    tags: list[str] = []
+
+    @classmethod
+    def load(cls, row_id: int = 0) -> "PJXKeyedListWidget":
+        _load_calls.append(row_id)
+        return cls(row_id=row_id, tags=["loaded"])
+
+
+PJXKeyedListWidget.__pjx_descriptor__ = _descriptor_for(
+    PJXKeyedListWidget, "reactive_keyed_list_widget.html"
+)
+
+
+class KeyedJsonAttrContainer(BaseComponent):
+    pass
+
+
+KeyedJsonAttrContainer.__pjx_descriptor__ = _descriptor_for(
+    KeyedJsonAttrContainer, "reactive_keyed_json_attr.html"
+)
+
+
 @pytest.fixture(autouse=True)
 def _registered_tags():
     """Register the container/widget tags this module's templates reference."""
     discovery._registry.mapping = {
         _pascal_to_snake(cls.__name__): cls
-        for cls in (ContainerComp, PJXReactiveWidget, PJXPlainWidget)
+        for cls in (
+            ContainerComp,
+            PJXReactiveWidget,
+            PJXPlainWidget,
+            PJXKeyedWidget,
+            KeyedTwiceContainer,
+            KeyedOverrideContainer,
+            PJXKeyedListWidget,
+            KeyedJsonAttrContainer,
+        )
     }
     _load_calls.clear()
     yield
@@ -77,14 +145,15 @@ def test_reactive_child_mounted_via_childref_has_load_run_automatically():
     session = RenderSession(template_dir="tests/templates")
     component = ContainerComp()
 
-    render_level(component, session)
+    with request_scope():
+        render_level(component, session)
 
     assert len(_load_calls) == 1
 
 
 def test_plain_child_mounted_via_childref_is_unaffected():
-    """A plain BaseComponent has no load() and no pjx_mount() override; mounting
-    it must not raise and must not add anything to the reactive load-call log."""
+    """A plain BaseComponent has no load() and no reactive marker; mounting it
+    must not raise and must not add anything to the reactive load-call log."""
     session = RenderSession(template_dir="tests/templates")
 
     class OnlyPlainContainer(BaseComponent):
@@ -101,37 +170,49 @@ def test_plain_child_mounted_via_childref_is_unaffected():
     assert _load_calls == []
 
 
-class PJXProtocolWidget(ReactiveComponent):
-    model_config = ConfigDict(extra="allow")
+def test_same_key_twice_in_one_render_runs_load_once():
+    """Both tags name row_id=7, so the second _fill_children call must hit the
+    request cache #726 installed and reuse the first instance's state."""
+    session = RenderSession(template_dir="tests/templates")
 
-    row_id: int = 0
+    with request_scope():
+        result = render_level(KeyedTwiceContainer(), session)
 
-    @classmethod
-    def load(cls, row_id: int = 0) -> "PJXProtocolWidget":
-        return cls(row_id=row_id, flavor="plain")  # type: ignore[reportCallIssue]
-
-
-def test_pjx_mount_copies_extra_fields_from_protocol_mode_load():
-    """Under extra='allow', load() may set undeclared attributes (e.g. via a
-    protocol-style constructor call); pjx_mount() must copy those onto self
-    too, not just the declared model_fields."""
-    component = PJXProtocolWidget(row_id=1)
-
-    component.pjx_mount()
-
-    assert getattr(component, "flavor", "MISSING") == "plain"
+    assert _load_calls == [7]
+    assert serialize(result).count("loaded-7") == 2
 
 
-def test_base_component_pjx_mount_is_noop():
-    """The base hook must do nothing at all: render.py calls it on every child,
-    so any side effect here would leak into every plain component's render."""
+def test_non_key_attrs_are_applied_onto_the_loaded_instance():
+    """label is not the key field, so load() never sees it; _fill_children must
+    set it on the returned instance, overriding what load() itself produced."""
+    session = RenderSession(template_dir="tests/templates")
 
-    class Plain(BaseComponent):
-        pass
+    with request_scope():
+        result = render_level(KeyedOverrideContainer(), session)
 
-    component = Plain()
-    before = component.model_dump()
+    assert _load_calls == [3]
+    assert "overridden" in serialize(result)
+    assert "loaded-3" not in serialize(result)
 
-    assert component.pjx_mount() is None
-    assert component.model_dump() == before
-    assert _load_calls == []
+
+def test_zero_key_reactive_child_is_loaded_with_no_args():
+    """PJXReactiveWidget declares no PjxKey field, so the key-arg split must
+    produce an empty kwargs dict rather than a KeyError or a stray positional."""
+    session = RenderSession(template_dir="tests/templates")
+
+    with request_scope():
+        render_level(ContainerComp(), session)
+
+    assert len(_load_calls) == 1
+
+
+def test_json_string_non_key_attr_is_coerced_before_assignment():
+    """tags is typed list[str]; the tag passes it as a JSON-looking string, so
+    _load_reactive_child must run the same JSON coercion _instantiate_child gets
+    for free from construction, or validate_assignment rejects the raw string."""
+    session = RenderSession(template_dir="tests/templates")
+
+    with request_scope():
+        result = render_level(KeyedJsonAttrContainer(), session)
+
+    assert serialize(result).count("override-tag") == 1
