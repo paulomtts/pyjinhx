@@ -106,7 +106,29 @@ Port order — dependency- and risk-sorted, tests ported alongside each family:
 - [ ] **5. JS-heavy tail** — Notification, ToastHost, Alert, Carousel, Resizable families.
 - [ ] **6. Release train** — bench comparison on the builtin-heavy page (G2: never slower), migration guide written from the port list's mods/drops (G5), rename `pyjinhx2` → `pyjinhx`, publish 1.0, freeze v0.x to critical fixes.
 
-Bench comparison: _(record here)_
+Bench comparison — v0.36.4 vs v2, same builtin-heavy page
+(`tests/fixtures/bench_builtin_heavy.py`, issue #537), reproduced by
+`uv run python scripts/bench_v0_vs_v2.py`. Median/mean of 20 iterations after
+one warmup, rows=200. v0.36 side: `pyjinhx/` was not byte-identical to the
+`v0.36.4` tag at the time of this run, so it was measured from a separate
+`git worktree add /tmp/pyjinhx-v0364 v0.36.4` checkout (see the script's
+docstring). Excluded from both sides (not ported to v2): PJXConfirmDialog,
+PJXPromptDialog.
+
+| case | v0.36 med (ms) | v2 med (ms) | delta (ms) | delta (%) |
+| --- | --- | --- | --- | --- |
+| full page | 103.20 | 41.32 | -61.89 | -60.0% |
+| table rows=200 | 89.73 | 36.51 | -53.22 | -59.3% |
+| shells only | 4.22 | 1.58 | -2.65 | -62.7% |
+
+**G2:** no case regressed — v2 is faster than v0.36 on every bench case
+(~59-65% lower median render time). One apparent regression surfaced and was
+fixed during script development, not left as a finding: an early version of
+the script built a fresh v2 `RenderSession` per timed render call, and its
+Jinja-`Environment` construction cost — paid once per call, never amortized —
+made the cheapest case ("shells only") look ~360% slower than v0. Reusing one
+session per case (mirroring v0's renderer reuse) removed that artifact; see
+the `scripts/bench_v0_vs_v2.py` commit for detail.
 
 ---
 
