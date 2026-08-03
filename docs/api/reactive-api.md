@@ -10,42 +10,31 @@ See [Reactivity](../reactivity.md) for conceptual documentation and usage patter
 class ReactiveComponent(BaseComponent): ...
 ```
 
-Base class for components that reload from application state via a `load()` classmethod and participate in out-of-band HTMX swaps.
+Base class for components that reload from application state via an instance `load()` method and participate in out-of-band HTMX swaps.
 
 ### Requirements
 
 - Declare the `react` **class keyword** — a set of `MutationKey` members this component subscribes to: `class Counter(ReactiveComponent, react={Keys.TODOS})`.
-- Implement `load()` as a `@classmethod` that returns a fresh component instance.
-- For keyed `load(cls, resource)` types, declare exactly one `Annotated[..., PjxKey()]` field.
-- **Subclassing builtins** — a builtin can be mixed in directly: `class LiveBadge(ReactiveComponent, PJXBadge, react={...})`. The subclass inherits the builtin's template and assets via the MRO. At most one concrete component base is allowed — `class X(PJXBadge, PJXCard)` raises `TypeError` at definition. See [Making builtins reactive](../reactivity.md#making-builtins-reactive).
+- Override `load(self)` to populate `self` from application state. It runs once per request — the first call is memoized in the request-scoped load cache, so later calls in the same request (e.g. from `pjx_mount()` on every recursive render) reuse the result instead of re-fetching.
+- For keyed types, declare exactly one `Annotated[..., PjxKey()]` field; its value becomes the load-cache key that identifies which instance `load()` is for.
+
+See [Making builtins reactive](../reactivity.md#making-builtins-reactive) for mixing a `ReactiveComponent` in with a builtin.
 
 ### Keyed vs singleton
 
-A parameter after `cls` in `load()` makes the type **instance-keyed** (e.g. one row per todo). Declare `PjxKey` on the resource field. Zero-arg `load(cls)` is a type-singleton.
+A class with a `PjxKey`-marked field is **instance-keyed** (e.g. one row per todo) — each distinct field value gets its own cached `load()` result. A class with no `PjxKey` field is a **type-singleton** — one cached result shared by every instance of the class in a request.
 
 Singleton reactive components default `id` to the kebab-cased class name (`TodoCounter` → `"todo-counter"`).
 
 ### render()
 
-Two forms coexist via a descriptor:
-
-**Class method (route entry point):**
-
 ```python
-Cls.render(*args, **kwargs) -> Markup
+instance.render(session: RenderSession | None = None) -> str
 ```
 
-Auto-`load()`s the primary, renders it, and appends OOB swaps when a `ClientBackend` is active and `@mutates` left pending keys.
+Renders this instance to a finished HTML string, calling `load()` (via `pjx_mount()`) first. This is `BaseComponent.render()` — `ReactiveComponent` adds no separate entry point.
 
-Raises `TypeError` if called with arguments on a type-singleton, or without the key argument on an instance-keyed type.
-
-**Instance method:**
-
-```python
-instance.render() -> Markup
-```
-
-Render an already-built instance as the primary without re-loading from the world.
+OOB swaps are not produced by `render()` itself. They're composed by `pyjinhx.reactive.response.ReactiveResponse`, which walks the client's `X-PJX-Mounted` manifest against this request's dirtied keys (`walk_manifest()`) and hands the resulting candidates to `oob_swaps()` to build the fan-out fragments appended after the primary markup.
 
 ### state_hash()
 
@@ -67,7 +56,10 @@ state_hash_exclude: ClassVar[frozenset[str]] = frozenset({"id"})
 class PjxKey: ...
 ```
 
-Marker for `Annotated[..., PjxKey()]`. The field value is stamped as `data-pjx-load` and returned in the client manifest as `load`.
+Marker for `Annotated[..., PjxKey()]`. The field value becomes this instance's load-cache key.
+
+!!! note "Not yet stamped client-side"
+    Nothing server-side currently stamps `data-pjx-type` or `data-pjx-load` — `root_attrs.py` stamps only `data-pjx-id` and `data-pjx-hash` — so a real client-built `X-PJX-Mounted` manifest carries empty `type`/`load` fields today.
 
 ## client_script
 
@@ -113,22 +105,16 @@ Parse `X-PJX-Trigger` — the `data-pjx-id` of the element that started the HTMX
 | `PJX_MOUNTED_HEADER` | `"X-PJX-Mounted"` | JSON manifest of mounted regions (`id`, `type`, `hash`, optional `load`) |
 | `PJX_TRIGGER_HEADER` | `"X-PJX-Trigger"` | JSON `{"id": "<data-pjx-id>"}` of the swap origin |
 
-Wire [ClientBackend](client-backend.md) via `setup()`; `render()` reads headers from the active backend.
+`pyjinhx.reactive.response.ReactiveResponse` reads these headers to build the composed body (primary markup plus OOB fragments).
 
 ## oob_swaps
 
 ```python
-def oob_swaps(
-    dirtied: set[ReactiveKey],
-    mounted: str | list[dict[str, Any]] | object | None,
-    *,
-    exclude_ids: set[str] | None = None,
-    skip_invalidate: bool = False,
-) -> Markup
+def oob_swaps(candidates: list[FanoutCandidate]) -> Markup
 ```
 
-Compute out-of-band swap fragments for every mounted reactive region whose `react` keys intersect `dirtied`.
+Compute out-of-band swap fragments for a list of `FanoutCandidate`s, in candidate order. A `"dirty"` candidate emits an `outerHTML:` swap of its already-built markup; a `"missing"` candidate (its keyed `load()` raised `LookupError` — entity removed) emits a delete swap (`delete:[data-pjx-id='…']`) instead. A `"clean"` candidate emits nothing.
 
-When a keyed `load(manifest.load)` raises `LookupError` (entity removed), emits a delete OOB swap (`delete:[data-pjx-id='…']`) instead of failing.
+Candidates come from `walk_manifest(manifest_entries, dirtied_keys, session=..., primary_html=...)`, which turns a parsed `X-PJX-Mounted` manifest and this request's dirtied keys into the filtered, deduped candidate list — dropping unknown tags, untouched classes, unchanged state hashes, nested regions, and anything the primary response already contains.
 
-`ReactiveComponent.render()` calls this automatically when reactive mode is active. Use directly only for tests and advanced composition.
+`pyjinhx.reactive.response.ReactiveResponse` calls `walk_manifest()` then `oob_swaps()` automatically to compose a reactive request's body. Use them directly only for tests and advanced composition.
