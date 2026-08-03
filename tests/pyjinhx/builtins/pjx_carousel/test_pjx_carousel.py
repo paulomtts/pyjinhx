@@ -185,6 +185,43 @@ class TestIcons:
         assert html.count("<svg") == 4
 
 
+@pytest.fixture
+def empty_registry():
+    """Render with a provably empty tag map — no build_registry(), no setup().
+
+    #693: the arrow and autoplay icons must not depend on registry-based tag
+    resolution; an empty map turns any surviving literal into passthrough
+    markup and fails these assertions.
+    """
+    before = discovery._registry.mapping
+    discovery._registry.mapping = {}
+    yield
+    discovery._registry.mapping = before
+
+
+class TestIconsWithoutARegistry:
+    def test_arrow_icons_render_with_an_empty_registry(self, session, empty_registry):
+        html = render(PJXCarousel(id="c", content="slide"), session)
+        assert "<PJXIcon" not in html
+        assert html.count("<svg") == 2
+
+    def test_autoplay_icons_render_with_an_empty_registry(
+        self, session, empty_registry
+    ):
+        html = render(PJXCarousel(id="c", content="slide", autoplay=True), session)
+        assert "<PJXIcon" not in html
+        assert html.count("<svg") == 4
+        assert "pjx-carousel__autoplay-icon-pause" in html
+        assert "pjx-carousel__autoplay-icon-play" in html
+
+    def test_icon_fields_are_slots(self, empty_registry):
+        slots = PJXCarousel.__pjx_descriptor__.slot_fields
+        assert {"prev_icon", "next_icon", "pause_icon", "play_icon"} <= slots
+
+    def test_children_field_is_still_content(self, empty_registry):
+        assert PJXCarousel.__pjx_descriptor__.children_field == "content"
+
+
 class TestAssets:
     def test_stylesheet_is_frozen_on_the_descriptor(self):
         css = PJXCarousel.__pjx_descriptor__.css_paths

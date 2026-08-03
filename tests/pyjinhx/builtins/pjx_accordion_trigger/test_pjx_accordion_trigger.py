@@ -101,3 +101,40 @@ def test_assets_are_discovered_from_the_component_directory():
     descriptor = PJXAccordionTrigger.__pjx_descriptor__
     assert descriptor.js_paths
     assert any(p.name == "pjx_accordion_trigger.js" for p in descriptor.js_paths)
+
+
+@pytest.fixture
+def empty_registry():
+    """Render with a provably empty tag map — no build_registry(), no setup().
+
+    #693: the trigger's chevron must not depend on registry-based tag
+    resolution, so this fixture makes the registry empty rather than
+    populating it, and any surviving literal <PJXIcon/> falls through to
+    passthrough markup and fails the assertions below.
+    """
+    before = discovery._registry.mapping
+    discovery._registry.mapping = {}
+    yield
+    discovery._registry.mapping = before
+
+
+def test_chevron_renders_with_an_empty_registry(trigger_session, empty_registry):
+    html = _html(trigger_session)
+    assert "<PJXIcon" not in html
+    assert "<svg" in html
+    assert 'class="pjx-icon pjx-accordion__chevron"' in html
+
+
+def test_chevron_is_a_slot_field(empty_registry):
+    assert "chevron" in PJXAccordionTrigger.__pjx_descriptor__.slot_fields
+
+
+def test_children_field_is_still_content(empty_registry):
+    assert PJXAccordionTrigger.__pjx_descriptor__.children_field == "content"
+
+
+def test_chevron_precedes_string_content_with_an_empty_registry(
+    trigger_session, empty_registry
+):
+    html = _html(trigger_session, content="Label")
+    assert html.index("pjx-accordion__chevron") < html.index("Label")

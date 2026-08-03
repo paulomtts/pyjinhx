@@ -2,6 +2,7 @@ from typing import ClassVar
 
 from pydantic import Field
 
+from pyjinhx.builtins.ui.pjx_icon import PJXIcon
 from pyjinhx.component import AttrValue, BaseComponent, ExtraAttrs, Slot
 
 
@@ -26,3 +27,18 @@ class PJXCarousel(BaseComponent):
     class_name: AttrValue = ""
     content: Slot = ""
     extra_attrs: ExtraAttrs = Field(default_factory=dict)
+    # Composed in Python rather than as <PJXIcon/> tag literals: a literal
+    # only resolves once build_registry() has run, so these four icons came
+    # out as raw tag text in any render path that never called setup() (#693).
+    prev_icon: PJXIcon = Field(default_factory=lambda: PJXIcon(name="chevron-left"))
+    next_icon: PJXIcon = Field(default_factory=lambda: PJXIcon(name="chevron-right"))
+    pause_icon: PJXIcon = Field(
+        default_factory=lambda: PJXIcon(
+            name="pause", class_name="pjx-carousel__autoplay-icon-pause"
+        )
+    )
+    play_icon: PJXIcon = Field(
+        default_factory=lambda: PJXIcon(
+            name="play", class_name="pjx-carousel__autoplay-icon-play"
+        )
+    )

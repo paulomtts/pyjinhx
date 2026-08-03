@@ -177,3 +177,39 @@ class TestLoading:
 
     def test_no_loader_when_not_loading(self, session, loader_registered):
         assert "pjx-region-loader" not in _html(session, content="X")
+
+
+@pytest.fixture
+def empty_registry():
+    """Render with a provably empty tag map — no build_registry(), no setup().
+
+    #693: the loading spinner must not depend on registry-based tag
+    resolution. An empty map means a surviving <PJXRegionLoader/> literal
+    would come back as passthrough markup and fail these assertions.
+    """
+    before = discovery._registry.mapping
+    discovery._registry.mapping = {}
+    yield
+    discovery._registry.mapping = before
+
+
+class TestLoadingWithoutARegistry:
+    def test_loader_renders_with_an_empty_registry(self, session, empty_registry):
+        html = _html(session, content="X", loading=True)
+        assert "<PJXRegionLoader" not in html
+        assert 'class="pjx-region-loader"' in html
+        assert 'role="status"' in html
+
+    def test_loader_id_is_derived_from_the_button_id(self, session, empty_registry):
+        html = _html(session, content="X", loading=True)
+        assert 'id="b-loader"' in html
+
+    def test_loader_follows_the_content(self, session, empty_registry):
+        html = _html(session, content="Save", loading=True)
+        assert html.index("Save") < html.index("pjx-region-loader")
+
+    def test_no_loader_markup_when_not_loading(self, session, empty_registry):
+        assert "pjx-region-loader" not in _html(session, content="X")
+
+    def test_loader_is_a_slot_field(self, empty_registry):
+        assert "loader" in PJXButton.__pjx_descriptor__.slot_fields
