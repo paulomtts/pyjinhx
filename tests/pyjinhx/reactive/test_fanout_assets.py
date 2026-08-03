@@ -20,8 +20,9 @@ class Keys(MutationKey):
 class AssetWidget(ReactiveComponent, react=(Keys.WIDGET,)):
     """A reactive component whose descriptor is repointed at real asset files."""
 
-    def load(self) -> int:
-        return 0
+    @classmethod
+    def load(cls) -> "AssetWidget":
+        return cls()
 
 
 @pytest.fixture
@@ -96,8 +97,9 @@ def test_garbage_tokens_are_treated_as_having_nothing(asset_files):
 
 def test_a_class_with_no_assets_is_a_no_op_not_an_error():
     class Bare(ReactiveComponent, react=(Keys.WIDGET,)):
-        def load(self) -> int:
-            return 0
+        @classmethod
+        def load(cls) -> "Bare":
+            return cls()
 
     bare = dataclasses.replace(candidate(), component_class=Bare)
     assert missing_asset_oob([bare], frozenset(), RenderSession()) == ""

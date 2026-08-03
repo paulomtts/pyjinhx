@@ -21,10 +21,12 @@ class ResponseWidget(ReactiveComponent, react=("todos",)):
     """A reactive component keyed by ``pjx_key``, dirtied by the ``todos`` key."""
 
     pjx_key: Annotated[str, PjxKey()] = ""
+    data: str = ""
 
-    def load(self) -> str:
-        LOAD_CALLS.append(self.pjx_key)
-        return f"data:{self.pjx_key}"
+    @classmethod
+    def load(cls, pjx_key: str) -> "ResponseWidget":
+        LOAD_CALLS.append(pjx_key)
+        return cls(pjx_key=pjx_key, data=f"data:{pjx_key}")
 
 
 _TEMPLATE_DIR = "templates"
@@ -303,7 +305,7 @@ def test_a_dynamic_dirty_key_evicts_the_instance_it_names():
     """
     with scope():
         registry.register_instance(ResponseWidget.__name__, "a", "entry")
-        ResponseWidget(pjx_key="1").load()
+        ResponseWidget.load("1")
         add_dirtied(["todos:1"])
         [candidate] = ReactiveResponse(
             primary="", mounted=[mounted_entry("a", load="1")]

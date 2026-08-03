@@ -88,21 +88,30 @@ class TableRegion(ReactiveComponent, react=(ROWS,)):
     rows: list[str] = Field(default_factory=list)
     table: Slot = ""
 
-    def load(self) -> None:
-        LOAD_CALLS.append(f"table:{self.pjx_key}")
-        self.rows = list(STORE["rows"])
-        self.table = PJXTable(
-            id=f"tbl-{self.id}",
+    @classmethod
+    def load(cls, pjx_key: str) -> "TableRegion":
+        LOAD_CALLS.append(f"table:{pjx_key}")
+        rows = list(STORE["rows"])
+        instance = cls(pjx_key=pjx_key, rows=rows)
+        # Nested ids are keyed off pjx_key, not instance.id: this instance is a
+        # throwaway the pjx_mount() shim copies fields out of (see #726), so
+        # its own auto-generated id is not the mounted region's final id and,
+        # worse, keeps incrementing across request scopes - deriving from it
+        # would make these nested ids leak that global counter instead of
+        # staying a pure function of which key was loaded.
+        instance.table = PJXTable(
+            id=f"tbl-{pjx_key}",
             content=PJXTableBody(
-                id=f"tbody-{self.id}",
+                id=f"tbody-{pjx_key}",
                 content=PJXTableRow(
-                    id=f"row-{self.id}",
+                    id=f"row-{pjx_key}",
                     content=PJXTableCell(
-                        id=f"cell-{self.id}", content=", ".join(self.rows)
+                        id=f"cell-{pjx_key}", content=", ".join(rows)
                     ),
                 ),
             ),
         )
+        return instance
 
 
 class PaginatorRegion(ReactiveComponent, react=(PAGE,)):
@@ -111,9 +120,10 @@ class PaginatorRegion(ReactiveComponent, react=(PAGE,)):
     pjx_key: Annotated[str, PjxKey()] = "main"
     page: int = 1
 
-    def load(self) -> None:
-        LOAD_CALLS.append(f"paginator:{self.pjx_key}")
-        self.page = int(STORE["page"])
+    @classmethod
+    def load(cls, pjx_key: str) -> "PaginatorRegion":
+        LOAD_CALLS.append(f"paginator:{pjx_key}")
+        return cls(pjx_key=pjx_key, page=int(STORE["page"]))
 
 
 class PageShell(ReactiveComponent, react=(PAGE,)):
@@ -121,14 +131,17 @@ class PageShell(ReactiveComponent, react=(PAGE,)):
 
     pjx_key: Annotated[str, PjxKey()] = "shell"
 
-    def load(self) -> None:
+    @classmethod
+    def load(cls, pjx_key: str) -> "PageShell":
         LOAD_CALLS.append("shell")
+        return cls(pjx_key=pjx_key)
 
 
 class BoomRegion(ReactiveComponent, react=(ROWS,)):
     """A region whose load() raises, to prove failures stay local."""
 
-    def load(self) -> None:
+    @classmethod
+    def load(cls) -> "BoomRegion":
         raise RuntimeError("boom")
 
 

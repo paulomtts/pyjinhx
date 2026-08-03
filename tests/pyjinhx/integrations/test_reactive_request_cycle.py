@@ -60,9 +60,10 @@ class CycleCard(ReactiveComponent, react=(Keys.CYCLE,)):
 
     pjx_key: Annotated[str, PjxKey()] = ""
 
-    def load(self) -> int:
-        LOAD_CALLS.append(self.pjx_key)
-        return STORE.get(self.pjx_key, 0)
+    @classmethod
+    def load(cls, pjx_key: str) -> "CycleCard":
+        LOAD_CALLS.append(pjx_key)
+        return cls(pjx_key=pjx_key)
 
 
 class CycleBadge(ReactiveComponent, react=(Keys.CYCLE,)):
@@ -70,9 +71,10 @@ class CycleBadge(ReactiveComponent, react=(Keys.CYCLE,)):
 
     pjx_key: Annotated[str, PjxKey()] = ""
 
-    def load(self) -> int:
-        LOAD_CALLS.append(f"badge:{self.pjx_key}")
-        return STORE.get(self.pjx_key, 0)
+    @classmethod
+    def load(cls, pjx_key: str) -> "CycleBadge":
+        LOAD_CALLS.append(f"badge:{pjx_key}")
+        return cls(pjx_key=pjx_key)
 
 
 ASSET_DIR = Path(__file__).parent.parent.parent / "templates"
@@ -530,8 +532,11 @@ class RequestAppContext(AppContext):
 class ContextCard(ReactiveComponent):
     """A card whose load() declares the app context and echoes it back."""
 
-    def load(self, ctx: RequestAppContext | None) -> str:  # pyright: ignore[reportIncompatibleMethodOverride]
-        return "no-context" if ctx is None else ctx.path
+    echoed: str = ""
+
+    @classmethod
+    def load(cls, ctx: RequestAppContext | None) -> "ContextCard":
+        return cls(echoed="no-context" if ctx is None else ctx.path)
 
 
 def test_load_receives_the_context_factory_result_over_a_real_request():
@@ -544,7 +549,7 @@ def test_load_receives_the_context_factory_result_over_a_real_request():
 
     @app.get("/ctx-echo")
     def ctx_echo() -> dict[str, str]:
-        return {"loaded": ContextCard().load()}  # pyright: ignore[reportCallIssue]
+        return {"loaded": ContextCard.load().echoed}
 
     with TestClient(app) as client:
         response = client.get("/ctx-echo")
@@ -559,7 +564,7 @@ def test_without_a_context_factory_the_injected_context_is_none():
 
     @app.get("/ctx-none")
     def ctx_none() -> dict[str, str]:
-        return {"loaded": ContextCard().load()}  # pyright: ignore[reportCallIssue]
+        return {"loaded": ContextCard.load().echoed}
 
     with TestClient(app) as client:
         response = client.get("/ctx-none")

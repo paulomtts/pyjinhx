@@ -14,14 +14,14 @@ from pyjinhx.rendering import render
 
 def _loaded_app(session):
     """The whole tree, loaded, the way a route would assemble it."""
-    item_list = ItemList(id="list")
-    item_list.load()
-    remaining = Counter(id="counter")
-    remaining.load()
-    total_count = Total(id="total")
-    total_count.load()
-    clear_button = ClearButton(id="clear")
-    clear_button.load()
+    item_list = ItemList.load()
+    item_list.id = "list"
+    remaining = Counter.load()
+    remaining.id = "counter"
+    total_count = Total.load()
+    total_count.id = "total"
+    clear_button = ClearButton.load()
+    clear_button.id = "clear"
     return App(
         id="app",
         item_list=item_list,
@@ -34,8 +34,8 @@ def _loaded_app(session):
 class TestItemRow:
     def test_renders_title_and_toggle_wiring(self, scope):
         todo = todo_store.all_todos()[0]
-        row = ItemRow(id=f"row-{todo.id}", todo_id=todo.id)
-        row.load()
+        row = ItemRow.load(todo.id)
+        row.id = f"row-{todo.id}"
 
         html = render(row, scope)
 
@@ -45,24 +45,24 @@ class TestItemRow:
 
     def test_keeps_the_skeleton_loading_indicator(self, scope):
         todo = todo_store.all_todos()[0]
-        row = ItemRow(id=f"row-{todo.id}", todo_id=todo.id)
-        row.load()
+        row = ItemRow.load(todo.id)
+        row.id = f"row-{todo.id}"
 
         assert 'data-pjx-loading="skeleton"' in render(row, scope)
 
     def test_done_row_gets_the_done_class(self, scope):
         todo = todo_store.all_todos()[0]
         todo_store.toggle(todo.id)
-        row = ItemRow(id=f"row-{todo.id}", todo_id=todo.id)
-        row.load()
+        row = ItemRow.load(todo.id)
+        row.id = f"row-{todo.id}"
 
         assert 'class="todo done"' in render(row, scope)
 
 
 class TestItemList:
     def test_renders_every_row(self, scope):
-        item_list = ItemList(id="list")
-        item_list.load()
+        item_list = ItemList.load()
+        item_list.id = "list"
 
         html = render(item_list, scope)
 
@@ -73,8 +73,8 @@ class TestItemList:
         for todo in list(todo_store.all_todos()):
             todo_store.toggle(todo.id)
         todo_store.clear_completed()
-        item_list = ItemList(id="list")
-        item_list.load()
+        item_list = ItemList.load()
+        item_list.id = "list"
 
         html = render(item_list, scope)
 
@@ -84,20 +84,20 @@ class TestItemList:
 
 class TestStatusComponents:
     def test_counter_renders_its_count(self, scope):
-        counter = Counter(id="counter")
-        counter.load()
+        counter = Counter.load()
+        counter.id = "counter"
 
         assert "3 left" in render(counter, scope)
 
     def test_total_renders_its_count(self, scope):
-        total = Total(id="total")
-        total.load()
+        total = Total.load()
+        total.id = "total"
 
         assert "3 total" in render(total, scope)
 
     def test_clear_button_keeps_its_loading_indicator_attrs(self, scope):
-        button = ClearButton(id="clear")
-        button.load()
+        button = ClearButton.load()
+        button.id = "clear"
 
         html = render(button, scope)
 
@@ -106,8 +106,8 @@ class TestStatusComponents:
         assert 'hx-post="/todos/clear-completed"' in html
 
     def test_clear_button_is_disabled_with_nothing_completed(self, scope):
-        button = ClearButton(id="clear")
-        button.load()
+        button = ClearButton.load()
+        button.id = "clear"
 
         assert "disabled" in render(button, scope)
 

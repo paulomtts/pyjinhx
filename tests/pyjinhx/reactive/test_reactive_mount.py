@@ -17,12 +17,14 @@ from pyjinhx.reactive.component import ReactiveComponent
 from pyjinhx.rendering import render_level
 from pyjinhx.session import RenderSession
 
-_load_calls: list[str] = []
+_load_calls: list[int] = []
 
 
 class PJXReactiveWidget(ReactiveComponent):
-    def load(self) -> None:
-        _load_calls.append(self.id)
+    @classmethod
+    def load(cls) -> "PJXReactiveWidget":
+        _load_calls.append(1)
+        return cls()
 
 
 class PJXPlainWidget(BaseComponent):
