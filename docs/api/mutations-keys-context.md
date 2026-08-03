@@ -121,6 +121,8 @@ An app's per-request context — a database session, the signed-in user, a
 tenant — reaches a component by declaring it on `load()`:
 
 ```python
+from typing import Self
+
 from pyjinhx.app_context import AppContext
 from pyjinhx.reactive.component import ReactiveComponent
 
@@ -132,8 +134,11 @@ class MyAppContext(AppContext):
 
 
 class TodoList(ReactiveComponent):
-    def load(self, ctx: MyAppContext):
-        return ctx.db.todos_for(ctx.user)
+    items: list = []
+
+    @classmethod
+    def load(cls, ctx: MyAppContext) -> Self:
+        return cls(items=ctx.db.todos_for(ctx.user))
 ```
 
 The value comes from the `context_factory` given to `setup()`, called once per
@@ -156,7 +161,7 @@ Rules:
   defined at import time, long before any app wiring exists to validate against.
 - At most one parameter may be annotated as an app context; two raise `TypeError`
   when the class is defined.
-- A zero-argument `load(self)` is untouched — no injection is attempted and
+- A zero-argument `load(cls)` is untouched — no injection is attempted and
   nothing about its behavior changes.
 
 ## Reactive dev
