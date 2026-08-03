@@ -5,7 +5,7 @@ Reactivity is **opt-in**. You can use PyJinHx with `BaseComponent` only — see 
 !!! info "Prerequisites"
     - HTMX for transport and swap
     - `request_scope()` (from `pyjinhx.session`) on every HTTP request
-    - [ClientBackend](api/client-backend.md) in middleware (recommended) so mutation routes need no framework kwargs on `render()`
+    - [IntegrationBackend](api/client-backend.md) in middleware (recommended) so mutation routes need no framework kwargs on `render()`
 
 pyjinhx owns **composition**; HTMX owns **transport and swap**. Between them sits
 the **state→view dependency graph** — which regions must change when a piece of
@@ -105,13 +105,13 @@ from pyjinhx import BaseComponent
 class AppShell(BaseComponent): ...  # app_shell.html is your full page template
 ```
 
-For a raw Jinja layout (outside the component render path), drop in `client_script()`:
+For a raw Jinja layout (outside the component render path), drop in `read_pjx_runtime()`:
 
 ```python
-from pyjinhx.client import client_script
+from pyjinhx.client import read_pjx_runtime
 
 # in your template context
-{"pjx_runtime": client_script()}
+{"pjx_runtime": read_pjx_runtime()}
 ```
 ```html
 <body>
@@ -143,9 +143,9 @@ The runtime attaches these headers to htmx requests:
 | `X-PJX-Assets` | URLs of `<script src>` and `<link rel="stylesheet">` already loaded |
 | `X-PJX-Trigger` | `data-pjx-id` of the element that started the request — sent only when a reactive root triggered it |
 
-Wire `FastAPIClientBackend` via `setup(app, ...)` — see the
+Wire `FastAPIBackend` via `setup(app, ...)` — see the
 [canonical snippet](integrations/fastapi.md#middleware-recommended) and
-[Client Backend](api/client-backend.md). Mutation routes then construct the primary
+[Integration Backend](api/client-backend.md). Mutation routes then construct the primary
 and call `.render()` with no extra kwargs — headers are read from the backend after
 `@mutates`. Full-page routes call `.render()` plainly; boosted navigations skip
 re-injecting `pjx.js` when `X-PJX-Mounted` is present.
@@ -222,12 +222,12 @@ def dismiss():
 Pass `html=` for a primary body alongside the keys, e.g.
 `ReactiveResponse(Keys.TODOS, html="<p>dismissed</p>")`.
 
-!!! note "Without ClientBackend"
-    Wire `ClientBackend` in middleware (via `setup()`) so `render()` reads manifest and asset headers automatically. Without a backend, reactive OOB is skipped when mutations are pending.
+!!! note "Without an integration backend"
+    Wire `IntegrationBackend` in middleware (via `setup()`) so `render()` reads manifest and asset headers automatically. Without a backend, reactive OOB is skipped when mutations are pending.
 
 ### Under the hood: `oob_swaps()`
 
-`render()` delegates its dependency walk to `oob_swaps(dirtied, mounted)` — hash-gate, nesting-dedup, and delete-on-LookupError in one call. It's exported for tests and advanced composition, but routes return `render()`, not bare swaps. Full walk mechanics are in [How it works (under the hood)](#how-it-works-under-the-hood) below.
+`render()` delegates its dependency walk to `oob_swaps(candidates)` — hash-gate, nesting-dedup, and delete-on-LookupError in one call over the mounted manifest's `FanoutCandidate`s. It's exported for tests and advanced composition, but routes return `render()`, not bare swaps. Full walk mechanics are in [How it works (under the hood)](#how-it-works-under-the-hood) below.
 
 The dependency graph lives in exactly one place — the `react` class keyword
 declarations — not smeared across endpoints. Adding a progress bar that declares
@@ -297,7 +297,7 @@ the instance's own load-key, so only the matching mounted instance is reloaded:
 
 ```python
 from pyjinhx import MutationKey, PjxKey, ReactiveComponent, dirty
-from pyjinhx.keys import reactive_key
+from pyjinhx.reactive.keys import reactive_key
 from typing import Annotated
 
 
@@ -441,7 +441,7 @@ enable_reactive_dev(strict=True)  # raise instead
 Checks include:
 
 - mutations recorded via `@mutates` but no reactive `render()` in the same request scope
-- mutations pending but no `ClientBackend` active (OOB swaps skipped)
+- mutations pending but no integration backend active (OOB swaps skipped)
 
 Inspect the dependency graph at startup:
 
@@ -465,24 +465,15 @@ Counter.load()  # cached: no DB, returns an independent copy
 
 ### Cache scope
 
-You don't choose a scope — it follows the backend. By default (no `invalidation_backend`),
-caching is per request; configuring a cross-worker backend extends it to cross-request per
-worker process.
+Caching is per request today: entries live in a `ContextVar` inside `request_scope()`,
+so nothing is shared across requests or worker processes.
 
 | Backend | Storage | Cross-request | Multi-worker safe |
 |---------|---------|---------------|-------------------|
-| none (default) | `ContextVar` inside `request_scope()` | no | yes |
-| configured | module-level dict per worker, fanned out on mutation | yes | yes (backend keeps workers consistent) |
-
-```python
-from pyjinhx import setup
-
-setup(app)  # per-request caching (default, multi-worker safe)
-setup(app, invalidation_backend=...)  # cross-request per worker
-```
+| none (default, only option today) | `ContextVar` inside `request_scope()` | no | yes |
 
 Use `request_scope()` on every HTTP request (middleware) for instance registry
-isolation and the request-tier cache (which dedups the OOB walk regardless of backend).
+isolation and the request-tier cache (which dedups the OOB walk).
 
 **Cache identity:** entries are keyed by `(component class, load key)` only. For per-user
 isolation use a `PjxKey`-keyed instance (one entry per user id) or ensure `PjxContext`
@@ -490,15 +481,15 @@ data is stable for all requests sharing a cache entry.
 
 Reactive `render()` (and `oob_swaps`) evicts pending dirtied keys before reloading
 dependents. For mutations outside a render — a background job, a webhook — call
-`LoadCache.invalidate` yourself:
+`invalidate()` yourself:
 
 ```python
-from pyjinhx.cache import LoadCache
+from pyjinhx.reactive.cache import invalidate
 
 
 def nightly_recalc():
     db.rebuild_todos()
-    LoadCache.invalidate({Keys.TODOS})
+    invalidate({Keys.TODOS})
 ```
 
 The cache holds one result per `(type, key)` and returns a fresh copy on every call, so
@@ -506,22 +497,9 @@ callers can mutate what they get back without affecting the cache.
 
 ### Multi-worker invalidation
 
-For multi-worker production, configure an `InvalidationBackend` so `invalidate()` fans out
-to every process. This is also what enables cross-request caching per worker:
-
-```python
-from pyjinhx import PjxSettings, setup
-from pyjinhx.integrations.redis import RedisInvalidationBackend
-
-setup(
-    app,
-    settings=PjxSettings(
-        invalidation_backend=RedisInvalidationBackend("redis://localhost:6379/0"),
-    ),
-)
-```
-
-Requires `pip install pyjinhx[redis]`. See [Redis integration](api/integrations-redis.md).
+Not yet implemented — today's cache is per request only, and there is no cross-worker
+invalidation backend. See [Redis integration](api/integrations-redis.md) for the planned
+Redis-backed fan-out.
 
 ## Loading indicators (in-flight)
 
