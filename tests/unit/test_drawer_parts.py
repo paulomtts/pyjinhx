@@ -1,6 +1,6 @@
 """Tests for PJXDrawerBody and PJXDrawerFooter."""
 
-from pyjinhx.builtins import PJXDrawerBody, PJXDrawerFooter
+from pyjinhx_v0.builtins import PJXDrawerBody, PJXDrawerFooter
 
 
 def test_drawer_body_renders_div():

@@ -1,4 +1,4 @@
-from pyjinhx.utils import read_vendored_htmx
+from pyjinhx_v0.utils import read_vendored_htmx
 
 
 def test_returns_vendored_htmx_library_source():

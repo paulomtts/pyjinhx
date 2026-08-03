@@ -2,7 +2,7 @@
 Tests for CSS/JS asset collection from classless (template-only) components.
 
 Prior to the fix, _collect_component_javascript/_css resolved the asset directory
-via Finder.get_class_directory(BaseComponent), which pointed to the pyjinhx package
+via Finder.get_class_directory(BaseComponent), which pointed to the pyjinhx_v0 package
 directory rather than the user's component directory.  Assets were never found.
 
 The fix: when the component is a bare BaseComponent fallback, derive the asset
@@ -14,8 +14,8 @@ import tempfile
 
 from jinja2 import Environment, FileSystemLoader
 
-from pyjinhx import Registry
-from pyjinhx.renderer import Renderer
+from pyjinhx_v0 import Registry
+from pyjinhx_v0.renderer import Renderer
 
 
 def test_classless_component_js_collected():

@@ -1,6 +1,6 @@
 import re
 
-from pyjinhx.builtins import PJXLazyLoad, PJXSkeleton
+from pyjinhx_v0.builtins import PJXLazyLoad, PJXSkeleton
 
 
 def _root(html: str) -> str:

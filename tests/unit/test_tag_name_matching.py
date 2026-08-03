@@ -1,6 +1,6 @@
 import pytest
 
-from pyjinhx.tags import RE_PASCAL_CASE_TAG_NAME, contains_custom_tag
+from pyjinhx_v0.tags import RE_PASCAL_CASE_TAG_NAME, contains_custom_tag
 
 
 @pytest.mark.parametrize(

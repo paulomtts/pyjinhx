@@ -2,8 +2,8 @@ from pathlib import Path
 
 from markupsafe import Markup
 
-from pyjinhx.reactive import _finish_with_oob, _mounted_ids_in
-from pyjinhx.renderer import Renderer
+from pyjinhx_v0.reactive import _finish_with_oob, _mounted_ids_in
+from pyjinhx_v0.renderer import Renderer
 from tests.reactive_test_support import reactive_client, record_mutation
 from tests.ui.reactive import store
 from tests.ui.reactive.reactive_clear_button import ReactiveClearButton  # noqa: F401
@@ -94,7 +94,7 @@ def test_base_render_unchanged_without_backend():
 
 
 def test_reactive_response_fans_out_for_raw_string():
-    from pyjinhx.reactive import ReactiveResponse
+    from pyjinhx_v0.reactive import ReactiveResponse
 
     store.state["remaining"] = 9
     manifest = [{"id": "counter", "type": "ReactiveCounter", "hash": "stale"}]
@@ -107,7 +107,7 @@ def test_reactive_response_fans_out_for_raw_string():
 
 
 def test_reactive_response_no_arg_fans_out():
-    from pyjinhx.reactive import ReactiveResponse
+    from pyjinhx_v0.reactive import ReactiveResponse
 
     store.state["remaining"] = 5
     manifest = [{"id": "counter", "type": "ReactiveCounter", "hash": "stale"}]
@@ -119,7 +119,7 @@ def test_reactive_response_no_arg_fans_out():
 
 
 def test_reactive_response_passthrough_without_backend():
-    from pyjinhx.reactive import ReactiveResponse
+    from pyjinhx_v0.reactive import ReactiveResponse
 
     record_mutation("todos")
     out = ReactiveResponse(html="<p>x</p>")
@@ -129,7 +129,7 @@ def test_reactive_response_passthrough_without_backend():
 def test_reactive_response_is_str_and_markup():
     from markupsafe import Markup
 
-    from pyjinhx.reactive import ReactiveResponse
+    from pyjinhx_v0.reactive import ReactiveResponse
 
     out = ReactiveResponse()
     assert isinstance(out, str)
@@ -137,7 +137,7 @@ def test_reactive_response_is_str_and_markup():
 
 
 def test_reactive_response_emits_once_per_scope():
-    from pyjinhx.reactive import ReactiveResponse
+    from pyjinhx_v0.reactive import ReactiveResponse
 
     store.state["remaining"] = 1
     manifest = [{"id": "counter", "type": "ReactiveCounter", "hash": "stale"}]
@@ -150,8 +150,8 @@ def test_reactive_response_emits_once_per_scope():
 
 
 def test_reactive_response_key_dirties_and_fans_out():
-    from pyjinhx.mutations import MutationTracker
-    from pyjinhx.reactive import ReactiveResponse
+    from pyjinhx_v0.mutations import MutationTracker
+    from pyjinhx_v0.reactive import ReactiveResponse
     from tests.reactive_test_support import Keys
 
     # No client scope: record() runs but the fan-out (which would consume the
@@ -168,9 +168,9 @@ def test_reactive_response_key_dirties_and_fans_out():
 
 
 def test_reactive_response_records_multiple_keys():
-    from pyjinhx import MutationKey
-    from pyjinhx.mutations import MutationTracker
-    from pyjinhx.reactive import ReactiveResponse
+    from pyjinhx_v0 import MutationKey
+    from pyjinhx_v0.mutations import MutationTracker
+    from pyjinhx_v0.reactive import ReactiveResponse
     from tests.reactive_test_support import Keys
 
     class OtherKeys(MutationKey):
@@ -181,8 +181,8 @@ def test_reactive_response_records_multiple_keys():
 
 
 def test_reactive_response_key_kwarg_derives_per_instance_key():
-    from pyjinhx.mutations import MutationTracker
-    from pyjinhx.reactive import ReactiveResponse
+    from pyjinhx_v0.mutations import MutationTracker
+    from pyjinhx_v0.reactive import ReactiveResponse
     from tests.reactive_test_support import Keys
 
     ReactiveResponse(Keys.TODOS, key="42")
@@ -190,9 +190,9 @@ def test_reactive_response_key_kwarg_derives_per_instance_key():
 
 
 def test_reactive_response_key_kwarg_applies_to_every_key():
-    from pyjinhx import MutationKey
-    from pyjinhx.mutations import MutationTracker
-    from pyjinhx.reactive import ReactiveResponse
+    from pyjinhx_v0 import MutationKey
+    from pyjinhx_v0.mutations import MutationTracker
+    from pyjinhx_v0.reactive import ReactiveResponse
     from tests.reactive_test_support import Keys
 
     class OtherKeys(MutationKey):
@@ -203,8 +203,8 @@ def test_reactive_response_key_kwarg_applies_to_every_key():
 
 
 def test_reactive_response_key_kwarg_reloads_only_the_matching_instance():
-    from pyjinhx.cache import LoadCache
-    from pyjinhx.reactive import ReactiveResponse
+    from pyjinhx_v0.cache import LoadCache
+    from pyjinhx_v0.reactive import ReactiveResponse
     from tests.ui.reactive.counted_row import CountedRow
     from tests.ui.reactive.counted_row import Keys as RowKeys
 
@@ -222,7 +222,7 @@ def test_reactive_response_key_kwarg_reloads_only_the_matching_instance():
 
 
 def test_reactive_response_html_keyword_keeps_primary_and_fans_out():
-    from pyjinhx.reactive import ReactiveResponse
+    from pyjinhx_v0.reactive import ReactiveResponse
 
     store.state["remaining"] = 8
     manifest = [{"id": "counter", "type": "ReactiveCounter", "hash": "stale"}]
@@ -235,7 +235,7 @@ def test_reactive_response_html_keyword_keeps_primary_and_fans_out():
 
 
 def test_reactive_response_key_and_html():
-    from pyjinhx.reactive import ReactiveResponse
+    from pyjinhx_v0.reactive import ReactiveResponse
     from tests.reactive_test_support import Keys
 
     store.state["remaining"] = 8
@@ -250,7 +250,7 @@ def test_reactive_response_key_and_html():
 def test_reactive_response_bare_string_positional_raises():
     import pytest
 
-    from pyjinhx.reactive import ReactiveResponse
+    from pyjinhx_v0.reactive import ReactiveResponse
 
     with pytest.raises(TypeError) as exc:
         ReactiveResponse("<p>oops</p>")  # type: ignore[arg-type]  # deliberately misuses the signature
@@ -258,8 +258,8 @@ def test_reactive_response_bare_string_positional_raises():
 
 
 def test_reactive_response_record_invalidates_load_cache(monkeypatch):
-    from pyjinhx import cache as cache_mod
-    from pyjinhx.reactive import ReactiveResponse
+    from pyjinhx_v0 import cache as cache_mod
+    from pyjinhx_v0.reactive import ReactiveResponse
     from tests.reactive_test_support import Keys
 
     calls = []
@@ -282,7 +282,7 @@ def test_reactive_response_record_invalidates_load_cache(monkeypatch):
 def test_class_render_does_not_double_invalidate(monkeypatch):
     # The class-render path invalidates before rendering the primary, so the
     # OOB tail must NOT invalidate again (avoids a redundant publish).
-    from pyjinhx import cache as cache_mod
+    from pyjinhx_v0 import cache as cache_mod
 
     calls = []
     original = cache_mod.LoadCache.invalidate

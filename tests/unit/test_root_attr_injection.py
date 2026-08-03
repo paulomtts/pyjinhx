@@ -2,9 +2,9 @@ from typing import Any
 
 import pytest
 
-from pyjinhx import BaseComponent, Renderer
-from pyjinhx.base import collect_extra_attrs
-from pyjinhx.builtins import PJXPopoverTrigger
+from pyjinhx_v0 import BaseComponent, Renderer
+from pyjinhx_v0.base import collect_extra_attrs
+from pyjinhx_v0.builtins import PJXPopoverTrigger
 
 
 def test_collect_merges_extra_attrs_field_and_stray_attrs():

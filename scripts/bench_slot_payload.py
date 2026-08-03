@@ -3,9 +3,9 @@
 bench_render_scaling_v2.py sweeps component *count* with tiny per-component
 payloads, and bench_render_depth.py sweeps nesting depth at breadth 1. Neither
 moves the number of *bytes* flowing through a level, so two size-driven costs
-are invisible in both: VerbatimParser.feed (pyjinhx2/segments.py), which scans
+are invisible in both: VerbatimParser.feed (pyjinhx/segments.py), which scans
 every character of a level's rendered markup and rebuilds a line-start index
-over it, and _splice_slot_nodes (pyjinhx2/render.py), which walks each string
+over it, and _splice_slot_nodes (pyjinhx/render.py), which walks each string
 segment looking for slot placeholder tokens. This script pins the component
 count and sweeps payload size instead, so any super-linear cost in bytes shows
 up on its own axis.
@@ -33,11 +33,11 @@ import tempfile
 import time
 from pathlib import Path
 
-from pyjinhx2 import discovery
-from pyjinhx2.component import BaseComponent, Children, Slot, _pascal_to_snake
-from pyjinhx2.descriptor import ClassDescriptor
-from pyjinhx2.render import render
-from pyjinhx2.session import RenderSession
+from pyjinhx import discovery
+from pyjinhx.component import BaseComponent, Children, Slot, _pascal_to_snake
+from pyjinhx.descriptor import ClassDescriptor
+from pyjinhx.render import render
+from pyjinhx.session import RenderSession
 
 FIXED_COMPONENTS = 50
 PAYLOAD_BYTES = (64, 256, 1024, 4096, 16384, 65536)
@@ -105,12 +105,12 @@ def build_slot_arm(
     """Root whose slot field holds a *list of leaf component instances*.
 
     Only a component-valued slot ever reaches _splice_slot_nodes: the finalize
-    hook (pyjinhx2/markers.py:finalize_slot_node) swaps in a placeholder token
+    hook (pyjinhx/markers.py:finalize_slot_node) swaps in a placeholder token
     only for a ComponentNode, and build_context._wrap_slot_value only wraps a
     Slot-typed field's value when it is actually a BaseComponent (or a
     list/dict of them) — never a plain str. A payload authored as markup
     attrs (``<Leaf panel="{{ payload }}"/>``) always arrives as a string via
-    ChildRef.attrs (pyjinhx2/render.py's own docstring: "A tag attribute
+    ChildRef.attrs (pyjinhx/render.py's own docstring: "A tag attribute
     always arrives as a string"), so that shape would never produce a token
     and _splice_slot_nodes would no-op on it — indistinguishable from the
     children arm and not what this script claims to isolate. The leaves are

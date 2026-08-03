@@ -1,7 +1,8 @@
-from pyjinhx import BaseComponent
-from pyjinhx.base import AttrValue
+from pyjinhx.component import AttrValue, BaseComponent, Slot
 
 
 class PJXCardBody(BaseComponent):
+    """The padded content region of a card."""
+
     class_name: AttrValue = ""
-    content: str | BaseComponent = ""
+    content: Slot = ""

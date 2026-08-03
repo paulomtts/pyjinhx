@@ -3,7 +3,7 @@
 
 import re
 
-from pyjinhx.builtins import PJXChipInput
+from pyjinhx_v0.builtins import PJXChipInput
 
 
 def _root(html: str) -> str:

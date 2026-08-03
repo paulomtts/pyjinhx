@@ -1,6 +1,6 @@
 """Render-cycle guard: cyclic cross-references render empty instead of recursing.
 
-Repro for https://github.com/paulomtts/pyjinhx/issues/64 — a PascalCase tag
+Repro for https://github.com/paulomtts/pyjinhx_v0/issues/64 — a PascalCase tag
 composing a registered component inside ``Registry.request_scope()`` used to
 hit ``RecursionError`` because every registered instance is injected into the
 render context and eagerly rendered.
@@ -10,8 +10,8 @@ import logging
 
 from jinja2 import Environment, FileSystemLoader
 
-from pyjinhx import BaseComponent, Registry
-from pyjinhx.renderer import Renderer
+from pyjinhx_v0 import BaseComponent, Registry
+from pyjinhx_v0.renderer import Renderer
 from tests.ui.unified_component import UnifiedComponent
 
 
@@ -186,7 +186,7 @@ def test_cycle_suppression_logs_warning(tmp_path, caplog):
     renderer = _renderer_for(tmp_path)
     with Registry.request_scope():
         CycleWarn(id="w")
-        with caplog.at_level(logging.WARNING, logger="pyjinhx"):
+        with caplog.at_level(logging.WARNING, logger="pyjinhx_v0"):
             renderer.render('<CycleWarn id="w"/>')
 
     assert any("render cycle suppressed" in r.message for r in caplog.records)

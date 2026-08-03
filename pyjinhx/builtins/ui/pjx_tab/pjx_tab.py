@@ -1,8 +1,9 @@
-from pyjinhx import BaseComponent
-from pyjinhx.base import AttrValue
+from pyjinhx.component import AttrValue, BaseComponent, Slot
 
 
 class PJXTab(BaseComponent):
+    """One tab trigger; ``panel`` wires it to the PJXTabPanel it reveals."""
+
     panel: str = ""
     icon: str = ""
     closeable: bool = False
@@ -10,4 +11,4 @@ class PJXTab(BaseComponent):
     selected: bool = False
     close_label: str = "Close"
     class_name: AttrValue = ""
-    content: str | BaseComponent = ""
+    content: Slot = ""

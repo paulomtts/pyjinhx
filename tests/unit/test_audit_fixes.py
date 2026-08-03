@@ -1,7 +1,7 @@
 import pytest
 
-from pyjinhx.finder import Finder
-from pyjinhx.tags import Parser
+from pyjinhx_v0.finder import Finder
+from pyjinhx_v0.tags import Parser
 
 
 def test_parser_raises_on_unclosed_custom_tag():

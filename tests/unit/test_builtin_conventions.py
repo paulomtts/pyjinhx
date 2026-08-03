@@ -4,9 +4,9 @@
 import os
 import re
 
-import pyjinhx.builtins as b
-from pyjinhx.base import _is_slot_field
-from pyjinhx.utils import TEMPLATE_EXTENSIONS
+import pyjinhx_v0.builtins as b
+from pyjinhx_v0.base import _is_slot_field
+from pyjinhx_v0.utils import TEMPLATE_EXTENSIONS
 
 SWEPT: list[type] = [getattr(b, name) for name in b.__all__]
 

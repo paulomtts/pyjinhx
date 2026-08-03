@@ -1,7 +1,8 @@
-from pyjinhx import BaseComponent
-from pyjinhx.base import AttrValue
+from pyjinhx.component import AttrValue, BaseComponent, Slot
 
 
 class PJXDrawerBody(BaseComponent):
+    """The scrollable middle region of a drawer."""
+
     class_name: AttrValue = ""
-    content: str | BaseComponent = ""
+    content: Slot = ""

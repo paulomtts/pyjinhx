@@ -7,7 +7,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 
 from jinja2 import Environment, FileSystemLoader
 
-from pyjinhx import BaseComponent, Renderer
+from pyjinhx_v0 import BaseComponent, Renderer
 
 
 def test_custom_html():

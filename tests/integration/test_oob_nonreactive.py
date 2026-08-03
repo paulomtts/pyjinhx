@@ -5,11 +5,11 @@ from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
 from fastapi.testclient import TestClient
 
-from pyjinhx import setup
-from pyjinhx.client import PJX_MOUNTED_HEADER
-from pyjinhx.mutations import MutationTracker
-from pyjinhx.reactive import ReactiveResponse
-from pyjinhx.renderer import Renderer
+from pyjinhx_v0 import setup
+from pyjinhx_v0.client import PJX_MOUNTED_HEADER
+from pyjinhx_v0.mutations import MutationTracker
+from pyjinhx_v0.reactive import ReactiveResponse
+from pyjinhx_v0.renderer import Renderer
 from tests.ui.reactive import store
 from tests.ui.reactive.reactive_counter import ReactiveCounter
 from tests.ui.unified_component import UnifiedComponent

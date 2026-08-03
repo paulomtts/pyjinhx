@@ -4,8 +4,8 @@ import re
 
 import pytest
 
-from pyjinhx import Renderer
-from pyjinhx.builtins import PJXTab, PJXTabList, PJXTabPanel
+from pyjinhx_v0 import Renderer
+from pyjinhx_v0.builtins import PJXTab, PJXTabList, PJXTabPanel
 
 
 @pytest.fixture(autouse=True)
@@ -15,7 +15,7 @@ def _env(tmp_path):
 
 from pathlib import Path
 
-_UI = Path(__file__).resolve().parents[2] / "pyjinhx" / "builtins" / "ui"
+_UI = Path(__file__).resolve().parents[2] / "pyjinhx_v0" / "builtins" / "ui"
 _TAB_CSS = {
     "group": _UI / "pjx_tab_group" / "pjx-tab-group.css",
     "tab": _UI / "pjx_tab" / "pjx-tab.css",

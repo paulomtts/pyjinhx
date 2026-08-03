@@ -1,4 +1,4 @@
-from pyjinhx.builtins import PJXAvatar, PJXAvatarStack
+from pyjinhx_v0.builtins import PJXAvatar, PJXAvatarStack
 
 
 def test_stack_renders_avatars_and_overflow():

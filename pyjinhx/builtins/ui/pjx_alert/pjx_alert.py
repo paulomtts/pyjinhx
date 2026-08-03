@@ -2,16 +2,22 @@ from typing import ClassVar, Literal
 
 from pydantic import Field
 
-from pyjinhx import BaseComponent
-from pyjinhx.base import AttrValue, ExtraAttrs
+from pyjinhx.component import AttrValue, BaseComponent, ExtraAttrs, Slot
 
 
 class PJXAlert(BaseComponent):
-    _pjx_children_field: ClassVar[str] = "body"
+    """An inline, optionally dismissible status banner.
+
+    The server emits static markup only; dismissal is wired declaratively by
+    the co-located script off the ``data-pjx-close`` marker, so no inline
+    handler ever reaches the page.
+    """
+
+    _pjx_children_field: ClassVar[str | None] = "body"
 
     variant: Literal["info", "success", "warning", "error"] = "info"
     title: str = ""
-    body: str | BaseComponent = ""
+    body: Slot = ""
     dismissible: bool = False
     dismiss_label: str = "Dismiss"
     class_name: AttrValue = ""

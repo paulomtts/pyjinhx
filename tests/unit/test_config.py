@@ -1,9 +1,9 @@
 import os
 from unittest.mock import patch
 
-from pyjinhx import PjxSettings
-from pyjinhx.cache import CacheScope, InvalidationBackend, LoadCache
-from pyjinhx.config import configure_pyjinhx, shutdown_pyjinhx
+from pyjinhx_v0 import PjxSettings
+from pyjinhx_v0.cache import CacheScope, InvalidationBackend, LoadCache
+from pyjinhx_v0.config import configure_pyjinhx, shutdown_pyjinhx
 
 
 class _StubBackend(InvalidationBackend):
@@ -87,7 +87,7 @@ def test_explicit_kwarg_still_overrides_settings():
 
 
 def test_from_env_with_sqlite_db(tmp_path):
-    from pyjinhx.integrations.sqlite import SqliteInvalidationBackend
+    from pyjinhx_v0.integrations.sqlite import SqliteInvalidationBackend
 
     db = str(tmp_path / "inval.db")
     with patch.dict(os.environ, {"PJX_INVALIDATION_DB": db}, clear=True):
@@ -99,7 +99,7 @@ def test_from_env_with_sqlite_db(tmp_path):
 
 
 def test_from_env_redis_wins_over_sqlite(tmp_path):
-    from pyjinhx.integrations.redis import RedisInvalidationBackend
+    from pyjinhx_v0.integrations.redis import RedisInvalidationBackend
 
     db = str(tmp_path / "inval.db")
     with patch.dict(
@@ -114,7 +114,7 @@ def test_inject_htmx_defaults_true():
 
 
 def test_configure_pyjinhx_toggles_inject_htmx():
-    from pyjinhx import assets
+    from pyjinhx_v0 import assets
 
     configure_pyjinhx(inject_htmx=False)
     assert assets._inject_htmx is False

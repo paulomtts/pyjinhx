@@ -1,6 +1,6 @@
 import re
 
-from pyjinhx.builtins import PJXPageLoader
+from pyjinhx_v0.builtins import PJXPageLoader
 
 
 def _root(html: str) -> str:

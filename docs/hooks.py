@@ -10,8 +10,8 @@ sys.path.insert(0, HERE)
 
 from demos import DEMOS
 
-from pyjinhx import BaseComponent, Registry
-from pyjinhx.utils import pascal_case_to_kebab_case
+from pyjinhx_v0 import BaseComponent, Registry
+from pyjinhx_v0.utils import pascal_case_to_kebab_case
 
 _MARKER = re.compile(r"<!--\s*demo:\s*([A-Za-z]+)\s*-->")
 

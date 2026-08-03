@@ -2,16 +2,15 @@ from typing import Any
 
 from pydantic import Field
 
-from pyjinhx import BaseComponent
-from pyjinhx.base import AttrValue, ExtraAttrs
+from pyjinhx.component import AttrValue, BaseComponent, Slot
 
 
 class PJXEmptyState(BaseComponent):
-    # First-class interactive suggestion chips (issue #77). Each item is a dict:
-    #   - label (str): button text
-    #   - value (str, optional): dispatched with the event; defaults to label
-    #   - event (str, optional): custom event name; defaults to "pjx:suggestion"
+    """An empty-state panel with slot content and optional suggestion chips."""
+
+    # Each chip is a dict: label (str, button text), value (str, optional,
+    # dispatched with the event; defaults to label), event (str, optional,
+    # custom event name; defaults to "pjx:suggestion").
     suggestions: list[Any] = Field(default_factory=list)
     class_name: AttrValue = ""
-    content: str | BaseComponent = ""
-    extra_attrs: ExtraAttrs = Field(default_factory=dict)
+    content: Slot = ""

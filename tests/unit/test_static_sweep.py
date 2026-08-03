@@ -1,6 +1,6 @@
 import pytest
 
-from pyjinhx.builtins import (
+from pyjinhx_v0.builtins import (
     PJXAvatar,
     PJXBadge,
     PJXBreadcrumb,

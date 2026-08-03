@@ -1,10 +1,10 @@
 import math
 import re
+from typing import ClassVar
 
 from pydantic import ValidationInfo, computed_field, field_validator
 
-from pyjinhx import BaseComponent
-from pyjinhx.base import AttrValue
+from pyjinhx.component import AttrValue, BaseComponent, Slot
 
 _PX = re.compile(r"^\d+(\.\d+)?px$")
 _NUM = re.compile(r"\d+(\.\d+)?")
@@ -30,11 +30,21 @@ def _floor_css(v: object) -> str | None:
 
 
 class PJXResizablePanel(BaseComponent):
+    """One resizable region of a :class:`PJXResizableGroup`.
+
+    A bound given as a bare number is a percentage the group's controller
+    clamps in JS; a ``"<n>px"`` bound (or ``min="content"``) is a hard floor
+    the browser owns through a CSS custom property, because a pixel strip must
+    stay visible even when the percentage math would hide it.
+    """
+
+    _pjx_children_field: ClassVar[str | None] = "content"
+
     size: float | None = None
     min: str | float = 0.0
     max: str | float = 100.0
     class_name: AttrValue = ""
-    content: str | BaseComponent = ""
+    content: Slot = ""
 
     @field_validator("min", "max")
     @classmethod

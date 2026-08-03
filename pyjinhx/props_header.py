@@ -1,19 +1,25 @@
-"""Parse a template's leading ``{#def ... #}`` prop header into a pydantic model.
+"""Parse a template's leading ``{#def ... #}`` prop header into a prop spec.
 
-A classless component template may declare its props in a header that is the
-first non-whitespace in the file::
+A classless component template declares its props in a header that is the first
+non-whitespace in the file::
 
     {#def title: str, count: int = 0, variant: str = "primary" #}
 
-The header is a valid (inert) Jinja comment; pyjinhx parses it out-of-band and
-builds a ``BaseComponent`` subclass whose declared props are validated fields.
+The header is a valid (inert) Jinja comment; pyjinhx reads it out-of-band. This
+module only parses — turning the result into a component class is done by the
+caller.
 """
 
 import ast
+import logging
 import re
-from typing import Any
+from pathlib import Path
+from typing import TYPE_CHECKING, Any
 
 from pydantic import create_model
+
+if TYPE_CHECKING:
+    from pyjinhx.component import OpenComponent
 
 _HEADER_RE = re.compile(r"\A\s*\{#\s*def\s+(?P<sig>.*?)\s*#\}", re.DOTALL)
 
@@ -28,7 +34,7 @@ _TYPES: dict[str, Any] = {
 }
 
 
-def _resolve_annotation(node: "ast.expr | None") -> Any:
+def _resolve_annotation(node: ast.expr | None) -> Any:
     if node is None:
         return Any
     if isinstance(node, ast.Name):
@@ -54,7 +60,7 @@ def _resolve_annotation(node: "ast.expr | None") -> Any:
     return Any
 
 
-def parse_props_header(source: str) -> "list[tuple[str, Any, Any]] | None":
+def parse_props_header(source: str) -> list[tuple[str, Any, Any]] | None:
     """Parse a ``{#def ... #}`` header; return ``[(name, type, default), ...]`` or None.
 
     ``default`` is ``Ellipsis`` (``...``) for a required prop. Raises ``ValueError``
@@ -84,6 +90,7 @@ def parse_props_header(source: str) -> "list[tuple[str, Any, Any]] | None":
         )
     args = arguments.args
     defaults = arguments.defaults
+    # Defaults bind to the *last* N params, so this offset maps index -> default.
     offset = len(args) - len(defaults)
     seen: set[str] = set()
     fields: list[tuple[str, Any, Any]] = []
@@ -108,17 +115,77 @@ def parse_props_header(source: str) -> "list[tuple[str, Any, Any]] | None":
     return fields
 
 
-def build_component_model(name: str, source: str) -> "type | None":
-    """Build a ``BaseComponent`` subclass from a template's header, or None if absent."""
-    fields = parse_props_header(source)
-    if fields is None:
-        return None
-    from pyjinhx.base import BaseComponent
+def build_component_class(
+    fields: list[tuple[str, Any, Any]], tag: str
+) -> "type[OpenComponent]":
+    """Build an open-model component class named ``tag`` from parsed header fields.
 
-    field_definitions: dict[str, Any] = {
-        field_name: (field_type, default) for field_name, field_type, default in fields
+    ``fields`` is ``parse_props_header``'s output verbatim: ``(name, annotation,
+    default)``, with ``Ellipsis`` as the default for a required prop — which is
+    already pydantic's own required sentinel, so each tuple maps straight onto a
+    ``create_model`` field definition with no translation.
+
+    The base is ``OpenComponent`` rather than ``BaseComponent``: a header
+    declares the props a template reads, not the full set of attributes a caller
+    may pass through, so undeclared keys must land in ``model_extra`` instead of
+    raising.
+    """
+    from pyjinhx.component import OpenComponent
+
+    definitions: dict[str, Any] = {
+        name: (annotation, default) for name, annotation, default in fields
     }
-    model = create_model(name, __base__=BaseComponent, **field_definitions)
-    model._pjx_template = name
-    model._pjx_classless = True
-    return model
+    # create_model otherwise reads __module__ off the calling frame, which would
+    # make a generated class's template and asset probing depend on which module
+    # happened to call in. Pin it here; discovery repoints it at the template's
+    # own package and calls rebuild_class_descriptor once the class is placed.
+    cls = create_model(tag, __base__=OpenComponent, __module__=__name__, **definitions)
+    # Set after creation, not as a create_model field: a leading underscore is a
+    # pydantic private attribute, and this is a plain class-level marker that
+    # downstream code reads off the type, never off an instance.
+    cls._pjx_classless = True  # pyright: ignore[reportAttributeAccessIssue]
+    return cls
+
+
+logger = logging.getLogger("pyjinhx")
+
+
+def template_has_props_header(template_path: Path) -> bool:
+    """Whether the template at ``template_path`` opens with a ``{#def#}`` header.
+
+    Answers False for anything it cannot read or parse. This runs at class
+    registration, where the template path is a candidate that nothing has
+    proven exists yet, and a diagnostic must never be the thing that breaks an
+    import — the caller that actually loads the template still raises its own
+    error if the file is missing.
+    """
+    try:
+        source = template_path.read_text(encoding="utf-8")
+    except OSError:
+        return False
+    try:
+        return parse_props_header(source) is not None
+    except ValueError:
+        # A malformed header is still a header, but header-parse correctness
+        # belongs to the classless path; staying silent here keeps a broken
+        # header from producing two unrelated complaints.
+        return False
+
+
+_STALE_DEF_HEADER_WARNING = (
+    "<%s>: a {#def#} header is present but a Python class is registered — "
+    "the header is ignored. Remove the header (or the class)."
+)
+
+
+def warn_stale_def_header(cls: type) -> None:
+    """Report ``cls``'s ignored ``{#def#}`` header, at most once per class.
+
+    The "already reported" bit lives on the class rather than in a module-level
+    set: the fact is per-class, so the class is where it belongs, and the render
+    path gains no shared mutable state.
+    """
+    if getattr(cls, "_pjx_stale_header_warned", False):
+        return
+    cls._pjx_stale_header_warned = True  # pyright: ignore[reportAttributeAccessIssue]
+    logger.warning(_STALE_DEF_HEADER_WARNING, cls.__name__)

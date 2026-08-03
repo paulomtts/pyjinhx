@@ -4,7 +4,7 @@ bench_render_scaling_v2.py renders only plain BaseComponents;
 bench_reactive_fanout.py measures the post-render walk, not the render itself.
 Neither prices the one line where the two paths diverge: render_level() calls
 child.pjx_mount() on every child it instantiates, unconditionally
-(pyjinhx2/render.py). On a BaseComponent that hook is a no-op; on a
+(pyjinhx/render.py). On a BaseComponent that hook is a no-op; on a
 ReactiveComponent it runs the cache-routed load(). So a page's reactive share,
 not its node count, is what moves this cost — and nothing measured that.
 
@@ -28,12 +28,12 @@ import time
 from pathlib import Path
 from typing import Annotated
 
-from pyjinhx2 import discovery
-from pyjinhx2.component import BaseComponent, _pascal_to_snake
-from pyjinhx2.descriptor import ClassDescriptor
-from pyjinhx2.reactive.component import PjxKey, ReactiveComponent
-from pyjinhx2.render import render
-from pyjinhx2.session import RenderSession, request_scope
+from pyjinhx import discovery
+from pyjinhx.component import BaseComponent, _pascal_to_snake
+from pyjinhx.descriptor import ClassDescriptor
+from pyjinhx.reactive.component import PjxKey, ReactiveComponent
+from pyjinhx.render import render
+from pyjinhx.session import RenderSession, request_scope
 
 SHAPES = ((5, 10), (10, 20), (20, 40), (30, 60))  # (mids, leaves per mid)
 

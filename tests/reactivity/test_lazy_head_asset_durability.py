@@ -35,7 +35,7 @@ from playwright.sync_api import Page, expect
 pytestmark = [pytest.mark.pjx_runtime, pytest.mark.reactivity]
 
 _OUTER_MODULE = """\
-from pyjinhx import BaseComponent
+from pyjinhx_v0 import BaseComponent
 
 
 class Outer(BaseComponent):
@@ -66,10 +66,10 @@ _PAGE_HTML = """<!DOCTYPE html>
 def _make_app(tmp_path: Path) -> FastAPI:
     from fastapi.responses import HTMLResponse
 
-    from pyjinhx import PjxSettings, setup
-    from pyjinhx.builtins import PJXBreadcrumb
-    from pyjinhx.client import client_script
-    from pyjinhx.renderer import Renderer
+    from pyjinhx_v0 import PjxSettings, setup
+    from pyjinhx_v0.builtins import PJXBreadcrumb
+    from pyjinhx_v0.client import client_script
+    from pyjinhx_v0.renderer import Renderer
 
     (tmp_path / "outer.html").write_text(_OUTER_TEMPLATE)
     module_path = tmp_path / "outer_component.py"

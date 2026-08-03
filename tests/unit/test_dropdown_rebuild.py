@@ -1,8 +1,8 @@
 import os
 import re
 
-import pyjinhx.builtins.ui.pjx_dropdown as dropdown_pkg
-from pyjinhx.builtins import PJXDropdown
+import pyjinhx_v0.builtins.ui.pjx_dropdown as dropdown_pkg
+from pyjinhx_v0.builtins import PJXDropdown
 
 
 def _root_tag(html: str) -> str:
@@ -55,7 +55,7 @@ def test_dropdown_headless_mode():
 def test_nested_dropdown_ships_popover_js():
     # Regression: extra-asset JS must be collected for nested components,
     # not only for the outermost root (fix to apply_component_render_assets).
-    from pyjinhx.builtins import PJXCard, PJXCardBody
+    from pyjinhx_v0.builtins import PJXCard, PJXCardBody
 
     html = str(
         PJXCard(

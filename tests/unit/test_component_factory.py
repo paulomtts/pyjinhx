@@ -2,8 +2,8 @@ import os
 
 import pytest
 
-from pyjinhx import BaseComponent, component
-from pyjinhx.renderer import Renderer
+from pyjinhx_v0 import BaseComponent, component
+from pyjinhx_v0.renderer import Renderer
 
 
 @pytest.fixture

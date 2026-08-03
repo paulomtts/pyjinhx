@@ -1,5 +1,5 @@
-from pyjinhx import MutationKey, ReactiveComponent
-from pyjinhx.cache import LoadCache
+from pyjinhx_v0 import MutationKey, ReactiveComponent
+from pyjinhx_v0.cache import LoadCache
 from tests.ui.reactive.cached_widget import CachedWidget, load_calls
 
 
@@ -78,6 +78,6 @@ def test_invalidate_cleans_reverse_index_across_keys():
 
 
 def test_invalidate_is_exported():
-    from pyjinhx.cache import LoadCache as exported
+    from pyjinhx_v0.cache import LoadCache as exported
 
     assert callable(exported)

@@ -1,3 +1,3 @@
-from .pjx_tab_list import PJXTabList
+from pyjinhx.builtins.ui.pjx_tab_list.pjx_tab_list import PJXTabList
 
 __all__ = ["PJXTabList"]

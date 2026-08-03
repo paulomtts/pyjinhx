@@ -1,6 +1,6 @@
 import logging
 
-from pyjinhx import Registry
+from pyjinhx_v0 import Registry
 from tests.ui.unified_component import UnifiedComponent
 
 
@@ -26,7 +26,7 @@ def test_request_scope_creates_fresh_registry():
 
 
 def test_request_scope_no_warnings_on_reuse(caplog):
-    logging.getLogger("pyjinhx").setLevel(logging.WARNING)
+    logging.getLogger("pyjinhx_v0").setLevel(logging.WARNING)
 
     Registry.clear_instances()
 

@@ -3,13 +3,13 @@ from typing import Any
 
 import pytest
 
-from pyjinhx import Registry
-from pyjinhx.assets import RenderSession
-from pyjinhx.cache import CacheScope, InvalidationHub, LoadCache
-from pyjinhx.client import ClientBackend
-from pyjinhx.config import shutdown_pyjinhx
-from pyjinhx.mutations import MutationTracker
-from pyjinhx.renderer import Renderer
+from pyjinhx_v0 import Registry
+from pyjinhx_v0.assets import RenderSession
+from pyjinhx_v0.cache import CacheScope, InvalidationHub, LoadCache
+from pyjinhx_v0.client import ClientBackend
+from pyjinhx_v0.config import shutdown_pyjinhx
+from pyjinhx_v0.mutations import MutationTracker
+from pyjinhx_v0.renderer import Renderer
 
 
 def _noop_inject_runtime(
@@ -28,7 +28,7 @@ def _suppress_pjx_runtime_injection(
     if request.node.get_closest_marker("pjx_runtime"):
         return
     monkeypatch.setattr(
-        "pyjinhx.assets.inject_runtime",
+        "pyjinhx_v0.assets.inject_runtime",
         _noop_inject_runtime,
     )
 
@@ -49,7 +49,7 @@ def _isolate_reactive_state(
     request: pytest.FixtureRequest,
 ) -> Generator[None]:
     """
-    Reset pyjinhx reactive state around every test inside a request scope.
+    Reset pyjinhx_v0 reactive state around every test inside a request scope.
 
     Mirrors production: load() cache (REQUEST scope), instance registry, and
     mutation tracking are all request-scoped. Tests marked ``no_request_scope``

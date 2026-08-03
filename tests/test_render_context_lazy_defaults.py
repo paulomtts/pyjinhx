@@ -13,10 +13,10 @@ from concurrent.futures import ThreadPoolExecutor
 
 from jinja2 import Environment, FileSystemLoader
 
-import pyjinhx.renderer as renderer_module
-from pyjinhx import Renderer
-from pyjinhx.assets import RenderSession
-from pyjinhx.registry import Registry
+import pyjinhx_v0.renderer as renderer_module
+from pyjinhx_v0 import Renderer
+from pyjinhx_v0.assets import RenderSession
+from pyjinhx_v0.registry import Registry
 
 
 def _load_module(tmp_path, name: str, source: str):
@@ -47,7 +47,7 @@ def test_cross_reference_still_resolves(tmp_path):
     module = _load_module(
         tmp_path,
         "lazy_defaults_components",
-        "from pyjinhx import BaseComponent\n\n"
+        "from pyjinhx_v0 import BaseComponent\n\n"
         "class LazyHost(BaseComponent):\n"
         "    pass\n\n"
         "class LazyPeer(BaseComponent):\n"
@@ -77,7 +77,7 @@ def test_unreferenced_peers_do_not_render(tmp_path):
     module = _load_module(
         tmp_path,
         "quiet_defaults_components",
-        "from pyjinhx import BaseComponent\n\n"
+        "from pyjinhx_v0 import BaseComponent\n\n"
         "class QuietHost(BaseComponent):\n"
         "    pass\n\n"
         "class QuietPeer(BaseComponent):\n"
@@ -106,7 +106,7 @@ def test_peer_resolves_inside_an_included_partial(tmp_path):
     module = _load_module(
         tmp_path,
         "include_defaults_components",
-        "from pyjinhx import BaseComponent\n\n"
+        "from pyjinhx_v0 import BaseComponent\n\n"
         "class IncHost(BaseComponent):\n"
         "    pass\n\n"
         "class IncPeer(BaseComponent):\n"
@@ -133,7 +133,7 @@ def test_explicit_context_shadows_same_named_peer(tmp_path):
     module = _load_module(
         tmp_path,
         "shadow_defaults_components",
-        "from pyjinhx import BaseComponent\n\n"
+        "from pyjinhx_v0 import BaseComponent\n\n"
         "class ShadowHost(BaseComponent):\n"
         "    shadow_peer: str = ''\n\n"
         "class ShadowPeer(BaseComponent):\n"
@@ -162,7 +162,7 @@ def test_peer_shadows_environment_global_of_the_same_name(tmp_path):
     module = _load_module(
         tmp_path,
         "global_defaults_components",
-        "from pyjinhx import BaseComponent\n\n"
+        "from pyjinhx_v0 import BaseComponent\n\n"
         "class GlobalHost(BaseComponent):\n"
         "    pass\n\n"
         "class GlobalPeer(BaseComponent):\n"
@@ -199,7 +199,7 @@ def test_peer_shadows_environment_global_inside_a_derived_context(tmp_path):
     module = _load_module(
         tmp_path,
         "scoped_defaults_components",
-        "from pyjinhx import BaseComponent\n\n"
+        "from pyjinhx_v0 import BaseComponent\n\n"
         "class ScopedHost(BaseComponent):\n"
         "    pass\n\n"
         "class ScopedPeer(BaseComponent):\n"
@@ -224,7 +224,7 @@ def test_async_environment_still_renders(tmp_path):
     module = _load_module(
         tmp_path,
         "async_defaults_components",
-        "from pyjinhx import BaseComponent\n\n"
+        "from pyjinhx_v0 import BaseComponent\n\n"
         "class AsyncHost(BaseComponent):\n"
         "    label: str = ''\n",
     )

@@ -3,7 +3,7 @@
 
 import re
 
-from pyjinhx.builtins import PJXPasswordInput
+from pyjinhx_v0.builtins import PJXPasswordInput
 
 
 def _root(html: str) -> str:

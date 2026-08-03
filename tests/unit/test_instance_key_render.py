@@ -1,7 +1,7 @@
 from typing import Annotated
 
-from pyjinhx import MutationKey, PjxKey, ReactiveComponent
-from pyjinhx.utils import read_client_runtime
+from pyjinhx_v0 import MutationKey, PjxKey, ReactiveComponent
+from pyjinhx_v0.utils import read_client_runtime
 
 
 class Keys(MutationKey):

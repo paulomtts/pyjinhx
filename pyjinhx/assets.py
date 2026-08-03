@@ -1,483 +1,270 @@
-from __future__ import annotations
+"""L2.2 assets — delivery modes, emission, and the manifest of a request's assets."""
 
 import hashlib
-import logging
 import os
-from collections.abc import Callable
-from contextvars import ContextVar
-from dataclasses import dataclass, field
+from collections.abc import Callable, Iterable
+from dataclasses import dataclass
 from enum import Enum
-from typing import TYPE_CHECKING, Literal
-
-from .finder import Finder
-from .utils import (
-    component_resolution_classes,
-    pascal_case_to_kebab_case,
-    read_client_runtime,
-    read_vendored_htmx,
-)
+from pathlib import Path
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from .base import BaseComponent
-
-AssetKind = Literal["js", "css"]
-AssetUrlResolver = Callable[[str], str]
-
-logger = logging.getLogger("pyjinhx")
-
-DEFAULT_RUNTIME_URL = "/static/pyjinhx/pjx.js"
-DEFAULT_HTMX_URL = "/static/pyjinhx/htmx.min.js"
-DEFAULT_STATIC_PREFIX = "/static/components"
-
-# Process-wide toggle: auto-inline a vendored htmx ahead of pjx.js on reactive
-# root renders. pjx.js depends on htmx; injecting it removes the silent-failure
-# mode where reactivity no-ops because htmx was never added to the page. Users
-# who manage their own htmx can disable this via ``setup(inject_htmx=False)``.
-_inject_htmx: bool = True
-
-
-def set_inject_htmx(enabled: bool) -> None:
-    """Toggle auto-inlining of the vendored htmx runtime (see ``_inject_htmx``)."""
-    global _inject_htmx
-    _inject_htmx = enabled
-
-
-# Request-scoped "runtime already injected" flag, set by Registry.request_scope.
-# ``None`` means no request scope is active and per-session dedup applies alone.
-_runtime_injected: ContextVar[bool | None] = ContextVar(
-    "runtime_injected", default=None
-)
+    from pyjinhx.session import RenderSession
 
 
 class AssetMode(str, Enum):
+    """How a kind of asset reaches the page for one render."""
+
     INLINE = "inline"
     NONE = "none"
+    # One member for both kinds: the asset kind already decides the tag shape
+    # (<link rel="stylesheet"> vs <script src>), so a separate SRC member would
+    # only create a way to set the wrong one on the wrong kind.
+    LINK = "link"
 
 
-@dataclass
-class CollectedAsset:
-    path: str
-    kind: AssetKind
+def _inline_tags(paths: set[Path], open_tag: str, close_tag: str) -> list[str]:
+    """Read each path and wrap its contents in the given tag pair, sorted by path.
 
-
-@dataclass
-class RenderSession:
+    Sorted because the accumulator stores paths in a set, which has no stable
+    iteration order; two renders of the same tree must produce byte-identical
+    output. A path that cannot be read raises: an asset silently dropped from
+    the page is a styling bug nobody can see in the response.
     """
-    Per-render state for asset aggregation and deduplication.
+    return [
+        f"{open_tag}{path.read_text()}{close_tag}" for path in sorted(paths, key=str)
+    ]
 
-    Attributes:
-        assets: Ordered, deduplicated asset paths collected during rendering.
-        collected_paths: Set of normalized paths already processed.
-        scripts: Inline JavaScript payloads (INLINE mode only).
-        styles: Inline CSS payloads (INLINE mode only).
-        runtime_injected: Whether the pyjinhx client runtime was scheduled.
-        rendering: Registry keys (``"TypeName_id"`` tuples) of components
-            currently on the render stack, used to break cross-reference
-            cycles (a same-type-and-id reference renders empty and logs a
-            warning).
-        reactive_mount_ids: data-pjx-ids assigned to reactive components
-            auto-mounted by tag in this render pass, used to detect id
-            collisions between mounts.
-        registry_defaults: Cache of registry instances (keyed by instance id)
-            already folded into render contexts during this session, so each
-            node only has to scan the registry entries added since the last
-            node rendered instead of rescanning it from scratch.
-        registry_scanned: Number of registry entries already folded into
-            ``registry_defaults``.
+
+def _sorted_resolved(
+    paths: Iterable[Path], resolver: Callable[[Path], str]
+) -> tuple[str, ...]:
+    """Return the URLs for the given asset paths, in path-sorted order.
+
+    Sorted before resolving because the accumulator stores paths in a set,
+    which has no stable iteration order, and two renders of the same tree must
+    produce byte-identical output. A resolver that raises is left to raise — an
+    asset silently dropped from the page fails invisibly in the browser.
     """
+    return tuple(resolver(path) for path in sorted(paths, key=str))
 
-    assets: list[CollectedAsset] = field(default_factory=list)
-    collected_paths: set[str] = field(default_factory=set)
-    scripts: list[str] = field(default_factory=list)
-    styles: list[str] = field(default_factory=list)
-    runtime_injected: bool = False
-    rendering: set[tuple[str, str]] = field(default_factory=set)
-    reactive_mount_ids: set[str] = field(default_factory=set)
-    registry_defaults: dict[str, BaseComponent] = field(default_factory=dict)
-    registry_scanned: int = 0
 
-    def manifest(self, *, resolver: AssetUrlResolver) -> AssetManifest:
-        stylesheets: list[str] = []
-        scripts: list[str] = []
-        for asset in self.assets:
-            url = resolver(asset.path)
-            if asset.kind == "css":
-                stylesheets.append(url)
-            else:
-                scripts.append(url)
-        return AssetManifest(
-            stylesheets=tuple(stylesheets),
-            scripts=tuple(scripts),
+def _url_tags(
+    paths: set[Path], resolver: Callable[[Path], str], template: str
+) -> list[str]:
+    """Format each resolved asset URL into the given tag, in path-sorted order."""
+    return [template.format(url=url) for url in _sorted_resolved(paths, resolver)]
+
+
+def _require_resolver(
+    resolver: Callable[[Path], str] | None,
+) -> Callable[[Path], str]:
+    """Return the resolver, refusing to emit LINK tags without one.
+
+    Raising rather than skipping the kind: a page quietly missing its
+    stylesheets is harder to diagnose than a failed render.
+    """
+    if resolver is None:
+        raise ValueError("LINK mode needs a resolver to build asset URLs")
+    return resolver
+
+
+def emit_assets(
+    session: "RenderSession", *, resolver: Callable[[Path], str] | None = None
+) -> str:
+    """Return the markup for this session's accumulated assets, per delivery mode.
+
+    Args:
+        session: The RenderSession whose css_assets/js_assets were populated by
+            accumulate_assets during the render, and whose css_mode/js_mode say
+            how each kind is delivered.
+        resolver: Maps an asset path to the URL it is served from, in the shape
+            asset_manifest() takes. Required only when a kind is in LINK mode.
+
+    Returns:
+        Concatenated CSS tags then JS tags, newline-joined, with the session's
+        inline runtime script (if any) leading the JS tags. Empty string when
+        both kinds are NONE or nothing was accumulated.
+
+    Raises:
+        OSError: If an asset file is missing or unreadable under INLINE mode.
+        ValueError: If a kind is in LINK mode and no resolver was given.
+    """
+    tags: list[str] = []
+    if session.css_mode is AssetMode.INLINE:
+        tags += _inline_tags(session.css_assets, "<style>", "</style>")
+    elif session.css_mode is AssetMode.LINK:
+        tags += _url_tags(
+            session.css_assets,
+            _require_resolver(resolver),
+            '<link rel="stylesheet" href="{url}">',
         )
+    if session.js_mode is AssetMode.INLINE:
+        # Runtime first: component scripts may call into pjx/htmx as soon as
+        # they execute, so the tag that defines them has to precede them.
+        if session.runtime_script is not None:
+            tags.append(session.runtime_script)
+        tags += _inline_tags(session.js_assets, "<script>", "</script>")
+    elif session.js_mode is AssetMode.LINK:
+        tags += _url_tags(
+            session.js_assets,
+            _require_resolver(resolver),
+            '<script src="{url}"></script>',
+        )
+    return "\n".join(tags)
 
 
 @dataclass(frozen=True)
 class AssetManifest:
+    """The resolved asset URLs for one render, split by kind.
+
+    Attributes:
+        stylesheets: URLs of the render's CSS assets, in path order.
+        scripts: URLs of the render's JS assets, in path order.
+    """
+
     stylesheets: tuple[str, ...]
     scripts: tuple[str, ...]
 
 
-@dataclass(frozen=True)
-class AssetPolicy:
-    """How a render emits assets: per-kind mode."""
+def asset_manifest(
+    session: "RenderSession", *, resolver: Callable[[Path], str]
+) -> AssetManifest:
+    """Return the resolved URLs of this session's accumulated assets.
 
-    js_mode: AssetMode
-    css_mode: AssetMode
+    Kinds stay in separate tuples so a caller builds <link> and <script src>
+    tags without re-inspecting file extensions. Independent of css_mode/
+    js_mode: those govern emit_assets, not what the render used.
 
-    def mode(self, kind: AssetKind) -> AssetMode:
-        return self.js_mode if kind == "js" else self.css_mode
+    Args:
+        session: The RenderSession whose css_assets/js_assets were populated
+            by accumulate_assets during the render.
+        resolver: Maps an asset path to the URL it is served from.
 
-
-def runtime_asset_path() -> str:
-    """Return the absolute path to the bundled pyjinhx client runtime."""
-    return os.path.normpath(
-        os.path.join(os.path.dirname(__file__), "runtime", "pjx.js")
+    Returns:
+        An AssetManifest of CSS then JS URLs, each in path-sorted order.
+    """
+    return AssetManifest(
+        stylesheets=_sorted_resolved(session.css_assets, resolver),
+        scripts=_sorted_resolved(session.js_assets, resolver),
     )
-
-
-def htmx_asset_path() -> str:
-    """Return the absolute path to the bundled (vendored) htmx runtime."""
-    return os.path.normpath(
-        os.path.join(os.path.dirname(__file__), "runtime", "htmx.min.js")
-    )
-
-
-def default_asset_url(path: str, *, root: str) -> str:
-    normalized_path = os.path.normpath(path)
-    if normalized_path == os.path.normpath(runtime_asset_path()):
-        return DEFAULT_RUNTIME_URL
-    relative_path = os.path.relpath(normalized_path, root).replace("\\", "/")
-    return f"{DEFAULT_STATIC_PREFIX}/{relative_path}"
-
-
-def make_default_asset_url_resolver(root: str) -> AssetUrlResolver:
-    def resolve(path: str) -> str:
-        return default_asset_url(path, root=root)
-
-    return resolve
 
 
 _hash_filename_cache: dict[tuple[str, float, int], str] = {}
 
 
-def hashed_filename(path: str, *, hash_len: int = 8) -> str:
-    """Return a cache-busted filename such as ``button.a1b2c3d4.js``."""
-    normalized_path = os.path.normpath(path)
-    mtime = os.path.getmtime(normalized_path)
-    cache_key = (normalized_path, mtime, hash_len)
-    cached = _hash_filename_cache.get(cache_key)
+def hashed_filename(path: Path, *, hash_len: int = 8) -> str:
+    """Return a cache-busted filename such as ``button.a1b2c3d4.js``.
+
+    Args:
+        path: The asset file on disk to hash.
+        hash_len: How many hex characters of the SHA-256 digest to keep.
+
+    Returns:
+        The file's stem, the truncated digest, and its suffix, dot-joined.
+
+    Raises:
+        OSError: If the file is missing or unreadable.
+    """
+    # Keyed on mtime as well as path so an edited asset re-hashes, while a
+    # repeated render of an untouched tree never re-reads the file.
+    key = (str(path.resolve()), path.stat().st_mtime, hash_len)
+    cached = _hash_filename_cache.get(key)
     if cached is not None:
         return cached
-    with open(normalized_path, "rb") as asset_file:
-        digest = hashlib.sha256(asset_file.read()).hexdigest()[:hash_len]
-    base_name, extension = os.path.splitext(os.path.basename(normalized_path))
-    result = f"{base_name}.{digest}{extension}"
-    _hash_filename_cache[cache_key] = result
+    digest = hashlib.sha256(path.read_bytes()).hexdigest()[:hash_len]
+    result = f"{path.stem}.{digest}{path.suffix}"
+    _hash_filename_cache[key] = result
     return result
 
 
-def resolver_with_hash(base_url: str, root: str) -> AssetUrlResolver:
-    """Build an asset URL resolver that embeds a content hash in each filename."""
+def asset_token(path: Path) -> str:
+    """Return the opaque dedup token the client reports for this asset.
 
-    def resolve(path: str) -> str:
-        normalized_path = os.path.normpath(path)
-        if normalized_path == os.path.normpath(runtime_asset_path()):
-            hashed = hashed_filename(normalized_path)
-            return f"{base_url.rstrip('/')}/pyjinhx/{hashed}"
-        relative_dir = os.path.relpath(os.path.dirname(normalized_path), root).replace(
-            "\\", "/"
-        )
-        hashed = hashed_filename(normalized_path)
-        if relative_dir == ".":
-            return f"{base_url.rstrip('/')}/{hashed}"
-        return f"{base_url.rstrip('/')}/{relative_dir}/{hashed}"
+    The identity the ``data-pjx-asset`` attribute carries and ``X-PJX-Assets``
+    reports back, so the server can tell an asset the browser already has from
+    one it does not. Derived from the normalized path rather than the file's
+    contents: an edited asset must keep the same identity, or every reactive
+    response after an edit would append a second copy to the head instead of
+    recognizing the one already there.
+    """
+    normalized = os.path.normpath(str(path)).replace("\\", "/")
+    return hashlib.sha1(normalized.encode("utf-8")).hexdigest()[:16]
+
+
+def resolver_with_hash(base_url: str, root: str) -> Callable[[Path], str]:
+    """Build an asset resolver that embeds a content hash in each filename.
+
+    The returned callable has the shape asset_manifest expects for its
+    resolver, so a caller wires cache-busted URLs in with one argument.
+
+    Args:
+        base_url: URL prefix the asset tree is served from; a trailing slash
+            is ignored.
+        root: Directory the asset paths are laid out under; the part of a
+            path below it is preserved in the URL.
+
+    Returns:
+        A callable mapping an asset path to its hashed URL, which raises
+        OSError if the file is missing.
+    """
+
+    def resolve(path: Path) -> str:
+        relative_dir = path.parent.relative_to(root)
+        hashed = hashed_filename(path)
+        prefix = base_url.rstrip("/")
+        # relative_to returns Path(".") for a file sitting directly in root,
+        # which would otherwise render as a "/./" segment in the URL.
+        if relative_dir == Path("."):
+            return f"{prefix}/{hashed}"
+        return f"{prefix}/{relative_dir.as_posix()}/{hashed}"
 
     return resolve
 
 
-def asset_manifest(
-    session: RenderSession,
-    *,
-    resolver: AssetUrlResolver,
-) -> AssetManifest:
-    return session.manifest(resolver=resolver)
+def _all_component_classes(root: type) -> set[type]:
+    """Every class below root in the subclass tree, root excluded.
+
+    Recursive rather than one level deep: a component that subclasses another
+    component is a distinct class with its own descriptor, and only leaves of
+    a deep hierarchy would be seen otherwise. Returned as a set because
+    multiple inheritance makes a class reachable by more than one path.
+    """
+    found: set[type] = set()
+    for subclass in root.__subclasses__():
+        found.add(subclass)
+        found |= _all_component_classes(subclass)
+    return found
 
 
-def normalize_asset_path(path: str) -> str:
-    return os.path.normpath(path).replace("\\", "/")
+def all_assets() -> tuple[tuple[Path, ...], tuple[Path, ...]]:
+    """Return every CSS and JS path declared by any component class.
 
+    Registry-wide rather than session-scoped: a class contributes its assets
+    whether or not it was rendered, which is what a build step bundling the
+    whole asset tree needs, as opposed to asset_manifest's per-request view.
 
-def asset_token(path: str) -> str:
-    """Stable opaque dedup token for an asset (hash of its normalized path)."""
-    normalized = normalize_asset_path(path)
-    return hashlib.sha1(normalized.encode("utf-8")).hexdigest()[:16]
+    Only classes imported by the time of the call are visible, since Python
+    discovers subclasses as their modules execute — import the component
+    package before calling this from a build script.
 
+    Returns:
+        The CSS paths then the JS paths, each deduped and in path-sorted
+        order so repeated calls and repeated builds agree byte for byte.
+    """
+    # Imported here rather than at module scope: session imports this module
+    # and component imports session, so a top-level import would cycle.
+    from pyjinhx.component import BaseComponent
 
-def should_emit_asset(
-    token: str, loaded: frozenset[str], *, dedup_enabled: bool
-) -> bool:
-    if not dedup_enabled:
-        return True
-    return token not in loaded
-
-
-def register_asset(
-    session: RenderSession,
-    path: str,
-    kind: AssetKind,
-    mode: AssetMode,
-) -> None:
-    normalized_path = normalize_asset_path(path)
-    if normalized_path in session.collected_paths:
-        return
-
-    if mode == AssetMode.INLINE:
-        with open(normalized_path, encoding="utf-8") as asset_file:
-            content = asset_file.read()
-        if not content:
-            return
-        if kind == "js":
-            session.scripts.append(content)
-        else:
-            session.styles.append(content)
-    else:
-        return
-
-    session.collected_paths.add(normalized_path)
-    session.assets.append(CollectedAsset(path=normalized_path, kind=kind))
-
-
-def collect_component_asset(
-    component: BaseComponent,
-    session: RenderSession,
-    kind: AssetKind,
-    *,
-    policy: AssetPolicy,
-    component_dir: str | None = None,
-    asset_name: str | None = None,
-) -> None:
-    mode = policy.mode(kind)
-    if mode == AssetMode.NONE:
-        return
-
-    if component_dir or asset_name:
-        candidates = [
-            (
-                component_dir or Finder.get_class_directory(type(component)),
-                asset_name or pascal_case_to_kebab_case(type(component).__name__),
-            )
-        ]
-    else:
-        candidates = [
-            (
-                Finder.get_class_directory(klass),
-                pascal_case_to_kebab_case(klass.__name__),
-            )
-            for klass in component_resolution_classes(type(component))
-        ]
-
-    for directory, name in candidates:
-        asset_path = Finder.find_in_directory(directory, f"{name}.{kind}")
-        if asset_path:
-            register_asset(session, asset_path, kind, mode)
-            return
-
-
-def collect_extra_assets(
-    component: BaseComponent,
-    session: RenderSession,
-    kind: AssetKind,
-    *,
-    policy: AssetPolicy,
-) -> None:
-    mode = policy.mode(kind)
-    if mode == AssetMode.NONE:
-        return
-
-    extra_paths = component.js if kind == "js" else component.css
-    label = "JS" if kind == "js" else "CSS"
-    for asset_path in extra_paths:
-        normalized_path = normalize_asset_path(asset_path)
-        if not os.path.exists(normalized_path):
-            logger.warning(
-                "Extra %s file not found: %s (component %s, id=%s)",
-                label,
-                normalized_path,
-                type(component).__name__,
-                component.id,
-            )
+    css: set[Path] = set()
+    js: set[Path] = set()
+    for cls in _all_component_classes(BaseComponent):
+        # A class that never went through descriptor resolution — an abstract
+        # mixin, say — has no descriptor attribute at all, and contributes
+        # nothing rather than failing the whole enumeration.
+        descriptor = getattr(cls, "__pjx_descriptor__", None)
+        if descriptor is None:
             continue
-        register_asset(session, normalized_path, kind, mode)
-
-
-def inject_runtime(
-    session: RenderSession,
-    *,
-    policy: AssetPolicy,
-    client: object | None = None,
-) -> None:
-    from pyjinhx.client import MountedManifest
-
-    request_injected = _runtime_injected.get()
-    if session.runtime_injected or request_injected:
-        return
-    if MountedManifest.is_present(client):
-        return
-    if policy.js_mode == AssetMode.INLINE:
-        rt_path = runtime_asset_path()
-        session.scripts.insert(0, read_client_runtime())
-        session.assets.insert(0, CollectedAsset(path=rt_path, kind="js"))
-        session.collected_paths.add(normalize_asset_path(rt_path))
-        # htmx is pjx.js's transport — inline it *before* pjx.js (insert at 0
-        # after pjx.js) so window.htmx exists when pjx.js registers listeners.
-        # The vendored source self-guards against double-load (see util).
-        if _inject_htmx:
-            htmx_path = htmx_asset_path()
-            session.scripts.insert(0, read_vendored_htmx())
-            session.assets.insert(0, CollectedAsset(path=htmx_path, kind="js"))
-            session.collected_paths.add(normalize_asset_path(htmx_path))
-    session.runtime_injected = True
-    if request_injected is not None:
-        _runtime_injected.set(True)
-
-
-def _inline_items(
-    session: RenderSession, kind: AssetKind
-) -> list[tuple[CollectedAsset, str]]:
-    """Return (asset, content) pairs for all INLINE assets of ``kind``, in order."""
-    payloads = session.scripts if kind == "js" else session.styles
-    assets = [a for a in session.assets if a.kind == kind]
-    return list(zip(assets, payloads))
-
-
-def render_assets(
-    session: RenderSession, kind: AssetKind, *, policy: AssetPolicy
-) -> str:
-    mode = policy.mode(kind)
-    if mode == AssetMode.INLINE:
-        items = _inline_items(session, kind)
-        if not items:
-            return ""
-        if kind == "js":
-            return "\n".join(
-                f'<script data-pjx-asset="{asset_token(asset.path)}">{content}</script>'
-                for asset, content in items
-            )
-        return "\n".join(
-            f'<style data-pjx-asset="{asset_token(asset.path)}">{content}</style>'
-            for asset, content in items
-        )
-    return ""
-
-
-def render_missing_assets_oob(session: RenderSession, loaded: frozenset[str]) -> str:
-    """
-    Build an OOB head-injection for INLINE assets not yet in the client's page.
-
-    Returns an empty string when nothing needs to be injected.
-    """
-    parts: list[str] = []
-    for asset, content in _inline_items(session, "css"):
-        token = asset_token(asset.path)
-        if should_emit_asset(token, loaded, dedup_enabled=True):
-            parts.append(
-                f'<style data-pjx-asset="{token}" hx-swap-oob="beforeend:head">{content}</style>'
-            )
-    for asset, content in _inline_items(session, "js"):
-        token = asset_token(asset.path)
-        if should_emit_asset(token, loaded, dedup_enabled=True):
-            parts.append(
-                f'<script data-pjx-asset="{token}" hx-swap-oob="beforeend:head">{content}</script>'
-            )
-    return "\n".join(parts)
-
-
-def apply_component_render_assets(
-    component: BaseComponent,
-    rendered_markup: str,
-    session: RenderSession,
-    *,
-    template_path: str | None,
-    is_root: bool,
-    collect_component_js: bool,
-    policy: AssetPolicy,
-    client: object | None,
-) -> str:
-    cls = type(component)
-    is_classless = cls.__name__ == "BaseComponent" or getattr(
-        cls, "_pjx_classless", False
-    )
-    if template_path is not None and is_classless:
-        asset_dir: str | None = os.path.dirname(template_path)
-        asset_name: str | None = os.path.splitext(os.path.basename(template_path))[
-            0
-        ].replace("_", "-")
-    else:
-        asset_dir = None
-        asset_name = None
-
-    if collect_component_js:
-        collect_component_asset(
-            component,
-            session,
-            "js",
-            policy=policy,
-            component_dir=asset_dir,
-            asset_name=asset_name,
-        )
-        collect_component_asset(
-            component,
-            session,
-            "css",
-            policy=policy,
-            component_dir=asset_dir,
-            asset_name=asset_name,
-        )
-
-    # Extra assets (e.g. PJXDropdown.js = [pjx_popover.js]) must be collected for
-    # every component in the tree, not just the root, so nested components
-    # (e.g. a PJXDropdown inside a PJXCard) still ship their dependencies.
-    collect_extra_assets(component, session, "css", policy=policy)
-    collect_extra_assets(component, session, "js", policy=policy)
-
-    if not is_root:
-        return rendered_markup
-
-    # Runtime injection and markup injection are root-only.
-    if policy.js_mode != AssetMode.NONE:
-        inject_runtime(session, policy=policy, client=client)
-    if policy.css_mode == AssetMode.NONE and policy.js_mode == AssetMode.NONE:
-        return rendered_markup
-
-    return inject_assets(rendered_markup, session, policy=policy, client=client)
-
-
-def inject_assets(
-    markup: str,
-    session: RenderSession,
-    *,
-    policy: AssetPolicy,
-    client: object | None = None,
-) -> str:
-    # On a swap the page already carries the runtime and every asset its eagerly
-    # rendered tree collected, so emit this render's not-yet-loaded INLINE assets
-    # as OOB ``<head>`` injections instead of inline tags in the swapped body.
-    # htmx core drops head-targeted OOB swaps, so ``pjx.js`` promotes them to
-    # ``<head>`` itself, deduping against the live document. This keeps swapped-in
-    # content (e.g. a ``PJXLazyLoad`` fragment) styled even when it introduces a
-    # builtin whose CSS/JS was never collected at page render — emitting it inline
-    # left it to be stripped on swap, rendering the content unstyled (#182).
-    from pyjinhx.client import ClientBackend, LoadedAssets, MountedManifest
-
-    resolved = ClientBackend.resolve_client(client)
-    if MountedManifest.is_present(resolved):
-        head = render_missing_assets_oob(session, LoadedAssets.parse(resolved))
-        return f"{markup}\n{head}" if head else markup
-
-    css_markup = render_assets(session, "css", policy=policy)
-    js_markup = render_assets(session, "js", policy=policy)
-    if css_markup:
-        markup = f"{css_markup}\n{markup}"
-    if js_markup:
-        markup = f"{markup}\n{js_markup}"
-    return markup
+        css.update(descriptor.css_paths)
+        js.update(descriptor.js_paths)
+    return tuple(sorted(css, key=str)), tuple(sorted(js, key=str))

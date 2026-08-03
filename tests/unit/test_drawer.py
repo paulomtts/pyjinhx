@@ -2,7 +2,12 @@
 
 import re
 
-from pyjinhx.builtins import PJXDrawer, PJXDrawerBody, PJXDrawerFooter, PJXDrawerHeader
+from pyjinhx_v0.builtins import (
+    PJXDrawer,
+    PJXDrawerBody,
+    PJXDrawerFooter,
+    PJXDrawerHeader,
+)
 
 
 def _dialog(html: str) -> str:

@@ -3,7 +3,7 @@ import os
 import sys
 import tempfile
 
-from pyjinhx.renderer import Renderer
+from pyjinhx_v0.renderer import Renderer
 
 
 def test_tag_template_auto_lookup_supports_jinja_extension():
@@ -33,7 +33,7 @@ def test_class_template_auto_lookup_supports_jinja_extension():
         module_path = os.path.join(component_dir, "jinja_component.py")
         with open(module_path, "w") as file:
             file.write(
-                "from pyjinhx import BaseComponent\n\n"
+                "from pyjinhx_v0 import BaseComponent\n\n"
                 "class JinjaAutoLookupComponent(BaseComponent):\n"
                 "    id: str\n"
                 "    text: str\n"
@@ -145,7 +145,7 @@ def test_python_instantiated_component_finds_hyphenated_template():
         module_path = os.path.join(component_dir, "hyphen_component.py")
         with open(module_path, "w") as file:
             file.write(
-                "from pyjinhx import BaseComponent\n\n"
+                "from pyjinhx_v0 import BaseComponent\n\n"
                 "class HyphenTemplateComponent(BaseComponent):\n"
                 "    id: str\n"
                 "    text: str\n"
@@ -185,7 +185,7 @@ def test_nested_python_component_finds_hyphenated_template():
         with open(module_path, "w") as file:
             file.write(
                 "from typing import Any\n"
-                "from pyjinhx import BaseComponent\n\n"
+                "from pyjinhx_v0 import BaseComponent\n\n"
                 "class NestedHyphenChild(BaseComponent):\n"
                 "    id: str\n"
                 "    label: str\n\n"

@@ -1,5 +1,5 @@
-from pyjinhx.cache import LoadCache
-from pyjinhx.reactive import oob_swaps
+from pyjinhx_v0.cache import LoadCache
+from pyjinhx_v0.reactive import oob_swaps
 from tests.ui.reactive.user_row import UserRow  # noqa: F401
 
 

@@ -6,7 +6,7 @@ removed. These tests verify equivalent behaviour via the composed parts.
 
 import re
 
-from pyjinhx.builtins import PJXDrawer, PJXDrawerBody, PJXDrawerHeader
+from pyjinhx_v0.builtins import PJXDrawer, PJXDrawerBody, PJXDrawerHeader
 
 
 def _dialog(html: str) -> str:

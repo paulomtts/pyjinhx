@@ -1,6 +1,6 @@
 """Unit tests for the refactored PJXEmptyState (content-slot API)."""
 
-from pyjinhx.builtins import PJXEmptyState
+from pyjinhx_v0.builtins import PJXEmptyState
 
 # --- New content-slot API ---
 

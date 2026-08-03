@@ -2,8 +2,8 @@ import pytest
 from jinja2 import DictLoader, Environment
 from pydantic import ValidationError
 
-from pyjinhx import Renderer
-from pyjinhx.base import BaseComponent, component
+from pyjinhx_v0 import Renderer
+from pyjinhx_v0.base import BaseComponent, component
 
 
 @pytest.fixture()

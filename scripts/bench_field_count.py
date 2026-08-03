@@ -3,9 +3,9 @@
 Every sibling script builds components with two or three fields, so the
 per-instance validation cost is a constant they never move. Two costs scale
 with field count and are invisible there: _coerce_json_string_attrs
-(pyjinhx2/component.py), a "before" model validator that loops over every one
+(pyjinhx/component.py), a "before" model validator that loops over every one
 of cls.model_fields on every instantiation, and _instantiate_child
-(pyjinhx2/render.py), which copies a ChildRef's attrs dict and hands it to
+(pyjinhx/render.py), which copies a ChildRef's attrs dict and hands it to
 pydantic. This script pins the tree shape and sweeps field count instead.
 
 Two arms at each field count, so the JSON-coercion branch is measured rather
@@ -29,11 +29,11 @@ import tempfile
 import time
 from pathlib import Path
 
-from pyjinhx2 import discovery
-from pyjinhx2.component import BaseComponent, _pascal_to_snake
-from pyjinhx2.descriptor import ClassDescriptor
-from pyjinhx2.render import render
-from pyjinhx2.session import RenderSession
+from pyjinhx import discovery
+from pyjinhx.component import BaseComponent, _pascal_to_snake
+from pyjinhx.descriptor import ClassDescriptor
+from pyjinhx.render import render
+from pyjinhx.session import RenderSession
 
 FIELD_COUNTS = (5, 20, 50, 100)
 FIXED_CHILDREN = 200

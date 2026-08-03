@@ -1,7 +1,7 @@
 import re
 
-from pyjinhx import BaseComponent
-from pyjinhx.builtins import PJXBadge
+from pyjinhx_v0 import BaseComponent
+from pyjinhx_v0.builtins import PJXBadge
 
 
 def test_constructor_without_id_autogenerates():

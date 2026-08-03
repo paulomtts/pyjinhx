@@ -1,5 +1,5 @@
-from pyjinhx.reactive import oob_swaps
-from pyjinhx.utils import read_client_runtime
+from pyjinhx_v0.reactive import oob_swaps
+from pyjinhx_v0.utils import read_client_runtime
 from tests.ui.reactive.reactive_counter import ReactiveCounter
 
 

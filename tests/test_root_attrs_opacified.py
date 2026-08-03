@@ -1,8 +1,8 @@
 """Root-attr stamping must not re-parse restored child markup (#240)."""
 
-import pyjinhx.renderer as renderer_module
-from pyjinhx import Renderer
-from pyjinhx.registry import Registry
+import pyjinhx_v0.renderer as renderer_module
+from pyjinhx_v0 import Renderer
+from pyjinhx_v0.registry import Registry
 
 
 def _setup_container(tmp_path):

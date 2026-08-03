@@ -39,7 +39,7 @@ pytestmark = [pytest.mark.pjx_runtime, pytest.mark.reactivity]
 # ---------------------------------------------------------------------------
 
 _COMPONENT_MODULE = """\
-from pyjinhx import BaseComponent
+from pyjinhx_v0 import BaseComponent
 
 
 class LazyWidget(BaseComponent):
@@ -48,7 +48,7 @@ class LazyWidget(BaseComponent):
 
 _WIDGET_TEMPLATE = '<div id="{{ id }}" class="lazy-widget">{{ label }}</div>'
 
-# htmx loads in <head>; the pyjinhx runtime is placed at the end of <body> (where
+# htmx loads in <head>; the pyjinhx_v0 runtime is placed at the end of <body> (where
 # it lands in production) because it binds listeners on document.body at load.
 _PAGE_HTML = """<!DOCTYPE html>
 <html lang="en">
@@ -70,11 +70,11 @@ def _make_lazy_app(tmp_path: Path) -> FastAPI:
     """Build a minimal FastAPI app whose lazy fragment carries a CSS-bearing builtin."""
     from fastapi.responses import HTMLResponse
 
-    from pyjinhx import PjxSettings, setup
-    from pyjinhx.builtins import PJXLazyLoad
-    from pyjinhx.client import ClientBackend, client_script
-    from pyjinhx.integrations.fastapi import FastAPIClientBackend
-    from pyjinhx.renderer import Renderer
+    from pyjinhx_v0 import PjxSettings, setup
+    from pyjinhx_v0.builtins import PJXLazyLoad
+    from pyjinhx_v0.client import ClientBackend, client_script
+    from pyjinhx_v0.integrations.fastapi import FastAPIClientBackend
+    from pyjinhx_v0.renderer import Renderer
 
     # --------------- component + co-located template & assets -------------
     (tmp_path / "lazy_widget.html").write_text(_WIDGET_TEMPLATE)

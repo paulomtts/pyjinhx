@@ -1,4 +1,4 @@
-from pyjinhx.utils import pascal_case_to_kebab_case, pascal_case_to_snake_case
+from pyjinhx_v0.utils import pascal_case_to_kebab_case, pascal_case_to_snake_case
 
 
 def test_snake_simple_pascal():

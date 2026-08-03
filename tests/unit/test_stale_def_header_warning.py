@@ -18,8 +18,8 @@ import os
 
 import pytest
 
-from pyjinhx import Renderer
-from pyjinhx.base import BaseComponent
+from pyjinhx_v0 import Renderer
+from pyjinhx_v0.base import BaseComponent
 
 # ---------------------------------------------------------------------------
 # Module-level classes — defined here so inspect.getfile points to this file
@@ -54,7 +54,7 @@ def isolate_renderer():
 @pytest.fixture(autouse=True)
 def clear_stale_warning_set():
     """Reset the dedup sets between tests so warnings are fresh."""
-    from pyjinhx import renderer as renderer_mod
+    from pyjinhx_v0 import renderer as renderer_mod
 
     renderer_mod._warned_stale_def_header.clear()
     renderer_mod._checked_stale_def_header.clear()
@@ -69,7 +69,7 @@ def clear_stale_warning_set():
 
 
 def test_warns_once_for_hand_written_class_with_header(caplog):
-    with caplog.at_level(logging.WARNING, logger="pyjinhx"):
+    with caplog.at_level(logging.WARNING, logger="pyjinhx_v0"):
         StaleCard(title="Hello").render()
 
     # Should have emitted exactly one warning mentioning the stale header
@@ -82,7 +82,7 @@ def test_warns_once_for_hand_written_class_with_header(caplog):
 
     # Second render must NOT emit another warning (dedup)
     caplog.clear()
-    with caplog.at_level(logging.WARNING, logger="pyjinhx"):
+    with caplog.at_level(logging.WARNING, logger="pyjinhx_v0"):
         StaleCard(title="World").render()
 
     second_stale = [r for r in caplog.records if "{#def#}" in r.message]
@@ -97,7 +97,7 @@ def test_warns_once_for_hand_written_class_with_header(caplog):
 
 
 def test_no_warning_for_classless_component(tmp_path, caplog):
-    from pyjinhx.base import component
+    from pyjinhx_v0.base import component
 
     comp_dir = tmp_path / "staleclassless"
     comp_dir.mkdir()
@@ -112,7 +112,7 @@ def test_no_warning_for_classless_component(tmp_path, caplog):
     # Verify it IS classless so the test is testing the right thing
     assert getattr(StaleClassless, "_pjx_classless", False) is True
 
-    with caplog.at_level(logging.WARNING, logger="pyjinhx"):
+    with caplog.at_level(logging.WARNING, logger="pyjinhx_v0"):
         StaleClassless(label="test").render()
 
     stale_warnings = [r for r in caplog.records if "{#def#}" in r.message]
@@ -128,7 +128,7 @@ def test_no_warning_for_classless_component(tmp_path, caplog):
 
 
 def test_no_warning_for_hand_written_class_without_header(caplog):
-    with caplog.at_level(logging.WARNING, logger="pyjinhx"):
+    with caplog.at_level(logging.WARNING, logger="pyjinhx_v0"):
         StaleBadge(text="Active").render()
 
     stale_warnings = [r for r in caplog.records if "{#def#}" in r.message]
@@ -145,7 +145,7 @@ def test_no_warning_for_hand_written_class_without_header(caplog):
 
 
 def test_template_only_read_once_per_class_without_header():
-    from pyjinhx import renderer as renderer_mod
+    from pyjinhx_v0 import renderer as renderer_mod
 
     real_check = renderer_mod._warn_if_stale_def_header
     check_calls = []

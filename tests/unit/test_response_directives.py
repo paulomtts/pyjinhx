@@ -2,8 +2,8 @@ from types import SimpleNamespace
 
 import pytest
 
-from pyjinhx import Registry
-from pyjinhx.client import ClientBackend, ResponseDirectives, current_directives
+from pyjinhx_v0 import Registry
+from pyjinhx_v0.client import ClientBackend, ResponseDirectives, current_directives
 
 
 @pytest.mark.no_request_scope
@@ -63,7 +63,7 @@ def test_apply_response_directives_noop_without_request_scope():
 
 
 def test_reactive_response_flags_reswap_when_oob_only():
-    from pyjinhx.reactive import ReactiveResponse
+    from pyjinhx_v0.reactive import ReactiveResponse
 
     with Registry.request_scope():
         ReactiveResponse()
@@ -71,7 +71,7 @@ def test_reactive_response_flags_reswap_when_oob_only():
 
 
 def test_reactive_response_no_flag_with_primary_html():
-    from pyjinhx.reactive import ReactiveResponse
+    from pyjinhx_v0.reactive import ReactiveResponse
 
     with Registry.request_scope():
         ReactiveResponse(html="<div>primary</div>")
@@ -80,7 +80,7 @@ def test_reactive_response_no_flag_with_primary_html():
 
 @pytest.mark.no_request_scope  # opt out of the global request_scope autouse fixture
 def test_reactive_response_flag_no_crash_without_scope():
-    from pyjinhx.reactive import ReactiveResponse
+    from pyjinhx_v0.reactive import ReactiveResponse
 
     # No request scope: current_directives() is None — must not raise.
     out = ReactiveResponse(html="<p>x</p>")

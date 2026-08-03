@@ -3,9 +3,9 @@ from typing import Annotated
 
 import pytest
 
-from pyjinhx import MutationKey, PjxKey, ReactiveComponent, Registry
-from pyjinhx.cache import LoadCache
-from pyjinhx.context import (
+from pyjinhx_v0 import MutationKey, PjxKey, ReactiveComponent, Registry
+from pyjinhx_v0.cache import LoadCache
+from pyjinhx_v0.context import (
     PjxContext,
     resolve_load_context_param,
 )

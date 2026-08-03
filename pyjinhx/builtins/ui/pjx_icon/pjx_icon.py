@@ -1,11 +1,9 @@
 import logging
 
-from pydantic import computed_field
+from pydantic import model_validator
 
-from pyjinhx import BaseComponent
-from pyjinhx.base import AttrValue
-
-from ._icons import ICONS
+from pyjinhx.builtins.ui.pjx_icon._icons import ICONS
+from pyjinhx.component import AttrValue, BaseComponent, Slot
 
 logger = logging.getLogger(__name__)
 
@@ -17,18 +15,23 @@ class PJXIcon(BaseComponent):
     label: str | None = None
     class_name: AttrValue = ""
 
-    @computed_field
-    @property
-    def svg_inner(self) -> str:
+    # Derived, not user-supplied. Declared as real fields (not computed_field)
+    # because a computed field never lands in model_fields, and the descriptor's
+    # slot-field resolution (and thus render_context.build_context) only walks
+    # model_fields.
+    svg_inner: Slot = ""
+    svg_size: str = ""
+
+    @model_validator(mode="after")
+    def _derive(self) -> "PJXIcon":
         inner = ICONS.get(self.name)
         if inner is None:
             logger.warning(
                 "PJXIcon: unknown icon name %r; rendering nothing", self.name
             )
-            return ""
-        return inner
-
-    @computed_field
-    @property
-    def svg_size(self) -> str:
-        return f"{self.size}px" if isinstance(self.size, int) else str(self.size)
+            inner = ""
+        self.svg_inner = inner
+        self.svg_size = (
+            f"{self.size}px" if isinstance(self.size, int) else str(self.size)
+        )
+        return self

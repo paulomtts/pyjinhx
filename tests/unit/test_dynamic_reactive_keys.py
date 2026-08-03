@@ -1,7 +1,7 @@
-from pyjinhx.cache import LoadCache
-from pyjinhx.keys import reactive_key
-from pyjinhx.reactive import oob_swaps
-from pyjinhx.registry import Registry
+from pyjinhx_v0.cache import LoadCache
+from pyjinhx_v0.keys import reactive_key
+from pyjinhx_v0.reactive import oob_swaps
+from pyjinhx_v0.registry import Registry
 from tests.ui.reactive.counted_row import CountedRow, Keys
 
 

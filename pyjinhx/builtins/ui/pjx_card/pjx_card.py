@@ -1,7 +1,8 @@
-from pyjinhx import BaseComponent
-from pyjinhx.base import AttrValue
+from pyjinhx.component import AttrValue, BaseComponent, Slot
 
 
 class PJXCard(BaseComponent):
+    """The card shell; regions come from PJXCardHeader/Body/Footer, not from fields here."""
+
     class_name: AttrValue = ""
-    content: str | BaseComponent = ""
+    content: Slot = ""

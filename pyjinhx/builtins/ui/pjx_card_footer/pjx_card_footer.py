@@ -1,7 +1,8 @@
-from pyjinhx import BaseComponent
-from pyjinhx.base import AttrValue
+from pyjinhx.component import AttrValue, BaseComponent, Slot
 
 
 class PJXCardFooter(BaseComponent):
+    """The bottom region of a card, separated by a rule."""
+
     class_name: AttrValue = ""
-    content: str | BaseComponent = ""
+    content: Slot = ""

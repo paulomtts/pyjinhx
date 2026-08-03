@@ -1,1 +1,1 @@
-"""Optional integrations loaded lazily from ``pyjinhx.config`` and ``pyjinhx.setup``."""
+"""Framework adapters. Each submodule wires pyjinhx into one web framework."""

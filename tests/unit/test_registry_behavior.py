@@ -1,6 +1,6 @@
 import logging
 
-from pyjinhx import Registry
+from pyjinhx_v0 import Registry
 from tests.ui.unified_component import UnifiedComponent
 
 
@@ -66,7 +66,7 @@ def test_registry_with_multiple_components():
 
 
 def test_duplicate_component_id_warning(caplog):
-    logging.getLogger("pyjinhx").setLevel(logging.WARNING)
+    logging.getLogger("pyjinhx_v0").setLevel(logging.WARNING)
 
     Registry.clear_instances()
 
@@ -85,7 +85,7 @@ def test_duplicate_component_id_warning(caplog):
 
 def test_different_component_types_same_id_no_collision():
     """Test that different component types can use the same id without collision."""
-    from pyjinhx import BaseComponent
+    from pyjinhx_v0 import BaseComponent
 
     Registry.clear_instances()
 

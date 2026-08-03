@@ -1,6 +1,6 @@
 import re
 
-from pyjinhx.builtins import PJXNotification
+from pyjinhx_v0.builtins import PJXNotification
 
 
 def _root(html: str) -> str:

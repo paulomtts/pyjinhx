@@ -5,9 +5,9 @@ from typing import Annotated
 from jinja2 import Environment, FileSystemLoader
 from pydantic import Field
 
-from pyjinhx import AssetMode, BaseComponent
-from pyjinhx.base import PjxSlot
-from pyjinhx.renderer import Renderer
+from pyjinhx_v0 import AssetMode, BaseComponent
+from pyjinhx_v0.base import PjxSlot
+from pyjinhx_v0.renderer import Renderer
 
 
 def test_component_template_can_expand_custom_tags():
@@ -117,7 +117,7 @@ def test_literal_custom_tag_in_python_supplied_content_still_expands():
     injection is suppressed so the root-level ``.render()`` call is directly
     comparable by equality.
     """
-    from pyjinhx import AssetMode, component
+    from pyjinhx_v0 import AssetMode, component
 
     with tempfile.TemporaryDirectory() as temp_dir:
         with open(os.path.join(temp_dir, "icon.html"), "w") as file:
@@ -341,7 +341,7 @@ def test_marker_already_present_in_rendered_output_does_not_corrupt_render():
     corrupt anything, crash anything, or skip real tag expansion (`Icon`
     below still must expand normally).
     """
-    from pyjinhx.renderer import _SLOT_PLACEHOLDER_CHAR
+    from pyjinhx_v0.renderer import _SLOT_PLACEHOLDER_CHAR
 
     with tempfile.TemporaryDirectory() as temp_dir:
         with open(os.path.join(temp_dir, "leaf.html"), "w") as file:

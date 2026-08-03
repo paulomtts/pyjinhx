@@ -1,28 +1,20 @@
-import json
-from typing import Annotated, Any
+from pydantic import Field
 
-from pydantic import BeforeValidator, Field
-
-from pyjinhx import BaseComponent
-from pyjinhx.base import AttrValue, ExtraAttrs
-
-
-def _coerce_options(value: Any) -> list[tuple[str, str]]:
-    if isinstance(value, str):
-        text = value.strip()
-        if not text:
-            return []
-        raw = json.loads(text)
-        return [(str(row[0]), str(row[1])) for row in raw]
-    return value
+from pyjinhx.component import AttrValue, BaseComponent, ExtraAttrs
 
 
 class PJXSegmentedControl(BaseComponent):
+    """A radiogroup rendered as a row of mutually exclusive segments.
+
+    Each ``options`` entry is a ``(value, label)`` pair; ``selected`` names the
+    value whose radio carries ``checked``. A JSON-string ``options`` (the
+    inline-attr path) is decoded by the core's generic
+    ``BaseComponent._coerce_json_string_attrs`` — no component-local coercion
+    needed here.
+    """
+
     name: str
-    options: Annotated[
-        list[tuple[str, str]],
-        BeforeValidator(_coerce_options),
-    ] = Field(default_factory=list)
+    options: list[tuple[str, str]] = Field(default_factory=list)
     selected: str = ""
     disabled: bool = False
     class_name: AttrValue = ""

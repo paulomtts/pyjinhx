@@ -3,9 +3,9 @@ from typing import Any
 
 from markupsafe import Markup
 
-from pyjinhx.client import PJX_MOUNTED_HEADER
-from pyjinhx.reactive import oob_swaps
-from pyjinhx.renderer import reactive_root_attrs
+from pyjinhx_v0.client import PJX_MOUNTED_HEADER
+from pyjinhx_v0.reactive import oob_swaps
+from pyjinhx_v0.renderer import reactive_root_attrs
 from tests.reactive_test_support import reactive_client, record_mutation
 from tests.ui.reactive import store
 from tests.ui.reactive.reactive_clear_button import ReactiveClearButton  # noqa: F401
@@ -127,7 +127,7 @@ def test_reactive_root_attrs_returns_pjx_dict():
 
 
 def test_reactive_root_attrs_empty_for_non_reactive():
-    from pyjinhx.builtins import PJXBadge
+    from pyjinhx_v0.builtins import PJXBadge
 
     assert reactive_root_attrs(PJXBadge(id="b", label="x")) == {}
 

@@ -1,9 +1,6 @@
 from typing import Literal
 
-from pydantic import Field
-
-from pyjinhx import BaseComponent
-from pyjinhx.base import AttrValue, ExtraAttrs
+from pyjinhx.component import AttrValue, BaseComponent
 
 
 class PJXBadge(BaseComponent):
@@ -11,4 +8,3 @@ class PJXBadge(BaseComponent):
     color: Literal["brand", "error", "neutral", "muted"] = "neutral"
     shape: Literal["square", "sm", "md", "full"] = "md"
     class_name: AttrValue = ""
-    extra_attrs: ExtraAttrs = Field(default_factory=dict)

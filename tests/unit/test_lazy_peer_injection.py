@@ -1,6 +1,6 @@
 """Registry peers injected into render contexts are consumed lazily.
 
-Repro for https://github.com/paulomtts/pyjinhx/issues/67 (finding 2) — every
+Repro for https://github.com/paulomtts/pyjinhx_v0/issues/67 (finding 2) — every
 registered instance is injected into every render context by id, and the
 undeclared-keys loop in ``BaseComponent._render`` used to render all of them
 eagerly. With N registered siblings whose template expands a tag, render counts
@@ -15,8 +15,8 @@ import importlib.util
 import sys
 import time
 
-from pyjinhx import Registry
-from pyjinhx.renderer import Renderer
+from pyjinhx_v0 import Registry
+from pyjinhx_v0.renderer import Renderer
 
 
 def _load_module(tmp_path, name: str, source: str):
@@ -44,7 +44,7 @@ def test_many_registered_peers_render_bounded(tmp_path, monkeypatch):
     module = _load_module(
         tmp_path,
         "explosion_components",
-        "from pyjinhx import BaseComponent\n\n"
+        "from pyjinhx_v0 import BaseComponent\n\n"
         "class ExplosionShell(BaseComponent):\n"
         "    pass\n\n"
         "class ExplosionInner(BaseComponent):\n"
@@ -92,7 +92,7 @@ def test_lazy_peer_renders_when_template_references_it(tmp_path):
     module = _load_module(
         tmp_path,
         "ref_components",
-        "from pyjinhx import BaseComponent\n\n"
+        "from pyjinhx_v0 import BaseComponent\n\n"
         "class RefHost(BaseComponent):\n"
         "    pass\n\n"
         "class RefChild(BaseComponent):\n"
@@ -131,7 +131,7 @@ def test_mutual_template_reference_by_id_is_cycle_guarded(tmp_path):
     module = _load_module(
         tmp_path,
         "jinja_cycle_components",
-        "from pyjinhx import BaseComponent\n\n"
+        "from pyjinhx_v0 import BaseComponent\n\n"
         "class JinjaCycleHost(BaseComponent):\n"
         "    pass\n\n"
         "class JinjaCycleLeft(BaseComponent):\n"

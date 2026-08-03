@@ -1,12 +1,13 @@
-from typing import Any
+from typing import Annotated, Any
 
 from pydantic import Field
 
-from pyjinhx import BaseComponent
-from pyjinhx.base import AttrValue, ExtraAttrs
+from pyjinhx.component import AttrValue, BaseComponent, PjxSlot
 
 
 class PJXAvatarStack(BaseComponent):
+    """A row of overlapping avatar pills with an optional "+N" overflow badge."""
+
     # Items to render.  Two accepted shapes:
     #   - Structured dict: keys initials, color, alt, name
     #       - initials (str): text shown in the pill (escaped)
@@ -17,8 +18,13 @@ class PJXAvatarStack(BaseComponent):
     #
     # Note: plain HTML *strings* are now escaped (autoescape is on).
     # Pass a BaseComponent for raw markup instead of a string.
-    avatars: list[Any] = Field(default_factory=list)
+    #
+    # The PjxSlot marker is what keeps the second shape working on v2:
+    # build_context() serializes non-slot fields through model_dump(), which
+    # would turn a component into a plain dict and route it down the
+    # "is mapping" pill branch. Marking the field slot re-reads the live list
+    # and wraps each component as an opaque node instead.
+    avatars: Annotated[list[Any], PjxSlot()] = Field(default_factory=list)
     extra_count: int = 0
     empty_label: str = ""
     class_name: AttrValue = ""
-    extra_attrs: ExtraAttrs = Field(default_factory=dict)

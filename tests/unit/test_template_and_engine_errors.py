@@ -2,9 +2,9 @@ import pytest
 from jinja2 import DictLoader, Environment
 from jinja2.exceptions import TemplateNotFound
 
-from pyjinhx import BaseComponent
-from pyjinhx.renderer import Renderer
-from pyjinhx.tags import _BUILTIN_TAG_NAMES, _missing_template_error
+from pyjinhx_v0 import BaseComponent
+from pyjinhx_v0.renderer import Renderer
+from pyjinhx_v0.tags import _BUILTIN_TAG_NAMES, _missing_template_error
 
 
 def test_missing_template_file():
@@ -38,7 +38,7 @@ def test_missing_template_error_hints_at_builtin_import():
     error = _missing_template_error("PJXTooltip")
 
     assert isinstance(error, FileNotFoundError)
-    assert "from pyjinhx.builtins import PJXTooltip" in str(error)
+    assert "from pyjinhx_v0.builtins import PJXTooltip" in str(error)
 
 
 def test_missing_template_error_lists_real_candidates():
@@ -52,6 +52,6 @@ def test_missing_template_error_lists_real_candidates():
 
 
 def test_builtin_tag_names_match_builtins_all():
-    import pyjinhx.builtins
+    import pyjinhx_v0.builtins
 
-    assert _BUILTIN_TAG_NAMES == frozenset(pyjinhx.builtins.__all__)
+    assert _BUILTIN_TAG_NAMES == frozenset(pyjinhx_v0.builtins.__all__)

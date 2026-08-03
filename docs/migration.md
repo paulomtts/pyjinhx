@@ -7,7 +7,7 @@ slots, reactivity, and every builtin are the same as 0.36 — a v0.x app ports w
 redesign. What changed is a short list of behaviors that the rebuild deliberately did not
 carry over, each one below with what to do instead.
 
-The v2 package currently imports as `pyjinhx2` while it ships alongside 0.36; renaming it
+The v2 package currently imports as `pyjinhx` while it ships alongside 0.36; renaming it
 back to `pyjinhx` for the 1.0 release is tracked separately (TODO(#539)). Examples below use
 the import path as it exists today.
 
@@ -31,7 +31,7 @@ class Card(BaseComponent):
 
 ```python
 # AFTER (1.0): card.py
-from pyjinhx2 import BaseComponent
+from pyjinhx import BaseComponent
 
 
 class Card(BaseComponent):

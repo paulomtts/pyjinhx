@@ -1,142 +1,130 @@
+"""App-level configuration for pyjinhx: the settings object and the setup() entrypoint.
+
+config sits above the render spine and may read from it; nothing in the spine,
+in reactive/ or in client/ may import this module back. Siblings that do not
+exist yet (dev, integrations.fastapi) are imported lazily inside functions so
+importing this module never depends on them.
+"""
+
 from __future__ import annotations
 
 import os
 from collections.abc import Callable
 from dataclasses import dataclass, fields, replace
-from typing import TYPE_CHECKING, Any, cast
+from pathlib import Path
+from typing import Any
 
-from pyjinhx.cache import CacheScope, InvalidationBackend, InvalidationHub, LoadCache
-from pyjinhx.dev import disable_reactive_dev, enable_reactive_dev
+from pyjinhx.component import BaseComponent
+from pyjinhx.discovery import build_registry
 
-if TYPE_CHECKING:
-    from starlette.applications import Starlette
+# Sentinel distinguishing "argument omitted" from None or a real value, so
+# setup()'s pass-through keywords never clobber an explicit settings object.
+_UNSET: Any = object()
 
-_UNSET: Any = (
-    object()
-)  # sentinel: distinguishes "argument omitted" from None / a real value
+_TRUE = {"1", "true", "yes", "on"}
+_FALSE = {"0", "false", "no", "off"}
+
+
+def _env_bool(name: str, default: bool) -> bool:
+    """``name``'s value as a bool, or ``default`` when it is unset or empty."""
+    raw = os.environ.get(name)
+    if raw is None or raw == "":
+        return default
+    lowered = raw.strip().lower()
+    if lowered in _TRUE:
+        return True
+    if lowered in _FALSE:
+        return False
+    raise ValueError(
+        f"{name}={raw!r} is not a boolean; use one of {sorted(_TRUE | _FALSE)}."
+    )
+
+
+def _env_path(name: str) -> Path | None:
+    raw = os.environ.get(name)
+    return Path(raw) if raw else None
 
 
 @dataclass(frozen=True)
 class PjxSettings:
-    invalidation_backend: InvalidationBackend | None = None
+    """The app-level knobs pyjinhx reads once at startup.
+
+    ``inject_htmx`` is stored only; how it maps onto the session's asset modes
+    is pending design.
+    """
+
     reactive_dev: bool = False
     inject_htmx: bool = True
-    htmx_redirects: bool = False
+    components_root: Path | str | None = None
+    static_root: Path | str | None = None
 
     @classmethod
     def from_env(cls) -> PjxSettings:
-        reactive_dev = os.environ.get("PJX_REACTIVE_DEV", "").lower() in {
-            "1",
-            "true",
-            "yes",
-        }
-        inject_htmx = os.environ.get("PJX_INJECT_HTMX", "").lower() not in {
-            "0",
-            "false",
-            "no",
-        }
-        htmx_redirects = os.environ.get("PJX_HTMX_REDIRECTS", "").lower() in {
-            "1",
-            "true",
-            "yes",
-        }
-        invalidation_backend: InvalidationBackend | None = None
-        redis_url = os.environ.get("REDIS_URL")
-        sqlite_db = os.environ.get("PJX_INVALIDATION_DB")
-        if redis_url:
-            from pyjinhx.integrations.redis import RedisInvalidationBackend
-
-            invalidation_backend = RedisInvalidationBackend(redis_url)
-        elif sqlite_db:
-            from pyjinhx.integrations.sqlite import SqliteInvalidationBackend
-
-            invalidation_backend = SqliteInvalidationBackend(sqlite_db)
+        """Settings read from the ``PJX_*`` environment variables."""
         return cls(
-            invalidation_backend=invalidation_backend,
-            reactive_dev=reactive_dev,
-            inject_htmx=inject_htmx,
-            htmx_redirects=htmx_redirects,
+            reactive_dev=_env_bool("PJX_REACTIVE_DEV", False),
+            inject_htmx=_env_bool("PJX_INJECT_HTMX", True),
+            components_root=_env_path("PJX_COMPONENTS_ROOT"),
+            static_root=_env_path("PJX_STATIC_ROOT"),
         )
 
     def merge(self, **overrides: Any) -> PjxSettings:
-        # only fields explicitly provided (not the _UNSET sentinel) override self, so an
-        # explicit `settings=` is never clobbered by setup()'s default keyword arguments
-        valid = {field.name for field in fields(self)}
-        filtered = {
-            key: value
-            for key, value in overrides.items()
-            if key in valid and value is not _UNSET
+        """A copy of these settings with ``overrides`` applied.
+
+        Keywords carrying the ``_UNSET`` sentinel are dropped, so a caller can
+        pass every field through unconditionally and still say nothing about
+        the ones it was never given. ``None`` is a real value and does override.
+        """
+        known = {field.name for field in fields(self)}
+        unknown = sorted(set(overrides) - known)
+        if unknown:
+            raise TypeError(f"unknown pyjinhx settings: {unknown}")
+        applied = {
+            key: value for key, value in overrides.items() if value is not _UNSET
         }
-        return replace(self, **filtered)
+        return replace(self, **applied)
 
 
-def _merge_settings(
-    settings: PjxSettings | None,
-    *,
-    invalidation_backend: Any,
-    reactive_dev: Any,
-    inject_htmx: Any,
-    htmx_redirects: Any,
-    extra: dict[str, Any],
-) -> PjxSettings:
-    return (settings or PjxSettings()).merge(
-        invalidation_backend=invalidation_backend,
-        reactive_dev=reactive_dev,
-        inject_htmx=inject_htmx,
-        htmx_redirects=htmx_redirects,
-        **extra,
-    )
+_current = PjxSettings()
 
 
-def configure_pyjinhx(
-    settings: PjxSettings | None = None,
-    /,
-    **kwargs: Any,
-) -> PjxSettings:
-    if kwargs or settings is None:
-        resolved = _merge_settings(
-            settings,
-            invalidation_backend=kwargs.pop("invalidation_backend", _UNSET),
-            reactive_dev=kwargs.pop("reactive_dev", _UNSET),
-            inject_htmx=kwargs.pop("inject_htmx", _UNSET),
-            htmx_redirects=kwargs.pop("htmx_redirects", _UNSET),
-            extra=kwargs,
-        )
+def current_settings() -> PjxSettings:
+    """The settings the last ``configure_pyjinhx`` published for this process."""
+    return _current
+
+
+def _apply_reactive_dev(enabled: bool) -> None:
+    """Turn dev mode on or off, if the dev module is importable.
+
+    The import is deferred and its absence is not an error: configuration must
+    still succeed in an install where dev tooling is not present, with the flag
+    recorded for whoever reads it later.
+    """
+    try:
+        from pyjinhx import dev  # pyright: ignore[reportAttributeAccessIssue]
+    except ImportError:
+        return
+    if dev is None:
+        return
+    if enabled:
+        dev.enable_reactive_dev()
     else:
-        resolved = settings
+        dev.disable_reactive_dev()
 
-    # The cache scope follows the backend: a cross-worker invalidation backend
-    # (e.g. Redis) makes cross-request PROCESS caching safe across workers; without
-    # one, the only multi-worker-safe behavior is per-request (REQUEST) caching.
-    backend = resolved.invalidation_backend
-    LoadCache.set_scope(
-        CacheScope.PROCESS if backend is not None else CacheScope.REQUEST
-    )
 
-    InvalidationHub.set_backend(backend)
-    if backend is not None:
-        InvalidationHub.start_listener()
-
-    if resolved.reactive_dev:
-        enable_reactive_dev()
-    else:
-        disable_reactive_dev()
-
-    from pyjinhx.assets import set_inject_htmx
-
-    set_inject_htmx(resolved.inject_htmx)
-
-    return resolved
+def configure_pyjinhx(settings: PjxSettings) -> PjxSettings:
+    """Publish ``settings`` as this process's configuration and apply its effects."""
+    global _current
+    _current = settings
+    _apply_reactive_dev(settings.reactive_dev)
+    return settings
 
 
 def shutdown_pyjinhx() -> None:
-    InvalidationHub.stop_listener()
-    InvalidationHub.set_backend(None)
-    disable_reactive_dev()
-
-
-def _is_asgi_app(app: object) -> bool:
-    return hasattr(app, "add_middleware") and hasattr(app, "router")
+    """Reset the process back to default settings and undo what config applied."""
+    global _current
+    _current = PjxSettings()
+    _apply_reactive_dev(False)
 
 
 def setup(
@@ -144,64 +132,65 @@ def setup(
     *,
     settings: PjxSettings | None = None,
     context_factory: Callable[[Any], object | None] | None = None,
-    invalidation_backend: InvalidationBackend | None = _UNSET,
-    reactive_dev: bool = _UNSET,
-    inject_htmx: bool = _UNSET,
-    htmx_redirects: bool = _UNSET,
-    components_root: str | os.PathLike[str] | None = None,
-    static_root: str | os.PathLike[str] | None = None,
+    components_root: Path | str | None = _UNSET,
+    static_root: Path | str | None = _UNSET,
     **kwargs: Any,
 ) -> PjxSettings:
+    """Configure pyjinhx for this process, and optionally wire it into an app.
+
+    Resolution order: an explicit ``settings`` object replaces the environment
+    as the base, and explicit keywords override whichever base was used.
+    ``components_root`` also triggers component discovery. With ``app=None``
+    only process configuration runs, which is what tests and scripts want.
     """
-    Wire pyjinhx for this process (and optionally a web app).
-
-    With ``app=None``, only process-wide configuration runs (tests, scripts).
-    With a FastAPI/Starlette app, lifespan is chained and registry middleware
-    is registered.
-
-    ``components_root`` sets the renderer's default environment to a
-    ``FileSystemLoader`` rooted there (works with or without an ``app``).
-    ``static_root`` mounts a ``StaticFiles`` app at ``/static`` and therefore
-    requires an ``app``.
-
-    The load-cache scope is derived from ``invalidation_backend``: cross-request
-    ``PROCESS`` caching when a backend is set (kept consistent across workers by
-    the backend), per-request ``REQUEST`` caching otherwise.
-
-    ``inject_htmx`` (default ``True``) inlines a vendored htmx ahead of the
-    pyjinhx runtime on reactive root renders, so reactivity works out of the
-    box. Set it to ``False`` if you load/manage htmx yourself; the inlined copy
-    self-guards against double-load regardless.
-    """
-    if components_root is not None:
-        from pyjinhx.renderer import Renderer
-
-        Renderer.set_default_environment(components_root)
-    if static_root is not None and app is None:
-        raise TypeError("setup(static_root=...) requires an app to mount it on")
-    resolved = _merge_settings(
-        settings,
-        invalidation_backend=invalidation_backend,
-        reactive_dev=reactive_dev,
-        inject_htmx=inject_htmx,
-        htmx_redirects=htmx_redirects,
-        extra=kwargs,
+    base = settings if settings is not None else PjxSettings.from_env()
+    resolved = base.merge(
+        components_root=components_root,
+        static_root=static_root,
+        **kwargs,
     )
+    if resolved.components_root is not None:
+        _register_components(resolved.components_root)
+    configure_pyjinhx(resolved)
     if app is None:
-        configure_pyjinhx(resolved)
         return resolved
     if not _is_asgi_app(app):
         raise TypeError(
-            "setup(app=...) requires a Starlette/FastAPI-like app "
-            "with add_middleware and router"
+            "setup(app=...) needs a Starlette/FastAPI-like app with "
+            "add_middleware and router attributes."
         )
-
-    from pyjinhx.integrations.fastapi import apply_setup
-
-    apply_setup(
-        cast("Starlette", app),
-        resolved,
-        context_factory=context_factory,
-        static_root=static_root,
+    from pyjinhx.integrations.fastapi import (  # pyright: ignore[reportMissingImports]
+        apply_setup,
     )
+
+    apply_setup(app, resolved, context_factory=context_factory)  # pyright: ignore[reportArgumentType]
     return resolved
+
+
+def _is_asgi_app(app: object) -> bool:
+    """Whether ``app`` looks like a Starlette/FastAPI application.
+
+    Duck-typed rather than isinstance-checked so pyjinhx never imports
+    Starlette to answer a question about an object the caller already built.
+    """
+    return hasattr(app, "add_middleware") and hasattr(app, "router")
+
+
+def _register_components(components_root: Path | str) -> None:
+    """Walk ``components_root`` and publish the tag -> class registry.
+
+    Every declared component class is offered to the walk; discovery is what
+    decides which of them a template on disk actually claims.
+    """
+    build_registry(components_root, _all_component_classes())
+
+
+def _all_component_classes() -> list[type]:
+    """Every declared BaseComponent subclass, nested ones included."""
+    found: list[type] = []
+    stack = list(BaseComponent.__subclasses__())
+    while stack:
+        cls = stack.pop()
+        found.append(cls)
+        stack.extend(cls.__subclasses__())
+    return found

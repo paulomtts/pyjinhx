@@ -6,10 +6,10 @@ import json
 from collections.abc import Iterator, Mapping, Sequence
 from contextlib import contextmanager
 
-from pyjinhx import MutationKey
-from pyjinhx.client import ClientBackend
-from pyjinhx.integrations.fastapi import FastAPIClientBackend
-from pyjinhx.mutations import MutationTracker
+from pyjinhx_v0 import MutationKey
+from pyjinhx_v0.client import ClientBackend
+from pyjinhx_v0.integrations.fastapi import FastAPIClientBackend
+from pyjinhx_v0.mutations import MutationTracker
 
 
 class Keys(MutationKey):

@@ -15,8 +15,8 @@ from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, JSONResponse, Response
 from markupsafe import Markup
 
-from pyjinhx import BaseComponent, PjxSettings, setup
-from pyjinhx.builtins import (
+from pyjinhx_v0 import BaseComponent, PjxSettings, setup
+from pyjinhx_v0.builtins import (
     PJXAccordion,
     PJXAccordionContent,
     PJXAccordionGroup,
@@ -417,7 +417,7 @@ def render_page() -> str:
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>pyjinhx reactivity kitchen sink</title>
+<title>pyjinhx_v0 reactivity kitchen sink</title>
 <script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.8/dist/htmx.min.js"
         integrity="sha384-/TgkGk7p307TH7EXJDuUlgG3Ce1UVolAOFopFekQkkXihi5u/6OCvVKyz1W+idaz"
         crossorigin="anonymous"></script>

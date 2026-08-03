@@ -18,12 +18,12 @@ import tempfile
 import pytest
 from jinja2 import Environment, FileSystemLoader
 
-from pyjinhx import Registry
-from pyjinhx.renderer import Renderer
-from pyjinhx.tags import ComponentAutodiscover
+from pyjinhx_v0 import Registry
+from pyjinhx_v0.renderer import Renderer
+from pyjinhx_v0.tags import ComponentAutodiscover
 
 _COMPONENT_SRC = """\
-from pyjinhx import BaseComponent
+from pyjinhx_v0 import BaseComponent
 
 class {class_name}(BaseComponent):
     id: str
@@ -143,7 +143,7 @@ def test_autodiscovery_skipped_when_already_registered():
     """No file is imported when the class is already in the class registry."""
     Registry.clear_instances()
 
-    from pyjinhx import BaseComponent
+    from pyjinhx_v0 import BaseComponent
 
     class AlreadyRegistered(BaseComponent):
         label: str = ""
@@ -213,7 +213,7 @@ def test_classless_no_header_tag_reads_template_once():
                 open_calls.append(path)
             return real_open(path, *args, **kwargs)
 
-        import pyjinhx.tags as tags_module
+        import pyjinhx_v0.tags as tags_module
 
         with pytest.MonkeyPatch.context() as mp:
             mp.setattr(tags_module, "open", counting_open, raising=False)

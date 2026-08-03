@@ -1,7 +1,7 @@
 """The per-class resolution walk must run once, not once per render (#240)."""
 
-from pyjinhx import BaseComponent, Registry, Renderer
-from pyjinhx.finder import Finder
+from pyjinhx_v0 import BaseComponent, Registry, Renderer
+from pyjinhx_v0.finder import Finder
 
 
 def test_resolution_walk_runs_once_per_class(tmp_path, monkeypatch):

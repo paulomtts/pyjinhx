@@ -1,7 +1,8 @@
-from pyjinhx import BaseComponent
-from pyjinhx.base import AttrValue
+from pyjinhx.component import AttrValue, BaseComponent, Slot
 
 
 class PJXModalFooter(BaseComponent):
+    """The bottom action region of a modal."""
+
     class_name: AttrValue = ""
-    content: str | BaseComponent = ""
+    content: Slot = ""

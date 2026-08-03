@@ -1,4 +1,4 @@
-from pyjinhx.builtins import PJXBadge
+from pyjinhx_v0.builtins import PJXBadge
 
 
 class FancyBadge(PJXBadge):

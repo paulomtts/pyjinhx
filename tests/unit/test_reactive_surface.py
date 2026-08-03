@@ -2,7 +2,7 @@ from typing import ClassVar
 
 import pytest
 
-from pyjinhx import BaseComponent, MutationKey, ReactiveComponent
+from pyjinhx_v0 import BaseComponent, MutationKey, ReactiveComponent
 
 
 class Keys(MutationKey):

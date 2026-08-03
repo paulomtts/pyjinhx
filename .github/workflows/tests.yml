@@ -27,11 +27,11 @@ jobs:
     - name: Install chromium for reactivity tests
       run: uv run playwright install --with-deps chromium
 
-    - name: Run pyjinhx2 tests
-      run: uv run pytest tests/pyjinhx2/
+    - name: Run pyjinhx tests
+      run: uv run pytest tests/pyjinhx/
 
     - name: Run tests
       run: uv run pytest tests/
 
-    - name: Typecheck pyjinhx2 (basedpyright, standard mode)
-      run: uvx "basedpyright==1.39.9" pyjinhx2/
+    - name: Typecheck pyjinhx (basedpyright, standard mode)
+      run: uvx "basedpyright==1.39.9" pyjinhx/

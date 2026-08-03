@@ -3,10 +3,10 @@ import sys
 
 import pytest
 
-from pyjinhx import BaseComponent, Registry
+from pyjinhx_v0 import BaseComponent, Registry
 
 _COLLISION_SRC = """\
-from pyjinhx import BaseComponent
+from pyjinhx_v0 import BaseComponent
 
 class {class_name}(BaseComponent):
     id: str = ""

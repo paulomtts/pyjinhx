@@ -1,3 +1,3 @@
-from .pjx_popover import PJXPopover, PJXPopoverPanel, PJXPopoverTrigger
+from pyjinhx.builtins.ui.pjx_popover.pjx_popover import PJXPopover
 
-__all__ = ["PJXPopover", "PJXPopoverPanel", "PJXPopoverTrigger"]
+__all__ = ["PJXPopover"]

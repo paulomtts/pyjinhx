@@ -5,12 +5,12 @@ import json
 import pytest
 from jinja2 import Environment, FileSystemLoader
 
-from pyjinhx import MutationKey, ReactiveComponent
-from pyjinhx.assets import asset_token, should_emit_asset
-from pyjinhx.client import PJX_ASSETS_HEADER, ClientBackend, LoadedAssets
-from pyjinhx.integrations.fastapi import FastAPIClientBackend
-from pyjinhx.reactive import oob_swaps
-from pyjinhx.renderer import Renderer
+from pyjinhx_v0 import MutationKey, ReactiveComponent
+from pyjinhx_v0.assets import asset_token, should_emit_asset
+from pyjinhx_v0.client import PJX_ASSETS_HEADER, ClientBackend, LoadedAssets
+from pyjinhx_v0.integrations.fastapi import FastAPIClientBackend
+from pyjinhx_v0.reactive import oob_swaps
+from pyjinhx_v0.renderer import Renderer
 
 # ---------------------------------------------------------------------------
 # Unit-level token + dedup tests (Step 2 / 4)

@@ -1,32 +1,11 @@
 from typing import Literal
 
-from pydantic import Field
-
-from pyjinhx import BaseComponent
-from pyjinhx.base import AttrValue, ExtraAttrs
+from pyjinhx.component import AttrValue, BaseComponent, Slot
 
 
 class PJXPopover(BaseComponent):
-    content: str | BaseComponent = ""
+    """The positioned root shell that anchors a trigger to its panel; the JS finds both through data-pjx-popover (port of v0.x pyjinhx/builtins/ui/pjx_popover/pjx_popover.py)."""
+
     align: Literal["start", "end"] = "start"
-    behavior: bool = True
     class_name: AttrValue = ""
-    extra_attrs: ExtraAttrs = Field(default_factory=dict)
-
-
-class PJXPopoverTrigger(BaseComponent):
-    content: str | BaseComponent = ""
-    tag: Literal["button", "div"] = "button"
-    role: Literal["", "menu", "listbox", "dialog"] = ""
-    behavior: bool = True
-    class_name: AttrValue = ""
-    extra_attrs: ExtraAttrs = Field(default_factory=dict)
-
-
-class PJXPopoverPanel(BaseComponent):
-    content: str | BaseComponent = ""
-    as_form: bool = False
-    role: Literal["", "menu", "listbox", "dialog"] = ""
-    behavior: bool = True
-    class_name: AttrValue = ""
-    extra_attrs: ExtraAttrs = Field(default_factory=dict)
+    content: Slot = ""

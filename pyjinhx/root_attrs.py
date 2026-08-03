@@ -1,35 +1,21 @@
-"""Single-root validation and inline attribute injection for components.
+"""Root-attr stamp: splice a component's pass-through attrs into its
+RenderedLevel's root opening tag, at the already-recorded root_span.
 
-A component's rendered template must contain exactly one top-level element
-(React-style). Inline tag attributes collected from the component are spliced
-into that root element's opening tag with override semantics.
+Import-pure (stdlib only) — this module may not import pyjinhx.render,
+pyjinhx.component, or pyjinhx.session (same rule as pyjinhx.segments).
+Single-root detection is NOT this module's job: it trusts the root_span
+it is given, produced by an earlier L0 step (issue #247's detection pass
+via VerbatimParser in pyjinhx/segments.py). This module never re-parses;
+it only slices and concatenates strings.
 
-This module is stdlib-only on purpose: it must not import ``base`` or
-``renderer`` (both import each other), so it stays free of the cycle.
+Port of v1 pyjinhx/root_attrs.py's `apply_root_attrs` / `_override_tag`
+behavior, scoped to L0: only pass-through attrs land here. `data-pjx-*` /
+`hx-swap-oob` stamping (L2/L3) reuses this same splice at the same span.
 """
 
 import re
-from html.parser import HTMLParser
 
-# HTML void elements have no closing tag, so they never open a nesting level.
-_VOID_ELEMENTS = frozenset(
-    {
-        "area",
-        "base",
-        "br",
-        "col",
-        "embed",
-        "hr",
-        "img",
-        "input",
-        "link",
-        "meta",
-        "param",
-        "source",
-        "track",
-        "wbr",
-    }
-)
+from pyjinhx.segments import RenderedLevel
 
 
 def serialize_attr(name: str, value: str) -> str:
@@ -41,71 +27,6 @@ def serialize_attr(name: str, value: str) -> str:
             )
         return f"{name}='{value}'"
     return f'{name}="{value}"'
-
-
-class _RootScanner(HTMLParser):
-    """Counts top-level elements and records the first root's opening-tag span."""
-
-    def __init__(self) -> None:
-        super().__init__(convert_charrefs=False)
-        self._depth = 0
-        self.root_count = 0
-        self.root_start: int | None = None
-        self.root_tag_text: str | None = None
-        self._line_offsets: list[int] = [0]
-
-    def feed(self, data: str) -> None:
-        # Map (line, col) from getpos() to absolute string offsets.
-        offset = 0
-        self._line_offsets = [0]
-        for line in data.splitlines(keepends=True):
-            offset += len(line)
-            self._line_offsets.append(offset)
-        super().feed(data)
-
-    def _abs_offset(self) -> int:
-        line, col = self.getpos()
-        return self._line_offsets[line - 1] + col
-
-    def _record_top_level(self) -> None:
-        if self._depth == 0:
-            self.root_count += 1
-            if self.root_count == 1:
-                self.root_start = self._abs_offset()
-                self.root_tag_text = self.get_starttag_text()
-
-    def handle_starttag(self, tag, attrs):
-        self._record_top_level()
-        if tag.lower() not in _VOID_ELEMENTS:
-            self._depth += 1
-
-    def handle_startendtag(self, tag, attrs):  # <tag/> — self-contained
-        self._record_top_level()
-
-    def handle_endtag(self, tag):
-        if self._depth > 0:
-            self._depth -= 1
-
-
-def find_single_root(html: str, *, component_name: str) -> tuple[int, int]:
-    """Return the (start, end) char span of the sole root element's opening tag.
-
-    Raises ``ValueError`` unless ``html`` has exactly one top-level element.
-    """
-    scanner = _RootScanner()
-    scanner.feed(html)
-    scanner.close()
-    if (
-        scanner.root_count != 1
-        or scanner.root_start is None
-        or scanner.root_tag_text is None
-    ):
-        raise ValueError(
-            f"<{component_name}> template must render exactly one root element "
-            f"(found {scanner.root_count})"
-        )
-    start = scanner.root_start
-    return start, start + len(scanner.root_tag_text)
 
 
 def _override_tag(tag_text: str, attrs: dict[str, str]) -> str:
@@ -120,19 +41,32 @@ def _override_tag(tag_text: str, attrs: dict[str, str]) -> str:
             body = pattern.sub(" " + pair, body, count=1)
         elif body.rstrip().endswith("/>"):
             idx = body.rindex("/>")
-            body = (
-                body[:idx].rstrip() + " " + pair + body[idx:]
-            )  # rstrip intentional: prevents extra space before '/>' (e.g. '<br data-y="1"/>' not '<br  data-y="1"/>')
+            # rstrip intentional: prevents extra space before '/>'
+            # (e.g. '<br data-y="1"/>' not '<br  data-y="1"/>')
+            body = body[:idx].rstrip() + " " + pair + body[idx:]
         else:
             idx = body.rindex(">")
             body = body[:idx] + " " + pair + body[idx:]
     return body
 
 
-def apply_root_attrs(html: str, *, component_name: str, attrs: dict[str, str]) -> str:
-    """Validate the single-root invariant and inject ``attrs`` into the root tag."""
-    start, end = find_single_root(html, component_name=component_name)
+def stamp_root_attrs(level: RenderedLevel, attrs: dict[str, str]) -> RenderedLevel:
+    """Splice ``attrs`` into ``level``'s root opening tag at ``level.root_span``.
+
+    No-op (identity) when ``attrs`` is empty. Otherwise replaces the
+    ``root_span`` substring of ``level.segments[0]`` with the stamped tag
+    text and updates ``root_span`` to match the new tag's length. Mutates
+    ``level`` in place and returns it, matching the ``splice()`` convention
+    in ``pyjinhx.segments``.
+    """
     if not attrs:
-        return html
-    new_tag = _override_tag(html[start:end], attrs)
-    return html[:start] + new_tag + html[end:]
+        return level
+    root = level.segments[0]
+    assert isinstance(root, str), (
+        f"stamp_root_attrs needs a str root segment, got {type(root).__name__}"
+    )
+    start, end = level.root_span
+    new_tag = _override_tag(root[start:end], attrs)
+    level.segments[0] = root[:start] + new_tag + root[end:]
+    level.root_span = (start, start + len(new_tag))
+    return level
