@@ -2,6 +2,9 @@
 // X-PJX-Mounted/X-PJX-Assets/X-PJX-Trigger request headers on every htmx
 // request, and applies the one swap mechanic htmx core can't do natively --
 // relocating [data-pjx-asset] head assets that arrive via OOB or cold render.
+// Loading state is dispatch-only: core tracks region/page loading state and
+// fires pjx:region-loading-*/pjx:page-loading-* events, never touching
+// classList itself -- that's the loading-indicator/page-loader artifacts' job.
 (function () {
   var pjx = {};
 
@@ -113,40 +116,6 @@
         document.head.appendChild(node); // appendChild relocates body -> head
       }
     );
-  }
-
-  // Injected once so loading indicators work with zero app CSS; every visual
-  // knob is a --pjx-* custom property the app can override in its own sheet.
-  function pjxInjectStyle() {
-    if (document.getElementById("pjx-style")) {
-      return;
-    }
-    var style = document.createElement("style");
-    style.id = "pjx-style";
-    style.textContent =
-      ".pjx-loading--skeleton,.pjx-loading--spinner{pointer-events:none}" +
-      ".pjx-loading--skeleton{color:transparent !important;" +
-      "border-radius:var(--pjx-skeleton-radius,6px);background-image:linear-gradient(90deg," +
-      "var(--pjx-skeleton-color,rgba(127,127,127,.12))," +
-      "var(--pjx-skeleton-highlight,rgba(127,127,127,.30)) 50%," +
-      "var(--pjx-skeleton-color,rgba(127,127,127,.12)));background-size:200% 100%;" +
-      "animation:pjx-shimmer var(--pjx-skeleton-speed,1.2s) ease-in-out infinite}" +
-      ".pjx-loading--skeleton *{visibility:hidden}" +
-      ".pjx-loading--spinner{position:relative}" +
-      ".pjx-loading--spinner::before{content:'';position:absolute;inset:0;" +
-      "background:var(--pjx-spinner-overlay,rgba(0,0,0,.45));" +
-      "backdrop-filter:blur(var(--pjx-spinner-blur,2px));" +
-      "-webkit-backdrop-filter:blur(var(--pjx-spinner-blur,2px));border-radius:inherit}" +
-      ".pjx-loading--spinner::after{content:'';position:absolute;top:50%;left:50%;" +
-      "width:var(--pjx-spinner-size,1.1em);height:var(--pjx-spinner-size,1.1em);" +
-      "margin:calc(var(--pjx-spinner-size,1.1em)/-2) 0 0 calc(var(--pjx-spinner-size,1.1em)/-2);" +
-      "box-sizing:border-box;border:var(--pjx-spinner-thickness,2px) solid " +
-      "var(--pjx-spinner-track,rgba(255,255,255,.4));" +
-      "border-top-color:var(--pjx-spinner-color,rgba(255,255,255,.95));" +
-      "border-radius:50%;animation:pjx-spin var(--pjx-spinner-speed,.6s) linear infinite}" +
-      "@keyframes pjx-shimmer{from{background-position:100% 0}to{background-position:-100% 0}}" +
-      "@keyframes pjx-spin{to{transform:rotate(360deg)}}";
-    document.head.appendChild(style);
   }
 
   var pjxLoadingByXhr = new Map(); // xhr -> [region id, ...]
@@ -334,7 +303,6 @@
   pjx.trigger = pjxTrigger;
   pjx.applyHeadAssets = pjxApplyHeadAssets;
   pjx.promoteInlineAssets = pjxPromoteInlineAssets;
-  pjx.injectStyle = pjxInjectStyle;
   pjx.toast = pjxToast;
   pjx.loader = { page: pjxLoaderPage, region: pjxLoaderRegion };
   pjx.loadingCount = function (id) {
@@ -352,7 +320,6 @@
     );
   }
 
-  pjxInjectStyle();
   pjxPromoteInlineAssets();
   document.body.addEventListener("htmx:configRequest", pjxConfigRequest);
   document.body.addEventListener("htmx:afterRequest", pjxApplyHeadAssetsFromRequest);
