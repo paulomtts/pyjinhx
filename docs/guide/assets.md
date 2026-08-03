@@ -52,13 +52,19 @@ Configure how assets are delivered with `AssetMode`:
 | `NONE` | silence | silence | Production: serve a pre-built bundle |
 
 ```python
-from pyjinhx import AssetMode, Renderer
+from pyjinhx import AssetMode
+from pyjinhx.session import RenderSession
 
-Renderer.set_default_js_mode(AssetMode.NONE)
-Renderer.set_default_css_mode(AssetMode.NONE)
+session = RenderSession(template_dir="./components")
+session.css_mode = AssetMode.NONE
+session.js_mode = AssetMode.NONE
 ```
 
-When `NONE` mode is active no asset tags are emitted by the renderer. Link your pre-built CSS and JS bundles in the layout `<head>` manually — see [One-bundle deployment](#one-bundle-deployment) below.
+`css_mode`/`js_mode` are per-`RenderSession` attributes (each defaults to `AssetMode.INLINE`)
+rather than a process-wide switch — set them on the session you pass to `render()`. When
+`NONE` mode is active no asset tags are emitted for that render. Link your pre-built CSS and
+JS bundles in the layout `<head>` manually — see [One-bundle deployment](#one-bundle-deployment)
+below.
 
 ### Reactive partial suppression
 
@@ -66,9 +72,20 @@ Full-page renders emit assets once at the layout root. Reactive partial response
 
 ### Client runtime (`pjx.js`)
 
-Root full-page renders auto-inject the pyjinhx client runtime (`pjx.js`) as an inline `<script>` unless the request already carries `X-PJX-Mounted`.
+Root full-page renders auto-inject the pyjinhx client runtime (`pjx.js`, vendored alongside a
+pinned copy of htmx) as an inline `<script>` unless the request already carries
+`X-PJX-Mounted`. This is handled by `inject_runtime(session, request)` from
+`pyjinhx.client.inject`, which records the script on the session for `emit_assets` to include.
 
-For raw Jinja shells, call `client_script()` (`from pyjinhx.client import client_script`) and pass the result into the template context (e.g. `{"pjx_runtime": client_script()}`), then render with `{{ pjx_runtime }}` in `<head>` or `<body>`.
+For a raw Jinja shell that renders outside pyjinhx's own pipeline, read the runtime source
+directly and embed it yourself:
+
+```python
+from pyjinhx.client import read_pjx_runtime, read_vendored_htmx
+
+pjx_runtime = f"<script>{read_vendored_htmx()}{read_pjx_runtime()}</script>"
+# pass pjx_runtime into your template context and render it in <head> or <body>
+```
 
 ### CSP
 
@@ -92,67 +109,74 @@ widget = MyWidget(
 
 ## Per-Render Manifest
 
-Inspect which assets a render used:
+Inspect which assets a render used. `asset_manifest` takes any resolver shaped
+`Callable[[Path], str]` — `resolver_with_hash` builds one that also cache-busts filenames:
 
 ```python
-from pyjinhx.assets import asset_manifest, make_default_asset_url_resolver
+from pyjinhx.assets import asset_manifest, resolver_with_hash
 
-resolver = make_default_asset_url_resolver("./components")
+resolver = resolver_with_hash("/static/components", root="./components")
 manifest = asset_manifest(session, resolver=resolver)
 # manifest.stylesheets, manifest.scripts
 ```
 
 ## Layout Preload (All Components)
 
-Ship every component asset from the layout shell instead of per-page discovery:
+Ship every component asset from the layout shell instead of per-page discovery. `all_assets()`
+walks every registered component class (not just the ones a given render used) and returns its
+CSS and JS paths, deduped and sorted:
 
 ```python
-from pyjinhx.assets import make_default_asset_url_resolver
-from pyjinhx.finder import Finder
+from pyjinhx.assets import all_assets, resolver_with_hash
 
-finder = Finder(root="./components")
-resolver = make_default_asset_url_resolver("./components")
-head_tags = finder.layout_asset_tags(resolver=resolver)
+resolver = resolver_with_hash("/static/components", root="./components")
+css_paths, js_paths = all_assets()
+head_tags = [f'<link rel="stylesheet" href="{resolver(p)}">' for p in css_paths]
+head_tags += [f'<script src="{resolver(p)}"></script>' for p in js_paths]
 ```
 
 Combine with `AssetMode.NONE` and reactive partial suppression so HTMX swaps never re-ship assets.
+
+!!! note "Import components before calling `all_assets()`"
+    `all_assets()` only sees classes Python has already imported (it walks `BaseComponent`'s
+    subclass tree), so import your component package — or call `setup(components_root=...)` —
+    before calling it from a build script.
 
 ## Cache-Busting
 
 Embed content hashes in filenames:
 
 ```python
+from pathlib import Path
 from pyjinhx.assets import hashed_filename, resolver_with_hash
 
-hashed_filename("components/ui/button.js")  # button.a1b2c3d4.js
+hashed_filename(Path("components/ui/button.js"))  # "button.a1b2c3d4.js"
 resolver = resolver_with_hash("/static/components", root="./components")
 ```
 
 ## Disabling Assets (`NONE` mode)
 
 ```python
-from pyjinhx import AssetMode, Renderer
+from pyjinhx import AssetMode
+from pyjinhx.session import RenderSession
 
-Renderer.set_default_js_mode(AssetMode.NONE)
-Renderer.set_default_css_mode(AssetMode.NONE)
+session = RenderSession(template_dir="./components")
+session.css_mode = AssetMode.NONE
+session.js_mode = AssetMode.NONE
 ```
 
-When disabled, no asset tags are emitted. Use `Finder.collect_javascript_files()` and `Finder.collect_css_files()` to discover files for fully manual static serving.
+When disabled, no asset tags are emitted. Use `all_assets()` (below) to discover files for
+fully manual static serving.
 
 ## Static File Serving
 
-Use `Finder` to get lists of asset files for static serving:
+Use `all_assets()` to get every component's asset paths for static serving:
 
 ```python
-from pyjinhx.finder import Finder
+from pyjinhx.assets import all_assets
 
-finder = Finder(root="./components")
-
-js_files = finder.collect_javascript_files(relative_to_root=True)
-# ['ui/button.js', 'ui/dropdown.js', ...]
-
-css_files = finder.collect_css_files(relative_to_root=True)
-# ['ui/button.css', 'ui/dropdown.css', ...]
+css_paths, js_paths = all_assets()
+# each is a sorted tuple[Path, ...], e.g. (Path("ui/button.css"), Path("ui/dropdown.css"), ...)
 ```
 
 ### Example: FastAPI with bundle serving
@@ -163,35 +187,33 @@ a static file. Set both modes to `NONE` so components don't inline what the bund
 ```python
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
-from pyjinhx import AssetMode, Renderer
+from pyjinhx import AssetMode
+from pyjinhx.session import RenderSession
 
 app = FastAPI()
 app.mount(
     "/static/pyjinhx", StaticFiles(directory="path/to/pyjinhx/runtime"), name="pyjinhx"
 )
 
-Renderer.set_default_js_mode(AssetMode.NONE)
-Renderer.set_default_css_mode(AssetMode.NONE)
-
 
 @app.get("/")
 def index():
-    return str(MyApp(id="app").render())  # bundle already linked in layout <head>
+    session = RenderSession(template_dir="./components")
+    session.css_mode = AssetMode.NONE
+    session.js_mode = AssetMode.NONE
+    return str(MyApp(id="app").render(session))  # bundle already linked in layout <head>
 ```
 
 ## Asset helpers reference
 
 | Symbol | Purpose |
 |--------|---------|
-| `DEFAULT_RUNTIME_URL` | Default `/static/pyjinhx/pjx.js` URL constant |
-| `runtime_asset_path()` | Filesystem path to bundled `pjx.js` |
-| `default_asset_url()` | Map absolute path → default public URL |
-| `make_default_asset_url_resolver()` | Build a resolver from a component root |
-| `hashed_filename()` | Content-hash a filename for cache-busting |
-| `resolver_with_hash()` | Resolver that embeds hashes in URLs |
-| `asset_manifest()` | Build `AssetManifest` from a `RenderSession` |
-| `Finder.layout_asset_tags()` | Preload all component assets in a layout shell (instance method) |
-| `Finder.all_assets()` | Every component asset as `(css_paths, js_paths)` — bundle input (instance method) |
+| `emit_assets()` | Markup for a session's accumulated assets, per delivery mode |
+| `asset_manifest()` | Build an `AssetManifest` (resolved URLs) from a `RenderSession` |
+| `all_assets()` | Every registered component's CSS/JS paths as `(css_paths, js_paths)` |
+| `hashed_filename()` | Content-hash a `Path` for cache-busting (`hash_len=8` by default) |
+| `asset_token()` | Opaque dedup token for an asset path (used by `X-PJX-Assets`) |
+| `resolver_with_hash()` | Build a resolver that embeds a content hash in each URL |
 
 See [Assets API](../api/assets-api.md) for signatures and examples.
 
@@ -202,25 +224,24 @@ component asset and serve two concatenated bundles with a content-hash ETag:
 
 ```python
 import hashlib
-import os
 from pathlib import Path
 
 from fastapi import FastAPI, Request, Response
-from pyjinhx.finder import Finder
+from pyjinhx.assets import all_assets
 
 app = FastAPI()
 
 
-def _build(paths: list[str], marker: str) -> tuple[bytes, str]:
+def _build(paths: tuple[Path, ...], marker: str) -> tuple[bytes, str]:
     parts = []
     for path in paths:
         parts.append(marker.format(path=path).encode())
-        parts.append(Path(path).read_bytes() + b"\n")
+        parts.append(path.read_bytes() + b"\n")
     payload = b"".join(parts)
     return payload, '"' + hashlib.md5(payload).hexdigest() + '"'
 
 
-CSS_PATHS, JS_PATHS = Finder("app/components").all_assets()
+CSS_PATHS, JS_PATHS = all_assets()
 CSS_BUNDLE, CSS_ETAG = _build(CSS_PATHS, "/* === {path} === */\n")
 JS_BUNDLE, JS_ETAG = _build(JS_PATHS, "// === {path} ===\n")
 
@@ -245,16 +266,10 @@ def bundle_js(request: Request) -> Response:
     return _bundle(request, JS_BUNDLE, JS_ETAG, "application/javascript")
 ```
 
-Reference the bundles from your layout `<head>` and render with
-`Renderer.set_default_js_mode(AssetMode.NONE)` / `set_default_css_mode(AssetMode.NONE)` so
-components stop inlining what the bundle already ships. Concatenation order is alphabetical;
-if your app's cascade needs a specific sheet first, prepend it to the list before building.
-To include the pyjinhx builtins, add `import pyjinhx.builtins` and build a second `Finder`:
-
-```python
-CSS_B, JS_B = Finder(
-    os.path.join(os.path.dirname(pyjinhx.builtins.__file__), "ui")
-).all_assets()
-```
-
-Concatenate both lists before building the bundles.
+Reference the bundles from your layout `<head>` and set `session.js_mode = AssetMode.NONE` /
+`session.css_mode = AssetMode.NONE` on the `RenderSession` you render with, so components stop
+inlining what the bundle already ships. Concatenation order is alphabetical; if your app's
+cascade needs a specific sheet first, prepend it to the list before building.
+`all_assets()` already walks every registered `BaseComponent` subclass — including the pyjinhx
+builtins — as long as they've been imported, so `import pyjinhx.builtins` before calling it is
+enough to fold builtin assets into the same bundle; no separate call is needed.
