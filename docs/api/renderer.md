@@ -73,6 +73,7 @@ Notify subscribers (`on_rendered`) that `component`'s subtree finished rendering
 class AssetMode(str, Enum):
     INLINE = "inline"
     NONE = "none"
+    LINK = "link"
 ```
 
-Per-kind (CSS/JS) delivery mode for a render. `INLINE` is the default so a cold render works with no configuration; `NONE` is how a caller shipping assets some other way (a build step, a CDN) suppresses emission.
+Per-kind (CSS/JS) delivery mode for a render. `INLINE` is the default so a cold render works with no configuration; `NONE` is how a caller shipping assets some other way (a build step, a CDN) suppresses emission; `LINK` emits a reference instead of inlining contents (`<link rel="stylesheet">` for CSS, `<script src>` for JS), requiring a URL resolver to turn each asset path into a servable URL.
