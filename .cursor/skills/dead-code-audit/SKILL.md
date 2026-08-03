@@ -50,12 +50,13 @@ dirty_keys
 resolve_mounted
 resolve_effective_dirtied
 warn_reactive_render_without_mounted
-get_load_context
 load_scope
-fastapi_client_backend
-parse_loaded_assets
 client_has_mounted_manifest
 data-pjx-key
+StateKey
+PyJinhxSettings
+LoadContext
+PjxLoad
 ```
 
 Also hunt stale **usage patterns** (not necessarily symbol names):
@@ -71,10 +72,10 @@ manifest.*"key"
 | Item | Why it stays |
 |------|----------------|
 | `_render(client=...)` | Tests pass explicit client for asset/runtime paths |
-| `ClientBackend.resolve_client(explicit)` | Supports `_render(client=request)` |
+| `IntegrationBackend` Protocol (`integrations/base.py`) | Structural seam for FastAPI/other hosts |
 | `_pjx_key` | Internal load-cache identity |
 | `depends_on()` default | Load-cache reverse index + dev validation |
-| `MutationTracker.render_was_consumed()` | Dev guardrail |
+| `add_dirtied()` / `get_dirtied()` (`session.py`) | Session-scoped mutation tracking behind `@mutates` |
 | `pyjinhx/__init__.py` re-exports | Public API surface |
 
 Compat shims: flag only when **zero callers** remain (grep the shim body, not just the name).
@@ -90,7 +91,7 @@ Compat shims: flag only when **zero callers** remain (grep the shim body, not ju
 rg -l '\bSYMBOL\b' pyjinhx tests examples docs .cursor/skills
 ```
 
-4. **Export vs usage** — compare `pyjinhx.__all__` to `tests/36_public_api_test.py` and doc tables; flag exports with no docs/tests if newly added.
+4. **Export vs usage** — compare `pyjinhx.__all__` to `tests/test_package_layout.py` (`EXPECTED_EXPORTS`) and doc tables; flag exports with no docs/tests if newly added.
 5. **Branch scan** — read compat helpers (`_manifest_load_arg`, `resolve_client`, etc.): is every branch reachable?
 6. **Test scan** — tests whose names/descriptions reference removed APIs (`mutation_scope`, `data-pjx-key`, instance-tier dirty keys).
 7. **Classify** each hit: delete | migrate caller | document as intentional compat | false positive.
@@ -100,13 +101,13 @@ rg -l '\bSYMBOL\b' pyjinhx tests examples docs .cursor/skills
 
 ```bash
 # Removed API ghosts (expand list as APIs drop)
-rg -n 'mutation_scope|coerce_dirty_args|interpolate_reactive_keys|dirty_keys|resolve_mounted|resolve_effective_dirtied|warn_reactive_render_without_mounted|get_load_context|fastapi_client_backend|data-pjx-key' \
+rg -n 'mutation_scope|coerce_dirty_args|interpolate_reactive_keys|dirty_keys|resolve_mounted|resolve_effective_dirtied|warn_reactive_render_without_mounted|StateKey|PyJinhxSettings|LoadContext|PjxLoad|data-pjx-key' \
   pyjinhx tests examples docs .cursor/skills
 
 # Stale render kwargs in docs/examples (not in pyjinhx — may be intentional in migration docs)
 rg -n 'render\([^)]*dirtied=|render\([^)]*mounted=' docs examples .cursor/skills
 
-# Top-level invalidate wrapper (canonical: LoadCache.invalidate)
+# Top-level invalidate re-export (canonical: pyjinhx.reactive.cache.invalidate)
 rg -n 'from pyjinhx import .*invalidate|pyjinhx\.invalidate\b' docs examples README.md
 
 # Unused imports (run ruff; triage F401 in scope only)
@@ -124,11 +125,11 @@ uv run ruff check .
 
 - [ ] No removed symbols in `pyjinhx/` (except CHANGELOG/historical notes if any)
 - [ ] No removed symbols in `tests/` imports or assertions
-- [ ] `docs/` and `examples/` use current API (`PjxKey`, `Cls.render(*args)`, `@mutates` state keys only)
+- [ ] `docs/` and `examples/` use current API (`PjxKey`, `@mutates` state keys only)
 - [ ] No orphan compat branches (manifest `key` alias, stem invalidation index, etc.) without tests or callers
 - [ ] No tests asserting deleted behavior unless explicitly marked legacy
 - [ ] Audit skills grep current symbols (`warn_reactive_render_without_client`, not `..._mounted`)
-- [ ] `__all__` / `36_public_api_test.py` / `docs/reference/public-api.md` agree
+- [ ] `__all__` / `tests/test_package_layout.py` / `docs/reference/public-api.md` agree
 
 ## Relationship to sibling audits
 

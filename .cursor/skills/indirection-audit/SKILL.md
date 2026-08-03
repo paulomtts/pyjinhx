@@ -22,16 +22,16 @@ Read: [CONVENTIONS.md](../code-audit-sweep/CONVENTIONS.md).
 
 | Pattern | pyjinhx precedent | Fix shape |
 |---------|-------------------|-----------|
-| Module fn → classmethod only | removed `invalidate()` → `LoadCache.invalidate` | Delete wrapper; call classmethod |
-| One-line factory | removed `FastAPIClientBackend.from_request` | Use constructor |
-| Parse wrapper | removed `parse_loaded_assets` | Export `LoadedAssets.parse` |
-| Nested closure for capture | old `_cached_load` in `install_cached_load` | Store on class (`_pjx_raw_load`); one shared classmethod |
+| Module fn → classmethod only | wrapper around `LoadedAssets.parse` (`client/inject.py`) | Delete wrapper; call the staticmethod |
+| One-line factory | `FastAPIBackend(...)` wrapped in a `make_*` helper (`integrations/fastapi.py`) | Use the constructor |
+| Parse wrapper | free `parse_*` helper duplicating `MountedManifest.parse` / `TriggerManifest.parse` | Export the staticmethod |
+| Re-export of a module fn | `pyjinhx.invalidate` forwarding to `reactive.cache.invalidate` | Import from the owning module |
 | Migration shim module | deleted `client.py` re-export | Migrate imports; delete shim |
 | Classmethod → module fn only | N/A if module fn **is** the implementation | OK |
 
 ## What is OK (do not flag)
 
-- `pyjinhx/__init__.py` re-exporting `FastAPIClientBackend` from `integrations.fastapi`
+- `pyjinhx/__init__.py` re-exporting `FastAPIBackend` from `integrations.fastapi`
 - Module-level `enable_reactive_dev()` with module-private `_DevConfig` (implementation lives there)
 - Lazy imports inside functions to break cycles
 
