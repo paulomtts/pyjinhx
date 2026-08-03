@@ -88,42 +88,49 @@ store.add_without_decorator(text)
 dirty(Keys.TODOS)
 ```
 
-## PjxContext
+### Injecting an app context into `load()`
+
+An app's per-request context — a database session, the signed-in user, a
+tenant — reaches a component by declaring it on `load()`:
 
 ```python
-@dataclass(frozen=True)
-class PjxContext: ...
+from pyjinhx.app_context import AppContext
+from pyjinhx.reactive.component import ReactiveComponent
+
+
+class MyAppContext(AppContext):
+    def __init__(self, db, user):
+        self.db = db
+        self.user = user
+
+
+class TodoList(ReactiveComponent):
+    def load(self, ctx: MyAppContext):
+        return ctx.db.todos_for(ctx.user)
 ```
 
-Opaque base for request-scoped data available inside reactive `load()` and any component method that declares a `PjxContext` parameter. Subclass with your own frozen dataclass fields (database session, user id, feature flags).
-
-## PjxContext.current / PjxContext.bind
+The value comes from the `context_factory` given to `setup()`, called once per
+request with that request's `Request`:
 
 ```python
-PjxContext.current() -> Any | None
-PjxContext.bind(ctx) -> ContextManager[None]
+setup(app, context_factory=lambda request: MyAppContext(db=get_db(), user=request.user))
 ```
 
-Return or set the load context for the current scope. Any component method that declares a parameter annotated with `PjxContext` (or a subclass) — including reactive `load()` — receives the current context when the parameter is left unbound; an explicitly passed argument takes precedence. At most one such parameter is allowed per method.
+Rules:
 
-Prefer `Registry.request_scope(load_context=ctx)` in web apps — it combines registry isolation, request cache, mutation tracking, and load context in one call.
-
-```python
-from pyjinhx import PjxContext, Registry
-from pyjinhx.integrations.fastapi import FastAPIClientBackend
-
-
-@dataclass(frozen=True)
-class AppLoadContext(PjxContext):
-    db: Session
-
-
-with Registry.request_scope(
-    load_context=AppLoadContext(db=session),
-    client_backend=FastAPIClientBackend(request),
-):
-    html = TodoList.render()
-```
+- The context class must subclass `AppContext`. `PjxContext` is the framework's
+  own read-only view of request state and is not subclassable for this.
+- Matching is by type annotation, not by parameter name — call the parameter
+  whatever reads best.
+- `MyAppContext | None` is matched too, and is the honest annotation when the
+  app may run without a factory.
+- With no `context_factory` configured, or when `load()` runs outside a request
+  scope, the parameter receives `None` rather than raising: a component class is
+  defined at import time, long before any app wiring exists to validate against.
+- At most one parameter may be annotated as an app context; two raise `TypeError`
+  when the class is defined.
+- A zero-argument `load(self)` is untouched — no injection is attempted and
+  nothing about its behavior changes.
 
 ## Reactive dev
 

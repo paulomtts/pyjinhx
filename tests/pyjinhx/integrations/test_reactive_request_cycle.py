@@ -532,7 +532,7 @@ class RequestAppContext(AppContext):
 class ContextCard(ReactiveComponent):
     """A card whose load() declares the app context and echoes it back."""
 
-    def load(self, ctx: RequestAppContext | None) -> str:
+    def load(self, ctx: RequestAppContext | None) -> str:  # pyright: ignore[reportIncompatibleMethodOverride]
         return "no-context" if ctx is None else ctx.path
 
 
@@ -546,7 +546,7 @@ def test_load_receives_the_context_factory_result_over_a_real_request():
 
     @app.get("/ctx-echo")
     def ctx_echo() -> dict[str, str]:
-        return {"loaded": ContextCard().load()}
+        return {"loaded": ContextCard().load()}  # pyright: ignore[reportCallIssue]
 
     with TestClient(app) as client:
         response = client.get("/ctx-echo")
@@ -561,7 +561,7 @@ def test_without_a_context_factory_the_injected_context_is_none():
 
     @app.get("/ctx-none")
     def ctx_none() -> dict[str, str]:
-        return {"loaded": ContextCard().load()}
+        return {"loaded": ContextCard().load()}  # pyright: ignore[reportCallIssue]
 
     with TestClient(app) as client:
         response = client.get("/ctx-none")

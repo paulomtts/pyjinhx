@@ -319,56 +319,56 @@ class DemoAppContext(AppContext):
 
 def test_load_receives_the_requests_app_context():
     class Widget(ReactiveComponent):
-        def load(self, ctx: DemoAppContext) -> str:
+        def load(self, ctx: DemoAppContext) -> str:  # pyright: ignore[reportIncompatibleMethodOverride]
             return ctx.user
 
     widget = Widget()
     with request_scope(load_context=DemoAppContext(user="ada")):
-        assert widget.load() == "ada"
+        assert widget.load() == "ada"  # pyright: ignore[reportCallIssue]
 
 
 def test_each_request_gets_its_own_app_context():
     class Widget(ReactiveComponent):
-        def load(self, ctx: DemoAppContext) -> str:
+        def load(self, ctx: DemoAppContext) -> str:  # pyright: ignore[reportIncompatibleMethodOverride]
             return ctx.user
 
     widget = Widget()
     with request_scope(load_context=DemoAppContext(user="ada")):
-        first = widget.load()
+        first = widget.load()  # pyright: ignore[reportCallIssue]
     with request_scope(load_context=DemoAppContext(user="grace")):
-        second = widget.load()
+        second = widget.load()  # pyright: ignore[reportCallIssue]
 
     assert (first, second) == ("ada", "grace")
 
 
 def test_injection_is_by_annotation_not_by_parameter_name():
     class Widget(ReactiveComponent):
-        def load(self, whatever: DemoAppContext) -> str:
+        def load(self, whatever: DemoAppContext) -> str:  # pyright: ignore[reportIncompatibleMethodOverride]
             return whatever.user
 
     widget = Widget()
     with request_scope(load_context=DemoAppContext(user="ada")):
-        assert widget.load() == "ada"
+        assert widget.load() == "ada"  # pyright: ignore[reportCallIssue]
 
 
 def test_optional_app_context_annotation_is_injected():
     class Widget(ReactiveComponent):
-        def load(self, ctx: DemoAppContext | None) -> str:
+        def load(self, ctx: DemoAppContext | None) -> str:  # pyright: ignore[reportIncompatibleMethodOverride]
             return "none" if ctx is None else ctx.user
 
     widget = Widget()
     with request_scope(load_context=DemoAppContext(user="ada")):
-        assert widget.load() == "ada"
+        assert widget.load() == "ada"  # pyright: ignore[reportCallIssue]
 
 
 def test_no_context_bound_injects_none():
     class Widget(ReactiveComponent):
-        def load(self, ctx: DemoAppContext | None) -> str:
+        def load(self, ctx: DemoAppContext | None) -> str:  # pyright: ignore[reportIncompatibleMethodOverride]
             return "none" if ctx is None else ctx.user
 
     widget = Widget()
     with request_scope():
-        assert widget.load() == "none"
+        assert widget.load() == "none"  # pyright: ignore[reportCallIssue]
 
 
 def test_zero_arg_load_is_untouched_when_a_context_is_bound():
@@ -391,14 +391,14 @@ def test_an_injected_load_is_still_cached_per_request():
     calls: list[int] = []
 
     class Widget(ReactiveComponent):
-        def load(self, ctx: DemoAppContext) -> str:
+        def load(self, ctx: DemoAppContext) -> str:  # pyright: ignore[reportIncompatibleMethodOverride]
             calls.append(1)
             return ctx.user
 
     widget = Widget()
     with request_scope(load_context=DemoAppContext(user="ada")):
-        assert widget.load() == "ada"
-        assert widget.load() == "ada"
+        assert widget.load() == "ada"  # pyright: ignore[reportCallIssue]
+        assert widget.load() == "ada"  # pyright: ignore[reportCallIssue]
 
     assert len(calls) == 1
 
@@ -410,5 +410,5 @@ def test_two_app_context_params_are_rejected_at_class_definition():
     with pytest.raises(TypeError, match="at most one"):
 
         class Widget(ReactiveComponent):
-            def load(self, first: DemoAppContext, second: OtherAppContext) -> None:
+            def load(self, first: DemoAppContext, second: OtherAppContext) -> None:  # pyright: ignore[reportIncompatibleMethodOverride]
                 return None
