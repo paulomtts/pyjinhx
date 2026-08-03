@@ -35,6 +35,8 @@ composition, and the one that actually renders every builtin instead of
 escaping it into inert text.
 """
 
+from collections.abc import Sequence
+
 from pyjinhx2.builtins.pjx_lazy_load import PJXLazyLoad
 from pyjinhx2.builtins.pjx_page_loader import PJXPageLoader
 from pyjinhx2.builtins.pjx_paginator import PJXPaginator
@@ -362,9 +364,9 @@ class BenchMulti(BaseComponent):
     items: Slot = ""
 
 
-def _multi(id_: str, items: list[BaseComponent]) -> BaseComponent:
+def _multi(id_: str, items: "Sequence[BaseComponent]") -> BaseComponent:
     """``items[0]`` unwrapped when there is only one, else a BenchMulti host."""
-    return items[0] if len(items) == 1 else BenchMulti(id=id_, items=items)
+    return items[0] if len(items) == 1 else BenchMulti(id=id_, items=list(items))
 
 
 def _v2_display_primitives() -> list[BaseComponent]:

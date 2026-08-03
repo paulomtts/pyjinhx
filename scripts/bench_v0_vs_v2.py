@@ -115,7 +115,7 @@ def _sanity(label: str, v0_html: str, v2_html: str) -> None:
         )
 
 
-def _time(fn: Callable[[], str]) -> list[float]:
+def _time(fn: Callable[[], object]) -> list[float]:
     """One warmup call, then ITERATIONS timed calls; per-iteration milliseconds."""
     fn()
     times: list[float] = []
@@ -126,7 +126,7 @@ def _time(fn: Callable[[], str]) -> list[float]:
     return times
 
 
-CASES: tuple[tuple[str, Callable[[], str], Callable[[], str]], ...] = (
+CASES: tuple[tuple[str, Callable[[], str], Callable[[], BaseComponent]], ...] = (
     ("full page", lambda: build_v0_page(ROWS), lambda: build_v2_page(ROWS)),
     ("table rows=200", lambda: build_v0_table(ROWS), lambda: build_v2_table(ROWS)),
     ("shells only", build_v0_shells, build_v2_shells),
