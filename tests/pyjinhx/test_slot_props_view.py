@@ -488,5 +488,6 @@ class TestStringSlotThroughProps:
         card = Card(content=Inner(body="<b>hi</b>"))
         context = build_context(card, Card.__pjx_descriptor__)
 
-        assert context["content"].props.body == "<b>hi</b>"
-        assert context["content"].props.body.__html__() == "<b>hi</b>"
+        body = context["content"].props.body
+        assert body == "<b>hi</b>"
+        assert body.__html__() == "<b>hi</b>"  # pyright: ignore[reportAttributeAccessIssue]
