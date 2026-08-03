@@ -12,9 +12,11 @@ from typing import Annotated, Any, ClassVar, get_args, get_origin, get_type_hint
 
 from pydantic.fields import FieldInfo
 
+from pyjinhx.app_context import resolve_load_context_param
 from pyjinhx.component import BaseComponent
 from pyjinhx.reactive.cache import cache_get, cache_has, cache_put
 from pyjinhx.reactive.keys import coerce_load_key_str, coerce_reactive_key
+from pyjinhx.session import get_load_context
 
 
 class ReactiveComponent(BaseComponent):
@@ -165,7 +167,7 @@ def resolve_pjx_key_field(model_cls: type[Any]) -> str | None:
 
 
 def _wrap_load(
-    cls: type["ReactiveComponent"], real_load: Callable[[Any], Any]
+    cls: type["ReactiveComponent"], real_load: Callable[..., Any]
 ) -> Callable[[Any], Any]:
     """Build the memoizing wrapper around one class's ``load``.
 
@@ -173,7 +175,15 @@ def _wrap_load(
     builds this instance's cache key and does the get/call/put dance. Outside a
     request scope the cache reads miss and the writes vanish, so the real body
     simply runs every time - no special case is needed here for that.
+
+    The app-context parameter, if the signature declares one, is resolved here
+    too and closed over: signature introspection is a per-class fact, and doing
+    it on every load() would put it on the hot render path.
+
+    Raises:
+        TypeError: ``load`` declares more than one app-context parameter.
     """
+    context_param = resolve_load_context_param(real_load)
 
     def wrapped_load(self: Any) -> Any:
         # An unmarked class has no per-instance key, so all its instances keep
@@ -182,7 +192,10 @@ def _wrap_load(
         key = coerce_load_key_str(getattr(self, field, None)) if field else None
         if cache_has(cls, key):
             return cache_get(cls, key)
-        result = real_load(self)
+        if context_param is None:
+            result = real_load(self)
+        else:
+            result = real_load(self, **{context_param: get_load_context()})
         # Index under both the static react keys (a bare "todos" dirties every
         # instance) and, when this instance has a load key, the per-instance
         # "todos:1" composite form reactive_key() produces — @mutates(key=...)

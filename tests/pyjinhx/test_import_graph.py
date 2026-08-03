@@ -429,11 +429,16 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
     # ReactiveComponent subclasses BaseComponent and routes load() through the
     # cache: the two edges below are the whole design. The reverse - anything in
     # the render spine importing reactive/ - stays forbidden.
+    # The load() wrap resolves its app-context parameter through app_context and
+    # reads the bound value out of session's ContextVar; both are strictly below
+    # reactive/, so neither edge is a cycle.
     "reactive.component": frozenset(
         {
+            "pyjinhx.app_context",
             "pyjinhx.component",
             "pyjinhx.reactive.cache",
             "pyjinhx.reactive.keys",
+            "pyjinhx.session",
         }
     ),
     # The reactive on_rendered branch (#463): it reads ReactiveComponent to
