@@ -76,6 +76,17 @@ def test_post_build_inlines_component_css(tmp_path):
         assert f"<style>{text}</style>" in page
 
 
+def test_post_build_inlines_component_js(tmp_path):
+    from pyjinhx.builtins.ui.pjx_accordion_group import PJXAccordionGroup
+
+    hooks.on_post_build({"site_dir": str(tmp_path)})
+    page = (tmp_path / "demos" / "pjx-accordion-group.html").read_text()
+    js_paths = PJXAccordionGroup.__pjx_descriptor__.js_paths
+    assert js_paths, "PJXAccordionGroup is expected to carry a script"
+    for p in js_paths:
+        assert f"<script>{Path(p).read_text()}</script>" in page
+
+
 def test_gallery_page_features_every_demo():
     """components.md must feature every builtin that has a demo (DEMOS key).
 
