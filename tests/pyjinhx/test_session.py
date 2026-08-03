@@ -7,6 +7,7 @@ lifecycle - creation, nesting, exception cleanup, thread isolation - not any
 read/write semantics, which land with the modules that consume them.
 """
 
+import asyncio
 import threading
 from pathlib import Path
 from typing import Any, cast
@@ -344,6 +345,30 @@ def test_cache_reverse_is_fresh_per_request_scope():
 def test_get_load_context_is_none_outside_any_scope():
     """Reading the app context outside a request is a miss, not a LookupError."""
     assert session_module.get_load_context() is None
+
+
+@pytest.mark.anyio
+async def test_concurrent_scopes_never_see_each_others_load_context():
+    """Two overlapping requests are two asyncio tasks, and a task gets its own
+    copy of the ContextVar map - so interleaving must not cross the values."""
+
+    async def run(label: str, first_sleep: float, second_sleep: float) -> list[object]:
+        seen: list[object] = []
+        await asyncio.sleep(first_sleep)
+        with session_module.request_scope(load_context=label):
+            seen.append(session_module.get_load_context())
+            await asyncio.sleep(second_sleep)
+            seen.append(session_module.get_load_context())
+        seen.append(session_module.get_load_context())
+        return seen
+
+    left, right = await asyncio.gather(
+        run("left", 0.0, 0.02),
+        run("right", 0.01, 0.0),
+    )
+
+    assert left == ["left", "left", None]
+    assert right == ["right", "right", None]
 
 
 def test_request_scope_binds_the_load_context_it_was_given():
