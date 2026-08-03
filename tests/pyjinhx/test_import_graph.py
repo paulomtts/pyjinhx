@@ -63,7 +63,12 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
     "builtins.ui.pjx_button.__init__": frozenset(
         {"pyjinhx.builtins.ui.pjx_button.pjx_button"}
     ),
-    "builtins.ui.pjx_button.pjx_button": frozenset({"pyjinhx.component"}),
+    # #693: the loading spinner is composed in Python as a component-typed
+    # field instead of a <PJXRegionLoader/> tag literal, so this leaf now also
+    # reaches down into the pjx_region_loader leaf.
+    "builtins.ui.pjx_button.pjx_button": frozenset(
+        {"pyjinhx.component", "pyjinhx.builtins.pjx_region_loader"}
+    ),
     "builtins.ui.pjx_chip_input.__init__": frozenset(
         {"pyjinhx.builtins.ui.pjx_chip_input.pjx_chip_input"}
     ),
@@ -178,8 +183,11 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
     "builtins.ui.pjx_accordion_trigger.__init__": frozenset(
         {"pyjinhx.builtins.ui.pjx_accordion_trigger.pjx_accordion_trigger"}
     ),
+    # #693: the chevron is composed in Python as a component-typed field
+    # instead of a <PJXIcon/> tag literal, so this leaf now also reaches down
+    # into the pjx_icon leaf.
     "builtins.ui.pjx_accordion_trigger.pjx_accordion_trigger": frozenset(
-        {"pyjinhx.component"}
+        {"pyjinhx.component", "pyjinhx.builtins.ui.pjx_icon"}
     ),
     # pjx_tab family (#520): the group shell, its tablist, the tab triggers
     # and the panels they reveal. Only the group carries JS; the tab template
@@ -267,7 +275,12 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
     "builtins.ui.pjx_carousel.__init__": frozenset(
         {"pyjinhx.builtins.ui.pjx_carousel.pjx_carousel"}
     ),
-    "builtins.ui.pjx_carousel.pjx_carousel": frozenset({"pyjinhx.component"}),
+    # #693: the four arrow/autoplay icons are composed in Python as
+    # component-typed fields instead of <PJXIcon/> tag literals, so this leaf
+    # now also reaches down into the pjx_icon leaf.
+    "builtins.ui.pjx_carousel.pjx_carousel": frozenset(
+        {"pyjinhx.component", "pyjinhx.builtins.ui.pjx_icon"}
+    ),
     "builtins.ui.pjx_carousel_slide.__init__": frozenset(
         {"pyjinhx.builtins.ui.pjx_carousel_slide.pjx_carousel_slide"}
     ),

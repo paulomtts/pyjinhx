@@ -205,7 +205,9 @@ class TestIconsWithoutARegistry:
         assert "<PJXIcon" not in html
         assert html.count("<svg") == 2
 
-    def test_autoplay_icons_render_with_an_empty_registry(self, session, empty_registry):
+    def test_autoplay_icons_render_with_an_empty_registry(
+        self, session, empty_registry
+    ):
         html = render(PJXCarousel(id="c", content="slide", autoplay=True), session)
         assert "<PJXIcon" not in html
         assert html.count("<svg") == 4
