@@ -2,64 +2,38 @@
 
 PyJinHx provides several configuration options for customizing template discovery and rendering behavior.
 
-## Default Environment
+## Template Loading
 
-The default Jinja environment controls where templates are loaded from.
+Templates are resolved per-request through a `RenderSession`, bound for the duration of a `request_scope()` block. There is no global default-environment singleton to configure — you tell the scope where to load templates from when you open it.
 
-### Auto-Detection
-
-By default, PyJinHx walks upward from the current directory to find your project root:
+### Setting the Template Directory
 
 ```python
-from pyjinhx import Renderer
+from pyjinhx.session import request_scope
 
-# Auto-detects project root
-renderer = Renderer.get_default_renderer()
+with request_scope(template_dir="./components"):
+    # Components here look for templates under ./components
+    ...
 ```
 
-Project root is detected by looking for common markers:
+`template_dir` defaults to `"templates"`.
 
-- `pyproject.toml`
-- `main.py`
-- `.git`
-- `.gitignore`
-- `package.json`
-- `uv.lock`
+### Passing a Pre-Built Session
 
-### Setting a Custom Path
+For full control over the underlying Jinja environment, construct a `RenderSession` yourself and hand it to `request_scope()`:
 
 ```python
-from pyjinhx import Renderer
+from pyjinhx.session import RenderSession, request_scope
 
-# Set explicit template path
-Renderer.set_default_environment("./components")
+session = RenderSession(template_dir="./templates")
+# session.jinja_env is a standard jinja2.Environment (FileSystemLoader,
+# autoescape enabled) — attach hooks like on_rendered before binding it.
 
-# Now all components look for templates under ./components
+with request_scope(session=session):
+    ...
 ```
 
-### Using a Jinja Environment
-
-For full control, pass a Jinja `Environment`:
-
-```python
-from jinja2 import Environment, FileSystemLoader
-from pyjinhx import Renderer
-
-env = Environment(
-    loader=FileSystemLoader("./templates"),
-    autoescape=True,
-    trim_blocks=True,
-    lstrip_blocks=True,
-)
-
-Renderer.set_default_environment(env)
-```
-
-### Clearing the Default
-
-```python
-Renderer.set_default_environment(None)  # Reset to auto-detection
-```
+When `session` is given, `template_dir` is ignored.
 
 ## Logging
 
@@ -126,7 +100,7 @@ setup(app)  # per-request caching (default, multi-worker safe)
 setup(app, invalidation_backend=...)  # cross-request per worker; see integrations.redis
 ```
 
-`Registry.request_scope()` initializes a request-scoped cache on entry and clears it on exit. With a backend configured, reads also use the process-wide store; otherwise only the request store is used. Within-request caching always happens — it dedups the repeated `load()` calls of the reactive OOB walk.
+`request_scope()` initializes a request-scoped cache on entry and clears it on exit. With a backend configured, reads also use the process-wide store; otherwise only the request store is used. Within-request caching always happens — it dedups the repeated `load()` calls of the reactive OOB walk.
 
 See [Cache & Invalidation](../api/cache-invalidation.md) and [Reactivity](../reactivity.md).
 
