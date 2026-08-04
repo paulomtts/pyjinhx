@@ -64,16 +64,19 @@ def test_manifest_accessors_read_the_session():
         pjx_assets="loaded-assets",
         pjx_trigger="trigger-manifest",
     )
+    mounted = [{"id": "a", "type": "Card", "load": {}, "hash": "h"}]
+    assets = frozenset({"tok"})
+    trigger = {"id": "a"}
     with request_scope() as session:
         session.pjx_request = request
-        session.pjx_mounted = "mounted-manifest"
-        session.pjx_assets = "loaded-assets"
-        session.pjx_trigger = "trigger-manifest"
+        session.pjx_mounted = mounted
+        session.pjx_assets = assets
+        session.pjx_trigger = trigger
         ctx = PjxContext.current()
         assert ctx.request is request
-        assert ctx.mounted == "mounted-manifest"
-        assert ctx.assets == "loaded-assets"
-        assert ctx.trigger == "trigger-manifest"
+        assert ctx.mounted == mounted
+        assert ctx.assets == assets
+        assert ctx.trigger == trigger
 
 
 def test_manifest_accessors_default_without_a_request():

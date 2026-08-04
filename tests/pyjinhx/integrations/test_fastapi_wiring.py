@@ -139,16 +139,20 @@ def test_scope_exits_when_the_handler_raises():
     assert current_session() is None
 
 
-def test_manifests_are_parsed_onto_request_state():
+def test_manifests_are_parsed_onto_the_session():
     app = FastAPI()
     apply_setup(app, _settings())
     captured: dict[str, object] = {}
 
     @app.get("/state")
     def state(request: Request):
-        captured["mounted"] = request.state.pjx_mounted
-        captured["assets"] = request.state.pjx_assets
-        captured["trigger"] = request.state.pjx_trigger
+        from pyjinhx.session import current_session
+
+        session = current_session()
+        assert session is not None
+        captured["mounted"] = session.pjx_mounted
+        captured["assets"] = session.pjx_assets
+        captured["trigger"] = session.pjx_trigger
         return {"ok": True}
 
     with TestClient(app) as client:

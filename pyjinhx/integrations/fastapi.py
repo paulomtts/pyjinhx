@@ -173,9 +173,6 @@ class PjxScopeMiddleware(BaseHTTPMiddleware):
         self.context_factory = context_factory
 
     async def dispatch(self, request: Any, call_next: Any) -> Any:
-        request.state.pjx_mounted = MountedManifest.parse(request)
-        request.state.pjx_assets = LoadedAssets.parse(request)
-        request.state.pjx_trigger = TriggerManifest.parse(request)
         load_context = (
             self.context_factory(request) if self.context_factory is not None else None
         )
@@ -193,6 +190,9 @@ class PjxScopeMiddleware(BaseHTTPMiddleware):
         session.on_rendered.append(register_rendered_instance)
         with request_scope(session=session, load_context=load_context) as session:
             session.pjx_request = request  # pyright: ignore[reportAttributeAccessIssue]
+            session.pjx_mounted = MountedManifest.parse(request)
+            session.pjx_assets = LoadedAssets.parse(request)
+            session.pjx_trigger = TriggerManifest.parse(request)
             return await call_next(request)
 
 
