@@ -5,7 +5,6 @@ description: >-
   no callers, obsolete backward-compat paths, unused parameters, and tests for
   deleted behavior. Use after refactors, API removals, or when the user asks to
   "sweep for dead code", "find unused code", or "remove leftovers". Read-only report.
-disable-model-invocation: true
 ---
 
 # Dead code audit
@@ -16,11 +15,11 @@ disable-model-invocation: true
 
 **I don't own:** thin wrappers that still have callers (→ `indirection-audit`), export policy (→ `public-api-audit`), intentional asymmetry (→ `duplication-audit`).
 
-Read: [CONVENTIONS.md](../code-audit-sweep/CONVENTIONS.md).
+Read: [CONVENTIONS.md](../_shared/CONVENTIONS.md).
 
 ## Scope
 
-Default: `pyjinhx/`, `tests/`, `examples/`, `docs/`, `.cursor/skills/`.
+Default: `pyjinhx/`, `tests/`, `examples/`, `docs/`, `.claude/skills/`.
 
 User may narrow (e.g. `pyjinhx/reactive/` only). Include docs when user says "full sweep".
 
@@ -88,7 +87,7 @@ Compat shims: flag only when **zero callers** remain (grep the shim body, not ju
 
 ```bash
 # Replace SYMBOL; expect hits in definition file only (+ maybe tests to delete)
-rg -l '\bSYMBOL\b' pyjinhx tests examples docs .cursor/skills
+rg -l '\bSYMBOL\b' pyjinhx tests examples docs .claude/skills
 ```
 
 4. **Export vs usage** — compare `pyjinhx.__all__` to `tests/test_package_layout.py` (`EXPECTED_EXPORTS`) and doc tables; flag exports with no docs/tests if newly added.
@@ -102,10 +101,10 @@ rg -l '\bSYMBOL\b' pyjinhx tests examples docs .cursor/skills
 ```bash
 # Removed API ghosts (expand list as APIs drop)
 rg -n 'mutation_scope|coerce_dirty_args|interpolate_reactive_keys|dirty_keys|resolve_mounted|resolve_effective_dirtied|warn_reactive_render_without_mounted|StateKey|PyJinhxSettings|LoadContext|PjxLoad|data-pjx-key' \
-  pyjinhx tests examples docs .cursor/skills
+  pyjinhx tests examples docs .claude/skills
 
 # Stale render kwargs in docs/examples (not in pyjinhx — may be intentional in migration docs)
-rg -n 'render\([^)]*dirtied=|render\([^)]*mounted=' docs examples .cursor/skills
+rg -n 'render\([^)]*dirtied=|render\([^)]*mounted=' docs examples .claude/skills
 
 # Top-level invalidate re-export (canonical: pyjinhx.reactive.cache.invalidate)
 rg -n 'from pyjinhx import .*invalidate|pyjinhx\.invalidate\b' docs examples README.md
