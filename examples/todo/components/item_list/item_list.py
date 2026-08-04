@@ -10,7 +10,7 @@ class ItemList(ReactiveComponent, react={Keys.TODO_LIST}):
     items: list[ItemRow] = []  # noqa: RUF012 -- pydantic field, not a shared mutable default
 
     @classmethod
-    def load(cls, ctx: TodoAppContext) -> "ItemList":
+    def load(cls, ctx: TodoAppContext | None = None) -> "ItemList":
         """Build one cache-routed row per todo.
 
         ``ItemRow.load(todo.id)`` is load-bearing: the renderer only auto-loads

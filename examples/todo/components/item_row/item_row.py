@@ -13,7 +13,7 @@ class ItemRow(ReactiveComponent, react={Keys.TODOS}):
     done: bool = False
 
     @classmethod
-    def load(cls, todo_id: int, ctx: TodoAppContext) -> "ItemRow":
+    def load(cls, todo_id: int, ctx: TodoAppContext | None = None) -> "ItemRow":
         """Build this row from the store.
 
         A todo_id that is not in the store returns a field-default row rather
