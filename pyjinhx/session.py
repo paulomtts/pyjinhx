@@ -123,7 +123,9 @@ class RenderSession:
             Callable[[BaseComponent, RenderedLevel, RenderSession], None]
         ] = []
         # The Starlette request object for this render, set by middleware and
-        # read by PjxContext to expose request.state manifests and app context.
+        # read by PjxContext to expose app context. Manifests live on the
+        # session itself (pjx_mounted/pjx_assets/pjx_trigger below), not on
+        # request.state.
         self.pjx_request: Any = None
         # The parsed pjx request headers. They live on the session, not on
         # request.state, because the response composer is framework-free: it
