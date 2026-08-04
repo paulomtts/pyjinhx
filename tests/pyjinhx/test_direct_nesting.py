@@ -13,7 +13,7 @@ from typing import Annotated, Any
 
 import pytest
 
-from pyjinhx.component import BaseComponent, Children, PjxSlot, Slot
+from pyjinhx._component import BaseComponent, Children, PjxSlot, Slot
 from pyjinhx.descriptor import ClassDescriptor
 from pyjinhx.markers import ComponentNode
 from pyjinhx.reactive.component import ReactiveComponent

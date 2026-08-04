@@ -1,4 +1,4 @@
-from pyjinhx.component import AttrValue, BaseComponent, Slot
+from pyjinhx._component import AttrValue, BaseComponent, Slot
 
 
 class PJXModalBody(BaseComponent):

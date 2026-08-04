@@ -1,6 +1,6 @@
 from pydantic import Field
 
-from pyjinhx.component import AttrValue, BaseComponent
+from pyjinhx._component import AttrValue, BaseComponent
 
 
 class PJXBreadcrumb(BaseComponent):

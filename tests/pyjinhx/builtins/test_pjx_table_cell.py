@@ -10,7 +10,7 @@ from pyjinhx.session import RenderSession
 
 @pytest.fixture
 def session():
-    # Descriptor template paths are absolute (module-dir walk in component.py);
+    # Descriptor template paths are absolute (module-dir walk in _component.py);
     # FileSystemLoader reconstructs them by joining the search root with the
     # split pieces, so the root "/" is the only search root that round-trips
     # an absolute path back to itself.

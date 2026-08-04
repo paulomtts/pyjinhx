@@ -9,7 +9,7 @@ from pathlib import Path
 import jinja2
 import pytest
 
-from pyjinhx.component import BaseComponent
+from pyjinhx._component import BaseComponent
 from pyjinhx.descriptor import ClassDescriptor
 from pyjinhx.rendering import render
 from pyjinhx.session import RenderSession, request_scope

@@ -1,6 +1,6 @@
 from typing import ClassVar, Literal
 
-from pyjinhx.component import AttrValue, BaseComponent, Slot
+from pyjinhx._component import AttrValue, BaseComponent, Slot
 
 
 class PJXResizableGroup(BaseComponent):

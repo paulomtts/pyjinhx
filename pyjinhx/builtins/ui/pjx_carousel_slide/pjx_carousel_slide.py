@@ -2,7 +2,7 @@ from typing import ClassVar
 
 from pydantic import Field
 
-from pyjinhx.component import AttrValue, BaseComponent, ExtraAttrs, Slot
+from pyjinhx._component import AttrValue, BaseComponent, ExtraAttrs, Slot
 
 
 class PJXCarouselSlide(BaseComponent):

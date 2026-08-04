@@ -18,6 +18,7 @@ from pathlib import Path
 import pytest
 
 from pyjinhx import discovery
+from pyjinhx._component import BaseComponent, Slot, _pascal_to_snake
 from pyjinhx.builtins.ui.pjx_avatar import PJXAvatar
 from pyjinhx.builtins.ui.pjx_avatar_stack import PJXAvatarStack
 from pyjinhx.builtins.ui.pjx_badge import PJXBadge
@@ -28,7 +29,6 @@ from pyjinhx.builtins.ui.pjx_progress import PJXProgress
 from pyjinhx.builtins.ui.pjx_skeleton import PJXSkeleton
 from pyjinhx.builtins.ui.pjx_spinner import PJXSpinner
 from pyjinhx.classless import component
-from pyjinhx.component import BaseComponent, Slot, _pascal_to_snake
 from pyjinhx.rendering import render
 from pyjinhx.session import RenderSession
 

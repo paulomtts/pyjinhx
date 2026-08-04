@@ -10,7 +10,7 @@ raw-HTML-capable Slot invariant, so this now matches v0's rendering.
 import pkgutil
 
 import pyjinhx.builtins
-from pyjinhx.component import BaseComponent
+from pyjinhx._component import BaseComponent
 from pyjinhx.discovery import build_registry
 from pyjinhx.rendering import render as v2_render
 from pyjinhx.session import RenderSession

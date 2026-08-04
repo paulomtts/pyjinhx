@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 
 from pyjinhx import discovery
-from pyjinhx.component import BaseComponent
+from pyjinhx._component import BaseComponent
 from pyjinhx.descriptor import ClassDescriptor
 from pyjinhx.rendering import _fill_children, _passthrough_markup
 from pyjinhx.segments import ChildRef, RenderedLevel

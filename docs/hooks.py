@@ -10,8 +10,8 @@ sys.path.insert(0, HERE)
 
 from demos import DEMOS
 
+from pyjinhx._component import BaseComponent, _pascal_to_snake
 from pyjinhx.assets import AssetMode, emit_assets
-from pyjinhx.component import BaseComponent, _pascal_to_snake
 from pyjinhx.session import RenderSession, accumulate_assets, request_scope
 
 

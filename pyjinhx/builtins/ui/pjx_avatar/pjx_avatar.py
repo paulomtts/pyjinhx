@@ -1,6 +1,6 @@
 from pydantic import computed_field, field_validator
 
-from pyjinhx.component import AttrValue, BaseComponent
+from pyjinhx._component import AttrValue, BaseComponent
 
 _NAMED_SIZES = {"sm", "md", "lg"}
 

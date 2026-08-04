@@ -23,6 +23,7 @@ from pathlib import Path
 import pytest
 
 from pyjinhx import discovery
+from pyjinhx._component import BaseComponent, Slot, _pascal_to_snake
 from pyjinhx.builtins.pjx_region_loader import PJXRegionLoader
 from pyjinhx.builtins.ui.pjx_button import PJXButton
 from pyjinhx.builtins.ui.pjx_chip_input import PJXChipInput
@@ -30,7 +31,6 @@ from pyjinhx.builtins.ui.pjx_form_field import PJXFormField
 from pyjinhx.builtins.ui.pjx_password_input import PJXPasswordInput
 from pyjinhx.builtins.ui.pjx_segmented_control import PJXSegmentedControl
 from pyjinhx.builtins.ui.pjx_toggle_switch import PJXToggleSwitch
-from pyjinhx.component import BaseComponent, Slot, _pascal_to_snake
 from pyjinhx.rendering import render
 from pyjinhx.session import RenderSession
 

@@ -14,11 +14,11 @@ import sys
 import time
 
 import pyjinhx.builtins  # noqa: F401 — registers builtins
+from pyjinhx._component import BaseComponent, Slot
 from pyjinhx.builtins.pjx_table import PJXTable
 from pyjinhx.builtins.pjx_table_body import PJXTableBody
 from pyjinhx.builtins.pjx_table_cell import PJXTableCell
 from pyjinhx.builtins.pjx_table_row import PJXTableRow
-from pyjinhx.component import BaseComponent, Slot
 from pyjinhx.rendering import render
 from pyjinhx.session import RenderSession
 

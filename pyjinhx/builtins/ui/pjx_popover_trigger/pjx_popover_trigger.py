@@ -1,6 +1,6 @@
 from typing import Literal
 
-from pyjinhx.component import AttrValue, BaseComponent, Slot
+from pyjinhx._component import AttrValue, BaseComponent, Slot
 
 
 class PJXPopoverTrigger(BaseComponent):

@@ -8,7 +8,7 @@ from dataclasses import dataclass, field
 
 import pytest
 
-from pyjinhx.component import BaseComponent
+from pyjinhx._component import BaseComponent
 from pyjinhx.integrations.base import (
     SETUP_FLAG,
     ContextFactory,

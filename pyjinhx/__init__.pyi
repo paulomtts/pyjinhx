@@ -1,11 +1,11 @@
 """Type stubs for pyjinhx public API."""
 
+from pyjinhx._component import BaseComponent as BaseComponent
+from pyjinhx._component import Children as Children
+from pyjinhx._component import Slot as Slot
 from pyjinhx.app_context import AppContext as AppContext
 from pyjinhx.assets import AssetMode as AssetMode
 from pyjinhx.classless import component as component
-from pyjinhx.component import BaseComponent as BaseComponent
-from pyjinhx.component import Children as Children
-from pyjinhx.component import Slot as Slot
 from pyjinhx.config import PjxSettings as PjxSettings
 from pyjinhx.config import setup as setup
 from pyjinhx.context import PjxContext as PjxContext

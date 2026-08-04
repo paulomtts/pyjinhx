@@ -168,7 +168,7 @@ def test_link_css_with_inline_js_emits_both_css_first(tmp_path):
 
 from dataclasses import replace
 
-from pyjinhx.component import BaseComponent
+from pyjinhx._component import BaseComponent
 from pyjinhx.descriptor import ClassDescriptor
 from pyjinhx.rendering import render, render_level
 from pyjinhx.segments import serialize

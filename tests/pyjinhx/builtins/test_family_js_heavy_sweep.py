@@ -23,6 +23,7 @@ from pathlib import Path
 import pytest
 
 from pyjinhx import discovery
+from pyjinhx._component import BaseComponent, Slot, _pascal_to_snake
 from pyjinhx.builtins.ui.pjx_alert import PJXAlert
 from pyjinhx.builtins.ui.pjx_carousel import PJXCarousel
 from pyjinhx.builtins.ui.pjx_carousel_slide import PJXCarouselSlide
@@ -33,7 +34,6 @@ from pyjinhx.builtins.ui.pjx_resizable_handle import PJXResizableHandle
 from pyjinhx.builtins.ui.pjx_resizable_panel import PJXResizablePanel
 from pyjinhx.builtins.ui.pjx_toast_host import PJXToastHost
 from pyjinhx.classless import component
-from pyjinhx.component import BaseComponent, Slot, _pascal_to_snake
 from pyjinhx.rendering import render
 from pyjinhx.session import RenderSession
 

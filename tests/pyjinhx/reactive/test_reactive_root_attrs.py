@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pytest
 
-from pyjinhx.component import BaseComponent, Slot
+from pyjinhx._component import BaseComponent, Slot
 from pyjinhx.descriptor import ClassDescriptor
 from pyjinhx.reactive.component import ReactiveComponent
 from pyjinhx.reactive.root_attrs import stamp_reactive_root_attrs

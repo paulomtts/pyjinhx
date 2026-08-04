@@ -15,7 +15,7 @@ sys.path.insert(0, str(DOCS))
 import hooks
 from demos import DEMOS
 
-from pyjinhx.component import BaseComponent
+from pyjinhx._component import BaseComponent
 
 
 class FakeFile:
@@ -104,7 +104,7 @@ def test_multi_component_demo_emits_each_asset_once(tmp_path):
 def test_base_css_link_survives_and_output_is_stable(tmp_path):
     import itertools
 
-    import pyjinhx.component as component_mod
+    import pyjinhx._component as component_mod
 
     first = tmp_path / "a"
     second = tmp_path / "b"

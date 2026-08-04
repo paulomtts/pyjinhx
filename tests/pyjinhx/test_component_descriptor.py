@@ -7,8 +7,8 @@ from typing import Annotated, ClassVar, Optional
 import pytest
 from pydantic import ConfigDict
 
-import pyjinhx.component
-from pyjinhx.component import (
+import pyjinhx._component
+from pyjinhx._component import (
     BaseComponent,
     Children,
     PjxSlot,
@@ -309,13 +309,13 @@ class TestDescriptorAttachedAtClassDefinition:
 
     def test_the_seam_is_called_exactly_once_per_class_definition(self, monkeypatch):
         calls: list[type] = []
-        real = pyjinhx.component._resolve_class_descriptor
+        real = pyjinhx._component._resolve_class_descriptor
 
         def counting(cls):
             calls.append(cls)
             return real(cls)
 
-        monkeypatch.setattr(pyjinhx.component, "_resolve_class_descriptor", counting)
+        monkeypatch.setattr(pyjinhx._component, "_resolve_class_descriptor", counting)
 
         class Card(BaseComponent):
             pass
@@ -367,13 +367,13 @@ class TestDescriptorAttachedAtClassDefinition:
         """One assignment site for `__pjx_descriptor__`: registration and
         dev-reload cannot drift apart because they are the same call."""
         seen: list[type] = []
-        real = pyjinhx.component.rebuild_class_descriptor
+        real = pyjinhx._component.rebuild_class_descriptor
 
         def spying(cls):
             seen.append(cls)
             real(cls)
 
-        monkeypatch.setattr(pyjinhx.component, "rebuild_class_descriptor", spying)
+        monkeypatch.setattr(pyjinhx._component, "rebuild_class_descriptor", spying)
 
         class Card(BaseComponent):
             pass
@@ -402,7 +402,7 @@ class TestHookOrdering:
         class never reaches the resolver."""
         calls: list[type] = []
         monkeypatch.setattr(
-            pyjinhx.component,
+            pyjinhx._component,
             "_resolve_class_descriptor",
             lambda cls: calls.append(cls),
         )
@@ -418,13 +418,13 @@ class TestHookOrdering:
         """super().__pydantic_init_subclass__(**kwargs) is still called first:
         by the time the seam sees the class, pydantic has finished building it."""
         seen: list[frozenset[str]] = []
-        real = pyjinhx.component._resolve_class_descriptor
+        real = pyjinhx._component._resolve_class_descriptor
 
         def spying(cls):
             seen.append(frozenset(cls.model_fields))
             return real(cls)
 
-        monkeypatch.setattr(pyjinhx.component, "_resolve_class_descriptor", spying)
+        monkeypatch.setattr(pyjinhx._component, "_resolve_class_descriptor", spying)
 
         class Card(BaseComponent):
             title: str = ""
@@ -437,7 +437,7 @@ class TestSeamFailurePropagates:
         def boom(cls):
             raise NotImplementedError("resolver not implemented yet")
 
-        monkeypatch.setattr(pyjinhx.component, "_resolve_class_descriptor", boom)
+        monkeypatch.setattr(pyjinhx._component, "_resolve_class_descriptor", boom)
 
         with pytest.raises(NotImplementedError, match="resolver not implemented yet"):
 
@@ -616,7 +616,7 @@ class TestRebuildClassDescriptor:
             provenance={},
         )
         monkeypatch.setattr(
-            pyjinhx.component, "_resolve_class_descriptor", lambda cls: sentinel
+            pyjinhx._component, "_resolve_class_descriptor", lambda cls: sentinel
         )
 
         rebuild_class_descriptor(Card)
@@ -1049,13 +1049,13 @@ class TestTemplateWalkStopsAtBaseComponent:
             pass
 
         considered: list[type] = []
-        real = pyjinhx.component._defining_module_dir
+        real = pyjinhx._component._defining_module_dir
 
         def spying(cls):
             considered.append(cls)
             return real(cls)
 
-        monkeypatch.setattr(pyjinhx.component, "_defining_module_dir", spying)
+        monkeypatch.setattr(pyjinhx._component, "_defining_module_dir", spying)
 
         _resolve_template_path(FancyCard)
 

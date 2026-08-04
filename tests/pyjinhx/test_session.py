@@ -15,7 +15,7 @@ from typing import Any, cast
 import pytest
 
 from pyjinhx import session as session_module
-from pyjinhx.component import BaseComponent
+from pyjinhx._component import BaseComponent
 from pyjinhx.descriptor import ClassDescriptor
 from pyjinhx.rendering import render
 
@@ -223,7 +223,7 @@ class PlainBox(BaseComponent):
 
 # There is no `__pjx_template__` override attribute anywhere in pyjinhx —
 # template resolution is a pure MRO/filesystem walk (`class_name.pjx` beside
-# the defining module; see component.py's `_walk_template`). This test needs a
+# the defining module; see _component.py's `_walk_template`). This test needs a
 # specific template, so it bypasses that walk entirely, the same way
 # test_render_level.py does: build a ClassDescriptor by hand and assign it.
 PlainBox.__pjx_descriptor__ = ClassDescriptor(

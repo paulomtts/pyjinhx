@@ -2,8 +2,8 @@ from typing import ClassVar
 
 from pydantic import Field
 
+from pyjinhx._component import AttrValue, BaseComponent, ExtraAttrs, Slot
 from pyjinhx.builtins.ui.pjx_icon import PJXIcon
-from pyjinhx.component import AttrValue, BaseComponent, ExtraAttrs, Slot
 
 
 class PJXCarousel(BaseComponent):

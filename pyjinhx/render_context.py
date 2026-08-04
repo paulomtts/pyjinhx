@@ -7,7 +7,7 @@ from typing import Any
 
 from markupsafe import Markup
 
-from pyjinhx.component import BaseComponent
+from pyjinhx._component import BaseComponent
 from pyjinhx.markers import ComponentNode, finalize_slot_node
 
 

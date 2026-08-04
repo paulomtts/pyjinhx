@@ -6,7 +6,7 @@ the other half of that decision: the on-demand path that says "give me a class
 for this template anyway", building one from the template's `{#def#}` header
 when it has one and a permissive placeholder when it does not.
 
-Sits above component.py, discovery.py and props_header.py and only calls into
+Sits above _component.py, discovery.py and props_header.py and only calls into
 them: parsing stays in props_header, the tag -> class mapping stays discovery's
 to write, and nothing here re-implements either.
 """
@@ -17,7 +17,7 @@ import types
 from pathlib import Path
 
 from pyjinhx import discovery
-from pyjinhx.component import (
+from pyjinhx._component import (
     OpenComponent,
     _pascal_to_snake,
     rebuild_class_descriptor,

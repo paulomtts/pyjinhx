@@ -2,8 +2,8 @@ from typing import Annotated
 
 from pydantic import Field
 
+from pyjinhx._component import BaseComponent, PjxSlot, Slot
 from pyjinhx.builtins.ui.pjx_popover import PJXPopover
-from pyjinhx.component import BaseComponent, PjxSlot, Slot
 
 
 class PJXDropdown(PJXPopover):

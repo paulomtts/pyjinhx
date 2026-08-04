@@ -2,7 +2,7 @@ from typing import Any
 
 from pydantic import Field
 
-from pyjinhx.component import AttrValue, BaseComponent, Slot
+from pyjinhx._component import AttrValue, BaseComponent, Slot
 
 
 class PJXEmptyState(BaseComponent):

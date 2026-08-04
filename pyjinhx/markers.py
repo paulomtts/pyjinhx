@@ -9,7 +9,7 @@ from contextlib import contextmanager
 from contextvars import ContextVar
 from pathlib import Path
 
-from pyjinhx.component import BaseComponent
+from pyjinhx._component import BaseComponent
 
 
 class SlotProps:

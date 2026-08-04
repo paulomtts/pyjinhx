@@ -11,8 +11,8 @@ from typing import Any, cast
 import jinja2
 from pydantic import TypeAdapter
 
+from pyjinhx._component import BaseComponent, _pascal_to_snake
 from pyjinhx.assets import emit_assets
-from pyjinhx.component import BaseComponent, _pascal_to_snake
 from pyjinhx.discovery import get_class
 from pyjinhx.markers import SLOT_TOKEN_RE, collect_slot_tokens
 from pyjinhx.props_header import warn_stale_def_header
