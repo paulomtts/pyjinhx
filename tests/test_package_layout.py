@@ -19,6 +19,7 @@ EXPECTED_EXPORTS = {
     "Children",
     "component",
     "ReactiveComponent",
+    "ReactiveResponse",
     "render",
     "RenderSession",
     # app wiring

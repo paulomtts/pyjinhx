@@ -199,10 +199,10 @@ def generate():
     return ReportSummary(report=report).render()  # non-reactive; counters fan out OOB
 ```
 
-For a response that renders no component at all (a raw string, a `204`), use `from pyjinhx.reactive.response import ReactiveResponse` to attach the same fan-out:
+For a response that renders no component at all (a raw string, a `204`), use `from pyjinhx import ReactiveResponse` to attach the same fan-out:
 
 ```python
-from pyjinhx.reactive.response import ReactiveResponse
+from pyjinhx import ReactiveResponse
 
 
 @app.post("/dismiss")
@@ -214,8 +214,7 @@ def dismiss():
 `ReactiveResponse` never dirties anything itself. Its full signature is `ReactiveResponse(primary=None, mounted=None, redirect=None, redirect_mode="redirect", assets=None)` — all keyword arguments, all about *what to send*. Dirty the keys first with `dirty(...)` (or `@mutates` on the store method), then build the response:
 
 ```python
-from pyjinhx import dirty
-from pyjinhx.reactive.response import ReactiveResponse
+from pyjinhx import ReactiveResponse, dirty
 
 
 @app.post("/dismiss")

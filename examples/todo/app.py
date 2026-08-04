@@ -12,8 +12,7 @@ from starlette.requests import Request
 from examples.todo import store
 from examples.todo.components import App, ItemRow
 from examples.todo.context import TodoAppContext
-from pyjinhx import setup
-from pyjinhx.reactive.response import ReactiveResponse
+from pyjinhx import ReactiveResponse, setup
 
 app = FastAPI()
 

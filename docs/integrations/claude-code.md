@@ -112,8 +112,7 @@ class Counter(ReactiveComponent, react={Keys.TODOS}):
 `render()` is an **instance method** — `BaseComponent.render(self, session=None)`. There is no `Cls.render(*args)` classmethod; a route builds the component it wants to send and renders that instance. Dirtying happens *before* the response is built, via `@mutates` on store methods (`MutationKey` members only) or an imperative `dirty(...)`:
 
 ```python
-from pyjinhx import dirty, mutates
-from pyjinhx.reactive.response import ReactiveResponse
+from pyjinhx import ReactiveResponse, dirty, mutates
 
 
 @mutates(Keys.TODOS)
