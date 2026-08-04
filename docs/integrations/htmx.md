@@ -287,14 +287,14 @@ extension docs, and render the streamed fragments with PyJinHx components as usu
 ## Dependency-aware updates (reactive OOB)
 
 The patterns above use manual `hx-target` / `hx-swap` for each interaction. With
-PyJinHx reactivity, a mutation route simply returns `Cls.render()` and every
+PyJinHx reactivity, a mutation route simply returns `Cls(...)` and every
 dependent region rides along as an `hx-swap-oob` fragment — no per-swap wiring.
 This is the path to reach for when **one mutation updates multiple regions**
 (counter, list, totals):
 
 - Declare `react={...}` + `load()` on `ReactiveComponent` subclasses
-- Construct the primary and `return <instance>.render()` from mutation routes — dependent regions ride along as `hx-swap-oob` fragments
-- Wire [IntegrationBackend](../api/client-backend.md) via `setup()` so routes call `.render()` with no framework kwargs
+- Construct the primary and `return <instance>` from mutation routes — dependent regions ride along as `hx-swap-oob` fragments
+- Wire [IntegrationBackend](../api/client-backend.md) via `setup()` so routes return components with no framework kwargs
 
 See [Reactivity](../reactivity.md) and [Usage tiers](../guide/usage-tiers.md).
 
@@ -302,11 +302,11 @@ See [Reactivity](../reactivity.md) and [Usage tiers](../guide/usage-tiers.md).
 
 ### Reactive triggers don't need `hx-swap="none"`
 
-A `ReactiveResponse` with no primary HTML is OOB-only: htmx applies the
-out-of-band swaps, then swaps the empty leftover into the trigger's target —
-clearing it. pyjinhx removes this footgun automatically: when a request produces
-an OOB-only `ReactiveResponse`, the middleware emits `HX-Reswap: none`, so the
-trigger keeps its content with no extra attribute:
+A response with no primary HTML is OOB-only: htmx applies the out-of-band swaps,
+then swaps the empty leftover into the trigger's target — clearing it. pyjinhx
+removes this footgun automatically: when a handler returns `None` (or an empty
+primary), the composer emits `HX-Reswap: none`, so the trigger keeps its content
+with no extra attribute:
 
 ```html
 <!-- no hx-swap="none" needed -->
@@ -319,28 +319,45 @@ This is always on and requires the pyjinhx middleware (installed by
 ### Making redirects navigate under htmx
 
 htmx AJAX-follows a `3xx` and swaps the destination page into a fragment instead
-of navigating. To make a redirect trigger a real browser navigation, pass
-`redirect=` (and optionally `redirect_mode=`) to `ReactiveResponse` instead of
-returning a framework `RedirectResponse`:
+of navigating. You do not need a pyjinhx-specific response for this: return your
+framework's own redirect and pyjinhx translates it.
 
 ```python
-from pyjinhx.reactive import ReactiveResponse
+from fastapi.responses import RedirectResponse
 
 
 @app.post("/logout")
 def logout():
-    return ReactiveResponse(redirect="/login")  # emits HX-Redirect
+    return RedirectResponse("/login", status_code=303)
 ```
 
-`redirect_mode="location"` emits `HX-Location` instead, for htmx's client-side
-ajax navigation rather than a full browser redirect.
+For an **htmx** request, any handler return whose `status_code` falls in 300–399 and
+that carries a `Location` header becomes `204 No Content` with `HX-Redirect: /login`,
+which htmx turns into a real browser navigation. The check is duck-typed on that shape,
+so hand-built and third-party redirect responses translate too. A **plain** (non-htmx)
+navigation gets the real `3xx` back, untouched — the same route serves both.
+
+`HX-Location` — htmx's client-side ajax navigation — has no status-code spelling, so
+there is nothing for pyjinhx to translate from. Ask for it directly:
+
+```python
+from starlette.responses import Response
+
+
+@app.post("/logout")
+def logout():
+    return Response(status_code=204, headers={"HX-Location": "/login"})
+```
+
+A framework `Response` is not a shape `compose()` adapts, so it takes the `PASSTHROUGH`
+path and reaches the client exactly as written.
 
 ### The `HX-Reswap: none` mechanism
 
-The automatic `HX-Reswap: none` behavior described above is implemented on
-`ReactiveResponse.headers` (in `pyjinhx/reactive/response.py`): it's emitted
-whenever a response has no primary markup. There's no pluggable backend hook
-for this — it's a fixed property of `ReactiveResponse` itself. Framework glue
+The automatic `HX-Reswap: none` behavior described above is implemented in
+`pyjinhx/responses.py`: `compose()` emits it whenever the composed body has no
+primary markup. There's no pluggable backend hook for this — it's a fixed
+property of composition, so every backend agrees about it. Framework glue
 (mounting static files, request scoping, adapting a pjx return into a native
 response) is the seam that *is* pluggable, via the
 [`IntegrationBackend`](../api/client-backend.md) protocol that `setup()` wires

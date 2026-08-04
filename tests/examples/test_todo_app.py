@@ -155,3 +155,10 @@ class TestSourceGuard:
 
         assert "ReactiveResponse" not in doc
         assert "appends OOB swaps" not in doc
+
+    def test_the_htmx_doc_names_no_removed_response_api(self):
+        """docs/integrations/htmx.md must describe native 3xx translation."""
+        doc = Path("docs/integrations/htmx.md").read_text()
+
+        assert "ReactiveResponse" not in doc
+        assert "HX-Redirect" in doc
