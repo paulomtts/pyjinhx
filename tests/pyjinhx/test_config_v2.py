@@ -177,17 +177,22 @@ def test_components_root_builds_the_registry(
     assert calls[0][0] == tmp_path
 
 
-def test_no_components_root_does_not_build_the_registry(
+def test_no_components_root_still_builds_the_registry_with_no_walked_dir(
     monkeypatch: pytest.MonkeyPatch,
 ):
+    """Issue #738: builtins claim tags off their own template even with no
+    components_root, so the registry build must still run — with
+    template_dir=None rather than being skipped outright."""
     from pyjinhx import config
 
     calls: list[object] = []
     monkeypatch.setattr(
-        config, "build_registry", lambda template_dir, classes: calls.append(1)
+        config,
+        "build_registry",
+        lambda template_dir, classes: calls.append(template_dir),
     )
     config.setup()
-    assert calls == []
+    assert calls == [None]
 
 
 def test_setup_rejects_a_non_asgi_app():
