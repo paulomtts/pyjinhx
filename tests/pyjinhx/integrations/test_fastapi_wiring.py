@@ -435,3 +435,47 @@ def test_non_htmx_native_redirect_is_untouched():
     assert response.status_code == 303
     assert response.headers["location"] == "/next"
     assert "HX-Redirect" not in response.headers
+
+
+def test_hand_built_redirect_response_translates_too():
+    app = FastAPI()
+    apply_setup(app, _settings())
+
+    @app.post("/raw")
+    def raw():
+        return Response(status_code=302, headers={"location": "/x"})
+
+    with TestClient(app) as client:
+        response = client.post(
+            "/raw", headers={"HX-Request": "true"}, follow_redirects=False
+        )
+
+    assert response.status_code == 204
+    assert response.headers["HX-Redirect"] == "/x"
+
+
+def test_translate_native_redirect_handles_case_sensitive_headers():
+    from types import SimpleNamespace
+
+    from pyjinhx.integrations.fastapi import _translate_native_redirect
+
+    request = SimpleNamespace(headers={"HX-Request": "true"})
+    result = SimpleNamespace(status_code=307, headers={"Location": "/cap"})
+
+    translated = _translate_native_redirect(result, request)
+
+    assert translated.status_code == 204  # pyright: ignore[reportAttributeAccessIssue]
+    assert translated.headers["HX-Redirect"] == "/cap"  # pyright: ignore[reportAttributeAccessIssue]
+
+
+def test_translate_native_redirect_handles_lowercase_only_third_party_headers():
+    from types import SimpleNamespace
+
+    from pyjinhx.integrations.fastapi import _translate_native_redirect
+
+    request = SimpleNamespace(headers={"HX-Request": "true"})
+    result = SimpleNamespace(status_code=307, headers={"location": "/low"})
+
+    translated = _translate_native_redirect(result, request)
+
+    assert translated.headers["HX-Redirect"] == "/low"  # pyright: ignore[reportAttributeAccessIssue]
