@@ -1,6 +1,6 @@
 # Code audit conventions (pyjinhx)
 
-Shared by all skills in the code-audit suite. Child skills link here instead of duplicating rules.
+Shared by all code-audit skills under `.claude/skills/`. Each skill links here instead of duplicating rules.
 
 ## Mode
 
@@ -66,17 +66,14 @@ top-level modules (component.py, rendering.py, session.py, registry.py, …)
 - `reactive/` must not import from `integrations/`, `client/` or `builtins/`.
 - Top-level modules (e.g. `rendering.py`) may import from `reactive/` where render paths require it; avoid pulling `integrations/` upward into them.
 
-## Suite order (orchestrator)
+## Suite order
 
-When running a full sweep, child audits run in this order:
+When running a full sweep, run the audits in this order:
 
-1. file-responsibility-audit
-2. module-placement-audit
-3. domain-entity-audit
-4. state-shape-audit
-5. duplication-audit
-6. indirection-audit
-7. public-api-audit
-8. dead-code-audit
+1. domain-entity-audit
+2. duplication-audit
+3. indirection-audit
+4. public-api-audit
+5. dead-code-audit
 
 Merge duplicate findings at the same location; keep the highest severity.

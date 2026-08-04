@@ -5,7 +5,6 @@ description: >-
   module functions that only delegate to classmethods, nested closures for capture,
   and internal re-export shims. Use when the user mentions indirection, wrappers,
   aliases, "just calls", or wants a delegation cleanup pass. Read-only report.
-disable-model-invocation: true
 ---
 
 # Indirection audit
@@ -16,7 +15,7 @@ disable-model-invocation: true
 
 **I don't own:** intentional package-boundary re-exports in `pyjinhx/__init__.py`, behavioral duplication (→ `duplication-audit`), export policy (→ `public-api-audit`).
 
-Read: [CONVENTIONS.md](../code-audit-sweep/CONVENTIONS.md).
+Read: [CONVENTIONS.md](../_shared/CONVENTIONS.md).
 
 ## What counts as indirection (flag)
 

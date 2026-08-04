@@ -5,7 +5,6 @@ description: >-
   orchestration in two modules, duplicate parsing/validation, identical decorator
   and context-manager bodies. Use when reviewing refactors, merge conflicts, or
   "keep these in sync" code. Read-only report; documents intentional asymmetry.
-disable-model-invocation: true
 ---
 
 # Duplication audit
@@ -14,9 +13,9 @@ disable-model-invocation: true
 
 **I own:** parallel workflows, copy-pasted orchestration, mergeable identical blocks.
 
-**I don't own:** thin wrappers (→ `indirection-audit`), file splits (→ `file-responsibility-audit`).
+**I don't own:** thin wrappers (→ `indirection-audit`).
 
-Read: [CONVENTIONS.md](../code-audit-sweep/CONVENTIONS.md).
+Read: [CONVENTIONS.md](../_shared/CONVENTIONS.md).
 
 ## Hunt targets
 

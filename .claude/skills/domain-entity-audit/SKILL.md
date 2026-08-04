@@ -5,7 +5,6 @@ description: >-
   ABC vs hub vs value object, procedural filenames vs type names. Use when naming
   new types, reviewing package structure, or asking "what should this be called".
   Read-only report.
-disable-model-invocation: true
 ---
 
 # Domain entity audit
@@ -14,9 +13,9 @@ disable-model-invocation: true
 
 **I own:** name ↔ concept alignment, entity vs algorithm vs value object classification.
 
-**I don't own:** file splits (→ `file-responsibility-audit`), layer placement (→ `module-placement-audit`).
+**I don't own:** entity naming is my lens only; export policy (→ `public-api-audit`), thin wrappers (→ `indirection-audit`).
 
-Read: [CONVENTIONS.md](../code-audit-sweep/CONVENTIONS.md).
+Read: [CONVENTIONS.md](../_shared/CONVENTIONS.md).
 
 ## Expected entity map (reactive subsystem)
 

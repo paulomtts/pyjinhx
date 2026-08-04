@@ -4,7 +4,6 @@ description: >-
   Audit pyjinhx public API surface—pyjinhx.__all__, top-level exports vs canonical
   implementations, docs/reference/public-api.md alignment, tests/test_package_layout.py.
   Use before releases, after refactors, or when removing deprecated symbols. Read-only.
-disable-model-invocation: true
 ---
 
 # Public API audit
@@ -13,9 +12,9 @@ disable-model-invocation: true
 
 **I own:** `pyjinhx/__init__.py` `__all__`, docs index vs exports, public-api test alignment.
 
-**I don't own:** internal wrapper removal (→ `indirection-audit`), where impl files live (→ `module-placement-audit`), zero-caller symbols (→ `dead-code-audit`).
+**I don't own:** internal wrapper removal (→ `indirection-audit`), zero-caller symbols (→ `dead-code-audit`).
 
-Read: [CONVENTIONS.md](../code-audit-sweep/CONVENTIONS.md).
+Read: [CONVENTIONS.md](../_shared/CONVENTIONS.md).
 
 ## Rules
 
