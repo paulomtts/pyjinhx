@@ -18,7 +18,6 @@ __all__ = [  # noqa: RUF022
     "Children",
     "component",
     "ReactiveComponent",
-    "ReactiveResponse",
     "render",
     "RenderSession",
     # app wiring
@@ -42,7 +41,6 @@ _lazy_imports = {
     "Slot": ("pyjinhx._component", "Slot"),
     "component": ("pyjinhx.classless", "component"),
     "ReactiveComponent": ("pyjinhx.reactive.component", "ReactiveComponent"),
-    "ReactiveResponse": ("pyjinhx.reactive.response", "ReactiveResponse"),
     "render": ("pyjinhx.rendering", "render"),
     "RenderSession": ("pyjinhx.session", "RenderSession"),
     "setup": ("pyjinhx.config", "setup"),
