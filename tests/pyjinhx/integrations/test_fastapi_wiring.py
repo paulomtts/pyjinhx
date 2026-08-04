@@ -479,3 +479,35 @@ def test_translate_native_redirect_handles_lowercase_only_third_party_headers():
     translated = _translate_native_redirect(result, request)
 
     assert translated.headers["HX-Redirect"] == "/low"  # pyright: ignore[reportAttributeAccessIssue]
+
+
+def test_htmx_non_redirect_response_is_untouched():
+    app = FastAPI()
+    apply_setup(app, _settings())
+
+    @app.get("/data")
+    def data():
+        return JSONResponse({"ok": True})
+
+    with TestClient(app) as client:
+        response = client.get("/data", headers={"HX-Request": "true"})
+
+    assert response.status_code == 200
+    assert response.json() == {"ok": True}
+    assert "HX-Redirect" not in response.headers
+
+
+def test_hx_location_response_is_not_reinterpreted():
+    app = FastAPI()
+    apply_setup(app, _settings())
+
+    @app.post("/client-nav")
+    def client_nav():
+        return Response(status_code=204, headers={"HX-Location": "/y"})
+
+    with TestClient(app) as client:
+        response = client.post("/client-nav", headers={"HX-Request": "true"})
+
+    assert response.status_code == 204
+    assert response.headers["HX-Location"] == "/y"
+    assert "HX-Redirect" not in response.headers
