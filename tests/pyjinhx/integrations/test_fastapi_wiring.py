@@ -17,7 +17,6 @@ from pyjinhx._component import BaseComponent
 from pyjinhx.config import PjxSettings
 from pyjinhx.descriptor import ClassDescriptor
 from pyjinhx.integrations.fastapi import apply_setup
-from pyjinhx.reactive.response import ReactiveResponse
 from pyjinhx.session import request_scope
 
 
@@ -222,29 +221,32 @@ def test_mounted_request_is_honoured_without_a_request_parameter():
         assert "htmx" not in client.get("/page", headers={"X-PJX-Mounted": "[]"}).text
 
 
-def test_reactive_response_body_and_headers_reach_the_client():
+def test_native_redirect_becomes_the_htmx_redirect_header():
     app = FastAPI()
     apply_setup(app, _settings())
 
     @app.post("/act")
     def act():
-        return ReactiveResponse(primary="", mounted=[], redirect="/next")
+        return RedirectResponse("/next", status_code=303)
 
     with TestClient(app) as client:
-        response = client.post("/act", headers={"X-PJX-Mounted": "[]"})
+        response = client.post(
+            "/act",
+            headers={"X-PJX-Mounted": "[]", "HX-Request": "true"},
+        )
 
-    assert response.headers["HX-Reswap"] == "none"
+    assert response.status_code == 204
     assert response.headers["HX-Redirect"] == "/next"
     assert "htmx" not in response.text
 
 
-def test_reactive_response_never_reinjects_the_runtime():
+def test_string_return_never_reinjects_the_runtime():
     app = FastAPI()
     apply_setup(app, _settings())
 
     @app.post("/act")
     def act():
-        return ReactiveResponse(primary="<p>ok</p>", mounted=[])
+        return "<p>ok</p>"
 
     with TestClient(app) as client:
         response = client.post("/act")
@@ -313,7 +315,7 @@ def test_backend_startup_and_shutdown_move_the_process_settings(tmp_path: Path):
     assert current_settings().static_root is None
 
 
-def test_backend_to_response_adapts_reactive_and_passes_others_through():
+def test_backend_to_response_composes_pjx_returns_and_passes_others_through():
     from pyjinhx.integrations.fastapi import FastAPIBackend
 
     backend = FastAPIBackend(_settings())
@@ -323,7 +325,7 @@ def test_backend_to_response_adapts_reactive_and_passes_others_through():
     with request_scope():
         adapted = cast(
             HTMLResponse,
-            backend.to_response(ReactiveResponse(primary="<div>hi</div>"), None),
+            backend.to_response("<div>hi</div>", None),
         )
         assert adapted.status_code == 200
         assert adapted.body == b"<div>hi</div>"
