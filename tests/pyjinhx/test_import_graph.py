@@ -517,6 +517,20 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
     # import is TYPE_CHECKING-only (see registry.py) — never a runtime edge.
     "registry": frozenset({"pyjinhx.session", "pyjinhx.segments"}),
     "root_attrs": frozenset({"pyjinhx.segments"}),
+    # The framework-free response layer every backend funnels handler returns
+    # through. It reaches down into the render spine to build a primary body and
+    # sideways into reactive/ for the two fan-out legs; nothing imports it back
+    # except the integrations, so these edges cannot become a cycle.
+    "responses": frozenset(
+        {
+            "pyjinhx._component",
+            "pyjinhx.reactive.assets",
+            "pyjinhx.reactive.cache",
+            "pyjinhx.reactive.fanout",
+            "pyjinhx.rendering",
+            "pyjinhx.session",
+        }
+    ),
     "segments": frozenset(),
     # The on_rendered hook's signature names BaseComponent and RenderedLevel, but
     # both imports are TYPE_CHECKING-only. At runtime session also imports
