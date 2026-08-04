@@ -4,7 +4,7 @@ Reactivity is **opt-in**. You can use PyJinHx with `BaseComponent` only — see 
 
 !!! info "Prerequisites"
     - HTMX for transport and swap
-    - `request_scope()` (from `pyjinhx.session`) on every HTTP request
+    - One request scope per HTTP request — `setup(app, ...)` opens it for you
     - [IntegrationBackend](api/client-backend.md) in middleware (via `setup(app, ...)`), which parses the client's headers onto the session and routes handler returns through [`compose()`](api/responses.md)
 
 pyjinhx owns **composition**; HTMX owns **transport and swap**. Between them sits
@@ -128,9 +128,15 @@ readers return **bare JS source** — no `<script>` wrapper — and `pjx.js` nee
 first, so assemble them in the same order `inject_runtime()` does and hand the result to the
 template as `Markup` (an unwrapped string would be autoescaped into visible page text):
 
+!!! note "Not yet public"
+    The `pyjinhx.client` readers below are **not** exported from `pyjinhx` and their
+    spelling may change. They are the only way to assemble the runtime by hand today;
+    if your page shell is a pyjinhx component, `setup(app)` injects all of this for you
+    and you need none of it.
+
 ```python
 from markupsafe import Markup
-from pyjinhx.client import (
+from pyjinhx.client import (  # not yet public
     read_loading_indicator_js,
     read_page_loader_js,
     read_pjx_runtime,
@@ -414,9 +420,9 @@ changed," `reactive_key()` derives a per-instance key from that same `MutationKe
 the instance's own load-key, so only the matching mounted instance is reloaded:
 
 ```python
-from pyjinhx import MutationKey, PjxKey, ReactiveComponent, dirty
-from pyjinhx.reactive.keys import reactive_key
 from typing import Annotated
+
+from pyjinhx import MutationKey, PjxKey, ReactiveComponent, dirty, reactive_key
 
 
 class ChatKeys(MutationKey):
@@ -515,13 +521,13 @@ def toggle(todo_id: int) -> Todo: ...
 
 Now only the mounted `TodoItemRow` whose load-key matches `todo_id` reloads.
 
-Use `request_scope()` on every request when relying on `@mutates` — it
+`@mutates` needs a request scope on every request — `setup(app)` opens one, which is what
 resets mutation tracking per request.
 
 ## Load context
 
 Pass request-scoped dependencies into `load()` without global imports. Subclass
-`AppContext` (from `pyjinhx.app_context`) — not `PjxContext`, which is the
+`AppContext` (`from pyjinhx import AppContext`) — not `PjxContext`, which is the
 framework's own read-only view of request state and is not meant to be
 subclassed by apps:
 
@@ -553,19 +559,29 @@ class Counter(ReactiveComponent, react={Keys.TODOS}):
 scope or one with no context configured, in which case `ctx` is `None`. The default also
 keeps static type checkers from flagging `Component.load()` call sites, since the runtime
 wrapper injects `ctx` and never requires callers to pass it. Set context
-per request via `setup(app, context_factory=...)` or `request_scope(load_context=MyAppContext(db=...))`.
+per request via `setup(app, context_factory=...)`.
 Cache keys remain `(class, load key)` — context is not part of the cache identity.
 
 ## Development mode
 
-Enable guardrails during local development:
+Enable guardrails during local development with the `reactive_dev` setting — a `setup()`
+keyword, or `PJX_REACTIVE_DEV=1` in the environment:
 
 ```python
-from pyjinhx.dev import enable_reactive_dev
+from pyjinhx import setup
 
-enable_reactive_dev()  # warnings
-enable_reactive_dev(strict=True)  # raise instead
+setup(app, components_root="./components", reactive_dev=True)
 ```
+
+!!! note "Not yet public"
+    `strict=True` (raise instead of log) has no setting yet; it is only reachable through
+    `pyjinhx.dev`, which is not exported from `pyjinhx`:
+
+    ```python
+    from pyjinhx.dev import enable_reactive_dev  # not yet public
+
+    enable_reactive_dev(strict=True)
+    ```
 
 One check runs today, `warn_unconsumed_mutations()`: it reports keys this request dirtied
 that nothing in the request loaded under, so dirtying them evicted nothing — usually a
@@ -576,7 +592,7 @@ or re-renders anything.
 Inspect the dependency graph at startup:
 
 ```python
-from pyjinhx.dev import dependency_graph, format_dependency_graph
+from pyjinhx.dev import dependency_graph, format_dependency_graph  # not yet public
 
 print(format_dependency_graph())
 # or format_dependency_graph(as_mermaid=True) for a flowchart
@@ -595,15 +611,15 @@ Counter.load()  # cached: no DB, returns an independent copy
 
 ### Cache scope
 
-Caching is per request today: entries live in a `ContextVar` inside `request_scope()`,
+Caching is per request today: entries live in a `ContextVar` bound by the request scope,
 so nothing is shared across requests or worker processes.
 
 | Backend | Storage | Cross-request | Multi-worker safe |
 |---------|---------|---------------|-------------------|
-| none (default, only option today) | `ContextVar` inside `request_scope()` | no | yes |
+| none (default, only option today) | `ContextVar` bound by the request scope | no | yes |
 
-Use `request_scope()` on every HTTP request (middleware) for instance registry
-isolation and the request-tier cache (which dedups the OOB walk).
+`setup(app)` opens that scope on every HTTP request, which is what gives you instance
+registry isolation and the request-tier cache (which dedups the OOB walk).
 
 **Cache identity:** entries are keyed by `(component class, load key)` only. For per-user
 isolation use a `PjxKey`-keyed instance (one entry per user id) or ensure `PjxContext`

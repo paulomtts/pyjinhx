@@ -127,8 +127,7 @@ tenant — reaches a component by declaring it on `load()`:
 ```python
 from typing import Self
 
-from pyjinhx.app_context import AppContext
-from pyjinhx.reactive.component import ReactiveComponent
+from pyjinhx import AppContext, ReactiveComponent
 
 
 class MyAppContext(AppContext):
@@ -209,8 +208,13 @@ def format_dependency_graph(*, as_mermaid: bool = False) -> str
 Format the dependency graph as a text table or Mermaid flowchart. Useful for debugging and documentation.
 
 ```python
-from pyjinhx.dev import format_dependency_graph
+from pyjinhx.dev import format_dependency_graph  # not yet public
 
 print(format_dependency_graph())
 print(format_dependency_graph(as_mermaid=True))
 ```
+
+!!! note "Not yet public"
+    `pyjinhx.dev` is an internal module — it is not in `pyjinhx.__all__` and its path may
+    change. Turn the guardrails themselves on with `setup(app, reactive_dev=True)`; only
+    the graph inspectors and `strict=True` require importing it directly.

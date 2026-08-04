@@ -142,19 +142,30 @@ class AddTaskForm(BaseComponent):
 
 ### Usage
 
+Nothing here is special: these are ordinary components, so a route returns them and the
+adapter turns the return into the response.
+
 ```python
-from components.ui.task_card import TaskCard
 from components.ui.add_task_form import AddTaskForm
+from components.ui.task_card import TaskCard
+from pyjinhx import setup
 
-# Render components
-task_card = TaskCard(
-    id="1",
-    title="Learn PyJinHx",
-    description="Understand how to build reusable components",
-    completed=False,
-).render()
+setup(app, components_root="./components")
 
-form = AddTaskForm(id="add-task-form").render()
+
+@app.get("/tasks/{task_id}")
+def task(task_id: str):
+    return TaskCard(
+        id=task_id,
+        title="Learn PyJinHx",
+        description="Understand how to build reusable components",
+        completed=False,
+    )
+
+
+@app.get("/tasks/new")
+def new_task():
+    return AddTaskForm(id="add-task-form")
 ```
 
 ## How templates map to WebAwesome

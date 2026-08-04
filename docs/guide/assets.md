@@ -59,8 +59,7 @@ it's served from) — pass one to `emit_assets()`/`asset_manifest()`, or it rais
 `resolver_with_hash` (see [Cache-Busting](#cache-busting)) is a ready-made resolver.
 
 ```python
-from pyjinhx import AssetMode
-from pyjinhx.session import RenderSession
+from pyjinhx import AssetMode, RenderSession
 
 session = RenderSession()
 session.css_mode = AssetMode.NONE
@@ -68,7 +67,9 @@ session.js_mode = AssetMode.NONE
 ```
 
 `css_mode`/`js_mode` are per-`RenderSession` attributes (each defaults to `AssetMode.INLINE`)
-rather than a process-wide switch — set them on the session you pass to `render()`. When
+rather than a process-wide switch — set them on the session that render uses. In a wired app
+that session is the one `PjxScopeMiddleware` opens per request; see
+[Choosing a mode in a wired app](#choosing-a-mode-in-a-wired-app). When
 `NONE` mode is active no asset tags are emitted for that render. Link your pre-built CSS and
 JS bundles in the layout `<head>` manually — see [One-bundle deployment](#one-bundle-deployment)
 below.
@@ -84,8 +85,9 @@ Full-page renders emit assets once at the layout root. An OOB swap carries marku
 
 Root full-page renders auto-inject the pyjinhx client runtime (`pjx.js`, vendored alongside a
 pinned copy of htmx) as an inline `<script>` unless the request already carries
-`X-PJX-Mounted`. This is handled by `inject_runtime(session, request)` from
-`pyjinhx.client.inject`, which records the script on the session for `emit_assets` to include.
+`X-PJX-Mounted`. `setup(app)` wires this for you — internally it is
+`inject_runtime(session, request)`, which records the script on the session for
+`emit_assets` to include. You never call it yourself.
 
 For a raw Jinja shell that renders outside pyjinhx's own pipeline, assemble the tags
 yourself — see [Reactivity](../reactivity.md#ship-the-client-runtime) for the full snippet
@@ -98,6 +100,13 @@ wrapper, `pjx.js` needs htmx loaded first, and the result must be handed to the 
 For strict `script-src` policies, use `AssetMode.NONE`, serve assets from a pre-built bundle, and add a nonce or hash for the single inline runtime script (or serve `pjx.js` as a static file and link it yourself).
 
 ## Per-Render Manifest
+
+!!! warning "`pyjinhx.assets` is not yet public"
+    Everything in the rest of this page — `asset_manifest()`, `all_assets()`,
+    `resolver_with_hash()`, `hashed_filename()`, `emit_assets()`, `asset_token()` — lives
+    in `pyjinhx.assets`, which is **not** in `pyjinhx.__all__`. These are the only spelling
+    for build-time asset enumeration today, so they are documented here, but the module path
+    may change. Only `AssetMode` and `RenderSession` are public.
 
 Inspect which assets a render used. `asset_manifest` takes any resolver shaped
 `Callable[[Path], str]` — `resolver_with_hash` builds one that also cache-busts filenames:
@@ -147,8 +156,7 @@ resolver = resolver_with_hash("/static/components", root="./components")
 ## Disabling Assets (`NONE` mode)
 
 ```python
-from pyjinhx import AssetMode
-from pyjinhx.session import RenderSession
+from pyjinhx import AssetMode, RenderSession
 
 session = RenderSession()
 session.css_mode = AssetMode.NONE
@@ -157,6 +165,31 @@ session.js_mode = AssetMode.NONE
 
 When disabled, no asset tags are emitted. Use `all_assets()` (below) to discover files for
 fully manual static serving.
+
+### Choosing a mode in a wired app
+
+Under `setup(app)` you do not build the session — `PjxScopeMiddleware` does, once per
+request — so set the modes from inside the scope. A FastAPI dependency runs there:
+
+```python
+from fastapi import Depends, FastAPI
+from pyjinhx import AssetMode, setup
+from pyjinhx.session import current_session  # not yet public
+
+
+def bundled_assets():
+    session = current_session()
+    session.css_mode = AssetMode.NONE
+    session.js_mode = AssetMode.NONE
+
+
+app = FastAPI(dependencies=[Depends(bundled_assets)])
+setup(app, components_root="./components")
+```
+
+!!! note "Not yet public"
+    `current_session()` lives in `pyjinhx.session`, which is not exported from `pyjinhx`.
+    There is no public per-app asset-mode setting yet; when there is, it will replace this.
 
 ## Static File Serving
 
@@ -175,26 +208,34 @@ Build a bundle at startup (see [One-bundle deployment](#one-bundle-deployment)) 
 a static file. Set both modes to `NONE` so components don't inline what the bundle already ships.
 
 ```python
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from fastapi.staticfiles import StaticFiles
-from pyjinhx import AssetMode
-from pyjinhx.session import RenderSession
+from pyjinhx import AssetMode, setup
+from pyjinhx.session import current_session  # not yet public
 
-app = FastAPI()
+from components import MyApp
+
+
+def bundled_assets():
+    session = current_session()
+    session.css_mode = AssetMode.NONE
+    session.js_mode = AssetMode.NONE
+
+
+app = FastAPI(dependencies=[Depends(bundled_assets)])
 app.mount(
     "/static/pyjinhx", StaticFiles(directory="path/to/pyjinhx/runtime"), name="pyjinhx"
 )
+setup(app, components_root="./components")
 
 
 @app.get("/")
 def index():
-    session = RenderSession()
-    session.css_mode = AssetMode.NONE
-    session.js_mode = AssetMode.NONE
-    return str(
-        MyApp(id="app").render(session)
-    )  # bundle already linked in layout <head>
+    return MyApp(id="app")  # bundle already linked in layout <head>
 ```
+
+The handler returns the component; the adapter renders it, and with both modes `NONE` it
+emits no `<style>`/`<script>` of its own.
 
 ## Asset helpers reference
 
@@ -258,9 +299,9 @@ def bundle_js(request: Request) -> Response:
     return _bundle(request, JS_BUNDLE, JS_ETAG, "application/javascript")
 ```
 
-Reference the bundles from your layout `<head>` and set `session.js_mode = AssetMode.NONE` /
-`session.css_mode = AssetMode.NONE` on the `RenderSession` you render with, so components stop
-inlining what the bundle already ships. Concatenation order is alphabetical; if your app's
+Reference the bundles from your layout `<head>` and set both modes to `AssetMode.NONE` on the
+request's session (see [Choosing a mode in a wired app](#choosing-a-mode-in-a-wired-app)), so
+components stop inlining what the bundle already ships. Concatenation order is alphabetical; if your app's
 cascade needs a specific sheet first, prepend it to the list before building.
 `all_assets()` already walks every registered `BaseComponent` subclass — including the pyjinhx
 builtins — as long as they've been imported, so `import pyjinhx.builtins` before calling it is

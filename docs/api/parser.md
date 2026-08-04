@@ -1,6 +1,11 @@
 # Template Discovery
 
-Public API for finding `.pjx` component templates on disk and resolving PascalCase tags to component classes.
+How pyjinhx finds `.pjx` component templates on disk and resolves PascalCase tags to component classes.
+
+!!! warning "Internal module"
+    Nothing on this page is part of the public API — none of it appears in
+    `pyjinhx.__all__`, and the module paths may change. `setup(components_root=...)` is
+    the supported way to trigger discovery; this page documents what it does underneath.
 
 See [PascalCase Tags](../guide/tags.md) for usage patterns.
 

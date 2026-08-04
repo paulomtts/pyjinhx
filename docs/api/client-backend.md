@@ -4,6 +4,13 @@ The interface a framework adapter implements to wire pyjinhx into an app, and th
 
 PyJinHx ships one adapter, `pyjinhx.integrations.fastapi`, and this interface is what a Flask, bare-WSGI, or other adapter would implement to plug in the same way.
 
+!!! warning "Internal modules — for adapter authors"
+    Nothing on this page is part of the public API: `IntegrationBackend`,
+    `register_backend`, `request_scope` and `get_load_context` are all absent from
+    `pyjinhx.__all__`. App code does not need any of it — `setup(app, context_factory=...)`
+    is the public seam, and components read context through their `load()`'s annotated
+    `ctx` parameter (see [Reactivity → Load context](../reactivity.md#load-context)).
+
 ## IntegrationBackend
 
 ```python

@@ -4,6 +4,12 @@
 
 Nothing in this module needs a web framework installed. `compose()` is callable from a test or a script.
 
+!!! note "You do not call this"
+    `pyjinhx.responses` is not exported from `pyjinhx` and is not part of the public API.
+    In an app wired with `setup(app)`, the adapter runs `compose()` on your handler's
+    return — that is the whole contract, and this page describes what it does with each
+    shape you might return. Import from here only for tests and custom adapters.
+
 ## compose()
 
 ```python

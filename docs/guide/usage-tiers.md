@@ -16,8 +16,7 @@ The Guide is organized in two halves that map onto these tiers:
 **Use when:** Scripts, static pages, or any server-rendered HTML without per-request state sharing.
 
 ```python
-from pyjinhx import BaseComponent
-from pyjinhx.session import RenderSession
+from pyjinhx import BaseComponent, RenderSession
 
 
 class Button(BaseComponent):
@@ -35,18 +34,28 @@ html = Button(id="cta", text="Click").render(session)
 
 ## Tier 2 — Web app scoping
 
-**What:** `request_scope()` per HTTP request.
+**What:** one request scope per HTTP request, opened for you by `setup(app)`.
 
 **Use when:** FastAPI, Starlette, or any multi-request server — isolates component instances so request A cannot leak into request B. Also initializes the request-tier load cache layer and resets mutation tracking.
 
 ```python
-from pyjinhx.session import request_scope
+from pyjinhx import setup
 
-with request_scope():
-    return MyPage(id="app").render()
+setup(app, components_root="./components")
+
+
+@app.get("/")
+def index():
+    return MyPage(id="app")
 ```
 
-`load_context` is **optional** — bare `request_scope()` is valid.
+`setup(app)` installs `PjxScopeMiddleware`, which opens the scope around every request; the handler just returns a component.
+
+!!! note "Not yet public"
+    On a framework pyjinhx has no backend for, you can open the scope by hand with
+    `from pyjinhx.session import request_scope`. That module is **not** part of the
+    public API (`pyjinhx.__all__`) and its spelling may change — prefer `setup(app)`
+    wherever it works.
 
 **Docs:** [Component Registry](registry.md), [FastAPI integration](../integrations/fastapi.md)
 
@@ -83,7 +92,7 @@ Fan-out is unconditional: `compose()` walks the manifest on every response it bu
 
 | Piece | Purpose |
 |-------|---------|
-| `load_context=` in `request_scope` | Pass DB/store into `load()` without globals |
+| `context_factory=` in `setup(app)` | Pass DB/store into `load()` without globals |
 | `IntegrationBackend` (registered via `register_backend()` / `setup(app)`) | Middleware parses `X-PJX-Mounted` / `X-PJX-Assets` onto the session, for `compose()` to consume |
 | Load cache + `invalidate()` | Cache `load()` results; evict on mutation |
 | `enable_reactive_dev()` | Warnings for dirtied keys nothing in the request loaded under |

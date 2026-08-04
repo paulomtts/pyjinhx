@@ -68,6 +68,10 @@ markdown_extensions:
   - toc:
       permalink: true
 
+validation:
+  anchors: warn
+  unrecognized_links: warn
+
 nav:
   - Home: index.md
   - Getting Started:

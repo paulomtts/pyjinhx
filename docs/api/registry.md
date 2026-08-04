@@ -2,6 +2,11 @@
 
 The **instance registry** (`pyjinhx.registry` + `pyjinhx.session`) maps a composite key to a request-scoped component instance or rendered level. It is not wrapped in a class — it is a set of free functions over per-request state.
 
+!!! warning "Internal modules"
+    Neither `pyjinhx.registry` nor `pyjinhx.session` is exported from `pyjinhx`, and their
+    paths may change. Under `setup(app)` the registry fills itself as components render;
+    you only reach for these functions when you are wiring a framework by hand.
+
 Not to be confused with the process-wide tag -> class registry, which is internal machinery documented under [Discovery & Assets](finder.md).
 
 See the [Component Registry guide](../guide/registry.md) for conceptual documentation and usage patterns.

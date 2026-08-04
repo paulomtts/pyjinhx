@@ -8,11 +8,13 @@ PyJinHx makes it easy to compose components together. You can nest single compon
     - **Python field values** (this page) — you build child instances yourself; give each child an **explicit `id`** (auto-generated `pjx-<n>` ids are not stable hooks).
     - **PascalCase `<Tag/>` in templates** (see [PascalCase Tags](tags.md)) — the renderer instantiates children for you and can **auto-generate the `id`** when `auto_id=True` (the default).
 
-!!! info "A nested field must be declared `Slot`"
-    A field only renders a `BaseComponent` value's HTML in place when it is declared `Slot`
-    (or `Children`, for the component's children field — see
-    [Escaping and slots](components.md#escaping-and-slots)). A plain `Button` or
-    `list[Button]` annotation makes the field an ordinary Pydantic field, not a nesting point.
+!!! info "Component-typed fields are nesting points already"
+    A field annotated with a component type — `Button`, `list[Button]`,
+    `dict[str, Button]` — renders that value's HTML in place with no extra marker.
+    `Slot` is the escape hatch for the ambiguous cases: a field that may hold *either*
+    literal markup or a component, or a plain `str` that must be emitted unescaped (see
+    [Escaping and slots](components.md#escaping-and-slots)). `Children` is the same idea
+    for the field that receives a PascalCase tag's nested markup.
 
 ## Direct Nesting
 
@@ -72,19 +74,16 @@ into the nested component.
 
 ## Lists of Components
 
-A list of nested components also needs a `Slot`-typed field — `Slot`'s string-or-component
-union works inside a `list` or `dict` too:
+A list of nested components is just a `list[...]` of the child type — the same shape the
+[todo example](https://github.com/paulomtts/pyjinhx/tree/master/examples/todo) uses for its rows:
 
 ```python
-from typing import Annotated
-
 from pyjinhx import BaseComponent
-from pyjinhx._component import PjxSlot
 
 
 class ButtonGroup(BaseComponent):
     id: str
-    buttons: Annotated[list[str | Button], PjxSlot()] = []
+    buttons: list[Button] = []
 ```
 
 ```html
@@ -112,13 +111,10 @@ Each list element still only exposes its rendered HTML via `{{ button }}` — se
 
 ## Dictionaries of Components
 
-The same `Slot`-collection annotation works for a `dict`, for named component collections:
+A `dict` works the same way, for named component collections:
 
 ```python
-from typing import Annotated
-
 from pyjinhx import BaseComponent
-from pyjinhx._component import PjxSlot
 
 
 class Widget(BaseComponent):
@@ -128,7 +124,7 @@ class Widget(BaseComponent):
 
 class Dashboard(BaseComponent):
     id: str
-    widgets: Annotated[dict[str, str | Widget], PjxSlot()] = {}
+    widgets: dict[str, Widget] = {}
 ```
 
 ```html

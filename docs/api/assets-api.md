@@ -1,6 +1,12 @@
 # Assets API
 
-Public helpers for asset delivery, manifests, and cache-busted URLs.
+Helpers for asset delivery, manifests, and cache-busted URLs.
+
+!!! warning "Internal module"
+    Apart from `AssetMode` (exported from `pyjinhx`), everything on this page lives in
+    `pyjinhx.assets` and is **not** part of the public API — it is absent from
+    `pyjinhx.__all__` and its module path may change. It is documented because build-time
+    asset enumeration has no public spelling today.
 
 See [Asset Collection](../guide/assets.md) for conceptual documentation and [Renderer](renderer.md) for `AssetMode` and `RenderSession`.
 

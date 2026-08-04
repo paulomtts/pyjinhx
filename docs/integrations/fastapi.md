@@ -16,8 +16,8 @@ my_app/
 │   └── ui/
 │       ├── button.py
 │       ├── button.pjx
-│       ├── card.py
-│       └── card.pjx
+│       ├── page.py
+│       └── page.pjx
 ├── main.py
 └── pyproject.toml
 ```
@@ -44,31 +44,60 @@ class Button(BaseComponent):
 </button>
 ```
 
+### Page shell
+
+The page is a component too, and it nests its children as PascalCase tags:
+
+```python
+# components/ui/page.py
+from pyjinhx import BaseComponent
+
+
+class Page(BaseComponent):
+    id: str
+```
+
+```html
+<!-- components/ui/page.pjx -->
+<!DOCTYPE html>
+<html>
+  <body id="{{ id }}">
+    <h1>Welcome</h1>
+    <Button id="submit-btn" text="Submit" />
+    <Button id="cancel-btn" text="Cancel" variant="secondary" />
+  </body>
+</html>
+```
+
 ### App
+
+Wire the app once with `setup()`, then let each route **return a component**. No
+`HTMLResponse`, no f-strings, no `.render()` — the adapter turns the return value into the
+response, which is also what attaches assets and any OOB legs:
 
 ```python
 # main.py
 from fastapi import FastAPI
-from fastapi.responses import HTMLResponse
 
-from components.ui.button import Button
+from components.ui.button import Button  # noqa: F401 — import before setup()
+from components.ui.page import Page
+from pyjinhx import setup
 
 app = FastAPI()
+setup(app, components_root="./components")
 
 
-@app.get("/", response_class=HTMLResponse)
-def index() -> str:
-    return f"""
-    <!DOCTYPE html>
-    <html>
-    <body>
-        <h1>Welcome</h1>
-        {Button(id="submit-btn", text="Submit", variant="primary").render()}
-        {Button(id="cancel-btn", text="Cancel", variant="secondary").render()}
-    </body>
-    </html>
-    """
+@app.get("/")
+def index():
+    return Page(id="page")
 ```
+
+!!! warning "Order matters"
+    `setup()` must run **after** your component modules are imported — it can only register
+    classes Python has already loaded — and **before** your routes are declared, since it
+    installs the middleware and route adaptation they need. `components_root` resolves
+    against the **process working directory**, not the module's directory, so run
+    `uvicorn main:app` from `my_app/`.
 
 ```bash
 uvicorn main:app --reload
@@ -129,8 +158,13 @@ setup(app, context_factory=lambda req: AppLoadContext(db=get_db(req)))
 
 ### Per-Route (manual)
 
+!!! note "Not yet public"
+    `request_scope` lives in `pyjinhx.session`, which is **not** exported from `pyjinhx`
+    and whose spelling may change. Everything below is an escape hatch for apps that
+    cannot call `setup(app)`.
+
 ```python
-from pyjinhx.session import request_scope
+from pyjinhx.session import request_scope  # not yet public
 
 
 @app.get("/", response_class=HTMLResponse)

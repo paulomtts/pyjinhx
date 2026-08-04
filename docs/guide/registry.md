@@ -22,7 +22,7 @@ register_instance("Button", button.id, button)
 ```
 
 !!! note "Registration is automatic under `setup(app)`"
-    `pyjinhx.registry` also exports `register_rendered_instance()`, shaped for `RenderSession.on_rendered`. `PjxScopeMiddleware` — the middleware `setup(app)` installs — subscribes it on the session it builds for each request, so under a wired app every rendered component lands in that request's registry under `ComponentName_id`, holding its `RenderedLevel`. Outside that wiring (a bare `RenderSession`, a hand-rolled `request_scope()`), subscribe it yourself or call `register_instance()` explicitly for whatever you want resolvable.
+    `pyjinhx.registry` also exports `register_rendered_instance()`, shaped for `RenderSession.on_rendered`. `PjxScopeMiddleware` — the middleware `setup(app)` installs — subscribes it on the session it builds for each request, so under a wired app every rendered component lands in that request's registry under `ComponentName_id`, holding its `RenderedLevel`. Outside that wiring (a bare `RenderSession`, a hand-opened scope), subscribe it yourself or call `register_instance()` explicitly for whatever you want resolvable.
 
 ### Composite Keys
 
@@ -47,55 +47,39 @@ In web applications, component instances from one request can persist and affect
 # Request 2: register_instance("Button", "submit-btn", button) → Warning: "already registered; overwriting"
 ```
 
-### The Solution: Request Scope
+### The Solution: `setup(app)`
 
-Use `request_scope()` to isolate components per request:
+`setup(app, ...)` installs `PjxScopeMiddleware`, which opens one request scope per request, subscribes the render hooks, and parses the pjx request headers onto the session. Handlers then just return components — nothing registers or renders by hand:
 
 ```python
-from pyjinhx.session import request_scope
-from pyjinhx.registry import register_instance
+from pyjinhx import setup
+
+setup(app, components_root="./components")
 
 
 @app.get("/")
 def index():
-    with request_scope():
-        # Components registered here are isolated to this request
-        button = Button(id="submit-btn", text="Submit")
-        register_instance("Button", button.id, button)
-        return button.render()
-    # Registry automatically cleaned up
+    # Everything rendered under this request is isolated to it,
+    # and cleaned up when the request ends.
+    return Button(id="submit-btn", text="Submit")
 ```
 
-On entry, `request_scope()` binds a fresh `RenderSession`, clears pending mutations, and initializes the request-tier load cache. On exit — even when an exception occurs — it restores the previous state.
+See the [canonical FastAPI snippet](../integrations/fastapi.md#middleware-recommended).
 
-`request_scope(session=None, *, load_context=None)` takes an optional pre-built `session` to bind instead of a fresh one — which is how you attach `on_rendered` hooks before the session goes live — and an optional `load_context`, the app's `context_factory` result for this request, readable via `get_load_context()`. There is no template-directory argument: sessions carry no components root, and templates resolve per component class (see [Configuration](configuration.md#template-loading)).
+On entry, the scope binds a fresh `RenderSession`, clears pending mutations, and initializes the request-tier load cache. On exit — even when an exception occurs — it restores the previous state. Scopes nest: an inner scope's registrations are invisible to the outer one, and the outer state is restored when it closes.
 
-For application-wide coverage, prefer `setup(app, ...)`: it installs `PjxScopeMiddleware`, which opens a `request_scope()` per request, subscribes the render hooks, and parses the pjx request headers onto the session (see the [canonical FastAPI snippet](../integrations/fastapi.md#middleware-recommended)). To wire it by hand instead, open the scope yourself:
+!!! note "Not yet public: opening a scope by hand"
+    On a framework pyjinhx has no backend for, the scope can be opened directly with
+    `from pyjinhx.session import request_scope`. `pyjinhx.session` is **not** part of
+    the public API (`pyjinhx.__all__`) and its spelling may change.
 
-```python
-from pyjinhx import setup
-from pyjinhx.session import request_scope
-
-setup(app)  # recommended
-# or:
-with request_scope():
-    ...
-```
-
-### Nested Scopes
-
-Scopes can be nested—each creates its own isolated registry:
-
-```python
-with request_scope():
-    outer = Button(id="outer", text="Outer")
-
-    with request_scope():
-        # "outer" is not visible here
-        inner = Button(id="inner", text="Inner")
-
-    # "inner" is not visible here, "outer" is restored
-```
+    `request_scope(session=None, *, load_context=None)` takes an optional pre-built
+    `session` to bind instead of a fresh one — which is how you attach `on_rendered`
+    hooks before the session goes live — and an optional `load_context`, the app's
+    `context_factory` result for this request, readable via `get_load_context()`.
+    There is no template-directory argument: sessions carry no components root, and
+    templates resolve per component class (see
+    [Configuration](configuration.md#template-loading)).
 
 ## Common Patterns
 
@@ -151,7 +135,7 @@ Discovery finds classes by scanning `components_root` for `.pjx` templates plus 
 from pyjinhx.registry import make_key, register_instance, resolve
 
 btn = MyButton(id="test")
-register_instance("MyButton", btn.id, btn)  # inside a request_scope()
+register_instance("MyButton", btn.id, btn)  # inside a request scope
 key = make_key("MyButton", "test")
 assert resolve("MyButton", "test") is btn
 ```

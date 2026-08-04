@@ -2,7 +2,13 @@
 
 Every symbol exported from `pyjinhx` (`__all__`) is listed below with a one-line description and a link to detailed documentation.
 
-These 17 symbols are the entire top-level public API; advanced/internal building blocks (e.g. `oob_swaps`, the load cache, `IntegrationBackend`, the asset-resolver helpers, dev tooling) remain importable from their submodules — e.g. `from pyjinhx.reactive.cache import cache_get`.
+These 17 symbols are the entire top-level public API. Everything else — `pyjinhx.session`, `pyjinhx.assets`, `pyjinhx.client`, `pyjinhx.dev`, `pyjinhx._component`, `pyjinhx.reactive.*` — is **internal**: importable, documented where it is genuinely useful, but outside `__all__` and free to change. If a page shows you one of those imports, it is telling you there is no public spelling yet.
+
+The one other supported import path is the builtin UI kit, which has its own short public path:
+
+```python
+from pyjinhx.builtins import PJXCard  # never pyjinhx.builtins.ui.pjx_card.pjx_card
+```
 
 The deeper machinery behind these symbols — the parser, finder, asset resolver, integration backend, cache/invalidation, and the Redis/SQLite backends — is documented under **API Reference → Internals**.
 
@@ -41,7 +47,7 @@ The deeper machinery behind these symbols — the parser, finder, asset resolver
 | Symbol | Description | Documentation |
 |--------|-------------|---------------|
 | `PjxSettings` | Invalidation backend and reactive dev flags | [Configuration](../api/config.md#pjxsettings) |
-| `AssetMode` | Enum: `INLINE` or `NONE` | [Renderer](../api/renderer.md#assetmode) |
+| `AssetMode` | Enum: `INLINE`, `LINK` or `NONE` | [Renderer](../api/renderer.md#assetmode) |
 
 ## Conceptual guides
 

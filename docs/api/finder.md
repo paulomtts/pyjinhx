@@ -2,6 +2,11 @@
 
 File discovery for `.pjx` templates and the registry-wide asset listing used by build tooling.
 
+!!! warning "Internal modules"
+    Nothing on this page is part of the public API — none of it appears in
+    `pyjinhx.__all__`, and the module paths may change. It is documented because build
+    scripts have no public equivalent today.
+
 ## walk_templates
 
 ```python

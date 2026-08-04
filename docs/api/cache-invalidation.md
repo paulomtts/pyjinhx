@@ -1,12 +1,18 @@
 # Cache & Invalidation
 
-Public API for the reactive `load()` cache and its cross-process fan-out.
+The reactive `load()` cache and its cross-process fan-out.
+
+!!! warning "Internal module"
+    Nothing on this page is part of the public API — `pyjinhx.reactive.cache` and
+    `pyjinhx.session` are absent from `pyjinhx.__all__` and their module paths may change.
+    In normal use the cache is invisible: `setup(app)` scopes it and `@mutates` evicts
+    from it. This page is for when you need to reach in anyway.
 
 See [Reactivity](../reactivity.md) for usage patterns.
 
 ## Cache scope
 
-The load cache is request-scoped: entries live in the dict `request_scope()` (in `pyjinhx.session`) hands out per request, and vanish when the scope exits. `pyjinhx.reactive.cache` owns no state of its own — it reads and writes through the session's store.
+The load cache is request-scoped: entries live in the dict the request scope (`request_scope()`, in the internal `pyjinhx.session`) hands out per request, and vanish when the scope exits. `pyjinhx.reactive.cache` owns no state of its own — it reads and writes through the session's store.
 
 ## make_key / cache_get / cache_has
 

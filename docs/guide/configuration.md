@@ -28,10 +28,11 @@ Sidebar = component("Sidebar", template_dir="./widgets")  # reads ./widgets/side
 
 ### Passing a Pre-Built Session
 
-For full control over the underlying Jinja environment — or to attach `on_rendered` hooks before the session goes live — construct a `RenderSession` yourself and hand it to `request_scope()`:
+For full control over the underlying Jinja environment — or to attach `on_rendered` hooks before the session goes live — construct a `RenderSession` yourself and bind it for the scope:
 
 ```python
-from pyjinhx.session import RenderSession, request_scope
+from pyjinhx import RenderSession
+from pyjinhx.session import request_scope  # not yet public
 
 session = RenderSession()
 # session.jinja_env is a standard jinja2.Environment (AbsolutePathLoader,
@@ -42,6 +43,12 @@ with request_scope(session=session):
 ```
 
 `RenderSession()` takes no arguments, and `request_scope()` takes only `session=` and `load_context=`.
+
+!!! note "Not yet public"
+    `RenderSession` is exported from `pyjinhx`; `request_scope` is not — it lives in
+    `pyjinhx.session`, outside `pyjinhx.__all__`. Under `setup(app)` you never open the
+    scope yourself, so reach for this only when you are wiring a framework pyjinhx has no
+    backend for.
 
 ## Logging
 
@@ -97,21 +104,31 @@ See [Configuration API](../api/config.md) for `PjxSettings` and lifespan chainin
 
 ## Load cache scope
 
-Component `load()` results are cached in a request-scoped store: `request_scope()` initializes an empty cache on entry and clears it on exit, so a value loaded once is reused for the rest of that request — this is what dedups the repeated `load()` calls made during the reactive OOB walk. The cache never crosses requests or workers.
+Component `load()` results are cached in a request-scoped store: the request scope initializes an empty cache on entry and clears it on exit, so a value loaded once is reused for the rest of that request — this is what dedups the repeated `load()` calls made during the reactive OOB walk. The cache never crosses requests or workers.
 
 See [Reactivity](../reactivity.md).
 
 ## Reactive dev mode
 
-Enable development guardrails to catch common reactive mistakes:
+Enable development guardrails to catch common reactive mistakes. The supported switch is the
+`reactive_dev` setting — pass it to `setup()`, or set `PJX_REACTIVE_DEV=1` in the environment:
 
 ```python
-from pyjinhx.dev import enable_reactive_dev, disable_reactive_dev
+from pyjinhx import setup
 
-enable_reactive_dev()  # log warnings
-enable_reactive_dev(strict=True)  # raise RuntimeError instead
-disable_reactive_dev()
+setup(app, components_root="./components", reactive_dev=True)
 ```
+
+!!! note "Not yet public"
+    The underlying `enable_reactive_dev()` / `disable_reactive_dev()` pair lives in
+    `pyjinhx.dev`, which is not exported from `pyjinhx`. Call it directly only for
+    `strict=True` (raise instead of log), which the setting does not expose yet:
+
+    ```python
+    from pyjinhx.dev import enable_reactive_dev
+
+    enable_reactive_dev(strict=True)  # raise RuntimeError instead of logging
+    ```
 
 The one guardrail is `warn_unconsumed_mutations()`: it reports keys this request dirtied that no `load()` in the request declared a dependency on, so dirtying them evicted nothing. `strict=True` raises instead of logging.
 

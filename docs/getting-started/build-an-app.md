@@ -7,7 +7,7 @@ When you're done you will have used:
 - `BaseComponent` and `ReactiveComponent`
 - Template discovery and nesting via typed child fields
 - Co-located JS/CSS and asset delivery modes
-- `request_scope`, `@mutates`, and `AppContext`
+- Per-request scope, `@mutates`, and `AppContext`
 - Returning components from routes, composed by `pyjinhx.responses.compose()` through the `IntegrationBackend` (`FastAPIBackend`) that `setup()` wires
 - Load-cache scopes and invalidation fan-out
 
@@ -67,7 +67,7 @@ my_app/
 
 ---
 
-## Step 1 — Your first component
+## Step 1 — Your first component, served by a route
 
 `components/todo_counter.py`:
 
@@ -86,23 +86,81 @@ class TodoCounter(BaseComponent):
 <span id="{{ id }}">{{ remaining }} left</span>
 ```
 
-Smoke test in a shell — no setup, no scope, because the template path comes off the class:
+`app.py` — import your components, call `setup()`, then declare routes that **return** them:
 
 ```python
+from fastapi import FastAPI
+from pyjinhx import setup
+
 from components.todo_counter import TodoCounter
 
-print(TodoCounter(id="counter", remaining=3).render())
+app = FastAPI()
+setup(app, components_root="./components")
+
+
+@app.get("/")
+def index():
+    return TodoCounter(id="counter", remaining=3)
 ```
+
+Run `uvicorn app:app --reload` from `my_app/` and `GET /` answers with
+
+```html
+<span id="counter">3 left</span>
+```
+
+plus the client runtime pyjinhx injects on a cold page load. No `HTMLResponse`, no
+`response_class=`, no rendering call anywhere — the returned component *is* the response.
+Everything else in this guide is built on that one shape.
+
+???+ question "Why return the component instead of rendering it yourself?"
+    Because returning it is what hands the request to `pyjinhx.responses.compose()`, and composition is where everything past "one component's markup" happens: the client runtime is injected on a cold page render, out-of-band fan-out is attached, and the htmx headers are set. Rendering a component yourself gives you exactly one component's HTML and nothing else — useful for inspection, never what a route wants.
+
+    You never construct a response object. The `FastAPIBackend` that `setup()` installed turns compose's answer into an `HTMLResponse` for you. A return value pyjinhx does not recognise — a `JSONResponse`, a dict, a `FileResponse` — passes through to FastAPI untouched.
+
+    Redirects are the one exception, and they need no pyjinhx surface either: return your framework's own `RedirectResponse`, and if the request carried `HX-Request` the backend rewrites it to `204` + `HX-Redirect` so htmx navigates instead of swapping the target page's body into your button. Detection is duck-typed on any response with a 3xx status and a `Location` header, it is always on, and a plain browser request still gets the real 3xx.
+
+    Any WSGI/ASGI framework works — PyJinHx is not tied to FastAPI.
+
+    See: [Response composition](../api/responses.md) · [FastAPI integration](../integrations/fastapi.md).
+
+!!! warning "`setup()` goes after the imports and before the routes"
+    It can only register component classes that are **already imported**, so every
+    component module must be imported above the call — see Step 5 for what that
+    registration buys you. And a handler annotated `-> TodoCounter` on a route registered
+    *before* `setup()` has already been turned into a pydantic response model by FastAPI,
+    and cannot be adapted. Call `setup()` first, or leave the return annotation off.
+
+    `components_root` is resolved against the **process working directory**, not against
+    `app.py`'s folder, so `"./components"` means "run uvicorn from `my_app/`". Pass an
+    absolute path if that is inconvenient.
+
+!!! tip "Seeing one component's raw markup"
+    When you want to eyeball what a single component produces, the public `render()`
+    function does it with no app, no scope and no configuration — the template path comes
+    off the class:
+
+    ```python
+    from pyjinhx import render
+
+    from components.todo_counter import TodoCounter
+
+    print(render(TodoCounter(id="counter", remaining=3)))
+    # → <span id="counter">3 left</span>
+    ```
+
+    That is an **inspection aid**, not a way to serve. It returns one component's markup
+    and nothing else: no runtime, no asset tags, no out-of-band fan-out.
 
 ???+ question "Why BaseComponent and a stable id?"
     `BaseComponent` is a **Pydantic model** — fields are validated at construction time. The `id` is the stable DOM identity: HTMX targets, registry lookups, and reactive `data-pjx-id` stamping all depend on it. An omitted `id` auto-generates a process-unique `pjx-<n>` value, which is fine for decorative markup and useless as a swap target — nothing about it is stable across requests. Any region you want to address from HTMX, and every reactive component, needs an explicit `id=`.
 
-    `BaseComponent` is also `extra="forbid"`: a field you did not declare is a validation error, not a silently accepted attribute. If you genuinely want open-ended fields, subclass `OpenComponent` (`from pyjinhx._component import OpenComponent`) instead.
+    `BaseComponent` is also `extra="forbid"`: a field you did not declare is a validation error, not a silently accepted attribute. Declare every field you mean to accept; if you need open-ended attributes, model them as one declared field (a `dict[str, str]`, say) and expand it in the template.
 
 ???+ question "Where does the template come from?"
     Nowhere you configure. `TodoCounter` looks for `todo_counter.pjx` beside `components/todo_counter.py` — snake_cased class name, `.pjx` extension. Subclasses inherit a template: if `DangerCounter(TodoCounter)` has no `danger_counter.pjx`, it renders its parent's.
 
-    `setup(app, components_root="./components")` in Step 5 walks the tree for a different reason — registering `<PascalCase/>` tag names — not to resolve this file.
+    `setup(app, components_root="./components")` walks the tree for a different reason — registering `<PascalCase/>` tag names — not to resolve this file.
 
 ---
 
@@ -127,17 +185,24 @@ class TodoList(BaseComponent):
 </ul>
 ```
 
-Build the tree in Python:
+Build the tree in Python and hand the root to the route — the whole tree renders:
 
 ```python
-from components.todo_counter import TodoCounter
-from components.todo_list import TodoList
+from components.todo_list import TodoList  # in app.py, above setup()
 
-page = TodoList(
-    id="todo-list",
-    items=[TodoCounter(id="counter", remaining=3)],
-)
-print(page.render())
+
+@app.get("/")
+def index():
+    return TodoList(
+        id="todo-list",
+        items=[TodoCounter(id="counter", remaining=3)],
+    )
+```
+
+```html
+<ul id="todo-list">
+  <span id="counter">3 left</span>
+</ul>
 ```
 
 ???+ question "Why compose in Python?"
@@ -173,7 +238,15 @@ class TodoPanel(BaseComponent):
 Build it in Python; the template decides where the child renders:
 
 ```python
-TodoPanel(id="panel", counter=TodoCounter(id="counter", remaining=3)).render()
+@app.get("/")
+def index():
+    return TodoPanel(id="panel", counter=TodoCounter(id="counter", remaining=3))
+```
+
+```html
+<div id="panel" class="panel">
+  <span id="counter">3 left</span>
+</div>
 ```
 
 ???+ question "Why typed child fields?"
@@ -189,23 +262,22 @@ Add `components/todo_counter.js` next to `todo_counter.py` — assets use the **
 console.log("todo counter ready");
 ```
 
-Under `setup(app, ...)` that is all you do: every request's session subscribes the
-`accumulate_assets` hook, so a root render collects each rendered component's JS/CSS once
-and appends it inline.
+That is the whole change — no registration call, no manifest entry, no route edit. Hit
+`GET /` again and the same handler's response now carries the script, appended after the
+markup (alongside the client runtime, elided here):
 
-Outside an app you subscribe the hook yourself, which is what the middleware does:
-
-```python
-from pyjinhx.session import RenderSession, accumulate_assets
-
-session = RenderSession()
-session.on_rendered.append(accumulate_assets)
-
-print(TodoPanel(id="panel", counter=TodoCounter(id="counter", remaining=2)).render(session))
-# → HTML <style>...</style> <script>...</script>
+```html
+<div id="panel" class="panel">
+  <span id="counter">3 left</span>
+</div>
+<script>console.log("todo counter ready");</script>
 ```
 
-A bare `RenderSession()` has no hooks attached and emits no asset tags at all.
+`PjxScopeMiddleware` (installed by the `setup()` call you made in Step 1) is what makes that happen: it opens
+one `RenderSession` per request and subscribes the asset-accumulation hook onto it, so a
+root render collects each rendered component's JS/CSS once and the composer appends it.
+Nothing collects assets on its own — the inspection `render()` from Step 1 has no such
+hook and emits no asset tags at all, which is exactly why it is only for inspection.
 
 ???+ question "Why co-located assets?"
     Components carry their own behavior and styling. Collecting at the **root render** avoids duplicate script tags when nested components share assets.
@@ -216,55 +288,10 @@ A bare `RenderSession()` has no hooks attached and emits no asset tags at all.
 
 ---
 
-## Step 5 — FastAPI shell
+## Step 5 — What `setup()` wired
 
-`app.py`:
-
-```python
-from fastapi import FastAPI
-from pyjinhx import setup
-
-from components.todo_counter import TodoCounter
-from components.todo_list import TodoList  # noqa: F401 — imported so its tag registers
-from components.todo_panel import TodoPanel
-
-app = FastAPI()
-setup(app, components_root="./components")
-
-
-@app.get("/")
-def index():
-    return TodoPanel(id="panel", counter=TodoCounter(id="counter", remaining=3))
-```
-
-Run: `uvicorn app:app --reload`
-
-!!! note "Import every component module, even the ones `app.py` never names"
-    The registry pairs walked templates with classes **already imported** into the
-    process, so `<TodoList/>` in a template only resolves because `app.py` imported
-    `TodoList`. Add `from components.todo_item_row import TodoItemRow` and
-    `from components.todo_app import TodoApp` as Steps 8 and 10 introduce them —
-    otherwise their tags come back as literal `<TodoItemRow/>` text in the page.
-
-???+ question "Why return the component instead of `.render()`?"
-    Because returning it is what hands the request to `pyjinhx.responses.compose()`, and composition is where everything past "one component's markup" happens: the client runtime is injected on a cold page render, out-of-band fan-out is attached, and the htmx headers are set. `.render()` gives you exactly one component's HTML and nothing else — useful in a shell, not what a route wants.
-
-    You never construct a response object. The `FastAPIBackend` that `setup()` installed turns compose's answer into an `HTMLResponse` for you, so no `response_class=` is needed. A return value pyjinhx does not recognise — a `JSONResponse`, a dict, a `FileResponse` — passes through to FastAPI untouched.
-
-    Redirects are the one exception, and they need no pyjinhx surface either: return your framework's own `RedirectResponse`, and if the request carried `HX-Request` the backend rewrites it to `204` + `HX-Redirect` so htmx navigates instead of swapping the target page's body into your button. Detection is duck-typed on any response with a 3xx status and a `Location` header, it is always on, and a plain browser request still gets the real 3xx.
-
-    Any WSGI/ASGI framework works — PyJinHx is not tied to FastAPI.
-
-    See: [Response composition](../api/responses.md) · [FastAPI integration](../integrations/fastapi.md).
-
-!!! warning "Declare routes after `setup(app, ...)`"
-    A handler annotated `-> TodoPanel` on a route registered *before* `setup()` has already been turned into a pydantic response model by FastAPI, and cannot be adapted. Call `setup()` first, or leave the return annotation off.
-
----
-
-## Step 6 — `setup()` (registry + cache hygiene)
-
-`setup(app, ...)` is the production path. One call wires everything a reactive request needs:
+You have been calling it since Step 1. Here is the whole of it — one call wires everything
+a reactive request needs, and it grows one keyword as the app does:
 
 ```python
 from pyjinhx import setup
@@ -274,37 +301,47 @@ setup(
     app,
     components_root="./components",
     context_factory=lambda request: AppLoadContext(store=store),
-)  # AppLoadContext defined in Step 12
+)  # AppLoadContext defined in Step 11
 ```
 
 That single call:
 
 - walks `components_root` and, for each `.pjx` it finds, registers the **already-imported** component class whose name snake_cases to that stem under its `<PascalCase/>` tag name — an orphan template (no class, or a class whose module was never imported) claims no tag, and the tag renders as literal text,
 - chains a lifespan that configures pyjinhx at startup and tears it down at shutdown,
-- adds `PjxScopeMiddleware`, which opens one `request_scope()` per request, parses the pjx headers onto that request's session, and subscribes the three render hooks (asset accumulation, reactive root stamping, instance registration),
+- adds `PjxScopeMiddleware`, which opens one request scope per request, parses the pjx headers onto that request's session, and subscribes the three render hooks (asset accumulation, reactive root stamping, instance registration),
 - installs the `IntegrationBackend` for your framework — `FastAPIBackend` here — so handlers can return components directly,
 - mounts `/static` when you pass `static_root`.
 
-???+ question "Manual alternative — `request_scope()`"
-    `request_scope()` is the low-level primitive `setup()`'s middleware calls for you. It takes an optional `session=` and `load_context=` and nothing else — there is no components root to hand it, because template lookup never used one. Reach for it directly only outside FastAPI, in custom wiring, or in a shell/test:
+!!! note "Import every component module, even the ones `app.py` never names"
+    The registry pairs walked templates with classes **already imported** into the
+    process, so `<TodoList/>` in a template only resolves because `app.py` imported
+    `TodoList`:
 
     ```python
-    from pyjinhx import setup
-    from pyjinhx.session import request_scope
-
-    setup(components_root="./components")  # process config only, no app
-
-    with request_scope():
-        print(TodoPanel(id="panel", counter=TodoCounter(id="counter", remaining=3)).render())
+    from components.todo_list import TodoList  # noqa: F401 — imported so its tag registers
     ```
 
-    A bare `request_scope()` gives you the per-request ContextVars and nothing more: no asset accumulation, no reactive root stamping, no instance registration, no header parsing, and no response composition — so reactive fan-out will not happen. Do not nest one inside a route of an already-wired app; it shadows the session the middleware set up and silently drops all of the above.
+    Add `from components.todo_app import TodoApp` (defined in Step 7) and
+    `from components.todo_item_row import TodoItemRow` (Step 9) as those steps introduce
+    them — otherwise their tags come back as literal `<TodoItemRow/>` text in the page.
+
+???+ question "Can I skip `setup()`?"
+    Only for the process-level half of it. `setup(components_root="./components")` with no
+    `app` configures pyjinhx and registers tags without touching any framework, which is
+    what a script or a unit test wants.
+
+    What you cannot skip is the per-request half. Everything in the middleware bullet
+    above — asset accumulation, reactive root stamping, instance registration, header
+    parsing — is per-request state, and without it there is no fan-out and no asset
+    delivery, only one component's markup. That is the difference between the inspection
+    `render()` of Step 1 and a served route, and it is why `setup(app, ...)` is the
+    production path.
 
 See [Configuration API](../api/config.md) and [FastAPI integration](../integrations/fastapi.md).
 
 ---
 
-## Step 7 — HTMX partial responses
+## Step 6 — HTMX partial responses
 
 HTMX is the transport for reactivity. PyJinHx auto-injects a vendored copy (alongside
 `pjx.js`) whenever a handler returns a component on a request that carries no
@@ -327,13 +364,20 @@ def bump():
     return TodoCounter(id="counter", remaining=2)
 ```
 
+!!! note "This shape has a shelf life"
+    `TodoCounter` is still a plain `BaseComponent` here, so the `remaining=2` you pass is
+    what renders. Step 7 makes it reactive, and from then on a returned reactive component
+    runs its own `load()` — the hand-passed value is discarded and the counter reads the
+    store instead. That is the point of the upgrade, but it does mean this snippet stops
+    meaning what it says once you get there.
+
 A route with nothing of its own to swap in returns `None`. That is a real return shape,
 not a no-op: the primary is empty, `HX-Reswap: none` is set so htmx leaves the triggering
 element alone, and the response is whatever out-of-band updates the mutation implied. You
 can also return a plain `str` or `Markup` when you have already built the HTML.
 
 !!! note
-    Middleware from Step 6 already wraps each request — no per-route `request_scope()` needed.
+    Middleware from Step 5 already wraps each request — nothing per-route to open or close.
 
 Template button:
 
@@ -350,10 +394,10 @@ Template button:
 
 ---
 
-## Step 8 — Reactive components
+## Step 7 — Reactive components
 
 Upgrade the counter. It names the state it derives from with a `Keys` enum and
-reads from a `store` module — **we define both `keys.py` and `store.py` in Step 9**;
+reads from a `store` module — **we define both `keys.py` and `store.py` in Step 8**;
 for now just note that `Keys.TODOS` and `store` are imported from there:
 
 ```python
@@ -374,8 +418,39 @@ class TodoCounter(ReactiveComponent, react={Keys.TODOS}):
 Define the page shell as a normal `BaseComponent` — no special marker required:
 
 ```python
+# components/todo_app.py
+from pyjinhx import BaseComponent
+
+
 class TodoApp(BaseComponent): ...
 ```
+
+Its template mounts the counter as a **tag**, with an explicit `id`:
+
+```html
+<!-- components/todo_app.pjx -->
+<main id="{{ id }}">
+  <TodoCounter id="counter"/>
+</main>
+```
+
+Now the page route returns the shell and nothing else:
+
+```python
+@app.get("/")
+def index():
+    return TodoApp(id="app")
+```
+
+???+ question "Why not keep passing `counter=` in like Step 3?"
+    Because `TodoCounter` is reactive now, and a reactive component mounted as a
+    `<PascalCase/>` tag runs its own `load()` — it reads the store itself. Hand-passing
+    `remaining=3` into a field, the way Step 3 did, skips `load()` entirely: the value
+    you passed is what renders, and it goes stale the moment anything mutates. That is
+    the one shape to avoid once a component is reactive.
+
+    This is why the shell exists at all. `index()` names no state, so it never goes
+    stale; each reactive region fetches its own data and refreshes independently.
 
 ???+ question "Why ReactiveComponent?"
     Reactive components declare **what state they derive from** (the `react` class keyword) and **how to rebuild** (`load()`). `load()` is a **classmethod factory** that returns a freshly populated instance from the current world — the renderer calls it for you when the component is the root of a render or is instantiated from a `<PascalCase/>` tag, so you rarely call it by hand. Writing it as an instance method (`def load(self)`) raises a `TypeError` the moment the class is defined.
@@ -390,7 +465,7 @@ class TodoApp(BaseComponent): ...
 
 ---
 
-## Step 9 — Keys, mutations, and the response
+## Step 8 — Keys, mutations, and the response
 
 Centralize reactive key strings in a `MutationKey` enum so `react=`, `@mutates`, and
 `dirty()` all share one vocabulary (no stray raw strings to typo). `keys.py`:
@@ -430,7 +505,7 @@ def remaining() -> int:
 
 def get(todo_id: int) -> Todo:
     # A plain dict lookup: the KeyError it raises on a deleted todo is the
-    # signal a load() is expected to let out. See Step 10.
+    # signal a load() is expected to let out. See Step 9.
     return _todos[todo_id]
 
 
@@ -447,7 +522,7 @@ def toggle(todo_id: int) -> Todo:
     return _todos[todo_id]
 ```
 
-Route (the `TodoItemRow` it returns is the instance-keyed row **we define in Step 10**):
+Route (the `TodoItemRow` it returns is the instance-keyed row **we define in Step 9**):
 
 ```python
 @app.post("/rows/{todo_id}/toggle")
@@ -469,7 +544,7 @@ declared `react={Keys.TODOS}`.
 
 ---
 
-## Step 10 — Instance-keyed rows
+## Step 9 — Instance-keyed rows
 
 ```python
 from typing import Annotated
@@ -527,7 +602,7 @@ for the tag-mount path, never as the thing that makes a region addressable.
     `IndexError` both subclass `LookupError`, so a plain `dict`/`list` lookup against your
     own store already raises the right thing. Let it out.
 
-`components/todo_item_row.pjx` (the `data-pjx-*` pair is the loading indicator — covered in Step 11):
+`components/todo_item_row.pjx` (the `data-pjx-*` pair is the loading indicator — covered in Step 10):
 
 ```html
 <li data-pjx-loading="skeleton" data-pjx-reacts="todos">
@@ -542,7 +617,7 @@ for the tag-mount path, never as the thing that makes a region addressable.
 
 ---
 
-## Step 11 — Loading states (in-flight indicators)
+## Step 10 — Loading states (in-flight indicators)
 
 While a reactive region's OOB update is in flight, it can show a built-in indicator.
 You opt in **in the template**, with two attributes on the reactive component's **root
@@ -586,7 +661,7 @@ OOB dependents.
 
 ---
 
-## Step 12 — AppContext (avoid globals in load())
+## Step 11 — AppContext (avoid globals in load())
 
 Subclass `AppContext` to declare the shape of your app's per-request context. Declare it
 as an annotated `ctx` parameter on `load()` and pyjinhx injects that request's value —
@@ -616,7 +691,7 @@ class TodoCounter(ReactiveComponent, react={Keys.TODOS}):
         return cls(remaining=ctx.store.remaining() if ctx else 0)
 ```
 
-Pass a factory to `setup()` (Step 6):
+Pass a factory to `setup()` (Step 5):
 
 ```python
 setup(app, context_factory=lambda request: AppLoadContext(store=store))
@@ -631,15 +706,15 @@ what arrives, rather than an error.
 
 ---
 
-## Step 13 — Load cache scope and invalidation
+## Step 12 — Load cache scope and invalidation
 
 `load()` results are cached **within a single HTTP request** — the cache lives on the
-request-scoped session middleware wires (Step 6) and is discarded when the request ends.
+request-scoped session middleware wires (Step 5) and is discarded when the request ends.
 That scope is what makes the cache multi-worker safe by default: nothing survives past
 one request, so there's nothing to keep consistent across workers.
 
 ???+ question "Why cache at all?"
-    A single page may call a component's `load()` many times during composition and OOB walks. Caching `(class, load_arg) → component snapshot` avoids repeated store/DB work. **Invalidation** is a two-part job: `@mutates` records the dirtied keys, and `compose()` calls `pyjinhx.reactive.cache.invalidate()` with them at response time, before it walks the manifest. Cache is a performance layer, not the source of truth.
+    A single page may call a component's `load()` many times during composition and OOB walks. Caching `(class, load_arg) → component snapshot` avoids repeated store/DB work. **Invalidation** is a two-part job: `@mutates` records the dirtied keys, and `compose()` evicts the matching cache entries with them at response time, before it walks the manifest. Cache is a performance layer, not the source of truth.
 
     If toggles feel stale, check that `@mutates` dirtied a key your rows actually
     declare via `react=`. Rows here use **pub-sub** on `{Keys.TODOS}` — every mounted
@@ -649,72 +724,52 @@ one request, so there's nothing to keep consistent across workers.
 
 ---
 
-## Step 14 — Production assets
+## Step 13 — Production assets
 
-Build a single CSS and JS bundle from all component assets and serve them as static files. Then
-put both asset modes on the request's `RenderSession` so components don't duplicate what the
-bundle already ships.
+Inlining every component's CSS and JS into every response is the right default in
+development and the wrong one in production. The production shape is: build one CSS and
+one JS bundle from all component assets at startup, serve them as static files, link them
+from your layout `<head>`, and switch the request off inline delivery so components don't
+duplicate what the bundle already ships.
 
-```python
-from pyjinhx import AssetMode
-from pyjinhx.assets import all_assets
-
-# Build bundles at startup, after components are registered via setup() —
-# see guide/assets.md "One-bundle deployment"
-css_paths, js_paths = all_assets()
-```
-
-`css_mode`/`js_mode` are per-`RenderSession` attributes (each defaults to `AssetMode.INLINE`), not
-a process-wide switch. Set them on the session bound to the current request — the one `setup()`'s
-middleware (or your own `request_scope()`) opened:
-
-```python
-from pyjinhx.session import current_session
-
-
-@app.get("/")
-def index():
-    session = current_session()
-    session.css_mode = AssetMode.NONE
-    session.js_mode = AssetMode.NONE
-    return TodoApp(id="app")  # assets come from the bundle, not inline tags
-```
-
-Link `bundle.css` and `bundle.js` in your layout `<head>`. Full-page renders then emit only
-the HTML — no inline asset tags.
+The switch is `AssetMode`. `css_mode` and `js_mode` are **per-`RenderSession` attributes**
+— each defaults to `AssetMode.INLINE` — not a process-wide setting, so what you change is
+the session that `setup()`'s middleware opened for the current request. Setting both to
+`AssetMode.NONE` makes that response emit only HTML.
 
 !!! warning "The client runtime rides on inline JS"
-    `inject_runtime()` no-ops when `js_mode` is not `AssetMode.INLINE`, so switching to
+    Runtime injection no-ops when `js_mode` is not `AssetMode.INLINE`, so switching to
     `NONE` also stops `pjx.js` and the vendored htmx from shipping — and without them
-    nothing sends the manifest, so nothing fans out. Serve the runtime yourself: link
-    `pjx.js` as a static file, or fold `read_pjx_runtime()`/`read_vendored_htmx()` from
-    `pyjinhx.client` into your bundle.
+    nothing sends the manifest, so nothing fans out. If you turn inline JS off you must
+    serve the runtime yourself: link `pjx.js` as a static file, or fold it into your
+    bundle.
 
-See [Assets](../guide/assets.md#one-bundle-deployment) for the bundle-serving route with
-ETags and the static-runtime recipe.
+See [Assets](../guide/assets.md#one-bundle-deployment) for the whole recipe — collecting
+the asset paths, the bundle-serving route with ETags, reaching the current request's
+session, and shipping the runtime statically.
 
 ---
 
-## Step 15 — Dev guardrails (optional)
+## Step 14 — Dev guardrails (optional)
+
+Turn on reactive dev mode with one keyword on the `setup()` you already have:
 
 ```python
-from pyjinhx.dev import enable_reactive_dev, dependency_graph, format_dependency_graph
-
-enable_reactive_dev()  # or enable_reactive_dev(strict=True) to raise instead of warn
-print(format_dependency_graph())  # as_mermaid=True for a diagram
+setup(app, components_root="./components", reactive_dev=True)
 ```
 
-???+ question "Why enable_reactive_dev?"
-    Reactivity bugs are often silent — the commonest is a `@mutates` key that no component's `react=` set names, so a mutation quietly updates nothing. `warn_unconsumed_mutations()` catches exactly that; `enable_reactive_dev()` turns the finding into a log warning, or into a `RuntimeError` under `strict=True`. `dependency_graph()` / `format_dependency_graph()` print the static key → class map so you can eyeball a typo before it becomes a support ticket.
+It is a `PjxSettings` field, so `PJX_REACTIVE_DEV=1` in the environment does the same
+thing without a code change — which is how you keep it on in dev and off in production.
+
+???+ question "Why reactive dev mode?"
+    Reactivity bugs are often silent — the commonest is a `@mutates` key that no component's `react=` set names, so a mutation quietly updates nothing. Dev mode watches for exactly that and logs a warning naming the unconsumed key, so you find the typo instead of debugging a widget that "just doesn't refresh".
 
 ---
 
-## Step 16 — Built-in UI kit (optional)
+## Step 15 — Built-in UI kit (optional)
 
 ```python
-from pyjinhx.builtins.ui.pjx_alert.pjx_alert import PJXAlert
-from pyjinhx.builtins.ui.pjx_card.pjx_card import PJXCard
-from pyjinhx.builtins.ui.pjx_modal.pjx_modal import PJXModal
+from pyjinhx.builtins import PJXAlert, PJXCard, PJXModal
 ```
 
 ???+ question "Why builtins?"
@@ -730,10 +785,10 @@ The per-step **Why?** panels above cover the *why*; this is the at-a-glance *wha
 
 | Tier | Pieces |
 |------|--------|
-| **Required** | `setup(app, components_root=...)` (registers tags, wires `FastAPIBackend` + `PjxScopeMiddleware`) · routes declared after `setup()` · routes **return components**, never `.render()` · explicit `id=` on every addressable region · `ReactiveComponent` (`react={...}` + classmethod `load()`) · `@mutates(Keys.…)` on mutations · `PjxKey` on keyed rows · `load()` lets `LookupError` out when the region is gone |
+| **Required** | `setup(app, components_root=...)` (registers tags, wires `FastAPIBackend` + `PjxScopeMiddleware`) · component modules imported above `setup()`, routes declared below it · routes **return components**, never pre-rendered markup · explicit `id=` on every addressable region · `ReactiveComponent` (`react={...}` + classmethod `load()`) · `@mutates(Keys.…)` on mutations · `PjxKey` on keyed rows · `load()` lets `LookupError` out when the region is gone |
 | **Auto-provided** | HTMX + `pjx.js` (vendored, inlined on cold root renders while `js_mode` is `INLINE`; the htmx copy self-guards with `if (!window.htmx)`) · `data-pjx-id`/`-type`/`-hash`/`-load` stamping · OOB fan-out and asset delta on every composed response |
-| **Recommended** | `AppContext` · `data-pjx-reacts` + `data-pjx-loading` indicators · `enable_reactive_dev()` in dev |
-| **Production** | `AssetMode.NONE` + pre-built bundle (`pyjinhx.assets.all_assets()`) |
+| **Recommended** | `AppContext` · `data-pjx-reacts` + `data-pjx-loading` indicators · `setup(..., reactive_dev=True)` in dev |
+| **Production** | `AssetMode.NONE` + pre-built bundle, with `pjx.js` served yourself ([Assets](../guide/assets.md#one-bundle-deployment)) |
 
 ---
 

@@ -18,7 +18,7 @@ PyJinHx layers optional features on top of a small core. You can stop at any tie
 | Tier | You get | Start here |
 |------|---------|------------|
 | **1 — Components** | `BaseComponent`, templates, assets | [Quick Start](getting-started/quickstart.md) |
-| **2 — Web app** | Per-request `request_scope()` | [Registry guide](guide/registry.md) |
+| **2 — Web app** | Per-request isolation via `setup(app)` | [Registry guide](guide/registry.md) |
 | **3 — Reactive** | HTMX OOB swaps, `@mutates`, `load()` | [Reactivity](reactivity.md) |
 | **4 — Full wiring** | `AppContext`, `IntegrationBackend`, cache, invalidation | [Build an App](getting-started/build-an-app.md) |
 
@@ -51,6 +51,10 @@ Within Tier 1, PyJinHx offers two complementary approaches:
     setup(components_root="./components")
     html = render(Button(id="submit", text="Submit", variant="primary"))
     ```
+
+Both of these render to a string, which is what a script or a static-site build wants. In a
+**web app** you do neither: call `setup(app)` once and have each route **return** the
+component — see [Build an App](getting-started/build-an-app.md).
 
 ## Next Steps
 

@@ -51,38 +51,64 @@ Create `components/ui/button.pjx` (same directory as the class):
     separate from how PascalCase tags *referenced inside* a template body are
     resolved — see [PascalCase tags](../guide/tags.md) for that lookup.
 
-## Step 3: Render the Component
+## Step 3: Serve It
 
 Create `main.py`:
 
 ```python
-from pyjinhx import RenderSession
+from fastapi import FastAPI
+
 from components.ui.button import Button
+from pyjinhx import setup
 
-# A RenderSession carries the Jinja environment. It takes no arguments —
-# each component finds its own template next to its class.
-session = RenderSession()
+app = FastAPI()
+setup(app, components_root="components")
 
-# Create and render
-button = Button(id="submit-btn", text="Submit", variant="primary")
 
-html = button.render(session)
-print(html)
+@app.get("/")
+def index():
+    return Button(id="submit-btn", text="Submit", variant="primary")
 ```
 
-!!! tip "The session is optional"
-    `button.render()` with no argument uses the session bound by the active
-    `request_scope()`, or builds a fresh one if there is no scope. Pass a session
-    explicitly only when you want several renders to share one — for example to
-    accumulate their assets together.
-
-Output:
+Run it with `uvicorn main:app --reload` and open <http://127.0.0.1:8000/>:
 
 ```html
 <button id="submit-btn" class="btn btn-primary">
     Submit
 </button>
 ```
+
+Two things to take from this, because they hold for every route you will write:
+
+- **Routes return components; they do not render them.** Returning the instance
+  is what hands the request to pyjinhx's response composer, which is where
+  everything past "one component's markup" happens — the client runtime is
+  injected on a cold page render, co-located CSS and JS ride along, and
+  [reactive out-of-band swaps](../reactivity.md) are attached. Call `.render()`
+  yourself and you get the markup alone.
+- **`setup()` runs once, before your routes.** It registers your components so
+  [PascalCase tags](../guide/tags.md) resolve, and installs the middleware that
+  opens a request scope. It can only register classes that are already imported
+  when it runs, so import your components above it.
+
+!!! warning "`components_root` is relative to the working directory"
+    `"components"` resolves against wherever you start the process, not against
+    `main.py`. Run `uvicorn` from the project root, or pass an absolute path
+    (`Path(__file__).parent / "components"`) if you need it to work from anywhere.
+
+!!! tip "No web framework? Render to a string"
+    Components work without a server — see
+    [Usage tiers](../guide/usage-tiers.md). Skip `setup()` and call `render()`:
+
+    ```python
+    from pyjinhx import render
+    from components.ui.button import Button
+
+    print(render(Button(id="submit-btn", text="Submit", variant="primary")))
+    ```
+
+    This is the whole standalone surface. You will not need `RenderSession` for
+    it — one is created for you.
 
 ## What's Next?
 

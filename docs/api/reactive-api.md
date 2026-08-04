@@ -96,7 +96,7 @@ Marker for `Annotated[..., PjxKey()]`. The field value becomes this instance's l
 def inject_runtime(session: RenderSession, request: Any = None) -> None
 ```
 
-`from pyjinhx.client.inject import inject_runtime`. Records the inline pjx.js runtime (plus vendored htmx and the loading artifacts) on `session` for a cold render. The integration backend calls it from `to_response()` before composing, and only for a component return — every other shape is a fragment. It no-ops when the request already carries `X-PJX-Mounted`, when this session was injected once already, or when JS is not delivered inline (`AssetMode.INLINE`). You do not normally call it: `setup(app)` wires it.
+`from pyjinhx.client.inject import inject_runtime` (internal module, not public API). Records the inline pjx.js runtime (plus vendored htmx and the loading artifacts) on `session` for a cold render. The integration backend calls it from `to_response()` before composing, and only for a component return — every other shape is a fragment. It no-ops when the request already carries `X-PJX-Mounted`, when this session was injected once already, or when JS is not delivered inline (`AssetMode.INLINE`). You do not normally call it: `setup(app)` wires it.
 
 ## MountedManifest
 
