@@ -425,13 +425,15 @@ class MyAppContext(AppContext):
 
 class Counter(ReactiveComponent, react={Keys.TODOS}):
     @classmethod
-    def load(cls, ctx: MyAppContext) -> Self:
-        return cls(remaining=ctx.db.remaining())
+    def load(cls, ctx: MyAppContext | None = None) -> Self:
+        return cls(remaining=ctx.db.remaining() if ctx else 0)
 ```
 
 `ctx` is injected by annotation, not by parameter name — declare it optional
-(`ctx: MyAppContext | None`) to keep `load()` valid when called outside a request
-scope or one with no context configured, in which case `ctx` is `None`. Set context
+(`ctx: MyAppContext | None = None`) to keep `load()` valid when called outside a request
+scope or one with no context configured, in which case `ctx` is `None`. The default also
+keeps static type checkers from flagging `Component.load()` call sites, since the runtime
+wrapper injects `ctx` and never requires callers to pass it. Set context
 per request via `setup(app, context_factory=...)` or `request_scope(load_context=MyAppContext(db=...))`.
 Cache keys remain `(class, load key)` — context is not part of the cache identity.
 
