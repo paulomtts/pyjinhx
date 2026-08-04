@@ -177,17 +177,22 @@ def test_components_root_builds_the_registry(
     assert calls[0][0] == tmp_path
 
 
-def test_no_components_root_does_not_build_the_registry(
+def test_no_components_root_still_builds_the_registry_with_no_walked_dir(
     monkeypatch: pytest.MonkeyPatch,
 ):
+    """Issue #738: builtins claim tags off their own template even with no
+    components_root, so the registry build must still run — with
+    template_dir=None rather than being skipped outright."""
     from pyjinhx import config
 
     calls: list[object] = []
     monkeypatch.setattr(
-        config, "build_registry", lambda template_dir, classes: calls.append(1)
+        config,
+        "build_registry",
+        lambda template_dir, classes: calls.append(template_dir),
     )
     config.setup()
-    assert calls == []
+    assert calls == [None]
 
 
 def test_setup_rejects_a_non_asgi_app():
@@ -233,3 +238,38 @@ def test_static_root_is_stored_on_the_settings(tmp_path: Path):
     from pyjinhx.config import setup
 
     assert setup(static_root=tmp_path).static_root == tmp_path
+
+
+@pytest.fixture(autouse=True)
+def _reset_discovery_registry():
+    """Each test starts from an empty published registry and leaves one behind."""
+    from pyjinhx import discovery
+
+    discovery._registry.mapping = {}
+    discovery._registry.template_dir = None
+    yield
+    discovery._registry.mapping = {}
+    discovery._registry.template_dir = None
+
+
+def test_setup_registers_builtins_with_a_components_root(tmp_path):
+    import pyjinhx.builtins  # noqa: F401
+    from pyjinhx import discovery
+    from pyjinhx.config import setup
+
+    (tmp_path / "user_page.pjx").write_text("<div>user</div>")
+    setup(app=None, components_root=tmp_path)
+
+    cls = discovery.get_class("pjx_card")
+    assert cls is not None
+    assert cls.__name__ == "PJXCard"
+
+
+def test_setup_registers_builtins_without_a_components_root():
+    import pyjinhx.builtins  # noqa: F401
+    from pyjinhx import discovery
+    from pyjinhx.config import setup
+
+    setup(app=None, components_root=None)
+
+    assert discovery.get_class("pjx_card") is not None

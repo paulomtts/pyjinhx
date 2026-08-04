@@ -9,6 +9,7 @@ importing this module never depends on them.
 from __future__ import annotations
 
 import os
+import sys
 from collections.abc import Callable
 from dataclasses import dataclass, fields, replace
 from importlib.util import find_spec as _find_spec
@@ -151,8 +152,7 @@ def setup(
         static_root=static_root,
         **kwargs,
     )
-    if resolved.components_root is not None:
-        _register_components(resolved.components_root)
+    _register_components(resolved.components_root)
     configure_pyjinhx(resolved)
     if app is None:
         return resolved
@@ -197,12 +197,36 @@ def _load_backend() -> IntegrationBackend:
     return backend
 
 
-def _register_components(components_root: Path | str) -> None:
-    """Walk ``components_root`` and publish the tag -> class registry.
+def _force_load_builtins() -> None:
+    """Eagerly import every shipped builtin, if the package has been imported.
 
-    Every declared component class is offered to the walk; discovery is what
-    decides which of them a template on disk actually claims.
+    ``pyjinhx.builtins`` exposes its classes lazily (#701) to keep import-time
+    cost down: a bare ``import pyjinhx.builtins`` defines no component classes
+    at all, it only makes each one importable on first attribute access.
+    Discovery can only claim a tag for a class that already exists, so without
+    this step a builtin would stay unregistered until something happened to
+    touch that one name. Walking the package's own lazy-import table forces
+    every builtin's module to load, once, without the app having to name each
+    one itself — and does nothing when the app never imported the package.
     """
+    builtins_module = sys.modules.get("pyjinhx.builtins")
+    if builtins_module is None:
+        return
+    lazy_imports = getattr(builtins_module, "_lazy_imports", None)
+    if not lazy_imports:
+        return
+    for name in lazy_imports:
+        getattr(builtins_module, name)
+
+
+def _register_components(components_root: Path | str | None) -> None:
+    """Publish the tag -> class registry for this process.
+
+    ``components_root`` is walked when there is one; classes that already
+    carry their own template on disk — every shipped builtin — claim their
+    tags either way, so an app with no components of its own still gets them.
+    """
+    _force_load_builtins()
     build_registry(components_root, _all_component_classes())
 
 

@@ -154,24 +154,57 @@ def _resolve_tag_owner(
     return winner
 
 
-def build_registry(template_dir: Path | str, classes: Iterable[type]) -> None:
+def _has_own_template(cls: type) -> bool:
+    """Whether ``cls`` resolved a template of its own on disk.
+
+    The tag a class answers to is decided by the template it already found
+    through its MRO (ADR 0007/0010), so a class whose template ships inside an
+    installed package can claim its tag without that file having to sit under
+    the walked tree. A class with no resolvable template is simply not claimed
+    — the same posture as an orphan `.pjx` with no class behind it.
+    """
+    descriptor = getattr(cls, "__pjx_descriptor__", None)
+    path = getattr(descriptor, "template_path", None)
+    return isinstance(path, Path) and path.is_file()
+
+
+def build_registry(template_dir: Path | str | None, classes: Iterable[type]) -> None:
     """Walk ``template_dir`` and publish a fresh tag -> class registry.
+
+    Two sources feed the published mapping: every `.pjx` found by walking
+    ``template_dir``, and every offered class that already resolved a template
+    of its own on disk (e.g. a builtin shipped inside the installed package,
+    nowhere near ``template_dir``). Both funnel into the same tag set and the
+    same `_resolve_tag_owner` call, so a tag contested across the two sources
+    still gets exactly one collision decision and one warning.
+
+    ``template_dir`` may be ``None`` — no tree to walk; only classes carrying
+    their own template claim tags. `get_template_dir()` then reports ``None``
+    too, which lets an app with no ``components_root`` of its own still get
+    its builtins registered.
 
     The new mapping is assembled complete in a local before anything is
     published, so a reader sees either the whole previous registry or the whole
     new one. Raises ``NotADirectoryError`` (from the walk) before any publish
     happens, leaving the live registry untouched.
     """
-    root = Path(template_dir)
+    root = Path(template_dir) if template_dir is not None else None
+    offered: list[type] = list(classes)
     by_tag: dict[str, list[type]] = {}
-    for cls in classes:
+    for cls in offered:
         by_tag.setdefault(_tag_for(cls), []).append(cls)
     fresh: dict[str, type] = {}
     warned: set[str] = set()
-    for candidate in walk_templates(root):
-        owner = _resolve_tag_owner(candidate.tag_name, by_tag, warned)
+    tags: list[str] = (
+        []
+        if root is None
+        else [candidate.tag_name for candidate in walk_templates(root)]
+    )
+    tags.extend(_tag_for(cls) for cls in offered if _has_own_template(cls))
+    for tag_name in dict.fromkeys(tags):
+        owner = _resolve_tag_owner(tag_name, by_tag, warned)
         if owner is not None:
-            fresh[candidate.tag_name] = owner
+            fresh[tag_name] = owner
     with _registry_lock:
         _registry.mapping = fresh
         _registry.template_dir = root
