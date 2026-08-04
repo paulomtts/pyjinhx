@@ -58,7 +58,7 @@ def test_current_outside_a_request_scope_raises_no_active_request_scope():
         PjxContext.current()
 
 
-def test_manifest_accessors_read_request_state():
+def test_manifest_accessors_read_the_session():
     request = FakeRequest(
         pjx_mounted="mounted-manifest",
         pjx_assets="loaded-assets",
@@ -66,6 +66,9 @@ def test_manifest_accessors_read_request_state():
     )
     with request_scope() as session:
         session.pjx_request = request
+        session.pjx_mounted = "mounted-manifest"
+        session.pjx_assets = "loaded-assets"
+        session.pjx_trigger = "trigger-manifest"
         ctx = PjxContext.current()
         assert ctx.request is request
         assert ctx.mounted == "mounted-manifest"
@@ -73,12 +76,12 @@ def test_manifest_accessors_read_request_state():
         assert ctx.trigger == "trigger-manifest"
 
 
-def test_manifest_accessors_are_none_without_a_request():
+def test_manifest_accessors_default_without_a_request():
     with request_scope():
         ctx = PjxContext.current()
         assert ctx.request is None
-        assert ctx.mounted is None
-        assert ctx.assets is None
+        assert ctx.mounted == []
+        assert ctx.assets == frozenset()
         assert ctx.trigger is None
 
 
@@ -110,3 +113,22 @@ def test_app_context_is_the_same_object_the_session_accessor_returns():
     sentinel = object()
     with request_scope(load_context=sentinel):
         assert PjxContext.current().app_context is get_load_context()
+
+
+def test_manifest_accessors_read_the_session_not_the_request():
+    with request_scope() as session:
+        session.pjx_mounted = [{"id": "a", "type": "Card", "load": {}, "hash": "h"}]
+        session.pjx_assets = frozenset({"tok"})
+        session.pjx_trigger = {"id": "a"}
+        ctx = PjxContext.current()
+        assert ctx.mounted == [{"id": "a", "type": "Card", "load": {}, "hash": "h"}]
+        assert ctx.assets == frozenset({"tok"})
+        assert ctx.trigger == {"id": "a"}
+
+
+def test_manifest_accessors_default_to_empty_outside_a_parsed_request():
+    with request_scope():
+        ctx = PjxContext.current()
+        assert ctx.mounted == []
+        assert ctx.assets == frozenset()
+        assert ctx.trigger is None

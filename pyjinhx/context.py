@@ -2,7 +2,7 @@
 
 This is deliberately narrower than v0.x's PjxContext: no user-data injection,
 no load()-parameter introspection, no mutation methods. It is a view over
-state that already lives in session.py's ContextVars and on request.state —
+state that already lives in session.py's ContextVars and on the session —
 constructed on demand, never itself ContextVar-bound.
 """
 
@@ -32,7 +32,7 @@ class PjxContext:
 
     Exposes the session bound by ``request_scope()``, the dirtied reactive
     keys, the instance registry, the two load-cache stores, the pjx header
-    manifests parsed onto ``request.state``, and the ``context_factory``
+    manifests parsed onto the session, and the ``context_factory``
     result bound by ``request_scope()``. Read-only: dirtying and mutation
     stay with ``reactive.mutations``.
     """
@@ -84,32 +84,28 @@ class PjxContext:
         return get_cache_reverse()
 
     @property
-    def mounted(self) -> Any:
-        """The MountedManifest the middleware parsed onto this request."""
-        return self._state("pjx_mounted")
+    def mounted(self) -> list[dict[str, Any]]:
+        """The MountedManifest the middleware parsed onto this session."""
+        session = current_session()
+        return [] if session is None else session.pjx_mounted
 
     @property
-    def assets(self) -> Any:
-        """The LoadedAssets manifest the middleware parsed onto this request."""
-        return self._state("pjx_assets")
+    def assets(self) -> frozenset[str]:
+        """The LoadedAssets manifest the middleware parsed onto this session."""
+        session = current_session()
+        return frozenset() if session is None else session.pjx_assets
 
     @property
-    def trigger(self) -> Any:
-        """The TriggerManifest the middleware parsed onto this request."""
-        return self._state("pjx_trigger")
+    def trigger(self) -> dict[str, Any] | None:
+        """The TriggerManifest the middleware parsed onto this session."""
+        session = current_session()
+        return None if session is None else session.pjx_trigger
 
     @property
     def app_context(self) -> Any:
         """Whatever the app's configured ``context_factory`` returned, or None.
 
-        Unlike the manifest accessors this one does not go through
-        ``request.state``: the value is bound on the scope itself, so it is
-        readable in a scope entered without a Starlette request at all.
+        The value is bound on the scope itself, so it is readable in a scope
+        entered without a Starlette request at all.
         """
         return get_load_context()
-
-    def _state(self, name: str) -> Any:
-        """The named ``request.state`` attribute, or None when unset."""
-        if self.request is None:
-            return None
-        return getattr(self.request.state, name, None)

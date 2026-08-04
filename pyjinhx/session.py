@@ -125,6 +125,12 @@ class RenderSession:
         # The Starlette request object for this render, set by middleware and
         # read by PjxContext to expose request.state manifests and app context.
         self.pjx_request: Any = None
+        # The parsed pjx request headers. They live on the session, not on
+        # request.state, because the response composer is framework-free: it
+        # has no Request to read manifests from, only the active session.
+        self.pjx_mounted: list[dict[str, Any]] = []
+        self.pjx_assets: frozenset[str] = frozenset()
+        self.pjx_trigger: dict[str, Any] | None = None
 
     def emit_rendered(self, component: "BaseComponent", level: "RenderedLevel") -> None:
         """Notify subscribers that ``component``'s subtree finished rendering.
