@@ -27,7 +27,7 @@ One test asserts the import graph. Cheap, catches spine violations forever.
 ```text
 pyjinhx/
 ├── __init__.py          public API, curated exports
-├── component.py         BaseComponent (strict), OpenComponent, Slot, children inference
+├── _component.py        BaseComponent (strict), _OpenComponent, Slot, children inference
 ├── descriptor.py        ClassDescriptor: MRO walk, slot fields, asset paths — frozen at registration
 ├── discovery.py         .pjx walk, class registry (built-then-swap), pjx_replace, dup warning
 ├── props_header.py      {#def#} parsing + open-class generation

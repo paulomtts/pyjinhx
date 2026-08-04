@@ -26,12 +26,12 @@ class Button(BaseComponent):
 ```
 
 ```html
-<!-- components/button.html -->
+<!-- components/button.pjx -->
 <button id="{{ id }}" class="btn btn-{{ variant }}">{{ text }}</button>
 ```
 
 ```html
-<!-- components/card.html -->
+<!-- components/card.pjx -->
 <div id="{{ id }}" class="card">
   <h2>{{ title }}</h2>
   <Button id="cta" text="{{ button_text }}" variant="primary"/>
@@ -40,7 +40,7 @@ class Button(BaseComponent):
 
 ```python
 # components/card.py
-from pyjinhx import BaseComponent, Renderer
+from pyjinhx import BaseComponent, setup
 
 
 class Card(BaseComponent):
@@ -49,7 +49,7 @@ class Card(BaseComponent):
     button_text: str = "Sign up"
 
 
-Renderer.set_default_environment("./components")
+setup(components_root="./components")
 html = Card(id="hero", title="Get Started").render()
 ```
 
