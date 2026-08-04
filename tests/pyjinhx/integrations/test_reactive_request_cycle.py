@@ -27,7 +27,6 @@ from pyjinhx.reactive.cache import invalidate
 from pyjinhx.reactive.component import PjxKey, ReactiveComponent
 from pyjinhx.reactive.keys import MutationKey
 from pyjinhx.reactive.mutations import dirty, mutates
-from pyjinhx.reactive.response import ReactiveResponse
 from pyjinhx.session import (
     NoActiveRequestScope,
     current_session,
@@ -222,7 +221,7 @@ def test_mutation_round_trip_returns_gated_oob_swap():
         )
         Counter().bump("card-1")
         invalidate(get_dirtied())
-        return ReactiveResponse(primary="", mounted=request)
+        return None
 
     with TestClient(app) as client:
         response = client.post(
@@ -252,7 +251,7 @@ def test_unchanged_region_is_gated_out_of_the_oob_swap():
         )
         dirty(Keys.CYCLE)
         invalidate(get_dirtied())
-        return ReactiveResponse(primary="", mounted=request)
+        return None
 
     with TestClient(app) as client:
         response = client.post(
@@ -287,7 +286,7 @@ def test_mutation_round_trip_demo_swaps_dirty_regions_and_ships_missing_assets()
                 cls.__name__, instance_id, cls(id=instance_id, pjx_key=key)
             )
         Counter().bump("card-1")
-        return ReactiveResponse(primary="", mounted=request, assets=request)
+        return None
 
     with TestClient(app) as client:
         response = client.post(
@@ -336,7 +335,7 @@ def test_round_trip_does_not_resend_assets_the_client_already_reports():
             CycleBadge.__name__, "c", CycleBadge(id="c", pjx_key="card-1")
         )
         Counter().bump("card-1")
-        return ReactiveResponse(primary="", mounted=request, assets=request)
+        return None
 
     with TestClient(app) as client:
         response = client.post(
@@ -361,7 +360,7 @@ def test_a_malformed_assets_header_means_the_client_has_nothing():
             CycleBadge.__name__, "c", CycleBadge(id="c", pjx_key="card-1")
         )
         Counter().bump("card-1")
-        return ReactiveResponse(primary="", mounted=request, assets=request)
+        return None
 
     with TestClient(app) as client:
         response = client.post(
