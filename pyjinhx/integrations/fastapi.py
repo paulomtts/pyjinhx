@@ -98,6 +98,10 @@ class FastAPIBackend:
         # Always set: to_response only runs from inside PjxScopeMiddleware's
         # request_scope(), which is the sole entry point for a pjx endpoint.
         assert session is not None, "handler return outside a request_scope()"
+        # ReactiveResponse already has its body and headers with fan-out computed,
+        # so return it directly without re-composing.
+        if isinstance(result, ReactiveResponse):
+            return HTMLResponse(str(result.body), headers=result.headers)
         # Before compose(), because compose() is what renders the component and
         # the runtime has to be in the session by then. Only a component return
         # can be a cold page render; every other shape is a fragment.
