@@ -12,6 +12,7 @@ from pyjinhx.config import PjxSettings
 from pyjinhx.descriptor import ClassDescriptor
 from pyjinhx.integrations.fastapi import apply_setup
 from pyjinhx.reactive.response import ReactiveResponse
+from pyjinhx.session import request_scope
 
 
 class Greeting(BaseComponent):
@@ -310,13 +311,17 @@ def test_backend_to_response_adapts_reactive_and_passes_others_through():
     from pyjinhx.integrations.fastapi import FastAPIBackend
 
     backend = FastAPIBackend(_settings())
-    adapted = cast(
-        HTMLResponse,
-        backend.to_response(ReactiveResponse(primary="<div>hi</div>"), None),
-    )
-    assert adapted.status_code == 200
-    assert adapted.body == b"<div>hi</div>"
-    assert backend.to_response({"json": True}, None) == {"json": True}
+    # to_response asserts an active RenderSession (it is only ever called from
+    # inside PjxScopeMiddleware's request_scope()), so this unit test binds one
+    # by hand rather than going through a live request.
+    with request_scope():
+        adapted = cast(
+            HTMLResponse,
+            backend.to_response(ReactiveResponse(primary="<div>hi</div>"), None),
+        )
+        assert adapted.status_code == 200
+        assert adapted.body == b"<div>hi</div>"
+        assert backend.to_response({"json": True}, None) == {"json": True}
 
 
 def test_scope_session_resolves_an_absolute_template_path(tmp_path: Path):
