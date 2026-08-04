@@ -19,7 +19,7 @@ from typing import TYPE_CHECKING, Any
 from pydantic import create_model
 
 if TYPE_CHECKING:
-    from pyjinhx._component import OpenComponent
+    from pyjinhx._component import _OpenComponent
 
 _HEADER_RE = re.compile(r"\A\s*\{#\s*def\s+(?P<sig>.*?)\s*#\}", re.DOTALL)
 
@@ -117,7 +117,7 @@ def parse_props_header(source: str) -> list[tuple[str, Any, Any]] | None:
 
 def build_component_class(
     fields: list[tuple[str, Any, Any]], tag: str
-) -> "type[OpenComponent]":
+) -> "type[_OpenComponent]":
     """Build an open-model component class named ``tag`` from parsed header fields.
 
     ``fields`` is ``parse_props_header``'s output verbatim: ``(name, annotation,
@@ -125,12 +125,12 @@ def build_component_class(
     already pydantic's own required sentinel, so each tuple maps straight onto a
     ``create_model`` field definition with no translation.
 
-    The base is ``OpenComponent`` rather than ``BaseComponent``: a header
+    The base is ``_OpenComponent`` rather than ``BaseComponent``: a header
     declares the props a template reads, not the full set of attributes a caller
     may pass through, so undeclared keys must land in ``model_extra`` instead of
     raising.
     """
-    from pyjinhx._component import OpenComponent
+    from pyjinhx._component import _OpenComponent
 
     definitions: dict[str, Any] = {
         name: (annotation, default) for name, annotation, default in fields
@@ -139,7 +139,7 @@ def build_component_class(
     # make a generated class's template and asset probing depend on which module
     # happened to call in. Pin it here; discovery repoints it at the template's
     # own package and calls rebuild_class_descriptor once the class is placed.
-    cls = create_model(tag, __base__=OpenComponent, __module__=__name__, **definitions)
+    cls = create_model(tag, __base__=_OpenComponent, __module__=__name__, **definitions)
     # Set after creation, not as a create_model field: a leading underscore is a
     # pydantic private attribute, and this is a plain class-level marker that
     # downstream code reads off the type, never off an instance.

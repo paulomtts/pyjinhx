@@ -12,8 +12,8 @@ from pyjinhx._component import (
     BaseComponent,
     Children,
     ExtraAttrs,
-    OpenComponent,
     Slot,
+    _OpenComponent,
     validate_attr_value,
     validate_extra_attrs,
 )
@@ -457,7 +457,7 @@ def test_component_module_does_not_import_above_itself():
             )
 
 
-class OpenCard(OpenComponent):
+class OpenCard(_OpenComponent):
     name: str
 
 
@@ -491,5 +491,5 @@ def test_open_subclass_is_not_strict_and_base_subclass_is():
 def test_open_subclass_still_enforces_reserved_id_field():
     with pytest.raises(TypeError, match="redeclares the reserved id field"):
 
-        class BadOpen(OpenComponent):
+        class BadOpen(_OpenComponent):
             id: int = 0  # pyright: ignore[reportIncompatibleVariableOverride]

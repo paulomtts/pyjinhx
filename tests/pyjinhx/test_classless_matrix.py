@@ -15,7 +15,7 @@ from typing import Any
 import pytest
 
 from pyjinhx import discovery
-from pyjinhx._component import BaseComponent, OpenComponent
+from pyjinhx._component import BaseComponent, _OpenComponent
 from pyjinhx.classless import component
 from pyjinhx.props_header import parse_props_header
 from pyjinhx.rendering import render_level
@@ -51,7 +51,7 @@ def absolute_session() -> RenderSession:
     return RenderSession()
 
 
-def _three_classes(tmp_path: Path) -> dict[str, type[OpenComponent]]:
+def _three_classes(tmp_path: Path) -> dict[str, type[BaseComponent]]:
     """One class per construction path, all three built in the same session.
 
     The point is that they are indistinguishable where ADR 0006 says they must
@@ -60,7 +60,7 @@ def _three_classes(tmp_path: Path) -> dict[str, type[OpenComponent]]:
     write_template(tmp_path, "card", '{#def title: str = "hi" #}<div>{{ title }}</div>')
     write_template(tmp_path, "badge", "<div>plain</div>")
 
-    class Panel(OpenComponent):
+    class Panel(_OpenComponent):
         title: str = "hi"
 
     return {
@@ -71,9 +71,9 @@ def _three_classes(tmp_path: Path) -> dict[str, type[OpenComponent]]:
 
 
 def test_every_construction_path_lands_on_the_open_base(tmp_path):
-    """ADR 0006: a class that accepts extras subclasses OpenComponent, always."""
+    """ADR 0006: a class that accepts extras subclasses _OpenComponent, always."""
     for label, cls in _three_classes(tmp_path).items():
-        assert issubclass(cls, OpenComponent), label
+        assert issubclass(cls, _OpenComponent), label
         assert cls.model_config.get("extra") == "allow", label
 
 
@@ -107,7 +107,7 @@ def test_a_multi_field_header_survives_parse_build_and_placement(tmp_path):
     cls = component("Card", template_dir=tmp_path)
     fields = cls.model_fields
 
-    assert issubclass(cls, OpenComponent)
+    assert issubclass(cls, _OpenComponent)
     assert fields["title"].annotation is str
     assert fields["title"].is_required()
     assert fields["count"].annotation is int
@@ -186,7 +186,7 @@ def test_a_nested_headed_template_is_not_reported_as_stale(tmp_path, caplog):
         cls = component("Card", template_dir=tmp_path)
         render_level(cls(), absolute_session())
 
-    assert issubclass(cls, OpenComponent)
+    assert issubclass(cls, _OpenComponent)
     assert cls.__pjx_descriptor__.has_stale_def_header is False
     assert stale_records(caplog) == []
 
@@ -313,7 +313,7 @@ def test_a_header_built_class_renders_its_declared_fields_end_to_end(tmp_path):
     instance = cls(title="Hello", count=3)  # pyright: ignore[reportCallIssue]
     output = serialize(render_level(instance, absolute_session()))
 
-    assert issubclass(cls, OpenComponent)
+    assert issubclass(cls, _OpenComponent)
     assert output == '<article class="card">Hello (3)</article>'
 
 
@@ -341,7 +341,7 @@ def test_a_placeholder_class_renders_the_same_way(tmp_path):
     instance = cls(text="OK")  # pyright: ignore[reportCallIssue]
     output = serialize(render_level(instance, absolute_session()))
 
-    assert issubclass(cls, OpenComponent)
+    assert issubclass(cls, _OpenComponent)
     assert set(cls.model_fields) == {"id"}
     assert instance.model_extra == {"text": "OK"}
     assert output == "<span>OK</span>"

@@ -18,7 +18,8 @@ from pathlib import Path
 
 from pyjinhx import discovery
 from pyjinhx._component import (
-    OpenComponent,
+    BaseComponent,
+    _OpenComponent,
     _pascal_to_snake,
     rebuild_class_descriptor,
 )
@@ -77,14 +78,14 @@ def _module_for_directory(directory: Path) -> str:
     return name
 
 
-def _placeholder_class(name: str, tag: str) -> type[OpenComponent]:
+def _placeholder_class(name: str, tag: str) -> type[_OpenComponent]:
     """A prop-less open class for a template that declares no props.
 
     A template with no header still renders — it just reads whatever the caller
     passed. Nothing is declared, so every attribute arrives as an extra, which
     is exactly what the open base already does.
     """
-    cls = types.new_class(name, (OpenComponent,))
+    cls = types.new_class(name, (_OpenComponent,))
     # Set after creation, not in the class body: pydantic turns a leading
     # underscore assignment in the body into a private instance attribute, and
     # these are plain class-level markers read off the type.
@@ -93,7 +94,7 @@ def _placeholder_class(name: str, tag: str) -> type[OpenComponent]:
     return cls
 
 
-def component(name: str, template_dir: Path | str | None = None) -> type[OpenComponent]:
+def component(name: str, template_dir: Path | str | None = None) -> type[BaseComponent]:
     """The component class for ``name``, building one from its template if needed.
 
     Returns the class already registered for the tag when there is one, so

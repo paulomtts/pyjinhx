@@ -397,7 +397,7 @@ def _resolve_class_descriptor(cls: type[BaseModel]) -> ClassDescriptor:
     """
     template_path, template_owner = _walk_template(cls)
 
-    # Imported here, not at module scope: props_header imports OpenComponent
+    # Imported here, not at module scope: props_header imports _OpenComponent
     # from this module, so a top-level import would close the cycle.
     from pyjinhx.props_header import template_has_props_header
 
@@ -617,7 +617,7 @@ class BaseComponent(BaseModel):
         return str(value)
 
 
-class OpenComponent(BaseComponent):
+class _OpenComponent(BaseComponent):
     """A BaseComponent variant that accepts undeclared keyword arguments.
 
     Extra keys pass validation and land in model_extra instead of raising.

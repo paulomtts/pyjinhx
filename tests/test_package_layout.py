@@ -56,7 +56,7 @@ def test_render_is_a_free_function_not_a_class():
 
 
 def test_private_and_v1_symbols_are_not_exported():
-    for name in ("OpenComponent", "Renderer", "Registry", "render_level"):
+    for name in ("_OpenComponent", "Renderer", "Registry", "render_level"):
         assert name not in pyjinhx.__all__
 
 

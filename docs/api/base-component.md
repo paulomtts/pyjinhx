@@ -14,7 +14,17 @@ Subclasses are automatically registered and can be rendered using their correspo
 |-------|------|----------|---------|-------------|
 | `id` | `str` | No | auto-generated (`pjx-<n>`) when omitted | Unique identifier for the component instance |
 
-`BaseComponent` is strict by default (`model_config = ConfigDict(extra="forbid")`): passing an undeclared kwarg at construction time raises a validation error. Allow-extra is not a `BaseComponent` option — it's specific to `OpenComponent`, the base that `component()`-synthesized classless wrappers and `{#def#}`-less templates use (`extra="allow"`), so those alone accept pass-through attributes.
+`BaseComponent` is strict by default (`model_config = ConfigDict(extra="forbid")`): passing an undeclared kwarg at construction time raises a validation error. To accept pass-through attributes, opt a class into pydantic's own `extra="allow"`:
+
+```python
+from pydantic import ConfigDict
+
+
+class Card(BaseComponent):
+    model_config = ConfigDict(extra="allow")
+```
+
+`component()`-synthesized classless wrappers and `{#def#}`-less templates are generated with that same config, which is why they accept extras out of the box.
 
 #### Methods
 
@@ -37,7 +47,7 @@ The template is auto-discovered based on the component class name: a colocated `
 ## component
 
 ```python
-def component(name: str, template_dir: Path | str | None = None) -> type[OpenComponent]
+def component(name: str, template_dir: Path | str | None = None) -> type[BaseComponent]
 ```
 
 Reference an **html-only** component — a template that has no hand-written Python class — from Python. Returns a `BaseComponent` subclass bound to that template, so you can instantiate, nest, and render it like any declared component.
@@ -49,7 +59,7 @@ Card = component("Card")  # finds card.pjx under the registered components root
 Card(title="Hi", content="body").render()
 ```
 
-The template is resolved by the same tag -> class registry used for `<Card/>` tags in templates (`pyjinhx.discovery`): if `"Card"` is already registered (a hand-declared class, or a previous `component("Card")` call), that class is returned as-is. Otherwise `component()` walks the template directory for `card.pjx`, parses its `{#def#}` prop header if it has one (building a validated `BaseComponent` subclass), or falls back to a permissive `OpenComponent` placeholder when it doesn't, and registers the result under the tag. `setup(components_root=...)` (or a prior call to `discovery.build_registry(...)`) establishes the template directory that walk searches; pass `template_dir` explicitly to `component()` to search elsewhere instead.
+The template is resolved by the same tag -> class registry used for `<Card/>` tags in templates (`pyjinhx.discovery`): if `"Card"` is already registered (a hand-declared class, or a previous `component("Card")` call), that class is returned as-is. Otherwise `component()` walks the template directory for `card.pjx`, parses its `{#def#}` prop header if it has one (building a validated `BaseComponent` subclass), or falls back to a permissive `extra="allow"` placeholder when it doesn't, and registers the result under the tag. `setup(components_root=...)` (or a prior call to `discovery.build_registry(...)`) establishes the template directory that walk searches; pass `template_dir` explicitly to `component()` to search elsewhere instead.
 
 Arbitrary attributes are accepted (`extra="allow"`) and children map to the `content` slot, e.g. `component("Card")(title="Hi", content="body")`.
 

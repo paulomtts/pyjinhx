@@ -179,4 +179,4 @@ def test_parsing_uses_only_the_stdlib():
         if isinstance(node, ast_module.Name)
     }
     assert "create_model" not in names
-    assert "OpenComponent" not in names
+    assert "_OpenComponent" not in names

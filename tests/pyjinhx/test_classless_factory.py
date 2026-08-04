@@ -13,7 +13,7 @@ from pathlib import Path
 import pytest
 
 from pyjinhx import discovery
-from pyjinhx._component import BaseComponent, OpenComponent
+from pyjinhx._component import BaseComponent, _OpenComponent
 from pyjinhx.classless import component
 
 
@@ -104,7 +104,7 @@ def test_a_headed_template_becomes_a_class_with_the_headers_props(tmp_path):
 
     cls = component("Card", template_dir=tmp_path)
 
-    assert issubclass(cls, OpenComponent)
+    assert issubclass(cls, _OpenComponent)
     assert issubclass(cls, BaseComponent)
     assert cls.__name__ == "Card"
     assert cls.model_fields["title"].annotation is str
@@ -151,7 +151,7 @@ def test_a_header_less_template_becomes_a_permissive_placeholder(tmp_path):
 
     cls = component("Card", template_dir=tmp_path)
 
-    assert issubclass(cls, OpenComponent)
+    assert issubclass(cls, _OpenComponent)
     assert cls.__name__ == "Card"
     assert cls._pjx_classless is True  # pyright: ignore[reportAttributeAccessIssue]
     assert cls._pjx_template == "card"  # pyright: ignore[reportAttributeAccessIssue]

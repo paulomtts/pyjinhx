@@ -282,7 +282,20 @@ Example(foo=1, bar=2)  # ValidationError: Extra inputs are not permitted
 ```
 
 Classless components are the exception. A component built from a template — by
-`component()` or by a `{#def #}` header — subclasses `OpenComponent`, which accepts
-undeclared keys and makes them available in the template context. That is what lets
-`hx-*`, `data-*` and other stray attributes pass through to the root element (see
+`component()` or by a `{#def #}` header — is generated with `extra="allow"`, so it
+accepts undeclared keys and makes them available in the template context. That is what
+lets `hx-*`, `data-*` and other stray attributes pass through to the root element (see
 [Attribute pass-through](#attribute-pass-through)).
+
+A hand-written class can opt into the same thing with pydantic's own config — there is no
+pyjinhx-specific base to import:
+
+```python
+from pydantic import ConfigDict
+from pyjinhx import BaseComponent
+
+
+class Card(BaseComponent):
+    model_config = ConfigDict(extra="allow")
+    title: str = ""
+```

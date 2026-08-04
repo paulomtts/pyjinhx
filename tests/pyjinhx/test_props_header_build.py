@@ -8,7 +8,7 @@ from typing import Any
 
 import pytest
 
-from pyjinhx._component import BaseComponent, OpenComponent
+from pyjinhx._component import BaseComponent, _OpenComponent
 from pyjinhx.descriptor import ClassDescriptor
 from pyjinhx.props_header import build_component_class, parse_props_header
 
@@ -17,7 +17,7 @@ def test_generated_class_subclasses_the_open_model_base():
     """ADR 0006: classless components need pass-through attributes, so they
     must never hang off the strict core directly."""
     cls = build_component_class([("title", str, ...)], "Card")
-    assert issubclass(cls, OpenComponent)
+    assert issubclass(cls, _OpenComponent)
     assert issubclass(cls, BaseComponent)
     assert cls.__name__ == "Card"
 
@@ -78,8 +78,8 @@ def test_generated_class_accepts_undeclared_attributes():
 def test_empty_field_list_generates_a_usable_class():
     """An empty header still declares the template classless, with zero props."""
     cls = build_component_class([], "Card")
-    assert issubclass(cls, OpenComponent)
-    assert set(cls.model_fields) == set(OpenComponent.model_fields)
+    assert issubclass(cls, _OpenComponent)
+    assert set(cls.model_fields) == set(_OpenComponent.model_fields)
     assert cls().model_extra == {}
 
 
@@ -90,9 +90,9 @@ def test_generated_class_gets_a_frozen_class_descriptor():
     descriptor = cls.__pjx_descriptor__
     assert isinstance(descriptor, ClassDescriptor)
     # The MRO walk probes Card's own candidate (not found, since Card has no
-    # file of its own yet) and falls back unprobed to OpenComponent's, per
+    # file of its own yet) and falls back unprobed to _OpenComponent's, per
     # `_walk_template`'s documented last-ancestor-unprobed semantics.
-    assert descriptor.template_path.name == "open_component.pjx"
+    assert descriptor.template_path.name == "_open_component.pjx"
 
 
 @pytest.mark.parametrize(
@@ -115,7 +115,7 @@ def test_parse_and_build_compose_end_to_end():
 
 def test_descriptor_template_path_is_provisional_until_relocated(tmp_path, monkeypatch):
     """A generated class has no module file of its own, so its first descriptor
-    resolves against this package's directory (``OpenComponent``'s own template
+    resolves against this package's directory (``_OpenComponent``'s own template
     candidate, since ``Card`` has none there and the walk's unprobed fallback is
     the nearest ancestor that does have a defining module). Discovery must
     re-point ``__module__`` at the template's real package and rebuild before
@@ -131,7 +131,7 @@ def test_descriptor_template_path_is_provisional_until_relocated(tmp_path, monke
     cls = build_component_class([("title", str, ...)], "Card")
     assert cls.__module__ == props_header_module.__name__
     assert cls.__pjx_descriptor__.template_path == (
-        Path(props_header_module.__file__).parent / "open_component.pjx"
+        Path(props_header_module.__file__).parent / "_open_component.pjx"
     )
 
     # Simulate discovery relocating the class beside its real template: a

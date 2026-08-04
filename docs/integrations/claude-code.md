@@ -16,7 +16,7 @@ You are building with PyJinHx — reusable, type-safe UI components from Pydanti
 
 ## Components
 
-A component is a Pydantic class plus a Jinja2 template in the **same directory**. `id` is optional — omitted/falsy ids auto-generate `pjx-<n>`. There is no class-name-derived default, so anything that has to be addressable (every reactive region, every htmx target) needs an explicit `id`. `BaseComponent` is strict (`model_config = ConfigDict(extra="forbid")`): an undeclared kwarg raises a validation error. Pass-through attributes require `OpenComponent` (`from pyjinhx._component import OpenComponent` — **not** public API; `pyjinhx.__all__` does not export it and the spelling may change), the `extra="allow"` base that classless and `{#def#}`-less components already use.
+A component is a Pydantic class plus a Jinja2 template in the **same directory**. `id` is optional — omitted/falsy ids auto-generate `pjx-<n>`. There is no class-name-derived default, so anything that has to be addressable (every reactive region, every htmx target) needs an explicit `id`. `BaseComponent` is strict (`model_config = ConfigDict(extra="forbid")`): an undeclared kwarg raises a validation error. For pass-through attributes, opt the class into pydantic's own `extra="allow"` — `class Card(BaseComponent): model_config = ConfigDict(extra="allow")`. There is no pyjinhx base class to import for this; classless and `{#def#}` components are generated with the same config.
 
 ```python
 from pyjinhx import BaseComponent
