@@ -24,12 +24,15 @@ serve it from your own CDN — include it in your layout as usual:
 <script src="https://unpkg.com/htmx.org@2.0.3"></script>
 ```
 
-The inlined copy self-guards (`if (!window.htmx)`), so it never double-loads
-when your page already provides HTMX. To turn auto-injection off entirely:
+Nothing else is needed to make the two copies coexist: the inlined one
+self-guards with `if (!window.htmx)`, so it defers to whatever HTMX your page
+already loaded and never double-loads.
 
-```python
-setup(app, inject_htmx=False)  # or env: PJX_INJECT_HTMX=false
-```
+There is no off-switch to reach for. `PjxSettings.inject_htmx` (settable as
+`setup(app, inject_htmx=False)` or `PJX_INJECT_HTMX=false`) is **recorded on the
+settings object and not read anywhere** — how it should map onto the session's
+asset modes is still open design. Treat auto-injection as always on, and rely on
+the self-guard.
 
 If HTMX ends up missing at runtime, `pjx.js` logs a clear `console.error`
 instead of failing silently.
@@ -38,15 +41,20 @@ instead of failing silently.
 
 ```
 my_app/
-├── components/
-│   └── ui/
-│       ├── button.py
-│       ├── button.html
-│       ├── counter.py
-│       ├── counter.html
-│       └── counter.js
-└── index.html
+└── components/
+    ├── ui/
+    │   ├── button.py
+    │   ├── button.pjx
+    │   ├── counter.py
+    │   ├── counter.pjx
+    │   └── counter.js
+    ├── page.py
+    └── page.pjx
 ```
+
+Templates are `<snake_case>.pjx` files sitting next to the module that defines
+the component — never `.html` or `.jinja`, never kebab-case. Co-located assets
+share the same stem (`counter.pjx` → `counter.js`).
 
 ## Basic Example
 
@@ -66,7 +74,7 @@ class Button(BaseComponent):
 ### Component Template with HTMX
 
 ```html
-<!-- components/ui/button.html -->
+<!-- components/ui/button.pjx -->
 <button
     id="{{ id }}"
     hx-post="{{ endpoint }}"
@@ -78,14 +86,24 @@ class Button(BaseComponent):
 </button>
 ```
 
-### HTML Page
+### Page
+
+The PascalCase `<Button>` tag is resolved by the PyJinHx renderer, so the page
+that uses it is itself a component template — a `.pjx` file, not a hand-written
+`index.html`:
+
+```python
+# page.py
+from pyjinhx import BaseComponent
+
+
+class Page(BaseComponent):
+    pass
+```
 
 ```html
-<!DOCTYPE html>
+<!-- page.pjx -->
 <html>
-<head>
-    <script src="https://unpkg.com/htmx.org@2.0.3"></script>
-</head>
 <body>
     <Button id="click-me" text="Click Me" endpoint="/clicked"></Button>
     <div id="result"></div>
@@ -93,8 +111,8 @@ class Button(BaseComponent):
 </html>
 ```
 
-Render a component instance directly — there's no separate "process this HTML
-string" step. A route builds the component and calls `.render()`:
+There's no separate "process this HTML string" step — a route builds the
+component and returns it:
 
 ```python
 from pyjinhx import setup
@@ -104,8 +122,11 @@ setup(app, components_root="./components")
 
 @app.get("/")
 def index():
-    return Button(id="click-me", text="Click Me", endpoint="/clicked").render()
+    return Page(id="page")
 ```
+
+You never have to add the `<script>` tag for HTMX yourself; PyJinHx inlines its
+vendored copy on a reactive root render (see [HTMX delivery](#htmx-delivery)).
 
 ## Counter Example
 
@@ -124,7 +145,7 @@ class Counter(BaseComponent):
 ```
 
 ```html
-<!-- components/ui/counter.html -->
+<!-- components/ui/counter.pjx -->
 <div id="{{ id }}" class="counter">
     <button
         hx-post="/counter/decrement"
@@ -169,7 +190,7 @@ server can target the right element) and use `hx-swap="outerHTML"` to replace
 the whole element with the response:
 
 ```html
-<!-- components/ui/item.html -->
+<!-- components/ui/item.pjx -->
 <div id="{{ id }}" class="item">
     <h3>{{ title }}</h3>
     <button
@@ -188,7 +209,7 @@ the whole element with the response:
 Use Jinja conditionals to control HTMX behavior:
 
 ```html
-<!-- components/ui/button.html -->
+<!-- components/ui/button.pjx -->
 <button
     id="{{ id }}"
     {% if endpoint %}
@@ -292,11 +313,18 @@ dependent region rides along as an `hx-swap-oob` fragment — no per-swap wiring
 This is the path to reach for when **one mutation updates multiple regions**
 (counter, list, totals):
 
-- Declare `react={...}` + `load()` on `ReactiveComponent` subclasses
+- Declare `react={...}` + a `@classmethod load(cls, <PjxKey fields>)` factory on `ReactiveComponent` subclasses
 - Construct the primary and `return <instance>` from mutation routes — dependent regions ride along as `hx-swap-oob` fragments
-- Wire [IntegrationBackend](../api/client-backend.md) via `setup()` so routes return components with no framework kwargs
+- Wire the app with `setup(app)` so the request scope, the header parsing and the response adapter are in place
 
-See [Reactivity](../reactivity.md) and [Usage tiers](../guide/usage-tiers.md).
+The OOB legs are attached by the response composer as it turns your return value
+into a response — not by `render()`, which only ever gives you one component's
+markup and never appended anything else. What earns the fan-out is *returning*
+from the handler, so returning `Cls(...)` and returning a string both get it;
+returning the component is simply the shorter spelling.
+
+See [Response composition](../api/responses.md), [Reactivity](../reactivity.md)
+and [Usage tiers](../guide/usage-tiers.md).
 
 ## Response edges pyjinhx smooths
 
@@ -352,6 +380,9 @@ def logout():
 A framework `Response` is not a shape `compose()` adapts, so it takes the `PASSTHROUGH`
 path and reaches the client exactly as written.
 
+There is no pyjinhx `redirect()` helper and no setting for any of this — the
+translation is always on. See [Response composition](../api/responses.md).
+
 ### The `HX-Reswap: none` mechanism
 
 The automatic `HX-Reswap: none` behavior described above is implemented in
@@ -361,4 +392,5 @@ property of composition, so every backend agrees about it. Framework glue
 (mounting static files, request scoping, adapting a pjx return into a native
 response) is the seam that *is* pluggable, via the
 [`IntegrationBackend`](../api/client-backend.md) protocol that `setup()` wires
-up per framework.
+up per framework. The full set of shapes `compose()` accepts is documented in
+[Response composition](../api/responses.md).

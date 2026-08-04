@@ -59,8 +59,9 @@ Create `main.py`:
 from pyjinhx import RenderSession
 from components.ui.button import Button
 
-# A RenderSession roots template discovery at the given directory.
-session = RenderSession("./components")
+# A RenderSession carries the Jinja environment. It takes no arguments —
+# each component finds its own template next to its class.
+session = RenderSession()
 
 # Create and render
 button = Button(id="submit-btn", text="Submit", variant="primary")
@@ -68,6 +69,12 @@ button = Button(id="submit-btn", text="Submit", variant="primary")
 html = button.render(session)
 print(html)
 ```
+
+!!! tip "The session is optional"
+    `button.render()` with no argument uses the session bound by the active
+    `request_scope()`, or builds a fresh one if there is no scope. Pass a session
+    explicitly only when you want several renders to share one — for example to
+    accumulate their assets together.
 
 Output:
 

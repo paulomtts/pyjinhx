@@ -40,9 +40,9 @@ my_app/
 ├── components/
 │   └── ui/
 │       ├── task_card.py
-│       ├── task_card.html
+│       ├── task_card.pjx
 │       ├── add_task_form.py
-│       └── add_task_form.html
+│       └── add_task_form.pjx
 └── index.html
 ```
 
@@ -65,7 +65,7 @@ class TaskCard(BaseComponent):
 ```
 
 ```html
-<!-- components/ui/task_card.html -->
+<!-- components/ui/task_card.pjx -->
 <wa-card id="task-{{ id }}" appearance="outlined" style="margin-bottom: 1rem;">
     <div slot="header">
         <div style="display: flex; align-items: center; gap: 0.75rem;">
@@ -112,7 +112,7 @@ class AddTaskForm(BaseComponent):
 ```
 
 ```html
-<!-- components/ui/add_task_form.html -->
+<!-- components/ui/add_task_form.pjx -->
 <wa-card appearance="filled">
     <div slot="header">Add New Task</div>
 
@@ -160,7 +160,7 @@ form = AddTaskForm(id="add-task-form").render()
 ## How templates map to WebAwesome
 
 There is nothing WebAwesome-specific in PyJinHx — you write the custom elements directly
-in a component's `.html`, and three plain-HTML conventions carry everything you need:
+in a component's `.pjx` template, and three plain-HTML conventions carry everything you need:
 
 - **Tags** — use the element name as-is (`<wa-button>`, `<wa-card>`, `<wa-icon>`). PyJinHx
   only expands *PascalCase* tags into its own components; lowercase custom-element tags pass
@@ -190,7 +190,7 @@ class Dialog(BaseComponent):
 ```
 
 ```html
-<!-- components/ui/dialog.html -->
+<!-- components/ui/dialog.pjx -->
 <wa-dialog id="{{ id }}" {% if open %}open{% endif %}>
     <div slot="header"><h2>{{ title }}</h2></div>
     <p>{{ content }}</p>

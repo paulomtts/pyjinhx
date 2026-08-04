@@ -72,7 +72,7 @@ The directory the last successful `build_registry` walked, or `None` if it hasn'
 ## build_registry
 
 ```python
-def build_registry(template_dir: Path | str, classes: Iterable[type]) -> None
+def build_registry(template_dir: Path | str | None, classes: Iterable[type]) -> None
 ```
 
 Walk `template_dir` and publish a fresh tag → class registry, assembled complete before it is published so a reader never sees a half-built map. Called once at startup; a class with `pjx_replace=True` wins any tag collision, otherwise the collision is logged and resolved deterministically.

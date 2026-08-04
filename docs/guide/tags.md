@@ -21,7 +21,7 @@ class Page(BaseComponent):
 ```
 
 ```html
-<!-- page.html -->
+<!-- page.pjx -->
 <div id="{{ id }}">
     <UserCard name="Ada"/>
 </div>
@@ -31,10 +31,12 @@ class Page(BaseComponent):
 html = render(Page(id="home"))
 ```
 
-A PascalCase tag resolves only after its component class has been registered — importing the
-class registers it, and `setup(components_root=...)` registers every class it finds while
-walking your template tree (see [Configuration](configuration.md)). For per-request isolation
-in a web app, see [Component Registry](registry.md) (Advanced).
+A PascalCase tag resolves only after its component class has been registered, and
+registration happens in exactly one place: `setup(...)`, which publishes the whole tag →
+class map at once. Importing a class is necessary but not sufficient — `setup()` can only
+register classes that are *already imported* when it runs, so import your components
+first, then call `setup()`. See [Configuration](configuration.md). For per-request
+isolation in a web app, see [Component Registry](registry.md) (Advanced).
 
 !!! warning "Recognized tag names are strict PascalCase"
     A tag is treated as a component only if its name matches `^[A-Z](?=[A-Za-z0-9]*[a-z])[A-Za-z0-9]*$` — it must start with a capital letter and contain at least one lowercase letter somewhere after it. This **rejects all-caps names**: `UI`, `H2`, and `ID` are NOT recognized and pass through as raw HTML. Names like `APIKey`, `HTMLBlock`, and `Button2` ARE recognized — the lowercase letters later in the name are enough to satisfy the pattern.
@@ -109,10 +111,9 @@ When PyJinHx encounters a PascalCase tag, it resolves the component in this orde
 
 ### 1. Registered class
 
-If a `BaseComponent` subclass with a matching name has been registered (by import, or by
-`setup(components_root=...)` walking your template tree), PyJinHx builds a fresh instance of
-it from the tag's attributes and inner content — giving you Pydantic validation, defaults, and
-field types.
+If a `BaseComponent` subclass with a matching name has been registered — that is, it was
+imported before `setup(...)` ran — PyJinHx builds a fresh instance of it from the tag's
+attributes and inner content, giving you Pydantic validation, defaults, and field types.
 
 ```python
 class Button(BaseComponent):
@@ -132,12 +133,14 @@ generic component: the tag is written back out exactly as it was, as ordinary ma
 registry miss is treated as an answer, not an error — the tag may simply be a web component,
 or markup nobody meant to intercept.
 
-!!! note "Builtins are not auto-discovered"
-    The registry only covers classes registered under your own template tree, so it does
-    **not** cover [built-in components](../components.md) — their templates ship inside the
-    pyjinhx package. Using `<PJXTooltip/>` (or any builtin) as a tag requires importing it
-    once at startup (`from pyjinhx.builtins import PJXTooltip` or `import pyjinhx.builtins`),
-    which registers the class. Without that import the tag is simply passed through
+!!! note "Builtins need an import, not a template tree"
+    [Built-in components](../components.md) are covered by the registry like anything else:
+    a class that carries its own template on disk claims its tag whether or not it lives
+    under your `components_root`, so an app with no components of its own still gets them.
+    What builtins do need is to be *imported* before `setup(...)` runs
+    (`import pyjinhx.builtins`, or `from pyjinhx.builtins import PJXTooltip` for one) —
+    `setup()` itself forces the lazy builtin module to load, so a plain `setup(app)` is
+    normally enough. Without the class being loaded, `<PJXTooltip/>` passes through
     unrecognized rather than expanded.
 
 ## Auto-Generated IDs

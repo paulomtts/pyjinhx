@@ -39,13 +39,17 @@ class Keys(MutationKey):
 
 class ItemRow(ReactiveComponent, react={Keys.TODOS}):
     todo_id: Annotated[int, PjxKey()]
+    text: str = ""
 
     @classmethod
-    def load(cls, todo_id: int | str) -> "ItemRow":
-        # The cache wrapper passes the key as a string; convert before use.
-        resolved_id = int(todo_id)
-        ...
+    def load(cls, todo_id: int) -> "ItemRow":
+        todo = store.todos[todo_id]
+        return cls(id=f"todo-{todo_id}", todo_id=todo_id, text=todo.text)
 ```
+
+`data-pjx-load` round-trips through an HTML attribute, so the value comes back off the client as a string — but the framework validates it back to the field's declared type before calling `load()`. A `todo_id: int` arrives as an `int`; write the signature against the declared type and do no coercion of your own.
+
+Raising out of `load()` is meaningful: a `LookupError` (which `KeyError` and `IndexError` both subclass, so a plain store lookup already qualifies) is the sole signal that the region is gone, and is what makes fan-out delete it on the client.
 
 ## mutates
 
@@ -53,7 +57,7 @@ class ItemRow(ReactiveComponent, react={Keys.TODOS}):
 def mutates(*keys: MutationKey, key: Callable[..., object] | None = None) -> Callable[[F], F]
 ```
 
-Decorator for store mutation methods. Each arg must be a **`MutationKey` member** or a **`reactive_key()`** value — bare strings raise `TypeError` at decoration time. After the wrapped function returns, invalidates the load cache and accumulates pending dirtied keys for the next reactive `render()`.
+Decorator for store mutation methods. Each arg must be a **`MutationKey` member** or a **`reactive_key()`** value — bare strings raise `TypeError` at decoration time. After the wrapped function returns, it records those keys in this request's dirtied set — and does nothing else. Cache eviction and the dependency walk happen later, when `pyjinhx.responses.compose()` composes the handler's return (see [Response composition](responses.md)).
 
 ```python
 from pyjinhx import MutationKey, mutates
@@ -82,7 +86,7 @@ class Store:
 def dirty(*keys: MutationKey | DynamicReactiveKey) -> None
 ```
 
-Imperatively dirty reactive keys — the same effect `@mutates` has, but without decorating a function. Each arg must be a **`MutationKey` member** or a **`reactive_key()`** value — bare strings raise `TypeError`. Invalidates the load cache and accumulates pending dirtied keys for the next reactive `render()`. A no-arg call is a no-op.
+Imperatively dirty reactive keys — the same effect `@mutates` has, but without decorating a function. Each arg must be a **`MutationKey` member** or a **`reactive_key()`** value — bare strings raise `TypeError`. Records those keys in this request's dirtied set; `compose()` is what evicts and fans out. A no-arg call is a no-op.
 
 ```python
 from pyjinhx import MutationKey, dirty
@@ -176,7 +180,7 @@ def enable_reactive_dev(*, strict: bool = False) -> None
 
 Enable guardrails. When enabled:
 
-- Warns if `@mutates` or `dirty()` recorded dirtied keys that no reactive `render()` consumed by the end of the request scope.
+- Warns if `@mutates` or `dirty()` recorded dirtied keys that nothing consumed by the end of the request scope — typically a handler whose return never reached `compose()`.
 
 Set `strict=True` to raise `RuntimeError` instead of logging warnings.
 

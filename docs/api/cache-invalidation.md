@@ -34,11 +34,11 @@ Cache a load result for this class and key, replacing any existing entry. `react
 def invalidate(dirtied_keys: Iterable[str]) -> None
 ```
 
-Evict every cache entry that depends on any of the given reactive keys. Called automatically by `@mutates` after a mutation completes. Outside a request scope this is a silent no-op, like the rest of the module.
+Evict every cache entry that depends on any of the given reactive keys. `@mutates` and `dirty()` do not call it — they only record the dirtied keys on the request. Eviction happens once, in `pyjinhx.responses.compose()`, which calls `invalidate(get_dirtied())` immediately before walking the manifest (see [Response composition](responses.md)). Evicting before the walk is what makes the walk honest: `walk_manifest()` reads the load cache to decide clean vs dirty, so an entry left in place would answer "clean" for data this request just changed. Outside a request scope this is a silent no-op, like the rest of the module.
 
 ## Cross-process fan-out
 
-`pyjinhx.reactive.fanout` walks a client's `X-PJX-Mounted` manifest against a request's dirtied keys and decides, per mounted region, whether it is clean, dirty, or missing — driving the out-of-band (OOB) swaps a reactive response sends back. Its core entry points:
+`pyjinhx.reactive.fanout` walks a client's `X-PJX-Mounted` manifest against a request's dirtied keys and decides, per mounted region, whether it is clean, dirty, or missing — driving the out-of-band (OOB) swaps `compose()` attaches to the response body. Its core entry points:
 
 ```python
 def walk_manifest(
@@ -51,6 +51,21 @@ def walk_manifest(
 def oob_swaps(candidates: list[FanoutCandidate]) -> Markup
 ```
 
-`walk_manifest()` resolves each manifest entry to a `FanoutCandidate`, re-rendering the ones a dirtied key touches; `oob_swaps()` assembles the surviving candidates' fragments into one response body (`outerHTML:` swaps for dirty regions, `delete:` swaps for regions the registry no longer knows about).
+`walk_manifest()` resolves each manifest entry to a `FanoutCandidate`, re-rendering the ones a dirtied key touches; `oob_swaps()` assembles the surviving candidates' fragments into one response body (`outerHTML:` swaps for dirty regions, `delete:` swaps for regions that are gone).
+
+### What counts as "gone"
+
+A `delete:` swap is emitted for exactly one reason: the candidate's `load()` raised `LookupError`. A miss in the request-scoped instance registry is *not* that signal — the registry only holds instances this request rendered, so every region outside the primary tree misses it as a matter of course.
+
+That makes raising part of `load()`'s contract. `KeyError` and `IndexError` both subclass `LookupError`, so an ordinary dict or list lookup against the app's own store is already the right thing:
+
+```python
+@classmethod
+def load(cls, todo_id: int) -> "ItemRow":
+    todo = store.todos[todo_id]  # KeyError -> LookupError -> delete swap
+    return cls(id=f"todo-{todo_id}", todo_id=todo_id, text=todo.text)
+```
+
+A `load()` that catches the store's `KeyError` and returns a field-default instance instead swaps the region with a *blank* render rather than deleting it — the failure is silent and looks like an emptied region on the client.
 
 This fan-out is in-process only — there is currently no built-in mechanism for propagating invalidation across worker processes or machines. Each worker's cache and registry are independent.

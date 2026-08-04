@@ -1,5 +1,194 @@
 # Migration guide
 
+!!! warning "Older sections describe older versions"
+    Sections are newest-first, and each one describes the APIs as they were **at that
+    release**. Anything below the current section may name symbols that have since been
+    removed and patterns that no longer work — read them for the upgrade steps between
+    those two versions, never as a description of how pyjinhx behaves today. The topmost
+    section is the only one that describes current behaviour.
+
+## 1.1.x → 1.2.0
+
+1.2.0 moves response composition out of the render path and into one framework-free
+module, `pyjinhx.responses`. The visible consequence is that `ReactiveResponse` is gone:
+a handler returns a component, a string, `None`, or its own framework's response object,
+and `compose()` turns that into the body and htmx headers. See
+[Responses](api/responses.md) for the full surface.
+
+### `ReactiveResponse` is deleted (breaking)
+
+The class, its module, and its export are removed — `from pyjinhx import ReactiveResponse`
+and `from pyjinhx.reactive import ReactiveResponse` both raise `ImportError`. There is no
+shim. Every construction rewrites to a plain return value:
+
+| BEFORE (1.1.x) | AFTER (1.2.0) |
+|---|---|
+| `return ReactiveResponse(primary=c.render(), mounted=request)` | `return c` |
+| `return ReactiveResponse(primary=html, mounted=request)` | `return html` |
+| `return ReactiveResponse(mounted=request)` | `return None` |
+| `return ReactiveResponse(primary="")` | `return None` |
+| `return ReactiveResponse(redirect="/todos")` | `return RedirectResponse("/todos", status_code=303)` |
+| `return ReactiveResponse(redirect="/todos", redirect_mode="location")` | `return Response(status_code=204, headers={"HX-Location": "/todos"})` |
+| `mounted=request`, `assets=request` | drop them — `PjxScopeMiddleware` parses both headers onto the session |
+
+```python
+# BEFORE (1.1.x)
+from pyjinhx import ReactiveResponse
+
+
+@app.post("/todos")
+def add_todo(request: Request, text: str = Form(...)):
+    todo = store.add(text)
+    row = ItemRow(todo_id=todo.id, id=f"row-{todo.id}")
+    return ReactiveResponse(primary=row.render(), mounted=request)
+
+
+# AFTER (1.2.0)
+@app.post("/todos")
+def add_todo(text: str = Form(...)):
+    todo = store.add(text)
+    return ItemRow(todo_id=todo.id, id=f"row-{todo.id}")
+```
+
+Returning `None` is how you say "this request has no primary fragment". The composer emits
+the fan-out on its own, plus `HX-Reswap: none` so htmx leaves the triggering element alone.
+
+### Fan-out belongs to the composer, not to `render()` (behavioral)
+
+`pyjinhx.responses.compose(result, *, session=None)` is what walks the client's manifest,
+evicts the request's dirtied keys, and appends the OOB legs. `render()` returns one
+component's markup and nothing else — it never appended OOB swaps, and code written on the
+assumption that it did was relying on `ReactiveResponse` to do the work.
+
+Fan-out is now **unconditional**: it runs on every path that produces a body, because the
+dirtied keys belong to the request rather than to whatever shape the handler chose to
+return. It does not require a registered backend; the backend only parses `X-PJX-Mounted`
+and `X-PJX-Assets` onto the session and turns the composed result into its own response
+type.
+
+`compose()` recognises exactly four shapes:
+
+- a `BaseComponent` — rendered as the primary,
+- `None` — an empty primary, plus `HX-Reswap: none`,
+- a `str`, `Markup`, or any object with `__html__` — used verbatim as the primary,
+- anything else — returned as the `PASSTHROUGH` sentinel, untouched.
+
+**Migration:** where a handler returned `Cls(...).render()` "so dependents ride along",
+return the component itself. The string form still fans out (it is the third shape above),
+but the component form is what lets pyjinhx exclude the primary's own regions from the
+walk correctly and keeps the response typed.
+
+### Redirects are native, with no pyjinhx surface (behavioral)
+
+There is no pyjinhx `redirect()` helper and no setting to enable this. Return your
+framework's own redirect. When the response carries a 3xx status **and** a `Location`
+header, and the request carried `HX-Request`, it is translated to `204` +
+`HX-Redirect` — which is what htmx can actually follow. A non-htmx request gets the real
+3xx untouched, so the same handler still works from a plain browser navigation.
+
+Detection is duck-typed on shape rather than on `RedirectResponse`, so hand-built and
+third-party redirect responses translate too.
+
+```python
+from fastapi.responses import RedirectResponse
+
+
+@app.post("/logout")
+def logout():
+    session.clear()
+    return RedirectResponse("/login", status_code=303)
+```
+
+`HX-Location` (htmx's client-side ajax navigation, the old `redirect_mode="location"`) has
+no pyjinhx surface at all — spell it yourself and it passes through untouched:
+
+```python
+from fastapi import Response
+
+return Response(status_code=204, headers={"HX-Location": "/login"})
+```
+
+### Reactive roots stamp four attributes (behavioral)
+
+A reactive root is stamped with `data-pjx-id`, `data-pjx-type`, `data-pjx-hash`, and —
+only when the class has a `PjxKey` field — `data-pjx-load`. `data-pjx-type` is the
+**snake_case tag name**, not the class name.
+
+`data-pjx-reacts` is *not* stamped by the framework. `pjx.js` only reads it, to scope its
+loading-indicator behavior, so a component that wants that behavior has to render the
+attribute itself:
+
+```html
+<li data-pjx-reacts="todos" class="row">{{ title }}</li>
+```
+
+### A `LookupError` out of `load()` is the only "region is gone" signal (behavioral)
+
+This is the change most likely to be silently wrong in an existing app.
+
+A miss in the request-scoped instance registry does **not** mean a region is gone —
+regions outside the primary tree miss it as a matter of course. The one thing that proves
+a region no longer exists server-side is `load()` raising `LookupError`, and that is what
+produces the delete swap:
+
+```html
+<div hx-swap-oob="delete:[data-pjx-id='row-7']"></div>
+```
+
+Raising is therefore part of `load()`'s contract. A `load()` that catches its store's
+`KeyError` and returns a field-default instance gets its region swapped with a **blank
+render** instead of deleted — no error, no warning, just an empty row left on the page.
+
+```python
+# BEFORE — swallows the signal; the client keeps a blank row forever
+@classmethod
+def load(cls, todo_id: int, ctx: TodoAppContext | None = None) -> "ItemRow":
+    try:
+        todo = ctx.store.get(todo_id)
+    except KeyError:
+        return cls(todo_id=todo_id)
+    return cls(todo_id=todo_id, title=todo.text, done=todo.done)
+
+
+# AFTER — let it raise; the region is deleted client-side
+@classmethod
+def load(cls, todo_id: int, ctx: TodoAppContext | None = None) -> "ItemRow":
+    todo = ctx.store.get(todo_id)  # KeyError is the signal
+    return cls(todo_id=todo_id, title=todo.text, done=todo.done)
+```
+
+`KeyError` and `IndexError` both subclass `LookupError`, so an ordinary dict or list lookup
+against your own store is already the correct signal — the migration is usually deleting a
+`try`/`except`, not adding a `raise`.
+
+### Load keys arrive as their declared type (behavioral)
+
+`data-pjx-load` round-trips through an HTML attribute as a string, but the framework
+validates it back to the `PjxKey` field's **declared** type before calling `load()`. A key
+declared `int` arrives as an `int`.
+
+**Migration:** delete any hand-rolled coercion, and narrow the signature back to the type
+you actually declared.
+
+```python
+# BEFORE (1.1.x) — widened signature plus manual coercion
+@classmethod
+def load(cls, todo_id: int | str, ctx: TodoAppContext | None = None) -> "ItemRow":
+    todo_id = int(todo_id)
+    ...
+
+
+# AFTER (1.2.0)
+@classmethod
+def load(cls, todo_id: int, ctx: TodoAppContext | None = None) -> "ItemRow":
+    ...
+```
+
+A value that will not validate is passed through untouched rather than raised on — `load()`
+is entitled to reject it with its own error, and the walk turns that into a delete swap.
+
+---
+
 ## 0.36.x → 1.0 (pyjinhx v2)
 
 pyjinhx 1.0 is a rebuild, not an increment. The component model, template syntax, props,
@@ -380,6 +569,12 @@ raised, so your context factory simply stops being installed. Update every call
 site.
 
 ### Non-reactive renders now fan out OOB swaps
+
+!!! danger "Never true, and superseded — do not copy this pattern"
+    `.render()` does not append OOB swaps and never did; this section documents an
+    intent the implementation never matched. Since 1.2.0, fan-out is attached by
+    [`compose()`](api/responses.md) to whatever a handler **returns**, and
+    `ReactiveResponse` no longer exists. See the [1.1.x → 1.2.0](#11x-120) section at the top of this page.
 
 Any component's `.render()` now appends out-of-band swaps for dirtied mounted
 reactive regions when a client backend is active and mutations occurred — not

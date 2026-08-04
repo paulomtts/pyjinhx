@@ -38,10 +38,10 @@ Render one component level: template → single parse → `RenderedLevel`. Inter
 
 ## RenderSession
 
-Per-render state: the Jinja environment, asset accumulation, and render-completion hooks. Constructed with a `template_dir` (default `"templates"`) that backs its `FileSystemLoader`.
+Per-render state: the Jinja environment, asset accumulation, parsed pjx request headers, and render-completion hooks. It takes no arguments and carries no components root: its loader is `AbsolutePathLoader`, which resolves each template name as an absolute filesystem path, because template paths are already fully resolved per class before Jinja sees them. The root that discovery walks is set once with `setup(components_root=...)`.
 
 ```python
-def __init__(self, template_dir: str = "templates") -> None
+def __init__(self) -> None
 ```
 
 ### Fields
@@ -55,9 +55,15 @@ def __init__(self, template_dir: str = "templates") -> None
 | `css_mode` | `AssetMode` | CSS delivery mode for this render (`INLINE` by default) |
 | `js_mode` | `AssetMode` | JS delivery mode for this render (`INLINE` by default) |
 | `runtime_script` | `str \| None` | The pyjinhx client runtime payload, set by `client/inject.py` |
+| `runtime_style` | `str \| None` | The runtime's CSS block, emitted alongside the other `<style>` tags |
 | `runtime_injected` | `bool` | Whether the client runtime was already scheduled for this session |
 | `on_rendered` | `list[Callable[[BaseComponent, RenderedLevel, RenderSession], None]]` | Hooks fired once per component after its subtree finishes rendering |
 | `pjx_request` | `Any` | The Starlette request bound to this render, set by middleware |
+| `pjx_mounted` | `list[dict[str, Any]]` | The client's parsed `X-PJX-Mounted` manifest, set by middleware and read by fan-out |
+| `pjx_assets` | `frozenset[str]` | The client's parsed `X-PJX-Assets` tokens — which assets it already holds |
+| `pjx_trigger` | `dict[str, Any] \| None` | The parsed htmx trigger header for this request, or `None` |
+
+The three `pjx_*` manifest fields live on the session rather than on `request.state` because the response composer is framework-free: it has no `Request` to read them from.
 
 ### emit_rendered()
 

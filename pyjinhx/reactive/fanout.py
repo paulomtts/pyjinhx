@@ -13,11 +13,12 @@ conversion between them happens in ``_resolve_registry_entry`` and nowhere else.
 The load cache's ``(component_class, load_key)`` space (E13) is a third space
 that never crosses either of those.
 
-TODO(#446 owner): nothing server-side stamps ``data-pjx-type`` or
-``data-pjx-load`` — ``reactive/root_attrs.py`` stamps only ``data-pjx-id`` and
-``data-pjx-hash`` — so a real client-built manifest carries empty ``type``/
-``load`` fields today and this walk filters everything out. Patching that
-touches L3.4 (#445), which this subtask does not own.
+``reactive/root_attrs.py`` stamps all four fields a manifest entry needs —
+``data-pjx-id``, ``data-pjx-type``, ``data-pjx-hash``, and ``data-pjx-load``
+for a keyed class — so an entry the client builds arrives here populated. The
+entry's ``load`` arrives as the string an HTML attribute round-trips it
+through; ``_build_dirty`` validates it back to the key field's declared type
+before calling ``load()``.
 """
 
 import re

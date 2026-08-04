@@ -5,7 +5,7 @@ Reactivity is **opt-in**. You can use PyJinHx with `BaseComponent` only — see 
 !!! info "Prerequisites"
     - HTMX for transport and swap
     - `request_scope()` (from `pyjinhx.session`) on every HTTP request
-    - [IntegrationBackend](api/client-backend.md) in middleware (recommended) so mutation routes need no framework kwargs on `render()`
+    - [IntegrationBackend](api/client-backend.md) in middleware (via `setup(app, ...)`), which parses the client's headers onto the session and routes handler returns through [`compose()`](api/responses.md)
 
 pyjinhx owns **composition**; HTMX owns **transport and swap**. Between them sits
 the **state→view dependency graph** — which regions must change when a piece of
@@ -20,9 +20,11 @@ See the [Public API Index](reference/public-api.md) for every exported reactive 
 
 ## Make a component reactive
 
-Subclass `ReactiveComponent` and declare **both** the `react` class keyword and a
-`load()` classmethod — `load()` overrides `ReactiveComponent`'s no-op default; a
-missing `react` is a definition-time error:
+Subclass `ReactiveComponent` and declare the `react` class keyword plus a
+`load()` classmethod — `load()` overrides `ReactiveComponent`'s field-default
+factory. `react` defaults to `()`, so omitting it is legal: the component is
+still reactive (it is stamped, mounted and cached) but no dirtied key ever
+reaches it, so it never fans out.
 
 ```python
 from typing import Self
@@ -35,12 +37,15 @@ class Keys(MutationKey):
 
 
 class Counter(ReactiveComponent, react={Keys.TODOS}):
-    remaining: int = 0  # id defaults to "counter"
+    remaining: int = 0
 
     @classmethod
     def load(cls) -> Self:
         return cls(remaining=db.remaining())
 ```
+
+Mount it with an explicit, stable id — `<Counter id="counter"/>` — so the region
+keeps the same `data-pjx-id` across renders.
 
 - `react` — the **state keys** this component derives from, as a set of `MutationKey`
   members. These are the keys *you* choose to name pieces of state (`Keys.TODOS`,
@@ -50,16 +55,25 @@ class Counter(ReactiveComponent, react={Keys.TODOS}):
 - `load()` — a classmethod factory that returns a freshly populated instance from the
   current world. It runs automatically right before a mounted instance's render,
   memoized per request under the class + load key.
-- `id` — defaults to the **kebab-cased class name** (`Counter` → `"counter"`,
-  `TodoCounter` → `"todo-counter"`), since a type-singleton's identity is its type, so
-  `load()` need not set one. Pass an explicit `id` only for instance-keyed regions —
-  multiple mounted instances of one type, e.g. `cls(id=f"todo-row-{user_id}", ...)`.
+- `id` — an unset `id` gets an auto-generated `pjx-<n>`, which is *not* stable across
+  renders. A reactive region has to be addressable by the client's mounted manifest, so
+  always give one **where the instance is constructed**: an `id=` attribute at the mount
+  site (`<Counter id="counter"/>`), or `id=f"row-{todo_id}"` in the route that builds the
+  row. Setting it inside `load()` works only on the tag-mount path — a direct route return
+  copies every field *except* `id` off the loaded instance, and OOB fan-out overwrites it
+  with the manifest's id — so it is a convenience there, never the thing that makes a
+  region addressable.
 - `state_hash()` — canonical SHA-256 of sorted JSON from `model_dump(mode="json")`
   with `state_hash_exclude` applied (`id` is excluded by default). Override for custom
   hashing or add fields to `state_hash_exclude` for ephemeral UI-only state.
 
-Reactive components are stamped with `data-pjx-id`, `data-pjx-type` (the class
-name), and `data-pjx-hash` on their root element automatically.
+Reactive components are stamped on their root element automatically with four
+attributes: `data-pjx-id`, `data-pjx-type` (the **snake_case tag name**, e.g.
+`todo_item_row`, not the class name), `data-pjx-hash`, and — only for a class that
+declares a `PjxKey` field — `data-pjx-load`.
+
+`data-pjx-reacts` is **not** stamped by the framework; see [Loading
+indicators](#loading-indicators-in-flight).
 
 ## Making builtins reactive
 
@@ -81,14 +95,15 @@ class LiveBadge(ReactiveComponent, PJXBadge, react={Keys.TASKS}):
         return cls(label=f"{db.open_tasks()} open", color="brand")
 ```
 
-No template or CSS needed: `LiveBadge` renders PJXBadge's `pjx_badge.html` and ships
-`pjx-badge.css`. Resolution is **first found per kind** — ship your own
-`live-badge.css` next to the subclass and it replaces `pjx-badge.css` (the
-template and JS still come from PJXBadge); ship `live_badge.html` and the
+No template or CSS needed: `LiveBadge` renders PJXBadge's `pjx_badge.pjx` and ships
+`pjx_badge.css`. Resolution is **first found per kind** — ship your own
+`live_badge.css` next to the subclass and it replaces `pjx_badge.css` (the
+template and JS still come from PJXBadge); ship `live_badge.pjx` and the
 template is yours too. Additions go through the `js=`/`css=` fields.
 
-One rule: **subclass one component at a time.** `class X(PJXBadge, PJXCard)` raises
-at class definition — two templates is no template.
+One rule: **subclass one component at a time.** `class X(PJXBadge, PJXCard)` does not
+raise — MRO resolution simply takes the first base's template and ignores the second, so
+`X` silently renders as a badge. Inherit from one component base and compose the rest.
 
 Fit: display builtins (PJXBadge, PJXProgress, PJXAvatarStack, PJXEmptyState, PJXCard).
 Stateful overlays (PJXModal, PJXDrawer, PJXPopover, PJXDropdown) are a poor fit — an OOB
@@ -105,16 +120,32 @@ requests from a page that already loaded it do not.
 from pyjinhx import BaseComponent
 
 
-class AppShell(BaseComponent): ...  # app_shell.html is your full page template
+class AppShell(BaseComponent): ...  # app_shell.pjx is your full page template
 ```
 
-For a raw Jinja layout (outside the component render path), drop in `read_pjx_runtime()`:
+For a raw Jinja layout (outside the component render path), build the tags yourself. The
+readers return **bare JS source** — no `<script>` wrapper — and `pjx.js` needs htmx loaded
+first, so assemble them in the same order `inject_runtime()` does and hand the result to the
+template as `Markup` (an unwrapped string would be autoescaped into visible page text):
 
 ```python
-from pyjinhx.client import read_pjx_runtime
+from markupsafe import Markup
+from pyjinhx.client import (
+    read_loading_indicator_js,
+    read_page_loader_js,
+    read_pjx_runtime,
+    read_pjx_style_css,
+    read_vendored_htmx,
+)
+
+pjx_runtime = Markup(
+    f'<style id="pjx-style">{read_pjx_style_css()}</style>'
+    f"<script>{read_vendored_htmx()}{read_pjx_runtime()}"
+    f"{read_loading_indicator_js()}{read_page_loader_js()}</script>"
+)
 
 # in your template context
-{"pjx_runtime": read_pjx_runtime()}
+{"pjx_runtime": pjx_runtime}
 ```
 ```html
 <body>
@@ -123,6 +154,11 @@ from pyjinhx.client import read_pjx_runtime
 </body>
 ```
 
+Vendored htmx first (it guards itself, so a page with its own htmx keeps that copy), then
+`pjx.js`, then the two loading artifacts, which call `pjx.region`/`pjx.loadingTargets`. Drop
+the style tag and the loading artifacts only if you do not use [loading
+indicators](#loading-indicators-in-flight).
+
 ## Mounting a reactive component by tag
 
 A reactive component placed as a bare PascalCase tag runs `load()` automatically
@@ -130,13 +166,20 @@ on cold render, so state that can't ride scalar tag attributes (e.g. a nested
 child built in `load()`) is populated:
 
 ```html
-<SidebarShell/>            <!-- type-singleton: runs load() -->
-<UserCard user_id="42"/>   <!-- keyed: runs load("42"), id "user-card-42" -->
+<SidebarShell id="sidebar"/>                 <!-- type-singleton: runs load() -->
+<UserCard id="user-42" user_id="42"/>        <!-- keyed: runs load(user_id=42) -->
 ```
 
-Remaining scalar attrs override the loaded values (`<UserCard user_id="42"
-highlight="on"/>`). The pre-load-into-the-registry pattern still works and takes
-precedence, but is no longer required for the common case.
+The key attribute is validated to the field's declared type before `load()` is
+called, so a `user_id: Annotated[int, PjxKey()]` arrives as the `int` `42`, not
+`"42"`. Give every mounted tag an explicit `id` — nothing derives one from the
+class or the key, and an unset `id` becomes a per-render `pjx-<n>`.
+
+Remaining scalar attrs override the loaded values (`<UserCard id="user-42"
+user_id="42" highlight="on"/>`). A tag resolves against the process-wide tag → class
+registry only; the request-scoped **instance** registry that reactivity uses is never
+consulted on the tag path, so pre-loading an instance into it changes nothing. A tag no
+class claims is not an error either — it goes back into the stream as literal markup.
 
 The runtime attaches these headers to htmx requests:
 
@@ -165,22 +208,24 @@ along as out-of-band swaps:
 @app.post("/todos/toggle")
 def toggle():
     db.toggle_all()
-    return Counter()
+    return Counter(id="counter")
 ```
 
 With `@mutates` on the store method, pending dirtied keys drive OOB swaps automatically.
 
-The composer runs the primary's `load()` (populating it from the current world), renders
-it as the main-target response, then attaches an OOB swap for every *other* mounted
-reactive region whose `react` keys intersect pending mutations from `@mutates`. Only the primary id
-is excluded (htmx swaps it as the main-target response); the region that *initiated* the
-request still updates out-of-band if it depends on the dirtied keys — e.g. a "Clear
-completed (N)" button updates its own count.
+The render path runs the primary's `load()` (populating it from the current world) and
+serializes it as the main-target response; `compose()` then attaches an OOB swap for every
+mounted reactive region whose `react` keys intersect pending mutations from `@mutates`.
+**Every `data-pjx-id` the serialized primary already carries is excluded** — not just the
+primary's own id — because htmx will swap that whole subtree as the main-target response
+and a second OOB swap of a region inside it would fight the first. A dependent region that
+is *not* in the primary body still updates out of band even if it initiated the request —
+e.g. a "Clear completed (N)" button updates its own count.
 
 `X-PJX-Trigger` is **client-only**: `pjx.js` reads it to drive loading indicators (which
 region the user clicked). The server reactive walk (`walk_manifest` / `oob_swaps`) never
-reads it — it excludes only the primary id and gates everything else on `react` keys and
-hashes.
+reads it — exclusion comes from the primary markup, and everything else is gated on
+`react` keys and hashes.
 
 A **plain, non-reactive** primary has no `load()` to call, so you build it and return it:
 `return MyFragment(id=..., ...)`.
@@ -188,10 +233,11 @@ A **plain, non-reactive** primary has no `load()` to call, so you build it and r
 ### What the composer accepts, and where fan-out comes from
 
 Fan-out is **not** a property of `.render()`. `.render()` returns one component's markup
-and nothing else; it always has. Fan-out belongs to `pyjinhx.responses.compose()`, which
-every backend funnels handler returns through, and it is attached on **every** return that
-produces a body — because the dirtied keys belong to the request, not to whichever
-spelling the handler reached for.
+and nothing else; it always has. Fan-out belongs to
+[`pyjinhx.responses.compose()`](api/responses.md), which every backend funnels handler
+returns through, and it is attached on **every** return that produces a body — because
+the dirtied keys belong to the request, not to whichever spelling the handler reached
+for.
 
 `compose()` recognizes exactly three shapes:
 
@@ -202,7 +248,18 @@ spelling the handler reached for.
 | a `str`, a `Markup`, or any object with `__html__` | that markup verbatim |
 
 Anything else — a framework `Response`, a `RedirectResponse`, a dict destined for JSON —
-is `PASSTHROUGH`: pyjinhx does not touch it and the backend keeps its own value.
+is `PASSTHROUGH`: `compose()` does not touch it and the backend keeps its own value. Such
+a return gets **no fan-out**, since there is no pyjinhx body to attach it to.
+
+One thing does happen to a passed-through result on the way out: a response whose status
+is 3xx *and* which carries a `Location` header is rewritten to `204` plus `HX-Redirect`
+when the request carries `HX-Request`, so htmx performs a real browser navigation instead
+of swapping the redirect target's body into the trigger. Detection is duck-typed on that
+shape, so hand-built and third-party redirect responses translate too; a non-htmx request
+gets the real 3xx untouched. It is always on — there is no pyjinhx `redirect()` helper and
+no setting. For `HX-Location` (a client-side "boosted" navigation) return the header
+yourself: `Response(status_code=204, headers={"HX-Location": "/x"})`, which passes through
+untouched.
 
 So a non-reactive command-result view fans out just by being returned:
 
@@ -240,11 +297,22 @@ Fan-out happens once per request scope and never double-swaps a region the prima
 already carries.
 
 !!! note "Without an integration backend"
-    Wire `IntegrationBackend` in middleware (via `setup()`) so `render()` reads manifest and asset headers automatically. Without a backend, reactive OOB is skipped when mutations are pending.
+    Fan-out itself is unconditional — `compose()` always attaches it. What a backend
+    supplies is the *input*: `PjxScopeMiddleware` (wired by `setup(app, ...)`) parses
+    `X-PJX-Mounted` and `X-PJX-Assets` onto the session, registers the root-stamping and
+    instance-registration hooks, and routes handler returns through `compose()`. With no
+    backend, nothing calls `compose()` and the session's manifest is empty, so there is
+    nothing to fan out to.
 
 ### Under the hood: `oob_swaps()`
 
-`render()` delegates its dependency walk to `oob_swaps(candidates)` — hash-gate, nesting-dedup, and delete-on-LookupError in one call over the mounted manifest's `FanoutCandidate`s. It's exported for tests and advanced composition, but routes return `render()`, not bare swaps. Full walk mechanics are in [How it works (under the hood)](#how-it-works-under-the-hood) below.
+`compose()` — not `render()` — owns the dependency walk. It evicts the dirtied keys from
+the `load()` cache, calls `walk_manifest(...)` over the client's mounted manifest, and
+passes the surviving `FanoutCandidate`s to `oob_swaps(candidates)`, which turns them into
+the response's OOB fragments (hash-gating happens in the walk; `oob_swaps` renders swaps
+and delete-fragments). Both are exported for tests and advanced composition, but routes
+return a component, not bare swaps. Full walk mechanics are in [How it works (under the
+hood)](#how-it-works-under-the-hood) below.
 
 The dependency graph lives in exactly one place — the `react` class keyword
 declarations — not smeared across endpoints. Adding a progress bar that declares
@@ -253,8 +321,9 @@ declarations — not smeared across endpoints. Adding a progress bar that declar
 ### Instance-keyed regions (rows)
 
 A reactive type can have **many mounted instances** — table rows, cards, list items.
-A component is **instance-keyed** by declaring exactly one `PjxKey` field on the model;
-that field's value seeds both the instance's cache key and its `id`:
+A component is **instance-keyed** by declaring exactly one `PjxKey` field on the model.
+That field's value is the instance's load-cache key and is stamped as `data-pjx-load`;
+the `id` is still yours to set, and deriving it from the key is the usual way:
 
 ```python
 from typing import Annotated
@@ -271,17 +340,19 @@ class TodoItemRow(ReactiveComponent, react={Keys.TODOS}):
     done: bool = False
 
     @classmethod
-    def load(cls, todo_id: int | str) -> "TodoItemRow":
-        t = store.get(int(todo_id))
+    def load(cls, todo_id: int) -> "TodoItemRow":
+        t = store.get(todo_id)  # raises KeyError if the todo is gone — let it out
         return cls(id=f"row-{t.id}", todo_id=t.id, title=t.text, done=t.done)
 ```
 
-On the OOB reload path the key arrives as a **string** from the cache wrapper (the
-manifest serialises to JSON), so `self.todo_id` may need coercing to `int` before use
-if your `load()` compares it against non-string ids.
+**Write `load()` against the declared type.** `data-pjx-load` round-trips through an HTML
+attribute, so the key comes back off the client as the string `"7"` — but the framework
+validates it back to the `PjxKey` field's declared type before calling `load()`. A
+`todo_id: Annotated[int, PjxKey()]` therefore arrives as the `int` `7`. Never coerce it
+yourself, and never widen the signature to `int | str`.
 
 - **`data-pjx-load`** is stamped from the `PjxKey` field and returned in the manifest
-  so OOB reloads call `load(manifest.load)`.
+  so OOB reloads call `load(<key>)`.
 - **Templates** use the field directly: `hx-post="/rows/{{ todo_id }}/toggle"`.
 - **`react`** lists **state keys only** (e.g. `{Keys.TODOS}`). Pub-sub OOB reloads
   every mounted row whose `react` keys intersect pending mutations; hash-gating skips
@@ -298,16 +369,41 @@ def toggle_row(todo_id: int):
     return TodoItemRow(todo_id=todo_id, id=f"row-{todo_id}")
 ```
 
-When a keyed entity is removed but still listed in the client's mounted manifest (e.g.
-after **clear completed**), `walk_manifest` catches `LookupError` from `load(manifest.load)`
-and marks the region `"missing"`; `oob_swaps` renders that as a delete OOB swap
-(`delete:[data-pjx-id='…']`), so stale row regions are removed from the DOM without a
-server error.
+### `load()` must raise `LookupError` for a region that is gone
 
-This makes a raised `LookupError` part of `load()`'s contract: it is how a component
-says "this instance no longer exists." A `load()` that catches its store's `KeyError`
-and returns a field-default instance instead suppresses that signal, and the region is
-swapped with a blank render rather than deleted.
+When a keyed entity is removed but the client still shows its row (e.g. after **clear
+completed**), the row is still in the mounted manifest and the walk will try to reload it.
+A raised `LookupError` is the **sole** signal that the region no longer exists:
+`walk_manifest` catches it, marks the region `"missing"`, and `oob_swaps` emits
+
+```html
+<div hx-swap-oob="delete:[data-pjx-id='row-7']"></div>
+```
+
+which takes the stale region out of the DOM without a server error.
+
+Nothing else means "gone". In particular a **miss in the request-scoped instance registry
+does not** — that registry is written only by this request's own renders, so any region
+outside the primary tree misses it as a matter of course.
+
+!!! warning "Do not swallow your store's `KeyError`"
+    This makes raising part of `load()`'s **contract**. A `load()` that catches the store's
+    `KeyError` and returns a field-default instance instead suppresses the signal, and the
+    region is swapped with a *blank* render instead of being deleted — a silent failure
+    that looks like an emptied-out row rather than an error.
+
+    `KeyError` and `IndexError` both subclass `LookupError`, so an ordinary `dict[...]` or
+    list index against your own store is already the correct signal. Let it out:
+
+    ```python
+    @classmethod
+    def load(cls, todo_id: int) -> "TodoItemRow":
+        t = store.get(todo_id)  # KeyError -> delete swap. Do not wrap in try/except.
+        return cls(id=f"row-{t.id}", todo_id=t.id, title=t.text, done=t.done)
+    ```
+
+    If a route wants a 404 for the same missing id, raise it *in the route* — `load()`
+    stays a plain lookup.
 
 ### Parametric per-instance keys
 
@@ -378,16 +474,19 @@ class Keys(MutationKey):
 class TodoCounter(ReactiveComponent, react={Keys.TODOS}): ...
 ```
 
-`react=` only accepts `MutationKey` members — passing a bare string raises `TypeError`
-at class-definition time. `@mutates` and `dirty()` accept `MutationKey` members or a
-`reactive_key()` value (see [Parametric per-instance keys](#parametric-per-instance-keys)
-below) — a bare string still raises `TypeError` at decoration/call time.
+`react=` is lenient — it stringifies whatever you give it, so a bare `react={"todos"}`
+is accepted silently. Use `MutationKey` members anyway: the other side is strict.
+`@mutates` and `dirty()` accept `MutationKey` members or a `reactive_key()` value (see
+[Parametric per-instance keys](#parametric-per-instance-keys) below) and raise `TypeError`
+on a bare string at decoration/call time, so a hand-typed `react=` string can only ever be
+dirtied by a key that came from the enum.
 
 ## Mutation tracking (`@mutates`)
 
-Decorate store mutation methods to invalidate the `load()` cache and accumulate
-dirtied keys for the current request. The next reactive `render()` uses pending keys
-from `@mutates` for OOB pub-sub:
+Decorate store mutation methods to accumulate dirtied keys for the current request.
+`@mutates` **only records** — it evicts nothing itself. `compose()` reads the recorded
+keys with `get_dirtied()`, calls `invalidate()` on them, and only then walks the manifest
+for OOB pub-sub:
 
 ```python
 from pyjinhx import mutates
@@ -442,6 +541,8 @@ class MyAppContext(AppContext):
 
 
 class Counter(ReactiveComponent, react={Keys.TODOS}):
+    remaining: int = 0
+
     @classmethod
     def load(cls, ctx: MyAppContext | None = None) -> Self:
         return cls(remaining=ctx.db.remaining() if ctx else 0)
@@ -466,10 +567,11 @@ enable_reactive_dev()  # warnings
 enable_reactive_dev(strict=True)  # raise instead
 ```
 
-Checks include:
-
-- mutations recorded via `@mutates` but no reactive `render()` in the same request scope
-- mutations pending but no integration backend active (OOB swaps skipped)
+One check runs today, `warn_unconsumed_mutations()`: it reports keys this request dirtied
+that nothing in the request loaded under, so dirtying them evicted nothing — usually a
+typo in a key, a key nothing reads any more, or a `dirty()` that fired before the `load()`
+which would have registered the dependency. It is observational: it never evicts, dirties
+or re-renders anything.
 
 Inspect the dependency graph at startup:
 
@@ -507,9 +609,10 @@ isolation and the request-tier cache (which dedups the OOB walk).
 isolation use a `PjxKey`-keyed instance (one entry per user id) or ensure `PjxContext`
 data is stable for all requests sharing a cache entry.
 
-Reactive `render()` (and `oob_swaps`) evicts pending dirtied keys before reloading
-dependents. For mutations outside a render — a background job, a webhook — call
-`invalidate()` yourself:
+`compose()` evicts the pending dirtied keys — `invalidate(get_dirtied())` — before it
+walks the manifest, so a dependent is reloaded from the world rather than from a stale
+entry. Neither `render()` nor `oob_swaps()` evicts anything. For mutations outside a
+composed response — a background job, a webhook — call `invalidate()` yourself:
 
 ```python
 from pyjinhx.reactive.cache import invalidate
@@ -537,10 +640,10 @@ fresh HTML when the response arrives. You opt in **in the template** by adding a
 root, or any element inside it:
 
 ```html
-<!-- item_row.html: shimmer the whole row while it reloads -->
+<!-- item_row.pjx: shimmer the whole row while it reloads -->
 <li class="todo" data-pjx-loading="skeleton">…</li>
 
-<!-- clear_button.html: spin just this button -->
+<!-- clear_button.pjx: spin just this button -->
 <button class="clear" data-pjx-loading="spinner">Clear completed ({{ completed }})</button>
 ```
 
@@ -551,12 +654,25 @@ Two built-in styles:
 - **`"spinner"`** — a dim, blurred overlay with a centered circular progress indicator; the
   content stays underneath and the element is non-interactive while loading.
 
-**Auto-triggered — no per-route wiring.** Every reactive root is stamped with `data-pjx-reacts`
-(its `react` keys). When an htmx request starts, `pjx.js` reads the triggering region's
-`data-pjx-reacts` as the predicted dirtied set, then lights the `data-pjx-loading` elements of
-**every mounted region whose keys intersect it** — the swap target *and* its out-of-band
-dependents. Declaring the `react` class keyword is all it takes for a component's loading
-elements to fire on the right mutations; routes don't change.
+**No per-route wiring — but you must render `data-pjx-reacts` yourself.** When an htmx
+request starts, `pjx.js` reads the triggering region's `data-pjx-reacts` (a space-separated
+list of `react` keys) as the predicted dirtied set, then lights the `data-pjx-loading`
+elements of **every mounted region whose keys intersect it** — the swap target *and* its
+out-of-band dependents. Routes never change.
+
+!!! warning "`data-pjx-reacts` is not stamped by the framework"
+    The server stamps `data-pjx-id`, `data-pjx-type`, `data-pjx-hash` and (when keyed)
+    `data-pjx-load`. It does **not** stamp `data-pjx-reacts` — `pjx.js` only reads it. A
+    region without it is invisible to this feature, so its indicators never fire and it is
+    never lit as a dependent. Put the attribute on the component root in the template:
+
+    ```html
+    <!-- item_row.pjx -->
+    <li class="todo" data-pjx-reacts="todos" data-pjx-loading="skeleton">…</li>
+    ```
+
+    Use the same key strings your `MutationKey` members carry (exposing them to the
+    template as a field is a tidy way to keep the two in step).
 
 - A loading element is matched through its **enclosing reactive root**, so it can sit on the
   root or any inner element; the root supplies the reactivity and the instance key.
@@ -611,10 +727,14 @@ are stamped with `data-pjx-*` at render time, and `pjx.js` reads the already-sta
 on `htmx:configRequest` (it never watches for changes; a DOM mutation is the *effect* of
 a swap, not its cause).
 
-A mutation route returns `Cls(...)`. The composer invalidates the `load()` cache for the
-dirtied keys, renders the primary as the main response, then runs the `oob_swaps` walk
-(with `exclude_ids = {primary.id}`) over the mounted manifest — sending the primary plus
-every dependent swap back in one response:
+A mutation route returns `Cls(...)`. `compose()` renders it as the primary, then invalidates
+the `load()` cache for the dirtied keys and calls `walk_manifest(entries, dirtied,
+session=…, primary_html=<the serialized primary>)` over the mounted manifest. Eviction is
+before the walk, never after: the walk consults the load cache to decide clean vs dirty, so
+an entry a dirtied key had already staled would otherwise answer "clean". `primary_html` is
+how exclusion works — every `data-pjx-id` in that markup is skipped, so no region swaps
+twice. `oob_swaps()` then turns the survivors into fragments, and the primary plus every
+dependent swap goes back in one response:
 
 ```mermaid
 sequenceDiagram
@@ -624,17 +744,17 @@ sequenceDiagram
 
     B->>S: htmx mutation request + X-PJX-Mounted header
     Note over S: open request scope, @mutates recorded the dirtied keys
-    S->>C: invalidate dirtied keys
 
-    Note over S: render the primary via compose
+    Note over S: compose() renders the primary
     S->>C: load primary
     C-->>S: state, a cache miss hits the DB then caches
     S->>S: render primary HTML
 
-    Note over S: fan out OOB swaps over the mounted manifest
-    loop each other mounted region whose react keys match a dirtied key
+    S->>C: compose() invalidates the dirtied keys
+    Note over S: walk_manifest(primary_html=primary) — ids in the primary are excluded
+    loop each remaining mounted region whose react keys match a dirtied key
         S->>C: load region
-        alt region no longer exists
+        alt load() raises LookupError
             Note over S: emit a delete swap
         else loaded
             C-->>S: state
@@ -658,12 +778,15 @@ child:
 
 ```mermaid
 flowchart TD
-    M["manifest entry"] --> F{"reactive type AND<br/>react keys intersect dirtied?"}
+    M["manifest entry"] --> EX{"id already in<br/>primary_html?"}
+    EX -->|yes| X2["ignore — the primary swap carries it"]
+    EX -->|no| F{"reactive type AND<br/>react keys intersect dirtied?"}
     F -->|no| X1["ignore"]
-    F -->|yes| EX{"id in exclude_ids?<br/>(it is the primary)"}
-    EX -->|yes| X2["ignore"]
-    EX -->|no| LOAD["cls.load() cached →<br/>render → fresh hash"]
-    LOAD --> GATE{"fresh hash ==<br/>reported hash?"}
+    F -->|yes| LOAD["cls.load() cached"]
+    LOAD --> ERR{"raised LookupError?"}
+    ERR -->|yes| DEL["emit delete: swap"]
+    ERR -->|no| REN["render → fresh hash"]
+    REN --> GATE{"fresh hash ==<br/>reported hash?"}
     GATE -->|yes| X3["SKIP — value unchanged"]
     GATE -->|no| DED{"nested inside another<br/>surviving region?"}
     DED -->|yes| X4["DROP — parent already contains it"]

@@ -99,6 +99,7 @@ nav:
           - BaseComponent: api/base-component.md
           - Reactive API: api/reactive-api.md
           - Render: api/renderer.md
+          - Responses: api/responses.md
           - Registry: api/registry.md
           - Configuration: api/config.md
           - Mutations, Keys & PjxContext: api/mutations-keys-context.md

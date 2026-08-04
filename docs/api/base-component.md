@@ -30,7 +30,7 @@ The template is auto-discovered based on the component class name: a colocated `
 
 `session` defaults to the session bound by the active `request_scope()`, or — outside any scope — to a fresh `RenderSession` the free `render()` function builds.
 
-This is a plain, zero-argument-beyond-`session` render. The dependency-aware reactive behavior (`dirtied` / `mounted` / `client`) lives on `ReactiveComponent` — see [Reactive API](reactive-api.md).
+`render()` returns one component's markup and nothing else — it never appends out-of-band swaps and takes no reactivity arguments. `ReactiveComponent` does not override it either: reactive state lives on the session, and the dependency walk that turns a handler return into a body with OOB legs attached belongs to `pyjinhx.responses.compose()` — see [Response composition](responses.md) and the [Reactive API](reactive-api.md).
 
 **Returns:** The component's rendered markup as a finished HTML string.
 

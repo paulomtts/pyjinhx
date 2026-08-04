@@ -41,14 +41,15 @@ Within Tier 1, PyJinHx offers two complementary approaches:
 
 === "Template-side"
 
-    Configure template discovery once, then render with the free `render()` function:
+    Register your components root once so PascalCase tags resolve inside templates,
+    then render with the free `render()` function:
 
     ```python
     from pyjinhx import setup, render
     from components.ui.button import Button
 
     setup(components_root="./components")
-    html = render(Button(text="Submit", variant="primary"))
+    html = render(Button(id="submit", text="Submit", variant="primary"))
     ```
 
 ## Next Steps
@@ -58,5 +59,6 @@ Within Tier 1, PyJinHx offers two complementary approaches:
 - [Quick Start](getting-started/quickstart.md) - Minimal first component
 - [Guide](guide/components.md) - Feature reference
 - [Components](components.md) - Optional `pyjinhx.builtins` package
+- [Response composition](api/responses.md) - What a route handler may return, and what pyjinhx makes of it
 - [Public API Index](reference/public-api.md) - Every symbol exported from `pyjinhx`
-- [Migration guide](migration.md) — 0.8 → 0.9 breaking changes and upgrading from 0.4.x
+- [Migration guide](migration.md) — breaking changes, version by version

@@ -4,7 +4,7 @@ The registry is how PyJinHx tracks component instances, enabling cross-referenci
 
 ## How It Works
 
-The registry is a low-level primitive in `pyjinhx.registry`, backed by a per-request `ContextVar`. Instances are **not** registered automatically when you instantiate a component — you register them yourself with `register_instance()`:
+The registry is a low-level primitive in `pyjinhx.registry`, backed by a per-request `ContextVar`. Instantiating a component registers nothing; entries appear when a component is *rendered*, or when you add one yourself with `register_instance()`:
 
 ```python
 from pyjinhx import BaseComponent
@@ -21,8 +21,8 @@ register_instance("Button", button.id, button)
 # button is now resolvable via pyjinhx.registry.resolve("Button", "submit-btn")
 ```
 
-!!! note "Not yet wired to instantiation"
-    `pyjinhx.registry` also exports `register_rendered_instance()`, meant to be subscribed to render events so instances register automatically. Nothing in pyjinhx currently subscribes it, so that automatic path does not run today (tracked by [#449](https://github.com/paulomtts/pyjinhx/issues/449)). Until it lands, call `register_instance()` explicitly wherever you want a component to be resolvable.
+!!! note "Registration is automatic under `setup(app)`"
+    `pyjinhx.registry` also exports `register_rendered_instance()`, shaped for `RenderSession.on_rendered`. `PjxScopeMiddleware` — the middleware `setup(app)` installs — subscribes it on the session it builds for each request, so under a wired app every rendered component lands in that request's registry under `ComponentName_id`, holding its `RenderedLevel`. Outside that wiring (a bare `RenderSession`, a hand-rolled `request_scope()`), subscribe it yourself or call `register_instance()` explicitly for whatever you want resolvable.
 
 ### Composite Keys
 
@@ -68,9 +68,9 @@ def index():
 
 On entry, `request_scope()` binds a fresh `RenderSession`, clears pending mutations, and initializes the request-tier load cache. On exit — even when an exception occurs — it restores the previous state.
 
-`request_scope(session=None, *, load_context=None)` takes an optional `template_dir` for where a newly-constructed `RenderSession` loads templates from, an optional pre-built `session` to bind instead, and an optional `load_context` — the app's `context_factory` result for this request, readable via `get_load_context()`.
+`request_scope(session=None, *, load_context=None)` takes an optional pre-built `session` to bind instead of a fresh one — which is how you attach `on_rendered` hooks before the session goes live — and an optional `load_context`, the app's `context_factory` result for this request, readable via `get_load_context()`. There is no template-directory argument: sessions carry no components root, and templates resolve per component class (see [Configuration](configuration.md#template-loading)).
 
-For application-wide coverage, pyjinhx ships no middleware of its own. Prefer `setup(app, ...)`, which registers middleware that opens a `request_scope()` for you (see the [canonical FastAPI snippet](../integrations/fastapi.md#middleware-recommended)). To wire it by hand instead, open the scope yourself:
+For application-wide coverage, prefer `setup(app, ...)`: it installs `PjxScopeMiddleware`, which opens a `request_scope()` per request, subscribes the render hooks, and parses the pjx request headers onto the session (see the [canonical FastAPI snippet](../integrations/fastapi.md#middleware-recommended)). To wire it by hand instead, open the scope yourself:
 
 ```python
 from pyjinhx import setup
@@ -145,7 +145,7 @@ PyJinHx separates how component *classes* are found from how component *instance
 | **Template discovery** | Process-wide | Walks `.pjx` template files on disk to map tag names to component classes |
 | **Instance registry** | Context-local | Maps composite keys to instances (e.g., `"Button_submit"` → instance) |
 
-Discovery finds classes by scanning the filesystem for `.pjx` templates, not by any side effect of defining a class — a component only becomes tag-resolvable once it has a matching template file. The instance registry enables cross-referencing in templates, once entries are registered explicitly (see [How It Works](#how-it-works) above).
+Discovery finds classes by scanning `components_root` for `.pjx` templates plus every declared class that already resolved a template of its own — a component only becomes tag-resolvable once it has a matching template file. The instance registry enables cross-referencing in templates; entries arrive as components render under a wired app, or explicitly (see [How It Works](#how-it-works) above).
 
 ```python
 from pyjinhx.registry import make_key, register_instance, resolve

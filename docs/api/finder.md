@@ -13,7 +13,7 @@ The `.pjx` files under `template_dir`, nested ones included, sorted by path. See
 ## build_registry
 
 ```python
-def build_registry(template_dir: Path | str, classes: Iterable[type]) -> None
+def build_registry(template_dir: Path | str | None, classes: Iterable[type]) -> None
 ```
 
 Walk `template_dir` and publish a fresh tag → class registry. See [Template Discovery](parser.md#build_registry).

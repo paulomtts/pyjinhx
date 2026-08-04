@@ -4,14 +4,14 @@ PyJinHx automatically handles JavaScript and CSS file collection for components.
 
 ## Automatic Asset Discovery
 
-Place asset files next to your component with a matching kebab-case name:
+Place asset files next to your component, under the same snake_case stem as its template:
 
 ```
 components/ui/
 ├── my_widget.py      # MyWidget class
-├── my_widget.html    # Template
-├── my-widget.js      # Auto-collected JavaScript
-└── my-widget.css     # Auto-collected CSS
+├── my_widget.pjx     # Template
+├── my_widget.js      # Auto-collected JavaScript
+└── my_widget.css     # Auto-collected CSS
 ```
 
 Assets are automatically injected when the component renders. The default mode inlines them as `<style>` and `<script>` tags.
@@ -21,8 +21,10 @@ Assets are automatically injected when the component renders. The default mode i
 | Class Name | JS File | CSS File |
 |------------|---------|----------|
 | `Button` | `button.js` | `button.css` |
-| `ActionButton` | `action-button.js` | `action-button.css` |
-| `MyWidget` | `my-widget.js` | `my-widget.css` |
+| `ActionButton` | `action_button.js` | `action_button.css` |
+| `MyWidget` | `my_widget.js` | `my_widget.css` |
+
+The probe walks the inheritance chain the same way template resolution does, so `class DangerButton(PJXButton)` with no files of its own inherits `pjx_button.css`.
 
 ### Deduplication
 
@@ -71,9 +73,12 @@ rather than a process-wide switch — set them on the session you pass to `rende
 JS bundles in the layout `<head>` manually — see [One-bundle deployment](#one-bundle-deployment)
 below.
 
-### Reactive partial suppression
+### Swap-in assets (the delta)
 
-Full-page renders emit assets once at the layout root. Reactive partial responses and OOB swaps **never** re-ship assets — matching production expectations where the layout shell loads static files once.
+Full-page renders emit assets once at the layout root. An OOB swap carries markup only — but a region appearing for the first time in this page's life still needs its stylesheet and its script, so the response composer ships the **difference**: the client reports the tokens it already has in `X-PJX-Assets`, `missing_asset_oob()` diffs that against what the walk's candidates require, and the shortfall is appended as head-targeted OOB fragments (`hx-swap-oob="beforeend:head"`, stamped `data-pjx-asset`) that `pjx.js` relocates on arrival. Nothing the client already reports is sent twice.
+
+!!! note "INLINE mode only, today"
+    The delta is built from the session's `css_mode`/`js_mode`, and only `INLINE` is delivered: `compose()` has no URL resolver to hand down, so a `LINK`-mode app ships no swap-in assets and must preload them from the layout shell (see [Layout Preload](#layout-preload-all-components)). `NONE` mode suppresses them as intended. A freshly loaded page also reports an empty token set — `emit_assets()` does not stamp `data-pjx-asset` yet — so it pays one redundant re-delivery on its first reactive response.
 
 ### Client runtime (`pjx.js`)
 
@@ -82,15 +87,11 @@ pinned copy of htmx) as an inline `<script>` unless the request already carries
 `X-PJX-Mounted`. This is handled by `inject_runtime(session, request)` from
 `pyjinhx.client.inject`, which records the script on the session for `emit_assets` to include.
 
-For a raw Jinja shell that renders outside pyjinhx's own pipeline, read the runtime source
-directly and embed it yourself:
-
-```python
-from pyjinhx.client import read_pjx_runtime, read_vendored_htmx
-
-pjx_runtime = f"<script>{read_vendored_htmx()}{read_pjx_runtime()}</script>"
-# pass pjx_runtime into your template context and render it in <head> or <body>
-```
+For a raw Jinja shell that renders outside pyjinhx's own pipeline, assemble the tags
+yourself — see [Reactivity](../reactivity.md#ship-the-client-runtime) for the full snippet
+and why each piece is there. In short: the readers return bare source with no `<script>`
+wrapper, `pjx.js` needs htmx loaded first, and the result must be handed to the template as
+`Markup` or Jinja will autoescape it into visible page text.
 
 ### CSP
 
@@ -124,7 +125,7 @@ head_tags = [f'<link rel="stylesheet" href="{resolver(p)}">' for p in css_paths]
 head_tags += [f'<script src="{resolver(p)}"></script>' for p in js_paths]
 ```
 
-Combine with `AssetMode.NONE` and reactive partial suppression so HTMX swaps never re-ship assets.
+Combine with `AssetMode.NONE` so neither the cold render nor an HTMX swap ships anything the preloaded bundle already covers.
 
 !!! note "Import components before calling `all_assets()`"
     `all_assets()` only sees classes Python has already imported (it walks `BaseComponent`'s

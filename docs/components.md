@@ -63,7 +63,7 @@ Small status label. **Assets:** `pjx_badge.css` only.
 
 ### PJXCard
 
-`<article>` shell for composed card layouts. Compose with `PJXCardHeader`, `PJXCardBody`, and `PJXCardFooter` parts. **Assets:** `pjx-card.css` only.
+`<article>` shell for composed card layouts. Compose with `PJXCardHeader`, `PJXCardBody`, and `PJXCardFooter` parts. **Assets:** `pjx_card.css` only.
 
 <!-- demo: PJXCard -->
 
@@ -110,7 +110,7 @@ Small status label. **Assets:** `pjx_badge.css` only.
 
 ### PJXCardHeader
 
-Card header region. When `title` is set it renders `<h3 class="pjx-card__title">` inside the header; when `title` is empty the `content` slot is rendered directly instead. **Assets:** `pjx-card-header.css` only.
+Card header region. When `title` is set it renders `<h3 class="pjx-card__title">` inside the header; when `title` is empty the `content` slot is rendered directly instead. **Assets:** `pjx_card_header.css` only.
 
 ```html
 <PJXCard>
@@ -142,7 +142,7 @@ Card header region. When `title` is set it renders `<h3 class="pjx-card__title">
 
 ### PJXCardBody
 
-Card body region. **Assets:** `pjx-card-body.css` only.
+Card body region. **Assets:** `pjx_card_body.css` only.
 
 ```html
 <PJXCard>
@@ -173,7 +173,7 @@ Card body region. **Assets:** `pjx-card-body.css` only.
 
 ### PJXCardFooter
 
-Card footer region. **Assets:** `pjx-card-footer.css` only.
+Card footer region. **Assets:** `pjx_card_footer.css` only.
 
 ```html
 <PJXCard>
@@ -204,7 +204,7 @@ Card footer region. **Assets:** `pjx-card-footer.css` only.
 
 ### PJXCarousel
 
-Compound image/content carousel with arrows, dots, keyboard nav, swipe, and opt-in autoplay. Compose with [`PJXCarouselSlide`](#pjxcarouselslide). **Assets:** `pjx-carousel.css`, `pjx-carousel.js`.
+Compound image/content carousel with arrows, dots, keyboard nav, swipe, and opt-in autoplay. Compose with [`PJXCarouselSlide`](#pjxcarouselslide). **Assets:** `pjx_carousel.css`, `pjx_carousel.js`.
 
 <!-- demo: PJXCarousel -->
 
@@ -246,7 +246,7 @@ Compound image/content carousel with arrows, dots, keyboard nav, swipe, and opt-
 
 ??? note "DOM & classes"
 
-    Root `div.pjx-carousel[role="region"][data-pjx-carousel]`. `pjx-carousel.js` discovers `[data-pjx-carousel-slide]` descendants at init, builds dots, and delegates click/keyboard/pointer events on `[data-pjx-carousel]`. Fires a cancelable `pjx:carousel:before-change` then `pjx:carousel:change` on the root, `detail = {index, reason}`.
+    Root `div.pjx-carousel[role="region"][data-pjx-carousel]`. `pjx_carousel.js` discovers `[data-pjx-carousel-slide]` descendants at init, builds dots, and delegates click/keyboard/pointer events on `[data-pjx-carousel]`. Fires a cancelable `pjx:carousel:before-change` then `pjx:carousel:change` on the root, `detail = {index, reason}`.
 
     **Classes:** `pjx-carousel`, `pjx-carousel__track`, `pjx-carousel__arrow`, `pjx-carousel__dots`, `pjx-carousel__dot`, `pjx-carousel__autoplay-toggle`.
 
@@ -265,7 +265,7 @@ Compound image/content carousel with arrows, dots, keyboard nav, swipe, and opt-
 
 ### PJXCarouselSlide
 
-Single carousel slide (any content, not just images). **Assets:** `pjx-carousel-slide.css`.
+Single carousel slide (any content, not just images). **Assets:** `pjx_carousel_slide.css`.
 
 ```html
 <PJXCarouselSlide label="Front view">
@@ -420,7 +420,7 @@ Image or initials in a circle. **Assets:** `pjx_avatar.css` only.
 
 ### PJXAvatarStack
 
-Overlapping row of avatars with optional overflow count. **Assets:** `pjx-avatar-stack.css` only.
+Overlapping row of avatars with optional overflow count. **Assets:** `pjx_avatar_stack.css` only.
 
 <!-- demo: PJXAvatarStack -->
 
@@ -603,7 +603,7 @@ Determinate or indeterminate meter. **Assets:** `pjx_progress.css` only.
 
 ### PJXEmptyState
 
-Centered, vertically-stacked empty-view container. Compose whatever you like inside via `content`. **Assets:** `pjx-empty-state.css` only (template file **`pjx-empty-state.html`** next to `pjx_empty_state.py`).
+Centered, vertically-stacked empty-view container. Compose whatever you like inside via `content`. **Assets:** `pjx_empty_state.css` only (template file **`pjx_empty_state.pjx`** next to `pjx_empty_state.py`).
 
 <!-- demo: PJXEmptyState -->
 
@@ -668,7 +668,7 @@ Centered, vertically-stacked empty-view container. Compose whatever you like ins
 
 ### PJXIcon
 
-Inline SVG icon from a vendored [Lucide](https://lucide.dev) set (ISC). **Assets:** `pjx-icon.css` only.
+Inline SVG icon from a vendored [Lucide](https://lucide.dev) set (ISC). **Assets:** none — the SVG carries its own sizing attributes.
 
 <!-- demo: PJXIcon -->
 
@@ -699,7 +699,7 @@ Inline SVG icon from a vendored [Lucide](https://lucide.dev) set (ISC). **Assets
 
 ### PJXButton
 
-Structural, themeable button. Composes [`PJXRegionLoader`](#pjxregionloader) for the inline loading state. **Assets:** `pjx-button.css` only.
+Structural, themeable button. Composes [`PJXRegionLoader`](#pjxregionloader) for the inline loading state. **Assets:** `pjx_button.css` only.
 
 <!-- demo: PJXButton -->
 
@@ -749,7 +749,7 @@ Structural, themeable button. Composes [`PJXRegionLoader`](#pjxregionloader) for
 
 ### PJXAccordion
 
-Collapsible section built on native `<details>`. Composed with `PJXAccordionTrigger` (the `<summary>`, with the auto chevron) and `PJXAccordionContent` (the body). **Assets:** `pjx-accordion.css` (shell radius only — trigger and chevron CSS ship with `PJXAccordionTrigger`). No JS.
+Collapsible section built on native `<details>`. Composed with `PJXAccordionTrigger` (the `<summary>`, with the auto chevron) and `PJXAccordionContent` (the body). **Assets:** `pjx_accordion.css` (shell radius only — trigger and chevron CSS ship with `PJXAccordionTrigger`). No JS.
 
 <!-- demo: PJXAccordion -->
 
@@ -800,7 +800,7 @@ Collapsible section built on native `<details>`. Composed with `PJXAccordionTrig
 
 ### PJXAccordionTrigger
 
-The `<summary>` part of a composed accordion. Composes [`PJXIcon`](#pjxicon) for the disclosure chevron. **Assets:** `pjx-accordion-trigger.css` (trigger + chevron styles), `pjx-accordion-trigger.js` (toggle-suppression for opt-in `pjx-accordion__actions`).
+The `<summary>` part of a composed accordion. Composes [`PJXIcon`](#pjxicon) for the disclosure chevron. **Assets:** `pjx_accordion_trigger.css` (trigger + chevron styles), `pjx_accordion_trigger.js` (toggle-suppression for opt-in `pjx-accordion__actions`).
 
 ```html
 <PJXAccordion>
@@ -817,7 +817,7 @@ The `<summary>` part of a composed accordion. Composes [`PJXIcon`](#pjxicon) for
     | `class_name` | `AttrValue` | `""` | Extra CSS class(es) for the root element. |
     | `content` | `str \| BaseComponent` | `""` | Trigger label (text or rich markup). |
 
-    **Actions (opt-in).** To add non-toggling action buttons, wrap them in `<div class="pjx-accordion__actions">` inside `content`. `pjx-accordion-trigger.js` registers a single capture-phase `click` listener that calls `preventDefault()` (only — deliberately **not** `stopPropagation()`) for any click inside `.pjx-accordion__actions`. This cancels the native `<summary>` toggle while leaving htmx and other handlers intact.
+    **Actions (opt-in).** To add non-toggling action buttons, wrap them in `<div class="pjx-accordion__actions">` inside `content`. `pjx_accordion_trigger.js` registers a single capture-phase `click` listener that calls `preventDefault()` (only — deliberately **not** `stopPropagation()`) for any click inside `.pjx-accordion__actions`. This cancels the native `<summary>` toggle while leaving htmx and other handlers intact.
 
 ??? note "DOM & classes"
 
@@ -863,7 +863,7 @@ The body part of a composed accordion. **Assets:** none (unstyled wrapper; use y
 
 ### PJXAccordionGroup
 
-Groups a set of `PJXAccordion`s into a shared layout/behavior container. Handles exclusive-open coordination in JS so you don't need to stamp a `group=` on every child. **Assets:** `pjx-accordion-group.css`, `pjx-accordion-group.js`.
+Groups a set of `PJXAccordion`s into a shared layout/behavior container. Handles exclusive-open coordination in JS so you don't need to stamp a `group=` on every child. **Assets:** `pjx_accordion_group.css`, `pjx_accordion_group.js`.
 
 <!-- demo: PJXAccordionGroup -->
 
@@ -886,10 +886,10 @@ Groups a set of `PJXAccordion`s into a shared layout/behavior container. Handles
     | --- | --- | --- | --- |
     | `mode` | `"exclusive" \| "multi"` | `"multi"` | `exclusive` — at most one child `<details>` open at a time (JS-coordinated via `toggle` capture); `multi` — independent. |
     | `gap` | `str` | `"0"` | Space between accordion items; written to `--pjx-accordion-group-gap` inline on the root. |
-    | `default_open` | `"none" \| "first" \| "all"` | `"none"` | Which items start open on mount. `none` — no change (each child respects its own `open` prop); `first` — JS opens the first direct `<details>` child; `all` — JS opens all direct `<details>` children. Applied by `pjx-accordion-group.js` after DOM settle. |
+    | `default_open` | `"none" \| "first" \| "all"` | `"none"` | Which items start open on mount. `none` — no change (each child respects its own `open` prop); `first` — JS opens the first direct `<details>` child; `all` — JS opens all direct `<details>` children. Applied by `pjx_accordion_group.js` after DOM settle. |
     | `content` | `str \| BaseComponent` | `""` | Children (nested `PJXAccordion`s or raw HTML). |
 
-    **`default_open` is JS-driven.** The group receives its `content` as a pre-rendered string, so it cannot set the `open` attribute on individual child elements at the server level. Instead, `data-default-open` is emitted on the root div and `pjx-accordion-group.js` opens the appropriate children on mount (and after every htmx swap). Per-child `open=True/False` props are still respected when `default_open="none"`.
+    **`default_open` is JS-driven.** The group receives its `content` as a pre-rendered string, so it cannot set the `open` attribute on individual child elements at the server level. Instead, `data-default-open` is emitted on the root div and `pjx_accordion_group.js` opens the appropriate children on mount (and after every htmx swap). Per-child `open=True/False` props are still respected when `default_open="none"`.
 
     **JS is always loaded with the group asset.** The script is a compact guarded IIFE; it exits early per-element when neither `mode="exclusive"` nor `data-default-open` requires action. In pure `multi` mode with `default_open="none"` (the defaults) the only runtime cost is the per-element `data-pjx-group-init` guard check.
 
@@ -903,7 +903,7 @@ Groups a set of `PJXAccordion`s into a shared layout/behavior container. Handles
 
 ??? note "DOM & classes"
 
-    Root `<div class="pjx-accordion-group" data-pjx-accordion-group data-mode="..." [data-default-open="..."]>`. `pjx-accordion-group.js` runs once per element (guarded by `data-pjx-group-init`), applies `default_open`, then wires the exclusive-open `toggle` listener when `mode="exclusive"`. Re-initialized on `htmx:afterSettle`.
+    Root `<div class="pjx-accordion-group" data-pjx-accordion-group data-mode="..." [data-default-open="..."]>`. `pjx_accordion_group.js` runs once per element (guarded by `data-pjx-group-init`), applies `default_open`, then wires the exclusive-open `toggle` listener when `mode="exclusive"`. Re-initialized on `htmx:afterSettle`.
 
     **Classes:** `pjx-accordion-group`.
 
@@ -927,7 +927,7 @@ Groups a set of `PJXAccordion`s into a shared layout/behavior container. Handles
 
 ### PJXTable
 
-Accessible data table shell. Compose with `PJXTableHead`, `PJXTableBody`, `PJXTableRow`, `PJXTableHeaderCell`, and `PJXTableCell` parts. **Assets:** `pjx-table.css`.
+Accessible data table shell. Compose with `PJXTableHead`, `PJXTableBody`, `PJXTableRow`, `PJXTableHeaderCell`, and `PJXTableCell` parts. **Assets:** `pjx_table.css`.
 
 <!-- demo: PJXTable -->
 
@@ -1020,7 +1020,7 @@ Accessible data table shell. Compose with `PJXTableHead`, `PJXTableBody`, `PJXTa
 
 ### PJXTableHead
 
-`<thead>` wrapper for a composed table. **Assets:** none (styled via `pjx-table.css`).
+`<thead>` wrapper for a composed table. **Assets:** none (styled via `pjx_table.css`).
 
 ```html
 <PJXTable>
@@ -1055,7 +1055,7 @@ Accessible data table shell. Compose with `PJXTableHead`, `PJXTableBody`, `PJXTa
 
 ### PJXTableBody
 
-`<tbody>` wrapper for a composed table. **Assets:** none (styled via `pjx-table.css`).
+`<tbody>` wrapper for a composed table. **Assets:** none (styled via `pjx_table.css`).
 
 ```html
 <PJXTable>
@@ -1088,7 +1088,7 @@ Accessible data table shell. Compose with `PJXTableHead`, `PJXTableBody`, `PJXTa
 
 ### PJXTableRow
 
-A `<tr>` for either the head or body section. When `selectable=True`, a checkbox cell is auto-prepended on the body row. **Assets:** none (styled via `pjx-table.css`).
+A `<tr>` for either the head or body section. When `selectable=True`, a checkbox cell is auto-prepended on the body row. **Assets:** none (styled via `pjx_table.css`).
 
 ```html
 <PJXTableRow selectable="true" value="1">
@@ -1128,7 +1128,7 @@ A `<tr>` for either the head or body section. When `selectable=True`, a checkbox
 
 ### PJXTableHeaderCell
 
-A `<th>` for use inside `PJXTableRow` in the head section. Reflects sort direction via `aria-sort`. **Assets:** none (styled via `pjx-table.css`).
+A `<th>` for use inside `PJXTableRow` in the head section. Reflects sort direction via `aria-sort`. **Assets:** none (styled via `pjx_table.css`).
 
 ```html
 <PJXTableHeaderCell sortable="true" sort="asc">Name</PJXTableHeaderCell>
@@ -1157,7 +1157,7 @@ A `<th>` for use inside `PJXTableRow` in the head section. Reflects sort directi
 
 ### PJXTableCell
 
-A `<td>` for use inside `PJXTableRow` in the body section. **Assets:** none (styled via `pjx-table.css`).
+A `<td>` for use inside `PJXTableRow` in the body section. **Assets:** none (styled via `pjx_table.css`).
 
 ```html
 <PJXTableCell>Ada Lovelace</PJXTableCell>
@@ -1186,7 +1186,7 @@ A `<td>` for use inside `PJXTableRow` in the body section. **Assets:** none (sty
 
 ### PJXModal
 
-Native `<dialog>` shell. Compose with `PJXModalHeader`, `PJXModalBody`, and `PJXModalFooter` for structured layouts. **Assets:** `pjx-modal.css`, `pjx-modal.js`.
+Native `<dialog>` shell. Compose with `PJXModalHeader`, `PJXModalBody`, and `PJXModalFooter` for structured layouts. **Assets:** `pjx_modal.css`, `pjx_modal.js`.
 
 <!-- demo: PJXModal -->
 
@@ -1262,7 +1262,7 @@ Native `<dialog>` shell. Compose with `PJXModalHeader`, `PJXModalBody`, and `PJX
 
 ### PJXModalHeader
 
-Header part for `PJXModal`. Renders a `<header>` inside the modal box; always includes a close button. **Assets:** `pjx-modal-header.css`.
+Header part for `PJXModal`. Renders a `<header>` inside the modal box; always includes a close button. **Assets:** `pjx_modal_header.css`.
 
 ```html
 <PJXModalHeader title="Delete file?"/>
@@ -1290,7 +1290,7 @@ Header part for `PJXModal`. Renders a `<header>` inside the modal box; always in
 
 ### PJXModalBody
 
-Body part for `PJXModal`. Renders a `<div class="pjx-modal__body">`. **Assets:** `pjx-modal-body.css`.
+Body part for `PJXModal`. Renders a `<div class="pjx-modal__body">`. **Assets:** `pjx_modal_body.css`.
 
 ```html
 <PJXModalBody>This cannot be undone.</PJXModalBody>
@@ -1315,7 +1315,7 @@ Body part for `PJXModal`. Renders a `<div class="pjx-modal__body">`. **Assets:**
 
 ### PJXModalFooter
 
-Footer part for `PJXModal`. Renders a `<footer class="pjx-modal__footer">`. **Assets:** `pjx-modal-footer.css`.
+Footer part for `PJXModal`. Renders a `<footer class="pjx-modal__footer">`. **Assets:** `pjx_modal_footer.css`.
 
 ```html
 <PJXModalFooter><PJXButton content="Delete"/></PJXModalFooter>
@@ -1340,7 +1340,7 @@ Footer part for `PJXModal`. Renders a `<footer class="pjx-modal__footer">`. **As
 
 ### PJXDrawer
 
-`<dialog>` shell sheet from an edge. **Assets:** `pjx-drawer.css`, `pjx-drawer.js` (JS stays on the shell; each part ships its own CSS — see [PJXDrawerHeader](#pjxdrawerheader), [PJXDrawerBody](#pjxdrawerbody), [PJXDrawerFooter](#pjxdrawerfooter)).
+`<dialog>` shell sheet from an edge. **Assets:** `pjx_drawer.css`, `pjx_drawer.js` (JS stays on the shell; each part ships its own CSS — see [PJXDrawerHeader](#pjxdrawerheader), [PJXDrawerBody](#pjxdrawerbody), [PJXDrawerFooter](#pjxdrawerfooter)).
 
 <!-- demo: PJXDrawer -->
 
@@ -1413,7 +1413,7 @@ Footer part for `PJXModal`. Renders a `<footer class="pjx-modal__footer">`. **As
 
 ### PJXDrawerHeader
 
-Header bar for a `PJXDrawer`. Automatically includes a close button. **Assets:** `pjx-drawer-header.css`.
+Header bar for a `PJXDrawer`. Automatically includes a close button. **Assets:** `pjx_drawer_header.css`.
 
 ```html
 <PJXDrawerHeader title="Menu"/>
@@ -1443,7 +1443,7 @@ Header bar for a `PJXDrawer`. Automatically includes a close button. **Assets:**
 
 ### PJXDrawerBody
 
-Scrollable body region for a `PJXDrawer`. **Assets:** `pjx-drawer-body.css`.
+Scrollable body region for a `PJXDrawer`. **Assets:** `pjx_drawer_body.css`.
 
 ```html
 <PJXDrawerBody>…links…</PJXDrawerBody>
@@ -1470,7 +1470,7 @@ Scrollable body region for a `PJXDrawer`. **Assets:** `pjx-drawer-body.css`.
 
 ### PJXDrawerFooter
 
-Footer strip for a `PJXDrawer`. **Assets:** `pjx-drawer-footer.css`.
+Footer strip for a `PJXDrawer`. **Assets:** `pjx_drawer_footer.css`.
 
 ```html
 <PJXDrawerFooter>v1.0</PJXDrawerFooter>
@@ -1493,116 +1493,6 @@ Footer strip for a `PJXDrawer`. **Assets:** `pjx-drawer-footer.css`.
 
     ```python
     PJXDrawerFooter(content="v1.0")
-    ```
-
-### PJXConfirmDialog
-
-Accessible `<dialog>` singleton that replaces `window.confirm`. Mount once in the layout; `pjx.confirm()` is available everywhere. **Assets:** `pjx-confirm-dialog.css`, `pjx-confirm-dialog.js`.
-
-```html
-<PJXConfirmDialog id="demo-confirm"/>
-```
-
-??? note "Props & API"
-
-    | Field | Type | Default | Description |
-    | --- | --- | --- | --- |
-    | `confirm_label` | `str` | `"Confirm"` | Default OK button text. |
-    | `cancel_label` | `str` | `"Cancel"` | Default cancel button text. |
-
-    Intercepts every `hx-confirm="…"` automatically (via `htmx:confirm` event):
-
-    ```html
-    <button hx-post="/delete/1"
-            hx-confirm="Delete this item?"
-            data-pjx-confirm-danger>Delete</button>
-    ```
-
-    For non-htmx forms use `data-confirm="…"` on the `<form>`.
-
-    Override labels per-call:
-
-    ```javascript
-    const ok = await pjx.confirm("Are you sure?", {
-        okLabel: "Yes, delete",
-        cancelLabel: "No",
-        danger: true,
-    });
-    if (ok) { /* proceed */ }
-    ```
-
-??? note "Style tokens"
-
-    | Token | Default |
-    | --- | --- |
-    | `--pjx-confirm-dialog-bg` | `var(--surface)` |
-    | `--pjx-confirm-dialog-border` | `var(--border)` |
-    | `--pjx-confirm-dialog-radius` | `var(--radius-md)` |
-    | `--pjx-confirm-dialog-shadow` | `var(--shadow-md)` |
-    | `--pjx-confirm-dialog-backdrop` | `rgb(0 0 0 / 0.5)` |
-    | `--pjx-confirm-dialog-danger` | `#b3261e` |
-
-??? note "DOM & classes"
-
-    Root `dialog.pjx-confirm-dialog[data-pjx-dialog="confirm"]` — singleton, matched by `document.querySelector`. `data-pjx-confirm-danger` on the htmx element → OK button gets `.pjx-confirm-dialog__ok--danger`. `data-pjx-confirm-ok` / `data-pjx-confirm-cancel` per-trigger label overrides.
-    API: `pjx.confirm(message, {okLabel?, cancelLabel?, danger?}) → Promise<boolean>`.
-    Falls back to `window.confirm` if no `PJXConfirmDialog` is mounted.
-
-    **Classes:** `pjx-confirm-dialog`, `pjx-confirm-dialog__card`, `pjx-confirm-dialog__message`, `pjx-confirm-dialog__actions`, `pjx-confirm-dialog__ok`, `pjx-confirm-dialog__ok--danger`, `pjx-confirm-dialog__cancel`.
-
-??? note "Python"
-
-    ```python
-    PJXConfirmDialog(id="demo-confirm")
-    ```
-
-### PJXPromptDialog
-
-Accessible `<dialog>` singleton that replaces `window.prompt`. Mount once in the layout; `pjx.prompt()` is available everywhere. **Assets:** `pjx-prompt-dialog.css`, `pjx-prompt-dialog.js`.
-
-```html
-<PJXPromptDialog id="demo-prompt"/>
-```
-
-??? note "Props & API"
-
-    | Field | Type | Default | Description |
-    | --- | --- | --- | --- |
-    | `input_label` | `str` | `""` | Default label text above the input. |
-    | `submit_label` | `str` | `"OK"` | Submit button text. |
-    | `cancel_label` | `str` | `"Cancel"` | Cancel button text. |
-
-    ```javascript
-    const name = await pjx.prompt("Enter your name", {
-        initial: "Alice",
-        placeholder: "Full name",
-        okLabel: "Save",
-    });
-    if (name !== null) { /* user submitted */ }
-    ```
-
-??? note "Style tokens"
-
-    | Token | Default |
-    | --- | --- |
-    | `--pjx-prompt-dialog-bg` | `var(--surface)` |
-    | `--pjx-prompt-dialog-border` | `var(--border)` |
-    | `--pjx-prompt-dialog-radius` | `var(--radius-md)` |
-    | `--pjx-prompt-dialog-shadow` | `var(--shadow-md)` |
-    | `--pjx-prompt-dialog-backdrop` | `rgb(0 0 0 / 0.5)` |
-
-??? note "DOM & classes"
-
-    Root `dialog.pjx-prompt-dialog[data-pjx-dialog="prompt"]` — singleton, matched by `document.querySelector`. Input pre-focused and selected on open.
-    API: `pjx.prompt(title, {initial?, placeholder?, okLabel?, cancelLabel?}) → Promise<string | null>`.
-    Returns `null` on cancel/Escape/backdrop close. Falls back to `window.prompt` if no `PJXPromptDialog` is mounted.
-
-    **Classes:** `pjx-prompt-dialog`, `pjx-prompt-dialog__card`, `pjx-prompt-dialog__label`, `pjx-prompt-dialog__input`, `pjx-prompt-dialog__actions`, `pjx-prompt-dialog__ok`, `pjx-prompt-dialog__cancel`.
-
-??? note "Python"
-
-    ```python
-    PJXPromptDialog(id="demo-prompt")
     ```
 
 ### PJXNotification
@@ -1715,7 +1605,7 @@ Inline status banner. **Assets:** `pjx_alert.css`, `pjx_alert.js`.
 
 ### PJXTooltip
 
-Composable tooltip shell. Compose with `PJXTooltipTrigger` and `PJXTooltipContent`. **Assets:** `pjx-tooltip.css`, `pjx-tooltip.js` (IIFE — no API, behavior only).
+Composable tooltip shell. Compose with `PJXTooltipTrigger` and `PJXTooltipContent`. **Assets:** `pjx_tooltip.css`, `pjx_tooltip.js` (IIFE — no API, behavior only).
 
 <!-- demo: PJXTooltip -->
 
@@ -1772,7 +1662,7 @@ Composable tooltip shell. Compose with `PJXTooltipTrigger` and `PJXTooltipConten
 
 ### PJXTooltipTrigger
 
-The focusable trigger part of a tooltip. **Assets:** `pjx-tooltip-trigger.css`.
+The focusable trigger part of a tooltip. **Assets:** `pjx_tooltip_trigger.css`.
 
 ```html
 <PJXTooltipTrigger>Hover over me</PJXTooltipTrigger>
@@ -1798,7 +1688,7 @@ The focusable trigger part of a tooltip. **Assets:** `pjx-tooltip-trigger.css`.
 
 ### PJXTooltipContent
 
-The floating tip body. **Assets:** `pjx-tooltip-content.css`.
+The floating tip body. **Assets:** `pjx_tooltip_content.css`.
 
 ```html
 <PJXTooltipContent>This is additional context shown on hover or focus.</PJXTooltipContent>
@@ -2005,7 +1895,7 @@ Button + anchored panel backed by the shared popover engine. **Assets:** `pjx_dr
 
 ### PJXTabGroup
 
-Thin shell that wraps a composed tab layout. Compose with [`PJXTabList`](#pjxtablist), [`PJXTab`](#pjxtab), and [`PJXTabPanel`](#pjxtabpanel). **Assets:** `pjx-tab-group.css`, `pjx-tab-group.js`.
+Thin shell that wraps a composed tab layout. Compose with [`PJXTabList`](#pjxtablist), [`PJXTab`](#pjxtab), and [`PJXTabPanel`](#pjxtabpanel). **Assets:** `pjx_tab_group.css`, `pjx_tab_group.js`.
 
 <!-- demo: PJXTabGroup -->
 
@@ -2054,7 +1944,7 @@ Thin shell that wraps a composed tab layout. Compose with [`PJXTabList`](#pjxtab
 
 ??? note "DOM & classes"
 
-    Root `div.pjx-tab-group[data-pjx-tab-group]`. The interior is authored by the caller via `content`. `pjx-tab-group.js` delegates events on `.pjx-tab-group[data-pjx-tab-group]`.
+    Root `div.pjx-tab-group[data-pjx-tab-group]`. The interior is authored by the caller via `content`. `pjx_tab_group.js` delegates events on `.pjx-tab-group[data-pjx-tab-group]`.
 
     **Classes:** `pjx-tab-group`.
 
@@ -2089,7 +1979,7 @@ Thin shell that wraps a composed tab layout. Compose with [`PJXTabList`](#pjxtab
 
 ### PJXTabList
 
-Tab button list (the `role="tablist"` container). **Assets:** `pjx-tab-list.css`.
+Tab button list (the `role="tablist"` container). **Assets:** `pjx_tab_list.css`.
 
 ```html
 <PJXTabList label="Project tabs">
@@ -2127,7 +2017,7 @@ Tab button list (the `role="tablist"` container). **Assets:** `pjx-tab-list.css`
 
 ### PJXTab
 
-Single tab button. **Assets:** `pjx-tab.css`.
+Single tab button. **Assets:** `pjx_tab.css`.
 
 ```html
 <PJXTab id="t0" panel="p0" selected="true" icon="file">Overview</PJXTab>
@@ -2159,7 +2049,7 @@ Single tab button. **Assets:** `pjx-tab.css`.
 
 ### PJXTabPanel
 
-Panel body associated with one tab. **Assets:** `pjx-tab-panel.css`.
+Panel body associated with one tab. **Assets:** `pjx_tab_panel.css`.
 
 ```html
 <PJXTabPanel id="p0" tab="t0"><p>Panel content.</p></PJXTabPanel>
@@ -2185,7 +2075,7 @@ Panel body associated with one tab. **Assets:** `pjx-tab-panel.css`.
 
 ### PJXResizableGroup
 
-Drag-to-resize split-pane container. Compose `PJXResizablePanel` and `PJXResizableHandle` parts inside. **Assets:** `pjx-resizable-group.css`, `pjx-resizable-group.js`.
+Drag-to-resize split-pane container. Compose `PJXResizablePanel` and `PJXResizableHandle` parts inside. **Assets:** `pjx_resizable_group.css`, `pjx_resizable_group.js`.
 
 <!-- demo: PJXResizableGroup -->
 
@@ -2226,7 +2116,7 @@ Drag-to-resize split-pane container. Compose `PJXResizablePanel` and `PJXResizab
 
 ??? note "DOM & classes"
 
-    Root `<div role="group" class="pjx-resizable-group pjx-resizable-group--{direction}" data-pjx-resizable-group data-direction="{direction}">` rendering `{{ content }}` verbatim. `pjx-resizable-group.js` initializes on `DOMContentLoaded` and `htmx:afterSettle` (bind-guarded per element), sets `flex-grow` on each panel from the panel's `data-size` attribute, and wires pointer/touch drag and keyboard events to the handles.
+    Root `<div role="group" class="pjx-resizable-group pjx-resizable-group--{direction}" data-pjx-resizable-group data-direction="{direction}">` rendering `{{ content }}` verbatim. `pjx_resizable_group.js` initializes on `DOMContentLoaded` and `htmx:afterSettle` (bind-guarded per element), sets `flex-grow` on each panel from the panel's `data-size` attribute, and wires pointer/touch drag and keyboard events to the handles.
 
     **Classes:** `pjx-resizable-group`; direction modifiers `pjx-resizable-group--row`, `--column`; drag state `pjx-resizable-group--dragging`.
 
@@ -2246,7 +2136,7 @@ Drag-to-resize split-pane container. Compose `PJXResizablePanel` and `PJXResizab
 
 ### PJXResizablePanel
 
-A resizable pane inside a `PJXResizableGroup`. Percentage-sized; `flex-grow` is set from `data-size` by JS. **Assets:** `pjx-resizable-panel.css`.
+A resizable pane inside a `PJXResizableGroup`. Percentage-sized; `flex-grow` is set from `data-size` by JS. **Assets:** `pjx_resizable_panel.css`.
 
 ```html
 <PJXResizableGroup direction="row">
@@ -2290,7 +2180,7 @@ A resizable pane inside a `PJXResizableGroup`. Percentage-sized; `flex-grow` is 
 
 ### PJXResizableHandle
 
-The draggable divider between two `PJXResizablePanel` siblings. Keyboard-accessible (`role="separator"`, `tabindex="0"`). **Assets:** `pjx-resizable-handle.css`.
+The draggable divider between two `PJXResizablePanel` siblings. Keyboard-accessible (`role="separator"`, `tabindex="0"`). **Assets:** `pjx_resizable_handle.css`.
 
 ```html
 <PJXResizableGroup direction="row">
@@ -2311,7 +2201,7 @@ The draggable divider between two `PJXResizablePanel` siblings. Keyboard-accessi
 
 ??? note "DOM & classes"
 
-    Root `<div role="separator" class="pjx-resizable-group__handle" data-pjx-resizable-handle tabindex="0" aria-label="{label}" aria-valuemin="0" aria-valuemax="100">`. Place between two `PJXResizablePanel`s inside a `PJXResizableGroup`. `pjx-resizable-group.js` sets `aria-valuenow` on the preceding panel's size at every update.
+    Root `<div role="separator" class="pjx-resizable-group__handle" data-pjx-resizable-handle tabindex="0" aria-label="{label}" aria-valuemin="0" aria-valuemax="100">`. Place between two `PJXResizablePanel`s inside a `PJXResizableGroup`. `pjx_resizable_group.js` sets `aria-valuenow` on the preceding panel's size at every update.
 
     **Classes:** `pjx-resizable-group__handle`. Handle appearance is controlled by the `PJXResizableGroup` style tokens.
 
@@ -2323,7 +2213,7 @@ The draggable divider between two `PJXResizablePanel` siblings. Keyboard-accessi
 
 ### PJXToastHost
 
-HX-Trigger-driven toast container singleton. Mount once in the layout. **Assets:** `pjx-toast-host.css`, `pjx-toast-host.js`.
+HX-Trigger-driven toast container singleton. Mount once in the layout. **Assets:** `pjx_toast_host.css`, `pjx_toast_host.js`.
 
 <!-- demo: PJXToastHost -->
 
@@ -2390,7 +2280,7 @@ HX-Trigger-driven toast container singleton. Mount once in the layout. **Assets:
 
 ### PJXRegionLoader
 
-In-place loading veil over a positioned ancestor. **Assets:** `pjx-region-loader.css`, `pjx-region-loader.js`.
+In-place loading veil over a positioned ancestor. **Assets:** `pjx_region_loader.css`, `pjx_region_loader.js`.
 
 <!-- demo: PJXRegionLoader -->
 
@@ -2436,7 +2326,7 @@ In-place loading veil over a positioned ancestor. **Assets:** `pjx-region-loader
 
 ### PJXPageLoader
 
-Full-page navigation loader. Mount once at the top of the layout body. **Assets:** `pjx-page-loader.css`, `pjx-page-loader.js`.
+Full-page navigation loader. Mount once at the top of the layout body. **Assets:** `pjx_page_loader.css`, `pjx_page_loader.js`.
 
 <!-- demo: PJXPageLoader -->
 
@@ -2485,7 +2375,7 @@ Full-page navigation loader. Mount once at the top of the layout body. **Assets:
 
 ### PJXLazyLoad
 
-HTMX deferred-content loader: an element that fetches `url` on a computed trigger and swaps itself with the response. Use it three ways — a **lazy panel** (load a section's content on first reveal), **load-on-mount**, or an **infinite-scroll sentinel** at the end of a list/table. **Assets:** none. `PJXLazyLoad` needs a backend, so it has no live render.
+HTMX deferred-content loader: an element that fetches `url` on a computed trigger and swaps itself with the response. Use it three ways — a **lazy panel** (load a section's content on first reveal), **load-on-mount**, or an **infinite-scroll sentinel** at the end of a list/table. **Assets:** `pjx_lazy_load.css`, `pjx_lazy_load.js`. `PJXLazyLoad` needs a backend, so it has no live render.
 
 ```html
 <PJXLazyLoad id="comments" url="/posts/42/comments">
@@ -2539,7 +2429,7 @@ HTMX deferred-content loader: an element that fetches `url` on a computed trigge
 
 ### PJXChipInput
 
-Tag-style multi-value input. Each chip carries its own `<input type="hidden">` so values post with any enclosing form and removal is pure DOM removal. **Assets:** `pjx-chip-input.css`, `pjx-chip-input.js`.
+Tag-style multi-value input. Each chip carries its own `<input type="hidden">` so values post with any enclosing form and removal is pure DOM removal. **Assets:** `pjx_chip_input.css`, `pjx_chip_input.js`.
 
 <!-- demo: PJXChipInput -->
 
@@ -2597,7 +2487,7 @@ Tag-style multi-value input. Each chip carries its own `<input type="hidden">` s
 
 ### PJXFormField
 
-Labelled control wrapper with help text and error state. **Assets:** `pjx-form-field.css` only.
+Labelled control wrapper with help text and error state. **Assets:** `pjx_form_field.css` only.
 
 <!-- demo: PJXFormField -->
 
@@ -2648,7 +2538,7 @@ Labelled control wrapper with help text and error state. **Assets:** `pjx-form-f
 
 ### PJXToggleSwitch
 
-Accessible on/off toggle backed by a visually-hidden checkbox. **Assets:** `pjx-toggle-switch.css` only — no JS.
+Accessible on/off toggle backed by a visually-hidden checkbox. **Assets:** `pjx_toggle_switch.css` only — no JS.
 
 <!-- demo: PJXToggleSwitch -->
 
@@ -2692,7 +2582,7 @@ Accessible on/off toggle backed by a visually-hidden checkbox. **Assets:** `pjx-
 
 ### PJXSegmentedControl
 
-Pill-style radio group for mutually exclusive options. **Assets:** `pjx-segmented-control.css` only — no JS.
+Pill-style radio group for mutually exclusive options. **Assets:** `pjx_segmented_control.css` only — no JS.
 
 <!-- demo: PJXSegmentedControl -->
 
@@ -2742,7 +2632,7 @@ Pill-style radio group for mutually exclusive options. **Assets:** `pjx-segmente
 
 ### PJXPasswordInput
 
-Password field with a show/hide toggle button. **Assets:** `pjx-password-input.css`, `pjx-password-input.js`.
+Password field with a show/hide toggle button. **Assets:** `pjx_password_input.css`, `pjx_password_input.js`.
 
 <!-- demo: PJXPasswordInput -->
 
@@ -2789,7 +2679,7 @@ Password field with a show/hide toggle button. **Assets:** `pjx-password-input.c
 
 ### PJXPaginator
 
-Accessible page-navigation bar. **Assets:** `pjx-paginator.css` only.
+Accessible page-navigation bar. **Assets:** `pjx_paginator.css` only.
 
 <!-- demo: PJXPaginator -->
 

@@ -25,7 +25,7 @@ What a framework adapter provides so `setup()` can wire pyjinhx in.
 | `mount_static(app, directory)` | Serve the files in `directory` at `/static` on `app`. |
 | `on_startup(app)` | Run pyjinhx's configure step as `app` starts. |
 | `on_shutdown(app)` | Run pyjinhx's shutdown step as `app` stops. |
-| `to_response(result, request)` | Adapt a pjx handler return into the framework's response type. Non-pjx results pass through untouched. |
+| `to_response(result, request)` | Adapt a pjx handler return into the framework's response type, by emitting what `pyjinhx.responses.compose()` answers. A result `compose()` answers `PASSTHROUGH` for is the framework's own to keep — with one exception: a response whose `status_code` is 300-399 and which carries a `Location` header is translated to `204` + `HX-Redirect` when the request carries `HX-Request` (see [Response composition](responses.md)). |
 
 Route adaptation is deliberately absent from this interface — turning a handler's pjx return into a framework response is `to_response()`, but *wiring* that onto routes differs enough per framework (FastAPI swaps `APIRoute` subclasses, Flask would use an `after_request` hook) that each backend owns its own wiring.
 

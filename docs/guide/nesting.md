@@ -34,7 +34,7 @@ class Card(BaseComponent):
 ```
 
 ```html
-<!-- card.html -->
+<!-- card.pjx -->
 <div id="{{ id }}" class="card">
     <h2>{{ title }}</h2>
     <div class="actions">
@@ -57,7 +57,7 @@ its fields are used, keeping the parent free to swap in whatever child it likes 
 parent template depending on the child's shape.
 
 ```html
-<!-- card.html -->
+<!-- card.pjx -->
 <div id="{{ id }}" class="card">
     <h2>{{ title }}</h2>
 
@@ -79,7 +79,7 @@ union works inside a `list` or `dict` too:
 from typing import Annotated
 
 from pyjinhx import BaseComponent
-from pyjinhx.component import PjxSlot
+from pyjinhx._component import PjxSlot
 
 
 class ButtonGroup(BaseComponent):
@@ -88,7 +88,7 @@ class ButtonGroup(BaseComponent):
 ```
 
 ```html
-<!-- button_group.html -->
+<!-- button_group.pjx -->
 <div id="{{ id }}" class="button-group">
     {% for button in buttons %}
         {{ button }}
@@ -118,7 +118,7 @@ The same `Slot`-collection annotation works for a `dict`, for named component co
 from typing import Annotated
 
 from pyjinhx import BaseComponent
-from pyjinhx.component import PjxSlot
+from pyjinhx._component import PjxSlot
 
 
 class Widget(BaseComponent):
@@ -132,7 +132,7 @@ class Dashboard(BaseComponent):
 ```
 
 ```html
-<!-- dashboard.html -->
+<!-- dashboard.pjx -->
 <div id="{{ id }}" class="dashboard">
     <aside>{{ widgets.sidebar }}</aside>
     <main>{{ widgets.main }}</main>

@@ -18,14 +18,14 @@ class Card(BaseComponent):
     subtitle: str = ""  # Optional with default
 ```
 
-Extra CSS/JS assets are auto-discovered from adjacent `.css`/`.js` files named after the component (kebab-case) — see [Asset Collection](assets.md) — not declared as fields on the class.
+Extra CSS/JS assets are auto-discovered from adjacent `.css`/`.js` files sharing the component's snake_case stem — the same stem as its template, so `Card` picks up `card.css` and `card.js` — see [Asset Collection](assets.md) — not declared as fields on the class.
 
 ### 2. HTML Template
 
 PyJinHX uses **Jinja2** templates for its components:
 
 ```html
-<!-- card.html -->
+<!-- card.pjx -->
 <div id="{{ id }}" class="card">
     <h2>{{ title }}</h2>
     {% if subtitle %}
@@ -64,28 +64,32 @@ button = Button(text="Submit")  # auto-generated pjx-<n>
     A subclass that redeclares `id: str` **without** a default makes it required at instantiation time.
 
 
-!!! tip "Auto-generated IDs apply to PascalCase tags only"
-    `auto_id` does **not** change how plain Python instances behave — omitting `id` on `BaseComponent(...)` always falls back to the built-in `pjx-<n>` counter. The `auto_id` class var only controls whether an `id` is generated when a PascalCase `<Tag/>` is expanded in a template without one (see [PascalCase Tags](tags.md)). Separately, `ReactiveComponent` (not `BaseComponent`) defaults its `id` to the kebab-cased class name (e.g. `TodoCounter` → `"todo-counter"`).
+!!! tip "Turning auto-ids off"
+    Set the `auto_id` class var to `False` to make `id` mandatory for that component — the `pjx-<n>` fallback is disabled and omitting `id` fails validation, whether you instantiate it from Python or write `<Tag/>` in a template (see [PascalCase Tags](tags.md)).
+
+!!! warning "Reactive components need an explicit `id`"
+    `ReactiveComponent` declares no `id` of its own, so it inherits the same `pjx-<n>` fallback — and that value is **not** stable across renders. A reactive region has to stay addressable for out-of-band swaps to find it, so always pass an explicit, stable `id=` (e.g. `TodoCounter(id="todo-counter")`).
 
 
 ## Template Discovery
 
-Templates are automatically discovered based on the class name:
+Templates are automatically discovered based on the class name, which is converted to
+snake_case and given the `.pjx` extension. That is the only naming convention there is —
+no `.html`/`.jinja` fallbacks, and no kebab-case:
 
 | Class Name | Template File |
 |------------|---------------|
-| `Button` | `button.pjx`, `button.html`, or `button.jinja` |
-| `ActionButton` | `action_button.pjx`, `action-button.pjx`, or `.html`/`.jinja` variants |
-| `UserCard` | `user_card.pjx`, `user-card.pjx`, or `.html`/`.jinja` variants |
+| `Button` | `button.pjx` |
+| `ActionButton` | `action_button.pjx` |
+| `UserCard` | `user_card.pjx` |
 
 !!! warning "Template Location Requirement"
     Templates must be in the same directory as the Python class file.
 
 A subclass with no adjacent template inherits the nearest ancestor's template and class
-assets, each resolved independently (first found per kind walking the MRO). At most one
-component base per class — a definition-time `TypeError` is raised if two component bases
-appear in `__bases__`. Framework bases (`ReactiveComponent`) don't count toward that
-limit, so `class LiveBadge(ReactiveComponent, PJXBadge, react={...})` is valid.
+assets, each resolved independently (first found per kind walking the MRO). Mixing a
+framework base with a component base works the same way — `class LiveBadge(ReactiveComponent,
+PJXBadge, react={...})` renders `pjx_badge.pjx`, the nearest template on the MRO.
 
 ## Single-root rule
 
@@ -113,30 +117,50 @@ resolves to a single element passes:
 
 ## Attribute pass-through
 
-Inline tag attributes that are not declared fields of a component are automatically injected
-onto that component's root element at render time. No template boilerplate is needed — you
-don't place any special token in the template.
+Every inline tag attribute becomes a constructor argument of the component class, so on a
+declared component each attribute must be a **declared field**. There is no automatic
+injection of stray attributes onto the root element: an attribute the class doesn't declare
+is a `ValidationError`, not a pass-through.
 
 ```python
 class Card(BaseComponent):
     id: str
-    title: str  # declared field — consumed as a prop, NOT injected
-    subtitle: str = ""  # declared field — consumed as a prop, NOT injected
+    title: str  # declared field — fills the template context
+    subtitle: str = ""  # declared field — fills the template context
 ```
 
 ```html
-<!-- hx-get and data-section are not Card fields, so they land on the root <div> -->
-<Card id="orders" title="Orders" hx-get="/orders" hx-trigger="every 5s" data-section="main"/>
+<!-- ValidationError: hx-get is not a Card field -->
+<Card id="orders" title="Orders" hx-get="/orders"/>
 ```
 
-**Override semantics:** a stray inline attribute replaces any same-named attribute the template
-already hardcodes on its root, including `class` and `style` (full replace, not merge). Attributes
-that don't collide are added to the root element alongside the existing ones.
+To let a component carry arbitrary `hx-*` / `data-*` attributes, declare a field for them and
+emit it on the root yourself — this is what the built-in UI components do with their
+`extra_attrs` dict:
 
-**Props vs. pass-through:** declared fields are props — they fill the template context and are
-not injected. Non-declared ("stray") attributes and the explicit `extra_attrs` dict are
-injected. For template-only components (no Python class, or created with `component()`), all
-attributes inject onto the root and are also available as template variables.
+```python
+from pydantic import Field
+
+
+class Card(BaseComponent):
+    id: str
+    title: str
+    extra_attrs: dict[str, str] = Field(default_factory=dict)
+```
+
+```jinja
+<div id="{{ id }}"{% for name, value in extra_attrs.items() %} {{ name }}="{{ value }}"{% endfor %}>
+    <h2>{{ title }}</h2>
+</div>
+```
+
+```html
+<Card id="orders" title="Orders" extra_attrs='{"hx-get": "/orders", "hx-trigger": "every 5s"}'/>
+```
+
+Template-only components (no Python class, or created with `component()`) are the loose case:
+they accept undeclared attributes and expose them as template variables, so you decide where —
+and whether — they land in the markup.
 
 ## Escaping and slots
 
@@ -193,12 +217,12 @@ the `component()` factory instead of hand-writing a `BaseComponent` subclass:
 ```python
 from pyjinhx import component
 
-Card = component("Card")  # finds card.html under the default environment
+Card = component("Card")  # finds card.pjx under the default environment
 Card(title="Hi", content="body").render()
 ```
 
 `component(name, template_dir=None)` returns a registered `BaseComponent` subclass
-bound to the discovered template (`card.html` for `"Card"`). By default it resolves the
+bound to the discovered template (`card.pjx` for `"Card"`). By default it resolves the
 template the same way tag rendering does — under the directory `setup(components_root=...)`
 last registered — but you can pass `template_dir` explicitly to point at a different
 directory instead. The result is a first-class component: instantiate it, pass it as a field
@@ -225,21 +249,26 @@ Python class:
 - Supported types: `str`, `int`, `float`, `bool`, `list`, `dict`, and `T | None`;
   anything else (or no annotation) is treated as `Any` (no coercion).
 - Declared props are validated (`<Card/>` with a missing required prop, or a
-  value that can't coerce, raises a clear error). **Undeclared** attributes still
-  pass through to the root element (`hx-*`, `data-*`, `@click`, `class`).
+  value that can't coerce, raises a clear error). **Undeclared** attributes are
+  still accepted rather than rejected (`hx-*`, `data-*`, `@click`, `class`) and
+  reach the template context — nothing places them in the markup for you.
 - The header is a normal Jinja comment, so it never appears in the output.
 - Header-declared props are **HTML-escaped** like any scalar value (see
   [Escaping & slots](#escaping-and-slots)). For intentional raw HTML, mark it safe
   in the template with `{{ prop|safe }}` — header props can't be typed `Slot`.
 - A hand-written Python class always takes precedence over a header.
 
-On the `component()` factory, the header is applied when the template is
-resolvable at call time (set the default environment first); the `<Tag/>` path
-always applies it.
+The header is read when the class is built, so `component()` needs the template
+to be resolvable at call time — pass `template_dir`, or run
+`setup(components_root=...)` first. Discovery deliberately leaves an orphan
+`.pjx` unregistered, so materialize it with `component()` once before using
+`<Tag/>` for it in another template.
 
 ## Extra Fields
 
-A plain Pydantic `BaseModel` rejects unknown fields with a `ValidationError`. With `BaseComponent`, **extra fields are accepted and available in the template context**. This allows you to pass dictionaries or data objects with additional fields without raising validation errors.
+`BaseComponent` is **strict**: like a plain Pydantic `BaseModel`, it rejects unknown keyword
+arguments with a `ValidationError`. Every prop a component accepts from Python has to be a
+declared field.
 
 ```python
 from pyjinhx import BaseComponent
@@ -249,5 +278,11 @@ class Example(BaseComponent):
     foo: int
 
 
-ex = Example(foo=1, bar=2)  # No error! 'bar' is just ignored
+Example(foo=1, bar=2)  # ValidationError: Extra inputs are not permitted
 ```
+
+Classless components are the exception. A component built from a template — by
+`component()` or by a `{#def #}` header — subclasses `OpenComponent`, which accepts
+undeclared keys and makes them available in the template context. That is what lets
+`hx-*`, `data-*` and other stray attributes pass through to the root element (see
+[Attribute pass-through](#attribute-pass-through)).
