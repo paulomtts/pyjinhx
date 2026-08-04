@@ -9,12 +9,21 @@ from markupsafe import Markup
 from pyjinhx import discovery
 from pyjinhx._component import BaseComponent
 from pyjinhx.responses import PASSTHROUGH, PjxResponse, compose
-from pyjinhx.session import request_scope
+from pyjinhx.session import RenderSession, request_scope
 
 
 class _Htmlish:
     def __html__(self) -> Markup:
         return Markup("<p>from-dunder-html</p>")
+
+
+def _compose(result: object, *, session: RenderSession | None = None) -> PjxResponse:
+    """`compose()` narrowed to its non-passthrough return, for tests that read
+    `.body`/`.headers`/`.status` — `compose`'s declared return type covers
+    `PASSTHROUGH` too, so callers that know better narrow it explicitly."""
+    composed = compose(result, session=session)
+    assert isinstance(composed, PjxResponse)
+    return composed
 
 
 def test_a_string_return_becomes_the_primary_body():
@@ -25,29 +34,29 @@ def test_a_string_return_becomes_the_primary_body():
 def test_the_body_is_a_plain_str_not_markup():
     """Backends serialize `.body` directly; Markup would leak escaping semantics."""
     with request_scope():
-        assert type(compose("<p>hi</p>").body) is str
+        assert type(_compose("<p>hi</p>").body) is str
 
 
 def test_a_dunder_html_return_is_adopted_without_escaping():
     with request_scope():
-        assert compose(_Htmlish()).body == "<p>from-dunder-html</p>"
+        assert _compose(_Htmlish()).body == "<p>from-dunder-html</p>"
 
 
 def test_a_none_return_is_an_empty_primary_and_asks_htmx_not_to_swap():
     with request_scope():
-        composed = compose(None)
+        composed = _compose(None)
         assert composed.body == ""
         assert composed.headers == {"HX-Reswap": "none"}
 
 
 def test_a_whitespace_only_primary_also_asks_htmx_not_to_swap():
     with request_scope():
-        assert compose("   \n\t ").headers == {"HX-Reswap": "none"}
+        assert _compose("   \n\t ").headers == {"HX-Reswap": "none"}
 
 
 def test_the_default_status_is_200():
     with request_scope():
-        assert compose("<p>hi</p>").status == 200
+        assert _compose("<p>hi</p>").status == 200
 
 
 def test_an_unknown_return_type_passes_through():
@@ -98,9 +107,9 @@ def _greeting_template(tmp_path):
 
 def test_a_component_return_is_rendered_as_the_primary(_greeting_template):
     with request_scope():
-        assert compose(Greeting(name="ada")).body == "<p>ada</p>"
+        assert _compose(Greeting(name="ada")).body == "<p>ada</p>"
 
 
 def test_a_component_return_sets_no_reswap_header(_greeting_template):
     with request_scope():
-        assert compose(Greeting(name="ada")).headers == {}
+        assert _compose(Greeting(name="ada")).headers == {}
