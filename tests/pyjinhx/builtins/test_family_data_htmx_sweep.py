@@ -19,6 +19,7 @@ import pytest
 from pydantic import Field
 
 from pyjinhx import discovery, registry
+from pyjinhx._component import Slot, _pascal_to_snake
 from pyjinhx.builtins.pjx_lazy_load import PJXLazyLoad
 from pyjinhx.builtins.pjx_page_loader import PJXPageLoader
 from pyjinhx.builtins.pjx_paginator import PJXPaginator
@@ -29,7 +30,6 @@ from pyjinhx.builtins.pjx_table_cell import PJXTableCell
 from pyjinhx.builtins.pjx_table_head import PJXTableHead
 from pyjinhx.builtins.pjx_table_header_cell import PJXTableHeaderCell
 from pyjinhx.builtins.pjx_table_row import PJXTableRow
-from pyjinhx._component import Slot, _pascal_to_snake
 from pyjinhx.reactive.cache import cache_has, invalidate
 from pyjinhx.reactive.component import PjxKey, ReactiveComponent
 from pyjinhx.reactive.fanout import walk_manifest

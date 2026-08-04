@@ -92,7 +92,9 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
     "builtins.ui.pjx_toggle_switch.__init__": frozenset(
         {"pyjinhx.builtins.ui.pjx_toggle_switch.pjx_toggle_switch"}
     ),
-    "builtins.ui.pjx_toggle_switch.pjx_toggle_switch": frozenset({"pyjinhx._component"}),
+    "builtins.ui.pjx_toggle_switch.pjx_toggle_switch": frozenset(
+        {"pyjinhx._component"}
+    ),
     "builtins.ui.pjx_spinner.__init__": frozenset(
         {"pyjinhx.builtins.ui.pjx_spinner.pjx_spinner"}
     ),
@@ -151,7 +153,9 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
     "builtins.ui.pjx_drawer_header.__init__": frozenset(
         {"pyjinhx.builtins.ui.pjx_drawer_header.pjx_drawer_header"}
     ),
-    "builtins.ui.pjx_drawer_header.pjx_drawer_header": frozenset({"pyjinhx._component"}),
+    "builtins.ui.pjx_drawer_header.pjx_drawer_header": frozenset(
+        {"pyjinhx._component"}
+    ),
     "builtins.ui.pjx_drawer_body.__init__": frozenset(
         {"pyjinhx.builtins.ui.pjx_drawer_body.pjx_drawer_body"}
     ),
@@ -159,7 +163,9 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
     "builtins.ui.pjx_drawer_footer.__init__": frozenset(
         {"pyjinhx.builtins.ui.pjx_drawer_footer.pjx_drawer_footer"}
     ),
-    "builtins.ui.pjx_drawer_footer.pjx_drawer_footer": frozenset({"pyjinhx._component"}),
+    "builtins.ui.pjx_drawer_footer.pjx_drawer_footer": frozenset(
+        {"pyjinhx._component"}
+    ),
     # pjx_accordion family (#519): the details/summary shell plus its
     # group/trigger/content parts. Same shape as the modal/drawer families —
     # each component module reaches down into _component.py only; each
@@ -223,7 +229,9 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
     "builtins.ui.pjx_popover_panel.__init__": frozenset(
         {"pyjinhx.builtins.ui.pjx_popover_panel.pjx_popover_panel"}
     ),
-    "builtins.ui.pjx_popover_panel.pjx_popover_panel": frozenset({"pyjinhx._component"}),
+    "builtins.ui.pjx_popover_panel.pjx_popover_panel": frozenset(
+        {"pyjinhx._component"}
+    ),
     # pjx_tooltip family (#522): the positioned root shell, its focusable
     # trigger, and the hidden tip. JS/CSS live only on the root; each leaf
     # reaches _component.py only.

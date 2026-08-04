@@ -12,13 +12,13 @@ from typing import TYPE_CHECKING, Any
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import HTMLResponse
 
+from pyjinhx._component import BaseComponent
 from pyjinhx.client.inject import (
     LoadedAssets,
     MountedManifest,
     TriggerManifest,
     inject_runtime,
 )
-from pyjinhx._component import BaseComponent
 from pyjinhx.config import PjxSettings, configure_pyjinhx, shutdown_pyjinhx
 from pyjinhx.integrations.base import (
     SETUP_FLAG,

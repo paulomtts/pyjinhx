@@ -4,8 +4,8 @@ import threading
 from dataclasses import replace
 from pathlib import Path
 
-from pyjinhx.assets import AssetMode, all_assets
 from pyjinhx._component import BaseComponent
+from pyjinhx.assets import AssetMode, all_assets
 from pyjinhx.descriptor import ClassDescriptor
 from pyjinhx.rendering import render
 from pyjinhx.session import (

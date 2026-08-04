@@ -13,8 +13,8 @@ from pathlib import Path
 import pytest
 
 from pyjinhx import discovery
-from pyjinhx.classless import component
 from pyjinhx._component import BaseComponent, OpenComponent
+from pyjinhx.classless import component
 
 
 @pytest.fixture(autouse=True)

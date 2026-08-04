@@ -14,6 +14,7 @@ from pathlib import Path
 import pytest
 
 from pyjinhx import discovery
+from pyjinhx._component import BaseComponent, Slot, _pascal_to_snake
 from pyjinhx.builtins.ui.pjx_accordion import PJXAccordion
 from pyjinhx.builtins.ui.pjx_accordion_content import PJXAccordionContent
 from pyjinhx.builtins.ui.pjx_accordion_group import PJXAccordionGroup
@@ -44,7 +45,6 @@ from pyjinhx.builtins.ui.pjx_tooltip import PJXTooltip
 from pyjinhx.builtins.ui.pjx_tooltip_content import PJXTooltipContent
 from pyjinhx.builtins.ui.pjx_tooltip_trigger import PJXTooltipTrigger
 from pyjinhx.classless import component
-from pyjinhx._component import BaseComponent, Slot, _pascal_to_snake
 from pyjinhx.rendering import render
 from pyjinhx.session import RenderSession
 

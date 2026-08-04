@@ -6,8 +6,8 @@ import logging
 import pytest
 from pydantic import ValidationError
 
-from pyjinhx.builtins.ui.pjx_icon import PJXIcon
 from pyjinhx._component import BaseComponent
+from pyjinhx.builtins.ui.pjx_icon import PJXIcon
 from pyjinhx.rendering import render
 from pyjinhx.session import RenderSession
 

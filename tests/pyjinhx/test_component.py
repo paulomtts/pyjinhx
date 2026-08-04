@@ -449,7 +449,9 @@ def test_component_module_does_not_import_above_itself():
         else:
             continue
         for name in names:
-            assert name not in FORBIDDEN_IMPORTS, f"_component.py must not import {name}"
+            assert name not in FORBIDDEN_IMPORTS, (
+                f"_component.py must not import {name}"
+            )
             assert not any(name.startswith(f"{f}.") for f in FORBIDDEN_IMPORTS), (
                 f"_component.py must not import {name}"
             )

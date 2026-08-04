@@ -2,8 +2,8 @@ from typing import Literal
 
 from pydantic import Field, model_validator
 
-from pyjinhx.builtins.pjx_region_loader import PJXRegionLoader
 from pyjinhx._component import AttrValue, BaseComponent, ExtraAttrs, Slot
+from pyjinhx.builtins.pjx_region_loader import PJXRegionLoader
 
 
 class PJXButton(BaseComponent):

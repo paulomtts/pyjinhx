@@ -4,8 +4,8 @@ from typing import Annotated, Any
 
 import pytest
 
-from pyjinhx.app_context import AppContext
 from pyjinhx._component import BaseComponent
+from pyjinhx.app_context import AppContext
 from pyjinhx.reactive.component import PjxKey, ReactiveComponent
 from pyjinhx.session import request_scope
 
