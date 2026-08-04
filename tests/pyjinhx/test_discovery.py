@@ -1,6 +1,7 @@
 """Tests for the .pjx template-tree walk (issue #357)."""
 
 import importlib.util
+import logging
 import sys
 from pathlib import Path
 
@@ -142,3 +143,73 @@ def test_class_with_template_outside_template_dir_is_claimed(tmp_path: Path):
     discovery.build_registry(walked, [OutsideWidget])
 
     assert discovery.get_class("outside_widget") is OutsideWidget
+
+
+def test_user_class_with_replace_shadows_an_outside_class(tmp_path, caplog):
+    """A user class declaring replace takes the tag from an outside-template class, silently."""
+    outside = tmp_path / "installed"
+    outside.mkdir()
+    (outside / "user_thing.pjx").write_text("<div>outside</div>")
+    (outside / "user_thing.py").write_text(
+        "from pyjinhx.component import BaseComponent\n\n\n"
+        "class UserThing(BaseComponent):\n"
+        "    pass\n"
+    )
+    OutsideThing = _load_class_from_module(
+        outside / "user_thing.py", "test_outside_thing_mod", "UserThing"
+    )
+
+    walked = tmp_path / "components"
+    walked.mkdir()
+    (walked / "user_thing.pjx").write_text("<div>user</div>")
+    (walked / "user_thing.py").write_text(
+        "from pyjinhx.component import BaseComponent\n\n\n"
+        "class UserThing(BaseComponent, pjx_replace=True):\n"
+        "    pass\n"
+    )
+    UserThing = _load_class_from_module(
+        walked / "user_thing.py", "test_user_thing_mod", "UserThing"
+    )
+    # `pjx_replace=True` is a class-kwarg consumed by
+    # BaseComponent.__init_subclass__ (pyjinhx/component.py), not a decorator
+    # or a plain class attribute.
+
+    discovery.build_registry(walked, [OutsideThing, UserThing])
+
+    assert discovery.get_class("user_thing") is UserThing
+    assert not [r for r in caplog.records if r.levelname == "WARNING"]
+
+
+def test_unintended_collision_across_sources_warns_once(tmp_path, caplog):
+    """Neither side declaring replace: alphabetical qualified-name tie-break, one warning naming both."""
+    outside = tmp_path / "installed"
+    outside.mkdir()
+    (outside / "user_thing.pjx").write_text("<div>outside</div>")
+    (outside / "user_thing.py").write_text(
+        "from pyjinhx.component import BaseComponent\n\n\n"
+        "class UserThing(BaseComponent):\n"
+        "    pass\n"
+    )
+    OutsideThing = _load_class_from_module(
+        outside / "user_thing.py", "test_outside_thing_mod2", "UserThing"
+    )
+
+    walked = tmp_path / "components"
+    walked.mkdir()
+    (walked / "user_thing.pjx").write_text("<div>user</div>")
+    (walked / "user_thing.py").write_text(
+        "from pyjinhx.component import BaseComponent\n\n\n"
+        "class UserThing(BaseComponent):\n"
+        "    pass\n"
+    )
+    UserThing = _load_class_from_module(
+        walked / "user_thing.py", "test_user_thing_mod2", "UserThing"
+    )
+
+    with caplog.at_level(logging.WARNING, logger="pyjinhx"):
+        discovery.build_registry(walked, [OutsideThing, UserThing])
+
+    warnings = [r for r in caplog.records if r.levelname == "WARNING"]
+    assert len(warnings) == 1
+    assert "test_outside_thing_mod2.UserThing" in warnings[0].getMessage()
+    assert "test_user_thing_mod2.UserThing" in warnings[0].getMessage()
