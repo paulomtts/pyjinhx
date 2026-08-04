@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.2.0 — Unconditional fan-out & response composition (2026-08-04)
 
 ### Removed
 - **Breaking:** `ReactiveResponse`. Response composition is no longer something a handler
@@ -27,6 +27,25 @@
   claiming fan-out rode along with any render. Fan-out is now attached on every
   body-producing return, since the dirtied keys belong to the request rather than to the
   spelling the handler chose.
+- Fan-out did nothing at all against a real browser: only `data-pjx-id` and `data-pjx-hash`
+  were stamped on a reactive root, so every manifest entry the client built carried an empty
+  `type` and the walk dropped every candidate before resolving it. Reactive roots now also
+  carry `data-pjx-type` and, for a keyed component, `data-pjx-load`.
+- Fan-out deleted the regions it was meant to refresh. A miss in the instance registry was
+  read as "this region is gone" and emitted a delete swap — but the registry is
+  request-scoped and written only by the current request's own renders, so every region
+  outside the primary response missed it as a matter of course. A failed `load()` is now
+  what marks a region gone, which is the only signal that actually proves it.
+- A load key declared `int` reached `load()` as the string the client's `data-pjx-load`
+  attribute round-tripped it through, so a keyed `load()` that looked its id up in an
+  int-keyed store missed and returned a field-default instance — fanned-out rows rendered
+  blank. The manifest value is now validated back to the key field's declared type first.
+
+### Changed (behaviour worth knowing about)
+- A `LookupError` (including `KeyError`) out of `load()` is now load-bearing: it is how a
+  component reports that an instance no longer exists, and it produces a delete swap. A
+  `load()` that catches its store's `KeyError` and returns a field-default instance will
+  have its region swapped with a blank render instead of removed.
 
 ## 1.0.0 — pyjinhx v2 (2026-08-03)
 
