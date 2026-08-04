@@ -576,6 +576,8 @@ state — no user-data injection, no mutation methods. To reach per-request app 
 `context_factory=`:
 
 ```python
+from typing import Self
+
 from pyjinhx import AppContext, ReactiveComponent, setup
 
 
@@ -589,8 +591,9 @@ setup(app, context_factory=lambda request: MyAppContext(get_db(request), request
 
 
 class TodoList(ReactiveComponent):
-    def load(self, ctx: MyAppContext) -> None:
-        self.items = ctx.db.todos_for(ctx.user)
+    @classmethod
+    def load(cls, ctx: MyAppContext) -> Self:
+        return cls(items=ctx.db.todos_for(ctx.user))
 ```
 
 ### `pyjinhx.render` → `pyjinhx.rendering`

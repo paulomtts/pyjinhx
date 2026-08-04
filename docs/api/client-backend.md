@@ -53,11 +53,17 @@ with request_scope(load_context=load_context) as session:
 Inside the scope, `get_load_context()` returns that value for the life of the request:
 
 ```python
+from typing import Self
+
+from pyjinhx import ReactiveComponent
 from pyjinhx.session import get_load_context
 
 
-def load(self):
-    request = get_load_context()
+class RequestScoped(ReactiveComponent):
+    @classmethod
+    def load(cls) -> Self:
+        request = get_load_context()
+        return cls(...)
 ```
 
 ## Non-FastAPI frameworks

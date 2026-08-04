@@ -21,10 +21,12 @@ See the [Public API Index](reference/public-api.md) for every exported reactive 
 ## Make a component reactive
 
 Subclass `ReactiveComponent` and declare **both** the `react` class keyword and a
-`load()` instance method — `load()` overrides `ReactiveComponent`'s no-op default; a
+`load()` classmethod — `load()` overrides `ReactiveComponent`'s no-op default; a
 missing `react` is a definition-time error:
 
 ```python
+from typing import Self
+
 from pyjinhx import ReactiveComponent, MutationKey
 
 
@@ -35,8 +37,9 @@ class Keys(MutationKey):
 class Counter(ReactiveComponent, react={Keys.TODOS}):
     remaining: int = 0  # id defaults to "counter"
 
-    def load(self) -> None:
-        self.remaining = db.remaining()
+    @classmethod
+    def load(cls) -> Self:
+        return cls(remaining=db.remaining())
 ```
 
 - `react` — the **state keys** this component derives from, as a set of `MutationKey`
@@ -44,9 +47,9 @@ class Counter(ReactiveComponent, react={Keys.TODOS}):
   `Keys.USER`) — **not** component ids or types, and not client-side watchers. The
   server simply intersects a component's declared keys with the route's `dirtied` keys
   (and uses them to evict the `load()` cache): it's cache invalidation, not signals.
-- `load()` — populates the instance's fields from the current world. It runs
-  automatically right before a mounted instance's render, memoized
-  per request under the class + load key.
+- `load()` — a classmethod factory that returns a freshly populated instance from the
+  current world. It runs automatically right before a mounted instance's render,
+  memoized per request under the class + load key.
 - `id` — defaults to the **kebab-cased class name** (`Counter` → `"counter"`,
   `TodoCounter` → `"todo-counter"`), since a type-singleton's identity is its type, so
   `load()` need not set one. Pass an explicit `id` only for instance-keyed regions —
@@ -73,9 +76,9 @@ class Keys(MutationKey):
 
 
 class LiveBadge(ReactiveComponent, PJXBadge, react={Keys.TASKS}):
-    def load(self) -> None:
-        self.label = f"{db.open_tasks()} open"
-        self.color = "brand"
+    @classmethod
+    def load(cls) -> "LiveBadge":
+        return cls(label=f"{db.open_tasks()} open", color="brand")
 ```
 
 No template or CSS needed: `LiveBadge` renders PJXBadge's `pjx_badge.html` and ships
@@ -255,11 +258,10 @@ class TodoItemRow(ReactiveComponent, react={Keys.TODOS}):
     title: str = ""
     done: bool = False
 
-    def load(self) -> None:
-        self.id = f"row-{self.todo_id}"
-        t = store.get(self.todo_id)
-        self.title = t.text
-        self.done = t.done
+    @classmethod
+    def load(cls, todo_id: int | str) -> "TodoItemRow":
+        t = store.get(int(todo_id))
+        return cls(id=f"row-{t.id}", todo_id=t.id, title=t.text, done=t.done)
 ```
 
 On the OOB reload path the key arrives as a **string** from the cache wrapper (the
@@ -281,7 +283,7 @@ def toggle(todo_id: int) -> Todo: ...
 @app.post("/rows/{todo_id}/toggle")
 def toggle_row(todo_id: int):
     store.toggle(todo_id)
-    return TodoItemRow(todo_id=todo_id).render()
+    return TodoItemRow.load(todo_id).render()
 ```
 
 When a keyed entity is removed but still listed in the client's mounted manifest (e.g.
@@ -311,9 +313,13 @@ class MessageBubble(ReactiveComponent, react={ChatKeys.MESSAGE}):
     message_id: Annotated[str, PjxKey()]
     text: str = ""
 
-    def load(self) -> None:
-        self.id = f"bubble-{self.message_id}"
-        self.text = store.get(self.message_id).text
+    @classmethod
+    def load(cls, message_id: str) -> "MessageBubble":
+        return cls(
+            id=f"bubble-{message_id}",
+            message_id=message_id,
+            text=store.get(message_id).text,
+        )
 
 
 # on settle, after finalizing one message:
@@ -376,7 +382,7 @@ def toggle(todo_id: int) -> Todo: ...
 @app.post("/rows/{todo_id}/toggle")
 def toggle_row(todo_id):
     store.toggle(todo_id)
-    return TodoItemRow(todo_id=todo_id).render()
+    return TodoItemRow.load(todo_id).render()
 ```
 
 This dirties `Keys.TODOS` on every call, so it reloads every mounted `TodoItemRow`
@@ -403,6 +409,8 @@ framework's own read-only view of request state and is not meant to be
 subclassed by apps:
 
 ```python
+from typing import Self
+
 from pyjinhx import AppContext, MutationKey, ReactiveComponent
 
 
@@ -416,8 +424,9 @@ class MyAppContext(AppContext):
 
 
 class Counter(ReactiveComponent, react={Keys.TODOS}):
-    def load(self, ctx: MyAppContext) -> None:
-        self.remaining = ctx.db.remaining()
+    @classmethod
+    def load(cls, ctx: MyAppContext) -> Self:
+        return cls(remaining=ctx.db.remaining())
 ```
 
 `ctx` is injected by annotation, not by parameter name — declare it optional

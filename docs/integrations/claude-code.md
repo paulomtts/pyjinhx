@@ -155,7 +155,7 @@ class TodoItemRow(ReactiveComponent, react={Keys.TODOS}):
 @app.post("/rows/{todo_id}/toggle")
 def toggle_row(todo_id: int):
     store.toggle(todo_id)
-    return TodoItemRow.load(todo_id).render()   # instance form: load() then render()
+    return TodoItemRow.load(todo_id).render()   # factory form: Cls.load(...) returns the instance, then render()
 ```
 
 Set an explicit `id` in `load()` for stable DOM targets; templates use the key field (`hx-post="/rows/{{ todo_id }}/toggle"`). Hash-gating skips unchanged regions. If a keyed `load(manifest.load)` raises `LookupError` during the OOB walk, a `delete:[data-pjx-id='…']` swap removes the stale region (e.g. after clear-completed removes rows still in the manifest).

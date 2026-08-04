@@ -319,6 +319,8 @@ reads from a `store` module — **we define both `keys.py` and `store.py` in Ste
 for now just note that `Keys.TODOS` and `store` are imported from there:
 
 ```python
+from typing import Self
+
 from pyjinhx import ReactiveComponent
 
 from keys import Keys
@@ -328,8 +330,9 @@ import store
 class TodoCounter(ReactiveComponent, react={Keys.TODOS}):
     remaining: int = 0
 
-    def load(self) -> None:
-        self.remaining = store.remaining()
+    @classmethod
+    def load(cls) -> Self:
+        return cls(remaining=store.remaining())
 ```
 
 Define the page shell as a normal `BaseComponent` — no special marker required:
@@ -339,7 +342,7 @@ class TodoApp(BaseComponent): ...
 ```
 
 ???+ question "Why ReactiveComponent?"
-    Reactive components declare **what state they derive from** (the `react` class keyword) and **how to rebuild** (`load()`). `load()` is an ordinary instance method that populates `self`'s fields from the current world — it runs automatically right before a mounted instance renders, so you never call it by hand. After a mutation, you return one primary fragment; PyJinHx appends OOB swaps for other mounted regions whose dependencies overlap — you don't list every widget in every route.
+    Reactive components declare **what state they derive from** (the `react` class keyword) and **how to rebuild** (`load()`). `load()` is a classmethod factory that returns a freshly populated instance from the current world — it runs automatically right before a mounted instance renders, so you never call it by hand. After a mutation, you return one primary fragment; PyJinHx appends OOB swaps for other mounted regions whose dependencies overlap — you don't list every widget in every route.
 
     Root full-page renders inject `pjx.js` automatically unless the request already carries `X-PJX-Mounted`. That runtime sends the manifest on every HTMX request so the server knows what's on screen.
 
@@ -397,14 +400,14 @@ Route (the `TodoItemRow` it renders is the instance-keyed row **we define in Ste
 @app.post("/rows/{todo_id}/toggle", response_class=HTMLResponse)
 def toggle_row(todo_id: int):
     store.toggle(todo_id)
-    return TodoItemRow(todo_id=todo_id).render()
+    return TodoItemRow.load(todo_id).render()
 ```
 
 ???+ question "Why @mutates and IntegrationBackend?"
     - **`@mutates`** — after a store change, invalidate the `load()` cache and accumulate pending state keys for the next reactive `render()`.
     - **`IntegrationBackend`** (`FastAPIBackend`, wired via `setup()`) — supplies `X-PJX-Mounted`, `X-PJX-Trigger`, and `X-PJX-Assets` so OOB swaps run without framework kwargs on `render()`.
 
-    `render()` auto-calls the instance's `load()` right before it renders — routes construct the instance and call `render()`, never `load()` directly.
+    `render()` auto-calls the instance's `load()` right before it renders on mount — but for keyed components like `TodoItemRow`, routes call `load(key)` themselves to build the instance, then call `render()`.
 
 ---
 
@@ -420,14 +423,15 @@ class TodoItemRow(ReactiveComponent, react={Keys.TODOS}):
     title: str = ""
     done: bool = False
 
-    def load(self) -> None:
-        self.id = f"row-{self.todo_id}"
-        todo = store.get(self.todo_id)
-        self.title = todo.text
-        self.done = todo.done
+    @classmethod
+    def load(cls, todo_id: int | str) -> "TodoItemRow":
+        todo = store.get(int(todo_id))
+        return cls(
+            id=f"row-{todo.id}", todo_id=todo.id, title=todo.text, done=todo.done
+        )
 ```
 
-On the OOB reload path the key arrives as a **string** from the cache wrapper (the manifest serialises to JSON), so `self.todo_id` may need coercing to `int` before use if your `load()` compares it against non-string ids.
+On the OOB reload path the key arrives as a **string** from the cache wrapper (the manifest serialises to JSON), so `todo_id` may need coercing to `int` before use if your `load()` compares it against non-string ids.
 
 Template (note `data-pjx-loading` — covered in Step 11):
 
