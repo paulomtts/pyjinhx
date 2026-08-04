@@ -28,7 +28,7 @@ from pyjinhx.integrations.base import (
 from pyjinhx.reactive.response import ReactiveResponse
 from pyjinhx.reactive.root_attrs import stamp_reactive_root_attrs
 from pyjinhx.registry import register_rendered_instance
-from pyjinhx.rendering import render
+from pyjinhx.responses import PASSTHROUGH, PjxResponse, compose
 from pyjinhx.session import (
     RenderSession,
     accumulate_assets,
@@ -88,23 +88,28 @@ class FastAPIBackend:
         shutdown_pyjinhx()
 
     def to_response(self, result: object, request: object | None) -> object:
-        """Adapt a pjx handler return into an HTML response, or pass it through.
+        """Emit compose()'s answer, or hand back a result that is not pjx's.
 
-        A ReactiveResponse already carries its composed body and htmx headers
-        (T2); a bare component is this request's primary render, so the runtime
-        is offered to it and inlined only when the request is not already
-        mounted (T1).
+        Composition — including whether this request fans out — is decided by
+        `pyjinhx.responses.compose`, which no framework has to be installed for.
+        All that is left here is turning that answer into a Starlette response.
         """
-        if isinstance(result, ReactiveResponse):
-            return HTMLResponse(str(result.body), headers=result.headers)
+        session = current_session()
+        # Always set: to_response only runs from inside PjxScopeMiddleware's
+        # request_scope(), which is the sole entry point for a pjx endpoint.
+        assert session is not None, "handler return outside a request_scope()"
+        # Before compose(), because compose() is what renders the component and
+        # the runtime has to be in the session by then. Only a component return
+        # can be a cold page render; every other shape is a fragment.
         if isinstance(result, BaseComponent):
-            session = current_session()
-            # Always set: to_response only runs from inside PjxScopeMiddleware's
-            # request_scope(), which is the sole entry point for a pjx endpoint.
-            assert session is not None, "component return outside a request_scope()"
             inject_runtime(session, request or getattr(session, "pjx_request", None))
-            return HTMLResponse(render(result, session=session))
-        return result
+        composed = compose(result, session=session)
+        if composed is PASSTHROUGH:
+            return result
+        assert isinstance(composed, PjxResponse)
+        return HTMLResponse(
+            composed.body, headers=composed.headers, status_code=composed.status
+        )
 
     def chain_lifespan(self, app: Starlette) -> None:
         """Run the startup/shutdown hooks around whatever lifespan app has.

@@ -571,3 +571,34 @@ def test_without_a_context_factory_the_injected_context_is_none():
 
     assert response.status_code == 200
     assert response.json() == {"loaded": "no-context"}
+
+
+def test_a_bare_component_return_still_fans_out_after_a_mutation():
+    """The #1 defect: a route returning a component with no wrapper shipped zero
+    OOB fragments, even though the mutation had already dirtied the keys."""
+    app = make_app()
+    STORE["card-1"] = 0
+
+    @app.post("/bump-bare")
+    def bump_bare():
+        # Stands in for the Load path: the region the client reports as mounted
+        # has to be resolvable before fan-out can swap it.
+        registry.register_instance(
+            CycleCard.__name__, "a", CycleCard(id="a", pjx_key="card-1")
+        )
+        Counter().bump("card-1")
+        return CycleBadge(id="primary", pjx_key="card-1")
+
+    with TestClient(app) as client:
+        response = client.post(
+            "/bump-bare",
+            headers={"X-PJX-Mounted": json.dumps([entry("a", load="card-1")])},
+        )
+
+    assert response.status_code == 200
+    # The primary is the returned component, unwrapped and un-.render()ed.
+    assert 'id="primary"' in response.text
+    # And the mounted card fanned out alongside it, with nothing asking for it.
+    assert "hx-swap-oob=\"outerHTML:[data-pjx-id='a']\"" in response.text
+    # A non-empty primary means htmx keeps its normal swap.
+    assert "HX-Reswap" not in response.headers

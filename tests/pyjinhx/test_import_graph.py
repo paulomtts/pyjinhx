@@ -401,7 +401,7 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
             "pyjinhx.reactive.response",
             "pyjinhx.reactive.root_attrs",
             "pyjinhx.registry",
-            "pyjinhx.rendering",
+            "pyjinhx.responses",
             "pyjinhx.session",
         }
     ),
