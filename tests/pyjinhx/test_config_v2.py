@@ -233,3 +233,37 @@ def test_static_root_is_stored_on_the_settings(tmp_path: Path):
     from pyjinhx.config import setup
 
     assert setup(static_root=tmp_path).static_root == tmp_path
+
+
+@pytest.fixture(autouse=True)
+def _reset_discovery_registry():
+    """Each test starts from an empty published registry and leaves one behind."""
+    from pyjinhx import discovery
+
+    discovery._registry.mapping = {}
+    discovery._registry.template_dir = None
+    yield
+    discovery._registry.mapping = {}
+    discovery._registry.template_dir = None
+
+
+def test_setup_registers_builtins_with_a_components_root(tmp_path):
+    import pyjinhx.builtins  # noqa: F401
+    from pyjinhx import discovery
+    from pyjinhx.config import setup
+
+    (tmp_path / "user_page.pjx").write_text("<div>user</div>")
+    setup(app=None, components_root=tmp_path)
+
+    assert discovery.get_class("pjx_card") is not None
+    assert discovery.get_class("pjx_card").__name__ == "PJXCard"
+
+
+def test_setup_registers_builtins_without_a_components_root():
+    import pyjinhx.builtins  # noqa: F401
+    from pyjinhx import discovery
+    from pyjinhx.config import setup
+
+    setup(app=None, components_root=None)
+
+    assert discovery.get_class("pjx_card") is not None
