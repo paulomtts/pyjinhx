@@ -54,13 +54,15 @@ def make_payload(size: int, index: int) -> str:
     return unit * max(1, size // len(unit))
 
 
-def _descriptor(cls: type[BaseComponent], template: str) -> ClassDescriptor:
+def _descriptor(
+    cls: type[BaseComponent], template: str, template_dir: Path
+) -> ClassDescriptor:
     """Minimal descriptor pointing at a temp-dir template."""
     slot_fields = frozenset(
         name for name in cls.model_fields if name in {"body", "panel"}
     )
     return ClassDescriptor(
-        template_path=Path(template),
+        template_path=template_dir / template,
         slot_fields=slot_fields,
         children_field="body" if "body" in cls.model_fields else None,
         css_paths=(),
@@ -94,7 +96,7 @@ def build_children_arm(template_dir: Path) -> type[BaseComponent]:
         (leaf, "bench_slot_payload_children_leaf.pjx"),
         (root, "bench_slot_payload_children_root.pjx"),
     ):
-        cls.__pjx_descriptor__ = _descriptor(cls, template)
+        cls.__pjx_descriptor__ = _descriptor(cls, template, template_dir)
         discovery._registry.mapping[_pascal_to_snake(cls.__name__)] = cls
     return root
 
@@ -135,9 +137,11 @@ def build_slot_arm(
     (template_dir / "bench_slot_payload_slot_root.pjx").write_text(
         '<div class="root">{% for item in items %}{{ item }}{% endfor %}</div>'
     )
-    leaf.__pjx_descriptor__ = _descriptor(leaf, "bench_slot_payload_slot_leaf.pjx")
+    leaf.__pjx_descriptor__ = _descriptor(
+        leaf, "bench_slot_payload_slot_leaf.pjx", template_dir
+    )
     root.__pjx_descriptor__ = ClassDescriptor(
-        template_path=Path("bench_slot_payload_slot_root.pjx"),
+        template_path=template_dir / "bench_slot_payload_slot_root.pjx",
         slot_fields=frozenset({"items"}),
         children_field=None,
         css_paths=(),

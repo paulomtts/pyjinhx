@@ -34,10 +34,12 @@ from pyjinhx.session import RenderSession
 DEPTHS = (10, 20, 40, 80, 160)
 
 
-def _descriptor(cls: type[BaseComponent], template: str) -> ClassDescriptor:
+def _descriptor(
+    cls: type[BaseComponent], template: str, template_dir: Path
+) -> ClassDescriptor:
     """Minimal descriptor pointing at a temp-dir template, no children field."""
     return ClassDescriptor(
-        template_path=Path(template),
+        template_path=template_dir / template,
         slot_fields=frozenset(),
         children_field=None,
         css_paths=(),
@@ -75,7 +77,7 @@ def build_chain(depth: int, template_dir: Path) -> type[BaseComponent]:
         source += "</div>"
         template_name = f"{_pascal_to_snake(class_name)}.pjx"
         (template_dir / template_name).write_text(source)
-        cls.__pjx_descriptor__ = _descriptor(cls, template_name)
+        cls.__pjx_descriptor__ = _descriptor(cls, template_name, template_dir)
         discovery._registry.mapping[_pascal_to_snake(class_name)] = cls
     return classes[0]
 

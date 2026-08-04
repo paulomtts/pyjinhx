@@ -39,9 +39,11 @@ FIELD_COUNTS = (5, 20, 50, 100)
 FIXED_CHILDREN = 200
 
 
-def _descriptor(cls: type[BaseComponent], template: str) -> ClassDescriptor:
+def _descriptor(
+    cls: type[BaseComponent], template: str, template_dir: Path
+) -> ClassDescriptor:
     return ClassDescriptor(
-        template_path=Path(template),
+        template_path=template_dir / template,
         slot_fields=frozenset(),
         children_field=None,
         css_paths=(),
@@ -83,7 +85,7 @@ def build_pair(arm: str, fields: int, template_dir: Path) -> type[BaseComponent]
     )
     for cls in (leaf, root):
         cls.__pjx_descriptor__ = _descriptor(
-            cls, f"{_pascal_to_snake(cls.__name__)}.pjx"
+            cls, f"{_pascal_to_snake(cls.__name__)}.pjx", template_dir
         )
         discovery._registry.mapping[_pascal_to_snake(cls.__name__)] = cls
     return root

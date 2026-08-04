@@ -38,9 +38,11 @@ from pyjinhx.session import RenderSession, request_scope
 SHAPES = ((5, 10), (10, 20), (20, 40), (30, 60))  # (mids, leaves per mid)
 
 
-def _descriptor(cls: type[BaseComponent], template: str) -> ClassDescriptor:
+def _descriptor(
+    cls: type[BaseComponent], template: str, template_dir: Path
+) -> ClassDescriptor:
     return ClassDescriptor(
-        template_path=Path(template),
+        template_path=template_dir / template,
         slot_fields=frozenset(),
         children_field=None,
         css_paths=(),
@@ -48,6 +50,31 @@ def _descriptor(cls: type[BaseComponent], template: str) -> ClassDescriptor:
         strict=True,
         provenance={"template": cls},
     )
+
+
+def _make_load(level: str):
+    """A classmethod `load()` for one tree level.
+
+    Since #725 `load()` is a factory keyed on the PjxKey field, and since 1.2.0
+    a reactive component returned straight from a route is auto-loaded — every
+    field except `id` is copied off the loaded instance. So a reactive **root**
+    cannot be handed its shape at construction time; it has to rebuild it, and
+    the only thing it receives is its load key. The root therefore encodes
+    `"<mids>:<leaves>"` in that key and parses it back here.
+
+    Mid and leaf need none of that: they are tag-mounted, and the tag's own
+    attrs (`leaves="{{ leaves }}"`) are re-applied after `load()` returns.
+    """
+
+    def load(cls, pjx_key: str):
+        fields: dict[str, object] = {"pjx_key": pjx_key, "label": level}
+        if level == "root":
+            mids, leaves = (int(part) for part in pjx_key.split(":"))
+            fields["mids"] = mids
+            fields["leaves"] = leaves
+        return cls(**fields)
+
+    return classmethod(load)
 
 
 def build_arm(
@@ -79,7 +106,7 @@ def build_arm(
         if level in reactive_levels:
             namespace["pjx_key"] = ""
             namespace["__annotations__"]["pjx_key"] = Annotated[str, PjxKey()]  # type: ignore[index]
-            namespace["load"] = lambda self: f"data:{self.pjx_key}"
+            namespace["load"] = _make_load(level)
             base: type[BaseComponent] = ReactiveComponent
         else:
             base = BaseComponent
@@ -108,7 +135,9 @@ def build_arm(
         source = source.replace(" pjxKeyPlaceholder", key_attr)
         template = f"{_pascal_to_snake(names[level])}.pjx"
         (template_dir / template).write_text(source)
-        classes[level].__pjx_descriptor__ = _descriptor(classes[level], template)
+        classes[level].__pjx_descriptor__ = _descriptor(
+            classes[level], template, template_dir
+        )
         discovery._registry.mapping[_pascal_to_snake(names[level])] = classes[level]
     return classes["root"]
 
@@ -127,7 +156,12 @@ def bench(
     ``session.template_dir`` does not exist and would raise AttributeError.
     """
     with request_scope():
-        root = root_cls(mids=mids, leaves=leaves)
+        shape: dict[str, object] = {"mids": mids, "leaves": leaves}
+        # Only the all-reactive arm's root has a PjxKey field, and only it needs
+        # the shape in its key — see _make_load.
+        if "pjx_key" in root_cls.model_fields:
+            shape["pjx_key"] = f"{mids}:{leaves}"
+        root = root_cls(**shape)
         t0 = time.perf_counter()
         out = render(root, session)
         dt = time.perf_counter() - t0

@@ -61,8 +61,9 @@ class BenchReactiveWidget(ReactiveComponent, react=("bench",)):
 
     pjx_key: Annotated[str, PjxKey()] = ""
 
-    def load(self) -> str:
-        return f"data:{self.pjx_key}"
+    @classmethod
+    def load(cls, pjx_key: str) -> "BenchReactiveWidget":
+        return cls(pjx_key=pjx_key)
 
 
 class BenchOobWidget(ReactiveComponent, react=("bench",)):
@@ -71,8 +72,9 @@ class BenchOobWidget(ReactiveComponent, react=("bench",)):
     pjx_key: Annotated[str, PjxKey()] = ""
     spans: int = 1
 
-    def load(self) -> str:
-        return f"data:{self.pjx_key}"
+    @classmethod
+    def load(cls, pjx_key: str) -> "BenchOobWidget":
+        return cls(pjx_key=pjx_key)
 
 
 def setup_registry() -> str:
@@ -91,11 +93,11 @@ def setup_registry() -> str:
     discovery.build_registry(template_dir, [BenchReactiveWidget, BenchOobWidget])
     BenchReactiveWidget.__pjx_descriptor__ = dataclasses.replace(
         BenchReactiveWidget.__pjx_descriptor__,
-        template_path=Path("bench_reactive_widget.pjx"),
+        template_path=template_dir / "bench_reactive_widget.pjx",
     )
     BenchOobWidget.__pjx_descriptor__ = dataclasses.replace(
         BenchOobWidget.__pjx_descriptor__,
-        template_path=Path("bench_oob_widget.pjx"),
+        template_path=template_dir / "bench_oob_widget.pjx",
     )
     return str(template_dir)
 
@@ -140,14 +142,17 @@ def bench_walk(n: int, dirty_ratio: float, template_dir: str) -> float:
 
 
 def bench_memoization(template_dir: str) -> tuple[float, float]:
-    """Cold vs. warm load() calls on the same instance, one request scope."""
+    """Cold vs. warm load() calls for the same load key, one request scope.
+
+    The memo wrap keys on (class, load key), so the second call for "1" is the
+    cache hit — there is no instance to call it on any more.
+    """
     with request_scope():
-        instance = BenchReactiveWidget(id="memo", pjx_key="1")
         t0 = time.perf_counter()
-        instance.load()
+        BenchReactiveWidget.load("1")
         cold = time.perf_counter() - t0
         t0 = time.perf_counter()
-        instance.load()
+        BenchReactiveWidget.load("1")
         warm = time.perf_counter() - t0
     return cold, warm
 
