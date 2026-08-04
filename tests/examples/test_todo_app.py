@@ -148,3 +148,10 @@ class TestSourceGuard:
         source = Path("examples/todo/app.py").read_text()
 
         assert "Request" not in source
+
+    def test_the_reactivity_doc_names_no_removed_response_api(self):
+        """docs/reactivity.md must describe compose(), not the deleted class."""
+        doc = Path("docs/reactivity.md").read_text()
+
+        assert "ReactiveResponse" not in doc
+        assert "appends OOB swaps" not in doc
