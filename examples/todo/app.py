@@ -7,7 +7,6 @@ methods read.
 """
 
 from fastapi import FastAPI, Form, HTTPException
-from starlette.requests import Request
 
 from examples.todo import store
 from examples.todo.components import App, ItemRow
@@ -35,24 +34,26 @@ def index():
 
 
 @app.post("/todos")
-def add_todo(request: Request, text: str = Form(...)):
-    """Add one todo and return its row, with the counters swapped out of band.
+def add_todo(text: str = Form(...)):
+    """Add one todo and return its row; the counters ride along out of band.
 
     The primary fragment is the row alone because the composer form targets
-    #list with hx-swap="beforeend"; the middleware adapter also refreshes the
-    mounted counters that store.add's @mutates just dirtied.
+    #list with hx-swap="beforeend". The counters refresh because store.add's
+    @mutates dirtied their keys for this request, not because this route asked
+    for them.
     """
     todo = store.add(text)
     return ItemRow(todo_id=todo.id, id=f"row-{todo.id}")
 
 
 @app.post("/rows/{todo_id}/toggle")
-def toggle_todo(request: Request, todo_id: int):
+def toggle_todo(todo_id: int):
     """Flip one todo and return its row.
 
     store.toggle raises KeyError on an id it has never seen — a stale row in a
     long-open tab is a client mistake, not a server fault, so it becomes a 404
-    rather than a 500.
+    rather than a 500. Every mounted region whose keys store.toggle's @mutates
+    dirtied is swapped out of band alongside the row.
     """
     try:
         store.toggle(todo_id)
@@ -62,11 +63,12 @@ def toggle_todo(request: Request, todo_id: int):
 
 
 @app.post("/todos/clear-completed")
-def clear_completed(request: Request):
+def clear_completed():
     """Delete every completed todo; the page updates entirely out of band.
 
-    No primary fragment: the clear button has nothing of its own to swap in, so
-    the response is the OOB fan-out that store.clear_completed's dirtied keys
-    imply, plus the HX-Reswap: none the empty primary carries.
+    Returning None means there is no primary fragment — the clear button has
+    nothing of its own to swap in. The response is the OOB fan-out implied by
+    the keys store.clear_completed's @mutates dirtied, plus the HX-Reswap: none
+    an empty primary carries.
     """
     store.clear_completed()
