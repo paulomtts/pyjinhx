@@ -137,8 +137,8 @@ class TodoList(ReactiveComponent):
     items: list = []
 
     @classmethod
-    def load(cls, ctx: MyAppContext) -> Self:
-        return cls(items=ctx.db.todos_for(ctx.user))
+    def load(cls, ctx: MyAppContext | None = None) -> Self:
+        return cls(items=ctx.db.todos_for(ctx.user) if ctx else [])
 ```
 
 The value comes from the `context_factory` given to `setup()`, called once per

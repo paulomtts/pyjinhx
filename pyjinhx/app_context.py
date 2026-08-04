@@ -26,7 +26,8 @@ class AppContext:
             def __init__(self, db, user): ...
 
         class TodoList(ReactiveComponent):
-            def load(self, ctx: MyAppContext): ...
+            @classmethod
+            def load(cls, ctx: MyAppContext | None = None) -> Self: ...
 
     ``ctx`` is whatever that request's ``context_factory`` returned. With no
     factory configured - or when ``load()`` is called outside a request scope -
