@@ -11,12 +11,12 @@
     <button class="composer__add" type="submit" aria-label="add todo">+</button>
   </form>
 
-  {{ item_list }}
+  <ItemList id="list"/>
 
   <footer class="meta">
-    {{ remaining }}
+    <Counter id="counter"/>
     <span class="meta__sep" aria-hidden="true">·</span>
-    {{ total_count }}
-    {{ clear_button }}
+    <Total id="total"/>
+    <ClearButton id="clear"/>
   </footer>
 </main>

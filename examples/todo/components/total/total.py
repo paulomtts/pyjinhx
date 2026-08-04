@@ -9,6 +9,6 @@ class Total(ReactiveComponent, react={Keys.TODOS}):
     count: int = 0
 
     @classmethod
-    def load(cls, ctx: TodoAppContext) -> "Total":
+    def load(cls, ctx: TodoAppContext | None = None) -> "Total":
         """Read the total todo count from the store."""
         return cls(count=ctx.store.total())

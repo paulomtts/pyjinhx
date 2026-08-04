@@ -1,5 +1,7 @@
 """The todo example's FastAPI wiring: what each route puts on the wire."""
 
+from pathlib import Path
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -35,6 +37,24 @@ class TestIndex:
 
         assert "3" in html
         assert 'id="list"' in html
+
+    def test_children_are_tag_nested_and_id_stamped(self, client):
+        """No route code stamps these ids — _fill_children applies the tag attrs."""
+        template_src = Path("examples/todo/components/app/app.pjx").read_text()
+        assert "<ItemList" in template_src
+        assert "<Counter" in template_src
+        assert "<Total" in template_src
+        assert "<ClearButton" in template_src
+
+        html = client.get("/").text
+
+        assert 'data-pjx-id="counter"' in html
+        assert 'data-pjx-id="total"' in html
+        assert 'data-pjx-id="clear"' in html
+        assert 'data-pjx-id="list"' in html
+        assert "3 left" in html
+        assert "3 total" in html
+        assert "Clear completed (0)" in html
 
 
 class TestAdd:

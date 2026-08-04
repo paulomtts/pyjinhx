@@ -12,23 +12,9 @@ from examples.todo.components import (
 from pyjinhx.rendering import render
 
 
-def _loaded_app(session):
-    """The whole tree, loaded, the way a route would assemble it."""
-    item_list = ItemList.load()
-    item_list.id = "list"
-    remaining = Counter.load()
-    remaining.id = "counter"
-    total_count = Total.load()
-    total_count.id = "total"
-    clear_button = ClearButton.load()
-    clear_button.id = "clear"
-    return App(
-        id="app",
-        item_list=item_list,
-        remaining=remaining,
-        total_count=total_count,
-        clear_button=clear_button,
-    )
+def _app():
+    """The whole tree, assembled the way the route does it — tags do the loading."""
+    return App(id="app")
 
 
 class TestItemRow:
@@ -114,7 +100,7 @@ class TestStatusComponents:
 
 class TestApp:
     def test_renders_the_whole_tree(self, scope):
-        html = render(_loaded_app(scope), scope)
+        html = render(_app(), scope)
 
         assert "Write the docs" in html
         assert "3 left" in html
@@ -122,21 +108,32 @@ class TestApp:
         assert "Clear completed (0)" in html
 
     def test_renders_the_composer_form(self, scope):
-        html = render(_loaded_app(scope), scope)
+        html = render(_app(), scope)
 
         assert 'hx-post="/todos"' in html
         assert 'name="text"' in html
 
+    def test_children_render_id_stamped_from_their_tags(self, scope):
+        from pyjinhx.reactive.root_attrs import stamp_reactive_root_attrs
+
+        scope.on_rendered.append(stamp_reactive_root_attrs)
+        html = render(_app(), scope)
+
+        assert 'data-pjx-id="counter"' in html
+        assert 'data-pjx-id="total"' in html
+        assert 'data-pjx-id="clear"' in html
+        assert 'data-pjx-id="list"' in html
+
 
 class TestDesignSystem:
     def test_app_output_inlines_the_stylesheet(self, scope):
-        html = render(_loaded_app(scope), scope)
+        html = render(_app(), scope)
 
         assert "<style>" in html
         assert "--accent" in html
 
     def test_the_palette_is_the_pastel_one(self, scope):
-        html = render(_loaded_app(scope), scope)
+        html = render(_app(), scope)
 
         assert "#faf9f7" in html
         assert "#b9a6f2" in html
@@ -144,7 +141,7 @@ class TestDesignSystem:
         assert "#b8ff4d" not in html
 
     def test_no_external_font_or_cdn_dependency(self, scope):
-        html = render(_loaded_app(scope), scope)
+        html = render(_app(), scope)
 
         assert "fonts.googleapis.com" not in html
         assert "fonts.gstatic.com" not in html
