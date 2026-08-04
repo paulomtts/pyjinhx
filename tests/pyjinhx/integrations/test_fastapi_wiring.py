@@ -5,7 +5,13 @@ from typing import cast
 
 from fastapi import FastAPI, Request
 from fastapi.testclient import TestClient
-from starlette.responses import HTMLResponse, PlainTextResponse
+from starlette.responses import (
+    HTMLResponse,
+    JSONResponse,
+    PlainTextResponse,
+    RedirectResponse,
+    Response,
+)
 
 from pyjinhx._component import BaseComponent
 from pyjinhx.config import PjxSettings
@@ -395,3 +401,21 @@ def test_registering_the_module_publishes_a_backend():
     from pyjinhx.integrations.base import IntegrationBackend, get_backend
 
     assert isinstance(get_backend(), IntegrationBackend)
+
+
+def test_htmx_native_redirect_becomes_hx_redirect():
+    app = FastAPI()
+    apply_setup(app, _settings())
+
+    @app.post("/go")
+    def go():
+        return RedirectResponse(url="/next", status_code=303)
+
+    with TestClient(app) as client:
+        response = client.post(
+            "/go", headers={"HX-Request": "true"}, follow_redirects=False
+        )
+
+    assert response.status_code == 204
+    assert response.headers["HX-Redirect"] == "/next"
+    assert response.text == ""
