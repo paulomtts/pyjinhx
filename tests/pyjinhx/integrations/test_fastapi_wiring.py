@@ -5,13 +5,19 @@ from typing import cast
 
 from fastapi import FastAPI, Request
 from fastapi.testclient import TestClient
-from starlette.responses import HTMLResponse, PlainTextResponse
+from starlette.responses import (
+    HTMLResponse,
+    JSONResponse,
+    PlainTextResponse,
+    RedirectResponse,
+    Response,
+)
 
 from pyjinhx._component import BaseComponent
 from pyjinhx.config import PjxSettings
 from pyjinhx.descriptor import ClassDescriptor
 from pyjinhx.integrations.fastapi import apply_setup
-from pyjinhx.reactive.response import ReactiveResponse
+from pyjinhx.session import request_scope
 
 
 class Greeting(BaseComponent):
@@ -139,16 +145,20 @@ def test_scope_exits_when_the_handler_raises():
     assert current_session() is None
 
 
-def test_manifests_are_parsed_onto_request_state():
+def test_manifests_are_parsed_onto_the_session():
     app = FastAPI()
     apply_setup(app, _settings())
     captured: dict[str, object] = {}
 
     @app.get("/state")
     def state(request: Request):
-        captured["mounted"] = request.state.pjx_mounted
-        captured["assets"] = request.state.pjx_assets
-        captured["trigger"] = request.state.pjx_trigger
+        from pyjinhx.session import current_session
+
+        session = current_session()
+        assert session is not None
+        captured["mounted"] = session.pjx_mounted
+        captured["assets"] = session.pjx_assets
+        captured["trigger"] = session.pjx_trigger
         return {"ok": True}
 
     with TestClient(app) as client:
@@ -211,29 +221,32 @@ def test_mounted_request_is_honoured_without_a_request_parameter():
         assert "htmx" not in client.get("/page", headers={"X-PJX-Mounted": "[]"}).text
 
 
-def test_reactive_response_body_and_headers_reach_the_client():
+def test_native_redirect_becomes_the_htmx_redirect_header():
     app = FastAPI()
     apply_setup(app, _settings())
 
     @app.post("/act")
     def act():
-        return ReactiveResponse(primary="", mounted=[], redirect="/next")
+        return RedirectResponse("/next", status_code=303)
 
     with TestClient(app) as client:
-        response = client.post("/act", headers={"X-PJX-Mounted": "[]"})
+        response = client.post(
+            "/act",
+            headers={"X-PJX-Mounted": "[]", "HX-Request": "true"},
+        )
 
-    assert response.headers["HX-Reswap"] == "none"
+    assert response.status_code == 204
     assert response.headers["HX-Redirect"] == "/next"
     assert "htmx" not in response.text
 
 
-def test_reactive_response_never_reinjects_the_runtime():
+def test_string_return_never_reinjects_the_runtime():
     app = FastAPI()
     apply_setup(app, _settings())
 
     @app.post("/act")
     def act():
-        return ReactiveResponse(primary="<p>ok</p>", mounted=[])
+        return "<p>ok</p>"
 
     with TestClient(app) as client:
         response = client.post("/act")
@@ -302,17 +315,21 @@ def test_backend_startup_and_shutdown_move_the_process_settings(tmp_path: Path):
     assert current_settings().static_root is None
 
 
-def test_backend_to_response_adapts_reactive_and_passes_others_through():
+def test_backend_to_response_composes_pjx_returns_and_passes_others_through():
     from pyjinhx.integrations.fastapi import FastAPIBackend
 
     backend = FastAPIBackend(_settings())
-    adapted = cast(
-        HTMLResponse,
-        backend.to_response(ReactiveResponse(primary="<div>hi</div>"), None),
-    )
-    assert adapted.status_code == 200
-    assert adapted.body == b"<div>hi</div>"
-    assert backend.to_response({"json": True}, None) == {"json": True}
+    # to_response asserts an active RenderSession (it is only ever called from
+    # inside PjxScopeMiddleware's request_scope()), so this unit test binds one
+    # by hand rather than going through a live request.
+    with request_scope():
+        adapted = cast(
+            HTMLResponse,
+            backend.to_response("<div>hi</div>", None),
+        )
+        assert adapted.status_code == 200
+        assert adapted.body == b"<div>hi</div>"
+        assert backend.to_response({"json": True}, None) == {"json": True}
 
 
 def test_scope_session_resolves_an_absolute_template_path(tmp_path: Path):
@@ -386,3 +403,113 @@ def test_registering_the_module_publishes_a_backend():
     from pyjinhx.integrations.base import IntegrationBackend, get_backend
 
     assert isinstance(get_backend(), IntegrationBackend)
+
+
+def test_htmx_native_redirect_becomes_hx_redirect():
+    app = FastAPI()
+    apply_setup(app, _settings())
+
+    @app.post("/go")
+    def go():
+        return RedirectResponse(url="/next", status_code=303)
+
+    with TestClient(app) as client:
+        response = client.post(
+            "/go", headers={"HX-Request": "true"}, follow_redirects=False
+        )
+
+    assert response.status_code == 204
+    assert response.headers["HX-Redirect"] == "/next"
+    assert response.text == ""
+
+
+def test_non_htmx_native_redirect_is_untouched():
+    app = FastAPI()
+    apply_setup(app, _settings())
+
+    @app.post("/go")
+    def go():
+        return RedirectResponse(url="/next", status_code=303)
+
+    with TestClient(app) as client:
+        response = client.post("/go", follow_redirects=False)
+
+    assert response.status_code == 303
+    assert response.headers["location"] == "/next"
+    assert "HX-Redirect" not in response.headers
+
+
+def test_hand_built_redirect_response_translates_too():
+    app = FastAPI()
+    apply_setup(app, _settings())
+
+    @app.post("/raw")
+    def raw():
+        return Response(status_code=302, headers={"location": "/x"})
+
+    with TestClient(app) as client:
+        response = client.post(
+            "/raw", headers={"HX-Request": "true"}, follow_redirects=False
+        )
+
+    assert response.status_code == 204
+    assert response.headers["HX-Redirect"] == "/x"
+
+
+def test_translate_native_redirect_handles_case_sensitive_headers():
+    from types import SimpleNamespace
+
+    from pyjinhx.integrations.fastapi import _translate_native_redirect
+
+    request = SimpleNamespace(headers={"HX-Request": "true"})
+    result = SimpleNamespace(status_code=307, headers={"Location": "/cap"})
+
+    translated = _translate_native_redirect(result, request)
+
+    assert translated.status_code == 204  # pyright: ignore[reportAttributeAccessIssue]
+    assert translated.headers["HX-Redirect"] == "/cap"  # pyright: ignore[reportAttributeAccessIssue]
+
+
+def test_translate_native_redirect_handles_lowercase_only_third_party_headers():
+    from types import SimpleNamespace
+
+    from pyjinhx.integrations.fastapi import _translate_native_redirect
+
+    request = SimpleNamespace(headers={"HX-Request": "true"})
+    result = SimpleNamespace(status_code=307, headers={"location": "/low"})
+
+    translated = _translate_native_redirect(result, request)
+
+    assert translated.headers["HX-Redirect"] == "/low"  # pyright: ignore[reportAttributeAccessIssue]
+
+
+def test_htmx_non_redirect_response_is_untouched():
+    app = FastAPI()
+    apply_setup(app, _settings())
+
+    @app.get("/data")
+    def data():
+        return JSONResponse({"ok": True})
+
+    with TestClient(app) as client:
+        response = client.get("/data", headers={"HX-Request": "true"})
+
+    assert response.status_code == 200
+    assert response.json() == {"ok": True}
+    assert "HX-Redirect" not in response.headers
+
+
+def test_hx_location_response_is_not_reinterpreted():
+    app = FastAPI()
+    apply_setup(app, _settings())
+
+    @app.post("/client-nav")
+    def client_nav():
+        return Response(status_code=204, headers={"HX-Location": "/y"})
+
+    with TestClient(app) as client:
+        response = client.post("/client-nav", headers={"HX-Request": "true"})
+
+    assert response.status_code == 204
+    assert response.headers["HX-Location"] == "/y"
+    assert "HX-Redirect" not in response.headers

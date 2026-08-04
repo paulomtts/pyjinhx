@@ -133,3 +133,32 @@ class TestClearCompleted:
         client.post("/todos/clear-completed")
 
         assert todo_store.total() == 3
+
+
+class TestSourceGuard:
+    def test_the_example_names_no_removed_response_api(self):
+        """The example is the migration reference: nothing v1-shaped may survive in it."""
+        source = Path("examples/todo/app.py").read_text()
+
+        assert "ReactiveResponse" not in source
+        assert ".render()" not in source
+
+    def test_no_route_takes_an_unused_request_argument(self):
+        """Routes return components; none of them needs the Request object."""
+        source = Path("examples/todo/app.py").read_text()
+
+        assert "Request" not in source
+
+    def test_the_reactivity_doc_names_no_removed_response_api(self):
+        """docs/reactivity.md must describe compose(), not the deleted class."""
+        doc = Path("docs/reactivity.md").read_text()
+
+        assert "ReactiveResponse" not in doc
+        assert "appends OOB swaps" not in doc
+
+    def test_the_htmx_doc_names_no_removed_response_api(self):
+        """docs/integrations/htmx.md must describe native 3xx translation."""
+        doc = Path("docs/integrations/htmx.md").read_text()
+
+        assert "ReactiveResponse" not in doc
+        assert "HX-Redirect" in doc

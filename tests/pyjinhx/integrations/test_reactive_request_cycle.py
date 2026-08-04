@@ -27,7 +27,6 @@ from pyjinhx.reactive.cache import invalidate
 from pyjinhx.reactive.component import PjxKey, ReactiveComponent
 from pyjinhx.reactive.keys import MutationKey
 from pyjinhx.reactive.mutations import dirty, mutates
-from pyjinhx.reactive.response import ReactiveResponse
 from pyjinhx.session import (
     NoActiveRequestScope,
     current_session,
@@ -153,11 +152,13 @@ def test_request_scope_contextvars_reset_after_response():
     @app.post("/dirty")
     def dirty_endpoint(request: Request):
         dirty(Keys.CYCLE)
+        session = current_session()
+        assert session is not None
         seen.append(
             {
-                "session": current_session(),
+                "session": session,
                 "dirtied": set(get_dirtied()),
-                "mounted": request.state.pjx_mounted,
+                "mounted": session.pjx_mounted,
             }
         )
         return {"ok": True}
@@ -220,7 +221,6 @@ def test_mutation_round_trip_returns_gated_oob_swap():
         )
         Counter().bump("card-1")
         invalidate(get_dirtied())
-        return ReactiveResponse(primary="", mounted=request)
 
     with TestClient(app) as client:
         response = client.post(
@@ -250,7 +250,6 @@ def test_unchanged_region_is_gated_out_of_the_oob_swap():
         )
         dirty(Keys.CYCLE)
         invalidate(get_dirtied())
-        return ReactiveResponse(primary="", mounted=request)
 
     with TestClient(app) as client:
         response = client.post(
@@ -285,7 +284,6 @@ def test_mutation_round_trip_demo_swaps_dirty_regions_and_ships_missing_assets()
                 cls.__name__, instance_id, cls(id=instance_id, pjx_key=key)
             )
         Counter().bump("card-1")
-        return ReactiveResponse(primary="", mounted=request, assets=request)
 
     with TestClient(app) as client:
         response = client.post(
@@ -334,7 +332,6 @@ def test_round_trip_does_not_resend_assets_the_client_already_reports():
             CycleBadge.__name__, "c", CycleBadge(id="c", pjx_key="card-1")
         )
         Counter().bump("card-1")
-        return ReactiveResponse(primary="", mounted=request, assets=request)
 
     with TestClient(app) as client:
         response = client.post(
@@ -359,7 +356,6 @@ def test_a_malformed_assets_header_means_the_client_has_nothing():
             CycleBadge.__name__, "c", CycleBadge(id="c", pjx_key="card-1")
         )
         Counter().bump("card-1")
-        return ReactiveResponse(primary="", mounted=request, assets=request)
 
     with TestClient(app) as client:
         response = client.post(
@@ -569,3 +565,34 @@ def test_without_a_context_factory_the_injected_context_is_none():
 
     assert response.status_code == 200
     assert response.json() == {"loaded": "no-context"}
+
+
+def test_a_bare_component_return_still_fans_out_after_a_mutation():
+    """The #1 defect: a route returning a component with no wrapper shipped zero
+    OOB fragments, even though the mutation had already dirtied the keys."""
+    app = make_app()
+    STORE["card-1"] = 0
+
+    @app.post("/bump-bare")
+    def bump_bare():
+        # Stands in for the Load path: the region the client reports as mounted
+        # has to be resolvable before fan-out can swap it.
+        registry.register_instance(
+            CycleCard.__name__, "a", CycleCard(id="a", pjx_key="card-1")
+        )
+        Counter().bump("card-1")
+        return CycleBadge(id="primary", pjx_key="card-1")
+
+    with TestClient(app) as client:
+        response = client.post(
+            "/bump-bare",
+            headers={"X-PJX-Mounted": json.dumps([entry("a", load="card-1")])},
+        )
+
+    assert response.status_code == 200
+    # The primary is the returned component, unwrapped and un-.render()ed.
+    assert 'id="primary"' in response.text
+    # And the mounted card fanned out alongside it, with nothing asking for it.
+    assert "hx-swap-oob=\"outerHTML:[data-pjx-id='a']\"" in response.text
+    # A non-empty primary means htmx keeps its normal swap.
+    assert "HX-Reswap" not in response.headers

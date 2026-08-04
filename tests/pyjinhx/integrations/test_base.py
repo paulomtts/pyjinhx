@@ -5,17 +5,18 @@ from __future__ import annotations
 import sys
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from pathlib import Path
 
 import pytest
 
 from pyjinhx._component import BaseComponent
+from pyjinhx.descriptor import ClassDescriptor
 from pyjinhx.integrations.base import (
     SETUP_FLAG,
     ContextFactory,
     IntegrationBackend,
     load_context_for,
 )
-from pyjinhx.reactive.response import ReactiveResponse
 from pyjinhx.session import current_session, get_load_context, request_scope
 
 
@@ -31,6 +32,21 @@ def test_module_has_no_web_framework_imports() -> None:
 def test_setup_flag_name_is_stable() -> None:
     assert SETUP_FLAG == "pyjinhx_setup"
     assert IntegrationBackend is not None
+
+
+class Greeting(BaseComponent):
+    """A minimal component instance for the isinstance() branch below."""
+
+
+Greeting.__pjx_descriptor__ = ClassDescriptor(
+    template_path=Path(__file__),
+    slot_fields=frozenset(),
+    children_field=None,
+    css_paths=(),
+    js_paths=(),
+    strict=True,
+    provenance={"template": Greeting},
+)
 
 
 @dataclass
@@ -77,8 +93,6 @@ class FakeBackend:
         app.events.append("shutdown")
 
     def to_response(self, result: object, request: object | None) -> object:
-        if isinstance(result, ReactiveResponse):
-            return FakeResponse(str(result.body), dict(result.headers))
         if isinstance(result, BaseComponent):
             return FakeResponse(type(result).__name__)
         return result
@@ -154,13 +168,11 @@ def test_lifecycle_hooks_fire_in_order() -> None:
     assert app.events == ["startup", "shutdown"]
 
 
-def test_to_response_adapts_reactive_and_passes_others_through() -> None:
+def test_to_response_adapts_a_component_and_passes_others_through() -> None:
     backend = FakeBackend()
-    reactive = ReactiveResponse(primary="<div>hi</div>")
-    adapted = backend.to_response(reactive, None)
+    adapted = backend.to_response(Greeting(), None)
     assert isinstance(adapted, FakeResponse)
-    assert adapted.body == "<div>hi</div>"
-    assert adapted.headers == {}
+    assert adapted.body == "Greeting"
     assert backend.to_response({"json": True}, None) == {"json": True}
 
 

@@ -10,7 +10,7 @@ from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING, Any
 
 from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.responses import HTMLResponse
+from starlette.responses import HTMLResponse, Response
 
 from pyjinhx._component import BaseComponent
 from pyjinhx.client.inject import (
@@ -25,10 +25,9 @@ from pyjinhx.integrations.base import (
     ContextFactory,
     register_backend,
 )
-from pyjinhx.reactive.response import ReactiveResponse
 from pyjinhx.reactive.root_attrs import stamp_reactive_root_attrs
 from pyjinhx.registry import register_rendered_instance
-from pyjinhx.rendering import render
+from pyjinhx.responses import PASSTHROUGH, PjxResponse, compose
 from pyjinhx.session import (
     RenderSession,
     accumulate_assets,
@@ -88,23 +87,30 @@ class FastAPIBackend:
         shutdown_pyjinhx()
 
     def to_response(self, result: object, request: object | None) -> object:
-        """Adapt a pjx handler return into an HTML response, or pass it through.
+        """Emit compose()'s answer, or hand back a result that is not pjx's.
 
-        A ReactiveResponse already carries its composed body and htmx headers
-        (T2); a bare component is this request's primary render, so the runtime
-        is offered to it and inlined only when the request is not already
-        mounted (T1).
+        Composition — including whether this request fans out — is decided by
+        `pyjinhx.responses.compose`, which no framework has to be installed for.
+        All that is left here is turning that answer into a Starlette response.
         """
-        if isinstance(result, ReactiveResponse):
-            return HTMLResponse(str(result.body), headers=result.headers)
+        session = current_session()
+        # Always set: to_response only runs from inside PjxScopeMiddleware's
+        # request_scope(), which is the sole entry point for a pjx endpoint.
+        assert session is not None, "handler return outside a request_scope()"
+        # Before compose(), because compose() is what renders the component and
+        # the runtime has to be in the session by then. Only a component return
+        # can be a cold page render; every other shape is a fragment.
         if isinstance(result, BaseComponent):
-            session = current_session()
-            # Always set: to_response only runs from inside PjxScopeMiddleware's
-            # request_scope(), which is the sole entry point for a pjx endpoint.
-            assert session is not None, "component return outside a request_scope()"
             inject_runtime(session, request or getattr(session, "pjx_request", None))
-            return HTMLResponse(render(result, session=session))
-        return result
+        composed = compose(result, session=session)
+        if composed is PASSTHROUGH:
+            return _translate_native_redirect(
+                result, request or getattr(session, "pjx_request", None)
+            )
+        assert isinstance(composed, PjxResponse)
+        return HTMLResponse(
+            composed.body, headers=composed.headers, status_code=composed.status
+        )
 
     def chain_lifespan(self, app: Starlette) -> None:
         """Run the startup/shutdown hooks around whatever lifespan app has.
@@ -173,9 +179,6 @@ class PjxScopeMiddleware(BaseHTTPMiddleware):
         self.context_factory = context_factory
 
     async def dispatch(self, request: Any, call_next: Any) -> Any:
-        request.state.pjx_mounted = MountedManifest.parse(request)
-        request.state.pjx_assets = LoadedAssets.parse(request)
-        request.state.pjx_trigger = TriggerManifest.parse(request)
         load_context = (
             self.context_factory(request) if self.context_factory is not None else None
         )
@@ -193,6 +196,9 @@ class PjxScopeMiddleware(BaseHTTPMiddleware):
         session.on_rendered.append(register_rendered_instance)
         with request_scope(session=session, load_context=load_context) as session:
             session.pjx_request = request  # pyright: ignore[reportAttributeAccessIssue]
+            session.pjx_mounted = MountedManifest.parse(request)
+            session.pjx_assets = LoadedAssets.parse(request)
+            session.pjx_trigger = TriggerManifest.parse(request)
             return await call_next(request)
 
 
@@ -204,6 +210,38 @@ def _request_from(kwargs: dict[str, Any]) -> Any:
         if isinstance(value, Request):
             return value
     return None
+
+
+def _is_htmx(request: Any) -> bool:
+    """Whether htmx, rather than the browser itself, issued this request."""
+    if request is None:
+        return False
+    headers = getattr(request, "headers", None)
+    if headers is None:
+        return False
+    return headers.get("HX-Request") == "true"
+
+
+def _translate_native_redirect(result: object, request: Any) -> object:
+    """Turn a native 3xx into the 204 + ``HX-Redirect`` htmx can actually follow.
+
+    htmx follows a 3xx transparently inside XHR and swaps the redirect target's
+    body into the triggering element, which is never what the handler meant. The
+    check is duck-typed on shape, not on ``RedirectResponse``, so hand-built and
+    third-party redirect responses translate too.
+    """
+    if not _is_htmx(request):
+        return result
+    status = getattr(result, "status_code", None)
+    if status not in range(300, 400):
+        return result
+    headers = getattr(result, "headers", None)
+    if headers is None:
+        return result
+    location = headers.get("Location") or headers.get("location")
+    if not location:
+        return result
+    return Response(status_code=204, headers={"HX-Redirect": location})
 
 
 def _adapt_endpoint(
@@ -228,15 +266,13 @@ def _returns_pjx(endpoint: Callable[..., Any]) -> bool:
     validate the component into JSON before the adapter ever sees it.
     """
     annotation = inspect.signature(endpoint).return_annotation
-    return isinstance(annotation, type) and issubclass(
-        annotation, (BaseComponent, ReactiveResponse)
-    )
+    return isinstance(annotation, type) and issubclass(annotation, BaseComponent)
 
 
 def _install_route_adaptation(backend: FastAPIBackend, app: Starlette) -> None:
     """Adapt pjx returns for routes registered before and after setup().
 
-    A handler annotated ``-> ReactiveResponse`` on a route declared before
+    A handler annotated with a component class on a route declared before
     ``apply_setup()`` cannot be patched: FastAPI resolves that annotation into
     a pydantic response_model inside ``APIRoute.__init__``, before this
     function ever runs. Omit the return annotation, or annotate with a real

@@ -1,5 +1,33 @@
 # Changelog
 
+## Unreleased
+
+### Removed
+- **Breaking:** `ReactiveResponse`. Response composition is no longer something a handler
+  constructs — return the body itself and the composer does the rest. Migrating:
+  - `return ReactiveResponse(primary=c.render(), mounted=request)` → `return c`
+  - `return ReactiveResponse(mounted=request)` → `return None`
+  - `return ReactiveResponse(redirect="/login")` → return your framework's own
+    `RedirectResponse("/login", status_code=303)`
+
+### Added
+- Native redirect support: a handler return whose `status_code` is in 300–399 and that
+  carries a `Location` header is translated to `204` + `HX-Redirect` for htmx requests, so
+  the browser really navigates. Non-htmx requests get the real `3xx` untouched. The check
+  is duck-typed on shape, so hand-built and third-party redirect responses work too.
+
+### Changed
+- Response composition moved to `pyjinhx.responses.compose()`, which every backend funnels
+  handler returns through. It recognizes a `BaseComponent` (rendered as the primary),
+  `None` (empty primary, `HX-Reswap: none`), and a `str`/`Markup`/`__html__`-bearing object
+  (used verbatim); anything else passes through untouched.
+
+### Fixed
+- Returning a bare component from a handler shipped zero OOB fragments, despite the docs
+  claiming fan-out rode along with any render. Fan-out is now attached on every
+  body-producing return, since the dirtied keys belong to the request rather than to the
+  spelling the handler chose.
+
 ## 1.0.0 — pyjinhx v2 (2026-08-03)
 
 pyjinhx 1.0 is the v2 rebuild, shipped under the `pyjinhx` import path. The 0.36.x engine has

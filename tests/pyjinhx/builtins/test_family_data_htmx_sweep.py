@@ -33,9 +33,9 @@ from pyjinhx.builtins.pjx_table_row import PJXTableRow
 from pyjinhx.reactive.cache import cache_has, invalidate
 from pyjinhx.reactive.component import PjxKey, ReactiveComponent
 from pyjinhx.reactive.fanout import walk_manifest
-from pyjinhx.reactive.response import ReactiveResponse
 from pyjinhx.reactive.root_attrs import stamp_reactive_root_attrs
 from pyjinhx.rendering import render
+from pyjinhx.responses import PjxResponse, compose
 from pyjinhx.session import (
     RenderSession,
     add_dirtied,
@@ -256,6 +256,20 @@ def _hash_of(html: str, instance_id: str) -> str:
     return match.group(1)
 
 
+def compose_body(
+    primary: str, mounted: list[dict[str, object]], session: RenderSession
+) -> str:
+    """The fan-out body compose() builds for ``primary`` against ``mounted``.
+
+    compose() reads the client's manifest off the session rather than taking it
+    as an argument, so the manifest is parked there first.
+    """
+    session.pjx_mounted = mounted
+    composed = compose(primary, session=session)
+    assert isinstance(composed, PjxResponse)
+    return composed.body
+
+
 def test_full_family_combo_renders_single_pass_no_error():
     with scope() as session:
         html = render(PageShell(id="shell"), session)
@@ -316,9 +330,9 @@ def test_identical_content_is_hash_gated_out_of_the_swap():
     with scope() as session:
         html = render(PageShell(id="shell"), session)
         current = _hash_of(html, "p-main")
-        # The real Load path (ReactiveResponse.candidates()) always calls
-        # invalidate() before walk_manifest(): otherwise the still-cached
-        # entry answers "clean" and the hash gate never runs at all.
+        # The real Load path (compose()'s fan-out) always calls invalidate()
+        # before walk_manifest(): otherwise the still-cached entry answers
+        # "clean" and the hash gate never runs at all.
         invalidate({PAGE})
         candidates = walk_manifest(
             [entry("paginator_region", "p-main", "main", hash_=current)],
@@ -366,18 +380,17 @@ def test_dropping_primary_html_makes_the_excluded_region_swap_again():
 def test_table_inside_pageloader_shell_is_not_double_swapped():
     with scope() as session:
         primary = render(PageShell(id="shell"), session)
-        # ReactiveResponse.candidates() reads this request's dirtied set off
-        # the ContextVar (get_dirtied()), not a parameter, and calls
-        # invalidate() itself — add_dirtied() is the one call this needs.
+        # compose() reads this request's dirtied set off the ContextVar
+        # (get_dirtied()), not a parameter, and calls invalidate() itself —
+        # add_dirtied() is the one call this needs.
         add_dirtied({ROWS})
-        body = str(
-            ReactiveResponse(
-                primary=primary,
-                mounted=[
-                    entry("page_shell", "shell", "shell"),
-                    entry("table_region", "t-main", "main"),
-                ],
-            ).body
+        body = compose_body(
+            primary,
+            [
+                entry("page_shell", "shell", "shell"),
+                entry("table_region", "t-main", "main"),
+            ],
+            session,
         )
 
     assert str(body).count('data-pjx-id="t-main"') == 1
@@ -388,12 +401,7 @@ def test_region_loader_overlay_rides_along_with_a_dirty_table_swap():
     with scope() as session:
         render(PageShell(id="shell"), session)
         add_dirtied({ROWS})
-        body = str(
-            ReactiveResponse(
-                primary="",
-                mounted=[entry("table_region", "t-main", "main")],
-            ).body
-        )
+        body = compose_body("", [entry("table_region", "t-main", "main")], session)
 
     assert 'class="pjx-region-loader"' in body
     assert 'role="status"' in body
@@ -405,12 +413,7 @@ def test_page_loader_overlay_survives_a_page_level_swap():
     with scope() as session:
         render(PageShell(id="shell"), session)
         add_dirtied({PAGE})
-        body = str(
-            ReactiveResponse(
-                primary="",
-                mounted=[entry("page_shell", "shell", "shell")],
-            ).body
-        )
+        body = compose_body("", [entry("page_shell", "shell", "shell")], session)
 
     assert "data-pjx-page-loader" in body
     assert 'data-nav-targets="app-content"' in body
@@ -423,14 +426,13 @@ def test_overlay_markup_is_not_duplicated_across_sibling_regions():
     with scope() as session:
         render(PageShell(id="shell"), session)
         add_dirtied({ROWS, PAGE})
-        body = str(
-            ReactiveResponse(
-                primary="",
-                mounted=[
-                    entry("table_region", "t-main", "main"),
-                    entry("paginator_region", "p-main", "main"),
-                ],
-            ).body
+        body = compose_body(
+            "",
+            [
+                entry("table_region", "t-main", "main"),
+                entry("paginator_region", "p-main", "main"),
+            ],
+            session,
         )
 
     # Only the table region carries a region-loader overlay; the paginator

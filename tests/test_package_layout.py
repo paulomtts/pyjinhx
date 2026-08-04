@@ -19,7 +19,6 @@ EXPECTED_EXPORTS = {
     "Children",
     "component",
     "ReactiveComponent",
-    "ReactiveResponse",
     "render",
     "RenderSession",
     # app wiring
@@ -178,3 +177,10 @@ def test_no_tracked_file_mentions_pyjinhx2():
         if "pyjinhx2" in text:
             offenders.append(rel)
     assert offenders == [], offenders
+
+
+def test_reactive_response_is_gone():
+    """#752 deleted ReactiveResponse outright — no export, no module, no shim."""
+    assert not hasattr(pyjinhx, "ReactiveResponse")
+    with pytest.raises(ModuleNotFoundError):
+        importlib.import_module("pyjinhx.reactive.response")

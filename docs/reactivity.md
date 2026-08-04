@@ -148,83 +148,96 @@ The runtime attaches these headers to htmx requests:
 
 Wire `FastAPIBackend` via `setup(app, ...)` — see the
 [canonical snippet](integrations/fastapi.md#middleware-recommended) and
-[Integration Backend](api/client-backend.md). Mutation routes then construct the primary
-and call `.render()` with no extra kwargs — headers are read from the backend after
-`@mutates`. Full-page routes call `.render()` plainly; boosted navigations skip
-re-injecting `pjx.js` when `X-PJX-Mounted` is present.
+[Integration Backend](api/client-backend.md). Mutation routes then **return** the primary
+component and the adapter composes the response — headers are read from the request scope
+after `@mutates`. Full-page routes return their component the same way; boosted navigations
+skip re-injecting `pjx.js` when `X-PJX-Mounted` is present.
 
 ## Emit OOB swaps from your route
 
-A mutation route does exactly one thing: **`return <component>.render()`**. You
-never call `load()` yourself and never assemble swaps by hand. For a **reactive**
-primary, construct the instance (its `PjxKey` field set, if it has one) and call
-`.render()` — it auto-`load()`s the instance for you before the render. The
-dependent regions ride along as out-of-band swaps:
+A mutation route does exactly one thing: **`return <component>`**. You never call
+`load()` yourself, never call `.render()`, and never assemble swaps by hand. For a
+**reactive** primary, construct the instance (its `PjxKey` field set, if it has one) and
+return it — the composer auto-`load()`s it before rendering. The dependent regions ride
+along as out-of-band swaps:
 
 ```python
 @app.post("/todos/toggle")
 def toggle():
     db.toggle_all()
-    return Counter().render()
+    return Counter()
 ```
 
 With `@mutates` on the store method, pending dirtied keys drive OOB swaps automatically.
 
-The primary's `.render()` runs its `load()` (populating `self` from the current
-world), renders it as the main-target response, then appends OOB swaps for every
-*other* mounted reactive region whose `react` keys intersect pending mutations from
-`@mutates`. Only the primary id is excluded (htmx swaps it as the main-target response);
-the region that *initiated* the request still updates out-of-band if it depends on the
-dirtied keys — e.g. a "Clear completed (N)" button updates its own count.
+The composer runs the primary's `load()` (populating it from the current world), renders
+it as the main-target response, then attaches an OOB swap for every *other* mounted
+reactive region whose `react` keys intersect pending mutations from `@mutates`. Only the primary id
+is excluded (htmx swaps it as the main-target response); the region that *initiated* the
+request still updates out-of-band if it depends on the dirtied keys — e.g. a "Clear
+completed (N)" button updates its own count.
 
 `X-PJX-Trigger` is **client-only**: `pjx.js` reads it to drive loading indicators (which
-region the user clicked). The server reactive walk (`render` / `oob_swaps`) never reads it —
-it excludes only the primary id and gates everything else on `react` keys and hashes.
+region the user clicked). The server reactive walk (`walk_manifest` / `oob_swaps`) never
+reads it — it excludes only the primary id and gates everything else on `react` keys and
+hashes.
 
-A **plain, non-reactive** primary has no `load()` to call, so you build it and render
-the instance: `MyFragment(id=..., ...).render()`.
+A **plain, non-reactive** primary has no `load()` to call, so you build it and return it:
+`return MyFragment(id=..., ...)`.
 
-### OOB swaps ride along any render
+### What the composer accepts, and where fan-out comes from
 
-The fan-out is not exclusive to `ReactiveComponent.render()`. **Any** component's
-`.render()` appends OOB swaps for dirtied mounted reactive regions when a client
-backend is active and mutations occurred in the request — including a non-reactive
-command-result view. Fan-out happens once per request scope and never double-swaps a
-region already present in the response body.
+Fan-out is **not** a property of `.render()`. `.render()` returns one component's markup
+and nothing else; it always has. Fan-out belongs to `pyjinhx.responses.compose()`, which
+every backend funnels handler returns through, and it is attached on **every** return that
+produces a body — because the dirtied keys belong to the request, not to whichever
+spelling the handler reached for.
+
+`compose()` recognizes exactly three shapes:
+
+| Handler returns | Primary body |
+|-----------------|--------------|
+| a `BaseComponent` | that component, rendered |
+| `None` | empty (OOB-only response, carries `HX-Reswap: none`) |
+| a `str`, a `Markup`, or any object with `__html__` | that markup verbatim |
+
+Anything else — a framework `Response`, a `RedirectResponse`, a dict destined for JSON —
+is `PASSTHROUGH`: pyjinhx does not touch it and the backend keeps its own value.
+
+So a non-reactive command-result view fans out just by being returned:
 
 ```python
 @app.post("/generate")
 def generate():
     report = controller.generate()  # @mutates dirties "reports", "quota"
-    return ReportSummary(report=report).render()  # non-reactive; counters fan out OOB
+    return ReportSummary(report=report)  # non-reactive; counters fan out OOB
 ```
 
-For a response that renders no component at all (a raw string, a `204`), use `from pyjinhx import ReactiveResponse` to attach the same fan-out:
+And a route with no component to show returns `None`:
 
 ```python
-from pyjinhx import ReactiveResponse
-
-
 @app.post("/dismiss")
 def dismiss():
     controller.dismiss()  # @mutates dirties mounted regions
-    return ReactiveResponse()  # no primary; dependents still fan out OOB
+    return None  # no primary; dependents still fan out OOB
 ```
 
-`ReactiveResponse` never dirties anything itself. Its full signature is `ReactiveResponse(primary=None, mounted=None, redirect=None, redirect_mode="redirect", assets=None)` — all keyword arguments, all about *what to send*. Dirty the keys first with `dirty(...)` (or `@mutates` on the store method), then build the response:
+Composing never dirties anything itself. Dirty the keys first — with `@mutates` on the
+store method, or `dirty(...)` inline — then return the body:
 
 ```python
-from pyjinhx import ReactiveResponse, dirty
+from pyjinhx import dirty
 
 
 @app.post("/dismiss")
 def dismiss():
     controller.dismiss()  # plain mutation, no @mutates
-    dirty(Keys.TODOS)  # dirty TODOS
-    return ReactiveResponse(primary="")  # fan out dependents OOB
+    dirty(Keys.TODOS)
+    return "<p>dismissed</p>"  # str primary; dependents fan out OOB
 ```
 
-Pass a primary body through `primary=`, e.g. `ReactiveResponse(primary="<p>dismissed</p>")`.
+Fan-out happens once per request scope and never double-swaps a region the primary body
+already carries.
 
 !!! note "Without an integration backend"
     Wire `IntegrationBackend` in middleware (via `setup()`) so `render()` reads manifest and asset headers automatically. Without a backend, reactive OOB is skipped when mutations are pending.
@@ -282,7 +295,7 @@ def toggle(todo_id: int) -> Todo: ...
 @app.post("/rows/{todo_id}/toggle")
 def toggle_row(todo_id: int):
     store.toggle(todo_id)
-    return TodoItemRow.load(todo_id).render()
+    return TodoItemRow(todo_id=todo_id, id=f"row-{todo_id}")
 ```
 
 When a keyed entity is removed but still listed in the client's mounted manifest (e.g.
@@ -333,7 +346,7 @@ whose `message_id` is `"42"`.
 
 `@mutates` takes the same idea as a `key=` keyword instead of calling `reactive_key()` yourself:
 
-- `dirty(reactive_key(ChatKeys.MESSAGE, message_id))` dirties exactly one bubble; the caller already has the id, so no `key=` helper is needed. `ReactiveResponse` takes no keys at all — dirty first, then build the response.
+- `dirty(reactive_key(ChatKeys.MESSAGE, message_id))` dirties exactly one bubble; the caller already has the id, so no `key=` helper is needed. Composition takes no keys at all — dirty first, then return the body.
 - `@mutates(ChatKeys.MESSAGE, key=lambda message_id: message_id)` is `key=` as a
   *callable* instead, since `@mutates` runs at decoration time, before any call
   arguments exist — see [Mutation tracking](#mutation-tracking-mutates) below.
@@ -381,7 +394,7 @@ def toggle(todo_id: int) -> Todo: ...
 @app.post("/rows/{todo_id}/toggle")
 def toggle_row(todo_id):
     store.toggle(todo_id)
-    return TodoItemRow.load(todo_id).render()
+    return TodoItemRow(todo_id=todo_id, id=f"row-{todo_id}")
 ```
 
 This dirties `Keys.TODOS` on every call, so it reloads every mounted `TodoItemRow`
@@ -592,7 +605,7 @@ are stamped with `data-pjx-*` at render time, and `pjx.js` reads the already-sta
 on `htmx:configRequest` (it never watches for changes; a DOM mutation is the *effect* of
 a swap, not its cause).
 
-A mutation route returns `Cls.render()`. That invalidates the `load()` cache for the
+A mutation route returns `Cls(...)`. The composer invalidates the `load()` cache for the
 dirtied keys, renders the primary as the main response, then runs the `oob_swaps` walk
 (with `exclude_ids = {primary.id}`) over the mounted manifest — sending the primary plus
 every dependent swap back in one response:
@@ -607,7 +620,7 @@ sequenceDiagram
     Note over S: open request scope, @mutates recorded the dirtied keys
     S->>C: invalidate dirtied keys
 
-    Note over S: render the primary via Cls.render
+    Note over S: render the primary via compose
     S->>C: load primary
     C-->>S: state, a cache miss hits the DB then caches
     S->>S: render primary HTML
