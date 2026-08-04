@@ -5,7 +5,7 @@ import logging
 import pytest
 
 from pyjinhx import dev
-from pyjinhx.component import BaseComponent
+from pyjinhx._component import BaseComponent
 from pyjinhx.reactive.cache import cache_put
 from pyjinhx.reactive.component import ReactiveComponent
 from pyjinhx.session import add_dirtied, request_scope

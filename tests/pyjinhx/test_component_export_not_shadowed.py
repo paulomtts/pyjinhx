@@ -21,8 +21,8 @@ def _run(code: str) -> subprocess.CompletedProcess[str]:
 def test_from_pyjinhx_import_component_is_callable():
     result = _run(
         "from pyjinhx import component\n"
-        "c = component('Index')\n"
-        "assert not isinstance(c, type(__import__('sys'))), 'component resolved to a module'\n"
+        "assert callable(component), f'component is not callable: {type(component)!r}'\n"
+        "assert not isinstance(component, type(__import__('sys'))), 'component resolved to a module'\n"
     )
     assert result.returncode == 0, result.stderr
 
@@ -30,8 +30,8 @@ def test_from_pyjinhx_import_component_is_callable():
 def test_pyjinhx_dot_component_is_callable():
     result = _run(
         "import pyjinhx\n"
-        "c = pyjinhx.component('Index')\n"
-        "assert not isinstance(c, type(__import__('sys'))), 'component resolved to a module'\n"
+        "assert callable(pyjinhx.component), f'component is not callable: {type(pyjinhx.component)!r}'\n"
+        "assert not isinstance(pyjinhx.component, type(__import__('sys'))), 'component resolved to a module'\n"
     )
     assert result.returncode == 0, result.stderr
 

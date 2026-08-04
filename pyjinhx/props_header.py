@@ -19,7 +19,7 @@ from typing import TYPE_CHECKING, Any
 from pydantic import create_model
 
 if TYPE_CHECKING:
-    from pyjinhx.component import OpenComponent
+    from pyjinhx._component import OpenComponent
 
 _HEADER_RE = re.compile(r"\A\s*\{#\s*def\s+(?P<sig>.*?)\s*#\}", re.DOTALL)
 
@@ -130,7 +130,7 @@ def build_component_class(
     may pass through, so undeclared keys must land in ``model_extra`` instead of
     raising.
     """
-    from pyjinhx.component import OpenComponent
+    from pyjinhx._component import OpenComponent
 
     definitions: dict[str, Any] = {
         name: (annotation, default) for name, annotation, default in fields

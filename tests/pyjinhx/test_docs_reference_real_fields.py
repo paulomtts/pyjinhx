@@ -21,7 +21,7 @@ import re
 from pathlib import Path
 
 import pyjinhx.builtins as b
-from pyjinhx.component import BaseComponent
+from pyjinhx._component import BaseComponent
 
 _ROOT = Path(__file__).resolve().parents[2]
 _DOCS = _ROOT / "docs"

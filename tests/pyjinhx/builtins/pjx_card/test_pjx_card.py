@@ -7,7 +7,7 @@ from pyjinhx.builtins.ui.pjx_card import PJXCard
 from pyjinhx.builtins.ui.pjx_card_body import PJXCardBody
 from pyjinhx.builtins.ui.pjx_card_footer import PJXCardFooter
 from pyjinhx.builtins.ui.pjx_card_header import PJXCardHeader
-from pyjinhx.component import BaseComponent, Slot
+from pyjinhx._component import BaseComponent, Slot
 from pyjinhx.rendering import render
 from pyjinhx.session import RenderSession
 

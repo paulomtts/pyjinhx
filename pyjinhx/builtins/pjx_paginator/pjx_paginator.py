@@ -2,7 +2,7 @@ from typing import Any
 
 from pydantic import Field, computed_field, field_validator
 
-from pyjinhx.component import AttrValue, BaseComponent, ExtraAttrs
+from pyjinhx._component import AttrValue, BaseComponent, ExtraAttrs
 
 
 class PJXPaginator(BaseComponent):

@@ -1,6 +1,6 @@
 from typing import Literal
 
-from pyjinhx.component import AttrValue, BaseComponent
+from pyjinhx._component import AttrValue, BaseComponent
 
 
 class PJXDivider(BaseComponent):

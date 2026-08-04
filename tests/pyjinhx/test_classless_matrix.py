@@ -16,7 +16,7 @@ import pytest
 
 from pyjinhx import discovery
 from pyjinhx.classless import component
-from pyjinhx.component import BaseComponent, OpenComponent
+from pyjinhx._component import BaseComponent, OpenComponent
 from pyjinhx.props_header import parse_props_header
 from pyjinhx.rendering import render_level
 from pyjinhx.segments import serialize

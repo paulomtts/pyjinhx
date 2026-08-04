@@ -2,7 +2,7 @@ from typing import Annotated, Any
 
 from pydantic import Field
 
-from pyjinhx.component import AttrValue, BaseComponent, PjxSlot
+from pyjinhx._component import AttrValue, BaseComponent, PjxSlot
 
 
 class PJXAvatarStack(BaseComponent):

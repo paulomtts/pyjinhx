@@ -10,7 +10,7 @@ from typing import get_args
 import pytest
 from pydantic import ValidationError
 
-from pyjinhx.component import BaseComponent, Children, Slot
+from pyjinhx._component import BaseComponent, Children, Slot
 from pyjinhx.descriptor import ClassDescriptor
 from pyjinhx.markers import ComponentNode
 from pyjinhx.render_context import build_context

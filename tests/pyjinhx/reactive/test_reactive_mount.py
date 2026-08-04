@@ -14,7 +14,7 @@ import pytest
 from pydantic import Field
 
 from pyjinhx import discovery
-from pyjinhx.component import BaseComponent, _pascal_to_snake
+from pyjinhx._component import BaseComponent, _pascal_to_snake
 from pyjinhx.descriptor import ClassDescriptor
 from pyjinhx.reactive.component import PjxKey, ReactiveComponent
 from pyjinhx.rendering import render, render_level

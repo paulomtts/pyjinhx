@@ -7,7 +7,7 @@ import pytest
 from pyjinhx import discovery
 from pyjinhx.builtins.ui.pjx_accordion_trigger import PJXAccordionTrigger
 from pyjinhx.builtins.ui.pjx_icon import PJXIcon
-from pyjinhx.component import BaseComponent, Slot
+from pyjinhx._component import BaseComponent, Slot
 from pyjinhx.rendering import render
 from pyjinhx.session import RenderSession
 

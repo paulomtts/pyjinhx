@@ -15,7 +15,7 @@ from typing import Any, cast
 import pytest
 
 from pyjinhx import session as session_module
-from pyjinhx.component import BaseComponent
+from pyjinhx._component import BaseComponent
 from pyjinhx.descriptor import ClassDescriptor
 from pyjinhx.rendering import render
 

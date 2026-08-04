@@ -5,7 +5,7 @@ import pytest
 from markupsafe import Markup
 from pydantic import BaseModel, ValidationError
 
-from pyjinhx.component import (
+from pyjinhx._component import (
     BaseComponent,
     Children,
     PjxSlot,
@@ -35,7 +35,7 @@ class TestSlotAliases:
     def test_slot_alias_carries_an_unflagged_marker(self):
         from typing import get_args
 
-        from pyjinhx.component import Slot
+        from pyjinhx._component import Slot
 
         markers = [m for m in get_args(Slot) if isinstance(m, PjxSlot)]
         assert len(markers) == 1
@@ -44,7 +44,7 @@ class TestSlotAliases:
     def test_children_alias_carries_a_flagged_marker(self):
         from typing import get_args
 
-        from pyjinhx.component import Children
+        from pyjinhx._component import Children
 
         markers = [m for m in get_args(Children) if isinstance(m, PjxSlot)]
         assert len(markers) == 1
@@ -53,7 +53,7 @@ class TestSlotAliases:
     def test_slot_alias_underlying_type_is_the_slot_value_union(self):
         from typing import get_args
 
-        from pyjinhx.component import BaseComponent, Slot
+        from pyjinhx._component import BaseComponent, Slot
 
         underlying = get_args(Slot)[0]
         assert set(get_args(underlying)) == {

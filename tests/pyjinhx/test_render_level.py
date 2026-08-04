@@ -3,7 +3,7 @@ from pathlib import Path
 import pytest
 
 from pyjinhx import discovery
-from pyjinhx.component import BaseComponent, Children, _pascal_to_snake
+from pyjinhx._component import BaseComponent, Children, _pascal_to_snake
 from pyjinhx.descriptor import ClassDescriptor
 from pyjinhx.rendering import render_level
 from pyjinhx.segments import ChildRef, RenderedLevel
@@ -412,7 +412,7 @@ def test_mixedcase_passes_through():
 # Test 13: Slot fields wrapped as opaque nodes (not passed as raw strings to template)
 def test_slot_fields_wrapped():
     """Slot fields wrapped as opaque nodes (not passed as raw strings to template)."""
-    from pyjinhx.component import Slot
+    from pyjinhx._component import Slot
 
     class ContainerComp(BaseComponent):
         content: Slot = ""
@@ -746,7 +746,7 @@ def test_template_assertion_error_not_wrapped():
 # Test: `{{ content }}` holding a component becomes a nested RenderedLevel segment
 def test_interpolated_component_slot_becomes_a_nested_level():
     """A component-valued slot enters segments as a RenderedLevel, not as text."""
-    from pyjinhx.component import Slot
+    from pyjinhx._component import Slot
     from pyjinhx.rendering import render_level
     from pyjinhx.segments import serialize
 

@@ -2,7 +2,7 @@ from typing import Literal
 
 from pydantic import Field
 
-from pyjinhx.component import AttrValue, BaseComponent, ExtraAttrs
+from pyjinhx._component import AttrValue, BaseComponent, ExtraAttrs
 
 
 class PJXToastHost(BaseComponent):

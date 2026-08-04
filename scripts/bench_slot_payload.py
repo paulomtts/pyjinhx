@@ -34,7 +34,7 @@ import time
 from pathlib import Path
 
 from pyjinhx import discovery
-from pyjinhx.component import BaseComponent, Children, Slot, _pascal_to_snake
+from pyjinhx._component import BaseComponent, Children, Slot, _pascal_to_snake
 from pyjinhx.descriptor import ClassDescriptor
 from pyjinhx.rendering import render
 from pyjinhx.session import RenderSession

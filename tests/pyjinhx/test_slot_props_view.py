@@ -10,7 +10,7 @@ from pathlib import Path
 import pytest
 from pydantic import BaseModel
 
-from pyjinhx.component import BaseComponent, Children, Slot
+from pyjinhx._component import BaseComponent, Children, Slot
 from pyjinhx.descriptor import ClassDescriptor
 
 _TEMPLATE_DIR = Path(__file__).parent.parent / "templates"

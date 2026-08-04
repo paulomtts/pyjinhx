@@ -23,7 +23,7 @@ from pathlib import Path
 import pytest
 
 from pyjinhx import discovery
-from pyjinhx.component import BaseComponent
+from pyjinhx._component import BaseComponent
 from pyjinhx.descriptor import ClassDescriptor
 from pyjinhx.registry import register_rendered_instance
 from pyjinhx.rendering import render

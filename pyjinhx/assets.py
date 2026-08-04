@@ -256,7 +256,7 @@ def all_assets() -> tuple[tuple[Path, ...], tuple[Path, ...]]:
     """
     # Imported here rather than at module scope: session imports this module
     # and component imports session, so a top-level import would cycle.
-    from pyjinhx.component import BaseComponent
+    from pyjinhx._component import BaseComponent
 
     css: set[Path] = set()
     js: set[Path] = set()

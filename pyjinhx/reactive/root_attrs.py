@@ -7,7 +7,7 @@ subscriber is exported, not auto-registered: callers append it to
 ``register_rendered_instance``.
 """
 
-from pyjinhx.component import BaseComponent
+from pyjinhx._component import BaseComponent
 from pyjinhx.reactive.component import ReactiveComponent
 from pyjinhx.root_attrs import stamp_root_attrs
 from pyjinhx.segments import RenderedLevel

@@ -17,7 +17,7 @@ import types
 from pathlib import Path
 
 from pyjinhx import discovery
-from pyjinhx.component import (
+from pyjinhx._component import (
     OpenComponent,
     _pascal_to_snake,
     rebuild_class_descriptor,

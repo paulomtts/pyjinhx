@@ -15,7 +15,7 @@ from collections.abc import Iterable, Iterator, Mapping
 from pathlib import Path
 from typing import NamedTuple
 
-from pyjinhx.component import _pascal_to_snake
+from pyjinhx._component import _pascal_to_snake
 
 logger = logging.getLogger("pyjinhx")
 

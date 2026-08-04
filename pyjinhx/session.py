@@ -14,7 +14,7 @@ from pyjinhx.markers import finalize_slot_node
 if TYPE_CHECKING:
     # Type-only: the hook's signature names the spine's own types, but importing
     # them at runtime would point session at its own consumers.
-    from pyjinhx.component import BaseComponent
+    from pyjinhx._component import BaseComponent
     from pyjinhx.segments import RenderedLevel
 
 # The seven pieces of per-request mutable state. They live here rather than

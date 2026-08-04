@@ -6,8 +6,8 @@ import pytest
 from pydantic import BaseModel, Field, ValidationError
 from pydantic.errors import PydanticUserError
 
-import pyjinhx.component
-from pyjinhx.component import (
+import pyjinhx._component
+from pyjinhx._component import (
     AttrValue,
     BaseComponent,
     Children,
@@ -439,7 +439,7 @@ def test_component_module_does_not_import_above_itself():
     BaseComponent at module scope and a module-level edge back would be a real
     cycle. tests/pyjinhx/test_import_graph.py is the whole-package view that
     enforces component.py is the *only* module allowed those edges."""
-    tree = ast.parse(inspect.getsource(pyjinhx.component))
+    tree = ast.parse(inspect.getsource(pyjinhx._component))
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
             names = [alias.name for alias in node.names]

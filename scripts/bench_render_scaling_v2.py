@@ -24,7 +24,7 @@ import time
 from pathlib import Path
 
 from pyjinhx import discovery
-from pyjinhx.component import BaseComponent
+from pyjinhx._component import BaseComponent
 from pyjinhx.descriptor import ClassDescriptor
 from pyjinhx.rendering import render
 from pyjinhx.session import RenderSession

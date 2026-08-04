@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from pyjinhx.component import BaseComponent
+from pyjinhx._component import BaseComponent
 from pyjinhx.markers import ComponentNode
 
 

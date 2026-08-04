@@ -5,7 +5,7 @@ from dataclasses import replace
 from pathlib import Path
 
 from pyjinhx.assets import AssetMode, all_assets
-from pyjinhx.component import BaseComponent
+from pyjinhx._component import BaseComponent
 from pyjinhx.descriptor import ClassDescriptor
 from pyjinhx.rendering import render
 from pyjinhx.session import (

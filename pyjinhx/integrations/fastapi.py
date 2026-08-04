@@ -18,7 +18,7 @@ from pyjinhx.client.inject import (
     TriggerManifest,
     inject_runtime,
 )
-from pyjinhx.component import BaseComponent
+from pyjinhx._component import BaseComponent
 from pyjinhx.config import PjxSettings, configure_pyjinhx, shutdown_pyjinhx
 from pyjinhx.integrations.base import (
     SETUP_FLAG,

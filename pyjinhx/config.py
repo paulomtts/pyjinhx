@@ -15,7 +15,7 @@ from importlib.util import find_spec as _find_spec
 from pathlib import Path
 from typing import Any
 
-from pyjinhx.component import BaseComponent
+from pyjinhx._component import BaseComponent
 from pyjinhx.discovery import build_registry
 from pyjinhx.integrations.base import IntegrationBackend, get_backend
 

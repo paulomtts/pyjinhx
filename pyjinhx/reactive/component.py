@@ -14,7 +14,7 @@ from typing import Annotated, Any, ClassVar, get_args, get_origin, get_type_hint
 from pydantic.fields import FieldInfo
 
 from pyjinhx.app_context import resolve_load_context_param
-from pyjinhx.component import BaseComponent
+from pyjinhx._component import BaseComponent
 from pyjinhx.reactive.cache import cache_get, cache_has, cache_put
 from pyjinhx.reactive.keys import coerce_load_key_str, coerce_reactive_key
 from pyjinhx.session import get_load_context

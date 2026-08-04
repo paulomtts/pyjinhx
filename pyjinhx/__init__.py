@@ -36,9 +36,9 @@ __all__ = [  # noqa: RUF022
 ]
 
 _lazy_imports = {
-    "BaseComponent": ("pyjinhx.component", "BaseComponent"),
-    "Children": ("pyjinhx.component", "Children"),
-    "Slot": ("pyjinhx.component", "Slot"),
+    "BaseComponent": ("pyjinhx._component", "BaseComponent"),
+    "Children": ("pyjinhx._component", "Children"),
+    "Slot": ("pyjinhx._component", "Slot"),
     "component": ("pyjinhx.classless", "component"),
     "ReactiveComponent": ("pyjinhx.reactive.component", "ReactiveComponent"),
     "render": ("pyjinhx.rendering", "render"),

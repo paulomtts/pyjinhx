@@ -7,7 +7,7 @@ import pytest
 from jinja2 import Environment
 from pydantic import BaseModel, ValidationError
 
-from pyjinhx.component import BaseComponent, Slot, _resolve_slot_fields
+from pyjinhx._component import BaseComponent, Slot, _resolve_slot_fields
 from pyjinhx.descriptor import ClassDescriptor
 from pyjinhx.markers import ComponentNode, collect_slot_tokens, finalize_slot_node
 from pyjinhx.render_context import build_context

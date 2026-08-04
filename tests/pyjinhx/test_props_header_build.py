@@ -8,7 +8,7 @@ from typing import Any
 
 import pytest
 
-from pyjinhx.component import BaseComponent, OpenComponent
+from pyjinhx._component import BaseComponent, OpenComponent
 from pyjinhx.descriptor import ClassDescriptor
 from pyjinhx.props_header import build_component_class, parse_props_header
 
@@ -126,7 +126,7 @@ def test_descriptor_template_path_is_provisional_until_relocated(tmp_path, monke
     from pathlib import Path
 
     import pyjinhx.props_header as props_header_module
-    from pyjinhx.component import rebuild_class_descriptor
+    from pyjinhx._component import rebuild_class_descriptor
 
     cls = build_component_class([("title", str, ...)], "Card")
     assert cls.__module__ == props_header_module.__name__

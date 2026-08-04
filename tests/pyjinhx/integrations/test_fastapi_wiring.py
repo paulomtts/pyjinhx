@@ -7,7 +7,7 @@ from fastapi import FastAPI, Request
 from fastapi.testclient import TestClient
 from starlette.responses import HTMLResponse, PlainTextResponse
 
-from pyjinhx.component import BaseComponent
+from pyjinhx._component import BaseComponent
 from pyjinhx.config import PjxSettings
 from pyjinhx.descriptor import ClassDescriptor
 from pyjinhx.integrations.fastapi import apply_setup

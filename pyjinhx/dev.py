@@ -14,7 +14,7 @@ the default and a plain no-op.
 import logging
 from dataclasses import dataclass
 
-from pyjinhx.component import BaseComponent
+from pyjinhx._component import BaseComponent
 from pyjinhx.session import get_cache_reverse, get_dirtied
 
 logger = logging.getLogger("pyjinhx")

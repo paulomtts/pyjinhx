@@ -5,7 +5,7 @@ import dataclasses
 import pytest
 
 from pyjinhx.builtins.ui.pjx_accordion import PJXAccordion
-from pyjinhx.component import BaseComponent, Slot
+from pyjinhx._component import BaseComponent, Slot
 from pyjinhx.rendering import render
 from pyjinhx.session import RenderSession
 

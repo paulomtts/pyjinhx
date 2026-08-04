@@ -29,7 +29,7 @@ from pyjinhx.builtins.pjx_table_cell import PJXTableCell
 from pyjinhx.builtins.pjx_table_head import PJXTableHead
 from pyjinhx.builtins.pjx_table_header_cell import PJXTableHeaderCell
 from pyjinhx.builtins.pjx_table_row import PJXTableRow
-from pyjinhx.component import Slot, _pascal_to_snake
+from pyjinhx._component import Slot, _pascal_to_snake
 from pyjinhx.reactive.cache import cache_has, invalidate
 from pyjinhx.reactive.component import PjxKey, ReactiveComponent
 from pyjinhx.reactive.fanout import walk_manifest

@@ -17,7 +17,7 @@ import logging
 from pathlib import Path
 
 from pyjinhx import props_header
-from pyjinhx.component import BaseComponent
+from pyjinhx._component import BaseComponent
 from pyjinhx.descriptor import ClassDescriptor
 from pyjinhx.props_header import build_component_class, parse_props_header
 from pyjinhx.rendering import render_level

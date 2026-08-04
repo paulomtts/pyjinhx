@@ -7,7 +7,7 @@ from typing import Annotated
 import pytest
 
 from pyjinhx import discovery, registry
-from pyjinhx.component import BaseComponent
+from pyjinhx._component import BaseComponent
 from pyjinhx.reactive import fanout
 from pyjinhx.reactive.cache import cache_has, cache_put
 from pyjinhx.reactive.component import PjxKey, ReactiveComponent

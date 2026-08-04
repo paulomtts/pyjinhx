@@ -7,7 +7,7 @@ from typing import Annotated, ClassVar
 
 import pytest
 
-from pyjinhx.component import (
+from pyjinhx._component import (
     BaseComponent,
     Children,
     PjxSlot,

@@ -1,7 +1,7 @@
 from pydantic import Field
 
 from pyjinhx.builtins.ui.pjx_icon import PJXIcon
-from pyjinhx.component import AttrValue, BaseComponent, Slot
+from pyjinhx._component import AttrValue, BaseComponent, Slot
 
 
 def _default_chevron() -> PJXIcon:

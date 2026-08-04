@@ -105,7 +105,7 @@ from pyjinhx.builtins.ui.pjx_toggle_switch import PJXToggleSwitch
 from pyjinhx.builtins.ui.pjx_tooltip import PJXTooltip
 from pyjinhx.builtins.ui.pjx_tooltip_content import PJXTooltipContent
 from pyjinhx.builtins.ui.pjx_tooltip_trigger import PJXTooltipTrigger
-from pyjinhx.component import BaseComponent, Slot
+from pyjinhx._component import BaseComponent, Slot
 
 EXCLUDED_FROM_BOTH = (
     "PJXConfirmDialog",
