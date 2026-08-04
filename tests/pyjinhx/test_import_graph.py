@@ -1,6 +1,6 @@
 """The declared import direction for pyjinhx, enforced statically.
 
-component.py sits below descriptor.py and must never reach up into it for
+_component.py sits below descriptor.py and must never reach up into it for
 anything but the one sanctioned edge: the ClassDescriptor it builds and attaches
 in __pydantic_init_subclass__ (#271). It also reaches up into rendering.py and
 session.py, but only from inside BaseComponent.render()'s method body — never at
@@ -36,7 +36,7 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
     "app_context": frozenset(),
     # builtins/ ports v0.x's component library onto the v2 stack, one leaf
     # package per component (#500). Each leaf only reaches down into
-    # component.py for BaseComponent/Slot/AttrValue and its own vendored
+    # _component.py for BaseComponent/Slot/AttrValue and its own vendored
     # data module; nothing above the leaf imports back.
     "builtins.__init__": frozenset(),
     "builtins.ui.__init__": frozenset(),
@@ -122,7 +122,7 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
     ),
     "builtins.ui.pjx_card_footer.pjx_card_footer": frozenset({"pyjinhx._component"}),
     # pjx_modal family (#517): the dialog shell plus its header/body/footer
-    # regions. Each component module reaches down into component.py only; each
+    # regions. Each component module reaches down into _component.py only; each
     # __init__ just re-exports its class from its co-located module.
     "builtins.ui.pjx_modal.__init__": frozenset(
         {"pyjinhx.builtins.ui.pjx_modal.pjx_modal"}
@@ -142,7 +142,7 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
     "builtins.ui.pjx_modal_footer.pjx_modal_footer": frozenset({"pyjinhx._component"}),
     # pjx_drawer family (#518): the slide-in dialog shell plus its
     # header/body/footer regions. Same shape as the modal family — each
-    # component module reaches down into component.py only; each __init__ just
+    # component module reaches down into _component.py only; each __init__ just
     # re-exports its class from its co-located module.
     "builtins.ui.pjx_drawer.__init__": frozenset(
         {"pyjinhx.builtins.ui.pjx_drawer.pjx_drawer"}
@@ -162,7 +162,7 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
     "builtins.ui.pjx_drawer_footer.pjx_drawer_footer": frozenset({"pyjinhx._component"}),
     # pjx_accordion family (#519): the details/summary shell plus its
     # group/trigger/content parts. Same shape as the modal/drawer families —
-    # each component module reaches down into component.py only; each
+    # each component module reaches down into _component.py only; each
     # __init__ just re-exports its class from its co-located module.
     "builtins.ui.pjx_accordion.__init__": frozenset(
         {"pyjinhx.builtins.ui.pjx_accordion.pjx_accordion"}
@@ -192,7 +192,7 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
     # pjx_tab family (#520): the group shell, its tablist, the tab triggers
     # and the panels they reveal. Only the group carries JS; the tab template
     # reaches PJXIcon through discovery's tag map, not a Python import, so no
-    # leaf gains an edge beyond component.py.
+    # leaf gains an edge beyond _component.py.
     "builtins.ui.pjx_tab_group.__init__": frozenset(
         {"pyjinhx.builtins.ui.pjx_tab_group.pjx_tab_group"}
     ),
@@ -209,7 +209,7 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
     "builtins.ui.pjx_tab_panel.pjx_tab_panel": frozenset({"pyjinhx._component"}),
     # pjx_popover family (#521): the positioned root shell, its trigger, and
     # the panel it reveals. JS/CSS live only on the root; each leaf reaches
-    # component.py only.
+    # _component.py only.
     "builtins.ui.pjx_popover.__init__": frozenset(
         {"pyjinhx.builtins.ui.pjx_popover.pjx_popover"}
     ),
@@ -226,7 +226,7 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
     "builtins.ui.pjx_popover_panel.pjx_popover_panel": frozenset({"pyjinhx._component"}),
     # pjx_tooltip family (#522): the positioned root shell, its focusable
     # trigger, and the hidden tip. JS/CSS live only on the root; each leaf
-    # reaches component.py only.
+    # reaches _component.py only.
     "builtins.ui.pjx_tooltip.__init__": frozenset(
         {"pyjinhx.builtins.ui.pjx_tooltip.pjx_tooltip"}
     ),
@@ -336,7 +336,7 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
     # the method body, never at module scope, because rendering.py imports
     # BaseComponent at import time and a module-level edge back would be a real
     # cycle — the same local-import escape hatch assets.py already uses.
-    "component": frozenset(
+    "_component": frozenset(
         {
             "pyjinhx.descriptor",
             "pyjinhx.props_header",
@@ -371,7 +371,7 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
     # imports it (deferred); nothing below may import it back.
     "dev": frozenset({"pyjinhx._component", "pyjinhx.session"}),
     # discovery keys the registry by each class's own resolved tag, so it reads
-    # component.py's snake-case helper rather than inventing a second naming
+    # _component.py's snake-case helper rather than inventing a second naming
     # scheme that could drift from the one templates are probed with.
     "discovery": frozenset({"pyjinhx._component"}),
     # The framework adapter sits at the very top with config: it orchestrates
@@ -627,7 +627,7 @@ def test_component_is_the_only_importer_of_class_descriptor():
         for path in module_paths()
         if "pyjinhx.descriptor" in internal_imports(path)
     }
-    assert importers == {"component"}
+    assert importers == {"_component"}
 
 
 def test_session_never_reaches_into_reactive():
@@ -678,7 +678,7 @@ def module_level_internal_imports(path: Path) -> set[str]:
     i.e. only the file's top-level statements, never descending into a
     function or class body. This is what distinguishes a real module-scope
     edge (which can create an import cycle) from the local-import escape
-    hatch component.py uses for rendering.py/session.py inside render()'s body."""
+    hatch _component.py uses for rendering.py/session.py inside render()'s body."""
     tree = ast.parse(path.read_text(encoding="utf-8"))
     found: set[str] = set()
     for node in tree.body:
@@ -700,7 +700,7 @@ def test_component_only_imports_render_and_session_inside_a_method_body():
     back would be a real cycle (#643). Assert that claim directly: the whole
     file's edge table above passes even if the import moves to module scope,
     since it doesn't distinguish where in the file the import lives."""
-    module_level = module_level_internal_imports(PACKAGE_ROOT / "component.py")
+    module_level = module_level_internal_imports(PACKAGE_ROOT / "_component.py")
     assert "pyjinhx.rendering" not in module_level
     assert "pyjinhx.session" not in module_level
 
@@ -724,7 +724,7 @@ def test_no_render_spine_module_declares_a_reactive_import():
 
 
 RENDER_SPINE_MODULES = (
-    "component",
+    "_component",
     "descriptor",
     "markers",
     "rendering",

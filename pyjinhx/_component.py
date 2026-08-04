@@ -94,7 +94,7 @@ class PjxSlot:
 
     Purely descriptive at this layer: nothing here escapes, wraps or renders.
     The render-time half (Markup-wrapping strings, opaque component nodes) is
-    L1 work and lives above component.py in the import graph.
+    L1 work and lives above _component.py in the import graph.
     """
 
     def __init__(self, children: bool = False) -> None:

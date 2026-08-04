@@ -33,7 +33,7 @@ _SNAKE_CASE_RE = re.compile(r"[a-z][a-z0-9]*(?:_[a-z0-9]+)*")
 def _is_candidate_name(stem: str) -> bool:
     """Whether ``stem`` is a filename a component class could have produced.
 
-    The exact shape `component.py`'s `_pascal_to_snake` emits, so every class
+    The exact shape `_component.py`'s `_pascal_to_snake` emits, so every class
     that resolves a template can be found by this walk, and nothing else is —
     ADR 0007 spends one convention, not six.
     """
