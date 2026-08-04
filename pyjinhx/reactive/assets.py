@@ -22,7 +22,7 @@ from pyjinhx.reactive.fanout import FanoutCandidate
 from pyjinhx.session import RenderSession
 
 # TODO(#490 follow-up): LINK mode needs a URL resolver to build <link href>/
-# <script src> tags, and ReactiveResponse has no resolver to hand down, so a
+# <script src> tags, and compose() has no resolver to hand down, so a
 # LINK-mode app delivers no swap-in assets today. Same for cold renders:
 # emit_assets() does not stamp data-pjx-asset yet, so a freshly loaded page
 # reports an empty token set and pays one redundant re-delivery on its first
