@@ -213,3 +213,22 @@ def test_unintended_collision_across_sources_warns_once(tmp_path, caplog):
     assert len(warnings) == 1
     assert "test_outside_thing_mod2.UserThing" in warnings[0].getMessage()
     assert "test_user_thing_mod2.UserThing" in warnings[0].getMessage()
+
+
+def test_build_registry_with_no_template_dir_still_claims_own_template_classes(tmp_path):
+    outside = tmp_path / "installed"
+    outside.mkdir()
+    (outside / "lonely_widget.pjx").write_text("<div>lonely</div>")
+    (outside / "lonely_widget.py").write_text(
+        "from pyjinhx.component import BaseComponent\n\n\n"
+        "class LonelyWidget(BaseComponent):\n"
+        "    pass\n"
+    )
+    LonelyWidget = _load_class_from_module(
+        outside / "lonely_widget.py", "test_lonely_widget_mod", "LonelyWidget"
+    )
+
+    discovery.build_registry(None, [LonelyWidget])
+
+    assert discovery.get_class("lonely_widget") is LonelyWidget
+    assert discovery.get_template_dir() is None
