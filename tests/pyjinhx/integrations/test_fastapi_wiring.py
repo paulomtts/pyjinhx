@@ -419,3 +419,19 @@ def test_htmx_native_redirect_becomes_hx_redirect():
     assert response.status_code == 204
     assert response.headers["HX-Redirect"] == "/next"
     assert response.text == ""
+
+
+def test_non_htmx_native_redirect_is_untouched():
+    app = FastAPI()
+    apply_setup(app, _settings())
+
+    @app.post("/go")
+    def go():
+        return RedirectResponse(url="/next", status_code=303)
+
+    with TestClient(app) as client:
+        response = client.post("/go", follow_redirects=False)
+
+    assert response.status_code == 303
+    assert response.headers["location"] == "/next"
+    assert "HX-Redirect" not in response.headers
