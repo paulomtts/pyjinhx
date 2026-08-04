@@ -18,3 +18,4 @@ ADRs are immutable: superseded by a new ADR, never edited. New decisions made du
 | [0010](./0010-keep-mro-resolution.md) | MRO template/asset resolution kept |
 | [0011](./0011-process-decisions.md) | Process decisions (packaging, release, deferrals) |
 | [0012](./0012-fanout-follows-the-request.md) | Fan-out follows the request, not the return value |
+| [0013](./0013-absence-is-proved-by-a-failed-load.md) | Absence is proved by a failed load, not a registry miss (amends 0009 E1/E17) |
