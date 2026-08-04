@@ -10,12 +10,10 @@ from fastapi import FastAPI, Form, HTTPException
 from starlette.requests import Request
 
 from examples.todo import store
-from examples.todo.components import App, ClearButton, Counter, ItemList, ItemRow, Total
+from examples.todo.components import App, ItemRow
 from examples.todo.context import TodoAppContext
 from pyjinhx import setup
 from pyjinhx.reactive.response import ReactiveResponse
-from pyjinhx.rendering import render
-from pyjinhx.session import current_session
 
 app = FastAPI()
 
@@ -28,27 +26,13 @@ setup(
 
 @app.get("/")
 def index():
-    """The whole panel, assembled and loaded.
+    """The whole panel, assembled by the renderer.
 
-    App is a plain shell whose four fields are interpolated by name, so nothing
-    populates them for us: a child assigned to a field is never mounted by the
-    renderer, and an unloaded one would render as its defaults.
+    App nests its four children as tags, so _fill_children builds each one
+    through its cache-routed load() factory and applies the tag's id attr —
+    nothing here loads or stamps anything by hand.
     """
-    item_list = ItemList.load()
-    item_list.id = "list"
-    remaining = Counter.load()
-    remaining.id = "counter"
-    total_count = Total.load()
-    total_count.id = "total"
-    clear_button = ClearButton.load()
-    clear_button.id = "clear"
-    return App(
-        id="app",
-        item_list=item_list,
-        remaining=remaining,
-        total_count=total_count,
-        clear_button=clear_button,
-    )
+    return App(id="app")
 
 
 @app.post("/todos")
@@ -60,9 +44,8 @@ def add_todo(request: Request, text: str = Form(...)):
     refreshes the mounted counters that store.add's @mutates just dirtied.
     """
     todo = store.add(text)
-    row = ItemRow.load(todo.id)
-    row.id = f"row-{todo.id}"
-    return ReactiveResponse(primary=render(row, current_session()), mounted=request)
+    row = ItemRow(todo_id=todo.id, id=f"row-{todo.id}").render()
+    return ReactiveResponse(primary=row, mounted=request)
 
 
 @app.post("/rows/{todo_id}/toggle")
@@ -77,9 +60,8 @@ def toggle_todo(request: Request, todo_id: int):
         store.toggle(todo_id)
     except KeyError:
         raise HTTPException(status_code=404, detail=f"no todo {todo_id}") from None
-    row = ItemRow.load(todo_id)
-    row.id = f"row-{todo_id}"
-    return ReactiveResponse(primary=render(row, current_session()), mounted=request)
+    row = ItemRow(todo_id=todo_id, id=f"row-{todo_id}").render()
+    return ReactiveResponse(primary=row, mounted=request)
 
 
 @app.post("/todos/clear-completed")
