@@ -15,7 +15,6 @@ from pyjinhx.reactive.keys import MutationKey as MutationKey
 from pyjinhx.reactive.keys import reactive_key as reactive_key
 from pyjinhx.reactive.mutations import dirty as dirty
 from pyjinhx.reactive.mutations import mutates as mutates
-from pyjinhx.reactive.response import ReactiveResponse as ReactiveResponse
 from pyjinhx.rendering import render as render
 from pyjinhx.session import RenderSession as RenderSession
 
@@ -29,7 +28,6 @@ __all__ = [
     "PjxKey",
     "PjxSettings",
     "ReactiveComponent",
-    "ReactiveResponse",
     "RenderSession",
     "Slot",
     "component",

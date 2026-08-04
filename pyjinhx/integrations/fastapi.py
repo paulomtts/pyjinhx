@@ -25,7 +25,6 @@ from pyjinhx.integrations.base import (
     ContextFactory,
     register_backend,
 )
-from pyjinhx.reactive.response import ReactiveResponse
 from pyjinhx.reactive.root_attrs import stamp_reactive_root_attrs
 from pyjinhx.registry import register_rendered_instance
 from pyjinhx.responses import PASSTHROUGH, PjxResponse, compose
@@ -98,10 +97,6 @@ class FastAPIBackend:
         # Always set: to_response only runs from inside PjxScopeMiddleware's
         # request_scope(), which is the sole entry point for a pjx endpoint.
         assert session is not None, "handler return outside a request_scope()"
-        # ReactiveResponse already has its body and headers with fan-out computed,
-        # so return it directly without re-composing.
-        if isinstance(result, ReactiveResponse):
-            return HTMLResponse(str(result.body), headers=result.headers)
         # Before compose(), because compose() is what renders the component and
         # the runtime has to be in the session by then. Only a component return
         # can be a cold page render; every other shape is a fragment.
@@ -271,15 +266,13 @@ def _returns_pjx(endpoint: Callable[..., Any]) -> bool:
     validate the component into JSON before the adapter ever sees it.
     """
     annotation = inspect.signature(endpoint).return_annotation
-    return isinstance(annotation, type) and issubclass(
-        annotation, (BaseComponent, ReactiveResponse)
-    )
+    return isinstance(annotation, type) and issubclass(annotation, BaseComponent)
 
 
 def _install_route_adaptation(backend: FastAPIBackend, app: Starlette) -> None:
     """Adapt pjx returns for routes registered before and after setup().
 
-    A handler annotated ``-> ReactiveResponse`` on a route declared before
+    A handler annotated with a component class on a route declared before
     ``apply_setup()`` cannot be patched: FastAPI resolves that annotation into
     a pydantic response_model inside ``APIRoute.__init__``, before this
     function ever runs. Omit the return annotation, or annotate with a real
