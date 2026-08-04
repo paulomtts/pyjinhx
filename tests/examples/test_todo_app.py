@@ -133,3 +133,18 @@ class TestClearCompleted:
         client.post("/todos/clear-completed")
 
         assert todo_store.total() == 3
+
+
+class TestSourceGuard:
+    def test_the_example_names_no_removed_response_api(self):
+        """The example is the migration reference: nothing v1-shaped may survive in it."""
+        source = Path("examples/todo/app.py").read_text()
+
+        assert "ReactiveResponse" not in source
+        assert ".render()" not in source
+
+    def test_no_route_takes_an_unused_request_argument(self):
+        """Routes return components; none of them needs the Request object."""
+        source = Path("examples/todo/app.py").read_text()
+
+        assert "Request" not in source
