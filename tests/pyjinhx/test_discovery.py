@@ -1,12 +1,40 @@
 """Tests for the .pjx template-tree walk (issue #357)."""
 
+import importlib.util
+import sys
 from pathlib import Path
 
 import pytest
 
+from pyjinhx import discovery
 from pyjinhx.discovery import TemplateCandidate, walk_templates
 
 DISCOVERY_DIR = Path(__file__).parent.parent / "templates" / "discovery"
+
+
+@pytest.fixture(autouse=True)
+def reset_registry():
+    """Each test starts from an empty published mapping, and leaves one behind."""
+    discovery._registry.mapping = {}
+    discovery._registry.template_dir = None
+    yield
+    discovery._registry.mapping = {}
+    discovery._registry.template_dir = None
+
+
+def _load_class_from_module(module_path: Path, module_name: str, class_name: str) -> type:
+    """Import ``module_path`` under a throwaway module name and return one of its classes.
+
+    Mirrors how a real builtin resolves its template: the class's __module__
+    must have a __file__ that actually lives beside the .pjx file, which a
+    class body attribute cannot fake (see pyjinhx/component.py::_defining_module_dir).
+    """
+    spec = importlib.util.spec_from_file_location(module_name, module_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[module_name] = module
+    spec.loader.exec_module(module)
+    return getattr(module, class_name)
 
 
 def tags(candidates):
@@ -85,7 +113,6 @@ def test_walk_does_not_deduplicate_same_tag_name_in_different_dirs():
 
 def test_walk_is_pure_no_registry_side_effect():
     assert list(walk_templates(DISCOVERY_DIR)) == list(walk_templates(DISCOVERY_DIR))
-    from pyjinhx import discovery
 
     mutable = [
         name
@@ -93,3 +120,25 @@ def test_walk_is_pure_no_registry_side_effect():
         if isinstance(value, (dict, list, set)) and not name.startswith("__")
     ]
     assert mutable == []
+
+
+def test_class_with_template_outside_template_dir_is_claimed(tmp_path: Path):
+    """A class whose own template lives outside the walked tree still claims its tag."""
+    outside = tmp_path / "installed"
+    outside.mkdir()
+    (outside / "outside_widget.pjx").write_text("<div>outside</div>")
+    (outside / "outside_widget.py").write_text(
+        "from pyjinhx.component import BaseComponent\n\n\n"
+        "class OutsideWidget(BaseComponent):\n"
+        "    pass\n"
+    )
+    walked = tmp_path / "components"
+    walked.mkdir()
+
+    OutsideWidget = _load_class_from_module(
+        outside / "outside_widget.py", "test_outside_widget_mod", "OutsideWidget"
+    )
+
+    discovery.build_registry(walked, [OutsideWidget])
+
+    assert discovery.get_class("outside_widget") is OutsideWidget
