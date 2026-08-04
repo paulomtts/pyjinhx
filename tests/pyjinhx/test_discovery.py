@@ -23,7 +23,9 @@ def reset_registry():
     discovery._registry.template_dir = None
 
 
-def _load_class_from_module(module_path: Path, module_name: str, class_name: str) -> type:
+def _load_class_from_module(
+    module_path: Path, module_name: str, class_name: str
+) -> type:
     """Import ``module_path`` under a throwaway module name and return one of its classes.
 
     Mirrors how a real builtin resolves its template: the class's __module__
@@ -215,7 +217,9 @@ def test_unintended_collision_across_sources_warns_once(tmp_path, caplog):
     assert "test_user_thing_mod2.UserThing" in warnings[0].getMessage()
 
 
-def test_build_registry_with_no_template_dir_still_claims_own_template_classes(tmp_path):
+def test_build_registry_with_no_template_dir_still_claims_own_template_classes(
+    tmp_path,
+):
     outside = tmp_path / "installed"
     outside.mkdir()
     (outside / "lonely_widget.pjx").write_text("<div>lonely</div>")

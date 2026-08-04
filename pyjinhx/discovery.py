@@ -196,7 +196,9 @@ def build_registry(template_dir: Path | str | None, classes: Iterable[type]) -> 
     fresh: dict[str, type] = {}
     warned: set[str] = set()
     tags: list[str] = (
-        [] if root is None else [candidate.tag_name for candidate in walk_templates(root)]
+        []
+        if root is None
+        else [candidate.tag_name for candidate in walk_templates(root)]
     )
     tags.extend(_tag_for(cls) for cls in offered if _has_own_template(cls))
     for tag_name in dict.fromkeys(tags):

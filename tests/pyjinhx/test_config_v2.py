@@ -260,8 +260,9 @@ def test_setup_registers_builtins_with_a_components_root(tmp_path):
     (tmp_path / "user_page.pjx").write_text("<div>user</div>")
     setup(app=None, components_root=tmp_path)
 
-    assert discovery.get_class("pjx_card") is not None
-    assert discovery.get_class("pjx_card").__name__ == "PJXCard"
+    cls = discovery.get_class("pjx_card")
+    assert cls is not None
+    assert cls.__name__ == "PJXCard"
 
 
 def test_setup_registers_builtins_without_a_components_root():
