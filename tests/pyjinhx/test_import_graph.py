@@ -384,7 +384,7 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
     "discovery": frozenset({"pyjinhx._component"}),
     # The framework adapter sits at the very top with config: it orchestrates
     # the request cycle by calling published entry points (request_scope,
-    # render, inject_runtime, ReactiveResponse) and nothing imports it back
+    # render, inject_runtime, compose) and nothing imports it back
     # except config's deferred setup() edge. It reads integrations.base for the
     # Protocol's shared names and to register itself at import time.
     "integrations.__init__": frozenset(),
@@ -398,7 +398,6 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
             "pyjinhx._component",
             "pyjinhx.config",
             "pyjinhx.integrations.base",
-            "pyjinhx.reactive.response",
             "pyjinhx.reactive.root_attrs",
             "pyjinhx.registry",
             "pyjinhx.responses",
@@ -433,24 +432,6 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
     # mutations.py records dirtied keys through session's public writer; it owns
     # no ContextVar of its own and never reaches sideways into cache.py.
     "reactive.mutations": frozenset({"pyjinhx.session", "pyjinhx.reactive.keys"}),
-    # ReactiveResponse (L3.6.1) composes one body out of the primary render and
-    # fanout.py's OOB candidates; it reads the manifest parser, the fanout walk
-    # and session's request-scoped dirtied-key/session accessors, and nothing
-    # else. No registry edge (ADR 0009): fanout.py already owns registry reads.
-    # #489/#488: `candidates()` also evicts the load cache for this request's
-    # dirtied keys before walking, so cache.py's `invalidate()` is a direct edge
-    # too, not just fanout.py's own transitive one.
-    # #490: the asset-delta leg reads assets.py's fragment builder alongside
-    # everything the region-swap leg already reads.
-    "reactive.response": frozenset(
-        {
-            "pyjinhx.client.inject",
-            "pyjinhx.reactive.assets",
-            "pyjinhx.reactive.cache",
-            "pyjinhx.reactive.fanout",
-            "pyjinhx.session",
-        }
-    ),
     # #490: which of a fan-out's required assets the client is missing, read
     # from the candidates' frozen descriptors (not session accumulation - see
     # the module docstring) and diffed against asset_token()'s identity.
