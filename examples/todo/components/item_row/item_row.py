@@ -16,14 +16,12 @@ class ItemRow(ReactiveComponent, react={Keys.TODOS}):
     def load(cls, todo_id: int, ctx: TodoAppContext | None = None) -> "ItemRow":
         """Build this row from the store.
 
-        A todo_id that is not in the store returns a field-default row rather
-        than raising: a row can outlive the todo it stands for (a
-        clear-completed that landed between render and swap), and a demo page
-        should render an empty row instead of a 500. The self-referencing
-        return annotation (`-> "ItemRow"`) exercises #713's fix.
+        A row can outlive the todo it stands for — a clear-completed deletes
+        the todo while the client still shows its row — and the store's KeyError
+        is how that says so. It is deliberately not caught: `LookupError` (which
+        `KeyError` subclasses) out of `load()` is what tells the fan-out walk the
+        region is gone, so it emits a delete swap instead of an empty row. The
+        self-referencing return annotation (`-> "ItemRow"`) exercises #713's fix.
         """
-        try:
-            todo = ctx.store.get(todo_id)
-        except KeyError:
-            return cls(todo_id=todo_id)
+        todo = ctx.store.get(todo_id)
         return cls(todo_id=todo_id, title=todo.text, done=todo.done)

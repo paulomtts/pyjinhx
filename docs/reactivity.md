@@ -299,9 +299,15 @@ def toggle_row(todo_id: int):
 ```
 
 When a keyed entity is removed but still listed in the client's mounted manifest (e.g.
-after **clear completed**), `oob_swaps` catches `LookupError` from `load(manifest.load)`
-and emits a delete OOB swap (`delete:[data-pjx-id='…']`) so stale row regions are removed
-from the DOM without a server error.
+after **clear completed**), `walk_manifest` catches `LookupError` from `load(manifest.load)`
+and marks the region `"missing"`; `oob_swaps` renders that as a delete OOB swap
+(`delete:[data-pjx-id='…']`), so stale row regions are removed from the DOM without a
+server error.
+
+This makes a raised `LookupError` part of `load()`'s contract: it is how a component
+says "this instance no longer exists." A `load()` that catches its store's `KeyError`
+and returns a field-default instance instead suppresses that signal, and the region is
+swapped with a blank render rather than deleted.
 
 ### Parametric per-instance keys
 

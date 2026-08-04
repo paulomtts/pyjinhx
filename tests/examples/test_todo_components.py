@@ -1,5 +1,7 @@
 """The todo example's components: what each load() puts on its instance."""
 
+import pytest
+
 from examples.todo import store as todo_store
 from examples.todo.components import (
     ClearButton,
@@ -28,11 +30,15 @@ class TestItemRow:
 
         assert row.done is True
 
-    def test_load_on_a_missing_todo_leaves_the_defaults(self, scope):
-        row = ItemRow.load(9999)
+    def test_load_on_a_missing_todo_raises_so_the_row_is_deleted(self, scope):
+        """A row can outlive its todo; the store's KeyError is how it says so.
 
-        assert row.title == ""
-        assert row.done is False
+        `KeyError` subclasses `LookupError`, which is what the fan-out walk
+        turns into a delete swap — so letting it out is what removes the stale
+        row from the client instead of swapping in a blank one.
+        """
+        with pytest.raises(LookupError):
+            ItemRow.load(9999)
 
     def test_todo_id_is_the_load_key_field(self):
         assert ItemRow._pjx_key_field == "todo_id"
