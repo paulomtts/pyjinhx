@@ -61,8 +61,8 @@ n= 10000     254.0 ms   0.025 ms/component
 ```
 
 Re-measured 2026-08-04 on v1.2.0, same command, same shapes. Scaling is intact —
-ms/component still falls as the tree grows, so **PRD G1 holds** — but absolute cost
-is up roughly 10-15% across every size since the L1 baseline above:
+ms/component still falls as the tree grows, so **PRD G1 holds**. Absolute numbers are
+above the L1 line, but see the A/B below before reading that as a regression:
 
 ```
 n=    50       2.3 ms   0.045 ms/component
@@ -75,11 +75,35 @@ n=  4971     146.0 ms   0.029 ms/component
 n= 10000     285.6 ms   0.029 ms/component
 ```
 
-The regression is flat across sizes, which points at a fixed per-component cost
-rather than anything algorithmic. Unconfirmed suspect: #760 added two more root
-attributes (`data-pjx-type`, and `data-pjx-load` on keyed classes) to every
-reactive component's stamp. Single unpinned run on a busy machine — indicative,
-not measured.
+Most of that gap is the machine, not the code. Running the **L1 commit itself**
+(100c216c) on the same machine on 2026-08-04 gives 267.5 ms — not the 254.0 ms it
+recorded on 2026-07-31 — so ~5% of the apparent regression is environmental drift
+between measurement days.
+
+Six interleaved A/B rounds, L1 commit vs v1.2.0, same machine, same session:
+
+```
+L1      268.6  269.9  285.1  273.0  277.7  267.5   min 267.5   mean 273.6
+v1.2.0  280.7  279.4  279.8  282.6  289.3  283.0   min 279.4   mean 282.5
+                                          min-vs-min  +4.4%
+                                        mean-vs-mean  +3.2%
+```
+
+So the real L1 -> v1.2.0 cost is **~3-4%**, not the ~12% a naive comparison against
+the recorded number suggests. One of the six rounds showed no difference at all, so
+even 3-4% is close to this machine's noise floor and should be re-measured on a quiet
+box before anyone optimises against it.
+
+`--profile` at n=10000 rules out reactive stamping as the cause: this bench renders
+plain `BaseComponent`s and attaches no `on_rendered` hooks, so `stamp_reactive_root_attrs`
+never runs. The cost is dominated by HTML parsing — `segments.py:feed` and the stdlib
+`html.parser` beneath it account for **0.430s of 0.954s (45%)** — with Jinja render at
+0.180s (19%) and `_fill_children` at 0.109s (11%). Any real optimisation work belongs
+in the parse, not in the stamp.
+
+**Lesson for future baselines: record the machine, or record nothing.** A bare number
+from one box on one day is not comparable to a number from another, and the gap here
+(5%) was larger than the regression it was being used to detect (4%).
 
 Companion numbers, same session (no earlier baseline recorded for these):
 
