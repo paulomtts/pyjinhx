@@ -153,11 +153,13 @@ def test_request_scope_contextvars_reset_after_response():
     @app.post("/dirty")
     def dirty_endpoint(request: Request):
         dirty(Keys.CYCLE)
+        session = current_session()
+        assert session is not None
         seen.append(
             {
-                "session": current_session(),
+                "session": session,
                 "dirtied": set(get_dirtied()),
-                "mounted": request.state.pjx_mounted,
+                "mounted": session.pjx_mounted,
             }
         )
         return {"ok": True}
