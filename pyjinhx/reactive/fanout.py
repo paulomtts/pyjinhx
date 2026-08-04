@@ -29,7 +29,7 @@ from markupsafe import Markup
 
 from pyjinhx import discovery, registry
 from pyjinhx.reactive.cache import cache_get, cache_has
-from pyjinhx.reactive.component import ReactiveComponent
+from pyjinhx.reactive.component import ReactiveComponent, coerce_load_arg
 from pyjinhx.reactive.keys import coerce_load_key_str
 from pyjinhx.rendering import render_level
 from pyjinhx.root_attrs import stamp_root_attrs
@@ -165,7 +165,10 @@ def _build_dirty(
     """
     key_args: dict[str, Any] = {}
     if cls._pjx_key_field is not None:
-        key_args[cls._pjx_key_field] = load
+        # The manifest's load arg came off a `data-pjx-load` attribute, so a
+        # key declared `int` arrives as `"1"`; restore the declared type before
+        # calling the author's load(), whose signature is written against it.
+        key_args[cls._pjx_key_field] = coerce_load_arg(cls, load)
     instance = cls.load(**key_args)
     instance.id = instance_id
     return instance, render_level(instance, session)

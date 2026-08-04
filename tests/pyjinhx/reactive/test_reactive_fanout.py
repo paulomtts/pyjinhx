@@ -950,3 +950,48 @@ def test_dirty_path_uses_an_explicit_session_and_the_ambient_one_alike():
 
     assert ambient.status == explicit.status == "dirty"
     assert ambient.fresh_hash == explicit.fresh_hash == fresh_hash_for("todo-1")
+
+
+class IntKeyedWidget(ReactiveComponent, react=("todos",)):
+    """A component whose PjxKey field is an `int`, like the todo example's row.
+
+    `data-pjx-load` is an HTML attribute, so this class's key round-trips
+    through the client as a string and must arrive back at `load()` as an int.
+    """
+
+    row_id: Annotated[int, PjxKey()] = 0
+    title: str = ""
+
+    @classmethod
+    def load(cls, row_id: int) -> "IntKeyedWidget":
+        INT_KEY_LOAD_ARGS.append(row_id)
+        # A dict keyed by int, exactly like the demo store: a str key misses.
+        titles = {1: "first", 2: "second"}
+        return cls(row_id=row_id, title=titles.get(row_id, ""))
+
+
+INT_KEY_LOAD_ARGS: list[object] = []
+
+
+def test_a_string_load_arg_reaches_load_as_the_declared_int(tmp_path):
+    """The manifest's `"1"` must arrive at load() as `1`, not `"1"`.
+
+    Regression: a rebuilt row rendered with every field at its default because
+    `load()` looked its key up in an int-keyed store and missed.
+    """
+    INT_KEY_LOAD_ARGS.clear()
+    template = tmp_path / "int_keyed_widget.pjx"
+    template.write_text("<div>{{ title }}</div>")
+    discovery.build_registry(tmp_path, [IntKeyedWidget])
+    IntKeyedWidget.__pjx_descriptor__ = dataclasses.replace(
+        IntKeyedWidget.__pjx_descriptor__, template_path=template
+    )
+    with scope():
+        [candidate] = walk_manifest(
+            [entry("int_keyed_widget", "row-1", load="1")], {"todos"}
+        )
+
+    assert INT_KEY_LOAD_ARGS == [1]
+    assert candidate.status == "dirty"
+    assert candidate.instance is not None
+    assert candidate.instance.title == "first"

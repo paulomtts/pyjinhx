@@ -11,6 +11,7 @@ import json
 from collections.abc import Callable, Iterable
 from typing import Annotated, Any, ClassVar, get_args, get_origin, get_type_hints
 
+from pydantic import TypeAdapter, ValidationError
 from pydantic.fields import FieldInfo
 
 from pyjinhx._component import BaseComponent
@@ -34,6 +35,11 @@ class ReactiveComponent(BaseComponent):
 
     _pjx_key_field: ClassVar[str | None] = None
     """Name of this class's PjxKey-marked field, or None when it has none."""
+
+    _pjx_key_adapter: ClassVar[Any] = None
+    """Validator for the PjxKey field's declared type, or None when it has none.
+    Restores a load key that round-tripped through a string medium (the
+    ``data-pjx-load`` attribute) to the type ``load()`` declares."""
 
     state_hash_exclude: ClassVar[frozenset[str]] = frozenset({"id"})
     """Field names left out of the state hash. A subclass's value replaces this
@@ -76,6 +82,7 @@ class ReactiveComponent(BaseComponent):
         """Run BaseComponent's registration, resolve the key field, install the wrap."""
         super().__pydantic_init_subclass__(**kwargs)
         cls._pjx_key_field = resolve_pjx_key_field(cls)
+        cls._pjx_key_adapter = _build_key_adapter(cls)
         if "load" not in cls.__dict__:
             # cls inherits load unchanged: the ancestor that defines it already
             # validated and wrapped it. Re-running _unwrap_load here would grab
@@ -148,6 +155,45 @@ def pjx_key_field_names(model_cls: type[Any]) -> list[str]:
         for name, annotation in annotations.items()
         if _annotation_has_pjx_key(annotation)
     ]
+
+
+def _build_key_adapter(model_cls: type[Any]) -> "TypeAdapter[Any] | None":
+    """A validator for the PjxKey field's declared type, built once per class.
+
+    Built at class-definition time, alongside ``_pjx_key_field``, because it is
+    a per-class derived fact — the same rule the load wrap and the descriptor
+    follow. A class with no PjxKey field, or one whose field carries no
+    resolvable annotation, gets None and coerces nothing.
+    """
+    field = resolve_pjx_key_field(model_cls)
+    if field is None:
+        return None
+    info = model_cls.model_fields.get(field)
+    if info is None or info.annotation is None:
+        return None
+    return TypeAdapter(info.annotation)
+
+
+def coerce_load_arg(cls: type["ReactiveComponent"], value: object) -> object:
+    """A manifest load arg, restored to the type the PjxKey field declares.
+
+    ``data-pjx-load`` is an HTML attribute, so a key declared ``int`` comes
+    back off the client as ``"1"``. Handing that straight to ``load()`` would
+    break the signature the author wrote against — ``store.get("1")`` misses a
+    dict keyed by ``int`` — so the string is validated back to the declared
+    type first.
+
+    A value that will not validate is passed through untouched rather than
+    raised on: ``load()`` is entitled to reject it with its own error, and the
+    fan-out walk turns that into a delete swap.
+    """
+    adapter = cls._pjx_key_adapter
+    if adapter is None or value is None:
+        return value
+    try:
+        return adapter.validate_python(value)
+    except ValidationError:
+        return value
 
 
 def resolve_pjx_key_field(model_cls: type[Any]) -> str | None:
