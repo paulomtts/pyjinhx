@@ -168,7 +168,7 @@ def _has_own_template(cls: type) -> bool:
     return isinstance(path, Path) and path.is_file()
 
 
-def build_registry(template_dir: Path | str, classes: Iterable[type]) -> None:
+def build_registry(template_dir: Path | str | None, classes: Iterable[type]) -> None:
     """Walk ``template_dir`` and publish a fresh tag -> class registry.
 
     Two sources feed the published mapping: every `.pjx` found by walking
@@ -178,19 +178,26 @@ def build_registry(template_dir: Path | str, classes: Iterable[type]) -> None:
     same `_resolve_tag_owner` call, so a tag contested across the two sources
     still gets exactly one collision decision and one warning.
 
+    ``template_dir`` may be ``None`` — no tree to walk; only classes carrying
+    their own template claim tags. `get_template_dir()` then reports ``None``
+    too, which lets an app with no ``components_root`` of its own still get
+    its builtins registered.
+
     The new mapping is assembled complete in a local before anything is
     published, so a reader sees either the whole previous registry or the whole
     new one. Raises ``NotADirectoryError`` (from the walk) before any publish
     happens, leaving the live registry untouched.
     """
-    root = Path(template_dir)
+    root = Path(template_dir) if template_dir is not None else None
     offered: list[type] = list(classes)
     by_tag: dict[str, list[type]] = {}
     for cls in offered:
         by_tag.setdefault(_tag_for(cls), []).append(cls)
     fresh: dict[str, type] = {}
     warned: set[str] = set()
-    tags: list[str] = [candidate.tag_name for candidate in walk_templates(root)]
+    tags: list[str] = (
+        [] if root is None else [candidate.tag_name for candidate in walk_templates(root)]
+    )
     tags.extend(_tag_for(cls) for cls in offered if _has_own_template(cls))
     for tag_name in dict.fromkeys(tags):
         owner = _resolve_tag_owner(tag_name, by_tag, warned)
