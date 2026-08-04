@@ -308,6 +308,6 @@ def test_stamping_the_parent_does_not_move_the_childs_attrs(
     html = serialize(render_level(ReactiveShell(id="outer2", body=child), session))
 
     assert (
-        f'<span data-pjx-id="inner2" data-pjx-hash="{child.state_hash()}">widget</span>'
-        in html
+        f'<span data-pjx-id="inner2" data-pjx-type="reactive_widget"'
+        f' data-pjx-hash="{child.state_hash()}">widget</span>' in html
     )

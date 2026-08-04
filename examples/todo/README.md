@@ -21,10 +21,11 @@ The store declares what it writes: `store.add` and `store.toggle` are
 `@mutates(Keys.TODOS)`, and `store.clear_completed` is
 `@mutates(Keys.TODOS, Keys.TODO_LIST)`. Calling one of them dirties those keys.
 
-Each route then returns a `ReactiveResponse`, which fans the mounted
-subscribers of the dirtied keys out as OOB swaps next to the primary fragment.
-Subscribers whose rendered output did not actually change are dropped, so the
-fan-out is usually smaller than the subscriber list.
+Each route then returns the primary fragment — a component, or `None` for no
+primary — and the composer fans the mounted subscribers of the dirtied keys
+out as OOB swaps alongside it. Subscribers whose rendered output did not
+actually change are dropped, so the fan-out is usually smaller than the
+subscriber list.
 
 Open the network tab, click around, and read the response bodies — the skipped
 components are named in HTML comments:

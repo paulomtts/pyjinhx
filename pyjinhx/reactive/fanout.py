@@ -134,9 +134,11 @@ def _resolve_registry_entry(
 
     The one place the snake_case tag name is traded for the PascalCase class
     name the registry is keyed by. A LookupError is caught rather than allowed
-    out: one region the client still shows but the server no longer knows about
-    must not take the whole walk down — it becomes a "missing" candidate,
-    which ``delete_swap()`` turns into a delete swap.
+    out: the registry is request-scoped (ADR 0009 E6) and written only by this
+    request's own renders (E7), so a region outside the primary tree misses
+    here as a matter of course. A miss is therefore "nothing cheap to hand
+    back", never "this region is gone" — deciding *that* is ``_build_dirty``'s
+    failed load, below.
     """
     try:
         return registry.resolve(cls.__name__, instance_id), True
@@ -155,6 +157,11 @@ def _build_dirty(
     ``render()``: ``oob_swaps()`` splices at a root_span, and only the level
     carries one. The id is stamped after: it identifies the mounted region, not
     the loaded data, so it is never a load() parameter.
+
+    Raises:
+        LookupError: ``load()`` cannot build this region any more — the one
+            honest signal that a region the client still shows is gone
+            server-side. ``walk_manifest`` turns it into a "missing" candidate.
     """
     key_args: dict[str, Any] = {}
     if cls._pjx_key_field is not None:
@@ -364,12 +371,13 @@ def walk_manifest(
         seen.add(dedup_key)
         instance_id = str(entry.get("id") or "")
         load = entry.get("load")
-        resolved, found = _resolve_registry_entry(cls, instance_id)
-        if not found:
-            status, instance, level, fresh_hash = "missing", None, None, None
-        elif cache_has(cls, dedup_key[1]):
+        resolved, _found = _resolve_registry_entry(cls, instance_id)
+        if cache_has(cls, dedup_key[1]):
             # E13: the clean answer comes from the load cache's own key space,
-            # never from the registry key that resolved above.
+            # never from the registry key that resolved above. The registry is
+            # consulted only for what it can cheaply hand back, never as the
+            # clean/dirty gate — see _resolve_registry_entry on why a miss
+            # here is the norm rather than a signal.
             status, instance, level, fresh_hash = "clean", None, None, None
             resolved = (
                 resolved if resolved is not None else cache_get(cls, dedup_key[1])
@@ -381,14 +389,29 @@ def walk_manifest(
             # constructing a fresh one, so a caller inside a request never has
             # its dirty-path render silently point at the wrong template dir.
             render_session = session or current_session() or RenderSession()
-            instance, level = _build_dirty(cls, instance_id, load, render_session)
-            fresh_hash = instance.state_hash()
-            if _hash_gate_drops(fresh_hash, entry):
-                # The dedup slot above is deliberately kept: a later duplicate
-                # of this (type, load-key) pair would gate out identically, so
-                # dropping here must not buy it a second load/render.
-                continue
-            status = "dirty"
+            try:
+                instance, level = _build_dirty(cls, instance_id, load, render_session)
+            except LookupError:
+                # E17: a key that no longer resolves must not yield a stale
+                # instance or render. A failed load is the only thing that
+                # actually proves the region is gone, so it — not a registry
+                # miss — is what becomes a delete swap.
+                status, instance, level, fresh_hash, resolved = (
+                    "missing",
+                    None,
+                    None,
+                    None,
+                    None,
+                )
+            else:
+                fresh_hash = instance.state_hash()
+                if _hash_gate_drops(fresh_hash, entry):
+                    # The dedup slot above is deliberately kept: a later
+                    # duplicate of this (type, load-key) pair would gate out
+                    # identically, so dropping here must not buy it a second
+                    # load/render.
+                    continue
+                status = "dirty"
         candidates.append(
             FanoutCandidate(
                 type_name=str(entry["type"]),

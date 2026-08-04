@@ -24,6 +24,12 @@ from pyjinhx.session import RenderSession, request_scope
 
 LOAD_CALLS: list[str | None] = []
 
+GONE_KEYS: set[str] = set()
+"""Load keys `FanoutWidget.load()` refuses to build, standing for a region the
+server no longer knows about. A failed load is the only thing that makes a
+candidate "missing" — a registry miss does not, because the registry is
+request-scoped (ADR 0009 E6) and misses for every out-of-primary region."""
+
 
 class FanoutWidget(ReactiveComponent, react=("todos",)):
     """A reactive component keyed by ``pjx_key``, whose load() is counted."""
@@ -34,6 +40,8 @@ class FanoutWidget(ReactiveComponent, react=("todos",)):
     @classmethod
     def load(cls, pjx_key: str) -> "FanoutWidget":
         LOAD_CALLS.append(pjx_key)
+        if pjx_key in GONE_KEYS:
+            raise LookupError(f"no widget for {pjx_key!r}")
         return cls(pjx_key=pjx_key, data=f"data:{pjx_key}")
 
 
@@ -53,6 +61,7 @@ class PlainWidget(BaseComponent):
 def _clean_registries(tmp_path, monkeypatch):
     """Publish a tag -> class map for the two test classes and reset call spies."""
     LOAD_CALLS.clear()
+    GONE_KEYS.clear()
     fanout_path = tmp_path / "fanout_widget.pjx"
     quiet_path = tmp_path / "quiet_widget.pjx"
     fanout_path.write_text("<div>{{ pjx_key }}</div>")
@@ -110,7 +119,9 @@ def test_entry_whose_keys_miss_the_dirtied_set_is_dropped():
 
 def test_entry_whose_keys_hit_the_dirtied_set_is_kept():
     with scope():
-        [candidate] = walk_manifest([entry("fanout_widget", "a")], {"todos"})
+        [candidate] = walk_manifest(
+            [entry("fanout_widget", "a", load="todo-1")], {"todos"}
+        )
         assert candidate.component_class is FanoutWidget
         assert candidate.instance_id == "a"
 
@@ -197,9 +208,9 @@ def test_cache_miss_loads_once_renders_and_caches():
         assert candidate.instance is not None
 
 
-def test_unregistered_entry_is_a_miss_and_does_not_abort_the_walk():
+def test_a_failed_load_is_a_miss_and_does_not_abort_the_walk():
+    GONE_KEYS.add("todo-1")
     with scope():
-        registry.register_instance(FanoutWidget.__name__, "b", "resolved-entry")
         manifest = [
             entry("fanout_widget", "gone", load="todo-1"),
             entry("fanout_widget", "b", load="todo-2"),
@@ -208,6 +219,19 @@ def test_unregistered_entry_is_a_miss_and_does_not_abort_the_walk():
         assert gone.status == "missing"
         assert gone.resolved is None
         assert alive.status == "dirty"
+
+
+def test_an_unregistered_entry_still_rebuilds_rather_than_deleting():
+    """The registry is request-scoped and written only by this request's own
+    renders (ADR 0009 E6/E7), so every region outside the primary tree misses
+    it. A miss must therefore mean "rebuild", never "delete" — otherwise a
+    plain fan-out would wipe the regions it exists to refresh."""
+    with scope():
+        [candidate] = walk_manifest(
+            [entry("fanout_widget", "never-registered", load="todo-1")], {"todos"}
+        )
+        assert candidate.status == "dirty"
+        assert candidate.level is not None
 
 
 def test_the_walk_never_writes_to_the_instance_registry(monkeypatch):
@@ -290,10 +314,11 @@ def test_clean_candidate_is_not_hash_gated_and_carries_no_fresh_hash(monkeypatch
 
 
 def test_missing_candidate_is_not_hash_gated_and_carries_no_fresh_hash():
+    GONE_KEYS.add("todo-1")
     with scope():
-        # Nothing registered under this id, so registry.resolve() raises and the
-        # entry is "missing" — #470's delete-swap input, which this gate must
-        # not consume even when the reported hash is the matching one.
+        # load() refuses this key, so the entry is "missing" — #470's
+        # delete-swap input, which this gate must not consume even when the
+        # reported hash is the matching one.
         manifest = [
             entry(
                 "fanout_widget", "gone", load="todo-1", hash_=fresh_hash_for("todo-1")
@@ -305,11 +330,9 @@ def test_missing_candidate_is_not_hash_gated_and_carries_no_fresh_hash():
 
 
 def test_mixed_manifest_gates_only_the_dirty_entries():
+    GONE_KEYS.add("todo-4")
     with scope():
         cache_put(FanoutWidget, "todo-1", "cached-payload", react_keys=("todos",))
-        registry.register_instance(FanoutWidget.__name__, "a", "level-a")
-        registry.register_instance(FanoutWidget.__name__, "same", "level-same")
-        registry.register_instance(FanoutWidget.__name__, "moved", "level-moved")
         manifest = [
             # clean: cached, reports the hash its own fresh render would have
             entry("fanout_widget", "a", load="todo-1", hash_=fresh_hash_for("todo-1")),
@@ -319,7 +342,7 @@ def test_mixed_manifest_gates_only_the_dirty_entries():
             ),
             # dirty + survives: reported hash is stale
             entry("fanout_widget", "moved", load="todo-3", hash_="stale"),
-            # missing: never resolved, gate must not touch it
+            # missing: load() refuses it, gate must not touch it
             entry(
                 "fanout_widget", "gone", load="todo-4", hash_=fresh_hash_for("todo-4")
             ),
@@ -337,18 +360,15 @@ def test_mixed_manifest_gates_only_the_dirty_entries():
         ]
         # The gated-out entry still ran its load — the gate decides *after* the
         # re-render, which is the whole point: it compares fresh output, not
-        # a guess about the data. The "gone" entry never loads: in
-        # `walk_manifest`, `_resolve_registry_entry`'s LookupError sets
-        # status="missing" before `_build_dirty` (and therefore `load()`) is
-        # ever reached, so only the two dirty entries appear here.
-        assert LOAD_CALLS == ["todo-2", "todo-3"]
+        # a guess about the data. The "gone" entry loads too — its refusal is
+        # what establishes it is missing — so all three appear here.
+        assert LOAD_CALLS == ["todo-2", "todo-3", "todo-4"]
 
 
 def test_mixed_manifest_produces_the_expected_ordered_candidate_list():
+    GONE_KEYS.add("todo-3")
     with scope():
         cache_put(FanoutWidget, "todo-1", "cached-payload", react_keys=("todos",))
-        registry.register_instance(FanoutWidget.__name__, "a", "level-a")
-        registry.register_instance(FanoutWidget.__name__, "c", "level-c")
         manifest = [
             entry("no_such_widget", "x"),
             entry("quiet_widget", "y"),
@@ -363,9 +383,9 @@ def test_mixed_manifest_produces_the_expected_ordered_candidate_list():
             ("c", "dirty"),
             ("gone", "missing"),
         ]
-        # Only the dirty candidate ran its body; the clean one was never loaded
-        # and the missing one was never built.
-        assert LOAD_CALLS == ["todo-2"]
+        # The clean candidate was never loaded; the missing one paid the one
+        # failed load that established it is gone.
+        assert LOAD_CALLS == ["todo-2", "todo-3"]
 
 
 def candidate(instance_id: str, level=None, resolved=None, status: str = "dirty"):
@@ -608,8 +628,8 @@ def test_entry_absent_from_the_primary_response_resolves_normally():
             primary_html='<div data-pjx-id="somewhere-else">x</div>',
         )
     assert candidate_.instance_id == "a"
-    assert candidate_.status == "missing"
-    assert LOAD_CALLS == []
+    assert candidate_.status == "dirty"
+    assert LOAD_CALLS == ["todo-1"]
 
 
 def test_walk_manifest_without_primary_html_is_unchanged():
@@ -627,7 +647,7 @@ def test_walk_manifest_without_primary_html_is_unchanged():
             (c.instance_id, c.status)
             for c in walk_manifest(manifest, {"todos"}, primary_html=None)
         ]
-    assert omitted == explicit_none == [("a", "missing"), ("b", "missing")]
+    assert omitted == explicit_none == [("a", "dirty"), ("b", "dirty")]
 
 
 def test_primary_exclusion_and_nesting_dedup_compose_in_one_walk(monkeypatch):
@@ -718,6 +738,7 @@ def test_a_gone_region_walks_to_a_delete_fragment_without_loading_anything(
     monkeypatch.setattr(
         registry, "register_instance", lambda *a, **kw: calls.append((a, kw))
     )
+    GONE_KEYS.add("todo-1")
     with scope():
         [candidate_] = walk_manifest(
             [entry("fanout_widget", "gone-1", load="todo-1")], {"todos"}
@@ -727,9 +748,10 @@ def test_a_gone_region_walks_to_a_delete_fragment_without_loading_anything(
         delete_swap(candidate_)
         == "<div hx-swap-oob=\"delete:[data-pjx-id='gone-1']\"></div>"
     )
-    # A missing region costs no load, no render and no registry write on the
-    # whole path from manifest entry to delete fragment.
-    assert LOAD_CALLS == []
+    # Establishing the region is gone costs the one failed load() and nothing
+    # more: no render, and no registry write, on the whole path from manifest
+    # entry to delete fragment.
+    assert LOAD_CALLS == ["todo-1"]
     assert candidate_.level is None
     assert calls == []
 
@@ -816,6 +838,7 @@ def test_one_walk_composes_every_status_gate_and_nesting_drop(monkeypatch):
         return instance, {"parent": parent, "child": child}.get(instance_id, level)
 
     monkeypatch.setattr(fanout, "_build_dirty", build)
+    GONE_KEYS.add("todo-4")
     with scope():
         cache_put(FanoutWidget, "todo-1", "cached-payload", react_keys=("todos",))
         for instance_id in ("a", "same", "moved", "parent", "child", "lonely"):
@@ -856,6 +879,7 @@ def test_one_walk_composes_every_status_gate_and_nesting_drop(monkeypatch):
 
 def test_oob_swaps_over_a_real_walk_emits_only_outerhtml_and_delete(monkeypatch):
     """ADR 0001: outerHTML for each dirty survivor, delete for each missing, nothing else."""
+    GONE_KEYS.add("todo-3")
     with scope():
         cache_put(FanoutWidget, "todo-1", "cached-payload", react_keys=("todos",))
         registry.register_instance(FanoutWidget.__name__, "a", "entry-a")

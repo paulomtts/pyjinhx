@@ -465,6 +465,10 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
         {
             "pyjinhx._component",
             "pyjinhx.reactive.component",
+            # coerce_load_key_str: data-pjx-load must be stamped through the
+            # same coercion fanout's _load_key() reads it back with (E16), or
+            # the two spellings of one key would not compare equal.
+            "pyjinhx.reactive.keys",
             "pyjinhx.root_attrs",
             "pyjinhx.segments",
             "pyjinhx.session",

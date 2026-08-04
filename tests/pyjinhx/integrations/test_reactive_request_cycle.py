@@ -73,6 +73,11 @@ class CycleBadge(ReactiveComponent, react=(Keys.CYCLE,)):
     @classmethod
     def load(cls, pjx_key: str) -> "CycleBadge":
         LOAD_CALLS.append(f"badge:{pjx_key}")
+        # A key the store never heard of is how a region says it is gone: the
+        # failed load, not a registry miss, is what walk_manifest turns into a
+        # delete swap (the registry is request-scoped, ADR 0009 E6).
+        if pjx_key not in STORE:
+            raise LookupError(f"no card {pjx_key!r}")
         return cls(pjx_key=pjx_key)
 
 
@@ -294,7 +299,7 @@ def test_mutation_round_trip_demo_swaps_dirty_regions_and_ships_missing_assets()
                         entry("a", load="card-1"),
                         entry("b", load="card-2", hash_=unchanged_hash),
                         badge_entry("c", load="card-1"),
-                        # A region the registry no longer knows about: gone.
+                        # A region whose load() can no longer build it: gone.
                         badge_entry("gone", load="card-9"),
                     ]
                 ),
@@ -309,7 +314,7 @@ def test_mutation_round_trip_demo_swaps_dirty_regions_and_ships_missing_assets()
     assert "hx-swap-oob=\"outerHTML:[data-pjx-id='a']\"" in body
     # 4b: dirty but byte-identical output — gated out.
     assert "[data-pjx-id='b']" not in body
-    # 4c: a region the registry lost is deleted rather than re-rendered.
+    # 4c: a region load() can no longer build is deleted rather than re-rendered.
     assert "hx-swap-oob=\"delete:[data-pjx-id='gone']\"" in body
     # 5: the asset-bearing region's CSS and JS ride along, head-targeted.
     css_token = asset_token(ASSET_DIR / "cycle_badge.css")
