@@ -29,6 +29,7 @@ Not a CI test (timing-sensitive). Run manually before/after parse or slot work:
     uv run python scripts/bench_slot_payload.py
 """
 
+import os
 import tempfile
 import time
 from pathlib import Path
@@ -41,6 +42,11 @@ from pyjinhx.session import RenderSession
 
 FIXED_COMPONENTS = 50
 PAYLOAD_BYTES = (64, 256, 1024, 4096, 16384, 65536)
+
+# CI runs these only to prove they still execute (tests/test_bench_scripts_smoke.py);
+# timings are meaningless at one point, so the sweep collapses to its smallest.
+if os.environ.get("PJX_BENCH_SMOKE"):
+    PAYLOAD_BYTES = PAYLOAD_BYTES[:1]
 
 
 def make_payload(size: int, index: int) -> str:

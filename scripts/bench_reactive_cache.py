@@ -18,12 +18,18 @@ Not a CI test (timing-sensitive). Run manually before/after load-cache work:
     uv run python scripts/bench_reactive_cache.py
 """
 
+import os
 import time
 
 from pyjinhx.reactive.cache import cache_put, invalidate
 from pyjinhx.session import request_scope
 
 ENTRY_COUNTS = (500, 1000, 2000, 4000, 8000)
+
+# CI runs these only to prove they still execute (tests/test_bench_scripts_smoke.py);
+# timings are meaningless at one point, so the sweep collapses to its smallest.
+if os.environ.get("PJX_BENCH_SMOKE"):
+    ENTRY_COUNTS = ENTRY_COUNTS[:1]
 # Every entry also carries a shared key, so one invalidate() evicts all of them.
 SHARED_KEY = "all"
 

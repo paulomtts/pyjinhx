@@ -25,6 +25,7 @@ Not a CI test (timing-sensitive). Run manually before/after validator work:
     uv run python scripts/bench_field_count.py
 """
 
+import os
 import tempfile
 import time
 from pathlib import Path
@@ -36,6 +37,11 @@ from pyjinhx.rendering import render
 from pyjinhx.session import RenderSession
 
 FIELD_COUNTS = (5, 20, 50, 100)
+
+# CI runs these only to prove they still execute (tests/test_bench_scripts_smoke.py);
+# timings are meaningless at one point, so the sweep collapses to its smallest.
+if os.environ.get("PJX_BENCH_SMOKE"):
+    FIELD_COUNTS = FIELD_COUNTS[:1]
 FIXED_CHILDREN = 200
 
 

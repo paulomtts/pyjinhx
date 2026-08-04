@@ -60,6 +60,46 @@ n=  4971     124.5 ms   0.025 ms/component
 n= 10000     254.0 ms   0.025 ms/component
 ```
 
+Re-measured 2026-08-04 on v1.2.0, same command, same shapes. Scaling is intact —
+ms/component still falls as the tree grows, so **PRD G1 holds** — but absolute cost
+is up roughly 10-15% across every size since the L1 baseline above:
+
+```
+n=    50       2.3 ms   0.045 ms/component
+n=   100       3.2 ms   0.032 ms/component
+n=   197       6.0 ms   0.031 ms/component
+n=   507      16.2 ms   0.032 ms/component
+n=   993      30.3 ms   0.031 ms/component
+n=  1981      55.4 ms   0.028 ms/component
+n=  4971     146.0 ms   0.029 ms/component
+n= 10000     285.6 ms   0.029 ms/component
+```
+
+The regression is flat across sizes, which points at a fixed per-component cost
+rather than anything algorithmic. Unconfirmed suspect: #760 added two more root
+attributes (`data-pjx-type`, and `data-pjx-load` on keyed classes) to every
+reactive component's stamp. Single unpinned run on a busy machine — indicative,
+not measured.
+
+Companion numbers, same session (no earlier baseline recorded for these):
+
+```
+bench_render_scaling      rows=438     66.5 ms    0.15 ms/row   (builtin table)
+bench_render_depth        depth=160    65.3 ms    0.41 ms/level (flat from 10)
+bench_field_count         100 fields   62.3 ms    311 us/child  (json ~2x plain)
+bench_slot_payload        64 KB       1096 ms /  556 ms         (children / slot)
+bench_state_hash          100 fields   21.5 us    0.22 us/field
+bench_reactive_cache      8000 entries  8.9 ms put / 2.7 ms invalidate-all
+bench_reactive_fanout     5000 manifest 13.5 ms clean / 239 ms all-dirty
+bench_mixed_reactive_tree 1831 nodes   99.6 / 99.0 ms (static-ancestor / all-reactive)
+```
+
+Five of the nine scripts did not run at all when this was re-measured — broken by
+#735 (absolute-path loader) and #725 (classmethod `load()`), neither of which
+updated `scripts/`. `tests/test_bench_scripts_smoke.py` now runs each one at its
+smallest size on every CI run, so breakage surfaces immediately even though
+timings still are not asserted.
+
 **Gate before L2: cleared.** The instance-registry enumeration (swap targeting, manifest membership, hash inputs, cache keying) is recorded in [ADR 0009 → Enumerated Surface](adr/0009-minimal-instance-registry.md#enumerated-surface) as E1-E18, with the ruled-out non-requirements as N1-N6 and both open questions (miss representation, cache scope) resolved there. That section is the source of truth: L2 builds only what it lists.
 
 ---

@@ -9,12 +9,12 @@ Not a CI test (timing-sensitive). Run manually before/after render-path work:
 import cProfile
 import io
 import logging
+import os
 import pstats
 import sys
 import time
 
 import pyjinhx.builtins  # noqa: F401 — registers builtins
-from pyjinhx._component import BaseComponent, Slot
 from pyjinhx.builtins.pjx_table import PJXTable
 from pyjinhx.builtins.pjx_table_body import PJXTableBody
 from pyjinhx.builtins.pjx_table_cell import PJXTableCell
@@ -26,31 +26,27 @@ logging.getLogger("pyjinhx").setLevel(logging.ERROR)
 
 ROW_COUNTS = (50, 100, 200, 438)
 
-
-class _RowsHost(BaseComponent):
-    """Sibling-list wrapper so multiple child instances share one field."""
-
-    content: Slot = ""
+# CI runs these only to prove they still execute (tests/test_bench_scripts_smoke.py);
+# timings are meaningless at one point, so the sweep collapses to its smallest.
+if os.environ.get("PJX_BENCH_SMOKE"):
+    ROW_COUNTS = ROW_COUNTS[:1]
 
 
 def make_table(rows: int) -> PJXTable:
     row_items = [
         PJXTableRow(
             id=f"r{r}",
-            content=_RowsHost(
-                id=f"cells-r{r}",
-                content=[
-                    PJXTableCell(id=f"c{r}a", content=f"choice {r}"),
-                    PJXTableCell(id=f"c{r}b", content=f"note {r}"),
-                    PJXTableCell(id=f"c{r}c", content=f"v{r}"),
-                ],
-            ),
+            content=[
+                PJXTableCell(id=f"c{r}a", content=f"choice {r}"),
+                PJXTableCell(id=f"c{r}b", content=f"note {r}"),
+                PJXTableCell(id=f"c{r}c", content=f"v{r}"),
+            ],
         )
         for r in range(rows)
     ]
     return PJXTable(
         id="t",
-        content=PJXTableBody(id="tb", content=_RowsHost(id="rows", content=row_items)),
+        content=PJXTableBody(id="tb", content=row_items),
     )
 
 

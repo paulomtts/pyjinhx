@@ -23,6 +23,7 @@ Not a CI test (timing-sensitive). Run manually before/after mount-path work:
     uv run python scripts/bench_mixed_reactive_tree.py
 """
 
+import os
 import tempfile
 import time
 from pathlib import Path
@@ -36,6 +37,11 @@ from pyjinhx.rendering import render
 from pyjinhx.session import RenderSession, request_scope
 
 SHAPES = ((5, 10), (10, 20), (20, 40), (30, 60))  # (mids, leaves per mid)
+
+# CI runs these only to prove they still execute (tests/test_bench_scripts_smoke.py);
+# timings are meaningless at one point, so the sweep collapses to its smallest.
+if os.environ.get("PJX_BENCH_SMOKE"):
+    SHAPES = SHAPES[:1]
 
 
 def _descriptor(

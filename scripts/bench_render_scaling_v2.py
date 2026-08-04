@@ -17,6 +17,7 @@ Not a CI test (timing-sensitive). Run manually before/after render-path work:
 import cProfile
 import io
 import math
+import os
 import pstats
 import sys
 import tempfile
@@ -30,6 +31,11 @@ from pyjinhx.rendering import render
 from pyjinhx.session import RenderSession
 
 COMPONENT_COUNTS = (50, 100, 200, 500, 1000, 2000, 5000, 10000)
+
+# CI runs these only to prove they still execute (tests/test_bench_scripts_smoke.py);
+# timings are meaningless at one point, so the sweep collapses to its smallest.
+if os.environ.get("PJX_BENCH_SMOKE"):
+    COMPONENT_COUNTS = COMPONENT_COUNTS[:1]
 
 
 def tree_shape(n: int) -> tuple[int, int]:

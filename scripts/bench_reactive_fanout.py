@@ -31,6 +31,7 @@ Not a CI test (timing-sensitive). Run manually before/after reactive-path work:
 """
 
 import dataclasses
+import os
 import tempfile
 import time
 from pathlib import Path
@@ -52,8 +53,21 @@ MANIFEST_SIZES = (50, 100, 200, 500, 1000, 2000, 5000)
 DIRTY_RATIOS = (0.0, 0.5, 1.0)  # all-clean, half-dirty, all-dirty
 OOB_REGION_COUNTS = (10, 50, 100, 200)
 OOB_SUBTREE_SIZES = (1, 10, 50)  # child spans inside each swapped region
+
+# CI runs these only to prove they still execute (tests/test_bench_scripts_smoke.py);
+# timings are meaningless at one point, so the sweep collapses to its smallest.
+if os.environ.get("PJX_BENCH_SMOKE"):
+    MANIFEST_SIZES = MANIFEST_SIZES[:1]
+    DIRTY_RATIOS = DIRTY_RATIOS[:1]
+    OOB_REGION_COUNTS = OOB_REGION_COUNTS[:1]
+    OOB_SUBTREE_SIZES = OOB_SUBTREE_SIZES[:1]
+
 DROP_CANDIDATE_COUNTS = (50, 200)
 DROP_SUBTREE_SIZES = (1, 10, 50, 200)
+
+if os.environ.get("PJX_BENCH_SMOKE"):
+    DROP_CANDIDATE_COUNTS = DROP_CANDIDATE_COUNTS[:1]
+    DROP_SUBTREE_SIZES = DROP_SUBTREE_SIZES[:1]
 
 
 class BenchReactiveWidget(ReactiveComponent, react=("bench",)):

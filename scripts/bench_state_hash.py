@@ -23,12 +23,19 @@ Not a CI test (timing-sensitive). Run manually before/after state-hash work:
     uv run python scripts/bench_state_hash.py
 """
 
+import os
 import time
 
 from pyjinhx.reactive.component import ReactiveComponent
 
 FIELD_COUNTS = (5, 20, 50, 100)
 VALUE_SIZES = (16, 256, 4096, 65536)
+
+# CI runs these only to prove they still execute (tests/test_bench_scripts_smoke.py);
+# timings are meaningless at one point, so the sweep collapses to its smallest.
+if os.environ.get("PJX_BENCH_SMOKE"):
+    FIELD_COUNTS = FIELD_COUNTS[:1]
+    VALUE_SIZES = VALUE_SIZES[:1]
 ITERATIONS = 200
 
 
