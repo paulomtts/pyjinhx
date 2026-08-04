@@ -30,7 +30,7 @@ def _load_class_from_module(
 
     Mirrors how a real builtin resolves its template: the class's __module__
     must have a __file__ that actually lives beside the .pjx file, which a
-    class body attribute cannot fake (see pyjinhx/component.py::_defining_module_dir).
+    class body attribute cannot fake (see pyjinhx/_component.py::_defining_module_dir).
     """
     spec = importlib.util.spec_from_file_location(module_name, module_path)
     assert spec is not None and spec.loader is not None
@@ -131,7 +131,7 @@ def test_class_with_template_outside_template_dir_is_claimed(tmp_path: Path):
     outside.mkdir()
     (outside / "outside_widget.pjx").write_text("<div>outside</div>")
     (outside / "outside_widget.py").write_text(
-        "from pyjinhx.component import BaseComponent\n\n\n"
+        "from pyjinhx._component import BaseComponent\n\n\n"
         "class OutsideWidget(BaseComponent):\n"
         "    pass\n"
     )
@@ -153,7 +153,7 @@ def test_user_class_with_replace_shadows_an_outside_class(tmp_path, caplog):
     outside.mkdir()
     (outside / "user_thing.pjx").write_text("<div>outside</div>")
     (outside / "user_thing.py").write_text(
-        "from pyjinhx.component import BaseComponent\n\n\n"
+        "from pyjinhx._component import BaseComponent\n\n\n"
         "class UserThing(BaseComponent):\n"
         "    pass\n"
     )
@@ -165,7 +165,7 @@ def test_user_class_with_replace_shadows_an_outside_class(tmp_path, caplog):
     walked.mkdir()
     (walked / "user_thing.pjx").write_text("<div>user</div>")
     (walked / "user_thing.py").write_text(
-        "from pyjinhx.component import BaseComponent\n\n\n"
+        "from pyjinhx._component import BaseComponent\n\n\n"
         "class UserThing(BaseComponent, pjx_replace=True):\n"
         "    pass\n"
     )
@@ -173,7 +173,7 @@ def test_user_class_with_replace_shadows_an_outside_class(tmp_path, caplog):
         walked / "user_thing.py", "test_user_thing_mod", "UserThing"
     )
     # `pjx_replace=True` is a class-kwarg consumed by
-    # BaseComponent.__init_subclass__ (pyjinhx/component.py), not a decorator
+    # BaseComponent.__init_subclass__ (pyjinhx/_component.py), not a decorator
     # or a plain class attribute.
 
     discovery.build_registry(walked, [OutsideThing, UserThing])
@@ -188,7 +188,7 @@ def test_unintended_collision_across_sources_warns_once(tmp_path, caplog):
     outside.mkdir()
     (outside / "user_thing.pjx").write_text("<div>outside</div>")
     (outside / "user_thing.py").write_text(
-        "from pyjinhx.component import BaseComponent\n\n\n"
+        "from pyjinhx._component import BaseComponent\n\n\n"
         "class UserThing(BaseComponent):\n"
         "    pass\n"
     )
@@ -200,7 +200,7 @@ def test_unintended_collision_across_sources_warns_once(tmp_path, caplog):
     walked.mkdir()
     (walked / "user_thing.pjx").write_text("<div>user</div>")
     (walked / "user_thing.py").write_text(
-        "from pyjinhx.component import BaseComponent\n\n\n"
+        "from pyjinhx._component import BaseComponent\n\n\n"
         "class UserThing(BaseComponent):\n"
         "    pass\n"
     )
@@ -224,7 +224,7 @@ def test_build_registry_with_no_template_dir_still_claims_own_template_classes(
     outside.mkdir()
     (outside / "lonely_widget.pjx").write_text("<div>lonely</div>")
     (outside / "lonely_widget.py").write_text(
-        "from pyjinhx.component import BaseComponent\n\n\n"
+        "from pyjinhx._component import BaseComponent\n\n\n"
         "class LonelyWidget(BaseComponent):\n"
         "    pass\n"
     )
