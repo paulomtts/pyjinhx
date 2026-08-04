@@ -5,7 +5,13 @@ from typing import cast
 
 from fastapi import FastAPI, Request
 from fastapi.testclient import TestClient
-from starlette.responses import HTMLResponse, PlainTextResponse
+from starlette.responses import (
+    HTMLResponse,
+    JSONResponse,
+    PlainTextResponse,
+    RedirectResponse,
+    Response,
+)
 
 from pyjinhx._component import BaseComponent
 from pyjinhx.config import PjxSettings
@@ -395,3 +401,113 @@ def test_registering_the_module_publishes_a_backend():
     from pyjinhx.integrations.base import IntegrationBackend, get_backend
 
     assert isinstance(get_backend(), IntegrationBackend)
+
+
+def test_htmx_native_redirect_becomes_hx_redirect():
+    app = FastAPI()
+    apply_setup(app, _settings())
+
+    @app.post("/go")
+    def go():
+        return RedirectResponse(url="/next", status_code=303)
+
+    with TestClient(app) as client:
+        response = client.post(
+            "/go", headers={"HX-Request": "true"}, follow_redirects=False
+        )
+
+    assert response.status_code == 204
+    assert response.headers["HX-Redirect"] == "/next"
+    assert response.text == ""
+
+
+def test_non_htmx_native_redirect_is_untouched():
+    app = FastAPI()
+    apply_setup(app, _settings())
+
+    @app.post("/go")
+    def go():
+        return RedirectResponse(url="/next", status_code=303)
+
+    with TestClient(app) as client:
+        response = client.post("/go", follow_redirects=False)
+
+    assert response.status_code == 303
+    assert response.headers["location"] == "/next"
+    assert "HX-Redirect" not in response.headers
+
+
+def test_hand_built_redirect_response_translates_too():
+    app = FastAPI()
+    apply_setup(app, _settings())
+
+    @app.post("/raw")
+    def raw():
+        return Response(status_code=302, headers={"location": "/x"})
+
+    with TestClient(app) as client:
+        response = client.post(
+            "/raw", headers={"HX-Request": "true"}, follow_redirects=False
+        )
+
+    assert response.status_code == 204
+    assert response.headers["HX-Redirect"] == "/x"
+
+
+def test_translate_native_redirect_handles_case_sensitive_headers():
+    from types import SimpleNamespace
+
+    from pyjinhx.integrations.fastapi import _translate_native_redirect
+
+    request = SimpleNamespace(headers={"HX-Request": "true"})
+    result = SimpleNamespace(status_code=307, headers={"Location": "/cap"})
+
+    translated = _translate_native_redirect(result, request)
+
+    assert translated.status_code == 204  # pyright: ignore[reportAttributeAccessIssue]
+    assert translated.headers["HX-Redirect"] == "/cap"  # pyright: ignore[reportAttributeAccessIssue]
+
+
+def test_translate_native_redirect_handles_lowercase_only_third_party_headers():
+    from types import SimpleNamespace
+
+    from pyjinhx.integrations.fastapi import _translate_native_redirect
+
+    request = SimpleNamespace(headers={"HX-Request": "true"})
+    result = SimpleNamespace(status_code=307, headers={"location": "/low"})
+
+    translated = _translate_native_redirect(result, request)
+
+    assert translated.headers["HX-Redirect"] == "/low"  # pyright: ignore[reportAttributeAccessIssue]
+
+
+def test_htmx_non_redirect_response_is_untouched():
+    app = FastAPI()
+    apply_setup(app, _settings())
+
+    @app.get("/data")
+    def data():
+        return JSONResponse({"ok": True})
+
+    with TestClient(app) as client:
+        response = client.get("/data", headers={"HX-Request": "true"})
+
+    assert response.status_code == 200
+    assert response.json() == {"ok": True}
+    assert "HX-Redirect" not in response.headers
+
+
+def test_hx_location_response_is_not_reinterpreted():
+    app = FastAPI()
+    apply_setup(app, _settings())
+
+    @app.post("/client-nav")
+    def client_nav():
+        return Response(status_code=204, headers={"HX-Location": "/y"})
+
+    with TestClient(app) as client:
+        response = client.post("/client-nav", headers={"HX-Request": "true"})
+
+    assert response.status_code == 204
+    assert response.headers["HX-Location"] == "/y"
+    assert "HX-Redirect" not in response.headers

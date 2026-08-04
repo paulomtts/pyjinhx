@@ -10,7 +10,7 @@ from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING, Any
 
 from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.responses import HTMLResponse
+from starlette.responses import HTMLResponse, Response
 
 from pyjinhx._component import BaseComponent
 from pyjinhx.client.inject import (
@@ -109,7 +109,9 @@ class FastAPIBackend:
             inject_runtime(session, request or getattr(session, "pjx_request", None))
         composed = compose(result, session=session)
         if composed is PASSTHROUGH:
-            return result
+            return _translate_native_redirect(
+                result, request or getattr(session, "pjx_request", None)
+            )
         assert isinstance(composed, PjxResponse)
         return HTMLResponse(
             composed.body, headers=composed.headers, status_code=composed.status
@@ -213,6 +215,38 @@ def _request_from(kwargs: dict[str, Any]) -> Any:
         if isinstance(value, Request):
             return value
     return None
+
+
+def _is_htmx(request: Any) -> bool:
+    """Whether htmx, rather than the browser itself, issued this request."""
+    if request is None:
+        return False
+    headers = getattr(request, "headers", None)
+    if headers is None:
+        return False
+    return headers.get("HX-Request") == "true"
+
+
+def _translate_native_redirect(result: object, request: Any) -> object:
+    """Turn a native 3xx into the 204 + ``HX-Redirect`` htmx can actually follow.
+
+    htmx follows a 3xx transparently inside XHR and swaps the redirect target's
+    body into the triggering element, which is never what the handler meant. The
+    check is duck-typed on shape, not on ``RedirectResponse``, so hand-built and
+    third-party redirect responses translate too.
+    """
+    if not _is_htmx(request):
+        return result
+    status = getattr(result, "status_code", None)
+    if status not in range(300, 400):
+        return result
+    headers = getattr(result, "headers", None)
+    if headers is None:
+        return result
+    location = headers.get("Location") or headers.get("location")
+    if not location:
+        return result
+    return Response(status_code=204, headers={"HX-Redirect": location})
 
 
 def _adapt_endpoint(
