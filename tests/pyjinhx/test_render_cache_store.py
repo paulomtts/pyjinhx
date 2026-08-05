@@ -18,7 +18,8 @@ from pyjinhx.render_cache import (
     restore_rendered_level,
     store_rendered_level,
 )
-from pyjinhx.segments import ChildRef, RenderedLevel
+from pyjinhx.rendering import render_level
+from pyjinhx.segments import ChildRef, RenderedLevel, serialize
 from pyjinhx.session import RenderSession
 
 
@@ -234,3 +235,40 @@ def test_replay_never_fires_rendered_subscribers(template: Path):
 
     assert calls == []
     assert session.css_assets == {template.parent / "a.css"}
+
+
+class _StoreLeaf(BaseComponent):
+    label: str = "click me"
+
+
+def test_real_pipeline_level_round_trips(tmp_path: Path):
+    """A level render_level actually produced survives the pickling backend.
+
+    A leaf component has no child tags, so the level render_level returns is
+    byte-for-byte the level its parse phase built - the shape tier 2 caches -
+    without reaching into _fill_children to capture it mid-flight.
+    """
+    template = tmp_path / "leaf.html"
+    template.write_text("<button>{{ label }}</button>", encoding="utf-8")
+    _StoreLeaf.__pjx_descriptor__ = _descriptor(
+        _StoreLeaf,
+        template,
+        css_paths=(tmp_path / "leaf.css",),
+        js_paths=(tmp_path / "leaf.js",),
+    )
+    session = RenderSession()
+    level = render_level(_StoreLeaf(), session)
+
+    backend = DiskCacheBackend(tmp_path / "cache")
+    store_rendered_level(backend, "k", level, ttl=300)
+    restored = restore_rendered_level(backend, "k")
+    backend.close()
+
+    assert isinstance(restored, RenderedLevel)
+    assert serialize(restored) == serialize(level)
+    assert restored.root_span == level.root_span
+
+    replay_session = RenderSession()
+    replay_asset_accumulation(restored, replay_session)
+    assert replay_session.css_assets == {tmp_path / "leaf.css"}
+    assert replay_session.js_assets == {tmp_path / "leaf.js"}
