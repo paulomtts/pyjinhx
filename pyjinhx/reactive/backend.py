@@ -98,7 +98,14 @@ class InMemoryCacheBackend:
         entry = self._entries.get(key)
         if entry is None:
             return MISS
-        value, _expires_at = entry
+        value, expires_at = entry
+        if expires_at is not None and self._clock() >= expires_at:
+            # Expiry is noticed on lookup rather than swept in the background:
+            # the entry is dead either way, and reaping it here is what keeps
+            # its tag memberships from outliving it.
+            self._entries.pop(key, None)
+            self._unindex(key)
+            return MISS
         return value
 
     def put(
@@ -112,7 +119,9 @@ class InMemoryCacheBackend:
         for tag in tags:
             self._by_tag.setdefault(tag, set()).add(key)
             self._tags_of.setdefault(key, set()).add(tag)
-        self._entries[key] = (value, None)
+        # An absolute deadline computed once here keeps every later lookup a
+        # single comparison instead of a subtraction against a stored ttl.
+        self._entries[key] = (value, None if ttl is None else self._clock() + ttl)
 
     def evict(self, tags: Iterable[str]) -> None:
         """Drop every entry carrying any of these tags."""

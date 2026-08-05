@@ -149,3 +149,72 @@ def test_clear_drops_the_tag_index_too():
     backend.put("todos", "b", tags=(), ttl=None)
     backend.evict(("todo-list",))
     assert backend.get("todos") == "b"
+
+
+def test_a_ttl_none_entry_never_expires():
+    clock = FakeClock()
+    backend = InMemoryCacheBackend(clock=clock)
+    backend.put("todos", "a", tags=(), ttl=None)
+    clock.advance(1_000_000.0)
+    assert backend.get("todos") == "a"
+
+
+def test_an_entry_is_a_hit_before_its_ttl_elapses():
+    clock = FakeClock()
+    backend = InMemoryCacheBackend(clock=clock)
+    backend.put("todos", "a", tags=(), ttl=60.0)
+    clock.advance(59.0)
+    assert backend.get("todos") == "a"
+
+
+def test_an_entry_becomes_a_miss_once_its_ttl_elapses():
+    clock = FakeClock()
+    backend = InMemoryCacheBackend(clock=clock)
+    backend.put("todos", "a", tags=(), ttl=60.0)
+    clock.advance(61.0)
+    assert backend.get("todos") is MISS
+
+
+def test_an_expired_none_is_a_miss_not_a_cached_none():
+    clock = FakeClock()
+    backend = InMemoryCacheBackend(clock=clock)
+    backend.put("todos", None, tags=(), ttl=60.0)
+    clock.advance(61.0)
+    assert backend.get("todos") is MISS
+
+
+def test_re_putting_an_expired_key_makes_it_a_hit_again():
+    clock = FakeClock()
+    backend = InMemoryCacheBackend(clock=clock)
+    backend.put("todos", "a", tags=(), ttl=60.0)
+    clock.advance(61.0)
+    backend.put("todos", "b", tags=(), ttl=60.0)
+    assert backend.get("todos") == "b"
+
+
+def test_evict_drops_an_expired_entry_that_was_never_looked_up():
+    clock = FakeClock()
+    backend = InMemoryCacheBackend(clock=clock)
+    backend.put("todos", "a", tags=("todo-list",), ttl=60.0)
+    clock.advance(61.0)
+    backend.evict(("todo-list",))
+    backend.put("todos", "b", tags=(), ttl=None)
+    backend.evict(("todo-list",))
+    assert backend.get("todos") == "b"
+
+
+def test_expiry_frees_the_entrys_tag_memberships():
+    clock = FakeClock()
+    backend = InMemoryCacheBackend(clock=clock)
+    backend.put("todos", "a", tags=("todo-list",), ttl=60.0)
+    clock.advance(61.0)
+    assert backend.get("todos") is MISS
+    backend.put("todos", "b", tags=(), ttl=None)
+    backend.evict(("todo-list",))
+    assert backend.get("todos") == "b"
+
+
+def test_the_default_clock_is_monotonic_and_does_not_expire_instantly():
+    backend = InMemoryCacheBackend()
+    backend.put("todos", "a", tags=(), ttl=60.0)
+    assert backend.get("todos") == "a"
