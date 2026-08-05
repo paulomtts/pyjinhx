@@ -4,13 +4,17 @@ from typing import Annotated
 
 import pytest
 
-from pyjinhx.config import PjxSettings, configure_pyjinhx, current_settings
-from pyjinhx.reactive.backend import CachePolicy, InMemoryCacheBackend
+from pyjinhx.config import configure_pyjinhx, current_settings
+from pyjinhx.reactive.backend import MISS, CachePolicy, InMemoryCacheBackend
+from pyjinhx.reactive.cache import cache_get, cache_has, invalidate
 from pyjinhx.reactive.component import (
     PjxKey,
     ReactiveComponent,
+    _cache_key,
     _resolve_tier2,
+    _string_cache_key,
 )
+from pyjinhx.session import get_cache_forward, request_scope
 
 
 @pytest.fixture
@@ -117,3 +121,207 @@ def test_resolve_tier2_reads_the_settings_at_call_time(
     configure_pyjinhx(current_settings().merge(cache_backend=replacement))
 
     assert _resolve_tier2(Row)[0] is replacement
+
+
+class RecordingBackend(InMemoryCacheBackend):
+    """An in-memory backend that remembers which methods it was asked for."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.gets: list[str] = []
+        self.puts: list[str] = []
+        self.evicts: list[tuple[str, ...]] = []
+
+    def get(self, key: str) -> object:
+        self.gets.append(key)
+        return super().get(key)
+
+    def put(self, key: str, value: object, *, tags, ttl) -> None:
+        self.puts.append(key)
+        super().put(key, value, tags=tags, ttl=ttl)
+
+    def evict(self, tags) -> None:
+        self.evicts.append(tuple(tags))
+        super().evict(self.evicts[-1])
+
+
+@pytest.fixture
+def recording_backend():
+    """Publish a RecordingBackend for one test, then restore the settings."""
+    previous = current_settings()
+    published = RecordingBackend()
+    configure_pyjinhx(previous.merge(cache_backend=published))
+    yield published
+    configure_pyjinhx(previous)
+
+
+def test_a_miss_writes_through_to_both_tiers(backend: InMemoryCacheBackend):
+    calls: list[int] = []
+
+    class Row(ReactiveComponent, react=("rows",)):
+        row_id: Annotated[int, PjxKey()] = 0
+
+        @classmethod
+        def load(cls, row_id: int) -> "Row":
+            calls.append(row_id)
+            return cls(row_id=row_id)
+
+    with request_scope():
+        loaded = Row.load(7)
+
+        assert calls == [7]
+        assert cache_has(Row, _cache_key(Row, {"row_id": 7}, protocol_mode=False))
+        assert (
+            cache_get(Row, _cache_key(Row, {"row_id": 7}, protocol_mode=False))
+            is loaded
+        )
+
+    stored = backend.get(_string_cache_key(Row, {"row_id": 7}, protocol_mode=False))
+    assert stored is loaded
+
+
+def test_a_tier2_hit_is_promoted_into_tier1_and_skips_the_real_load(
+    backend: InMemoryCacheBackend,
+):
+    calls: list[int] = []
+
+    class Row(ReactiveComponent, react=("rows",)):
+        row_id: Annotated[int, PjxKey()] = 0
+
+        @classmethod
+        def load(cls, row_id: int) -> "Row":
+            calls.append(row_id)
+            return cls(row_id=row_id)
+
+    with request_scope():
+        first = Row.load(7)
+
+    # A fresh request: tier 1 is empty again, so only tier 2 can answer.
+    with request_scope():
+        key = _cache_key(Row, {"row_id": 7}, protocol_mode=False)
+        assert cache_has(Row, key) is False
+
+        second = Row.load(7)
+
+        assert second is first
+        assert calls == [7]
+        # Promotion, not a bare return: the rest of this request answers from
+        # the dict without consulting the backend again.
+        assert cache_has(Row, key) is True
+        assert cache_get(Row, key) is first
+
+
+def test_the_promoted_entry_carries_the_same_reactive_keys(
+    backend: InMemoryCacheBackend,
+):
+    class Row(ReactiveComponent, react=("rows",)):
+        row_id: Annotated[int, PjxKey()] = 0
+
+        @classmethod
+        def load(cls, row_id: int) -> "Row":
+            return cls(row_id=row_id)
+
+    with request_scope():
+        Row.load(7)
+
+    with request_scope():
+        promoted = Row.load(7)
+        key = _cache_key(Row, {"row_id": 7}, protocol_mode=False)
+
+        assert get_cache_forward()[(Row, key)] == {"rows", "rows:7"}
+
+        # And the keys actually bite: dirtying the composite drops the promoted
+        # entry from tier 1.
+        invalidate(["rows:7"])
+        assert cache_has(Row, key) is False
+        assert promoted is not None
+
+
+def test_tier2_is_tagged_with_the_same_reactive_keys_tier1_indexes_on(
+    recording_backend: RecordingBackend,
+):
+    class Row(ReactiveComponent, react=("rows",)):
+        row_id: Annotated[int, PjxKey()] = 0
+
+        @classmethod
+        def load(cls, row_id: int) -> "Row":
+            return cls(row_id=row_id)
+
+    with request_scope():
+        Row.load(7)
+
+    string_key = _string_cache_key(Row, {"row_id": 7}, protocol_mode=False)
+    assert recording_backend.puts == [string_key]
+
+    recording_backend.evict(["rows:7"])
+    assert recording_backend.get(string_key) is MISS
+
+
+def test_a_cache_false_class_never_touches_the_backend(
+    recording_backend: RecordingBackend,
+):
+    calls: list[int] = []
+
+    class Row(ReactiveComponent, react=("rows",), cache=False):
+        row_id: Annotated[int, PjxKey()] = 0
+
+        @classmethod
+        def load(cls, row_id: int) -> "Row":
+            calls.append(row_id)
+            return cls(row_id=row_id)
+
+    with request_scope():
+        Row.load(7)
+        Row.load(7)
+
+    with request_scope():
+        Row.load(7)
+
+    assert recording_backend.gets == []
+    assert recording_backend.puts == []
+    # Tier 1 still memoizes within a request, and still starts empty in the next.
+    assert calls == [7, 7]
+
+
+def test_with_no_backend_every_request_runs_the_real_load_once(no_backend: None):
+    calls: list[int] = []
+
+    class Row(ReactiveComponent, react=("rows",)):
+        row_id: Annotated[int, PjxKey()] = 0
+
+        @classmethod
+        def load(cls, row_id: int) -> "Row":
+            calls.append(row_id)
+            return cls(row_id=row_id)
+
+    with request_scope():
+        Row.load(7)
+        Row.load(7)
+
+    with request_scope():
+        Row.load(7)
+
+    assert calls == [7, 7]
+
+
+def test_an_expired_tier2_entry_falls_through_to_the_real_load(
+    backend: InMemoryCacheBackend,
+):
+    """ttl is honored per class: a policy that has run out is an ordinary miss."""
+    calls: list[int] = []
+
+    class Row(ReactiveComponent, cache=CachePolicy(ttl=0)):
+        row_id: Annotated[int, PjxKey()] = 0
+
+        @classmethod
+        def load(cls, row_id: int) -> "Row":
+            calls.append(row_id)
+            return cls(row_id=row_id)
+
+    with request_scope():
+        Row.load(7)
+
+    with request_scope():
+        Row.load(7)
+
+    assert calls == [7, 7]

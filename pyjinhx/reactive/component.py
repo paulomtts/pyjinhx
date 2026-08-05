@@ -473,6 +473,35 @@ def _wrap_load(
         key = _cache_key(bound_cls, supplied, protocol_mode=cache_key_protocol_mode)
         if cache_has(bound_cls, key):
             return cache_get(bound_cls, key)
+        # Index under both the static react keys (a bare "todos" dirties every
+        # instance) and, when this call has a load key, the per-instance
+        # "todos:1" composite reactive_key() produces — @mutates(key=...) and
+        # dirty(reactive_key(...)) dirty only the composite, so invalidate()
+        # needs both forms to find this entry. Derived before either tier is
+        # consulted: a tier-2 hit indexes its promotion under the same keys a
+        # fresh load would have.
+        react_keys = bound_cls._pjx_react_keys
+        field = bound_cls._pjx_key_field
+        load_key = coerce_load_key_str(supplied.get(field)) if field else None
+        if load_key is not None:
+            react_keys = (
+                *react_keys,
+                *(f"{rk}:{load_key}" for rk in bound_cls._pjx_react_keys),
+            )
+        backend, ttl = _resolve_tier2(bound_cls)
+        string_key = ""
+        if backend is not None:
+            string_key = _string_cache_key(
+                bound_cls, supplied, protocol_mode=cache_key_protocol_mode
+            )
+            cached = backend.get(string_key)
+            # `is not MISS`, not truthiness: a load() may legitimately return a
+            # falsy component, and a cached one is a hit like any other.
+            if cached is not MISS:
+                # Promoted, not merely returned: the rest of this request must
+                # answer from the dict rather than going back over the seam.
+                cache_put(bound_cls, key, cached, react_keys=react_keys)
+                return cached
         call_kwargs = dict(supplied)
         if context_param is not None:
             call_kwargs[context_param] = get_load_context()
@@ -482,20 +511,11 @@ def _wrap_load(
                 f"{bound_cls.__name__}.load must return an instance of "
                 f"{bound_cls.__name__}; got {type(result).__name__}."
             )
-        # Index under both the static react keys (a bare "todos" dirties every
-        # instance) and, when this call has a load key, the per-instance
-        # "todos:1" composite reactive_key() produces — @mutates(key=...) and
-        # dirty(reactive_key(...)) dirty only the composite, so invalidate()
-        # needs both forms to find this entry.
-        react_keys = bound_cls._pjx_react_keys
-        field = bound_cls._pjx_key_field
-        load_key = coerce_load_key_str(supplied.get(field)) if field else None
-        if load_key is not None:
-            react_keys = (
-                *react_keys,
-                *(f"{rk}:{load_key}" for rk in bound_cls._pjx_react_keys),
-            )
         cache_put(bound_cls, key, result, react_keys=react_keys)
+        if backend is not None:
+            # The same tuple tier 1 reverse-indexes on becomes tier 2's tags, so
+            # one dirtied key reaches both stores without a second index here.
+            backend.put(string_key, result, tags=react_keys, ttl=ttl)
         return result
 
     return wrapped_load
