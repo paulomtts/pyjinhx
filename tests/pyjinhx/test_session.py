@@ -511,3 +511,41 @@ def test_request_scope_leaves_a_caller_supplied_session_alone():
             assert "x" not in session.jinja_env.globals
     finally:
         shutdown_pyjinhx()
+
+
+def test_render_session_configured_global_fires_in_rendered_output():
+    """Membership in .globals is not the contract — being callable from a
+    template is. This renders the global rather than inspecting the dict."""
+
+    def site_name() -> str:
+        return "pyjinhx"
+
+    session = session_module.RenderSession(jinja_globals={"site_name": site_name})
+    template = session.jinja_env.from_string("{{ site_name() }}")
+
+    assert template.render() == "pyjinhx"
+
+
+def test_render_session_configured_filter_fires_in_rendered_output():
+    session = session_module.RenderSession(jinja_filters={"shout": str.upper})
+    template = session.jinja_env.from_string("{{ 'ok'|shout }}")
+
+    assert template.render() == "OK"
+
+
+def test_render_session_configured_filter_does_not_clobber_builtin_in_rendered_output():
+    """update() vs assignment, proven through output: |upper is Jinja's own
+    filter and must keep working next to the one the caller added."""
+    session = session_module.RenderSession(jinja_filters={"shout": str.upper})
+    template = session.jinja_env.from_string("{{ 'ok'|shout }}|{{ 'b'|upper }}")
+
+    assert template.render() == "OK|B"
+
+
+def test_render_session_with_no_extras_still_renders_jinja_builtins():
+    """The None default is 'nothing to add', not 'clear' — a session built with
+    no configuration renders the standard library normally."""
+    session = session_module.RenderSession()
+    template = session.jinja_env.from_string("{{ 'b'|upper }}{{ range(3)|list }}")
+
+    assert template.render() == "B[0, 1, 2]"
