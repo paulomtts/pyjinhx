@@ -184,3 +184,63 @@ def test_template_edit_busts_cache_key(spy: SpyBackend, tmp_path: Path):
     # than overwriting or hitting the old one.
     assert len(spy.puts) == 2
     assert spy.puts[0] != spy.puts[1]
+
+
+class _AssetShell(BaseComponent):
+    pass
+
+
+def _accumulating_session() -> RenderSession:
+    """A fresh session wired the way the live asset path is.
+
+    accumulate_assets is opt-in per session (see tests/pyjinhx/test_assets.py):
+    a bare RenderSession() emits nothing on a live render either, so a session
+    that never subscribed proves nothing about a hit.
+    """
+    session = RenderSession()
+    session.on_rendered.append(accumulate_assets)
+    return session
+
+
+def test_hit_still_emits_css_and_js(spy: SpyBackend, tmp_path: Path):
+    """Assets are part of the response, so a hit has to deliver them too.
+
+    Asserted on the markup render() actually returns — in the default INLINE
+    mode emit_assets reads each accumulated file and inlines its text — rather
+    than on the accumulator sets, because what a page is missing when the replay
+    does not fire is the tag, not a set entry. Both levels of the tree carry
+    assets: the shell answers from the cache and the child renders through it.
+    """
+    shell_css = tmp_path / "shell.css"
+    shell_css.write_text(".shell{color:SHELLCSS}", encoding="utf-8")
+    shell_js = tmp_path / "shell.js"
+    shell_js.write_text("window.SHELLJS=1", encoding="utf-8")
+    child_css = tmp_path / "child.css"
+    child_css.write_text(".child{color:CHILDCSS}", encoding="utf-8")
+    child_js = tmp_path / "child.js"
+    child_js.write_text("window.CHILDJS=1", encoding="utf-8")
+
+    child_template = tmp_path / "asset_child.html"
+    child_template.write_text("<span>child</span>", encoding="utf-8")
+    _attach(_AlphaChild, child_template, css_paths=(child_css,), js_paths=(child_js,))
+    shell_template = tmp_path / "asset_shell.html"
+    shell_template.write_text("<div><Inner/></div>", encoding="utf-8")
+    _attach(_AssetShell, shell_template, css_paths=(shell_css,), js_paths=(shell_js,))
+    discovery._registry.mapping = {_pascal_to_snake("Inner"): _AlphaChild}
+    shell_key = render_cache_key(_AssetShell(id="a"))
+
+    cold = render(_AssetShell(id="a"), _accumulating_session())
+    warm = render(_AssetShell(id="a"), _accumulating_session())
+
+    assert "SHELLCSS" in cold
+    assert "SHELLJS" in cold
+    assert warm == cold
+    assert "<style>.shell{color:SHELLCSS}</style>" in warm
+    assert "<script>window.SHELLJS=1</script>" in warm
+    assert "<style>.child{color:CHILDCSS}</style>" in warm
+    assert "<script>window.CHILDJS=1</script>" in warm
+    # The second render really was a hit, so the assertions above are about the
+    # replay rather than about a second live render.
+    assert spy.puts.count(shell_key) == 1
+    assert spy.gets.count(shell_key) == 2
+
