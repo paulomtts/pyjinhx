@@ -16,12 +16,12 @@ if TYPE_CHECKING:
     # Type-only: the hook's signature names the spine's own types, but importing
     # them at runtime would point session at its own consumers.
     from pyjinhx._component import BaseComponent
-    from pyjinhx.segments import RenderedLevel
 
     # Type-only for the same reason config is imported inside request_scope()'s
     # body and nowhere else: config sits above the render spine, so a runtime
     # module-scope edge back would be a genuine cycle.
     from pyjinhx.config import PjxSettings
+    from pyjinhx.segments import RenderedLevel
 
 # The seven pieces of per-request mutable state. They live here rather than
 # beside their eventual consumers because the import rule runs one way only:
