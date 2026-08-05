@@ -1,5 +1,6 @@
 """The diskcache-backed tier-2 cache: extra wiring and CacheBackend conformance."""
 
+import logging
 import subprocess
 import sys
 import textwrap
@@ -8,10 +9,25 @@ import time
 import pytest
 
 from pyjinhx.reactive.backend import MISS, CacheBackend
+from pyjinhx.reactive.backend_health import is_degraded
 
 diskcache = pytest.importorskip("diskcache")
 
 from pyjinhx.integrations.diskcache import DiskCacheBackend
+
+
+class Unpicklable:
+    """A value whose instances refuse to pickle, the way a live handle would."""
+
+    def __reduce__(self):
+        raise TypeError("Unpicklable does not pickle")
+
+
+class AlsoUnpicklable:
+    """A second such class, so log-once-per-class is distinguishable from once-ever."""
+
+    def __reduce__(self):
+        raise TypeError("AlsoUnpicklable does not pickle")
 
 
 def test_importing_bare_pyjinhx_does_not_need_the_extra():
@@ -206,3 +222,50 @@ def test_close_is_callable_the_way_shutdown_calls_it(tmp_path):
     close = getattr(backend, "close", None)
     assert close is not None
     close()
+
+
+def test_putting_an_unpicklable_value_does_not_raise(tmp_path):
+    backend = DiskCacheBackend(tmp_path)
+    backend.put("summary", Unpicklable(), tags=("todos",), ttl=None)
+
+
+def test_putting_an_unpicklable_value_leaves_the_key_unset(tmp_path):
+    backend = DiskCacheBackend(tmp_path)
+    backend.put("summary", Unpicklable(), tags=("todos",), ttl=None)
+    assert backend.get("summary") is MISS
+
+
+def test_putting_an_unpicklable_value_logs_once_per_class(tmp_path, caplog):
+    backend = DiskCacheBackend(tmp_path)
+    with caplog.at_level(logging.WARNING, logger="pyjinhx"):
+        backend.put("first", Unpicklable(), tags=("todos",), ttl=None)
+        backend.put("second", Unpicklable(), tags=("todos",), ttl=None)
+    assert len(caplog.records) == 1
+    assert "Unpicklable" in caplog.records[0].getMessage()
+
+
+def test_putting_two_different_unpicklable_classes_each_logs_once(tmp_path, caplog):
+    backend = DiskCacheBackend(tmp_path)
+    with caplog.at_level(logging.WARNING, logger="pyjinhx"):
+        backend.put("first", Unpicklable(), tags=("todos",), ttl=None)
+        backend.put("second", AlsoUnpicklable(), tags=("todos",), ttl=None)
+        backend.put("third", AlsoUnpicklable(), tags=("todos",), ttl=None)
+    assert len(caplog.records) == 2
+    logged = [record.getMessage() for record in caplog.records]
+    # Module-qualified, and with the trailing space: "AlsoUnpicklable" contains
+    # "Unpicklable", so a bare substring check would pass on the wrong record.
+    for cls in (Unpicklable, AlsoUnpicklable):
+        name = f"{cls.__module__}.{cls.__qualname__} "
+        assert any(name in message for message in logged), name
+
+
+def test_an_unpicklable_value_does_not_mark_the_backend_degraded(tmp_path):
+    # A value that will not pickle is a fact about that value, not a backend
+    # that is down - degradation is backend_health.py's separate mechanism.
+    backend = DiskCacheBackend(tmp_path)
+    backend.put("summary", Unpicklable(), tags=("todos",), ttl=None)
+    assert is_degraded(backend) is False
+    backend.put("todos", [1], tags=("todos",), ttl=None)
+    assert backend.get("todos") == [1]
+    backend.evict(("todos",))
+    assert backend.get("todos") is MISS
