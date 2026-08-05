@@ -453,7 +453,12 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
     # AST regardless of the guard (see registry's entry above), so
     # pyjinhx.session is declared here too.
     "render_cache": frozenset(
-        {"pyjinhx._component", "pyjinhx.reactive.backend", "pyjinhx.segments", "pyjinhx.session"}
+        {
+            "pyjinhx._component",
+            "pyjinhx.reactive.backend",
+            "pyjinhx.segments",
+            "pyjinhx.session",
+        }
     ),
     "render_context": frozenset({"pyjinhx.markers", "pyjinhx._component"}),
     "reactive.__init__": frozenset(),

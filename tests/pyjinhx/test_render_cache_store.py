@@ -7,6 +7,7 @@ inside a test function cannot be pickled by reference.
 
 import pickle
 from pathlib import Path
+from typing import cast
 
 import pytest
 
@@ -97,10 +98,11 @@ def test_disk_round_trip_survives_pickling(tmp_path: Path, template: Path):
     assert restored.root_span == level.root_span
     assert restored.segments[0] == level.segments[0]
     assert restored.segments[2] == level.segments[2]
-    assert restored.descriptor.template_path == template
-    assert restored.descriptor.css_paths == css
-    assert restored.descriptor.js_paths == js
-    assert restored.descriptor.provenance["template"] is _StorePlain
+    restored_descriptor = cast(ClassDescriptor, restored.descriptor)
+    assert restored_descriptor.template_path == template
+    assert restored_descriptor.css_paths == css
+    assert restored_descriptor.js_paths == js
+    assert restored_descriptor.provenance["template"] is _StorePlain
 
 
 def test_restored_level_keeps_childref_unresolved(tmp_path: Path, template: Path):
@@ -142,7 +144,9 @@ def test_ttl_expiry_is_a_miss(template: Path):
     """A stored level past its ttl reads back as MISS."""
     now = [1000.0]
     backend = InMemoryCacheBackend(clock=lambda: now[0])
-    store_rendered_level(backend, "k", _level(_descriptor(_StorePlain, template)), ttl=5)
+    store_rendered_level(
+        backend, "k", _level(_descriptor(_StorePlain, template)), ttl=5
+    )
 
     now[0] = 1006.0
 
@@ -175,7 +179,7 @@ def test_broken_segment_raises(template: Path):
     """A segment that did not survive storage raises, naming its position."""
     backend = InMemoryCacheBackend()
     level = _level(_descriptor(_StorePlain, template))
-    level.segments[1] = object()  # pyright: ignore[reportArgumentType]
+    level.segments[1] = object()  # pyright: ignore[reportArgumentType, reportCallIssue]
     backend.put("k", level, tags=(), ttl=None)
 
     with pytest.raises(ValueError, match="segment 1"):

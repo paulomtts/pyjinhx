@@ -116,15 +116,18 @@ def restore_rendered_level(backend: CacheBackend, key: str) -> object:
 
 def _check_restored(key: str, value: object) -> None:
     """Raise unless ``value`` is a RenderedLevel whose parts survived storage."""
+    # ValueError, not TypeError (ruff TRY004 would prefer): this is a data
+    # integrity problem with a stored entry, not a caller passing the wrong
+    # type into a function.
     if not isinstance(value, RenderedLevel):
-        raise ValueError(
+        raise ValueError(  # noqa: TRY004
             f"render cache entry {key!r} is not a RenderedLevel but a "
             f"{type(value).__name__}; the entry is corrupt or was written by "
             f"something else, and serving it would put that value in a page."
         )
     for index, segment in enumerate(value.segments):
         if not isinstance(segment, (str, ChildRef, RenderedLevel)):
-            raise ValueError(
+            raise ValueError(  # noqa: TRY004
                 f"render cache entry {key!r} came back with segment {index} as a "
                 f"{type(segment).__name__}; a level's segments are str, ChildRef "
                 f"or RenderedLevel only, so this entry did not survive storage."
