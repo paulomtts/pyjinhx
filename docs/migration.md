@@ -824,11 +824,12 @@ BeautifulSoup) instead of pyjinhx internals.
 ### `pyjinhx.builtins` today
 
 `pyjinhx.builtins` no longer ships the older component set (`Card`, `Tooltip`, `Panel`,
-`PanelTrigger`, `Notification`, `Avatar`, `Modal`, …). The current builtins are the HTMX
-data/nav family — `PJXTable` and its parts (`PJXTableHead`, `PJXTableBody`, `PJXTableRow`,
-`PJXTableHeaderCell`, `PJXTableCell`), `PJXPaginator`, `PJXRegionLoader`, `PJXPageLoader`,
-`PJXLazyLoad` — plus the `ui/` component set. Check `pyjinhx.builtins.__init__` for the
-current list rather than assuming a name from an older release survived.
+`PanelTrigger`, `Notification`, `Avatar`, `Modal`, …). `pyjinhx.builtins.__all__` in
+`pyjinhx/builtins/__init__.py` is the source of truth for the current builtin set — check
+it rather than assuming a name from an older release survived or trusting a hand-written
+list here, which will drift. The only components genuinely absent from 1.0 are `PJXPanel`
+and `PJXLazyPanel`; use `PJXTabPanel` / `PJXLazyLoad` instead. Every other pre-1.0 builtin
+either ports directly or has a documented replacement.
 
 ### `PjxContext` is narrower
 
