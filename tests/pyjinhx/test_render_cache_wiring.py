@@ -574,3 +574,49 @@ def test_a_template_printing_an_explicit_id_is_still_cached(
     render_level(_IdPrinter(id="a", label="hi"), RenderSession())
 
     assert len(spy.puts) == 1
+
+
+class _TinyBox(BaseComponent):
+    label: str = "hi"
+
+
+class _TinyExplicit(BaseComponent, cache=CachePolicy(ttl=30)):
+    label: str = "hi"
+
+
+def test_a_class_measured_too_cheap_stops_touching_the_backend(
+    backend: InMemoryCacheBackend, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    # A floor no real template clears, so the first render measures under it.
+    monkeypatch.setenv("PJX_RENDER_CACHE_MIN_US", "1000000")
+    path = tmp_path / "tiny_box.html"
+    path.write_text("<div>{{ label }}</div>", encoding="utf-8")
+    _attach(_TinyBox, path)
+    spy = SpyBackend()
+    configure_pyjinhx(current_settings().merge(cache_backend=spy))
+
+    render_level(_TinyBox(label="hi"), RenderSession())
+    first_gets, first_puts = len(spy.gets), len(spy.puts)
+    render_level(_TinyBox(label="hi"), RenderSession())
+
+    # The first render pays a lookup and a store — that is the price of
+    # measuring. Every render after it pays neither, reads included.
+    assert (len(spy.gets), len(spy.puts)) == (first_gets, first_puts)
+
+
+def test_an_explicit_cache_policy_overrides_the_too_cheap_verdict(
+    backend: InMemoryCacheBackend, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    monkeypatch.setenv("PJX_RENDER_CACHE_MIN_US", "1000000")
+    path = tmp_path / "tiny_explicit.html"
+    path.write_text("<div>{{ label }}</div>", encoding="utf-8")
+    _attach(_TinyExplicit, path)
+    spy = SpyBackend()
+    configure_pyjinhx(current_settings().merge(cache_backend=spy))
+
+    render_level(_TinyExplicit(label="hi"), RenderSession())
+    render_level(_TinyExplicit(label="hi"), RenderSession())
+
+    # cache=CachePolicy(...) is the author saying "cache this"; a measurement
+    # must not quietly overrule it.
+    assert len(spy.gets) == 2

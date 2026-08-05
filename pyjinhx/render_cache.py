@@ -4,6 +4,7 @@
 
 import hashlib
 import json
+import os
 from typing import TYPE_CHECKING, Any, cast
 
 from pyjinhx._component import BaseComponent
@@ -17,6 +18,24 @@ from pyjinhx.segments import ChildRef, RenderedLevel
 
 if TYPE_CHECKING:
     from pyjinhx.session import RenderSession
+
+# A cache hit is not free: the key, the backend read, the unpickle and the asset
+# replay come to roughly 20us for a small component. Caching a render cheaper
+# than that costs more than it saves, and every builtin this repo ships renders
+# in 30-105us with only a fraction of that spent on the template. The default
+# sits well clear of them, so what gets cached is a template doing real work.
+_DEFAULT_MIN_SAVING_US = 150.0
+
+# Qualified names, not classes: see _too_cheap_key. Process-wide because the
+# measurement is a property of the template, not of any one request.
+_too_cheap: set[str] = set()
+_decided: set[str] = set()
+
+
+def reset_render_cost_decisions() -> None:
+    """Forget every measured class. For tests, which must not inherit a verdict."""
+    _too_cheap.clear()
+    _decided.clear()
 
 
 def _holds_component(value: object) -> bool:
@@ -154,6 +173,68 @@ def render_cache_key(component: BaseComponent) -> str:
     # would clear it.
     template_mtime = descriptor.template_path.stat().st_mtime
     return f"{identity}:{fields_digest}:{template_mtime}"
+
+
+def _min_saving_us() -> float:
+    """The render-and-parse cost, in microseconds, below which caching is a loss.
+
+    Read per call rather than captured at import so a test — or an app that sets
+    the variable after importing pyjinhx — is not fighting import order.
+    """
+    raw = os.environ.get("PJX_RENDER_CACHE_MIN_US")
+    if raw is None or raw == "":
+        return _DEFAULT_MIN_SAVING_US
+    try:
+        return float(raw)
+    except ValueError:
+        raise ValueError(
+            f"PJX_RENDER_CACHE_MIN_US={raw!r} is not a number of microseconds."
+        ) from None
+
+
+def is_too_cheap(cls: type[BaseComponent]) -> bool:
+    """Whether this class was measured as costing less to render than to cache.
+
+    Answered from a process-wide set filled by ``note_render_cost``. Asked before
+    the key is built and before the backend is read, because a class that is not
+    worth caching should pay neither — skipping only the write would leave the
+    per-request half of the waste in place.
+    """
+    return _too_cheap_key(cls) in _too_cheap
+
+
+def note_render_cost(cls: type[BaseComponent], saving_us: float) -> None:
+    """Record what rendering this class actually cost, and decide it once.
+
+    ``saving_us`` is the template render plus the parse — the work a cache hit
+    replaces, not the whole of render_level. Timing the whole thing would fold in
+    validation, context building and child filling, none of which a hit avoids,
+    and would price a class as expensive for work the cache cannot save.
+
+    Per class rather than per instance: the same template doing the same work
+    costs the same whether it is row 3 or row 197, so one measurement settles
+    every instance and the check afterwards is a set lookup.
+
+    Decided once and never revisited. A class that re-measured could flip between
+    requests on nothing but machine load, which would make cache membership — and
+    so the store's contents — depend on scheduling noise.
+    """
+    key = _too_cheap_key(cls)
+    if key in _decided:
+        return
+    _decided.add(key)
+    if saving_us < _min_saving_us():
+        _too_cheap.add(key)
+
+
+def _too_cheap_key(cls: type[BaseComponent]) -> str:
+    """The qualified name this class is remembered under.
+
+    A name rather than the class object, so the two sets cannot keep a class
+    alive for the life of the process — the same reason the diskcache backend
+    remembers unpicklable types by name.
+    """
+    return f"{cls.__module__}.{cls.__qualname__}"
 
 
 def resolve_render_tier2(

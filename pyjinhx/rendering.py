@@ -6,6 +6,7 @@ finished HTML string for a childless component (render, public API).
 """
 
 import html
+import time
 from typing import Any, cast
 
 import jinja2
@@ -19,7 +20,9 @@ from pyjinhx.props_header import warn_stale_def_header
 from pyjinhx.render_cache import (
     auto_id_in_output,
     holds_spliced_components,
+    is_too_cheap,
     load_rendered_level,
+    note_render_cost,
     render_cache_key,
     replay_asset_accumulation,
     resolve_render_tier2,
@@ -331,6 +334,16 @@ def render_level(
     cache_key = ""
     if getattr(component.__class__, "_pjx_key_field", _NO_KEY_FIELD) is _NO_KEY_FIELD:
         backend, ttl = resolve_render_tier2(component.__class__)
+    # Asked before the key is built and before the backend is read: a class that
+    # costs less to render than to cache must pay neither half. An explicit
+    # cache= is the author overriding the measurement, so it is never consulted
+    # for one — resolve_render_tier2 has already turned cache=False off.
+    if (
+        backend is not None
+        and component.__class__._pjx_cache_policy is None
+        and is_too_cheap(component.__class__)
+    ):
+        backend, ttl = None, None
     # holds_spliced_components reads the instance's own slot/children field
     # values off the descriptor, which is only ever safe to do for a class
     # tier 2 would otherwise cache — checked last, and only once tier 2 is
@@ -357,6 +370,16 @@ def render_level(
         raise jinja2.TemplateNotFound(
             err.name, message=f"{prefix}template file not found"
         ) from err
+    # Only the render and the parse are timed, because only they are what a
+    # cache hit replaces. Everything around them — validation, context build,
+    # child filling — is paid on a hit too, so folding it in would price a class
+    # as expensive for work the cache cannot save.
+    #
+    # This first render is also the one Jinja compiles the template on, so the
+    # figure runs high. Left uncorrected: the error points at caching a class
+    # that did not need it, which costs a hit's overhead, while the opposite
+    # error forfeits a saving measured at 3-9x on templates that do real work.
+    render_started = time.perf_counter()
     with collect_slot_tokens() as slot_table:
         output_string = template.render(context)
 
@@ -364,6 +387,7 @@ def render_level(
     parser = VerbatimParser()
     parser.feed(output_string)
     parser.close()
+    note_render_cost(component.__class__, (time.perf_counter() - render_started) * 1e6)
 
     # Validate single-root rule
     try:
