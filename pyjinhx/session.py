@@ -369,10 +369,7 @@ def request_scope(
         from pyjinhx.config import current_settings
 
         settings = current_settings()
-        session = RenderSession(
-            jinja_globals=settings.jinja_globals,
-            jinja_filters=settings.jinja_filters,
-        )
+        session = RenderSession(jinja_env=_environment_for(settings))
     session_token = _render_session.set(session)
     instances_token = _instances.set({})
     dirtied_token = _dirtied.set(set())

@@ -727,3 +727,28 @@ def test_render_session_rejects_an_adopted_environment_with_extras():
 
     with pytest.raises(TypeError):
         session_module.RenderSession(jinja_env=env, jinja_filters={"shout": str.upper})
+
+
+def test_request_scope_default_session_uses_the_cached_environment():
+    """Two requests under one configuration must land on one environment —
+    otherwise every request starts with an empty template cache."""
+    from pyjinhx.config import (
+        PjxSettings,
+        configure_pyjinhx,
+        current_settings,
+        shutdown_pyjinhx,
+    )
+
+    configure_pyjinhx(PjxSettings(jinja_globals={"x": 1}))
+    try:
+        expected = session_module._environment_for(current_settings())
+        with session_module.request_scope() as first:
+            pass
+        with session_module.request_scope() as second:
+            pass
+
+        assert first.jinja_env is expected
+        assert second.jinja_env is expected
+        assert first is not second
+    finally:
+        shutdown_pyjinhx()
