@@ -12,6 +12,7 @@ from pyjinhx._component import (
     Slot,
     _is_component_typed_annotation,
     _is_slot_field,
+    _resolve_slot_fields,
 )
 from pyjinhx.descriptor import ClassDescriptor
 from pyjinhx.render_context import build_context
@@ -85,6 +86,15 @@ class _DesignatedChildren(BaseComponent):
     kids: str = ""  # designated children field, no PjxSlot metadata
 
 
+class _NullableSlots(BaseComponent):
+    # Both spellings wrap `Annotated[..., PjxSlot()]` in an *outer* union with
+    # None. Pydantic hoists metadata only off the outermost `Annotated`, so the
+    # marker never reaches `field.metadata` here and detection has to unwrap the
+    # union to find it.
+    body: Slot | None = None
+    raw: Annotated[str | BaseComponent | None, PjxSlot()] | None = None
+
+
 class TestIsSlotField:
     def test_true_for_explicit_slot_field(self):
         assert _is_slot_field(_Demo, "body") is True
@@ -108,6 +118,16 @@ class TestIsSlotField:
         # `Slot | None` drops PjxSlot at the field level, so the marker must sit
         # on the OUTER Annotated. This asserts the outer form keeps working.
         assert _is_slot_field(_Demo, "nullable_slot") is True
+
+    def test_true_for_slot_alias_under_an_outer_none(self):
+        """`body: Slot | None` is a slot even though the field carries no metadata."""
+        assert _NullableSlots.model_fields["body"].metadata == []
+        assert _is_slot_field(_NullableSlots, "body") is True
+
+    def test_true_for_hand_built_annotated_under_an_outer_none(self):
+        """`Annotated[..., PjxSlot()] | None` spelled out by hand is a slot too."""
+        assert _NullableSlots.model_fields["raw"].metadata == []
+        assert _is_slot_field(_NullableSlots, "raw") is True
 
 
 class _Leaf(BaseComponent):
@@ -332,6 +352,35 @@ class TestSlotInterpolation:
         template = env.from_string("{{ content|length }}")
         with pytest.raises(TypeError):
             template.render(content=ComponentNode(FilterLeaf()))
+
+
+class TestNullableSlotRendersRaw:
+    """A `Slot | None` field keeps the autoescape exemption at render time."""
+
+    def test_nullable_slot_string_is_not_escaped(self):
+        from pyjinhx.rendering import render
+        from pyjinhx.session import RenderSession
+
+        class NullableBox(BaseComponent):
+            content: Slot | None = None
+
+        # Resolving the slot set the way registration does, instead of hardcoding
+        # it, is what ties this assertion to slot detection: a descriptor built by
+        # hand would render raw no matter what `_is_slot_field` decided.
+        NullableBox.__pjx_descriptor__ = ClassDescriptor(
+            template_path=_TEMPLATE_DIR / "slot_interp.html",
+            slot_fields=_resolve_slot_fields(NullableBox),
+            children_field=None,
+            css_paths=(),
+            js_paths=(),
+            strict=True,
+            provenance={"template": NullableBox},
+        )
+
+        html = render(NullableBox(content="<b>x</b>"), RenderSession())
+
+        assert html == '<div class="box">before <b>x</b> after</div>'
+        assert "&lt;b&gt;" not in html
 
 
 class TestSlotSpliceGuards:
