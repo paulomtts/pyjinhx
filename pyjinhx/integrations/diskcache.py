@@ -39,6 +39,15 @@ class DiskCacheBackend:
     hosts pointed at their own directories hold two independent caches, and an
     eviction on one is invisible to the other.
 
+    ``directory`` must be ephemeral per deployment - created empty when the
+    deployment starts and gone when it stops, e.g. a Kubernetes ``emptyDir``, a
+    Docker ``--tmpfs``, or a systemd ``RuntimeDirectory=``. A path that survives
+    a deploy serves entries written by the previous version of the code, with
+    the TTL bounding how long rather than preventing it. There is no default
+    directory so the choice has to be made; enforcing it is the platform's job,
+    since "startup" here is one event per worker and a store that is already
+    warm is indistinguishable from one a sibling worker just filled.
+
     ``directory`` must live on local disk. SQLite's locking is unreliable over
     NFS and other network filesystems, and a cache that corrupts under
     concurrency is worse than no cache; this is documented rather than detected
@@ -63,7 +72,8 @@ class DiskCacheBackend:
         """Open (or create) a cache under ``directory``.
 
         Args:
-            directory: Where the cache's SQLite shards live. Local disk only.
+            directory: Where the cache's SQLite shards live. Local disk only,
+                and ephemeral per deployment.
             shards: How many SQLite databases the entries are spread over.
                 More than one because a single database serializes every
                 worker behind its write lock.
