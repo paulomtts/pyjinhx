@@ -56,3 +56,39 @@ def test_string_key_keeps_a_falsy_real_load_key_distinct_from_the_no_key_placeho
     assert empty_key != dash_key
     assert empty_key == f"pjx:1:{Row.__module__}.{Row.__qualname__}:"
     assert dash_key == f"pjx:1:{Row.__module__}.{Row.__qualname__}:-"
+
+
+def test_protocol_mode_string_key_is_insensitive_to_argument_order():
+    class Row(ReactiveComponent):
+        model_config = ConfigDict(extra="allow")
+        row_id: Annotated[int, PjxKey()] = 0
+
+        @classmethod
+        def load(cls, row_id: int, flavor: str = "plain") -> "Row":
+            return cls(row_id=row_id, flavor=flavor)  # type: ignore[reportCallIssue]
+
+    first = _string_cache_key(
+        Row, {"row_id": 1, "flavor": "spicy"}, protocol_mode=True
+    )
+    second = _string_cache_key(
+        Row, {"flavor": "spicy", "row_id": 1}, protocol_mode=True
+    )
+
+    assert first == second
+
+
+def test_protocol_mode_string_key_separates_calls_that_differ_in_any_argument():
+    class Row(ReactiveComponent):
+        model_config = ConfigDict(extra="allow")
+        row_id: Annotated[int, PjxKey()] = 0
+
+        @classmethod
+        def load(cls, row_id: int, flavor: str = "plain") -> "Row":
+            return cls(row_id=row_id, flavor=flavor)  # type: ignore[reportCallIssue]
+
+    plain = _string_cache_key(Row, {"row_id": 1, "flavor": "plain"}, protocol_mode=True)
+    spicy = _string_cache_key(Row, {"row_id": 1, "flavor": "spicy"}, protocol_mode=True)
+    other = _string_cache_key(Row, {"row_id": 2, "flavor": "plain"}, protocol_mode=True)
+
+    assert plain != spicy
+    assert plain != other
