@@ -131,3 +131,52 @@ def test_a_degraded_backend_is_not_even_asked_for_a_get(settings_restored: None)
 
     assert backend.gets == []
     assert calls == [7, 7]
+
+
+def test_a_raising_put_drops_the_write_without_touching_the_result(
+    settings_restored: None,
+):
+    publish(BrokenBackend(fail_put=True))
+    calls: list[int] = []
+    Row = make_row_class(calls)
+
+    with request_scope():
+        loaded = Row.load(7)
+
+    assert loaded.row_id == 7
+    assert calls == [7]
+
+
+def test_a_raising_put_warns_once_and_never_degrades_the_backend(
+    settings_restored: None, caplog: pytest.LogCaptureFixture
+):
+    backend = publish(BrokenBackend(fail_put=True))
+    calls: list[int] = []
+    Row = make_row_class(calls)
+
+    with caplog.at_level(logging.WARNING, logger="pyjinhx"):
+        for _ in range(3):
+            with request_scope():
+                Row.load(7)
+
+    assert len(caplog.records) == 1
+    # Only a failed eviction can degrade a backend: a dropped write costs
+    # speed, not correctness, so reads keep being tried.
+    assert is_degraded(backend) is False
+    assert backend.gets != []
+
+
+def test_a_landed_write_clears_the_degraded_flag(settings_restored: None):
+    backend = publish(BrokenBackend())
+    calls: list[int] = []
+    Row = make_row_class(calls)
+
+    from pyjinhx.reactive.backend_health import note_failure
+
+    note_failure(backend, "evict", RuntimeError("boom"), degrade=True)
+    assert is_degraded(backend) is True
+
+    with request_scope():
+        Row.load(7)
+
+    assert is_degraded(backend) is False

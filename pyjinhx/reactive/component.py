@@ -525,7 +525,16 @@ def _wrap_load(
         if backend is not None:
             # The same tuple tier 1 reverse-indexes on becomes tier 2's tags, so
             # one dirtied key reaches both stores without a second index here.
-            backend.put(string_key, result, tags=react_keys, ttl=ttl)
+            try:
+                backend.put(string_key, result, tags=react_keys, ttl=ttl)
+            except Exception as exc:
+                # The component is already loaded and already in tier 1: a
+                # dropped write costs the next request a load, nothing more.
+                note_failure(backend, "put", exc, degrade=False)
+            else:
+                # A write that landed is the evidence a degraded backend is
+                # answering again, and that what it now holds is current.
+                note_write_success(backend)
         return result
 
     return wrapped_load
