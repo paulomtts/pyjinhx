@@ -188,6 +188,75 @@ is entitled to reject it with its own error, and the walk turns that into a dele
 
 ---
 
+## 1.0.x → 1.1.0
+
+Two breaking API changes shipped in 1.1.0: `load()` became a classmethod factory, and
+`RenderSession` / `request_scope()` stopped taking a `template_dir`.
+
+### `load()` is now a classmethod factory (breaking)
+
+In 1.0.x, `load()` was an instance method — the framework constructed the component, then
+called `load(self)` to fill it in, and the method returned `None`. In 1.1.0 `load()` is a
+`@classmethod` that constructs and returns the instance itself.
+
+A `load` that is not a classmethod whose first parameter is `cls` raises `TypeError` at
+class-definition time, not at first render — the check runs from
+`__pydantic_init_subclass__`, so an unmigrated component fails on import.
+
+```python
+# BEFORE (1.0.x) — instance method, mutates self, returns None
+class Row(ReactiveComponent):
+    row_id: int = PjxKey()
+    title: str = ""
+
+    def load(self) -> None:
+        self.title = store.get(self.row_id).title
+
+
+# AFTER (1.1.0) — classmethod, constructs and returns cls(...)
+class Row(ReactiveComponent):
+    row_id: int = PjxKey()
+    title: str = ""
+
+    @classmethod
+    def load(cls, row_id: int) -> "Row":
+        return cls(row_id=row_id, title=store.get(row_id).title)
+```
+
+### `RenderSession` / `request_scope()` dropped `template_dir` (breaking)
+
+`RenderSession.__init__` and `request_scope()` no longer accept a `template_dir` — or any
+other search-root argument. The Jinja loader is hardcoded to `AbsolutePathLoader`.
+
+`AbsolutePathLoader` treats every template name as a fully resolved absolute filesystem
+path. There is no search root, and no relative or cwd fallback: a name that is not an
+absolute path to an existing file raises `TemplateNotFound`. Component template names are
+already resolved by the time they reach the loader, so there is nothing left to search
+for — and a cwd-rooted fallback is what made un-configured requests fail confusingly under
+the old `FileSystemLoader("templates")` default.
+
+**Migration:** if you passed `template_dir=`, resolve the path at the call site instead.
+Template names must already be absolute before they reach the session.
+
+```python
+# BEFORE (1.0.x) — session held the search root
+session = RenderSession(template_dir="templates")
+
+with request_scope(session, template_dir="templates"):
+    ...
+
+
+# AFTER (1.1.0) — no template_dir; the caller resolves an absolute path
+TEMPLATES = Path(__file__).parent / "templates"
+
+session = RenderSession()
+
+with request_scope(session):
+    template = str(TEMPLATES / "row.html")  # absolute, already resolved
+```
+
+---
+
 ## 0.36.x → 1.0 (pyjinhx v2)
 
 pyjinhx 1.0 is a rebuild, not an increment. The component model, template syntax, props,
