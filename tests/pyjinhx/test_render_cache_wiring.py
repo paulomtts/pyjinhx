@@ -461,7 +461,7 @@ def test_a_component_valued_slot_is_never_cached_and_splices_every_time(
 
     real_render_cache_key = rendering.render_cache_key
 
-    def guarded(component: object) -> str:
+    def guarded(component: BaseComponent) -> str:
         # Scoped to _HoleHolder itself, not the whole tree: its spliced _Inner
         # child is an ordinary cacheable component and legitimately gets its
         # own key computed on its own render_level call — what D1 disqualifies
