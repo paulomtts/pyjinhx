@@ -9,7 +9,8 @@ import hashlib
 import inspect
 import json
 from collections.abc import Callable, Iterable
-from typing import Annotated, Any, ClassVar, get_args, get_origin, get_type_hints
+from enum import Enum
+from typing import Annotated, Any, ClassVar, cast, get_args, get_origin, get_type_hints
 
 from pydantic import TypeAdapter, ValidationError
 from pydantic.fields import FieldInfo
@@ -98,6 +99,7 @@ class ReactiveComponent(BaseComponent):
         _validate_load_is_classmethod(cls, real_load, is_classmethod)
         context_param = resolve_load_context_param(real_load)
         _validate_load_params(cls, real_load, context_param)
+        _validate_protocol_mode_load_params(cls, real_load, context_param)
         cls.load = classmethod(_wrap_load(cls, real_load, context_param))  # pyright: ignore[reportAttributeAccessIssue]
 
 
@@ -313,6 +315,88 @@ def _validate_load_params(
         )
 
 
+_DETERMINISTIC_REPR_TYPES = (str, int, float, bool, type(None))
+"""Types whose repr() is a stable function of the value alone."""
+
+_BARE_CONTAINERS = (list, tuple, set, frozenset, dict)
+"""Unparameterized containers: element types unknown, so undecidable."""
+
+
+def _annotation_reprs_deterministically(annotation: Any) -> bool:
+    """Report whether values of this annotation repr() the same for equal values.
+
+    Containers are judged by their arguments: sorting entries by parameter name
+    and repr-ing each value never depends on a container's internal ordering
+    beyond what repr() itself shows, so ``list[str]`` is fine while a bare
+    ``list`` (unknown element types) is not.
+    """
+    if (
+        annotation is inspect.Parameter.empty
+        or annotation is Any
+        or annotation is object
+    ):
+        return False
+    if annotation is None:
+        return True
+    if get_origin(annotation) is Annotated:
+        return _annotation_reprs_deterministically(get_args(annotation)[0])
+    args = [arg for arg in get_args(annotation) if arg is not Ellipsis]
+    if args:
+        return all(_annotation_reprs_deterministically(arg) for arg in args)
+    if not isinstance(annotation, type):
+        return False
+    if annotation in _DETERMINISTIC_REPR_TYPES or issubclass(annotation, Enum):
+        return True
+    if get_origin(annotation) is not None or annotation in _BARE_CONTAINERS:
+        return False
+    # object.__repr__ prints the instance's memory address, so two equal values
+    # of such a class stringify differently between processes and even between
+    # objects in one process.
+    return annotation.__repr__ is not object.__repr__
+
+
+def _validate_protocol_mode_load_params(
+    cls: type[Any], func: Callable[..., Any], context_param: str | None
+) -> None:
+    """Reject a protocol-mode class whose load args cannot be keyed on.
+
+    Under ``extra="allow"`` every bound argument goes into the cache key, so an
+    argument whose repr() carries an identity would key two equal calls apart
+    and one changed call together. That is a wrong cache, not a slow one, so it
+    is refused when the class is defined rather than discovered at runtime.
+
+    Raises:
+        TypeError: A load parameter's type does not serialize deterministically.
+    """
+    if cls.model_config.get("extra") != "allow":
+        return
+    signature = inspect.signature(func)
+    try:
+        hints = get_type_hints(func, include_extras=True)
+    except Exception:  # noqa: BLE001 -- an unresolvable forward ref (#713) must
+        # not stop a class from being defined; fall back to raw annotations and
+        # skip anything still a string.
+        hints = {}
+    offenders: list[tuple[str, Any]] = []
+    for name, param in signature.parameters.items():
+        if name in ("cls", context_param):
+            continue
+        annotation = hints.get(name, param.annotation)
+        if isinstance(annotation, str):
+            continue
+        if not _annotation_reprs_deterministically(annotation):
+            offenders.append((name, annotation))
+    if offenders:
+        detail = ", ".join(
+            f"{name!r} ({annotation!r})" for name, annotation in offenders
+        )
+        raise TypeError(
+            f"{cls.__name__}.load parameter(s) {detail} do not serialize "
+            f"deterministically for tier-2 cache keys; use a type with a stable "
+            f"repr (str, int, float, bool, None, an Enum, or a container of them)."
+        )
+
+
 def _wrap_load(
     cls: type["ReactiveComponent"],
     real_load: Callable[..., Any],
@@ -408,3 +492,46 @@ def _cache_key(
     if field is None:
         return None
     return coerce_load_key_str(supplied.get(field))
+
+
+_KEY_SCHEMA_VERSION = "1"
+"""Schema version baked into every string cache key. Bump it whenever the key's
+meaning changes, so an upgraded pyjinhx never serves entries a previous version
+wrote under different semantics."""
+
+_NO_LOAD_KEY = "-"
+"""String-key segment for a class with no PjxKey field. Safe against collision
+with a real key value of "-": the key already carries the class's module and
+qualname, and a given class either has a key field or has none."""
+
+_STRING_KEY_MAX_PLAIN = 256
+"""Plain-form length above which the protocol-mode load key is hashed instead."""
+
+
+def _string_cache_key(
+    cls: type["ReactiveComponent"], supplied: dict[str, Any], *, protocol_mode: bool
+) -> str:
+    """Build the versioned string form of this call's cache key.
+
+    Shape: ``pjx:<version>:<module>.<qualname>:<load_key>``. Derived from the
+    same ``_cache_key()`` value tier 1 keys on, so the two tiers can never
+    disagree about what identifies a call.
+    """
+    key = _cache_key(cls, supplied, protocol_mode=protocol_mode)
+    if protocol_mode:
+        pairs = cast(tuple[tuple[str, str], ...], key)
+        # _cache_key() already sorted by name, so equal arguments passed in a
+        # different keyword order serialize to the same string.
+        plain = ",".join(f"{name}={value}" for name, value in pairs)
+        if len(plain) > _STRING_KEY_MAX_PLAIN:
+            load_key = hashlib.sha256(plain.encode("utf-8")).hexdigest()
+        else:
+            load_key = plain
+    else:
+        str_key = cast(str | None, key)
+        # `is None`, not `or`: a real load-key value that happens to be falsy
+        # (e.g. an empty-string PjxKey field) must not be conflated with "this
+        # class has no PjxKey field at all" — both would otherwise collapse to
+        # the same placeholder segment and collide.
+        load_key = _NO_LOAD_KEY if str_key is None else str_key
+    return f"pjx:{_KEY_SCHEMA_VERSION}:{cls.__module__}.{cls.__qualname__}:{load_key}"
