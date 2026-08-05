@@ -180,8 +180,7 @@ def load(cls, todo_id: int | str, ctx: TodoAppContext | None = None) -> "ItemRow
 
 # AFTER (1.2.0)
 @classmethod
-def load(cls, todo_id: int, ctx: TodoAppContext | None = None) -> "ItemRow":
-    ...
+def load(cls, todo_id: int, ctx: TodoAppContext | None = None) -> "ItemRow": ...
 ```
 
 A value that will not validate is passed through untouched rather than raised on — `load()`
