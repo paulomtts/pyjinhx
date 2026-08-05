@@ -17,11 +17,17 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass, fields, replace
 from importlib.util import find_spec as _find_spec
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from pyjinhx._component import BaseComponent
 from pyjinhx.discovery import build_registry
 from pyjinhx.integrations.base import IntegrationBackend, get_backend
+
+if TYPE_CHECKING:
+    # Type-only, and it must stay that way: config sits above reactive/, and
+    # naming a backend's protocol in a field annotation must not make importing
+    # config drag reactive/ in at runtime.
+    from pyjinhx.reactive.backend import CacheBackend
 
 # Sentinel distinguishing "argument omitted" from None or a real value, so
 # setup()'s pass-through keywords never clobber an explicit settings object.
@@ -69,6 +75,9 @@ class PjxSettings:
     # missing mapping should mean to the session that applies these.
     jinja_globals: Mapping[str, Any] | None = None
     jinja_filters: Mapping[str, Any] | None = None
+    # Handed in by the app, never read from the environment: a backend needs a
+    # path, a connection or a constructor call that a string cannot carry.
+    cache_backend: CacheBackend | None = None
 
     @classmethod
     def from_env(cls) -> PjxSettings:

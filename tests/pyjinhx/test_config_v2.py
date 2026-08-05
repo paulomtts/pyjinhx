@@ -10,6 +10,7 @@ import pytest
 
 import pyjinhx
 from pyjinhx.config import PjxSettings
+from pyjinhx.reactive.backend import InMemoryCacheBackend
 
 
 @pytest.fixture(autouse=True)
@@ -240,7 +241,11 @@ def test_setup_delegates_an_asgi_app_to_the_fastapi_integration(
 
 
 def test_deferred_cache_machinery_is_not_ported():
-    """ADR 0009/0011: no invalidation backend, hub or cache scope in v2."""
+    """ADR 0009/0011: no invalidation backend, hub or cache scope in v2.
+
+    Milestone 10 (#800) reopens that deferral for a cross-request cache: the
+    only field it adds here is cache_backend, an opt-in handed in by the app.
+    """
     names = {field.name for field in dataclasses.fields(PjxSettings)}
     assert names == {
         "reactive_dev",
@@ -249,6 +254,7 @@ def test_deferred_cache_machinery_is_not_ported():
         "static_root",
         "jinja_globals",
         "jinja_filters",
+        "cache_backend",
     }
 
 
@@ -291,3 +297,49 @@ def test_setup_registers_builtins_without_a_components_root():
     setup(app=None, components_root=None)
 
     assert discovery.get_class("pjx_card") is not None
+
+
+def test_cache_backend_defaults_to_none():
+    assert PjxSettings().cache_backend is None
+
+
+def test_cache_backend_is_stored_by_identity():
+    backend = InMemoryCacheBackend()
+    settings = PjxSettings(cache_backend=backend)
+    assert settings.cache_backend is backend
+
+
+def test_from_env_never_sets_a_cache_backend(monkeypatch: pytest.MonkeyPatch):
+    """A backend needs a path, a connection or a constructor call, none of which
+    an environment variable can carry, so there is deliberately no PJX_ var."""
+    monkeypatch.setenv(
+        "PJX_CACHE_BACKEND", "pyjinhx.reactive.backend:InMemoryCacheBackend"
+    )
+    assert PjxSettings.from_env().cache_backend is None
+
+
+def test_merge_applies_a_cache_backend():
+    backend = InMemoryCacheBackend()
+    merged = PjxSettings().merge(cache_backend=backend)
+    assert merged.cache_backend is backend
+
+
+def test_merge_without_the_keyword_keeps_the_existing_backend():
+    backend = InMemoryCacheBackend()
+    settings = PjxSettings(cache_backend=backend)
+    assert settings.merge().cache_backend is backend
+    assert settings.merge(reactive_dev=True).cache_backend is backend
+
+
+def test_merge_accepts_none_to_clear_the_backend():
+    settings = PjxSettings(cache_backend=InMemoryCacheBackend())
+    assert settings.merge(cache_backend=None).cache_backend is None
+
+
+def test_setup_passes_a_cache_backend_through_to_the_settings():
+    from pyjinhx.config import current_settings, setup
+
+    backend = InMemoryCacheBackend()
+    resolved = setup(cache_backend=backend)
+    assert resolved.cache_backend is backend
+    assert current_settings().cache_backend is backend
