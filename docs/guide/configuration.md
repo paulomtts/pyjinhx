@@ -28,7 +28,9 @@ Sidebar = component("Sidebar", template_dir="./widgets")  # reads ./widgets/side
 
 ### Passing a Pre-Built Session
 
-For full control over the underlying Jinja environment — or to attach `on_rendered` hooks before the session goes live — construct a `RenderSession` yourself and bind it for the scope:
+Prefer `jinja_globals` and `jinja_filters` on `setup()` for adding names to templates — see [Jinja globals and filters](#jinja-globals-and-filters). Building the session by hand is for the two cases `setup(app)` does not cover: pyjinhx has no backend integration for the framework you are on, or you need to attach `on_rendered` hooks to the session before it goes live.
+
+In those cases, construct a `RenderSession` yourself and bind it for the scope:
 
 ```python
 from pyjinhx import RenderSession
@@ -42,13 +44,11 @@ with request_scope(session=session):
     ...
 ```
 
-`RenderSession()` takes two optional keyword arguments, `jinja_globals=` and `jinja_filters=`, and `request_scope()` takes only `session=` and `load_context=`.
+`RenderSession()` takes two optional keyword arguments, `jinja_globals=` and `jinja_filters=`, and `request_scope()` takes only `session=` and `load_context=`. A session you build yourself is used as-is: `request_scope()` reads `PjxSettings` for the Jinja mappings only when it has to construct the session itself.
 
 !!! note "Not yet public"
     `RenderSession` is exported from `pyjinhx`; `request_scope` is not — it lives in
-    `pyjinhx.session`, outside `pyjinhx.__all__`. Under `setup(app)` you never open the
-    scope yourself, so reach for this only when you are wiring a framework pyjinhx has no
-    backend for.
+    `pyjinhx.session`, outside `pyjinhx.__all__`.
 
 ## Logging
 
