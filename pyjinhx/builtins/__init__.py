@@ -31,6 +31,7 @@ __all__ = [  # noqa: RUF022
     "PJXCarousel",
     "PJXCarouselSlide",
     "PJXChipInput",
+    "PJXConfirmDialog",
     "PJXDivider",
     "PJXDrawer",
     "PJXDrawerBody",
@@ -121,6 +122,10 @@ _lazy_imports = {
     "PJXChipInput": (
         "pyjinhx.builtins.ui.pjx_chip_input.pjx_chip_input",
         "PJXChipInput",
+    ),
+    "PJXConfirmDialog": (
+        "pyjinhx.builtins.ui.pjx_confirm_dialog.pjx_confirm_dialog",
+        "PJXConfirmDialog",
     ),
     "PJXDivider": ("pyjinhx.builtins.ui.pjx_divider.pjx_divider", "PJXDivider"),
     "PJXDrawer": ("pyjinhx.builtins.ui.pjx_drawer.pjx_drawer", "PJXDrawer"),
