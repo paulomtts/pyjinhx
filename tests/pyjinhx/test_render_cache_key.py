@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pytest
 
-from pyjinhx._component import BaseComponent
+from pyjinhx._component import BaseComponent, Children, Slot
 from pyjinhx.descriptor import ClassDescriptor
 from pyjinhx.render_cache import render_cache_key
 
@@ -22,6 +22,16 @@ class _KeyPlain(BaseComponent):
 
 class _KeyOther(BaseComponent):
     label: str = "hi"
+
+
+class _KeySlotted(BaseComponent):
+    label: str = "hi"
+    body: Slot = ""
+
+
+class _KeyChildren(BaseComponent):
+    label: str = "hi"
+    content: Children = ""
 
 
 def _attach(
@@ -82,3 +92,53 @@ def test_an_unreadable_template_propagates_the_stat_error(tmp_path: Path):
     _attach(_KeyPlain, tmp_path / "gone.html")
     with pytest.raises(FileNotFoundError):
         render_cache_key(_KeyPlain(id="a", label="hi"))
+
+
+def test_slot_field_values_are_excluded_from_the_key(template: Path):
+    _attach(_KeyPlain, template)
+    _attach(_KeySlotted, template, slot_fields=frozenset({"body"}))
+    with_one_child = render_cache_key(
+        _KeySlotted(id="a", label="hi", body=_KeyPlain(id="c1", label="one"))
+    )
+    with_another_child = render_cache_key(
+        _KeySlotted(id="a", label="hi", body=_KeyPlain(id="c2", label="two"))
+    )
+    assert with_one_child == with_another_child
+
+
+def test_children_field_values_are_excluded_from_the_key(template: Path):
+    _attach(_KeyPlain, template)
+    _attach(
+        _KeyChildren,
+        template,
+        slot_fields=frozenset({"content"}),
+        children_field="content",
+    )
+    with_one_child = render_cache_key(
+        _KeyChildren(id="a", label="hi", content=[_KeyPlain(id="c1", label="one")])
+    )
+    with_another_child = render_cache_key(
+        _KeyChildren(id="a", label="hi", content=[_KeyPlain(id="c2", label="two")])
+    )
+    assert with_one_child == with_another_child
+
+
+def test_a_component_with_no_slot_or_children_fields_still_keys(template: Path):
+    _attach(_KeyPlain, template)
+    assert isinstance(render_cache_key(_KeyPlain(id="a", label="hi")), str)
+
+
+def test_excluding_slot_fields_does_not_hide_a_differing_own_prop(template: Path):
+    _attach(_KeyPlain, template)
+    _attach(_KeySlotted, template, slot_fields=frozenset({"body"}))
+    child = _KeyPlain(id="c1", label="one")
+    assert render_cache_key(
+        _KeySlotted(id="a", label="hi", body=child)
+    ) != render_cache_key(_KeySlotted(id="a", label="bye", body=child))
+
+
+def test_a_slot_field_holding_a_plain_string_stays_in_the_key(template: Path):
+    _attach(_KeySlotted, template, slot_fields=frozenset({"body"}))
+    assert render_cache_key(
+        _KeySlotted(id="a", label="hi", body="hello world")
+    ) != render_cache_key(_KeySlotted(id="a", label="hi", body="goodbye moon"))
