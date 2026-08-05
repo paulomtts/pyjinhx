@@ -85,6 +85,15 @@ class _DesignatedChildren(BaseComponent):
     kids: str = ""  # designated children field, no PjxSlot metadata
 
 
+class _NullableSlots(BaseComponent):
+    # Both spellings wrap `Annotated[..., PjxSlot()]` in an *outer* union with
+    # None. Pydantic hoists metadata only off the outermost `Annotated`, so the
+    # marker never reaches `field.metadata` here and detection has to unwrap the
+    # union to find it.
+    body: Slot | None = None
+    raw: Annotated[str | BaseComponent | None, PjxSlot()] | None = None
+
+
 class TestIsSlotField:
     def test_true_for_explicit_slot_field(self):
         assert _is_slot_field(_Demo, "body") is True
@@ -108,6 +117,16 @@ class TestIsSlotField:
         # `Slot | None` drops PjxSlot at the field level, so the marker must sit
         # on the OUTER Annotated. This asserts the outer form keeps working.
         assert _is_slot_field(_Demo, "nullable_slot") is True
+
+    def test_true_for_slot_alias_under_an_outer_none(self):
+        """`body: Slot | None` is a slot even though the field carries no metadata."""
+        assert _NullableSlots.model_fields["body"].metadata == []
+        assert _is_slot_field(_NullableSlots, "body") is True
+
+    def test_true_for_hand_built_annotated_under_an_outer_none(self):
+        """`Annotated[..., PjxSlot()] | None` spelled out by hand is a slot too."""
+        assert _NullableSlots.model_fields["raw"].metadata == []
+        assert _is_slot_field(_NullableSlots, "raw") is True
 
 
 class _Leaf(BaseComponent):
