@@ -1,14 +1,13 @@
-"""How a rendered level is keyed for the tier-2 (non-reactive) render cache.
-
-Stateless by construction: one pure function over a component instance and the
-template file its class resolved to. Storing and restoring entries under this
-key lives elsewhere.
+"""How a rendered level is keyed, stored and restored for the tier-2
+(non-reactive) render cache.
 """
 
 import hashlib
 import json
 
 from pyjinhx._component import BaseComponent
+from pyjinhx.reactive.backend import MISS, CacheBackend
+from pyjinhx.segments import ChildRef, RenderedLevel
 
 
 def _holds_component(value: object) -> bool:
@@ -66,3 +65,63 @@ def render_cache_key(component: BaseComponent) -> str:
     # would clear it.
     template_mtime = descriptor.template_path.stat().st_mtime
     return f"{identity}:{fields_digest}:{template_mtime}"
+
+
+def store_rendered_level(
+    backend: CacheBackend, key: str, level: RenderedLevel, *, ttl: float | None
+) -> None:
+    """Put ``level`` into ``backend`` under ``key``, expiring after ``ttl`` seconds.
+
+    Args:
+        backend: The tier-2 store to write behind.
+        key: The entry's key, as answered by ``render_cache_key``.
+        level: The level to cache, with its child holes still unresolved.
+        ttl: Seconds the entry stays valid, or None to never expire on its own.
+    """
+    # Untagged on purpose: tags exist so a dirtied reactive key can evict what
+    # it invalidated, and a non-reactive level has no reactive key behind it.
+    # Its only invalidation paths are the template mtime baked into the key and
+    # the ttl.
+    backend.put(key, level, tags=(), ttl=ttl)
+
+
+def restore_rendered_level(backend: CacheBackend, key: str) -> object:
+    """Return the level stored under ``key``, or ``MISS``.
+
+    Args:
+        backend: The tier-2 store to read through.
+        key: The entry's key, as answered by ``render_cache_key``.
+
+    Returns:
+        The restored RenderedLevel on a hit, or ``MISS`` when there is no live
+        entry.
+
+    Raises:
+        ValueError: If the entry exists but is not shaped like a RenderedLevel.
+    """
+    value = backend.get(key)
+    if value is MISS:
+        return MISS
+    # A hit that does not look like a level is a corrupted or foreign entry,
+    # and answering MISS for it would quietly re-render forever while the bad
+    # entry sat there; answering it as-is would splice something unserializable
+    # into a page. Neither is a thing a caller can notice, so it raises.
+    _check_restored(key, value)
+    return value
+
+
+def _check_restored(key: str, value: object) -> None:
+    """Raise unless ``value`` is a RenderedLevel whose parts survived storage."""
+    if not isinstance(value, RenderedLevel):
+        raise ValueError(
+            f"render cache entry {key!r} is not a RenderedLevel but a "
+            f"{type(value).__name__}; the entry is corrupt or was written by "
+            f"something else, and serving it would put that value in a page."
+        )
+    for index, segment in enumerate(value.segments):
+        if not isinstance(segment, (str, ChildRef, RenderedLevel)):
+            raise ValueError(
+                f"render cache entry {key!r} came back with segment {index} as a "
+                f"{type(segment).__name__}; a level's segments are str, ChildRef "
+                f"or RenderedLevel only, so this entry did not survive storage."
+            )

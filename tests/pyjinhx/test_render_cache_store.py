@@ -1,0 +1,153 @@
+"""Unit tests for tier-2 render-cache store/restore and asset replay.
+
+Component classes and descriptor builders are module-level on purpose: the
+DiskCacheBackend path pickles whatever it is handed, and a class defined
+inside a test function cannot be pickled by reference.
+"""
+
+from pathlib import Path
+
+import pytest
+
+from pyjinhx._component import BaseComponent
+from pyjinhx.descriptor import ClassDescriptor
+from pyjinhx.integrations.diskcache import DiskCacheBackend
+from pyjinhx.reactive.backend import MISS, InMemoryCacheBackend
+from pyjinhx.render_cache import restore_rendered_level, store_rendered_level
+from pyjinhx.segments import ChildRef, RenderedLevel
+
+
+class _StorePlain(BaseComponent):
+    label: str = "hi"
+
+
+def _descriptor(
+    cls: type[BaseComponent],
+    template_path: Path,
+    *,
+    css_paths: tuple[Path, ...] = (),
+    js_paths: tuple[Path, ...] = (),
+) -> ClassDescriptor:
+    return ClassDescriptor(
+        template_path=template_path,
+        slot_fields=frozenset(),
+        children_field=None,
+        css_paths=css_paths,
+        js_paths=js_paths,
+        strict=True,
+        provenance={"template": cls},
+    )
+
+
+def _level(descriptor: ClassDescriptor) -> RenderedLevel:
+    return RenderedLevel(
+        segments=[
+            '<div class="root">',
+            ChildRef(tag="PJXButton", attrs={"label": "go"}, inner=None),
+            "</div>",
+        ],
+        root_span=(0, 19),
+        descriptor=descriptor,
+    )
+
+
+@pytest.fixture
+def template(tmp_path: Path) -> Path:
+    path = tmp_path / "store_template.html"
+    path.write_text("<div>{{ label }}</div>", encoding="utf-8")
+    return path
+
+
+def test_in_memory_round_trip(template: Path):
+    """Store then restore through InMemoryCacheBackend hands the level back."""
+    backend = InMemoryCacheBackend()
+    level = _level(_descriptor(_StorePlain, template))
+
+    store_rendered_level(backend, "k", level, ttl=300)
+    restored = restore_rendered_level(backend, "k")
+
+    assert isinstance(restored, RenderedLevel)
+    assert restored.root_span == (0, 19)
+    assert restored.segments[0] == '<div class="root">'
+    assert restored.segments[2] == "</div>"
+
+
+def test_disk_round_trip_survives_pickling(tmp_path: Path, template: Path):
+    """The pickling backend returns a copy whose fields all survive."""
+    backend = DiskCacheBackend(tmp_path / "cache")
+    css = (template.parent / "a.css",)
+    js = (template.parent / "a.js",)
+    level = _level(_descriptor(_StorePlain, template, css_paths=css, js_paths=js))
+
+    store_rendered_level(backend, "k", level, ttl=300)
+    restored = restore_rendered_level(backend, "k")
+    backend.close()
+
+    assert isinstance(restored, RenderedLevel)
+    assert restored is not level
+    assert restored.root_span == level.root_span
+    assert restored.segments[0] == level.segments[0]
+    assert restored.segments[2] == level.segments[2]
+    assert restored.descriptor.template_path == template
+    assert restored.descriptor.css_paths == css
+    assert restored.descriptor.js_paths == js
+    assert restored.descriptor.provenance["template"] is _StorePlain
+
+
+def test_restored_level_keeps_childref_unresolved(tmp_path: Path, template: Path):
+    """A ChildRef hole comes back a ChildRef, not text and not a component."""
+    backend = DiskCacheBackend(tmp_path / "cache")
+    level = _level(_descriptor(_StorePlain, template))
+
+    store_rendered_level(backend, "k", level, ttl=300)
+    restored = restore_rendered_level(backend, "k")
+    backend.close()
+
+    assert isinstance(restored, RenderedLevel)
+    hole = restored.segments[1]
+    assert isinstance(hole, ChildRef)
+    assert hole.tag == "PJXButton"
+    assert hole.attrs == {"label": "go"}
+    assert hole.inner is None
+
+
+def test_miss_returns_sentinel():
+    """A key nothing was stored under answers MISS, not an exception."""
+    backend = InMemoryCacheBackend()
+
+    assert restore_rendered_level(backend, "nothing-here") is MISS
+
+
+def test_store_is_untagged(template: Path):
+    """Nothing tags a non-reactive entry, so evict() by any tag misses it."""
+    backend = InMemoryCacheBackend()
+    level = _level(_descriptor(_StorePlain, template))
+
+    store_rendered_level(backend, "k", level, ttl=300)
+    backend.evict(["anything"])
+
+    assert restore_rendered_level(backend, "k") is not MISS
+
+
+def test_ttl_expiry_is_a_miss(template: Path):
+    """A stored level past its ttl reads back as MISS."""
+    now = [1000.0]
+    backend = InMemoryCacheBackend(clock=lambda: now[0])
+    store_rendered_level(backend, "k", _level(_descriptor(_StorePlain, template)), ttl=5)
+
+    now[0] = 1006.0
+
+    assert restore_rendered_level(backend, "k") is MISS
+
+
+def test_backend_put_failure_propagates(template: Path):
+    """A backend that raises on put is not swallowed here."""
+
+    class _Exploding(InMemoryCacheBackend):
+        def put(self, key, value, *, tags, ttl):
+            raise OSError("disk on fire")
+
+    with pytest.raises(OSError, match="disk on fire"):
+        store_rendered_level(
+            _Exploding(), "k", _level(_descriptor(_StorePlain, template)), ttl=300
+        )
