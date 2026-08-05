@@ -205,3 +205,86 @@ def test_a_never_expiring_policy_writes_a_none_ttl(ledger: LedgerBackend):
         Row.load(7)
 
     assert [ttl for _, _, _, ttl in ledger.puts] == [None]
+
+
+def test_the_whole_cascade_reads_off_the_backend_ledger(ledger: LedgerBackend):
+    """One story: tier-1 hit, then a tier-2 hit, then a real load after eviction."""
+    calls: list[int] = []
+
+    class Row(ReactiveComponent, react=("rows",)):
+        row_id: Annotated[int, PjxKey()] = 0
+
+        @classmethod
+        def load(cls, row_id: int) -> "Row":
+            calls.append(row_id)
+            return cls(row_id=row_id)
+
+    string_key = _string_cache_key(Row, {"row_id": 7}, protocol_mode=False)
+    tier1_key = _cache_key(Row, {"row_id": 7}, protocol_mode=False)
+
+    # Request 1: a miss, so one get(), one real load, one put().
+    with request_scope():
+        first = Row.load(7)
+        Row.load(7)
+
+    assert calls == [7]
+    assert ledger.gets == [string_key]
+    assert [key for key, _, _, _ in ledger.puts] == [string_key]
+
+    # Request 2: tier 1 is empty again, so tier 2 answers and promotes.
+    with request_scope():
+        assert cache_has(Row, tier1_key) is False
+
+        promoted = Row.load(7)
+
+        assert promoted is first
+        assert cache_has(Row, tier1_key) is True
+        # The promotion is a tier-1 write only: no second put() over the seam.
+        assert ledger.gets == [string_key, string_key]
+        assert [key for key, _, _, _ in ledger.puts] == [string_key]
+
+    assert calls == [7]
+
+    # Request 3: a dirtied key clears both tiers, so the load runs for real.
+    with request_scope():
+        invalidate(["rows:7"])
+
+    assert ledger.evicts == [("rows:7",)]
+    assert ledger.get(string_key) is MISS
+
+    with request_scope():
+        Row.load(7)
+
+    assert calls == [7, 7]
+    assert [key for key, _, _, _ in ledger.puts] == [string_key, string_key]
+
+
+def test_with_no_backend_the_cascade_is_tier1_only(no_backend: None):
+    """Pre-#800 behavior: memoized within a request, cold in the next one."""
+    calls: list[int] = []
+
+    class Row(ReactiveComponent, react=("rows",)):
+        row_id: Annotated[int, PjxKey()] = 0
+
+        @classmethod
+        def load(cls, row_id: int) -> "Row":
+            calls.append(row_id)
+            return cls(row_id=row_id)
+
+    tier1_key = _cache_key(Row, {"row_id": 7}, protocol_mode=False)
+
+    with request_scope():
+        first = Row.load(7)
+
+        assert Row.load(7) is first
+        assert cache_has(Row, tier1_key) is True
+
+    with request_scope():
+        assert cache_has(Row, tier1_key) is False
+
+        second = Row.load(7)
+
+        assert second is not first
+
+    assert calls == [7, 7]
+    assert current_settings().cache_backend is None
