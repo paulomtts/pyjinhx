@@ -82,8 +82,26 @@ setup(app, context_factory=lambda req: AppLoadContext(db=get_db(req)))
 - `inject_htmx` — recorded only today; nothing reads it, so the vendored htmx runtime ships with `pjx.js` either way (default `True`)
 - `components_root` — path to scan for classless components; setting it triggers component discovery (default `None`)
 - `static_root` — path to serve static assets from (default `None`)
+- `jinja_globals` — extra names to expose to every template, as a mapping of name to value (default `None`)
+- `jinja_filters` — extra filters to expose to every template, as a mapping of filter name to callable (default `None`)
 
 Pass a settings object via `settings=`, or override individual fields with explicit `setup()` keyword arguments. Explicit `setup()` kwargs take precedence over values from `settings=`.
+
+### Jinja globals and filters
+
+`jinja_globals` and `jinja_filters` are the supported way to register names app-wide. Pass them to `setup()` and every request's Jinja environment gets them:
+
+```python
+from pyjinhx import setup
+
+setup(app, jinja_globals={"site_name": "Acme"}, jinja_filters={"money": lambda cents: f"${cents / 100:,.2f}"})
+```
+
+Templates then read `{{ site_name }}` and `{{ total | money }}` with no per-component wiring.
+
+Both default to `None`, which means "nothing extra to add" — not "start from an empty environment". Jinja seeds its own globals and filters (`range`, `dict`, `|upper`, `|length`, and the rest of the standard library) into every environment first, and these settings are merged on top. Passing `jinja_globals={...}` adds to that seed; it does not replace it. A name that collides with a builtin wins.
+
+There is no environment variable for either field: `PjxSettings.from_env()` reads only the four `PJX_*` variables listed below.
 
 ### Environment variables
 
