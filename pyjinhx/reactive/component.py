@@ -330,7 +330,11 @@ def _annotation_reprs_deterministically(annotation: Any) -> bool:
     beyond what repr() itself shows, so ``list[str]`` is fine while a bare
     ``list`` (unknown element types) is not.
     """
-    if annotation is inspect.Parameter.empty or annotation is Any or annotation is object:
+    if (
+        annotation is inspect.Parameter.empty
+        or annotation is Any
+        or annotation is object
+    ):
         return False
     if annotation is None:
         return True
@@ -369,9 +373,9 @@ def _validate_protocol_mode_load_params(
     signature = inspect.signature(func)
     try:
         hints = get_type_hints(func, include_extras=True)
-    except Exception:
-        # An unresolvable forward ref (#713) must not stop a class from being
-        # defined; fall back to raw annotations and skip anything still a string.
+    except Exception:  # noqa: BLE001 -- an unresolvable forward ref (#713) must
+        # not stop a class from being defined; fall back to raw annotations and
+        # skip anything still a string.
         hints = {}
     offenders: list[tuple[str, Any]] = []
     for name, param in signature.parameters.items():
@@ -383,7 +387,9 @@ def _validate_protocol_mode_load_params(
         if not _annotation_reprs_deterministically(annotation):
             offenders.append((name, annotation))
     if offenders:
-        detail = ", ".join(f"{name!r} ({annotation!r})" for name, annotation in offenders)
+        detail = ", ".join(
+            f"{name!r} ({annotation!r})" for name, annotation in offenders
+        )
         raise TypeError(
             f"{cls.__name__}.load parameter(s) {detail} do not serialize "
             f"deterministically for tier-2 cache keys; use a type with a stable "

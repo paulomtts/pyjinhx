@@ -67,9 +67,7 @@ def test_protocol_mode_string_key_is_insensitive_to_argument_order():
         def load(cls, row_id: int, flavor: str = "plain") -> "Row":
             return cls(row_id=row_id, flavor=flavor)  # type: ignore[reportCallIssue]
 
-    first = _string_cache_key(
-        Row, {"row_id": 1, "flavor": "spicy"}, protocol_mode=True
-    )
+    first = _string_cache_key(Row, {"row_id": 1, "flavor": "spicy"}, protocol_mode=True)
     second = _string_cache_key(
         Row, {"flavor": "spicy", "row_id": 1}, protocol_mode=True
     )
