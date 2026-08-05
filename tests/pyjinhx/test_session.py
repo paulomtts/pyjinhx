@@ -8,6 +8,7 @@ read/write semantics, which land with the modules that consume them.
 """
 
 import asyncio
+import os
 import threading
 from pathlib import Path
 from typing import Any, cast
@@ -630,6 +631,7 @@ def test_environment_for_keeps_each_settings_extras_to_itself():
     left_env = session_module._environment_for(left)
     right_env = session_module._environment_for(right)
 
+    assert left_env is not right_env
     assert left_env.globals["left"] == 1
     assert "right" not in left_env.globals
     assert "rshout" not in left_env.filters
@@ -701,9 +703,10 @@ def test_cached_environment_keeps_the_loader_autoescape_and_builtins():
     assert isinstance(env.loader, session_module.AbsolutePathLoader)
     assert env.autoescape is True
     template = env.from_string(
-        "{{ x }}|{{ 'ok'|shout }}|{{ 'b'|upper }}|{{ range(2)|list }}|{{ 'ab'|length }}"
+        "{{ x }}|{{ 'ok'|shout }}|{{ 'b'|upper }}|{{ range(2)|list }}"
+        "|{{ 'ab'|length }}|{{ 'ab' is string }}"
     )
-    assert template.render() == "1|OK|B|[0, 1]|2"
+    assert template.render() == "1|OK|B|[0, 1]|2|True"
 
 
 def test_render_session_adopts_a_supplied_environment():
@@ -752,3 +755,43 @@ def test_request_scope_default_session_uses_the_cached_environment():
         assert first is not second
     finally:
         shutdown_pyjinhx()
+
+
+def test_environment_for_picks_up_template_edits_across_renders(tmp_path):
+    """The environment now outlives the request that built it, and Jinja's
+    template cache lives on the environment — so the only thing standing
+    between a developer editing a template and the server serving the old one
+    forever is AbsolutePathLoader.get_source's uptodate() mtime closure. This
+    pins that closure through the cached environment: same Environment object,
+    same warm cache, edited file, new output."""
+    from pyjinhx.config import PjxSettings
+
+    template_path = tmp_path / "hot.html"
+    template_path.write_text("<p>before</p>", encoding="utf-8")
+    settings = PjxSettings()
+    env = session_module._environment_for(settings)
+    session = session_module.RenderSession(jinja_env=env)
+
+    assert session.jinja_env is env
+    assert session.jinja_env.get_template(str(template_path)).render() == (
+        "<p>before</p>"
+    )
+
+    # Without this the rest of the test is vacuous: if the environment's cache
+    # were cold, a second get_template would recompile anyway and picking up
+    # the edit would prove nothing about invalidation.
+    warm = env.get_template(str(template_path))
+    assert env.get_template(str(template_path)) is warm
+
+    template_path.write_text("<p>after</p>", encoding="utf-8")
+    # Explicit mtime bump: a coarse-resolution filesystem can stamp both writes
+    # with the same st_mtime, which would make uptodate() report "unchanged"
+    # for reasons that have nothing to do with the code under test.
+    stat = template_path.stat()
+    os.utime(template_path, (stat.st_atime + 10, stat.st_mtime + 10))
+
+    reloaded = env.get_template(str(template_path))
+
+    assert env is session_module._environment_for(settings)
+    assert reloaded is not warm
+    assert reloaded.render() == "<p>after</p>"
