@@ -74,4 +74,4 @@ def test_undeclared_attr_is_rejected():
 def test_exported_from_the_builtins_namespace():
     """`from pyjinhx.builtins import PJXConfirmDialog` must resolve through the lazy export table."""
     assert "PJXConfirmDialog" in builtins.__all__
-    assert builtins.PJXConfirmDialog is PJXConfirmDialog
+    assert builtins.PJXConfirmDialog is PJXConfirmDialog  # pyright: ignore[reportAttributeAccessIssue]

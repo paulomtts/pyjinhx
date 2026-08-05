@@ -79,4 +79,4 @@ def test_undeclared_attr_is_rejected():
 def test_exported_from_the_builtins_namespace():
     """`from pyjinhx.builtins import PJXPromptDialog` must resolve through the lazy export table."""
     assert "PJXPromptDialog" in builtins.__all__
-    assert builtins.PJXPromptDialog is PJXPromptDialog
+    assert builtins.PJXPromptDialog is PJXPromptDialog  # pyright: ignore[reportAttributeAccessIssue]
