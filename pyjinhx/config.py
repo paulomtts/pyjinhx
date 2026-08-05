@@ -1,16 +1,19 @@
 """App-level configuration for pyjinhx: the settings object and the setup() entrypoint.
 
 config sits above the render spine and may read from it; nothing in the spine,
-in reactive/ or in client/ may import this module back. Siblings that do not
-exist yet (dev, integrations.fastapi) are imported lazily inside functions so
-importing this module never depends on them.
+in reactive/ or in client/ may import this module back — except session.py's
+request_scope(), which reads current_settings() through a function-local
+import to seed a default session's Jinja globals/filters, never at module
+scope (test_session_only_imports_config_inside_a_function_body pins that).
+Siblings that do not exist yet (dev, integrations.fastapi) are imported
+lazily inside functions so importing this module never depends on them.
 """
 
 from __future__ import annotations
 
 import os
 import sys
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, fields, replace
 from importlib.util import find_spec as _find_spec
 from pathlib import Path
@@ -53,13 +56,19 @@ class PjxSettings:
     """The app-level knobs pyjinhx reads once at startup.
 
     ``inject_htmx`` is stored only; how it maps onto the session's asset modes
-    is pending design.
+    is pending design. ``jinja_globals`` and ``jinja_filters`` are registered
+    onto each request's Jinja environment by the session that reads them.
     """
 
     reactive_dev: bool = False
     inject_htmx: bool = True
     components_root: Path | str | None = None
     static_root: Path | str | None = None
+    # None rather than an empty dict: the dataclass is frozen and a mutable
+    # default is disallowed outright, and "nothing to add" is exactly what a
+    # missing mapping should mean to the session that applies these.
+    jinja_globals: Mapping[str, Any] | None = None
+    jinja_filters: Mapping[str, Any] | None = None
 
     @classmethod
     def from_env(cls) -> PjxSettings:

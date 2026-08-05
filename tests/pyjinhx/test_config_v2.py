@@ -26,6 +26,17 @@ def test_defaults():
     assert settings.inject_htmx is True
     assert settings.components_root is None
     assert settings.static_root is None
+    assert settings.jinja_globals is None
+    assert settings.jinja_filters is None
+
+
+def test_jinja_globals_and_filters_are_stored_as_given():
+    def shout(value: str) -> str:
+        return value.upper()
+
+    settings = PjxSettings(jinja_globals={"x": 1}, jinja_filters={"shout": shout})
+    assert settings.jinja_globals == {"x": 1}
+    assert settings.jinja_filters == {"shout": shout}
 
 
 def test_settings_are_frozen():
@@ -231,7 +242,14 @@ def test_setup_delegates_an_asgi_app_to_the_fastapi_integration(
 def test_deferred_cache_machinery_is_not_ported():
     """ADR 0009/0011: no invalidation backend, hub or cache scope in v2."""
     names = {field.name for field in dataclasses.fields(PjxSettings)}
-    assert names == {"reactive_dev", "inject_htmx", "components_root", "static_root"}
+    assert names == {
+        "reactive_dev",
+        "inject_htmx",
+        "components_root",
+        "static_root",
+        "jinja_globals",
+        "jinja_filters",
+    }
 
 
 def test_static_root_is_stored_on_the_settings(tmp_path: Path):

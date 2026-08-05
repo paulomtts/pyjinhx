@@ -508,11 +508,20 @@ def test_lower_layers_do_not_import_the_wiring_layer():
         )
     ]
 
+    # session.request_scope() reads current_settings() through a function-local
+    # import (never at module scope) to seed a default session's Jinja
+    # globals/filters; test_import_graph.py's
+    # test_session_only_imports_config_inside_a_function_body pins that it
+    # stays function-local, so it is not a real upward edge here.
+    allowed_edges = {("pyjinhx.session", "pyjinhx.config")}
+
     offenders: list[tuple[str, str]] = []
     for name in lower:
         source = Path(importlib.import_module(name).__file__ or "").read_text()
         imported = imported_module_names(source)
         for upper_name in upper:
+            if (name, upper_name) in allowed_edges:
+                continue
             if upper_name in imported or any(
                 mod.startswith(f"{upper_name}.") for mod in imported
             ):

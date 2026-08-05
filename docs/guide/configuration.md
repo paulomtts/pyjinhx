@@ -42,7 +42,7 @@ with request_scope(session=session):
     ...
 ```
 
-`RenderSession()` takes no arguments, and `request_scope()` takes only `session=` and `load_context=`.
+`RenderSession()` takes two optional keyword arguments, `jinja_globals=` and `jinja_filters=`, and `request_scope()` takes only `session=` and `load_context=`.
 
 !!! note "Not yet public"
     `RenderSession` is exported from `pyjinhx`; `request_scope` is not — it lives in
