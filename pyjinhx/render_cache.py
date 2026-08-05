@@ -140,6 +140,27 @@ def resolve_render_tier2(
     return backend, (CachePolicy() if policy is None else policy).ttl
 
 
+def copy_level_shell(level: RenderedLevel) -> RenderedLevel:
+    """A level sharing everything but its segment list with ``level``.
+
+    Both directions across the cache seam need this. A backend may store by
+    reference (InMemoryCacheBackend does, by design), while _fill_children and
+    _splice_slot_nodes rewrite ``segments`` in place - so writing the live level
+    would let this request's children land inside the cached entry, and handing
+    a restored entry straight back would let the next request fill a level that
+    is already full.
+
+    Shallow on purpose: the descriptor is frozen, the root span is a tuple, and
+    a ChildRef is only ever read (its attrs are copied before use), so a deep
+    copy would duplicate immutable data on every hit for nothing.
+    """
+    return RenderedLevel(
+        segments=list(level.segments),
+        root_span=level.root_span,
+        descriptor=level.descriptor,
+    )
+
+
 def store_rendered_level(
     backend: CacheBackend, key: str, level: RenderedLevel, *, ttl: float | None
 ) -> None:
