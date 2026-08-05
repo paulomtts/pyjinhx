@@ -16,7 +16,11 @@ class BrokenBackend(InMemoryCacheBackend):
     """An in-memory backend whose chosen methods raise instead of working."""
 
     def __init__(
-        self, *, fail_get: bool = False, fail_put: bool = False, fail_evict: bool = False
+        self,
+        *,
+        fail_get: bool = False,
+        fail_put: bool = False,
+        fail_evict: bool = False,
     ) -> None:
         super().__init__()
         self.fail_get = fail_get
@@ -54,7 +58,7 @@ def clean_health():
     reset_backend_health()
 
 
-def publish(backend: object):
+def publish[B](backend: B) -> B:
     """Publish a backend into the process settings and return it."""
     configure_pyjinhx(current_settings().merge(cache_backend=backend))
     return backend
@@ -68,7 +72,7 @@ def settings_restored():
     configure_pyjinhx(previous)
 
 
-def make_row_class(calls: list[int]) -> type[ReactiveComponent]:
+def make_row_class(calls: list[int]):
     """A reactive component whose load() records every call it really ran."""
 
     class Row(ReactiveComponent, react=("rows",)):
@@ -208,10 +212,9 @@ def test_a_raising_evict_degrades_the_backend_and_warns_once(
 
     from pyjinhx.reactive.cache import invalidate
 
-    with caplog.at_level(logging.WARNING, logger="pyjinhx"):
-        with request_scope():
-            invalidate(["rows:7"])
-            invalidate(["rows:8"])
+    with caplog.at_level(logging.WARNING, logger="pyjinhx"), request_scope():
+        invalidate(["rows:7"])
+        invalidate(["rows:8"])
 
     assert is_degraded(backend) is True
     assert len(caplog.records) == 1

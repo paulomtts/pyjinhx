@@ -27,7 +27,11 @@ from pydantic.fields import FieldInfo
 from pyjinhx._component import BaseComponent
 from pyjinhx.app_context import resolve_load_context_param
 from pyjinhx.reactive.backend import MISS, CacheBackend, CachePolicy
-from pyjinhx.reactive.backend_health import is_degraded, note_failure, note_write_success
+from pyjinhx.reactive.backend_health import (
+    is_degraded,
+    note_failure,
+    note_write_success,
+)
 from pyjinhx.reactive.cache import cache_get, cache_has, cache_put
 from pyjinhx.reactive.keys import coerce_load_key_str, coerce_reactive_key
 from pyjinhx.session import get_load_context
@@ -501,7 +505,10 @@ def _wrap_load(
             if not is_degraded(backend):
                 try:
                     cached = backend.get(string_key)
-                except Exception as exc:
+                # A backend is a plugin implementing an arbitrary protocol, so
+                # its failure mode is unknowable in advance; the policy is to
+                # degrade on any of them rather than pick and miss some.
+                except Exception as exc:  # noqa: BLE001
                     # A cache is an optimization: a backend that cannot answer
                     # costs this request a real load, never an error.
                     note_failure(backend, "get", exc, degrade=False)
@@ -527,7 +534,9 @@ def _wrap_load(
             # one dirtied key reaches both stores without a second index here.
             try:
                 backend.put(string_key, result, tags=react_keys, ttl=ttl)
-            except Exception as exc:
+            # Same rationale as the get() guard above: any backend failure
+            # degrades rather than only the ones this module can predict.
+            except Exception as exc:  # noqa: BLE001
                 # The component is already loaded and already in tier 1: a
                 # dropped write costs the next request a load, nothing more.
                 note_failure(backend, "put", exc, degrade=False)

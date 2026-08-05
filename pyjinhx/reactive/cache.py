@@ -151,7 +151,10 @@ def invalidate(dirtied_keys: Iterable[str]) -> None:
         # second index to maintain and nothing to translate here.
         try:
             backend.evict(dirtied)
-        except Exception as exc:
+        # Same rationale as component.py's get()/put() guards: a backend is a
+        # plugin, so any failure it raises degrades rather than only the
+        # subset this module could predict.
+        except Exception as exc:  # noqa: BLE001
             # Unlike a dropped read or write, an eviction that did not happen
             # leaves entries that are now known to be wrong, so the backend
             # stops being read from until a write proves it current again.
