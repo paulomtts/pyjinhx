@@ -440,15 +440,28 @@ nesting structure exactly. Anywhere the heuristic and the structure disagreed, t
 is right — so the only expected difference is fewer redundant swaps, never a missing one.
 Nothing to change in your code.
 
-### Cross-request `InvalidationBackend` is not in 1.0 yet (deferred)
+### Cross-request `InvalidationBackend` — deferred at 1.0, landed in 1.4.0
 
-> **Deferred, not removed.** The cross-request invalidation backends (Redis, SQLite) are
-> not part of the 1.0 release and are planned for a post-1.0 version (ADR 0011).
+> **Superseded.** This was deferred from the 1.0 release (ADR 0011). The capability
+> arrived in 1.4.0, in a different shape — see
+> [Cache Backends](api/cache-backends.md).
 
-The **per-request** load cache ships in 1.0 and is unchanged — single-process apps see no
-difference. If you configured a Redis or SQLite backend to share invalidation across
-processes, that configuration has no 1.0 equivalent yet; stay on 0.36 until it lands if you
-depend on it.
+The **per-request** load cache ships in 1.0 and is unchanged, so single-process apps see no
+difference either way.
+
+If you configured a 0.x Redis or SQLite backend to share invalidation across processes,
+1.4.0 is where that capability returns — but it is not a rename, and there is no drop-in
+equivalent to port to:
+
+- 0.x split **invalidation** (pub/sub of dirtied keys) from **storage**. 1.4.0 does not:
+  workers share one store, so an eviction in one is visible to the rest without a channel
+  beside it. Configure a `CacheBackend` and the invalidation comes with it.
+- `DiskCacheBackend` (`pyjinhx[diskcache]`) is the shipped implementation. It is SQLite
+  underneath, so it replaces the old SQLite backend's role, though not its API.
+- There is no Redis backend yet. The `redis` extra a 0.x app installed no longer exists —
+  a future one would implement the same `CacheBackend` protocol.
+- The store must live on a directory that is **ephemeral per deployment**. This is new, and
+  it is a deployment requirement rather than a setting.
 
 ### Still removed from earlier versions
 
