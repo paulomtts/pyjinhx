@@ -89,18 +89,25 @@ class InMemoryCacheBackend:
                 above all - do not have to wait out real seconds.
         """
         self._clock = clock
+        self._entries: dict[str, tuple[object, float | None]] = {}
 
     def get(self, key: str) -> object:
         """Return the value stored under ``key``, or ``MISS``."""
-        return MISS
+        entry = self._entries.get(key)
+        if entry is None:
+            return MISS
+        value, _expires_at = entry
+        return value
 
     def put(
         self, key: str, value: object, *, tags: Iterable[str], ttl: float | None
     ) -> None:
         """Store ``value`` under ``key``, replacing any entry already there."""
+        self._entries[key] = (value, None)
 
     def evict(self, tags: Iterable[str]) -> None:
         """Drop every entry carrying any of these tags."""
 
     def clear(self) -> None:
         """Drop every entry and every tag, whatever its ttl."""
+        self._entries.clear()
