@@ -108,6 +108,13 @@ def _is_slot_field(cls: type, field_name: str) -> bool:
     children field, it carries a :class:`PjxSlot` marker in its ``Annotated``
     metadata, or its annotation names a component (see
     :func:`_is_component_typed_annotation`). Unknown field names are not slots.
+
+    The marker is looked for in two places. Pydantic hoists metadata into
+    ``field.metadata`` only from the outermost ``Annotated``, so a field spelled
+    ``Slot | None`` arrives with empty metadata and the marker still nested
+    inside the union; unwrapping the annotation the way
+    :func:`_is_component_typed_annotation` does recovers it. A union that keeps
+    more than one non-``None`` type is too ambiguous to read a marker out of.
     """
     if field_name == getattr(cls, "_pjx_children_field", None):
         return True
@@ -117,6 +124,13 @@ def _is_slot_field(cls: type, field_name: str) -> bool:
         return False
     if any(isinstance(m, PjxSlot) for m in field.metadata):
         return True
+    annotation = field.annotation
+    if get_origin(annotation) in (Union, types.UnionType):
+        args = [a for a in get_args(annotation) if a is not type(None)]
+        if len(args) == 1:
+            inner_metadata = getattr(args[0], "__metadata__", ())
+            if any(isinstance(m, PjxSlot) for m in inner_metadata):
+                return True
     return _is_component_typed_annotation(field.annotation)
 
 
