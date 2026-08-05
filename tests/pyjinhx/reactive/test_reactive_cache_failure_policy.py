@@ -1,0 +1,133 @@
+"""A raising tier-2 backend degrades the cache instead of failing the request."""
+
+import logging
+from typing import Annotated
+
+import pytest
+
+from pyjinhx.config import configure_pyjinhx, current_settings
+from pyjinhx.reactive.backend import InMemoryCacheBackend
+from pyjinhx.reactive.backend_health import is_degraded, reset_backend_health
+from pyjinhx.reactive.component import PjxKey, ReactiveComponent
+from pyjinhx.session import request_scope
+
+
+class BrokenBackend(InMemoryCacheBackend):
+    """An in-memory backend whose chosen methods raise instead of working."""
+
+    def __init__(
+        self, *, fail_get: bool = False, fail_put: bool = False, fail_evict: bool = False
+    ) -> None:
+        super().__init__()
+        self.fail_get = fail_get
+        self.fail_put = fail_put
+        self.fail_evict = fail_evict
+        self.gets: list[str] = []
+        self.puts: list[str] = []
+        self.evicts: list[tuple[str, ...]] = []
+
+    def get(self, key: str) -> object:
+        self.gets.append(key)
+        if self.fail_get:
+            raise RuntimeError("get is down")
+        return super().get(key)
+
+    def put(self, key: str, value: object, *, tags, ttl) -> None:
+        self.puts.append(key)
+        if self.fail_put:
+            raise RuntimeError("put is down")
+        super().put(key, value, tags=tags, ttl=ttl)
+
+    def evict(self, tags) -> None:
+        collected = tuple(tags)
+        self.evicts.append(collected)
+        if self.fail_evict:
+            raise RuntimeError("evict is down")
+        super().evict(collected)
+
+
+@pytest.fixture(autouse=True)
+def clean_health():
+    """Backend health is process-wide: no test may inherit another's flags."""
+    reset_backend_health()
+    yield
+    reset_backend_health()
+
+
+def publish(backend: object):
+    """Publish a backend into the process settings and return it."""
+    configure_pyjinhx(current_settings().merge(cache_backend=backend))
+    return backend
+
+
+@pytest.fixture
+def settings_restored():
+    """Restore whatever settings the process had before this test."""
+    previous = current_settings()
+    yield
+    configure_pyjinhx(previous)
+
+
+def make_row_class(calls: list[int]) -> type[ReactiveComponent]:
+    """A reactive component whose load() records every call it really ran."""
+
+    class Row(ReactiveComponent, react=("rows",)):
+        row_id: Annotated[int, PjxKey()] = 0
+
+        @classmethod
+        def load(cls, row_id: int) -> "Row":
+            calls.append(row_id)
+            return cls(row_id=row_id)
+
+    return Row
+
+
+def test_a_raising_get_falls_through_to_the_real_load(settings_restored: None):
+    publish(BrokenBackend(fail_get=True))
+    calls: list[int] = []
+    Row = make_row_class(calls)
+
+    with request_scope():
+        loaded = Row.load(7)
+
+    assert loaded.row_id == 7
+    assert calls == [7]
+
+
+def test_a_raising_get_warns_once_across_many_requests(
+    settings_restored: None, caplog: pytest.LogCaptureFixture
+):
+    publish(BrokenBackend(fail_get=True))
+    calls: list[int] = []
+    Row = make_row_class(calls)
+
+    with caplog.at_level(logging.WARNING, logger="pyjinhx"):
+        for _ in range(3):
+            with request_scope():
+                Row.load(7)
+
+    assert calls == [7, 7, 7]
+    assert len(caplog.records) == 1
+
+
+def test_a_degraded_backend_is_not_even_asked_for_a_get(settings_restored: None):
+    backend = publish(BrokenBackend(fail_evict=True))
+    calls: list[int] = []
+    Row = make_row_class(calls)
+
+    # A failed eviction is what degrades the backend.
+    with request_scope():
+        Row.load(7)
+    from pyjinhx.reactive.cache import invalidate
+
+    with request_scope():
+        invalidate(["rows:7"])
+
+    assert is_degraded(backend) is True
+    backend.gets.clear()
+
+    with request_scope():
+        Row.load(7)
+
+    assert backend.gets == []
+    assert calls == [7, 7]

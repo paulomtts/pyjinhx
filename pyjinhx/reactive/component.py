@@ -27,6 +27,7 @@ from pydantic.fields import FieldInfo
 from pyjinhx._component import BaseComponent
 from pyjinhx.app_context import resolve_load_context_param
 from pyjinhx.reactive.backend import MISS, CacheBackend, CachePolicy
+from pyjinhx.reactive.backend_health import is_degraded, note_failure, note_write_success
 from pyjinhx.reactive.cache import cache_get, cache_has, cache_put
 from pyjinhx.reactive.keys import coerce_load_key_str, coerce_reactive_key
 from pyjinhx.session import get_load_context
@@ -494,7 +495,16 @@ def _wrap_load(
             string_key = _string_cache_key(
                 bound_cls, supplied, protocol_mode=cache_key_protocol_mode
             )
-            cached = backend.get(string_key)
+            cached = MISS
+            # A degraded backend is one whose evict() raised: entries it still
+            # holds may be stale, so it is not read from until a write lands.
+            if not is_degraded(backend):
+                try:
+                    cached = backend.get(string_key)
+                except Exception as exc:
+                    # A cache is an optimization: a backend that cannot answer
+                    # costs this request a real load, never an error.
+                    note_failure(backend, "get", exc, degrade=False)
             # `is not MISS`, not truthiness: a load() may legitimately return a
             # falsy component, and a cached one is a hit like any other.
             if cached is not MISS:
