@@ -438,6 +438,12 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
             "pyjinhx.session",
         }
     ),
+    # render_cache holds the tier-2 render-cache key derivation: a pure
+    # function over a component and its template file. It reaches down into
+    # _component only for the BaseComponent annotation, and reads the class
+    # descriptor off the class rather than importing descriptor.py, so it adds
+    # no new edge into the spine.
+    "render_cache": frozenset({"pyjinhx._component"}),
     "render_context": frozenset({"pyjinhx.markers", "pyjinhx._component"}),
     "reactive.__init__": frozenset(),
     "reactive.keys": frozenset(),
