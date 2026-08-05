@@ -105,6 +105,7 @@ Detection is duck-typed on that shape, not on `RedirectResponse`, so hand-built 
 ```python
 from starlette.responses import RedirectResponse
 
+
 @app.post("/todos")
 def create(title: str):
     ...

@@ -11,7 +11,7 @@ The L3.5 implementation read that miss as evidence of absence:
 ```python
 resolved, found = _resolve_registry_entry(cls, instance_id)
 if not found:
-    status = "missing"      # -> <div hx-swap-oob="delete:[data-pjx-id='...']">
+    status = "missing"  # -> <div hx-swap-oob="delete:[data-pjx-id='...']">
 ```
 
 Compose E6 and E7 and that reading collapses. In production the registry is written only by `register_rendered_instance`, subscribed to `on_rendered`, so it contains exactly the regions the *current* request rendered. A T2 request renders its primary and nothing else. Every region outside the primary tree — which is precisely the set fan-out exists to refresh — therefore misses the registry as a matter of course.
