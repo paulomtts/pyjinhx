@@ -590,3 +590,165 @@ def test_request_scope_with_unset_settings_still_renders_jinja_builtins():
             assert template.render() == "B[0, 1, 2]"
     finally:
         shutdown_pyjinhx()
+
+
+def test_environment_for_reuses_one_environment_per_settings_instance():
+    """The whole point of the hoist: every request served under one settings
+    object shares one environment, so Jinja's template cache survives the
+    request that filled it."""
+    from pyjinhx.config import PjxSettings
+
+    settings = PjxSettings(jinja_globals={"x": 1})
+
+    first = session_module._environment_for(settings)
+    second = session_module._environment_for(settings)
+
+    assert first is second
+
+
+def test_environment_for_does_not_share_across_value_equal_settings():
+    """PjxSettings is a frozen dataclass, so two distinct instances compare
+    equal — identity, not equality, is what the cache keys on. Two apps in one
+    process must never end up updating each other's environment."""
+    from pyjinhx.config import PjxSettings
+
+    one = PjxSettings()
+    two = PjxSettings()
+
+    assert one == two
+    assert session_module._environment_for(one) is not session_module._environment_for(
+        two
+    )
+
+
+def test_environment_for_keeps_each_settings_extras_to_itself():
+    from pyjinhx.config import PjxSettings
+
+    left = PjxSettings(jinja_globals={"left": 1}, jinja_filters={"lshout": str.upper})
+    right = PjxSettings(jinja_globals={"right": 2}, jinja_filters={"rshout": str.lower})
+
+    left_env = session_module._environment_for(left)
+    right_env = session_module._environment_for(right)
+
+    assert left_env.globals["left"] == 1
+    assert "right" not in left_env.globals
+    assert "rshout" not in left_env.filters
+    assert right_env.globals["right"] == 2
+    assert "left" not in right_env.globals
+    assert "lshout" not in right_env.filters
+
+
+def test_environment_for_does_not_reapply_the_extras_on_a_cache_hit():
+    """A cache hit must return the stored environment untouched: no second
+    construction, and no second .update() that would resurrect a name the app
+    deliberately removed after startup."""
+    from pyjinhx.config import PjxSettings
+
+    settings = PjxSettings(jinja_globals={"x": 1}, jinja_filters={"shout": str.upper})
+
+    env = session_module._environment_for(settings)
+    globals_before = env.globals
+    del env.globals["x"]
+    del env.filters["shout"]
+
+    again = session_module._environment_for(settings)
+
+    assert again is env
+    assert again.globals is globals_before
+    assert "x" not in again.globals
+    assert "shout" not in again.filters
+
+
+def test_environment_for_is_safe_under_concurrent_first_lookups():
+    """Two threads racing the first _environment_for(settings) call for the
+    same settings instance (e.g. two sync FastAPI handlers dispatched into
+    Starlette's threadpool) must not each build-and-store their own
+    Environment — the lock is what makes 'one environment per settings' hold
+    under real concurrency, not just in a single-threaded test."""
+    from pyjinhx.config import PjxSettings
+
+    settings = PjxSettings(jinja_globals={"x": 1})
+    start = threading.Barrier(8)
+    results: list[session_module.Environment] = []
+    lock = threading.Lock()
+
+    def worker() -> None:
+        start.wait(timeout=5)
+        env = session_module._environment_for(settings)
+        with lock:
+            results.append(env)
+
+    threads = [threading.Thread(target=worker) for _ in range(8)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join(timeout=5)
+
+    assert len(results) == 8
+    assert len({id(env) for env in results}) == 1
+
+
+def test_cached_environment_keeps_the_loader_autoescape_and_builtins():
+    """Reuse changes nothing about how the environment is built: same loader,
+    same autoescape, and Jinja's own standard library still resolves next to
+    the configured extras."""
+    from pyjinhx.config import PjxSettings
+
+    settings = PjxSettings(jinja_globals={"x": 1}, jinja_filters={"shout": str.upper})
+
+    env = session_module._environment_for(settings)
+
+    assert isinstance(env.loader, session_module.AbsolutePathLoader)
+    assert env.autoescape is True
+    template = env.from_string(
+        "{{ x }}|{{ 'ok'|shout }}|{{ 'b'|upper }}|{{ range(2)|list }}|{{ 'ab'|length }}"
+    )
+    assert template.render() == "1|OK|B|[0, 1]|2"
+
+
+def test_render_session_adopts_a_supplied_environment():
+    from pyjinhx.config import PjxSettings
+
+    env = session_module._environment_for(PjxSettings(jinja_globals={"x": 1}))
+    session = session_module.RenderSession(jinja_env=env)
+
+    assert session.jinja_env is env
+
+
+def test_render_session_rejects_an_adopted_environment_with_extras():
+    """An adopted environment is shared with every other session on the same
+    settings; updating it here would leak one session's names into all of them."""
+    from pyjinhx.config import PjxSettings
+
+    env = session_module._environment_for(PjxSettings())
+
+    with pytest.raises(TypeError):
+        session_module.RenderSession(jinja_env=env, jinja_globals={"x": 1})
+
+    with pytest.raises(TypeError):
+        session_module.RenderSession(jinja_env=env, jinja_filters={"shout": str.upper})
+
+
+def test_request_scope_default_session_uses_the_cached_environment():
+    """Two requests under one configuration must land on one environment —
+    otherwise every request starts with an empty template cache."""
+    from pyjinhx.config import (
+        PjxSettings,
+        configure_pyjinhx,
+        current_settings,
+        shutdown_pyjinhx,
+    )
+
+    configure_pyjinhx(PjxSettings(jinja_globals={"x": 1}))
+    try:
+        expected = session_module._environment_for(current_settings())
+        with session_module.request_scope() as first:
+            pass
+        with session_module.request_scope() as second:
+            pass
+
+        assert first.jinja_env is expected
+        assert second.jinja_env is expected
+        assert first is not second
+    finally:
+        shutdown_pyjinhx()

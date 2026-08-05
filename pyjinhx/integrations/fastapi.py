@@ -35,6 +35,7 @@ from pyjinhx.registry import register_rendered_instance
 from pyjinhx.responses import PASSTHROUGH, PjxResponse, compose
 from pyjinhx.session import (
     RenderSession,
+    _environment_for,
     accumulate_assets,
     current_session,
     request_scope,
@@ -199,10 +200,7 @@ class PjxScopeMiddleware(BaseHTTPMiddleware):
         # settings, but it leaves a caller-supplied one alone — so the same
         # seeding has to happen here, at the only call site that supplies one.
         settings = current_settings()
-        session = RenderSession(
-            jinja_globals=settings.jinja_globals,
-            jinja_filters=settings.jinja_filters,
-        )
+        session = RenderSession(jinja_env=_environment_for(settings))
         session.on_rendered.append(accumulate_assets)
         session.on_rendered.append(stamp_reactive_root_attrs)
         session.on_rendered.append(register_rendered_instance)

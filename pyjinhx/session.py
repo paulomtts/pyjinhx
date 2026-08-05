@@ -1,5 +1,6 @@
 """RenderSession, the per-request ContextVars, and the request_scope that owns them."""
 
+import threading
 from collections.abc import Callable, Iterable, Iterator, Mapping
 from contextlib import contextmanager
 from contextvars import ContextVar
@@ -15,6 +16,11 @@ if TYPE_CHECKING:
     # Type-only: the hook's signature names the spine's own types, but importing
     # them at runtime would point session at its own consumers.
     from pyjinhx._component import BaseComponent
+
+    # Type-only for the same reason config is imported inside request_scope()'s
+    # body and nowhere else: config sits above the render spine, so a runtime
+    # module-scope edge back would be a genuine cycle.
+    from pyjinhx.config import PjxSettings
     from pyjinhx.segments import RenderedLevel
 
 # The seven pieces of per-request mutable state. They live here rather than
@@ -74,31 +80,97 @@ class AbsolutePathLoader(BaseLoader):
         return source, str(path), uptodate
 
 
+def _build_environment(
+    jinja_globals: Mapping[str, Any] | None,
+    jinja_filters: Mapping[str, Any] | None,
+) -> Environment:
+    """A new Jinja environment with pyjinhx's loader, autoescape and slot finalize."""
+    env = Environment(
+        loader=AbsolutePathLoader(),
+        autoescape=True,
+        # Interpolating a component-valued slot must not stringify it; the
+        # hook swaps in a placeholder the render pipeline resolves later.
+        finalize=finalize_slot_node,
+    )
+    # update(), never assignment: Jinja seeds both mappings with its own
+    # builtins (range, dict, |upper, |length ...) and replacing the mapping
+    # outright would take a template's whole standard library with it.
+    # None is "nothing to add", not "clear".
+    if jinja_globals is not None:
+        env.globals.update(jinja_globals)
+    if jinja_filters is not None:
+        env.filters.update(jinja_filters)
+    return env
+
+
+# Keyed by id(settings) rather than by the settings object, because PjxSettings
+# is a frozen dataclass: two distinct instances with equal fields hash and
+# compare equal, and one carrying a plain dict in jinja_globals is not hashable
+# at all. Identity is what an environment's contents actually depend on. The
+# settings object is stored beside its environment so CPython cannot recycle
+# its id onto a different object while the entry is live.
+_environment_cache: dict[int, tuple["PjxSettings", Environment]] = {}
+# architecture-overview.md invariant 4: process-wide mutable state is either
+# built-then-swapped under a lock, or ContextVar-scoped - no third category.
+# This dict is mutated in place (not swapped), so the lock has to wrap every
+# read-or-build, matching classless.py's _build_lock / discovery.py's
+# _registry_lock shape. Without it, two threads racing the first lookup for
+# one settings instance could each build and store their own Environment,
+# and a session already handed the loser would render off a discarded one -
+# silently breaking "one environment per settings" under the exact
+# concurrency this cache exists to survive.
+_environment_cache_lock = threading.Lock()
+
+
+def _environment_for(settings: "PjxSettings") -> Environment:
+    """The process-wide Jinja environment for ``settings``, built on first use.
+
+    Every request served under one settings object shares one environment.
+    Building a fresh one per request threw away Jinja's template cache — which
+    lives on the environment — so every request re-read and re-compiled every
+    template it touched.
+    """
+    with _environment_cache_lock:
+        cached = _environment_cache.get(id(settings))
+        if cached is not None:
+            return cached[1]
+        env = _build_environment(settings.jinja_globals, settings.jinja_filters)
+        _environment_cache[id(settings)] = (settings, env)
+        return env
+
+
 class RenderSession:
     """Session providing Jinja environment with autoescape enabled."""
 
     def __init__(
         self,
         *,
+        jinja_env: Environment | None = None,
         jinja_globals: Mapping[str, Any] | None = None,
         jinja_filters: Mapping[str, Any] | None = None,
     ):
-        """Initialize render session, optionally with extra Jinja globals and filters."""
-        self.jinja_env = Environment(
-            loader=AbsolutePathLoader(),
-            autoescape=True,
-            # Interpolating a component-valued slot must not stringify it; the
-            # hook swaps in a placeholder the render pipeline resolves later.
-            finalize=finalize_slot_node,
+        """Initialize render session, optionally with extra Jinja globals and filters.
+
+        ``jinja_env`` adopts an already-built environment: this is how the two
+        request paths hand in the process-wide cached one instead of paying for
+        a fresh environment — and a cold template cache — per request. It is
+        mutually exclusive with the two mappings, which build a private
+        environment for a session the caller assembles by hand.
+        """
+        if jinja_env is not None and (
+            jinja_globals is not None or jinja_filters is not None
+        ):
+            raise TypeError(
+                "pass jinja_env or jinja_globals/jinja_filters, not both: an "
+                "adopted environment is shared with every other session built "
+                "from the same settings, so updating it here would leak this "
+                "session's names into all of them."
+            )
+        self.jinja_env = (
+            jinja_env
+            if jinja_env is not None
+            else _build_environment(jinja_globals, jinja_filters)
         )
-        # update(), never assignment: Jinja seeds both mappings with its own
-        # builtins (range, dict, |upper, |length ...) and replacing the mapping
-        # outright would take a template's whole standard library with it.
-        # None is "nothing to add", not "clear".
-        if jinja_globals is not None:
-            self.jinja_env.globals.update(jinja_globals)
-        if jinja_filters is not None:
-            self.jinja_env.filters.update(jinja_filters)
         # Generic per-request asset slot from the #423 ContextVar model
         # (predates L2.2.1's descriptor accumulator below); no producer in
         # this codebase writes to it yet, so it stays as-is for whatever
@@ -297,10 +369,7 @@ def request_scope(
         from pyjinhx.config import current_settings
 
         settings = current_settings()
-        session = RenderSession(
-            jinja_globals=settings.jinja_globals,
-            jinja_filters=settings.jinja_filters,
-        )
+        session = RenderSession(jinja_env=_environment_for(settings))
     session_token = _render_session.set(session)
     instances_token = _instances.set({})
     dirtied_token = _dirtied.set(set())
