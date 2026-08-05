@@ -11,3 +11,4 @@ explicitly in their **Status** line.
 | ADR | Title |
 |-----|-------|
 | [0001](0001-outerhtml-only-oob-swaps.md) | outerHTML-only OOB swaps, no append/prepend modes |
+| [0002](0002-cache-backend-architecture.md) | Two-tier cache with a pluggable cross-request backend |
