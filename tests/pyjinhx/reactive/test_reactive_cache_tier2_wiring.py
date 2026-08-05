@@ -325,3 +325,89 @@ def test_an_expired_tier2_entry_falls_through_to_the_real_load(
         Row.load(7)
 
     assert calls == [7, 7]
+
+
+def test_invalidate_evicts_the_backend_entry_too(backend: InMemoryCacheBackend):
+    calls: list[int] = []
+
+    class Row(ReactiveComponent, react=("rows",)):
+        row_id: Annotated[int, PjxKey()] = 0
+
+        @classmethod
+        def load(cls, row_id: int) -> "Row":
+            calls.append(row_id)
+            return cls(row_id=row_id)
+
+    with request_scope():
+        Row.load(7)
+
+    string_key = _string_cache_key(Row, {"row_id": 7}, protocol_mode=False)
+    assert backend.get(string_key) is not MISS
+
+    with request_scope():
+        invalidate(["rows:7"])
+
+    assert backend.get(string_key) is MISS
+
+    # The next request has to load for real: neither tier holds it any more.
+    with request_scope():
+        Row.load(7)
+
+    assert calls == [7, 7]
+
+
+def test_invalidate_hands_the_backend_the_dirtied_keys_verbatim(
+    recording_backend: RecordingBackend,
+):
+    with request_scope():
+        invalidate(["rows", "rows:7"])
+
+    assert recording_backend.evicts == [("rows", "rows:7")]
+
+
+def test_invalidate_survives_a_one_shot_iterator_of_dirtied_keys(
+    recording_backend: RecordingBackend,
+):
+    """Both tiers see the same keys: the first walk must not drain the second."""
+
+    class Row(ReactiveComponent, react=("rows",)):
+        row_id: Annotated[int, PjxKey()] = 0
+
+        @classmethod
+        def load(cls, row_id: int) -> "Row":
+            return cls(row_id=row_id)
+
+    with request_scope():
+        Row.load(7)
+        key = _cache_key(Row, {"row_id": 7}, protocol_mode=False)
+
+        invalidate(iter(["rows:7"]))
+
+        assert cache_has(Row, key) is False
+
+    assert recording_backend.evicts == [("rows:7",)]
+    assert (
+        recording_backend.get(
+            _string_cache_key(Row, {"row_id": 7}, protocol_mode=False)
+        )
+        is MISS
+    )
+
+
+def test_invalidate_with_no_backend_configured_is_a_tier1_only_no_op(
+    no_backend: None,
+):
+    class Row(ReactiveComponent, react=("rows",)):
+        row_id: Annotated[int, PjxKey()] = 0
+
+        @classmethod
+        def load(cls, row_id: int) -> "Row":
+            return cls(row_id=row_id)
+
+    with request_scope():
+        Row.load(7)
+        key = _cache_key(Row, {"row_id": 7}, protocol_mode=False)
+
+        invalidate(["rows:7"])
+
+        assert cache_has(Row, key) is False

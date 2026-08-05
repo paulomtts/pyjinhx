@@ -18,6 +18,12 @@ single entry sits under so un-indexing costs that entry's own key count instead
 of a walk over every bucket. Outside a request scope every function is a no-op:
 the session getters answer throwaway containers, so writes vanish and reads
 miss. A cache that does nothing is a correct cache, so nothing raises.
+
+``invalidate()`` is the one function here that looks past this request:
+``wrapped_load`` writes each cross-request entry under the same reactive keys
+this module reverse-indexes by, so the dirtied keys pass straight through to
+the configured backend's ``evict()`` as tags. Nothing else in this module knows
+that tier exists.
 """
 
 from collections.abc import Iterable
@@ -105,18 +111,24 @@ def cache_put(
 def invalidate(dirtied_keys: Iterable[str]) -> None:
     """Evict every cache entry that depends on any of these reactive keys.
 
-    Outside a request scope there is nothing indexed and nothing to drop, so
-    this is a silent no-op like the rest of the module.
+    Both tiers are swept: this request's store, and the configured cross-request
+    backend, where the same keys are the tags its entries were written under.
+    Outside a request scope there is nothing indexed in tier 1 and nothing to
+    drop there, so that half is a silent no-op like the rest of the module.
 
     Args:
         dirtied_keys: Normalized string keys, as produced by
             coerce_reactive_keys() and collected by session.add_dirtied().
     """
+    # Materialized once because two independent stores read it: a caller that
+    # passes a generator would otherwise hand the backend an already-drained
+    # iterable and quietly evict from tier 1 only.
+    dirtied = tuple(dirtied_keys)
     reverse = get_cache_reverse()
     forward = get_cache_forward()
     store = get_cache_store()
     evicted: set[tuple[type, object]] = set()
-    for react_key in dirtied_keys:
+    for react_key in dirtied:
         evicted |= reverse.get(react_key, set())
     for cache_key in evicted:
         # An entry reachable from two dirtied keys is popped once; the second
@@ -126,6 +138,17 @@ def invalidate(dirtied_keys: Iterable[str]) -> None:
         # ones that matched: the entry is gone from the store, so any surviving
         # membership would name a cache_key nothing can look up.
         _unindex(reverse, forward, cache_key)
+    # Function-local by necessity: config sits above reactive/ and imports the
+    # render spine at import time, so a module-scope edge back would be a real
+    # cycle. Same escape hatch session.py's request_scope() uses.
+    from pyjinhx.config import current_settings
+
+    backend = current_settings().cache_backend
+    if backend is not None:
+        # The dirtied keys are the tags verbatim - wrapped_load wrote each entry
+        # under the very tuple tier 1 reverse-indexes it by - so there is no
+        # second index to maintain and nothing to translate here.
+        backend.evict(dirtied)
 
 
 def _unindex(
