@@ -180,3 +180,83 @@ def test_a_landed_write_clears_the_degraded_flag(settings_restored: None):
         Row.load(7)
 
     assert is_degraded(backend) is False
+
+
+def test_a_raising_evict_still_clears_tier_one(settings_restored: None):
+    publish(BrokenBackend(fail_evict=True))
+    calls: list[int] = []
+    Row = make_row_class(calls)
+
+    from pyjinhx.reactive.cache import invalidate
+    from pyjinhx.reactive.component import _cache_key
+
+    with request_scope():
+        Row.load(7)
+        key = _cache_key(Row, {"row_id": 7}, protocol_mode=False)
+
+        invalidate(["rows:7"])
+
+        from pyjinhx.reactive.cache import cache_has
+
+        assert cache_has(Row, key) is False
+
+
+def test_a_raising_evict_degrades_the_backend_and_warns_once(
+    settings_restored: None, caplog: pytest.LogCaptureFixture
+):
+    backend = publish(BrokenBackend(fail_evict=True))
+
+    from pyjinhx.reactive.cache import invalidate
+
+    with caplog.at_level(logging.WARNING, logger="pyjinhx"):
+        with request_scope():
+            invalidate(["rows:7"])
+            invalidate(["rows:8"])
+
+    assert is_degraded(backend) is True
+    assert len(caplog.records) == 1
+
+
+def test_a_successful_put_lets_a_degraded_backend_be_read_again(
+    settings_restored: None,
+):
+    backend = publish(BrokenBackend(fail_evict=True))
+    calls: list[int] = []
+    Row = make_row_class(calls)
+
+    from pyjinhx.reactive.cache import invalidate
+
+    with request_scope():
+        invalidate(["rows:7"])
+    assert is_degraded(backend) is True
+
+    # This request's write lands, which clears the flag...
+    with request_scope():
+        Row.load(7)
+    assert is_degraded(backend) is False
+
+    # ...so the next one consults the backend again and is served from it.
+    backend.gets.clear()
+    with request_scope():
+        Row.load(7)
+
+    assert backend.gets != []
+    assert calls == [7]
+
+
+def test_two_backends_degrade_independently(settings_restored: None):
+    first = BrokenBackend(fail_evict=True)
+    second = BrokenBackend()
+
+    from pyjinhx.reactive.cache import invalidate
+
+    publish(first)
+    with request_scope():
+        invalidate(["rows:7"])
+
+    publish(second)
+    with request_scope():
+        invalidate(["rows:7"])
+
+    assert is_degraded(first) is True
+    assert is_degraded(second) is False
