@@ -512,8 +512,18 @@ def test_lower_layers_do_not_import_the_wiring_layer():
     # import (never at module scope) to seed a default session's Jinja
     # globals/filters; test_import_graph.py's
     # test_session_only_imports_config_inside_a_function_body pins that it
-    # stays function-local, so it is not a real upward edge here.
-    allowed_edges = {("pyjinhx.session", "pyjinhx.config")}
+    # stays function-local, so it is not a real upward edge here. The two
+    # reactive/ edges below are the same lazy pattern:
+    # reactive.component's _resolve_tier2() and reactive.cache's invalidate()
+    # each read current_settings() inside their own bodies to find the
+    # process's cache backend, never at module scope
+    # (test_component_only_imports_config_inside_a_function_body and
+    # test_cache_only_imports_config_inside_a_function_body pin those).
+    allowed_edges = {
+        ("pyjinhx.session", "pyjinhx.config"),
+        ("pyjinhx.reactive.component", "pyjinhx.config"),
+        ("pyjinhx.reactive.cache", "pyjinhx.config"),
+    }
 
     offenders: list[tuple[str, str]] = []
     for name in lower:

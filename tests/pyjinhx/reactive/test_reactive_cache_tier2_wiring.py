@@ -14,7 +14,7 @@ from pyjinhx.reactive.component import (
     _resolve_tier2,
     _string_cache_key,
 )
-from pyjinhx.session import get_cache_forward, request_scope
+from pyjinhx.session import add_dirtied, get_cache_forward, get_dirtied, request_scope
 
 
 @pytest.fixture
@@ -411,3 +411,37 @@ def test_invalidate_with_no_backend_configured_is_a_tier1_only_no_op(
         invalidate(["rows:7"])
 
         assert cache_has(Row, key) is False
+
+
+def test_a_dirtied_key_recorded_through_the_session_clears_both_tiers(
+    backend: InMemoryCacheBackend,
+):
+    """The real path: a mutation records a key, the response fan-out invalidates
+    it, and the next request must not be served stale from tier 2."""
+    calls: list[int] = []
+
+    class Row(ReactiveComponent, react=("rows",)):
+        row_id: Annotated[int, PjxKey()] = 0
+
+        @classmethod
+        def load(cls, row_id: int) -> "Row":
+            calls.append(row_id)
+            return cls(row_id=row_id)
+
+    with request_scope():
+        Row.load(7)
+
+    with request_scope():
+        add_dirtied({"rows:7"})
+        invalidate(get_dirtied())
+
+    # Both tiers are clear right after invalidate() - before the next request
+    # writes a fresh entry back.
+    assert (
+        backend.get(_string_cache_key(Row, {"row_id": 7}, protocol_mode=False)) is MISS
+    )
+
+    with request_scope():
+        Row.load(7)
+
+    assert calls == [7, 7]
