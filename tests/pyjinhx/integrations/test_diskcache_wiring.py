@@ -11,7 +11,7 @@ from pyjinhx.reactive.backend import MISS, CacheBackend
 
 diskcache = pytest.importorskip("diskcache")
 
-from pyjinhx.integrations.diskcache import DiskCacheBackend  # noqa: E402
+from pyjinhx.integrations.diskcache import DiskCacheBackend
 
 
 def test_importing_bare_pyjinhx_does_not_need_the_extra():
@@ -39,7 +39,7 @@ def test_importing_bare_pyjinhx_does_not_need_the_extra():
         print("ok")
     """)
     result = subprocess.run(
-        [sys.executable, "-c", script], capture_output=True, text=True
+        [sys.executable, "-c", script], capture_output=True, text=True, check=False
     )
     assert result.returncode == 0, result.stderr
     assert "ok" in result.stdout
