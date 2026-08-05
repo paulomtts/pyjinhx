@@ -19,7 +19,12 @@ from pyjinhx.client.inject import (
     TriggerManifest,
     inject_runtime,
 )
-from pyjinhx.config import PjxSettings, configure_pyjinhx, shutdown_pyjinhx
+from pyjinhx.config import (
+    PjxSettings,
+    configure_pyjinhx,
+    current_settings,
+    shutdown_pyjinhx,
+)
 from pyjinhx.integrations.base import (
     SETUP_FLAG,
     ContextFactory,
@@ -190,7 +195,14 @@ class PjxScopeMiddleware(BaseHTTPMiddleware):
         # The session is built here rather than defaulted inside request_scope():
         # the three render hooks below are exported unsubscribed, and this is
         # the one place production wiring attaches them before the scope opens.
-        session = RenderSession()
+        # request_scope() seeds a session it builds itself from the configured
+        # settings, but it leaves a caller-supplied one alone — so the same
+        # seeding has to happen here, at the only call site that supplies one.
+        settings = current_settings()
+        session = RenderSession(
+            jinja_globals=settings.jinja_globals,
+            jinja_filters=settings.jinja_filters,
+        )
         session.on_rendered.append(accumulate_assets)
         session.on_rendered.append(stamp_reactive_root_attrs)
         session.on_rendered.append(register_rendered_instance)
