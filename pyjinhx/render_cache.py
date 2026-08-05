@@ -4,10 +4,14 @@
 
 import hashlib
 import json
+from typing import TYPE_CHECKING, Any
 
 from pyjinhx._component import BaseComponent
 from pyjinhx.reactive.backend import MISS, CacheBackend
 from pyjinhx.segments import ChildRef, RenderedLevel
+
+if TYPE_CHECKING:
+    from pyjinhx.session import RenderSession
 
 
 def _holds_component(value: object) -> bool:
@@ -125,3 +129,26 @@ def _check_restored(key: str, value: object) -> None:
                 f"{type(segment).__name__}; a level's segments are str, ChildRef "
                 f"or RenderedLevel only, so this entry did not survive storage."
             )
+
+
+def replay_asset_accumulation(level: RenderedLevel, session: "RenderSession") -> None:
+    """Set-add a restored level's descriptor asset paths into ``session``.
+
+    A cache hit never runs render_level, so the on_rendered fan-out that
+    normally collects assets never fires. This replays that one subscriber's
+    effect and nothing else: the other two subscribers stamp reactive root
+    attrs and register a reactive instance, and tier 2 only ever holds
+    non-reactive components, so firing them here would invent state for a
+    component that has none.
+
+    Args:
+        level: The restored level whose descriptor carries the asset paths.
+        session: The RenderSession this request is rendering against.
+    """
+    # Same structural read as session.accumulate_assets: RenderedLevel.descriptor
+    # is typed as `object` to keep segments.py import-pure, and importing
+    # ClassDescriptor here just to annotate it would break that parity for
+    # nothing.
+    descriptor: Any = level.descriptor
+    session.css_assets.update(descriptor.css_paths)
+    session.js_assets.update(descriptor.js_paths)

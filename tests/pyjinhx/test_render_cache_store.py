@@ -13,8 +13,13 @@ from pyjinhx._component import BaseComponent
 from pyjinhx.descriptor import ClassDescriptor
 from pyjinhx.integrations.diskcache import DiskCacheBackend
 from pyjinhx.reactive.backend import MISS, InMemoryCacheBackend
-from pyjinhx.render_cache import restore_rendered_level, store_rendered_level
+from pyjinhx.render_cache import (
+    replay_asset_accumulation,
+    restore_rendered_level,
+    store_rendered_level,
+)
 from pyjinhx.segments import ChildRef, RenderedLevel
+from pyjinhx.session import RenderSession
 
 
 class _StorePlain(BaseComponent):
@@ -182,3 +187,50 @@ def test_backend_get_failure_propagates():
 
     with pytest.raises(OSError, match="disk on fire"):
         restore_rendered_level(_Exploding(), "k")
+
+
+def test_replay_adds_descriptor_assets(template: Path):
+    """The level's descriptor paths land in the session's asset sets."""
+    css = (template.parent / "a.css",)
+    js = (template.parent / "a.js",)
+    level = _level(_descriptor(_StorePlain, template, css_paths=css, js_paths=js))
+    session = RenderSession()
+
+    replay_asset_accumulation(level, session)
+
+    assert session.css_assets == set(css)
+    assert session.js_assets == set(js)
+
+
+def test_replay_is_idempotent(template: Path):
+    """A second replay of the same level changes nothing."""
+    css = (template.parent / "a.css",)
+    js = (template.parent / "a.js",)
+    level = _level(_descriptor(_StorePlain, template, css_paths=css, js_paths=js))
+    session = RenderSession()
+
+    replay_asset_accumulation(level, session)
+    replay_asset_accumulation(level, session)
+
+    assert session.css_assets == set(css)
+    assert session.js_assets == set(js)
+
+
+def test_replay_never_fires_rendered_subscribers(template: Path):
+    """The reactive-shaped on_rendered hooks stay untouched on a cache hit."""
+    calls: list[object] = []
+    session = RenderSession()
+    session.on_rendered.append(lambda component, level, sess: calls.append(component))
+    level = _level(
+        _descriptor(
+            _StorePlain,
+            template,
+            css_paths=(template.parent / "a.css",),
+            js_paths=(),
+        )
+    )
+
+    replay_asset_accumulation(level, session)
+
+    assert calls == []
+    assert session.css_assets == {template.parent / "a.css"}
