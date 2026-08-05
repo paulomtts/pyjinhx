@@ -443,12 +443,23 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
             "pyjinhx.session",
         }
     ),
-    # render_cache holds the tier-2 render-cache key derivation: a pure
-    # function over a component and its template file. It reaches down into
-    # _component only for the BaseComponent annotation, and reads the class
-    # descriptor off the class rather than importing descriptor.py, so it adds
-    # no new edge into the spine.
-    "render_cache": frozenset({"pyjinhx._component"}),
+    # render_cache holds the tier-2 render-cache key derivation plus the
+    # store/restore/replay primitives built on top of it. It reaches down into
+    # _component only for the BaseComponent annotation, reads the class
+    # descriptor off the class rather than importing descriptor.py, and reads
+    # the CacheBackend protocol/MISS sentinel and RenderedLevel/ChildRef to
+    # store and shape-check a level. The RenderSession reference for asset
+    # replay is TYPE_CHECKING-only, but internal_imports() walks the whole
+    # AST regardless of the guard (see registry's entry above), so
+    # pyjinhx.session is declared here too.
+    "render_cache": frozenset(
+        {
+            "pyjinhx._component",
+            "pyjinhx.reactive.backend",
+            "pyjinhx.segments",
+            "pyjinhx.session",
+        }
+    ),
     "render_context": frozenset({"pyjinhx.markers", "pyjinhx._component"}),
     "reactive.__init__": frozenset(),
     "reactive.keys": frozenset(),
