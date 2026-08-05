@@ -26,6 +26,7 @@ from pyjinhx.render_cache import (
     copy_level_shell,
     holds_spliced_components,
     load_rendered_level,
+    render_cache_key,
     resolve_render_tier2,
     save_rendered_level,
 )
@@ -480,3 +481,34 @@ def test_a_component_valued_slot_is_never_cached_and_splices_every_time(
 
     assert first == second == "<div><span>i</span></div>"
     assert "pjx-slot-" not in first
+
+
+def test_a_failing_get_degrades_the_backend_without_failing_the_render(
+    box_template: Path, caplog: pytest.LogCaptureFixture
+):
+    spy = SpyBackend(fail_get=True)
+    previous = current_settings()
+    configure_pyjinhx(previous.merge(cache_backend=spy))
+    try:
+        with caplog.at_level("WARNING", logger="pyjinhx"):
+            rendered = serialize(
+                render_level(_CachedBox(id="a", label="hi"), RenderSession())
+            )
+    finally:
+        configure_pyjinhx(previous)
+
+    assert rendered == "<div>hi</div>"
+    assert len(caplog.records) == 1
+
+
+def test_a_corrupt_entry_propagates_out_of_render_level(box_template: Path):
+    spy = SpyBackend()
+    previous = current_settings()
+    configure_pyjinhx(previous.merge(cache_backend=spy))
+    try:
+        key = render_cache_key(_CachedBox(id="a", label="hi"))
+        spy.put(key, "not a level", tags=(), ttl=None)
+        with pytest.raises(ValueError, match="not a RenderedLevel"):
+            render_level(_CachedBox(id="a", label="hi"), RenderSession())
+    finally:
+        configure_pyjinhx(previous)
