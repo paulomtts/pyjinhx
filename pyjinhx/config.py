@@ -3,8 +3,11 @@
 config sits above the render spine and may read from it; nothing in the spine,
 in reactive/ or in client/ may import this module back — except session.py's
 request_scope(), which reads current_settings() through a function-local
-import to seed a default session's Jinja globals/filters, never at module
-scope (test_session_only_imports_config_inside_a_function_body pins that).
+import to seed a default session's Jinja globals/filters, and reactive/
+component.py's _resolve_tier2(), which reads it the same way to find the
+process's cache backend. Never at module scope in either case
+(test_session_only_imports_config_inside_a_function_body and
+test_component_only_imports_config_inside_a_function_body pin that).
 Siblings that do not exist yet (dev, integrations.fastapi) are imported
 lazily inside functions so importing this module never depends on them.
 """

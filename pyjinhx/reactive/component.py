@@ -26,7 +26,7 @@ from pydantic.fields import FieldInfo
 
 from pyjinhx._component import BaseComponent
 from pyjinhx.app_context import resolve_load_context_param
-from pyjinhx.reactive.backend import CachePolicy
+from pyjinhx.reactive.backend import MISS, CacheBackend, CachePolicy
 from pyjinhx.reactive.cache import cache_get, cache_has, cache_put
 from pyjinhx.reactive.keys import coerce_load_key_str, coerce_reactive_key
 from pyjinhx.session import get_load_context
@@ -499,6 +499,33 @@ def _wrap_load(
         return result
 
     return wrapped_load
+
+
+def _resolve_tier2(
+    cls: type["ReactiveComponent"],
+) -> tuple["CacheBackend | None", float | None]:
+    """The cross-request backend this class caches through, and the ttl it writes at.
+
+    Answers ``(None, None)`` when tier 2 is off for ``cls`` - either because no
+    backend is configured for the process or because the class opted out with
+    ``cache=False``. Otherwise the configured backend and the seconds its
+    entries stay valid.
+    """
+    # Function-local by necessity: config sits above reactive/ and imports the
+    # render spine at import time, so a module-scope edge back would be a real
+    # cycle. Same escape hatch session.py's request_scope() uses.
+    from pyjinhx.config import current_settings
+
+    policy = cls._pjx_cache_policy
+    # `is False`, not falsiness: None is "the class said nothing", which means
+    # the process default applies, and it is not the same answer as an explicit
+    # opt-out.
+    if policy is False:
+        return None, None
+    backend = current_settings().cache_backend
+    if backend is None:
+        return None, None
+    return backend, (CachePolicy() if policy is None else policy).ttl
 
 
 def _cache_key(
