@@ -309,3 +309,62 @@ def test_no_backend_configured_matches_configured_behavior(tmp_path: Path):
     assert warm_off == cold_off
     assert cold_on == cold_off
     assert warm_on == cold_off
+
+
+_load_calls: list[int] = []
+
+
+class _CachedRow(ReactiveComponent):
+    row_id: Annotated[int, PjxKey()] = 0
+    label: str = ""
+
+    @classmethod
+    def load(cls, row_id: int) -> "_CachedRow":
+        _load_calls.append(row_id)
+        return cls(row_id=row_id, label=f"row {row_id}")
+
+
+def test_reactive_component_never_uses_render_cache(
+    spy: SpyBackend, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    """A reactive class caches its load() result and nothing else.
+
+    Two independently invalidated stores holding one component is the failure
+    this boundary exists to prevent: the load cache is evicted by reactive keys,
+    the render cache only by ttl and template mtime, so a render-cached shell
+    would outlive the data it was rendered from. The marker _pjx_key_field is
+    what takes the level off the render-cache path, so the assertion is that no
+    render key is ever derived for this class — while its own two-tier load
+    cache goes on working exactly as it does without a render cache in the
+    picture.
+    """
+    _load_calls.clear()
+    template = tmp_path / "row.html"
+    template.write_text("<div>{{ label }}</div>", encoding="utf-8")
+    _attach(_CachedRow, template)
+
+    real_render_cache_key = rendering.render_cache_key
+
+    def guarded(component: BaseComponent) -> str:
+        if isinstance(component, ReactiveComponent):
+            raise AssertionError(  # noqa: TRY004
+                "a reactive component must never be render-cached"
+            )
+        return real_render_cache_key(component)
+
+    monkeypatch.setattr(rendering, "render_cache_key", guarded)
+
+    with request_scope():
+        first = render(_CachedRow(id="r", row_id=7), RenderSession())
+    # A second request: tier 1 is gone with the scope, so only the load cache's
+    # tier 2 can spare the real load() call.
+    with request_scope():
+        second = render(_CachedRow(id="r", row_id=7), RenderSession())
+
+    assert first == second == "<div>row 7</div>"
+    assert _load_calls == [7]
+    # The only key this class put through the backend is its load key: no render
+    # key was written beside it.
+    load_key = _string_cache_key(_CachedRow, {"row_id": 7}, protocol_mode=False)
+    assert spy.puts == [load_key]
+    assert set(spy.gets) == {load_key}
