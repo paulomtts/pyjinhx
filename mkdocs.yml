@@ -113,6 +113,7 @@ nav:
           - Assets API: api/assets-api.md
           - Integration Backend: api/client-backend.md
           - Cache & Invalidation: api/cache-invalidation.md
+          - Cache Backends: api/cache-backends.md
   - Migration guide: migration.md
   - Decisions:
       - Index: decisions/index.md

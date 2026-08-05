@@ -1,6 +1,6 @@
 # Cache & Invalidation
 
-The reactive `load()` cache and its cross-process fan-out.
+The reactive `load()` cache and its cross-process fan-out. For the optional cross-request tier underneath it, see [Cache Backends](cache-backends.md).
 
 !!! warning "Internal module"
     Nothing on this page is part of the public API — `pyjinhx.reactive.cache` and
@@ -74,4 +74,4 @@ def load(cls, todo_id: int) -> "ItemRow":
 
 A `load()` that catches the store's `KeyError` and returns a field-default instance instead swaps the region with a *blank* render rather than deleting it — the failure is silent and looks like an emptied region on the client.
 
-This fan-out is in-process only — there is currently no built-in mechanism for propagating invalidation across worker processes or machines. Each worker's cache and registry are independent.
+This fan-out is in-process only: it turns one request's dirtied keys into that response's OOB swaps, and it never reaches another worker. Whether an *eviction* crosses a process boundary depends on the cache tier below it. With no cache backend configured — the default — nothing does: the load cache described above is request-scoped, so each worker's cache and registry are independent. With a `DiskCacheBackend` configured, `invalidate()` also calls `evict()` on that backend, and every worker sharing its directory sees the eviction on its next read. See [Cache Backends](cache-backends.md) for that tier, and for where the boundary actually falls (one machine, not one cluster).
