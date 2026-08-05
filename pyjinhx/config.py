@@ -17,11 +17,17 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass, fields, replace
 from importlib.util import find_spec as _find_spec
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from pyjinhx._component import BaseComponent
 from pyjinhx.discovery import build_registry
 from pyjinhx.integrations.base import IntegrationBackend, get_backend
+
+if TYPE_CHECKING:
+    # Type-only, and it must stay that way: config sits above reactive/, and
+    # naming a backend's protocol in a field annotation must not make importing
+    # config drag reactive/ in at runtime.
+    from pyjinhx.reactive.backend import CacheBackend
 
 # Sentinel distinguishing "argument omitted" from None or a real value, so
 # setup()'s pass-through keywords never clobber an explicit settings object.
@@ -69,6 +75,9 @@ class PjxSettings:
     # missing mapping should mean to the session that applies these.
     jinja_globals: Mapping[str, Any] | None = None
     jinja_filters: Mapping[str, Any] | None = None
+    # Handed in by the app, never read from the environment: a backend needs a
+    # path, a connection or a constructor call that a string cannot carry.
+    cache_backend: CacheBackend | None = None
 
     @classmethod
     def from_env(cls) -> PjxSettings:
@@ -133,8 +142,20 @@ def configure_pyjinhx(settings: PjxSettings) -> PjxSettings:
 
 
 def shutdown_pyjinhx() -> None:
-    """Reset the process back to default settings and undo what config applied."""
+    """Reset the process back to default settings and undo what config applied.
+
+    A configured cache backend is closed first, so whatever it holds open is
+    released before the settings that named it are dropped.
+    """
     global _current
+    backend = _current.cache_backend
+    if backend is not None:
+        # CacheBackend is a structural protocol and declares no close(): a
+        # purely in-memory backend has nothing to release, so closing is what a
+        # backend opts into rather than something every one must implement.
+        close = getattr(backend, "close", None)
+        if close is not None:
+            close()
     _current = PjxSettings()
     _apply_reactive_dev(False)
 

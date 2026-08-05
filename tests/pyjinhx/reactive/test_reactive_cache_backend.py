@@ -1,4 +1,13 @@
-from pyjinhx.reactive.backend import MISS, CacheBackend, InMemoryCacheBackend
+import dataclasses
+
+import pytest
+
+from pyjinhx.reactive.backend import (
+    MISS,
+    CacheBackend,
+    CachePolicy,
+    InMemoryCacheBackend,
+)
 
 
 class FakeClock:
@@ -218,3 +227,32 @@ def test_the_default_clock_is_monotonic_and_does_not_expire_instantly():
     backend = InMemoryCacheBackend()
     backend.put("todos", "a", tags=(), ttl=60.0)
     assert backend.get("todos") == "a"
+
+
+def test_cache_policy_defaults_to_a_finite_ttl():
+    assert CachePolicy().ttl == 300
+
+
+def test_cache_policy_accepts_an_explicit_ttl():
+    assert CachePolicy(ttl=60).ttl == 60
+
+
+def test_cache_policy_accepts_an_explicit_none_ttl():
+    assert CachePolicy(ttl=None).ttl is None
+
+
+def test_cache_policy_is_frozen():
+    policy = CachePolicy()
+    with pytest.raises(dataclasses.FrozenInstanceError):
+        policy.ttl = 60  # type: ignore[misc]
+
+
+def test_cache_policies_compare_by_value():
+    assert CachePolicy(ttl=60) == CachePolicy(ttl=60)
+    assert CachePolicy(ttl=60) != CachePolicy(ttl=300)
+    assert CachePolicy() == CachePolicy(ttl=300)
+
+
+def test_cache_policy_has_exactly_one_field():
+    names = [field.name for field in dataclasses.fields(CachePolicy)]
+    assert names == ["ttl"]

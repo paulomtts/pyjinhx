@@ -368,6 +368,9 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
     # components and it defers to siblings that own the app wiring and dev
     # tooling. The reverse edge — any spine, reactive/ or client/ module
     # importing config — stays forbidden and is asserted below.
+    # reactive.backend is TYPE_CHECKING-only: PjxSettings.cache_backend names
+    # the protocol, and config never touches a backend at import time. The
+    # guard test below pins it out of module scope.
     "config": frozenset(
         {
             "pyjinhx",
@@ -376,6 +379,7 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
             "pyjinhx.dev",
             "pyjinhx.integrations.base",
             "pyjinhx.integrations.fastapi",
+            "pyjinhx.reactive.backend",
         }
     ),
     # context sits above the spine with config and integrations.fastapi: it is a
@@ -464,10 +468,13 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
     # The load() wrap resolves its app-context parameter through app_context and
     # reads the bound value out of session's ContextVar; both are strictly below
     # reactive/, so neither edge is a cycle.
+    # backend is a third, vocabulary-only edge: CachePolicy names the cache=
+    # class keyword's type. No call into a backend is made from here.
     "reactive.component": frozenset(
         {
             "pyjinhx.app_context",
             "pyjinhx._component",
+            "pyjinhx.reactive.backend",
             "pyjinhx.reactive.cache",
             "pyjinhx.reactive.keys",
             "pyjinhx.session",
@@ -748,6 +755,21 @@ def test_session_only_imports_config_inside_a_function_body():
     where in the file an import lives, so pin it here."""
     module_level = module_level_internal_imports(PACKAGE_ROOT / "session.py")
     assert "pyjinhx.config" not in module_level
+
+
+def test_config_names_the_cache_backend_type_without_importing_it():
+    """PjxSettings.cache_backend is annotated CacheBackend | None, but config
+    sits above reactive/: a module-scope edge would make importing config pull
+    reactive/ in, and config already imports the spine at import time. The
+    whole-file edge table can't see where in the file an import lives, so pin
+    it here — the import belongs under TYPE_CHECKING and nowhere else."""
+    module_level = module_level_internal_imports(PACKAGE_ROOT / "config.py")
+    reactive_edges = {
+        name for name in module_level if name.startswith("pyjinhx.reactive")
+    }
+    assert not reactive_edges, (
+        f"config.py imports reactive at module scope: {sorted(reactive_edges)}"
+    )
 
 
 def test_no_render_spine_module_declares_a_reactive_import():

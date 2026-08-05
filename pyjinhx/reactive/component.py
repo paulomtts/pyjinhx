@@ -10,13 +10,23 @@ import inspect
 import json
 from collections.abc import Callable, Iterable
 from enum import Enum
-from typing import Annotated, Any, ClassVar, cast, get_args, get_origin, get_type_hints
+from typing import (
+    Annotated,
+    Any,
+    ClassVar,
+    Literal,
+    cast,
+    get_args,
+    get_origin,
+    get_type_hints,
+)
 
 from pydantic import TypeAdapter, ValidationError
 from pydantic.fields import FieldInfo
 
 from pyjinhx._component import BaseComponent
 from pyjinhx.app_context import resolve_load_context_param
+from pyjinhx.reactive.backend import CachePolicy
 from pyjinhx.reactive.cache import cache_get, cache_has, cache_put
 from pyjinhx.reactive.keys import coerce_load_key_str, coerce_reactive_key
 from pyjinhx.session import get_load_context
@@ -46,6 +56,11 @@ class ReactiveComponent(BaseComponent):
     """Field names left out of the state hash. A subclass's value replaces this
     one outright rather than adding to it."""
 
+    _pjx_cache_policy: ClassVar[CachePolicy | Literal[False] | None] = None
+    """This class's cross-request cache policy: a CachePolicy that overrides the
+    process default, False for tier-1-only, or None when the class said nothing
+    and the process default applies. None and False are different answers."""
+
     @classmethod
     def load(cls, *args: Any, **kwargs: Any) -> "ReactiveComponent":  # type: ignore[misc]
         """Build this component for the current request. Override in subclasses.
@@ -68,14 +83,24 @@ class ReactiveComponent(BaseComponent):
         canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"))
         return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
-    def __init_subclass__(cls, *, react: Iterable[object] = (), **kwargs: Any) -> None:
-        """Consume the ``react`` class kwarg and record it as normalized keys.
+    def __init_subclass__(
+        cls,
+        *,
+        react: Iterable[object] = (),
+        cache: CachePolicy | Literal[False] | None = None,
+        **kwargs: Any,
+    ) -> None:
+        """Consume the ``react`` and ``cache`` class kwargs and record them.
 
-        Recorded on every subclass rather than inherited: a subclass declares
-        its own dependencies, and silently reusing a parent's set would tie its
-        cache entry to state it never reads.
+        Both are recorded on every subclass rather than inherited: a subclass
+        declares its own dependencies and its own caching, and silently reusing
+        a parent's would tie its cache entry to state it never reads.
         """
         cls._pjx_react_keys = tuple(coerce_reactive_key(key) for key in react or ())
+        # Stored exactly as given: an omitted cache= is None, which means "no
+        # answer, use the process default" and is not the same as an explicit
+        # False. Resolving None against the default belongs to whoever reads it.
+        cls._pjx_cache_policy = cache
         super().__init_subclass__(**kwargs)
 
     @classmethod
