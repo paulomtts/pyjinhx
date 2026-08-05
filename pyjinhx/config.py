@@ -1,10 +1,14 @@
 """App-level configuration for pyjinhx: the settings object and the setup() entrypoint.
 
 config sits above the render spine and may read from it; nothing in the spine,
-in reactive/ or in client/ may import this module back — except session.py's
-request_scope(), which reads current_settings() through a function-local
-import to seed a default session's Jinja globals/filters, never at module
-scope (test_session_only_imports_config_inside_a_function_body pins that).
+in reactive/ or in client/ may import this module back — except three
+function-local reads of current_settings(): session.py's request_scope(),
+which seeds a default session's Jinja globals/filters, reactive/component.py's
+_resolve_tier2() and reactive/cache.py's invalidate(), which both find the
+process's cache backend. Never at module scope in any of the three
+(test_session_only_imports_config_inside_a_function_body,
+test_component_only_imports_config_inside_a_function_body and
+test_cache_only_imports_config_inside_a_function_body pin that).
 Siblings that do not exist yet (dev, integrations.fastapi) are imported
 lazily inside functions so importing this module never depends on them.
 """

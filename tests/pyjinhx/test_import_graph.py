@@ -447,8 +447,11 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
     "reactive.backend": frozenset(),
     # cache.py is a store over session's cache ContextVar and nothing else: it
     # owns no state, and it must not reach sideways into keys.py or up into the
-    # render spine to key or evict anything.
-    "reactive.cache": frozenset({"pyjinhx.session"}),
+    # render spine to key or evict anything. The one exception is lazy:
+    # invalidate() reads current_settings() inside its own body to sweep the
+    # configured cross-request backend with the same dirtied keys.
+    # test_cache_only_imports_config_inside_a_function_body pins it there.
+    "reactive.cache": frozenset({"pyjinhx.session", "pyjinhx.config"}),
     # mutations.py records dirtied keys through session's public writer; it owns
     # no ContextVar of its own and never reaches sideways into cache.py.
     "reactive.mutations": frozenset({"pyjinhx.session", "pyjinhx.reactive.keys"}),
@@ -468,12 +471,16 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
     # The load() wrap resolves its app-context parameter through app_context and
     # reads the bound value out of session's ContextVar; both are strictly below
     # reactive/, so neither edge is a cycle.
-    # backend is a third, vocabulary-only edge: CachePolicy names the cache=
-    # class keyword's type. No call into a backend is made from here.
+    # backend supplies both the cache= keyword's vocabulary and the MISS
+    # sentinel the tier-2 read compares against.
+    # config is the one upward edge, and it is lazy: _resolve_tier2() reads
+    # current_settings() inside its own body to find the configured backend.
+    # test_component_only_imports_config_inside_a_function_body pins it there.
     "reactive.component": frozenset(
         {
             "pyjinhx.app_context",
             "pyjinhx._component",
+            "pyjinhx.config",
             "pyjinhx.reactive.backend",
             "pyjinhx.reactive.cache",
             "pyjinhx.reactive.keys",
@@ -694,13 +701,24 @@ def test_nothing_below_config_imports_config():
     current_settings() inside its own body to seed a default session's Jinja
     environment. The edge never executes at import time, and
     test_session_only_imports_config_inside_a_function_body pins it there.
+
+    reactive/component.py and reactive/cache.py are the third and fourth, and
+    lazy in the same way: _resolve_tier2() and invalidate() call
+    current_settings() inside their own bodies to find the process's cache
+    backend. test_component_only_imports_config_inside_a_function_body and
+    test_cache_only_imports_config_inside_a_function_body pin them there.
     """
     importers = {
         module_name(path)
         for path in module_paths()
         if "pyjinhx.config" in internal_imports(path)
     }
-    assert importers == {"integrations.fastapi", "session"}
+    assert importers == {
+        "integrations.fastapi",
+        "reactive.cache",
+        "reactive.component",
+        "session",
+    }
 
 
 def test_nothing_imports_context():
@@ -754,6 +772,28 @@ def test_session_only_imports_config_inside_a_function_body():
     import time, would be a genuine cycle. The whole-file edge table can't see
     where in the file an import lives, so pin it here."""
     module_level = module_level_internal_imports(PACKAGE_ROOT / "session.py")
+    assert "pyjinhx.config" not in module_level
+
+
+def test_component_only_imports_config_inside_a_function_body():
+    """_resolve_tier2() reads current_settings() to find the process's cache
+    backend, but config sits above reactive/: a module-scope edge would invert
+    the layering and, because config imports the spine at import time, would be
+    a genuine cycle. The whole-file edge table can't see where in the file an
+    import lives, so pin it here."""
+    module_level = module_level_internal_imports(
+        PACKAGE_ROOT / "reactive" / "component.py"
+    )
+    assert "pyjinhx.config" not in module_level
+
+
+def test_cache_only_imports_config_inside_a_function_body():
+    """invalidate() reads current_settings() to sweep the cross-request backend,
+    but config sits above reactive/: a module-scope edge would invert the
+    layering and, because config imports the spine at import time, would be a
+    genuine cycle. The whole-file edge table can't see where in the file an
+    import lives, so pin it here."""
+    module_level = module_level_internal_imports(PACKAGE_ROOT / "reactive" / "cache.py")
     assert "pyjinhx.config" not in module_level
 
 
