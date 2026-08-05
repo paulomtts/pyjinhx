@@ -136,3 +136,68 @@ def test_protocol_mode_string_key_below_the_threshold_stays_plain():
     key = _string_cache_key(Row, {"row_id": 1}, protocol_mode=True)
 
     assert key == f"pjx:1:{Row.__module__}.{Row.__qualname__}:row_id=1"
+
+
+def test_protocol_mode_class_with_an_unserializable_load_param_is_rejected():
+    class Opaque:
+        pass
+
+    with pytest.raises(TypeError, match="serialize deterministically"):
+
+        class Row(ReactiveComponent):
+            model_config = ConfigDict(extra="allow")
+            row_id: Annotated[int, PjxKey()] = 0
+
+            @classmethod
+            def load(cls, row_id: int, blob: Opaque) -> "Row":
+                return cls(row_id=row_id)
+
+
+def test_protocol_mode_class_with_an_unannotated_load_param_is_rejected():
+    with pytest.raises(TypeError, match="serialize deterministically"):
+
+        class Row(ReactiveComponent):
+            model_config = ConfigDict(extra="allow")
+            row_id: Annotated[int, PjxKey()] = 0
+
+            @classmethod
+            def load(cls, row_id: int, flavor=None) -> "Row":  # type: ignore[no-untyped-def]
+                return cls(row_id=row_id)
+
+
+def test_strict_mode_classes_are_exempt_from_the_determinism_check():
+    # `object` stands in for a "risky" type here rather than a custom class:
+    # a custom arbitrary type would also need arbitrary_types_allowed=True on
+    # the model itself for the PjxKey field to validate at all, which is an
+    # orthogonal pydantic concern this test isn't about. `object` is a valid
+    # pydantic field type out of the box and is explicitly on the spec's
+    # rejected list for protocol mode, so it still exercises "risky type,
+    # strict mode, must not raise".
+    class Row(ReactiveComponent):
+        blob: Annotated[object, PjxKey()] = "unset"
+
+        @classmethod
+        def load(cls, blob: object) -> "Row":
+            return cls(blob=blob)
+
+    assert Row._pjx_key_field == "blob"
+
+
+def test_protocol_mode_class_with_serializable_load_params_defines_cleanly():
+    class Row(ReactiveComponent):
+        model_config = ConfigDict(extra="allow")
+        row_id: Annotated[int, PjxKey()] = 0
+
+        @classmethod
+        def load(
+            cls,
+            row_id: int,
+            flavor: str = "plain",
+            ratio: float = 1.0,
+            on: bool = True,
+            note: str | None = None,
+            tags: tuple[str, ...] = (),
+        ) -> "Row":
+            return cls(row_id=row_id)
+
+    assert Row.load(1) is not None  # class defined and the wrap installed
