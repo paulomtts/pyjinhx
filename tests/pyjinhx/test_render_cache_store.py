@@ -5,11 +5,14 @@ DiskCacheBackend path pickles whatever it is handed, and a class defined
 inside a test function cannot be pickled by reference.
 """
 
+import pickle
 from pathlib import Path
 
 import pytest
 
+from pyjinhx import discovery
 from pyjinhx._component import BaseComponent
+from pyjinhx.classless import component
 from pyjinhx.descriptor import ClassDescriptor
 from pyjinhx.integrations.diskcache import DiskCacheBackend
 from pyjinhx.reactive.backend import MISS, InMemoryCacheBackend
@@ -272,3 +275,36 @@ def test_real_pipeline_level_round_trips(tmp_path: Path):
     replay_asset_accumulation(restored, replay_session)
     assert replay_session.css_assets == {tmp_path / "leaf.css"}
     assert replay_session.js_assets == {tmp_path / "leaf.js"}
+
+
+def test_classless_component_level_fails_loudly_on_the_disk_backend(tmp_path: Path):
+    """A generated class's descriptor cannot be pickled, and says so.
+
+    component() builds a class in a synthetic module that is registered in
+    sys.modules but never given the class as an attribute, so pickle's
+    by-reference lookup for descriptor.provenance finds nothing. The disk
+    backend surfaces that as its own error rather than storing a half-level;
+    that is the behavior tier 2 gets, and #820's wiring has to live with a
+    generated component simply not caching rather than caching wrongly.
+    """
+    saved_mapping = discovery._registry.mapping
+    saved_template_dir = discovery._registry.template_dir
+    discovery._registry.mapping = {}
+    discovery._registry.template_dir = None
+    try:
+        (tmp_path / "widget.pjx").write_text("<div>hello</div>", encoding="utf-8")
+        cls = component("Widget", template_dir=tmp_path)
+        level = RenderedLevel(
+            segments=["<div>hello</div>"],
+            root_span=(0, 5),
+            descriptor=cls.__pjx_descriptor__,
+        )
+        backend = DiskCacheBackend(tmp_path / "cache")
+
+        with pytest.raises((pickle.PicklingError, AttributeError)):
+            store_rendered_level(backend, "k", level, ttl=300)
+
+        backend.close()
+    finally:
+        discovery._registry.mapping = saved_mapping
+        discovery._registry.template_dir = saved_template_dir
