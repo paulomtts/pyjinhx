@@ -6,6 +6,7 @@ import pytest
 
 from pyjinhx._component import BaseComponent
 from pyjinhx.app_context import AppContext
+from pyjinhx.reactive.backend import CachePolicy
 from pyjinhx.reactive.component import PjxKey, ReactiveComponent
 from pyjinhx.session import request_scope
 
@@ -714,3 +715,59 @@ def test_app_context_is_excluded_from_the_cache_key():
     assert first is second
     assert first.user == "ada"
     assert len(calls) == 1
+
+
+def test_cache_policy_defaults_to_unset():
+    class Baz(ReactiveComponent):
+        pass
+
+    assert Baz._pjx_cache_policy is None
+
+
+def test_cache_policy_is_recorded_verbatim():
+    class Foo(ReactiveComponent, cache=CachePolicy(ttl=60)):
+        pass
+
+    assert Foo._pjx_cache_policy == CachePolicy(ttl=60)
+
+
+def test_cache_false_is_recorded_as_false_not_as_unset():
+    class Bar(ReactiveComponent, cache=False):
+        pass
+
+    assert Bar._pjx_cache_policy is False
+
+
+def test_cache_policy_is_not_inherited():
+    class Parent(ReactiveComponent, cache=CachePolicy(ttl=60)):
+        pass
+
+    class Child(Parent):
+        pass
+
+    assert Child._pjx_cache_policy is None
+
+
+def test_cache_false_is_not_inherited():
+    class Parent(ReactiveComponent, cache=False):
+        pass
+
+    class Child(Parent):
+        pass
+
+    assert Child._pjx_cache_policy is None
+
+
+def test_react_and_cache_are_both_consumed_together():
+    class Widget(ReactiveComponent, react=("todos",), cache=CachePolicy(ttl=60)):
+        pass
+
+    assert Widget._pjx_react_keys == ("todos",)
+    assert Widget._pjx_cache_policy == CachePolicy(ttl=60)
+
+
+def test_cache_alone_does_not_disturb_the_react_keys():
+    class Widget(ReactiveComponent, cache=False):
+        pass
+
+    assert Widget._pjx_react_keys == ()

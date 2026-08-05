@@ -464,10 +464,13 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
     # The load() wrap resolves its app-context parameter through app_context and
     # reads the bound value out of session's ContextVar; both are strictly below
     # reactive/, so neither edge is a cycle.
+    # backend is a third, vocabulary-only edge: CachePolicy names the cache=
+    # class keyword's type. No call into a backend is made from here.
     "reactive.component": frozenset(
         {
             "pyjinhx.app_context",
             "pyjinhx._component",
+            "pyjinhx.reactive.backend",
             "pyjinhx.reactive.cache",
             "pyjinhx.reactive.keys",
             "pyjinhx.session",
