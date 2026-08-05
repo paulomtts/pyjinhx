@@ -289,7 +289,18 @@ def request_scope(
         The RenderSession bound for this scope.
     """
     if session is None:
-        session = RenderSession()
+        # Function-local by necessity: config sits above the render spine and
+        # imports it at import time, so a module-scope edge back would be a
+        # real cycle. Same escape hatch _component.py uses for rendering.py.
+        # Only the branch that builds the session consults the settings: a
+        # caller that supplied one already chose its environment.
+        from pyjinhx.config import current_settings
+
+        settings = current_settings()
+        session = RenderSession(
+            jinja_globals=settings.jinja_globals,
+            jinja_filters=settings.jinja_filters,
+        )
     session_token = _render_session.set(session)
     instances_token = _instances.set({})
     dirtied_token = _dirtied.set(set())

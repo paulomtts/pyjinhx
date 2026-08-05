@@ -520,12 +520,18 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
     # The on_rendered hook's signature names BaseComponent and RenderedLevel, but
     # both imports are TYPE_CHECKING-only. At runtime session also imports
     # AssetMode from assets, a real edge alongside markers.
+    # session owns the per-request ContextVars. The one upward edge is
+    # config, imported inside request_scope()'s body — never at module scope
+    # — so the default session can be seeded with the app's Jinja globals and
+    # filters without inverting the layering; see the function-local guard
+    # test below.
     "session": frozenset(
         {
             "pyjinhx.markers",
             "pyjinhx._component",
             "pyjinhx.segments",
             "pyjinhx.assets",
+            "pyjinhx.config",
         }
     ),
     # pjx_table family (#526): each component module imports only the core
@@ -647,6 +653,7 @@ def test_session_never_reaches_into_reactive():
         "pyjinhx._component",
         "pyjinhx.segments",
         "pyjinhx.assets",
+        "pyjinhx.config",
     }
 
 
@@ -659,13 +666,18 @@ def test_nothing_below_config_imports_config():
     chain the app's lifespan — the two modules' mutual edges are each lazy
     (config imports integrations.fastapi inside setup(), see its own entry
     above) so the runtime cycle never actually executes at import time.
+
+    session.py is the second exception, and a lazy one: request_scope() calls
+    current_settings() inside its own body to seed a default session's Jinja
+    environment. The edge never executes at import time, and
+    test_session_only_imports_config_inside_a_function_body pins it there.
     """
     importers = {
         module_name(path)
         for path in module_paths()
         if "pyjinhx.config" in internal_imports(path)
     }
-    assert importers == {"integrations.fastapi"}
+    assert importers == {"integrations.fastapi", "session"}
 
 
 def test_nothing_imports_context():
@@ -710,6 +722,16 @@ def test_component_only_imports_render_and_session_inside_a_method_body():
     module_level = module_level_internal_imports(PACKAGE_ROOT / "_component.py")
     assert "pyjinhx.rendering" not in module_level
     assert "pyjinhx.session" not in module_level
+
+
+def test_session_only_imports_config_inside_a_function_body():
+    """request_scope() reads current_settings() to seed a default session's
+    Jinja environment, but config sits above the render spine: a module-scope
+    edge would invert the layering and, because config imports the spine at
+    import time, would be a genuine cycle. The whole-file edge table can't see
+    where in the file an import lives, so pin it here."""
+    module_level = module_level_internal_imports(PACKAGE_ROOT / "session.py")
+    assert "pyjinhx.config" not in module_level
 
 
 def test_no_render_spine_module_declares_a_reactive_import():

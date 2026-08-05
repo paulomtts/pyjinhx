@@ -479,3 +479,35 @@ def test_render_session_still_constructs_with_no_arguments():
     assert session.jinja_env.autoescape is True
     assert "range" in session.jinja_env.globals
     assert "upper" in session.jinja_env.filters
+
+
+def test_request_scope_applies_the_configured_globals_and_filters():
+    """The default-construction branch is the only place settings are read, so
+    an app that never builds its own session still gets its Jinja extras."""
+    from pyjinhx.config import PjxSettings, configure_pyjinhx, shutdown_pyjinhx
+
+    configure_pyjinhx(
+        PjxSettings(jinja_globals={"x": 1}, jinja_filters={"shout": str.upper})
+    )
+    try:
+        with session_module.request_scope() as session:
+            assert session.jinja_env.globals["x"] == 1
+            assert session.jinja_env.filters["shout"] is str.upper
+            assert "range" in session.jinja_env.globals
+    finally:
+        shutdown_pyjinhx()
+
+
+def test_request_scope_leaves_a_caller_supplied_session_alone():
+    """A pre-built session is the caller's business — the FastAPI middleware
+    builds its own and attaches hooks to it before the scope opens."""
+    from pyjinhx.config import PjxSettings, configure_pyjinhx, shutdown_pyjinhx
+
+    configure_pyjinhx(PjxSettings(jinja_globals={"x": 1}))
+    prebuilt = session_module.RenderSession()
+    try:
+        with session_module.request_scope(session=prebuilt) as session:
+            assert session is prebuilt
+            assert "x" not in session.jinja_env.globals
+    finally:
+        shutdown_pyjinhx()
