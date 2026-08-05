@@ -12,7 +12,7 @@ from typing import Any
 
 import pytest
 
-from pyjinhx import discovery
+from pyjinhx import discovery, rendering
 from pyjinhx._component import BaseComponent, Children, Slot, _pascal_to_snake
 from pyjinhx.config import configure_pyjinhx, current_settings
 from pyjinhx.descriptor import ClassDescriptor
@@ -412,3 +412,71 @@ def test_a_hit_does_not_fill_the_children_of_the_cached_entry(
     third = serialize(render_level(_CachedBox(id="a", label="hi"), RenderSession()))
 
     assert first == second == third == "<div>hi<span>i</span></div>"
+
+
+def test_cache_false_never_touches_the_backend(box_template: Path):
+    class OptedOut(BaseComponent, cache=False):
+        label: str = "hi"
+
+    _attach(OptedOut, box_template)
+    spy = SpyBackend()
+    previous = current_settings()
+    configure_pyjinhx(previous.merge(cache_backend=spy))
+    try:
+        render_level(OptedOut(id="a", label="hi"), RenderSession())
+        render_level(OptedOut(id="a", label="hi"), RenderSession())
+    finally:
+        configure_pyjinhx(previous)
+
+    assert spy.gets == []
+    assert spy.puts == []
+
+
+def test_no_backend_configured_never_computes_a_key(
+    no_backend: None, box_template: Path, monkeypatch: pytest.MonkeyPatch
+):
+    def boom(component: object) -> str:
+        raise AssertionError("render_cache_key was computed with tier 2 off")
+
+    monkeypatch.setattr(rendering, "render_cache_key", boom)
+
+    assert serialize(render_level(_CachedBox(id="a", label="hi"), RenderSession())) == (
+        "<div>hi</div>"
+    )
+
+
+def test_a_component_valued_slot_is_never_cached_and_splices_every_time(
+    backend: InMemoryCacheBackend, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    """The (b) disqualification: no key, no entry, and correct markup twice."""
+    inner = tmp_path / "inner.html"
+    inner.write_text("<span>i</span>", encoding="utf-8")
+    _attach(_Inner, inner)
+    holder = tmp_path / "slot_holder.html"
+    holder.write_text("<div>{{ body }}</div>", encoding="utf-8")
+    _attach(
+        _HoleHolder, holder, slot_fields=frozenset({"body"}), children_field="content"
+    )
+
+    real_render_cache_key = rendering.render_cache_key
+
+    def guarded(component: object) -> str:
+        # Scoped to _HoleHolder itself, not the whole tree: its spliced _Inner
+        # child is an ordinary cacheable component and legitimately gets its
+        # own key computed on its own render_level call — what D1 disqualifies
+        # is only the parent instance holding the component-valued slot.
+        if isinstance(component, _HoleHolder):
+            raise AssertionError(  # noqa: TRY004
+                "a component-valued slot must never be keyed"
+            )
+        return real_render_cache_key(component)
+
+    monkeypatch.setattr(rendering, "render_cache_key", guarded)
+
+    first = serialize(render_level(_HoleHolder(id="a", body=_Inner()), RenderSession()))
+    second = serialize(
+        render_level(_HoleHolder(id="a", body=_Inner()), RenderSession())
+    )
+
+    assert first == second == "<div><span>i</span></div>"
+    assert "pjx-slot-" not in first
