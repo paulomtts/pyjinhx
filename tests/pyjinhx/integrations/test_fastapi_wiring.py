@@ -513,3 +513,39 @@ def test_hx_location_response_is_not_reinterpreted():
     assert response.status_code == 204
     assert response.headers["HX-Location"] == "/y"
     assert "HX-Redirect" not in response.headers
+
+
+def test_configured_jinja_globals_and_filters_reach_the_request_session():
+    """The middleware builds its own session so it can attach the render hooks,
+    which means request_scope()'s settings-seeding branch never runs for a
+    FastAPI app — the middleware has to seed that session itself."""
+    from pyjinhx.session import current_session
+
+    def site_name() -> str:
+        return "pyjinhx"
+
+    app = FastAPI()
+    apply_setup(
+        app,
+        _settings(
+            jinja_globals={"site_name": site_name},
+            jinja_filters={"shout": str.upper},
+        ),
+    )
+
+    @app.get("/render")
+    def render():
+        session = current_session()
+        assert session is not None
+        # "b"|upper is Jinja's own builtin filter: the extras are added to the
+        # environment, never swapped in for it.
+        template = session.jinja_env.from_string(
+            "{{ site_name() }}|{{ 'ok'|shout }}|{{ 'b'|upper }}"
+        )
+        return PlainTextResponse(template.render())
+
+    with TestClient(app) as client:
+        response = client.get("/render")
+
+    assert response.status_code == 200
+    assert response.text == "pyjinhx|OK|B"
