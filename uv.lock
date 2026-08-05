@@ -142,6 +142,15 @@ wheels = [
 ]
 
 [[package]]
+name = "diskcache"
+version = "5.6.3"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/3f/21/1c1ffc1a039ddcc459db43cc108658f32c57d271d7289a2794e401d0fdb6/diskcache-5.6.3.tar.gz", hash = "sha256:2c3a3fa2743d8535d832ec61c2054a1641f41775aa7c556758a109941e33e4fc", size = 67916, upload-time = "2023-08-31T06:12:00.316Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/3f/27/4570e78fc0bf5ea0ca45eb1de3818a23787af9b390c0b0a0033a1b8236f9/diskcache-5.6.3-py3-none-any.whl", hash = "sha256:5e31b2d5fbad117cc363ebaf6b689474db18a1f6438bc82358b024abd4c2ca19", size = 45550, upload-time = "2023-08-31T06:11:58.822Z" },
+]
+
+[[package]]
 name = "fakeredis"
 version = "2.36.2"
 source = { registry = "https://pypi.org/simple" }
@@ -671,6 +680,9 @@ dependencies = [
 ]
 
 [package.optional-dependencies]
+diskcache = [
+    { name = "diskcache" },
+]
 fastapi = [
     { name = "fastapi" },
     { name = "starlette" },
@@ -682,6 +694,7 @@ redis = [
 
 [package.dev-dependencies]
 dev = [
+    { name = "diskcache" },
     { name = "fakeredis" },
     { name = "fastapi" },
     { name = "httpx" },
@@ -696,6 +709,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "diskcache", marker = "extra == 'diskcache'", specifier = ">=5.6.0" },
     { name = "fakeredis", marker = "extra == 'redis'", specifier = ">=2.26.0" },
     { name = "fastapi", marker = "extra == 'fastapi'", specifier = ">=0.115.0" },
     { name = "jinja2", specifier = ">=3.1.6" },
@@ -704,10 +718,11 @@ requires-dist = [
     { name = "redis", marker = "extra == 'redis'", specifier = ">=5.0.0" },
     { name = "starlette", marker = "extra == 'fastapi'", specifier = ">=0.40.0" },
 ]
-provides-extras = ["redis", "fastapi"]
+provides-extras = ["redis", "fastapi", "diskcache"]
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "diskcache", specifier = ">=5.6.0" },
     { name = "fakeredis", specifier = ">=2.26.0" },
     { name = "fastapi", specifier = ">=0.115.0" },
     { name = "httpx", specifier = ">=0.27.0" },

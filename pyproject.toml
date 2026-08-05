@@ -44,6 +44,7 @@ extraPaths = ["docs"]
 [project.optional-dependencies]
 redis = ["redis>=5.0.0", "fakeredis>=2.26.0"]
 fastapi = ["fastapi>=0.115.0", "starlette>=0.40.0"]
+diskcache = ["diskcache>=5.6.0"]
 
 [dependency-groups]
 dev = [
@@ -56,5 +57,6 @@ dev = [
     "python-multipart>=0.0.9",
     "fakeredis>=2.26.0",
     "redis>=5.0.0",
+    "diskcache>=5.6.0",
     "pytest-playwright>=0.8.0",
 ]
