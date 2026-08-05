@@ -31,6 +31,47 @@ def _holds_component(value: object) -> bool:
     return False
 
 
+def _spliced_fields(component: BaseComponent) -> set[str]:
+    """Slot/children field names whose current value is a component, or a
+    list/dict holding one.
+
+    These are the fields a render treats as opaque holes: the key leaves them
+    out (see render_cache_key) and the cache refuses the instance outright (see
+    holds_spliced_components), which are the two halves of one rule.
+    """
+    descriptor = type(component).__pjx_descriptor__
+    hole_fields = set(descriptor.slot_fields)
+    if descriptor.children_field is not None:
+        hole_fields.add(descriptor.children_field)
+    return {name for name in hole_fields if _holds_component(getattr(component, name))}
+
+
+def holds_spliced_components(component: BaseComponent) -> bool:
+    """Whether this instance carries a component in a slot or children field,
+    which disqualifies it from the render cache.
+
+    Such a value never reaches the template as text: build_context wraps it in a
+    ComponentNode, and interpolating it fires the finalize hook, which writes a
+    random ``pjx-slot-<uuid4 hex>`` token into a table that lives exactly as long
+    as the one ``template.render()`` call that produced it. A cache hit performs
+    no such call, so the tokens baked into a restored level match nothing in this
+    request and would splice as literal garbage into the page.
+
+    Regenerating those tokens positionally against a fresh table is possible in
+    principle - an identical key implies identical control flow implies identical
+    emission order - but it needs the stored level to carry that order, which
+    means changing what is stored. So the render cache declines these instances
+    instead, the same way the load cache declines an unpicklable result: not an
+    error, just an instance that renders live every time.
+
+    Answered per instance, not per class: a Slot field declared component-capable
+    but currently holding a plain string emits no token at all, and that string is
+    baked into the cached segments as text (and stays in the key), so there is
+    nothing to disqualify.
+    """
+    return bool(_spliced_fields(component))
+
+
 def render_cache_key(component: BaseComponent) -> str:
     """Return the render-cache key for ``component``.
 
@@ -50,12 +91,7 @@ def render_cache_key(component: BaseComponent) -> str:
     # string instead is baked into the cached segments as literal text, never
     # a ChildRef, so that value has to stay in the key or two different
     # strings on the same field would collide on one entry.
-    hole_fields = set(descriptor.slot_fields)
-    if descriptor.children_field is not None:
-        hole_fields.add(descriptor.children_field)
-    spliced_fields = {
-        name for name in hole_fields if _holds_component(getattr(component, name))
-    }
+    spliced_fields = _spliced_fields(component)
     # JSON-mode dump plus sorted, separator-pinned encoding so dict ordering
     # and non-JSON-native types can't perturb an unchanged set of props.
     canonical = json.dumps(

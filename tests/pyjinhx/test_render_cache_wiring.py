@@ -6,14 +6,16 @@ the wiring — that render_level consults the backend at all, that it stops
 consulting it when told to, and that nothing it caches can splice wrong.
 """
 
+from pathlib import Path
 from typing import Any
 
 import pytest
 
-from pyjinhx._component import BaseComponent
+from pyjinhx._component import BaseComponent, Children, Slot
 from pyjinhx.config import configure_pyjinhx, current_settings
+from pyjinhx.descriptor import ClassDescriptor
 from pyjinhx.reactive.backend import CachePolicy, InMemoryCacheBackend
-from pyjinhx.render_cache import resolve_render_tier2
+from pyjinhx.render_cache import holds_spliced_components, resolve_render_tier2
 
 
 def test_a_plain_component_records_an_explicit_cache_policy():
@@ -99,3 +101,56 @@ def test_render_tier2_is_off_for_a_class_that_opted_out(backend: Any):
         label: str = ""
 
     assert resolve_render_tier2(Widget) == (None, None)
+
+
+class _HoleHolder(BaseComponent):
+    label: str = "hi"
+    body: Slot = ""
+    content: Children = ""
+
+
+class _Inner(BaseComponent):
+    pass
+
+
+def _attach(
+    cls: type[BaseComponent],
+    template_path: Path,
+    *,
+    slot_fields: frozenset[str] = frozenset(),
+    children_field: str | None = None,
+) -> None:
+    """Point a class at a tmp-path template, as test_render_cache_key.py does."""
+    cls.__pjx_descriptor__ = ClassDescriptor(
+        template_path=template_path,
+        slot_fields=slot_fields,
+        children_field=children_field,
+        css_paths=(),
+        js_paths=(),
+        strict=True,
+        provenance={"template": cls},
+    )
+
+
+def test_a_string_in_a_slot_field_is_not_a_spliced_component(tmp_path: Path):
+    template = tmp_path / "holder.html"
+    template.write_text("<div>{{ body }}</div>", encoding="utf-8")
+    _attach(_HoleHolder, template, slot_fields=frozenset({"body"}), children_field="content")
+
+    assert holds_spliced_components(_HoleHolder(body="plain", content="text")) is False
+
+
+def test_a_component_in_a_slot_field_is_a_spliced_component(tmp_path: Path):
+    template = tmp_path / "holder.html"
+    template.write_text("<div>{{ body }}</div>", encoding="utf-8")
+    _attach(_HoleHolder, template, slot_fields=frozenset({"body"}), children_field="content")
+
+    assert holds_spliced_components(_HoleHolder(body=_Inner(), content="text")) is True
+
+
+def test_a_component_in_the_children_field_is_a_spliced_component(tmp_path: Path):
+    template = tmp_path / "holder.html"
+    template.write_text("<div>{{ content }}</div>", encoding="utf-8")
+    _attach(_HoleHolder, template, slot_fields=frozenset({"body"}), children_field="content")
+
+    assert holds_spliced_components(_HoleHolder(body="x", content=[_Inner()])) is True
