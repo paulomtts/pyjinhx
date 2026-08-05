@@ -77,6 +77,41 @@ def holds_spliced_components(component: BaseComponent) -> bool:
     return bool(_spliced_fields(component))
 
 
+def has_auto_id(component: BaseComponent) -> bool:
+    """Whether this instance's ``id`` came from the default factory.
+
+    Pydantic records the names the caller actually passed in ``model_fields_set``,
+    so an absent ``id`` there is one ``_auto_id()`` minted — ``pjx-1``, ``pjx-2``,
+    and so on, a fresh value per instance.
+    """
+    return "id" not in component.model_fields_set
+
+
+def auto_id_in_output(component: BaseComponent, output: str) -> bool:
+    """Whether an auto-generated ``id`` was interpolated into this render.
+
+    The key deliberately ignores an auto id, so a template that prints one — via
+    ``{{ id }}``, or an attribute built from it — would bake ``pjx-1`` into an
+    entry later served to ``pjx-2``. Such an instance is declined rather than
+    cached wrong, the same way ``holds_spliced_components`` declines one whose
+    slot tokens cannot outlive their render.
+
+    Tested against the finished output rather than by parsing the template for
+    an ``id`` reference: the output is the ground truth about what actually got
+    printed, it is already in hand at the point this is asked, and a substring
+    scan costs far less than a second parse. An author-supplied id is not
+    checked at all — it is in the key, so an entry can only ever be served back
+    to the same value.
+
+    Args:
+        component: The instance that produced ``output``.
+        output: The template's rendered text, before parsing.
+    """
+    if not has_auto_id(component):
+        return False
+    return component.id in output
+
+
 def render_cache_key(component: BaseComponent) -> str:
     """Return the render-cache key for ``component``.
 
@@ -85,6 +120,13 @@ def render_cache_key(component: BaseComponent) -> str:
     children values left out (a string on the same field stays in, since it is
     baked into the cached output rather than spliced back in), and the
     modification time of the template the class resolved to.
+
+    An auto-generated ``id`` is left out of the digest too. It counts up per
+    instance, so keeping it would give two structurally identical components two
+    different keys and the cache could never hit at all. An id the author passed
+    explicitly stays in: that one names something about the instance, and two
+    values of it are two different renders. This mirrors reactive's
+    ``state_hash_exclude``, which drops ``id`` for the same reason.
     """
     cls = type(component)
     descriptor = cls.__pjx_descriptor__
@@ -97,6 +139,8 @@ def render_cache_key(component: BaseComponent) -> str:
     # a ChildRef, so that value has to stay in the key or two different
     # strings on the same field would collide on one entry.
     spliced_fields = _spliced_fields(component)
+    if has_auto_id(component):
+        spliced_fields.add("id")
     # JSON-mode dump plus sorted, separator-pinned encoding so dict ordering
     # and non-JSON-native types can't perturb an unchanged set of props.
     canonical = json.dumps(
