@@ -102,11 +102,11 @@ class ReactiveComponent(BaseComponent):
         a parent's would tie its cache entry to state it never reads.
         """
         cls._pjx_react_keys = tuple(coerce_reactive_key(key) for key in react or ())
-        # Stored exactly as given: an omitted cache= is None, which means "no
-        # answer, use the process default" and is not the same as an explicit
-        # False. Resolving None against the default belongs to whoever reads it.
-        cls._pjx_cache_policy = cache
-        super().__init_subclass__(**kwargs)
+        # Forwarded rather than assigned here: BaseComponent owns the attribute
+        # now, so plain and reactive classes answer the same knob the same way.
+        # The precise annotation stays on this parameter because reactive/ is
+        # where CachePolicy may legally be named.
+        super().__init_subclass__(cache=cache, **kwargs)
 
     @classmethod
     def __pydantic_init_subclass__(cls, **kwargs: Any) -> None:

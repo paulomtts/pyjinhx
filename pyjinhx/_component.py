@@ -486,6 +486,19 @@ class BaseComponent(BaseModel):
 
     _pjx_replace: ClassVar[bool] = False
 
+    _pjx_cache_policy: ClassVar[Any] = None
+    """This class's cross-request cache policy, exactly as ``cache=`` gave it:
+    a CachePolicy overriding the process default, False for no cross-request
+    caching, or None when the class said nothing (which is not the same answer
+    as False — resolving None against the default belongs to whoever reads it).
+
+    Typed loosely on purpose: CachePolicy lives under reactive/, and the render
+    spine may not import reactive/ at all. The two readers give the value its
+    meaning — render_cache.resolve_render_tier2 for the render cache and
+    reactive's _resolve_tier2 for the load cache — and ReactiveComponent
+    re-declares this attribute with the precise type where that import is legal.
+    """
+
     _pjx_stale_header_warned: ClassVar[bool] = False
     """Set the first time this class's stale ``{#def#}`` header is reported, so
     the complaint is made once and not once per render."""
@@ -546,15 +559,23 @@ class BaseComponent(BaseModel):
 
         return _render(self, session or current_session())
 
-    def __init_subclass__(cls, *, pjx_replace: bool = False, **kwargs: Any) -> None:
-        """Consume the ``pjx_replace`` class kwarg before it reaches
-        ``object.__init_subclass__``, which accepts no keyword arguments.
+    def __init_subclass__(
+        cls, *, pjx_replace: bool = False, cache: Any = None, **kwargs: Any
+    ) -> None:
+        """Consume the ``pjx_replace`` and ``cache`` class kwargs before they
+        reach ``object.__init_subclass__``, which accepts no keyword arguments.
 
         Assigned on every subclass, never merely inherited: a subclass of a
         replacing component is a new class that has not asked to replace
-        anything, and a leaked ``True`` would hand it someone else's tag.
+        anything, and a leaked ``True`` would hand it someone else's tag. Same
+        for caching — a subclass that inherited a parent's policy would be
+        cached against state it never declared.
         """
         cls._pjx_replace = bool(pjx_replace)
+        # Stored exactly as given, not coerced: None means "no answer, use the
+        # process default" and an explicit False means "never", and bool() would
+        # collapse the two into one.
+        cls._pjx_cache_policy = cache
         super().__init_subclass__(**kwargs)
 
     @classmethod
