@@ -8,6 +8,8 @@ so installing the extra stays optional.
 
 from __future__ import annotations
 
+import logging
+import pickle
 from collections.abc import Iterable
 from pathlib import Path
 from typing import cast
@@ -15,6 +17,11 @@ from typing import cast
 from diskcache import FanoutCache
 
 from pyjinhx.reactive.backend import MISS
+
+logger = logging.getLogger("pyjinhx")
+
+_PICKLING_ERRORS = (pickle.PicklingError, TypeError, AttributeError)
+"""What a value that will not pickle raises, across pickle's several ways of saying so."""
 
 _KEYS_OF_TAG = "pjx:diskcache:keys-of-tag:"
 """Prefix of the entry holding the set of keys carrying one tag."""
@@ -64,6 +71,7 @@ class DiskCacheBackend:
                 giving up on that operation.
         """
         self._cache = FanoutCache(str(directory), shards=shards, timeout=timeout)
+        self._unpicklable: set[str] = set()
 
     def get(self, key: str) -> object:
         """Return the value stored under ``key``, or ``MISS``."""
@@ -74,8 +82,23 @@ class DiskCacheBackend:
     def put(
         self, key: str, value: object, *, tags: Iterable[str], ttl: float | None
     ) -> None:
-        """Store ``value`` under ``key``, replacing any entry already there."""
-        self._cache.set(key, value, expire=ttl)
+        """Store ``value`` under ``key``, replacing any entry already there.
+
+        A value that will not pickle is logged and skipped rather than raised
+        over: once a backend is configured, every component's load() result
+        passes through here, and one holding a socket or a lock is a normal
+        thing to meet, not an authoring error worth failing a request for.
+        """
+        try:
+            self._cache.set(key, value, expire=ttl)
+        except _PICKLING_ERRORS as exc:
+            # Caught here rather than left to component.py's generic handler:
+            # that one logs once per backend, class-blind, so the first
+            # unpicklable class would hide every later one. Narrow exception
+            # types on purpose - a lock timeout or a disk error still belongs
+            # to the caller, which degrades the backend over it.
+            self._note_unpicklable(value, exc)
+            return
         # A replacement may hang off different tags than the entry it replaces,
         # so its old memberships go before the new ones land - merging them
         # would leave the new value evictable by a tag it never claimed.
@@ -143,4 +166,25 @@ class DiskCacheBackend:
         return cast(
             "frozenset[str]",
             self._cache.get(_TAGS_OF_KEY + key, default=frozenset()),
+        )
+
+    def _note_unpicklable(self, value: object, exc: BaseException) -> None:
+        """Warn the first time this backend meets a class that will not pickle."""
+        cls = type(value)
+        name = f"{cls.__module__}.{cls.__qualname__}"
+        # One warning per class, not per call: a load() returning this type
+        # fails on every request, and a line per request buries the first. The
+        # qualified name rather than the class object, so this set does not
+        # keep a class alive for the life of the process.
+        if name in self._unpicklable:
+            return
+        self._unpicklable.add(name)
+        logger.warning(
+            "pyjinhx cache backend %s could not pickle a value of type %s "
+            "(%s: %s); it is not being cached. Further values of this type "
+            "are not logged.",
+            type(self).__name__,
+            name,
+            type(exc).__name__,
+            exc,
         )
