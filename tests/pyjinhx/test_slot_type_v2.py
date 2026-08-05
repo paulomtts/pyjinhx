@@ -12,6 +12,7 @@ from pyjinhx._component import (
     Slot,
     _is_component_typed_annotation,
     _is_slot_field,
+    _resolve_slot_fields,
 )
 from pyjinhx.descriptor import ClassDescriptor
 from pyjinhx.render_context import build_context
@@ -351,6 +352,35 @@ class TestSlotInterpolation:
         template = env.from_string("{{ content|length }}")
         with pytest.raises(TypeError):
             template.render(content=ComponentNode(FilterLeaf()))
+
+
+class TestNullableSlotRendersRaw:
+    """A `Slot | None` field keeps the autoescape exemption at render time."""
+
+    def test_nullable_slot_string_is_not_escaped(self):
+        from pyjinhx.rendering import render
+        from pyjinhx.session import RenderSession
+
+        class NullableBox(BaseComponent):
+            content: Slot | None = None
+
+        # Resolving the slot set the way registration does, instead of hardcoding
+        # it, is what ties this assertion to slot detection: a descriptor built by
+        # hand would render raw no matter what `_is_slot_field` decided.
+        NullableBox.__pjx_descriptor__ = ClassDescriptor(
+            template_path=_TEMPLATE_DIR / "slot_interp.html",
+            slot_fields=_resolve_slot_fields(NullableBox),
+            children_field=None,
+            css_paths=(),
+            js_paths=(),
+            strict=True,
+            provenance={"template": NullableBox},
+        )
+
+        html = render(NullableBox(content="<b>x</b>"), RenderSession())
+
+        assert html == '<div class="box">before <b>x</b> after</div>'
+        assert "&lt;b&gt;" not in html
 
 
 class TestSlotSpliceGuards:
