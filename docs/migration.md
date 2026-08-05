@@ -31,6 +31,17 @@ shim. Every construction rewrites to a plain return value:
 | `return ReactiveResponse(redirect="/todos", redirect_mode="location")` | `return Response(status_code=204, headers={"HX-Location": "/todos"})` |
 | `mounted=request`, `assets=request` | drop them — `PjxScopeMiddleware` parses both headers onto the session |
 
+!!! note "Upgrading straight from 0.36 or earlier"
+    The table above is written against the 1.1.x signature
+    (`ReactiveResponse(primary=..., mounted=request)`). If you're coming from 0.36 or
+    earlier, your code more likely uses the older positional-key form from the
+    [0.12 → 0.13](#012-013) section: `ReactiveResponse(Keys.TODOS, html="<p>…</p>")`,
+    where the positional key both dirtied state *and* supplied the response body in one
+    call. That single call now splits into two steps: dirty the key with
+    [`dirty()`/`@mutates`](api/mutations-keys-context.md), and return the body as a plain value —
+    `dirty(Keys.TODOS); return "<p>…</p>"` (or, more commonly, dirty inside a `@mutates`
+    handler and return a component).
+
 ```python
 # BEFORE (1.1.x)
 from pyjinhx import ReactiveResponse
@@ -60,11 +71,14 @@ evicts the request's dirtied keys, and appends the OOB legs. `render()` returns 
 component's markup and nothing else — it never appended OOB swaps, and code written on the
 assumption that it did was relying on `ReactiveResponse` to do the work.
 
-Fan-out is now **unconditional**: it runs on every path that produces a body, because the
-dirtied keys belong to the request rather than to whatever shape the handler chose to
-return. It does not require a registered backend; the backend only parses `X-PJX-Mounted`
-and `X-PJX-Assets` onto the session and turns the composed result into its own response
-type.
+Fan-out now rides along any return `compose()` recognises as a body — a `BaseComponent`,
+`None`, or a raw string/`__html__` object — rather than only the shapes `ReactiveResponse`
+used to wrap, because the dirtied keys belong to the request rather than to whatever shape
+the handler chose to return. It does not require a registered backend; the backend only
+parses `X-PJX-Mounted` and `X-PJX-Assets` onto the session and turns the composed result
+into its own response type. A handler that returns its own framework's response object
+(anything `compose()` doesn't recognise) gets no fan-out at all — see the four shapes
+below.
 
 `compose()` recognises exactly four shapes:
 
