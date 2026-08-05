@@ -438,6 +438,11 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
             "pyjinhx.discovery",
             "pyjinhx.markers",
             "pyjinhx.props_header",
+            # render_cache is the render spine's one door to the cross-request cache:
+            # it owns every reactive/ import the cache needs (the backend protocol and
+            # the health state), so rendering.py can consult tier 2 without the spine
+            # naming reactive/ anywhere - which the two tests below still forbid.
+            "pyjinhx.render_cache",
             "pyjinhx.render_context",
             "pyjinhx.segments",
             "pyjinhx.session",

@@ -266,3 +266,43 @@ def test_a_failing_put_does_not_raise_and_does_not_clear_degradation():
     save_rendered_level(spy, "k", _level(), ttl=None)
 
     assert spy.puts == ["k"]
+
+
+from pyjinhx import discovery
+from pyjinhx.rendering import render_level
+from pyjinhx.segments import serialize
+from pyjinhx.session import RenderSession
+
+
+class _CachedBox(BaseComponent):
+    label: str = "hi"
+
+
+@pytest.fixture(autouse=True)
+def reset_registry():
+    discovery._registry.mapping = {}
+    discovery._registry.template_dir = None
+    yield
+    discovery._registry.mapping = {}
+    discovery._registry.template_dir = None
+
+
+@pytest.fixture
+def box_template(tmp_path: Path) -> Path:
+    path = tmp_path / "cached_box.html"
+    path.write_text("<div>{{ label }}</div>", encoding="utf-8")
+    _attach(_CachedBox, path)
+    return path
+
+
+def test_a_first_render_writes_the_shell_through_to_the_backend(
+    backend: InMemoryCacheBackend, box_template: Path
+):
+    spy = SpyBackend()
+    configure_pyjinhx(current_settings().merge(cache_backend=spy))
+
+    rendered = serialize(render_level(_CachedBox(id="a", label="hi"), RenderSession()))
+
+    assert rendered == "<div>hi</div>"
+    assert len(spy.puts) == 1
+    assert len(spy.gets) == 1
