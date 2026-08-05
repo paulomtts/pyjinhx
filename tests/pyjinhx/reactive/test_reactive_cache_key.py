@@ -92,3 +92,47 @@ def test_protocol_mode_string_key_separates_calls_that_differ_in_any_argument():
 
     assert plain != spicy
     assert plain != other
+
+
+def test_protocol_mode_string_key_is_hashed_once_the_plain_form_is_long():
+    class Row(ReactiveComponent):
+        model_config = ConfigDict(extra="allow")
+        row_id: Annotated[int, PjxKey()] = 0
+
+        @classmethod
+        def load(cls, row_id: int, payload: str = "") -> "Row":
+            return cls(row_id=row_id, payload=payload)  # type: ignore[reportCallIssue]
+
+    long_payload = "x" * 512
+    prefix = f"pjx:1:{Row.__module__}.{Row.__qualname__}:"
+
+    first = _string_cache_key(
+        Row, {"row_id": 1, "payload": long_payload}, protocol_mode=True
+    )
+    again = _string_cache_key(
+        Row, {"row_id": 1, "payload": long_payload}, protocol_mode=True
+    )
+    different = _string_cache_key(
+        Row, {"row_id": 1, "payload": "y" * 512}, protocol_mode=True
+    )
+
+    digest = first.removeprefix(prefix)
+    assert len(digest) == 64
+    assert all(char in "0123456789abcdef" for char in digest)
+    assert long_payload not in first
+    assert first == again
+    assert first != different
+
+
+def test_protocol_mode_string_key_below_the_threshold_stays_plain():
+    class Row(ReactiveComponent):
+        model_config = ConfigDict(extra="allow")
+        row_id: Annotated[int, PjxKey()] = 0
+
+        @classmethod
+        def load(cls, row_id: int) -> "Row":
+            return cls(row_id=row_id)
+
+    key = _string_cache_key(Row, {"row_id": 1}, protocol_mode=True)
+
+    assert key == f"pjx:1:{Row.__module__}.{Row.__qualname__}:row_id=1"
