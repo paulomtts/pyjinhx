@@ -145,7 +145,9 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
     "builtins.ui.pjx_confirm_dialog.__init__": frozenset(
         {"pyjinhx.builtins.ui.pjx_confirm_dialog.pjx_confirm_dialog"}
     ),
-    "builtins.ui.pjx_confirm_dialog.pjx_confirm_dialog": frozenset({"pyjinhx._component"}),
+    "builtins.ui.pjx_confirm_dialog.pjx_confirm_dialog": frozenset(
+        {"pyjinhx._component"}
+    ),
     # pjx_drawer family (#518): the slide-in dialog shell plus its
     # header/body/footer regions. Same shape as the modal family — each
     # component module reaches down into _component.py only; each __init__ just
