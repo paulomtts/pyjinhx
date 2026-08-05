@@ -16,9 +16,17 @@ from pyjinhx.assets import emit_assets
 from pyjinhx.discovery import get_class
 from pyjinhx.markers import SLOT_TOKEN_RE, collect_slot_tokens
 from pyjinhx.props_header import warn_stale_def_header
+from pyjinhx.render_cache import (
+    holds_spliced_components,
+    load_rendered_level,
+    render_cache_key,
+    replay_asset_accumulation,
+    resolve_render_tier2,
+    save_rendered_level,
+)
 from pyjinhx.render_context import build_context
 from pyjinhx.segments import ChildRef, RenderedLevel, VerbatimParser, serialize
-from pyjinhx.session import RenderSession
+from pyjinhx.session import RenderSession, accumulate_assets
 
 # How many times one class may appear on a single nesting path before the path
 # is treated as a cycle. A terminating design reuses a class a handful of times
@@ -215,6 +223,40 @@ def _splice_slot_nodes(
     level.segments = spliced
 
 
+def _finish_cached_level(
+    level: RenderedLevel, session: "RenderSession", chain: tuple[str, ...]
+) -> RenderedLevel:
+    """Finish a level restored from the render cache: resolve its holes, replay
+    its assets, return it.
+
+    Everything a live render does after the parse, and nothing it does before.
+    The child holes are still ChildRefs - that is the whole point of caching the
+    shell - so they resolve and recurse here exactly as they do on a fresh
+    level, cycle guard and registry lookups included.
+
+    _splice_slot_nodes is deliberately not called: a component-valued slot is
+    what holds_spliced_components refuses to cache in the first place, so a
+    restored level carries no live slot tokens and this request's table would be
+    empty - the call would return on its first line. Skipping it says that out
+    loud instead of relying on the reader to check.
+
+    replay_asset_accumulation stands in for the accumulate_assets half of
+    session.emit_rendered - the hook's other two subscribers stamp reactive
+    root attrs and register a reactive instance, and nothing reactive is ever
+    in this cache. Called only when accumulate_assets is actually one of this
+    session's on_rendered subscribers (D6): that hook is opt-in per session,
+    not automatic (see tests/pyjinhx/test_assets.py), so a hit must reproduce
+    what the live path would have done for *this* session - forcing
+    accumulation onto a session that never asked for it would make a hit
+    observably different from the miss it stands in for.
+    """
+    for index, child in _fill_children(level):
+        level.segments[index] = render_level(child, session, chain)
+    if accumulate_assets in session.on_rendered:
+        replay_asset_accumulation(level, session)
+    return level
+
+
 def render_level(
     component: BaseComponent,
     session: "RenderSession",
@@ -252,15 +294,12 @@ def render_level(
     if descriptor.has_stale_def_header:
         warn_stale_def_header(component.__class__)
 
-    # Phase 2: Context build — component-valued slots arrive as ComponentNode,
-    # string-valued slots arrive as Markup so authored markup survives
-    # autoescape.
-    context = build_context(component, descriptor)
-
-    # Phase 3: Jinja render with autoescape ON
-    jinja_env = session.jinja_env
     prefix = f"{component.__class__.__name__} (template: {descriptor.template_path}): "
 
+    # Checked before anything else this level does, including a cache lookup: a
+    # hit skips the template render entirely, so a guard left down in Phase 3
+    # would stop counting the moment the cache started answering.
+    #
     # A class may legitimately reappear deeper on the same path — Card > Row >
     # Card terminates — so mere presence in the chain proves nothing. What a
     # real cycle looks like is a path that stops making progress: the same class
@@ -276,6 +315,40 @@ def render_level(
         cycle = chain[last:]
         raise ValueError(f"{prefix}cycle detected: {' -> '.join((*cycle, name))}")
     chain = (*chain, name)
+
+    # Tier 2 (the render cache) is for plain components only. A reactive class
+    # carries the _pjx_key_field marker and caches its load() result across
+    # requests instead; caching its rendered shell too would key one component
+    # against two independently invalidated stores, so the marker's mere
+    # presence takes this level off the render-cache path entirely (the same
+    # duck-type _fill_children and _mount_root read, and the reason this module
+    # still imports nothing from reactive/). A component holding a component in
+    # a slot/children field is disqualified the same way (D1): its slot tokens
+    # are only valid for the template.render() call that emitted them.
+    backend = None
+    ttl = None
+    cache_key = ""
+    if getattr(component.__class__, "_pjx_key_field", _NO_KEY_FIELD) is _NO_KEY_FIELD:
+        backend, ttl = resolve_render_tier2(component.__class__)
+    # holds_spliced_components reads the instance's own slot/children field
+    # values off the descriptor, which is only ever safe to do for a class
+    # tier 2 would otherwise cache — checked last, and only once tier 2 is
+    # already on, so an off backend costs this nothing extra.
+    if backend is not None and holds_spliced_components(component):
+        backend, ttl = None, None
+    if backend is not None:
+        cache_key = render_cache_key(component)
+        restored = load_rendered_level(backend, cache_key)
+        if restored is not None:
+            return _finish_cached_level(restored, session, chain)
+
+    # Phase 2: Context build — component-valued slots arrive as ComponentNode,
+    # string-valued slots arrive as Markup so authored markup survives
+    # autoescape.
+    context = build_context(component, descriptor)
+
+    # Phase 3: Jinja render with autoescape ON
+    jinja_env = session.jinja_env
 
     try:
         template = jinja_env.get_template(str(descriptor.template_path))
@@ -303,6 +376,11 @@ def render_level(
         root_span=parser.root_span or (0, 0),
         descriptor=descriptor,
     )
+    if backend is not None:
+        # Written here, with every child hole still unresolved: what is worth
+        # caching is this level's own shell, and a level whose children were
+        # already spliced in would be a cache of one request's whole subtree.
+        save_rendered_level(backend, cache_key, level, ttl=ttl)
     # Unregistered tags stop being holes here, one pass per level (ADR 0005);
     # the ones that do resolve arrive already built — a reactive child through
     # its cache-routed load() factory, a plain one through its constructor.

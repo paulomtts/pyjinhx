@@ -438,6 +438,11 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
             "pyjinhx.discovery",
             "pyjinhx.markers",
             "pyjinhx.props_header",
+            # render_cache is the render spine's one door to the cross-request cache:
+            # it owns every reactive/ import the cache needs (the backend protocol and
+            # the health state), so rendering.py can consult tier 2 without the spine
+            # naming reactive/ anywhere - which the two tests below still forbid.
+            "pyjinhx.render_cache",
             "pyjinhx.render_context",
             "pyjinhx.segments",
             "pyjinhx.session",
@@ -455,7 +460,14 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
     "render_cache": frozenset(
         {
             "pyjinhx._component",
+            # Lazy, inside resolve_render_tier2()'s body only (config sits above
+            # the render spine, see test_render_cache_only_imports_config_inside_a_function_body).
+            "pyjinhx.config",
             "pyjinhx.reactive.backend",
+            # backend_health carries the degrade-on-failure policy the load cache
+            # already uses; the render cache degrades on the same terms, so it reads
+            # the same state rather than keeping a second one.
+            "pyjinhx.reactive.backend_health",
             "pyjinhx.segments",
             "pyjinhx.session",
         }
@@ -737,6 +749,12 @@ def test_nothing_below_config_imports_config():
     current_settings() inside their own bodies to find the process's cache
     backend. test_component_only_imports_config_inside_a_function_body and
     test_cache_only_imports_config_inside_a_function_body pin them there.
+
+    render_cache.py is the fifth, and lazy for the same reason:
+    resolve_render_tier2() calls current_settings() inside its own body to find
+    the process's render-cache backend. config sits above the render spine, so
+    a module-scope edge would be a genuine cycle.
+    test_render_cache_only_imports_config_inside_a_function_body pins it there.
     """
     importers = {
         module_name(path)
@@ -747,6 +765,7 @@ def test_nothing_below_config_imports_config():
         "integrations.fastapi",
         "reactive.cache",
         "reactive.component",
+        "render_cache",
         "session",
     }
 
@@ -814,6 +833,16 @@ def test_component_only_imports_config_inside_a_function_body():
     module_level = module_level_internal_imports(
         PACKAGE_ROOT / "reactive" / "component.py"
     )
+    assert "pyjinhx.config" not in module_level
+
+
+def test_render_cache_only_imports_config_inside_a_function_body():
+    """resolve_render_tier2() reads current_settings() to find the process's
+    render-cache backend, but config sits above the render spine: a
+    module-scope edge would invert the layering and, because config imports
+    the spine at import time, would be a genuine cycle. The whole-file edge
+    table can't see where in the file an import lives, so pin it here."""
+    module_level = module_level_internal_imports(PACKAGE_ROOT / "render_cache.py")
     assert "pyjinhx.config" not in module_level
 
 

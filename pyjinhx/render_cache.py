@@ -4,10 +4,15 @@
 
 import hashlib
 import json
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from pyjinhx._component import BaseComponent
-from pyjinhx.reactive.backend import MISS, CacheBackend
+from pyjinhx.reactive.backend import MISS, CacheBackend, CachePolicy
+from pyjinhx.reactive.backend_health import (
+    is_degraded,
+    note_failure,
+    note_write_success,
+)
 from pyjinhx.segments import ChildRef, RenderedLevel
 
 if TYPE_CHECKING:
@@ -31,6 +36,47 @@ def _holds_component(value: object) -> bool:
     return False
 
 
+def _spliced_fields(component: BaseComponent) -> set[str]:
+    """Slot/children field names whose current value is a component, or a
+    list/dict holding one.
+
+    These are the fields a render treats as opaque holes: the key leaves them
+    out (see render_cache_key) and the cache refuses the instance outright (see
+    holds_spliced_components), which are the two halves of one rule.
+    """
+    descriptor = type(component).__pjx_descriptor__
+    hole_fields = set(descriptor.slot_fields)
+    if descriptor.children_field is not None:
+        hole_fields.add(descriptor.children_field)
+    return {name for name in hole_fields if _holds_component(getattr(component, name))}
+
+
+def holds_spliced_components(component: BaseComponent) -> bool:
+    """Whether this instance carries a component in a slot or children field,
+    which disqualifies it from the render cache.
+
+    Such a value never reaches the template as text: build_context wraps it in a
+    ComponentNode, and interpolating it fires the finalize hook, which writes a
+    random ``pjx-slot-<uuid4 hex>`` token into a table that lives exactly as long
+    as the one ``template.render()`` call that produced it. A cache hit performs
+    no such call, so the tokens baked into a restored level match nothing in this
+    request and would splice as literal garbage into the page.
+
+    Regenerating those tokens positionally against a fresh table is possible in
+    principle - an identical key implies identical control flow implies identical
+    emission order - but it needs the stored level to carry that order, which
+    means changing what is stored. So the render cache declines these instances
+    instead, the same way the load cache declines an unpicklable result: not an
+    error, just an instance that renders live every time.
+
+    Answered per instance, not per class: a Slot field declared component-capable
+    but currently holding a plain string emits no token at all, and that string is
+    baked into the cached segments as text (and stays in the key), so there is
+    nothing to disqualify.
+    """
+    return bool(_spliced_fields(component))
+
+
 def render_cache_key(component: BaseComponent) -> str:
     """Return the render-cache key for ``component``.
 
@@ -50,12 +96,7 @@ def render_cache_key(component: BaseComponent) -> str:
     # string instead is baked into the cached segments as literal text, never
     # a ChildRef, so that value has to stay in the key or two different
     # strings on the same field would collide on one entry.
-    hole_fields = set(descriptor.slot_fields)
-    if descriptor.children_field is not None:
-        hole_fields.add(descriptor.children_field)
-    spliced_fields = {
-        name for name in hole_fields if _holds_component(getattr(component, name))
-    }
+    spliced_fields = _spliced_fields(component)
     # JSON-mode dump plus sorted, separator-pinned encoding so dict ordering
     # and non-JSON-native types can't perturb an unchanged set of props.
     canonical = json.dumps(
@@ -69,6 +110,60 @@ def render_cache_key(component: BaseComponent) -> str:
     # would clear it.
     template_mtime = descriptor.template_path.stat().st_mtime
     return f"{identity}:{fields_digest}:{template_mtime}"
+
+
+def resolve_render_tier2(
+    cls: type[BaseComponent],
+) -> tuple[CacheBackend | None, float | None]:
+    """The render cache this class stores through, and the ttl it writes at.
+
+    Answers ``(None, None)`` when the render cache is off for ``cls`` - either
+    because no backend is configured for the process or because the class opted
+    out with ``cache=False``. Otherwise the configured backend and the seconds
+    its entries stay valid.
+
+    A near-twin of reactive's ``_resolve_tier2`` rather than a shared import:
+    that one is typed to ReactiveComponent and lives next to the load-cache key
+    machinery its only caller needs, while this one is handed a plain class and
+    nothing else. Sharing them would drag reactive/ into the render spine's
+    reach for four lines.
+    """
+    # Function-local by necessity: config sits above the render spine and
+    # imports it at import time, so a module-scope edge back would be a real
+    # cycle. Same escape hatch reactive's _resolve_tier2 uses.
+    from pyjinhx.config import current_settings
+
+    policy = cls._pjx_cache_policy
+    # `is False`, not falsiness: None is "the class said nothing", which means
+    # the process default applies, and it is not the same answer as an explicit
+    # opt-out.
+    if policy is False:
+        return None, None
+    backend = current_settings().cache_backend
+    if backend is None:
+        return None, None
+    return backend, (CachePolicy() if policy is None else policy).ttl
+
+
+def copy_level_shell(level: RenderedLevel) -> RenderedLevel:
+    """A level sharing everything but its segment list with ``level``.
+
+    Both directions across the cache seam need this. A backend may store by
+    reference (InMemoryCacheBackend does, by design), while _fill_children and
+    _splice_slot_nodes rewrite ``segments`` in place - so writing the live level
+    would let this request's children land inside the cached entry, and handing
+    a restored entry straight back would let the next request fill a level that
+    is already full.
+
+    Shallow on purpose: the descriptor is frozen, the root span is a tuple, and
+    a ChildRef is only ever read (its attrs are copied before use), so a deep
+    copy would duplicate immutable data on every hit for nothing.
+    """
+    return RenderedLevel(
+        segments=list(level.segments),
+        root_span=level.root_span,
+        descriptor=level.descriptor,
+    )
 
 
 def store_rendered_level(
@@ -155,3 +250,62 @@ def replay_asset_accumulation(level: RenderedLevel, session: "RenderSession") ->
     descriptor: Any = level.descriptor
     session.css_assets.update(descriptor.css_paths)
     session.js_assets.update(descriptor.js_paths)
+
+
+def load_rendered_level(backend: CacheBackend, key: str) -> RenderedLevel | None:
+    """The level cached under ``key``, or None when there is nothing usable.
+
+    None covers three answers the caller treats identically - no entry, a
+    degraded backend that is not being read from, and a backend whose get()
+    raised - because all three mean the same thing to a render: do the work.
+
+    The level comes back detached from the stored one (copy_level_shell), so the
+    caller may fill its children without editing the cache.
+
+    Raises:
+        ValueError: If the entry exists but is not a RenderedLevel. A corrupt or
+            foreign entry is a data-integrity problem the caller must see, not a
+            backend that failed to answer, so it is neither swallowed as a miss
+            nor counted against the backend's health.
+    """
+    # A degraded backend is one whose evict() raised: entries it still holds may
+    # be stale, so it is not read from until a write lands.
+    if is_degraded(backend):
+        return None
+    try:
+        restored = restore_rendered_level(backend, key)
+    except ValueError:
+        raise
+    # A backend is a plugin implementing an arbitrary protocol, so its failure
+    # mode is unknowable in advance; the policy is to degrade on any of them
+    # rather than pick and miss some.
+    except Exception as exc:  # noqa: BLE001
+        # A cache is an optimization: a backend that cannot answer costs this
+        # request a real render, never an error.
+        note_failure(backend, "get", exc, degrade=False)
+        return None
+    if restored is MISS:
+        return None
+    return copy_level_shell(cast(RenderedLevel, restored))
+
+
+def save_rendered_level(
+    backend: CacheBackend, key: str, level: RenderedLevel, *, ttl: float | None
+) -> None:
+    """Write ``level``'s shell behind ``key``, absorbing a backend that raises.
+
+    Stores a detached copy: the caller is about to resolve this level's children
+    in place, and the entry must keep its holes for the next request to fill.
+    """
+    try:
+        store_rendered_level(backend, key, copy_level_shell(level), ttl=ttl)
+    # Same rationale as the get() guard above: any backend failure degrades
+    # rather than only the ones this module can predict.
+    except Exception as exc:  # noqa: BLE001
+        # The level is already rendered: a dropped write costs the next request
+        # a render, nothing more.
+        note_failure(backend, "put", exc, degrade=False)
+    else:
+        # A write that landed is the evidence a degraded backend is answering
+        # again, and that what it now holds is current.
+        note_write_success(backend)
