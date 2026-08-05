@@ -151,3 +151,34 @@ def test_backend_put_failure_propagates(template: Path):
         store_rendered_level(
             _Exploding(), "k", _level(_descriptor(_StorePlain, template)), ttl=300
         )
+
+
+def test_foreign_entry_raises():
+    """A non-level under the key raises rather than being served or downgraded."""
+    backend = InMemoryCacheBackend()
+    backend.put("k", {"not": "a level"}, tags=(), ttl=None)
+
+    with pytest.raises(ValueError, match="not a RenderedLevel but a dict"):
+        restore_rendered_level(backend, "k")
+
+
+def test_broken_segment_raises(template: Path):
+    """A segment that did not survive storage raises, naming its position."""
+    backend = InMemoryCacheBackend()
+    level = _level(_descriptor(_StorePlain, template))
+    level.segments[1] = object()  # pyright: ignore[reportArgumentType]
+    backend.put("k", level, tags=(), ttl=None)
+
+    with pytest.raises(ValueError, match="segment 1"):
+        restore_rendered_level(backend, "k")
+
+
+def test_backend_get_failure_propagates():
+    """A backend that raises on get is not turned into a miss here."""
+
+    class _Exploding(InMemoryCacheBackend):
+        def get(self, key):
+            raise OSError("disk on fire")
+
+    with pytest.raises(OSError, match="disk on fire"):
+        restore_rendered_level(_Exploding(), "k")
