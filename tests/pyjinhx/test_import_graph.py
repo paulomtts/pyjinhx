@@ -408,6 +408,11 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
     # only touches session.py's request_scope() by documented contract, never
     # by import, so it has no internal edges of its own.
     "integrations.base": frozenset(),
+    # diskcache is only reached by a caller that imports it directly (the
+    # extra-free import guarantee); it wraps FanoutCache with the same
+    # MISS sentinel reactive.backend already defines, rather than inventing
+    # a second one.
+    "integrations.diskcache": frozenset({"pyjinhx.reactive.backend"}),
     "integrations.fastapi": frozenset(
         {
             "pyjinhx.client.inject",
