@@ -62,8 +62,10 @@ Eviction is by tag rather than through a reverse index the caller keeps, because
 from pyjinhx import setup
 from pyjinhx.integrations.diskcache import DiskCacheBackend
 
-setup(app, cache_backend=DiskCacheBackend("/var/cache/pjx"))
+setup(app, cache_backend=DiskCacheBackend("/cache/pjx"))
 ```
+
+The directory must be ephemeral per deployment — see [The cache is volatile](#the-cache-is-volatile) for why, and for the mount that gives you one on each platform.
 
 `PjxSettings.cache_backend` defaults to `None`: no backend, no behaviour change, no new dependency. The backend is constructed by the app rather than named by a string in an environment variable — it needs a path or a connection, and the app is the only thing that knows them. `shutdown_pyjinhx()` calls `close()` on it if it has one.
 
@@ -144,9 +146,72 @@ That is a safety net for correctness rather than a tuning knob, and it matters m
 
 ## The cache is volatile
 
-The store starts empty on every boot, and that is deliberate. A disk-backed cache is persistent by nature, and here the persistence is a hazard: a deploy that changes how a component loads or renders would otherwise serve output built by the previous version of the code, with the TTL bounding how long rather than preventing it. So point the cache at an ephemeral directory — tmpfs is a fine place for it.
+The store starts empty on every boot, and that is deliberate. A disk-backed cache is persistent by nature, and here the persistence is a hazard: a deploy that changes how a component loads or renders would otherwise serve output built by the previous version of the code, with the TTL bounding how long rather than preventing it.
 
-The one constraint is that "empty at startup" means once per boot, not once per worker: all workers of a deployment share the store, and a worker booting into a running deployment must not wipe what its siblings warmed.
+The contract, then: **the directory you hand `DiskCacheBackend` must be ephemeral per deployment** — created empty when the deployment starts, gone when it stops. A path that survives a deploy is a misconfiguration, not a tuning choice. `DiskCacheBackend(directory)` takes that path as a required positional with no default precisely so the decision has to be made rather than inherited.
+
+The one constraint on "empty" is that it means once per deployment, not once per worker: all workers share the store, and a worker booting into a running deployment must not wipe what its siblings warmed.
+
+### The recipe, per platform
+
+Every platform has a native mechanism that gives exactly this — a directory that is new and empty per deployment and shared by every worker inside it:
+
+| Platform | Mechanism | Mount at |
+| --- | --- | --- |
+| Kubernetes | an `emptyDir` volume — new and empty per pod | `/cache` |
+| Docker | `--tmpfs /cache` — a new tmpfs per container | `/cache` |
+| systemd | `RuntimeDirectory=myapp` — created at start, removed at stop | `/run/myapp` |
+| bare metal | any path under tmpfs | `/run/myapp/cache` |
+
+Kubernetes:
+
+```yaml
+spec:
+  containers:
+    - name: web
+      volumeMounts:
+        - name: pjx-cache
+          mountPath: /cache
+  volumes:
+    - name: pjx-cache
+      emptyDir:
+        medium: Memory
+```
+
+Docker:
+
+```
+docker run --tmpfs /cache myapp
+```
+
+systemd:
+
+```ini
+[Service]
+RuntimeDirectory=myapp
+```
+
+Either way the app names the same path it was given:
+
+```python
+setup(app, cache_backend=DiskCacheBackend("/cache/pjx"))
+```
+
+The store is then empty on boot **by construction** — no wipe, no marker file, no supervisor detection — and workers still share it, because they share the pod or the container.
+
+### Why this is the operator's job
+
+Not an oversight: pyjinhx cannot do it correctly, and the reason is structural.
+
+"App startup" is not one event. It is N events, one per worker, at times nobody controls. A wipe on startup either erases what sibling workers just warmed — including when a single worker respawns mid-life under live traffic — or it avoids that by giving each worker its own namespace, which throws away the cross-worker invalidation the shared store exists for.
+
+Detecting "I am the first worker of a fresh boot" would need supervisor identity that no worker can reliably obtain. Hooking uvicorn's lifespan misses `gunicorn -k UvicornWorker` entirely, and parent-process identity is stable across restarts for single-process and `--reload` deployments, so it cannot distinguish a new boot from a respawn.
+
+Nor is there a runtime warning to be had. A non-empty store at first use is indistinguishable from a sibling worker having warmed it a second earlier, so a warning would fire constantly on correct deployments and get muted, which is worse than none.
+
+### What a persistent path costs
+
+Stale output served across a deploy. Change a component's `load()` or its template, ship it, and requests are answered from entries the previous version wrote — correct-looking HTML built by code that no longer exists. Nothing in the key notices: the load key covers the call's arguments, and the render key covers the instance's fields and the template's mtime, neither of which changes when the *Python* changes. The TTL is the only thing that ends it, so the window is up to `CachePolicy.ttl` after every deploy — 300 seconds by default, unbounded under `ttl=None`.
 
 Stated outright: the disk backend buys **cross-worker sharing, not warm start**. Every deploy begins cold, by design.
 
