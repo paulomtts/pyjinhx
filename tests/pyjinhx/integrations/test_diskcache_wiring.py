@@ -114,6 +114,82 @@ def test_evicting_a_tag_that_matches_nothing_is_a_no_op(tmp_path):
     assert backend.get("todos") == [1]
 
 
+def test_an_entry_with_several_tags_is_evicted_by_any_one_of_them(tmp_path):
+    # A fresh directory per case: an entry evicted by its first tag proves
+    # nothing about the second unless the second is tried on a live entry.
+    for tag in ("todos", "users"):
+        backend = DiskCacheBackend(tmp_path / tag)
+        backend.put("summary", [1], tags=("todos", "users"), ttl=None)
+        backend.evict((tag,))
+        assert backend.get("summary") is MISS
+
+
+def test_evict_drops_every_entry_matching_any_given_tag(tmp_path):
+    backend = DiskCacheBackend(tmp_path)
+    backend.put("todos", [1], tags=("todos",), ttl=None)
+    backend.put("users", [2], tags=("users",), ttl=None)
+    backend.put("orders", [3], tags=("orders",), ttl=None)
+    backend.evict(("todos", "users"))
+    assert backend.get("todos") is MISS
+    assert backend.get("users") is MISS
+    assert backend.get("orders") == [3]
+
+
+def test_an_entry_reachable_from_two_evicted_tags_is_dropped_once(tmp_path):
+    backend = DiskCacheBackend(tmp_path)
+    backend.put("summary", [1], tags=("todos", "users"), ttl=None)
+    backend.evict(("todos", "users"))
+    assert backend.get("summary") is MISS
+    # Whatever bookkeeping the double match left behind must not resurrect the
+    # key or poison the tags for the next entry stored under them.
+    backend.put("summary", [2], tags=("todos", "users"), ttl=None)
+    assert backend.get("summary") == [2]
+
+
+def test_re_putting_a_key_drops_its_old_tags(tmp_path):
+    backend = DiskCacheBackend(tmp_path)
+    backend.put("summary", [1], tags=("todos",), ttl=None)
+    backend.put("summary", [2], tags=("users",), ttl=None)
+    backend.evict(("todos",))
+    assert backend.get("summary") == [2]
+    backend.evict(("users",))
+    assert backend.get("summary") is MISS
+
+
+def test_evict_with_no_tags_is_a_no_op(tmp_path):
+    backend = DiskCacheBackend(tmp_path)
+    backend.put("summary", [1], tags=("todos", "users"), ttl=None)
+    backend.evict(())
+    assert backend.get("summary") == [1]
+
+
+def test_put_with_no_tags_is_never_evicted_by_a_later_evict_call(tmp_path):
+    backend = DiskCacheBackend(tmp_path)
+    backend.put("summary", [1], tags=(), ttl=None)
+    backend.evict(("todos", "users", ""))
+    assert backend.get("summary") == [1]
+
+
+def test_a_multi_tag_entry_still_expires_on_its_ttl(tmp_path):
+    backend = DiskCacheBackend(tmp_path)
+    backend.put("summary", [1], tags=("todos", "users"), ttl=0.05)
+    assert backend.get("summary") == [1]
+    time.sleep(0.1)
+    assert backend.get("summary") is MISS
+
+
+def test_multi_tag_semantics_hold_across_two_backend_instances_sharing_a_directory(
+    tmp_path,
+):
+    # The tag index has to live in the cache directory, not in either instance's
+    # memory: that is what makes an eviction in one worker visible in the next.
+    writer = DiskCacheBackend(tmp_path)
+    evictor = DiskCacheBackend(tmp_path)
+    writer.put("summary", [1], tags=("todos", "users"), ttl=None)
+    evictor.evict(("users",))
+    assert writer.get("summary") is MISS
+
+
 def test_clear_empties_the_cache(tmp_path):
     backend = DiskCacheBackend(tmp_path)
     backend.put("todos", [1], tags=("todos",), ttl=None)
