@@ -252,15 +252,12 @@ def render_level(
     if descriptor.has_stale_def_header:
         warn_stale_def_header(component.__class__)
 
-    # Phase 2: Context build — component-valued slots arrive as ComponentNode,
-    # string-valued slots arrive as Markup so authored markup survives
-    # autoescape.
-    context = build_context(component, descriptor)
-
-    # Phase 3: Jinja render with autoescape ON
-    jinja_env = session.jinja_env
     prefix = f"{component.__class__.__name__} (template: {descriptor.template_path}): "
 
+    # Checked before anything else this level does, including a cache lookup: a
+    # hit skips the template render entirely, so a guard left down in Phase 3
+    # would stop counting the moment the cache started answering.
+    #
     # A class may legitimately reappear deeper on the same path — Card > Row >
     # Card terminates — so mere presence in the chain proves nothing. What a
     # real cycle looks like is a path that stops making progress: the same class
@@ -276,6 +273,14 @@ def render_level(
         cycle = chain[last:]
         raise ValueError(f"{prefix}cycle detected: {' -> '.join((*cycle, name))}")
     chain = (*chain, name)
+
+    # Phase 2: Context build — component-valued slots arrive as ComponentNode,
+    # string-valued slots arrive as Markup so authored markup survives
+    # autoescape.
+    context = build_context(component, descriptor)
+
+    # Phase 3: Jinja render with autoescape ON
+    jinja_env = session.jinja_env
 
     try:
         template = jinja_env.get_template(str(descriptor.template_path))
