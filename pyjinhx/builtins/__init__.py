@@ -54,6 +54,7 @@ __all__ = [  # noqa: RUF022
     "PJXPopoverPanel",
     "PJXPopoverTrigger",
     "PJXProgress",
+    "PJXPromptDialog",
     "PJXRegionLoader",
     "PJXResizableGroup",
     "PJXResizableHandle",
@@ -188,6 +189,10 @@ _lazy_imports = {
         "PJXPopoverTrigger",
     ),
     "PJXProgress": ("pyjinhx.builtins.ui.pjx_progress.pjx_progress", "PJXProgress"),
+    "PJXPromptDialog": (
+        "pyjinhx.builtins.ui.pjx_prompt_dialog.pjx_prompt_dialog",
+        "PJXPromptDialog",
+    ),
     "PJXRegionLoader": (
         "pyjinhx.builtins.pjx_region_loader.pjx_region_loader",
         "PJXRegionLoader",
