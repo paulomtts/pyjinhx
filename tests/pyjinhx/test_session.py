@@ -455,3 +455,27 @@ def test_exception_inside_the_block_still_resets_load_context():
         pass
 
     assert session_module.get_load_context() is None
+
+
+def test_render_session_registers_jinja_globals_alongside_the_builtins():
+    def now() -> str:
+        return "noon"
+
+    session = session_module.RenderSession(jinja_globals={"now": now})
+    assert session.jinja_env.globals["now"] is now
+    # Updating rather than reassigning is the whole point: Jinja's own globals
+    # must survive the addition.
+    assert "range" in session.jinja_env.globals
+
+
+def test_render_session_registers_jinja_filters_alongside_the_builtins():
+    session = session_module.RenderSession(jinja_filters={"shout": str.upper})
+    assert session.jinja_env.filters["shout"] is str.upper
+    assert "upper" in session.jinja_env.filters
+
+
+def test_render_session_still_constructs_with_no_arguments():
+    session = session_module.RenderSession()
+    assert session.jinja_env.autoescape is True
+    assert "range" in session.jinja_env.globals
+    assert "upper" in session.jinja_env.filters

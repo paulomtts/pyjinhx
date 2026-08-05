@@ -1,6 +1,6 @@
 """RenderSession, the per-request ContextVars, and the request_scope that owns them."""
 
-from collections.abc import Callable, Iterable, Iterator
+from collections.abc import Callable, Iterable, Iterator, Mapping
 from contextlib import contextmanager
 from contextvars import ContextVar
 from pathlib import Path
@@ -77,8 +77,13 @@ class AbsolutePathLoader(BaseLoader):
 class RenderSession:
     """Session providing Jinja environment with autoescape enabled."""
 
-    def __init__(self):
-        """Initialize render session."""
+    def __init__(
+        self,
+        *,
+        jinja_globals: Mapping[str, Any] | None = None,
+        jinja_filters: Mapping[str, Any] | None = None,
+    ):
+        """Initialize render session, optionally with extra Jinja globals and filters."""
         self.jinja_env = Environment(
             loader=AbsolutePathLoader(),
             autoescape=True,
@@ -86,6 +91,14 @@ class RenderSession:
             # hook swaps in a placeholder the render pipeline resolves later.
             finalize=finalize_slot_node,
         )
+        # update(), never assignment: Jinja seeds both mappings with its own
+        # builtins (range, dict, |upper, |length ...) and replacing the mapping
+        # outright would take a template's whole standard library with it.
+        # None is "nothing to add", not "clear".
+        if jinja_globals is not None:
+            self.jinja_env.globals.update(jinja_globals)
+        if jinja_filters is not None:
+            self.jinja_env.filters.update(jinja_filters)
         # Generic per-request asset slot from the #423 ContextVar model
         # (predates L2.2.1's descriptor accumulator below); no producer in
         # this codebase writes to it yet, so it stays as-is for whatever
