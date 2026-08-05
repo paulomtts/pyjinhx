@@ -188,8 +188,13 @@ def test_put_with_no_tags_is_never_evicted_by_a_later_evict_call(tmp_path):
 
 def test_a_multi_tag_entry_still_expires_on_its_ttl(tmp_path):
     backend = DiskCacheBackend(tmp_path)
-    backend.put("summary", [1], tags=("todos", "users"), ttl=0.05)
+    # Two puts rather than one, because a tagged put writes the tag index as
+    # well as the entry - half a dozen SQLite round trips that a loaded machine
+    # can stretch past a 50ms ttl, expiring the entry before the read below.
+    # The long ttl carries the "still readable" half, the short one the expiry.
+    backend.put("summary", [1], tags=("todos", "users"), ttl=30)
     assert backend.get("summary") == [1]
+    backend.put("summary", [1], tags=("todos", "users"), ttl=0.05)
     time.sleep(0.1)
     assert backend.get("summary") is MISS
 
