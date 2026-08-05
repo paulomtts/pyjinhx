@@ -206,6 +206,63 @@ def test_multi_tag_semantics_hold_across_two_backend_instances_sharing_a_directo
     assert writer.get("summary") is MISS
 
 
+def test_an_eviction_in_one_process_is_visible_to_another_process_on_its_next_read(
+    tmp_path,
+):
+    # Two backend instances in one interpreter share a directory but also share
+    # a process; real workers do not. Only separate OS processes exercise the
+    # SQLite connections the directory-resident tag index has to reach across.
+    writer_script = textwrap.dedent("""
+        import sys
+
+        from pyjinhx.integrations.diskcache import DiskCacheBackend
+
+        backend = DiskCacheBackend(sys.argv[1])
+        backend.put("summary", [1], tags=("todos",), ttl=None)
+        assert backend.get("summary") == [1]
+        backend.close()
+        print("ok")
+    """)
+    reader_script = textwrap.dedent("""
+        import sys
+
+        from pyjinhx.reactive.backend import MISS
+        from pyjinhx.integrations.diskcache import DiskCacheBackend
+
+        backend = DiskCacheBackend(sys.argv[1])
+        result = backend.get("summary")
+        backend.close()
+        assert result is MISS, result
+        print("ok")
+    """)
+
+    # Opened before the writer runs, so the read below goes through connections
+    # that predate the entry rather than ones opened after it landed.
+    evictor = DiskCacheBackend(tmp_path)
+
+    written = subprocess.run(
+        [sys.executable, "-c", writer_script, str(tmp_path)],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert written.returncode == 0, written.stderr
+    assert "ok" in written.stdout
+
+    assert evictor.get("summary") == [1]
+
+    evictor.evict(("todos",))
+
+    read = subprocess.run(
+        [sys.executable, "-c", reader_script, str(tmp_path)],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert read.returncode == 0, read.stderr
+    assert "ok" in read.stdout
+
+
 def test_clear_empties_the_cache(tmp_path):
     backend = DiskCacheBackend(tmp_path)
     backend.put("todos", [1], tags=("todos",), ttl=None)
