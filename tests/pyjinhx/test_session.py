@@ -549,3 +549,44 @@ def test_render_session_with_no_extras_still_renders_jinja_builtins():
     template = session.jinja_env.from_string("{{ 'b'|upper }}{{ range(3)|list }}")
 
     assert template.render() == "B[0, 1, 2]"
+
+
+def test_request_scope_default_session_seeded_from_settings_renders_configured_global_and_filter():
+    """The no-session branch is the only place settings are read, and reaching
+    them has to survive all the way into a rendered template — not just into
+    the environment's dicts."""
+    from pyjinhx.config import PjxSettings, configure_pyjinhx, shutdown_pyjinhx
+
+    def site_name() -> str:
+        return "pyjinhx"
+
+    configure_pyjinhx(
+        PjxSettings(
+            jinja_globals={"site_name": site_name},
+            jinja_filters={"shout": str.upper},
+        )
+    )
+    try:
+        with session_module.request_scope() as session:
+            template = session.jinja_env.from_string(
+                "{{ site_name() }}|{{ 'ok'|shout }}|{{ 'b'|upper }}"
+            )
+            assert template.render() == "pyjinhx|OK|B"
+    finally:
+        shutdown_pyjinhx()
+
+
+def test_request_scope_with_unset_settings_still_renders_jinja_builtins():
+    """jinja_globals/jinja_filters default to None; the seeding branch must
+    hand those straight through without disturbing the environment."""
+    from pyjinhx.config import PjxSettings, configure_pyjinhx, shutdown_pyjinhx
+
+    configure_pyjinhx(PjxSettings())
+    try:
+        with session_module.request_scope() as session:
+            template = session.jinja_env.from_string(
+                "{{ 'b'|upper }}{{ range(3)|list }}"
+            )
+            assert template.render() == "B[0, 1, 2]"
+    finally:
+        shutdown_pyjinhx()
