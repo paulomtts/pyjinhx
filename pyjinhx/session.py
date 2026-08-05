@@ -145,25 +145,32 @@ class RenderSession:
     def __init__(
         self,
         *,
+        jinja_env: Environment | None = None,
         jinja_globals: Mapping[str, Any] | None = None,
         jinja_filters: Mapping[str, Any] | None = None,
     ):
-        """Initialize render session, optionally with extra Jinja globals and filters."""
-        self.jinja_env = Environment(
-            loader=AbsolutePathLoader(),
-            autoescape=True,
-            # Interpolating a component-valued slot must not stringify it; the
-            # hook swaps in a placeholder the render pipeline resolves later.
-            finalize=finalize_slot_node,
+        """Initialize render session, optionally with extra Jinja globals and filters.
+
+        ``jinja_env`` adopts an already-built environment: this is how the two
+        request paths hand in the process-wide cached one instead of paying for
+        a fresh environment — and a cold template cache — per request. It is
+        mutually exclusive with the two mappings, which build a private
+        environment for a session the caller assembles by hand.
+        """
+        if jinja_env is not None and (
+            jinja_globals is not None or jinja_filters is not None
+        ):
+            raise TypeError(
+                "pass jinja_env or jinja_globals/jinja_filters, not both: an "
+                "adopted environment is shared with every other session built "
+                "from the same settings, so updating it here would leak this "
+                "session's names into all of them."
+            )
+        self.jinja_env = (
+            jinja_env
+            if jinja_env is not None
+            else _build_environment(jinja_globals, jinja_filters)
         )
-        # update(), never assignment: Jinja seeds both mappings with its own
-        # builtins (range, dict, |upper, |length ...) and replacing the mapping
-        # outright would take a template's whole standard library with it.
-        # None is "nothing to add", not "clear".
-        if jinja_globals is not None:
-            self.jinja_env.globals.update(jinja_globals)
-        if jinja_filters is not None:
-            self.jinja_env.filters.update(jinja_filters)
         # Generic per-request asset slot from the #423 ContextVar model
         # (predates L2.2.1's descriptor accumulator below); no producer in
         # this codebase writes to it yet, so it stays as-is for whatever

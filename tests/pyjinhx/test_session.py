@@ -704,3 +704,26 @@ def test_cached_environment_keeps_the_loader_autoescape_and_builtins():
         "{{ x }}|{{ 'ok'|shout }}|{{ 'b'|upper }}|{{ range(2)|list }}|{{ 'ab'|length }}"
     )
     assert template.render() == "1|OK|B|[0, 1]|2"
+
+
+def test_render_session_adopts_a_supplied_environment():
+    from pyjinhx.config import PjxSettings
+
+    env = session_module._environment_for(PjxSettings(jinja_globals={"x": 1}))
+    session = session_module.RenderSession(jinja_env=env)
+
+    assert session.jinja_env is env
+
+
+def test_render_session_rejects_an_adopted_environment_with_extras():
+    """An adopted environment is shared with every other session on the same
+    settings; updating it here would leak one session's names into all of them."""
+    from pyjinhx.config import PjxSettings
+
+    env = session_module._environment_for(PjxSettings())
+
+    with pytest.raises(TypeError):
+        session_module.RenderSession(jinja_env=env, jinja_globals={"x": 1})
+
+    with pytest.raises(TypeError):
+        session_module.RenderSession(jinja_env=env, jinja_filters={"shout": str.upper})
