@@ -20,10 +20,28 @@ from __future__ import annotations
 
 import time
 from collections.abc import Callable, Iterable
+from dataclasses import dataclass
 from typing import Protocol, runtime_checkable
 
 MISS = object()
 """Answered by ``get()`` when there is no live entry, as distinct from a cached None."""
+
+
+@dataclass(frozen=True)
+class CachePolicy:
+    """How long one component class's tier-2 entries stay valid.
+
+    A class carries a policy only to override the process-wide default; the
+    presence of a configured backend is what turns tier 2 on, not this.
+    """
+
+    ttl: float | None = 300
+    """Seconds an entry stays valid, or None to never expire on its own.
+
+    Finite by default, and None only when a caller spells it out: tier 1 heals
+    itself when the request ends, while tier 2 outlives restarts, so a mutation
+    that bypasses dirty() would otherwise leave a wrong entry no deploy clears.
+    """
 
 
 @runtime_checkable
