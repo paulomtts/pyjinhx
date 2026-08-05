@@ -2,7 +2,7 @@
 
 import dataclasses
 import re
-from typing import Annotated
+from typing import Annotated, cast
 
 import pytest
 
@@ -994,4 +994,4 @@ def test_a_string_load_arg_reaches_load_as_the_declared_int(tmp_path):
     assert INT_KEY_LOAD_ARGS == [1]
     assert candidate.status == "dirty"
     assert candidate.instance is not None
-    assert candidate.instance.title == "first"
+    assert cast(IntKeyedWidget, candidate.instance).title == "first"
