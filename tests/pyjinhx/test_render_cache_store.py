@@ -27,6 +27,21 @@ from pyjinhx.segments import ChildRef, RenderedLevel, serialize
 from pyjinhx.session import RenderSession
 
 
+@pytest.fixture(autouse=True)
+def reset_registry():
+    """Each test starts from an empty published mapping.
+
+    Mirrors test_classless_factory.py's teardown convention: reset to
+    {}/None on both sides rather than snapshotting and restoring whatever
+    was there before.
+    """
+    discovery._registry.mapping = {}
+    discovery._registry.template_dir = None
+    yield
+    discovery._registry.mapping = {}
+    discovery._registry.template_dir = None
+
+
 class _StorePlain(BaseComponent):
     label: str = "hi"
 
@@ -291,24 +306,16 @@ def test_classless_component_level_fails_loudly_on_the_disk_backend(tmp_path: Pa
     that is the behavior tier 2 gets, and #820's wiring has to live with a
     generated component simply not caching rather than caching wrongly.
     """
-    saved_mapping = discovery._registry.mapping
-    saved_template_dir = discovery._registry.template_dir
-    discovery._registry.mapping = {}
-    discovery._registry.template_dir = None
-    try:
-        (tmp_path / "widget.pjx").write_text("<div>hello</div>", encoding="utf-8")
-        cls = component("Widget", template_dir=tmp_path)
-        level = RenderedLevel(
-            segments=["<div>hello</div>"],
-            root_span=(0, 5),
-            descriptor=cls.__pjx_descriptor__,
-        )
-        backend = DiskCacheBackend(tmp_path / "cache")
+    (tmp_path / "widget.pjx").write_text("<div>hello</div>", encoding="utf-8")
+    cls = component("Widget", template_dir=tmp_path)
+    level = RenderedLevel(
+        segments=["<div>hello</div>"],
+        root_span=(0, 5),
+        descriptor=cls.__pjx_descriptor__,
+    )
+    backend = DiskCacheBackend(tmp_path / "cache")
 
-        with pytest.raises((pickle.PicklingError, AttributeError)):
-            store_rendered_level(backend, "k", level, ttl=300)
+    with pytest.raises((pickle.PicklingError, AttributeError)):
+        store_rendered_level(backend, "k", level, ttl=300)
 
-        backend.close()
-    finally:
-        discovery._registry.mapping = saved_mapping
-        discovery._registry.template_dir = saved_template_dir
+    backend.close()
