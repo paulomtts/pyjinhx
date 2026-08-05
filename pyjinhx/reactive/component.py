@@ -9,7 +9,7 @@ import hashlib
 import inspect
 import json
 from collections.abc import Callable, Iterable
-from typing import Annotated, Any, ClassVar, get_args, get_origin, get_type_hints
+from typing import Annotated, Any, ClassVar, cast, get_args, get_origin, get_type_hints
 
 from pydantic import TypeAdapter, ValidationError
 from pydantic.fields import FieldInfo
@@ -408,3 +408,46 @@ def _cache_key(
     if field is None:
         return None
     return coerce_load_key_str(supplied.get(field))
+
+
+_KEY_SCHEMA_VERSION = "1"
+"""Schema version baked into every string cache key. Bump it whenever the key's
+meaning changes, so an upgraded pyjinhx never serves entries a previous version
+wrote under different semantics."""
+
+_NO_LOAD_KEY = "-"
+"""String-key segment for a class with no PjxKey field. Safe against collision
+with a real key value of "-": the key already carries the class's module and
+qualname, and a given class either has a key field or has none."""
+
+_STRING_KEY_MAX_PLAIN = 256
+"""Plain-form length above which the protocol-mode load key is hashed instead."""
+
+
+def _string_cache_key(
+    cls: type["ReactiveComponent"], supplied: dict[str, Any], *, protocol_mode: bool
+) -> str:
+    """Build the versioned string form of this call's cache key.
+
+    Shape: ``pjx:<version>:<module>.<qualname>:<load_key>``. Derived from the
+    same ``_cache_key()`` value tier 1 keys on, so the two tiers can never
+    disagree about what identifies a call.
+    """
+    key = _cache_key(cls, supplied, protocol_mode=protocol_mode)
+    if protocol_mode:
+        pairs = cast(tuple[tuple[str, str], ...], key)
+        # _cache_key() already sorted by name, so equal arguments passed in a
+        # different keyword order serialize to the same string.
+        plain = ",".join(f"{name}={value}" for name, value in pairs)
+        if len(plain) > _STRING_KEY_MAX_PLAIN:
+            load_key = hashlib.sha256(plain.encode("utf-8")).hexdigest()
+        else:
+            load_key = plain
+    else:
+        str_key = cast(str | None, key)
+        # `is None`, not `or`: a real load-key value that happens to be falsy
+        # (e.g. an empty-string PjxKey field) must not be conflated with "this
+        # class has no PjxKey field at all" — both would otherwise collapse to
+        # the same placeholder segment and collide.
+        load_key = _NO_LOAD_KEY if str_key is None else str_key
+    return f"pjx:{_KEY_SCHEMA_VERSION}:{cls.__module__}.{cls.__qualname__}:{load_key}"
