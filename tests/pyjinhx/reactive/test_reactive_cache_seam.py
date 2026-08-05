@@ -157,3 +157,51 @@ def test_a_tier1_hit_holds_even_when_the_backend_would_explode():
             assert Row.load(7) is first
     finally:
         configure_pyjinhx(previous)
+
+
+def test_the_default_policy_writes_through_at_ttl_300(ledger: LedgerBackend):
+    """A class that says nothing about caching still writes at the process default."""
+
+    class Row(ReactiveComponent, react=("rows",)):
+        row_id: Annotated[int, PjxKey()] = 0
+
+        @classmethod
+        def load(cls, row_id: int) -> "Row":
+            return cls(row_id=row_id)
+
+    with request_scope():
+        Row.load(7)
+
+    string_key = _string_cache_key(Row, {"row_id": 7}, protocol_mode=False)
+    assert [(key, ttl) for key, _, _, ttl in ledger.puts] == [(string_key, 300)]
+    assert CachePolicy().ttl == 300
+
+
+def test_an_explicit_policy_ttl_reaches_the_backend_verbatim(ledger: LedgerBackend):
+    class Row(ReactiveComponent, react=("rows",), cache=CachePolicy(ttl=45)):
+        row_id: Annotated[int, PjxKey()] = 0
+
+        @classmethod
+        def load(cls, row_id: int) -> "Row":
+            return cls(row_id=row_id)
+
+    with request_scope():
+        Row.load(7)
+
+    assert [ttl for _, _, _, ttl in ledger.puts] == [45]
+
+
+def test_a_never_expiring_policy_writes_a_none_ttl(ledger: LedgerBackend):
+    """None is passed down as None, not coerced into a very large number."""
+
+    class Row(ReactiveComponent, react=("rows",), cache=CachePolicy(ttl=None)):
+        row_id: Annotated[int, PjxKey()] = 0
+
+        @classmethod
+        def load(cls, row_id: int) -> "Row":
+            return cls(row_id=row_id)
+
+    with request_scope():
+        Row.load(7)
+
+    assert [ttl for _, _, _, ttl in ledger.puts] == [None]
