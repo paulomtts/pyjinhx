@@ -6,12 +6,14 @@ the wiring — that render_level consults the backend at all, that it stops
 consulting it when told to, and that nothing it caches can splice wrong.
 """
 
+import os
 from pathlib import Path
 from typing import Any
 
 import pytest
 
-from pyjinhx._component import BaseComponent, Children, Slot
+from pyjinhx import discovery
+from pyjinhx._component import BaseComponent, Children, Slot, _pascal_to_snake
 from pyjinhx.config import configure_pyjinhx, current_settings
 from pyjinhx.descriptor import ClassDescriptor
 from pyjinhx.reactive.backend import CachePolicy, InMemoryCacheBackend
@@ -27,7 +29,9 @@ from pyjinhx.render_cache import (
     resolve_render_tier2,
     save_rendered_level,
 )
-from pyjinhx.segments import ChildRef, RenderedLevel
+from pyjinhx.rendering import render_level
+from pyjinhx.segments import ChildRef, RenderedLevel, serialize
+from pyjinhx.session import RenderSession, accumulate_assets
 
 
 def test_a_plain_component_records_an_explicit_cache_policy():
@@ -268,12 +272,6 @@ def test_a_failing_put_does_not_raise_and_does_not_clear_degradation():
     assert spy.puts == ["k"]
 
 
-from pyjinhx import discovery
-from pyjinhx.rendering import render_level
-from pyjinhx.segments import serialize
-from pyjinhx.session import RenderSession
-
-
 class _CachedBox(BaseComponent):
     label: str = "hi"
 
@@ -306,3 +304,111 @@ def test_a_first_render_writes_the_shell_through_to_the_backend(
     assert rendered == "<div>hi</div>"
     assert len(spy.puts) == 1
     assert len(spy.gets) == 1
+
+
+def test_a_second_render_answers_from_the_cache_without_rendering_the_template(
+    backend: InMemoryCacheBackend, box_template: Path
+):
+    session = RenderSession()
+    first = serialize(render_level(_CachedBox(id="a", label="hi"), session))
+    mtime = box_template.stat().st_mtime
+    box_template.write_text("<div>REBUILT</div>", encoding="utf-8")
+    os.utime(box_template, (mtime, mtime))
+
+    second = serialize(render_level(_CachedBox(id="a", label="hi"), RenderSession()))
+
+    assert first == "<div>hi</div>"
+    assert second == first
+
+
+def _accumulating_session() -> RenderSession:
+    """A fresh RenderSession with the asset accumulator wired to on_rendered.
+
+    accumulate_assets is opt-in per session (see tests/pyjinhx/test_assets.py's
+    fixture of the same shape) — a bare RenderSession() never accumulates on a
+    live render either, so a test proving a hit "replays what a live render
+    would have done" has to compare against a session that actually would.
+    """
+    session = RenderSession()
+    session.on_rendered.append(accumulate_assets)
+    return session
+
+
+def test_a_hit_replays_the_assets_a_live_render_would_have_emitted(
+    backend: InMemoryCacheBackend, tmp_path: Path
+):
+    css = tmp_path / "box.css"
+    js = tmp_path / "box.js"
+    template = tmp_path / "asset_box.html"
+    template.write_text("<div>{{ label }}</div>", encoding="utf-8")
+    _CachedBox.__pjx_descriptor__ = ClassDescriptor(
+        template_path=template,
+        slot_fields=frozenset(),
+        children_field=None,
+        css_paths=(css,),
+        js_paths=(js,),
+        strict=True,
+        provenance={"template": _CachedBox},
+    )
+    render_level(_CachedBox(id="a", label="hi"), _accumulating_session())
+
+    warm = _accumulating_session()
+    render_level(_CachedBox(id="a", label="hi"), warm)
+
+    assert warm.css_assets == {css}
+    assert warm.js_assets == {js}
+
+
+def test_a_hit_accumulates_nothing_when_the_session_never_asked_for_it(
+    backend: InMemoryCacheBackend, tmp_path: Path
+):
+    """D6: a hit must not do more than the live path would for this session.
+
+    accumulate_assets is opt-in (see _accumulating_session above); a session
+    that never subscribed it gets nothing on a live render, so a cache hit on
+    an equivalent, un-wired session must also get nothing — not a forced
+    accumulation the caller never asked for.
+    """
+    css = tmp_path / "unwired_box.css"
+    template = tmp_path / "unwired_box.html"
+    template.write_text("<div>{{ label }}</div>", encoding="utf-8")
+    _CachedBox.__pjx_descriptor__ = ClassDescriptor(
+        template_path=template,
+        slot_fields=frozenset(),
+        children_field=None,
+        css_paths=(css,),
+        js_paths=(),
+        strict=True,
+        provenance={"template": _CachedBox},
+    )
+    # Primes the cache (a miss, on an un-wired session — nothing accumulates,
+    # which is the baseline this test is protecting).
+    priming = RenderSession()
+    render_level(_CachedBox(id="a", label="hi"), priming)
+    assert priming.css_assets == set()
+
+    # A hit, on a second un-wired session — must match the miss above, not
+    # force accumulation this session never subscribed to.
+    warm = RenderSession()
+    render_level(_CachedBox(id="a", label="hi"), warm)
+
+    assert warm.css_assets == set()
+
+
+def test_a_hit_does_not_fill_the_children_of_the_cached_entry(
+    backend: InMemoryCacheBackend, tmp_path: Path
+):
+    """The entry keeps its holes: filling the restored copy must not edit it."""
+    icon = tmp_path / "icon.html"
+    icon.write_text("<span>i</span>", encoding="utf-8")
+    _attach(_Inner, icon)
+    holder = tmp_path / "holder_tag.html"
+    holder.write_text("<div>{{ label }}<Inner/></div>", encoding="utf-8")
+    _attach(_CachedBox, holder)
+    discovery._registry.mapping = {_pascal_to_snake("Inner"): _Inner}
+
+    first = serialize(render_level(_CachedBox(id="a", label="hi"), RenderSession()))
+    second = serialize(render_level(_CachedBox(id="a", label="hi"), RenderSession()))
+    third = serialize(render_level(_CachedBox(id="a", label="hi"), RenderSession()))
+
+    assert first == second == third == "<div>hi<span>i</span></div>"
