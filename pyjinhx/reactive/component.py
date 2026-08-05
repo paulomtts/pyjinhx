@@ -27,6 +27,11 @@ from pydantic.fields import FieldInfo
 from pyjinhx._component import BaseComponent
 from pyjinhx.app_context import resolve_load_context_param
 from pyjinhx.reactive.backend import MISS, CacheBackend, CachePolicy
+from pyjinhx.reactive.backend_health import (
+    is_degraded,
+    note_failure,
+    note_write_success,
+)
 from pyjinhx.reactive.cache import cache_get, cache_has, cache_put
 from pyjinhx.reactive.keys import coerce_load_key_str, coerce_reactive_key
 from pyjinhx.session import get_load_context
@@ -494,7 +499,19 @@ def _wrap_load(
             string_key = _string_cache_key(
                 bound_cls, supplied, protocol_mode=cache_key_protocol_mode
             )
-            cached = backend.get(string_key)
+            cached = MISS
+            # A degraded backend is one whose evict() raised: entries it still
+            # holds may be stale, so it is not read from until a write lands.
+            if not is_degraded(backend):
+                try:
+                    cached = backend.get(string_key)
+                # A backend is a plugin implementing an arbitrary protocol, so
+                # its failure mode is unknowable in advance; the policy is to
+                # degrade on any of them rather than pick and miss some.
+                except Exception as exc:  # noqa: BLE001
+                    # A cache is an optimization: a backend that cannot answer
+                    # costs this request a real load, never an error.
+                    note_failure(backend, "get", exc, degrade=False)
             # `is not MISS`, not truthiness: a load() may legitimately return a
             # falsy component, and a cached one is a hit like any other.
             if cached is not MISS:
@@ -515,7 +532,18 @@ def _wrap_load(
         if backend is not None:
             # The same tuple tier 1 reverse-indexes on becomes tier 2's tags, so
             # one dirtied key reaches both stores without a second index here.
-            backend.put(string_key, result, tags=react_keys, ttl=ttl)
+            try:
+                backend.put(string_key, result, tags=react_keys, ttl=ttl)
+            # Same rationale as the get() guard above: any backend failure
+            # degrades rather than only the ones this module can predict.
+            except Exception as exc:  # noqa: BLE001
+                # The component is already loaded and already in tier 1: a
+                # dropped write costs the next request a load, nothing more.
+                note_failure(backend, "put", exc, degrade=False)
+            else:
+                # A write that landed is the evidence a degraded backend is
+                # answering again, and that what it now holds is current.
+                note_write_success(backend)
         return result
 
     return wrapped_load

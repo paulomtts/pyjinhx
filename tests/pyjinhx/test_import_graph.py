@@ -445,13 +445,20 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
     # both self-contained on stdlib. Nothing here reaches into tier 1 (cache.py)
     # or the render spine - wiring it in is a later subtask's edge to add.
     "reactive.backend": frozenset(),
+    # backend_health.py is the per-backend log-once/degraded state (#808): a
+    # leaf keyed on id(backend), stdlib only, so both cache.py and component.py
+    # can import it without creating a cycle back up into either.
+    "reactive.backend_health": frozenset(),
     # cache.py is a store over session's cache ContextVar and nothing else: it
     # owns no state, and it must not reach sideways into keys.py or up into the
     # render spine to key or evict anything. The one exception is lazy:
     # invalidate() reads current_settings() inside its own body to sweep the
-    # configured cross-request backend with the same dirtied keys.
+    # configured cross-request backend with the same dirtied keys. It also
+    # reaches into backend_health.py to record an evict() failure (#808).
     # test_cache_only_imports_config_inside_a_function_body pins it there.
-    "reactive.cache": frozenset({"pyjinhx.session", "pyjinhx.config"}),
+    "reactive.cache": frozenset(
+        {"pyjinhx.session", "pyjinhx.config", "pyjinhx.reactive.backend_health"}
+    ),
     # mutations.py records dirtied keys through session's public writer; it owns
     # no ContextVar of its own and never reaches sideways into cache.py.
     "reactive.mutations": frozenset({"pyjinhx.session", "pyjinhx.reactive.keys"}),
@@ -482,6 +489,7 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
             "pyjinhx._component",
             "pyjinhx.config",
             "pyjinhx.reactive.backend",
+            "pyjinhx.reactive.backend_health",
             "pyjinhx.reactive.cache",
             "pyjinhx.reactive.keys",
             "pyjinhx.session",

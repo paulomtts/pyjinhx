@@ -28,6 +28,7 @@ that tier exists.
 
 from collections.abc import Iterable
 
+from pyjinhx.reactive.backend_health import note_failure
 from pyjinhx.session import get_cache_forward, get_cache_reverse, get_cache_store
 
 # Distinguishes "no entry" from an entry whose value happens to be None.
@@ -148,7 +149,16 @@ def invalidate(dirtied_keys: Iterable[str]) -> None:
         # The dirtied keys are the tags verbatim - wrapped_load wrote each entry
         # under the very tuple tier 1 reverse-indexes it by - so there is no
         # second index to maintain and nothing to translate here.
-        backend.evict(dirtied)
+        try:
+            backend.evict(dirtied)
+        # Same rationale as component.py's get()/put() guards: a backend is a
+        # plugin, so any failure it raises degrades rather than only the
+        # subset this module could predict.
+        except Exception as exc:  # noqa: BLE001
+            # Unlike a dropped read or write, an eviction that did not happen
+            # leaves entries that are now known to be wrong, so the backend
+            # stops being read from until a write proves it current again.
+            note_failure(backend, "evict", exc, degrade=True)
 
 
 def _unindex(
