@@ -94,7 +94,11 @@ Pass a settings object via `settings=`, or override individual fields with expli
 ```python
 from pyjinhx import setup
 
-setup(app, jinja_globals={"site_name": "Acme"}, jinja_filters={"money": lambda cents: f"${cents / 100:,.2f}"})
+setup(
+    app,
+    jinja_globals={"site_name": "Acme"},
+    jinja_filters={"money": lambda cents: f"${cents / 100:,.2f}"},
+)
 ```
 
 Templates then read `{{ site_name }}` and `{{ total | money }}` with no per-component wiring.
