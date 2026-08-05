@@ -152,3 +152,35 @@ def test_hit_with_different_children_splices_correctly(spy: SpyBackend, tmp_path
     # one stored rather than re-parsing the shell template.
     assert spy.puts.count(shell_key) == 1
     assert spy.gets.count(shell_key) == 2
+
+
+class _EditableBox(BaseComponent):
+    label: str = "hi"
+
+
+def test_template_edit_busts_cache_key(spy: SpyBackend, tmp_path: Path):
+    """An author editing a template is seen by the next render, not swallowed.
+
+    The mtime the key carries is the only thing standing between an edit and a
+    page served from an entry no restart would clear, so the assertion is on the
+    markup that reaches the caller and on the two distinct keys behind it.
+    """
+    template = tmp_path / "editable.html"
+    template.write_text("<div>v1 {{ label }}</div>", encoding="utf-8")
+    _attach(_EditableBox, template)
+
+    first = render(_EditableBox(id="b"), RenderSession())
+    # An explicit bump rather than trusting two writes to land on different
+    # clock ticks: a filesystem with coarse mtime granularity would otherwise
+    # make this test flaky rather than meaningful.
+    bumped = template.stat().st_mtime + 10
+    template.write_text("<div>v2 {{ label }}</div>", encoding="utf-8")
+    os.utime(template, (bumped, bumped))
+    second = render(_EditableBox(id="b"), RenderSession())
+
+    assert first == "<div>v1 hi</div>"
+    assert second == "<div>v2 hi</div>"
+    # Two writes under two different keys: the edit produced a new entry rather
+    # than overwriting or hitting the old one.
+    assert len(spy.puts) == 2
+    assert spy.puts[0] != spy.puts[1]
