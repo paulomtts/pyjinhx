@@ -7,7 +7,7 @@ import json
 from typing import TYPE_CHECKING, Any
 
 from pyjinhx._component import BaseComponent
-from pyjinhx.reactive.backend import MISS, CacheBackend
+from pyjinhx.reactive.backend import MISS, CacheBackend, CachePolicy
 from pyjinhx.segments import ChildRef, RenderedLevel
 
 if TYPE_CHECKING:
@@ -69,6 +69,39 @@ def render_cache_key(component: BaseComponent) -> str:
     # would clear it.
     template_mtime = descriptor.template_path.stat().st_mtime
     return f"{identity}:{fields_digest}:{template_mtime}"
+
+
+def resolve_render_tier2(
+    cls: type[BaseComponent],
+) -> tuple[CacheBackend | None, float | None]:
+    """The render cache this class stores through, and the ttl it writes at.
+
+    Answers ``(None, None)`` when the render cache is off for ``cls`` - either
+    because no backend is configured for the process or because the class opted
+    out with ``cache=False``. Otherwise the configured backend and the seconds
+    its entries stay valid.
+
+    A near-twin of reactive's ``_resolve_tier2`` rather than a shared import:
+    that one is typed to ReactiveComponent and lives next to the load-cache key
+    machinery its only caller needs, while this one is handed a plain class and
+    nothing else. Sharing them would drag reactive/ into the render spine's
+    reach for four lines.
+    """
+    # Function-local by necessity: config sits above the render spine and
+    # imports it at import time, so a module-scope edge back would be a real
+    # cycle. Same escape hatch reactive's _resolve_tier2 uses.
+    from pyjinhx.config import current_settings
+
+    policy = cls._pjx_cache_policy
+    # `is False`, not falsiness: None is "the class said nothing", which means
+    # the process default applies, and it is not the same answer as an explicit
+    # opt-out.
+    if policy is False:
+        return None, None
+    backend = current_settings().cache_backend
+    if backend is None:
+        return None, None
+    return backend, (CachePolicy() if policy is None else policy).ttl
 
 
 def store_rendered_level(

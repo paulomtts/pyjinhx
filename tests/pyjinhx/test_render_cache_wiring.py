@@ -11,7 +11,9 @@ from typing import Any
 import pytest
 
 from pyjinhx._component import BaseComponent
-from pyjinhx.reactive.backend import CachePolicy
+from pyjinhx.config import configure_pyjinhx, current_settings
+from pyjinhx.reactive.backend import CachePolicy, InMemoryCacheBackend
+from pyjinhx.render_cache import resolve_render_tier2
 
 
 def test_a_plain_component_records_an_explicit_cache_policy():
@@ -43,3 +45,57 @@ def test_a_subclass_does_not_inherit_its_parents_cache_policy():
         label: str = ""
 
     assert Child._pjx_cache_policy is None
+
+
+@pytest.fixture
+def backend():
+    """Publish a fresh in-memory backend for one test, then restore the settings.
+
+    configure_pyjinhx rather than shutdown_pyjinhx, matching
+    test_reactive_cache_tier2_wiring.py: a test that asked for a backend should
+    not also blow away whatever else the process was configured with.
+    """
+    previous = current_settings()
+    published = InMemoryCacheBackend()
+    configure_pyjinhx(previous.merge(cache_backend=published))
+    yield published
+    configure_pyjinhx(previous)
+
+
+@pytest.fixture
+def no_backend():
+    previous = current_settings()
+    configure_pyjinhx(previous.merge(cache_backend=None))
+    yield
+    configure_pyjinhx(previous)
+
+
+def test_render_tier2_is_off_when_no_backend_is_configured(no_backend: None):
+    class Widget(BaseComponent):
+        label: str = ""
+
+    assert resolve_render_tier2(Widget) == (None, None)
+
+
+def test_render_tier2_is_on_by_default_at_the_process_default_ttl(backend: Any):
+    class Widget(BaseComponent):
+        label: str = ""
+
+    resolved, ttl = resolve_render_tier2(Widget)
+
+    assert resolved is backend
+    assert ttl == CachePolicy().ttl == 300
+
+
+def test_render_tier2_honors_an_explicit_policy_ttl(backend: Any):
+    class Widget(BaseComponent, cache=CachePolicy(ttl=45)):
+        label: str = ""
+
+    assert resolve_render_tier2(Widget) == (backend, 45)
+
+
+def test_render_tier2_is_off_for_a_class_that_opted_out(backend: Any):
+    class Widget(BaseComponent, cache=False):
+        label: str = ""
+
+    assert resolve_render_tier2(Widget) == (None, None)
