@@ -437,6 +437,10 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
     "render_context": frozenset({"pyjinhx.markers", "pyjinhx._component"}),
     "reactive.__init__": frozenset(),
     "reactive.keys": frozenset(),
+    # The tier-2 cache seam: a protocol and a reference in-memory implementation,
+    # both self-contained on stdlib. Nothing here reaches into tier 1 (cache.py)
+    # or the render spine - wiring it in is a later subtask's edge to add.
+    "reactive.backend": frozenset(),
     # cache.py is a store over session's cache ContextVar and nothing else: it
     # owns no state, and it must not reach sideways into keys.py or up into the
     # render spine to key or evict anything.
