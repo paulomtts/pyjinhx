@@ -343,3 +343,71 @@ def test_setup_passes_a_cache_backend_through_to_the_settings():
     resolved = setup(cache_backend=backend)
     assert resolved.cache_backend is backend
     assert current_settings().cache_backend is backend
+
+
+class ClosableBackend:
+    """A CacheBackend that also holds something worth releasing on shutdown."""
+
+    def __init__(self) -> None:
+        self.closed = 0
+
+    def get(self, key: str) -> object:
+        raise AssertionError("shutdown must not read the backend")
+
+    def put(self, key, value, *, tags, ttl) -> None:
+        raise AssertionError("shutdown must not write the backend")
+
+    def evict(self, tags) -> None:
+        raise AssertionError("shutdown must not evict")
+
+    def clear(self) -> None:
+        raise AssertionError("shutdown must not clear")
+
+    def close(self) -> None:
+        self.closed += 1
+
+
+def test_shutdown_closes_a_backend_that_has_a_close():
+    from pyjinhx.config import configure_pyjinhx, shutdown_pyjinhx
+
+    backend = ClosableBackend()
+    configure_pyjinhx(PjxSettings(cache_backend=backend))
+    shutdown_pyjinhx()
+    assert backend.closed == 1
+
+
+def test_shutdown_clears_the_backend_off_the_settings():
+    from pyjinhx.config import configure_pyjinhx, current_settings, shutdown_pyjinhx
+
+    configure_pyjinhx(PjxSettings(cache_backend=ClosableBackend()))
+    shutdown_pyjinhx()
+    assert current_settings().cache_backend is None
+
+
+def test_shutdown_does_not_require_a_close_method():
+    """CacheBackend is a structural Protocol with no close(): an in-memory
+    backend has nothing to release, and shutdown must not assume otherwise."""
+    from pyjinhx.config import configure_pyjinhx, shutdown_pyjinhx
+
+    backend = InMemoryCacheBackend()
+    assert not hasattr(backend, "close")
+    configure_pyjinhx(PjxSettings(cache_backend=backend))
+    shutdown_pyjinhx()
+
+
+def test_shutdown_with_no_backend_configured_still_works():
+    from pyjinhx.config import configure_pyjinhx, current_settings, shutdown_pyjinhx
+
+    configure_pyjinhx(PjxSettings(reactive_dev=False))
+    shutdown_pyjinhx()
+    assert current_settings() == PjxSettings()
+
+
+def test_shutdown_closes_the_backend_only_once():
+    from pyjinhx.config import configure_pyjinhx, shutdown_pyjinhx
+
+    backend = ClosableBackend()
+    configure_pyjinhx(PjxSettings(cache_backend=backend))
+    shutdown_pyjinhx()
+    shutdown_pyjinhx()
+    assert backend.closed == 1
