@@ -549,3 +549,32 @@ def test_configured_jinja_globals_and_filters_reach_the_request_session():
 
     assert response.status_code == 200
     assert response.text == "pyjinhx|OK|B"
+
+
+def test_middleware_sessions_share_the_cached_environment():
+    """The middleware builds its own session so it can attach the render hooks,
+    so it is also the place that has to adopt the cached environment — two
+    requests must not each compile the app's templates from scratch."""
+    from pyjinhx.config import current_settings
+    from pyjinhx.session import _environment_for, current_session
+
+    seen: list[object] = []
+
+    app = FastAPI()
+    apply_setup(app, _settings(jinja_globals={"x": 1}))
+
+    @app.get("/render")
+    def render():
+        session = current_session()
+        assert session is not None
+        seen.append(session.jinja_env)
+        return PlainTextResponse(session.jinja_env.from_string("{{ x }}").render())
+
+    with TestClient(app) as client:
+        assert client.get("/render").text == "1"
+        assert client.get("/render").text == "1"
+        # Inside the client block: the lifespan's shutdown resets the process
+        # settings, and the cache keys on the settings instance that was live.
+        expected = _environment_for(current_settings())
+
+    assert seen == [expected, expected]
