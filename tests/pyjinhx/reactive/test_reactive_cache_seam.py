@@ -87,3 +87,73 @@ def test_the_ledger_backend_records_a_put_with_its_tags_and_ttl():
     assert backend.puts == [("k", "v", ("rows", "rows:7"), 45)]
     assert backend.get("k") == "v"
     assert backend.gets == ["k"]
+
+
+def test_a_tier1_hit_never_reaches_the_backend(ledger: LedgerBackend):
+    """The second load() in a request is answered before tier 2 is consulted."""
+    calls: list[int] = []
+
+    class Row(ReactiveComponent, react=("rows",)):
+        row_id: Annotated[int, PjxKey()] = 0
+
+        @classmethod
+        def load(cls, row_id: int) -> "Row":
+            calls.append(row_id)
+            return cls(row_id=row_id)
+
+    string_key = _string_cache_key(Row, {"row_id": 7}, protocol_mode=False)
+
+    with request_scope():
+        first = Row.load(7)
+
+        # The miss: one read that found nothing, one write-through.
+        assert ledger.gets == [string_key]
+        assert [key for key, _, _, _ in ledger.puts] == [string_key]
+
+        second = Row.load(7)
+
+        assert second is first
+        assert calls == [7]
+        # Unchanged ledgers: the tier-1 hit short-circuits above the seam.
+        assert ledger.gets == [string_key]
+        assert [key for key, _, _, _ in ledger.puts] == [string_key]
+
+
+class ForbiddenBackend(InMemoryCacheBackend):
+    """A backend that fails the test if the seam touches it at all."""
+
+    def get(self, key: str) -> object:
+        raise AssertionError(f"the backend was read for {key!r}")
+
+    def put(
+        self, key: str, value: object, *, tags: Iterable[str], ttl: float | None
+    ) -> None:
+        raise AssertionError(f"the backend was written for {key!r}")
+
+
+def test_a_tier1_hit_holds_even_when_the_backend_would_explode():
+    """A second load() must not depend on the backend being reachable at all."""
+    previous = current_settings()
+    warm = InMemoryCacheBackend()
+    configure_pyjinhx(previous.merge(cache_backend=warm))
+    try:
+
+        class Row(ReactiveComponent, react=("rows",)):
+            row_id: Annotated[int, PjxKey()] = 0
+
+            @classmethod
+            def load(cls, row_id: int) -> "Row":
+                return cls(row_id=row_id)
+
+        with request_scope():
+            first = Row.load(7)
+
+            # Swapped in only after tier 1 holds the entry: any further backend
+            # contact for this key would now raise instead of quietly working.
+            configure_pyjinhx(
+                current_settings().merge(cache_backend=ForbiddenBackend())
+            )
+
+            assert Row.load(7) is first
+    finally:
+        configure_pyjinhx(previous)
