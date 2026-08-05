@@ -244,3 +244,68 @@ def test_hit_still_emits_css_and_js(spy: SpyBackend, tmp_path: Path):
     assert spy.puts.count(shell_key) == 1
     assert spy.gets.count(shell_key) == 2
 
+
+class _OptedOut(BaseComponent, cache=False):
+    label: str = "hi"
+
+
+def test_cache_false_never_touches_backend(spy: SpyBackend, tmp_path: Path):
+    """cache=False is a promise about the whole request, not just resolution.
+
+    The wiring module already pins that render_level() skips the backend for
+    such a class; what this adds is the end-to-end answer — two full render()
+    calls, a configured backend that records everything, and markup that matches
+    the same tree rendered with tier 2 turned off entirely.
+    """
+    child = tmp_path / "opted_child.html"
+    child.write_text("<span>child</span>", encoding="utf-8")
+    _attach(_AlphaChild, child)
+    template = tmp_path / "opted_out.html"
+    template.write_text("<div>{{ label }}<Inner/></div>", encoding="utf-8")
+    _attach(_OptedOut, template)
+    discovery._registry.mapping = {_pascal_to_snake("Inner"): _AlphaChild}
+
+    first = render(_OptedOut(id="o"), RenderSession())
+    second = render(_OptedOut(id="o"), RenderSession())
+
+    assert first == second == "<div>hi<span>child</span></div>"
+    # The child is an ordinary cacheable class and legitimately uses the
+    # backend; nothing keyed for the opted-out parent may appear.
+    parent_keys = [key for key in spy.gets + spy.puts if "_OptedOut" in key]
+    assert parent_keys == []
+
+
+def test_no_backend_configured_matches_configured_behavior(tmp_path: Path):
+    """Tier 2 is invisible: the same tree renders identically with and without it.
+
+    Both configurations render twice, so a cache that changed the second render
+    of a tree — the failure mode a single render would not catch — shows up as a
+    difference against the uncached baseline rather than as four equal strings.
+    """
+    child = tmp_path / "parity_child.html"
+    child.write_text("<span>child</span>", encoding="utf-8")
+    _attach(_AlphaChild, child)
+    shell = tmp_path / "parity_shell.html"
+    shell.write_text('<div class="shell">{{ label }}<Inner/></div>', encoding="utf-8")
+    _attach(_Shell, shell)
+    discovery._registry.mapping = {_pascal_to_snake("Inner"): _AlphaChild}
+
+    previous = current_settings()
+    configure_pyjinhx(previous.merge(cache_backend=None))
+    try:
+        cold_off = render(_Shell(id="s"), RenderSession())
+        warm_off = render(_Shell(id="s"), RenderSession())
+    finally:
+        configure_pyjinhx(previous)
+
+    configure_pyjinhx(previous.merge(cache_backend=SpyBackend()))
+    try:
+        cold_on = render(_Shell(id="s"), RenderSession())
+        warm_on = render(_Shell(id="s"), RenderSession())
+    finally:
+        configure_pyjinhx(previous)
+
+    assert cold_off == '<div class="shell">shell<span>child</span></div>'
+    assert warm_off == cold_off
+    assert cold_on == cold_off
+    assert warm_on == cold_off
