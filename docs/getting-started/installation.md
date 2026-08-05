@@ -18,11 +18,17 @@ uv add pyjinhx
 
 ## Optional extras
 
-The `redis` extra pulls in the dependencies for the Redis invalidation backend (used across multiple workers; configuring it also enables cross-request caching):
+The `diskcache` extra pulls in the dependencies for `DiskCacheBackend`, which lets a `load()` result or a rendered shell be reused across requests instead of being rebuilt every time. Every worker on the machine shares one store, so a mutation in one is seen by the rest:
 
 ```bash
-pip install pyjinhx[redis]
+pip install "pyjinhx[diskcache]"
 ```
+
+```bash
+uv add "pyjinhx[diskcache]"
+```
+
+Optional in both directions: pyjinhx imports and runs without it, and installing it changes nothing until you pass a backend to `setup()`. See [Cache Backends](../api/cache-backends.md) for what it does and the directory it needs.
 
 ## Dependencies
 

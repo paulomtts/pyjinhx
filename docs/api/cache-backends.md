@@ -58,14 +58,61 @@ Eviction is by tag rather than through a reverse index the caller keeps, because
 
 ## Turning it on
 
+Three steps: install the extra, hand `setup()` a backend, and give it a directory that starts empty on every deployment.
+
+**1. Install the extra.** `diskcache` is not a runtime dependency, so it has to be asked for:
+
+```bash
+uv add "pyjinhx[diskcache]"      # or: pip install "pyjinhx[diskcache]"
+```
+
+**2. Construct a backend and pass it to `setup()`:**
+
 ```python
+from fastapi import FastAPI
+
 from pyjinhx import setup
 from pyjinhx.integrations.diskcache import DiskCacheBackend
+
+app = FastAPI()
 
 setup(app, cache_backend=DiskCacheBackend("/cache/pjx"))
 ```
 
-The directory must be ephemeral per deployment — see [The cache is volatile](#the-cache-is-volatile) for why, and for the mount that gives you one on each platform.
+That is the whole surface an app touches: this call and the `cache=` class keyword below.
+
+**3. Make `/cache` ephemeral.** This step is configuration, not code, and skipping it is the one mistake with real consequences — a directory that survives a deploy serves output built by the previous version of your code:
+
+```yaml
+# Kubernetes: an emptyDir is new and empty per pod
+volumes:
+  - name: pjx-cache
+    emptyDir: {}
+volumeMounts:
+  - name: pjx-cache
+    mountPath: /cache
+```
+
+```bash
+# Docker: a new tmpfs per container
+docker run --tmpfs /cache myapp
+```
+
+```ini
+# systemd: created at start, removed at stop — gives you /run/myapp
+RuntimeDirectory=myapp
+```
+
+See [The cache is volatile](#the-cache-is-volatile) for why enforcing this is the platform's job rather than pyjinhx's, and for the full per-platform table.
+
+### Checking it works
+
+Two things to confirm on the first deployment:
+
+- **Every worker shares one directory.** If each gets its own, the cross-worker eviction that keeps this safe is gone — one worker's `@mutates` will not reach the others, and they will serve stale data until the TTL expires.
+- **Nothing is being silently declined.** A component holding something unpicklable — a database handle, an open file, a lambda in a field — logs `could not pickle a value of type ...` once per class and then renders live every time. Nothing breaks, but that component gains nothing, and `cache=False` is how to say so deliberately.
+
+`scripts/bench_cross_request_load.py` shows the shape to expect: its `load() ran` column should settle at one execution per distinct key and stay flat as requests repeat.
 
 `PjxSettings.cache_backend` defaults to `None`: no backend, no behaviour change, no new dependency. The backend is constructed by the app rather than named by a string in an environment variable — it needs a path or a connection, and the app is the only thing that knows them. `shutdown_pyjinhx()` calls `close()` on it if it has one.
 
