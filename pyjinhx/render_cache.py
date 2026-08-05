@@ -4,10 +4,15 @@
 
 import hashlib
 import json
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from pyjinhx._component import BaseComponent
 from pyjinhx.reactive.backend import MISS, CacheBackend, CachePolicy
+from pyjinhx.reactive.backend_health import (
+    is_degraded,
+    note_failure,
+    note_write_success,
+)
 from pyjinhx.segments import ChildRef, RenderedLevel
 
 if TYPE_CHECKING:
@@ -245,3 +250,62 @@ def replay_asset_accumulation(level: RenderedLevel, session: "RenderSession") ->
     descriptor: Any = level.descriptor
     session.css_assets.update(descriptor.css_paths)
     session.js_assets.update(descriptor.js_paths)
+
+
+def load_rendered_level(backend: CacheBackend, key: str) -> RenderedLevel | None:
+    """The level cached under ``key``, or None when there is nothing usable.
+
+    None covers three answers the caller treats identically - no entry, a
+    degraded backend that is not being read from, and a backend whose get()
+    raised - because all three mean the same thing to a render: do the work.
+
+    The level comes back detached from the stored one (copy_level_shell), so the
+    caller may fill its children without editing the cache.
+
+    Raises:
+        ValueError: If the entry exists but is not a RenderedLevel. A corrupt or
+            foreign entry is a data-integrity problem the caller must see, not a
+            backend that failed to answer, so it is neither swallowed as a miss
+            nor counted against the backend's health.
+    """
+    # A degraded backend is one whose evict() raised: entries it still holds may
+    # be stale, so it is not read from until a write lands.
+    if is_degraded(backend):
+        return None
+    try:
+        restored = restore_rendered_level(backend, key)
+    except ValueError:
+        raise
+    # A backend is a plugin implementing an arbitrary protocol, so its failure
+    # mode is unknowable in advance; the policy is to degrade on any of them
+    # rather than pick and miss some.
+    except Exception as exc:  # noqa: BLE001
+        # A cache is an optimization: a backend that cannot answer costs this
+        # request a real render, never an error.
+        note_failure(backend, "get", exc, degrade=False)
+        return None
+    if restored is MISS:
+        return None
+    return copy_level_shell(cast(RenderedLevel, restored))
+
+
+def save_rendered_level(
+    backend: CacheBackend, key: str, level: RenderedLevel, *, ttl: float | None
+) -> None:
+    """Write ``level``'s shell behind ``key``, absorbing a backend that raises.
+
+    Stores a detached copy: the caller is about to resolve this level's children
+    in place, and the entry must keep its holes for the next request to fill.
+    """
+    try:
+        store_rendered_level(backend, key, copy_level_shell(level), ttl=ttl)
+    # Same rationale as the get() guard above: any backend failure degrades
+    # rather than only the ones this module can predict.
+    except Exception as exc:  # noqa: BLE001
+        # The level is already rendered: a dropped write costs the next request
+        # a render, nothing more.
+        note_failure(backend, "put", exc, degrade=False)
+    else:
+        # A write that landed is the evidence a degraded backend is answering
+        # again, and that what it now holds is current.
+        note_write_success(backend)
