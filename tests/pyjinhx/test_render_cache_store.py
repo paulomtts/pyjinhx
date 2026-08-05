@@ -5,7 +5,7 @@ DiskCacheBackend path pickles whatever it is handed, and a class defined
 inside a test function cannot be pickled by reference.
 """
 
-import pickle
+import logging
 from pathlib import Path
 from typing import cast
 
@@ -296,15 +296,17 @@ def test_real_pipeline_level_round_trips(tmp_path: Path):
     assert replay_session.js_assets == {tmp_path / "leaf.js"}
 
 
-def test_classless_component_level_fails_loudly_on_the_disk_backend(tmp_path: Path):
-    """A generated class's descriptor cannot be pickled, and says so.
+def test_classless_component_level_is_skipped_by_the_disk_backend(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+):
+    """A generated class's level is not stored, and the skip is logged.
 
     component() builds a class in a synthetic module that is registered in
     sys.modules but never given the class as an attribute, so pickle's
     by-reference lookup for descriptor.provenance finds nothing. The disk
-    backend surfaces that as its own error rather than storing a half-level;
-    that is the behavior tier 2 gets, and #820's wiring has to live with a
-    generated component simply not caching rather than caching wrongly.
+    backend skips such a value and warns rather than storing a half-level, so
+    a generated component simply does not cache on tier 2 - the behavior
+    #820's wiring has to live with.
     """
     (tmp_path / "widget.pjx").write_text("<div>hello</div>", encoding="utf-8")
     cls = component("Widget", template_dir=tmp_path)
@@ -315,7 +317,15 @@ def test_classless_component_level_fails_loudly_on_the_disk_backend(tmp_path: Pa
     )
     backend = DiskCacheBackend(tmp_path / "cache")
 
-    with pytest.raises((pickle.PicklingError, AttributeError)):
+    with caplog.at_level(logging.WARNING, logger="pyjinhx"):
         store_rendered_level(backend, "k", level, ttl=300)
-
+    restored = restore_rendered_level(backend, "k")
     backend.close()
+
+    assert restored is MISS
+    # The pickling failure itself, not some other warning the render path emits:
+    # a skip logged for an unrelated reason would leave this test green while
+    # tier 2 silently cached a half-level.
+    assert len(caplog.records) == 1
+    assert "could not pickle" in caplog.records[0].getMessage()
+    assert "Widget" in caplog.records[0].getMessage()
