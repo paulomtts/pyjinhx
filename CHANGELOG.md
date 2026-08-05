@@ -1,5 +1,71 @@
 # Changelog
 
+## 1.4.0 — Cross-request caching (2026-08-05)
+
+Work that spanned a request boundary previously did not survive one. Every request
+rebuilt every component from scratch, because the load cache, the instance registry
+and the dirtied set are all request-scoped `ContextVar`s that `request_scope()`
+discards at the end of a request. This release adds a second cache tier behind that
+one, plus the seam a backend plugs into.
+
+Nothing changes until a backend is configured. With none, behaviour is exactly 1.3.0's.
+
+### Added
+- `CacheBackend`: the protocol a cross-request cache implements — `get`/`put`/`evict`/
+  `clear`, with tag-based eviction so the reactive keys the request-scoped cache already
+  indexes by become the backend's tags verbatim.
+- `PjxSettings.cache_backend`: configuring one turns tier 2 on for every component at
+  `ttl=300`. `cache=CachePolicy(ttl=...)` overrides the TTL for a class and `cache=False`
+  opts it out. `shutdown_pyjinhx()` closes the backend.
+- `DiskCacheBackend`, shipped as the `pyjinhx[diskcache]` extra: a SQLite-backed store on
+  a shared directory, so every worker on a machine shares one cache and an eviction in one
+  reaches the rest. An in-memory backend ships in-tree for tests and single-process use.
+- Cross-request caching of *rendered output* for non-reactive components — a shell or
+  layout re-rendered identically every request. What is cached is the level with its child
+  holes still unresolved, so this request's children still splice in.
+
+### Changed
+- The Jinja `Environment` is now built once per settings object rather than once per
+  request. It was being discarded with each `RenderSession`, taking Jinja's template cache
+  with it, so every request re-read and re-compiled every template it touched. Hot reload
+  still works: `AbsolutePathLoader` already mtime-checks through Jinja's own invalidation.
+- The render cache declines components cheaper to render than to cache. A hit costs a key,
+  a backend read, an unpickle and an asset replay — about 20µs — and every builtin renders
+  in 31–105µs, so caching them was a measured net loss. The floor is 150µs, overridable
+  with `PJX_RENDER_CACHE_MIN_US`; an explicit `cache=CachePolicy(...)` overrides it.
+- A value the backend cannot pickle is logged once per class and skipped rather than
+  raising. Tier 2 is on by default once configured, so an unpicklable instance is an
+  ordinary condition, not an author error.
+
+### Removed
+- The `redis` extra, and the `docs/api/integrations-redis.md` description of a
+  `RedisInvalidationBackend` that never existed — v0.x residue from when invalidation was
+  split from storage. A future Redis backend implements `CacheBackend` instead.
+
+### Notes for operators
+- **The cache directory must be ephemeral per deployment.** A Kubernetes `emptyDir`, a
+  Docker `--tmpfs`, a systemd `RuntimeDirectory=` — anything that starts empty and dies
+  with the deployment. pyjinhx does not enforce this: "app startup" is N events, one per
+  worker at unpredictable times, so an in-process wipe would either erase what sibling
+  workers just warmed or namespace per worker and break the sharing that justifies a shared
+  store. A persistent path serves output built by the previous version of your code,
+  bounded only by the TTL.
+- **Local disk only.** SQLite's locking is unreliable over NFS.
+- **One machine, not one cluster.** Workers in a pod or container share a store; four pods
+  have four. Cross-host sharing is what the protocol was shaped to admit a Redis backend for.
+- **This buys cross-worker sharing, not warm start.** Every deploy begins cold, by design.
+- `load()` still runs on every miss. A miss is the only way to discover the data was
+  unchanged; there is no cheap staleness probe distinct from `load()` itself.
+
+### Benchmarks
+Two new scripts render or load the same thing across separate request scopes, which no
+existing benchmark did — every one rendered its tree once, so none could observe a cache
+hit at all.
+- `scripts/bench_cross_request_load.py` — sweeps the simulated cost of `load()`. Tier 2
+  loses only when `load()` is free (−34%) and is 92% ahead by 0.1ms, so any `load()` that
+  touches I/O is past break-even.
+- `scripts/bench_cross_request_cache.py` — the render side, cold versus warm request.
+
 ## 1.3.0 — Jinja globals, restored dialogs, and a slot-detection fix (2026-08-05)
 
 ### Added
