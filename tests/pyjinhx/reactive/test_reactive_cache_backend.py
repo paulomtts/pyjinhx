@@ -72,3 +72,80 @@ def test_clear_empties_the_store():
     backend.clear()
     assert backend.get("todos") is MISS
     assert backend.get("users") is MISS
+
+
+def test_evict_drops_an_entry_carrying_the_tag():
+    backend = InMemoryCacheBackend()
+    backend.put("todos", "a", tags=("todo-list",), ttl=None)
+    backend.evict(("todo-list",))
+    assert backend.get("todos") is MISS
+
+
+def test_evict_leaves_entries_with_no_overlapping_tag_alone():
+    backend = InMemoryCacheBackend()
+    backend.put("todos", "a", tags=("todo-list",), ttl=None)
+    backend.put("users", "b", tags=("user-list",), ttl=None)
+    backend.evict(("todo-list",))
+    assert backend.get("users") == "b"
+
+
+def test_an_entry_with_several_tags_is_evicted_by_any_one_of_them():
+    backend = InMemoryCacheBackend()
+    backend.put("todos", "a", tags=("todo-list", "user-list"), ttl=None)
+    backend.evict(("user-list",))
+    assert backend.get("todos") is MISS
+
+
+def test_evict_drops_every_entry_matching_any_given_tag():
+    backend = InMemoryCacheBackend()
+    backend.put("todos", "a", tags=("todo-list",), ttl=None)
+    backend.put("users", "b", tags=("user-list",), ttl=None)
+    backend.put("stats", "c", tags=("stats",), ttl=None)
+    backend.evict(("todo-list", "user-list"))
+    assert backend.get("todos") is MISS
+    assert backend.get("users") is MISS
+    assert backend.get("stats") == "c"
+
+
+def test_an_entry_reachable_from_two_evicted_tags_is_dropped_once():
+    backend = InMemoryCacheBackend()
+    backend.put("todos", "a", tags=("todo-list", "user-list"), ttl=None)
+    backend.evict(("todo-list", "user-list"))
+    assert backend.get("todos") is MISS
+
+
+def test_re_putting_a_key_drops_its_old_tags():
+    backend = InMemoryCacheBackend()
+    backend.put("todos", "first", tags=("todo-list",), ttl=None)
+    backend.put("todos", "second", tags=("user-list",), ttl=None)
+    backend.evict(("todo-list",))
+    assert backend.get("todos") == "second"
+
+
+def test_evict_with_no_tags_is_a_no_op():
+    backend = InMemoryCacheBackend()
+    backend.put("todos", "a", tags=("todo-list",), ttl=None)
+    backend.evict(())
+    assert backend.get("todos") == "a"
+
+
+def test_evict_on_an_unknown_tag_is_a_no_op():
+    backend = InMemoryCacheBackend()
+    backend.put("todos", "a", tags=("todo-list",), ttl=None)
+    backend.evict(("nothing-uses-this",))
+    assert backend.get("todos") == "a"
+
+
+def test_evict_on_an_empty_backend_is_a_no_op():
+    backend = InMemoryCacheBackend()
+    backend.evict(("todo-list",))
+    assert backend.get("todos") is MISS
+
+
+def test_clear_drops_the_tag_index_too():
+    backend = InMemoryCacheBackend()
+    backend.put("todos", "a", tags=("todo-list",), ttl=None)
+    backend.clear()
+    backend.put("todos", "b", tags=(), ttl=None)
+    backend.evict(("todo-list",))
+    assert backend.get("todos") == "b"

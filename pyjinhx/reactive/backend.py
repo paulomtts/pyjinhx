@@ -90,6 +90,8 @@ class InMemoryCacheBackend:
         """
         self._clock = clock
         self._entries: dict[str, tuple[object, float | None]] = {}
+        self._by_tag: dict[str, set[str]] = {}
+        self._tags_of: dict[str, set[str]] = {}
 
     def get(self, key: str) -> object:
         """Return the value stored under ``key``, or ``MISS``."""
@@ -103,11 +105,36 @@ class InMemoryCacheBackend:
         self, key: str, value: object, *, tags: Iterable[str], ttl: float | None
     ) -> None:
         """Store ``value`` under ``key``, replacing any entry already there."""
+        # A replacement may hang off different tags than the entry it replaces,
+        # so its old memberships go before the new ones land - merging them
+        # would leave the new value evictable by a tag it never claimed.
+        self._unindex(key)
+        for tag in tags:
+            self._by_tag.setdefault(tag, set()).add(key)
+            self._tags_of.setdefault(key, set()).add(tag)
         self._entries[key] = (value, None)
 
     def evict(self, tags: Iterable[str]) -> None:
         """Drop every entry carrying any of these tags."""
+        doomed: set[str] = set()
+        for tag in tags:
+            doomed |= self._by_tag.get(tag, set())
+        for key in doomed:
+            self._entries.pop(key, None)
+            # Un-index every tag the entry sat under, not just the matched ones:
+            # the entry is gone, so a surviving membership would name a key
+            # nothing can look up.
+            self._unindex(key)
 
     def clear(self) -> None:
         """Drop every entry and every tag, whatever its ttl."""
         self._entries.clear()
+        self._by_tag.clear()
+        self._tags_of.clear()
+
+    def _unindex(self, key: str) -> None:
+        """Remove ``key`` from every tag bucket holding it."""
+        # The forward index names exactly the buckets this key sits in, so the
+        # cost is the entry's own tag count rather than the whole tag index.
+        for tag in self._tags_of.pop(key, set()):
+            self._by_tag[tag].discard(key)
