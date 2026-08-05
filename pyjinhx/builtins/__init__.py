@@ -31,6 +31,7 @@ __all__ = [  # noqa: RUF022
     "PJXCarousel",
     "PJXCarouselSlide",
     "PJXChipInput",
+    "PJXConfirmDialog",
     "PJXDivider",
     "PJXDrawer",
     "PJXDrawerBody",
@@ -53,6 +54,7 @@ __all__ = [  # noqa: RUF022
     "PJXPopoverPanel",
     "PJXPopoverTrigger",
     "PJXProgress",
+    "PJXPromptDialog",
     "PJXRegionLoader",
     "PJXResizableGroup",
     "PJXResizableHandle",
@@ -122,6 +124,10 @@ _lazy_imports = {
         "pyjinhx.builtins.ui.pjx_chip_input.pjx_chip_input",
         "PJXChipInput",
     ),
+    "PJXConfirmDialog": (
+        "pyjinhx.builtins.ui.pjx_confirm_dialog.pjx_confirm_dialog",
+        "PJXConfirmDialog",
+    ),
     "PJXDivider": ("pyjinhx.builtins.ui.pjx_divider.pjx_divider", "PJXDivider"),
     "PJXDrawer": ("pyjinhx.builtins.ui.pjx_drawer.pjx_drawer", "PJXDrawer"),
     "PJXDrawerBody": (
@@ -183,6 +189,10 @@ _lazy_imports = {
         "PJXPopoverTrigger",
     ),
     "PJXProgress": ("pyjinhx.builtins.ui.pjx_progress.pjx_progress", "PJXProgress"),
+    "PJXPromptDialog": (
+        "pyjinhx.builtins.ui.pjx_prompt_dialog.pjx_prompt_dialog",
+        "PJXPromptDialog",
+    ),
     "PJXRegionLoader": (
         "pyjinhx.builtins.pjx_region_loader.pjx_region_loader",
         "PJXRegionLoader",
