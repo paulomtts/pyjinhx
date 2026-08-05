@@ -687,10 +687,6 @@ fastapi = [
     { name = "fastapi" },
     { name = "starlette" },
 ]
-redis = [
-    { name = "fakeredis" },
-    { name = "redis" },
-]
 
 [package.dev-dependencies]
 dev = [
@@ -710,15 +706,13 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "diskcache", marker = "extra == 'diskcache'", specifier = ">=5.6.0" },
-    { name = "fakeredis", marker = "extra == 'redis'", specifier = ">=2.26.0" },
     { name = "fastapi", marker = "extra == 'fastapi'", specifier = ">=0.115.0" },
     { name = "jinja2", specifier = ">=3.1.6" },
     { name = "markupsafe", specifier = ">=3.0.3" },
     { name = "pydantic", specifier = ">=2.12.5" },
-    { name = "redis", marker = "extra == 'redis'", specifier = ">=5.0.0" },
     { name = "starlette", marker = "extra == 'fastapi'", specifier = ">=0.40.0" },
 ]
-provides-extras = ["redis", "fastapi", "diskcache"]
+provides-extras = ["fastapi", "diskcache"]
 
 [package.metadata.requires-dev]
 dev = [
