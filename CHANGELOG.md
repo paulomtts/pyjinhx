@@ -1,5 +1,39 @@
 # Changelog
 
+## 1.3.0 — Jinja globals, restored dialogs, and a slot-detection fix (2026-08-05)
+
+### Added
+- `PjxSettings.jinja_globals`/`jinja_filters`: a supported way to inject Jinja globals and
+  filters (e.g. an i18n dict) under `setup(app)`, applied to every request's `RenderSession`
+  — no more hand-rolling `request_scope(session=...)` to reach `session.jinja_env`.
+- `PJXConfirmDialog` and `PJXPromptDialog` are back, ported to v2 conventions and registered
+  in `pyjinhx.builtins.__all__`. Both were deliberately dropped when the v0.x engine was
+  removed for 1.0 and never ported forward; every other `PJX*` builtin survived that cut.
+
+### Fixed
+- A field typed `Slot | None` (or the internal `Annotated[..., PjxSlot()] | None` spelling)
+  was silently **not** detected as a slot — Pydantic only hoists `Annotated` metadata from
+  the outermost annotation, so the marker stayed buried inside the union and the field
+  rendered escaped instead of raw. Slot detection now unwraps a `T | None` union before
+  checking for the marker.
+
+### Documentation
+- Added the missing "1.0.x → 1.1.0" section to the migration guide, covering two breaking
+  changes that shipped with no migration note at the time: `ReactiveComponent.load()`
+  becoming a required `@classmethod` factory (was an instance method), and
+  `RenderSession`/`request_scope()` losing their `template_dir` parameter in favor of an
+  absolute-path loader.
+- Replaced the stale pre-1.0 "builtins no longer ships…" paragraph with a pointer at
+  `pyjinhx.builtins.__all__` — it named an outdated removed-component list that no longer
+  matched the 59+ `PJX*` builtins 1.2 actually ships.
+- Added a note for apps upgrading straight from 0.36 or earlier: the 1.1→1.2
+  `ReactiveResponse` rewrite table only matched the 1.1.x signature, leaving 0.36's
+  positional-mutation-key form (`ReactiveResponse(Keys.TODOS, html=...)`) without a row to
+  follow.
+- Softened "fan-out is unconditional" — `compose()` actually gates on return type and passes
+  anything it doesn't recognize straight through untouched; the docs now say fan-out "rides
+  along any return pyjinhx composes."
+
 ## 1.2.0 — Unconditional fan-out & response composition (2026-08-04)
 
 ### Removed
