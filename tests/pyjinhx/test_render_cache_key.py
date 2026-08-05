@@ -13,7 +13,7 @@ import pytest
 
 from pyjinhx._component import BaseComponent, Children, Slot
 from pyjinhx.descriptor import ClassDescriptor
-from pyjinhx.render_cache import render_cache_key
+from pyjinhx.render_cache import auto_id_in_output, has_auto_id, render_cache_key
 
 
 class _KeyPlain(BaseComponent):
@@ -142,3 +142,42 @@ def test_a_slot_field_holding_a_plain_string_stays_in_the_key(template: Path):
     assert render_cache_key(
         _KeySlotted(id="a", label="hi", body="hello world")
     ) != render_cache_key(_KeySlotted(id="a", label="hi", body="goodbye moon"))
+
+
+def test_two_instances_with_auto_ids_share_a_key(template: Path):
+    _attach(_KeyPlain, template)
+    first, second = _KeyPlain(label="hi"), _KeyPlain(label="hi")
+    assert first.id != second.id
+    assert render_cache_key(first) == render_cache_key(second)
+
+
+def test_two_explicit_ids_still_give_different_keys(template: Path):
+    _attach(_KeyPlain, template)
+    assert render_cache_key(_KeyPlain(id="a", label="hi")) != render_cache_key(
+        _KeyPlain(id="b", label="hi")
+    )
+
+
+def test_an_auto_id_and_an_explicit_id_do_not_collide(template: Path):
+    _attach(_KeyPlain, template)
+    assert render_cache_key(_KeyPlain(label="hi")) != render_cache_key(
+        _KeyPlain(id="a", label="hi")
+    )
+
+
+def test_has_auto_id_reports_how_the_id_was_set():
+    assert has_auto_id(_KeyPlain(label="hi"))
+    assert not has_auto_id(_KeyPlain(id="a", label="hi"))
+
+
+def test_auto_id_in_output_catches_an_interpolated_auto_id():
+    component = _KeyPlain(label="hi")
+    assert auto_id_in_output(component, f'<div id="{component.id}">hi</div>')
+    assert not auto_id_in_output(component, "<div>hi</div>")
+
+
+def test_an_explicit_id_in_the_output_is_not_declined():
+    # An explicit id is part of the key, so an entry can only ever be served
+    # back to the same value — printing it is safe.
+    component = _KeyPlain(id="a", label="hi")
+    assert not auto_id_in_output(component, '<div id="a">hi</div>')

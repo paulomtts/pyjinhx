@@ -512,3 +512,65 @@ def test_a_corrupt_entry_propagates_out_of_render_level(box_template: Path):
             render_level(_CachedBox(id="a", label="hi"), RenderSession())
     finally:
         configure_pyjinhx(previous)
+
+
+class _AutoIdBox(BaseComponent):
+    label: str = "hi"
+
+
+class _IdPrinter(BaseComponent):
+    label: str = "hi"
+
+
+def test_two_instances_with_auto_ids_hit_the_same_entry(
+    backend: InMemoryCacheBackend, tmp_path: Path
+):
+    # The regression this file previously missed: every other render test names
+    # an explicit id, so an auto id counting up per instance never showed up as
+    # a key that could not repeat.
+    path = tmp_path / "auto_id_box.html"
+    path.write_text("<div>{{ label }}</div>", encoding="utf-8")
+    _attach(_AutoIdBox, path)
+    spy = SpyBackend()
+    configure_pyjinhx(current_settings().merge(cache_backend=spy))
+
+    first = serialize(render_level(_AutoIdBox(label="hi"), RenderSession()))
+    second = serialize(render_level(_AutoIdBox(label="hi"), RenderSession()))
+
+    assert first == second == "<div>hi</div>"
+    assert len(spy.puts) == 1
+
+
+def test_a_template_printing_its_auto_id_is_not_cached(
+    backend: InMemoryCacheBackend, tmp_path: Path
+):
+    # The auto id is out of the key, so an entry baking one in would be served
+    # back under a different id. Declined rather than cached wrong.
+    path = tmp_path / "id_printer.html"
+    path.write_text('<div id="{{ id }}">{{ label }}</div>', encoding="utf-8")
+    _attach(_IdPrinter, path)
+    spy = SpyBackend()
+    configure_pyjinhx(current_settings().merge(cache_backend=spy))
+
+    one = _IdPrinter(label="hi")
+    two = _IdPrinter(label="hi")
+    first = serialize(render_level(one, RenderSession()))
+    second = serialize(render_level(two, RenderSession()))
+
+    assert spy.puts == []
+    assert first == f'<div id="{one.id}">hi</div>'
+    assert second == f'<div id="{two.id}">hi</div>'
+
+
+def test_a_template_printing_an_explicit_id_is_still_cached(
+    backend: InMemoryCacheBackend, tmp_path: Path
+):
+    path = tmp_path / "explicit_id_printer.html"
+    path.write_text('<div id="{{ id }}">{{ label }}</div>', encoding="utf-8")
+    _attach(_IdPrinter, path)
+    spy = SpyBackend()
+    configure_pyjinhx(current_settings().merge(cache_backend=spy))
+
+    render_level(_IdPrinter(id="a", label="hi"), RenderSession())
+
+    assert len(spy.puts) == 1

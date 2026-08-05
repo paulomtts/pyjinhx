@@ -17,6 +17,7 @@ from pyjinhx.discovery import get_class
 from pyjinhx.markers import SLOT_TOKEN_RE, collect_slot_tokens
 from pyjinhx.props_header import warn_stale_def_header
 from pyjinhx.render_cache import (
+    auto_id_in_output,
     holds_spliced_components,
     load_rendered_level,
     render_cache_key,
@@ -376,7 +377,7 @@ def render_level(
         root_span=parser.root_span or (0, 0),
         descriptor=descriptor,
     )
-    if backend is not None:
+    if backend is not None and not auto_id_in_output(component, output_string):
         # Written here, with every child hole still unresolved: what is worth
         # caching is this level's own shell, and a level whose children were
         # already spliced in would be a cache of one request's whole subtree.
