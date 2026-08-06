@@ -365,6 +365,10 @@ def render_level(
     jinja_env = session.jinja_env
 
     try:
+        # Jinja re-checks the template's mtime on every get_template() call.
+        # AbsolutePathLoader's uptodate() closure memoizes that answer in the
+        # request-scoped freshness cache, so the repeat lookups a reactive pass
+        # makes for one template cost a dict hit rather than a filesystem stat.
         template = jinja_env.get_template(str(descriptor.template_path))
     except jinja2.TemplateNotFound as err:
         raise jinja2.TemplateNotFound(

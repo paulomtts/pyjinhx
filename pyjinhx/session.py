@@ -70,17 +70,32 @@ class AbsolutePathLoader(BaseLoader):
             raise TemplateNotFound(template)
         source = path.read_text(encoding="utf-8")
         mtime = path.stat().st_mtime
+        name = str(path)
 
         def uptodate() -> bool:
+            # One stat per template per request, not one per lookup. Jinja calls
+            # this on every get_template() when auto_reload is on, and a reactive
+            # request's walk_manifest() looks the same template up once per dirty
+            # candidate - hundreds of identical stats for one file. The request
+            # cache is a plain dict bound once by request_scope(), so the fan-out
+            # threadpool's per-item Context copies all mutate the same object.
+            freshness = get_freshness_cache()
+            if freshness.get(name):
+                return True
             # Matches FileSystemLoader's cache-invalidation contract: a deleted
             # or touched file must invalidate, so the missing case is stale
-            # rather than an exception escaping Jinja's cache check.
+            # rather than an exception escaping Jinja's cache check. Only the
+            # confirmed-fresh answer is worth remembering; a stale one has to be
+            # re-asked, since the reload it triggers changes the answer.
             try:
-                return path.stat().st_mtime == mtime
+                fresh = path.stat().st_mtime == mtime
             except OSError:
                 return False
+            if fresh:
+                freshness[name] = True
+            return fresh
 
-        return source, str(path), uptodate
+        return source, name, uptodate
 
 
 def _build_environment(

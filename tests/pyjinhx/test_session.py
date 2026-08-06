@@ -826,3 +826,34 @@ def test_nested_scope_restores_the_outer_freshness_cache():
         assert session_module.get_freshness_cache() == {"/tmp/outer.html": True}
 
     assert session_module.get_freshness_cache() == {}
+
+
+def test_uptodate_records_and_then_short_circuits_within_one_request():
+    """The freshness closure confirms a path once per request, then answers from
+    the cache: this is the memoization walk_manifest's repeat lookups ride on."""
+    template_path = _TEMPLATE_DIR / "plain_div.html"
+    loader = session_module.AbsolutePathLoader()
+    env = session_module.Environment(loader=loader)
+
+    with session_module.request_scope():
+        _source, filename, uptodate = loader.get_source(env, str(template_path))
+        assert session_module.get_freshness_cache() == {}
+
+        assert uptodate() is True
+        assert session_module.get_freshness_cache() == {filename: True}
+
+        # Second call must not consult the filesystem at all: a stat() that would
+        # raise proves the answer came from the request cache.
+        def _boom(*_args: object, **_kwargs: object) -> None:
+            raise AssertionError("uptodate() re-stat'ed a confirmed-fresh path")
+
+        original_stat = Path.stat
+        Path.stat = _boom  # type: ignore[method-assign]
+        try:
+            assert uptodate() is True
+        finally:
+            Path.stat = original_stat  # type: ignore[method-assign]
+
+    # A new request starts cold, so a mid-request edit is seen on the next one.
+    with session_module.request_scope():
+        assert session_module.get_freshness_cache() == {}
