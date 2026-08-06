@@ -85,7 +85,9 @@ def test_align_end_with_no_overflow_right_aligns_the_panel(position):
 
 
 def test_start_align_overflowing_the_right_edge_flips_to_end(position):
-    result = position(**_opts(trigger={"top": 100, "left": 850, "width": 100, "height": 30}))
+    result = position(
+        **_opts(trigger={"top": 100, "left": 850, "width": 100, "height": 30})
+    )
     assert result["align"] == "end"
     assert result["left"] == -100
     assert result["adjusted"] is True
@@ -93,7 +95,9 @@ def test_start_align_overflowing_the_right_edge_flips_to_end(position):
 
 def test_end_align_overflowing_the_left_edge_flips_to_start(position):
     result = position(
-        **_opts(align="end", trigger={"top": 100, "left": 20, "width": 100, "height": 30})
+        **_opts(
+            align="end", trigger={"top": 100, "left": 20, "width": 100, "height": 30}
+        )
     )
     assert result["align"] == "start"
     assert result["left"] == 0
@@ -101,7 +105,9 @@ def test_end_align_overflowing_the_left_edge_flips_to_start(position):
 
 
 def test_overflowing_the_bottom_flips_above_the_trigger(position):
-    result = position(**_opts(trigger={"top": 700, "left": 100, "width": 100, "height": 30}))
+    result = position(
+        **_opts(trigger={"top": 700, "left": 100, "width": 100, "height": 30})
+    )
     assert result["placement"] == "above"
     # Panel bottom sits one gap above the trigger top: -(150 + 4).
     assert result["top"] == -154
@@ -146,3 +152,41 @@ def test_viewport_shorter_than_the_panel_clamps_to_the_top_padding(position):
     )
     assert result["top"] == 8 - 60
     assert result["adjusted"] is True
+
+
+def test_the_source_never_reads_or_writes_the_dom(position):
+    source = SOURCE.read_text()
+    for forbidden in (
+        "getBoundingClientRect",
+        "document.",
+        "window.innerWidth",
+        ".style",
+    ):
+        assert forbidden not in source
+
+
+def test_calling_it_does_not_mutate_the_options_object(position, page):
+    page.evaluate(
+        "window.__opts = {"
+        "  trigger: { top: 700, left: 850, width: 100, height: 30 },"
+        "  panel: { width: 200, height: 150 },"
+        "  viewport: { width: 1000, height: 800 },"
+        "  align: 'start'"
+        "};"
+        "window.__before = JSON.stringify(window.__opts);"
+        "pjx.popoverPosition(window.__opts);"
+    )
+    assert page.evaluate("JSON.stringify(window.__opts) === window.__before") is True
+
+
+def test_a_custom_gap_and_padding_are_honoured(position):
+    assert position(**_opts(gap=10))["top"] == 40
+    result = position(
+        **_opts(
+            trigger={"top": 100, "left": 40, "width": 100, "height": 30},
+            panel={"width": 300, "height": 150},
+            viewport={"width": 200, "height": 800},
+            padding=0,
+        )
+    )
+    assert result["left"] == -40

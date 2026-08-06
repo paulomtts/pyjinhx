@@ -1,10 +1,25 @@
 (function () {
+    // Pure geometry, deliberately DOM-free: callers measure and apply, this
+    // only resolves numbers, so a dropdown with its own rect source (or a
+    // unit test with synthetic rects) can reuse it unchanged.
     window.pjx = window.pjx || {};
 
     function clamp(value, min, max) {
         return Math.max(min, Math.min(value, max));
     }
 
+    /**
+     * Resolve where a floating panel goes relative to its trigger's top-left corner.
+     *
+     * Returns { align, placement, left, top, adjusted }. `left`/`top` are px
+     * offsets from the trigger's top-left; with no overflow they reproduce the
+     * static CSS default exactly and `adjusted` is false, so a caller may skip
+     * writing inline styles altogether.
+     *
+     * This file is not shipped by the asset walk — only the stem-matched
+     * pjx_popover.js is co-located with PJXPopover — so whoever wires the
+     * primitive into the popover controller also arranges its delivery.
+     */
     function popoverPosition(options) {
         const trigger = options.trigger;
         const panel = options.panel;
