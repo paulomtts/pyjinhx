@@ -136,9 +136,15 @@
             viewport: { width: window.innerWidth, height: window.innerHeight },
             align: alignOf(root),
         });
-        // Nothing to write when the primitive lands on the static CSS default —
-        // an untouched panel keeps the stylesheet in charge, and its rendered
-        // markup stays byte-identical to a popover that never needed flipping.
+        // A prior open may have left inline left/top/right on this panel (it
+        // was adjusted then). Drop the whole style attribute so a since-fixed
+        // layout falls back to the CSS default instead of keeping stale
+        // coordinates around.
+        panel.removeAttribute('style');
+        // Nothing further to write when the primitive lands on the static CSS
+        // default — an untouched panel keeps the stylesheet in charge, and its
+        // rendered markup stays byte-identical to a popover that never needed
+        // flipping.
         if (result.adjusted !== true) return;
         panel.style.left = result.left + 'px';
         panel.style.top = result.top + 'px';
@@ -170,6 +176,9 @@
         const detail = { reason: reason || 'api', trigger: trigger || null };
         if (!fire(target, 'pjx:popover:before-close', detail, true)) return false;
         panel.hidden = true;
+        // Drop any inline position left by open() so a closed panel never
+        // carries stale coordinates that outlive the layout that produced them.
+        panel.removeAttribute('style');
         const t = trigger || triggerFor(panel);
         if (t) t.setAttribute('aria-expanded', 'false');
         fire(target, 'pjx:popover:close', detail);
