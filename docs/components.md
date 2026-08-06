@@ -1832,6 +1832,70 @@ Floating panel for a `PJXPopover`. **Assets:** bundled in `pjx_popover.css`.
     PJXPopoverPanel(id="p", role="menu", content="…")
     ```
 
+### PJXSelect
+
+A styled replacement for a bare `<select>`, single-choice or multi. A hidden native `<select>` carries the same options, so a plain form submit still posts a value without JS. **Assets:** `pjx_select.css`, `pjx_select.js`.
+
+<!-- demo: PJXSelect -->
+
+```html
+<PJXSelect name="fruit" ... />
+```
+
+??? note "Props & API"
+
+    | Field | Type | Default | Description |
+    | --- | --- | --- | --- |
+    | `name` | `str` | — | Required. Form field name, on both the root (`data-name`) and the native `<select>`. |
+    | `options` | `list[SelectOption]` | — | Required. Each `SelectOption` has `value` and `label`. Plain dicts are coerced. |
+    | `value` | `str \| list[str] \| None` | `None` | Current selection. Must be a list when `multiple=True`, a str otherwise; a value matching no option renders unselected. |
+    | `multiple` | `bool` | `False` | Multi-select: checkbox per row, chip summary on the trigger. |
+    | `placeholder` | `str` | `"Select…"` | Trigger text when nothing is selected. |
+    | `disabled` | `bool` | `False` | Marks the root, the trigger, the native `<select>`, and the filter input. |
+    | `class_name` | `AttrValue` | `""` | Appended to the root's classes. |
+
+    Panels with more than 8 options render a search input above the list; shorter lists render without one. The input is UI-only — it hides option buttons and never posts.
+
+??? note "Style tokens"
+
+    | Token | Default |
+    | --- | --- |
+    | `--pjx-select-bg` | `var(--surface, #fff)` |
+    | `--pjx-select-fg` | `var(--text)` |
+    | `--pjx-select-border` | `var(--border)` |
+    | `--pjx-select-focus` | `var(--border-focus, var(--border))` |
+    | `--pjx-select-radius` | `var(--radius-md)` |
+    | `--pjx-select-padding` | `0.375rem 0.5rem` |
+    | `--pjx-select-panel-bg` | `var(--surface-alt)` |
+    | `--pjx-select-panel-shadow` | `var(--shadow-md)` |
+    | `--pjx-select-panel-min-w` | `12rem` |
+    | `--pjx-select-panel-max-h` | `16rem` |
+    | `--pjx-select-panel-z` | `300` |
+    | `--pjx-select-option-hover` | `var(--surface-hover, var(--surface-alt))` |
+    | `--pjx-select-option-active` | `var(--accent-soft, var(--surface-alt))` |
+
+??? note "DOM & classes"
+
+    Root `[data-pjx-select]`, carrying `data-name`, plus `data-multiple` and `data-placeholder` in multi mode and `data-disabled` when disabled. Trigger: `[data-pjx-select-trigger]` with `aria-haspopup="listbox"` and `aria-expanded` synced by JS. Panel: `[data-pjx-select-panel]` with `role="listbox"`, `hidden` when closed; the JS writes inline `left`/`top` only when the panel would otherwise overflow the viewport (flip/clamp), and removes them on close. Options: `[data-pjx-select-option]` with `data-value`, `role="option"`, and `aria-selected` as the selection state. Filter: `[data-pjx-select-filter]`, presentation-only — it hides option buttons and never changes selection. A hidden native `<select name="…">` inside the root is the form's source of truth and is re-derived from the option buttons on every change; without JS it submits on its own.
+
+    Keyboard: ArrowDown/ArrowUp/Home/End move focus among options (wrapping); ArrowDown/ArrowUp/Enter/Space on the trigger open the panel and focus an edge option; type-ahead jumps to the next option whose label starts with the typed prefix (case-insensitive, buffer resets after a pause); Enter/Space selects and closes in single mode, toggles and stays open in multi mode; Escape closes and returns focus to the trigger from anywhere inside the root, including the filter input.
+
+    **Classes:** `pjx-select`, `pjx-select__trigger`, `pjx-select__label`, `pjx-select__chips`, `pjx-select__panel`, `pjx-select__filter`, `pjx-select__option`, `pjx-select__checkbox`. Chips reuse `pjx-chip-input__chip` / `pjx-chip-input__label`.
+
+??? note "Python"
+
+    ```python
+    PJXSelect(
+        name="fruit",
+        options=[
+            SelectOption(value="a", label="Apple"),
+            SelectOption(value="b", label="Banana"),
+        ],
+        value=["a", "b"],
+        multiple=True,
+    )
+    ```
+
 ## Interaction & loading
 
 ### PJXDropdown

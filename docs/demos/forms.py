@@ -2,6 +2,7 @@ from pyjinhx.builtins.ui.pjx_chip_input import PJXChipInput
 from pyjinhx.builtins.ui.pjx_form_field import PJXFormField
 from pyjinhx.builtins.ui.pjx_password_input import PJXPasswordInput
 from pyjinhx.builtins.ui.pjx_segmented_control import PJXSegmentedControl
+from pyjinhx.builtins.ui.pjx_select import PJXSelect, SelectOption
 from pyjinhx.builtins.ui.pjx_toggle_switch import PJXToggleSwitch
 
 
@@ -46,10 +47,23 @@ def password_input():
     ).render()
 
 
+def select():
+    return PJXSelect(
+        name="fruit",
+        options=[
+            SelectOption(value="a", label="Apple"),
+            SelectOption(value="b", label="Banana"),
+            SelectOption(value="c", label="Cherry"),
+        ],
+        value="b",
+    ).render()
+
+
 DEMOS = {
     "PJXChipInput": (chip_input, 160),
     "PJXFormField": (form_field, 200),
     "PJXToggleSwitch": (toggle_switch, 120),
     "PJXSegmentedControl": (segmented_control, 120),
     "PJXPasswordInput": (password_input, 140),
+    "PJXSelect": (select, 200),
 }
