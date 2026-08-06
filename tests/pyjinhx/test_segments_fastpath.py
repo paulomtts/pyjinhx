@@ -58,3 +58,22 @@ def test_fast_path_matches_slow_path(chunks: list[str]) -> None:
 def test_tag_free_chunk_is_one_data_segment() -> None:
     segments = assert_identical_parse(["no markup here"])
     assert segments == ["no markup here"]
+
+
+def test_component_tag_split_across_two_feeds() -> None:
+    segments = assert_identical_parse(["prefix <PJXBut", 'ton kind="a"/> suffix'])
+    refs = [seg for seg in segments if isinstance(seg, ChildRef)]
+    assert len(refs) == 1
+    assert refs[0].tag == "PJXButton"
+    assert refs[0].attrs == {"kind": "a"}
+    assert refs[0].inner is None
+
+
+def test_entity_and_char_refs_stay_separate_segments() -> None:
+    segments = assert_identical_parse(["a &amp; b &#38; c"])
+    assert segments == ["a ", "&amp;", " b ", "&#38;", " c"]
+
+
+def test_literal_less_than_that_is_not_a_tag() -> None:
+    assert_identical_parse(["3 < 5 and 5 > 3"])
+    assert_identical_parse(["cost < ", "10 dollars"])
