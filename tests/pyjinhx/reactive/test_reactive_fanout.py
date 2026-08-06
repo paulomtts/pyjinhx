@@ -22,6 +22,7 @@ from pyjinhx.reactive.fanout import (
     oob_swaps,
     walk_manifest,
 )
+from pyjinhx.reactive.load_cost import note_load_cost
 from pyjinhx.segments import ChildRef, RenderedLevel
 from pyjinhx.session import (
     RenderSession,
@@ -56,6 +57,18 @@ class FanoutWidget(ReactiveComponent, react=("todos",)):
 
 class QuietWidget(ReactiveComponent, react=("other",)):
     """A reactive component that no test's dirtied keys ever touch."""
+
+
+class LoudWidget(ReactiveComponent, react=("todos",)):
+    """A reactive component that reacts to the same keys as FanoutWidget but is
+    never measured, so a pass mixing it with a too-cheap class must still thread."""
+
+    pjx_key: Annotated[str, PjxKey()] = ""
+    data: str = ""
+
+    @classmethod
+    def load(cls, pjx_key: str) -> "LoudWidget":
+        return cls(pjx_key=pjx_key, data=f"data:{pjx_key}")
 
 
 class PlainWidget(BaseComponent):
@@ -108,8 +121,10 @@ def _clean_registries(tmp_path, monkeypatch):
     quiet_path.write_text("<div>quiet</div>")
     plain_path = tmp_path / "plain_widget.pjx"
     plain_path.write_text("<div>plain</div>")
+    loud_path = tmp_path / "loud_widget.pjx"
+    loud_path.write_text("<div>{{ pjx_key }}</div>")
     discovery.build_registry(
-        tmp_path, [FanoutWidget, QuietWidget, PlainWidget, SpyWidget]
+        tmp_path, [FanoutWidget, QuietWidget, PlainWidget, SpyWidget, LoudWidget]
     )
     # `_resolve_template_path` walks the class's *defining module's* directory
     # (this test file's dir), not `template_dir` passed to `build_registry` —
@@ -129,6 +144,9 @@ def _clean_registries(tmp_path, monkeypatch):
     )
     SpyWidget.__pjx_descriptor__ = dataclasses.replace(
         SpyWidget.__pjx_descriptor__, template_path=spy_path
+    )
+    LoudWidget.__pjx_descriptor__ = dataclasses.replace(
+        LoudWidget.__pjx_descriptor__, template_path=loud_path
     )
     yield
 
@@ -1286,6 +1304,100 @@ def test_a_raising_future_abandons_the_whole_pass():
     # And the pass yields no value at all — there is no partial mapping to
     # inspect, by design.
     assert caught.value.args == ("boom:boom",)
+
+
+def test_build_pass_skips_the_pool_when_every_class_measured_too_cheap():
+    """A pass whose classes all load cheaply builds inline, with no pool at all."""
+    note_load_cost(FanoutWidget, 0.0)
+    manifest = [
+        entry("fanout_widget", "a", load="a"),
+        entry("fanout_widget", "b", load="b"),
+    ]
+    built_on: list[str] = []
+
+    def recording_load(cls, pjx_key: str):
+        built_on.append(threading.current_thread().name)
+        return cls(pjx_key=pjx_key, data=f"data:{pjx_key}")
+
+    def no_pool(*args, **kwargs):
+        raise AssertionError("the too-cheap path must not build a ThreadPoolExecutor")
+
+    with request_scope() as session, pytest.MonkeyPatch.context() as patch:
+        patch.setattr(FanoutWidget, "load", classmethod(recording_load))
+        patch.setattr(fanout, "ThreadPoolExecutor", no_pool)
+        items = fanout._filter_pass(manifest, {"todos"}, set())
+        built = fanout._build_pass(items, session)
+
+    assert sorted(built) == [0, 1]
+    assert all(result.missing is False for result in built.values())
+    assert all(result.instance is not None for result in built.values())
+    assert built_on == [threading.current_thread().name] * 2
+
+
+def test_build_pass_threads_a_class_nobody_measured():
+    """An unmeasured class keeps the pool: the verdict is earned, never assumed."""
+    manifest = [entry("fanout_widget", "a", load="a")]
+    pools: list[int] = []
+    real_pool = fanout.ThreadPoolExecutor
+
+    def counting_pool(*args, **kwargs):
+        pools.append(1)
+        return real_pool(*args, **kwargs)
+
+    with request_scope() as session, pytest.MonkeyPatch.context() as patch:
+        patch.setattr(fanout, "ThreadPoolExecutor", counting_pool)
+        items = fanout._filter_pass(manifest, {"todos"}, set())
+        built = fanout._build_pass(items, session)
+
+    assert pools == [1]
+    assert sorted(built) == [0]
+    assert built[0].missing is False
+
+
+def test_build_pass_threads_when_only_some_classes_are_too_cheap():
+    """One costly class in the pass is enough to keep every item on the pool."""
+    note_load_cost(FanoutWidget, 0.0)
+    manifest = [
+        entry("fanout_widget", "a", load="a"),
+        entry("loud_widget", "q", load="q"),
+    ]
+    pools: list[int] = []
+    real_pool = fanout.ThreadPoolExecutor
+
+    def counting_pool(*args, **kwargs):
+        pools.append(1)
+        return real_pool(*args, **kwargs)
+
+    with request_scope() as session, pytest.MonkeyPatch.context() as patch:
+        patch.setattr(fanout, "ThreadPoolExecutor", counting_pool)
+        items = fanout._filter_pass(manifest, {"todos"}, set())
+        built = fanout._build_pass(items, session)
+
+    assert pools == [1]
+    assert sorted(built) == [0, 1]
+    assert all(result.missing is False for result in built.values())
+
+
+def test_build_pass_sequential_path_still_proves_absence():
+    """A LookupError on the inline path lands as a missing result, not an escape."""
+    note_load_cost(FanoutWidget, 0.0)
+    GONE_KEYS.add("gone")
+    manifest = [
+        entry("fanout_widget", "a", load="a"),
+        entry("fanout_widget", "bad", load="gone"),
+    ]
+
+    def no_pool(*args, **kwargs):
+        raise AssertionError("the too-cheap path must not build a ThreadPoolExecutor")
+
+    with request_scope() as session, pytest.MonkeyPatch.context() as patch:
+        patch.setattr(fanout, "ThreadPoolExecutor", no_pool)
+        items = fanout._filter_pass(manifest, {"todos"}, set())
+        built = fanout._build_pass(items, session)
+
+    assert built[0].missing is False
+    assert built[1].missing is True
+    assert built[1].instance is None and built[1].level is None
 
 
 def test_module_never_registers_instances():

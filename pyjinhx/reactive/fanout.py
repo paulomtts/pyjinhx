@@ -35,7 +35,7 @@ from pyjinhx import discovery, registry
 from pyjinhx.reactive.cache import cache_get, cache_has
 from pyjinhx.reactive.component import ReactiveComponent, coerce_load_arg
 from pyjinhx.reactive.keys import coerce_load_key_str
-from pyjinhx.reactive.load_cost import note_load_cost
+from pyjinhx.reactive.load_cost import is_too_cheap_to_thread, note_load_cost
 from pyjinhx.rendering import render_level
 from pyjinhx.root_attrs import stamp_root_attrs
 from pyjinhx.segments import ChildRef, RenderedLevel, serialize
@@ -477,10 +477,22 @@ def _build_pass(
     shared one would raise "cannot enter context: ... is already entered". Each
     copy is taken here, on the submitting thread — taking it inside a worker
     would copy the worker's empty context instead of the request's.
+
+    A pass whose every item is a class already measured as loading faster than a
+    thread costs runs inline instead, on the calling thread. Handing such a
+    build to the pool spends more on the submit, the context copy and the join
+    than the build itself takes. The verdict is read once, before anything is
+    built, so a class that earns its verdict partway through this very pass does
+    not change where its siblings run — and one unmeasured or costly class is
+    enough to keep the whole pass on the pool, since threading is what an
+    unproven load() still gets. The inline path takes no context copy: it
+    already runs under the request's own ContextVars.
     """
     pending = [item for item in items if not item.clean]
     if not pending:
         return {}
+    if all(is_too_cheap_to_thread(item.component_class) for item in pending):
+        return {item.index: _build_one(item, session) for item in pending}
     with ThreadPoolExecutor(max_workers=min(8, len(pending))) as pool:
         futures = {
             item.index: pool.submit(copy_context().run, _build_one, item, session)
