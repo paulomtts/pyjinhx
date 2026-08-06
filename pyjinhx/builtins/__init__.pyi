@@ -106,6 +106,7 @@ from pyjinhx.builtins.ui.pjx_resizable_panel.pjx_resizable_panel import (
 from pyjinhx.builtins.ui.pjx_segmented_control.pjx_segmented_control import (
     PJXSegmentedControl as PJXSegmentedControl,
 )
+from pyjinhx.builtins.ui.pjx_select.pjx_select import PJXSelect as PJXSelect
 from pyjinhx.builtins.ui.pjx_skeleton.pjx_skeleton import PJXSkeleton as PJXSkeleton
 from pyjinhx.builtins.ui.pjx_spinner.pjx_spinner import PJXSpinner as PJXSpinner
 from pyjinhx.builtins.ui.pjx_tab.pjx_tab import PJXTab as PJXTab
@@ -171,6 +172,7 @@ __all__ = [
     "PJXResizableHandle",
     "PJXResizablePanel",
     "PJXSegmentedControl",
+    "PJXSelect",
     "PJXSkeleton",
     "PJXSpinner",
     "PJXTab",

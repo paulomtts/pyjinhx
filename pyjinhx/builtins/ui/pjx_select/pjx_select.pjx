@@ -1,0 +1,14 @@
+{% set selected = (options | selectattr("value", "equalto", value) | list | first) -%}
+<div id="{{ id }}" class="pjx-select{% if class_name %} {{ class_name }}{% endif %}" data-pjx-select data-name="{{ name }}"{% if disabled %} data-disabled{% endif %}>
+  <select name="{{ name }}" hidden{% if disabled %} disabled{% endif %}>
+    {% for option in options %}<option value="{{ option.value }}"{% if option.value == value %} selected{% endif %}>{{ option.label }}</option>
+    {% endfor %}
+  </select>
+  <button type="button" class="pjx-select__trigger" data-pjx-select-trigger aria-haspopup="listbox" aria-expanded="false"{% if disabled %} disabled{% endif %}>
+    <span class="pjx-select__label">{{ selected.label if selected else placeholder }}</span>
+  </button>
+  <div class="pjx-select__panel" data-pjx-select-panel hidden role="listbox">
+    {% for option in options %}<button type="button" class="pjx-select__option" data-pjx-select-option data-value="{{ option.value }}" aria-selected="{{ 'true' if option.value == value else 'false' }}" role="option">{{ option.label }}</button>
+    {% endfor %}
+  </div>
+</div>
