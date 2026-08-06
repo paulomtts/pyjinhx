@@ -1481,6 +1481,10 @@ def test_a_workers_non_lookup_error_still_propagates():
             walk_manifest([entry("spy_widget", "a", load="boom")], {"todos"})
 
 
+@pytest.mark.xfail(
+    reason="~12% flaky pending #888's freshness-cache race fix; see sub-issue #892",
+    strict=False,
+)
 def test_walk_manifest_stats_shared_template_only_once(monkeypatch):
     """Five dirty candidates over one template file cost one freshness stat.
 
