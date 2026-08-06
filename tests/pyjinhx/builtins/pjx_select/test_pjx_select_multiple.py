@@ -153,3 +153,40 @@ class TestStylesheet:
         assert ".pjx-select__checkbox" in css
         assert "var(--pjx-chip-input-gap)" in css
         assert "--pjx-select-chip-" not in css
+
+
+class TestController:
+    """The controller is asserted structurally — there is no JS runtime in this suite.
+
+    These checks pin the contract the markup and the script share (hook names,
+    escaping discipline) so a rename on either side fails loudly.
+    """
+
+    @staticmethod
+    def _js() -> str:
+        from pathlib import Path
+
+        return (
+            Path(__file__).resolve().parents[4]
+            / "pyjinhx"
+            / "builtins"
+            / "ui"
+            / "pjx_select"
+            / "pjx_select.js"
+        ).read_text()
+
+    def test_controller_branches_on_the_multiple_hook(self):
+        js = self._js()
+        assert "data-multiple" in js
+        assert "data-placeholder" in js
+
+    def test_controller_builds_chips_without_innerhtml(self):
+        js = self._js()
+        assert "pjx-chip-input__chip" in js
+        assert "pjx-chip-input__label" in js
+        assert "innerHTML =" not in js
+
+    def test_controller_keeps_no_search_or_keyboard_handling(self):
+        js = self._js()
+        assert "keydown" not in js
+        assert 'type="search"' not in js
