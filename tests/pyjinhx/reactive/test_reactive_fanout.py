@@ -1,6 +1,7 @@
 """Unit tests for the manifest walk: filter, dedup, and clean/dirty resolution."""
 
 import dataclasses
+import pathlib
 import re
 from typing import Annotated, cast
 
@@ -1136,3 +1137,32 @@ def test_build_pass_results_are_keyed_by_manifest_index():
     assert results[1].instance is not None and results[1].level is not None
     assert results[2].missing is True
     assert results[2].instance is None and results[2].level is None
+
+
+def test_reduce_pass_restores_manifest_order():
+    """Candidates come back in work-item order, whatever order builds finished in."""
+    manifest = [
+        _entry("a", "fanout_widget", "a"),
+        _entry("b", "fanout_widget", "b"),
+    ]
+    with request_scope() as session:
+        items = fanout._filter_pass(manifest, {"todos"}, set())
+        built = fanout._build_pass(items, session)
+        # Rebuild the mapping back-to-front: the reduce pass must key off the
+        # work items, never off insertion order of the results dict.
+        shuffled = {index: built[index] for index in sorted(built, reverse=True)}
+        candidates = fanout._reduce_pass(items, shuffled)
+
+    assert [c.instance_id for c in candidates] == ["a", "b"]
+    assert [c.status for c in candidates] == ["dirty", "dirty"]
+
+
+def test_module_never_registers_instances():
+    """Fan-out stays read-only against the instance registry (ADR 0009 E7).
+
+    The module's own docstrings talk *about* ``register_instance`` while
+    explaining they never call it, so a bare substring check would trip on
+    its own prose. Looking for the call shape is what actually proves it.
+    """
+    source = pathlib.Path(fanout.__file__).read_text()
+    assert "register_instance(" not in source

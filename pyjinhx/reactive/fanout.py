@@ -469,54 +469,15 @@ def _build_pass(
         return {index: future.result() for index, future in futures.items()}
 
 
-def walk_manifest(
-    manifest_entries: Sequence[dict[str, Any]],
-    dirtied_keys: Iterable[str],
-    session: RenderSession | None = None,
-    primary_html: object = None,
+def _reduce_pass(
+    items: list[_WorkItem], built: dict[int, _BuildResult]
 ) -> list[FanoutCandidate]:
-    """The candidates this request's dirtied keys make out of a mounted manifest.
+    """The surviving candidates, in manifest order, with the late drops applied.
 
-    Args:
-        manifest_entries: ``MountedManifest.parse()`` output — dicts shaped
-            ``{id, type, load, hash}``, where ``type`` is a snake_case tag name.
-        dirtied_keys: This request's normalized dirtied reactive keys.
-        session: the RenderSession a dirty candidate's re-render runs against;
-            a fresh one is built per call when omitted.
-        primary_html: this request's already-serialized primary response, when
-            there is one. Every region it already contains is excluded from the
-            fan-out — otherwise that region swaps twice, once as primary content
-            and once OOB (the T2 ordering fact). Omitted or None means no
-            exclusion, so a caller with no primary body is unaffected.
-
-    Returns:
-        One FanoutCandidate per surviving, deduped entry, in manifest order.
-        An entry naming an unknown tag, or a class no dirtied key touches, is
-        dropped silently — it is not this request's concern. A candidate's
-        ``status`` is one of ``"clean"``, ``"dirty"``, or ``"missing"``.
-        A dirty entry whose freshly rendered state hash equals the hash the
-        client reported is dropped too: the region changed keys but not output.
-        A candidate whose region is structurally nested inside another
-        survivor's region is dropped: the parent's swap already carries it, and
-        so is one whose id the primary response already carries.
-        A dirtied key of the form ``"todos:2"`` (``reactive_key()``) narrows to
-        the one entry whose own load key is ``"2"``; the bare ``"todos"`` still
-        matches every mounted instance of the class.
-
-    Turning a ``"missing"`` candidate into a delete swap is ``delete_swap()``
-    below; assembling those fragments with the real swaps into one response
-    body is ``oob_swaps()``, and is deliberately not done here.
+    Walking the work items rather than the results dict is what keeps the
+    output in manifest order regardless of which build finished first, and it
+    is what ``_drop_nested``'s containment logic depends on.
     """
-    dirty = set(dirtied_keys)
-    excluded = _mounted_ids_in(primary_html)
-    items = _filter_pass(manifest_entries, dirty, excluded)
-    # A bare `RenderSession()` installs an AbsolutePathLoader, losing any
-    # template roots the caller's real session was configured with. Fall back
-    # to the active request_scope()'s session before ever constructing a fresh
-    # one, so a caller inside a request never has its dirty-path render
-    # silently point at the wrong template dir.
-    render_session = session or current_session() or RenderSession()
-    built = _build_pass(items, render_session)
     candidates: list[FanoutCandidate] = []
     for item in items:
         if item.clean:
@@ -562,6 +523,62 @@ def walk_manifest(
             )
         )
     return _drop_nested(candidates)
+
+
+def walk_manifest(
+    manifest_entries: Sequence[dict[str, Any]],
+    dirtied_keys: Iterable[str],
+    session: RenderSession | None = None,
+    primary_html: object = None,
+) -> list[FanoutCandidate]:
+    """The candidates this request's dirtied keys make out of a mounted manifest.
+
+    Args:
+        manifest_entries: ``MountedManifest.parse()`` output — dicts shaped
+            ``{id, type, load, hash}``, where ``type`` is a snake_case tag name.
+        dirtied_keys: This request's normalized dirtied reactive keys.
+        session: the RenderSession a dirty candidate's re-render runs against;
+            a fresh one is built per call when omitted.
+        primary_html: this request's already-serialized primary response, when
+            there is one. Every region it already contains is excluded from the
+            fan-out — otherwise that region swaps twice, once as primary content
+            and once OOB (the T2 ordering fact). Omitted or None means no
+            exclusion, so a caller with no primary body is unaffected.
+
+    Returns:
+        One FanoutCandidate per surviving, deduped entry, in manifest order.
+        An entry naming an unknown tag, or a class no dirtied key touches, is
+        dropped silently — it is not this request's concern. A candidate's
+        ``status`` is one of ``"clean"``, ``"dirty"``, or ``"missing"``.
+        A dirty entry whose freshly rendered state hash equals the hash the
+        client reported is dropped too: the region changed keys but not output.
+        A candidate whose region is structurally nested inside another
+        survivor's region is dropped: the parent's swap already carries it, and
+        so is one whose id the primary response already carries.
+        A dirtied key of the form ``"todos:2"`` (``reactive_key()``) narrows to
+        the one entry whose own load key is ``"2"``; the bare ``"todos"`` still
+        matches every mounted instance of the class.
+
+    Turning a ``"missing"`` candidate into a delete swap is ``delete_swap()``
+    below; assembling those fragments with the real swaps into one response
+    body is ``oob_swaps()``, and is deliberately not done here.
+
+    Three passes, not one loop. The filter pass runs every cheap check and
+    finishes its dedup before anything is built; the build pass runs the loads
+    and renders on a threadpool, since ``load()`` is sync and this walk stays a
+    plain sync call; the reduce pass hash-gates, maps a failed load to
+    "missing", and reassembles by manifest position.
+    """
+    items = _filter_pass(
+        manifest_entries, set(dirtied_keys), _mounted_ids_in(primary_html)
+    )
+    # A bare `RenderSession()` installs an AbsolutePathLoader, losing any
+    # template roots the caller's real session was configured with. Fall back
+    # to the active request_scope()'s session before ever constructing a fresh
+    # one, so a caller inside a request never has its dirty-path render
+    # silently point at the wrong template dir.
+    render_session = session or current_session() or RenderSession()
+    return _reduce_pass(items, _build_pass(items, render_session))
 
 
 def _css_attr_value(value: str) -> str:
