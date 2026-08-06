@@ -1,7 +1,7 @@
 """The FastAPI adapter: request scope, header parsing, T1/T2 response adaptation."""
 
 from pathlib import Path
-from typing import cast
+from typing import TYPE_CHECKING, cast
 
 from fastapi import FastAPI, Request
 from fastapi.testclient import TestClient
@@ -18,6 +18,9 @@ from pyjinhx.config import PjxSettings
 from pyjinhx.descriptor import ClassDescriptor
 from pyjinhx.integrations.fastapi import apply_setup
 from pyjinhx.session import request_scope
+
+if TYPE_CHECKING:
+    from starlette.routing import BaseRoute
 
 
 class Greeting(BaseComponent):
@@ -578,3 +581,130 @@ def test_middleware_sessions_share_the_cached_environment():
         expected = _environment_for(current_settings())
 
     assert seen == [expected, expected]
+
+
+class _FakeRouter:
+    """Stands in for the ``.original_router`` of fastapi's _IncludedRouter."""
+
+    def __init__(self, routes):
+        self.routes = routes
+
+
+class _FakeIncludedRoute:
+    """Duck-typed stand-in for fastapi>=0.137's routing._IncludedRouter."""
+
+    def __init__(self, routes):
+        self.original_router = _FakeRouter(routes)
+
+
+def _real_api_route(path: str = "/deep"):
+    from fastapi.routing import APIRoute
+
+    def handler() -> str:
+        return "hello"
+
+    return APIRoute(path, handler)
+
+
+def test_included_router_routes_are_adapted_one_level_deep():
+    app = FastAPI()
+    inner = _real_api_route()
+    original_call = inner.dependant.call
+    app.router.routes.append(cast("BaseRoute", _FakeIncludedRoute([inner])))
+
+    apply_setup(app, _settings())
+
+    assert inner.dependant.call is not original_call
+
+
+def test_included_router_routes_are_adapted_two_levels_deep():
+    app = FastAPI()
+    inner = _real_api_route("/deeper")
+    original_call = inner.dependant.call
+    app.router.routes.append(
+        cast("BaseRoute", _FakeIncludedRoute([_FakeIncludedRoute([inner])]))
+    )
+
+    apply_setup(app, _settings())
+
+    assert inner.dependant.call is not original_call
+
+
+def test_nested_route_without_a_dependant_call_is_left_alone():
+    app = FastAPI()
+    inner = _real_api_route("/unguarded")
+    inner.dependant.call = None
+    app.router.routes.append(cast("BaseRoute", _FakeIncludedRoute([inner])))
+
+    apply_setup(app, _settings())
+
+    assert inner.dependant.call is None
+
+
+def test_unknown_route_shapes_in_the_tree_are_skipped():
+    from starlette.routing import Route, WebSocketRoute
+
+    async def endpoint(websocket):  # pragma: no cover - never called
+        raise AssertionError
+
+    app = FastAPI()
+    inner = _real_api_route("/mixed")
+    original_call = inner.dependant.call
+    app.router.routes.append(
+        cast(
+            "BaseRoute",
+            _FakeIncludedRoute(
+                [
+                    Route("/plain", lambda request: PlainTextResponse("x")),
+                    WebSocketRoute("/ws", endpoint),
+                    _FakeIncludedRoute([]),
+                    inner,
+                ]
+            ),
+        )
+    )
+
+    apply_setup(app, _settings())
+
+    assert inner.dependant.call is not original_call
+
+
+def test_include_router_after_setup_is_adapted():
+    from fastapi import APIRouter
+
+    app = FastAPI()
+    apply_setup(app, _settings())
+
+    sub = APIRouter()
+
+    @sub.get("/sub-after")
+    def sub_after() -> Greeting:
+        return Greeting(name="after")
+
+    app.include_router(sub)
+
+    with TestClient(app) as client:
+        response = client.get("/sub-after")
+
+    assert response.status_code == 200
+    assert "after" in response.text
+
+
+def test_include_router_before_setup_is_adapted():
+    from fastapi import APIRouter
+
+    app = FastAPI()
+    sub = APIRouter()
+
+    @sub.get("/sub-before")
+    def sub_before():
+        return Greeting(name="before")
+
+    app.include_router(sub)
+    apply_setup(app, _settings())
+
+    with TestClient(app) as client:
+        response = client.get("/sub-before")
+
+    assert response.status_code == 200
+    assert "before" in response.text
