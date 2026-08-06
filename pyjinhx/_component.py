@@ -308,6 +308,19 @@ def _resolve_slot_fields(cls: type) -> frozenset[str]:
     return frozenset(name for name in fields if _is_slot_field(cls, name))
 
 
+def _resolve_json_coercible_fields(cls: type) -> frozenset[str]:
+    """The declared fields of ``cls`` whose annotation is a JSON-coercion
+    candidate, resolved once per class at registration alongside
+    ``slot_fields`` — see :func:`_is_json_coercible_annotation`.
+    """
+    fields = getattr(cls, "model_fields", {})
+    return frozenset(
+        name
+        for name, field in fields.items()
+        if _is_json_coercible_annotation(field.annotation)
+    )
+
+
 def _resolve_children_field(cls: type) -> str | None:
     """The declared field a PascalCase tag's body content lands on, or ``None``.
 
@@ -433,6 +446,7 @@ def _resolve_class_descriptor(cls: type[BaseModel]) -> ClassDescriptor:
         if owner is not None
     }
     slot_fields = _resolve_slot_fields(cls)
+    json_coercible_fields = _resolve_json_coercible_fields(cls)
     children_field = _resolve_children_field(cls)
     declared_fields = getattr(cls, "model_fields", {})
     # A children_field reached via the override or the flagged-field branch is
@@ -452,6 +466,7 @@ def _resolve_class_descriptor(cls: type[BaseModel]) -> ClassDescriptor:
     return ClassDescriptor(
         template_path=template_path,
         slot_fields=slot_fields,
+        json_coercible_fields=json_coercible_fields,
         children_field=children_field,
         css_paths=() if css_path is None else (css_path,),
         js_paths=() if js_path is None else (js_path,),
@@ -627,14 +642,14 @@ class BaseComponent(BaseModel):
         strict core keeps its promise that undeclared keys are never walked."""
         if not isinstance(data, dict):
             return data
-        for name, field in cls.model_fields.items():
+        for name in cls.model_fields:
             value = data.get(name)
             if not isinstance(value, str):
                 continue
             text = value.strip()
             if not text or text[0] not in "{[":
                 continue
-            if not _is_json_coercible_annotation(field.annotation):
+            if name not in cls.__pjx_descriptor__.json_coercible_fields:
                 continue
             try:
                 data[name] = json.loads(text)

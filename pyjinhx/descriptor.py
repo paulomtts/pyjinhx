@@ -30,3 +30,7 @@ class ClassDescriptor:
     """Whether the resolved template still carries a ``{#def#}`` header this
     class-based component ignores. Answered once, when ``template_path`` is
     resolved, so no render pays for the probe."""
+    json_coercible_fields: frozenset[str] = frozenset()
+    """Declared fields whose annotation makes them JSON-coercion candidates —
+    see :func:`pyjinhx._component._is_json_coercible_annotation`. Resolved
+    once per class at registration, mirroring ``slot_fields``."""

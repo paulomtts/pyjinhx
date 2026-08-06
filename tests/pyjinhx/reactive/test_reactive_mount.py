@@ -14,7 +14,11 @@ import pytest
 from pydantic import Field
 
 from pyjinhx import discovery
-from pyjinhx._component import BaseComponent, _pascal_to_snake
+from pyjinhx._component import (
+    BaseComponent,
+    _pascal_to_snake,
+    _resolve_json_coercible_fields,
+)
 from pyjinhx.descriptor import ClassDescriptor
 from pyjinhx.reactive.component import PjxKey, ReactiveComponent
 from pyjinhx.rendering import render, render_level
@@ -41,6 +45,7 @@ def _descriptor_for(cls: type[BaseComponent], template: str) -> ClassDescriptor:
     return ClassDescriptor(
         template_path=_TEMPLATE_DIR / template,
         slot_fields=frozenset(),
+        json_coercible_fields=_resolve_json_coercible_fields(cls),
         children_field=None,
         css_paths=(),
         js_paths=(),
