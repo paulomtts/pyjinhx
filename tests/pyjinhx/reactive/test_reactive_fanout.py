@@ -995,3 +995,99 @@ def test_a_string_load_arg_reaches_load_as_the_declared_int(tmp_path):
     assert candidate.status == "dirty"
     assert candidate.instance is not None
     assert cast(IntKeyedWidget, candidate.instance).title == "first"
+
+
+def _entry(entry_id: str, type_name: str, load: str | None, hash_value: str | None = None):
+    """One manifest entry shaped the way `MountedManifest.parse()` emits them."""
+    entry: dict[str, object] = {"id": entry_id, "type": type_name, "load": load}
+    if hash_value is not None:
+        entry["hash"] = hash_value
+    return entry
+
+
+def test_walk_manifest_mixed_manifest_parity():
+    """One manifest exercising every drop reason resolves to one ordered survivor list."""
+    GONE_KEYS.add("gone")
+    primary_html = '<div data-pjx-id="in-primary"></div>'
+    manifest = [
+        # Dropped: already carried by the primary response.
+        _entry("in-primary", "fanout_widget", "a"),
+        # Dropped: unknown tag.
+        _entry("unknown", "no_such_widget", "a"),
+        # Dropped: known tag, non-reactive class.
+        _entry("plain", "plain_widget", None),
+        # Dropped: reactive, but no dirtied key names it.
+        _entry("quiet", "quiet_widget", None),
+        # Survives: dirty build.
+        _entry("first", "fanout_widget", "a"),
+        # Dropped: same (type, load key) as "first".
+        _entry("dup", "fanout_widget", "a"),
+        # Survives: missing, load() refuses to build "gone".
+        _entry("missing", "fanout_widget", "gone"),
+        # Survives: dirty build under a different load key.
+        _entry("second", "fanout_widget", "b"),
+    ]
+    with request_scope():
+        candidates = walk_manifest(manifest, ["todos"], primary_html=primary_html)
+
+    assert [(c.instance_id, c.status) for c in candidates] == [
+        ("first", "dirty"),
+        ("missing", "missing"),
+        ("second", "dirty"),
+    ]
+    assert [c.type_name for c in candidates] == ["fanout_widget"] * 3
+    assert [c.load for c in candidates] == ["a", "gone", "b"]
+    assert all(c.component_class is FanoutWidget for c in candidates)
+    assert candidates[0].fresh_hash is not None
+    assert candidates[1].fresh_hash is None
+    assert candidates[1].level is None and candidates[1].instance is None
+    assert candidates[2].fresh_hash is not None
+    # E10: the dedup'd "dup" entry must not have bought a second load().
+    assert sorted(LOAD_CALLS) == ["a", "b", "gone"]
+
+
+def test_walk_manifest_hash_gate_drops_unchanged_region():
+    """A dirty entry whose fresh hash equals the reported one is dropped."""
+    with request_scope():
+        built = walk_manifest([_entry("only", "fanout_widget", "a")], ["todos"])
+    fresh = built[0].fresh_hash
+    assert fresh is not None
+    # A fresh request_scope() so the first call's load cache does not turn
+    # this second call's entry "clean" before the hash gate ever runs.
+    with request_scope():
+        gated = walk_manifest([_entry("only", "fanout_widget", "a", fresh)], ["todos"])
+    assert gated == []
+
+
+def test_walk_manifest_missing_entry_does_not_affect_siblings():
+    """One entry's failed load leaves every sibling's outcome untouched."""
+    GONE_KEYS.add("gone")
+    manifest = [
+        _entry("a", "fanout_widget", "a"),
+        _entry("bad", "fanout_widget", "gone"),
+        _entry("c", "fanout_widget", "c"),
+    ]
+    with request_scope():
+        candidates = walk_manifest(manifest, ["todos"])
+
+    assert [(c.instance_id, c.status) for c in candidates] == [
+        ("a", "dirty"),
+        ("bad", "missing"),
+        ("c", "dirty"),
+    ]
+    assert candidates[0].instance is not None
+    assert candidates[2].instance is not None
+    assert sorted(LOAD_CALLS) == ["a", "c", "gone"]
+
+
+def test_walk_manifest_non_lookup_error_propagates():
+    """A worker's non-LookupError exception reaches the caller unswallowed."""
+
+    def boom(pjx_key: str):
+        raise RuntimeError(f"boom:{pjx_key}")
+
+    with request_scope():
+        with pytest.MonkeyPatch.context() as patch:
+            patch.setattr(FanoutWidget, "load", classmethod(lambda cls, pjx_key: boom(pjx_key)))
+            with pytest.raises(RuntimeError, match="boom:a"):
+                walk_manifest([_entry("a", "fanout_widget", "a")], ["todos"])
