@@ -1166,3 +1166,14 @@ def test_module_never_registers_instances():
     """
     source = pathlib.Path(fanout.__file__).read_text()
     assert "register_instance(" not in source
+
+
+def test_module_does_not_wire_contextvar_propagation():
+    """Fan-out's threadpool must not reach for contextvars.
+
+    ContextVar propagation into workers is #871's problem (see the rebuild
+    plan's Global Constraints); this module submits builds to the pool as
+    plain callables and leaves that wiring to the later subtask.
+    """
+    source = pathlib.Path(fanout.__file__).read_text()
+    assert "copy_context" not in source
