@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.5.1 — Fan-out walk performance (2026-08-06)
+
+Found by profiling `walk_manifest()` at a large, mostly-dirty manifest (`scripts/bench_reactive_fanout.py`'s worst-case shape): ~93% of wall time was Jinja re-verifying template freshness on every single render, and the fan-out build pass always spun up a threadpool even when there was no I/O to overlap.
+
+### Changed
+- `walk_manifest()` no longer re-stats a template file on every render inside one request's fan-out — freshness is checked once per template per request instead of once per `get_template()` call. Hot-reload across requests is unaffected.
+- `_build_pass()` runs a class's dirty candidates inline instead of on a threadpool once that class's `load()` has been measured cheaper than a thread costs (`PJX_FANOUT_THREAD_MIN_US`, floor 200µs, mirrors the render-cache threshold's pattern). Classes with genuinely I/O-bound `load()` keep their existing 2-7.6x threaded win from 1.5.0; the zero-cost case, previously a 0.3-0.4x loss, is now parity.
+
 ## 1.5.0 — PJXSelect, concurrent fan-out, and two bug fixes (2026-08-06)
 
 ### Added
