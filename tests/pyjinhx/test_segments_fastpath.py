@@ -20,14 +20,16 @@ class SlowParser(VerbatimParser):
         HTMLParser.feed(self, data)
 
 
-def parse(parser: VerbatimParser, chunks: list[str]) -> tuple[list[object], object]:
+def parse(
+    parser: VerbatimParser, chunks: list[str]
+) -> tuple[list[str | ChildRef], tuple[int, int] | None]:
     for chunk in chunks:
         parser.feed(chunk)
     parser.close()
     return parser.segments, parser.root_span
 
 
-def assert_identical_parse(chunks: list[str]) -> list[object]:
+def assert_identical_parse(chunks: list[str]) -> list[str | ChildRef]:
     """Fast-path and slow-path parses agree on segments, root_span and round-trip."""
     fast_segments, fast_span = parse(VerbatimParser(), chunks)
     slow_segments, slow_span = parse(SlowParser(), chunks)
