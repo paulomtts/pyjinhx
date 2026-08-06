@@ -3,6 +3,7 @@
 import dataclasses
 import pathlib
 import re
+import sys
 import threading
 import time
 from typing import Annotated, cast
@@ -88,6 +89,15 @@ SEEN_LOAD_CONTEXTS: list[object] = []
 SEEN_THREADS: set[int] = set()
 """The thread each SpyWidget.load() ran on, to prove more than one was used."""
 
+STAT_CALLS: list[str] = []
+"""Template paths the loader's freshness closure actually stat()'ed this walk.
+
+Only stats made from inside `uptodate()` are recorded. `get_source()`'s own
+initial mtime read and `Path.is_file()`'s probe go through the same
+`Path.stat`, and counting those would measure template *loading* rather than
+the per-lookup freshness re-check this test is about.
+"""
+
 
 class SpyWidget(ReactiveComponent, react=("todos",)):
     """A reactive component whose load() records its worker's context view."""
@@ -113,6 +123,7 @@ def _clean_registries(tmp_path, monkeypatch):
     SEEN_SESSIONS.clear()
     SEEN_LOAD_CONTEXTS.clear()
     SEEN_THREADS.clear()
+    STAT_CALLS.clear()
     spy_path = tmp_path / "spy_widget.pjx"
     spy_path.write_text("<div>{{ pjx_key }}</div>")
     fanout_path = tmp_path / "fanout_widget.pjx"
@@ -1468,3 +1479,51 @@ def test_a_workers_non_lookup_error_still_propagates():
         registry.register_instance(SpyWidget.__name__, "a", "resolved-entry")
         with pytest.raises(ValueError, match="loader exploded"):
             walk_manifest([entry("spy_widget", "a", load="boom")], {"todos"})
+
+
+def test_walk_manifest_stats_shared_template_only_once(monkeypatch):
+    """Five dirty candidates over one template file cost one freshness stat.
+
+    Jinja re-asks the loader's `uptodate()` closure on every `get_template()`
+    while auto_reload is on, and a fan-out walk looks the same template up once
+    per dirty candidate. The request-scoped freshness cache is what keeps that
+    from turning into one stat per candidate, including across the build pass's
+    threadpool workers.
+    """
+    shared_template = FanoutWidget.__pjx_descriptor__.template_path
+    assert shared_template is not None
+    # Both classes render the same file, so the walk has one distinct template
+    # path but candidates of two different types resolving to it.
+    SpyWidget.__pjx_descriptor__ = dataclasses.replace(
+        SpyWidget.__pjx_descriptor__, template_path=shared_template
+    )
+
+    original_stat = pathlib.Path.stat
+
+    def counting_stat(self: pathlib.Path, *args: object, **kwargs: object) -> object:
+        # The caller's frame name is what separates the freshness re-check from
+        # every other stat pathlib makes on the way to loading a template.
+        if sys._getframe(1).f_code.co_name == "uptodate":
+            STAT_CALLS.append(str(self))
+        return original_stat(self, *args, **kwargs)
+
+    monkeypatch.setattr(pathlib.Path, "stat", counting_stat)
+
+    manifest = [
+        entry("fanout_widget", "a", load="todo-1"),
+        entry("fanout_widget", "b", load="todo-2"),
+        entry("fanout_widget", "c", load="todo-3"),
+        entry("spy_widget", "d", load="todo-4"),
+        entry("spy_widget", "e", load="todo-5"),
+    ]
+    with scope():
+        candidates = walk_manifest(manifest, {"todos"})
+
+    # Guard against a false pass: the stat count would also be low if the walk
+    # had quietly dropped or deduped candidates before rendering them.
+    assert [c.instance_id for c in candidates] == ["a", "b", "c", "d", "e"]
+    assert sorted(LOAD_CALLS) == ["todo-1", "todo-2", "todo-3"]
+    assert len(SEEN_SESSIONS) == 2
+
+    assert STAT_CALLS == [str(shared_template)]
+    assert len(STAT_CALLS) != len(candidates)
