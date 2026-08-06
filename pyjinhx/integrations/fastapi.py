@@ -301,7 +301,9 @@ def _install_route_adaptation(backend: FastAPIBackend, app: Starlette) -> None:
         for route in routes:
             if isinstance(route, APIRoute):
                 if route.dependant.call is not None:
-                    route.dependant.call = _adapt_endpoint(backend, route.dependant.call)
+                    route.dependant.call = _adapt_endpoint(
+                        backend, route.dependant.call
+                    )
                     route.app = request_response(route.get_route_handler())
                 continue
             # fastapi >= 0.137 keeps included routes under a sentinel route
