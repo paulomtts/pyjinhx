@@ -55,6 +55,10 @@ class Slotted(BaseComponent):
     body: Slot = ""
 
 
+class CachedListHolder(BaseComponent):
+    data: list[str] = Field(default_factory=list)
+
+
 class StrictStructural(BaseComponent):
     auto_id = False
     sources: list = Field(default_factory=list)
@@ -293,6 +297,19 @@ class TestJsonCoercion:
             Structural(**{field_name: 123})  # pyright: ignore[reportArgumentType]
         assert [error["type"] for error in excinfo.value.errors()] == [error_type]
         assert "invalid JSON attribute value" not in str(excinfo.value)
+
+
+class TestJsonCoercibleFieldsCache:
+    def test_json_coercion_consistent_across_instances(self):
+        # The coercibility verdict is resolved once per class; repeated
+        # construction must keep producing the same coerced value as a
+        # directly-constructed Python value would.
+        instances = [
+            CachedListHolder(data='["a", "b"]')  # pyright: ignore[reportArgumentType]
+            for _ in range(3)
+        ]
+        assert [instance.data for instance in instances] == [["a", "b"]] * 3
+        assert instances[0].data == CachedListHolder(data=["a", "b"]).data
 
 
 class Anchor(BaseComponent):
