@@ -25,6 +25,13 @@ walk's cost is driven by the dirty share, not the manifest size alone.
      per-candidate rendered-subtree size, which _contained walks segment by
      segment and which the count sweep holds at a constant.
 
+  5. _build_pass(), the concurrent half of the walk, against a simulated load()
+     cost — time.sleep() stands in for the I/O so the threadpool is priced
+     against a query the process is blocked on. Swept twice: once over load
+     cost, to find the cost below which threading does not pay for itself, and
+     once with an instant load() and a deliberately expensive template, so the
+     second reading is Jinja's GIL-bound render cost with no I/O in the frame.
+
 Not a CI test (timing-sensitive). Run manually before/after reactive-path work:
 
     uv run python scripts/bench_reactive_fanout.py
@@ -42,7 +49,10 @@ from pyjinhx.reactive.cache import cache_put
 from pyjinhx.reactive.component import PjxKey, ReactiveComponent
 from pyjinhx.reactive.fanout import (
     FanoutCandidate,
+    _build_one,
+    _build_pass,
     _drop_nested,
+    _filter_pass,
     oob_swaps,
     walk_manifest,
 )
@@ -69,15 +79,46 @@ if os.environ.get("PJX_BENCH_SMOKE"):
     DROP_CANDIDATE_COUNTS = DROP_CANDIDATE_COUNTS[:1]
     DROP_SUBTREE_SIZES = DROP_SUBTREE_SIZES[:1]
 
+# Milliseconds one load() call blocks for while the build pass runs it. 0.0 is
+# the pure-overhead case: what the threadpool costs when it saves nothing.
+BUILD_LOAD_COSTS_MS = (0.0, 0.5, 2.0, 10.0)
+BUILD_CANDIDATE_COUNTS = (8, 32)
+# Inner spans the render-only template loops over, i.e. how much CPU one
+# render_level() burns while holding the GIL.
+RENDER_SPAN_COUNTS = (10, 100, 500)
+
+if os.environ.get("PJX_BENCH_SMOKE"):
+    BUILD_LOAD_COSTS_MS = BUILD_LOAD_COSTS_MS[:1]
+    BUILD_CANDIDATE_COUNTS = BUILD_CANDIDATE_COUNTS[:1]
+    RENDER_SPAN_COUNTS = RENDER_SPAN_COUNTS[:1]
+
+# Seconds one BenchReactiveWidget.load() blocks for. time.sleep() stands in for
+# the I/O: it releases the GIL the way a socket wait does, so the build pass is
+# measured against a query the process is blocked on rather than one it burns
+# CPU over. Left at zero for every section that is not sweeping load cost.
+_load_cost_s = 0.0
+# Spans BenchReactiveWidget's template loops over for the render-only sweep.
+# Left at zero for every section that is not sweeping render cost.
+_render_spans = 0
+
 
 class BenchReactiveWidget(ReactiveComponent, react=("bench",)):
-    """A reactive component keyed by ``pjx_key``; load() does real-ish work."""
+    """A reactive component keyed by ``pjx_key``; load() does real-ish work.
+
+    ``spans`` is what makes one render cost something: at zero the template
+    emits a single div, so a build reading prices load() alone; above zero the
+    loop is deliberate CPU work inside Jinja, which is what the GIL question
+    turns on.
+    """
 
     pjx_key: Annotated[str, PjxKey()] = ""
+    spans: int = 0
 
     @classmethod
     def load(cls, pjx_key: str) -> "BenchReactiveWidget":
-        return cls(pjx_key=pjx_key)
+        if _load_cost_s:
+            time.sleep(_load_cost_s)
+        return cls(pjx_key=pjx_key, spans=_render_spans)
 
 
 class BenchOobWidget(ReactiveComponent, react=("bench",)):
@@ -98,7 +139,11 @@ def setup_registry() -> str:
     the class lives in this script, not on disk under a package.
     """
     template_dir = Path(tempfile.mkdtemp())
-    (template_dir / "bench_reactive_widget.pjx").write_text("<div>{{ pjx_key }}</div>")
+    (template_dir / "bench_reactive_widget.pjx").write_text(
+        "<div>{{ pjx_key }}"
+        '{% for i in range(spans) %}<span class="cell">{{ pjx_key }}-{{ i }}</span>'
+        "{% endfor %}</div>"
+    )
     (template_dir / "bench_oob_widget.pjx").write_text(
         '<div class="oob">{% for i in range(spans) %}'
         '<span class="cell">{{ pjx_key }}-{{ i }}</span>'
@@ -236,6 +281,58 @@ def bench_drop_nested(candidates_n: int, subtree: int, template_dir: str) -> flo
         return dt
 
 
+def _build_items(candidates_n: int, template_dir: str) -> tuple[RenderSession, list]:
+    """Fresh manifest + filter pass, ready for either a concurrent or sequential build."""
+    manifest = make_manifest(candidates_n, 1.0, template_dir)
+    session = RenderSession()
+    items = _filter_pass(manifest, {"bench"}, set())
+    assert len(items) == candidates_n, (
+        f"all-dirty manifest must survive the filter, got {len(items)}"
+    )
+    return session, items
+
+
+def bench_build_pass(
+    candidates_n: int, cost_ms: float, template_dir: str, spans: int = 0
+) -> tuple[float, float]:
+    """Concurrent vs. sequential wall time for the build pass, in seconds.
+
+    The filter pass runs before the clock starts, so what is timed is only the
+    loads and renders themselves: _build_pass as it ships (threadpool,
+    max_workers=min(8, len(pending))) against the same work items built one at
+    a time. Everything else — dedup, hash gate, reduce — is identical between
+    the two readings and deliberately outside both frames.
+
+    Concurrent and sequential each get their own request_scope(), not one
+    scope with both phases run in sequence inside it: ReactiveComponent.load()
+    is memoized on ``(class, load key)`` per request (tier 1, a dict a fresh
+    request_scope() clears), so running the sequential loop straight after the
+    concurrent pass over the *same* load keys would hit warm cache on every
+    call and skip _load_cost_s entirely — a "sequential" reading with none of
+    load()'s cost in it. A fresh manifest per phase, built from the same
+    candidates_n and cost, keeps both readings honest.
+    """
+    global _load_cost_s, _render_spans
+    _load_cost_s = cost_ms / 1000
+    _render_spans = spans
+    try:
+        with request_scope():
+            session, items = _build_items(candidates_n, template_dir)
+            t0 = time.perf_counter()
+            _build_pass(items, session)
+            concurrent = time.perf_counter() - t0
+        with request_scope():
+            session, items = _build_items(candidates_n, template_dir)
+            t0 = time.perf_counter()
+            for item in items:
+                _build_one(item, session)
+            sequential = time.perf_counter() - t0
+        return concurrent, sequential
+    finally:
+        _load_cost_s = 0.0
+        _render_spans = 0
+
+
 def main() -> None:
     template_dir = setup_registry()
 
@@ -278,6 +375,37 @@ def main() -> None:
         for candidates_n in DROP_CANDIDATE_COUNTS:
             dt = bench_drop_nested(candidates_n, subtree, template_dir)
             row.append(f"{dt * 1000:9.2f}ms")
+        print("  ".join(row))
+
+    print()
+    print("_build_pass() concurrent vs. sequential, by simulated load() cost:")
+    header = f"{'load()':>10}  " + "  ".join(
+        f"{n:>3} cands conc/seq" for n in BUILD_CANDIDATE_COUNTS
+    )
+    print(header)
+    for cost_ms in BUILD_LOAD_COSTS_MS:
+        row = [f"{cost_ms:8.1f}ms"]
+        for candidates_n in BUILD_CANDIDATE_COUNTS:
+            conc, seq = bench_build_pass(candidates_n, cost_ms, template_dir)
+            speedup = seq / conc if conc else 0.0
+            row.append(f"{conc * 1000:7.2f}/{seq * 1000:<7.2f}ms {speedup:4.1f}x")
+        print("  ".join(row))
+
+    print()
+    print(
+        "_build_pass() with an instant load(): render-only, concurrent vs. sequential"
+    )
+    print("(load() cost is zero, so every millisecond here is GIL-bound Jinja work)")
+    header = f"{'spans':>8}  " + "  ".join(
+        f"{n:>3} cands conc/seq" for n in BUILD_CANDIDATE_COUNTS
+    )
+    print(header)
+    for spans in RENDER_SPAN_COUNTS:
+        row = [f"{spans:8d}"]
+        for candidates_n in BUILD_CANDIDATE_COUNTS:
+            conc, seq = bench_build_pass(candidates_n, 0.0, template_dir, spans=spans)
+            speedup = seq / conc if conc else 0.0
+            row.append(f"{conc * 1000:7.2f}/{seq * 1000:<7.2f}ms {speedup:4.1f}x")
         print("  ".join(row))
 
 
