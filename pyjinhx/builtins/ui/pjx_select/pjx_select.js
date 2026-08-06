@@ -279,4 +279,143 @@
         const root = rootOf(filter);
         if (root) applyFilter(root, filter.value);
     });
+
+    // --- keyboard navigation -------------------------------------------
+    // Option buttons are natively focusable, so focus moves with .focus()
+    // alone; no roving tabindex. A select panel is a transient popup whose
+    // only tab stop is the trigger, unlike a tablist that must stay in the
+    // page's tab order with exactly one active tab.
+
+    function visibleOptions(root) {
+        return Array.prototype.slice.call(
+            root.querySelectorAll('[data-pjx-select-option]:not([hidden]):not([disabled])')
+        );
+    }
+
+    function moveFocus(root, from, delta) {
+        const options = visibleOptions(root);
+        if (!options.length) return;
+        const at = options.indexOf(from);
+        // An unknown `from` (focus in the filter box, or a node the filter
+        // just hid) enters the list from whichever end the caller is heading.
+        const next = at === -1
+            ? (delta > 0 ? 0 : options.length - 1)
+            : (at + delta + options.length) % options.length;
+        options[next].focus();
+    }
+
+    function focusEdge(root, last) {
+        const options = visibleOptions(root);
+        if (!options.length) return;
+        options[last ? options.length - 1 : 0].focus();
+    }
+
+    let typeAhead = '';
+    let typeAheadTimer = null;
+
+    function pushTypeAhead(ch) {
+        typeAhead += ch;
+        if (typeAheadTimer) clearTimeout(typeAheadTimer);
+        // A pause means the next keystroke starts a new word, not a longer
+        // prefix of the old one.
+        typeAheadTimer = setTimeout(function () {
+            typeAhead = '';
+            typeAheadTimer = null;
+        }, 500);
+        return typeAhead;
+    }
+
+    function typeAheadTarget(root, from, needle) {
+        const options = visibleOptions(root);
+        if (!options.length) return null;
+        const start = options.indexOf(from);
+        const prefix = needle.toLowerCase();
+        // Search starts *after* the focused option so repeating a letter
+        // cycles through the options sharing that initial.
+        for (let step = 1; step <= options.length; step += 1) {
+            const option = options[(start + step + options.length) % options.length];
+            if (labelOf(option).toLowerCase().indexOf(prefix) === 0) return option;
+        }
+        return null;
+    }
+
+    function dismiss(root) {
+        const trigger = root.querySelector('[data-pjx-select-trigger]');
+        close(root);
+        if (trigger) trigger.focus();
+    }
+
+    function commitOption(root, option) {
+        if (isMultiple(root)) {
+            // Multi-select stays open and keeps focus put, so the next Enter
+            // lands on the option the user is still looking at.
+            toggle(root, option);
+            return;
+        }
+        select(root, option.getAttribute('data-value'));
+        dismiss(root);
+    }
+
+    function onTriggerKey(e, root) {
+        if (e.key === 'ArrowDown' || e.key === 'ArrowUp' || e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            open(root);
+            const options = visibleOptions(root);
+            if (!options.length) return;
+            options[e.key === 'ArrowUp' ? options.length - 1 : 0].focus();
+        }
+    }
+
+    document.addEventListener('keydown', function (e) {
+        if (e.isComposing) return;
+        if (!e.target.closest) return;
+        const root = rootOf(e.target);
+        if (!root || root.hasAttribute('data-disabled')) return;
+
+        if (e.key === 'Escape') {
+            e.preventDefault();
+            dismiss(root);
+            return;
+        }
+
+        const option = e.target.closest('[data-pjx-select-option]');
+        if (!option) {
+            // The filter box owns its own keystrokes: its `input` listener is
+            // the search, so type-ahead would only fight it.
+            if (e.target.closest('[data-pjx-select-filter]')) {
+                if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    focusEdge(root, false);
+                }
+                return;
+            }
+            if (e.target.closest('[data-pjx-select-trigger]')) onTriggerKey(e, root);
+            return;
+        }
+
+        if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+            e.preventDefault();
+            moveFocus(root, option, e.key === 'ArrowDown' ? 1 : -1);
+            return;
+        }
+        if (e.key === 'Home' || e.key === 'End') {
+            e.preventDefault();
+            focusEdge(root, e.key === 'End');
+            return;
+        }
+        if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            commitOption(root, option);
+            return;
+        }
+        if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+            const target = typeAheadTarget(root, option, pushTypeAhead(e.key));
+            // No match leaves focus alone; the buffer still holds, so the
+            // user can back out of a typo by pausing.
+            if (target) {
+                e.preventDefault();
+                target.focus();
+            }
+        }
+    });
 }());
