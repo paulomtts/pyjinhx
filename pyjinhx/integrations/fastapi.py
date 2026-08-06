@@ -5,7 +5,7 @@ from __future__ import annotations
 import functools
 import inspect
 import logging
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING, Any
 
@@ -297,8 +297,18 @@ def _install_route_adaptation(backend: FastAPIBackend, app: Starlette) -> None:
                 kwargs["response_model"] = None
             super().__init__(path, _adapt_endpoint(backend, endpoint), **kwargs)
 
+    def patch_routes(routes: Iterable[Any]) -> None:
+        for route in routes:
+            if isinstance(route, APIRoute):
+                if route.dependant.call is not None:
+                    route.dependant.call = _adapt_endpoint(backend, route.dependant.call)
+                    route.app = request_response(route.get_route_handler())
+                continue
+            # fastapi >= 0.137 keeps included routes under a sentinel route
+            # instead of flattening them into app.router.routes.
+            included = getattr(route, "original_router", None)
+            if included is not None:
+                patch_routes(included.routes)
+
     app.router.route_class = PjxRoute  # pyright: ignore[reportAttributeAccessIssue]
-    for route in app.router.routes:
-        if isinstance(route, APIRoute) and route.dependant.call is not None:
-            route.dependant.call = _adapt_endpoint(backend, route.dependant.call)
-            route.app = request_response(route.get_route_handler())
+    patch_routes(app.router.routes)
