@@ -152,23 +152,94 @@
         if (parts.trigger) parts.trigger.setAttribute('aria-expanded', 'false');
     }
 
+    function isMultiple(root) {
+        return root.hasAttribute('data-multiple');
+    }
+
+    function selectedOptions(root) {
+        return Array.prototype.slice.call(
+            root.querySelectorAll('[data-pjx-select-option][aria-selected="true"]')
+        );
+    }
+
+    function labelOf(option) {
+        return option.textContent.trim();
+    }
+
+    // The native <select> is the form's source of truth in both modes, so it is
+    // re-derived from the option buttons rather than patched incrementally.
+    function syncNative(root, parts) {
+        if (!parts.native) return;
+        const values = selectedOptions(root).map(function (opt) {
+            return opt.getAttribute('data-value');
+        });
+        Array.prototype.forEach.call(parts.native.options, function (nativeOption) {
+            nativeOption.selected = values.indexOf(nativeOption.value) !== -1;
+        });
+    }
+
+    // Mirrors the template's trigger branch: 2+ selections become a chip row,
+    // 0 or 1 stay plain text. Chips are built node-by-node with textContent so
+    // a label containing markup can never become markup.
+    function renderTrigger(root, parts) {
+        if (!parts.label) return;
+        const chosen = selectedOptions(root);
+        if (chosen.length < 2) {
+            parts.label.textContent = chosen.length
+                ? labelOf(chosen[0])
+                : root.getAttribute('data-placeholder') || '';
+            return;
+        }
+        const row = document.createElement('span');
+        row.className = 'pjx-select__chips';
+        chosen.forEach(function (option) {
+            const chip = document.createElement('span');
+            chip.className = 'pjx-chip-input__chip';
+            const label = document.createElement('span');
+            label.className = 'pjx-chip-input__label';
+            label.textContent = labelOf(option);
+            chip.appendChild(label);
+            row.appendChild(chip);
+        });
+        parts.label.textContent = '';
+        parts.label.appendChild(row);
+    }
+
+    function toggle(root, option) {
+        const parts = partsOf(root);
+        const next = option.getAttribute('aria-selected') !== 'true';
+        option.setAttribute('aria-selected', next ? 'true' : 'false');
+        const box = option.querySelector('.pjx-select__checkbox');
+        if (box) box.checked = next;
+        syncNative(root, parts);
+        renderTrigger(root, parts);
+    }
+
     function select(root, value) {
         const parts = partsOf(root);
-        if (parts.native) parts.native.value = value;
         root.querySelectorAll('[data-pjx-select-option]').forEach(function (opt) {
             const isIt = opt.getAttribute('data-value') === value;
             opt.setAttribute('aria-selected', isIt ? 'true' : 'false');
-            if (isIt && parts.label) parts.label.textContent = opt.textContent.trim();
         });
+        syncNative(root, parts);
+        renderTrigger(root, parts);
     }
 
     document.addEventListener('click', function (e) {
         const option = e.target.closest('[data-pjx-select-option]');
         if (option) {
             const root = rootOf(option);
-            if (root) {
-                select(root, option.getAttribute('data-value'));
-                close(root);
+            // A disabled select never opens its panel, so this branch is
+            // unreachable while disabled — the guard just makes that explicit.
+            if (root && !root.hasAttribute('data-disabled')) {
+                if (isMultiple(root)) {
+                    // Multi-select stays open: picking several values from one
+                    // opening is the whole point of the mode.
+                    toggle(root, option);
+                } else {
+                    select(root, option.getAttribute('data-value'));
+                    close(root);
+                }
             }
             return;
         }
