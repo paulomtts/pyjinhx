@@ -4,6 +4,7 @@ import dataclasses
 import pathlib
 import re
 import threading
+import time
 from typing import Annotated, cast
 
 import pytest
@@ -1204,6 +1205,87 @@ def test_reduce_pass_restores_manifest_order():
 
     assert [c.instance_id for c in candidates] == ["a", "b"]
     assert [c.status for c in candidates] == ["dirty", "dirty"]
+
+
+def test_build_pass_reduce_pass_order_survives_real_thread_interleaving():
+    """Ten real threaded builds finishing back-to-front still reduce in manifest order.
+
+    The sleeps are inverted against manifest position, so the last item's load
+    returns first and the first item's returns last. A reduce pass that keyed
+    off the results dict's insertion order — or off completion order — would
+    hand back a reversed list here while still passing the two-item guards
+    above, which is the hole this test exists to cover.
+    """
+    keys = [f"k{i}" for i in range(10)]
+    GONE_KEYS.add("k4")
+    finished: list[str] = []
+    finished_lock = threading.Lock()
+
+    def jittered_load(cls, pjx_key: str):
+        # Later manifest positions sleep least, so completion order comes back
+        # roughly reversed against submission order.
+        time.sleep((10 - int(pjx_key[1:])) * 0.01)
+        with finished_lock:
+            finished.append(pjx_key)
+        if pjx_key in GONE_KEYS:
+            raise LookupError(f"no widget for {pjx_key!r}")
+        return cls(pjx_key=pjx_key, data=f"data:{pjx_key}")
+
+    manifest = [_entry(key, "fanout_widget", key) for key in keys]
+    with request_scope() as session, pytest.MonkeyPatch.context() as patch:
+        patch.setattr(FanoutWidget, "load", classmethod(jittered_load))
+        items = fanout._filter_pass(manifest, {"todos"}, set())
+        built = fanout._build_pass(items, session)
+        candidates = fanout._reduce_pass(items, built)
+
+    # The interleaving actually happened — otherwise the ordering assertion
+    # below proves nothing.
+    assert finished != keys
+    assert len(finished) == 10
+    assert [c.instance_id for c in candidates] == keys
+    assert [c.status for c in candidates] == (
+        ["dirty"] * 4 + ["missing"] + ["dirty"] * 5
+    )
+    missing = candidates[4]
+    assert missing.instance is None
+    assert missing.level is None
+    assert missing.resolved is None
+    assert missing.fresh_hash is None
+    assert all(c.instance is not None for c in candidates if c.status == "dirty")
+    assert all(c.fresh_hash is not None for c in candidates if c.status == "dirty")
+
+
+def test_a_raising_future_abandons_the_whole_pass():
+    """A non-LookupError leaves no partial result set behind — the pass is all or nothing.
+
+    `_reduce_pass` indexes `built[item.index]` for every non-clean item, so a
+    half-filled dict would only turn a loader bug into a KeyError somewhere
+    else. The build pass hands back one complete mapping or it raises; the
+    siblings that already finished are deliberately dropped on the floor.
+    """
+    manifest = [
+        _entry("a", "fanout_widget", "a"),
+        _entry("boom", "fanout_widget", "boom"),
+        _entry("c", "fanout_widget", "c"),
+    ]
+
+    def exploding_load(cls, pjx_key: str):
+        if pjx_key == "boom":
+            raise RuntimeError(f"boom:{pjx_key}")
+        return cls(pjx_key=pjx_key, data=f"data:{pjx_key}")
+
+    with request_scope() as session, pytest.MonkeyPatch.context() as patch:
+        patch.setattr(FanoutWidget, "load", classmethod(exploding_load))
+        items = fanout._filter_pass(manifest, {"todos"}, set())
+        with pytest.raises(RuntimeError, match="boom:boom") as caught:
+            fanout._build_pass(items, session)
+
+    # The loader's own exception travels, not a wrapper: a caller upstack that
+    # knows what its load() raises must still be able to catch it by type.
+    assert type(caught.value) is RuntimeError
+    # And the pass yields no value at all — there is no partial mapping to
+    # inspect, by design.
+    assert caught.value.args == ("boom:boom",)
 
 
 def test_module_never_registers_instances():

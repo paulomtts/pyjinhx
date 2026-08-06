@@ -444,6 +444,16 @@ def _build_pass(
     depends on completion order, and the ``with`` block shuts the pool down
     even when a worker raises.
 
+    The pass is all-or-nothing against anything that is not a LookupError: the
+    first ``future.result()`` to re-raise abandons the comprehension, and the
+    results its already-finished siblings computed are dropped rather than
+    returned. That is deliberate — the reduce pass indexes ``built`` for every
+    non-clean item, so a half-filled mapping could only turn a loader's
+    exception into a KeyError further downstack, hiding the real cause. A
+    region the server genuinely no longer knows about is the one thing that
+    must *not* take the pass down with it, and that is exactly what
+    ``_build_one`` catches per item.
+
     A new OS thread starts with a fresh, empty ContextVar context rather than
     inheriting the caller's, so every per-request variable in ``session`` — the
     render session, the load context, the three load-cache dicts — would read
