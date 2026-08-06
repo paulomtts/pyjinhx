@@ -23,6 +23,7 @@ before calling ``load()``.
 
 import re
 from collections.abc import Iterable, Sequence
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from typing import Any
 
@@ -316,6 +317,205 @@ def _drop_nested(candidates: list[FanoutCandidate]) -> list[FanoutCandidate]:
     return surviving
 
 
+@dataclass(frozen=True)
+class _WorkItem:
+    """One manifest entry that survived the filter pass, and where it came from."""
+
+    index: int
+    """The entry's position in the manifest, so the reduce pass can restore order."""
+
+    entry: dict[str, Any]
+    """The raw manifest entry, carried through for the hash gate."""
+
+    component_class: type[ReactiveComponent]
+    """The class ``discovery.get_class()`` answered for this entry's tag."""
+
+    load_key: str | None
+    """The load-cache key half of this item's dedup key."""
+
+    instance_id: str
+    """The entry's ``data-pjx-id``."""
+
+    load: object
+    """The entry's raw ``load`` arg, before any key coercion."""
+
+    resolved: object
+    """Whatever the registry (or, on the clean path, the load cache) handed back."""
+
+    clean: bool
+    """Whether the load cache already answers this item, so no build is owed."""
+
+
+def _filter_pass(
+    manifest_entries: Sequence[dict[str, Any]],
+    dirty: set[str],
+    excluded: set[str],
+) -> list[_WorkItem]:
+    """The surviving, deduped work items, in manifest order.
+
+    Every cheap check lives here and runs to completion before any build
+    starts: the dedup ``seen`` set is only a guarantee that one ``(type, load
+    key)`` pair costs one load if no build can begin while the set is still
+    being filled.
+    """
+    seen: set[tuple[str, str | None]] = set()
+    items: list[_WorkItem] = []
+    for index, entry in enumerate(manifest_entries):
+        # Cheapest filter first, ahead of the two E9 ones: one set membership
+        # against a string id, before any class lookup, dedup bookkeeping,
+        # resolve, load or render is paid for.
+        if excluded and str(entry.get("id") or "") in excluded:
+            continue
+        cls = _candidate_class(entry, dirty)
+        if cls is None:
+            continue
+        # E10: dedup before any resolve/load/render runs, so two mounted
+        # regions standing for the same (class, load arg) cost one of each.
+        load_key = _load_key(cls, entry.get("load"))
+        dedup_key = (str(entry["type"]), load_key)
+        if dedup_key in seen:
+            continue
+        seen.add(dedup_key)
+        instance_id = str(entry.get("id") or "")
+        resolved, _found = _resolve_registry_entry(cls, instance_id)
+        clean = cache_has(cls, load_key)
+        if clean and resolved is None:
+            # E13: the clean answer comes from the load cache's own key space,
+            # never from the registry key that resolved above. The registry is
+            # consulted only for what it can cheaply hand back, never as the
+            # clean/dirty gate — see _resolve_registry_entry on why a miss
+            # here is the norm rather than a signal.
+            resolved = cache_get(cls, load_key)
+        items.append(
+            _WorkItem(
+                index=index,
+                entry=entry,
+                component_class=cls,
+                load_key=load_key,
+                instance_id=instance_id,
+                load=entry.get("load"),
+                resolved=resolved,
+                clean=clean,
+            )
+        )
+    return items
+
+
+@dataclass(frozen=True)
+class _BuildResult:
+    """What one work item's build produced, or the fact that it proved absent."""
+
+    instance: ReactiveComponent | None
+    """The freshly loaded instance, or None when the load proved the region gone."""
+
+    level: object
+    """The freshly rendered level, or None on the missing path."""
+
+    missing: bool
+    """Whether ``load()`` raised LookupError — ADR 0013's proof of absence."""
+
+
+def _build_one(item: _WorkItem, session: RenderSession) -> _BuildResult:
+    """One work item's load and render, with its own absence proof caught.
+
+    The LookupError is caught per item rather than per pass so one region the
+    server no longer knows about cannot decide any sibling's outcome. Every
+    other exception is left to travel, exactly as it did before the build ran
+    off-thread.
+    """
+    try:
+        instance, level = _build_dirty(
+            item.component_class, item.instance_id, item.load, session
+        )
+    except LookupError:
+        return _BuildResult(instance=None, level=None, missing=True)
+    return _BuildResult(instance=instance, level=level, missing=False)
+
+
+def _build_pass(
+    items: list[_WorkItem], session: RenderSession
+) -> dict[int, _BuildResult]:
+    """Every non-clean item's build, run on a threadpool, keyed by manifest index.
+
+    ``load()`` is sync, so the concurrency lives here rather than in an async
+    variant of the walk — ``walk_manifest`` stays a plain sync callable and
+    drives the pool itself. The dict is keyed by index so the reduce pass never
+    depends on completion order, and the ``with`` block shuts the pool down
+    even when a worker raises.
+
+    A new OS thread starts with a fresh, empty ContextVar context rather than
+    inheriting the caller's, so the load cache's ``cache_put()`` inside a
+    worker's ``load()`` call writes into a throwaway dict that vanishes the
+    moment the worker returns. That is a known gap, not an oversight:
+    propagating the caller's ContextVar context into these workers is #871's
+    job, so it is deliberately left undone here.
+    """
+    pending = [item for item in items if not item.clean]
+    if not pending:
+        return {}
+    with ThreadPoolExecutor(max_workers=min(8, len(pending))) as pool:
+        futures = {
+            item.index: pool.submit(_build_one, item, session) for item in pending
+        }
+        return {index: future.result() for index, future in futures.items()}
+
+
+def _reduce_pass(
+    items: list[_WorkItem], built: dict[int, _BuildResult]
+) -> list[FanoutCandidate]:
+    """The surviving candidates, in manifest order, with the late drops applied.
+
+    Walking the work items rather than the results dict is what keeps the
+    output in manifest order regardless of which build finished first, and it
+    is what ``_drop_nested``'s containment logic depends on.
+    """
+    candidates: list[FanoutCandidate] = []
+    for item in items:
+        if item.clean:
+            status, instance, level, fresh_hash = "clean", None, None, None
+            resolved = item.resolved
+        else:
+            result = built[item.index]
+            if result.missing:
+                # E17: a key that no longer resolves must not yield a stale
+                # instance or render. A failed load is the only thing that
+                # actually proves the region is gone, so it — not a registry
+                # miss — is what becomes a delete swap.
+                status, instance, level, fresh_hash, resolved = (
+                    "missing",
+                    None,
+                    None,
+                    None,
+                    None,
+                )
+            else:
+                instance, level = result.instance, result.level
+                assert instance is not None
+                fresh_hash = instance.state_hash()
+                if _hash_gate_drops(fresh_hash, item.entry):
+                    # The dedup slot the filter pass took is deliberately kept:
+                    # a later duplicate of this (type, load-key) pair would gate
+                    # out identically, so dropping here must not buy it a second
+                    # load/render.
+                    continue
+                status, resolved = "dirty", item.resolved
+        candidates.append(
+            FanoutCandidate(
+                type_name=str(item.entry["type"]),
+                component_class=item.component_class,
+                instance_id=item.instance_id,
+                load=item.load,
+                status=status,
+                entry=item.entry,
+                resolved=resolved,
+                level=level,
+                instance=instance,
+                fresh_hash=fresh_hash,
+            )
+        )
+    return _drop_nested(candidates)
+
+
 def walk_manifest(
     manifest_entries: Sequence[dict[str, Any]],
     dirtied_keys: Iterable[str],
@@ -353,84 +553,23 @@ def walk_manifest(
     Turning a ``"missing"`` candidate into a delete swap is ``delete_swap()``
     below; assembling those fragments with the real swaps into one response
     body is ``oob_swaps()``, and is deliberately not done here.
+
+    Three passes, not one loop. The filter pass runs every cheap check and
+    finishes its dedup before anything is built; the build pass runs the loads
+    and renders on a threadpool, since ``load()`` is sync and this walk stays a
+    plain sync call; the reduce pass hash-gates, maps a failed load to
+    "missing", and reassembles by manifest position.
     """
-    dirty = set(dirtied_keys)
-    excluded = _mounted_ids_in(primary_html)
-    seen: set[tuple[str, str | None]] = set()
-    candidates: list[FanoutCandidate] = []
-    for entry in manifest_entries:
-        # Cheapest filter first, ahead of the two E9 ones: one set membership
-        # against a string id, before any class lookup, dedup bookkeeping,
-        # resolve, load or render is paid for.
-        if excluded and str(entry.get("id") or "") in excluded:
-            continue
-        cls = _candidate_class(entry, dirty)
-        if cls is None:
-            continue
-        # E10: dedup before any resolve/load/render runs, so two mounted
-        # regions standing for the same (class, load arg) cost one of each.
-        dedup_key = (str(entry["type"]), _load_key(cls, entry.get("load")))
-        if dedup_key in seen:
-            continue
-        seen.add(dedup_key)
-        instance_id = str(entry.get("id") or "")
-        load = entry.get("load")
-        resolved, _found = _resolve_registry_entry(cls, instance_id)
-        if cache_has(cls, dedup_key[1]):
-            # E13: the clean answer comes from the load cache's own key space,
-            # never from the registry key that resolved above. The registry is
-            # consulted only for what it can cheaply hand back, never as the
-            # clean/dirty gate — see _resolve_registry_entry on why a miss
-            # here is the norm rather than a signal.
-            status, instance, level, fresh_hash = "clean", None, None, None
-            resolved = (
-                resolved if resolved is not None else cache_get(cls, dedup_key[1])
-            )
-        else:
-            # A bare `RenderSession()` installs an AbsolutePathLoader, losing
-            # any template roots the caller's real session was configured with.
-            # Fall back to the active request_scope()'s session before ever
-            # constructing a fresh one, so a caller inside a request never has
-            # its dirty-path render silently point at the wrong template dir.
-            render_session = session or current_session() or RenderSession()
-            try:
-                instance, level = _build_dirty(cls, instance_id, load, render_session)
-            except LookupError:
-                # E17: a key that no longer resolves must not yield a stale
-                # instance or render. A failed load is the only thing that
-                # actually proves the region is gone, so it — not a registry
-                # miss — is what becomes a delete swap.
-                status, instance, level, fresh_hash, resolved = (
-                    "missing",
-                    None,
-                    None,
-                    None,
-                    None,
-                )
-            else:
-                fresh_hash = instance.state_hash()
-                if _hash_gate_drops(fresh_hash, entry):
-                    # The dedup slot above is deliberately kept: a later
-                    # duplicate of this (type, load-key) pair would gate out
-                    # identically, so dropping here must not buy it a second
-                    # load/render.
-                    continue
-                status = "dirty"
-        candidates.append(
-            FanoutCandidate(
-                type_name=str(entry["type"]),
-                component_class=cls,
-                instance_id=instance_id,
-                load=load,
-                status=status,
-                entry=entry,
-                resolved=resolved,
-                level=level,
-                instance=instance,
-                fresh_hash=fresh_hash,
-            )
-        )
-    return _drop_nested(candidates)
+    items = _filter_pass(
+        manifest_entries, set(dirtied_keys), _mounted_ids_in(primary_html)
+    )
+    # A bare `RenderSession()` installs an AbsolutePathLoader, losing any
+    # template roots the caller's real session was configured with. Fall back
+    # to the active request_scope()'s session before ever constructing a fresh
+    # one, so a caller inside a request never has its dirty-path render
+    # silently point at the wrong template dir.
+    render_session = session or current_session() or RenderSession()
+    return _reduce_pass(items, _build_pass(items, render_session))
 
 
 def _css_attr_value(value: str) -> str:
