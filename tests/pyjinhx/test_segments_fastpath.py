@@ -29,14 +29,21 @@ def parse(
     return parser.segments, parser.root_span
 
 
-def assert_identical_parse(chunks: list[str]) -> list[str | ChildRef]:
-    """Fast-path and slow-path parses agree on segments, root_span and round-trip."""
+def assert_identical_parse(
+    chunks: list[str], *, round_trip: bool = True
+) -> list[str | ChildRef]:
+    """Fast-path and slow-path parses agree on segments, root_span and round-trip.
+
+    ``round_trip=False`` covers inputs HTMLParser deliberately normalizes (close
+    tags lowercased, ``&nbsp`` completed to ``&nbsp;``) or drops (a construct cut
+    off at a feed boundary), where reconstruction can never equal the source.
+    """
     fast_segments, fast_span = parse(VerbatimParser(), chunks)
     slow_segments, slow_span = parse(SlowParser(), chunks)
     assert fast_segments == slow_segments
     assert fast_span == slow_span
     source = "".join(chunks)
-    if all(not isinstance(seg, ChildRef) for seg in fast_segments):
+    if round_trip and all(not isinstance(seg, ChildRef) for seg in fast_segments):
         assert "".join(str(seg) for seg in fast_segments) == source
     return fast_segments
 
@@ -79,3 +86,9 @@ def test_entity_and_char_refs_stay_separate_segments() -> None:
 def test_literal_less_than_that_is_not_a_tag() -> None:
     assert_identical_parse(["3 < 5 and 5 > 3"])
     assert_identical_parse(["cost < ", "10 dollars"])
+
+
+def test_known_lossy_case_can_skip_round_trip() -> None:
+    """A construct truncated at a feed boundary parses identically but does not round-trip."""
+    segments = assert_identical_parse(["end with <", "more"], round_trip=False)
+    assert segments == ["end with "]
