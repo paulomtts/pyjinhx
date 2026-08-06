@@ -1,8 +1,8 @@
-"""request_scope's five ContextVars: fresh in, prior state out.
+"""request_scope's ContextVars: fresh in, prior state out.
 
-The five pieces of per-request mutable state (RenderSession asset slot, instance
-registry, dirtied keys, cache store, cache reverse index) are the entire
-ContextVar half of the mutable-state census. These tests pin the container
+The per-request mutable state (RenderSession asset slot, instance registry,
+dirtied keys, cache store, cache reverse index, template-freshness cache) is the
+entire ContextVar half of the mutable-state census. These tests pin the container
 lifecycle - creation, nesting, exception cleanup, thread isolation - not any
 read/write semantics, which land with the modules that consume them.
 """

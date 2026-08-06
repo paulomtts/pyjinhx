@@ -77,7 +77,8 @@ import app
 ```text
 integrations/fastapi.py   request in
  1. session.py       request_scope enters ── fresh ContextVars: RenderSession,
-    │                instance registry, dirtied keys, LoadCache store
+    │                instance registry, dirtied keys, LoadCache store,
+    │                template-freshness cache (one stat per template per request)
  2. reactive/…       top-level tag-mounted? load() via LoadCache (miss → real load())
  3. render.py        render(component, session)          ◄────────────────┐
     ├─ descriptor.py   read frozen descriptor (no compute)                │
