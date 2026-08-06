@@ -8,6 +8,8 @@ import pytest
 from pydantic import ValidationError
 
 from pyjinhx.builtins.ui.pjx_select import PJXSelect, SelectOption
+from pyjinhx.rendering import render
+from pyjinhx.session import RenderSession
 
 OPTIONS = [
     SelectOption(value="a", label="Apple"),
@@ -37,7 +39,9 @@ class TestFields:
 
     def test_options_accept_plain_dicts(self):
         sel = PJXSelect(
-            id="s", name="fruit", options=[{"value": "a", "label": "Apple"}]
+            id="s",
+            name="fruit",
+            options=[{"value": "a", "label": "Apple"}],  # type: ignore[list-item]
         )
         assert sel.options[0].label == "Apple"
 
@@ -47,14 +51,10 @@ class TestFields:
 
 
 def test_exported_from_the_builtins_namespace():
-    import pyjinhx.builtins as builtins
+    from pyjinhx import builtins
 
     assert "PJXSelect" in builtins.__all__
     assert builtins.PJXSelect is PJXSelect
-
-
-from pyjinhx.rendering import render
-from pyjinhx.session import RenderSession
 
 
 @pytest.fixture
@@ -112,7 +112,7 @@ class TestRender:
         # thing: no native <option> is marked selected, and no aria-selected
         # is "true".
         assert " selected>" not in html
-        assert "aria-selected=\"true\"" not in html
+        assert 'aria-selected="true"' not in html
         assert "Select…" in html
 
     def test_options_render_in_order_with_value_hooks(self, session):
@@ -134,7 +134,7 @@ class TestRender:
         html = _html(session, disabled=True)
         assert "data-disabled" in html[: html.index(">")]
         assert '<select name="fruit" hidden disabled>' in html
-        assert "<button type=\"button\" class=\"pjx-select__trigger\"" in html
+        assert '<button type="button" class="pjx-select__trigger"' in html
         assert "disabled>" in html
 
     def test_not_disabled_by_default(self, session):
