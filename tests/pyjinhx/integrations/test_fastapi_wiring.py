@@ -634,3 +634,28 @@ def test_nested_route_without_a_dependant_call_is_left_alone():
     apply_setup(app, _settings())
 
     assert inner.dependant.call is None
+
+
+def test_unknown_route_shapes_in_the_tree_are_skipped():
+    from starlette.routing import Route, WebSocketRoute
+
+    async def endpoint(websocket):  # pragma: no cover - never called
+        raise AssertionError
+
+    app = FastAPI()
+    inner = _real_api_route("/mixed")
+    original_call = inner.dependant.call
+    app.router.routes.append(
+        _FakeIncludedRoute(
+            [
+                Route("/plain", lambda request: PlainTextResponse("x")),
+                WebSocketRoute("/ws", endpoint),
+                _FakeIncludedRoute([]),
+                inner,
+            ]
+        )
+    )
+
+    apply_setup(app, _settings())
+
+    assert inner.dependant.call is not original_call
