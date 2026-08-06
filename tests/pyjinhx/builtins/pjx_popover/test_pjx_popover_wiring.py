@@ -75,6 +75,20 @@ def test_a_colliding_popover_gets_the_primitive_s_numbers_inline(page: Page):
     assert "right: auto" in style
 
 
+def test_reopening_after_a_collision_clears_the_stale_inline_position(page: Page):
+    # Open while colliding (gets inline left/top/right), close, move the
+    # trigger to a spot with room, then reopen: the panel must fall back to
+    # the CSS default rather than keep the first open's stale inline styles.
+    _load(page, left=250)
+    page.click("[data-pjx-toggle]")
+    page.click("[data-pjx-toggle]")  # close
+    page.evaluate("document.getElementById('root').style.left = '10px'")
+    page.click("[data-pjx-toggle]")  # reopen with room
+    assert (
+        page.evaluate("document.getElementById('panel').getAttribute('style')") is None
+    )
+
+
 def test_the_primitive_stays_callable_standalone(page: Page):
     _load(page, left=10)
     result = page.evaluate(
