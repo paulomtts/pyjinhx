@@ -138,12 +138,19 @@ class TestChipSummary:
 
 
 class TestStylesheet:
-    """The chip summary must borrow PJXChipInput's tokens, not fork them."""
+    """The chip summary borrows PJXChipInput's tokens when available, but pyjinhx's
+    asset walk resolves CSS per-class with no cross-component dependency: a page
+    that renders PJXSelect(multiple=True) without ever rendering PJXChipInput only
+    ships pjx_select.css. So pjx_select.css must carry its own fallback values for
+    every PJXChipInput token it references, and the actual chip visuals (not just
+    layout), rather than assuming pjx_chip_input.css is also on the page.
+    """
 
-    def test_chip_layout_rules_exist_and_reuse_chip_input_tokens(self):
+    @staticmethod
+    def _css() -> str:
         from pathlib import Path
 
-        css = (
+        return (
             Path(__file__).resolve().parents[4]
             / "pyjinhx"
             / "builtins"
@@ -151,10 +158,37 @@ class TestStylesheet:
             / "pjx_select"
             / "pjx_select.css"
         ).read_text()
+
+    def test_chip_layout_rules_exist_and_reuse_chip_input_tokens(self):
+        css = self._css()
         assert ".pjx-select__chips" in css
         assert ".pjx-select__checkbox" in css
-        assert "var(--pjx-chip-input-gap)" in css
+        assert "var(--pjx-chip-input-gap" in css
         assert "--pjx-select-chip-" not in css
+
+    def test_chip_tokens_have_standalone_fallbacks(self):
+        """Every --pjx-chip-input-* var() reference needs a fallback value so
+        chips still render (with the right colours, not just layout) when
+        pjx_chip_input.css never ships on the page."""
+        css = self._css()
+        import re
+
+        refs = re.findall(r"var\(--pjx-chip-input-[\w-]+([^)]*)\)", css)
+        assert refs, "expected at least one --pjx-chip-input-* var() reference"
+        assert all("," in ref for ref in refs), (
+            "every --pjx-chip-input-* reference needs a fallback: "
+            f"{[r for r in refs if ',' not in r]}"
+        )
+
+    def test_chip_visuals_are_embedded_not_just_layout(self):
+        """The chip's own background/border/radius/font-size must be embedded
+        in pjx_select.css, not left to pjx_chip_input.css to supply."""
+        css = self._css()
+        chip_rule_start = css.index(".pjx-select__chips .pjx-chip-input__chip")
+        chip_rule = css[chip_rule_start : css.index("}", chip_rule_start)]
+        assert "background" in chip_rule
+        assert "border-radius" in chip_rule
+        assert "font-size" in chip_rule
 
 
 class TestController:
