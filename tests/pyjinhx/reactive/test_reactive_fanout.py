@@ -23,7 +23,7 @@ from pyjinhx.reactive.fanout import (
 from pyjinhx.segments import ChildRef, RenderedLevel
 from pyjinhx.session import RenderSession, request_scope
 
-LOAD_CALLS: list[str | None] = []
+LOAD_CALLS: list[str] = []
 
 GONE_KEYS: set[str] = set()
 """Load keys `FanoutWidget.load()` refuses to build, standing for a region the
