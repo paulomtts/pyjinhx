@@ -1252,6 +1252,39 @@ def test_build_pass_reduce_pass_order_survives_real_thread_interleaving():
     assert all(c.fresh_hash is not None for c in candidates if c.status == "dirty")
 
 
+def test_a_raising_future_abandons_the_whole_pass():
+    """A non-LookupError leaves no partial result set behind — the pass is all or nothing.
+
+    `_reduce_pass` indexes `built[item.index]` for every non-clean item, so a
+    half-filled dict would only turn a loader bug into a KeyError somewhere
+    else. The build pass hands back one complete mapping or it raises; the
+    siblings that already finished are deliberately dropped on the floor.
+    """
+    manifest = [
+        _entry("a", "fanout_widget", "a"),
+        _entry("boom", "fanout_widget", "boom"),
+        _entry("c", "fanout_widget", "c"),
+    ]
+
+    def exploding_load(cls, pjx_key: str):
+        if pjx_key == "boom":
+            raise RuntimeError(f"boom:{pjx_key}")
+        return cls(pjx_key=pjx_key, data=f"data:{pjx_key}")
+
+    with request_scope() as session, pytest.MonkeyPatch.context() as patch:
+        patch.setattr(FanoutWidget, "load", classmethod(exploding_load))
+        items = fanout._filter_pass(manifest, {"todos"}, set())
+        with pytest.raises(RuntimeError, match="boom:boom") as caught:
+            fanout._build_pass(items, session)
+
+    # The loader's own exception travels, not a wrapper: a caller upstack that
+    # knows what its load() raises must still be able to catch it by type.
+    assert type(caught.value) is RuntimeError
+    # And the pass yields no value at all — there is no partial mapping to
+    # inspect, by design.
+    assert caught.value.args == ("boom:boom",)
+
+
 def test_module_never_registers_instances():
     """Fan-out stays read-only against the instance registry (ADR 0009 E7).
 
