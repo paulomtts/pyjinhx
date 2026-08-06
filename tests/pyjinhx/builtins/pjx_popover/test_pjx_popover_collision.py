@@ -77,3 +77,13 @@ def test_right_edge_trigger_flips_to_end_alignment(page: Page):
     assert "left: -100px" in style
     assert box["right"] == 350
     assert box["right"] <= 400
+
+
+def test_bottom_edge_trigger_flips_above(page: Page):
+    # Trigger at y=300 in a 400px viewport: 30px of trigger plus a 4px gap
+    # plus a 150px panel reaches 484, so the panel goes above instead.
+    box = _open_at(page, viewport=(400, 400), left=10, top=300)
+    assert page.evaluate("document.getElementById('panel').style.top") == "-154px"
+    assert box["top"] == 146
+    assert box["bottom"] == 296  # trigger top (300) minus the 4px gap
+    assert box["top"] >= 0
