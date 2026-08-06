@@ -127,3 +127,21 @@
   accent-color: var(--pjx-select-option-active);
   pointer-events: none;
 }
+
+/* ── Search filter ─────────────────────────────────────────────────────────── */
+
+.pjx-select__filter {
+  width: 100%;
+  box-sizing: border-box;
+  margin-bottom: 0.25rem;
+  padding: var(--pjx-select-padding);
+  border: 1px solid var(--pjx-select-border);
+  border-radius: var(--pjx-select-radius);
+  background: var(--pjx-select-bg);
+  color: var(--pjx-select-fg);
+}
+
+.pjx-select__filter:focus {
+  border-color: var(--pjx-select-focus);
+  outline: none;
+}
