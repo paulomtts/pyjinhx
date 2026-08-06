@@ -178,12 +178,46 @@ def test_malformed_ampersand_is_not_a_reference(
     assert assert_identical_parse([payload], round_trip=round_trip) == expected
 
 
-def test_literal_less_than_that_is_not_a_tag() -> None:
-    assert_identical_parse(["3 < 5 and 5 > 3"])
-    assert_identical_parse(["cost < ", "10 dollars"])
+@pytest.mark.parametrize(
+    ("payload", "expected", "round_trip"),
+    [
+        ("a < b", ["a ", "<", " b"], True),
+        ("3 < 5 and 5 > 3", ["3 ", "<", " 5 and 5 > 3"], True),
+        ("<3 hearts", ["<", "3 hearts"], True),
+        ("x <- y", ["x ", "<", "- y"], True),
+        ("a < div> b", ["a ", "<", " div> b"], True),
+        ("end with <", ["end with ", "<"], True),
+        ("a<b", ["a"], False),
+    ],
+)
+def test_literal_less_than_variants(
+    payload: str, expected: list[str], round_trip: bool
+) -> None:
+    """A ``<`` followed by anything that cannot open a tag stays literal text.
+    ``a<b`` is the exception: ``<b`` is a real tag opener truncated at EOF, which
+    HTMLParser drops, so it cannot round-trip."""
+    assert assert_identical_parse([payload], round_trip=round_trip) == expected
 
 
-def test_known_lossy_case_can_skip_round_trip() -> None:
-    """A construct truncated at a feed boundary parses identically but does not round-trip."""
-    segments = assert_identical_parse(["end with <", "more"], round_trip=False)
-    assert segments == ["end with "]
+@pytest.mark.parametrize(
+    ("chunks", "expected", "round_trip"),
+    [
+        (["5 < ", "3 is false"], ["5 ", "<", " ", "3 is false"], True),
+        (["a < b", "ut c"], ["a ", "<", " b", "ut c"], True),
+        (["cost < ", "10 dollars"], ["cost ", "<", " ", "10 dollars"], True),
+        (["end with <", "more"], ["end with "], False),
+    ],
+)
+def test_literal_less_than_at_chunk_boundary(
+    chunks: list[str], expected: list[str], round_trip: bool
+) -> None:
+    """A boundary landing on or just after a literal ``<``. A chunk ending in ``<``
+    followed by a letter loses the ``<``, because each feed() starts a fresh source
+    window — recorded here so any future shortcut reproduces it exactly."""
+    assert assert_identical_parse(chunks, round_trip=round_trip) == expected
+
+
+def test_mixed_real_tags_and_literal_less_than_in_one_payload() -> None:
+    """Literal ``<`` on both sides of a real element leaves the element's root span intact."""
+    segments = assert_identical_parse(["a < b <div>real</div> c < d"])
+    assert segments == ["a ", "<", " b ", "<div>", "real", "</div>", " c ", "<", " d"]
