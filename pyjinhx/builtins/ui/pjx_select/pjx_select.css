@@ -85,22 +85,37 @@
 
 /* ── Multi-select: chip summary + option checkboxes ──────────────────────────── */
 /* Colour, radius and spacing come from PJXChipInput's tokens on purpose: the
-   trigger summary is the same chip, so a theme retunes both at once. Only
-   layout lives here. */
+   trigger summary is the same chip, so a theme retunes both at once. But
+   pyjinhx resolves CSS per component with no cross-component dependency, so a
+   page can render PJXSelect(multiple=True) and never render PJXChipInput. Every
+   --pjx-chip-input-* reference below therefore carries the same fallback value
+   pjx_chip_input.css itself declares, and the chip's visuals (not just this
+   row's layout) are embedded here so the summary is never unstyled on its own. */
 .pjx-select__chips {
   display: inline-flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--pjx-chip-input-gap);
+  gap: var(--pjx-chip-input-gap, 0.375rem);
   min-width: 0;
   overflow: hidden;
 }
 
 .pjx-select__chips .pjx-chip-input__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
   max-width: 100%;
+  padding: 0.125rem 0.5rem;
+  background: var(--pjx-chip-input-chip-bg, var(--surface-alt));
+  color: var(--pjx-chip-input-chip-fg, var(--text));
+  border-radius: var(--pjx-chip-input-chip-radius, var(--radius-full));
+  border: 1px solid var(--pjx-chip-input-border, var(--border));
+  font-size: 0.875em;
+  line-height: 1.5;
 }
 
 .pjx-select__chips .pjx-chip-input__label {
+  max-width: 16rem;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
