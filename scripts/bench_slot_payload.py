@@ -27,9 +27,14 @@ cycle guard (ADR 0004) out of the reading, as in bench_render_depth.py.
 Not a CI test (timing-sensitive). Run manually before/after parse or slot work:
 
     uv run python scripts/bench_slot_payload.py
+    uv run python scripts/bench_slot_payload.py --profile
 """
 
+import cProfile
+import io
 import os
+import pstats
+import sys
 import tempfile
 import time
 from pathlib import Path
@@ -207,6 +212,17 @@ def main() -> None:
         print(
             f"{size:8d}  {children * 1000:10.2f}ms  {slot * 1000:10.2f}ms  {per_kb:16.2f}"
         )
+
+    if "--profile" in sys.argv:
+        profiler = cProfile.Profile()
+        profiler.enable()
+        bench_children(children_root, session, PAYLOAD_BYTES[-1])
+        bench_slot(slot_root, slot_leaf, session, PAYLOAD_BYTES[-1])
+        profiler.disable()
+        for sort_key in ("cumulative", "tottime"):
+            stream = io.StringIO()
+            pstats.Stats(profiler, stream=stream).sort_stats(sort_key).print_stats(25)
+            print(stream.getvalue())
 
 
 if __name__ == "__main__":
