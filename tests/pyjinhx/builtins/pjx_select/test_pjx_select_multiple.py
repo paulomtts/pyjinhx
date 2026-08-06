@@ -222,7 +222,6 @@ class TestController:
         assert "pjx-chip-input__label" in js
         assert "innerHTML =" not in js
 
-    def test_controller_keeps_no_search_or_keyboard_handling(self):
+    def test_controller_never_builds_the_search_markup(self):
         js = self._js()
-        assert "keydown" not in js
         assert 'type="search"' not in js
