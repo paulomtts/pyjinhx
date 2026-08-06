@@ -23,6 +23,8 @@ before calling ``load()``.
 
 import re
 from collections.abc import Iterable, Sequence
+from concurrent.futures import ThreadPoolExecutor
+from contextvars import copy_context
 from dataclasses import dataclass
 from typing import Any
 
@@ -400,6 +402,73 @@ def _filter_pass(
     return items
 
 
+@dataclass(frozen=True)
+class _BuildResult:
+    """What one work item's build produced, or the fact that it proved absent."""
+
+    instance: ReactiveComponent | None
+    """The freshly loaded instance, or None when the load proved the region gone."""
+
+    level: object
+    """The freshly rendered level, or None on the missing path."""
+
+    missing: bool
+    """Whether ``load()`` raised LookupError — ADR 0013's proof of absence."""
+
+
+def _build_one(item: _WorkItem, session: RenderSession) -> _BuildResult:
+    """One work item's load and render, with its own absence proof caught.
+
+    The LookupError is caught per item rather than per pass so one region the
+    server no longer knows about cannot decide any sibling's outcome. Every
+    other exception is left to travel, exactly as it did before the build ran
+    off-thread.
+    """
+    try:
+        instance, level = _build_dirty(
+            item.component_class, item.instance_id, item.load, session
+        )
+    except LookupError:
+        return _BuildResult(instance=None, level=None, missing=True)
+    return _BuildResult(instance=instance, level=level, missing=False)
+
+
+def _build_pass(
+    items: list[_WorkItem], session: RenderSession
+) -> dict[int, _BuildResult]:
+    """Every non-clean item's build, run on a threadpool, keyed by manifest index.
+
+    ``load()`` is sync, so the concurrency lives here rather than in an async
+    variant of the walk — ``walk_manifest`` stays a plain sync callable and
+    drives the pool itself. The dict is keyed by index so the reduce pass never
+    depends on completion order, and the ``with`` block shuts the pool down
+    even when a worker raises.
+
+    A new OS thread starts with a fresh, empty ContextVar context rather than
+    inheriting the caller's, so a bare ``pool.submit(_build_one, ...)`` would
+    make the load cache's ``cache_put()`` write into a throwaway dict that
+    vanishes the moment the worker returns (`get_cache_store()` sees the
+    request's ContextVar unset and hands back an empty one). Running each
+    worker through a copy of the calling thread's context keeps the same
+    request-scoped dict object bound in both places, so the load cache still
+    fills exactly as it did in the single-threaded implementation. Deeper
+    ContextVar propagation - a worker's *own* writes flowing into anything a
+    sibling worker reads - is #871's job; this is only what parity with the
+    pre-split behavior requires.
+    """
+    pending = [item for item in items if not item.clean]
+    if not pending:
+        return {}
+    # Each item gets its own context copy: a single Context object cannot be
+    # entered by two threads at once, so sharing one across items would race.
+    with ThreadPoolExecutor(max_workers=min(8, len(pending))) as pool:
+        futures = {
+            item.index: pool.submit(copy_context().run, _build_one, item, session)
+            for item in pending
+        }
+        return {index: future.result() for index, future in futures.items()}
+
+
 def walk_manifest(
     manifest_entries: Sequence[dict[str, Any]],
     dirtied_keys: Iterable[str],
@@ -440,24 +509,22 @@ def walk_manifest(
     """
     dirty = set(dirtied_keys)
     excluded = _mounted_ids_in(primary_html)
+    items = _filter_pass(manifest_entries, dirty, excluded)
+    # A bare `RenderSession()` installs an AbsolutePathLoader, losing any
+    # template roots the caller's real session was configured with. Fall back
+    # to the active request_scope()'s session before ever constructing a fresh
+    # one, so a caller inside a request never has its dirty-path render
+    # silently point at the wrong template dir.
+    render_session = session or current_session() or RenderSession()
+    built = _build_pass(items, render_session)
     candidates: list[FanoutCandidate] = []
-    for item in _filter_pass(manifest_entries, dirty, excluded):
-        cls = item.component_class
+    for item in items:
         if item.clean:
             status, instance, level, fresh_hash = "clean", None, None, None
             resolved = item.resolved
         else:
-            # A bare `RenderSession()` installs an AbsolutePathLoader, losing
-            # any template roots the caller's real session was configured with.
-            # Fall back to the active request_scope()'s session before ever
-            # constructing a fresh one, so a caller inside a request never has
-            # its dirty-path render silently point at the wrong template dir.
-            render_session = session or current_session() or RenderSession()
-            try:
-                instance, level = _build_dirty(
-                    cls, item.instance_id, item.load, render_session
-                )
-            except LookupError:
+            result = built[item.index]
+            if result.missing:
                 # E17: a key that no longer resolves must not yield a stale
                 # instance or render. A failed load is the only thing that
                 # actually proves the region is gone, so it — not a registry
@@ -470,6 +537,8 @@ def walk_manifest(
                     None,
                 )
             else:
+                instance, level = result.instance, result.level
+                assert instance is not None
                 fresh_hash = instance.state_hash()
                 if _hash_gate_drops(fresh_hash, item.entry):
                     # The dedup slot the filter pass took is deliberately kept:
@@ -481,7 +550,7 @@ def walk_manifest(
         candidates.append(
             FanoutCandidate(
                 type_name=str(item.entry["type"]),
-                component_class=cls,
+                component_class=item.component_class,
                 instance_id=item.instance_id,
                 load=item.load,
                 status=status,

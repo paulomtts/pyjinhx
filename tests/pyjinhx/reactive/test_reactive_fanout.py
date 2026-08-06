@@ -1117,3 +1117,22 @@ def test_filter_pass_keeps_manifest_order_and_dedups():
     assert all(i.clean is False for i in items)
     # The filter pass must not have loaded or rendered anything.
     assert LOAD_CALLS == []
+
+
+def test_build_pass_results_are_keyed_by_manifest_index():
+    """Each dirty item's build result comes back under its manifest position."""
+    GONE_KEYS.add("gone")
+    manifest = [
+        _entry("quiet", "quiet_widget", None),
+        _entry("a", "fanout_widget", "a"),
+        _entry("bad", "fanout_widget", "gone"),
+    ]
+    with request_scope() as session:
+        items = fanout._filter_pass(manifest, {"todos"}, set())
+        results = fanout._build_pass(items, session)
+
+    assert sorted(results) == [1, 2]
+    assert results[1].missing is False
+    assert results[1].instance is not None and results[1].level is not None
+    assert results[2].missing is True
+    assert results[2].instance is None and results[2].level is None
