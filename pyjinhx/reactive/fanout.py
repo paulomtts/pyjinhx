@@ -24,7 +24,6 @@ before calling ``load()``.
 import re
 from collections.abc import Iterable, Sequence
 from concurrent.futures import ThreadPoolExecutor
-from contextvars import copy_context
 from dataclasses import dataclass
 from typing import Any
 
@@ -445,26 +444,18 @@ def _build_pass(
     even when a worker raises.
 
     A new OS thread starts with a fresh, empty ContextVar context rather than
-    inheriting the caller's, so a bare ``pool.submit(_build_one, ...)`` would
-    make the load cache's ``cache_put()`` write into a throwaway dict that
-    vanishes the moment the worker returns (`get_cache_store()` sees the
-    request's ContextVar unset and hands back an empty one). Running each
-    worker through a copy of the calling thread's context keeps the same
-    request-scoped dict object bound in both places, so the load cache still
-    fills exactly as it did in the single-threaded implementation. Deeper
-    ContextVar propagation - a worker's *own* writes flowing into anything a
-    sibling worker reads - is #871's job; this is only what parity with the
-    pre-split behavior requires.
+    inheriting the caller's, so the load cache's ``cache_put()`` inside a
+    worker's ``load()`` call writes into a throwaway dict that vanishes the
+    moment the worker returns. That is a known gap, not an oversight:
+    propagating the caller's ContextVar context into these workers is #871's
+    job, so it is deliberately left undone here.
     """
     pending = [item for item in items if not item.clean]
     if not pending:
         return {}
-    # Each item gets its own context copy: a single Context object cannot be
-    # entered by two threads at once, so sharing one across items would race.
     with ThreadPoolExecutor(max_workers=min(8, len(pending))) as pool:
         futures = {
-            item.index: pool.submit(copy_context().run, _build_one, item, session)
-            for item in pending
+            item.index: pool.submit(_build_one, item, session) for item in pending
         }
         return {index: future.result() for index, future in futures.items()}
 
