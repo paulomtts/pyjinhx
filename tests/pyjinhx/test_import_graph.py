@@ -566,12 +566,20 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
             "pyjinhx.reactive.cache",
             "pyjinhx.reactive.component",
             "pyjinhx.reactive.keys",
+            "pyjinhx.reactive.load_cost",
             "pyjinhx.rendering",
             "pyjinhx.root_attrs",
             "pyjinhx.segments",
             "pyjinhx.session",
         }
     ),
+    # #894: a process-wide, decide-once verdict on whether a class's load() is
+    # cheap enough that fan-out threading it is a loss. Mirrors render_cache.py's
+    # is_too_cheap()/note_render_cost() pattern one level down, inside reactive/
+    # rather than at the render spine, since the thing it prices (load()) is a
+    # reactive/-only concept. component is imported only under TYPE_CHECKING for
+    # the annotation, so it carries no runtime edge.
+    "reactive.load_cost": frozenset({"pyjinhx.reactive.component"}),
     # The instance registry (ADR 0009) is read-only over session's ContextVar
     # store; it consumes get_instances() and nothing else in pyjinhx. The
     # register_rendered_instance signature also names RenderedLevel, but that
