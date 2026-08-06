@@ -23,7 +23,7 @@ if TYPE_CHECKING:
     from pyjinhx.config import PjxSettings
     from pyjinhx.segments import RenderedLevel
 
-# The seven pieces of per-request mutable state. They live here rather than
+# The eight pieces of per-request mutable state. They live here rather than
 # beside their eventual consumers because the import rule runs one way only:
 # reactive/ imports session, never the reverse. Each defaults to None so that
 # reading one outside a request is a miss, not a LookupError.
@@ -44,6 +44,9 @@ _cache_forward: ContextVar[dict[tuple[type, object], set[str]] | None] = Context
     "pjx_cache_forward", default=None
 )
 _load_context: ContextVar[object | None] = ContextVar("pjx_load_context", default=None)
+_freshness_cache: ContextVar[dict[str, bool] | None] = ContextVar(
+    "pjx_freshness_cache", default=None
+)
 
 
 class NoActiveRequestScope(RuntimeError):
@@ -329,6 +332,20 @@ def get_cache_forward() -> dict[tuple[type, object], set[str]]:
     return forward
 
 
+def get_freshness_cache() -> dict[str, bool]:
+    """Return this request's confirmed-fresh template paths, empty outside a scope.
+
+    Keyed by the absolute template path string the loader reports as a Template's
+    filename. A path recorded here has had its mtime confirmed once this request
+    and is not re-stat'ed again until the next one, so a template edited mid-request
+    is picked up on the following request rather than the current one.
+    """
+    cache = _freshness_cache.get()
+    if cache is None:
+        return {}
+    return cache
+
+
 def get_load_context() -> object | None:
     """Return whatever the app's ``context_factory`` produced for this request.
 
@@ -376,6 +393,7 @@ def request_scope(
     cache_token = _cache_store.set({})
     cache_reverse_token = _cache_reverse.set({})
     cache_forward_token = _cache_forward.set({})
+    freshness_token = _freshness_cache.set({})
     # Bound only when supplied, so an inner scope that knows nothing about the
     # app context cannot blank out the request's value for the code below it.
     load_token = _load_context.set(load_context) if load_context is not None else None
@@ -386,6 +404,7 @@ def request_scope(
         # outer scope its own state back, not clear the variable outright.
         if load_token is not None:
             _load_context.reset(load_token)
+        _freshness_cache.reset(freshness_token)
         _cache_forward.reset(cache_forward_token)
         _cache_reverse.reset(cache_reverse_token)
         _cache_store.reset(cache_token)

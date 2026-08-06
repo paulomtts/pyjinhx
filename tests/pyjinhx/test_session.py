@@ -795,3 +795,34 @@ def test_environment_for_picks_up_template_edits_across_renders(tmp_path):
     assert env is session_module._environment_for(settings)
     assert reloaded is not warm
     assert reloaded.render() == "<p>after</p>"
+
+
+def test_freshness_cache_is_empty_outside_any_scope():
+    """An unset freshness cache reads as an empty dict, never raises: callers
+    outside a request degrade to no memoization rather than crashing."""
+    assert session_module.get_freshness_cache() == {}
+
+
+def test_freshness_cache_is_one_object_for_the_life_of_a_scope():
+    """The fan-out threadpool copies the caller's Context per work item, so every
+    worker must land on the same dict object request_scope() bound."""
+    with session_module.request_scope():
+        first = session_module.get_freshness_cache()
+        first["/tmp/a.html"] = True
+        assert session_module.get_freshness_cache() is first
+
+    with session_module.request_scope():
+        assert session_module.get_freshness_cache() == {}
+
+
+def test_nested_scope_restores_the_outer_freshness_cache():
+    with session_module.request_scope():
+        session_module.get_freshness_cache()["/tmp/outer.html"] = True
+
+        with session_module.request_scope():
+            assert session_module.get_freshness_cache() == {}
+            session_module.get_freshness_cache()["/tmp/inner.html"] = True
+
+        assert session_module.get_freshness_cache() == {"/tmp/outer.html": True}
+
+    assert session_module.get_freshness_cache() == {}
