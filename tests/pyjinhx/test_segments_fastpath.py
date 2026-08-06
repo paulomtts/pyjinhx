@@ -125,9 +125,57 @@ def test_split_inside_closing_tag(chunks: list[str]) -> None:
     assert segments == ["<PJXButton>", "body", "</pjxbutton>", " tail"]
 
 
-def test_entity_and_char_refs_stay_separate_segments() -> None:
-    segments = assert_identical_parse(["a &amp; b &#38; c"])
-    assert segments == ["a ", "&amp;", " b ", "&#38;", " c"]
+@pytest.mark.parametrize(
+    ("payload", "expected"),
+    [
+        ("a &amp; b", ["a ", "&amp;", " b"]),
+        ("a &lt; b", ["a ", "&lt;", " b"]),
+        ('say &quot;hi&quot;', ["say ", "&quot;", "hi", "&quot;"]),
+    ],
+)
+def test_named_entity_refs(payload: str, expected: list[str]) -> None:
+    """Each named entity is its own segment and keeps its source spelling."""
+    assert assert_identical_parse([payload]) == expected
+
+
+def test_numeric_and_hex_char_refs() -> None:
+    """Decimal and hex char refs each become one segment, hex case preserved."""
+    segments = assert_identical_parse(["a &#38; b &#x26; c"])
+    assert segments == ["a ", "&#38;", " b ", "&#x26;", " c"]
+
+
+@pytest.mark.parametrize(
+    "chunks",
+    [
+        ["a &", "amp; b"],
+        ["a &am", "p; b"],
+        ["a &amp", "; b"],
+        ["a &#", "38; b"],
+        ["a &#x2", "6; b"],
+    ],
+)
+def test_entity_ref_split_across_chunk_boundary(chunks: list[str]) -> None:
+    """A reference cut in half by a feed boundary still parses as one reference segment."""
+    segments = assert_identical_parse(chunks)
+    assert len(segments) == 3
+    assert segments[1] in ("&amp;", "&#38;", "&#x26;")
+
+
+@pytest.mark.parametrize(
+    ("payload", "expected", "round_trip"),
+    [
+        ("a & b", ["a ", "&", " b"], True),
+        ("tom & jerry &", ["tom ", "&", " jerry ", "&"], True),
+        ("a & ", ["a ", "&", " "], True),
+        ("a &nbsp b", ["a ", "&nbsp;", " b"], False),
+    ],
+)
+def test_malformed_ampersand_is_not_a_reference(
+    payload: str, expected: list[str], round_trip: bool
+) -> None:
+    """A bare or unterminated ampersand stays text; HTMLParser only completes a
+    known name like ``&nbsp``, which is why that one cannot round-trip."""
+    assert assert_identical_parse([payload], round_trip=round_trip) == expected
 
 
 def test_literal_less_than_that_is_not_a_tag() -> None:
