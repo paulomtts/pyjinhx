@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.5.2 — Per-instance coercion checks, README/CI fixes (2026-08-06)
+
+### Changed
+- `_is_json_coercible_annotation()`'s verdict is now cached per `(class, field)` instead of being recomputed on every instance render — a static property of a field's type annotation was being re-derived on every instantiation. `bench_field_count.py`'s `json` column shows a measured improvement at higher field counts.
+- README's Performance section rewritten with plain-language "what this means for a real app" notes and refreshed numbers reflecting 1.5.1's fixes; added previously-missing cross-request-caching and fan-out-concurrency tables.
+
+### Fixed
+- The `Deploy Docs` GitHub Actions workflow's `pages` concurrency group could get stuck when several merges landed on `master` in quick succession — a queued deploy could time out waiting on a deployment already superseded by a newer one. Now cancels a stale, still-queued deploy in favor of the latest.
+
+### Investigated, not shipped
+- A prototype fast-path for the segment parser (to skip scanning content bytes that can't contain a tag) was built, benchmarked, and reverted — kept as a documented option, not adopted this release. See [issue #907](https://github.com/paulomtts/pyjinhx/issues/907).
+
 ## 1.5.1 — Fan-out walk performance (2026-08-06)
 
 Found by profiling `walk_manifest()` at a large, mostly-dirty manifest (`scripts/bench_reactive_fanout.py`'s worst-case shape): ~93% of wall time was Jinja re-verifying template freshness on every single render, and the fan-out build pass always spun up a threadpool even when there was no I/O to overlap.
