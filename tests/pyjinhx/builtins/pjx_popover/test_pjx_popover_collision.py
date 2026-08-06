@@ -87,3 +87,15 @@ def test_bottom_edge_trigger_flips_above(page: Page):
     assert box["top"] == 146
     assert box["bottom"] == 296  # trigger top (300) minus the 4px gap
     assert box["top"] >= 0
+
+
+def test_a_viewport_too_tight_for_the_panel_clamps_within_bounds(page: Page):
+    # 260x220 viewport: the 200x150 panel fits the viewport but not at the
+    # trigger, and neither flip helps (end alignment lands at x=-20, above
+    # lands at y=-54), so only the padded clamp keeps it fully on-screen.
+    box = _open_at(page, viewport=(260, 220), left=80, top=100)
+    assert box["left"] >= 0
+    assert box["top"] >= 0
+    assert box["right"] <= 260
+    assert box["bottom"] <= 220
+    assert (box["left"], box["top"]) == (52, 62)  # clamped to the 8px inset
