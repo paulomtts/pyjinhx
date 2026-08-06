@@ -99,3 +99,14 @@ def test_a_viewport_too_tight_for_the_panel_clamps_within_bounds(page: Page):
     assert box["right"] <= 260
     assert box["bottom"] <= 220
     assert (box["left"], box["top"]) == (52, 62)  # clamped to the 8px inset
+
+
+def test_trigger_with_room_on_all_sides_gets_no_inline_styles(page: Page):
+    # Centered in a large viewport with room on every side: the primitive
+    # lands on the CSS default, so the controller writes nothing and the
+    # rendered markup stays identical to a popover that never flips.
+    _open_at(page, viewport=(1000, 800), left=450, top=385)
+    assert (
+        page.evaluate("document.getElementById('panel').getAttribute('style')")
+        is None
+    )
