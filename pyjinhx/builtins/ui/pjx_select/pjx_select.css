@@ -82,3 +82,33 @@
 .pjx-select__option[aria-selected="true"] {
   background: var(--pjx-select-option-active);
 }
+
+/* ── Multi-select: chip summary + option checkboxes ──────────────────────────── */
+/* Colour, radius and spacing come from PJXChipInput's tokens on purpose: the
+   trigger summary is the same chip, so a theme retunes both at once. Only
+   layout lives here. */
+.pjx-select__chips {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--pjx-chip-input-gap);
+  min-width: 0;
+  overflow: hidden;
+}
+
+.pjx-select__chips .pjx-chip-input__chip {
+  max-width: 100%;
+}
+
+.pjx-select__chips .pjx-chip-input__label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pjx-select__checkbox {
+  flex: none;
+  margin-right: 0.5rem;
+  accent-color: var(--pjx-select-option-active);
+  pointer-events: none;
+}

@@ -133,3 +133,23 @@ class TestChipSummary:
     def test_label_span_is_still_the_single_trigger_hook(self, session):
         html = _html(session, multiple=True, value=["a", "c"])
         assert html.count('class="pjx-select__label"') == 1
+
+
+class TestStylesheet:
+    """The chip summary must borrow PJXChipInput's tokens, not fork them."""
+
+    def test_chip_layout_rules_exist_and_reuse_chip_input_tokens(self):
+        from pathlib import Path
+
+        css = (
+            Path(__file__).resolve().parents[4]
+            / "pyjinhx"
+            / "builtins"
+            / "ui"
+            / "pjx_select"
+            / "pjx_select.css"
+        ).read_text()
+        assert ".pjx-select__chips" in css
+        assert ".pjx-select__checkbox" in css
+        assert "var(--pjx-chip-input-gap)" in css
+        assert "--pjx-select-chip-" not in css
