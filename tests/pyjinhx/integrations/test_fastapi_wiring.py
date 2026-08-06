@@ -687,7 +687,10 @@ def test_include_router_after_setup_is_adapted():
         response = client.get("/sub-after")
 
     assert response.status_code == 200
-    assert "after" in response.text
+    # Asserting on the rendered fragment, not just the name: an unadapted route
+    # also answers 200 with the name in it, as pydantic-serialized JSON.
+    assert response.headers["content-type"].startswith("text/html")
+    assert "<div>hello after</div>" in response.text
 
 
 def test_include_router_before_setup_is_adapted():
@@ -707,4 +710,29 @@ def test_include_router_before_setup_is_adapted():
         response = client.get("/sub-before")
 
     assert response.status_code == 200
-    assert "before" in response.text
+    assert response.headers["content-type"].startswith("text/html")
+    assert "<div>hello before</div>" in response.text
+
+
+def test_nested_include_router_is_adapted_end_to_end():
+    from fastapi import APIRouter
+
+    app = FastAPI()
+    apply_setup(app, _settings())
+
+    inner = APIRouter()
+
+    @inner.get("/nested-deep")
+    def nested_deep() -> Greeting:
+        return Greeting(name="deep")
+
+    outer = APIRouter()
+    outer.include_router(inner)
+    app.include_router(outer)
+
+    with TestClient(app) as client:
+        response = client.get("/nested-deep")
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/html")
+    assert "<div>hello deep</div>" in response.text

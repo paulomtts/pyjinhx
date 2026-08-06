@@ -266,6 +266,7 @@ def _adapt_endpoint(
             result = await result
         return backend.to_response(result, _request_from(kwargs))
 
+    setattr(adapted, "__pjx_adapted__", True)  # noqa: B010
     return adapted
 
 
@@ -300,10 +301,14 @@ def _install_route_adaptation(backend: FastAPIBackend, app: Starlette) -> None:
     def patch_routes(routes: Iterable[Any]) -> None:
         for route in routes:
             if isinstance(route, APIRoute):
-                if route.dependant.call is not None:
-                    route.dependant.call = _adapt_endpoint(
-                        backend, route.dependant.call
-                    )
+                call = route.dependant.call
+                if call is not None and not getattr(call, "__pjx_adapted__", False):
+                    adapted = _adapt_endpoint(backend, call)
+                    route.dependant.call = adapted
+                    # An included sub-router is dispatched through effective
+                    # route contexts that fastapi rebuilds from ``endpoint``,
+                    # not from the dependant we just patched.
+                    route.endpoint = adapted
                     route.app = request_response(route.get_route_handler())
                 continue
             # fastapi >= 0.137 keeps included routes under a sentinel route
@@ -312,5 +317,19 @@ def _install_route_adaptation(backend: FastAPIBackend, app: Starlette) -> None:
             if included is not None:
                 patch_routes(included.routes)
 
-    app.router.route_class = PjxRoute  # pyright: ignore[reportAttributeAccessIssue]
-    patch_routes(app.router.routes)
+    app_router: Any = app.router
+    app_router.route_class = PjxRoute
+    patch_routes(app_router.routes)
+
+    # Routers included after setup never see PjxRoute: fastapi keeps the
+    # sub-router's own APIRoute objects instead of rebuilding them with the
+    # app's route_class, so adaptation has to happen at include time.
+    include_router = app_router.include_router
+
+    @functools.wraps(include_router)
+    def adapting_include_router(router: Any, **kwargs: Any) -> Any:
+        result = include_router(router, **kwargs)
+        patch_routes(router.routes)
+        return result
+
+    app_router.include_router = adapting_include_router
