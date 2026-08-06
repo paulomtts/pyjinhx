@@ -210,4 +210,6 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    from _bench_profiling import run_with_optional_profile
+
+    run_with_optional_profile(main)
