@@ -158,21 +158,6 @@ class VerbatimParser(HTMLParser):
         """Parse ``data`` and record line positions for offset recovery."""
         self._source = data
         self._line_starts = [0] + [i + 1 for i, char in enumerate(data) if char == "\n"]
-        if not self.rawdata and "<" not in data and "&" not in data:
-            # A chunk with no '<' and no '&' can only ever produce one
-            # handle_data event, so tokenizing it character by character buys
-            # nothing. '&' is excluded because convert_charrefs is off: an
-            # entity reference lands in its own segment, and collapsing it into
-            # the surrounding text would change the segment list.
-            if data:
-                self.segments.append(data)
-                newlines = data.count("\n")
-                if newlines:
-                    self.lineno += newlines
-                    self.offset = len(data) - data.rindex("\n") - 1
-                else:
-                    self.offset += len(data)
-            return
         super().feed(data)
 
     def _raw_at(self, pattern: "re.Pattern[str]") -> "str | None":
