@@ -1411,6 +1411,92 @@ def test_build_pass_sequential_path_still_proves_absence():
     assert built[1].instance is None and built[1].level is None
 
 
+def _candidate_shape(candidate: FanoutCandidate) -> tuple:
+    """One candidate reduced to the values two builds of it must agree on.
+
+    ``instance`` is compared by its dumped fields minus ``id`` rather than by
+    identity or model equality: ``id`` is auto-generated per build, so two
+    equally correct builds of the same region can never share it — which is
+    exactly why ``state_hash()`` excludes it too. ``level`` is compared only
+    for presence, because a RenderedLevel holds the class descriptor object
+    and its own segment objects, and only the fact that a render happened is
+    a cross-path invariant.
+    """
+    instance = candidate.instance
+    return (
+        candidate.type_name,
+        candidate.component_class,
+        candidate.instance_id,
+        candidate.load,
+        candidate.status,
+        candidate.entry,
+        candidate.fresh_hash,
+        None if instance is None else type(instance),
+        None if instance is None else instance.model_dump(exclude={"id"}),
+        candidate.level is None,
+    )
+
+
+def test_build_and_reduce_pass_parity_between_sequential_and_threaded_paths():
+    """The same manifest yields the same candidates on the pool and inline.
+
+    The threaded run goes first because a class's cost verdict is decided once
+    per process and never revisited: measuring it here would let the machine's
+    speed, not the test, choose the second run's path. Patching out the
+    measurement keeps FanoutWidget unmeasured — and therefore threaded — until
+    the test itself notes a zero cost for the inline run.
+    """
+    GONE_KEYS.add("gone")
+
+    def manifest() -> list[dict]:
+        return [
+            entry("fanout_widget", "a", load="a"),
+            entry("fanout_widget", "bad", load="gone"),
+            entry("fanout_widget", "c", load="c"),
+        ]
+
+    pools: list[int] = []
+    real_pool = fanout.ThreadPoolExecutor
+
+    def counting_pool(*args, **kwargs):
+        pools.append(1)
+        return real_pool(*args, **kwargs)
+
+    def no_pool(*args, **kwargs):
+        raise AssertionError("the too-cheap path must not build a ThreadPoolExecutor")
+
+    # Run B: nobody has measured FanoutWidget, so the pass takes the pool.
+    with request_scope() as session, pytest.MonkeyPatch.context() as patch:
+        patch.setattr(fanout, "ThreadPoolExecutor", counting_pool)
+        patch.setattr(fanout, "note_load_cost", lambda cls, cost_us: None)
+        items = fanout._filter_pass(manifest(), {"todos"}, set())
+        built = fanout._build_pass(items, session)
+        threaded = fanout._reduce_pass(items, built)
+
+    assert pools == [1]
+
+    # Run A: the same manifest, in a fresh request scope so Run B's load cache
+    # cannot report anything clean, with the class now measured as too cheap.
+    note_load_cost(FanoutWidget, 0.0)
+    with request_scope() as session, pytest.MonkeyPatch.context() as patch:
+        patch.setattr(fanout, "ThreadPoolExecutor", no_pool)
+        items = fanout._filter_pass(manifest(), {"todos"}, set())
+        built = fanout._build_pass(items, session)
+        sequential = fanout._reduce_pass(items, built)
+
+    assert pools == [1]
+    assert [candidate.instance_id for candidate in sequential] == ["a", "bad", "c"]
+    assert [candidate.status for candidate in sequential] == [
+        "dirty",
+        "missing",
+        "dirty",
+    ]
+    assert len(sequential) == len(threaded)
+    assert [_candidate_shape(candidate) for candidate in sequential] == [
+        _candidate_shape(candidate) for candidate in threaded
+    ]
+
+
 def test_module_never_registers_instances():
     """Fan-out stays read-only against the instance registry (ADR 0009 E7).
 
