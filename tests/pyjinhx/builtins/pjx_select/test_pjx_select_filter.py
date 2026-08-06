@@ -123,3 +123,61 @@ class TestRender:
         html = _html(session, value="o3")
         assert "data-pjx-select-filter" in html
         assert 'type="checkbox"' not in html
+
+    def test_prior_multi_selection_is_independent_of_the_filter(self, session):
+        html = _html(session, multiple=True, value=["o1", "o7"])
+        assert 'data-value="o1" aria-selected="true"' in html
+        assert 'data-value="o7" aria-selected="true"' in html
+        assert html.count('aria-selected="true"') == 2
+        # The filter is a sibling of the option buttons, not a wrapper: its
+        # presence must not shift which options are marked selected.
+        assert "data-pjx-select-filter" in html
+
+
+from pathlib import Path
+
+CONTROLLER = (
+    Path(__file__).resolve().parents[4]
+    / "pyjinhx"
+    / "builtins"
+    / "ui"
+    / "pjx_select"
+    / "pjx_select.js"
+)
+
+
+class TestController:
+    """Source-shape guards.
+
+    There is no JS harness in this repo, so browser behavior for the filter is
+    an acknowledged coverage gap owned by the PJXSelect test/docs subtask.
+    These assertions pin the invariants that are cheapest to break.
+    """
+
+    def test_listens_for_input_on_the_filter_hook(self):
+        source = CONTROLLER.read_text()
+        assert "addEventListener('input'" in source
+        assert "[data-pjx-select-filter]" in source
+
+    def test_filtering_never_touches_selection_state(self):
+        source = CONTROLLER.read_text()
+        body = source[source.index("function applyFilter") :]
+        body = body[: body.index("\n    }")]
+        assert "aria-selected" not in body
+        assert "syncNative" not in body
+        assert "renderTrigger" not in body
+
+    def test_match_is_case_insensitive(self):
+        source = CONTROLLER.read_text()
+        assert "toLowerCase()" in source
+
+    def test_the_position_primitive_is_untouched(self):
+        primitive = (
+            Path(__file__).resolve().parents[4]
+            / "pyjinhx"
+            / "builtins"
+            / "ui"
+            / "pjx_popover"
+            / "pjx_popover_position.js"
+        ).read_text()
+        assert primitive in CONTROLLER.read_text()

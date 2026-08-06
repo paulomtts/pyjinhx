@@ -149,6 +149,13 @@
         if (!parts.panel || parts.panel.hidden) return;
         parts.panel.hidden = true;
         parts.panel.removeAttribute('style');
+        // Reopening starts from the whole list: a stale query would silently
+        // hide options the user never chose to filter out.
+        const filter = root.querySelector('[data-pjx-select-filter]');
+        if (filter) {
+            filter.value = '';
+            applyFilter(root, '');
+        }
         if (parts.trigger) parts.trigger.setAttribute('aria-expanded', 'false');
     }
 
@@ -164,6 +171,15 @@
 
     function labelOf(option) {
         return option.textContent.trim();
+    }
+
+    // Visual-only: option buttons are hidden, never deselected, and the native
+    // <select> keeps every one of its options so a submit still posts them.
+    function applyFilter(root, query) {
+        const needle = query.trim().toLowerCase();
+        root.querySelectorAll('[data-pjx-select-option]').forEach(function (option) {
+            option.hidden = needle !== '' && labelOf(option).toLowerCase().indexOf(needle) === -1;
+        });
     }
 
     // The native <select> is the form's source of truth in both modes, so it is
@@ -255,5 +271,12 @@
         const panel = targetRoot.querySelector('[data-pjx-select-panel]');
         if (panel && panel.hidden) open(targetRoot);
         else close(targetRoot);
+    });
+
+    document.addEventListener('input', function (e) {
+        const filter = e.target.closest('[data-pjx-select-filter]');
+        if (!filter) return;
+        const root = rootOf(filter);
+        if (root) applyFilter(root, filter.value);
     });
 }());
