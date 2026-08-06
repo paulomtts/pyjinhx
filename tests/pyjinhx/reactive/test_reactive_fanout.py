@@ -3,6 +3,7 @@
 import dataclasses
 import pathlib
 import re
+import threading
 from typing import Annotated, cast
 
 import pytest
@@ -21,7 +22,13 @@ from pyjinhx.reactive.fanout import (
     walk_manifest,
 )
 from pyjinhx.segments import ChildRef, RenderedLevel
-from pyjinhx.session import RenderSession, request_scope
+from pyjinhx.session import (
+    RenderSession,
+    current_session,
+    get_cache_store,
+    get_load_context,
+    request_scope,
+)
 
 LOAD_CALLS: list[str] = []
 
@@ -58,18 +65,51 @@ class PlainWidget(BaseComponent):
     """
 
 
+SEEN_SESSIONS: list[object] = []
+"""What `current_session()` answered inside each SpyWidget.load() call."""
+
+SEEN_LOAD_CONTEXTS: list[object] = []
+"""What `get_load_context()` answered inside each SpyWidget.load() call."""
+
+SEEN_THREADS: set[int] = set()
+"""The thread each SpyWidget.load() ran on, to prove more than one was used."""
+
+
+class SpyWidget(ReactiveComponent, react=("todos",)):
+    """A reactive component whose load() records its worker's context view."""
+
+    pjx_key: Annotated[str, PjxKey()] = ""
+    data: str = ""
+
+    @classmethod
+    def load(cls, pjx_key: str) -> "SpyWidget":
+        SEEN_SESSIONS.append(current_session())
+        SEEN_LOAD_CONTEXTS.append(get_load_context())
+        SEEN_THREADS.add(threading.get_ident())
+        if pjx_key == "boom":
+            raise ValueError("loader exploded")
+        return cls(pjx_key=pjx_key, data=f"data:{pjx_key}")
+
+
 @pytest.fixture(autouse=True)
 def _clean_registries(tmp_path, monkeypatch):
     """Publish a tag -> class map for the two test classes and reset call spies."""
     LOAD_CALLS.clear()
     GONE_KEYS.clear()
+    SEEN_SESSIONS.clear()
+    SEEN_LOAD_CONTEXTS.clear()
+    SEEN_THREADS.clear()
+    spy_path = tmp_path / "spy_widget.pjx"
+    spy_path.write_text("<div>{{ pjx_key }}</div>")
     fanout_path = tmp_path / "fanout_widget.pjx"
     quiet_path = tmp_path / "quiet_widget.pjx"
     fanout_path.write_text("<div>{{ pjx_key }}</div>")
     quiet_path.write_text("<div>quiet</div>")
     plain_path = tmp_path / "plain_widget.pjx"
     plain_path.write_text("<div>plain</div>")
-    discovery.build_registry(tmp_path, [FanoutWidget, QuietWidget, PlainWidget])
+    discovery.build_registry(
+        tmp_path, [FanoutWidget, QuietWidget, PlainWidget, SpyWidget]
+    )
     # `_resolve_template_path` walks the class's *defining module's* directory
     # (this test file's dir), not `template_dir` passed to `build_registry` —
     # the two are deliberately different concerns (tag lookup vs. file probe).
@@ -85,6 +125,9 @@ def _clean_registries(tmp_path, monkeypatch):
     )
     QuietWidget.__pjx_descriptor__ = dataclasses.replace(
         QuietWidget.__pjx_descriptor__, template_path=quiet_path
+    )
+    SpyWidget.__pjx_descriptor__ = dataclasses.replace(
+        SpyWidget.__pjx_descriptor__, template_path=spy_path
     )
     yield
 
@@ -1191,3 +1234,42 @@ def test_a_second_walk_reads_the_workers_cache_entry_as_clean():
         )
         assert candidate.status == "clean"
         assert LOAD_CALLS == []
+
+
+def test_current_session_inside_a_worker_is_the_requests_session():
+    with scope() as session:
+        registry.register_instance(SpyWidget.__name__, "a", "resolved-entry")
+        walk_manifest([entry("spy_widget", "a", load="todo-1")], {"todos"})
+        assert SEEN_SESSIONS == [session]
+        assert isinstance(session, RenderSession)
+
+
+def test_get_load_context_inside_a_worker_is_the_requests_load_context():
+    app_context = object()
+    with request_scope(load_context=app_context):
+        registry.register_instance(SpyWidget.__name__, "a", "resolved-entry")
+        walk_manifest([entry("spy_widget", "a", load="todo-1")], {"todos"})
+        assert SEEN_LOAD_CONTEXTS == [app_context]
+
+
+def test_every_workers_cache_write_lands_when_the_pool_has_several_workers():
+    with scope():
+        manifest = [
+            entry("spy_widget", f"row-{n}", load=f"todo-{n}") for n in range(4)
+        ]
+        for n in range(4):
+            registry.register_instance(SpyWidget.__name__, f"row-{n}", None)
+        candidates = walk_manifest(manifest, {"todos"})
+        assert len(candidates) == 4
+        assert len(SEEN_THREADS) > 1
+        store = get_cache_store()
+        for n in range(4):
+            assert cache_has(SpyWidget, f"todo-{n}") is True
+        assert len(store) == 4
+
+
+def test_a_workers_non_lookup_error_still_propagates():
+    with scope():
+        registry.register_instance(SpyWidget.__name__, "a", "resolved-entry")
+        with pytest.raises(ValueError, match="loader exploded"):
+            walk_manifest([entry("spy_widget", "a", load="boom")], {"todos"})
