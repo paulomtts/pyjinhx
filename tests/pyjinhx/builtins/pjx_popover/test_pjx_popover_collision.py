@@ -107,6 +107,5 @@ def test_trigger_with_room_on_all_sides_gets_no_inline_styles(page: Page):
     # rendered markup stays identical to a popover that never flips.
     _open_at(page, viewport=(1000, 800), left=450, top=385)
     assert (
-        page.evaluate("document.getElementById('panel').getAttribute('style')")
-        is None
+        page.evaluate("document.getElementById('panel').getAttribute('style')") is None
     )
