@@ -31,7 +31,11 @@ import time
 from pathlib import Path
 
 from pyjinhx import discovery
-from pyjinhx._component import BaseComponent, _pascal_to_snake
+from pyjinhx._component import (
+    BaseComponent,
+    _pascal_to_snake,
+    _resolve_json_coercible_fields,
+)
 from pyjinhx.descriptor import ClassDescriptor
 from pyjinhx.rendering import render
 from pyjinhx.session import RenderSession
@@ -51,6 +55,7 @@ def _descriptor(
     return ClassDescriptor(
         template_path=template_dir / template,
         slot_fields=frozenset(),
+        json_coercible_fields=_resolve_json_coercible_fields(cls),
         children_field=None,
         css_paths=(),
         js_paths=(),
