@@ -22,6 +22,7 @@ before calling ``load()``.
 """
 
 import re
+import time
 from collections.abc import Iterable, Sequence
 from concurrent.futures import ThreadPoolExecutor
 from contextvars import copy_context
@@ -34,6 +35,7 @@ from pyjinhx import discovery, registry
 from pyjinhx.reactive.cache import cache_get, cache_has
 from pyjinhx.reactive.component import ReactiveComponent, coerce_load_arg
 from pyjinhx.reactive.keys import coerce_load_key_str
+from pyjinhx.reactive.load_cost import note_load_cost
 from pyjinhx.rendering import render_level
 from pyjinhx.root_attrs import stamp_root_attrs
 from pyjinhx.segments import ChildRef, RenderedLevel, serialize
@@ -165,6 +167,11 @@ def _build_dirty(
         LookupError: ``load()`` cannot build this region any more — the one
             honest signal that a region the client still shows is gone
             server-side. ``walk_manifest`` turns it into a "missing" candidate.
+
+    The load is timed around the call that already happens — never a second,
+    synthetic one — so the verdict prices the author's real work. Recording it
+    here only writes the decision; what reads it is the build pass's choice of
+    threading, which lands separately.
     """
     key_args: dict[str, Any] = {}
     if cls._pjx_key_field is not None:
@@ -172,7 +179,9 @@ def _build_dirty(
         # key declared `int` arrives as `"1"`; restore the declared type before
         # calling the author's load(), whose signature is written against it.
         key_args[cls._pjx_key_field] = coerce_load_arg(cls, load)
+    started = time.perf_counter()
     instance = cls.load(**key_args)
+    note_load_cost(cls, (time.perf_counter() - started) * 1_000_000)
     instance.id = instance_id
     return instance, render_level(instance, session)
 

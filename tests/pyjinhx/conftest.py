@@ -1,5 +1,6 @@
 import pytest
 
+from pyjinhx.reactive.load_cost import reset_load_cost_decisions
 from pyjinhx.render_cache import reset_render_cost_decisions
 from pyjinhx.session import RenderSession
 
@@ -21,6 +22,19 @@ def render_cost_decisions():
     reset_render_cost_decisions()
     yield
     reset_render_cost_decisions()
+
+
+@pytest.fixture(autouse=True)
+def load_cost_decisions():
+    """Clear the per-class load-cost verdicts around every test.
+
+    Same rationale as render_cost_decisions: process-wide, decided once, so
+    without this the first test to build a class through fan-out would fix its
+    threading verdict for the rest of the session.
+    """
+    reset_load_cost_decisions()
+    yield
+    reset_load_cost_decisions()
 
 
 @pytest.fixture(autouse=True)
