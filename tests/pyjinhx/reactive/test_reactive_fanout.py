@@ -997,7 +997,9 @@ def test_a_string_load_arg_reaches_load_as_the_declared_int(tmp_path):
     assert cast(IntKeyedWidget, candidate.instance).title == "first"
 
 
-def _entry(entry_id: str, type_name: str, load: str | None, hash_value: str | None = None):
+def _entry(
+    entry_id: str, type_name: str, load: str | None, hash_value: str | None = None
+):
     """One manifest entry shaped the way `MountedManifest.parse()` emits them."""
     entry: dict[str, object] = {"id": entry_id, "type": type_name, "load": load}
     if hash_value is not None:
@@ -1086,8 +1088,32 @@ def test_walk_manifest_non_lookup_error_propagates():
     def boom(pjx_key: str):
         raise RuntimeError(f"boom:{pjx_key}")
 
+    with request_scope(), pytest.MonkeyPatch.context() as patch:
+        patch.setattr(
+            FanoutWidget, "load", classmethod(lambda cls, pjx_key: boom(pjx_key))
+        )
+        with pytest.raises(RuntimeError, match="boom:a"):
+            walk_manifest([_entry("a", "fanout_widget", "a")], ["todos"])
+
+
+def test_filter_pass_keeps_manifest_order_and_dedups():
+    """The filter pass yields surviving, deduped items tagged with their index."""
+    manifest = [
+        _entry("in-primary", "fanout_widget", "a"),
+        _entry("unknown", "no_such_widget", "a"),
+        _entry("quiet", "quiet_widget", None),
+        _entry("first", "fanout_widget", "a"),
+        _entry("dup", "fanout_widget", "a"),
+        _entry("second", "fanout_widget", "b"),
+    ]
     with request_scope():
-        with pytest.MonkeyPatch.context() as patch:
-            patch.setattr(FanoutWidget, "load", classmethod(lambda cls, pjx_key: boom(pjx_key)))
-            with pytest.raises(RuntimeError, match="boom:a"):
-                walk_manifest([_entry("a", "fanout_widget", "a")], ["todos"])
+        items = fanout._filter_pass(manifest, {"todos"}, {"in-primary"})
+
+    assert [(i.index, i.instance_id, i.load_key) for i in items] == [
+        (3, "first", "a"),
+        (5, "second", "b"),
+    ]
+    assert all(i.component_class is FanoutWidget for i in items)
+    assert all(i.clean is False for i in items)
+    # The filter pass must not have loaded or rendered anything.
+    assert LOAD_CALLS == []

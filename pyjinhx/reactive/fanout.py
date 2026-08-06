@@ -316,6 +316,90 @@ def _drop_nested(candidates: list[FanoutCandidate]) -> list[FanoutCandidate]:
     return surviving
 
 
+@dataclass(frozen=True)
+class _WorkItem:
+    """One manifest entry that survived the filter pass, and where it came from."""
+
+    index: int
+    """The entry's position in the manifest, so the reduce pass can restore order."""
+
+    entry: dict[str, Any]
+    """The raw manifest entry, carried through for the hash gate."""
+
+    component_class: type[ReactiveComponent]
+    """The class ``discovery.get_class()`` answered for this entry's tag."""
+
+    load_key: str | None
+    """The load-cache key half of this item's dedup key."""
+
+    instance_id: str
+    """The entry's ``data-pjx-id``."""
+
+    load: object
+    """The entry's raw ``load`` arg, before any key coercion."""
+
+    resolved: object
+    """Whatever the registry (or, on the clean path, the load cache) handed back."""
+
+    clean: bool
+    """Whether the load cache already answers this item, so no build is owed."""
+
+
+def _filter_pass(
+    manifest_entries: Sequence[dict[str, Any]],
+    dirty: set[str],
+    excluded: set[str],
+) -> list[_WorkItem]:
+    """The surviving, deduped work items, in manifest order.
+
+    Every cheap check lives here and runs to completion before any build
+    starts: the dedup ``seen`` set is only a guarantee that one ``(type, load
+    key)`` pair costs one load if no build can begin while the set is still
+    being filled.
+    """
+    seen: set[tuple[str, str | None]] = set()
+    items: list[_WorkItem] = []
+    for index, entry in enumerate(manifest_entries):
+        # Cheapest filter first, ahead of the two E9 ones: one set membership
+        # against a string id, before any class lookup, dedup bookkeeping,
+        # resolve, load or render is paid for.
+        if excluded and str(entry.get("id") or "") in excluded:
+            continue
+        cls = _candidate_class(entry, dirty)
+        if cls is None:
+            continue
+        # E10: dedup before any resolve/load/render runs, so two mounted
+        # regions standing for the same (class, load arg) cost one of each.
+        load_key = _load_key(cls, entry.get("load"))
+        dedup_key = (str(entry["type"]), load_key)
+        if dedup_key in seen:
+            continue
+        seen.add(dedup_key)
+        instance_id = str(entry.get("id") or "")
+        resolved, _found = _resolve_registry_entry(cls, instance_id)
+        clean = cache_has(cls, load_key)
+        if clean and resolved is None:
+            # E13: the clean answer comes from the load cache's own key space,
+            # never from the registry key that resolved above. The registry is
+            # consulted only for what it can cheaply hand back, never as the
+            # clean/dirty gate — see _resolve_registry_entry on why a miss
+            # here is the norm rather than a signal.
+            resolved = cache_get(cls, load_key)
+        items.append(
+            _WorkItem(
+                index=index,
+                entry=entry,
+                component_class=cls,
+                load_key=load_key,
+                instance_id=instance_id,
+                load=entry.get("load"),
+                resolved=resolved,
+                clean=clean,
+            )
+        )
+    return items
+
+
 def walk_manifest(
     manifest_entries: Sequence[dict[str, Any]],
     dirtied_keys: Iterable[str],
@@ -356,36 +440,12 @@ def walk_manifest(
     """
     dirty = set(dirtied_keys)
     excluded = _mounted_ids_in(primary_html)
-    seen: set[tuple[str, str | None]] = set()
     candidates: list[FanoutCandidate] = []
-    for entry in manifest_entries:
-        # Cheapest filter first, ahead of the two E9 ones: one set membership
-        # against a string id, before any class lookup, dedup bookkeeping,
-        # resolve, load or render is paid for.
-        if excluded and str(entry.get("id") or "") in excluded:
-            continue
-        cls = _candidate_class(entry, dirty)
-        if cls is None:
-            continue
-        # E10: dedup before any resolve/load/render runs, so two mounted
-        # regions standing for the same (class, load arg) cost one of each.
-        dedup_key = (str(entry["type"]), _load_key(cls, entry.get("load")))
-        if dedup_key in seen:
-            continue
-        seen.add(dedup_key)
-        instance_id = str(entry.get("id") or "")
-        load = entry.get("load")
-        resolved, _found = _resolve_registry_entry(cls, instance_id)
-        if cache_has(cls, dedup_key[1]):
-            # E13: the clean answer comes from the load cache's own key space,
-            # never from the registry key that resolved above. The registry is
-            # consulted only for what it can cheaply hand back, never as the
-            # clean/dirty gate — see _resolve_registry_entry on why a miss
-            # here is the norm rather than a signal.
+    for item in _filter_pass(manifest_entries, dirty, excluded):
+        cls = item.component_class
+        if item.clean:
             status, instance, level, fresh_hash = "clean", None, None, None
-            resolved = (
-                resolved if resolved is not None else cache_get(cls, dedup_key[1])
-            )
+            resolved = item.resolved
         else:
             # A bare `RenderSession()` installs an AbsolutePathLoader, losing
             # any template roots the caller's real session was configured with.
@@ -394,7 +454,9 @@ def walk_manifest(
             # its dirty-path render silently point at the wrong template dir.
             render_session = session or current_session() or RenderSession()
             try:
-                instance, level = _build_dirty(cls, instance_id, load, render_session)
+                instance, level = _build_dirty(
+                    cls, item.instance_id, item.load, render_session
+                )
             except LookupError:
                 # E17: a key that no longer resolves must not yield a stale
                 # instance or render. A failed load is the only thing that
@@ -409,21 +471,21 @@ def walk_manifest(
                 )
             else:
                 fresh_hash = instance.state_hash()
-                if _hash_gate_drops(fresh_hash, entry):
-                    # The dedup slot above is deliberately kept: a later
-                    # duplicate of this (type, load-key) pair would gate out
-                    # identically, so dropping here must not buy it a second
+                if _hash_gate_drops(fresh_hash, item.entry):
+                    # The dedup slot the filter pass took is deliberately kept:
+                    # a later duplicate of this (type, load-key) pair would gate
+                    # out identically, so dropping here must not buy it a second
                     # load/render.
                     continue
-                status = "dirty"
+                status, resolved = "dirty", item.resolved
         candidates.append(
             FanoutCandidate(
-                type_name=str(entry["type"]),
+                type_name=str(item.entry["type"]),
                 component_class=cls,
-                instance_id=instance_id,
-                load=load,
+                instance_id=item.instance_id,
+                load=item.load,
                 status=status,
-                entry=entry,
+                entry=item.entry,
                 resolved=resolved,
                 level=level,
                 instance=instance,
