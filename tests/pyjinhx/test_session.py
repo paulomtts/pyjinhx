@@ -828,6 +828,43 @@ def test_nested_scope_restores_the_outer_freshness_cache():
     assert session_module.get_freshness_cache() == {}
 
 
+def test_freshness_cache_does_not_leak_across_request_scopes(tmp_path):
+    """The memoized "fresh" verdict is a per-request shortcut, not a per-process
+    one: a template edited between two requests must be re-stat'ed by the
+    second. Scope 2 starts on an empty dict, so uptodate() has nothing to trust
+    and has to ask the filesystem again."""
+    from pyjinhx.config import PjxSettings
+
+    template_path = tmp_path / "across.html"
+    template_path.write_text("<p>before</p>", encoding="utf-8")
+    # One settings instance for both scopes: _environment_for memoizes per
+    # instance, so this pins the same Environment - and the same warm Jinja
+    # template cache - across the two requests. A fresh Environment in scope 2
+    # would recompile regardless and prove nothing about the freshness cache.
+    settings = PjxSettings()
+    env = session_module._environment_for(settings)
+
+    with session_module.request_scope():
+        assert env.get_template(str(template_path)).render() == "<p>before</p>"
+        # Warm: uptodate() is only ever invoked on a cache *hit* (Jinja's
+        # is_up_to_date check), never on the first, cache-miss load. Without
+        # this second call inside scope 1, the freshness dict is never written
+        # to in the first place - there would be nothing to leak, and the
+        # "revert #890" probe below would pass for the wrong reason (verified:
+        # omitting this line makes the RED step in 1.3 stay green).
+        assert env.get_template(str(template_path)).render() == "<p>before</p>"
+
+    template_path.write_text("<p>after</p>", encoding="utf-8")
+    # Explicit mtime bump: a coarse-resolution filesystem can stamp both writes
+    # with the same st_mtime, which would make uptodate() report "unchanged"
+    # for reasons that have nothing to do with the code under test.
+    stat = template_path.stat()
+    os.utime(template_path, (stat.st_atime + 10, stat.st_mtime + 10))
+
+    with session_module.request_scope():
+        assert env.get_template(str(template_path)).render() == "<p>after</p>"
+
+
 def test_uptodate_records_and_then_short_circuits_within_one_request():
     """The freshness closure confirms a path once per request, then answers from
     the cache: this is the memoization walk_manifest's repeat lookups ride on."""
