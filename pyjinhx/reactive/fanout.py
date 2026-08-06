@@ -24,6 +24,7 @@ before calling ``load()``.
 import re
 from collections.abc import Iterable, Sequence
 from concurrent.futures import ThreadPoolExecutor
+from contextvars import copy_context
 from dataclasses import dataclass
 from typing import Any
 
@@ -444,18 +445,27 @@ def _build_pass(
     even when a worker raises.
 
     A new OS thread starts with a fresh, empty ContextVar context rather than
-    inheriting the caller's, so the load cache's ``cache_put()`` inside a
-    worker's ``load()`` call writes into a throwaway dict that vanishes the
-    moment the worker returns. That is a known gap, not an oversight:
-    propagating the caller's ContextVar context into these workers is #871's
-    job, so it is deliberately left undone here.
+    inheriting the caller's, so every per-request variable in ``session`` — the
+    render session, the load context, the three load-cache dicts — would read
+    back as its ``None`` default inside a worker, and a worker's
+    ``cache_put()`` would write into a throwaway dict. Copying the caller's
+    context and running the build inside it fixes that with no merge-back step:
+    a copy holds the *same* dict and set objects ``request_scope()`` built, so
+    a worker mutating one in place mutates the request's own.
+
+    One copy per item, not one shared across the pool: a single ``Context``
+    cannot be entered by two threads at once, and with more than one worker a
+    shared one would raise "cannot enter context: ... is already entered". Each
+    copy is taken here, on the submitting thread — taking it inside a worker
+    would copy the worker's empty context instead of the request's.
     """
     pending = [item for item in items if not item.clean]
     if not pending:
         return {}
     with ThreadPoolExecutor(max_workers=min(8, len(pending))) as pool:
         futures = {
-            item.index: pool.submit(_build_one, item, session) for item in pending
+            item.index: pool.submit(copy_context().run, _build_one, item, session)
+            for item in pending
         }
         return {index: future.result() for index, future in futures.items()}
 
