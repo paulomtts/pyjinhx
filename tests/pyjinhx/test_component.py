@@ -59,6 +59,11 @@ class CachedListHolder(BaseComponent):
     data: list[str] = Field(default_factory=list)
 
 
+class CachedStrHolder(BaseComponent):
+    data: str = ""
+    count: int = 0
+
+
 class StrictStructural(BaseComponent):
     auto_id = False
     sources: list = Field(default_factory=list)
@@ -310,6 +315,27 @@ class TestJsonCoercibleFieldsCache:
         ]
         assert [instance.data for instance in instances] == [["a", "b"]] * 3
         assert instances[0].data == CachedListHolder(data=["a", "b"]).data
+
+    def test_json_coercible_fields_scoped_per_class(self):
+        # Two classes share the field name `data` with different annotations,
+        # so a verdict cached by name alone would leak across them.
+        assert "data" in CachedListHolder.__pjx_descriptor__.json_coercible_fields
+        assert "data" not in CachedStrHolder.__pjx_descriptor__.json_coercible_fields
+
+        payload = '["a", "b"]'
+        assert CachedListHolder(data=payload).data == [  # pyright: ignore[reportArgumentType]
+            "a",
+            "b",
+        ]
+        assert CachedStrHolder(data=payload).data == payload
+
+    def test_non_coercible_annotation_untouched_by_cache(self):
+        # `count` is excluded from the frozenset, so the early-exit branch must
+        # leave it entirely to Pydantic — both for a good value and a bad one.
+        assert CachedStrHolder(count=3).count == 3
+        with pytest.raises(ValidationError) as excinfo:
+            CachedStrHolder(count="[1, 2]")  # pyright: ignore[reportArgumentType]
+        assert "invalid JSON attribute value" not in str(excinfo.value)
 
 
 class Anchor(BaseComponent):
