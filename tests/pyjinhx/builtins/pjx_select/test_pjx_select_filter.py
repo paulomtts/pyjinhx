@@ -27,9 +27,7 @@ FRUITS = [
 
 def options(count: int) -> list[SelectOption]:
     """First ``count`` fruit options, value "o0", "o1", ... in order."""
-    return [
-        SelectOption(value=f"o{i}", label=FRUITS[i]) for i in range(count)
-    ]
+    return [SelectOption(value=f"o{i}", label=FRUITS[i]) for i in range(count)]
 
 
 class TestFields:
@@ -115,9 +113,7 @@ class TestRender:
         html = _html(session, multiple=True, value=["o0"])
         assert "data-pjx-select-filter" in html
         assert html.count('type="checkbox"') == 10
-        assert html.index("data-pjx-select-filter") < html.index(
-            'type="checkbox"'
-        )
+        assert html.index("data-pjx-select-filter") < html.index('type="checkbox"')
 
     def test_filter_renders_for_single_select(self, session):
         html = _html(session, value="o3")
