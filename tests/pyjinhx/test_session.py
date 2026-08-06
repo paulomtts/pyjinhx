@@ -1,8 +1,8 @@
-"""request_scope's five ContextVars: fresh in, prior state out.
+"""request_scope's ContextVars: fresh in, prior state out.
 
-The five pieces of per-request mutable state (RenderSession asset slot, instance
-registry, dirtied keys, cache store, cache reverse index) are the entire
-ContextVar half of the mutable-state census. These tests pin the container
+The per-request mutable state (RenderSession asset slot, instance registry,
+dirtied keys, cache store, cache reverse index, template-freshness cache) is the
+entire ContextVar half of the mutable-state census. These tests pin the container
 lifecycle - creation, nesting, exception cleanup, thread isolation - not any
 read/write semantics, which land with the modules that consume them.
 """
@@ -795,3 +795,65 @@ def test_environment_for_picks_up_template_edits_across_renders(tmp_path):
     assert env is session_module._environment_for(settings)
     assert reloaded is not warm
     assert reloaded.render() == "<p>after</p>"
+
+
+def test_freshness_cache_is_empty_outside_any_scope():
+    """An unset freshness cache reads as an empty dict, never raises: callers
+    outside a request degrade to no memoization rather than crashing."""
+    assert session_module.get_freshness_cache() == {}
+
+
+def test_freshness_cache_is_one_object_for_the_life_of_a_scope():
+    """The fan-out threadpool copies the caller's Context per work item, so every
+    worker must land on the same dict object request_scope() bound."""
+    with session_module.request_scope():
+        first = session_module.get_freshness_cache()
+        first["/tmp/a.html"] = True
+        assert session_module.get_freshness_cache() is first
+
+    with session_module.request_scope():
+        assert session_module.get_freshness_cache() == {}
+
+
+def test_nested_scope_restores_the_outer_freshness_cache():
+    with session_module.request_scope():
+        session_module.get_freshness_cache()["/tmp/outer.html"] = True
+
+        with session_module.request_scope():
+            assert session_module.get_freshness_cache() == {}
+            session_module.get_freshness_cache()["/tmp/inner.html"] = True
+
+        assert session_module.get_freshness_cache() == {"/tmp/outer.html": True}
+
+    assert session_module.get_freshness_cache() == {}
+
+
+def test_uptodate_records_and_then_short_circuits_within_one_request():
+    """The freshness closure confirms a path once per request, then answers from
+    the cache: this is the memoization walk_manifest's repeat lookups ride on."""
+    template_path = _TEMPLATE_DIR / "plain_div.html"
+    loader = session_module.AbsolutePathLoader()
+    env = session_module.Environment(loader=loader)
+
+    with session_module.request_scope():
+        _source, filename, uptodate = loader.get_source(env, str(template_path))
+        assert session_module.get_freshness_cache() == {}
+
+        assert uptodate() is True
+        assert session_module.get_freshness_cache() == {filename: True}
+
+        # Second call must not consult the filesystem at all: a stat() that would
+        # raise proves the answer came from the request cache.
+        def _boom(*_args: object, **_kwargs: object) -> None:
+            raise AssertionError("uptodate() re-stat'ed a confirmed-fresh path")
+
+        original_stat = Path.stat
+        Path.stat = _boom  # type: ignore[method-assign]
+        try:
+            assert uptodate() is True
+        finally:
+            Path.stat = original_stat  # type: ignore[method-assign]
+
+    # A new request starts cold, so a mid-request edit is seen on the next one.
+    with session_module.request_scope():
+        assert session_module.get_freshness_cache() == {}
