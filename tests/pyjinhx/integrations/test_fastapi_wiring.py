@@ -623,3 +623,14 @@ def test_included_router_routes_are_adapted_two_levels_deep():
     apply_setup(app, _settings())
 
     assert inner.dependant.call is not original_call
+
+
+def test_nested_route_without_a_dependant_call_is_left_alone():
+    app = FastAPI()
+    inner = _real_api_route("/unguarded")
+    inner.dependant.call = None
+    app.router.routes.append(_FakeIncludedRoute([inner]))
+
+    apply_setup(app, _settings())
+
+    assert inner.dependant.call is None
