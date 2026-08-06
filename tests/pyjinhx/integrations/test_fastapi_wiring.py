@@ -578,3 +578,37 @@ def test_middleware_sessions_share_the_cached_environment():
         expected = _environment_for(current_settings())
 
     assert seen == [expected, expected]
+
+
+class _FakeRouter:
+    """Stands in for the ``.original_router`` of fastapi's _IncludedRouter."""
+
+    def __init__(self, routes):
+        self.routes = routes
+
+
+class _FakeIncludedRoute:
+    """Duck-typed stand-in for fastapi>=0.137's routing._IncludedRouter."""
+
+    def __init__(self, routes):
+        self.original_router = _FakeRouter(routes)
+
+
+def _real_api_route(path: str = "/deep"):
+    from fastapi.routing import APIRoute
+
+    def handler() -> str:
+        return "hello"
+
+    return APIRoute(path, handler)
+
+
+def test_included_router_routes_are_adapted_one_level_deep():
+    app = FastAPI()
+    inner = _real_api_route()
+    original_call = inner.dependant.call
+    app.router.routes.append(_FakeIncludedRoute([inner]))
+
+    apply_setup(app, _settings())
+
+    assert inner.dependant.call is not original_call
