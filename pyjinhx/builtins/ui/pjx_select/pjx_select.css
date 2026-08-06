@@ -1,0 +1,129 @@
+/* ── PJXSelect tokens ────────────────────────────────────────────────────────── */
+:where(:root) {
+  --pjx-select-bg:            var(--surface, #fff);
+  --pjx-select-fg:            var(--text);
+  --pjx-select-border:        var(--border);
+  --pjx-select-focus:         var(--border-focus, var(--border));
+  --pjx-select-radius:        var(--radius-md);
+  --pjx-select-padding:       0.375rem 0.5rem;
+  --pjx-select-panel-bg:      var(--surface-alt);
+  --pjx-select-panel-shadow:  var(--shadow-md);
+  --pjx-select-panel-min-w:   12rem;
+  --pjx-select-panel-max-h:   16rem;
+  --pjx-select-panel-z:       300;
+  --pjx-select-option-hover:  var(--surface-hover, var(--surface-alt));
+  --pjx-select-option-active: var(--accent-soft, var(--surface-alt));
+}
+
+.pjx-select {
+  position: relative;
+  display: inline-block;
+}
+
+.pjx-select__trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  width: 100%;
+  font: inherit;
+  color: var(--pjx-select-fg);
+  background: var(--pjx-select-bg);
+  border: 1px solid var(--pjx-select-border);
+  border-radius: var(--pjx-select-radius);
+  padding: var(--pjx-select-padding);
+  cursor: pointer;
+}
+
+.pjx-select__trigger:focus-visible {
+  outline: 2px solid var(--pjx-select-focus);
+  outline-offset: -1px;
+}
+
+.pjx-select__trigger:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.pjx-select__panel {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: var(--pjx-select-panel-z);
+  min-width: var(--pjx-select-panel-min-w);
+  max-height: var(--pjx-select-panel-max-h);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  background: var(--pjx-select-panel-bg);
+  border: 1px solid var(--pjx-select-border);
+  border-radius: var(--pjx-select-radius);
+  box-shadow: var(--pjx-select-panel-shadow);
+}
+
+.pjx-select__panel[hidden] {
+  display: none !important;
+}
+
+.pjx-select__option {
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  padding: var(--pjx-select-padding);
+  cursor: pointer;
+}
+
+.pjx-select__option:hover {
+  background: var(--pjx-select-option-hover);
+}
+
+.pjx-select__option[aria-selected="true"] {
+  background: var(--pjx-select-option-active);
+}
+
+/* ── Multi-select: chip summary + option checkboxes ──────────────────────────── */
+/* Colour, radius and spacing come from PJXChipInput's tokens on purpose: the
+   trigger summary is the same chip, so a theme retunes both at once. But
+   pyjinhx resolves CSS per component with no cross-component dependency, so a
+   page can render PJXSelect(multiple=True) and never render PJXChipInput. Every
+   --pjx-chip-input-* reference below therefore carries the same fallback value
+   pjx_chip_input.css itself declares, and the chip's visuals (not just this
+   row's layout) are embedded here so the summary is never unstyled on its own. */
+.pjx-select__chips {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--pjx-chip-input-gap, 0.375rem);
+  min-width: 0;
+  overflow: hidden;
+}
+
+.pjx-select__chips .pjx-chip-input__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  max-width: 100%;
+  padding: 0.125rem 0.5rem;
+  background: var(--pjx-chip-input-chip-bg, var(--surface-alt));
+  color: var(--pjx-chip-input-chip-fg, var(--text));
+  border-radius: var(--pjx-chip-input-chip-radius, var(--radius-full));
+  border: 1px solid var(--pjx-chip-input-border, var(--border));
+  font-size: 0.875em;
+  line-height: 1.5;
+}
+
+.pjx-select__chips .pjx-chip-input__label {
+  max-width: 16rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pjx-select__checkbox {
+  flex: none;
+  margin-right: 0.5rem;
+  accent-color: var(--pjx-select-option-active);
+  pointer-events: none;
+}

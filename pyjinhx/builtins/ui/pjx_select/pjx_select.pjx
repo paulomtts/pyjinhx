@@ -1,0 +1,20 @@
+{% set selected_values = (value or []) if multiple else ([value] if value else []) -%}
+{% set selected_options = options | selectattr("value", "in", selected_values) | list -%}
+<div id="{{ id }}" class="pjx-select{% if class_name %} {{ class_name }}{% endif %}" data-pjx-select data-name="{{ name }}"{% if multiple %} data-multiple data-placeholder="{{ placeholder }}"{% endif %}{% if disabled %} data-disabled{% endif %}>
+  <select name="{{ name }}"{% if multiple %} multiple{% endif %} hidden{% if disabled %} disabled{% endif %}>
+    {% for option in options %}<option value="{{ option.value }}"{% if option.value in selected_values %} selected{% endif %}>{{ option.label }}</option>
+    {% endfor %}
+  </select>
+  <button type="button" class="pjx-select__trigger" data-pjx-select-trigger aria-haspopup="listbox" aria-expanded="false"{% if disabled %} disabled{% endif %}>
+    {#- The chip row lives *inside* .pjx-select__label rather than replacing it,
+        so the JS keeps one node to rewrite in both modes. Chips reuse
+        PJXChipInput's classes but deliberately omit its remove button and
+        hidden input: this is a read-only summary, and the native <select>
+        already posts the values. -#}
+    <span class="pjx-select__label">{% if multiple and selected_options | length > 1 %}<span class="pjx-select__chips">{% for option in selected_options %}<span class="pjx-chip-input__chip"><span class="pjx-chip-input__label">{{ option.label }}</span></span>{% endfor %}</span>{% else %}{{ selected_options[0].label if selected_options else placeholder }}{% endif %}</span>
+  </button>
+  <div class="pjx-select__panel" data-pjx-select-panel hidden role="listbox">
+    {% for option in options %}<button type="button" class="pjx-select__option" data-pjx-select-option data-value="{{ option.value }}" aria-selected="{{ 'true' if option.value in selected_values else 'false' }}" role="option">{% if multiple %}<input type="checkbox"{% if disabled %} disabled{% endif %}{% if option.value in selected_values %} checked{% endif %} class="pjx-select__checkbox" tabindex="-1" aria-hidden="true">{% endif %}{{ option.label }}</button>
+    {% endfor %}
+  </div>
+</div>
