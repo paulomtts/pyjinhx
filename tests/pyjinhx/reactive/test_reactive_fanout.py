@@ -408,8 +408,10 @@ def test_mixed_manifest_gates_only_the_dirty_entries():
         # The gated-out entry still ran its load — the gate decides *after* the
         # re-render, which is the whole point: it compares fresh output, not
         # a guess about the data. The "gone" entry loads too — its refusal is
-        # what establishes it is missing — so all three appear here.
-        assert LOAD_CALLS == ["todo-2", "todo-3", "todo-4"]
+        # what establishes it is missing — so all three appear here. Sorted:
+        # the build pass runs the loads on a threadpool, so which one records
+        # itself first is not fixed.
+        assert sorted(LOAD_CALLS) == ["todo-2", "todo-3", "todo-4"]
 
 
 def test_mixed_manifest_produces_the_expected_ordered_candidate_list():
@@ -431,8 +433,9 @@ def test_mixed_manifest_produces_the_expected_ordered_candidate_list():
             ("gone", "missing"),
         ]
         # The clean candidate was never loaded; the missing one paid the one
-        # failed load that established it is gone.
-        assert LOAD_CALLS == ["todo-2", "todo-3"]
+        # failed load that established it is gone. Sorted: the two loads race
+        # each other on the build pass threadpool.
+        assert sorted(LOAD_CALLS) == ["todo-2", "todo-3"]
 
 
 def candidate(instance_id: str, level=None, resolved=None, status: str = "dirty"):
