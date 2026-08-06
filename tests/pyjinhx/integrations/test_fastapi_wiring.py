@@ -612,3 +612,14 @@ def test_included_router_routes_are_adapted_one_level_deep():
     apply_setup(app, _settings())
 
     assert inner.dependant.call is not original_call
+
+
+def test_included_router_routes_are_adapted_two_levels_deep():
+    app = FastAPI()
+    inner = _real_api_route("/deeper")
+    original_call = inner.dependant.call
+    app.router.routes.append(_FakeIncludedRoute([_FakeIncludedRoute([inner])]))
+
+    apply_setup(app, _settings())
+
+    assert inner.dependant.call is not original_call
