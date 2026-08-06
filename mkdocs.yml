@@ -118,6 +118,7 @@ nav:
   - Decisions:
       - Index: decisions/index.md
       - "0001: outerHTML-only OOB swaps": decisions/0001-outerhtml-only-oob-swaps.md
+      - "0002: Cache backend architecture": decisions/0002-cache-backend-architecture.md
 
 extra_css:
   - stylesheets/toc-collapse.css
