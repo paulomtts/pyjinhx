@@ -1,5 +1,27 @@
 # Changelog
 
+## 1.5.0 — PJXSelect, concurrent fan-out, and two bug fixes (2026-08-06)
+
+### Added
+- `PJXSelect`: a single- and multi-select builtin with search/filter, keyboard
+  navigation (arrows, Home/End, type-ahead, Enter/Escape), and a chip/tag trigger
+  summary for multi-select mode. Shares the same flip/clamp viewport-collision
+  positioning primitive as `PJXPopover`.
+- The fan-out build pass (`_build_pass()`) now runs candidates concurrently via a
+  threadpool when their `load()` is I/O-bound, instead of always running
+  sequentially. Benchmarked win scales with both candidate count and `load()` cost
+  — 2.8x-7.7x faster at realistic (0.5ms-10ms) I/O costs; a wash, never a
+  regression, when `load()` is instant or the bottleneck is GIL-bound Jinja
+  rendering instead of I/O.
+
+### Fixed
+- Popover positioning left a stale inline `style` after a reopen/close cycle,
+  causing the next open to render at the previous position for one frame.
+- Routes registered through `app.include_router()` (rather than directly on the
+  app) were not adapted when `include_router()` ran *after* `setup()` — only the
+  before-setup ordering worked. Both orderings now adapt correctly, end to end
+  through nested sub-routers.
+
 ## 1.4.0 — Cross-request caching (2026-08-05)
 
 Work that spanned a request boundary previously did not survive one. Every request
