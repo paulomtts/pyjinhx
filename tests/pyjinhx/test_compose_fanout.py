@@ -178,13 +178,10 @@ def test_a_dirtied_key_evicts_its_cache_entry_so_the_region_re_renders():
         session.pjx_mounted = [mounted_entry("a", load="1")]
         composed = _compose("", session=session)
         assert "hx-swap-oob=\"outerHTML:[data-pjx-id='a']\"" in composed.body
-        # The re-load runs on fanout's threadpool, whose worker thread starts
-        # with an empty ContextVar context, so cache_put()'s write during that
-        # reload never reaches this thread's store. Restoring that visibility
-        # is #871's job (fanout deliberately does not wire contextvars.
-        # copy_context() to paper over it), so the entry reads back evicted
-        # rather than re-loaded for now.
-        assert cache_has(ResponseWidget, "1") is False
+        # The re-load runs on fanout's threadpool, but the worker runs inside
+        # a copy of this request's context, so cache_put()'s write during that
+        # reload lands back in this thread's store.
+        assert cache_has(ResponseWidget, "1") is True  # re-loaded, not left evicted
 
 
 def test_an_undirtied_cache_entry_survives_the_fan_out():

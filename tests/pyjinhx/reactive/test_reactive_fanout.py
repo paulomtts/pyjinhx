@@ -202,13 +202,10 @@ def test_cache_miss_loads_once_renders_and_caches():
         )
         assert candidate.status == "dirty"
         assert LOAD_CALLS == ["todo-1"]
-        # A dirty build now runs on the threadpool's own worker thread, whose
-        # ContextVar context starts empty rather than inheriting the caller's
-        # (see _build_pass): cache_put()'s write lands in a dict that vanishes
-        # with the thread. Restoring same-request visibility is #871's job, not
-        # this walk's — see the rebuild plan's Global Constraints on why fanout
-        # must not reach for contextvars.copy_context() to paper over it here.
-        assert cache_has(FanoutWidget, "todo-1") is False
+        # The build ran on a pool worker, but the worker ran inside a copy of
+        # this request's context, so its memo wrap's cache_put() mutated the
+        # store this scope still holds.
+        assert cache_has(FanoutWidget, "todo-1") is True
         assert candidate.level is not None
         assert isinstance(candidate.level, RenderedLevel)
         assert candidate.level.root_span is not None
@@ -1174,12 +1171,23 @@ def test_module_never_registers_instances():
     assert "register_instance(" not in source
 
 
-def test_module_does_not_wire_contextvar_propagation():
-    """Fan-out's threadpool must not reach for contextvars.
+def test_a_workers_cache_write_lands_in_the_requests_store():
+    with scope():
+        registry.register_instance(FanoutWidget.__name__, "a", "resolved-entry")
+        walk_manifest([entry("fanout_widget", "a", load="todo-1")], {"todos"})
+        # The load ran on a pool worker; its memo wrap's cache_put must have
+        # mutated the very dict this request's context still points at.
+        assert cache_has(FanoutWidget, "todo-1") is True
+        assert LOAD_CALLS == ["todo-1"]
 
-    ContextVar propagation into workers is #871's problem (see the rebuild
-    plan's Global Constraints); this module submits builds to the pool as
-    plain callables and leaves that wiring to the later subtask.
-    """
-    source = pathlib.Path(fanout.__file__).read_text()
-    assert "copy_context" not in source
+
+def test_a_second_walk_reads_the_workers_cache_entry_as_clean():
+    with scope():
+        registry.register_instance(FanoutWidget.__name__, "a", "resolved-entry")
+        walk_manifest([entry("fanout_widget", "a", load="todo-1")], {"todos"})
+        LOAD_CALLS.clear()
+        [candidate] = walk_manifest(
+            [entry("fanout_widget", "a", load="todo-1")], {"todos"}
+        )
+        assert candidate.status == "clean"
+        assert LOAD_CALLS == []
