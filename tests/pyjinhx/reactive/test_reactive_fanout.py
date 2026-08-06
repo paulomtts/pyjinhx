@@ -1254,9 +1254,7 @@ def test_get_load_context_inside_a_worker_is_the_requests_load_context():
 
 def test_every_workers_cache_write_lands_when_the_pool_has_several_workers():
     with scope():
-        manifest = [
-            entry("spy_widget", f"row-{n}", load=f"todo-{n}") for n in range(4)
-        ]
+        manifest = [entry("spy_widget", f"row-{n}", load=f"todo-{n}") for n in range(4)]
         for n in range(4):
             registry.register_instance(SpyWidget.__name__, f"row-{n}", None)
         candidates = walk_manifest(manifest, {"todos"})
