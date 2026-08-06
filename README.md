@@ -57,16 +57,22 @@ Drop a `button.css` or `card.js` next to the component and it's included once, a
 
 ## Performance
 
+**In plain terms:** for a typical page — a few dozen to a few hundred components, ordinary-sized text/JSON fields — rendering costs a fraction of a millisecond and stays that way as the page grows. The only scenarios below that get expensive are deliberately extreme ones (thousands of components on one page, or a single component holding tens of kilobytes of text) — see the "what this means for a real app" note under each table that has one.
+
 - **Linear component-count scaling**: ~0.03 ms/component, flat from 50 to 10,000 components in a tree — no super-linear blowup from breadth.
 - **Flat nesting-depth cost**: ~0.4 ms/level regardless of chain length (10 to 160 levels deep).
 - **No static/reactive mixing penalty**: a tree with some `ReactiveComponent` levels and some plain ones costs the same as an all-reactive tree of the same shape — noise-level delta at every size.
+- **Cross-request caching, when configured, turns a repeat render into ~0.3 ms** regardless of how expensive the underlying data lookup is — see "Cross-request caching" below.
+- **Fan-out re-renders thread I/O-bound work automatically** (2-7.6x faster for realistic database-style costs) and stay at parity — no threading tax — when there's nothing to overlap.
 
-Run via `uv run python scripts/bench_*.py` on `origin/master`, single machine, no averaging across runs — directional, not authoritative. Full numbers, including field-count, slot-payload-size, and reactive-fanout sweeps:
+Run via `uv run python scripts/bench_*.py` on `origin/master`, single machine, no averaging across runs — directional, not authoritative. Add `PJX_BENCH_PROFILE=1` before any of them for a full `cProfile` breakdown of where the time actually goes. Full numbers below:
 
 <details>
 <summary>Full benchmark tables</summary>
 
 ### Component count scaling (`bench_render_scaling_v2.py`)
+
+**What it measures:** how render time grows as a page gets more components on it — the most direct "will this scale" question.
 
 Renders one nested tree per data point — a fixed 3-level shape (root → mids → leaves), with breadth scaled so the total component count hits the target `n`. This is the shape a real page has: a few structural layers, many repeated leaves.
 
@@ -78,20 +84,22 @@ Renders one nested tree per data point — a fixed 3-level shape (root → mids 
   Leaf  Leaf Leaf  Leaf  ...
 ```
 
-| n | total | ms/component |
+| components on the page | total render time | ms per component |
 |---|---|---|
-| 50 | 1.7 ms | 0.034 |
-| 100 | 3.2 ms | 0.032 |
+| 50 | 1.7 ms | 0.035 |
+| 100 | 3.3 ms | 0.033 |
 | 197 | 6.1 ms | 0.031 |
-| 507 | 15.2 ms | 0.030 |
-| 993 | 29.6 ms | 0.030 |
-| 1981 | 58.3 ms | 0.029 |
-| 4971 | 142.2 ms | 0.029 |
-| 10000 | 283.8 ms | 0.028 |
+| 507 | 15.8 ms | 0.031 |
+| 993 | 30.1 ms | 0.030 |
+| 1,981 | 60.3 ms | 0.030 |
+| 4,971 | 149.1 ms | 0.030 |
+| 10,000 | 293.1 ms | 0.029 |
 
-ms/component holds flat (even trends slightly down) as the tree grows — no super-linear blowup from breadth.
+**What this means for a real app:** the "ms per component" column barely moves as the page grows from 50 components to 10,000 — there's no penalty for a bigger page beyond the components it actually adds. A typical page (tens to low hundreds of components) renders in low single-digit milliseconds.
 
 ### Nesting depth scaling (`bench_render_depth.py`)
+
+**What it measures:** whether deeply nested components (a component inside a component inside a component...) cost more per level than a shallow, wide page does.
 
 Breadth pinned at 1 — a single linear chain, no siblings — with depth swept instead. Isolates any cost that scales with *nesting depth* specifically (recursive fill/serialize, the ancestor-chain cycle guard, scope propagation through nested renders), which the component-count sweep above can't see since it holds depth fixed at 3.
 
@@ -99,53 +107,61 @@ Breadth pinned at 1 — a single linear chain, no siblings — with depth swept 
 Root → Level1 → Level2 → Level3 → ... → LevelN
 ```
 
-| depth | total | ms/level |
+| nesting depth | total render time | ms per level |
 |---|---|---|
-| 10 | 3.95 ms | 0.395 |
-| 20 | 7.68 ms | 0.384 |
-| 40 | 15.28 ms | 0.382 |
-| 80 | 32.26 ms | 0.403 |
-| 160 | 64.48 ms | 0.403 |
+| 10 | 4.14 ms | 0.414 |
+| 20 | 8.27 ms | 0.414 |
+| 40 | 16.30 ms | 0.407 |
+| 80 | 33.16 ms | 0.414 |
+| 160 | 61.18 ms | 0.382 |
 
-ms/level is flat — depth alone doesn't cost more per level as the chain gets longer.
+**What this means for a real app:** ms/level stays flat out to 160 levels deep — a chain far deeper than any real component tree — so nesting depth on its own is never the bottleneck.
 
-### Field count scaling, 200 children/tree (`bench_field_count.py`)
+### Field count scaling, 200 children per tree (`bench_field_count.py`)
 
-Tree shape pinned; declared field *count* per component swept instead. Targets two costs that scale with field count specifically: the JSON-attr-coercion validator (loops over every field on each instantiation) and child-attr copying. Two arms per field count:
+**What it measures:** the cost of a component having many fields (validated Pydantic attributes), and specifically the extra cost when some of those fields carry JSON-looking strings that need parsing.
+
+Tree shape pinned; declared field *count* per component swept instead. Two arms per field count:
 
 - **plain** — every field is `str`, coercion takes the cheap early-out.
 - **json** — every field is `list` with a JSON-looking string value, so every field goes through `json.loads`.
 
-| fields | plain | json | us/child (json) |
+| fields per component | plain fields | JSON-valued fields | us per child (JSON arm) |
 |---|---|---|---|
-| 5 | 6.91 ms | 9.61 ms | 48.1 |
-| 20 | 10.64 ms | 18.40 ms | 92.0 |
-| 50 | 17.54 ms | 34.85 ms | 174.3 |
-| 100 | 30.91 ms | 81.72 ms | 408.6 |
+| 5 | 6.66 ms | 8.79 ms | 44.0 |
+| 20 | 10.02 ms | 15.28 ms | 76.4 |
+| 50 | 17.13 ms | 29.02 ms | 145.1 |
+| 100 | 30.10 ms | 54.07 ms | 270.4 |
 
-JSON-coercion cost scales roughly linearly with field count, as expected — no quadratic surprise.
+**What this means for a real app:** cost grows in a straight line with field count, no sudden jump — a component with a normal number of fields (a handful to a couple dozen) pays a small, predictable tax even in the worst case (every field is JSON).
 
-### Slot payload size, 50 components/tree (`bench_slot_payload.py`)
+### Slot payload size, 50 components per tree (`bench_slot_payload.py`)
 
-Component count pinned; payload *size in bytes* swept instead, to isolate costs that scale with byte count rather than component count (the segment parser scanning every character, and slot-placeholder splicing walking each string segment). Two arms:
+**What it measures:** what happens when a component's content is *large* (a long piece of text or a big JSON blob) rather than many small fields — this is the one place render time is genuinely driven by content size, not component count.
+
+Component count pinned; payload *size in bytes* swept instead. Two arms:
 
 - **children** — payload rides in as a tag's body text (children-field merge).
-- **slot** — payload rides in as a list of leaf component instances on a `Slot` field, so the parent emits one placeholder token per leaf that must be found and replaced.
+- **slot** — payload rides in as a list of leaf component instances on a `Slot` field.
 
-| bytes | children slot | plain slot | us/KB (children) |
+| payload size | children arm | slot arm | us per KB (children arm) |
 |---|---|---|---|
-| 64 | 2.48 ms | 1.72 ms | 794.53 |
-| 256 | 6.15 ms | 3.48 ms | 492.15 |
-| 1024 | 19.56 ms | 9.95 ms | 391.21 |
-| 4096 | 78.22 ms | 37.48 ms | 391.09 |
-| 16384 | 297.93 ms | 139.86 ms | 372.41 |
-| 65536 | 1184.57 ms | 554.10 ms | 370.18 |
+| 64 bytes | 2.50 ms | 1.82 ms | 799.5 |
+| 256 bytes | 5.58 ms | 3.45 ms | 446.3 |
+| 1 KB | 17.47 ms | 9.40 ms | 349.5 |
+| 4 KB | 65.54 ms | 33.84 ms | 327.7 |
+| 16 KB | 261.29 ms | 132.73 ms | 326.6 |
+| 64 KB | 1,080.34 ms | 549.51 ms | 337.6 |
 
-us/KB drops and then flattens as payload grows — fixed per-call overhead dominates at small sizes, byte-scanning cost dominates and stabilizes at larger ones.
+Those totals are for **50 components at once**; per single component, a 64 KB payload costs roughly **20 ms** (measured directly, not divided out — a 64 KB payload is about 800-1,300 lines of plain text, well beyond a typical field's content).
+
+**What this means for a real app:** this only matters if a single component's field holds tens of kilobytes of text or JSON — a label, a description, a normal-sized JSON payload for a form (well under 1 KB) costs a fraction of a millisecond. This is the one benchmark in this whole suite where the answer is "yes, be mindful of it," but only for genuinely large content in one field, not for ordinary component usage. ([Tracked as a known, unfixed edge case — issue #907](https://github.com/paulomtts/pyjinhx/issues/907).)
 
 ### Mixed static/reactive tree, identical node counts (`bench_mixed_reactive_tree.py`)
 
-Same tree shape and node count in both arms — only which levels are `ReactiveComponent` vs plain `BaseComponent` changes. Isolates the one place the two paths diverge: every child instantiation unconditionally calls `pjx_mount()`, a no-op on a plain component but a cache-routed `load()` on a reactive one.
+**What it measures:** whether mixing `ReactiveComponent` (data-backed, cache-aware) and plain `BaseComponent` levels in the same tree costs more than an all-one-kind tree of the same size.
+
+Same tree shape and node count in both arms — only which levels are reactive changes.
 
 ```
 mixed:                       pure:
@@ -156,94 +172,134 @@ mixed:                       pure:
   [reactive Leaf] ...           [reactive Leaf] ...
 ```
 
-| nodes | mixed | pure reactive | delta |
+| nodes in tree | mixed (some static) | pure (all reactive) | difference |
 |---|---|---|---|
-| 56 | 2.26 ms | 2.21 ms | -0.05 ms |
-| 211 | 8.00 ms | 7.78 ms | -0.22 ms |
-| 821 | 28.73 ms | 29.69 ms | +0.96 ms |
-| 1831 | 66.75 ms | 65.29 ms | -1.46 ms |
+| 56 | 3.61 ms | 3.64 ms | +0.03 ms |
+| 211 | 11.86 ms | 11.82 ms | -0.04 ms |
+| 821 | 42.70 ms | 43.31 ms | +0.61 ms |
+| 1,831 | 93.72 ms | 91.02 ms | -2.70 ms |
 
-No consistent overhead from mixing static and reactive components in the same tree — noise-level delta at every size, meaning a page's reactive *share* isn't a meaningful cost driver on its own.
+**What this means for a real app:** the difference bounces around zero at every size — there's no cost to having a mix of reactive and static components on the same page; only how many components you have matters, not the ratio.
 
-### state_hash() cost (`bench_state_hash.py`)
+### `state_hash()` cost (`bench_state_hash.py`)
 
-Calls `state_hash()` directly in a loop — no session, no render — since inside a full render it's normally dwarfed by `load()` and `render_level()`, hiding any regression in the hash itself. `state_hash()` is three stacked costs: `model_dump(mode="json")`, a sorted `json.dumps`, and a SHA-256 digest. Two axes swept independently:
+**What it measures:** the cost of computing a reactive component's content fingerprint (used to detect "did this actually change" before sending an update to the browser) — called directly here, isolated from a full render, so a regression in the hash itself isn't hidden by other costs.
 
-By field count (16-byte values — moves `model_dump`'s per-field work and the number of keys `json.dumps` sorts):
+Two things move this cost independently: how many fields a component has, and how big each field's value is.
 
-| fields | us/call | us/field |
+By field count (16-byte values):
+
+| fields | microseconds per call | microseconds per field |
 |---|---|---|
-| 5 | 3.66 | 0.733 |
-| 20 | 6.96 | 0.348 |
-| 50 | 13.28 | 0.266 |
-| 100 | 21.22 | 0.212 |
+| 5 | 3.33 | 0.666 |
+| 20 | 6.16 | 0.308 |
+| 50 | 11.88 | 0.238 |
+| 100 | 19.87 | 0.199 |
 
-By value size (10 fields, byte size swept — moves the encoded byte count `json.dumps`/SHA-256 consume, field count held constant):
+By value size (10 fields, value size swept):
 
-| bytes | us/call | us/KB |
+| value size | microseconds per call | microseconds per KB |
 |---|---|---|
-| 16 | 4.54 | 29.03 |
-| 256 | 9.19 | 3.67 |
-| 4096 | 78.38 | 1.96 |
-| 65536 | 1544.74 | 2.41 |
+| 16 bytes | 4.23 | 27.09 |
+| 256 bytes | 8.58 | 3.43 |
+| 4 KB | 81.38 | 2.03 |
+| 64 KB | 1,514.88 | 2.37 |
+
+**What this means for a real app:** microseconds, not milliseconds, for any realistic component — this cost is invisible next to an actual render.
 
 ### Load-cache indexing cost (`bench_reactive_cache.py`)
 
-Isolates `cache_put()`/`invalidate()`'s index bookkeeping (reverse/forward bucket maintenance) from the render path entirely — just N cache entries, indexed and then evicted. The check: doubling N should roughly double each column, not quadruple it (a prior bug made full eviction quadratic — PR #619/#600 fixed the related `_drop_nested` cost below).
+**What it measures:** the bookkeeping cost of the in-memory, per-request cache that avoids re-fetching the same data twice in one request — separate from the fetch itself, just the cache's own indexing work.
 
-| entries | put | re-put | invalidate all |
+| entries cached | add one | re-add (already present) | clear everything |
 |---|---|---|---|
-| 500 | 2.22 ms | 0.41 ms | 0.11 ms |
-| 1000 | 0.81 ms | 0.84 ms | 0.24 ms |
-| 2000 | 1.72 ms | 1.92 ms | 0.63 ms |
-| 4000 | 3.45 ms | 4.05 ms | 1.15 ms |
-| 8000 | 8.70 ms | 8.19 ms | 2.99 ms |
+| 500 | 0.41 ms | 0.54 ms | 0.11 ms |
+| 1,000 | 0.87 ms | 0.85 ms | 0.23 ms |
+| 2,000 | 2.01 ms | 1.91 ms | 0.55 ms |
+| 4,000 | 3.35 ms | 3.81 ms | 1.24 ms |
+| 8,000 | 8.46 ms | 9.38 ms | 2.98 ms |
 
-Roughly linear scaling holds (the 500-entry `put` row is a one-off warm-up outlier).
+**What this means for a real app:** doubling the number of cached entries roughly doubles the cost, not more — no hidden quadratic blowup even with thousands of cached items in one request.
 
-### Reactive fanout (`bench_reactive_fanout.py`)
+### Cross-request caching (`bench_cross_request_cache.py`, `bench_cross_request_load.py`)
 
-Four sub-benchmarks over the machinery that runs *after* a render, driven by the client's mounted manifest rather than the tree just rendered:
+**What it measures:** the payoff of configuring a `CacheBackend` (e.g. `pyjinhx[diskcache]`) so a component's data survives *across* requests, not just within one. Without a backend configured, this is entirely opt-in — nothing below applies unless you turn it on.
 
-**Load-cache memoization** — one instance, cold call (real `load()`) vs. warm call (cache hit): cold 18.7 us, warm 3.0 us.
+Without a backend, a fresh request always re-renders and re-fetches from scratch (no regression to watch here — this confirms "no backend" behaves exactly as before):
 
-**`walk_manifest()`** — cost scales with "how many components the client currently has mounted," not with the size of the render that just happened. A clean candidate costs one cache lookup; a dirty one costs a real `load()` + `render_level()` + `state_hash()`. Swept over manifest size at three dirty shares:
-
-| n | 0% dirty | 50% dirty | 100% dirty |
-|---|---|---|---|
-| 50 | 0.15 ms | 2.29 ms | 2.45 ms |
-| 100 | 0.25 ms | 2.82 ms | 4.33 ms |
-| 200 | 0.55 ms | 4.55 ms | 8.51 ms |
-| 500 | 1.23 ms | 11.03 ms | 20.24 ms |
-| 1000 | 2.58 ms | 22.46 ms | 41.14 ms |
-| 2000 | 5.14 ms | 43.75 ms | 83.14 ms |
-| 5000 | 13.79 ms | 108.36 ms | 208.39 ms |
-
-Cost is driven almost entirely by dirty share, not raw manifest size — the 0%-dirty column stays cheap even at n=5000.
-
-**`oob_swaps()` alone** — the response-body build that runs after the walk: per dirty candidate, stamps `hx-swap-oob`/`data-pjx-hash` at the recorded span and serializes. Swept over region count × per-region "span" count (how many discontiguous markup pieces make up one region), with levels prebuilt so no render is in the timed frame:
-
-```
-region 1: [span][span][span] ...  (× spans-per-region)
-region 2: [span][span][span] ...
-   ...    × region count
-```
-
-| regions | 1 span | 10 spans | 50 spans |
-|---|---|---|---|
-| 10 | 0.23 ms | 0.07 ms | 0.14 ms |
-| 50 | 0.21 ms | 0.29 ms | 0.65 ms |
-| 100 | 0.40 ms | 0.56 ms | 1.31 ms |
-| 200 | 0.80 ms | 1.11 ms | 2.65 ms |
-
-**`_drop_nested()`** — the containment walk that drops a dirty candidate already covered by an ancestor's swap. The candidate-count axis was made linear by #600/#619; this sweeps the other axis, per-candidate rendered-subtree size:
-
-| subtree size | 50 candidates | 200 candidates |
+| components on the page | first request | later requests |
 |---|---|---|
-| 1 | 0.03 ms | 0.12 ms |
-| 10 | 0.10 ms | 0.43 ms |
-| 50 | 0.51 ms | 1.80 ms |
-| 200 | 1.63 ms | 6.58 ms |
+| 50 | 3.8 ms | 1.6 ms |
+| 197 | 5.7 ms | 5.8 ms |
+| 993 | 31.1 ms | 29.5 ms |
+| 4,971 | 141.7 ms | 142.4 ms |
+
+With a backend configured, the real win shows up on the *data-fetch* side — sweeping how expensive a simulated database call inside `load()` is, with and without the cache:
+
+| simulated database cost | no backend | with `diskcache` backend | time saved |
+|---|---|---|---|
+| 0 ms (in-memory only) | 0.15 ms | 0.29 ms | — (cache overhead exceeds a no-op fetch) |
+| 0.1 ms | 3.19 ms | 0.30 ms | 91% |
+| 0.5 ms | 11.15 ms | 0.29 ms | 97% |
+| 2.0 ms | 41.35 ms | 0.29 ms | 99% |
+| 10.0 ms | 202.63 ms | 0.28 ms | 100% |
+
+**What this means for a real app:** once a database call or API request costs even a fraction of a millisecond — which almost any real one does — cross-request caching turns a repeat page load into a flat ~0.3 ms regardless of how expensive the original fetch was. The only case where it doesn't help is data that was already effectively free to fetch (pure in-memory, no I/O at all).
+
+### Reactive fan-out (`bench_reactive_fanout.py`)
+
+This is the machinery that runs *after* a mutation — deciding which of the client's currently-mounted components need updating and re-rendering just those, rather than the whole page.
+
+**Load-cache memoization** — one instance, cold call (real `load()`) vs. warm call (cache hit): cold 68.8 us, warm 12.0 us.
+
+**`walk_manifest()`** — scanning the client's mounted components to find which ones changed. Cost is driven by "how many components the client currently has on screen," not by the size of the render that just happened. Swept over manifest size at three "how much changed" shares:
+
+| components on screen | nothing changed | half changed | everything changed |
+|---|---|---|---|
+| 50 | 0.20 ms | 4.89 ms | 2.48 ms |
+| 100 | 0.33 ms | 2.99 ms | 5.42 ms |
+| 200 | 0.64 ms | 5.09 ms | 9.94 ms |
+| 500 | 1.67 ms | 15.95 ms | 28.47 ms |
+| 1,000 | 3.88 ms | 24.49 ms | 45.25 ms |
+| 2,000 | 6.80 ms | 48.56 ms | 90.99 ms |
+| 5,000 | 17.71 ms | 126.42 ms | 241.53 ms |
+
+**What this means for a real app:** cost is driven almost entirely by how much actually changed, not by how many components are on screen — the "nothing changed" column stays cheap even with 5,000 components mounted. A typical mutation changes a handful of components, not thousands.
+
+**Building the update (concurrent vs. one-at-a-time)** — when a changed component's data fetch is I/O-bound (a real database call), pyjinhx automatically runs those fetches concurrently instead of one after another. Measured at steady state (after each component class's fetch cost has been measured once):
+
+| simulated database cost | 8 changed components | 32 changed components |
+|---|---|---|
+| 0 ms (in-memory only) | 1.0x (no difference) | 1.0x (no difference) |
+| 0.5 ms | 2.0x faster | 3.5-4.1x faster |
+| 2.0 ms | 3.9-4.0x faster | 5.6-6.0x faster |
+| 10.0 ms | 6.2-6.8x faster | 7.6x faster |
+
+**What this means for a real app:** for realistic database-backed components, updating many changed regions at once is multiple times faster than one-at-a-time — and for components with no real I/O cost, pyjinhx correctly doesn't bother threading them, so there's no overhead tax either way. (Note: pyjinhx decides this once per component class and remembers it for the life of the process, so a class whose fetch cost changes dramatically over time — fast at startup, slow once a database is under load — can be slower to adapt; [tracked in issue #906](https://github.com/paulomtts/pyjinhx/issues/906).)
+
+**Building the response body** — per changed component, stamping the swap instruction and serializing its HTML. Swept over how many regions changed × how fragmented each region's markup is:
+
+```
+region 1: [piece][piece][piece] ...  (× pieces per region)
+region 2: [piece][piece][piece] ...
+   ...    × number of regions
+```
+
+| regions changed | 1 piece each | 10 pieces each | 50 pieces each |
+|---|---|---|---|
+| 10 | 0.24 ms | 0.07 ms | 0.14 ms |
+| 50 | 0.20 ms | 0.29 ms | 0.61 ms |
+| 100 | 0.40 ms | 0.55 ms | 1.30 ms |
+| 200 | 0.78 ms | 1.07 ms | 2.64 ms |
+
+**Skipping redundant work** — when a changed component is nested inside another changed component, pyjinhx skips re-sending the nested one (the parent's update already covers it). Swept by how large each candidate's rendered content is:
+
+| content size per candidate | 50 candidates | 200 candidates |
+|---|---|---|
+| 1 unit | 0.03 ms | 0.13 ms |
+| 10 units | 0.11 ms | 0.43 ms |
+| 50 units | 0.43 ms | 1.75 ms |
+| 200 units | 1.53 ms | 5.93 ms |
 
 </details>
 
