@@ -73,7 +73,7 @@ class TestMultipleMarkup:
 
     def test_multiple_checked_state_follows_the_value_list(self, session):
         html = _html(session, multiple=True, value=["a", "c"])
-        assert html.count("checkbox\" checked") == 2
+        assert html.count('checkbox" checked') == 2
         assert html.count('<option value="a" selected>') == 1
         assert html.count('<option value="c" selected>') == 1
         assert '<option value="b">' in html
@@ -82,7 +82,7 @@ class TestMultipleMarkup:
     def test_multiple_unknown_value_dropped(self, session):
         html = _html(session, multiple=True, value=["a", "zzz"])
         assert html.count('aria-selected="true"') == 1
-        assert html.count("checkbox\" checked") == 1
+        assert html.count('checkbox" checked') == 1
         assert "zzz" not in html
 
     def test_multiple_disabled_checkboxes_present_but_inert(self, session):
@@ -126,7 +126,9 @@ class TestChipSummary:
             SelectOption(value="a", label="<b>Ampersand & co</b>"),
             SelectOption(value="b", label="Banana"),
         ]
-        trigger = _trigger(_html(session, options=options, multiple=True, value=["a", "b"]))
+        trigger = _trigger(
+            _html(session, options=options, multiple=True, value=["a", "b"])
+        )
         assert "&lt;b&gt;Ampersand &amp; co&lt;/b&gt;" in trigger
         assert "<b>Ampersand" not in trigger
 
