@@ -98,3 +98,51 @@ def test_end_align_overflowing_the_left_edge_flips_to_start(position):
     assert result["align"] == "start"
     assert result["left"] == 0
     assert result["adjusted"] is True
+
+
+def test_overflowing_the_bottom_flips_above_the_trigger(position):
+    result = position(**_opts(trigger={"top": 700, "left": 100, "width": 100, "height": 30}))
+    assert result["placement"] == "above"
+    # Panel bottom sits one gap above the trigger top: -(150 + 4).
+    assert result["top"] == -154
+    assert result["adjusted"] is True
+
+
+def test_no_room_above_or_below_stays_below_and_clamps_to_the_viewport(position):
+    result = position(
+        **_opts(
+            trigger={"top": 300, "left": 100, "width": 100, "height": 30},
+            panel={"width": 200, "height": 400},
+            viewport={"width": 1000, "height": 500},
+        )
+    )
+    assert result["placement"] == "below"
+    # Clamped so the panel bottom lands on the padded viewport edge: 500-400-8=92
+    # absolute, i.e. 92-300 relative to the trigger top.
+    assert result["top"] == -208
+    assert result["adjusted"] is True
+
+
+def test_viewport_narrower_than_the_panel_clamps_to_the_left_padding(position):
+    result = position(
+        **_opts(
+            trigger={"top": 100, "left": 40, "width": 100, "height": 30},
+            panel={"width": 300, "height": 150},
+            viewport={"width": 200, "height": 800},
+        )
+    )
+    # Both sides overflow, so the clamp pins the panel at the left padding: 8-40.
+    assert result["left"] == -32
+    assert result["adjusted"] is True
+
+
+def test_viewport_shorter_than_the_panel_clamps_to_the_top_padding(position):
+    result = position(
+        **_opts(
+            trigger={"top": 60, "left": 100, "width": 100, "height": 30},
+            panel={"width": 200, "height": 400},
+            viewport={"width": 1000, "height": 300},
+        )
+    )
+    assert result["top"] == 8 - 60
+    assert result["adjusted"] is True

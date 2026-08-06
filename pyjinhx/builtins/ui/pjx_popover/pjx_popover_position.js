@@ -48,13 +48,29 @@
             x = clamp(x, padding, viewport.width - panel.width - padding);
         }
 
+        const belowY = trigger.top + trigger.height + gap;
+        const aboveY = trigger.top - panel.height - gap;
+        let placement = 'below';
+        let y = belowY;
+
+        // Same raw-edge-vs-padding split as the horizontal half: the flip
+        // check uses the true viewport bound, and the padded clamp only
+        // engages as a fallback when the chosen placement still overflows.
+        if (belowY + panel.height > viewport.height && aboveY >= 0) {
+            placement = 'above';
+            y = aboveY;
+        }
+        if (y < 0 || y + panel.height > viewport.height) {
+            y = clamp(y, padding, viewport.height - panel.height - padding);
+        }
+
         const defaultX = requested === 'start' ? startX : endX;
         return {
             align: align,
-            placement: 'below',
+            placement: placement,
             left: x - trigger.left,
-            top: trigger.height + gap,
-            adjusted: align !== requested || x !== defaultX,
+            top: y - trigger.top,
+            adjusted: align !== requested || x !== defaultX || y !== belowY,
         };
     }
 
