@@ -1,7 +1,10 @@
-"""Fast-path parity checks for VerbatimParser.
+"""Parity checks for VerbatimParser against an always-tokenize reference.
 
-Lightweight sanity coverage taken while prototyping the tag-free fast path;
-the systematic split-tag / entity-ref / literal-`<` suite lives elsewhere.
+Systematic coverage of the three cases a tag-free tokenization shortcut could
+break: a component tag split across a feed() boundary, entity and character
+references, and a literal `<` that is not a tag. VerbatimParser has no shortcut
+today, so these run as a regression baseline and become the acceptance gate if
+one is ever added.
 """
 
 from html.parser import HTMLParser
@@ -104,9 +107,7 @@ def test_open_close_component_split_body_does_not_collapse() -> None:
     """A split inside the body of an open/close component leaves raw segments: collapsing
     an open/close pair into one ChildRef only happens when the whole tag is seen in a
     single feed(); this records that both parsers agree on the (non-collapsed) result."""
-    segments = assert_identical_parse(
-        ["<PJXCard>bo", "dy</PJXCard>"], round_trip=False
-    )
+    segments = assert_identical_parse(["<PJXCard>bo", "dy</PJXCard>"], round_trip=False)
     assert segments == ["<PJXCard>", "bo", "dy", "</pjxcard>"]
 
 
@@ -130,7 +131,7 @@ def test_split_inside_closing_tag(chunks: list[str]) -> None:
     [
         ("a &amp; b", ["a ", "&amp;", " b"]),
         ("a &lt; b", ["a ", "&lt;", " b"]),
-        ('say &quot;hi&quot;', ["say ", "&quot;", "hi", "&quot;"]),
+        ("say &quot;hi&quot;", ["say ", "&quot;", "hi", "&quot;"]),
     ],
 )
 def test_named_entity_refs(payload: str, expected: list[str]) -> None:
