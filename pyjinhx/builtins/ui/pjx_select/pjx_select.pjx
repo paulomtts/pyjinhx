@@ -6,7 +6,12 @@
     {% endfor %}
   </select>
   <button type="button" class="pjx-select__trigger" data-pjx-select-trigger aria-haspopup="listbox" aria-expanded="false"{% if disabled %} disabled{% endif %}>
-    <span class="pjx-select__label">{{ selected_options[0].label if selected_options else placeholder }}</span>
+    {#- The chip row lives *inside* .pjx-select__label rather than replacing it,
+        so the JS keeps one node to rewrite in both modes. Chips reuse
+        PJXChipInput's classes but deliberately omit its remove button and
+        hidden input: this is a read-only summary, and the native <select>
+        already posts the values. -#}
+    <span class="pjx-select__label">{% if multiple and selected_options | length > 1 %}<span class="pjx-select__chips">{% for option in selected_options %}<span class="pjx-chip-input__chip"><span class="pjx-chip-input__label">{{ option.label }}</span></span>{% endfor %}</span>{% else %}{{ selected_options[0].label if selected_options else placeholder }}{% endif %}</span>
   </button>
   <div class="pjx-select__panel" data-pjx-select-panel hidden role="listbox">
     {% for option in options %}<button type="button" class="pjx-select__option" data-pjx-select-option data-value="{{ option.value }}" aria-selected="{{ 'true' if option.value in selected_values else 'false' }}" role="option">{% if multiple %}<input type="checkbox"{% if disabled %} disabled{% endif %}{% if option.value in selected_values %} checked{% endif %} class="pjx-select__checkbox" tabindex="-1" aria-hidden="true">{% endif %}{{ option.label }}</button>

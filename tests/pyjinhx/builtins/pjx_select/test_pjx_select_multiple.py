@@ -90,3 +90,46 @@ class TestMultipleMarkup:
         assert html.count('type="checkbox"') == 3
         assert html.count('type="checkbox" disabled') == 3
         assert "data-disabled" in html[: html.index(">")]
+
+
+def _trigger(html: str) -> str:
+    start = html.index("data-pjx-select-trigger")
+    return html[start : html.index("</button>", start)]
+
+
+class TestChipSummary:
+    def test_multiple_two_plus_selected_renders_chips(self, session):
+        trigger = _trigger(_html(session, multiple=True, value=["a", "c"]))
+        assert trigger.count('class="pjx-chip-input__chip"') == 2
+        assert trigger.count('class="pjx-chip-input__label"') == 2
+        assert 'class="pjx-select__chips"' in trigger
+        assert "Apple" in trigger
+        assert "Cherry" in trigger
+        assert "Banana" not in trigger
+
+    def test_trigger_chips_carry_no_remove_button(self, session):
+        trigger = _trigger(_html(session, multiple=True, value=["a", "c"]))
+        assert "pjx-chip-input__remove" not in trigger
+        assert "&#x2715;" not in trigger
+
+    def test_multiple_zero_or_one_selected_renders_plain_label(self, session):
+        none_selected = _trigger(_html(session, multiple=True))
+        assert "pjx-chip-input__chip" not in none_selected
+        assert "Select…" in none_selected
+
+        one_selected = _trigger(_html(session, multiple=True, value=["b"]))
+        assert "pjx-chip-input__chip" not in one_selected
+        assert "Banana" in one_selected
+
+    def test_multiple_chip_label_escaped(self, session):
+        options = [
+            SelectOption(value="a", label="<b>Ampersand & co</b>"),
+            SelectOption(value="b", label="Banana"),
+        ]
+        trigger = _trigger(_html(session, options=options, multiple=True, value=["a", "b"]))
+        assert "&lt;b&gt;Ampersand &amp; co&lt;/b&gt;" in trigger
+        assert "<b>Ampersand" not in trigger
+
+    def test_label_span_is_still_the_single_trigger_hook(self, session):
+        html = _html(session, multiple=True, value=["a", "c"])
+        assert html.count('class="pjx-select__label"') == 1
