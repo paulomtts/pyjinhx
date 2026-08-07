@@ -67,7 +67,11 @@ def test_dropped_behavior_field_is_rejected():
         PJXPopoverPanel(id="pl", behavior=True)  # type: ignore[call-arg]
 
 
-def test_dropped_extra_attrs_field_is_rejected():
-    """`extra_attrs` did not survive the v2 port either (ADR 0006, strict core)."""
-    with pytest.raises(ValidationError):
-        PJXPopoverPanel(id="pl", extra_attrs={"data-x": "1"})  # type: ignore[call-arg]
+def test_extra_attrs_surface_on_the_root_without_clobbering_panel_wiring(
+    panel_session,
+):
+    html = _html(panel_session, extra_attrs={"data-testid": "panel"})
+    root = html[: html.index(">")]
+    assert 'data-testid="panel"' in root
+    assert "data-pjx-popover-panel" in root
+    assert "hidden" in root
