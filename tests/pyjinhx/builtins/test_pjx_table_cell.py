@@ -22,6 +22,7 @@ class TestFields:
         cell = PJXTableCell(id="c1")
         assert cell.class_name == ""
         assert cell.content == ""
+        assert cell.extra_attrs == {}
 
     def test_content_is_a_declared_slot_field(self):
         assert "content" in PJXTableCell.__pjx_descriptor__.slot_fields
@@ -49,6 +50,10 @@ class TestRender:
             render(PJXTableCell(id="c1", content="a & b"), session)
             == '<td id="c1" class="pjx-table__cell">a & b</td>'
         )
+
+    def test_extra_attrs_surface_on_the_root(self, session):
+        html = render(PJXTableCell(id="c1", extra_attrs={"colspan": "2"}), session)
+        assert 'colspan="2"' in html[: html.index(">")]
 
     def test_component_content_renders_as_an_opaque_child(self, session):
         # A component nested directly inside an instance of its own class trips
