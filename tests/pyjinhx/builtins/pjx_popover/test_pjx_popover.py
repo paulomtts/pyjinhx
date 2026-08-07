@@ -80,10 +80,9 @@ def test_dropped_behavior_field_is_rejected():
         PJXPopover(id="p", behavior=True)  # type: ignore[call-arg]
 
 
-def test_dropped_extra_attrs_field_is_rejected():
-    """`extra_attrs` did not survive the v2 port either (ADR 0006, strict core)."""
-    with pytest.raises(ValidationError):
-        PJXPopover(id="p", extra_attrs={"data-x": "1"})  # type: ignore[call-arg]
+def test_extra_attrs_surface_on_the_root(popover_session):
+    html = _html(popover_session, extra_attrs={"data-testid": "popover"})
+    assert 'data-testid="popover"' in html[: html.index(">")]
 
 
 def test_assets_are_discovered_from_the_component_directory():
