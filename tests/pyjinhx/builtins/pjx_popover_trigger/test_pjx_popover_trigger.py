@@ -69,7 +69,11 @@ def test_dropped_behavior_field_is_rejected():
         PJXPopoverTrigger(id="t", behavior=True)  # type: ignore[call-arg]
 
 
-def test_dropped_extra_attrs_field_is_rejected():
-    """`extra_attrs` did not survive the v2 port either (ADR 0006, strict core)."""
-    with pytest.raises(ValidationError):
-        PJXPopoverTrigger(id="t", extra_attrs={"data-x": "1"})  # type: ignore[call-arg]
+def test_extra_attrs_surface_on_the_root_without_clobbering_toggle_wiring(
+    trigger_session,
+):
+    html = _html(trigger_session, extra_attrs={"hx-get": "/panel"})
+    root = html[: html.index(">")]
+    assert 'hx-get="/panel"' in root
+    assert "data-pjx-toggle" in root
+    assert 'aria-expanded="false"' in root
