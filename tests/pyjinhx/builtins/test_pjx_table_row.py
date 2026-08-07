@@ -21,6 +21,7 @@ class TestFields:
         assert row.selectable is False
         assert row.value == ""
         assert row.select_label == "Select row"
+        assert row.extra_attrs == {}
 
     def test_content_is_a_declared_slot_field(self):
         assert "content" in PJXTableRow.__pjx_descriptor__.slot_fields
@@ -41,6 +42,10 @@ class TestRender:
             render(PJXTableRow(id="r1", class_name="hot"), session)
             == '<tr id="r1" class="pjx-table__row hot"></tr>'
         )
+
+    def test_extra_attrs_surface_on_the_root(self, session):
+        html = render(PJXTableRow(id="r1", extra_attrs={"data-id": "7"}), session)
+        assert 'data-id="7"' in html[: html.index(">")]
 
 
 class TestSelectable:
