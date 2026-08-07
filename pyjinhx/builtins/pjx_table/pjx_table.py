@@ -1,6 +1,8 @@
 from typing import Literal
 
-from pyjinhx._component import AttrValue, BaseComponent, Slot
+from pydantic import Field
+
+from pyjinhx._component import AttrValue, BaseComponent, ExtraAttrs, Slot
 
 
 class PJXTable(BaseComponent):
@@ -13,3 +15,4 @@ class PJXTable(BaseComponent):
     bordered: Literal["none", "horizontal", "all"] = "none"
     class_name: AttrValue = ""
     content: Slot = ""
+    extra_attrs: ExtraAttrs = Field(default_factory=dict)
