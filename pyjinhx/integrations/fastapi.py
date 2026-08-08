@@ -92,7 +92,9 @@ class FastAPIBackend:
     def on_shutdown(self, app: object) -> None:
         shutdown_pyjinhx()
 
-    def to_response(self, result: object, request: object | None) -> object:
+    def to_response(
+        self, result: object, request: object | None, response: Any = None
+    ) -> object:
         """Emit compose()'s answer, or hand back a result that is not pjx's.
 
         Composition — including whether this request fans out — is decided by
@@ -114,9 +116,8 @@ class FastAPIBackend:
                 result, request or getattr(session, "pjx_request", None)
             )
         assert isinstance(composed, PjxResponse)
-        return HTMLResponse(
-            composed.body, headers=composed.headers, status_code=composed.status
-        )
+        headers, status = _merge_injected(composed, response)
+        return HTMLResponse(composed.body, headers=headers, status_code=status)
 
     def chain_lifespan(self, app: Starlette) -> None:
         """Run the startup/shutdown hooks around whatever lifespan app has.
@@ -230,6 +231,31 @@ def _response_from(kwargs: dict[str, Any]) -> Any:
         if isinstance(value, StarletteResponse):
             return value
     return None
+
+
+def _merge_injected(
+    composed: PjxResponse, response: Any
+) -> tuple[dict[str, str], int]:
+    """Fold what the handler set on its injected ``Response`` into the composed one.
+
+    The injected object wins on collisions: setting a header there is an explicit
+    act by the handler, while the composed headers are pyjinhx's own defaults.
+    Starlette cannot say whether a status was assigned or left at its default, so
+    only a non-200 counts as deliberate. ``content-length`` is dropped because it
+    describes the injected object's empty body, not the composed one.
+    """
+    if response is None:
+        return composed.headers, composed.status
+    injected = {
+        key: value
+        for key, value in dict(response.headers).items()
+        if key.lower() != "content-length"
+    }
+    status = getattr(response, "status_code", None)
+    return (
+        {**composed.headers, **injected},
+        composed.status if status in (None, 200) else status,
+    )
 
 
 def _is_htmx(request: Any) -> bool:

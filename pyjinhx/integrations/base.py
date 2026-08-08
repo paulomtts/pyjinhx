@@ -76,14 +76,19 @@ class IntegrationBackend(Protocol):
         """Run pyjinhx's shutdown step as ``app`` stops."""
         ...
 
-    def to_response(self, result: object, request: object | None) -> object:
+    def to_response(
+        self, result: object, request: object | None, response: object | None = None
+    ) -> object:
         """Adapt a pjx handler return into this framework's response type.
 
         A backend delegates the decision to ``pyjinhx.responses.compose`` and
         emits its ``PjxResponse``; a ``PASSTHROUGH`` answer means the result was
         never pyjinhx's and is returned untouched. Nothing about fan-out
         ordering, dedupe or htmx header names is decided here, so two backends
-        cannot drift apart on any of it.
+        cannot drift apart on any of it. ``response`` is the framework's own
+        dependency-injected response object, if the handler declared one and
+        the backend can discover it; a backend with no such concept passes
+        ``None``.
         """
         ...
 

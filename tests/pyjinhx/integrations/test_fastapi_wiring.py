@@ -749,3 +749,38 @@ def test_response_from_returns_none_without_an_injected_response():
     from pyjinhx.integrations.fastapi import _response_from
 
     assert _response_from({"x": 1, "name": "world"}) is None
+
+
+def test_to_response_merges_injected_headers_and_non_default_status():
+    from pyjinhx.integrations.fastapi import FastAPIBackend
+
+    backend = FastAPIBackend(_settings())
+    injected = Response()
+    injected.headers["X-Custom"] = "yes"
+    injected.status_code = 201
+    with request_scope():
+        adapted = cast(
+            HTMLResponse,
+            backend.to_response("<div>hi</div>", None, injected),
+        )
+    assert adapted.status_code == 201
+    assert adapted.headers["X-Custom"] == "yes"
+    assert adapted.body == b"<div>hi</div>"
+
+
+def test_to_response_leaves_status_alone_when_injected_response_is_untouched():
+    from pyjinhx.integrations.fastapi import FastAPIBackend
+
+    backend = FastAPIBackend(_settings())
+    with request_scope():
+        untouched = cast(
+            HTMLResponse,
+            backend.to_response("<div>hi</div>", None, Response()),
+        )
+        baseline = cast(
+            HTMLResponse,
+            backend.to_response("<div>hi</div>", None),
+        )
+    assert untouched.status_code == baseline.status_code == 200
+    assert untouched.body == baseline.body == b"<div>hi</div>"
+    assert untouched.headers["content-length"] == baseline.headers["content-length"]
