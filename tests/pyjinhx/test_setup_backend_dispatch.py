@@ -87,7 +87,9 @@ class _SentinelBackend:
 
     def on_shutdown(self, app: object) -> None: ...
 
-    def to_response(self, result: object, request: object | None) -> object:
+    def to_response(
+        self, result: object, request: object | None, response: object | None = None
+    ) -> object:
         return result
 
 
