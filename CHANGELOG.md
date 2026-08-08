@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.6.1 — Fix root-attr crash on component-tag ReactiveComponent roots (2026-08-08)
+
+### Fixed
+- `stamp_root_attrs` crashed (`AssertionError`) for any `ReactiveComponent` whose entire
+  template was a single builtin/component tag (e.g. root `<PJXPopover>`, `<PJXButton>`) rather
+  than raw HTML. By the time the reactive root-attr stamp ran, `render_level` had already
+  replaced that root segment with the child's own `RenderedLevel`, which the assertion didn't
+  account for. It now recurses into a `RenderedLevel` root segment and stamps that nested
+  level's own root tag, at any nesting depth. Reported in #934 — present since 0.26.0, only
+  newly reachable once #925 stopped an earlier validation error from masking it.
+
 ## 1.6.0 — extra_attrs on every builtin (2026-08-08)
 
 `BaseComponent` is strict (`extra="forbid"`, ADR 0006), so pass-through HTML attributes only
