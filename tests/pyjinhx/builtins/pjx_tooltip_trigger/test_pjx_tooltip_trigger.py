@@ -1,7 +1,6 @@
 """PJXTooltipTrigger renders the focusable element that reveals its tooltip tip (port of v0.x pyjinhx/builtins/ui/pjx_tooltip_trigger/pjx_tooltip_trigger.py)."""
 
 import pytest
-from pydantic import ValidationError
 
 from pyjinhx.builtins.ui.pjx_tooltip_trigger import PJXTooltipTrigger
 from pyjinhx.rendering import render
@@ -51,10 +50,9 @@ def test_string_content_is_interpolated(trigger_session):
     assert ">Hover me</span>" in _html(trigger_session, content="Hover me")
 
 
-def test_dropped_extra_attrs_field_is_rejected():
-    """v0.x had no extra_attrs here either; extra="forbid" turns it into an error (ADR 0006)."""
-    with pytest.raises(ValidationError):
-        PJXTooltipTrigger(id="tr", extra_attrs={"data-x": "1"})  # type: ignore[call-arg]
+def test_extra_attrs_surface_on_the_trigger(trigger_session):
+    html = _html(trigger_session, extra_attrs={"data-testid": "trigger"})
+    assert 'data-testid="trigger"' in html[: html.index(">")]
 
 
 def test_focus_visible_css_is_discovered_from_the_component_directory():

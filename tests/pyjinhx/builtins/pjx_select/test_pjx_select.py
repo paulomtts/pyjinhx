@@ -37,6 +37,10 @@ class TestFields:
         with pytest.raises(ValidationError):
             PJXSelect(id="s", name="fruit", options=OPTIONS, bogus="x")  # type: ignore[call-arg]
 
+    def test_extra_attrs_defaults_empty(self):
+        sel = PJXSelect(id="s", name="fruit", options=OPTIONS)
+        assert sel.extra_attrs == {}
+
     def test_options_accept_plain_dicts(self):
         sel = PJXSelect(
             id="s",
@@ -78,6 +82,10 @@ class TestRender:
         assert html.count("data-pjx-select ") == 1
         assert html.startswith('<div id="s"')
         assert html.endswith("</div>")
+
+    def test_extra_attrs_surface_on_the_root(self, session):
+        html = _html(session, extra_attrs={"data-testid": "sel"})
+        assert 'data-testid="sel"' in html
 
     def test_root_carries_the_name(self, session):
         head = _html(session, name="pick")

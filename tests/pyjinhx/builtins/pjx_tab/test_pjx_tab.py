@@ -93,6 +93,12 @@ def test_class_name_appended_to_root(tab_session, icon_registered):
     assert 'class="pjx-tab mine"' in _html(tab_session, class_name="mine")
 
 
+def test_extra_attrs_surface_on_the_root(tab_session, icon_registered):
+    html = _html(tab_session, extra_attrs={"data-test": "1"})
+    assert 'data-test="1"' in html
+    assert html.count('<div id="t"') == 1
+
+
 def test_string_content_renders_raw_inside_the_label(tab_session, icon_registered):
     """ADR 0003: a plain str in a Slot is authored markup, not escaped."""
     html = _html(tab_session, content="<p>raw</p>")

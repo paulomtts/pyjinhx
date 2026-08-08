@@ -1,1 +1,1 @@
-<details id="{{ id }}" class="pjx-accordion{% if class_name %} {{ class_name }}{% endif %}"{% if open %} open{% endif %}{% if group %} name="{{ group }}"{% endif %}>{{ content }}</details>
+<details id="{{ id }}" class="pjx-accordion{% if class_name %} {{ class_name }}{% endif %}"{% if open %} open{% endif %}{% if group %} name="{{ group }}"{% endif %}{% for name, value in extra_attrs.items() %} {{ name }}="{{ value }}"{% endfor %}>{{ content }}</details>

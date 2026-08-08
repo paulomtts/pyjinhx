@@ -94,6 +94,11 @@ class TestRender:
         html = _html(session)
         assert "data-pjx-resizable-group" in html
 
+    def test_extra_attrs_surface_on_the_root(self, session):
+        html = _html(session, extra_attrs={"data-testid": "group-1"})
+        assert 'data-testid="group-1"' in html
+        assert "data-pjx-resizable-group" in html
+
 
 class TestAssets:
     def test_stylesheet_is_frozen_on_the_descriptor(self):

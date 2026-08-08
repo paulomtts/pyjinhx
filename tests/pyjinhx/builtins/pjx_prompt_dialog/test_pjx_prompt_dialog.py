@@ -71,9 +71,18 @@ def test_input_label_renders_on_label(prompt_session):
 
 
 def test_undeclared_attr_is_rejected():
-    """v2 core is strict (extra="forbid"): v0.x's extra_attrs pass-through is gone."""
+    """v2 core is strict (extra="forbid"): only extra_attrs may pass extra attributes through."""
     with pytest.raises(ValidationError):
-        PJXPromptDialog(id="pd", extra_attrs={"data-k": "v"})  # pyright: ignore[reportCallIssue]
+        PJXPromptDialog(id="pd", data_k="v")  # pyright: ignore[reportCallIssue]
+
+
+def test_extra_attrs_round_trip_onto_the_dialog(prompt_session):
+    html = _html(prompt_session, extra_attrs={"data-testid": "prompt"})
+    assert 'data-testid="prompt"' in html
+    assert html == EXPECTED_DEFAULT.replace(
+        'aria-labelledby="pd-label">',
+        'aria-labelledby="pd-label" data-testid="prompt">',
+    )
 
 
 def test_exported_from_the_builtins_namespace():

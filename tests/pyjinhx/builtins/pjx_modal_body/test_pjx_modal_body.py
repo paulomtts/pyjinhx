@@ -32,6 +32,12 @@ def test_empty_class_name_adds_nothing(modal_body_session):
     assert 'class="pjx-modal__body"' in _html(modal_body_session, class_name="")
 
 
+def test_extra_attrs_surface_on_the_root(modal_body_session):
+    html = _html(modal_body_session, extra_attrs={"data-testid": "modal-body"})
+    assert 'data-testid="modal-body"' in html
+    assert html.count("<div") == 1
+
+
 def test_component_content_renders_nested(modal_body_session):
     html = _html(modal_body_session, content=PJXDivider(id="d"))
     assert html.count("<div") == 1

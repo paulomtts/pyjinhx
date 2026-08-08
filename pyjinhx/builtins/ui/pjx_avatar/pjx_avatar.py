@@ -1,6 +1,6 @@
-from pydantic import computed_field, field_validator
+from pydantic import Field, computed_field, field_validator
 
-from pyjinhx._component import AttrValue, BaseComponent
+from pyjinhx._component import AttrValue, BaseComponent, ExtraAttrs
 
 _NAMED_SIZES = {"sm", "md", "lg"}
 
@@ -17,6 +17,7 @@ class PJXAvatar(BaseComponent):
     size: str | int = "md"
     class_name: AttrValue = ""
     color: AttrValue = ""
+    extra_attrs: ExtraAttrs = Field(default_factory=dict)
 
     @field_validator("initials", mode="before")
     @classmethod

@@ -118,4 +118,9 @@ def test_undeclared_attr_is_rejected():
     Deliberate narrowing of v0.x behavior, matching the #500 precedent.
     """
     with pytest.raises(ValidationError):
-        PJXEmptyState(id="e", extra_attrs={"data-x": "y"})  # pyright: ignore[reportCallIssue]
+        PJXEmptyState(id="e", **{"data-x": "y"})  # pyright: ignore[reportCallIssue, reportArgumentType]
+
+
+def test_extra_attrs_surface_on_the_root(empty_state_session):
+    html = _html(empty_state_session, extra_attrs={"data-x": "y"})
+    assert 'data-x="y"' in html

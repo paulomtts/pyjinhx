@@ -1,4 +1,4 @@
-<nav id="{{ id }}" class="pjx-breadcrumb{% if class_name %} {{ class_name }}{% endif %}" aria-label="{{ aria_label }}">
+<nav id="{{ id }}" class="pjx-breadcrumb{% if class_name %} {{ class_name }}{% endif %}" aria-label="{{ aria_label }}"{% for name, value in extra_attrs.items() %} {{ name }}="{{ value }}"{% endfor %}>
   <ol class="pjx-breadcrumb__list">
     {% for label, href in items %}
     <li class="pjx-breadcrumb__item">

@@ -2,7 +2,7 @@ from typing import Any
 
 from pydantic import Field
 
-from pyjinhx._component import AttrValue, BaseComponent, Slot
+from pyjinhx._component import AttrValue, BaseComponent, ExtraAttrs, Slot
 
 
 class PJXEmptyState(BaseComponent):
@@ -14,3 +14,4 @@ class PJXEmptyState(BaseComponent):
     suggestions: list[Any] = Field(default_factory=list)
     class_name: AttrValue = ""
     content: Slot = ""
+    extra_attrs: ExtraAttrs = Field(default_factory=dict)

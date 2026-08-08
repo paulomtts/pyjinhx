@@ -2,7 +2,7 @@ from typing import Annotated, Any
 
 from pydantic import Field
 
-from pyjinhx._component import AttrValue, BaseComponent, PjxSlot
+from pyjinhx._component import AttrValue, BaseComponent, ExtraAttrs, PjxSlot
 
 
 class PJXAvatarStack(BaseComponent):
@@ -28,3 +28,4 @@ class PJXAvatarStack(BaseComponent):
     extra_count: int = 0
     empty_label: str = ""
     class_name: AttrValue = ""
+    extra_attrs: ExtraAttrs = Field(default_factory=dict)

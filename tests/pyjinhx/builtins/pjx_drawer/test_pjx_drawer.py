@@ -121,7 +121,6 @@ def test_clean_break_removed_fields():
         "footer",
         "close_label",
         "close_content",
-        "extra_attrs",
     ):
         assert gone not in PJXDrawer.model_fields
 
@@ -137,9 +136,14 @@ def test_shell_fields_stay_minimal():
 
 
 def test_undeclared_attr_is_rejected():
-    """v2 core is strict (extra="forbid"): v0.x's extra_attrs pass-through is gone."""
+    """v2 core is strict (extra="forbid"): unknown kwargs are still rejected."""
     with pytest.raises(ValidationError):
-        PJXDrawer(id="d", extra_attrs={"data-x": "y"})  # pyright: ignore[reportCallIssue]
+        PJXDrawer(id="d", bogus="y")  # pyright: ignore[reportCallIssue]
+
+
+def test_extra_attrs_surface_on_the_root(drawer_session):
+    html = _html(drawer_session, extra_attrs={"data-testid": "drawer"})
+    assert 'data-testid="drawer"' in html[: html.index(">")]
 
 
 class DrawerHost(BaseComponent):

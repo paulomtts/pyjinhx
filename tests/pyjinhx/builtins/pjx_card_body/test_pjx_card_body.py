@@ -46,3 +46,10 @@ def test_class_name_appended_to_root(card_body_session):
 
 def test_empty_class_name_adds_nothing(card_body_session):
     assert 'class="pjx-card__body"' in _html(card_body_session, class_name="")
+
+
+def test_extra_attrs_render_on_root(card_body_session):
+    """extra_attrs round-trips onto the <div> root without disturbing class wiring."""
+    html = _html(card_body_session, extra_attrs={"data-testid": "body-1"})
+    assert 'data-testid="body-1"' in html
+    assert 'class="pjx-card__body"' in html

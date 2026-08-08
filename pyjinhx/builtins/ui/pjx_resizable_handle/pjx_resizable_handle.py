@@ -1,4 +1,6 @@
-from pyjinhx._component import AttrValue, BaseComponent
+from pydantic import Field
+
+from pyjinhx._component import AttrValue, BaseComponent, ExtraAttrs
 
 
 class PJXResizableHandle(BaseComponent):
@@ -11,3 +13,4 @@ class PJXResizableHandle(BaseComponent):
 
     label: str = "Resize"
     class_name: AttrValue = ""
+    extra_attrs: ExtraAttrs = Field(default_factory=dict)

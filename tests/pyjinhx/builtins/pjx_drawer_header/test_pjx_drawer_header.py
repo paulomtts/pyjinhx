@@ -89,3 +89,8 @@ def test_close_content_accepts_a_component(drawer_header_session):
     html = _html(drawer_header_session, close_content=PJXDivider(id="glyph"))
     assert '<hr id="glyph"' in html
     assert "✕" not in html
+
+
+def test_extra_attrs_surface_on_the_root(drawer_header_session):
+    html = _html(drawer_header_session, extra_attrs={"data-testid": "header"})
+    assert 'data-testid="header"' in html[: html.index(">")]

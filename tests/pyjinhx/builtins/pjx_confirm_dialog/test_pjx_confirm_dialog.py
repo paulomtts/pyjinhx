@@ -66,9 +66,18 @@ def test_cancel_label_renders_on_cancel_button(confirm_session):
 
 
 def test_undeclared_attr_is_rejected():
-    """v2 core is strict (extra="forbid"): v0.x's extra_attrs pass-through is gone."""
+    """v2 core is strict (extra="forbid"): only extra_attrs may pass extra attributes through."""
     with pytest.raises(ValidationError):
-        PJXConfirmDialog(id="cd", extra_attrs={"data-k": "v"})  # pyright: ignore[reportCallIssue]
+        PJXConfirmDialog(id="cd", data_k="v")  # pyright: ignore[reportCallIssue]
+
+
+def test_extra_attrs_round_trip_onto_the_dialog(confirm_session):
+    html = _html(confirm_session, extra_attrs={"data-testid": "confirm"})
+    assert 'data-testid="confirm"' in html
+    assert html == EXPECTED_DEFAULT.replace(
+        'aria-labelledby="cd-message">',
+        'aria-labelledby="cd-message" data-testid="confirm">',
+    )
 
 
 def test_exported_from_the_builtins_namespace():

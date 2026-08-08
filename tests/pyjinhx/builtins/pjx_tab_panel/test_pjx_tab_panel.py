@@ -39,6 +39,12 @@ def test_class_name_appended_to_root(tab_panel_session):
     )
 
 
+def test_extra_attrs_surface_on_the_root(tab_panel_session):
+    html = _html(tab_panel_session, extra_attrs={"data-test": "1"})
+    assert 'data-test="1"' in html
+    assert html.count("<div") == 1
+
+
 def test_string_content_renders_raw_inside_root(tab_panel_session):
     """ADR 0003: a plain str in a Slot is authored markup, not escaped."""
     html = _html(tab_panel_session, content="<p>raw</p>")

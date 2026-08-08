@@ -1,6 +1,8 @@
 from typing import Literal
 
-from pyjinhx._component import AttrValue, BaseComponent
+from pydantic import Field
+
+from pyjinhx._component import AttrValue, BaseComponent, ExtraAttrs
 
 
 class PJXSkeleton(BaseComponent):
@@ -9,3 +11,4 @@ class PJXSkeleton(BaseComponent):
     variant: Literal["text", "circle", "rect"] = "text"
     lines: int = 3
     class_name: AttrValue = ""
+    extra_attrs: ExtraAttrs = Field(default_factory=dict)

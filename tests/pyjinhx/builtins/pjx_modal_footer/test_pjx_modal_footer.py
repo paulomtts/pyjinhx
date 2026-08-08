@@ -35,6 +35,12 @@ def test_empty_class_name_adds_nothing(modal_footer_session):
     assert 'class="pjx-modal__footer"' in _html(modal_footer_session, class_name="")
 
 
+def test_extra_attrs_surface_on_the_root(modal_footer_session):
+    html = _html(modal_footer_session, extra_attrs={"data-testid": "modal-footer"})
+    assert 'data-testid="modal-footer"' in html
+    assert html.count("<footer") == 1
+
+
 def test_component_content_renders_nested(modal_footer_session):
     html = _html(modal_footer_session, content=PJXDivider(id="d"))
     assert html.count("<footer") == 1

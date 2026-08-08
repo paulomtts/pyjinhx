@@ -1,6 +1,6 @@
 {% set selected_values = (value or []) if multiple else ([value] if value else []) -%}
 {% set selected_options = options | selectattr("value", "in", selected_values) | list -%}
-<div id="{{ id }}" class="pjx-select{% if class_name %} {{ class_name }}{% endif %}" data-pjx-select data-name="{{ name }}"{% if multiple %} data-multiple data-placeholder="{{ placeholder }}"{% endif %}{% if disabled %} data-disabled{% endif %}>
+<div id="{{ id }}" class="pjx-select{% if class_name %} {{ class_name }}{% endif %}" data-pjx-select data-name="{{ name }}"{% if multiple %} data-multiple data-placeholder="{{ placeholder }}"{% endif %}{% if disabled %} data-disabled{% endif %}{% for extra_name, extra_value in extra_attrs.items() %} {{ extra_name }}="{{ extra_value }}"{% endfor %}>
   <select name="{{ name }}"{% if multiple %} multiple{% endif %} hidden{% if disabled %} disabled{% endif %}>
     {% for option in options %}<option value="{{ option.value }}"{% if option.value in selected_values %} selected{% endif %}>{{ option.label }}</option>
     {% endfor %}

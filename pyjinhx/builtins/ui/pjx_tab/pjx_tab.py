@@ -1,4 +1,6 @@
-from pyjinhx._component import AttrValue, BaseComponent, Slot
+from pydantic import Field
+
+from pyjinhx._component import AttrValue, BaseComponent, ExtraAttrs, Slot
 
 
 class PJXTab(BaseComponent):
@@ -11,4 +13,5 @@ class PJXTab(BaseComponent):
     selected: bool = False
     close_label: str = "Close"
     class_name: AttrValue = ""
+    extra_attrs: ExtraAttrs = Field(default_factory=dict)
     content: Slot = ""

@@ -40,3 +40,10 @@ def test_class_name_appended_to_root(card_footer_session):
     assert 'class="pjx-card__footer bar"' in _html(
         card_footer_session, class_name="bar"
     )
+
+
+def test_extra_attrs_render_on_root(card_footer_session):
+    """extra_attrs round-trips onto the <footer> root without disturbing class wiring."""
+    html = _html(card_footer_session, extra_attrs={"data-testid": "footer-1"})
+    assert 'data-testid="footer-1"' in html
+    assert 'class="pjx-card__footer"' in html

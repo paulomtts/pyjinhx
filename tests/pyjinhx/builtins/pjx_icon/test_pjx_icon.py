@@ -84,6 +84,17 @@ def test_undeclared_attr_is_rejected():
         PJXIcon(id="i", name="plus", **{"data-x": "y"})  # pyright: ignore[reportCallIssue, reportArgumentType]
 
 
+def test_extra_attrs_surface_on_the_svg_root(icon_session):
+    html = _html(icon_session, name="plus", extra_attrs={"data-x": "y"})
+    assert 'data-x="y"' in html
+
+
+def test_extra_attrs_surface_on_the_fallback_span_root(icon_session, caplog):
+    html = _html(icon_session, name="not-a-real-icon", extra_attrs={"data-x": "y"})
+    assert 'data-x="y"' in html
+    assert "<span" in html
+
+
 def test_multi_root_template_still_raises(icon_session, tmp_path):
     """Invariant 3 regression guard: two roots must raise, no try/except concession."""
     module_dir = tmp_path / "pkg"

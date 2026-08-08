@@ -58,9 +58,16 @@ def test_clean_break_removed_fields():
 
 
 def test_undeclared_attr_is_rejected():
-    """v2 core is strict (extra="forbid"): v0.x's extra_attrs pass-through is gone."""
+    """v2 core is strict (extra="forbid"): unknown kwargs are still rejected."""
     with pytest.raises(ValidationError):
-        PJXCard(id="c", extra_attrs={"data-x": "y"})  # pyright: ignore[reportCallIssue]
+        PJXCard(id="c", bogus="y")  # pyright: ignore[reportCallIssue]
+
+
+def test_extra_attrs_render_on_root(card_session):
+    """extra_attrs round-trips onto the <article> root without disturbing class wiring."""
+    html = _html(card_session, extra_attrs={"data-testid": "card-1"})
+    assert 'data-testid="card-1"' in html
+    assert 'class="pjx-card"' in html
 
 
 class CardHost(BaseComponent):

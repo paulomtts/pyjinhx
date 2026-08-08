@@ -2,9 +2,9 @@ import math
 import re
 from typing import ClassVar
 
-from pydantic import ValidationInfo, computed_field, field_validator
+from pydantic import Field, ValidationInfo, computed_field, field_validator
 
-from pyjinhx._component import AttrValue, BaseComponent, Slot
+from pyjinhx._component import AttrValue, BaseComponent, ExtraAttrs, Slot
 
 _PX = re.compile(r"^\d+(\.\d+)?px$")
 _NUM = re.compile(r"\d+(\.\d+)?")
@@ -44,6 +44,7 @@ class PJXResizablePanel(BaseComponent):
     min: str | float = 0.0
     max: str | float = 100.0
     class_name: AttrValue = ""
+    extra_attrs: ExtraAttrs = Field(default_factory=dict)
     content: Slot = ""
 
     @field_validator("min", "max")

@@ -1,4 +1,6 @@
-from pyjinhx._component import AttrValue, BaseComponent
+from pydantic import Field
+
+from pyjinhx._component import AttrValue, BaseComponent, ExtraAttrs
 
 
 class PJXConfirmDialog(BaseComponent):
@@ -7,3 +9,4 @@ class PJXConfirmDialog(BaseComponent):
     confirm_label: str = "Confirm"
     cancel_label: str = "Cancel"
     class_name: AttrValue = ""
+    extra_attrs: ExtraAttrs = Field(default_factory=dict)
