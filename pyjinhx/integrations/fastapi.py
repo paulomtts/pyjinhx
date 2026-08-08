@@ -106,8 +106,11 @@ class FastAPIBackend:
         # request_scope(), which is the sole entry point for a pjx endpoint.
         assert session is not None, "handler return outside a request_scope()"
         # Before compose(), because compose() is what renders the component and
-        # the runtime has to be in the session by then. Only a component return
-        # can be a cold page render; every other shape is a fragment.
+        # the runtime has to be in the session by then. Redundant with the
+        # injection BaseComponent.render() now does for any render against the
+        # active session (#938) — inject_runtime() self-guards against a second
+        # call, so this stays a safety net for a component return rather than
+        # dead code to remove.
         if isinstance(result, BaseComponent):
             inject_runtime(session, request or getattr(session, "pjx_request", None))
         composed = compose(result, session=session)
