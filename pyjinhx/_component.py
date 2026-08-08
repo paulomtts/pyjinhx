@@ -568,11 +568,23 @@ class BaseComponent(BaseModel):
         """
         # Imported here, not at module scope: rendering.py imports BaseComponent at
         # import time, so a module-level edge back into it is a real circular
-        # import. session.py carries no cycle, but stays local for symmetry.
+        # import. The others carry no cycle, but stay local for symmetry.
+        from pyjinhx.client.inject import inject_runtime
         from pyjinhx.rendering import render as _render
         from pyjinhx.session import current_session
 
-        return _render(self, session or current_session())
+        active = current_session()
+        target = session or active
+        if target is not None and target is active:
+            # render() is where assets get emitted, so a handler that renders to
+            # a string itself has already produced its final markup by the time
+            # the adapter sees the return value — the runtime has to land in the
+            # session now or it never lands at all. Only inside a request scope:
+            # a bare Component().render() in library code stays pure markup.
+            # inject_runtime() self-guards on mounted requests, a second call,
+            # and non-inline JS, so the object-return path cannot double-inject.
+            inject_runtime(target, target.pjx_request)
+        return _render(self, target)
 
     def __init_subclass__(
         cls, *, pjx_replace: bool = False, cache: Any = None, **kwargs: Any
