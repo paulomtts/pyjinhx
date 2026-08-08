@@ -11,13 +11,14 @@ from pathlib import Path
 
 import pytest
 
+from pyjinhx import discovery
 from pyjinhx._component import BaseComponent, Slot
 from pyjinhx.descriptor import ClassDescriptor
 from pyjinhx.reactive.component import ReactiveComponent
 from pyjinhx.reactive.root_attrs import stamp_reactive_root_attrs
 from pyjinhx.rendering import render_level
 from pyjinhx.root_attrs import serialize_attr, stamp_root_attrs
-from pyjinhx.segments import serialize
+from pyjinhx.segments import ChildRef, RenderedLevel, serialize
 from pyjinhx.session import RenderSession
 
 _TEMPLATE_DIR = Path(__file__).parent.parent.parent / "templates"
@@ -86,6 +87,42 @@ ReactiveShell.__pjx_descriptor__ = ClassDescriptor(
     strict=True,
     provenance={"template": ReactiveShell},
 )
+
+
+class InnerBadge(BaseComponent):
+    pass
+
+
+class MiddleWrap(BaseComponent):
+    pass
+
+
+class BuiltinRootWidget(ReactiveComponent):
+    pass
+
+
+class DoubleBuiltinRootWidget(ReactiveComponent):
+    pass
+
+
+InnerBadge.__pjx_descriptor__ = _descriptor_for(InnerBadge, "inner_badge.html")
+MiddleWrap.__pjx_descriptor__ = _descriptor_for(MiddleWrap, "middle_wrap.html")
+BuiltinRootWidget.__pjx_descriptor__ = _descriptor_for(
+    BuiltinRootWidget, "reactive_builtin_root.html"
+)
+DoubleBuiltinRootWidget.__pjx_descriptor__ = _descriptor_for(
+    DoubleBuiltinRootWidget, "reactive_double_root.html"
+)
+
+
+@pytest.fixture
+def registered_children():
+    """Publish the nested-root fixture tags, then restore the prior mapping."""
+    previous = discovery._registry.mapping
+    discovery.register_class("inner_badge", InnerBadge)
+    discovery.register_class("middle_wrap", MiddleWrap)
+    yield
+    discovery._registry.mapping = previous
 
 
 @pytest.fixture
@@ -298,6 +335,59 @@ def test_child_level_segments_are_untouched_by_the_parents_stamp(
     assert 'data-pjx-id="inner"' in html
     assert html.count("data-pjx-id=") == 2
     assert html.index('data-pjx-id="outer"') < html.index("<p>before</p>")
+
+
+def test_builtin_root_stamps_onto_the_nested_levels_root_tag(
+    session: RenderSession, registered_children: None
+):
+    """#934: when the template root IS a child tag, render_level has already
+    replaced segments[0] with that child's RenderedLevel — the stamp recurses
+    into it instead of asserting on a str."""
+    component = BuiltinRootWidget(id="b1")
+
+    html = serialize(render_level(component, session))
+
+    assert html == (
+        f'<b class="badge" data-pjx-id="b1"'
+        f' data-pjx-type="builtin_root_widget"'
+        f' data-pjx-hash="{component.state_hash()}">badge</b>'
+    )
+
+
+def test_stamp_recurses_through_two_levels_of_nested_roots(
+    session: RenderSession, registered_children: None
+):
+    """A builtin root whose own root is another child level: recursion, not a
+    single hardcoded unwrap."""
+    component = DoubleBuiltinRootWidget(id="b2")
+
+    html = serialize(render_level(component, session))
+
+    assert 'data-pjx-id="b2"' in html
+    assert html.startswith('<b class="badge" data-pjx-id="b2"')
+    assert html.count("data-pjx-id=") == 1
+
+
+def test_empty_attrs_is_a_noop_when_the_root_segment_is_a_nested_level(
+    registered_children: None,
+):
+    plain = RenderSession()
+    level = render_level(BuiltinRootWidget(id="b3"), plain)
+    before = serialize(level)
+
+    assert stamp_root_attrs(level, {}) is level
+    assert serialize(level) == before
+
+
+def test_non_str_non_level_root_segment_raises_a_clear_error():
+    level = RenderedLevel(
+        segments=[ChildRef(tag="Unresolved", attrs={}, inner=None)],
+        root_span=(0, 0),
+        descriptor=None,
+    )
+
+    with pytest.raises(AssertionError, match="str or RenderedLevel"):
+        stamp_root_attrs(level, {"class": "x"})
 
 
 def test_stamping_the_parent_does_not_move_the_childs_attrs(

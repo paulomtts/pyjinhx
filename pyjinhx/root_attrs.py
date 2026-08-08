@@ -58,12 +58,24 @@ def stamp_root_attrs(level: RenderedLevel, attrs: dict[str, str]) -> RenderedLev
     text and updates ``root_span`` to match the new tag's length. Mutates
     ``level`` in place and returns it, matching the ``splice()`` convention
     in ``pyjinhx.segments``.
+
+    When a component's whole template is one child tag, the renderer has
+    already replaced ``segments[0]`` with that child's own RenderedLevel by
+    the time this runs, so the root tag to stamp lives one level down: the
+    call recurses into it and the outer ``level.root_span`` is left alone,
+    since in that shape it bounds nothing this module owns and nothing reads
+    it. The returned object is still the outer ``level``, so the
+    mutate-and-return contract holds at every depth.
     """
     if not attrs:
         return level
     root = level.segments[0]
+    if isinstance(root, RenderedLevel):
+        stamp_root_attrs(root, attrs)
+        return level
     assert isinstance(root, str), (
-        f"stamp_root_attrs needs a str root segment, got {type(root).__name__}"
+        "stamp_root_attrs needs a str or RenderedLevel root segment, "
+        f"got {type(root).__name__}"
     )
     start, end = level.root_span
     new_tag = _override_tag(root[start:end], attrs)
