@@ -1,4 +1,6 @@
-from pyjinhx._component import AttrValue, BaseComponent, Slot
+from pydantic import Field
+
+from pyjinhx._component import AttrValue, BaseComponent, ExtraAttrs, Slot
 
 
 class PJXModalHeader(BaseComponent):
@@ -8,4 +10,5 @@ class PJXModalHeader(BaseComponent):
     close_label: str = "Close"
     close_content: Slot = "✕"
     class_name: AttrValue = ""
+    extra_attrs: ExtraAttrs = Field(default_factory=dict)
     content: Slot = ""

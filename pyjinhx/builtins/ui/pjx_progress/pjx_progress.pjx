@@ -1,4 +1,4 @@
-<div id="{{ id }}" class="pjx-progress{% if class_name %} {{ class_name }}{% endif %}">
+<div id="{{ id }}" class="pjx-progress{% if class_name %} {{ class_name }}{% endif %}"{% for name, value in extra_attrs.items() %} {{ name }}="{{ value }}"{% endfor %}>
   {% if label %}
   <span class="pjx-progress__label" id="{{ id }}-label">{{ label }}</span>
   {% endif %}

@@ -3,7 +3,6 @@
 import dataclasses
 
 import pytest
-from pydantic import ValidationError
 
 from pyjinhx._component import BaseComponent, Slot
 from pyjinhx.builtins.ui.pjx_tooltip_content import PJXTooltipContent
@@ -69,10 +68,9 @@ def test_component_content_renders_inside_the_tip(content_session, tip_child_tem
     assert '<em id="c" class="child">Inner</em>' in html
 
 
-def test_dropped_extra_attrs_field_is_rejected():
-    """v0.x had no extra_attrs here either; extra="forbid" turns it into an error (ADR 0006)."""
-    with pytest.raises(ValidationError):
-        PJXTooltipContent(id="tc", extra_attrs={"data-x": "1"})  # type: ignore[call-arg]
+def test_extra_attrs_surface_on_the_tip(content_session):
+    html = _html(content_session, extra_attrs={"data-testid": "tip"})
+    assert 'data-testid="tip"' in html[: html.index(">")]
 
 
 def test_positioning_css_is_discovered_from_the_component_directory():

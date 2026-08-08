@@ -1,6 +1,8 @@
 from typing import Literal
 
-from pyjinhx._component import AttrValue, BaseComponent, Slot
+from pydantic import Field
+
+from pyjinhx._component import AttrValue, BaseComponent, ExtraAttrs, Slot
 
 
 class PJXDrawer(BaseComponent):
@@ -11,3 +13,4 @@ class PJXDrawer(BaseComponent):
     remove_on_close: bool = False
     class_name: AttrValue = ""
     content: Slot = ""
+    extra_attrs: ExtraAttrs = Field(default_factory=dict)

@@ -1,6 +1,8 @@
 from typing import Literal
 
-from pyjinhx._component import AttrValue, BaseComponent
+from pydantic import Field
+
+from pyjinhx._component import AttrValue, BaseComponent, ExtraAttrs
 
 
 class PJXDivider(BaseComponent):
@@ -9,3 +11,4 @@ class PJXDivider(BaseComponent):
     orientation: Literal["horizontal", "vertical"] = "horizontal"
     label: str = ""
     class_name: AttrValue = ""
+    extra_attrs: ExtraAttrs = Field(default_factory=dict)

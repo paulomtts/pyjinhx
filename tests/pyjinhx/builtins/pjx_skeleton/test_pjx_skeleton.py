@@ -78,4 +78,9 @@ def test_undeclared_attr_is_rejected():
     Deliberate narrowing of v0.x behavior, matching the #500 precedent.
     """
     with pytest.raises(ValidationError):
-        PJXSkeleton(id="s", extra_attrs={"data-x": "y"})  # pyright: ignore[reportCallIssue]
+        PJXSkeleton(id="s", **{"data-x": "y"})  # pyright: ignore[reportCallIssue, reportArgumentType]
+
+
+def test_extra_attrs_surface_on_the_root(skeleton_session):
+    html = _html(skeleton_session, extra_attrs={"data-x": "y"})
+    assert 'data-x="y"' in html

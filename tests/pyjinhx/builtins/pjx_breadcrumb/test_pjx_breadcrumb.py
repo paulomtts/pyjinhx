@@ -72,14 +72,13 @@ def test_aria_label_defaults_and_is_overridable(breadcrumb_session):
     )
 
 
-def test_clean_break_no_extra_attrs_field():
-    """v2 core is strict (extra="forbid"): v0.x's extra_attrs pass-through is gone."""
-    assert "extra_attrs" not in PJXBreadcrumb.model_fields
-
-
 def test_undeclared_attr_is_rejected():
     with pytest.raises(ValidationError):
-        PJXBreadcrumb(id="bc", extra_attrs={"data-x": "y"})  # pyright: ignore[reportCallIssue]
+        PJXBreadcrumb(id="bc", **{"data-x": "y"})  # pyright: ignore[reportCallIssue, reportArgumentType]
+
+
+def test_extra_attrs_surface_on_the_root(breadcrumb_session):
+    assert 'data-x="y"' in _html(breadcrumb_session, extra_attrs={"data-x": "y"})
 
 
 def test_json_string_items_still_coerced_by_core_hook():

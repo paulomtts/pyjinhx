@@ -67,4 +67,9 @@ def test_undeclared_attr_is_rejected():
     Deliberate narrowing of v0.x behavior, matching the #504 precedent.
     """
     with pytest.raises(ValidationError):
-        PJXSpinner(id="s", extra_attrs={"data-x": "y"})  # pyright: ignore[reportCallIssue]
+        PJXSpinner(id="s", **{"data-x": "y"})  # pyright: ignore[reportCallIssue, reportArgumentType]
+
+
+def test_extra_attrs_surface_on_the_root(spinner_session):
+    html = _html(spinner_session, extra_attrs={"data-x": "y"})
+    assert 'data-x="y"' in html

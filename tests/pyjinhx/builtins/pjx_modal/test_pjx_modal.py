@@ -3,7 +3,6 @@
 import dataclasses
 
 import pytest
-from pydantic import ValidationError
 
 from pyjinhx._component import BaseComponent, Slot
 from pyjinhx.builtins.ui.pjx_modal import PJXModal
@@ -80,10 +79,10 @@ def test_clean_break_removed_fields():
         assert gone not in PJXModal.model_fields
 
 
-def test_undeclared_attr_is_rejected():
-    """v2 core is strict (extra="forbid"): v0.x's extra_attrs pass-through is gone."""
-    with pytest.raises(ValidationError):
-        PJXModal(id="m", extra_attrs={"data-x": "y"})  # pyright: ignore[reportCallIssue]
+def test_extra_attrs_surface_on_the_root(modal_session):
+    html = _html(modal_session, extra_attrs={"data-testid": "confirm-modal"})
+    assert 'data-testid="confirm-modal"' in html
+    assert html.count("<dialog") == 1
 
 
 class ModalHost(BaseComponent):

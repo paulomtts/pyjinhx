@@ -1,4 +1,6 @@
-from pyjinhx._component import AttrValue, BaseComponent
+from pydantic import Field
+
+from pyjinhx._component import AttrValue, BaseComponent, ExtraAttrs
 
 
 class PJXProgress(BaseComponent):
@@ -9,3 +11,4 @@ class PJXProgress(BaseComponent):
     label: str = ""
     loading_label: str = "Loading"
     class_name: AttrValue = ""
+    extra_attrs: ExtraAttrs = Field(default_factory=dict)

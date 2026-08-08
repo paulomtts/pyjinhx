@@ -75,6 +75,11 @@ def test_undeclared_attr_is_rejected():
         PJXBadge(id="b", **{"data-x": "y"})  # pyright: ignore[reportCallIssue, reportArgumentType]
 
 
+def test_extra_attrs_surface_on_the_root(badge_session):
+    html = _html(badge_session, extra_attrs={"data-testid": "b1"})
+    assert 'data-testid="b1"' in html
+
+
 def test_descriptor_finds_snake_case_css():
     """The descriptor probes "<snake_case class name>.css" next to the module.
 

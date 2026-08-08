@@ -53,3 +53,8 @@ def test_string_content_renders_raw_inside_root(drawer_body_session):
     html = _html(drawer_body_session, content="<p>Body content</p>")
     assert html.count("<div") == 1
     assert "<p>Body content</p>" in html
+
+
+def test_extra_attrs_surface_on_the_root(drawer_body_session):
+    html = _html(drawer_body_session, extra_attrs={"data-testid": "body"})
+    assert 'data-testid="body"' in html[: html.index(">")]

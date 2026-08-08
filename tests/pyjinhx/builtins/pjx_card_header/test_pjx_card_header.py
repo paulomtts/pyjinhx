@@ -54,3 +54,13 @@ def test_title_renders_escaped(card_header_session):
 def test_class_name_appended_to_root(card_header_session):
     html = _html(card_header_session, class_name="lead", content="x")
     assert 'class="pjx-card__header lead"' in html
+
+
+def test_extra_attrs_render_on_root(card_header_session):
+    """extra_attrs round-trips onto the <header> root without disturbing class/title wiring."""
+    html = _html(
+        card_header_session, title="Q3 report", extra_attrs={"data-testid": "header-1"}
+    )
+    assert 'data-testid="header-1"' in html
+    assert 'class="pjx-card__header"' in html
+    assert '<h3 class="pjx-card__title">Q3 report</h3>' in html

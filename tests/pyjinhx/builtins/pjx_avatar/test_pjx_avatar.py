@@ -121,6 +121,12 @@ def test_undeclared_attr_is_rejected():
         PJXAvatar(id="a", **{"data-x": "y"})  # pyright: ignore[reportCallIssue, reportArgumentType]
 
 
+def test_extra_attrs_surface_on_the_root(avatar_session):
+    html = _html(avatar_session, extra_attrs={"data-testid": "avatar-1"})
+    assert 'data-testid="avatar-1"' in html
+    assert 'class="pjx-avatar pjx-avatar--md"' in html
+
+
 def test_stylesheet_is_auto_discovered_by_snake_case_filename():
     """The descriptor probes "<snake_case class name>.css" next to the module,
     so the v0.x kebab-case filename had to be renamed on the way in.

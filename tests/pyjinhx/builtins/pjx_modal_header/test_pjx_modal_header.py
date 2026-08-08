@@ -63,6 +63,12 @@ def test_close_content_defaults_to_the_glyph(modal_header_session):
     assert ">✕</button>" in _html(modal_header_session)
 
 
+def test_extra_attrs_surface_on_the_root(modal_header_session):
+    html = _html(modal_header_session, extra_attrs={"data-testid": "modal-header"})
+    assert 'data-testid="modal-header"' in html
+    assert html.count("<header") == 1
+
+
 def test_close_content_accepts_a_component(modal_header_session):
     """v2 narrowing of v0.x: raw-HTML strings are escaped, so markup arrives as a component."""
     html = _html(modal_header_session, close_content=PJXDivider(id="glyph"))

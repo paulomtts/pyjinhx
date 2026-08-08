@@ -1,4 +1,6 @@
-from pyjinhx._component import AttrValue, BaseComponent, Slot
+from pydantic import Field
+
+from pyjinhx._component import AttrValue, BaseComponent, ExtraAttrs, Slot
 
 
 class PJXAccordion(BaseComponent):
@@ -8,3 +10,4 @@ class PJXAccordion(BaseComponent):
     group: str | None = None
     class_name: AttrValue = ""
     content: Slot = ""
+    extra_attrs: ExtraAttrs = Field(default_factory=dict)

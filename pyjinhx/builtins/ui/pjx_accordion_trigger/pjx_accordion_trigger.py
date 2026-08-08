@@ -1,6 +1,6 @@
 from pydantic import Field
 
-from pyjinhx._component import AttrValue, BaseComponent, Slot
+from pyjinhx._component import AttrValue, BaseComponent, ExtraAttrs, Slot
 from pyjinhx.builtins.ui.pjx_icon import PJXIcon
 
 
@@ -20,3 +20,4 @@ class PJXAccordionTrigger(BaseComponent):
     # setup() — the docs demo build among them (#693). A component-typed field
     # is a slot by convention and renders through the slot-token path instead.
     chevron: PJXIcon = Field(default_factory=_default_chevron)
+    extra_attrs: ExtraAttrs = Field(default_factory=dict)

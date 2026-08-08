@@ -34,6 +34,11 @@ def test_empty_class_name_adds_nothing(content_session):
     assert 'class="pjx-accordion__content"' in _html(content_session, class_name="")
 
 
+def test_extra_attrs_surface_on_the_root(content_session):
+    html = _html(content_session, extra_attrs={"data-testid": "content"})
+    assert 'data-testid="content"' in html[: html.index(">")]
+
+
 def test_string_content_renders_raw_inside_root(content_session):
     # ADR 0003: a plain str in a Slot is authored markup, not escaped.
     html = _html(content_session, content="<p>raw</p>")

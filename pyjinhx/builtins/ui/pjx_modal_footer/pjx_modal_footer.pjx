@@ -1,1 +1,1 @@
-<footer id="{{ id }}" class="pjx-modal__footer{% if class_name %} {{ class_name }}{% endif %}">{{ content }}</footer>
+<footer id="{{ id }}" class="pjx-modal__footer{% if class_name %} {{ class_name }}{% endif %}"{% for name, value in extra_attrs.items() %} {{ name }}="{{ value }}"{% endfor %}>{{ content }}</footer>

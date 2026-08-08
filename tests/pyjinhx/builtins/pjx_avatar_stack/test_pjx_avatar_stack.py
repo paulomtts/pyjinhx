@@ -114,6 +114,12 @@ def test_undeclared_attr_is_rejected():
         PJXAvatarStack(id="s", **{"data-x": "y"})  # pyright: ignore[reportCallIssue, reportArgumentType]
 
 
+def test_extra_attrs_surface_on_the_root(stack_session):
+    html = _html(stack_session, extra_attrs={"data-testid": "stack-1"})
+    assert 'data-testid="stack-1"' in html
+    assert 'class="pjx-avatar-stack"' in html
+
+
 def test_stylesheet_is_auto_discovered_by_snake_case_filename():
     css_paths = PJXAvatarStack.__pjx_descriptor__.css_paths
     assert len(css_paths) == 1

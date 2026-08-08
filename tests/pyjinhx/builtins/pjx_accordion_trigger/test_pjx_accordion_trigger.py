@@ -51,6 +51,11 @@ def test_chevron_icon_tag_expands_to_svg_markup(trigger_session, icon_registered
     assert 'class="pjx-icon pjx-accordion__chevron"' in html
 
 
+def test_extra_attrs_surface_on_the_root(trigger_session, icon_registered):
+    html = _html(trigger_session, extra_attrs={"data-testid": "trigger"})
+    assert 'data-testid="trigger"' in html[: html.index(">")]
+
+
 def test_disabled_emits_aria_disabled(trigger_session, icon_registered):
     html = _html(trigger_session, disabled=True)
     assert 'aria-disabled="true"' in html

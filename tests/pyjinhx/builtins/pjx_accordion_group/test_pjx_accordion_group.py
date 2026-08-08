@@ -52,6 +52,11 @@ def test_empty_class_name_adds_nothing(group_session):
     assert 'class="pjx-accordion-group"' in _html(group_session, class_name="")
 
 
+def test_extra_attrs_surface_on_the_root(group_session):
+    html = _html(group_session, extra_attrs={"data-testid": "group"})
+    assert 'data-testid="group"' in html[: html.index(">")]
+
+
 def test_mode_outside_the_literal_is_rejected():
     with pytest.raises(ValidationError):
         PJXAccordionGroup(id="g", mode="nope")  # pyright: ignore[reportArgumentType]

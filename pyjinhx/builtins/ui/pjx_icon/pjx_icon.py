@@ -1,8 +1,8 @@
 import logging
 
-from pydantic import model_validator
+from pydantic import Field, model_validator
 
-from pyjinhx._component import AttrValue, BaseComponent, Slot
+from pyjinhx._component import AttrValue, BaseComponent, ExtraAttrs, Slot
 from pyjinhx.builtins.ui.pjx_icon._icons import ICONS
 
 logger = logging.getLogger(__name__)
@@ -14,6 +14,7 @@ class PJXIcon(BaseComponent):
     stroke_width: float = 1.5
     label: str | None = None
     class_name: AttrValue = ""
+    extra_attrs: ExtraAttrs = Field(default_factory=dict)
 
     # Derived, not user-supplied. Declared as real fields (not computed_field)
     # because a computed field never lands in model_fields, and the descriptor's

@@ -1,4 +1,6 @@
-from pyjinhx._component import AttrValue, BaseComponent, Slot
+from pydantic import Field
+
+from pyjinhx._component import AttrValue, BaseComponent, ExtraAttrs, Slot
 
 
 class PJXDrawerHeader(BaseComponent):
@@ -9,3 +11,4 @@ class PJXDrawerHeader(BaseComponent):
     close_content: Slot = "✕"
     class_name: AttrValue = ""
     content: Slot = ""
+    extra_attrs: ExtraAttrs = Field(default_factory=dict)

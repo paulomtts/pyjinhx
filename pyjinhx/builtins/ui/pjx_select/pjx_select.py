@@ -1,8 +1,8 @@
 from typing import ClassVar, Self
 
-from pydantic import BaseModel, model_validator
+from pydantic import BaseModel, Field, model_validator
 
-from pyjinhx._component import AttrValue, BaseComponent
+from pyjinhx._component import AttrValue, BaseComponent, ExtraAttrs
 
 
 class SelectOption(BaseModel):
@@ -39,6 +39,7 @@ class PJXSelect(BaseComponent):
     placeholder: str = "Select…"
     disabled: bool = False
     class_name: AttrValue = ""
+    extra_attrs: ExtraAttrs = Field(default_factory=dict)
 
     @model_validator(mode="after")
     def _check_value_shape(self) -> Self:

@@ -94,4 +94,25 @@ def test_undeclared_attr_is_rejected():
     Deliberate narrowing of v0.x behavior, matching the #500 precedent.
     """
     with pytest.raises(ValidationError):
-        PJXDivider(id="d", extra_attrs={"data-x": "y"})  # pyright: ignore[reportCallIssue]
+        PJXDivider(id="d", **{"data-x": "y"})  # pyright: ignore[reportCallIssue, reportArgumentType]
+
+
+def test_extra_attrs_surface_on_the_root(divider_session):
+    html = render(PJXDivider(id="d", extra_attrs={"data-x": "y"}), divider_session)
+    assert 'data-x="y"' in html
+
+
+def test_extra_attrs_surface_on_vertical_root(divider_session):
+    html = render(
+        PJXDivider(id="d", orientation="vertical", extra_attrs={"data-x": "y"}),
+        divider_session,
+    )
+    assert 'data-x="y"' in html
+
+
+def test_extra_attrs_surface_on_labeled_root(divider_session):
+    html = render(
+        PJXDivider(id="d", label="OR", extra_attrs={"data-x": "y"}),
+        divider_session,
+    )
+    assert 'data-x="y"' in html

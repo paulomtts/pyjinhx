@@ -56,3 +56,8 @@ def test_string_content_renders_raw_inside_root(drawer_footer_session):
     html = _html(drawer_footer_session, content="<button>Save</button>")
     assert html.count("<footer") == 1
     assert "<button>Save</button>" in html
+
+
+def test_extra_attrs_surface_on_the_root(drawer_footer_session):
+    html = _html(drawer_footer_session, extra_attrs={"data-testid": "footer"})
+    assert 'data-testid="footer"' in html[: html.index(">")]

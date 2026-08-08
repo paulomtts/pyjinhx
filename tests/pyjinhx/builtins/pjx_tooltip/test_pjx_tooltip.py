@@ -56,10 +56,9 @@ def test_invalid_placement_is_rejected():
         PJXTooltip(id="tt", placement="middle")  # type: ignore[arg-type]
 
 
-def test_dropped_extra_attrs_field_is_rejected():
-    """v0.x had no extra_attrs here either; extra="forbid" turns it into an error (ADR 0006)."""
-    with pytest.raises(ValidationError):
-        PJXTooltip(id="tt", extra_attrs={"data-x": "1"})  # type: ignore[call-arg]
+def test_extra_attrs_surface_on_the_root(tooltip_session):
+    html = _html(tooltip_session, extra_attrs={"data-testid": "tooltip"})
+    assert 'data-testid="tooltip"' in html[: html.index(">")]
 
 
 def test_assets_are_discovered_from_the_component_directory():
