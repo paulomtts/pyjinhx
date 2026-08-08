@@ -1,5 +1,25 @@
 # Changelog
 
+## 1.6.0 — extra_attrs on every builtin (2026-08-08)
+
+`BaseComponent` is strict (`extra="forbid"`, ADR 0006), so pass-through HTML attributes only
+work on components that declare `extra_attrs: ExtraAttrs = Field(default_factory=dict)`. Roughly
+half of pyjinhx's builtins never declared it — found in production (#924) as a hard crash trying
+to pass `colspan` to `PJXTableCell`.
+
+### Added
+- `extra_attrs` on every remaining builtin: the table family (`PJXTable`, `PJXTableHead`,
+  `PJXTableHeaderCell`, `PJXTableBody`, `PJXTableRow`, `PJXTableCell`), the popover family
+  (`PJXPopover`, `PJXPopoverTrigger`, `PJXPopoverPanel`), and 37 more across the accordion,
+  avatar, card, drawer, modal, resizable, tab, and tooltip families plus the standalone dialogs
+  and single-element builtins (`PJXBadge`, `PJXBreadcrumb`, `PJXDivider`, `PJXEmptyState`,
+  `PJXIcon`, `PJXProgress`, `PJXSelect`, `PJXSkeleton`, `PJXSpinner`, `PJXConfirmDialog`,
+  `PJXPromptDialog`). Every builtin now has an escape hatch for `aria-*`, `hx-*`, `data-*`, and
+  any other attribute pyjinhx didn't already name a field for.
+- A regression test (`tests/test_builtin_extra_attrs.py`) that walks every `BaseComponent`
+  subclass under `pyjinhx.builtins` and fails if one is missing `extra_attrs`, so this gap can't
+  silently reopen for a future builtin.
+
 ## 1.5.2 — Per-instance coercion checks, README/CI fixes (2026-08-06)
 
 ### Changed
