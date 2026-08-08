@@ -228,4 +228,4 @@ hands back one component's markup and nothing else. See
 ## Tips
 
 - **Component assets**: Components with adjacent `.js` and `.css` files — same snake_case stem as the `.pjx`, e.g. `todo_counter.py` / `todo_counter.pjx` / `todo_counter.js` — have their assets auto-injected. See [Asset Collection](../guide/assets.md).
-- **Response types**: FastAPI's `HTMLResponse` works directly with `render()`, which returns a plain `str`. Under `setup(app)` you can also just return the component (or a plain string) and let the composer build the response — see [Response composition](../api/responses.md).
+- **Response types**: FastAPI's `HTMLResponse` works directly with `render()`, which returns a plain `str`. Under `setup(app)` you can also just return the component (or a plain string) and let the composer build the response — see [Response composition](../api/responses.md). Prefer returning the component for full-page/cold routes: a `str`/`Markup` return skips runtime injection (see [`render()`](../api/base-component.md#render) and #938), so only use it for fragments where the page has already booted.

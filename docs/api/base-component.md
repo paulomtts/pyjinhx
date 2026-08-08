@@ -44,6 +44,11 @@ The template is auto-discovered based on the component class name: a colocated `
 
 **Returns:** The component's rendered markup as a finished HTML string.
 
+!!! warning "Inside a pjx-adapted FastAPI route, return the component — not `.render()`"
+    `render()` returns markup only; it never injects the htmx/pjx.js runtime. In a route wired with `setup(app)`, return the component instance itself so the backend's response composer can fan out and inject the runtime. Calling `.render()` and returning the resulting string bypasses that path — `FastAPIBackend.to_response()` only calls `inject_runtime()` when the result `isinstance(..., BaseComponent)`, so a `str` return is assumed to be a fragment of an already-booted page and the page ships with no runtime. See [Response composition](responses.md#the-four-return-shapes) and #938.
+
+    `render()` remains correct everywhere else — tests, non-FastAPI usage, fragments, and any other integration that doesn't route handler returns through the composer.
+
 ## component
 
 ```python
