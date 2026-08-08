@@ -26,6 +26,7 @@ class TestFields:
         assert table.sticky_header is False
         assert table.density == "comfortable"
         assert table.bordered == "none"
+        assert table.extra_attrs == {}
 
     def test_content_is_a_declared_slot_field(self):
         assert "content" in PJXTable.__pjx_descriptor__.slot_fields
@@ -62,6 +63,10 @@ class TestRender:
             '<table id="t1" class="pjx-table">'
             '<caption class="pjx-table__caption">Sales</caption>x</table>'
         )
+
+    def test_extra_attrs_surface_on_the_root(self, session):
+        html = render(PJXTable(id="t1", extra_attrs={"data-sort": "asc"}), session)
+        assert 'data-sort="asc"' in html[: html.index(">")]
 
     def test_no_caption_element_when_caption_is_empty(self, session):
         assert "<caption" not in render(PJXTable(id="t1"), session)

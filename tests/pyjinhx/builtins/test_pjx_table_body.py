@@ -18,6 +18,7 @@ class TestFields:
         body = PJXTableBody(id="b1")
         assert body.class_name == ""
         assert body.content == ""
+        assert body.extra_attrs == {}
 
     def test_content_is_a_declared_slot_field(self):
         assert "content" in PJXTableBody.__pjx_descriptor__.slot_fields
@@ -45,6 +46,10 @@ class TestRender:
             render(PJXTableBody(id="b1", content="a & b"), session)
             == '<tbody id="b1" class="pjx-table__body">a & b</tbody>'
         )
+
+    def test_extra_attrs_surface_on_the_root(self, session):
+        html = render(PJXTableBody(id="b1", extra_attrs={"data-live": "true"}), session)
+        assert 'data-live="true"' in html[: html.index(">")]
 
     def test_component_content_renders_as_an_opaque_child(self, session):
         from pyjinhx.builtins.pjx_table_cell import PJXTableCell

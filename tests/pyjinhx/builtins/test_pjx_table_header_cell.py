@@ -20,6 +20,7 @@ class TestFields:
         assert cell.content == ""
         assert cell.sortable is False
         assert cell.sort == "none"
+        assert cell.extra_attrs == {}
 
     def test_content_is_a_declared_slot_field(self):
         assert "content" in PJXTableHeaderCell.__pjx_descriptor__.slot_fields
@@ -65,6 +66,14 @@ class TestSortable:
     def test_unknown_sort_value_raises(self):
         with pytest.raises(ValidationError):
             PJXTableHeaderCell(id="h1", sort="sideways")  # type: ignore[arg-type]
+
+
+class TestRender:
+    def test_extra_attrs_surface_on_the_root(self, session):
+        html = render(
+            PJXTableHeaderCell(id="h1", extra_attrs={"data-col": "name"}), session
+        )
+        assert 'data-col="name"' in html[: html.index(">")]
 
 
 class TestValidation:
