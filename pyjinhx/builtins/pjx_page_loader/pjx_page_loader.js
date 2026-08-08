@@ -1,7 +1,6 @@
 (function () {
     window.pjx = window.pjx || {};
-    pjx.loader = pjx.loader || {};
-    if (pjx.loader.page) return;
+    if (pjx.pageLoader) return;
 
     function fire(el, name) {
         el.dispatchEvent(new CustomEvent(name, { bubbles: true, detail: {} }));
@@ -94,5 +93,5 @@
         coldLoadDone();
     }
 
-    pjx.loader.page = { show: show, hide: hide, wrap: wrap, reset: reset };
+    pjx.pageLoader = { show: show, hide: hide, wrap: wrap, reset: reset };
 }());
