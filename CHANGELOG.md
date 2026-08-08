@@ -1,8 +1,10 @@
 # Changelog
 
-## Unreleased
+## 1.6.2 — Response header merge and runtime injection on manual .render() (2026-08-08)
 
 ### Fixed
+- `to_response()` dropped any headers/status code a route set on its FastAPI-injected
+  `response: Response` param; they're now merged into the composed response (#939).
 - Route handlers that call `Component(...).render()` themselves and return the string now
   receive the inline pjx runtime, matching the component-return path (#938).
 
