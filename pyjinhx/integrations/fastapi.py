@@ -300,7 +300,9 @@ def _adapt_endpoint(
         result = endpoint(*args, **kwargs)
         if inspect.isawaitable(result):
             result = await result
-        return backend.to_response(result, _request_from(kwargs))
+        return backend.to_response(
+            result, _request_from(kwargs), _response_from(kwargs)
+        )
 
     setattr(adapted, "__pjx_adapted__", True)  # noqa: B010
     return adapted

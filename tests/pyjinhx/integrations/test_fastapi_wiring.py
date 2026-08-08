@@ -784,3 +784,41 @@ def test_to_response_leaves_status_alone_when_injected_response_is_untouched():
     assert untouched.status_code == baseline.status_code == 200
     assert untouched.body == baseline.body == b"<div>hi</div>"
     assert untouched.headers["content-length"] == baseline.headers["content-length"]
+
+
+def test_injected_response_headers_and_status_reach_the_client():
+    app = FastAPI()
+    apply_setup(app, _settings())
+
+    @app.get("/hello")
+    def hello(response: Response) -> Greeting:
+        response.headers["X-Custom"] = "yes"
+        response.status_code = 201
+        return Greeting(name="ana")
+
+    with TestClient(app) as client:
+        result = client.get("/hello")
+
+    assert result.status_code == 201
+    assert result.headers["X-Custom"] == "yes"
+    assert "ana" in result.text
+
+
+def test_untouched_injected_response_changes_nothing_for_the_client():
+    app = FastAPI()
+    apply_setup(app, _settings())
+
+    @app.get("/with")
+    def with_response(response: Response) -> Greeting:
+        return Greeting(name="ana")
+
+    @app.get("/without")
+    def without_response() -> Greeting:
+        return Greeting(name="ana")
+
+    with TestClient(app) as client:
+        injected = client.get("/with")
+        plain = client.get("/without")
+
+    assert injected.status_code == plain.status_code == 200
+    assert injected.text == plain.text
