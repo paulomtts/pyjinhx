@@ -2427,7 +2427,7 @@ Full-page navigation loader. Mount once at the top of the layout body. **Assets:
     `data-pjx-loader` on any element marks its htmx requests as loader-tracked regardless of target.
     Tracking is detected via `htmx:beforeRequest`; the loader releases via the request's `loadend` (terminal on load, error, abort, and timeout); history navigations reset via `htmx:historyRestore`.
     Events (non-cancelable, bubble from the root): `pjx:page-loader:show`, `pjx:page-loader:hide`.
-    API: `pjx.loader.page.show()`, `pjx.loader.page.hide()`, `pjx.loader.page.reset()`, `pjx.loader.page.wrap(promise)`.
+    API: `pjx.pageLoader.show()`, `pjx.pageLoader.hide()`, `pjx.pageLoader.reset()`, `pjx.pageLoader.wrap(promise)`.
 
     **Classes:** `pjx-page-loader`, `pjx-page-loader--active`, `pjx-page-loader__spinner`.
 

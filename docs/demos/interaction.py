@@ -95,7 +95,7 @@ def page_loader():
     return [
         PJXPageLoader(id="demo-page-loader").render(),
         """<button class="pjx-demo-btn" style="margin-top:0.75rem"
-            onclick="pjx.loader.page.show();setTimeout(()=>pjx.loader.page.hide(),1500)">
+            onclick="pjx.pageLoader.show();setTimeout(()=>pjx.pageLoader.hide(),1500)">
             Simulate load</button>""",
     ]
 

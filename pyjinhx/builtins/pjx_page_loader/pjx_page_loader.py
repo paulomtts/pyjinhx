@@ -8,7 +8,7 @@ class PJXPageLoader(BaseComponent):
 
     Ships active when ``active_on_load`` so a cold page load is covered until
     ``DOMContentLoaded``; afterwards visibility is ref-counted from the client
-    by ``pjx.loader.page``.
+    by ``pjx.pageLoader``.
     """
 
     nav_targets: str = "app-content"
