@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+- `PJXPageLoader`'s client API moved from `pjx.loader.page` to `pjx.pageLoader`, which had been
+  colliding with core's ref-counted `pjx.loader.page(on)` toggle and leaving the cold-load
+  overlay stuck active (#950).
+
 ## 1.6.2 — Response header merge and runtime injection on manual .render() (2026-08-08)
 
 ### Fixed

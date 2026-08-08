@@ -67,7 +67,7 @@ document.getElementById("confirm-del").addEventListener("pjx:modal:before-close"
 ## The `window.pjx` namespace
 
 `pjx.modal` · `pjx.drawer` · `pjx.popover` · `pjx.notification` · `pjx.loader.region` (region busy-state) ·
-`pjx.loader.page` (page navigation) · `pjx.toast`. Open/close/show/hide
+`pjx.pageLoader` (page navigation) · `pjx.toast`. Open/close/show/hide
 functions return `false` when a `before-*` hook canceled the action.
 
 ## Attribute pass-through
