@@ -362,6 +362,7 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
     # cycle — the same local-import escape hatch assets.py already uses.
     "_component": frozenset(
         {
+            "pyjinhx.client.inject",
             "pyjinhx.descriptor",
             "pyjinhx.props_header",
             "pyjinhx.rendering",

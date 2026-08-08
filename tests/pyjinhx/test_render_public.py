@@ -193,8 +193,12 @@ def test_component_render_uses_ambient_session(tmp_path):
     with request_scope() as session:
         ambient = DivComp().render()
 
-    assert ambient == render(DivComp(), RenderSession())
+    # The ambient session is also the active request_scope() session, so this
+    # render also gets the runtime injected — unlike a bare render() outside
+    # any scope, which stays plain markup and would equal a fresh session's
+    # output instead.
     assert ambient == render(DivComp(), session)
+    assert "Hello" in ambient
 
 
 # Test: outside any request_scope, no-arg render() behaves exactly like passing

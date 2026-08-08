@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+- Route handlers that call `Component(...).render()` themselves and return the string now
+  receive the inline pjx runtime, matching the component-return path (#938).
+
 ## 1.6.1 — Fix root-attr crash on component-tag ReactiveComponent roots (2026-08-08)
 
 ### Fixed

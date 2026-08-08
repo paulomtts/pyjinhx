@@ -103,6 +103,8 @@ integrations/fastapi.py   request in
  7. session.py       request_scope exits ── ContextVars reset
 ```
 
+Injection happens in `BaseComponent.render()` for the active request session — before `emit_assets()` runs — so a handler that stringifies its own component still gets the runtime; the adapter's `to_response()` call covers the handler-returns-a-component path and is a no-op when `render()` already injected.
+
 ### T2 — reactive request (mutation)
 
 ```text

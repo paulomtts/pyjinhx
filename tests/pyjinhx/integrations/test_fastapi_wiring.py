@@ -842,3 +842,64 @@ def test_native_redirect_still_translates_with_an_injected_response():
     assert result.status_code == 204
     assert result.headers["HX-Redirect"] == "/next"
     assert "X-Custom" not in result.headers
+
+
+def test_direct_render_return_still_injects_the_runtime():
+    app = FastAPI()
+    apply_setup(app, _settings())
+
+    @app.get("/page")
+    def page():
+        return Greeting(name="ada").render()
+
+    with TestClient(app) as client:
+        response = client.get("/page")
+
+    assert "ada" in response.text
+    assert "<script>" in response.text
+
+
+def test_direct_render_return_injects_the_runtime_exactly_once():
+    app = FastAPI()
+    apply_setup(app, _settings())
+
+    @app.get("/page")
+    def page():
+        component = Greeting(name="ada")
+        component.render()
+        return component.render()
+
+    with TestClient(app) as client:
+        response = client.get("/page")
+
+    assert response.text.count('id="pjx-style"') == 1
+
+
+def test_object_return_still_injects_the_runtime_exactly_once():
+    app = FastAPI()
+    apply_setup(app, _settings())
+
+    @app.get("/page")
+    def page():
+        return Greeting(name="ada")
+
+    with TestClient(app) as client:
+        response = client.get("/page")
+
+    assert "<script>" in response.text
+    assert response.text.count('id="pjx-style"') == 1
+
+
+def test_mounted_request_direct_render_gets_no_runtime():
+    app = FastAPI()
+    apply_setup(app, _settings())
+
+    @app.get("/frag")
+    def frag():
+        return Greeting(name="ada").render()
+
+    with TestClient(app) as client:
+        response = client.get("/frag", headers={"X-PJX-Mounted": "[]"})
+
+    assert "ada" in response.text
+    assert "<script>" not in response.text
