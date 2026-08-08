@@ -1,6 +1,8 @@
 from typing import Literal
 
-from pyjinhx._component import AttrValue, BaseComponent, Slot
+from pydantic import Field
+
+from pyjinhx._component import AttrValue, BaseComponent, ExtraAttrs, Slot
 
 
 class PJXPopoverTrigger(BaseComponent):
@@ -10,3 +12,4 @@ class PJXPopoverTrigger(BaseComponent):
     role: Literal["", "menu", "listbox", "dialog"] = ""
     class_name: AttrValue = ""
     content: Slot = ""
+    extra_attrs: ExtraAttrs = Field(default_factory=dict)

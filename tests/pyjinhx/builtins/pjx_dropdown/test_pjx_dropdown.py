@@ -108,10 +108,16 @@ def test_dropped_behavior_field_is_rejected():
         PJXDropdown(id="d", behavior=True)  # type: ignore[call-arg]
 
 
-def test_dropped_extra_attrs_field_is_rejected():
-    """`extra_attrs` did not survive the v2 port either (ADR 0006, strict core)."""
-    with pytest.raises(ValidationError):
-        PJXDropdown(id="d", extra_attrs={"data-x": "1"})  # type: ignore[call-arg]
+def test_extra_attrs_is_accepted_via_inheritance_but_not_rendered(dropdown_session):
+    """PJXDropdown extends PJXPopover, so #927's extra_attrs field is inherited and no longer
+    rejected — but pjx_dropdown.pjx is its own template with no extra_attrs loop, so the
+    values are silently unused rather than clobbering `data-pjx-popover`. Rendering support
+    for PJXDropdown itself is out of scope for #927.
+    """
+    html = _html(dropdown_session, extra_attrs={"data-testid": "dropdown"})
+    root = html[: html.index(">")]
+    assert 'data-testid="dropdown"' not in root
+    assert "data-pjx-popover" in root
 
 
 def test_dropped_js_field_is_rejected():
