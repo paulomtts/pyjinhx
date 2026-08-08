@@ -736,3 +736,109 @@ def test_nested_include_router_is_adapted_end_to_end():
     assert response.status_code == 200
     assert response.headers["content-type"].startswith("text/html")
     assert "<div>hello deep</div>" in response.text
+
+
+def test_response_from_finds_the_injected_response():
+    from pyjinhx.integrations.fastapi import _response_from
+
+    injected = Response()
+    assert _response_from({"x": 1, "response": injected}) is injected
+
+
+def test_response_from_returns_none_without_an_injected_response():
+    from pyjinhx.integrations.fastapi import _response_from
+
+    assert _response_from({"x": 1, "name": "world"}) is None
+
+
+def test_to_response_merges_injected_headers_and_non_default_status():
+    from pyjinhx.integrations.fastapi import FastAPIBackend
+
+    backend = FastAPIBackend(_settings())
+    injected = Response()
+    injected.headers["X-Custom"] = "yes"
+    injected.status_code = 201
+    with request_scope():
+        adapted = cast(
+            HTMLResponse,
+            backend.to_response("<div>hi</div>", None, injected),
+        )
+    assert adapted.status_code == 201
+    assert adapted.headers["X-Custom"] == "yes"
+    assert adapted.body == b"<div>hi</div>"
+
+
+def test_to_response_leaves_status_alone_when_injected_response_is_untouched():
+    from pyjinhx.integrations.fastapi import FastAPIBackend
+
+    backend = FastAPIBackend(_settings())
+    with request_scope():
+        untouched = cast(
+            HTMLResponse,
+            backend.to_response("<div>hi</div>", None, Response()),
+        )
+        baseline = cast(
+            HTMLResponse,
+            backend.to_response("<div>hi</div>", None),
+        )
+    assert untouched.status_code == baseline.status_code == 200
+    assert untouched.body == baseline.body == b"<div>hi</div>"
+    assert untouched.headers["content-length"] == baseline.headers["content-length"]
+
+
+def test_injected_response_headers_and_status_reach_the_client():
+    app = FastAPI()
+    apply_setup(app, _settings())
+
+    @app.get("/hello")
+    def hello(response: Response) -> Greeting:
+        response.headers["X-Custom"] = "yes"
+        response.status_code = 201
+        return Greeting(name="ana")
+
+    with TestClient(app) as client:
+        result = client.get("/hello")
+
+    assert result.status_code == 201
+    assert result.headers["X-Custom"] == "yes"
+    assert "ana" in result.text
+
+
+def test_untouched_injected_response_changes_nothing_for_the_client():
+    app = FastAPI()
+    apply_setup(app, _settings())
+
+    @app.get("/with")
+    def with_response(response: Response) -> Greeting:
+        return Greeting(name="ana")
+
+    @app.get("/without")
+    def without_response() -> Greeting:
+        return Greeting(name="ana")
+
+    with TestClient(app) as client:
+        injected = client.get("/with")
+        plain = client.get("/without")
+
+    assert injected.status_code == plain.status_code == 200
+    assert injected.text == plain.text
+
+
+def test_native_redirect_still_translates_with_an_injected_response():
+    app = FastAPI()
+    apply_setup(app, _settings())
+
+    @app.post("/go")
+    def go(response: Response):
+        response.headers["X-Custom"] = "yes"
+        response.status_code = 201
+        return RedirectResponse(url="/next", status_code=303)
+
+    with TestClient(app) as client:
+        result = client.post(
+            "/go", headers={"HX-Request": "true"}, follow_redirects=False
+        )
+
+    assert result.status_code == 204
+    assert result.headers["HX-Redirect"] == "/next"
+    assert "X-Custom" not in result.headers
