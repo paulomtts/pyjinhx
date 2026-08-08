@@ -822,3 +822,23 @@ def test_untouched_injected_response_changes_nothing_for_the_client():
 
     assert injected.status_code == plain.status_code == 200
     assert injected.text == plain.text
+
+
+def test_native_redirect_still_translates_with_an_injected_response():
+    app = FastAPI()
+    apply_setup(app, _settings())
+
+    @app.post("/go")
+    def go(response: Response):
+        response.headers["X-Custom"] = "yes"
+        response.status_code = 201
+        return RedirectResponse(url="/next", status_code=303)
+
+    with TestClient(app) as client:
+        result = client.post(
+            "/go", headers={"HX-Request": "true"}, follow_redirects=False
+        )
+
+    assert result.status_code == 204
+    assert result.headers["HX-Redirect"] == "/next"
+    assert "X-Custom" not in result.headers

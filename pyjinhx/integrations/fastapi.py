@@ -233,9 +233,7 @@ def _response_from(kwargs: dict[str, Any]) -> Any:
     return None
 
 
-def _merge_injected(
-    composed: PjxResponse, response: Any
-) -> tuple[dict[str, str], int]:
+def _merge_injected(composed: PjxResponse, response: Any) -> tuple[dict[str, str], int]:
     """Fold what the handler set on its injected ``Response`` into the composed one.
 
     The injected object wins on collisions: setting a header there is an explicit
