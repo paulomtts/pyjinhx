@@ -736,3 +736,16 @@ def test_nested_include_router_is_adapted_end_to_end():
     assert response.status_code == 200
     assert response.headers["content-type"].startswith("text/html")
     assert "<div>hello deep</div>" in response.text
+
+
+def test_response_from_finds_the_injected_response():
+    from pyjinhx.integrations.fastapi import _response_from
+
+    injected = Response()
+    assert _response_from({"x": 1, "response": injected}) is injected
+
+
+def test_response_from_returns_none_without_an_injected_response():
+    from pyjinhx.integrations.fastapi import _response_from
+
+    assert _response_from({"x": 1, "name": "world"}) is None

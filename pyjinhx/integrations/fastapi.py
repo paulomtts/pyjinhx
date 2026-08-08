@@ -222,6 +222,16 @@ def _request_from(kwargs: dict[str, Any]) -> Any:
     return None
 
 
+def _response_from(kwargs: dict[str, Any]) -> Any:
+    """The ``Response`` argument FastAPI injected, if the handler declared one."""
+    from starlette.responses import Response as StarletteResponse
+
+    for value in kwargs.values():
+        if isinstance(value, StarletteResponse):
+            return value
+    return None
+
+
 def _is_htmx(request: Any) -> bool:
     """Whether htmx, rather than the browser itself, issued this request."""
     if request is None:
