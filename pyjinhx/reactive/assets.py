@@ -6,11 +6,12 @@ and the client tells the server which ones it already has in ``X-PJX-Assets``.
 This module answers the difference, as head-targeted OOB fragments pjx.js
 relocates on arrival (``pyjinhx/client/pjx.js`` reads ``data-pjx-asset``).
 
-Ported from v0.x's ``render_missing_assets_oob`` (``pyjinhx/assets.py``), with
-one deliberate difference: the required paths come from the candidates' frozen
-class descriptors rather than from a shared RenderSession's accumulator, since
-nothing in v2 subscribes ``accumulate_assets`` onto the fan-out render's
-session and that accumulator would therefore always be empty.
+Ported from v0.x's ``render_missing_assets_oob`` (``pyjinhx/assets.py``). The
+required paths are the union of two sources: the candidates' frozen class
+descriptors, which is the only place a clean candidate's assets appear because
+a clean candidate never renders, and the session's accumulator, which is the
+only place a descendant rendered inside the walk appears because no candidate
+names it.
 """
 
 from collections.abc import Callable, Iterable
@@ -21,12 +22,9 @@ from pyjinhx.assets import AssetMode, _sorted_resolved, asset_token
 from pyjinhx.reactive.fanout import FanoutCandidate
 from pyjinhx.session import RenderSession
 
-# TODO(#490 follow-up): LINK mode needs a URL resolver to build <link href>/
-# <script src> tags, and compose() has no resolver to hand down, so a
-# LINK-mode app delivers no swap-in assets today. Same for cold renders:
-# emit_assets() does not stamp data-pjx-asset yet, so a freshly loaded page
-# reports an empty token set and pays one redundant re-delivery on its first
-# reactive response.
+# TODO: cold renders — emit_assets() does not stamp data-pjx-asset yet, so a
+# freshly loaded page reports an empty token set and pays one redundant
+# re-delivery on its first reactive response.
 
 
 def required_asset_paths(

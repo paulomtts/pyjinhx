@@ -224,7 +224,10 @@ def test_link_mode_emits_url_oob_fragments_instead_of_nothing(asset_files):
     session.css_mode = AssetMode.LINK
     session.js_mode = AssetMode.LINK
     fragment = missing_asset_oob(
-        [candidate()], frozenset(), session, resolver=lambda path: f"/static/{path.name}"
+        [candidate()],
+        frozenset(),
+        session,
+        resolver=lambda path: f"/static/{path.name}",
     )
 
     assert (
@@ -283,3 +286,31 @@ def test_compose_threads_the_resolver_into_the_link_mode_fragments(
         f'<script data-pjx-asset="{asset_token(js)}" '
         'hx-swap-oob="beforeend:head" src="/static/widget.js"></script>' in body
     )
+
+
+def test_none_mode_emits_nothing_even_when_the_walk_accumulated_assets(
+    tmp_path, monkeypatch
+):
+    from pyjinhx import responses as responses_module
+
+    child_css = tmp_path / "child.css"
+    child_css.write_text(".child{color:blue}")
+    child_js = tmp_path / "child.js"
+    child_js.write_text("window.child=1;")
+    session = RenderSession()
+    session.css_mode = AssetMode.NONE
+    session.js_mode = AssetMode.NONE
+
+    def fake_walk(*args, **kwargs):
+        # cast(Any, None), not a bare None: emit_rendered's component parameter
+        # is typed BaseComponent, and basedpyright standard mode rejects None
+        # there — the existing on_rendered tests use the same cast for the same
+        # reason (tests/pyjinhx/test_session.py).
+        session.emit_rendered(cast(Any, None), descendant_level(child_css, child_js))
+        return [candidate("clean")]
+
+    monkeypatch.setattr(responses_module, "walk_manifest", fake_walk)
+    composed = responses_module.compose("", session=session)
+    assert isinstance(composed, responses_module.PjxResponse)
+
+    assert "data-pjx-asset" not in str(composed.body)
