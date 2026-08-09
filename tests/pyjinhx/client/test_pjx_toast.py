@@ -2,6 +2,18 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
+import pyjinhx
+
+TOAST_HOST_JS_PATH = (
+    Path(pyjinhx.__file__).parent
+    / "builtins"
+    / "ui"
+    / "pjx_toast_host"
+    / "pjx_toast_host.js"
+)
+
 LISTEN = """
 () => {
   window.__toasts = [];
@@ -41,3 +53,12 @@ def test_toast_with_no_payload_dispatches_an_empty_detail(pjx_page):
     page.evaluate(LISTEN)
     page.evaluate("pjx.toast()")
     assert page.evaluate("window.__toasts") == [{}]
+
+
+def test_toast_renders_a_toast_element_in_the_host(pjx_page):
+    page = pjx_page("<div data-pjx-toast-host data-event-name='pjx:toast'></div>")
+    page.add_script_tag(content=TOAST_HOST_JS_PATH.read_text(encoding="utf-8"))
+    page.evaluate("window.pjx.toast('saved', { level: 'success' })")
+    toast = page.locator("[data-pjx-toast-host] .pjx-toast")
+    assert toast.count() == 1
+    assert "saved" in toast.inner_text()
