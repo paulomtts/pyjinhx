@@ -92,7 +92,8 @@ def missing_asset_oob(
         loaded: ``LoadedAssets.parse()`` output — the tokens the browser
             reports. An unreadable header parses to an empty set, which means
             every required asset is delivered rather than none.
-        session: The RenderSession whose css_mode/js_mode decide delivery.
+        session: The RenderSession whose css_mode/js_mode decide delivery and
+            whose css_assets/js_assets carry what the walk actually rendered.
 
     Returns:
         CSS fragments then JS fragments, newline-joined, or ``""`` when the
@@ -100,6 +101,11 @@ def missing_asset_oob(
         session delivers that kind some other way.
     """
     css_paths, js_paths = required_asset_paths(candidates)
+    # Unioned, not replaced: a clean candidate short-circuits before it renders,
+    # so on_rendered never fires for it and the accumulator never sees the
+    # stylesheet its region may still be missing.
+    css_paths |= session.css_assets
+    js_paths |= session.js_assets
     fragments: list[str] = []
     if session.css_mode is AssetMode.INLINE:
         fragments += _inline_fragments(css_paths, loaded, "<style", "</style>")

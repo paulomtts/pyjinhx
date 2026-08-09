@@ -437,8 +437,10 @@ def test_overlay_markup_is_not_duplicated_across_sibling_regions():
 
     # Only the table region carries a region-loader overlay; the paginator
     # region carries none, so one dirty swap of each must not multiply or
-    # cross-contaminate the other's markup.
-    assert body.count("pjx-region-loader__spinner") == 1
+    # cross-contaminate the other's markup. Matched by the quoted class
+    # attribute, not the bare string: the OOB response now also delivers the
+    # loader's stylesheet, whose selector text contains the same substring.
+    assert body.count('class="pjx-region-loader__spinner"') == 1
     assert body.count("pjx-page-loader") == 0
 
 

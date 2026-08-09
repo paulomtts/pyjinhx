@@ -2,6 +2,7 @@
 
 import dataclasses
 from pathlib import Path
+from typing import Any, cast
 
 import pytest
 
@@ -10,6 +11,7 @@ from pyjinhx.reactive.assets import missing_asset_oob, required_asset_paths
 from pyjinhx.reactive.component import ReactiveComponent
 from pyjinhx.reactive.fanout import FanoutCandidate
 from pyjinhx.reactive.keys import MutationKey
+from pyjinhx.segments import RenderedLevel
 from pyjinhx.session import RenderSession
 
 
@@ -170,3 +172,47 @@ def test_an_assets_only_body_still_says_do_not_swap(asset_files, monkeypatch):
 
     assert "data-pjx-asset" in str(composed.body)
     assert composed.headers["HX-Reswap"] == "none"
+
+
+def descendant_level(css: Path, js: Path) -> RenderedLevel:
+    """A RenderedLevel standing in for a descendant rendered inside the walk."""
+
+    class Descriptor:
+        css_paths = (css,)
+        js_paths = (js,)
+
+    return RenderedLevel(
+        segments=["<div>child</div>"], root_span=(0, 5), descriptor=Descriptor()
+    )
+
+
+def test_a_descendant_rendered_during_the_walk_gets_its_assets_delivered(
+    tmp_path, monkeypatch
+):
+    from pyjinhx import responses as responses_module
+
+    child_css = tmp_path / "child.css"
+    child_css.write_text(".child{color:blue}")
+    child_js = tmp_path / "child.js"
+    child_js.write_text("window.child=1;")
+    session = RenderSession()
+
+    def fake_walk(*args, **kwargs):
+        # Stands in for a descendant render inside walk_manifest: the walk fires
+        # on_rendered for components no top-level candidate names.
+        # cast(Any, None), not a bare None: emit_rendered's component parameter
+        # is typed BaseComponent, and basedpyright standard mode rejects None
+        # there — the existing on_rendered tests use the same cast for the same
+        # reason (tests/pyjinhx/test_session.py).
+        session.emit_rendered(cast(Any, None), descendant_level(child_css, child_js))
+        return [candidate("clean")]
+
+    monkeypatch.setattr(responses_module, "walk_manifest", fake_walk)
+    composed = responses_module.compose("", session=session)
+    assert isinstance(composed, responses_module.PjxResponse)
+    body = str(composed.body)
+
+    assert f'<style data-pjx-asset="{asset_token(child_css)}"' in body
+    assert ".child{color:blue}" in body
+    assert f'<script data-pjx-asset="{asset_token(child_js)}"' in body
+    assert "window.child=1;" in body

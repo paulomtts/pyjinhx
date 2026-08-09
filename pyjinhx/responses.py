@@ -16,7 +16,12 @@ from pyjinhx.reactive.assets import missing_asset_oob
 from pyjinhx.reactive.cache import invalidate
 from pyjinhx.reactive.fanout import oob_swaps, walk_manifest
 from pyjinhx.rendering import render
-from pyjinhx.session import RenderSession, current_session, get_dirtied
+from pyjinhx.session import (
+    RenderSession,
+    accumulate_assets,
+    current_session,
+    get_dirtied,
+)
 
 
 @dataclass(frozen=True)
@@ -51,6 +56,15 @@ def _fan_out(primary: str, session: RenderSession) -> tuple[str, dict[str, str]]
     # otherwise answer "clean" and the client would keep markup this request
     # just invalidated.
     invalidate(dirtied)
+    # Subscribed before the walk, not after: a descendant re-rendered inside
+    # walk_manifest is never a top-level candidate, so its descriptor is only
+    # reachable through the on_rendered callback that fires as it renders.
+    # Guarded, not unconditional: the FastAPI integration already subscribes
+    # accumulate_assets onto every request's session before compose() ever
+    # runs (pyjinhx/integrations/fastapi.py), so an unconditional append would
+    # double-subscribe it there and run it twice per rendered component.
+    if accumulate_assets not in session.on_rendered:
+        session.on_rendered.append(accumulate_assets)
     # primary_html is passed so a region the primary body already carries is not
     # also swapped OOB: fan-out runs after the primary serialize, and without
     # this the client would swap that region twice in one response.
