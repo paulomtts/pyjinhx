@@ -53,23 +53,41 @@ def _override_tag(tag_text: str, attrs: dict[str, str]) -> str:
 def stamp_root_attrs(level: RenderedLevel, attrs: dict[str, str]) -> RenderedLevel:
     """Splice ``attrs`` into ``level``'s root opening tag at ``level.root_span``.
 
-    No-op (identity) when ``attrs`` is empty. Otherwise replaces the
-    ``root_span`` substring of ``level.segments[0]`` with the stamped tag
-    text and updates ``root_span`` to match the new tag's length. Mutates
+    No-op (identity) when ``attrs`` is empty. Otherwise walks ``segments``
+    past any leading whitespace-only ``str`` segments to find the root
+    segment, replaces the ``root_span`` substring of it with the stamped tag
+    text, and updates ``root_span`` to match the new tag's length. Mutates
     ``level`` in place and returns it, matching the ``splice()`` convention
     in ``pyjinhx.segments``.
 
+    ``root_span`` is an absolute offset into the raw source that produced
+    ``segments``, so it is rebased by the summed length of the skipped
+    whitespace prologue before slicing the located segment.
+
     When a component's whole template is one child tag, the renderer has
-    already replaced ``segments[0]`` with that child's own RenderedLevel by
-    the time this runs, so the root tag to stamp lives one level down: the
-    call recurses into it and the outer ``level.root_span`` is left alone,
-    since in that shape it bounds nothing this module owns and nothing reads
-    it. The returned object is still the outer ``level``, so the
+    already replaced that segment with the child's own RenderedLevel by the
+    time this runs, so the root tag to stamp lives one level down: the call
+    recurses into it and the outer ``level.root_span`` is left alone, since
+    in that shape it bounds nothing this module owns and nothing reads it.
+    The returned object is still the outer ``level``, so the
     mutate-and-return contract holds at every depth.
     """
     if not attrs:
         return level
-    root = level.segments[0]
+    skipped = 0
+    index = None
+    for position, segment in enumerate(level.segments):
+        if isinstance(segment, str) and not segment.strip():
+            skipped += len(segment)
+            continue
+        index = position
+        break
+    if index is None:
+        raise ValueError(
+            "stamp_root_attrs found no non-whitespace root segment in "
+            f"{level.segments!r}"
+        )
+    root = level.segments[index]
     if isinstance(root, RenderedLevel):
         stamp_root_attrs(root, attrs)
         return level
@@ -77,8 +95,8 @@ def stamp_root_attrs(level: RenderedLevel, attrs: dict[str, str]) -> RenderedLev
         "stamp_root_attrs needs a str or RenderedLevel root segment, "
         f"got {type(root).__name__}"
     )
-    start, end = level.root_span
+    start, end = (offset - skipped for offset in level.root_span)
     new_tag = _override_tag(root[start:end], attrs)
-    level.segments[0] = root[:start] + new_tag + root[end:]
-    level.root_span = (start, start + len(new_tag))
+    level.segments[index] = root[:start] + new_tag + root[end:]
+    level.root_span = (start + skipped, start + skipped + len(new_tag))
     return level

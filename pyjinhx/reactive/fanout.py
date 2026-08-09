@@ -247,10 +247,17 @@ def _root_instance_id(level: RenderedLevel) -> str | None:
     RenderedLevel and the authored ``id`` attr goes with it, so the stamped root
     tag is the only place a nested level's instance identity still lives.
     """
-    root = level.segments[0] if level.segments else ""
+    skipped = 0
+    root: object = None
+    for segment in level.segments:
+        if isinstance(segment, str) and not segment.strip():
+            skipped += len(segment)
+            continue
+        root = segment
+        break
     if not isinstance(root, str):
         return None
-    start, end = level.root_span
+    start, end = (offset - skipped for offset in level.root_span)
     match = RE_ROOT_PJX_ID.search(root[start:end])
     if match is None:
         return None

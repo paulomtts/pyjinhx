@@ -34,9 +34,10 @@ class RenderedLevel:
     """One component's rendered output: its own markup cut into ordered segments.
 
     Children enter ``segments`` as whole RenderedLevel objects, never as text.
-    ``root_span`` is the (start, end) offset of the root tag inside ``segments[0]``,
-    recorded by the parse that produced the cut — later attr stamping is a splice
-    at that offset, never a re-parse.
+    ``root_span`` is the (start, end) offset of the root tag in the raw source
+    markup that produced ``segments`` — absolute, not relative to any one
+    segment — recorded by the parse that produced the cut. Later attr stamping
+    is a splice at that offset, never a re-parse.
     """
 
     segments: list["str | ChildRef | RenderedLevel"]

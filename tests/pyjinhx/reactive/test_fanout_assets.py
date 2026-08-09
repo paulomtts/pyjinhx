@@ -2,6 +2,7 @@
 
 import dataclasses
 from pathlib import Path
+from typing import Any, cast
 
 import pytest
 
@@ -10,6 +11,7 @@ from pyjinhx.reactive.assets import missing_asset_oob, required_asset_paths
 from pyjinhx.reactive.component import ReactiveComponent
 from pyjinhx.reactive.fanout import FanoutCandidate
 from pyjinhx.reactive.keys import MutationKey
+from pyjinhx.segments import RenderedLevel
 from pyjinhx.session import RenderSession
 
 
@@ -170,3 +172,145 @@ def test_an_assets_only_body_still_says_do_not_swap(asset_files, monkeypatch):
 
     assert "data-pjx-asset" in str(composed.body)
     assert composed.headers["HX-Reswap"] == "none"
+
+
+def descendant_level(css: Path, js: Path) -> RenderedLevel:
+    """A RenderedLevel standing in for a descendant rendered inside the walk."""
+
+    class Descriptor:
+        css_paths = (css,)
+        js_paths = (js,)
+
+    return RenderedLevel(
+        segments=["<div>child</div>"], root_span=(0, 5), descriptor=Descriptor()
+    )
+
+
+def test_a_descendant_rendered_during_the_walk_gets_its_assets_delivered(
+    tmp_path, monkeypatch
+):
+    from pyjinhx import responses as responses_module
+
+    child_css = tmp_path / "child.css"
+    child_css.write_text(".child{color:blue}")
+    child_js = tmp_path / "child.js"
+    child_js.write_text("window.child=1;")
+    session = RenderSession()
+
+    def fake_walk(*args, **kwargs):
+        # Stands in for a descendant render inside walk_manifest: the walk fires
+        # on_rendered for components no top-level candidate names.
+        # cast(Any, None), not a bare None: emit_rendered's component parameter
+        # is typed BaseComponent, and basedpyright standard mode rejects None
+        # there — the existing on_rendered tests use the same cast for the same
+        # reason (tests/pyjinhx/test_session.py).
+        session.emit_rendered(cast(Any, None), descendant_level(child_css, child_js))
+        return [candidate("clean")]
+
+    monkeypatch.setattr(responses_module, "walk_manifest", fake_walk)
+    composed = responses_module.compose("", session=session)
+    assert isinstance(composed, responses_module.PjxResponse)
+    body = str(composed.body)
+
+    assert f'<style data-pjx-asset="{asset_token(child_css)}"' in body
+    assert ".child{color:blue}" in body
+    assert f'<script data-pjx-asset="{asset_token(child_js)}"' in body
+    assert "window.child=1;" in body
+
+
+def test_link_mode_emits_url_oob_fragments_instead_of_nothing(asset_files):
+    css, js = asset_files
+    session = RenderSession()
+    session.css_mode = AssetMode.LINK
+    session.js_mode = AssetMode.LINK
+    fragment = missing_asset_oob(
+        [candidate()],
+        frozenset(),
+        session,
+        resolver=lambda path: f"/static/{path.name}",
+    )
+
+    assert (
+        f'<link rel="stylesheet" data-pjx-asset="{asset_token(css)}" '
+        'hx-swap-oob="beforeend:head" href="/static/widget.css">' in fragment
+    )
+    assert (
+        f'<script data-pjx-asset="{asset_token(js)}" '
+        'hx-swap-oob="beforeend:head" src="/static/widget.js"></script>' in fragment
+    )
+    # CSS before JS, so a script that measures layout sees the styled DOM.
+    assert fragment.index("<link") < fragment.index("<script")
+
+
+def test_link_mode_skips_the_tokens_the_client_already_reports(asset_files):
+    css, js = asset_files
+    session = RenderSession()
+    session.css_mode = AssetMode.LINK
+    session.js_mode = AssetMode.LINK
+    fragment = missing_asset_oob(
+        [candidate()],
+        frozenset({asset_token(css)}),
+        session,
+        resolver=lambda path: f"/static/{path.name}",
+    )
+
+    assert asset_token(css) not in fragment
+    assert asset_token(js) in fragment
+
+
+def test_compose_threads_the_resolver_into_the_link_mode_fragments(
+    asset_files, monkeypatch
+):
+    from pyjinhx import responses as responses_module
+
+    css, js = asset_files
+    monkeypatch.setattr(
+        responses_module,
+        "walk_manifest",
+        lambda *args, **kwargs: [candidate("clean")],
+    )
+    session = RenderSession()
+    session.css_mode = AssetMode.LINK
+    session.js_mode = AssetMode.LINK
+    composed = responses_module.compose(
+        "", session=session, resolver=lambda path: f"/static/{path.name}"
+    )
+    assert isinstance(composed, responses_module.PjxResponse)
+    body = str(composed.body)
+
+    assert (
+        f'<link rel="stylesheet" data-pjx-asset="{asset_token(css)}" '
+        'hx-swap-oob="beforeend:head" href="/static/widget.css">' in body
+    )
+    assert (
+        f'<script data-pjx-asset="{asset_token(js)}" '
+        'hx-swap-oob="beforeend:head" src="/static/widget.js"></script>' in body
+    )
+
+
+def test_none_mode_emits_nothing_even_when_the_walk_accumulated_assets(
+    tmp_path, monkeypatch
+):
+    from pyjinhx import responses as responses_module
+
+    child_css = tmp_path / "child.css"
+    child_css.write_text(".child{color:blue}")
+    child_js = tmp_path / "child.js"
+    child_js.write_text("window.child=1;")
+    session = RenderSession()
+    session.css_mode = AssetMode.NONE
+    session.js_mode = AssetMode.NONE
+
+    def fake_walk(*args, **kwargs):
+        # cast(Any, None), not a bare None: emit_rendered's component parameter
+        # is typed BaseComponent, and basedpyright standard mode rejects None
+        # there — the existing on_rendered tests use the same cast for the same
+        # reason (tests/pyjinhx/test_session.py).
+        session.emit_rendered(cast(Any, None), descendant_level(child_css, child_js))
+        return [candidate("clean")]
+
+    monkeypatch.setattr(responses_module, "walk_manifest", fake_walk)
+    composed = responses_module.compose("", session=session)
+    assert isinstance(composed, responses_module.PjxResponse)
+
+    assert "data-pjx-asset" not in str(composed.body)
