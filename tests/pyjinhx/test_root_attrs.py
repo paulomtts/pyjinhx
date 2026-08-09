@@ -97,3 +97,49 @@ def test_stamp_root_attrs_multiple_attrs_via_rendered_level():
     start, end = level.root_span
     assert level.segments[0][start:end] == ('<div class="root" data-a="1" data-b="2">')  # type: ignore[index]
     assert level.segments[0][end:] == "hi</div>"  # type: ignore[index]
+
+
+def test_stamp_root_attrs_with_whitespace_prologue_keeps_root_span_absolute():
+    # segments[0] is a whitespace-only prologue segment; the real root tag
+    # lives in segments[1], and root_span is absolute over the raw source
+    # (i.e. offset as if segments[0] and segments[1] were concatenated).
+    prologue = "\n  "
+    tag = '<div class="root">hi</div>'
+    level = RenderedLevel(
+        segments=[prologue, tag],
+        root_span=(len(prologue) + 0, len(prologue) + 18),
+        descriptor=None,
+    )
+    stamp_root_attrs(level, {"data-x": "1"})
+    start, end = level.root_span
+    # root_span must still be absolute (rebased past the prologue), so a
+    # caller slicing segments[1] with root_span - len(prologue) gets the tag.
+    local_start, local_end = start - len(prologue), end - len(prologue)
+    assert level.segments[1][local_start:local_end] == (  # type: ignore[index]
+        '<div class="root" data-x="1">'
+    )
+
+
+def test_stamp_root_attrs_with_whitespace_prologue_is_idempotent_across_two_calls():
+    # A second stamp call (e.g. re-stamping via oob_swaps) must not re-subtract
+    # the prologue's length from an already-rebased root_span.
+    prologue = "\n  "
+    tag = '<div class="root">hi</div>'
+    level = RenderedLevel(
+        segments=[prologue, tag],
+        root_span=(len(prologue), len(prologue) + 18),
+        descriptor=None,
+    )
+    stamp_root_attrs(level, {"data-a": "1"})
+    stamp_root_attrs(level, {"data-b": "2"})
+    start, end = level.root_span
+    local_start, local_end = start - len(prologue), end - len(prologue)
+    assert level.segments[1][local_start:local_end] == (  # type: ignore[index]
+        '<div class="root" data-a="1" data-b="2">'
+    )
+
+
+def test_stamp_root_attrs_all_whitespace_segments_raises():
+    level = RenderedLevel(segments=["   ", "\n"], root_span=(0, 0), descriptor=None)
+    with pytest.raises(ValueError):
+        stamp_root_attrs(level, {"data-x": "1"})

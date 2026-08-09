@@ -75,13 +75,18 @@ def stamp_root_attrs(level: RenderedLevel, attrs: dict[str, str]) -> RenderedLev
     if not attrs:
         return level
     skipped = 0
-    index = 0
+    index = None
     for position, segment in enumerate(level.segments):
         if isinstance(segment, str) and not segment.strip():
             skipped += len(segment)
             continue
         index = position
         break
+    if index is None:
+        raise ValueError(
+            "stamp_root_attrs found no non-whitespace root segment in "
+            f"{level.segments!r}"
+        )
     root = level.segments[index]
     if isinstance(root, RenderedLevel):
         stamp_root_attrs(root, attrs)
@@ -93,5 +98,5 @@ def stamp_root_attrs(level: RenderedLevel, attrs: dict[str, str]) -> RenderedLev
     start, end = (offset - skipped for offset in level.root_span)
     new_tag = _override_tag(root[start:end], attrs)
     level.segments[index] = root[:start] + new_tag + root[end:]
-    level.root_span = (start, start + len(new_tag))
+    level.root_span = (start + skipped, start + skipped + len(new_tag))
     return level
