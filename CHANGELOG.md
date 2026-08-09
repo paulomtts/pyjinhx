@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.6.4 — window.pjx collision fixes and reactive asset swap-in gaps (2026-08-09)
 
 ### Fixed
 - The runtime bundle and component asset tags are now appended once, at the outermost
@@ -18,6 +18,12 @@
   instead of replacing the namespace wholesale, so self-guarding builtins (popover, toast
   host) that ran on a first execution survive a second (#958).
 - `stamp_root_attrs` now locates the root opening tag when whitespace-only segments precede it, rebasing the absolute `root_span` offset instead of slicing `segments[0]` blindly.
+- Reactive OOB swap-in now accumulates assets from descendant components rendered during
+  fan-out, not just the fan-out candidates' own top-level assets, so a component appearing
+  for the first time via an htmx swap ships with its CSS/JS (#954).
+- OOB asset swap-in now emits `<link>`/`<script src>` fragments for `AssetMode.LINK`
+  sessions instead of silently emitting nothing; `AssetMode.NONE` continues to emit
+  nothing (#954).
 
 ## 1.6.3 — PJXPageLoader namespace collision with core's pjx.loader.page (2026-08-08)
 
