@@ -3,6 +3,10 @@
 ## Unreleased
 
 ### Fixed
+- The runtime bundle and component asset tags are now appended once, at the outermost
+  `render()` call for a session, instead of once per nesting level. A parent that
+  stringifies a child mid-build no longer ships duplicate `<script>`/`<style>` blocks
+  in its output (#959).
 - Re-executing the `pjx.js` runtime bundle no longer wipes builtin state installed on
   `window.pjx`. The final assignment now merges (`Object.assign(window.pjx || {}, pjx)`)
   instead of replacing the namespace wholesale, so self-guarding builtins (popover, toast
