@@ -259,9 +259,12 @@
 
   // The dispatch half of the toast API. Rendering belongs to an L4 toast-host
   // builtin listening for this event, so core stays DOM-template-free.
+  // Dispatched with bubbles: true so it reaches the window-level listener
+  // the toast host builtin registers, matching the HX-Trigger toast path
+  // which already fires on the triggering element and bubbles to window.
   function pjxToast(payload) {
     document.dispatchEvent(
-      new CustomEvent("pjx:toast", { detail: payload || {}, bubbles: false })
+      new CustomEvent("pjx:toast", { detail: payload || {}, bubbles: true })
     );
   }
 

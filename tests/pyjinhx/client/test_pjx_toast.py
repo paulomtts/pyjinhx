@@ -19,14 +19,16 @@ def test_toast_dispatches_a_pjx_toast_event_carrying_the_payload(pjx_page):
     ]
 
 
-def test_toast_event_is_dispatched_on_document(pjx_page):
+def test_toast_event_bubbles_from_document_to_window(pjx_page):
     page = pjx_page("<div></div>")
     page.evaluate(
-        "window.__target = null;"
-        "document.addEventListener('pjx:toast', (e) => { window.__target = e.target === document; })"
+        "window.__seen = null;"
+        "window.addEventListener('pjx:toast', (e) => {"
+        "  window.__seen = { onWindow: true, targetIsDocument: e.target === document };"
+        "})"
     )
     page.evaluate("pjx.toast({ message: 'hi' })")
-    assert page.evaluate("window.__target") is True
+    assert page.evaluate("window.__seen") == {"onWindow": True, "targetIsDocument": True}
 
 
 def test_toast_without_a_listener_does_not_throw(pjx_page):
