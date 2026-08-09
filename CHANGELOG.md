@@ -9,6 +9,10 @@
 - `pjx.toast()` dispatched a non-bubbling event on `document`, which never reached the toast
   host's `window`-level listener. The event now bubbles, so both `pjx.toast()` calls and the
   HX-Trigger path deliver toasts to the host (#963).
+- Re-executing the `pjx.js` runtime bundle no longer wipes builtin state installed on
+  `window.pjx`. The final assignment now merges (`Object.assign(window.pjx || {}, pjx)`)
+  instead of replacing the namespace wholesale, so self-guarding builtins (popover, toast
+  host) that ran on a first execution survive a second (#958).
 
 ## 1.6.3 — PJXPageLoader namespace collision with core's pjx.loader.page (2026-08-08)
 
