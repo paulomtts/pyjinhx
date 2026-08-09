@@ -311,7 +311,10 @@
   pjx.region = pjxRegion;
   pjx.loadingTargets = pjxLoadingTargets;
   pjx.loadingClass = pjxLoadingClass;
-  window.pjx = pjx;
+  // Merge, never replace: builtins (popover, toast host) install themselves on
+  // this same namespace and self-guard, so a second execution of the bundle
+  // must not throw away keys the first execution's builtins left behind.
+  window.pjx = Object.assign(window.pjx || {}, pjx);
 
   if (!window.htmx) {
     console.error(

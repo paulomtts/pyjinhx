@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+- Re-executing the `pjx.js` runtime bundle no longer wipes builtin state installed on
+  `window.pjx`. The final assignment now merges (`Object.assign(window.pjx || {}, pjx)`)
+  instead of replacing the namespace wholesale, so self-guarding builtins (popover, toast
+  host) that ran on a first execution survive a second (#958).
+
 ## 1.6.3 — PJXPageLoader namespace collision with core's pjx.loader.page (2026-08-08)
 
 ### Fixed
