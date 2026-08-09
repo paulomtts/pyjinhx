@@ -62,3 +62,12 @@ def test_toast_renders_a_toast_element_in_the_host(pjx_page):
     toast = page.locator("[data-pjx-toast-host] .pjx-toast")
     assert toast.count() == 1
     assert "saved" in toast.inner_text()
+
+
+def test_loading_the_toast_host_twice_renders_one_toast(pjx_page):
+    page = pjx_page("<div data-pjx-toast-host data-event-name='pjx:toast'></div>")
+    source = TOAST_HOST_JS_PATH.read_text(encoding="utf-8")
+    page.add_script_tag(content=source)
+    page.add_script_tag(content=source)
+    page.evaluate("window.pjx.toast('once')")
+    assert page.locator("[data-pjx-toast-host] .pjx-toast").count() == 1
