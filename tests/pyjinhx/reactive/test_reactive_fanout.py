@@ -1617,3 +1617,25 @@ def test_walk_manifest_stats_shared_template_only_once(monkeypatch):
 
     assert STAT_CALLS == [str(shared_template)]
     assert len(STAT_CALLS) != len(candidates)
+
+
+def test_root_instance_id_reads_a_root_stamped_behind_a_whitespace_prologue():
+    """The inverse of stamp_root_attrs must skip the same whitespace segments.
+
+    A level whose root has a whitespace prologue gets its tag stamped into
+    segments[1..] by stamp_root_attrs, with root_span rebased absolute past
+    the prologue. `_root_instance_id` must walk the same skip to land on the
+    same segment, or extraction silently returns None.
+    """
+    from pyjinhx.root_attrs import stamp_root_attrs
+
+    prologue = "\n  "
+    tag = '<div class="root">hi</div>'
+    level = RenderedLevel(
+        segments=[prologue, tag],
+        root_span=(len(prologue), len(prologue) + 18),
+        descriptor=None,
+    )
+    stamp_root_attrs(level, {"data-pjx-id": "abc123"})
+
+    assert fanout._root_instance_id(level) == "abc123"

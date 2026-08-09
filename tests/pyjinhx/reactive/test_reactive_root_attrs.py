@@ -18,7 +18,7 @@ from pyjinhx.reactive.component import ReactiveComponent
 from pyjinhx.reactive.root_attrs import stamp_reactive_root_attrs
 from pyjinhx.rendering import render_level
 from pyjinhx.root_attrs import serialize_attr, stamp_root_attrs
-from pyjinhx.segments import ChildRef, RenderedLevel, serialize
+from pyjinhx.segments import ChildRef, RenderedLevel, VerbatimParser, serialize
 from pyjinhx.session import RenderSession
 
 _TEMPLATE_DIR = Path(__file__).parent.parent.parent / "templates"
@@ -112,6 +112,15 @@ BuiltinRootWidget.__pjx_descriptor__ = _descriptor_for(
 )
 DoubleBuiltinRootWidget.__pjx_descriptor__ = _descriptor_for(
     DoubleBuiltinRootWidget, "reactive_double_root.html"
+)
+
+
+class PrologueRootWidget(ReactiveComponent):
+    pass
+
+
+PrologueRootWidget.__pjx_descriptor__ = _descriptor_for(
+    PrologueRootWidget, "reactive_prologue_root.html"
 )
 
 
@@ -401,3 +410,45 @@ def test_stamping_the_parent_does_not_move_the_childs_attrs(
         f'<span data-pjx-id="inner2" data-pjx-type="reactive_widget"'
         f' data-pjx-hash="{child.state_hash()}">widget</span>' in html
     )
+
+
+def test_whitespace_prologue_before_component_root(
+    session: RenderSession, registered_children
+):
+    component = PrologueRootWidget(id="pro1")
+
+    html = serialize(render_level(component, session))
+
+    assert 'data-pjx-id="pro1"' in html
+    assert html.lstrip().startswith("<b ")
+    assert 'class="badge"' in html
+    assert html.strip().endswith("</b>")
+
+
+def test_whitespace_prologue_before_plain_div_root():
+    source = '\n  <div class="card">body</div>\n'
+    parser = VerbatimParser()
+    parser.feed(source)
+    parser.close()
+    assert parser.root_span is not None
+    level = RenderedLevel(
+        segments=list(parser.segments),
+        root_span=parser.root_span,
+        descriptor=None,
+    )
+
+    html = serialize(stamp_root_attrs(level, {"data-x": "1", "class": "stamped"}))
+
+    assert html == '\n  <div class="stamped" data-x="1">body</div>\n'
+
+
+def test_multiple_whitespace_prologue_segments_before_root():
+    level = RenderedLevel(
+        segments=["\n", "   ", '<div id="d">x</div>'],
+        root_span=(4, 16),
+        descriptor=None,
+    )
+
+    html = serialize(stamp_root_attrs(level, {"data-y": "2"}))
+
+    assert html == '\n   <div id="d" data-y="2">x</div>'

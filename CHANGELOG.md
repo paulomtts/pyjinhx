@@ -13,6 +13,7 @@
   `window.pjx`. The final assignment now merges (`Object.assign(window.pjx || {}, pjx)`)
   instead of replacing the namespace wholesale, so self-guarding builtins (popover, toast
   host) that ran on a first execution survive a second (#958).
+- `stamp_root_attrs` now locates the root opening tag when whitespace-only segments precede it, rebasing the absolute `root_span` offset instead of slicing `segments[0]` blindly.
 
 ## 1.6.3 — PJXPageLoader namespace collision with core's pjx.loader.page (2026-08-08)
 
