@@ -1,6 +1,9 @@
 (function () {
     window.pjx = window.pjx || {};
-    if (pjx.toast) return;
+    // Private wiring flag: pjx.toast is this file's public API, so guarding on
+    // it would trip on core's own pjx.toast and skip wiring entirely.
+    if (pjx.__toastHostWired) return;
+    pjx.__toastHostWired = true;
 
     const wiredEvents = new Set();
 

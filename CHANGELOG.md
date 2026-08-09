@@ -3,6 +3,12 @@
 ## Unreleased
 
 ### Fixed
+- `PJXToastHost`'s wiring guard checked `pjx.toast`, the same key the host itself assigns as
+  its public API, so the guard always tripped and the host's `window` listener never attached.
+  It now guards on a private `pjx.__toastHostWired` flag instead (#963).
+- `pjx.toast()` dispatched a non-bubbling event on `document`, which never reached the toast
+  host's `window`-level listener. The event now bubbles, so both `pjx.toast()` calls and the
+  HX-Trigger path deliver toasts to the host (#963).
 - Re-executing the `pjx.js` runtime bundle no longer wipes builtin state installed on
   `window.pjx`. The final assignment now merges (`Object.assign(window.pjx || {}, pjx)`)
   instead of replacing the namespace wholesale, so self-guarding builtins (popover, toast
