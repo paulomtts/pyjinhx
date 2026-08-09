@@ -13,11 +13,11 @@ nothing in v2 subscribes ``accumulate_assets`` onto the fan-out render's
 session and that accumulator would therefore always be empty.
 """
 
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from pathlib import Path
 from typing import Any
 
-from pyjinhx.assets import AssetMode, asset_token
+from pyjinhx.assets import AssetMode, _sorted_resolved, asset_token
 from pyjinhx.reactive.fanout import FanoutCandidate
 from pyjinhx.session import RenderSession
 
@@ -80,10 +80,37 @@ def _inline_fragments(
     return fragments
 
 
+def _url_fragments(
+    paths: set[Path],
+    loaded: frozenset[str],
+    resolver: Callable[[Path], str],
+    template: str,
+) -> list[str]:
+    """One head-targeted OOB fragment per unloaded path, pointing at its URL.
+
+    Args:
+        paths: The asset paths this walk requires.
+        loaded: The tokens the client reports it already has.
+        resolver: Maps an asset path to the URL it is served from.
+        template: A tag with ``{token}`` and ``{url}`` placeholders.
+
+    Returns:
+        The fragments, in the same path-sorted order ``_inline_fragments`` uses.
+    """
+    ordered = sorted(paths, key=str)
+    wanted = [path for path in ordered if asset_token(path) not in loaded]
+    urls = _sorted_resolved(wanted, resolver)
+    return [
+        template.format(token=asset_token(path), url=url)
+        for path, url in zip(wanted, urls, strict=True)
+    ]
+
+
 def missing_asset_oob(
     candidates: Iterable[FanoutCandidate],
     loaded: frozenset[str],
     session: RenderSession,
+    resolver: Callable[[Path], str] | None = None,
 ) -> str:
     """The OOB fragments delivering assets this walk needs and the client lacks.
 
@@ -94,6 +121,9 @@ def missing_asset_oob(
             every required asset is delivered rather than none.
         session: The RenderSession whose css_mode/js_mode decide delivery and
             whose css_assets/js_assets carry what the walk actually rendered.
+        resolver: Maps an asset path to the URL it is served from, in the shape
+            asset_manifest() takes. A LINK-mode kind delivers nothing without
+            one.
 
     Returns:
         CSS fragments then JS fragments, newline-joined, or ``""`` when the
@@ -107,8 +137,27 @@ def missing_asset_oob(
     css_paths |= session.css_assets
     js_paths |= session.js_assets
     fragments: list[str] = []
+    # A resolver-less LINK kind emits nothing rather than raising, unlike
+    # emit_assets: a reactive response is a partial update, and taking the whole
+    # response down over a missing asset URL would blank a working page.
     if session.css_mode is AssetMode.INLINE:
         fragments += _inline_fragments(css_paths, loaded, "<style", "</style>")
+    elif session.css_mode is AssetMode.LINK and resolver is not None:
+        fragments += _url_fragments(
+            css_paths,
+            loaded,
+            resolver,
+            '<link rel="stylesheet" data-pjx-asset="{token}" '
+            'hx-swap-oob="beforeend:head" href="{url}">',
+        )
     if session.js_mode is AssetMode.INLINE:
         fragments += _inline_fragments(js_paths, loaded, "<script", "</script>")
+    elif session.js_mode is AssetMode.LINK and resolver is not None:
+        fragments += _url_fragments(
+            js_paths,
+            loaded,
+            resolver,
+            '<script data-pjx-asset="{token}" '
+            'hx-swap-oob="beforeend:head" src="{url}"></script>',
+        )
     return "\n".join(fragments)

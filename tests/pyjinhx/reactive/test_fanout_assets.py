@@ -216,3 +216,70 @@ def test_a_descendant_rendered_during_the_walk_gets_its_assets_delivered(
     assert ".child{color:blue}" in body
     assert f'<script data-pjx-asset="{asset_token(child_js)}"' in body
     assert "window.child=1;" in body
+
+
+def test_link_mode_emits_url_oob_fragments_instead_of_nothing(asset_files):
+    css, js = asset_files
+    session = RenderSession()
+    session.css_mode = AssetMode.LINK
+    session.js_mode = AssetMode.LINK
+    fragment = missing_asset_oob(
+        [candidate()], frozenset(), session, resolver=lambda path: f"/static/{path.name}"
+    )
+
+    assert (
+        f'<link rel="stylesheet" data-pjx-asset="{asset_token(css)}" '
+        'hx-swap-oob="beforeend:head" href="/static/widget.css">' in fragment
+    )
+    assert (
+        f'<script data-pjx-asset="{asset_token(js)}" '
+        'hx-swap-oob="beforeend:head" src="/static/widget.js"></script>' in fragment
+    )
+    # CSS before JS, so a script that measures layout sees the styled DOM.
+    assert fragment.index("<link") < fragment.index("<script")
+
+
+def test_link_mode_skips_the_tokens_the_client_already_reports(asset_files):
+    css, js = asset_files
+    session = RenderSession()
+    session.css_mode = AssetMode.LINK
+    session.js_mode = AssetMode.LINK
+    fragment = missing_asset_oob(
+        [candidate()],
+        frozenset({asset_token(css)}),
+        session,
+        resolver=lambda path: f"/static/{path.name}",
+    )
+
+    assert asset_token(css) not in fragment
+    assert asset_token(js) in fragment
+
+
+def test_compose_threads_the_resolver_into_the_link_mode_fragments(
+    asset_files, monkeypatch
+):
+    from pyjinhx import responses as responses_module
+
+    css, js = asset_files
+    monkeypatch.setattr(
+        responses_module,
+        "walk_manifest",
+        lambda *args, **kwargs: [candidate("clean")],
+    )
+    session = RenderSession()
+    session.css_mode = AssetMode.LINK
+    session.js_mode = AssetMode.LINK
+    composed = responses_module.compose(
+        "", session=session, resolver=lambda path: f"/static/{path.name}"
+    )
+    assert isinstance(composed, responses_module.PjxResponse)
+    body = str(composed.body)
+
+    assert (
+        f'<link rel="stylesheet" data-pjx-asset="{asset_token(css)}" '
+        'hx-swap-oob="beforeend:head" href="/static/widget.css">' in body
+    )
+    assert (
+        f'<script data-pjx-asset="{asset_token(js)}" '
+        'hx-swap-oob="beforeend:head" src="/static/widget.js"></script>' in body
+    )
