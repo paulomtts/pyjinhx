@@ -476,8 +476,12 @@ def render(component: BaseComponent, session: "RenderSession | None" = None) -> 
             kernel don't need to construct one by hand.
 
     Returns:
-        The component's rendered markup as a finished HTML string, with the
-        session's accumulated assets appended per their delivery mode.
+        The component's rendered markup as a finished HTML string. The
+        session's accumulated assets are appended per their delivery mode
+        only when this is the outermost render() call for the session — a
+        nested call (a parent stringifying a child mid-build) returns pure
+        markup, with assets appended once by the call that unwinds back to
+        the top.
 
     Fires each ``session.on_rendered`` callback with ``(component, level,
     session)`` after each component's level is built, depth-first post-order.
@@ -495,8 +499,15 @@ def render(component: BaseComponent, session: "RenderSession | None" = None) -> 
     if session is None:
         session = RenderSession()
     component = _mount_root(component)
-    level = render_level(component, session)
+    session.render_depth += 1
+    try:
+        level = render_level(component, session)
+    finally:
+        session.render_depth -= 1
     # The one join at the top, and the one place assets are emitted: every
     # component in the tree has already fired on_rendered by now, so the
     # session's asset sets are complete. render_level() never lands here.
-    return serialize(level) + emit_assets(session)
+    markup = serialize(level)
+    if session.render_depth > 0:
+        return markup
+    return markup + emit_assets(session)
