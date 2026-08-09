@@ -428,3 +428,107 @@ def test_emit_assets_skips_runtime_script_when_js_mode_is_not_inline(tmp_path):
     session.runtime_script = "<script>RUNTIME</script>"
 
     assert emit_assets(session) == ""
+
+
+# --- #959: nested .render() must not re-emit the runtime bundle / asset tags ---
+#
+# Real nesting means the child's .render() call happens while the parent's
+# own render() is still on the stack — not two sequential top-level calls
+# concatenated afterward (that's Task 5's regression scenario, and must keep
+# emitting twice). The only way user/template code reaches back into Python
+# *during* the parent's own render_level() is from inside Jinja template
+# evaluation itself, so the parent's template calls a Jinja global that
+# renders the child mid-build.
+
+from markupsafe import Markup
+
+
+class _NestedChild(BaseComponent):
+    """Childless leaf, rendered standalone or nested mid-build by the parent."""
+
+
+_NestedChild.__pjx_descriptor__ = _plain_descriptor(_NestedChild)
+
+
+class _NestedParent(BaseComponent):
+    """A parent whose template renders a child mid-build via a Jinja global."""
+
+
+_NestedParent.__pjx_descriptor__ = ClassDescriptor(
+    template_path=_TEMPLATE_DIR / "nested_emit_parent.html",
+    slot_fields=frozenset(),
+    children_field=None,
+    css_paths=(),
+    js_paths=(),
+    strict=True,
+    provenance={"template": _NestedParent},
+)
+
+
+def _render_parent_with_nested_child(session: RenderSession) -> str:
+    """Render a parent whose template calls back into Python, mid-build, to
+    render a child component — the child's .render() runs while the parent's
+    own render() call is still on the stack, i.e. real re-entrancy, not two
+    sequential top-level calls."""
+
+    def render_nested_child() -> Markup:
+        return Markup(_NestedChild().render(session))
+
+    session.jinja_env.globals["render_nested_child"] = render_nested_child
+    try:
+        return _NestedParent().render(session)
+    finally:
+        del session.jinja_env.globals["render_nested_child"]
+
+
+def test_nested_render_emits_runtime_bundle_exactly_once():
+    with request_scope() as session:
+        out = _render_parent_with_nested_child(session)
+
+    assert session.runtime_script is not None
+    assert out.count(session.runtime_script) == 1, out
+
+
+def test_nested_render_emits_component_asset_tags_exactly_once(tmp_path):
+    css = tmp_path / "nested.css"
+    css.write_text(".nested { color: red; }")
+    js = tmp_path / "nested.js"
+    js.write_text("console.log('nested');")
+
+    with request_scope() as session:
+        session.css_assets.add(css)
+        session.js_assets.add(js)
+        out = _render_parent_with_nested_child(session)
+
+    assert out.count("<style>.nested { color: red; }</style>") == 1
+    assert out.count("<script>console.log('nested');</script>") == 1
+
+
+def test_single_top_level_render_still_emits_runtime_and_assets(tmp_path):
+    css = tmp_path / "solo.css"
+    css.write_text(".solo { color: blue; }")
+
+    with request_scope() as session:
+        session.css_assets.add(css)
+        out = _NestedChild().render(session)
+
+    assert session.runtime_script is not None
+    assert out.count(session.runtime_script) == 1
+    assert out.count("<style>.solo { color: blue; }</style>") == 1
+
+
+def test_repeated_independent_top_level_renders_each_emit_assets(tmp_path):
+    css = tmp_path / "repeat.css"
+    css.write_text(".repeat { color: green; }")
+
+    with request_scope() as session:
+        session.css_assets.add(css)
+        first = _NestedChild().render(session)
+        second = _NestedChild().render(session)
+
+    # Each independent top-level render is its own finished fragment: the
+    # depth gate must not turn the second one into bare markup.
+    assert session.runtime_script is not None
+    assert first.count(session.runtime_script) == 1
+    assert second.count(session.runtime_script) == 1
+    assert second.count("<style>.repeat { color: green; }</style>") == 1
