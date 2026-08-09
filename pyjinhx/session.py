@@ -215,6 +215,13 @@ class RenderSession:
         # so runtime_script stays a single pure <script>.
         self.runtime_style: str | None = None
         self.runtime_injected: bool = False
+        # Re-entrancy depth for render(): a nested .render() (a parent
+        # stringifying a child mid-build) sees depth > 0 and skips emission, so
+        # the bundle and the asset tags land once, at the outermost return.
+        # A counter rather than a once-ever flag on purpose: two *independent*
+        # top-level renders in one session each start and end at depth 0 and
+        # each still get their assets, as they do today.
+        self.render_depth: int = 0
         # A plain list, not an event bus: render fires it once per component and
         # subscribers (asset accumulation, the reactive instance registry) just
         # append. Per-session so subscriptions die with the request. Callbacks

@@ -3,6 +3,10 @@
 ## Unreleased
 
 ### Fixed
+- The runtime bundle and component asset tags are now appended once, at the outermost
+  `render()` call for a session, instead of once per nesting level. A parent that
+  stringifies a child mid-build no longer ships duplicate `<script>`/`<style>` blocks
+  in its output (#959).
 - `PJXToastHost`'s wiring guard checked `pjx.toast`, the same key the host itself assigns as
   its public API, so the guard always tripped and the host's `window` listener never attached.
   It now guards on a private `pjx.__toastHostWired` flag instead (#963).
