@@ -7,7 +7,9 @@ two backends can disagree about them.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
+from pathlib import Path
 
 from markupsafe import Markup
 
@@ -16,7 +18,12 @@ from pyjinhx.reactive.assets import missing_asset_oob
 from pyjinhx.reactive.cache import invalidate
 from pyjinhx.reactive.fanout import oob_swaps, walk_manifest
 from pyjinhx.rendering import render
-from pyjinhx.session import RenderSession, current_session, get_dirtied
+from pyjinhx.session import (
+    RenderSession,
+    accumulate_assets,
+    current_session,
+    get_dirtied,
+)
 
 
 @dataclass(frozen=True)
@@ -35,12 +42,18 @@ PASSTHROUGH = object()
 """``compose()``'s answer for a return value that is not pyjinhx's to adapt."""
 
 
-def _fan_out(primary: str, session: RenderSession) -> tuple[str, dict[str, str]]:
+def _fan_out(
+    primary: str,
+    session: RenderSession,
+    resolver: Callable[[Path], str] | None = None,
+) -> tuple[str, dict[str, str]]:
     """The whole body and htmx headers for a primary, with the OOB legs attached.
 
     Args:
         primary: This request's already-serialized primary markup, possibly empty.
         session: The session carrying the client's manifest and asset tokens.
+        resolver: Maps an asset path to the URL it is served from. Only a
+            LINK-mode kind needs one; other modes ignore it.
 
     Returns:
         The joined body and the htmx headers the body itself implies.
@@ -51,6 +64,15 @@ def _fan_out(primary: str, session: RenderSession) -> tuple[str, dict[str, str]]
     # otherwise answer "clean" and the client would keep markup this request
     # just invalidated.
     invalidate(dirtied)
+    # Subscribed before the walk, not after: a descendant re-rendered inside
+    # walk_manifest is never a top-level candidate, so its descriptor is only
+    # reachable through the on_rendered callback that fires as it renders.
+    # Guarded, not unconditional: the FastAPI integration already subscribes
+    # accumulate_assets onto every request's session before compose() ever
+    # runs (pyjinhx/integrations/fastapi.py), so an unconditional append would
+    # double-subscribe it there and run it twice per rendered component.
+    if accumulate_assets not in session.on_rendered:
+        session.on_rendered.append(accumulate_assets)
     # primary_html is passed so a region the primary body already carries is not
     # also swapped OOB: fan-out runs after the primary serialize, and without
     # this the client would swap that region twice in one response.
@@ -60,7 +82,7 @@ def _fan_out(primary: str, session: RenderSession) -> tuple[str, dict[str, str]]
     parts = [
         primary,
         str(oob_swaps(candidates)),
-        missing_asset_oob(candidates, session.pjx_assets, session),
+        missing_asset_oob(candidates, session.pjx_assets, session, resolver),
     ]
     # An OOB-only body has nothing for htmx's default swap to place, so htmx would
     # swap the empty primary into the triggering element and wipe it. Telling htmx
@@ -69,7 +91,12 @@ def _fan_out(primary: str, session: RenderSession) -> tuple[str, dict[str, str]]
     return "\n".join(part for part in parts if part), headers
 
 
-def compose(result: object, *, session: RenderSession | None = None) -> object:
+def compose(
+    result: object,
+    *,
+    session: RenderSession | None = None,
+    resolver: Callable[[Path], str] | None = None,
+) -> object:
     """Turn one handler return into a PjxResponse, or answer PASSTHROUGH.
 
     Fan-out is attached on every path that produces a body, because the dirtied
@@ -81,6 +108,9 @@ def compose(result: object, *, session: RenderSession | None = None) -> object:
         result: Whatever the handler returned.
         session: The session to compose against. Defaults to the active
             ``request_scope()``'s, and to a bare one outside a scope.
+        resolver: Maps an asset path to the URL it is served from, passed
+            straight to the fan-out's asset leg. Only a LINK-mode session
+            needs one.
 
     Returns:
         A ``PjxResponse``, or ``PASSTHROUGH`` when ``result`` is not a pyjinhx
@@ -101,5 +131,5 @@ def compose(result: object, *, session: RenderSession | None = None) -> object:
         primary = str(Markup(result))
     else:
         return PASSTHROUGH
-    body, headers = _fan_out(primary, session)
+    body, headers = _fan_out(primary, session, resolver)
     return PjxResponse(body=body, headers=headers)
