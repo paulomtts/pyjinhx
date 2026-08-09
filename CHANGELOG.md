@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+- `stamp_root_attrs` now locates the root opening tag when whitespace-only segments precede it, rebasing the absolute `root_span` offset instead of slicing `segments[0]` blindly.
+
 ## 1.6.3 — PJXPageLoader namespace collision with core's pjx.loader.page (2026-08-08)
 
 ### Fixed
