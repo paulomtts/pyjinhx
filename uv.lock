@@ -671,7 +671,7 @@ wheels = [
 
 [[package]]
 name = "pyjinhx"
-version = "1.6.3"
+version = "1.6.4"
 source = { editable = "." }
 dependencies = [
     { name = "jinja2" },
