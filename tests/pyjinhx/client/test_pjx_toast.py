@@ -40,7 +40,10 @@ def test_toast_event_bubbles_from_document_to_window(pjx_page):
         "})"
     )
     page.evaluate("pjx.toast({ message: 'hi' })")
-    assert page.evaluate("window.__seen") == {"onWindow": True, "targetIsDocument": True}
+    assert page.evaluate("window.__seen") == {
+        "onWindow": True,
+        "targetIsDocument": True,
+    }
 
 
 def test_toast_without_a_listener_does_not_throw(pjx_page):
