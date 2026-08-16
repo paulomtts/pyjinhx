@@ -1,6 +1,7 @@
 """Unit tests for pyjinhx/config.py — PjxSettings, setup() and the process-wide holder."""
 
 import dataclasses
+import subprocess
 import sys
 import types
 from pathlib import Path
@@ -411,3 +412,32 @@ def test_shutdown_closes_the_backend_only_once():
     shutdown_pyjinhx()
     shutdown_pyjinhx()
     assert backend.closed == 1
+
+
+def test_setup_registers_a_builtin_tag_when_pyjinhx_builtins_was_never_imported():
+    """A fresh interpreter: nothing pre-imports pyjinhx.builtins, so only
+    setup()'s own force-load can make a builtin tag resolvable.
+
+    This runs in a subprocess because BaseComponent.__subclasses__() is
+    process-global and permanent — other test modules import builtin
+    submodules directly, so an in-process test would pass on their leftovers
+    whether or not setup() force-loads anything.
+    """
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            (
+                "from pyjinhx import discovery\n"
+                "from pyjinhx.config import setup\n"
+                "setup(app=None, components_root=None)\n"
+                "assert discovery.get_class('pjx_button') is not None, "
+                "'setup() left pjx_button unregistered'\n"
+            ),
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stderr
