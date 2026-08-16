@@ -5,9 +5,11 @@ from pathlib import Path
 
 import pytest
 
+from pyjinhx import dev
 from pyjinhx.descriptor import ClassDescriptor
 from pyjinhx.reactive.component import ReactiveComponent
 from pyjinhx.registry import (
+    InstanceKeyCollisionError,
     make_key,
     register_instance,
     register_rendered_instance,
@@ -280,3 +282,56 @@ def test_two_instances_of_one_class_register_under_their_own_ids():
         second = render_level(RegisteredWidget(id="r7"), session)
         assert resolve("RegisteredWidget", "r6") is first
         assert resolve("RegisteredWidget", "r7") is second
+
+
+@pytest.fixture
+def strict_dev():
+    """Reactive-dev strict mode on for one test, off again afterwards.
+
+    The flag is process-wide, not request-scoped, so leaving it on would leak
+    into every test that runs after this one.
+    """
+    dev.enable_reactive_dev(strict=True)
+    yield
+    dev.disable_reactive_dev()
+
+
+def test_duplicate_key_raises_under_strict_dev_mode(strict_dev, caplog):
+    first = Widget("first")
+    with request_scope(), caplog.at_level(logging.WARNING, logger="pyjinhx"):
+        register_instance("Widget", "w1", first)
+        with pytest.raises(InstanceKeyCollisionError, match="Widget_w1"):
+            register_instance("Widget", "w1", Widget("second"))
+        # The raise replaces the warning (mirrors dev._report()'s raise-instead-
+        # of-log branch), and the failed write left the first entry intact
+        # rather than half-applied.
+        assert caplog.records == []
+        assert resolve("Widget", "w1") is first
+
+
+class LiteralIdWidget(ReactiveComponent):
+    """The #977 shape: every instance carries the same hard-coded id."""
+
+    id: str = "shared-literal"
+
+
+LiteralIdWidget.__pjx_descriptor__ = ClassDescriptor(
+    template_path=_TEMPLATE_DIR / "reactive_widget.html",
+    slot_fields=frozenset(),
+    children_field=None,
+    css_paths=(),
+    js_paths=(),
+    strict=True,
+    provenance={"template": LiteralIdWidget},
+)
+
+
+def test_two_literal_id_instances_in_one_request_raise_under_strict_dev(strict_dev):
+    session = _wired_session()
+
+    with request_scope(session=session):
+        render_level(LiteralIdWidget(), session)
+        with pytest.raises(
+            InstanceKeyCollisionError, match="LiteralIdWidget_shared-literal"
+        ):
+            render_level(LiteralIdWidget(), session)

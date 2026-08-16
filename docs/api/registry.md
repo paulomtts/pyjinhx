@@ -39,6 +39,8 @@ def register_instance(type_name: str, instance_id: str, entry: object) -> None
 
 Store an entry in this request's registry under its composite key. The only function that mutates the registry. A call outside `request_scope()` is dropped with a logged warning rather than silently vanishing.
 
+Writing a key that already holds an entry in the same request logs a warning and overwrites (last write wins). With reactive-dev strict mode on (`pyjinhx.dev.enable_reactive_dev(strict=True)` — there is no `PjxSettings` field or `PJX_*` env var that reaches strict mode yet, only this direct call) the same collision raises `pyjinhx.registry.InstanceKeyCollisionError` instead, leaving the existing entry intact — it almost always means two instances of one component class share a hard-coded `id`.
+
 ### request_scope()
 
 ```python

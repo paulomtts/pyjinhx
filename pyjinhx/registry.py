@@ -9,7 +9,7 @@ concern, not this module's, and resolve() deduplicates nothing.
 import logging
 from typing import TYPE_CHECKING, Any
 
-from pyjinhx.session import _instances, get_instances
+from pyjinhx.session import _instances, get_dev_strict, get_instances
 
 if TYPE_CHECKING:
     # Type-only: naming the spine's own types in a signature must not make this
@@ -57,6 +57,15 @@ def resolve(type_name: str, instance_id: str) -> object:
     return instances[key]
 
 
+class InstanceKeyCollisionError(RuntimeError):
+    """Two live entries claimed one composite key within a single request.
+
+    Not a LookupError: ADR 0009 reserves that for resolve() misses, which are a
+    read-side failure. This is a write-side one, and it only surfaces while
+    reactive-dev strict mode is on.
+    """
+
+
 def register_instance(type_name: str, instance_id: str, entry: object) -> None:
     """Store an entry in this request's registry under its composite key.
 
@@ -68,6 +77,11 @@ def register_instance(type_name: str, instance_id: str, entry: object) -> None:
         instance_id: The instance's id, unique within one request.
         entry: What resolve() should hand back — a live instance or a cached
             RenderedLevel, stored as-is.
+
+    Raises:
+        InstanceKeyCollisionError: The key already holds an entry in this
+            request and reactive-dev strict mode is on. With strict mode off
+            the collision is a warning and a last-write-wins overwrite.
     """
     key = make_key(type_name, instance_id)
     # get_instances() answers a throwaway {} outside a scope, so writing there
@@ -79,6 +93,14 @@ def register_instance(type_name: str, instance_id: str, entry: object) -> None:
         )
         return
     if key in instances:
+        # The one production caller fires once per rendered component, so a
+        # second write to one key in one request means two components claimed
+        # the same id — usually a hard-coded `id` default on a class rendered
+        # more than once.
+        if get_dev_strict():
+            raise InstanceKeyCollisionError(
+                f"Key {key!r} is already registered; two instances share one id."
+            )
         logger.warning("Key %r is already registered; overwriting.", key)
     instances[key] = entry
 

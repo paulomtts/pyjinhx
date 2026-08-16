@@ -15,7 +15,7 @@ import logging
 from dataclasses import dataclass
 
 from pyjinhx._component import BaseComponent
-from pyjinhx.session import get_cache_reverse, get_dirtied
+from pyjinhx.session import get_cache_reverse, get_dirtied, set_dev_strict
 
 logger = logging.getLogger("pyjinhx")
 
@@ -40,12 +40,16 @@ def enable_reactive_dev(*, strict: bool = False) -> None:
     """
     global _dev_config
     _dev_config = _DevConfig(enabled=True, strict=strict)
+    # registry sits below dev and cannot import it, so the strict bit is kept
+    # on session, which both modules already import.
+    set_dev_strict(strict)
 
 
 def disable_reactive_dev() -> None:
     """Turn the development-time reactive checks off."""
     global _dev_config
     _dev_config = _DevConfig()
+    set_dev_strict(False)
 
 
 def _report(message: str) -> None:
