@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+- `PJXTooltip` positioned its tip against the browser viewport, so a trigger near the edge of
+  a scrolling or `overflow: hidden` ancestor (card, panel, table cell) rendered its tip
+  outside that container whenever the viewport still had room beyond it. Placement now
+  resolves against the trigger's nearest clipping ancestor: it flips `top`↔`bottom` and
+  `start`↔`end` when the requested side overflows that container and the opposite side fits,
+  and clamps within the container's padded bounds otherwise. Unclipped triggers keep the
+  previous viewport-relative behavior (#980).
+
 ## 1.6.4 — window.pjx collision fixes and reactive asset swap-in gaps (2026-08-09)
 
 ### Fixed
