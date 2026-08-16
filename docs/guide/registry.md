@@ -47,6 +47,8 @@ In web applications, component instances from one request can persist and affect
 # Request 2: register_instance("Button", "submit-btn", button) → Warning: "already registered; overwriting"
 ```
 
+Under reactive-dev strict mode that warning becomes an `InstanceKeyCollisionError` instead, so two components sharing one `id` fail loudly in development and stay last-write-wins in production.
+
 ### The Solution: `setup(app)`
 
 `setup(app, ...)` installs `PjxScopeMiddleware`, which opens one request scope per request, subscribes the render hooks, and parses the pjx request headers onto the session. Handlers then just return components — nothing registers or renders by hand:
