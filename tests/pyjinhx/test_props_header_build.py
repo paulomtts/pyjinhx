@@ -172,3 +172,22 @@ def test_descriptor_template_path_is_provisional_until_relocated(tmp_path, monke
     cls.__module__ = fake_module.__name__
     rebuild_class_descriptor(cls)
     assert cls.__pjx_descriptor__.template_path == tmp_path / "card.pjx"
+
+
+@pytest.mark.parametrize(
+    "annotation",
+    ["Slot | None", "Optional[Slot]"],
+    ids=["union", "optional"],
+)
+def test_header_declared_slot_union_is_detected_as_slot_on_the_built_class(
+    annotation: str,
+):
+    """Pydantic hoists metadata only from the outermost Annotated, so an
+    optional slot arrives with empty field metadata and the marker still nested
+    inside the union; detection has to unwrap it."""
+    from pyjinhx._component import _is_slot_field
+
+    fields = parse_props_header(f"{{#def value: {annotation} #}}")
+    assert fields is not None
+    cls = build_component_class(fields, "Card")
+    assert _is_slot_field(cls, "value") is True
