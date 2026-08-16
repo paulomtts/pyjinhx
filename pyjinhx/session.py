@@ -51,8 +51,12 @@ _freshness_cache: ContextVar[dict[str, bool] | None] = ContextVar(
 # Not a ContextVar and deliberately so: this mirrors dev._dev_config, which is
 # process-wide configuration rather than per-request state, so it stays out of
 # invariant 4's per-request mutable-state census. dev owns the policy; session
-# holds the bit because registry sits below dev and may not import it.
+# holds the bit because registry sits below dev and may not import it. Per
+# invariant 4 ("built-then-swapped under a lock, or ContextVar-scoped — no
+# third category"), a bare module global takes the lock branch, matching
+# _environment_cache_lock further down this file.
 _dev_strict = False
+_dev_strict_lock = threading.Lock()
 
 
 class NoActiveRequestScope(RuntimeError):
@@ -307,7 +311,8 @@ def get_instances() -> dict[str, object]:
 
 def get_dev_strict() -> bool:
     """Return whether reactive-dev strict mode is on, process-wide."""
-    return _dev_strict
+    with _dev_strict_lock:
+        return _dev_strict
 
 
 def set_dev_strict(strict: bool) -> None:
@@ -317,7 +322,8 @@ def set_dev_strict(strict: bool) -> None:
         strict: True while dev.enable_reactive_dev(strict=True) is in effect.
     """
     global _dev_strict
-    _dev_strict = strict
+    with _dev_strict_lock:
+        _dev_strict = strict
 
 
 def get_dirtied() -> set[str]:
