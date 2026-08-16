@@ -376,10 +376,13 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
     # reactive.backend is TYPE_CHECKING-only: PjxSettings.cache_backend names
     # the protocol, and config never touches a backend at import time. The
     # guard test below pins it out of module scope.
+    # builtins is imported unconditionally in _force_load_builtins() to force
+    # every lazy builtin module to load so discovery can register them all.
     "config": frozenset(
         {
             "pyjinhx",
             "pyjinhx._component",
+            "pyjinhx.builtins",
             "pyjinhx.discovery",
             "pyjinhx.dev",
             "pyjinhx.integrations.base",

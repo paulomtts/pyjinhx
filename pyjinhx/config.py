@@ -11,12 +11,14 @@ test_component_only_imports_config_inside_a_function_body and
 test_cache_only_imports_config_inside_a_function_body pin that).
 Siblings that do not exist yet (dev, integrations.fastapi) are imported
 lazily inside functions so importing this module never depends on them.
+builtins is imported the same way — inside a function body, never at module
+scope — but unconditionally rather than conditionally: _force_load_builtins()
+always imports it to force every lazy builtin module to load.
 """
 
 from __future__ import annotations
 
 import os
-import sys
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, fields, replace
 from importlib.util import find_spec as _find_spec
@@ -179,6 +181,9 @@ def setup(
     as the base, and explicit keywords override whichever base was used.
     ``components_root`` also triggers component discovery. With ``app=None``
     only process configuration runs, which is what tests and scripts want.
+
+    Every shipped builtin is registered here, so a caller never has to
+    pre-import ``pyjinhx.builtins`` for a builtin's tag to be discoverable.
     """
     base = settings if settings is not None else PjxSettings.from_env()
     resolved = base.merge(
@@ -232,20 +237,20 @@ def _load_backend() -> IntegrationBackend:
 
 
 def _force_load_builtins() -> None:
-    """Eagerly import every shipped builtin, if the package has been imported.
+    """Eagerly import every shipped builtin so discovery can register them.
 
     ``pyjinhx.builtins`` exposes its classes lazily (#701) to keep import-time
     cost down: a bare ``import pyjinhx.builtins`` defines no component classes
     at all, it only makes each one importable on first attribute access.
     Discovery can only claim a tag for a class that already exists, so without
     this step a builtin would stay unregistered until something happened to
-    touch that one name. Walking the package's own lazy-import table forces
-    every builtin's module to load, once, without the app having to name each
-    one itself — and does nothing when the app never imported the package.
+    touch that one name. Importing the package and walking its own lazy-import
+    table forces every builtin's module to load, once, without the app having
+    to name each one itself, and regardless of whether the app ever imported
+    ``pyjinhx.builtins``.
     """
-    builtins_module = sys.modules.get("pyjinhx.builtins")
-    if builtins_module is None:
-        return
+    import pyjinhx.builtins as builtins_module
+
     lazy_imports = getattr(builtins_module, "_lazy_imports", None)
     if not lazy_imports:
         return
