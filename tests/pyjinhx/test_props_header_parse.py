@@ -4,6 +4,7 @@ Parsing only — building a model class from the parsed spec belongs to #376,
 so nothing here exercises class generation.
 """
 
+import logging
 from typing import Any
 
 import pytest
@@ -44,9 +45,20 @@ def test_each_supported_annotation_resolves_to_its_type(
     ]
 
 
-def test_unrecognized_annotation_falls_back_to_any():
+def test_unrecognized_annotation_falls_back_to_any(caplog):
     """The vocabulary is deliberately closed: a header cannot import names."""
-    assert parse_props_header("{#def value: SomeModel #}") == [("value", Any, ...)]
+    with caplog.at_level(logging.WARNING, logger="pyjinhx"):
+        fields = parse_props_header("{#def value: SomeModel #}")
+
+    assert fields == [("value", Any, ...)]
+    warnings = [
+        r for r in caplog.records if "is not a recognized type" in r.getMessage()
+    ]
+    assert len(warnings) == 1, [r.getMessage() for r in caplog.records]
+    assert warnings[0].levelno == logging.WARNING
+    message = warnings[0].getMessage()
+    assert "value" in message
+    assert "SomeModel" in message
 
 
 @pytest.mark.parametrize(
