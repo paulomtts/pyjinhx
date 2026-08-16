@@ -49,6 +49,38 @@ def test_unrecognized_annotation_falls_back_to_any():
     assert parse_props_header("{#def value: SomeModel #}") == [("value", Any, ...)]
 
 
+@pytest.mark.parametrize(
+    "annotation, expected_children",
+    [("Slot", False), ("Children", True)],
+)
+def test_slot_names_resolve_to_the_marker_carrying_aliases(
+    annotation: str, expected_children: bool
+):
+    """A header cannot import names, so the two slot aliases have to be part of
+    the parser's own closed vocabulary."""
+    from typing import get_args
+
+    from pyjinhx._component import PjxSlot
+
+    fields = parse_props_header(f"{{#def value: {annotation} #}}")
+    assert fields is not None
+    name, resolved, default = fields[0]
+    assert (name, default) == ("value", ...)
+    marker = next(m for m in get_args(resolved) if isinstance(m, PjxSlot))
+    assert marker.children is expected_children
+
+
+def test_slot_names_resolve_to_the_component_module_aliases_themselves():
+    """Same object as the Python-class API uses, so every consumer that already
+    reads PjxSlot metadata keeps working with no translation layer."""
+    from pyjinhx._component import Children, Slot
+
+    assert parse_props_header("{#def value: Slot #}") == [("value", Slot, ...)]
+    assert parse_props_header("{#def content: Children #}") == [
+        ("content", Children, ...)
+    ]
+
+
 def test_required_props_keep_their_declared_order():
     assert parse_props_header("{#def title: str, count: int, flag: bool #}") == [
         ("title", str, ...),

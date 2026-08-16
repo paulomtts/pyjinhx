@@ -435,7 +435,8 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
     ),
     "markers": frozenset({"pyjinhx._component"}),
     # Generating a class from a {#def #} header needs the open-model base to
-    # subclass; parsing itself stays pure.
+    # subclass; parsing also reaches in now, to resolve the Slot/Children
+    # marker aliases.
     "props_header": frozenset({"pyjinhx._component"}),
     # rendering resolves each ChildRef tag against the published class registry;
     # an unregistered tag is emitted verbatim, so this is a read-only edge.

@@ -113,6 +113,34 @@ def test_parse_and_build_compose_end_to_end():
     assert cls(title="hi").variant == "primary"  # pyright: ignore[reportCallIssue,reportAttributeAccessIssue]
 
 
+@pytest.mark.parametrize(
+    "annotation, prop",
+    [("Slot", "value"), ("Children", "content")],
+    ids=["slot", "children"],
+)
+def test_header_declared_slots_are_detected_as_slots_on_the_built_class(
+    annotation: str, prop: str
+):
+    """Closing the loop: resolution is only useful if the marker survives
+    create_model and the shared slot check sees it."""
+    from pyjinhx._component import _is_slot_field
+
+    fields = parse_props_header(f"{{#def {prop}: {annotation} #}}")
+    assert fields is not None
+    cls = build_component_class(fields, "Card")
+    assert _is_slot_field(cls, prop) is True
+
+
+def test_header_declared_plain_props_are_not_slots():
+    """The detection above must come from the marker, not from being generated."""
+    from pyjinhx._component import _is_slot_field
+
+    fields = parse_props_header("{#def title: str #}")
+    assert fields is not None
+    cls = build_component_class(fields, "Card")
+    assert _is_slot_field(cls, "title") is False
+
+
 def test_descriptor_template_path_is_provisional_until_relocated(tmp_path, monkeypatch):
     """A generated class has no module file of its own, so its first descriptor
     resolves against this package's directory (``_OpenComponent``'s own template
