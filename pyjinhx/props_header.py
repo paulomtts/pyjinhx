@@ -66,6 +66,14 @@ def parse_props_header(source: str) -> list[tuple[str, Any, Any]] | None:
     ``default`` is ``Ellipsis`` (``...``) for a required prop. Raises ``ValueError``
     for a malformed signature, a non-literal default, or a duplicate prop.
     """
+    # Imported here, not at module scope: Slot and Children are defined at the
+    # bottom of _component.py, after _OpenComponent, whose class body reenters
+    # this module — a top-level import would read them before they are bound.
+    from pyjinhx._component import Children, Slot
+
+    _TYPES["Slot"] = Slot
+    _TYPES["Children"] = Children
+
     match = _HEADER_RE.match(source)
     if match is None:
         return None
