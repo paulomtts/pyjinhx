@@ -11,6 +11,12 @@ it only slices and concatenates strings.
 Port of v1 pyjinhx/root_attrs.py's `apply_root_attrs` / `_override_tag`
 behavior, scoped to L0: only pass-through attrs land here. `data-pjx-*` /
 `hx-swap-oob` stamping (L2/L3) reuses this same splice at the same span.
+
+Stamping across a component boundary (the nested-root recursion) refuses to
+overwrite an identity another component already wrote: a tag already carrying
+data-pjx-id/-type/-hash raises RootStampCollisionError instead. Detection is a
+string sniff of the tag text, not a type check, so this module stays import-pure
+and never learns what "reactive" means.
 """
 
 import re
@@ -50,7 +56,32 @@ def _override_tag(tag_text: str, attrs: dict[str, str]) -> str:
     return body
 
 
-def stamp_root_attrs(level: RenderedLevel, attrs: dict[str, str]) -> RenderedLevel:
+# The three attrs a reactive stamp always writes. data-pjx-load is deliberately
+# absent: it is only stamped when the component declares a key field, so its
+# presence says nothing about whether the tag was already stamped.
+_REACTIVE_STAMP_KEYS = ("data-pjx-id", "data-pjx-type", "data-pjx-hash")
+
+
+class RootStampCollisionError(ValueError):
+    """Two components tried to claim the same root tag's reactive identity."""
+
+
+def _reactive_stamps(tag_text: str) -> dict[str, str]:
+    """Read back whichever of the reactive identity attrs the tag already carries."""
+    found: dict[str, str] = {}
+    for name in _REACTIVE_STAMP_KEYS:
+        match = re.search(
+            r"\s" + re.escape(name) + r"\s*=\s*(\"[^\"]*\"|'[^']*'|[^\s/>]*)",
+            tag_text,
+        )
+        if match:
+            found[name] = match.group(1).strip("\"'")
+    return found
+
+
+def stamp_root_attrs(
+    level: RenderedLevel, attrs: dict[str, str], *, nested: bool = False
+) -> RenderedLevel:
     """Splice ``attrs`` into ``level``'s root opening tag at ``level.root_span``.
 
     No-op (identity) when ``attrs`` is empty. Otherwise walks ``segments``
@@ -71,6 +102,14 @@ def stamp_root_attrs(level: RenderedLevel, attrs: dict[str, str]) -> RenderedLev
     in that shape it bounds nothing this module owns and nothing reads it.
     The returned object is still the outer ``level``, so the
     mutate-and-return contract holds at every depth.
+
+    Recursing into a nested level crosses a component boundary, so the splice
+    there is no longer this component's to make unconditionally: if the nested
+    root already carries all of data-pjx-id/-type/-hash and this call would
+    rewrite those same keys, it raises RootStampCollisionError rather than
+    clobbering the inner component's identity. Same-level re-stamping (the
+    ``str`` root branch reached without recursion) still overrides, since
+    there the identity being replaced is the component's own.
     """
     if not attrs:
         return level
@@ -89,14 +128,28 @@ def stamp_root_attrs(level: RenderedLevel, attrs: dict[str, str]) -> RenderedLev
         )
     root = level.segments[index]
     if isinstance(root, RenderedLevel):
-        stamp_root_attrs(root, attrs)
+        stamp_root_attrs(root, attrs, nested=True)
         return level
     assert isinstance(root, str), (
         "stamp_root_attrs needs a str or RenderedLevel root segment, "
         f"got {type(root).__name__}"
     )
     start, end = (offset - skipped for offset in level.root_span)
-    new_tag = _override_tag(root[start:end], attrs)
+    tag_text = root[start:end]
+    if nested:
+        existing = _reactive_stamps(tag_text)
+        if len(existing) == len(_REACTIVE_STAMP_KEYS) and any(
+            name in attrs for name in _REACTIVE_STAMP_KEYS
+        ):
+            raise RootStampCollisionError(
+                "cannot stamp a reactive root tag that another reactive "
+                "component already stamped: this component's whole template is "
+                "a single reactive child tag, so both want the same element. "
+                f"already stamped: {existing}; stamping: "
+                f"{ {k: v for k, v in attrs.items() if k in _REACTIVE_STAMP_KEYS} }. "
+                "Wrap the child in an element of your own."
+            )
+    new_tag = _override_tag(tag_text, attrs)
     level.segments[index] = root[:start] + new_tag + root[end:]
     level.root_span = (start + skipped, start + skipped + len(new_tag))
     return level
