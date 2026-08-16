@@ -34,17 +34,22 @@ _TYPES: dict[str, Any] = {
 }
 
 
-def _resolve_annotation(node: ast.expr | None) -> Any:
+def _resolve_annotation(node: ast.expr | None, field_name: str) -> Any:
     if node is None:
         return Any
     if isinstance(node, ast.Name):
-        return _TYPES.get(node.id, Any)
+        if node.id not in _TYPES:
+            # The only emission point: None and the union wrappers are handled
+            # by the branches below, so nesting never double-reports one prop.
+            logger.warning(_UNRECOGNIZED_ANNOTATION_WARNING, field_name, node.id)
+            return Any
+        return _TYPES[node.id]
     if isinstance(node, ast.Constant) and node.value is None:
         return type(None)
     # T | None  ->  Optional[T]
     if isinstance(node, ast.BinOp) and isinstance(node.op, ast.BitOr):
-        left = _resolve_annotation(node.left)
-        right = _resolve_annotation(node.right)
+        left = _resolve_annotation(node.left, field_name)
+        right = _resolve_annotation(node.right, field_name)
         if right is type(None):
             return left | None
         if left is type(None):
@@ -56,7 +61,7 @@ def _resolve_annotation(node: ast.expr | None) -> Any:
         and isinstance(node.value, ast.Name)
         and node.value.id == "Optional"
     ):
-        return _resolve_annotation(node.slice) | None
+        return _resolve_annotation(node.slice, field_name) | None
     return Any
 
 
@@ -107,7 +112,7 @@ def parse_props_header(source: str) -> list[tuple[str, Any, Any]] | None:
         if name in seen:
             raise ValueError(f"{{#def#}} header has duplicate prop {name!r}")
         seen.add(name)
-        annotation = _resolve_annotation(arg.annotation)
+        annotation = _resolve_annotation(arg.annotation, name)
         if index >= offset:
             default_node = defaults[index - offset]
             try:
@@ -183,6 +188,12 @@ def template_has_props_header(template_path: Path) -> bool:
 _STALE_DEF_HEADER_WARNING = (
     "<%s>: a {#def#} header is present but a Python class is registered — "
     "the header is ignored. Remove the header (or the class)."
+)
+
+_UNRECOGNIZED_ANNOTATION_WARNING = (
+    "<%s>: {#def#} annotation %r is not a recognized type — the prop falls back "
+    "to Any. A header cannot import names; use a builtin type or drop the "
+    "annotation."
 )
 
 

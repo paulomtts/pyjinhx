@@ -4,6 +4,7 @@ Parsing only — building a model class from the parsed spec belongs to #376,
 so nothing here exercises class generation.
 """
 
+import logging
 from typing import Any
 
 import pytest
@@ -44,9 +45,53 @@ def test_each_supported_annotation_resolves_to_its_type(
     ]
 
 
-def test_unrecognized_annotation_falls_back_to_any():
+def test_unrecognized_annotation_falls_back_to_any(caplog):
     """The vocabulary is deliberately closed: a header cannot import names."""
-    assert parse_props_header("{#def value: SomeModel #}") == [("value", Any, ...)]
+    with caplog.at_level(logging.WARNING, logger="pyjinhx"):
+        fields = parse_props_header("{#def value: SomeModel #}")
+
+    assert fields == [("value", Any, ...)]
+    warnings = [
+        r for r in caplog.records if "is not a recognized type" in r.getMessage()
+    ]
+    assert len(warnings) == 1, [r.getMessage() for r in caplog.records]
+    assert warnings[0].levelno == logging.WARNING
+    message = warnings[0].getMessage()
+    assert "value" in message
+    assert "SomeModel" in message
+
+
+@pytest.mark.parametrize(
+    "annotation",
+    ["str", "int", "float", "bool", "list", "dict", "Any", "Slot", "Children"],
+)
+def test_recognized_annotations_do_not_warn(annotation: str, caplog):
+    """A name in the closed vocabulary resolved fine — warning about it would
+    train authors to ignore the warning that matters."""
+    with caplog.at_level(logging.WARNING, logger="pyjinhx"):
+        parse_props_header(f"{{#def value: {annotation} #}}")
+
+    assert [
+        r.getMessage()
+        for r in caplog.records
+        if "is not a recognized type" in r.getMessage()
+    ] == []
+
+
+@pytest.mark.parametrize(
+    "annotation", ["SomeModel | None", "None | SomeModel", "Optional[SomeModel]"]
+)
+def test_unrecognized_inside_optional_warns_exactly_once(annotation: str, caplog):
+    """The Name branch is the sole emission point, so wrapping an unresolved
+    name in a union reports it once, not once per recursive descent."""
+    with caplog.at_level(logging.WARNING, logger="pyjinhx"):
+        parse_props_header(f"{{#def value: {annotation} #}}")
+
+    warnings = [
+        r for r in caplog.records if "is not a recognized type" in r.getMessage()
+    ]
+    assert len(warnings) == 1, [r.getMessage() for r in warnings]
+    assert "SomeModel" in warnings[0].getMessage()
 
 
 @pytest.mark.parametrize(
