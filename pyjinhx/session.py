@@ -48,6 +48,12 @@ _freshness_cache: ContextVar[dict[str, bool] | None] = ContextVar(
     "pjx_freshness_cache", default=None
 )
 
+# Not a ContextVar and deliberately so: this mirrors dev._dev_config, which is
+# process-wide configuration rather than per-request state, so it stays out of
+# invariant 4's per-request mutable-state census. dev owns the policy; session
+# holds the bit because registry sits below dev and may not import it.
+_dev_strict = False
+
 
 class NoActiveRequestScope(RuntimeError):
     """Raised when per-request state is touched outside an active request_scope()."""
@@ -297,6 +303,21 @@ def get_instances() -> dict[str, object]:
     if registry is None:
         return {}
     return registry
+
+
+def get_dev_strict() -> bool:
+    """Return whether reactive-dev strict mode is on, process-wide."""
+    return _dev_strict
+
+
+def set_dev_strict(strict: bool) -> None:
+    """Record whether reactive-dev strict mode is on.
+
+    Args:
+        strict: True while dev.enable_reactive_dev(strict=True) is in effect.
+    """
+    global _dev_strict
+    _dev_strict = strict
 
 
 def get_dirtied() -> set[str]:
