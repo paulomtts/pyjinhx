@@ -17,7 +17,7 @@ from pyjinhx.descriptor import ClassDescriptor
 from pyjinhx.reactive.component import ReactiveComponent
 from pyjinhx.reactive.root_attrs import stamp_reactive_root_attrs
 from pyjinhx.rendering import render_level
-from pyjinhx.root_attrs import serialize_attr, stamp_root_attrs
+from pyjinhx.root_attrs import RootStampCollisionError, serialize_attr, stamp_root_attrs
 from pyjinhx.segments import ChildRef, RenderedLevel, VerbatimParser, serialize
 from pyjinhx.session import RenderSession
 
@@ -124,12 +124,29 @@ PrologueRootWidget.__pjx_descriptor__ = _descriptor_for(
 )
 
 
+class InnerReactiveRoot(ReactiveComponent):
+    pass
+
+
+class OuterReactiveRoot(ReactiveComponent):
+    pass
+
+
+InnerReactiveRoot.__pjx_descriptor__ = _descriptor_for(
+    InnerReactiveRoot, "reactive_inner_root.html"
+)
+OuterReactiveRoot.__pjx_descriptor__ = _descriptor_for(
+    OuterReactiveRoot, "reactive_nested_reactive_root.html"
+)
+
+
 @pytest.fixture
 def registered_children():
     """Publish the nested-root fixture tags, then restore the prior mapping."""
     previous = discovery._registry.mapping
     discovery.register_class("inner_badge", InnerBadge)
     discovery.register_class("middle_wrap", MiddleWrap)
+    discovery.register_class("inner_reactive_root", InnerReactiveRoot)
     yield
     discovery._registry.mapping = previous
 
@@ -452,3 +469,30 @@ def test_multiple_whitespace_prologue_segments_before_root():
     html = serialize(stamp_root_attrs(level, {"data-y": "2"}))
 
     assert html == '\n   <div id="d" data-y="2">x</div>'
+
+
+def test_reactive_in_reactive_bare_root_raises_collision(
+    session: RenderSession, registered_children: None
+):
+    """#978: a reactive component whose whole template is one reactive child
+    tag would silently clobber the child's identity — both want the same
+    element, so the stamp refuses instead."""
+    component = OuterReactiveRoot(id="outer1")
+
+    with pytest.raises(RootStampCollisionError):
+        render_level(component, session)
+
+
+def test_reactive_in_reactive_collision_message_names_both_components(
+    session: RenderSession, registered_children: None
+):
+    """The message has to name both sides: the id the outer wanted to write and
+    the type the inner already wrote are what identify the colliding pair."""
+    component = OuterReactiveRoot(id="outer1")
+
+    with pytest.raises(RootStampCollisionError) as exc_info:
+        render_level(component, session)
+
+    message = str(exc_info.value)
+    assert "outer1" in message
+    assert "inner_reactive_root" in message
