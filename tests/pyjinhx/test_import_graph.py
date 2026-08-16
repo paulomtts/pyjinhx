@@ -888,6 +888,18 @@ def test_config_names_the_cache_backend_type_without_importing_it():
     )
 
 
+def test_props_header_only_imports_component_inside_a_function_body():
+    """parse_props_header() resolves the Slot and Children aliases out of
+    _component.py, but both names are bound at the bottom of that module, after
+    _OpenComponent — whose __pydantic_init_subclass__ reenters this module. A
+    module-scope import would therefore read them before they exist, deadlocking
+    class definition. The whole-file edge table above already permits the
+    props_header -> pyjinhx._component edge and cannot see where in the file the
+    import lives, so pin the scope here."""
+    module_level = module_level_internal_imports(PACKAGE_ROOT / "props_header.py")
+    assert "pyjinhx._component" not in module_level
+
+
 def test_no_render_spine_module_declares_a_reactive_import():
     """FORBIDDEN per architecture-overview.md: anything in the render spine
     importing reactive/. pyjinhx/reactive/ doesn't exist yet (#288), so this
