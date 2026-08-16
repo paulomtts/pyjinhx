@@ -5,8 +5,33 @@
     let activeTip = null;
     let hideTimer = null;
 
+    function clamp(value, min, max) {
+        return Math.max(min, Math.min(value, max));
+    }
+
+    /** Bounds the tip must stay inside: the trigger's nearest clipping ancestor. */
+    function boundsFor(trigger) {
+        let node = trigger.parentElement;
+        while (node && node !== document.documentElement) {
+            const cs = getComputedStyle(node);
+            if (cs.overflowX !== 'visible' || cs.overflowY !== 'visible') {
+                return node.getBoundingClientRect();
+            }
+            node = node.parentElement;
+        }
+        // Nothing clips the trigger, so the viewport is the bound. We synthesize
+        // the rect instead of measuring documentElement: its rect tracks content
+        // height, which on a long page is far taller than the visible box.
+        return {
+            left: 0,
+            top: 0,
+            right: window.innerWidth,
+            bottom: window.innerHeight,
+        };
+    }
+
     function place(tip, root) {
-        const placement = root.dataset.pjxTooltipPlacement || 'top';
+        let placement = root.dataset.pjxTooltipPlacement || 'top';
         const gapRaw = getComputedStyle(document.documentElement)
             .getPropertyValue('--pjx-tooltip-gap')
             .trim();
@@ -16,10 +41,24 @@
         const tr = trigger.getBoundingClientRect();
         const tw = tip.offsetWidth;
         const th = tip.offsetHeight;
-        const vw = window.innerWidth;
-        const vh = window.innerHeight;
+        const b = boundsFor(trigger);
         let top;
         let left;
+
+        // Flip to the opposite side of the same axis when the requested side
+        // overflows the bounds and the opposite one actually fits. The checks
+        // use the raw bound edges, not the padded ones below: the padding is a
+        // last-resort clamp distance, and treating it as the flip threshold
+        // would flip placements that are still fully inside the container.
+        if (placement === 'top' && tr.top - th - gap < b.top) {
+            if (tr.bottom + gap + th <= b.bottom) placement = 'bottom';
+        } else if (placement === 'bottom' && tr.bottom + gap + th > b.bottom) {
+            if (tr.top - th - gap >= b.top) placement = 'top';
+        } else if (placement === 'start' && tr.left - tw - gap < b.left) {
+            if (tr.right + gap + tw <= b.right) placement = 'end';
+        } else if (placement === 'end' && tr.right + gap + tw > b.right) {
+            if (tr.left - tw - gap >= b.left) placement = 'start';
+        }
 
         if (placement === 'bottom') {
             top = tr.bottom + gap;
@@ -35,8 +74,8 @@
             left = tr.left + tr.width / 2 - tw / 2;
         }
 
-        left = Math.max(8, Math.min(left, vw - tw - 8));
-        top = Math.max(8, Math.min(top, vh - th - 8));
+        left = clamp(left, b.left + 8, b.right - tw - 8);
+        top = clamp(top, b.top + 8, b.bottom - th - 8);
         tip.style.left = left + 'px';
         tip.style.top = top + 'px';
     }
