@@ -328,5 +328,7 @@ def test_two_literal_id_instances_in_one_request_raise_under_strict_dev(strict_d
 
     with request_scope(session=session):
         render_level(LiteralIdWidget(), session)
-        with pytest.raises(InstanceKeyCollisionError, match="LiteralIdWidget_shared-literal"):
+        with pytest.raises(
+            InstanceKeyCollisionError, match="LiteralIdWidget_shared-literal"
+        ):
             render_level(LiteralIdWidget(), session)
