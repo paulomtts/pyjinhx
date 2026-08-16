@@ -62,6 +62,39 @@ def test_unrecognized_annotation_falls_back_to_any(caplog):
 
 
 @pytest.mark.parametrize(
+    "annotation",
+    ["str", "int", "float", "bool", "list", "dict", "Any", "Slot", "Children"],
+)
+def test_recognized_annotations_do_not_warn(annotation: str, caplog):
+    """A name in the closed vocabulary resolved fine — warning about it would
+    train authors to ignore the warning that matters."""
+    with caplog.at_level(logging.WARNING, logger="pyjinhx"):
+        parse_props_header(f"{{#def value: {annotation} #}}")
+
+    assert [
+        r.getMessage()
+        for r in caplog.records
+        if "is not a recognized type" in r.getMessage()
+    ] == []
+
+
+@pytest.mark.parametrize(
+    "annotation", ["SomeModel | None", "None | SomeModel", "Optional[SomeModel]"]
+)
+def test_unrecognized_inside_optional_warns_exactly_once(annotation: str, caplog):
+    """The Name branch is the sole emission point, so wrapping an unresolved
+    name in a union reports it once, not once per recursive descent."""
+    with caplog.at_level(logging.WARNING, logger="pyjinhx"):
+        parse_props_header(f"{{#def value: {annotation} #}}")
+
+    warnings = [
+        r for r in caplog.records if "is not a recognized type" in r.getMessage()
+    ]
+    assert len(warnings) == 1, [r.getMessage() for r in warnings]
+    assert "SomeModel" in warnings[0].getMessage()
+
+
+@pytest.mark.parametrize(
     "annotation, expected_children",
     [("Slot", False), ("Children", True)],
 )
