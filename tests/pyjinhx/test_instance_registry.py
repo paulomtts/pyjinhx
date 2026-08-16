@@ -296,13 +296,16 @@ def strict_dev():
     dev.disable_reactive_dev()
 
 
-def test_duplicate_key_raises_under_strict_dev_mode(strict_dev):
+def test_duplicate_key_raises_under_strict_dev_mode(strict_dev, caplog):
     first = Widget("first")
-    with request_scope():
+    with request_scope(), caplog.at_level(logging.WARNING, logger="pyjinhx"):
         register_instance("Widget", "w1", first)
         with pytest.raises(InstanceKeyCollisionError, match="Widget_w1"):
             register_instance("Widget", "w1", Widget("second"))
-        # The failed write left the first entry intact rather than half-applied.
+        # The raise replaces the warning (mirrors dev._report()'s raise-instead-
+        # of-log branch), and the failed write left the first entry intact
+        # rather than half-applied.
+        assert caplog.records == []
         assert resolve("Widget", "w1") is first
 
 
