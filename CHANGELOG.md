@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.6.5 — Tooltip clipping, classless Slot props, id collisions, reactive stamping, and lazy builtins (2026-08-16)
 
 ### Fixed
 - `PJXTooltip` positioned its tip against the browser viewport, so a trigger near the edge of
@@ -10,6 +10,25 @@
   `start`↔`end` when the requested side overflows that container and the opposite side fits,
   and clamps within the container's padded bounds otherwise. Unclipped triggers keep the
   previous viewport-relative behavior (#980).
+- Classless `{#def#}` components had no way to declare a `Slot`-typed prop — the header
+  parser recognized only a closed set of primitive type names, so `Slot`/`Children` silently
+  resolved to `Any` and a component instance passed into that prop rendered as its pydantic
+  dict repr instead of markup. `Slot`/`Children` now resolve correctly, and an unrecognized
+  header type name logs a warning instead of failing silently (#973).
+- A subclass could redeclare `BaseComponent.id` with a literal default (defeating the base
+  field's per-instance `default_factory`), so every instance shared one id and a same-request
+  collision silently overwrote the registry entry. `register_instance` now raises
+  `InstanceKeyCollisionError` on such a collision when reactive-dev strict mode is on;
+  non-strict/production behavior (warn and overwrite) is unchanged (#972).
+- A `ReactiveComponent` whose entire root was another `ReactiveComponent` had its inner
+  component's `data-pjx-id`/`-type`/`-hash` silently overwritten by the outer component's own
+  stamp, making the inner component unaddressable to the client runtime. Stamping across a
+  component boundary now raises `RootStampCollisionError` instead of clobbering an existing
+  reactive identity (#978).
+- `setup()` only force-loaded the shipped builtins (`PJXButton`, `PJXModal`, etc.) if
+  `pyjinhx.builtins` had already been imported elsewhere; otherwise builtin tags rendered as
+  inert literal text with no error. `setup()` now always registers every shipped builtin,
+  regardless of whether the app imported `pyjinhx.builtins` itself (#923).
 
 ## 1.6.4 — window.pjx collision fixes and reactive asset swap-in gaps (2026-08-09)
 
