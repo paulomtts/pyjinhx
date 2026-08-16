@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.6.5 — Tooltip clipping, classless Slot props, id collisions, reactive stamping, and lazy builtins (2026-08-16)
+## 1.6.6 — Tooltip clipping, classless Slot props, id collisions, reactive stamping, and lazy builtins (2026-08-16)
 
 ### Fixed
 - `PJXTooltip` positioned its tip against the browser viewport, so a trigger near the edge of
