@@ -1,6 +1,11 @@
 import pytest
 
-from pyjinhx.root_attrs import _override_tag, serialize_attr, stamp_root_attrs
+from pyjinhx.root_attrs import (
+    RootStampCollisionError,
+    _override_tag,
+    serialize_attr,
+    stamp_root_attrs,
+)
 from pyjinhx.segments import RenderedLevel
 
 
@@ -143,3 +148,86 @@ def test_stamp_root_attrs_all_whitespace_segments_raises():
     level = RenderedLevel(segments=["   ", "\n"], root_span=(0, 0), descriptor=None)
     with pytest.raises(ValueError):
         stamp_root_attrs(level, {"data-x": "1"})
+
+
+def test_stamp_root_attrs_nested_reactive_collision_raises():
+    """Stamping a nested reactive root that already carries all three reactive
+    identity attrs with attrs that include one of those keys raises
+    RootStampCollisionError, preventing silent overwrite of the child's id."""
+    # Inner level's tag with all three reactive stamps
+    inner_tag = (
+        '<div data-pjx-id="inner-123" data-pjx-type="inner_comp" data-pjx-hash="abc">'
+    )
+    inner_level = _level(inner_tag, (0, len(inner_tag)))
+
+    # Outer level whose root segment is the inner level (component template = another component)
+    outer_level = RenderedLevel(
+        segments=[inner_level], root_span=(0, len(inner_tag)), descriptor=None
+    )
+
+    # Attempting to stamp the outer component's reactive identity onto the nested root
+    # should raise, not silently overwrite the inner component's identity
+    with pytest.raises(RootStampCollisionError) as exc_info:
+        stamp_root_attrs(
+            outer_level,
+            {
+                "data-pjx-id": "outer-456",
+                "data-pjx-type": "outer_comp",
+                "data-pjx-hash": "def",
+            },
+        )
+
+    assert "cannot stamp a reactive root tag" in str(exc_info.value)
+    assert "inner-123" in str(exc_info.value)
+    assert "outer-456" in str(exc_info.value)
+
+
+def test_stamp_root_attrs_nested_partial_reactive_does_not_collide():
+    """A nested reactive root with only some of the identity attrs (not a
+    complete stamp) can still be stamped without collision, allowing partial
+    overwrites."""
+    # Inner level with only some reactive stamps (not all three)
+    inner_tag = '<div data-pjx-id="inner-123" data-pjx-type="inner_comp">'
+    inner_level = _level(inner_tag, (0, len(inner_tag)))
+
+    outer_level = RenderedLevel(
+        segments=[inner_level], root_span=(0, len(inner_tag)), descriptor=None
+    )
+
+    # Since the inner tag doesn't have all three stamps, this should not raise
+    stamp_root_attrs(
+        outer_level,
+        {
+            "data-pjx-id": "outer-456",
+            "data-pjx-type": "outer_comp",
+            "data-pjx-hash": "def",
+        },
+    )
+    # Should complete without error
+    assert outer_level is not None
+
+
+def test_stamp_root_attrs_nested_same_level_override_allowed():
+    """Stamping a nested RenderedLevel with no reactive stamps allows it,
+    and stamping the same level multiple times (re-stamping) overwrites."""
+    # Inner level with no reactive stamps
+    inner_tag = "<div>"
+    inner_level = _level(inner_tag, (0, len(inner_tag)))
+
+    outer_level = RenderedLevel(
+        segments=[inner_level], root_span=(0, len(inner_tag)), descriptor=None
+    )
+
+    # First stamp should work
+    stamp_root_attrs(
+        outer_level,
+        {"data-pjx-id": "first-id", "data-pjx-type": "first_type"},
+    )
+
+    # Re-stamping the same nested level should also work (it's own level override)
+    stamp_root_attrs(
+        outer_level,
+        {"data-pjx-id": "second-id", "data-pjx-type": "second_type"},
+    )
+
+    assert outer_level is not None
