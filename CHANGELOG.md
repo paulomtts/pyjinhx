@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+### Added
+- `PJXTooltip(backdrop=True)` renders a full-viewport dimming overlay
+  (`.pjx-tooltip__backdrop`) that opens and closes on the tip's own show/hide lifecycle —
+  same hover/focus handlers, same 80ms hide debounce, same fade. It sits below the tip at
+  `--pjx-tooltip-backdrop-z` (390) and lifts `.pjx-tooltip__trigger` above itself while open,
+  so the anchored hover card stays lit while the rest of the page dims. The overlay is
+  `pointer-events: none`, so it never swallows the hover that keeps the tip open. Tooltips
+  are unchanged unless they opt in (#1002).
+
 ## 1.6.6 — Tooltip clipping, classless Slot props, id collisions, reactive stamping, and lazy builtins (2026-08-16)
 
 ### Fixed

@@ -9,10 +9,41 @@
   --pjx-tooltip-fg:          var(--text);
   --pjx-tooltip-font-size:   var(--font-size-xs);
   --pjx-tooltip-z:           400;
+  --pjx-tooltip-backdrop:    rgb(0 0 0 / 0.45);
+  --pjx-tooltip-backdrop-z:  390;
 }
 
 .pjx-tooltip {
   position: relative;
   display: inline-flex;
   align-items: center;
+}
+
+.pjx-tooltip__backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: var(--pjx-tooltip-backdrop-z);
+  background: var(--pjx-tooltip-backdrop);
+  pointer-events: none;
+  visibility: hidden;
+  opacity: 0;
+  transition: opacity 0.12s ease, visibility 0.12s;
+}
+
+.pjx-tooltip__backdrop.pjx-tooltip__backdrop--visible {
+  visibility: visible;
+  opacity: 1;
+}
+
+/* The tip fades rather than unmounts, so the attribute must not collapse the
+   box the transition runs on — same trick .pjx-tooltip__tip[hidden] uses. */
+.pjx-tooltip__backdrop[hidden] {
+  display: block;
+}
+
+/* Without a lift the fixed backdrop would dim the trigger it is drawing
+   attention to; the tip already sits higher at --pjx-tooltip-z. */
+.pjx-tooltip:has(.pjx-tooltip__backdrop--visible) .pjx-tooltip__trigger {
+  position: relative;
+  z-index: calc(var(--pjx-tooltip-backdrop-z) + 1);
 }
