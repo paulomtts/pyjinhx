@@ -31,8 +31,11 @@
   background: transparent;
   z-index: var(--pjx-drawer-z);
   /* Clip the box while it slides in from off-screen so the page never gets a
-     transient scrollbar during the open/close animation. */
-  overflow: hidden;
+     transient scrollbar during the open/close animation. Must be `clip`, not
+     `hidden`: `hidden` makes this a scroll container, and showModal()'s focus
+     of the first control inside the still-off-screen box scrolls it back into
+     view — pinning scrollLeft to max and cancelling the slide entirely. */
+  overflow: clip;
   animation: pjx-drawer-root-in 200ms ease forwards;
 }
 
@@ -146,6 +149,8 @@
   to { transform: translateY(100%); }
 }
 
+/* Percentages here resolve against the box's own border box, so the offset
+   stays exact even though `width` is the content-box width token. */
 .pjx-drawer--left .pjx-drawer__box {
   --pjx-drawer-slide-from: -100%;
 }
