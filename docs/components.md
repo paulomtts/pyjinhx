@@ -1621,6 +1621,7 @@ Composable tooltip shell. Compose with `PJXTooltipTrigger` and `PJXTooltipConten
     | Field | Type | Default | Description |
     | --- | --- | --- | --- |
     | `placement` | literal | `"top"` | `top`, `bottom`, `start`, `end` → `data-pjx-tooltip-placement`. |
+    | `backdrop` | `bool` | `False` | Dim the rest of the page while the tip is open (attention-grabbing hover cards). |
     | `content` | `str \| BaseComponent` | `""` | Children: compose `PJXTooltipTrigger` + `PJXTooltipContent` here. |
 
 ??? note "Style tokens"
@@ -1637,12 +1638,16 @@ Composable tooltip shell. Compose with `PJXTooltipTrigger` and `PJXTooltipConten
     | `--pjx-tooltip-fg` | `var(--text)` |
     | `--pjx-tooltip-font-size` | `var(--font-size-xs)` |
     | `--pjx-tooltip-z` | `400` |
+    | `--pjx-tooltip-backdrop` | `rgb(0 0 0 / 0.45)` |
+    | `--pjx-tooltip-backdrop-z` | `390` |
 
 ??? note "DOM & classes"
 
     Root `.pjx-tooltip` `<span>`. `data-pjx-tooltip-placement` drives JS positioning. Tip shows on `mouseover` anywhere inside `.pjx-tooltip` root, or on `focusin` of `.pjx-tooltip__trigger`; hides on `mouseout`/`focusout`; repositions on `scroll`. The JS sets `aria-describedby` at runtime when the tip is shown. No JS API (`pjx._tooltipWired` guard only).
 
-    **Classes:** `pjx-tooltip`.
+    With `backdrop=True` the root also renders a `.pjx-tooltip__backdrop` `<span>` (`data-pjx-tooltip-backdrop`, `hidden`) that the same show/hide lifecycle fades in and out via `.pjx-tooltip__backdrop--visible`. It is `position: fixed` and `pointer-events: none`, sits below the tip at `--pjx-tooltip-backdrop-z`, and lifts `.pjx-tooltip__trigger` above itself while open.
+
+    **Classes:** `pjx-tooltip`, `pjx-tooltip__backdrop`, `pjx-tooltip__backdrop--visible`.
 
 ??? note "Python"
 

@@ -3,7 +3,13 @@
     if (pjx._tooltipWired) return;
     pjx._tooltipWired = true;
     let activeTip = null;
+    let activeBackdrop = null;
     let hideTimer = null;
+
+    function hideBackdrop(backdrop) {
+        backdrop.classList.remove('pjx-tooltip__backdrop--visible');
+        backdrop.setAttribute('hidden', '');
+    }
 
     function clamp(value, min, max) {
         return Math.max(min, Math.min(value, max));
@@ -83,27 +89,35 @@
     function show(root) {
         const tip = root.querySelector('.pjx-tooltip__tip');
         if (!tip) return;
+        const backdrop = root.querySelector('.pjx-tooltip__backdrop');
         clearTimeout(hideTimer);
         if (activeTip && activeTip !== tip) {
             activeTip.classList.remove('pjx-tooltip__tip--visible');
             activeTip.setAttribute('hidden', '');
         }
+        if (activeBackdrop && activeBackdrop !== backdrop) hideBackdrop(activeBackdrop);
         activeTip = tip;
+        activeBackdrop = backdrop;
         tip.removeAttribute('hidden');
+        if (backdrop) backdrop.removeAttribute('hidden');
         const trig = root.querySelector('.pjx-tooltip__trigger'); if (trig && tip.id) trig.setAttribute('aria-describedby', tip.id);
         requestAnimationFrame(() => {
             place(tip, root);
             tip.classList.add('pjx-tooltip__tip--visible');
+            if (backdrop) backdrop.classList.add('pjx-tooltip__backdrop--visible');
         });
     }
 
     function hide(root) {
         const tip = root.querySelector('.pjx-tooltip__tip');
         if (!tip) return;
+        const backdrop = root.querySelector('.pjx-tooltip__backdrop');
         hideTimer = setTimeout(() => {
             tip.classList.remove('pjx-tooltip__tip--visible');
             tip.setAttribute('hidden', '');
+            if (backdrop) hideBackdrop(backdrop);
             if (activeTip === tip) activeTip = null;
+            if (activeBackdrop === backdrop) activeBackdrop = null;
         }, 80);
     }
 

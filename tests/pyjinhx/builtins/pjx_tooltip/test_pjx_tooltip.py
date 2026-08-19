@@ -51,6 +51,46 @@ def test_empty_content_renders_an_empty_root(tooltip_session):
     assert _html(tooltip_session).endswith("></span>")
 
 
+def test_backdrop_is_off_by_default(tooltip_session):
+    assert "pjx-tooltip__backdrop" not in _html(tooltip_session, content="hello")
+
+
+def test_backdrop_renders_a_hidden_overlay_before_the_content(tooltip_session):
+    html = _html(tooltip_session, backdrop=True, content="hello")
+    assert html == (
+        '<span id="tt" class="pjx-tooltip" data-pjx-tooltip-placement="top">'
+        '<span class="pjx-tooltip__backdrop" data-pjx-tooltip-backdrop hidden></span>'
+        "hello</span>"
+    )
+
+
+def test_backdrop_overlay_joins_the_composed_trigger_and_tip(tooltip_session):
+    """The backdrop is a sibling of the trigger and tip, so one root drives all three."""
+    html = render(
+        PJXTooltip(
+            id="tt",
+            backdrop=True,
+            content=[
+                PJXTooltipTrigger(id="tr", content="Hover me"),
+                PJXTooltipContent(id="tc", content="Tip text"),
+            ],
+        ),
+        tooltip_session,
+    )
+    assert html == (
+        '<span id="tt" class="pjx-tooltip" data-pjx-tooltip-placement="top">'
+        '<span class="pjx-tooltip__backdrop" data-pjx-tooltip-backdrop hidden></span>'
+        '<span id="tr" class="pjx-tooltip__trigger" tabindex="0">Hover me</span>'
+        '<span id="tc" class="pjx-tooltip__tip" role="tooltip" hidden>Tip text</span>'
+        "</span>"
+    )
+
+
+def test_backdrop_rejects_a_non_boolean():
+    with pytest.raises(ValidationError):
+        PJXTooltip(id="tt", backdrop="yes please")  # type: ignore[arg-type]
+
+
 def test_invalid_placement_is_rejected():
     with pytest.raises(ValidationError):
         PJXTooltip(id="tt", placement="middle")  # type: ignore[arg-type]
