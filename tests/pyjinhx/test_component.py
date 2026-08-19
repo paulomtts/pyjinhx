@@ -1,5 +1,6 @@
 import ast
 import inspect
+import logging
 from typing import ClassVar
 
 import pytest
@@ -467,6 +468,93 @@ class TestReservedNameCollisions:
         assert FixedId(id="custom").id == "custom"
         # the inherited _validate_id lineage still applies
         assert FixedId(id="").id.startswith("pjx-")
+
+
+class TestLiteralIdDefaultWarning:
+    """A literal ``id`` default is shared by every instance of the class, which
+    is the one thing the base field's factory exists to prevent."""
+
+    @staticmethod
+    def _id_warnings(caplog) -> list[str]:
+        return [
+            record.getMessage()
+            for record in caplog.records
+            if "shared by every instance" in record.getMessage()
+        ]
+
+    def test_literal_id_default_warns_at_class_definition(self, caplog):
+        with caplog.at_level(logging.WARNING, logger="pyjinhx"):
+
+            class LiteralId(BaseComponent):
+                id: str = "section-card"
+
+        messages = self._id_warnings(caplog)
+        assert len(messages) == 1
+        assert "LiteralId" in messages[0]
+        assert "section-card" in messages[0]
+
+    def test_literal_id_default_via_field_warns(self, caplog):
+        with caplog.at_level(logging.WARNING, logger="pyjinhx"):
+
+            class FieldLiteralId(BaseComponent):
+                id: str = Field(default="fixed", description="a fixed id")
+
+        assert len(self._id_warnings(caplog)) == 1
+
+    def test_inherited_literal_id_default_warns_for_the_grandchild_too(self, caplog):
+        class Parent(BaseComponent):
+            id: str = "shared"
+
+        caplog.clear()
+        with caplog.at_level(logging.WARNING, logger="pyjinhx"):
+
+            class Child(Parent):
+                pass
+
+        messages = self._id_warnings(caplog)
+        assert len(messages) == 1
+        assert "Child" in messages[0]
+
+    def test_untouched_id_does_not_warn(self, caplog):
+        with caplog.at_level(logging.WARNING, logger="pyjinhx"):
+
+            class Untouched(BaseComponent):
+                name: str = ""
+
+        assert self._id_warnings(caplog) == []
+
+    def test_custom_factory_does_not_warn(self, caplog):
+        with caplog.at_level(logging.WARNING, logger="pyjinhx"):
+
+            class CustomFactory(BaseComponent):
+                id: str = Field(default_factory=lambda: "x")
+
+        assert self._id_warnings(caplog) == []
+
+    def test_required_id_does_not_warn(self, caplog):
+        with caplog.at_level(logging.WARNING, logger="pyjinhx"):
+
+            class RequiredId(BaseComponent):
+                auto_id = False
+                id: str  # pyright: ignore[reportGeneralTypeIssues]
+
+        assert self._id_warnings(caplog) == []
+
+    def test_auto_id_opt_out_does_not_warn(self, caplog):
+        # auto_id = False already requires an explicit id, loudly, at
+        # construction; the literal default is dead weight, not a silent trap.
+        with caplog.at_level(logging.WARNING, logger="pyjinhx"):
+
+            class OptedOut(BaseComponent):
+                auto_id = False
+                id: str = "fixed"
+
+        assert self._id_warnings(caplog) == []
+
+    def test_base_component_itself_does_not_warn(self, caplog):
+        with caplog.at_level(logging.WARNING, logger="pyjinhx"):
+            assert BaseComponent.model_fields["id"].default_factory is not None
+        assert self._id_warnings(caplog) == []
 
 
 FORBIDDEN_IMPORTS = ("pyjinhx.reactive",)

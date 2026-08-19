@@ -12,6 +12,7 @@ import graph is enforced statically by tests/pyjinhx/test_import_graph.py.
 
 import itertools
 import json
+import logging
 import re
 import sys
 import types
@@ -28,6 +29,7 @@ from pydantic import (
     field_validator,
     model_validator,
 )
+from pydantic.fields import FieldInfo
 
 from pyjinhx.descriptor import ClassDescriptor
 
@@ -36,12 +38,46 @@ if TYPE_CHECKING:
     # with rendering.py.
     from pyjinhx.session import RenderSession
 
+logger = logging.getLogger("pyjinhx")
+
 _auto_id_counter = itertools.count(1)
 
 
 def _auto_id() -> str:
     """Generate a process-unique component id (``pjx-<n>``)."""
     return f"pjx-{next(_auto_id_counter)}"
+
+
+def _warn_on_literal_id_default(
+    cls: "type[BaseComponent]", id_field: FieldInfo
+) -> None:
+    """Complain when ``cls`` gives ``id`` one fixed value instead of a factory.
+
+    The base field's ``default_factory`` is the whole reason two components of
+    the same class never share an id. A literal default replaces it with one
+    value every instance of the class carries, so a template that renders the
+    class twice registers both under the same key and the first instance is
+    quietly dropped from the request's instance registry. Nothing else in the
+    render path notices — the markup still comes out right and only a later
+    resolve()-by-id returns the wrong instance — so the class definition is the
+    last honest place to say something.
+
+    Silent for ``auto_id = False`` classes: those already refuse to construct
+    without an explicit id, so the declared default never reaches an instance
+    and the opt-out is deliberate and loud on its own.
+    """
+    if not cls.auto_id:
+        return
+    if id_field.default_factory is not None or id_field.is_required():
+        return
+    logger.warning(
+        "%s declares id = %r, a single literal shared by every instance instead "
+        "of the per-instance auto-id. Two of these rendered in one request "
+        "collide in the instance registry and the first one is lost. Use "
+        "Field(default_factory=...) or require callers to pass a distinct id.",
+        cls.__name__,
+        id_field.default,
+    )
 
 
 _ATTR_NAME_RE = re.compile(r"[A-Za-z@:][A-Za-z0-9_.:@-]*")
@@ -628,6 +664,7 @@ class BaseComponent(BaseModel):
                 f"{id_field.annotation}; id must remain typed str so "
                 f"_validate_id and _require_explicit_id keep their meaning."
             )
+        _warn_on_literal_id_default(cls, id_field)
         rebuild_class_descriptor(cls)
 
     @model_validator(mode="before")
