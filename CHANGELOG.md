@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.7.0 — Tooltip backdrop, drawer slide-in, and a literal-id-default warning (2026-08-19)
 
 ### Added
 - `PJXTooltip(backdrop=True)` renders a full-viewport dimming overlay
@@ -10,6 +10,18 @@
   so the anchored hover card stays lit while the rest of the page dims. The overlay is
   `pointer-events: none`, so it never swallows the hover that keeps the tip open. Tooltips
   are unchanged unless they opt in (#1002).
+
+### Fixed
+- `PJXDrawer`'s `side="right"`/`"bottom"` open animation didn't visibly slide: the dialog's
+  `overflow: hidden` made it a scroll container, and `showModal()`'s focus-scroll-into-view
+  pinned `scrollLeft`/`scrollTop` to their max every frame, exactly cancelling the slide
+  transform. `side="left"` was unaffected, since `scrollLeft` can't go negative in LTR.
+  Switched to `overflow: clip`, which clips identically without creating a scroll container
+  (#1003).
+- A subclass that redeclared `BaseComponent.id` with a literal default (rather than the base
+  field's `default_factory`) now logs a warning at class-definition time, so the footgun that
+  causes same-request id collisions (registry-collision handling already added in 1.6.6) is
+  caught at the source instead of only downstream (#972).
 
 ## 1.6.6 — Tooltip clipping, classless Slot props, id collisions, reactive stamping, and lazy builtins (2026-08-16)
 
