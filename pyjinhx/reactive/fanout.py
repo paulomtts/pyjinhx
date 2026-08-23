@@ -333,7 +333,9 @@ def _nested_root(
     return _NestedRoot(
         level=level,
         component_class=reactive,
-        react_keys=None if session is None else session.nested_react_keys.get(instance_id),
+        react_keys=None
+        if session is None
+        else session.nested_react_keys.get(instance_id),
         load_key=_tag_attr(tag_text, RE_ROOT_PJX_LOAD),
     )
 
