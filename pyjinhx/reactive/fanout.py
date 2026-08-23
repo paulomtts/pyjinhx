@@ -96,24 +96,31 @@ def _load_key(cls: type[ReactiveComponent], load: object) -> str | None:
     return coerce_load_key_str(load)
 
 
-def _matches_dirtied(
-    cls: type[ReactiveComponent], load_key: str | None, dirtied_keys: set[str]
+def _keys_match_dirtied(
+    react_keys: tuple[str, ...], load_key: str | None, dirtied_keys: set[str]
 ) -> bool:
-    """Whether any dirtied key names this class, or this exact instance of it.
+    """Whether any dirtied key names these react keys, or this exact instance.
 
     Two shapes reach here. A plain static key (``"todos"``) names every mounted
     instance of a class that declares it. A dynamic key (``reactive_key(TODOS,
     "2")`` -> ``"todos:2"``) names one instance: the mounted region whose own
-    load key is ``"2"``. Narrowing lives here rather than in the caller so the
-    two shapes are decided in one place and a class with no PjxKey field —
-    whose load key is None — simply never matches a dynamic key.
+    load key is ``"2"``. Narrowing lives here rather than in the callers so the
+    two shapes are decided in one place, and an instance with no load key — an
+    unkeyed class — simply never matches a dynamic key.
     """
-    static = set(cls._pjx_react_keys)
+    static = set(react_keys)
     if static & dirtied_keys:
         return True
     if load_key is None:
         return False
     return bool({f"{key}:{load_key}" for key in static} & dirtied_keys)
+
+
+def _matches_dirtied(
+    cls: type[ReactiveComponent], load_key: str | None, dirtied_keys: set[str]
+) -> bool:
+    """Whether any dirtied key names this class, or this exact instance of it."""
+    return _keys_match_dirtied(cls._pjx_react_keys, load_key, dirtied_keys)
 
 
 def _candidate_class(
@@ -737,7 +744,44 @@ def delete_swap(candidate: FanoutCandidate) -> Markup:
     return Markup(f'<div hx-swap-oob="{selector}"></div>')
 
 
-def oob_swaps(candidates: list[FanoutCandidate]) -> Markup:
+def _preserve_nested(
+    level: RenderedLevel,
+    dirtied_keys: set[str],
+    candidate_ids: set[str],
+    session: RenderSession | None,
+) -> None:
+    """Splice ``hx-preserve="true"`` onto each nested root this swap must not disturb.
+
+    A nested reactive region whose keys this request never dirtied is not the
+    parent's to replace: htmx keeps the live element when the incoming markup
+    carries ``hx-preserve``, so the parent's swap lands around it instead of
+    through it. Stamping is deliberately conservative — a nested root is stamped
+    only on positive proof of disjointness, so an unresolvable class or an
+    unrecorded id simply keeps today's behavior.
+
+    ``hx-preserve`` is a documented no-op for an id the client does not already
+    show, so a first-mount nested region needs no special case here.
+
+    Runs after the candidate's own root stamp, never before: the shape where the
+    "nested" root *is* the fragment's own swap target (a parent whose whole
+    template is one reactive child) is exactly the shape ``stamp_root_attrs``
+    already refuses with RootStampCollisionError, so no fragment reaches this
+    pass with its own swap target among the nested roots.
+    """
+    _ids, _objects, nested_roots = _contained(level, session)
+    for _nested_id, nested in nested_roots.items():
+        if nested.react_keys is None:
+            continue
+        if set(nested.react_keys) & dirtied_keys:
+            continue
+        stamp_root_attrs(nested.level, {"hx-preserve": "true"}, nested=True)
+
+
+def oob_swaps(
+    candidates: list[FanoutCandidate],
+    dirtied_keys: Iterable[str] = (),
+    session: RenderSession | None = None,
+) -> Markup:
     """The whole OOB response body for one walk's candidates, in candidate order.
 
     Each dirty candidate's already-built level is stamped with its own
@@ -757,11 +801,25 @@ def oob_swaps(candidates: list[FanoutCandidate]) -> Markup:
         candidates: ``walk_manifest()`` output. Every filter — hash gate, dedup,
             nesting, primary-region exclusion — has already been applied; this
             function re-decides none of them.
+        dirtied_keys: This request's normalized dirtied reactive keys, so a
+            nested region none of them names can be preserved across its
+            parent's swap. Empty by default: a caller that supplies none gets
+            today's behavior, which stamps nothing.
+        session: The session carrying ``nested_react_keys``; defaults to the
+            active ``request_scope()``'s, and to None outside one, in which
+            case nothing is stamped.
 
     Returns:
         The surviving fragments joined by newlines, or ``Markup("")`` when no
         candidate is dirty or missing.
     """
+    dirtied = set(dirtied_keys)
+    render_session = session or current_session()
+    candidate_ids = {
+        candidate.instance_id
+        for candidate in candidates
+        if candidate.status in ("dirty", "missing")
+    }
     fragments: list[str] = []
     for candidate in candidates:
         if candidate.status == "dirty":
@@ -781,7 +839,9 @@ def oob_swaps(candidates: list[FanoutCandidate]) -> Markup:
                 f"outerHTML:[data-pjx-id='{_css_attr_value(candidate.instance_id)}']"
             )
             attrs = {"hx-swap-oob": selector, "data-pjx-hash": candidate.fresh_hash}
-            fragments.append(serialize(stamp_root_attrs(level, attrs)))
+            stamp_root_attrs(level, attrs)
+            _preserve_nested(level, dirtied, candidate_ids, render_session)
+            fragments.append(serialize(level))
         elif candidate.status == "missing":
             fragments.append(delete_swap(candidate))
     return Markup("\n".join(fragments))
