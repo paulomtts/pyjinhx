@@ -394,21 +394,20 @@ def test_the_same_key_collides_loudly_again_after_the_block_exits(caplog):
     assert "Widget_w1" in caplog.records[0].getMessage()
 
 
-def test_the_quiet_set_is_bound_per_scope_and_restored_on_exit():
-    """An inner scope starts empty and hands the outer one its own set back."""
-    assert get_quiet_collisions() == frozenset()
-    with request_scope():
-        assert get_quiet_collisions() == frozenset()
-        with quiet_collisions([make_key("Widget", "w1")]):
-            assert get_quiet_collisions() == frozenset({"Widget_w1"})
-            with request_scope():
-                assert get_quiet_collisions() == frozenset()
-                with quiet_collisions([make_key("Widget", "inner")]):
-                    assert get_quiet_collisions() == frozenset({"Widget_inner"})
-            assert get_quiet_collisions() == frozenset({"Widget_w1"})
-    assert get_quiet_collisions() == frozenset()
-    with request_scope():
-        assert get_quiet_collisions() == frozenset()
+def test_a_quiet_block_does_not_reach_into_a_nested_request_scope():
+    """One request's suppression is its own: a scope opened inside the block
+    starts loud, and what it quiets does not survive back out into the block.
+
+    The scope's own bind/reset lifecycle is pinned in tests/pyjinhx/test_session.py;
+    what this asserts is the pairing of the two, which is registry's to keep working.
+    """
+    with request_scope(), quiet_collisions([make_key("Widget", "w1")]):
+        assert get_quiet_collisions() == frozenset({"Widget_w1"})
+        with request_scope():
+            assert get_quiet_collisions() == frozenset()
+            with quiet_collisions([make_key("Widget", "inner")]):
+                assert get_quiet_collisions() == frozenset({"Widget_inner"})
+        assert get_quiet_collisions() == frozenset({"Widget_w1"})
 
 
 def test_nested_quiet_blocks_union_and_restore_the_outer_set():
