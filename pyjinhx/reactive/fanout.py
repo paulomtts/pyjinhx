@@ -517,18 +517,35 @@ class _BuildResult:
     """Whether ``load()`` raised LookupError — ADR 0013's proof of absence."""
 
 
-def _build_one(item: _WorkItem, session: RenderSession) -> _BuildResult:
+def _build_one(
+    item: _WorkItem, session: RenderSession, pass_keys: frozenset[str]
+) -> _BuildResult:
     """One work item's load and render, with its own absence proof caught.
 
     The LookupError is caught per item rather than per pass so one region the
     server no longer knows about cannot decide any sibling's outcome. Every
     other exception is left to travel, exactly as it did before the build ran
     off-thread.
+
+    ``pass_keys`` carries every filtered item's composite key; this item's own is
+    removed before the quiet block opens. What is left is "ids this request's
+    client-reported manifest already lists as separately-mounted top-level
+    regions", so a component reached as a nested descendant of this build's tree
+    whose id is one of them is #1022's benign double-render, not an authoring
+    mistake, and its second registry write says nothing worth logging. A
+    collision on this item's *own* key is the opposite claim — something else
+    took the exact key this build is about to write — and stays loud.
+
+    The block is entered here, inside the worker, so on the threaded branch it
+    lives entirely within that worker's copied context and cannot disturb a
+    sibling's or the submitting thread's view.
     """
+    own_key = registry.make_key(item.component_class.__name__, item.instance_id)
     try:
-        instance, level = _build_dirty(
-            item.component_class, item.instance_id, item.load, session
-        )
+        with registry.quiet_collisions(pass_keys - {own_key}):
+            instance, level = _build_dirty(
+                item.component_class, item.instance_id, item.load, session
+            )
     except LookupError:
         return _BuildResult(instance=None, level=None, missing=True)
     return _BuildResult(instance=instance, level=level, missing=False)
@@ -570,6 +587,11 @@ def _build_pass(
     copy is taken here, on the submitting thread — taking it inside a worker
     would copy the worker's empty context instead of the request's.
 
+    Each item's build runs with every *other* item's composite key quieted, so
+    the registry stops reporting #1022's structural double-registration — one
+    region built both as its own candidate and as a nested descendant of a
+    sibling's tree — as an id clash. See ``_build_one``.
+
     A pass whose every item is a class already measured as loading faster than a
     thread costs runs inline instead, on the calling thread. Handing such a
     build to the pool spends more on the submit, the context copy and the join
@@ -583,11 +605,22 @@ def _build_pass(
     pending = [item for item in items if not item.clean]
     if not pending:
         return {}
+    # Computed once, from the whole filtered list, before anything is built:
+    # what a build may benignly re-register is decided by the client's manifest,
+    # never by something a render discovers about itself midway. Clean items are
+    # included — a clean sibling is still a separately-mounted region, and its id
+    # turning up inside a dirty build's tree is the same benign shape.
+    pass_keys = frozenset(
+        registry.make_key(item.component_class.__name__, item.instance_id)
+        for item in items
+    )
     if all(is_too_cheap_to_thread(item.component_class) for item in pending):
-        return {item.index: _build_one(item, session) for item in pending}
+        return {item.index: _build_one(item, session, pass_keys) for item in pending}
     with ThreadPoolExecutor(max_workers=min(8, len(pending))) as pool:
         futures = {
-            item.index: pool.submit(copy_context().run, _build_one, item, session)
+            item.index: pool.submit(
+                copy_context().run, _build_one, item, session, pass_keys
+            )
             for item in pending
         }
         return {index: future.result() for index, future in futures.items()}
