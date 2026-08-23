@@ -517,9 +517,7 @@ class _BuildResult:
     """Whether ``load()`` raised LookupError — ADR 0013's proof of absence."""
 
 
-def _build_one(
-    item: _WorkItem, session: RenderSession, pass_keys: frozenset[str]
-) -> _BuildResult:
+def _build_one(item: _WorkItem, session: RenderSession) -> _BuildResult:
     """One work item's load and render, with its own absence proof caught.
 
     The LookupError is caught per item rather than per pass so one region the
@@ -527,14 +525,17 @@ def _build_one(
     other exception is left to travel, exactly as it did before the build ran
     off-thread.
 
-    ``pass_keys`` carries every filtered item's composite key; this item's own is
-    removed before the quiet block opens. What is left is "ids this request's
-    client-reported manifest already lists as separately-mounted top-level
-    regions", so a component reached as a nested descendant of this build's tree
-    whose id is one of them is #1022's benign double-render, not an authoring
-    mistake, and its second registry write says nothing worth logging. A
-    collision on this item's *own* key is the opposite claim — something else
-    took the exact key this build is about to write — and stays loud.
+    ``_build_pass`` already has every filtered item's composite key quieted for
+    the whole pass before this runs (see there); what is left here is undoing
+    that quiet for exactly this item's own key. A component reached as a
+    nested descendant of this build's tree whose id is some *other* item's key
+    is #1022's benign double-render, not an authoring mistake, and its second
+    registry write says nothing worth logging. A collision on this item's own
+    key is the opposite claim — something else took the exact key this build
+    is about to write — and stays loud, which is exactly what
+    ``quiet_collisions_except`` buys back in O(1): the alternative,
+    re-deriving "every key but mine" as a fresh set per item, is what made the
+    first cut of this fix O(n²) over a fully-dirty manifest (#1024's fixup).
 
     The block is entered here, inside the worker, so on the threaded branch it
     lives entirely within that worker's copied context and cannot disturb a
@@ -542,7 +543,7 @@ def _build_one(
     """
     own_key = registry.make_key(item.component_class.__name__, item.instance_id)
     try:
-        with registry.quiet_collisions(pass_keys - {own_key}):
+        with registry.quiet_collisions_except(own_key):
             instance, level = _build_dirty(
                 item.component_class, item.instance_id, item.load, session
             )
@@ -587,10 +588,15 @@ def _build_pass(
     copy is taken here, on the submitting thread — taking it inside a worker
     would copy the worker's empty context instead of the request's.
 
-    Each item's build runs with every *other* item's composite key quieted, so
-    the registry stops reporting #1022's structural double-registration — one
+    Every item's build runs with every item's composite key quieted (its own
+    included — ``_build_one`` buys that one back per item, in O(1)), so the
+    registry stops reporting #1022's structural double-registration — one
     region built both as its own candidate and as a nested descendant of a
-    sibling's tree — as an id clash. See ``_build_one``.
+    sibling's tree — as an id clash. The whole-pass ``quiet_collisions()``
+    block below is entered exactly once, not once per item: a frozenset union
+    always copies, even against an empty operand, so re-deriving a quiet set
+    per item made the first cut of this fix O(n²) over a fully-dirty manifest
+    of n candidates (#1024's fixup) where the pass as shipped is O(n).
 
     A pass whose every item is a class already measured as loading faster than a
     thread costs runs inline instead, on the calling thread. Handing such a
@@ -614,16 +620,19 @@ def _build_pass(
         registry.make_key(item.component_class.__name__, item.instance_id)
         for item in items
     )
-    if all(is_too_cheap_to_thread(item.component_class) for item in pending):
-        return {item.index: _build_one(item, session, pass_keys) for item in pending}
-    with ThreadPoolExecutor(max_workers=min(8, len(pending))) as pool:
-        futures = {
-            item.index: pool.submit(
-                copy_context().run, _build_one, item, session, pass_keys
-            )
-            for item in pending
-        }
-        return {index: future.result() for index, future in futures.items()}
+    # Entered once, wrapping the whole pass — including the pool's submission
+    # loop, so copy_context() (below) captures the quiet set already set on
+    # this thread and carries it into each worker for free. Neither branch
+    # re-derives the set per item; see the docstring above.
+    with registry.quiet_collisions(pass_keys):
+        if all(is_too_cheap_to_thread(item.component_class) for item in pending):
+            return {item.index: _build_one(item, session) for item in pending}
+        with ThreadPoolExecutor(max_workers=min(8, len(pending))) as pool:
+            futures = {
+                item.index: pool.submit(copy_context().run, _build_one, item, session)
+                for item in pending
+            }
+            return {index: future.result() for index, future in futures.items()}
 
 
 def _reduce_pass(

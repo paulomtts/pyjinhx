@@ -1516,6 +1516,27 @@ def test_build_pass_results_are_keyed_by_manifest_index():
     assert results[2].instance is None and results[2].level is None
 
 
+def test_build_pass_enters_quiet_collisions_once_not_once_per_item(monkeypatch):
+    """#1024's fixup: the O(n²) regression was one `quiet_collisions()` call per
+    item, each rebuilding a fresh frozenset over the whole pass. Guard the fix
+    by pinning the call count to the pass, not the item count."""
+    manifest = [_entry(f"row-{i}", "fanout_widget", f"todo-{i}") for i in range(6)]
+    calls: list[frozenset] = []
+    real_quiet_collisions = registry.quiet_collisions
+
+    def counting_quiet_collisions(keys):
+        calls.append(frozenset(keys))
+        return real_quiet_collisions(keys)
+
+    monkeypatch.setattr(fanout.registry, "quiet_collisions", counting_quiet_collisions)
+    with request_scope() as session:
+        items = fanout._filter_pass(manifest, {"todos"}, set())
+        fanout._build_pass(items, session)
+
+    assert len(calls) == 1
+    assert calls[0] == {registry.make_key("FanoutWidget", f"row-{i}") for i in range(6)}
+
+
 def test_reduce_pass_restores_manifest_order():
     """Candidates come back in work-item order, whatever order builds finished in."""
     manifest = [

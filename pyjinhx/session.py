@@ -23,7 +23,7 @@ if TYPE_CHECKING:
     from pyjinhx.config import PjxSettings
     from pyjinhx.segments import RenderedLevel
 
-# The nine pieces of per-request mutable state. They live here rather than
+# The ten pieces of per-request mutable state. They live here rather than
 # beside their eventual consumers because the import rule runs one way only:
 # reactive/ imports session, never the reverse. Each defaults to None so that
 # reading one outside a request is a miss, not a LookupError.
@@ -49,6 +49,15 @@ _freshness_cache: ContextVar[dict[str, bool] | None] = ContextVar(
 )
 _quiet_collisions: ContextVar[frozenset[str] | None] = ContextVar(
     "pjx_quiet_collisions", default=None
+)
+# Deliberately a *second*, separate ContextVar rather than folding into the set
+# above: excluding one key from a big frozenset means rebuilding it (frozenset
+# union/difference always copies, even against an empty operand — see #1024's
+# fixup), so fanout's build pass would pay O(n) per work item, O(n²) overall,
+# to mark "every key but mine" quiet for each of n items. A lone excepted key
+# needs no set at all; register_instance() just compares against it.
+_quiet_collisions_except: ContextVar[str | None] = ContextVar(
+    "pjx_quiet_collisions_except", default=None
 )
 
 # Not a ContextVar and deliberately so: this mirrors dev._dev_config, which is
@@ -334,6 +343,17 @@ def get_quiet_collisions() -> frozenset[str]:
     return quiet
 
 
+def get_quiet_collisions_except() -> str | None:
+    """Return the one composite key the innermost quiet block excludes, or None.
+
+    None is the normal answer, both outside any block and inside a plain
+    ``quiet_collisions()`` block: only ``quiet_collisions_except()`` sets this,
+    and a key can never itself be None, so register_instance()'s ``!=`` check
+    treats "nothing excepted" and "no key would match anyway" identically.
+    """
+    return _quiet_collisions_except.get()
+
+
 def get_dev_strict() -> bool:
     """Return whether reactive-dev strict mode is on, process-wide."""
     with _dev_strict_lock:
@@ -469,6 +489,7 @@ def request_scope(
     cache_forward_token = _cache_forward.set({})
     freshness_token = _freshness_cache.set({})
     quiet_token = _quiet_collisions.set(frozenset())
+    quiet_except_token = _quiet_collisions_except.set(None)
     # Bound only when supplied, so an inner scope that knows nothing about the
     # app context cannot blank out the request's value for the code below it.
     load_token = _load_context.set(load_context) if load_context is not None else None
@@ -479,6 +500,7 @@ def request_scope(
         # outer scope its own state back, not clear the variable outright.
         if load_token is not None:
             _load_context.reset(load_token)
+        _quiet_collisions_except.reset(quiet_except_token)
         _quiet_collisions.reset(quiet_token)
         _freshness_cache.reset(freshness_token)
         _cache_forward.reset(cache_forward_token)
