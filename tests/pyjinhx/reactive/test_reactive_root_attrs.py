@@ -589,3 +589,25 @@ def test_reactive_component_without_react_kwarg_records_an_empty_tuple(
 
     assert "u1" in recording_session.nested_react_keys
     assert recording_session.nested_react_keys["u1"] == ()
+
+
+def test_a_tree_of_plain_components_records_nothing(
+    recording_session: RenderSession,
+):
+    """Spec test 4: non-reactive components are a bare isinstance no-op."""
+    render_level(PlainShell(id="ps1", body=PlainWidget(id="pw1")), recording_session)
+
+    assert recording_session.nested_react_keys == {}
+
+
+def test_a_mixed_tree_records_only_its_reactive_nodes(
+    recording_session: RenderSession,
+):
+    """Spec test 5: a plain child of a reactive parent never becomes a key."""
+    render_level(
+        KeyedReactiveShell(id="mix1", body=PlainWidget(id="plain1")),
+        recording_session,
+    )
+
+    assert recording_session.nested_react_keys == {"mix1": ("shell",)}
+    assert "plain1" not in recording_session.nested_react_keys

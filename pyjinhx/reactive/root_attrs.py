@@ -55,5 +55,30 @@ def stamp_reactive_root_attrs(
 def record_nested_react_keys(
     component: BaseComponent, level: RenderedLevel, session: RenderSession
 ) -> None:
-    """Record a rendered reactive component's react keys under its instance id."""
-    session.nested_react_keys[component.id] = type(component)._pjx_react_keys  # pyright: ignore[reportAttributeAccessIssue]
+    """Record a rendered reactive component's react keys under its instance id.
+
+    Shaped for ``RenderSession.on_rendered`` and exported rather than
+    auto-registered: a session that never appends it keeps an empty
+    ``nested_react_keys`` map, so nothing in a normal render changes. A
+    non-reactive component returns before anything is read, so a tree with no
+    reactive nodes pays one isinstance check per component and nothing else.
+
+    ``emit_rendered`` fires once per component, so every reactive node lands an
+    entry at every nesting depth — the nested entries are what #1013's fan-out
+    needs to tell a disjoint nested reactive region from part of a parent's own
+    swap. A class declared without ``react=(...)`` records the empty tuple:
+    presence of an id means "this is a reactive component", the value answers
+    "on what keys". A repeat render of one id overwrites in silence — unlike
+    ``registry.register_instance``, there is nothing to collide over, since the
+    value is class-derived and every write for one id is identical.
+
+    Args:
+        component: The component that just finished rendering.
+        level: That component's RenderedLevel (unused; this subscriber splices
+            nothing and leaves the rendered output byte-identical).
+        session: The RenderSession this render ran against; its
+            ``nested_react_keys`` map is where the entry lands.
+    """
+    if not isinstance(component, ReactiveComponent):
+        return
+    session.nested_react_keys[component.id] = type(component)._pjx_react_keys
