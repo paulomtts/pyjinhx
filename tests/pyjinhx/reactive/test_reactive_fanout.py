@@ -611,6 +611,10 @@ def test_drop_nested_collapses_three_levels_to_the_outermost():
 
 
 def test_drop_nested_is_a_no_op_on_empty_and_singleton_lists():
+    """The single-candidate short-circuit walks nothing (#1028): a lone
+    candidate might be clean or missing, never reaching `_preserve_nested`, so
+    populating its `nested_roots` cache here would risk pure waste. The
+    returned candidate is the exact original object, unlike the >=2 branch."""
     only = [candidate("a", level=stamped_level("a"))]
     with scope():
         assert _drop_nested([]) == []
@@ -704,9 +708,9 @@ def test_drop_nested_walks_each_candidate_tree_exactly_once(monkeypatch):
     calls: list[int] = []
     real_contained = fanout._contained
 
-    def counting_contained(level):
+    def counting_contained(level, session=None):
         calls.append(id(level))
-        return real_contained(level)
+        return real_contained(level, session)
 
     monkeypatch.setattr(fanout, "_contained", counting_contained)
 
@@ -1087,9 +1091,9 @@ def test_walk_manifest_runs_the_nesting_dedup_on_its_survivors(monkeypatch):
     seen_calls: list[int] = []
     original = _drop_nested
 
-    def spy(candidates):
+    def spy(candidates, session=None):
         seen_calls.append(len(candidates))
-        return original(candidates)
+        return original(candidates, session)
 
     monkeypatch.setattr("pyjinhx.reactive.fanout._drop_nested", spy)
     with scope():

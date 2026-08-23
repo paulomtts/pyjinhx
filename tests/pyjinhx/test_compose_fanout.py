@@ -358,6 +358,51 @@ def test_a_disjoint_nested_region_is_preserved_across_a_parent_swap():
     assert 'hx-preserve="true"' in body[start : body.index(">", start) + 1]
 
 
+def test_compose_walks_the_shells_tree_for_containment_exactly_once(monkeypatch):
+    """#1028: _drop_nested and _preserve_nested used to each walk a dirty
+    candidate's level independently — once during walk_manifest(), again
+    moments later inside oob_swaps() on the very same candidates, every real
+    request with two or more surviving top-level candidates (the shape that
+    actually triggers the bug: _drop_nested's own single-candidate
+    short-circuit never called _contained at all, so this needs a second,
+    unrelated dirty region alongside the shell to exercise the >=2 branch
+    where the redundant walk lived). Pin the count to one call per level with
+    a level through the actual production path (compose()), so the redundant
+    walk cannot silently return.
+    """
+    from pyjinhx.reactive import fanout
+
+    calls: list[int] = []
+    real_contained = fanout._contained
+
+    def counting_contained(level, session=None):
+        calls.append(id(level))
+        return real_contained(level, session)
+
+    monkeypatch.setattr(fanout, "_contained", counting_contained)
+    with request_scope() as session:
+        session.on_rendered.append(stamp_reactive_root_attrs)
+        registry.register_instance(ShellWidget.__name__, "shell", "resolved-entry")
+        registry.register_instance(ResponseWidget.__name__, "resp", "resolved-entry")
+        add_dirtied(["todos"])
+        session.pjx_mounted = [
+            {"type": "shell_widget", "id": "shell", "load": None, "hash": "stale"},
+            {
+                "type": "response_widget",
+                "id": "resp",
+                "load": "r1",
+                "hash": "stale",
+            },
+        ]
+        body = _compose(None, session=session).body
+    assert 'hx-preserve="true"' in body
+    assert "hx-swap-oob=\"outerHTML:[data-pjx-id='resp']\"" in body
+    # One call per level with a level (shell + resp = 2), never one per level
+    # per pass (which would be 4): _drop_nested's own union walk over both
+    # candidates' trees is reused by _preserve_nested instead of repeated.
+    assert len(calls) == 2
+
+
 def test_a_nested_region_this_request_dirtied_is_not_preserved():
     """The request's own dirtied keys reach oob_swaps, not an empty default set.
 
