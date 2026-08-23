@@ -93,6 +93,16 @@ def avatar():
     ]
 
 
+def avatar_shapes():
+    return [
+        PJXAvatar(initials="JD", size="lg", shape="circle", alt="Circle").render(),
+        PJXAvatar(initials="JD", size="lg", shape="square", alt="Square").render(),
+        PJXAvatar(initials="JD", size="lg", shape="hexagon", alt="Hexagon").render(),
+        PJXAvatar(initials="JD", size="lg", shape="diamond", alt="Diamond").render(),
+        PJXAvatar(initials="JD", size="lg", shape="triangle", alt="Triangle").render(),
+    ]
+
+
 def avatar_stack():
     return PJXAvatarStack(
         avatars=[
@@ -232,6 +242,7 @@ DEMOS = {
     "PJXDivider": (divider, 120),
     "PJXSpinner": (spinner, 140),
     "PJXAvatar": (avatar, 140),
+    "PJXAvatarShapes": (avatar_shapes, 140),
     "PJXAvatarStack": (avatar_stack, 120),
     "PJXBreadcrumb": (breadcrumb, 120),
     "PJXSkeleton": (skeleton, 150),
