@@ -772,6 +772,12 @@ def _preserve_nested(
     ``hx-preserve`` is a documented no-op for an id the client does not already
     show, so a first-mount nested region needs no special case here.
 
+    htmx resolves the live element by the incoming tag's plain ``id`` attribute
+    (``handlePreservedElements`` -> ``getElementById``), not by ``data-pjx-id``,
+    so retention only actually lands for a region whose own template root
+    carries a stable authored ``id``. Stamping one here would not help: the
+    element already on the page came from a render that carried none either.
+
     Runs after the candidate's own root stamp, never before: the shape where the
     "nested" root *is* the fragment's own swap target (a parent whose whole
     template is one reactive child) is exactly the shape ``stamp_root_attrs``
