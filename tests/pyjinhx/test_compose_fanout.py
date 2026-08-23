@@ -356,3 +356,24 @@ def test_a_disjoint_nested_region_is_preserved_across_a_parent_swap():
     assert "hx-swap-oob=\"outerHTML:[data-pjx-id='shell']\"" in body
     start = body.index('data-pjx-id="side"')
     assert 'hx-preserve="true"' in body[start : body.index(">", start) + 1]
+
+
+def test_a_nested_region_this_request_dirtied_is_not_preserved():
+    """The request's own dirtied keys reach oob_swaps, not an empty default set.
+
+    Sibling of the test above, and the half of the pair that can tell whether
+    `_fan_out` actually hands its dirtied keys on: with none of them travelling,
+    every nested region looks disjoint and gets held back, including this one,
+    which this request dirtied outright.
+    """
+    with request_scope() as session:
+        session.on_rendered.append(stamp_reactive_root_attrs)
+        registry.register_instance(ShellWidget.__name__, "shell", "resolved-entry")
+        add_dirtied(["todos", "sidebar"])
+        session.pjx_mounted = [
+            {"type": "shell_widget", "id": "shell", "load": None, "hash": "stale"}
+        ]
+        body = _compose(None, session=session).body
+    assert "hx-swap-oob=\"outerHTML:[data-pjx-id='shell']\"" in body
+    assert 'data-pjx-id="side"' in body
+    assert "hx-preserve" not in body
