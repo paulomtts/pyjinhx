@@ -67,6 +67,16 @@ Used by OOB swap gating — override for custom hashing.
 state_hash_exclude: ClassVar[frozenset[str]] = frozenset({"id"})
 ```
 
+A subclass's `state_hash_exclude` **replaces** this set rather than adding to it:
+`frozenset({"trace_id"})` un-excludes `id`. Write `frozenset({"id", "trace_id"})`.
+
+Any field regenerated on every render belongs in it — trace ids, request ids, and
+timestamps not derived from persisted data. Left in the digest, such a field makes
+`state_hash()` never repeat for that instance, so the OOB gate can never drop a
+redundant swap and every dirty event on a parent re-swaps every nested child
+region. See [Fields that change on every
+render](../reactivity.md#fields-that-change-on-every-render).
+
 ## PjxKey
 
 ```python
