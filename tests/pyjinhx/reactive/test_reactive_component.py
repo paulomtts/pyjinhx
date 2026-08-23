@@ -771,3 +771,38 @@ def test_cache_alone_does_not_disturb_the_react_keys():
         pass
 
     assert Widget._pjx_react_keys == ()
+
+
+def test_retain_across_parent_swaps_defaults_to_true():
+    assert ReactiveComponent.retain_across_parent_swaps is True
+
+
+def test_retain_across_parent_swaps_is_inherited_by_a_silent_subclass():
+    class Widget(ReactiveComponent):
+        pass
+
+    assert Widget.retain_across_parent_swaps is True
+    assert Widget().retain_across_parent_swaps is True
+
+
+def test_a_subclass_can_opt_out_of_retain_across_parent_swaps_without_mutating_the_base():
+    class Widget(ReactiveComponent):
+        retain_across_parent_swaps = False
+
+    class Child(Widget):
+        pass
+
+    assert Widget.retain_across_parent_swaps is False
+    assert Child.retain_across_parent_swaps is False
+    assert ReactiveComponent.retain_across_parent_swaps is True
+
+
+def test_sibling_subclasses_set_retain_across_parent_swaps_independently():
+    class OptedOut(ReactiveComponent):
+        retain_across_parent_swaps = False
+
+    class Silent(ReactiveComponent):
+        pass
+
+    assert OptedOut.retain_across_parent_swaps is False
+    assert Silent.retain_across_parent_swaps is True

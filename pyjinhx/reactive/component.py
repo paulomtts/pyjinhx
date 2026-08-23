@@ -61,6 +61,12 @@ class ReactiveComponent(BaseComponent):
     """Field names left out of the state hash. A subclass's value replaces this
     one outright rather than adding to it."""
 
+    retain_across_parent_swaps: ClassVar[bool] = True
+    """Whether this class's rendered region survives an ancestor's OOB swap
+    untouched when nothing it depends on was dirtied. A subclass sets this to
+    False to declare itself fully owned by its parent, so a parent swap always
+    re-renders it rather than preserving what is on the page."""
+
     _pjx_cache_policy: ClassVar[CachePolicy | Literal[False] | None] = None
     """This class's cross-request cache policy: a CachePolicy that overrides the
     process default, False for tier-1-only, or None when the class said nothing
