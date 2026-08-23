@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.9.1 — False-positive root-stamp collision (2026-08-23)
+
+### Fixed
+- A `ReactiveComponent` whose entire template is a single non-reactive child tag raised a
+  false-positive `RootStampCollisionError` when dirtied and rebuilt as an OOB swap candidate
+  under the real FastAPI wiring, where the session's `on_rendered` subscriber and `oob_swaps`'s
+  explicit stamp both write the same reactive identity onto the same tag in one render pass.
+  `stamp_root_attrs`'s nested-branch collision check now only raises when the overlapping
+  `data-pjx-id`/`-type`/`-hash` values actually differ, not merely when all three are already
+  present and about to be rewritten (#1020).
+
 ## 1.9.0 — Nested reactive OOB ownership (2026-08-23)
 
 ### Added
