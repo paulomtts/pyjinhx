@@ -36,6 +36,7 @@ from pyjinhx.reactive.cache import cache_get, cache_has
 from pyjinhx.reactive.component import ReactiveComponent, coerce_load_arg
 from pyjinhx.reactive.keys import coerce_load_key_str
 from pyjinhx.reactive.load_cost import is_too_cheap_to_thread, note_load_cost
+from pyjinhx.reactive.root_attrs import record_nested_react_keys
 from pyjinhx.rendering import render_level
 from pyjinhx.root_attrs import stamp_root_attrs
 from pyjinhx.segments import ChildRef, RenderedLevel, serialize
@@ -699,6 +700,13 @@ def walk_manifest(
     # one, so a caller inside a request never has its dirty-path render
     # silently point at the wrong template dir.
     render_session = session or current_session() or RenderSession()
+    # Subscribed here rather than inside _build_dirty: one append per walk
+    # covers every build the pass runs, and the guard mirrors the one
+    # responses.py:74 uses for accumulate_assets, so a session that already
+    # carries the recorder — a second walk, or a caller that wired it — never
+    # records the same render twice.
+    if record_nested_react_keys not in render_session.on_rendered:
+        render_session.on_rendered.append(record_nested_react_keys)
     return _reduce_pass(items, _build_pass(items, render_session))
 
 

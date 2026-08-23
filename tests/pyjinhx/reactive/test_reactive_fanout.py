@@ -24,6 +24,7 @@ from pyjinhx.reactive.fanout import (
     walk_manifest,
 )
 from pyjinhx.reactive.load_cost import note_load_cost
+from pyjinhx.reactive.root_attrs import record_nested_react_keys
 from pyjinhx.segments import ChildRef, RenderedLevel
 from pyjinhx.session import (
     RenderSession,
@@ -1841,3 +1842,17 @@ def test_root_instance_id_reads_a_root_stamped_behind_a_whitespace_prologue():
     stamp_root_attrs(level, {"data-pjx-id": "abc123"})
 
     assert fanout._root_instance_id(level) == "abc123"
+
+
+def test_walk_manifest_wires_the_nested_react_key_recorder_exactly_once():
+    """The subscriber is appended per walk, guarded the way responses.py guards its own."""
+    with scope() as session:
+        registry.register_instance(FanoutWidget.__name__, "a", "resolved-entry")
+        walk_manifest(
+            [entry("fanout_widget", "a", load="todo-1")], {"todos"}, session=session
+        )
+        walk_manifest(
+            [entry("fanout_widget", "a", load="todo-2")], {"todos"}, session=session
+        )
+    assert session.on_rendered.count(record_nested_react_keys) == 1
+    assert session.nested_react_keys["a"] == ("todos",)
