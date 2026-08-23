@@ -496,3 +496,19 @@ def test_reactive_in_reactive_collision_message_names_both_components(
     message = str(exc_info.value)
     assert "outer1" in message
     assert "inner_reactive_root" in message
+
+
+def test_fresh_session_starts_with_an_empty_nested_react_keys_map():
+    """#1012's per-request map: empty until a subscriber writes into it."""
+    assert RenderSession().nested_react_keys == {}
+
+
+def test_each_session_owns_its_own_nested_react_keys_map():
+    """Per-request by construction: no shared class-level or module-level dict."""
+    first = RenderSession()
+    second = RenderSession()
+
+    first.nested_react_keys["w"] = ("a",)
+
+    assert second.nested_react_keys == {}
+    assert first.nested_react_keys is not second.nested_react_keys
