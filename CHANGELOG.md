@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.9.0 — Nested reactive OOB ownership (2026-08-23)
+
+### Added
+- `ReactiveComponent.retain_across_parent_swaps: ClassVar[bool] = True`. A nested
+  reactive region whose `react` keys are disjoint from a request's dirtied keys is
+  now stamped `hx-preserve="true"` inside an ancestor's OOB swap fragment (never
+  its own), so an unrelated parent update can no longer clobber or revert a
+  region it didn't dirty — fixing both DOM-detachment and stale-revert races
+  between independent, concurrent requests against nested regions (#1008). Set
+  `retain_across_parent_swaps = False` on a subclass to keep the old
+  fully-parent-owned behavior for that region.
+- Documented that any field regenerated on every render (trace/request ids,
+  non-persisted timestamps) must be added to `state_hash_exclude` — left in, it
+  silently defeats the hash gate and widens the race window above.
+
 ## 1.8.0 — Full Lucide icon set (2026-08-23)
 
 ### Added
