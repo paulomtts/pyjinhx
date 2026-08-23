@@ -492,6 +492,33 @@ def stamped_level(instance_id: str, *children) -> RenderedLevel:
     )
 
 
+def reactive_level(
+    instance_id: str,
+    type_name: str = "quiet_widget",
+    load: str | None = None,
+    children: tuple = (),
+) -> RenderedLevel:
+    """A RenderedLevel whose root tag carries the full reactive identity stamp.
+
+    `stamped_level` writes only `data-pjx-id`. The preserve pass also reads
+    `data-pjx-type` (the only place a nested level records its owning class)
+    and `data-pjx-load`, so these tests need a root tag shaped the way
+    `stamp_reactive_root_attrs` shapes a real one.
+    """
+    attrs = (
+        f'data-pjx-id="{instance_id}" data-pjx-type="{type_name}" '
+        f'data-pjx-hash="h-{instance_id}"'
+    )
+    if load is not None:
+        attrs += f' data-pjx-load="{load}"'
+    root = f"<div {attrs}>"
+    return RenderedLevel(
+        segments=[root, *children, "</div>"],
+        root_span=(0, len(root)),
+        descriptor=FanoutWidget.__pjx_descriptor__,
+    )
+
+
 def test_drop_nested_drops_a_child_level_nested_in_a_parent_level():
     child = stamped_level("child")
     parent = stamped_level("parent", child)
@@ -674,6 +701,41 @@ def test_drop_nested_walks_each_candidate_tree_exactly_once(monkeypatch):
     assert [c.instance_id for c in survivors] == [f"n{i}" for i in range(10)] + [
         "no-structure"
     ]
+
+
+def test_contained_reports_a_nested_reactive_root_with_its_class_and_load_key():
+    nested = reactive_level("nested", "fanout_widget", load="todo-9")
+    parent = reactive_level("parent", "fanout_widget", children=(nested,))
+    with scope() as session:
+        session.nested_react_keys["nested"] = ("todos",)
+        ids, objects, nested_roots = fanout._contained(parent, session)
+    assert ids == {"nested"}
+    assert objects == {id(nested)}
+    assert list(nested_roots) == ["nested"]
+    record = nested_roots["nested"]
+    assert record.level is nested
+    assert record.component_class is FanoutWidget
+    assert record.react_keys == ("todos",)
+    assert record.load_key == "todo-9"
+
+
+def test_contained_without_a_session_reports_no_react_keys():
+    """No session, no map: the id is still found, but nothing claims it is disjoint."""
+    nested = reactive_level("nested", "quiet_widget")
+    parent = reactive_level("parent", "fanout_widget", children=(nested,))
+    ids, _objects, nested_roots = fanout._contained(parent)
+    assert ids == {"nested"}
+    assert nested_roots["nested"].react_keys is None
+    assert nested_roots["nested"].component_class is QuietWidget
+
+
+def test_contained_reports_no_class_for_a_nested_root_without_a_pjx_type():
+    """An unstamped nested root resolves to no class, so nothing can be decided about it."""
+    nested = stamped_level("nested")
+    parent = reactive_level("parent", "fanout_widget", children=(nested,))
+    _ids, _objects, nested_roots = fanout._contained(parent)
+    assert nested_roots["nested"].component_class is None
+    assert nested_roots["nested"].load_key is None
 
 
 def test_mounted_ids_in_extracts_both_quote_styles():

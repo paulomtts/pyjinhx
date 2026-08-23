@@ -202,6 +202,14 @@ RE_ROOT_PJX_ID = re.compile(
     r'data-pjx-id\s*=\s*"([^"]*)"|data-pjx-id\s*=\s*\'([^\']*)\''
 )
 
+RE_ROOT_PJX_TYPE = re.compile(
+    r'data-pjx-type\s*=\s*"([^"]*)"|data-pjx-type\s*=\s*\'([^\']*)\''
+)
+
+RE_ROOT_PJX_LOAD = re.compile(
+    r'data-pjx-load\s*=\s*"([^"]*)"|data-pjx-load\s*=\s*\'([^\']*)\''
+)
+
 
 def _mounted_ids_in(primary_html: object) -> set[str]:
     """Every ``data-pjx-id`` the primary response's markup already carries.
@@ -238,14 +246,13 @@ def _level_of(candidate: FanoutCandidate) -> RenderedLevel | None:
     return None
 
 
-def _root_instance_id(level: RenderedLevel) -> str | None:
-    """The ``data-pjx-id`` on this level's root tag, or None if unstamped.
+def _root_tag_text(level: RenderedLevel) -> str | None:
+    """This level's root opening tag, sliced at the offsets the parse recorded.
 
-    The exact inverse of ``stamp_root_attrs``: one read of the single tag whose
-    offsets the original parse recorded, never a re-parse and never a scan of
-    the rendered markup. ``_fill_children`` replaces a child's ChildRef with its
-    RenderedLevel and the authored ``id`` attr goes with it, so the stamped root
-    tag is the only place a nested level's instance identity still lives.
+    Never a re-parse and never a scan of the rendered markup: one read of the
+    single tag whose span the original parse wrote down. ``root_span`` is an
+    absolute offset into the raw source, so it is rebased by the summed length
+    of any whitespace-only prologue segments walked past first.
     """
     skipped = 0
     root: object = None
@@ -258,23 +265,90 @@ def _root_instance_id(level: RenderedLevel) -> str | None:
     if not isinstance(root, str):
         return None
     start, end = (offset - skipped for offset in level.root_span)
-    match = RE_ROOT_PJX_ID.search(root[start:end])
+    return root[start:end]
+
+
+def _tag_attr(tag_text: str, pattern: re.Pattern[str]) -> str | None:
+    """One attribute's value out of a root tag, double- or single-quoted."""
+    match = pattern.search(tag_text)
     if match is None:
         return None
     return match.group(1) if match.group(1) is not None else match.group(2)
 
 
-def _contained(level: RenderedLevel) -> tuple[set[str], set[int]]:
-    """Every id and every level object nested *strictly inside* this level.
+def _root_instance_id(level: RenderedLevel) -> str | None:
+    """The ``data-pjx-id`` on this level's root tag, or None if unstamped.
+
+    The exact inverse of ``stamp_root_attrs``. ``_fill_children`` replaces a
+    child's ChildRef with its RenderedLevel and the authored ``id`` attr goes
+    with it, so the stamped root tag is the only place a nested level's
+    instance identity still lives.
+    """
+    tag_text = _root_tag_text(level)
+    if tag_text is None:
+        return None
+    return _tag_attr(tag_text, RE_ROOT_PJX_ID)
+
+
+@dataclass(frozen=True)
+class _NestedRoot:
+    """One reactive root nested inside a candidate's level, and what decides its stamp."""
+
+    level: RenderedLevel
+    """The nested level itself, so a stamp can be spliced into that exact object."""
+
+    component_class: type[ReactiveComponent] | None
+    """The class its ``data-pjx-type`` names, or None when the tag names none."""
+
+    react_keys: tuple[str, ...] | None
+    """What ``record_nested_react_keys`` recorded for this id, or None if nothing did."""
+
+    load_key: str | None
+    """This instance's ``data-pjx-load``, or None for an unkeyed class."""
+
+
+def _nested_root(
+    level: RenderedLevel, instance_id: str, session: RenderSession | None
+) -> _NestedRoot:
+    """Everything the preserve pass needs about one nested root, read once.
+
+    The class comes from the tag's own ``data-pjx-type`` — a RenderedLevel's
+    descriptor carries no back-reference to the class that rendered it, and the
+    tag is where ``stamp_reactive_root_attrs`` already wrote the snake_case tag
+    name ``discovery`` is keyed by. The react keys come from the session map
+    ``record_nested_react_keys`` fills, and stay None when nothing recorded this
+    id: absence of information is never read as disjointness.
+    """
+    tag_text = _root_tag_text(level) or ""
+    cls = discovery.get_class(_tag_attr(tag_text, RE_ROOT_PJX_TYPE) or "")
+    reactive = cls if cls is not None and issubclass(cls, ReactiveComponent) else None
+    return _NestedRoot(
+        level=level,
+        component_class=reactive,
+        react_keys=None if session is None else session.nested_react_keys.get(instance_id),
+        load_key=_tag_attr(tag_text, RE_ROOT_PJX_LOAD),
+    )
+
+
+def _contained(
+    level: RenderedLevel, session: RenderSession | None = None
+) -> tuple[set[str], set[int], dict[str, _NestedRoot]]:
+    """Every id, level object, and reactive root nested *strictly inside* this level.
 
     Two identity channels, because a descendant can be either shape: an
     unfilled ChildRef still carries the authored ``id`` attr, while a filled
     RenderedLevel carries its stamped root id — plus object identity, which
     settles the case where a survivor's own level object is literally the node
     sitting in another survivor's tree.
+
+    The third channel is additive and read by the preserve pass alone: one
+    ``_NestedRoot`` per filled nested level, keyed by its stamped id.
+    ``_drop_nested`` ignores it. An unfilled ChildRef contributes nothing to it
+    — there is no level to stamp and no rendered tag to read.
     """
     ids: set[str] = set()
     objects: set[int] = set()
+    nested_roots: dict[str, _NestedRoot] = {}
     stack: list[object] = list(level.segments)
     while stack:
         node = stack.pop()
@@ -287,8 +361,9 @@ def _contained(level: RenderedLevel) -> tuple[set[str], set[int]]:
             nested_id = _root_instance_id(node)
             if nested_id:
                 ids.add(nested_id)
+                nested_roots[nested_id] = _nested_root(node, nested_id, session)
             stack.extend(node.segments)
-    return ids, objects
+    return ids, objects, nested_roots
 
 
 def _drop_nested(candidates: list[FanoutCandidate]) -> list[FanoutCandidate]:
@@ -320,7 +395,7 @@ def _drop_nested(candidates: list[FanoutCandidate]) -> list[FanoutCandidate]:
         level = _level_of(other)
         if level is None:
             continue
-        ids, objects = _contained(level)
+        ids, objects, _nested_roots = _contained(level)
         all_ids |= ids
         all_objects |= objects
     surviving: list[FanoutCandidate] = []
