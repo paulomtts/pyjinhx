@@ -391,9 +391,18 @@ Image or initials in a circle. **Assets:** `pjx_avatar.css` only.
     | `alt` | `str` | `""` | `img` alt text; also used as `title` on initials. |
     | `initials` | `str` | `""` | Up to two characters (trimmed/capped in validation). |
     | `size` | `str \| int` | `"md"` | Named token (`sm`, `md`, `lg`) **or** an arbitrary pixel size (`int`) or CSS length string (`"36px"`, `"2.5rem"`). Named tokens emit the BEM modifier class; an int/CSS length renders `width`/`height` inline. |
+    | `shape` | `Literal["circle", "square", "hexagon", "diamond", "triangle"]` | `"circle"` | `"circle"` is the implicit default and emits no modifier class; the others emit `pjx-avatar--{shape}`. |
     | `color` | `str` | `""` | Inline `background` color (e.g. `"#4f46e5"`, `"hsl(240 60% 50%)"` ). |
 
     **Arbitrary pixel sizing:** pass an `int` for a pixel size or any CSS length string for a custom size. This bypasses the named-token classes so the avatar can be sized by data rather than the three design-system tokens.
+
+    **Non-circle shapes:** `hexagon`, `diamond`, and `triangle` are cut with `clip-path`, which clips the border along with the shape — expect a straight-edged border on those, not a rounded one.
+
+<!-- demo: PJXAvatarShapes -->
+
+```html
+<PJXAvatar initials="JD" size="lg" shape="hexagon" alt="Hexagon"/>
+```
 
 ??? note "Style tokens"
 
@@ -410,12 +419,13 @@ Image or initials in a circle. **Assets:** `pjx_avatar.css` only.
 
     Root `.pjx-avatar`; no JS API.
 
-    **Classes:** `pjx-avatar`, `pjx-avatar--sm|md|lg` (named tokens only), `pjx-avatar__img`, `pjx-avatar__initials`.
+    **Classes:** `pjx-avatar`, `pjx-avatar--sm|md|lg` (named tokens only), `pjx-avatar--square|hexagon|diamond|triangle` (non-circle shapes only), `pjx-avatar__img`, `pjx-avatar__initials`.
 
 ??? note "Python"
 
     ```python
     PJXAvatar(initials="JD", size="sm", alt="Jane Doe")
+    PJXAvatar(initials="JD", size="lg", shape="hexagon", alt="Jane Doe")
     ```
 
 ### PJXAvatarStack

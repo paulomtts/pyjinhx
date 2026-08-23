@@ -1,3 +1,5 @@
+from typing import Literal
+
 from pydantic import Field, computed_field, field_validator
 
 from pyjinhx._component import AttrValue, BaseComponent, ExtraAttrs
@@ -6,7 +8,7 @@ _NAMED_SIZES = {"sm", "md", "lg"}
 
 
 class PJXAvatar(BaseComponent):
-    """A circular avatar showing an image when ``src`` is set, initials otherwise."""
+    """An avatar showing an image when ``src`` is set, initials otherwise."""
 
     src: str = ""
     alt: str = ""
@@ -15,6 +17,8 @@ class PJXAvatar(BaseComponent):
     # An int (px) or any other CSS length string (e.g. "36px", "2.5rem")
     # renders inline width/height instead and omits the modifier class.
     size: str | int = "md"
+    # "circle" is the implicit default and emits no modifier class.
+    shape: Literal["circle", "square", "hexagon", "diamond", "triangle"] = "circle"
     class_name: AttrValue = ""
     color: AttrValue = ""
     extra_attrs: ExtraAttrs = Field(default_factory=dict)

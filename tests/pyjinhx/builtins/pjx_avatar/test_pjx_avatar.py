@@ -127,6 +127,23 @@ def test_extra_attrs_surface_on_the_root(avatar_session):
     assert 'class="pjx-avatar pjx-avatar--md"' in html
 
 
+def test_default_shape_is_circle_and_emits_no_modifier_class(avatar_session):
+    html = _html(avatar_session)
+    assert 'class="pjx-avatar pjx-avatar--md"' in html
+    assert "pjx-avatar--circle" not in html
+
+
+@pytest.mark.parametrize("shape", ["square", "hexagon", "diamond", "triangle"])
+def test_non_circle_shapes_emit_modifier_class(avatar_session, shape):
+    html = _html(avatar_session, shape=shape)
+    assert f"pjx-avatar--{shape}" in html
+
+
+def test_invalid_shape_is_rejected():
+    with pytest.raises(ValidationError):
+        PJXAvatar(id="a", shape="octagon")  # pyright: ignore[reportArgumentType]
+
+
 def test_stylesheet_is_auto_discovered_by_snake_case_filename():
     """The descriptor probes "<snake_case class name>.css" next to the module,
     so the v0.x kebab-case filename had to be renamed on the way in.

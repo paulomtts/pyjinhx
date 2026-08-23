@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.7.1 — Avatar shapes (2026-08-23)
+
+### Added
+- `PJXAvatar(shape=...)` accepts `"square"`, `"hexagon"`, `"diamond"`, and `"triangle"` in
+  addition to the existing circle. `"circle"` stays the implicit default and emits no
+  modifier class; the others emit `pjx-avatar--{shape}`. `hexagon`/`diamond`/`triangle` are
+  cut with `clip-path`, so their border comes out straight-edged rather than rounded.
+
 ## 1.7.0 — Tooltip backdrop, drawer slide-in, and a literal-id-default warning (2026-08-19)
 
 ### Added
