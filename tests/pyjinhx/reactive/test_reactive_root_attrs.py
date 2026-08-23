@@ -15,7 +15,10 @@ from pyjinhx import discovery
 from pyjinhx._component import BaseComponent, Slot
 from pyjinhx.descriptor import ClassDescriptor
 from pyjinhx.reactive.component import ReactiveComponent
-from pyjinhx.reactive.root_attrs import stamp_reactive_root_attrs
+from pyjinhx.reactive.root_attrs import (
+    record_nested_react_keys,
+    stamp_reactive_root_attrs,
+)
 from pyjinhx.rendering import render_level
 from pyjinhx.root_attrs import RootStampCollisionError, serialize_attr, stamp_root_attrs
 from pyjinhx.segments import ChildRef, RenderedLevel, VerbatimParser, serialize
@@ -89,6 +92,48 @@ ReactiveShell.__pjx_descriptor__ = ClassDescriptor(
 )
 
 
+class KeyedReactiveWidget(ReactiveComponent, react=("a", "b")):
+    pass
+
+
+class UnkeyedReactiveWidget(ReactiveComponent):
+    pass
+
+
+class KeyedReactiveShell(ReactiveComponent, react=("shell",)):
+    body: Slot = ""
+
+
+class PlainShell(BaseComponent):
+    body: Slot = ""
+
+
+KeyedReactiveWidget.__pjx_descriptor__ = _descriptor_for(
+    KeyedReactiveWidget, "reactive_widget.html"
+)
+UnkeyedReactiveWidget.__pjx_descriptor__ = _descriptor_for(
+    UnkeyedReactiveWidget, "reactive_widget.html"
+)
+KeyedReactiveShell.__pjx_descriptor__ = ClassDescriptor(
+    template_path=_TEMPLATE_DIR / "reactive_shell.html",
+    slot_fields=frozenset({"body"}),
+    children_field=None,
+    css_paths=(),
+    js_paths=(),
+    strict=True,
+    provenance={"template": KeyedReactiveShell},
+)
+PlainShell.__pjx_descriptor__ = ClassDescriptor(
+    template_path=_TEMPLATE_DIR / "reactive_shell.html",
+    slot_fields=frozenset({"body"}),
+    children_field=None,
+    css_paths=(),
+    js_paths=(),
+    strict=True,
+    provenance={"template": PlainShell},
+)
+
+
 class InnerBadge(BaseComponent):
     pass
 
@@ -156,6 +201,14 @@ def session() -> RenderSession:
     """A session with only the reactive root-attr subscriber attached."""
     session = RenderSession()
     session.on_rendered.append(stamp_reactive_root_attrs)
+    return session
+
+
+@pytest.fixture
+def recording_session() -> RenderSession:
+    """A session with only the nested-react-keys recorder attached."""
+    session = RenderSession()
+    session.on_rendered.append(record_nested_react_keys)
     return session
 
 
@@ -512,3 +565,27 @@ def test_each_session_owns_its_own_nested_react_keys_map():
 
     assert second.nested_react_keys == {}
     assert first.nested_react_keys is not second.nested_react_keys
+
+
+def test_records_a_reactive_components_declared_react_keys(
+    recording_session: RenderSession,
+):
+    """Spec test 1: the value is the class's normalized _pjx_react_keys tuple."""
+    component = KeyedReactiveWidget(id="k1")
+
+    render_level(component, recording_session)
+
+    assert recording_session.nested_react_keys == {
+        "k1": KeyedReactiveWidget._pjx_react_keys
+    }
+    assert recording_session.nested_react_keys["k1"] == ("a", "b")
+
+
+def test_reactive_component_without_react_kwarg_records_an_empty_tuple(
+    recording_session: RenderSession,
+):
+    """Spec test 2: presence means 'reactive'; the value answers 'on what keys'."""
+    render_level(UnkeyedReactiveWidget(id="u1"), recording_session)
+
+    assert "u1" in recording_session.nested_react_keys
+    assert recording_session.nested_react_keys["u1"] == ()

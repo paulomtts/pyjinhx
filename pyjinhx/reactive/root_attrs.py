@@ -50,3 +50,10 @@ def stamp_reactive_root_attrs(
         if load_key is not None:
             attrs["data-pjx-load"] = load_key
     stamp_root_attrs(level, attrs)
+
+
+def record_nested_react_keys(
+    component: BaseComponent, level: RenderedLevel, session: RenderSession
+) -> None:
+    """Record a rendered reactive component's react keys under its instance id."""
+    session.nested_react_keys[component.id] = type(component)._pjx_react_keys  # pyright: ignore[reportAttributeAccessIssue]
