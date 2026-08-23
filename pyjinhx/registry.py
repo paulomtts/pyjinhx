@@ -7,9 +7,17 @@ concern, not this module's, and resolve() deduplicates nothing.
 """
 
 import logging
+from collections.abc import Iterable, Iterator
+from contextlib import contextmanager
 from typing import TYPE_CHECKING, Any
 
-from pyjinhx.session import _instances, get_dev_strict, get_instances
+from pyjinhx.session import (
+    _instances,
+    _quiet_collisions,
+    get_dev_strict,
+    get_instances,
+    get_quiet_collisions,
+)
 
 if TYPE_CHECKING:
     # Type-only: naming the spine's own types in a signature must not make this
@@ -66,6 +74,33 @@ class InstanceKeyCollisionError(RuntimeError):
     """
 
 
+@contextmanager
+def quiet_collisions(keys: Iterable[str]) -> Iterator[None]:
+    """Mark composite keys whose collision is expected for the duration of the block.
+
+    A write to one of these keys still overwrites — last-write-wins is
+    unchanged — but skips the warning and the dev-strict raise. Nested blocks
+    union: an inner block adds to the outer one's set, and the exit restores the
+    outer one exactly, including when the body raises. Used outside an active
+    request_scope() this binds and restores a set nothing reads, which is a
+    no-op rather than an error: the mechanism is advisory noise-suppression.
+
+    Args:
+        keys: Composite keys, as make_key() builds them.
+
+    Yields:
+        None; the block body runs with those keys quieted.
+    """
+    token = _quiet_collisions.set(get_quiet_collisions() | frozenset(keys))
+    try:
+        yield
+    finally:
+        # Reset by token, never by assigning the old value back: a worker's
+        # copied context and a nested block both have to hand back exactly what
+        # they were handed, and only the token knows what that was.
+        _quiet_collisions.reset(token)
+
+
 def register_instance(type_name: str, instance_id: str, entry: object) -> None:
     """Store an entry in this request's registry under its composite key.
 
@@ -92,11 +127,15 @@ def register_instance(type_name: str, instance_id: str, entry: object) -> None:
             "Entry for key %r registered outside request_scope(); dropped.", key
         )
         return
-    if key in instances:
+    if key in instances and key not in get_quiet_collisions():
         # The one production caller fires once per rendered component, so a
         # second write to one key in one request means two components claimed
         # the same id — usually a hard-coded `id` default on a class rendered
-        # more than once.
+        # more than once. Unless a caller said otherwise: a key inside an
+        # active quiet_collisions() block is one this request already knows two
+        # builds will claim (#1022 — a region rendered both as its own fan-out
+        # candidate and as a nested descendant of a sibling candidate's tree),
+        # so it overwrites in silence.
         if get_dev_strict():
             raise InstanceKeyCollisionError(
                 f"Key {key!r} is already registered; two instances share one id."

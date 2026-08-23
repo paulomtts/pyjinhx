@@ -23,7 +23,7 @@ if TYPE_CHECKING:
     from pyjinhx.config import PjxSettings
     from pyjinhx.segments import RenderedLevel
 
-# The eight pieces of per-request mutable state. They live here rather than
+# The nine pieces of per-request mutable state. They live here rather than
 # beside their eventual consumers because the import rule runs one way only:
 # reactive/ imports session, never the reverse. Each defaults to None so that
 # reading one outside a request is a miss, not a LookupError.
@@ -46,6 +46,9 @@ _cache_forward: ContextVar[dict[tuple[type, object], set[str]] | None] = Context
 _load_context: ContextVar[object | None] = ContextVar("pjx_load_context", default=None)
 _freshness_cache: ContextVar[dict[str, bool] | None] = ContextVar(
     "pjx_freshness_cache", default=None
+)
+_quiet_collisions: ContextVar[frozenset[str] | None] = ContextVar(
+    "pjx_quiet_collisions", default=None
 )
 
 # Not a ContextVar and deliberately so: this mirrors dev._dev_config, which is
@@ -317,6 +320,20 @@ def get_instances() -> dict[str, object]:
     return registry
 
 
+def get_quiet_collisions() -> frozenset[str]:
+    """Return the composite keys whose collision is expected, empty outside a scope.
+
+    A key in this set is one some caller already knows two writers will claim in
+    this request, so register_instance() overwrites without the warning or the
+    dev-strict raise. Empty is the normal answer: the set is only non-empty
+    inside a registry.quiet_collisions() block.
+    """
+    quiet = _quiet_collisions.get()
+    if quiet is None:
+        return frozenset()
+    return quiet
+
+
 def get_dev_strict() -> bool:
     """Return whether reactive-dev strict mode is on, process-wide."""
     with _dev_strict_lock:
@@ -451,6 +468,7 @@ def request_scope(
     cache_reverse_token = _cache_reverse.set({})
     cache_forward_token = _cache_forward.set({})
     freshness_token = _freshness_cache.set({})
+    quiet_token = _quiet_collisions.set(frozenset())
     # Bound only when supplied, so an inner scope that knows nothing about the
     # app context cannot blank out the request's value for the code below it.
     load_token = _load_context.set(load_context) if load_context is not None else None
@@ -461,6 +479,7 @@ def request_scope(
         # outer scope its own state back, not clear the variable outright.
         if load_token is not None:
             _load_context.reset(load_token)
+        _quiet_collisions.reset(quiet_token)
         _freshness_cache.reset(freshness_token)
         _cache_forward.reset(cache_forward_token)
         _cache_reverse.reset(cache_reverse_token)
