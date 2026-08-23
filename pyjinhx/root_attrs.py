@@ -106,10 +106,15 @@ def stamp_root_attrs(
     Recursing into a nested level crosses a component boundary, so the splice
     there is no longer this component's to make unconditionally: if the nested
     root already carries all of data-pjx-id/-type/-hash and this call would
-    rewrite those same keys, it raises RootStampCollisionError rather than
-    clobbering the inner component's identity. Same-level re-stamping (the
-    ``str`` root branch reached without recursion) still overrides, since
-    there the identity being replaced is the component's own.
+    rewrite any of those same keys to a *different* value, it raises
+    RootStampCollisionError rather than clobbering the inner component's
+    identity. An exact restamp — same id, same type, same hash — is one
+    component's own identity being re-asserted (e.g. a session's
+    ``on_rendered`` subscriber and an explicit OOB stamp both firing in the
+    same render pass), not a boundary violation, so it is a no-op. Same-level
+    re-stamping (the ``str`` root branch reached without recursion) still
+    overrides unconditionally, since there the identity being replaced is the
+    component's own.
     """
     if not attrs:
         return level
@@ -139,7 +144,8 @@ def stamp_root_attrs(
     if nested:
         existing = _reactive_stamps(tag_text)
         if len(existing) == len(_REACTIVE_STAMP_KEYS) and any(
-            name in attrs for name in _REACTIVE_STAMP_KEYS
+            name in attrs and attrs[name] != existing[name]
+            for name in _REACTIVE_STAMP_KEYS
         ):
             raise RootStampCollisionError(
                 "cannot stamp a reactive root tag that another reactive "

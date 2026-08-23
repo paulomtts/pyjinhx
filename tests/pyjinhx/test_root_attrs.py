@@ -182,6 +182,32 @@ def test_stamp_root_attrs_nested_reactive_collision_raises():
     assert "outer-456" in str(exc_info.value)
 
 
+def test_stamp_root_attrs_nested_reactive_exact_restamp_is_noop():
+    """A component whose whole template is one child tag can be stamped with
+    the *same* identity values that already sit on the nested root (e.g. the
+    on_rendered subscriber and an explicit OOB stamp both firing in the same
+    render pass) without raising: the values agree, so this is one component
+    re-asserting its own identity, not a boundary violation (issue #1020)."""
+    inner_tag = (
+        '<div data-pjx-id="same-123" data-pjx-type="same_comp" data-pjx-hash="abc">'
+    )
+    inner_level = _level(inner_tag, (0, len(inner_tag)))
+
+    outer_level = RenderedLevel(
+        segments=[inner_level], root_span=(0, len(inner_tag)), descriptor=None
+    )
+
+    stamp_root_attrs(
+        outer_level,
+        {
+            "data-pjx-id": "same-123",
+            "data-pjx-type": "same_comp",
+            "data-pjx-hash": "abc",
+        },
+    )
+    assert outer_level is not None
+
+
 def test_stamp_root_attrs_nested_partial_reactive_does_not_collide():
     """A nested reactive root with only some of the identity attrs (not a
     complete stamp) can still be stamped without collision, allowing partial
