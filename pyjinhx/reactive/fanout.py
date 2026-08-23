@@ -36,6 +36,7 @@ from pyjinhx.reactive.cache import cache_get, cache_has
 from pyjinhx.reactive.component import ReactiveComponent, coerce_load_arg
 from pyjinhx.reactive.keys import coerce_load_key_str
 from pyjinhx.reactive.load_cost import is_too_cheap_to_thread, note_load_cost
+from pyjinhx.reactive.root_attrs import record_nested_react_keys
 from pyjinhx.rendering import render_level
 from pyjinhx.root_attrs import stamp_root_attrs
 from pyjinhx.segments import ChildRef, RenderedLevel, serialize
@@ -96,24 +97,31 @@ def _load_key(cls: type[ReactiveComponent], load: object) -> str | None:
     return coerce_load_key_str(load)
 
 
-def _matches_dirtied(
-    cls: type[ReactiveComponent], load_key: str | None, dirtied_keys: set[str]
+def _keys_match_dirtied(
+    react_keys: tuple[str, ...], load_key: str | None, dirtied_keys: set[str]
 ) -> bool:
-    """Whether any dirtied key names this class, or this exact instance of it.
+    """Whether any dirtied key names these react keys, or this exact instance.
 
     Two shapes reach here. A plain static key (``"todos"``) names every mounted
     instance of a class that declares it. A dynamic key (``reactive_key(TODOS,
     "2")`` -> ``"todos:2"``) names one instance: the mounted region whose own
-    load key is ``"2"``. Narrowing lives here rather than in the caller so the
-    two shapes are decided in one place and a class with no PjxKey field —
-    whose load key is None — simply never matches a dynamic key.
+    load key is ``"2"``. Narrowing lives here rather than in the callers so the
+    two shapes are decided in one place, and an instance with no load key — an
+    unkeyed class — simply never matches a dynamic key.
     """
-    static = set(cls._pjx_react_keys)
+    static = set(react_keys)
     if static & dirtied_keys:
         return True
     if load_key is None:
         return False
     return bool({f"{key}:{load_key}" for key in static} & dirtied_keys)
+
+
+def _matches_dirtied(
+    cls: type[ReactiveComponent], load_key: str | None, dirtied_keys: set[str]
+) -> bool:
+    """Whether any dirtied key names this class, or this exact instance of it."""
+    return _keys_match_dirtied(cls._pjx_react_keys, load_key, dirtied_keys)
 
 
 def _candidate_class(
@@ -202,6 +210,14 @@ RE_ROOT_PJX_ID = re.compile(
     r'data-pjx-id\s*=\s*"([^"]*)"|data-pjx-id\s*=\s*\'([^\']*)\''
 )
 
+RE_ROOT_PJX_TYPE = re.compile(
+    r'data-pjx-type\s*=\s*"([^"]*)"|data-pjx-type\s*=\s*\'([^\']*)\''
+)
+
+RE_ROOT_PJX_LOAD = re.compile(
+    r'data-pjx-load\s*=\s*"([^"]*)"|data-pjx-load\s*=\s*\'([^\']*)\''
+)
+
 
 def _mounted_ids_in(primary_html: object) -> set[str]:
     """Every ``data-pjx-id`` the primary response's markup already carries.
@@ -238,14 +254,13 @@ def _level_of(candidate: FanoutCandidate) -> RenderedLevel | None:
     return None
 
 
-def _root_instance_id(level: RenderedLevel) -> str | None:
-    """The ``data-pjx-id`` on this level's root tag, or None if unstamped.
+def _root_tag_text(level: RenderedLevel) -> str | None:
+    """This level's root opening tag, sliced at the offsets the parse recorded.
 
-    The exact inverse of ``stamp_root_attrs``: one read of the single tag whose
-    offsets the original parse recorded, never a re-parse and never a scan of
-    the rendered markup. ``_fill_children`` replaces a child's ChildRef with its
-    RenderedLevel and the authored ``id`` attr goes with it, so the stamped root
-    tag is the only place a nested level's instance identity still lives.
+    Never a re-parse and never a scan of the rendered markup: one read of the
+    single tag whose span the original parse wrote down. ``root_span`` is an
+    absolute offset into the raw source, so it is rebased by the summed length
+    of any whitespace-only prologue segments walked past first.
     """
     skipped = 0
     root: object = None
@@ -258,23 +273,92 @@ def _root_instance_id(level: RenderedLevel) -> str | None:
     if not isinstance(root, str):
         return None
     start, end = (offset - skipped for offset in level.root_span)
-    match = RE_ROOT_PJX_ID.search(root[start:end])
+    return root[start:end]
+
+
+def _tag_attr(tag_text: str, pattern: re.Pattern[str]) -> str | None:
+    """One attribute's value out of a root tag, double- or single-quoted."""
+    match = pattern.search(tag_text)
     if match is None:
         return None
     return match.group(1) if match.group(1) is not None else match.group(2)
 
 
-def _contained(level: RenderedLevel) -> tuple[set[str], set[int]]:
-    """Every id and every level object nested *strictly inside* this level.
+def _root_instance_id(level: RenderedLevel) -> str | None:
+    """The ``data-pjx-id`` on this level's root tag, or None if unstamped.
+
+    The exact inverse of ``stamp_root_attrs``. ``_fill_children`` replaces a
+    child's ChildRef with its RenderedLevel and the authored ``id`` attr goes
+    with it, so the stamped root tag is the only place a nested level's
+    instance identity still lives.
+    """
+    tag_text = _root_tag_text(level)
+    if tag_text is None:
+        return None
+    return _tag_attr(tag_text, RE_ROOT_PJX_ID)
+
+
+@dataclass(frozen=True)
+class _NestedRoot:
+    """One reactive root nested inside a candidate's level, and what decides its stamp."""
+
+    level: RenderedLevel
+    """The nested level itself, so a stamp can be spliced into that exact object."""
+
+    component_class: type[ReactiveComponent] | None
+    """The class its ``data-pjx-type`` names, or None when the tag names none."""
+
+    react_keys: tuple[str, ...] | None
+    """What ``record_nested_react_keys`` recorded for this id, or None if nothing did."""
+
+    load_key: str | None
+    """This instance's ``data-pjx-load``, or None for an unkeyed class."""
+
+
+def _nested_root(
+    level: RenderedLevel, instance_id: str, session: RenderSession | None
+) -> _NestedRoot:
+    """Everything the preserve pass needs about one nested root, read once.
+
+    The class comes from the tag's own ``data-pjx-type`` — a RenderedLevel's
+    descriptor carries no back-reference to the class that rendered it, and the
+    tag is where ``stamp_reactive_root_attrs`` already wrote the snake_case tag
+    name ``discovery`` is keyed by. The react keys come from the session map
+    ``record_nested_react_keys`` fills, and stay None when nothing recorded this
+    id: absence of information is never read as disjointness.
+    """
+    tag_text = _root_tag_text(level) or ""
+    cls = discovery.get_class(_tag_attr(tag_text, RE_ROOT_PJX_TYPE) or "")
+    reactive = cls if cls is not None and issubclass(cls, ReactiveComponent) else None
+    return _NestedRoot(
+        level=level,
+        component_class=reactive,
+        react_keys=None
+        if session is None
+        else session.nested_react_keys.get(instance_id),
+        load_key=_tag_attr(tag_text, RE_ROOT_PJX_LOAD),
+    )
+
+
+def _contained(
+    level: RenderedLevel, session: RenderSession | None = None
+) -> tuple[set[str], set[int], dict[str, _NestedRoot]]:
+    """Every id, level object, and reactive root nested *strictly inside* this level.
 
     Two identity channels, because a descendant can be either shape: an
     unfilled ChildRef still carries the authored ``id`` attr, while a filled
     RenderedLevel carries its stamped root id — plus object identity, which
     settles the case where a survivor's own level object is literally the node
     sitting in another survivor's tree.
+
+    The third channel is additive and read by the preserve pass alone: one
+    ``_NestedRoot`` per filled nested level, keyed by its stamped id.
+    ``_drop_nested`` ignores it. An unfilled ChildRef contributes nothing to it
+    — there is no level to stamp and no rendered tag to read.
     """
     ids: set[str] = set()
     objects: set[int] = set()
+    nested_roots: dict[str, _NestedRoot] = {}
     stack: list[object] = list(level.segments)
     while stack:
         node = stack.pop()
@@ -287,8 +371,9 @@ def _contained(level: RenderedLevel) -> tuple[set[str], set[int]]:
             nested_id = _root_instance_id(node)
             if nested_id:
                 ids.add(nested_id)
+                nested_roots[nested_id] = _nested_root(node, nested_id, session)
             stack.extend(node.segments)
-    return ids, objects
+    return ids, objects, nested_roots
 
 
 def _drop_nested(candidates: list[FanoutCandidate]) -> list[FanoutCandidate]:
@@ -320,7 +405,7 @@ def _drop_nested(candidates: list[FanoutCandidate]) -> list[FanoutCandidate]:
         level = _level_of(other)
         if level is None:
             continue
-        ids, objects = _contained(level)
+        ids, objects, _nested_roots = _contained(level)
         all_ids |= ids
         all_objects |= objects
     surviving: list[FanoutCandidate] = []
@@ -617,6 +702,13 @@ def walk_manifest(
     # one, so a caller inside a request never has its dirty-path render
     # silently point at the wrong template dir.
     render_session = session or current_session() or RenderSession()
+    # Subscribed here rather than inside _build_dirty: one append per walk
+    # covers every build the pass runs, and the guard mirrors the one
+    # responses.py:74 uses for accumulate_assets, so a session that already
+    # carries the recorder — a second walk, or a caller that wired it — never
+    # records the same render twice.
+    if record_nested_react_keys not in render_session.on_rendered:
+        render_session.on_rendered.append(record_nested_react_keys)
     return _reduce_pass(items, _build_pass(items, render_session))
 
 
@@ -662,7 +754,55 @@ def delete_swap(candidate: FanoutCandidate) -> Markup:
     return Markup(f'<div hx-swap-oob="{selector}"></div>')
 
 
-def oob_swaps(candidates: list[FanoutCandidate]) -> Markup:
+def _preserve_nested(
+    level: RenderedLevel,
+    dirtied_keys: set[str],
+    candidate_ids: set[str],
+    session: RenderSession | None,
+) -> None:
+    """Splice ``hx-preserve="true"`` onto each nested root this swap must not disturb.
+
+    A nested reactive region whose keys this request never dirtied is not the
+    parent's to replace: htmx keeps the live element when the incoming markup
+    carries ``hx-preserve``, so the parent's swap lands around it instead of
+    through it. Stamping is deliberately conservative — a nested root is stamped
+    only on positive proof of disjointness, so an unresolvable class or an
+    unrecorded id simply keeps today's behavior.
+
+    ``hx-preserve`` is a documented no-op for an id the client does not already
+    show, so a first-mount nested region needs no special case here.
+
+    htmx resolves the live element by the incoming tag's plain ``id`` attribute
+    (``handlePreservedElements`` -> ``getElementById``), not by ``data-pjx-id``,
+    so retention only actually lands for a region whose own template root
+    carries a stable authored ``id``. Stamping one here would not help: the
+    element already on the page came from a render that carried none either.
+
+    Runs after the candidate's own root stamp, never before: the shape where the
+    "nested" root *is* the fragment's own swap target (a parent whose whole
+    template is one reactive child) is exactly the shape ``stamp_root_attrs``
+    already refuses with RootStampCollisionError, so no fragment reaches this
+    pass with its own swap target among the nested roots.
+    """
+    _ids, _objects, nested_roots = _contained(level, session)
+    for nested_id, nested in nested_roots.items():
+        if nested_id in candidate_ids:
+            continue
+        cls = nested.component_class
+        if cls is None or not cls.retain_across_parent_swaps:
+            continue
+        if nested.react_keys is None:
+            continue
+        if _keys_match_dirtied(nested.react_keys, nested.load_key, dirtied_keys):
+            continue
+        stamp_root_attrs(nested.level, {"hx-preserve": "true"}, nested=True)
+
+
+def oob_swaps(
+    candidates: list[FanoutCandidate],
+    dirtied_keys: Iterable[str] = (),
+    session: RenderSession | None = None,
+) -> Markup:
     """The whole OOB response body for one walk's candidates, in candidate order.
 
     Each dirty candidate's already-built level is stamped with its own
@@ -682,11 +822,25 @@ def oob_swaps(candidates: list[FanoutCandidate]) -> Markup:
         candidates: ``walk_manifest()`` output. Every filter — hash gate, dedup,
             nesting, primary-region exclusion — has already been applied; this
             function re-decides none of them.
+        dirtied_keys: This request's normalized dirtied reactive keys, so a
+            nested region none of them names can be preserved across its
+            parent's swap. Empty by default: a caller that supplies none gets
+            today's behavior, which stamps nothing.
+        session: The session carrying ``nested_react_keys``; defaults to the
+            active ``request_scope()``'s, and to None outside one, in which
+            case nothing is stamped.
 
     Returns:
         The surviving fragments joined by newlines, or ``Markup("")`` when no
         candidate is dirty or missing.
     """
+    dirtied = set(dirtied_keys)
+    render_session = session or current_session()
+    candidate_ids = {
+        candidate.instance_id
+        for candidate in candidates
+        if candidate.status in ("dirty", "missing")
+    }
     fragments: list[str] = []
     for candidate in candidates:
         if candidate.status == "dirty":
@@ -706,7 +860,9 @@ def oob_swaps(candidates: list[FanoutCandidate]) -> Markup:
                 f"outerHTML:[data-pjx-id='{_css_attr_value(candidate.instance_id)}']"
             )
             attrs = {"hx-swap-oob": selector, "data-pjx-hash": candidate.fresh_hash}
-            fragments.append(serialize(stamp_root_attrs(level, attrs)))
+            stamp_root_attrs(level, attrs)
+            _preserve_nested(level, dirtied, candidate_ids, render_session)
+            fragments.append(serialize(level))
         elif candidate.status == "missing":
             fragments.append(delete_swap(candidate))
     return Markup("\n".join(fragments))

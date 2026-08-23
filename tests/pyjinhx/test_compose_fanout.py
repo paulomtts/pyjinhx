@@ -9,6 +9,7 @@ from pyjinhx import discovery, registry
 from pyjinhx.reactive import cache
 from pyjinhx.reactive.cache import cache_get, cache_has, cache_put
 from pyjinhx.reactive.component import PjxKey, ReactiveComponent
+from pyjinhx.reactive.root_attrs import stamp_reactive_root_attrs
 from pyjinhx.responses import PjxResponse, compose
 from pyjinhx.session import RenderSession, add_dirtied, request_scope
 
@@ -27,18 +28,40 @@ class ResponseWidget(ReactiveComponent, react=("todos",)):
         return cls(pjx_key=pjx_key, data=f"data:{pjx_key}")
 
 
+class SidebarWidget(ReactiveComponent, react=("sidebar",)):
+    """A nested reactive region no `todos` mutation ever touches."""
+
+
+class ShellWidget(ReactiveComponent, react=("todos",)):
+    """A dirty parent whose template nests a disjoint reactive region."""
+
+    @classmethod
+    def load(cls) -> "ShellWidget":
+        return cls()
+
+
 @pytest.fixture(autouse=True)
 def _publish_registry(tmp_path, monkeypatch):
     """Publish a tag -> class map for ResponseWidget and point it at a real template."""
     LOAD_CALLS.clear()
     template = tmp_path / "response_widget.pjx"
     template.write_text("<div>{{ pjx_key }}</div>")
-    discovery.build_registry(tmp_path, [ResponseWidget])
+    sidebar = tmp_path / "sidebar_widget.pjx"
+    sidebar.write_text("<aside>sidebar</aside>")
+    shell = tmp_path / "shell_widget.pjx"
+    shell.write_text('<div><SidebarWidget id="side"/></div>')
+    discovery.build_registry(tmp_path, [ResponseWidget, SidebarWidget, ShellWidget])
     # `_resolve_template_path` probes the class's defining module directory, not the
     # dir passed to build_registry; repoint the descriptor at the tmp_path file. The
     # loader is absolute-only, so the descriptor carries the full path.
     ResponseWidget.__pjx_descriptor__ = dataclasses.replace(
         ResponseWidget.__pjx_descriptor__, template_path=template
+    )
+    SidebarWidget.__pjx_descriptor__ = dataclasses.replace(
+        SidebarWidget.__pjx_descriptor__, template_path=sidebar
+    )
+    ShellWidget.__pjx_descriptor__ = dataclasses.replace(
+        ShellWidget.__pjx_descriptor__, template_path=shell
     )
     yield
 
@@ -315,3 +338,42 @@ def test_primary_with_dunder_html_is_used_as_markup():
 
     with request_scope() as session:
         assert _compose(Fragment(), session=session).body == "<p>hi</p>"
+
+
+def test_a_disjoint_nested_region_is_preserved_across_a_parent_swap():
+    """The whole path: recorder wired by the walk, keys compared, stamp emitted."""
+    with request_scope() as session:
+        # A nested root only carries data-pjx-id/-type once stamp_reactive_root_attrs
+        # has run. Production wires it per request (pyjinhx/integrations/fastapi.py);
+        # a bare session in a test does not, so this test wires it the same way.
+        session.on_rendered.append(stamp_reactive_root_attrs)
+        registry.register_instance(ShellWidget.__name__, "shell", "resolved-entry")
+        add_dirtied(["todos"])
+        session.pjx_mounted = [
+            {"type": "shell_widget", "id": "shell", "load": None, "hash": "stale"}
+        ]
+        body = _compose(None, session=session).body
+    assert "hx-swap-oob=\"outerHTML:[data-pjx-id='shell']\"" in body
+    start = body.index('data-pjx-id="side"')
+    assert 'hx-preserve="true"' in body[start : body.index(">", start) + 1]
+
+
+def test_a_nested_region_this_request_dirtied_is_not_preserved():
+    """The request's own dirtied keys reach oob_swaps, not an empty default set.
+
+    Sibling of the test above, and the half of the pair that can tell whether
+    `_fan_out` actually hands its dirtied keys on: with none of them travelling,
+    every nested region looks disjoint and gets held back, including this one,
+    which this request dirtied outright.
+    """
+    with request_scope() as session:
+        session.on_rendered.append(stamp_reactive_root_attrs)
+        registry.register_instance(ShellWidget.__name__, "shell", "resolved-entry")
+        add_dirtied(["todos", "sidebar"])
+        session.pjx_mounted = [
+            {"type": "shell_widget", "id": "shell", "load": None, "hash": "stale"}
+        ]
+        body = _compose(None, session=session).body
+    assert "hx-swap-oob=\"outerHTML:[data-pjx-id='shell']\"" in body
+    assert 'data-pjx-id="side"' in body
+    assert "hx-preserve" not in body

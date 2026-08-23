@@ -81,7 +81,10 @@ def _fan_out(
     )
     parts = [
         primary,
-        str(oob_swaps(candidates)),
+        # dirtied and session both travel: a nested region this request never
+        # dirtied is preserved across its parent's swap, and the session is
+        # where the walk recorded which keys each nested region reacts to.
+        str(oob_swaps(candidates, dirtied, session=session)),
         missing_asset_oob(candidates, session.pjx_assets, session, resolver),
     ]
     # An OOB-only body has nothing for htmx's default swap to place, so htmx would

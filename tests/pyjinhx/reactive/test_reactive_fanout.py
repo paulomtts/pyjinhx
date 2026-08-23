@@ -24,6 +24,7 @@ from pyjinhx.reactive.fanout import (
     walk_manifest,
 )
 from pyjinhx.reactive.load_cost import note_load_cost
+from pyjinhx.reactive.root_attrs import record_nested_react_keys
 from pyjinhx.segments import ChildRef, RenderedLevel
 from pyjinhx.session import (
     RenderSession,
@@ -58,6 +59,12 @@ class FanoutWidget(ReactiveComponent, react=("todos",)):
 
 class QuietWidget(ReactiveComponent, react=("other",)):
     """A reactive component that no test's dirtied keys ever touch."""
+
+
+class OwnedWidget(ReactiveComponent, react=("other",)):
+    """A nested class that declares itself fully owned by its parent's swap."""
+
+    retain_across_parent_swaps = False
 
 
 class LoudWidget(ReactiveComponent, react=("todos",)):
@@ -130,12 +137,15 @@ def _clean_registries(tmp_path, monkeypatch):
     quiet_path = tmp_path / "quiet_widget.pjx"
     fanout_path.write_text("<div>{{ pjx_key }}</div>")
     quiet_path.write_text("<div>quiet</div>")
+    owned_path = tmp_path / "owned_widget.pjx"
+    owned_path.write_text("<div>owned</div>")
     plain_path = tmp_path / "plain_widget.pjx"
     plain_path.write_text("<div>plain</div>")
     loud_path = tmp_path / "loud_widget.pjx"
     loud_path.write_text("<div>{{ pjx_key }}</div>")
     discovery.build_registry(
-        tmp_path, [FanoutWidget, QuietWidget, PlainWidget, SpyWidget, LoudWidget]
+        tmp_path,
+        [FanoutWidget, QuietWidget, PlainWidget, SpyWidget, LoudWidget, OwnedWidget],
     )
     # `_resolve_template_path` walks the class's *defining module's* directory
     # (this test file's dir), not `template_dir` passed to `build_registry` —
@@ -158,6 +168,9 @@ def _clean_registries(tmp_path, monkeypatch):
     )
     LoudWidget.__pjx_descriptor__ = dataclasses.replace(
         LoudWidget.__pjx_descriptor__, template_path=loud_path
+    )
+    OwnedWidget.__pjx_descriptor__ = dataclasses.replace(
+        OwnedWidget.__pjx_descriptor__, template_path=owned_path
     )
     yield
 
@@ -492,6 +505,40 @@ def stamped_level(instance_id: str, *children) -> RenderedLevel:
     )
 
 
+def reactive_level(
+    instance_id: str,
+    type_name: str = "quiet_widget",
+    load: str | None = None,
+    children: tuple = (),
+) -> RenderedLevel:
+    """A RenderedLevel whose root tag carries the full reactive identity stamp.
+
+    `stamped_level` writes only `data-pjx-id`. The preserve pass also reads
+    `data-pjx-type` (the only place a nested level records its owning class)
+    and `data-pjx-load`, so these tests need a root tag shaped the way
+    `stamp_reactive_root_attrs` shapes a real one.
+    """
+    attrs = (
+        f'data-pjx-id="{instance_id}" data-pjx-type="{type_name}" '
+        f'data-pjx-hash="h-{instance_id}"'
+    )
+    if load is not None:
+        attrs += f' data-pjx-load="{load}"'
+    root = f"<div {attrs}>"
+    return RenderedLevel(
+        segments=[root, *children, "</div>"],
+        root_span=(0, len(root)),
+        descriptor=FanoutWidget.__pjx_descriptor__,
+    )
+
+
+def dirty_with_level(instance_id: str, level: RenderedLevel) -> FanoutCandidate:
+    """A dirty candidate carrying a hand-shaped level and the fresh_hash oob_swaps asserts."""
+    return dataclasses.replace(
+        candidate(instance_id, level=level), fresh_hash="fresh-hash"
+    )
+
+
 def test_drop_nested_drops_a_child_level_nested_in_a_parent_level():
     child = stamped_level("child")
     parent = stamped_level("parent", child)
@@ -674,6 +721,162 @@ def test_drop_nested_walks_each_candidate_tree_exactly_once(monkeypatch):
     assert [c.instance_id for c in survivors] == [f"n{i}" for i in range(10)] + [
         "no-structure"
     ]
+
+
+def test_contained_reports_a_nested_reactive_root_with_its_class_and_load_key():
+    nested = reactive_level("nested", "fanout_widget", load="todo-9")
+    parent = reactive_level("parent", "fanout_widget", children=(nested,))
+    with scope() as session:
+        session.nested_react_keys["nested"] = ("todos",)
+        ids, objects, nested_roots = fanout._contained(parent, session)
+    assert ids == {"nested"}
+    assert objects == {id(nested)}
+    assert list(nested_roots) == ["nested"]
+    record = nested_roots["nested"]
+    assert record.level is nested
+    assert record.component_class is FanoutWidget
+    assert record.react_keys == ("todos",)
+    assert record.load_key == "todo-9"
+
+
+def test_contained_without_a_session_reports_no_react_keys():
+    """No session, no map: the id is still found, but nothing claims it is disjoint."""
+    nested = reactive_level("nested", "quiet_widget")
+    parent = reactive_level("parent", "fanout_widget", children=(nested,))
+    ids, _objects, nested_roots = fanout._contained(parent)
+    assert ids == {"nested"}
+    assert nested_roots["nested"].react_keys is None
+    assert nested_roots["nested"].component_class is QuietWidget
+
+
+def test_contained_reports_no_class_for_a_nested_root_without_a_pjx_type():
+    """An unstamped nested root resolves to no class, so nothing can be decided about it."""
+    nested = stamped_level("nested")
+    parent = reactive_level("parent", "fanout_widget", children=(nested,))
+    _ids, _objects, nested_roots = fanout._contained(parent)
+    assert nested_roots["nested"].component_class is None
+    assert nested_roots["nested"].load_key is None
+
+
+def nested_tag_of(body: str, instance_id: str) -> str:
+    """The opening tag of the nested root with this id, out of a serialized body."""
+    start = body.index(f'<div data-pjx-id="{instance_id}"')
+    return body[start : body.index(">", start) + 1]
+
+
+def test_a_disjoint_nested_region_is_stamped_with_hx_preserve():
+    nested = reactive_level("nested", "quiet_widget")
+    parent = reactive_level("parent", "fanout_widget", children=(nested,))
+    with scope() as session:
+        session.nested_react_keys["nested"] = ("other",)
+        body = str(oob_swaps([dirty_with_level("parent", parent)], {"todos"}, session))
+    assert 'hx-preserve="true"' in nested_tag_of(body, "nested")
+    parent_tag = nested_tag_of(body, "parent")
+    assert "hx-swap-oob=\"outerHTML:[data-pjx-id='parent']\"" in parent_tag
+    assert 'data-pjx-hash="fresh-hash"' in parent_tag
+    assert "hx-preserve" not in parent_tag
+
+
+def test_a_regions_own_fragment_never_carries_the_stamp():
+    """Step 3 only ever touches nested ids inside another candidate's fragment."""
+    own = reactive_level("nested", "quiet_widget")
+    with scope() as session:
+        session.nested_react_keys["nested"] = ("other",)
+        body = str(oob_swaps([dirty_with_level("nested", own)], {"todos"}, session))
+    assert "hx-preserve" not in body
+    assert "hx-swap-oob=\"outerHTML:[data-pjx-id='nested']\"" in body
+
+
+def test_a_nested_root_with_no_recorded_react_keys_is_left_byte_identical():
+    """Absence of information is never disjointness: the fragment is today's exactly."""
+    nested = reactive_level("nested", "quiet_widget")
+    parent = reactive_level("parent", "fanout_widget", children=(nested,))
+    baseline_nested = reactive_level("nested", "quiet_widget")
+    baseline_parent = reactive_level(
+        "parent", "fanout_widget", children=(baseline_nested,)
+    )
+    with scope() as session:
+        stamped = str(
+            oob_swaps([dirty_with_level("parent", parent)], {"todos"}, session)
+        )
+        baseline = str(oob_swaps([dirty_with_level("parent", baseline_parent)]))
+    assert "hx-preserve" not in stamped
+    assert stamped == baseline
+
+
+def test_stamping_a_nested_root_leaves_its_identity_attrs_untouched():
+    """The first caller to stamp a *nested* root: no RootStampCollisionError."""
+    nested = reactive_level("nested", "quiet_widget", load="k-1")
+    parent = reactive_level("parent", "fanout_widget", children=(nested,))
+    with scope() as session:
+        session.nested_react_keys["nested"] = ("other",)
+        body = str(oob_swaps([dirty_with_level("parent", parent)], {"todos"}, session))
+    tag = nested_tag_of(body, "nested")
+    assert 'data-pjx-id="nested"' in tag
+    assert 'data-pjx-type="quiet_widget"' in tag
+    assert 'data-pjx-hash="h-nested"' in tag
+    assert 'data-pjx-load="k-1"' in tag
+    assert 'hx-preserve="true"' in tag
+
+
+def test_a_class_opting_out_of_retention_is_never_stamped():
+    nested = reactive_level("nested", "owned_widget")
+    parent = reactive_level("parent", "fanout_widget", children=(nested,))
+    with scope() as session:
+        session.nested_react_keys["nested"] = ("other",)
+        body = str(oob_swaps([dirty_with_level("parent", parent)], {"todos"}, session))
+    assert "hx-preserve" not in body
+
+
+def test_a_nested_root_that_is_itself_a_candidate_is_never_stamped():
+    """Belt and braces, asserted directly.
+
+    A real walk cannot produce this shape — a candidate's own keys always match
+    the dirtied set that made it one — so the guard is driven by a hand-built
+    candidate list whose session map deliberately disagrees with that.
+    """
+    nested = reactive_level("nested", "quiet_widget")
+    parent = reactive_level("parent", "fanout_widget", children=(nested,))
+    with scope() as session:
+        session.nested_react_keys["nested"] = ("other",)
+        body = str(
+            oob_swaps(
+                [
+                    dirty_with_level("parent", parent),
+                    dirty_with_level("nested", nested),
+                ],
+                {"todos"},
+                session,
+            )
+        )
+    assert "hx-preserve" not in body
+
+
+def test_a_nested_root_dirtied_by_the_dynamic_key_form_is_not_stamped():
+    """The `key:load_key` form is folded in from the tag's own data-pjx-load."""
+    nested = reactive_level("nested", "fanout_widget", load="9")
+    parent = reactive_level("parent", "fanout_widget", children=(nested,))
+    with scope() as session:
+        session.nested_react_keys["nested"] = ("todos",)
+        body = str(
+            oob_swaps([dirty_with_level("parent", parent)], {"todos:9"}, session)
+        )
+    assert "hx-preserve" not in body
+
+
+def test_parent_and_child_dirtied_by_one_request_yield_no_preserve_anywhere():
+    """Regression guard for the failure the app's static-attribute workaround hit."""
+    child = reactive_level("child", "fanout_widget")
+    parent = reactive_level("parent", "fanout_widget", children=(child,))
+    with scope() as session:
+        session.nested_react_keys["parent"] = ("todos",)
+        session.nested_react_keys["child"] = ("todos",)
+        survivors = _drop_nested(
+            [dirty_with_level("parent", parent), dirty_with_level("child", child)]
+        )
+        body = str(oob_swaps(survivors, {"todos"}, session))
+    assert [c.instance_id for c in survivors] == ["parent"]
+    assert "hx-preserve" not in body
 
 
 def test_mounted_ids_in_extracts_both_quote_styles():
@@ -1639,3 +1842,17 @@ def test_root_instance_id_reads_a_root_stamped_behind_a_whitespace_prologue():
     stamp_root_attrs(level, {"data-pjx-id": "abc123"})
 
     assert fanout._root_instance_id(level) == "abc123"
+
+
+def test_walk_manifest_wires_the_nested_react_key_recorder_exactly_once():
+    """The subscriber is appended per walk, guarded the way responses.py guards its own."""
+    with scope() as session:
+        registry.register_instance(FanoutWidget.__name__, "a", "resolved-entry")
+        walk_manifest(
+            [entry("fanout_widget", "a", load="todo-1")], {"todos"}, session=session
+        )
+        walk_manifest(
+            [entry("fanout_widget", "a", load="todo-2")], {"todos"}, session=session
+        )
+    assert session.on_rendered.count(record_nested_react_keys) == 1
+    assert session.nested_react_keys["a"] == ("todos",)

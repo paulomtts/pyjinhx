@@ -572,6 +572,7 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
             "pyjinhx.reactive.component",
             "pyjinhx.reactive.keys",
             "pyjinhx.reactive.load_cost",
+            "pyjinhx.reactive.root_attrs",
             "pyjinhx.rendering",
             "pyjinhx.root_attrs",
             "pyjinhx.segments",
