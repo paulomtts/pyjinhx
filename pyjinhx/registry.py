@@ -149,9 +149,9 @@ def register_rendered_instance(
 ) -> None:
     """Register a just-rendered component's level under its composite key.
 
-    Shaped for ``RenderSession.on_rendered`` but subscribed by no production
-    code: the reactive Load path attaches it when it needs rendered levels
-    resolvable, and a session that never attaches it registers nothing.
+    Shaped for ``RenderSession.on_rendered`` and subscribed onto every request's
+    session by ``integrations/fastapi.py``'s middleware; a hand-built session
+    that never attaches it registers nothing.
 
     Args:
         component: The component that was just rendered; its class name and

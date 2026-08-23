@@ -25,7 +25,10 @@ from pyjinhx.reactive.fanout import (
     walk_manifest,
 )
 from pyjinhx.reactive.load_cost import note_load_cost
-from pyjinhx.reactive.root_attrs import record_nested_react_keys, stamp_reactive_root_attrs
+from pyjinhx.reactive.root_attrs import (
+    record_nested_react_keys,
+    stamp_reactive_root_attrs,
+)
 from pyjinhx.registry import InstanceKeyCollisionError
 from pyjinhx.segments import ChildRef, RenderedLevel
 from pyjinhx.session import (
@@ -2024,9 +2027,11 @@ def test_two_unrelated_candidates_sharing_one_id_still_raise_under_strict(strict
         entry("fanout_widget", "shared", load="todo-1"),
         entry("fanout_widget", "shared", load="todo-2"),
     ]
-    with request_scope(session=session):
-        with pytest.raises(InstanceKeyCollisionError, match="FanoutWidget_shared"):
-            walk_manifest(manifest, {"todos"})
+    with (
+        request_scope(session=session),
+        pytest.raises(InstanceKeyCollisionError, match="FanoutWidget_shared"),
+    ):
+        walk_manifest(manifest, {"todos"})
 
 
 def test_the_quieting_holds_on_the_inline_build_branch(caplog):

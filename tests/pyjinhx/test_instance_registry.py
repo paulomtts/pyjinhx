@@ -422,19 +422,23 @@ def test_nested_quiet_blocks_union_and_restore_the_outer_set():
 def test_quiet_collisions_restores_the_previous_set_when_the_body_raises():
     """The build pass lets a loader's exception travel; the set must not travel with it."""
     with request_scope():
-        with pytest.raises(RuntimeError, match="boom"):
-            with quiet_collisions([make_key("Widget", "w1")]):
-                assert get_quiet_collisions() == frozenset({"Widget_w1"})
-                raise RuntimeError("boom")
+        with (
+            pytest.raises(RuntimeError, match="boom"),
+            quiet_collisions([make_key("Widget", "w1")]),
+        ):
+            assert get_quiet_collisions() == frozenset({"Widget_w1"})
+            raise RuntimeError("boom")
         assert get_quiet_collisions() == frozenset()
 
 
 def test_quiet_collisions_outside_request_scope_raises_nothing(caplog):
     """Advisory, not load-bearing: no scope means no new failure mode."""
     assert _instances.get() is None
-    with caplog.at_level(logging.WARNING, logger="pyjinhx"):
-        with quiet_collisions([make_key("Widget", "w1")]):
-            register_instance("Widget", "w1", Widget("orphan"))
+    with (
+        caplog.at_level(logging.WARNING, logger="pyjinhx"),
+        quiet_collisions([make_key("Widget", "w1")]),
+    ):
+        register_instance("Widget", "w1", Widget("orphan"))
     # The out-of-scope drop happens before any quiet-set check, so its warning
     # is untouched by the block.
     assert len(caplog.records) == 1
