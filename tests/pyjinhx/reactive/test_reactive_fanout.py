@@ -60,6 +60,12 @@ class QuietWidget(ReactiveComponent, react=("other",)):
     """A reactive component that no test's dirtied keys ever touch."""
 
 
+class OwnedWidget(ReactiveComponent, react=("other",)):
+    """A nested class that declares itself fully owned by its parent's swap."""
+
+    retain_across_parent_swaps = False
+
+
 class LoudWidget(ReactiveComponent, react=("todos",)):
     """A reactive component that reacts to the same keys as FanoutWidget but is
     never measured, so a pass mixing it with a too-cheap class must still thread."""
@@ -130,12 +136,15 @@ def _clean_registries(tmp_path, monkeypatch):
     quiet_path = tmp_path / "quiet_widget.pjx"
     fanout_path.write_text("<div>{{ pjx_key }}</div>")
     quiet_path.write_text("<div>quiet</div>")
+    owned_path = tmp_path / "owned_widget.pjx"
+    owned_path.write_text("<div>owned</div>")
     plain_path = tmp_path / "plain_widget.pjx"
     plain_path.write_text("<div>plain</div>")
     loud_path = tmp_path / "loud_widget.pjx"
     loud_path.write_text("<div>{{ pjx_key }}</div>")
     discovery.build_registry(
-        tmp_path, [FanoutWidget, QuietWidget, PlainWidget, SpyWidget, LoudWidget]
+        tmp_path,
+        [FanoutWidget, QuietWidget, PlainWidget, SpyWidget, LoudWidget, OwnedWidget],
     )
     # `_resolve_template_path` walks the class's *defining module's* directory
     # (this test file's dir), not `template_dir` passed to `build_registry` —
@@ -158,6 +167,9 @@ def _clean_registries(tmp_path, monkeypatch):
     )
     LoudWidget.__pjx_descriptor__ = dataclasses.replace(
         LoudWidget.__pjx_descriptor__, template_path=loud_path
+    )
+    OwnedWidget.__pjx_descriptor__ = dataclasses.replace(
+        OwnedWidget.__pjx_descriptor__, template_path=owned_path
     )
     yield
 
@@ -804,6 +816,66 @@ def test_stamping_a_nested_root_leaves_its_identity_attrs_untouched():
     assert 'data-pjx-hash="h-nested"' in tag
     assert 'data-pjx-load="k-1"' in tag
     assert 'hx-preserve="true"' in tag
+
+
+def test_a_class_opting_out_of_retention_is_never_stamped():
+    nested = reactive_level("nested", "owned_widget")
+    parent = reactive_level("parent", "fanout_widget", children=(nested,))
+    with scope() as session:
+        session.nested_react_keys["nested"] = ("other",)
+        body = str(oob_swaps([dirty_with_level("parent", parent)], {"todos"}, session))
+    assert "hx-preserve" not in body
+
+
+def test_a_nested_root_that_is_itself_a_candidate_is_never_stamped():
+    """Belt and braces, asserted directly.
+
+    A real walk cannot produce this shape — a candidate's own keys always match
+    the dirtied set that made it one — so the guard is driven by a hand-built
+    candidate list whose session map deliberately disagrees with that.
+    """
+    nested = reactive_level("nested", "quiet_widget")
+    parent = reactive_level("parent", "fanout_widget", children=(nested,))
+    with scope() as session:
+        session.nested_react_keys["nested"] = ("other",)
+        body = str(
+            oob_swaps(
+                [
+                    dirty_with_level("parent", parent),
+                    dirty_with_level("nested", nested),
+                ],
+                {"todos"},
+                session,
+            )
+        )
+    assert "hx-preserve" not in body
+
+
+def test_a_nested_root_dirtied_by_the_dynamic_key_form_is_not_stamped():
+    """The `key:load_key` form is folded in from the tag's own data-pjx-load."""
+    nested = reactive_level("nested", "fanout_widget", load="9")
+    parent = reactive_level("parent", "fanout_widget", children=(nested,))
+    with scope() as session:
+        session.nested_react_keys["nested"] = ("todos",)
+        body = str(
+            oob_swaps([dirty_with_level("parent", parent)], {"todos:9"}, session)
+        )
+    assert "hx-preserve" not in body
+
+
+def test_parent_and_child_dirtied_by_one_request_yield_no_preserve_anywhere():
+    """Regression guard for the failure the app's static-attribute workaround hit."""
+    child = reactive_level("child", "fanout_widget")
+    parent = reactive_level("parent", "fanout_widget", children=(child,))
+    with scope() as session:
+        session.nested_react_keys["parent"] = ("todos",)
+        session.nested_react_keys["child"] = ("todos",)
+        survivors = _drop_nested(
+            [dirty_with_level("parent", parent), dirty_with_level("child", child)]
+        )
+        body = str(oob_swaps(survivors, {"todos"}, session))
+    assert [c.instance_id for c in survivors] == ["parent"]
+    assert "hx-preserve" not in body
 
 
 def test_mounted_ids_in_extracts_both_quote_styles():

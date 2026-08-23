@@ -769,10 +769,15 @@ def _preserve_nested(
     pass with its own swap target among the nested roots.
     """
     _ids, _objects, nested_roots = _contained(level, session)
-    for _nested_id, nested in nested_roots.items():
+    for nested_id, nested in nested_roots.items():
+        if nested_id in candidate_ids:
+            continue
+        cls = nested.component_class
+        if cls is None or not cls.retain_across_parent_swaps:
+            continue
         if nested.react_keys is None:
             continue
-        if set(nested.react_keys) & dirtied_keys:
+        if _keys_match_dirtied(nested.react_keys, nested.load_key, dirtied_keys):
             continue
         stamp_root_attrs(nested.level, {"hx-preserve": "true"}, nested=True)
 
