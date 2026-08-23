@@ -255,8 +255,8 @@ class RenderSession:
         self.pjx_trigger: dict[str, Any] | None = None
         # Per-request map of reactive instance id -> that class's
         # _pjx_react_keys, written by reactive.root_attrs.record_nested_react_keys
-        # when a caller appends it to on_rendered above. #1013's fan-out reads it
-        # to decide which nested reactive regions a parent swap must retain, so
+        # when a caller appends it to on_rendered above. The fan-out reads it to
+        # decide which nested reactive regions a parent swap must retain, so
         # the key is the same instance-id string fanout's _contained resolves
         # (ChildRef.attrs["id"] / _root_instance_id). Lives on the session, not
         # module-global: it must die with the request.

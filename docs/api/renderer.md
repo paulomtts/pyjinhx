@@ -62,6 +62,7 @@ def __init__(self) -> None
 | `pjx_mounted` | `list[dict[str, Any]]` | The client's parsed `X-PJX-Mounted` manifest, set by middleware and read by fan-out |
 | `pjx_assets` | `frozenset[str]` | The client's parsed `X-PJX-Assets` tokens — which assets it already holds |
 | `pjx_trigger` | `dict[str, Any] \| None` | The parsed htmx trigger header for this request, or `None` |
+| `nested_react_keys` | `dict[str, tuple[str, ...]]` | Reactive instance id → that class's reactive keys, written by `record_nested_react_keys` when a caller appends it to `on_rendered` |
 
 The three `pjx_*` manifest fields live on the session rather than on `request.state` because the response composer is framework-free: it has no `Request` to read them from.
 

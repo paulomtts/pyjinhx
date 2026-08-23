@@ -64,9 +64,9 @@ def record_nested_react_keys(
     reactive nodes pays one isinstance check per component and nothing else.
 
     ``emit_rendered`` fires once per component, so every reactive node lands an
-    entry at every nesting depth — the nested entries are what #1013's fan-out
-    needs to tell a disjoint nested reactive region from part of a parent's own
-    swap. A class declared without ``react=(...)`` records the empty tuple:
+    entry at every nesting depth — the nested entries are what lets the fan-out
+    tell a disjoint nested reactive region from part of a parent's own swap. A
+    class declared without ``react=(...)`` records the empty tuple:
     presence of an id means "this is a reactive component", the value answers
     "on what keys". A repeat render of one id overwrites in silence — unlike
     ``registry.register_instance``, there is nothing to collide over, since the
