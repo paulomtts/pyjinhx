@@ -65,7 +65,9 @@ keeps the same `data-pjx-id` across renders.
   region addressable.
 - `state_hash()` — canonical SHA-256 of sorted JSON from `model_dump(mode="json")`
   with `state_hash_exclude` applied (`id` is excluded by default). Override for custom
-  hashing or add fields to `state_hash_exclude` for ephemeral UI-only state.
+  hashing, or add fields to `state_hash_exclude` for ephemeral UI-only state — see
+  [Fields that change on every render](#fields-that-change-on-every-render) for the
+  fields that *must* go there.
 
 Reactive components are stamped on their root element automatically with four
 attributes: `data-pjx-id`, `data-pjx-type` (the **snake_case tag name**, e.g.
@@ -74,6 +76,39 @@ declares a `PjxKey` field — `data-pjx-load`.
 
 `data-pjx-reacts` is **not** stamped by the framework; see [Loading
 indicators](#loading-indicators-in-flight).
+
+### Fields that change on every render
+
+A field whose value is minted fresh every time the component is built — a
+`uuid4().hex` trace or request id, a `datetime.now()` timestamp that is not read
+back from persisted data — has to be named in `state_hash_exclude`:
+
+```python
+from uuid import uuid4
+
+from pydantic import Field
+
+
+class OrderPanel(ReactiveComponent, react={Keys.TODOS}):
+    state_hash_exclude = frozenset({"id", "trace_id"})
+
+    total: int = 0
+    trace_id: str = Field(default_factory=lambda: uuid4().hex)
+```
+
+`state_hash()` digests every field that is not excluded, so an unexcluded
+per-render value gives that instance a hash that never repeats. The hash gate —
+the check that drops a swap when a region's freshly computed hash equals the one
+the client reported — then has nothing to match on and can never fire, so every
+dirty event on the parent forces an `outerHTML` swap over every nested child
+region even when the child's own data did not move. Nothing raises and nothing
+warns; the only symptom is over-swapping.
+
+`state_hash_exclude` is a `ClassVar[frozenset[str]]`, and a subclass's value
+**replaces** the inherited set rather than adding to it. Writing
+`frozenset({"trace_id"})` un-excludes `id`, which puts a per-render auto id back
+into the digest and reintroduces the same never-repeating hash. Always repeat
+`"id"`.
 
 ## Making builtins reactive
 
