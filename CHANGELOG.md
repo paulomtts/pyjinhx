@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.8.0 — Full Lucide icon set (2026-08-23)
+
+### Added
+- `PJXIcon` now vendors the complete Lucide icon set (1636 icons, up from a
+  128-icon curated subset) at the pinned `0.544.0` tag. `scripts/vendor_lucide_icons.py`
+  fetches the full icon-name list straight from the Lucide repo instead of a
+  hand-maintained list, so the vendored set can no longer drift out of sync
+  with what actually exists at the pinned tag.
+
 ## 1.7.1 — Avatar shapes (2026-08-23)
 
 ### Added

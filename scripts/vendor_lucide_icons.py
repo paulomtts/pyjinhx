@@ -1,11 +1,12 @@
 """One-off generator for pyjinhx/builtins/ui/pjx_icon/_icons.py.
 
-Downloads the curated Lucide icons at a pinned release and writes their inner
-SVG markup into _icons.py. Not imported by the package; run manually:
+Downloads every Lucide icon at a pinned release and writes their inner SVG
+markup into _icons.py. Not imported by the package; run manually:
 
     uv run python scripts/vendor_lucide_icons.py
 """
 
+import json
 import re
 import sys
 import urllib.request
@@ -13,164 +14,26 @@ from pathlib import Path
 
 LUCIDE_TAG = "0.544.0"
 RAW = "https://raw.githubusercontent.com/lucide-icons/lucide/{tag}/icons/{name}.svg"
-
-CURATED: tuple[str, ...] = (
-    # chevrons / arrows / navigation
-    "chevron-right",
-    "chevron-left",
-    "chevron-up",
-    "chevron-down",
-    "chevrons-left",
-    "chevrons-right",
-    "chevrons-up-down",
-    "arrow-right",
-    "arrow-left",
-    "arrow-up",
-    "arrow-down",
-    "arrow-up-right",
-    "corner-down-right",
-    "menu",
-    "panel-left",
-    "panel-right",
-    "sidebar",
-    "external-link",
-    "maximize",
-    "minimize",
-    "expand",
-    # actions / editing
-    "plus",
-    "plus-circle",
-    "minus",
-    "minus-circle",
-    "x",
-    "check",
-    "edit",
-    "pencil",
-    "trash",
-    "trash-2",
-    "copy",
-    "clipboard",
-    "scissors",
-    "save",
-    "download",
-    "upload",
-    "share",
-    "share-2",
-    "link",
-    "unlink",
-    "refresh-cw",
-    "rotate-cw",
-    "undo",
-    "redo",
-    "send",
-    "filter",
-    "sliders-horizontal",
-    "search",
-    "settings",
-    "settings-2",
-    # status / feedback
-    "triangle-alert",
-    "alert-circle",
-    "info",
-    "check-circle",
-    "x-circle",
-    "help-circle",
-    "ban",
-    "shield",
-    "shield-check",
-    "loader",
-    "clock",
-    # users / communication
-    "user",
-    "users",
-    "user-plus",
-    "user-check",
-    "user-x",
-    "mail",
-    "at-sign",
-    "message-square",
-    "message-circle",
-    "phone",
-    "bell",
-    "bell-off",
-    # files / data / layout
-    "file",
-    "file-text",
-    "files",
-    "folder",
-    "folder-open",
-    "image",
-    "paperclip",
-    "archive",
-    "database",
-    "server",
-    "hard-drive",
-    "layout-dashboard",
-    "layout-grid",
-    "list",
-    "table",
-    "columns",
-    "calendar",
-    # media
-    "play",
-    "pause",
-    "square",
-    "skip-forward",
-    "skip-back",
-    "volume-2",
-    "volume-x",
-    "mic",
-    "mic-off",
-    "camera",
-    # commerce / objects
-    "shopping-cart",
-    "credit-card",
-    "dollar-sign",
-    "tag",
-    "gift",
-    "package",
-    "truck",
-    "star",
-    "heart",
-    "bookmark",
-    "flag",
-    "thumbs-up",
-    "thumbs-down",
-    # visibility / security
-    "eye",
-    "eye-off",
-    "lock",
-    "unlock",
-    "key",
-    # misc
-    "home",
-    "globe",
-    "map-pin",
-    "sun",
-    "moon",
-    "cloud",
-    "zap",
-    "activity",
-    "bar-chart",
-    "trending-up",
-    "code",
-    "terminal",
-    "git-branch",
-    "log-in",
-    "log-out",
-    "power",
-    # issue-99: new additions
-    "building",
-    "brain",
-    # issue-204: pin/unpin toggle
-    "pin",
-    "pin-off",
-    # issue-200: overflow/kebab menu trigger
-    "ellipsis",
-    "ellipsis-vertical",
+# Non-recursive contents call would need one request per subdirectory and hit
+# GitHub's ~1000-entries-per-page cap; the recursive git-tree call returns the
+# whole repo listing (icons/ has no subdirectories) in a single request.
+TREE_API = (
+    "https://api.github.com/repos/lucide-icons/lucide/git/trees/{tag}?recursive=1"
 )
 
 INNER_RE = re.compile(r"<svg[^>]*>(.*)</svg>", re.DOTALL)
+
+
+def list_icon_names() -> list[str]:
+    url = TREE_API.format(tag=LUCIDE_TAG)
+    with urllib.request.urlopen(url, timeout=30) as resp:
+        tree = json.load(resp)["tree"]
+    names = [
+        entry["path"].removeprefix("icons/").removesuffix(".svg")
+        for entry in tree
+        if entry["path"].startswith("icons/") and entry["path"].endswith(".svg")
+    ]
+    return sorted(names)
 
 
 def fetch_inner(name: str) -> str:
@@ -185,7 +48,7 @@ def fetch_inner(name: str) -> str:
 
 def main() -> None:
     icons: dict[str, str] = {}
-    for name in CURATED:
+    for name in list_icon_names():
         try:
             icons[name] = fetch_inner(name)
         except Exception as exc:  # noqa: BLE001
