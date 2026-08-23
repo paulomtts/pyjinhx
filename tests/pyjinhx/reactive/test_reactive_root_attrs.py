@@ -611,3 +611,70 @@ def test_a_mixed_tree_records_only_its_reactive_nodes(
 
     assert recording_session.nested_react_keys == {"mix1": ("shell",)}
     assert "plain1" not in recording_session.nested_react_keys
+
+
+def test_every_depth_of_a_nested_reactive_tree_gets_its_own_entry(
+    recording_session: RenderSession,
+):
+    """Spec test 3: nested entries are the point — one per component, per class."""
+    child = KeyedReactiveWidget(id="inner-k")
+    parent = KeyedReactiveShell(id="outer-k", body=child)
+
+    render_level(parent, recording_session)
+
+    assert recording_session.nested_react_keys == {
+        "outer-k": ("shell",),
+        "inner-k": ("a", "b"),
+    }
+
+
+def test_the_recorded_id_is_the_id_stamped_as_data_pjx_id():
+    """Spec test 6: the map key is the identity channel fanout's _contained reads."""
+    both = RenderSession()
+    both.on_rendered.append(stamp_reactive_root_attrs)
+    both.on_rendered.append(record_nested_react_keys)
+
+    html = serialize(render_level(KeyedReactiveWidget(id="ident1"), both))
+
+    assert list(both.nested_react_keys) == ["ident1"]
+    assert 'data-pjx-id="ident1"' in html
+
+
+def test_recording_leaves_the_rendered_markup_byte_identical():
+    """Spec test 7: the recorder splices nothing and perturbs no other stamp."""
+    stamp_only = RenderSession()
+    stamp_only.on_rendered.append(stamp_reactive_root_attrs)
+    both = RenderSession()
+    both.on_rendered.append(stamp_reactive_root_attrs)
+    both.on_rendered.append(record_nested_react_keys)
+
+    without = serialize(
+        render_level(
+            KeyedReactiveShell(id="bytes1", body=KeyedReactiveWidget(id="bytes2")),
+            stamp_only,
+        )
+    )
+    with_recorder = serialize(
+        render_level(
+            KeyedReactiveShell(id="bytes1", body=KeyedReactiveWidget(id="bytes2")),
+            both,
+        )
+    )
+
+    assert with_recorder == without
+    assert both.nested_react_keys == {"bytes1": ("shell",), "bytes2": ("a", "b")}
+    assert stamp_only.nested_react_keys == {}
+
+
+def test_two_sessions_never_see_each_others_entries():
+    """Spec test 8: request-scoped state, per ADR 0009/0012."""
+    first = RenderSession()
+    first.on_rendered.append(record_nested_react_keys)
+    second = RenderSession()
+    second.on_rendered.append(record_nested_react_keys)
+
+    render_level(KeyedReactiveWidget(id="s1"), first)
+    render_level(KeyedReactiveWidget(id="s2"), second)
+
+    assert first.nested_react_keys == {"s1": ("a", "b")}
+    assert second.nested_react_keys == {"s2": ("a", "b")}
