@@ -15,7 +15,10 @@ from pyjinhx import discovery
 from pyjinhx._component import BaseComponent, Slot
 from pyjinhx.descriptor import ClassDescriptor
 from pyjinhx.reactive.component import ReactiveComponent
-from pyjinhx.reactive.root_attrs import stamp_reactive_root_attrs
+from pyjinhx.reactive.root_attrs import (
+    record_nested_react_keys,
+    stamp_reactive_root_attrs,
+)
 from pyjinhx.rendering import render_level
 from pyjinhx.root_attrs import RootStampCollisionError, serialize_attr, stamp_root_attrs
 from pyjinhx.segments import ChildRef, RenderedLevel, VerbatimParser, serialize
@@ -89,6 +92,48 @@ ReactiveShell.__pjx_descriptor__ = ClassDescriptor(
 )
 
 
+class KeyedReactiveWidget(ReactiveComponent, react=("a", "b")):
+    pass
+
+
+class UnkeyedReactiveWidget(ReactiveComponent):
+    pass
+
+
+class KeyedReactiveShell(ReactiveComponent, react=("shell",)):
+    body: Slot = ""
+
+
+class PlainShell(BaseComponent):
+    body: Slot = ""
+
+
+KeyedReactiveWidget.__pjx_descriptor__ = _descriptor_for(
+    KeyedReactiveWidget, "reactive_widget.html"
+)
+UnkeyedReactiveWidget.__pjx_descriptor__ = _descriptor_for(
+    UnkeyedReactiveWidget, "reactive_widget.html"
+)
+KeyedReactiveShell.__pjx_descriptor__ = ClassDescriptor(
+    template_path=_TEMPLATE_DIR / "reactive_shell.html",
+    slot_fields=frozenset({"body"}),
+    children_field=None,
+    css_paths=(),
+    js_paths=(),
+    strict=True,
+    provenance={"template": KeyedReactiveShell},
+)
+PlainShell.__pjx_descriptor__ = ClassDescriptor(
+    template_path=_TEMPLATE_DIR / "reactive_shell.html",
+    slot_fields=frozenset({"body"}),
+    children_field=None,
+    css_paths=(),
+    js_paths=(),
+    strict=True,
+    provenance={"template": PlainShell},
+)
+
+
 class InnerBadge(BaseComponent):
     pass
 
@@ -156,6 +201,14 @@ def session() -> RenderSession:
     """A session with only the reactive root-attr subscriber attached."""
     session = RenderSession()
     session.on_rendered.append(stamp_reactive_root_attrs)
+    return session
+
+
+@pytest.fixture
+def recording_session() -> RenderSession:
+    """A session with only the nested-react-keys recorder attached."""
+    session = RenderSession()
+    session.on_rendered.append(record_nested_react_keys)
     return session
 
 
@@ -496,3 +549,132 @@ def test_reactive_in_reactive_collision_message_names_both_components(
     message = str(exc_info.value)
     assert "outer1" in message
     assert "inner_reactive_root" in message
+
+
+def test_fresh_session_starts_with_an_empty_nested_react_keys_map():
+    """#1012's per-request map: empty until a subscriber writes into it."""
+    assert RenderSession().nested_react_keys == {}
+
+
+def test_each_session_owns_its_own_nested_react_keys_map():
+    """Per-request by construction: no shared class-level or module-level dict."""
+    first = RenderSession()
+    second = RenderSession()
+
+    first.nested_react_keys["w"] = ("a",)
+
+    assert second.nested_react_keys == {}
+    assert first.nested_react_keys is not second.nested_react_keys
+
+
+def test_records_a_reactive_components_declared_react_keys(
+    recording_session: RenderSession,
+):
+    """Spec test 1: the value is the class's normalized _pjx_react_keys tuple."""
+    component = KeyedReactiveWidget(id="k1")
+
+    render_level(component, recording_session)
+
+    assert recording_session.nested_react_keys == {
+        "k1": KeyedReactiveWidget._pjx_react_keys
+    }
+    assert recording_session.nested_react_keys["k1"] == ("a", "b")
+
+
+def test_reactive_component_without_react_kwarg_records_an_empty_tuple(
+    recording_session: RenderSession,
+):
+    """Spec test 2: presence means 'reactive'; the value answers 'on what keys'."""
+    render_level(UnkeyedReactiveWidget(id="u1"), recording_session)
+
+    assert "u1" in recording_session.nested_react_keys
+    assert recording_session.nested_react_keys["u1"] == ()
+
+
+def test_a_tree_of_plain_components_records_nothing(
+    recording_session: RenderSession,
+):
+    """Spec test 4: non-reactive components are a bare isinstance no-op."""
+    render_level(PlainShell(id="ps1", body=PlainWidget(id="pw1")), recording_session)
+
+    assert recording_session.nested_react_keys == {}
+
+
+def test_a_mixed_tree_records_only_its_reactive_nodes(
+    recording_session: RenderSession,
+):
+    """Spec test 5: a plain child of a reactive parent never becomes a key."""
+    render_level(
+        KeyedReactiveShell(id="mix1", body=PlainWidget(id="plain1")),
+        recording_session,
+    )
+
+    assert recording_session.nested_react_keys == {"mix1": ("shell",)}
+    assert "plain1" not in recording_session.nested_react_keys
+
+
+def test_every_depth_of_a_nested_reactive_tree_gets_its_own_entry(
+    recording_session: RenderSession,
+):
+    """Spec test 3: nested entries are the point — one per component, per class."""
+    child = KeyedReactiveWidget(id="inner-k")
+    parent = KeyedReactiveShell(id="outer-k", body=child)
+
+    render_level(parent, recording_session)
+
+    assert recording_session.nested_react_keys == {
+        "outer-k": ("shell",),
+        "inner-k": ("a", "b"),
+    }
+
+
+def test_the_recorded_id_is_the_id_stamped_as_data_pjx_id():
+    """Spec test 6: the map key is the identity channel fanout's _contained reads."""
+    both = RenderSession()
+    both.on_rendered.append(stamp_reactive_root_attrs)
+    both.on_rendered.append(record_nested_react_keys)
+
+    html = serialize(render_level(KeyedReactiveWidget(id="ident1"), both))
+
+    assert list(both.nested_react_keys) == ["ident1"]
+    assert 'data-pjx-id="ident1"' in html
+
+
+def test_recording_leaves_the_rendered_markup_byte_identical():
+    """Spec test 7: the recorder splices nothing and perturbs no other stamp."""
+    stamp_only = RenderSession()
+    stamp_only.on_rendered.append(stamp_reactive_root_attrs)
+    both = RenderSession()
+    both.on_rendered.append(stamp_reactive_root_attrs)
+    both.on_rendered.append(record_nested_react_keys)
+
+    without = serialize(
+        render_level(
+            KeyedReactiveShell(id="bytes1", body=KeyedReactiveWidget(id="bytes2")),
+            stamp_only,
+        )
+    )
+    with_recorder = serialize(
+        render_level(
+            KeyedReactiveShell(id="bytes1", body=KeyedReactiveWidget(id="bytes2")),
+            both,
+        )
+    )
+
+    assert with_recorder == without
+    assert both.nested_react_keys == {"bytes1": ("shell",), "bytes2": ("a", "b")}
+    assert stamp_only.nested_react_keys == {}
+
+
+def test_two_sessions_never_see_each_others_entries():
+    """Spec test 8: request-scoped state, per ADR 0009/0012."""
+    first = RenderSession()
+    first.on_rendered.append(record_nested_react_keys)
+    second = RenderSession()
+    second.on_rendered.append(record_nested_react_keys)
+
+    render_level(KeyedReactiveWidget(id="s1"), first)
+    render_level(KeyedReactiveWidget(id="s2"), second)
+
+    assert first.nested_react_keys == {"s1": ("a", "b")}
+    assert second.nested_react_keys == {"s2": ("a", "b")}

@@ -253,6 +253,14 @@ class RenderSession:
         self.pjx_mounted: list[dict[str, Any]] = []
         self.pjx_assets: frozenset[str] = frozenset()
         self.pjx_trigger: dict[str, Any] | None = None
+        # Per-request map of reactive instance id -> that class's
+        # _pjx_react_keys, written by reactive.root_attrs.record_nested_react_keys
+        # when a caller appends it to on_rendered above. The fan-out reads it to
+        # decide which nested reactive regions a parent swap must retain, so
+        # the key is the same instance-id string fanout's _contained resolves
+        # (ChildRef.attrs["id"] / _root_instance_id). Lives on the session, not
+        # module-global: it must die with the request.
+        self.nested_react_keys: dict[str, tuple[str, ...]] = {}
 
     def emit_rendered(self, component: "BaseComponent", level: "RenderedLevel") -> None:
         """Notify subscribers that ``component``'s subtree finished rendering.
