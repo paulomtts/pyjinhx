@@ -115,8 +115,10 @@ def register_instance(type_name: str, instance_id: str, entry: object) -> None:
 
     Raises:
         InstanceKeyCollisionError: The key already holds an entry in this
-            request and reactive-dev strict mode is on. With strict mode off
-            the collision is a warning and a last-write-wins overwrite.
+            request, reactive-dev strict mode is on, and the key is not one an
+            enclosing quiet_collisions() block marked as expected. With strict
+            mode off the collision is a warning; quieted, it is silent. Either
+            way the write itself is a last-write-wins overwrite.
     """
     key = make_key(type_name, instance_id)
     # get_instances() answers a throwaway {} outside a scope, so writing there
