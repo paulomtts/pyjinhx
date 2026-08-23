@@ -26,7 +26,7 @@ import time
 from collections.abc import Iterable, Sequence
 from concurrent.futures import ThreadPoolExecutor
 from contextvars import copy_context
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Any
 
 from markupsafe import Markup
@@ -81,6 +81,21 @@ class FanoutCandidate:
     (``stamp_reactive_root_attrs`` is not wired onto the dirty path's session,
     so nothing else does it first), so the next manifest reports the hash the
     client is actually showing.
+    """
+
+    nested_roots: "dict[str, _NestedRoot] | None" = None
+    """This candidate's own tree, pre-walked by ``_drop_nested`` — reused by
+    ``oob_swaps()``'s ``_preserve_nested`` instead of re-walked from scratch.
+
+    ``_drop_nested`` already calls ``_contained()`` over every surviving
+    candidate's level to decide containment; its third return value used to be
+    discarded there and recomputed by ``_preserve_nested`` moments later in the
+    same request — the same tree walked twice per dirty candidate, every
+    request, confirmed by benchmark (#1028). None means "not computed by
+    ``_drop_nested``", either because this candidate carries no level or
+    because a caller built candidates directly without going through
+    ``walk_manifest``; ``_preserve_nested`` falls back to a live walk in
+    that case, so behavior for such a caller is unchanged.
     """
 
 
@@ -376,7 +391,9 @@ def _contained(
     return ids, objects, nested_roots
 
 
-def _drop_nested(candidates: list[FanoutCandidate]) -> list[FanoutCandidate]:
+def _drop_nested(
+    candidates: list[FanoutCandidate], session: RenderSession | None = None
+) -> list[FanoutCandidate]:
     """Drop every candidate whose region sits inside another survivor's region.
 
     The v0.x behavior (a parent's swap already carries its children, so a child
@@ -396,18 +413,41 @@ def _drop_nested(candidates: list[FanoutCandidate]) -> list[FanoutCandidate]:
     instance, and a container side with no tree at all, both simply fail to
     produce that proof and the candidate survives; absence of a check is never
     a drop. Order is preserved and nothing is duplicated.
+
+    The union loop below already calls `_contained` once per candidate with a
+    level, purely to decide containment, and used to discard its third return
+    value — a map of every nested reactive root inside that candidate's own
+    tree. `oob_swaps()`'s `_preserve_nested` would then redo that exact walk
+    per dirty candidate a moment later in the same request. Keeping the map
+    here and attaching it to whichever candidate survives, so
+    `_preserve_nested` can reuse it instead, is what #1028 fixes — at zero
+    added walks, since the union loop's own walk already ran regardless.
+
+    `session` is threaded through so the reused map already carries real
+    `react_keys` (`_nested_root` needs a session to read `nested_react_keys`);
+    omitted, both this walk's containment decision and the reused map behave
+    exactly as they did before session-awareness existed here.
+
+    The single-candidate short-circuit below deliberately keeps the shape it
+    always had — no `_contained` call at all — rather than walking that one
+    candidate's tree just to populate a cache nothing may ever read (a lone
+    *clean* or *missing* candidate never reaches `_preserve_nested`, so that
+    walk would be pure waste); `oob_swaps` falls back to a live walk for it,
+    exactly as it did before this field existed.
     """
     if len(candidates) < 2:
         return candidates
     all_ids: set[str] = set()
     all_objects: set[int] = set()
+    nested_roots_by_id: dict[int, dict[str, _NestedRoot]] = {}
     for other in candidates:
         level = _level_of(other)
         if level is None:
             continue
-        ids, objects, _nested_roots = _contained(level)
+        ids, objects, nested_roots = _contained(level, session)
         all_ids |= ids
         all_objects |= objects
+        nested_roots_by_id[id(other)] = nested_roots
     surviving: list[FanoutCandidate] = []
     for candidate in candidates:
         own_level = _level_of(candidate)
@@ -415,6 +455,9 @@ def _drop_nested(candidates: list[FanoutCandidate]) -> list[FanoutCandidate]:
             own_level is not None and id(own_level) in all_objects
         )
         if not nested:
+            cached = nested_roots_by_id.get(id(candidate))
+            if cached is not None:
+                candidate = replace(candidate, nested_roots=cached)
             surviving.append(candidate)
     return surviving
 
@@ -594,13 +637,19 @@ def _build_pass(
 
 
 def _reduce_pass(
-    items: list[_WorkItem], built: dict[int, _BuildResult]
+    items: list[_WorkItem],
+    built: dict[int, _BuildResult],
+    session: RenderSession | None = None,
 ) -> list[FanoutCandidate]:
     """The surviving candidates, in manifest order, with the late drops applied.
 
     Walking the work items rather than the results dict is what keeps the
     output in manifest order regardless of which build finished first, and it
     is what ``_drop_nested``'s containment logic depends on.
+
+    ``session`` only reaches ``_drop_nested``, which threads it into the
+    containment walk it caches for ``oob_swaps()`` to reuse (#1028); omitted,
+    every non-session-dependent behavior here is unchanged.
     """
     candidates: list[FanoutCandidate] = []
     for item in items:
@@ -646,7 +695,7 @@ def _reduce_pass(
                 fresh_hash=fresh_hash,
             )
         )
-    return _drop_nested(candidates)
+    return _drop_nested(candidates, session)
 
 
 def walk_manifest(
@@ -709,7 +758,7 @@ def walk_manifest(
     # records the same render twice.
     if record_nested_react_keys not in render_session.on_rendered:
         render_session.on_rendered.append(record_nested_react_keys)
-    return _reduce_pass(items, _build_pass(items, render_session))
+    return _reduce_pass(items, _build_pass(items, render_session), render_session)
 
 
 def _css_attr_value(value: str) -> str:
@@ -759,6 +808,7 @@ def _preserve_nested(
     dirtied_keys: set[str],
     candidate_ids: set[str],
     session: RenderSession | None,
+    nested_roots: "dict[str, _NestedRoot] | None" = None,
 ) -> None:
     """Splice ``hx-preserve="true"`` onto each nested root this swap must not disturb.
 
@@ -783,8 +833,17 @@ def _preserve_nested(
     template is one reactive child) is exactly the shape ``stamp_root_attrs``
     already refuses with RootStampCollisionError, so no fragment reaches this
     pass with its own swap target among the nested roots.
+
+    ``nested_roots``, when given, is ``_drop_nested``'s own walk of this exact
+    level, reused instead of re-derived (#1028: the two walks found the same
+    thing every time, since nothing mutates a level's *structure* between the
+    build pass and this call — only its root tag's attrs, which `_contained`
+    never reads). ``None`` means no caller supplied one — a candidate built
+    outside ``walk_manifest``, say — so a live walk runs exactly as it always
+    did.
     """
-    _ids, _objects, nested_roots = _contained(level, session)
+    if nested_roots is None:
+        _ids, _objects, nested_roots = _contained(level, session)
     for nested_id, nested in nested_roots.items():
         if nested_id in candidate_ids:
             continue
@@ -861,7 +920,9 @@ def oob_swaps(
             )
             attrs = {"hx-swap-oob": selector, "data-pjx-hash": candidate.fresh_hash}
             stamp_root_attrs(level, attrs)
-            _preserve_nested(level, dirtied, candidate_ids, render_session)
+            _preserve_nested(
+                level, dirtied, candidate_ids, render_session, candidate.nested_roots
+            )
             fragments.append(serialize(level))
         elif candidate.status == "missing":
             fragments.append(delete_swap(candidate))
