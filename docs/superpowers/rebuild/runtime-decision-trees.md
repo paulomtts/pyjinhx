@@ -50,6 +50,46 @@ how the mechanisms *interact*; this one walks the branch points inside them.
 
 ---
 
+## How the four trees relate
+
+The numbering is execution order of the *entry points*, but the trees are
+nested, not a flat pipeline. Trees 1, 2 and 4 do run in that sequence; tree 3
+is not a stage at all — it is a subroutine the other two call.
+
+```text
+TREE 1  compose()
+          │
+          ├─ primary render ──► TREE 2  render_level()
+          │                        │  recurses into itself per child
+          │                        └─ reactive child ──► TREE 3  load()
+          │
+          └─ _fan_out()
+               ├─ invalidate(dirtied)
+               ├─ walk_manifest ──► BUILD PASS
+               │                      └─ per region: TREE 3  load()
+               │                                     TREE 2  render_level()
+               └─ TREE 4  oob_swaps()
+```
+
+- **Tree 2 runs many times per request**, once per component level, and
+  recursively — a page with 200 components ran it 200 times. Trees 1 and 4 run
+  exactly once.
+
+- **Tree 3 is reached from two directions:** from inside tree 2's fill-children
+  step during the primary render, and again from tree 4's build pass for each
+  stale region. That is why the tier-1 request dict matters — the second visit
+  for the same key is a dict hit.
+
+- **Tree 4 re-enters tree 2.** The fan-out's build pass has no renderer of its
+  own; it loads the region and calls `render_level()` on it, same as the
+  primary did. That is the "there is no second renderer" point — the OOB legs
+  go through the identical decision tree, cycle guard and all.
+
+So read top to bottom for the order things start in, but tree 3 sits *inside*
+the other two rather than after them.
+
+---
+
 ## 1. `compose()` — is this even mine?
 
 `pyjinhx/responses.py`
