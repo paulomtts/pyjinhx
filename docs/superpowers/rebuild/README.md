@@ -11,6 +11,7 @@ The documentation set for rebuilding the pyjinhx engine as `src/pyjinhx/`, shipp
 | [architecture-overview.md](./architecture-overview.md) | How it works: hard invariants, the mechanism-interaction map (mermaid), per-layer mechanisms with ship criteria, non-obvious interactions, worked example. *Living* — updated as layers ship; where it and reality disagree, fix the doc. |
 | [feature-port-list.md](./feature-port-list.md) | What ships where: every v0.36 feature with keep/mod/drop verdict and its build layer. The G3 parity checklist; each layer spec must cover its assigned rows. |
 | [implementation-overview.md](./implementation-overview.md) | How it lands as code: architecture style (flat module-per-mechanism + import rule), folder/file structure, render timelines (T0 startup / T1 cold / T2 reactive), load-bearing ordering facts. |
+| [runtime-decision-trees.md](./runtime-decision-trees.md) | What the runtime decides, in the order it decides it: the request round-trip, `render_level()`, the two cache tiers, the fan-out's three passes. *Living* — retrace against source when a branch point moves. |
 | [roadmap.md](./roadmap.md) | When and in what order: per-layer deliverables, PR-sized inner steps in dependency order, the two gates, checkboxes + recorded bench numbers. *Living* — check off as things ship. |
 
 Per-layer design docs (RFC role) are not standalone artifacts — the /feature workflow's spec phase (brainstorm + adversarial-doc-review) produces each layer's design just-in-time, saved under `docs/superpowers/specs/`. Decided 2026-07-29.
