@@ -198,9 +198,20 @@ Messages  bare construct OK   -> Messages(conversation='1', body='', unread=0)
 Invoice   bare construct FAILS -> ValidationError: total  Field required
 ```
 
-That failure's obvious workaround is `Invoice.load(...)`, which is exactly what
-now raises. `ref()` records props rather than building a model, so it works for
-both classes identically.
+`Messages` constructs because every load-supplied field has a default. `Invoice`
+does not, because an invoice *has* a total — "an Invoice that has not been fetched
+yet" is not expressible in its own type.
+
+That squeezes a strictly-typed class out of both spellings: bare construction
+raises on validation, and `Invoice.load(...)` raises under section 1's rule
+because the instance it returns carries `total=1234.5` — the child's data. `ref()`
+is the way out, and the reason it is public API rather than sugar: it records
+props without constructing the model, so `total` is never missing and arrives at
+the hole when `load()` runs.
+
+The alternative needing no new API is a plain dict, since the annotation already
+names the class (`content={"conversation": view}`). Rejected: untyped, invisible
+to an IDE, and reads like configuration rather than composition.
 
 ### What a parent may still read
 
@@ -309,6 +320,25 @@ field, not a new mechanism.
   everywhere → the whole tree loads. No special case.
 - **Slots join here.** `_splice_slot_nodes` hands a `Ref` to the same gate a
   `ChildRef` goes through.
+- **Only the handler's return pays unconditionally.** Every component beneath it
+  is a hole and is gated, backend or not — an ancestor on the path to a dirty
+  descendant is preserved along with everything under it, and the dirty
+  descendant still gets its own OOB leg because `walk_manifest` builds it
+  standalone from the manifest entry:
+
+  ```
+  handler returns Page;  TodoList dirty,  Shell clean
+
+  Page      primary -> load runs, template renders
+    Shell   hole -> clean, client holds it -> PRESERVED, load never runs
+      TodoList  never visited on this path
+  TodoList  built standalone by fan-out, swapped OOB
+  ```
+
+  The one remaining load is an authoring choice, not a framework limit: returning
+  the shell when only a region changed is asking for the shell. Return the
+  narrowest component that changed, or `None` and let fan-out ship OOB legs —
+  `_fan_out` already sets `HX-Reswap: none` for an empty primary.
 
 ## Section 3 — Provenance and the 2a error
 
@@ -454,6 +484,33 @@ Per mechanism:
   ClassVar opt-out silences it.
 - **No eager** — assigning a loaded reactive component to a component-typed field
   raises; loading inside `load()` without storing it does not.
+
+## What this does not deliver
+
+Three gaps stand between this design and unqualified island reactivity. None are
+regressions; all should be read as scope, not as covered.
+
+**1. Preservation requires a stable authored id.** Condition 4 is a real gate, not
+a footnote: a region whose root falls back to an auto `pjx-N` id is never
+preserved and always loads. Components get islands only if their template root
+carries an authored id, which makes this as much a documentation problem as a code
+one. Lists are where it bites hardest — the difference between one load and fifty.
+Worth considering a dev-mode warning for a reactive class whose root has no
+authored id, so the degradation is visible rather than silent.
+
+**2. #1022 / #1027 remain open.** They live in a different pipeline:
+`walk_manifest`'s parallel build pass renders a candidate that is *also* a strict
+descendant of another surviving candidate's tree, and `_drop_nested` prunes only
+the output — after both renders already ran. The skip gate does not help, because
+in that scenario the nested candidate **is** dirty; that is why it is a candidate.
+So the *dirty* term stays inflated by redundant renders. PR #1025 quiets the
+resulting registry collisions; #1027 is the follow-up that would avoid the build.
+Closing it needs containment knowledge before the build pass, which this design
+deliberately declines to record.
+
+**3. The handler's returned component always loads and renders.** Inherent, and
+addressed by authoring guidance rather than machinery (see section 2's
+consequences).
 
 ## Corrections owed
 
