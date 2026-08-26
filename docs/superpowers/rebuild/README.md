@@ -1,6 +1,6 @@
 # pyjinhx v2 rebuild — doc index
 
-The documentation set for rebuilding the pyjinhx engine as `src/pyjinhx/`, shipping as pyjinhx 1.0. Everything here is local-only (gitignored with the rest of `docs/superpowers/`).
+The documentation set for rebuilding the pyjinhx engine as `src/pyjinhx/`, shipping as pyjinhx 1.0. `docs/superpowers/` is gitignored, but this directory is un-ignored (`.gitignore:22`) and its docs are tracked; `mkdocs.yml` excludes `superpowers/` from the built site, so nothing here needs to satisfy `--strict`.
 
 ## The set
 
@@ -11,6 +11,7 @@ The documentation set for rebuilding the pyjinhx engine as `src/pyjinhx/`, shipp
 | [architecture-overview.md](./architecture-overview.md) | How it works: hard invariants, the mechanism-interaction map (mermaid), per-layer mechanisms with ship criteria, non-obvious interactions, worked example. *Living* — updated as layers ship; where it and reality disagree, fix the doc. |
 | [feature-port-list.md](./feature-port-list.md) | What ships where: every v0.36 feature with keep/mod/drop verdict and its build layer. The G3 parity checklist; each layer spec must cover its assigned rows. |
 | [implementation-overview.md](./implementation-overview.md) | How it lands as code: architecture style (flat module-per-mechanism + import rule), folder/file structure, render timelines (T0 startup / T1 cold / T2 reactive), load-bearing ordering facts. |
+| [how-pyjinhx-works.md](./how-pyjinhx-works.md) | What the runtime does today, in five mermaid diagrams: the request round trip, the render walk, tag vs slot composition, the two caches, and reactivity. Closes with where the model leaks. *Living*. |
 | [roadmap.md](./roadmap.md) | When and in what order: per-layer deliverables, PR-sized inner steps in dependency order, the two gates, checkboxes + recorded bench numbers. *Living* — check off as things ship. |
 
 Per-layer design docs (RFC role) are not standalone artifacts — the /feature workflow's spec phase (brainstorm + adversarial-doc-review) produces each layer's design just-in-time, saved under `docs/superpowers/specs/`. Decided 2026-07-29.
