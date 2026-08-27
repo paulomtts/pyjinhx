@@ -142,8 +142,7 @@ def test_hovering_a_trigger_inside_a_modal_dialog_shows_the_tip(page: Page):
     page.hover(".pjx-tooltip__trigger")
     page.wait_for_selector(".pjx-tooltip__tip--visible")
     assert page.evaluate(
-        "document.getElementById('tip')"
-        ".classList.contains('pjx-tooltip__tip--visible')"
+        "document.getElementById('tip').classList.contains('pjx-tooltip__tip--visible')"
     )
 
 
@@ -163,8 +162,7 @@ def test_focusing_a_trigger_inside_a_modal_dialog_shows_the_tip(page: Page):
     page.focus(".pjx-tooltip__trigger")
     page.wait_for_selector(".pjx-tooltip__tip--visible")
     assert page.evaluate(
-        "document.getElementById('tip')"
-        ".classList.contains('pjx-tooltip__tip--visible')"
+        "document.getElementById('tip').classList.contains('pjx-tooltip__tip--visible')"
     )
 
 
@@ -211,8 +209,7 @@ def test_a_non_modal_open_dialog_behaves_the_same(page: Page):
     page.hover(".pjx-tooltip__trigger")
     page.wait_for_selector(".pjx-tooltip__tip--visible")
     assert page.evaluate(
-        "document.getElementById('tip')"
-        ".classList.contains('pjx-tooltip__tip--visible')"
+        "document.getElementById('tip').classList.contains('pjx-tooltip__tip--visible')"
     )
 
 
