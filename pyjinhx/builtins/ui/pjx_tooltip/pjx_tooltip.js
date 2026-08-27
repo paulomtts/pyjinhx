@@ -15,25 +15,37 @@
         return Math.max(min, Math.min(value, max));
     }
 
-    /** Bounds the tip must stay inside: the trigger's nearest clipping ancestor. */
+    /**
+     * Bounds the tip must stay inside: the trigger's nearest clipping ancestor,
+     * intersected with the viewport. A clipping ancestor (e.g. a wide/tall
+     * scrollable table wrapper) can itself extend past the visible window, so
+     * clamping to it alone would still let the tip spill off-screen.
+     */
     function boundsFor(trigger) {
-        let node = trigger.parentElement;
-        while (node && node !== document.documentElement) {
-            const cs = getComputedStyle(node);
-            if (cs.overflowX !== 'visible' || cs.overflowY !== 'visible') {
-                return node.getBoundingClientRect();
-            }
-            node = node.parentElement;
-        }
-        // Nothing clips the trigger, so the viewport is the bound. We synthesize
-        // the rect instead of measuring documentElement: its rect tracks content
-        // height, which on a long page is far taller than the visible box.
-        return {
+        // We synthesize the viewport rect instead of measuring documentElement:
+        // its rect tracks content height, which on a long page is far taller
+        // than the visible box.
+        const viewport = {
             left: 0,
             top: 0,
             right: window.innerWidth,
             bottom: window.innerHeight,
         };
+        let node = trigger.parentElement;
+        while (node && node !== document.documentElement) {
+            const cs = getComputedStyle(node);
+            if (cs.overflowX !== 'visible' || cs.overflowY !== 'visible') {
+                const rect = node.getBoundingClientRect();
+                return {
+                    left: Math.max(rect.left, viewport.left),
+                    top: Math.max(rect.top, viewport.top),
+                    right: Math.min(rect.right, viewport.right),
+                    bottom: Math.min(rect.bottom, viewport.bottom),
+                };
+            }
+            node = node.parentElement;
+        }
+        return viewport;
     }
 
     function place(tip, root) {

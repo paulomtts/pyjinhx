@@ -158,6 +158,28 @@ def test_container_too_tight_clamps_to_padded_container_bounds(page: Page):
     assert box["right"] <= BOX["right"]
 
 
+def test_container_larger_than_viewport_clamps_to_the_viewport(page: Page):
+    # The container overhangs the viewport on the right and bottom (e.g. a
+    # wide/tall scrollable table wrapper). Clamping to the container alone
+    # lets the tip spill past the actual browser window edge; it must also
+    # respect the viewport.
+    page.set_viewport_size({"width": 800, "height": 600})
+    page.set_content(
+        BOXED.replace("PLACEMENT", "top")
+        .replace("LEFT", "950")
+        .replace("TOP", "500")
+        .replace("OVERFLOW", "hidden")
+        .replace("left: 100px; top: 200px;", "left: -200px; top: -200px;")
+        .replace("width: 300px; height: 200px;", "width: 1200px; height: 1000px;")
+    )
+    page.add_script_tag(content=CONTROLLER.read_text())
+    page.hover(".pjx-tooltip__trigger")
+    page.wait_for_selector(".pjx-tooltip__tip--visible")
+    box = page.evaluate(RECT)
+    assert box["right"] <= 800
+    assert box["bottom"] <= 600
+
+
 def test_no_clipping_ancestor_keeps_viewport_behavior(page: Page):
     # No overflow ancestor anywhere: the fallback bounds are the viewport, so
     # a trigger with room on every side lands on the plain default placement.
