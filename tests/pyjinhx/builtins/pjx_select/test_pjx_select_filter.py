@@ -47,11 +47,12 @@ class TestFields:
         ).read_text()
         assert f"options | length > {PJXSelect._FILTER_THRESHOLD}" in template
 
-    def test_filter_is_sticky_above_the_scrolling_option_list(self):
-        """The filter renders first inside .pjx-select__panel, which scrolls
-        (overflow-y: auto) once the option list overflows its max-height —
-        without `position: sticky` the filter scrolls out of view along with
-        the options instead of staying pinned above them."""
+    def test_only_the_option_list_scrolls_not_the_whole_panel(self):
+        """The option list — not .pjx-select__panel itself — owns
+        overflow-y/max-height, so the filter (a sibling, outside that
+        scrolling wrapper) never scrolls out of view nor reserves a
+        scrollbar gutter beside itself the way a merely-`sticky` filter
+        inside the scrolling container would."""
         from pathlib import Path
 
         css = (
@@ -62,9 +63,12 @@ class TestFields:
             / "pjx_select"
             / "pjx_select.css"
         ).read_text()
-        filter_rule = css.split(".pjx-select__filter {", 1)[1].split("}", 1)[0]
-        assert "position: sticky" in filter_rule
-        assert "top: 0" in filter_rule
+        panel_rule = css.split(".pjx-select__panel {", 1)[1].split("}", 1)[0]
+        options_rule = css.split(".pjx-select__options {", 1)[1].split("}", 1)[0]
+        assert "overflow-y" not in panel_rule
+        assert "max-height" not in panel_rule
+        assert "overflow-y: auto" in options_rule
+        assert "max-height" in options_rule
 
 
 @pytest.fixture
@@ -106,6 +110,19 @@ class TestRender:
         html = _html(session)
         panel = html[html.index("data-pjx-select-panel") :]
         assert "data-pjx-select-filter" in panel[: panel.index("</div>")]
+
+    def test_filter_sits_outside_the_scrolling_options_wrapper(self, session):
+        """The filter must precede <div class="pjx-select__options">, not be
+        nested inside it — that wrapper is what scrolls."""
+        html = _html(session)
+        assert html.index("data-pjx-select-filter") < html.index(
+            'class="pjx-select__options"'
+        )
+
+    def test_options_render_inside_their_own_scrolling_wrapper(self, session):
+        html = _html(session)
+        options_wrapper = html[html.index('class="pjx-select__options"') :]
+        assert "data-pjx-select-option" in options_wrapper
 
     def test_filter_is_a_search_input(self, session):
         html = _html(session)

@@ -51,8 +51,6 @@
   left: 0;
   z-index: var(--pjx-select-panel-z);
   min-width: var(--pjx-select-panel-min-w);
-  max-height: var(--pjx-select-panel-max-h);
-  overflow-y: auto;
   display: flex;
   flex-direction: column;
   background: var(--pjx-select-panel-bg);
@@ -63,6 +61,17 @@
 
 .pjx-select__panel[hidden] {
   display: none !important;
+}
+
+/* The scrolling region: only the option list, never the filter above it —
+   moving max-height/overflow here (off .pjx-select__panel) is what keeps the
+   filter fully outside the scrollable area instead of merely pinned within
+   it (a sticky filter still reserves a scrollbar gutter beside itself). */
+.pjx-select__options {
+  overflow-y: auto;
+  max-height: var(--pjx-select-panel-max-h);
+  display: flex;
+  flex-direction: column;
 }
 
 .pjx-select__option {
@@ -131,9 +140,6 @@
 /* ── Search filter ─────────────────────────────────────────────────────────── */
 
 .pjx-select__filter {
-  position: sticky;
-  top: 0;
-  z-index: 1;
   width: 100%;
   box-sizing: border-box;
   margin-bottom: 0.25rem;

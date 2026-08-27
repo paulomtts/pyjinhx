@@ -13,16 +13,19 @@
         already posts the values. -#}
     <span class="pjx-select__label">{% if multiple and selected_options | length > 1 %}<span class="pjx-select__chips">{% for option in selected_options %}<span class="pjx-chip-input__chip"><span class="pjx-chip-input__label">{{ option.label }}</span></span>{% endfor %}</span>{% else %}{{ selected_options[0].label if selected_options else placeholder }}{% endif %}</span>
   </button>
-  <div class="pjx-select__panel" data-pjx-select-panel hidden role="listbox">
+  <div class="pjx-select__panel" data-pjx-select-panel hidden>
     {#- Long lists get a search box; short ones are faster to scan than to type
         into, so the input is omitted from the markup rather than hidden. It
         carries no name: the native <select> is what posts.
         Threshold mirrors PJXSelect._FILTER_THRESHOLD; the docstring there is
         the contract, and test_filter_threshold_matches_the_template guards
-        the two staying in step. -#}
+        the two staying in step. Sits outside .pjx-select__options on purpose
+        — it must never scroll away with the list it filters. -#}
     {% if options | length > 8 %}<input type="search" class="pjx-select__filter" data-pjx-select-filter placeholder="Search…" autocomplete="off"{% if disabled %} disabled{% endif %}>
     {% endif %}
-    {% for option in options %}<button type="button" class="pjx-select__option" data-pjx-select-option data-value="{{ option.value }}" aria-selected="{{ 'true' if option.value in selected_values else 'false' }}" role="option">{% if multiple %}<input type="checkbox"{% if disabled %} disabled{% endif %}{% if option.value in selected_values %} checked{% endif %} class="pjx-select__checkbox" tabindex="-1" aria-hidden="true">{% endif %}{{ option.label }}</button>
-    {% endfor %}
+    <div class="pjx-select__options" role="listbox">
+      {% for option in options %}<button type="button" class="pjx-select__option" data-pjx-select-option data-value="{{ option.value }}" aria-selected="{{ 'true' if option.value in selected_values else 'false' }}" role="option">{% if multiple %}<input type="checkbox"{% if disabled %} disabled{% endif %}{% if option.value in selected_values %} checked{% endif %} class="pjx-select__checkbox" tabindex="-1" aria-hidden="true">{% endif %}{{ option.label }}</button>
+      {% endfor %}
+    </div>
   </div>
 </div>
