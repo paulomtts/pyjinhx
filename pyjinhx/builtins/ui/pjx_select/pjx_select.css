@@ -131,6 +131,9 @@
 /* ── Search filter ─────────────────────────────────────────────────────────── */
 
 .pjx-select__filter {
+  position: sticky;
+  top: 0;
+  z-index: 1;
   width: 100%;
   box-sizing: border-box;
   margin-bottom: 0.25rem;
