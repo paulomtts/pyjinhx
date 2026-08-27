@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.9.4 — Tooltip portal fade and trigger-occlusion fixes (2026-08-27)
+
+### Fixed
+- `PJXTooltip(portal=True)` reparented the tip out of `document.body` in the
+  same tick its fade-out started, so the tip's layout box changed mid-fade
+  (unconstrained body -> its real narrow/clipped container), producing a
+  visible reflow instead of a clean fade. `hide()` now defers `unportalTip()`
+  until the 120ms fade transition has finished (#1047).
+- `place()`'s final clamp bounded the tip inside the viewport/clipping
+  ancestor but had no awareness of the trigger's own rect, so when neither
+  the requested placement nor its flip fully fit, the tip could be clamped
+  on top of the trigger it describes. The clamp is now re-applied against
+  the trigger's rect on the placement's axis, even if that pushes the tip
+  further past the container's edge (#1046).
+
 ## 1.9.3 — Tooltip portal escape hatch (2026-08-27)
 
 ### Added
