@@ -73,6 +73,27 @@ CLIPPED = (
 """
 )
 
+# A faithful stand-in for PJXDrawer: pjx_drawer.css animates .pjx-drawer__box
+# with `animation-fill-mode: forwards`, so the box keeps a transform after the
+# slide settles, and it is offset from the viewport origin. That transform makes
+# the box the containing block for the position: fixed tip.
+TRANSFORMED = (
+    STYLE
+    + """
+<dialog id="host">
+  <div id="box" style="position: absolute; left: 200px; top: 100px;
+       width: 200px; height: 200px; overflow: hidden;
+       transform: translateX(0);">
+    <div id="root" class="pjx-tooltip" data-pjx-tooltip-placement="top"
+         style="left: 40px; top: 60px;">
+      <button class="pjx-tooltip__trigger">t</button>
+      <div id="tip" class="pjx-tooltip__tip" hidden>tip</div>
+    </div>
+  </div>
+</dialog>
+"""
+)
+
 WITH_BACKDROP = (
     STYLE
     + """
@@ -197,6 +218,26 @@ def test_a_clipping_box_inside_the_dialog_still_bounds_the_tip(page: Page):
     assert box["top"] == 94  # trigger top (140) - tip (40) - gap (6)
     assert box["right"] <= 200
     assert box["bottom"] <= 200
+
+
+def test_a_transformed_box_inside_the_dialog_does_not_throw_the_tip_off_screen(
+    page: Page,
+):
+    # place() computes viewport coordinates, but a transformed ancestor makes
+    # itself the containing block for the fixed tip, so those coordinates get
+    # re-based onto the box and the tip lands a boxRect away from where it
+    # belongs — off-screen entirely for a right-hand drawer.
+    _open_modal(page, TRANSFORMED)
+    page.hover(".pjx-tooltip__trigger")
+    page.wait_for_selector(".pjx-tooltip__tip--visible")
+    box = page.evaluate(RECT)
+    # Trigger at 240..280 x 160..190; a 120px tip centred on it wants x=200,
+    # which the box's left padding pushes to 208; y = 160 - 40 (tip) - 6 (gap).
+    assert box["left"] == 208
+    assert box["top"] == 114
+    # Inside the clipping box (200..400 x 100..300), hence on screen at all.
+    assert box["right"] <= 400
+    assert box["bottom"] <= 300
 
 
 def test_a_non_modal_open_dialog_behaves_the_same(page: Page):

@@ -84,6 +84,27 @@
         return viewport;
     }
 
+    /**
+     * Offset from viewport coordinates to the tip's own containing block.
+     * A position: fixed element resolves left/top against the viewport only
+     * while no ancestor establishes a containing block for it; a transform,
+     * filter or perspective anywhere above it (a drawer box left transformed
+     * by its slide-in animation's forwards fill, say) silently re-bases those
+     * coordinates onto that ancestor's border box.
+     */
+    function containingBlockOffset(tip) {
+        let node = tip.parentElement;
+        while (node && node !== document.documentElement) {
+            const cs = getComputedStyle(node);
+            if (cs.transform !== 'none' || cs.filter !== 'none' || cs.perspective !== 'none') {
+                const rect = node.getBoundingClientRect();
+                return { x: rect.left, y: rect.top };
+            }
+            node = node.parentElement;
+        }
+        return { x: 0, y: 0 };
+    }
+
     function place(tip, root) {
         let placement = root.dataset.pjxTooltipPlacement || 'top';
         const gapRaw = getComputedStyle(document.documentElement)
@@ -146,8 +167,9 @@
             left = Math.max(left, tr.right + gap);
         }
 
-        tip.style.left = left + 'px';
-        tip.style.top = top + 'px';
+        const origin = containingBlockOffset(tip);
+        tip.style.left = left - origin.x + 'px';
+        tip.style.top = top - origin.y + 'px';
     }
 
     function show(root) {
@@ -172,12 +194,12 @@
         const trig = root.querySelector('.pjx-tooltip__trigger'); if (trig && tip.id) trig.setAttribute('aria-describedby', tip.id);
         requestAnimationFrame(() => {
             // Visibility first, position second. place() measures live layout,
-            // and a throw inside a rAF callback is swallowed by the browser and
-            // abandons the rest of the callback — with the ordering reversed, a
-            // measurement that misbehaves (a trigger nested under a top-layer
-            // <dialog>, say) leaves the tip with its hidden attribute already
-            // removed but no visible class, i.e. permanently invisible. A bad
-            // measurement must cost position, never visibility.
+            // and a throw inside a rAF callback is swallowed by the browser,
+            // abandoning the rest of the callback: with the ordering reversed
+            // any measurement that misbehaves would leave the tip with its
+            // hidden attribute already removed but no visible class, i.e.
+            // permanently invisible. A bad measurement must cost the tip its
+            // position, never its visibility.
             tip.classList.add('pjx-tooltip__tip--visible');
             if (backdrop) backdrop.classList.add('pjx-tooltip__backdrop--visible');
             place(tip, root);

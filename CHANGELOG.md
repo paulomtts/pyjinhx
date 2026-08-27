@@ -4,12 +4,19 @@
 
 ### Fixed
 - A `PJXTooltip` whose root sits inside an open `<dialog>` (in practice a
-  `PJXDrawer`) removed the tip's `hidden` attribute on hover but never added
-  `pjx-tooltip__tip--visible`, so the tip stayed at `visibility: hidden`.
-  `place()` ran first inside `show()`'s `requestAnimationFrame` callback and a
-  throw there is swallowed by the browser, abandoning the class add that
-  followed it. The visible classes now go on before `place()`, so a bad
-  measurement costs the tip its position, never its visibility (#1051).
+  `PJXDrawer`) never appeared. `place()` computes viewport coordinates for the
+  `position: fixed` tip, but `PJXDrawer`'s slide-in animation runs with
+  `animation-fill-mode: forwards` and so leaves a `transform` on
+  `.pjx-drawer__box` permanently, making that box the tip's containing block —
+  the coordinates were then re-based onto the box and put the tip a whole
+  drawer-width off-screen. `place()` now subtracts the containing block's own
+  offset, which is zero whenever no ancestor is transformed (#1051).
+- `show()` adds `pjx-tooltip__tip--visible` (and the backdrop's visible class)
+  before calling `place()` rather than after. A throw inside a
+  `requestAnimationFrame` callback is swallowed by the browser and abandons the
+  rest of the callback, so with the old ordering a bad measurement could leave
+  the tip with its `hidden` attribute removed but no visible class — invisible
+  with no way back. A bad measurement now costs position, never visibility.
 
 ## 1.9.6 — Select filter moved fully outside the scrolling option list (2026-08-27)
 
