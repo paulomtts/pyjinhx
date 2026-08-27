@@ -10,6 +10,7 @@ class PJXTooltip(BaseComponent):
 
     placement: Literal["top", "bottom", "start", "end"] = "top"
     backdrop: bool = False
+    portal: bool = False
     class_name: AttrValue = ""
     content: Slot = ""
     extra_attrs: ExtraAttrs = Field(default_factory=dict)

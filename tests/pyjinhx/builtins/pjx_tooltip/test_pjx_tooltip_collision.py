@@ -52,6 +52,23 @@ BOXED = (
 """
 )
 
+NARROW_PORTAL = (
+    STYLE
+    + """
+<div id="box" style="position: absolute; left: 100px; top: 200px;
+     width: 52px; height: 300px; overflow-y: auto; overflow-x: hidden;">
+  <div id="root" class="pjx-tooltip" data-pjx-tooltip-placement="PLACEMENT"
+       data-pjx-tooltip-portal
+       style="left: LEFTpx; top: TOPpx;">
+    <button class="pjx-tooltip__trigger">t</button>
+    <div id="tip" class="pjx-tooltip__tip" hidden>tip</div>
+  </div>
+</div>
+"""
+)
+
+NARROW_NO_PORTAL = NARROW_PORTAL.replace(' data-pjx-tooltip-portal\n', "\n")
+
 PLAIN = (
     STYLE
     + """
@@ -214,3 +231,46 @@ def test_scrolling_the_container_repositions_the_tip(page: Page):
     after = page.evaluate(RECT)
     assert after["top"] == 256  # trigger bottom (250) + gap (6), flipped below
     assert after["bottom"] <= BOX["bottom"]
+
+
+def test_no_portal_squeezes_the_tip_into_a_too_narrow_container(page: Page):
+    # 52px-wide clipping ancestor, 120px tip: without the escape hatch the
+    # tip is clamped into the container and overlaps the trigger it's meant
+    # to sit beside (the #1044 bug).
+    box = _hover(page, NARROW_NO_PORTAL, placement="end", left=10, top=100)
+    assert box["left"] < 150  # trigger's right edge (100 + 10 + 40)
+
+
+def test_portal_escapes_the_narrow_container_and_avoids_the_trigger(page: Page):
+    box = _hover(page, NARROW_PORTAL, placement="end", left=10, top=100)
+    assert box["left"] >= 150  # placed beside the trigger, not overlapping it
+
+
+def test_portal_reparents_the_tip_to_document_body_while_shown(page: Page):
+    page.set_viewport_size({"width": 800, "height": 600})
+    page.set_content(
+        NARROW_PORTAL.replace("PLACEMENT", "end")
+        .replace("LEFT", "10")
+        .replace("TOP", "100")
+    )
+    page.add_script_tag(content=CONTROLLER.read_text())
+    page.hover(".pjx-tooltip__trigger")
+    page.wait_for_selector(".pjx-tooltip__tip--visible")
+    assert page.evaluate("document.getElementById('tip').parentElement === document.body")
+
+
+def test_portal_restores_the_tip_to_its_original_parent_on_hide(page: Page):
+    page.set_viewport_size({"width": 800, "height": 600})
+    page.set_content(
+        NARROW_PORTAL.replace("PLACEMENT", "end")
+        .replace("LEFT", "10")
+        .replace("TOP", "100")
+    )
+    page.add_script_tag(content=CONTROLLER.read_text())
+    page.hover(".pjx-tooltip__trigger")
+    page.wait_for_selector(".pjx-tooltip__tip--visible")
+    page.hover("body")
+    page.wait_for_timeout(150)
+    assert page.evaluate(
+        "document.getElementById('tip').parentElement === document.getElementById('root')"
+    )
