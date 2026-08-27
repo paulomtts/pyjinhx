@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.9.5 — Select filter stays pinned while scrolling (2026-08-27)
+
+### Fixed
+- `PJXSelect`'s search filter had no `position: sticky`, so once the option
+  list overflowed the panel's `max-height` and started scrolling, the filter
+  scrolled away with it instead of staying pinned above the list (#1049).
+
 ## 1.9.4 — Tooltip portal fade and trigger-occlusion fixes (2026-08-27)
 
 ### Fixed
