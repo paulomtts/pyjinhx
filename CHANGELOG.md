@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.9.2 — Tooltip clamps to the viewport (2026-08-27)
+
+### Fixed
+- `PJXTooltip` clamped its position against only the trigger's nearest clipping
+  ancestor (e.g. a scrollable table wrapper), which can itself extend past the
+  visible window — letting the tooltip render partly off-screen when hovering
+  an item inside such a container. `boundsFor()` now intersects the clipping
+  ancestor's rect with the viewport before flipping/clamping (#1043).
+
 ## 1.9.1 — False-positive root-stamp collision (2026-08-23)
 
 ### Fixed
