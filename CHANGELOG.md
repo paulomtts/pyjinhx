@@ -1,5 +1,23 @@
 # Changelog
 
+## 1.9.7 — Tooltip shows inside an open dialog (2026-08-27)
+
+### Fixed
+- A `PJXTooltip` whose root sits inside an open `<dialog>` (in practice a
+  `PJXDrawer`) never appeared. `place()` computes viewport coordinates for the
+  `position: fixed` tip, but `PJXDrawer`'s slide-in animation runs with
+  `animation-fill-mode: forwards` and so leaves a `transform` on
+  `.pjx-drawer__box` permanently, making that box the tip's containing block —
+  the coordinates were then re-based onto the box and put the tip a whole
+  drawer-width off-screen. `place()` now subtracts the containing block's own
+  offset, which is zero whenever no ancestor is transformed (#1051).
+- `show()` adds `pjx-tooltip__tip--visible` (and the backdrop's visible class)
+  before calling `place()` rather than after. A throw inside a
+  `requestAnimationFrame` callback is swallowed by the browser and abandons the
+  rest of the callback, so with the old ordering a bad measurement could leave
+  the tip with its `hidden` attribute removed but no visible class — invisible
+  with no way back. A bad measurement now costs position, never visibility.
+
 ## 1.9.6 — Select filter moved fully outside the scrolling option list (2026-08-27)
 
 ### Fixed
