@@ -91,6 +91,20 @@ def test_backdrop_rejects_a_non_boolean():
         PJXTooltip(id="tt", backdrop="yes please")  # type: ignore[arg-type]
 
 
+def test_portal_is_off_by_default(tooltip_session):
+    assert "data-pjx-tooltip-portal" not in _html(tooltip_session)
+
+
+def test_portal_true_adds_the_data_attribute(tooltip_session):
+    html = _html(tooltip_session, portal=True)
+    assert 'data-pjx-tooltip-placement="top" data-pjx-tooltip-portal' in html
+
+
+def test_portal_rejects_a_non_boolean():
+    with pytest.raises(ValidationError):
+        PJXTooltip(id="tt", portal="yes please")  # type: ignore[arg-type]
+
+
 def test_invalid_placement_is_rejected():
     with pytest.raises(ValidationError):
         PJXTooltip(id="tt", placement="middle")  # type: ignore[arg-type]

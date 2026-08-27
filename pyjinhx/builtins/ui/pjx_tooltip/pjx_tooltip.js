@@ -3,8 +3,39 @@
     if (pjx._tooltipWired) return;
     pjx._tooltipWired = true;
     let activeTip = null;
+    let activeRoot = null;
     let activeBackdrop = null;
     let hideTimer = null;
+    // Keyed by root, not tip: once portalled the tip is no longer a
+    // descendant of root, so root.querySelector('.pjx-tooltip__tip') can no
+    // longer find it — every lookup goes through tipFor()/portalled instead.
+    const portalled = new WeakMap();
+
+    function isPortalled(root) {
+        return root.dataset.pjxTooltipPortal !== undefined;
+    }
+
+    function tipFor(root) {
+        return root.querySelector('.pjx-tooltip__tip') || (portalled.get(root) || {}).tip || null;
+    }
+
+    /**
+     * Reparent the tip to document.body so it escapes a clipping (or
+     * fixed-positioning-containing) ancestor entirely, instead of being
+     * clamped into that ancestor's bounds.
+     */
+    function portalTip(tip, root) {
+        if (!isPortalled(root) || portalled.has(root)) return;
+        portalled.set(root, { tip, parent: tip.parentElement, next: tip.nextSibling });
+        document.body.appendChild(tip);
+    }
+
+    function unportalTip(root) {
+        const entry = portalled.get(root);
+        if (!entry) return;
+        portalled.delete(root);
+        entry.parent.insertBefore(entry.tip, entry.next);
+    }
 
     function hideBackdrop(backdrop) {
         backdrop.classList.remove('pjx-tooltip__backdrop--visible');
@@ -21,7 +52,7 @@
      * scrollable table wrapper) can itself extend past the visible window, so
      * clamping to it alone would still let the tip spill off-screen.
      */
-    function boundsFor(trigger) {
+    function boundsFor(trigger, portalled) {
         // We synthesize the viewport rect instead of measuring documentElement:
         // its rect tracks content height, which on a long page is far taller
         // than the visible box.
@@ -31,6 +62,7 @@
             right: window.innerWidth,
             bottom: window.innerHeight,
         };
+        if (portalled) return viewport;
         let node = trigger.parentElement;
         while (node && node !== document.documentElement) {
             const cs = getComputedStyle(node);
@@ -59,7 +91,7 @@
         const tr = trigger.getBoundingClientRect();
         const tw = tip.offsetWidth;
         const th = tip.offsetHeight;
-        const b = boundsFor(trigger);
+        const b = boundsFor(trigger, isPortalled(root));
         let top;
         let left;
 
@@ -99,18 +131,21 @@
     }
 
     function show(root) {
-        const tip = root.querySelector('.pjx-tooltip__tip');
+        const tip = tipFor(root);
         if (!tip) return;
         const backdrop = root.querySelector('.pjx-tooltip__backdrop');
         clearTimeout(hideTimer);
         if (activeTip && activeTip !== tip) {
             activeTip.classList.remove('pjx-tooltip__tip--visible');
             activeTip.setAttribute('hidden', '');
+            unportalTip(activeRoot);
         }
         if (activeBackdrop && activeBackdrop !== backdrop) hideBackdrop(activeBackdrop);
         activeTip = tip;
+        activeRoot = root;
         activeBackdrop = backdrop;
         tip.removeAttribute('hidden');
+        portalTip(tip, root);
         if (backdrop) backdrop.removeAttribute('hidden');
         const trig = root.querySelector('.pjx-tooltip__trigger'); if (trig && tip.id) trig.setAttribute('aria-describedby', tip.id);
         requestAnimationFrame(() => {
@@ -121,14 +156,18 @@
     }
 
     function hide(root) {
-        const tip = root.querySelector('.pjx-tooltip__tip');
+        const tip = tipFor(root);
         if (!tip) return;
         const backdrop = root.querySelector('.pjx-tooltip__backdrop');
         hideTimer = setTimeout(() => {
             tip.classList.remove('pjx-tooltip__tip--visible');
             tip.setAttribute('hidden', '');
+            unportalTip(root);
             if (backdrop) hideBackdrop(backdrop);
-            if (activeTip === tip) activeTip = null;
+            if (activeTip === tip) {
+                activeTip = null;
+                activeRoot = null;
+            }
             if (activeBackdrop === backdrop) activeBackdrop = null;
         }, 80);
     }
@@ -164,9 +203,8 @@
     window.addEventListener(
         'scroll',
         () => {
-            if (activeTip && activeTip.classList.contains('pjx-tooltip__tip--visible')) {
-                const root = activeTip.closest('.pjx-tooltip');
-                if (root) place(activeTip, root);
+            if (activeTip && activeRoot && activeTip.classList.contains('pjx-tooltip__tip--visible')) {
+                place(activeTip, activeRoot);
             }
         },
         true

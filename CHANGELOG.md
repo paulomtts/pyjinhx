@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.9.3 — Tooltip portal escape hatch (2026-08-27)
+
+### Added
+- `PJXTooltip(portal=True)` reparents the tip to `document.body` while shown,
+  so a trigger inside a narrow or clipped scrollable container (e.g. a 52px
+  icon rail) gets full-viewport collision avoidance instead of being clamped
+  into a container too small to fit the tip, which previously made the tip
+  overlap its own trigger (#1044). The tip is moved back to its original
+  position in the DOM on hide.
+
 ## 1.9.2 — Tooltip clamps to the viewport (2026-08-27)
 
 ### Fixed
