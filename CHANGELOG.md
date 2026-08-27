@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.9.6 — Select filter moved fully outside the scrolling option list (2026-08-27)
+
+### Fixed
+- 1.9.5 pinned `PJXSelect`'s search filter with `position: sticky`, but it
+  still shared the same scrolling container as the options, so it kept a
+  scrollbar gutter beside it. `overflow-y`/`max-height` now live on a new
+  `.pjx-select__options` wrapper around just the option buttons — the filter
+  is a true sibling outside the scroll area, not merely pinned inside it
+  (#1050).
+
 ## 1.9.5 — Select filter stays pinned while scrolling (2026-08-27)
 
 ### Fixed
