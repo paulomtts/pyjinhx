@@ -10,6 +10,10 @@
     // descendant of root, so root.querySelector('.pjx-tooltip__tip') can no
     // longer find it — every lookup goes through tipFor()/portalled instead.
     const portalled = new WeakMap();
+    // Pending unportalTip() timers, keyed by root: show() cancels a root's
+    // timer when it reactivates a tip mid fade-out, so a stale timer can't
+    // reparent a tip that's visible again.
+    const unportalTimers = new WeakMap();
 
     function isPortalled(root) {
         return root.dataset.pjxTooltipPortal !== undefined;
@@ -126,6 +130,22 @@
 
         left = clamp(left, b.left + 8, b.right - tw - 8);
         top = clamp(top, b.top + 8, b.bottom - th - 8);
+
+        // The bounds clamp above has no notion of the trigger itself, so in
+        // the reduced-space case (neither side fully fits) it can push the
+        // tip on top of the trigger it's describing. Re-clamp against the
+        // trigger's own rect on the axis the chosen placement sits on, even
+        // if that pushes the tip further past the bounds edge.
+        if (placement === 'top') {
+            top = Math.min(top, tr.top - th - gap);
+        } else if (placement === 'bottom') {
+            top = Math.max(top, tr.bottom + gap);
+        } else if (placement === 'start') {
+            left = Math.min(left, tr.left - tw - gap);
+        } else if (placement === 'end') {
+            left = Math.max(left, tr.right + gap);
+        }
+
         tip.style.left = left + 'px';
         tip.style.top = top + 'px';
     }
@@ -135,9 +155,11 @@
         if (!tip) return;
         const backdrop = root.querySelector('.pjx-tooltip__backdrop');
         clearTimeout(hideTimer);
+        clearTimeout(unportalTimers.get(root));
         if (activeTip && activeTip !== tip) {
             activeTip.classList.remove('pjx-tooltip__tip--visible');
             activeTip.setAttribute('hidden', '');
+            clearTimeout(unportalTimers.get(activeRoot));
             unportalTip(activeRoot);
         }
         if (activeBackdrop && activeBackdrop !== backdrop) hideBackdrop(activeBackdrop);
@@ -162,7 +184,11 @@
         hideTimer = setTimeout(() => {
             tip.classList.remove('pjx-tooltip__tip--visible');
             tip.setAttribute('hidden', '');
-            unportalTip(root);
+            // Defer unportalTip() until the fade-out transition has actually
+            // finished: reparenting synchronously here changes the tip's
+            // layout box (unconstrained body -> clamped narrow ancestor)
+            // while it's still visibly fading, producing a reflow mid-fade.
+            unportalTimers.set(root, setTimeout(() => unportalTip(root), 120));
             if (backdrop) hideBackdrop(backdrop);
             if (activeTip === tip) {
                 activeTip = null;

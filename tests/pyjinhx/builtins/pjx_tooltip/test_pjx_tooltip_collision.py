@@ -67,7 +67,7 @@ NARROW_PORTAL = (
 """
 )
 
-NARROW_NO_PORTAL = NARROW_PORTAL.replace(' data-pjx-tooltip-portal\n', "\n")
+NARROW_NO_PORTAL = NARROW_PORTAL.replace(" data-pjx-tooltip-portal\n", "\n")
 
 PLAIN = (
     STYLE
@@ -154,9 +154,15 @@ def test_placement_start_flips_to_end_inside_the_container(page: Page):
     assert box["right"] <= BOX["right"]
 
 
-def test_container_too_tight_clamps_to_padded_container_bounds(page: Page):
+def test_container_too_tight_clamps_past_container_bounds_to_avoid_the_trigger(
+    page: Page,
+):
     # A 60px-tall container fits neither placement for a 40px tip plus gap,
-    # so no flip helps and only the padded clamp keeps the tip inside.
+    # so no flip helps. The padded container clamp alone (top: 208) would
+    # still land the tip on top of the trigger (215..245) — #1046 — so the
+    # trigger-aware re-clamp pushes it up past the container's own top edge
+    # instead, trading "stay inside the container" for "never hide the
+    # trigger" when the two can't both hold.
     page.set_viewport_size({"width": 800, "height": 600})
     page.set_content(
         BOXED.replace("PLACEMENT", "top")
@@ -169,8 +175,8 @@ def test_container_too_tight_clamps_to_padded_container_bounds(page: Page):
     page.hover(".pjx-tooltip__trigger")
     page.wait_for_selector(".pjx-tooltip__tip--visible")
     box = page.evaluate(RECT)
-    assert box["top"] == 208  # container top (200) + padding (8)
-    assert box["bottom"] == 248  # still inside the container's bottom (260)
+    assert box["top"] == 169  # trigger top (215) - tip (40) - gap (6)
+    assert box["bottom"] == 209  # clear of the trigger's top (215)
     assert box["left"] >= BOX["left"]
     assert box["right"] <= BOX["right"]
 
@@ -195,6 +201,37 @@ def test_container_larger_than_viewport_clamps_to_the_viewport(page: Page):
     box = page.evaluate(RECT)
     assert box["right"] <= 800
     assert box["bottom"] <= 600
+
+
+def test_clamp_never_pushes_the_tip_over_its_own_trigger(page: Page):
+    # #1046: a 40px-tall container can't fit a 40px tip + 6px gap on either
+    # side of the trigger, so no flip helps and the plain bounds-only clamp
+    # used to land the tip's box on top of the trigger it describes. The
+    # clamp must also respect the trigger's own rect.
+    page.set_viewport_size({"width": 800, "height": 600})
+    page.set_content(
+        BOXED.replace("PLACEMENT", "top")
+        .replace("LEFT", "130")
+        .replace("TOP", "5")
+        .replace("OVERFLOW", "hidden")
+        .replace("height: 200px", "height: 40px")
+    )
+    page.add_script_tag(content=CONTROLLER.read_text())
+    page.hover(".pjx-tooltip__trigger")
+    page.wait_for_selector(".pjx-tooltip__tip--visible")
+    tip = page.evaluate(RECT)
+    trigger = page.evaluate(
+        "() => { const r = document.querySelector('.pjx-tooltip__trigger')"
+        ".getBoundingClientRect(); return {left: r.left, top: r.top,"
+        " right: r.right, bottom: r.bottom}; }"
+    )
+    overlaps = (
+        tip["left"] < trigger["right"]
+        and tip["right"] > trigger["left"]
+        and tip["top"] < trigger["bottom"]
+        and tip["bottom"] > trigger["top"]
+    )
+    assert not overlaps
 
 
 def test_no_clipping_ancestor_keeps_viewport_behavior(page: Page):
@@ -233,12 +270,17 @@ def test_scrolling_the_container_repositions_the_tip(page: Page):
     assert after["bottom"] <= BOX["bottom"]
 
 
-def test_no_portal_squeezes_the_tip_into_a_too_narrow_container(page: Page):
+def test_no_portal_spills_past_the_too_narrow_container_but_not_over_the_trigger(
+    page: Page,
+):
     # 52px-wide clipping ancestor, 120px tip: without the escape hatch the
-    # tip is clamped into the container and overlaps the trigger it's meant
-    # to sit beside (the #1044 bug).
+    # container-bounds clamp alone would land the tip on top of the trigger
+    # it's meant to sit beside (the #1046 bug). The trigger-aware re-clamp
+    # (added for #1046) keeps it clear of the trigger even here, at the cost
+    # of spilling past the container's own right edge — portal (below) is
+    # still what keeps it visually contained instead of merely trigger-safe.
     box = _hover(page, NARROW_NO_PORTAL, placement="end", left=10, top=100)
-    assert box["left"] < 150  # trigger's right edge (100 + 10 + 40)
+    assert box["left"] >= 150  # trigger's right edge (100 + 10 + 40)
 
 
 def test_portal_escapes_the_narrow_container_and_avoids_the_trigger(page: Page):
@@ -256,7 +298,9 @@ def test_portal_reparents_the_tip_to_document_body_while_shown(page: Page):
     page.add_script_tag(content=CONTROLLER.read_text())
     page.hover(".pjx-tooltip__trigger")
     page.wait_for_selector(".pjx-tooltip__tip--visible")
-    assert page.evaluate("document.getElementById('tip').parentElement === document.body")
+    assert page.evaluate(
+        "document.getElementById('tip').parentElement === document.body"
+    )
 
 
 def test_portal_restores_the_tip_to_its_original_parent_on_hide(page: Page):
@@ -270,7 +314,38 @@ def test_portal_restores_the_tip_to_its_original_parent_on_hide(page: Page):
     page.hover(".pjx-tooltip__trigger")
     page.wait_for_selector(".pjx-tooltip__tip--visible")
     page.hover("body")
-    page.wait_for_timeout(150)
+    # hide()'s 80ms timer, then the 120ms fade-out deferral (#1047) before
+    # unportalTip() actually runs.
+    page.wait_for_timeout(80 + 120 + 60)
+    assert page.evaluate(
+        "document.getElementById('tip').parentElement === document.getElementById('root')"
+    )
+
+
+def test_portal_defers_unparenting_until_the_fade_completes(page: Page):
+    # #1047: unportalTip() must not fire in the same tick the fade-out class
+    # is removed — the tip's layout box would change (unconstrained body ->
+    # clamped narrow ancestor) while it is still visibly fading, producing a
+    # visible reflow instead of a clean fade. It should still be parented to
+    # document.body for the whole 120ms transition, and only move back once
+    # the transition has actually finished.
+    page.set_viewport_size({"width": 800, "height": 600})
+    page.set_content(
+        NARROW_PORTAL.replace("PLACEMENT", "end")
+        .replace("LEFT", "10")
+        .replace("TOP", "100")
+    )
+    page.add_script_tag(content=CONTROLLER.read_text())
+    page.hover(".pjx-tooltip__trigger")
+    page.wait_for_selector(".pjx-tooltip__tip--visible")
+    page.hover("body")
+    # hide()'s own setTimeout is 80ms; the fade-out class removal happens
+    # then, and the CSS transition is 120ms long. Sample mid-transition.
+    page.wait_for_timeout(80 + 40)
+    assert page.evaluate(
+        "document.getElementById('tip').parentElement === document.body"
+    )
+    page.wait_for_timeout(120 + 60)
     assert page.evaluate(
         "document.getElementById('tip').parentElement === document.getElementById('root')"
     )
