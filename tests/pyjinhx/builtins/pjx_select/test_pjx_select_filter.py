@@ -47,6 +47,25 @@ class TestFields:
         ).read_text()
         assert f"options | length > {PJXSelect._FILTER_THRESHOLD}" in template
 
+    def test_filter_is_sticky_above_the_scrolling_option_list(self):
+        """The filter renders first inside .pjx-select__panel, which scrolls
+        (overflow-y: auto) once the option list overflows its max-height —
+        without `position: sticky` the filter scrolls out of view along with
+        the options instead of staying pinned above them."""
+        from pathlib import Path
+
+        css = (
+            Path(__file__).resolve().parents[4]
+            / "pyjinhx"
+            / "builtins"
+            / "ui"
+            / "pjx_select"
+            / "pjx_select.css"
+        ).read_text()
+        filter_rule = css.split(".pjx-select__filter {", 1)[1].split("}", 1)[0]
+        assert "position: sticky" in filter_rule
+        assert "top: 0" in filter_rule
+
 
 @pytest.fixture
 def session():
