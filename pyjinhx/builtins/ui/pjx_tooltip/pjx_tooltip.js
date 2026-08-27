@@ -171,9 +171,16 @@
         if (backdrop) backdrop.removeAttribute('hidden');
         const trig = root.querySelector('.pjx-tooltip__trigger'); if (trig && tip.id) trig.setAttribute('aria-describedby', tip.id);
         requestAnimationFrame(() => {
-            place(tip, root);
+            // Visibility first, position second. place() measures live layout,
+            // and a throw inside a rAF callback is swallowed by the browser and
+            // abandons the rest of the callback — with the ordering reversed, a
+            // measurement that misbehaves (a trigger nested under a top-layer
+            // <dialog>, say) leaves the tip with its hidden attribute already
+            // removed but no visible class, i.e. permanently invisible. A bad
+            // measurement must cost position, never visibility.
             tip.classList.add('pjx-tooltip__tip--visible');
             if (backdrop) backdrop.classList.add('pjx-tooltip__backdrop--visible');
+            place(tip, root);
         });
     }
 
