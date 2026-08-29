@@ -23,6 +23,7 @@ class TestFields:
         assert sel.value is None
         assert sel.placeholder == "Select…"
         assert sel.disabled is False
+        assert sel.portal is False
         assert sel.class_name == ""
 
     def test_name_is_required(self):
@@ -160,3 +161,54 @@ class TestRender:
 
     def test_empty_class_name_adds_nothing(self, session):
         assert 'class="pjx-select"' in _html(session)
+
+    def test_portal_is_off_by_default(self, session):
+        assert "data-pjx-select-portal" not in _html(session)
+
+    def test_portal_true_adds_the_data_attribute(self, session):
+        html = _html(session, portal=True)
+        assert "data-pjx-select-portal" in html[: html.index(">")]
+
+    def test_portal_rejects_a_non_boolean(self):
+        with pytest.raises(ValidationError):
+            PJXSelect(id="s", name="fruit", options=OPTIONS, portal="yes please")  # type: ignore[arg-type]
+
+
+OPTIONS_WITH_BLANK = [
+    SelectOption(value="", label="All fruit"),
+    SelectOption(value="a", label="Apple"),
+]
+
+
+class TestEmptyStringValue:
+    """An <option value=""> sentinel ("all"/"no selection") must match like any other value."""
+
+    def test_empty_string_value_is_marked_selected_on_the_native_select(self, session):
+        html = render(
+            PJXSelect(id="s", name="fruit", options=OPTIONS_WITH_BLANK, value=""),
+            session,
+        )
+        assert '<option value="" selected>' in html
+
+    def test_empty_string_value_shows_its_own_label_not_the_placeholder(self, session):
+        html = render(
+            PJXSelect(
+                id="s",
+                name="fruit",
+                options=OPTIONS_WITH_BLANK,
+                value="",
+                placeholder="Select…",
+            ),
+            session,
+        )
+        trigger = html[html.index("data-pjx-select-trigger") :]
+        assert "All fruit" in trigger[: trigger.index("</button>")]
+        assert "Select…" not in trigger[: trigger.index("</button>")]
+
+    def test_empty_string_value_marks_its_option_row_selected(self, session):
+        html = render(
+            PJXSelect(id="s", name="fruit", options=OPTIONS_WITH_BLANK, value=""),
+            session,
+        )
+        assert 'data-value="" aria-selected="true"' in html
+        assert 'data-value="a" aria-selected="false"' in html

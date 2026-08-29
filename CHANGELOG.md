@@ -28,6 +28,29 @@
   portalled popover instead of leaving it visually detached from its trigger,
   and closing while the original host has been removed drops the panel
   instead of leaving it dangling on `document.body` (#1053).
+- `PJXSelect` gained a `portal` prop mirroring `PJXTooltip`'s: with
+  `portal=True`, opening reparents the whole root to `document.body` (fixed at
+  its pre-move position, so the trigger doesn't visibly jump) and restores it
+  on close, so an `overflow: hidden`/`auto` ancestor can no longer clip the
+  panel (#1054).
+
+### Fixed
+- The open panel now always matches the trigger's rendered width instead of
+  sizing to its own content, so a stretched (`width: 100%`) select gets a
+  panel the same width as the control it opens from (#1054).
+- `pjx_select.pjx` compared `value` against Jinja truthiness, so `value=""` —
+  a common "all"/"no selection" sentinel — never matched its own option and
+  fell back to the untranslated `placeholder` instead. Selection now compares
+  against `None`, so `""` is a legitimate, matchable value (#1054).
+- `syncNative()` set the hidden native `<select>`'s value via the `.selected`
+  IDL property, which fires no `change`/`input` event, so `hx-trigger="change
+  from:select"` and vanilla listeners went silent. It now dispatches real
+  `change`/`input` events on the hidden `<select>` after resyncing it (#1054).
+- Opening a searchable select (more options than `PJXSelect._FILTER_THRESHOLD`)
+  never focused its filter input, for either a mouse or a keyboard-triggered
+  open. `open()` now focuses the filter when present, and the trigger's own
+  keyboard handler defers to it instead of jumping straight to an option
+  (#1054).
 
 ## 1.9.7 — Tooltip shows inside an open dialog (2026-08-27)
 

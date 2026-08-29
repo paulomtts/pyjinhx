@@ -182,6 +182,14 @@ SINGLE = """
 </div>
 """
 
+# Same options as SINGLE but with no filter box, so opening still lands
+# keyboard focus on the first/last *option* — the pre-autofocus behavior,
+# still correct for panels short enough to skip the search input.
+SINGLE_NO_FILTER = SINGLE.replace(
+    '    <input type="search" class="pjx-select__filter" data-pjx-select-filter placeholder="Search…">\n',
+    "",
+)
+
 MULTIPLE = """
 <div id="root" class="pjx-select" data-pjx-select data-name="fruit" data-multiple
      data-placeholder="Select…">
@@ -235,18 +243,18 @@ class TestArrowNavigationRealDom:
     def test_arrowdown_on_the_trigger_opens_the_panel_and_focuses_the_first_option(
         self, page: Page
     ):
-        _load(page, SINGLE)
+        _load(page, SINGLE_NO_FILTER)
         page.keyboard.press("ArrowDown")
         assert page.evaluate("document.getElementById('panel').hidden") is False
         assert _active_value(page) == "a"
 
     def test_arrowup_on_the_trigger_opens_at_the_last_option(self, page: Page):
-        _load(page, SINGLE)
+        _load(page, SINGLE_NO_FILTER)
         page.keyboard.press("ArrowUp")
         assert _active_value(page) == "c"
 
     def test_arrowdown_moves_focus_forward_and_wraps(self, page: Page):
-        _load(page, SINGLE)
+        _load(page, SINGLE_NO_FILTER)
         page.keyboard.press("ArrowDown")  # opens on "a"
         page.keyboard.press("ArrowDown")  # -> b
         page.keyboard.press("ArrowDown")  # -> c
@@ -254,7 +262,7 @@ class TestArrowNavigationRealDom:
         assert _active_value(page) == "a"
 
     def test_home_and_end_jump_to_the_edges(self, page: Page):
-        _load(page, SINGLE)
+        _load(page, SINGLE_NO_FILTER)
         page.keyboard.press("ArrowDown")  # opens on "a"
         page.keyboard.press("End")
         assert _active_value(page) == "c"
@@ -264,13 +272,13 @@ class TestArrowNavigationRealDom:
 
 class TestTypeAheadRealDom:
     def test_typing_a_letter_jumps_to_the_matching_option(self, page: Page):
-        _load(page, SINGLE)
+        _load(page, SINGLE_NO_FILTER)
         page.keyboard.press("ArrowDown")  # opens on "a" (Apple)
         page.keyboard.press("c")
         assert _active_value(page) == "c"
 
     def test_type_ahead_is_case_insensitive(self, page: Page):
-        _load(page, SINGLE)
+        _load(page, SINGLE_NO_FILTER)
         page.keyboard.press("ArrowDown")
         page.keyboard.press("B")
         assert _active_value(page) == "b"
@@ -278,7 +286,7 @@ class TestTypeAheadRealDom:
     def test_type_ahead_with_no_match_is_a_no_op_and_does_not_throw(self, page: Page):
         errors: list[str] = []
         page.on("pageerror", lambda exc: errors.append(str(exc)))
-        _load(page, SINGLE)
+        _load(page, SINGLE_NO_FILTER)
         page.keyboard.press("ArrowDown")  # opens on "a"
         page.keyboard.press("z")
         assert _active_value(page) == "a"  # focus unchanged
@@ -289,7 +297,7 @@ class TestCommitRealDom:
     def test_enter_selects_the_focused_option_and_closes_in_single_mode(
         self, page: Page
     ):
-        _load(page, SINGLE)
+        _load(page, SINGLE_NO_FILTER)
         page.keyboard.press("ArrowDown")  # opens on "a"
         page.keyboard.press("ArrowDown")  # -> b
         page.keyboard.press("Enter")
@@ -317,6 +325,43 @@ class TestCommitRealDom:
             )
             == "true"
         )
+
+
+class TestFilterAutofocusRealDom:
+    def test_arrowdown_on_the_trigger_focuses_the_filter_when_present(self, page: Page):
+        _load(page, SINGLE)
+        page.keyboard.press("ArrowDown")
+        assert page.evaluate("document.getElementById('panel').hidden") is False
+        assert page.evaluate(
+            "document.activeElement.hasAttribute('data-pjx-select-filter')"
+        )
+
+    def test_arrowup_on_the_trigger_also_focuses_the_filter(self, page: Page):
+        _load(page, SINGLE)
+        page.keyboard.press("ArrowUp")
+        assert page.evaluate(
+            "document.activeElement.hasAttribute('data-pjx-select-filter')"
+        )
+
+    def test_clicking_the_trigger_focuses_the_filter(self, page: Page):
+        _load(page, SINGLE)
+        page.click("[data-pjx-select-trigger]")
+        assert page.evaluate(
+            "document.activeElement.hasAttribute('data-pjx-select-filter')"
+        )
+
+    def test_arrowdown_from_the_filter_still_reaches_the_first_option(self, page: Page):
+        # Filter takes the initial focus, but its own ArrowDown handling
+        # (unchanged by this fix) still hands off into the option list.
+        _load(page, SINGLE)
+        page.keyboard.press("ArrowDown")  # focuses the filter
+        page.keyboard.press("ArrowDown")  # -> first option
+        assert _active_value(page) == "a"
+
+    def test_no_filter_falls_back_to_focusing_the_first_option(self, page: Page):
+        _load(page, SINGLE_NO_FILTER)
+        page.keyboard.press("ArrowDown")
+        assert _active_value(page) == "a"
 
 
 class TestEscapeRealDom:

@@ -115,8 +115,48 @@
         };
     }
 
+    // Keyed by root, not panel: the panel is a child of root (unlike the
+    // tooltip's tip, a sibling of its trigger), so moving the whole root
+    // keeps the panel's absolute positioning relative to it intact and
+    // `.closest('[data-pjx-select]')` lookups keep resolving wherever it lands.
+    const portalled = new WeakMap();
+
+    function isPortalled(root) {
+        return root.dataset.pjxSelectPortal !== undefined;
+    }
+
+    function portalRoot(root) {
+        if (!isPortalled(root) || portalled.has(root)) return;
+        const rect = root.getBoundingClientRect();
+        portalled.set(root, { parent: root.parentElement, next: root.nextSibling });
+        // Fixed positioning at the pre-move rect keeps the trigger visually in
+        // place even though it's no longer a descendant of its original,
+        // possibly clipping, ancestor.
+        root.style.position = 'fixed';
+        root.style.left = rect.left + 'px';
+        root.style.top = rect.top + 'px';
+        root.style.width = rect.width + 'px';
+        document.body.appendChild(root);
+    }
+
+    function unportalRoot(root) {
+        const entry = portalled.get(root);
+        if (!entry) return;
+        portalled.delete(root);
+        root.style.position = '';
+        root.style.left = '';
+        root.style.top = '';
+        root.style.width = '';
+        entry.parent.insertBefore(root, entry.next);
+    }
+
     function position(panel, trigger) {
         const t = trigger.getBoundingClientRect();
+        // Stretched triggers (width: 100%) would otherwise leave the panel
+        // sized to its own content instead of matching the control it opens
+        // from; set it before measuring so the flip/clamp math below sees the
+        // width the panel will actually render at.
+        panel.style.width = t.width + 'px';
         const p = panel.getBoundingClientRect();
         const result = pjx.popoverPosition({
             trigger: { top: t.top, left: t.left, width: t.width, height: t.height },
@@ -125,8 +165,10 @@
             align: 'start',
         });
         // A prior open may have left inline coordinates behind; drop them so a
-        // since-fixed layout falls back to the CSS default.
+        // since-fixed layout falls back to the CSS default, then reapply the
+        // width match dropped along with them.
         panel.removeAttribute('style');
+        panel.style.width = t.width + 'px';
         if (result.adjusted !== true) return;
         panel.style.left = result.left + 'px';
         panel.style.top = result.top + 'px';
@@ -135,6 +177,7 @@
     function open(root) {
         const parts = partsOf(root);
         if (!parts.panel || !parts.panel.hidden) return;
+        portalRoot(root);
         parts.panel.hidden = false;
         if (parts.trigger) {
             parts.trigger.setAttribute('aria-expanded', 'true');
@@ -142,6 +185,8 @@
             // same synchronous block, so the unpositioned panel never paints.
             position(parts.panel, parts.trigger);
         }
+        const filter = root.querySelector('[data-pjx-select-filter]');
+        if (filter) filter.focus();
     }
 
     function close(root) {
@@ -157,6 +202,7 @@
             applyFilter(root, '');
         }
         if (parts.trigger) parts.trigger.setAttribute('aria-expanded', 'false');
+        unportalRoot(root);
     }
 
     function isMultiple(root) {
@@ -192,6 +238,11 @@
         Array.prototype.forEach.call(parts.native.options, function (nativeOption) {
             nativeOption.selected = values.indexOf(nativeOption.value) !== -1;
         });
+        // The .selected writes above are silent IDL property sets, unlike a
+        // real user pick, so nothing downstream (hx-trigger="change
+        // from:select", a vanilla change listener) hears about them otherwise.
+        parts.native.dispatchEvent(new Event('input', { bubbles: true }));
+        parts.native.dispatchEvent(new Event('change', { bubbles: true }));
     }
 
     // Mirrors the template's trigger branch: 2+ selections become a chip row,
@@ -360,6 +411,10 @@
         if (e.key === 'ArrowDown' || e.key === 'ArrowUp' || e.key === 'Enter' || e.key === ' ') {
             e.preventDefault();
             open(root);
+            // A searchable panel already took focus itself (open() focuses
+            // the filter when present); only a plain option list needs the
+            // trigger's own arrow-direction focus here.
+            if (root.querySelector('[data-pjx-select-filter]')) return;
             const options = visibleOptions(root);
             if (!options.length) return;
             options[e.key === 'ArrowUp' ? options.length - 1 : 0].focus();
