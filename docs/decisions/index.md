@@ -12,3 +12,4 @@ explicitly in their **Status** line.
 |-----|-------|
 | [0001](0001-outerhtml-only-oob-swaps.md) | outerHTML-only OOB swaps, no append/prepend modes |
 | [0002](0002-cache-backend-architecture.md) | Two-tier cache with a pluggable cross-request backend |
+| [0003](0003-builtin-css-ordering.md) | Builtin CSS always emits before application CSS |

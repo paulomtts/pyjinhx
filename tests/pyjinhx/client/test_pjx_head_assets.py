@@ -84,6 +84,49 @@ def test_asset_tagged_link_is_not_applied(pjx_page):
     assert page.evaluate(HEAD_TOKENS) == []
 
 
+# --- #1058: builtin CSS delivered post-paint must land before any app CSS
+# already resident in <head>, so a bare app selector still wins the tie even
+# when the builtin's stylesheet arrives on a later response.
+
+BUILTIN_SWAP_HTML = (
+    '<style data-pjx-asset="builtin.css" data-pjx-origin="builtin" '
+    'hx-swap-oob="beforeend:head">.pjx-widget{padding:0}</style>'
+)
+HEAD_CSS_ORDER = (
+    "() => Array.from(document.head.querySelectorAll('style[data-pjx-asset]'))"
+    ".map(n => n.getAttribute('data-pjx-asset'))"
+)
+
+
+def test_late_builtin_css_is_inserted_before_existing_app_css(pjx_page):
+    page = pjx_page(
+        "<div></div>",
+        head='<style data-pjx-asset="app.css">.app{padding:8px}</style>',
+    )
+    page.evaluate(APPLY, BUILTIN_SWAP_HTML)
+    assert page.evaluate(HEAD_CSS_ORDER) == ["builtin.css", "app.css"]
+
+
+def test_late_builtin_css_with_no_app_css_yet_still_appends(pjx_page):
+    page = pjx_page("<div></div>")
+    page.evaluate(APPLY, BUILTIN_SWAP_HTML)
+    assert page.evaluate(HEAD_CSS_ORDER) == ["builtin.css"]
+
+
+def test_late_app_css_after_a_resident_builtin_still_lands_after_it(pjx_page):
+    page = pjx_page(
+        "<div></div>",
+        head='<style data-pjx-asset="builtin.css" data-pjx-origin="builtin">'
+        ".pjx-widget{padding:0}</style>",
+    )
+    app_swap = (
+        '<style data-pjx-asset="app.css" '
+        'hx-swap-oob="beforeend:head">.app{padding:8px}</style>'
+    )
+    page.evaluate(APPLY, app_swap)
+    assert page.evaluate(HEAD_CSS_ORDER) == ["builtin.css", "app.css"]
+
+
 def test_external_script_keeps_its_src(pjx_page):
     page = pjx_page("<div></div>")
     page.evaluate(

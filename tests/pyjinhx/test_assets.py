@@ -276,3 +276,28 @@ def test_asset_token_differs_per_path():
     from pyjinhx.assets import asset_token
 
     assert asset_token(Path("a/style.css")) != asset_token(Path("b/style.css"))
+
+
+# --- #1058: origin split feeding the builtin-first ordering guarantee ---
+
+
+def test_is_builtin_asset_true_for_a_path_under_pyjinhx_builtins():
+    import pyjinhx
+    from pyjinhx.assets import _is_builtin_asset
+
+    package_dir = Path(pyjinhx.__file__).parent
+    builtin_css = package_dir / "builtins" / "ui" / "pjx_popover" / "pjx_popover.css"
+    assert _is_builtin_asset(builtin_css) is True
+
+
+def test_is_builtin_asset_false_for_an_app_path():
+    from pyjinhx.assets import _is_builtin_asset
+
+    assert _is_builtin_asset(Path("/app/components/box.css")) is False
+
+
+def test_is_builtin_asset_false_for_a_pyjinhx_module_outside_builtins():
+    import pyjinhx
+    from pyjinhx.assets import _is_builtin_asset
+
+    assert _is_builtin_asset(Path(pyjinhx.__file__).parent / "assets.py") is False

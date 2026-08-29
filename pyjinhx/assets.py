@@ -12,6 +12,30 @@ if TYPE_CHECKING:
     from pyjinhx.session import RenderSession
 
 
+_BUILTIN_ASSET_DIR = Path(__file__).resolve().parent / "builtins"
+
+
+def _is_builtin_asset(path: Path) -> bool:
+    """True when ``path`` ships inside ``pyjinhx.builtins`` rather than an app.
+
+    A builtin's rule and the app rule restyling it are both single classes on
+    the same element, so they tie at specificity and document order decides —
+    emitting builtins first, everywhere CSS is emitted, is what lets a bare
+    app selector reliably win that tie. This is the origin test that ordering
+    is built on.
+    """
+    return path.resolve().is_relative_to(_BUILTIN_ASSET_DIR)
+
+
+def _split_by_origin(paths: set[Path]) -> tuple[set[Path], set[Path]]:
+    """Partition ``paths`` into (builtin, app) by origin."""
+    builtin: set[Path] = set()
+    app: set[Path] = set()
+    for path in paths:
+        (builtin if _is_builtin_asset(path) else app).add(path)
+    return builtin, app
+
+
 class AssetMode(str, Enum):
     """How a kind of asset reaches the page for one render."""
 
@@ -93,14 +117,20 @@ def emit_assets(
     tags: list[str] = []
     if session.runtime_style is not None:
         tags.append(session.runtime_style)
+    # Builtin CSS always emits before app CSS: both are single-class selectors
+    # on the same element and tie at specificity, so document order decides
+    # the winner — putting builtins first is what lets a bare app selector
+    # reliably beat the builtin it's restyling.
+    builtin_css, app_css = _split_by_origin(session.css_assets)
     if session.css_mode is AssetMode.INLINE:
-        tags += _inline_tags(session.css_assets, "<style>", "</style>")
+        tags += _inline_tags(builtin_css, "<style>", "</style>")
+        tags += _inline_tags(app_css, "<style>", "</style>")
     elif session.css_mode is AssetMode.LINK:
+        css_resolver = _require_resolver(resolver)
         tags += _url_tags(
-            session.css_assets,
-            _require_resolver(resolver),
-            '<link rel="stylesheet" href="{url}">',
+            builtin_css, css_resolver, '<link rel="stylesheet" href="{url}">'
         )
+        tags += _url_tags(app_css, css_resolver, '<link rel="stylesheet" href="{url}">')
     if session.js_mode is AssetMode.INLINE:
         # Runtime first: component scripts may call into pjx/htmx as soon as
         # they execute, so the tag that defines them has to precede them.

@@ -18,7 +18,7 @@ from collections.abc import Callable, Iterable
 from pathlib import Path
 from typing import Any
 
-from pyjinhx.assets import AssetMode, _sorted_resolved, asset_token
+from pyjinhx.assets import AssetMode, _sorted_resolved, _split_by_origin, asset_token
 from pyjinhx.reactive.fanout import FanoutCandidate
 from pyjinhx.session import RenderSession
 
@@ -59,12 +59,21 @@ def required_asset_paths(
 
 
 def _inline_fragments(
-    paths: set[Path], loaded: frozenset[str], open_tag: str, close_tag: str
+    paths: set[Path],
+    loaded: frozenset[str],
+    open_tag: str,
+    close_tag: str,
+    origin_attr: str = "",
 ) -> list[str]:
     """One head-targeted OOB fragment per path the client does not report.
 
     Path-sorted for the same reason ``emit_assets`` sorts: the store is a set,
     and two identical responses must be byte-identical.
+
+    Args:
+        origin_attr: Extra markup inserted right after ``data-pjx-asset``, e.g.
+            ``' data-pjx-origin="builtin"'`` — pjx.js reads it to keep builtin
+            CSS ahead of app CSS when it relocates a late-arriving style.
     """
     fragments: list[str] = []
     for path in sorted(paths, key=str):
@@ -72,8 +81,8 @@ def _inline_fragments(
         if token in loaded:
             continue
         fragments.append(
-            f'{open_tag} data-pjx-asset="{token}" hx-swap-oob="beforeend:head">'
-            f"{path.read_text()}{close_tag}"
+            f'{open_tag} data-pjx-asset="{token}"{origin_attr} '
+            f'hx-swap-oob="beforeend:head">{path.read_text()}{close_tag}'
         )
     return fragments
 
@@ -83,6 +92,7 @@ def _url_fragments(
     loaded: frozenset[str],
     resolver: Callable[[Path], str],
     template: str,
+    origin_attr: str = "",
 ) -> list[str]:
     """One head-targeted OOB fragment per unloaded path, pointing at its URL.
 
@@ -90,7 +100,9 @@ def _url_fragments(
         paths: The asset paths this walk requires.
         loaded: The tokens the client reports it already has.
         resolver: Maps an asset path to the URL it is served from.
-        template: A tag with ``{token}`` and ``{url}`` placeholders.
+        template: A tag with ``{token}``, ``{url}``, and (for CSS) ``{origin}``
+            placeholders.
+        origin_attr: Value for ``{origin}`` — see ``_inline_fragments``.
 
     Returns:
         The fragments, in the same path-sorted order ``_inline_fragments`` uses.
@@ -99,7 +111,7 @@ def _url_fragments(
     wanted = [path for path in ordered if asset_token(path) not in loaded]
     urls = _sorted_resolved(wanted, resolver)
     return [
-        template.format(token=asset_token(path), url=url)
+        template.format(token=asset_token(path), url=url, origin=origin_attr)
         for path, url in zip(wanted, urls, strict=True)
     ]
 
@@ -135,19 +147,32 @@ def missing_asset_oob(
     css_paths |= session.css_assets
     js_paths |= session.js_assets
     fragments: list[str] = []
+    # Builtin CSS always emits before app CSS, same reason as emit_assets:
+    # both are single-class selectors on the same element that tie at
+    # specificity, and this response's document order is what the client
+    # preserves when it relocates these fragments into <head>.
+    builtin_css, app_css = _split_by_origin(css_paths)
+    # Builtin CSS is stamped data-pjx-origin="builtin" so pjx.js can insert a
+    # late-arriving one ahead of app CSS already resident in <head>, instead
+    # of appendChild-ing it wherever it happens to land in the document.
+    builtin_origin = ' data-pjx-origin="builtin"'
     # A resolver-less LINK kind emits nothing rather than raising, unlike
     # emit_assets: a reactive response is a partial update, and taking the whole
     # response down over a missing asset URL would blank a working page.
     if session.css_mode is AssetMode.INLINE:
-        fragments += _inline_fragments(css_paths, loaded, "<style", "</style>")
-    elif session.css_mode is AssetMode.LINK and resolver is not None:
-        fragments += _url_fragments(
-            css_paths,
-            loaded,
-            resolver,
-            '<link rel="stylesheet" data-pjx-asset="{token}" '
-            'hx-swap-oob="beforeend:head" href="{url}">',
+        fragments += _inline_fragments(
+            builtin_css, loaded, "<style", "</style>", origin_attr=builtin_origin
         )
+        fragments += _inline_fragments(app_css, loaded, "<style", "</style>")
+    elif session.css_mode is AssetMode.LINK and resolver is not None:
+        link_template = (
+            '<link rel="stylesheet" data-pjx-asset="{token}"{origin} '
+            'hx-swap-oob="beforeend:head" href="{url}">'
+        )
+        fragments += _url_fragments(
+            builtin_css, loaded, resolver, link_template, origin_attr=builtin_origin
+        )
+        fragments += _url_fragments(app_css, loaded, resolver, link_template)
     if session.js_mode is AssetMode.INLINE:
         fragments += _inline_fragments(js_paths, loaded, "<script", "</script>")
     elif session.js_mode is AssetMode.LINK and resolver is not None:
