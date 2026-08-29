@@ -20,6 +20,12 @@ Every pyjinhx builtin follows the same contract, so knowing one means knowing al
 4. **All copy is props.** Every user-visible string, aria-labels included, has an English default
    you can replace: `PJXModalHeader(title="Excluir?", close_label="Fechar")`.
 5. **JS is headless.** Builtin JavaScript never writes inline styles for state — visibility and variants are classes/attributes; computed positioning coordinates (tooltip/popover placement) are the one sanctioned inline-style use. Communication is through `pjx:*` DOM events and `data-pjx-*` attributes; programmatic APIs live under the single `window.pjx` namespace.
+   An internal helper defaults to exposed, not closure-private, whenever a consuming app is
+   likely to want to compose it — DOM construction for a builtin's own markup shape
+   (`pjx.buildChip`), geometry/positioning math (`pjx.popoverPosition`), and the like. Keep the
+   helper's own name as its `pjx.*` property name (`pjx.popoverPosition = popoverPosition;`); only
+   reach for a per-builtin namespace object (`pjx.modal`, `pjx.drawer`) when there's more than one
+   related entry point to group.
    Async-state JS follows the runtime's concurrency pattern: a ref-count per scope,
    release keyed to each request's `loadend` (terminal on load, error, abort, and
    timeout), and state re-applied after `htmx:afterSettle` for nodes a swap replaced
@@ -67,7 +73,8 @@ document.getElementById("confirm-del").addEventListener("pjx:modal:before-close"
 ## The `window.pjx` namespace
 
 `pjx.modal` · `pjx.drawer` · `pjx.popover` · `pjx.notification` · `pjx.loader.region` (region busy-state) ·
-`pjx.pageLoader` (page navigation) · `pjx.toast`. Open/close/show/hide
+`pjx.pageLoader` (page navigation) · `pjx.toast` · `pjx.popoverPosition` (trigger/panel/viewport
+geometry) · `pjx.buildChip` (a chip's label/hidden-input/remove-button markup). Open/close/show/hide
 functions return `false` when a `before-*` hook canceled the action.
 
 ## Attribute pass-through

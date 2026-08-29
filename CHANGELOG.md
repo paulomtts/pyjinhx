@@ -9,6 +9,15 @@
   removal behavior (e.g. `hx-post`) onto the button itself, mirroring
   `PJXTab`'s `closeable` pattern. The default (non-removable) render is
   unchanged (#1055).
+- `PJXChipInput`'s internal chip-building helper is now exposed as
+  `pjx.buildChip(root, value)`, so an app composing its own chip-shaped UI
+  (e.g. a ref picker fed by async search results) can reuse the same
+  label/hidden-input/remove-button markup instead of re-deriving it (#1056).
+  Documented alongside the rest of the `window.pjx` namespace in
+  `docs/guide/builtin-conventions.md`, which also now states the general
+  policy: an internal helper a consuming app is likely to want to compose
+  (DOM construction, positioning math) defaults to exposed rather than
+  closure-private.
 
 ## 1.9.7 — Tooltip shows inside an open dialog (2026-08-27)
 
