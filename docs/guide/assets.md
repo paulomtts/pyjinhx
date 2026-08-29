@@ -35,13 +35,21 @@ Assets are collected once per render session. If the same component type is rend
 Rendered output follows this structure:
 
 ```html
-<style>/* component CSS — INLINE mode */</style>
+<style data-pjx-asset="...">/* component CSS — INLINE mode */</style>
 <div id="root-component">...</div>
 <script>/* component JS — INLINE mode */</script>
 ```
 
-- **CSS** is injected **before** the HTML (styles apply immediately)
-- **JS** is injected **after** the HTML (DOM elements exist when scripts run)
+- **CSS** is injected **before** the HTML (styles apply immediately), stamped with a
+  `data-pjx-asset` token — the invariant is that every style pyjinhx puts on a page
+  carries one, and every tokened style ends up in `<head>`. `pjx.js` promotes an
+  inline `<style>` there on load and after every htmx settle, so a style that lands
+  inside a region a later swap replaces survives instead of being deleted with it,
+  and the token also tells the server the browser already has the file (see
+  [Swap-in assets](#swap-in-assets-the-delta)).
+- **JS** is injected **after** the HTML (DOM elements exist when scripts run), untokened —
+  `pjx.js` never relocates a `<script>` node (re-appending one would re-execute it), so
+  a token nobody reads would be dead weight.
 - Nested component assets are aggregated and injected at the root level
 
 ### CSS Ordering Guarantee
@@ -104,7 +112,14 @@ below.
 Full-page renders emit assets once at the layout root. An OOB swap carries markup only — but a region appearing for the first time in this page's life still needs its stylesheet and its script, so the response composer ships the **difference**: the client reports the tokens it already has in `X-PJX-Assets`, `missing_asset_oob()` diffs that against what the walk's candidates require, and the shortfall is appended as head-targeted OOB fragments (`hx-swap-oob="beforeend:head"`, stamped `data-pjx-asset`) that `pjx.js` relocates on arrival. Nothing the client already reports is sent twice.
 
 !!! note "INLINE mode only, today"
-    The delta is built from the session's `css_mode`/`js_mode`, and only `INLINE` is delivered: `compose()` has no URL resolver to hand down, so a `LINK`-mode app ships no swap-in assets and must preload them from the layout shell (see [Layout Preload](#layout-preload-all-components)). `NONE` mode suppresses them as intended. A freshly loaded page also reports an empty token set — `emit_assets()` does not stamp `data-pjx-asset` yet — so it pays one redundant re-delivery on its first reactive response.
+    The delta is built from the session's `css_mode`/`js_mode`, and only `INLINE` is delivered: `compose()` has no URL resolver to hand down, so a `LINK`-mode app ships no swap-in assets and must preload them from the layout shell (see [Layout Preload](#layout-preload-all-components)). `NONE` mode suppresses them as intended.
+
+A component returned directly as an htmx fragment response (rather than nested inside a
+full page) goes through the same `emit_assets()`/`missing_asset_oob()` pair as a full-page
+render — its stylesheet is still tokened, so a poll-and-replace fragment (`hx-trigger="every
+..."`, `hx-swap="outerHTML"`) never grows an unbounded pile of orphaned `<style>` nodes: each
+swap's inline style is promoted to `<head>` on the next settle and deduped against the one
+already there.
 
 ### Client runtime (`pjx.js`)
 

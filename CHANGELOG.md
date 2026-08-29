@@ -67,6 +67,18 @@
   inserts it before the first app-owned `<style>` already in `<head>`,
   instead of `appendChild`, so the guarantee holds however the assets arrive
   over a session (#1058).
+- `emit_assets()` inlined `<style>` tags with no `data-pjx-asset` token. For a
+  route returning a component directly as an htmx fragment (the ordinary shape
+  for a poll-and-replace region, `hx-trigger="every ..."` + `hx-swap="outerHTML"`),
+  that style is part of the swapped content and lands wherever the swap lands —
+  and with no token, the client never reported it as loaded (so the server
+  re-sent the full stylesheet on every poll) and `pjx.js`'s relocation/promotion
+  passes couldn't see it to move it to `<head>`, so one orphaned `<style>` node
+  was grafted into the DOM on every poll, forever. Inline CSS now carries the
+  same token the OOB delta uses, and `pjx.js` runs its inline-style promotion
+  pass after every htmx settle instead of only once at init, so a style that
+  lands inside a swapped region is relocated to `<head>` (and deduped against
+  whatever token is already there) before the next swap can delete it (#1057).
 
 ### Behavior change
 - **A bare app selector now always wins a specificity tie against the

@@ -129,7 +129,7 @@ class TestDesignSystem:
     def test_app_output_inlines_the_stylesheet(self, scope):
         html = render(_app(), scope)
 
-        assert "<style>" in html
+        assert "<style" in html
         assert "--accent" in html
 
     def test_the_palette_is_the_pastel_one(self, scope):

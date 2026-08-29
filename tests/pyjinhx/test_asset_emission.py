@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from pyjinhx.assets import AssetMode
+from pyjinhx.assets import AssetMode, asset_token
 from pyjinhx.session import RenderSession
 
 _TEMPLATE_DIR = Path(__file__).parent.parent / "templates"
@@ -41,8 +41,36 @@ def test_inline_emits_style_and_script_with_exact_file_contents(tmp_path):
 
     out = emit_assets(session)
 
-    assert "<style>.box { color: red; }</style>" in out
+    token = asset_token(css)
+    assert f'<style data-pjx-asset="{token}">.box {{ color: red; }}</style>' in out
     assert "<script>console.log('box');</script>" in out
+
+
+def test_inline_css_is_tokened_so_a_swapped_style_can_be_relocated(tmp_path):
+    """The token is what makes an inline style visible to pjxLoadedAssets and
+    pjxPromoteInlineAssets on the client — without it a style that lands
+    inside a swapped region is neither reported as loaded nor moved to head."""
+    css = tmp_path / "box.css"
+    css.write_text(".box { color: red; }")
+    session = _session(tmp_path)
+    session.css_assets.add(css)
+
+    out = emit_assets(session)
+
+    assert f'data-pjx-asset="{asset_token(css)}"' in out
+
+
+def test_inline_js_stays_untokened(tmp_path):
+    """Scripts are never relocated by pjx.js (re-appending one re-executes
+    it), so stamping a token nobody reads would be dead weight."""
+    js = tmp_path / "box.js"
+    js.write_text("console.log('box');")
+    session = _session(tmp_path)
+    session.js_assets.add(js)
+
+    out = emit_assets(session)
+
+    assert "data-pjx-asset" not in out
 
 
 def test_none_mode_emits_nothing_for_that_kind(tmp_path):
@@ -71,7 +99,7 @@ def test_mixed_modes_emit_css_only(tmp_path):
 
     out = emit_assets(session)
 
-    assert "<style>" in out
+    assert "<style" in out
     assert "<script>" not in out
 
 
@@ -225,7 +253,8 @@ def test_render_inlines_accumulated_css_and_js(tmp_path):
 
     out = render(EmitBox(), session)
 
-    assert "<style>.box { color: red; }</style>" in out
+    token = asset_token(css)
+    assert f'<style data-pjx-asset="{token}">.box {{ color: red; }}</style>' in out
     assert "<script>console.log('box');</script>" in out
 
 
@@ -553,7 +582,11 @@ def test_nested_render_emits_component_asset_tags_exactly_once(tmp_path):
         session.js_assets.add(js)
         out = _render_parent_with_nested_child(session)
 
-    assert out.count("<style>.nested { color: red; }</style>") == 1
+    token = asset_token(css)
+    assert (
+        out.count(f'<style data-pjx-asset="{token}">.nested {{ color: red; }}</style>')
+        == 1
+    )
     assert out.count("<script>console.log('nested');</script>") == 1
 
 
@@ -567,7 +600,11 @@ def test_single_top_level_render_still_emits_runtime_and_assets(tmp_path):
 
     assert session.runtime_script is not None
     assert out.count(session.runtime_script) == 1
-    assert out.count("<style>.solo { color: blue; }</style>") == 1
+    token = asset_token(css)
+    assert (
+        out.count(f'<style data-pjx-asset="{token}">.solo {{ color: blue; }}</style>')
+        == 1
+    )
 
 
 def test_repeated_independent_top_level_renders_each_emit_assets(tmp_path):
@@ -584,4 +621,10 @@ def test_repeated_independent_top_level_renders_each_emit_assets(tmp_path):
     assert session.runtime_script is not None
     assert first.count(session.runtime_script) == 1
     assert second.count(session.runtime_script) == 1
-    assert second.count("<style>.repeat { color: green; }</style>") == 1
+    token = asset_token(css)
+    assert (
+        second.count(
+            f'<style data-pjx-asset="{token}">.repeat {{ color: green; }}</style>'
+        )
+        == 1
+    )

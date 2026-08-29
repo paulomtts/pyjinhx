@@ -65,7 +65,7 @@
   // are single classes on the same element), so whichever lands later in
   // <head> wins the tie -- appendChild alone can't guarantee a bare app
   // selector wins if its builtin counterpart happens to arrive after it.
-  // Builtin styles carry data-pjx-origin="builtin" (server-emitted, #1058);
+  // Builtin styles carry data-pjx-origin="builtin" (server-emitted);
   // inserting one before the first app style already resident keeps builtins
   // ahead of app CSS no matter which one this page saw first.
   function pjxInsertHeadStyle(node) {
@@ -127,10 +127,13 @@
     pjxApplyHeadAssets(xhr && xhr.responseText);
   }
 
-  // A cold render emits <style data-pjx-asset> inline in the body. If that style
-  // sits inside a region that later re-renders, the swap deletes it and the
-  // server -- seeing its token in X-PJX-Assets -- won't resend it, leaving the
-  // content unstyled. <head> is the durable home. Styles only: a <script>'s
+  // A cold render (or a swapped-in fragment) emits <style data-pjx-asset>
+  // inline in the body. If that style sits inside a region that later
+  // re-renders, the swap deletes it and the server -- seeing its token in
+  // X-PJX-Assets -- won't resend it, leaving the content unstyled. <head> is
+  // the durable home, so this also runs after every htmx:afterSettle, not
+  // just at init -- a style arriving inside a swapped region is exactly as
+  // destructible as one from the cold render. Styles only: a <script>'s
   // effect outlives its node, and re-appending it would re-execute it.
   function pjxPromoteInlineAssets() {
     Array.prototype.forEach.call(
@@ -364,4 +367,5 @@
   document.body.addEventListener("htmx:sendError", pjxEndLoading);
   document.body.addEventListener("htmx:abort", pjxEndLoading);
   document.body.addEventListener("htmx:afterSettle", pjxReapplyLoading);
+  document.body.addEventListener("htmx:afterSettle", pjxPromoteInlineAssets);
 })();

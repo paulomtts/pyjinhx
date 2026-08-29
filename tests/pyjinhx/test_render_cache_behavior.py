@@ -19,6 +19,7 @@ import pytest
 
 from pyjinhx import discovery, rendering
 from pyjinhx._component import BaseComponent, _pascal_to_snake
+from pyjinhx.assets import asset_token
 from pyjinhx.config import configure_pyjinhx, current_settings
 from pyjinhx.descriptor import ClassDescriptor
 from pyjinhx.reactive.backend import InMemoryCacheBackend
@@ -235,9 +236,17 @@ def test_hit_still_emits_css_and_js(spy: SpyBackend, tmp_path: Path):
     assert "SHELLCSS" in cold
     assert "SHELLJS" in cold
     assert warm == cold
-    assert "<style>.shell{color:SHELLCSS}</style>" in warm
+    shell_token = asset_token(shell_css)
+    child_token = asset_token(child_css)
+    assert (
+        f'<style data-pjx-asset="{shell_token}">.shell{{color:SHELLCSS}}</style>'
+        in warm
+    )
     assert "<script>window.SHELLJS=1</script>" in warm
-    assert "<style>.child{color:CHILDCSS}</style>" in warm
+    assert (
+        f'<style data-pjx-asset="{child_token}">.child{{color:CHILDCSS}}</style>'
+        in warm
+    )
     assert "<script>window.CHILDJS=1</script>" in warm
     # The second render really was a hit, so the assertions above are about the
     # replay rather than about a second live render.

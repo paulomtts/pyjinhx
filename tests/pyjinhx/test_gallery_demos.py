@@ -63,20 +63,17 @@ def test_every_factory_renders():
         assert isinstance(height, int), name
 
 
-def _descriptor_css_text(cls) -> list[str]:
-    """The on-disk text of every stylesheet the class's descriptor points at."""
-    return [Path(p).read_text() for p in cls.__pjx_descriptor__.css_paths]
-
-
 def test_post_build_inlines_component_css(tmp_path):
+    from pyjinhx.assets import asset_token
     from pyjinhx.builtins.ui.pjx_button import PJXButton
 
     hooks.on_post_build({"site_dir": str(tmp_path)})
     page = (tmp_path / "demos" / "pjx-button.html").read_text()
-    css_texts = _descriptor_css_text(PJXButton)
-    assert css_texts, "PJXButton is expected to carry at least one stylesheet"
-    for text in css_texts:
-        assert f"<style>{text}</style>" in page
+    css_paths = PJXButton.__pjx_descriptor__.css_paths
+    assert css_paths, "PJXButton is expected to carry at least one stylesheet"
+    for p in css_paths:
+        token = asset_token(Path(p))
+        assert f'<style data-pjx-asset="{token}">{Path(p).read_text()}</style>' in page
 
 
 def test_post_build_inlines_component_js(tmp_path):
@@ -98,7 +95,7 @@ def test_multi_component_demo_emits_each_asset_once(tmp_path):
     (css_path,) = PJXSpinner.__pjx_descriptor__.css_paths
     text = Path(css_path).read_text()
     assert page.count(text) == 1  # three spinners, one stylesheet
-    assert page.count("<style>") == len(set(PJXSpinner.__pjx_descriptor__.css_paths))
+    assert page.count("<style ") == len(set(PJXSpinner.__pjx_descriptor__.css_paths))
 
 
 def test_base_css_link_survives_and_output_is_stable(tmp_path):
