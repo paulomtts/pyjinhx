@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.9.8 — Portals, asset tokens, and a builtin-before-app CSS guarantee (2026-08-29)
 
 ### Added
 - `PJXBadge` gains an optional removable affordance: `removable=True` renders
