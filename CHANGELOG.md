@@ -51,6 +51,37 @@
   open. `open()` now focuses the filter when present, and the trigger's own
   keyboard handler defers to it instead of jumping straight to an option
   (#1054).
+- Builtin component CSS (`.pjx-popover`, `.pjx-button`, …) and application
+  component CSS had no ordering guarantee in `<head>`: both are single-class
+  selectors on the same element, so they tie at specificity `(0,1,0)` and
+  document order decides the winner — and document order was not stable
+  across a session, because assets delivered after first paint were
+  `appendChild`-ed to the end of `<head>` regardless of origin. Whichever half
+  of a tied pair happened to arrive late would flip the winner, producing
+  intermittent visual corruption (padding/position/display rules silently
+  losing) that looked nothing like a CSS problem.
+- `emit_assets()` and `missing_asset_oob()` now partition accumulated CSS by
+  origin — a path check, since builtins ship from inside the `pyjinhx`
+  package — and always emit builtin CSS before app CSS. `pjx.js` marks
+  builtin CSS delivered post-paint with `data-pjx-origin="builtin"` and
+  inserts it before the first app-owned `<style>` already in `<head>`,
+  instead of `appendChild`, so the guarantee holds however the assets arrive
+  over a session (#1058).
+
+### Behavior change
+- **A bare app selector now always wins a specificity tie against the
+  builtin class it restyles**, regardless of accumulation or delivery order.
+  Previously this depended on load order and could go either way session to
+  session. If an app was relying on a builtin rule winning such a tie (rather
+  than the documented workaround of qualifying the selector,
+  `.pjx-popover__trigger.my-trigger { ... }`), that rule now consistently
+  loses instead of winning intermittently — give it the extra specificity it
+  always needed. Ties are the only case affected: a builtin rule that is
+  already more specific than the app's still wins, exactly as before.
+
+See [ADR 0003](docs/decisions/0003-builtin-css-ordering.md) for the full
+design rationale, including why a cascade layer (`@layer`) was considered and
+rejected.
 
 ## 1.9.7 — Tooltip shows inside an open dialog (2026-08-27)
 

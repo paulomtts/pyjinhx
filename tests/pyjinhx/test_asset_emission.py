@@ -410,6 +410,59 @@ def test_link_mode_repeated_calls_are_byte_identical(tmp_path):
     assert first.index("/static/q.css") < first.index("/static/a.js")
 
 
+# --- #1058: builtin CSS must emit before app CSS, so a bare app selector wins
+# any specificity tie against a builtin one regardless of accumulation order.
+#
+# The builtin dir is monkeypatched to a subtree that sorts *after* the app
+# paths alphabetically ("zzz-builtins" > "aaa.css"), so a passing test proves
+# the origin-based reorder is doing the work, not an accident of path sort.
+
+
+def _builtin_dir_under(tmp_path: Path, monkeypatch) -> Path:
+    from pyjinhx import assets as assets_module
+
+    builtin_dir = tmp_path / "zzz-builtins"
+    builtin_dir.mkdir()
+    monkeypatch.setattr(assets_module, "_BUILTIN_ASSET_DIR", builtin_dir)
+    return builtin_dir
+
+
+def test_builtin_css_is_emitted_before_app_css_regardless_of_path_sort_order(
+    tmp_path, monkeypatch
+):
+    builtin_dir = _builtin_dir_under(tmp_path, monkeypatch)
+    builtin_css = builtin_dir / "widget.css"
+    builtin_css.write_text(".pjx-widget { padding: 0; }")
+    app_css = tmp_path / "aaa.css"
+    app_css.write_text(".app-thing { padding: 8px; }")
+    session = _session(tmp_path)
+    session.css_assets.update({app_css, builtin_css})
+
+    out = emit_assets(session)
+
+    assert out.index(".pjx-widget") < out.index(".app-thing")
+
+
+def test_builtin_css_ordering_holds_with_multiple_paths_on_each_side(
+    tmp_path, monkeypatch
+):
+    builtin_dir = _builtin_dir_under(tmp_path, monkeypatch)
+    builtin_css = builtin_dir / "widget.css"
+    builtin_css.write_text(".pjx-widget {}")
+    app_a = tmp_path / "a.css"
+    app_a.write_text(".a {}")
+    app_z = tmp_path / "z.css"
+    app_z.write_text(".z {}")
+    session = _session(tmp_path)
+    session.css_assets.update({app_a, app_z, builtin_css})
+
+    out = emit_assets(session)
+
+    builtin_index = out.index(".pjx-widget")
+    assert builtin_index < out.index(".a {}")
+    assert builtin_index < out.index(".z {}")
+
+
 def test_emit_assets_puts_runtime_script_before_component_scripts(tmp_path):
     script = tmp_path / "widget.js"
     script.write_text("widget();")

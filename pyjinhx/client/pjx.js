@@ -61,6 +61,26 @@
     }
   }
 
+  // A builtin style and the app style restyling it tie at specificity (both
+  // are single classes on the same element), so whichever lands later in
+  // <head> wins the tie -- appendChild alone can't guarantee a bare app
+  // selector wins if its builtin counterpart happens to arrive after it.
+  // Builtin styles carry data-pjx-origin="builtin" (server-emitted, #1058);
+  // inserting one before the first app style already resident keeps builtins
+  // ahead of app CSS no matter which one this page saw first.
+  function pjxInsertHeadStyle(node) {
+    if (node.getAttribute("data-pjx-origin") === "builtin") {
+      var appStyle = document.head.querySelector(
+        'style[data-pjx-asset]:not([data-pjx-origin="builtin"])'
+      );
+      if (appStyle) {
+        document.head.insertBefore(node, appStyle);
+        return;
+      }
+    }
+    document.head.appendChild(node);
+  }
+
   // htmx core silently drops hx-swap-oob swaps that target <head>, so the
   // component assets the server carries alongside OOB fragments have to be
   // parsed out of the raw response and appended here. Fresh nodes: a parsed
@@ -84,12 +104,20 @@
         }
         var fresh = document.createElement(tag);
         fresh.setAttribute("data-pjx-asset", token);
+        var origin = node.getAttribute("data-pjx-origin");
+        if (origin) {
+          fresh.setAttribute("data-pjx-origin", origin);
+        }
         if (tag === "script" && node.src) {
           fresh.src = node.src;
         } else {
           fresh.textContent = node.textContent;
         }
-        document.head.appendChild(fresh);
+        if (tag === "style") {
+          pjxInsertHeadStyle(fresh);
+        } else {
+          document.head.appendChild(fresh);
+        }
       }
     );
   }
@@ -113,7 +141,7 @@
           node.remove();
           return;
         }
-        document.head.appendChild(node); // appendChild relocates body -> head
+        pjxInsertHeadStyle(node); // relocates body -> head, builtins first
       }
     );
   }

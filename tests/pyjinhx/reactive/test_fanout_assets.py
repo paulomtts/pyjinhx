@@ -218,6 +218,30 @@ def test_a_descendant_rendered_during_the_walk_gets_its_assets_delivered(
     assert "window.child=1;" in body
 
 
+def test_missing_asset_oob_emits_builtin_css_before_app_css(
+    asset_files, tmp_path, monkeypatch
+):
+    # #1058: post-paint OOB delivery must never let a late-arriving app rule
+    # lose a specificity tie to a builtin rule delivered in the same batch —
+    # emit builtins first regardless of path-sort order. The builtin dir is
+    # monkeypatched to sort after the app asset's path ("zzz-builtins" >
+    # "widget.css"), so a passing test proves the reorder, not path luck.
+    from pyjinhx import assets as assets_module
+
+    css, _ = asset_files  # app css: tmp_path/widget.css
+    builtin_dir = tmp_path / "zzz-builtins"
+    builtin_dir.mkdir()
+    monkeypatch.setattr(assets_module, "_BUILTIN_ASSET_DIR", builtin_dir)
+    builtin_css = builtin_dir / "pjx_widget.css"
+    builtin_css.write_text(".pjx-widget{color:blue}")
+    session = RenderSession()
+    session.css_assets.add(builtin_css)
+
+    fragment = missing_asset_oob([candidate()], frozenset(), session)
+
+    assert fragment.index(".pjx-widget") < fragment.index(asset_token(css))
+
+
 def test_link_mode_emits_url_oob_fragments_instead_of_nothing(asset_files):
     css, js = asset_files
     session = RenderSession()

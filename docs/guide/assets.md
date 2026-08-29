@@ -44,6 +44,31 @@ Rendered output follows this structure:
 - **JS** is injected **after** the HTML (DOM elements exist when scripts run)
 - Nested component assets are aggregated and injected at the root level
 
+### CSS Ordering Guarantee
+
+A builtin's rule and the app rule restyling it (`class="pjx-popover__trigger
+my-trigger"`, both a single class) tie at specificity, and a tied pair
+resolves by document order. **Builtin CSS always emits before application
+CSS** — in `emit_assets()`, in `missing_asset_oob()`'s post-paint fragments,
+and in how `pjx.js` relocates a late-arriving builtin stylesheet into
+`<head>` — so a bare app selector reliably wins that tie, in every delivery
+mode and at any point in a session, regardless of which half happens to load
+first.
+
+This only settles *ties*. A builtin rule that is already more specific than
+the app's own (an `--open`/`--active` state class, say) still wins on
+specificity, exactly as before — nothing here changes how specificity itself
+is compared. If you need to beat a more-specific builtin rule, qualify your
+selector with the builtin's class (`.pjx-popover__trigger.my-trigger { }`),
+same as always.
+
+`all_assets()` (used for [one-bundle deployment](#one-bundle-deployment))
+does not apply this ordering — it returns one alphabetically sorted tuple
+across every registered component. Building your own bundle from it and
+relying on this guarantee inside that bundle means sorting builtin paths
+first yourself. See [ADR 0003](../decisions/0003-builtin-css-ordering.md) for
+the full rationale.
+
 ## Asset Delivery Modes
 
 Configure how assets are delivered with `AssetMode`:
