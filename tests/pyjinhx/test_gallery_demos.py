@@ -64,7 +64,7 @@ def test_every_factory_renders():
 
 
 def test_post_build_inlines_component_css(tmp_path):
-    from pyjinhx.assets import asset_token
+    from pyjinhx.assets import BUILTIN_ORIGIN_ATTR, asset_token
     from pyjinhx.builtins.ui.pjx_button import PJXButton
 
     hooks.on_post_build({"site_dir": str(tmp_path)})
@@ -73,7 +73,10 @@ def test_post_build_inlines_component_css(tmp_path):
     assert css_paths, "PJXButton is expected to carry at least one stylesheet"
     for p in css_paths:
         token = asset_token(Path(p))
-        assert f'<style data-pjx-asset="{token}">{Path(p).read_text()}</style>' in page
+        assert (
+            f'<style data-pjx-asset="{token}"{BUILTIN_ORIGIN_ATTR}>'
+            f"{Path(p).read_text()}</style>" in page
+        )
 
 
 def test_post_build_inlines_component_js(tmp_path):

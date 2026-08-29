@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from pyjinhx.assets import AssetMode, asset_token
+from pyjinhx.assets import BUILTIN_ORIGIN_ATTR, AssetMode, asset_token
 from pyjinhx.session import RenderSession
 
 _TEMPLATE_DIR = Path(__file__).parent.parent / "templates"
@@ -439,7 +439,7 @@ def test_link_mode_repeated_calls_are_byte_identical(tmp_path):
     assert first.index("/static/q.css") < first.index("/static/a.js")
 
 
-# --- #1058: builtin CSS must emit before app CSS, so a bare app selector wins
+# --- Builtin CSS must emit before app CSS, so a bare app selector wins
 # any specificity tie against a builtin one regardless of accumulation order.
 #
 # The builtin dir is monkeypatched to a subtree that sorts *after* the app
@@ -490,6 +490,28 @@ def test_builtin_css_ordering_holds_with_multiple_paths_on_each_side(
     builtin_index = out.index(".pjx-widget")
     assert builtin_index < out.index(".a {}")
     assert builtin_index < out.index(".z {}")
+
+
+def test_inline_builtin_css_carries_the_origin_marker(tmp_path, monkeypatch):
+    """Emission order alone doesn't survive promotion.
+
+    An inline style is tokened, so pjx.js relocates it into <head> after a
+    settle — and there it is placed by origin, not by the order it was
+    emitted in. Without the marker a builtin style promoted out of a fragment
+    would append after app CSS and lose the tie emission had just won.
+    """
+    builtin_dir = _builtin_dir_under(tmp_path, monkeypatch)
+    builtin_css = builtin_dir / "widget.css"
+    builtin_css.write_text(".pjx-widget {}")
+    app_css = tmp_path / "aaa.css"
+    app_css.write_text(".app-thing {}")
+    session = _session(tmp_path)
+    session.css_assets.update({app_css, builtin_css})
+
+    out = emit_assets(session)
+
+    assert f'data-pjx-asset="{asset_token(builtin_css)}"{BUILTIN_ORIGIN_ATTR}>' in out
+    assert f'data-pjx-asset="{asset_token(app_css)}">' in out
 
 
 def test_emit_assets_puts_runtime_script_before_component_scripts(tmp_path):

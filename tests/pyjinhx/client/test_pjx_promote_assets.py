@@ -60,6 +60,7 @@ def test_promoted_builtin_style_is_inserted_before_resident_app_css(pjx_page):
     )
     assert page.evaluate(HEAD_CSS_ORDER) == ["builtin.css", "app.css"]
 
+
 SWAP_IN_TOKENED_STYLE = """
 () => {
   const region = document.querySelector('[data-pjx-id="badge"]');
