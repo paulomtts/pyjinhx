@@ -28,6 +28,14 @@
         return root.dataset.removeLabel || 'Remove';
     }
 
+    /**
+     * Build one chip element — label span, hidden input, remove button —
+     * matching PJXChipInput's own markup shape.
+     *
+     * Exposed on `window.pjx` so an app building its own chip-shaped UI (e.g.
+     * a ref picker fed by async search results, not free-text entry) can
+     * reuse the same DOM construction instead of re-deriving it.
+     */
     function buildChip(root, value) {
         const chip = document.createElement('span');
         chip.className = 'pjx-chip-input__chip';
@@ -54,6 +62,8 @@
 
         return chip;
     }
+
+    pjx.buildChip = buildChip;
 
     function commit(root, field) {
         const value = field.value.trim().replace(/,$/, '');
