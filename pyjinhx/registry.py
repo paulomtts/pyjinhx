@@ -7,9 +7,19 @@ concern, not this module's, and resolve() deduplicates nothing.
 """
 
 import logging
+from collections.abc import Iterable, Iterator
+from contextlib import contextmanager
 from typing import TYPE_CHECKING, Any
 
-from pyjinhx.session import _instances, get_dev_strict, get_instances
+from pyjinhx.session import (
+    _instances,
+    _quiet_collisions,
+    _quiet_collisions_except,
+    get_dev_strict,
+    get_instances,
+    get_quiet_collisions,
+    get_quiet_collisions_except,
+)
 
 if TYPE_CHECKING:
     # Type-only: naming the spine's own types in a signature must not make this
@@ -66,6 +76,64 @@ class InstanceKeyCollisionError(RuntimeError):
     """
 
 
+@contextmanager
+def quiet_collisions(keys: Iterable[str]) -> Iterator[None]:
+    """Mark composite keys whose collision is expected for the duration of the block.
+
+    A write to one of these keys still overwrites — last-write-wins is
+    unchanged — but skips the warning and the dev-strict raise. Nested blocks
+    union: an inner block adds to the outer one's set, and the exit restores the
+    outer one exactly, including when the body raises. Used outside an active
+    request_scope() this binds and restores a set nothing reads, which is a
+    no-op rather than an error: the mechanism is advisory noise-suppression.
+
+    Args:
+        keys: Composite keys, as make_key() builds them.
+
+    Yields:
+        None; the block body runs with those keys quieted.
+    """
+    token = _quiet_collisions.set(get_quiet_collisions() | frozenset(keys))
+    try:
+        yield
+    finally:
+        # Reset by token, never by assigning the old value back: a worker's
+        # copied context and a nested block both have to hand back exactly what
+        # they were handed, and only the token knows what that was.
+        _quiet_collisions.reset(token)
+
+
+@contextmanager
+def quiet_collisions_except(key: str) -> Iterator[None]:
+    """Un-quiet exactly one composite key for the duration of the block.
+
+    Where ``quiet_collisions()`` marks a whole set of keys as expected
+    collisions — an O(n) operation in the set's size, since a frozenset union
+    always copies, even against an empty operand — this marks a single key as
+    *not* expected, in O(1), regardless of how large an enclosing
+    ``quiet_collisions()`` set is.
+
+    Built for ``fanout._build_one``: each fan-out work item's own composite
+    key must stay loud on collision even while every *other* surviving
+    candidate's key is quieted for the whole pass. Re-deriving "every key but
+    mine" per item, the first cut of #1024's fix did, costs O(n) per item and
+    O(n²) over a fully-dirty manifest of n candidates; comparing against one
+    excepted key costs O(1) per item instead, keeping the pass linear in n.
+
+    Args:
+        key: The composite key this block's write should never treat as quiet,
+            even if an enclosing ``quiet_collisions()`` set contains it.
+
+    Yields:
+        None; the block body runs with that one key un-quieted.
+    """
+    token = _quiet_collisions_except.set(key)
+    try:
+        yield
+    finally:
+        _quiet_collisions_except.reset(token)
+
+
 def register_instance(type_name: str, instance_id: str, entry: object) -> None:
     """Store an entry in this request's registry under its composite key.
 
@@ -80,8 +148,11 @@ def register_instance(type_name: str, instance_id: str, entry: object) -> None:
 
     Raises:
         InstanceKeyCollisionError: The key already holds an entry in this
-            request and reactive-dev strict mode is on. With strict mode off
-            the collision is a warning and a last-write-wins overwrite.
+            request, reactive-dev strict mode is on, and the key is not one an
+            enclosing quiet_collisions() block marked as expected (or is one a
+            nested quiet_collisions_except() un-marked). With strict mode off
+            the collision is a warning; quieted, it is silent. Either way the
+            write itself is a last-write-wins overwrite.
     """
     key = make_key(type_name, instance_id)
     # get_instances() answers a throwaway {} outside a scope, so writing there
@@ -92,11 +163,17 @@ def register_instance(type_name: str, instance_id: str, entry: object) -> None:
             "Entry for key %r registered outside request_scope(); dropped.", key
         )
         return
-    if key in instances:
+    quiet = key in get_quiet_collisions() and key != get_quiet_collisions_except()
+    if key in instances and not quiet:
         # The one production caller fires once per rendered component, so a
         # second write to one key in one request means two components claimed
         # the same id — usually a hard-coded `id` default on a class rendered
-        # more than once.
+        # more than once. Unless a caller said otherwise: a key inside an
+        # active quiet_collisions() block (and not the one key an enclosing
+        # quiet_collisions_except() singles back out) is one this request
+        # already knows two builds will claim (#1022 — a region rendered both
+        # as its own fan-out candidate and as a nested descendant of a
+        # sibling candidate's tree), so it overwrites in silence.
         if get_dev_strict():
             raise InstanceKeyCollisionError(
                 f"Key {key!r} is already registered; two instances share one id."
@@ -110,9 +187,9 @@ def register_rendered_instance(
 ) -> None:
     """Register a just-rendered component's level under its composite key.
 
-    Shaped for ``RenderSession.on_rendered`` but subscribed by no production
-    code: the reactive Load path attaches it when it needs rendered levels
-    resolvable, and a session that never attaches it registers nothing.
+    Shaped for ``RenderSession.on_rendered`` and subscribed onto every request's
+    session by ``integrations/fastapi.py``'s middleware; a hand-built session
+    that never attaches it registers nothing.
 
     Args:
         component: The component that was just rendered; its class name and
