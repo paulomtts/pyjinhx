@@ -26,6 +26,10 @@ class PJXSelect(BaseComponent):
     Panels holding strictly more than ``_FILTER_THRESHOLD`` options open with a
     search input above the list; shorter lists render without one. The input is
     UI-only — it hides option buttons in the browser and never posts.
+
+    ``portal=True`` reparents the whole root to ``document.body`` while open,
+    the same escape hatch ``PJXTooltip`` offers, so the panel isn't clipped by
+    an ``overflow: hidden``/``auto`` ancestor.
     """
 
     # Below this many options a filter adds more chrome than it saves, so the
@@ -38,6 +42,7 @@ class PJXSelect(BaseComponent):
     multiple: bool = False
     placeholder: str = "Select…"
     disabled: bool = False
+    portal: bool = False
     class_name: AttrValue = ""
     extra_attrs: ExtraAttrs = Field(default_factory=dict)
 

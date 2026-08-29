@@ -111,7 +111,16 @@ def _open_at(
     page.set_viewport_size({"width": width, "height": height})
     page.set_content(STYLE + markup.replace("LEFT", str(left)).replace("TOP", str(top)))
     page.add_script_tag(content=CONTROLLER.read_text())
-    page.click("[data-pjx-select-trigger]")
+    # A raw coordinate click, not page.click(): a trigger placed to spill past
+    # the viewport (the whole point of these edge-case tests) would otherwise
+    # have Playwright scroll it into view first, shifting every coordinate in
+    # the test by however much it scrolled.
+    trigger = page.evaluate(
+        "document.querySelector('[data-pjx-select-trigger]').getBoundingClientRect().toJSON()"
+    )
+    page.mouse.click(
+        trigger["left"] + trigger["width"] / 2, trigger["top"] + trigger["height"] / 2
+    )
     return page.evaluate(
         "() => { const r = document.getElementById('panel').getBoundingClientRect();"
         " return {left: r.left, top: r.top, right: r.right, bottom: r.bottom}; }"
@@ -119,12 +128,14 @@ def _open_at(
 
 
 def test_panel_flips_or_clamps_at_right_edge(page: Page):
-    # Trigger at x=250 in a 400px viewport: a 200px panel aligned to the
-    # trigger's left edge would end at 450, so it flips to end alignment.
-    box = _open_at(page, viewport=(400, 400), left=250, top=10)
-    assert page.evaluate("document.getElementById('panel').style.left") == "-100px"
-    assert box["left"] == 150
-    assert box["right"] == 350
+    # The panel now matches the trigger's own width (100px), so start- and
+    # end-aligned x land on the same spot — flipping can't help here. A
+    # trigger at x=320 in a 400px viewport still overflows (420 > 400), so
+    # this exercises the padded clamp instead.
+    box = _open_at(page, viewport=(400, 400), left=320, top=10)
+    assert page.evaluate("document.getElementById('panel').style.left") == "-28px"
+    assert box["left"] == 292
+    assert box["right"] == 392
 
 
 def test_panel_flips_above_at_bottom_edge(page: Page):
@@ -138,24 +149,40 @@ def test_panel_flips_above_at_bottom_edge(page: Page):
 
 
 def test_a_viewport_too_tight_for_the_panel_clamps_within_bounds(page: Page):
-    # 260x220 viewport: the 200x150 panel fits the viewport but not at the
-    # trigger, and neither flip helps (end alignment lands at x=-20, above
-    # lands at y=-54), so only the padded clamp keeps it fully on-screen.
-    box = _open_at(page, viewport=(260, 220), left=80, top=100)
+    # 120x220 viewport: the width-matched 100px panel fits the viewport but
+    # not at the trigger (neither alignment helps, since matching the
+    # trigger's width makes start and end identical), and 150px of panel
+    # height overflows too, so only the padded clamp keeps it fully on-screen.
+    box = _open_at(page, viewport=(120, 220), left=65, top=100)
     assert box["left"] >= 0
     assert box["top"] >= 0
-    assert box["right"] <= 260
+    assert box["right"] <= 120
     assert box["bottom"] <= 220
-    assert (box["left"], box["top"]) == (52, 62)  # clamped to the 8px inset
+    assert (box["left"], box["top"]) == (12, 62)  # clamped to the 8px inset
 
 
-def test_trigger_with_room_on_all_sides_gets_no_inline_styles(page: Page):
-    # With room on every side the primitive lands on the CSS default, so the
-    # controller writes nothing and the panel keeps the stylesheet's geometry.
+def test_trigger_with_room_on_all_sides_only_gets_the_width_match(page: Page):
+    # With room on every side the position primitive lands on the CSS
+    # default, so left/top stay unset — but width always tracks the
+    # trigger (100px per STYLE), regardless of whether placement needed
+    # adjusting.
     _open_at(page, viewport=(1000, 800), left=450, top=385)
     assert (
-        page.evaluate("document.getElementById('panel').getAttribute('style')") is None
+        page.evaluate("document.getElementById('panel').getAttribute('style')")
+        == "width: 100px;"
     )
+
+
+def test_panel_width_matches_the_stretched_trigger(page: Page):
+    # STYLE's panel is 200px by default, wider than the 100px trigger; opened
+    # with plenty of room, it should still shrink to the trigger's own width
+    # rather than keep its own static CSS width.
+    _open_at(page, viewport=(1000, 800), left=100, top=100)
+    assert page.evaluate("document.getElementById('panel').style.width") == "100px"
+    box = page.evaluate(
+        "() => document.getElementById('panel').getBoundingClientRect().toJSON()"
+    )
+    assert box["width"] == 100
 
 
 def test_panel_position_unaffected_in_multiple_mode(page: Page):
