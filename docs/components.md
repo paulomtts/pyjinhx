@@ -1873,9 +1873,10 @@ A styled replacement for a bare `<select>`, single-choice or multi. A hidden nat
     | `multiple` | `bool` | `False` | Multi-select: checkbox per row, chip summary on the trigger. |
     | `placeholder` | `str` | `"Select…"` | Trigger text when nothing is selected. |
     | `disabled` | `bool` | `False` | Marks the root, the trigger, the native `<select>`, and the filter input. |
+    | `portal` | `bool` | `False` | Reparent the whole root to `document.body` while open, so an `overflow: hidden`/`auto` ancestor can't clip the panel. |
     | `class_name` | `AttrValue` | `""` | Appended to the root's classes. |
 
-    Panels with more than 8 options render a search input above the list; shorter lists render without one. The input is UI-only — it hides option buttons and never posts.
+    Panels with more than 8 options render a search input above the list; shorter lists render without one. The input is UI-only — it hides option buttons and never posts. Opening focuses that input when present, for both mouse and keyboard opens.
 
 ??? note "Style tokens"
 
@@ -1897,9 +1898,11 @@ A styled replacement for a bare `<select>`, single-choice or multi. A hidden nat
 
 ??? note "DOM & classes"
 
-    Root `[data-pjx-select]`, carrying `data-name`, plus `data-multiple` and `data-placeholder` in multi mode and `data-disabled` when disabled. Trigger: `[data-pjx-select-trigger]` with `aria-haspopup="listbox"` and `aria-expanded` synced by JS. Panel: `[data-pjx-select-panel]` with `role="listbox"`, `hidden` when closed; the JS writes inline `left`/`top` only when the panel would otherwise overflow the viewport (flip/clamp), and removes them on close. Options: `[data-pjx-select-option]` with `data-value`, `role="option"`, and `aria-selected` as the selection state. Filter: `[data-pjx-select-filter]`, presentation-only — it hides option buttons and never changes selection. A hidden native `<select name="…">` inside the root is the form's source of truth and is re-derived from the option buttons on every change; without JS it submits on its own.
+    Root `[data-pjx-select]`, carrying `data-name`, plus `data-multiple` and `data-placeholder` in multi mode, `data-disabled` when disabled, and `data-pjx-select-portal` when `portal=True`. Trigger: `[data-pjx-select-trigger]` with `aria-haspopup="listbox"` and `aria-expanded` synced by JS. Panel: `[data-pjx-select-panel]` with `role="listbox"`, `hidden` when closed; opening always sets its width to match the trigger's rendered width and writes inline `left`/`top` on top of that only when the panel would otherwise overflow the viewport (flip/clamp), removing everything on close. Options: `[data-pjx-select-option]` with `data-value`, `role="option"`, and `aria-selected` as the selection state. Filter: `[data-pjx-select-filter]`, presentation-only — it hides option buttons and never changes selection; opening focuses it when present, from either a mouse or a keyboard open. A hidden native `<select name="…">` inside the root is the form's source of truth and is re-derived from the option buttons on every change, dispatching real `change`/`input` events on itself so `hx-trigger="change from:select"` and vanilla listeners still fire; without JS it submits on its own.
 
-    Keyboard: ArrowDown/ArrowUp/Home/End move focus among options (wrapping); ArrowDown/ArrowUp/Enter/Space on the trigger open the panel and focus an edge option; type-ahead jumps to the next option whose label starts with the typed prefix (case-insensitive, buffer resets after a pause); Enter/Space selects and closes in single mode, toggles and stays open in multi mode; Escape closes and returns focus to the trigger from anywhere inside the root, including the filter input.
+    With `portal=True`, opening reparents the whole root (not just the panel) to `document.body`, fixed at its pre-move screen position so the trigger doesn't visibly jump, and moves it back to its original parent on close — the same escape hatch `PJXTooltip`'s `portal` prop offers for a clipping `overflow: hidden`/`auto` ancestor.
+
+    Keyboard: ArrowDown/ArrowUp/Home/End move focus among options (wrapping); ArrowDown/ArrowUp/Enter/Space on the trigger open the panel and focus the filter input if present, otherwise an edge option; type-ahead jumps to the next option whose label starts with the typed prefix (case-insensitive, buffer resets after a pause); Enter/Space selects and closes in single mode, toggles and stays open in multi mode; Escape closes and returns focus to the trigger from anywhere inside the root, including the filter input.
 
     **Classes:** `pjx-select`, `pjx-select__trigger`, `pjx-select__label`, `pjx-select__chips`, `pjx-select__panel`, `pjx-select__filter`, `pjx-select__option`, `pjx-select__checkbox`. Chips reuse `pjx-chip-input__chip` / `pjx-chip-input__label`.
 
