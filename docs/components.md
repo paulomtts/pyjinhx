@@ -27,6 +27,9 @@ Small status label. **Assets:** `pjx_badge.css` only.
     | `label` | `str` | `""` | Inner text. |
     | `color` | literal | `"neutral"` | `brand`, `error`, `neutral`, `muted` → `pjx-badge--{color}`. |
     | `shape` | literal | `"md"` | `square`, `sm`, `md`, `full` → `pjx-badge--{shape}`. |
+    | `removable` | `bool` | `False` | Renders a remove button (`data-pjx-badge-remove`). |
+    | `remove_label` | `str` | `"Remove"` | `aria-label` for the remove button. |
+    | `remove_attrs` | `dict` | `{}` | Extra attributes on the remove button (e.g. `hx-post` to wire removal). |
 
 ??? note "Style tokens"
 
@@ -53,7 +56,7 @@ Small status label. **Assets:** `pjx_badge.css` only.
 
     Root `.pjx-badge`; no JS API.
 
-    **Classes:** `pjx-badge`; color modifiers `pjx-badge--brand`, `--error`, `--neutral`, `--muted`; shape `pjx-badge--square`, `--sm`, `--md`, `--full`.
+    **Classes:** `pjx-badge`; color modifiers `pjx-badge--brand`, `--error`, `--neutral`, `--muted`; shape `pjx-badge--square`, `--sm`, `--md`, `--full`; `removable` adds `pjx-badge--removable` and a `.pjx-badge__remove` button. Wire removal yourself (e.g. `remove_attrs={"hx-post": "..."}`); the button has no built-in behavior.
 
 ??? note "Python"
 

@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+### Added
+- `PJXBadge` gains an optional removable affordance: `removable=True` renders
+  an inner `.pjx-badge__remove` button (`data-pjx-badge-remove`) after the
+  label, with `remove_label` for its `aria-label` and `remove_attrs` to wire
+  removal behavior (e.g. `hx-post`) onto the button itself, mirroring
+  `PJXTab`'s `closeable` pattern. The default (non-removable) render is
+  unchanged (#1055).
+
 ## 1.9.7 — Tooltip shows inside an open dialog (2026-08-27)
 
 ### Fixed
