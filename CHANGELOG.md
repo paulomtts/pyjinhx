@@ -18,6 +18,16 @@
   policy: an internal helper a consuming app is likely to want to compose
   (DOM construction, positioning math) defaults to exposed rather than
   closure-private.
+- `PJXPopover(portal=True)` (and `PJXDropdown`, which inherits it) reparents
+  the panel to `document.body` while open, so a trigger inside a scrollable
+  or clipping ancestor gets a panel that isn't clamped or visually trapped
+  inside it — the same mechanism `PJXTooltip(portal=True)` already uses.
+  `rootOf()`/`triggerFor()`/`panelForToggle()` now resolve root, trigger and
+  panel through a `WeakMap` alongside the existing DOM-containment lookup, so
+  they keep working once the panel alone has moved. Scrolling closes an open
+  portalled popover instead of leaving it visually detached from its trigger,
+  and closing while the original host has been removed drops the panel
+  instead of leaving it dangling on `document.body` (#1053).
 
 ## 1.9.7 — Tooltip shows inside an open dialog (2026-08-27)
 

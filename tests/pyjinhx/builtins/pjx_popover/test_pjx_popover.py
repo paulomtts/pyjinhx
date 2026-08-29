@@ -85,6 +85,20 @@ def test_extra_attrs_surface_on_the_root(popover_session):
     assert 'data-testid="popover"' in html[: html.index(">")]
 
 
+def test_portal_is_off_by_default(popover_session):
+    assert "data-pjx-popover-portal" not in _html(popover_session)
+
+
+def test_portal_true_adds_the_data_attribute(popover_session):
+    html = _html(popover_session, portal=True)
+    assert "data-pjx-popover data-pjx-popover-portal" in html
+
+
+def test_portal_rejects_a_non_boolean():
+    with pytest.raises(ValidationError):
+        PJXPopover(id="p", portal="yes please")  # type: ignore[arg-type]
+
+
 def test_assets_are_discovered_from_the_component_directory():
     """CSS and JS sit next to the module and are picked up by the descriptor, with no manual wiring."""
     descriptor = PJXPopover.__pjx_descriptor__

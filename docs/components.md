@@ -1750,6 +1750,7 @@ Click-toggle compound. Three separate components; compose them by placing `PJXPo
     | `content` | `str \| BaseComponent` | `""` | Children (trigger + panel). |
     | `align` | literal | `"start"` | `start` or `end` (panel alignment) → `pjx-popover--align-end`. |
     | `behavior` | `bool` | `True` | When `True`, adds `data-pjx-popover` (JS picks it up). |
+    | `portal` | `bool` | `False` | Reparent the panel to `document.body` while open, so an `overflow: hidden`/`auto` ancestor can't clip it. |
 
 ??? note "Style tokens"
 
@@ -1768,6 +1769,8 @@ Click-toggle compound. Three separate components; compose them by placing `PJXPo
     Root `[data-pjx-popover]` (the PJXPopover wrapper). Trigger: `[data-pjx-toggle]` on the trigger element; `aria-expanded` synced by JS. Panel: `[data-pjx-popover-panel]` element, `hidden` when closed. `data-pjx-close` inside the panel closes it. `data-pjx-toggle="<panel-id>"` on any element opens/closes a named panel.
     Events (bubble from `[data-pjx-popover]`): `pjx:popover:before-open`*, `pjx:popover:open`, `pjx:popover:before-close`*, `pjx:popover:close` — `detail = {reason, trigger}`.
     API: `pjx.popover.open(idOrEl)`, `pjx.popover.close(idOrEl)`, `pjx.popover.toggle(idOrEl)`.
+
+    With `portal=True` the root also carries `data-pjx-popover-portal`, and opening moves the panel alone to `document.body`, restoring it to its original position on close — the same escape hatch `PJXTooltip`'s `portal` prop offers when an ancestor's `overflow` clips the panel. The root, trigger, and panel keep resolving to each other while the panel lives elsewhere, so events and the JS API are unchanged. Two consequences are specific to a portalled popover: scrolling anywhere outside the panel closes it (a panel parked on `document.body` would otherwise detach visually from a trigger scrolling out from under it), emitting the usual close events with `reason: "scroll"`; and if the panel's original parent is removed from the document while the panel is open, the panel is dropped rather than left orphaned on `document.body`.
 
     **Classes:** `pjx-popover`, `pjx-popover--align-end`, `pjx-popover__trigger`, `pjx-popover__panel`.
 
@@ -1935,6 +1938,7 @@ Button + anchored panel backed by the shared popover engine. **Assets:** `pjx_dr
     | `items` | `list[str \| BaseComponent]` | `[]` | Menu items. A `str` entry is plain text and is HTML-escaped; pass a component for markup. |
     | `align` | literal | `"start"` | `start` or `end` → `pjx-dropdown--align-end`. |
     | `menu_label` | `str` | `"Submenu"` | `aria-label` on the menu panel. |
+    | `portal` | `bool` | `False` | Inherited from `PJXPopover`: reparent the menu to `document.body` while open, escaping a clipping ancestor. |
 
     Trigger id is `{{ id }}-trigger`, menu is `{{ id }}-menu`.
 
@@ -1958,7 +1962,7 @@ Button + anchored panel backed by the shared popover engine. **Assets:** `pjx_dr
 
 ??? note "DOM & classes"
 
-    Root `.pjx-dropdown` with `data-pjx-popover`. Trigger: `button.pjx-dropdown__trigger` with `data-pjx-toggle="{{ id }}-menu"`, `aria-expanded` synced by `pjx_popover.js`. Panel: `div.pjx-dropdown__menu[data-pjx-popover-panel][role="menu"]`, `hidden` when closed. All popover events and API apply: `pjx.popover.open/close/toggle(panelId)`. Document click outside closes the menu; `Escape` closes all open popovers.
+    Root `.pjx-dropdown` with `data-pjx-popover`. Trigger: `button.pjx-dropdown__trigger` with `data-pjx-toggle="{{ id }}-menu"`, `aria-expanded` synced by `pjx_popover.js`. Panel: `div.pjx-dropdown__menu[data-pjx-popover-panel][role="menu"]`, `hidden` when closed. All popover events and API apply: `pjx.popover.open/close/toggle(panelId)`. Document click outside closes the menu; `Escape` closes all open popovers. `portal=True` behaves exactly as it does on `PJXPopover`, menu in place of panel.
 
     **Classes:** `pjx-dropdown`, `pjx-dropdown--align-end`, `pjx-dropdown__trigger`, `pjx-dropdown__menu`.
 
