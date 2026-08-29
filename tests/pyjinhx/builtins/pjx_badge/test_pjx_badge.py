@@ -112,3 +112,35 @@ def test_css_uses_shared_tokens_not_hardcoded_hex():
     assert "var(--brand" in css
     assert "var(--error" in css
     assert "#" not in css
+
+
+def test_removable_renders_the_remove_button(badge_session):
+    html = _html(badge_session, removable=True)
+    assert "pjx-badge--removable" in html
+    assert "data-pjx-badge-remove" in html
+    assert 'aria-label="Remove"' in html
+
+
+def test_remove_label_overrides_the_button_aria_label(badge_session):
+    html = _html(badge_session, removable=True, remove_label="Dismiss tag")
+    assert 'aria-label="Dismiss tag"' in html
+
+
+def test_non_removable_omits_the_remove_button(badge_session):
+    html = _html(badge_session)
+    assert "pjx-badge--removable" not in html
+    assert "data-pjx-badge-remove" not in html
+
+
+def test_remove_attrs_surface_on_the_remove_button(badge_session):
+    html = _html(
+        badge_session, removable=True, remove_attrs={"hx-post": "/tags/1/remove"}
+    )
+    assert 'hx-post="/tags/1/remove"' in html
+
+
+def test_default_render_is_byte_identical_to_before(badge_session):
+    """Adding the removable affordance must not change the non-removable render."""
+    assert _html(badge_session, label="Active", color="brand") == (
+        '<span id="b" class="pjx-badge pjx-badge--brand pjx-badge--md">Active</span>'
+    )

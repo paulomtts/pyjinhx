@@ -61,6 +61,7 @@ def badge():
         PJXBadge(label="Error", color="error").render(),
         PJXBadge(label="Neutral", color="neutral").render(),
         PJXBadge(label="Beta", color="muted", shape="full").render(),
+        PJXBadge(label="Removable", color="brand", removable=True).render(),
     ]
 
 
