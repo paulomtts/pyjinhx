@@ -103,18 +103,33 @@
 
     const DISMISSIBLE = '.pjx-notification, .pjx-alert, dialog.pjx-modal, dialog.pjx-drawer, [data-pjx-popover-panel]';
 
+    // Keyed by root, not panel: once portalled the panel is no longer a
+    // descendant of root, so root.querySelector('[data-pjx-popover-panel]')
+    // can no longer find it — every lookup goes through the maps below.
+    const portalled = new WeakMap();
+    // Companion to `portalled`, which a WeakMap can't enumerate: lets the
+    // scroll-close handler below walk every root currently portalled.
+    const portalledRoots = new Set();
+    // Reverse of `portalled`: rootOf()/triggerFor() are handed the panel,
+    // not the root, and closest() stops working the moment it moves.
+    const panelRoot = new WeakMap();
+
     function fire(el, name, detail, cancelable) {
         return el.dispatchEvent(new CustomEvent(name, {
             bubbles: true, cancelable: Boolean(cancelable), detail: detail || {},
         }));
     }
 
+    function rootFor(panel) {
+        return panel.closest('[data-pjx-popover]') || panelRoot.get(panel) || null;
+    }
+
     function rootOf(panel) {
-        return panel.closest('[data-pjx-popover]') || panel;
+        return rootFor(panel) || panel;
     }
 
     function triggerFor(panel) {
-        const root = panel.closest('[data-pjx-popover]');
+        const root = rootFor(panel);
         return root ? root.querySelector('[data-pjx-toggle]') : null;
     }
 
@@ -125,6 +140,37 @@
 
     function alignOf(root) {
         return root.classList.contains('pjx-popover--align-end') ? 'end' : 'start';
+    }
+
+    function isPortalled(root) {
+        return root.dataset.pjxPopoverPortal !== undefined;
+    }
+
+    /**
+     * Reparent the panel to document.body so it escapes a clipping ancestor
+     * entirely, instead of being clamped into that ancestor's bounds.
+     */
+    function portalPanel(panel, root) {
+        if (!isPortalled(root) || portalled.has(root)) return;
+        portalled.set(root, { panel, parent: panel.parentElement, next: panel.nextSibling });
+        panelRoot.set(panel, root);
+        portalledRoots.add(root);
+        document.body.appendChild(panel);
+    }
+
+    function unportalPanel(root) {
+        const entry = portalled.get(root);
+        if (!entry) return;
+        portalled.delete(root);
+        portalledRoots.delete(root);
+        if (entry.parent.isConnected) {
+            entry.parent.insertBefore(entry.panel, entry.next);
+        } else {
+            // The host that used to hold this panel is gone — nothing to
+            // restore it into, so drop it rather than leave it dangling,
+            // attached to document.body forever with no way back.
+            entry.panel.remove();
+        }
     }
 
     function position(panel, root, trigger) {
@@ -160,6 +206,7 @@
         const detail = { reason: reason || 'api', trigger: trigger || null };
         if (!fire(target, 'pjx:popover:before-open', detail, true)) return false;
         panel.hidden = false;
+        portalPanel(panel, target);
         const t = trigger || triggerFor(panel);
         if (t) t.setAttribute('aria-expanded', 'true');
         // Measured after unhiding (a hidden panel has no box) but in the same
@@ -179,6 +226,7 @@
         // Drop any inline position left by open() so a closed panel never
         // carries stale coordinates that outlive the layout that produced them.
         panel.removeAttribute('style');
+        unportalPanel(target);
         const t = trigger || triggerFor(panel);
         if (t) t.setAttribute('aria-expanded', 'false');
         fire(target, 'pjx:popover:close', detail);
@@ -195,7 +243,9 @@
         const explicit = toggleEl.getAttribute('data-pjx-toggle');
         if (explicit) return document.getElementById(explicit);
         const root = toggleEl.closest('[data-pjx-popover]');
-        return root ? root.querySelector('[data-pjx-popover-panel]') : null;
+        if (!root) return null;
+        const entry = portalled.get(root);
+        return entry ? entry.panel : root.querySelector('[data-pjx-popover-panel]');
     }
 
     document.addEventListener('click', (e) => {
@@ -216,7 +266,12 @@
         // also when clicking a trigger (so opening B closes A; nested popovers survive).
         document.querySelectorAll('[data-pjx-popover-panel]:not([hidden])').forEach((panel) => {
             if (panel === targetPanel) return;
-            if (!rootOf(panel).contains(e.target)) close(panel, 'backdrop', null);
+            // A portalled panel is no longer a descendant of its root, so a
+            // click inside it must also count as "inside" — otherwise it
+            // reads as an outside click and closes the popover on itself.
+            if (!rootOf(panel).contains(e.target) && !panel.contains(e.target)) {
+                close(panel, 'backdrop', null);
+            }
         });
         if (toggleEl && targetPanel) toggle(targetPanel, 'trigger', toggleEl);
     });
@@ -236,6 +291,23 @@
             close(panel, 'escape', null);
         });
     });
+
+    window.addEventListener(
+        'scroll',
+        (e) => {
+            // A portalled panel doesn't reposition on scroll the way a
+            // tooltip's tip does — it would just detach visually from a
+            // trigger scrolling out from under it — so scrolling anywhere
+            // but inside the panel itself closes it instead.
+            portalledRoots.forEach((root) => {
+                const entry = portalled.get(root);
+                if (entry && !entry.panel.contains(e.target)) {
+                    close(entry.panel, 'scroll', null);
+                }
+            });
+        },
+        true
+    );
 
     pjx.popover = { open: open, close: close, toggle: toggle };
 }());

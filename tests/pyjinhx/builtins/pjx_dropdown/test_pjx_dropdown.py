@@ -102,6 +102,21 @@ def test_invalid_align_is_rejected():
         PJXDropdown(id="d", align="middle")  # type: ignore[arg-type]
 
 
+def test_portal_is_off_by_default(dropdown_session):
+    assert "data-pjx-popover-portal" not in _html(dropdown_session)
+
+
+def test_portal_true_adds_the_data_attribute(dropdown_session):
+    """Inherited from PJXPopover; dropdown's own template wires it in beside data-pjx-popover."""
+    html = _html(dropdown_session, portal=True)
+    assert "data-pjx-popover data-pjx-popover-portal" in html
+
+
+def test_portal_rejects_a_non_boolean():
+    with pytest.raises(ValidationError):
+        PJXDropdown(id="d", portal="yes please")  # type: ignore[arg-type]
+
+
 def test_dropped_behavior_field_is_rejected():
     """`behavior` did not survive the v2 port; extra="forbid" turns it into an error."""
     with pytest.raises(ValidationError):
