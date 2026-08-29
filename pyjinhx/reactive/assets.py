@@ -18,13 +18,15 @@ from collections.abc import Callable, Iterable
 from pathlib import Path
 from typing import Any
 
-from pyjinhx.assets import AssetMode, _sorted_resolved, _split_by_origin, asset_token
+from pyjinhx.assets import (
+    BUILTIN_ORIGIN_ATTR,
+    AssetMode,
+    _sorted_resolved,
+    _split_by_origin,
+    asset_token,
+)
 from pyjinhx.reactive.fanout import FanoutCandidate
 from pyjinhx.session import RenderSession
-
-# TODO: cold renders — emit_assets() does not stamp data-pjx-asset yet, so a
-# freshly loaded page reports an empty token set and pays one redundant
-# re-delivery on its first reactive response.
 
 
 def required_asset_paths(
@@ -155,7 +157,7 @@ def missing_asset_oob(
     # Builtin CSS is stamped data-pjx-origin="builtin" so pjx.js can insert a
     # late-arriving one ahead of app CSS already resident in <head>, instead
     # of appendChild-ing it wherever it happens to land in the document.
-    builtin_origin = ' data-pjx-origin="builtin"'
+    builtin_origin = BUILTIN_ORIGIN_ATTR
     # A resolver-less LINK kind emits nothing rather than raising, unlike
     # emit_assets: a reactive response is a partial update, and taking the whole
     # response down over a missing asset URL would blank a working page.

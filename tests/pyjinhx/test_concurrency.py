@@ -330,7 +330,7 @@ def test_concurrent_renders_no_filenotfound_races(monkeypatch):
     fail_on_errors(errors)
     assert_no_bleed(observations)
     for observed in observations.values():
-        assert "<style>" in observed.html
+        assert "<style" in observed.html
         assert "<script>" in observed.html
 
 

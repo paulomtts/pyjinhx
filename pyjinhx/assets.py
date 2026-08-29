@@ -1,4 +1,13 @@
-"""L2.2 assets — delivery modes, emission, and the manifest of a request's assets."""
+"""L2.2 assets — delivery modes, emission, and the manifest of a request's assets.
+
+Invariant: every style pyjinhx puts on a page carries a ``data-pjx-asset``
+token, and every tokened style ends up in ``<head>``. ``emit_assets()`` stamps
+the token on inline CSS so a style that lands inside a swappable region is
+still visible to ``pjx.js``'s ``pjxLoadedAssets``/``pjxPromoteInlineAssets`` —
+the same token the client already recognized is not paid for twice, and a
+style a swap would otherwise delete is relocated to ``<head>`` before that
+can happen.
+"""
 
 import hashlib
 import os
@@ -27,6 +36,9 @@ def _is_builtin_asset(path: Path) -> bool:
     return path.resolve().is_relative_to(_BUILTIN_ASSET_DIR)
 
 
+BUILTIN_ORIGIN_ATTR = ' data-pjx-origin="builtin"'
+
+
 def _split_by_origin(paths: set[Path]) -> tuple[set[Path], set[Path]]:
     """Partition ``paths`` into (builtin, app) by origin."""
     builtin: set[Path] = set()
@@ -47,14 +59,38 @@ class AssetMode(str, Enum):
     LINK = "link"
 
 
-def _inline_tags(paths: set[Path], open_tag: str, close_tag: str) -> list[str]:
+def _inline_tags(
+    paths: set[Path],
+    open_tag: str,
+    close_tag: str,
+    *,
+    tokened: bool = False,
+    origin_attr: str = "",
+) -> list[str]:
     """Read each path and wrap its contents in the given tag pair, sorted by path.
 
     Sorted because the accumulator stores paths in a set, which has no stable
     iteration order; two renders of the same tree must produce byte-identical
     output. A path that cannot be read raises: an asset silently dropped from
     the page is a styling bug nobody can see in the response.
+
+    Args:
+        tokened: Stamp a ``data-pjx-asset`` attribute on each tag, using the
+            same token ``X-PJX-Assets``/the OOB delta compute. Only CSS asks
+            for this: a script's effect outlives its node, so pjx.js never
+            relocates one, and an untokened script has nothing to gain from
+            carrying an identity nobody reads.
+        origin_attr: Extra markup inserted right after ``data-pjx-asset``, e.g.
+            ``' data-pjx-origin="builtin"'``. An inline style is promoted into
+            ``<head>`` after any settle, so it needs the same origin marker the
+            OOB fragments carry to land ahead of app CSS once there.
     """
+    if tokened:
+        return [
+            f'{open_tag} data-pjx-asset="{asset_token(path)}"{origin_attr}>'
+            f"{path.read_text()}{close_tag}"
+            for path in sorted(paths, key=str)
+        ]
     return [
         f"{open_tag}{path.read_text()}{close_tag}" for path in sorted(paths, key=str)
     ]
@@ -108,7 +144,9 @@ def emit_assets(
     Returns:
         Concatenated CSS tags then JS tags, newline-joined, with the session's
         inline runtime script (if any) leading the JS tags. Empty string when
-        both kinds are NONE or nothing was accumulated.
+        both kinds are NONE or nothing was accumulated. Each inline ``<style>``
+        carries a ``data-pjx-asset`` token; scripts do not, since pjx.js never
+        relocates one and nothing reads the identity.
 
     Raises:
         OSError: If an asset file is missing or unreadable under INLINE mode.
@@ -123,8 +161,14 @@ def emit_assets(
     # reliably beat the builtin it's restyling.
     builtin_css, app_css = _split_by_origin(session.css_assets)
     if session.css_mode is AssetMode.INLINE:
-        tags += _inline_tags(builtin_css, "<style>", "</style>")
-        tags += _inline_tags(app_css, "<style>", "</style>")
+        tags += _inline_tags(
+            builtin_css,
+            "<style",
+            "</style>",
+            tokened=True,
+            origin_attr=BUILTIN_ORIGIN_ATTR,
+        )
+        tags += _inline_tags(app_css, "<style", "</style>", tokened=True)
     elif session.css_mode is AssetMode.LINK:
         css_resolver = _require_resolver(resolver)
         tags += _url_tags(
