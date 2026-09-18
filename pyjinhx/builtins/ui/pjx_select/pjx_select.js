@@ -228,6 +228,16 @@
         });
     }
 
+    // The native <select>'s own `invalid` event (fired on a failed
+    // constraint check, e.g. reportValidity()) can't usefully anchor a
+    // validation bubble to a hidden control, so its failure is mirrored onto
+    // the visible trigger instead.
+    function clearInvalid(parts) {
+        if (!parts.trigger) return;
+        parts.trigger.removeAttribute('aria-invalid');
+        parts.trigger.classList.remove('pjx-select--invalid');
+    }
+
     // The native <select> is the form's source of truth in both modes, so it is
     // re-derived from the option buttons rather than patched incrementally.
     function syncNative(root, parts) {
@@ -280,6 +290,7 @@
         if (box) box.checked = next;
         syncNative(root, parts);
         renderTrigger(root, parts);
+        clearInvalid(parts);
     }
 
     function select(root, value) {
@@ -290,6 +301,7 @@
         });
         syncNative(root, parts);
         renderTrigger(root, parts);
+        clearInvalid(parts);
     }
 
     document.addEventListener('click', function (e) {
@@ -330,6 +342,21 @@
         const root = rootOf(filter);
         if (root) applyFilter(root, filter.value);
     });
+
+    // `invalid` doesn't bubble, so it's only observable on the capture phase.
+    document.addEventListener('invalid', function (e) {
+        if (e.target.tagName !== 'SELECT') return;
+        const root = rootOf(e.target);
+        if (!root) return;
+        // The native <select> is hidden, so the browser can't anchor its own
+        // validation bubble to it; the trigger stands in for it instead.
+        e.preventDefault();
+        const parts = partsOf(root);
+        if (!parts.trigger) return;
+        parts.trigger.setAttribute('aria-invalid', 'true');
+        parts.trigger.classList.add('pjx-select--invalid');
+        parts.trigger.focus();
+    }, true);
 
     // --- keyboard navigation -------------------------------------------
     // Option buttons are natively focusable, so focus moves with .focus()
