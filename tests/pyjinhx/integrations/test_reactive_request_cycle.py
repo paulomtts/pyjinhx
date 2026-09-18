@@ -26,6 +26,7 @@ from pyjinhx.integrations.fastapi import apply_setup
 from pyjinhx.reactive.cache import invalidate
 from pyjinhx.reactive.component import PjxKey, ReactiveComponent
 from pyjinhx.reactive.keys import MutationKey
+from pyjinhx.reactive.load_cost import note_load_cost
 from pyjinhx.reactive.mutations import dirty, mutates
 from pyjinhx.session import (
     NoActiveRequestScope,
@@ -81,6 +82,28 @@ class CycleBadge(ReactiveComponent, react=(Keys.CYCLE,)):
         return cls(pjx_key=pjx_key)
 
 
+class CycleNested(ReactiveComponent, react=(Keys.CYCLE,)):
+    """A region CycleShell's template mounts by tag under the id ``n``."""
+
+    pjx_key: Annotated[str, PjxKey()] = ""
+
+    @classmethod
+    def load(cls, pjx_key: str) -> "CycleNested":
+        LOAD_CALLS.append(f"nested:{pjx_key}")
+        return cls(pjx_key=pjx_key)
+
+
+class CycleShell(ReactiveComponent, react=(Keys.CYCLE,)):
+    """A region whose own render nests CycleNested — the #1022 shape."""
+
+    pjx_key: Annotated[str, PjxKey()] = ""
+
+    @classmethod
+    def load(cls, pjx_key: str) -> "CycleShell":
+        LOAD_CALLS.append(f"shell:{pjx_key}")
+        return cls(pjx_key=pjx_key)
+
+
 ASSET_DIR = Path(__file__).parent.parent.parent / "templates"
 
 
@@ -98,7 +121,9 @@ def _publish_registry():
     STORE.clear()
     LOAD_CALLS.clear()
     template_dir = Path(__file__).parent.parent.parent / "templates"
-    discovery.build_registry(template_dir, [CycleCard, CycleBadge])
+    discovery.build_registry(
+        template_dir, [CycleCard, CycleBadge, CycleNested, CycleShell]
+    )
     # The middleware's request session roots its loader at "/", so the
     # descriptor must carry the real absolute path rather than a bare name.
     CycleCard.__pjx_descriptor__ = dataclasses.replace(
@@ -109,6 +134,12 @@ def _publish_registry():
         template_path=template_dir / "cycle_badge.pjx",
         css_paths=(ASSET_DIR / "cycle_badge.css",),
         js_paths=(ASSET_DIR / "cycle_badge.js",),
+    )
+    CycleNested.__pjx_descriptor__ = dataclasses.replace(
+        CycleNested.__pjx_descriptor__, template_path=template_dir / "cycle_nested.pjx"
+    )
+    CycleShell.__pjx_descriptor__ = dataclasses.replace(
+        CycleShell.__pjx_descriptor__, template_path=template_dir / "cycle_shell.pjx"
     )
     yield
 
@@ -620,3 +651,61 @@ def test_a_bare_component_return_still_fans_out_after_a_mutation():
     assert "hx-swap-oob=\"outerHTML:[data-pjx-id='a']\"" in response.text
     # A non-empty primary means htmx keeps its normal swap.
     assert "HX-Reswap" not in response.headers
+
+
+def test_a_nested_child_candidate_swaps_without_a_registry_collision_warning(caplog):
+    """#1022 through the real middleware: no warning, same swaps, still 200.
+
+    Both classes are pre-measured as too cheap to thread, so `_build_pass` runs
+    them inline in manifest order: the nested child's own build registers
+    `CycleNested_n` first, and the shell's build then re-renders that same region
+    as a descendant and writes the key a second time. That second write is what
+    used to log "already registered; overwriting" on every such request.
+    """
+    app = make_app()
+    STORE["card-1"] = 0
+    note_load_cost(CycleNested, 0.0)
+    note_load_cost(CycleShell, 0.0)
+
+    @app.post("/bump")
+    def bump(request: Request):
+        Counter().bump("card-1")
+        invalidate(get_dirtied())
+
+    with caplog.at_level(logging.WARNING, logger="pyjinhx"), TestClient(app) as client:
+        response = client.post(
+            "/bump",
+            headers={
+                "X-PJX-Mounted": json.dumps(
+                    [
+                        {
+                            "type": "cycle_nested",
+                            "id": "n",
+                            "load": "card-1",
+                            "hash": "stale",
+                        },
+                        {
+                            "type": "cycle_shell",
+                            "id": "s",
+                            "load": "card-1",
+                            "hash": "stale",
+                        },
+                    ]
+                ),
+                "X-PJX-Assets": "[]",
+            },
+        )
+
+    body = response.text
+    assert response.status_code == 200
+    assert "hx-swap-oob=\"outerHTML:[data-pjx-id='s']\"" in body
+    # The nested region ships inside the shell's swap, never as its own:
+    # _drop_nested's output filtering is untouched by this subtask.
+    assert "hx-swap-oob=\"outerHTML:[data-pjx-id='n']\"" not in body
+    assert "nested card-1" in body
+    collisions = [
+        record.getMessage()
+        for record in caplog.records
+        if "already registered" in record.getMessage()
+    ]
+    assert collisions == []

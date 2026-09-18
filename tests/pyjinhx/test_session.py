@@ -1,10 +1,11 @@
 """request_scope's ContextVars: fresh in, prior state out.
 
 The per-request mutable state (RenderSession asset slot, instance registry,
-dirtied keys, cache store, cache reverse index, template-freshness cache) is the
-entire ContextVar half of the mutable-state census. These tests pin the container
-lifecycle - creation, nesting, exception cleanup, thread isolation - not any
-read/write semantics, which land with the modules that consume them.
+dirtied keys, cache store, cache reverse index, template-freshness cache,
+expected-collision key set) is the entire ContextVar half of the mutable-state
+census. These tests pin the container lifecycle - creation, nesting, exception
+cleanup, thread isolation - not any read/write semantics, which land with the
+modules that consume them.
 """
 
 import asyncio
@@ -894,3 +895,63 @@ def test_uptodate_records_and_then_short_circuits_within_one_request():
     # A new request starts cold, so a mid-request edit is seen on the next one.
     with session_module.request_scope():
         assert session_module.get_freshness_cache() == {}
+
+
+def test_quiet_collisions_read_as_an_empty_set_outside_any_scope():
+    """An unset quiet set reads as an empty frozenset, never raises: a caller
+    outside a request degrades to "nothing is quieted", which is the loud
+    default register_instance() had before the set existed."""
+    assert session_module.get_quiet_collisions() == frozenset()
+
+
+def test_request_scope_binds_an_empty_quiet_set():
+    with session_module.request_scope():
+        assert session_module.get_quiet_collisions() == frozenset()
+
+
+def test_nested_scope_restores_the_outer_quiet_set():
+    """An inner request starts with nothing quieted and hands the outer request
+    its own set back — a suppression is one request's claim, never a sibling's."""
+    with session_module.request_scope():
+        session_module._quiet_collisions.set(frozenset({"Widget_outer"}))
+
+        with session_module.request_scope():
+            assert session_module.get_quiet_collisions() == frozenset()
+            session_module._quiet_collisions.set(frozenset({"Widget_inner"}))
+
+        assert session_module.get_quiet_collisions() == frozenset({"Widget_outer"})
+
+    assert session_module.get_quiet_collisions() == frozenset()
+
+
+def test_exception_inside_the_block_still_resets_the_quiet_set():
+    with pytest.raises(RuntimeError, match="boom"), session_module.request_scope():
+        session_module._quiet_collisions.set(frozenset({"Widget_w1"}))
+        raise RuntimeError("boom")
+
+    assert session_module.get_quiet_collisions() == frozenset()
+
+
+def test_two_threads_do_not_see_each_others_quiet_set():
+    """The fan-out pass opens its quiet block inside a pool worker, so a worker's
+    set must not be visible to any other thread that never opened one."""
+    seen: dict[str, frozenset[str]] = {}
+
+    def quieting() -> None:
+        with session_module.request_scope():
+            session_module._quiet_collisions.set(frozenset({"Widget_a"}))
+            seen["quieting"] = session_module.get_quiet_collisions()
+
+    def bystander() -> None:
+        with session_module.request_scope():
+            seen["bystander"] = session_module.get_quiet_collisions()
+
+    first = threading.Thread(target=quieting)
+    first.start()
+    first.join()
+    second = threading.Thread(target=bystander)
+    second.start()
+    second.join()
+
+    assert seen["quieting"] == frozenset({"Widget_a"})
+    assert seen["bystander"] == frozenset()

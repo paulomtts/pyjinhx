@@ -1,6 +1,7 @@
 """Unit tests for the manifest walk: filter, dedup, and clean/dirty resolution."""
 
 import dataclasses
+import logging
 import pathlib
 import re
 import sys
@@ -10,7 +11,7 @@ from typing import Annotated, cast
 
 import pytest
 
-from pyjinhx import discovery, registry
+from pyjinhx import dev, discovery, registry
 from pyjinhx._component import BaseComponent
 from pyjinhx.reactive import fanout
 from pyjinhx.reactive.cache import cache_has, cache_put
@@ -24,13 +25,18 @@ from pyjinhx.reactive.fanout import (
     walk_manifest,
 )
 from pyjinhx.reactive.load_cost import note_load_cost
-from pyjinhx.reactive.root_attrs import record_nested_react_keys
+from pyjinhx.reactive.root_attrs import (
+    record_nested_react_keys,
+    stamp_reactive_root_attrs,
+)
+from pyjinhx.registry import InstanceKeyCollisionError
 from pyjinhx.segments import ChildRef, RenderedLevel
 from pyjinhx.session import (
     RenderSession,
     current_session,
     get_cache_store,
     get_load_context,
+    get_quiet_collisions,
     request_scope,
 )
 
@@ -77,6 +83,73 @@ class LoudWidget(ReactiveComponent, react=("todos",)):
     @classmethod
     def load(cls, pjx_key: str) -> "LoudWidget":
         return cls(pjx_key=pjx_key, data=f"data:{pjx_key}")
+
+
+CHILD_REGISTERED = threading.Event()
+"""Set once NestedChildWidget has rendered and registered under its own id.
+
+NestingParentWidget.load() waits on it so the #1022 ordering under test is the
+one the issue reports: the child's *own* top-level build registers first, and
+the parent's nested re-render of the same region is the second, colliding
+write. Without the gate the two pool workers race and the test would assert on
+whichever finished first.
+"""
+
+
+class NestedChildWidget(ReactiveComponent, react=("todos",)):
+    """A reactive child that NestingParentWidget's template mounts by tag."""
+
+    pjx_key: Annotated[str, PjxKey()] = ""
+
+    @classmethod
+    def load(cls, pjx_key: str) -> "NestedChildWidget":
+        LOAD_CALLS.append(f"child:{pjx_key}")
+        return cls(pjx_key=pjx_key)
+
+
+class NestingParentWidget(ReactiveComponent, react=("todos",)):
+    """A reactive parent whose template nests NestedChildWidget under a fixed id."""
+
+    pjx_key: Annotated[str, PjxKey()] = ""
+
+    @classmethod
+    def load(cls, pjx_key: str) -> "NestingParentWidget":
+        LOAD_CALLS.append(f"parent:{pjx_key}")
+        CHILD_REGISTERED.wait(timeout=5)
+        return cls(pjx_key=pjx_key)
+
+
+def _child_registered(component, level, session) -> None:
+    """An on_rendered subscriber that releases NestingParentWidget.load()."""
+    if isinstance(component, NestedChildWidget):
+        CHILD_REGISTERED.set()
+
+
+def wired_session() -> RenderSession:
+    """A session wired the way integrations/fastapi.py:208-210 wires a request's.
+
+    The stamp hook is what writes each rendered root's ``data-pjx-id``, which is
+    what `_drop_nested`'s containment check reads; the registry writer is what
+    makes the double registration happen at all. The releaser goes last, so it
+    only fires once the write it is reporting has landed.
+    """
+    session = RenderSession()
+    session.on_rendered.append(stamp_reactive_root_attrs)
+    session.on_rendered.append(registry.register_rendered_instance)
+    session.on_rendered.append(_child_registered)
+    return session
+
+
+@pytest.fixture
+def strict_dev():
+    """Reactive-dev strict mode on for one test, off again afterwards.
+
+    Process-wide, not request-scoped, so leaving it on would leak into every
+    test that runs after this one.
+    """
+    dev.enable_reactive_dev(strict=True)
+    yield
+    dev.disable_reactive_dev()
 
 
 class PlainWidget(BaseComponent):
@@ -143,9 +216,25 @@ def _clean_registries(tmp_path, monkeypatch):
     plain_path.write_text("<div>plain</div>")
     loud_path = tmp_path / "loud_widget.pjx"
     loud_path.write_text("<div>{{ pjx_key }}</div>")
+    CHILD_REGISTERED.clear()
+    child_path = tmp_path / "nested_child_widget.pjx"
+    child_path.write_text("<div>child {{ pjx_key }}</div>")
+    parent_path = tmp_path / "nesting_parent_widget.pjx"
+    parent_path.write_text(
+        '<div>parent <NestedChildWidget pjx_key="k1" id="child-1" /></div>'
+    )
     discovery.build_registry(
         tmp_path,
-        [FanoutWidget, QuietWidget, PlainWidget, SpyWidget, LoudWidget, OwnedWidget],
+        [
+            FanoutWidget,
+            QuietWidget,
+            PlainWidget,
+            SpyWidget,
+            LoudWidget,
+            OwnedWidget,
+            NestedChildWidget,
+            NestingParentWidget,
+        ],
     )
     # `_resolve_template_path` walks the class's *defining module's* directory
     # (this test file's dir), not `template_dir` passed to `build_registry` —
@@ -171,6 +260,12 @@ def _clean_registries(tmp_path, monkeypatch):
     )
     OwnedWidget.__pjx_descriptor__ = dataclasses.replace(
         OwnedWidget.__pjx_descriptor__, template_path=owned_path
+    )
+    NestedChildWidget.__pjx_descriptor__ = dataclasses.replace(
+        NestedChildWidget.__pjx_descriptor__, template_path=child_path
+    )
+    NestingParentWidget.__pjx_descriptor__ = dataclasses.replace(
+        NestingParentWidget.__pjx_descriptor__, template_path=parent_path
     )
     yield
 
@@ -1425,6 +1520,27 @@ def test_build_pass_results_are_keyed_by_manifest_index():
     assert results[2].instance is None and results[2].level is None
 
 
+def test_build_pass_enters_quiet_collisions_once_not_once_per_item(monkeypatch):
+    """#1024's fixup: the O(n²) regression was one `quiet_collisions()` call per
+    item, each rebuilding a fresh frozenset over the whole pass. Guard the fix
+    by pinning the call count to the pass, not the item count."""
+    manifest = [_entry(f"row-{i}", "fanout_widget", f"todo-{i}") for i in range(6)]
+    calls: list[frozenset] = []
+    real_quiet_collisions = registry.quiet_collisions
+
+    def counting_quiet_collisions(keys):
+        calls.append(frozenset(keys))
+        return real_quiet_collisions(keys)
+
+    monkeypatch.setattr(fanout.registry, "quiet_collisions", counting_quiet_collisions)
+    with request_scope() as session:
+        items = fanout._filter_pass(manifest, {"todos"}, set())
+        fanout._build_pass(items, session)
+
+    assert len(calls) == 1
+    assert calls[0] == {registry.make_key("FanoutWidget", f"row-{i}") for i in range(6)}
+
+
 def test_reduce_pass_restores_manifest_order():
     """Candidates come back in work-item order, whatever order builds finished in."""
     manifest = [
@@ -1860,3 +1976,107 @@ def test_walk_manifest_wires_the_nested_react_key_recorder_exactly_once():
         )
     assert session.on_rendered.count(record_nested_react_keys) == 1
     assert session.nested_react_keys["a"] == ("todos",)
+
+
+def nesting_manifest() -> list[dict]:
+    """The #1022 manifest: the nested child first, then its containing parent.
+
+    Child first is deliberate. The child's own dedicated build registers
+    `NestedChildWidget_child-1`; the parent's build then re-renders the same
+    region as a nested descendant and writes that key a second time. That second
+    write is the one this subtask quiets.
+    """
+    return [
+        entry("nested_child_widget", "child-1", load="k1"),
+        entry("nesting_parent_widget", "parent-1", load="k1"),
+    ]
+
+
+def test_a_nested_child_that_is_also_its_own_candidate_registers_silently(caplog):
+    session = wired_session()
+    with (
+        request_scope(session=session),
+        caplog.at_level(logging.WARNING, logger="pyjinhx"),
+    ):
+        walk_manifest(nesting_manifest(), {"todos"})
+
+    assert [record.getMessage() for record in caplog.records] == []
+    # Both builds really ran — the quieting is about the noise, not about
+    # skipping the redundant work (an explicit Non-goal).
+    assert "child:k1" in LOAD_CALLS
+    assert "parent:k1" in LOAD_CALLS
+
+
+def test_the_nested_double_registration_does_not_crash_dev_strict(strict_dev):
+    """Today's false positive: dev-strict turns the benign shape into a 500."""
+    session = wired_session()
+    with request_scope(session=session):
+        candidates = walk_manifest(nesting_manifest(), {"todos"})
+
+    assert [candidate.instance_id for candidate in candidates] == ["parent-1"]
+
+
+def test_the_nesting_dedup_output_is_unchanged_by_the_quieting():
+    """Non-goal guard: which swap ships is still _drop_nested's call, unchanged."""
+    session = wired_session()
+    with request_scope(session=session):
+        candidates = walk_manifest(nesting_manifest(), {"todos"})
+        body = oob_swaps(candidates)
+
+    assert [(c.instance_id, c.status) for c in candidates] == [("parent-1", "dirty")]
+    swaps = re.findall(r'hx-swap-oob="([^:]+):\[data-pjx-id=\'([^\']+)\'', body)
+    assert swaps == [("outerHTML", "parent-1")]
+
+
+def test_two_unrelated_candidates_sharing_one_id_still_warn(caplog):
+    """The authoring bug is not masked: neither region is nested in the other."""
+    session = wired_session()
+    manifest = [
+        entry("fanout_widget", "shared", load="todo-1"),
+        entry("fanout_widget", "shared", load="todo-2"),
+    ]
+    with (
+        request_scope(session=session),
+        caplog.at_level(logging.WARNING, logger="pyjinhx"),
+    ):
+        walk_manifest(manifest, {"todos"})
+
+    messages = [record.getMessage() for record in caplog.records]
+    assert [m for m in messages if "FanoutWidget_shared" in m and "overwriting" in m]
+
+
+def test_two_unrelated_candidates_sharing_one_id_still_raise_under_strict(strict_dev):
+    """Same shape, dev-strict: the raise still travels out of the build pass."""
+    session = wired_session()
+    manifest = [
+        entry("fanout_widget", "shared", load="todo-1"),
+        entry("fanout_widget", "shared", load="todo-2"),
+    ]
+    with (
+        request_scope(session=session),
+        pytest.raises(InstanceKeyCollisionError, match="FanoutWidget_shared"),
+    ):
+        walk_manifest(manifest, {"todos"})
+
+
+def test_the_quieting_holds_on_the_inline_build_branch(caplog):
+    """The all-cheap branch runs on the caller's own ContextVars, not a copy."""
+    note_load_cost(NestedChildWidget, 0.0)
+    note_load_cost(NestingParentWidget, 0.0)
+
+    def no_pool(*args, **kwargs):
+        raise AssertionError("the too-cheap path must not build a ThreadPoolExecutor")
+
+    session = wired_session()
+    with (
+        request_scope(session=session),
+        pytest.MonkeyPatch.context() as patch,
+        caplog.at_level(logging.WARNING, logger="pyjinhx"),
+    ):
+        patch.setattr(fanout, "ThreadPoolExecutor", no_pool)
+        candidates = walk_manifest(nesting_manifest(), {"todos"})
+
+    assert [record.getMessage() for record in caplog.records] == []
+    assert [candidate.instance_id for candidate in candidates] == ["parent-1"]
+    # And the block left nothing behind on the caller's own context.
+    assert get_quiet_collisions() == frozenset()

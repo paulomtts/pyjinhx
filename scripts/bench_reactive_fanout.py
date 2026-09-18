@@ -323,9 +323,18 @@ def bench_build_pass(
             concurrent = time.perf_counter() - t0
         with request_scope():
             session, items = _build_items(candidates_n, template_dir)
+            # The same set _build_pass computes, entered the same way (once,
+            # around the whole loop) so the sequential leg prices identical
+            # work — including the one quiet block the pass opens, not one
+            # rebuilt per item.
+            pass_keys = frozenset(
+                registry.make_key(item.component_class.__name__, item.instance_id)
+                for item in items
+            )
             t0 = time.perf_counter()
-            for item in items:
-                _build_one(item, session)
+            with registry.quiet_collisions(pass_keys):
+                for item in items:
+                    _build_one(item, session)
             sequential = time.perf_counter() - t0
         return concurrent, sequential
     finally:

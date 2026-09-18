@@ -11,13 +11,22 @@ from pyjinhx.reactive.component import ReactiveComponent
 from pyjinhx.registry import (
     InstanceKeyCollisionError,
     make_key,
+    quiet_collisions,
+    quiet_collisions_except,
     register_instance,
     register_rendered_instance,
     resolve,
 )
 from pyjinhx.rendering import render_level
 from pyjinhx.segments import RenderedLevel, serialize
-from pyjinhx.session import RenderSession, _instances, get_instances, request_scope
+from pyjinhx.session import (
+    RenderSession,
+    _instances,
+    get_instances,
+    get_quiet_collisions,
+    get_quiet_collisions_except,
+    request_scope,
+)
 
 _TEMPLATE_DIR = Path(__file__).parent.parent / "templates"
 
@@ -335,3 +344,161 @@ def test_two_literal_id_instances_in_one_request_raise_under_strict_dev(strict_d
             InstanceKeyCollisionError, match="LiteralIdWidget_shared-literal"
         ):
             render_level(LiteralIdWidget(), session)
+
+
+def test_a_quieted_key_collides_silently_and_still_last_write_wins(caplog):
+    """The #1022 shape: the collision is expected, so only the log and the raise go."""
+    second = Widget("second")
+    with request_scope(), caplog.at_level(logging.WARNING, logger="pyjinhx"):
+        register_instance("Widget", "w1", Widget("first"))
+        with quiet_collisions([make_key("Widget", "w1")]):
+            register_instance("Widget", "w1", second)
+        assert caplog.records == []
+        # Last-write-wins is untouched: quieting suppresses the noise, never
+        # the overwrite.
+        assert resolve("Widget", "w1") is second
+
+
+def test_a_key_outside_the_quiet_set_still_warns_while_another_is_quieted(caplog):
+    """Quieting is per key, not a mode: the block does not hush the whole request."""
+    with request_scope(), caplog.at_level(logging.WARNING, logger="pyjinhx"):
+        register_instance("Widget", "w1", Widget("first"))
+        register_instance("Widget", "w2", Widget("first"))
+        with quiet_collisions([make_key("Widget", "w1")]):
+            register_instance("Widget", "w1", Widget("second"))
+            register_instance("Widget", "w2", Widget("second"))
+    assert len(caplog.records) == 1
+    assert "Widget_w2" in caplog.records[0].getMessage()
+
+
+def test_strict_mode_skips_the_raise_for_a_quieted_key_only(strict_dev):
+    """Dev-strict's false positive on the benign shape goes; the real one stays."""
+    second = Widget("second")
+    with request_scope():
+        register_instance("Widget", "w1", Widget("first"))
+        register_instance("Widget", "w2", Widget("first"))
+        with quiet_collisions([make_key("Widget", "w1")]):
+            register_instance("Widget", "w1", second)
+            assert resolve("Widget", "w1") is second
+            with pytest.raises(InstanceKeyCollisionError, match="Widget_w2"):
+                register_instance("Widget", "w2", Widget("second"))
+
+
+def test_the_same_key_collides_loudly_again_after_the_block_exits(caplog):
+    """The suppression is scoped to the block, not sticky for the request."""
+    with request_scope(), caplog.at_level(logging.WARNING, logger="pyjinhx"):
+        register_instance("Widget", "w1", Widget("first"))
+        with quiet_collisions([make_key("Widget", "w1")]):
+            register_instance("Widget", "w1", Widget("second"))
+        assert caplog.records == []
+        register_instance("Widget", "w1", Widget("third"))
+    assert len(caplog.records) == 1
+    assert "Widget_w1" in caplog.records[0].getMessage()
+
+
+def test_a_quiet_block_does_not_reach_into_a_nested_request_scope():
+    """One request's suppression is its own: a scope opened inside the block
+    starts loud, and what it quiets does not survive back out into the block.
+
+    The scope's own bind/reset lifecycle is pinned in tests/pyjinhx/test_session.py;
+    what this asserts is the pairing of the two, which is registry's to keep working.
+    """
+    with request_scope(), quiet_collisions([make_key("Widget", "w1")]):
+        assert get_quiet_collisions() == frozenset({"Widget_w1"})
+        with request_scope():
+            assert get_quiet_collisions() == frozenset()
+            with quiet_collisions([make_key("Widget", "inner")]):
+                assert get_quiet_collisions() == frozenset({"Widget_inner"})
+        assert get_quiet_collisions() == frozenset({"Widget_w1"})
+
+
+def test_nested_quiet_blocks_union_and_restore_the_outer_set():
+    """Composition, so a future second caller cannot strand the first one's set."""
+    with request_scope(), quiet_collisions([make_key("Widget", "a")]):
+        with quiet_collisions([make_key("Widget", "b")]):
+            assert get_quiet_collisions() == frozenset({"Widget_a", "Widget_b"})
+        assert get_quiet_collisions() == frozenset({"Widget_a"})
+
+
+def test_quiet_collisions_restores_the_previous_set_when_the_body_raises():
+    """The build pass lets a loader's exception travel; the set must not travel with it."""
+    with request_scope():
+        with (
+            pytest.raises(RuntimeError, match="boom"),
+            quiet_collisions([make_key("Widget", "w1")]),
+        ):
+            assert get_quiet_collisions() == frozenset({"Widget_w1"})
+            raise RuntimeError("boom")
+        assert get_quiet_collisions() == frozenset()
+
+
+def test_quiet_collisions_outside_request_scope_raises_nothing(caplog):
+    """Advisory, not load-bearing: no scope means no new failure mode."""
+    assert _instances.get() is None
+    with (
+        caplog.at_level(logging.WARNING, logger="pyjinhx"),
+        quiet_collisions([make_key("Widget", "w1")]),
+    ):
+        register_instance("Widget", "w1", Widget("orphan"))
+    # The out-of-scope drop happens before any quiet-set check, so its warning
+    # is untouched by the block.
+    assert len(caplog.records) == 1
+    assert "outside request_scope()" in caplog.records[0].getMessage()
+    assert get_quiet_collisions() == frozenset()
+
+
+def test_quiet_collisions_except_un_quiets_exactly_that_key(caplog):
+    """#1024's fixup: buying one key back out of a whole-set quiet block is O(1)."""
+    with (
+        request_scope(),
+        caplog.at_level(logging.WARNING, logger="pyjinhx"),
+        quiet_collisions([make_key("Widget", "w1"), make_key("Widget", "w2")]),
+    ):
+        register_instance("Widget", "w1", Widget("first"))
+        register_instance("Widget", "w2", Widget("first"))
+        with quiet_collisions_except(make_key("Widget", "w1")):
+            # w1 is un-quieted for this block even though the outer set names
+            # it; w2 stays quiet, since only w1 was singled back out.
+            register_instance("Widget", "w1", Widget("second"))
+            register_instance("Widget", "w2", Widget("second"))
+    assert len(caplog.records) == 1
+    assert "Widget_w1" in caplog.records[0].getMessage()
+
+
+def test_quiet_collisions_except_does_not_shrink_the_underlying_set(caplog):
+    """Un-quieting one key is a comparison, not a rebuild of the set itself."""
+    with (
+        request_scope(),
+        caplog.at_level(logging.WARNING, logger="pyjinhx"),
+        quiet_collisions([make_key("Widget", "w1")]),
+    ):
+        with quiet_collisions_except(make_key("Widget", "w1")):
+            assert get_quiet_collisions() == frozenset({"Widget_w1"})
+        # Outside the except block, the same key is quiet again.
+        register_instance("Widget", "w1", Widget("first"))
+        register_instance("Widget", "w1", Widget("second"))
+    assert caplog.records == []
+
+
+def test_quiet_collisions_except_restores_the_previous_exception_when_nested():
+    """A nested except block hands back exactly what it was given, not None."""
+    with request_scope():
+        assert get_quiet_collisions_except() is None
+        with quiet_collisions_except(make_key("Widget", "outer")):
+            assert get_quiet_collisions_except() == "Widget_outer"
+            with quiet_collisions_except(make_key("Widget", "inner")):
+                assert get_quiet_collisions_except() == "Widget_inner"
+            assert get_quiet_collisions_except() == "Widget_outer"
+        assert get_quiet_collisions_except() is None
+
+
+def test_quiet_collisions_except_restores_on_raise():
+    """The build pass lets a loader's exception travel; the exception key must not."""
+    with request_scope():
+        with (
+            pytest.raises(RuntimeError, match="boom"),
+            quiet_collisions_except(make_key("Widget", "w1")),
+        ):
+            assert get_quiet_collisions_except() == "Widget_w1"
+            raise RuntimeError("boom")
+        assert get_quiet_collisions_except() is None
