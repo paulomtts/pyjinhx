@@ -24,6 +24,7 @@ class TestFields:
         assert sel.placeholder == "Select…"
         assert sel.disabled is False
         assert sel.portal is False
+        assert sel.required is False
         assert sel.class_name == ""
 
     def test_name_is_required(self):
@@ -93,7 +94,7 @@ class TestRender:
         assert 'data-name="pick"' in head[: head.index(">")]
 
     def test_hidden_native_select_posts_under_the_name(self, session):
-        html = _html(session)
+        html = _html(session, value="a")
         assert '<select name="fruit"' in html
         assert html.count("<option ") == 2
 
@@ -147,7 +148,10 @@ class TestRender:
         assert "disabled>" in html
 
     def test_not_disabled_by_default(self, session):
-        html = _html(session)
+        # value="a" avoids the #1066 synthetic placeholder option, which is
+        # itself always `disabled` regardless of this component's own
+        # disabled prop — see TestUnmatchedValueNativeState.
+        html = _html(session, value="a")
         assert "data-disabled" not in html[: html.index(">")]
         assert "disabled" not in html
 
@@ -172,6 +176,55 @@ class TestRender:
     def test_portal_rejects_a_non_boolean(self):
         with pytest.raises(ValidationError):
             PJXSelect(id="s", name="fruit", options=OPTIONS, portal="yes please")  # type: ignore[arg-type]
+
+
+class TestUnmatchedValueNativeState:
+    """#1066: a native <select> with no <option selected> silently reports
+    the first option's value even when the visible UI shows the
+    placeholder. A synthetic empty option keeps ``.value`` honestly empty.
+    """
+
+    PLACEHOLDER_OPTION = '<option value="" selected disabled hidden></option>'
+
+    def test_no_value_gets_a_synthetic_empty_selected_option(self, session):
+        assert self.PLACEHOLDER_OPTION in _html(session)
+
+    def test_unmatched_value_gets_the_same_synthetic_option(self, session):
+        assert self.PLACEHOLDER_OPTION in _html(session, value="zzz")
+
+    def test_matched_value_gets_no_synthetic_option(self, session):
+        assert self.PLACEHOLDER_OPTION not in _html(session, value="a")
+
+    def test_multiple_with_no_value_gets_no_synthetic_option(self, session):
+        html = _html(session, multiple=True, value=None)
+        assert self.PLACEHOLDER_OPTION not in html
+
+    def test_multiple_with_empty_list_gets_no_synthetic_option(self, session):
+        html = _html(session, multiple=True, value=[])
+        assert self.PLACEHOLDER_OPTION not in html
+
+
+class TestRequired:
+    def test_required_rejects_a_non_boolean(self):
+        with pytest.raises(ValidationError):
+            PJXSelect(id="s", name="fruit", options=OPTIONS, required="yes please")  # type: ignore[arg-type]
+
+    def test_not_required_by_default(self, session):
+        assert " required" not in _html(session, value="a")
+
+    def test_required_flags_the_native_select(self, session):
+        html = _html(session, required=True, value="a")
+        assert '<select name="fruit" hidden required>' in html
+
+    def test_required_marks_the_trigger_aria_required(self, session):
+        html = _html(session, required=True, value="a")
+        trigger = html[html.index("data-pjx-select-trigger") :]
+        assert 'aria-required="true"' in trigger[: trigger.index(">")]
+
+    def test_trigger_has_no_aria_required_when_not_required(self, session):
+        html = _html(session, value="a")
+        trigger = html[html.index("data-pjx-select-trigger") :]
+        assert "aria-required" not in trigger[: trigger.index(">")]
 
 
 OPTIONS_WITH_BLANK = [

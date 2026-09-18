@@ -18,7 +18,18 @@ class PJXSelect(BaseComponent):
     The JS finds trigger and panel through ``data-pjx-select``, mirroring
     pjx_popover's trigger/panel split. A hidden native ``<select>`` carries the
     same options so a plain form submit still posts a value without JS. A
-    ``value`` that matches no option renders unselected rather than raising.
+    ``value`` that matches no option renders unselected rather than raising —
+    in single-select mode this adds a synthetic ``<option value="" selected
+    disabled hidden>`` so the native element's ``.value`` is honestly empty,
+    since an HTML ``<select>`` with no ``option[selected]`` otherwise defaults
+    its live value to the first option (#1066).
+
+    ``required`` forwards to the native ``<select>`` and mirrors ``aria-required``
+    onto the visible trigger, since the native element is hidden. When the
+    native element fails constraint validation on submit, the JS sets
+    ``aria-invalid="true"`` and a ``pjx-select--invalid`` class on the trigger
+    and focuses it — the browser can't anchor its own validation bubble to a
+    hidden control — clearing both as soon as a real selection is made (#1065).
 
     With ``multiple``, ``value`` is a list, every option row gets a checkbox,
     and the trigger summarises two or more selections as chips.
@@ -42,6 +53,7 @@ class PJXSelect(BaseComponent):
     multiple: bool = False
     placeholder: str = "Select…"
     disabled: bool = False
+    required: bool = False
     portal: bool = False
     class_name: AttrValue = ""
     extra_attrs: ExtraAttrs = Field(default_factory=dict)

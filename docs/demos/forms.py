@@ -56,6 +56,7 @@ def select():
             SelectOption(value="c", label="Cherry"),
         ],
         value="b",
+        required=True,
     ).render()
 
 

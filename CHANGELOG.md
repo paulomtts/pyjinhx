@@ -1,5 +1,21 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+- `PJXSelect` (single-select) no longer lets the native `<select>` silently
+  report the first option's value when nothing has actually been chosen: a
+  `value` matching no option now also renders a synthetic `<option value=""
+  selected disabled hidden>`, so anything reading `.value` (validation,
+  `required`, a plain `formData.get(...)`) sees an honestly empty value
+  instead of a phantom first-option pick (#1066).
+- `PJXSelect` gains a `required` prop, forwarded to the native `<select>` and
+  mirrored as `aria-required` on the trigger. Since the native element is
+  always hidden and can't anchor the browser's own validation bubble, a
+  failed constraint check on submit now sets `aria-invalid`/`pjx-select--invalid`
+  on the trigger and focuses it, clearing both as soon as a real selection is
+  made (#1065).
+
 ## 1.9.8 — Portals, asset tokens, and a builtin-before-app CSS guarantee (2026-08-29)
 
 ### Added
