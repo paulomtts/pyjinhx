@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.9.9 — Select's required/empty-value handling, quieter nested fan-out registrations (2026-09-19)
 
 ### Fixed
 - The reactive fan-out build pass no longer logs a confusing "already
