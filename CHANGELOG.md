@@ -3,6 +3,17 @@
 ## Unreleased
 
 ### Fixed
+- The reactive fan-out build pass no longer logs a confusing "already
+  registered; overwriting" warning (or raises `InstanceKeyCollisionError`
+  under dev-strict) when a surviving top-level manifest candidate is also a
+  strict descendant of another surviving candidate's tree — a structural
+  case, not a hard-coded-id authoring bug. `registry.quiet_collisions()`, a
+  request-scoped context manager, marks the other surviving candidates'
+  composite keys as an expected collision for the duration of one
+  candidate's build, while its own key stays loud so a genuine same-id
+  collision still warns/raises. `_drop_nested`'s existing containment-based
+  output filtering is unchanged — this only silences the registry noise from
+  the redundant build (#1022).
 - `PJXSelect` (single-select) no longer lets the native `<select>` silently
   report the first option's value when nothing has actually been chosen: a
   `value` matching no option now also renders a synthetic `<option value=""
