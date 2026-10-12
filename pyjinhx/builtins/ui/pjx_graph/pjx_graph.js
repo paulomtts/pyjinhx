@@ -87,6 +87,8 @@ var __pjxD3=(()=>{var fe=Object.defineProperty;var vn=Object.getOwnPropertyDescr
   const instances = new WeakMap();
   // Room left around the nodes when a fit frames them.
   const FIT_PAD = 48;
+  // A press that moves no further than this, in screen pixels, is a click.
+  const DRAG_SLOP = 4;
 
   // One control step; two steps double or halve the scale.
   const ZOOM_STEP = Math.SQRT2;
@@ -262,6 +264,11 @@ var __pjxD3=(()=>{var fe=Object.defineProperty;var vn=Object.getOwnPropertyDescr
       const value = coordinate(node, axis);
       if (value !== null) node.style.setProperty('--pjx-graph-node-' + axis, value + 'px');
     });
+  }
+
+  function moveTo(node, x, y) {
+    node.style.setProperty('--pjx-graph-node-x', x + 'px');
+    node.style.setProperty('--pjx-graph-node-y', y + 'px');
   }
 
   // A missing attribute reads as empty, as PJXGraphEdges would have written it.
@@ -512,7 +519,61 @@ var __pjxD3=(()=>{var fe=Object.defineProperty;var vn=Object.getOwnPropertyDescr
       root.dispatchEvent(new CustomEvent('pjx:graph:rendered', { bubbles: true, detail: null }));
     }
 
+    function draggable(target) {
+      const node = target.closest('[data-node-id]');
+      return node && viewport.contains(node) ? node : null;
+    }
+
+    function listenForDrag() {
+      let press = null;
+
+      function follow(event) {
+        if (event.pointerId !== press.pointerId) return;
+        const dx = event.clientX - press.clientX;
+        const dy = event.clientY - press.clientY;
+        if (!press.dragging && Math.hypot(dx, dy) <= DRAG_SLOP) return;
+        press.dragging = true;
+        const k = d3.zoomTransform(canvas).k;
+        // Whole pixels, so the live position is the one the drop reports.
+        press.x = Math.round(press.startX + dx / k);
+        press.y = Math.round(press.startY + dy / k);
+        moveTo(press.node, press.x, press.y);
+      }
+
+      function end(event) {
+        if (event.pointerId !== press.pointerId) return;
+        const done = press;
+        press = null;
+        window.removeEventListener('pointermove', follow);
+        window.removeEventListener('pointerup', end);
+        window.removeEventListener('pointercancel', end);
+        if (!done.dragging) return;
+        const id = done.node.getAttribute('data-node-id');
+        root.dispatchEvent(new CustomEvent('pjx:graph:move',
+          { bubbles: true, detail: { id: id, x: done.x, y: done.y } }));
+      }
+
+      canvas.addEventListener('pointerdown', (event) => {
+        if (press !== null || event.button !== 0 || event.ctrlKey) return;
+        const node = draggable(event.target);
+        if (!node) return;
+        // Where the node shows now: its drop, or the server's position.
+        const style = node.style;
+        press = {
+          node: node, pointerId: event.pointerId, dragging: false,
+          clientX: event.clientX, clientY: event.clientY,
+          startX: parseFloat(style.getPropertyValue('--pjx-graph-node-x')),
+          startY: parseFloat(style.getPropertyValue('--pjx-graph-node-y')),
+        };
+        // On window, so the drag goes on outside the canvas.
+        window.addEventListener('pointermove', follow);
+        window.addEventListener('pointerup', end);
+        window.addEventListener('pointercancel', end);
+      });
+    }
+
     listenForSelection(root, canvas, viewport, plane, choose, deselect);
+    listenForDrag();
     return {
       root: root, box: box, inAnchor: inAnchor, outAnchor: outAnchor, fit: fit, zoomBy: zoomBy,
       drawEdges: drawEdges, select: select, deselect: deselect,
