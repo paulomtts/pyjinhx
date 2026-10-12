@@ -12,6 +12,7 @@ graph event a drag could fire, which also proves they bubble.
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -407,4 +408,66 @@ def test_a_press_on_a_nested_stage_background_does_not_move_the_outer_node(
     _drag(page, (round(box["x"] + 400), round(box["y"] + 150)))
     assert _position(page, "g-a") == ["20px", "20px"]
     assert _events(page, "move") == []
+    assert page_errors == []
+
+
+# Edges
+
+# The d of the visible path a stage's own plane draws for an edge id.
+EDGE_D = """([stage, id]) => Array.from(document.querySelectorAll('#' + stage
+    + ' > .pjx-graph__canvas > .pjx-graph__viewport > svg.pjx-graph__edge-plane'
+    + ' > path.pjx-graph__edge'))
+    .find((path) => path.getAttribute('data-edge-id') === id).getAttribute('d')"""
+
+OUT_ANCHOR = """([stage, id, port]) =>
+    pjx.graph.get(document.getElementById(stage)).outAnchor(id, port)"""
+
+# The screen point halfway along the stage's first edge hit path.
+EDGE_POINT = """() => {
+    const hit = document.querySelector('#g path.pjx-graph__edge-hit');
+    const mid = hit.getPointAtLength(hit.getTotalLength() / 2);
+    const at = new DOMPoint(mid.x, mid.y).matrixTransform(hit.getScreenCTM());
+    return [at.x, at.y];
+}"""
+
+MARKED = "() => document.querySelectorAll('#g path.pjx-graph__edge--selected').length"
+
+NUMBER = re.compile(r"-?\d+(?:\.\d+)?(?:e[-+]?\d+)?")
+
+
+def _linked(session) -> str:
+    """n1 at (100, 100) wired from its ok port to n2 at (500, 100)."""
+    nodes = [_start(), _node("n2", 500, 100, in_port=True, title="End")]
+    edges = [{"id": "e1", "from": "n1", "to": "n2", "port": "ok"}]
+    return _keyed(session, nodes, edges=edges)
+
+
+def _numbers(d: str) -> list[float]:
+    return [float(n) for n in NUMBER.findall(d)]
+
+
+def test_an_edge_follows_the_dragged_node_without_a_rendered_event(
+    page, page_errors, session
+):
+    _serve(page, _linked(session))
+    before = page.evaluate(EDGE_D, ["g", "e1"])
+    rendered = len(_events(page, "rendered"))
+    _press(page, _center(page, _title()))
+    during = page.evaluate(EDGE_D, ["g", "e1"])
+    anchor = page.evaluate(OUT_ANCHOR, ["g", "n1", "ok"])
+    assert during != before
+    assert _numbers(during)[:2] == pytest.approx([anchor["x"], anchor["y"]], abs=0.01)
+    page.mouse.up()
+    assert len(_events(page, "rendered")) == rendered
+    assert page_errors == []
+
+
+def test_a_selected_edge_stays_marked_through_a_drag(page, page_errors, session):
+    _serve(page, _linked(session))
+    page.mouse.click(*page.evaluate(EDGE_POINT))
+    assert page.evaluate(MARKED) == 1
+    _press(page, _center(page, _title()))
+    assert page.evaluate(MARKED) == 1
+    page.mouse.up()
+    assert page.evaluate(MARKED) == 1
     assert page_errors == []

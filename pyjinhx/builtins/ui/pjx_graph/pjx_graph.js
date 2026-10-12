@@ -468,7 +468,7 @@ var __pjxD3=(()=>{var fe=Object.defineProperty;var vn=Object.getOwnPropertyDescr
       return node !== null && node.getClientRects().length > 0;
     }
 
-    function drawEdges() {
+    function redraw() {
       drawn.forEach((el) => el.remove());
       drawn = [];
       // A span with no edge id at all is not an edge; an empty one still is.
@@ -518,6 +518,10 @@ var __pjxD3=(()=>{var fe=Object.defineProperty;var vn=Object.getOwnPropertyDescr
       // The redrawn paths are new elements, so the selection's class goes
       // back on; a selected edge that is gone keeps its selection for later.
       mark(true);
+    }
+
+    function drawEdges() {
+      redraw();
       root.dispatchEvent(new CustomEvent('pjx:graph:rendered', { bubbles: true, detail: null }));
     }
 
@@ -550,6 +554,8 @@ var __pjxD3=(()=>{var fe=Object.defineProperty;var vn=Object.getOwnPropertyDescr
         press.x = Math.round(press.startX + dx / k);
         press.y = Math.round(press.startY + dy / k);
         moveTo(press.node, press.x, press.y);
+        // Silent: rendered follows a reconcile, not every pointer move.
+        redraw();
       }
 
       function end(event) {
