@@ -379,3 +379,139 @@ def test_opposite_edges_share_one_fan_and_other_pairs_stay_unfanned(
         _expected(out_a, _call(page, "inAnchor", "c")), abs=0.5
     )
     assert page_errors == []
+
+
+# State and label
+
+LABELS = """id => Array.from(document.querySelectorAll('#' + id
+        + ' > .pjx-graph__canvas > .pjx-graph__viewport > svg.pjx-graph__edge-plane > text'))
+    .map(text => {
+        const along = text.querySelector('textPath');
+        const target = document.getElementById(along.getAttribute('href').slice(1));
+        return {cls: text.getAttribute('class'), edge: text.getAttribute('data-edge-id'),
+                text: along.textContent, offset: along.getAttribute('startOffset'),
+                anchor: along.getAttribute('text-anchor'),
+                elements: text.querySelectorAll('*').length,
+                target: target && target.getAttribute('data-edge-id'),
+                targetClass: target && target.getAttribute('class'),
+                stage: target && target.closest('[data-pjx-graph]').id};
+    })"""
+
+
+def _labels(page: Page, stage_id: str = "g") -> list[dict]:
+    return page.evaluate(LABELS, stage_id)
+
+
+def test_the_state_becomes_a_class_modifier_when_it_is_one_token(
+    page, page_errors, session
+):
+    _seed(page, IDENTITY)
+    edges = [
+        _edge("f", "a", "b", state="failed"),
+        _edge("n", "a", "c"),
+        _edge("s", "b", "c", state="very bad"),
+    ]
+    _serve(page, _stage(session, _trio(), edges=edges, storage_key="flow"))
+    assert [(el["edge"], el["cls"], el["state"]) for el in _visible(page)] == [
+        ("f", "pjx-graph__edge pjx-graph__edge--failed", "failed"),
+        ("n", "pjx-graph__edge", ""),
+        ("s", "pjx-graph__edge", "very bad"),
+    ]
+    assert page_errors == []
+
+
+def _label(edge: str, text: str, stage: str = "g") -> dict:
+    return {
+        "cls": "pjx-graph__edge-label",
+        "edge": edge,
+        "text": text,
+        "offset": "50%",
+        "anchor": "middle",
+        "elements": 1,
+        "target": edge,
+        "targetClass": "pjx-graph__edge",
+        "stage": stage,
+    }
+
+
+def test_a_label_follows_its_path_as_literal_text(page, page_errors, session):
+    _seed(page, IDENTITY)
+    edges = [
+        _edge("l", "a", "b", label="Retry"),
+        _edge("m", "a", "c", label="<b>&"),
+        _edge("x", "b", "c"),
+    ]
+    _serve(page, _stage(session, _trio(), edges=edges, storage_key="flow"))
+    assert _labels(page) == [_label("l", "Retry"), _label("m", "<b>&")]
+    assert page.evaluate("() => document.querySelectorAll('svg b').length") == 0
+    assert [(el["tag"], el["edge"]) for el in _plane(page)] == [
+        ("path", "l"),
+        ("path", "l"),
+        ("text", "l"),
+        ("path", "m"),
+        ("path", "m"),
+        ("text", "m"),
+        ("path", "x"),
+        ("path", "x"),
+    ]
+    assert page_errors == []
+
+
+def test_path_ids_are_unique_across_stages_reusing_edge_ids(page, page_errors, session):
+    _seed(page, IDENTITY)
+    edges = [_edge("zz1", "a", "b", label="one"), _edge("zz2", "a", "c", label="two")]
+    _serve(
+        page,
+        _stage(session, _trio(), edges=edges, storage_key="flow")
+        + _stage(session, _trio("h"), "h", edges=edges),
+    )
+    ids = page.evaluate(
+        "() => Array.from(document.querySelectorAll('[id]'), el => el.id)"
+    )
+    assert len(ids) == len(set(ids))
+    paths = [el["id"] for stage in ("g", "h") for el in _visible(page, stage)]
+    assert len(paths) == 4
+    assert all(path_id and "zz" not in path_id for path_id in paths)
+    assert _labels(page) == [_label("zz1", "one"), _label("zz2", "two")]
+    assert _labels(page, "h") == [_label("zz1", "one", "h"), _label("zz2", "two", "h")]
+    assert page_errors == []
+
+
+def test_markup_characters_in_ids_states_and_labels_stay_inert(
+    page, page_errors, console_errors, session
+):
+    _seed(page, IDENTITY)
+    odd = "<i>&'] x"
+    edges = [_edge(odd, "a", "b", state="<i>&']", label=odd)]
+    _serve(page, _stage(session, _trio(), edges=edges, storage_key="flow"))
+    [line] = _visible(page)
+    assert (line["edge"], line["state"], line["cls"]) == (
+        odd,
+        "<i>&']",
+        "pjx-graph__edge pjx-graph__edge--<i>&']",
+    )
+    assert _labels(page) == [_label(odd, odd)]
+    assert page.evaluate("() => document.querySelectorAll('i').length") == 0
+    assert console_errors == []
+    assert page_errors == []
+
+
+def test_label_styles_come_from_tokens_and_an_app_state_rule_wins(
+    page, page_errors, session
+):
+    _seed(page, IDENTITY)
+    nodes = [_node("a", 20, 40, title="A"), _node("b", 400, 40, title="B")]
+    edges = [_edge("e1", "a", "b", state="failed", label="Retry")]
+    # App CSS loads after the builtin's; same specificity, so it wins.
+    css = THEME + ".pjx-graph__edge--failed { stroke: rgb(200, 0, 0); }"
+    _serve(page, _stage(session, nodes, edges=edges, storage_key="flow"), css)
+    assert page.evaluate(STYLE, ["g", "path.pjx-graph__edge"])["stroke"] == (
+        "rgb(200, 0, 0)"
+    )
+    label = page.evaluate(STYLE, ["g", "text.pjx-graph__edge-label"])
+    assert (label["fill"], label["size"], label["events"]) == (
+        "rgb(40, 50, 60)",
+        "12px",
+        "none",
+    )
+    assert page_errors == []

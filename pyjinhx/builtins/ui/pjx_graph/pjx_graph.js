@@ -372,17 +372,31 @@ var __pjxD3=(()=>{var fe=Object.defineProperty;var vn=Object.getOwnPropertyDescr
         const id = attr(edge, 'data-edge-id');
         const d = edgePath(outAnchor(from, attr(edge, 'data-port')), inAnchor(to),
           fanOffset(nth, totals.get(pair)));
+        const state = attr(edge, 'data-state');
+        // A state is the app's word; only a single token can become a class.
+        const modifier = /^\S+$/.test(state) ? ' pjx-graph__edge--' + state : '';
         // The wide transparent twin goes first, underneath, as the press target.
         drawn.push(svg('path', { class: 'pjx-graph__edge-hit', d: d, 'data-edge-id': id }));
         drawn.push(svg('path', {
-          class: 'pjx-graph__edge',
+          class: 'pjx-graph__edge' + modifier,
           id: prefix + index,
           d: d,
           'data-edge-id': id,
           'data-from': from,
           'data-to': to,
-          'data-state': attr(edge, 'data-state'),
+          'data-state': state,
         }));
+        const label = attr(edge, 'data-label');
+        if (label) {
+          const text = svg('text', { class: 'pjx-graph__edge-label', 'data-edge-id': id });
+          const along = svg('textPath', {
+            href: '#' + prefix + index, startOffset: '50%', 'text-anchor': 'middle',
+          });
+          // Text, never markup: a label shows exactly as written.
+          along.textContent = label;
+          text.append(along);
+          drawn.push(text);
+        }
       });
       plane.append(...drawn);
     }

@@ -8,6 +8,8 @@
   --pjx-graph-edge-stroke: var(--border);
   --pjx-graph-edge-width: 1.5px;
   --pjx-graph-edge-hit-width: 14px;
+  --pjx-graph-edge-label-color: var(--text-muted);
+  --pjx-graph-edge-label-size: 0.75rem;
 }
 
 .pjx-graph {
@@ -57,6 +59,13 @@
   stroke: transparent;
   stroke-width: var(--pjx-graph-edge-hit-width);
   pointer-events: stroke;
+}
+
+/* No per-state rules: .pjx-graph__edge--<state> is the app's hook. */
+.pjx-graph__edge-label {
+  fill: var(--pjx-graph-edge-label-color);
+  font-size: var(--pjx-graph-edge-label-size);
+  pointer-events: none;
 }
 
 .pjx-graph__nodes {
