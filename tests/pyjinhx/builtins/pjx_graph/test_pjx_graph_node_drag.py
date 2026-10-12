@@ -552,3 +552,87 @@ def test_broken_storage_still_drags_and_fires_move(page, page_errors, session):
     assert _position(page) == [f"{x}px", f"{y}px"]
     assert _events(page, "move") == [_move("n1", x, y)]
     assert page_errors == []
+
+
+# Placing stored drops at mount
+
+
+def test_a_drop_survives_a_reload(page, page_errors, session):
+    _serve(page, _keyed(session))
+    _drag(page, _center(page, _title()))
+    _reload(page)
+    assert _position(page) == ["160px", "140px"]
+    assert _record(page) == {"view": IDENTITY_VIEW, "nodes": {"n1": STORED}}
+    assert page_errors == []
+
+
+def test_an_unchanged_server_position_keeps_the_drop(page, page_errors, session):
+    seeded = json.dumps(
+        {
+            "view": IDENTITY_VIEW,
+            "nodes": {"n1": {"x": 40, "y": 30, "base": {"x": 100, "y": 100}}},
+        }
+    )
+    _serve(page, _keyed(session), record=seeded)
+    assert _position(page) == ["40px", "30px"]
+    assert _raw(page) == seeded
+    assert page_errors == []
+
+
+def test_a_dragged_drop_starts_from_where_it_shows(page, page_errors, session):
+    nodes = {"n1": {"x": 40, "y": 30, "base": {"x": 100, "y": 100}}}
+    _serve(page, _keyed(session), record={"view": IDENTITY_VIEW, "nodes": nodes})
+    _drag(page, _center(page, _title()))
+    assert _events(page, "move") == [_move("n1", 100, 70)]
+    assert page_errors == []
+
+
+def test_a_changed_server_position_discards_the_drop(page, page_errors, session):
+    nodes = {
+        "n1": {"x": 40, "y": 30, "base": {"x": 50, "y": 50}},
+        "absent": {"x": 1, "y": 2, "base": {"x": 3, "y": 4}},
+    }
+    _serve(page, _keyed(session), record={"view": IDENTITY_VIEW, "nodes": nodes})
+    assert _position(page) == ["100px", "100px"]
+    assert _record(page) == {
+        "view": IDENTITY_VIEW,
+        "nodes": {"absent": nodes["absent"]},
+    }
+    assert page_errors == []
+
+
+@pytest.mark.parametrize(
+    "override",
+    [
+        {"x": "a"},
+        {"x": 1, "y": 2},
+        {"x": 1, "y": 2, "base": None},
+        {"x": 1, "y": 2, "base": {"x": "100", "y": 100}},
+        None,
+        7,
+    ],
+    ids=["text-x", "no-base", "null-base", "text-base", "null", "number"],
+)
+def test_a_malformed_drop_is_ignored_and_discarded(
+    page, page_errors, session, override
+):
+    _serve(
+        page,
+        _keyed(session),
+        record={"view": IDENTITY_VIEW, "nodes": {"n1": override}},
+    )
+    assert _position(page) == ["100px", "100px"]
+    assert _record(page) == {"view": IDENTITY_VIEW, "nodes": {}}
+    assert page_errors == []
+
+
+@pytest.mark.parametrize("node_id", ["__proto__", "constructor"])
+def test_a_prototype_named_id_restores_across_a_reload(
+    page, page_errors, session, node_id
+):
+    _serve(page, _keyed(session, [_node(node_id, title="Odd")]))
+    _drag(page, _center(page, _title(f"g-{node_id}")))
+    _reload(page)
+    assert _position(page, f"g-{node_id}") == ["160px", "140px"]
+    assert _record(page)["nodes"] == {node_id: STORED}
+    assert page_errors == []

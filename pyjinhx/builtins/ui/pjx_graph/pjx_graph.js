@@ -215,6 +215,12 @@ var __pjxD3=(()=>{var fe=Object.defineProperty;var vn=Object.getOwnPropertyDescr
     return nodes && typeof nodes === 'object' && !Array.isArray(nodes) ? nodes : null;
   }
 
+  function usableOverride(o) {
+    return o !== null && typeof o === 'object' && Number.isFinite(o.x) && Number.isFinite(o.y)
+      && o.base !== null && typeof o.base === 'object'
+      && Number.isFinite(o.base.x) && Number.isFinite(o.base.y);
+  }
+
   function saveOverride(key, id, override) {
     const record = readRecord(key);
     const nodes = overridesOf(record) || {};
@@ -296,6 +302,29 @@ var __pjxD3=(()=>{var fe=Object.defineProperty;var vn=Object.getOwnPropertyDescr
   function moveTo(node, x, y) {
     node.style.setProperty('--pjx-graph-node-x', x + 'px');
     node.style.setProperty('--pjx-graph-node-y', y + 'px');
+  }
+
+  // A drop holds while the server still sends the position it was made
+  // from. Once the server moves the node, the server wins and the drop is
+  // forgotten, so a later return to the old spot cannot bring it back.
+  function placeAll(nodes, key) {
+    const record = key ? readRecord(key) : {};
+    const overrides = overridesOf(record);
+    let discarded = false;
+    nodes.forEach((node) => {
+      place(node);
+      const id = node.getAttribute('data-node-id');
+      if (!overrides || !own(overrides, id)) return;
+      const o = overrides[id];
+      if (usableOverride(o) && o.base.x === coordinate(node, 'x')
+          && o.base.y === coordinate(node, 'y')) {
+        moveTo(node, o.x, o.y);
+      } else {
+        delete overrides[id];
+        discarded = true;
+      }
+    });
+    if (discarded) writeRecord(key, record);
   }
 
   // A missing attribute reads as empty, as PJXGraphEdges would have written it.
@@ -656,7 +685,8 @@ var __pjxD3=(()=>{var fe=Object.defineProperty;var vn=Object.getOwnPropertyDescr
     const plane = part(viewport, 'svg.pjx-graph__edge-plane', true);
     part(viewport, '.pjx-graph__nodes', false);
     const view = attachZoom(root, canvas, viewport);
-    nodesOf(root, viewport).forEach(place);
+    // Before the edges and any fit, so both see where the nodes show.
+    placeAll(nodesOf(root, viewport), view.key);
     const instance = createInstance(root, canvas, viewport, plane, view);
     instances.set(root, instance);
     listenForControls(root, canvas, instance);
