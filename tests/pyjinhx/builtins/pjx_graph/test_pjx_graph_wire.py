@@ -480,3 +480,56 @@ def test_a_source_removed_mid_drag_drops_the_ghost_and_fires_nothing(
     page.mouse.up()
     assert _events(page, "wire") == []
     assert page_errors == []
+
+
+# Selection and page text
+
+
+def test_a_wire_drop_changes_no_selection(page, page_errors, session):
+    _serve(page, _keyed(session))
+    page.click(_title())
+    _forget(page)
+    x, y = _center(page, _port())
+    _wire(page, (x, y), _center(page, _title("g-n2")))
+    _wire(page, (x, y), (x + 30, y + 200))
+    _wire(page, (x, y), _center(page, _title()))
+    assert _events(page, "before-select", "select", "deselect") == []
+    assert page.evaluate(SELECTED) == ["g-n1"]
+    page.mouse.click(*_center(page, _title("g-n2")))
+    assert [e["type"] for e in _events(page, "before-select", "select")] == [
+        "before-select",
+        "select",
+    ]
+    assert page.evaluate(SELECTED) == ["g-n2"]
+    assert page_errors == []
+
+
+def test_a_wire_drag_selects_no_page_text(page, page_errors, session):
+    _serve(page, "<p id='words'>Some words to select</p>" + _keyed(session))
+    words = page.locator("#words").bounding_box()
+    assert words is not None
+    _wire(page, _center(page, _port()), (round(words["x"] + 2), round(words["y"] + 4)))
+    assert page.evaluate("() => window.getSelection().toString()") == ""
+    assert page_errors == []
+
+
+@pytest.mark.parametrize("ending", ["release", "cancel"])
+def test_page_text_selects_again_after_a_wire_ends(page, page_errors, session, ending):
+    _serve(page, _keyed(session) + "<p id='words'>Some words to select</p>")
+    x, y = _center(page, _port())
+    _press(page, (x, y), (x + 30, y + 200))
+    if ending == "cancel":
+        page.evaluate(
+            "() => window.dispatchEvent(new PointerEvent('pointercancel',"
+            " { pointerId: 1, bubbles: true }))"
+        )
+    page.mouse.up()
+    words = page.locator("#words").bounding_box()
+    assert words is not None
+    middle = round(words["y"] + words["height"] / 2)
+    page.mouse.move(round(words["x"] + 1), middle)
+    page.mouse.down()
+    page.mouse.move(round(words["x"] + words["width"] - 1), middle, steps=4)
+    page.mouse.up()
+    assert page.evaluate("() => window.getSelection().toString()") != ""
+    assert page_errors == []

@@ -591,11 +591,17 @@ var __pjxD3=(()=>{var fe=Object.defineProperty;var vn=Object.getOwnPropertyDescr
       return node;
     }
 
+    // The click that follows a dragged release must not select; armed for
+    // that one click only, since a release does not always produce one.
+    let swallow = false;
+
+    function swallowClick() {
+      swallow = true;
+      setTimeout(() => { swallow = false; }, 0);
+    }
+
     function listenForDrag() {
       let press = null;
-      // The click that follows a drop must not select; armed for that one
-      // click only, since a release does not always produce one.
-      let swallow = false;
 
       function follow(event) {
         if (event.pointerId !== press.pointerId) return;
@@ -621,8 +627,7 @@ var __pjxD3=(()=>{var fe=Object.defineProperty;var vn=Object.getOwnPropertyDescr
         window.removeEventListener('pointercancel', end);
         document.removeEventListener('selectstart', block);
         if (!done.dragging) return;
-        swallow = true;
-        setTimeout(() => { swallow = false; }, 0);
+        swallowClick();
         const id = done.node.getAttribute('data-node-id');
         const baseX = coordinate(done.node, 'x');
         const baseY = coordinate(done.node, 'y');
@@ -655,13 +660,6 @@ var __pjxD3=(()=>{var fe=Object.defineProperty;var vn=Object.getOwnPropertyDescr
         window.addEventListener('pointercancel', end);
         document.addEventListener('selectstart', block);
       });
-
-      // Capturing, so it runs before the selection listener on the canvas.
-      canvas.addEventListener('click', (event) => {
-        if (!swallow) return;
-        swallow = false;
-        event.stopImmediatePropagation();
-      }, true);
     }
 
     // The nearest node, when it is one of this stage's own.
@@ -709,7 +707,10 @@ var __pjxD3=(()=>{var fe=Object.defineProperty;var vn=Object.getOwnPropertyDescr
         window.removeEventListener('pointermove', follow);
         window.removeEventListener('pointerup', end);
         window.removeEventListener('pointercancel', end);
-        if (!done.dragging || event.type !== 'pointerup' || !findNode(done.from)) return;
+        document.removeEventListener('selectstart', block);
+        if (!done.dragging) return;
+        swallowClick();
+        if (event.type !== 'pointerup' || !findNode(done.from)) return;
         // The ghost takes no pointer events, so it never hides the node below.
         const hit = document.elementFromPoint(event.clientX, event.clientY);
         const target = hit && ownNode(hit);
@@ -719,6 +720,10 @@ var __pjxD3=(()=>{var fe=Object.defineProperty;var vn=Object.getOwnPropertyDescr
         if (to === done.from) return;
         root.dispatchEvent(new CustomEvent('pjx:graph:wire',
           { bubbles: true, detail: { from: done.from, port: done.port, to: to } }));
+      }
+
+      function block(event) {
+        event.preventDefault();
       }
 
       canvas.addEventListener('pointerdown', (event) => {
@@ -735,8 +740,16 @@ var __pjxD3=(()=>{var fe=Object.defineProperty;var vn=Object.getOwnPropertyDescr
         window.addEventListener('pointermove', follow);
         window.addEventListener('pointerup', end);
         window.addEventListener('pointercancel', end);
+        document.addEventListener('selectstart', block);
       });
     }
+
+    // Capturing, so it runs before the selection listener on the canvas.
+    canvas.addEventListener('click', (event) => {
+      if (!swallow) return;
+      swallow = false;
+      event.stopImmediatePropagation();
+    }, true);
 
     listenForSelection(root, canvas, viewport, plane, choose, deselect);
     listenForDrag();
