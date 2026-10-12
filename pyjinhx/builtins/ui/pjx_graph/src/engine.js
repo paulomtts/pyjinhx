@@ -592,8 +592,64 @@
       }, true);
     }
 
+    // The nearest node, when it is one of this stage's own.
+    function ownNode(target) {
+      const node = target.closest('[data-node-id]');
+      return node && viewport.contains(node) && node.closest('[data-pjx-graph]') === root
+        ? node : null;
+    }
+
+    // Starts on an out-port and ends on another node; the app creates the
+    // edge, so the engine only reports the request.
+    function listenForWire() {
+      let wire = null;
+
+      function follow(event) {
+        if (event.pointerId !== wire.pointerId) return;
+        const dx = event.clientX - wire.clientX;
+        const dy = event.clientY - wire.clientY;
+        if (!wire.dragging && Math.hypot(dx, dy) <= DRAG_SLOP) return;
+        wire.dragging = true;
+      }
+
+      function end(event) {
+        if (event.pointerId !== wire.pointerId) return;
+        const done = wire;
+        wire = null;
+        window.removeEventListener('pointermove', follow);
+        window.removeEventListener('pointerup', end);
+        window.removeEventListener('pointercancel', end);
+        if (!done.dragging || event.type !== 'pointerup') return;
+        const hit = document.elementFromPoint(event.clientX, event.clientY);
+        const target = hit && ownNode(hit);
+        if (!target) return;
+        const to = target.getAttribute('data-node-id');
+        // Never a self-loop: a drop back on the source cancels.
+        if (to === done.from) return;
+        root.dispatchEvent(new CustomEvent('pjx:graph:wire',
+          { bubbles: true, detail: { from: done.from, port: done.port, to: to } }));
+      }
+
+      canvas.addEventListener('pointerdown', (event) => {
+        if (wire !== null || event.button !== 0 || event.ctrlKey) return;
+        const port = event.target.closest('[data-pjx-graph-port="out"]');
+        const node = port && ownNode(port);
+        if (!node) return;
+        wire = {
+          from: node.getAttribute('data-node-id'), port: attr(port, 'data-port'),
+          pointerId: event.pointerId, dragging: false,
+          clientX: event.clientX, clientY: event.clientY,
+        };
+        // On window, so a release outside the canvas still ends the wire.
+        window.addEventListener('pointermove', follow);
+        window.addEventListener('pointerup', end);
+        window.addEventListener('pointercancel', end);
+      });
+    }
+
     listenForSelection(root, canvas, viewport, plane, choose, deselect);
     listenForDrag();
+    listenForWire();
     return {
       root: root, box: box, inAnchor: inAnchor, outAnchor: outAnchor, fit: fit, zoomBy: zoomBy,
       drawEdges: drawEdges, select: select, deselect: deselect,
