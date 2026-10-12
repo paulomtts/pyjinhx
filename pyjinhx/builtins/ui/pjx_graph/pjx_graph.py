@@ -17,8 +17,8 @@ class PJXGraph(BaseComponent):
     controls: Slot = ""
     panel: Slot = ""
     storage_key: str = ""
-    scale_min: float = Field(default=0.2, gt=0)
-    scale_max: float = Field(default=2.0, gt=0)
+    scale_min: float = Field(default=0.2, gt=0, allow_inf_nan=False)
+    scale_max: float = Field(default=2.0, gt=0, allow_inf_nan=False)
     aria_label: str = "Graph"
     class_name: AttrValue = ""
     extra_attrs: ExtraAttrs = Field(default_factory=dict)

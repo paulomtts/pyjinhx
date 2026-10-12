@@ -65,6 +65,14 @@ class TestFields:
         with pytest.raises(ValidationError):
             PJXGraph(id="g", nodes=NODES, scale_min=scale_min, scale_max=scale_max)
 
+    @pytest.mark.parametrize(
+        ("scale_min", "scale_max"), [(0.2, float("inf")), (float("inf"), float("inf"))]
+    )
+    def test_scale_validation_rejects_infinity(self, scale_min, scale_max):
+        # str(inf) renders "inf", which the engine cannot parse as a number.
+        with pytest.raises(ValidationError):
+            PJXGraph(id="g", nodes=NODES, scale_min=scale_min, scale_max=scale_max)
+
     def test_equal_scale_bounds_are_accepted(self):
         graph = PJXGraph(id="g", nodes=NODES, scale_min=1, scale_max=1)
         assert graph.scale_min == graph.scale_max == 1.0
