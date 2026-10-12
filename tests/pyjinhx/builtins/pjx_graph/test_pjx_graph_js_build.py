@@ -7,10 +7,9 @@ chromium, since only a running page can show what the file leaves on window.
 from __future__ import annotations
 
 import importlib.util
-from collections.abc import Iterator
 from pathlib import Path
 from types import ModuleType
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 import pytest
 
@@ -40,36 +39,6 @@ def _load_script() -> ModuleType:
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
-
-
-@pytest.fixture(autouse=True)
-def _require_chromium(request: pytest.FixtureRequest) -> None:
-    # Function-scoped so a missing browser skips only the tests that ask for
-    # a page, mirroring tests/pyjinhx/client/conftest.py.
-    if "page" not in set(request.fixturenames):
-        return
-    pytest.importorskip("playwright")
-    browser_type: Any = request.getfixturevalue("browser_type")
-    if not Path(browser_type.executable_path).exists():
-        pytest.skip(
-            "chromium is not installed (run: uv run playwright install chromium)"
-        )
-
-
-@pytest.fixture
-def page_errors(page: Page) -> list[str]:
-    """Every uncaught error the page throws from here on."""
-    errors: list[str] = []
-    page.on("pageerror", lambda error: errors.append(str(error)))
-    return errors
-
-
-@pytest.fixture
-def graph_page(page: Page, page_errors: list[str]) -> Iterator[Page]:
-    """A blank page with the asset loaded once as a classic script."""
-    page.set_content("<body></body>")
-    page.add_script_tag(content=ASSET.read_text(encoding="utf-8"))
-    yield page
 
 
 def test_engine_source_is_one_guarded_iife():
