@@ -391,6 +391,20 @@ var __pjxD3=(()=>{var fe=Object.defineProperty;var vn=Object.getOwnPropertyDescr
     // together, so a node and an edge sharing an id are different selections.
     let selected = null;
 
+    // The first of several nodes sharing an id is the one findNode picks.
+    function indexNodes() {
+      const index = new Map();
+      nodesOf(root, viewport).forEach((node) => {
+        const id = node.getAttribute('data-node-id');
+        if (!index.has(id)) index.set(id, node);
+      });
+      return index;
+    }
+
+    // This stage's nodes as of the last reconcile, so a swapped-in element
+    // shows up as not being the one indexed for its id.
+    let known = indexNodes();
+
     // World coordinates are the viewport's untransformed pixels, the space
     // data-x/y are written in, so they do not change with pan/zoom.
     function toWorld(clientX, clientY) {
@@ -579,6 +593,17 @@ var __pjxD3=(()=>{var fe=Object.defineProperty;var vn=Object.getOwnPropertyDescr
       root.dispatchEvent(new CustomEvent('pjx:graph:rendered', { bubbles: true, detail: null }));
     }
 
+    // Only elements new to the stage are placed: a kept node's data-x/y have
+    // not changed, and without a storage key placing it again would snap a
+    // drop the user just made back to the server position.
+    function reconcile() {
+      const fresh = nodesOf(root, viewport)
+        .filter((node) => known.get(node.getAttribute('data-node-id')) !== node);
+      placeAll(fresh, view.key);
+      known = indexNodes();
+      drawEdges();
+    }
+
     // Only this stage's nodes with a server position drag: a drop needs a
     // base to anchor it, and a port or form control keeps its own press.
     function draggable(target) {
@@ -756,7 +781,7 @@ var __pjxD3=(()=>{var fe=Object.defineProperty;var vn=Object.getOwnPropertyDescr
     listenForWire();
     return {
       root: root, box: box, inAnchor: inAnchor, outAnchor: outAnchor, fit: fit, zoomBy: zoomBy,
-      drawEdges: drawEdges, select: select, deselect: deselect,
+      drawEdges: drawEdges, select: select, deselect: deselect, reconcile: reconcile,
     };
   }
 
