@@ -237,6 +237,20 @@ def test_dropping_on_any_part_of_a_node_wires_to_that_node(
     assert page_errors == []
 
 
+def test_a_second_pointer_pressing_during_a_wire_is_ignored(page, page_errors, session):
+    _serve(page, _keyed(session, _pair(ports=("ok", "err"))))
+    x, y = _center(page, _port())
+    _press(page, (x, y), (x + 60, y + 40))
+    page.evaluate(
+        f"""() => document.querySelector('{_port(key="err")}').dispatchEvent(
+            new PointerEvent('pointerdown', {{ pointerId: 2, button: 0, bubbles: true }}))"""
+    )
+    page.mouse.move(*_center(page, _title("g-n2")), steps=2)
+    page.mouse.up()
+    assert _events(page, "wire") == [_wired("n1", "ok", "n2")]
+    assert page_errors == []
+
+
 def test_dropping_a_wire_on_the_canvas_background_fires_nothing(
     page, page_errors, session
 ):
