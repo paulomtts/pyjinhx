@@ -518,3 +518,175 @@ def test_label_styles_come_from_tokens_and_an_app_state_rule_wins(
         "none",
     )
     assert page_errors == []
+
+
+# pjx:graph:rendered and redraws
+
+# Recorded at dispatch, so each entry says what was true when the event fired.
+RENDERED = """window.rendered = [];
+document.addEventListener('pjx:graph:rendered', (event) => window.rendered.push({
+    id: event.target.id,
+    ready: event.target.hasAttribute('data-pjx-graph-ready'),
+    edges: event.target.querySelectorAll(':scope > .pjx-graph__canvas'
+        + ' > .pjx-graph__viewport > svg > path.pjx-graph__edge').length,
+    bubbles: event.bubbles, cancelable: event.cancelable, detail: event.detail}));"""
+
+
+def _listen(page: Page) -> None:
+    """Record every pjx:graph:rendered reaching document, from before the asset runs."""
+    page.add_init_script(RENDERED)
+
+
+def _rendered(page: Page) -> list[dict]:
+    return page.evaluate("() => window.rendered")
+
+
+def _fired(stage_id: str, edges: int) -> dict:
+    return {
+        "id": stage_id,
+        "ready": False,
+        "edges": edges,
+        "bubbles": True,
+        "cancelable": False,
+        "detail": None,
+    }
+
+
+def test_rendered_fires_once_per_stage_after_drawing_and_before_ready(
+    page, page_errors, session
+):
+    _seed(page, IDENTITY)
+    _listen(page)
+    restored = _stage(
+        session,
+        _trio(),
+        edges=[_edge("e1", "a", "b"), _edge("e2", "a", "c")],
+        storage_key="flow",
+    )
+    fresh = _stage(session, _trio("f"), "f", edges=[_edge("e1", "a", "b")])
+    _serve(page, restored + fresh)
+    assert sorted(_rendered(page), key=lambda r: r["id"]) == [
+        _fired("f", 1),
+        _fired("g", 2),
+    ]
+    assert page_errors == []
+
+
+def test_draw_edges_redraws_without_duplicates_and_fires_each_time(
+    page, page_errors, session
+):
+    _seed(page, IDENTITY)
+    _listen(page)
+    edges = [_edge("e1", "a", "b", label="L"), _edge("e2", "a", "c")]
+    _serve(page, _stage(session, _trio(), edges=edges, storage_key="flow"))
+    before = _plane(page)
+    page.evaluate(
+        """() => document.querySelector('#g .pjx-graph__edge-plane')
+            .insertAdjacentHTML('beforeend', '<rect id="app-owned"></rect>')"""
+    )
+    assert _call(page, "drawEdges") is None
+    assert _call(page, "drawEdges") is None
+    assert [el for el in _plane(page) if el["id"] != "app-owned"] == before
+    assert page.locator("#app-owned").count() == 1
+    assert len(_rendered(page)) == 3
+    page.evaluate("() => pjx.graph.mount(document.getElementById('g'))")
+    assert len(_rendered(page)) == 3
+    assert len(_visible(page)) == 2
+    assert page_errors == []
+
+
+def test_a_stage_without_edges_fires_rendered_and_is_ready(page, page_errors, session):
+    _listen(page)
+    bare = _stage(session, _trio())
+    empty = _stage(session, _trio("h"), "h", edges=[])
+    _serve(page, bare + empty)
+    assert _plane(page) == []
+    assert _plane(page, "h") == []
+    assert sorted(r["id"] for r in _rendered(page)) == ["g", "h"]
+    assert page.evaluate(
+        "() => ['g', 'h'].every(id =>"
+        " document.getElementById(id).hasAttribute('data-pjx-graph-ready'))"
+    )
+    assert page_errors == []
+
+
+def test_a_nested_stage_draws_its_own_edges_into_its_own_plane(
+    page, page_errors, session
+):
+    _seed(page, IDENTITY)
+    # Same node and edge ids inside and out, so reading the other stage's
+    # spans would draw a second edge.
+    inner_nodes = [
+        _node("a", 10, 10, "in", title="A"),
+        _node("b", 300, 10, "in", title="B"),
+    ]
+    inner = _stage(session, inner_nodes, "in", edges=[_edge("inner", "a", "b")])
+    outer_nodes = [
+        _node("a", 40, 40, title="A", icon=Markup(inner)),
+        _node("b", 700, 300, title="B"),
+    ]
+    _serve(
+        page,
+        _stage(
+            session, outer_nodes, edges=[_edge("outer", "a", "b")], storage_key="flow"
+        ),
+    )
+    assert [el["edge"] for el in _visible(page)] == ["outer"]
+    assert [el["edge"] for el in _visible(page, "in")] == ["inner"]
+    assert page_errors == []
+
+
+def test_pan_and_zoom_leave_every_path_unchanged(page, page_errors, session):
+    _seed(page, IDENTITY)
+    edges = [_edge("e1", "a", "b"), _edge("e2", "a", "c"), _edge("e3", "b", "c")]
+    _serve(page, _stage(session, _trio(), edges=edges, storage_key="flow"))
+    before = [el["d"] for el in _plane(page)]
+    box = page.locator("#g > .pjx-graph__canvas").bounding_box()
+    assert box is not None
+    # Empty canvas, right of every node and edge.
+    x, y = round(box["x"] + 900), round(box["y"] + 200)
+    page.mouse.move(x, y)
+    page.mouse.down()
+    page.mouse.move(x + 60, y + 40, steps=4)
+    page.mouse.up()
+    page.mouse.wheel(0, -100)
+    page.wait_for_function(
+        """() => new DOMMatrix(getComputedStyle(
+            document.querySelector('#g .pjx-graph__viewport')).transform).a > 1.01"""
+    )
+    assert [el["d"] for el in _plane(page)] == before
+    assert page_errors == []
+
+
+def test_a_stage_that_never_lays_out_still_renders_and_is_ready(
+    page, page_errors, console_errors, session
+):
+    _listen(page)
+    stage = _stage(session, _trio(), edges=[_edge("e1", "a", "b")])
+    _serve(page, f'<div style="display:none">{stage}</div>')
+    assert _plane(page) == []
+    assert [r["id"] for r in _rendered(page)] == ["g"]
+    assert page.evaluate(
+        "() => document.getElementById('g').hasAttribute('data-pjx-graph-ready')"
+    )
+    assert console_errors == []
+    assert page_errors == []
+
+
+def test_a_stage_removed_before_its_draw_does_not_throw(
+    page, page_errors, console_errors, session
+):
+    _serve(page, "")
+    page.evaluate(
+        """html => {
+            document.body.insertAdjacentHTML('beforeend', html);
+            const el = document.getElementById('g');
+            pjx.graph.mount(el);
+            el.remove();
+            window.removed = el;
+        }""",
+        _stage(session, _trio(), edges=[_edge("e1", "a", "b")]),
+    )
+    page.wait_for_function("() => window.removed.hasAttribute('data-pjx-graph-ready')")
+    assert console_errors == []
+    assert page_errors == []
