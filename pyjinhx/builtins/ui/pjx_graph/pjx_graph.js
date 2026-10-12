@@ -83,6 +83,7 @@ var __pjxD3=(()=>{var fe=Object.defineProperty;var vn=Object.getOwnPropertyDescr
     return;
   }
 
+  const d3 = __pjxD3;
   const instances = new WeakMap();
 
   function part(parent, selector, direct) {
@@ -93,6 +94,18 @@ var __pjxD3=(()=>{var fe=Object.defineProperty;var vn=Object.getOwnPropertyDescr
       throw new Error('pjx.graph.mount: [data-pjx-graph] stage is missing ' + selector);
     }
     return found;
+  }
+
+  function paint(viewport, t) {
+    viewport.style.transform = 'translate(' + t.x + 'px, ' + t.y + 'px) scale(' + t.k + ')';
+  }
+
+  function attachZoom(canvas, viewport) {
+    const zoom = d3.zoom()
+      .on('zoom', (event) => paint(viewport, event.transform));
+    // Double-click stays free for selection; zoom is the wheel and the controls.
+    d3.select(canvas).call(zoom).on('dblclick.zoom', null);
+    d3.select(canvas).call(zoom.transform, d3.zoomIdentity);
   }
 
   function mount(root) {
@@ -107,6 +120,7 @@ var __pjxD3=(()=>{var fe=Object.defineProperty;var vn=Object.getOwnPropertyDescr
     const viewport = part(canvas, '.pjx-graph__viewport', true);
     part(viewport, 'svg.pjx-graph__edge-plane', true);
     part(viewport, '.pjx-graph__nodes', false);
+    attachZoom(canvas, viewport);
     const instance = { root: root };
     instances.set(root, instance);
     return instance;
