@@ -147,6 +147,17 @@ var __pjxD3=(()=>{var fe=Object.defineProperty;var vn=Object.getOwnPropertyDescr
     });
   }
 
+  // Delegated, like the controls. A click is judged by its nearest node
+  // inside this viewport, so a node of a nested stage is left to that stage.
+  function listenForSelection(root, canvas, viewport, choose) {
+    canvas.addEventListener('click', (event) => {
+      const node = event.target.closest('[data-node-id]');
+      if (node && viewport.contains(node) && node.closest('[data-pjx-graph]') === root) {
+        choose('node', node.getAttribute('data-node-id'));
+      }
+    });
+  }
+
   function paint(viewport, t) {
     viewport.style.transform = 'translate(' + t.x + 'px, ' + t.y + 'px) scale(' + t.k + ')';
   }
@@ -301,6 +312,9 @@ var __pjxD3=(()=>{var fe=Object.defineProperty;var vn=Object.getOwnPropertyDescr
     // Only the last pass's own elements are cleared, so anything else in the
     // plane survives a redraw.
     let drawn = [];
+    // At most one selection, a node or an edge. Kind and id are kept
+    // together, so a node and an edge sharing an id are different selections.
+    let selected = null;
 
     // World coordinates are the viewport's untransformed pixels, the space
     // data-x/y are written in, so they do not change with pan/zoom.
@@ -380,6 +394,35 @@ var __pjxD3=(()=>{var fe=Object.defineProperty;var vn=Object.getOwnPropertyDescr
         [canvas.clientWidth / 2, canvas.clientHeight / 2]);
     }
 
+    // A node's class goes on the node findNode picks.
+    function selectedElements() {
+      if (selected === null) return [];
+      const node = findNode(selected.id);
+      return node ? [node] : [];
+    }
+
+    function mark(on) {
+      if (selected === null) return;
+      const name = 'pjx-graph__' + selected.kind + '--selected';
+      selectedElements().forEach((el) => el.classList.toggle(name, on));
+    }
+
+    // The before- event can veto the change; the plain one reports it once
+    // the DOM shows it. Choosing the current selection again changes nothing.
+    function choose(kind, id) {
+      if (selected !== null && selected.kind === kind && selected.id === id) return true;
+      const suffix = kind === 'edge' ? '-edge' : '';
+      const allowed = root.dispatchEvent(new CustomEvent('pjx:graph:before-select' + suffix,
+        { bubbles: true, cancelable: true, detail: { id: id } }));
+      if (!allowed) return false;
+      mark(false);
+      selected = { kind: kind, id: id };
+      mark(true);
+      root.dispatchEvent(new CustomEvent('pjx:graph:select' + suffix,
+        { bubbles: true, detail: { id: id } }));
+      return true;
+    }
+
     // An unknown or display:none node has no box to join.
     function shown(id) {
       const node = findNode(id);
@@ -436,6 +479,7 @@ var __pjxD3=(()=>{var fe=Object.defineProperty;var vn=Object.getOwnPropertyDescr
       root.dispatchEvent(new CustomEvent('pjx:graph:rendered', { bubbles: true, detail: null }));
     }
 
+    listenForSelection(root, canvas, viewport, choose);
     return {
       root: root, box: box, inAnchor: inAnchor, outAnchor: outAnchor, fit: fit, zoomBy: zoomBy,
       drawEdges: drawEdges,
