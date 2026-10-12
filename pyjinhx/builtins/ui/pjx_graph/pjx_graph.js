@@ -124,8 +124,43 @@ var __pjxD3=(()=>{var fe=Object.defineProperty;var vn=Object.getOwnPropertyDescr
     viewport.style.transform = 'translate(' + t.x + 'px, ' + t.y + 'px) scale(' + t.k + ')';
   }
 
+  // Storage can throw anywhere, even on reading window.localStorage, and a
+  // broken store must never break pan/zoom.
+  function readRecord(key) {
+    try {
+      const value = JSON.parse(window.localStorage.getItem(key));
+      return value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+    } catch (error) {
+      return {};
+    }
+  }
+
+  function saveView(key, t) {
+    // Other fields of the record belong to other features and are kept.
+    const record = readRecord(key);
+    record.view = { x: t.x, y: t.y, k: t.k };
+    try {
+      window.localStorage.setItem(key, JSON.stringify(record));
+    } catch (error) {
+      // Pan/zoom keeps working, just without persistence.
+    }
+  }
+
+  function storedView(record, extent) {
+    const view = record.view;
+    if (!view || !Number.isFinite(view.x) || !Number.isFinite(view.y)
+        || !Number.isFinite(view.k) || view.k <= 0) {
+      return d3.zoomIdentity;
+    }
+    // A view saved under a wider range is pulled into the current one.
+    const k = Math.min(extent[1], Math.max(extent[0], view.k));
+    return d3.zoomIdentity.translate(view.x, view.y).scale(k);
+  }
+
   function attachZoom(root, canvas, viewport) {
     const extent = scaleExtent(root);
+    const storageKey = root.getAttribute('data-pjx-graph-storage-key');
+    const key = storageKey ? 'pjx-graph:' + storageKey : null;
     const zoom = d3.zoom()
       .scaleExtent(extent)
       // Wheel zooms from anywhere over the canvas; only presses need background.
@@ -136,7 +171,9 @@ var __pjxD3=(()=>{var fe=Object.defineProperty;var vn=Object.getOwnPropertyDescr
     d3.select(canvas).call(zoom).on('dblclick.zoom', null);
     // d3 lets a wheel at either end of the range scroll the page.
     canvas.addEventListener('wheel', (event) => event.preventDefault(), { passive: false });
-    d3.select(canvas).call(zoom.transform, d3.zoomIdentity);
+    d3.select(canvas).call(zoom.transform, key ? storedView(readRecord(key), extent) : d3.zoomIdentity);
+    // Listening only now, so applying the restored view does not write it back.
+    if (key) zoom.on('end', () => saveView(key, d3.zoomTransform(canvas)));
   }
 
   function mount(root) {

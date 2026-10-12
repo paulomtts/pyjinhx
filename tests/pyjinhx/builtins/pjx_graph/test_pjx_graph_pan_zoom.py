@@ -7,6 +7,7 @@ read back from the viewport's computed transform, since d3 is not on window.
 
 from __future__ import annotations
 
+import json
 import re
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -28,6 +29,7 @@ CSS = (UI / "pjx_graph" / "pjx_graph.css").read_text(encoding="utf-8") + (
     UI / "pjx_graph_node" / "pjx_graph_node.css"
 ).read_text(encoding="utf-8")
 URL = "http://pjx.test/"
+RECORD = "pjx-graph:flow"
 # One wheel notch of deltaY -100 zooms by 2 ** 0.2 under d3's default wheelDelta.
 NOTCH = 2**0.2
 
@@ -322,4 +324,192 @@ def test_boot_logs_an_invalid_scale_range_and_boots_the_rest(
     assert page.evaluate("() => pjx.graph.get(document.getElementById('bad'))") is None
     assert len(console_errors) == 1
     assert "pjx.graph.mount: invalid scale range" in console_errors[0]
+    assert page_errors == []
+
+
+# Persistence
+
+
+def _record(page: Page) -> dict:
+    raw = page.evaluate("key => localStorage.getItem(key)", RECORD)
+    assert raw is not None
+    return json.loads(raw)
+
+
+def _wait_for_saved_k(page: Page, k: float) -> None:
+    page.wait_for_function(
+        """([key, k]) => {
+            const view = JSON.parse(localStorage.getItem(key) || '{}').view;
+            return view !== undefined && Math.abs(view.k - k) < 1e-6;
+        }""",
+        arg=[RECORD, k],
+    )
+
+
+def _seed(page: Page, value: str) -> None:
+    """Store value under the record key before the page's own scripts run."""
+    page.add_init_script(
+        f"localStorage.setItem({json.dumps(RECORD)}, {json.dumps(value)});"
+    )
+
+
+def test_the_view_survives_a_reload(page, page_errors, session):
+    _serve(page, _stage(session, storage_key="flow"))
+    point = _background(page)
+    _drag(page, point)
+    _wheel(page, point)
+    _wait_for_saved_k(page, NOTCH)
+    before = _view(page)
+    page.reload()
+    assert _view(page) == pytest.approx(before, abs=0.01)
+    assert page_errors == []
+
+
+def test_a_pan_saves_the_view_record(page, page_errors, session):
+    _serve(page, _stage(session, storage_key="flow"))
+    _drag(page, _background(page))
+    page.wait_for_function("key => localStorage.getItem(key) !== null", arg=RECORD)
+    record = _record(page)
+    assert list(record) == ["view"]
+    assert record["view"] == pytest.approx({"x": 60, "y": 40, "k": 1}, abs=0.01)
+    assert page_errors == []
+
+
+def test_mounting_alone_writes_nothing(page, page_errors, session):
+    _serve(page, _stage(session, storage_key="flow"))
+    assert page.evaluate("() => localStorage.length") == 0
+    assert page_errors == []
+
+
+def test_saving_keeps_the_record_other_fields(page, page_errors, session):
+    positions = {"n1": {"x": 5, "y": 6, "base": [100, 100]}}
+    _seed(page, json.dumps({"positions": positions}))
+    _serve(page, _stage(session, storage_key="flow"))
+    _wheel(page, _background(page))
+    _wait_for_saved_k(page, NOTCH)
+    record = _record(page)
+    assert record["positions"] == positions
+    assert record["view"]["k"] == pytest.approx(NOTCH)
+    assert page_errors == []
+
+
+def test_a_stored_scale_above_the_range_is_clamped(page, page_errors, session):
+    _seed(page, json.dumps({"view": {"x": 30, "y": 20, "k": 9}}))
+    _serve(page, _stage(session, storage_key="flow", scale_max=3))
+    assert _view(page) == pytest.approx({"x": 30, "y": 20, "k": 3}, abs=0.01)
+    assert page_errors == []
+
+
+@pytest.mark.parametrize(
+    "stored",
+    [
+        "{not json",
+        "null",
+        "[1, 2]",
+        '"view"',
+        '{"view": null}',
+        '{"view": {"x": "10", "y": 0, "k": 1}}',
+        '{"view": {"x": 0, "y": 0, "k": 0}}',
+        '{"view": {"x": 0, "y": 0, "k": -2}}',
+        '{"view": {"x": 0, "y": 0}}',
+    ],
+)
+def test_an_unusable_record_starts_at_identity_silently(
+    page, page_errors, console_errors, session, stored
+):
+    _seed(page, stored)
+    _serve(page, _stage(session, storage_key="flow"))
+    assert _identity(_view(page))
+    _drag(page, _background(page))
+    assert _view(page) == pytest.approx({"x": 60, "y": 40, "k": 1}, abs=0.01)
+    assert console_errors == []
+    assert page_errors == []
+
+
+def test_saving_over_an_array_record_writes_an_object(page, page_errors, session):
+    _seed(page, "[1, 2]")
+    _serve(page, _stage(session, storage_key="flow"))
+    _drag(page, _background(page))
+    page.wait_for_function(
+        "key => !localStorage.getItem(key).startsWith('[')", arg=RECORD
+    )
+    assert list(_record(page)) == ["view"]
+    assert page_errors == []
+
+
+def test_without_a_storage_key_nothing_is_stored(page, page_errors, session):
+    _serve(page, _stage(session))
+    point = _background(page)
+    _drag(page, point)
+    _wheel(page, point)
+    _wait_for_k(page, NOTCH)
+    # Past d3's 150 ms wheel debounce, when a save would have happened.
+    page.wait_for_timeout(300)
+    assert page.evaluate("() => localStorage.length") == 0
+    assert page_errors == []
+
+
+BROKEN_STORAGE = {
+    "getItem": "Storage.prototype.getItem = () => { throw new Error('denied'); };",
+    "getter": (
+        "Object.defineProperty(window, 'localStorage', {"
+        " get() { throw new DOMException('denied', 'SecurityError'); } });"
+    ),
+}
+
+
+@pytest.mark.parametrize("broken", list(BROKEN_STORAGE))
+def test_unreadable_storage_mounts_at_identity_and_pans(
+    page, page_errors, console_errors, session, broken
+):
+    page.add_init_script(BROKEN_STORAGE[broken])
+    _serve(page, _stage(session, storage_key="flow"))
+    assert _identity(_view(page))
+    point = _background(page)
+    _drag(page, point)
+    _wheel(page, point)
+    _wait_for_k(page, NOTCH)
+    page.wait_for_timeout(300)
+    assert console_errors == []
+    assert page_errors == []
+
+
+def test_unwritable_storage_keeps_pan_and_zoom_working(
+    page, page_errors, console_errors, session
+):
+    page.add_init_script(
+        "Storage.prototype.setItem = () => { throw new Error('quota'); };"
+    )
+    _serve(page, _stage(session, storage_key="flow"))
+    point = _background(page)
+    _drag(page, point)
+    _wheel(page, point)
+    _wait_for_k(page, NOTCH)
+    page.wait_for_timeout(300)
+    assert _view(page)["k"] == pytest.approx(NOTCH, abs=1e-3)
+    assert console_errors == []
+    assert page_errors == []
+
+
+def test_a_swapped_in_stage_restores_the_saved_view(page, page_errors, session):
+    _serve(page, _stage(session, storage_key="flow"))
+    point = _background(page)
+    _drag(page, point)
+    _wheel(page, point)
+    _wait_for_saved_k(page, NOTCH)
+    before = _view(page)
+    page.evaluate(
+        """html => {
+            window.oldRoot = document.getElementById('g');
+            window.oldRoot.outerHTML = html;
+        }""",
+        _stage(session, storage_key="flow"),
+    )
+    page.wait_for_function(
+        """() => {
+            const el = document.getElementById('g');
+            return el !== window.oldRoot && pjx.graph.get(el) !== null;
+        }"""
+    )
+    assert _view(page) == pytest.approx(before, abs=0.01)
     assert page_errors == []
