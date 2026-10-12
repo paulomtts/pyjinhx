@@ -11,6 +11,8 @@
   --pjx-graph-edge-label-color: var(--text-muted);
   --pjx-graph-edge-label-size: 0.75rem;
   --pjx-graph-selected: var(--text);
+  --pjx-graph-wire-stroke: var(--pjx-graph-selected);
+  --pjx-graph-wire-dash: 4 4;
 }
 
 .pjx-graph {
@@ -65,6 +67,16 @@
   stroke: transparent;
   stroke-width: var(--pjx-graph-edge-hit-width);
   pointer-events: stroke;
+}
+
+/* The wire being dragged. It must never take a press, or the release would
+   hit-test the ghost instead of the node under it. */
+.pjx-graph__wire {
+  fill: none;
+  stroke: var(--pjx-graph-wire-stroke);
+  stroke-width: var(--pjx-graph-edge-width);
+  stroke-dasharray: var(--pjx-graph-wire-dash);
+  pointer-events: none;
 }
 
 /* No per-state rules: .pjx-graph__edge--<state> is the app's hook. */

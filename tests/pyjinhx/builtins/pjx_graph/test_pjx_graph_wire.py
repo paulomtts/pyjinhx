@@ -533,3 +533,37 @@ def test_page_text_selects_again_after_a_wire_ends(page, page_errors, session, e
     page.mouse.up()
     assert page.evaluate("() => window.getSelection().toString()") != ""
     assert page_errors == []
+
+
+# Styling
+
+WIRE_CSS = ":root { --pjx-graph-selected: rgb(1, 2, 3); }"
+
+WIRE_STYLE = f"""() => {{
+    const style = getComputedStyle(({GHOSTS})('g')[0]);
+    return [style.stroke, style.strokeDasharray, style.strokeWidth, style.fill,
+            style.pointerEvents];
+}}"""
+
+
+def test_the_ghost_edge_is_dashed_in_the_wire_tokens(page, page_errors, session):
+    _serve(page, _keyed(session), WIRE_CSS)
+    x, y = _center(page, _port())
+    _press(page, (x, y), (x + 80, y + 60))
+    assert page.evaluate(WIRE_STYLE)[:4] == [
+        "rgb(1, 2, 3)",
+        "4px, 4px",
+        "1.5px",
+        "none",
+    ]
+    page.mouse.up()
+    assert page_errors == []
+
+
+def test_the_ghost_edge_takes_no_pointer_events(page, page_errors, session):
+    _serve(page, _keyed(session))
+    x, y = _center(page, _port())
+    _press(page, (x, y), (x + 80, y + 60))
+    assert page.evaluate(WIRE_STYLE)[4] == "none"
+    page.mouse.up()
+    assert page_errors == []
