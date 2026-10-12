@@ -15,6 +15,9 @@
   const instances = new WeakMap();
   // Room left around the nodes when a fit frames them.
   const FIT_PAD = 48;
+
+  // One control step; two steps double or halve the scale.
+  const ZOOM_STEP = Math.SQRT2;
   const SVG_NS = 'http://www.w3.org/2000/svg';
   // Gives each mounted stage its own path-id prefix, so ids never collide
   // across stages, whatever edge ids the app reuses.
@@ -276,6 +279,17 @@
       d3.select(canvas).call(view.zoom.transform, t);
     }
 
+    // About the canvas centre, so what sits in the middle of the view stays
+    // there. Through d3, so a later wheel or pan continues from here and a
+    // stored view is saved as for any other zoom.
+    function zoomBy(dir) {
+      if (typeof dir !== 'number' || !Number.isFinite(dir)) {
+        throw new Error('pjx.graph.zoomBy: dir must be a finite number');
+      }
+      view.zoom.scaleBy(d3.select(canvas), ZOOM_STEP ** dir,
+        [canvas.clientWidth / 2, canvas.clientHeight / 2]);
+    }
+
     // An unknown or display:none node has no box to join.
     function shown(id) {
       const node = findNode(id);
@@ -333,7 +347,8 @@
     }
 
     return {
-      root: root, box: box, inAnchor: inAnchor, outAnchor: outAnchor, fit: fit, drawEdges: drawEdges,
+      root: root, box: box, inAnchor: inAnchor, outAnchor: outAnchor, fit: fit, zoomBy: zoomBy,
+      drawEdges: drawEdges,
     };
   }
 
