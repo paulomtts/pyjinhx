@@ -148,13 +148,19 @@ var __pjxD3=(()=>{var fe=Object.defineProperty;var vn=Object.getOwnPropertyDescr
   }
 
   // Delegated, like the controls. A click is judged by its nearest node
-  // inside this viewport, so a node of a nested stage is left to that stage.
-  function listenForSelection(root, canvas, viewport, choose) {
+  // inside this viewport: a node of a nested stage is left to that stage,
+  // while the nested stage's own background still lies inside one of ours.
+  function listenForSelection(root, canvas, viewport, choose, deselect) {
     canvas.addEventListener('click', (event) => {
-      const node = event.target.closest('[data-node-id]');
-      if (node && viewport.contains(node) && node.closest('[data-pjx-graph]') === root) {
-        choose('node', node.getAttribute('data-node-id'));
+      const target = event.target;
+      const node = target.closest('[data-node-id]');
+      if (node && viewport.contains(node)) {
+        if (node.closest('[data-pjx-graph]') === root) {
+          choose('node', node.getAttribute('data-node-id'));
+        }
+        return;
       }
+      if (isBackground(target, canvas, viewport)) deselect();
     });
   }
 
@@ -423,6 +429,13 @@ var __pjxD3=(()=>{var fe=Object.defineProperty;var vn=Object.getOwnPropertyDescr
       return true;
     }
 
+    function deselect() {
+      if (selected === null) return;
+      mark(false);
+      selected = null;
+      root.dispatchEvent(new CustomEvent('pjx:graph:deselect', { bubbles: true, detail: null }));
+    }
+
     // An unknown or display:none node has no box to join.
     function shown(id) {
       const node = findNode(id);
@@ -479,7 +492,7 @@ var __pjxD3=(()=>{var fe=Object.defineProperty;var vn=Object.getOwnPropertyDescr
       root.dispatchEvent(new CustomEvent('pjx:graph:rendered', { bubbles: true, detail: null }));
     }
 
-    listenForSelection(root, canvas, viewport, choose);
+    listenForSelection(root, canvas, viewport, choose, deselect);
     return {
       root: root, box: box, inAnchor: inAnchor, outAnchor: outAnchor, fit: fit, zoomBy: zoomBy,
       drawEdges: drawEdges,

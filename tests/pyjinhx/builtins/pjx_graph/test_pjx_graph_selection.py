@@ -13,9 +13,11 @@ import json
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+import pytest
 from markupsafe import Markup
 
 from pyjinhx.builtins.ui.pjx_graph import PJXGraph
+from pyjinhx.builtins.ui.pjx_graph_controls import PJXGraphControls
 from pyjinhx.builtins.ui.pjx_graph_edges import PJXGraphEdges
 from pyjinhx.builtins.ui.pjx_graph_node import PJXGraphNode
 from pyjinhx.builtins.ui.pjx_graph_nodes import PJXGraphNodes
@@ -288,4 +290,90 @@ def test_a_nested_stage_selects_its_own_node_and_the_outer_stage_ignores_it(
         _ev("select", "b", "in"),
     ]
     assert sorted(_selected_nodes(page)) == ["g-b", "in-b"]
+    assert page_errors == []
+
+
+# Background clicks
+
+
+def test_a_background_click_deselects_once(page, page_errors, session):
+    _serve(page, _stage(session, _pair()))
+    page.click("#g-a")
+    _forget(page)
+    _click_background(page)
+    assert _events(page) == [_ev("deselect")]
+    assert _selected_nodes(page) == []
+    _click_background(page)
+    assert _events(page) == [_ev("deselect")]
+    assert page_errors == []
+
+
+def test_a_background_click_with_nothing_selected_fires_nothing(
+    page, page_errors, session
+):
+    _serve(page, _stage(session, _pair()))
+    _click_background(page)
+    assert _events(page) == []
+    assert page_errors == []
+
+
+@pytest.mark.parametrize(
+    "button",
+    [
+        '[data-pjx-graph-zoom="in"]',
+        '[data-pjx-graph-zoom="out"]',
+        "[data-pjx-graph-fit]",
+    ],
+    ids=["in", "out", "fit"],
+)
+def test_the_controls_keep_the_selection(page, page_errors, session, button):
+    controls = PJXGraphControls(id="g-controls")
+    _serve(page, _stage(session, _pair(), controls=controls))
+    page.click("#g-a")
+    _forget(page)
+    page.click(f"#g-controls {button}")
+    assert _events(page) == []
+    assert _selected_nodes(page) == ["g-a"]
+    assert page_errors == []
+
+
+def test_a_background_pan_keeps_the_selection(page, page_errors, session):
+    _serve(page, _stage(session, _pair()))
+    page.click("#g-a")
+    _forget(page)
+    x, y = _background(page)
+    page.mouse.move(x, y)
+    page.mouse.down()
+    page.mouse.move(x + 60, y - 40, steps=4)
+    page.mouse.up()
+    page.wait_for_timeout(100)
+    assert _events(page) == []
+    assert _selected_nodes(page) == ["g-a"]
+    assert page_errors == []
+
+
+def test_a_background_click_leaves_a_sibling_stage_selected(page, page_errors, session):
+    _serve(page, _stage(session, _pair("s")) + _stage(session, _pair("t"), "t"))
+    page.click("#s-a")
+    _forget(page)
+    _click_background(page, "t")
+    assert _events(page) == []
+    assert _selected_nodes(page) == ["s-a"]
+    assert page_errors == []
+
+
+def test_a_nested_stage_background_click_deselects_inside_and_selects_outside(
+    page, page_errors, session
+):
+    _serve(page, _nested(session), NESTED_CSS)
+    page.click("#in-b")
+    _forget(page)
+    _click_background(page, "in")
+    # The inner canvas's listener runs first: it is deeper on the bubble path.
+    assert _events(page) == [
+        _ev("deselect", target="in"),
+        _ev("before-select", "a"),
+        _ev("select", "a"),
+    ]
+    assert _selected_nodes(page) == ["g-a"]
     assert page_errors == []
