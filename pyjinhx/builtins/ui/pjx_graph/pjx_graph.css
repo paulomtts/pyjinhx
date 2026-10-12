@@ -1,0 +1,45 @@
+:where(:root) {
+  --pjx-graph-bg: var(--surface);
+  --pjx-graph-border: var(--border);
+  --pjx-graph-radius: var(--radius-md);
+  --pjx-graph-grid-color: var(--border);
+  --pjx-graph-grid-size: 24px;
+  --pjx-graph-min-height: 24rem;
+}
+
+.pjx-graph {
+  position: relative;
+}
+
+/* The grid lives on the canvas, not the viewport, so it stays put while the
+   viewport pans and zooms. */
+.pjx-graph__canvas {
+  position: relative;
+  overflow: hidden;
+  min-height: var(--pjx-graph-min-height);
+  border: 1px solid var(--pjx-graph-border);
+  border-radius: var(--pjx-graph-radius);
+  background-color: var(--pjx-graph-bg);
+  background-image: radial-gradient(circle, var(--pjx-graph-grid-color) 1px, transparent 1px);
+  background-size: var(--pjx-graph-grid-size) var(--pjx-graph-grid-size);
+}
+
+/* Sizeless on purpose: it is only a transform target for pan/zoom. */
+.pjx-graph__viewport {
+  position: absolute;
+  inset: 0 auto auto 0;
+  transform-origin: 0 0;
+}
+
+.pjx-graph__edge-plane {
+  position: absolute;
+  top: 0;
+  left: 0;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.pjx-graph__nodes {
+  position: absolute;
+  inset: 0 auto auto 0;
+}
