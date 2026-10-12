@@ -785,6 +785,23 @@ var __pjxD3=(()=>{var fe=Object.defineProperty;var vn=Object.getOwnPropertyDescr
     };
   }
 
+  // Swaps inside the viewport reconcile once, in the next frame, however
+  // many records they make. The edge planes hold drawing only, the engine's
+  // own and a nested stage's, so their changes are skipped; otherwise every
+  // redraw would schedule the next.
+  function observeViewport(viewport, instance) {
+    let pending = false;
+    new MutationObserver((mutations) => {
+      const outside = mutations.some((m) => !m.target.closest('svg.pjx-graph__edge-plane'));
+      if (pending || !outside) return;
+      pending = true;
+      requestAnimationFrame(() => {
+        pending = false;
+        instance.reconcile();
+      });
+    }).observe(viewport, { childList: true, subtree: true });
+  }
+
   function mount(root) {
     if (!(root instanceof Element) || !root.hasAttribute('data-pjx-graph')) {
       throw new Error('pjx.graph.mount: expected a [data-pjx-graph] element');
@@ -802,6 +819,7 @@ var __pjxD3=(()=>{var fe=Object.defineProperty;var vn=Object.getOwnPropertyDescr
     placeAll(nodesOf(root, viewport), view.key);
     const instance = createInstance(root, canvas, viewport, plane, view);
     instances.set(root, instance);
+    observeViewport(viewport, instance);
     listenForControls(root, canvas, instance);
     // A restored view is where the user left off; only a fresh stage is framed.
     // Edges are drawn before ready, so whatever waits on ready sees them.

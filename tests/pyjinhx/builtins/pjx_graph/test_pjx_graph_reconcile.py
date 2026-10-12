@@ -18,6 +18,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
+from markupsafe import Markup
 
 from pyjinhx.builtins.ui.pjx_graph import PJXGraph
 from pyjinhx.builtins.ui.pjx_graph_edges import PJXGraphEdges
@@ -450,4 +451,239 @@ def test_a_duplicate_node_id_does_not_break_reconcile(page, page_errors, session
     )
     assert [anchor["x"], anchor["y"]] == pytest.approx(first, abs=0.01)
     assert [e["edge"] for e in _visible(page)] == ["e1", "e2"]
+    assert page_errors == []
+
+
+# Noticing swaps
+
+
+def test_replacing_the_whole_nodes_layer_redraws_edges_at_the_new_positions(
+    page, page_errors, session
+):
+    _serve(page, _stage(session))
+    before = _rendered(page)
+    layer = _html(session, _layer(session, _trio(b=(400, 180))))
+    _mutate(page, _replace("#g-nodes", layer))
+    _settle(page, before)
+    assert _position(page, "g-b") == ["400px", "180px"]
+    anchor = _call(page, "inAnchor", "b")
+    assert _numbers(_path(page, "e1"))[-2:] == pytest.approx(
+        [anchor["x"], anchor["y"]], abs=0.01
+    )
+    assert anchor["y"] > 180
+    assert page_errors == []
+
+
+def test_replacing_one_node_by_id_moves_only_that_node(page, page_errors, session):
+    _serve(page, _stage(session))
+    page.evaluate(
+        "() => ['g-a', 'g-c'].forEach((id) => { document.getElementById(id).__kept = id; })"
+    )
+    before = _rendered(page)
+    edge = _path(page, "e1")
+    moved = _html(session, _node("b", 400, 140, in_port=True, out_ports=("ok",)))
+    _mutate(page, _replace("#g-b", moved))
+    _settle(page, before)
+    kept = page.evaluate(
+        "() => ['g-a', 'g-c'].map((id) => document.getElementById(id).__kept)"
+    )
+    assert kept == ["g-a", "g-c"]
+    assert _position(page, "g-a") == ["20px", "40px"]
+    assert _position(page, "g-c") == ["400px", "260px"]
+    assert _path(page, "e1") != edge
+    anchor = _call(page, "inAnchor", "b")
+    assert _numbers(_path(page, "e1"))[-2:] == pytest.approx(
+        [anchor["x"], anchor["y"]], abs=0.01
+    )
+    assert page_errors == []
+
+
+def test_adding_a_node_and_its_edge_draws_the_edge(page, page_errors, session):
+    _serve(page, _stage(session))
+    before = _rendered(page)
+    added = _html(session, _node("d", 700, 40, in_port=True))
+    _mutate(
+        page,
+        _append("#g-nodes", added),
+        _append("#g-edges", _span(_edge("e3", "b", "d", port="ok"))),
+    )
+    assert _settle(page, before) == before + 1
+    assert [e["edge"] for e in _visible(page)] == ["e1", "e2", "e3"]
+    anchor = _call(page, "inAnchor", "d")
+    assert _numbers(_path(page, "e3"))[-2:] == pytest.approx(
+        [anchor["x"], anchor["y"]], abs=0.01
+    )
+    assert page_errors == []
+
+
+def test_removing_a_node_drops_its_edges(page, page_errors, session):
+    edges = [*EDGES, _edge("e3", "b", "c", port="ok")]
+    _serve(page, _stage(session, edges=edges))
+    assert [e["edge"] for e in _visible(page)] == ["e1", "e2", "e3"]
+    before = _rendered(page)
+    _mutate(page, _remove("#g-c"))
+    _settle(page, before)
+    assert [e["edge"] for e in _visible(page)] == ["e1"]
+    assert page_errors == []
+
+
+def test_adding_and_removing_an_edge_element_redraws_and_unfans_the_pair(
+    page, page_errors, session
+):
+    _serve(page, _stage(session))
+    plain = _path(page, "e1")
+    before = _rendered(page)
+    _mutate(page, _append("#g-edges", _span(_edge("e3", "a", "b", port="ok"))))
+    before = _settle(page, before)
+    assert [e["edge"] for e in _visible(page)] == ["e1", "e2", "e3"]
+    # Two edges between a and b fan apart, so e1 bows away from its plain path.
+    assert _path(page, "e1") != plain
+    _mutate(
+        page,
+        "document.querySelector('#g-edges [data-edge-id=\"e3\"]').remove();",
+    )
+    _settle(page, before)
+    assert [e["edge"] for e in _visible(page)] == ["e1", "e2"]
+    assert _path(page, "e1") == plain
+    assert page_errors == []
+
+
+def test_removing_the_whole_nodes_layer_draws_nothing_and_fires_one_rendered(
+    page, page_errors, session
+):
+    _serve(page, _stage(session))
+    page.evaluate(
+        "() => { window.__instance = pjx.graph.get(document.getElementById('g')); }"
+    )
+    before = _rendered(page)
+    _mutate(page, _remove("#g-nodes"))
+    assert _settle(page, before) == before + 1
+    assert _visible(page) == []
+    assert page.evaluate(
+        "() => pjx.graph.get(document.getElementById('g')) === window.__instance"
+    )
+    assert page_errors == []
+
+
+def test_a_node_removed_then_reinserted_keeps_its_stored_drop(
+    page, page_errors, session
+):
+    seeded = json.dumps(
+        {
+            "view": IDENTITY_VIEW,
+            "nodes": {"b": {"x": 300, "y": 150, "base": {"x": 400, "y": 40}}},
+        }
+    )
+    _serve(page, _keyed(session), record=seeded)
+    before = _rendered(page)
+    _mutate(page, _remove("#g-b"))
+    before = _settle(page, before)
+    assert _raw(page) == seeded
+    same = _html(session, _node("b", 400, 40, in_port=True, out_ports=("ok",)))
+    _mutate(page, _append("#g-nodes", same))
+    _settle(page, before)
+    assert _position(page, "g-b") == ["300px", "150px"]
+    assert _raw(page) == seeded
+    assert page_errors == []
+
+
+# Coalescing and the plane
+
+
+def test_mutations_in_one_task_cause_one_reconcile(page, page_errors, session):
+    _serve(page, _stage(session))
+    before = _rendered(page)
+    _mutate(
+        page,
+        _replace("#g-a", _html(session, _trio()[0])),
+        _replace("#g-b", _html(session, _trio(b=(400, 100))[1])),
+        _append("#g-edges", _span(_edge("e3", "b", "c", port="ok"))),
+    )
+    assert _settle(page, before) == before + 1
+    assert page_errors == []
+
+
+def test_a_reconcile_does_not_trigger_another(page, page_errors, session):
+    _serve(page, _stage(session))
+    before = _rendered(page)
+    _mutate(page, _replace("#g-c", _html(session, _trio()[2])))
+    after = _settle(page, before)
+    assert after == before + 1
+    _frames(page, 4)
+    assert _rendered(page) == after
+    assert page_errors == []
+
+
+def test_calling_reconcile_by_hand_schedules_nothing(page, page_errors, session):
+    _serve(page, _stage(session))
+    before = _rendered(page)
+    page.evaluate(RECONCILE, "g")
+    _frames(page)
+    assert _rendered(page) == before + 1
+    assert page_errors == []
+
+
+def test_selecting_a_node_fires_no_rendered(page, page_errors, session):
+    _serve(page, _stage(session))
+    before = _rendered(page)
+    page.click(_title("g-b"))
+    assert [e["type"] for e in _events(page, "select")] == ["select"]
+    _frames(page)
+    assert _rendered(page) == before
+    assert page_errors == []
+
+
+def test_dragging_a_wire_fires_no_rendered(page, page_errors, session):
+    _serve(page, _stage(session))
+    before = _rendered(page)
+    _drag(page, _center(page, _port("g-a")), _center(page, _title("g-c")))
+    assert [e["detail"] for e in _events(page, "wire")] == [
+        {"from": "a", "port": "ok", "to": "c"}
+    ]
+    _frames(page)
+    assert _rendered(page) == before
+    assert page_errors == []
+
+
+NESTED_CSS = (
+    "#g-a { width: 700px; } #in { width: 600px; }"
+    " #in > .pjx-graph__canvas { min-height: 0; height: 200px; }"
+)
+
+
+def _nested(page: Page, session) -> str:
+    """Stage g whose node a (at 20, 20) holds stage in, with nodes x (10, 10) and y (300, 10)."""
+    inner = _stage(
+        session,
+        [
+            _node("x", 10, 10, "in", out_ports=("ok",)),
+            _node("y", 300, 10, "in", in_port=True),
+        ],
+        "in",
+        edges=[_edge("i1", "x", "y", port="ok")],
+        storage_key="inner",
+    )
+    _seed(page, {"view": IDENTITY_VIEW}, key="pjx-graph:inner")
+    return _keyed(
+        session,
+        [_node("a", 20, 20, icon=Markup(inner), title="Outer")],
+        edges=[],
+    )
+
+
+def test_a_swap_inside_a_nested_stage_settles(page, page_errors, session):
+    _serve(page, _nested(page, session), NESTED_CSS)
+    inner, outer = _rendered(page, "in"), _rendered(page, "g")
+    moved = _html(session, _node("y", 300, 60, "in", in_port=True))
+    _mutate(page, _replace("#in-y", moved))
+    _settle(page, inner, "in")
+    counts = (_rendered(page, "in"), _rendered(page, "g"))
+    assert counts[0] == inner + 1
+    assert counts[1] <= outer + 1
+    _frames(page, 4)
+    assert (_rendered(page, "in"), _rendered(page, "g")) == counts
+    anchor = _call(page, "inAnchor", "y", stage_id="in")
+    assert _numbers(_path(page, "i1", "in"))[-2:] == pytest.approx(
+        [anchor["x"], anchor["y"]], abs=0.01
+    )
     assert page_errors == []
