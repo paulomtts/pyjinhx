@@ -90,3 +90,10 @@ class TestJoin:
     def test_join_keeps_markup_and_entities_verbatim(self):
         joined = PJXGraphNodes.join([Markup("<i>a</i>"), "<b>&amp;</b>"])
         assert str(joined) == "<i>a</i><b>&amp;</b>"
+
+
+def test_exported_from_the_builtins_namespace():
+    from pyjinhx import builtins
+
+    assert "PJXGraphNodes" in builtins.__all__
+    assert builtins.PJXGraphNodes is PJXGraphNodes

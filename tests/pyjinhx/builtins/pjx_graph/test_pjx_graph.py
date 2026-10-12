@@ -245,3 +245,10 @@ class TestStylesheet:
             ".pjx-graph__nodes",
         ):
             _rule_block(css, selector)
+
+
+def test_exported_from_the_builtins_namespace():
+    from pyjinhx import builtins
+
+    assert "PJXGraph" in builtins.__all__
+    assert builtins.PJXGraph is PJXGraph

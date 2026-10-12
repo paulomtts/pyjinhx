@@ -40,6 +40,8 @@ __all__ = [  # noqa: RUF022
     "PJXDropdown",
     "PJXEmptyState",
     "PJXFormField",
+    "PJXGraph",
+    "PJXGraphNodes",
     "PJXIcon",
     "PJXLazyLoad",
     "PJXModal",
@@ -151,6 +153,11 @@ _lazy_imports = {
     "PJXFormField": (
         "pyjinhx.builtins.ui.pjx_form_field.pjx_form_field",
         "PJXFormField",
+    ),
+    "PJXGraph": ("pyjinhx.builtins.ui.pjx_graph.pjx_graph", "PJXGraph"),
+    "PJXGraphNodes": (
+        "pyjinhx.builtins.ui.pjx_graph_nodes.pjx_graph_nodes",
+        "PJXGraphNodes",
     ),
     "PJXIcon": ("pyjinhx.builtins.ui.pjx_icon.pjx_icon", "PJXIcon"),
     "PJXLazyLoad": ("pyjinhx.builtins.pjx_lazy_load.pjx_lazy_load", "PJXLazyLoad"),
