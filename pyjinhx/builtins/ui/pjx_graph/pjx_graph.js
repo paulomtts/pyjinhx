@@ -96,12 +96,24 @@ var __pjxD3=(()=>{var fe=Object.defineProperty;var vn=Object.getOwnPropertyDescr
     return found;
   }
 
+  // A press pans only from empty canvas: nodes, ports and edges will have
+  // their own drags, and controls outside the viewport are buttons.
+  function isBackground(target, canvas, viewport) {
+    if (target === canvas) return true;
+    if (!viewport.contains(target) || target.closest('[data-node-id]')) return false;
+    const plane = target.closest('svg.pjx-graph__edge-plane');
+    return !plane || plane === target;
+  }
+
   function paint(viewport, t) {
     viewport.style.transform = 'translate(' + t.x + 'px, ' + t.y + 'px) scale(' + t.k + ')';
   }
 
   function attachZoom(canvas, viewport) {
     const zoom = d3.zoom()
+      // Wheel zooms from anywhere over the canvas; only presses need background.
+      .filter((event) => event.type === 'wheel'
+        || (!event.ctrlKey && !event.button && isBackground(event.target, canvas, viewport)))
       .on('zoom', (event) => paint(viewport, event.transform));
     // Double-click stays free for selection; zoom is the wheel and the controls.
     d3.select(canvas).call(zoom).on('dblclick.zoom', null);

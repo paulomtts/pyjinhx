@@ -163,3 +163,71 @@ def test_mounting_twice_attaches_one_zoom(page, page_errors, session):
     page.wait_for_timeout(100)
     assert _view(page)["k"] == pytest.approx(NOTCH, abs=1e-3)
     assert page_errors == []
+
+
+@pytest.mark.parametrize(
+    "selector",
+    [
+        "#g-n1 .pjx-graph__node-title",
+        '#g-n1 [data-pjx-graph-port="in"]',
+        '#g-n1 [data-pjx-graph-port="out"]',
+        "#fit",
+    ],
+    ids=["node", "in-port", "out-port", "control"],
+)
+def test_a_press_off_the_background_does_not_pan(page, page_errors, session, selector):
+    _serve(page, _stage(session))
+    # The drag ends over empty canvas; only where it started matters.
+    _drag(page, _center(page, selector))
+    assert _identity(_view(page))
+    assert page_errors == []
+
+
+def test_a_press_on_an_edge_element_does_not_pan(page, page_errors, session):
+    _serve(page, _stage(session))
+    page.evaluate(
+        """() => document.querySelector('#g .pjx-graph__edge-plane').insertAdjacentHTML(
+            'beforeend',
+            '<rect id="edge-hit" x="20" y="20" width="60" height="40"'
+            + ' style="pointer-events: all"></rect>')"""
+    )
+    _drag(page, _center(page, "#edge-hit"))
+    assert _identity(_view(page))
+    assert page_errors == []
+
+
+@pytest.mark.parametrize("button", ["right", "middle"])
+def test_a_non_primary_button_does_not_pan(page, page_errors, session, button):
+    _serve(page, _stage(session))
+    _drag(page, _background(page), button=button)
+    assert _identity(_view(page))
+    assert page_errors == []
+
+
+def test_a_ctrl_press_does_not_pan(page, page_errors, session):
+    _serve(page, _stage(session))
+    page.keyboard.down("Control")
+    _drag(page, _background(page))
+    page.keyboard.up("Control")
+    assert _identity(_view(page))
+    assert page_errors == []
+
+
+def test_wheel_over_a_node_or_a_control_zooms(page, page_errors, session):
+    _serve(page, _stage(session))
+    _wheel(page, _center(page, "#g-n1 .pjx-graph__node-title"))
+    _wait_for_k(page, NOTCH)
+    _wheel(page, _center(page, "#fit"))
+    _wait_for_k(page, NOTCH**2)
+    assert page_errors == []
+
+
+def test_the_side_panel_never_pans_or_zooms(page, page_errors, session):
+    panel = Markup('<aside id="panel" style="height:120px">Details</aside>')
+    _serve(page, _stage(session, panel=panel))
+    panel_point = _center(page, "#panel")
+    _drag(page, panel_point)
+    _wheel(page, panel_point)
+    page.wait_for_timeout(100)
+    assert _identity(_view(page))
+    assert page_errors == []
