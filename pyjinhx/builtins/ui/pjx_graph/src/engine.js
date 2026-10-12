@@ -131,6 +131,54 @@
     });
   }
 
+  function createInstance(root, canvas, viewport, view) {
+    // World coordinates are the viewport's untransformed pixels, the space
+    // data-x/y are written in, so they do not change with pan/zoom.
+    function toWorld(clientX, clientY) {
+      const origin = viewport.getBoundingClientRect();
+      const k = d3.zoomTransform(canvas).k;
+      return { x: (clientX - origin.left) / k, y: (clientY - origin.top) / k };
+    }
+
+    // Compared as strings, so ids need no CSS escaping.
+    function findNode(id) {
+      return nodesOf(root, viewport)
+        .find((node) => node.getAttribute('data-node-id') === id) || null;
+    }
+
+    function boxOf(node) {
+      const rect = node.getBoundingClientRect();
+      const at = toWorld(rect.left, rect.top);
+      return { x: at.x, y: at.y, width: node.offsetWidth, height: node.offsetHeight };
+    }
+
+    function box(id) {
+      const node = findNode(id);
+      return node && boxOf(node);
+    }
+
+    function inAnchor(id) {
+      const b = box(id);
+      return b && { x: b.x, y: b.y + b.height / 2 };
+    }
+
+    function outAnchor(id, port) {
+      const node = findNode(id);
+      if (!node) return null;
+      const dot = Array.from(node.querySelectorAll('[data-pjx-graph-port="out"]'))
+        .find((el) => el.getAttribute('data-port') === port);
+      if (!dot) {
+        const b = boxOf(node);
+        return { x: b.x + b.width, y: b.y + b.height / 2 };
+      }
+      // The ports straddle the edge with a transform, which offsetLeft ignores.
+      const rect = dot.getBoundingClientRect();
+      return toWorld(rect.left + rect.width / 2, rect.top + rect.height / 2);
+    }
+
+    return { root: root, box: box, inAnchor: inAnchor, outAnchor: outAnchor };
+  }
+
   function mount(root) {
     if (!(root instanceof Element) || !root.hasAttribute('data-pjx-graph')) {
       throw new Error('pjx.graph.mount: expected a [data-pjx-graph] element');
@@ -145,7 +193,7 @@
     part(viewport, '.pjx-graph__nodes', false);
     const view = attachZoom(root, canvas, viewport);
     nodesOf(root, viewport).forEach(place);
-    const instance = { root: root };
+    const instance = createInstance(root, canvas, viewport, view);
     instances.set(root, instance);
     settle(root, canvas, view);
     return instance;
