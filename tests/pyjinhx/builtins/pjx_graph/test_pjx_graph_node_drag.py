@@ -471,3 +471,84 @@ def test_a_selected_edge_stays_marked_through_a_drag(page, page_errors, session)
     page.mouse.up()
     assert page.evaluate(MARKED) == 1
     assert page_errors == []
+
+
+# Persistence
+
+STORED = {"x": 160, "y": 140, "base": {"x": 100, "y": 100}}
+
+
+def test_a_drop_is_stored_with_the_server_position_as_its_base(
+    page, page_errors, session
+):
+    _serve(page, _keyed(session))
+    _drag(page, _center(page, _title()))
+    assert _record(page) == {"view": IDENTITY_VIEW, "nodes": {"n1": STORED}}
+    assert page_errors == []
+
+
+def test_a_drop_keeps_the_record_other_fields(page, page_errors, session):
+    other = {"x": 1, "y": 2, "base": {"x": 3, "y": 4}}
+    _serve(
+        page,
+        _keyed(session),
+        record={"view": IDENTITY_VIEW, "nodes": {"gone": other}, "extra": [1]},
+    )
+    _drag(page, _center(page, _title()))
+    record = _record(page)
+    assert record["extra"] == [1]
+    assert record["view"] == IDENTITY_VIEW
+    assert record["nodes"] == {"gone": other, "n1": STORED}
+    assert page_errors == []
+
+
+@pytest.mark.parametrize("nodes", [None, [1, 2], "n1"], ids=["null", "array", "string"])
+def test_a_drop_replaces_unusable_nodes_with_an_object(
+    page, page_errors, session, nodes
+):
+    _serve(page, _keyed(session), record={"view": IDENTITY_VIEW, "nodes": nodes})
+    _drag(page, _center(page, _title()))
+    assert _record(page) == {"view": IDENTITY_VIEW, "nodes": {"n1": STORED}}
+    assert page_errors == []
+
+
+@pytest.mark.parametrize("node_id", ["__proto__", "constructor"])
+def test_a_prototype_named_id_is_stored_as_its_own_key(
+    page, page_errors, session, node_id
+):
+    _serve(page, _keyed(session, [_node(node_id, title="Odd")]))
+    _drag(page, _center(page, _title(f"g-{node_id}")))
+    assert _events(page, "move") == [_move(node_id, 160, 140)]
+    assert _record(page)["nodes"] == {node_id: STORED}
+    assert page.evaluate("() => Object.getPrototypeOf({}) === Object.prototype")
+    assert page_errors == []
+
+
+def test_without_a_storage_key_a_drag_never_persists(page, page_errors, session):
+    _serve(page, _stage(session), record="")
+    page.evaluate("() => localStorage.clear()")
+    _drag(page, _center(page, _title()))
+    assert _position(page) != ["100px", "100px"]
+    assert len(_events(page, "move")) == 1
+    assert page.evaluate("() => localStorage.length") == 0
+    _reload(page)
+    assert _position(page) == ["100px", "100px"]
+    assert page_errors == []
+
+
+def test_broken_storage_still_drags_and_fires_move(page, page_errors, session):
+    broken = (
+        "Storage.prototype.setItem = () => { throw new Error('quota'); };"
+        "Storage.prototype.getItem = () => { throw new Error('denied'); };"
+    )
+    _serve(page, _keyed(session), init=broken)
+    # Nothing is readable, so the stage was fit; the delta scales by its k.
+    k = page.evaluate(
+        "() => new DOMMatrix(getComputedStyle("
+        "document.querySelector('#g .pjx-graph__viewport')).transform).a"
+    )
+    _drag(page, _center(page, _title()))
+    x, y = round(100 + 60 / k), round(100 + 40 / k)
+    assert _position(page) == [f"{x}px", f"{y}px"]
+    assert _events(page, "move") == [_move("n1", x, y)]
+    assert page_errors == []

@@ -189,15 +189,40 @@ var __pjxD3=(()=>{var fe=Object.defineProperty;var vn=Object.getOwnPropertyDescr
     }
   }
 
+  function writeRecord(key, record) {
+    try {
+      window.localStorage.setItem(key, JSON.stringify(record));
+    } catch (error) {
+      // The stage keeps working, just without persistence.
+    }
+  }
+
   function saveView(key, t) {
     // Other fields of the record belong to other features and are kept.
     const record = readRecord(key);
     record.view = { x: t.x, y: t.y, k: t.k };
-    try {
-      window.localStorage.setItem(key, JSON.stringify(record));
-    } catch (error) {
-      // Pan/zoom keeps working, just without persistence.
-    }
+    writeRecord(key, record);
+  }
+
+  // Ids are the app's strings, so "__proto__" or "constructor" must be read
+  // as plain keys, never found on a prototype.
+  function own(object, name) {
+    return Object.prototype.hasOwnProperty.call(object, name);
+  }
+
+  function overridesOf(record) {
+    const nodes = record.nodes;
+    return nodes && typeof nodes === 'object' && !Array.isArray(nodes) ? nodes : null;
+  }
+
+  function saveOverride(key, id, override) {
+    const record = readRecord(key);
+    const nodes = overridesOf(record) || {};
+    // defineProperty, since assigning to "__proto__" would set the prototype.
+    Object.defineProperty(nodes, id,
+      { value: override, enumerable: true, writable: true, configurable: true });
+    record.nodes = nodes;
+    writeRecord(key, record);
   }
 
   function clampScale(k, extent) {
@@ -570,6 +595,11 @@ var __pjxD3=(()=>{var fe=Object.defineProperty;var vn=Object.getOwnPropertyDescr
         swallow = true;
         setTimeout(() => { swallow = false; }, 0);
         const id = done.node.getAttribute('data-node-id');
+        const baseX = coordinate(done.node, 'x');
+        const baseY = coordinate(done.node, 'y');
+        if (view.key && baseX !== null && baseY !== null) {
+          saveOverride(view.key, id, { x: done.x, y: done.y, base: { x: baseX, y: baseY } });
+        }
         root.dispatchEvent(new CustomEvent('pjx:graph:move',
           { bubbles: true, detail: { id: id, x: done.x, y: done.y } }));
       }
