@@ -10,6 +10,7 @@
   --pjx-graph-edge-hit-width: 14px;
   --pjx-graph-edge-label-color: var(--text-muted);
   --pjx-graph-edge-label-size: 0.75rem;
+  --pjx-graph-selected: var(--text);
 }
 
 .pjx-graph {
@@ -50,6 +51,11 @@
   stroke: var(--pjx-graph-edge-stroke);
   stroke-width: var(--pjx-graph-edge-width);
   pointer-events: none;
+}
+
+/* After the base rule: equal specificity, so source order lets it win. */
+.pjx-graph__edge--selected {
+  stroke: var(--pjx-graph-selected);
 }
 
 /* Unfilled, or the wide path would paint as a wedge; it takes presses even

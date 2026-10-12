@@ -572,3 +572,45 @@ def test_select_ignores_a_nested_stage_node(page, page_errors, session):
     assert _call(page, "select", "x") == {"error": 'pjx.graph.select: no node "x"'}
     assert _events(page) == []
     assert page_errors == []
+
+
+# Styling
+
+THEME = ":root { --text: rgb(70, 80, 90); --border: rgb(10, 20, 30); }"
+
+STYLE = """selector => {
+    const s = getComputedStyle(document.querySelector(selector));
+    return {outline: s.outlineStyle, outlineColor: s.outlineColor,
+            stroke: s.stroke, border: s.borderTopWidth, width: s.width};
+}"""
+
+
+def test_selection_styles_come_from_the_selected_token(page, page_errors, session):
+    _serve(
+        page,
+        _stage(session, _pair(), edges=_edges(session, ("e1", "a", "b"))),
+        THEME,
+    )
+    plain = page.evaluate(STYLE, "#g-a")
+    assert plain["outline"] == "none"
+    page.click("#g-a")
+    selected = page.evaluate(STYLE, "#g-a")
+    assert selected["outline"] == "solid"
+    assert selected["outlineColor"] == "rgb(70, 80, 90)"
+    # An outline adds no layout, so the node keeps its size.
+    assert (selected["border"], selected["width"]) == (plain["border"], plain["width"])
+    _click_edge(page, "e1")
+    edge = "#g svg.pjx-graph__edge-plane > path.pjx-graph__edge"
+    assert page.evaluate(STYLE, edge)["stroke"] == "rgb(70, 80, 90)"
+    assert page_errors == []
+
+
+def test_an_app_can_retheme_the_selection(page, page_errors, session):
+    css = THEME + "#g { --pjx-graph-selected: rgb(1, 2, 3); }"
+    _serve(page, _stage(session, _pair(), edges=_edges(session, ("e1", "a", "b"))), css)
+    page.click("#g-a")
+    assert page.evaluate(STYLE, "#g-a")["outlineColor"] == "rgb(1, 2, 3)"
+    _click_edge(page, "e1")
+    edge = "#g svg.pjx-graph__edge-plane > path.pjx-graph__edge"
+    assert page.evaluate(STYLE, edge)["stroke"] == "rgb(1, 2, 3)"
+    assert page_errors == []
