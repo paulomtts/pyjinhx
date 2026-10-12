@@ -687,3 +687,74 @@ def test_a_swap_inside_a_nested_stage_settles(page, page_errors, session):
         [anchor["x"], anchor["y"]], abs=0.01
     )
     assert page_errors == []
+
+
+# Interaction after swaps
+
+
+def test_handlers_are_not_double_bound_after_swaps(page, page_errors, session):
+    _serve(page, _keyed(session))
+    for b in [(400, 40), (400, 40)]:
+        before = _rendered(page)
+        _mutate(page, _replace("#g-nodes", _html(session, _layer(session, _trio(b=b)))))
+        _settle(page, before)
+    for _ in range(3):
+        page.evaluate(RECONCILE, "g")
+    _forget(page)
+    page.click(_title("g-b"))
+    assert [e["type"] for e in _events(page, "before-select", "select")] == [
+        "before-select",
+        "select",
+    ]
+    _forget(page)
+    x, y = _center(page, _title("g-b"))
+    _drag(page, (x, y), (x + 60, y + 40))
+    assert [e["detail"] for e in _events(page, "move")] == [
+        {"id": "b", "x": 460, "y": 80}
+    ]
+    assert page_errors == []
+
+
+def test_a_wire_from_a_replaced_node_fires_one_wire_event(page, page_errors, session):
+    _serve(page, _stage(session))
+    before = _rendered(page)
+    _mutate(page, _replace("#g-a", _html(session, _trio()[0])))
+    _settle(page, before)
+    _forget(page)
+    _drag(page, _center(page, _port("g-a")), _center(page, _title("g-c")))
+    assert [e["detail"] for e in _events(page, "wire")] == [
+        {"from": "a", "port": "ok", "to": "c"}
+    ]
+    assert page_errors == []
+
+
+def test_a_replaced_selected_node_stays_selected(page, page_errors, session):
+    _serve(page, _stage(session))
+    page.click(_title("g-b"))
+    _forget(page)
+    before = _rendered(page)
+    _mutate(page, _replace("#g-b", _html(session, _trio()[1])))
+    _settle(page, before)
+    assert page.evaluate(
+        "() => document.getElementById('g-b').classList.contains('pjx-graph__node--selected')"
+    )
+    assert _events(page, "deselect") == []
+    assert page_errors == []
+
+
+def test_a_reconcile_during_a_node_drag_leaves_the_dragged_node_alone(
+    page, page_errors, session
+):
+    _serve(page, _keyed(session))
+    x, y = _center(page, _title("g-a"))
+    _press(page, (x, y), (x + 60, y + 40))
+    assert _position(page, "g-a") == ["80px", "80px"]
+    before = _rendered(page)
+    _mutate(page, _replace("#g-c", _html(session, _trio()[2])), reconcile="g")
+    _settle(page, before)
+    assert _position(page, "g-a") == ["80px", "80px"]
+    page.mouse.up()
+    assert [e["detail"] for e in _events(page, "move")] == [
+        {"id": "a", "x": 80, "y": 80}
+    ]
+    assert page_errors == []
