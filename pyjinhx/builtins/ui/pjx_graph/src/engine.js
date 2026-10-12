@@ -100,8 +100,35 @@
     // d3 lets a wheel at either end of the range scroll the page.
     canvas.addEventListener('wheel', (event) => event.preventDefault(), { passive: false });
     d3.select(canvas).call(zoom.transform, key ? storedView(readRecord(key), extent) : d3.zoomIdentity);
-    // Listening only now, so applying the restored view does not write it back.
-    if (key) zoom.on('end', () => saveView(key, d3.zoomTransform(canvas)));
+    return { zoom: zoom, key: key };
+  }
+
+  // Listening only now, so the initial view is never written back.
+  function settle(root, canvas, view) {
+    if (view.key) view.zoom.on('end', () => saveView(view.key, d3.zoomTransform(canvas)));
+    root.setAttribute('data-pjx-graph-ready', '');
+  }
+
+  // A graph nested inside a node owns its own nodes.
+  function nodesOf(root, viewport) {
+    return Array.from(viewport.querySelectorAll('[data-node-id]'))
+      .filter((node) => node.closest('[data-pjx-graph]') === root);
+  }
+
+  function coordinate(node, axis) {
+    const raw = node.getAttribute('data-' + axis);
+    // Number() reads a missing or blank attribute as 0, a position nobody wrote.
+    const value = raw === null || raw.trim() === '' ? NaN : Number(raw);
+    return Number.isFinite(value) ? value : null;
+  }
+
+  // data-x/y are the server's truth; an inline style can be stale, e.g. after
+  // a partial swap kept an old node.
+  function place(node) {
+    ['x', 'y'].forEach((axis) => {
+      const value = coordinate(node, axis);
+      if (value !== null) node.style.setProperty('--pjx-graph-node-' + axis, value + 'px');
+    });
   }
 
   function mount(root) {
@@ -116,9 +143,11 @@
     const viewport = part(canvas, '.pjx-graph__viewport', true);
     part(viewport, 'svg.pjx-graph__edge-plane', true);
     part(viewport, '.pjx-graph__nodes', false);
-    attachZoom(root, canvas, viewport);
+    const view = attachZoom(root, canvas, viewport);
+    nodesOf(root, viewport).forEach(place);
     const instance = { root: root };
     instances.set(root, instance);
+    settle(root, canvas, view);
     return instance;
   }
 
