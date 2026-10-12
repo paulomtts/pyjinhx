@@ -245,6 +245,19 @@ var __pjxD3=(()=>{var fe=Object.defineProperty;var vn=Object.getOwnPropertyDescr
       + ', ' + p2.x + ' ' + p2.y;
   }
 
+  // Parallel edges between two nodes spread this far apart.
+  const FAN_GAP = 26;
+
+  // Centred on zero, so the middle of an odd fan is a plain edge.
+  function fanOffset(index, total) {
+    return total < 2 ? 0 : (index - (total - 1) / 2) * FAN_GAP;
+  }
+
+  // Unordered, so A→B and B→A fan together; JSON keeps any id unambiguous.
+  function pairOf(edge) {
+    return JSON.stringify([edge.getAttribute('data-from'), edge.getAttribute('data-to')].sort());
+  }
+
   // A stage inserted mid-layout reports a size that is about to change, so
   // wait until it holds for a frame; a hidden stage never gets one, so give up
   // after ten tries.
@@ -344,25 +357,33 @@ var __pjxD3=(()=>{var fe=Object.defineProperty;var vn=Object.getOwnPropertyDescr
     function drawEdges() {
       drawn.forEach((el) => el.remove());
       drawn = [];
-      edgesOf(root, viewport)
-        .filter((edge) => shown(edge.getAttribute('data-from')) && shown(edge.getAttribute('data-to')))
-        .forEach((edge, index) => {
-          const from = edge.getAttribute('data-from');
-          const to = edge.getAttribute('data-to');
-          const id = attr(edge, 'data-edge-id');
-          const d = edgePath(outAnchor(from, attr(edge, 'data-port')), inAnchor(to), 0);
-          // The wide transparent twin goes first, underneath, as the press target.
-          drawn.push(svg('path', { class: 'pjx-graph__edge-hit', d: d, 'data-edge-id': id }));
-          drawn.push(svg('path', {
-            class: 'pjx-graph__edge',
-            id: prefix + index,
-            d: d,
-            'data-edge-id': id,
-            'data-from': from,
-            'data-to': to,
-            'data-state': attr(edge, 'data-state'),
-          }));
-        });
+      const edges = edgesOf(root, viewport)
+        .filter((edge) => shown(edge.getAttribute('data-from')) && shown(edge.getAttribute('data-to')));
+      // Counted over the edges actually drawn, so a lone survivor is unfanned.
+      const totals = new Map();
+      edges.forEach((edge) => totals.set(pairOf(edge), (totals.get(pairOf(edge)) || 0) + 1));
+      const seen = new Map();
+      edges.forEach((edge, index) => {
+        const pair = pairOf(edge);
+        const nth = seen.get(pair) || 0;
+        seen.set(pair, nth + 1);
+        const from = edge.getAttribute('data-from');
+        const to = edge.getAttribute('data-to');
+        const id = attr(edge, 'data-edge-id');
+        const d = edgePath(outAnchor(from, attr(edge, 'data-port')), inAnchor(to),
+          fanOffset(nth, totals.get(pair)));
+        // The wide transparent twin goes first, underneath, as the press target.
+        drawn.push(svg('path', { class: 'pjx-graph__edge-hit', d: d, 'data-edge-id': id }));
+        drawn.push(svg('path', {
+          class: 'pjx-graph__edge',
+          id: prefix + index,
+          d: d,
+          'data-edge-id': id,
+          'data-from': from,
+          'data-to': to,
+          'data-state': attr(edge, 'data-state'),
+        }));
+      });
       plane.append(...drawn);
     }
 

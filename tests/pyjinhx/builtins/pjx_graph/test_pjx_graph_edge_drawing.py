@@ -326,3 +326,56 @@ def test_edge_and_hit_path_styles_come_from_tokens(page, page_errors, session):
         page.evaluate(STYLE, ["h", "path.pjx-graph__edge"])["stroke"] == "rgb(1, 2, 3)"
     )
     assert page_errors == []
+
+
+# Fan
+
+# b sits below and right of a, so the normal has both an x and a y part.
+FAN_NODES = [("a", 20, 40), ("b", 400, 160), ("c", 400, 320)]
+
+
+def _fan_nodes(stage_id: str = "g") -> list[PJXGraphNode]:
+    return [_node(n, x, y, stage_id, title=n) for n, x, y in FAN_NODES]
+
+
+def test_parallel_edges_fan_out_around_the_unfanned_path(page, page_errors, session):
+    _seed(page, IDENTITY)
+    three = [_edge("e1", "a", "b"), _edge("e2", "a", "b"), _edge("e3", "a", "b")]
+    _serve(
+        page,
+        _stage(session, _fan_nodes(), edges=three, storage_key="flow")
+        + _stage(session, _fan_nodes("h"), "h", edges=[_edge("e1", "a", "b")]),
+    )
+    p1 = _call(page, "outAnchor", "a")
+    p2 = _call(page, "inAnchor", "b")
+    lines = _visible(page)
+    for line, offset in zip(lines, (-26, 0, 26), strict=True):
+        assert _numbers(line["d"]) == pytest.approx(_expected(p1, p2, offset), abs=0.5)
+    # The middle one is exactly a lone edge, endpoints included.
+    [single] = _visible(page, "h")
+    assert _numbers(lines[1]["d"]) == pytest.approx(_numbers(single["d"]), abs=0.5)
+    for line in lines:
+        assert _numbers(line["d"])[:2] == pytest.approx([p1["x"], p1["y"]], abs=0.5)
+        assert _numbers(line["d"])[-2:] == pytest.approx([p2["x"], p2["y"]], abs=0.5)
+    assert page_errors == []
+
+
+def test_opposite_edges_share_one_fan_and_other_pairs_stay_unfanned(
+    page, page_errors, session
+):
+    _seed(page, IDENTITY)
+    edges = [_edge("ab", "a", "b"), _edge("ba", "b", "a"), _edge("ac", "a", "c")]
+    _serve(page, _stage(session, _fan_nodes(), edges=edges, storage_key="flow"))
+    ab, ba, ac = _visible(page)
+    out_a = _call(page, "outAnchor", "a")
+    assert _numbers(ab["d"]) == pytest.approx(
+        _expected(out_a, _call(page, "inAnchor", "b"), -13), abs=0.5
+    )
+    assert _numbers(ba["d"]) == pytest.approx(
+        _expected(_call(page, "outAnchor", "b"), _call(page, "inAnchor", "a"), 13),
+        abs=0.5,
+    )
+    assert _numbers(ac["d"]) == pytest.approx(
+        _expected(out_a, _call(page, "inAnchor", "c")), abs=0.5
+    )
+    assert page_errors == []
