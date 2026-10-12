@@ -333,8 +333,8 @@ def test_htmx_load_on_a_container_boots_its_stages(graph_page, page_errors, sess
             document.body.insertAdjacentHTML('beforeend', '<div id="box"></div>');
             await turn();
             const box = document.getElementById('box');
-            // Parsed into a detached template first, then moved in while the
-            // marker is off, so no added node is a stage.
+            // The marker is off before the observer callback runs, so the
+            // observer finds no stage among the added nodes.
             box.innerHTML = html;
             const el = document.getElementById('g');
             el.removeAttribute('data-pjx-graph');
