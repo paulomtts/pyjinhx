@@ -262,7 +262,8 @@ var __pjxD3=(()=>{var fe=Object.defineProperty;var vn=Object.getOwnPropertyDescr
       const node = findNode(id);
       if (!node) return null;
       const dot = Array.from(node.querySelectorAll('[data-pjx-graph-port="out"]'))
-        .find((el) => el.getAttribute('data-port') === port);
+        // A graph nested in the node may have a port with the same key.
+        .find((el) => el.getAttribute('data-port') === port && el.closest('[data-node-id]') === node);
       if (!dot) {
         const b = boxOf(node);
         return { x: b.x + b.width, y: b.y + b.height / 2 };

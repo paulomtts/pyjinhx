@@ -320,6 +320,20 @@ def test_a_nested_stage_keeps_its_own_nodes(page, page_errors, session):
     assert page_errors == []
 
 
+def test_out_anchor_ignores_a_nested_stage_port_with_the_same_key(
+    page, page_errors, session
+):
+    _seed(page, IDENTITY)
+    deep = _node("deep", 10, 10, "in", title="Deep", out_ports=("ok",))
+    inner = _stage(session, [deep], "in")
+    outer = _node("a", 40, 40, title="A", icon=Markup(inner), out_ports=("ok",))
+    _serve(page, _stage(session, [outer], storage_key="flow"))
+    box = _call(page, "box", "a")
+    anchor = _call(page, "outAnchor", "a", "ok")
+    assert anchor["x"] == pytest.approx(box["x"] + box["width"], abs=0.5)
+    assert page_errors == []
+
+
 # Fit
 
 NOTCH = 2**0.2
