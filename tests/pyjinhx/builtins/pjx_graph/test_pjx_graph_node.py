@@ -1,5 +1,8 @@
 """PJXGraphNode — one node card of the graph builtin: fields, DOM contract, escaping, CSS."""
 
+import re
+from pathlib import Path
+
 import pytest
 from pydantic import ValidationError
 
@@ -9,6 +12,15 @@ from pyjinhx.builtins.ui.pjx_graph_nodes import PJXGraphNodes
 from pyjinhx.rendering import render
 
 REQUIRED = {"node_id": "a", "x": 10, "y": 20.5, "title": "Start"}
+
+CSS = (
+    Path(__file__).resolve().parents[4]
+    / "pyjinhx"
+    / "builtins"
+    / "ui"
+    / "pjx_graph_node"
+    / "pjx_graph_node.css"
+)
 
 
 def _node(**kwargs) -> PJXGraphNode:
@@ -262,3 +274,53 @@ class TestMarkup:
         layer = PJXGraphNodes(id="layer", nodes_html=PJXGraphNodes.join([a, b]))
         root = _root(parse_html, render(layer, session))
         assert [child.attrs["data-node-id"] for child in root.children] == ["a", "b"]
+
+
+def _rule_block(css: str, selector: str) -> str:
+    match = re.search(re.escape(selector) + r"\s*\{([^}]*)\}", css)
+    assert match, f"no rule for {selector}"
+    return match.group(1)
+
+
+class TestStylesheet:
+    def test_css_asset_skeleton(self):
+        css = CSS.read_text(encoding="utf-8")
+        tokens = _rule_block(css, ":where(:root)")
+        for token in (
+            "--pjx-graph-node-bg: var(--surface);",
+            "--pjx-graph-node-border: var(--border);",
+            "--pjx-graph-node-radius: var(--radius-md);",
+            "--pjx-graph-node-width:",
+            "--pjx-graph-node-muted: var(--text-muted);",
+            "--pjx-graph-port-size:",
+            "--pjx-graph-port-bg: var(--surface);",
+        ):
+            assert token in tokens
+        node = _rule_block(css, ".pjx-graph__node")
+        assert "position: absolute" in node
+        assert "var(--pjx-graph-node-x" in node
+        assert "var(--pjx-graph-node-y" in node
+        assert "var(--pjx-graph-node-color, var(--pjx-graph-node-border))" in node
+        for selector in (
+            ".pjx-graph__node-icon",
+            ".pjx-graph__node-body",
+            ".pjx-graph__node-eyebrow",
+            ".pjx-graph__node-title",
+            ".pjx-graph__node-summary",
+            ".pjx-graph__node-ports",
+            ".pjx-graph__port",
+            ".pjx-graph__port--in",
+            ".pjx-graph__port--out",
+        ):
+            _rule_block(css, selector)
+        assert "!important" not in css
+        assert "pjx-icon" not in css
+        assert "--muted-foreground" not in css
+
+    def test_rendering_registers_stylesheet(self, session):
+        from pyjinhx.session import accumulate_assets
+
+        assert PJXGraphNode.__pjx_descriptor__.css_paths == (CSS,)
+        session.on_rendered.append(accumulate_assets)
+        _html(session)
+        assert CSS in session.css_assets
