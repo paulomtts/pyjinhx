@@ -490,3 +490,85 @@ def test_a_node_and_an_edge_sharing_an_id_are_different_selections(
         "pjx-graph__edge pjx-graph__edge--selected",
     ]
     assert page_errors == []
+
+
+# select() and deselect()
+
+
+def test_select_runs_the_click_sequence_and_returns_true(page, page_errors, session):
+    _serve(page, _stage(session, _pair()))
+    assert _call(page, "select", "b") == {"value": True}
+    assert _events(page) == [_ev("before-select", "b"), _ev("select", "b")]
+    assert _selected_nodes(page) == ["g-b"]
+    _forget(page)
+    assert _call(page, "select", "b") == {"value": True}
+    assert _events(page) == []
+    assert page_errors == []
+
+
+def test_a_prevented_select_returns_false(page, page_errors, session):
+    _serve(page, _stage(session, _pair()))
+    _call(page, "select", "a")
+    _veto(page, "before-select")
+    _forget(page)
+    assert _call(page, "select", "b") == {"value": False}
+    assert _events(page) == [_ev("before-select", "b")]
+    assert _selected_nodes(page) == ["g-a"]
+    assert page_errors == []
+
+
+def test_select_replaces_an_edge_selection(page, page_errors, session):
+    _serve(page, _stage(session, _pair(), edges=_edges(session, ("e1", "a", "b"))))
+    _click_edge(page, "e1")
+    _forget(page)
+    assert _call(page, "select", "a") == {"value": True}
+    assert _events(page) == [_ev("before-select", "a"), _ev("select", "a")]
+    assert _edge_classes(page, "e1") == ["pjx-graph__edge-hit", "pjx-graph__edge"]
+    assert _selected_nodes(page) == ["g-a"]
+    assert page_errors == []
+
+
+def test_deselect_fires_once_and_returns_nothing(page, page_errors, session):
+    _serve(page, _stage(session, _pair()))
+    _call(page, "select", "a")
+    _forget(page)
+    assert _call(page, "deselect") == {"value": None}
+    assert _events(page) == [_ev("deselect")]
+    assert _selected_nodes(page) == []
+    assert _call(page, "deselect") == {"value": None}
+    assert _events(page) == [_ev("deselect")]
+    assert page_errors == []
+
+
+@pytest.mark.parametrize("bad", [42, None, True], ids=["number", "null", "bool"])
+def test_select_rejects_a_non_string_id(page, page_errors, session, bad):
+    _serve(page, _stage(session, _pair()))
+    _call(page, "select", "a")
+    _forget(page)
+    assert _call(page, "select", bad) == {
+        "error": "pjx.graph.select: expected a string id"
+    }
+    assert _events(page) == []
+    assert _selected_nodes(page) == ["g-a"]
+    assert page_errors == []
+
+
+def test_select_rejects_an_unknown_id(page, page_errors, session):
+    _serve(page, _stage(session, _pair()))
+    _call(page, "select", "a")
+    _forget(page)
+    assert _call(page, "select", "nope") == {
+        "error": 'pjx.graph.select: no node "nope"'
+    }
+    assert _events(page) == []
+    assert _selected_nodes(page) == ["g-a"]
+    assert page_errors == []
+
+
+def test_select_ignores_a_nested_stage_node(page, page_errors, session):
+    inner = _stage(session, [_node("x", 10, 10, "in")], "in")
+    outer = [_node("a", 20, 20, icon=Markup(inner))]
+    _serve(page, _stage(session, outer), NESTED_CSS)
+    assert _call(page, "select", "x") == {"error": 'pjx.graph.select: no node "x"'}
+    assert _events(page) == []
+    assert page_errors == []

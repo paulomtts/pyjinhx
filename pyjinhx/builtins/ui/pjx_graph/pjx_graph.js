@@ -440,6 +440,12 @@ var __pjxD3=(()=>{var fe=Object.defineProperty;var vn=Object.getOwnPropertyDescr
       return true;
     }
 
+    function select(id) {
+      if (typeof id !== 'string') throw new Error('pjx.graph.select: expected a string id');
+      if (!findNode(id)) throw new Error('pjx.graph.select: no node "' + id + '"');
+      return choose('node', id);
+    }
+
     function deselect() {
       if (selected === null) return;
       mark(false);
@@ -509,7 +515,7 @@ var __pjxD3=(()=>{var fe=Object.defineProperty;var vn=Object.getOwnPropertyDescr
     listenForSelection(root, canvas, viewport, plane, choose, deselect);
     return {
       root: root, box: box, inAnchor: inAnchor, outAnchor: outAnchor, fit: fit, zoomBy: zoomBy,
-      drawEdges: drawEdges,
+      drawEdges: drawEdges, select: select, deselect: deselect,
     };
   }
 
