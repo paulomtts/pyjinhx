@@ -490,7 +490,10 @@ def test_markup_characters_in_ids_states_and_labels_stay_inert(
         "<i>&']",
         "pjx-graph__edge pjx-graph__edge--<i>&']",
     )
-    assert _labels(page) == [_label(odd, odd)]
+    # The state is one token, so it is also the modifier on the label's target.
+    assert _labels(page) == [
+        {**_label(odd, odd), "targetClass": "pjx-graph__edge pjx-graph__edge--<i>&']"}
+    ]
     assert page.evaluate("() => document.querySelectorAll('i').length") == 0
     assert console_errors == []
     assert page_errors == []
