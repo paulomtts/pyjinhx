@@ -278,3 +278,12 @@ class TestMarkup:
         assert nodes.classes == ["pjx-graph__nodes"]
         assert edges.classes == ["pjx-graph__edges"]
         assert [span.attrs["data-edge-id"] for span in edges.children] == ["e1"]
+
+
+def test_exported_from_the_builtins_namespace():
+    from pyjinhx import builtins
+
+    names = builtins.__all__
+    assert names.index("PJXGraphEdges") == names.index("PJXGraph") + 1
+    assert names.index("PJXGraphNode") == names.index("PJXGraphEdges") + 1
+    assert builtins.PJXGraphEdges is PJXGraphEdges

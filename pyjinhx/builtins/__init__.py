@@ -41,6 +41,7 @@ __all__ = [  # noqa: RUF022
     "PJXEmptyState",
     "PJXFormField",
     "PJXGraph",
+    "PJXGraphEdges",
     "PJXGraphNode",
     "PJXGraphNodes",
     "PJXIcon",
@@ -156,6 +157,10 @@ _lazy_imports = {
         "PJXFormField",
     ),
     "PJXGraph": ("pyjinhx.builtins.ui.pjx_graph.pjx_graph", "PJXGraph"),
+    "PJXGraphEdges": (
+        "pyjinhx.builtins.ui.pjx_graph_edges.pjx_graph_edges",
+        "PJXGraphEdges",
+    ),
     "PJXGraphNode": (
         "pyjinhx.builtins.ui.pjx_graph_node.pjx_graph_node",
         "PJXGraphNode",
