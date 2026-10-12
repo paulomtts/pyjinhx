@@ -262,3 +262,47 @@ def test_a_release_outside_the_canvas_ends_the_drag_once(page, page_errors, sess
     page.mouse.move(x + 200, below + 20)
     assert len(_events(page, "move")) == 1
     assert page_errors == []
+
+
+def test_a_drag_swallows_only_its_own_trailing_click(page, page_errors, session):
+    _serve(page, _keyed(session))
+    _drag(page, _center(page, _title()))
+    assert _events(page, "before-select", "select", "deselect") == []
+    assert (
+        page.evaluate(
+            "() => document.querySelectorAll('.pjx-graph__node--selected').length"
+        )
+        == 0
+    )
+    page.mouse.click(*_center(page, _title()))
+    assert [e["type"] for e in _events(page, "before-select", "select")] == [
+        "before-select",
+        "select",
+    ]
+    assert page_errors == []
+
+
+def test_a_drag_keeps_the_current_selection(page, page_errors, session):
+    nodes = [_start(), _node("n2", 500, 300, title="Other")]
+    _serve(page, _keyed(session, nodes))
+    page.click("#g-n2")
+    _forget(page)
+    _drag(page, _center(page, _title()))
+    assert _events(page, "before-select", "select", "deselect") == []
+    assert page.evaluate(
+        "() => Array.from(document.querySelectorAll('.pjx-graph__node--selected'))"
+        ".map((n) => n.id)"
+    ) == ["g-n2"]
+    assert page_errors == []
+
+
+def test_a_drag_selects_no_page_text(page, page_errors, session):
+    _serve(page, "<p id='words'>Some words to select</p>" + _keyed(session))
+    words = page.locator("#words").bounding_box()
+    assert words is not None
+    x, y = _center(page, _title())
+    # Up and over the paragraph above the stage, which a text drag would select.
+    _drag(page, (x, y), dx=words["x"] + 2 - x, dy=words["y"] + 4 - y)
+    assert page.evaluate("() => window.getSelection().toString()") == ""
+    assert len(_events(page, "move")) == 1
+    assert page_errors == []

@@ -454,6 +454,9 @@
 
     function listenForDrag() {
       let press = null;
+      // The click that follows a drop must not select; armed for that one
+      // click only, since a release does not always produce one.
+      let swallow = false;
 
       function follow(event) {
         if (event.pointerId !== press.pointerId) return;
@@ -475,10 +478,17 @@
         window.removeEventListener('pointermove', follow);
         window.removeEventListener('pointerup', end);
         window.removeEventListener('pointercancel', end);
+        document.removeEventListener('selectstart', block);
         if (!done.dragging) return;
+        swallow = true;
+        setTimeout(() => { swallow = false; }, 0);
         const id = done.node.getAttribute('data-node-id');
         root.dispatchEvent(new CustomEvent('pjx:graph:move',
           { bubbles: true, detail: { id: id, x: done.x, y: done.y } }));
+      }
+
+      function block(event) {
+        event.preventDefault();
       }
 
       canvas.addEventListener('pointerdown', (event) => {
@@ -497,7 +507,15 @@
         window.addEventListener('pointermove', follow);
         window.addEventListener('pointerup', end);
         window.addEventListener('pointercancel', end);
+        document.addEventListener('selectstart', block);
       });
+
+      // Capturing, so it runs before the selection listener on the canvas.
+      canvas.addEventListener('click', (event) => {
+        if (!swallow) return;
+        swallow = false;
+        event.stopImmediatePropagation();
+      }, true);
     }
 
     listenForSelection(root, canvas, viewport, plane, choose, deselect);
