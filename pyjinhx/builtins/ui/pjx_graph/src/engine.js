@@ -17,6 +17,8 @@
   const FIT_PAD = 48;
   // A press that moves no further than this, in screen pixels, is a click.
   const DRAG_SLOP = 4;
+  // Pressing these inside a node uses them; it never drags the node.
+  const INTERACTIVE = 'input, textarea, select, button, a[href], [contenteditable]';
 
   // One control step; two steps double or halve the scale.
   const ZOOM_STEP = Math.SQRT2;
@@ -447,9 +449,16 @@
       root.dispatchEvent(new CustomEvent('pjx:graph:rendered', { bubbles: true, detail: null }));
     }
 
+    // Only this stage's nodes with a server position drag: a drop needs a
+    // base to anchor it, and a port or form control keeps its own press.
     function draggable(target) {
+      if (target.closest('[data-pjx-graph]') !== root) return null;
       const node = target.closest('[data-node-id]');
-      return node && viewport.contains(node) ? node : null;
+      if (!node || !viewport.contains(node)) return null;
+      const used = target.closest('[data-pjx-graph-port], ' + INTERACTIVE);
+      if (used && node.contains(used)) return null;
+      if (coordinate(node, 'x') === null || coordinate(node, 'y') === null) return null;
+      return node;
     }
 
     function listenForDrag() {

@@ -15,6 +15,9 @@ import json
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+import pytest
+from markupsafe import Markup
+
 from pyjinhx.builtins.ui.pjx_graph import PJXGraph
 from pyjinhx.builtins.ui.pjx_graph_edges import PJXGraphEdges
 from pyjinhx.builtins.ui.pjx_graph_node import PJXGraphNode
@@ -305,4 +308,103 @@ def test_a_drag_selects_no_page_text(page, page_errors, session):
     _drag(page, (x, y), dx=words["x"] + 2 - x, dy=words["y"] + 4 - y)
     assert page.evaluate("() => window.getSelection().toString()") == ""
     assert len(_events(page, "move")) == 1
+    assert page_errors == []
+
+
+# What does not drag
+
+
+@pytest.mark.parametrize(
+    "selector",
+    ['#g-n1 [data-pjx-graph-port="in"]', '#g-n1 [data-pjx-graph-port="out"]'],
+    ids=["in-port", "out-port"],
+)
+def test_pressing_a_port_does_not_move_the_node(page, page_errors, session, selector):
+    _serve(page, _keyed(session))
+    _drag(page, _center(page, selector))
+    assert _position(page) == ["100px", "100px"]
+    assert _events(page, "move") == []
+    assert page_errors == []
+
+
+@pytest.mark.parametrize(
+    "control",
+    [
+        '<input id="ctl" value="some text here">',
+        '<a id="ctl" href="#x">a link</a>',
+        '<button id="ctl" type="button">Go</button>',
+    ],
+    ids=["input", "link", "button"],
+)
+def test_pressing_a_control_inside_a_node_does_not_move_it(
+    page, page_errors, session, control
+):
+    _serve(page, _keyed(session, [_start(icon=Markup(control))]))
+    _drag(page, _center(page, "#ctl"))
+    assert _position(page) == ["100px", "100px"]
+    assert _events(page, "move") == []
+    assert page_errors == []
+
+
+def test_an_input_inside_a_node_still_takes_typing(page, page_errors, session):
+    _serve(page, _keyed(session, [_start(icon=Markup('<input id="ctl">'))]))
+    page.click("#ctl")
+    page.keyboard.type("hi")
+    assert page.input_value("#ctl") == "hi"
+    assert page_errors == []
+
+
+@pytest.mark.parametrize("value", ["", "abc"], ids=["blank", "not-a-number"])
+def test_a_node_without_a_server_position_is_not_draggable(
+    page, page_errors, session, value
+):
+    html = _keyed(session).replace('data-x="100.0"', f'data-x="{value}"')
+    assert f'data-x="{value}"' in html
+    _serve(page, html)
+    before = _position(page)
+    _drag(page, _center(page, _title()))
+    assert _position(page) == before
+    assert _events(page, "move") == []
+    assert _record(page) == {"view": IDENTITY_VIEW}
+    page.click(_title())
+    assert [e["type"] for e in _events(page, "select")] == ["select"]
+    assert page_errors == []
+
+
+NESTED_CSS = (
+    "#g-a { width: 700px; } #in { width: 600px; }"
+    " #in > .pjx-graph__canvas { min-height: 0; height: 200px; }"
+)
+
+
+def _nested(page: Page, session) -> str:
+    """Stage g whose node a (at 20, 20) holds stage in with its node x at (10, 10).
+
+    Both stages start from an identity view.
+    """
+    inner = _stage(
+        session, [_node("x", 10, 10, "in", title="Inner")], "in", storage_key="inner"
+    )
+    _seed(page, {"view": IDENTITY_VIEW}, key="pjx-graph:inner")
+    return _keyed(session, [_node("a", 20, 20, icon=Markup(inner), title="Outer")])
+
+
+def test_dragging_a_nested_stage_node_moves_only_that_node(page, page_errors, session):
+    _serve(page, _nested(page, session), NESTED_CSS)
+    _drag(page, _center(page, _title("in-x")))
+    assert _position(page, "in-x") == ["70px", "50px"]
+    assert _position(page, "g-a") == ["20px", "20px"]
+    assert _events(page, "move") == [_move("x", 70, 50, target="in")]
+    assert page_errors == []
+
+
+def test_a_press_on_a_nested_stage_background_does_not_move_the_outer_node(
+    page, page_errors, session
+):
+    _serve(page, _nested(page, session), NESTED_CSS)
+    box = page.locator("#in > .pjx-graph__canvas").bounding_box()
+    assert box is not None
+    _drag(page, (round(box["x"] + 400), round(box["y"] + 150)))
+    assert _position(page, "g-a") == ["20px", "20px"]
+    assert _events(page, "move") == []
     assert page_errors == []
