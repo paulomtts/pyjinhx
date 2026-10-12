@@ -5,6 +5,9 @@
   --pjx-graph-grid-color: var(--border);
   --pjx-graph-grid-size: 24px;
   --pjx-graph-min-height: 24rem;
+  --pjx-graph-edge-stroke: var(--border);
+  --pjx-graph-edge-width: 1.5px;
+  --pjx-graph-edge-hit-width: 14px;
 }
 
 .pjx-graph {
@@ -37,6 +40,23 @@
   left: 0;
   overflow: visible;
   pointer-events: none;
+}
+
+/* The hit path is the press target, so the visible edge never is. */
+.pjx-graph__edge {
+  fill: none;
+  stroke: var(--pjx-graph-edge-stroke);
+  stroke-width: var(--pjx-graph-edge-width);
+  pointer-events: none;
+}
+
+/* Unfilled, or the wide path would paint as a wedge; it takes presses even
+   though the plane itself does not. */
+.pjx-graph__edge-hit {
+  fill: none;
+  stroke: transparent;
+  stroke-width: var(--pjx-graph-edge-hit-width);
+  pointer-events: stroke;
 }
 
 .pjx-graph__nodes {

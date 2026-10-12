@@ -15,6 +15,10 @@
   const instances = new WeakMap();
   // Room left around the nodes when a fit frames them.
   const FIT_PAD = 48;
+  const SVG_NS = 'http://www.w3.org/2000/svg';
+  // Gives each mounted stage its own path-id prefix, so ids never collide
+  // across stages, whatever edge ids the app reuses.
+  let stageCount = 0;
 
   function part(parent, selector, direct) {
     // PJXGraph's own parts are direct children, so a nested graph never
@@ -122,6 +126,12 @@
       .filter((node) => node.closest('[data-pjx-graph]') === root);
   }
 
+  // A graph nested inside a node draws its own edges.
+  function edgesOf(root, viewport) {
+    return Array.from(viewport.querySelectorAll('[data-pjx-graph-edge]'))
+      .filter((edge) => edge.closest('[data-pjx-graph]') === root);
+  }
+
   function coordinate(node, axis) {
     const raw = node.getAttribute('data-' + axis);
     // Number() reads a missing or blank attribute as 0, a position nobody wrote.
@@ -136,6 +146,31 @@
       const value = coordinate(node, axis);
       if (value !== null) node.style.setProperty('--pjx-graph-node-' + axis, value + 'px');
     });
+  }
+
+  // A missing attribute reads as empty, as PJXGraphEdges would have written it.
+  function attr(el, name) {
+    return el.getAttribute(name) || '';
+  }
+
+  function svg(tag, attrs) {
+    const el = document.createElementNS(SVG_NS, tag);
+    Object.keys(attrs).forEach((name) => el.setAttribute(name, attrs[name]));
+    return el;
+  }
+
+  // A horizontal bezier between the anchors. The offset moves only the two
+  // control points along the normal, so parallel edges bow apart while their
+  // ends stay on the ports.
+  function edgePath(p1, p2, offset) {
+    const dx = Math.max(48, Math.abs(p2.x - p1.x) * 0.5);
+    const len = Math.hypot(p2.x - p1.x, p2.y - p1.y) || 1;
+    const nx = -(p2.y - p1.y) / len * offset;
+    const ny = (p2.x - p1.x) / len * offset;
+    return 'M ' + p1.x + ' ' + p1.y
+      + ' C ' + (p1.x + dx + nx) + ' ' + (p1.y + ny)
+      + ', ' + (p2.x - dx + nx) + ' ' + (p2.y + ny)
+      + ', ' + p2.x + ' ' + p2.y;
   }
 
   // A stage inserted mid-layout reports a size that is about to change, so
@@ -155,7 +190,12 @@
     })();
   }
 
-  function createInstance(root, canvas, viewport, view) {
+  function createInstance(root, canvas, viewport, plane, view) {
+    const prefix = 'pjx-graph-edge-' + (++stageCount) + '-';
+    // Only the last pass's own elements are cleared, so anything else in the
+    // plane survives a redraw.
+    let drawn = [];
+
     // World coordinates are the viewport's untransformed pixels, the space
     // data-x/y are written in, so they do not change with pan/zoom.
     function toWorld(clientX, clientY) {
@@ -223,7 +263,40 @@
       d3.select(canvas).call(view.zoom.transform, t);
     }
 
-    return { root: root, box: box, inAnchor: inAnchor, outAnchor: outAnchor, fit: fit };
+    // An unknown or display:none node has no box to join.
+    function shown(id) {
+      const node = findNode(id);
+      return node !== null && node.getClientRects().length > 0;
+    }
+
+    function drawEdges() {
+      drawn.forEach((el) => el.remove());
+      drawn = [];
+      edgesOf(root, viewport)
+        .filter((edge) => shown(edge.getAttribute('data-from')) && shown(edge.getAttribute('data-to')))
+        .forEach((edge, index) => {
+          const from = edge.getAttribute('data-from');
+          const to = edge.getAttribute('data-to');
+          const id = attr(edge, 'data-edge-id');
+          const d = edgePath(outAnchor(from, attr(edge, 'data-port')), inAnchor(to), 0);
+          // The wide transparent twin goes first, underneath, as the press target.
+          drawn.push(svg('path', { class: 'pjx-graph__edge-hit', d: d, 'data-edge-id': id }));
+          drawn.push(svg('path', {
+            class: 'pjx-graph__edge',
+            id: prefix + index,
+            d: d,
+            'data-edge-id': id,
+            'data-from': from,
+            'data-to': to,
+            'data-state': attr(edge, 'data-state'),
+          }));
+        });
+      plane.append(...drawn);
+    }
+
+    return {
+      root: root, box: box, inAnchor: inAnchor, outAnchor: outAnchor, fit: fit, drawEdges: drawEdges,
+    };
   }
 
   function mount(root) {
@@ -236,18 +309,21 @@
     }
     const canvas = part(root, '.pjx-graph__canvas', true);
     const viewport = part(canvas, '.pjx-graph__viewport', true);
-    part(viewport, 'svg.pjx-graph__edge-plane', true);
+    const plane = part(viewport, 'svg.pjx-graph__edge-plane', true);
     part(viewport, '.pjx-graph__nodes', false);
     const view = attachZoom(root, canvas, viewport);
     nodesOf(root, viewport).forEach(place);
-    const instance = createInstance(root, canvas, viewport, view);
+    const instance = createInstance(root, canvas, viewport, plane, view);
     instances.set(root, instance);
     // A restored view is where the user left off; only a fresh stage is framed.
+    // Edges are drawn before ready, so whatever waits on ready sees them.
     if (view.restored) {
+      instance.drawEdges();
       settle(root, canvas, view);
     } else {
       whenLaidOut(canvas, () => {
         instance.fit();
+        instance.drawEdges();
         settle(root, canvas, view);
       });
     }
