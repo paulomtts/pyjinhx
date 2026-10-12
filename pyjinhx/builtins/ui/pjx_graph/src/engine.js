@@ -604,22 +604,41 @@
     function listenForWire() {
       let wire = null;
 
+      function clearGhost() {
+        if (wire.ghost) wire.ghost.remove();
+        wire.ghost = null;
+      }
+
       function follow(event) {
         if (event.pointerId !== wire.pointerId) return;
         const dx = event.clientX - wire.clientX;
         const dy = event.clientY - wire.clientY;
         if (!wire.dragging && Math.hypot(dx, dy) <= DRAG_SLOP) return;
         wire.dragging = true;
+        const start = outAnchor(wire.from, wire.port);
+        // A source swapped out mid-gesture has nowhere to start from.
+        if (!start) {
+          clearGhost();
+          return;
+        }
+        if (!wire.ghost) {
+          // Outside drawn, so a redraw during the gesture keeps it.
+          wire.ghost = svg('path', { class: 'pjx-graph__wire' });
+          plane.append(wire.ghost);
+        }
+        wire.ghost.setAttribute('d', edgePath(start, toWorld(event.clientX, event.clientY), 0));
       }
 
       function end(event) {
         if (event.pointerId !== wire.pointerId) return;
+        clearGhost();
         const done = wire;
         wire = null;
         window.removeEventListener('pointermove', follow);
         window.removeEventListener('pointerup', end);
         window.removeEventListener('pointercancel', end);
-        if (!done.dragging || event.type !== 'pointerup') return;
+        if (!done.dragging || event.type !== 'pointerup' || !findNode(done.from)) return;
+        // The ghost takes no pointer events, so it never hides the node below.
         const hit = document.elementFromPoint(event.clientX, event.clientY);
         const target = hit && ownNode(hit);
         if (!target) return;
@@ -637,7 +656,7 @@
         if (!node) return;
         wire = {
           from: node.getAttribute('data-node-id'), port: attr(port, 'data-port'),
-          pointerId: event.pointerId, dragging: false,
+          pointerId: event.pointerId, dragging: false, ghost: null,
           clientX: event.clientX, clientY: event.clientY,
         };
         // On window, so a release outside the canvas still ends the wire.

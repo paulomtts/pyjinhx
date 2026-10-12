@@ -366,3 +366,117 @@ def test_a_nested_stage_node_is_no_target_of_the_outer_stage(
     _wire(page, _center(page, _port("g-s")), _center(page, _title("in-x")))
     assert _events(page, "wire") == []
     assert page_errors == []
+
+
+# The ghost edge
+
+
+def test_the_ghost_edge_follows_the_pointer_while_dragging(page, page_errors, session):
+    _serve(page, _keyed(session))
+    x, y = _center(page, _port())
+    page.mouse.move(x, y)
+    page.mouse.down()
+    for pointer in [(x + 80, y + 60), (x + 150, y - 40)]:
+        page.mouse.move(*pointer, steps=4)
+        assert _ghosts(page) == 1
+        _assert_ghost(page, pointer)
+    page.mouse.up()
+    assert page_errors == []
+
+
+def test_the_ghost_edge_ends_at_the_pointer_on_a_zoomed_and_panned_stage(
+    page, page_errors, session
+):
+    _serve(page, _keyed(session), view={"x": 30, "y": 20, "k": 2})
+    x, y = _center(page, _port())
+    _press(page, (x, y), (x + 60, y + 40))
+    _assert_ghost(page, (x + 60, y + 40), k=2)
+    page.mouse.up()
+    assert page_errors == []
+
+
+def test_the_ghost_edge_is_no_edge(page, page_errors, session):
+    _serve(page, _keyed(session))
+    x, y = _center(page, _port())
+    _press(page, (x, y), (x + 80, y + 60))
+    ghost = page.evaluate(
+        f"() => {{ const g = ({GHOSTS})('g')[0];"
+        " return [g.getAttribute('class'), g.hasAttribute('data-edge-id')]; }"
+    )
+    assert ghost == ["pjx-graph__wire", False]
+    page.mouse.up()
+    assert page_errors == []
+
+
+@pytest.mark.parametrize("drop", ["node", "background"])
+def test_the_ghost_edge_is_removed_after_a_drop(page, page_errors, session, drop):
+    _serve(page, _keyed(session))
+    x, y = _center(page, _port())
+    end = _center(page, _title("g-n2")) if drop == "node" else (x + 30, y + 200)
+    _press(page, (x, y), end)
+    assert _ghosts(page) == 1
+    page.mouse.up()
+    assert _ghosts(page) == 0
+    assert page_errors == []
+
+
+def test_a_redraw_while_wiring_keeps_the_ghost_out_of_the_edges(
+    page, page_errors, session
+):
+    edges = [{"id": "e1", "from": "n1", "to": "n2", "port": "ok"}]
+    _serve(page, _keyed(session, edges=edges))
+    x, y = _center(page, _port())
+    _press(page, (x, y), (x + 80, y + 60))
+    page.evaluate("() => pjx.graph.get(document.getElementById('g')).drawEdges()")
+    assert _ghosts(page) == 1
+    assert (
+        page.evaluate(
+            "() => document.querySelectorAll('#g path.pjx-graph__edge').length"
+        )
+        == 1
+    )
+    page.mouse.up()
+    assert _ghosts(page) == 0
+    assert page_errors == []
+
+
+def test_a_press_on_an_out_port_that_moves_four_pixels_or_less_draws_and_fires_nothing(
+    page, page_errors, session
+):
+    _serve(page, _keyed(session))
+    x, y = _center(page, _port())
+    _press(page, (x, y), (x + 3, y))
+    assert _ghosts(page) == 0
+    page.mouse.up()
+    assert _events(page, "wire") == []
+    assert page_errors == []
+
+
+def test_a_cancelled_pointer_removes_the_ghost_and_fires_nothing(
+    page, page_errors, session
+):
+    _serve(page, _keyed(session))
+    _press(page, _center(page, _port()), _center(page, _title("g-n2")))
+    page.evaluate(
+        "() => window.dispatchEvent(new PointerEvent('pointercancel',"
+        " { pointerId: 1, bubbles: true }))"
+    )
+    assert _ghosts(page) == 0
+    page.mouse.up()
+    assert _events(page, "wire") == []
+    assert page_errors == []
+
+
+def test_a_source_removed_mid_drag_drops_the_ghost_and_fires_nothing(
+    page, page_errors, session
+):
+    _serve(page, _keyed(session))
+    x, y = _center(page, _port())
+    target = _center(page, _title("g-n2"))
+    _press(page, (x, y), (x + 60, y + 40))
+    page.evaluate("() => document.getElementById('g-n1').remove()")
+    page.mouse.move(*target, steps=2)
+    assert _ghosts(page) == 0
+    page.mouse.up()
+    assert _events(page, "wire") == []
+    assert page_errors == []
