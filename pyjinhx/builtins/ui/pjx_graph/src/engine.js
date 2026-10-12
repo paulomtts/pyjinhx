@@ -44,6 +44,43 @@
     return instances.get(root) || null;
   }
 
+  function boot(subtree) {
+    const stages = Array.from(subtree.querySelectorAll('[data-pjx-graph]'));
+    if (subtree.matches && subtree.matches('[data-pjx-graph]')) {
+      stages.unshift(subtree);
+    }
+    stages.forEach((stage) => {
+      // One broken stage must not keep the others on the page from booting.
+      try {
+        mount(stage);
+      } catch (error) {
+        console.error(error);
+      }
+    });
+  }
+
+  function watch() {
+    boot(document);
+    // Observing only after the parser is done: a stage it is still streaming
+    // is seen before its children exist and would fail to mount.
+    new MutationObserver((mutations) => {
+      mutations.forEach((m) => m.addedNodes.forEach((node) => {
+        if (node.nodeType === 1) boot(node);
+      }));
+    }).observe(document.documentElement, { childList: true, subtree: true });
+  }
+
+  // Covers stages the observer never sees added, e.g. one that gained
+  // data-pjx-graph or its parts after insertion.
+  document.addEventListener('htmx:load', (event) => {
+    if (event.target.querySelectorAll) boot(event.target);
+  });
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', watch);
+  } else {
+    watch();
+  }
+
   graph.mount = mount;
   graph.get = get;
 })();

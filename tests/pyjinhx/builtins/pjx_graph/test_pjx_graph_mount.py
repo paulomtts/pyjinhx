@@ -212,3 +212,218 @@ def test_reloading_keeps_mount_get_and_instances(graph_page, page_errors, sessio
             && pjx.graph.get(el) === instance"""
     )
     assert page_errors == []
+
+
+@pytest.fixture
+def console_errors(page: Page) -> list[str]:
+    """The text of every console.error the page logs from here on."""
+    errors: list[str] = []
+    page.on(
+        "console", lambda msg: errors.append(msg.text) if msg.type == "error" else None
+    )
+    return errors
+
+
+def _booted(stage_id: str = "g") -> str:
+    return f"pjx.graph.get(document.getElementById('{stage_id}')) !== null"
+
+
+def _append(page: Page, html: str) -> None:
+    page.evaluate("html => document.body.insertAdjacentHTML('beforeend', html)", html)
+
+
+def test_stage_present_before_the_asset_is_booted(page: Page, page_errors, session):
+    page.set_content(f"<body>{_stage(session)}</body>")
+    page.add_script_tag(content=ASSET.read_text(encoding="utf-8"))
+    # Booted synchronously when the script runs after load.
+    assert page.evaluate(_booted())
+    assert page.evaluate(
+        "() => pjx.graph.get(document.getElementById('g')).root"
+        " === document.getElementById('g')"
+    )
+    assert page_errors == []
+
+
+def test_asset_in_head_boots_the_stage_on_dom_content_loaded(
+    page: Page, page_errors, console_errors, session
+):
+    asset = ASSET.read_text(encoding="utf-8")
+    page.set_content(
+        f"<html><head><script>{asset}</script></head>"
+        f"<body>{_stage(session)}</body></html>"
+    )
+    assert page.evaluate(_booted())
+    assert console_errors == []
+    assert page_errors == []
+
+
+def test_stage_streamed_by_the_parser_boots_without_errors(
+    page: Page, page_errors, console_errors, session
+):
+    # The inline script pauses the parser after the stage element is created
+    # but before its children exist; a live observer would mount it there.
+    asset = ASSET.read_text(encoding="utf-8")
+    stage = _stage(session).replace(
+        '><div class="pjx-graph__canvas">',
+        '><script>window.midStage = 1;</script><div class="pjx-graph__canvas">',
+        1,
+    )
+    assert "midStage" in stage
+    html = f"<html><head><script>{asset}</script></head><body>{stage}</body></html>"
+    # A real navigation, not set_content: document.write would parse the whole
+    # body before any observer callback could run.
+    page.route(
+        "http://pjx.test/",
+        lambda route: route.fulfill(body=html, content_type="text/html"),
+    )
+    page.goto("http://pjx.test/")
+    assert page.evaluate("window.midStage") == 1
+    assert page.evaluate(_booted())
+    assert console_errors == []
+    assert page_errors == []
+
+
+def test_stage_appended_after_load_is_booted(graph_page, page_errors, session):
+    _append(graph_page, _stage(session))
+    graph_page.wait_for_function(_booted())
+    assert page_errors == []
+
+
+def test_stage_nested_in_an_appended_wrapper_is_booted(
+    graph_page, page_errors, session
+):
+    graph_page.evaluate(
+        """html => {
+            const wrapper = document.createElement('div');
+            wrapper.innerHTML = '<section>' + html + '</section>';
+            document.body.appendChild(wrapper);
+        }""",
+        _stage(session),
+    )
+    graph_page.wait_for_function(_booted())
+    assert page_errors == []
+
+
+def test_htmx_load_boots_a_stage_the_observer_did_not(graph_page, page_errors, session):
+    # The marker is removed before the observer callback runs, so the
+    # observer sees no stage; only htmx:load can mount it afterwards.
+    result = graph_page.evaluate(
+        """async html => {
+            const turn = () => new Promise((resolve) => setTimeout(resolve));
+            document.body.insertAdjacentHTML('beforeend', html);
+            const el = document.getElementById('g');
+            el.removeAttribute('data-pjx-graph');
+            await turn();
+            el.setAttribute('data-pjx-graph', '');
+            await turn();
+            const before = pjx.graph.get(el);
+            el.dispatchEvent(new CustomEvent('htmx:load', {bubbles: true}));
+            return [before === null, pjx.graph.get(el) !== null];
+        }""",
+        _stage(session),
+    )
+    assert result == [True, True]
+    assert page_errors == []
+
+
+def test_htmx_load_on_a_container_boots_its_stages(graph_page, page_errors, session):
+    result = graph_page.evaluate(
+        """async html => {
+            const turn = () => new Promise((resolve) => setTimeout(resolve));
+            document.body.insertAdjacentHTML('beforeend', '<div id="box"></div>');
+            await turn();
+            const box = document.getElementById('box');
+            // Parsed into a detached template first, then moved in while the
+            // marker is off, so no added node is a stage.
+            box.innerHTML = html;
+            const el = document.getElementById('g');
+            el.removeAttribute('data-pjx-graph');
+            await turn();
+            el.setAttribute('data-pjx-graph', '');
+            box.dispatchEvent(new CustomEvent('htmx:load', {bubbles: true}));
+            return pjx.graph.get(el) !== null;
+        }""",
+        _stage(session),
+    )
+    assert result is True
+    assert page_errors == []
+
+
+def test_broken_stage_is_logged_and_does_not_stop_its_neighbour(
+    graph_page, page_errors, console_errors, session
+):
+    _append(graph_page, BROKEN[".pjx-graph__canvas"] + _stage(session))
+    graph_page.wait_for_function(_booted())
+    assert graph_page.evaluate(_booted("bad")) is False
+    assert len(console_errors) == 1
+    assert "pjx.graph.mount:" in console_errors[0]
+    assert ".pjx-graph__canvas" in console_errors[0]
+    assert page_errors == []
+
+
+def test_reloading_installs_no_second_observer(
+    graph_page, page_errors, console_errors, session
+):
+    graph_page.add_script_tag(content=ASSET.read_text(encoding="utf-8"))
+    _append(graph_page, BROKEN[".pjx-graph__canvas"] + _stage(session))
+    graph_page.wait_for_function(_booted())
+    # One observer logs the broken stage once; a second one would log it twice.
+    assert len(console_errors) == 1
+    assert page_errors == []
+
+
+def test_reinserted_stage_keeps_its_instance(graph_page, page_errors, session):
+    _append(graph_page, _stage(session))
+    graph_page.wait_for_function(_booted())
+    assert graph_page.evaluate(
+        """async () => {
+            const el = document.getElementById('g');
+            const instance = pjx.graph.get(el);
+            el.remove();
+            await new Promise((resolve) => setTimeout(resolve));
+            document.body.appendChild(el);
+            await new Promise((resolve) => setTimeout(resolve));
+            return pjx.graph.get(el) === instance;
+        }"""
+    )
+    assert page_errors == []
+
+
+def test_replaced_stage_gets_a_new_instance(graph_page, page_errors, session):
+    _append(graph_page, _stage(session))
+    graph_page.wait_for_function(_booted())
+    graph_page.evaluate(
+        """html => {
+            const old = document.getElementById('g');
+            window.oldInstance = pjx.graph.get(old);
+            old.outerHTML = html;
+        }""",
+        _stage(session),
+    )
+    graph_page.wait_for_function(_booted())
+    assert graph_page.evaluate(
+        """() => {
+            const el = document.getElementById('g');
+            const instance = pjx.graph.get(el);
+            return instance !== oldInstance && instance.root === el
+                && oldInstance.root !== el;
+        }"""
+    )
+    assert page_errors == []
+
+
+def test_sync_mount_before_the_observer_keeps_one_instance(
+    graph_page, page_errors, console_errors, session
+):
+    assert graph_page.evaluate(
+        """async html => {
+            document.body.insertAdjacentHTML('beforeend', html);
+            const el = document.getElementById('g');
+            const instance = pjx.graph.mount(el);
+            await new Promise((resolve) => setTimeout(resolve));
+            return pjx.graph.get(el) === instance;
+        }""",
+        _stage(session),
+    )
+    assert console_errors == []
+    assert page_errors == []
