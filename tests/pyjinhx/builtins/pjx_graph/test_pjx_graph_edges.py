@@ -284,6 +284,11 @@ def test_exported_from_the_builtins_namespace():
     from pyjinhx import builtins
 
     names = builtins.__all__
-    assert names.index("PJXGraphEdges") == names.index("PJXGraph") + 1
-    assert names.index("PJXGraphNode") == names.index("PJXGraphEdges") + 1
+    start = names.index("PJXGraph")
+    assert names[start : start + 4] == [
+        "PJXGraph",
+        "PJXGraphControls",
+        "PJXGraphEdges",
+        "PJXGraphNode",
+    ]
     assert builtins.PJXGraphEdges is PJXGraphEdges
