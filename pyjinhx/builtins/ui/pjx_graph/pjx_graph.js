@@ -96,6 +96,21 @@ var __pjxD3=(()=>{var fe=Object.defineProperty;var vn=Object.getOwnPropertyDescr
     return found;
   }
 
+  function scaleBound(root, name, fallback) {
+    const raw = root.getAttribute('data-pjx-graph-scale-' + name);
+    return raw === null ? fallback : Number(raw);
+  }
+
+  function scaleExtent(root) {
+    const min = scaleBound(root, 'min', 0.2);
+    const max = scaleBound(root, 'max', 2);
+    // NaN fails every comparison, so a non-numeric attribute lands here too.
+    if (!(min > 0 && min <= max && Number.isFinite(max))) {
+      throw new Error('pjx.graph.mount: invalid scale range ' + min + '..' + max);
+    }
+    return [min, max];
+  }
+
   // A press pans only from empty canvas: nodes, ports and edges will have
   // their own drags, and controls outside the viewport are buttons.
   function isBackground(target, canvas, viewport) {
@@ -109,14 +124,18 @@ var __pjxD3=(()=>{var fe=Object.defineProperty;var vn=Object.getOwnPropertyDescr
     viewport.style.transform = 'translate(' + t.x + 'px, ' + t.y + 'px) scale(' + t.k + ')';
   }
 
-  function attachZoom(canvas, viewport) {
+  function attachZoom(root, canvas, viewport) {
+    const extent = scaleExtent(root);
     const zoom = d3.zoom()
+      .scaleExtent(extent)
       // Wheel zooms from anywhere over the canvas; only presses need background.
       .filter((event) => event.type === 'wheel'
         || (!event.ctrlKey && !event.button && isBackground(event.target, canvas, viewport)))
       .on('zoom', (event) => paint(viewport, event.transform));
     // Double-click stays free for selection; zoom is the wheel and the controls.
     d3.select(canvas).call(zoom).on('dblclick.zoom', null);
+    // d3 lets a wheel at either end of the range scroll the page.
+    canvas.addEventListener('wheel', (event) => event.preventDefault(), { passive: false });
     d3.select(canvas).call(zoom.transform, d3.zoomIdentity);
   }
 
@@ -132,7 +151,7 @@ var __pjxD3=(()=>{var fe=Object.defineProperty;var vn=Object.getOwnPropertyDescr
     const viewport = part(canvas, '.pjx-graph__viewport', true);
     part(viewport, 'svg.pjx-graph__edge-plane', true);
     part(viewport, '.pjx-graph__nodes', false);
-    attachZoom(canvas, viewport);
+    attachZoom(root, canvas, viewport);
     const instance = { root: root };
     instances.set(root, instance);
     return instance;

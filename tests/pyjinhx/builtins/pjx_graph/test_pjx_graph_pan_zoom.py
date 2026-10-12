@@ -7,6 +7,7 @@ read back from the viewport's computed transform, since d3 is not on window.
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -230,4 +231,95 @@ def test_the_side_panel_never_pans_or_zooms(page, page_errors, session):
     _wheel(page, panel_point)
     page.wait_for_timeout(100)
     assert _identity(_view(page))
+    assert page_errors == []
+
+
+def test_wheel_clamps_to_the_stage_scale_range(page, page_errors, session):
+    _serve(page, _stage(session, scale_min=0.5, scale_max=3))
+    point = _background(page)
+    _wheel(page, point, notches=20)
+    _wait_for_k(page, 3)
+    _wheel(page, point, notches=30, dy=100)
+    _wait_for_k(page, 0.5)
+    assert page_errors == []
+
+
+def test_missing_scale_attributes_default_to_the_component_range(
+    page, page_errors, session
+):
+    html = re.sub(r' data-pjx-graph-scale-(min|max)="[^"]*"', "", _stage(session))
+    assert "data-pjx-graph-scale" not in html
+    _serve(page, html)
+    point = _background(page)
+    _wheel(page, point, notches=20)
+    _wait_for_k(page, 2)
+    _wheel(page, point, notches=30, dy=100)
+    _wait_for_k(page, 0.2)
+    assert page_errors == []
+
+
+def test_wheel_at_the_end_of_the_range_does_not_scroll_the_page(
+    page, page_errors, session
+):
+    _serve(page, _stage(session, scale_min=1) + '<div style="height:3000px"></div>')
+    # Wheel-out at the minimum: d3 ignores it, and the page below could scroll.
+    _wheel(page, _background(page), notches=3, dy=100)
+    page.wait_for_timeout(200)
+    assert page.evaluate("() => window.scrollY") == 0
+    assert _identity(_view(page))
+    assert page_errors == []
+
+
+@pytest.mark.parametrize(
+    ("attribute", "value"),
+    [
+        ("min", "abc"),
+        ("min", "0"),
+        ("min", "-1"),
+        ("max", "Infinity"),
+        ("min", ""),
+        ("min", "3"),
+    ],
+    ids=["not-a-number", "zero", "negative", "infinite", "empty", "min-above-max"],
+)
+def test_invalid_scale_attributes_fail_the_mount(
+    page, page_errors, session, attribute, value
+):
+    html = re.sub(
+        rf'data-pjx-graph-scale-{attribute}="[^"]*"',
+        f'data-pjx-graph-scale-{attribute}="{value}"',
+        _stage(session),
+    )
+    _serve(page, "")
+    result = page.evaluate(
+        """html => {
+            const host = document.createElement('div');
+            host.innerHTML = html;
+            const el = host.firstElementChild;
+            try {
+                pjx.graph.mount(el);
+            } catch (error) {
+                const canvas = el.querySelector('.pjx-graph__canvas');
+                return [error.message, pjx.graph.get(el), '__zoom' in canvas];
+            }
+            return 'did not throw';
+        }""",
+        html,
+    )
+    assert result[0].startswith("pjx.graph.mount: invalid scale range")
+    assert result[1:] == [None, False]
+    assert page_errors == []
+
+
+def test_boot_logs_an_invalid_scale_range_and_boots_the_rest(
+    page, page_errors, console_errors, session
+):
+    bad = _stage(session, "bad").replace(
+        'data-pjx-graph-scale-min="0.2"', 'data-pjx-graph-scale-min="abc"'
+    )
+    _serve(page, bad + _stage(session))
+    assert page.evaluate("() => pjx.graph.get(document.getElementById('g')) !== null")
+    assert page.evaluate("() => pjx.graph.get(document.getElementById('bad'))") is None
+    assert len(console_errors) == 1
+    assert "pjx.graph.mount: invalid scale range" in console_errors[0]
     assert page_errors == []

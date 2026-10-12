@@ -214,16 +214,6 @@ def test_reloading_keeps_mount_get_and_instances(graph_page, page_errors, sessio
     assert page_errors == []
 
 
-@pytest.fixture
-def console_errors(page: Page) -> list[str]:
-    """The text of every console.error the page logs from here on."""
-    errors: list[str] = []
-    page.on(
-        "console", lambda msg: errors.append(msg.text) if msg.type == "error" else None
-    )
-    return errors
-
-
 def _booted(stage_id: str = "g") -> str:
     return f"pjx.graph.get(document.getElementById('{stage_id}')) !== null"
 

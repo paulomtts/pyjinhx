@@ -103,6 +103,16 @@ def page_errors(page: Page) -> list[str]:
 
 
 @pytest.fixture
+def console_errors(page: Page) -> list[str]:
+    """The text of every console.error the page logs from here on."""
+    errors: list[str] = []
+    page.on(
+        "console", lambda msg: errors.append(msg.text) if msg.type == "error" else None
+    )
+    return errors
+
+
+@pytest.fixture
 def graph_page(page: Page, page_errors: list[str]) -> Iterator[Page]:
     """A blank page with the asset loaded once as a classic script."""
     page.set_content("<body></body>")
