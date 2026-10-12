@@ -285,7 +285,9 @@
     function drawEdges() {
       drawn.forEach((el) => el.remove());
       drawn = [];
+      // A span with no edge id at all is not an edge; an empty one still is.
       const edges = edgesOf(root, viewport)
+        .filter((edge) => edge.hasAttribute('data-edge-id'))
         .filter((edge) => shown(edge.getAttribute('data-from')) && shown(edge.getAttribute('data-to')));
       // Counted over the edges actually drawn, so a lone survivor is unfanned.
       const totals = new Map();

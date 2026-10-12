@@ -270,9 +270,14 @@ def test_edges_to_unknown_or_hidden_nodes_are_skipped(
         ),
         session,
     )
-    # Hand-written spans: one without data-to, one without port/state/label.
+    # Hand-written spans: without data-to, without data-from, without
+    # data-edge-id, with an empty data-edge-id, and without port/state/label.
     raw = (
         '<span hidden data-pjx-graph-edge data-edge-id="raw" data-from="a"></span>'
+        '<span hidden data-pjx-graph-edge data-edge-id="raw" data-to="b"></span>'
+        '<span hidden data-pjx-graph-edge data-from="a" data-to="b"></span>'
+        '<span hidden data-pjx-graph-edge data-edge-id="" data-from="b"'
+        ' data-to="a"></span>'
         '<span hidden data-pjx-graph-edge data-edge-id="plain" data-from="b"'
         ' data-to="b"></span>'
     )
@@ -287,6 +292,7 @@ def test_edges_to_unknown_or_hidden_nodes_are_skipped(
     )
     assert [(el["edge"], el["state"]) for el in _visible(page)] == [
         ("ok", ""),
+        ("", ""),
         ("plain", ""),
     ]
     assert console_errors == []
