@@ -13,6 +13,8 @@
 
   const d3 = __pjxD3;
   const instances = new WeakMap();
+  // Room left around the nodes when a fit frames them.
+  const FIT_PAD = 48;
 
   function part(parent, selector, direct) {
     // PJXGraph's own parts are direct children, so a nested graph never
@@ -74,15 +76,19 @@
     }
   }
 
+  function clampScale(k, extent) {
+    return Math.min(extent[1], Math.max(extent[0], k));
+  }
+
+  // null, not identity, for an unusable view: only a usable one stops the fit.
   function storedView(record, extent) {
     const view = record.view;
     if (!view || !Number.isFinite(view.x) || !Number.isFinite(view.y)
         || !Number.isFinite(view.k) || view.k <= 0) {
-      return d3.zoomIdentity;
+      return null;
     }
     // A view saved under a wider range is pulled into the current one.
-    const k = Math.min(extent[1], Math.max(extent[0], view.k));
-    return d3.zoomIdentity.translate(view.x, view.y).scale(k);
+    return d3.zoomIdentity.translate(view.x, view.y).scale(clampScale(view.k, extent));
   }
 
   function attachZoom(root, canvas, viewport) {
@@ -99,8 +105,9 @@
     d3.select(canvas).call(zoom).on('dblclick.zoom', null);
     // d3 lets a wheel at either end of the range scroll the page.
     canvas.addEventListener('wheel', (event) => event.preventDefault(), { passive: false });
-    d3.select(canvas).call(zoom.transform, key ? storedView(readRecord(key), extent) : d3.zoomIdentity);
-    return { zoom: zoom, key: key };
+    const restored = key ? storedView(readRecord(key), extent) : null;
+    d3.select(canvas).call(zoom.transform, restored || d3.zoomIdentity);
+    return { zoom: zoom, extent: extent, key: key, restored: restored !== null };
   }
 
   // Listening only now, so the initial view is never written back.
@@ -129,6 +136,23 @@
       const value = coordinate(node, axis);
       if (value !== null) node.style.setProperty('--pjx-graph-node-' + axis, value + 'px');
     });
+  }
+
+  // A stage inserted mid-layout reports a size that is about to change, so
+  // wait until it holds for a frame; a hidden stage never gets one, so give up
+  // after ten tries.
+  function whenLaidOut(canvas, done) {
+    let attempts = 0;
+    (function check() {
+      const width = canvas.clientWidth;
+      const height = canvas.clientHeight;
+      requestAnimationFrame(() => {
+        attempts += 1;
+        const settled = width > 0 && height > 0
+          && width === canvas.clientWidth && height === canvas.clientHeight;
+        if (settled || attempts === 10) done(); else check();
+      });
+    })();
   }
 
   function createInstance(root, canvas, viewport, view) {
@@ -176,7 +200,29 @@
       return toWorld(rect.left + rect.width / 2, rect.top + rect.height / 2);
     }
 
-    return { root: root, box: box, inAnchor: inAnchor, outAnchor: outAnchor };
+    function fit() {
+      // A hidden node has no box; its zero rect would pull the frame to the origin.
+      const boxes = nodesOf(root, viewport)
+        .filter((node) => node.getClientRects().length > 0)
+        .map(boxOf);
+      if (!boxes.length) return;
+      const left = Math.min(...boxes.map((b) => b.x));
+      const top = Math.min(...boxes.map((b) => b.y));
+      const right = Math.max(...boxes.map((b) => b.x + b.width));
+      const bottom = Math.max(...boxes.map((b) => b.y + b.height));
+      // Client sizes leave out the canvas border.
+      const width = canvas.clientWidth;
+      const height = canvas.clientHeight;
+      const k = clampScale(Math.min(
+        Math.max(1, width - 2 * FIT_PAD) / Math.max(1, right - left),
+        Math.max(1, height - 2 * FIT_PAD) / Math.max(1, bottom - top)), view.extent);
+      const t = d3.zoomIdentity
+        .translate(width / 2 - k * (left + right) / 2, height / 2 - k * (top + bottom) / 2)
+        .scale(k);
+      d3.select(canvas).call(view.zoom.transform, t);
+    }
+
+    return { root: root, box: box, inAnchor: inAnchor, outAnchor: outAnchor, fit: fit };
   }
 
   function mount(root) {
@@ -195,7 +241,15 @@
     nodesOf(root, viewport).forEach(place);
     const instance = createInstance(root, canvas, viewport, view);
     instances.set(root, instance);
-    settle(root, canvas, view);
+    // A restored view is where the user left off; only a fresh stage is framed.
+    if (view.restored) {
+      settle(root, canvas, view);
+    } else {
+      whenLaidOut(canvas, () => {
+        instance.fit();
+        settle(root, canvas, view);
+      });
+    }
     return instance;
   }
 

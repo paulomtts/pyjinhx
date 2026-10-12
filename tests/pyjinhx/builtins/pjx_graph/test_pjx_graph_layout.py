@@ -318,3 +318,239 @@ def test_a_nested_stage_keeps_its_own_nodes(page, page_errors, session):
     assert _call(page, "box", "deep") is None
     assert _call(page, "box", "deep", stage_id="in") is not None
     assert page_errors == []
+
+
+# Fit
+
+NOTCH = 2**0.2
+PAD = 48
+# A fixed canvas size, so what a fit should give is computable.
+FRAME = "width:800px;--pjx-graph-min-height:400px"
+
+INNER = """id => {
+    const canvas = document.querySelector('#' + id + ' > .pjx-graph__canvas');
+    return {width: canvas.clientWidth, height: canvas.clientHeight};
+}"""
+
+
+def _identity(view: dict[str, float]) -> bool:
+    return view == pytest.approx({"x": 0, "y": 0, "k": 1}, abs=1e-6)
+
+
+def _framed(html: str) -> str:
+    return f'<div style="{FRAME}">{html}</div>'
+
+
+def _assert_framed(
+    page: Page, stage_id: str = "g", skip: frozenset[str] = frozenset()
+) -> None:
+    """Every node inside the canvas inset by PAD, and their union centred in it."""
+    inner = page.evaluate(INNER, stage_id)
+    rects = [r for r in _rects(page, stage_id) if r["id"] not in skip]
+    for r in rects:
+        assert r["x"] >= PAD - 1
+        assert r["y"] >= PAD - 1
+        assert r["right"] <= inner["width"] - PAD + 1
+        assert r["bottom"] <= inner["height"] - PAD + 1
+    left = min(r["x"] for r in rects)
+    right = max(r["right"] for r in rects)
+    top = min(r["y"] for r in rects)
+    bottom = max(r["bottom"] for r in rects)
+    assert (left + right) / 2 == pytest.approx(inner["width"] / 2, abs=1)
+    assert (top + bottom) / 2 == pytest.approx(inner["height"] / 2, abs=1)
+
+
+def _corner(page: Page, stage_id: str = "g") -> tuple[int, int]:
+    """A point just inside the canvas's top-left corner, which a fit leaves empty."""
+    box = page.locator(f"#{stage_id} > .pjx-graph__canvas").bounding_box()
+    assert box is not None
+    return round(box["x"] + 12), round(box["y"] + 12)
+
+
+def _drag(page: Page, start: tuple[int, int]) -> None:
+    x, y = start
+    page.mouse.move(x, y)
+    page.mouse.down()
+    page.mouse.move(x + 60, y + 40, steps=4)
+    page.mouse.up()
+
+
+# Wide enough that no fit can use the default 0.2..2 range's clamp.
+SPREAD = [("a", 0, 0), ("b", 900, 300), ("c", 1800, 600)]
+
+
+def _spread(session, **graph) -> str:
+    return _framed(
+        _stage(session, [_node(n, x, y, title=n) for n, x, y in SPREAD], **graph)
+    )
+
+
+def test_initial_fit_frames_every_node(page, page_errors, session):
+    _serve(page, _spread(session))
+    k = _view(page)["k"]
+    assert 0.2 <= k <= 2
+    _assert_framed(page)
+    assert page_errors == []
+
+
+def test_initial_fit_clamps_to_the_scale_range(page, page_errors, session):
+    small = _framed(_stage(session, [_node("a", 10, 10, title="A")], scale_max=1.5))
+    _serve(page, small)
+    assert _view(page)["k"] == pytest.approx(1.5, abs=1e-3)
+    wide = [_node("a", 0, 0, title="A"), _node("b", 10000, 0, title="B")]
+    page.unroute(URL)
+    _serve(page, _framed(_stage(session, wide, scale_min=0.5)))
+    assert _view(page)["k"] == pytest.approx(0.5, abs=1e-3)
+    assert page_errors == []
+
+
+def test_a_persisted_view_suppresses_the_initial_fit(page, page_errors, session):
+    seeded = {"x": 30, "y": 20, "k": 1.25}
+    _seed(page, {"view": seeded})
+    _serve(page, _spread(session, storage_key="flow"))
+    assert _view(page) == pytest.approx(seeded, abs=0.01)
+    # Well past the ten frames a pending fit could take.
+    page.wait_for_timeout(300)
+    assert _view(page) == pytest.approx(seeded, abs=0.01)
+    assert page_errors == []
+
+
+@pytest.mark.parametrize(
+    "record",
+    [{"view": {"x": "a", "k": 0}}, {"positions": {"a": {"x": 5, "y": 6}}}],
+    ids=["unusable-view", "no-view"],
+)
+def test_an_unusable_persisted_view_still_fits(page, page_errors, session, record):
+    _seed(page, record)
+    _serve(page, _spread(session, storage_key="flow"))
+    assert not _identity(_view(page))
+    _assert_framed(page)
+    assert page_errors == []
+
+
+def test_the_initial_fit_writes_nothing(page, page_errors, session):
+    _serve(page, _spread(session, storage_key="flow"))
+    assert not _identity(_view(page))
+    assert page.evaluate("() => localStorage.length") == 0
+    assert page_errors == []
+
+
+def test_the_initial_fit_waits_for_the_canvas_to_settle(page, page_errors, session):
+    html = _spread(session).replace(
+        'class="pjx-graph__canvas"',
+        'class="pjx-graph__canvas" style="height:0;min-height:0"',
+    )
+    grow = (
+        "<script>document.addEventListener('DOMContentLoaded', () =>"
+        " requestAnimationFrame(() => requestAnimationFrame(() => {"
+        " document.querySelector('#g > .pjx-graph__canvas').style.height = '400px';"
+        " })));</script>"
+    )
+    _serve(page, grow + html)
+    assert page.evaluate(INNER, "g")["height"] == 400
+    _assert_framed(page)
+    assert page_errors == []
+
+
+def test_a_stage_that_never_lays_out_fits_without_error(
+    page, page_errors, console_errors, session
+):
+    _serve(page, f'<div style="display:none">{_spread(session)}</div>')
+    assert page.evaluate(
+        "() => document.getElementById('g').hasAttribute('data-pjx-graph-ready')"
+    )
+    assert console_errors == []
+    assert page_errors == []
+
+
+def test_a_stage_with_no_nodes_stays_at_identity_and_is_ready(
+    page, page_errors, session
+):
+    _serve(page, _framed(_stage(session, [])))
+    assert _identity(_view(page))
+    assert (
+        page.evaluate(
+            "() => document.getElementById('g').getAttribute('data-pjx-graph-ready')"
+        )
+        == ""
+    )
+    assert page_errors == []
+
+
+def _record(page: Page) -> dict:
+    raw = page.evaluate("key => localStorage.getItem(key)", RECORD)
+    assert raw is not None
+    return json.loads(raw)
+
+
+def test_fit_after_a_pan_reframes_and_saves(page, page_errors, session):
+    positions = {"a": {"x": 5, "y": 6}}
+    _seed(page, {"positions": positions})
+    _serve(page, _spread(session, storage_key="flow"))
+    fitted = _view(page)
+    _drag(page, _corner(page))
+    page.wait_for_function(
+        "key => 'view' in JSON.parse(localStorage.getItem(key))", arg=RECORD
+    )
+    assert _view(page) == pytest.approx(
+        {"x": fitted["x"] + 60, "y": fitted["y"] + 40, "k": fitted["k"]}, abs=0.01
+    )
+    page.evaluate("() => pjx.graph.get(document.getElementById('g')).fit()")
+    assert _view(page) == pytest.approx(fitted, abs=0.01)
+    record = _record(page)
+    assert record["positions"] == positions
+    assert record["view"] == pytest.approx(fitted, abs=0.01)
+    assert page_errors == []
+
+
+def test_wheel_after_the_fit_continues_from_the_fitted_view(page, page_errors, session):
+    _serve(page, _spread(session))
+    k = _view(page)["k"]
+    page.mouse.move(*_corner(page))
+    page.mouse.wheel(0, -100)
+    page.wait_for_function(
+        f"([id, k]) => Math.abs(({VIEW})(id).k - k) < 1e-3", arg=["g", k * NOTCH]
+    )
+    assert page_errors == []
+
+
+def test_mounting_twice_fits_once(page, page_errors, session):
+    _serve(page, _spread(session))
+    fitted = _view(page)
+    page.evaluate("() => pjx.graph.mount(document.getElementById('g'))")
+    _drag(page, _corner(page))
+    page.wait_for_timeout(300)
+    assert _view(page) == pytest.approx(
+        {"x": fitted["x"] + 60, "y": fitted["y"] + 40, "k": fitted["k"]}, abs=0.01
+    )
+    assert page_errors == []
+
+
+def test_a_stage_removed_before_the_fit_lands_does_not_throw(
+    page, page_errors, console_errors, session
+):
+    _serve(page, "")
+    page.evaluate(
+        """html => {
+            document.body.insertAdjacentHTML('beforeend', html);
+            const el = document.getElementById('g');
+            pjx.graph.mount(el);
+            el.remove();
+            window.removed = el;
+        }""",
+        _spread(session),
+    )
+    page.wait_for_function("() => window.removed.hasAttribute('data-pjx-graph-ready')")
+    assert console_errors == []
+    assert page_errors == []
+
+
+def test_fit_skips_a_hidden_node(page, page_errors, session):
+    hidden = render(_node("h", 5000, 5000, title="H"), session).replace(
+        'style="', 'style="display:none;'
+    )
+    visible = [render(_node(n, x, y, title=n), session) for n, x, y in SPREAD]
+    layer = PJXGraphNodes(id="g-nodes", nodes_html=Markup("".join(visible) + hidden))
+    _serve(page, _framed(render(PJXGraph(id="g", nodes=layer), session)))
+    _assert_framed(page, skip=frozenset({"h"}))
+    assert page_errors == []

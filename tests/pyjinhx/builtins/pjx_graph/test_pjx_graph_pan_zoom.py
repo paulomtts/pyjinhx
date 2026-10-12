@@ -3,6 +3,8 @@
 d3-zoom reacts to real pointer and wheel events over laid-out boxes, so every
 stage is served from a real origin with the graph CSS applied. The view is
 read back from the viewport's computed transform, since d3 is not on window.
+A fresh stage fits its nodes, so tests that need a known start seed a
+persisted identity view, the one view a fit never overrides.
 """
 
 from __future__ import annotations
@@ -32,6 +34,7 @@ URL = "http://pjx.test/"
 RECORD = "pjx-graph:flow"
 # One wheel notch of deltaY -100 zooms by 2 ** 0.2 under d3's default wheelDelta.
 NOTCH = 2**0.2
+IDENTITY = json.dumps({"view": {"x": 0, "y": 0, "k": 1}})
 
 # Absolutely placed so it never sits over the background point the tests press.
 CONTROLS = Markup(
@@ -64,7 +67,7 @@ def _stage(session, stage_id: str = "g", **graph) -> str:
 
 
 def _serve(page: Page, body: str) -> None:
-    """Load body with the graph CSS and asset as a real page on a real origin."""
+    """Load body with the graph CSS and asset, then wait until every mounted stage is ready."""
     asset = ASSET.read_text(encoding="utf-8")
     html = (
         f"<html><head><style>{CSS}</style></head>"
@@ -72,6 +75,29 @@ def _serve(page: Page, body: str) -> None:
     )
     page.route(URL, lambda route: route.fulfill(body=html, content_type="text/html"))
     page.goto(URL)
+    _wait_ready(page)
+
+
+def _wait_ready(page: Page) -> None:
+    # A stage whose mount failed never gets ready, so only mounted ones count.
+    page.wait_for_function(
+        """() => Array.from(document.querySelectorAll('[data-pjx-graph]'))
+            .every(s => !pjx.graph.get(s) || s.hasAttribute('data-pjx-graph-ready'))""",
+        timeout=5000,
+    )
+
+
+def _seed(page: Page, value: str) -> None:
+    """Store value under the record key before the page's own scripts run."""
+    page.add_init_script(
+        f"localStorage.setItem({json.dumps(RECORD)}, {json.dumps(value)});"
+    )
+
+
+def _at_identity(page: Page, session, **graph) -> str:
+    """The default stage, starting from a persisted identity view so no fit moves it."""
+    _seed(page, IDENTITY)
+    return _stage(session, storage_key="flow", **graph)
 
 
 def _view(page: Page, stage_id: str = "g") -> dict[str, float]:
@@ -91,10 +117,21 @@ def _center(page: Page, selector: str) -> tuple[int, int]:
 
 
 def _background(page: Page, stage_id: str = "g") -> tuple[int, int]:
-    """A point on empty canvas, well clear of the node and the controls."""
+    """A point on empty canvas at identity, well clear of the node and the controls."""
     box = page.locator(f"#{stage_id} > .pjx-graph__canvas").bounding_box()
     assert box is not None
     return round(box["x"] + 600), round(box["y"] + 300)
+
+
+def _corner(page: Page, stage_id: str = "g") -> tuple[int, int]:
+    """A point just inside the canvas's top-left corner, which a fit leaves empty."""
+    box = page.locator(f"#{stage_id} > .pjx-graph__canvas").bounding_box()
+    assert box is not None
+    return round(box["x"] + 12), round(box["y"] + 12)
+
+
+def _moved(view: dict[str, float], dx: float = 60, dy: float = 40) -> dict[str, float]:
+    return {"x": view["x"] + dx, "y": view["y"] + dy, "k": view["k"]}
 
 
 def _drag(page: Page, start: tuple[int, int], button: str = "left") -> None:
@@ -115,8 +152,9 @@ def _identity(view: dict[str, float]) -> bool:
     return view == pytest.approx({"x": 0, "y": 0, "k": 1}, abs=1e-6)
 
 
-def test_mounted_viewport_carries_the_identity_transform(page, page_errors, session):
-    _serve(page, _stage(session))
+def test_a_stage_with_no_nodes_keeps_the_identity_transform(page, page_errors, session):
+    nodes = PJXGraphNodes(id="g-nodes")
+    _serve(page, render(PJXGraph(id="g", nodes=nodes, controls=CONTROLS), session))
     style = page.evaluate(
         "() => document.querySelector('#g .pjx-graph__viewport').style.transform"
     )
@@ -125,14 +163,14 @@ def test_mounted_viewport_carries_the_identity_transform(page, page_errors, sess
 
 
 def test_dragging_the_background_pans_by_the_pointer_delta(page, page_errors, session):
-    _serve(page, _stage(session))
+    _serve(page, _at_identity(page, session))
     _drag(page, _background(page))
     assert _view(page) == pytest.approx({"x": 60, "y": 40, "k": 1}, abs=0.01)
     assert page_errors == []
 
 
 def test_wheel_zooms_about_the_pointer(page, page_errors, session):
-    _serve(page, _stage(session))
+    _serve(page, _at_identity(page, session))
     x, y = _background(page)
     world = """([x, y]) => {
         const canvas = document.querySelector('#g > .pjx-graph__canvas');
@@ -150,7 +188,7 @@ def test_wheel_zooms_about_the_pointer(page, page_errors, session):
 
 
 def test_double_click_on_the_background_does_not_zoom(page, page_errors, session):
-    _serve(page, _stage(session))
+    _serve(page, _at_identity(page, session))
     page.mouse.dblclick(*_background(page))
     # d3's double-click zoom would animate over 250 ms.
     page.wait_for_timeout(400)
@@ -159,7 +197,7 @@ def test_double_click_on_the_background_does_not_zoom(page, page_errors, session
 
 
 def test_mounting_twice_attaches_one_zoom(page, page_errors, session):
-    _serve(page, _stage(session))
+    _serve(page, _at_identity(page, session))
     page.evaluate("() => pjx.graph.mount(document.getElementById('g'))")
     _wheel(page, _background(page))
     _wait_for_k(page, NOTCH)
@@ -179,7 +217,7 @@ def test_mounting_twice_attaches_one_zoom(page, page_errors, session):
     ids=["node", "in-port", "out-port", "control"],
 )
 def test_a_press_off_the_background_does_not_pan(page, page_errors, session, selector):
-    _serve(page, _stage(session))
+    _serve(page, _at_identity(page, session))
     # The drag ends over empty canvas; only where it started matters.
     _drag(page, _center(page, selector))
     assert _identity(_view(page))
@@ -187,7 +225,7 @@ def test_a_press_off_the_background_does_not_pan(page, page_errors, session, sel
 
 
 def test_a_press_on_an_edge_element_does_not_pan(page, page_errors, session):
-    _serve(page, _stage(session))
+    _serve(page, _at_identity(page, session))
     page.evaluate(
         """() => document.querySelector('#g .pjx-graph__edge-plane').insertAdjacentHTML(
             'beforeend',
@@ -201,14 +239,14 @@ def test_a_press_on_an_edge_element_does_not_pan(page, page_errors, session):
 
 @pytest.mark.parametrize("button", ["right", "middle"])
 def test_a_non_primary_button_does_not_pan(page, page_errors, session, button):
-    _serve(page, _stage(session))
+    _serve(page, _at_identity(page, session))
     _drag(page, _background(page), button=button)
     assert _identity(_view(page))
     assert page_errors == []
 
 
 def test_a_ctrl_press_does_not_pan(page, page_errors, session):
-    _serve(page, _stage(session))
+    _serve(page, _at_identity(page, session))
     page.keyboard.down("Control")
     _drag(page, _background(page))
     page.keyboard.up("Control")
@@ -217,7 +255,7 @@ def test_a_ctrl_press_does_not_pan(page, page_errors, session):
 
 
 def test_wheel_over_a_node_or_a_control_zooms(page, page_errors, session):
-    _serve(page, _stage(session))
+    _serve(page, _at_identity(page, session))
     _wheel(page, _center(page, "#g-n1 .pjx-graph__node-title"))
     _wait_for_k(page, NOTCH)
     _wheel(page, _center(page, "#fit"))
@@ -227,7 +265,7 @@ def test_wheel_over_a_node_or_a_control_zooms(page, page_errors, session):
 
 def test_the_side_panel_never_pans_or_zooms(page, page_errors, session):
     panel = Markup('<aside id="panel" style="height:120px">Details</aside>')
-    _serve(page, _stage(session, panel=panel))
+    _serve(page, _at_identity(page, session, panel=panel))
     panel_point = _center(page, "#panel")
     _drag(page, panel_point)
     _wheel(page, panel_point)
@@ -237,7 +275,8 @@ def test_the_side_panel_never_pans_or_zooms(page, page_errors, session):
 
 
 def test_wheel_clamps_to_the_stage_scale_range(page, page_errors, session):
-    _serve(page, _stage(session, scale_min=0.5, scale_max=3))
+    # From identity, so reaching each end is the wheel's doing, not the fit's.
+    _serve(page, _at_identity(page, session, scale_min=0.5, scale_max=3))
     point = _background(page)
     _wheel(page, point, notches=20)
     _wait_for_k(page, 3)
@@ -249,7 +288,9 @@ def test_wheel_clamps_to_the_stage_scale_range(page, page_errors, session):
 def test_missing_scale_attributes_default_to_the_component_range(
     page, page_errors, session
 ):
-    html = re.sub(r' data-pjx-graph-scale-(min|max)="[^"]*"', "", _stage(session))
+    html = re.sub(
+        r' data-pjx-graph-scale-(min|max)="[^"]*"', "", _at_identity(page, session)
+    )
     assert "data-pjx-graph-scale" not in html
     _serve(page, html)
     point = _background(page)
@@ -263,7 +304,8 @@ def test_missing_scale_attributes_default_to_the_component_range(
 def test_wheel_at_the_end_of_the_range_does_not_scroll_the_page(
     page, page_errors, session
 ):
-    _serve(page, _stage(session, scale_min=1) + '<div style="height:3000px"></div>')
+    stage = _at_identity(page, session, scale_min=1)
+    _serve(page, stage + '<div style="height:3000px"></div>')
     # Wheel-out at the minimum: d3 ignores it, and the page below could scroll.
     _wheel(page, _background(page), notches=3, dy=100)
     page.wait_for_timeout(200)
@@ -340,38 +382,35 @@ def _wait_for_saved_k(page: Page, k: float) -> None:
     page.wait_for_function(
         """([key, k]) => {
             const view = JSON.parse(localStorage.getItem(key) || '{}').view;
-            return view !== undefined && Math.abs(view.k - k) < 1e-6;
+            return view !== undefined && Math.abs(view.k - k) < 1e-3;
         }""",
         arg=[RECORD, k],
     )
 
 
-def _seed(page: Page, value: str) -> None:
-    """Store value under the record key before the page's own scripts run."""
-    page.add_init_script(
-        f"localStorage.setItem({json.dumps(RECORD)}, {json.dumps(value)});"
-    )
-
-
 def test_the_view_survives_a_reload(page, page_errors, session):
     _serve(page, _stage(session, storage_key="flow"))
-    point = _background(page)
+    k = _view(page)["k"]
+    point = _corner(page)
     _drag(page, point)
-    _wheel(page, point)
-    _wait_for_saved_k(page, NOTCH)
+    # Out, since the fit may already sit at the top of the range.
+    _wheel(page, point, dy=100)
+    _wait_for_saved_k(page, k / NOTCH)
     before = _view(page)
     page.reload()
+    _wait_ready(page)
     assert _view(page) == pytest.approx(before, abs=0.01)
     assert page_errors == []
 
 
 def test_a_pan_saves_the_view_record(page, page_errors, session):
     _serve(page, _stage(session, storage_key="flow"))
-    _drag(page, _background(page))
+    fitted = _view(page)
+    _drag(page, _corner(page))
     page.wait_for_function("key => localStorage.getItem(key) !== null", arg=RECORD)
     record = _record(page)
     assert list(record) == ["view"]
-    assert record["view"] == pytest.approx({"x": 60, "y": 40, "k": 1}, abs=0.01)
+    assert record["view"] == pytest.approx(_moved(fitted), abs=0.01)
     assert page_errors == []
 
 
@@ -383,7 +422,8 @@ def test_mounting_alone_writes_nothing(page, page_errors, session):
 
 def test_saving_keeps_the_record_other_fields(page, page_errors, session):
     positions = {"n1": {"x": 5, "y": 6, "base": [100, 100]}}
-    _seed(page, json.dumps({"positions": positions}))
+    identity = {"x": 0, "y": 0, "k": 1}
+    _seed(page, json.dumps({"positions": positions, "view": identity}))
     _serve(page, _stage(session, storage_key="flow"))
     _wheel(page, _background(page))
     _wait_for_saved_k(page, NOTCH)
@@ -414,14 +454,16 @@ def test_a_stored_scale_above_the_range_is_clamped(page, page_errors, session):
         '{"view": {"x": 0, "y": 0}}',
     ],
 )
-def test_an_unusable_record_starts_at_identity_silently(
+def test_an_unusable_record_is_not_restored_and_the_stage_fits_silently(
     page, page_errors, console_errors, session, stored
 ):
     _seed(page, stored)
     _serve(page, _stage(session, storage_key="flow"))
-    assert _identity(_view(page))
-    _drag(page, _background(page))
-    assert _view(page) == pytest.approx({"x": 60, "y": 40, "k": 1}, abs=0.01)
+    fitted = _view(page)
+    # Every stored view above is identity or unusable; the fit moved off both.
+    assert not _identity(fitted)
+    _drag(page, _corner(page))
+    assert _view(page) == pytest.approx(_moved(fitted), abs=0.01)
     assert console_errors == []
     assert page_errors == []
 
@@ -429,7 +471,7 @@ def test_an_unusable_record_starts_at_identity_silently(
 def test_saving_over_an_array_record_writes_an_object(page, page_errors, session):
     _seed(page, "[1, 2]")
     _serve(page, _stage(session, storage_key="flow"))
-    _drag(page, _background(page))
+    _drag(page, _corner(page))
     page.wait_for_function(
         "key => !localStorage.getItem(key).startsWith('[')", arg=RECORD
     )
@@ -439,10 +481,11 @@ def test_saving_over_an_array_record_writes_an_object(page, page_errors, session
 
 def test_without_a_storage_key_nothing_is_stored(page, page_errors, session):
     _serve(page, _stage(session))
-    point = _background(page)
+    k = _view(page)["k"]
+    point = _corner(page)
     _drag(page, point)
-    _wheel(page, point)
-    _wait_for_k(page, NOTCH)
+    _wheel(page, point, dy=100)
+    _wait_for_k(page, k / NOTCH)
     # Past d3's 150 ms wheel debounce, when a save would have happened.
     page.wait_for_timeout(300)
     assert page.evaluate("() => localStorage.length") == 0
@@ -459,16 +502,18 @@ BROKEN_STORAGE = {
 
 
 @pytest.mark.parametrize("broken", list(BROKEN_STORAGE))
-def test_unreadable_storage_mounts_at_identity_and_pans(
+def test_unreadable_storage_fits_and_pans(
     page, page_errors, console_errors, session, broken
 ):
     page.add_init_script(BROKEN_STORAGE[broken])
     _serve(page, _stage(session, storage_key="flow"))
-    assert _identity(_view(page))
-    point = _background(page)
+    fitted = _view(page)
+    assert not _identity(fitted)
+    point = _corner(page)
     _drag(page, point)
-    _wheel(page, point)
-    _wait_for_k(page, NOTCH)
+    assert _view(page) == pytest.approx(_moved(fitted), abs=0.01)
+    _wheel(page, point, dy=100)
+    _wait_for_k(page, fitted["k"] / NOTCH)
     page.wait_for_timeout(300)
     assert console_errors == []
     assert page_errors == []
@@ -481,22 +526,24 @@ def test_unwritable_storage_keeps_pan_and_zoom_working(
         "Storage.prototype.setItem = () => { throw new Error('quota'); };"
     )
     _serve(page, _stage(session, storage_key="flow"))
-    point = _background(page)
+    k = _view(page)["k"]
+    point = _corner(page)
     _drag(page, point)
-    _wheel(page, point)
-    _wait_for_k(page, NOTCH)
+    _wheel(page, point, dy=100)
+    _wait_for_k(page, k / NOTCH)
     page.wait_for_timeout(300)
-    assert _view(page)["k"] == pytest.approx(NOTCH, abs=1e-3)
+    assert _view(page)["k"] == pytest.approx(k / NOTCH, abs=1e-3)
     assert console_errors == []
     assert page_errors == []
 
 
 def test_a_swapped_in_stage_restores_the_saved_view(page, page_errors, session):
     _serve(page, _stage(session, storage_key="flow"))
-    point = _background(page)
+    k = _view(page)["k"]
+    point = _corner(page)
     _drag(page, point)
-    _wheel(page, point)
-    _wait_for_saved_k(page, NOTCH)
+    _wheel(page, point, dy=100)
+    _wait_for_saved_k(page, k / NOTCH)
     before = _view(page)
     page.evaluate(
         """html => {
@@ -511,5 +558,6 @@ def test_a_swapped_in_stage_restores_the_saved_view(page, page_errors, session):
             return el !== window.oldRoot && pjx.graph.get(el) !== null;
         }"""
     )
+    _wait_ready(page)
     assert _view(page) == pytest.approx(before, abs=0.01)
     assert page_errors == []
