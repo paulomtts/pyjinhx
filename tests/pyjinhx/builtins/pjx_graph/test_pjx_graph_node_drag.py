@@ -268,6 +268,23 @@ def test_a_release_outside_the_canvas_ends_the_drag_once(page, page_errors, sess
     assert page_errors == []
 
 
+def test_a_release_outside_the_canvas_leaves_the_next_click_alone(
+    page, page_errors, session
+):
+    nodes = [_start(), _node("n2", 500, 100, title="Other")]
+    _serve(page, _keyed(session, nodes) + "<div style='height:400px'></div>")
+    canvas = page.locator("#g > .pjx-graph__canvas").bounding_box()
+    assert canvas is not None
+    x, y = _center(page, _title())
+    _drag(page, (x, y), dx=0, dy=canvas["y"] + canvas["height"] + 40 - y)
+    page.mouse.click(*_center(page, _title("g-n2")))
+    assert [e["type"] for e in _events(page, "before-select", "select")] == [
+        "before-select",
+        "select",
+    ]
+    assert page_errors == []
+
+
 def test_a_drag_swallows_only_its_own_trailing_click(page, page_errors, session):
     _serve(page, _keyed(session))
     _drag(page, _center(page, _title()))
