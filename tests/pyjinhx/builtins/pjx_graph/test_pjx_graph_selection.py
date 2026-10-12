@@ -464,6 +464,26 @@ def test_a_selected_edge_that_leaves_and_returns_is_selected_again(
     assert page_errors == []
 
 
+def test_a_rendered_listener_already_sees_the_redrawn_selection(
+    page, page_errors, session
+):
+    _serve(page, _stage(session, _pair(), edges=_edges(session, ("e1", "a", "b"))))
+    _click_edge(page, "e1")
+    seen = page.evaluate(
+        """() => {
+            const root = document.getElementById('g');
+            let seen = null;
+            root.addEventListener('pjx:graph:rendered', () => {
+                seen = root.querySelectorAll('path.pjx-graph__edge--selected').length;
+            }, {once: true});
+            pjx.graph.get(root).drawEdges();
+            return seen;
+        }"""
+    )
+    assert seen == 1
+    assert page_errors == []
+
+
 def test_an_edge_with_an_empty_id_is_not_selectable(page, page_errors, session):
     span = '<span hidden data-pjx-graph-edge data-edge-id="" data-from="a" data-to="b"></span>'
     _serve(page, _stage(session, _pair(), edges=Markup(span)))
