@@ -324,3 +324,10 @@ class TestStylesheet:
         session.on_rendered.append(accumulate_assets)
         _html(session)
         assert CSS in session.css_assets
+
+
+def test_exported_from_the_builtins_namespace():
+    from pyjinhx import builtins
+
+    assert "PJXGraphNode" in builtins.__all__
+    assert builtins.PJXGraphNode is PJXGraphNode
