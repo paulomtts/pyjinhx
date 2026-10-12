@@ -173,9 +173,10 @@ def test_reloading_keeps_the_same_graph_namespace(graph_page, page_errors):
     assert page_errors == []
 
 
-def test_loading_keeps_an_existing_pjx_namespace(page: Page):
+def test_loading_keeps_an_existing_pjx_namespace(page: Page, page_errors):
     page.set_content("<body></body>")
     page.add_script_tag(content="window.pjx = {other: 1};")
     page.add_script_tag(content=ASSET.read_text(encoding="utf-8"))
     assert page.evaluate("window.pjx.other") == 1
     assert page.evaluate("typeof window.pjx.graph") == "object"
+    assert page_errors == []
