@@ -320,6 +320,10 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
         {"pyjinhx.builtins.ui.pjx_graph.pjx_graph"}
     ),
     "builtins.ui.pjx_graph.pjx_graph": frozenset({"pyjinhx._component"}),
+    "builtins.ui.pjx_graph_edges.__init__": frozenset(
+        {"pyjinhx.builtins.ui.pjx_graph_edges.pjx_graph_edges"}
+    ),
+    "builtins.ui.pjx_graph_edges.pjx_graph_edges": frozenset({"pyjinhx._component"}),
     "builtins.ui.pjx_graph_node.__init__": frozenset(
         {"pyjinhx.builtins.ui.pjx_graph_node.pjx_graph_node"}
     ),
