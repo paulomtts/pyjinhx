@@ -150,7 +150,7 @@ var __pjxD3=(()=>{var fe=Object.defineProperty;var vn=Object.getOwnPropertyDescr
   // Delegated, like the controls. A click is judged by its nearest node
   // inside this viewport: a node of a nested stage is left to that stage,
   // while the nested stage's own background still lies inside one of ours.
-  function listenForSelection(root, canvas, viewport, choose, deselect) {
+  function listenForSelection(root, canvas, viewport, plane, choose, deselect) {
     canvas.addEventListener('click', (event) => {
       const target = event.target;
       const node = target.closest('[data-node-id]');
@@ -158,6 +158,12 @@ var __pjxD3=(()=>{var fe=Object.defineProperty;var vn=Object.getOwnPropertyDescr
         if (node.closest('[data-pjx-graph]') === root) {
           choose('node', node.getAttribute('data-node-id'));
         }
+        return;
+      }
+      if (target.parentNode === plane && target.classList.contains('pjx-graph__edge-hit')) {
+        // An empty id cannot be named in an event, so its edge is not selectable.
+        const id = target.getAttribute('data-edge-id');
+        if (id) choose('edge', id);
         return;
       }
       if (isBackground(target, canvas, viewport)) deselect();
@@ -400,11 +406,16 @@ var __pjxD3=(()=>{var fe=Object.defineProperty;var vn=Object.getOwnPropertyDescr
         [canvas.clientWidth / 2, canvas.clientHeight / 2]);
     }
 
-    // A node's class goes on the node findNode picks.
+    // A node's class goes on the node findNode picks; an edge's on each of
+    // its visible paths, never on the hit path.
     function selectedElements() {
       if (selected === null) return [];
-      const node = findNode(selected.id);
-      return node ? [node] : [];
+      if (selected.kind === 'node') {
+        const node = findNode(selected.id);
+        return node ? [node] : [];
+      }
+      return drawn.filter((el) => el.classList.contains('pjx-graph__edge')
+        && el.getAttribute('data-edge-id') === selected.id);
     }
 
     function mark(on) {
@@ -489,10 +500,13 @@ var __pjxD3=(()=>{var fe=Object.defineProperty;var vn=Object.getOwnPropertyDescr
         }
       });
       plane.append(...drawn);
+      // The redrawn paths are new elements, so the selection's class goes
+      // back on; a selected edge that is gone keeps its selection for later.
+      mark(true);
       root.dispatchEvent(new CustomEvent('pjx:graph:rendered', { bubbles: true, detail: null }));
     }
 
-    listenForSelection(root, canvas, viewport, choose, deselect);
+    listenForSelection(root, canvas, viewport, plane, choose, deselect);
     return {
       root: root, box: box, inAnchor: inAnchor, outAnchor: outAnchor, fit: fit, zoomBy: zoomBy,
       drawEdges: drawEdges,

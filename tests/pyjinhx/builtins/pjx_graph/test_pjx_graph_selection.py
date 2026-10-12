@@ -377,3 +377,116 @@ def test_a_nested_stage_background_click_deselects_inside_and_selects_outside(
     ]
     assert _selected_nodes(page) == ["g-a"]
     assert page_errors == []
+
+
+# Edge clicks
+
+
+def test_clicking_an_edge_selects_its_visible_path_and_clears_the_node(
+    page, page_errors, session
+):
+    _serve(page, _stage(session, _pair(), edges=_edges(session, ("e1", "a", "b"))))
+    page.click("#g-a")
+    _forget(page)
+    _click_edge(page, "e1")
+    assert _events(page) == [_ev("before-select-edge", "e1"), _ev("select-edge", "e1")]
+    assert _edge_classes(page, "e1") == [
+        "pjx-graph__edge-hit",
+        "pjx-graph__edge pjx-graph__edge--selected",
+    ]
+    assert _selected_nodes(page) == []
+    assert page_errors == []
+
+
+def test_a_prevented_before_select_edge_keeps_the_node(page, page_errors, session):
+    _serve(page, _stage(session, _pair(), edges=_edges(session, ("e1", "a", "b"))))
+    page.click("#g-a")
+    _veto(page, "before-select-edge")
+    _forget(page)
+    _click_edge(page, "e1")
+    assert _events(page) == [_ev("before-select-edge", "e1")]
+    assert _edge_classes(page, "e1") == ["pjx-graph__edge-hit", "pjx-graph__edge"]
+    assert _selected_nodes(page) == ["g-a"]
+    assert page_errors == []
+
+
+def test_clicking_the_selected_edge_again_fires_nothing(page, page_errors, session):
+    _serve(page, _stage(session, _pair(), edges=_edges(session, ("e1", "a", "b"))))
+    _click_edge(page, "e1")
+    _forget(page)
+    _click_edge(page, "e1")
+    assert _events(page) == []
+    assert _edge_classes(page, "e1") == [
+        "pjx-graph__edge-hit",
+        "pjx-graph__edge pjx-graph__edge--selected",
+    ]
+    assert page_errors == []
+
+
+def test_an_edge_selection_survives_a_redraw(page, page_errors, session):
+    _serve(page, _stage(session, _pair(), edges=_edges(session, ("e1", "a", "b"))))
+    _click_edge(page, "e1")
+    _forget(page)
+    _call(page, "drawEdges")
+    assert _edge_classes(page, "e1") == [
+        "pjx-graph__edge-hit",
+        "pjx-graph__edge pjx-graph__edge--selected",
+    ]
+    assert _events(page) == []
+    assert page_errors == []
+
+
+def test_a_selected_edge_that_leaves_and_returns_is_selected_again(
+    page, page_errors, session
+):
+    _serve(page, _stage(session, _pair(), edges=_edges(session, ("e1", "a", "b"))))
+    _click_edge(page, "e1")
+    _forget(page)
+    page.evaluate(
+        """() => {
+            window.__span = document.querySelector('#g-edges [data-edge-id="e1"]');
+            window.__span.remove();
+            pjx.graph.get(document.getElementById('g')).drawEdges();
+        }"""
+    )
+    assert _edge_classes(page, "e1") == []
+    page.evaluate(
+        """() => {
+            document.getElementById('g-edges').append(window.__span);
+            pjx.graph.get(document.getElementById('g')).drawEdges();
+        }"""
+    )
+    assert _edge_classes(page, "e1") == [
+        "pjx-graph__edge-hit",
+        "pjx-graph__edge pjx-graph__edge--selected",
+    ]
+    assert _events(page) == []
+    assert page_errors == []
+
+
+def test_an_edge_with_an_empty_id_is_not_selectable(page, page_errors, session):
+    span = '<span hidden data-pjx-graph-edge data-edge-id="" data-from="a" data-to="b"></span>'
+    _serve(page, _stage(session, _pair(), edges=Markup(span)))
+    page.click("#g-a")
+    _forget(page)
+    _click_edge(page, "")
+    assert _events(page) == []
+    assert _selected_nodes(page) == ["g-a"]
+    assert _edge_classes(page, "") == ["pjx-graph__edge-hit", "pjx-graph__edge"]
+    assert page_errors == []
+
+
+def test_a_node_and_an_edge_sharing_an_id_are_different_selections(
+    page, page_errors, session
+):
+    _serve(page, _stage(session, _pair(), edges=_edges(session, ("a", "a", "b"))))
+    page.click("#g-a")
+    _forget(page)
+    _click_edge(page, "a")
+    assert _events(page) == [_ev("before-select-edge", "a"), _ev("select-edge", "a")]
+    assert _selected_nodes(page) == []
+    assert _edge_classes(page, "a") == [
+        "pjx-graph__edge-hit",
+        "pjx-graph__edge pjx-graph__edge--selected",
+    ]
+    assert page_errors == []
