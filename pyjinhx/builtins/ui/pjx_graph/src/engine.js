@@ -57,6 +57,24 @@
     return !plane || plane === target;
   }
 
+  // Delegated, so controls swapped in later work without rebinding. A
+  // control in a nested stage belongs to that stage's own listener, and the
+  // values are matched one by one so a name like "constructor" is no step.
+  function listenForControls(root, canvas, instance) {
+    canvas.addEventListener('click', (event) => {
+      const control = event.target.closest('[data-pjx-graph-zoom], [data-pjx-graph-fit]');
+      if (!control || !canvas.contains(control)
+          || control.closest('[data-pjx-graph]') !== root) return;
+      if (control.hasAttribute('data-pjx-graph-fit')) {
+        instance.fit();
+        return;
+      }
+      const value = control.getAttribute('data-pjx-graph-zoom');
+      if (value === 'in') instance.zoomBy(1);
+      else if (value === 'out') instance.zoomBy(-1);
+    });
+  }
+
   function paint(viewport, t) {
     viewport.style.transform = 'translate(' + t.x + 'px, ' + t.y + 'px) scale(' + t.k + ')';
   }
@@ -368,6 +386,7 @@
     nodesOf(root, viewport).forEach(place);
     const instance = createInstance(root, canvas, viewport, plane, view);
     instances.set(root, instance);
+    listenForControls(root, canvas, instance);
     // A restored view is where the user left off; only a fresh stage is framed.
     // Edges are drawn before ready, so whatever waits on ready sees them.
     if (view.restored) {

@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
+from markupsafe import Markup
 
 from pyjinhx.builtins.ui.pjx_graph import PJXGraph
 from pyjinhx.builtins.ui.pjx_graph_controls import PJXGraphControls
@@ -252,4 +253,268 @@ def test_a_zoom_by_continues_into_the_wheel(page, page_errors, session):
     page.mouse.move(round(box["x"] + 600), round(box["y"] + 300))
     page.mouse.wheel(0, -100)
     _wait_for_k(page, STEP * NOTCH)
+    assert page_errors == []
+
+
+# The buttons
+
+
+def _button(kind: str, stage_id: str = "g") -> str:
+    return f"#{stage_id}-controls {BUTTONS[kind]}"
+
+
+def _click(page: Page, kind: str, stage_id: str = "g") -> None:
+    page.click(_button(kind, stage_id))
+
+
+def _record(page: Page) -> dict:
+    raw = page.evaluate("key => localStorage.getItem(key)", RECORD)
+    assert raw is not None
+    return json.loads(raw)
+
+
+def _wait_for_saved_k(page: Page, k: float) -> None:
+    page.wait_for_function(
+        """([key, k]) => {
+            const view = JSON.parse(localStorage.getItem(key) || '{}').view;
+            return view !== undefined && Math.abs(view.k - k) < 1e-3;
+        }""",
+        arg=[RECORD, k],
+        timeout=5000,
+    )
+
+
+def test_zoom_in_click_steps_about_the_canvas_centre(page, page_errors, session):
+    _serve(page, _at_identity(page, session))
+    _click(page, "in")
+    _wait_for_k(page, STEP)
+    assert _view(page) == pytest.approx(_centred(page, STEP), abs=0.05)
+    assert page_errors == []
+
+
+def test_zoom_out_click_steps_about_the_canvas_centre(page, page_errors, session):
+    _serve(page, _at_identity(page, session))
+    _click(page, "out")
+    _wait_for_k(page, 1 / STEP)
+    assert _view(page) == pytest.approx(_centred(page, 1 / STEP), abs=0.05)
+    assert page_errors == []
+
+
+@pytest.mark.parametrize(
+    ("kind", "bound", "expected"),
+    [
+        ("in", {"scale_max": 2}, (STEP, 2, 2)),
+        ("out", {"scale_min": 0.5}, (1 / STEP, 0.5, 0.5)),
+    ],
+    ids=["max", "min"],
+)
+def test_clicks_clamp_to_the_stage_range(
+    page, page_errors, session, kind, bound, expected
+):
+    _serve(page, _at_identity(page, session, **bound))
+    for k in expected:
+        _click(page, kind)
+        _wait_for_k(page, k)
+    page.wait_for_timeout(100)
+    assert _view(page)["k"] == pytest.approx(expected[-1], abs=1e-3)
+    assert page_errors == []
+
+
+def test_fit_click_returns_to_the_first_load_view(page, page_errors, session):
+    _serve(page, _stage(session))
+    fitted = _view(page)
+    _drag(page, _corner(page))
+    assert _view(page) != pytest.approx(fitted, abs=0.05)
+    _click(page, "fit")
+    assert _view(page) == pytest.approx(fitted, abs=0.05)
+    assert page_errors == []
+
+
+def test_a_click_zoom_continues_into_the_wheel(page, page_errors, session):
+    _serve(page, _at_identity(page, session))
+    _click(page, "in")
+    _wait_for_k(page, STEP)
+    box = page.locator("#g > .pjx-graph__canvas").bounding_box()
+    assert box is not None
+    page.mouse.move(round(box["x"] + 600), round(box["y"] + 300))
+    page.mouse.wheel(0, -100)
+    _wait_for_k(page, STEP * NOTCH)
+    assert page_errors == []
+
+
+def test_a_click_zoom_is_saved_and_restored(page, page_errors, session):
+    _serve(page, _stage(session, storage_key="flow"))
+    k = _view(page)["k"]
+    # Out, since the fit may already sit at the top of the range.
+    _click(page, "out")
+    _wait_for_saved_k(page, k / STEP)
+    assert _record(page)["view"]["k"] == pytest.approx(k / STEP, abs=1e-3)
+    before = _view(page)
+    page.reload()
+    _wait_ready(page)
+    assert _view(page) == pytest.approx(before, abs=0.01)
+    assert page_errors == []
+
+
+def test_mounting_twice_still_steps_once(page, page_errors, session):
+    _serve(page, _at_identity(page, session))
+    page.evaluate("() => pjx.graph.mount(document.getElementById('g'))")
+    _click(page, "in")
+    _wait_for_k(page, STEP)
+    page.wait_for_timeout(100)
+    assert _view(page)["k"] == pytest.approx(STEP, abs=1e-3)
+    assert page_errors == []
+
+
+def test_a_click_drives_only_its_own_stage(page, page_errors, session):
+    _seed(page, IDENTITY)
+    stages = _stage(session, "a", storage_key="flow") + _stage(
+        session, "b", storage_key="flow"
+    )
+    _serve(page, stages)
+    _click(page, "in", "a")
+    _wait_for_k(page, STEP, "a")
+    page.wait_for_timeout(100)
+    assert _identity(_view(page, "b"))
+    assert page_errors == []
+
+
+@pytest.mark.parametrize("kind", ["in", "out", "fit"])
+def test_a_drag_from_a_control_does_not_pan(page, page_errors, session, kind):
+    _serve(page, _at_identity(page, session))
+    # The drag ends off the button, so no click fires on it.
+    _drag(page, _center(page, _button(kind)))
+    page.wait_for_timeout(100)
+    assert _identity(_view(page))
+    assert page_errors == []
+
+
+def test_wheel_over_a_control_zooms_about_the_pointer(page, page_errors, session):
+    _serve(page, _at_identity(page, session))
+    x, y = _center(page, _button("in"))
+    world = """([x, y]) => {
+        const canvas = document.querySelector('#g > .pjx-graph__canvas');
+        const r = canvas.getBoundingClientRect();
+        const m = new DOMMatrix(getComputedStyle(
+            canvas.querySelector(':scope > .pjx-graph__viewport')).transform);
+        return [(x - r.left - canvas.clientLeft - m.e) / m.a,
+                (y - r.top - canvas.clientTop - m.f) / m.a];
+    }"""
+    before = page.evaluate(world, [x, y])
+    page.mouse.move(x, y)
+    page.mouse.wheel(0, -100)
+    _wait_for_k(page, NOTCH)
+    assert page.evaluate(world, [x, y]) == pytest.approx(before, abs=0.05)
+    assert page_errors == []
+
+
+def test_enter_and_space_each_step_once(page, page_errors, session):
+    _serve(page, _at_identity(page, session, scale_max=4))
+    page.focus(_button("in"))
+    page.keyboard.press("Enter")
+    _wait_for_k(page, STEP)
+    page.keyboard.press("Space")
+    _wait_for_k(page, 2)
+    page.wait_for_timeout(100)
+    assert _view(page)["k"] == pytest.approx(2, abs=1e-3)
+    assert page_errors == []
+
+
+def test_swapped_controls_keep_working(page, page_errors, session):
+    _serve(page, _at_identity(page, session))
+    fresh = render(PJXGraphControls(id="g-controls", zoom_in_label="More"), session)
+    page.evaluate(
+        "html => { document.getElementById('g-controls').outerHTML = html; }", fresh
+    )
+    assert page.text_content(_button("in")) == "More"
+    _click(page, "in")
+    _wait_for_k(page, STEP)
+    page.wait_for_timeout(100)
+    assert _view(page)["k"] == pytest.approx(STEP, abs=1e-3)
+    assert page_errors == []
+
+
+@pytest.mark.parametrize("value", ["sideways", "constructor", "toString", "IN", ""])
+def test_an_unknown_zoom_value_does_nothing(page, page_errors, session, value):
+    _serve(page, _at_identity(page, session))
+    page.evaluate(
+        """value => {
+            const odd = document.createElement('button');
+            odd.type = 'button';
+            odd.id = 'odd';
+            odd.textContent = '?';
+            odd.setAttribute('data-pjx-graph-zoom', value);
+            document.getElementById('g-controls').append(odd);
+        }""",
+        value,
+    )
+    page.click("#odd")
+    page.wait_for_timeout(100)
+    assert _identity(_view(page))
+    assert page_errors == []
+
+
+def test_a_click_inside_a_control_acts_on_it(page, page_errors, session):
+    _serve(page, _at_identity(page, session))
+    page.evaluate(
+        """sel => { document.querySelector(sel).innerHTML =
+            '<span id="glyph" style="display:inline-block;padding:4px">+</span>'; }""",
+        _button("in"),
+    )
+    page.click("#glyph")
+    _wait_for_k(page, STEP)
+    assert page_errors == []
+
+
+def test_a_disabled_control_does_nothing(page, page_errors, session):
+    _serve(page, _at_identity(page, session))
+    page.evaluate(
+        "sel => { document.querySelector(sel).disabled = true; }", _button("in")
+    )
+    page.click(_button("in"), force=True)
+    page.wait_for_timeout(100)
+    assert _identity(_view(page))
+    assert page_errors == []
+
+
+def test_a_fit_attribute_on_the_stage_root_is_not_a_control(page, page_errors, session):
+    _serve(page, _at_identity(page, session, extra_attrs={"data-pjx-graph-fit": ""}))
+    box = page.locator("#g > .pjx-graph__canvas").bounding_box()
+    assert box is not None
+    page.mouse.click(round(box["x"] + 600), round(box["y"] + 300))
+    page.wait_for_timeout(100)
+    assert _identity(_view(page))
+    assert page_errors == []
+
+
+def test_controls_outside_a_stage_are_inert(page, page_errors, session):
+    loose = render(PJXGraphControls(id="loose"), session)
+    _serve(page, loose + _at_identity(page, session))
+    for kind in ("in", "out", "fit"):
+        page.click(f"#loose {BUTTONS[kind]}")
+    page.wait_for_timeout(100)
+    assert _identity(_view(page))
+    assert page_errors == []
+
+
+def test_a_nested_stage_control_drives_only_the_nested_stage(
+    page, page_errors, session
+):
+    _seed(page, IDENTITY)
+    inner = _stage(session, "in", storage_key="flow")
+    host = PJXGraphNode(
+        id="g-host", node_id="host", x=40, y=40, title="Host", icon=Markup(inner)
+    )
+    outer = PJXGraph(
+        id="g",
+        nodes=PJXGraphNodes(id="g-nodes", nodes_html=host),
+        controls=PJXGraphControls(id="g-controls"),
+        storage_key="flow",
+    )
+    _serve(page, render(outer, session))
+    # A programmatic click: the nested canvas may be clipped by the outer one.
+    page.evaluate("sel => document.querySelector(sel).click()", _button("in", "in"))
+    _wait_for_k(page, STEP, "in")
+    page.wait_for_timeout(100)
+    assert _identity(_view(page))
     assert page_errors == []
