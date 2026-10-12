@@ -50,8 +50,6 @@ class _TreeBuilder(HTMLParser):
 
 @pytest.fixture
 def session():
-    # template_dir="/" so the descriptor's absolute template path resolves,
-    # same fixture shape as the sibling builtin tests.
     return RenderSession()
 
 
