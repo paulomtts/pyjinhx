@@ -385,6 +385,132 @@ def test_an_app_made_panel_without_a_back_button_still_works(
     assert page_errors == []
 
 
+# Isolation
+
+
+SELECTION = {"before-select", "select", "before-select-edge", "select-edge", "deselect"}
+
+
+def test_clicks_inside_the_panel_keep_the_canvas_selection(page, page_errors, session):
+    panel = _panel(content=Markup('<p id="g-body">Body</p>'))
+    _serve(page, _stage(session, panel=panel))
+    _call(page, "select", "a")
+    _panel_call(page, "open", "a")
+    _panel_call(page, "open", "b")
+    _forget(page)
+    title = "#g-panel [data-pjx-graph-panel-title]"
+    for selector in ("#g-body", title, _back(), _close()):
+        page.click(selector)
+    types = [event["type"] for event in _events(page)]
+    assert types == ["panel:open", "panel:before-close", "panel:close"]
+    assert not SELECTION & set(types)
+    assert _selected_nodes(page) == ["g-a"]
+    assert page_errors == []
+
+
+def test_a_swapped_in_panel_follows_the_stage_history(page, page_errors, session):
+    _serve(page, _stage(session))
+    for node_id in ("a", "b", "c"):
+        _panel_call(page, "open", node_id)
+    fresh = render(_panel(open=True), session)
+    page.evaluate(
+        "html => { document.getElementById('g-panel').outerHTML = html; }", fresh
+    )
+    _forget(page)
+    assert _panel_call(page, "back") == {"value": True}
+    assert _events(page) == [_ev("panel:open", "b")]
+    assert _back_hidden(page) is False
+    _forget(page)
+    page.click(_close())
+    assert _events(page) == [_ev("panel:before-close", "b"), _ev("panel:close", "b")]
+    assert _state(page) == "false"
+    assert page_errors == []
+
+
+NESTED_CSS = (
+    "#g-panel { width: 640px; max-height: none; }"
+    " #in > .pjx-graph__canvas { min-height: 0; height: 200px; }"
+)
+
+
+def _nested(session) -> str:
+    """Stage g whose open panel holds stage in, which has its own open panel."""
+    inner = _stage(session, "in", panel=_panel("in", open=True))
+    return _stage(session, panel=_panel(open=True, content=Markup(inner)))
+
+
+def test_a_nested_stage_panel_answers_only_to_its_own_buttons(
+    page, page_errors, session
+):
+    _serve(page, _nested(session), NESTED_CSS)
+    _panel_call(page, "open", "a")
+    _panel_call(page, "open", "x", stage_id="in")
+    _panel_call(page, "open", "y", stage_id="in")
+    _forget(page)
+    page.click(_back("in"))
+    assert _events(page) == [_ev("panel:open", "x", "in")]
+    _forget(page)
+    page.click(_close("in"))
+    assert _events(page) == [
+        _ev("panel:before-close", "x", "in"),
+        _ev("panel:close", "x", "in"),
+    ]
+    assert _state(page, "in") == "false"
+    assert _state(page) == "true"
+    _forget(page)
+    assert _panel_call(page, "close") == {"value": True}
+    assert _events(page) == [_ev("panel:before-close", "a"), _ev("panel:close", "a")]
+    assert page_errors == []
+
+
+def test_sibling_stages_keep_their_own_panels(page, page_errors, session):
+    _serve(page, _stage(session) + _stage(session, "h"))
+    _panel_call(page, "open", "a")
+    _panel_call(page, "open", "b")
+    _panel_call(page, "open", "c", stage_id="h")
+    _forget(page)
+    page.click(_close())
+    assert _events(page) == [_ev("panel:before-close", "b"), _ev("panel:close", "b")]
+    assert _state(page, "h") == "true"
+    assert _panel_call(page, "back", stage_id="h") == {"value": False}
+    _forget(page)
+    assert _panel_call(page, "close", stage_id="h") == {"value": True}
+    assert _events(page) == [
+        _ev("panel:before-close", "c", "h"),
+        _ev("panel:close", "c", "h"),
+    ]
+    assert page_errors == []
+
+
+def test_a_remounted_stage_starts_with_an_empty_history(page, page_errors, session):
+    _serve(page, _stage(session))
+    _panel_call(page, "open", "a")
+    _panel_call(page, "open", "b")
+    # Removed and put back in separate tasks, so the document observer drops
+    # the stage before it mounts it afresh.
+    page.evaluate(
+        """async () => {
+            const stage = document.getElementById('g');
+            const parent = stage.parentNode;
+            stage.remove();
+            await new Promise((resolve) => setTimeout(resolve, 50));
+            parent.prepend(stage);
+        }"""
+    )
+    page.wait_for_function(
+        "() => pjx.graph.get(document.getElementById('g')) !== null", timeout=5000
+    )
+    _forget(page)
+    assert _state(page) == "true"
+    assert _panel_call(page, "back") == {"value": False}
+    page.click(_close())
+    assert _events(page) == [
+        _ev("panel:before-close", None),
+        _ev("panel:close", None),
+    ]
+    assert page_errors == []
+
+
 # Errors
 
 
