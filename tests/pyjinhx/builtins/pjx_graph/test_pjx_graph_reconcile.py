@@ -58,7 +58,8 @@ PLANE = """id => {
     return Array.from(plane.children).map(el => ({
         tag: el.tagName, cls: el.getAttribute('class'), id: el.id,
         d: el.getAttribute('d'), edge: el.getAttribute('data-edge-id'),
-        from: el.getAttribute('data-from'), to: el.getAttribute('data-to')}));
+        from: el.getAttribute('data-from'), to: el.getAttribute('data-to'),
+        state: el.getAttribute('data-state')}));
 }"""
 
 CALL = """([id, method, args]) => {
@@ -222,6 +223,10 @@ def _replace(selector: str, html: str) -> str:
     return f"document.querySelector({json.dumps(selector)}).outerHTML = {json.dumps(html)};"
 
 
+def _edge_span(edge_id: str, stage_id: str = "g") -> str:
+    return f'#{stage_id}-edges [data-edge-id="{edge_id}"]'
+
+
 def _append(selector: str, html: str) -> str:
     return (
         f"document.querySelector({json.dumps(selector)})"
@@ -301,6 +306,27 @@ def _path(page: Page, edge_id: str, stage_id: str = "g") -> str:
 
 def _call(page: Page, method: str, *args, stage_id: str = "g"):
     return page.evaluate(CALL, [stage_id, method, list(args)])
+
+
+def _fanned(page: Page, a_id: str, b_id: str, plain: str) -> None:
+    """Edges a and b, alone on plain's pair and port, bow evenly apart about it."""
+    base = _numbers(plain)
+    a, b = _numbers(_path(page, a_id)), _numbers(_path(page, b_id))
+    assert a != b
+    for path in (a, b):
+        assert path[:2] == pytest.approx(base[:2], abs=0.01)
+        assert path[-2:] == pytest.approx(base[-2:], abs=0.01)
+    # Only the control points move, by equal offsets on either side of zero.
+    middle = [(p + q) / 2 for p, q in zip(a[2:6], b[2:6], strict=True)]
+    assert middle == pytest.approx(base[2:6], abs=0.01)
+
+
+def _fan(page: Page) -> tuple[str, int]:
+    """Add e3 beside e1 (a→b on ok); return e1's lone path and the settled rendered count."""
+    plain = _path(page, "e1")
+    before = _rendered(page)
+    _mutate(page, _append("#g-edges", _span(_edge("e3", "a", "b", port="ok"))))
+    return plain, _settle(page, before)
 
 
 def _numbers(d: str) -> list[float]:
@@ -773,6 +799,54 @@ def test_a_reconcile_during_a_node_drag_leaves_the_dragged_node_alone(
     assert [e["detail"] for e in _events(page, "move")] == [
         {"id": "a", "x": 80, "y": 80}
     ]
+    assert page_errors == []
+
+
+# Edge changes
+
+
+def test_adding_one_edge_fans_the_pair(page, page_errors, session):
+    _serve(page, _stage(session))
+    plain = _path(page, "e1")
+    before = _rendered(page)
+    _mutate(page, _append("#g-edges", _span(_edge("e3", "a", "b", port="ok"))))
+    assert _settle(page, before) == before + 1
+    assert [e["edge"] for e in _visible(page)] == ["e1", "e2", "e3"]
+    _fanned(page, "e1", "e3", plain)
+    assert page_errors == []
+
+
+def test_removing_one_edge_unfans_the_pair(page, page_errors, session):
+    _serve(page, _stage(session))
+    plain, before = _fan(page)
+    _mutate(page, _remove(_edge_span("e3")))
+    assert _settle(page, before) == before + 1
+    assert [e["edge"] for e in _visible(page)] == ["e1", "e2"]
+    assert _path(page, "e1") == plain
+    assert page_errors == []
+
+
+def test_swapping_the_whole_edges_element_draws_only_the_new_list(
+    page, page_errors, session
+):
+    _serve(page, _stage(session))
+    plain = _path(page, "e1")
+    before = _rendered(page)
+    fresh = [
+        _edge("e1", "a", "b", port="ok", state="ok"),
+        _edge("e3", "a", "b", port="ok"),
+        _edge("e4", "b", "c", port="ok", state="fail"),
+    ]
+    _mutate(
+        page,
+        _replace("#g-edges", _html(session, PJXGraphEdges(id="g-edges", edges=fresh))),
+    )
+    assert _settle(page, before) == before + 1
+    visible = _visible(page)
+    assert [e["edge"] for e in visible] == ["e1", "e3", "e4"]
+    assert [e["state"] for e in visible] == ["ok", "", "fail"]
+    assert "e2" not in {el["edge"] for el in _plane(page)}
+    _fanned(page, "e1", "e3", plain)
     assert page_errors == []
 
 
