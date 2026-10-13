@@ -107,3 +107,36 @@ class TestMarkup:
     def test_id_autogenerates(self, session, parse_html):
         root = _root(parse_html, render(PJXGraphSidePanel(), session))
         assert root.attrs["id"]
+
+    def test_marker_renders_between_back_and_title(self, session, parse_html):
+        (head, _) = _root(parse_html, _html(session, marker=True)).children
+        back, marker, title, close = head.children
+        assert "data-pjx-graph-panel-back" in back.attrs
+        assert marker.tag == "span"
+        assert marker.classes == ["pjx-graph__panel-marker"]
+        assert "data-pjx-graph-panel-marker" in marker.attrs
+        assert marker.attrs["aria-hidden"] == "true"
+        assert marker.children == []
+        assert "data-pjx-graph-panel-title" in title.attrs
+        assert "data-pjx-graph-panel-close" in close.attrs
+
+    def test_accent_color_sets_inline_token(self, session, parse_html):
+        html = _html(session, accent_color="#f00")
+        assert ' data-open="false" style="--pjx-graph-panel-accent: #f00">' in html
+        assert _root(parse_html, html).attrs["style"] == (
+            "--pjx-graph-panel-accent: #f00"
+        )
+        assert "style=" not in _html(session)
+        assert "style=" not in _html(session, marker=True)
+
+    def test_badge_slot_renders_raw_after_title(self, session, parse_html):
+        (head, _) = _root(parse_html, _html(session, badge="<b>3</b>")).children
+        _, title, badge, close = head.children
+        assert "data-pjx-graph-panel-title" in title.attrs
+        assert badge.tag == "span"
+        assert badge.classes == ["pjx-graph__panel-badge"]
+        assert "data-pjx-graph-panel-badge" in badge.attrs
+        (bold,) = badge.children
+        assert bold.tag == "b"
+        assert "data-pjx-graph-panel-close" in close.attrs
+        assert "data-pjx-graph-panel-badge" not in _html(session)
