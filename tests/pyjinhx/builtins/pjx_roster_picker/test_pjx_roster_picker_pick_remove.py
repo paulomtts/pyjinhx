@@ -673,6 +673,74 @@ def test_a_remove_fires_one_change_with_the_rest(
     assert page_errors == []
 
 
+def test_removing_a_chip_from_a_capped_picker_reenables_the_input(
+    page: Page, session: RenderSession, page_errors: list[str]
+):
+    _serve(page, session, _picker(session, items=[_item("a")], max_items=2))
+    _open(page)
+    _pick(page, "v1").click()
+    _record_changes(page)
+
+    _remove(page, "a").click()
+
+    assert not _input(page).is_disabled()
+    assert _hint_hidden(page) is True
+    assert _has_focus(_remove(page, "v1"))
+    assert _changes(page) == [
+        {"values": ["v1"], "target": "p", "bubbles": True, "cancelable": False}
+    ]
+    assert _state(page) == CLOSED
+    assert page_errors == []
+
+
+def test_removing_the_last_chip_from_a_cap_refocuses_the_input(
+    page: Page, session: RenderSession, page_errors: list[str]
+):
+    requests = _serve(page, session, _picker(session, items=[_item("a")], max_items=2))
+    _open(page)
+    _pick(page, "v1").click()
+    sent = len(requests)
+
+    _remove(page, "v1").click()
+
+    assert not _input(page).is_disabled()
+    assert _hint_hidden(page) is True
+    assert _has_focus(_input(page))
+    assert _state(page) == CLOSED
+    # Past the 300 ms debounce, so an open's search would have been sent.
+    page.wait_for_timeout(500)
+    assert _state(page) == CLOSED
+    assert len(requests) == sent
+    assert page_errors == []
+
+
+def test_a_picker_rendered_full_starts_capped(
+    page: Page, session: RenderSession, page_errors: list[str]
+):
+    requests = _serve(
+        page, session, _picker(session, items=[_item("a"), _item("b")], max_items=2)
+    )
+    _settle(page)
+
+    assert _input(page).is_disabled()
+    assert _hint_hidden(page) is False
+    assert requests == []
+
+    _remove(page, "a").click()
+
+    assert not _input(page).is_disabled()
+    assert _hint_hidden(page) is True
+
+    _open(page)
+    _pick(page, "v1").click()
+
+    assert _chip_values(page) == ["b", "v1"]
+    assert _input(page).is_disabled()
+    assert _hint_hidden(page) is False
+    assert _has_focus(_remove(page, "v1"))
+    assert page_errors == []
+
+
 def test_a_remove_of_an_unlisted_value_forgets_the_last_query(
     page: Page, session: RenderSession, page_errors: list[str]
 ):

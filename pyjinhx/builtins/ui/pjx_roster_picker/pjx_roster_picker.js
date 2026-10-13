@@ -230,6 +230,8 @@
         const next = chip.nextElementSibling;
         chip.remove();
         syncRows(picker);
+        // Before the focus below, which a still-disabled box would refuse.
+        syncCap(picker);
         const input = searchInput(picker);
         // The kept rows were fetched with this value excluded, so a route that
         // honoured exclude left it out; only a fresh search can bring it back.
