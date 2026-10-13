@@ -100,6 +100,18 @@ RECORD_CHANGES = """() => {
     });
 }"""
 
+# On the picker itself, so a pass proves events from a row on body still
+# start at the picker.
+RECORD_PICK_EVENTS = """() => {
+    window.picks = [];
+    const picker = document.getElementById('p');
+    for (const name of ['before-pick', 'pick']) {
+        picker.addEventListener(`pjx:roster-picker:${name}`, (event) => {
+            window.picks.push({ name: name, value: event.detail.value, target: event.target.id });
+        });
+    }
+}"""
+
 # What an enclosing dialog's own Escape handler would see.
 RECORD_WINDOW_ESCAPES = """() => {
     window.escapes = 0;
@@ -465,6 +477,25 @@ def test_pick_from_portal_list(
     assert geometry["inline"] == ""
     assert _row_hidden(page, "v2") is True
     assert _input_has_focus(page)
+    assert page_errors == []
+
+
+def test_a_portal_pickers_pick_events_target_the_picker(
+    page: Page, session: RenderSession, page_errors: list[str]
+):
+    _serve(page, session, _clip(_picker(session)))
+    _open(page)
+    page.evaluate(RECORD_PICK_EVENTS)
+    assert _geometry(page)["onBody"] is True
+
+    page.click('#p-results [data-pjx-roster-pick][data-value="v2"]')
+    _settle(page)
+
+    assert page.evaluate("() => window.picks") == [
+        {"name": "before-pick", "value": "v2", "target": "p"},
+        {"name": "pick", "value": "v2", "target": "p"},
+    ]
+    assert _chip_values(page) == ["v2"]
     assert page_errors == []
 
 

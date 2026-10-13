@@ -262,26 +262,33 @@
         if (input) input.removeAttribute('aria-invalid');
     }
 
-    // Read after the DOM change, so listeners see the selection as it now is.
-    function announceChange(picker) {
-        picker.dispatchEvent(
-            new CustomEvent('pjx:roster-picker:change', {
-                bubbles: true,
-                detail: { values: chippedValues(picker) },
-            })
+    // Every event starts at the picker, even from a row on body, so one
+    // listener on the picker or the page hears it. False means a listener
+    // refused it.
+    function fire(picker, name, detail, cancelable) {
+        return picker.dispatchEvent(
+            new CustomEvent(name, { bubbles: true, cancelable: cancelable, detail: detail })
         );
     }
 
+    // Read after the DOM change, so listeners see the selection as it now is.
+    function announceChange(picker) {
+        fire(picker, 'pjx:roster-picker:change', { values: chippedValues(picker) }, false);
+    }
+
     function pickRow(picker, row) {
+        const value = row.dataset.value;
         // The box is disabled at the cap, so this is only a stale row's click.
         if (isFull(picker)) return;
-        if (chippedValues(picker).includes(row.dataset.value)) return;
+        if (chippedValues(picker).includes(value)) return;
         const template = row.nextElementSibling;
         const source =
             template instanceof HTMLTemplateElement &&
             template.content.querySelector('[data-pjx-roster-chip]');
         // A stale or hand-built row without its chip has nothing to add.
         if (!source) return;
+        // Asked before anything moves, so a refusal leaves the list as it was.
+        if (!fire(picker, 'pjx:roster-picker:before-pick', { value }, true)) return;
         const chip = document.importNode(source, true);
         chip.querySelector(':scope > .pjx-roster-picker__chip-input').name = picker.dataset.name;
         const chips = picker.querySelector('.pjx-roster-picker__chips');
@@ -301,6 +308,7 @@
         if (remove) remove.focus();
         else if (input && !input.disabled) quietFocus(input);
         syncValidity(picker);
+        fire(picker, 'pjx:roster-picker:pick', { value }, false);
         announceChange(picker);
     }
 
