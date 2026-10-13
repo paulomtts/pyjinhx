@@ -369,3 +369,118 @@ def test_a_row_without_a_chip_template_is_ignored(
     assert _state(page) == OPEN
     assert _hidden_rows(page) == {"v0": False, "v1": False, "v2": False}
     assert page_errors == []
+
+
+def test_a_swapped_page_hides_rows_already_chipped(
+    page: Page, session: RenderSession, page_errors: list[str]
+):
+    _serve(page, session, _picker(session, items=[_item("v0")]))
+
+    _open(page)
+
+    _wait_hidden_rows(page, {"v0": True, "v1": False, "v2": False})
+    assert page_errors == []
+
+
+def test_a_later_page_hides_rows_already_chipped(
+    page: Page, session: RenderSession, page_errors: list[str]
+):
+    first = render(
+        PJXRosterResults(picker_id="p", items=[_item("v0"), _item("v1")]), session
+    )
+    # Stands in for the paging sentinel, which swaps itself for the next page.
+    more = f'<div hx-get="{MORE_URL}" hx-trigger="load" hx-swap="outerHTML"></div>'
+    second = render(
+        PJXRosterResults(picker_id="p", items=[_item("v2"), _item("v3")]), session
+    )
+    _serve(page, session, _picker(session, items=[_item("v2")]), rows=first + more)
+    page.route(
+        f"{MORE_URL}*",
+        lambda route: route.fulfill(body=second, content_type="text/html"),
+    )
+
+    _input(page).click()
+
+    _wait_hidden_rows(page, {"v0": False, "v1": False, "v2": True, "v3": False})
+    assert page_errors == []
+
+
+def test_a_pick_of_a_value_already_chipped_does_nothing(
+    page: Page, session: RenderSession, page_errors: list[str]
+):
+    _serve(page, session, _picker(session, items=[_item("v0")]))
+    _open(page)
+    _wait_hidden_rows(page, {"v0": True, "v1": False, "v2": False})
+    # Stands in for a row the script has not hidden yet.
+    page.evaluate(
+        """() => {
+            document.querySelector('#p-results [data-value="v0"]').hidden = false;
+        }"""
+    )
+    _record_changes(page)
+
+    _pick(page, "v0").click()
+    _settle(page)
+
+    assert _chip_values(page) == ["v0"]
+    assert _changes(page) == []
+    assert _state(page) == OPEN
+    assert _hidden_rows(page)["v0"] is False
+    assert _has_focus(_pick(page, "v0"))
+    assert page_errors == []
+
+
+def test_a_single_item_picker_replaces_its_chip(
+    page: Page, session: RenderSession, page_errors: list[str]
+):
+    _serve(page, session, _picker(session, items=[_item("v0")], max_items=1))
+    _open(page)
+    _wait_hidden_rows(page, {"v0": True, "v1": False, "v2": False})
+    _record_changes(page)
+
+    _pick(page, "v1").click()
+
+    assert _chip_values(page) == ["v1"]
+    assert _hidden_rows(page) == {"v0": False, "v1": True, "v2": False}
+    assert _changes(page) == [
+        {"values": ["v1"], "target": "p", "bubbles": True, "cancelable": False}
+    ]
+    assert page_errors == []
+
+
+def test_a_multi_item_cap_still_appends(
+    page: Page, session: RenderSession, page_errors: list[str]
+):
+    _serve(page, session, _picker(session, items=[_item("a")], max_items=3))
+    _open(page)
+
+    _pick(page, "v1").click()
+
+    assert _chip_values(page) == ["a", "v1"]
+    assert page_errors == []
+
+
+def test_settles_outside_a_pickers_rows_are_ignored(
+    page: Page, session: RenderSession, page_errors: list[str]
+):
+    body = (
+        '<div id="outside"></div>'
+        + _picker(session, "d", items=[_item("a")], disabled=True)
+        + _picker(session)
+    )
+    _serve(page, session, body)
+
+    page.evaluate(
+        """() => {
+            const settle = (target) => target.dispatchEvent(
+                new CustomEvent('htmx:afterSettle', { bubbles: true })
+            );
+            settle(document);
+            settle(document.getElementById('outside'));
+            settle(document.querySelector('#d .pjx-roster-picker__chips'));
+        }"""
+    )
+    _settle(page)
+
+    assert _chip_values(page, "d") == ["a"]
+    assert page_errors == []

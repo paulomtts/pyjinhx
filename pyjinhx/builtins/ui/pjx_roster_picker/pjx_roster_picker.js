@@ -170,6 +170,7 @@
     }
 
     function pickRow(picker, row) {
+        if (chippedValues(picker).includes(row.dataset.value)) return;
         const template = row.nextElementSibling;
         const source =
             template instanceof HTMLTemplateElement &&
@@ -178,7 +179,10 @@
         if (!source) return;
         const chip = document.importNode(source, true);
         chip.querySelector(':scope > .pjx-roster-picker__chip-input').name = picker.dataset.name;
-        picker.querySelector('.pjx-roster-picker__chips').append(chip);
+        const chips = picker.querySelector('.pjx-roster-picker__chips');
+        // A single-item picker swaps its one chip rather than refusing.
+        if (picker.dataset.maxItems === '1') chips.replaceChildren(chip);
+        else chips.append(chip);
         syncRows(picker);
         setOpen(picker, false);
         const input = searchInput(picker);
@@ -248,6 +252,15 @@
         const row = event.target.closest('[data-pjx-roster-pick]');
         const picker = row && pickerOf(row);
         if (picker) pickRow(picker, row);
+    });
+
+    // A swap can bring rows for values already chipped: a route that ignored
+    // exclude, or a later page. The paging sentinel swaps outerHTML, so htmx
+    // settles the new page inside the mount, not the mount itself.
+    document.addEventListener('htmx:afterSettle', function (event) {
+        if (!(event.target instanceof Element)) return;
+        const picker = pickerOf(event.target);
+        if (picker) syncRows(picker);
     });
 
     // Read when the request is built, not at load, so the route sees the
