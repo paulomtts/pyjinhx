@@ -1,5 +1,39 @@
 # Changelog
 
+## Unreleased — Graph builtin
+
+### Added
+- Six builtins for a pan/zoom node graph, exported from `pyjinhx.builtins`:
+  `PJXGraph` (the stage: canvas, viewport, node and edge layers),
+  `PJXGraphNodes` (the node layer), `PJXGraphNode` (one positioned node
+  card), `PJXGraphEdges` (the edge layer, one hidden `span` per edge),
+  `PJXGraphControls` (zoom in, zoom out and fit buttons) and
+  `PJXGraphSidePanel` (a floating card with a header and one content region).
+- `window.pjx.graph`: `mount(root)`, `get(root)`, and
+  `panel.open(root, id)`, `panel.back(root)`, `panel.close(root)`. The stage
+  instance has `select`, `deselect`, `fit`, `zoomBy`, `drawEdges`,
+  `reconcile`, `box`, `inAnchor` and `outAnchor`.
+- Events on the stage root: `pjx:graph:before-select`, `pjx:graph:select`,
+  `pjx:graph:before-select-edge`, `pjx:graph:select-edge`,
+  `pjx:graph:deselect`, `pjx:graph:move`, `pjx:graph:wire`,
+  `pjx:graph:rendered`, `pjx:graph:panel:open`,
+  `pjx:graph:panel:before-close` and `pjx:graph:panel:close`. The `before-*`
+  events are cancelable.
+- The graph reconciles itself after any htmx swap inside it (the whole node
+  layer, one node or edge out-of-band, SSE): changed nodes are placed and
+  every edge is redrawn, with no app-side call. A swap during a drag is
+  applied on release.
+- `storage_key` keeps the pan/zoom view and dropped node positions in
+  localStorage. A drop holds while the server sends the position it was
+  dragged from, and the server wins once that changes.
+- d3-selection and d3-zoom are bundled into the graph's own JS asset; the app
+  loads no d3.
+- `--pjx-graph-*` tokens theme the stage, nodes, edges, controls and panel.
+
+See the [Graph guide](docs/guide/graph.md) and
+[ADR 0004](docs/decisions/0004-graph-reconcile-model.md) for why the engine
+reconciles on DOM mutation instead of a resync call.
+
 ## 1.9.8 — Portals, asset tokens, and a builtin-before-app CSS guarantee (2026-08-29)
 
 ### Added
