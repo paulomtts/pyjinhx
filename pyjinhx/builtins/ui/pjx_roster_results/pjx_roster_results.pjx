@@ -1,2 +1,10 @@
 <div id="{{ id }}" class="pjx-roster-picker__results-page{% if class_name %} {{ class_name }}{% endif %}" data-pjx-roster-results{% for attr_name, attr_value in extra_attrs.items() %} {{ attr_name }}="{{ attr_value }}"{% endfor %}>
+  {% for item in items %}
+  <button type="button" class="pjx-roster-picker__pick" data-pjx-roster-pick data-value="{{ item.value }}">
+    {{ visuals[loop.index0] }}
+    <span class="pjx-roster-picker__pick-text"><span class="pjx-roster-picker__pick-label">{{ item.label }}</span>{% if item.subtitle %}<span class="pjx-roster-picker__pick-subtitle">{{ item.subtitle }}</span>{% endif %}</span>
+    {{ add_icons[loop.index0] }}
+  </button>
+  <template>{{ chips[loop.index0] }}</template>
+  {% endfor %}
 </div>

@@ -1,7 +1,26 @@
-from pydantic import Field
+from typing import Self
+
+from pydantic import Field, model_validator
 
 from pyjinhx._component import AttrValue, BaseComponent, ExtraAttrs
+from pyjinhx.builtins.ui.pjx_avatar import PJXAvatar
+from pyjinhx.builtins.ui.pjx_icon import PJXIcon
+from pyjinhx.builtins.ui.pjx_roster_chip import PJXRosterChip
 from pyjinhx.builtins.ui.pjx_roster_picker.item import PJXRosterItem
+
+
+def _visual(item: PJXRosterItem) -> BaseComponent:
+    if item.icon:
+        return PJXIcon(name=item.icon, class_name="pjx-roster-picker__pick-icon")
+    # alt is empty because the label beside the avatar already names it.
+    return PJXAvatar(
+        src=item.src,
+        initials=item.initials,
+        color=item.color,
+        alt="",
+        size="sm",
+        class_name="pjx-roster-picker__pick-avatar",
+    )
 
 
 class PJXRosterResults(BaseComponent):
@@ -24,3 +43,34 @@ class PJXRosterResults(BaseComponent):
     remove_label: str = "Remove"
     class_name: AttrValue = ""
     extra_attrs: ExtraAttrs = Field(default_factory=dict)
+
+    # Derived from items, one entry per item, not user-supplied. Built in
+    # Python rather than as tag literals in the template for the same reason
+    # PJXRosterChip.visual is. visuals is typed list[BaseComponent] because a
+    # list of a union is not recognised as a slot.
+    visuals: list[BaseComponent] = Field(default_factory=list)
+    add_icons: list[PJXIcon] = Field(default_factory=list)
+    chips: list[PJXRosterChip] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def _build_rows(self) -> Self:
+        self.visuals = [_visual(item) for item in self.items]
+        self.add_icons = [
+            PJXIcon(name="plus", class_name="pjx-roster-picker__pick-add")
+            for _ in self.items
+        ]
+        self.chips = [
+            PJXRosterChip(
+                value=item.value,
+                label=item.label,
+                initials=item.initials,
+                color=item.color,
+                src=item.src,
+                icon=item.icon,
+                extra=item.extra,
+                detail=item.detail,
+                remove_label=self.remove_label,
+            )
+            for item in self.items
+        ]
+        return self
