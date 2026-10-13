@@ -263,6 +263,14 @@
         }
     });
 
+    document.addEventListener('focusout', function (event) {
+        if (!(event.target instanceof Element)) return;
+        const search = event.target.closest('.pjx-roster-picker__search');
+        if (!search || search.contains(event.relatedTarget)) return;
+        const picker = pickerOf(search);
+        if (picker) setOpen(picker, false);
+    });
+
     // invalid does not bubble, so only a capture listener sees it. The
     // validity input is clipped to 1px, so the browser's own bubble and
     // focus would land on nothing visible; the box takes the focus and the

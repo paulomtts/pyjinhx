@@ -368,6 +368,13 @@ def test_resize_replaces_every_open_picker_and_skips_a_disabled_one(
     _serve(page, session, body)
     _open(page, "a")
     _open(page, "b")
+    # Focus leaving a for b closed it; typing reopens a list without
+    # focusing it, so both are open at once.
+    page.evaluate(
+        "() => document.querySelector('#a .pjx-roster-picker__input')"
+        ".dispatchEvent(new Event('input', { bubbles: true }))"
+    )
+    _settle(page)
     assert _geometry(page, "a")["above"] is False
     assert _geometry(page, "b")["above"] is True
 
