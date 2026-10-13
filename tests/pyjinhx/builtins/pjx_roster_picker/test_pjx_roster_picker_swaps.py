@@ -623,6 +623,8 @@ def test_a_chip_swapped_for_another_value_moves_the_hidden_row(
     assert _state(page) == OPEN
     assert _has_focus(_input(page))
     assert _events(page) == []
+    # Past the 300 ms debounce, so a search the swap set off would have been sent.
+    page.wait_for_timeout(300)
     assert len(requests) == sent
     assert page_errors == []
 
