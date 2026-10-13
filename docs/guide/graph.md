@@ -27,8 +27,12 @@ setup(app)
 
 def flow_graph() -> PJXGraph:
     nodes = [
-        PJXGraphNode(id="node-a", node_id="a", x=40, y=60, title="Fetch", out_ports=("next",)),
-        PJXGraphNode(id="node-b", node_id="b", x=320, y=60, title="Store", in_port=True),
+        PJXGraphNode(
+            id="node-a", node_id="a", x=40, y=60, title="Fetch", out_ports=("next",)
+        ),
+        PJXGraphNode(
+            id="node-b", node_id="b", x=320, y=60, title="Store", in_port=True
+        ),
     ]
     return PJXGraph(
         id="flow",
@@ -172,4 +176,393 @@ A floating card beside the canvas: a header and one content region.
 | `open` | `bool` | `False` | Sets `data-open`. A closed panel is hidden by the stylesheet. |
 | `content` | children | `""` | The content region, raw HTML. It renders whether the panel is open or not. |
 
-An `accent_color` that contains `;` raises a validation error.
+An `accent_color` that contains `;` raises a validation error. Opening the panel is the app's job;
+see [Events and JavaScript API](#events-and-javascript-api).
+
+## Interaction
+
+- **Wheel** zooms anywhere over the canvas, about the pointer. The page does not scroll under the canvas.
+- **Pressing empty canvas** and dragging pans. Double-click does not zoom.
+- **Dragging a node** moves it. A press that starts on a port, a form control, a button, a link or
+  editable content does not drag, and neither does a node without a valid `data-x`/`data-y`.
+  Dropped positions are whole pixels.
+- **Dragging from an out-port** draws a dashed wire. Releasing it over another node of the same
+  stage fires `pjx:graph:wire`. Releasing it on the source node or on empty canvas cancels.
+- **Clicking a node** selects it. **Clicking an edge** selects the edge. **Clicking empty canvas**
+  clears the selection. One node or one edge is selected at a time. The click that ends a drag
+  does not select.
+- **Controls**: zoom in and zoom out step by a factor of √2 about the canvas center. Fit frames
+  every visible node.
+- Zoom always stays within `scale_min..scale_max`. A fresh stage frames its nodes once it is laid
+  out, unless it restores a stored view.
+
+## Events and JavaScript API
+
+### Event list
+
+Every event is dispatched on the stage root and bubbles. A `before-*` event is cancelable:
+`event.preventDefault()` stops the change. `detail` carries ids, never domain data.
+
+| Event | `detail` | Cancelable | Fired when |
+|---|---|---|---|
+| `pjx:graph:before-select` | `{id}` | yes | A node is about to be selected, by click or `select(id)`. |
+| `pjx:graph:select` | `{id}` | no | A node was selected. |
+| `pjx:graph:before-select-edge` | `{id}` | yes | An edge is about to be selected by click. |
+| `pjx:graph:select-edge` | `{id}` | no | An edge was selected. |
+| `pjx:graph:deselect` | `null` | no | The selection was cleared by a background click or `deselect()`. |
+| `pjx:graph:move` | `{id, x, y}` | no | A node was dropped after a drag. `x`/`y` are world pixels. |
+| `pjx:graph:wire` | `{from, port, to}` | no | A wire from `from`'s out-port `port` was released over node `to`. |
+| `pjx:graph:rendered` | `null` | no | Edges were drawn: on mount, after each reconcile, and on `drawEdges()`. |
+| `pjx:graph:panel:open` | `{id}` | no | `panel.open(root, id)` showed `id`, or `panel.back(root)` went back to `id`. |
+| `pjx:graph:panel:before-close` | `{id}` | yes | The panel is about to close. `id` is the shown id, or `null` when the server rendered the panel open and nothing was opened since. |
+| `pjx:graph:panel:close` | `{id}` | no | The panel closed. `id` as for `before-close`. |
+
+Selecting the item that is already selected changes nothing and fires nothing.
+
+### `window.pjx.graph`
+
+| Call | Returns | Throws |
+|---|---|---|
+| `pjx.graph.mount(root)` | The stage instance. A stage that is already mounted returns its instance. | When `root` is not a `[data-pjx-graph]` element, when the stage is missing its canvas, viewport, edge plane or node layer, or when its scale range is invalid. |
+| `pjx.graph.get(root)` | The instance, or `null` if `root` is not mounted. | Never. |
+| `pjx.graph.panel.open(root, id)` | `true`. Opening the id that is already shown changes nothing. | When `id` is not a non-empty string. |
+| `pjx.graph.panel.back(root)` | `true`, or `false` when there is no earlier id to go back to. | |
+| `pjx.graph.panel.close(root)` | `true` (also when already closed), or `false` when `before-close` was canceled. | |
+
+All three `panel.*` calls also throw when `root` is not a mounted stage, or when it has no panel as a
+direct child. `mount()` is rarely needed, since stages boot on their own. Each stage keeps its
+panel history (the ids opened, newest last) until the panel closes. Back pops it, and the back
+button shows only when there is somewhere to go back to.
+
+The instance from `mount()`/`get()` has:
+
+| Member | Does |
+|---|---|
+| `root` | The stage root element. |
+| `select(id)` | Selects node `id`. Returns `false` if `before-select` was canceled, `true` otherwise. Throws when `id` is not a string or names no node. |
+| `deselect()` | Clears the selection and fires `deselect`. Does nothing when nothing is selected. |
+| `fit()` | Frames every visible node. |
+| `zoomBy(dir)` | Zooms `dir` steps of √2 about the canvas center (`1` in, `-1` out). Throws when `dir` is not a finite number. |
+| `drawEdges()` | Redraws every edge and fires `rendered`. |
+| `reconcile()` | Re-reads node positions and redraws edges, as a swap does. Held while a drag or wire is in progress. |
+| `box(id)` | `{x, y, width, height}` of node `id` in world pixels, or `null`. |
+| `inAnchor(id)` | `{x, y}` where edges enter node `id`, or `null`. |
+| `outAnchor(id, port)` | `{x, y}` where edges leave node `id` from `port`, or `null`. |
+
+### Wiring the app
+
+The engine never creates an edge on `wire`, and the panel never opens on `select`. Both are the
+app's decisions. This is all the script an app needs for both:
+
+```js
+document.addEventListener("pjx:graph:select", (event) => {
+  pjx.graph.panel.open(event.target, event.detail.id);
+});
+
+document.addEventListener("pjx:graph:panel:open", (event) => {
+  htmx.ajax("GET", "/flow/panel/" + encodeURIComponent(event.detail.id), {
+    target: "#flow-panel [data-pjx-graph-panel-content]",
+    swap: "innerHTML",
+  });
+});
+
+document.addEventListener("pjx:graph:wire", (event) => {
+  htmx.ajax("POST", "/flow/edges", { values: event.detail, swap: "none" });
+});
+```
+
+`event.target` is the stage root, because every event is dispatched there. The `/flow/edges` route
+stores the edge, and the server swaps the edge layer back with any shape from
+[Updating the graph](#updating-the-graph). The new edge is drawn without further script.
+
+## Positions and persistence
+
+A node shows at its server `data-x`/`data-y` unless the user dropped it somewhere else. With a
+`storage_key`, the engine keeps one browser record under the localStorage key
+`pjx-graph:<storage_key>`. It holds the last pan/zoom view, and each dropped node's position together
+with the server position it was dragged from (its base).
+
+- On mount, a stored view is restored (clamped to the current zoom range) instead of fitting.
+- A stored drop holds as long as the server keeps sending that node's base position.
+- Once the server sends a different position, the server wins and the stored drop is deleted. A
+  later return to the old position does not bring it back.
+- With an empty `storage_key`, nothing is stored. A drop holds on the page until the server sends a
+  different position for that node, and is gone on reload.
+
+The engine never sends positions to the server. To persist them, listen for `pjx:graph:move` and post
+`detail.x`/`detail.y` yourself. A broken or full localStorage never breaks the stage; it just stops persisting.
+
+## Updating the graph
+
+Every update shape is a plain htmx swap of server-rendered markup. The engine watches its viewport
+and reconciles after any swap or `data-*` change in a layer: it places the nodes whose server
+position changed and redraws every edge. No JavaScript call is needed. A swap that lands while the
+user is dragging a node or a wire is applied when the drag ends, so nothing moves under the
+pointer. The selection survives a swap as long as the selected id is still there.
+
+### Reload the whole layer
+
+Make a layer reactive by subclassing it into a `ReactiveComponent`, as in
+[Making builtins reactive](../reactivity.md#making-builtins-reactive). Every mutation that dirties its
+key re-renders the whole layer out-of-band.
+
+```python
+from typing import Annotated
+
+from fastapi import Form
+
+from pyjinhx import MutationKey, ReactiveComponent, mutates
+from pyjinhx.builtins import PJXGraph, PJXGraphEdges, PJXGraphNode, PJXGraphNodes
+
+
+class Keys(MutationKey):
+    FLOW = "flow"
+
+
+class FlowNodes(ReactiveComponent, PJXGraphNodes, react={Keys.FLOW}):
+    @classmethod
+    def load(cls) -> "FlowNodes":
+        return cls(
+            id="flow-nodes",
+            nodes_html=cls.join(
+                PJXGraphNode(
+                    id=f"node-{n.id}", node_id=n.id, x=n.x, y=n.y, title=n.title
+                ).render()
+                for n in db.flow_nodes()
+            ),
+        )
+
+
+class FlowEdges(ReactiveComponent, PJXGraphEdges, react={Keys.FLOW}):
+    @classmethod
+    def load(cls) -> "FlowEdges":
+        return cls(id="flow-edges", edges=db.flow_edges())
+
+
+@mutates(Keys.FLOW)
+def connect(source: str, port: str, target: str) -> None:
+    db.insert_edge(source, port, target)
+
+
+@app.get("/flow")
+def flow():
+    return PJXGraph(id="flow", nodes=FlowNodes.load(), edges=FlowEdges.load())
+
+
+@app.post("/flow/edges")
+def add_edge(
+    source: Annotated[str, Form(alias="from")],
+    target: Annotated[str, Form(alias="to")],
+    port: Annotated[str, Form()] = "",
+):
+    connect(source, port, target)
+    return None
+```
+
+Both layers mount with stable ids (`flow-nodes`, `flow-edges`), so the reactive fan-out can find
+them. `PJXGraphEdges` subclasses the same way `PJXGraphNodes` does. The trigger is the `wire`
+listener from [Wiring the app](#wiring-the-app), or any htmx element:
+
+```html
+<button hx-post="/flow/edges" hx-vals='{"from": "a", "port": "next", "to": "b"}' hx-swap="none">
+  Connect
+</button>
+```
+
+The route returns `None`, so the response carries only the out-of-band legs: both layers, re-rendered
+from `load()`. FastAPI's `Form` needs the `python-multipart` package.
+
+### Swap one node out-of-band
+
+To change one node without re-rendering the layer, return that node with `hx-swap-oob` next to the
+route's primary response:
+
+```python
+from pyjinhx import render
+from pyjinhx.builtins import PJXBadge, PJXGraphEdges, PJXGraphNode
+
+
+@app.post("/flow/nodes/{node_id}/run")
+def run_node(node_id: str):
+    n = db.run(node_id)
+    node = PJXGraphNode(
+        id=f"node-{n.id}",
+        node_id=n.id,
+        x=n.x,
+        y=n.y,
+        title=n.title,
+        summary=n.status,
+        out_ports=("next",),
+        extra_attrs={"hx-swap-oob": "true"},
+    )
+    return render(PJXBadge(id="run-status", label=f"Ran {n.title}")) + render(node)
+```
+
+```html
+<button hx-post="/flow/nodes/a/run" hx-target="#run-status" hx-swap="outerHTML">Run</button>
+<span id="run-status"></span>
+```
+
+The node needs a stable `id` (here `node-<node_id>`), the same on the page and in the response. The
+swap is outerHTML-only: the whole node element is replaced. See
+[ADR 0001](../decisions/0001-outerhtml-only-oob-swaps.md). A node can be added or removed this way
+by swapping the whole `PJXGraphNodes` layer instead.
+
+Adding or removing an edge works the same way: swap the whole `PJXGraphEdges` layer.
+
+```python
+@app.delete("/flow/edges/{edge_id}")
+def delete_edge(edge_id: str):
+    db.delete_edge(edge_id)
+    return PJXGraphEdges(
+        id="flow-edges", edges=db.flow_edges(), extra_attrs={"hx-swap-oob": "true"}
+    )
+```
+
+```html
+<button hx-delete="/flow/edges/a-b" hx-swap="none">Remove edge</button>
+```
+
+### Stream updates over SSE
+
+To push changes the user did not ask for, stream out-of-band fragments over server-sent events. Load
+the htmx 2 SSE extension yourself, since pyjinhx does not ship it:
+
+```html
+<script src="https://unpkg.com/htmx-ext-sse@2/sse.js"></script>
+```
+
+Wrap the graph in an element that connects to the stream, and give it a hidden sink that receives
+each `graph` event. The sink's content is thrown away; the out-of-band fragments in it land on their
+targets.
+
+```html
+<div hx-ext="sse" sse-connect="/graph/stream">
+  <!-- the PJXGraph stage renders here -->
+  <div hidden sse-swap="graph"></div>
+</div>
+```
+
+```python
+from fastapi.responses import StreamingResponse
+
+from pyjinhx import render
+from pyjinhx.builtins import PJXGraphEdges, PJXGraphNode
+
+
+@app.get("/graph/stream")
+async def graph_stream():
+    async def events():
+        async for change in db.flow_changes():
+            fragments = [
+                render(
+                    PJXGraphNode(
+                        id=f"node-{n.id}",
+                        node_id=n.id,
+                        x=n.x,
+                        y=n.y,
+                        title=n.title,
+                        extra_attrs={"hx-swap-oob": "true"},
+                    )
+                )
+                for n in change.nodes
+            ]
+            if change.edges_changed:
+                fragments.append(
+                    render(
+                        PJXGraphEdges(
+                            id="flow-edges",
+                            edges=db.flow_edges(),
+                            extra_attrs={"hx-swap-oob": "true"},
+                        )
+                    )
+                )
+            lines = "".join(fragments).splitlines()
+            yield "event: graph\n" + "".join(f"data: {line}\n" for line in lines) + "\n"
+
+    return StreamingResponse(events(), media_type="text/event-stream")
+```
+
+One event can update any number of nodes and the edge layer, since every fragment carries its own
+`hx-swap-oob`. Each message is framed as SSE `data:` lines. See
+[HTMX: Server-Sent Events and WebSockets](../integrations/htmx.md#server-sent-events-and-websockets)
+and htmx's [SSE extension](https://htmx.org/extensions/sse/).
+
+## Theming
+
+The graph reads these `--pjx-graph-*` tokens, set on `:root` by default. Override them globally or
+on one stage, as described in [Builtin conventions](builtin-conventions.md#theming).
+
+| Area | Tokens |
+|---|---|
+| Stage | `--pjx-graph-bg`, `--pjx-graph-border`, `--pjx-graph-radius`, `--pjx-graph-grid-color`, `--pjx-graph-grid-size`, `--pjx-graph-min-height` |
+| Edges | `--pjx-graph-edge-stroke`, `--pjx-graph-edge-width`, `--pjx-graph-edge-hit-width`, `--pjx-graph-edge-label-color`, `--pjx-graph-edge-label-size`, `--pjx-graph-wire-stroke`, `--pjx-graph-wire-dash` |
+| Selection | `--pjx-graph-selected` |
+| Nodes | `--pjx-graph-node-bg`, `--pjx-graph-node-border`, `--pjx-graph-node-radius`, `--pjx-graph-node-width`, `--pjx-graph-node-muted`, `--pjx-graph-port-size`, `--pjx-graph-port-bg` |
+| Controls | `--pjx-graph-controls-bg`, `--pjx-graph-controls-border`, `--pjx-graph-controls-radius`, `--pjx-graph-controls-color`, `--pjx-graph-controls-inset`, `--pjx-graph-controls-gap` |
+| Panel | `--pjx-graph-panel-bg`, `--pjx-graph-panel-border`, `--pjx-graph-panel-radius`, `--pjx-graph-panel-color`, `--pjx-graph-panel-muted`, `--pjx-graph-panel-accent`, `--pjx-graph-panel-inset`, `--pjx-graph-panel-width`, `--pjx-graph-panel-gap`, `--pjx-graph-panel-padding`, `--pjx-graph-panel-marker-size`, `--pjx-graph-panel-title-size`, `--pjx-graph-panel-control-size`, `--pjx-graph-panel-duration` |
+
+Each node also sets `--pjx-graph-node-color` from its `color` prop. `--pjx-graph-node-x` and
+`--pjx-graph-node-y` hold its position; the engine writes them, so do not set them yourself.
+Edge states have no built-in colors: style `.pjx-graph__edge--<state>` in the app. The panel's open
+animation honors `prefers-reduced-motion`.
+
+## DOM contract
+
+These classes, attributes, events and states are versioned API.
+
+### Classes
+
+| Class | Element |
+|---|---|
+| `.pjx-graph` | Stage root |
+| `.pjx-graph__canvas` | The clipped, gridded surface that takes the gestures |
+| `.pjx-graph__viewport` | The pan/zoom transform target |
+| `.pjx-graph__edge-plane` | The SVG the engine draws edges into |
+| `.pjx-graph__nodes` | Node layer root |
+| `.pjx-graph__node` | Node card root |
+| `.pjx-graph__node-icon`, `.pjx-graph__node-body`, `.pjx-graph__node-eyebrow`, `.pjx-graph__node-title`, `.pjx-graph__node-summary`, `.pjx-graph__node-ports` | Node parts |
+| `.pjx-graph__port`, `.pjx-graph__port--in`, `.pjx-graph__port--out` | Port handles |
+| `.pjx-graph__edges` | Edge layer root (hidden) |
+| `.pjx-graph__edge` | A drawn edge path |
+| `.pjx-graph__edge-hit` | The wide, transparent click target under each edge |
+| `.pjx-graph__edge-label` | An edge label (`<text>`) |
+| `.pjx-graph__wire` | The dashed wire shown while dragging from an out-port |
+| `.pjx-graph__controls`, `.pjx-graph__control` | Controls group and its buttons |
+| `.pjx-graph__panel` | Side panel root (`<aside>`) |
+| `.pjx-graph__panel-head`, `.pjx-graph__panel-control`, `.pjx-graph__panel-marker`, `.pjx-graph__panel-title`, `.pjx-graph__panel-badge`, `.pjx-graph__panel-content` | Panel parts |
+
+### Attributes
+
+| Attribute | On | Meaning |
+|---|---|---|
+| `data-pjx-graph` | Stage root | Marks a stage. The engine mounts every one. |
+| `data-pjx-graph-storage-key` | Stage root | Present only with a `storage_key`. |
+| `data-pjx-graph-scale-min`, `data-pjx-graph-scale-max` | Stage root | The zoom range. |
+| `data-pjx-graph-ready` | Stage root | Set by the engine once mounted, framed and drawn. |
+| `data-node-id`, `data-node-type` | Node root | The node's id and type. |
+| `data-x`, `data-y` | Node root | The server position, in world pixels. |
+| `data-pjx-graph-port="in"` / `"out"` | Port handle | Port direction. |
+| `data-port` | Out-port handle | The port key. |
+| `data-pjx-graph-edge` | Edge span | Marks one edge. |
+| `data-edge-id`, `data-from`, `data-to`, `data-port`, `data-state`, `data-label` | Edge span | The edge's fields. Drawn paths repeat `data-edge-id`, and the visible path also `data-from`, `data-to`, `data-state`. |
+| `data-pjx-graph-controls` | Controls root | Marks the controls group. |
+| `data-pjx-graph-zoom="in"` / `"out"`, `data-pjx-graph-fit` | Control button | What the button does. Any element in the canvas with these attributes works as a control. |
+| `data-pjx-graph-panel` | Panel root | Marks the panel. Must be a direct child of the stage root. |
+| `data-open="true"` / `"false"` | Panel root | Whether the panel shows. |
+| `data-pjx-graph-panel-head`, `data-pjx-graph-panel-back`, `data-pjx-graph-panel-close`, `data-pjx-graph-panel-marker`, `data-pjx-graph-panel-title`, `data-pjx-graph-panel-badge`, `data-pjx-graph-panel-content` | Panel parts | Mark the panel's header, buttons and content region. |
+
+### Events
+
+All `pjx:graph:*` events and their `detail` are listed in [Event list](#event-list).
+
+### State
+
+| State | Meaning |
+|---|---|
+| `.pjx-graph__node--selected` | The selected node. |
+| `.pjx-graph__edge--selected` | The selected edge's visible path. |
+| `.pjx-graph__edge--<state>` | An edge whose `state` is `<state>`. |
+| `[data-open]` on the panel | `"true"` while the panel shows. |
+| `[hidden]` on the panel's back button | Present while there is no history to go back to. |
+| `[data-pjx-graph-ready]` on the root | The stage is mounted and drawn. |
