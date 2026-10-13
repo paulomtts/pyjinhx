@@ -1009,6 +1009,109 @@ def test_an_edge_state_edit_inside_a_nested_stage_settles(page, page_errors, ses
     assert page_errors == []
 
 
+def test_changing_a_kept_nodes_data_x_moves_it_and_its_edges(
+    page, page_errors, session
+):
+    _serve(page, _stage(session))
+    edge = _path(page, "e1")
+    before = _rendered(page)
+    _mutate(page, _set("#g-b", "data-x", "460"))
+    _settle(page, before)
+    assert _position(page, "g-b") == ["460px", "40px"]
+    assert _path(page, "e1") != edge
+    anchor = _call(page, "inAnchor", "b")
+    assert _numbers(_path(page, "e1"))[-2:] == pytest.approx(
+        [anchor["x"], anchor["y"]], abs=0.01
+    )
+    assert page_errors == []
+
+
+def test_a_new_server_position_on_a_kept_node_discards_its_drop(
+    page, page_errors, session
+):
+    record = {
+        "view": IDENTITY_VIEW,
+        "nodes": {"b": {"x": 300, "y": 150, "base": {"x": 400, "y": 40}}},
+    }
+    _serve(page, _keyed(session), record=record)
+    assert _position(page, "g-b") == ["300px", "150px"]
+    before = _rendered(page)
+    _mutate(page, _set("#g-b", "data-y", "90"))
+    _settle(page, before)
+    assert _position(page, "g-b") == ["400px", "90px"]
+    assert _record(page) == {"view": IDENTITY_VIEW, "nodes": {}}
+    assert page_errors == []
+
+
+def test_a_direct_reconcile_after_set_attribute_places_the_node(
+    page, page_errors, session
+):
+    _serve(page, _stage(session))
+    before = _rendered(page)
+    _mutate(page, _set("#g-b", "data-x", "460"), reconcile="g")
+    assert _position(page, "g-b") == ["460px", "40px"]
+    anchor = _call(page, "inAnchor", "b")
+    assert _numbers(_path(page, "e1"))[-2:] == pytest.approx(
+        [anchor["x"], anchor["y"]], abs=0.01
+    )
+    # The observer's own reconcile still follows, and moves nothing again.
+    _settle(page, before + 1)
+    assert _position(page, "g-b") == ["460px", "40px"]
+    assert page_errors == []
+
+
+def test_a_blank_data_x_keeps_the_node_where_it_was(page, page_errors, session):
+    _serve(page, _stage(session))
+    for value in ("", "left"):
+        before = _rendered(page)
+        _mutate(page, _set("#g-b", "data-x", value))
+        _settle(page, before)
+        assert _position(page, "g-b") == ["400px", "40px"]
+    assert [e["edge"] for e in _visible(page)] == ["e1", "e2"]
+    assert page_errors == []
+
+
+def test_resending_the_same_position_keeps_a_dropped_node_where_it_was_dropped(
+    page, page_errors, session
+):
+    # No storage key: the drop lives only in the node's style.
+    _serve(page, _stage(session), record="")
+    x, y = _center(page, _title("g-a"))
+    _drag(page, (x, y), (x + 60, y + 40))
+    dropped = _position(page, "g-a")
+    assert dropped != ["20px", "40px"]
+    before = _rendered(page)
+    # A morphing swap writes the attributes back even when they are unchanged.
+    _mutate(
+        page,
+        """for (const name of ['data-x', 'data-y']) {
+            const node = document.getElementById('g-a');
+            node.setAttribute(name, node.getAttribute(name));
+        }""",
+    )
+    _settle(page, before)
+    assert _position(page, "g-a") == dropped
+    assert page_errors == []
+
+
+def test_moving_a_nested_stages_node_by_attribute_settles(page, page_errors, session):
+    _serve(page, _nested(page, session), NESTED_CSS)
+    inner, outer = _rendered(page, "in"), _rendered(page, "g")
+    _mutate(page, _set("#in-y", "data-y", "60"))
+    _settle(page, inner, "in")
+    counts = (_rendered(page, "in"), _rendered(page, "g"))
+    assert counts[0] == inner + 1
+    assert counts[1] <= outer + 1
+    _frames(page, 4)
+    assert (_rendered(page, "in"), _rendered(page, "g")) == counts
+    assert _position(page, "in-y") == ["300px", "60px"]
+    anchor = _call(page, "inAnchor", "y", stage_id="in")
+    assert _numbers(_path(page, "i1", "in"))[-2:] == pytest.approx(
+        [anchor["x"], anchor["y"]], abs=0.01
+    )
+    assert page_errors == []
+
+
 # Node lookup
 
 

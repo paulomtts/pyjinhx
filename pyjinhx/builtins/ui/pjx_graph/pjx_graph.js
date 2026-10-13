@@ -401,9 +401,25 @@ var __pjxD3=(()=>{var fe=Object.defineProperty;var vn=Object.getOwnPropertyDescr
       return index;
     }
 
-    // This stage's nodes as of the last reconcile, so a swapped-in element
-    // shows up as not being the one indexed for its id.
-    let known = indexNodes();
+    // The raw data-x/y each node was last placed with. Only a node whose
+    // pair differs is placed: a swapped-in element has none yet, while
+    // placing a kept node the server did not move would snap a drop the
+    // user just made without a storage key back to the server position.
+    const placedWith = new WeakMap();
+
+    function serverPosition(node) {
+      return JSON.stringify([node.getAttribute('data-x'), node.getAttribute('data-y')]);
+    }
+
+    function placeChanged() {
+      const changed = nodesOf(root, viewport)
+        .filter((node) => placedWith.get(node) !== serverPosition(node));
+      placeAll(changed, view.key);
+      changed.forEach((node) => placedWith.set(node, serverPosition(node)));
+    }
+
+    // Before the edges and any fit, so both see where the nodes show.
+    placeChanged();
 
     // Every edge is redrawn on each reconcile: that keeps every pair's fan
     // correct and is cheap. At 200 edges over 50 nodes a redraw cost about
@@ -611,14 +627,8 @@ var __pjxD3=(()=>{var fe=Object.defineProperty;var vn=Object.getOwnPropertyDescr
       root.dispatchEvent(new CustomEvent('pjx:graph:rendered', { bubbles: true, detail: null }));
     }
 
-    // Only elements new to the stage are placed: a kept node's data-x/y have
-    // not changed, and without a storage key placing it again would snap a
-    // drop the user just made back to the server position.
     function reconcile() {
-      const fresh = nodesOf(root, viewport)
-        .filter((node) => known.get(node.getAttribute('data-node-id')) !== node);
-      placeAll(fresh, view.key);
-      known = indexNodes();
+      placeChanged();
       drawEdges();
     }
 
@@ -843,8 +853,6 @@ var __pjxD3=(()=>{var fe=Object.defineProperty;var vn=Object.getOwnPropertyDescr
     const plane = part(viewport, 'svg.pjx-graph__edge-plane', true);
     part(viewport, '.pjx-graph__nodes', false);
     const view = attachZoom(root, canvas, viewport);
-    // Before the edges and any fit, so both see where the nodes show.
-    placeAll(nodesOf(root, viewport), view.key);
     const instance = createInstance(root, canvas, viewport, plane, view);
     instances.set(root, instance);
     observeViewport(viewport, instance);
