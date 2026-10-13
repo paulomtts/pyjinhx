@@ -299,12 +299,14 @@
   // A stage inserted mid-layout reports a size that is about to change, so
   // wait until it holds for a frame; a hidden stage never gets one, so give up
   // after ten tries.
-  function whenLaidOut(canvas, done) {
+  function whenLaidOut(canvas, signal, done) {
     let attempts = 0;
     (function check() {
       const width = canvas.clientWidth;
       const height = canvas.clientHeight;
       requestAnimationFrame(() => {
+        // A dropped stage never lays out, and its root must not turn ready.
+        if (signal.aborted) return;
         attempts += 1;
         const settled = width > 0 && height > 0
           && width === canvas.clientWidth && height === canvas.clientHeight;
@@ -313,7 +315,7 @@
     })();
   }
 
-  function createInstance(root, canvas, viewport, plane, view) {
+  function createInstance(root, canvas, viewport, plane, view, signal) {
     const prefix = 'pjx-graph-edge-' + (++stageCount) + '-';
     // Only the last pass's own elements are cleared, so anything else in the
     // plane survives a redraw.
@@ -565,6 +567,8 @@
     let dirty = false;
 
     function reconcile() {
+      // A dropped stage is detached for good, so nothing it would draw is seen.
+      if (signal.aborted) return;
       if (gestures > 0) {
         dirty = true;
         return;
@@ -799,16 +803,18 @@
 
   // Swaps inside the viewport, and edits to what an edge or node is drawn
   // from, reconcile once, in the next frame, however many records they make.
-  function observeViewport(viewport, instance) {
+  function observeViewport(viewport, instance, signal) {
     let pending = false;
-    new MutationObserver((mutations) => {
+    const observer = new MutationObserver((mutations) => {
       if (pending || !mutations.some(concernsGraph)) return;
       pending = true;
       requestAnimationFrame(() => {
         pending = false;
         instance.reconcile();
       });
-    }).observe(viewport, { childList: true, subtree: true, attributeFilter: WATCHED });
+    });
+    observer.observe(viewport, { childList: true, subtree: true, attributeFilter: WATCHED });
+    signal.addEventListener('abort', () => observer.disconnect());
   }
 
   function mount(root) {
@@ -825,10 +831,10 @@
     part(viewport, '.pjx-graph__nodes', false);
     const life = new AbortController();
     const view = attachZoom(root, canvas, viewport);
-    const instance = createInstance(root, canvas, viewport, plane, view);
+    const instance = createInstance(root, canvas, viewport, plane, view, life.signal);
     instances.set(root, instance);
     lives.set(root, life);
-    observeViewport(viewport, instance);
+    observeViewport(viewport, instance, life.signal);
     listenForControls(root, canvas, instance);
     // A restored view is where the user left off; only a fresh stage is framed.
     // Edges are drawn before ready, so whatever waits on ready sees them.
@@ -836,7 +842,7 @@
       instance.drawEdges();
       settle(root, canvas, view);
     } else {
-      whenLaidOut(canvas, () => {
+      whenLaidOut(canvas, life.signal, () => {
         instance.fit();
         instance.drawEdges();
         settle(root, canvas, view);

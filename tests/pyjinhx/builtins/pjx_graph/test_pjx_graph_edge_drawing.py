@@ -679,7 +679,7 @@ def test_a_stage_that_never_lays_out_still_renders_and_is_ready(
     assert page_errors == []
 
 
-def test_a_stage_removed_before_its_draw_does_not_throw(
+def test_a_stage_removed_before_its_draw_is_dropped_undrawn(
     page, page_errors, console_errors, session
 ):
     _serve(page, "")
@@ -693,6 +693,17 @@ def test_a_stage_removed_before_its_draw_does_not_throw(
         }""",
         _stage(session, _trio(), edges=[_edge("e1", "a", "b")]),
     )
-    page.wait_for_function("() => window.removed.hasAttribute('data-pjx-graph-ready')")
+    # Past the ten frames a stage that never lays out waits before it draws.
+    page.evaluate(
+        """() => new Promise((done) => {
+            const tick = (left) => left ? requestAnimationFrame(() => tick(left - 1)) : done();
+            tick(15);
+        })"""
+    )
+    assert page.evaluate("() => pjx.graph.get(window.removed) === null")
+    assert not page.evaluate(
+        "() => window.removed.hasAttribute('data-pjx-graph-ready')"
+    )
+    assert page.evaluate("() => window.removed.querySelectorAll('path').length") == 0
     assert console_errors == []
     assert page_errors == []

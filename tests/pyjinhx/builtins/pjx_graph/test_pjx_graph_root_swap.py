@@ -205,6 +205,10 @@ def _old_dropped(page: Page) -> bool:
     return page.evaluate("() => pjx.graph.get(window.oldRoot) === null")
 
 
+def _old_events(page: Page) -> list[str]:
+    return page.evaluate("() => window.__old")
+
+
 def _new_is_not_old(page: Page, stage_id: str = "g") -> bool:
     return page.evaluate(
         "id => pjx.graph.get(document.getElementById(id)) !== window.oldInstance",
@@ -388,4 +392,82 @@ def test_a_nested_stage_inside_a_replaced_root_is_dropped(page, page_errors, ses
             return inner !== null && inner !== window.oldInner;
         }"""
     )
+    assert page_errors == []
+
+
+# A dropped instance goes quiet
+
+
+def test_dropped_instance_no_longer_reconciles(page, page_errors, session):
+    _serve(page, _keyed(session))
+    _swap(page, _keyed(session))
+    plane = "window.oldRoot.querySelector('svg.pjx-graph__edge-plane').children.length"
+    drawn = page.evaluate(f"() => {plane}")
+    placed = "window.oldRoot.querySelector('#g-b').style.getPropertyValue('--pjx-graph-node-x')"
+    before = _rendered(page)
+    # In one task with a swap on the new stage, so a live old observer would
+    # reconcile in the same frame the new stage's rendered waits for.
+    page.evaluate(
+        """([edge, fresh]) => {
+            window.oldRoot.querySelector('#g-b').setAttribute('data-x', '999');
+            window.oldRoot.querySelector('#g-edges').insertAdjacentHTML('beforeend', edge);
+            document.getElementById('g-c').outerHTML = fresh;
+        }""",
+        [
+            render(PJXGraphEdges(id="tmp", edges=[_edge("e9", "a", "c")])),
+            render(_node("c", 400, 260, in_port=True)),
+        ],
+    )
+    _settle(page, before)
+    assert page.evaluate(f"() => {placed}") == "400px"
+    assert page.evaluate(f"() => {plane}") == drawn
+    assert _old_events(page) == []
+    assert page_errors == []
+
+
+def test_root_mounted_by_hand_and_replaced_before_layout_never_turns_ready(
+    page, page_errors, console_errors, session
+):
+    _serve(page, _keyed(session))
+    page.evaluate(
+        """html => {
+            document.body.insertAdjacentHTML('beforeend', html);
+            window.oldRoot = document.getElementById('h');
+            pjx.graph.mount(window.oldRoot);
+            window.oldRoot.outerHTML = html;
+        }""",
+        _stage(session, stage_id="h"),
+    )
+    page.wait_for_function(
+        """() => {
+            const root = document.getElementById('h');
+            return pjx.graph.get(root) !== null && root.hasAttribute('data-pjx-graph-ready');
+        }""",
+        timeout=5000,
+    )
+    _frames(page, 15)
+    assert _old_dropped(page)
+    assert not page.evaluate(
+        "() => window.oldRoot.hasAttribute('data-pjx-graph-ready')"
+    )
+    assert console_errors == []
+    assert page_errors == []
+
+
+def test_calling_a_kept_reference_to_a_dropped_instance_does_not_throw(
+    page, page_errors, session
+):
+    _serve(page, _keyed(session))
+    _swap(page, _keyed(session))
+    page.evaluate(
+        """() => {
+            const old = window.oldInstance;
+            old.reconcile();
+            old.drawEdges();
+            old.fit();
+            old.zoomBy(1);
+            old.deselect();
+        }"""
+    )
+    _frames(page)
     assert page_errors == []
