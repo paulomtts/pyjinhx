@@ -1,0 +1,216 @@
+/* ── PJXRosterPicker tokens ──────────────────────────────────────────────────── */
+:where(:root) {
+  --pjx-roster-picker-bg:          var(--surface, #fff);
+  --pjx-roster-picker-fg:          var(--text);
+  --pjx-roster-picker-muted:       var(--text-muted, var(--text));
+  --pjx-roster-picker-border:      var(--border);
+  --pjx-roster-picker-focus:       var(--border-focus, var(--border));
+  --pjx-roster-picker-invalid:     var(--error, var(--border-focus, var(--border)));
+  --pjx-roster-picker-radius:      var(--radius-md);
+  --pjx-roster-picker-padding:     0.375rem 0.5rem;
+  --pjx-roster-picker-gap:         0.375rem;
+  --pjx-roster-picker-chip-bg:     var(--surface-alt);
+  --pjx-roster-picker-results-bg:  var(--surface-alt);
+  --pjx-roster-picker-shadow:      var(--shadow-md);
+  --pjx-roster-picker-z:           300;
+  --pjx-roster-picker-max-h:       16rem;
+  --pjx-roster-picker-room:        var(--pjx-roster-picker-max-h);
+  --pjx-roster-picker-row-hover:   var(--surface-hover, var(--surface-alt));
+  --pjx-roster-picker-row-active:  var(--accent-soft, var(--surface-alt));
+}
+
+.pjx-roster-picker {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--pjx-roster-picker-gap);
+  color: var(--pjx-roster-picker-fg);
+}
+
+.pjx-roster-picker__search {
+  position: relative;
+}
+
+.pjx-roster-picker__input {
+  box-sizing: border-box;
+  width: 100%;
+  font: inherit;
+  color: var(--pjx-roster-picker-fg);
+  background: var(--pjx-roster-picker-bg);
+  border: 1px solid var(--pjx-roster-picker-border);
+  border-radius: var(--pjx-roster-picker-radius);
+  padding: var(--pjx-roster-picker-padding);
+  transition: border-color 0.15s ease;
+}
+
+.pjx-roster-picker__input:focus-visible {
+  outline: 2px solid var(--pjx-roster-picker-focus);
+  outline-offset: -1px;
+}
+
+.pjx-roster-picker__input:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.pjx-roster-picker--invalid .pjx-roster-picker__input {
+  border-color: var(--pjx-roster-picker-invalid);
+}
+
+/* Capped by the token or by the room the JS measured towards the viewport
+   edge, whichever is smaller, so the list never runs off-screen. */
+.pjx-roster-picker__results {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: var(--pjx-roster-picker-z);
+  max-height: min(var(--pjx-roster-picker-max-h), var(--pjx-roster-picker-room));
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  background: var(--pjx-roster-picker-results-bg);
+  border: 1px solid var(--pjx-roster-picker-border);
+  border-radius: var(--pjx-roster-picker-radius);
+  box-shadow: var(--pjx-roster-picker-shadow);
+}
+
+.pjx-roster-picker__results[hidden] {
+  display: none;
+}
+
+.pjx-roster-picker__results--above {
+  top: auto;
+  bottom: calc(100% + 4px);
+}
+
+.pjx-roster-picker__results-page {
+  display: flex;
+  flex-direction: column;
+}
+
+.pjx-roster-picker__pick {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  background: none;
+  border: none;
+  padding: var(--pjx-roster-picker-padding);
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.pjx-roster-picker__pick:hover {
+  background: var(--pjx-roster-picker-row-hover);
+}
+
+.pjx-roster-picker__pick:focus-visible {
+  outline: none;
+  background: var(--pjx-roster-picker-row-active);
+}
+
+.pjx-roster-picker__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--pjx-roster-picker-gap);
+}
+
+.pjx-roster-picker__chips:empty {
+  display: none;
+}
+
+.pjx-roster-picker__chip {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.25rem 0.5rem;
+  background: var(--pjx-roster-picker-chip-bg);
+  border: 1px solid var(--pjx-roster-picker-border);
+  border-radius: var(--pjx-roster-picker-radius);
+}
+
+.pjx-roster-picker__chip-row {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.pjx-roster-picker__chip-avatar,
+.pjx-roster-picker__chip-icon {
+  flex: none;
+}
+
+.pjx-roster-picker__chip-label {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.pjx-roster-picker__chip-extra {
+  display: inline-flex;
+  align-items: center;
+  color: var(--pjx-roster-picker-muted);
+}
+
+.pjx-roster-picker__chip-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.125rem;
+  font: inherit;
+  color: var(--pjx-roster-picker-muted);
+  background: none;
+  border: none;
+  border-radius: var(--pjx-roster-picker-radius);
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.pjx-roster-picker__chip-remove:hover {
+  color: var(--pjx-roster-picker-fg);
+  background: var(--pjx-roster-picker-row-hover);
+}
+
+.pjx-roster-picker__chip-remove:focus-visible {
+  outline: 2px solid var(--pjx-roster-picker-focus);
+  outline-offset: 1px;
+}
+
+.pjx-roster-picker__chip-detail {
+  font-size: 0.875em;
+  color: var(--pjx-roster-picker-muted);
+}
+
+.pjx-roster-picker__hint {
+  margin: 0;
+  font-size: 0.875em;
+  color: var(--pjx-roster-picker-muted);
+}
+
+/* Clipped, never display:none: the browser has to be able to anchor its
+   "please fill in this field" bubble to the control it validates. */
+.pjx-roster-picker__validity {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  clip-path: inset(50%);
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pjx-roster-picker__input,
+  .pjx-roster-picker__pick,
+  .pjx-roster-picker__chip-remove {
+    transition: none;
+  }
+}

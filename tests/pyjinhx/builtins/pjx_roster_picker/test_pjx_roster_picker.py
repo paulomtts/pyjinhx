@@ -1,6 +1,7 @@
 """PJXRosterPicker — the picker shell: search combobox, chips, cap hint, validity input and CSS."""
 
 import json
+import re
 from pathlib import Path
 
 import pytest
@@ -11,6 +12,17 @@ from pyjinhx._component import _is_slot_field
 from pyjinhx.builtins.ui.pjx_roster_picker import PJXRosterItem, PJXRosterPicker
 from pyjinhx.classless import component
 from pyjinhx.rendering import render
+from pyjinhx.session import accumulate_assets
+
+PACKAGE_DIR = (
+    Path(__file__).resolve().parents[4]
+    / "pyjinhx"
+    / "builtins"
+    / "ui"
+    / "pjx_roster_picker"
+)
+CSS_PATH = PACKAGE_DIR / "pjx_roster_picker.css"
+JS_PATH = PACKAGE_DIR / "pjx_roster_picker.js"
 
 TEXT_FIELDS = [
     "name",
@@ -20,6 +32,49 @@ TEXT_FIELDS = [
     "limit_label",
     "empty_message",
     "class_name",
+]
+
+CSS_CLASSES = [
+    "pjx-roster-picker",
+    "pjx-roster-picker__search",
+    "pjx-roster-picker__input",
+    "pjx-roster-picker__results",
+    "pjx-roster-picker__results--above",
+    "pjx-roster-picker__results-page",
+    "pjx-roster-picker__pick",
+    "pjx-roster-picker__chips",
+    "pjx-roster-picker__chip",
+    "pjx-roster-picker__chip-row",
+    "pjx-roster-picker__chip-label",
+    "pjx-roster-picker__chip-extra",
+    "pjx-roster-picker__chip-remove",
+    "pjx-roster-picker__chip-detail",
+    "pjx-roster-picker__chip-avatar",
+    "pjx-roster-picker__chip-icon",
+    "pjx-roster-picker__hint",
+    "pjx-roster-picker--invalid",
+    "pjx-roster-picker__validity",
+]
+# Tokens that name a colour, a radius or a shadow default to a semantic token;
+# sizes and spacing have no semantic token to lean on, so they are literals.
+SEMANTIC_TOKENS = {
+    "--pjx-roster-picker-bg": "var(--surface",
+    "--pjx-roster-picker-fg": "var(--text",
+    "--pjx-roster-picker-muted": "var(--text-muted",
+    "--pjx-roster-picker-border": "var(--border",
+    "--pjx-roster-picker-focus": "var(--border-focus",
+    "--pjx-roster-picker-radius": "var(--radius-md",
+    "--pjx-roster-picker-chip-bg": "var(--surface-alt",
+    "--pjx-roster-picker-results-bg": "var(--surface-alt",
+    "--pjx-roster-picker-shadow": "var(--shadow-md",
+    "--pjx-roster-picker-row-hover": "var(--surface-hover",
+    "--pjx-roster-picker-row-active": "var(--accent-soft",
+}
+LITERAL_TOKENS = [
+    "--pjx-roster-picker-padding",
+    "--pjx-roster-picker-gap",
+    "--pjx-roster-picker-z",
+    "--pjx-roster-picker-max-h",
 ]
 
 
@@ -44,6 +99,34 @@ def _one(root, name):
     found = _by_class(root, name)
     assert len(found) == 1, name
     return found[0]
+
+
+def _css():
+    """The stylesheet with its comments stripped."""
+    return re.sub(
+        r"/\*.*?\*/", "", CSS_PATH.read_text(encoding="utf-8"), flags=re.DOTALL
+    )
+
+
+def _token_block():
+    match = re.search(r":where\(:root\)\s*\{([^}]*)\}", _css())
+    assert match is not None
+    return dict(re.findall(r"(--pjx-roster-picker-[\w-]+)\s*:\s*([^;]+);", match[1]))
+
+
+def _rules():
+    """Every innermost (selector, body) pair, the token block left out.
+
+    Brace-free selectors only match innermost blocks, so an @media wrapper
+    never shows up as a selector; its inner rules do.
+    """
+    rules = []
+    for selector, body in re.findall(r"([^{}]+)\{([^{}]*)\}", _css()):
+        selector = selector.strip()
+        if selector.startswith(":where(:root)"):
+            continue
+        rules.append((selector, body))
+    return rules
 
 
 @pytest.fixture
@@ -525,3 +608,88 @@ def test_portal_adds_the_portal_flag(parse_html, session):
     root = _picker(parse_html, session, portal=True)
 
     assert "data-pjx-roster-picker-portal" in root.attrs
+
+
+# ── Assets ───────────────────────────────────────────────────────────────────
+
+
+def test_render_records_the_picker_css_and_js_assets(session):
+    # A bare RenderSession does not collect assets until accumulate_assets is
+    # subscribed, the same wiring the other builtin asset tests use.
+    session.on_rendered.append(accumulate_assets)
+
+    render(PJXRosterPicker(name="members", candidates_url="/people"), session)
+
+    assert CSS_PATH in {path.resolve() for path in session.css_assets}
+    assert JS_PATH in {path.resolve() for path in session.js_assets}
+
+
+def test_package_ships_css_next_to_the_component():
+    assert (PACKAGE_DIR / "pjx_roster_picker.py").is_file()
+    assert CSS_PATH.is_file()
+
+
+# ── CSS ──────────────────────────────────────────────────────────────────────
+
+
+def test_css_declares_tokens_in_a_where_root_block_defaulting_to_semantic_tokens():
+    tokens = _token_block()
+
+    for token, default in SEMANTIC_TOKENS.items():
+        assert tokens[token].startswith(default), token
+    for token in LITERAL_TOKENS:
+        assert token in tokens, token
+    assert tokens["--pjx-roster-picker-room"] == "var(--pjx-roster-picker-max-h)"
+    used = set(re.findall(r"var\((--pjx-roster-picker-[\w-]+)", _css()))
+    assert used <= set(tokens)
+
+
+def test_css_styles_every_block_class():
+    selectors = " ".join(selector for selector, _ in _rules())
+
+    for name in CSS_CLASSES:
+        assert re.search(re.escape("." + name) + r"(?![\w-])", selectors), name
+
+
+def test_css_results_height_is_capped_by_the_room_token():
+    (body,) = [
+        body for selector, body in _rules() if selector == ".pjx-roster-picker__results"
+    ]
+
+    assert "position: absolute" in body
+    assert "overflow-y: auto" in body
+    assert (
+        "max-height: min(var(--pjx-roster-picker-max-h), var(--pjx-roster-picker-room))"
+        in body
+    )
+
+
+def test_css_validity_input_is_clipped_not_display_none():
+    validity_rules = [
+        body for selector, body in _rules() if "pjx-roster-picker__validity" in selector
+    ]
+
+    assert validity_rules
+    body = " ".join(validity_rules)
+    assert "position: absolute" in body
+    assert "width: 1px" in body
+    assert "height: 1px" in body
+    assert "clip-path: inset(50%)" in body
+    assert "overflow: hidden" in body
+    assert "display: none" not in body
+
+
+def test_css_selectors_stay_inside_the_block():
+    for selector, _ in _rules():
+        for part in selector.split(","):
+            assert part.strip().startswith(".pjx-roster-picker"), part
+
+
+def test_css_has_a_reduced_motion_query():
+    css = _css()
+
+    assert "@media (prefers-reduced-motion: reduce)" in css
+    reduced = css.split("@media (prefers-reduced-motion: reduce)", 1)[1]
+    for selector, body in _rules():
+        if "transition:" in body and "transition: none" not in body:
+            assert selector in reduced, selector
