@@ -9,3 +9,6 @@ DEMOS = {
     **forms.DEMOS,
     **graph.DEMOS,
 }
+
+# Demos whose page needs the htmx + pjx.js runtime to work, not just to paint.
+RUNTIME_DEMOS = frozenset({"PJXGraph"})
