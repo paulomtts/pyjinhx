@@ -803,21 +803,31 @@ var __pjxD3=(()=>{var fe=Object.defineProperty;var vn=Object.getOwnPropertyDescr
     };
   }
 
-  // Swaps inside the viewport reconcile once, in the next frame, however
-  // many records they make. The edge planes hold drawing only, the engine's
-  // own and a nested stage's, so their changes are skipped; otherwise every
-  // redraw would schedule the next.
+  // An edge or a node is drawn from these. style stays unwatched, since
+  // placing a node writes it.
+  const WATCHED = ['data-x', 'data-y', 'data-from', 'data-to', 'data-port', 'data-state',
+    'data-label'];
+
+  // The edge planes hold drawing only, the engine's own and a nested stage's,
+  // so their changes are skipped; otherwise every redraw would schedule the
+  // next. A watched name on the app's own markup inside a node is not ours.
+  function concernsGraph(m) {
+    if (m.target.closest('svg.pjx-graph__edge-plane')) return false;
+    return m.type === 'childList' || m.target.matches('[data-pjx-graph-edge], [data-node-id]');
+  }
+
+  // Swaps inside the viewport, and edits to what an edge or node is drawn
+  // from, reconcile once, in the next frame, however many records they make.
   function observeViewport(viewport, instance) {
     let pending = false;
     new MutationObserver((mutations) => {
-      const outside = mutations.some((m) => !m.target.closest('svg.pjx-graph__edge-plane'));
-      if (pending || !outside) return;
+      if (pending || !mutations.some(concernsGraph)) return;
       pending = true;
       requestAnimationFrame(() => {
         pending = false;
         instance.reconcile();
       });
-    }).observe(viewport, { childList: true, subtree: true });
+    }).observe(viewport, { childList: true, subtree: true, attributeFilter: WATCHED });
   }
 
   function mount(root) {
