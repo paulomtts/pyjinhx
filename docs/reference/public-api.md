@@ -51,7 +51,8 @@ The deeper machinery behind these symbols — the parser, finder, asset resolver
 
 ## Builtin graph components
 
-Imported from `pyjinhx.builtins`. The engine behind them is `window.pjx.graph`, see the
+Imported from `pyjinhx.builtins`. They are listed here because they carry a JavaScript API,
+`window.pjx.graph`, see the
 [Graph guide](../guide/graph.md#events-and-javascript-api).
 
 | Symbol | Description | Documentation |

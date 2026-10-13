@@ -25,6 +25,11 @@ attributes). However many records a swap makes, they schedule one
 the engine's own drawing and are ignored, so a redraw does not schedule the
 next one.
 
+htmx settles a swapped element by writing the server's `style` attribute back,
+and `style` is deliberately unwatched. So the stage also listens for
+`htmx:afterSettle` and places again the nodes inside the settled element;
+without it a stored drop would be undone about 20 ms after the swap.
+
 `reconcile()` is idempotent. It places every node whose `data-x`/`data-y`
 differ from the pair it was last placed with, keyed by element identity, so a
 swapped-in element is always placed and a kept, unmoved one is left alone. Then
@@ -47,8 +52,8 @@ any that leaves, so a swapped stage root boots on its own and, with a
 
 `PJXGraphEdges` renders one hidden `span[data-pjx-graph-edge]` per edge, with
 `data-edge-id`, `data-from`, `data-to`, `data-port`, `data-state` and
-`data-label`. One edge can then be swapped out-of-band like any element, and
-every edge change, added, removed or edited, is a mutation the observer sees.
+`data-label`. Every edge change, added, removed or edited, is a mutation the observer
+sees, whether the whole layer is swapped or one span is edited in place.
 
 Every reconcile redraws all edges rather than tracking which pairs changed.
 Measured at about 15 ms for 200 edges between 50 nodes, before node lookups
@@ -62,7 +67,9 @@ the node's server `data-x`/`data-y` at drag time, in localStorage under
 that base. Once the server sends a different position, the server wins and the
 stored drop is deleted. The base is persisted, not kept in memory, so the rule
 holds after a full page load. With an empty `storage_key` nothing is stored. A
-drop holds on the page until the server moves that node and is gone on reload.
+drop lives only on the node element: it holds while that element stays and the
+server does not move it, a swap that replaces the node puts it back at the
+server position, and a reload forgets it.
 
 ## Decision: bundle a pinned d3 subset
 

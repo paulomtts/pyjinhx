@@ -20,7 +20,7 @@
   `pjx:graph:panel:before-close` and `pjx:graph:panel:close`. The `before-*`
   events are cancelable.
 - The graph reconciles itself after any htmx swap inside it (the whole node
-  layer, one node or edge out-of-band, SSE): changed nodes are placed and
+  layer or edge layer, one node out-of-band, SSE): changed nodes are placed and
   every edge is redrawn, with no app-side call. A swap during a drag is
   applied on release.
 - `storage_key` keeps the pan/zoom view and dropped node positions in

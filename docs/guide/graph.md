@@ -57,7 +57,7 @@ def flow():
 
 There is no script call. The engine mounts every `[data-pjx-graph]` stage when the page loads, when a
 stage is inserted later (by an htmx swap or plain DOM code), and on `htmx:load`. A stage removed
-from the document is unmounted. Once a stage is mounted, has drawn its edges and has framed its nodes,
+from the document is unmounted. Once a stage is mounted, and has drawn its edges (after the first fit, or the restore of a stored view),
 its root gets `data-pjx-graph-ready`.
 
 The canvas spans the width of its container and is at least `--pjx-graph-min-height` (24rem) tall.
@@ -78,7 +78,7 @@ The stage: canvas, viewport, edge plane, and the slots for the layers, the contr
 
 | Prop | Type | Default | Notes |
 |---|---|---|---|
-| `nodes` | `Slot` | required | The node layer, normally a `PJXGraphNodes`. |
+| `nodes` | `Slot` | required | The node layer. It must contain a `PJXGraphNodes`: the engine needs its `.pjx-graph__nodes`. |
 | `edges` | `Slot` | `""` | The edge layer, normally a `PJXGraphEdges`. |
 | `controls` | `Slot` | `""` | Normally a `PJXGraphControls`. Floats over the canvas. |
 | `panel` | `Slot` | `""` | Normally a `PJXGraphSidePanel`. Renders as a sibling after the canvas, outside it, so clicks in the panel never pan, drag or select. |
@@ -146,7 +146,8 @@ draws the visible edges in the SVG edge plane. Nothing in this layer is visible 
 An edge dict raises a validation error when `id`, `from` or `to` is missing or empty, when it has a
 key outside the six above, when its `id` repeats another edge's, or when `id`, `from`, `to`, `port`
 or `state` contains a double quote (`"`). An edge whose `from` or `to` node is missing, or hidden with
-`display: none`, is not an error. It is skipped silently and drawn once both ends show. Edges between
+`display: none`, is not an error. It is skipped silently and drawn at the next reconcile after both ends show. If you reveal a node
+by changing its class or style rather than by a swap, call `drawEdges()`. Edges between
 the same two nodes fan apart, in either direction.
 
 ### PJXGraphControls
@@ -177,8 +178,8 @@ A floating card beside the canvas: a header and one content region.
 | `open` | `bool` | `False` | Sets `data-open`. A closed panel is hidden by the stylesheet. |
 | `content` | children | `""` | The content region, raw HTML. It renders whether the panel is open or not. |
 
-An `accent_color` that contains `;` or a double quote (`"`) raises a validation error. Opening the panel is the app's job;
-see [Events and JavaScript API](#events-and-javascript-api).
+An `accent_color` that contains `;` or a double quote (`"`) raises a validation error.
+Opening the panel is the app's job; see [Events and JavaScript API](#events-and-javascript-api).
 
 ## Interaction
 
@@ -194,6 +195,8 @@ see [Events and JavaScript API](#events-and-javascript-api).
   does not select.
 - **Controls**: zoom in and zoom out step by a factor of √2 about the canvas center. Fit frames
   every visible node.
+- Nodes and edges are not keyboard-focusable, so selection is pointer-only. For keyboard use, drive
+  `select(id)` and `pjx.graph.panel.open` from your own controls.
 - Zoom always stays within `scale_min..scale_max`. A fresh stage frames its nodes once it is laid
   out, unless it restores a stored view.
 
@@ -202,7 +205,10 @@ see [Events and JavaScript API](#events-and-javascript-api).
 ### Event list
 
 Every event is dispatched on the stage root and bubbles. A `before-*` event is cancelable:
-`event.preventDefault()` stops the change. `detail` carries ids, never domain data.
+`event.preventDefault()` stops the change. `detail` carries ids, never domain data, so graph
+`before-*` events carry `{id}`, not the `{reason, trigger}` of other builtins. The node and edge
+attributes (`data-node-id`, `data-x`, `data-from` and so on) keep their unprefixed names, as they
+are data fields.
 
 | Event | `detail` | Cancelable | Fired when |
 |---|---|---|---|
@@ -245,7 +251,7 @@ The instance from `mount()`/`get()` has:
 | `fit()` | Frames every visible node. |
 | `zoomBy(dir)` | Zooms `dir` steps of √2 about the canvas center (`1` in, `-1` out). Throws when `dir` is not a finite number. |
 | `drawEdges()` | Redraws every edge and fires `rendered`. |
-| `reconcile()` | Re-reads node positions and redraws edges, as a swap does. Held while a drag or wire is in progress. |
+| `reconcile()` | Places nodes whose `data-x`/`data-y` changed and redraws every edge, as a swap does. Held while a drag or wire is in progress. |
 | `box(id)` | `{x, y, width, height}` of node `id` in world pixels, or `null`. |
 | `inAnchor(id)` | `{x, y}` where edges enter node `id`, or `null`. |
 | `outAnchor(id, port)` | `{x, y}` where edges leave node `id` from `port`, or `null`. |
@@ -287,19 +293,23 @@ with the server position it was dragged from (its base).
 - A stored drop holds as long as the server keeps sending that node's base position.
 - Once the server sends a different position, the server wins and the stored drop is deleted. A
   later return to the old position does not bring it back.
-- With an empty `storage_key`, nothing is stored. A drop holds on the page until the server sends a
-  different position for that node, and is gone on reload.
+- With an empty `storage_key`, nothing is stored. A drop lives only on the node element: it holds
+  while that element stays in the page and the server does not move it. A swap that replaces the
+  node (or its layer) puts it back at the server position, and a reload forgets it.
 
 The engine never sends positions to the server. To persist them, listen for `pjx:graph:move` and post
-`detail.x`/`detail.y` yourself. A broken or full localStorage never breaks the stage; it just stops persisting.
+`detail.x`/`detail.y` yourself. A broken or full localStorage never breaks the stage; it just
+stops persisting.
 
 ## Updating the graph
 
 Every update shape is a plain htmx swap of server-rendered markup. The engine watches its viewport
-and reconciles after any swap or `data-*` change in a layer: it places the nodes whose server
+and reconciles after any swap in a layer, or a change to a node's `data-x`/`data-y` or an edge's
+`data-from`, `data-to`, `data-port`, `data-state` or `data-label`: it places the nodes whose server
 position changed and redraws every edge. No JavaScript call is needed. A swap that lands while the
 user is dragging a node or a wire is applied when the drag ends, so nothing moves under the
-pointer. The selection survives a swap as long as the selected id is still there.
+pointer. The selection survives a swap as long as the selected id is still there. If that id disappears,
+no `deselect` fires; the selection is kept and shows again if the id comes back.
 
 ### Reload the whole layer
 
@@ -406,8 +416,8 @@ def run_node(node_id: str):
 
 The node needs a stable `id` (here `node-<node_id>`), the same on the page and in the response. The
 swap is outerHTML-only: the whole node element is replaced. See
-[ADR 0001](../decisions/0001-outerhtml-only-oob-swaps.md). A node can be added or removed this way
-by swapping the whole `PJXGraphNodes` layer instead.
+[ADR 0001](../decisions/0001-outerhtml-only-oob-swaps.md). To add or remove a node, swap the whole
+`PJXGraphNodes` layer instead.
 
 Adding or removing an edge works the same way: swap the whole `PJXGraphEdges` layer.
 
@@ -540,7 +550,7 @@ These classes, attributes, events and states are versioned API.
 | `data-pjx-graph` | Stage root | Marks a stage. The engine mounts every one. |
 | `data-pjx-graph-storage-key` | Stage root | Present only with a `storage_key`. |
 | `data-pjx-graph-scale-min`, `data-pjx-graph-scale-max` | Stage root | The zoom range. |
-| `data-pjx-graph-ready` | Stage root | Set by the engine once mounted, framed and drawn. |
+| `data-pjx-graph-ready` | Stage root | Set by the engine once mounted and its edges are drawn. |
 | `data-node-id`, `data-node-type` | Node root | The node's id and type. |
 | `data-x`, `data-y` | Node root | The server position, in world pixels. |
 | `data-pjx-graph-port="in"` / `"out"` | Port handle | Port direction. |
