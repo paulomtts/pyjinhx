@@ -13,6 +13,9 @@
 
   const d3 = __pjxD3;
   const instances = new WeakMap();
+  // Aborted when a stage is dropped: everything the stage started outside
+  // its own elements listens to it, so one abort stops all of it.
+  const lives = new WeakMap();
   // Room left around the nodes when a fit frames them.
   const FIT_PAD = 48;
   // A press that moves no further than this, in screen pixels, is a click.
@@ -820,9 +823,11 @@
     const viewport = part(canvas, '.pjx-graph__viewport', true);
     const plane = part(viewport, 'svg.pjx-graph__edge-plane', true);
     part(viewport, '.pjx-graph__nodes', false);
+    const life = new AbortController();
     const view = attachZoom(root, canvas, viewport);
     const instance = createInstance(root, canvas, viewport, plane, view);
     instances.set(root, instance);
+    lives.set(root, life);
     observeViewport(viewport, instance);
     listenForControls(root, canvas, instance);
     // A restored view is where the user left off; only a fresh stage is framed.
@@ -844,12 +849,27 @@
     return instances.get(root) || null;
   }
 
-  function boot(subtree) {
+  // A root that has left the document is gone for good, so its instance
+  // stops and get() forgets it; a root put back later is mounted afresh.
+  function drop(root) {
+    const life = lives.get(root);
+    if (!life) return;
+    life.abort();
+    lives.delete(root);
+    instances.delete(root);
+  }
+
+  // The stages in a subtree, its own root included.
+  function stagesIn(subtree) {
     const stages = Array.from(subtree.querySelectorAll('[data-pjx-graph]'));
     if (subtree.matches && subtree.matches('[data-pjx-graph]')) {
       stages.unshift(subtree);
     }
-    stages.forEach((stage) => {
+    return stages;
+  }
+
+  function boot(subtree) {
+    stagesIn(subtree).forEach((stage) => {
       // One broken stage must not keep the others on the page from booting.
       try {
         mount(stage);
@@ -862,11 +882,19 @@
   function watch() {
     boot(document);
     // Observing only after the parser is done: a stage it is still streaming
-    // is seen before its children exist and would fail to mount.
+    // is seen before its children exist and would fail to mount. A batch is
+    // judged by where its nodes ended up: a root moved within it is still in
+    // the document and keeps its instance, and one added and removed within
+    // it is not mounted, since nothing would be left to drop it.
     new MutationObserver((mutations) => {
-      mutations.forEach((m) => m.addedNodes.forEach((node) => {
-        if (node.nodeType === 1) boot(node);
-      }));
+      mutations.forEach((m) => {
+        m.removedNodes.forEach((node) => {
+          if (node.nodeType === 1 && !node.isConnected) stagesIn(node).forEach(drop);
+        });
+        m.addedNodes.forEach((node) => {
+          if (node.nodeType === 1 && node.isConnected) boot(node);
+        });
+      });
     }).observe(document.documentElement, { childList: true, subtree: true });
   }
 
