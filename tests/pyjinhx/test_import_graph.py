@@ -316,6 +316,34 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
     "builtins.ui.pjx_carousel_slide.pjx_carousel_slide": frozenset(
         {"pyjinhx._component"}
     ),
+    "builtins.ui.pjx_graph.__init__": frozenset(
+        {"pyjinhx.builtins.ui.pjx_graph.pjx_graph"}
+    ),
+    "builtins.ui.pjx_graph.pjx_graph": frozenset({"pyjinhx._component"}),
+    "builtins.ui.pjx_graph_controls.__init__": frozenset(
+        {"pyjinhx.builtins.ui.pjx_graph_controls.pjx_graph_controls"}
+    ),
+    "builtins.ui.pjx_graph_controls.pjx_graph_controls": frozenset(
+        {"pyjinhx._component"}
+    ),
+    "builtins.ui.pjx_graph_edges.__init__": frozenset(
+        {"pyjinhx.builtins.ui.pjx_graph_edges.pjx_graph_edges"}
+    ),
+    "builtins.ui.pjx_graph_edges.pjx_graph_edges": frozenset({"pyjinhx._component"}),
+    "builtins.ui.pjx_graph_node.__init__": frozenset(
+        {"pyjinhx.builtins.ui.pjx_graph_node.pjx_graph_node"}
+    ),
+    "builtins.ui.pjx_graph_node.pjx_graph_node": frozenset({"pyjinhx._component"}),
+    "builtins.ui.pjx_graph_nodes.__init__": frozenset(
+        {"pyjinhx.builtins.ui.pjx_graph_nodes.pjx_graph_nodes"}
+    ),
+    "builtins.ui.pjx_graph_nodes.pjx_graph_nodes": frozenset({"pyjinhx._component"}),
+    "builtins.ui.pjx_graph_side_panel.__init__": frozenset(
+        {"pyjinhx.builtins.ui.pjx_graph_side_panel.pjx_graph_side_panel"}
+    ),
+    "builtins.ui.pjx_graph_side_panel.pjx_graph_side_panel": frozenset(
+        {"pyjinhx._component"}
+    ),
     "builtins.ui.pjx_resizable_group.__init__": frozenset(
         {"pyjinhx.builtins.ui.pjx_resizable_group.pjx_resizable_group"}
     ),

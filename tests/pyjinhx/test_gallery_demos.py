@@ -182,3 +182,81 @@ def test_dropdown_demo_menu_entries_are_not_escaped():
     assert "&lt;button&gt;" not in html
     assert "Edit" in html
     assert html.count("<button") >= 4  # the trigger plus three menu entries
+
+
+def test_graph_demo_renders_the_pipeline_stage():
+    from demos.graph import graph
+
+    from pyjinhx.session import request_scope
+
+    assert "PJXGraph" in DEMOS
+    with request_scope():
+        html = graph()
+
+    assert "data-pjx-graph " in html
+    assert "data-pjx-graph-storage-key" not in html  # no persistence
+    assert 'id="demo-graph-edges"' in html
+    assert html.count("data-pjx-graph-edge ") == 2
+    steps = ["trigger", "fetch", "transform", "store"]
+    assert re.findall(r'data-node-id="([^"]+)"', html) == steps
+    assert re.findall(r'<template data-demo-panel="([^"]+)"', html) == steps
+    assert 'id="demo-graph-panel"' in html
+    assert 'data-pjx-graph-panel data-open="false"' in html
+    assert "data-pjx-graph-controls" in html
+    # The in-page stand-in for the app's routes. (Counting <script> tags would
+    # not work: each render() here appends its own asset scripts.)
+    assert html.count('addEventListener("pjx:graph:wire"') == 1
+
+
+def test_runtime_demos_are_registered_demos():
+    from demos import RUNTIME_DEMOS
+
+    assert RUNTIME_DEMOS == {"PJXGraph"}
+    assert RUNTIME_DEMOS <= set(DEMOS)
+
+
+def test_post_build_gives_the_graph_page_the_runtime_once_in_the_body(tmp_path):
+    from pyjinhx.builtins.ui.pjx_graph import PJXGraph
+    from pyjinhx.client import read_pjx_runtime, read_vendored_htmx
+
+    hooks.on_post_build({"site_dir": str(tmp_path)})
+    page = (tmp_path / "demos" / "pjx-graph.html").read_text()
+    (js_path,) = PJXGraph.__pjx_descriptor__.js_paths
+    graph_script = f"<script>{Path(js_path).read_text()}</script>"
+    assert page.count(graph_script) == 1
+    assert page.count(read_vendored_htmx()) == 1
+    assert page.count('<style id="pjx-style">') == 1
+    # pjx.js reads document.body as it runs, so the runtime cannot sit in <head>.
+    runtime = page.index(read_pjx_runtime())
+    assert page.index("<body>") < runtime < page.index(graph_script)
+
+
+def test_post_build_leaves_the_runtime_off_every_other_page(tmp_path):
+    from pyjinhx.client import read_vendored_htmx
+
+    hooks.on_post_build({"site_dir": str(tmp_path)})
+    htmx_source = read_vendored_htmx()
+    for path in (tmp_path / "demos").glob("*.html"):
+        if path.name == "pjx-graph.html":
+            continue
+        page = path.read_text()
+        assert 'id="pjx-style"' not in page, path.name
+        assert htmx_source not in page, path.name
+
+
+def test_graph_page_output_is_stable(tmp_path):
+    import itertools
+
+    import pyjinhx._component as component_mod
+
+    first = tmp_path / "a"
+    second = tmp_path / "b"
+    # Rewound for the same reason as in the button stability test above: two
+    # separate `mkdocs build` processes each start the counter fresh.
+    component_mod._auto_id_counter = itertools.count(1)
+    hooks.on_post_build({"site_dir": str(first)})
+    component_mod._auto_id_counter = itertools.count(1)
+    hooks.on_post_build({"site_dir": str(second)})
+    page_a = (first / "demos" / "pjx-graph.html").read_text()
+    page_b = (second / "demos" / "pjx-graph.html").read_text()
+    assert page_a == page_b

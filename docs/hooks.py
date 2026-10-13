@@ -8,10 +8,11 @@ import sys
 HERE = os.path.dirname(__file__)
 sys.path.insert(0, HERE)
 
-from demos import DEMOS
+from demos import DEMOS, RUNTIME_DEMOS
 
 from pyjinhx._component import BaseComponent, _pascal_to_snake
 from pyjinhx.assets import AssetMode, emit_assets
+from pyjinhx.client.inject import inject_runtime
 from pyjinhx.session import RenderSession, accumulate_assets, request_scope
 
 
@@ -95,11 +96,19 @@ def on_post_build(config):
         session.js_mode = AssetMode.NONE
         with request_scope(session=session):
             markup = demo_markup(factory())
-        # No inject_runtime: these pages are static snapshots in an iframe
-        # and no demo needs htmx/pjx.js to paint. LINK mode is never used, so
-        # emit_assets needs no resolver.
+        # LINK mode is never used, so emit_assets needs no resolver.
         session.css_mode = AssetMode.INLINE
         session.js_mode = AssetMode.INLINE
-        assets = emit_assets(session)
+        if name in RUNTIME_DEMOS:
+            # The other pages are static snapshots that need no htmx/pjx.js to
+            # paint; a runtime demo does real htmx swaps (the graph's wire
+            # drop swaps its edge layer out-of-band). pjx.js reads
+            # document.body as it runs, so these assets go at the end of the
+            # body instead of in <head>. inject_runtime no-ops unless js_mode
+            # is INLINE, hence after the flip above.
+            inject_runtime(session)
+            markup, assets = f"{markup}\n{emit_assets(session)}", ""
+        else:
+            assets = emit_assets(session)
         with open(path, "w", encoding="utf-8") as fh:
             fh.write(_PAGE.format(markup=markup, assets=assets))

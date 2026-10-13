@@ -2519,6 +2519,36 @@ HTMX deferred-content loader: an element that fetches `url` on a computed trigge
     )
     ```
 
+### PJXGraph
+
+Pan/zoom node graph: draggable node cards joined by edges, zoom controls and a side panel, composed from `PJXGraphNodes`, `PJXGraphNode`, `PJXGraphEdges`, `PJXGraphControls` and `PJXGraphSidePanel`. **Assets:** `pjx_graph.css`, `pjx_graph.js`, `pjx_graph_node.css`, `pjx_graph_controls.css`, `pjx_graph_side_panel.css`.
+
+<!-- demo: PJXGraph -->
+
+Drag a node, drag a wire from a node's right-hand port onto another node, or click a node to open the panel. A docs page has no server, so a small inline script stands in for the two routes from [Wiring the app](guide/graph.md#wiring-the-app). The new edge still arrives as a real htmx out-of-band swap of the edge layer.
+
+```python
+nodes = [
+    PJXGraphNode(
+        id="node-a", node_id="a", x=40, y=60, title="Fetch", out_ports=("next",)
+    ),
+    PJXGraphNode(id="node-b", node_id="b", x=320, y=60, title="Store", in_port=True),
+]
+PJXGraph(
+    id="flow",
+    nodes=PJXGraphNodes(
+        id="flow-nodes", nodes_html=PJXGraphNodes.join(node.render() for node in nodes)
+    ),
+    edges=PJXGraphEdges(
+        id="flow-edges", edges=[{"id": "a-b", "from": "a", "to": "b", "port": "next"}]
+    ),
+    controls=PJXGraphControls(),
+    panel=PJXGraphSidePanel(id="flow-panel"),
+)
+```
+
+Every prop, event, persistence rule and update shape is in the [Graph guide](guide/graph.md).
+
 ## Form controls
 
 ### PJXChipInput

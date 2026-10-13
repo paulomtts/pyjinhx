@@ -1,0 +1,111 @@
+:where(:root) {
+  --pjx-graph-panel-bg: var(--surface);
+  --pjx-graph-panel-border: var(--border);
+  --pjx-graph-panel-radius: var(--radius-md);
+  --pjx-graph-panel-color: var(--text);
+  --pjx-graph-panel-muted: var(--text-muted);
+  --pjx-graph-panel-accent: var(--text-muted);
+  --pjx-graph-panel-inset: 0.75rem;
+  --pjx-graph-panel-width: 20rem;
+  --pjx-graph-panel-gap: 0.5rem;
+  --pjx-graph-panel-padding: 0.75rem;
+  --pjx-graph-panel-marker-size: 0.625rem;
+  --pjx-graph-panel-title-size: 0.875rem;
+  --pjx-graph-panel-control-size: 0.75rem;
+  --pjx-graph-panel-duration: 150ms;
+}
+
+/* The stage, not the canvas, is the positioning context: the panel sits
+   beside the canvas in the markup, so it floats over it without being
+   clipped by the canvas's overflow. */
+.pjx-graph__panel {
+  position: absolute;
+  top: var(--pjx-graph-panel-inset);
+  right: var(--pjx-graph-panel-inset);
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  width: var(--pjx-graph-panel-width);
+  max-width: calc(100% - 2 * var(--pjx-graph-panel-inset));
+  max-height: calc(100% - 2 * var(--pjx-graph-panel-inset));
+  border: 1px solid var(--pjx-graph-panel-border);
+  border-radius: var(--pjx-graph-panel-radius);
+  background: var(--pjx-graph-panel-bg);
+  color: var(--pjx-graph-panel-color);
+}
+
+.pjx-graph__panel[data-open="false"] {
+  display: none;
+}
+
+/* Only opening animates; closing is the instant display: none above. */
+.pjx-graph__panel[data-open="true"] {
+  animation: pjx-graph-panel-in var(--pjx-graph-panel-duration) ease-out;
+}
+
+@keyframes pjx-graph-panel-in {
+  from { opacity: 0; transform: translateY(calc(-1 * var(--pjx-graph-panel-gap))); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.pjx-graph__panel-head {
+  display: flex;
+  align-items: center;
+  gap: var(--pjx-graph-panel-gap);
+  padding: var(--pjx-graph-panel-padding);
+  border-bottom: 1px solid var(--pjx-graph-panel-border);
+}
+
+.pjx-graph__panel-control {
+  display: inline-flex;
+  align-items: center;
+  padding: calc(var(--pjx-graph-panel-gap) / 2) var(--pjx-graph-panel-gap);
+  border: 1px solid var(--pjx-graph-panel-border);
+  border-radius: var(--pjx-graph-panel-radius);
+  background: var(--pjx-graph-panel-bg);
+  color: var(--pjx-graph-panel-muted);
+  font: inherit;
+  font-size: var(--pjx-graph-panel-control-size);
+  cursor: pointer;
+}
+
+/* The display above outranks the UA [hidden] rule, so restate it. */
+.pjx-graph__panel-control[hidden] {
+  display: none;
+}
+
+.pjx-graph__panel-marker {
+  flex: none;
+  width: var(--pjx-graph-panel-marker-size);
+  height: var(--pjx-graph-panel-marker-size);
+  border-radius: 50%;
+  background: var(--pjx-graph-panel-accent);
+}
+
+.pjx-graph__panel-title {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  font-size: var(--pjx-graph-panel-title-size);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pjx-graph__panel-badge {
+  flex: none;
+}
+
+.pjx-graph__panel-content {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: var(--pjx-graph-panel-padding);
+}
+
+/* Clamped rather than removed; equal specificity, so source order wins. */
+@media (prefers-reduced-motion: reduce) {
+  .pjx-graph__panel[data-open="true"] {
+    animation-duration: 0.01ms;
+  }
+}

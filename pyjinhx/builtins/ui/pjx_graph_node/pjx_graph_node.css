@@ -1,0 +1,104 @@
+:where(:root) {
+  --pjx-graph-node-bg: var(--surface);
+  --pjx-graph-node-border: var(--border);
+  --pjx-graph-node-radius: var(--radius-md);
+  --pjx-graph-node-width: 14rem;
+  --pjx-graph-node-muted: var(--text-muted);
+  --pjx-graph-port-size: 10px;
+  --pjx-graph-port-bg: var(--surface);
+}
+
+/* Position lives in two custom properties so the engine moves a node by
+   rewriting them, without touching layout rules. */
+.pjx-graph__node {
+  position: absolute;
+  left: var(--pjx-graph-node-x, 0);
+  top: var(--pjx-graph-node-y, 0);
+  box-sizing: border-box;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  width: var(--pjx-graph-node-width);
+  padding: 0.625rem 0.75rem;
+  border: 1px solid var(--pjx-graph-node-border);
+  border-left: 3px solid var(--pjx-graph-node-color, var(--pjx-graph-node-border));
+  border-radius: var(--pjx-graph-node-radius);
+  background: var(--pjx-graph-node-bg);
+  color: var(--text);
+}
+
+/* display: flex above beats the UA [hidden] rule. */
+.pjx-graph__node[hidden] {
+  display: none;
+}
+
+/* An outline, not a border, so selecting a node never shifts its layout. */
+.pjx-graph__node--selected {
+  outline: 2px solid var(--pjx-graph-selected);
+  outline-offset: 2px;
+}
+
+.pjx-graph__node-icon {
+  display: inline-flex;
+  flex: none;
+  color: var(--pjx-graph-node-color, var(--pjx-graph-node-muted));
+}
+
+.pjx-graph__node-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  min-width: 0;
+}
+
+.pjx-graph__node-eyebrow {
+  font-size: var(--font-size-xs);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--pjx-graph-node-muted);
+}
+
+.pjx-graph__node-title {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.pjx-graph__node-summary {
+  margin: 0;
+  font-size: var(--font-size-xs);
+  color: var(--pjx-graph-node-muted);
+  overflow-wrap: anywhere;
+}
+
+/* Out-ports straddle the right edge, spread evenly down the card. */
+.pjx-graph__node-ports {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-evenly;
+  transform: translateX(50%);
+}
+
+.pjx-graph__port {
+  box-sizing: border-box;
+  width: var(--pjx-graph-port-size);
+  height: var(--pjx-graph-port-size);
+  border: 1px solid var(--pjx-graph-node-border);
+  border-radius: 50%;
+  background: var(--pjx-graph-port-bg);
+}
+
+.pjx-graph__port--in {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  transform: translate(-50%, -50%);
+}
+
+.pjx-graph__port--out {
+  display: block;
+}

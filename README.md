@@ -343,3 +343,4 @@ def toggle():
 - [Components](docs/guide/components.md) · [PascalCase tags](docs/guide/tags.md) · [Assets](docs/guide/assets.md)
 - [Reactivity guide](docs/reactivity.md)
 - [Built-in components](docs/components.md)
+- [Graph](docs/guide/graph.md) — pan/zoom node graphs, built on [d3](https://d3js.org) (ISC, Mike Bostock)

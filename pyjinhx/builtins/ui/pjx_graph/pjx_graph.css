@@ -1,0 +1,92 @@
+:where(:root) {
+  --pjx-graph-bg: var(--surface);
+  --pjx-graph-border: var(--border);
+  --pjx-graph-radius: var(--radius-md);
+  --pjx-graph-grid-color: var(--border);
+  --pjx-graph-grid-size: 24px;
+  --pjx-graph-min-height: 24rem;
+  --pjx-graph-edge-stroke: var(--border);
+  --pjx-graph-edge-width: 1.5px;
+  --pjx-graph-edge-hit-width: 14px;
+  --pjx-graph-edge-label-color: var(--text-muted);
+  --pjx-graph-edge-label-size: 0.75rem;
+  --pjx-graph-selected: var(--text);
+  --pjx-graph-wire-stroke: var(--pjx-graph-selected);
+  --pjx-graph-wire-dash: 4 4;
+}
+
+.pjx-graph {
+  position: relative;
+}
+
+/* The grid lives on the canvas, not the viewport, so it stays put while the
+   viewport pans and zooms. */
+.pjx-graph__canvas {
+  position: relative;
+  overflow: hidden;
+  min-height: var(--pjx-graph-min-height);
+  border: 1px solid var(--pjx-graph-border);
+  border-radius: var(--pjx-graph-radius);
+  background-color: var(--pjx-graph-bg);
+  background-image: radial-gradient(circle, var(--pjx-graph-grid-color) 1px, transparent 1px);
+  background-size: var(--pjx-graph-grid-size) var(--pjx-graph-grid-size);
+}
+
+/* Sizeless on purpose: it is only a transform target for pan/zoom. */
+.pjx-graph__viewport {
+  position: absolute;
+  inset: 0 auto auto 0;
+  transform-origin: 0 0;
+}
+
+.pjx-graph__edge-plane {
+  position: absolute;
+  top: 0;
+  left: 0;
+  overflow: visible;
+  pointer-events: none;
+}
+
+/* The hit path is the press target, so the visible edge never is. */
+.pjx-graph__edge {
+  fill: none;
+  stroke: var(--pjx-graph-edge-stroke);
+  stroke-width: var(--pjx-graph-edge-width);
+  pointer-events: none;
+}
+
+/* After the base rule: equal specificity, so source order lets it win. */
+.pjx-graph__edge--selected {
+  stroke: var(--pjx-graph-selected);
+}
+
+/* Unfilled, or the wide path would paint as a wedge; it takes presses even
+   though the plane itself does not. */
+.pjx-graph__edge-hit {
+  fill: none;
+  stroke: transparent;
+  stroke-width: var(--pjx-graph-edge-hit-width);
+  pointer-events: stroke;
+}
+
+/* The wire being dragged. It must never take a press, or the release would
+   hit-test the ghost instead of the node under it. */
+.pjx-graph__wire {
+  fill: none;
+  stroke: var(--pjx-graph-wire-stroke);
+  stroke-width: var(--pjx-graph-edge-width);
+  stroke-dasharray: var(--pjx-graph-wire-dash);
+  pointer-events: none;
+}
+
+/* No per-state rules: .pjx-graph__edge--<state> is the app's hook. */
+.pjx-graph__edge-label {
+  fill: var(--pjx-graph-edge-label-color);
+  font-size: var(--pjx-graph-edge-label-size);
+  pointer-events: none;
+}
+
+.pjx-graph__nodes {
+  position: absolute;
+  inset: 0 auto auto 0;
+}

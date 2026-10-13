@@ -72,7 +72,7 @@ document.getElementById("confirm-del").addEventListener("pjx:modal:before-close"
 
 ## The `window.pjx` namespace
 
-`pjx.modal` · `pjx.drawer` · `pjx.popover` · `pjx.notification` · `pjx.loader.region` (region busy-state) ·
+`pjx.modal` · `pjx.drawer` · `pjx.popover` · `pjx.graph` (mount/get/panel) · `pjx.notification` · `pjx.loader.region` (region busy-state) ·
 `pjx.pageLoader` (page navigation) · `pjx.toast` · `pjx.popoverPosition` (trigger/panel/viewport
 geometry) · `pjx.buildChip` (a chip's label/hidden-input/remove-button markup). Open/close/show/hide
 functions return `false` when a `before-*` hook canceled the action.
