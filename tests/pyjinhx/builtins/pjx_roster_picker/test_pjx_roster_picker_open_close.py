@@ -144,7 +144,7 @@ def test_click_opens_the_list_and_asks_once(
     page.wait_for_timeout(500)
 
     query = parse_qs(urlsplit(request.value.url).query, keep_blank_values=True)
-    assert query == {"q": [""], "picker_id": ["p"]}
+    assert query == {"q": [""], "exclude": [""], "picker_id": ["p"]}
     assert len(requests) == 1
     assert page_errors == []
 

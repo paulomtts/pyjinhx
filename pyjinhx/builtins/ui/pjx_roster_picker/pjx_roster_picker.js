@@ -118,6 +118,15 @@
         return picker.querySelector('.pjx-roster-picker__results');
     }
 
+    // Only each chip's own hidden input: an app's control nested in a chip's
+    // slot can share the class, and template chips are not live DOM.
+    function chippedValues(picker) {
+        const inputs = picker.querySelectorAll(
+            '.pjx-roster-picker__chips > [data-pjx-roster-chip] > .pjx-roster-picker__chip-input'
+        );
+        return Array.from(inputs, (input) => input.value);
+    }
+
     function isOpen(input) {
         return input.getAttribute('aria-expanded') === 'true';
     }
@@ -190,5 +199,13 @@
         setOpen(picker, false);
         // A row focused inside the now-hidden list would strand the keyboard.
         if (event.target !== input) quietFocus(input);
+    });
+
+    // Read when the request is built, not at load, so the route sees the
+    // chips as they are now and can leave those people out of the rows.
+    document.addEventListener('htmx:configRequest', function (event) {
+        if (!isSearchInput(event.target)) return;
+        const picker = pickerOf(event.target);
+        if (picker) event.detail.parameters.exclude = chippedValues(picker).join(',');
     });
 })();
