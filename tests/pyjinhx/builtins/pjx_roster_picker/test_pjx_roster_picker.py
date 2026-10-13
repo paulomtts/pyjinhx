@@ -690,6 +690,13 @@ def test_css_has_a_reduced_motion_query():
 
     assert "@media (prefers-reduced-motion: reduce)" in css
     reduced = css.split("@media (prefers-reduced-motion: reduce)", 1)[1]
+    clamped = {
+        part.strip()
+        for selector, body in re.findall(r"([^{}]+)\{([^{}]*)\}", reduced)
+        if "transition: none" in body
+        for part in selector.split(",")
+    }
     for selector, body in _rules():
         if "transition:" in body and "transition: none" not in body:
-            assert selector in reduced, selector
+            for part in selector.split(","):
+                assert part.strip() in clamped, part
