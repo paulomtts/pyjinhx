@@ -295,3 +295,86 @@ document.getElementById("team").addEventListener("pjx:roster-picker:before-remov
 throw `Error("pjx.rosterPicker.<name>: expected a roster picker root ([data-pjx-roster-picker])")`
 when `root` is anything but the picker root.
 
+
+## Theming
+
+The picker reads these `--pjx-roster-picker-*` tokens, set on `:where(:root)`. Override them
+globally or on one picker, as described in [Builtin conventions](builtin-conventions.md#theming).
+
+| Area | Tokens |
+|---|---|
+| Colors | `--pjx-roster-picker-bg`, `--pjx-roster-picker-fg`, `--pjx-roster-picker-muted`, `--pjx-roster-picker-border`, `--pjx-roster-picker-focus`, `--pjx-roster-picker-invalid` |
+| Shape | `--pjx-roster-picker-radius`, `--pjx-roster-picker-padding`, `--pjx-roster-picker-gap` |
+| Chips | `--pjx-roster-picker-chip-bg` |
+| Results list | `--pjx-roster-picker-results-bg`, `--pjx-roster-picker-shadow`, `--pjx-roster-picker-z`, `--pjx-roster-picker-max-h`, `--pjx-roster-picker-min-h`, `--pjx-roster-picker-room` |
+| Rows | `--pjx-roster-picker-row-hover`, `--pjx-roster-picker-row-active` |
+
+`--pjx-roster-picker-room` is written by the script while the list is open: the room on the side the
+list opens on. It defaults to `--pjx-roster-picker-max-h`. Do not set it yourself.
+
+To restyle the block, scope your rules under an app class
+(`.team-form .pjx-roster-picker__chip { ... }`). Do not redefine `.pjx-roster-picker*` rules
+unscoped.
+
+## DOM contract
+
+These classes, attributes, events and states are versioned API.
+
+### Classes
+
+| Class | Element |
+|---|---|
+| `.pjx-roster-picker` | Picker root |
+| `.pjx-roster-picker__search` | Wraps the search box and its results list |
+| `.pjx-roster-picker__input` | The search box |
+| `.pjx-roster-picker__results` | The results list (`#<id>-results`) |
+| `.pjx-roster-picker__results--above` | The results list, opened above the box |
+| `.pjx-roster-picker__results-page` | One `PJXRosterResults` page |
+| `.pjx-roster-picker__pick` | A result row (a button) |
+| `.pjx-roster-picker__pick-avatar`, `.pjx-roster-picker__pick-icon`, `.pjx-roster-picker__pick-text`, `.pjx-roster-picker__pick-label`, `.pjx-roster-picker__pick-subtitle`, `.pjx-roster-picker__pick-add` | Result row parts |
+| `.pjx-roster-picker__empty` | The `empty_message` paragraph |
+| `.pjx-roster-picker__more` | The paging sentinel |
+| `.pjx-roster-picker__chips` | The chip list |
+| `.pjx-roster-picker__chip` | Chip root |
+| `.pjx-roster-picker__chip-input` | The chip's hidden input |
+| `.pjx-roster-picker__chip-row`, `.pjx-roster-picker__chip-avatar`, `.pjx-roster-picker__chip-icon`, `.pjx-roster-picker__chip-label`, `.pjx-roster-picker__chip-extra`, `.pjx-roster-picker__chip-detail` | Chip parts |
+| `.pjx-roster-picker__chip-remove` | The chip's remove button |
+| `.pjx-roster-picker__hint` | The limit hint |
+| `.pjx-roster-picker__validity` | The hidden input `required` adds |
+| `.pjx-roster-picker--invalid` | The root, after a failed submit |
+
+### Attributes
+
+| Attribute | On | Meaning |
+|---|---|---|
+| `data-pjx-roster-picker` | Picker root | Marks a picker. |
+| `data-name`, `data-max-items`, `data-empty-message` | Picker root | The `name`, `max_items` and `empty_message` props. |
+| `data-disabled` | Picker root | Present when disabled. |
+| `data-pjx-roster-picker-portal` | Picker root | Present with `portal=True`. |
+| `role="combobox"`, `aria-autocomplete="list"` | Search box | Always. |
+| `aria-expanded` | Search box | `"true"` while the list is open. |
+| `aria-controls="<id>-results"` | Search box | Names the results list. |
+| `aria-required="true"` | Search box | Present with `required=True`. |
+| `aria-invalid="true"` | Search box | Set after a failed submit. |
+| `data-last-query` | Search box | Set by the script: the text the shown rows answer. |
+| `id="<id>-results"`, `hidden` | Results list | Its id, and `hidden` while closed. |
+| `data-pjx-roster-results` | Results page | Marks one page. |
+| `data-pjx-roster-pick`, `data-value` | Result row | Marks a row and holds its value. |
+| `data-pjx-roster-chip` | Chip root | Marks a chip. |
+| `data-pjx-roster-remove` | Remove button | Marks the button that drops its chip. |
+
+### Events
+
+All `pjx:roster-picker:*` events and their `detail` are listed in [Event list](#event-list).
+
+### State
+
+| State | Meaning |
+|---|---|
+| `[aria-expanded="true"]` on the search box | The list is open. |
+| `[hidden]` on the results list | The list is closed. |
+| `disabled` on the search box | The picker is full. |
+| `[hidden]` on the hint | The picker is not full. |
+| `.pjx-roster-picker--invalid` on the root, `aria-invalid` on the box | A submit failed while nothing was chosen. Cleared by the next pick. |
+| `.pjx-roster-picker__results--above` on the results list | The list opened above the box. |
+| `hidden` on a result row | The row's `data-value` is already chipped. |

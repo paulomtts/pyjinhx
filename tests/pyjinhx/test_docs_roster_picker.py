@@ -24,6 +24,28 @@ from pyjinhx.builtins import (
 _ROOT = Path(__file__).resolve().parents[2]
 _GUIDE = _ROOT / "docs" / "guide" / "roster-picker.md"
 
+_UI = _ROOT / "pyjinhx" / "builtins" / "ui"
+_CSS = _UI / "pjx_roster_picker" / "pjx_roster_picker.css"
+_JS = _UI / "pjx_roster_picker" / "src" / "picker.js"
+_TEMPLATES = (
+    _UI / "pjx_roster_picker" / "pjx_roster_picker.pjx",
+    _UI / "pjx_roster_chip" / "pjx_roster_chip.pjx",
+    _UI / "pjx_roster_results" / "pjx_roster_results.pjx",
+)
+# The .py files hold the classes composed in Python (the avatar, icon and
+# sentinel classes), which no template or stylesheet spells out.
+_SOURCES = (
+    _CSS,
+    _JS,
+    *_TEMPLATES,
+    _UI / "pjx_roster_chip" / "pjx_roster_chip.py",
+    _UI / "pjx_roster_results" / "pjx_roster_results.py",
+)
+
+_CLASS_OR_TOKEN = re.compile(r"pjx-roster-picker[\w-]*")
+_DATA_ATTR = re.compile(r"data-pjx-roster[\w-]*")
+_EVENT = re.compile(r"pjx:roster-picker:[\w-]+")
+
 # Built by the component from other fields, never passed by the app.
 _DERIVED = {"chips", "visuals", "add_icons", "sentinel", "visual", "remove_icon"}
 # Every component takes these; the guide says so once instead of per table.
@@ -59,6 +81,19 @@ def _snippet(heading: str) -> str:
     match = re.search(r"```python\n(.*?)```", _section(_guide(), heading), re.DOTALL)
     assert match, f"no python block under {heading}"
     return match.group(1)
+
+
+def _names(text: str) -> set[str]:
+    # A trailing - or _ comes from a wildcard (--pjx-roster-picker-*), not a name.
+    found = {name.rstrip("-_") for name in _CLASS_OR_TOKEN.findall(text)}
+    found |= set(_DATA_ATTR.findall(text))
+    found |= set(_EVENT.findall(text))
+    return found
+
+
+def _mentions(text: str, name: str) -> bool:
+    """Whether ``name`` occurs whole, not only as the start of a longer name."""
+    return re.search(re.escape(name) + r"(?![\w-])", text) is not None
 
 
 @pytest.fixture
@@ -206,3 +241,40 @@ def test_props_tables_list_every_user_facing_field(model):
 
     fields = set(model.model_fields) - _DERIVED - _COMMON
     assert fields - documented == set()
+
+
+def test_every_named_class_attribute_token_and_event_exists():
+    sources = "\n".join(path.read_text(encoding="utf-8") for path in _SOURCES)
+    named = _names(_guide())
+
+    assert named, "the guide names no roster picker class, attribute or event"
+    ghosts = sorted(name for name in named if not _mentions(sources, name))
+    assert not ghosts, f"the guide names what the sources lack: {ghosts}"
+
+
+def test_guide_names_every_shipped_class_token_and_event():
+    css = _CSS.read_text(encoding="utf-8")
+    root_block = re.search(r":where\(:root\)\s*\{(.*?)\}", css, re.DOTALL)
+    assert root_block, "no :where(:root) token block in the stylesheet"
+    classes = set(re.findall(r"\.(pjx-roster-picker[\w-]*)", css))
+    tokens = set(re.findall(r"(--pjx-roster-picker-[\w-]+)\s*:", root_block.group(1)))
+    attributes = {
+        name
+        for path in _TEMPLATES
+        for name in _DATA_ATTR.findall(path.read_text(encoding="utf-8"))
+    }
+    events = set(
+        re.findall(
+            r"fire\(\s*picker,\s*'(pjx:roster-picker:[\w-]+)'",
+            _JS.read_text(encoding="utf-8"),
+        )
+    )
+    assert classes and tokens and attributes and events
+
+    guide = _guide()
+    missing = sorted(
+        name
+        for name in classes | tokens | attributes | events
+        if not _mentions(guide, name)
+    )
+    assert not missing, f"the guide does not document: {missing}"
