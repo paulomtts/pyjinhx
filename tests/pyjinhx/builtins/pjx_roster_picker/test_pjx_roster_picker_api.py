@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
+from urllib.parse import parse_qs, urlsplit
 
 import pytest
 
@@ -313,7 +314,7 @@ def test_values_does_not_open_focus_or_announce(
     assert page_errors == []
 
 
-@pytest.mark.parametrize("name", ["values"])
+@pytest.mark.parametrize("name", ["values", "open", "close"])
 @pytest.mark.parametrize("root_js", NON_PICKER_ROOTS)
 def test_api_throws_for_a_non_picker_root(
     page: Page, session: RenderSession, page_errors: list[str], name: str, root_js: str
@@ -324,7 +325,7 @@ def test_api_throws_for_a_non_picker_root(
     assert page_errors == []
 
 
-@pytest.mark.parametrize("name", ["values"])
+@pytest.mark.parametrize("name", ["values", "open", "close"])
 @pytest.mark.parametrize("root_js", INSIDE_ROOTS)
 def test_api_throws_for_an_element_inside_a_picker(
     page: Page, session: RenderSession, page_errors: list[str], name: str, root_js: str
@@ -336,4 +337,225 @@ def test_api_throws_for_an_element_inside_a_picker(
     # Nothing changed before the throw: the list is still closed and unasked.
     assert _state(page) == CLOSED
     assert requests == []
+    assert page_errors == []
+
+
+def test_open_opens_the_list_and_searches(
+    page: Page, session: RenderSession, page_errors: list[str]
+):
+    requests = _serve(page, session, _picker(session))
+    page.evaluate(
+        "() => { document.querySelector('#p .pjx-roster-picker__input').value = 'Per'; }"
+    )
+
+    with page.expect_request(CANDIDATES, timeout=5000) as request:
+        assert _api(page, "open") is True
+        assert _state(page) == OPEN
+    _settle(page)
+
+    query = parse_qs(urlsplit(request.value.url).query, keep_blank_values=True)
+    assert query["q"] == ["Per"]
+    assert len(requests) == 1
+    assert _opens(page) == 1
+    assert page_errors == []
+
+
+def test_open_leaves_focus_where_it_was(
+    page: Page, session: RenderSession, page_errors: list[str]
+):
+    body = '<button id="trigger" type="button">Add</button>' + _picker(session)
+    _serve(page, session, body)
+    page.focus("#trigger")
+
+    assert _api(page, "open") is True
+    _settle(page)
+
+    assert page.evaluate("() => document.activeElement.id") == "trigger"
+    assert _state(page) == OPEN
+    assert page_errors == []
+
+
+def test_open_on_an_open_list_returns_true_and_asks_nothing_more(
+    page: Page, session: RenderSession, page_errors: list[str]
+):
+    requests = _serve(page, session, _picker(session))
+
+    assert _api(page, "open") is True
+    assert _api(page, "open") is True
+    _settle(page)
+
+    assert _state(page) == OPEN
+    assert _opens(page) == 1
+    assert len(requests) == 1
+    assert page_errors == []
+
+
+def test_open_after_close_does_not_search_again(
+    page: Page, session: RenderSession, page_errors: list[str]
+):
+    requests = _serve(page, session, _picker(session))
+
+    _api(page, "open")
+    _wait_rows(page)
+    _wait_last_query(page, "")
+    assert _api(page, "close") is True
+    assert _api(page, "open") is True
+    _settle(page)
+
+    assert _state(page) == OPEN
+    assert len(requests) == 1
+    assert page.locator("#p-results [data-pjx-roster-pick]").count() == 3
+    assert page_errors == []
+
+
+def test_close_closes_the_list_and_keeps_its_rows(
+    page: Page, session: RenderSession, page_errors: list[str]
+):
+    _serve(page, session, _picker(session))
+
+    _api(page, "open")
+    _wait_rows(page)
+    assert _api(page, "close") is True
+
+    assert _state(page) == CLOSED
+    assert page.locator("#p-results [data-pjx-roster-pick]").count() == 3
+    assert page_errors == []
+
+
+def test_close_on_a_closed_list_returns_true(
+    page: Page, session: RenderSession, page_errors: list[str]
+):
+    requests = _serve(page, session, _picker(session))
+    before = page.eval_on_selector("#p", "picker => picker.outerHTML")
+
+    assert _api(page, "close") is True
+    _settle(page)
+
+    assert page.eval_on_selector("#p", "picker => picker.outerHTML") == before
+    assert _state(page) == CLOSED
+    assert requests == []
+    assert page_errors == []
+
+
+def test_open_and_close_move_a_portal_list_to_body_and_home(
+    page: Page, session: RenderSession, page_errors: list[str]
+):
+    _serve(page, session, _picker(session, portal=True))
+    where = """() => {
+        const mount = document.getElementById('p-results');
+        const search = document.querySelector('#p .pjx-roster-picker__search');
+        return {
+            onBody: mount.parentElement === document.body,
+            home: mount.parentElement === search && search.lastElementChild === mount,
+        };
+    }"""
+
+    assert _api(page, "open") is True
+    assert page.evaluate(where) == {"onBody": True, "home": False}
+    assert _api(page, "close") is True
+    assert page.evaluate(where) == {"onBody": False, "home": True}
+    assert _state(page) == CLOSED
+    assert page_errors == []
+
+
+def test_open_and_close_return_false_for_a_disabled_picker(
+    page: Page, session: RenderSession, page_errors: list[str]
+):
+    requests = _serve(
+        page, session, _picker(session, disabled=True, items=[_item("v0")])
+    )
+    before = page.eval_on_selector("#p", "picker => picker.outerHTML")
+
+    assert _api(page, "open") is False
+    assert _api(page, "close") is False
+    _settle(page)
+
+    assert page.eval_on_selector("#p", "picker => picker.outerHTML") == before
+    assert _opens(page) == 0
+    assert requests == []
+    assert page_errors == []
+
+
+def test_open_and_close_return_false_without_an_input(
+    page: Page, session: RenderSession, page_errors: list[str]
+):
+    requests = _serve(page, session, _picker(session))
+    page.evaluate(
+        "() => document.querySelector('#p .pjx-roster-picker__input').remove()"
+    )
+
+    assert _api(page, "open") is False
+    assert _api(page, "close") is False
+    _settle(page)
+
+    assert page.evaluate("() => document.getElementById('p-results').hidden") is True
+    assert requests == []
+    assert page_errors == []
+
+
+def test_open_and_close_return_false_at_the_cap(
+    page: Page, session: RenderSession, page_errors: list[str]
+):
+    items = [_item("v0"), _item("v1")]
+    requests = _serve(page, session, _picker(session, max_items=2, items=items))
+
+    assert _api(page, "open") is False
+    assert _api(page, "close") is False
+    _settle(page)
+
+    assert _state(page) == CLOSED
+    assert _opens(page) == 0
+    assert requests == []
+    assert page_errors == []
+
+
+def test_close_before_the_search_answers_keeps_the_list_closed(
+    page: Page, session: RenderSession, page_errors: list[str]
+):
+    _serve(page, session, _picker(session))
+
+    # The debounced search was already asked for, so it still goes out; its
+    # rows must land in the hidden list without opening it.
+    with page.expect_request(CANDIDATES, timeout=5000):
+        assert _api(page, "open") is True
+        assert _api(page, "close") is True
+    _wait_rows(page)
+    _settle(page)
+
+    assert _state(page) == CLOSED
+    assert page_errors == []
+
+
+def test_api_works_when_the_script_is_loaded_twice(
+    page: Page, session: RenderSession, page_errors: list[str]
+):
+    scripts = HTMX_TAG + ASSET_TAG + ASSET_TAG
+    requests = _serve(page, session, _picker(session, items=[_item("v0")]), scripts)
+
+    assert _api(page, "values") == ["v0"]
+    assert _api(page, "open") is True
+    _settle(page)
+    assert _state(page) == OPEN
+    assert _opens(page) == 1
+    assert len(requests) == 1
+    assert _api(page, "close") is True
+    assert _state(page) == CLOSED
+    assert page_errors == []
+
+
+@pytest.mark.parametrize("name", ["values", "open", "close"])
+def test_api_throws_for_a_portaled_list_on_body(
+    page: Page, session: RenderSession, page_errors: list[str], name: str
+):
+    _serve(page, session, _picker(session, portal=True))
+    _api(page, "open")
+
+    thrown = _thrown(page, name, "document.getElementById('p-results')")
+
+    assert thrown == [True, MESSAGE.format(name=name)]
+    # The list on body is still open and still on body: nothing ran.
+    assert _state(page) == OPEN
+    assert page.evaluate(
+        "() => document.getElementById('p-results').parentElement === document.body"
+    )
     assert page_errors == []

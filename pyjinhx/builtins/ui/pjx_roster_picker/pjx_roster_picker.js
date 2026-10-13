@@ -98,7 +98,7 @@
     // re-running it, or two pickers shipping it) finds it and returns before
     // binding, so the document listeners below exist once per page.
     if (window.pjx.rosterPicker) return;
-    window.pjx.rosterPicker = { placement: placement, values: values };
+    window.pjx.rosterPicker = { placement: placement, values: values, open: open, close: close };
 
     // Focus this script moves (Escape, a pick or a remove handing it back to
     // the box) is not the user arriving, so it must not reopen the list.
@@ -463,6 +463,45 @@
     function values(root) {
         checkRoot('values', root);
         return chippedValues(root);
+    }
+
+    // A disabled picker renders no box and a full one disables it; a user
+    // cannot open either, and a list there could take no pick.
+    function usableInput(picker) {
+        const input = searchInput(picker);
+        return input && !input.disabled ? input : null;
+    }
+
+    /**
+     * Open a picker's list and search for the box's text, as a user's click does.
+     *
+     * Takes the picker root. A reopen over the text the kept list was
+     * fetched for sends no request, and an already open list is left as it
+     * is. Focus does not move. Returns false, changing nothing, when the
+     * picker is disabled, has no search box, or is full. Throws when root is
+     * not a picker root.
+     */
+    function open(root) {
+        checkRoot('open', root);
+        const input = usableInput(root);
+        if (!input) return false;
+        openByUser(input);
+        return true;
+    }
+
+    /**
+     * Close a picker's list, keeping its rows and bringing a portaled list home.
+     *
+     * Takes the picker root. Closing a closed list changes nothing. Focus
+     * does not move. Returns false, changing nothing, when the picker is
+     * disabled, has no search box, or is full. Throws when root is not a
+     * picker root.
+     */
+    function close(root) {
+        checkRoot('close', root);
+        if (!usableInput(root)) return false;
+        setOpen(root, false);
+        return true;
     }
 
     // An event can target document itself, which has no closest or matches.
