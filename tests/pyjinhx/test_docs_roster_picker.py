@@ -159,3 +159,27 @@ def test_quick_start_next_pages_keep_the_exclude(client):
     seen = _walk_pages(client, {"q": "", "exclude": "alan", "picker_id": "team"})
 
     assert sorted(seen) == ["ada", "edsger", "grace"]
+
+
+def test_updating_snippet_chip_posts_under_the_picker_name():
+    # The update snippet adds a route to the quick start's app, as the guide says.
+    source = _snippet("## Quick start") + _snippet("## Updating a picker")
+    namespace: dict[str, Any] = {}
+    exec(source, namespace)  # noqa: S102 — the published snippets
+    with TestClient(namespace["app"]) as test_client:
+        response = test_client.post("/team/lead")
+
+    assert response.status_code == 200
+    assert "data-pjx-roster-chip" in response.text
+    assert re.search(r'<input type="hidden"[^>]*name="members"', response.text)
+
+
+def test_api_section_documents_values_open_close_only():
+    guide = _guide()
+    api = _section(guide, "### `window.pjx.rosterPicker`")
+
+    for call in ("values(root)", "open(root)", "close(root)"):
+        assert f"pjx.rosterPicker.{call}" in api
+    # placement is exposed only for a unit test, never as API.
+    assert "placement(" not in guide
+    assert "rosterPicker.placement" not in guide

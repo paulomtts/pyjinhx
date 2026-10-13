@@ -82,3 +82,130 @@ find its picker.
 `PJXRosterPicker` is built in Python. Its `items` is a list of models, which a `.pjx` tag cannot
 pass, as with `PJXSelect`'s `options`.
 
+
+## Search route contract
+
+The search box sends `GET <candidates_url>` with three parameters:
+
+| Parameter | Value |
+|---|---|
+| `q` | The text in the search box. |
+| `exclude` | The values already chipped, joined with `,`. Read when the request is built. |
+| `picker_id` | The picker's `id`. |
+
+Typing searches after a 300 ms pause. The box has `hx-sync="this:replace"`, so a newer search
+replaces one still in flight. The answer is swapped into the results list (`innerHTML`).
+
+- An empty `q` is a normal request. Answer it with the first entries, as the quick start does.
+- Return `PJXRosterResults(picker_id=picker_id, ...)`.
+- Honouring `exclude` is optional. The picker hides any row whose value is already chipped, so a
+  route that ignores it still shows no duplicates.
+- **Paging.** The next page is fetched by the sentinel, not by the search box, so its request
+  carries no `q`, `exclude` or `picker_id` of its own. `next_url` must hold everything the route
+  needs: the quick start passes all three plus `cursor`. The new page replaces the sentinel inside
+  the list.
+- **Values with commas.** `exclude` is joined with `,`, so a value that contains a comma cannot be
+  split back reliably. A route that honours `exclude` needs values without commas, or it should
+  ignore `exclude` and rely on the picker hiding chipped rows.
+- The search box is detached from any enclosing form, so `q` never posts with the form. Only the
+  chips' hidden inputs post, each as `<name>=<value>`.
+- Reopening the list over the same text sends no request: the rows it holds already answer it. A
+  search that fails or is aborted keeps the rows it would have replaced.
+
+## Behaviour
+
+- **Open and close.** A click on the search box, or focus arriving on it, opens the list and
+  searches for the box's text. Typing into a closed list opens it. A pick, focus leaving the box
+  and its list, or Escape closes it. Closing hides the rows but keeps them.
+- **Pick and remove.** A pick appends the result's chip, or replaces the chip when `max_items=1`.
+  It then clears the box and puts focus back in it. Removing a chip moves focus to the next chip's
+  remove button, or to the box when there is none.
+- **Limit.** `max_items=0` takes any number of chips. `max_items=1` swaps its chip on each pick and
+  is never full. With `max_items` above 1, the picker is full once it holds that many chips: the
+  search box is disabled, the hint shows `limit_label`, and focus goes to the new chip's remove
+  button. Removing a chip undoes all three. A picker rendered with `max_items` items starts full.
+- **Required.** `required=True` adds a visually hidden `input.pjx-roster-picker__validity` with
+  `required`. It has no `name`, so it never posts. While nothing is chosen it blocks form submit.
+  When the browser reports it invalid, the search box takes focus and gets `aria-invalid="true"`,
+  and the root gets `pjx-roster-picker--invalid`. The next pick clears both. A required picker's
+  box also has `aria-required="true"`.
+- **Disabled.** A disabled picker renders no search box and no remove buttons. The chips' hidden
+  inputs stay, so the selection still submits. Its validity input is disabled too, so a disabled
+  picker never blocks its form.
+- **Portal.** With `portal=True`, the open list moves to `document.body` and is fixed under the
+  search box, so an `overflow: hidden` or `auto` ancestor cannot clip it. It goes back into the
+  picker when it closes. `PJXSelect(portal=True)` offers the same escape hatch, though it moves its
+  whole root.
+- **Placement.** The list opens under the search box, or above it
+  (`pjx-roster-picker__results--above`) when there is not room for it below. Its height is capped by
+  `--pjx-roster-picker-max-h` and by the room on that side. It is placed again when the window is
+  resized or an ancestor scrolls.
+- **Keyboard.** ArrowDown in the open search box moves focus to the first visible result. Results
+  are buttons, so Tab reaches them and Enter or Space picks. Escape closes the list and returns
+  focus to the box. Escape on a closed list is left alone, so it reaches an enclosing dialog. There
+  is no ArrowUp, Enter, Home or End roving from the box, and no `aria-activedescendant`.
+
+## Updating a picker
+
+Every update is a plain htmx swap of server-rendered markup. The picker listens on the document, so
+nothing needs rebinding after a swap.
+
+- **Swap the whole picker.** Re-render `PJXRosterPicker` with the same `id` and new `items`, and swap
+  it over the old one.
+- **Swap one chip or the chip list.** A swap that adds or removes chips, including an `outerHTML`
+  swap whose answer is empty, brings the limit, the hint, the validity input and the hidden result
+  rows back in step with the chips.
+
+A swap fires no `pjx:roster-picker:*` events. Those report what the user did, not what the server
+changed.
+
+This route adds a chip from the server. A button with `hx-post="/team/lead"`,
+`hx-target="#team .pjx-roster-picker__chips"` and `hx-swap="beforeend"` appends it to the picker
+from the quick start:
+
+```python
+from pyjinhx.builtins import PJXRosterChip
+
+
+@app.post("/team/lead")
+def add_lead():
+    # Chips the picker builds get its name; a hand-rendered one needs it too,
+    # or its hidden input posts under no name.
+    return PJXRosterChip(value="grace", label="Grace Hopper", name="members")
+```
+
+## Events and JavaScript API
+
+### Event list
+
+Every event is dispatched on the picker root and bubbles. A `before-*` event is cancelable:
+`event.preventDefault()` refuses the pick or keeps the chip. `detail` carries the value, not the
+`{reason, trigger}` of the overlay builtins: a pick has no dismiss reason.
+
+| Event | `detail` | Cancelable | Fired when |
+|---|---|---|---|
+| `pjx:roster-picker:before-pick` | `{value}` | yes | A result is about to be added. |
+| `pjx:roster-picker:pick` | `{value}` | no | The chip was added. |
+| `pjx:roster-picker:before-remove` | `{value}` | yes | A chip is about to be dropped. |
+| `pjx:roster-picker:remove` | `{value}` | no | The chip was dropped. |
+| `pjx:roster-picker:change` | `{values}` | no | After each pick or remove, once, with every chip's value in chip order. |
+
+```js
+document.getElementById("team").addEventListener("pjx:roster-picker:before-remove", (event) => {
+    // The team's owner cannot be taken off it.
+    if (event.detail.value === "ada") event.preventDefault();
+});
+```
+
+### `window.pjx.rosterPicker`
+
+| Call | Returns |
+|---|---|
+| `pjx.rosterPicker.values(root)` | A new array of the chips' values, in chip order. |
+| `pjx.rosterPicker.open(root)` | `true`. Opens the list and searches, as a click does. A reopen over the same text sends no request. Focus does not move. |
+| `pjx.rosterPicker.close(root)` | `true`. Closes the list and keeps its rows. Focus does not move. |
+
+`open` and `close` return `false` and change nothing when the picker is disabled or full. All three
+throw `Error("pjx.rosterPicker.<name>: expected a roster picker root ([data-pjx-roster-picker])")`
+when `root` is anything but the picker root.
+
