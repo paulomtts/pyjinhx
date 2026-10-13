@@ -85,6 +85,9 @@ var __pjxD3=(()=>{var fe=Object.defineProperty;var vn=Object.getOwnPropertyDescr
 
   const d3 = __pjxD3;
   const instances = new WeakMap();
+  // Aborted when a stage is dropped: everything the stage started outside
+  // its own elements listens to it, so one abort stops all of it.
+  const lives = new WeakMap();
   // Room left around the nodes when a fit frames them.
   const FIT_PAD = 48;
   // A press that moves no further than this, in screen pixels, is a click.
@@ -136,7 +139,7 @@ var __pjxD3=(()=>{var fe=Object.defineProperty;var vn=Object.getOwnPropertyDescr
   // Delegated, so controls swapped in later work without rebinding. A
   // control in a nested stage belongs to that stage's own listener, and the
   // values are matched one by one so a name like "constructor" is no step.
-  function listenForControls(root, canvas, instance) {
+  function listenForControls(root, canvas, instance, signal) {
     canvas.addEventListener('click', (event) => {
       const control = event.target.closest('[data-pjx-graph-zoom], [data-pjx-graph-fit]');
       if (!control || !canvas.contains(control)
@@ -148,13 +151,13 @@ var __pjxD3=(()=>{var fe=Object.defineProperty;var vn=Object.getOwnPropertyDescr
       const value = control.getAttribute('data-pjx-graph-zoom');
       if (value === 'in') instance.zoomBy(1);
       else if (value === 'out') instance.zoomBy(-1);
-    });
+    }, { signal: signal });
   }
 
   // Delegated, like the controls. A click is judged by its nearest node
   // inside this viewport: a node of a nested stage is left to that stage,
   // while the nested stage's own background still lies inside one of ours.
-  function listenForSelection(root, canvas, viewport, plane, choose, deselect) {
+  function listenForSelection(root, canvas, viewport, plane, choose, deselect, signal) {
     canvas.addEventListener('click', (event) => {
       const target = event.target;
       const node = target.closest('[data-node-id]');
@@ -171,7 +174,7 @@ var __pjxD3=(()=>{var fe=Object.defineProperty;var vn=Object.getOwnPropertyDescr
         return;
       }
       if (isBackground(target, canvas, viewport)) deselect();
-    });
+    }, { signal: signal });
   }
 
   function paint(viewport, t) {
@@ -246,7 +249,7 @@ var __pjxD3=(()=>{var fe=Object.defineProperty;var vn=Object.getOwnPropertyDescr
     return d3.zoomIdentity.translate(view.x, view.y).scale(clampScale(view.k, extent));
   }
 
-  function attachZoom(root, canvas, viewport) {
+  function attachZoom(root, canvas, viewport, signal) {
     const extent = scaleExtent(root);
     const storageKey = root.getAttribute('data-pjx-graph-storage-key');
     const key = storageKey ? 'pjx-graph:' + storageKey : null;
@@ -259,7 +262,8 @@ var __pjxD3=(()=>{var fe=Object.defineProperty;var vn=Object.getOwnPropertyDescr
     // Double-click stays free for selection; zoom is the wheel and the controls.
     d3.select(canvas).call(zoom).on('dblclick.zoom', null);
     // d3 lets a wheel at either end of the range scroll the page.
-    canvas.addEventListener('wheel', (event) => event.preventDefault(), { passive: false });
+    canvas.addEventListener('wheel', (event) => event.preventDefault(),
+      { passive: false, signal: signal });
     const restored = key ? storedView(readRecord(key), extent) : null;
     d3.select(canvas).call(zoom.transform, restored || d3.zoomIdentity);
     return { zoom: zoom, extent: extent, key: key, restored: restored !== null };
@@ -368,12 +372,14 @@ var __pjxD3=(()=>{var fe=Object.defineProperty;var vn=Object.getOwnPropertyDescr
   // A stage inserted mid-layout reports a size that is about to change, so
   // wait until it holds for a frame; a hidden stage never gets one, so give up
   // after ten tries.
-  function whenLaidOut(canvas, done) {
+  function whenLaidOut(canvas, signal, done) {
     let attempts = 0;
     (function check() {
       const width = canvas.clientWidth;
       const height = canvas.clientHeight;
       requestAnimationFrame(() => {
+        // A dropped stage never lays out, and its root must not turn ready.
+        if (signal.aborted) return;
         attempts += 1;
         const settled = width > 0 && height > 0
           && width === canvas.clientWidth && height === canvas.clientHeight;
@@ -382,7 +388,7 @@ var __pjxD3=(()=>{var fe=Object.defineProperty;var vn=Object.getOwnPropertyDescr
     })();
   }
 
-  function createInstance(root, canvas, viewport, plane, view) {
+  function createInstance(root, canvas, viewport, plane, view, signal) {
     const prefix = 'pjx-graph-edge-' + (++stageCount) + '-';
     // Only the last pass's own elements are cleared, so anything else in the
     // plane survives a redraw.
@@ -390,6 +396,42 @@ var __pjxD3=(()=>{var fe=Object.defineProperty;var vn=Object.getOwnPropertyDescr
     // At most one selection, a node or an edge. Kind and id are kept
     // together, so a node and an edge sharing an id are different selections.
     let selected = null;
+
+    // The first of several nodes sharing an id is the one findNode picks.
+    function indexNodes() {
+      const index = new Map();
+      nodesOf(root, viewport).forEach((node) => {
+        const id = node.getAttribute('data-node-id');
+        if (!index.has(id)) index.set(id, node);
+      });
+      return index;
+    }
+
+    // The raw data-x/y each node was last placed with. Only a node whose
+    // pair differs is placed: a swapped-in element has none yet, while
+    // placing a kept node the server did not move would snap a drop the
+    // user just made without a storage key back to the server position.
+    const placedWith = new WeakMap();
+
+    function serverPosition(node) {
+      return JSON.stringify([node.getAttribute('data-x'), node.getAttribute('data-y')]);
+    }
+
+    function placeChanged() {
+      const changed = nodesOf(root, viewport)
+        .filter((node) => placedWith.get(node) !== serverPosition(node));
+      placeAll(changed, view.key);
+      changed.forEach((node) => placedWith.set(node, serverPosition(node)));
+    }
+
+    // Before the edges and any fit, so both see where the nodes show.
+    placeChanged();
+
+    // Every edge is redrawn on each reconcile: that keeps every pair's fan
+    // correct and is cheap. At 200 edges over 50 nodes a redraw cost about
+    // 15 ms, 12.6 ms of it finding nodes rather than drawing, so a redraw
+    // indexes the nodes once and findNode reads that index while it runs.
+    let index = null;
 
     // World coordinates are the viewport's untransformed pixels, the space
     // data-x/y are written in, so they do not change with pan/zoom.
@@ -399,8 +441,10 @@ var __pjxD3=(()=>{var fe=Object.defineProperty;var vn=Object.getOwnPropertyDescr
       return { x: (clientX - origin.left) / k, y: (clientY - origin.top) / k };
     }
 
-    // Compared as strings, so ids need no CSS escaping.
+    // Compared as strings, so ids need no CSS escaping. Outside a redraw the
+    // DOM is read live, so a node the app has just added is found at once.
     function findNode(id) {
+      if (index) return index.get(id) || null;
       return nodesOf(root, viewport)
         .find((node) => node.getAttribute('data-node-id') === id) || null;
     }
@@ -522,7 +566,7 @@ var __pjxD3=(()=>{var fe=Object.defineProperty;var vn=Object.getOwnPropertyDescr
       return node !== null && node.getClientRects().length > 0;
     }
 
-    function redraw() {
+    function drawAll() {
       drawn.forEach((el) => el.remove());
       drawn = [];
       // A span with no edge id at all is not an edge; an empty one still is.
@@ -574,9 +618,50 @@ var __pjxD3=(()=>{var fe=Object.defineProperty;var vn=Object.getOwnPropertyDescr
       mark(true);
     }
 
+    // Cleared even if drawing throws, so a stale index never outlives it.
+    function redraw() {
+      index = indexNodes();
+      try {
+        drawAll();
+      } finally {
+        index = null;
+      }
+    }
+
     function drawEdges() {
       redraw();
       root.dispatchEvent(new CustomEvent('pjx:graph:rendered', { bubbles: true, detail: null }));
+    }
+
+    // While a node or a wire is held, a reconcile only marks the stage
+    // dirty, so nothing moves under the pointer; the last gesture to end
+    // runs the one reconcile that was put off.
+    let gestures = 0;
+    let dirty = false;
+
+    function reconcile() {
+      // A dropped stage is detached for good, so nothing it would draw is seen.
+      if (signal.aborted) return;
+      if (gestures > 0) {
+        dirty = true;
+        return;
+      }
+      placeChanged();
+      drawEdges();
+    }
+
+    function beginGesture() {
+      gestures += 1;
+    }
+
+    // Called after the gesture's own work, so a drop is stored before the
+    // flush places the nodes. Cleared first, so a throw inside the flush
+    // cannot leave the stage stuck dirty.
+    function endGesture() {
+      gestures -= 1;
+      if (gestures > 0 || !dirty) return;
+      dirty = false;
+      reconcile();
     }
 
     // Only this stage's nodes with a server position drag: a drop needs a
@@ -626,7 +711,13 @@ var __pjxD3=(()=>{var fe=Object.defineProperty;var vn=Object.getOwnPropertyDescr
         window.removeEventListener('pointerup', end);
         window.removeEventListener('pointercancel', end);
         document.removeEventListener('selectstart', block);
-        if (!done.dragging) return;
+        if (done.dragging) drop(done);
+        endGesture();
+      }
+
+      // Read from the pressed element, even if the app has since replaced
+      // it, so the drop keeps the base the user dragged from.
+      function drop(done) {
         swallowClick();
         const id = done.node.getAttribute('data-node-id');
         const baseX = coordinate(done.node, 'x');
@@ -654,12 +745,16 @@ var __pjxD3=(()=>{var fe=Object.defineProperty;var vn=Object.getOwnPropertyDescr
           startX: parseFloat(style.getPropertyValue('--pjx-graph-node-x')),
           startY: parseFloat(style.getPropertyValue('--pjx-graph-node-y')),
         };
-        // On window, so the drag goes on outside the canvas.
-        window.addEventListener('pointermove', follow);
-        window.addEventListener('pointerup', end);
-        window.addEventListener('pointercancel', end);
-        document.addEventListener('selectstart', block);
-      });
+        // On window, so the drag goes on outside the canvas. Tied to the
+        // stage's life, so dropping the stage abandons the drag.
+        window.addEventListener('pointermove', follow, { signal: signal });
+        window.addEventListener('pointerup', end, { signal: signal });
+        window.addEventListener('pointercancel', end, { signal: signal });
+        document.addEventListener('selectstart', block, { signal: signal });
+        // From the press, not from the slop: a reconcile before the drag
+        // starts would place the node the user is about to move.
+        beginGesture();
+      }, { signal: signal });
     }
 
     // The nearest node, when it is one of this stage's own.
@@ -708,7 +803,13 @@ var __pjxD3=(()=>{var fe=Object.defineProperty;var vn=Object.getOwnPropertyDescr
         window.removeEventListener('pointerup', end);
         window.removeEventListener('pointercancel', end);
         document.removeEventListener('selectstart', block);
-        if (!done.dragging) return;
+        if (done.dragging) connect(done, event);
+        endGesture();
+      }
+
+      // Before the flush, so the drop is hit-tested against the nodes the
+      // user saw while wiring.
+      function connect(done, event) {
         swallowClick();
         if (event.type !== 'pointerup' || !findNode(done.from)) return;
         // The ghost takes no pointer events, so it never hides the node below.
@@ -737,11 +838,13 @@ var __pjxD3=(()=>{var fe=Object.defineProperty;var vn=Object.getOwnPropertyDescr
           clientX: event.clientX, clientY: event.clientY,
         };
         // On window, so a release outside the canvas still ends the wire.
-        window.addEventListener('pointermove', follow);
-        window.addEventListener('pointerup', end);
-        window.addEventListener('pointercancel', end);
-        document.addEventListener('selectstart', block);
-      });
+        // Tied to the stage's life, so dropping the stage abandons the wire.
+        window.addEventListener('pointermove', follow, { signal: signal });
+        window.addEventListener('pointerup', end, { signal: signal });
+        window.addEventListener('pointercancel', end, { signal: signal });
+        document.addEventListener('selectstart', block, { signal: signal });
+        beginGesture();
+      }, { signal: signal });
     }
 
     // Capturing, so it runs before the selection listener on the canvas.
@@ -749,15 +852,44 @@ var __pjxD3=(()=>{var fe=Object.defineProperty;var vn=Object.getOwnPropertyDescr
       if (!swallow) return;
       swallow = false;
       event.stopImmediatePropagation();
-    }, true);
+    }, { capture: true, signal: signal });
 
-    listenForSelection(root, canvas, viewport, plane, choose, deselect);
+    listenForSelection(root, canvas, viewport, plane, choose, deselect, signal);
     listenForDrag();
     listenForWire();
     return {
       root: root, box: box, inAnchor: inAnchor, outAnchor: outAnchor, fit: fit, zoomBy: zoomBy,
-      drawEdges: drawEdges, select: select, deselect: deselect,
+      drawEdges: drawEdges, select: select, deselect: deselect, reconcile: reconcile,
     };
+  }
+
+  // An edge or a node is drawn from these. style stays unwatched, since
+  // placing a node writes it.
+  const WATCHED = ['data-x', 'data-y', 'data-from', 'data-to', 'data-port', 'data-state',
+    'data-label'];
+
+  // The edge planes hold drawing only, the engine's own and a nested stage's,
+  // so their changes are skipped; otherwise every redraw would schedule the
+  // next. A watched name on the app's own markup inside a node is not ours.
+  function concernsGraph(m) {
+    if (m.target.closest('svg.pjx-graph__edge-plane')) return false;
+    return m.type === 'childList' || m.target.matches('[data-pjx-graph-edge], [data-node-id]');
+  }
+
+  // Swaps inside the viewport, and edits to what an edge or node is drawn
+  // from, reconcile once, in the next frame, however many records they make.
+  function observeViewport(viewport, instance, signal) {
+    let pending = false;
+    const observer = new MutationObserver((mutations) => {
+      if (pending || !mutations.some(concernsGraph)) return;
+      pending = true;
+      requestAnimationFrame(() => {
+        pending = false;
+        instance.reconcile();
+      });
+    });
+    observer.observe(viewport, { childList: true, subtree: true, attributeFilter: WATCHED });
+    signal.addEventListener('abort', () => observer.disconnect());
   }
 
   function mount(root) {
@@ -772,19 +904,20 @@ var __pjxD3=(()=>{var fe=Object.defineProperty;var vn=Object.getOwnPropertyDescr
     const viewport = part(canvas, '.pjx-graph__viewport', true);
     const plane = part(viewport, 'svg.pjx-graph__edge-plane', true);
     part(viewport, '.pjx-graph__nodes', false);
-    const view = attachZoom(root, canvas, viewport);
-    // Before the edges and any fit, so both see where the nodes show.
-    placeAll(nodesOf(root, viewport), view.key);
-    const instance = createInstance(root, canvas, viewport, plane, view);
+    const life = new AbortController();
+    const view = attachZoom(root, canvas, viewport, life.signal);
+    const instance = createInstance(root, canvas, viewport, plane, view, life.signal);
     instances.set(root, instance);
-    listenForControls(root, canvas, instance);
+    lives.set(root, life);
+    observeViewport(viewport, instance, life.signal);
+    listenForControls(root, canvas, instance, life.signal);
     // A restored view is where the user left off; only a fresh stage is framed.
     // Edges are drawn before ready, so whatever waits on ready sees them.
     if (view.restored) {
       instance.drawEdges();
       settle(root, canvas, view);
     } else {
-      whenLaidOut(canvas, () => {
+      whenLaidOut(canvas, life.signal, () => {
         instance.fit();
         instance.drawEdges();
         settle(root, canvas, view);
@@ -797,12 +930,27 @@ var __pjxD3=(()=>{var fe=Object.defineProperty;var vn=Object.getOwnPropertyDescr
     return instances.get(root) || null;
   }
 
-  function boot(subtree) {
+  // A root that has left the document is gone for good, so its instance
+  // stops and get() forgets it; a root put back later is mounted afresh.
+  function drop(root) {
+    const life = lives.get(root);
+    if (!life) return;
+    life.abort();
+    lives.delete(root);
+    instances.delete(root);
+  }
+
+  // The stages in a subtree, its own root included.
+  function stagesIn(subtree) {
     const stages = Array.from(subtree.querySelectorAll('[data-pjx-graph]'));
     if (subtree.matches && subtree.matches('[data-pjx-graph]')) {
       stages.unshift(subtree);
     }
-    stages.forEach((stage) => {
+    return stages;
+  }
+
+  function boot(subtree) {
+    stagesIn(subtree).forEach((stage) => {
       // One broken stage must not keep the others on the page from booting.
       try {
         mount(stage);
@@ -815,11 +963,19 @@ var __pjxD3=(()=>{var fe=Object.defineProperty;var vn=Object.getOwnPropertyDescr
   function watch() {
     boot(document);
     // Observing only after the parser is done: a stage it is still streaming
-    // is seen before its children exist and would fail to mount.
+    // is seen before its children exist and would fail to mount. A batch is
+    // judged by where its nodes ended up: a root moved within it is still in
+    // the document and keeps its instance, and one added and removed within
+    // it is not mounted, since nothing would be left to drop it.
     new MutationObserver((mutations) => {
-      mutations.forEach((m) => m.addedNodes.forEach((node) => {
-        if (node.nodeType === 1) boot(node);
-      }));
+      mutations.forEach((m) => {
+        m.removedNodes.forEach((node) => {
+          if (node.nodeType === 1 && !node.isConnected) stagesIn(node).forEach(drop);
+        });
+        m.addedNodes.forEach((node) => {
+          if (node.nodeType === 1 && node.isConnected) boot(node);
+        });
+      });
     }).observe(document.documentElement, { childList: true, subtree: true });
   }
 

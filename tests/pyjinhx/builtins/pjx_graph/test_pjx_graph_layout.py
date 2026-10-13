@@ -540,7 +540,7 @@ def test_mounting_twice_fits_once(page, page_errors, session):
     assert page_errors == []
 
 
-def test_a_stage_removed_before_the_fit_lands_does_not_throw(
+def test_a_stage_removed_before_the_fit_lands_is_dropped_unfitted(
     page, page_errors, console_errors, session
 ):
     _serve(page, "")
@@ -554,7 +554,17 @@ def test_a_stage_removed_before_the_fit_lands_does_not_throw(
         }""",
         _spread(session),
     )
-    page.wait_for_function("() => window.removed.hasAttribute('data-pjx-graph-ready')")
+    # Past the ten frames a stage that never lays out waits before it fits.
+    page.evaluate(
+        """() => new Promise((done) => {
+            const tick = (left) => left ? requestAnimationFrame(() => tick(left - 1)) : done();
+            tick(15);
+        })"""
+    )
+    assert page.evaluate("() => pjx.graph.get(window.removed) === null")
+    assert not page.evaluate(
+        "() => window.removed.hasAttribute('data-pjx-graph-ready')"
+    )
     assert console_errors == []
     assert page_errors == []
 

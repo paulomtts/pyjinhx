@@ -362,7 +362,9 @@ def test_reloading_installs_no_second_observer(
     assert page_errors == []
 
 
-def test_reinserted_stage_keeps_its_instance(graph_page, page_errors, session):
+def test_stage_reinserted_in_a_later_task_gets_a_fresh_instance(
+    graph_page, page_errors, session
+):
     _append(graph_page, _stage(session))
     graph_page.wait_for_function(_booted())
     assert graph_page.evaluate(
@@ -371,9 +373,11 @@ def test_reinserted_stage_keeps_its_instance(graph_page, page_errors, session):
             const instance = pjx.graph.get(el);
             el.remove();
             await new Promise((resolve) => setTimeout(resolve));
+            const dropped = pjx.graph.get(el) === null;
             document.body.appendChild(el);
             await new Promise((resolve) => setTimeout(resolve));
-            return pjx.graph.get(el) === instance;
+            const fresh = pjx.graph.get(el);
+            return dropped && fresh !== null && fresh !== instance;
         }"""
     )
     assert page_errors == []
