@@ -5,7 +5,8 @@ The roster picker is a server-searched multi-picker. The user types into a searc
 hidden input posts with the form. The app supplies one search route. The JavaScript and CSS ship
 with the component, so there is no script call. The engine is headless: it opens, searches, picks
 and removes, then reports what the user did as `pjx:roster-picker:*` events. It is a separate family
-from `PJXSelect`, which stays the select for a fixed list of options.
+from `PJXSelect`, which stays the select for a fixed list of options;
+[ADR 0005](../decisions/0005-roster-picker.md) records why.
 
 ## Quick start
 

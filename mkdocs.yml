@@ -123,6 +123,7 @@ nav:
       - "0002: Cache backend architecture": decisions/0002-cache-backend-architecture.md
       - "0003: Builtin CSS ordering": decisions/0003-builtin-css-ordering.md
       - "0004: Graph reconcile model": decisions/0004-graph-reconcile-model.md
+      - "0005: Roster picker": decisions/0005-roster-picker.md
 
 extra_css:
   - stylesheets/toc-collapse.css
