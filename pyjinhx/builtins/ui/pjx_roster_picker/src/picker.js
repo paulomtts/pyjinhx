@@ -236,8 +236,8 @@
         );
     }
 
-    // The markup renders a full picker this way already, so only a pick or
-    // a remove has to keep it in step.
+    // The markup renders a full picker this way already, so only a pick, a
+    // remove or a swap has to keep it in step.
     function syncCap(picker) {
         const full = isFull(picker);
         const input = searchInput(picker);
@@ -251,6 +251,14 @@
     function syncValidity(picker) {
         const validity = picker.querySelector(':scope > .pjx-roster-picker__validity');
         if (validity) validity.value = chippedValues(picker).join(',');
+    }
+
+    // A swap changes the chips without a pick or a remove, so whatever runs
+    // after one brings rows, cap and validity back in step together.
+    function syncSelection(picker) {
+        syncRows(picker);
+        syncCap(picker);
+        syncValidity(picker);
     }
 
     // Only the browser's invalid event marks a picker, and a pick is the
@@ -561,14 +569,15 @@
     });
 
     // A swap can bring rows for values already chipped: a route that ignored
-    // exclude, or a later page. The paging sentinel swaps outerHTML, so htmx
-    // settles the new page inside the mount, not the mount itself. The first
-    // open placed an empty mount, so the side is decided again on the rows.
+    // exclude, or a later page. A swap of the chips moves the cap and the
+    // validity too. The paging sentinel swaps outerHTML, so htmx settles the
+    // new page inside the mount, not the mount itself. The first open placed
+    // an empty mount, so the side is decided again on the rows.
     document.addEventListener('htmx:afterSettle', function (event) {
         if (!(event.target instanceof Element)) return;
         const picker = pickerOf(event.target);
         if (!picker) return;
-        syncRows(picker);
+        syncSelection(picker);
         place(picker);
     });
 

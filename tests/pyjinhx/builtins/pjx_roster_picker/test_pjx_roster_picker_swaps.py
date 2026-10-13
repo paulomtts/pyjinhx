@@ -599,3 +599,70 @@ def test_a_pick_from_a_lazy_next_page_is_excluded_from_the_next_search(
         page.keyboard.type("P")
     assert _exclude(request.value.url) == ["a0,b0"]
     assert page_errors == []
+
+
+def test_a_chip_swapped_for_another_value_moves_the_hidden_row(
+    page: Page, session: RenderSession, page_errors: list[str]
+):
+    requests = _serve(
+        page,
+        session,
+        _picker(session, items=_items("v0", "v1"), required=True),
+        swap=_chip(session, "v2"),
+    )
+    _open(page)
+    sent = len(requests)
+    _record_events(page)
+
+    _swap(page, CHIP.format(value="v0"), "outerHTML")
+    _wait_values(page, ["v2", "v1"])
+    _settle(page)
+
+    assert _hidden_rows(page) == {"v0": False, "v1": True, "v2": True}
+    assert _validity(page) == "v2,v1"
+    assert _state(page) == OPEN
+    assert _has_focus(_input(page))
+    assert _events(page) == []
+    assert len(requests) == sent
+    assert page_errors == []
+
+
+@pytest.mark.parametrize(
+    ("selector", "swap", "answer"),
+    [
+        # One chip's outerHTML replaced by itself and a new one.
+        (CHIP.format(value="v0"), "outerHTML", ("v0", "v2")),
+        # A new chip appended to the chips.
+        ("#p .pjx-roster-picker__chips", "beforeend", ("v2",)),
+    ],
+    ids=["outer", "beforeend"],
+)
+def test_a_chip_added_by_a_swap_reaches_the_cap_and_validity(
+    page: Page,
+    session: RenderSession,
+    page_errors: list[str],
+    selector: str,
+    swap: str,
+    answer: tuple[str, ...],
+):
+    _serve(
+        page,
+        session,
+        _picker(session, items=_items("v0"), max_items=2, required=True),
+        swap="".join(_chip(session, value) for value in answer),
+    )
+    _open(page)
+    _close_by_blur(page)
+    _record_events(page)
+
+    _swap(page, selector, swap)
+    _wait_values(page, ["v0", "v2"])
+    _settle(page)
+
+    assert _hidden_rows(page) == {"v0": True, "v1": False, "v2": True}
+    assert _input(page).is_disabled()
+    assert _hint_hidden(page) is False
+    assert _validity(page) == "v0,v2"
+    assert _state(page) == CLOSED
+    assert _events(page) == []
+    assert page_errors == []
