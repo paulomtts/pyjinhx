@@ -428,9 +428,49 @@ def test_hint_is_hidden_and_shows_limit_label(parse_html, session):
 
 
 def test_max_items_is_rendered_on_the_root(parse_html, session):
-    root = _picker(parse_html, session, max_items=3, items=_items("u1", "u2", "u3"))
+    root = _picker(parse_html, session, max_items=3, items=_items("u1", "u2"))
 
     assert root.attrs["data-max-items"] == "3"
+    assert "hidden" in _one(root, "pjx-roster-picker__hint").attrs
+
+
+def test_a_picker_rendered_full_disables_the_input_and_shows_the_hint(
+    parse_html, session
+):
+    root = _picker(
+        parse_html,
+        session,
+        max_items=3,
+        items=_items("u1", "u2", "u3"),
+        limit_label="Team is full",
+    )
+
+    assert "disabled" in _one(root, "pjx-roster-picker__input").attrs
+    hint = _one(root, "pjx-roster-picker__hint")
+    assert "hidden" not in hint.attrs
+    assert hint.text == "Team is full"
+
+
+def test_a_picker_below_its_cap_keeps_the_input_enabled(parse_html, session):
+    root = _picker(parse_html, session, max_items=3, items=_items("u1", "u2"))
+
+    assert "disabled" not in _one(root, "pjx-roster-picker__input").attrs
+    assert "hidden" in _one(root, "pjx-roster-picker__hint").attrs
+
+
+def test_a_full_single_item_picker_is_not_capped(parse_html, session):
+    root = _picker(parse_html, session, max_items=1, items=_items("u1"))
+
+    assert "disabled" not in _one(root, "pjx-roster-picker__input").attrs
+    assert "hidden" in _one(root, "pjx-roster-picker__hint").attrs
+
+
+def test_a_disabled_full_picker_keeps_the_hint_hidden(parse_html, session):
+    root = _picker(
+        parse_html, session, max_items=2, items=_items("u1", "u2"), disabled=True
+    )
+
+    assert _by_class(root, "pjx-roster-picker__input") == []
     assert "hidden" in _one(root, "pjx-roster-picker__hint").attrs
 
 

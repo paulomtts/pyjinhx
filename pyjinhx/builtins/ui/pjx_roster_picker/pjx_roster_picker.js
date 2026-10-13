@@ -159,6 +159,43 @@
         });
     }
 
+    // A single-item picker swaps its chip instead of refusing, and a
+    // disabled one takes no picks, so neither is ever full.
+    function isFull(picker) {
+        const max = Number(picker.dataset.maxItems);
+        return (
+            !picker.hasAttribute('data-disabled') &&
+            max > 1 &&
+            chippedValues(picker).length >= max
+        );
+    }
+
+    // The markup renders a full picker this way already, so only a pick or
+    // a remove has to keep it in step.
+    function syncCap(picker) {
+        const full = isFull(picker);
+        const input = searchInput(picker);
+        if (input) input.disabled = full;
+        picker.querySelector('.pjx-roster-picker__hint').hidden = !full;
+    }
+
+    // The browser validates this one input, not the chips, so it has to
+    // follow every pick and remove. :scope > because a control in a chip's
+    // slot could share the class. A picker that is not required has none.
+    function syncValidity(picker) {
+        const validity = picker.querySelector(':scope > .pjx-roster-picker__validity');
+        if (validity) validity.value = chippedValues(picker).join(',');
+    }
+
+    // Only the browser's invalid event marks a picker, and a pick is the
+    // answer to it, so a pick is the one thing that clears the mark. A
+    // remove leaves it alone either way.
+    function clearInvalid(picker) {
+        picker.classList.remove('pjx-roster-picker--invalid');
+        const input = searchInput(picker);
+        if (input) input.removeAttribute('aria-invalid');
+    }
+
     // Read after the DOM change, so listeners see the selection as it now is.
     function announceChange(picker) {
         picker.dispatchEvent(
@@ -170,6 +207,8 @@
     }
 
     function pickRow(picker, row) {
+        // The box is disabled at the cap, so this is only a stale row's click.
+        if (isFull(picker)) return;
         if (chippedValues(picker).includes(row.dataset.value)) return;
         const template = row.nextElementSibling;
         const source =
@@ -183,13 +222,19 @@
         // A single-item picker swaps its one chip rather than refusing.
         if (picker.dataset.maxItems === '1') chips.replaceChildren(chip);
         else chips.append(chip);
+        clearInvalid(picker);
         syncRows(picker);
         setOpen(picker, false);
         const input = searchInput(picker);
-        if (input) {
-            input.value = '';
-            quietFocus(input);
-        }
+        if (input) input.value = '';
+        // Before focus moves, so focus is never left on a box just disabled.
+        syncCap(picker);
+        // A full picker's box is disabled, so the new chip's remove button is
+        // the next useful stop. Not the box, so it cannot reopen the list.
+        const remove = isFull(picker) && chip.querySelector('[data-pjx-roster-remove]');
+        if (remove) remove.focus();
+        else if (input && !input.disabled) quietFocus(input);
+        syncValidity(picker);
         announceChange(picker);
     }
 
@@ -204,6 +249,8 @@
         const next = chip.nextElementSibling;
         chip.remove();
         syncRows(picker);
+        // Before the focus below, which a still-disabled box would refuse.
+        syncCap(picker);
         const input = searchInput(picker);
         // The kept rows were fetched with this value excluded, so a route that
         // honoured exclude left it out; only a fresh search can bring it back.
@@ -211,6 +258,7 @@
         const nextRemove = next && next.querySelector('[data-pjx-roster-remove]');
         if (nextRemove) nextRemove.focus();
         else if (input) quietFocus(input);
+        syncValidity(picker);
         announceChange(picker);
     }
 
@@ -233,6 +281,24 @@
             openByUser(event.target);
         }
     });
+
+    // invalid does not bubble, so only a capture listener sees it. The
+    // validity input is clipped to 1px, so the browser's own bubble and
+    // focus would land on nothing visible; the box takes the focus and the
+    // mark stands in for the bubble, as PJXSelect does for its hidden
+    // select. Only the picker's own input, as in syncValidity. A disabled
+    // picker has no box and is left alone.
+    document.addEventListener('invalid', function (event) {
+        if (!(event.target instanceof Element)) return;
+        if (!event.target.matches('[data-pjx-roster-picker] > .pjx-roster-picker__validity')) return;
+        const picker = pickerOf(event.target);
+        const input = picker && searchInput(picker);
+        if (!input) return;
+        event.preventDefault();
+        input.setAttribute('aria-invalid', 'true');
+        picker.classList.add('pjx-roster-picker--invalid');
+        quietFocus(input);
+    }, true);
 
     // A box that already has focus fires no focusin, so after Escape only the
     // click itself can reopen it. The click that just focused a box finds it
@@ -264,6 +330,18 @@
         setOpen(picker, false);
         // A row focused inside the now-hidden list would strand the keyboard.
         if (event.target !== input) quietFocus(input);
+    });
+
+    document.addEventListener('keydown', function (event) {
+        if (event.key !== 'ArrowDown' || !isSearchInput(event.target)) return;
+        const picker = pickerOf(event.target);
+        if (!picker || !isOpen(event.target)) return;
+        // A chipped value's row stays in the list hidden, and focus() on a
+        // hidden button does nothing, so the press would be swallowed.
+        const row = resultsMount(picker).querySelector('[data-pjx-roster-pick]:not([hidden])');
+        if (!row) return;
+        event.preventDefault();
+        row.focus();
     });
 
     // closest, not the target: the press usually lands on the row's label or
