@@ -881,15 +881,36 @@
     return true;
   }
 
+  // The history is forgotten only once no listener has vetoed the close, so
+  // a vetoed close leaves back exactly where it was.
+  function closePanel(root) {
+    const panel = panelOf(root, 'close');
+    if (panel.getAttribute('data-open') !== 'true') return true;
+    const history = histories.get(root);
+    // null when the server rendered the panel open and nothing was opened since.
+    const id = newest(history);
+    const allowed = root.dispatchEvent(new CustomEvent('pjx:graph:panel:before-close',
+      { bubbles: true, cancelable: true, detail: { id: id } }));
+    if (!allowed) return false;
+    panel.setAttribute('data-open', 'false');
+    history.length = 0;
+    syncBack(panel, history);
+    root.dispatchEvent(new CustomEvent('pjx:graph:panel:close',
+      { bubbles: true, detail: { id: id } }));
+    return true;
+  }
+
   // On the root, since the panel sits beside the canvas and its clicks never
   // reach the canvas listeners. Delegated, so a panel swapped in later needs
   // no rebinding; a button in a nested stage's panel is left to that stage.
   function listenForPanel(root, signal) {
     root.addEventListener('click', (event) => {
-      const button = event.target.closest('[data-pjx-graph-panel-back]');
+      const button = event.target.closest(
+        '[data-pjx-graph-panel-close], [data-pjx-graph-panel-back]');
       const panel = button && button.closest('[data-pjx-graph-panel]');
       if (!panel || panel !== root.querySelector(':scope > [data-pjx-graph-panel]')) return;
-      backPanel(root);
+      if (button.hasAttribute('data-pjx-graph-panel-close')) closePanel(root);
+      else backPanel(root);
     }, { signal: signal });
   }
 
@@ -996,5 +1017,5 @@
 
   graph.mount = mount;
   graph.get = get;
-  graph.panel = { open: openPanel, back: backPanel };
+  graph.panel = { open: openPanel, close: closePanel, back: backPanel };
 })();

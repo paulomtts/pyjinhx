@@ -274,10 +274,121 @@ def test_back_with_an_empty_history_returns_false(page, page_errors, session):
     assert page_errors == []
 
 
+# close()
+
+
+def test_the_close_button_closes_and_resets_the_history(page, page_errors, session):
+    _serve(page, _stage(session))
+    _panel_call(page, "open", "a")
+    _panel_call(page, "open", "b")
+    _forget(page)
+    page.click(_close())
+    assert _events(page) == [_ev("panel:before-close", "b"), _ev("panel:close", "b")]
+    assert _state(page) == "false"
+    assert _back_hidden(page) is True
+    _forget(page)
+    _panel_call(page, "open", "a")
+    assert _events(page) == [_ev("panel:open", "a")]
+    assert _back_hidden(page) is True
+    assert page_errors == []
+
+
+def test_close_returns_true_and_closing_twice_fires_nothing(page, page_errors, session):
+    _serve(page, _stage(session))
+    _panel_call(page, "open", "a")
+    _forget(page)
+    assert _panel_call(page, "close") == {"value": True}
+    assert _events(page) == [_ev("panel:before-close", "a"), _ev("panel:close", "a")]
+    assert _state(page) == "false"
+    _forget(page)
+    assert _panel_call(page, "close") == {"value": True}
+    assert _events(page) == []
+    assert page_errors == []
+
+
+def test_a_prevented_before_close_keeps_the_panel_and_its_history(
+    page, page_errors, session
+):
+    _serve(page, _stage(session))
+    _panel_call(page, "open", "a")
+    _panel_call(page, "open", "b")
+    _veto(page, "panel:before-close")
+    _forget(page)
+    page.click(_close())
+    assert _panel_call(page, "close") == {"value": False}
+    assert _events(page) == [
+        _ev("panel:before-close", "b"),
+        _ev("panel:before-close", "b"),
+    ]
+    assert _state(page) == "true"
+    assert _back_hidden(page) is False
+    _forget(page)
+    assert _panel_call(page, "back") == {"value": True}
+    assert _events(page) == [_ev("panel:open", "a")]
+    assert page_errors == []
+
+
+def test_a_server_open_panel_closes_with_a_null_id(page, page_errors, session):
+    _serve(page, _stage(session, panel=_panel(open=True)))
+    assert _panel_call(page, "back") == {"value": False}
+    page.click(_close())
+    assert _events(page) == [
+        _ev("panel:before-close", None),
+        _ev("panel:close", None),
+    ]
+    assert _state(page) == "false"
+    assert page_errors == []
+
+
+def test_close_listeners_see_the_panel_before_and_after(page, page_errors, session):
+    _serve(page, _stage(session))
+    _panel_call(page, "open", "a")
+    _panel_call(page, "open", "b")
+    page.evaluate(
+        """() => {
+            window.__seen = [];
+            ['panel:before-close', 'panel:close'].forEach((name) =>
+                document.addEventListener('pjx:graph:' + name, () => {
+                    const panel = document.getElementById('g-panel');
+                    window.__seen.push([name, panel.getAttribute('data-open'),
+                        panel.querySelector('[data-pjx-graph-panel-back]').hidden]);
+                }));
+        }"""
+    )
+    page.click(_close())
+    assert page.evaluate("() => window.__seen") == [
+        ["panel:before-close", "true", False],
+        ["panel:close", "false", True],
+    ]
+    assert page_errors == []
+
+
+# An app may write its own panel; only the data attributes matter.
+APP_PANEL = Markup(
+    '<aside id="g-panel" data-pjx-graph-panel data-open="false">'
+    '<button type="button" data-pjx-graph-panel-close><span id="g-x">x</span></button>'
+    "</aside>"
+)
+
+
+def test_an_app_made_panel_without_a_back_button_still_works(
+    page, page_errors, session
+):
+    _serve(page, _stage(session, panel=APP_PANEL))
+    assert _panel_call(page, "open", "a") == {"value": True}
+    assert _panel_call(page, "open", "b") == {"value": True}
+    assert _panel_call(page, "back") == {"value": True}
+    _forget(page)
+    page.click("#g-x")
+    assert _events(page) == [_ev("panel:before-close", "a"), _ev("panel:close", "a")]
+    assert _state(page) == "false"
+    assert page_errors == []
+
+
 # Errors
 
 
-@pytest.mark.parametrize("fn", ["open", "back"])
+@pytest.mark.parametrize("fn", ["open", "close", "back"])
 @pytest.mark.parametrize("target", ["plain", "missing"], ids=["div", "null"])
 def test_a_panel_function_rejects_what_is_not_a_mounted_stage(
     page, page_errors, session, fn, target
@@ -290,7 +401,7 @@ def test_a_panel_function_rejects_what_is_not_a_mounted_stage(
     assert page_errors == []
 
 
-@pytest.mark.parametrize("fn", ["open", "back"])
+@pytest.mark.parametrize("fn", ["open", "close", "back"])
 def test_a_panel_function_rejects_a_stage_without_a_panel(
     page, page_errors, session, fn
 ):
