@@ -499,6 +499,32 @@ def test_a_replaced_node_takes_its_stored_drop_while_the_server_position_is_unch
     assert page_errors == []
 
 
+def test_a_replaced_node_keeps_its_stored_drop_after_htmx_settles_the_swap(
+    page, page_errors, session
+):
+    seeded = json.dumps(
+        {
+            "view": IDENTITY_VIEW,
+            "nodes": {"b": {"x": 300, "y": 150, "base": {"x": 400, "y": 40}}},
+        }
+    )
+    _serve(page, _keyed(session), record=seeded)
+    same = _html(session, _node("b", 400, 40, in_port=True, out_ports=("ok",)))
+    _mutate(page, _replace("#g-b", same), reconcile="g")
+    # htmx settles a swapped element by writing the server's style back, then
+    # announces it; the drop has to survive that.
+    page.evaluate(
+        """() => {
+            const node = document.getElementById('g-b');
+            node.setAttribute('style', '--pjx-graph-node-x:400.0px;--pjx-graph-node-y:40.0px;');
+            node.dispatchEvent(new CustomEvent('htmx:afterSettle', { bubbles: true }));
+        }"""
+    )
+    assert _position(page, "g-b") == ["300px", "150px"]
+    assert _raw(page) == seeded
+    assert page_errors == []
+
+
 def test_a_replaced_node_with_a_new_server_position_discards_the_drop(
     page, page_errors, session
 ):

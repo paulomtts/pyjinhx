@@ -785,6 +785,15 @@
       event.stopImmediatePropagation();
     }, { capture: true, signal: signal });
 
+    // htmx settles a swapped element by writing the server's style attribute
+    // back, undoing the placement made when it landed. Place it again.
+    root.addEventListener('htmx:afterSettle', (event) => {
+      nodesOf(root, viewport).forEach((node) => {
+        if (event.target.contains(node) || node.contains(event.target)) placedWith.delete(node);
+      });
+      reconcile();
+    }, { signal: signal });
+
     listenForSelection(root, canvas, viewport, plane, choose, deselect, signal);
     listenForDrag();
     listenForWire();
