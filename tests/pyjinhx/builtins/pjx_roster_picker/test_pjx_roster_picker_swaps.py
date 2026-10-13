@@ -782,3 +782,48 @@ def test_an_empty_chip_swap_in_a_disabled_picker_throws_nothing(
 
     assert _hint_hidden(page) is True
     assert page_errors == []
+
+
+def test_a_press_across_a_whole_picker_swap_leaves_no_error(
+    page: Page, session: RenderSession, page_errors: list[str]
+):
+    requests = _serve(
+        page, session, _picker(session), swap=_picker(session, items=_items("v1"))
+    )
+    _open(page)
+    box = _input(page).bounding_box()
+    assert box is not None
+    page.mouse.move(box["x"] + 5, box["y"] + 5)
+    page.mouse.down()
+
+    _swap(page, "#p", "outerHTML")
+    _wait_values(page, ["v1"])
+    _settle(page)
+    sent = len(requests)
+    # Released far from any picker: the press ends outside the new one.
+    page.mouse.move(700, 500)
+    page.mouse.up()
+    _settle(page)
+    # Past the 300 ms debounce, so an open's search would have been sent.
+    page.wait_for_timeout(300)
+
+    assert _state(page) == CLOSED
+    assert len(requests) == sent
+    assert page_errors == []
+
+
+def test_a_click_on_a_label_around_the_picker_still_opens_it(
+    page: Page, session: RenderSession, page_errors: list[str]
+):
+    body = f'<label><span id="caption">Members</span>{_picker(session)}</label>'
+    requests = _serve(page, session, body)
+
+    page.click("#caption")
+    page.wait_for_selector(
+        "#p-results [data-pjx-roster-pick]", state="attached", timeout=5000
+    )
+
+    assert _has_focus(_input(page))
+    assert _state(page) == OPEN
+    assert len(requests) == 1
+    assert page_errors == []

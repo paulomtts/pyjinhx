@@ -517,12 +517,6 @@
         return target instanceof Element && target.matches('.pjx-roster-picker__input');
     }
 
-    document.addEventListener('focusin', function (event) {
-        if (isSearchInput(event.target) && event.target !== quietInput) {
-            openByUser(event.target);
-        }
-    });
-
     // A press that moves focus out closes the list only once the press has
     // ended, after its click: the list must not vanish from under the press
     // before the click lands on what it was aimed at. A touch tap moves focus
@@ -553,6 +547,15 @@
         const inside = event.target instanceof Element && searchOf(event.target);
         press = { inside: inside || null };
     }, true);
+
+    // Focus that lands on a box during a press begun anywhere else is the
+    // browser's doing, not the user arriving: a press held while a swap
+    // replaces its picker can drop focus into the new box.
+    document.addEventListener('focusin', function (event) {
+        if (!isSearchInput(event.target) || event.target === quietInput) return;
+        if (press && press.inside !== searchOf(event.target)) return;
+        openByUser(event.target);
+    });
 
     function endPress() {
         if (!press) return;
