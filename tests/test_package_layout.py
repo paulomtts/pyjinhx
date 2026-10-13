@@ -207,3 +207,13 @@ def test_public_api_lists_every_graph_builtin():
     assert len(documented) == len(set(documented))
     assert set(documented) == exported
     assert [n for n in documented if not hasattr(pyjinhx.builtins, n)] == []
+
+
+def test_every_adr_is_indexed_and_in_nav():
+    decisions = REPO_ROOT / "docs" / "decisions"
+    index = (decisions / "index.md").read_text(encoding="utf-8")
+    nav = (REPO_ROOT / "mkdocs.yml").read_text(encoding="utf-8")
+    adrs = sorted(p.name for p in decisions.glob("[0-9][0-9][0-9][0-9]-*.md"))
+    assert adrs
+    assert [a for a in adrs if f"]({a})" not in index] == []
+    assert [a for a in adrs if f"decisions/{a}" not in nav] == []
