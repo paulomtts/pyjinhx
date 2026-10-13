@@ -14,6 +14,7 @@
   --pjx-roster-picker-shadow:      var(--shadow-md);
   --pjx-roster-picker-z:           300;
   --pjx-roster-picker-max-h:       16rem;
+  --pjx-roster-picker-min-h:       3rem;
   --pjx-roster-picker-room:        var(--pjx-roster-picker-max-h);
   --pjx-roster-picker-row-hover:   var(--surface-hover, var(--surface-alt));
   --pjx-roster-picker-row-active:  var(--accent-soft, var(--surface-alt));
@@ -57,15 +58,19 @@
   border-color: var(--pjx-roster-picker-invalid);
 }
 
-/* Capped by the token or by the room the JS measured towards the viewport
-   edge, whichever is smaller, so the list never runs off-screen. */
+/* Capped by the token or by the room the JS measured on the side it opens
+   on, whichever is smaller, so the list stays inside the viewport and every
+   clipping box around it. The floor keeps the list usable when that room is
+   nearly nothing: it then overflows by at most the floor rather than
+   collapsing. border-box so the room bounds the border too. */
 .pjx-roster-picker__results {
   position: absolute;
   top: calc(100% + 4px);
   left: 0;
   right: 0;
   z-index: var(--pjx-roster-picker-z);
-  max-height: min(var(--pjx-roster-picker-max-h), var(--pjx-roster-picker-room));
+  box-sizing: border-box;
+  max-height: clamp(var(--pjx-roster-picker-min-h), var(--pjx-roster-picker-room), var(--pjx-roster-picker-max-h));
   overflow-y: auto;
   display: flex;
   flex-direction: column;

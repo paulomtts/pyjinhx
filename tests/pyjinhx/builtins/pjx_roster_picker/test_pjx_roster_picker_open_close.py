@@ -456,7 +456,8 @@ def test_arrow_down_focuses_its_own_pickers_first_result(
 
     assert _focused_row(page, "b") == "v0"
     assert _focused_row(page, "a") is None
-    assert _state(page, "a") == OPEN
+    # Focus leaving a for b closed it.
+    assert _state(page, "a") == CLOSED
     assert _state(page, "b") == OPEN
     assert page_errors == []
 
@@ -582,16 +583,23 @@ def test_pickers_open_and_close_independently(
     assert _state(page, "b") == CLOSED
     assert _opens(page, "b") == 0
 
+    # Focus leaving a for b closes a once the click that moved it has landed.
     _input(page, "b").click()
-    assert _state(page, "a") == OPEN
+    _settle(page)
+    assert _state(page, "a") == CLOSED
     assert _state(page, "b") == OPEN
+    assert _opens(page, "b") == 1
 
     _input(page, "a").click()
+    _settle(page)
+    assert _state(page, "a") == OPEN
+    assert _state(page, "b") == CLOSED
     page.keyboard.press("Escape")
 
     assert _state(page, "a") == CLOSED
-    assert _state(page, "b") == OPEN
-    assert _opens(page, "a") == 1
+    assert _state(page, "b") == CLOSED
+    assert _opens(page, "a") == 2
+    assert _opens(page, "b") == 1
     assert page_errors == []
 
 

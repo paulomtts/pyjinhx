@@ -98,7 +98,7 @@
     // re-running it, or two pickers shipping it) finds it and returns before
     // binding, so the document listeners below exist once per page.
     if (window.pjx.rosterPicker) return;
-    window.pjx.rosterPicker = {};
+    window.pjx.rosterPicker = { placement: placement };
 
     // Focus this script moves (Escape, a pick or a remove handing it back to
     // the box) is not the user arriving, so it must not reopen the list.
@@ -106,8 +106,29 @@
     // outlive that call.
     let quietInput = null;
 
+    // A portal picker's open list lives on body, outside the picker, so the
+    // two find each other here instead of through the tree. Keyed by both
+    // the picker and its mount, each to one { picker, mount, parent, next,
+    // gap }: parent is the search box the mount came from, next its old
+    // next sibling, gap how far under the box it hung there.
+    const portalled = new WeakMap();
+
+    // The entry of the portaled list el is in, if it is in one.
+    function entryOf(el) {
+        const mount = el.closest('.pjx-roster-picker__results');
+        return mount && portalled.get(mount);
+    }
+
     function pickerOf(el) {
-        return el.closest('[data-pjx-roster-picker]');
+        const entry = entryOf(el);
+        return entry ? entry.picker : el.closest('[data-pjx-roster-picker]');
+    }
+
+    // The search box el belongs to, whether el is inside the box or inside
+    // its list portaled to body.
+    function searchOf(el) {
+        const entry = entryOf(el);
+        return entry ? entry.parent : el.closest('.pjx-roster-picker__search');
     }
 
     // Null for a disabled picker, which renders no search box.
@@ -116,7 +137,8 @@
     }
 
     function resultsMount(picker) {
-        return picker.querySelector('.pjx-roster-picker__results');
+        const entry = portalled.get(picker);
+        return entry ? entry.mount : picker.querySelector('.pjx-roster-picker__results');
     }
 
     // Only each chip's own hidden input: an app's control nested in a chip's
@@ -132,13 +154,148 @@
         return input.getAttribute('aria-expanded') === 'true';
     }
 
+    /**
+     * Decide which side of its search box an open list goes on, and how tall it may grow there.
+     *
+     * Takes the search box's {top, bottom}, the list's height, the clipping
+     * box's {top, bottom} and the gap between search box and list, all in
+     * viewport px, and returns {above, room}. Not part of the documented API:
+     * exposed only so a unit test can call the shipped code, as
+     * pjx.popoverPosition is.
+     */
+    function placement(search, listHeight, box, gap) {
+        const below = box.bottom - search.bottom - gap;
+        const above = search.top - box.top - gap;
+        // popoverPosition flips only when the panel fits above, so a list
+        // taller than both sides is offered at the roomier side's height.
+        const answer = pjx.popoverPosition({
+            trigger: {
+                top: search.top - box.top,
+                left: 0,
+                width: 0,
+                height: search.bottom - search.top,
+            },
+            panel: { width: 0, height: Math.max(0, Math.min(listHeight, Math.max(below, above))) },
+            viewport: { width: 0, height: box.bottom - box.top },
+            gap: gap,
+        });
+        const goesAbove = answer.placement === 'above';
+        return { above: goesAbove, room: Math.max(0, goesAbove ? above : below) };
+    }
+
+    // Only the vertical extent: the list stays left:0; right:0 under its box.
+    // body and html pass their overflow on to the viewport, the starting box,
+    // and their own rects only span the content, so they are not walked.
+    function clippingBox(search) {
+        let top = 0;
+        let bottom = window.innerHeight;
+        for (
+            let el = search.parentElement;
+            el && el !== document.body && el !== document.documentElement;
+            el = el.parentElement
+        ) {
+            if (getComputedStyle(el).overflowY === 'visible') continue;
+            const rect = el.getBoundingClientRect();
+            top = Math.max(top, rect.top);
+            bottom = Math.min(bottom, rect.bottom);
+        }
+        return { top: top, bottom: bottom };
+    }
+
+    const PORTAL_STYLES = ['position', 'left', 'right', 'top', 'bottom', 'width'];
+
+    function clearPlacement(mount) {
+        mount.classList.remove('pjx-roster-picker__results--above');
+        mount.style.removeProperty('--pjx-roster-picker-room');
+        if (portalled.has(mount)) {
+            PORTAL_STYLES.forEach((name) => mount.style.removeProperty(name));
+        }
+    }
+
+    // The gap is measured while the mount still hangs at home: on body the
+    // CSS offset no longer places it, so a theme's offset is kept from here.
+    function portal(picker, mount) {
+        if (!picker.hasAttribute('data-pjx-roster-picker-portal') || portalled.has(mount)) {
+            return;
+        }
+        const parent = mount.parentElement;
+        const entry = {
+            picker: picker,
+            mount: mount,
+            parent: parent,
+            next: mount.nextSibling,
+            gap: mount.getBoundingClientRect().top - parent.getBoundingClientRect().bottom,
+        };
+        portalled.set(picker, entry);
+        portalled.set(mount, entry);
+        document.body.appendChild(mount);
+    }
+
+    // Forgotten before the move: a focused row can lose focus in it, and a
+    // close that runs from that focusout must find nothing left to undo.
+    function unportal(mount) {
+        const entry = portalled.get(mount);
+        if (!entry) return;
+        portalled.delete(mount);
+        portalled.delete(entry.picker);
+        entry.parent.insertBefore(mount, entry.next);
+    }
+
+    // Fixed on body, the list no longer follows its box, so it is put where
+    // it would hang at home if nothing clipped it: under the box, as wide.
+    function hangBelow(mount, rect, gap) {
+        mount.style.position = 'fixed';
+        mount.style.left = rect.left + 'px';
+        mount.style.right = 'auto';
+        mount.style.width = rect.width + 'px';
+        mount.style.top = rect.bottom + gap + 'px';
+        mount.style.bottom = 'auto';
+    }
+
+    // Cleared first, so the list is measured at its default: below, capped
+    // only by the max-h token. Runs in the same task as the unhide, so no
+    // frame paints the unplaced list.
+    function place(picker) {
+        const input = searchInput(picker);
+        if (!input || !isOpen(input)) return;
+        const mount = resultsMount(picker);
+        clearPlacement(mount);
+        const search = input.closest('.pjx-roster-picker__search');
+        const rect = search.getBoundingClientRect();
+        const entry = portalled.get(mount);
+        if (entry) hangBelow(mount, rect, entry.gap);
+        const list = mount.getBoundingClientRect();
+        // Measured, not assumed, so a theme that moves the list stays right.
+        const gap = list.top - rect.bottom;
+        // On body no ancestor of the box holds the list, so only the
+        // viewport clips it.
+        const box = entry ? { top: 0, bottom: window.innerHeight } : clippingBox(search);
+        const answer = placement(rect, list.height, box, gap);
+        mount.classList.toggle('pjx-roster-picker__results--above', answer.above);
+        mount.style.setProperty('--pjx-roster-picker-room', answer.room + 'px');
+        if (entry && answer.above) {
+            mount.style.top = 'auto';
+            mount.style.bottom = window.innerHeight - rect.top + gap + 'px';
+        }
+    }
+
     // Every open and close goes through here, so the input's aria-expanded
-    // and the mount's hidden never disagree. Closing only hides the rows.
+    // and the mount's hidden never disagree. Closing only hides the rows,
+    // drops the placement so the next open starts clean, and brings a
+    // portaled list home.
     function setOpen(picker, open) {
         const input = searchInput(picker);
         if (!input) return;
         input.setAttribute('aria-expanded', open ? 'true' : 'false');
-        resultsMount(picker).hidden = !open;
+        const mount = resultsMount(picker);
+        mount.hidden = !open;
+        if (open) {
+            portal(picker, mount);
+            place(picker);
+        } else {
+            clearPlacement(mount);
+            unportal(mount);
+        }
     }
 
     function quietFocus(input) {
@@ -153,8 +310,11 @@
     // A row is hidden exactly while its value is chipped, whether or not the
     // route honoured exclude.
     function syncRows(picker) {
+        const mount = resultsMount(picker);
+        // A disabled picker renders no list.
+        if (!mount) return;
         const chipped = chippedValues(picker);
-        picker.querySelectorAll('[data-pjx-roster-pick]').forEach((row) => {
+        mount.querySelectorAll('[data-pjx-roster-pick]').forEach((row) => {
             row.hidden = chipped.includes(row.dataset.value);
         });
     }
@@ -282,6 +442,74 @@
         }
     });
 
+    // A press that moves focus out closes the list only once the press has
+    // ended, after its click: the list must not vanish from under the press
+    // before the click lands on what it was aimed at. A touch tap moves focus
+    // after its pointerup (the browser's compatibility mousedown), so the
+    // press stays live past the pointerup, until its click; a tap that never
+    // clicks ends on a timer. A press that never ends (a context menu, a
+    // drag, a window switch) ends on the next key, contextmenu, dragstart,
+    // pointercancel or window blur.
+    const PRESS_FALLBACK_MS = 400;
+    let press = null; // { inside: the search box the press began in or in its list, or null }
+    let closeAfterPress = null;
+    let pressTimer = null;
+
+    document.addEventListener('focusout', function (event) {
+        if (!(event.target instanceof Element)) return;
+        const search = searchOf(event.target);
+        const to = event.relatedTarget;
+        // Into the box's own list, on body or not, is not leaving.
+        if (!search || (to instanceof Element && searchOf(to) === search)) return;
+        const picker = pickerOf(search);
+        if (!picker) return;
+        if (press) closeAfterPress = picker;
+        else setOpen(picker, false);
+    });
+
+    document.addEventListener('pointerdown', function (event) {
+        clearTimeout(pressTimer);
+        const inside = event.target instanceof Element && searchOf(event.target);
+        press = { inside: inside || null };
+    }, true);
+
+    function endPress() {
+        if (!press) return;
+        clearTimeout(pressTimer);
+        const inside = press.inside;
+        const picker = closeAfterPress;
+        press = null;
+        closeAfterPress = null;
+        if (!picker) return;
+        // Deferred a task, so every click handler of this press has run first.
+        setTimeout(function () {
+            const input = searchInput(picker);
+            // A press inside this picker's box and list keeps it open even
+            // when it moved focus nowhere (a tap on the list's padding, or on
+            // a row in a browser whose buttons take no focus on press): the
+            // open list gets back the focus it needs.
+            if (inside && pickerOf(inside) === picker && input && isOpen(input)) {
+                const active = document.activeElement;
+                if (!active || searchOf(active) !== inside) quietFocus(input);
+                return;
+            }
+            setOpen(picker, false);
+        }, 0);
+    }
+
+    document.addEventListener('click', endPress, true);
+    document.addEventListener('pointerup', function () {
+        clearTimeout(pressTimer);
+        if (press) pressTimer = setTimeout(endPress, PRESS_FALLBACK_MS);
+    }, true);
+
+    ['pointercancel', 'contextmenu', 'dragstart', 'keydown'].forEach(function (type) {
+        document.addEventListener(type, endPress, true);
+    });
+    // Not capturing and not on document: those would also hear every
+    // element's own blur, and input.blur() would end the press it defers to.
+    window.addEventListener('blur', endPress);
+
     // invalid does not bubble, so only a capture listener sees it. The
     // validity input is clipped to 1px, so the browser's own bubble and
     // focus would land on nothing visible; the box takes the focus and the
@@ -317,7 +545,7 @@
 
     document.addEventListener('keydown', function (event) {
         if (event.key !== 'Escape' || !(event.target instanceof Element)) return;
-        const search = event.target.closest('.pjx-roster-picker__search');
+        const search = searchOf(event.target);
         const picker = search && pickerOf(search);
         const input = picker && searchInput(picker);
         // A closed list leaves Escape alone, so the next press reaches an
@@ -355,12 +583,48 @@
 
     // A swap can bring rows for values already chipped: a route that ignored
     // exclude, or a later page. The paging sentinel swaps outerHTML, so htmx
-    // settles the new page inside the mount, not the mount itself.
+    // settles the new page inside the mount, not the mount itself. The first
+    // open placed an empty mount, so the side is decided again on the rows.
     document.addEventListener('htmx:afterSettle', function (event) {
         if (!(event.target instanceof Element)) return;
         const picker = pickerOf(event.target);
-        if (picker) syncRows(picker);
+        if (!picker) return;
+        syncRows(picker);
+        place(picker);
     });
+
+    // A swap that takes a picker away would leave its portaled list on body,
+    // still holding the picker's results id. Closed first, the list goes
+    // home and leaves with its picker. contains() counts the target itself.
+    // A response htmx will not swap (an error) takes nothing away.
+    document.addEventListener('htmx:beforeSwap', function (event) {
+        const target = event.detail.target;
+        if (!event.detail.shouldSwap || !(target instanceof Element)) return;
+        document.querySelectorAll('[data-pjx-roster-picker-portal]').forEach((picker) => {
+            if (portalled.has(picker) && target.contains(picker)) setOpen(picker, false);
+        });
+    });
+
+    function placeOpenPickers() {
+        document
+            .querySelectorAll('.pjx-roster-picker__input[aria-expanded="true"]')
+            .forEach((input) => {
+                const picker = pickerOf(input);
+                if (picker) place(picker);
+            });
+    }
+
+    window.addEventListener('resize', placeOpenPickers);
+
+    // scroll does not bubble, so only a capture listener hears an ancestor's.
+    // A list scrolling its own rows moves nothing it is placed against. The
+    // page's own scroll targets document, which has no closest.
+    document.addEventListener('scroll', function (event) {
+        if (event.target instanceof Element && event.target.closest('.pjx-roster-picker__results')) {
+            return;
+        }
+        placeOpenPickers();
+    }, true);
 
     document.addEventListener('click', function (event) {
         if (!(event.target instanceof Element)) return;
