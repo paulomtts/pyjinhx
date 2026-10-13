@@ -666,3 +666,119 @@ def test_a_chip_added_by_a_swap_reaches_the_cap_and_validity(
     assert _state(page) == CLOSED
     assert _events(page) == []
     assert page_errors == []
+
+
+def test_a_chip_removed_by_an_empty_swap_frees_its_row_cap_and_validity(
+    page: Page, session: RenderSession, page_errors: list[str]
+):
+    _serve(
+        page,
+        session,
+        _picker(session, items=_items("v0"), max_items=2, required=True),
+        swap="",
+    )
+    _open(page)
+    # Reaches the cap and closes the list, keeping its rows.
+    _pick(page, "v1").click()
+    assert _input(page).is_disabled()
+    _record_events(page)
+
+    _swap(page, CHIP.format(value="v0"), "outerHTML")
+    _wait_values(page, ["v1"])
+    _settle(page)
+
+    assert _hidden_rows(page) == {"v0": False, "v1": True, "v2": False}
+    assert not _input(page).is_disabled()
+    assert _hint_hidden(page) is True
+    assert _validity(page) == "v1"
+    assert _state(page) == CLOSED
+    assert _events(page) == []
+    assert page_errors == []
+
+
+def test_a_chip_removed_by_an_empty_swap_shows_its_row_in_an_open_list(
+    page: Page, session: RenderSession, page_errors: list[str]
+):
+    _serve(page, session, _picker(session, items=_items("v0", "v1")), swap="")
+    _open(page)
+    _record_events(page)
+
+    _swap(page, CHIP.format(value="v0"), "outerHTML")
+    _wait_values(page, ["v1"])
+    _settle(page)
+
+    assert _hidden_rows(page) == {"v0": False, "v1": True, "v2": False}
+    assert _state(page) == OPEN
+    assert _has_focus(_input(page))
+    assert _events(page) == []
+    assert page_errors == []
+
+
+def test_an_empty_chip_swap_leaves_another_picker_alone(
+    page: Page, session: RenderSession, page_errors: list[str]
+):
+    body = _picker(session, items=_items("v0"), required=True) + _picker(
+        session, "q", items=_items("v0", "v1"), max_items=2, required=True
+    )
+    _serve(page, session, body, swap="")
+
+    _swap(page, CHIP.format(value="v0"), "outerHTML")
+    _wait_values(page, [])
+    _settle(page)
+
+    assert _validity(page) == ""
+    assert _values(page, "q") == ["v0", "v1"]
+    assert _input(page, "q").is_disabled()
+    assert _hint_hidden(page, "q") is False
+    assert _validity(page, "q") == "v0,v1"
+    assert page_errors == []
+
+
+def test_a_failed_chip_swap_changes_nothing(
+    page: Page, session: RenderSession, page_errors: list[str]
+):
+    _serve(
+        page,
+        session,
+        _picker(session, items=_items("v0", "v1"), max_items=2, required=True),
+    )
+    # Registered last, so it answers /swap ahead of _serve's route.
+    page.route(
+        SWAP_URL,
+        lambda route: route.fulfill(status=500, body="no", content_type="text/html"),
+    )
+    _record_events(page)
+
+    # htmx swaps nothing for a 500.
+    page.evaluate(
+        "selector => htmx.ajax('GET', '/swap', {"
+        " target: document.querySelector(selector), swap: 'outerHTML' })"
+        ".catch(() => {})",
+        CHIP.format(value="v0"),
+    )
+    _settle(page)
+
+    assert _values(page) == ["v0", "v1"]
+    assert _input(page).is_disabled()
+    assert _hint_hidden(page) is False
+    assert _validity(page) == "v0,v1"
+    assert _events(page) == []
+    assert page_errors == []
+
+
+def test_an_empty_chip_swap_in_a_disabled_picker_throws_nothing(
+    page: Page, session: RenderSession, page_errors: list[str]
+):
+    _serve(
+        page,
+        session,
+        _picker(session, items=_items("v0", "v1"), disabled=True),
+        swap="",
+    )
+
+    _swap(page, CHIP.format(value="v0"), "outerHTML")
+    _wait_values(page, ["v1"])
+    _settle(page)
+
+    assert _hint_hidden(page) is True
+    assert page_errors == []

@@ -591,6 +591,18 @@
         document.querySelectorAll('[data-pjx-roster-picker-portal]').forEach((picker) => {
             if (portalled.has(picker) && target.contains(picker)) setOpen(picker, false);
         });
+        // An outerHTML swap with an empty answer settles nothing, so htmx
+        // fires no afterSettle for a chip it removes that way. The swap's own
+        // change to the DOM is the signal instead, whenever htmx makes it.
+        // The parent, so a removed target is seen too. A picker the swap
+        // replaces is left to its successor's afterSettle.
+        const picker = pickerOf(target);
+        if (!picker || target.contains(picker)) return;
+        const observer = new MutationObserver(function () {
+            observer.disconnect();
+            syncSelection(picker);
+        });
+        observer.observe(target.parentNode, { childList: true, subtree: true });
     });
 
     function placeOpenPickers() {
