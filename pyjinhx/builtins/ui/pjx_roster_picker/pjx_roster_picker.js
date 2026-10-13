@@ -167,6 +167,14 @@
         if (isSearchInput(event.target)) openByUser(event.target);
     });
 
+    // Typing already searches through the input's own hx-trigger, so opening
+    // here must not ask a second time.
+    document.addEventListener('input', function (event) {
+        if (!isSearchInput(event.target) || isOpen(event.target)) return;
+        const picker = pickerOf(event.target);
+        if (picker) setOpen(picker, true);
+    });
+
     document.addEventListener('keydown', function (event) {
         if (event.key !== 'Escape' || !(event.target instanceof Element)) return;
         const search = event.target.closest('.pjx-roster-picker__search');

@@ -355,3 +355,55 @@ def test_pickers_open_and_close_independently(
     assert _state(page, "b") == OPEN
     assert _opens(page, "a") == 1
     assert page_errors == []
+
+
+def test_typing_into_a_closed_list_opens_it(
+    page: Page, session: RenderSession, page_errors: list[str]
+):
+    _serve(page, session, _picker(session))
+    _input(page).click()
+    page.keyboard.press("Escape")
+    assert _state(page) == CLOSED
+
+    page.keyboard.type("a")
+
+    assert _state(page) == OPEN
+    _settle(page)
+    # The input's own hx-trigger searches for typed text; opening adds no ask.
+    assert _opens(page) == 1
+    assert page_errors == []
+
+
+def test_typing_in_another_input_leaves_the_picker_alone(
+    page: Page, session: RenderSession, page_errors: list[str]
+):
+    body = '<input id="other" type="text">' + _picker(session)
+    _serve(page, session, body)
+
+    page.click("#other")
+    page.keyboard.type("hi")
+    _settle(page)
+
+    assert _state(page) == CLOSED
+    assert page.evaluate("() => window.opens") == {}
+    assert page_errors == []
+
+
+def test_events_aimed_at_the_document_itself_are_ignored(
+    page: Page, session: RenderSession, page_errors: list[str]
+):
+    _serve(page, session, _picker(session))
+
+    page.evaluate(
+        """() => {
+            document.dispatchEvent(new FocusEvent('focusin', { bubbles: true }));
+            document.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+            document.dispatchEvent(new InputEvent('input', { bubbles: true }));
+            document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+        }"""
+    )
+    _settle(page)
+
+    assert _state(page) == CLOSED
+    assert page.evaluate("() => window.opens") == {}
+    assert page_errors == []
