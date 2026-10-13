@@ -794,7 +794,13 @@ var __pjxD3=(()=>{var fe=Object.defineProperty;var vn=Object.getOwnPropertyDescr
         window.removeEventListener('pointerup', end);
         window.removeEventListener('pointercancel', end);
         document.removeEventListener('selectstart', block);
-        if (!done.dragging) return;
+        if (done.dragging) connect(done, event);
+        endGesture();
+      }
+
+      // Before the flush, so the drop is hit-tested against the nodes the
+      // user saw while wiring.
+      function connect(done, event) {
         swallowClick();
         if (event.type !== 'pointerup' || !findNode(done.from)) return;
         // The ghost takes no pointer events, so it never hides the node below.
@@ -827,6 +833,7 @@ var __pjxD3=(()=>{var fe=Object.defineProperty;var vn=Object.getOwnPropertyDescr
         window.addEventListener('pointerup', end);
         window.addEventListener('pointercancel', end);
         document.addEventListener('selectstart', block);
+        beginGesture();
       });
     }
 

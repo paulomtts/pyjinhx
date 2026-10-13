@@ -377,6 +377,20 @@ def _flushed_once(page: Page, before: int, stage_id: str = "g") -> int:
     return before + 1
 
 
+def _second_pointer(page: Page, kind: str) -> None:
+    """Press pointer 2 on a's ok port ("pointerdown") or let it go ("pointerup")."""
+    page.evaluate(
+        """kind => {
+            const target = kind === 'pointerdown'
+                ? document.querySelector('#g-a [data-pjx-graph-port="out"][data-port="ok"]')
+                : window;
+            target.dispatchEvent(new PointerEvent(kind,
+                { pointerId: 2, button: 0, bubbles: true }));
+        }""",
+        kind,
+    )
+
+
 # Calling reconcile
 
 
@@ -1384,4 +1398,59 @@ def test_a_background_pan_holds_nothing(page, page_errors, session):
     assert _settle(page, before) == before + 1
     page.mouse.up()
     assert _events(page, "move") == []
+    assert page_errors == []
+
+
+def test_a_wire_drag_survives_a_node_layer_swap(page, page_errors, session):
+    _serve(page, _keyed(session))
+    x, y = _center(page, _port("g-a"))
+    _press(page, (x, y), (x + 60, y + 40))
+    before = _rendered(page)
+    _mutate(page, _replace("#g-nodes", _html(session, _layer(session, _trio()))))
+    _held(page, before)
+    page.mouse.move(*_center(page, _title("g-c")), steps=2)
+    page.mouse.up()
+    assert [e["detail"] for e in _events(page, "wire")] == [
+        {"from": "a", "port": "ok", "to": "c"}
+    ]
+    _flushed_once(page, before)
+    assert page_errors == []
+
+
+def test_a_wire_whose_source_is_removed_mid_drag_fires_no_wire_and_flushes_once(
+    page, page_errors, session
+):
+    _serve(page, _keyed(session))
+    x, y = _center(page, _port("g-a"))
+    target = _center(page, _title("g-c"))
+    _press(page, (x, y), (x + 60, y + 40))
+    before = _rendered(page)
+    _mutate(page, _remove("#g-a"))
+    _held(page, before)
+    assert [e["edge"] for e in _visible(page)] == ["e1", "e2"]
+    page.mouse.move(*target, steps=2)
+    page.mouse.up()
+    assert _events(page, "wire") == []
+    _flushed_once(page, before)
+    # Both edges start at a, so with a gone none is drawn.
+    assert _visible(page) == []
+    assert page_errors == []
+
+
+def test_overlapping_gestures_flush_once_when_the_last_ends(page, page_errors, session):
+    _serve(page, _keyed(session))
+    _second_pointer(page, "pointerdown")
+    x, y = _center(page, _title("g-b"))
+    _press(page, (x, y), (x + 60, y + 40))
+    before = _rendered(page)
+    _mutate(page, _replace("#g-c", _html(session, _trio()[2])), reconcile="g")
+    page.mouse.up()
+    # The wire's pointer is still down, so the node's release flushes nothing.
+    _held(page, before)
+    assert [e["detail"] for e in _events(page, "move")] == [
+        {"id": "b", "x": 460, "y": 80}
+    ]
+    _second_pointer(page, "pointerup")
+    _flushed_once(page, before)
+    assert _events(page, "wire") == []
     assert page_errors == []
