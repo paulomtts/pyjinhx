@@ -6,10 +6,10 @@
     if (window.pjx.rosterPicker) return;
     window.pjx.rosterPicker = {};
 
-    // Focus this script moves (Escape or a pick handing it back to the box)
-    // is not the user arriving, so it must not reopen the list. focus()
-    // dispatches focusin synchronously, so the mark only has to outlive
-    // that call.
+    // Focus this script moves (Escape, a pick or a remove handing it back to
+    // the box) is not the user arriving, so it must not reopen the list.
+    // focus() dispatches focusin synchronously, so the mark only has to
+    // outlive that call.
     let quietInput = null;
 
     function pickerOf(el) {
@@ -99,6 +99,27 @@
         announceChange(picker);
     }
 
+    // Only the mount's live rows: template content is not searched.
+    function isListed(picker, value) {
+        const rows = resultsMount(picker).querySelectorAll('[data-pjx-roster-pick]');
+        return Array.from(rows).some((row) => row.dataset.value === value);
+    }
+
+    function removeChip(picker, chip) {
+        const value = chip.querySelector(':scope > .pjx-roster-picker__chip-input').value;
+        const next = chip.nextElementSibling;
+        chip.remove();
+        syncRows(picker);
+        const input = searchInput(picker);
+        // The kept rows were fetched with this value excluded, so a route that
+        // honoured exclude left it out; only a fresh search can bring it back.
+        if (input && !isListed(picker, value)) input.removeAttribute('data-last-query');
+        const nextRemove = next && next.querySelector('[data-pjx-roster-remove]');
+        if (nextRemove) nextRemove.focus();
+        else if (input) quietFocus(input);
+        announceChange(picker);
+    }
+
     // The input's hx-trigger turns roster-picker-open into a debounced search
     // for whatever the box already holds.
     function openByUser(input) {
@@ -167,6 +188,14 @@
         if (!(event.target instanceof Element)) return;
         const picker = pickerOf(event.target);
         if (picker) syncRows(picker);
+    });
+
+    document.addEventListener('click', function (event) {
+        if (!(event.target instanceof Element)) return;
+        const button = event.target.closest('[data-pjx-roster-remove]');
+        const chip = button && button.closest('[data-pjx-roster-chip]');
+        const picker = chip && pickerOf(chip);
+        if (picker) removeChip(picker, chip);
     });
 
     // Read when the request is built, not at load, so the route sees the
