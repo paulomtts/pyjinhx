@@ -72,6 +72,22 @@ RECONCILE = """id => {
     return result === undefined ? 'undefined' : String(result);
 }"""
 
+# Calls drawEdges once and counts the viewport's node queries it makes.
+COUNT_NODE_QUERIES = """id => {
+    const viewport = document.querySelector('#' + id + ' > .pjx-graph__canvas > .pjx-graph__viewport');
+    let count = 0;
+    viewport.querySelectorAll = function (selector) {
+        if (selector === '[data-node-id]') count += 1;
+        return Element.prototype.querySelectorAll.call(this, selector);
+    };
+    try {
+        pjx.graph.get(document.getElementById(id)).drawEdges();
+    } finally {
+        delete viewport.querySelectorAll;
+    }
+    return count;
+}"""
+
 NUMBER = re.compile(r"-?\d+(?:\.\d+)?(?:e[-+]?\d+)?")
 SPAN = re.compile(r"<span [^>]*data-pjx-graph-edge[^>]*></span>")
 
@@ -757,4 +773,35 @@ def test_a_reconcile_during_a_node_drag_leaves_the_dragged_node_alone(
     assert [e["detail"] for e in _events(page, "move")] == [
         {"id": "a", "x": 80, "y": 80}
     ]
+    assert page_errors == []
+
+
+# Node lookup
+
+
+def test_a_redraw_queries_nodes_once(page, page_errors, session):
+    edges = [_edge(f"e{i}", "a", "b", port="ok") for i in range(5)] + [
+        _edge(f"e{i}", "a", "c", port="fail") for i in range(5, 10)
+    ]
+    _serve(page, _stage(session, edges=edges))
+    assert len(_visible(page)) == 10
+    assert page.evaluate(COUNT_NODE_QUERIES, "g") == 1
+    assert len(_visible(page)) == 10
+    assert page_errors == []
+
+
+def test_lookups_outside_a_redraw_see_a_node_added_in_the_same_task(
+    page, page_errors, session
+):
+    _serve(page, _stage(session))
+    added = _html(session, _node("d", 700, 40, in_port=True))
+    found = page.evaluate(
+        """html => {
+            document.getElementById('g-nodes').insertAdjacentHTML('beforeend', html);
+            const instance = pjx.graph.get(document.getElementById('g'));
+            return [instance.box('d') !== null, instance.select('d')];
+        }""",
+        added,
+    )
+    assert found == [True, True]
     assert page_errors == []
