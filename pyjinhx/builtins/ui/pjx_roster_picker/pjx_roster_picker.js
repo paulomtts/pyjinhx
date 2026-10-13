@@ -100,9 +100,10 @@
     if (window.pjx.rosterPicker) return;
     window.pjx.rosterPicker = {};
 
-    // Focus this script moves (Escape handing it back to the box) is not the
-    // user arriving, so it must not reopen the list. focus() dispatches
-    // focusin synchronously, so the mark only has to outlive that call.
+    // Focus this script moves (Escape or a pick handing it back to the box)
+    // is not the user arriving, so it must not reopen the list. focus()
+    // dispatches focusin synchronously, so the mark only has to outlive
+    // that call.
     let quietInput = null;
 
     function pickerOf(el) {
@@ -147,6 +148,45 @@
         } finally {
             quietInput = null;
         }
+    }
+
+    // A row is hidden exactly while its value is chipped, whether or not the
+    // route honoured exclude.
+    function syncRows(picker) {
+        const chipped = chippedValues(picker);
+        picker.querySelectorAll('[data-pjx-roster-pick]').forEach((row) => {
+            row.hidden = chipped.includes(row.dataset.value);
+        });
+    }
+
+    // Read after the DOM change, so listeners see the selection as it now is.
+    function announceChange(picker) {
+        picker.dispatchEvent(
+            new CustomEvent('pjx:roster-picker:change', {
+                bubbles: true,
+                detail: { values: chippedValues(picker) },
+            })
+        );
+    }
+
+    function pickRow(picker, row) {
+        const template = row.nextElementSibling;
+        const source =
+            template instanceof HTMLTemplateElement &&
+            template.content.querySelector('[data-pjx-roster-chip]');
+        // A stale or hand-built row without its chip has nothing to add.
+        if (!source) return;
+        const chip = document.importNode(source, true);
+        chip.querySelector(':scope > .pjx-roster-picker__chip-input').name = picker.dataset.name;
+        picker.querySelector('.pjx-roster-picker__chips').append(chip);
+        syncRows(picker);
+        setOpen(picker, false);
+        const input = searchInput(picker);
+        if (input) {
+            input.value = '';
+            quietFocus(input);
+        }
+        announceChange(picker);
     }
 
     // The input's hx-trigger turns roster-picker-open into a debounced search
@@ -199,6 +239,15 @@
         setOpen(picker, false);
         // A row focused inside the now-hidden list would strand the keyboard.
         if (event.target !== input) quietFocus(input);
+    });
+
+    // closest, not the target: the press usually lands on the row's label or
+    // avatar. Enter and Space on a focused row arrive as a click too.
+    document.addEventListener('click', function (event) {
+        if (!(event.target instanceof Element)) return;
+        const row = event.target.closest('[data-pjx-roster-pick]');
+        const picker = row && pickerOf(row);
+        if (picker) pickRow(picker, row);
     });
 
     // Read when the request is built, not at load, so the route sees the
