@@ -459,3 +459,69 @@ def test_tag_in_a_host_template_renders_the_picker_with_inline_attributes(
     assert picker.attrs["data-team"] == "core"
     assert picker.attrs["data-name"] == "members"
     assert _one(picker, "pjx-roster-picker__input").attrs["hx-get"] == "/people"
+
+
+# ── Disabled / required / portal ─────────────────────────────────────────────
+
+
+def test_disabled_drops_the_search_wrapper_and_remove_buttons_but_keeps_hidden_inputs(
+    parse_html, session
+):
+    root = _picker(parse_html, session, disabled=True, items=_items("u1", "u2"))
+
+    assert "data-disabled" in root.attrs
+    assert _by_class(root, "pjx-roster-picker__search") == []
+    assert _by_class(root, "pjx-roster-picker__input") == []
+    assert _by_class(root, "pjx-roster-picker__results") == []
+    assert [el for el in root.descendants() if el.tag == "button"] == []
+    hidden = _by_class(root, "pjx-roster-picker__chip-input")
+    assert [el.attrs["value"] for el in hidden] == ["u1", "u2"]
+    for el in hidden:
+        assert el.attrs["name"] == "members"
+        assert "disabled" not in el.attrs
+    chips, hint = root.children
+    assert "pjx-roster-picker__chips" in chips.classes
+    assert "pjx-roster-picker__hint" in hint.classes
+
+
+def test_required_adds_a_visually_hidden_validity_input_after_the_hint(
+    parse_html, session
+):
+    root = _picker(parse_html, session, required=True, items=_items("u1", "u2"))
+
+    assert len(root.children) == 4
+    validity = root.children[-1]
+    assert validity.tag == "input"
+    assert "pjx-roster-picker__validity" in validity.classes
+    assert validity.attrs["type"] == "text"
+    assert "required" in validity.attrs
+    assert validity.attrs["tabindex"] == "-1"
+    assert validity.attrs["aria-hidden"] == "true"
+    assert "name" not in validity.attrs
+    assert "disabled" not in validity.attrs
+    assert validity.attrs["value"] == "u1,u2"
+    assert _one(root, "pjx-roster-picker__input").attrs["aria-required"] == "true"
+
+
+def test_required_with_no_items_gives_an_empty_validity_value(parse_html, session):
+    root = _picker(parse_html, session, required=True)
+
+    assert _one(root, "pjx-roster-picker__validity").attrs["value"] == ""
+
+
+def test_required_and_disabled_validity_input_is_disabled(parse_html, session):
+    root = _picker(parse_html, session, required=True, disabled=True)
+
+    assert "disabled" in _one(root, "pjx-roster-picker__validity").attrs
+
+
+def test_not_required_renders_no_validity_input(parse_html, session):
+    root = _picker(parse_html, session, items=_items("u1"))
+
+    assert _by_class(root, "pjx-roster-picker__validity") == []
+
+
+def test_portal_adds_the_portal_flag(parse_html, session):
+    root = _picker(parse_html, session, portal=True)
+
+    assert "data-pjx-roster-picker-portal" in root.attrs
