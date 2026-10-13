@@ -329,3 +329,74 @@ def test_a_non_required_picker_has_no_validity_input_and_submits(
     assert _submits(page) == [[]]
     assert _cue(page) == (None, False)
     assert page_errors == []
+
+
+def test_an_empty_required_picker_blocks_submit_and_focuses_the_box(
+    page: Page, session: RenderSession, page_errors: list[str]
+):
+    requests = _serve(page, session, _form(_picker(session, required=True)))
+    _record_submits(page)
+
+    _submit(page)
+    # Past the 300 ms debounce, so a reopen's search would have been sent.
+    page.wait_for_timeout(500)
+
+    assert _submits(page) == []
+    assert _has_focus(_input(page))
+    assert _cue(page) == ("true", True)
+    assert _state(page) == CLOSED
+    assert requests == []
+    assert page_errors == []
+
+
+def test_a_second_submit_leaves_the_same_cue(
+    page: Page, session: RenderSession, page_errors: list[str]
+):
+    requests = _serve(page, session, _form(_picker(session, required=True)))
+    _record_submits(page)
+
+    _submit(page)
+    _submit(page)
+    page.wait_for_timeout(500)
+
+    assert _submits(page) == []
+    assert _has_focus(_input(page))
+    assert _cue(page) == ("true", True)
+    assert (
+        page.evaluate("() => document.getElementById('p').className")
+        == "pjx-roster-picker pjx-roster-picker--invalid"
+    )
+    assert _state(page) == CLOSED
+    assert requests == []
+    assert page_errors == []
+
+
+def test_check_validity_cues_every_empty_required_picker(
+    page: Page, session: RenderSession, page_errors: list[str]
+):
+    body = _picker(session, "p", required=True) + _picker(session, "q", required=True)
+    _serve(page, session, _form(body))
+
+    assert _valid(page) is False
+
+    assert _cue(page, "p") == ("true", True)
+    assert _cue(page, "q") == ("true", True)
+    assert _state(page, "p") == CLOSED
+    assert _state(page, "q") == CLOSED
+    assert page_errors == []
+
+
+def test_an_unrelated_invalid_control_leaves_the_picker_alone(
+    page: Page, session: RenderSession, page_errors: list[str]
+):
+    picker = _picker(session, required=True, items=[_item("a")])
+    _serve(page, session, _form(f'<input id="title" required>{picker}'))
+    _record_submits(page)
+
+    _submit(page)
+    _settle(page)
+
+    assert _submits(page) == []
+    assert _cue(page) == (None, False)
+    assert _has_focus(page.locator("#title"))
+    assert page_errors == []

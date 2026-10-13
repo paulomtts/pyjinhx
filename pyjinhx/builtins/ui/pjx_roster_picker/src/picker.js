@@ -178,6 +178,23 @@
         }
     });
 
+    // invalid does not bubble, so only a capture listener sees it. The
+    // validity input is clipped to 1px, so the browser's own bubble and
+    // focus would land on nothing visible; the box takes them instead, as
+    // PJXSelect does for its hidden select. A disabled picker has no box
+    // and is left alone.
+    document.addEventListener('invalid', function (event) {
+        if (!(event.target instanceof Element)) return;
+        if (!event.target.matches('.pjx-roster-picker__validity')) return;
+        const picker = pickerOf(event.target);
+        const input = picker && searchInput(picker);
+        if (!input) return;
+        event.preventDefault();
+        input.setAttribute('aria-invalid', 'true');
+        picker.classList.add('pjx-roster-picker--invalid');
+        quietFocus(input);
+    }, true);
+
     // A box that already has focus fires no focusin, so after Escape only the
     // click itself can reopen it. The click that just focused a box finds it
     // open already and does nothing.
