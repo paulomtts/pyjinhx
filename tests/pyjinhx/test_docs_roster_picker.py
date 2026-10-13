@@ -14,8 +14,20 @@ from typing import Any
 import pytest
 from fastapi.testclient import TestClient
 
+from pyjinhx.builtins import (
+    PJXRosterChip,
+    PJXRosterItem,
+    PJXRosterPicker,
+    PJXRosterResults,
+)
+
 _ROOT = Path(__file__).resolve().parents[2]
 _GUIDE = _ROOT / "docs" / "guide" / "roster-picker.md"
+
+# Built by the component from other fields, never passed by the app.
+_DERIVED = {"chips", "visuals", "add_icons", "sentinel", "visual", "remove_icon"}
+# Every component takes these; the guide says so once instead of per table.
+_COMMON = {"id", "class_name", "extra_attrs"}
 
 
 def _guide() -> str:
@@ -183,3 +195,14 @@ def test_api_section_documents_values_open_close_only():
     # placement is exposed only for a unit test, never as API.
     assert "placement(" not in guide
     assert "rosterPicker.placement" not in guide
+
+
+@pytest.mark.parametrize(
+    "model", [PJXRosterItem, PJXRosterPicker, PJXRosterResults, PJXRosterChip]
+)
+def test_props_tables_list_every_user_facing_field(model):
+    table = _section(_guide(), f"### {model.__name__}")
+    documented = set(re.findall(r"^\| `(\w+)` \|", table, re.MULTILINE))
+
+    fields = set(model.model_fields) - _DERIVED - _COMMON
+    assert fields - documented == set()

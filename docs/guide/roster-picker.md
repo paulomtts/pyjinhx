@@ -83,6 +83,92 @@ find its picker.
 pass, as with `PJXSelect`'s `options`.
 
 
+## Components
+
+Every component also takes `id`, `class_name` and `extra_attrs`, as described in
+[Builtin conventions](builtin-conventions.md#the-contract). The tables below list the other props.
+Text props are escaped. `Slot` props render raw HTML, so escape any plain text the app puts in them.
+
+### PJXRosterItem
+
+One entry, shown as a chip or a result row. It is a frozen pydantic model, not a component, so it
+takes no `id`, `class_name` or `extra_attrs`.
+
+| Prop | Type | Default | Meaning |
+|---|---|---|---|
+| `value` | `str` | required | Non-empty. The value the chip's hidden input posts. |
+| `label` | `str` | required | Non-empty. The name shown on the chip and the row. |
+| `subtitle` | `str` | `""` | A second line on the result row. Chips do not show it. |
+| `initials` | `str` | `""` | Shown in the avatar when there is no `src`. |
+| `color` | `str` | `""` | The avatar's background color. |
+| `src` | `str` | `""` | The avatar's image URL. |
+| `icon` | `str` | `""` | An icon name. When set, the icon replaces the avatar. |
+| `extra` | `Slot` | `""` | Raw HTML beside the chip's label. |
+| `detail` | `Slot` | `""` | Raw HTML in a second row under the chip. |
+
+### PJXRosterPicker
+
+The picker: the search box, the results list, the chips, the limit hint and, when required, the
+validity input.
+
+| Prop | Type | Default | Meaning |
+|---|---|---|---|
+| `name` | `str` | required | Non-empty. Each chip's hidden input posts under this name. |
+| `candidates_url` | `str` | required | Non-empty. The search route. See [Search route contract](#search-route-contract). |
+| `items` | `list[PJXRosterItem]` | `[]` | The initial selection, one chip each, in order. |
+| `max_items` | `int` | `0` | The most chips the picker takes. `0` means no limit. See [Behaviour](#behaviour). |
+| `required` | `bool` | `False` | Blocks form submit while nothing is chosen. |
+| `disabled` | `bool` | `False` | Shows the chips only: no search box, no remove buttons. The selection still submits. |
+| `portal` | `bool` | `False` | Moves the open list to `document.body`, for ancestors that clip it. |
+| `placeholder` | `str` | `"Search…"` | The search box's placeholder. |
+| `remove_label` | `str` | `"Remove"` | Each remove button's `aria-label` starts with it. |
+| `limit_label` | `str` | `"Limit reached"` | The hint shown while the picker is full. |
+| `empty_message` | `str` | `"No results"` | Written to `data-empty-message` on the root. |
+
+An empty `name` or `candidates_url`, a negative `max_items`, two items with the same `value`, or
+more items than a non-zero `max_items` raises a `pydantic.ValidationError`.
+
+### PJXRosterResults
+
+One page of search results: what the search route returns.
+
+| Prop | Type | Default | Meaning |
+|---|---|---|---|
+| `items` | `list[PJXRosterItem]` | `[]` | The rows on this page, one pick button each. |
+| `picker_id` | `str` | required | The picker's `id`. Non-empty, no whitespace. |
+| `next_url` | `str` | `""` | Where the next page is. `""` means this is the last page. |
+| `next_cursor` | `str` | `""` | Added to the sentinel's id, so each page's sentinel id is unique. |
+| `empty_message` | `str` | `"No results"` | Shown when `items` is empty. |
+| `remove_label` | `str` | `"Remove"` | The `remove_label` of the chips a pick adds. |
+
+With no items, the page renders `empty_message` and no sentinel. With items and a `next_url`, the
+page ends with a `PJXLazyLoad` sentinel. Its id is `<picker_id>-more`, plus `-<next_cursor>` when
+`next_cursor` is set. It fires on `intersect once root:#<picker_id>-results`, when it scrolls into
+view inside the list, and swaps `outerHTML`, so the next page replaces it.
+
+### PJXRosterChip
+
+One selected entry: a hidden input, the avatar or icon, the label, `extra` and the remove button,
+then the optional `detail` row.
+
+| Prop | Type | Default | Meaning |
+|---|---|---|---|
+| `value` | `str` | required | Non-empty. The hidden input's value. |
+| `label` | `str` | required | Non-empty. The chip's text. |
+| `initials` | `str` | `""` | As on `PJXRosterItem`. |
+| `color` | `str` | `""` | As on `PJXRosterItem`. |
+| `src` | `str` | `""` | As on `PJXRosterItem`. |
+| `icon` | `str` | `""` | As on `PJXRosterItem`. |
+| `extra` | `Slot` | `""` | As on `PJXRosterItem`. |
+| `detail` | `Slot` | `""` | As on `PJXRosterItem`. |
+| `name` | `str` | `""` | The hidden input's name. Must be the picker's `name` for the chip to post with it. |
+| `remove_label` | `str` | `"Remove"` | The remove button's `aria-label` is `"<remove_label>: <label>"`. |
+| `disabled` | `bool` | `False` | Drops the remove button. The hidden input stays, so the chip still submits. |
+
+The picker builds its chips itself, from `items` and from each result row. An app renders a
+`PJXRosterChip` only for a custom layout or a swap; see [Updating a picker](#updating-a-picker).
+
+
 ## Search route contract
 
 The search box sends `GET <candidates_url>` with three parameters:
