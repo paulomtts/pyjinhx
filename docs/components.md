@@ -2609,6 +2609,29 @@ Tag-style multi-value input. Each chip carries its own `<input type="hidden">` s
     )
     ```
 
+### PJXRosterPicker
+
+Server-searched multi-picker: the user searches, picks from the rows the route sends back, and each pick becomes a removable chip with its own hidden input. **Assets:** `pjx_roster_picker.css`, `pjx_roster_picker.js`.
+
+<!-- demo: PJXRosterPicker -->
+
+Type part of a name, scroll the list for more, pick and remove. The three pickers take any number of people, one (a pick replaces the chip) and at most three. A docs page has no server, so a small inline script plays the search route from the [Roster Picker guide](guide/roster-picker.md#quick-start); the rows and each next page still arrive through real htmx swaps.
+
+```python
+PJXRosterPicker(
+    id="team",
+    name="members",
+    candidates_url="/people",
+    items=[
+        PJXRosterItem(
+            value="ada", label="Ada Lovelace", subtitle="Analyst", initials="AL"
+        ),
+    ],
+)
+```
+
+Every prop, event, search-route rule and update shape is in the [Roster Picker guide](guide/roster-picker.md).
+
 ### PJXFormField
 
 Labelled control wrapper with help text and error state. **Assets:** `pjx_form_field.css` only.

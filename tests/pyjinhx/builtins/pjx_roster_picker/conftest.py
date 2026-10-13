@@ -121,3 +121,13 @@ def page_errors(page: Page) -> list[str]:
     errors: list[str] = []
     page.on("pageerror", lambda error: errors.append(str(error)))
     return errors
+
+
+@pytest.fixture
+def console_errors(page: Page) -> list[str]:
+    """The text of every console.error the page logs from here on."""
+    errors: list[str] = []
+    page.on(
+        "console", lambda msg: errors.append(msg.text) if msg.type == "error" else None
+    )
+    return errors
