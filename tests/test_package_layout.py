@@ -197,24 +197,32 @@ def test_reactive_response_is_gone():
         importlib.import_module("pyjinhx.reactive.response")
 
 
-def _graph_symbols_in_public_api() -> list[str]:
-    """The backticked names in the first column of the graph builtins table."""
+def _symbols_in_public_api(heading: str) -> list[str]:
+    """The backticked names in the first column of the table under `## <heading>`."""
     text = (REPO_ROOT / "docs" / "reference" / "public-api.md").read_text(
         encoding="utf-8"
     )
-    _, heading, rest = text.partition("## Builtin graph components\n")
-    if not heading:
+    _, found, rest = text.partition(f"## {heading}\n")
+    if not found:
         return []
     section = rest.split("\n## ", 1)[0]
     return re.findall(r"^\| `(\w+)` \|", section, flags=re.MULTILINE)
 
 
 def test_public_api_lists_every_graph_builtin():
-    documented = _graph_symbols_in_public_api()
+    documented = _symbols_in_public_api("Builtin graph components")
     exported = {n for n in pyjinhx.builtins.__all__ if n.startswith("PJXGraph")}
     assert exported
     assert len(documented) == len(set(documented))
     assert set(documented) == exported
+    assert [n for n in documented if not hasattr(pyjinhx.builtins, n)] == []
+
+
+def test_public_api_lists_every_roster_builtin():
+    documented = _symbols_in_public_api("Builtin roster picker components")
+    assert documented
+    assert len(documented) == len(set(documented))
+    assert set(documented) == set(ROSTER_EXPORTS)
     assert [n for n in documented if not hasattr(pyjinhx.builtins, n)] == []
 
 

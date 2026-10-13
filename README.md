@@ -344,3 +344,4 @@ def toggle():
 - [Reactivity guide](docs/reactivity.md)
 - [Built-in components](docs/components.md)
 - [Graph](docs/guide/graph.md) — pan/zoom node graphs, built on [d3](https://d3js.org) (ISC, Mike Bostock)
+- [Roster Picker](docs/guide/roster-picker.md) — server-searched multi-picker with removable chips
