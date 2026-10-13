@@ -4,7 +4,7 @@
     // re-running it, or two pickers shipping it) finds it and returns before
     // binding, so the document listeners below exist once per page.
     if (window.pjx.rosterPicker) return;
-    window.pjx.rosterPicker = { placement: placement };
+    window.pjx.rosterPicker = { placement: placement, values: values, open: open, close: close };
 
     // Focus this script moves (Escape, a pick or a remove handing it back to
     // the box) is not the user arriving, so it must not reopen the list.
@@ -236,8 +236,8 @@
         );
     }
 
-    // The markup renders a full picker this way already, so only a pick or
-    // a remove has to keep it in step.
+    // The markup renders a full picker this way already, so only a pick, a
+    // remove or a swap has to keep it in step.
     function syncCap(picker) {
         const full = isFull(picker);
         const input = searchInput(picker);
@@ -253,6 +253,14 @@
         if (validity) validity.value = chippedValues(picker).join(',');
     }
 
+    // A swap changes the chips without a pick or a remove, so whatever runs
+    // after one brings rows, cap and validity back in step together.
+    function syncSelection(picker) {
+        syncRows(picker);
+        syncCap(picker);
+        syncValidity(picker);
+    }
+
     // Only the browser's invalid event marks a picker, and a pick is the
     // answer to it, so a pick is the one thing that clears the mark. A
     // remove leaves it alone either way.
@@ -262,26 +270,33 @@
         if (input) input.removeAttribute('aria-invalid');
     }
 
-    // Read after the DOM change, so listeners see the selection as it now is.
-    function announceChange(picker) {
-        picker.dispatchEvent(
-            new CustomEvent('pjx:roster-picker:change', {
-                bubbles: true,
-                detail: { values: chippedValues(picker) },
-            })
+    // Every event starts at the picker, even from a row on body, so one
+    // listener on the picker or the page hears it. False means a listener
+    // refused it.
+    function fire(picker, name, detail, cancelable) {
+        return picker.dispatchEvent(
+            new CustomEvent(name, { bubbles: true, cancelable: cancelable, detail: detail })
         );
     }
 
+    // Read after the DOM change, so listeners see the selection as it now is.
+    function announceChange(picker) {
+        fire(picker, 'pjx:roster-picker:change', { values: chippedValues(picker) }, false);
+    }
+
     function pickRow(picker, row) {
+        const value = row.dataset.value;
         // The box is disabled at the cap, so this is only a stale row's click.
         if (isFull(picker)) return;
-        if (chippedValues(picker).includes(row.dataset.value)) return;
+        if (chippedValues(picker).includes(value)) return;
         const template = row.nextElementSibling;
         const source =
             template instanceof HTMLTemplateElement &&
             template.content.querySelector('[data-pjx-roster-chip]');
         // A stale or hand-built row without its chip has nothing to add.
         if (!source) return;
+        // Asked before anything moves, so a refusal leaves the list as it was.
+        if (!fire(picker, 'pjx:roster-picker:before-pick', { value }, true)) return;
         const chip = document.importNode(source, true);
         chip.querySelector(':scope > .pjx-roster-picker__chip-input').name = picker.dataset.name;
         const chips = picker.querySelector('.pjx-roster-picker__chips');
@@ -301,6 +316,7 @@
         if (remove) remove.focus();
         else if (input && !input.disabled) quietFocus(input);
         syncValidity(picker);
+        fire(picker, 'pjx:roster-picker:pick', { value }, false);
         announceChange(picker);
     }
 
@@ -312,6 +328,8 @@
 
     function removeChip(picker, chip) {
         const value = chip.querySelector(':scope > .pjx-roster-picker__chip-input').value;
+        // Asked while the chip is still there, so a refusal has nothing to undo.
+        if (!fire(picker, 'pjx:roster-picker:before-remove', { value }, true)) return;
         const next = chip.nextElementSibling;
         chip.remove();
         syncRows(picker);
@@ -325,6 +343,7 @@
         if (nextRemove) nextRemove.focus();
         else if (input) quietFocus(input);
         syncValidity(picker);
+        fire(picker, 'pjx:roster-picker:remove', { value }, false);
         announceChange(picker);
     }
 
@@ -337,16 +356,72 @@
         input.dispatchEvent(new Event('roster-picker-open'));
     }
 
+    // The root itself, never resolved upward from a descendant: a call aimed
+    // at the wrong element fails loudly instead of acting on its picker.
+    function checkRoot(name, root) {
+        if (!(root instanceof Element) || !root.matches('[data-pjx-roster-picker]')) {
+            throw new Error(
+                'pjx.rosterPicker.' + name +
+                    ': expected a roster picker root ([data-pjx-roster-picker])'
+            );
+        }
+    }
+
+    /**
+     * Return a picker's selection: each chip's value, in chip order.
+     *
+     * Takes the picker root, the element carrying data-pjx-roster-picker, and
+     * returns a fresh array, the same list pjx:roster-picker:change carries.
+     * Throws when root is anything else.
+     */
+    function values(root) {
+        checkRoot('values', root);
+        return chippedValues(root);
+    }
+
+    // A disabled picker renders no box and a full one disables it; a user
+    // cannot open either, and a list there could take no pick.
+    function usableInput(picker) {
+        const input = searchInput(picker);
+        return input && !input.disabled ? input : null;
+    }
+
+    /**
+     * Open a picker's list and search for the box's text, as a user's click does.
+     *
+     * Takes the picker root. A reopen over the text the kept list was
+     * fetched for sends no request, and an already open list is left as it
+     * is. Focus does not move. Returns false, changing nothing, when the
+     * picker is disabled, has no search box, or is full. Throws when root is
+     * not a picker root.
+     */
+    function open(root) {
+        checkRoot('open', root);
+        const input = usableInput(root);
+        if (!input) return false;
+        openByUser(input);
+        return true;
+    }
+
+    /**
+     * Close a picker's list, keeping its rows and bringing a portaled list home.
+     *
+     * Takes the picker root. Closing a closed list changes nothing. Focus
+     * does not move. Returns false, changing nothing, when the picker is
+     * disabled, has no search box, or is full. Throws when root is not a
+     * picker root.
+     */
+    function close(root) {
+        checkRoot('close', root);
+        if (!usableInput(root)) return false;
+        setOpen(root, false);
+        return true;
+    }
+
     // An event can target document itself, which has no closest or matches.
     function isSearchInput(target) {
         return target instanceof Element && target.matches('.pjx-roster-picker__input');
     }
-
-    document.addEventListener('focusin', function (event) {
-        if (isSearchInput(event.target) && event.target !== quietInput) {
-            openByUser(event.target);
-        }
-    });
 
     // A press that moves focus out closes the list only once the press has
     // ended, after its click: the list must not vanish from under the press
@@ -378,6 +453,15 @@
         const inside = event.target instanceof Element && searchOf(event.target);
         press = { inside: inside || null };
     }, true);
+
+    // Focus that lands on a box during a press begun anywhere else is the
+    // browser's doing, not the user arriving: a press held while a swap
+    // replaces its picker can drop focus into the new box.
+    document.addEventListener('focusin', function (event) {
+        if (!isSearchInput(event.target) || event.target === quietInput) return;
+        if (press && press.inside !== searchOf(event.target)) return;
+        openByUser(event.target);
+    });
 
     function endPress() {
         if (!press) return;
@@ -488,14 +572,15 @@
     });
 
     // A swap can bring rows for values already chipped: a route that ignored
-    // exclude, or a later page. The paging sentinel swaps outerHTML, so htmx
-    // settles the new page inside the mount, not the mount itself. The first
-    // open placed an empty mount, so the side is decided again on the rows.
+    // exclude, or a later page. A swap of the chips moves the cap and the
+    // validity too. The paging sentinel swaps outerHTML, so htmx settles the
+    // new page inside the mount, not the mount itself. The first open placed
+    // an empty mount, so the side is decided again on the rows.
     document.addEventListener('htmx:afterSettle', function (event) {
         if (!(event.target instanceof Element)) return;
         const picker = pickerOf(event.target);
         if (!picker) return;
-        syncRows(picker);
+        syncSelection(picker);
         place(picker);
     });
 
@@ -509,6 +594,18 @@
         document.querySelectorAll('[data-pjx-roster-picker-portal]').forEach((picker) => {
             if (portalled.has(picker) && target.contains(picker)) setOpen(picker, false);
         });
+        // An outerHTML swap with an empty answer settles nothing, so htmx
+        // fires no afterSettle for a chip it removes that way. The swap's own
+        // change to the DOM is the signal instead, whenever htmx makes it.
+        // The parent, so a removed target is seen too. A picker the swap
+        // replaces is left to its successor's afterSettle.
+        const picker = pickerOf(target);
+        if (!picker || target.contains(picker)) return;
+        const observer = new MutationObserver(function () {
+            observer.disconnect();
+            syncSelection(picker);
+        });
+        observer.observe(target.parentNode, { childList: true, subtree: true });
     });
 
     function placeOpenPickers() {
