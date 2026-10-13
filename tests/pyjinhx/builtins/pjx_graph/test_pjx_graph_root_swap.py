@@ -19,6 +19,7 @@ from typing import TYPE_CHECKING
 from markupsafe import Markup
 
 from pyjinhx.builtins.ui.pjx_graph import PJXGraph
+from pyjinhx.builtins.ui.pjx_graph_controls import PJXGraphControls
 from pyjinhx.builtins.ui.pjx_graph_edges import PJXGraphEdges
 from pyjinhx.builtins.ui.pjx_graph_node import PJXGraphNode
 from pyjinhx.builtins.ui.pjx_graph_nodes import PJXGraphNodes
@@ -526,4 +527,42 @@ def test_root_replaced_mid_wire_leaves_no_listeners(page, page_errors, session):
         == 0
     )
     assert page.evaluate(SELECTABLE)
+    assert page_errors == []
+
+
+# A root mounted again
+
+
+def test_a_root_mounted_again_selects_once_per_click(page, page_errors, session):
+    _serve(page, _keyed(session))
+    page.evaluate(KEEP_OLD, "g")
+    page.evaluate("() => window.oldRoot.remove()")
+    _frames(page)
+    page.evaluate("() => document.body.prepend(window.oldRoot)")
+    page.wait_for_function("() => pjx.graph.get(window.oldRoot) !== null", timeout=5000)
+    page.evaluate("() => { window.__events = []; }")
+    page.click("#g-b .pjx-graph__node-title")
+    assert [e["type"] for e in _events(page, "before-select", "select")] == [
+        "before-select",
+        "select",
+    ]
+    assert page_errors == []
+
+
+def test_a_root_mounted_again_zooms_one_step_per_control_click(
+    page, page_errors, session
+):
+    _serve(page, _keyed(session, controls=PJXGraphControls(id="g-controls")))
+    page.evaluate(KEEP_OLD, "g")
+    page.evaluate("() => window.oldRoot.remove()")
+    _frames(page)
+    page.evaluate("() => document.body.prepend(window.oldRoot)")
+    page.wait_for_function("() => pjx.graph.get(window.oldRoot) !== null", timeout=5000)
+    _wait_ready(page)
+    page.click('#g [data-pjx-graph-zoom="in"]')
+    k = page.evaluate(
+        """() => new DOMMatrix(getComputedStyle(
+            document.querySelector('#g .pjx-graph__viewport')).transform).a"""
+    )
+    assert abs(k - 2**0.5) < 1e-3
     assert page_errors == []

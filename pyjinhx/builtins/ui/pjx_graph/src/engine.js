@@ -67,7 +67,7 @@
   // Delegated, so controls swapped in later work without rebinding. A
   // control in a nested stage belongs to that stage's own listener, and the
   // values are matched one by one so a name like "constructor" is no step.
-  function listenForControls(root, canvas, instance) {
+  function listenForControls(root, canvas, instance, signal) {
     canvas.addEventListener('click', (event) => {
       const control = event.target.closest('[data-pjx-graph-zoom], [data-pjx-graph-fit]');
       if (!control || !canvas.contains(control)
@@ -79,13 +79,13 @@
       const value = control.getAttribute('data-pjx-graph-zoom');
       if (value === 'in') instance.zoomBy(1);
       else if (value === 'out') instance.zoomBy(-1);
-    });
+    }, { signal: signal });
   }
 
   // Delegated, like the controls. A click is judged by its nearest node
   // inside this viewport: a node of a nested stage is left to that stage,
   // while the nested stage's own background still lies inside one of ours.
-  function listenForSelection(root, canvas, viewport, plane, choose, deselect) {
+  function listenForSelection(root, canvas, viewport, plane, choose, deselect, signal) {
     canvas.addEventListener('click', (event) => {
       const target = event.target;
       const node = target.closest('[data-node-id]');
@@ -102,7 +102,7 @@
         return;
       }
       if (isBackground(target, canvas, viewport)) deselect();
-    });
+    }, { signal: signal });
   }
 
   function paint(viewport, t) {
@@ -177,7 +177,7 @@
     return d3.zoomIdentity.translate(view.x, view.y).scale(clampScale(view.k, extent));
   }
 
-  function attachZoom(root, canvas, viewport) {
+  function attachZoom(root, canvas, viewport, signal) {
     const extent = scaleExtent(root);
     const storageKey = root.getAttribute('data-pjx-graph-storage-key');
     const key = storageKey ? 'pjx-graph:' + storageKey : null;
@@ -190,7 +190,8 @@
     // Double-click stays free for selection; zoom is the wheel and the controls.
     d3.select(canvas).call(zoom).on('dblclick.zoom', null);
     // d3 lets a wheel at either end of the range scroll the page.
-    canvas.addEventListener('wheel', (event) => event.preventDefault(), { passive: false });
+    canvas.addEventListener('wheel', (event) => event.preventDefault(),
+      { passive: false, signal: signal });
     const restored = key ? storedView(readRecord(key), extent) : null;
     d3.select(canvas).call(zoom.transform, restored || d3.zoomIdentity);
     return { zoom: zoom, extent: extent, key: key, restored: restored !== null };
@@ -681,7 +682,7 @@
         // From the press, not from the slop: a reconcile before the drag
         // starts would place the node the user is about to move.
         beginGesture();
-      });
+      }, { signal: signal });
     }
 
     // The nearest node, when it is one of this stage's own.
@@ -771,7 +772,7 @@
         window.addEventListener('pointercancel', end, { signal: signal });
         document.addEventListener('selectstart', block, { signal: signal });
         beginGesture();
-      });
+      }, { signal: signal });
     }
 
     // Capturing, so it runs before the selection listener on the canvas.
@@ -779,9 +780,9 @@
       if (!swallow) return;
       swallow = false;
       event.stopImmediatePropagation();
-    }, true);
+    }, { capture: true, signal: signal });
 
-    listenForSelection(root, canvas, viewport, plane, choose, deselect);
+    listenForSelection(root, canvas, viewport, plane, choose, deselect, signal);
     listenForDrag();
     listenForWire();
     return {
@@ -832,12 +833,12 @@
     const plane = part(viewport, 'svg.pjx-graph__edge-plane', true);
     part(viewport, '.pjx-graph__nodes', false);
     const life = new AbortController();
-    const view = attachZoom(root, canvas, viewport);
+    const view = attachZoom(root, canvas, viewport, life.signal);
     const instance = createInstance(root, canvas, viewport, plane, view, life.signal);
     instances.set(root, instance);
     lives.set(root, life);
     observeViewport(viewport, instance, life.signal);
-    listenForControls(root, canvas, instance);
+    listenForControls(root, canvas, instance, life.signal);
     // A restored view is where the user left off; only a fresh stage is framed.
     // Edges are drawn before ready, so whatever waits on ready sees them.
     if (view.restored) {
