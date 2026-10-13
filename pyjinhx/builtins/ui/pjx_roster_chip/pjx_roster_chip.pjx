@@ -3,6 +3,8 @@
   <div class="pjx-roster-picker__chip-row">
     {{ visual }}
     <span class="pjx-roster-picker__chip-label">{{ label }}</span>
-    <button type="button" class="pjx-roster-picker__chip-remove" data-pjx-roster-remove aria-label="{{ remove_label }}: {{ label }}">{{ remove_icon }}</button>
+    {% if extra %}<span class="pjx-roster-picker__chip-extra">{{ extra }}</span>{% endif %}
+    {% if not disabled %}<button type="button" class="pjx-roster-picker__chip-remove" data-pjx-roster-remove aria-label="{{ remove_label }}: {{ label }}">{{ remove_icon }}</button>{% endif %}
   </div>
+  {% if detail %}<div class="pjx-roster-picker__chip-detail">{{ detail }}</div>{% endif %}
 </div>

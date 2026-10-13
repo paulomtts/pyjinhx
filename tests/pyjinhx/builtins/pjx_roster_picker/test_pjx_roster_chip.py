@@ -8,6 +8,7 @@ from pydantic import ValidationError
 
 from pyjinhx import discovery
 from pyjinhx._component import _is_slot_field
+from pyjinhx.builtins.ui.pjx_icon import PJXIcon
 from pyjinhx.builtins.ui.pjx_roster_chip import PJXRosterChip
 from pyjinhx.classless import component
 from pyjinhx.rendering import render
@@ -294,3 +295,107 @@ def test_tag_in_a_host_template_renders_the_chip(host_dir, parse_html, session):
     assert "pjx-roster-picker__chip" in chip.classes
     assert chip.children[0].attrs["value"] == "u1"
     assert _one(chip, "pjx-roster-picker__chip-label").text == "Ada"
+
+
+def test_label_markup_is_escaped_text_not_a_tag(parse_html, session):
+    label = "<script>alert(1)</script>"
+
+    root = _chip(parse_html, session, label=label)
+
+    assert [el for el in root.descendants() if el.tag == "script"] == []
+    assert _one(root, "pjx-roster-picker__chip-label").text == label
+    button = _one(root, "pjx-roster-picker__chip-remove")
+    assert button.attrs["aria-label"] == f"Remove: {label}"
+
+
+def test_quotes_in_attribute_props_round_trip(parse_html, session):
+    root = _chip(
+        parse_html,
+        session,
+        value='a"b',
+        name='n"m',
+        remove_label='R"x',
+        src='/a?x=1&y="2"',
+    )
+
+    assert len(root.children) == 2
+    hidden = root.children[0]
+    assert hidden.attrs["value"] == 'a"b'
+    assert hidden.attrs["name"] == 'n"m'
+    button = _one(root, "pjx-roster-picker__chip-remove")
+    assert button.attrs["aria-label"] == 'R"x: Ada'
+    (img,) = [el for el in root.descendants() if el.tag == "img"]
+    assert img.attrs["src"] == '/a?x=1&y="2"'
+
+
+def test_text_is_escaped_exactly_once(parse_html, session):
+    root = _chip(parse_html, session, label="A & B", initials="<")
+
+    assert _one(root, "pjx-roster-picker__chip-label").text == "A & B"
+    assert _one(root, "pjx-avatar__initials").text == "<"
+    button = _one(root, "pjx-roster-picker__chip-remove")
+    assert button.attrs["aria-label"] == "Remove: A & B"
+
+
+def test_disabled_drops_only_the_remove_button(parse_html, session):
+    root = _chip(
+        parse_html,
+        session,
+        name="members",
+        disabled=True,
+        extra="<b>admin</b>",
+        detail="<i>x</i>",
+    )
+
+    assert [el for el in root.descendants() if el.tag == "button"] == []
+    hidden = root.children[0]
+    assert hidden.tag == "input"
+    assert hidden.attrs["name"] == "members"
+    assert hidden.attrs["value"] == "u1"
+    assert "disabled" not in hidden.attrs
+    _one(root, "pjx-roster-picker__chip-avatar")
+    assert _one(root, "pjx-roster-picker__chip-label").text == "Ada"
+    _one(root, "pjx-roster-picker__chip-extra")
+    _one(root, "pjx-roster-picker__chip-detail")
+
+
+def test_extra_renders_raw_between_label_and_remove_button(parse_html, session):
+    root = _chip(parse_html, session, extra="<b>admin</b>")
+
+    _, label, extra, button = root.children[1].children
+    assert "pjx-roster-picker__chip-label" in label.classes
+    assert extra.tag == "span"
+    assert "pjx-roster-picker__chip-extra" in extra.classes
+    (bold,) = extra.children
+    assert bold.tag == "b"
+    assert bold.text == "admin"
+    assert button.tag == "button"
+
+
+def test_a_component_in_extra_renders_as_its_markup(parse_html, session):
+    root = _chip(
+        parse_html, session, extra=PJXIcon(name="user", class_name="role-icon")
+    )
+
+    (icon,) = _one(root, "pjx-roster-picker__chip-extra").children
+    assert icon.tag == "svg"
+    assert "role-icon" in icon.classes
+
+
+def test_detail_renders_raw_as_the_roots_last_child(parse_html, session):
+    root = _chip(parse_html, session, detail="<i>x</i>")
+
+    assert len(root.children) == 3
+    detail = root.children[-1]
+    assert detail.tag == "div"
+    assert "pjx-roster-picker__chip-detail" in detail.classes
+    (italic,) = detail.children
+    assert italic.tag == "i"
+    assert italic.text == "x"
+
+
+def test_empty_extra_and_detail_render_no_wrappers(parse_html, session):
+    root = _chip(parse_html, session)
+
+    assert _by_class(root, "pjx-roster-picker__chip-extra") == []
+    assert _by_class(root, "pjx-roster-picker__chip-detail") == []
