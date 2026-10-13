@@ -212,6 +212,13 @@ def _has_focus(locator: Locator) -> bool:
     return locator.evaluate("el => el === document.activeElement")
 
 
+def _hint_hidden(page: Page, picker_id: str = "p") -> bool:
+    return page.evaluate(
+        "id => document.querySelector(`#${id} .pjx-roster-picker__hint`).hidden",
+        picker_id,
+    )
+
+
 def _record_changes(page: Page) -> None:
     page.evaluate(RECORD_CHANGES)
 
@@ -445,6 +452,10 @@ def test_a_single_item_picker_replaces_its_chip(
     assert _changes(page) == [
         {"values": ["v1"], "target": "p", "bubbles": True, "cancelable": False}
     ]
+    # Replacing, never full: the box stays usable.
+    assert not _input(page).is_disabled()
+    assert _hint_hidden(page) is True
+    assert _has_focus(_input(page))
     assert page_errors == []
 
 
@@ -457,6 +468,102 @@ def test_a_multi_item_cap_still_appends(
     _pick(page, "v1").click()
 
     assert _chip_values(page) == ["a", "v1"]
+    assert not _input(page).is_disabled()
+    assert _hint_hidden(page) is True
+    assert _has_focus(_input(page))
+    assert page_errors == []
+
+
+def test_a_pick_reaching_the_cap_disables_the_input_and_focuses_the_new_chip(
+    page: Page, session: RenderSession, page_errors: list[str]
+):
+    _serve(page, session, _picker(session, items=[_item("a")], max_items=2))
+    _open(page)
+    _record_changes(page)
+
+    _pick(page, "v1").click()
+
+    assert _chip_values(page) == ["a", "v1"]
+    assert _input(page).is_disabled()
+    assert _hint_hidden(page) is False
+    assert _has_focus(_remove(page, "v1"))
+    assert _state(page) == CLOSED
+    assert _changes(page) == [
+        {"values": ["a", "v1"], "target": "p", "bubbles": True, "cancelable": False}
+    ]
+    assert page_errors == []
+
+
+def test_enter_on_a_row_reaching_the_cap_focuses_the_new_chip(
+    page: Page, session: RenderSession, page_errors: list[str]
+):
+    _serve(page, session, _picker(session, items=[_item("a")], max_items=2))
+    _open(page)
+    _pick(page, "v1").focus()
+
+    page.keyboard.press("Enter")
+
+    assert _chip_values(page) == ["a", "v1"]
+    assert _input(page).is_disabled()
+    assert _hint_hidden(page) is False
+    assert _has_focus(_remove(page, "v1"))
+    assert _state(page) == CLOSED
+    assert page_errors == []
+
+
+def test_clicking_a_capped_input_neither_opens_nor_searches(
+    page: Page, session: RenderSession, page_errors: list[str]
+):
+    requests = _serve(page, session, _picker(session, items=[_item("a")], max_items=2))
+    _open(page)
+    _pick(page, "v1").click()
+    sent = len(requests)
+
+    # force: Playwright would otherwise wait for the disabled box to enable.
+    _input(page).click(force=True)
+    # Past the 300 ms debounce, so an open's search would have been sent.
+    page.wait_for_timeout(500)
+
+    assert _state(page) == CLOSED
+    assert len(requests) == sent
+    assert page_errors == []
+
+
+def test_capping_one_picker_leaves_the_other_alone(
+    page: Page, session: RenderSession, page_errors: list[str]
+):
+    # Side by side, so neither open list covers the other picker's box.
+    body = (
+        '<div style="display: flex; gap: 40px">'
+        f'<div style="flex: 1">{_picker(session, "p", items=[_item("a")], max_items=2)}</div>'
+        f'<div style="flex: 1">{_picker(session, "q", items=[_item("b")], max_items=2)}</div>'
+        "</div>"
+    )
+    _serve(page, session, body)
+    _open(page, "p")
+
+    _pick(page, "v1", "p").click()
+
+    assert _input(page, "p").is_disabled()
+    assert not _input(page, "q").is_disabled()
+    assert _hint_hidden(page, "q") is True
+    assert page_errors == []
+
+
+def test_an_unbounded_picker_never_caps(
+    page: Page, session: RenderSession, page_errors: list[str]
+):
+    _serve(page, session, _picker(session))
+    _open(page)
+
+    for value in ("v0", "v1", "v2"):
+        # A pick closes the list; the box already has focus, so a click reopens it.
+        _input(page).click()
+        _pick(page, value).click()
+
+    assert _chip_values(page) == ["v0", "v1", "v2"]
+    assert not _input(page).is_disabled()
+    assert _hint_hidden(page) is True
     assert page_errors == []
 
 

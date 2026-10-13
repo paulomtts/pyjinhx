@@ -65,6 +65,26 @@
         });
     }
 
+    // A single-item picker swaps its chip instead of refusing, and a
+    // disabled one takes no picks, so neither is ever full.
+    function isFull(picker) {
+        const max = Number(picker.dataset.maxItems);
+        return (
+            !picker.hasAttribute('data-disabled') &&
+            max > 1 &&
+            chippedValues(picker).length >= max
+        );
+    }
+
+    // The markup renders a full picker this way already, so only a pick or
+    // a remove has to keep it in step.
+    function syncCap(picker) {
+        const full = isFull(picker);
+        const input = searchInput(picker);
+        if (input) input.disabled = full;
+        picker.querySelector('.pjx-roster-picker__hint').hidden = !full;
+    }
+
     // Read after the DOM change, so listeners see the selection as it now is.
     function announceChange(picker) {
         picker.dispatchEvent(
@@ -92,10 +112,14 @@
         syncRows(picker);
         setOpen(picker, false);
         const input = searchInput(picker);
-        if (input) {
-            input.value = '';
-            quietFocus(input);
-        }
+        if (input) input.value = '';
+        // Before focus moves, so focus is never left on a box just disabled.
+        syncCap(picker);
+        // A full picker's box is disabled, so the new chip's remove button is
+        // the next useful stop. Not the box, so it cannot reopen the list.
+        const remove = isFull(picker) && chip.querySelector('[data-pjx-roster-remove]');
+        if (remove) remove.focus();
+        else if (input && !input.disabled) quietFocus(input);
         announceChange(picker);
     }
 
