@@ -4,6 +4,7 @@ import importlib
 import inspect
 import re
 import subprocess
+import sys
 import tomllib
 from pathlib import Path
 
@@ -36,6 +37,13 @@ EXPECTED_EXPORTS = {
     # configuration
     "PjxSettings",
     "AssetMode",
+}
+
+ROSTER_EXPORTS = {
+    "PJXRosterChip": "pyjinhx.builtins.ui.pjx_roster_chip.pjx_roster_chip",
+    "PJXRosterItem": "pyjinhx.builtins.ui.pjx_roster_picker.item",
+    "PJXRosterPicker": "pyjinhx.builtins.ui.pjx_roster_picker.pjx_roster_picker",
+    "PJXRosterResults": "pyjinhx.builtins.ui.pjx_roster_results.pjx_roster_results",
 }
 
 
@@ -217,3 +225,35 @@ def test_every_adr_is_indexed_and_in_nav():
     assert adrs
     assert [a for a in adrs if f"]({a})" not in index] == []
     assert [a for a in adrs if f"decisions/{a}" not in nav] == []
+
+
+def test_roster_builtins_are_exported_in_order():
+    names = pyjinhx.builtins.__all__
+    start = names.index("PJXResizablePanel") + 1
+
+    assert names[start : start + len(ROSTER_EXPORTS)] == list(ROSTER_EXPORTS)
+    assert len(names) == len(set(names))
+
+
+def test_roster_builtins_lazy_map_to_their_defining_modules():
+    for name, module in ROSTER_EXPORTS.items():
+        assert pyjinhx.builtins._lazy_imports[name] == (module, name)
+
+
+def test_importing_builtins_does_not_import_roster_modules():
+    # A fresh interpreter, because this test session has already imported them.
+    modules = sorted(ROSTER_EXPORTS.values())
+    code = (
+        "import sys\n"
+        "import pyjinhx.builtins\n"
+        f"print([m for m in {modules!r} if m in sys.modules])\n"
+    )
+    result = subprocess.run(
+        [sys.executable, "-c", code],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip() == "[]"

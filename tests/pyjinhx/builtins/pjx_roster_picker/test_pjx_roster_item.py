@@ -125,3 +125,10 @@ def test_item_module_imports_in_a_fresh_interpreter():
     )
 
     assert result.returncode == 0, result.stderr
+
+
+def test_exported_from_the_builtins_namespace():
+    from pyjinhx import builtins
+
+    assert "PJXRosterItem" in builtins.__all__
+    assert builtins.PJXRosterItem is PJXRosterItem

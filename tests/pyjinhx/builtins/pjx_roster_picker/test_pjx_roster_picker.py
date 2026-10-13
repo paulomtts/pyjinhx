@@ -718,3 +718,10 @@ def test_css_has_a_reduced_motion_query():
         if "transition:" in body and "transition: none" not in body:
             for part in selector.split(","):
                 assert part.strip() in clamped, part
+
+
+def test_exported_from_the_builtins_namespace():
+    from pyjinhx import builtins
+
+    assert "PJXRosterPicker" in builtins.__all__
+    assert builtins.PJXRosterPicker is PJXRosterPicker

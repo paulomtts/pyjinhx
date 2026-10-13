@@ -512,3 +512,10 @@ def test_two_pages_in_one_session_never_share_an_id(parse_html, session):
     assert "p1-more-c1" in ids
     assert "p1-more-c2" in ids
     assert len(ids) == len(set(ids))
+
+
+def test_exported_from_the_builtins_namespace():
+    from pyjinhx import builtins
+
+    assert "PJXRosterResults" in builtins.__all__
+    assert builtins.PJXRosterResults is PJXRosterResults

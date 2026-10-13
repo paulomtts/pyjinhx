@@ -399,3 +399,10 @@ def test_empty_extra_and_detail_render_no_wrappers(parse_html, session):
 
     assert _by_class(root, "pjx-roster-picker__chip-extra") == []
     assert _by_class(root, "pjx-roster-picker__chip-detail") == []
+
+
+def test_exported_from_the_builtins_namespace():
+    from pyjinhx import builtins
+
+    assert "PJXRosterChip" in builtins.__all__
+    assert builtins.PJXRosterChip is PJXRosterChip

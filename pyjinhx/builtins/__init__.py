@@ -65,6 +65,10 @@ __all__ = [  # noqa: RUF022
     "PJXResizableGroup",
     "PJXResizableHandle",
     "PJXResizablePanel",
+    "PJXRosterChip",
+    "PJXRosterItem",
+    "PJXRosterPicker",
+    "PJXRosterResults",
     "PJXSegmentedControl",
     "PJXSelect",
     "PJXSkeleton",
@@ -236,6 +240,19 @@ _lazy_imports = {
     "PJXResizablePanel": (
         "pyjinhx.builtins.ui.pjx_resizable_panel.pjx_resizable_panel",
         "PJXResizablePanel",
+    ),
+    "PJXRosterChip": (
+        "pyjinhx.builtins.ui.pjx_roster_chip.pjx_roster_chip",
+        "PJXRosterChip",
+    ),
+    "PJXRosterItem": ("pyjinhx.builtins.ui.pjx_roster_picker.item", "PJXRosterItem"),
+    "PJXRosterPicker": (
+        "pyjinhx.builtins.ui.pjx_roster_picker.pjx_roster_picker",
+        "PJXRosterPicker",
+    ),
+    "PJXRosterResults": (
+        "pyjinhx.builtins.ui.pjx_roster_results.pjx_roster_results",
+        "PJXRosterResults",
     ),
     "PJXSegmentedControl": (
         "pyjinhx.builtins.ui.pjx_segmented_control.pjx_segmented_control",
