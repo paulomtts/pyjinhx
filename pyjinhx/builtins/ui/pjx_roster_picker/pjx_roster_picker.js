@@ -98,7 +98,7 @@
     // re-running it, or two pickers shipping it) finds it and returns before
     // binding, so the document listeners below exist once per page.
     if (window.pjx.rosterPicker) return;
-    window.pjx.rosterPicker = { placement: placement };
+    window.pjx.rosterPicker = { placement: placement, values: values };
 
     // Focus this script moves (Escape, a pick or a remove handing it back to
     // the box) is not the user arriving, so it must not reopen the list.
@@ -440,6 +440,29 @@
         if (!picker || input.disabled || isOpen(input)) return;
         setOpen(picker, true);
         input.dispatchEvent(new Event('roster-picker-open'));
+    }
+
+    // The root itself, never resolved upward from a descendant: a call aimed
+    // at the wrong element fails loudly instead of acting on its picker.
+    function checkRoot(name, root) {
+        if (!(root instanceof Element) || !root.matches('[data-pjx-roster-picker]')) {
+            throw new Error(
+                'pjx.rosterPicker.' + name +
+                    ': expected a roster picker root ([data-pjx-roster-picker])'
+            );
+        }
+    }
+
+    /**
+     * Return a picker's selection: each chip's value, in chip order.
+     *
+     * Takes the picker root, the element carrying data-pjx-roster-picker, and
+     * returns a fresh array, the same list pjx:roster-picker:change carries.
+     * Throws when root is anything else.
+     */
+    function values(root) {
+        checkRoot('values', root);
+        return chippedValues(root);
     }
 
     // An event can target document itself, which has no closest or matches.
