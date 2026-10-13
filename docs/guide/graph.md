@@ -1,8 +1,8 @@
 # Graph
 
 The graph builtins render a pan/zoom node graph: draggable node cards joined by edges, with zoom
-controls and a side panel. Everything ships with the components, including the small d3 subset the
-engine uses, so the app supplies no script or stylesheet. The engine is headless. It draws, pans,
+controls and a side panel. Everything ships with the components, including the small
+[d3](https://d3js.org) subset the engine uses (see [Credits](#credits)), so the app supplies no script or stylesheet. The engine is headless. It draws, pans,
 zooms, drags and selects, then reports what the user did as `pjx:graph:*` events. What happens next
 (creating an edge, opening the panel, saving a position) is up to the app.
 
@@ -57,12 +57,13 @@ def flow():
 
 There is no script call. The engine mounts every `[data-pjx-graph]` stage when the page loads, when a
 stage is inserted later (by an htmx swap or plain DOM code), and on `htmx:load`. A stage removed
-from the document is unmounted. Once a stage is mounted, and has drawn its edges (after the first fit, or the restore of a stored view),
-its root gets `data-pjx-graph-ready`.
+from the document is unmounted. Once a stage is mounted, and has drawn its edges (after the first fit, or the restore of a stored view), its root gets
+`data-pjx-graph-ready`.
 
 The canvas spans the width of its container and is at least `--pjx-graph-min-height` (24rem) tall.
 For a taller stage, raise that token or give `.pjx-graph__canvas` a height. A stage that is hidden
-when it mounts has no size to frame its nodes against. Press **Fit** (or call `fit()`) once it shows.
+when it mounts (in a tab or a modal) has no size to frame its nodes against. It is framed and its
+edges are drawn the first time it shows.
 
 Give the stage, both layers and the panel stable ids. The update shapes below target them.
 
@@ -187,7 +188,8 @@ Opening the panel is the app's job; see [Events and JavaScript API](#events-and-
 - **Pressing empty canvas** and dragging pans. Double-click does not zoom.
 - **Dragging a node** moves it. A press that starts on a port, a form control, a button, a link or
   editable content does not drag, and neither does a node without a valid `data-x`/`data-y`.
-  Dropped positions are whole pixels.
+  Dropped positions are whole pixels. If the browser takes the gesture over (`pointercancel`), the
+  node goes back to where it was and no `move` fires.
 - **Dragging from an out-port** draws a dashed wire. Releasing it over another node of the same
   stage fires `pjx:graph:wire`. Releasing it on the source node or on empty canvas cancels.
 - **Clicking a node** selects it. **Clicking an edge** selects the edge. **Clicking empty canvas**
@@ -577,3 +579,19 @@ All `pjx:graph:*` events and their `detail` are listed in [Event list](#event-li
 | `[data-open]` on the panel | `"true"` while the panel shows. |
 | `[hidden]` on the panel's back button | Present while there is no history to go back to. |
 | `[data-pjx-graph-ready]` on the root | The stage is mounted and drawn. |
+
+## Credits
+
+Panning and zooming are done by [d3](https://d3js.org), created by Mike Bostock and the d3
+contributors. The graph builtins bundle a pinned subset of it, so the app loads no d3 of its own:
+
+| Module | Version |
+|---|---|
+| [d3-selection](https://github.com/d3/d3-selection) | 3.0.0 |
+| [d3-zoom](https://github.com/d3/d3-zoom) | 3.0.0 |
+| [d3-dispatch](https://github.com/d3/d3-dispatch), [d3-drag](https://github.com/d3/d3-drag), [d3-interpolate](https://github.com/d3/d3-interpolate), [d3-color](https://github.com/d3/d3-color), [d3-transition](https://github.com/d3/d3-transition), [d3-timer](https://github.com/d3/d3-timer), [d3-ease](https://github.com/d3/d3-ease) | their dependencies, at the versions d3-zoom 3.0.0 pins |
+
+d3 is released under the ISC licence, Copyright 2010-2022 Mike Bostock. The licence text is kept in
+the header of the bundled `pjx_graph.js`. See
+[ADR 0004](../decisions/0004-graph-reconcile-model.md#decision-bundle-a-pinned-d3-subset) for why d3
+is bundled and how it is updated.

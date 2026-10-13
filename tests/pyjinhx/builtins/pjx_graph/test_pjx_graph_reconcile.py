@@ -24,6 +24,7 @@ from pyjinhx.builtins.ui.pjx_graph import PJXGraph
 from pyjinhx.builtins.ui.pjx_graph_edges import PJXGraphEdges
 from pyjinhx.builtins.ui.pjx_graph_node import PJXGraphNode
 from pyjinhx.builtins.ui.pjx_graph_nodes import PJXGraphNodes
+from pyjinhx.builtins.ui.pjx_graph_side_panel import PJXGraphSidePanel
 from pyjinhx.rendering import render
 
 if TYPE_CHECKING:
@@ -1345,11 +1346,10 @@ def test_a_cancelled_drag_flushes_once(page, page_errors, session):
     _held(page, before)
     page.evaluate(CANCEL)
     _flushed_once(page, before)
-    assert [e["detail"] for e in _events(page, "move")] == [
-        {"id": "a", "x": 80, "y": 80}
-    ]
+    assert _events(page, "move") == []
+    assert _position(page, "g-a") == ["20px", "40px"]
     page.mouse.up()
-    assert len(_events(page, "move")) == 1
+    assert _events(page, "move") == []
     assert page_errors == []
 
 
@@ -1479,4 +1479,118 @@ def test_overlapping_gestures_flush_once_when_the_last_ends(page, page_errors, s
     _second_pointer(page, "pointerup")
     _flushed_once(page, before)
     assert _events(page, "wire") == []
+    assert page_errors == []
+
+
+# Found in review
+
+
+def _edge_count(page: Page) -> int:
+    return page.evaluate(
+        "() => document.querySelectorAll('#g svg.pjx-graph__edge-plane path').length"
+    )
+
+
+def test_a_pointerup_stopped_inside_a_node_does_not_wedge_the_stage(
+    page, page_errors, session
+):
+    _serve(page, _stage(session), record="")
+    page.evaluate(
+        """() => document.querySelector('#g-a .pjx-graph__node-title')
+            .addEventListener('pointerup', (e) => e.stopPropagation())"""
+    )
+    x, y = _center(page, _title("g-a"))
+    _drag(page, (x, y), (x + 60, y + 40))
+    _mutate(page, _set("#g-b", "data-x", "410"), reconcile="g")
+    assert _position(page, "g-b") == ["410px", "40px"]
+    assert page_errors == []
+
+
+def test_a_stage_that_mounted_hidden_is_framed_and_drawn_when_shown(
+    page, page_errors, session
+):
+    stage = _stage(session)
+    _serve(page, f'<div id="wrap" style="display:none">{stage}</div>')
+    assert _edge_count(page) == 0
+    page.evaluate("() => { document.getElementById('wrap').style.display = 'block'; }")
+    page.wait_for_function(
+        "() => document.querySelectorAll('#g svg.pjx-graph__edge-plane path').length > 0"
+    )
+    assert page_errors == []
+
+
+def test_edges_follow_a_node_that_changes_size_without_a_swap(
+    page, page_errors, session
+):
+    _serve(page, _stage(session), record="")
+    before = [el["d"] for el in _plane(page)]
+    page.evaluate("() => { document.getElementById('g-b').style.minHeight = '300px'; }")
+    page.wait_for_function(
+        """before => Array.from(document.querySelectorAll(
+            '#g svg.pjx-graph__edge-plane path')).map(p => p.getAttribute('d'))
+            .join('|') !== before.join('|')""",
+        arg=before,
+    )
+    assert page_errors == []
+
+
+def test_a_hidden_node_disappears(page, page_errors, session):
+    _serve(page, _stage(session), record="")
+    page.evaluate("() => { document.getElementById('g-b').hidden = true; }")
+    assert not page.locator("#g-b").is_visible()
+    assert page_errors == []
+
+
+def test_swapping_the_roots_inner_markup_remounts_the_stage(page, page_errors, session):
+    _serve(page, _stage(session), record="")
+    before = _edge_count(page)
+    assert before > 0
+    page.evaluate(
+        """() => {
+            const root = document.getElementById('g');
+            root.innerHTML = root.innerHTML;
+        }"""
+    )
+    page.wait_for_function(
+        "n => document.querySelectorAll('#g svg.pjx-graph__edge-plane path').length === n",
+        arg=before,
+    )
+    _forget(page)
+    page.mouse.click(*_center(page, _title("g-a")))
+    assert [e["type"] for e in _events(page, "select")] == ["select"]
+    assert page_errors == []
+
+
+def test_a_settle_inside_a_node_keeps_an_unkeyed_drop(page, page_errors, session):
+    _serve(page, _stage(session), record="")
+    x, y = _center(page, _title("g-a"))
+    _drag(page, (x, y), (x + 60, y + 40))
+    dropped = _position(page, "g-a")
+    page.evaluate(
+        """() => document.querySelector('#g-a .pjx-graph__node-title')
+            .dispatchEvent(new CustomEvent('htmx:afterSettle', { bubbles: true }))"""
+    )
+    _frames(page)
+    assert _position(page, "g-a") == dropped
+    assert page_errors == []
+
+
+def test_a_swapped_closed_panel_forgets_the_panel_history(page, page_errors, session):
+    panel = PJXGraphSidePanel(id="g-panel", title="Details")
+    _serve(page, _stage(session, panel=panel), record="")
+    page.evaluate("() => { pjx.graph.panel.open(document.getElementById('g'), 'a'); }")
+    page.evaluate("() => { pjx.graph.panel.open(document.getElementById('g'), 'b'); }")
+    closed = _html(session, PJXGraphSidePanel(id="g-panel", title="Details"))
+    page.evaluate(
+        """html => {
+            document.getElementById('g-panel').outerHTML = html;
+            document.getElementById('g-panel')
+                .dispatchEvent(new CustomEvent('htmx:afterSettle', { bubbles: true }));
+        }""",
+        closed,
+    )
+    page.evaluate("() => { pjx.graph.panel.open(document.getElementById('g'), 'c'); }")
+    assert page.evaluate(
+        "() => document.querySelector('#g [data-pjx-graph-panel-back]').hidden"
+    )
     assert page_errors == []

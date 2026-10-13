@@ -85,6 +85,7 @@ var __pjxD3=(()=>{var fe=Object.defineProperty;var vn=Object.getOwnPropertyDescr
 
   const d3 = __pjxD3;
   const instances = new WeakMap();
+  const canvases = new WeakMap();
   // Aborted when a stage is dropped: everything the stage started outside
   // its own elements listens to it, so one abort stops all of it.
   const lives = new WeakMap();
@@ -391,7 +392,7 @@ var __pjxD3=(()=>{var fe=Object.defineProperty;var vn=Object.getOwnPropertyDescr
     })();
   }
 
-  function createInstance(root, canvas, viewport, plane, view, signal) {
+  function createInstance(root, canvas, viewport, plane, view, signal, state) {
     const prefix = 'pjx-graph-edge-' + (++stageCount) + '-';
     // Only the last pass's own elements are cleared, so anything else in the
     // plane survives a redraw.
@@ -429,6 +430,52 @@ var __pjxD3=(()=>{var fe=Object.defineProperty;var vn=Object.getOwnPropertyDescr
 
     // Before the edges and any fit, so both see where the nodes show.
     placeChanged();
+
+    // A node that grows or hides, or a canvas that is first shown, moves the
+    // anchors without a swap, so edges would stay where they were. The first
+    // size of an element is only recorded: it is not a change.
+    const sizes = new WeakMap();
+    const watched = new Set();
+    const resizes = new ResizeObserver((entries) => {
+      if (signal.aborted) return;
+      let changed = false;
+      entries.forEach((entry) => {
+        // A removed node reports zero; that is a swap, which reconcile sees.
+        if (!entry.target.isConnected) return;
+        const size = entry.contentRect.width + 'x' + entry.contentRect.height;
+        if (sizes.has(entry.target) && sizes.get(entry.target) !== size) changed = true;
+        sizes.set(entry.target, size);
+      });
+      if (!changed) return;
+      // Held like a swap, so nothing moves under the pointer.
+      if (gestures > 0) {
+        dirty = true;
+        return;
+      }
+      // A stage that mounted hidden is framed when it first shows.
+      if (!state.framed && canvas.clientWidth > 0 && canvas.clientHeight > 0) {
+        state.framed = true;
+        fit();
+      }
+      drawEdges();
+    });
+    resizes.observe(canvas);
+    signal.addEventListener('abort', () => resizes.disconnect());
+
+    function watchNodes() {
+      const live = new Set(nodesOf(root, viewport));
+      live.forEach((node) => {
+        if (watched.has(node)) return;
+        watched.add(node);
+        resizes.observe(node);
+      });
+      watched.forEach((node) => {
+        if (live.has(node)) return;
+        watched.delete(node);
+        resizes.unobserve(node);
+      });
+    }
+    watchNodes();
 
     // Every edge is redrawn on each reconcile: that keeps every pair's fan
     // correct and is cheap. At 200 edges over 50 nodes a redraw cost about
@@ -650,6 +697,7 @@ var __pjxD3=(()=>{var fe=Object.defineProperty;var vn=Object.getOwnPropertyDescr
         return;
       }
       placeChanged();
+      watchNodes();
       drawEdges();
     }
 
@@ -693,6 +741,11 @@ var __pjxD3=(()=>{var fe=Object.defineProperty;var vn=Object.getOwnPropertyDescr
 
       function follow(event) {
         if (event.pointerId !== press.pointerId) return;
+        // A release nobody saw leaves the mouse up with the gesture still held.
+        if (event.pointerType === 'mouse' && event.buttons === 0) {
+          end(event);
+          return;
+        }
         const dx = event.clientX - press.clientX;
         const dy = event.clientY - press.clientY;
         if (!press.dragging && Math.hypot(dx, dy) <= DRAG_SLOP) return;
@@ -710,12 +763,21 @@ var __pjxD3=(()=>{var fe=Object.defineProperty;var vn=Object.getOwnPropertyDescr
         if (event.pointerId !== press.pointerId) return;
         const done = press;
         press = null;
-        window.removeEventListener('pointermove', follow);
-        window.removeEventListener('pointerup', end);
-        window.removeEventListener('pointercancel', end);
+        window.removeEventListener('pointermove', follow, true);
+        window.removeEventListener('pointerup', end, true);
+        window.removeEventListener('pointercancel', end, true);
         document.removeEventListener('selectstart', block);
-        if (done.dragging) drop(done);
+        if (done.dragging) {
+          if (event.type === 'pointercancel') revert(done); else drop(done);
+        }
         endGesture();
+      }
+
+      // A cancelled pointer is not a drop: the browser took the gesture, so
+      // the node goes back to where it was and nothing is stored or reported.
+      function revert(done) {
+        moveTo(done.node, done.startX, done.startY);
+        redraw();
       }
 
       // Read from the pressed element, even if the app has since replaced
@@ -748,11 +810,13 @@ var __pjxD3=(()=>{var fe=Object.defineProperty;var vn=Object.getOwnPropertyDescr
           startX: parseFloat(style.getPropertyValue('--pjx-graph-node-x')),
           startY: parseFloat(style.getPropertyValue('--pjx-graph-node-y')),
         };
-        // On window, so the drag goes on outside the canvas. Tied to the
-        // stage's life, so dropping the stage abandons the drag.
-        window.addEventListener('pointermove', follow, { signal: signal });
-        window.addEventListener('pointerup', end, { signal: signal });
-        window.addEventListener('pointercancel', end, { signal: signal });
+        // On window, so the drag goes on outside the canvas, and in the
+        // capture phase, so an app's stopPropagation() inside a node cannot
+        // hide the release. Tied to the stage's life, so dropping the stage
+        // abandons the drag.
+        window.addEventListener('pointermove', follow, { capture: true, signal: signal });
+        window.addEventListener('pointerup', end, { capture: true, signal: signal });
+        window.addEventListener('pointercancel', end, { capture: true, signal: signal });
         document.addEventListener('selectstart', block, { signal: signal });
         // From the press, not from the slop: a reconcile before the drag
         // starts would place the node the user is about to move.
@@ -779,6 +843,10 @@ var __pjxD3=(()=>{var fe=Object.defineProperty;var vn=Object.getOwnPropertyDescr
 
       function follow(event) {
         if (event.pointerId !== wire.pointerId) return;
+        if (event.pointerType === 'mouse' && event.buttons === 0) {
+          end(event);
+          return;
+        }
         const dx = event.clientX - wire.clientX;
         const dy = event.clientY - wire.clientY;
         if (!wire.dragging && Math.hypot(dx, dy) <= DRAG_SLOP) return;
@@ -802,9 +870,9 @@ var __pjxD3=(()=>{var fe=Object.defineProperty;var vn=Object.getOwnPropertyDescr
         clearGhost();
         const done = wire;
         wire = null;
-        window.removeEventListener('pointermove', follow);
-        window.removeEventListener('pointerup', end);
-        window.removeEventListener('pointercancel', end);
+        window.removeEventListener('pointermove', follow, true);
+        window.removeEventListener('pointerup', end, true);
+        window.removeEventListener('pointercancel', end, true);
         document.removeEventListener('selectstart', block);
         if (done.dragging) connect(done, event);
         endGesture();
@@ -840,11 +908,12 @@ var __pjxD3=(()=>{var fe=Object.defineProperty;var vn=Object.getOwnPropertyDescr
           pointerId: event.pointerId, dragging: false, ghost: null,
           clientX: event.clientX, clientY: event.clientY,
         };
-        // On window, so a release outside the canvas still ends the wire.
-        // Tied to the stage's life, so dropping the stage abandons the wire.
-        window.addEventListener('pointermove', follow, { signal: signal });
-        window.addEventListener('pointerup', end, { signal: signal });
-        window.addEventListener('pointercancel', end, { signal: signal });
+        // On window, so a release outside the canvas still ends the wire, and
+        // in the capture phase, as for a node drag. Tied to the stage's life,
+        // so dropping the stage abandons the wire.
+        window.addEventListener('pointermove', follow, { capture: true, signal: signal });
+        window.addEventListener('pointerup', end, { capture: true, signal: signal });
+        window.addEventListener('pointercancel', end, { capture: true, signal: signal });
         document.addEventListener('selectstart', block, { signal: signal });
         beginGesture();
       }, { signal: signal });
@@ -861,9 +930,10 @@ var __pjxD3=(()=>{var fe=Object.defineProperty;var vn=Object.getOwnPropertyDescr
     // back, undoing the placement made when it landed. Place it again.
     root.addEventListener('htmx:afterSettle', (event) => {
       nodesOf(root, viewport).forEach((node) => {
-        if (event.target.contains(node) || node.contains(event.target)) placedWith.delete(node);
+        if (event.target.contains(node)) placedWith.delete(node);
       });
       reconcile();
+      resyncPanel(root, event.target);
     }, { signal: signal });
 
     listenForSelection(root, canvas, viewport, plane, choose, deselect, signal);
@@ -929,6 +999,17 @@ var __pjxD3=(()=>{var fe=Object.defineProperty;var vn=Object.getOwnPropertyDescr
 
   function newest(history) {
     return history.length ? history[history.length - 1] : null;
+  }
+
+  // A swapped panel comes back as the server rendered it: back hidden, and
+  // possibly closed. Its history is brought in line, so back shows only
+  // where there is somewhere to go and a closed panel forgets what it showed.
+  function resyncPanel(root, target) {
+    const panel = root.querySelector(':scope > [data-pjx-graph-panel]');
+    if (!panel || !(panel.contains(target) || target.contains(panel))) return;
+    const history = histories.get(root);
+    if (panel.getAttribute('data-open') !== 'true') history.length = 0;
+    syncBack(panel, history);
   }
 
   // The app calls this, usually from its own select listener; the id is
@@ -1000,17 +1081,23 @@ var __pjxD3=(()=>{var fe=Object.defineProperty;var vn=Object.getOwnPropertyDescr
       throw new Error('pjx.graph.mount: expected a [data-pjx-graph] element');
     }
     const existing = instances.get(root);
-    if (existing) {
+    // An innerHTML swap of the root replaces the canvas under a live instance,
+    // which is then bound to parts that are gone.
+    if (existing && canvases.get(root) === root.querySelector(':scope > .pjx-graph__canvas')) {
       return existing;
     }
+    if (existing) drop(root);
     const canvas = part(root, '.pjx-graph__canvas', true);
     const viewport = part(canvas, '.pjx-graph__viewport', true);
     const plane = part(viewport, 'svg.pjx-graph__edge-plane', true);
     part(viewport, '.pjx-graph__nodes', false);
     const life = new AbortController();
     const view = attachZoom(root, canvas, viewport, life.signal);
-    const instance = createInstance(root, canvas, viewport, plane, view, life.signal);
+    // Framed once a fit has run over a canvas that has a size, or never needed.
+    const state = { framed: view.restored };
+    const instance = createInstance(root, canvas, viewport, plane, view, life.signal, state);
     instances.set(root, instance);
+    canvases.set(root, canvas);
     lives.set(root, life);
     histories.set(root, []);
     observeViewport(viewport, instance, life.signal);
@@ -1024,6 +1111,7 @@ var __pjxD3=(()=>{var fe=Object.defineProperty;var vn=Object.getOwnPropertyDescr
     } else {
       whenLaidOut(canvas, life.signal, () => {
         instance.fit();
+        state.framed = canvas.clientWidth > 0 && canvas.clientHeight > 0;
         instance.drawEdges();
         settle(root, canvas, view);
       });
@@ -1042,6 +1130,7 @@ var __pjxD3=(()=>{var fe=Object.defineProperty;var vn=Object.getOwnPropertyDescr
     if (!life) return;
     life.abort();
     lives.delete(root);
+    canvases.delete(root);
     histories.delete(root);
     instances.delete(root);
   }
@@ -1056,7 +1145,11 @@ var __pjxD3=(()=>{var fe=Object.defineProperty;var vn=Object.getOwnPropertyDescr
   }
 
   function boot(subtree) {
-    stagesIn(subtree).forEach((stage) => {
+    const stages = stagesIn(subtree);
+    // Markup swapped into a stage's canvas lands inside a root nobody added.
+    const owner = subtree.closest && subtree.closest('[data-pjx-graph]');
+    if (owner && !stages.includes(owner)) stages.unshift(owner);
+    stages.forEach((stage) => {
       // One broken stage must not keep the others on the page from booting.
       try {
         mount(stage);

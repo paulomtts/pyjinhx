@@ -27,6 +27,11 @@
   color: var(--text);
 }
 
+/* display: flex above beats the UA [hidden] rule. */
+.pjx-graph__node[hidden] {
+  display: none;
+}
+
 /* An outline, not a border, so selecting a node never shifts its layout. */
 .pjx-graph__node--selected {
   outline: 2px solid var(--pjx-graph-selected);

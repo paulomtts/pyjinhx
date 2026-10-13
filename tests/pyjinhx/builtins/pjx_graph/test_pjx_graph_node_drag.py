@@ -285,17 +285,21 @@ def test_a_release_outside_the_canvas_leaves_the_next_click_alone(
     assert page_errors == []
 
 
-def test_a_cancelled_pointer_ends_the_drag_where_it_is(page, page_errors, session):
+def test_a_cancelled_pointer_puts_the_node_back_and_stores_nothing(
+    page, page_errors, session
+):
     _serve(page, _keyed(session))
+    start = _position(page)
     _press(page, _center(page, _title()))
+    assert _position(page) != start
     page.evaluate(
         "() => window.dispatchEvent(new PointerEvent('pointercancel',"
         " { pointerId: 1, bubbles: true }))"
     )
-    assert _position(page) == ["160px", "140px"]
-    assert _events(page, "move") == [_move("n1", 160, 140)]
+    assert _position(page) == start
+    assert _events(page, "move") == []
     page.mouse.up()
-    assert len(_events(page, "move")) == 1
+    assert _events(page, "move") == []
     assert page_errors == []
 
 

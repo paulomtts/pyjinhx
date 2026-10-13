@@ -26,8 +26,8 @@
 - `storage_key` keeps the pan/zoom view and dropped node positions in
   localStorage. A drop holds while the server sends the position it was
   dragged from, and the server wins once that changes.
-- d3-selection and d3-zoom are bundled into the graph's own JS asset; the app
-  loads no d3.
+- d3-selection and d3-zoom (Mike Bostock and the d3 contributors, ISC) are
+  bundled into the graph's own JS asset; the app loads no d3.
 - `--pjx-graph-*` tokens theme the stage, nodes, edges, controls and panel.
 
 See the [Graph guide](docs/guide/graph.md) and
