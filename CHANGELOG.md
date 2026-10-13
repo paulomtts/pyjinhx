@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased — Graph builtin
+## 1.10.0 — Graph builtin (2026-10-13)
 
 ### Added
 - Six builtins for a pan/zoom node graph, exported from `pyjinhx.builtins`:
@@ -33,6 +33,33 @@
 See the [Graph guide](docs/guide/graph.md) and
 [ADR 0004](docs/decisions/0004-graph-reconcile-model.md) for why the engine
 reconciles on DOM mutation instead of a resync call.
+
+## 1.9.9 — Select's required/empty-value handling, quieter nested fan-out registrations (2026-09-19)
+
+### Fixed
+- The reactive fan-out build pass no longer logs a confusing "already
+  registered; overwriting" warning (or raises `InstanceKeyCollisionError`
+  under dev-strict) when a surviving top-level manifest candidate is also a
+  strict descendant of another surviving candidate's tree — a structural
+  case, not a hard-coded-id authoring bug. `registry.quiet_collisions()`, a
+  request-scoped context manager, marks the other surviving candidates'
+  composite keys as an expected collision for the duration of one
+  candidate's build, while its own key stays loud so a genuine same-id
+  collision still warns/raises. `_drop_nested`'s existing containment-based
+  output filtering is unchanged — this only silences the registry noise from
+  the redundant build (#1022).
+- `PJXSelect` (single-select) no longer lets the native `<select>` silently
+  report the first option's value when nothing has actually been chosen: a
+  `value` matching no option now also renders a synthetic `<option value=""
+  selected disabled hidden>`, so anything reading `.value` (validation,
+  `required`, a plain `formData.get(...)`) sees an honestly empty value
+  instead of a phantom first-option pick (#1066).
+- `PJXSelect` gains a `required` prop, forwarded to the native `<select>` and
+  mirrored as `aria-required` on the trigger. Since the native element is
+  always hidden and can't anchor the browser's own validation bubble, a
+  failed constraint check on submit now sets `aria-invalid`/`pjx-select--invalid`
+  on the trigger and focuses it, clearing both as soon as a real selection is
+  made (#1065).
 
 ## 1.9.8 — Portals, asset tokens, and a builtin-before-app CSS guarantee (2026-08-29)
 

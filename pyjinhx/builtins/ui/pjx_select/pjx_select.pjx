@@ -1,11 +1,17 @@
 {% set selected_values = (value if value is not none else []) if multiple else ([value] if value is not none else []) -%}
 {% set selected_options = options | selectattr("value", "in", selected_values) | list -%}
 <div id="{{ id }}" class="pjx-select{% if class_name %} {{ class_name }}{% endif %}" data-pjx-select data-name="{{ name }}"{% if multiple %} data-multiple data-placeholder="{{ placeholder }}"{% endif %}{% if disabled %} data-disabled{% endif %}{% if portal %} data-pjx-select-portal{% endif %}{% for extra_name, extra_value in extra_attrs.items() %} {{ extra_name }}="{{ extra_value }}"{% endfor %}>
-  <select name="{{ name }}"{% if multiple %} multiple{% endif %} hidden{% if disabled %} disabled{% endif %}>
-    {% for option in options %}<option value="{{ option.value }}"{% if option.value in selected_values %} selected{% endif %}>{{ option.label }}</option>
+  <select name="{{ name }}"{% if multiple %} multiple{% endif %} hidden{% if disabled %} disabled{% endif %}{% if required %} required{% endif %}>
+    {#- A value matching no option renders unselected (by design), but a
+        native <select> with no option[selected] otherwise defaults its live
+        .value to the first option — see PJXSelect's docstring (#1066). This
+        synthetic option keeps that value honestly empty; it's disabled and
+        hidden so it can never be a real, pickable choice, and it's invisible
+        either way since the native <select> stays hidden throughout. -#}
+    {% if not multiple and not selected_options %}<option value="" selected disabled hidden></option>{% endif %}{% for option in options %}<option value="{{ option.value }}"{% if option.value in selected_values %} selected{% endif %}>{{ option.label }}</option>
     {% endfor %}
   </select>
-  <button type="button" class="pjx-select__trigger" data-pjx-select-trigger aria-haspopup="listbox" aria-expanded="false"{% if disabled %} disabled{% endif %}>
+  <button type="button" class="pjx-select__trigger" data-pjx-select-trigger aria-haspopup="listbox" aria-expanded="false"{% if required %} aria-required="true"{% endif %}{% if disabled %} disabled{% endif %}>
     {#- The chip row lives *inside* .pjx-select__label rather than replacing it,
         so the JS keeps one node to rewrite in both modes. Chips reuse
         PJXChipInput's classes but deliberately omit its remove button and
