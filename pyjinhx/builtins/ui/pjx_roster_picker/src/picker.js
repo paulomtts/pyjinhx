@@ -4,7 +4,7 @@
     // re-running it, or two pickers shipping it) finds it and returns before
     // binding, so the document listeners below exist once per page.
     if (window.pjx.rosterPicker) return;
-    window.pjx.rosterPicker = {};
+    window.pjx.rosterPicker = { placement: placement };
 
     // Focus this script moves (Escape, a pick or a remove handing it back to
     // the box) is not the user arriving, so it must not reopen the list.
@@ -36,6 +36,35 @@
 
     function isOpen(input) {
         return input.getAttribute('aria-expanded') === 'true';
+    }
+
+    /**
+     * Decide which side of its search box an open list goes on, and how tall it may grow there.
+     *
+     * Takes the search box's {top, bottom}, the list's height, the clipping
+     * box's {top, bottom} and the gap between search box and list, all in
+     * viewport px, and returns {above, room}. Not part of the documented API:
+     * exposed only so a unit test can call the shipped code, as
+     * pjx.popoverPosition is.
+     */
+    function placement(search, listHeight, box, gap) {
+        const below = box.bottom - search.bottom - gap;
+        const above = search.top - box.top - gap;
+        // popoverPosition flips only when the panel fits above, so a list
+        // taller than both sides is offered at the roomier side's height.
+        const answer = pjx.popoverPosition({
+            trigger: {
+                top: search.top - box.top,
+                left: 0,
+                width: 0,
+                height: search.bottom - search.top,
+            },
+            panel: { width: 0, height: Math.max(0, Math.min(listHeight, Math.max(below, above))) },
+            viewport: { width: 0, height: box.bottom - box.top },
+            gap: gap,
+        });
+        const goesAbove = answer.placement === 'above';
+        return { above: goesAbove, room: Math.max(0, goesAbove ? above : below) };
     }
 
     // Every open and close goes through here, so the input's aria-expanded
