@@ -284,6 +284,7 @@ def test_a_disabled_picker_ignores_clicks_and_keys(
     page.click("#d .pjx-roster-picker__chip-label")
     page.click("#d")
     page.keyboard.press("Escape")
+    page.keyboard.press("ArrowDown")
     _settle(page)
 
     assert page.eval_on_selector("#d", "picker => picker.outerHTML") == before
@@ -460,6 +461,110 @@ def test_arrow_down_focuses_its_own_pickers_first_result(
     assert page_errors == []
 
 
+def test_arrow_down_with_every_row_hidden_stays_in_the_input(
+    page: Page, session: RenderSession, page_errors: list[str]
+):
+    items = [
+        PJXRosterItem(value=f"v{index}", label=f"Person {index}") for index in range(3)
+    ]
+    _serve(page, session, _picker(session, items=items))
+    _input(page).click()
+    _wait_rows_hidden(page, ["v0", "v1", "v2"])
+
+    page.keyboard.press("ArrowDown")
+
+    assert _input_has_focus(page)
+    assert _arrow_down_prevented(page) is False
+    _settle(page)
+    assert _state(page) == OPEN
+    assert page_errors == []
+
+
+def test_arrow_down_before_the_rows_arrive_stays_in_the_input(
+    page: Page, session: RenderSession, page_errors: list[str]
+):
+    _serve(page, session, _picker(session))
+    _input(page).click()
+    page.wait_for_selector(PICKS, timeout=5000)
+
+    # An open list whose search has not answered yet has an empty mount.
+    # Emptying it and pressing in one script turn stands for that without
+    # racing the search debounce.
+    prevented = page.evaluate(
+        """() => {
+            document.getElementById('p-results').replaceChildren();
+            const event = new KeyboardEvent('keydown', {
+                key: 'ArrowDown', bubbles: true, cancelable: true,
+            });
+            document.querySelector('#p .pjx-roster-picker__input').dispatchEvent(event);
+            return event.defaultPrevented;
+        }"""
+    )
+
+    assert prevented is False
+    assert _input_has_focus(page)
+    assert _state(page) == OPEN
+    assert page_errors == []
+
+
+def test_arrow_down_on_a_closed_list_does_nothing(
+    page: Page, session: RenderSession, page_errors: list[str]
+):
+    requests = _serve(page, session, _picker(session))
+    _input(page).click()
+    page.wait_for_selector(PICKS, timeout=5000)
+    page.keyboard.press("Escape")
+    assert _state(page) == CLOSED
+
+    page.keyboard.press("ArrowDown")
+
+    assert _input_has_focus(page)
+    assert _arrow_down_prevented(page) is False
+    # Past the 300 ms debounce, so a search from the press would have been sent.
+    page.wait_for_timeout(500)
+    assert _state(page) == CLOSED
+    assert _opens(page) == 1
+    assert len(requests) == 1
+    assert page_errors == []
+
+
+def test_arrow_down_on_a_result_stays_put(
+    page: Page, session: RenderSession, page_errors: list[str]
+):
+    _serve(page, session, _picker(session))
+    _input(page).click()
+    page.wait_for_selector(PICKS, timeout=5000)
+    page.keyboard.press("ArrowDown")
+    assert _focused_row(page) == "v0"
+
+    page.keyboard.press("ArrowDown")
+
+    assert _focused_row(page) == "v0"
+    assert _arrow_down_prevented(page) is False
+    _settle(page)
+    assert _state(page) == OPEN
+    assert page_errors == []
+
+
+def test_escape_after_arrow_down_returns_focus_without_reopening(
+    page: Page, session: RenderSession, page_errors: list[str]
+):
+    _serve(page, session, _picker(session))
+    _input(page).click()
+    page.wait_for_selector(PICKS, timeout=5000)
+    page.keyboard.press("ArrowDown")
+    assert _focused_row(page) == "v0"
+
+    page.keyboard.press("Escape")
+
+    assert _state(page) == CLOSED
+    assert _input_has_focus(page)
+    _settle(page)
+    assert _state(page) == CLOSED
+    assert _opens(page) == 1
+    assert page_errors == []
+
+
 def test_pickers_open_and_close_independently(
     page: Page, session: RenderSession, page_errors: list[str]
 ):
@@ -533,6 +638,7 @@ def test_events_aimed_at_the_document_itself_are_ignored(
             document.dispatchEvent(new MouseEvent('click', { bubbles: true }));
             document.dispatchEvent(new InputEvent('input', { bubbles: true }));
             document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+            document.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
         }"""
     )
     _settle(page)
