@@ -85,6 +85,14 @@
         picker.querySelector('.pjx-roster-picker__hint').hidden = !full;
     }
 
+    // The browser validates this one input, not the chips, so it has to
+    // follow every pick and remove. :scope > because a control in a chip's
+    // slot could share the class. A picker that is not required has none.
+    function syncValidity(picker) {
+        const validity = picker.querySelector(':scope > .pjx-roster-picker__validity');
+        if (validity) validity.value = chippedValues(picker).join(',');
+    }
+
     // Read after the DOM change, so listeners see the selection as it now is.
     function announceChange(picker) {
         picker.dispatchEvent(
@@ -122,6 +130,7 @@
         const remove = isFull(picker) && chip.querySelector('[data-pjx-roster-remove]');
         if (remove) remove.focus();
         else if (input && !input.disabled) quietFocus(input);
+        syncValidity(picker);
         announceChange(picker);
     }
 
@@ -145,6 +154,7 @@
         const nextRemove = next && next.querySelector('[data-pjx-roster-remove]');
         if (nextRemove) nextRemove.focus();
         else if (input) quietFocus(input);
+        syncValidity(picker);
         announceChange(picker);
     }
 
