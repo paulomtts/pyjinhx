@@ -1029,3 +1029,103 @@ def test_a_canceled_single_item_swap_keeps_the_old_chip(
     assert _state(page) == OPEN
     assert _names(page) == ["before-pick"]
     assert page_errors == []
+
+
+def test_a_remove_fires_before_remove_remove_then_change(
+    page: Page, session: RenderSession, page_errors: list[str]
+):
+    items = [_item("a"), _item("b"), _item("c")]
+    _serve(page, session, _picker(session, items=items))
+    _record_events(page)
+
+    _remove(page, "b").click()
+
+    assert [(event["name"], event["chips"]) for event in _events(page)] == [
+        ("before-remove", ["a", "b", "c"]),
+        ("remove", ["a", "c"]),
+        ("change", ["a", "c"]),
+    ]
+    assert page_errors == []
+
+
+def test_remove_events_carry_the_value_and_bubble_from_the_picker(
+    page: Page, session: RenderSession, page_errors: list[str]
+):
+    _serve(page, session, _picker(session, items=[_item("a"), _item("b")]))
+    _record_events(page)
+
+    _remove(page, "a").click()
+
+    assert _events(page)[:2] == [
+        {
+            "name": "before-remove",
+            "detail": {"value": "a"},
+            "target": "p",
+            "bubbles": True,
+            "cancelable": True,
+            "chips": ["a", "b"],
+        },
+        {
+            "name": "remove",
+            "detail": {"value": "a"},
+            "target": "p",
+            "bubbles": True,
+            "cancelable": False,
+            "chips": ["b"],
+        },
+    ]
+    assert page_errors == []
+
+
+def test_a_canceled_before_remove_keeps_the_chip(
+    page: Page, session: RenderSession, page_errors: list[str]
+):
+    _serve(page, session, _picker(session))
+    _open(page)
+    _pick(page, "v1").click()
+    _record_events(page, refuse="before-remove")
+
+    _remove(page, "v1").click()
+    _settle(page)
+
+    assert _chip_values(page) == ["v1"]
+    assert _hidden_rows(page) == {"v0": False, "v1": True, "v2": False}
+    # The click's own focus; the script moved nothing.
+    assert _has_focus(_remove(page, "v1"))
+    assert _names(page) == ["before-remove"]
+    assert page_errors == []
+
+
+def test_a_canceled_remove_on_a_capped_picker_stays_capped(
+    page: Page, session: RenderSession, page_errors: list[str]
+):
+    # max_items=1 never caps (it swaps), so the smallest capped picker is two of two.
+    _serve(page, session, _picker(session, items=[_item("a"), _item("b")], max_items=2))
+    _settle(page)
+    _record_events(page, refuse="before-remove")
+
+    _remove(page, "a").click()
+    _settle(page)
+
+    assert _chip_values(page) == ["a", "b"]
+    assert _input(page).is_disabled()
+    assert _hint_hidden(page) is False
+    assert _names(page) == ["before-remove"]
+    assert page_errors == []
+
+
+def test_a_canceled_remove_of_an_unlisted_value_keeps_the_last_query(
+    page: Page, session: RenderSession, page_errors: list[str]
+):
+    _serve(page, session, _picker(session, items=[_item("a")]))
+    _open(page)
+    # Closed, so the open list does not cover the chip.
+    page.keyboard.press("Escape")
+    _record_events(page, refuse="before-remove")
+
+    _remove(page, "a").click()
+    _settle(page)
+
+    assert _chip_values(page) == ["a"]
+    assert _last_query(page) == ""
+    assert page_errors == []

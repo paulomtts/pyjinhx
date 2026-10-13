@@ -414,6 +414,8 @@
 
     function removeChip(picker, chip) {
         const value = chip.querySelector(':scope > .pjx-roster-picker__chip-input').value;
+        // Asked while the chip is still there, so a refusal has nothing to undo.
+        if (!fire(picker, 'pjx:roster-picker:before-remove', { value }, true)) return;
         const next = chip.nextElementSibling;
         chip.remove();
         syncRows(picker);
@@ -427,6 +429,7 @@
         if (nextRemove) nextRemove.focus();
         else if (input) quietFocus(input);
         syncValidity(picker);
+        fire(picker, 'pjx:roster-picker:remove', { value }, false);
         announceChange(picker);
     }
 
