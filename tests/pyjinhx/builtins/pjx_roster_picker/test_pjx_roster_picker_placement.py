@@ -286,3 +286,98 @@ def test_reopening_by_typing_places_the_list_afresh(
         geometry["viewport"] - geometry["searchBottom"] - GAP, abs=1
     )
     assert page_errors == []
+
+
+def test_placed_again_after_resize(
+    page: Page, session: RenderSession, page_errors: list[str]
+):
+    _serve(page, session, _at(280, _picker(session)))
+    _open(page)
+    assert _geometry(page)["above"] is False
+
+    page.set_viewport_size({"width": 800, "height": 450})
+    _settle(page)
+
+    geometry = _geometry(page)
+    assert geometry["above"] is True
+    assert _px(geometry["room"]) == pytest.approx(geometry["searchTop"] - GAP, abs=1)
+    assert page_errors == []
+
+
+def test_ancestor_scroll_replaces_and_list_scroll_does_not(
+    page: Page, session: RenderSession, page_errors: list[str]
+):
+    _serve(page, session, _in_box(_picker(session), height=240, spacer=180, tail=400))
+    _open(page)
+    before = _px(_geometry(page)["room"])
+
+    page.evaluate("() => { document.getElementById('box').scrollTop = 60; }")
+    _settle(page)
+
+    geometry = _geometry(page)
+    box = _box(page)
+    assert geometry["above"] is True
+    assert _px(geometry["room"]) == pytest.approx(
+        geometry["searchTop"] - box["top"] - GAP, abs=1
+    )
+    assert _px(geometry["room"]) < before - 30
+
+    # A room no placement would write, so only a re-place could change it.
+    page.evaluate(
+        "() => document.getElementById('p-results')"
+        ".style.setProperty('--pjx-roster-picker-room', '77px')"
+    )
+    page.evaluate("() => { document.getElementById('p-results').scrollTop = 30; }")
+    _settle(page)
+
+    assert page.evaluate("() => document.getElementById('p-results').scrollTop") == 30
+    assert _geometry(page)["room"] == "77px"
+    assert page_errors == []
+
+
+def test_page_scroll_replaces_the_list(
+    page: Page, session: RenderSession, page_errors: list[str]
+):
+    # A tall page, so the window itself scrolls; that scroll targets
+    # document, which has no closest.
+    filler = '<div style="height:2000px"></div>'
+    _serve(page, session, filler + _at(300, _picker(session)))
+    _open(page)
+    before = _px(_geometry(page)["room"])
+
+    page.evaluate("() => window.scrollTo(0, 200)")
+    _settle(page)
+
+    geometry = _geometry(page)
+    assert geometry["above"] is False
+    assert _px(geometry["room"]) == pytest.approx(
+        geometry["viewport"] - geometry["searchBottom"] - GAP, abs=1
+    )
+    assert _px(geometry["room"]) > before + 150
+    assert page_errors == []
+
+
+def test_resize_replaces_every_open_picker_and_skips_a_disabled_one(
+    page: Page, session: RenderSession, page_errors: list[str]
+):
+    body = (
+        _at(20, _picker(session, "a"), "spot-a")
+        + _at(380, _picker(session, "b"), "spot-b")
+        + _at(470, _picker(session, "d", disabled=True), "spot-d")
+    )
+    _serve(page, session, body)
+    _open(page, "a")
+    _open(page, "b")
+    assert _geometry(page, "a")["above"] is False
+    assert _geometry(page, "b")["above"] is True
+
+    page.set_viewport_size({"width": 800, "height": 900})
+    _settle(page)
+
+    for picker_id in ("a", "b"):
+        geometry = _geometry(page, picker_id)
+        assert geometry["above"] is False, picker_id
+        assert _px(geometry["room"]) == pytest.approx(
+            geometry["viewport"] - geometry["searchBottom"] - GAP, abs=1
+        ), picker_id
+    assert page_errors == []

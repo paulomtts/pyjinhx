@@ -440,6 +440,27 @@
         place(picker);
     });
 
+    function placeOpenPickers() {
+        document
+            .querySelectorAll('.pjx-roster-picker__input[aria-expanded="true"]')
+            .forEach((input) => {
+                const picker = pickerOf(input);
+                if (picker) place(picker);
+            });
+    }
+
+    window.addEventListener('resize', placeOpenPickers);
+
+    // scroll does not bubble, so only a capture listener hears an ancestor's.
+    // A list scrolling its own rows moves nothing it is placed against. The
+    // page's own scroll targets document, which has no closest.
+    document.addEventListener('scroll', function (event) {
+        if (event.target instanceof Element && event.target.closest('.pjx-roster-picker__results')) {
+            return;
+        }
+        placeOpenPickers();
+    }, true);
+
     document.addEventListener('click', function (event) {
         if (!(event.target instanceof Element)) return;
         const button = event.target.closest('[data-pjx-roster-remove]');
