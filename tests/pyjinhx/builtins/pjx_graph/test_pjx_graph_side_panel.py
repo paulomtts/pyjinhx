@@ -316,3 +316,11 @@ class TestStylesheet:
         session.on_rendered.append(accumulate_assets)
         _html(session)
         assert CSS in session.css_assets
+
+
+def test_exported_from_the_builtins_namespace():
+    from pyjinhx import builtins
+
+    names = builtins.__all__
+    assert names.index("PJXGraphSidePanel") == names.index("PJXGraphNodes") + 1
+    assert builtins.PJXGraphSidePanel is PJXGraphSidePanel

@@ -45,6 +45,7 @@ __all__ = [  # noqa: RUF022
     "PJXGraphEdges",
     "PJXGraphNode",
     "PJXGraphNodes",
+    "PJXGraphSidePanel",
     "PJXIcon",
     "PJXLazyLoad",
     "PJXModal",
@@ -173,6 +174,10 @@ _lazy_imports = {
     "PJXGraphNodes": (
         "pyjinhx.builtins.ui.pjx_graph_nodes.pjx_graph_nodes",
         "PJXGraphNodes",
+    ),
+    "PJXGraphSidePanel": (
+        "pyjinhx.builtins.ui.pjx_graph_side_panel.pjx_graph_side_panel",
+        "PJXGraphSidePanel",
     ),
     "PJXIcon": ("pyjinhx.builtins.ui.pjx_icon.pjx_icon", "PJXIcon"),
     "PJXLazyLoad": ("pyjinhx.builtins.pjx_lazy_load.pjx_lazy_load", "PJXLazyLoad"),

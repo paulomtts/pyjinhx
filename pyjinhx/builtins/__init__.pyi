@@ -82,6 +82,9 @@ from pyjinhx.builtins.ui.pjx_graph_node.pjx_graph_node import (
 from pyjinhx.builtins.ui.pjx_graph_nodes.pjx_graph_nodes import (
     PJXGraphNodes as PJXGraphNodes,
 )
+from pyjinhx.builtins.ui.pjx_graph_side_panel.pjx_graph_side_panel import (
+    PJXGraphSidePanel as PJXGraphSidePanel,
+)
 from pyjinhx.builtins.ui.pjx_icon.pjx_icon import PJXIcon as PJXIcon
 from pyjinhx.builtins.ui.pjx_modal.pjx_modal import PJXModal as PJXModal
 from pyjinhx.builtins.ui.pjx_modal_body.pjx_modal_body import (
@@ -171,6 +174,7 @@ __all__ = [
     "PJXGraphEdges",
     "PJXGraphNode",
     "PJXGraphNodes",
+    "PJXGraphSidePanel",
     "PJXIcon",
     "PJXLazyLoad",
     "PJXModal",
