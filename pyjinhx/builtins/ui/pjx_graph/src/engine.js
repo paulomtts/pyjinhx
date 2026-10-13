@@ -16,6 +16,9 @@
   // Aborted when a stage is dropped: everything the stage started outside
   // its own elements listens to it, so one abort stops all of it.
   const lives = new WeakMap();
+  // Each stage's panel history, newest id last. Kept by the root, not the
+  // panel, so a panel swapped in later carries on where the old one left off.
+  const histories = new WeakMap();
   // Room left around the nodes when a fit frames them.
   const FIT_PAD = 48;
   // A press that moves no further than this, in screen pixels, is a click.
@@ -820,6 +823,97 @@
     signal.addEventListener('abort', () => observer.disconnect());
   }
 
+  // The panel is looked up on every call, never kept, since htmx may swap it.
+  // Only the root's direct child is its panel; one deeper belongs to a nested
+  // stage.
+  function panelOf(root, fn) {
+    if (!(root instanceof Element) || !get(root)) {
+      throw new Error('pjx.graph.panel.' + fn + ': expected a mounted [data-pjx-graph] stage');
+    }
+    const panel = root.querySelector(':scope > [data-pjx-graph-panel]');
+    if (!panel) {
+      throw new Error('pjx.graph.panel.' + fn + ': stage has no [data-pjx-graph-panel]');
+    }
+    return panel;
+  }
+
+  // Back shows only when there is somewhere to go back to. A nested stage's
+  // panel in this one's content has its own back button, which is not ours,
+  // and an app-made panel may have none at all.
+  function syncBack(panel, history) {
+    const back = Array.from(panel.querySelectorAll('[data-pjx-graph-panel-back]'))
+      .find((button) => button.closest('[data-pjx-graph-panel]') === panel);
+    if (back) back.hidden = history.length <= 1;
+  }
+
+  function newest(history) {
+    return history.length ? history[history.length - 1] : null;
+  }
+
+  // The app calls this, usually from its own select listener; the id is
+  // anything it can show, so it is not checked against the nodes.
+  function openPanel(root, id) {
+    const panel = panelOf(root, 'open');
+    if (typeof id !== 'string' || id === '') {
+      throw new Error('pjx.graph.panel.open: expected a non-empty string id');
+    }
+    const history = histories.get(root);
+    // Showing what is already shown changes nothing.
+    if (panel.getAttribute('data-open') === 'true' && newest(history) === id) return true;
+    history.push(id);
+    panel.setAttribute('data-open', 'true');
+    syncBack(panel, history);
+    root.dispatchEvent(new CustomEvent('pjx:graph:panel:open',
+      { bubbles: true, detail: { id: id } }));
+    return true;
+  }
+
+  // Going back shows the previous id again, so the app hears it as an open.
+  function backPanel(root) {
+    const panel = panelOf(root, 'back');
+    const history = histories.get(root);
+    if (history.length <= 1) return false;
+    history.pop();
+    panel.setAttribute('data-open', 'true');
+    syncBack(panel, history);
+    root.dispatchEvent(new CustomEvent('pjx:graph:panel:open',
+      { bubbles: true, detail: { id: newest(history) } }));
+    return true;
+  }
+
+  // The history is forgotten only once no listener has vetoed the close, so
+  // a vetoed close leaves back exactly where it was.
+  function closePanel(root) {
+    const panel = panelOf(root, 'close');
+    if (panel.getAttribute('data-open') !== 'true') return true;
+    const history = histories.get(root);
+    // null when the server rendered the panel open and nothing was opened since.
+    const id = newest(history);
+    const allowed = root.dispatchEvent(new CustomEvent('pjx:graph:panel:before-close',
+      { bubbles: true, cancelable: true, detail: { id: id } }));
+    if (!allowed) return false;
+    panel.setAttribute('data-open', 'false');
+    history.length = 0;
+    syncBack(panel, history);
+    root.dispatchEvent(new CustomEvent('pjx:graph:panel:close',
+      { bubbles: true, detail: { id: id } }));
+    return true;
+  }
+
+  // On the root, since the panel sits beside the canvas and its clicks never
+  // reach the canvas listeners. Delegated, so a panel swapped in later needs
+  // no rebinding; a button in a nested stage's panel is left to that stage.
+  function listenForPanel(root, signal) {
+    root.addEventListener('click', (event) => {
+      const button = event.target.closest(
+        '[data-pjx-graph-panel-close], [data-pjx-graph-panel-back]');
+      const panel = button && button.closest('[data-pjx-graph-panel]');
+      if (!panel || panel !== root.querySelector(':scope > [data-pjx-graph-panel]')) return;
+      if (button.hasAttribute('data-pjx-graph-panel-close')) closePanel(root);
+      else backPanel(root);
+    }, { signal: signal });
+  }
+
   function mount(root) {
     if (!(root instanceof Element) || !root.hasAttribute('data-pjx-graph')) {
       throw new Error('pjx.graph.mount: expected a [data-pjx-graph] element');
@@ -837,8 +931,10 @@
     const instance = createInstance(root, canvas, viewport, plane, view, life.signal);
     instances.set(root, instance);
     lives.set(root, life);
+    histories.set(root, []);
     observeViewport(viewport, instance, life.signal);
     listenForControls(root, canvas, instance, life.signal);
+    listenForPanel(root, life.signal);
     // A restored view is where the user left off; only a fresh stage is framed.
     // Edges are drawn before ready, so whatever waits on ready sees them.
     if (view.restored) {
@@ -865,6 +961,7 @@
     if (!life) return;
     life.abort();
     lives.delete(root);
+    histories.delete(root);
     instances.delete(root);
   }
 
@@ -920,4 +1017,5 @@
 
   graph.mount = mount;
   graph.get = get;
+  graph.panel = { open: openPanel, close: closePanel, back: backPanel };
 })();

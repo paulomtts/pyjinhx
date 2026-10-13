@@ -338,6 +338,12 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
         {"pyjinhx.builtins.ui.pjx_graph_nodes.pjx_graph_nodes"}
     ),
     "builtins.ui.pjx_graph_nodes.pjx_graph_nodes": frozenset({"pyjinhx._component"}),
+    "builtins.ui.pjx_graph_side_panel.__init__": frozenset(
+        {"pyjinhx.builtins.ui.pjx_graph_side_panel.pjx_graph_side_panel"}
+    ),
+    "builtins.ui.pjx_graph_side_panel.pjx_graph_side_panel": frozenset(
+        {"pyjinhx._component"}
+    ),
     "builtins.ui.pjx_resizable_group.__init__": frozenset(
         {"pyjinhx.builtins.ui.pjx_resizable_group.pjx_resizable_group"}
     ),
