@@ -584,3 +584,35 @@ def test_a_click_on_the_portal_lists_padding_keeps_it_open(
     assert _input_has_focus(page)
     assert len(requests) == 1
     assert page_errors == []
+
+
+def test_htmx_swap_of_portaled_picker_leaves_no_stray_list(
+    page: Page, session: RenderSession, page_errors: list[str]
+):
+    markup = _picker(session)
+    _serve(page, session, _at(20, markup), fresh=markup)
+    # Opened by typing, not focus: a focused box removed by the swap could
+    # close the list through focusout and hide a missing cleanup.
+    page.evaluate(
+        "() => document.querySelector('#p .pjx-roster-picker__input')"
+        ".dispatchEvent(new Event('input', { bubbles: true }))"
+    )
+    page.wait_for_selector("#p-results [data-pjx-roster-pick]", timeout=5000)
+    _settle(page)
+    assert _geometry(page)["onBody"] is True
+
+    page.evaluate(
+        "() => htmx.ajax('GET', '/fresh', { target: '#spot', swap: 'innerHTML' })"
+    )
+    _settle(page)
+
+    lists = page.evaluate(
+        """() => ({
+            count: document.querySelectorAll('#p-results').length,
+            inPicker: document.getElementById('p').contains(document.getElementById('p-results')),
+            onBody: document.querySelectorAll('body > .pjx-roster-picker__results').length,
+        })"""
+    )
+    assert lists == {"count": 1, "inPicker": True, "onBody": 0}
+    assert _geometry(page)["hidden"] is True
+    assert page_errors == []

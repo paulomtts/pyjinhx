@@ -499,6 +499,17 @@
         place(picker);
     });
 
+    // A swap that takes a picker away would leave its portaled list on body,
+    // still holding the picker's results id. Closed first, the list goes
+    // home and leaves with its picker. contains() counts the target itself.
+    document.addEventListener('htmx:beforeSwap', function (event) {
+        const target = event.detail.target;
+        if (!(target instanceof Element)) return;
+        document.querySelectorAll('[data-pjx-roster-picker-portal]').forEach((picker) => {
+            if (portalled.has(picker) && target.contains(picker)) setOpen(picker, false);
+        });
+    });
+
     function placeOpenPickers() {
         document
             .querySelectorAll('.pjx-roster-picker__input[aria-expanded="true"]')
