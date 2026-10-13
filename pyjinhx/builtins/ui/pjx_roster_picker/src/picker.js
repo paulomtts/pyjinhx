@@ -93,6 +93,15 @@
         if (validity) validity.value = chippedValues(picker).join(',');
     }
 
+    // Only the browser's invalid event marks a picker, and a pick is the
+    // answer to it, so a pick is the one thing that clears the mark. A
+    // remove leaves it alone either way.
+    function clearInvalid(picker) {
+        picker.classList.remove('pjx-roster-picker--invalid');
+        const input = searchInput(picker);
+        if (input) input.removeAttribute('aria-invalid');
+    }
+
     // Read after the DOM change, so listeners see the selection as it now is.
     function announceChange(picker) {
         picker.dispatchEvent(
@@ -119,6 +128,7 @@
         // A single-item picker swaps its one chip rather than refusing.
         if (picker.dataset.maxItems === '1') chips.replaceChildren(chip);
         else chips.append(chip);
+        clearInvalid(picker);
         syncRows(picker);
         setOpen(picker, false);
         const input = searchInput(picker);

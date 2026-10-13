@@ -400,3 +400,65 @@ def test_an_unrelated_invalid_control_leaves_the_picker_alone(
     assert _cue(page) == (None, False)
     assert _has_focus(page.locator("#title"))
     assert page_errors == []
+
+
+def test_a_pick_clears_the_cue_and_the_form_posts_every_value(
+    page: Page, session: RenderSession, page_errors: list[str]
+):
+    _serve(page, session, _form(_picker(session, required=True)))
+    _record_submits(page)
+    _submit(page)
+    assert _cue(page) == ("true", True)
+    _open(page)
+
+    _pick(page, "v0").click()
+
+    assert _cue(page) == (None, False)
+    _input(page).click()
+    _pick(page, "v1").click()
+    assert _validity(page) == "v0,v1"
+    assert _valid(page) is True
+    _submit(page)
+    assert _submits(page) == [[["members", "v0"], ["members", "v1"]]]
+    assert page_errors == []
+
+
+def test_a_pick_reaching_the_cap_clears_the_cue(
+    page: Page, session: RenderSession, page_errors: list[str]
+):
+    _serve(page, session, _form(_picker(session, required=True, max_items=2)))
+    _submit(page)
+    assert _cue(page) == ("true", True)
+    _open(page)
+    _pick(page, "v0").click()
+    _input(page).click()
+
+    _pick(page, "v1").click()
+
+    assert _input(page).is_disabled()
+    assert _has_focus(_remove(page, "v1"))
+    assert _cue(page) == (None, False)
+    assert _validity(page) == "v0,v1"
+    assert page_errors == []
+
+
+def test_an_ignored_pick_keeps_the_cue(
+    page: Page, session: RenderSession, page_errors: list[str]
+):
+    _serve(page, session, _form(_picker(session, required=True)))
+    _submit(page)
+    _open(page)
+    # v1 loses its chip template, so its click has nothing to add.
+    page.evaluate(
+        """() => {
+            const rows = document.querySelectorAll('#p-results [data-pjx-roster-pick]');
+            rows[1].nextElementSibling.remove();
+        }"""
+    )
+
+    _pick(page, "v1").click()
+    _settle(page)
+
+    assert _cue(page) == ("true", True)
+    assert _validity(page) == ""
+    assert page_errors == []
