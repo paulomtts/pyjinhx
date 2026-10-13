@@ -92,6 +92,7 @@ nav:
           - Reactivity: reactivity.md
           - Configuration: guide/configuration.md
           - Builtin Conventions: guide/builtin-conventions.md
+          - Graph: guide/graph.md
           - Integrations:
               - FastAPI: integrations/fastapi.md
               - HTMX: integrations/htmx.md
