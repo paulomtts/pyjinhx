@@ -200,6 +200,18 @@
         if (event.target !== input) quietFocus(input);
     });
 
+    document.addEventListener('keydown', function (event) {
+        if (event.key !== 'ArrowDown' || !isSearchInput(event.target)) return;
+        const picker = pickerOf(event.target);
+        if (!picker || !isOpen(event.target)) return;
+        // A chipped value's row stays in the list hidden, and focus() on a
+        // hidden button does nothing, so the press would be swallowed.
+        const row = resultsMount(picker).querySelector('[data-pjx-roster-pick]:not([hidden])');
+        if (!row) return;
+        event.preventDefault();
+        row.focus();
+    });
+
     // closest, not the target: the press usually lands on the row's label or
     // avatar. Enter and Space on a focused row arrive as a click too.
     document.addEventListener('click', function (event) {
