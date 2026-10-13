@@ -67,13 +67,59 @@
         return { above: goesAbove, room: Math.max(0, goesAbove ? above : below) };
     }
 
+    // Only the vertical extent: the list stays left:0; right:0 under its box.
+    // body and html pass their overflow on to the viewport, the starting box,
+    // and their own rects only span the content, so they are not walked.
+    function clippingBox(search) {
+        let top = 0;
+        let bottom = window.innerHeight;
+        for (
+            let el = search.parentElement;
+            el && el !== document.body && el !== document.documentElement;
+            el = el.parentElement
+        ) {
+            if (getComputedStyle(el).overflowY === 'visible') continue;
+            const rect = el.getBoundingClientRect();
+            top = Math.max(top, rect.top);
+            bottom = Math.min(bottom, rect.bottom);
+        }
+        return { top: top, bottom: bottom };
+    }
+
+    function clearPlacement(mount) {
+        mount.classList.remove('pjx-roster-picker__results--above');
+        mount.style.removeProperty('--pjx-roster-picker-room');
+    }
+
+    // Cleared first, so the list is measured at its default: below, capped
+    // only by the max-h token. Runs in the same task as the unhide, so no
+    // frame paints the unplaced list.
+    function place(picker) {
+        const input = searchInput(picker);
+        if (!input || !isOpen(input)) return;
+        const mount = resultsMount(picker);
+        clearPlacement(mount);
+        const search = input.closest('.pjx-roster-picker__search');
+        const rect = search.getBoundingClientRect();
+        const list = mount.getBoundingClientRect();
+        // Measured, not assumed, so a theme that moves the list stays right.
+        const gap = list.top - rect.bottom;
+        const answer = placement(rect, list.height, clippingBox(search), gap);
+        mount.classList.toggle('pjx-roster-picker__results--above', answer.above);
+        mount.style.setProperty('--pjx-roster-picker-room', answer.room + 'px');
+    }
+
     // Every open and close goes through here, so the input's aria-expanded
-    // and the mount's hidden never disagree. Closing only hides the rows.
+    // and the mount's hidden never disagree. Closing only hides the rows,
+    // and drops the placement so the next open starts clean.
     function setOpen(picker, open) {
         const input = searchInput(picker);
         if (!input) return;
         input.setAttribute('aria-expanded', open ? 'true' : 'false');
-        resultsMount(picker).hidden = !open;
+        const mount = resultsMount(picker);
+        mount.hidden = !open;
+        if (open) place(picker);
+        else clearPlacement(mount);
     }
 
     function quietFocus(input) {
@@ -290,11 +336,14 @@
 
     // A swap can bring rows for values already chipped: a route that ignored
     // exclude, or a later page. The paging sentinel swaps outerHTML, so htmx
-    // settles the new page inside the mount, not the mount itself.
+    // settles the new page inside the mount, not the mount itself. The first
+    // open placed an empty mount, so the side is decided again on the rows.
     document.addEventListener('htmx:afterSettle', function (event) {
         if (!(event.target instanceof Element)) return;
         const picker = pickerOf(event.target);
-        if (picker) syncRows(picker);
+        if (!picker) return;
+        syncRows(picker);
+        place(picker);
     });
 
     document.addEventListener('click', function (event) {
