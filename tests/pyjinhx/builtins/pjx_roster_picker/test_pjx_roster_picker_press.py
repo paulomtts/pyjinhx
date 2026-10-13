@@ -483,6 +483,7 @@ def test_a_picker_swapped_out_while_its_close_waits_throws_nothing(
 
     page.evaluate(
         """html => {
+            window.swappedOut = document.querySelector('#p .pjx-roster-picker__input');
             document.getElementById('host').innerHTML = html;
             document.getElementById('outside').dispatchEvent(
                 new KeyboardEvent('keydown', { key: 'Shift', bubbles: true })
@@ -492,5 +493,9 @@ def test_a_picker_swapped_out_while_its_close_waits_throws_nothing(
     )
     _settle(page)
 
+    # The close that waited acted on the detached picker, not the new one.
+    assert page.evaluate("() => window.swappedOut.getAttribute('aria-expanded')") == (
+        "false"
+    )
     assert _state(page) == CLOSED
     assert page_errors == []
