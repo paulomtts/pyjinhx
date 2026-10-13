@@ -397,3 +397,131 @@ def test_a_request_from_inside_the_results_is_left_alone(
     assert "exclude" not in _query(request.value.url)
     assert _last_query(page) == ""
     assert page_errors == []
+
+
+def test_a_reopen_over_unchanged_text_sends_nothing(
+    page: Page, session: RenderSession, page_errors: list[str]
+):
+    requests = _serve(page, session, _picker(session))
+    _input(page).click()
+    page.wait_for_selector(PICKS, timeout=5000)
+    _wait_last_query(page, "")
+    page.keyboard.press("Escape")
+
+    _input(page).click()
+    # Past the 300 ms debounce, so a search would have been sent.
+    page.wait_for_timeout(500)
+
+    assert len(requests) == 1
+    assert _state(page) == OPEN
+    assert page.locator(PICKS).count() == 3
+    assert page_errors == []
+
+
+def test_typing_after_a_skipped_reopen_still_searches(
+    page: Page, session: RenderSession, page_errors: list[str]
+):
+    requests = _serve(page, session, _picker(session))
+    _input(page).click()
+    _wait_last_query(page, "")
+    page.keyboard.press("Escape")
+    _input(page).click()
+    page.wait_for_timeout(500)
+    assert len(requests) == 1
+
+    with page.expect_request(_asks_for("z"), timeout=5000):
+        page.keyboard.type("z")
+    _wait_last_query(page, "z")
+
+    assert page_errors == []
+
+
+def test_a_reopen_over_typed_text_it_already_answered_sends_nothing(
+    page: Page, session: RenderSession, page_errors: list[str]
+):
+    requests = _serve(page, session, _picker(session))
+    _input(page).click()
+    # Answered first, so typing cannot fold into the open's own search.
+    _wait_last_query(page, "")
+    page.keyboard.type("al")
+    _wait_last_query(page, "al")
+    page.keyboard.press("Escape")
+
+    _input(page).click()
+    page.wait_for_timeout(500)
+
+    assert [_query(url)["q"] for url in requests] == [[""], ["al"]]
+    assert _state(page) == OPEN
+    assert page_errors == []
+
+
+def test_a_keyboard_reopen_over_unchanged_text_sends_nothing(
+    page: Page, session: RenderSession, page_errors: list[str]
+):
+    body = '<button id="before" type="button">Before</button>' + _picker(session)
+    requests = _serve(page, session, body)
+    _input(page).click()
+    _wait_last_query(page, "")
+    page.keyboard.press("Escape")
+
+    page.keyboard.press("Shift+Tab")
+    page.keyboard.press("Tab")
+    page.wait_for_timeout(500)
+
+    assert _state(page) == OPEN
+    assert len(requests) == 1
+    assert page_errors == []
+
+
+def test_typing_back_to_the_last_query_still_searches(
+    page: Page, session: RenderSession, page_errors: list[str]
+):
+    requests = _serve(page, session, _picker(session))
+    _input(page).click()
+    _wait_last_query(page, "")
+
+    with page.expect_request(_asks_for(""), timeout=5000):
+        page.keyboard.type("a")
+        page.keyboard.press("Backspace")
+    _settle(page)
+
+    assert [_query(url)["q"] for url in requests] == [[""], [""]]
+    assert page_errors == []
+
+
+def test_a_failed_search_keeps_the_old_query_so_a_reopen_asks_again(
+    page: Page, session: RenderSession, page_errors: list[str]
+):
+    _serve(page, session, _picker(session), statuses={"x": 500})
+    _input(page).click()
+    page.wait_for_selector(PICKS, timeout=5000)
+    _wait_last_query(page, "")
+
+    with page.expect_request(_asks_for("x"), timeout=5000):
+        page.keyboard.type("x")
+    _settle(page)
+
+    assert page.locator(PICKS).count() == 3
+    assert _last_query(page) == ""
+
+    page.keyboard.press("Escape")
+    with page.expect_request(_asks_for("x"), timeout=5000):
+        _input(page).click()
+
+    assert page_errors == []
+
+
+def test_a_reopen_over_an_emptied_list_asks_again(
+    page: Page, session: RenderSession, page_errors: list[str]
+):
+    _serve(page, session, _picker(session))
+    _input(page).click()
+    page.wait_for_selector(PICKS, timeout=5000)
+    _wait_last_query(page, "")
+    page.evaluate("() => { document.getElementById('p-results').innerHTML = ''; }")
+    page.keyboard.press("Escape")
+
+    with page.expect_request(_asks_for(""), timeout=5000):
+        _input(page).click()
+
+    assert page_errors == []

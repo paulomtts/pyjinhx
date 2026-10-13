@@ -122,4 +122,24 @@
         if (!isSearchInput(event.target) || event.detail.successful !== true) return;
         event.target.setAttribute('data-last-query', event.detail.requestConfig.parameters.q);
     });
+
+    // A reopen over the text the kept rows were fetched for has nothing new
+    // to ask. Typing always searches, even back to the same text, and an
+    // emptied list always asks again. Cancelling here, rather than skipping
+    // the dispatch, lets htmx release its hx-sync slot for the next search.
+    document.addEventListener('htmx:beforeRequest', function (event) {
+        const input = event.target;
+        if (!isSearchInput(input)) return;
+        const trigger = event.detail.requestConfig.triggeringEvent;
+        const picker = pickerOf(input);
+        if (
+            picker &&
+            trigger &&
+            trigger.type === 'roster-picker-open' &&
+            input.value === input.getAttribute('data-last-query') &&
+            resultsMount(picker).childElementCount > 0
+        ) {
+            event.preventDefault();
+        }
+    });
 })();
