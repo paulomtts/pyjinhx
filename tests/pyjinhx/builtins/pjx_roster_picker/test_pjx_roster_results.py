@@ -364,3 +364,151 @@ def test_row_text_is_escaped_exactly_once(parse_html, session):
     assert _one(button, "pjx-avatar__initials").text == "<"
     (template,) = _templates(root)
     assert _one(template, "pjx-roster-picker__chip-label").text == "A & B"
+
+
+# ── Sentinel ─────────────────────────────────────────────────────────────────
+
+
+def test_items_and_next_url_close_the_page_with_a_scoped_sentinel(parse_html, session):
+    root = _results(
+        parse_html,
+        session,
+        items=_items("u1"),
+        next_url="/people?cursor=c2",
+        next_cursor="c2",
+    )
+
+    sentinel = root.children[-1]
+    assert sentinel.tag == "div"
+    assert "data-pjx-lazy-load" in sentinel.attrs
+    assert "pjx-roster-picker__more" in sentinel.classes
+    assert sentinel.attrs["id"] == "p1-more-c2"
+    assert sentinel.attrs["hx-get"] == "/people?cursor=c2"
+    assert sentinel.attrs["hx-trigger"] == "intersect once root:#p1-results"
+    assert sentinel.attrs["hx-swap"] == "outerHTML"
+
+
+def test_sentinel_id_without_a_cursor_is_picker_id_more(parse_html, session):
+    root = _results(parse_html, session, items=_items("u1"), next_url="/people")
+
+    assert root.children[-1].attrs["id"] == "p1-more"
+
+
+def test_no_next_url_renders_no_sentinel(parse_html, session):
+    root = _results(parse_html, session, items=_items("u1"), next_cursor="c2")
+
+    assert [el for el in root.descendants() if "data-pjx-lazy-load" in el.attrs] == []
+
+
+def test_no_items_with_a_next_url_renders_no_sentinel(parse_html, session):
+    root = _results(parse_html, session, next_url="/people", next_cursor="c2")
+
+    assert [el for el in root.descendants() if "data-pjx-lazy-load" in el.attrs] == []
+
+
+# ── Empty state ──────────────────────────────────────────────────────────────
+
+
+def test_no_items_renders_only_the_empty_message(parse_html, session):
+    root = _results(parse_html, session)
+
+    (empty,) = root.children
+    assert empty.tag == "p"
+    assert "pjx-roster-picker__empty" in empty.classes
+    assert empty.children == []
+    assert empty.text == "No results"
+
+
+def test_custom_empty_message_replaces_the_text(parse_html, session):
+    root = _results(parse_html, session, empty_message="Nobody found")
+
+    assert _one(root, "pjx-roster-picker__empty").text == "Nobody found"
+
+
+def test_items_render_no_empty_message(parse_html, session):
+    root = _results(parse_html, session, items=_items("u1"))
+
+    assert _by_class(root, "pjx-roster-picker__empty") == []
+
+
+def test_extra_attrs_land_on_the_root_only(parse_html, session):
+    root = _results(
+        parse_html,
+        session,
+        items=_items("u1"),
+        next_url="/people",
+        extra_attrs={"data-team": "core"},
+    )
+
+    assert root.attrs["data-team"] == "core"
+    assert [el for el in root.descendants() if "data-team" in el.attrs] == []
+    assert "data-pjx-lazy-load" in root.children[-1].attrs
+
+
+# ── Escaping (empty state and sentinel) ──────────────────────────────────────
+
+
+def test_empty_message_is_escaped_exactly_once(parse_html, session):
+    root = _results(parse_html, session, empty_message="<b>A & B</b>")
+
+    empty = _one(root, "pjx-roster-picker__empty")
+    assert empty.children == []
+    assert empty.text == "<b>A & B</b>"
+
+
+def test_quotes_and_ampersands_in_attribute_props_round_trip(parse_html, session):
+    items = [PJXRosterItem(value='a"&b', label="Ada")]
+
+    root = _results(
+        parse_html,
+        session,
+        items=items,
+        remove_label='R"&x',
+        next_url='/people?q=a&b="2"',
+        next_cursor='c"&2',
+    )
+
+    (button,) = _pick_rows(root)
+    assert button.attrs["data-value"] == 'a"&b'
+    (template,) = _templates(root)
+    chip = template.children[0]
+    assert chip.children[0].attrs["value"] == 'a"&b'
+    remove = _one(chip, "pjx-roster-picker__chip-remove")
+    assert remove.attrs["aria-label"] == 'R"&x: Ada'
+    sentinel = root.children[-1]
+    assert sentinel.attrs["hx-get"] == '/people?q=a&b="2"'
+    assert sentinel.attrs["id"] == 'p1-more-c"&2'
+
+
+# ── Ids ──────────────────────────────────────────────────────────────────────
+
+
+def test_two_pages_in_one_session_never_share_an_id(parse_html, session):
+    html = render(
+        PJXRosterResults(
+            picker_id="p1",
+            items=_items("u1", "u2"),
+            next_url="/people?cursor=c1",
+            next_cursor="c1",
+        ),
+        session,
+    ) + render(
+        PJXRosterResults(
+            picker_id="p1",
+            items=_items("u3"),
+            next_url="/people?cursor=c2",
+            next_cursor="c2",
+        ),
+        session,
+    )
+
+    roots = parse_html(html)
+    ids = [
+        el.attrs["id"]
+        for root in roots
+        for el in [root, *root.descendants()]
+        if "id" in el.attrs
+    ]
+    assert "p1-more-c1" in ids
+    assert "p1-more-c2" in ids
+    assert len(ids) == len(set(ids))

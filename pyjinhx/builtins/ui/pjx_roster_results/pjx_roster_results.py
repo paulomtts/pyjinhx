@@ -3,6 +3,7 @@ from typing import Self
 from pydantic import Field, model_validator
 
 from pyjinhx._component import AttrValue, BaseComponent, ExtraAttrs
+from pyjinhx.builtins.pjx_lazy_load import PJXLazyLoad
 from pyjinhx.builtins.ui.pjx_avatar import PJXAvatar
 from pyjinhx.builtins.ui.pjx_icon import PJXIcon
 from pyjinhx.builtins.ui.pjx_roster_chip import PJXRosterChip
@@ -51,6 +52,7 @@ class PJXRosterResults(BaseComponent):
     visuals: list[BaseComponent] = Field(default_factory=list)
     add_icons: list[PJXIcon] = Field(default_factory=list)
     chips: list[PJXRosterChip] = Field(default_factory=list)
+    sentinel: PJXLazyLoad | None = None
 
     @model_validator(mode="after")
     def _build_rows(self) -> Self:
@@ -73,4 +75,17 @@ class PJXRosterResults(BaseComponent):
             )
             for item in self.items
         ]
+        if self.items and self.next_url:
+            sentinel_id = f"{self.picker_id}-more"
+            if self.next_cursor:
+                sentinel_id += f"-{self.next_cursor}"
+            # The root: scope is required: the default "revealed" trigger never
+            # fires for an element inside the scrolling results list.
+            self.sentinel = PJXLazyLoad(
+                id=sentinel_id,
+                url=self.next_url,
+                trigger=f"intersect once root:#{self.picker_id}-results",
+                swap="outerHTML",
+                class_name="pjx-roster-picker__more",
+            )
         return self

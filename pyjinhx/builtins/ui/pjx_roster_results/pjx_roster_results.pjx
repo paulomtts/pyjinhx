@@ -6,5 +6,9 @@
     {{ add_icons[loop.index0] }}
   </button>
   <template>{{ chips[loop.index0] }}</template>
+  {% else %}
+  <p class="pjx-roster-picker__empty">{{ empty_message }}</p>
   {% endfor %}
+  {#- Jinja prints None as "None", so the absent sentinel needs a guard. -#}
+  {% if sentinel is not none %}{{ sentinel }}{% endif %}
 </div>
