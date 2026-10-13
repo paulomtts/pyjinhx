@@ -381,3 +381,23 @@ def test_resize_replaces_every_open_picker_and_skips_a_disabled_one(
             geometry["viewport"] - geometry["searchBottom"] - GAP, abs=1
         ), picker_id
     assert page_errors == []
+
+
+def test_rows_settling_into_a_closed_list_do_not_place_it(
+    page: Page, session: RenderSession, page_errors: list[str]
+):
+    # A search answer can land after Escape closed the list; the hidden mount
+    # must stay free of placement.
+    _serve(page, session, _at(520, _picker(session)))
+    _open(page)
+    page.keyboard.press("Escape")
+
+    page.evaluate(
+        "() => document.getElementById('p-results').dispatchEvent("
+        "new CustomEvent('htmx:afterSettle', { bubbles: true }))"
+    )
+
+    geometry = _geometry(page)
+    assert geometry["above"] is False
+    assert geometry["room"] == ""
+    assert page_errors == []
