@@ -93,6 +93,7 @@ nav:
           - Configuration: guide/configuration.md
           - Builtin Conventions: guide/builtin-conventions.md
           - Graph: guide/graph.md
+          - Roster Picker: guide/roster-picker.md
           - Integrations:
               - FastAPI: integrations/fastapi.md
               - HTMX: integrations/htmx.md
