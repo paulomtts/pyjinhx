@@ -89,8 +89,22 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
     "builtins.ui.pjx_segmented_control.pjx_segmented_control": frozenset(
         {"pyjinhx._component"}
     ),
-    "builtins.ui.pjx_roster_picker.__init__": frozenset(),
+    "builtins.ui.pjx_roster_picker.__init__": frozenset(
+        {
+            "pyjinhx.builtins.ui.pjx_roster_picker.item",
+            "pyjinhx.builtins.ui.pjx_roster_picker.pjx_roster_picker",
+        }
+    ),
     "builtins.ui.pjx_roster_picker.item": frozenset({"pyjinhx._component"}),
+    # The picker composes one PJXRosterChip per item in Python, so it reaches
+    # into the pjx_roster_chip leaf.
+    "builtins.ui.pjx_roster_picker.pjx_roster_picker": frozenset(
+        {
+            "pyjinhx._component",
+            "pyjinhx.builtins.ui.pjx_roster_chip",
+            "pyjinhx.builtins.ui.pjx_roster_picker.item",
+        }
+    ),
     "builtins.ui.pjx_roster_chip.__init__": frozenset(
         {"pyjinhx.builtins.ui.pjx_roster_chip.pjx_roster_chip"}
     ),
