@@ -121,8 +121,9 @@ One node card, absolutely positioned at `(x, y)` in world pixels.
 | `out_ports` | `tuple[str, ...]` | `()` | One out-port handle per key, spread down the right edge. Keys must be non-empty and unique. |
 
 `node_id` is required: the node needs it to be selected, joined by edges, or named in an event.
-A non-finite `x`/`y` (`nan`, `inf`), an empty `node_id`, an empty or repeated `out_ports` key, or a
-`color` that contains `;` raises a validation error.
+A non-finite `x`/`y` (`nan`, `inf`), an empty `node_id`, an empty or repeated `out_ports` key, a
+`color` that contains `;`, or a `node_id`, `node_type`, `color` or `out_ports` key that contains a
+double quote (`"`) raises a validation error.
 
 ### PJXGraphEdges
 
@@ -144,7 +145,7 @@ draws the visible edges in the SVG edge plane. Nothing in this layer is visible 
 
 An edge dict raises a validation error when `id`, `from` or `to` is missing or empty, when it has a
 key outside the six above, when its `id` repeats another edge's, or when `id`, `from`, `to`, `port`
-or `state` contains a quote. An edge whose `from` or `to` node is missing, or hidden with
+or `state` contains a double quote (`"`). An edge whose `from` or `to` node is missing, or hidden with
 `display: none`, is not an error. It is skipped silently and drawn once both ends show. Edges between
 the same two nodes fan apart, in either direction.
 
@@ -176,7 +177,7 @@ A floating card beside the canvas: a header and one content region.
 | `open` | `bool` | `False` | Sets `data-open`. A closed panel is hidden by the stylesheet. |
 | `content` | children | `""` | The content region, raw HTML. It renders whether the panel is open or not. |
 
-An `accent_color` that contains `;` raises a validation error. Opening the panel is the app's job;
+An `accent_color` that contains `;` or a double quote (`"`) raises a validation error. Opening the panel is the app's job;
 see [Events and JavaScript API](#events-and-javascript-api).
 
 ## Interaction
