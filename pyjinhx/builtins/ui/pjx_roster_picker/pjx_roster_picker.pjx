@@ -1,15 +1,18 @@
+{#- A single-item picker swaps its chip and a disabled one takes no picks,
+    so neither is ever full. -#}
+{% set capped = not disabled and max_items > 1 and items | length >= max_items -%}
 <div id="{{ id }}" class="pjx-roster-picker{% if class_name %} {{ class_name }}{% endif %}" data-pjx-roster-picker data-name="{{ name }}" data-max-items="{{ max_items }}" data-empty-message="{{ empty_message }}"{% if disabled %} data-disabled{% endif %}{% if portal %} data-pjx-roster-picker-portal{% endif %}{% for attr_name, attr_value in extra_attrs.items() %} {{ attr_name }}="{{ attr_value }}"{% endfor %}>
   {% if not disabled %}
   <div class="pjx-roster-picker__search">
     {#- form names an id no element carries: that detaches the box from any
         enclosing form, so the query never posts with it. hx-vals is
         single-quoted because tojson escapes ' but leaves " alone. -#}
-    <input type="text" class="pjx-roster-picker__input" role="combobox" aria-expanded="false" aria-controls="{{ id }}-results" aria-autocomplete="list" autocomplete="off" name="q" form="pjx-roster-picker-no-form" placeholder="{{ placeholder }}"{% if required %} aria-required="true"{% endif %} hx-get="{{ candidates_url }}" hx-trigger="input delay:300ms, roster-picker-open delay:300ms" hx-sync="this:replace" hx-vals='{{ {"picker_id": id} | tojson }}' hx-target="#{{ id }}-results" hx-swap="innerHTML">
+    <input type="text" class="pjx-roster-picker__input" role="combobox" aria-expanded="false" aria-controls="{{ id }}-results" aria-autocomplete="list" autocomplete="off" name="q" form="pjx-roster-picker-no-form" placeholder="{{ placeholder }}"{% if required %} aria-required="true"{% endif %} hx-get="{{ candidates_url }}" hx-trigger="input delay:300ms, roster-picker-open delay:300ms" hx-sync="this:replace" hx-vals='{{ {"picker_id": id} | tojson }}' hx-target="#{{ id }}-results" hx-swap="innerHTML"{% if capped %} disabled{% endif %}>
     <div id="{{ id }}-results" class="pjx-roster-picker__results" hidden></div>
   </div>
   {% endif %}
   <div class="pjx-roster-picker__chips">{% for chip in chips %}{{ chip }}{% endfor %}</div>
-  <p class="pjx-roster-picker__hint" hidden>{{ limit_label }}</p>
+  <p class="pjx-roster-picker__hint"{% if not capped %} hidden{% endif %}>{{ limit_label }}</p>
   {% if required %}
   {#- type="text" because browsers skip constraint validation on hidden
       inputs; no name, so it never posts. -#}
