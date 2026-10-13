@@ -5,6 +5,11 @@
   --pjx-graph-grid-color: var(--border);
   --pjx-graph-grid-size: 24px;
   --pjx-graph-min-height: 24rem;
+  --pjx-graph-edge-stroke: var(--border);
+  --pjx-graph-edge-width: 1.5px;
+  --pjx-graph-edge-hit-width: 14px;
+  --pjx-graph-edge-label-color: var(--text-muted);
+  --pjx-graph-edge-label-size: 0.75rem;
 }
 
 .pjx-graph {
@@ -36,6 +41,30 @@
   top: 0;
   left: 0;
   overflow: visible;
+  pointer-events: none;
+}
+
+/* The hit path is the press target, so the visible edge never is. */
+.pjx-graph__edge {
+  fill: none;
+  stroke: var(--pjx-graph-edge-stroke);
+  stroke-width: var(--pjx-graph-edge-width);
+  pointer-events: none;
+}
+
+/* Unfilled, or the wide path would paint as a wedge; it takes presses even
+   though the plane itself does not. */
+.pjx-graph__edge-hit {
+  fill: none;
+  stroke: transparent;
+  stroke-width: var(--pjx-graph-edge-hit-width);
+  pointer-events: stroke;
+}
+
+/* No per-state rules: .pjx-graph__edge--<state> is the app's hook. */
+.pjx-graph__edge-label {
+  fill: var(--pjx-graph-edge-label-color);
+  font-size: var(--pjx-graph-edge-label-size);
   pointer-events: none;
 }
 

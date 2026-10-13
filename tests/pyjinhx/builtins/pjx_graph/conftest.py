@@ -1,13 +1,27 @@
-"""Fixtures shared by the PJXGraph / PJXGraphNodes render tests."""
+"""Fixtures shared by the graph builtin's render tests and browser tests."""
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from html.parser import HTMLParser
+from pathlib import Path
+from typing import TYPE_CHECKING, Any
 
 import pytest
 
 from pyjinhx.session import RenderSession
+
+if TYPE_CHECKING:
+    from playwright.sync_api import Page
+
+ASSET = (
+    Path(__file__).resolve().parents[4]
+    / "pyjinhx"
+    / "builtins"
+    / "ui"
+    / "pjx_graph"
+    / "pjx_graph.js"
+)
 
 
 class El:
@@ -64,3 +78,43 @@ def parse_html() -> Callable[[str], list[El]]:
         return builder.top.children
 
     return parse
+
+
+@pytest.fixture(autouse=True)
+def _require_chromium(request: pytest.FixtureRequest) -> None:
+    # Function-scoped so a missing browser skips only the tests that ask for
+    # a page, mirroring tests/pyjinhx/client/conftest.py.
+    if "page" not in set(request.fixturenames):
+        return
+    pytest.importorskip("playwright")
+    browser_type: Any = request.getfixturevalue("browser_type")
+    if not Path(browser_type.executable_path).exists():
+        pytest.skip(
+            "chromium is not installed (run: uv run playwright install chromium)"
+        )
+
+
+@pytest.fixture
+def page_errors(page: Page) -> list[str]:
+    """Every uncaught error the page throws from here on."""
+    errors: list[str] = []
+    page.on("pageerror", lambda error: errors.append(str(error)))
+    return errors
+
+
+@pytest.fixture
+def console_errors(page: Page) -> list[str]:
+    """The text of every console.error the page logs from here on."""
+    errors: list[str] = []
+    page.on(
+        "console", lambda msg: errors.append(msg.text) if msg.type == "error" else None
+    )
+    return errors
+
+
+@pytest.fixture
+def graph_page(page: Page, page_errors: list[str]) -> Iterator[Page]:
+    """A blank page with the asset loaded once as a classic script."""
+    page.set_content("<body></body>")
+    page.add_script_tag(content=ASSET.read_text(encoding="utf-8"))
+    yield page
