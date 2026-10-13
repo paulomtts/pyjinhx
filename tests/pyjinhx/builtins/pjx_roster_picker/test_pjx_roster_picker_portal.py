@@ -616,3 +616,26 @@ def test_htmx_swap_of_portaled_picker_leaves_no_stray_list(
     assert lists == {"count": 1, "inPicker": True, "onBody": 0}
     assert _geometry(page)["hidden"] is True
     assert page_errors == []
+
+
+def test_a_failed_htmx_request_at_the_picker_leaves_its_portal_list_open(
+    page: Page, session: RenderSession, page_errors: list[str]
+):
+    _serve(page, session, _at(20, _picker(session)))
+    page.route(
+        "http://pjx.test/broken",
+        lambda route: route.fulfill(status=500, body="no", content_type="text/html"),
+    )
+    _open(page)
+
+    # htmx swaps nothing for a 500, so the picker and its open list stay.
+    page.evaluate(
+        "() => htmx.ajax('GET', '/broken', { target: '#spot', swap: 'innerHTML' })"
+        ".catch(() => {})"
+    )
+    _settle(page)
+
+    geometry = _geometry(page)
+    assert geometry["hidden"] is False
+    assert geometry["onBody"] is True
+    assert page_errors == []
