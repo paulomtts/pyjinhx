@@ -1,0 +1,2 @@
+<div id="{{ id }}" class="pjx-roster-picker__results-page{% if class_name %} {{ class_name }}{% endif %}" data-pjx-roster-results{% for attr_name, attr_value in extra_attrs.items() %} {{ attr_name }}="{{ attr_value }}"{% endfor %}>
+</div>

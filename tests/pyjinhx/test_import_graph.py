@@ -117,6 +117,22 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
             "pyjinhx.builtins.ui.pjx_icon",
         }
     ),
+    "builtins.ui.pjx_roster_results.__init__": frozenset(
+        {"pyjinhx.builtins.ui.pjx_roster_results.pjx_roster_results"}
+    ),
+    # The visuals, chips and lazy-load sentinel are composed in Python, so this
+    # leaf reaches into the avatar, icon, chip and lazy-load leaves, and
+    # sideways into the picker package for the item model.
+    "builtins.ui.pjx_roster_results.pjx_roster_results": frozenset(
+        {
+            "pyjinhx._component",
+            "pyjinhx.builtins.pjx_lazy_load",
+            "pyjinhx.builtins.ui.pjx_avatar",
+            "pyjinhx.builtins.ui.pjx_icon",
+            "pyjinhx.builtins.ui.pjx_roster_chip",
+            "pyjinhx.builtins.ui.pjx_roster_picker.item",
+        }
+    ),
     "builtins.ui.pjx_select.__init__": frozenset(
         {"pyjinhx.builtins.ui.pjx_select.pjx_select"}
     ),
