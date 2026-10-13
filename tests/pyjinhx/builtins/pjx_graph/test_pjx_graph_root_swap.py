@@ -443,6 +443,31 @@ def test_dropped_instance_no_longer_reconciles(page, page_errors, session):
     assert page_errors == []
 
 
+def test_reconcile_already_scheduled_does_nothing_once_dropped(
+    page, page_errors, session
+):
+    _serve(page, _keyed(session))
+    page.evaluate(KEEP_OLD, "g")
+    # The node swap's observer runs first and schedules the reconcile frame;
+    # the root is replaced only after, but still before that frame.
+    page.evaluate(
+        """async ([node, html]) => {
+            document.getElementById('g-b').outerHTML = node;
+            await Promise.resolve();
+            window.oldRoot.outerHTML = html;
+        }""",
+        [render(_node("b", 400, 120, in_port=True)), _keyed(session)],
+    )
+    page.wait_for_function(
+        "() => pjx.graph.get(document.getElementById('g')) !== null", timeout=5000
+    )
+    _wait_ready(page)
+    _frames(page)
+    assert _old_dropped(page)
+    assert _old_events(page) == []
+    assert page_errors == []
+
+
 def test_root_mounted_by_hand_and_replaced_before_layout_never_turns_ready(
     page, page_errors, console_errors, session
 ):
