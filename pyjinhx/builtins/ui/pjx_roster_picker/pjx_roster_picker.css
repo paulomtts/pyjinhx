@@ -113,6 +113,55 @@
   background: var(--pjx-roster-picker-row-active);
 }
 
+/* The script hides a picked row with the hidden attribute, which the
+   display: flex above would otherwise override. */
+.pjx-roster-picker__pick[hidden] {
+  display: none;
+}
+
+.pjx-roster-picker__pick-avatar,
+.pjx-roster-picker__pick-icon,
+.pjx-roster-picker__pick-add {
+  flex: none;
+}
+
+/* min-width: 0 lets the text shrink below its content so long labels
+   ellipsize instead of pushing the plus icon out of the row. */
+.pjx-roster-picker__pick-text {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.pjx-roster-picker__pick-label,
+.pjx-roster-picker__pick-subtitle {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.pjx-roster-picker__pick-subtitle {
+  font-size: 0.875em;
+  color: var(--pjx-roster-picker-muted);
+}
+
+.pjx-roster-picker__pick-add {
+  color: var(--pjx-roster-picker-muted);
+}
+
+.pjx-roster-picker__empty {
+  margin: 0;
+  padding: var(--pjx-roster-picker-padding);
+  color: var(--pjx-roster-picker-muted);
+}
+
+/* An empty sentinel has no height, and the intersection observer needs an
+   area to see. */
+.pjx-roster-picker__more {
+  min-height: 1px;
+}
+
 .pjx-roster-picker__chips {
   display: flex;
   flex-wrap: wrap;

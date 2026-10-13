@@ -42,6 +42,14 @@ CSS_CLASSES = [
     "pjx-roster-picker__results--above",
     "pjx-roster-picker__results-page",
     "pjx-roster-picker__pick",
+    "pjx-roster-picker__pick-avatar",
+    "pjx-roster-picker__pick-icon",
+    "pjx-roster-picker__pick-text",
+    "pjx-roster-picker__pick-label",
+    "pjx-roster-picker__pick-subtitle",
+    "pjx-roster-picker__pick-add",
+    "pjx-roster-picker__empty",
+    "pjx-roster-picker__more",
     "pjx-roster-picker__chips",
     "pjx-roster-picker__chip",
     "pjx-roster-picker__chip-row",
@@ -677,6 +685,16 @@ def test_css_validity_input_is_clipped_not_display_none():
     assert "clip-path: inset(50%)" in body
     assert "overflow: hidden" in body
     assert "display: none" not in body
+
+
+def test_css_hides_a_picked_row_despite_its_flex_display():
+    (body,) = [
+        body
+        for selector, body in _rules()
+        if selector == ".pjx-roster-picker__pick[hidden]"
+    ]
+
+    assert "display: none" in body
 
 
 def test_css_selectors_stay_inside_the_block():
