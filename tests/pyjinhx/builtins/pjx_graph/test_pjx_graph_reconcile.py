@@ -1548,7 +1548,10 @@ def test_swapping_the_roots_inner_markup_remounts_the_stage(page, page_errors, s
     page.evaluate(
         """() => {
             const root = document.getElementById('g');
-            root.innerHTML = root.innerHTML;
+            // Server markup has an empty plane; drawn paths are the engine's.
+            const copy = root.cloneNode(true);
+            copy.querySelector('svg.pjx-graph__edge-plane').replaceChildren();
+            root.innerHTML = copy.innerHTML;
         }"""
     )
     page.wait_for_function(
