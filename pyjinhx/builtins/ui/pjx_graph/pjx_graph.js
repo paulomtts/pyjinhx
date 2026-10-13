@@ -940,6 +940,31 @@ var __pjxD3=(()=>{var fe=Object.defineProperty;var vn=Object.getOwnPropertyDescr
     return true;
   }
 
+  // Going back shows the previous id again, so the app hears it as an open.
+  function backPanel(root) {
+    const panel = panelOf(root, 'back');
+    const history = histories.get(root);
+    if (history.length <= 1) return false;
+    history.pop();
+    panel.setAttribute('data-open', 'true');
+    syncBack(panel, history);
+    root.dispatchEvent(new CustomEvent('pjx:graph:panel:open',
+      { bubbles: true, detail: { id: newest(history) } }));
+    return true;
+  }
+
+  // On the root, since the panel sits beside the canvas and its clicks never
+  // reach the canvas listeners. Delegated, so a panel swapped in later needs
+  // no rebinding; a button in a nested stage's panel is left to that stage.
+  function listenForPanel(root, signal) {
+    root.addEventListener('click', (event) => {
+      const button = event.target.closest('[data-pjx-graph-panel-back]');
+      const panel = button && button.closest('[data-pjx-graph-panel]');
+      if (!panel || panel !== root.querySelector(':scope > [data-pjx-graph-panel]')) return;
+      backPanel(root);
+    }, { signal: signal });
+  }
+
   function mount(root) {
     if (!(root instanceof Element) || !root.hasAttribute('data-pjx-graph')) {
       throw new Error('pjx.graph.mount: expected a [data-pjx-graph] element');
@@ -960,6 +985,7 @@ var __pjxD3=(()=>{var fe=Object.defineProperty;var vn=Object.getOwnPropertyDescr
     histories.set(root, []);
     observeViewport(viewport, instance, life.signal);
     listenForControls(root, canvas, instance, life.signal);
+    listenForPanel(root, life.signal);
     // A restored view is where the user left off; only a fresh stage is framed.
     // Edges are drawn before ready, so whatever waits on ready sees them.
     if (view.restored) {
@@ -1042,6 +1068,6 @@ var __pjxD3=(()=>{var fe=Object.defineProperty;var vn=Object.getOwnPropertyDescr
 
   graph.mount = mount;
   graph.get = get;
-  graph.panel = { open: openPanel };
+  graph.panel = { open: openPanel, back: backPanel };
 })();
 })();

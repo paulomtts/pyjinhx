@@ -231,10 +231,53 @@ def test_open_never_touches_the_panel_content(page, page_errors, session):
     assert page_errors == []
 
 
+# back()
+
+
+def test_the_back_button_returns_to_the_previous_id(page, page_errors, session):
+    _serve(page, _stage(session))
+    _panel_call(page, "open", "a")
+    _panel_call(page, "open", "b")
+    assert _back_hidden(page) is False
+    _forget(page)
+    page.click(_back())
+    assert _events(page) == [_ev("panel:open", "a")]
+    assert _back_hidden(page) is True
+    assert _state(page) == "true"
+    _forget(page)
+    assert _panel_call(page, "back") == {"value": False}
+    assert _events(page) == []
+    assert page_errors == []
+
+
+def test_back_walks_through_three_entries(page, page_errors, session):
+    _serve(page, _stage(session))
+    for node_id in ("a", "b", "c"):
+        _panel_call(page, "open", node_id)
+    _forget(page)
+    assert _panel_call(page, "back") == {"value": True}
+    assert _events(page) == [_ev("panel:open", "b")]
+    assert _back_hidden(page) is False
+    _forget(page)
+    assert _panel_call(page, "back") == {"value": True}
+    assert _events(page) == [_ev("panel:open", "a")]
+    assert _back_hidden(page) is True
+    assert _state(page) == "true"
+    assert page_errors == []
+
+
+def test_back_with_an_empty_history_returns_false(page, page_errors, session):
+    _serve(page, _stage(session))
+    assert _panel_call(page, "back") == {"value": False}
+    assert _state(page) == "false"
+    assert _events(page) == []
+    assert page_errors == []
+
+
 # Errors
 
 
-@pytest.mark.parametrize("fn", ["open"])
+@pytest.mark.parametrize("fn", ["open", "back"])
 @pytest.mark.parametrize("target", ["plain", "missing"], ids=["div", "null"])
 def test_a_panel_function_rejects_what_is_not_a_mounted_stage(
     page, page_errors, session, fn, target
@@ -247,7 +290,7 @@ def test_a_panel_function_rejects_what_is_not_a_mounted_stage(
     assert page_errors == []
 
 
-@pytest.mark.parametrize("fn", ["open"])
+@pytest.mark.parametrize("fn", ["open", "back"])
 def test_a_panel_function_rejects_a_stage_without_a_panel(
     page, page_errors, session, fn
 ):
