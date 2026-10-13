@@ -1,5 +1,8 @@
 """PJXGraphSidePanel — the graph's floating side panel: fields, DOM contract, escaping, CSS."""
 
+import re
+from pathlib import Path
+
 import pytest
 from pydantic import ValidationError
 
@@ -9,6 +12,15 @@ from pyjinhx.builtins.ui.pjx_graph_controls import PJXGraphControls
 from pyjinhx.builtins.ui.pjx_graph_nodes import PJXGraphNodes
 from pyjinhx.builtins.ui.pjx_graph_side_panel import PJXGraphSidePanel
 from pyjinhx.rendering import render
+
+CSS = (
+    Path(__file__).resolve().parents[4]
+    / "pyjinhx"
+    / "builtins"
+    / "ui"
+    / "pjx_graph_side_panel"
+    / "pjx_graph_side_panel.css"
+)
 
 CLOSED = (
     '<aside id="p" aria-label="Graph panel" class="pjx-graph__panel"'
@@ -239,3 +251,68 @@ class TestMarkup:
         assert panel.tag == "aside"
         assert panel.attrs["id"] == "p"
         assert all(el.tag != "aside" for el in canvas.descendants())
+
+
+def _rule_block(css: str, selector: str) -> str:
+    match = re.search(re.escape(selector) + r"\s*\{([^}]*)\}", css)
+    assert match, f"no rule for {selector}"
+    return match.group(1)
+
+
+class TestStylesheet:
+    def test_css_asset_skeleton(self):
+        css = CSS.read_text(encoding="utf-8")
+        tokens = _rule_block(css, ":where(:root)")
+        for token in (
+            "--pjx-graph-panel-bg: var(--surface);",
+            "--pjx-graph-panel-border: var(--border);",
+            "--pjx-graph-panel-radius: var(--radius-md);",
+            "--pjx-graph-panel-color: var(--text);",
+            "--pjx-graph-panel-muted: var(--text-muted);",
+            "--pjx-graph-panel-accent: var(--text-muted);",
+            "--pjx-graph-panel-inset:",
+            "--pjx-graph-panel-width:",
+            "--pjx-graph-panel-gap:",
+            "--pjx-graph-panel-duration:",
+        ):
+            assert token in tokens
+        panel = _rule_block(css, ".pjx-graph__panel")
+        assert "position: absolute" in panel
+        assert "top: var(--pjx-graph-panel-inset)" in panel
+        assert "right: var(--pjx-graph-panel-inset)" in panel
+        assert "z-index:" in panel
+        assert "width: var(--pjx-graph-panel-width)" in panel
+        assert "max-height:" in panel
+        closed = _rule_block(css, '.pjx-graph__panel[data-open="false"]')
+        assert "display: none" in closed
+        opened = _rule_block(css, '.pjx-graph__panel[data-open="true"]')
+        assert "animation:" in opened
+        assert "var(--pjx-graph-panel-duration)" in opened
+        hidden = _rule_block(css, ".pjx-graph__panel-control[hidden]")
+        assert "display: none" in hidden
+        for selector in (
+            ".pjx-graph__panel-head",
+            ".pjx-graph__panel-control",
+            ".pjx-graph__panel-marker",
+            ".pjx-graph__panel-title",
+            ".pjx-graph__panel-content",
+        ):
+            _rule_block(css, selector)
+        assert "!important" not in css
+        assert "pjx-icon" not in css
+
+    def test_reduced_motion_clamps_open_animation(self):
+        css = CSS.read_text(encoding="utf-8")
+        start = css.index("@media (prefers-reduced-motion: reduce)")
+        media = css[start:]
+        rule = _rule_block(media, '.pjx-graph__panel[data-open="true"]')
+        assert "animation-duration:" in rule
+        assert "animation: none" not in media
+
+    def test_rendering_registers_stylesheet(self, session):
+        from pyjinhx.session import accumulate_assets
+
+        assert PJXGraphSidePanel.__pjx_descriptor__.css_paths == (CSS,)
+        session.on_rendered.append(accumulate_assets)
+        _html(session)
+        assert CSS in session.css_assets
