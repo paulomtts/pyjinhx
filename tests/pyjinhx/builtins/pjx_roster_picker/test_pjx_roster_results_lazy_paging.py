@@ -61,18 +61,21 @@ def _items(prefix: str, count: int) -> list[PJXRosterItem]:
     ]
 
 
-def _serve(page: Page, session: RenderSession) -> list[str]:
-    """Load 30 rows into #p-results, route /more to 30 more, return the request log."""
+def _serve(
+    page: Page, session: RenderSession, rows: int = 30, hidden: bool = False
+) -> list[str]:
+    """Load rows into #p-results, route /more to 30 more, return the request log."""
     first = PJXRosterResults(
         picker_id="p",
-        items=_items("a", 30),
+        items=_items("a", rows),
         next_url="http://pjx.test/more?cursor=2",
         next_cursor="2",
     )
     second = render(PJXRosterResults(picker_id="p", items=_items("b", 30)), session)
+    hidden_attr = " hidden" if hidden else ""
     html = (
         f"<html><head><style>{CSS}{LIST_CSS}</style></head><body>"
-        f'<div id="p-results" class="pjx-roster-picker__results">'
+        f'<div id="p-results" class="pjx-roster-picker__results"{hidden_attr}>'
         f"{render(first, session)}</div>"
         '<div style="height: 200vh"></div>'
         f"<script>{read_vendored_htmx()}</script></body></html>"
@@ -173,5 +176,34 @@ def test_list_scroll_fetches_the_next_page_once_and_appends_it(
     _settle(page)
 
     assert _list_scroll_top(page) > 0
+    assert len(requests) == 1
+    assert page_errors == []
+
+
+def test_a_page_that_does_not_fill_the_list_fetches_the_next_one_on_load(
+    page: Page, session: RenderSession, page_errors: list[str]
+):
+    with page.expect_request(MORE, timeout=5000):
+        requests = _serve(page, session, rows=1)
+    page.wait_for_function(SWAPPED, timeout=5000)
+
+    assert len(requests) == 1
+    assert page_errors == []
+
+
+def test_a_hidden_list_fetches_only_once_shown(
+    page: Page, session: RenderSession, page_errors: list[str]
+):
+    # The shipped CSS hides .pjx-roster-picker__results[hidden], as when the
+    # picker is closed; a single row would otherwise fetch on load.
+    requests = _serve(page, session, rows=1, hidden=True)
+    _settle(page)
+
+    assert requests == []
+
+    with page.expect_request(MORE, timeout=5000):
+        page.evaluate("() => { document.getElementById('p-results').hidden = false; }")
+    page.wait_for_function(SWAPPED, timeout=5000)
+
     assert len(requests) == 1
     assert page_errors == []
