@@ -182,3 +182,24 @@ def test_dropdown_demo_menu_entries_are_not_escaped():
     assert "&lt;button&gt;" not in html
     assert "Edit" in html
     assert html.count("<button") >= 4  # the trigger plus three menu entries
+
+
+def test_graph_demo_renders_the_pipeline_stage():
+    from demos.graph import graph
+
+    from pyjinhx.session import request_scope
+
+    assert "PJXGraph" in DEMOS
+    with request_scope():
+        html = graph()
+
+    assert "data-pjx-graph " in html
+    assert "data-pjx-graph-storage-key" not in html  # no persistence
+    assert 'id="demo-graph-edges"' in html
+    assert html.count("data-pjx-graph-edge ") == 2
+    steps = ["trigger", "fetch", "transform", "store"]
+    assert re.findall(r'data-node-id="([^"]+)"', html) == steps
+    assert re.findall(r'<template data-demo-panel="([^"]+)"', html) == steps
+    assert 'id="demo-graph-panel"' in html
+    assert 'data-pjx-graph-panel data-open="false"' in html
+    assert "data-pjx-graph-controls" in html
