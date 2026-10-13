@@ -83,6 +83,7 @@ LITERAL_TOKENS = [
     "--pjx-roster-picker-gap",
     "--pjx-roster-picker-z",
     "--pjx-roster-picker-max-h",
+    "--pjx-roster-picker-min-h",
 ]
 
 
@@ -699,16 +700,19 @@ def test_css_styles_every_block_class():
         assert re.search(re.escape("." + name) + r"(?![\w-])", selectors), name
 
 
-def test_css_results_height_is_capped_by_the_room_token():
+def test_css_results_height_is_clamped_between_the_floor_and_the_room():
     (body,) = [
         body for selector, body in _rules() if selector == ".pjx-roster-picker__results"
     ]
 
     assert "position: absolute" in body
     assert "overflow-y: auto" in body
+    # The measured room has to bound the border too, or the list overshoots
+    # the edge by it.
+    assert "box-sizing: border-box" in body
     assert (
-        "max-height: min(var(--pjx-roster-picker-max-h), var(--pjx-roster-picker-room))"
-        in body
+        "max-height: clamp(var(--pjx-roster-picker-min-h),"
+        " var(--pjx-roster-picker-room), var(--pjx-roster-picker-max-h))" in body
     )
 
 
