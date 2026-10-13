@@ -51,6 +51,9 @@ from pyjinhx.builtins.ui.pjx_carousel_slide.pjx_carousel_slide import (
 from pyjinhx.builtins.ui.pjx_chip_input.pjx_chip_input import (
     PJXChipInput as PJXChipInput,
 )
+from pyjinhx.builtins.ui.pjx_confirm_dialog.pjx_confirm_dialog import (
+    PJXConfirmDialog as PJXConfirmDialog,
+)
 from pyjinhx.builtins.ui.pjx_divider.pjx_divider import PJXDivider as PJXDivider
 from pyjinhx.builtins.ui.pjx_drawer.pjx_drawer import PJXDrawer as PJXDrawer
 from pyjinhx.builtins.ui.pjx_drawer_body.pjx_drawer_body import (
@@ -110,6 +113,9 @@ from pyjinhx.builtins.ui.pjx_popover_trigger.pjx_popover_trigger import (
     PJXPopoverTrigger as PJXPopoverTrigger,
 )
 from pyjinhx.builtins.ui.pjx_progress.pjx_progress import PJXProgress as PJXProgress
+from pyjinhx.builtins.ui.pjx_prompt_dialog.pjx_prompt_dialog import (
+    PJXPromptDialog as PJXPromptDialog,
+)
 from pyjinhx.builtins.ui.pjx_resizable_group.pjx_resizable_group import (
     PJXResizableGroup as PJXResizableGroup,
 )
@@ -118,6 +124,16 @@ from pyjinhx.builtins.ui.pjx_resizable_handle.pjx_resizable_handle import (
 )
 from pyjinhx.builtins.ui.pjx_resizable_panel.pjx_resizable_panel import (
     PJXResizablePanel as PJXResizablePanel,
+)
+from pyjinhx.builtins.ui.pjx_roster_chip.pjx_roster_chip import (
+    PJXRosterChip as PJXRosterChip,
+)
+from pyjinhx.builtins.ui.pjx_roster_picker.item import PJXRosterItem as PJXRosterItem
+from pyjinhx.builtins.ui.pjx_roster_picker.pjx_roster_picker import (
+    PJXRosterPicker as PJXRosterPicker,
+)
+from pyjinhx.builtins.ui.pjx_roster_results.pjx_roster_results import (
+    PJXRosterResults as PJXRosterResults,
 )
 from pyjinhx.builtins.ui.pjx_segmented_control.pjx_segmented_control import (
     PJXSegmentedControl as PJXSegmentedControl,
@@ -161,6 +177,7 @@ __all__ = [
     "PJXCarousel",
     "PJXCarouselSlide",
     "PJXChipInput",
+    "PJXConfirmDialog",
     "PJXDivider",
     "PJXDrawer",
     "PJXDrawerBody",
@@ -189,10 +206,15 @@ __all__ = [
     "PJXPopoverPanel",
     "PJXPopoverTrigger",
     "PJXProgress",
+    "PJXPromptDialog",
     "PJXRegionLoader",
     "PJXResizableGroup",
     "PJXResizableHandle",
     "PJXResizablePanel",
+    "PJXRosterChip",
+    "PJXRosterItem",
+    "PJXRosterPicker",
+    "PJXRosterResults",
     "PJXSegmentedControl",
     "PJXSelect",
     "PJXSkeleton",

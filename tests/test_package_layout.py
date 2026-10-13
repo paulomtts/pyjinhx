@@ -1,5 +1,6 @@
 """Guards the 1.0 package layout: `pyjinhx` is the v2 engine and v0.x is gone (#540)."""
 
+import ast
 import importlib
 import inspect
 import re
@@ -257,3 +258,31 @@ def test_importing_builtins_does_not_import_roster_modules():
 
     assert result.returncode == 0, result.stderr
     assert result.stdout.strip() == "[]"
+
+
+def test_builtins_stub_matches_runtime_all():
+    # Generic on purpose: a builtin added to only one of the two files fails here.
+    stub = ast.parse(
+        (REPO_ROOT / "pyjinhx" / "builtins" / "__init__.pyi").read_text(
+            encoding="utf-8"
+        )
+    )
+    stub_all: list[str] = []
+    reexports: dict[str, tuple[str, str]] = {}
+    for node in stub.body:
+        if isinstance(node, ast.ImportFrom) and node.module:
+            for alias in node.names:
+                # Only `import X as X` re-exports a name from a stub.
+                if alias.asname == alias.name:
+                    reexports[alias.name] = (node.module, alias.name)
+        elif isinstance(node, ast.Assign) and any(
+            isinstance(target, ast.Name) and target.id == "__all__"
+            for target in node.targets
+        ):
+            stub_all = ast.literal_eval(node.value)
+
+    assert len(stub_all) == len(set(stub_all))
+    assert set(stub_all) == set(pyjinhx.builtins.__all__)
+    assert {name: reexports.get(name) for name in stub_all} == {
+        name: pyjinhx.builtins._lazy_imports[name] for name in stub_all
+    }
