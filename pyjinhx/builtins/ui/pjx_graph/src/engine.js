@@ -15,6 +15,13 @@
   const instances = new WeakMap();
   // Room left around the nodes when a fit frames them.
   const FIT_PAD = 48;
+  // A press that moves no further than this, in screen pixels, is a click.
+  const DRAG_SLOP = 4;
+  // Pressing these inside a node uses them; it never drags the node.
+  const INTERACTIVE = 'input, textarea, select, button, a[href], [contenteditable]';
+
+  // One control step; two steps double or halve the scale.
+  const ZOOM_STEP = Math.SQRT2;
   const SVG_NS = 'http://www.w3.org/2000/svg';
   // Gives each mounted stage its own path-id prefix, so ids never collide
   // across stages, whatever edge ids the app reuses.
@@ -54,6 +61,47 @@
     return !plane || plane === target;
   }
 
+  // Delegated, so controls swapped in later work without rebinding. A
+  // control in a nested stage belongs to that stage's own listener, and the
+  // values are matched one by one so a name like "constructor" is no step.
+  function listenForControls(root, canvas, instance) {
+    canvas.addEventListener('click', (event) => {
+      const control = event.target.closest('[data-pjx-graph-zoom], [data-pjx-graph-fit]');
+      if (!control || !canvas.contains(control)
+          || control.closest('[data-pjx-graph]') !== root) return;
+      if (control.hasAttribute('data-pjx-graph-fit')) {
+        instance.fit();
+        return;
+      }
+      const value = control.getAttribute('data-pjx-graph-zoom');
+      if (value === 'in') instance.zoomBy(1);
+      else if (value === 'out') instance.zoomBy(-1);
+    });
+  }
+
+  // Delegated, like the controls. A click is judged by its nearest node
+  // inside this viewport: a node of a nested stage is left to that stage,
+  // while the nested stage's own background still lies inside one of ours.
+  function listenForSelection(root, canvas, viewport, plane, choose, deselect) {
+    canvas.addEventListener('click', (event) => {
+      const target = event.target;
+      const node = target.closest('[data-node-id]');
+      if (node && viewport.contains(node)) {
+        if (node.closest('[data-pjx-graph]') === root) {
+          choose('node', node.getAttribute('data-node-id'));
+        }
+        return;
+      }
+      if (target.parentNode === plane && target.classList.contains('pjx-graph__edge-hit')) {
+        // An empty id cannot be named in an event, so its edge is not selectable.
+        const id = target.getAttribute('data-edge-id');
+        if (id) choose('edge', id);
+        return;
+      }
+      if (isBackground(target, canvas, viewport)) deselect();
+    });
+  }
+
   function paint(viewport, t) {
     viewport.style.transform = 'translate(' + t.x + 'px, ' + t.y + 'px) scale(' + t.k + ')';
   }
@@ -69,15 +117,46 @@
     }
   }
 
+  function writeRecord(key, record) {
+    try {
+      window.localStorage.setItem(key, JSON.stringify(record));
+    } catch (error) {
+      // The stage keeps working, just without persistence.
+    }
+  }
+
   function saveView(key, t) {
     // Other fields of the record belong to other features and are kept.
     const record = readRecord(key);
     record.view = { x: t.x, y: t.y, k: t.k };
-    try {
-      window.localStorage.setItem(key, JSON.stringify(record));
-    } catch (error) {
-      // Pan/zoom keeps working, just without persistence.
-    }
+    writeRecord(key, record);
+  }
+
+  // Ids are the app's strings, so "__proto__" or "constructor" must be read
+  // as plain keys, never found on a prototype.
+  function own(object, name) {
+    return Object.prototype.hasOwnProperty.call(object, name);
+  }
+
+  function overridesOf(record) {
+    const nodes = record.nodes;
+    return nodes && typeof nodes === 'object' && !Array.isArray(nodes) ? nodes : null;
+  }
+
+  function usableOverride(o) {
+    return o !== null && typeof o === 'object' && Number.isFinite(o.x) && Number.isFinite(o.y)
+      && o.base !== null && typeof o.base === 'object'
+      && Number.isFinite(o.base.x) && Number.isFinite(o.base.y);
+  }
+
+  function saveOverride(key, id, override) {
+    const record = readRecord(key);
+    const nodes = overridesOf(record) || {};
+    // defineProperty, since assigning to "__proto__" would set the prototype.
+    Object.defineProperty(nodes, id,
+      { value: override, enumerable: true, writable: true, configurable: true });
+    record.nodes = nodes;
+    writeRecord(key, record);
   }
 
   function clampScale(k, extent) {
@@ -148,6 +227,34 @@
     });
   }
 
+  function moveTo(node, x, y) {
+    node.style.setProperty('--pjx-graph-node-x', x + 'px');
+    node.style.setProperty('--pjx-graph-node-y', y + 'px');
+  }
+
+  // A drop holds while the server still sends the position it was made
+  // from. Once the server moves the node, the server wins and the drop is
+  // forgotten, so a later return to the old spot cannot bring it back.
+  function placeAll(nodes, key) {
+    const record = key ? readRecord(key) : {};
+    const overrides = overridesOf(record);
+    let discarded = false;
+    nodes.forEach((node) => {
+      place(node);
+      const id = node.getAttribute('data-node-id');
+      if (!overrides || !own(overrides, id)) return;
+      const o = overrides[id];
+      if (usableOverride(o) && o.base.x === coordinate(node, 'x')
+          && o.base.y === coordinate(node, 'y')) {
+        moveTo(node, o.x, o.y);
+      } else {
+        delete overrides[id];
+        discarded = true;
+      }
+    });
+    if (discarded) writeRecord(key, record);
+  }
+
   // A missing attribute reads as empty, as PJXGraphEdges would have written it.
   function attr(el, name) {
     return el.getAttribute(name) || '';
@@ -208,6 +315,9 @@
     // Only the last pass's own elements are cleared, so anything else in the
     // plane survives a redraw.
     let drawn = [];
+    // At most one selection, a node or an edge. Kind and id are kept
+    // together, so a node and an edge sharing an id are different selections.
+    let selected = null;
 
     // World coordinates are the viewport's untransformed pixels, the space
     // data-x/y are written in, so they do not change with pan/zoom.
@@ -276,13 +386,71 @@
       d3.select(canvas).call(view.zoom.transform, t);
     }
 
+    // About the canvas centre, so what sits in the middle of the view stays
+    // there. Through d3, so a later wheel or pan continues from here and a
+    // stored view is saved as for any other zoom.
+    function zoomBy(dir) {
+      if (typeof dir !== 'number' || !Number.isFinite(dir)) {
+        throw new Error('pjx.graph.zoomBy: dir must be a finite number');
+      }
+      view.zoom.scaleBy(d3.select(canvas), ZOOM_STEP ** dir,
+        [canvas.clientWidth / 2, canvas.clientHeight / 2]);
+    }
+
+    // A node's class goes on the node findNode picks; an edge's on each of
+    // its visible paths, never on the hit path.
+    function selectedElements() {
+      if (selected === null) return [];
+      if (selected.kind === 'node') {
+        const node = findNode(selected.id);
+        return node ? [node] : [];
+      }
+      return drawn.filter((el) => el.classList.contains('pjx-graph__edge')
+        && el.getAttribute('data-edge-id') === selected.id);
+    }
+
+    function mark(on) {
+      if (selected === null) return;
+      const name = 'pjx-graph__' + selected.kind + '--selected';
+      selectedElements().forEach((el) => el.classList.toggle(name, on));
+    }
+
+    // The before- event can veto the change; the plain one reports it once
+    // the DOM shows it. Choosing the current selection again changes nothing.
+    function choose(kind, id) {
+      if (selected !== null && selected.kind === kind && selected.id === id) return true;
+      const suffix = kind === 'edge' ? '-edge' : '';
+      const allowed = root.dispatchEvent(new CustomEvent('pjx:graph:before-select' + suffix,
+        { bubbles: true, cancelable: true, detail: { id: id } }));
+      if (!allowed) return false;
+      mark(false);
+      selected = { kind: kind, id: id };
+      mark(true);
+      root.dispatchEvent(new CustomEvent('pjx:graph:select' + suffix,
+        { bubbles: true, detail: { id: id } }));
+      return true;
+    }
+
+    function select(id) {
+      if (typeof id !== 'string') throw new Error('pjx.graph.select: expected a string id');
+      if (!findNode(id)) throw new Error('pjx.graph.select: no node "' + id + '"');
+      return choose('node', id);
+    }
+
+    function deselect() {
+      if (selected === null) return;
+      mark(false);
+      selected = null;
+      root.dispatchEvent(new CustomEvent('pjx:graph:deselect', { bubbles: true, detail: null }));
+    }
+
     // An unknown or display:none node has no box to join.
     function shown(id) {
       const node = findNode(id);
       return node !== null && node.getClientRects().length > 0;
     }
 
-    function drawEdges() {
+    function redraw() {
       drawn.forEach((el) => el.remove());
       drawn = [];
       // A span with no edge id at all is not an edge; an empty one still is.
@@ -329,11 +497,194 @@
         }
       });
       plane.append(...drawn);
+      // The redrawn paths are new elements, so the selection's class goes
+      // back on; a selected edge that is gone keeps its selection for later.
+      mark(true);
+    }
+
+    function drawEdges() {
+      redraw();
       root.dispatchEvent(new CustomEvent('pjx:graph:rendered', { bubbles: true, detail: null }));
     }
 
+    // Only this stage's nodes with a server position drag: a drop needs a
+    // base to anchor it, and a port or form control keeps its own press.
+    function draggable(target) {
+      if (target.closest('[data-pjx-graph]') !== root) return null;
+      const node = target.closest('[data-node-id]');
+      if (!node || !viewport.contains(node)) return null;
+      const used = target.closest('[data-pjx-graph-port], ' + INTERACTIVE);
+      if (used && node.contains(used)) return null;
+      if (coordinate(node, 'x') === null || coordinate(node, 'y') === null) return null;
+      return node;
+    }
+
+    // The click that follows a dragged release must not select; armed for
+    // that one click only, since a release does not always produce one.
+    let swallow = false;
+
+    function swallowClick() {
+      swallow = true;
+      setTimeout(() => { swallow = false; }, 0);
+    }
+
+    function listenForDrag() {
+      let press = null;
+
+      function follow(event) {
+        if (event.pointerId !== press.pointerId) return;
+        const dx = event.clientX - press.clientX;
+        const dy = event.clientY - press.clientY;
+        if (!press.dragging && Math.hypot(dx, dy) <= DRAG_SLOP) return;
+        press.dragging = true;
+        const k = d3.zoomTransform(canvas).k;
+        // Whole pixels, so the live position is the one the drop reports.
+        press.x = Math.round(press.startX + dx / k);
+        press.y = Math.round(press.startY + dy / k);
+        moveTo(press.node, press.x, press.y);
+        // Silent: rendered follows a reconcile, not every pointer move.
+        redraw();
+      }
+
+      function end(event) {
+        if (event.pointerId !== press.pointerId) return;
+        const done = press;
+        press = null;
+        window.removeEventListener('pointermove', follow);
+        window.removeEventListener('pointerup', end);
+        window.removeEventListener('pointercancel', end);
+        document.removeEventListener('selectstart', block);
+        if (!done.dragging) return;
+        swallowClick();
+        const id = done.node.getAttribute('data-node-id');
+        const baseX = coordinate(done.node, 'x');
+        const baseY = coordinate(done.node, 'y');
+        if (view.key && baseX !== null && baseY !== null) {
+          saveOverride(view.key, id, { x: done.x, y: done.y, base: { x: baseX, y: baseY } });
+        }
+        root.dispatchEvent(new CustomEvent('pjx:graph:move',
+          { bubbles: true, detail: { id: id, x: done.x, y: done.y } }));
+      }
+
+      function block(event) {
+        event.preventDefault();
+      }
+
+      canvas.addEventListener('pointerdown', (event) => {
+        if (press !== null || event.button !== 0 || event.ctrlKey) return;
+        const node = draggable(event.target);
+        if (!node) return;
+        // Where the node shows now: its drop, or the server's position.
+        const style = node.style;
+        press = {
+          node: node, pointerId: event.pointerId, dragging: false,
+          clientX: event.clientX, clientY: event.clientY,
+          startX: parseFloat(style.getPropertyValue('--pjx-graph-node-x')),
+          startY: parseFloat(style.getPropertyValue('--pjx-graph-node-y')),
+        };
+        // On window, so the drag goes on outside the canvas.
+        window.addEventListener('pointermove', follow);
+        window.addEventListener('pointerup', end);
+        window.addEventListener('pointercancel', end);
+        document.addEventListener('selectstart', block);
+      });
+    }
+
+    // The nearest node, when it is one of this stage's own.
+    function ownNode(target) {
+      const node = target.closest('[data-node-id]');
+      return node && viewport.contains(node) && node.closest('[data-pjx-graph]') === root
+        ? node : null;
+    }
+
+    // Starts on an out-port and ends on another node; the app creates the
+    // edge, so the engine only reports the request.
+    function listenForWire() {
+      let wire = null;
+
+      function clearGhost() {
+        if (wire.ghost) wire.ghost.remove();
+        wire.ghost = null;
+      }
+
+      function follow(event) {
+        if (event.pointerId !== wire.pointerId) return;
+        const dx = event.clientX - wire.clientX;
+        const dy = event.clientY - wire.clientY;
+        if (!wire.dragging && Math.hypot(dx, dy) <= DRAG_SLOP) return;
+        wire.dragging = true;
+        const start = outAnchor(wire.from, wire.port);
+        // A source swapped out mid-gesture has nowhere to start from.
+        if (!start) {
+          clearGhost();
+          return;
+        }
+        if (!wire.ghost) {
+          // Outside drawn, so a redraw during the gesture keeps it.
+          wire.ghost = svg('path', { class: 'pjx-graph__wire' });
+          plane.append(wire.ghost);
+        }
+        wire.ghost.setAttribute('d', edgePath(start, toWorld(event.clientX, event.clientY), 0));
+      }
+
+      function end(event) {
+        if (event.pointerId !== wire.pointerId) return;
+        clearGhost();
+        const done = wire;
+        wire = null;
+        window.removeEventListener('pointermove', follow);
+        window.removeEventListener('pointerup', end);
+        window.removeEventListener('pointercancel', end);
+        document.removeEventListener('selectstart', block);
+        if (!done.dragging) return;
+        swallowClick();
+        if (event.type !== 'pointerup' || !findNode(done.from)) return;
+        // The ghost takes no pointer events, so it never hides the node below.
+        const hit = document.elementFromPoint(event.clientX, event.clientY);
+        const target = hit && ownNode(hit);
+        if (!target) return;
+        const to = target.getAttribute('data-node-id');
+        // Never a self-loop: a drop back on the source cancels.
+        if (to === done.from) return;
+        root.dispatchEvent(new CustomEvent('pjx:graph:wire',
+          { bubbles: true, detail: { from: done.from, port: done.port, to: to } }));
+      }
+
+      function block(event) {
+        event.preventDefault();
+      }
+
+      canvas.addEventListener('pointerdown', (event) => {
+        if (wire !== null || event.button !== 0 || event.ctrlKey) return;
+        const port = event.target.closest('[data-pjx-graph-port="out"]');
+        const node = port && ownNode(port);
+        if (!node) return;
+        wire = {
+          from: node.getAttribute('data-node-id'), port: attr(port, 'data-port'),
+          pointerId: event.pointerId, dragging: false, ghost: null,
+          clientX: event.clientX, clientY: event.clientY,
+        };
+        // On window, so a release outside the canvas still ends the wire.
+        window.addEventListener('pointermove', follow);
+        window.addEventListener('pointerup', end);
+        window.addEventListener('pointercancel', end);
+        document.addEventListener('selectstart', block);
+      });
+    }
+
+    // Capturing, so it runs before the selection listener on the canvas.
+    canvas.addEventListener('click', (event) => {
+      if (!swallow) return;
+      swallow = false;
+      event.stopImmediatePropagation();
+    }, true);
+
+    listenForSelection(root, canvas, viewport, plane, choose, deselect);
+    listenForDrag();
+    listenForWire();
     return {
-      root: root, box: box, inAnchor: inAnchor, outAnchor: outAnchor, fit: fit, drawEdges: drawEdges,
+      root: root, box: box, inAnchor: inAnchor, outAnchor: outAnchor, fit: fit, zoomBy: zoomBy,
+      drawEdges: drawEdges, select: select, deselect: deselect,
     };
   }
 
@@ -350,9 +701,11 @@
     const plane = part(viewport, 'svg.pjx-graph__edge-plane', true);
     part(viewport, '.pjx-graph__nodes', false);
     const view = attachZoom(root, canvas, viewport);
-    nodesOf(root, viewport).forEach(place);
+    // Before the edges and any fit, so both see where the nodes show.
+    placeAll(nodesOf(root, viewport), view.key);
     const instance = createInstance(root, canvas, viewport, plane, view);
     instances.set(root, instance);
+    listenForControls(root, canvas, instance);
     // A restored view is where the user left off; only a fresh stage is framed.
     // Edges are drawn before ready, so whatever waits on ready sees them.
     if (view.restored) {

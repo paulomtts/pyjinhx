@@ -1,0 +1,31 @@
+:where(:root) {
+  --pjx-graph-controls-bg: var(--surface);
+  --pjx-graph-controls-border: var(--border);
+  --pjx-graph-controls-radius: var(--radius-md);
+  --pjx-graph-controls-color: var(--text-muted);
+  --pjx-graph-controls-inset: 0.75rem;
+  --pjx-graph-controls-gap: 0.25rem;
+}
+
+/* The canvas is the positioning context. Stacked above the viewport, so a
+   node panned into the corner never covers the buttons. */
+.pjx-graph__controls {
+  position: absolute;
+  right: var(--pjx-graph-controls-inset);
+  bottom: var(--pjx-graph-controls-inset);
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--pjx-graph-controls-gap);
+}
+
+.pjx-graph__control {
+  padding: 0.25rem 0.5rem;
+  border: 1px solid var(--pjx-graph-controls-border);
+  border-radius: var(--pjx-graph-controls-radius);
+  background: var(--pjx-graph-controls-bg);
+  color: var(--pjx-graph-controls-color);
+  font: inherit;
+  font-size: 0.75rem;
+  cursor: pointer;
+}

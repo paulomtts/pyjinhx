@@ -70,6 +70,9 @@ from pyjinhx.builtins.ui.pjx_form_field.pjx_form_field import (
     PJXFormField as PJXFormField,
 )
 from pyjinhx.builtins.ui.pjx_graph.pjx_graph import PJXGraph as PJXGraph
+from pyjinhx.builtins.ui.pjx_graph_controls.pjx_graph_controls import (
+    PJXGraphControls as PJXGraphControls,
+)
 from pyjinhx.builtins.ui.pjx_graph_edges.pjx_graph_edges import (
     PJXGraphEdges as PJXGraphEdges,
 )
@@ -164,6 +167,7 @@ __all__ = [
     "PJXEmptyState",
     "PJXFormField",
     "PJXGraph",
+    "PJXGraphControls",
     "PJXGraphEdges",
     "PJXGraphNode",
     "PJXGraphNodes",
