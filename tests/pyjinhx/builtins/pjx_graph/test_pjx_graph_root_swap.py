@@ -58,6 +58,10 @@ KEEP_OLD = f"""id => {{
 TRANSFORM = """root => root.querySelector(
     ':scope > .pjx-graph__canvas > .pjx-graph__viewport').style.transform"""
 
+# Whether a selectstart on document is let through, i.e. not prevented.
+SELECTABLE = """() => document.dispatchEvent(
+    new Event('selectstart', { bubbles: true, cancelable: true }))"""
+
 NESTED_CSS = (
     "#g-a { width: 700px; } #in { width: 600px; }"
     " #in > .pjx-graph__canvas { min-height: 0; height: 200px; }"
@@ -230,6 +234,19 @@ def _position(page: Page, element_id: str) -> list[str]:
         }""",
         element_id,
     )
+
+
+def _center(page: Page, selector: str) -> tuple[int, int]:
+    box = page.locator(selector).bounding_box()
+    assert box is not None
+    return round(box["x"] + box["width"] / 2), round(box["y"] + box["height"] / 2)
+
+
+def _press(page: Page, start: tuple[int, int], end: tuple[int, int]) -> None:
+    """Press at start and move to end in steps, without releasing."""
+    page.mouse.move(*start)
+    page.mouse.down()
+    page.mouse.move(*end, steps=6)
 
 
 def _reconciles(page: Page, stage_id: str = "g") -> None:
@@ -470,4 +487,43 @@ def test_calling_a_kept_reference_to_a_dropped_instance_does_not_throw(
         }"""
     )
     _frames(page)
+    assert page_errors == []
+
+
+# Gestures cut off by the swap
+
+
+def test_root_replaced_mid_drag_leaves_no_listeners(page, page_errors, session):
+    _serve(page, _keyed(session))
+    x, y = _center(page, "#g-b .pjx-graph__node-title")
+    _press(page, (x, y), (x + 60, y + 40))
+    assert not page.evaluate(SELECTABLE)
+    _swap(page, _keyed(session))
+    assert page.evaluate(SELECTABLE)
+    page.mouse.move(x + 120, y + 80, steps=4)
+    page.mouse.up()
+    _frames(page)
+    assert _old_events(page) == []
+    assert _events(page, "move") == []
+    assert page.evaluate(SELECTABLE)
+    assert page_errors == []
+
+
+def test_root_replaced_mid_wire_leaves_no_listeners(page, page_errors, session):
+    _serve(page, _keyed(session))
+    x, y = _center(page, '#g-a [data-pjx-graph-port="out"][data-port="ok"]')
+    _press(page, (x, y), (x + 60, y + 40))
+    assert not page.evaluate(SELECTABLE)
+    _swap(page, _keyed(session))
+    assert page.evaluate(SELECTABLE)
+    page.mouse.move(*_center(page, "#g-c .pjx-graph__node-title"), steps=4)
+    page.mouse.up()
+    _frames(page)
+    assert _old_events(page) == []
+    assert _events(page, "wire") == []
+    assert (
+        page.evaluate("() => document.querySelectorAll('#g .pjx-graph__wire').length")
+        == 0
+    )
+    assert page.evaluate(SELECTABLE)
     assert page_errors == []

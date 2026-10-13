@@ -744,11 +744,12 @@ var __pjxD3=(()=>{var fe=Object.defineProperty;var vn=Object.getOwnPropertyDescr
           startX: parseFloat(style.getPropertyValue('--pjx-graph-node-x')),
           startY: parseFloat(style.getPropertyValue('--pjx-graph-node-y')),
         };
-        // On window, so the drag goes on outside the canvas.
-        window.addEventListener('pointermove', follow);
-        window.addEventListener('pointerup', end);
-        window.addEventListener('pointercancel', end);
-        document.addEventListener('selectstart', block);
+        // On window, so the drag goes on outside the canvas. Tied to the
+        // stage's life, so dropping the stage abandons the drag.
+        window.addEventListener('pointermove', follow, { signal: signal });
+        window.addEventListener('pointerup', end, { signal: signal });
+        window.addEventListener('pointercancel', end, { signal: signal });
+        document.addEventListener('selectstart', block, { signal: signal });
         // From the press, not from the slop: a reconcile before the drag
         // starts would place the node the user is about to move.
         beginGesture();
@@ -836,10 +837,11 @@ var __pjxD3=(()=>{var fe=Object.defineProperty;var vn=Object.getOwnPropertyDescr
           clientX: event.clientX, clientY: event.clientY,
         };
         // On window, so a release outside the canvas still ends the wire.
-        window.addEventListener('pointermove', follow);
-        window.addEventListener('pointerup', end);
-        window.addEventListener('pointercancel', end);
-        document.addEventListener('selectstart', block);
+        // Tied to the stage's life, so dropping the stage abandons the wire.
+        window.addEventListener('pointermove', follow, { signal: signal });
+        window.addEventListener('pointerup', end, { signal: signal });
+        window.addEventListener('pointercancel', end, { signal: signal });
+        document.addEventListener('selectstart', block, { signal: signal });
         beginGesture();
       });
     }
