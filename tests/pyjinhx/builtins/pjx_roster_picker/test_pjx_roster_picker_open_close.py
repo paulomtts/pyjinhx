@@ -181,13 +181,21 @@ def test_a_second_click_on_an_open_list_does_nothing(
 def test_the_script_loaded_twice_binds_once(
     page: Page, session: RenderSession, page_errors: list[str]
 ):
-    scripts = (
-        HTMX_TAG
-        + ASSET_TAG
-        + "<script>window.firstNamespace = window.pjx.rosterPicker;</script>"
-        + ASSET_TAG
-    )
+    # A second binding would be invisible to clicks and Escape, since each
+    # handler sees the state the first one left, so count what the second
+    # copy hands to document.addEventListener while it runs.
+    count_binds = """<script>
+        window.firstNamespace = window.pjx.rosterPicker;
+        window.secondCopyBinds = 0;
+        document.addEventListener = function (...args) {
+            window.secondCopyBinds += 1;
+            return EventTarget.prototype.addEventListener.apply(this, args);
+        };
+    </script>"""
+    stop_counting = "<script>delete document.addEventListener;</script>"
+    scripts = HTMX_TAG + ASSET_TAG + count_binds + ASSET_TAG + stop_counting
     _serve(page, session, _picker(session), scripts=scripts)
+    assert page.evaluate("() => window.secondCopyBinds") == 0
 
     _input(page).click()
     _settle(page)
