@@ -38,3 +38,13 @@ def build() -> str:
             raise ValueError(f"{source} must end with a newline")
         parts.append(text)
     return BANNER + "".join(parts)
+
+
+def main() -> None:
+    text = build()
+    OUT.write_text(text, encoding="utf-8", newline="\n")
+    print(f"wrote pjx_roster_picker.js ({len(text.encode('utf-8'))} bytes) to {OUT}")
+
+
+if __name__ == "__main__":
+    main()
