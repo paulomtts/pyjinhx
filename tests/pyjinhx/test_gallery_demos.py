@@ -203,6 +203,9 @@ def test_graph_demo_renders_the_pipeline_stage():
     assert 'id="demo-graph-panel"' in html
     assert 'data-pjx-graph-panel data-open="false"' in html
     assert "data-pjx-graph-controls" in html
+    # The in-page stand-in for the app's routes. (Counting <script> tags would
+    # not work: each render() here appends its own asset scripts.)
+    assert html.count('addEventListener("pjx:graph:wire"') == 1
 
 
 def test_runtime_demos_are_registered_demos():

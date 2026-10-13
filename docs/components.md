@@ -2524,7 +2524,9 @@ Drag a node, drag a wire from a node's right-hand port onto another node, or cli
 
 ```python
 nodes = [
-    PJXGraphNode(id="node-a", node_id="a", x=40, y=60, title="Fetch", out_ports=("next",)),
+    PJXGraphNode(
+        id="node-a", node_id="a", x=40, y=60, title="Fetch", out_ports=("next",)
+    ),
     PJXGraphNode(id="node-b", node_id="b", x=320, y=60, title="Store", in_port=True),
 ]
 PJXGraph(
