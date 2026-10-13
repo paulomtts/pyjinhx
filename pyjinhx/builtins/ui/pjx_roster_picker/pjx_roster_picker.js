@@ -357,13 +357,62 @@
         }
     });
 
+    // A press that moves focus out closes the list only once the press has
+    // ended, after its click: the list must not vanish from under the press
+    // before the click lands on what it was aimed at. A touch tap moves focus
+    // after its pointerup (the browser's compatibility mousedown), so the
+    // press stays live past the pointerup, until its click; a tap that never
+    // clicks ends on a timer.
+    const PRESS_FALLBACK_MS = 400;
+    let press = null; // { inside: the search box the press began in, or null }
+    let closeAfterPress = null;
+    let pressTimer = null;
+
     document.addEventListener('focusout', function (event) {
         if (!(event.target instanceof Element)) return;
         const search = event.target.closest('.pjx-roster-picker__search');
         if (!search || search.contains(event.relatedTarget)) return;
         const picker = pickerOf(search);
-        if (picker) setOpen(picker, false);
+        if (!picker) return;
+        if (press) closeAfterPress = picker;
+        else setOpen(picker, false);
     });
+
+    document.addEventListener('pointerdown', function (event) {
+        clearTimeout(pressTimer);
+        const inside =
+            event.target instanceof Element && event.target.closest('.pjx-roster-picker__search');
+        press = { inside: inside || null };
+    }, true);
+
+    function endPress() {
+        if (!press) return;
+        clearTimeout(pressTimer);
+        const inside = press.inside;
+        const picker = closeAfterPress;
+        press = null;
+        closeAfterPress = null;
+        if (!picker) return;
+        // Deferred a task, so every click handler of this press has run first.
+        setTimeout(function () {
+            const input = searchInput(picker);
+            // A press inside this picker's box and list keeps it open even
+            // when it moved focus nowhere (a tap on the list's padding, or on
+            // a row in a browser whose buttons take no focus on press): the
+            // open list gets back the focus it needs.
+            if (inside && pickerOf(inside) === picker && input && isOpen(input)) {
+                if (!inside.contains(document.activeElement)) quietFocus(input);
+                return;
+            }
+            setOpen(picker, false);
+        }, 0);
+    }
+
+    document.addEventListener('click', endPress, true);
+    document.addEventListener('pointerup', function () {
+        clearTimeout(pressTimer);
+        if (press) pressTimer = setTimeout(endPress, PRESS_FALLBACK_MS);
+    }, true);
 
     // invalid does not bubble, so only a capture listener sees it. The
     // validity input is clipped to 1px, so the browser's own bubble and

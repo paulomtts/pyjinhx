@@ -17,7 +17,7 @@ from pyjinhx.client import read_vendored_htmx
 from pyjinhx.rendering import render
 
 if TYPE_CHECKING:
-    from playwright.sync_api import Locator, Page, Route
+    from playwright.sync_api import Browser, Locator, Page, Route
 
     from pyjinhx.session import RenderSession
 
@@ -273,5 +273,139 @@ def test_focus_leaving_with_no_press_closes_at_once_and_returning_keeps_the_rows
     page.wait_for_timeout(500)
 
     assert _state(page) == OPEN
+    assert len(requests) == 1
+    assert page_errors == []
+
+
+def test_a_click_on_a_result_lands_before_the_list_closes(
+    page: Page, session: RenderSession, page_errors: list[str]
+):
+    _serve(page, session, _picker(session))
+    _open(page)
+    page.evaluate(BLUR_ON_ROW_PRESS)
+
+    page.click('#p-results [data-pjx-roster-pick][data-value="v1"]')
+    _settle(page)
+
+    assert _chip_values(page) == ["v1"]
+    assert _state(page) == CLOSED
+    assert page_errors == []
+
+
+def test_a_click_on_the_lists_padding_keeps_it_open(
+    page: Page, session: RenderSession, page_errors: list[str]
+):
+    requests = _serve(
+        page, session, _picker(session), css="#p-results { padding: 40px; }"
+    )
+    _open(page)
+    box = page.locator("#p-results").bounding_box()
+    assert box is not None
+
+    page.mouse.click(box["x"] + box["width"] / 2, box["y"] + 8)
+    # Past the 300 ms debounce, so a reopen's search would have been sent.
+    _settle(page)
+    page.wait_for_timeout(300)
+
+    assert _state(page) == OPEN
+    assert _input_has_focus(page)
+    assert len(requests) == 1
+    assert page_errors == []
+
+
+def test_a_tap_on_the_lists_padding_keeps_it_open(
+    browser: Browser, session: RenderSession
+):
+    context = browser.new_context(has_touch=True)
+    try:
+        page = context.new_page()
+        page_errors: list[str] = []
+        page.on("pageerror", lambda error: page_errors.append(str(error)))
+        requests = _serve(
+            page, session, _picker(session), css="#p-results { padding: 40px; }"
+        )
+        _open(page)
+        box = page.locator("#p-results").bounding_box()
+        assert box is not None
+
+        page.touchscreen.tap(box["x"] + box["width"] / 2, box["y"] + 8)
+        _settle(page)
+        page.wait_for_timeout(300)
+
+        assert _state(page) == OPEN
+        assert _input_has_focus(page)
+        assert len(requests) == 1
+        assert page_errors == []
+    finally:
+        context.close()
+
+
+def test_a_touch_tap_on_a_result_picks_it(browser: Browser, session: RenderSession):
+    context = browser.new_context(has_touch=True)
+    try:
+        page = context.new_page()
+        page_errors: list[str] = []
+        page.on("pageerror", lambda error: page_errors.append(str(error)))
+        _serve(page, session, _picker(session))
+        _open(page)
+        page.evaluate(BLUR_ON_ROW_PRESS)
+        box = page.locator(
+            '#p-results [data-pjx-roster-pick][data-value="v0"]'
+        ).bounding_box()
+        assert box is not None
+
+        page.touchscreen.tap(box["x"] + box["width"] / 2, box["y"] + box["height"] / 2)
+        _settle(page)
+
+        assert _chip_values(page) == ["v0"]
+        assert _state(page) == CLOSED
+        assert _input_has_focus(page)
+        assert page_errors == []
+    finally:
+        context.close()
+
+
+def test_a_press_whose_click_never_comes_ends_on_the_timer(
+    page: Page, session: RenderSession, page_errors: list[str]
+):
+    body = OUTSIDE + _picker(session)
+    _serve(page, session, body)
+    _open(page)
+
+    page.evaluate(
+        """() => {
+            const outside = document.getElementById('outside');
+            outside.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
+            outside.dispatchEvent(new PointerEvent('pointerup', { bubbles: true }));
+            document.querySelector('#p .pjx-roster-picker__input').blur();
+        }"""
+    )
+    # Read at once, well inside the 400 ms the timer waits.
+    assert _state(page) == OPEN
+
+    page.wait_for_timeout(600)
+
+    assert _state(page) == CLOSED
+    assert page_errors == []
+
+
+def test_a_remove_click_on_an_open_list_closes_it_and_keeps_the_box_focused(
+    page: Page, session: RenderSession, page_errors: list[str]
+):
+    # Low on the page, so the list opens upward and leaves the chips uncovered.
+    body = '<div style="height: 600px"></div>' + _picker(
+        session, items=[PJXRosterItem(value="a", label="A")]
+    )
+    requests = _serve(page, session, body)
+    _open(page)
+
+    page.click("#p [data-pjx-roster-remove]")
+    # Past the 300 ms debounce, so a reopen's search would have been sent.
+    _settle(page)
+    page.wait_for_timeout(300)
+
+    assert _chip_values(page) == []
+    assert _state(page) == CLOSED
+    assert _input_has_focus(page)
     assert len(requests) == 1
     assert page_errors == []
