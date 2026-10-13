@@ -3,6 +3,10 @@
 import pytest
 from pydantic import ValidationError
 
+from pyjinhx._component import _resolve_children_field
+from pyjinhx.builtins.ui.pjx_graph import PJXGraph
+from pyjinhx.builtins.ui.pjx_graph_controls import PJXGraphControls
+from pyjinhx.builtins.ui.pjx_graph_nodes import PJXGraphNodes
 from pyjinhx.builtins.ui.pjx_graph_side_panel import PJXGraphSidePanel
 from pyjinhx.rendering import render
 
@@ -140,3 +144,98 @@ class TestMarkup:
         assert bold.tag == "b"
         assert "data-pjx-graph-panel-close" in close.attrs
         assert "data-pjx-graph-panel-badge" not in _html(session)
+
+    def test_content_renders_raw_open_and_closed(self, session, parse_html):
+        for is_open in (False, True):
+            html = _html(session, content="<p>x</p>", open=is_open)
+            (_, content) = _root(parse_html, html).children
+            (paragraph,) = content.children
+            assert paragraph.tag == "p"
+
+    def test_component_values_fill_badge_and_content(self, session, parse_html):
+        html = _html(
+            session,
+            badge=PJXGraphControls(id="k1"),
+            content=PJXGraphControls(id="k2"),
+        )
+        head, content = _root(parse_html, html).children
+        (_, _, badge, _) = head.children
+        (in_badge,) = badge.children
+        assert in_badge.attrs["id"] == "k1"
+        assert in_badge.classes == ["pjx-graph__controls"]
+        (in_content,) = content.children
+        assert in_content.attrs["id"] == "k2"
+        assert in_content.classes == ["pjx-graph__controls"]
+
+    def test_tag_body_targets_content_not_badge(self):
+        assert _resolve_children_field(PJXGraphSidePanel) == "content"
+
+    def test_text_props_are_escaped(self, session, parse_html):
+        text = '<b>&"x'
+        escaped = "&lt;b&gt;&amp;&#34;x"
+        html = _html(
+            session,
+            title=text,
+            aria_label=text,
+            back_label=text,
+            close_label=text,
+        )
+        assert "<b>" not in html
+        assert html.count(f'aria-label="{escaped}"') == 3
+        assert f">{escaped}</h2>" in html
+        assert html.count(f">{escaped}</button>") == 2
+        root = _root(parse_html, html)
+        assert all(el.tag != "b" for el in root.descendants())
+        assert root.attrs["aria-label"] == text
+        (head, _) = root.children
+        back, _, close = head.children
+        assert back.attrs["aria-label"] == text
+        assert close.attrs["aria-label"] == text
+
+    def test_label_props_replace_text_and_aria_label(self, session, parse_html):
+        html = _html(session, back_label="Previous", close_label="Dismiss")
+        assert ">Previous</button>" in html
+        assert ">Dismiss</button>" in html
+        (head, _) = _root(parse_html, html).children
+        back, _, close = head.children
+        assert back.attrs["aria-label"] == "Previous"
+        assert close.attrs["aria-label"] == "Dismiss"
+
+    def test_class_name_appends(self, session, parse_html):
+        root = _root(parse_html, _html(session, class_name="extra more"))
+        assert root.classes == ["pjx-graph__panel", "extra", "more"]
+        assert 'class="pjx-graph__panel k&lt;&amp;"' in _html(session, class_name="k<&")
+
+    def test_extra_attrs_on_root_escaped(self, session, parse_html):
+        attrs = {"hx-swap-oob": "true", "data-k": "<y>&"}
+        html = _html(session, extra_attrs=attrs)
+        assert ' data-open="false" hx-swap-oob="true" data-k="&lt;y&gt;&amp;">' in html
+        styled = _html(session, accent_color="#f00", extra_attrs=attrs)
+        assert (
+            ' style="--pjx-graph-panel-accent: #f00" hx-swap-oob="true"'
+            ' data-k="&lt;y&gt;&amp;">' in styled
+        )
+        root = _root(parse_html, html)
+        assert root.attrs["hx-swap-oob"] == "true"
+        assert root.attrs["data-k"] == "<y>&"
+        assert all("hx-swap-oob" not in el.attrs for el in root.descendants())
+
+    def test_accent_color_is_escaped(self, session):
+        assert 'style="--pjx-graph-panel-accent: a&lt;&amp;"' in _html(
+            session, accent_color="a<&"
+        )
+
+    def test_renders_as_the_stage_last_child_beside_the_canvas(
+        self, session, parse_html
+    ):
+        graph = PJXGraph(
+            id="g",
+            nodes=PJXGraphNodes(id="layer"),
+            panel=PJXGraphSidePanel(id="p"),
+        )
+        root = _root(parse_html, render(graph, session))
+        canvas, panel = root.children
+        assert canvas.classes == ["pjx-graph__canvas"]
+        assert panel.tag == "aside"
+        assert panel.attrs["id"] == "p"
+        assert all(el.tag != "aside" for el in canvas.descendants())
