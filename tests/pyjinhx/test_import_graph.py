@@ -91,6 +91,18 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
     ),
     "builtins.ui.pjx_roster_picker.__init__": frozenset(),
     "builtins.ui.pjx_roster_picker.item": frozenset({"pyjinhx._component"}),
+    "builtins.ui.pjx_roster_chip.__init__": frozenset(
+        {"pyjinhx.builtins.ui.pjx_roster_chip.pjx_roster_chip"}
+    ),
+    # The avatar and icons are composed in Python, so this leaf reaches down
+    # into the pjx_avatar and pjx_icon leaves.
+    "builtins.ui.pjx_roster_chip.pjx_roster_chip": frozenset(
+        {
+            "pyjinhx._component",
+            "pyjinhx.builtins.ui.pjx_avatar",
+            "pyjinhx.builtins.ui.pjx_icon",
+        }
+    ),
     "builtins.ui.pjx_select.__init__": frozenset(
         {"pyjinhx.builtins.ui.pjx_select.pjx_select"}
     ),

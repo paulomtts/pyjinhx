@@ -1,0 +1,8 @@
+<div id="{{ id }}" class="pjx-roster-picker__chip{% if class_name %} {{ class_name }}{% endif %}" data-pjx-roster-chip{% for attr_name, attr_value in extra_attrs.items() %} {{ attr_name }}="{{ attr_value }}"{% endfor %}>
+  <input type="hidden" class="pjx-roster-picker__chip-input" name="{{ name }}" value="{{ value }}">
+  <div class="pjx-roster-picker__chip-row">
+    {{ visual }}
+    <span class="pjx-roster-picker__chip-label">{{ label }}</span>
+    <button type="button" class="pjx-roster-picker__chip-remove" data-pjx-roster-remove aria-label="{{ remove_label }}: {{ label }}">{{ remove_icon }}</button>
+  </div>
+</div>
