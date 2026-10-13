@@ -114,4 +114,12 @@
         const picker = pickerOf(event.target);
         if (picker) event.detail.parameters.exclude = chippedValues(picker).join(',');
     });
+
+    // The query the request sent, not the box's text now: the user may have
+    // typed on while it was in flight. A failed or aborted search never set
+    // successful, so the rows on screen still answer the old query.
+    document.addEventListener('htmx:afterRequest', function (event) {
+        if (!isSearchInput(event.target) || event.detail.successful !== true) return;
+        event.target.setAttribute('data-last-query', event.detail.requestConfig.parameters.q);
+    });
 })();

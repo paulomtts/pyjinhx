@@ -315,3 +315,85 @@ def test_a_picker_added_after_load_sends_exclude(
         "picker_id": ["late"],
     }
     assert page_errors == []
+
+
+def test_a_successful_search_records_the_query_it_sent(
+    page: Page, session: RenderSession, page_errors: list[str]
+):
+    _serve(page, session, _picker(session))
+    assert _last_query(page) is None
+
+    _input(page).click()
+    _wait_last_query(page, "")
+    page.keyboard.type("al")
+    _wait_last_query(page, "al")
+
+    assert page_errors == []
+
+
+def test_the_recorded_query_is_the_one_sent_not_the_box_text(
+    page: Page, session: RenderSession, page_errors: list[str]
+):
+    held: dict[str, list[Route]] = {"a": [], "ab": []}
+    _serve(page, session, _picker(session), held=held)
+    _input(page).click()
+    _wait_last_query(page, "")
+
+    page.keyboard.type("a")
+    search_for_a = _held_route(page, held["a"])
+    page.keyboard.type("b")
+    # Answered inside the 300 ms before the search for "ab" would replace it.
+    search_for_a.fulfill(body="<p>rows for a</p>", content_type="text/html")
+    _wait_last_query(page, "a")
+    _settle(page)
+
+    assert _input(page).input_value() == "ab"
+    assert _last_query(page) == "a"
+    assert page_errors == []
+
+
+def test_an_app_request_in_a_chip_is_left_alone(
+    page: Page, session: RenderSession, page_errors: list[str]
+):
+    button = f'<button type="button" id="app" hx-get="{APP_URL}">Go</button>'
+    items = [PJXRosterItem(value="ada", label="Ada", extra=button)]
+    _serve(page, session, _picker(session, items=items))
+    page.route(
+        f"{APP_URL}*",
+        lambda route: route.fulfill(body="Done", content_type="text/html"),
+    )
+    _input(page).click()
+    page.keyboard.type("al")
+    _wait_last_query(page, "al")
+    # Closed, so the open list does not cover the chip's button.
+    page.keyboard.press("Escape")
+
+    with page.expect_request(f"{APP_URL}*", timeout=5000) as request:
+        page.click("#app")
+    page.wait_for_selector("#app:has-text('Done')", timeout=5000)
+    _settle(page)
+
+    assert "exclude" not in _query(request.value.url)
+    assert _last_query(page) == "al"
+    assert page_errors == []
+
+
+def test_a_request_from_inside_the_results_is_left_alone(
+    page: Page, session: RenderSession, page_errors: list[str]
+):
+    # Stands in for the paging sentinel: an htmx element the rows bring in.
+    rows = f'<div><div id="more" hx-get="{APP_URL}" hx-trigger="load">More</div></div>'
+    items = [PJXRosterItem(value="ada", label="Ada")]
+    _serve(page, session, _picker(session, items=items), rows=rows)
+    page.route(
+        f"{APP_URL}*",
+        lambda route: route.fulfill(body="", content_type="text/html"),
+    )
+
+    with page.expect_request(f"{APP_URL}*", timeout=5000) as request:
+        _input(page).click()
+    _settle(page)
+
+    assert "exclude" not in _query(request.value.url)
+    assert _last_query(page) == ""
+    assert page_errors == []
