@@ -555,9 +555,33 @@
       root.dispatchEvent(new CustomEvent('pjx:graph:rendered', { bubbles: true, detail: null }));
     }
 
+    // While a node or a wire is held, a reconcile only marks the stage
+    // dirty, so nothing moves under the pointer; the last gesture to end
+    // runs the one reconcile that was put off.
+    let gestures = 0;
+    let dirty = false;
+
     function reconcile() {
+      if (gestures > 0) {
+        dirty = true;
+        return;
+      }
       placeChanged();
       drawEdges();
+    }
+
+    function beginGesture() {
+      gestures += 1;
+    }
+
+    // Called after the gesture's own work, so a drop is stored before the
+    // flush places the nodes. Cleared first, so a throw inside the flush
+    // cannot leave the stage stuck dirty.
+    function endGesture() {
+      gestures -= 1;
+      if (gestures > 0 || !dirty) return;
+      dirty = false;
+      reconcile();
     }
 
     // Only this stage's nodes with a server position drag: a drop needs a
@@ -607,7 +631,13 @@
         window.removeEventListener('pointerup', end);
         window.removeEventListener('pointercancel', end);
         document.removeEventListener('selectstart', block);
-        if (!done.dragging) return;
+        if (done.dragging) drop(done);
+        endGesture();
+      }
+
+      // Read from the pressed element, even if the app has since replaced
+      // it, so the drop keeps the base the user dragged from.
+      function drop(done) {
         swallowClick();
         const id = done.node.getAttribute('data-node-id');
         const baseX = coordinate(done.node, 'x');
@@ -640,6 +670,9 @@
         window.addEventListener('pointerup', end);
         window.addEventListener('pointercancel', end);
         document.addEventListener('selectstart', block);
+        // From the press, not from the slop: a reconcile before the drag
+        // starts would place the node the user is about to move.
+        beginGesture();
       });
     }
 

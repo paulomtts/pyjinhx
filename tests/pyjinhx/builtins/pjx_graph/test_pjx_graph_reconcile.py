@@ -97,6 +97,17 @@ COUNT_NODE_QUERIES = """id => {
     return count;
 }"""
 
+# Calls one instance method and lists the graph events it fired before returning.
+FIRED_BY = """([id, method]) => {
+    const from = window.__events.length;
+    pjx.graph.get(document.getElementById(id))[method]();
+    return window.__events.slice(from).map((e) => e.type);
+}"""
+
+# Ends the mouse's press the way a browser that takes the pointer over would.
+CANCEL = """() => window.dispatchEvent(new PointerEvent('pointercancel',
+    { pointerId: 1, bubbles: true }))"""
+
 NUMBER = re.compile(r"-?\d+(?:\.\d+)?(?:e[-+]?\d+)?")
 SPAN = re.compile(r"<span [^>]*data-pjx-graph-edge[^>]*></span>")
 
@@ -350,6 +361,20 @@ def _fan(page: Page) -> tuple[str, int]:
 
 def _numbers(d: str) -> list[float]:
     return [float(n) for n in NUMBER.findall(d)]
+
+
+def _held(page: Page, before: int, stage_id: str = "g") -> None:
+    """Let pending reconciles run; check the stage fired no rendered since before."""
+    _frames(page, 4)
+    assert _rendered(page, stage_id) == before
+
+
+def _flushed_once(page: Page, before: int, stage_id: str = "g") -> int:
+    """Check exactly one rendered followed before; return the new count."""
+    assert _settle(page, before, stage_id) == before + 1
+    _frames(page, 4)
+    assert _rendered(page, stage_id) == before + 1
+    return before + 1
 
 
 # Calling reconcile
@@ -812,12 +837,15 @@ def test_a_reconcile_during_a_node_drag_leaves_the_dragged_node_alone(
     assert _position(page, "g-a") == ["80px", "80px"]
     before = _rendered(page)
     _mutate(page, _replace("#g-c", _html(session, _trio()[2])), reconcile="g")
-    _settle(page, before)
+    assert page.evaluate(FIRED_BY, ["g", "reconcile"]) == []
+    _held(page, before)
     assert _position(page, "g-a") == ["80px", "80px"]
     page.mouse.up()
+    _flushed_once(page, before)
     assert [e["detail"] for e in _events(page, "move")] == [
         {"id": "a", "x": 80, "y": 80}
     ]
+    assert _position(page, "g-a") == ["80px", "80px"]
     assert page_errors == []
 
 
@@ -1140,4 +1168,220 @@ def test_lookups_outside_a_redraw_see_a_node_added_in_the_same_task(
         added,
     )
     assert found == [True, True]
+    assert page_errors == []
+
+
+# Holding updates during a gesture
+
+
+def test_a_node_replacement_mid_drag_is_placed_only_after_release(
+    page, page_errors, session
+):
+    _serve(page, _keyed(session))
+    bx, by = _center(page, _title("g-b"))
+    _drag(page, (bx, by), (bx + 60, by + 40))
+    assert _position(page, "g-b") == ["460px", "80px"]
+    x, y = _center(page, _title("g-a"))
+    _press(page, (x, y), (x + 60, y + 40))
+    edge = _path(page, "e1")
+    before = _rendered(page)
+    same = _html(session, _node("b", 400, 40, in_port=True, out_ports=("ok",)))
+    _mutate(page, _replace("#g-b", same))
+    _held(page, before)
+    # The swapped-in element shows the server position it was rendered with
+    # (the component renders floats, so "400.0px", not the engine's "400px").
+    assert _position(page, "g-b") == ["400.0px", "40.0px"]
+    assert _path(page, "e1") == edge
+    page.mouse.up()
+    _flushed_once(page, before)
+    assert _position(page, "g-b") == ["460px", "80px"]
+    anchor = _call(page, "inAnchor", "b")
+    assert _numbers(_path(page, "e1"))[-2:] == pytest.approx(
+        [anchor["x"], anchor["y"]], abs=0.01
+    )
+    assert page_errors == []
+
+
+def test_an_edge_added_mid_drag_is_drawn_only_after_release(page, page_errors, session):
+    _serve(page, _keyed(session))
+    x, y = _center(page, _title("g-a"))
+    _press(page, (x, y), (x + 60, y + 40))
+    # Drawn at the drag's last move; the pointer stays put once e3 is added.
+    plain = _path(page, "e1")
+    before = _rendered(page)
+    _mutate(page, _append("#g-edges", _span(_edge("e3", "a", "b", port="ok"))))
+    _held(page, before)
+    assert [e["edge"] for e in _visible(page)] == ["e1", "e2"]
+    page.mouse.up()
+    _flushed_once(page, before)
+    assert [e["edge"] for e in _visible(page)] == ["e1", "e2", "e3"]
+    _fanned(page, "e1", "e3", plain)
+    assert page_errors == []
+
+
+def test_a_node_and_an_edge_change_mid_drag_flush_one_rendered(
+    page, page_errors, session
+):
+    _serve(page, _keyed(session))
+    x, y = _center(page, _title("g-a"))
+    _press(page, (x, y), (x + 60, y + 40))
+    e2 = _path(page, "e2")
+    before = _rendered(page)
+    # Separate tasks, so the observer may reconcile between any two of them.
+    moved_c = _html(session, _node("c", 400, 200, in_port=True))
+    _mutate(page, _replace("#g-c", moved_c))
+    _mutate(page, _append("#g-edges", _span(_edge("e3", "a", "b", port="ok"))))
+    _mutate(page, _set("#g-b", "data-x", "460"))
+    _mutate(page, reconcile="g")
+    _mutate(page, reconcile="g")
+    _held(page, before)
+    assert _position(page, "g-b") == ["400px", "40px"]
+    assert [e["edge"] for e in _visible(page)] == ["e1", "e2"]
+    assert _path(page, "e2") == e2
+    page.mouse.up()
+    _flushed_once(page, before)
+    assert _position(page, "g-b") == ["460px", "40px"]
+    assert [e["edge"] for e in _visible(page)] == ["e1", "e2", "e3"]
+    for edge, node in (("e1", "b"), ("e2", "c"), ("e3", "b")):
+        anchor = _call(page, "inAnchor", node)
+        assert _numbers(_path(page, edge))[-2:] == pytest.approx(
+            [anchor["x"], anchor["y"]], abs=0.01
+        )
+    assert page_errors == []
+
+
+def test_a_press_without_a_drag_holds_and_flushes_once(page, page_errors, session):
+    _serve(page, _keyed(session))
+    page.mouse.move(*_center(page, _title("g-b")))
+    page.mouse.down()
+    before = _rendered(page)
+    _mutate(page, _replace("#g-c", _html(session, _trio()[2])), reconcile="g")
+    _held(page, before)
+    page.mouse.up()
+    _flushed_once(page, before)
+    assert [e["detail"] for e in _events(page, "select")] == [{"id": "b"}]
+    assert page_errors == []
+
+
+def test_a_gesture_with_no_update_fires_no_rendered(page, page_errors, session):
+    _serve(page, _keyed(session))
+    before = _rendered(page)
+    x, y = _center(page, _title("g-a"))
+    _drag(page, (x, y), (x + 60, y + 40))
+    _frames(page, 4)
+    assert _rendered(page) == before
+    assert [e["detail"] for e in _events(page, "move")] == [
+        {"id": "a", "x": 80, "y": 80}
+    ]
+    assert page_errors == []
+
+
+def test_a_held_stage_does_not_hold_a_nested_stage(page, page_errors, session):
+    _serve(page, _nested(page, session), NESTED_CSS)
+    # The outer node's own title, not one of the nested stage's.
+    x, y = _center(page, "#g-a > .pjx-graph__node-body > .pjx-graph__node-title")
+    _press(page, (x, y), (x + 60, y + 40))
+    inner, outer = _rendered(page, "in"), _rendered(page, "g")
+    moved = _html(session, _node("y", 300, 60, "in", in_port=True))
+    _mutate(page, _replace("#in-y", moved))
+    assert _settle(page, inner, "in") == inner + 1
+    _held(page, outer, "g")
+    anchor = _call(page, "inAnchor", "y", stage_id="in")
+    assert _numbers(_path(page, "i1", "in"))[-2:] == pytest.approx(
+        [anchor["x"], anchor["y"]], abs=0.01
+    )
+    page.mouse.up()
+    _flushed_once(page, outer, "g")
+    assert _rendered(page, "in") == inner + 1
+    assert page_errors == []
+
+
+def test_a_cancelled_drag_flushes_once(page, page_errors, session):
+    _serve(page, _keyed(session))
+    x, y = _center(page, _title("g-a"))
+    _press(page, (x, y), (x + 60, y + 40))
+    before = _rendered(page)
+    _mutate(page, _replace("#g-c", _html(session, _trio()[2])))
+    _held(page, before)
+    page.evaluate(CANCEL)
+    _flushed_once(page, before)
+    assert [e["detail"] for e in _events(page, "move")] == [
+        {"id": "a", "x": 80, "y": 80}
+    ]
+    page.mouse.up()
+    assert len(_events(page, "move")) == 1
+    assert page_errors == []
+
+
+def test_reconcile_after_a_flushed_gesture_runs_normally(page, page_errors, session):
+    _serve(page, _keyed(session))
+    x, y = _center(page, _title("g-a"))
+    _press(page, (x, y), (x + 60, y + 40))
+    before = _rendered(page)
+    _mutate(page, _replace("#g-c", _html(session, _trio()[2])), reconcile="g")
+    _held(page, before)
+    page.mouse.up()
+    after = _flushed_once(page, before)
+    _mutate(page, _replace("#g-c", _html(session, _trio()[2])))
+    assert _settle(page, after) == after + 1
+    assert page.evaluate(FIRED_BY, ["g", "reconcile"]) == ["rendered"]
+    assert page_errors == []
+
+
+def test_replacing_the_pressed_node_mid_drag_places_the_replacement_at_the_drop(
+    page, page_errors, session
+):
+    _serve(page, _keyed(session))
+    x, y = _center(page, _title("g-a"))
+    _press(page, (x, y), (x + 60, y + 40))
+    before = _rendered(page)
+    _mutate(page, _replace("#g-a", _html(session, _trio()[0])))
+    _held(page, before)
+    page.mouse.up()
+    _flushed_once(page, before)
+    assert [e["detail"] for e in _events(page, "move")] == [
+        {"id": "a", "x": 80, "y": 80}
+    ]
+    assert _record(page)["nodes"] == {
+        "a": {"x": 80, "y": 80, "base": {"x": 20, "y": 40}}
+    }
+    assert _position(page, "g-a") == ["80px", "80px"]
+    assert page_errors == []
+
+
+def test_a_ctrl_press_on_a_node_holds_nothing(page, page_errors, session):
+    _serve(page, _keyed(session))
+    page.mouse.move(*_center(page, _title("g-b")))
+    page.keyboard.down("Control")
+    page.mouse.down()
+    assert page.evaluate(FIRED_BY, ["g", "reconcile"]) == ["rendered"]
+    page.mouse.up()
+    page.keyboard.up("Control")
+    assert page_errors == []
+
+
+def test_draw_edges_during_a_drag_is_not_held(page, page_errors, session):
+    _serve(page, _keyed(session))
+    x, y = _center(page, _title("g-a"))
+    _press(page, (x, y), (x + 60, y + 40))
+    assert page.evaluate(FIRED_BY, ["g", "drawEdges"]) == ["rendered"]
+    after = _rendered(page)
+    page.mouse.up()
+    _frames(page, 4)
+    assert _rendered(page) == after
+    assert page_errors == []
+
+
+def test_a_background_pan_holds_nothing(page, page_errors, session):
+    _serve(page, _keyed(session, edges=[]))
+    box = page.locator("#g > .pjx-graph__canvas").bounding_box()
+    assert box is not None
+    # Empty canvas at identity: below node a, left of b and c.
+    x, y = round(box["x"] + 150), round(box["y"] + 300)
+    _press(page, (x, y), (x + 40, y + 20))
+    before = _rendered(page)
+    _mutate(page, _replace("#g-c", _html(session, _trio()[2])))
+    assert _settle(page, before) == before + 1
+    page.mouse.up()
+    assert _events(page, "move") == []
     assert page_errors == []
