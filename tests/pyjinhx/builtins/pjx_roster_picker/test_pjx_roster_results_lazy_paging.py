@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import TYPE_CHECKING
+from urllib.parse import parse_qs, urlsplit
 
 from pyjinhx.builtins.ui.pjx_roster_picker import PJXRosterItem
 from pyjinhx.builtins.ui.pjx_roster_results import PJXRosterResults
@@ -45,6 +46,12 @@ CENTRE_SENTINEL_IN_WINDOW = """() => {
     const box = document.getElementById('p-more-2').getBoundingClientRect();
     window.scrollTo(0, window.scrollY + box.top - window.innerHeight / 2);
 }"""
+
+PICK_VALUES = "picks => picks.map((pick) => pick.dataset.value)"
+
+# outerHTML consumed the sentinel and the second page carries none.
+SWAPPED = """() => !document.getElementById('p-more-2')
+    && !document.querySelector('.pjx-roster-picker__more')"""
 
 
 def _items(prefix: str, count: int) -> list[PJXRosterItem]:
@@ -140,4 +147,31 @@ def test_window_scroll_does_not_fetch_the_next_page(
     assert on_screen
     assert _list_scroll_top(page) == 0
     assert requests == []
+    assert page_errors == []
+
+
+def test_list_scroll_fetches_the_next_page_once_and_appends_it(
+    page: Page, session: RenderSession, page_errors: list[str]
+):
+    requests = _serve(page, session)
+
+    with page.expect_request(MORE, timeout=5000) as request:
+        _scroll_list(page, to_bottom=True)
+    page.wait_for_function(SWAPPED, timeout=5000)
+
+    assert parse_qs(urlsplit(request.value.url).query) == {"cursor": ["2"]}
+    expected = [f"a{index}" for index in range(30)] + [
+        f"b{index}" for index in range(30)
+    ]
+    assert page.eval_on_selector_all(PICKS, PICK_VALUES) == expected
+    # No pick row landed anywhere but inside the list.
+    assert page.locator("[data-pjx-roster-pick]").count() == len(expected)
+
+    _scroll_list(page, to_bottom=False)
+    _settle(page)
+    _scroll_list(page, to_bottom=True)
+    _settle(page)
+
+    assert _list_scroll_top(page) > 0
+    assert len(requests) == 1
     assert page_errors == []
