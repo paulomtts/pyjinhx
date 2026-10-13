@@ -199,6 +199,11 @@ def test_the_script_loaded_twice_binds_once(
         " && window.pjx.rosterPicker === window.firstNamespace"
     )
 
+    page.keyboard.press("Escape")
+    _settle(page)
+
+    assert _state(page) == CLOSED
+    assert _opens(page) == 1
     assert page_errors == []
 
 
@@ -252,4 +257,101 @@ def test_a_disabled_input_stays_closed_on_focus(
 
     assert _state(page) == CLOSED
     assert _opens(page) == 0
+    assert page_errors == []
+
+
+def test_click_on_the_focused_box_reopens_after_escape(
+    page: Page, session: RenderSession, page_errors: list[str]
+):
+    _serve(page, session, _picker(session))
+    _input(page).click()
+    page.keyboard.press("Escape")
+    assert _state(page) == CLOSED
+    assert _input_has_focus(page)
+
+    _input(page).click()
+
+    assert _state(page) == OPEN
+    assert _opens(page) == 2
+    assert page_errors == []
+
+
+def test_escape_closes_an_open_list_and_stops_there(
+    page: Page, session: RenderSession, page_errors: list[str]
+):
+    _serve(page, session, _picker(session))
+    _input(page).click()
+    page.wait_for_selector(PICKS, timeout=5000)
+
+    page.keyboard.press("Escape")
+
+    assert _state(page) == CLOSED
+    assert page.locator(PICKS).count() == 3
+    assert _input_has_focus(page)
+    assert page.evaluate("() => window.escapesAtWindow") == []
+    assert page.evaluate("() => window.lastEscape.defaultPrevented") is True
+    assert page_errors == []
+
+
+def test_escape_on_a_closed_list_passes_through(
+    page: Page, session: RenderSession, page_errors: list[str]
+):
+    _serve(page, session, _picker(session))
+    _input(page).click()
+    page.keyboard.press("Escape")
+
+    page.keyboard.press("Escape")
+
+    assert page.evaluate("() => window.escapesAtWindow") == [False]
+    assert page.evaluate("() => window.lastEscape.defaultPrevented") is False
+    assert _state(page) == CLOSED
+    assert page_errors == []
+
+
+def test_escape_from_inside_the_list_returns_focus_without_reopening(
+    page: Page, session: RenderSession, page_errors: list[str]
+):
+    _serve(page, session, _picker(session))
+    _input(page).click()
+    page.wait_for_selector(PICKS, timeout=5000)
+    page.locator(PICKS).first.focus()
+    assert _state(page) == OPEN
+
+    page.keyboard.press("Escape")
+
+    assert _state(page) == CLOSED
+    assert _input_has_focus(page)
+    _settle(page)
+    assert _state(page) == CLOSED
+    assert _opens(page) == 1
+    assert page_errors == []
+
+
+def test_pickers_open_and_close_independently(
+    page: Page, session: RenderSession, page_errors: list[str]
+):
+    # Side by side, so neither open list covers the other picker's box.
+    body = (
+        '<div style="display: flex; gap: 40px">'
+        f'<div style="flex: 1">{_picker(session, "a")}</div>'
+        f'<div style="flex: 1">{_picker(session, "b")}</div>'
+        "</div>"
+    )
+    _serve(page, session, body)
+
+    _input(page, "a").click()
+    assert _state(page, "a") == OPEN
+    assert _state(page, "b") == CLOSED
+    assert _opens(page, "b") == 0
+
+    _input(page, "b").click()
+    assert _state(page, "a") == OPEN
+    assert _state(page, "b") == OPEN
+
+    _input(page, "a").click()
+    page.keyboard.press("Escape")
+
+    assert _state(page, "a") == CLOSED
+    assert _state(page, "b") == OPEN
+    assert _opens(page, "a") == 1
     assert page_errors == []
