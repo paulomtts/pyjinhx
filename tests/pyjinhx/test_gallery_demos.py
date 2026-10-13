@@ -233,6 +233,9 @@ def test_roster_picker_demo_renders_three_pickers():
     assert re.findall(r'<template data-demo-roster-page="([^"]+)"', html) == pickers
     assert re.findall(r'<template data-demo-roster-empty="([^"]+)"', html) == pickers
     assert html.count("data-pjx-roster-pick ") == len(pickers) * len(PEOPLE)
+    # The in-page stand-in for the app's search route. (Counting <script> tags
+    # would not work: each render() here appends its own asset scripts.)
+    assert html.count("<script data-demo-roster-route>") == 1
 
 
 def test_runtime_demos_are_registered_demos():
@@ -273,6 +276,9 @@ def test_post_build_gives_the_roster_picker_page_the_runtime_once_in_the_body(
     assert page.count('<style id="pjx-style">') == 1
     runtime = page.index(read_pjx_runtime())
     assert page.index("<body>") < runtime < page.index(picker_script)
+    # The route's script sits in the markup, ahead of the picker's script,
+    # which is why it waits for DOMContentLoaded to listen.
+    assert page.index("<script data-demo-roster-route>") < page.index(picker_script)
 
 
 def test_post_build_leaves_the_runtime_off_every_other_page(tmp_path):

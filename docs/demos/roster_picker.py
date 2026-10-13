@@ -45,6 +45,95 @@ PICKERS = (
     ),
 )
 
+# The guide's quick-start route, played in-page because a docs page has no
+# server, as the graph demo plays its routes. Each answer is cut from the
+# pages rendered into this picker's <template>s and handed to htmx.swap
+# against the request's own target, so the swap and the picker's listeners
+# are real. Only attributes are set from request values, so a query only
+# ever becomes attribute text.
+SCRIPT = """<script data-demo-roster-route>
+(() => {
+  const ROUTE = "/demo/people";
+  const PAGE_SIZE = 4;
+
+  function inert(kind, pickerId) {
+    const name = "data-demo-roster-" + kind;
+    const template = Array.from(document.querySelectorAll("template[" + name + "]"))
+      .find((t) => t.getAttribute(name) === pickerId);
+    return template && template.content.firstElementChild.cloneNode(true);
+  }
+
+  // One page of the people whose label holds q and who are not excluded,
+  // closed by a sentinel while more remain. Null for a picker this page
+  // does not have.
+  function answer(params) {
+    const pickerId = params.get("picker_id") || "";
+    const full = inert("page", pickerId);
+    const empty = inert("empty", pickerId);
+    if (!full || !empty) return null;
+    const q = params.get("q") || "";
+    const exclude = params.get("exclude") || "";
+    const excluded = exclude ? exclude.split(",") : [];
+    const cursor = Number(params.get("cursor") || 0);
+    const rows = Array.from(full.querySelectorAll(":scope > [data-pjx-roster-pick]"));
+    const matches = rows.filter((row) => {
+      const label = row.querySelector(".pjx-roster-picker__pick-label").textContent;
+      return label.toLowerCase().includes(q.toLowerCase()) && !excluded.includes(row.dataset.value);
+    });
+    const page = matches.slice(cursor, cursor + PAGE_SIZE);
+    if (!page.length) {
+      empty.id = pickerId + "-page-" + cursor;
+      return empty;
+    }
+    // Each row's chip <template> goes with it.
+    rows.filter((row) => !page.includes(row)).forEach((row) => {
+      row.nextElementSibling.remove();
+      row.remove();
+    });
+    full.id = pickerId + "-page-" + cursor;
+    const sentinel = full.querySelector(":scope > .pjx-roster-picker__more");
+    const next = cursor + PAGE_SIZE;
+    if (next < matches.length) {
+      const query = new URLSearchParams({ q, exclude, picker_id: pickerId, cursor: next });
+      sentinel.id = pickerId + "-more-" + next;
+      sentinel.setAttribute("hx-get", ROUTE + "?" + query);
+    } else {
+      sentinel.remove();
+    }
+    return full;
+  }
+
+  // Not bound until the document is parsed: the picker's script comes after
+  // this one, and its own beforeRequest listener, which cancels a reopen
+  // over the text the kept rows answer, has to run first.
+  document.addEventListener("DOMContentLoaded", () => {
+    document.addEventListener("htmx:beforeRequest", (event) => {
+      if (event.defaultPrevented) return;
+      const { elt, target, requestConfig } = event.detail;
+      const path = requestConfig.path;
+      const search = path === ROUTE;
+      if (!search && !path.startsWith(ROUTE + "?")) return;
+      // A search sends its values; a sentinel carries its search in its url.
+      const values = requestConfig.parameters;
+      const params = search
+        ? new URLSearchParams({
+            q: values.q || "",
+            exclude: values.exclude || "",
+            picker_id: values.picker_id || "",
+          })
+        : new URL(path, location.href).searchParams;
+      const page = answer(params);
+      if (!page) return;
+      event.preventDefault();
+      htmx.swap(target, page.outerHTML, { swapStyle: elt.getAttribute("hx-swap") });
+      // A cancelled request never reaches htmx:afterRequest, where the
+      // picker records the query its rows answer, so it is recorded here.
+      if (search) elt.setAttribute("data-last-query", params.get("q"));
+    });
+  });
+})();
+</script>"""
+
 
 def _answers(picker_id):
     # What the route can send this picker, kept inert until a request: every
@@ -78,7 +167,7 @@ def roster_picker():
         parts.append(f"<p>{caption}</p>{picker}{_answers(picker_id)}")
     body = "".join(parts)
     # The demo stage is 360px wide, narrow for chips with avatars.
-    return f'<div style="width: min(480px, calc(100vw - 2rem))">{body}</div>'
+    return f'<div style="width: min(480px, calc(100vw - 2rem))">{body}{SCRIPT}</div>'
 
 
 DEMOS = {"PJXRosterPicker": (roster_picker, 460)}
