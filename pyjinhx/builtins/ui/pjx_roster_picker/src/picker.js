@@ -30,6 +30,13 @@
         return entry ? entry.picker : el.closest('[data-pjx-roster-picker]');
     }
 
+    // The search box el belongs to, whether el is inside the box or inside
+    // its list portaled to body.
+    function searchOf(el) {
+        const entry = entryOf(el);
+        return entry ? entry.parent : el.closest('.pjx-roster-picker__search');
+    }
+
     // Null for a disabled picker, which renders no search box.
     function searchInput(picker) {
         return picker.querySelector('.pjx-roster-picker__input');
@@ -209,8 +216,11 @@
     // A row is hidden exactly while its value is chipped, whether or not the
     // route honoured exclude.
     function syncRows(picker) {
+        const mount = resultsMount(picker);
+        // A disabled picker renders no list.
+        if (!mount) return;
         const chipped = chippedValues(picker);
-        picker.querySelectorAll('[data-pjx-roster-pick]').forEach((row) => {
+        mount.querySelectorAll('[data-pjx-roster-pick]').forEach((row) => {
             row.hidden = chipped.includes(row.dataset.value);
         });
     }
@@ -347,14 +357,16 @@
     // drag, a window switch) ends on the next key, contextmenu, dragstart,
     // pointercancel or window blur.
     const PRESS_FALLBACK_MS = 400;
-    let press = null; // { inside: the search box the press began in, or null }
+    let press = null; // { inside: the search box the press began in or in its list, or null }
     let closeAfterPress = null;
     let pressTimer = null;
 
     document.addEventListener('focusout', function (event) {
         if (!(event.target instanceof Element)) return;
-        const search = event.target.closest('.pjx-roster-picker__search');
-        if (!search || search.contains(event.relatedTarget)) return;
+        const search = searchOf(event.target);
+        const to = event.relatedTarget;
+        // Into the box's own list, on body or not, is not leaving.
+        if (!search || (to instanceof Element && searchOf(to) === search)) return;
         const picker = pickerOf(search);
         if (!picker) return;
         if (press) closeAfterPress = picker;
@@ -363,8 +375,7 @@
 
     document.addEventListener('pointerdown', function (event) {
         clearTimeout(pressTimer);
-        const inside =
-            event.target instanceof Element && event.target.closest('.pjx-roster-picker__search');
+        const inside = event.target instanceof Element && searchOf(event.target);
         press = { inside: inside || null };
     }, true);
 
@@ -384,7 +395,8 @@
             // a row in a browser whose buttons take no focus on press): the
             // open list gets back the focus it needs.
             if (inside && pickerOf(inside) === picker && input && isOpen(input)) {
-                if (!inside.contains(document.activeElement)) quietFocus(input);
+                const active = document.activeElement;
+                if (!active || searchOf(active) !== inside) quietFocus(input);
                 return;
             }
             setOpen(picker, false);
@@ -439,7 +451,7 @@
 
     document.addEventListener('keydown', function (event) {
         if (event.key !== 'Escape' || !(event.target instanceof Element)) return;
-        const search = event.target.closest('.pjx-roster-picker__search');
+        const search = searchOf(event.target);
         const picker = search && pickerOf(search);
         const input = picker && searchInput(picker);
         // A closed list leaves Escape alone, so the next press reaches an

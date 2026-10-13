@@ -93,6 +93,21 @@ CONTROLS = """id => {
     };
 }"""
 
+RECORD_CHANGES = """() => {
+    window.changes = [];
+    document.addEventListener('pjx:roster-picker:change', (event) => {
+        window.changes.push({ values: event.detail.values, target: event.target.id });
+    });
+}"""
+
+# What an enclosing dialog's own Escape handler would see.
+RECORD_WINDOW_ESCAPES = """() => {
+    window.escapes = 0;
+    window.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') window.escapes += 1;
+    });
+}"""
+
 
 def _picker(
     session: RenderSession, picker_id: str = "p", portal: bool = True, **kwargs: Any
@@ -201,6 +216,33 @@ def _geometry(page: Page, picker_id: str = "p") -> dict[str, Any]:
 def _px(value: str) -> float:
     assert value.endswith("px"), value
     return float(value[:-2])
+
+
+def _input_has_focus(page: Page, picker_id: str = "p") -> bool:
+    return page.evaluate(
+        "id => document.activeElement === document.querySelector(`#${id} .pjx-roster-picker__input`)",
+        picker_id,
+    )
+
+
+def _chip_values(page: Page, picker_id: str = "p") -> list[str]:
+    return page.evaluate(
+        """id => Array.from(
+            document.querySelectorAll(
+                `#${id} .pjx-roster-picker__chips > [data-pjx-roster-chip] > .pjx-roster-picker__chip-input`
+            ),
+            (input) => input.value,
+        )""",
+        picker_id,
+    )
+
+
+def _row_hidden(page: Page, value: str) -> bool:
+    """Whether p's result row for value is hidden, wherever the list lives."""
+    return page.evaluate(
+        'value => document.querySelector(`#p-results [data-value="${value}"]`).hidden',
+        value,
+    )
 
 
 def test_overflow_hidden_ancestor_clips_the_list_without_portal(
@@ -397,4 +439,148 @@ def test_portal_list_keeps_a_themed_gap(
     assert _px(geometry["room"]) == pytest.approx(
         geometry["viewport"] - geometry["searchBottom"] - 12, abs=1
     )
+    assert page_errors == []
+
+
+def test_pick_from_portal_list(
+    page: Page, session: RenderSession, page_errors: list[str]
+):
+    _serve(page, session, _clip(_picker(session)))
+    _open(page)
+    page.evaluate(RECORD_CHANGES)
+    assert _geometry(page)["onBody"] is True
+
+    page.click('#p-results [data-pjx-roster-pick][data-value="v2"]')
+    _settle(page)
+
+    assert _chip_values(page) == ["v2"]
+    name = page.evaluate(
+        "() => document.querySelector('#p .pjx-roster-picker__chip-input').name"
+    )
+    assert name == "members"
+    assert page.evaluate("() => window.changes") == [{"values": ["v2"], "target": "p"}]
+    geometry = _geometry(page)
+    assert geometry["hidden"] is True
+    assert geometry["home"] is True
+    assert geometry["inline"] == ""
+    assert _row_hidden(page, "v2") is True
+    assert _input_has_focus(page)
+    assert page_errors == []
+
+
+def test_arrow_down_and_escape_from_portal_row(
+    page: Page, session: RenderSession, page_errors: list[str]
+):
+    _serve(page, session, _at(20, _picker(session)))
+    page.evaluate(RECORD_WINDOW_ESCAPES)
+    _open(page)
+
+    page.keyboard.press("ArrowDown")
+    _settle(page)
+
+    first_row_focused = page.evaluate(
+        "() => document.activeElement"
+        " === document.querySelector('#p-results [data-pjx-roster-pick]:not([hidden])')"
+    )
+    assert first_row_focused is True
+    geometry = _geometry(page)
+    assert geometry["onBody"] is True
+    assert geometry["hidden"] is False
+
+    page.keyboard.press("Escape")
+
+    geometry = _geometry(page)
+    assert geometry["hidden"] is True
+    assert geometry["home"] is True
+    assert _input_has_focus(page)
+    assert page.evaluate("() => window.escapes") == 0
+    assert page_errors == []
+
+
+def test_focus_leaving_portal_list_closes_it(
+    page: Page, session: RenderSession, page_errors: list[str]
+):
+    after = '<button id="after" type="button">After</button>'
+    _serve(page, session, _at(20, _picker(session) + after))
+    _open(page)
+    page.keyboard.press("ArrowDown")
+    page.keyboard.press("Tab")
+    _settle(page)
+
+    # Tab moved between rows of the box's own list, which is not leaving.
+    second_row_focused = page.evaluate(
+        "() => document.activeElement"
+        " === document.querySelectorAll('#p-results [data-pjx-roster-pick]')[1]"
+    )
+    assert second_row_focused is True
+    assert _geometry(page)["hidden"] is False
+
+    # The rows sit last on body, so a Tab past them leaves the page; focus()
+    # moves to a control after the picker, as a press-free Tab would.
+    page.locator("#after").focus()
+    _settle(page)
+
+    geometry = _geometry(page)
+    assert geometry["hidden"] is True
+    assert geometry["home"] is True
+    assert geometry["inline"] == ""
+    assert page_errors == []
+
+
+def test_chipped_row_hidden_in_portal_list(
+    page: Page, session: RenderSession, page_errors: list[str]
+):
+    picker = _picker(session, items=[PJXRosterItem(value="v1", label="Person 1")])
+    _serve(page, session, _at(20, picker))
+    _open(page)
+
+    rows = page.evaluate(
+        "() => Array.from(document.querySelectorAll('#p-results [data-pjx-roster-pick]'),"
+        " (row) => [row.dataset.value, row.hidden])"
+    )
+    assert _geometry(page)["onBody"] is True
+    assert [value for value, hidden in rows if hidden] == ["v1"]
+    assert len(rows) == 12
+    assert page_errors == []
+
+
+def test_removing_a_chip_unhides_its_row_in_portal_list(
+    page: Page, session: RenderSession, page_errors: list[str]
+):
+    # At 400px the list opens above the box, so it does not cover the chip.
+    picker = _picker(session, items=[PJXRosterItem(value="v1", label="Person 1")])
+    _serve(page, session, _at(400, picker))
+    _open(page)
+    assert _geometry(page)["above"] is True
+    assert _row_hidden(page, "v1") is True
+
+    page.click("#p [data-pjx-roster-remove]")
+    _settle(page)
+
+    assert _chip_values(page) == []
+    assert _row_hidden(page, "v1") is False
+    assert _geometry(page)["home"] is True
+    assert page_errors == []
+
+
+def test_a_click_on_the_portal_lists_padding_keeps_it_open(
+    page: Page, session: RenderSession, page_errors: list[str]
+):
+    requests = _serve(
+        page, session, _at(20, _picker(session)), css="#p-results { padding: 40px; }"
+    )
+    _open(page)
+    box = page.locator("#p-results").bounding_box()
+    assert box is not None
+
+    page.mouse.click(box["x"] + box["width"] / 2, box["y"] + 8)
+    # Past the 300 ms debounce, so a reopen's search would have been sent.
+    _settle(page)
+    page.wait_for_timeout(300)
+
+    geometry = _geometry(page)
+    assert geometry["hidden"] is False
+    assert geometry["onBody"] is True
+    assert _input_has_focus(page)
+    assert len(requests) == 1
     assert page_errors == []
