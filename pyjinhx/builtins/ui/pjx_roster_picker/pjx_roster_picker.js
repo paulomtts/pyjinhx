@@ -106,8 +106,22 @@
     // outlive that call.
     let quietInput = null;
 
+    // A portal picker's open list lives on body, outside the picker, so the
+    // two find each other here instead of through the tree. Keyed by both
+    // the picker and its mount, each to one { picker, mount, parent, next,
+    // gap }: parent is the search box the mount came from, next its old
+    // next sibling, gap how far under the box it hung there.
+    const portalled = new WeakMap();
+
+    // The entry of the portaled list el is in, if it is in one.
+    function entryOf(el) {
+        const mount = el.closest('.pjx-roster-picker__results');
+        return mount && portalled.get(mount);
+    }
+
     function pickerOf(el) {
-        return el.closest('[data-pjx-roster-picker]');
+        const entry = entryOf(el);
+        return entry ? entry.picker : el.closest('[data-pjx-roster-picker]');
     }
 
     // Null for a disabled picker, which renders no search box.
@@ -116,7 +130,8 @@
     }
 
     function resultsMount(picker) {
-        return picker.querySelector('.pjx-roster-picker__results');
+        const entry = portalled.get(picker);
+        return entry ? entry.mount : picker.querySelector('.pjx-roster-picker__results');
     }
 
     // Only each chip's own hidden input: an app's control nested in a chip's
@@ -180,9 +195,54 @@
         return { top: top, bottom: bottom };
     }
 
+    const PORTAL_STYLES = ['position', 'left', 'right', 'top', 'bottom', 'width'];
+
     function clearPlacement(mount) {
         mount.classList.remove('pjx-roster-picker__results--above');
         mount.style.removeProperty('--pjx-roster-picker-room');
+        if (portalled.has(mount)) {
+            PORTAL_STYLES.forEach((name) => mount.style.removeProperty(name));
+        }
+    }
+
+    // The gap is measured while the mount still hangs at home: on body the
+    // CSS offset no longer places it, so a theme's offset is kept from here.
+    function portal(picker, mount) {
+        if (!picker.hasAttribute('data-pjx-roster-picker-portal') || portalled.has(mount)) {
+            return;
+        }
+        const parent = mount.parentElement;
+        const entry = {
+            picker: picker,
+            mount: mount,
+            parent: parent,
+            next: mount.nextSibling,
+            gap: mount.getBoundingClientRect().top - parent.getBoundingClientRect().bottom,
+        };
+        portalled.set(picker, entry);
+        portalled.set(mount, entry);
+        document.body.appendChild(mount);
+    }
+
+    // Forgotten before the move: a focused row can lose focus in it, and a
+    // close that runs from that focusout must find nothing left to undo.
+    function unportal(mount) {
+        const entry = portalled.get(mount);
+        if (!entry) return;
+        portalled.delete(mount);
+        portalled.delete(entry.picker);
+        entry.parent.insertBefore(mount, entry.next);
+    }
+
+    // Fixed on body, the list no longer follows its box, so it is put where
+    // it would hang at home if nothing clipped it: under the box, as wide.
+    function hangBelow(mount, rect, gap) {
+        mount.style.position = 'fixed';
+        mount.style.left = rect.left + 'px';
+        mount.style.right = 'auto';
+        mount.style.width = rect.width + 'px';
+        mount.style.top = rect.bottom + gap + 'px';
+        mount.style.bottom = 'auto';
     }
 
     // Cleared first, so the list is measured at its default: below, capped
@@ -195,25 +255,40 @@
         clearPlacement(mount);
         const search = input.closest('.pjx-roster-picker__search');
         const rect = search.getBoundingClientRect();
+        const entry = portalled.get(mount);
+        if (entry) hangBelow(mount, rect, entry.gap);
         const list = mount.getBoundingClientRect();
         // Measured, not assumed, so a theme that moves the list stays right.
         const gap = list.top - rect.bottom;
-        const answer = placement(rect, list.height, clippingBox(search), gap);
+        // On body no ancestor of the box holds the list, so only the
+        // viewport clips it.
+        const box = entry ? { top: 0, bottom: window.innerHeight } : clippingBox(search);
+        const answer = placement(rect, list.height, box, gap);
         mount.classList.toggle('pjx-roster-picker__results--above', answer.above);
         mount.style.setProperty('--pjx-roster-picker-room', answer.room + 'px');
+        if (entry && answer.above) {
+            mount.style.top = 'auto';
+            mount.style.bottom = window.innerHeight - rect.top + gap + 'px';
+        }
     }
 
     // Every open and close goes through here, so the input's aria-expanded
     // and the mount's hidden never disagree. Closing only hides the rows,
-    // and drops the placement so the next open starts clean.
+    // drops the placement so the next open starts clean, and brings a
+    // portaled list home.
     function setOpen(picker, open) {
         const input = searchInput(picker);
         if (!input) return;
         input.setAttribute('aria-expanded', open ? 'true' : 'false');
         const mount = resultsMount(picker);
         mount.hidden = !open;
-        if (open) place(picker);
-        else clearPlacement(mount);
+        if (open) {
+            portal(picker, mount);
+            place(picker);
+        } else {
+            clearPlacement(mount);
+            unportal(mount);
+        }
     }
 
     function quietFocus(input) {
