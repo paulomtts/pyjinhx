@@ -362,7 +362,9 @@
     // before the click lands on what it was aimed at. A touch tap moves focus
     // after its pointerup (the browser's compatibility mousedown), so the
     // press stays live past the pointerup, until its click; a tap that never
-    // clicks ends on a timer.
+    // clicks ends on a timer. A press that never ends (a context menu, a
+    // drag, a window switch) ends on the next key, contextmenu, dragstart,
+    // pointercancel or window blur.
     const PRESS_FALLBACK_MS = 400;
     let press = null; // { inside: the search box the press began in, or null }
     let closeAfterPress = null;
@@ -413,6 +415,13 @@
         clearTimeout(pressTimer);
         if (press) pressTimer = setTimeout(endPress, PRESS_FALLBACK_MS);
     }, true);
+
+    ['pointercancel', 'contextmenu', 'dragstart', 'keydown'].forEach(function (type) {
+        document.addEventListener(type, endPress, true);
+    });
+    // Not capturing and not on document: those would also hear every
+    // element's own blur, and input.blur() would end the press it defers to.
+    window.addEventListener('blur', endPress);
 
     // invalid does not bubble, so only a capture listener sees it. The
     // validity input is clipped to 1px, so the browser's own bubble and

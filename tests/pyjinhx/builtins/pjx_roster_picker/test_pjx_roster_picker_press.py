@@ -11,6 +11,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+import pytest
+
 from pyjinhx.builtins.ui.pjx_roster_picker import PJXRosterItem, PJXRosterPicker
 from pyjinhx.builtins.ui.pjx_roster_results import PJXRosterResults
 from pyjinhx.client import read_vendored_htmx
@@ -408,4 +410,87 @@ def test_a_remove_click_on_an_open_list_closes_it_and_keeps_the_box_focused(
     assert _state(page) == CLOSED
     assert _input_has_focus(page)
     assert len(requests) == 1
+    assert page_errors == []
+
+
+# Each ends a press that has no pointerup to arm the timer.
+ENDERS = {
+    "contextmenu": "outside.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }))",
+    "keydown": "outside.dispatchEvent(new KeyboardEvent('keydown', { key: 'Shift', bubbles: true }))",
+    "dragstart": "outside.dispatchEvent(new DragEvent('dragstart', { bubbles: true }))",
+    "pointercancel": "outside.dispatchEvent(new PointerEvent('pointercancel', { bubbles: true }))",
+    "window_blur": "window.dispatchEvent(new Event('blur'))",
+}
+
+
+@pytest.mark.parametrize("ender", list(ENDERS))
+def test_a_press_that_never_ends_closes_on_an_ender(
+    page: Page, session: RenderSession, page_errors: list[str], ender: str
+):
+    body = OUTSIDE + _picker(session)
+    _serve(page, session, body)
+    _open(page)
+    page.evaluate(
+        """() => {
+            const outside = document.getElementById('outside');
+            outside.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
+            document.querySelector('#p .pjx-roster-picker__input').blur();
+        }"""
+    )
+    _settle(page)
+    assert _state(page) == OPEN
+
+    page.evaluate(
+        f"() => {{ const outside = document.getElementById('outside'); {ENDERS[ender]}; }}"
+    )
+    _settle(page)
+
+    assert _state(page) == CLOSED
+    assert page_errors == []
+
+
+def test_a_right_click_outside_closes_the_list(
+    page: Page, session: RenderSession, page_errors: list[str]
+):
+    body = OUTSIDE + _picker(session)
+    _serve(page, session, body)
+    _open(page)
+    box = page.locator("#outside").bounding_box()
+    assert box is not None
+
+    page.mouse.click(
+        box["x"] + box["width"] / 2, box["y"] + box["height"] / 2, button="right"
+    )
+
+    # Under the 400 ms timer, so only the contextmenu can have ended the press.
+    _wait_closed(page, timeout=300)
+    assert page_errors == []
+
+
+def test_a_picker_swapped_out_while_its_close_waits_throws_nothing(
+    page: Page, session: RenderSession, page_errors: list[str]
+):
+    markup = _picker(session)
+    _serve(page, session, OUTSIDE + f'<div id="host">{markup}</div>')
+    _open(page)
+    page.evaluate(
+        """() => {
+            const outside = document.getElementById('outside');
+            outside.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
+            document.querySelector('#p .pjx-roster-picker__input').blur();
+        }"""
+    )
+
+    page.evaluate(
+        """html => {
+            document.getElementById('host').innerHTML = html;
+            document.getElementById('outside').dispatchEvent(
+                new KeyboardEvent('keydown', { key: 'Shift', bubbles: true })
+            );
+        }""",
+        markup,
+    )
+    _settle(page)
+
+    assert _state(page) == CLOSED
     assert page_errors == []
