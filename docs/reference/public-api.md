@@ -49,6 +49,20 @@ The deeper machinery behind these symbols — the parser, finder, asset resolver
 | `PjxSettings` | Invalidation backend and reactive dev flags | [Configuration](../api/config.md#pjxsettings) |
 | `AssetMode` | Enum: `INLINE`, `LINK` or `NONE` | [Renderer](../api/renderer.md#assetmode) |
 
+## Builtin graph components
+
+Imported from `pyjinhx.builtins`. The engine behind them is `window.pjx.graph`, see the
+[Graph guide](../guide/graph.md#events-and-javascript-api).
+
+| Symbol | Description | Documentation |
+|--------|-------------|---------------|
+| `PJXGraph` | The stage of a pan/zoom node graph: canvas, viewport, node and edge layers | [Graph](../guide/graph.md#pjxgraph) |
+| `PJXGraphNodes` | The node layer of a `PJXGraph`: a stable container of node markup | [Graph](../guide/graph.md#pjxgraphnodes) |
+| `PJXGraphNode` | One node card of a `PJXGraph`, absolutely positioned at `(x, y)` | [Graph](../guide/graph.md#pjxgraphnode) |
+| `PJXGraphEdges` | The edge layer of a `PJXGraph`: one hidden `span` per edge | [Graph](../guide/graph.md#pjxgraphedges) |
+| `PJXGraphControls` | Zoom in, zoom out and fit buttons that float over a `PJXGraph` canvas | [Graph](../guide/graph.md#pjxgraphcontrols) |
+| `PJXGraphSidePanel` | A floating card beside a `PJXGraph` canvas: header plus one content region | [Graph](../guide/graph.md#pjxgraphsidepanel) |
+
 ## Conceptual guides
 
 For usage patterns and tutorials, see:
