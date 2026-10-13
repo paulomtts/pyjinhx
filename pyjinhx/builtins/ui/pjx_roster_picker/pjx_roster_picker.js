@@ -284,12 +284,13 @@
 
     // invalid does not bubble, so only a capture listener sees it. The
     // validity input is clipped to 1px, so the browser's own bubble and
-    // focus would land on nothing visible; the box takes them instead, as
-    // PJXSelect does for its hidden select. A disabled picker has no box
-    // and is left alone.
+    // focus would land on nothing visible; the box takes the focus and the
+    // mark stands in for the bubble, as PJXSelect does for its hidden
+    // select. Only the picker's own input, as in syncValidity. A disabled
+    // picker has no box and is left alone.
     document.addEventListener('invalid', function (event) {
         if (!(event.target instanceof Element)) return;
-        if (!event.target.matches('.pjx-roster-picker__validity')) return;
+        if (!event.target.matches('[data-pjx-roster-picker] > .pjx-roster-picker__validity')) return;
         const picker = pickerOf(event.target);
         const input = picker && searchInput(picker);
         if (!input) return;

@@ -462,3 +462,23 @@ def test_an_ignored_pick_keeps_the_cue(
     assert _cue(page) == ("true", True)
     assert _validity(page) == ""
     assert page_errors == []
+
+
+def test_an_invalid_control_in_a_chip_sharing_the_class_leaves_the_picker_alone(
+    page: Page, session: RenderSession, page_errors: list[str]
+):
+    _serve(page, session, _form(_picker(session, required=True, items=[_item("a")])))
+    # An app's control in a chip's slot can share the validity input's class.
+    page.evaluate(
+        """() => {
+            const control = document.createElement('input');
+            control.className = 'pjx-roster-picker__validity';
+            control.required = true;
+            document.querySelector('#p [data-pjx-roster-chip]').append(control);
+        }"""
+    )
+
+    assert _valid(page) is False
+
+    assert _cue(page) == (None, False)
+    assert page_errors == []
