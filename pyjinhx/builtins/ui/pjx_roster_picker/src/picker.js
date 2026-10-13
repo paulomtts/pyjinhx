@@ -96,6 +96,8 @@
     }
 
     function pickRow(picker, row) {
+        // The box is disabled at the cap, so this is only a stale row's click.
+        if (isFull(picker)) return;
         if (chippedValues(picker).includes(row.dataset.value)) return;
         const template = row.nextElementSibling;
         const source =

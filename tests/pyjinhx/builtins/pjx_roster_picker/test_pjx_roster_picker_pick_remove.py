@@ -567,6 +567,27 @@ def test_an_unbounded_picker_never_caps(
     assert page_errors == []
 
 
+def test_a_capped_picker_ignores_a_pick(
+    page: Page, session: RenderSession, page_errors: list[str]
+):
+    _serve(page, session, _picker(session, items=[_item("a")], max_items=2))
+    _open(page)
+    _record_changes(page)
+    _pick(page, "v1").click()
+
+    # The closed list hides the row, so only a script can still click it.
+    page.evaluate(
+        """() => document.querySelector('#p-results [data-value="v2"]').click()"""
+    )
+    _settle(page)
+
+    assert _chip_values(page) == ["a", "v1"]
+    assert len(_changes(page)) == 1
+    assert _input(page).is_disabled()
+    assert _hint_hidden(page) is False
+    assert page_errors == []
+
+
 def test_settles_outside_a_pickers_rows_are_ignored(
     page: Page, session: RenderSession, page_errors: list[str]
 ):
