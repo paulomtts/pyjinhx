@@ -10,370 +10,50 @@ The built-in `pyjinhx.builtins` components, rendered here at docs build time. Ea
 
 ## Static
 
-### PJXBadge
+### PJXAlert
 
-Small status label. **Assets:** `pjx_badge.css` only.
+Inline status banner. **Assets:** `pjx_alert.css`, `pjx_alert.js`.
 
-<!-- demo: PJXBadge -->
+<!-- demo: PJXAlert -->
 
 ```html
-<PJXBadge label="Active" color="brand"/>
+<PJXAlert variant="info" title="Heads up" body="A new version is available."/>
 ```
 
 ??? note "Props & API"
 
     | Field | Type | Default | Description |
     | --- | --- | --- | --- |
-    | `label` | `str` | `""` | Inner text. |
-    | `color` | literal | `"neutral"` | `brand`, `error`, `neutral`, `muted` → `pjx-badge--{color}`. |
-    | `shape` | literal | `"md"` | `square`, `sm`, `md`, `full` → `pjx-badge--{shape}`. |
-    | `removable` | `bool` | `False` | Renders a remove button (`data-pjx-badge-remove`). |
-    | `remove_label` | `str` | `"Remove"` | `aria-label` for the remove button. |
-    | `remove_attrs` | `dict` | `{}` | Extra attributes on the remove button (e.g. `hx-post` to wire removal). |
-
-??? note "Style tokens"
-
-    | Token | Default (maps to) |
-    | --- | --- |
-    | `--pjx-badge-font-size` | `var(--font-size-xs)` |
-    | `--pjx-badge-radius-sm` | `var(--radius-sm)` |
-    | `--pjx-badge-radius-md` | `var(--radius-md)` |
-    | `--pjx-badge-radius-full` | `var(--radius-full)` |
-    | `--pjx-badge-brand-bg` | `var(--brand-subtle)` |
-    | `--pjx-badge-brand-fg` | `var(--brand-muted)` |
-    | `--pjx-badge-brand-accent` | `var(--brand)` |
-    | `--pjx-badge-error-bg` | `var(--error-bg)` |
-    | `--pjx-badge-error-fg` | `var(--error)` |
-    | `--pjx-badge-error-border` | `var(--error-border)` |
-    | `--pjx-badge-neutral-bg` | `var(--surface-alt)` |
-    | `--pjx-badge-neutral-fg` | `var(--text)` |
-    | `--pjx-badge-neutral-border` | `var(--border)` |
-    | `--pjx-badge-muted-bg` | `var(--surface)` |
-    | `--pjx-badge-muted-fg` | `var(--text-muted)` |
-    | `--pjx-badge-muted-border` | `var(--border)` |
-
-??? note "DOM & classes"
-
-    Root `.pjx-badge`; no JS API.
-
-    **Classes:** `pjx-badge`; color modifiers `pjx-badge--brand`, `--error`, `--neutral`, `--muted`; shape `pjx-badge--square`, `--sm`, `--md`, `--full`; `removable` adds `pjx-badge--removable` and a `.pjx-badge__remove` button. Wire removal yourself (e.g. `remove_attrs={"hx-post": "..."}`); the button has no built-in behavior.
-
-??? note "Python"
-
-    ```python
-    PJXBadge(label="Active", color="brand")
-    ```
-
-### PJXCard
-
-`<article>` shell for composed card layouts. Compose with `PJXCardHeader`, `PJXCardBody`, and `PJXCardFooter` parts. **Assets:** `pjx_card.css` only.
-
-<!-- demo: PJXCard -->
-
-```html
-<PJXCard>
-  <PJXCardHeader title="Quarterly report"/>
-  <PJXCardBody>Revenue grew 12% over Q1.</PJXCardBody>
-  <PJXCardFooter>Updated today</PJXCardFooter>
-</PJXCard>
-```
-
-??? note "Props & API"
-
-    | Field | Type | Default | Description |
-    | --- | --- | --- | --- |
-    | `class_name` | `str` | `""` | Extra CSS class(es) on the root element. |
-    | `content` | `str \| BaseComponent` | `""` | Pre-rendered children (header + body + footer parts). |
+    | `variant` | literal | `"info"` | `info`, `success`, `warning`, `error` → `pjx-alert--{variant}`. |
+    | `title` | `str` | `""` | Optional heading. |
+    | `body` | `str \| BaseComponent` | `""` | Main copy. |
+    | `dismissible` | `bool` | `False` | When `True`, renders a dismiss button with `data-pjx-close`. |
+    | `dismiss_label` | `str` | `"Dismiss"` | `aria-label` for the dismiss button. |
 
 ??? note "Style tokens"
 
     | Token | Default |
     | --- | --- |
-    | `--pjx-card-bg` | `var(--surface-alt)` |
-    | `--pjx-card-border` | `var(--border)` |
-    | `--pjx-card-radius` | `var(--radius-md)` |
-    | `--pjx-card-title-color` | `var(--text)` |
-    | `--pjx-card-padding` | `var(--space-4, 1rem)` |
+    | `--pjx-alert-radius` | `var(--radius-md)` |
+    | `--pjx-alert-padding` | `0.875rem 1rem` |
+    | `--pjx-alert-border` | `var(--border)` |
+    | `--pjx-alert-shadow` | `var(--shadow-md)` |
+    | `--pjx-alert-title-size` | `var(--font-size-sm)` |
+    | `--pjx-alert-body-size` | `var(--font-size-sm)` |
+    | `--pjx-alert-dismiss-color` | `var(--text-muted)` |
 
 ??? note "DOM & classes"
 
-    Root `article.pjx-card`; no JS API.
+    Root `.pjx-alert` (state: `.pjx-alert--dismissed` — set by JS, hides via `display: none`).
+    `data-pjx-close` inside triggers dismissal.
+    Events: `pjx:alert:before-dismiss`* (cancelable), `pjx:alert:dismiss` — `detail = {reason: 'trigger', trigger}`.
 
-    **Classes:** `pjx-card`.
+    **Classes:** `pjx-alert`; variant modifiers `pjx-alert--info`, `--success`, `--warning`, `--error`; dismissed state `pjx-alert--dismissed`; `pjx-alert__inner`, `__text`, `__title`, `__body`, `__dismiss`. Variants use `color-mix` with `--brand`, `--success`, `--warning`, or `--error` / `--error-bg` / `--error-border` where applicable.
 
 ??? note "Python"
 
     ```python
-    PJXCard(
-        content=PJXCardHeader(title="Quarterly report").render()
-        + PJXCardBody(content="Revenue grew 12% over Q1.").render()
-        + PJXCardFooter(content="Updated today").render()
-    )
-    ```
-
-### PJXCardHeader
-
-Card header region. When `title` is set it renders `<h3 class="pjx-card__title">` inside the header; when `title` is empty the `content` slot is rendered directly instead. **Assets:** `pjx_card_header.css` only.
-
-```html
-<PJXCard>
-  <PJXCardHeader title="Quarterly report"/>
-  <PJXCardBody>…</PJXCardBody>
-  <PJXCardFooter>…</PJXCardFooter>
-</PJXCard>
-```
-
-??? note "Props & API"
-
-    | Field | Type | Default | Description |
-    | --- | --- | --- | --- |
-    | `title` | `str` | `""` | Convenience shorthand — renders `<h3 class="pjx-card__title">` when set; takes precedence over `content`. |
-    | `class_name` | `str` | `""` | Extra CSS class(es) on the root element. |
-    | `content` | `str \| BaseComponent` | `""` | Rich header slot; used when `title` is empty. |
-
-??? note "DOM & classes"
-
-    Root `header.pjx-card__header`; no JS API.
-
-    **Classes:** `pjx-card__header`, `pjx-card__title`.
-
-??? note "Python"
-
-    ```python
-    PJXCardHeader(title="Quarterly report")
-    ```
-
-### PJXCardBody
-
-Card body region. **Assets:** `pjx_card_body.css` only.
-
-```html
-<PJXCard>
-  <PJXCardHeader title="Quarterly report"/>
-  <PJXCardBody>Revenue grew 12% over Q1.</PJXCardBody>
-  <PJXCardFooter>…</PJXCardFooter>
-</PJXCard>
-```
-
-??? note "Props & API"
-
-    | Field | Type | Default | Description |
-    | --- | --- | --- | --- |
-    | `class_name` | `str` | `""` | Extra CSS class(es) on the root element. |
-    | `content` | `str \| BaseComponent` | `""` | Main card content. |
-
-??? note "DOM & classes"
-
-    Root `div.pjx-card__body`; no JS API.
-
-    **Classes:** `pjx-card__body`.
-
-??? note "Python"
-
-    ```python
-    PJXCardBody(content="Revenue grew 12% over Q1.")
-    ```
-
-### PJXCardFooter
-
-Card footer region. **Assets:** `pjx_card_footer.css` only.
-
-```html
-<PJXCard>
-  <PJXCardHeader title="Quarterly report"/>
-  <PJXCardBody>…</PJXCardBody>
-  <PJXCardFooter>Updated today</PJXCardFooter>
-</PJXCard>
-```
-
-??? note "Props & API"
-
-    | Field | Type | Default | Description |
-    | --- | --- | --- | --- |
-    | `class_name` | `str` | `""` | Extra CSS class(es) on the root element. |
-    | `content` | `str \| BaseComponent` | `""` | Footer content (actions, metadata, etc.). |
-
-??? note "DOM & classes"
-
-    Root `footer.pjx-card__footer`; no JS API.
-
-    **Classes:** `pjx-card__footer`.
-
-??? note "Python"
-
-    ```python
-    PJXCardFooter(content="Updated today")
-    ```
-
-### PJXCarousel
-
-Compound image/content carousel with arrows, dots, keyboard nav, swipe, and opt-in autoplay. Compose with [`PJXCarouselSlide`](#pjxcarouselslide). **Assets:** `pjx_carousel.css`, `pjx_carousel.js`.
-
-<!-- demo: PJXCarousel -->
-
-```html
-<PJXCarousel label="Product photos">
-  <PJXCarouselSlide><img src="/photo-1.jpg" alt="Front view"></PJXCarouselSlide>
-  <PJXCarouselSlide><img src="/photo-2.jpg" alt="Side view"></PJXCarouselSlide>
-  <PJXCarouselSlide><img src="/photo-3.jpg" alt="Back view"></PJXCarouselSlide>
-</PJXCarousel>
-```
-
-??? note "Props & API"
-
-    | Field | Type | Default | Description |
-    | --- | --- | --- | --- |
-    | `label` | `str` | `"Carousel"` | `aria-label` on the root region. |
-    | `loop` | `bool` | `True` | Wrap at the ends. When `False`, the prev/next arrows disable (`aria-disabled`) at the first/last slide. |
-    | `autoplay` | `bool` | `False` | Auto-advance on a timer. Always ships a play/pause toggle button when enabled, and pauses on hover/focus/pointer interaction — never a silent, unpausable auto-advance. |
-    | `interval_ms` | `int` | `5000` | Autoplay interval in milliseconds. Ignored when `autoplay=False`. |
-    | `prev_label` | `str` | `"Previous slide"` | aria-label on the previous-slide arrow button. |
-    | `next_label` | `str` | `"Next slide"` | aria-label on the next-slide arrow button. |
-    | `autoplay_toggle_label` | `str` | `"Pause autoplay"` | aria-label on the autoplay pause/play toggle button (only rendered when autoplay=True). |
-    | `class_name` | `str` | `""` | Extra CSS class(es) appended to the root element. |
-    | `content` | `str \| BaseComponent` | `""` | Composed interior — one or more `PJXCarouselSlide`s. |
-
-    Respects `prefers-reduced-motion: reduce`: disables the slide transition and disables autoplay outright.
-
-??? note "Style tokens"
-
-    | Token | Default |
-    | --- | --- |
-    | `--pjx-carousel-border` | `var(--border)` |
-    | `--pjx-carousel-bg` | `var(--surface)` |
-    | `--pjx-carousel-radius` | `var(--radius-md)` |
-    | `--pjx-carousel-arrow-bg` | `color-mix(in srgb, var(--surface) 70%, transparent)` |
-    | `--pjx-carousel-arrow-fg` | `var(--text)` |
-    | `--pjx-carousel-dot-bg` | `var(--border)` |
-    | `--pjx-carousel-dot-active-bg` | `var(--brand)` |
-
-??? note "DOM & classes"
-
-    Root `div.pjx-carousel[role="region"][data-pjx-carousel]`. `pjx_carousel.js` discovers `[data-pjx-carousel-slide]` descendants at init, builds dots, and delegates click/keyboard/pointer events on `[data-pjx-carousel]`. Fires a cancelable `pjx:carousel:before-change` then `pjx:carousel:change` on the root, `detail = {index, reason}`.
-
-    **Classes:** `pjx-carousel`, `pjx-carousel__track`, `pjx-carousel__arrow`, `pjx-carousel__dots`, `pjx-carousel__dot`, `pjx-carousel__autoplay-toggle`.
-
-??? note "Python"
-
-    ```python
-    PJXCarousel(
-        label="Product photos",
-        content=(
-            PJXCarouselSlide(content='<img src="/photo-1.jpg" alt="Front view">').render()
-            + PJXCarouselSlide(content='<img src="/photo-2.jpg" alt="Side view">').render()
-            + PJXCarouselSlide(content='<img src="/photo-3.jpg" alt="Back view">').render()
-        ),
-    )
-    ```
-
-### PJXCarouselSlide
-
-Single carousel slide (any content, not just images). **Assets:** `pjx_carousel_slide.css`.
-
-```html
-<PJXCarouselSlide label="Front view">
-  <img src="/photo-1.jpg" alt="Front view">
-</PJXCarouselSlide>
-```
-
-??? note "Props & API"
-
-    | Field | Type | Default | Description |
-    | --- | --- | --- | --- |
-    | `label` | `str` | `""` | Optional per-slide `aria-label` prefix (e.g. "Front view"). The engine appends "— N of M" at init regardless of whether `label` is set. |
-    | `class_name` | `str` | `""` | Extra CSS class(es) appended to the root element. |
-    | `content` | `str \| BaseComponent` | `""` | Slide content — typically an `<img>`, but any markup is valid. |
-
-??? note "DOM & classes"
-
-    Root `div.pjx-carousel__slide[role="group"][data-pjx-carousel-slide]`.
-
-    **Classes:** `pjx-carousel__slide`.
-
-??? note "Python"
-
-    ```python
-    PJXCarouselSlide(
-        label="Front view", content='<img src="/photo-1.jpg" alt="Front view">'
-    )
-    ```
-
-### PJXDivider
-
-Separator line. **Assets:** `pjx_divider.css` only.
-
-<!-- demo: PJXDivider -->
-
-```html
-<PJXDivider orientation="horizontal" label="or continue with"/>
-```
-
-??? note "Props & API"
-
-    | Field | Type | Default | Description |
-    | --- | --- | --- | --- |
-    | `orientation` | literal | `"horizontal"` | `horizontal` (default `hr`) or `vertical` (bar). |
-    | `label` | `str` | `""` | If set with horizontal orientation, flex row with label between lines. |
-
-??? note "Style tokens"
-
-    | Token | Default |
-    | --- | --- |
-    | `--pjx-divider-color` | `var(--border)` |
-    | `--pjx-divider-thickness` | `1px` |
-    | `--pjx-divider-gap` | `0.75rem` |
-    | `--pjx-divider-label-color` | `var(--text-muted)` |
-    | `--pjx-divider-label-size` | `var(--font-size-sm)` |
-
-??? note "DOM & classes"
-
-    Root `.pjx-divider`; no JS API.
-
-    **Classes:** `pjx-divider--horizontal`, `pjx-divider--vertical`, `pjx-divider--labeled`, `pjx-divider__line`, `pjx-divider__label`.
-
-??? note "Python"
-
-    ```python
-    PJXDivider(orientation="horizontal", label="or continue with")
-    ```
-
-### PJXSpinner
-
-Inline loading indicator. **Assets:** `pjx_spinner.css` only.
-
-<!-- demo: PJXSpinner -->
-
-```html
-<PJXSpinner size="sm" label="Loading data"/>
-```
-
-??? note "Props & API"
-
-    | Field | Type | Default | Description |
-    | --- | --- | --- | --- |
-    | `size` | literal | `"md"` | `sm`, `md`, or `lg`. |
-    | `label` | `str` | `"Loading"` | Visually hidden; exposed to assistive tech. |
-
-??? note "Style tokens"
-
-    | Token | Default |
-    | --- | --- |
-    | `--pjx-spinner-sm` | `1.25rem` |
-    | `--pjx-spinner-md` | `2rem` |
-    | `--pjx-spinner-lg` | `2.75rem` |
-    | `--pjx-spinner-track` | `color-mix(in srgb, var(--text-muted) 35%, transparent)` |
-    | `--pjx-spinner-accent` | `var(--brand)` |
-
-??? note "DOM & classes"
-
-    Root `.pjx-spinner`; no JS API.
-
-    **Classes:** `pjx-spinner`, `pjx-spinner--sm|md|lg`, `pjx-spinner__ring`, `pjx-spinner__label` (screen-reader-only).
-
-??? note "Python"
-
-    ```python
-    PJXSpinner(size="sm", label="Loading data")
+    PJXAlert(variant="info", title="Heads up", body="A new version is available.")
     ```
 
 ### PJXAvatar
@@ -492,6 +172,60 @@ Overlapping row of avatars with optional overflow count. **Assets:** `pjx_avatar
     )
     ```
 
+### PJXBadge
+
+Small status label. **Assets:** `pjx_badge.css` only.
+
+<!-- demo: PJXBadge -->
+
+```html
+<PJXBadge label="Active" color="brand"/>
+```
+
+??? note "Props & API"
+
+    | Field | Type | Default | Description |
+    | --- | --- | --- | --- |
+    | `label` | `str` | `""` | Inner text. |
+    | `color` | literal | `"neutral"` | `brand`, `error`, `neutral`, `muted` → `pjx-badge--{color}`. |
+    | `shape` | literal | `"md"` | `square`, `sm`, `md`, `full` → `pjx-badge--{shape}`. |
+    | `removable` | `bool` | `False` | Renders a remove button (`data-pjx-badge-remove`). |
+    | `remove_label` | `str` | `"Remove"` | `aria-label` for the remove button. |
+    | `remove_attrs` | `dict` | `{}` | Extra attributes on the remove button (e.g. `hx-post` to wire removal). |
+
+??? note "Style tokens"
+
+    | Token | Default (maps to) |
+    | --- | --- |
+    | `--pjx-badge-font-size` | `var(--font-size-xs)` |
+    | `--pjx-badge-radius-sm` | `var(--radius-sm)` |
+    | `--pjx-badge-radius-md` | `var(--radius-md)` |
+    | `--pjx-badge-radius-full` | `var(--radius-full)` |
+    | `--pjx-badge-brand-bg` | `var(--brand-subtle)` |
+    | `--pjx-badge-brand-fg` | `var(--brand-muted)` |
+    | `--pjx-badge-brand-accent` | `var(--brand)` |
+    | `--pjx-badge-error-bg` | `var(--error-bg)` |
+    | `--pjx-badge-error-fg` | `var(--error)` |
+    | `--pjx-badge-error-border` | `var(--error-border)` |
+    | `--pjx-badge-neutral-bg` | `var(--surface-alt)` |
+    | `--pjx-badge-neutral-fg` | `var(--text)` |
+    | `--pjx-badge-neutral-border` | `var(--border)` |
+    | `--pjx-badge-muted-bg` | `var(--surface)` |
+    | `--pjx-badge-muted-fg` | `var(--text-muted)` |
+    | `--pjx-badge-muted-border` | `var(--border)` |
+
+??? note "DOM & classes"
+
+    Root `.pjx-badge`; no JS API.
+
+    **Classes:** `pjx-badge`; color modifiers `pjx-badge--brand`, `--error`, `--neutral`, `--muted`; shape `pjx-badge--square`, `--sm`, `--md`, `--full`; `removable` adds `pjx-badge--removable` and a `.pjx-badge__remove` button. Wire removal yourself (e.g. `remove_attrs={"hx-post": "..."}`); the button has no built-in behavior.
+
+??? note "Python"
+
+    ```python
+    PJXBadge(label="Active", color="brand")
+    ```
+
 ### PJXBreadcrumb
 
 Ordered trail of links. **Assets:** `pjx_breadcrumb.css` only.
@@ -531,87 +265,184 @@ Ordered trail of links. **Assets:** `pjx_breadcrumb.css` only.
     PJXBreadcrumb(items=[("Home", "/"), ("Projects", "/projects"), ("Dashboard", None)])
     ```
 
-### PJXSkeleton
+### PJXCard
 
-Placeholder shimmer blocks. **Assets:** `pjx_skeleton.css` only.
+`<article>` shell for composed card layouts. Compose with `PJXCardHeader`, `PJXCardBody`, and `PJXCardFooter` parts. **Assets:** `pjx_card.css` only.
 
-<!-- demo: PJXSkeleton -->
+<!-- demo: PJXCard -->
 
 ```html
-<PJXSkeleton variant="text" lines="3"/>
+<PJXCard>
+  <PJXCardHeader title="Quarterly report"/>
+  <PJXCardBody>Revenue grew 12% over Q1.</PJXCardBody>
+  <PJXCardFooter>Updated today</PJXCardFooter>
+</PJXCard>
 ```
 
 ??? note "Props & API"
 
     | Field | Type | Default | Description |
     | --- | --- | --- | --- |
-    | `variant` | literal | `"text"` | `text` (stacked lines), `circle`, or `rect`. |
-    | `lines` | `int` | `3` | For `text`, count of `pjx-skeleton__line` rows. |
+    | `class_name` | `str` | `""` | Extra CSS class(es) on the root element. |
+    | `content` | `str \| BaseComponent` | `""` | Pre-rendered children (header + body + footer parts). |
 
 ??? note "Style tokens"
 
     | Token | Default |
     | --- | --- |
-    | `--pjx-skeleton-bg` | `var(--surface-alt)` |
-    | `--pjx-skeleton-shine` | `color-mix(in srgb, var(--text) 8%, var(--surface-alt))` |
-    | `--pjx-skeleton-line-height` | `0.65rem` |
-    | `--pjx-skeleton-line-gap` | `0.5rem` |
-    | `--pjx-skeleton-circle-size` | `2.5rem` |
-    | `--pjx-skeleton-rect-height` | `6rem` |
-    | `--pjx-skeleton-rect-radius` | `var(--radius-md)` |
-    | `--pjx-skeleton-duration` | `1.2s` |
+    | `--pjx-card-bg` | `var(--surface-alt)` |
+    | `--pjx-card-border` | `var(--border)` |
+    | `--pjx-card-radius` | `var(--radius-md)` |
+    | `--pjx-card-title-color` | `var(--text)` |
+    | `--pjx-card-padding` | `var(--space-4, 1rem)` |
 
 ??? note "DOM & classes"
 
-    Root `.pjx-skeleton`; no JS API.
+    Root `article.pjx-card`; no JS API.
 
-    **Classes:** `pjx-skeleton`; variant modifiers `pjx-skeleton--text`, `--circle`, `--rect`; `pjx-skeleton__line`, `pjx-skeleton__circle`, `pjx-skeleton__rect`.
+    **Classes:** `pjx-card`.
 
 ??? note "Python"
 
     ```python
-    PJXSkeleton(variant="text", lines=3)
+    PJXCard(
+        content=PJXCardHeader(title="Quarterly report").render()
+        + PJXCardBody(content="Revenue grew 12% over Q1.").render()
+        + PJXCardFooter(content="Updated today").render()
+    )
     ```
 
-### PJXProgress
+### PJXCardBody
 
-Determinate or indeterminate meter. **Assets:** `pjx_progress.css` only.
-
-<!-- demo: PJXProgress -->
+Card body region. **Assets:** `pjx_card_body.css` only.
 
 ```html
-<PJXProgress value="65" max="100" label="Upload progress"/>
+<PJXCard>
+  <PJXCardHeader title="Quarterly report"/>
+  <PJXCardBody>Revenue grew 12% over Q1.</PJXCardBody>
+  <PJXCardFooter>…</PJXCardFooter>
+</PJXCard>
 ```
 
 ??? note "Props & API"
 
     | Field | Type | Default | Description |
     | --- | --- | --- | --- |
-    | `value` | `float \| None` | `None` | Omit or `None` for indeterminate `<progress>`. |
-    | `max` | `float` | `100` | Passed to `<progress max="…">`. |
-    | `label` | `str` | `""` | Optional `pjx-progress__label`; wires `aria-labelledby` when set. |
-    | `loading_label` | `str` | `"Loading"` | `aria-label` fallback on `<progress>` when `label` is empty. |
+    | `class_name` | `str` | `""` | Extra CSS class(es) on the root element. |
+    | `content` | `str \| BaseComponent` | `""` | Main card content. |
+
+??? note "DOM & classes"
+
+    Root `div.pjx-card__body`; no JS API.
+
+    **Classes:** `pjx-card__body`.
+
+??? note "Python"
+
+    ```python
+    PJXCardBody(content="Revenue grew 12% over Q1.")
+    ```
+
+### PJXCardFooter
+
+Card footer region. **Assets:** `pjx_card_footer.css` only.
+
+```html
+<PJXCard>
+  <PJXCardHeader title="Quarterly report"/>
+  <PJXCardBody>…</PJXCardBody>
+  <PJXCardFooter>Updated today</PJXCardFooter>
+</PJXCard>
+```
+
+??? note "Props & API"
+
+    | Field | Type | Default | Description |
+    | --- | --- | --- | --- |
+    | `class_name` | `str` | `""` | Extra CSS class(es) on the root element. |
+    | `content` | `str \| BaseComponent` | `""` | Footer content (actions, metadata, etc.). |
+
+??? note "DOM & classes"
+
+    Root `footer.pjx-card__footer`; no JS API.
+
+    **Classes:** `pjx-card__footer`.
+
+??? note "Python"
+
+    ```python
+    PJXCardFooter(content="Updated today")
+    ```
+
+### PJXCardHeader
+
+Card header region. When `title` is set it renders `<h3 class="pjx-card__title">` inside the header; when `title` is empty the `content` slot is rendered directly instead. **Assets:** `pjx_card_header.css` only.
+
+```html
+<PJXCard>
+  <PJXCardHeader title="Quarterly report"/>
+  <PJXCardBody>…</PJXCardBody>
+  <PJXCardFooter>…</PJXCardFooter>
+</PJXCard>
+```
+
+??? note "Props & API"
+
+    | Field | Type | Default | Description |
+    | --- | --- | --- | --- |
+    | `title` | `str` | `""` | Convenience shorthand — renders `<h3 class="pjx-card__title">` when set; takes precedence over `content`. |
+    | `class_name` | `str` | `""` | Extra CSS class(es) on the root element. |
+    | `content` | `str \| BaseComponent` | `""` | Rich header slot; used when `title` is empty. |
+
+??? note "DOM & classes"
+
+    Root `header.pjx-card__header`; no JS API.
+
+    **Classes:** `pjx-card__header`, `pjx-card__title`.
+
+??? note "Python"
+
+    ```python
+    PJXCardHeader(title="Quarterly report")
+    ```
+
+### PJXDivider
+
+Separator line. **Assets:** `pjx_divider.css` only.
+
+<!-- demo: PJXDivider -->
+
+```html
+<PJXDivider orientation="horizontal" label="or continue with"/>
+```
+
+??? note "Props & API"
+
+    | Field | Type | Default | Description |
+    | --- | --- | --- | --- |
+    | `orientation` | literal | `"horizontal"` | `horizontal` (default `hr`) or `vertical` (bar). |
+    | `label` | `str` | `""` | If set with horizontal orientation, flex row with label between lines. |
 
 ??? note "Style tokens"
 
     | Token | Default |
     | --- | --- |
-    | `--pjx-progress-height` | `0.5rem` |
-    | `--pjx-progress-radius` | `var(--radius-full)` |
-    | `--pjx-progress-track` | `var(--surface-alt)` |
-    | `--pjx-progress-fill` | `var(--brand)` |
-    | `--pjx-progress-indeterminate-speed` | `1.2s` |
+    | `--pjx-divider-color` | `var(--border)` |
+    | `--pjx-divider-thickness` | `1px` |
+    | `--pjx-divider-gap` | `0.75rem` |
+    | `--pjx-divider-label-color` | `var(--text-muted)` |
+    | `--pjx-divider-label-size` | `var(--font-size-sm)` |
 
 ??? note "DOM & classes"
 
-    Root `.pjx-progress`; no JS API.
+    Root `.pjx-divider`; no JS API.
 
-    **Classes:** `pjx-progress`, `pjx-progress__label`, `pjx-progress__bar`.
+    **Classes:** `pjx-divider--horizontal`, `pjx-divider--vertical`, `pjx-divider--labeled`, `pjx-divider__line`, `pjx-divider__label`.
 
 ??? note "Python"
 
     ```python
-    PJXProgress(value=65, max=100, label="Upload progress")
+    PJXDivider(orientation="horizontal", label="or continue with")
     ```
 
 ### PJXEmptyState
@@ -710,55 +541,1003 @@ Inline SVG icon from a vendored [Lucide](https://lucide.dev) set (ISC). **Assets
     PJXIcon(name="plus", size=24, label="Add")
     ```
 
-### PJXButton
+### PJXTable
 
-Structural, themeable button. Composes [`PJXRegionLoader`](#pjxregionloader) for the inline loading state. **Assets:** `pjx_button.css` only.
+Accessible data table shell. Compose with `PJXTableHead`, `PJXTableBody`, `PJXTableRow`, `PJXTableHeaderCell`, and `PJXTableCell` parts. **Assets:** `pjx_table.css`.
 
-<!-- demo: PJXButton -->
+<!-- demo: PJXTable -->
 
 ```html
-<PJXButton content="Save" variant="primary"/>
+<PJXTable caption="Team members" striped="true" bordered="horizontal">
+  <PJXTableHead>
+    <PJXTableRow>
+      <PJXTableHeaderCell sortable="true" sort="asc">Name</PJXTableHeaderCell>
+      <PJXTableHeaderCell>Role</PJXTableHeaderCell>
+    </PJXTableRow>
+  </PJXTableHead>
+  <PJXTableBody>
+    <PJXTableRow selectable="true" value="1"><PJXTableCell>Ada Lovelace</PJXTableCell><PJXTableCell>Engineer</PJXTableCell></PJXTableRow>
+    <PJXTableRow selectable="true" value="2"><PJXTableCell>Alan Turing</PJXTableCell><PJXTableCell>Researcher</PJXTableCell></PJXTableRow>
+  </PJXTableBody>
+</PJXTable>
 ```
 
 ??? note "Props & API"
 
     | Field | Type | Default | Description |
     | --- | --- | --- | --- |
-    | `content` | `str \| BaseComponent` | `""` | Freeform button content (rendered raw); nest icons, text, or any markup here. The loading spinner auto-appends after this. |
-    | `variant` | `str` | `"default"` | Class hook only → `pjx-button--{variant}`. No baked palette; style it yourself. |
-    | `block` | `bool` | `False` | Full-width (`pjx-button--block`) instead of content-width. |
-    | `loading` | `bool` | `False` | Renders a `<PJXRegionLoader/>` overlay and sets `aria-busy="true"`. |
-    | `disabled` | `bool` | `False` | Sets the `disabled` attribute. |
-    | `type` | literal | `"button"` | `button`, `submit`, or `reset`. |
+    | `caption` | `str` | `""` | `<caption>` text; suppressed when empty. |
+    | `striped` | `bool` | `False` | Alternating row shading via `pjx-table--striped`. |
+    | `sticky_header` | `bool` | `False` | Keeps the `<thead>` visible on scroll via `pjx-table--sticky`. |
+    | `density` | `"comfortable" \| "compact"` | `"comfortable"` | Cell padding scale → `pjx-table--density-compact` when `"compact"`; no class for `"comfortable"` or `"none"`. |
+    | `bordered` | `"none" \| "horizontal" \| "all"` | `"none"` | Border style → `pjx-table--bordered-{bordered}` (omitted when `"none"`). |
+    | `class_name` | `AttrValue` | `""` | Extra CSS class(es) on the root element. |
+    | `content` | `str \| BaseComponent` | `""` | Pre-rendered children (`PJXTableHead` + `PJXTableBody`). |
 
 ??? note "Style tokens"
 
     | Token | Default |
     | --- | --- |
-    | `--pjx-button-bg` | `transparent` |
-    | `--pjx-button-color` | `inherit` |
-    | `--pjx-button-border` | `1px solid currentColor` |
-    | `--pjx-button-radius` | `0.375rem` |
-    | `--pjx-button-padding` | `0.5rem 0.875rem` |
-    | `--pjx-button-gap` | `0.5rem` |
-    | `--pjx-button-font-size` | `inherit` |
-    | `--pjx-button-font-weight` | `500` |
-    | `--pjx-button-bg-hover` | `var(--pjx-button-bg)` |
-    | `--pjx-button-border-hover` | `currentColor` |
+    | `--pjx-table-border` | `var(--border)` |
+    | `--pjx-table-header-bg` | `var(--surface-alt)` |
+    | `--pjx-table-header-fg` | `var(--text)` |
+    | `--pjx-table-stripe-bg` | `var(--surface-alt)` |
+    | `--pjx-table-row-hover-bg` | `var(--surface-alt)` |
+    | `--pjx-table-cell-pad-y` | `0.5rem` |
+    | `--pjx-table-cell-pad-x` | `0.75rem` |
 
 ??? note "DOM & classes"
 
-    Root `<button>` rendering `{{ content }}` verbatim. No JS API — pass `hx-*`/`@click` inline (they pass through to the root). The default `.pjx-button` is visually neutral so it never fights your design system; paint variants via `.pjx-button--<variant>`.
+    Root `<table class="pjx-table">` with an optional `<caption class="pjx-table__caption">` as its first child. No JS public API — sort state is reflected via `aria-sort` on `<th>` cells and driven by your own htmx/Alpine handlers on `PJXTableHeaderCell`.
 
-    **Classes:** `pjx-button`; `pjx-button--block`; variant seams `pjx-button--<variant>`.
-
-    An icon-only button (`content` is just a `PJXIcon`, which renders `aria-hidden`) has no accessible name on its own — pass `aria-label` (it passes through to the root like any other attribute): `<PJXButton aria-label="Delete"><PJXIcon name="trash"/></PJXButton>`.
+    **Classes:** `pjx-table`, `pjx-table--striped`, `pjx-table--sticky`, `pjx-table--density-compact`, `pjx-table--bordered-horizontal`, `pjx-table--bordered-all`.
 
 ??? note "Python"
 
     ```python
-    PJXButton(content="Save", variant="primary")
+    PJXTable(
+        caption="Team members",
+        striped=True,
+        bordered="horizontal",
+        content=(
+            PJXTableHead(
+                content=PJXTableRow(
+                    content=(
+                        PJXTableHeaderCell(
+                            sortable=True, sort="asc", content="Name"
+                        ).render()
+                        + PJXTableHeaderCell(content="Role").render()
+                    )
+                ).render()
+            ).render()
+            + PJXTableBody(
+                content=(
+                    PJXTableRow(
+                        selectable=True,
+                        value="1",
+                        content=(
+                            PJXTableCell(content="Ada Lovelace").render()
+                            + PJXTableCell(content="Engineer").render()
+                        ),
+                    ).render()
+                    + PJXTableRow(
+                        selectable=True,
+                        value="2",
+                        content=(
+                            PJXTableCell(content="Alan Turing").render()
+                            + PJXTableCell(content="Researcher").render()
+                        ),
+                    ).render()
+                )
+            ).render()
+        ),
+    )
     ```
+
+### PJXTableBody
+
+`<tbody>` wrapper for a composed table. **Assets:** none (styled via `pjx_table.css`).
+
+```html
+<PJXTable>
+  <PJXTableBody>
+    <PJXTableRow><PJXTableCell>Ada Lovelace</PJXTableCell></PJXTableRow>
+  </PJXTableBody>
+</PJXTable>
+```
+
+??? note "Props & API"
+
+    | Field | Type | Default | Description |
+    | --- | --- | --- | --- |
+    | `class_name` | `AttrValue` | `""` | Extra CSS class(es) on the root element. |
+    | `content` | `str \| BaseComponent` | `""` | Pre-rendered `PJXTableRow` children. |
+
+??? note "DOM & classes"
+
+    Root `<tbody class="pjx-table__body">` rendering `{{ content }}` verbatim.
+
+    **Classes:** `pjx-table__body`.
+
+??? note "Python"
+
+    ```python
+    PJXTableBody(
+        content=PJXTableRow(content=PJXTableCell(content="Ada Lovelace").render()).render()
+    )
+    ```
+
+### PJXTableCell
+
+A `<td>` for use inside `PJXTableRow` in the body section. **Assets:** none (styled via `pjx_table.css`).
+
+```html
+<PJXTableCell>Ada Lovelace</PJXTableCell>
+```
+
+??? note "Props & API"
+
+    | Field | Type | Default | Description |
+    | --- | --- | --- | --- |
+    | `class_name` | `AttrValue` | `""` | Extra CSS class(es) on the root element. |
+    | `content` | `str \| BaseComponent` | `""` | Cell content. |
+
+??? note "DOM & classes"
+
+    Root `<td class="pjx-table__cell">` rendering `{{ content }}` verbatim.
+
+    **Classes:** `pjx-table__cell`.
+
+??? note "Python"
+
+    ```python
+    PJXTableCell(content="Ada Lovelace")
+    ```
+
+### PJXTableHead
+
+`<thead>` wrapper for a composed table. **Assets:** none (styled via `pjx_table.css`).
+
+```html
+<PJXTable>
+  <PJXTableHead>
+    <PJXTableRow>
+      <PJXTableHeaderCell>Name</PJXTableHeaderCell>
+    </PJXTableRow>
+  </PJXTableHead>
+</PJXTable>
+```
+
+??? note "Props & API"
+
+    | Field | Type | Default | Description |
+    | --- | --- | --- | --- |
+    | `class_name` | `AttrValue` | `""` | Extra CSS class(es) on the root element. |
+    | `content` | `str \| BaseComponent` | `""` | Pre-rendered `PJXTableRow` children. |
+
+??? note "DOM & classes"
+
+    Root `<thead class="pjx-table__head">` rendering `{{ content }}` verbatim.
+
+    **Classes:** `pjx-table__head`.
+
+??? note "Python"
+
+    ```python
+    PJXTableHead(
+        content=PJXTableRow(content=PJXTableHeaderCell(content="Name").render()).render()
+    )
+    ```
+
+### PJXTableHeaderCell
+
+A `<th>` for use inside `PJXTableRow` in the head section. Reflects sort direction via `aria-sort`. **Assets:** none (styled via `pjx_table.css`).
+
+```html
+<PJXTableHeaderCell sortable="true" sort="asc">Name</PJXTableHeaderCell>
+```
+
+??? note "Props & API"
+
+    | Field | Type | Default | Description |
+    | --- | --- | --- | --- |
+    | `sortable` | `bool` | `False` | Adds `pjx-table__th--sortable` and a sort-direction indicator. |
+    | `sort` | `"none" \| "asc" \| "desc"` | `"none"` | Current sort direction → `aria-sort` attribute; `"none"` omits `aria-sort`. |
+    | `class_name` | `AttrValue` | `""` | Extra CSS class(es) on the root element. |
+    | `content` | `str \| BaseComponent` | `""` | Column header label. |
+
+??? note "DOM & classes"
+
+    Root `<th class="pjx-table__th" scope="col">`. When `sortable=True`: `pjx-table__th--sortable` is added and `aria-sort` is set when `sort` is `"asc"` or `"desc"`.
+
+    **Classes:** `pjx-table__th`, `pjx-table__th--sortable`.
+
+??? note "Python"
+
+    ```python
+    PJXTableHeaderCell(sortable=True, sort="asc", content="Name")
+    ```
+
+### PJXTableRow
+
+A `<tr>` for either the head or body section. When `selectable=True`, a checkbox cell is auto-prepended on the body row. **Assets:** none (styled via `pjx_table.css`).
+
+```html
+<PJXTableRow selectable="true" value="1">
+  <PJXTableCell>Ada Lovelace</PJXTableCell>
+  <PJXTableCell>Engineer</PJXTableCell>
+</PJXTableRow>
+```
+
+??? note "Props & API"
+
+    | Field | Type | Default | Description |
+    | --- | --- | --- | --- |
+    | `selectable` | `bool` | `False` | Auto-prepends a checkbox `<td>` with `name="selected"` and `value="{{ value }}"`. |
+    | `value` | `str` | `""` | Checkbox value emitted when the row is selected. |
+    | `select_label` | `str` | `"Select row"` | `aria-label` on the auto-prepended checkbox. |
+    | `class_name` | `AttrValue` | `""` | Extra CSS class(es) on the root element. |
+    | `content` | `str \| BaseComponent` | `""` | Pre-rendered cell children. |
+
+    **Select-all alignment.** When using `selectable` rows, add a leading `PJXTableHeaderCell` to the head row (empty, or a select-all checkbox you wire with htmx/Alpine) so the columns align — `selectable` only auto-prepends a checkbox on body rows.
+
+??? note "DOM & classes"
+
+    Root `<tr class="pjx-table__row">`; `pjx-table__row--selectable` added when `selectable=True`.
+
+    **Classes:** `pjx-table__row`, `pjx-table__row--selectable`.
+
+??? note "Python"
+
+    ```python
+    PJXTableRow(
+        selectable=True,
+        value="1",
+        content=PJXTableCell(content="Ada Lovelace").render()
+        + PJXTableCell(content="Engineer").render(),
+    )
+    ```
+
+## Overlays & dialogs
+
+### PJXDrawer
+
+`<dialog>` shell sheet from an edge. **Assets:** `pjx_drawer.css`, `pjx_drawer.js` (JS stays on the shell; each part ships its own CSS — see [PJXDrawerHeader](#pjxdrawerheader), [PJXDrawerBody](#pjxdrawerbody), [PJXDrawerFooter](#pjxdrawerfooter)).
+
+<!-- demo: PJXDrawer -->
+
+```html
+<PJXDrawer id="demo-drawer" side="right">
+  <PJXDrawerHeader id="demo-drawer-h" title="Filter results"/>
+  <PJXDrawerBody id="demo-drawer-b"><p>Adjust filters to narrow down your results.</p></PJXDrawerBody>
+  <PJXDrawerFooter id="demo-drawer-f"><button class="pjx-demo-btn" data-pjx-close>Done</button></PJXDrawerFooter>
+</PJXDrawer>
+```
+
+??? note "Props & API"
+
+    | Field | Type | Default | Description |
+    | --- | --- | --- | --- |
+    | `side` | literal | `"right"` | `left`, `right`, or `bottom` → `pjx-drawer--{side}`. |
+    | `open_on_mount` | `bool` | `False` | Adds `data-pjx-open-on-mount`; JS opens on arrival. |
+    | `remove_on_close` | `bool` | `False` | Adds `data-pjx-remove-on-close`; JS removes element on close. |
+    | `class_name` | `str` | `""` | Extra CSS classes on the root `<dialog>`. |
+    | `content` | `str \| BaseComponent` | `""` | Inner slot; place composable part components here. |
+
+??? note "Style tokens"
+
+    | Token | Default |
+    | --- | --- |
+    | `--pjx-drawer-width` | `min(24rem, 100vw)` |
+    | `--pjx-drawer-height-bottom` | `min(50dvh, 28rem)` |
+    | `--pjx-drawer-bg` | `var(--surface)` |
+    | `--pjx-drawer-border` | `var(--border)` |
+    | `--pjx-drawer-shadow` | `var(--shadow-md)` |
+    | `--pjx-drawer-backdrop` | `rgb(0 0 0 / 0.45)` |
+    | `--pjx-drawer-header-bg` | `var(--surface-alt)` |
+    | `--pjx-drawer-header-sep` | `var(--border)` |
+    | `--pjx-drawer-footer-bg` | `var(--surface-alt)` |
+    | `--pjx-drawer-footer-sep` | `var(--border)` |
+    | `--pjx-drawer-padding` | `1rem` |
+    | `--pjx-drawer-z` | `250` |
+
+??? note "DOM & classes"
+
+    Root `dialog.pjx-drawer.pjx-drawer--{side}` (state: `[open]`, `.pjx-drawer--closing`).
+    `data-pjx-open="<id>"` on any element opens it; `data-pjx-close` inside closes it;
+    `data-pjx-open-on-mount`, `data-pjx-remove-on-close` reflect lifecycle props.
+    Events: `pjx:drawer:before-open`*, `pjx:drawer:open`, `pjx:drawer:before-close`*, `pjx:drawer:close` — `*` = cancelable, `detail = {reason, trigger}`, `reason ∈ escape|backdrop|api|trigger`.
+    API: `pjx.drawer.open(id)`, `pjx.drawer.close(id)`.
+
+    **Classes:** `pjx-drawer`; side modifiers `pjx-drawer--left`, `--right`, `--bottom`; closing state `pjx-drawer--closing`. The inner layout classes (`__header`, `__title`, `__close`, `__body`, `__footer`) belong to the part components — see below.
+
+    `showModal()` gives the dialog an implicit `role="dialog"` and `aria-modal="true"`. Pass `aria-label`, or `aria-labelledby="<header-id>-title"` pointing at your `PJXDrawerHeader`'s title — both pass through to the root: `<PJXDrawer aria-labelledby="demo-drawer-h-title">`.
+
+??? note "Python"
+
+    ```python
+    PJXDrawer(
+        id="demo-drawer",
+        side="right",
+        content=(
+            PJXDrawerHeader(id="demo-drawer-h", title="Filter results").render()
+            + PJXDrawerBody(
+                id="demo-drawer-b",
+                content="<p>Adjust filters to narrow down your results.</p>",
+            ).render()
+            + PJXDrawerFooter(
+                id="demo-drawer-f",
+                content='<button class="pjx-demo-btn" data-pjx-close>Done</button>',
+            ).render()
+        ),
+    )
+    ```
+
+### PJXDrawerBody
+
+Scrollable body region for a `PJXDrawer`. **Assets:** `pjx_drawer_body.css`.
+
+```html
+<PJXDrawerBody>…links…</PJXDrawerBody>
+```
+
+??? note "Props & API"
+
+    | Field | Type | Default | Description |
+    | --- | --- | --- | --- |
+    | `class_name` | `str` | `""` | Extra CSS classes on the root `<div>`. |
+    | `content` | `str \| BaseComponent` | `""` | Body slot. |
+
+??? note "DOM & classes"
+
+    Root `<div class="pjx-drawer__body">`.
+
+    **Classes:** `pjx-drawer__body`.
+
+??? note "Python"
+
+    ```python
+    PJXDrawerBody(content="…links…")
+    ```
+
+### PJXDrawerFooter
+
+Footer strip for a `PJXDrawer`. **Assets:** `pjx_drawer_footer.css`.
+
+```html
+<PJXDrawerFooter>v1.0</PJXDrawerFooter>
+```
+
+??? note "Props & API"
+
+    | Field | Type | Default | Description |
+    | --- | --- | --- | --- |
+    | `class_name` | `str` | `""` | Extra CSS classes on the root `<footer>`. |
+    | `content` | `str \| BaseComponent` | `""` | Footer slot. |
+
+??? note "DOM & classes"
+
+    Root `<footer class="pjx-drawer__footer">`.
+
+    **Classes:** `pjx-drawer__footer`.
+
+??? note "Python"
+
+    ```python
+    PJXDrawerFooter(content="v1.0")
+    ```
+
+### PJXDrawerHeader
+
+Header bar for a `PJXDrawer`. Automatically includes a close button. **Assets:** `pjx_drawer_header.css`.
+
+```html
+<PJXDrawerHeader title="Menu"/>
+```
+
+??? note "Props & API"
+
+    | Field | Type | Default | Description |
+    | --- | --- | --- | --- |
+    | `title` | `str` | `""` | Renders `<span id="{id}-title" class="pjx-drawer__title">` when set; omit to use `content` for a fully custom header. The `id` gives `PJXDrawer`'s `aria-labelledby` something to point at. |
+    | `close_label` | `str` | `"Close"` | `aria-label` for the auto-included close button. |
+    | `close_content` | `str` | `"✕"` | Inner HTML/text of the close button. |
+    | `class_name` | `str` | `""` | Extra CSS classes on the root `<header>`. |
+    | `content` | `str \| BaseComponent` | `""` | Custom header slot used when `title` is not set. |
+
+??? note "DOM & classes"
+
+    Root `<header class="pjx-drawer__header">`. When `title` is set renders `<span class="pjx-drawer__title">`. Always renders a `<button class="pjx-drawer__close" data-pjx-close aria-label="...">`.
+
+    **Classes:** `pjx-drawer__header`, `pjx-drawer__title`, `pjx-drawer__close`.
+
+??? note "Python"
+
+    ```python
+    PJXDrawerHeader(title="Menu")
+    ```
+
+### PJXDropdown
+
+Button + anchored panel backed by the shared popover engine. **Assets:** `pjx_dropdown.css` plus `pjx_popover.js`, inherited from the `PJXPopover` it extends — a rendered dropdown ships the runtime that reads its `data-pjx-popover` markup.
+
+<!-- demo: PJXDropdown -->
+
+```html
+<!-- Menu entries are supplied via the `items` prop (a list); see the Python example below. -->
+<PJXDropdown trigger="Actions" menu_label="Actions menu" />
+```
+
+??? note "Props & API"
+
+    | Field | Type | Default | Description |
+    | --- | --- | --- | --- |
+    | `trigger` | `str \| BaseComponent` | `""` | Button label. |
+    | `items` | `list[str \| BaseComponent]` | `[]` | Menu items. A `str` entry is plain text and is HTML-escaped; pass a component for markup. |
+    | `align` | literal | `"start"` | `start` or `end` → `pjx-dropdown--align-end`. |
+    | `menu_label` | `str` | `"Submenu"` | `aria-label` on the menu panel. |
+    | `portal` | `bool` | `False` | Inherited from `PJXPopover`: reparent the menu to `document.body` while open, escaping a clipping ancestor. |
+
+    Trigger id is `{{ id }}-trigger`, menu is `{{ id }}-menu`.
+
+??? note "Style tokens"
+
+    | Token | Default |
+    | --- | --- |
+    | `--pjx-dropdown-menu-bg` | `var(--surface-alt)` |
+    | `--pjx-dropdown-menu-border` | `var(--border)` |
+    | `--pjx-dropdown-menu-radius` | `var(--radius-md)` |
+    | `--pjx-dropdown-menu-shadow` | `var(--shadow-md)` |
+    | `--pjx-dropdown-menu-padding` | `0.35rem 0` |
+    | `--pjx-dropdown-menu-min-w` | `10rem` |
+    | `--pjx-dropdown-menu-max-h` | `min(70dvh, 24rem)` |
+    | `--pjx-dropdown-z` | `350` |
+    | `--pjx-dropdown-trigger-bg` | `var(--surface-alt)` |
+    | `--pjx-dropdown-trigger-border` | `var(--border)` |
+    | `--pjx-dropdown-trigger-radius` | `var(--radius-md)` |
+    | `--pjx-dropdown-trigger-padding` | `0.5rem 0.85rem` |
+    | `--pjx-dropdown-trigger-bg-hover` | `color-mix(in srgb, var(--text) 6%, var(--surface-alt))` |
+
+??? note "DOM & classes"
+
+    Root `.pjx-dropdown` with `data-pjx-popover`. Trigger: `button.pjx-dropdown__trigger` with `data-pjx-toggle="{{ id }}-menu"`, `aria-expanded` synced by `pjx_popover.js`. Panel: `div.pjx-dropdown__menu[data-pjx-popover-panel][role="menu"]`, `hidden` when closed. All popover events and API apply: `pjx.popover.open/close/toggle(panelId)`. Document click outside closes the menu; `Escape` closes all open popovers. `portal=True` behaves exactly as it does on `PJXPopover`, menu in place of panel.
+
+    **Classes:** `pjx-dropdown`, `pjx-dropdown--align-end`, `pjx-dropdown__trigger`, `pjx-dropdown__menu`.
+
+??? note "Python"
+
+    ```python
+    PJXDropdown(
+        trigger="Actions",
+        items=[
+            PJXButton(variant="ghost", content=label)
+            for label in ("Edit", "Duplicate", "Delete")
+        ],
+        menu_label="Actions menu",
+    )
+    ```
+
+### PJXModal
+
+Native `<dialog>` shell. Compose with `PJXModalHeader`, `PJXModalBody`, and `PJXModalFooter` for structured layouts. **Assets:** `pjx_modal.css`, `pjx_modal.js`.
+
+<!-- demo: PJXModal -->
+
+```html
+<PJXModal id="demo-modal">
+  <PJXModalHeader id="demo-modal-h" title="Confirm changes"/>
+  <PJXModalBody id="demo-modal-b">Your draft will be published immediately. This action cannot be undone.</PJXModalBody>
+  <PJXModalFooter id="demo-modal-f"><button class="pjx-demo-btn" data-pjx-close>Cancel</button></PJXModalFooter>
+</PJXModal>
+```
+
+??? note "Props & API"
+
+    | Field | Type | Default | Description |
+    | --- | --- | --- | --- |
+    | `content` | `str \| BaseComponent` | `""` | Inner content (part components or arbitrary markup). |
+    | `open_on_mount` | `bool` | `False` | When `True`, adds `data-pjx-open-on-mount`; JS opens the dialog as soon as it mounts (e.g. via `hx-swap="beforeend"`). |
+    | `remove_on_close` | `bool` | `False` | When `True`, adds `data-pjx-remove-on-close`; JS removes the element from the DOM on close. |
+    | `class_name` | `str` | `""` | Extra CSS classes on the root `<dialog>`. |
+
+??? note "Style tokens"
+
+    | Token | Default |
+    | --- | --- |
+    | `--pjx-modal-width` | `52rem` |
+    | `--pjx-modal-min-height` | `28rem` |
+    | `--pjx-modal-bg` | `var(--surface)` |
+    | `--pjx-modal-border` | `var(--border)` |
+    | `--pjx-modal-radius` | `var(--radius-lg)` |
+    | `--pjx-modal-shadow` | `var(--shadow-md)` |
+    | `--pjx-modal-header-bg` | `var(--surface-alt)` |
+    | `--pjx-modal-header-sep` | `var(--border)` |
+    | `--pjx-modal-footer-bg` | `var(--surface-alt)` |
+    | `--pjx-modal-footer-sep` | `var(--border)` |
+    | `--pjx-modal-title-color` | `var(--text)` |
+    | `--pjx-modal-close-color` | `var(--text-muted)` |
+    | `--pjx-modal-backdrop` | `rgb(0 0 0 / 0.6)` |
+    | `--pjx-modal-padding` | `1.5rem` |
+
+    Close control hover uses `var(--surface)`, `var(--text)`, `var(--radius-sm)`, `var(--transition)` from your theme.
+
+??? note "DOM & classes"
+
+    Root `dialog.pjx-modal` (state: `[open]`, `.pjx-modal--closing`).
+    Attributes: `data-pjx-open="<id>"` on any element opens it on click; `data-pjx-close` inside closes it;
+    `data-pjx-open-on-mount`, `data-pjx-remove-on-close` reflect the lifecycle props.
+    Events (bubble from the root): `pjx:modal:before-open`*, `pjx:modal:open`,
+    `pjx:modal:before-close`*, `pjx:modal:close` — `*` = cancelable, `detail = {reason, trigger}`,
+    `reason ∈ escape|backdrop|api|trigger`. API: `pjx.modal.open(id)`, `pjx.modal.close(id)`.
+
+    **Classes:** `pjx-modal`; closing state `pjx-modal--closing`; `pjx-modal__box`. Part-component classes (`__header`, `__title`, `__close`, `__body`, `__footer`) belong to the respective part components below.
+
+    `showModal()` gives the dialog an implicit `role="dialog"` and `aria-modal="true"` — no extra markup needed. Content is arbitrary, so there's no automatic accessible name; pass `aria-label`, or `aria-labelledby="<header-id>-title"` pointing at your `PJXModalHeader`'s title — both pass through to the root like any other attribute: `<PJXModal aria-labelledby="demo-modal-h-title">`.
+
+??? note "Python"
+
+    ```python
+    PJXModal(
+        id="demo-modal",
+        content=(
+            PJXModalHeader(id="demo-modal-h", title="Confirm changes").render()
+            + PJXModalBody(
+                id="demo-modal-b",
+                content="Your draft will be published immediately. This action cannot be undone.",
+            ).render()
+            + PJXModalFooter(
+                id="demo-modal-f",
+                content='<button class="pjx-demo-btn" data-pjx-close>Cancel</button>',
+            ).render()
+        ),
+    )
+    ```
+
+### PJXModalBody
+
+Body part for `PJXModal`. Renders a `<div class="pjx-modal__body">`. **Assets:** `pjx_modal_body.css`.
+
+```html
+<PJXModalBody>This cannot be undone.</PJXModalBody>
+```
+
+??? note "Props & API"
+
+    | Field | Type | Default | Description |
+    | --- | --- | --- | --- |
+    | `class_name` | `str` | `""` | Extra CSS classes on the body `<div>`. |
+    | `content` | `str \| BaseComponent` | `""` | Main content. |
+
+??? note "DOM & classes"
+
+    **Classes:** `pjx-modal__body`.
+
+??? note "Python"
+
+    ```python
+    PJXModalBody(content="This cannot be undone.")
+    ```
+
+### PJXModalFooter
+
+Footer part for `PJXModal`. Renders a `<footer class="pjx-modal__footer">`. **Assets:** `pjx_modal_footer.css`.
+
+```html
+<PJXModalFooter><PJXButton content="Delete"/></PJXModalFooter>
+```
+
+??? note "Props & API"
+
+    | Field | Type | Default | Description |
+    | --- | --- | --- | --- |
+    | `class_name` | `str` | `""` | Extra CSS classes on the `<footer>`. |
+    | `content` | `str \| BaseComponent` | `""` | Footer content (e.g. action buttons). |
+
+??? note "DOM & classes"
+
+    **Classes:** `pjx-modal__footer`.
+
+??? note "Python"
+
+    ```python
+    PJXModalFooter(content=PJXButton(content="Delete").render())
+    ```
+
+### PJXModalHeader
+
+Header part for `PJXModal`. Renders a `<header>` inside the modal box; always includes a close button. **Assets:** `pjx_modal_header.css`.
+
+```html
+<PJXModalHeader title="Delete file?"/>
+```
+
+??? note "Props & API"
+
+    | Field | Type | Default | Description |
+    | --- | --- | --- | --- |
+    | `title` | `str` | `""` | When set, renders `<span id="{id}-title" class="pjx-modal__title">` with this text (escaped); when empty, `{{ content }}` is used instead. The `id` gives `PJXModal`'s `aria-labelledby` something to point at. |
+    | `close_label` | `str` | `"Close"` | `aria-label` for the auto-included close button. |
+    | `close_content` | `str` | `"✕"` | Inner markup/text of the close button. |
+    | `class_name` | `str` | `""` | Extra CSS classes on the `<header>`. |
+    | `content` | `str \| BaseComponent` | `""` | Custom header body; used when `title` is empty. |
+
+??? note "DOM & classes"
+
+    **Classes:** `pjx-modal__header`, `pjx-modal__title`, `pjx-modal__close`.
+
+??? note "Python"
+
+    ```python
+    PJXModalHeader(title="Delete file?")
+    ```
+
+### PJXNotification
+
+Fixed-position toast. **Assets:** `pjx_notification.css`, `pjx_notification.js`.
+
+<!-- demo: PJXNotification -->
+
+```html
+<PJXNotification
+  id="demo-notification"
+  content="Your changes have been saved."
+  corner="top-right"
+  timeout="4000"/>
+```
+
+??? note "Props & API"
+
+    | Field | Type | Default | Description |
+    | --- | --- | --- | --- |
+    | `content` | `str \| BaseComponent` | `""` | Message body. |
+    | `corner` | literal | `"top-right"` | `top-right`, `top-left`, `bottom-right`, `bottom-left`. |
+    | `timeout` | `int` | `5000` | Auto-dismiss ms; `0` disables. Rendered as `data-timeout`. |
+    | `autoshow` | `bool` | `True` | When `True`, adds `data-pjx-autoshow`; JS shows the notification as soon as it mounts. |
+    | `dismiss_label` | `str` | `"Dismiss"` | `aria-label` for the dismiss button. |
+
+    Maps children to `content`; see the [children-vs-`content` note](#components).
+
+??? note "Style tokens"
+
+    | Token | Default |
+    | --- | --- |
+    | `--pjx-notification-width` | `22rem` |
+    | `--pjx-notification-gap` | `1.25rem` (viewport inset; used in slide animations) |
+    | `--pjx-notification-bg` | `var(--surface-alt)` |
+    | `--pjx-notification-border` | `var(--border)` |
+    | `--pjx-notification-radius` | `var(--radius-md)` |
+    | `--pjx-notification-shadow` | `var(--shadow-md)` |
+    | `--pjx-notification-padding` | `1rem 1rem 1rem 1.25rem` |
+    | `--pjx-notification-close-color` | `var(--text-muted)` |
+    | `--pjx-notification-z` | `500` |
+
+    Content uses `var(--font-size-sm)`, `var(--text)`; close hover uses `var(--surface)`, `var(--text)`, `var(--radius-sm)`, `var(--transition)`.
+
+??? note "DOM & classes"
+
+    Root `.pjx-notification` (state: `.pjx-notification--visible`, `.pjx-notification--hiding`).
+    `data-pjx-autoshow` triggers auto-show on mount. `data-pjx-close` inside hides it.
+    Events: `pjx:notification:before-show`*, `pjx:notification:show`, `pjx:notification:before-hide`*, `pjx:notification:hide` — `*` = cancelable, `detail = {reason, trigger}`.
+    API: `pjx.notification.show(id)`, `pjx.notification.hide(id)`.
+
+    **Classes:** `pjx-notification`; placement `pjx-notification--top-right`, `--top-left`, `--bottom-right`, `--bottom-left`; JS state `pjx-notification--visible`, `pjx-notification--hiding`; `pjx-notification__content`, `pjx-notification__close`.
+
+??? note "Python"
+
+    ```python
+    PJXNotification(
+        id="demo-notification",
+        content="Your changes have been saved.",
+        corner="top-right",
+        timeout=4000,
+    )
+    ```
+
+### PJXPopover
+
+Click-toggle compound. Three separate components; compose them by placing `PJXPopoverTrigger` and `PJXPopoverPanel` **as children inside `PJXPopover`**. **Assets:** `pjx_popover.css`, `pjx_popover.js` (IIFE under `pjx.popover`).
+
+<!-- demo: PJXPopover -->
+
+```html
+<PJXPopover id="demo-popover">
+  <PJXPopoverTrigger id="demo-popover-t" role="dialog">Show info</PJXPopoverTrigger>
+  <PJXPopoverPanel id="demo-popover-p" role="dialog"><strong>Keyboard shortcuts</strong><p style="margin:.35rem 0 0">Press <kbd>?</kbd> anytime to reopen this panel.</p></PJXPopoverPanel>
+</PJXPopover>
+```
+
+??? note "Props & API"
+
+    | Field | Type | Default | Description |
+    | --- | --- | --- | --- |
+    | `content` | `str \| BaseComponent` | `""` | Children (trigger + panel). |
+    | `align` | literal | `"start"` | `start` or `end` (panel alignment) → `pjx-popover--align-end`. |
+    | `behavior` | `bool` | `True` | When `True`, adds `data-pjx-popover` (JS picks it up). |
+    | `portal` | `bool` | `False` | Reparent the panel to `document.body` while open, so an `overflow: hidden`/`auto` ancestor can't clip it. |
+
+??? note "Style tokens"
+
+    | Token | Default |
+    | --- | --- |
+    | `--pjx-popover-max-width` | `28ch` |
+    | `--pjx-popover-bg` | `var(--surface-alt)` |
+    | `--pjx-popover-border` | `var(--border)` |
+    | `--pjx-popover-radius` | `var(--radius-md)` |
+    | `--pjx-popover-shadow` | `var(--shadow-md)` |
+    | `--pjx-popover-padding` | `var(--space-3, 0.75rem) var(--space-4, 1rem)` |
+    | `--pjx-popover-z` | `300` |
+
+??? note "DOM & classes"
+
+    Root `[data-pjx-popover]` (the PJXPopover wrapper). Trigger: `[data-pjx-toggle]` on the trigger element; `aria-expanded` synced by JS. Panel: `[data-pjx-popover-panel]` element, `hidden` when closed. `data-pjx-close` inside the panel closes it. `data-pjx-toggle="<panel-id>"` on any element opens/closes a named panel.
+    Events (bubble from `[data-pjx-popover]`): `pjx:popover:before-open`*, `pjx:popover:open`, `pjx:popover:before-close`*, `pjx:popover:close` — `detail = {reason, trigger}`.
+    API: `pjx.popover.open(idOrEl)`, `pjx.popover.close(idOrEl)`, `pjx.popover.toggle(idOrEl)`.
+
+    With `portal=True` the root also carries `data-pjx-popover-portal`, and opening moves the panel alone to `document.body`, restoring it to its original position on close — the same escape hatch `PJXTooltip`'s `portal` prop offers when an ancestor's `overflow` clips the panel. The root, trigger, and panel keep resolving to each other while the panel lives elsewhere, so events and the JS API are unchanged. Two consequences are specific to a portalled popover: scrolling anywhere outside the panel closes it (a panel parked on `document.body` would otherwise detach visually from a trigger scrolling out from under it), emitting the usual close events with `reason: "scroll"`; and if the panel's original parent is removed from the document while the panel is open, the panel is dropped rather than left orphaned on `document.body`.
+
+    **Classes:** `pjx-popover`, `pjx-popover--align-end`, `pjx-popover__trigger`, `pjx-popover__panel`.
+
+??? note "Python"
+
+    ```python
+    PJXPopover(
+        id="demo-popover",
+        content=(
+            PJXPopoverTrigger(
+                id="demo-popover-t", content="Show info", role="dialog"
+            ).render()
+            + PJXPopoverPanel(
+                id="demo-popover-p",
+                role="dialog",
+                content=(
+                    "<strong>Keyboard shortcuts</strong>"
+                    '<p style="margin:.35rem 0 0">Press <kbd>?</kbd> anytime to reopen this panel.</p>'
+                ),
+            ).render()
+        ),
+    )
+    ```
+
+### PJXPopoverPanel
+
+Floating panel for a `PJXPopover`. **Assets:** bundled in `pjx_popover.css`.
+
+```html
+<PJXPopoverPanel id="p" role="menu">…</PJXPopoverPanel>
+```
+
+??? note "Props & API"
+
+    | Field | Type | Default | Description |
+    | --- | --- | --- | --- |
+    | `content` | `str \| BaseComponent` | `""` | Panel body. |
+    | `as_form` | `bool` | `False` | Render panel as `<form>` instead of `<div>`. |
+    | `role` | literal | `""` | ARIA `role` attribute (`menu`, `listbox`, `dialog`, or `""`). |
+    | `behavior` | `bool` | `True` | When `True`, adds `data-pjx-popover-panel` (hidden by default). |
+
+??? note "DOM & classes"
+
+    `[data-pjx-popover-panel]` element, `hidden` when closed.
+
+    **Classes:** `pjx-popover__panel`.
+
+??? note "Python"
+
+    ```python
+    PJXPopoverPanel(id="p", role="menu", content="…")
+    ```
+
+### PJXPopoverTrigger
+
+Trigger button for a `PJXPopover`. **Assets:** bundled in `pjx_popover.css`.
+
+```html
+<PJXPopoverTrigger id="t">Open</PJXPopoverTrigger>
+```
+
+??? note "Props & API"
+
+    | Field | Type | Default | Description |
+    | --- | --- | --- | --- |
+    | `content` | `str \| BaseComponent` | `""` | Button/div label. |
+    | `tag` | literal | `"button"` | `button` or `div` (role="button"). |
+    | `role` | literal | `""` | `aria-haspopup` value: `menu`, `listbox`, `dialog`, or `""`. |
+    | `behavior` | `bool` | `True` | When `True`, adds `data-pjx-toggle`. |
+
+??? note "DOM & classes"
+
+    `[data-pjx-toggle]` element; `aria-expanded` synced by JS.
+
+    **Classes:** `pjx-popover__trigger`.
+
+??? note "Python"
+
+    ```python
+    PJXPopoverTrigger(id="t", content="Open")
+    ```
+
+### PJXToastHost
+
+HX-Trigger-driven toast container singleton. Mount once in the layout. **Assets:** `pjx_toast_host.css`, `pjx_toast_host.js`.
+
+<!-- demo: PJXToastHost -->
+
+```html
+<PJXToastHost position="bottom-right"/>
+```
+
+??? note "Props & API"
+
+    | Field | Type | Default | Description |
+    | --- | --- | --- | --- |
+    | `position` | literal | `"bottom-right"` | `top-right`, `top-left`, `bottom-right`, `bottom-left`. |
+    | `timeout` | `int` | `4000` | Default auto-dismiss ms; `0` disables. |
+    | `dismiss_label` | `str` | `"Dismiss"` | `aria-label` for dismiss buttons on individual toasts. |
+    | `event_name` | `str` | `"pjx:toast"` | Custom event name to listen for (wired on mount). |
+
+    Fire from a FastAPI route via `HX-Trigger`:
+
+    ```python
+    import json
+
+    response.headers["HX-Trigger"] = json.dumps(
+        {"pjx:toast": {"message": "Saved.", "level": "success"}}
+    )
+    ```
+
+    Or from JS:
+
+    ```javascript
+    pjx.toast("Upload complete.", { level: "success", timeout: 3000 });
+    ```
+
+    Toast `level` maps to `.pjx-toast--<level>`; supported values: `info`, `success`, `warning`, `error`.
+
+??? note "Style tokens"
+
+    | Token | Default |
+    | --- | --- |
+    | `--pjx-toast-bg` | `var(--surface)` |
+    | `--pjx-toast-border` | `var(--border)` |
+    | `--pjx-toast-radius` | `var(--radius-md)` |
+    | `--pjx-toast-shadow` | `var(--shadow-md)` |
+    | `--pjx-toast-gap` | `0.5rem` |
+    | `--pjx-toast-z` | `1000` |
+    | `--pjx-toast-info` | `var(--brand, #5c8fa8)` |
+    | `--pjx-toast-success` | `#3e7d4f` |
+    | `--pjx-toast-warning` | `#b07415` |
+    | `--pjx-toast-error` | `#b3261e` |
+
+??? note "DOM & classes"
+
+    Root `div.pjx-toast-host[data-pjx-toast-host]`. `data-event-name` sets the custom event; `data-timeout` sets the default dismiss timeout; `data-dismiss-label` sets dismiss button label.
+    Events (bubble from the host): `pjx:toasthost:show` (detail: `{level}`), `pjx:toasthost:hide`.
+    API: `pjx.toast(message, {level?, timeout?})`.
+    Individual toasts: `div.pjx-toast.pjx-toast--<level>` > `.pjx-toast__message` + `button.pjx-toast__dismiss`.
+
+    **Classes:** `pjx-toast-host`, `pjx-toast-host--top-right`, `--top-left`, `--bottom-right`, `--bottom-left`; `pjx-toast`, `pjx-toast--info`, `--success`, `--warning`, `--error`; `pjx-toast--hiding`; `pjx-toast__message`, `pjx-toast__dismiss`.
+
+??? note "Python"
+
+    ```python
+    PJXToastHost(position="bottom-right")
+    ```
+
+### PJXTooltip
+
+Composable tooltip shell. Compose with `PJXTooltipTrigger` and `PJXTooltipContent`. **Assets:** `pjx_tooltip.css`, `pjx_tooltip.js` (IIFE — no API, behavior only).
+
+<!-- demo: PJXTooltip -->
+
+```html
+<PJXTooltip id="demo-tooltip" placement="top">
+  <PJXTooltipTrigger id="demo-tooltip-tr">Hover over me</PJXTooltipTrigger>
+  <PJXTooltipContent id="demo-tooltip-tc">This is additional context shown on hover or focus.</PJXTooltipContent>
+</PJXTooltip>
+```
+
+??? note "Props & API"
+
+    | Field | Type | Default | Description |
+    | --- | --- | --- | --- |
+    | `placement` | literal | `"top"` | `top`, `bottom`, `start`, `end` → `data-pjx-tooltip-placement`. |
+    | `backdrop` | `bool` | `False` | Dim the rest of the page while the tip is open (attention-grabbing hover cards). |
+    | `content` | `str \| BaseComponent` | `""` | Children: compose `PJXTooltipTrigger` + `PJXTooltipContent` here. |
+
+??? note "Style tokens"
+
+    | Token | Default |
+    | --- | --- |
+    | `--pjx-tooltip-gap` | `6px` |
+    | `--pjx-tooltip-bg` | `var(--surface-alt)` |
+    | `--pjx-tooltip-border` | `var(--border)` |
+    | `--pjx-tooltip-radius` | `var(--radius-sm)` |
+    | `--pjx-tooltip-shadow` | `var(--shadow-md)` |
+    | `--pjx-tooltip-padding` | `0.35rem 0.5rem` |
+    | `--pjx-tooltip-max-width` | `20ch` |
+    | `--pjx-tooltip-fg` | `var(--text)` |
+    | `--pjx-tooltip-font-size` | `var(--font-size-xs)` |
+    | `--pjx-tooltip-z` | `400` |
+    | `--pjx-tooltip-backdrop` | `rgb(0 0 0 / 0.45)` |
+    | `--pjx-tooltip-backdrop-z` | `390` |
+
+??? note "DOM & classes"
+
+    Root `.pjx-tooltip` `<span>`. `data-pjx-tooltip-placement` drives JS positioning. Tip shows on `mouseover` anywhere inside `.pjx-tooltip` root, or on `focusin` of `.pjx-tooltip__trigger`; hides on `mouseout`/`focusout`; repositions on `scroll`. The JS sets `aria-describedby` at runtime when the tip is shown. No JS API (`pjx._tooltipWired` guard only).
+
+    With `backdrop=True` the root also renders a `.pjx-tooltip__backdrop` `<span>` (`data-pjx-tooltip-backdrop`, `hidden`) that the same show/hide lifecycle fades in and out via `.pjx-tooltip__backdrop--visible`. It is `position: fixed` and `pointer-events: none`, sits below the tip at `--pjx-tooltip-backdrop-z`, and lifts `.pjx-tooltip__trigger` above itself while open.
+
+    **Classes:** `pjx-tooltip`, `pjx-tooltip__backdrop`, `pjx-tooltip__backdrop--visible`.
+
+??? note "Python"
+
+    ```python
+    PJXTooltip(
+        id="demo-tooltip",
+        placement="top",
+        content=(
+            PJXTooltipTrigger(id="demo-tooltip-tr", content="Hover over me").render()
+            + PJXTooltipContent(
+                id="demo-tooltip-tc",
+                content="This is additional context shown on hover or focus.",
+            ).render()
+        ),
+    )
+    ```
+
+### PJXTooltipContent
+
+The floating tip body. **Assets:** `pjx_tooltip_content.css`.
+
+```html
+<PJXTooltipContent>This is additional context shown on hover or focus.</PJXTooltipContent>
+```
+
+??? note "Props & API"
+
+    | Field | Type | Default | Description |
+    | --- | --- | --- | --- |
+    | `content` | `str \| BaseComponent` | `""` | Tooltip text or rich content. |
+
+??? note "DOM & classes"
+
+    `<span class="pjx-tooltip__tip" role="tooltip" hidden>`. The JS removes `hidden` and adds `.pjx-tooltip__tip--visible` on show. Place inside a `PJXTooltip` shell.
+
+    **Classes:** `pjx-tooltip__tip`.
+
+??? note "Python"
+
+    ```python
+    PJXTooltipContent(content="This is additional context shown on hover or focus.")
+    ```
+
+### PJXTooltipTrigger
+
+The focusable trigger part of a tooltip. **Assets:** `pjx_tooltip_trigger.css`.
+
+```html
+<PJXTooltipTrigger>Hover over me</PJXTooltipTrigger>
+```
+
+??? note "Props & API"
+
+    | Field | Type | Default | Description |
+    | --- | --- | --- | --- |
+    | `content` | `str \| BaseComponent` | `""` | Trigger label or element. |
+
+??? note "DOM & classes"
+
+    `<span class="pjx-tooltip__trigger" tabindex="0">`. The JS sets `aria-describedby` to the tip's id at show time. Place inside a `PJXTooltip` shell.
+
+    **Classes:** `pjx-tooltip__trigger`.
+
+??? note "Python"
+
+    ```python
+    PJXTooltipTrigger(content="Hover over me")
+    ```
+
+## Interaction & loading
 
 ### PJXAccordion
 
@@ -809,39 +1588,6 @@ Collapsible section built on native `<details>`. Composed with `PJXAccordionTrig
             content="<p>A Python/Jinja HTML component framework.</p>"
         ).render()
     )
-    ```
-
-### PJXAccordionTrigger
-
-The `<summary>` part of a composed accordion. Composes [`PJXIcon`](#pjxicon) for the disclosure chevron. **Assets:** `pjx_accordion_trigger.css` (trigger + chevron styles), `pjx_accordion_trigger.js` (toggle-suppression for opt-in `pjx-accordion__actions`).
-
-```html
-<PJXAccordion>
-  <PJXAccordionTrigger>What is pyjinhx?</PJXAccordionTrigger>
-  <PJXAccordionContent>…</PJXAccordionContent>
-</PJXAccordion>
-```
-
-??? note "Props & API"
-
-    | Field | Type | Default | Description |
-    | --- | --- | --- | --- |
-    | `disabled` | `bool` | `False` | Marks the summary `aria-disabled="true"` + `tabindex="-1"` (and `pointer-events: none` via CSS). |
-    | `class_name` | `AttrValue` | `""` | Extra CSS class(es) for the root element. |
-    | `content` | `str \| BaseComponent` | `""` | Trigger label (text or rich markup). |
-
-    **Actions (opt-in).** To add non-toggling action buttons, wrap them in `<div class="pjx-accordion__actions">` inside `content`. `pjx_accordion_trigger.js` registers a single capture-phase `click` listener that calls `preventDefault()` (only — deliberately **not** `stopPropagation()`) for any click inside `.pjx-accordion__actions`. This cancels the native `<summary>` toggle while leaving htmx and other handlers intact.
-
-??? note "DOM & classes"
-
-    Root `<summary class="pjx-accordion__trigger">` containing the auto-chevron and `content`. The chevron rotates on `[open]` via CSS. The default marker is stripped.
-
-    **Classes:** `pjx-accordion__trigger`, `pjx-accordion__chevron`, `pjx-accordion__actions`.
-
-??? note "Python"
-
-    ```python
-    PJXAccordionTrigger(content="What is pyjinhx?")
     ```
 
 ### PJXAccordionContent
@@ -938,1053 +1684,627 @@ Groups a set of `PJXAccordion`s into a shared layout/behavior container. Handles
     )
     ```
 
-### PJXTable
+### PJXAccordionTrigger
 
-Accessible data table shell. Compose with `PJXTableHead`, `PJXTableBody`, `PJXTableRow`, `PJXTableHeaderCell`, and `PJXTableCell` parts. **Assets:** `pjx_table.css`.
-
-<!-- demo: PJXTable -->
+The `<summary>` part of a composed accordion. Composes [`PJXIcon`](#pjxicon) for the disclosure chevron. **Assets:** `pjx_accordion_trigger.css` (trigger + chevron styles), `pjx_accordion_trigger.js` (toggle-suppression for opt-in `pjx-accordion__actions`).
 
 ```html
-<PJXTable caption="Team members" striped="true" bordered="horizontal">
-  <PJXTableHead>
-    <PJXTableRow>
-      <PJXTableHeaderCell sortable="true" sort="asc">Name</PJXTableHeaderCell>
-      <PJXTableHeaderCell>Role</PJXTableHeaderCell>
-    </PJXTableRow>
-  </PJXTableHead>
-  <PJXTableBody>
-    <PJXTableRow selectable="true" value="1"><PJXTableCell>Ada Lovelace</PJXTableCell><PJXTableCell>Engineer</PJXTableCell></PJXTableRow>
-    <PJXTableRow selectable="true" value="2"><PJXTableCell>Alan Turing</PJXTableCell><PJXTableCell>Researcher</PJXTableCell></PJXTableRow>
-  </PJXTableBody>
-</PJXTable>
+<PJXAccordion>
+  <PJXAccordionTrigger>What is pyjinhx?</PJXAccordionTrigger>
+  <PJXAccordionContent>…</PJXAccordionContent>
+</PJXAccordion>
 ```
 
 ??? note "Props & API"
 
     | Field | Type | Default | Description |
     | --- | --- | --- | --- |
-    | `caption` | `str` | `""` | `<caption>` text; suppressed when empty. |
-    | `striped` | `bool` | `False` | Alternating row shading via `pjx-table--striped`. |
-    | `sticky_header` | `bool` | `False` | Keeps the `<thead>` visible on scroll via `pjx-table--sticky`. |
-    | `density` | `"comfortable" \| "compact"` | `"comfortable"` | Cell padding scale → `pjx-table--density-compact` when `"compact"`; no class for `"comfortable"` or `"none"`. |
-    | `bordered` | `"none" \| "horizontal" \| "all"` | `"none"` | Border style → `pjx-table--bordered-{bordered}` (omitted when `"none"`). |
-    | `class_name` | `AttrValue` | `""` | Extra CSS class(es) on the root element. |
-    | `content` | `str \| BaseComponent` | `""` | Pre-rendered children (`PJXTableHead` + `PJXTableBody`). |
+    | `disabled` | `bool` | `False` | Marks the summary `aria-disabled="true"` + `tabindex="-1"` (and `pointer-events: none` via CSS). |
+    | `class_name` | `AttrValue` | `""` | Extra CSS class(es) for the root element. |
+    | `content` | `str \| BaseComponent` | `""` | Trigger label (text or rich markup). |
+
+    **Actions (opt-in).** To add non-toggling action buttons, wrap them in `<div class="pjx-accordion__actions">` inside `content`. `pjx_accordion_trigger.js` registers a single capture-phase `click` listener that calls `preventDefault()` (only — deliberately **not** `stopPropagation()`) for any click inside `.pjx-accordion__actions`. This cancels the native `<summary>` toggle while leaving htmx and other handlers intact.
+
+??? note "DOM & classes"
+
+    Root `<summary class="pjx-accordion__trigger">` containing the auto-chevron and `content`. The chevron rotates on `[open]` via CSS. The default marker is stripped.
+
+    **Classes:** `pjx-accordion__trigger`, `pjx-accordion__chevron`, `pjx-accordion__actions`.
+
+??? note "Python"
+
+    ```python
+    PJXAccordionTrigger(content="What is pyjinhx?")
+    ```
+
+### PJXCarousel
+
+Compound image/content carousel with arrows, dots, keyboard nav, swipe, and opt-in autoplay. Compose with [`PJXCarouselSlide`](#pjxcarouselslide). **Assets:** `pjx_carousel.css`, `pjx_carousel.js`.
+
+<!-- demo: PJXCarousel -->
+
+```html
+<PJXCarousel label="Product photos">
+  <PJXCarouselSlide><img src="/photo-1.jpg" alt="Front view"></PJXCarouselSlide>
+  <PJXCarouselSlide><img src="/photo-2.jpg" alt="Side view"></PJXCarouselSlide>
+  <PJXCarouselSlide><img src="/photo-3.jpg" alt="Back view"></PJXCarouselSlide>
+</PJXCarousel>
+```
+
+??? note "Props & API"
+
+    | Field | Type | Default | Description |
+    | --- | --- | --- | --- |
+    | `label` | `str` | `"Carousel"` | `aria-label` on the root region. |
+    | `loop` | `bool` | `True` | Wrap at the ends. When `False`, the prev/next arrows disable (`aria-disabled`) at the first/last slide. |
+    | `autoplay` | `bool` | `False` | Auto-advance on a timer. Always ships a play/pause toggle button when enabled, and pauses on hover/focus/pointer interaction — never a silent, unpausable auto-advance. |
+    | `interval_ms` | `int` | `5000` | Autoplay interval in milliseconds. Ignored when `autoplay=False`. |
+    | `prev_label` | `str` | `"Previous slide"` | aria-label on the previous-slide arrow button. |
+    | `next_label` | `str` | `"Next slide"` | aria-label on the next-slide arrow button. |
+    | `autoplay_toggle_label` | `str` | `"Pause autoplay"` | aria-label on the autoplay pause/play toggle button (only rendered when autoplay=True). |
+    | `class_name` | `str` | `""` | Extra CSS class(es) appended to the root element. |
+    | `content` | `str \| BaseComponent` | `""` | Composed interior — one or more `PJXCarouselSlide`s. |
+
+    Respects `prefers-reduced-motion: reduce`: disables the slide transition and disables autoplay outright.
 
 ??? note "Style tokens"
 
     | Token | Default |
     | --- | --- |
-    | `--pjx-table-border` | `var(--border)` |
-    | `--pjx-table-header-bg` | `var(--surface-alt)` |
-    | `--pjx-table-header-fg` | `var(--text)` |
-    | `--pjx-table-stripe-bg` | `var(--surface-alt)` |
-    | `--pjx-table-row-hover-bg` | `var(--surface-alt)` |
-    | `--pjx-table-cell-pad-y` | `0.5rem` |
-    | `--pjx-table-cell-pad-x` | `0.75rem` |
+    | `--pjx-carousel-border` | `var(--border)` |
+    | `--pjx-carousel-bg` | `var(--surface)` |
+    | `--pjx-carousel-radius` | `var(--radius-md)` |
+    | `--pjx-carousel-arrow-bg` | `color-mix(in srgb, var(--surface) 70%, transparent)` |
+    | `--pjx-carousel-arrow-fg` | `var(--text)` |
+    | `--pjx-carousel-dot-bg` | `var(--border)` |
+    | `--pjx-carousel-dot-active-bg` | `var(--brand)` |
 
 ??? note "DOM & classes"
 
-    Root `<table class="pjx-table">` with an optional `<caption class="pjx-table__caption">` as its first child. No JS public API — sort state is reflected via `aria-sort` on `<th>` cells and driven by your own htmx/Alpine handlers on `PJXTableHeaderCell`.
+    Root `div.pjx-carousel[role="region"][data-pjx-carousel]`. `pjx_carousel.js` discovers `[data-pjx-carousel-slide]` descendants at init, builds dots, and delegates click/keyboard/pointer events on `[data-pjx-carousel]`. Fires a cancelable `pjx:carousel:before-change` then `pjx:carousel:change` on the root, `detail = {index, reason}`.
 
-    **Classes:** `pjx-table`, `pjx-table--striped`, `pjx-table--sticky`, `pjx-table--density-compact`, `pjx-table--bordered-horizontal`, `pjx-table--bordered-all`.
+    **Classes:** `pjx-carousel`, `pjx-carousel__track`, `pjx-carousel__arrow`, `pjx-carousel__dots`, `pjx-carousel__dot`, `pjx-carousel__autoplay-toggle`.
 
 ??? note "Python"
 
     ```python
-    PJXTable(
-        caption="Team members",
-        striped=True,
-        bordered="horizontal",
+    PJXCarousel(
+        label="Product photos",
         content=(
-            PJXTableHead(
-                content=PJXTableRow(
-                    content=(
-                        PJXTableHeaderCell(
-                            sortable=True, sort="asc", content="Name"
-                        ).render()
-                        + PJXTableHeaderCell(content="Role").render()
-                    )
-                ).render()
-            ).render()
-            + PJXTableBody(
-                content=(
-                    PJXTableRow(
-                        selectable=True,
-                        value="1",
-                        content=(
-                            PJXTableCell(content="Ada Lovelace").render()
-                            + PJXTableCell(content="Engineer").render()
-                        ),
-                    ).render()
-                    + PJXTableRow(
-                        selectable=True,
-                        value="2",
-                        content=(
-                            PJXTableCell(content="Alan Turing").render()
-                            + PJXTableCell(content="Researcher").render()
-                        ),
-                    ).render()
-                )
-            ).render()
+            PJXCarouselSlide(content='<img src="/photo-1.jpg" alt="Front view">').render()
+            + PJXCarouselSlide(content='<img src="/photo-2.jpg" alt="Side view">').render()
+            + PJXCarouselSlide(content='<img src="/photo-3.jpg" alt="Back view">').render()
         ),
     )
     ```
 
-### PJXTableHead
+### PJXCarouselSlide
 
-`<thead>` wrapper for a composed table. **Assets:** none (styled via `pjx_table.css`).
+Single carousel slide (any content, not just images). **Assets:** `pjx_carousel_slide.css`.
 
 ```html
-<PJXTable>
-  <PJXTableHead>
-    <PJXTableRow>
-      <PJXTableHeaderCell>Name</PJXTableHeaderCell>
-    </PJXTableRow>
-  </PJXTableHead>
-</PJXTable>
+<PJXCarouselSlide label="Front view">
+  <img src="/photo-1.jpg" alt="Front view">
+</PJXCarouselSlide>
 ```
 
 ??? note "Props & API"
 
     | Field | Type | Default | Description |
     | --- | --- | --- | --- |
-    | `class_name` | `AttrValue` | `""` | Extra CSS class(es) on the root element. |
-    | `content` | `str \| BaseComponent` | `""` | Pre-rendered `PJXTableRow` children. |
+    | `label` | `str` | `""` | Optional per-slide `aria-label` prefix (e.g. "Front view"). The engine appends "— N of M" at init regardless of whether `label` is set. |
+    | `class_name` | `str` | `""` | Extra CSS class(es) appended to the root element. |
+    | `content` | `str \| BaseComponent` | `""` | Slide content — typically an `<img>`, but any markup is valid. |
 
 ??? note "DOM & classes"
 
-    Root `<thead class="pjx-table__head">` rendering `{{ content }}` verbatim.
+    Root `div.pjx-carousel__slide[role="group"][data-pjx-carousel-slide]`.
 
-    **Classes:** `pjx-table__head`.
+    **Classes:** `pjx-carousel__slide`.
 
 ??? note "Python"
 
     ```python
-    PJXTableHead(
-        content=PJXTableRow(content=PJXTableHeaderCell(content="Name").render()).render()
+    PJXCarouselSlide(
+        label="Front view", content='<img src="/photo-1.jpg" alt="Front view">'
     )
     ```
 
-### PJXTableBody
+### PJXGraph
 
-`<tbody>` wrapper for a composed table. **Assets:** none (styled via `pjx_table.css`).
+Pan/zoom node graph: draggable node cards joined by edges, zoom controls and a side panel, composed from `PJXGraphNodes`, `PJXGraphNode`, `PJXGraphEdges`, `PJXGraphControls` and `PJXGraphSidePanel`. **Assets:** `pjx_graph.css`, `pjx_graph.js`, `pjx_graph_node.css`, `pjx_graph_controls.css`, `pjx_graph_side_panel.css`.
+
+<!-- demo: PJXGraph -->
+
+Drag a node, drag a wire from a node's right-hand port onto another node, or click a node to open the panel. A docs page has no server, so a small inline script stands in for the two routes from [Wiring the app](guide/graph.md#wiring-the-app). The new edge still arrives as a real htmx out-of-band swap of the edge layer.
+
+```python
+nodes = [
+    PJXGraphNode(
+        id="node-a", node_id="a", x=40, y=60, title="Fetch", out_ports=("next",)
+    ),
+    PJXGraphNode(id="node-b", node_id="b", x=320, y=60, title="Store", in_port=True),
+]
+PJXGraph(
+    id="flow",
+    nodes=PJXGraphNodes(
+        id="flow-nodes", nodes_html=PJXGraphNodes.join(node.render() for node in nodes)
+    ),
+    edges=PJXGraphEdges(
+        id="flow-edges", edges=[{"id": "a-b", "from": "a", "to": "b", "port": "next"}]
+    ),
+    controls=PJXGraphControls(),
+    panel=PJXGraphSidePanel(id="flow-panel"),
+)
+```
+
+Every prop, event, persistence rule and update shape is in the [Graph guide](guide/graph.md).
+
+### PJXLazyLoad
+
+HTMX deferred-content loader: an element that fetches `url` on a computed trigger and swaps itself with the response. Use it three ways — a **lazy panel** (load a section's content on first reveal), **load-on-mount**, or an **infinite-scroll sentinel** at the end of a list/table. **Assets:** `pjx_lazy_load.css`, `pjx_lazy_load.js`. `PJXLazyLoad` needs a backend, so it has no live render.
 
 ```html
-<PJXTable>
-  <PJXTableBody>
-    <PJXTableRow><PJXTableCell>Ada Lovelace</PJXTableCell></PJXTableRow>
-  </PJXTableBody>
-</PJXTable>
+<PJXLazyLoad id="comments" url="/posts/42/comments">
+  <PJXSkeleton id="comments-skel"/>
+</PJXLazyLoad>
 ```
 
 ??? note "Props & API"
 
     | Field | Type | Default | Description |
     | --- | --- | --- | --- |
-    | `class_name` | `AttrValue` | `""` | Extra CSS class(es) on the root element. |
-    | `content` | `str \| BaseComponent` | `""` | Pre-rendered `PJXTableRow` children. |
+    | `url` | `str` | required | Endpoint for the deferred content (`hx-get`). |
+    | `when` | literal | `"viewport"` | `viewport` (scroll-revealed), `reveal` (`pjx:reveal` from nearest `[data-pjx-region]`), `load` (immediately). Overridden by `trigger`. |
+    | `trigger` | `str` | `""` | Explicit `hx-trigger` value; overrides `when` entirely when set. |
+    | `swap` | `str` | `"outerHTML"` | `hx-swap` strategy. The default self-replaces the element. |
+    | `tag` | literal | `"div"` | Rendered root element: `div`, `li` (inside a `<ul>`/`<ol>`), or `tr` (inside a `<tbody>`). Lets the loader sit directly in a list or table. |
+    | `content` | `str \| BaseComponent` | `""` | Placeholder / loading indicator shown until the fetch lands (e.g. a [`PJXSkeleton`](#pjxskeleton) or "Loading…"). |
+
+    `when` preset mapping:
+
+    | `when` | `hx-trigger` value |
+    | --- | --- |
+    | `viewport` (default) | `revealed` |
+    | `reveal` | `pjx:reveal from:closest [data-pjx-region] once` |
+    | `load` | `load` |
+
+    **Load more on scroll (infinite-scroll sentinel).** Drop a `PJXLazyLoad` at the end of a list or `<tbody>` with `when="viewport"` and the matching `tag`. When it scrolls into view it `hx-get`s `url` and `outerHTML`-replaces itself with the server's next batch **plus a fresh `PJXLazyLoad`** carrying the next cursor; the loop ends when the server stops emitting a sentinel. The scroll container is just a `max-height; overflow:auto` wrapper (or the page) — no extra component needed. Ships no JS (htmx's `revealed` does the visibility detection).
+
+    ```html
+    <tbody id="rows">
+      <!-- … rendered rows … -->
+      <PJXLazyLoad url="/rows?cursor=20" tag="tr" content="Loading…"/>
+    </tbody>
+    ```
 
 ??? note "DOM & classes"
 
-    Root `<tbody class="pjx-table__body">` rendering `{{ content }}` verbatim.
+    Root `.pjx-lazy-load` (element chosen by `tag`); no JS (pure HTMX). `data-pjx-region` on a `PJXTabPanel` host fires `pjx:reveal`/`pjx:before-reveal` events that `when="reveal"` listens for.
 
-    **Classes:** `pjx-table__body`.
+    **Classes:** `pjx-lazy-load` (unstyled hook). No theming tokens.
 
 ??? note "Python"
 
     ```python
-    PJXTableBody(
-        content=PJXTableRow(content=PJXTableCell(content="Ada Lovelace").render()).render()
+    PJXLazyLoad(
+        id="comments", url="/posts/42/comments", content=PJXSkeleton(id="comments-skel")
     )
     ```
 
-### PJXTableRow
+### PJXPageLoader
 
-A `<tr>` for either the head or body section. When `selectable=True`, a checkbox cell is auto-prepended on the body row. **Assets:** none (styled via `pjx_table.css`).
+Full-page navigation loader. Mount once at the top of the layout body. **Assets:** `pjx_page_loader.css`, `pjx_page_loader.js`.
+
+<!-- demo: PJXPageLoader -->
 
 ```html
-<PJXTableRow selectable="true" value="1">
-  <PJXTableCell>Ada Lovelace</PJXTableCell>
-  <PJXTableCell>Engineer</PJXTableCell>
-</PJXTableRow>
+<PJXPageLoader id="demo-page-loader"/>
 ```
 
 ??? note "Props & API"
 
     | Field | Type | Default | Description |
     | --- | --- | --- | --- |
-    | `selectable` | `bool` | `False` | Auto-prepends a checkbox `<td>` with `name="selected"` and `value="{{ value }}"`. |
-    | `value` | `str` | `""` | Checkbox value emitted when the row is selected. |
-    | `select_label` | `str` | `"Select row"` | `aria-label` on the auto-prepended checkbox. |
-    | `class_name` | `AttrValue` | `""` | Extra CSS class(es) on the root element. |
-    | `content` | `str \| BaseComponent` | `""` | Pre-rendered cell children. |
+    | `nav_targets` | `str` | `"app-content"` | Comma-separated element ids whose htmx GET requests activate the loader. |
+    | `active_on_load` | `bool` | `True` | When `True`, renders with `.pjx-page-loader--active` (cold-load shimmer, removed on `DOMContentLoaded`). |
+    | `loading_label` | `str` | `"Loading"` | `aria-label` for the `role="status"` element. |
 
-    **Select-all alignment.** When using `selectable` rows, add a leading `PJXTableHeaderCell` to the head row (empty, or a select-all checkbox you wire with htmx/Alpine) so the columns align — `selectable` only auto-prepends a checkbox on body rows.
+    Add `data-pjx-loader` to any element to make its htmx requests activate the loader regardless of `nav_targets`:
 
-??? note "DOM & classes"
-
-    Root `<tr class="pjx-table__row">`; `pjx-table__row--selectable` added when `selectable=True`.
-
-    **Classes:** `pjx-table__row`, `pjx-table__row--selectable`.
-
-??? note "Python"
-
-    ```python
-    PJXTableRow(
-        selectable=True,
-        value="1",
-        content=PJXTableCell(content="Ada Lovelace").render()
-        + PJXTableCell(content="Engineer").render(),
-    )
+    ```html
+    <a hx-get="/slow-page" hx-target="#main-content" data-pjx-loader>Go</a>
     ```
-
-### PJXTableHeaderCell
-
-A `<th>` for use inside `PJXTableRow` in the head section. Reflects sort direction via `aria-sort`. **Assets:** none (styled via `pjx_table.css`).
-
-```html
-<PJXTableHeaderCell sortable="true" sort="asc">Name</PJXTableHeaderCell>
-```
-
-??? note "Props & API"
-
-    | Field | Type | Default | Description |
-    | --- | --- | --- | --- |
-    | `sortable` | `bool` | `False` | Adds `pjx-table__th--sortable` and a sort-direction indicator. |
-    | `sort` | `"none" \| "asc" \| "desc"` | `"none"` | Current sort direction → `aria-sort` attribute; `"none"` omits `aria-sort`. |
-    | `class_name` | `AttrValue` | `""` | Extra CSS class(es) on the root element. |
-    | `content` | `str \| BaseComponent` | `""` | Column header label. |
-
-??? note "DOM & classes"
-
-    Root `<th class="pjx-table__th" scope="col">`. When `sortable=True`: `pjx-table__th--sortable` is added and `aria-sort` is set when `sort` is `"asc"` or `"desc"`.
-
-    **Classes:** `pjx-table__th`, `pjx-table__th--sortable`.
-
-??? note "Python"
-
-    ```python
-    PJXTableHeaderCell(sortable=True, sort="asc", content="Name")
-    ```
-
-### PJXTableCell
-
-A `<td>` for use inside `PJXTableRow` in the body section. **Assets:** none (styled via `pjx_table.css`).
-
-```html
-<PJXTableCell>Ada Lovelace</PJXTableCell>
-```
-
-??? note "Props & API"
-
-    | Field | Type | Default | Description |
-    | --- | --- | --- | --- |
-    | `class_name` | `AttrValue` | `""` | Extra CSS class(es) on the root element. |
-    | `content` | `str \| BaseComponent` | `""` | Cell content. |
-
-??? note "DOM & classes"
-
-    Root `<td class="pjx-table__cell">` rendering `{{ content }}` verbatim.
-
-    **Classes:** `pjx-table__cell`.
-
-??? note "Python"
-
-    ```python
-    PJXTableCell(content="Ada Lovelace")
-    ```
-
-## Overlays & dialogs
-
-### PJXModal
-
-Native `<dialog>` shell. Compose with `PJXModalHeader`, `PJXModalBody`, and `PJXModalFooter` for structured layouts. **Assets:** `pjx_modal.css`, `pjx_modal.js`.
-
-<!-- demo: PJXModal -->
-
-```html
-<PJXModal id="demo-modal">
-  <PJXModalHeader id="demo-modal-h" title="Confirm changes"/>
-  <PJXModalBody id="demo-modal-b">Your draft will be published immediately. This action cannot be undone.</PJXModalBody>
-  <PJXModalFooter id="demo-modal-f"><button class="pjx-demo-btn" data-pjx-close>Cancel</button></PJXModalFooter>
-</PJXModal>
-```
-
-??? note "Props & API"
-
-    | Field | Type | Default | Description |
-    | --- | --- | --- | --- |
-    | `content` | `str \| BaseComponent` | `""` | Inner content (part components or arbitrary markup). |
-    | `open_on_mount` | `bool` | `False` | When `True`, adds `data-pjx-open-on-mount`; JS opens the dialog as soon as it mounts (e.g. via `hx-swap="beforeend"`). |
-    | `remove_on_close` | `bool` | `False` | When `True`, adds `data-pjx-remove-on-close`; JS removes the element from the DOM on close. |
-    | `class_name` | `str` | `""` | Extra CSS classes on the root `<dialog>`. |
 
 ??? note "Style tokens"
 
     | Token | Default |
     | --- | --- |
-    | `--pjx-modal-width` | `52rem` |
-    | `--pjx-modal-min-height` | `28rem` |
-    | `--pjx-modal-bg` | `var(--surface)` |
-    | `--pjx-modal-border` | `var(--border)` |
-    | `--pjx-modal-radius` | `var(--radius-lg)` |
-    | `--pjx-modal-shadow` | `var(--shadow-md)` |
-    | `--pjx-modal-header-bg` | `var(--surface-alt)` |
-    | `--pjx-modal-header-sep` | `var(--border)` |
-    | `--pjx-modal-footer-bg` | `var(--surface-alt)` |
-    | `--pjx-modal-footer-sep` | `var(--border)` |
-    | `--pjx-modal-title-color` | `var(--text)` |
-    | `--pjx-modal-close-color` | `var(--text-muted)` |
-    | `--pjx-modal-backdrop` | `rgb(0 0 0 / 0.6)` |
-    | `--pjx-modal-padding` | `1.5rem` |
-
-    Close control hover uses `var(--surface)`, `var(--text)`, `var(--radius-sm)`, `var(--transition)` from your theme.
+    | `--pjx-page-loader-backdrop` | `rgb(0 0 0 / 0.15)` |
+    | `--pjx-page-loader-z` | `9999` |
+    | `--pjx-page-loader-size` | `2rem` |
 
 ??? note "DOM & classes"
 
-    Root `dialog.pjx-modal` (state: `[open]`, `.pjx-modal--closing`).
-    Attributes: `data-pjx-open="<id>"` on any element opens it on click; `data-pjx-close` inside closes it;
-    `data-pjx-open-on-mount`, `data-pjx-remove-on-close` reflect the lifecycle props.
-    Events (bubble from the root): `pjx:modal:before-open`*, `pjx:modal:open`,
-    `pjx:modal:before-close`*, `pjx:modal:close` — `*` = cancelable, `detail = {reason, trigger}`,
-    `reason ∈ escape|backdrop|api|trigger`. API: `pjx.modal.open(id)`, `pjx.modal.close(id)`.
+    Root `div.pjx-page-loader[data-pjx-page-loader]` (state: `.pjx-page-loader--active`).
+    `data-nav-targets` — comma-separated ids; htmx GET requests targeting any of these activate the loader.
+    `data-pjx-loader` on any element marks its htmx requests as loader-tracked regardless of target.
+    Tracking is detected via `htmx:beforeRequest`; the loader releases via the request's `loadend` (terminal on load, error, abort, and timeout); history navigations reset via `htmx:historyRestore`.
+    Events (non-cancelable, bubble from the root): `pjx:page-loader:show`, `pjx:page-loader:hide`.
+    API: `pjx.pageLoader.show()`, `pjx.pageLoader.hide()`, `pjx.pageLoader.reset()`, `pjx.pageLoader.wrap(promise)`.
 
-    **Classes:** `pjx-modal`; closing state `pjx-modal--closing`; `pjx-modal__box`. Part-component classes (`__header`, `__title`, `__close`, `__body`, `__footer`) belong to the respective part components below.
-
-    `showModal()` gives the dialog an implicit `role="dialog"` and `aria-modal="true"` — no extra markup needed. Content is arbitrary, so there's no automatic accessible name; pass `aria-label`, or `aria-labelledby="<header-id>-title"` pointing at your `PJXModalHeader`'s title — both pass through to the root like any other attribute: `<PJXModal aria-labelledby="demo-modal-h-title">`.
+    **Classes:** `pjx-page-loader`, `pjx-page-loader--active`, `pjx-page-loader__spinner`.
 
 ??? note "Python"
 
     ```python
-    PJXModal(
-        id="demo-modal",
+    PJXPageLoader(id="demo-page-loader")
+    ```
+
+### PJXPaginator
+
+Accessible page-navigation bar. **Assets:** `pjx_paginator.css` only.
+
+<!-- demo: PJXPaginator -->
+
+```html
+<PJXPaginator page="4" total_pages="12" url="/items?page={page}"/>
+```
+
+??? note "Props & API"
+
+    Pairs naturally with [`PJXTable`](#pjxtable): point `target` at the table body or its wrapper and return the re-paged fragment from your view to update both the rows and the paginator in one swap.
+
+    | Field | Type | Default | Description |
+    | --- | --- | --- | --- |
+    | `page` | `int` | *(required)* | Current page number (clamped to `[1, total_pages]` internally). |
+    | `total_pages` | `int` | *(required)* | Total number of pages (must be ≥ 1). |
+    | `url` | `str` | *(required)* | URL template; **must contain `{page}`** (e.g. `/items?page={page}`). |
+    | `target` | `str` | `""` | CSS selector for the htmx swap target. When set, every link gets `hx-get`/`hx-target`/`hx-swap` (and `hx-push-url` when `push_url=True`); when empty, links render as plain `<a href>`. |
+    | `swap` | `str` | `"innerHTML"` | htmx `hx-swap` strategy; only used when `target` is set. |
+    | `push_url` | `bool` | `False` | When `True` and `target` is set, adds `hx-push-url="true"` to each link. |
+    | `siblings` | `int` | `1` | Pages shown on each side of the current page (≥ 0). |
+    | `boundaries` | `int` | `1` | Pages shown at each end of the range (≥ 0). |
+    | `prev_next` | `bool` | `True` | Render Prev / Next controls. |
+    | `first_last` | `bool` | `False` | Render First / Last controls. |
+    | `prev_label` | `str` | `"Prev"` | Label for the Prev control. |
+    | `next_label` | `str` | `"Next"` | Label for the Next control. |
+    | `first_label` | `str` | `"First"` | Label for the First control. |
+    | `last_label` | `str` | `"Last"` | Label for the Last control. |
+    | `aria_label` | `str` | `"Pagination"` | `aria-label` on the root `<nav>`. |
+    | `class_name` | `AttrValue` | `""` | Extra CSS class(es) on the root element. |
+
+??? note "Style tokens"
+
+    | Token | Default |
+    | --- | --- |
+    | `--pjx-paginator-gap` | `0.25rem` |
+    | `--pjx-paginator-link-fg` | `var(--text)` |
+    | `--pjx-paginator-link-bg` | `transparent` |
+    | `--pjx-paginator-link-hover-bg` | `var(--surface-alt)` |
+    | `--pjx-paginator-current-fg` | `var(--brand)` |
+    | `--pjx-paginator-current-bg` | `var(--brand-subtle)` |
+    | `--pjx-paginator-border` | `var(--border)` |
+    | `--pjx-paginator-radius` | `var(--radius-sm)` |
+    | `--pjx-paginator-disabled-opacity` | `0.4` |
+
+??? note "DOM & classes"
+
+    Root `<nav class="pjx-paginator" aria-label="...">` containing `<ul class="pjx-paginator__list">` → `<li class="pjx-paginator__item">` per entry. The current page renders as `<span class="pjx-paginator__link pjx-paginator__link--current" aria-current="page">`. Ellipsis gaps render as `<span class="pjx-paginator__ellipsis" aria-hidden="true">`. Disabled controls (Prev on page 1, Next on the last page, etc.) render as `<span class="pjx-paginator__control pjx-paginator__control--{variant} pjx-paginator__control--disabled" aria-disabled="true">`. Each active page link and enabled control renders as `<a href="...">` when `target` is empty, or as `<a hx-get="..." hx-target="..." hx-swap="...">` when `target` is set. No JS.
+
+    **Classes:** `pjx-paginator`, `pjx-paginator__list`, `pjx-paginator__item`, `pjx-paginator__link`, `pjx-paginator__link--current`, `pjx-paginator__ellipsis`, `pjx-paginator__control`, `pjx-paginator__control--first`, `pjx-paginator__control--prev`, `pjx-paginator__control--next`, `pjx-paginator__control--last`, `pjx-paginator__control--disabled`.
+
+??? note "Python"
+
+    ```python
+    PJXPaginator(page=4, total_pages=12, url="/items?page={page}", target="#list")
+    ```
+```
+
+### PJXProgress
+
+Determinate or indeterminate meter. **Assets:** `pjx_progress.css` only.
+
+<!-- demo: PJXProgress -->
+
+```html
+<PJXProgress value="65" max="100" label="Upload progress"/>
+```
+
+??? note "Props & API"
+
+    | Field | Type | Default | Description |
+    | --- | --- | --- | --- |
+    | `value` | `float \| None` | `None` | Omit or `None` for indeterminate `<progress>`. |
+    | `max` | `float` | `100` | Passed to `<progress max="…">`. |
+    | `label` | `str` | `""` | Optional `pjx-progress__label`; wires `aria-labelledby` when set. |
+    | `loading_label` | `str` | `"Loading"` | `aria-label` fallback on `<progress>` when `label` is empty. |
+
+??? note "Style tokens"
+
+    | Token | Default |
+    | --- | --- |
+    | `--pjx-progress-height` | `0.5rem` |
+    | `--pjx-progress-radius` | `var(--radius-full)` |
+    | `--pjx-progress-track` | `var(--surface-alt)` |
+    | `--pjx-progress-fill` | `var(--brand)` |
+    | `--pjx-progress-indeterminate-speed` | `1.2s` |
+
+??? note "DOM & classes"
+
+    Root `.pjx-progress`; no JS API.
+
+    **Classes:** `pjx-progress`, `pjx-progress__label`, `pjx-progress__bar`.
+
+??? note "Python"
+
+    ```python
+    PJXProgress(value=65, max=100, label="Upload progress")
+    ```
+
+### PJXRegionLoader
+
+In-place loading veil over a positioned ancestor. **Assets:** `pjx_region_loader.css`, `pjx_region_loader.js`.
+
+<!-- demo: PJXRegionLoader -->
+
+```html
+<PJXRegionLoader id="demo-region"/>
+```
+
+??? note "Props & API"
+
+    | Field | Type | Default | Description |
+    | --- | --- | --- | --- |
+    | `aria_label` | `str` | `"Loading"` | Accessible label (`role="status"`). |
+
+    **Layout:** Overlay is `position: absolute; inset: 0`. Parent must be **`position: relative`** (or any non-`static` value) so coverage is correct.
+
+    Supports both declarative (`hx-indicator`) and programmatic use (`pjx.loader.region.*`).
+
+??? note "Style tokens"
+
+    | Token | Default |
+    | --- | --- |
+    | `--pjx-region-loader-bg` | `color-mix(in srgb, var(--text) 55%, transparent)` |
+    | `--pjx-region-loader-backdrop` | `blur(2px)` |
+    | `--pjx-region-loader-z` | `100` |
+    | `--pjx-region-loader-spinner-size` | `2.5rem` |
+    | `--pjx-region-loader-spinner-width` | `3px` |
+    | `--pjx-region-loader-spinner-color` | `var(--brand)` |
+    | `--pjx-region-loader-spinner-track` | `color-mix(in srgb, var(--text) 12%, transparent)` |
+
+??? note "DOM & classes"
+
+    Root `.pjx-region-loader` (state: `.pjx-region-loader--visible`, `.pjx-region-loader--hiding`; also responds to `.htmx-request` as an htmx indicator — CSS activates the veil, no JS call required).
+    Events (non-cancelable): `pjx:region-loader:show`, `pjx:region-loader:hide`.
+    API: `pjx.loader.region.show/hide/reset(id)` and `pjx.loader.region.wrap(id, promise)`. Ref-counted for concurrent sources: visible from the first `show(id)` to the last `hide(id)`; `show`/`hide` events fire only on real visibility transitions (a show during an in-flight hide cancels it silently); hides finalize via a fallback timer even when animations are disabled. `wrap(id, promise)` pairs show/hide around any async task. Nodes replaced by a swap while sources remain active are re-lit on htmx:afterSettle.
+
+    **Classes:** `pjx-region-loader`; state `pjx-region-loader--visible`, `pjx-region-loader--hiding`; `pjx-region-loader__spinner`.
+
+??? note "Python"
+
+    ```python
+    PJXRegionLoader(id="demo-region")
+    ```
+
+### PJXResizableGroup
+
+Drag-to-resize split-pane container. Compose `PJXResizablePanel` and `PJXResizableHandle` parts inside. **Assets:** `pjx_resizable_group.css`, `pjx_resizable_group.js`.
+
+<!-- demo: PJXResizableGroup -->
+
+```html
+<PJXResizableGroup direction="row">
+  <PJXResizablePanel size="25" min="15">sidebar</PJXResizablePanel>
+  <PJXResizableHandle/>
+  <PJXResizablePanel size="75">main</PJXResizablePanel>
+</PJXResizableGroup>
+```
+
+??? note "Props & API"
+
+    | Field | Type | Default | Description |
+    | --- | --- | --- | --- |
+    | `direction` | `"row" \| "column"` | `"row"` | Flex direction for the group (`row` = side-by-side, `column` = stacked). Emits `pjx-resizable-group--row` / `--column` and `data-direction`. |
+    | `class_name` | `AttrValue` | `""` | Extra CSS class(es) on the root element. |
+    | `content` | `str \| BaseComponent` | `""` | Pre-rendered children: alternating `PJXResizablePanel` and `PJXResizableHandle` components. |
+
+    **`pjx:resize` event.** Fires on the group root after every drag-end or keyboard step. `detail.sizes` is an ordered array of panel size percentages (one entry per `[data-pjx-resizable-panel]` direct child). Listen to persist the layout:
+
+    ```javascript
+    document.addEventListener("pjx:resize", e => {
+        localStorage.setItem("panel-sizes", JSON.stringify(e.detail.sizes));
+    });
+    ```
+
+    **Nesting.** A `PJXResizablePanel` may contain a `PJXResizableGroup` of the perpendicular direction, giving a resizable grid. Each group initializes independently via `:scope` + direct-children traversal.
+
+??? note "Style tokens"
+
+    | Token | Default |
+    | --- | --- |
+    | `--pjx-resizable-handle-size` | `0.5rem` |
+    | `--pjx-resizable-handle-color` | `transparent` |
+    | `--pjx-resizable-grip-color` | `var(--border)` |
+    | `--pjx-resizable-handle-color-active` | `var(--brand-muted)` |
+
+??? note "DOM & classes"
+
+    Root `<div role="group" class="pjx-resizable-group pjx-resizable-group--{direction}" data-pjx-resizable-group data-direction="{direction}">` rendering `{{ content }}` verbatim. `pjx_resizable_group.js` initializes on `DOMContentLoaded` and `htmx:afterSettle` (bind-guarded per element), sets `flex-grow` on each panel from the panel's `data-size` attribute, and wires pointer/touch drag and keyboard events to the handles.
+
+    **Classes:** `pjx-resizable-group`; direction modifiers `pjx-resizable-group--row`, `--column`; drag state `pjx-resizable-group--dragging`.
+
+??? note "Python"
+
+    ```python
+    PJXResizableGroup(
+        id="split",
+        direction="row",
         content=(
-            PJXModalHeader(id="demo-modal-h", title="Confirm changes").render()
-            + PJXModalBody(
-                id="demo-modal-b",
-                content="Your draft will be published immediately. This action cannot be undone.",
-            ).render()
-            + PJXModalFooter(
-                id="demo-modal-f",
-                content='<button class="pjx-demo-btn" data-pjx-close>Cancel</button>',
-            ).render()
+            PJXResizablePanel(id="split-l", size=25, min=15, content="sidebar").render()
+            + PJXResizableHandle(id="split-h").render()
+            + PJXResizablePanel(id="split-r", size=75, content="main").render()
         ),
     )
     ```
 
-### PJXModalHeader
+### PJXResizableHandle
 
-Header part for `PJXModal`. Renders a `<header>` inside the modal box; always includes a close button. **Assets:** `pjx_modal_header.css`.
+The draggable divider between two `PJXResizablePanel` siblings. Keyboard-accessible (`role="separator"`, `tabindex="0"`). **Assets:** `pjx_resizable_handle.css`.
 
 ```html
-<PJXModalHeader title="Delete file?"/>
+<PJXResizableGroup direction="row">
+  <PJXResizablePanel size="50">Left</PJXResizablePanel>
+  <PJXResizableHandle label="Resize panels"/>
+  <PJXResizablePanel size="50">Right</PJXResizablePanel>
+</PJXResizableGroup>
 ```
 
 ??? note "Props & API"
 
     | Field | Type | Default | Description |
     | --- | --- | --- | --- |
-    | `title` | `str` | `""` | When set, renders `<span id="{id}-title" class="pjx-modal__title">` with this text (escaped); when empty, `{{ content }}` is used instead. The `id` gives `PJXModal`'s `aria-labelledby` something to point at. |
-    | `close_label` | `str` | `"Close"` | `aria-label` for the auto-included close button. |
-    | `close_content` | `str` | `"✕"` | Inner markup/text of the close button. |
-    | `class_name` | `str` | `""` | Extra CSS classes on the `<header>`. |
-    | `content` | `str \| BaseComponent` | `""` | Custom header body; used when `title` is empty. |
+    | `label` | `str` | `"Resize"` | `aria-label` for the `role="separator"` element. |
+    | `class_name` | `AttrValue` | `""` | Extra CSS class(es) on the root element. |
+
+    **Keyboard controls.** When the handle is focused: `ArrowRight`/`ArrowDown` grows the preceding panel by 5 %; `ArrowLeft`/`ArrowUp` shrinks it by 5 %; `Home` collapses the preceding panel to its `min`; `End` expands it to the remaining group space (clamped to `max`). `min`/`max` constraints from both neighbors are respected.
 
 ??? note "DOM & classes"
 
-    **Classes:** `pjx-modal__header`, `pjx-modal__title`, `pjx-modal__close`.
+    Root `<div role="separator" class="pjx-resizable-group__handle" data-pjx-resizable-handle tabindex="0" aria-label="{label}" aria-valuemin="0" aria-valuemax="100">`. Place between two `PJXResizablePanel`s inside a `PJXResizableGroup`. `pjx_resizable_group.js` sets `aria-valuenow` on the preceding panel's size at every update.
+
+    **Classes:** `pjx-resizable-group__handle`. Handle appearance is controlled by the `PJXResizableGroup` style tokens.
 
 ??? note "Python"
 
     ```python
-    PJXModalHeader(title="Delete file?")
+    PJXResizableHandle(label="Resize panels")
     ```
 
-### PJXModalBody
+### PJXResizablePanel
 
-Body part for `PJXModal`. Renders a `<div class="pjx-modal__body">`. **Assets:** `pjx_modal_body.css`.
+A resizable pane inside a `PJXResizableGroup`. Percentage-sized; `flex-grow` is set from `data-size` by JS. **Assets:** `pjx_resizable_panel.css`.
 
 ```html
-<PJXModalBody>This cannot be undone.</PJXModalBody>
+<PJXResizableGroup direction="row">
+  <PJXResizablePanel size="40" min="20">Left panel</PJXResizablePanel>
+  <PJXResizableHandle/>
+  <PJXResizablePanel size="60">Right panel</PJXResizablePanel>
+</PJXResizableGroup>
 ```
 
 ??? note "Props & API"
 
     | Field | Type | Default | Description |
     | --- | --- | --- | --- |
-    | `class_name` | `str` | `""` | Extra CSS classes on the body `<div>`. |
-    | `content` | `str \| BaseComponent` | `""` | Main content. |
+    | `size` | `float \| None` | `None` | Initial size as a percentage of the group (e.g. `40` = 40 %). `None` → `flex-grow: 1` (equal share). Rendered as `data-size` and inline `style="flex-grow: {size}"`. |
+    | `min` | `str \| float` | `0` | Minimum size. A number = percent of the group; `"120px"` = pixels; `"content"` = the panel's intrinsic min-content (so a fixed child stays visible at any viewport). |
+    | `max` | `str \| float` | `100` | Maximum size. A number = percent; `"120px"` = pixels. (`"content"` is not valid for max.) |
+    | `class_name` | `AttrValue` | `""` | Extra CSS class(es) on the root element. |
+    | `content` | `str \| BaseComponent` | `""` | Panel body content. |
+
+    Content floor — keeps the bottom strip visible regardless of viewport height:
+
+    ```html
+    <PJXResizableGroup direction="column">
+      <PJXResizablePanel size="70">messages</PJXResizablePanel>
+      <PJXResizableHandle/>
+      <PJXResizablePanel size="30" min="content">workspace strip</PJXResizablePanel>
+    </PJXResizableGroup>
+    ```
 
 ??? note "DOM & classes"
 
-    **Classes:** `pjx-modal__body`.
+    Root `<div class="pjx-resizable-group__panel" data-pjx-resizable-panel [data-size] data-min data-max style="flex-grow: ...">`. Place inside a `PJXResizableGroup`; a `PJXResizableHandle` between two panels enables drag-to-resize. Each panel in the group must be a direct child.
+
+    **Classes:** `pjx-resizable-group__panel`. No own theming tokens; layout is controlled by `flex-grow`.
 
 ??? note "Python"
 
     ```python
-    PJXModalBody(content="This cannot be undone.")
+    PJXResizablePanel(size=40, min=20, content="Left panel")
     ```
 
-### PJXModalFooter
+### PJXSkeleton
 
-Footer part for `PJXModal`. Renders a `<footer class="pjx-modal__footer">`. **Assets:** `pjx_modal_footer.css`.
+Placeholder shimmer blocks. **Assets:** `pjx_skeleton.css` only.
+
+<!-- demo: PJXSkeleton -->
 
 ```html
-<PJXModalFooter><PJXButton content="Delete"/></PJXModalFooter>
+<PJXSkeleton variant="text" lines="3"/>
 ```
 
 ??? note "Props & API"
 
     | Field | Type | Default | Description |
     | --- | --- | --- | --- |
-    | `class_name` | `str` | `""` | Extra CSS classes on the `<footer>`. |
-    | `content` | `str \| BaseComponent` | `""` | Footer content (e.g. action buttons). |
-
-??? note "DOM & classes"
-
-    **Classes:** `pjx-modal__footer`.
-
-??? note "Python"
-
-    ```python
-    PJXModalFooter(content=PJXButton(content="Delete").render())
-    ```
-
-### PJXDrawer
-
-`<dialog>` shell sheet from an edge. **Assets:** `pjx_drawer.css`, `pjx_drawer.js` (JS stays on the shell; each part ships its own CSS — see [PJXDrawerHeader](#pjxdrawerheader), [PJXDrawerBody](#pjxdrawerbody), [PJXDrawerFooter](#pjxdrawerfooter)).
-
-<!-- demo: PJXDrawer -->
-
-```html
-<PJXDrawer id="demo-drawer" side="right">
-  <PJXDrawerHeader id="demo-drawer-h" title="Filter results"/>
-  <PJXDrawerBody id="demo-drawer-b"><p>Adjust filters to narrow down your results.</p></PJXDrawerBody>
-  <PJXDrawerFooter id="demo-drawer-f"><button class="pjx-demo-btn" data-pjx-close>Done</button></PJXDrawerFooter>
-</PJXDrawer>
-```
-
-??? note "Props & API"
-
-    | Field | Type | Default | Description |
-    | --- | --- | --- | --- |
-    | `side` | literal | `"right"` | `left`, `right`, or `bottom` → `pjx-drawer--{side}`. |
-    | `open_on_mount` | `bool` | `False` | Adds `data-pjx-open-on-mount`; JS opens on arrival. |
-    | `remove_on_close` | `bool` | `False` | Adds `data-pjx-remove-on-close`; JS removes element on close. |
-    | `class_name` | `str` | `""` | Extra CSS classes on the root `<dialog>`. |
-    | `content` | `str \| BaseComponent` | `""` | Inner slot; place composable part components here. |
+    | `variant` | literal | `"text"` | `text` (stacked lines), `circle`, or `rect`. |
+    | `lines` | `int` | `3` | For `text`, count of `pjx-skeleton__line` rows. |
 
 ??? note "Style tokens"
 
     | Token | Default |
     | --- | --- |
-    | `--pjx-drawer-width` | `min(24rem, 100vw)` |
-    | `--pjx-drawer-height-bottom` | `min(50dvh, 28rem)` |
-    | `--pjx-drawer-bg` | `var(--surface)` |
-    | `--pjx-drawer-border` | `var(--border)` |
-    | `--pjx-drawer-shadow` | `var(--shadow-md)` |
-    | `--pjx-drawer-backdrop` | `rgb(0 0 0 / 0.45)` |
-    | `--pjx-drawer-header-bg` | `var(--surface-alt)` |
-    | `--pjx-drawer-header-sep` | `var(--border)` |
-    | `--pjx-drawer-footer-bg` | `var(--surface-alt)` |
-    | `--pjx-drawer-footer-sep` | `var(--border)` |
-    | `--pjx-drawer-padding` | `1rem` |
-    | `--pjx-drawer-z` | `250` |
+    | `--pjx-skeleton-bg` | `var(--surface-alt)` |
+    | `--pjx-skeleton-shine` | `color-mix(in srgb, var(--text) 8%, var(--surface-alt))` |
+    | `--pjx-skeleton-line-height` | `0.65rem` |
+    | `--pjx-skeleton-line-gap` | `0.5rem` |
+    | `--pjx-skeleton-circle-size` | `2.5rem` |
+    | `--pjx-skeleton-rect-height` | `6rem` |
+    | `--pjx-skeleton-rect-radius` | `var(--radius-md)` |
+    | `--pjx-skeleton-duration` | `1.2s` |
 
 ??? note "DOM & classes"
 
-    Root `dialog.pjx-drawer.pjx-drawer--{side}` (state: `[open]`, `.pjx-drawer--closing`).
-    `data-pjx-open="<id>"` on any element opens it; `data-pjx-close` inside closes it;
-    `data-pjx-open-on-mount`, `data-pjx-remove-on-close` reflect lifecycle props.
-    Events: `pjx:drawer:before-open`*, `pjx:drawer:open`, `pjx:drawer:before-close`*, `pjx:drawer:close` — `*` = cancelable, `detail = {reason, trigger}`, `reason ∈ escape|backdrop|api|trigger`.
-    API: `pjx.drawer.open(id)`, `pjx.drawer.close(id)`.
+    Root `.pjx-skeleton`; no JS API.
 
-    **Classes:** `pjx-drawer`; side modifiers `pjx-drawer--left`, `--right`, `--bottom`; closing state `pjx-drawer--closing`. The inner layout classes (`__header`, `__title`, `__close`, `__body`, `__footer`) belong to the part components — see below.
-
-    `showModal()` gives the dialog an implicit `role="dialog"` and `aria-modal="true"`. Pass `aria-label`, or `aria-labelledby="<header-id>-title"` pointing at your `PJXDrawerHeader`'s title — both pass through to the root: `<PJXDrawer aria-labelledby="demo-drawer-h-title">`.
+    **Classes:** `pjx-skeleton`; variant modifiers `pjx-skeleton--text`, `--circle`, `--rect`; `pjx-skeleton__line`, `pjx-skeleton__circle`, `pjx-skeleton__rect`.
 
 ??? note "Python"
 
     ```python
-    PJXDrawer(
-        id="demo-drawer",
-        side="right",
-        content=(
-            PJXDrawerHeader(id="demo-drawer-h", title="Filter results").render()
-            + PJXDrawerBody(
-                id="demo-drawer-b",
-                content="<p>Adjust filters to narrow down your results.</p>",
-            ).render()
-            + PJXDrawerFooter(
-                id="demo-drawer-f",
-                content='<button class="pjx-demo-btn" data-pjx-close>Done</button>',
-            ).render()
-        ),
-    )
+    PJXSkeleton(variant="text", lines=3)
     ```
 
-### PJXDrawerHeader
+### PJXSpinner
 
-Header bar for a `PJXDrawer`. Automatically includes a close button. **Assets:** `pjx_drawer_header.css`.
+Inline loading indicator. **Assets:** `pjx_spinner.css` only.
+
+<!-- demo: PJXSpinner -->
 
 ```html
-<PJXDrawerHeader title="Menu"/>
+<PJXSpinner size="sm" label="Loading data"/>
 ```
 
 ??? note "Props & API"
 
     | Field | Type | Default | Description |
     | --- | --- | --- | --- |
-    | `title` | `str` | `""` | Renders `<span id="{id}-title" class="pjx-drawer__title">` when set; omit to use `content` for a fully custom header. The `id` gives `PJXDrawer`'s `aria-labelledby` something to point at. |
-    | `close_label` | `str` | `"Close"` | `aria-label` for the auto-included close button. |
-    | `close_content` | `str` | `"✕"` | Inner HTML/text of the close button. |
-    | `class_name` | `str` | `""` | Extra CSS classes on the root `<header>`. |
-    | `content` | `str \| BaseComponent` | `""` | Custom header slot used when `title` is not set. |
-
-??? note "DOM & classes"
-
-    Root `<header class="pjx-drawer__header">`. When `title` is set renders `<span class="pjx-drawer__title">`. Always renders a `<button class="pjx-drawer__close" data-pjx-close aria-label="...">`.
-
-    **Classes:** `pjx-drawer__header`, `pjx-drawer__title`, `pjx-drawer__close`.
-
-??? note "Python"
-
-    ```python
-    PJXDrawerHeader(title="Menu")
-    ```
-
-### PJXDrawerBody
-
-Scrollable body region for a `PJXDrawer`. **Assets:** `pjx_drawer_body.css`.
-
-```html
-<PJXDrawerBody>…links…</PJXDrawerBody>
-```
-
-??? note "Props & API"
-
-    | Field | Type | Default | Description |
-    | --- | --- | --- | --- |
-    | `class_name` | `str` | `""` | Extra CSS classes on the root `<div>`. |
-    | `content` | `str \| BaseComponent` | `""` | Body slot. |
-
-??? note "DOM & classes"
-
-    Root `<div class="pjx-drawer__body">`.
-
-    **Classes:** `pjx-drawer__body`.
-
-??? note "Python"
-
-    ```python
-    PJXDrawerBody(content="…links…")
-    ```
-
-### PJXDrawerFooter
-
-Footer strip for a `PJXDrawer`. **Assets:** `pjx_drawer_footer.css`.
-
-```html
-<PJXDrawerFooter>v1.0</PJXDrawerFooter>
-```
-
-??? note "Props & API"
-
-    | Field | Type | Default | Description |
-    | --- | --- | --- | --- |
-    | `class_name` | `str` | `""` | Extra CSS classes on the root `<footer>`. |
-    | `content` | `str \| BaseComponent` | `""` | Footer slot. |
-
-??? note "DOM & classes"
-
-    Root `<footer class="pjx-drawer__footer">`.
-
-    **Classes:** `pjx-drawer__footer`.
-
-??? note "Python"
-
-    ```python
-    PJXDrawerFooter(content="v1.0")
-    ```
-
-### PJXNotification
-
-Fixed-position toast. **Assets:** `pjx_notification.css`, `pjx_notification.js`.
-
-<!-- demo: PJXNotification -->
-
-```html
-<PJXNotification
-  id="demo-notification"
-  content="Your changes have been saved."
-  corner="top-right"
-  timeout="4000"/>
-```
-
-??? note "Props & API"
-
-    | Field | Type | Default | Description |
-    | --- | --- | --- | --- |
-    | `content` | `str \| BaseComponent` | `""` | Message body. |
-    | `corner` | literal | `"top-right"` | `top-right`, `top-left`, `bottom-right`, `bottom-left`. |
-    | `timeout` | `int` | `5000` | Auto-dismiss ms; `0` disables. Rendered as `data-timeout`. |
-    | `autoshow` | `bool` | `True` | When `True`, adds `data-pjx-autoshow`; JS shows the notification as soon as it mounts. |
-    | `dismiss_label` | `str` | `"Dismiss"` | `aria-label` for the dismiss button. |
-
-    Maps children to `content`; see the [children-vs-`content` note](#components).
+    | `size` | literal | `"md"` | `sm`, `md`, or `lg`. |
+    | `label` | `str` | `"Loading"` | Visually hidden; exposed to assistive tech. |
 
 ??? note "Style tokens"
 
     | Token | Default |
     | --- | --- |
-    | `--pjx-notification-width` | `22rem` |
-    | `--pjx-notification-gap` | `1.25rem` (viewport inset; used in slide animations) |
-    | `--pjx-notification-bg` | `var(--surface-alt)` |
-    | `--pjx-notification-border` | `var(--border)` |
-    | `--pjx-notification-radius` | `var(--radius-md)` |
-    | `--pjx-notification-shadow` | `var(--shadow-md)` |
-    | `--pjx-notification-padding` | `1rem 1rem 1rem 1.25rem` |
-    | `--pjx-notification-close-color` | `var(--text-muted)` |
-    | `--pjx-notification-z` | `500` |
-
-    Content uses `var(--font-size-sm)`, `var(--text)`; close hover uses `var(--surface)`, `var(--text)`, `var(--radius-sm)`, `var(--transition)`.
+    | `--pjx-spinner-sm` | `1.25rem` |
+    | `--pjx-spinner-md` | `2rem` |
+    | `--pjx-spinner-lg` | `2.75rem` |
+    | `--pjx-spinner-track` | `color-mix(in srgb, var(--text-muted) 35%, transparent)` |
+    | `--pjx-spinner-accent` | `var(--brand)` |
 
 ??? note "DOM & classes"
 
-    Root `.pjx-notification` (state: `.pjx-notification--visible`, `.pjx-notification--hiding`).
-    `data-pjx-autoshow` triggers auto-show on mount. `data-pjx-close` inside hides it.
-    Events: `pjx:notification:before-show`*, `pjx:notification:show`, `pjx:notification:before-hide`*, `pjx:notification:hide` — `*` = cancelable, `detail = {reason, trigger}`.
-    API: `pjx.notification.show(id)`, `pjx.notification.hide(id)`.
+    Root `.pjx-spinner`; no JS API.
 
-    **Classes:** `pjx-notification`; placement `pjx-notification--top-right`, `--top-left`, `--bottom-right`, `--bottom-left`; JS state `pjx-notification--visible`, `pjx-notification--hiding`; `pjx-notification__content`, `pjx-notification__close`.
+    **Classes:** `pjx-spinner`, `pjx-spinner--sm|md|lg`, `pjx-spinner__ring`, `pjx-spinner__label` (screen-reader-only).
 
 ??? note "Python"
 
     ```python
-    PJXNotification(
-        id="demo-notification",
-        content="Your changes have been saved.",
-        corner="top-right",
-        timeout=4000,
-    )
-    ```
-
-### PJXAlert
-
-Inline status banner. **Assets:** `pjx_alert.css`, `pjx_alert.js`.
-
-<!-- demo: PJXAlert -->
-
-```html
-<PJXAlert variant="info" title="Heads up" body="A new version is available."/>
-```
-
-??? note "Props & API"
-
-    | Field | Type | Default | Description |
-    | --- | --- | --- | --- |
-    | `variant` | literal | `"info"` | `info`, `success`, `warning`, `error` → `pjx-alert--{variant}`. |
-    | `title` | `str` | `""` | Optional heading. |
-    | `body` | `str \| BaseComponent` | `""` | Main copy. |
-    | `dismissible` | `bool` | `False` | When `True`, renders a dismiss button with `data-pjx-close`. |
-    | `dismiss_label` | `str` | `"Dismiss"` | `aria-label` for the dismiss button. |
-
-??? note "Style tokens"
-
-    | Token | Default |
-    | --- | --- |
-    | `--pjx-alert-radius` | `var(--radius-md)` |
-    | `--pjx-alert-padding` | `0.875rem 1rem` |
-    | `--pjx-alert-border` | `var(--border)` |
-    | `--pjx-alert-shadow` | `var(--shadow-md)` |
-    | `--pjx-alert-title-size` | `var(--font-size-sm)` |
-    | `--pjx-alert-body-size` | `var(--font-size-sm)` |
-    | `--pjx-alert-dismiss-color` | `var(--text-muted)` |
-
-??? note "DOM & classes"
-
-    Root `.pjx-alert` (state: `.pjx-alert--dismissed` — set by JS, hides via `display: none`).
-    `data-pjx-close` inside triggers dismissal.
-    Events: `pjx:alert:before-dismiss`* (cancelable), `pjx:alert:dismiss` — `detail = {reason: 'trigger', trigger}`.
-
-    **Classes:** `pjx-alert`; variant modifiers `pjx-alert--info`, `--success`, `--warning`, `--error`; dismissed state `pjx-alert--dismissed`; `pjx-alert__inner`, `__text`, `__title`, `__body`, `__dismiss`. Variants use `color-mix` with `--brand`, `--success`, `--warning`, or `--error` / `--error-bg` / `--error-border` where applicable.
-
-??? note "Python"
-
-    ```python
-    PJXAlert(variant="info", title="Heads up", body="A new version is available.")
-    ```
-
-### PJXTooltip
-
-Composable tooltip shell. Compose with `PJXTooltipTrigger` and `PJXTooltipContent`. **Assets:** `pjx_tooltip.css`, `pjx_tooltip.js` (IIFE — no API, behavior only).
-
-<!-- demo: PJXTooltip -->
-
-```html
-<PJXTooltip id="demo-tooltip" placement="top">
-  <PJXTooltipTrigger id="demo-tooltip-tr">Hover over me</PJXTooltipTrigger>
-  <PJXTooltipContent id="demo-tooltip-tc">This is additional context shown on hover or focus.</PJXTooltipContent>
-</PJXTooltip>
-```
-
-??? note "Props & API"
-
-    | Field | Type | Default | Description |
-    | --- | --- | --- | --- |
-    | `placement` | literal | `"top"` | `top`, `bottom`, `start`, `end` → `data-pjx-tooltip-placement`. |
-    | `backdrop` | `bool` | `False` | Dim the rest of the page while the tip is open (attention-grabbing hover cards). |
-    | `content` | `str \| BaseComponent` | `""` | Children: compose `PJXTooltipTrigger` + `PJXTooltipContent` here. |
-
-??? note "Style tokens"
-
-    | Token | Default |
-    | --- | --- |
-    | `--pjx-tooltip-gap` | `6px` |
-    | `--pjx-tooltip-bg` | `var(--surface-alt)` |
-    | `--pjx-tooltip-border` | `var(--border)` |
-    | `--pjx-tooltip-radius` | `var(--radius-sm)` |
-    | `--pjx-tooltip-shadow` | `var(--shadow-md)` |
-    | `--pjx-tooltip-padding` | `0.35rem 0.5rem` |
-    | `--pjx-tooltip-max-width` | `20ch` |
-    | `--pjx-tooltip-fg` | `var(--text)` |
-    | `--pjx-tooltip-font-size` | `var(--font-size-xs)` |
-    | `--pjx-tooltip-z` | `400` |
-    | `--pjx-tooltip-backdrop` | `rgb(0 0 0 / 0.45)` |
-    | `--pjx-tooltip-backdrop-z` | `390` |
-
-??? note "DOM & classes"
-
-    Root `.pjx-tooltip` `<span>`. `data-pjx-tooltip-placement` drives JS positioning. Tip shows on `mouseover` anywhere inside `.pjx-tooltip` root, or on `focusin` of `.pjx-tooltip__trigger`; hides on `mouseout`/`focusout`; repositions on `scroll`. The JS sets `aria-describedby` at runtime when the tip is shown. No JS API (`pjx._tooltipWired` guard only).
-
-    With `backdrop=True` the root also renders a `.pjx-tooltip__backdrop` `<span>` (`data-pjx-tooltip-backdrop`, `hidden`) that the same show/hide lifecycle fades in and out via `.pjx-tooltip__backdrop--visible`. It is `position: fixed` and `pointer-events: none`, sits below the tip at `--pjx-tooltip-backdrop-z`, and lifts `.pjx-tooltip__trigger` above itself while open.
-
-    **Classes:** `pjx-tooltip`, `pjx-tooltip__backdrop`, `pjx-tooltip__backdrop--visible`.
-
-??? note "Python"
-
-    ```python
-    PJXTooltip(
-        id="demo-tooltip",
-        placement="top",
-        content=(
-            PJXTooltipTrigger(id="demo-tooltip-tr", content="Hover over me").render()
-            + PJXTooltipContent(
-                id="demo-tooltip-tc",
-                content="This is additional context shown on hover or focus.",
-            ).render()
-        ),
-    )
-    ```
-
-### PJXTooltipTrigger
-
-The focusable trigger part of a tooltip. **Assets:** `pjx_tooltip_trigger.css`.
-
-```html
-<PJXTooltipTrigger>Hover over me</PJXTooltipTrigger>
-```
-
-??? note "Props & API"
-
-    | Field | Type | Default | Description |
-    | --- | --- | --- | --- |
-    | `content` | `str \| BaseComponent` | `""` | Trigger label or element. |
-
-??? note "DOM & classes"
-
-    `<span class="pjx-tooltip__trigger" tabindex="0">`. The JS sets `aria-describedby` to the tip's id at show time. Place inside a `PJXTooltip` shell.
-
-    **Classes:** `pjx-tooltip__trigger`.
-
-??? note "Python"
-
-    ```python
-    PJXTooltipTrigger(content="Hover over me")
-    ```
-
-### PJXTooltipContent
-
-The floating tip body. **Assets:** `pjx_tooltip_content.css`.
-
-```html
-<PJXTooltipContent>This is additional context shown on hover or focus.</PJXTooltipContent>
-```
-
-??? note "Props & API"
-
-    | Field | Type | Default | Description |
-    | --- | --- | --- | --- |
-    | `content` | `str \| BaseComponent` | `""` | Tooltip text or rich content. |
-
-??? note "DOM & classes"
-
-    `<span class="pjx-tooltip__tip" role="tooltip" hidden>`. The JS removes `hidden` and adds `.pjx-tooltip__tip--visible` on show. Place inside a `PJXTooltip` shell.
-
-    **Classes:** `pjx-tooltip__tip`.
-
-??? note "Python"
-
-    ```python
-    PJXTooltipContent(content="This is additional context shown on hover or focus.")
-    ```
-
-### PJXPopover
-
-Click-toggle compound. Three separate components; compose them by placing `PJXPopoverTrigger` and `PJXPopoverPanel` **as children inside `PJXPopover`**. **Assets:** `pjx_popover.css`, `pjx_popover.js` (IIFE under `pjx.popover`).
-
-<!-- demo: PJXPopover -->
-
-```html
-<PJXPopover id="demo-popover">
-  <PJXPopoverTrigger id="demo-popover-t" role="dialog">Show info</PJXPopoverTrigger>
-  <PJXPopoverPanel id="demo-popover-p" role="dialog"><strong>Keyboard shortcuts</strong><p style="margin:.35rem 0 0">Press <kbd>?</kbd> anytime to reopen this panel.</p></PJXPopoverPanel>
-</PJXPopover>
-```
-
-??? note "Props & API"
-
-    | Field | Type | Default | Description |
-    | --- | --- | --- | --- |
-    | `content` | `str \| BaseComponent` | `""` | Children (trigger + panel). |
-    | `align` | literal | `"start"` | `start` or `end` (panel alignment) → `pjx-popover--align-end`. |
-    | `behavior` | `bool` | `True` | When `True`, adds `data-pjx-popover` (JS picks it up). |
-    | `portal` | `bool` | `False` | Reparent the panel to `document.body` while open, so an `overflow: hidden`/`auto` ancestor can't clip it. |
-
-??? note "Style tokens"
-
-    | Token | Default |
-    | --- | --- |
-    | `--pjx-popover-max-width` | `28ch` |
-    | `--pjx-popover-bg` | `var(--surface-alt)` |
-    | `--pjx-popover-border` | `var(--border)` |
-    | `--pjx-popover-radius` | `var(--radius-md)` |
-    | `--pjx-popover-shadow` | `var(--shadow-md)` |
-    | `--pjx-popover-padding` | `var(--space-3, 0.75rem) var(--space-4, 1rem)` |
-    | `--pjx-popover-z` | `300` |
-
-??? note "DOM & classes"
-
-    Root `[data-pjx-popover]` (the PJXPopover wrapper). Trigger: `[data-pjx-toggle]` on the trigger element; `aria-expanded` synced by JS. Panel: `[data-pjx-popover-panel]` element, `hidden` when closed. `data-pjx-close` inside the panel closes it. `data-pjx-toggle="<panel-id>"` on any element opens/closes a named panel.
-    Events (bubble from `[data-pjx-popover]`): `pjx:popover:before-open`*, `pjx:popover:open`, `pjx:popover:before-close`*, `pjx:popover:close` — `detail = {reason, trigger}`.
-    API: `pjx.popover.open(idOrEl)`, `pjx.popover.close(idOrEl)`, `pjx.popover.toggle(idOrEl)`.
-
-    With `portal=True` the root also carries `data-pjx-popover-portal`, and opening moves the panel alone to `document.body`, restoring it to its original position on close — the same escape hatch `PJXTooltip`'s `portal` prop offers when an ancestor's `overflow` clips the panel. The root, trigger, and panel keep resolving to each other while the panel lives elsewhere, so events and the JS API are unchanged. Two consequences are specific to a portalled popover: scrolling anywhere outside the panel closes it (a panel parked on `document.body` would otherwise detach visually from a trigger scrolling out from under it), emitting the usual close events with `reason: "scroll"`; and if the panel's original parent is removed from the document while the panel is open, the panel is dropped rather than left orphaned on `document.body`.
-
-    **Classes:** `pjx-popover`, `pjx-popover--align-end`, `pjx-popover__trigger`, `pjx-popover__panel`.
-
-??? note "Python"
-
-    ```python
-    PJXPopover(
-        id="demo-popover",
-        content=(
-            PJXPopoverTrigger(
-                id="demo-popover-t", content="Show info", role="dialog"
-            ).render()
-            + PJXPopoverPanel(
-                id="demo-popover-p",
-                role="dialog",
-                content=(
-                    "<strong>Keyboard shortcuts</strong>"
-                    '<p style="margin:.35rem 0 0">Press <kbd>?</kbd> anytime to reopen this panel.</p>'
-                ),
-            ).render()
-        ),
-    )
-    ```
-
-### PJXPopoverTrigger
-
-Trigger button for a `PJXPopover`. **Assets:** bundled in `pjx_popover.css`.
-
-```html
-<PJXPopoverTrigger id="t">Open</PJXPopoverTrigger>
-```
-
-??? note "Props & API"
-
-    | Field | Type | Default | Description |
-    | --- | --- | --- | --- |
-    | `content` | `str \| BaseComponent` | `""` | Button/div label. |
-    | `tag` | literal | `"button"` | `button` or `div` (role="button"). |
-    | `role` | literal | `""` | `aria-haspopup` value: `menu`, `listbox`, `dialog`, or `""`. |
-    | `behavior` | `bool` | `True` | When `True`, adds `data-pjx-toggle`. |
-
-??? note "DOM & classes"
-
-    `[data-pjx-toggle]` element; `aria-expanded` synced by JS.
-
-    **Classes:** `pjx-popover__trigger`.
-
-??? note "Python"
-
-    ```python
-    PJXPopoverTrigger(id="t", content="Open")
-    ```
-
-### PJXPopoverPanel
-
-Floating panel for a `PJXPopover`. **Assets:** bundled in `pjx_popover.css`.
-
-```html
-<PJXPopoverPanel id="p" role="menu">…</PJXPopoverPanel>
-```
-
-??? note "Props & API"
-
-    | Field | Type | Default | Description |
-    | --- | --- | --- | --- |
-    | `content` | `str \| BaseComponent` | `""` | Panel body. |
-    | `as_form` | `bool` | `False` | Render panel as `<form>` instead of `<div>`. |
-    | `role` | literal | `""` | ARIA `role` attribute (`menu`, `listbox`, `dialog`, or `""`). |
-    | `behavior` | `bool` | `True` | When `True`, adds `data-pjx-popover-panel` (hidden by default). |
-
-??? note "DOM & classes"
-
-    `[data-pjx-popover-panel]` element, `hidden` when closed.
-
-    **Classes:** `pjx-popover__panel`.
-
-??? note "Python"
-
-    ```python
-    PJXPopoverPanel(id="p", role="menu", content="…")
-    ```
-
-### PJXSelect
-
-A styled replacement for a bare `<select>`, single-choice or multi. A hidden native `<select>` carries the same options, so a plain form submit still posts a value without JS. **Assets:** `pjx_select.css`, `pjx_select.js`.
-
-<!-- demo: PJXSelect -->
-
-```html
-<PJXSelect name="fruit" ... />
-```
-
-??? note "Props & API"
-
-    | Field | Type | Default | Description |
-    | --- | --- | --- | --- |
-    | `name` | `str` | — | Required. Form field name, on both the root (`data-name`) and the native `<select>`. |
-    | `options` | `list[SelectOption]` | — | Required. Each `SelectOption` has `value` and `label`. Plain dicts are coerced. |
-    | `value` | `str \| list[str] \| None` | `None` | Current selection. Must be a list when `multiple=True`, a str otherwise; a value matching no option renders unselected. |
-    | `multiple` | `bool` | `False` | Multi-select: checkbox per row, chip summary on the trigger. |
-    | `placeholder` | `str` | `"Select…"` | Trigger text when nothing is selected. |
-    | `disabled` | `bool` | `False` | Marks the root, the trigger, the native `<select>`, and the filter input. |
-    | `required` | `bool` | `False` | Forwards `required` to the native `<select>` and `aria-required="true"` to the trigger, since the native element is hidden and can't carry that on its own. |
-    | `portal` | `bool` | `False` | Reparent the whole root to `document.body` while open, so an `overflow: hidden`/`auto` ancestor can't clip the panel. |
-    | `class_name` | `AttrValue` | `""` | Appended to the root's classes. |
-
-    Panels with more than 8 options render a search input above the list; shorter lists render without one. The input is UI-only — it hides option buttons and never posts. Opening focuses that input when present, for both mouse and keyboard opens.
-
-    In single-select mode, a `value` matching no option (including no value at all) renders a synthetic `<option value="" selected disabled hidden>` on the native `<select>` in addition to rendering unselected. Without it, an HTML `<select>` with no `option[selected]` reports its live `.value` as the first option even though nothing was chosen — this keeps that value honestly empty for anything reading it (validation, `required`, `formData.get(...)`).
-
-    When the native `<select>` fails constraint validation on submit (e.g. `required` with nothing chosen), the browser has nothing visible to anchor its own validation bubble to, so the JS mirrors the failure onto the trigger instead: `aria-invalid="true"` and a `pjx-select--invalid` class, with focus moved to the trigger. Both clear as soon as a real selection is made. No default invalid styling ships — style `.pjx-select--invalid` (or `[aria-invalid="true"]` on the trigger) as needed.
-
-??? note "Style tokens"
-
-    | Token | Default |
-    | --- | --- |
-    | `--pjx-select-bg` | `var(--surface, #fff)` |
-    | `--pjx-select-fg` | `var(--text)` |
-    | `--pjx-select-border` | `var(--border)` |
-    | `--pjx-select-focus` | `var(--border-focus, var(--border))` |
-    | `--pjx-select-radius` | `var(--radius-md)` |
-    | `--pjx-select-padding` | `0.375rem 0.5rem` |
-    | `--pjx-select-panel-bg` | `var(--surface-alt)` |
-    | `--pjx-select-panel-shadow` | `var(--shadow-md)` |
-    | `--pjx-select-panel-min-w` | `12rem` |
-    | `--pjx-select-panel-max-h` | `16rem` |
-    | `--pjx-select-panel-z` | `300` |
-    | `--pjx-select-option-hover` | `var(--surface-hover, var(--surface-alt))` |
-    | `--pjx-select-option-active` | `var(--accent-soft, var(--surface-alt))` |
-
-??? note "DOM & classes"
-
-    Root `[data-pjx-select]`, carrying `data-name`, plus `data-multiple` and `data-placeholder` in multi mode, `data-disabled` when disabled, and `data-pjx-select-portal` when `portal=True`. Trigger: `[data-pjx-select-trigger]` with `aria-haspopup="listbox"`, `aria-expanded` synced by JS, `aria-required="true"` when `required=True`, and `aria-invalid`/`pjx-select--invalid` set by JS after a failed constraint check (cleared on the next real selection). Panel: `[data-pjx-select-panel]` with `role="listbox"`, `hidden` when closed; opening always sets its width to match the trigger's rendered width and writes inline `left`/`top` on top of that only when the panel would otherwise overflow the viewport (flip/clamp), removing everything on close. Options: `[data-pjx-select-option]` with `data-value`, `role="option"`, and `aria-selected` as the selection state. Filter: `[data-pjx-select-filter]`, presentation-only — it hides option buttons and never changes selection; opening focuses it when present, from either a mouse or a keyboard open. A hidden native `<select name="…">` inside the root is the form's source of truth and is re-derived from the option buttons on every change, dispatching real `change`/`input` events on itself so `hx-trigger="change from:select"` and vanilla listeners still fire; without JS it submits on its own.
-
-    With `portal=True`, opening reparents the whole root (not just the panel) to `document.body`, fixed at its pre-move screen position so the trigger doesn't visibly jump, and moves it back to its original parent on close — the same escape hatch `PJXTooltip`'s `portal` prop offers for a clipping `overflow: hidden`/`auto` ancestor.
-
-    Keyboard: ArrowDown/ArrowUp/Home/End move focus among options (wrapping); ArrowDown/ArrowUp/Enter/Space on the trigger open the panel and focus the filter input if present, otherwise an edge option; type-ahead jumps to the next option whose label starts with the typed prefix (case-insensitive, buffer resets after a pause); Enter/Space selects and closes in single mode, toggles and stays open in multi mode; Escape closes and returns focus to the trigger from anywhere inside the root, including the filter input.
-
-    **Classes:** `pjx-select`, `pjx-select__trigger`, `pjx-select__label`, `pjx-select__chips`, `pjx-select__panel`, `pjx-select__filter`, `pjx-select__option`, `pjx-select__checkbox`. Chips reuse `pjx-chip-input__chip` / `pjx-chip-input__label`.
-
-??? note "Python"
-
-    ```python
-    PJXSelect(
-        name="fruit",
-        options=[
-            SelectOption(value="a", label="Apple"),
-            SelectOption(value="b", label="Banana"),
-        ],
-        value=["a", "b"],
-        multiple=True,
-    )
-    ```
-
-## Interaction & loading
-
-### PJXDropdown
-
-Button + anchored panel backed by the shared popover engine. **Assets:** `pjx_dropdown.css` plus `pjx_popover.js`, inherited from the `PJXPopover` it extends — a rendered dropdown ships the runtime that reads its `data-pjx-popover` markup.
-
-<!-- demo: PJXDropdown -->
-
-```html
-<!-- Menu entries are supplied via the `items` prop (a list); see the Python example below. -->
-<PJXDropdown trigger="Actions" menu_label="Actions menu" />
-```
-
-??? note "Props & API"
-
-    | Field | Type | Default | Description |
-    | --- | --- | --- | --- |
-    | `trigger` | `str \| BaseComponent` | `""` | Button label. |
-    | `items` | `list[str \| BaseComponent]` | `[]` | Menu items. A `str` entry is plain text and is HTML-escaped; pass a component for markup. |
-    | `align` | literal | `"start"` | `start` or `end` → `pjx-dropdown--align-end`. |
-    | `menu_label` | `str` | `"Submenu"` | `aria-label` on the menu panel. |
-    | `portal` | `bool` | `False` | Inherited from `PJXPopover`: reparent the menu to `document.body` while open, escaping a clipping ancestor. |
-
-    Trigger id is `{{ id }}-trigger`, menu is `{{ id }}-menu`.
-
-??? note "Style tokens"
-
-    | Token | Default |
-    | --- | --- |
-    | `--pjx-dropdown-menu-bg` | `var(--surface-alt)` |
-    | `--pjx-dropdown-menu-border` | `var(--border)` |
-    | `--pjx-dropdown-menu-radius` | `var(--radius-md)` |
-    | `--pjx-dropdown-menu-shadow` | `var(--shadow-md)` |
-    | `--pjx-dropdown-menu-padding` | `0.35rem 0` |
-    | `--pjx-dropdown-menu-min-w` | `10rem` |
-    | `--pjx-dropdown-menu-max-h` | `min(70dvh, 24rem)` |
-    | `--pjx-dropdown-z` | `350` |
-    | `--pjx-dropdown-trigger-bg` | `var(--surface-alt)` |
-    | `--pjx-dropdown-trigger-border` | `var(--border)` |
-    | `--pjx-dropdown-trigger-radius` | `var(--radius-md)` |
-    | `--pjx-dropdown-trigger-padding` | `0.5rem 0.85rem` |
-    | `--pjx-dropdown-trigger-bg-hover` | `color-mix(in srgb, var(--text) 6%, var(--surface-alt))` |
-
-??? note "DOM & classes"
-
-    Root `.pjx-dropdown` with `data-pjx-popover`. Trigger: `button.pjx-dropdown__trigger` with `data-pjx-toggle="{{ id }}-menu"`, `aria-expanded` synced by `pjx_popover.js`. Panel: `div.pjx-dropdown__menu[data-pjx-popover-panel][role="menu"]`, `hidden` when closed. All popover events and API apply: `pjx.popover.open/close/toggle(panelId)`. Document click outside closes the menu; `Escape` closes all open popovers. `portal=True` behaves exactly as it does on `PJXPopover`, menu in place of panel.
-
-    **Classes:** `pjx-dropdown`, `pjx-dropdown--align-end`, `pjx-dropdown__trigger`, `pjx-dropdown__menu`.
-
-??? note "Python"
-
-    ```python
-    PJXDropdown(
-        trigger="Actions",
-        items=[
-            PJXButton(variant="ghost", content=label)
-            for label in ("Edit", "Duplicate", "Delete")
-        ],
-        menu_label="Actions menu",
-    )
+    PJXSpinner(size="sm", label="Loading data")
     ```
 
 ### PJXTabGroup
@@ -2071,6 +2391,38 @@ Thin shell that wraps a composed tab layout. Compose with [`PJXTabList`](#pjxtab
     )
     ```
 
+### PJXTab
+
+Single tab button. **Assets:** `pjx_tab.css`.
+
+```html
+<PJXTab id="t0" panel="p0" selected="true" icon="file">Overview</PJXTab>
+<PJXTab id="t1" panel="p1" closeable="true">Activity</PJXTab>
+```
+
+??? note "Props & API"
+
+    | Field | Type | Default | Description |
+    | --- | --- | --- | --- |
+    | `panel` | `str` | `""` | `id` of the associated `PJXTabPanel` (`aria-controls`). |
+    | `icon` | `str` | `""` | Icon name passed to `PJXIcon`; shown before the label. |
+    | `closeable` | `bool` | `False` | Renders a close button (`data-pjx-tab-close`). |
+    | `pinned` | `bool` | `False` | Marks the tab as pinned; suppresses close button. |
+    | `selected` | `bool` | `False` | Initially selected state (`aria-selected`, `tabindex=0`). |
+    | `close_label` | `str` | `"Close"` | `aria-label` for the close button. |
+    | `class_name` | `str` | `""` | Extra CSS class(es) appended to the root element. |
+    | `content` | `str \| BaseComponent` | `""` | Tab label text or markup. |
+
+??? note "DOM & classes"
+
+    Root `div[role="tab"][data-pjx-tab].pjx-tab`. Selected state adds `pjx-tab--selected`; closeable adds `pjx-tab--closeable`; pinned adds `pjx-tab--pinned`. The `id` here must match the `tab` field on the corresponding `PJXTabPanel`.
+
+??? note "Python"
+
+    ```python
+    PJXTab(id="t0", panel="p0", selected=True, icon="file", content="Overview")
+    ```
+
 ### PJXTabList
 
 Tab button list (the `role="tablist"` container). **Assets:** `pjx_tab_list.css`.
@@ -2109,38 +2461,6 @@ Tab button list (the `role="tablist"` container). **Assets:** `pjx_tab_list.css`
     )
     ```
 
-### PJXTab
-
-Single tab button. **Assets:** `pjx_tab.css`.
-
-```html
-<PJXTab id="t0" panel="p0" selected="true" icon="file">Overview</PJXTab>
-<PJXTab id="t1" panel="p1" closeable="true">Activity</PJXTab>
-```
-
-??? note "Props & API"
-
-    | Field | Type | Default | Description |
-    | --- | --- | --- | --- |
-    | `panel` | `str` | `""` | `id` of the associated `PJXTabPanel` (`aria-controls`). |
-    | `icon` | `str` | `""` | Icon name passed to `PJXIcon`; shown before the label. |
-    | `closeable` | `bool` | `False` | Renders a close button (`data-pjx-tab-close`). |
-    | `pinned` | `bool` | `False` | Marks the tab as pinned; suppresses close button. |
-    | `selected` | `bool` | `False` | Initially selected state (`aria-selected`, `tabindex=0`). |
-    | `close_label` | `str` | `"Close"` | `aria-label` for the close button. |
-    | `class_name` | `str` | `""` | Extra CSS class(es) appended to the root element. |
-    | `content` | `str \| BaseComponent` | `""` | Tab label text or markup. |
-
-??? note "DOM & classes"
-
-    Root `div[role="tab"][data-pjx-tab].pjx-tab`. Selected state adds `pjx-tab--selected`; closeable adds `pjx-tab--closeable`; pinned adds `pjx-tab--pinned`. The `id` here must match the `tab` field on the corresponding `PJXTabPanel`.
-
-??? note "Python"
-
-    ```python
-    PJXTab(id="t0", panel="p0", selected=True, icon="file", content="Overview")
-    ```
-
 ### PJXTabPanel
 
 Panel body associated with one tab. **Assets:** `pjx_tab_panel.css`.
@@ -2167,389 +2487,57 @@ Panel body associated with one tab. **Assets:** `pjx_tab_panel.css`.
     PJXTabPanel(id="p0", tab="t0", content="<p>Panel content.</p>")
     ```
 
-### PJXResizableGroup
-
-Drag-to-resize split-pane container. Compose `PJXResizablePanel` and `PJXResizableHandle` parts inside. **Assets:** `pjx_resizable_group.css`, `pjx_resizable_group.js`.
-
-<!-- demo: PJXResizableGroup -->
-
-```html
-<PJXResizableGroup direction="row">
-  <PJXResizablePanel size="25" min="15">sidebar</PJXResizablePanel>
-  <PJXResizableHandle/>
-  <PJXResizablePanel size="75">main</PJXResizablePanel>
-</PJXResizableGroup>
-```
-
-??? note "Props & API"
-
-    | Field | Type | Default | Description |
-    | --- | --- | --- | --- |
-    | `direction` | `"row" \| "column"` | `"row"` | Flex direction for the group (`row` = side-by-side, `column` = stacked). Emits `pjx-resizable-group--row` / `--column` and `data-direction`. |
-    | `class_name` | `AttrValue` | `""` | Extra CSS class(es) on the root element. |
-    | `content` | `str \| BaseComponent` | `""` | Pre-rendered children: alternating `PJXResizablePanel` and `PJXResizableHandle` components. |
-
-    **`pjx:resize` event.** Fires on the group root after every drag-end or keyboard step. `detail.sizes` is an ordered array of panel size percentages (one entry per `[data-pjx-resizable-panel]` direct child). Listen to persist the layout:
-
-    ```javascript
-    document.addEventListener("pjx:resize", e => {
-        localStorage.setItem("panel-sizes", JSON.stringify(e.detail.sizes));
-    });
-    ```
-
-    **Nesting.** A `PJXResizablePanel` may contain a `PJXResizableGroup` of the perpendicular direction, giving a resizable grid. Each group initializes independently via `:scope` + direct-children traversal.
-
-??? note "Style tokens"
-
-    | Token | Default |
-    | --- | --- |
-    | `--pjx-resizable-handle-size` | `0.5rem` |
-    | `--pjx-resizable-handle-color` | `transparent` |
-    | `--pjx-resizable-grip-color` | `var(--border)` |
-    | `--pjx-resizable-handle-color-active` | `var(--brand-muted)` |
-
-??? note "DOM & classes"
-
-    Root `<div role="group" class="pjx-resizable-group pjx-resizable-group--{direction}" data-pjx-resizable-group data-direction="{direction}">` rendering `{{ content }}` verbatim. `pjx_resizable_group.js` initializes on `DOMContentLoaded` and `htmx:afterSettle` (bind-guarded per element), sets `flex-grow` on each panel from the panel's `data-size` attribute, and wires pointer/touch drag and keyboard events to the handles.
-
-    **Classes:** `pjx-resizable-group`; direction modifiers `pjx-resizable-group--row`, `--column`; drag state `pjx-resizable-group--dragging`.
-
-??? note "Python"
-
-    ```python
-    PJXResizableGroup(
-        id="split",
-        direction="row",
-        content=(
-            PJXResizablePanel(id="split-l", size=25, min=15, content="sidebar").render()
-            + PJXResizableHandle(id="split-h").render()
-            + PJXResizablePanel(id="split-r", size=75, content="main").render()
-        ),
-    )
-    ```
-
-### PJXResizablePanel
-
-A resizable pane inside a `PJXResizableGroup`. Percentage-sized; `flex-grow` is set from `data-size` by JS. **Assets:** `pjx_resizable_panel.css`.
-
-```html
-<PJXResizableGroup direction="row">
-  <PJXResizablePanel size="40" min="20">Left panel</PJXResizablePanel>
-  <PJXResizableHandle/>
-  <PJXResizablePanel size="60">Right panel</PJXResizablePanel>
-</PJXResizableGroup>
-```
-
-??? note "Props & API"
-
-    | Field | Type | Default | Description |
-    | --- | --- | --- | --- |
-    | `size` | `float \| None` | `None` | Initial size as a percentage of the group (e.g. `40` = 40 %). `None` → `flex-grow: 1` (equal share). Rendered as `data-size` and inline `style="flex-grow: {size}"`. |
-    | `min` | `str \| float` | `0` | Minimum size. A number = percent of the group; `"120px"` = pixels; `"content"` = the panel's intrinsic min-content (so a fixed child stays visible at any viewport). |
-    | `max` | `str \| float` | `100` | Maximum size. A number = percent; `"120px"` = pixels. (`"content"` is not valid for max.) |
-    | `class_name` | `AttrValue` | `""` | Extra CSS class(es) on the root element. |
-    | `content` | `str \| BaseComponent` | `""` | Panel body content. |
-
-    Content floor — keeps the bottom strip visible regardless of viewport height:
-
-    ```html
-    <PJXResizableGroup direction="column">
-      <PJXResizablePanel size="70">messages</PJXResizablePanel>
-      <PJXResizableHandle/>
-      <PJXResizablePanel size="30" min="content">workspace strip</PJXResizablePanel>
-    </PJXResizableGroup>
-    ```
-
-??? note "DOM & classes"
-
-    Root `<div class="pjx-resizable-group__panel" data-pjx-resizable-panel [data-size] data-min data-max style="flex-grow: ...">`. Place inside a `PJXResizableGroup`; a `PJXResizableHandle` between two panels enables drag-to-resize. Each panel in the group must be a direct child.
-
-    **Classes:** `pjx-resizable-group__panel`. No own theming tokens; layout is controlled by `flex-grow`.
-
-??? note "Python"
-
-    ```python
-    PJXResizablePanel(size=40, min=20, content="Left panel")
-    ```
-
-### PJXResizableHandle
-
-The draggable divider between two `PJXResizablePanel` siblings. Keyboard-accessible (`role="separator"`, `tabindex="0"`). **Assets:** `pjx_resizable_handle.css`.
-
-```html
-<PJXResizableGroup direction="row">
-  <PJXResizablePanel size="50">Left</PJXResizablePanel>
-  <PJXResizableHandle label="Resize panels"/>
-  <PJXResizablePanel size="50">Right</PJXResizablePanel>
-</PJXResizableGroup>
-```
-
-??? note "Props & API"
-
-    | Field | Type | Default | Description |
-    | --- | --- | --- | --- |
-    | `label` | `str` | `"Resize"` | `aria-label` for the `role="separator"` element. |
-    | `class_name` | `AttrValue` | `""` | Extra CSS class(es) on the root element. |
-
-    **Keyboard controls.** When the handle is focused: `ArrowRight`/`ArrowDown` grows the preceding panel by 5 %; `ArrowLeft`/`ArrowUp` shrinks it by 5 %; `Home` collapses the preceding panel to its `min`; `End` expands it to the remaining group space (clamped to `max`). `min`/`max` constraints from both neighbors are respected.
-
-??? note "DOM & classes"
-
-    Root `<div role="separator" class="pjx-resizable-group__handle" data-pjx-resizable-handle tabindex="0" aria-label="{label}" aria-valuemin="0" aria-valuemax="100">`. Place between two `PJXResizablePanel`s inside a `PJXResizableGroup`. `pjx_resizable_group.js` sets `aria-valuenow` on the preceding panel's size at every update.
-
-    **Classes:** `pjx-resizable-group__handle`. Handle appearance is controlled by the `PJXResizableGroup` style tokens.
-
-??? note "Python"
-
-    ```python
-    PJXResizableHandle(label="Resize panels")
-    ```
-
-### PJXToastHost
-
-HX-Trigger-driven toast container singleton. Mount once in the layout. **Assets:** `pjx_toast_host.css`, `pjx_toast_host.js`.
-
-<!-- demo: PJXToastHost -->
-
-```html
-<PJXToastHost position="bottom-right"/>
-```
-
-??? note "Props & API"
-
-    | Field | Type | Default | Description |
-    | --- | --- | --- | --- |
-    | `position` | literal | `"bottom-right"` | `top-right`, `top-left`, `bottom-right`, `bottom-left`. |
-    | `timeout` | `int` | `4000` | Default auto-dismiss ms; `0` disables. |
-    | `dismiss_label` | `str` | `"Dismiss"` | `aria-label` for dismiss buttons on individual toasts. |
-    | `event_name` | `str` | `"pjx:toast"` | Custom event name to listen for (wired on mount). |
-
-    Fire from a FastAPI route via `HX-Trigger`:
-
-    ```python
-    import json
-
-    response.headers["HX-Trigger"] = json.dumps(
-        {"pjx:toast": {"message": "Saved.", "level": "success"}}
-    )
-    ```
-
-    Or from JS:
-
-    ```javascript
-    pjx.toast("Upload complete.", { level: "success", timeout: 3000 });
-    ```
-
-    Toast `level` maps to `.pjx-toast--<level>`; supported values: `info`, `success`, `warning`, `error`.
-
-??? note "Style tokens"
-
-    | Token | Default |
-    | --- | --- |
-    | `--pjx-toast-bg` | `var(--surface)` |
-    | `--pjx-toast-border` | `var(--border)` |
-    | `--pjx-toast-radius` | `var(--radius-md)` |
-    | `--pjx-toast-shadow` | `var(--shadow-md)` |
-    | `--pjx-toast-gap` | `0.5rem` |
-    | `--pjx-toast-z` | `1000` |
-    | `--pjx-toast-info` | `var(--brand, #5c8fa8)` |
-    | `--pjx-toast-success` | `#3e7d4f` |
-    | `--pjx-toast-warning` | `#b07415` |
-    | `--pjx-toast-error` | `#b3261e` |
-
-??? note "DOM & classes"
-
-    Root `div.pjx-toast-host[data-pjx-toast-host]`. `data-event-name` sets the custom event; `data-timeout` sets the default dismiss timeout; `data-dismiss-label` sets dismiss button label.
-    Events (bubble from the host): `pjx:toasthost:show` (detail: `{level}`), `pjx:toasthost:hide`.
-    API: `pjx.toast(message, {level?, timeout?})`.
-    Individual toasts: `div.pjx-toast.pjx-toast--<level>` > `.pjx-toast__message` + `button.pjx-toast__dismiss`.
-
-    **Classes:** `pjx-toast-host`, `pjx-toast-host--top-right`, `--top-left`, `--bottom-right`, `--bottom-left`; `pjx-toast`, `pjx-toast--info`, `--success`, `--warning`, `--error`; `pjx-toast--hiding`; `pjx-toast__message`, `pjx-toast__dismiss`.
-
-??? note "Python"
-
-    ```python
-    PJXToastHost(position="bottom-right")
-    ```
-
-### PJXRegionLoader
-
-In-place loading veil over a positioned ancestor. **Assets:** `pjx_region_loader.css`, `pjx_region_loader.js`.
-
-<!-- demo: PJXRegionLoader -->
-
-```html
-<PJXRegionLoader id="demo-region"/>
-```
-
-??? note "Props & API"
-
-    | Field | Type | Default | Description |
-    | --- | --- | --- | --- |
-    | `aria_label` | `str` | `"Loading"` | Accessible label (`role="status"`). |
-
-    **Layout:** Overlay is `position: absolute; inset: 0`. Parent must be **`position: relative`** (or any non-`static` value) so coverage is correct.
-
-    Supports both declarative (`hx-indicator`) and programmatic use (`pjx.loader.region.*`).
-
-??? note "Style tokens"
-
-    | Token | Default |
-    | --- | --- |
-    | `--pjx-region-loader-bg` | `color-mix(in srgb, var(--text) 55%, transparent)` |
-    | `--pjx-region-loader-backdrop` | `blur(2px)` |
-    | `--pjx-region-loader-z` | `100` |
-    | `--pjx-region-loader-spinner-size` | `2.5rem` |
-    | `--pjx-region-loader-spinner-width` | `3px` |
-    | `--pjx-region-loader-spinner-color` | `var(--brand)` |
-    | `--pjx-region-loader-spinner-track` | `color-mix(in srgb, var(--text) 12%, transparent)` |
-
-??? note "DOM & classes"
-
-    Root `.pjx-region-loader` (state: `.pjx-region-loader--visible`, `.pjx-region-loader--hiding`; also responds to `.htmx-request` as an htmx indicator — CSS activates the veil, no JS call required).
-    Events (non-cancelable): `pjx:region-loader:show`, `pjx:region-loader:hide`.
-    API: `pjx.loader.region.show/hide/reset(id)` and `pjx.loader.region.wrap(id, promise)`. Ref-counted for concurrent sources: visible from the first `show(id)` to the last `hide(id)`; `show`/`hide` events fire only on real visibility transitions (a show during an in-flight hide cancels it silently); hides finalize via a fallback timer even when animations are disabled. `wrap(id, promise)` pairs show/hide around any async task. Nodes replaced by a swap while sources remain active are re-lit on htmx:afterSettle.
-
-    **Classes:** `pjx-region-loader`; state `pjx-region-loader--visible`, `pjx-region-loader--hiding`; `pjx-region-loader__spinner`.
-
-??? note "Python"
-
-    ```python
-    PJXRegionLoader(id="demo-region")
-    ```
-
-### PJXPageLoader
-
-Full-page navigation loader. Mount once at the top of the layout body. **Assets:** `pjx_page_loader.css`, `pjx_page_loader.js`.
-
-<!-- demo: PJXPageLoader -->
-
-```html
-<PJXPageLoader id="demo-page-loader"/>
-```
-
-??? note "Props & API"
-
-    | Field | Type | Default | Description |
-    | --- | --- | --- | --- |
-    | `nav_targets` | `str` | `"app-content"` | Comma-separated element ids whose htmx GET requests activate the loader. |
-    | `active_on_load` | `bool` | `True` | When `True`, renders with `.pjx-page-loader--active` (cold-load shimmer, removed on `DOMContentLoaded`). |
-    | `loading_label` | `str` | `"Loading"` | `aria-label` for the `role="status"` element. |
-
-    Add `data-pjx-loader` to any element to make its htmx requests activate the loader regardless of `nav_targets`:
-
-    ```html
-    <a hx-get="/slow-page" hx-target="#main-content" data-pjx-loader>Go</a>
-    ```
-
-??? note "Style tokens"
-
-    | Token | Default |
-    | --- | --- |
-    | `--pjx-page-loader-backdrop` | `rgb(0 0 0 / 0.15)` |
-    | `--pjx-page-loader-z` | `9999` |
-    | `--pjx-page-loader-size` | `2rem` |
-
-??? note "DOM & classes"
-
-    Root `div.pjx-page-loader[data-pjx-page-loader]` (state: `.pjx-page-loader--active`).
-    `data-nav-targets` — comma-separated ids; htmx GET requests targeting any of these activate the loader.
-    `data-pjx-loader` on any element marks its htmx requests as loader-tracked regardless of target.
-    Tracking is detected via `htmx:beforeRequest`; the loader releases via the request's `loadend` (terminal on load, error, abort, and timeout); history navigations reset via `htmx:historyRestore`.
-    Events (non-cancelable, bubble from the root): `pjx:page-loader:show`, `pjx:page-loader:hide`.
-    API: `pjx.pageLoader.show()`, `pjx.pageLoader.hide()`, `pjx.pageLoader.reset()`, `pjx.pageLoader.wrap(promise)`.
-
-    **Classes:** `pjx-page-loader`, `pjx-page-loader--active`, `pjx-page-loader__spinner`.
-
-??? note "Python"
-
-    ```python
-    PJXPageLoader(id="demo-page-loader")
-    ```
-
-### PJXLazyLoad
-
-HTMX deferred-content loader: an element that fetches `url` on a computed trigger and swaps itself with the response. Use it three ways — a **lazy panel** (load a section's content on first reveal), **load-on-mount**, or an **infinite-scroll sentinel** at the end of a list/table. **Assets:** `pjx_lazy_load.css`, `pjx_lazy_load.js`. `PJXLazyLoad` needs a backend, so it has no live render.
-
-```html
-<PJXLazyLoad id="comments" url="/posts/42/comments">
-  <PJXSkeleton id="comments-skel"/>
-</PJXLazyLoad>
-```
-
-??? note "Props & API"
-
-    | Field | Type | Default | Description |
-    | --- | --- | --- | --- |
-    | `url` | `str` | required | Endpoint for the deferred content (`hx-get`). |
-    | `when` | literal | `"viewport"` | `viewport` (scroll-revealed), `reveal` (`pjx:reveal` from nearest `[data-pjx-region]`), `load` (immediately). Overridden by `trigger`. |
-    | `trigger` | `str` | `""` | Explicit `hx-trigger` value; overrides `when` entirely when set. |
-    | `swap` | `str` | `"outerHTML"` | `hx-swap` strategy. The default self-replaces the element. |
-    | `tag` | literal | `"div"` | Rendered root element: `div`, `li` (inside a `<ul>`/`<ol>`), or `tr` (inside a `<tbody>`). Lets the loader sit directly in a list or table. |
-    | `content` | `str \| BaseComponent` | `""` | Placeholder / loading indicator shown until the fetch lands (e.g. a [`PJXSkeleton`](#pjxskeleton) or "Loading…"). |
-
-    `when` preset mapping:
-
-    | `when` | `hx-trigger` value |
-    | --- | --- |
-    | `viewport` (default) | `revealed` |
-    | `reveal` | `pjx:reveal from:closest [data-pjx-region] once` |
-    | `load` | `load` |
-
-    **Load more on scroll (infinite-scroll sentinel).** Drop a `PJXLazyLoad` at the end of a list or `<tbody>` with `when="viewport"` and the matching `tag`. When it scrolls into view it `hx-get`s `url` and `outerHTML`-replaces itself with the server's next batch **plus a fresh `PJXLazyLoad`** carrying the next cursor; the loop ends when the server stops emitting a sentinel. The scroll container is just a `max-height; overflow:auto` wrapper (or the page) — no extra component needed. Ships no JS (htmx's `revealed` does the visibility detection).
-
-    ```html
-    <tbody id="rows">
-      <!-- … rendered rows … -->
-      <PJXLazyLoad url="/rows?cursor=20" tag="tr" content="Loading…"/>
-    </tbody>
-    ```
-
-??? note "DOM & classes"
-
-    Root `.pjx-lazy-load` (element chosen by `tag`); no JS (pure HTMX). `data-pjx-region` on a `PJXTabPanel` host fires `pjx:reveal`/`pjx:before-reveal` events that `when="reveal"` listens for.
-
-    **Classes:** `pjx-lazy-load` (unstyled hook). No theming tokens.
-
-??? note "Python"
-
-    ```python
-    PJXLazyLoad(
-        id="comments", url="/posts/42/comments", content=PJXSkeleton(id="comments-skel")
-    )
-    ```
-
-### PJXGraph
-
-Pan/zoom node graph: draggable node cards joined by edges, zoom controls and a side panel, composed from `PJXGraphNodes`, `PJXGraphNode`, `PJXGraphEdges`, `PJXGraphControls` and `PJXGraphSidePanel`. **Assets:** `pjx_graph.css`, `pjx_graph.js`, `pjx_graph_node.css`, `pjx_graph_controls.css`, `pjx_graph_side_panel.css`.
-
-<!-- demo: PJXGraph -->
-
-Drag a node, drag a wire from a node's right-hand port onto another node, or click a node to open the panel. A docs page has no server, so a small inline script stands in for the two routes from [Wiring the app](guide/graph.md#wiring-the-app). The new edge still arrives as a real htmx out-of-band swap of the edge layer.
-
-```python
-nodes = [
-    PJXGraphNode(
-        id="node-a", node_id="a", x=40, y=60, title="Fetch", out_ports=("next",)
-    ),
-    PJXGraphNode(id="node-b", node_id="b", x=320, y=60, title="Store", in_port=True),
-]
-PJXGraph(
-    id="flow",
-    nodes=PJXGraphNodes(
-        id="flow-nodes", nodes_html=PJXGraphNodes.join(node.render() for node in nodes)
-    ),
-    edges=PJXGraphEdges(
-        id="flow-edges", edges=[{"id": "a-b", "from": "a", "to": "b", "port": "next"}]
-    ),
-    controls=PJXGraphControls(),
-    panel=PJXGraphSidePanel(id="flow-panel"),
-)
-```
-
-Every prop, event, persistence rule and update shape is in the [Graph guide](guide/graph.md).
-
 ## Form controls
+
+### PJXButton
+
+Structural, themeable button. Composes [`PJXRegionLoader`](#pjxregionloader) for the inline loading state. **Assets:** `pjx_button.css` only.
+
+<!-- demo: PJXButton -->
+
+```html
+<PJXButton content="Save" variant="primary"/>
+```
+
+??? note "Props & API"
+
+    | Field | Type | Default | Description |
+    | --- | --- | --- | --- |
+    | `content` | `str \| BaseComponent` | `""` | Freeform button content (rendered raw); nest icons, text, or any markup here. The loading spinner auto-appends after this. |
+    | `variant` | `str` | `"default"` | Class hook only → `pjx-button--{variant}`. No baked palette; style it yourself. |
+    | `block` | `bool` | `False` | Full-width (`pjx-button--block`) instead of content-width. |
+    | `loading` | `bool` | `False` | Renders a `<PJXRegionLoader/>` overlay and sets `aria-busy="true"`. |
+    | `disabled` | `bool` | `False` | Sets the `disabled` attribute. |
+    | `type` | literal | `"button"` | `button`, `submit`, or `reset`. |
+
+??? note "Style tokens"
+
+    | Token | Default |
+    | --- | --- |
+    | `--pjx-button-bg` | `transparent` |
+    | `--pjx-button-color` | `inherit` |
+    | `--pjx-button-border` | `1px solid currentColor` |
+    | `--pjx-button-radius` | `0.375rem` |
+    | `--pjx-button-padding` | `0.5rem 0.875rem` |
+    | `--pjx-button-gap` | `0.5rem` |
+    | `--pjx-button-font-size` | `inherit` |
+    | `--pjx-button-font-weight` | `500` |
+    | `--pjx-button-bg-hover` | `var(--pjx-button-bg)` |
+    | `--pjx-button-border-hover` | `currentColor` |
+
+??? note "DOM & classes"
+
+    Root `<button>` rendering `{{ content }}` verbatim. No JS API — pass `hx-*`/`@click` inline (they pass through to the root). The default `.pjx-button` is visually neutral so it never fights your design system; paint variants via `.pjx-button--<variant>`.
+
+    **Classes:** `pjx-button`; `pjx-button--block`; variant seams `pjx-button--<variant>`.
+
+    An icon-only button (`content` is just a `PJXIcon`, which renders `aria-hidden`) has no accessible name on its own — pass `aria-label` (it passes through to the root like any other attribute): `<PJXButton aria-label="Delete"><PJXIcon name="trash"/></PJXButton>`.
+
+??? note "Python"
+
+    ```python
+    PJXButton(content="Save", variant="primary")
+    ```
 
 ### PJXChipInput
 
@@ -2609,29 +2597,6 @@ Tag-style multi-value input. Each chip carries its own `<input type="hidden">` s
     )
     ```
 
-### PJXRosterPicker
-
-Server-searched multi-picker: the user searches, picks from the rows the route sends back, and each pick becomes a removable chip with its own hidden input. **Assets:** `pjx_roster_picker.css`, `pjx_roster_picker.js`.
-
-<!-- demo: PJXRosterPicker -->
-
-Type part of a name, scroll the list for more, pick and remove. The three pickers take any number of people, one (a pick replaces the chip) and at most three. A docs page has no server, so a small inline script plays the search route from the [Roster Picker guide](guide/roster-picker.md#quick-start); the rows and each next page still arrive through real htmx swaps.
-
-```python
-PJXRosterPicker(
-    id="team",
-    name="members",
-    candidates_url="/people",
-    items=[
-        PJXRosterItem(
-            value="ada", label="Ada Lovelace", subtitle="Analyst", initials="AL"
-        ),
-    ],
-)
-```
-
-Every prop, event, search-route rule and update shape is in the [Roster Picker guide](guide/roster-picker.md).
-
 ### PJXFormField
 
 Labelled control wrapper with help text and error state. **Assets:** `pjx_form_field.css` only.
@@ -2683,49 +2648,75 @@ Labelled control wrapper with help text and error state. **Assets:** `pjx_form_f
     )
     ```
 
-### PJXToggleSwitch
+### PJXPasswordInput
 
-Accessible on/off toggle backed by a visually-hidden checkbox. **Assets:** `pjx_toggle_switch.css` only — no JS.
+Password field with a show/hide toggle button. **Assets:** `pjx_password_input.css`, `pjx_password_input.js`.
 
-<!-- demo: PJXToggleSwitch -->
+<!-- demo: PJXPasswordInput -->
 
 ```html
-<PJXToggleSwitch name="notifications" checked="true" label="Email notifications"/>
+<PJXPasswordInput name="password" placeholder="Enter your password" autocomplete="current-password" required="true"/>
 ```
 
 ??? note "Props & API"
 
     | Field | Type | Default | Description |
     | --- | --- | --- | --- |
-    | `name` | `str` | `""` | `name` attribute on the hidden checkbox. |
-    | `value` | `str` | `"on"` | `value` attribute on the checkbox. |
-    | `checked` | `bool` | `False` | When `True`, adds `checked` to the checkbox. |
-    | `label` | `str` | `""` | Visible label text rendered after the track; omitted when empty. |
-    | `disabled` | `bool` | `False` | When `True`, adds `disabled` to the checkbox. |
+    | `name` | `str` | `"password"` | `name` on the `<input>`. |
+    | `placeholder` | `str` | `""` | `placeholder` on the `<input>`; omitted when empty. |
+    | `autocomplete` | `str` | `"current-password"` | `autocomplete` attribute. |
+    | `required` | `bool` | `False` | When `True`, adds `required` to the `<input>`. |
+    | `show_label` | `str` | `"Show password"` | Static `aria-label` on the toggle button; visibility state is conveyed by `aria-pressed` (ARIA toggle-button pattern). |
 
 ??? note "Style tokens"
 
     | Token | Default |
     | --- | --- |
-    | `--pjx-toggle-switch-width` | `2.75rem` |
-    | `--pjx-toggle-switch-height` | `1.5rem` |
-    | `--pjx-toggle-switch-track` | `var(--border)` |
-    | `--pjx-toggle-switch-track-on` | `var(--brand)` |
-    | `--pjx-toggle-switch-thumb` | `#fff` |
-    | `--pjx-toggle-switch-radius` | `var(--radius-full)` |
-    | `--pjx-toggle-switch-gap` | `0.5rem` |
+    | `--pjx-password-input-border` | `var(--border)` |
+    | `--pjx-password-input-radius` | `var(--radius-md)` |
+    | `--pjx-password-input-focus` | `var(--border-focus, var(--brand))` |
+    | `--pjx-password-input-toggle-color` | `var(--text-muted)` |
+    | `--pjx-password-input-eye-size` | `1.25rem` |
 
 ??? note "DOM & classes"
 
-    Root `label.pjx-toggle-switch` wrapping a visually-hidden `input[type=checkbox].pjx-toggle-switch__input` (uses `clip-path: inset(50%)`, not `display:none` — keeps focus and click). CSS keys on `:checked + .pjx-toggle-switch__track` for the active state and `:focus-visible + .pjx-toggle-switch__track` for the ring. No JS API.
+    Root `div.pjx-password-input[data-pjx-password]`. Field: `input.pjx-password-input__field` with id `{{ id }}-field`. Toggle button: `button.pjx-password-input__toggle[data-pjx-password-toggle]`; `aria-pressed` reflects state (`"false"` when hidden, `"true"` when shown); `.pjx-password-input__toggle--on` class added when visible. No `pjx:*` events — state is readable from `aria-pressed` on the button. No JS API under `window.pjx`.
 
-    **Classes:** `pjx-toggle-switch`, `pjx-toggle-switch__input`, `pjx-toggle-switch__track`, `pjx-toggle-switch__thumb`, `pjx-toggle-switch__label`.
+    **Classes:** `pjx-password-input`, `pjx-password-input__field`, `pjx-password-input__toggle`, `pjx-password-input__toggle--on`, `pjx-password-input__eye`.
 
 ??? note "Python"
 
     ```python
-    PJXToggleSwitch(name="notifications", checked=True, label="Email notifications")
+    PJXPasswordInput(
+        name="password",
+        placeholder="Enter your password",
+        autocomplete="current-password",
+        required=True,
+    )
     ```
+
+### PJXRosterPicker
+
+Server-searched multi-picker: the user searches, picks from the rows the route sends back, and each pick becomes a removable chip with its own hidden input. **Assets:** `pjx_roster_picker.css`, `pjx_roster_picker.js`.
+
+<!-- demo: PJXRosterPicker -->
+
+Type part of a name, scroll the list for more, pick and remove. The three pickers take any number of people, one (a pick replaces the chip) and at most three. A docs page has no server, so a small inline script plays the search route from the [Roster Picker guide](guide/roster-picker.md#quick-start); the rows and each next page still arrive through real htmx swaps.
+
+```python
+PJXRosterPicker(
+    id="team",
+    name="members",
+    candidates_url="/people",
+    items=[
+        PJXRosterItem(
+            value="ada", label="Ada Lovelace", subtitle="Analyst", initials="AL"
+        ),
+    ],
+)
+```
+
+Every prop, event, search-route rule and update shape is in the [Roster Picker guide](guide/roster-picker.md).
 
 ### PJXSegmentedControl
 
@@ -2777,109 +2768,118 @@ Pill-style radio group for mutually exclusive options. **Assets:** `pjx_segmente
     )
     ```
 
-### PJXPasswordInput
+### PJXSelect
 
-Password field with a show/hide toggle button. **Assets:** `pjx_password_input.css`, `pjx_password_input.js`.
+A styled replacement for a bare `<select>`, single-choice or multi. A hidden native `<select>` carries the same options, so a plain form submit still posts a value without JS. **Assets:** `pjx_select.css`, `pjx_select.js`.
 
-<!-- demo: PJXPasswordInput -->
+<!-- demo: PJXSelect -->
 
 ```html
-<PJXPasswordInput name="password" placeholder="Enter your password" autocomplete="current-password" required="true"/>
+<PJXSelect name="fruit" ... />
 ```
 
 ??? note "Props & API"
 
     | Field | Type | Default | Description |
     | --- | --- | --- | --- |
-    | `name` | `str` | `"password"` | `name` on the `<input>`. |
-    | `placeholder` | `str` | `""` | `placeholder` on the `<input>`; omitted when empty. |
-    | `autocomplete` | `str` | `"current-password"` | `autocomplete` attribute. |
-    | `required` | `bool` | `False` | When `True`, adds `required` to the `<input>`. |
-    | `show_label` | `str` | `"Show password"` | Static `aria-label` on the toggle button; visibility state is conveyed by `aria-pressed` (ARIA toggle-button pattern). |
+    | `name` | `str` | — | Required. Form field name, on both the root (`data-name`) and the native `<select>`. |
+    | `options` | `list[SelectOption]` | — | Required. Each `SelectOption` has `value` and `label`. Plain dicts are coerced. |
+    | `value` | `str \| list[str] \| None` | `None` | Current selection. Must be a list when `multiple=True`, a str otherwise; a value matching no option renders unselected. |
+    | `multiple` | `bool` | `False` | Multi-select: checkbox per row, chip summary on the trigger. |
+    | `placeholder` | `str` | `"Select…"` | Trigger text when nothing is selected. |
+    | `disabled` | `bool` | `False` | Marks the root, the trigger, the native `<select>`, and the filter input. |
+    | `required` | `bool` | `False` | Forwards `required` to the native `<select>` and `aria-required="true"` to the trigger, since the native element is hidden and can't carry that on its own. |
+    | `portal` | `bool` | `False` | Reparent the whole root to `document.body` while open, so an `overflow: hidden`/`auto` ancestor can't clip the panel. |
+    | `class_name` | `AttrValue` | `""` | Appended to the root's classes. |
+
+    Panels with more than 8 options render a search input above the list; shorter lists render without one. The input is UI-only — it hides option buttons and never posts. Opening focuses that input when present, for both mouse and keyboard opens.
+
+    In single-select mode, a `value` matching no option (including no value at all) renders a synthetic `<option value="" selected disabled hidden>` on the native `<select>` in addition to rendering unselected. Without it, an HTML `<select>` with no `option[selected]` reports its live `.value` as the first option even though nothing was chosen — this keeps that value honestly empty for anything reading it (validation, `required`, `formData.get(...)`).
+
+    When the native `<select>` fails constraint validation on submit (e.g. `required` with nothing chosen), the browser has nothing visible to anchor its own validation bubble to, so the JS mirrors the failure onto the trigger instead: `aria-invalid="true"` and a `pjx-select--invalid` class, with focus moved to the trigger. Both clear as soon as a real selection is made. No default invalid styling ships — style `.pjx-select--invalid` (or `[aria-invalid="true"]` on the trigger) as needed.
 
 ??? note "Style tokens"
 
     | Token | Default |
     | --- | --- |
-    | `--pjx-password-input-border` | `var(--border)` |
-    | `--pjx-password-input-radius` | `var(--radius-md)` |
-    | `--pjx-password-input-focus` | `var(--border-focus, var(--brand))` |
-    | `--pjx-password-input-toggle-color` | `var(--text-muted)` |
-    | `--pjx-password-input-eye-size` | `1.25rem` |
+    | `--pjx-select-bg` | `var(--surface, #fff)` |
+    | `--pjx-select-fg` | `var(--text)` |
+    | `--pjx-select-border` | `var(--border)` |
+    | `--pjx-select-focus` | `var(--border-focus, var(--border))` |
+    | `--pjx-select-radius` | `var(--radius-md)` |
+    | `--pjx-select-padding` | `0.375rem 0.5rem` |
+    | `--pjx-select-panel-bg` | `var(--surface-alt)` |
+    | `--pjx-select-panel-shadow` | `var(--shadow-md)` |
+    | `--pjx-select-panel-min-w` | `12rem` |
+    | `--pjx-select-panel-max-h` | `16rem` |
+    | `--pjx-select-panel-z` | `300` |
+    | `--pjx-select-option-hover` | `var(--surface-hover, var(--surface-alt))` |
+    | `--pjx-select-option-active` | `var(--accent-soft, var(--surface-alt))` |
 
 ??? note "DOM & classes"
 
-    Root `div.pjx-password-input[data-pjx-password]`. Field: `input.pjx-password-input__field` with id `{{ id }}-field`. Toggle button: `button.pjx-password-input__toggle[data-pjx-password-toggle]`; `aria-pressed` reflects state (`"false"` when hidden, `"true"` when shown); `.pjx-password-input__toggle--on` class added when visible. No `pjx:*` events — state is readable from `aria-pressed` on the button. No JS API under `window.pjx`.
+    Root `[data-pjx-select]`, carrying `data-name`, plus `data-multiple` and `data-placeholder` in multi mode, `data-disabled` when disabled, and `data-pjx-select-portal` when `portal=True`. Trigger: `[data-pjx-select-trigger]` with `aria-haspopup="listbox"`, `aria-expanded` synced by JS, `aria-required="true"` when `required=True`, and `aria-invalid`/`pjx-select--invalid` set by JS after a failed constraint check (cleared on the next real selection). Panel: `[data-pjx-select-panel]` with `role="listbox"`, `hidden` when closed; opening always sets its width to match the trigger's rendered width and writes inline `left`/`top` on top of that only when the panel would otherwise overflow the viewport (flip/clamp), removing everything on close. Options: `[data-pjx-select-option]` with `data-value`, `role="option"`, and `aria-selected` as the selection state. Filter: `[data-pjx-select-filter]`, presentation-only — it hides option buttons and never changes selection; opening focuses it when present, from either a mouse or a keyboard open. A hidden native `<select name="…">` inside the root is the form's source of truth and is re-derived from the option buttons on every change, dispatching real `change`/`input` events on itself so `hx-trigger="change from:select"` and vanilla listeners still fire; without JS it submits on its own.
 
-    **Classes:** `pjx-password-input`, `pjx-password-input__field`, `pjx-password-input__toggle`, `pjx-password-input__toggle--on`, `pjx-password-input__eye`.
+    With `portal=True`, opening reparents the whole root (not just the panel) to `document.body`, fixed at its pre-move screen position so the trigger doesn't visibly jump, and moves it back to its original parent on close — the same escape hatch `PJXTooltip`'s `portal` prop offers for a clipping `overflow: hidden`/`auto` ancestor.
+
+    Keyboard: ArrowDown/ArrowUp/Home/End move focus among options (wrapping); ArrowDown/ArrowUp/Enter/Space on the trigger open the panel and focus the filter input if present, otherwise an edge option; type-ahead jumps to the next option whose label starts with the typed prefix (case-insensitive, buffer resets after a pause); Enter/Space selects and closes in single mode, toggles and stays open in multi mode; Escape closes and returns focus to the trigger from anywhere inside the root, including the filter input.
+
+    **Classes:** `pjx-select`, `pjx-select__trigger`, `pjx-select__label`, `pjx-select__chips`, `pjx-select__panel`, `pjx-select__filter`, `pjx-select__option`, `pjx-select__checkbox`. Chips reuse `pjx-chip-input__chip` / `pjx-chip-input__label`.
 
 ??? note "Python"
 
     ```python
-    PJXPasswordInput(
-        name="password",
-        placeholder="Enter your password",
-        autocomplete="current-password",
-        required=True,
+    PJXSelect(
+        name="fruit",
+        options=[
+            SelectOption(value="a", label="Apple"),
+            SelectOption(value="b", label="Banana"),
+        ],
+        value=["a", "b"],
+        multiple=True,
     )
     ```
 
-### PJXPaginator
+### PJXToggleSwitch
 
-Accessible page-navigation bar. **Assets:** `pjx_paginator.css` only.
+Accessible on/off toggle backed by a visually-hidden checkbox. **Assets:** `pjx_toggle_switch.css` only — no JS.
 
-<!-- demo: PJXPaginator -->
+<!-- demo: PJXToggleSwitch -->
 
 ```html
-<PJXPaginator page="4" total_pages="12" url="/items?page={page}"/>
+<PJXToggleSwitch name="notifications" checked="true" label="Email notifications"/>
 ```
 
 ??? note "Props & API"
 
-    Pairs naturally with [`PJXTable`](#pjxtable): point `target` at the table body or its wrapper and return the re-paged fragment from your view to update both the rows and the paginator in one swap.
-
     | Field | Type | Default | Description |
     | --- | --- | --- | --- |
-    | `page` | `int` | *(required)* | Current page number (clamped to `[1, total_pages]` internally). |
-    | `total_pages` | `int` | *(required)* | Total number of pages (must be ≥ 1). |
-    | `url` | `str` | *(required)* | URL template; **must contain `{page}`** (e.g. `/items?page={page}`). |
-    | `target` | `str` | `""` | CSS selector for the htmx swap target. When set, every link gets `hx-get`/`hx-target`/`hx-swap` (and `hx-push-url` when `push_url=True`); when empty, links render as plain `<a href>`. |
-    | `swap` | `str` | `"innerHTML"` | htmx `hx-swap` strategy; only used when `target` is set. |
-    | `push_url` | `bool` | `False` | When `True` and `target` is set, adds `hx-push-url="true"` to each link. |
-    | `siblings` | `int` | `1` | Pages shown on each side of the current page (≥ 0). |
-    | `boundaries` | `int` | `1` | Pages shown at each end of the range (≥ 0). |
-    | `prev_next` | `bool` | `True` | Render Prev / Next controls. |
-    | `first_last` | `bool` | `False` | Render First / Last controls. |
-    | `prev_label` | `str` | `"Prev"` | Label for the Prev control. |
-    | `next_label` | `str` | `"Next"` | Label for the Next control. |
-    | `first_label` | `str` | `"First"` | Label for the First control. |
-    | `last_label` | `str` | `"Last"` | Label for the Last control. |
-    | `aria_label` | `str` | `"Pagination"` | `aria-label` on the root `<nav>`. |
-    | `class_name` | `AttrValue` | `""` | Extra CSS class(es) on the root element. |
+    | `name` | `str` | `""` | `name` attribute on the hidden checkbox. |
+    | `value` | `str` | `"on"` | `value` attribute on the checkbox. |
+    | `checked` | `bool` | `False` | When `True`, adds `checked` to the checkbox. |
+    | `label` | `str` | `""` | Visible label text rendered after the track; omitted when empty. |
+    | `disabled` | `bool` | `False` | When `True`, adds `disabled` to the checkbox. |
 
 ??? note "Style tokens"
 
     | Token | Default |
     | --- | --- |
-    | `--pjx-paginator-gap` | `0.25rem` |
-    | `--pjx-paginator-link-fg` | `var(--text)` |
-    | `--pjx-paginator-link-bg` | `transparent` |
-    | `--pjx-paginator-link-hover-bg` | `var(--surface-alt)` |
-    | `--pjx-paginator-current-fg` | `var(--brand)` |
-    | `--pjx-paginator-current-bg` | `var(--brand-subtle)` |
-    | `--pjx-paginator-border` | `var(--border)` |
-    | `--pjx-paginator-radius` | `var(--radius-sm)` |
-    | `--pjx-paginator-disabled-opacity` | `0.4` |
+    | `--pjx-toggle-switch-width` | `2.75rem` |
+    | `--pjx-toggle-switch-height` | `1.5rem` |
+    | `--pjx-toggle-switch-track` | `var(--border)` |
+    | `--pjx-toggle-switch-track-on` | `var(--brand)` |
+    | `--pjx-toggle-switch-thumb` | `#fff` |
+    | `--pjx-toggle-switch-radius` | `var(--radius-full)` |
+    | `--pjx-toggle-switch-gap` | `0.5rem` |
 
 ??? note "DOM & classes"
 
-    Root `<nav class="pjx-paginator" aria-label="...">` containing `<ul class="pjx-paginator__list">` → `<li class="pjx-paginator__item">` per entry. The current page renders as `<span class="pjx-paginator__link pjx-paginator__link--current" aria-current="page">`. Ellipsis gaps render as `<span class="pjx-paginator__ellipsis" aria-hidden="true">`. Disabled controls (Prev on page 1, Next on the last page, etc.) render as `<span class="pjx-paginator__control pjx-paginator__control--{variant} pjx-paginator__control--disabled" aria-disabled="true">`. Each active page link and enabled control renders as `<a href="...">` when `target` is empty, or as `<a hx-get="..." hx-target="..." hx-swap="...">` when `target` is set. No JS.
+    Root `label.pjx-toggle-switch` wrapping a visually-hidden `input[type=checkbox].pjx-toggle-switch__input` (uses `clip-path: inset(50%)`, not `display:none` — keeps focus and click). CSS keys on `:checked + .pjx-toggle-switch__track` for the active state and `:focus-visible + .pjx-toggle-switch__track` for the ring. No JS API.
 
-    **Classes:** `pjx-paginator`, `pjx-paginator__list`, `pjx-paginator__item`, `pjx-paginator__link`, `pjx-paginator__link--current`, `pjx-paginator__ellipsis`, `pjx-paginator__control`, `pjx-paginator__control--first`, `pjx-paginator__control--prev`, `pjx-paginator__control--next`, `pjx-paginator__control--last`, `pjx-paginator__control--disabled`.
+    **Classes:** `pjx-toggle-switch`, `pjx-toggle-switch__input`, `pjx-toggle-switch__track`, `pjx-toggle-switch__thumb`, `pjx-toggle-switch__label`.
 
 ??? note "Python"
 
     ```python
-    PJXPaginator(page=4, total_pages=12, url="/items?page={page}", target="#list")
+    PJXToggleSwitch(name="notifications", checked=True, label="Email notifications")
     ```
-```
