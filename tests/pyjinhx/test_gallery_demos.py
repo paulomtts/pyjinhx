@@ -208,10 +208,40 @@ def test_graph_demo_renders_the_pipeline_stage():
     assert html.count('addEventListener("pjx:graph:wire"') == 1
 
 
+def test_roster_picker_demo_renders_three_pickers():
+    from demos.roster_picker import PEOPLE, roster_picker
+
+    from pyjinhx.session import request_scope
+
+    assert "PJXRosterPicker" in DEMOS
+    with request_scope():
+        html = roster_picker()
+
+    pickers = ["demo-roster-team", "demo-roster-owner", "demo-roster-approvers"]
+    roots = re.findall(
+        r'<div id="([^"]+)" class="pjx-roster-picker" data-pjx-roster-picker'
+        r' data-name="[^"]+" data-max-items="(\d+)"',
+        html,
+    )
+    assert roots == [(pickers[0], "0"), (pickers[1], "1"), (pickers[2], "3")]
+    # Only a picker's own chips post under its name: the chips inside the
+    # result rows' templates carry an empty name until a pick gives them one.
+    names = ("team", "owner", "approvers")
+    assert [html.count(f' name="{name}"') for name in names] == [1, 1, 2]
+    assert html.count('hx-get="/demo/people" hx-trigger="input delay:300ms') == 3
+    # What the in-page route answers from, kept inert for each picker.
+    assert re.findall(r'<template data-demo-roster-page="([^"]+)"', html) == pickers
+    assert re.findall(r'<template data-demo-roster-empty="([^"]+)"', html) == pickers
+    assert html.count("data-pjx-roster-pick ") == len(pickers) * len(PEOPLE)
+    # The in-page stand-in for the app's search route. (Counting <script> tags
+    # would not work: each render() here appends its own asset scripts.)
+    assert html.count("<script data-demo-roster-route>") == 1
+
+
 def test_runtime_demos_are_registered_demos():
     from demos import RUNTIME_DEMOS
 
-    assert RUNTIME_DEMOS == {"PJXGraph"}
+    assert RUNTIME_DEMOS == {"PJXGraph", "PJXRosterPicker"}
     assert RUNTIME_DEMOS <= set(DEMOS)
 
 
@@ -231,20 +261,46 @@ def test_post_build_gives_the_graph_page_the_runtime_once_in_the_body(tmp_path):
     assert page.index("<body>") < runtime < page.index(graph_script)
 
 
+def test_post_build_gives_the_roster_picker_page_the_runtime_once_in_the_body(
+    tmp_path,
+):
+    from pyjinhx.builtins.ui.pjx_roster_picker import PJXRosterPicker
+    from pyjinhx.client import read_pjx_runtime, read_vendored_htmx
+
+    hooks.on_post_build({"site_dir": str(tmp_path)})
+    page = (tmp_path / "demos" / "pjx-roster-picker.html").read_text()
+    (js_path,) = PJXRosterPicker.__pjx_descriptor__.js_paths
+    picker_script = f"<script>{Path(js_path).read_text()}</script>"
+    assert page.count(picker_script) == 1
+    assert page.count(read_vendored_htmx()) == 1
+    assert page.count('<style id="pjx-style">') == 1
+    runtime = page.index(read_pjx_runtime())
+    assert page.index("<body>") < runtime < page.index(picker_script)
+    # The route's script sits in the markup, ahead of the picker's script,
+    # which is why it waits for DOMContentLoaded to listen.
+    assert page.index("<script data-demo-roster-route>") < page.index(picker_script)
+
+
 def test_post_build_leaves_the_runtime_off_every_other_page(tmp_path):
+    from demos import RUNTIME_DEMOS
+
     from pyjinhx.client import read_vendored_htmx
 
     hooks.on_post_build({"site_dir": str(tmp_path)})
     htmx_source = read_vendored_htmx()
+    runtime_pages = {
+        f"{hooks.pascal_case_to_kebab_case(name)}.html" for name in RUNTIME_DEMOS
+    }
     for path in (tmp_path / "demos").glob("*.html"):
-        if path.name == "pjx-graph.html":
+        if path.name in runtime_pages:
             continue
         page = path.read_text()
         assert 'id="pjx-style"' not in page, path.name
         assert htmx_source not in page, path.name
 
 
-def test_graph_page_output_is_stable(tmp_path):
+@pytest.mark.parametrize("name", ["pjx-graph.html", "pjx-roster-picker.html"])
+def test_runtime_page_output_is_stable(tmp_path, name):
     import itertools
 
     import pyjinhx._component as component_mod
@@ -257,6 +313,6 @@ def test_graph_page_output_is_stable(tmp_path):
     hooks.on_post_build({"site_dir": str(first)})
     component_mod._auto_id_counter = itertools.count(1)
     hooks.on_post_build({"site_dir": str(second)})
-    page_a = (first / "demos" / "pjx-graph.html").read_text()
-    page_b = (second / "demos" / "pjx-graph.html").read_text()
+    page_a = (first / "demos" / name).read_text()
+    page_b = (second / "demos" / name).read_text()
     assert page_a == page_b

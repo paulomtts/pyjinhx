@@ -1,9 +1,11 @@
 """Guards the 1.0 package layout: `pyjinhx` is the v2 engine and v0.x is gone (#540)."""
 
+import ast
 import importlib
 import inspect
 import re
 import subprocess
+import sys
 import tomllib
 from pathlib import Path
 
@@ -36,6 +38,13 @@ EXPECTED_EXPORTS = {
     # configuration
     "PjxSettings",
     "AssetMode",
+}
+
+ROSTER_EXPORTS = {
+    "PJXRosterChip": "pyjinhx.builtins.ui.pjx_roster_chip.pjx_roster_chip",
+    "PJXRosterItem": "pyjinhx.builtins.ui.pjx_roster_picker.item",
+    "PJXRosterPicker": "pyjinhx.builtins.ui.pjx_roster_picker.pjx_roster_picker",
+    "PJXRosterResults": "pyjinhx.builtins.ui.pjx_roster_results.pjx_roster_results",
 }
 
 
@@ -188,24 +197,32 @@ def test_reactive_response_is_gone():
         importlib.import_module("pyjinhx.reactive.response")
 
 
-def _graph_symbols_in_public_api() -> list[str]:
-    """The backticked names in the first column of the graph builtins table."""
+def _symbols_in_public_api(heading: str) -> list[str]:
+    """The backticked names in the first column of the table under `## <heading>`."""
     text = (REPO_ROOT / "docs" / "reference" / "public-api.md").read_text(
         encoding="utf-8"
     )
-    _, heading, rest = text.partition("## Builtin graph components\n")
-    if not heading:
+    _, found, rest = text.partition(f"## {heading}\n")
+    if not found:
         return []
     section = rest.split("\n## ", 1)[0]
     return re.findall(r"^\| `(\w+)` \|", section, flags=re.MULTILINE)
 
 
 def test_public_api_lists_every_graph_builtin():
-    documented = _graph_symbols_in_public_api()
+    documented = _symbols_in_public_api("Builtin graph components")
     exported = {n for n in pyjinhx.builtins.__all__ if n.startswith("PJXGraph")}
     assert exported
     assert len(documented) == len(set(documented))
     assert set(documented) == exported
+    assert [n for n in documented if not hasattr(pyjinhx.builtins, n)] == []
+
+
+def test_public_api_lists_every_roster_builtin():
+    documented = _symbols_in_public_api("Builtin roster picker components")
+    assert documented
+    assert len(documented) == len(set(documented))
+    assert set(documented) == set(ROSTER_EXPORTS)
     assert [n for n in documented if not hasattr(pyjinhx.builtins, n)] == []
 
 
@@ -217,3 +234,63 @@ def test_every_adr_is_indexed_and_in_nav():
     assert adrs
     assert [a for a in adrs if f"]({a})" not in index] == []
     assert [a for a in adrs if f"decisions/{a}" not in nav] == []
+
+
+def test_roster_builtins_are_exported_in_order():
+    names = pyjinhx.builtins.__all__
+    start = names.index("PJXResizablePanel") + 1
+
+    assert names[start : start + len(ROSTER_EXPORTS)] == list(ROSTER_EXPORTS)
+    assert len(names) == len(set(names))
+
+
+def test_roster_builtins_lazy_map_to_their_defining_modules():
+    for name, module in ROSTER_EXPORTS.items():
+        assert pyjinhx.builtins._lazy_imports[name] == (module, name)
+
+
+def test_importing_builtins_does_not_import_roster_modules():
+    # A fresh interpreter, because this test session has already imported them.
+    modules = sorted(ROSTER_EXPORTS.values())
+    code = (
+        "import sys\n"
+        "import pyjinhx.builtins\n"
+        f"print([m for m in {modules!r} if m in sys.modules])\n"
+    )
+    result = subprocess.run(
+        [sys.executable, "-c", code],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip() == "[]"
+
+
+def test_builtins_stub_matches_runtime_all():
+    # Generic on purpose: a builtin added to only one of the two files fails here.
+    stub = ast.parse(
+        (REPO_ROOT / "pyjinhx" / "builtins" / "__init__.pyi").read_text(
+            encoding="utf-8"
+        )
+    )
+    stub_all: list[str] = []
+    reexports: dict[str, tuple[str, str]] = {}
+    for node in stub.body:
+        if isinstance(node, ast.ImportFrom) and node.module:
+            for alias in node.names:
+                # Only `import X as X` re-exports a name from a stub.
+                if alias.asname == alias.name:
+                    reexports[alias.name] = (node.module, alias.name)
+        elif isinstance(node, ast.Assign) and any(
+            isinstance(target, ast.Name) and target.id == "__all__"
+            for target in node.targets
+        ):
+            stub_all = ast.literal_eval(node.value)
+
+    assert len(stub_all) == len(set(stub_all))
+    assert set(stub_all) == set(pyjinhx.builtins.__all__)
+    assert {name: reexports.get(name) for name in stub_all} == {
+        name: pyjinhx.builtins._lazy_imports[name] for name in stub_all
+    }

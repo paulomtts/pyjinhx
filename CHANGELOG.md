@@ -1,5 +1,25 @@
 # Changelog
 
+## 1.11.0 — Roster picker builtin (2026-10-13)
+
+### Added
+- Four builtins for a server-searched multi-picker, exported from
+  `pyjinhx.builtins`: `PJXRosterPicker` (the search box, results list and
+  chips), `PJXRosterItem` (one entry, a frozen model), `PJXRosterResults`
+  (one page of search results, what the search route returns) and
+  `PJXRosterChip` (one removable chip with its hidden input).
+- `window.pjx.rosterPicker`: `values(root)`, `open(root)` and `close(root)`.
+- Events on the picker root: `pjx:roster-picker:before-pick`,
+  `pjx:roster-picker:pick`, `pjx:roster-picker:before-remove`,
+  `pjx:roster-picker:remove` (detail `{value}`) and
+  `pjx:roster-picker:change` (detail `{values}`). The `before-*` events are
+  cancelable.
+- `--pjx-roster-picker-*` tokens theme the picker, its chips and results list.
+
+See the [Roster Picker guide](docs/guide/roster-picker.md) and
+[ADR 0005](docs/decisions/0005-roster-picker.md) for why it is its own family
+and not a `PJXSelect` mode.
+
 ## 1.10.0 — Graph builtin (2026-10-13)
 
 ### Added

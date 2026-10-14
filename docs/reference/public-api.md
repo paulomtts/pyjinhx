@@ -64,6 +64,19 @@ Imported from `pyjinhx.builtins`. They are listed here because they carry a Java
 | `PJXGraphControls` | Zoom in, zoom out and fit buttons that float over a `PJXGraph` canvas | [Graph](../guide/graph.md#pjxgraphcontrols) |
 | `PJXGraphSidePanel` | A floating card beside a `PJXGraph` canvas: header plus one content region | [Graph](../guide/graph.md#pjxgraphsidepanel) |
 
+## Builtin roster picker components
+
+Imported from `pyjinhx.builtins`. They are listed here because they carry a JavaScript API,
+`window.pjx.rosterPicker`, see the
+[Roster Picker guide](../guide/roster-picker.md#events-and-javascript-api).
+
+| Symbol | Description | Documentation |
+|--------|-------------|---------------|
+| `PJXRosterItem` | One entry, shown as a chip or a result row; a frozen pydantic model, not a component | [Roster Picker](../guide/roster-picker.md#pjxrosteritem) |
+| `PJXRosterPicker` | The picker: search box, results list, chips and their hidden inputs | [Roster Picker](../guide/roster-picker.md#pjxrosterpicker) |
+| `PJXRosterResults` | One page of search results: what the app's search route returns | [Roster Picker](../guide/roster-picker.md#pjxrosterresults) |
+| `PJXRosterChip` | One removable chip with its hidden input | [Roster Picker](../guide/roster-picker.md#pjxrosterchip) |
+
 ## Conceptual guides
 
 For usage patterns and tutorials, see:
