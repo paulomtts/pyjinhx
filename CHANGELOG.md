@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased — Roster picker builtin
+## 1.11.0 — Roster picker builtin (2026-10-13)
 
 ### Added
 - Four builtins for a server-searched multi-picker, exported from
