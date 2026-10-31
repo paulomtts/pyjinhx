@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.12.0 — Fan-out skips nested candidates (2026-10-31)
 
 ### Changed
 - `X-PJX-Mounted` entries now carry an optional `parent`: `pjx.js` sets it to the
