@@ -546,6 +546,40 @@ def _filter_pass(
     return items
 
 
+def _parent_of(item: _WorkItem) -> str | None:
+    """The id this item's entry names as its nearest mounted ancestor, or None.
+
+    Anything but a non-empty string other than the item's own id means "no
+    parent": the hint comes off the wire, so a malformed one is ignored rather
+    than raised on.
+    """
+    parent = item.entry.get("parent")
+    if not isinstance(parent, str) or not parent or parent == item.instance_id:
+        return None
+    return parent
+
+
+def _deferred_indexes(items: list[_WorkItem]) -> set[int]:
+    """The non-clean items whose parent is an earlier non-clean item, by manifest index.
+
+    One forward walk over the finished survivor list, since the rule depends on
+    which items survived. A parent named later in the manifest, a clean one, or
+    one that is not a survivor at all leaves the item a root, so no cycle can
+    form. Only the nearest ancestor is read: a child whose parent is clean is a
+    root even under a dirty grandparent. A deferred item still counts as an
+    earlier non-clean item, so a whole chain defers below its top.
+    """
+    building: set[str] = set()
+    deferred: set[int] = set()
+    for item in items:
+        if item.clean:
+            continue
+        if _parent_of(item) in building:
+            deferred.add(item.index)
+        building.add(item.instance_id)
+    return deferred
+
+
 @dataclass(frozen=True)
 class _BuildResult:
     """What one work item's build produced, or the fact that it proved absent."""
@@ -596,7 +630,9 @@ def _build_one(item: _WorkItem, session: RenderSession) -> _BuildResult:
 
 
 def _build_pass(
-    items: list[_WorkItem], session: RenderSession
+    items: list[_WorkItem],
+    session: RenderSession,
+    pending: list[_WorkItem] | None = None,
 ) -> dict[int, _BuildResult]:
     """Every non-clean item's build, run on a threadpool, keyed by manifest index.
 
@@ -650,8 +686,15 @@ def _build_pass(
     enough to keep the whole pass on the pool, since threading is what an
     unproven load() still gets. The inline path takes no context copy: it
     already runs under the request's own ContextVars.
+
+    ``pending`` narrows which items this call builds. ``walk_manifest``'s two
+    waves each pass their own slice, while ``items`` still decides what is
+    quieted, so both waves quiet exactly the keys one pass over the whole list
+    would. Omitted, every non-clean item is built. An empty slice returns
+    before the quiet block is entered or a pool is made.
     """
-    pending = [item for item in items if not item.clean]
+    if pending is None:
+        pending = [item for item in items if not item.clean]
     if not pending:
         return {}
     # Computed once, from the whole filtered list, before anything is built:
@@ -676,6 +719,37 @@ def _build_pass(
                 for item in pending
             }
             return {index: future.result() for index, future in futures.items()}
+
+
+def _proven_nested(
+    items: list[_WorkItem], built: dict[int, _BuildResult], deferred: set[int]
+) -> set[int]:
+    """The deferred items some shipping root's fresh tree already mounts, by index.
+
+    A built root ships when its load found the region and the hash gate keeps
+    it, the same two checks that make ``_reduce_pass`` call it ``"dirty"``.
+    Each shipping root contributes the ids ``_contained`` finds strictly inside
+    its level. That is the id channel ``_drop_nested`` reads, so an item proven
+    here is one ``_drop_nested`` would have dropped on the same evidence.
+    """
+    if not deferred:
+        return set()
+    mounted: set[str] = set()
+    for item in items:
+        result = built.get(item.index)
+        if result is None or result.instance is None:
+            continue
+        # A gated root sends nothing, so nothing it rendered reaches the client
+        # and it cannot vouch for a child.
+        if _hash_gate_drops(result.instance.state_hash(), item.entry):
+            continue
+        if isinstance(result.level, RenderedLevel):
+            mounted |= _contained(result.level)[0]
+    return {
+        item.index
+        for item in items
+        if item.index in deferred and item.instance_id in mounted
+    }
 
 
 def _reduce_pass(
@@ -750,7 +824,9 @@ def walk_manifest(
 
     Args:
         manifest_entries: ``MountedManifest.parse()`` output — dicts shaped
-            ``{id, type, load, hash}``, where ``type`` is a snake_case tag name.
+            ``{id, type, load, hash, parent}``, where ``type`` is a snake_case
+            tag name and the optional ``parent`` is the id of the entry's
+            nearest mounted ancestor.
         dirtied_keys: This request's normalized dirtied reactive keys.
         session: the RenderSession a dirty candidate's re-render runs against;
             a fresh one is built per call when omitted.
@@ -778,11 +854,16 @@ def walk_manifest(
     below; assembling those fragments with the real swaps into one response
     body is ``oob_swaps()``, and is deliberately not done here.
 
-    Three passes, not one loop. The filter pass runs every cheap check and
-    finishes its dedup before anything is built; the build pass runs the loads
+    Three stages, not one loop. The filter pass runs every cheap check and
+    finishes its dedup before anything is built. The build stage runs the loads
     and renders on a threadpool, since ``load()`` is sync and this walk stays a
-    plain sync call; the reduce pass hash-gates, maps a failed load to
-    "missing", and reassembles by manifest position.
+    plain sync call. It builds in up to two waves. An entry whose ``parent``
+    names an earlier non-clean survivor waits, and is skipped outright when a
+    shipping region's fresh tree already mounts it. Any it cannot prove that
+    way is built in a second wave exactly as it would have been, so ``parent``
+    decides build order and never which swaps ship. The reduce pass
+    hash-gates, maps a failed load to "missing", and reassembles by manifest
+    position.
     """
     items = _filter_pass(
         manifest_entries, set(dirtied_keys), _mounted_ids_in(primary_html)
@@ -800,7 +881,23 @@ def walk_manifest(
     # records the same render twice.
     if record_nested_react_keys not in render_session.on_rendered:
         render_session.on_rendered.append(record_nested_react_keys)
-    return _reduce_pass(items, _build_pass(items, render_session), render_session)
+    deferred = _deferred_indexes(items)
+    built = _build_pass(
+        items,
+        render_session,
+        [item for item in items if not item.clean and item.index not in deferred],
+    )
+    proven = _proven_nested(items, built, deferred)
+    # Anything the proof could not vouch for is built exactly as it would have
+    # been with no hint, so a wrong hint costs a build and never a refresh.
+    built |= _build_pass(
+        items,
+        render_session,
+        [item for item in items if item.index in deferred and item.index not in proven],
+    )
+    return _reduce_pass(
+        [item for item in items if item.index not in proven], built, render_session
+    )
 
 
 def _css_attr_value(value: str) -> str:
