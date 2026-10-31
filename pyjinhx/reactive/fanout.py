@@ -18,7 +18,10 @@ that never crosses either of those.
 for a keyed class — so an entry the client builds arrives here populated. The
 entry's ``load`` arrives as the string an HTML attribute round-trips it
 through; ``_build_dirty`` validates it back to the key field's declared type
-before calling ``load()``.
+before calling ``load()``. An entry may also carry an optional ``parent``, the
+id of its nearest mounted ancestor. The client reads it off the DOM rather
+than a stamped attribute, and omits it when there is no such ancestor. It is a
+build-order hint only; ``walk_manifest`` documents how it is used.
 """
 
 import re
