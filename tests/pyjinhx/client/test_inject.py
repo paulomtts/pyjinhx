@@ -240,6 +240,17 @@ def test_mounted_manifest_parses_a_json_string_and_keeps_every_field():
     assert set(parsed[0]) == {"id", "type", "load", "hash"}
 
 
+def test_mounted_manifest_keeps_the_parent_field():
+    from pyjinhx.client.inject import MountedManifest
+
+    entry = {**MANIFEST_ENTRY, "parent": "shell-1"}
+
+    for mounted in (json.dumps([entry]), [entry]):
+        parsed = MountedManifest.parse(mounted)
+        assert parsed == [entry]
+        assert parsed[0]["parent"] == "shell-1"
+
+
 def test_mounted_manifest_accepts_a_pre_parsed_list():
     from pyjinhx.client.inject import MountedManifest
 
