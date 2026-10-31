@@ -709,3 +709,62 @@ def test_a_nested_child_candidate_swaps_without_a_registry_collision_warning(cap
         if "already registered" in record.getMessage()
     ]
     assert collisions == []
+
+
+def test_a_nested_child_candidate_is_built_once_when_the_manifest_says_so(caplog):
+    """Document order with `parent`, through the real middleware.
+
+    The shell is listed first and the nested region names it as its parent, the
+    way the client reports a region inside another. The shell's swap carries
+    the nested region, the nested region's own build never runs, and so its
+    registry key is written once and nothing logs a collision. Without the
+    hint, this order writes the nested key twice and logs on every request.
+    """
+    app = make_app()
+    STORE["card-1"] = 0
+    note_load_cost(CycleNested, 0.0)
+    note_load_cost(CycleShell, 0.0)
+
+    @app.post("/bump")
+    def bump(request: Request):
+        Counter().bump("card-1")
+        invalidate(get_dirtied())
+
+    with caplog.at_level(logging.WARNING, logger="pyjinhx"), TestClient(app) as client:
+        response = client.post(
+            "/bump",
+            headers={
+                "X-PJX-Mounted": json.dumps(
+                    [
+                        {
+                            "type": "cycle_shell",
+                            "id": "s",
+                            "load": "card-1",
+                            "hash": "stale",
+                        },
+                        {
+                            "type": "cycle_nested",
+                            "id": "n",
+                            "load": "card-1",
+                            "hash": "stale",
+                            "parent": "s",
+                        },
+                    ]
+                ),
+                "X-PJX-Assets": "[]",
+            },
+        )
+
+    body = response.text
+    assert response.status_code == 200
+    assert "hx-swap-oob=\"outerHTML:[data-pjx-id='s']\"" in body
+    assert "hx-swap-oob=\"outerHTML:[data-pjx-id='n']\"" not in body
+    assert "nested card-1" in body
+    assert LOAD_CALLS.count("shell:card-1") == 1
+    assert LOAD_CALLS.count("nested:card-1") == 1
+    collisions = [
+        record.getMessage()
+        for record in caplog.records
+        if "already registered" in record.getMessage()
+    ]
+    assert collisions == []

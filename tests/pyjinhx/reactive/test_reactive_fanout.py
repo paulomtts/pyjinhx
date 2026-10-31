@@ -119,6 +119,74 @@ class NestingParentWidget(ReactiveComponent, react=("todos",)):
         return cls(pjx_key=pjx_key)
 
 
+RENDERS: list[str] = []
+"""The class name of every component the walk's session finished rendering,
+top-level or nested, so a test can tell a skipped build from a run one."""
+
+BOOM_KEYS: set[str] = set()
+"""Load keys `HostWidget.load()` fails on with a ValueError, standing for a
+loader bug rather than a gone region."""
+
+
+class HostWidget(ReactiveComponent, react=("todos",)):
+    """A reactive parent that mounts NestedChildWidget, with no gate in load()."""
+
+    pjx_key: Annotated[str, PjxKey()] = ""
+
+    @classmethod
+    def load(cls, pjx_key: str) -> "HostWidget":
+        LOAD_CALLS.append(f"host:{pjx_key}")
+        if pjx_key in BOOM_KEYS:
+            raise ValueError(f"host loader exploded for {pjx_key!r}")
+        if pjx_key in GONE_KEYS:
+            raise LookupError(f"no host for {pjx_key!r}")
+        return cls(pjx_key=pjx_key)
+
+
+class HollowHostWidget(ReactiveComponent, react=("todos",)):
+    """A reactive region a client may wrongly claim as a parent: it mounts nothing."""
+
+    pjx_key: Annotated[str, PjxKey()] = ""
+
+    @classmethod
+    def load(cls, pjx_key: str) -> "HollowHostWidget":
+        LOAD_CALLS.append(f"hollow:{pjx_key}")
+        return cls(pjx_key=pjx_key)
+
+
+class OuterWidget(ReactiveComponent, react=("todos",)):
+    """The top of a three-level chain: it mounts MiddleWidget."""
+
+    pjx_key: Annotated[str, PjxKey()] = ""
+
+    @classmethod
+    def load(cls, pjx_key: str) -> "OuterWidget":
+        LOAD_CALLS.append(f"outer:{pjx_key}")
+        return cls(pjx_key=pjx_key)
+
+
+class MiddleWidget(ReactiveComponent, react=("todos",)):
+    """The middle of a three-level chain: it mounts NestedChildWidget."""
+
+    pjx_key: Annotated[str, PjxKey()] = ""
+
+    @classmethod
+    def load(cls, pjx_key: str) -> "MiddleWidget":
+        LOAD_CALLS.append(f"middle:{pjx_key}")
+        return cls(pjx_key=pjx_key)
+
+
+class PreservingHostWidget(ReactiveComponent, react=("todos",)):
+    """A parent mounting a dirty child and a disjoint QuietWidget the preserve pass stamps."""
+
+    pjx_key: Annotated[str, PjxKey()] = ""
+
+    @classmethod
+    def load(cls, pjx_key: str) -> "PreservingHostWidget":
+        LOAD_CALLS.append(f"phost:{pjx_key}")
+        return cls(pjx_key=pjx_key)
+
+
 def _child_registered(component, level, session) -> None:
     """An on_rendered subscriber that releases NestingParentWidget.load()."""
     if isinstance(component, NestedChildWidget):
@@ -138,6 +206,27 @@ def wired_session() -> RenderSession:
     session.on_rendered.append(registry.register_rendered_instance)
     session.on_rendered.append(_child_registered)
     return session
+
+
+def _count_render(component, level, session) -> None:
+    """An on_rendered subscriber that records each finished render's class name."""
+    RENDERS.append(type(component).__name__)
+
+
+def counting_session() -> RenderSession:
+    """`wired_session()` plus the render counter, appended last."""
+    session = wired_session()
+    session.on_rendered.append(_count_render)
+    return session
+
+
+def host_hash(cls: type[ReactiveComponent], load: str) -> str:
+    """The state hash the walk will compute for this gate-free class and load key.
+
+    The `fresh_hash_for` idea, for classes whose only field is `pjx_key`, so a
+    test can seed a manifest hash that makes the hash gate drop the region.
+    """
+    return cls(id="probe", pjx_key=load).state_hash()
 
 
 @pytest.fixture
@@ -204,6 +293,8 @@ def _clean_registries(tmp_path, monkeypatch):
     SEEN_LOAD_CONTEXTS.clear()
     SEEN_THREADS.clear()
     STAT_CALLS.clear()
+    RENDERS.clear()
+    BOOM_KEYS.clear()
     spy_path = tmp_path / "spy_widget.pjx"
     spy_path.write_text("<div>{{ pjx_key }}</div>")
     fanout_path = tmp_path / "fanout_widget.pjx"
@@ -223,6 +314,25 @@ def _clean_registries(tmp_path, monkeypatch):
     parent_path.write_text(
         '<div>parent <NestedChildWidget pjx_key="k1" id="child-1" /></div>'
     )
+    host_path = tmp_path / "host_widget.pjx"
+    host_path.write_text(
+        '<div>host <NestedChildWidget pjx_key="k1" id="child-1" /></div>'
+    )
+    hollow_path = tmp_path / "hollow_host_widget.pjx"
+    hollow_path.write_text("<div>hollow</div>")
+    outer_path = tmp_path / "outer_widget.pjx"
+    outer_path.write_text(
+        '<div>outer <MiddleWidget pjx_key="k1" id="middle-1" /></div>'
+    )
+    middle_path = tmp_path / "middle_widget.pjx"
+    middle_path.write_text(
+        '<div>middle <NestedChildWidget pjx_key="k1" id="child-1" /></div>'
+    )
+    phost_path = tmp_path / "preserving_host_widget.pjx"
+    phost_path.write_text(
+        '<div><NestedChildWidget pjx_key="k1" id="child-1" />'
+        '<QuietWidget id="quiet-1" /></div>'
+    )
     discovery.build_registry(
         tmp_path,
         [
@@ -234,6 +344,11 @@ def _clean_registries(tmp_path, monkeypatch):
             OwnedWidget,
             NestedChildWidget,
             NestingParentWidget,
+            HostWidget,
+            HollowHostWidget,
+            OuterWidget,
+            MiddleWidget,
+            PreservingHostWidget,
         ],
     )
     # `_resolve_template_path` walks the class's *defining module's* directory
@@ -267,14 +382,45 @@ def _clean_registries(tmp_path, monkeypatch):
     NestingParentWidget.__pjx_descriptor__ = dataclasses.replace(
         NestingParentWidget.__pjx_descriptor__, template_path=parent_path
     )
+    HostWidget.__pjx_descriptor__ = dataclasses.replace(
+        HostWidget.__pjx_descriptor__, template_path=host_path
+    )
+    HollowHostWidget.__pjx_descriptor__ = dataclasses.replace(
+        HollowHostWidget.__pjx_descriptor__, template_path=hollow_path
+    )
+    OuterWidget.__pjx_descriptor__ = dataclasses.replace(
+        OuterWidget.__pjx_descriptor__, template_path=outer_path
+    )
+    MiddleWidget.__pjx_descriptor__ = dataclasses.replace(
+        MiddleWidget.__pjx_descriptor__, template_path=middle_path
+    )
+    PreservingHostWidget.__pjx_descriptor__ = dataclasses.replace(
+        PreservingHostWidget.__pjx_descriptor__, template_path=phost_path
+    )
     yield
 
 
+_ABSENT = object()
+"""Sentinel for `entry(parent=...)`: distinguishes "no key" from `parent=None`."""
+
+
 def entry(
-    type_name: str, instance_id: str, load: object = None, hash_: str = "h"
+    type_name: str,
+    instance_id: str,
+    load: object = None,
+    hash_: str = "h",
+    *,
+    parent: object = _ABSENT,
 ) -> dict:
-    """Build one synthetic X-PJX-Mounted manifest entry."""
-    return {"type": type_name, "id": instance_id, "load": load, "hash": hash_}
+    """Build one synthetic X-PJX-Mounted manifest entry.
+
+    `parent` is added only when passed, so the entry can carry any value,
+    including None or a non-string, exactly as a client might send it.
+    """
+    built: dict = {"type": type_name, "id": instance_id, "load": load, "hash": hash_}
+    if parent is not _ABSENT:
+        built["parent"] = parent
+    return built
 
 
 def scope():
@@ -1993,6 +2139,12 @@ def nesting_manifest() -> list[dict]:
 
 
 def test_a_nested_child_that_is_also_its_own_candidate_registers_silently(caplog):
+    """The old-client path: a manifest with no `parent` builds both regions.
+
+    With no hint to defer on, the child's own build and the parent's nested
+    render of it both run, as they always have, and the second registry write
+    of the child's key stays quiet.
+    """
     session = wired_session()
     with (
         request_scope(session=session),
@@ -2080,3 +2232,428 @@ def test_the_quieting_holds_on_the_inline_build_branch(caplog):
     assert [candidate.instance_id for candidate in candidates] == ["parent-1"]
     # And the block left nothing behind on the caller's own context.
     assert get_quiet_collisions() == frozenset()
+
+
+# --- Deferred nested candidates: the manifest's `parent` hint ---------------
+
+
+def host_entry(hash_: str = "stale", **kwargs: object) -> dict:
+    """The default parent-first manifest's HostWidget entry, `host-1` at `k1`."""
+    return entry("host_widget", "host-1", load="k1", hash_=hash_, **kwargs)
+
+
+def child_entry(
+    load: str = "k1", instance_id: str = "child-1", **kwargs: object
+) -> dict:
+    """A NestedChildWidget entry, `child-1` at `k1` unless told otherwise."""
+    return entry("nested_child_widget", instance_id, load=load, hash_="stale", **kwargs)
+
+
+def without_parent(manifest: list[dict]) -> list[dict]:
+    """The same manifest as an old client would send it: no entry carries `parent`."""
+    return [
+        {key: value for key, value in e.items() if key != "parent"} for e in manifest
+    ]
+
+
+def survivor_ids(shapes: list[tuple]) -> list[str]:
+    """The instance ids out of `swaps()`'s candidate shapes, in order."""
+    return [shape[0] for shape in shapes]
+
+
+def swaps(manifest, primary_html=None, before=None) -> tuple[str, list[tuple]]:
+    """One walk, in its own request, and what it would ship.
+
+    `before` runs inside the request scope ahead of the walk, which is where a
+    test seeds the load cache. The cache is per request, so seeding outside
+    would be lost. Returns the `oob_swaps` body and each surviving candidate's
+    `(instance_id, status, fresh_hash)`, in order.
+    """
+    session = counting_session()
+    with request_scope(session=session):
+        if before is not None:
+            before()
+        candidates = walk_manifest(manifest, {"todos"}, primary_html=primary_html)
+        body = str(oob_swaps(candidates, {"todos"}, session))
+    return body, [(c.instance_id, c.status, c.fresh_hash) for c in candidates]
+
+
+@dataclasses.dataclass
+class Comparison:
+    """A with-`parent` walk, its no-`parent` baseline, and the hinted walk's spies."""
+
+    hinted: tuple[str, list[tuple]]
+    baseline: tuple[str, list[tuple]]
+    loads: list[str]
+    renders: list[str]
+    baseline_renders: list[str]
+
+
+def compare(manifest, primary_html=None, before=None) -> Comparison:
+    """Walk `manifest` as sent, then again with every `parent` removed.
+
+    The spies are cleared before each walk, so `loads` and `renders` count
+    the with-`parent` walk alone and `baseline_renders` the baseline alone.
+    """
+    LOAD_CALLS.clear()
+    RENDERS.clear()
+    hinted = swaps(manifest, primary_html, before)
+    loads, renders = list(LOAD_CALLS), list(RENDERS)
+    LOAD_CALLS.clear()
+    RENDERS.clear()
+    baseline = swaps(without_parent(manifest), primary_html, before)
+    return Comparison(hinted, baseline, loads, renders, list(RENDERS))
+
+
+def test_a_nested_candidate_with_a_dirty_parent_is_not_built():
+    run = compare([host_entry(), child_entry(parent="host-1")])
+
+    assert run.loads.count("child:k1") == 1
+    # Only the copy rendered inside the host: the child's own build never ran.
+    assert run.renders.count("NestedChildWidget") == 1
+    assert survivor_ids(run.hinted[1]) == ["host-1"]
+    assert run.hinted == run.baseline
+
+
+def test_an_empty_wave_two_builds_nothing_more(monkeypatch):
+    built: list[str] = []
+    real_build_one = fanout._build_one
+
+    def counting_build_one(item, session):
+        built.append(item.instance_id)
+        return real_build_one(item, session)
+
+    quiet_calls: list[frozenset] = []
+    real_quiet_collisions = registry.quiet_collisions
+
+    def counting_quiet_collisions(keys):
+        quiet_calls.append(frozenset(keys))
+        return real_quiet_collisions(keys)
+
+    monkeypatch.setattr(fanout, "_build_one", counting_build_one)
+    monkeypatch.setattr(fanout.registry, "quiet_collisions", counting_quiet_collisions)
+    swaps([host_entry(), child_entry(parent="host-1")])
+
+    assert built == ["host-1"]
+    assert quiet_calls == [
+        {
+            registry.make_key("HostWidget", "host-1"),
+            registry.make_key("NestedChildWidget", "child-1"),
+        }
+    ]
+
+
+def test_a_different_load_key_in_the_parent_still_wins():
+    run = compare([host_entry(), child_entry(load="k9", parent="host-1")])
+
+    assert "child:k9" not in run.loads
+    assert survivor_ids(run.hinted[1]) == ["host-1"]
+    assert "child k1" in run.hinted[0]
+    assert run.hinted == run.baseline
+
+
+@pytest.mark.parametrize(
+    ("prefix", "primary_html"),
+    [
+        pytest.param([entry("no_such_widget", "p-1")], None, id="unknown_tag"),
+        pytest.param([entry("quiet_widget", "p-1")], None, id="keys_not_dirtied"),
+        pytest.param(
+            [entry("host_widget", "p-1", load="k1", hash_="stale")],
+            '<div data-pjx-id="p-1"></div>',
+            id="excluded_by_primary",
+        ),
+        pytest.param(
+            [
+                entry("fanout_widget", "a", load="x", hash_="stale"),
+                entry("fanout_widget", "p-1", load="x", hash_="stale"),
+            ],
+            None,
+            id="dedup_dropped",
+        ),
+    ],
+)
+def test_a_child_whose_parent_is_not_a_surviving_candidate_is_built(
+    prefix, primary_html
+):
+    run = compare([*prefix, child_entry(parent="p-1")], primary_html=primary_html)
+
+    assert "child:k1" in run.loads
+    assert "child-1" in survivor_ids(run.hinted[1])
+    assert run.hinted == run.baseline
+
+
+def test_a_child_whose_parent_is_clean_is_built():
+    def seed():
+        cache_put(HostWidget, "k1", HostWidget(pjx_key="k1"), react_keys=("todos",))
+
+    run = compare([host_entry(), child_entry(parent="host-1")], before=seed)
+
+    statuses = {shape[0]: shape[1] for shape in run.hinted[1]}
+    assert statuses == {"host-1": "clean", "child-1": "dirty"}
+    assert "child:k1" in run.loads
+    assert run.hinted == run.baseline
+
+
+def test_a_child_whose_parent_is_hash_gated_is_built_in_wave_two_and_ships_alone():
+    # Output only: see the spec's Known limitation on this path's registry log.
+    manifest = [
+        host_entry(hash_=host_hash(HostWidget, "k1")),
+        child_entry(parent="host-1"),
+    ]
+    run = compare(manifest)
+
+    assert [(s[0], s[1]) for s in run.hinted[1]] == [("child-1", "dirty")]
+    assert "hx-swap-oob=\"outerHTML:[data-pjx-id='child-1']\"" in run.hinted[0]
+    # Once nested in the gated host, once as its own wave-two build.
+    assert run.renders.count("NestedChildWidget") == 2
+    assert run.hinted == run.baseline
+
+
+def test_a_child_whose_parent_is_missing_is_built_in_wave_two():
+    GONE_KEYS.add("k1")
+    run = compare([host_entry(), child_entry(parent="host-1")])
+
+    assert [(s[0], s[1]) for s in run.hinted[1]] == [
+        ("host-1", "missing"),
+        ("child-1", "dirty"),
+    ]
+    assert "<div hx-swap-oob=\"delete:[data-pjx-id='host-1']\"></div>" in run.hinted[0]
+    assert "child:k1" in run.loads
+    assert run.hinted == run.baseline
+
+
+def test_a_lying_parent_claim_falls_back_to_a_build():
+    manifest = [
+        entry("hollow_host_widget", "hollow-1", load="k1", hash_="stale"),
+        child_entry(parent="hollow-1"),
+    ]
+    run = compare(manifest)
+
+    assert survivor_ids(run.hinted[1]) == ["hollow-1", "child-1"]
+    assert "hx-swap-oob=\"outerHTML:[data-pjx-id='hollow-1']\"" in run.hinted[0]
+    assert "hx-swap-oob=\"outerHTML:[data-pjx-id='child-1']\"" in run.hinted[0]
+    assert "child:k1" in run.loads
+    assert run.renders.count("NestedChildWidget") == 1
+    assert run.hinted == run.baseline
+
+
+@pytest.mark.parametrize(
+    "manifest",
+    [
+        pytest.param([host_entry(), child_entry(parent="child-1")], id="self"),
+        pytest.param([host_entry(), child_entry(parent="nobody")], id="unknown"),
+        pytest.param([child_entry(parent="host-1"), host_entry()], id="forward"),
+        pytest.param([host_entry(), child_entry(parent=None)], id="none"),
+        pytest.param([host_entry(), child_entry(parent="")], id="empty"),
+        pytest.param([host_entry(), child_entry(parent=7)], id="int"),
+        pytest.param([host_entry(), child_entry(parent=["host-1"])], id="list"),
+        pytest.param([host_entry(), child_entry(parent={"id": "host-1"})], id="dict"),
+        pytest.param([host_entry(), child_entry(parent=True)], id="bool"),
+    ],
+)
+def test_parent_self_unknown_forward_and_non_string_are_ignored(manifest):
+    run = compare(manifest)
+
+    assert run.loads.count("child:k1") >= 1
+    # The child's own build ran beside the host's nested render of it.
+    assert run.renders.count("NestedChildWidget") == 2
+    assert run.renders.count("NestedChildWidget") == run.baseline_renders.count(
+        "NestedChildWidget"
+    )
+    assert run.hinted == run.baseline
+
+
+def test_a_deferred_child_that_is_gone_becomes_a_delete_swap():
+    GONE_KEYS.add("gone")
+    manifest = [
+        entry("hollow_host_widget", "hollow-1", load="k1", hash_="stale"),
+        entry("host_widget", "host-9", load="gone", hash_="stale", parent="hollow-1"),
+    ]
+    run = compare(manifest)
+
+    assert [(s[0], s[1]) for s in run.hinted[1]] == [
+        ("hollow-1", "dirty"),
+        ("host-9", "missing"),
+    ]
+    assert "<div hx-swap-oob=\"delete:[data-pjx-id='host-9']\"></div>" in run.hinted[0]
+    assert run.hinted == run.baseline
+
+
+def test_a_deferred_child_with_an_empty_id_is_never_proven():
+    run = compare([host_entry(), child_entry(instance_id="", parent="host-1")])
+
+    assert survivor_ids(run.hinted[1]) == ["host-1", ""]
+    assert run.renders.count("NestedChildWidget") == 2
+    assert run.hinted == run.baseline
+
+
+def test_a_clean_child_with_a_parent_is_never_deferred():
+    def seed():
+        cache_put(
+            NestedChildWidget,
+            "k1",
+            NestedChildWidget(pjx_key="k1"),
+            react_keys=("todos",),
+        )
+
+    run = compare([host_entry(), child_entry(parent="host-1")], before=seed)
+
+    assert survivor_ids(run.hinted[1]) == ["host-1"]
+    assert "child:k1" not in run.loads
+    assert run.renders.count("NestedChildWidget") == 1
+    assert run.hinted == run.baseline
+
+
+def chain_manifest() -> list[dict]:
+    """Outer > Middle > child, all dirty, each naming its nearest mounted ancestor."""
+    return [
+        entry("outer_widget", "outer-1", load="k1", hash_="stale"),
+        entry("middle_widget", "middle-1", load="k1", hash_="stale", parent="outer-1"),
+        child_entry(parent="middle-1"),
+    ]
+
+
+def test_a_three_level_chain_defers_both_descendants():
+    run = compare(chain_manifest())
+
+    assert run.loads.count("outer:k1") == 1
+    assert run.loads.count("middle:k1") == 1
+    assert run.loads.count("child:k1") == 1
+    assert run.renders.count("OuterWidget") == 1
+    assert run.renders.count("MiddleWidget") == 1
+    assert run.renders.count("NestedChildWidget") == 1
+    assert survivor_ids(run.hinted[1]) == ["outer-1"]
+    assert run.hinted == run.baseline
+
+
+def test_a_dirty_grandchild_under_a_clean_middle_is_built_as_a_root():
+    def seed():
+        cache_put(MiddleWidget, "k1", MiddleWidget(pjx_key="k1"), react_keys=("todos",))
+
+    run = compare(chain_manifest(), before=seed)
+
+    # Nearest ancestor only: the clean middle leaves the child a root, so its
+    # standalone build runs beside the copy nested in outer > middle.
+    assert run.renders.count("NestedChildWidget") == 2
+    assert survivor_ids(run.hinted[1]) == ["outer-1"]
+    assert run.hinted == run.baseline
+
+
+def test_wave_two_runs_under_the_same_quieting(strict_dev, caplog, monkeypatch):
+    manifest = [
+        entry("hollow_host_widget", "hollow-1", load="k1", hash_="stale"),
+        child_entry(parent="hollow-1"),
+        entry("fanout_widget", "f-1", load="f", hash_="stale"),
+    ]
+    pass_keys = {
+        registry.make_key("HollowHostWidget", "hollow-1"),
+        registry.make_key("NestedChildWidget", "child-1"),
+        registry.make_key("FanoutWidget", "f-1"),
+    }
+    quiet_calls: list[frozenset] = []
+    real_quiet_collisions = registry.quiet_collisions
+
+    def counting_quiet_collisions(keys):
+        quiet_calls.append(frozenset(keys))
+        return real_quiet_collisions(keys)
+
+    seen_quiet: dict[str, frozenset] = {}
+    real_build_one = fanout._build_one
+
+    def recording_build_one(item, session):
+        seen_quiet[item.instance_id] = get_quiet_collisions()
+        return real_build_one(item, session)
+
+    monkeypatch.setattr(fanout.registry, "quiet_collisions", counting_quiet_collisions)
+    monkeypatch.setattr(fanout, "_build_one", recording_build_one)
+    with caplog.at_level(logging.WARNING, logger="pyjinhx"):
+        _, shapes = swaps(manifest)
+
+    assert survivor_ids(shapes) == ["hollow-1", "child-1", "f-1"]
+    # One quiet block per wave, both over the whole filtered list.
+    assert quiet_calls == [pass_keys, pass_keys]
+    assert seen_quiet == {
+        "hollow-1": pass_keys,
+        "f-1": pass_keys,
+        "child-1": pass_keys,
+    }
+    assert not [r for r in caplog.records if "already registered" in r.getMessage()]
+    assert get_quiet_collisions() == frozenset()
+
+
+def tag_with_id(body: str, instance_id: str) -> str:
+    """The opening tag carrying this `data-pjx-id`, wherever the attr sits in it."""
+    match = re.search(rf'<[^<>]*data-pjx-id="{re.escape(instance_id)}"[^<>]*>', body)
+    assert match is not None, f"no tag carries data-pjx-id={instance_id!r}"
+    return match.group(0)
+
+
+def test_a_deferred_item_never_reaches_preserve_stamping():
+    manifest = [
+        entry("preserving_host_widget", "phost-1", load="k1", hash_="stale"),
+        child_entry(parent="phost-1"),
+    ]
+    run = compare(manifest)
+
+    assert survivor_ids(run.hinted[1]) == ["phost-1"]
+    assert run.renders.count("NestedChildWidget") == 1
+    body = run.hinted[0]
+    assert 'hx-preserve="true"' in tag_with_id(body, "quiet-1")
+    assert "hx-preserve" not in tag_with_id(body, "child-1")
+    assert run.hinted == run.baseline
+
+
+@pytest.mark.parametrize("branch", ["inline", "threaded"])
+def test_the_deferral_holds_on_both_build_branches(branch):
+    pools: list[int] = []
+    real_pool = fanout.ThreadPoolExecutor
+
+    def counting_pool(*args, **kwargs):
+        pools.append(1)
+        return real_pool(*args, **kwargs)
+
+    def no_pool(*args, **kwargs):
+        raise AssertionError("the too-cheap path must not build a ThreadPoolExecutor")
+
+    if branch == "inline":
+        note_load_cost(HostWidget, 0.0)
+        note_load_cost(NestedChildWidget, 0.0)
+    with pytest.MonkeyPatch.context() as patch:
+        patch.setattr(
+            fanout,
+            "ThreadPoolExecutor",
+            no_pool if branch == "inline" else counting_pool,
+        )
+        _, shapes = swaps([host_entry(), child_entry(parent="host-1")])
+
+    assert LOAD_CALLS.count("child:k1") == 1
+    assert RENDERS.count("NestedChildWidget") == 1
+    assert survivor_ids(shapes) == ["host-1"]
+    assert pools == ([] if branch == "inline" else [1])
+
+
+def test_a_raise_in_wave_one_never_starts_wave_two():
+    BOOM_KEYS.add("k1")
+    with (
+        request_scope(session=counting_session()),
+        pytest.raises(ValueError, match="host loader exploded"),
+    ):
+        walk_manifest([host_entry(), child_entry(parent="host-1")], {"todos"})
+
+    assert "child:k1" not in LOAD_CALLS
+    assert RENDERS.count("NestedChildWidget") == 0
+
+
+def test_one_walk_drops_the_proven_child_and_builds_the_unproven_one():
+    manifest = [
+        host_entry(),
+        child_entry(parent="host-1"),
+        entry("hollow_host_widget", "hollow-1", load="k1", hash_="stale"),
+        entry("fanout_widget", "f-1", load="f", hash_="stale", parent="hollow-1"),
+    ]
+    run = compare(manifest)
+
+    assert survivor_ids(run.hinted[1]) == ["host-1", "hollow-1", "f-1"]
+    assert run.renders.count("NestedChildWidget") == 1
+    assert "f" in run.loads
+    assert run.hinted == run.baseline
