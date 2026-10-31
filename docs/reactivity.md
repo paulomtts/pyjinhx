@@ -226,7 +226,7 @@ The runtime attaches these headers to htmx requests:
 
 | Header | Purpose |
 |--------|---------|
-| `X-PJX-Mounted` | Reactive regions currently in the DOM (`id`, `type`, `hash`, optional `load`) |
+| `X-PJX-Mounted` | Reactive regions currently in the DOM (`id`, `type`, `hash`, optional `load`, optional `parent`) |
 | `X-PJX-Assets` | URLs of `<script src>` and `<link rel="stylesheet">` already loaded |
 | `X-PJX-Trigger` | `data-pjx-id` of the element that started the request — sent only when a reactive root triggered it |
 
@@ -803,7 +803,8 @@ sequenceDiagram
 
     S->>C: compose() invalidates the dirtied keys
     Note over S: walk_manifest(primary_html=primary) — ids in the primary are excluded
-    loop each remaining mounted region whose react keys match a dirtied key
+    Note over S: defer each dirty region whose parent is an earlier dirty region
+    loop wave one: each remaining mounted region whose react keys match a dirtied key, not deferred
         S->>C: load region
         alt load() raises LookupError
             Note over S: emit a delete swap
@@ -816,6 +817,10 @@ sequenceDiagram
                 Note over S: keep it, stamped with hx-swap-oob
             end
         end
+    end
+    opt some regions were deferred
+        Note over S: drop each deferred region a shipping region's fresh tree already mounts, unbuilt
+        Note over S: wave two: build every other deferred region through the same load, render and hash steps
     end
     Note over S: drop regions nested in another survivor, collect missing assets
 
@@ -833,7 +838,11 @@ flowchart TD
     EX -->|yes| X2["ignore — the primary swap carries it"]
     EX -->|no| F{"reactive type AND<br/>react keys intersect dirtied?"}
     F -->|no| X1["ignore"]
-    F -->|yes| LOAD["cls.load() cached"]
+    F -->|yes| DEF{"parent names an earlier<br/>dirty candidate?"}
+    DEF -->|no, wave one| LOAD["cls.load() cached"]
+    DEF -->|yes| PRV{"mounted inside a shipping<br/>root's fresh tree?"}
+    PRV -->|yes| X5["DROP — not built, that root's swap carries it"]
+    PRV -->|no, wave two| LOAD
     LOAD --> ERR{"raised LookupError?"}
     ERR -->|yes| DEL["emit delete: swap"]
     ERR -->|no| REN["render → fresh hash"]
@@ -852,6 +861,20 @@ The four parent/child cases (regions nested in the rendered HTML):
 | changed | unchanged | swap parent only |
 | **unchanged** | **changed** | **swap child alone** — only correct because gating removes the parent *before* dedup |
 | unchanged | unchanged | swap nothing |
+
+Each `X-PJX-Mounted` entry may also carry an optional `parent`: the client sets it to
+the `data-pjx-id` of the region's nearest mounted ancestor, and omits it when there is
+none. The walk reads it only to order builds. A dirty region whose `parent` names an
+earlier dirty region in the manifest waits, and it is dropped unbuilt when a region that
+ships from the first wave already mounts it in its own freshly rendered tree. A region
+under a clean parent, or whose `parent` names itself, a later entry, or a region that is
+not a candidate, is built in the first wave as usual. Any deferred region the server's
+render cannot vouch for, because its parent was hash-gated, failed to load, or no longer
+renders it, is built in a second wave exactly as it would have been, so a wrong or stale
+hint costs an extra build and never a missed refresh. That keeps the table's third row
+true: an unchanged parent is gated, vouches for nothing, and its changed child still
+swaps alone. A client that sends no `parent` defers nothing and gets the same walk as
+before — the invariant below, applied to build order.
 
 Governing invariant throughout: **when in doubt, swap** — missing, unknown, or
 mismatched hashes always send. Hash gating is a *skip-hint*, not correctness authority:
