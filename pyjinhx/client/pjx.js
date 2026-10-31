@@ -20,6 +20,11 @@
         if (el.dataset.pjxLoad) {
           entry.load = el.dataset.pjxLoad;
         }
+        // Start from parentElement: el.closest would match el itself.
+        var ancestor = el.parentElement && el.parentElement.closest("[data-pjx-id]");
+        if (ancestor && ancestor.dataset.pjxId) {
+          entry.parent = ancestor.dataset.pjxId;
+        }
         return entry;
       }
     );

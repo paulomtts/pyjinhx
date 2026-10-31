@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+- `X-PJX-Mounted` entries now carry an optional `parent`: `pjx.js` sets it to the
+  `data-pjx-id` of the region's nearest mounted ancestor and omits it when there is
+  none. The fan-out uses it to skip building a dirty region whose dirty parent's fresh
+  swap already carries it. Output is unchanged: the same swaps ship, a client that
+  sends no `parent` keeps the old behavior, and a wrong or stale hint costs only an
+  extra build (#1027).
+
 ## 1.11.0 — Roster picker builtin (2026-10-13)
 
 ### Added

@@ -118,7 +118,7 @@ class MountedManifest:
     ) -> list[dict[str, Any]]: ...
 ```
 
-`parse()` returns the mounted-region manifest from a request-like object, raw JSON string, or parsed list. Anything unreadable yields an empty list, which fan-out reads as "nothing is mounted" — a full render rather than a failed one.
+`parse()` returns the mounted-region manifest from a request-like object, raw JSON string, or parsed list. Anything unreadable yields an empty list, which fan-out reads as "nothing is mounted" — a full render rather than a failed one. Entries pass through verbatim, including the optional `parent` (the `data-pjx-id` of the entry's nearest mounted ancestor, omitted when there is none); fan-out is the only reader that validates it, and it ignores a malformed one.
 
 ## TriggerManifest
 
@@ -136,7 +136,7 @@ Parse `X-PJX-Trigger` — the `data-pjx-id` of the element that started the HTMX
 
 | Constant | Value | Purpose |
 |----------|-------|---------|
-| `PJX_MOUNTED_HEADER` | `"X-PJX-Mounted"` | JSON manifest of mounted regions (`id`, `type`, `hash`, optional `load`) |
+| `PJX_MOUNTED_HEADER` | `"X-PJX-Mounted"` | JSON manifest of mounted regions (`id`, `type`, `hash`, optional `load`, optional `parent`) |
 | `PJX_TRIGGER_HEADER` | `"X-PJX-Trigger"` | JSON `{"id": "<data-pjx-id>"}` of the swap origin |
 | `PJX_ASSETS_HEADER` | `"X-PJX-Assets"` | JSON list of the asset tokens the client already has |
 
@@ -152,6 +152,6 @@ Compute out-of-band swap fragments for a list of `FanoutCandidate`s, in candidat
 
 A miss in the request-scoped instance registry is **not** a "missing" candidate — out-of-primary regions miss it routinely. Only `LookupError` out of `load()` produces a delete.
 
-Candidates come from `walk_manifest(manifest_entries, dirtied_keys, session=..., primary_html=...)`, which turns a parsed `X-PJX-Mounted` manifest and this request's dirtied keys into the filtered, deduped candidate list — dropping unknown tags, untouched classes, unchanged state hashes, nested regions, and anything the primary response already contains.
+Candidates come from `walk_manifest(manifest_entries, dirtied_keys, session=..., primary_html=...)`, which turns a parsed `X-PJX-Mounted` manifest and this request's dirtied keys into the filtered, deduped candidate list — dropping unknown tags, untouched classes, unchanged state hashes, nested regions, and anything the primary response already contains. A candidate whose `parent` names an earlier dirty candidate is built only when no shipping region's fresh swap already carries it; the result is the same list either way.
 
 [`compose()`](responses.md) calls `walk_manifest()` then `oob_swaps()` automatically on every response it builds. Use them directly only for tests and advanced composition.
