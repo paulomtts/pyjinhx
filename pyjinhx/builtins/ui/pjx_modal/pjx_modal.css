@@ -1,19 +1,19 @@
-/* ── PJXModal tokens (defaults wire to common design tokens) ─── */
+/* ── PJXModal tokens (defaults wire to theme tokens) ─────────── */
 :where(:root) {
   --pjx-modal-width:        52rem;
   --pjx-modal-min-height:   28rem;
-  --pjx-modal-bg:           var(--surface);
-  --pjx-modal-border:       var(--border);
-  --pjx-modal-radius:       var(--radius-lg);
-  --pjx-modal-shadow:       var(--shadow-md);
-  --pjx-modal-header-bg:    var(--surface-alt);
-  --pjx-modal-header-sep:   var(--border);
-  --pjx-modal-footer-bg:    var(--surface-alt);
-  --pjx-modal-footer-sep:   var(--border);
-  --pjx-modal-title-color:  var(--text);
-  --pjx-modal-close-color:  var(--text-muted);
+  --pjx-modal-bg:           var(--pjx-color-surface, #ffffff);
+  --pjx-modal-border:       var(--pjx-color-border, #e4e4e7);
+  --pjx-modal-radius:       var(--pjx-radius-lg, 12px);
+  --pjx-modal-shadow:       var(--pjx-shadow-md, 0 4px 12px rgb(0 0 0 / 0.08));
+  --pjx-modal-header-bg:    var(--pjx-color-surface-alt, #fafafa);
+  --pjx-modal-header-sep:   var(--pjx-color-border, #e4e4e7);
+  --pjx-modal-footer-bg:    var(--pjx-color-surface-alt, #fafafa);
+  --pjx-modal-footer-sep:   var(--pjx-color-border, #e4e4e7);
+  --pjx-modal-title-color:  var(--pjx-color-text, #18181b);
+  --pjx-modal-close-color:  var(--pjx-color-text-muted, #52525b);
   --pjx-modal-backdrop:     rgb(0 0 0 / 0.6);
-  --pjx-modal-padding:      1.5rem;
+  --pjx-modal-padding:      var(--pjx-space-6, 1.5rem);
 }
 
 /* ── Backdrop ──────────────────────────────────────────────── */
@@ -27,8 +27,9 @@
 .pjx-modal[open] {
   display: flex;
   flex-direction: column;
-  width: min(var(--pjx-modal-width), calc(100vw - 2rem));
+  width: min(var(--pjx-modal-width), calc(100vw - var(--pjx-space-8, 2rem)));
   min-height: var(--pjx-modal-min-height);
+  /* 4rem is past the largest spacing step (3rem), so it stays literal. */
   max-height: calc(100dvh - 4rem);
   margin: auto;
   padding: 0;
