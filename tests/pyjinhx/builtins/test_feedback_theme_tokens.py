@@ -85,3 +85,21 @@ def test_alert_padding_keeps_its_off_scale_vertical():
         declared(read(ALERT), ":where(:root)", "--pjx-alert-padding")
         == "0.875rem var(--pjx-space-4, 1rem)"
     )
+
+
+NOTIFICATION = "pjx_notification/pjx_notification.css"
+
+
+def test_notification_sits_on_the_notification_layer():
+    assert (
+        declared(read(NOTIFICATION), ":where(:root)", "--pjx-notification-z")
+        == f"var(--pjx-z-notification, {light('--pjx-z-notification')})"
+    )
+
+
+def test_notification_padding_gives_every_step_a_fallback():
+    css = read(NOTIFICATION)
+    assert declared(css, ":where(:root)", "--pjx-notification-padding") == (
+        "var(--pjx-space-4, 1rem) var(--pjx-space-4, 1rem) "
+        "var(--pjx-space-4, 1rem) var(--pjx-space-5, 1.25rem)"
+    )
