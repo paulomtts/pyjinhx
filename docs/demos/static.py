@@ -18,6 +18,7 @@ from pyjinhx.builtins.ui.pjx_card import PJXCard
 from pyjinhx.builtins.ui.pjx_card_body import PJXCardBody
 from pyjinhx.builtins.ui.pjx_card_footer import PJXCardFooter
 from pyjinhx.builtins.ui.pjx_card_header import PJXCardHeader
+from pyjinhx.builtins.ui.pjx_chart import PJXChart, PJXChartSeries
 from pyjinhx.builtins.ui.pjx_divider import PJXDivider
 from pyjinhx.builtins.ui.pjx_empty_state import PJXEmptyState
 from pyjinhx.builtins.ui.pjx_icon import PJXIcon
@@ -71,6 +72,24 @@ def card():
         + PJXCardBody(content="Revenue grew 12% over Q1.").render()
         + PJXCardFooter(content="Updated today").render(),
     ).render()
+
+
+def chart():
+    months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun"]
+    visits = PJXChartSeries(name="Visits", values=[120, 180, 150, 210, None, 260])
+    signups = PJXChartSeries(name="Sign-ups", values=[30, 45, 40, 70, 65, 90])
+    return [
+        PJXChart(
+            title="Traffic", labels=months, series=[visits, signups], height=160
+        ).render(),
+        PJXChart(
+            title="Sign-ups by month",
+            kind="bar",
+            labels=months,
+            series=[signups],
+            height=160,
+        ).render(),
+    ]
 
 
 def divider():
@@ -240,6 +259,7 @@ DEMOS = {
     "PJXAccordionGroup": (accordion_group, 260),
     "PJXBadge": (badge, 140),
     "PJXCard": (card, 220),
+    "PJXChart": (chart, 600),
     "PJXDivider": (divider, 120),
     "PJXSpinner": (spinner, 140),
     "PJXAvatar": (avatar, 140),

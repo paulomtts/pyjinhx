@@ -69,6 +69,16 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
     "builtins.ui.pjx_button.pjx_button": frozenset(
         {"pyjinhx._component", "pyjinhx.builtins.pjx_region_loader"}
     ),
+    "builtins.ui.pjx_chart.__init__": frozenset(
+        {
+            "pyjinhx.builtins.ui.pjx_chart.pjx_chart",
+            "pyjinhx.builtins.ui.pjx_chart.series",
+        }
+    ),
+    "builtins.ui.pjx_chart.pjx_chart": frozenset(
+        {"pyjinhx._component", "pyjinhx.builtins.ui.pjx_chart.series"}
+    ),
+    "builtins.ui.pjx_chart.series": frozenset(),
     "builtins.ui.pjx_chip_input.__init__": frozenset(
         {"pyjinhx.builtins.ui.pjx_chip_input.pjx_chip_input"}
     ),

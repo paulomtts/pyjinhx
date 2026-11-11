@@ -406,6 +406,64 @@ Card header region. When `title` is set it renders `<h3 class="pjx-card__title">
     PJXCardHeader(title="Quarterly report")
     ```
 
+### PJXChart
+
+Line or bar chart drawn on the server as SVG. **Assets:** `pjx_chart.css` only, no JavaScript.
+The full walkthrough is the [Chart guide](guide/chart.md).
+
+<!-- demo: PJXChart -->
+
+```python
+from pyjinhx.builtins import PJXChart, PJXChartSeries
+
+PJXChart(
+    title="Traffic",
+    labels=["Jan", "Feb", "Mar"],
+    series=[PJXChartSeries(name="Visits", values=[120, 180, 150])],
+)
+```
+
+??? note "Props & API"
+
+    | Field | Type | Default | Description |
+    | --- | --- | --- | --- |
+    | `labels` | `list[str]` | required | One x-axis label per data point. |
+    | `series` | `list[PJXChartSeries]` | required | One to eight, each with a `name` and one `values` entry per label; `None` marks a missing value. |
+    | `kind` | literal | `"line"` | `line` or `bar` (grouped when there are several series). |
+    | `title` | `str` | `""` | Visible caption; also names the chart. |
+    | `aria_label` | `str` | `"Chart"` | Names the chart when `title` is empty. |
+    | `legend` | `bool` | `True` | Shows a legend when there are two or more series. |
+    | `y_min` / `y_max` | `float \| None` | `None` | Fix an end of the y axis; marks past it are clamped. |
+    | `height` | `int` | `240` | Plot height in pixels; the width follows the container. |
+
+??? note "Style tokens"
+
+    | Token | Default |
+    | --- | --- |
+    | `--pjx-chart-1` … `--pjx-chart-8` | a validated palette, with darker steps in dark mode |
+    | `--pjx-chart-surface` | `var(--surface)` |
+    | `--pjx-chart-text` | `var(--text-muted)` |
+    | `--pjx-chart-title` | `var(--text)` |
+    | `--pjx-chart-grid` | `var(--border)` at 70% |
+    | `--pjx-chart-axis` | `var(--border)` |
+    | `--pjx-chart-font-size` | `12px` |
+    | `--pjx-chart-line-width` | `2px` |
+    | `--pjx-chart-area` | `10%` |
+    | `--pjx-chart-dim` | `0.3` |
+
+??? note "DOM & classes"
+
+    Root `<figure class="pjx-chart pjx-chart--{kind}">`, then an optional `figcaption`, the plot's
+    `aria-hidden` `<svg>`, an optional legend and a visually hidden data table. No JS: hover
+    emphasis and label thinning are CSS.
+
+    **Classes:** `pjx-chart`, `pjx-chart--line`, `pjx-chart--bar`, `pjx-chart--dense`,
+    `pjx-chart__title`, `pjx-chart__plot`, `pjx-chart__svg`, `pjx-chart__stretch`,
+    `pjx-chart__grid`, `pjx-chart__zero`, `pjx-chart__x-label`, `pjx-chart__x-label--minor`,
+    `pjx-chart__y-label`, `pjx-chart__series`, `pjx-chart__series--{1-8}`, `pjx-chart__line`,
+    `pjx-chart__area`, `pjx-chart__point`, `pjx-chart__bar`, `pjx-chart__legend`,
+    `pjx-chart__legend-item`, `pjx-chart__data`, `pjx-chart__table`.
+
 ### PJXDivider
 
 Separator line. **Assets:** `pjx_divider.css` only.
