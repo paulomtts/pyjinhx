@@ -1,12 +1,16 @@
 """L2.2 assets — delivery modes, emission, and the manifest of a request's assets.
 
-Invariant: every style pyjinhx puts on a page carries a ``data-pjx-asset``
-token, and every tokened style ends up in ``<head>``. ``emit_assets()`` stamps
-the token on inline CSS so a style that lands inside a swappable region is
-still visible to ``pjx.js``'s ``pjxLoadedAssets``/``pjxPromoteInlineAssets`` —
-the same token the client already recognized is not paid for twice, and a
-style a swap would otherwise delete is relocated to ``<head>`` before that
-can happen.
+Invariant: every component style pyjinhx puts on a page carries a
+``data-pjx-asset`` token, and every tokened style ends up in ``<head>``.
+``emit_assets()`` stamps the token on inline CSS so a style that lands inside a
+swappable region is still visible to ``pjx.js``'s
+``pjxLoadedAssets``/``pjxPromoteInlineAssets`` — the same token the client
+already recognized is not paid for twice, and a style a swap would otherwise
+delete is relocated to ``<head>`` before that can happen.
+
+The two runtime blocks, ``<style id="pjx-theme">`` and
+``<style id="pjx-style">``, are the exception: server-emitted once per cold
+render, untokened, and never relocated by ``pjx.js``.
 """
 
 import hashlib
@@ -142,17 +146,25 @@ def emit_assets(
             asset_manifest() takes. Required only when a kind is in LINK mode.
 
     Returns:
-        Concatenated CSS tags then JS tags, newline-joined, with the session's
-        inline runtime script (if any) leading the JS tags. Empty string when
-        both kinds are NONE or nothing was accumulated. Each inline ``<style>``
-        carries a ``data-pjx-asset`` token; scripts do not, since pjx.js never
-        relocates one and nothing reads the identity.
+        Concatenated CSS tags then JS tags, newline-joined. The session's theme
+        block (if any) comes first, then its runtime style block (if any) —
+        both regardless of css_mode — then builtin CSS, then app CSS; the
+        inline runtime script (if any) leads the JS tags. Empty string when
+        both kinds are NONE or nothing was accumulated. Each inline component
+        ``<style>`` carries a ``data-pjx-asset`` token; the ``pjx-theme`` and
+        ``pjx-style`` blocks and scripts do not, since pjx.js never relocates
+        one and nothing reads the identity.
 
     Raises:
         OSError: If an asset file is missing or unreadable under INLINE mode.
         ValueError: If a kind is in LINK mode and no resolver was given.
     """
     tags: list[str] = []
+    # The theme only defines --pjx-* variables, so it goes before everything
+    # that reads them: any later rule, builtin or app, can then override a
+    # token — the same general-layer-first ordering builtins get over app CSS.
+    if session.theme_style is not None:
+        tags.append(session.theme_style)
     if session.runtime_style is not None:
         tags.append(session.runtime_style)
     # Builtin CSS always emits before app CSS: both are single-class selectors
