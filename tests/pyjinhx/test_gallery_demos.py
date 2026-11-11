@@ -238,6 +238,18 @@ def test_roster_picker_demo_renders_three_pickers():
     assert html.count("<script data-demo-roster-route>") == 1
 
 
+def test_chart_demo_renders_a_line_and_a_bar_chart():
+    from pyjinhx.session import request_scope
+
+    factory, _height = DEMOS["PJXChart"]
+    with request_scope():
+        html = hooks.demo_markup(factory())
+
+    assert "pjx-demo-stage--row" in html
+    assert html.count('class="pjx-chart pjx-chart--line"') == 1
+    assert html.count('class="pjx-chart pjx-chart--bar"') == 1
+
+
 def test_runtime_demos_are_registered_demos():
     from demos import RUNTIME_DEMOS
 
