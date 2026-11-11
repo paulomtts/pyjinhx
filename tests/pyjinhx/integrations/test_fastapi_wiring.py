@@ -918,7 +918,9 @@ def test_fastapi_object_return_emits_the_theme_once_and_first():
 
     text = response.text
     assert text.count('<style id="pjx-theme">') == 1
-    assert text.index('<style id="pjx-theme">') < text.index('id="pjx-style"')
+    theme_at = text.index('<style id="pjx-theme">')
+    assert theme_at == text.index("<style")
+    assert theme_at < text.index('id="pjx-style"')
 
 
 def test_fastapi_double_direct_render_emits_the_theme_once():
