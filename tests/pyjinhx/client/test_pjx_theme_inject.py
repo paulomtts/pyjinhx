@@ -132,6 +132,27 @@ def test_theme_is_emitted_even_when_css_mode_is_none(themed, tmp_path):
     assert out.count(THEME_TAG) == 1
 
 
+def test_theme_applies_in_chromium_and_data_pjx_theme_dark_flips_it(themed, page):
+    session = RenderSession()
+    inject_runtime(session)
+    page.emulate_media(color_scheme="light")
+    page.set_content(
+        f"<html><head>{emit_assets(session)}</head><body>"
+        '<div data-pjx-theme="dark" id="w"><span id="i"></span></div>'
+        "</body></html>"
+    )
+    root = page.evaluate(
+        "getComputedStyle(document.documentElement)"
+        ".getPropertyValue('--pjx-color-surface').trim()"
+    )
+    inner = page.evaluate(
+        "getComputedStyle(document.getElementById('i'))"
+        ".getPropertyValue('--pjx-color-surface').trim()"
+    )
+    assert root == "#ffffff"
+    assert inner == "#18181b"
+
+
 # Kept after every themed test on purpose: if a fixture ever stopped restoring
 # the settings, this is the test that would see the leaked theme.
 def test_theme_off_by_default_leaves_theme_style_unset():
