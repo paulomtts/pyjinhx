@@ -23,7 +23,7 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass, fields, replace
 from importlib.util import find_spec as _find_spec
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal
 
 from pyjinhx._component import BaseComponent
 from pyjinhx.discovery import build_registry
@@ -63,13 +63,27 @@ def _env_path(name: str) -> Path | None:
     return Path(raw) if raw else None
 
 
+def _env_theme(name: str) -> Literal["default"] | None:
+    """``name``'s value as a theme name, or ``None`` when it is unset or empty."""
+    raw = os.environ.get(name)
+    if raw is None or raw == "":
+        return None
+    # Exact match, no strip or lowercase: Literal["default"] names one string,
+    # and a near miss is more likely a typo than a request for the theme.
+    if raw == "default":
+        return "default"
+    raise ValueError(f"{name}={raw!r} is not a theme; use one of ['default'].")
+
+
 @dataclass(frozen=True)
 class PjxSettings:
     """The app-level knobs pyjinhx reads once at startup.
 
     ``inject_htmx`` is stored only; how it maps onto the session's asset modes
-    is pending design. ``jinja_globals`` and ``jinja_filters`` are registered
-    onto each request's Jinja environment by the session that reads them.
+    is pending design. ``theme`` is stored only too: ``"default"`` selects the
+    shipped theme sheet, but nothing reads the field until theme injection
+    lands. ``jinja_globals`` and ``jinja_filters`` are registered onto each
+    request's Jinja environment by the session that reads them.
     """
 
     reactive_dev: bool = False
@@ -84,6 +98,9 @@ class PjxSettings:
     # Handed in by the app, never read from the environment: a backend needs a
     # path, a connection or a constructor call that a string cannot carry.
     cache_backend: CacheBackend | None = None
+    # Opt-in: None means no theme sheet, so an app that never asks for the
+    # theme renders exactly as before.
+    theme: Literal["default"] | None = None
 
     @classmethod
     def from_env(cls) -> PjxSettings:
@@ -93,6 +110,7 @@ class PjxSettings:
             inject_htmx=_env_bool("PJX_INJECT_HTMX", True),
             components_root=_env_path("PJX_COMPONENTS_ROOT"),
             static_root=_env_path("PJX_STATIC_ROOT"),
+            theme=_env_theme("PJX_THEME"),
         )
 
     def merge(self, **overrides: Any) -> PjxSettings:

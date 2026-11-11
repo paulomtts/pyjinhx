@@ -63,12 +63,14 @@ class PjxSettings:
     inject_htmx: bool = True
     components_root: Path | str | None = None
     static_root: Path | str | None = None
+    theme: Literal["default"] | None = None
 ```
 
 - `reactive_dev` — enables reactive dev guardrails when true.
 - `inject_htmx` — stored only; how it maps onto the session's asset modes is pending design.
 - `components_root` — directory walked for component discovery; `None` is a no-op.
 - `static_root` — directory mounted as static assets when `setup(app, ...)` is given an app; `None` is a no-op.
+- `theme` — `"default"` selects the shipped theme sheet; `None` (the default) means no theme. Stored only for now: nothing reads it until theme injection lands.
 
 ### from_env
 
@@ -83,6 +85,7 @@ def from_env(cls) -> PjxSettings
 | `PJX_INJECT_HTMX` | on | Sets `inject_htmx`; same boolean parsing as above |
 | `PJX_COMPONENTS_ROOT` | unset | Sets `components_root` from a filesystem path |
 | `PJX_STATIC_ROOT` | unset | Sets `static_root` from a filesystem path |
+| `PJX_THEME` | unset | Sets `theme`; only `default` is accepted (empty means unset, anything else raises `ValueError`) |
 
 ## configure_pyjinhx / shutdown_pyjinhx
 
