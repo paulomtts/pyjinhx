@@ -22,17 +22,17 @@ import tempfile
 from pathlib import Path
 
 D3_PACKAGES = {
-    "d3-selection": "3.0.0",
-    "d3-zoom": "3.0.0",
-    "d3-dispatch": "3.0.1",
-    "d3-drag": "3.0.0",
-    "d3-interpolate": "3.0.1",
-    "d3-color": "3.1.0",
-    "d3-transition": "3.0.1",
-    "d3-timer": "3.0.1",
-    "d3-ease": "3.0.1",
+    "d3-selection": "3.0.1",
+    "d3-zoom": "3.0.1",
+    "d3-dispatch": "3.0.2",
+    "d3-drag": "3.0.1",
+    "d3-interpolate": "3.0.2",
+    "d3-color": "3.1.1",
+    "d3-transition": "3.0.2",
+    "d3-timer": "3.0.2",
+    "d3-ease": "3.0.2",
 }
-ESBUILD_VERSION = "0.25.0"
+ESBUILD_VERSION = "0.28.2"
 MAX_BODY_BYTES = 61_440  # 60 KiB, the graph design's size target
 
 ENTRY = (
