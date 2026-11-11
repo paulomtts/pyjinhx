@@ -4,15 +4,15 @@
   align-items: center;
   justify-content: center;
   box-sizing: border-box;
-  gap: var(--pjx-button-gap, 0.5rem);
-  padding: var(--pjx-button-padding, 0.5rem 0.875rem);
+  gap: var(--pjx-button-gap, var(--pjx-space-2, 0.5rem));
+  padding: var(--pjx-button-padding, var(--pjx-space-2, 0.5rem) var(--pjx-space-3, 0.75rem));
   font-size: var(--pjx-button-font-size, inherit);
-  font-weight: var(--pjx-button-font-weight, 500);
+  font-weight: var(--pjx-button-font-weight, var(--pjx-font-weight-medium, 500));
   line-height: 1.2;
   color: var(--pjx-button-color, inherit);
   background: var(--pjx-button-bg, transparent);
   border: var(--pjx-button-border, 1px solid currentColor);
-  border-radius: var(--pjx-button-radius, 0.375rem);
+  border-radius: var(--pjx-button-radius, var(--pjx-radius-md, 8px));
   cursor: pointer;
 }
 
