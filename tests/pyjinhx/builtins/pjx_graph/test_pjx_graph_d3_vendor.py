@@ -27,15 +27,15 @@ SOURCE = (
 )
 
 BUNDLED = {
-    "d3-selection": "3.0.0",
-    "d3-zoom": "3.0.0",
-    "d3-dispatch": "3.0.1",
-    "d3-drag": "3.0.0",
-    "d3-interpolate": "3.0.1",
-    "d3-color": "3.1.0",
-    "d3-transition": "3.0.1",
-    "d3-timer": "3.0.1",
-    "d3-ease": "3.0.1",
+    "d3-selection": "3.0.1",
+    "d3-zoom": "3.0.1",
+    "d3-dispatch": "3.0.2",
+    "d3-drag": "3.0.1",
+    "d3-interpolate": "3.0.2",
+    "d3-color": "3.1.1",
+    "d3-transition": "3.0.2",
+    "d3-timer": "3.0.2",
+    "d3-ease": "3.0.2",
 }
 
 BODY_START = "var __pjxD3="
@@ -78,7 +78,7 @@ def test_vendored_file_exists():
 def test_first_line_names_pins_and_licence():
     first_line = SOURCE.read_text(encoding="utf-8").split("\n", 1)[0]
     assert first_line == (
-        "/* d3-selection 3.0.0 + d3-zoom 3.0.0"
+        "/* d3-selection 3.0.1 + d3-zoom 3.0.1"
         " — vendored by scripts/vendor_d3_zoom.py (ISC) */"
     )
 

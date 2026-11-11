@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.13.0 — htmx 2.0.11 (2026-11-11)
+
+### Changed
+- The vendored htmx that `inject_runtime` ships is now 2.0.11 (was 2.0.3).
+  `pjx.js` still relies on the same htmx surface (`detail.xhr`, the xhr
+  `loadend` event, `htmx:afterOnLoad`), and its browser tests pass against it.
+- The vendored d3 subset in `PJXGraph` moves to the latest d3 3.x patch
+  releases (d3-selection 3.0.1, d3-zoom 3.0.1 and their dependencies).
+- The `fastapi` extra now requires `fastapi>=0.137.0` and `starlette>=0.46.0`.
+  On earlier fastapi, a router included after setup was not adapted, so its
+  component-returning routes answered with JSON instead of HTML.
+
 ## 1.12.0 — Fan-out skips nested candidates (2026-10-31)
 
 ### Changed

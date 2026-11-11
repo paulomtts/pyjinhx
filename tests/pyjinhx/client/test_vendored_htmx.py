@@ -34,4 +34,6 @@ def test_asset_records_the_pinned_version():
     # vendored copy is obvious in a diff.
     raw = HTMX_RUNTIME_PATH.read_text(encoding="utf-8")
     first_line = raw.split("\n", 1)[0]
-    assert first_line == "/* htmx 2.0.3 — vendored by scripts/vendor_htmx2.py (0BSD) */"
+    assert (
+        first_line == "/* htmx 2.0.11 — vendored by scripts/vendor_htmx2.py (0BSD) */"
+    )

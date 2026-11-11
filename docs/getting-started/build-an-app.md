@@ -351,7 +351,7 @@ htmx yourself — but you can load your own in the layout to pin a version or ad
 extensions (the injected copy self-guards against double-loading):
 
 ```html
-<script src="https://unpkg.com/htmx.org@2.0.3"></script>
+<script src="https://unpkg.com/htmx.org@2.0.11"></script>
 ```
 
 There is currently no off-switch: `inject_htmx` is recorded on the settings object but nothing reads it, and the inlined copy is wrapped in `if (!window.htmx)`, so loading your own first already wins.

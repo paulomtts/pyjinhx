@@ -134,7 +134,9 @@ def _load_reactive_child(
         # A tag attr always arrives as a string (Jinja renders the tag before
         # it's parsed); load() is a plain method, not a pydantic constructor,
         # so nothing coerces it on the way in unless this does.
-        annotation = cls.model_fields[key_field].annotation
+        # A declared model field always has an annotation; pydantic types it
+        # as optional only for the unannotated-FieldInfo case.
+        annotation = cast(Any, cls.model_fields[key_field].annotation)
         key_args[key_field] = TypeAdapter(annotation).validate_python(raw_key)
     instance = cast(BaseComponent, cls.load(**key_args))  # pyright: ignore[reportAttributeAccessIssue]
     coerced = cast(Any, cls)._coerce_json_string_attrs(kwargs)
