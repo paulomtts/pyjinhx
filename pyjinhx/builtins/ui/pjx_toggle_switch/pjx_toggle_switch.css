@@ -62,8 +62,7 @@
   background: var(--pjx-toggle-switch-track-on);
 }
 
-.pjx-toggle-switch__input:checked + .pjx-toggle-switch__track /* Thumb geometry is derived from the track size, not the spacing scale. */
-.pjx-toggle-switch__thumb {
+.pjx-toggle-switch__input:checked + .pjx-toggle-switch__track .pjx-toggle-switch__thumb {
   transform: translateY(-50%) translateX(calc(var(--pjx-toggle-switch-width) - var(--pjx-toggle-switch-height) + 0.0625rem));
 }
 
