@@ -103,3 +103,23 @@ def test_notification_padding_gives_every_step_a_fallback():
         "var(--pjx-space-4, 1rem) var(--pjx-space-4, 1rem) "
         "var(--pjx-space-4, 1rem) var(--pjx-space-5, 1.25rem)"
     )
+
+
+TOAST = "pjx_toast_host/pjx_toast_host.css"
+
+
+def test_toast_sits_on_the_toast_layer():
+    # 600: above notifications (500), below the page loader (1000).
+    assert (
+        declared(read(TOAST), ":where(:root)", "--pjx-toast-z")
+        == f"var(--pjx-z-toast, {light('--pjx-z-toast')})"
+    )
+
+
+@pytest.mark.parametrize("status", STATUSES)
+def test_toast_status_colour_follows_the_theme(status):
+    token = f"--pjx-color-{status}"
+    assert (
+        declared(read(TOAST), ":where(:root)", f"--pjx-toast-{status}")
+        == f"var({token}, {light(token)})"
+    )

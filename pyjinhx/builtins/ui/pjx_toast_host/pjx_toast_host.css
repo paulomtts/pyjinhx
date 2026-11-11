@@ -1,14 +1,14 @@
 :where(:root) {
-  --pjx-toast-bg:      var(--surface);
-  --pjx-toast-border:  var(--border);
-  --pjx-toast-radius:  var(--radius-md);
-  --pjx-toast-shadow:  var(--shadow-md);
-  --pjx-toast-gap:     0.5rem;
-  --pjx-toast-z:       1000;
-  --pjx-toast-info:    var(--brand, #5c8fa8);
-  --pjx-toast-success: #3e7d4f;
-  --pjx-toast-warning: #b07415;
-  --pjx-toast-error:   #b3261e;
+  --pjx-toast-bg:      var(--pjx-color-surface, #ffffff);
+  --pjx-toast-border:  var(--pjx-color-border, #e4e4e7);
+  --pjx-toast-radius:  var(--pjx-radius-md, 8px);
+  --pjx-toast-shadow:  var(--pjx-shadow-md, 0 4px 12px rgb(0 0 0 / 0.08));
+  --pjx-toast-gap:     var(--pjx-space-2, 0.5rem);
+  --pjx-toast-z:       var(--pjx-z-toast, 600);
+  --pjx-toast-info:    var(--pjx-color-info, #0284c7);
+  --pjx-toast-success: var(--pjx-color-success, #16a34a);
+  --pjx-toast-warning: var(--pjx-color-warning, #b45309);
+  --pjx-toast-error:   var(--pjx-color-error, #dc2626);
 }
 
 .pjx-toast-host {
@@ -20,14 +20,15 @@
   pointer-events: none;
 }
 
-.pjx-toast-host--top-right    { top: 1.5rem; right: 1.5rem; }
-.pjx-toast-host--top-left     { top: 1.5rem; left: 1.5rem; }
-.pjx-toast-host--bottom-right { bottom: 1.5rem; right: 1.5rem; }
-.pjx-toast-host--bottom-left  { bottom: 1.5rem; left: 1.5rem; }
+.pjx-toast-host--top-right    { top: var(--pjx-space-6, 1.5rem); right: var(--pjx-space-6, 1.5rem); }
+.pjx-toast-host--top-left     { top: var(--pjx-space-6, 1.5rem); left: var(--pjx-space-6, 1.5rem); }
+.pjx-toast-host--bottom-right { bottom: var(--pjx-space-6, 1.5rem); right: var(--pjx-space-6, 1.5rem); }
+.pjx-toast-host--bottom-left  { bottom: var(--pjx-space-6, 1.5rem); left: var(--pjx-space-6, 1.5rem); }
 
 .pjx-toast {
   display: flex;
   align-items: center;
+  /* Off the spacing scale on purpose: a compact toast sits between the small and medium steps. */
   gap: 0.6rem;
   padding: 0.7rem 0.9rem;
   background: var(--pjx-toast-bg);
@@ -35,7 +36,7 @@
   border-left: 3px solid var(--pjx-toast-info);
   border-radius: var(--pjx-toast-radius);
   box-shadow: var(--pjx-toast-shadow);
-  color: var(--text);
+  color: var(--pjx-color-text, #18181b);
   pointer-events: auto;
   animation: pjx-toast-in 150ms ease;
 }
@@ -49,7 +50,7 @@
 .pjx-toast__dismiss {
   background: transparent;
   border: none;
-  color: var(--text-muted);
+  color: var(--pjx-color-text-muted, #52525b);
   cursor: pointer;
   font: inherit;
   padding: 0;

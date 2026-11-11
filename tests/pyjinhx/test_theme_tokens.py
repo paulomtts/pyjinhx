@@ -78,7 +78,6 @@ LEGACY_PENDING: tuple[str, ...] = (
     "pyjinhx/builtins/ui/pjx_spinner/pjx_spinner.css",
     "pyjinhx/builtins/ui/pjx_tab/pjx_tab.css",
     "pyjinhx/builtins/ui/pjx_tab_group/pjx_tab_group.css",
-    "pyjinhx/builtins/ui/pjx_toast_host/pjx_toast_host.css",
     "pyjinhx/builtins/ui/pjx_toggle_switch/pjx_toggle_switch.css",
     "pyjinhx/builtins/ui/pjx_tooltip/pjx_tooltip.css",
     "pyjinhx/builtins/ui/pjx_tooltip_trigger/pjx_tooltip_trigger.css",
