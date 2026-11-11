@@ -12,6 +12,7 @@ from pyjinhx.client import (
     read_page_loader_js,
     read_pjx_runtime,
     read_pjx_style_css,
+    read_pjx_theme_css,
     read_vendored_htmx,
 )
 from pyjinhx.session import RenderSession
@@ -76,8 +77,10 @@ def _is_mounted_request(request: Any) -> bool:
 def inject_runtime(session: RenderSession, request: Any = None) -> None:
     """Record the inline pjx.js runtime on ``session`` for a cold render.
 
-    No-ops when the request already carries the mounted header, when this
-    session was injected once already, or when JS is not delivered inline.
+    Also records the ``<style id="pjx-theme">`` block when the configured
+    ``PjxSettings.theme`` is ``"default"``. No-ops when the request already
+    carries the mounted header, when this session was injected once already,
+    or when JS is not delivered inline.
 
     Args:
         session: The RenderSession this render writes into.
@@ -85,8 +88,8 @@ def inject_runtime(session: RenderSession, request: Any = None) -> None:
             None outside a request.
 
     Raises:
-        OSError: If pjx.js, the vendored htmx source, or a loading artifact
-            cannot be read.
+        OSError: If pjx.js, the vendored htmx source, a loading artifact, or
+            the theme sheet cannot be read.
     """
     if _is_mounted_request(request):
         return
@@ -94,6 +97,11 @@ def inject_runtime(session: RenderSession, request: Any = None) -> None:
         return
     if session.js_mode is not AssetMode.INLINE:
         return
+    # Function-local by necessity: config imports the render spine at import
+    # time, so a module-scope edge from here back up to it would be a real
+    # cycle. Read per call so a configure_pyjinhx() before the render counts.
+    from pyjinhx.config import current_settings
+
     # htmx first, so window.htmx exists by the time pjx.js registers its
     # listeners; its own guard makes re-defining a page's htmx a no-op. The two
     # loading artifacts come last: they call pjx.region/pjx.loadingTargets.
@@ -102,6 +110,8 @@ def inject_runtime(session: RenderSession, request: Any = None) -> None:
         f"{read_loading_indicator_js()}{read_page_loader_js()}</script>"
     )
     session.runtime_style = f'<style id="pjx-style">{read_pjx_style_css()}</style>'
+    if current_settings().theme == "default":
+        session.theme_style = f'<style id="pjx-theme">{read_pjx_theme_css()}</style>'
     session.runtime_injected = True
 
 

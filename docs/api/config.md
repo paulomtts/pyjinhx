@@ -70,7 +70,7 @@ class PjxSettings:
 - `inject_htmx` — stored only; how it maps onto the session's asset modes is pending design.
 - `components_root` — directory walked for component discovery; `None` is a no-op.
 - `static_root` — directory mounted as static assets when `setup(app, ...)` is given an app; `None` is a no-op.
-- `theme` — `"default"` selects the shipped theme sheet; `None` (the default) means no theme. Stored only for now: nothing reads it until theme injection lands.
+- `theme` — `"default"` makes a cold render emit the shipped theme sheet as `<style id="pjx-theme">`, first, ahead of all other CSS; `None` (the default) means no theme. Reactive and mounted responses never carry it, and it is only emitted when JS is delivered inline — an app building its own `<head>` reads the sheet from `pyjinhx.client.read_pjx_theme_css()` or `PJX_THEME_PATH`.
 
 ### from_env
 

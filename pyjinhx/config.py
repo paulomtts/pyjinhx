@@ -80,10 +80,10 @@ class PjxSettings:
     """The app-level knobs pyjinhx reads once at startup.
 
     ``inject_htmx`` is stored only; how it maps onto the session's asset modes
-    is pending design. ``theme`` is stored only too: ``"default"`` selects the
-    shipped theme sheet, but nothing reads the field until theme injection
-    lands. ``jinja_globals`` and ``jinja_filters`` are registered onto each
-    request's Jinja environment by the session that reads them.
+    is pending design. ``theme="default"`` makes a cold render emit the shipped
+    theme sheet as ``<style id="pjx-theme">``, first, ahead of all other CSS.
+    ``jinja_globals`` and ``jinja_filters`` are registered onto each request's
+    Jinja environment by the session that reads them.
     """
 
     reactive_dev: bool = False
