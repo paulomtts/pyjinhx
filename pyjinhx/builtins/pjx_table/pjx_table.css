@@ -1,24 +1,24 @@
 :where(:root) {
-  --pjx-table-border: var(--border);
-  --pjx-table-header-bg: var(--surface-alt);
-  --pjx-table-header-fg: var(--text);
-  --pjx-table-stripe-bg: color-mix(in srgb, var(--surface) 60%, var(--surface-alt));
-  --pjx-table-row-hover-bg: color-mix(in srgb, var(--surface) 40%, var(--surface-alt));
-  --pjx-table-cell-pad-y: var(--space-3, 0.5rem);
-  --pjx-table-cell-pad-x: var(--space-4, 0.75rem);
+  --pjx-table-border: var(--pjx-color-border, #e4e4e7);
+  --pjx-table-header-bg: var(--pjx-color-surface-alt, #fafafa);
+  --pjx-table-header-fg: var(--pjx-color-text, #18181b);
+  --pjx-table-stripe-bg: color-mix(in srgb, var(--pjx-color-surface, #ffffff) 60%, var(--pjx-color-surface-alt, #fafafa));
+  --pjx-table-row-hover-bg: color-mix(in srgb, var(--pjx-color-surface, #ffffff) 40%, var(--pjx-color-surface-alt, #fafafa));
+  --pjx-table-cell-pad-y: var(--pjx-space-3, 0.75rem);
+  --pjx-table-cell-pad-x: var(--pjx-space-4, 1rem);
 }
 
 .pjx-table {
   width: 100%;
   border-collapse: collapse;
-  color: var(--text);
-  font-size: var(--font-size-sm, 0.875rem);
+  color: var(--pjx-color-text, #18181b);
+  font-size: var(--pjx-font-size-sm, 0.875rem);
 }
 
 .pjx-table__caption {
   padding: var(--pjx-table-cell-pad-y) var(--pjx-table-cell-pad-x);
   text-align: left;
-  color: var(--text-muted, var(--text));
+  color: var(--pjx-color-text-muted, #52525b);
   font-weight: 600;
 }
 
@@ -44,8 +44,8 @@
 }
 
 .pjx-table--density-compact {
-  --pjx-table-cell-pad-y: var(--space-2, 0.25rem);
-  --pjx-table-cell-pad-x: var(--space-3, 0.5rem);
+  --pjx-table-cell-pad-y: var(--pjx-space-2, 0.5rem);
+  --pjx-table-cell-pad-x: var(--pjx-space-3, 0.75rem);
 }
 
 .pjx-table--sticky .pjx-table__th {
@@ -67,7 +67,7 @@
 .pjx-table__sort {
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
+  gap: 0.35rem; /* off-scale: between space-1 and space-2 so the caret hugs its label */
   margin: 0;
   padding: 0;
   font: inherit;
