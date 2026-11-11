@@ -48,6 +48,8 @@ from pyjinhx.builtins.ui.pjx_carousel.pjx_carousel import PJXCarousel as PJXCaro
 from pyjinhx.builtins.ui.pjx_carousel_slide.pjx_carousel_slide import (
     PJXCarouselSlide as PJXCarouselSlide,
 )
+from pyjinhx.builtins.ui.pjx_chart.pjx_chart import PJXChart as PJXChart
+from pyjinhx.builtins.ui.pjx_chart.series import PJXChartSeries as PJXChartSeries
 from pyjinhx.builtins.ui.pjx_chip_input.pjx_chip_input import (
     PJXChipInput as PJXChipInput,
 )
@@ -176,6 +178,8 @@ __all__ = [
     "PJXCardHeader",
     "PJXCarousel",
     "PJXCarouselSlide",
+    "PJXChart",
+    "PJXChartSeries",
     "PJXChipInput",
     "PJXConfirmDialog",
     "PJXDivider",

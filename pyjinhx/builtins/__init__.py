@@ -30,6 +30,8 @@ __all__ = [  # noqa: RUF022
     "PJXCardHeader",
     "PJXCarousel",
     "PJXCarouselSlide",
+    "PJXChart",
+    "PJXChartSeries",
     "PJXChipInput",
     "PJXConfirmDialog",
     "PJXDivider",
@@ -131,6 +133,8 @@ _lazy_imports = {
         "pyjinhx.builtins.ui.pjx_carousel_slide.pjx_carousel_slide",
         "PJXCarouselSlide",
     ),
+    "PJXChart": ("pyjinhx.builtins.ui.pjx_chart.pjx_chart", "PJXChart"),
+    "PJXChartSeries": ("pyjinhx.builtins.ui.pjx_chart.series", "PJXChartSeries"),
     "PJXChipInput": (
         "pyjinhx.builtins.ui.pjx_chip_input.pjx_chip_input",
         "PJXChipInput",

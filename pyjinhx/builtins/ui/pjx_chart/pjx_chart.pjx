@@ -1,0 +1,29 @@
+{%- set name = title or aria_label -%}
+<figure id="{{ id }}" class="pjx-chart pjx-chart--{{ kind }}{% if dense %} pjx-chart--dense{% endif %}{% if class_name %} {{ class_name }}{% endif %}" style="--pjx-chart-height: {{ height }}px"{% if not title %} aria-label="{{ aria_label }}"{% endif %}{% for attr_name, attr_value in extra_attrs.items() %} {{ attr_name }}="{{ attr_value }}"{% endfor %}>
+  {% if title %}<figcaption class="pjx-chart__title">{{ title }}</figcaption>{% endif %}
+  <div class="pjx-chart__plot">
+    <svg class="pjx-chart__svg" aria-hidden="true" focusable="false">
+      {% for tick in y_ticks %}<line class="pjx-chart__grid" x1="0" x2="100%" y1="{{ tick.y }}%" y2="{{ tick.y }}%"/><text class="pjx-chart__y-label" x="-8" y="{{ tick.y }}%">{{ tick.text }}</text>{% endfor %}
+      {% for tick in x_ticks %}<text class="pjx-chart__x-label{% if tick.minor %} pjx-chart__x-label--minor{% endif %}" x="{{ tick.x }}%" y="100%" dy="20">{{ tick.text }}</text>{% endfor %}
+      {% for mark in marks %}<g class="pjx-chart__series pjx-chart__series--{{ mark.color }}">
+        {%- if kind == "bar" -%}
+        {% for bar in mark.points %}<rect class="pjx-chart__bar" x="{{ bar.x }}%" y="{{ bar.y }}%" width="{{ bar.width }}%" height="{{ bar.height }}%" rx="3"><title>{{ bar.tip }}</title></rect>{% endfor %}
+        {%- else -%}
+        {#- Stretched to the plot so the path can use the same percentages;
+            the strokes opt out of the stretch in the stylesheet. -#}
+        {% if mark.line %}<svg class="pjx-chart__stretch" viewBox="0 0 100 100" preserveAspectRatio="none" width="100%" height="100%">{% if mark.area %}<path class="pjx-chart__area" d="{{ mark.area }}"/>{% endif %}<path class="pjx-chart__line" d="{{ mark.line }}"/></svg>{% endif %}
+        {% for point in mark.points %}<circle class="pjx-chart__point" cx="{{ point.x }}%" cy="{{ point.y }}%" r="4"><title>{{ point.tip }}</title></circle>{% endfor %}
+        {%- endif -%}
+      </g>{% endfor %}
+      {% if zero_y is not none %}<line class="pjx-chart__zero" x1="0" x2="100%" y1="{{ zero_y }}%" y2="{{ zero_y }}%"/>{% endif %}
+    </svg>
+  </div>
+  {% if legend and series | length > 1 %}<ul class="pjx-chart__legend">{% for mark in marks %}<li class="pjx-chart__legend-item pjx-chart__series--{{ mark.color }}">{{ mark.name }}</li>{% endfor %}</ul>{% endif %}
+  <div class="pjx-chart__data">
+  <table class="pjx-chart__table">
+    <caption>{{ name }}</caption>
+    <tr><th scope="col"></th>{% for s in series %}<th scope="col">{{ s.name }}</th>{% endfor %}</tr>
+    {% for row in rows %}<tr><th scope="row">{{ row.label }}</th>{% for cell in row.cells %}<td>{{ cell }}</td>{% endfor %}</tr>{% endfor %}
+  </table>
+  </div>
+</figure>
