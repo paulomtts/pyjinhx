@@ -5,6 +5,8 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+import pytest
+
 from pyjinhx.client import read_pjx_theme_css
 
 REPO_ROOT = Path(__file__).parents[2]
@@ -32,6 +34,57 @@ LEGACY_NAME = re.compile(
     r")(?![\w-])"
 )
 VAR_OPEN = re.compile(r"(?<![\w-])var\(")
+
+# Stylesheets that still use legacy names. Remove a path once its file is
+# migrated; the suite fails until you do.
+LEGACY_PENDING: tuple[str, ...] = (
+    "pyjinhx/builtins/pjx_page_loader/pjx_page_loader.css",
+    "pyjinhx/builtins/pjx_paginator/pjx_paginator.css",
+    "pyjinhx/builtins/pjx_region_loader/pjx_region_loader.css",
+    "pyjinhx/builtins/pjx_table/pjx_table.css",
+    "pyjinhx/builtins/ui/pjx_alert/pjx_alert.css",
+    "pyjinhx/builtins/ui/pjx_avatar/pjx_avatar.css",
+    "pyjinhx/builtins/ui/pjx_avatar_stack/pjx_avatar_stack.css",
+    "pyjinhx/builtins/ui/pjx_badge/pjx_badge.css",
+    "pyjinhx/builtins/ui/pjx_breadcrumb/pjx_breadcrumb.css",
+    "pyjinhx/builtins/ui/pjx_card/pjx_card.css",
+    "pyjinhx/builtins/ui/pjx_card_header/pjx_card_header.css",
+    "pyjinhx/builtins/ui/pjx_carousel/pjx_carousel.css",
+    "pyjinhx/builtins/ui/pjx_chart/pjx_chart.css",
+    "pyjinhx/builtins/ui/pjx_chip_input/pjx_chip_input.css",
+    "pyjinhx/builtins/ui/pjx_confirm_dialog/pjx_confirm_dialog.css",
+    "pyjinhx/builtins/ui/pjx_divider/pjx_divider.css",
+    "pyjinhx/builtins/ui/pjx_drawer/pjx_drawer.css",
+    "pyjinhx/builtins/ui/pjx_drawer_body/pjx_drawer_body.css",
+    "pyjinhx/builtins/ui/pjx_drawer_header/pjx_drawer_header.css",
+    "pyjinhx/builtins/ui/pjx_dropdown/pjx_dropdown.css",
+    "pyjinhx/builtins/ui/pjx_empty_state/pjx_empty_state.css",
+    "pyjinhx/builtins/ui/pjx_form_field/pjx_form_field.css",
+    "pyjinhx/builtins/ui/pjx_graph/pjx_graph.css",
+    "pyjinhx/builtins/ui/pjx_graph_controls/pjx_graph_controls.css",
+    "pyjinhx/builtins/ui/pjx_graph_node/pjx_graph_node.css",
+    "pyjinhx/builtins/ui/pjx_graph_side_panel/pjx_graph_side_panel.css",
+    "pyjinhx/builtins/ui/pjx_modal/pjx_modal.css",
+    "pyjinhx/builtins/ui/pjx_modal_body/pjx_modal_body.css",
+    "pyjinhx/builtins/ui/pjx_modal_header/pjx_modal_header.css",
+    "pyjinhx/builtins/ui/pjx_notification/pjx_notification.css",
+    "pyjinhx/builtins/ui/pjx_password_input/pjx_password_input.css",
+    "pyjinhx/builtins/ui/pjx_popover/pjx_popover.css",
+    "pyjinhx/builtins/ui/pjx_progress/pjx_progress.css",
+    "pyjinhx/builtins/ui/pjx_prompt_dialog/pjx_prompt_dialog.css",
+    "pyjinhx/builtins/ui/pjx_resizable_handle/pjx_resizable_handle.css",
+    "pyjinhx/builtins/ui/pjx_roster_picker/pjx_roster_picker.css",
+    "pyjinhx/builtins/ui/pjx_segmented_control/pjx_segmented_control.css",
+    "pyjinhx/builtins/ui/pjx_select/pjx_select.css",
+    "pyjinhx/builtins/ui/pjx_skeleton/pjx_skeleton.css",
+    "pyjinhx/builtins/ui/pjx_spinner/pjx_spinner.css",
+    "pyjinhx/builtins/ui/pjx_tab/pjx_tab.css",
+    "pyjinhx/builtins/ui/pjx_tab_group/pjx_tab_group.css",
+    "pyjinhx/builtins/ui/pjx_toast_host/pjx_toast_host.css",
+    "pyjinhx/builtins/ui/pjx_toggle_switch/pjx_toggle_switch.css",
+    "pyjinhx/builtins/ui/pjx_tooltip/pjx_tooltip.css",
+    "pyjinhx/builtins/ui/pjx_tooltip_trigger/pjx_tooltip_trigger.css",
+)
 
 
 def light_values() -> dict[str, str]:
@@ -105,11 +158,59 @@ def fallback_mismatches(css: str, light: dict[str, str]) -> list[str]:
     return problems
 
 
+def stylesheets() -> list[str]:
+    """Return the repo-relative paths of every pyjinhx stylesheet but the theme sheet."""
+    paths = (
+        path.relative_to(REPO_ROOT).as_posix()
+        for path in (REPO_ROOT / "pyjinhx").rglob("*.css")
+    )
+    return sorted(path for path in paths if path != THEME_SHEET)
+
+
+STYLESHEETS = stylesheets()
+MIGRATED = [path for path in STYLESHEETS if path not in LEGACY_PENDING]
+
+
+def read(path: str) -> str:
+    return (REPO_ROOT / path).read_text(encoding="utf-8")
+
+
 def test_sheet_light_values_parse():
     light = light_values()
     assert light
     assert light["--pjx-color-surface"] == "#ffffff"
     assert light["--pjx-color-brand"] == "#27272a"
+
+
+@pytest.mark.parametrize("path", MIGRATED)
+def test_migrated_stylesheet_tokens_are_defined(path):
+    undefined = undefined_tokens(read(path), light_values())
+    assert not undefined, f"{path} uses undefined theme tokens: {sorted(undefined)}"
+
+
+@pytest.mark.parametrize("path", MIGRATED)
+def test_migrated_stylesheet_fallbacks_match_light_values(path):
+    problems = fallback_mismatches(read(path), light_values())
+    assert not problems, f"{path}: " + "; ".join(problems)
+
+
+@pytest.mark.parametrize("path", MIGRATED)
+def test_migrated_stylesheet_has_no_legacy_names(path):
+    found = legacy_names(read(path))
+    assert not found, f"{path} still uses legacy names: {sorted(found)}"
+
+
+def test_pending_list_is_sorted_and_unique():
+    assert LEGACY_PENDING == tuple(sorted(set(LEGACY_PENDING)))
+
+
+@pytest.mark.parametrize("path", LEGACY_PENDING)
+def test_pending_path_still_needs_migration(path):
+    assert (REPO_ROOT / path).is_file(), f"pending path does not exist: {path}"
+    assert path in STYLESHEETS, f"{path} is not a stylesheet under test"
+    assert legacy_names(read(path)), (
+        f"{path} has no legacy names left; remove it from LEGACY_PENDING"
+    )
 
 
 def test_theme_token_finder_matches_only_theme_families():
