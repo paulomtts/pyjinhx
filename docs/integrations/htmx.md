@@ -21,7 +21,7 @@ If you prefer to manage HTMX yourself — to pin a version, add extensions, or
 serve it from your own CDN — include it in your layout as usual:
 
 ```html
-<script src="https://unpkg.com/htmx.org@2.0.3"></script>
+<script src="https://unpkg.com/htmx.org@2.0.11"></script>
 ```
 
 Nothing else is needed to make the two copies coexist: the inlined one

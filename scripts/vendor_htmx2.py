@@ -14,7 +14,7 @@ htmx is distributed under the 0BSD license.
 import urllib.request
 from pathlib import Path
 
-HTMX_VERSION = "2.0.3"
+HTMX_VERSION = "2.0.11"
 URL = f"https://unpkg.com/htmx.org@{HTMX_VERSION}/dist/htmx.min.js"
 
 HEADER = f"/* htmx {HTMX_VERSION} — vendored by scripts/vendor_htmx2.py (0BSD) */\n"
