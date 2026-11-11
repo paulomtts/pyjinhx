@@ -123,3 +123,20 @@ def test_toast_status_colour_follows_the_theme(status):
         declared(read(TOAST), ":where(:root)", f"--pjx-toast-{status}")
         == f"var({token}, {light(token)})"
     )
+
+
+SPINNER = "pjx_spinner/pjx_spinner.css"
+
+
+def test_spinner_accent_follows_the_brand():
+    assert (
+        declared(read(SPINNER), ":where(:root)", "--pjx-spinner-accent")
+        == f"var(--pjx-color-brand, {light('--pjx-color-brand')})"
+    )
+
+
+def test_spinner_track_mixes_the_muted_text_with_its_fallback():
+    muted = light("--pjx-color-text-muted")
+    assert declared(read(SPINNER), ":where(:root)", "--pjx-spinner-track") == (
+        f"color-mix(in srgb, var(--pjx-color-text-muted, {muted}) 35%, transparent)"
+    )

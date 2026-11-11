@@ -2,15 +2,15 @@
   --pjx-spinner-sm: 1.25rem;
   --pjx-spinner-md: 2rem;
   --pjx-spinner-lg: 2.75rem;
-  --pjx-spinner-track: color-mix(in srgb, var(--text-muted) 35%, transparent);
-  --pjx-spinner-accent: var(--brand);
+  --pjx-spinner-track: color-mix(in srgb, var(--pjx-color-text-muted, #52525b) 35%, transparent);
+  --pjx-spinner-accent: var(--pjx-color-brand, #27272a);
 }
 
 .pjx-spinner {
   position: relative;
   display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: var(--pjx-space-2, 0.5rem);
   vertical-align: middle;
 }
 
