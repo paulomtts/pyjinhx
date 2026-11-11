@@ -1,0 +1,87 @@
+"""Alert, notification, toast host and spinner default to theme tokens."""
+
+from __future__ import annotations
+
+import re
+from pathlib import Path
+
+import pytest
+
+from pyjinhx.client import read_pjx_theme_css
+
+UI = Path(__file__).parents[3] / "pyjinhx" / "builtins" / "ui"
+STATUSES = ("info", "success", "warning", "error")
+
+# Copied from tests/pyjinhx/test_theme_tokens.py: the tests tree has no
+# __init__.py files, so test modules cannot import each other reliably.
+ROOT = re.compile(r"^:root \{(.*?)^\}", re.MULTILINE | re.DOTALL)
+DECLARATION = re.compile(r"([\w-]+):\s*([^;]+);")
+COMMENT = re.compile(r"/\*.*?\*/", re.DOTALL)
+
+ALERT = "pjx_alert/pjx_alert.css"
+
+
+def light(token: str) -> str:
+    """Return token's value in the theme sheet's light :root block."""
+    match = ROOT.search(read_pjx_theme_css())
+    assert match is not None, f"token block not found: {ROOT.pattern}"
+    return dict(DECLARATION.findall(match.group(1)))[token]
+
+
+def read(path: str) -> str:
+    return (UI / path).read_text(encoding="utf-8")
+
+
+def rule_block(css: str, selector: str) -> str:
+    """Return the body of the rule whose selector starts a line, comments removed."""
+    css = COMMENT.sub("", css)
+    pattern = rf"^{re.escape(selector)}\s*\{{([^}}]*)\}}"
+    match = re.search(pattern, css, re.MULTILINE)
+    assert match is not None, f"no {selector} rule"
+    return match.group(1)
+
+
+def declared(css: str, selector: str, prop: str) -> str:
+    """Return prop's value inside selector's rule, whitespace collapsed."""
+    block = rule_block(css, selector)
+    match = re.search(rf"(?<![\w-]){re.escape(prop)}:\s*([^;]+);", block)
+    assert match is not None, f"{selector} does not declare {prop}"
+    return " ".join(match.group(1).split())
+
+
+def test_declared_reads_the_named_rule_and_property():
+    css = (
+        ".a-b { color: red; }\n"
+        ".a { border-color: blue;\n  /* color: green; */\n  color:   var(--x,\n"
+        "    #fff); }\n"
+    )
+    assert declared(css, ".a", "color") == "var(--x, #fff)"
+    assert declared(css, ".a", "border-color") == "blue"
+    assert declared(css, ".a-b", "color") == "red"
+
+
+@pytest.mark.parametrize("status", STATUSES)
+def test_alert_variant_uses_the_status_palette(status):
+    css = read(ALERT)
+    selector = f".pjx-alert--{status}"
+    for prop, role in (
+        ("background", "subtle"),
+        ("border-color", "border"),
+        ("color", "text"),
+    ):
+        token = f"--pjx-color-{status}-{role}"
+        assert declared(css, selector, prop) == f"var({token}, {light(token)})"
+
+
+@pytest.mark.parametrize("status", STATUSES)
+def test_alert_variant_mixes_no_colours_and_skips_brand(status):
+    block = rule_block(read(ALERT), f".pjx-alert--{status}")
+    assert "color-mix" not in block
+    assert "--pjx-color-brand" not in block
+
+
+def test_alert_padding_keeps_its_off_scale_vertical():
+    assert (
+        declared(read(ALERT), ":where(:root)", "--pjx-alert-padding")
+        == "0.875rem var(--pjx-space-4, 1rem)"
+    )
