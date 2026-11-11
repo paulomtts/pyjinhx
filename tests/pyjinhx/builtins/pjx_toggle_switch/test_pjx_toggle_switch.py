@@ -138,9 +138,7 @@ class TestAssets:
         assert PJXToggleSwitch.__pjx_descriptor__.js_paths == ()
 
 
-TOGGLE_CSS = PJXToggleSwitch.__pjx_descriptor__.css_paths[0].read_text(
-    encoding="utf-8"
-)
+TOGGLE_CSS = PJXToggleSwitch.__pjx_descriptor__.css_paths[0].read_text(encoding="utf-8")
 
 
 def _toggle_markup(checked: bool) -> str:
