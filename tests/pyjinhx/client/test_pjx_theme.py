@@ -123,3 +123,98 @@ def test_no_custom_property_is_defined_outside_the_token_blocks():
     for block in TOKEN_BLOCKS:
         rest = block.sub("", rest)
     assert re.findall(r"--pjx-[\w-]+\s*:", rest) == []
+
+
+RULE = re.compile(r"^(\.pjx-[\w-]+) \{(.*?)^\}", re.MULTILINE | re.DOTALL)
+TOKEN_REFERENCE = re.compile(r"var\((--pjx-[\w-]+)\)")
+
+SANS = "var(--pjx-font-family-sans)"
+TEXT = "var(--pjx-color-text)"
+MUTED = "var(--pjx-color-text-muted)"
+TIGHT = "var(--pjx-line-height-tight)"
+NORMAL = "var(--pjx-line-height-normal)"
+REGULAR = "var(--pjx-font-weight-regular)"
+SEMIBOLD = "var(--pjx-font-weight-semibold)"
+
+
+def heading(size: str, weight: str) -> dict[str, str]:
+    return {
+        "font-family": SANS,
+        "font-size": f"var(--pjx-font-size-{size})",
+        "font-weight": weight,
+        "line-height": TIGHT,
+        "color": TEXT,
+    }
+
+
+def body(size: str, line_height: str, color: str = TEXT) -> dict[str, str]:
+    return {
+        "font-family": SANS,
+        "font-size": f"var(--pjx-font-size-{size})",
+        "font-weight": REGULAR,
+        "line-height": line_height,
+        "color": color,
+    }
+
+
+TYPOGRAPHY = {
+    ".pjx-heading-1": heading("3xl", "var(--pjx-font-weight-bold)"),
+    ".pjx-heading-2": heading("2xl", SEMIBOLD),
+    ".pjx-heading-3": heading("xl", SEMIBOLD),
+    ".pjx-heading-4": heading("lg", SEMIBOLD),
+    ".pjx-text-lg": body("lg", "var(--pjx-line-height-relaxed)"),
+    ".pjx-text": body("md", NORMAL),
+    ".pjx-text-sm": body("sm", NORMAL),
+    ".pjx-caption": body("xs", NORMAL, MUTED),
+    ".pjx-text-muted": {"color": MUTED},
+    ".pjx-text-mono": {"font-family": "var(--pjx-font-family-mono)"},
+}
+
+
+def typography_rules() -> list[tuple[str, dict[str, str]]]:
+    """Return each top-level .pjx-* rule as (selector, property to value)."""
+    return [
+        (selector, dict(DECLARATION.findall(declarations)))
+        for selector, declarations in RULE.findall(read_pjx_theme_css())
+    ]
+
+
+def test_each_typography_class_is_one_rule():
+    selectors = [selector for selector, _ in typography_rules()]
+    assert sorted(selectors) == sorted(TYPOGRAPHY)
+
+
+def test_typography_rules_match_the_spec_table():
+    assert dict(typography_rules()) == TYPOGRAPHY
+
+
+def test_typography_uses_only_root_tokens():
+    root = tokens(ROOT)
+    for selector, declarations in typography_rules():
+        for prop, value in declarations.items():
+            assert not prop.startswith("--"), (selector, prop)
+            reference = TOKEN_REFERENCE.fullmatch(value)
+            assert reference is not None, (selector, prop, value)
+            assert reference.group(1) in root, (selector, prop, value)
+
+
+def test_modifiers_set_one_property_and_come_after_the_size_classes():
+    rules = typography_rules()
+    order = [selector for selector, _ in rules]
+    declarations = dict(rules)
+    assert declarations[".pjx-text-muted"] == {"color": MUTED}
+    assert declarations[".pjx-text-mono"] == {
+        "font-family": "var(--pjx-font-family-mono)"
+    }
+    last_size_class = max(
+        order.index(selector)
+        for selector in TYPOGRAPHY
+        if selector not in (".pjx-text-muted", ".pjx-text-mono")
+    )
+    assert order.index(".pjx-text-muted") > last_size_class
+    assert order.index(".pjx-text-mono") > last_size_class
+
+
+def test_typography_follows_the_token_blocks():
+    css = read_pjx_theme_css()
+    assert css.index(".pjx-heading-1 {") > css.index("/* Breakpoints")

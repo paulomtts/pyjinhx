@@ -249,3 +249,76 @@
 }
 
 /* Breakpoints (documented, not tokens): sm 640px · md 768px · lg 1024px · xl 1280px */
+
+/* Typography (D7): classes, not components. Size classes first, then single-property modifiers. */
+.pjx-heading-1 {
+  font-family: var(--pjx-font-family-sans);
+  font-size: var(--pjx-font-size-3xl);
+  font-weight: var(--pjx-font-weight-bold);
+  line-height: var(--pjx-line-height-tight);
+  color: var(--pjx-color-text);
+}
+
+.pjx-heading-2 {
+  font-family: var(--pjx-font-family-sans);
+  font-size: var(--pjx-font-size-2xl);
+  font-weight: var(--pjx-font-weight-semibold);
+  line-height: var(--pjx-line-height-tight);
+  color: var(--pjx-color-text);
+}
+
+.pjx-heading-3 {
+  font-family: var(--pjx-font-family-sans);
+  font-size: var(--pjx-font-size-xl);
+  font-weight: var(--pjx-font-weight-semibold);
+  line-height: var(--pjx-line-height-tight);
+  color: var(--pjx-color-text);
+}
+
+.pjx-heading-4 {
+  font-family: var(--pjx-font-family-sans);
+  font-size: var(--pjx-font-size-lg);
+  font-weight: var(--pjx-font-weight-semibold);
+  line-height: var(--pjx-line-height-tight);
+  color: var(--pjx-color-text);
+}
+
+.pjx-text-lg {
+  font-family: var(--pjx-font-family-sans);
+  font-size: var(--pjx-font-size-lg);
+  font-weight: var(--pjx-font-weight-regular);
+  line-height: var(--pjx-line-height-relaxed);
+  color: var(--pjx-color-text);
+}
+
+.pjx-text {
+  font-family: var(--pjx-font-family-sans);
+  font-size: var(--pjx-font-size-md);
+  font-weight: var(--pjx-font-weight-regular);
+  line-height: var(--pjx-line-height-normal);
+  color: var(--pjx-color-text);
+}
+
+.pjx-text-sm {
+  font-family: var(--pjx-font-family-sans);
+  font-size: var(--pjx-font-size-sm);
+  font-weight: var(--pjx-font-weight-regular);
+  line-height: var(--pjx-line-height-normal);
+  color: var(--pjx-color-text);
+}
+
+.pjx-caption {
+  font-family: var(--pjx-font-family-sans);
+  font-size: var(--pjx-font-size-xs);
+  font-weight: var(--pjx-font-weight-regular);
+  line-height: var(--pjx-line-height-normal);
+  color: var(--pjx-color-text-muted);
+}
+
+.pjx-text-muted {
+  color: var(--pjx-color-text-muted);
+}
+
+.pjx-text-mono {
+  font-family: var(--pjx-font-family-mono);
+}
