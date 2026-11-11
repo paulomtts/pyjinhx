@@ -1,5 +1,23 @@
 # Changelog
 
+## Unreleased
+
+### Added
+- Two builtins for data charts, exported from `pyjinhx.builtins`: `PJXChart`
+  (a line or bar chart drawn on the server as SVG) and `PJXChartSeries` (one
+  named row of values, a frozen model). The chart ships no JavaScript, so it
+  is in the first paint and an htmx swap replaces it like any markup. It
+  fills its container's width at a fixed pixel height, with text and lines
+  at their pixel size at any width. A visually hidden table carries the same
+  data for screen readers.
+- `--pjx-chart-*` tokens theme the chart; `--pjx-chart-1` to `--pjx-chart-8`
+  are the series colours, a palette checked for colour-blind separation and
+  contrast, with its own steps for dark mode.
+
+See the [Chart guide](docs/guide/chart.md) and
+[ADR 0006](docs/decisions/0006-server-rendered-svg-charts.md) for why charts
+are drawn in Python rather than by a JavaScript charting library.
+
 ## 1.13.0 — htmx 2.0.11 (2026-11-11)
 
 ### Changed

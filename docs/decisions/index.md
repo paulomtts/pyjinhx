@@ -15,3 +15,4 @@ explicitly in their **Status** line.
 | [0003](0003-builtin-css-ordering.md) | Builtin CSS always emits before application CSS |
 | [0004](0004-graph-reconcile-model.md) | Graph engine reconciles on DOM mutation, not on a resync call |
 | [0005](0005-roster-picker.md) | Roster picker is its own builtin family, fed by items |
+| [0006](0006-server-rendered-svg-charts.md) | Charts are SVG drawn on the server, with no JavaScript |
