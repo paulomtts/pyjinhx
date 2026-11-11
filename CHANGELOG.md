@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.14.0 — Chart builtin (2026-11-11)
 
 ### Added
 - Two builtins for data charts, exported from `pyjinhx.builtins`: `PJXChart`
