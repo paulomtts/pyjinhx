@@ -1,11 +1,11 @@
 :where(:root) {
-  --pjx-popover-bg:      var(--surface-alt);
-  --pjx-popover-border:  var(--border);
-  --pjx-popover-radius:  var(--radius-md);
-  --pjx-popover-shadow:  var(--shadow-md);
+  --pjx-popover-bg:      var(--pjx-color-surface-alt, #fafafa);
+  --pjx-popover-border:  var(--pjx-color-border, #e4e4e7);
+  --pjx-popover-radius:  var(--pjx-radius-md, 8px);
+  --pjx-popover-shadow:  var(--pjx-shadow-md, 0 4px 12px rgb(0 0 0 / 0.08));
   --pjx-popover-min-w:   12rem;
-  --pjx-popover-z:       300;
-  --pjx-popover-padding: var(--space-3, 0.75rem);
+  --pjx-popover-z:       var(--pjx-z-popover, 300);
+  --pjx-popover-padding: var(--pjx-space-3, 0.75rem);
 }
 
 .pjx-popover {
@@ -23,13 +23,14 @@
 }
 
 .pjx-popover__trigger:focus-visible {
-  outline: 2px solid var(--border-focus, var(--border));
+  outline: 2px solid var(--pjx-color-border-focus, #3f3f46);
   outline-offset: 2px;
-  border-radius: var(--radius-sm);
+  border-radius: var(--pjx-radius-sm, 4px);
 }
 
 .pjx-popover__panel {
   position: absolute;
+  /* The popover controller's collision maths assumes this exact 4px gap. */
   top: calc(100% + 4px);
   left: 0;
   z-index: var(--pjx-popover-z);
