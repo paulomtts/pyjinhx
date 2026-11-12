@@ -5,6 +5,9 @@ Single-select behaviour lives in test_pjx_select.py. Search (#867), keyboard nav
 nothing here anticipates their markup.
 """
 
+import re
+from pathlib import Path
+
 import pytest
 from pydantic import ValidationError
 
@@ -189,6 +192,79 @@ class TestStylesheet:
         assert "background" in chip_rule
         assert "border-radius" in chip_rule
         assert "font-size" in chip_rule
+
+    @staticmethod
+    def _chip_input_css() -> str:
+        return (
+            Path(__file__).resolve().parents[4]
+            / "pyjinhx"
+            / "builtins"
+            / "ui"
+            / "pjx_chip_input"
+            / "pjx_chip_input.css"
+        ).read_text()
+
+    @staticmethod
+    def _chip_input_fallbacks(css: str) -> list[tuple[str, str]]:
+        """Return (name, squashed fallback) for each var(--pjx-chip-input-<name>, …).
+
+        The fallback runs from the first top-level comma to the matching ")".
+        """
+        found = []
+        for match in re.finditer(r"var\(\s*--pjx-chip-input-([\w-]+)\s*,", css):
+            depth = 0
+            end = len(css)
+            for index in range(match.end(), len(css)):
+                if css[index] == "(":
+                    depth += 1
+                elif css[index] == ")":
+                    if depth == 0:
+                        end = index
+                        break
+                    depth -= 1
+            found.append((match.group(1), " ".join(css[match.end() : end].split())))
+        return found
+
+    @staticmethod
+    def _rule_declarations(css: str, selector: str) -> dict[str, str]:
+        """Return the squashed property: value pairs of the rule for selector."""
+        start = css.index(selector + " {") + len(selector) + 2
+        rule = css[start : css.index("}", start)]
+        body = re.sub(r"/\*.*?\*/", "", rule, flags=re.DOTALL)
+        return {
+            name: " ".join(value.split())
+            for name, value in re.findall(r"([\w-]+)\s*:\s*([^;]+);", body)
+        }
+
+    def test_select_chip_fallbacks_match_chip_input_defaults(self):
+        """S1: pjx_select.css carries the exact defaults pjx_chip_input.css
+        declares, so a page without PJXChipInput still gets the same chip."""
+        declared = {
+            name: " ".join(value.split())
+            for name, value in re.findall(
+                r"--pjx-chip-input-([\w-]+):\s*([^;]+);", self._chip_input_css()
+            )
+        }
+        fallbacks = self._chip_input_fallbacks(self._css())
+        assert len({name for name, _ in fallbacks}) >= 4
+        drift = [
+            f"--pjx-chip-input-{name}: select falls back to {fallback!r}, "
+            f"chip input declares {declared.get(name)!r}"
+            for name, fallback in fallbacks
+            if declared.get(name) != fallback
+        ]
+        assert not drift, "; ".join(drift)
+
+    def test_select_summary_chip_geometry_matches_chip_input(self):
+        """The summary chip embeds the chip-input chip's geometry verbatim."""
+        summary = self._rule_declarations(
+            self._css(), ".pjx-select__chips .pjx-chip-input__chip"
+        )
+        chip = self._rule_declarations(self._chip_input_css(), ".pjx-chip-input__chip")
+        for prop in ("gap", "padding", "font-size", "line-height"):
+            assert summary[prop] == chip[prop], (
+                f"{prop}: select {summary[prop]!r} vs chip input {chip[prop]!r}"
+            )
 
 
 class TestController:

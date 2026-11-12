@@ -11,6 +11,7 @@ from pyjinhx import discovery
 from pyjinhx._component import _is_slot_field
 from pyjinhx.builtins.ui.pjx_roster_picker import PJXRosterItem, PJXRosterPicker
 from pyjinhx.classless import component
+from pyjinhx.client import read_pjx_theme_css
 from pyjinhx.rendering import render
 from pyjinhx.session import accumulate_assets
 
@@ -63,25 +64,27 @@ CSS_CLASSES = [
     "pjx-roster-picker--invalid",
     "pjx-roster-picker__validity",
 ]
-# Tokens that name a colour, a radius or a shadow default to a semantic token;
-# sizes and spacing have no semantic token to lean on, so they are literals.
+# Tokens that name a colour, a radius, a shadow or a layer default to a theme
+# token; the size tokens have no theme token to lean on, so they are literals.
+# Padding and gap start with an off-scale literal, so they are checked by name.
 SEMANTIC_TOKENS = {
-    "--pjx-roster-picker-bg": "var(--surface",
-    "--pjx-roster-picker-fg": "var(--text",
-    "--pjx-roster-picker-muted": "var(--text-muted",
-    "--pjx-roster-picker-border": "var(--border",
-    "--pjx-roster-picker-focus": "var(--border-focus",
-    "--pjx-roster-picker-radius": "var(--radius-md",
-    "--pjx-roster-picker-chip-bg": "var(--surface-alt",
-    "--pjx-roster-picker-results-bg": "var(--surface-alt",
-    "--pjx-roster-picker-shadow": "var(--shadow-md",
-    "--pjx-roster-picker-row-hover": "var(--surface-hover",
-    "--pjx-roster-picker-row-active": "var(--accent-soft",
+    "--pjx-roster-picker-bg": "var(--pjx-color-surface,",
+    "--pjx-roster-picker-fg": "var(--pjx-color-text,",
+    "--pjx-roster-picker-muted": "var(--pjx-color-text-muted,",
+    "--pjx-roster-picker-border": "var(--pjx-color-border,",
+    "--pjx-roster-picker-focus": "var(--pjx-color-border-focus,",
+    "--pjx-roster-picker-invalid": "var(--pjx-color-error,",
+    "--pjx-roster-picker-radius": "var(--pjx-radius-md,",
+    "--pjx-roster-picker-chip-bg": "var(--pjx-color-surface-alt,",
+    "--pjx-roster-picker-results-bg": "var(--pjx-color-surface-alt,",
+    "--pjx-roster-picker-shadow": "var(--pjx-shadow-md,",
+    "--pjx-roster-picker-z": "var(--pjx-z-popover,",
+    "--pjx-roster-picker-row-hover": "var(--pjx-color-surface-hover,",
+    "--pjx-roster-picker-row-active": "var(--pjx-color-brand-muted,",
 }
 LITERAL_TOKENS = [
     "--pjx-roster-picker-padding",
     "--pjx-roster-picker-gap",
-    "--pjx-roster-picker-z",
     "--pjx-roster-picker-max-h",
     "--pjx-roster-picker-min-h",
 ]
@@ -769,3 +772,130 @@ def test_exported_from_the_builtins_namespace():
 
     assert "PJXRosterPicker" in builtins.__all__
     assert builtins.PJXRosterPicker is PJXRosterPicker
+
+
+# ── Theme tokens in a real cascade ───────────────────────────────────────────
+
+PICKER_MARKUP = (
+    '<div class="pjx-roster-picker">'
+    '<div class="pjx-roster-picker__search">'
+    '<input id="input" class="pjx-roster-picker__input">'
+    '<div id="results" class="pjx-roster-picker__results">'
+    '<button id="pick" class="pjx-roster-picker__pick" type="button">Ada</button>'
+    "</div></div>"
+    '<div class="pjx-roster-picker__chips">'
+    '<span id="chip" class="pjx-roster-picker__chip">Ada</span>'
+    "</div>"
+    '<p id="hint" class="pjx-roster-picker__hint">Limit reached</p>'
+    "</div>"
+    '<div class="pjx-roster-picker pjx-roster-picker--invalid">'
+    '<div class="pjx-roster-picker__search">'
+    '<input id="invalid" class="pjx-roster-picker__input">'
+    "</div></div>"
+)
+
+# What the portal leaves behind: the list moved to <body>, outside any picker root.
+PORTALLED_MARKUP = '<div id="results" class="pjx-roster-picker__results"></div>'
+
+
+def _picker_page(page, body: str, *, head: str = "", html_attrs: str = "") -> None:
+    css = CSS_PATH.read_text(encoding="utf-8")
+    page.set_content(
+        f"<html{html_attrs}><head>{head}<style>{css}</style></head>"
+        f"<body>{body}</body></html>"
+    )
+
+
+def _picker_style(page, element_id: str, prop: str) -> str:
+    return page.evaluate(
+        f"getComputedStyle(document.getElementById('{element_id}'))"
+        f".getPropertyValue('{prop}')"
+    )
+
+
+def _root_token(page, name: str) -> str:
+    return page.evaluate(
+        f"getComputedStyle(document.documentElement).getPropertyValue('{name}').trim()"
+    )
+
+
+def test_roster_picker_defaults_use_light_fallbacks(page):
+    _picker_page(page, PICKER_MARKUP)
+    assert _picker_style(page, "input", "background-color") == "rgb(255, 255, 255)"
+    assert _picker_style(page, "input", "color") == "rgb(24, 24, 27)"
+    assert _picker_style(page, "input", "border-top-color") == "rgb(228, 228, 231)"
+    assert _picker_style(page, "input", "border-top-left-radius") == "8px"
+    # 0.375rem stays off the spacing scale; 8px is space-2.
+    assert _picker_style(page, "input", "padding-top") == "6px"
+    assert _picker_style(page, "input", "padding-left") == "8px"
+    assert _picker_style(page, "input", "transition-duration") == "0.15s"
+    assert _picker_style(page, "results", "z-index") == "300"
+    assert _picker_style(page, "results", "background-color") == "rgb(250, 250, 250)"
+    assert _picker_style(page, "chip", "padding-top") == "4px"
+    assert _picker_style(page, "chip", "padding-left") == "8px"
+    assert _picker_style(page, "chip", "column-gap") == "4px"
+    assert _picker_style(page, "pick", "column-gap") == "8px"
+    assert _picker_style(page, "hint", "color") == "rgb(82, 82, 91)"
+    assert _picker_style(page, "invalid", "border-top-color") == "rgb(220, 38, 38)"
+
+
+def test_roster_picker_results_layer_follows_popover_token(page):
+    _picker_page(
+        page,
+        PICKER_MARKUP,
+        head="<style>:root { --pjx-z-popover: 310; }</style>",
+    )
+    assert _picker_style(page, "results", "z-index") == "310"
+    _picker_page(
+        page,
+        PICKER_MARKUP,
+        head=(
+            "<style>:root { --pjx-z-popover: 310; }</style>"
+            "<style>:root { --pjx-roster-picker-z: 275; }</style>"
+        ),
+    )
+    assert _picker_style(page, "results", "z-index") == "275"
+    # The component token still wins with the theme sheet loaded.
+    _picker_page(
+        page,
+        PICKER_MARKUP,
+        head=(
+            f"<style>{read_pjx_theme_css()}</style>"
+            "<style>:root { --pjx-roster-picker-z: 275; }</style>"
+        ),
+    )
+    assert _picker_style(page, "results", "z-index") == "275"
+
+
+def test_roster_picker_follows_dark_theme(page):
+    page.emulate_media(color_scheme="light")
+    _picker_page(
+        page,
+        PICKER_MARKUP,
+        head=f"<style>{read_pjx_theme_css()}</style>",
+        html_attrs=' data-pjx-theme="dark"',
+    )
+    assert _picker_style(page, "results", "background-color") == "rgb(9, 9, 11)"
+    assert _root_token(page, "--pjx-roster-picker-row-active") == "#3f3f46"
+    assert _picker_style(page, "input", "background-color") == "rgb(24, 24, 27)"
+    assert _picker_style(page, "input", "color") == "rgb(244, 244, 245)"
+
+
+def test_roster_picker_follows_os_dark_preference(page):
+    page.emulate_media(color_scheme="dark")
+    _picker_page(page, PICKER_MARKUP, head=f"<style>{read_pjx_theme_css()}</style>")
+    assert _picker_style(page, "results", "background-color") == "rgb(9, 9, 11)"
+    assert _picker_style(page, "input", "background-color") == "rgb(24, 24, 27)"
+
+
+def test_roster_picker_portalled_results_keep_their_layer(page):
+    _picker_page(page, PORTALLED_MARKUP)
+    assert _picker_style(page, "results", "z-index") == "300"
+    assert _picker_style(page, "results", "background-color") == "rgb(250, 250, 250)"
+
+
+def test_roster_picker_reduced_motion_drops_transitions(page):
+    page.emulate_media(reduced_motion="reduce")
+    _picker_page(page, PICKER_MARKUP)
+    assert _picker_style(page, "input", "transition-duration") == "0s"
+    assert _picker_style(page, "pick", "transition-duration") == "0s"
