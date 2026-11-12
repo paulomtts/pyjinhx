@@ -29,6 +29,7 @@ NAVIGATION_SHEETS = [
     "ui/pjx_breadcrumb/pjx_breadcrumb.css",
     "pjx_paginator/pjx_paginator.css",
     "ui/pjx_resizable_handle/pjx_resizable_handle.css",
+    "ui/pjx_accordion_trigger/pjx_accordion_trigger.css",
 ]
 
 
@@ -357,3 +358,44 @@ def test_resizable_grip_keeps_its_literal_sizes():
     assert declared(css, column, "height") == "3px"
     # Off-scale values stay literal with a comment saying why (DT:66).
     assert any("grip" in comment for comment in COMMENT.findall(css))
+
+
+TRIGGER = "pjx_accordion_trigger/pjx_accordion_trigger.css"
+REDUCED_MOTION = re.compile(
+    r"@media \(prefers-reduced-motion: reduce\) \{(.*?)^\}", re.MULTILINE | re.DOTALL
+)
+
+
+def test_accordion_trigger_spacing_is_on_the_scale():
+    css = read(TRIGGER)
+    space_1 = f"var(--pjx-space-1, {light('--pjx-space-1')})"
+    space_2 = f"var(--pjx-space-2, {light('--pjx-space-2')})"
+    space_3 = f"var(--pjx-space-3, {light('--pjx-space-3')})"
+    assert declared(css, ".pjx-accordion__trigger", "gap") == space_2
+    assert (
+        declared(css, ".pjx-accordion__trigger", "padding")
+        == f"var(--pjx-accordion-trigger-padding, {space_2} {space_3})"
+    )
+    assert (
+        declared(css, ".pjx-accordion__actions", "gap")
+        == f"var(--pjx-accordion-actions-gap, {space_1})"
+    )
+
+
+def test_accordion_trigger_font_weight_is_medium():
+    assert declared(read(TRIGGER), ".pjx-accordion__trigger", "font-weight") == (
+        "var(--pjx-accordion-trigger-font-weight, "
+        f"var(--pjx-font-weight-medium, {light('--pjx-font-weight-medium')}))"
+    )
+
+
+def test_accordion_chevron_uses_theme_motion_and_respects_reduced_motion():
+    css = read(TRIGGER)
+    assert (
+        declared(css, ".pjx-accordion__chevron", "transition")
+        == f"transform {motion()}"
+    )
+    media = REDUCED_MOTION.search(css)
+    assert media is not None, "reduced-motion block removed"
+    assert ".pjx-accordion__chevron" in media.group(1)
+    assert "transition: none;" in media.group(1)
