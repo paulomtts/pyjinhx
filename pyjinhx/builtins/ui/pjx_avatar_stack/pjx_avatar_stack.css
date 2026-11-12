@@ -1,6 +1,6 @@
 :where(:root) {
   --pjx-avatar-stack-overlap: -0.5rem;
-  --pjx-avatar-stack-ring:    var(--surface);
+  --pjx-avatar-stack-ring:    var(--pjx-color-surface, #ffffff);
 }
 
 .pjx-avatar-stack {
@@ -21,13 +21,13 @@
   flex-shrink: 0;
   width: var(--pjx-avatar-sm, 2rem);
   height: var(--pjx-avatar-sm, 2rem);
-  border-radius: var(--radius-full, 9999px);
+  border-radius: var(--pjx-radius-full, 9999px);
   overflow: hidden;
-  background: var(--pjx-avatar-bg, var(--surface-alt));
-  border: 1px solid var(--pjx-avatar-border, var(--border));
-  font-size: var(--pjx-avatar-font-size-sm, var(--font-size-xs));
+  background: var(--pjx-avatar-bg, var(--pjx-color-surface-alt, #fafafa));
+  border: 1px solid var(--pjx-avatar-border, var(--pjx-color-border, #e4e4e7));
+  font-size: var(--pjx-avatar-font-size-sm, var(--pjx-font-size-xs, 0.75rem));
   font-weight: 600;
-  color: var(--pjx-avatar-fg, var(--text-muted));
+  color: var(--pjx-avatar-fg, var(--pjx-color-text-muted, #52525b));
   text-transform: uppercase;
   user-select: none;
   line-height: 1;
@@ -43,15 +43,16 @@
   justify-content: center;
   min-width: 2rem;
   height: 2rem;
+  /* Off the spacing scale: just enough side room for "+99" inside the circle. */
   padding: 0 0.3rem;
   border-radius: 50%;
-  background: var(--surface-alt);
-  color: var(--text-muted);
-  font-size: var(--font-size-sm, 0.85rem);
+  background: var(--pjx-color-surface-alt, #fafafa);
+  color: var(--pjx-color-text-muted, #52525b);
+  font-size: var(--pjx-font-size-sm, 0.875rem);
   font-weight: 600;
 }
 
 .pjx-avatar-stack__empty {
-  color: var(--text-muted);
-  font-size: var(--font-size-sm, 0.85rem);
+  color: var(--pjx-color-text-muted, #52525b);
+  font-size: var(--pjx-font-size-sm, 0.875rem);
 }
