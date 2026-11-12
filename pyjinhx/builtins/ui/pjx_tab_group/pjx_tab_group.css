@@ -1,12 +1,12 @@
 :where(:root) {
-  --pjx-tab-group-border: var(--border);
-  --pjx-tab-group-bg: var(--surface-alt);
-  --pjx-tab-group-tab-fg: var(--text-muted);
-  --pjx-tab-group-tab-active-fg: var(--text);
-  --pjx-tab-group-tab-active-border: var(--brand);
-  --pjx-tab-group-panel-bg: var(--surface);
-  --pjx-tab-group-radius: var(--radius-md);
-  --pjx-tab-group-padding: var(--space-4, 1rem);
+  --pjx-tab-group-border: var(--pjx-color-border, #e4e4e7);
+  --pjx-tab-group-bg: var(--pjx-color-surface-alt, #fafafa);
+  --pjx-tab-group-tab-fg: var(--pjx-color-text-muted, #52525b);
+  --pjx-tab-group-tab-active-fg: var(--pjx-color-text, #18181b);
+  --pjx-tab-group-tab-active-border: var(--pjx-color-brand, #27272a);
+  --pjx-tab-group-panel-bg: var(--pjx-color-surface, #ffffff);
+  --pjx-tab-group-radius: var(--pjx-radius-md, 8px);
+  --pjx-tab-group-padding: var(--pjx-space-4, 1rem);
 }
 
 /* The group fills its container so its width stays stable as tabs/panels
