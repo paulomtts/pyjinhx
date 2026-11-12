@@ -274,6 +274,28 @@ def table():
     ).render()
 
 
+def typography():
+    samples = [
+        ("h1", "pjx-heading-1"),
+        ("h2", "pjx-heading-2"),
+        ("h3", "pjx-heading-3"),
+        ("h4", "pjx-heading-4"),
+        ("p", "pjx-text-lg"),
+        ("p", "pjx-text"),
+        ("p", "pjx-text-sm"),
+        ("p", "pjx-caption"),
+        ("p", "pjx-text pjx-text-muted"),
+        ("p", "pjx-text pjx-text-mono"),
+    ]
+    # The classes set no margins, so the browser's default h1/p margins would
+    # stretch the frame; the stage's gap does the spacing instead.
+    return "\n".join(
+        f'<{tag} class="{classes}" style="margin:0">'
+        f".{classes.replace(' ', ' .')}</{tag}>"
+        for tag, classes in samples
+    )
+
+
 DEMOS = {
     "PJXAccordion": (accordion, 160),
     "PJXAccordionGroup": (accordion_group, 260),
@@ -295,4 +317,5 @@ DEMOS = {
     "PJXResizableGroup": (resizable_group, 160),
     "PJXTable": (table, 260),
     "PJXPaginator": (paginator, 130),
+    "Typography": (typography, 420),
 }

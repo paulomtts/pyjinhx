@@ -328,3 +328,23 @@ def test_runtime_page_output_is_stable(tmp_path, name):
     page_a = (first / "demos" / name).read_text()
     page_b = (second / "demos" / name).read_text()
     assert page_a == page_b
+
+
+def test_typography_demo_shows_every_class():
+    from pyjinhx.client import read_pjx_theme_css
+    from pyjinhx.session import request_scope
+
+    css = read_pjx_theme_css()
+    block = css[css.index("/* Typography") :]
+    classes = re.findall(r"^\.(pjx-[a-z0-9-]+) \{", block, re.MULTILINE)
+    assert len(classes) == 10, classes
+
+    factory, _height = DEMOS["Typography"]
+    with request_scope():
+        html = str(factory())
+    attributes = [set(a.split()) for a in re.findall(r'class="([^"]*)"', html)]
+    for name in classes:
+        assert any(name in a for a in attributes), name
+    # The modifiers are drawn the way the guide says to use them: next to a size class.
+    assert {"pjx-text", "pjx-text-muted"} in attributes
+    assert {"pjx-text", "pjx-text-mono"} in attributes

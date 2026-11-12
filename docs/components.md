@@ -3001,3 +3001,11 @@ Accessible on/off toggle backed by a visually-hidden checkbox. **Assets:** `pjx_
     ```python
     PJXToggleSwitch(name="notifications", checked=True, label="Email notifications")
     ```
+
+## Typography
+
+These are classes in the theme sheet, not components, so they need `theme="default"` (or the sheet in your own `<head>`). Each line below is drawn with the class it names.
+
+<!-- demo: Typography -->
+
+See [Typography](guide/theming.md#typography) in the Theming guide for what each class sets and how they combine.
