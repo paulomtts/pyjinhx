@@ -1,5 +1,7 @@
 """PJXBadge renders a single-root themeable label span (port of v0.x pyjinhx/builtins/ui/pjx_badge)."""
 
+import re
+
 import pytest
 from pydantic import ValidationError
 
@@ -104,14 +106,63 @@ def test_css_styles_every_shape_variant(shape):
     assert f".pjx-badge--{shape}" in css
 
 
-def test_css_uses_shared_tokens_not_hardcoded_hex():
-    """Colors come from docs/demos/base.css tokens so light/dark repaint for free."""
+def _css() -> str:
+    """The badge stylesheet with whitespace collapsed to single spaces."""
     css = PJXBadge.__pjx_descriptor__.css_paths[0].read_text(encoding="utf-8")
+    return " ".join(css.split())
+
+
+def _rule(selector: str) -> str:
+    """The body of the first rule whose selector is exactly `selector`."""
+    match = re.search(re.escape(selector) + r" \{([^}]*)\}", _css())
+    assert match, f"no {selector} rule"
+    return match.group(1)
+
+
+def test_css_uses_theme_tokens():
+    """Defaults live in :where(:root) so app overrides win, and read theme tokens."""
+    css = _css()
     assert ":where(:root)" in css
     assert "--pjx-badge-" in css
-    assert "var(--brand" in css
-    assert "var(--error" in css
-    assert "#" not in css
+    assert "var(--pjx-color-brand" in css
+    assert "var(--pjx-color-error" in css
+
+
+def test_error_variant_uses_the_full_error_set():
+    """The label reads error-text, the token designed to sit on error-subtle."""
+    css = _css()
+    assert "--pjx-badge-error-bg: var(--pjx-color-error-subtle, #fef2f2);" in css
+    assert "--pjx-badge-error-text: var(--pjx-color-error-text, #991b1b);" in css
+    assert "--pjx-badge-error-border: var(--pjx-color-error-border, #fecaca);" in css
+
+
+def test_spacing_follows_the_spacing_scale():
+    css = _css()
+    assert "--pjx-badge-padding: 0.2rem var(--pjx-space-2, 0.5rem);" in css
+    assert "padding: var(--pjx-space-1, 0.25rem) 0.6rem;" in _rule(".pjx-badge--md")
+    assert "padding: var(--pjx-space-1, 0.25rem) var(--pjx-space-3, 0.75rem);" in _rule(
+        ".pjx-badge--full"
+    )
+
+
+def test_size_corners_follow_the_radius_scale():
+    assert "border-radius: var(--pjx-radius-md, 8px);" in _rule(".pjx-badge--md")
+    assert "border-radius: var(--pjx-radius-full, 9999px);" in _rule(".pjx-badge--full")
+
+
+@pytest.mark.parametrize(
+    "selector",
+    [
+        ".pjx-badge",
+        ".pjx-badge--brand",
+        ".pjx-badge--error",
+        ".pjx-badge--neutral",
+        ".pjx-badge--muted",
+    ],
+)
+def test_rule_bodies_read_component_tokens_without_fallbacks(selector):
+    """:where(:root) always declares the badge tokens, so a second fallback only duplicates it."""
+    assert not re.search(r"var\(--pjx-badge-[\w-]+,", _rule(selector))
 
 
 def test_removable_renders_the_remove_button(badge_session):
