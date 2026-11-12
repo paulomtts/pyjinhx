@@ -358,6 +358,21 @@ def test_runtime_page_output_is_stable(tmp_path, name):
     assert page_a == page_b
 
 
+# Copied from tests/pyjinhx/test_theme_tokens.py: the tests tree has no
+# __init__.py files, so test modules cannot import each other reliably.
+ROOT = re.compile(r"^:root \{(.*?)^\}", re.MULTILINE | re.DOTALL)
+DECLARATION = re.compile(r"([\w-]+):\s*([^;]+);")
+LEGACY_NAME = re.compile(
+    r"(?<![\w-])--(?:"
+    r"surface(?:-alt|-hover)?|text(?:-muted)?|border(?:-focus)?"
+    r"|brand(?:-subtle|-muted)?|error(?:-bg|-border)?|success|warning"
+    r"|font-size-[\w-]+|radius-[\w-]+|shadow-md|space-\d+|transition"
+    r")(?![\w-])"
+)
+CUSTOM_PROPERTY = re.compile(r"^\s*--[\w-]+\s*:", re.MULTILINE)
+VAR_NAME = re.compile(r"(?<![\w-])var\(\s*(--[\w-]+)")
+
+
 def test_every_demo_page_carries_the_theme_once(tmp_path):
     settings = current_settings()
     hooks.on_post_build({"site_dir": str(tmp_path)})
@@ -393,3 +408,21 @@ def test_runtime_page_has_one_theme_under_theme_default(tmp_path, themed):
     for name in ("pjx-graph.html", "pjx-button.html"):
         page = (tmp_path / "demos" / name).read_text()
         assert page.count(tag) == 1, name
+
+
+def test_demo_base_css_defines_no_custom_properties(tmp_path):
+    hooks.on_post_build({"site_dir": str(tmp_path)})
+    css = (tmp_path / "demos" / "demo-base.css").read_text()
+    assert CUSTOM_PROPERTY.findall(css) == []
+    assert LEGACY_NAME.findall(css) == []  # comments included
+
+
+def test_demo_base_css_reads_only_defined_theme_tokens(tmp_path):
+    hooks.on_post_build({"site_dir": str(tmp_path)})
+    css = (tmp_path / "demos" / "demo-base.css").read_text()
+    root = ROOT.search(read_pjx_theme_css())
+    assert root is not None, f"token block not found: {ROOT.pattern}"
+    defined = {name for name, _value in DECLARATION.findall(root.group(1))}
+    used = set(VAR_NAME.findall(css))
+    assert {"--pjx-color-surface", "--pjx-color-text"} <= used
+    assert used - defined == set()
