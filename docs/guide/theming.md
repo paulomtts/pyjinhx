@@ -167,11 +167,32 @@ again inside its dark selector the same way.
 The theme sheet ships these classes, so they need `theme="default"` or the sheet in your own
 `<head>`:
 
-- `.pjx-heading-1`, `.pjx-heading-2`, `.pjx-heading-3`, `.pjx-heading-4` — headings, largest first
-- `.pjx-text-lg`, `.pjx-text`, `.pjx-text-sm` — body text sizes
-- `.pjx-caption` — small, muted text
-- `.pjx-text-muted` — muted colour only, to combine with a size class
-- `.pjx-text-mono` — the monospace family only, to combine with a size class
+<!-- demo: Typography -->
+
+| Class | Family | Size | Weight | Line height | Colour |
+| --- | --- | --- | --- | --- | --- |
+| `.pjx-heading-1` | `--pjx-font-family-sans` | `--pjx-font-size-3xl` | `--pjx-font-weight-bold` | `--pjx-line-height-tight` | `--pjx-color-text` |
+| `.pjx-heading-2` | `--pjx-font-family-sans` | `--pjx-font-size-2xl` | `--pjx-font-weight-semibold` | `--pjx-line-height-tight` | `--pjx-color-text` |
+| `.pjx-heading-3` | `--pjx-font-family-sans` | `--pjx-font-size-xl` | `--pjx-font-weight-semibold` | `--pjx-line-height-tight` | `--pjx-color-text` |
+| `.pjx-heading-4` | `--pjx-font-family-sans` | `--pjx-font-size-lg` | `--pjx-font-weight-semibold` | `--pjx-line-height-tight` | `--pjx-color-text` |
+| `.pjx-text-lg` | `--pjx-font-family-sans` | `--pjx-font-size-lg` | `--pjx-font-weight-regular` | `--pjx-line-height-relaxed` | `--pjx-color-text` |
+| `.pjx-text` | `--pjx-font-family-sans` | `--pjx-font-size-md` | `--pjx-font-weight-regular` | `--pjx-line-height-normal` | `--pjx-color-text` |
+| `.pjx-text-sm` | `--pjx-font-family-sans` | `--pjx-font-size-sm` | `--pjx-font-weight-regular` | `--pjx-line-height-normal` | `--pjx-color-text` |
+| `.pjx-caption` | `--pjx-font-family-sans` | `--pjx-font-size-xs` | `--pjx-font-weight-regular` | `--pjx-line-height-normal` | `--pjx-color-text-muted` |
+| `.pjx-text-muted` | — | — | — | — | `--pjx-color-text-muted` |
+| `.pjx-text-mono` | `--pjx-font-family-mono` | — | — | — | — |
+
+The headings run largest first; `.pjx-text-lg`, `.pjx-text` and `.pjx-text-sm` are the body sizes.
+The token values are on the [token reference](../reference/theme-tokens.md) page.
+
+How they combine:
+
+- A size class (a heading, a body size or `.pjx-caption`) sets family, size, weight, line height
+  and colour together. Use one per element.
+- `.pjx-text-muted` changes only the colour and `.pjx-text-mono` only the family. Put them next
+  to a size class: `class="pjx-text-sm pjx-text-muted"`.
+- `.pjx-caption` is already muted, so it needs no `.pjx-text-muted`.
+- The classes set no margins. Spacing between blocks is up to your page.
 
 ```html
 <h2 class="pjx-heading-2">Billing</h2>
