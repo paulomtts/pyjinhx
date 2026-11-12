@@ -115,7 +115,7 @@ There is no environment variable for either field: `PjxSettings.from_env()` read
 - `PJX_INJECT_HTMX` — sets the `inject_htmx` field when set to `1`, `true`, or `yes` (default `true`)
 - `PJX_COMPONENTS_ROOT` — path that triggers component discovery
 - `PJX_STATIC_ROOT` — path to serve static assets from
-- `PJX_THEME` — `default` turns on the built-in theme; unset or empty means no theme; any other value raises `ValueError`
+- `PJX_THEME` — `default` turns on the built-in theme; unset or empty means no theme; any other value raises `ValueError`. See [Theming](theming.md).
 
 ```python
 from pyjinhx import PjxSettings, setup

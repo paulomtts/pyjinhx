@@ -94,3 +94,13 @@ def test_pitfalls_are_named():
     assert "PJX_THEME" in guide
     assert '<style id="pjx-theme">' in guide
     assert "partial" in guide
+
+
+def test_configuration_links_to_guide():
+    configuration = (_ROOT / "docs" / "guide" / "configuration.md").read_text(
+        encoding="utf-8"
+    )
+    bullet = next(
+        line for line in configuration.splitlines() if line.startswith("- `PJX_THEME`")
+    )
+    assert "(theming.md)" in bullet
