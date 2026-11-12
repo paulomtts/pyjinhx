@@ -238,3 +238,30 @@ def test_region_loader_keeps_reduced_motion_and_fade_timing():
     )
     assert "@media (prefers-reduced-motion: reduce)" in css
     assert "animation-duration: 0.01ms !important;" in css
+
+
+LAZY_LOAD = "pjx_lazy_load/pjx_lazy_load.css"
+
+
+def test_lazy_load_error_uses_the_theme_error_colour():
+    css = read_builtin(LAZY_LOAD)
+    assert (
+        declared(css, ":where(:root)", "--pjx-lazy-load-error-color")
+        == f"var(--pjx-color-error, {light('--pjx-color-error')})"
+    )
+    # The guard's legacy pattern does not know --danger, so pin it here.
+    assert "--danger" not in css
+
+
+def test_lazy_load_error_spacing_and_size_are_on_scale():
+    css = read_builtin(LAZY_LOAD)
+    space_3 = f"var(--pjx-space-3, {light('--pjx-space-3')})"
+    space_4 = f"var(--pjx-space-4, {light('--pjx-space-4')})"
+    assert (
+        declared(css, ":where(:root)", "--pjx-lazy-load-error-pad")
+        == f"{space_3} {space_4}"
+    )
+    assert (
+        declared(css, ".pjx-lazy-load__error", "font-size")
+        == f"var(--pjx-font-size-sm, {light('--pjx-font-size-sm')})"
+    )
