@@ -8,7 +8,7 @@ import sys
 HERE = os.path.dirname(__file__)
 sys.path.insert(0, HERE)
 
-from demos import DEMOS, RUNTIME_DEMOS
+from demos import DEMOS, RUNTIME_DEMOS, THEME_DEMOS
 
 from pyjinhx._component import BaseComponent, _pascal_to_snake
 from pyjinhx.assets import AssetMode, emit_assets
@@ -23,6 +23,7 @@ def pascal_case_to_kebab_case(name: str) -> str:
 
 
 _MARKER = re.compile(r"<!--\s*demo:\s*([A-Za-z]+)\s*-->")
+_THEME_MARKER = re.compile(r"<!--\s*theme-tokens\s*-->")
 
 # The gallery theme control. The head script applies the stored choice before
 # anything paints; braces are doubled because _PAGE goes through str.format.
@@ -117,7 +118,48 @@ def on_page_markdown(markdown, *, page, config, files):
             f'style="{_IFRAME_STYLE}" loading="lazy" title="{name} demo"></iframe>'
         )
 
-    return _MARKER.sub(replace, markdown)
+    markdown = _MARKER.sub(replace, markdown)
+    if _THEME_MARKER.search(markdown):
+        table = theme_token_table(read_pjx_theme_css())
+        # A function replacement, so backslashes in the table (escaped "\|")
+        # are inserted as-is instead of read as regex escapes.
+        markdown = _THEME_MARKER.sub(lambda _match: table, markdown)
+    return markdown
+
+
+_DECLARATION = re.compile(r"(--pjx-[a-z0-9-]+)\s*:\s*([^;]+);")
+
+
+def _css_block(css: str, selector: str) -> dict[str, str]:
+    """Return the ``--pjx-*`` declarations of the column-0 ``selector { ... }`` block."""
+    # Column 0 only: the @media block's indented ":root:not(...)" must not
+    # be taken for the top-level :root.
+    match = re.search(
+        rf"^{re.escape(selector)} \{{\n(.*?)^\}}", css, re.DOTALL | re.MULTILINE
+    )
+    if not match:
+        raise ValueError(f"theme sheet has no {selector} block")
+    return {name: value.strip() for name, value in _DECLARATION.findall(match[1])}
+
+
+def _code_cell(text: str) -> str:
+    """Render text as inline code that cannot split a table cell."""
+    escaped = text.replace("|", "\\|")
+    return f"`{escaped}`"
+
+
+def theme_token_table(css: str) -> str:
+    """Return a markdown table of every ``:root`` token with its light and forced-dark value."""
+    light = _css_block(css, ":root")
+    dark = _css_block(css, '[data-pjx-theme="dark"]')
+    dark_only = [name for name in dark if name not in light]
+    if dark_only:
+        raise ValueError(f"dark block declares tokens missing from :root: {dark_only}")
+    lines = ["| Token | Light | Dark |", "|---|---|---|"]
+    for name, value in light.items():
+        dark_cell = _code_cell(dark[name]) if name in dark else "—"
+        lines.append(f"| {_code_cell(name)} | {_code_cell(value)} | {dark_cell} |")
+    return "\n".join(lines)
 
 
 def on_post_build(config):
@@ -168,5 +210,9 @@ def on_post_build(config):
             markup, assets = f"{markup}\n{emit_assets(session)}", ""
         else:
             assets = emit_assets(session)
+        if name in THEME_DEMOS:
+            # Same id the runtime gives it, so the page matches what
+            # theme="default" puts in an app's <head>.
+            assets = f'<style id="pjx-theme">{read_pjx_theme_css()}</style>\n{assets}'
         with open(path, "w", encoding="utf-8") as fh:
             fh.write(_PAGE.format(markup=markup, assets=assets))

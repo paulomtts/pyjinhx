@@ -463,3 +463,54 @@ def test_theme_toggle_script_runs_in_head_on_every_page(tmp_path):
         assert init < page.index("</head>"), name
         assert init < page.index('<link rel="stylesheet" href="demo-base.css">'), name
         assert init < page.index('<style id="pjx-theme">'), name
+
+
+def test_typography_demo_shows_every_class():
+    from pyjinhx.client import read_pjx_theme_css
+    from pyjinhx.session import request_scope
+
+    css = read_pjx_theme_css()
+    block = css[css.index("/* Typography") :]
+    classes = re.findall(r"^\.(pjx-[a-z0-9-]+) \{", block, re.MULTILINE)
+    assert len(classes) == 10, classes
+
+    factory, _height = DEMOS["Typography"]
+    with request_scope():
+        html = str(factory())
+    attributes = [set(a.split()) for a in re.findall(r'class="([^"]*)"', html)]
+    for name in classes:
+        assert any(name in a for a in attributes), name
+    # The modifiers are drawn the way the guide says to use them: next to a size class.
+    assert {"pjx-text", "pjx-text-muted"} in attributes
+    assert {"pjx-text", "pjx-text-mono"} in attributes
+
+
+def test_theme_demos_are_registered_demos():
+    from demos import THEME_DEMOS
+
+    assert "Typography" in THEME_DEMOS
+    assert THEME_DEMOS <= set(DEMOS)
+
+
+def test_post_build_gives_theme_pages_the_sheet_once_in_the_head(tmp_path):
+    from demos import THEME_DEMOS
+
+    from pyjinhx.client import read_pjx_theme_css
+
+    hooks.on_post_build({"site_dir": str(tmp_path)})
+    sheet = f'<style id="pjx-theme">{read_pjx_theme_css()}</style>'
+    assert (tmp_path / "demos" / "typography.html").is_file()
+    for name in THEME_DEMOS:
+        path = tmp_path / "demos" / f"{hooks.pascal_case_to_kebab_case(name)}.html"
+        page = path.read_text()
+        assert page.count(sheet) == 1, name
+        assert page.index("<head>") < page.index(sheet) < page.index("</head>"), name
+        assert '<link rel="stylesheet" href="demo-base.css">' in page, name
+
+
+def test_typography_page_output_is_stable(tmp_path):
+    hooks.on_post_build({"site_dir": str(tmp_path / "a")})
+    hooks.on_post_build({"site_dir": str(tmp_path / "b")})
+    page_a = (tmp_path / "a" / "demos" / "typography.html").read_text()
+    page_b = (tmp_path / "b" / "demos" / "typography.html").read_text()
+    assert page_a == page_b
