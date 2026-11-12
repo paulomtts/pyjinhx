@@ -1,16 +1,16 @@
 :where(:root) {
-  --pjx-graph-bg: var(--surface);
-  --pjx-graph-border: var(--border);
-  --pjx-graph-radius: var(--radius-md);
-  --pjx-graph-grid-color: var(--border);
+  --pjx-graph-bg: var(--pjx-color-surface, #ffffff);
+  --pjx-graph-border: var(--pjx-color-border, #e4e4e7);
+  --pjx-graph-radius: var(--pjx-radius-md, 8px);
+  --pjx-graph-grid-color: var(--pjx-color-border, #e4e4e7);
   --pjx-graph-grid-size: 24px;
   --pjx-graph-min-height: 24rem;
-  --pjx-graph-edge-stroke: var(--border);
+  --pjx-graph-edge-stroke: var(--pjx-color-border, #e4e4e7);
   --pjx-graph-edge-width: 1.5px;
   --pjx-graph-edge-hit-width: 14px;
-  --pjx-graph-edge-label-color: var(--text-muted);
-  --pjx-graph-edge-label-size: 0.75rem;
-  --pjx-graph-selected: var(--text);
+  --pjx-graph-edge-label-color: var(--pjx-color-text-muted, #52525b);
+  --pjx-graph-edge-label-size: var(--pjx-font-size-xs, 0.75rem);
+  --pjx-graph-selected: var(--pjx-color-text, #18181b);
   --pjx-graph-wire-stroke: var(--pjx-graph-selected);
   --pjx-graph-wire-dash: 4 4;
 }
