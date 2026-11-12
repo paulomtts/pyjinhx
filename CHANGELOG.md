@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased — Default theme
+## 1.15.0 — Default theme (2026-11-12)
 
 ### Added
 - An opt-in default theme: one stylesheet of grouped `--pjx-*` tokens (colour, type, spacing,
