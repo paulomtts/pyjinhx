@@ -190,3 +190,20 @@ def test_toggle_works_when_storage_throws(
     page.select_option(SELECT, "dark")
     assert page.evaluate(ATTR) == "dark"
     assert page_errors == []
+
+
+def test_control_is_pinned_inside_the_smallest_frame(page: Page, demos: Path) -> None:
+    # The gallery's shortest iframe is 120px tall.
+    page.set_viewport_size({"width": 400, "height": 120})
+    _serve(page, demos)
+    page.goto(URL + "pjx-button.html")
+    position = page.evaluate(
+        f'getComputedStyle(document.querySelector("{SELECT}")).position'
+    )
+    assert position == "fixed"  # out of the body grid, so the stage stays centred
+    box = page.locator(SELECT).bounding_box()
+    assert box is not None
+    assert box["y"] >= 0 and box["y"] + box["height"] <= 120
+    assert box["x"] >= 0 and box["x"] + box["width"] <= 400
+    # Pinned top-right: closer to the right edge than the left.
+    assert 400 - (box["x"] + box["width"]) < box["x"]

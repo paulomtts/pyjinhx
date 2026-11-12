@@ -44,3 +44,18 @@ body {
   flex-wrap: wrap;
   justify-content: center;
 }
+
+/* The page's System/Light/Dark control. Fixed, so it stays out of the body
+   grid and the demo stage keeps its centre. */
+[data-pjx-demo-theme] {
+  position: fixed;
+  top: var(--pjx-space-2);
+  right: var(--pjx-space-2);
+  padding: var(--pjx-space-1) var(--pjx-space-2);
+  border: 1px solid var(--pjx-color-border);
+  border-radius: var(--pjx-radius-sm);
+  background: var(--pjx-color-surface);
+  color: var(--pjx-color-text);
+  font-family: inherit;
+  font-size: var(--pjx-font-size-xs);
+}
