@@ -1,11 +1,11 @@
 :where(:root) {
-  --pjx-empty-state-padding: 2rem 1.5rem;
+  --pjx-empty-state-padding: var(--pjx-space-8, 2rem) var(--pjx-space-6, 1.5rem);
   --pjx-empty-state-max-width: 28rem;
-  --pjx-empty-state-gap: 0.5rem;
-  --pjx-empty-state-actions-gap: 0.5rem;
-  --pjx-empty-state-chip-bg: var(--surface-alt);
-  --pjx-empty-state-chip-color: var(--text-muted);
-  --pjx-empty-state-chip-border: var(--border);
+  --pjx-empty-state-gap: var(--pjx-space-2, 0.5rem);
+  --pjx-empty-state-actions-gap: var(--pjx-space-2, 0.5rem);
+  --pjx-empty-state-chip-bg: var(--pjx-color-surface-alt, #fafafa);
+  --pjx-empty-state-chip-color: var(--pjx-color-text-muted, #52525b);
+  --pjx-empty-state-chip-border: var(--pjx-color-border, #e4e4e7);
 }
 
 .pjx-empty-state {
@@ -24,18 +24,18 @@
   flex-wrap: wrap;
   justify-content: center;
   gap: var(--pjx-empty-state-actions-gap);
-  margin-top: 0.75rem;
+  margin-top: var(--pjx-space-3, 0.75rem);
 }
 
 .pjx-empty-state__chip {
   display: inline-flex;
   align-items: center;
-  padding: 0.25rem 0.75rem;
-  border-radius: var(--radius-full, 9999px);
+  padding: var(--pjx-space-1, 0.25rem) var(--pjx-space-3, 0.75rem);
+  border-radius: var(--pjx-radius-full, 9999px);
   border: 1px solid var(--pjx-empty-state-chip-border);
   background: var(--pjx-empty-state-chip-bg);
   color: var(--pjx-empty-state-chip-color);
-  font-size: var(--font-size-sm, 0.875rem);
+  font-size: var(--pjx-font-size-sm, 0.875rem);
   cursor: pointer;
   transition:
     background 0.15s ease,
@@ -43,8 +43,8 @@
 }
 
 .pjx-empty-state__chip:hover {
-  background: var(--surface-hover, var(--surface-alt));
-  color: var(--text);
+  background: var(--pjx-color-surface-hover, #f4f4f5);
+  color: var(--pjx-color-text, #18181b);
 }
 
 @media (prefers-reduced-motion: reduce) {

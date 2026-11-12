@@ -52,7 +52,6 @@ LEGACY_PENDING: tuple[str, ...] = (
     "pyjinhx/builtins/ui/pjx_drawer_body/pjx_drawer_body.css",
     "pyjinhx/builtins/ui/pjx_drawer_header/pjx_drawer_header.css",
     "pyjinhx/builtins/ui/pjx_dropdown/pjx_dropdown.css",
-    "pyjinhx/builtins/ui/pjx_empty_state/pjx_empty_state.css",
     "pyjinhx/builtins/ui/pjx_form_field/pjx_form_field.css",
     "pyjinhx/builtins/ui/pjx_graph/pjx_graph.css",
     "pyjinhx/builtins/ui/pjx_graph_controls/pjx_graph_controls.css",
