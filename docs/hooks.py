@@ -8,7 +8,7 @@ import sys
 HERE = os.path.dirname(__file__)
 sys.path.insert(0, HERE)
 
-from demos import DEMOS, RUNTIME_DEMOS
+from demos import DEMOS, RUNTIME_DEMOS, THEME_DEMOS
 
 from pyjinhx._component import BaseComponent, _pascal_to_snake
 from pyjinhx.assets import AssetMode, emit_assets
@@ -153,5 +153,9 @@ def on_post_build(config):
             markup, assets = f"{markup}\n{emit_assets(session)}", ""
         else:
             assets = emit_assets(session)
+        if name in THEME_DEMOS:
+            # Same id the runtime gives it, so the page matches what
+            # theme="default" puts in an app's <head>.
+            assets = f'<style id="pjx-theme">{read_pjx_theme_css()}</style>\n{assets}'
         with open(path, "w", encoding="utf-8") as fh:
             fh.write(_PAGE.format(markup=markup, assets=assets))
