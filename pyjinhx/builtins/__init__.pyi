@@ -143,6 +143,7 @@ from pyjinhx.builtins.ui.pjx_segmented_control.pjx_segmented_control import (
 from pyjinhx.builtins.ui.pjx_select.pjx_select import PJXSelect as PJXSelect
 from pyjinhx.builtins.ui.pjx_skeleton.pjx_skeleton import PJXSkeleton as PJXSkeleton
 from pyjinhx.builtins.ui.pjx_spinner.pjx_spinner import PJXSpinner as PJXSpinner
+from pyjinhx.builtins.ui.pjx_stack.pjx_stack import PJXStack as PJXStack
 from pyjinhx.builtins.ui.pjx_tab.pjx_tab import PJXTab as PJXTab
 from pyjinhx.builtins.ui.pjx_tab_group.pjx_tab_group import PJXTabGroup as PJXTabGroup
 from pyjinhx.builtins.ui.pjx_tab_list.pjx_tab_list import PJXTabList as PJXTabList
@@ -223,6 +224,7 @@ __all__ = [
     "PJXSelect",
     "PJXSkeleton",
     "PJXSpinner",
+    "PJXStack",
     "PJXTab",
     "PJXTabGroup",
     "PJXTabList",

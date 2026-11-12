@@ -599,6 +599,66 @@ Inline SVG icon from a vendored [Lucide](https://lucide.dev) set (ISC). **Assets
     PJXIcon(name="plus", size=24, label="Add")
     ```
 
+### PJXStack
+
+A flex row or column of its content, spaced by a step on the theme spacing scale. **Assets:** `pjx_stack.css` only.
+
+<!-- demo: PJXStack -->
+
+```html
+<PJXStack direction="horizontal" gap="4" align="center">
+  <PJXButton variant="primary">Save</PJXButton>
+  <PJXButton>Cancel</PJXButton>
+  <PJXBadge label="Draft" color="muted"/>
+</PJXStack>
+```
+
+??? note "Props & API"
+
+    | Field | Type | Default | Description |
+    | --- | --- | --- | --- |
+    | `direction` | literal | `"vertical"` | `vertical` (column) or `horizontal` (row) → `pjx-stack--{direction}`. |
+    | `gap` | literal | `"3"` | A step on the theme spacing scale, as a string: `"1"`, `"2"`, `"3"`, `"4"`, `"5"`, `"6"`, `"8"`, `"10"`, `"12"`. Each maps to `--pjx-space-N` (with a light fallback, see Style tokens). |
+    | `align` | literal | `""` | Cross-axis `align-items`: `start`, `center`, `end`, `stretch`, `baseline` (`start`/`end` → `flex-start`/`flex-end`). `""` adds no class, so the browser default applies. |
+    | `justify` | literal | `""` | Main-axis `justify-content`: `start`, `center`, `end`, `between`, `around`, `evenly` (`between`/`around`/`evenly` → `space-between`/`space-around`/`space-evenly`). `""` adds no class, so the browser default applies. |
+    | `wrap` | `bool` | `False` | When `True`, adds `flex-wrap: wrap`. |
+    | `content` | `str \| BaseComponent` | `""` | The stacked children (rendered as-is). |
+    | `class_name` | `str` | `""` | Extra CSS class(es) appended to the root element. |
+
+??? note "Style tokens"
+
+    No `--pjx-stack-*` tokens. The gap reads the theme's spacing tokens and falls back to the light values when no theme is loaded:
+
+    | Gap | Token | Fallback |
+    | --- | --- | --- |
+    | `"1"` | `--pjx-space-1` | `0.25rem` |
+    | `"2"` | `--pjx-space-2` | `0.5rem` |
+    | `"3"` | `--pjx-space-3` | `0.75rem` |
+    | `"4"` | `--pjx-space-4` | `1rem` |
+    | `"5"` | `--pjx-space-5` | `1.25rem` |
+    | `"6"` | `--pjx-space-6` | `1.5rem` |
+    | `"8"` | `--pjx-space-8` | `2rem` |
+    | `"10"` | `--pjx-space-10` | `2.5rem` |
+    | `"12"` | `--pjx-space-12` | `3rem` |
+
+??? note "DOM & classes"
+
+    Root `.pjx-stack`; no JS API.
+
+    **Classes:** `pjx-stack--vertical`, `pjx-stack--horizontal`, `pjx-stack--gap-{1,2,3,4,5,6,8,10,12}`, `pjx-stack--align-{start,center,end,stretch,baseline}`, `pjx-stack--justify-{start,center,end,between,around,evenly}`, `pjx-stack--wrap`. The align, justify and wrap classes appear only when those props are set.
+
+??? note "Python"
+
+    ```python
+    PJXStack(
+        direction="horizontal",
+        gap="4",
+        align="center",
+        content=PJXButton(content="Save", variant="primary").render()
+        + PJXButton(content="Cancel").render(),
+    )
+    ```
+
 ### PJXTable
 
 Accessible data table shell. Compose with `PJXTableHead`, `PJXTableBody`, `PJXTableRow`, `PJXTableHeaderCell`, and `PJXTableCell` parts. **Assets:** `pjx_table.css`.

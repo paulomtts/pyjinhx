@@ -28,6 +28,7 @@ from pyjinhx.builtins.ui.pjx_resizable_handle import PJXResizableHandle
 from pyjinhx.builtins.ui.pjx_resizable_panel import PJXResizablePanel
 from pyjinhx.builtins.ui.pjx_skeleton import PJXSkeleton
 from pyjinhx.builtins.ui.pjx_spinner import PJXSpinner
+from pyjinhx.builtins.ui.pjx_stack import PJXStack
 
 
 def accordion():
@@ -182,6 +183,25 @@ def icon():
     ]
 
 
+def stack():
+    return [
+        PJXStack(
+            gap="2",
+            align="start",
+            content=PJXBadge(label="Active", color="brand").render()
+            + PJXBadge(label="Beta", color="muted").render()
+            + PJXBadge(label="Error", color="error").render(),
+        ).render(),
+        PJXStack(
+            direction="horizontal",
+            gap="4",
+            align="center",
+            content=PJXButton(content="Save", variant="primary").render()
+            + PJXButton(content="Cancel").render(),
+        ).render(),
+    ]
+
+
 def button():
     return [
         PJXButton(content="Save", variant="primary").render(),
@@ -270,6 +290,7 @@ DEMOS = {
     "PJXProgress": (progress, 170),
     "PJXEmptyState": (empty_state, 340),
     "PJXIcon": (icon, 140),
+    "PJXStack": (stack, 160),
     "PJXButton": (button, 140),
     "PJXResizableGroup": (resizable_group, 160),
     "PJXTable": (table, 260),
