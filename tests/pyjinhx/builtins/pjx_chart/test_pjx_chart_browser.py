@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from pyjinhx.builtins import PJXChart, PJXChartSeries
-from pyjinhx.client import read_vendored_htmx
+from pyjinhx.client import read_pjx_theme_css, read_vendored_htmx
 from pyjinhx.rendering import render
 from pyjinhx.session import RenderSession
 
@@ -28,6 +28,8 @@ CSS = (
     / "pjx_chart.css"
 ).read_text(encoding="utf-8")
 URL = "http://pjx.test/"
+LIGHT_BLUE = "rgb(42, 120, 214)"  # #2a78d6, series 1 in light mode
+DARK_BLUE = "rgb(57, 135, 229)"  # #3987e5, series 1 in dark mode
 
 
 def _chart(values: list[float | None], **kw) -> str:
@@ -40,7 +42,20 @@ def _chart(values: list[float | None], **kw) -> str:
     )
 
 
-def _open(page: Page, body: str, routes: dict[str, str] | None = None) -> None:
+def _open(
+    page: Page,
+    body: str,
+    routes: dict[str, str] | None = None,
+    *,
+    theme: bool = False,
+    html_attrs: str = "",
+) -> None:
+    """Serve body with the chart sheet, the theme sheet ahead of it when asked.
+
+    html_attrs is raw attribute text for <html>, such as 'data-pjx-theme="dark"'.
+    """
+    sheets = (read_pjx_theme_css() if theme else "") + CSS
+
     def fulfill(route) -> None:
         path = route.request.url.removeprefix(URL)
         if path in (routes or {}):
@@ -48,11 +63,20 @@ def _open(page: Page, body: str, routes: dict[str, str] | None = None) -> None:
         else:
             route.fulfill(
                 content_type="text/html",
-                body=f"<html><head><style>{CSS}</style></head><body>{body}</body></html>",
+                body=f"<html {html_attrs}><head><style>{sheets}</style></head>"
+                f"<body>{body}</body></html>",
             )
 
     page.route(URL + "**", fulfill)
     page.goto(URL)
+
+
+def _style(page: Page, selector: str, prop: str) -> str:
+    """The computed value of prop on the first element matching selector."""
+    return page.evaluate(
+        "([selector, prop]) => getComputedStyle(document.querySelector(selector))[prop]",
+        [selector, prop],
+    )
 
 
 def test_svg_fills_its_container_at_the_given_height(page, page_errors):
@@ -201,4 +225,77 @@ def test_a_shrink_to_fit_parent_still_gives_the_chart_room(page, page_errors):
     )
     box = page.locator("#c").bounding_box()
     assert box is not None and box["width"] >= 280
+    assert page_errors == []
+
+
+def test_forced_dark_attribute_takes_the_dark_palette(page, page_errors):
+    _open(page, _chart([1, 2, 3], kind="bar"), html_attrs='data-pjx-theme="dark"')
+    assert _style(page, ".pjx-chart__bar", "fill") == DARK_BLUE
+    assert page_errors == []
+
+
+def test_forced_light_attribute_keeps_the_light_palette(page, page_errors):
+    page.emulate_media(color_scheme="dark")
+    _open(page, _chart([1, 2, 3], kind="bar"), html_attrs='data-pjx-theme="light"')
+    assert _style(page, ".pjx-chart__bar", "fill") == LIGHT_BLUE
+    assert page_errors == []
+
+
+def test_old_theme_attribute_no_longer_switches(page, page_errors):
+    _open(page, _chart([1, 2, 3], kind="bar"), html_attrs='data-theme="dark"')
+    assert _style(page, ".pjx-chart__bar", "fill") == LIGHT_BLUE
+    assert page_errors == []
+
+
+def test_series_follow_the_theme_series_tokens(page, page_errors):
+    _open(
+        page,
+        "<style>:root { --pjx-chart-series-1: rgb(1, 2, 3); }</style>"
+        + _chart([1, 2, 3], kind="bar"),
+        theme=True,
+    )
+    assert _style(page, ".pjx-chart__bar", "fill") == "rgb(1, 2, 3)"
+    assert page_errors == []
+
+
+def test_without_the_theme_the_light_fallbacks_apply(page, page_errors):
+    _open(page, _chart([1, 2, 3], title="T"))
+    assert _style(page, ".pjx-chart__point", "stroke") == "rgb(255, 255, 255)"
+    assert _style(page, ".pjx-chart__y-label", "fill") == "rgb(82, 82, 91)"
+    assert _style(page, ".pjx-chart__title", "color") == "rgb(24, 24, 27)"
+    assert _style(page, ".pjx-chart__title", "fontSize") == "14px"
+    assert page_errors == []
+
+
+def test_theme_dark_values_reach_the_chart_chrome(page, page_errors):
+    page.emulate_media(color_scheme="dark")
+    _open(page, _chart([1, 2, 3]), theme=True)
+    assert _style(page, ".pjx-chart__point", "stroke") == "rgb(24, 24, 27)"
+    assert _style(page, ".pjx-chart__y-label", "fill") == "rgb(161, 161, 170)"
+    assert page_errors == []
+
+
+def test_an_app_series_override_wins_in_dark_mode(page, page_errors):
+    # The dark block sets --pjx-chart-1 itself, so --pjx-chart-1 is the
+    # override that works in both schemes.
+    page.emulate_media(color_scheme="dark")
+    _open(
+        page,
+        "<style>:root { --pjx-chart-1: rgb(1, 2, 3); }</style>"
+        + _chart([1, 2, 3], kind="bar"),
+        theme=True,
+    )
+    assert _style(page, ".pjx-chart__bar", "fill") == "rgb(1, 2, 3)"
+    assert page_errors == []
+
+
+def test_a_light_wrapper_does_not_relight_the_series(page, page_errors):
+    # The chart's palette resolves on the root only; a wrapper inherits it.
+    page.emulate_media(color_scheme="dark")
+    _open(
+        page,
+        f'<div data-pjx-theme="light">{_chart([1, 2, 3], kind="bar")}</div>',
+        theme=True,
+    )
+    assert _style(page, ".pjx-chart__bar", "fill") == DARK_BLUE
     assert page_errors == []
