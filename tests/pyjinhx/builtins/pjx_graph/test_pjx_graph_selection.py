@@ -596,7 +596,9 @@ def test_select_ignores_a_nested_stage_node(page, page_errors, session):
 
 # Styling
 
-THEME = ":root { --text: rgb(70, 80, 90); --border: rgb(10, 20, 30); }"
+THEME = (
+    ":root { --pjx-color-text: rgb(70, 80, 90); --pjx-color-border: rgb(10, 20, 30); }"
+)
 
 STYLE = """selector => {
     const s = getComputedStyle(document.querySelector(selector));

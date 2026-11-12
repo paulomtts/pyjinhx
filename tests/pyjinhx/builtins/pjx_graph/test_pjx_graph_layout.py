@@ -29,6 +29,10 @@ ASSET = UI / "pjx_graph" / "pjx_graph.js"
 CSS = (UI / "pjx_graph" / "pjx_graph.css").read_text(encoding="utf-8") + (
     UI / "pjx_graph_node" / "pjx_graph_node.css"
 ).read_text(encoding="utf-8")
+# These tests measure box geometry, so the node is served borderless: the
+# out-ports straddle the padding-box edge, which a real border would put 1px
+# inside the border-box edge the assertions compare against.
+CSS += ".pjx-graph__node { border-width: 0; }"
 URL = "http://pjx.test/"
 RECORD = "pjx-graph:flow"
 IDENTITY = {"view": {"x": 0, "y": 0, "k": 1}}
