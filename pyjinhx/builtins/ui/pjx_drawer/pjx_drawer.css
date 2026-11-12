@@ -1,16 +1,16 @@
 :where(:root) {
   --pjx-drawer-width:        min(24rem, 100vw);
   --pjx-drawer-height-bottom: min(50dvh, 28rem);
-  --pjx-drawer-bg:           var(--surface);
-  --pjx-drawer-border:       var(--border);
-  --pjx-drawer-shadow:       var(--shadow-md);
+  --pjx-drawer-bg:           var(--pjx-color-surface, #ffffff);
+  --pjx-drawer-border:       var(--pjx-color-border, #e4e4e7);
+  --pjx-drawer-shadow:       var(--pjx-shadow-md, 0 4px 12px rgb(0 0 0 / 0.08));
   --pjx-drawer-backdrop:     rgb(0 0 0 / 0.45);
-  --pjx-drawer-header-bg:    var(--surface-alt);
-  --pjx-drawer-header-sep:   var(--border);
-  --pjx-drawer-footer-bg:    var(--surface-alt);
-  --pjx-drawer-footer-sep:   var(--border);
-  --pjx-drawer-padding:      1rem;
-  --pjx-drawer-z:            250;
+  --pjx-drawer-header-bg:    var(--pjx-color-surface-alt, #fafafa);
+  --pjx-drawer-header-sep:   var(--pjx-color-border, #e4e4e7);
+  --pjx-drawer-footer-bg:    var(--pjx-color-surface-alt, #fafafa);
+  --pjx-drawer-footer-sep:   var(--pjx-color-border, #e4e4e7);
+  --pjx-drawer-padding:      var(--pjx-space-4, 1rem);
+  --pjx-drawer-z:            var(--pjx-z-overlay, 200);
 }
 
 .pjx-drawer::backdrop {
@@ -86,17 +86,17 @@
 }
 
 .pjx-drawer--right .pjx-drawer__box {
-  border-radius: var(--radius-lg) 0 0 var(--radius-lg);
+  border-radius: var(--pjx-radius-lg, 12px) 0 0 var(--pjx-radius-lg, 12px);
 }
 
 .pjx-drawer--left .pjx-drawer__box {
-  border-radius: 0 var(--radius-lg) var(--radius-lg) 0;
+  border-radius: 0 var(--pjx-radius-lg, 12px) var(--pjx-radius-lg, 12px) 0;
 }
 
 .pjx-drawer--bottom .pjx-drawer__box {
   width: 100%;
   max-height: var(--pjx-drawer-height-bottom);
-  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  border-radius: var(--pjx-radius-lg, 12px) var(--pjx-radius-lg, 12px) 0 0;
   animation: pjx-drawer-slide-bottom-in 200ms ease forwards;
 }
 

@@ -3,7 +3,7 @@
   padding: var(--pjx-modal-padding);
   overflow-y: auto;
   flex: 1;
-  color: var(--text);
-  font-size: var(--font-size-md);
+  color: var(--pjx-color-text, #18181b);
+  font-size: var(--pjx-font-size-md, 1rem);
   line-height: 1.6;
 }
