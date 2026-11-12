@@ -176,10 +176,10 @@ class TestStylesheet:
         css = CSS.read_text(encoding="utf-8")
         tokens = _rule_block(css, ":where(:root)")
         for token in (
-            "--pjx-graph-controls-bg: var(--surface);",
-            "--pjx-graph-controls-border: var(--border);",
-            "--pjx-graph-controls-radius: var(--radius-md);",
-            "--pjx-graph-controls-color: var(--text-muted);",
+            "--pjx-graph-controls-bg: var(--pjx-color-surface, #ffffff);",
+            "--pjx-graph-controls-border: var(--pjx-color-border, #e4e4e7);",
+            "--pjx-graph-controls-radius: var(--pjx-radius-md, 8px);",
+            "--pjx-graph-controls-color: var(--pjx-color-text-muted, #52525b);",
             "--pjx-graph-controls-inset:",
             "--pjx-graph-controls-gap:",
         ):
@@ -189,6 +189,7 @@ class TestStylesheet:
         assert "right: var(--pjx-graph-controls-inset)" in group
         assert "bottom: var(--pjx-graph-controls-inset)" in group
         assert "z-index:" in group
+        assert "z-index: var(--pjx-z-raised, 10);" in group
         assert "flex-direction: column" in group
         _rule_block(css, ".pjx-graph__control")
         assert "!important" not in css
