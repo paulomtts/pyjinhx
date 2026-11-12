@@ -35,7 +35,7 @@ URL = "http://pjx.test/"
 RECORD = "pjx-graph:flow"
 IDENTITY = {"view": {"x": 0, "y": 0, "k": 1}}
 # App semantic tokens the graph tokens default to; the test page has no theme.
-THEME = ":root { --border: rgb(10, 20, 30); --text-muted: rgb(40, 50, 60); }"
+THEME = ":root { --pjx-color-border: rgb(10, 20, 30); --pjx-color-text-muted: rgb(40, 50, 60); }"
 
 # What a stage's own plane holds, in DOM order.
 PLANE = """id => {

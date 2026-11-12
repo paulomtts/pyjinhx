@@ -1,18 +1,18 @@
 :where(:root) {
-  --pjx-graph-panel-bg: var(--surface);
-  --pjx-graph-panel-border: var(--border);
-  --pjx-graph-panel-radius: var(--radius-md);
-  --pjx-graph-panel-color: var(--text);
-  --pjx-graph-panel-muted: var(--text-muted);
-  --pjx-graph-panel-accent: var(--text-muted);
-  --pjx-graph-panel-inset: 0.75rem;
+  --pjx-graph-panel-bg: var(--pjx-color-surface, #ffffff);
+  --pjx-graph-panel-border: var(--pjx-color-border, #e4e4e7);
+  --pjx-graph-panel-radius: var(--pjx-radius-md, 8px);
+  --pjx-graph-panel-color: var(--pjx-color-text, #18181b);
+  --pjx-graph-panel-muted: var(--pjx-color-text-muted, #52525b);
+  --pjx-graph-panel-accent: var(--pjx-color-text-muted, #52525b);
+  --pjx-graph-panel-inset: var(--pjx-space-3, 0.75rem);
   --pjx-graph-panel-width: 20rem;
-  --pjx-graph-panel-gap: 0.5rem;
-  --pjx-graph-panel-padding: 0.75rem;
+  --pjx-graph-panel-gap: var(--pjx-space-2, 0.5rem);
+  --pjx-graph-panel-padding: var(--pjx-space-3, 0.75rem);
   --pjx-graph-panel-marker-size: 0.625rem;
-  --pjx-graph-panel-title-size: 0.875rem;
-  --pjx-graph-panel-control-size: 0.75rem;
-  --pjx-graph-panel-duration: 150ms;
+  --pjx-graph-panel-title-size: var(--pjx-font-size-sm, 0.875rem);
+  --pjx-graph-panel-control-size: var(--pjx-font-size-xs, 0.75rem);
+  --pjx-graph-panel-duration: var(--pjx-duration-normal, 150ms);
 }
 
 /* The stage, not the canvas, is the positioning context: the panel sits
@@ -22,7 +22,8 @@
   position: absolute;
   top: var(--pjx-graph-panel-inset);
   right: var(--pjx-graph-panel-inset);
-  z-index: 2;
+  /* One step above the controls, so the panel covers them where they overlap. */
+  z-index: calc(var(--pjx-z-raised, 10) + 1);
   display: flex;
   flex-direction: column;
   width: var(--pjx-graph-panel-width);
@@ -40,7 +41,7 @@
 
 /* Only opening animates; closing is the instant display: none above. */
 .pjx-graph__panel[data-open="true"] {
-  animation: pjx-graph-panel-in var(--pjx-graph-panel-duration) ease-out;
+  animation: pjx-graph-panel-in var(--pjx-graph-panel-duration) var(--pjx-easing-standard, cubic-bezier(0.2, 0, 0, 1));
 }
 
 @keyframes pjx-graph-panel-in {

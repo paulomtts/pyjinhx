@@ -1,20 +1,21 @@
 /* The series palette passed a colour-vision and contrast check against a
    light and a dark chart surface. Dark mode gets its own steps of the same
-   eight hues, not an automatic flip. */
+   eight hues, not an automatic flip. The dark steps are written out so the
+   chart keeps them without the theme sheet. */
 :where(:root) {
-  --pjx-chart-1: #2a78d6;
-  --pjx-chart-2: #eb6834;
-  --pjx-chart-3: #1baf7a;
-  --pjx-chart-4: #eda100;
-  --pjx-chart-5: #e87ba4;
-  --pjx-chart-6: #008300;
-  --pjx-chart-7: #6250d6;
-  --pjx-chart-8: #e34948;
-  --pjx-chart-surface:    var(--surface);
-  --pjx-chart-text:       var(--text-muted);
-  --pjx-chart-title:      var(--text);
-  --pjx-chart-grid:       color-mix(in srgb, var(--border) 70%, transparent);
-  --pjx-chart-axis:       var(--border);
+  --pjx-chart-1: var(--pjx-chart-series-1, #2a78d6);
+  --pjx-chart-2: var(--pjx-chart-series-2, #eb6834);
+  --pjx-chart-3: var(--pjx-chart-series-3, #1baf7a);
+  --pjx-chart-4: var(--pjx-chart-series-4, #eda100);
+  --pjx-chart-5: var(--pjx-chart-series-5, #e87ba4);
+  --pjx-chart-6: var(--pjx-chart-series-6, #008300);
+  --pjx-chart-7: var(--pjx-chart-series-7, #6250d6);
+  --pjx-chart-8: var(--pjx-chart-series-8, #e34948);
+  --pjx-chart-surface:    var(--pjx-color-surface, #ffffff);
+  --pjx-chart-text:       var(--pjx-color-text-muted, #52525b);
+  --pjx-chart-title:      var(--pjx-color-text, #18181b);
+  --pjx-chart-grid:       color-mix(in srgb, var(--pjx-color-border, #e4e4e7) 70%, transparent);
+  --pjx-chart-axis:       var(--pjx-color-border, #e4e4e7);
   --pjx-chart-font-size:  12px;
   --pjx-chart-line-width: 2px;
   --pjx-chart-area:       10%;
@@ -22,7 +23,7 @@
 }
 
 @media (prefers-color-scheme: dark) {
-  :where(:root:not([data-theme="light"])) {
+  :where(:root:not([data-pjx-theme="light"])) {
     --pjx-chart-1: #3987e5;
     --pjx-chart-2: #d95926;
     --pjx-chart-3: #199e70;
@@ -34,7 +35,7 @@
   }
 }
 
-:where(:root[data-theme="dark"]) {
+:where(:root[data-pjx-theme="dark"]) {
   --pjx-chart-1: #3987e5;
   --pjx-chart-2: #d95926;
   --pjx-chart-3: #199e70;
@@ -57,15 +58,16 @@
 }
 
 .pjx-chart__title {
-  margin-bottom: 0.75rem;
-  font-size: var(--font-size-sm);
+  margin-bottom: var(--pjx-space-3, 0.75rem);
+  font-size: var(--pjx-font-size-sm, 0.875rem);
   font-weight: 600;
   color: var(--pjx-chart-title);
 }
 
-/* The gutters hold the axis labels, which the SVG draws past its own box. */
+/* The gutters hold the axis labels, which the SVG draws past its own box.
+   The bottom 1.75rem is off the spacing scale: it is sized to the x labels. */
 .pjx-chart__plot {
-  padding: 0.5rem 0.5rem 1.75rem 3rem;
+  padding: var(--pjx-space-2, 0.5rem) var(--pjx-space-2, 0.5rem) 1.75rem var(--pjx-space-12, 3rem);
 }
 
 .pjx-chart__svg {
@@ -169,17 +171,20 @@
   opacity: var(--pjx-chart-dim);
 }
 
+/* The left space-12 matches the plot's left gutter, so the legend lines up
+   with the plot. */
 .pjx-chart__legend {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.25rem 1rem;
-  margin: 0.25rem 0 0 3rem;
+  gap: var(--pjx-space-1, 0.25rem) var(--pjx-space-4, 1rem);
+  margin: var(--pjx-space-1, 0.25rem) 0 0 var(--pjx-space-12, 3rem);
   padding: 0;
   list-style: none;
-  font-size: var(--font-size-sm);
+  font-size: var(--pjx-font-size-sm, 0.875rem);
   color: var(--pjx-chart-text);
 }
 
+/* 0.4rem is off the spacing scale, tuned to the swatch-to-label distance. */
 .pjx-chart__legend-item {
   display: inline-flex;
   align-items: center;

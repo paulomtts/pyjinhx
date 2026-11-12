@@ -113,28 +113,32 @@ native tooltip on hover.
 
 ## Theming
 
-Series take colours from `--pjx-chart-1` to `--pjx-chart-8` in order. A ninth series is refused
-rather than given a repeated colour, which would read as the same series: fold small series into
-an "Other" series or split the chart. The default palette was checked for lightness, chroma,
-colour-blind separation and contrast against both a light and a dark surface. Dark mode takes its
-own, darker steps of the same eight hues, under `prefers-color-scheme: dark` or
-`[data-theme="dark"]` on the root, and `[data-theme="light"]` keeps the light ones.
+Series take colours from `--pjx-chart-1` to `--pjx-chart-8` in order. These default to the
+theme's `--pjx-chart-series-1` … `--pjx-chart-series-8`, and the same palette is built in for
+when the theme sheet is absent. A ninth series is refused rather than given a repeated colour,
+which would read as the same series: fold small series into an "Other" series or split the chart.
+The default palette was checked for lightness, chroma, colour-blind separation and contrast
+against both a light and a dark surface. Dark mode takes its own, darker steps of the same eight
+hues, under `prefers-color-scheme: dark` or `[data-pjx-theme="dark"]` on the root, and
+`[data-pjx-theme="light"]` on the root keeps the light ones. The chart sets its dark steps itself,
+so to recolour a series in both schemes set `--pjx-chart-1` … `--pjx-chart-8`, not the theme's
+series tokens.
 
 | Token | Default |
 | --- | --- |
-| `--pjx-chart-1` … `--pjx-chart-8` | blue, orange, aqua, yellow, magenta, green, violet, red |
-| `--pjx-chart-surface` | `var(--surface)`: the ring around each point |
-| `--pjx-chart-text` | `var(--text-muted)` |
-| `--pjx-chart-title` | `var(--text)` |
-| `--pjx-chart-grid` | `var(--border)` at 70% |
-| `--pjx-chart-axis` | `var(--border)` |
+| `--pjx-chart-1` … `--pjx-chart-8` | `--pjx-chart-series-1` … `--pjx-chart-series-8`: blue, orange, aqua, yellow, magenta, green, violet, red |
+| `--pjx-chart-surface` | `var(--pjx-color-surface)`: the ring around each point |
+| `--pjx-chart-text` | `var(--pjx-color-text-muted)` |
+| `--pjx-chart-title` | `var(--pjx-color-text)` |
+| `--pjx-chart-grid` | `var(--pjx-color-border)` at 70% |
+| `--pjx-chart-axis` | `var(--pjx-color-border)` |
 | `--pjx-chart-font-size` | `12px` |
 | `--pjx-chart-line-width` | `2px` |
 | `--pjx-chart-area` | `10%`: how strong the wash under a lone line is |
 | `--pjx-chart-dim` | `0.3`: the opacity of the other series while one is hovered |
 
 ```css
-.revenue { --pjx-chart-1: var(--brand); }
+.revenue { --pjx-chart-1: var(--pjx-color-brand); }
 ```
 
 ## What it does not do

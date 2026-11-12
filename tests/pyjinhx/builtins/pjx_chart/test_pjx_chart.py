@@ -44,6 +44,12 @@ def test_ships_a_stylesheet_and_no_script():
     assert descriptor.js_paths == ()
 
 
+def test_no_old_theme_attribute():
+    css = PJXChart.__pjx_descriptor__.css_paths[0].read_text(encoding="utf-8")
+    assert "data-pjx-theme" in css
+    assert "data-theme=" not in css
+
+
 def test_root_is_a_figure_with_the_kind_class():
     html = _html()
     assert html.startswith('<figure id="c" class="pjx-chart pjx-chart--line"')

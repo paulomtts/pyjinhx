@@ -1,10 +1,10 @@
 :where(:root) {
-  --pjx-graph-controls-bg: var(--surface);
-  --pjx-graph-controls-border: var(--border);
-  --pjx-graph-controls-radius: var(--radius-md);
-  --pjx-graph-controls-color: var(--text-muted);
-  --pjx-graph-controls-inset: 0.75rem;
-  --pjx-graph-controls-gap: 0.25rem;
+  --pjx-graph-controls-bg: var(--pjx-color-surface, #ffffff);
+  --pjx-graph-controls-border: var(--pjx-color-border, #e4e4e7);
+  --pjx-graph-controls-radius: var(--pjx-radius-md, 8px);
+  --pjx-graph-controls-color: var(--pjx-color-text-muted, #52525b);
+  --pjx-graph-controls-inset: var(--pjx-space-3, 0.75rem);
+  --pjx-graph-controls-gap: var(--pjx-space-1, 0.25rem);
 }
 
 /* The canvas is the positioning context. Stacked above the viewport, so a
@@ -13,19 +13,19 @@
   position: absolute;
   right: var(--pjx-graph-controls-inset);
   bottom: var(--pjx-graph-controls-inset);
-  z-index: 1;
+  z-index: var(--pjx-z-raised, 10);
   display: flex;
   flex-direction: column;
   gap: var(--pjx-graph-controls-gap);
 }
 
 .pjx-graph__control {
-  padding: 0.25rem 0.5rem;
+  padding: var(--pjx-space-1, 0.25rem) var(--pjx-space-2, 0.5rem);
   border: 1px solid var(--pjx-graph-controls-border);
   border-radius: var(--pjx-graph-controls-radius);
   background: var(--pjx-graph-controls-bg);
   color: var(--pjx-graph-controls-color);
   font: inherit;
-  font-size: 0.75rem;
+  font-size: var(--pjx-font-size-xs, 0.75rem);
   cursor: pointer;
 }

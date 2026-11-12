@@ -37,13 +37,7 @@ VAR_OPEN = re.compile(r"(?<![\w-])var\(")
 
 # Stylesheets that still use legacy names. Remove a path once its file is
 # migrated; the suite fails until you do.
-LEGACY_PENDING: tuple[str, ...] = (
-    "pyjinhx/builtins/ui/pjx_chart/pjx_chart.css",
-    "pyjinhx/builtins/ui/pjx_graph/pjx_graph.css",
-    "pyjinhx/builtins/ui/pjx_graph_controls/pjx_graph_controls.css",
-    "pyjinhx/builtins/ui/pjx_graph_node/pjx_graph_node.css",
-    "pyjinhx/builtins/ui/pjx_graph_side_panel/pjx_graph_side_panel.css",
-)
+LEGACY_PENDING: tuple[str, ...] = ()
 
 
 def light_values() -> dict[str, str]:

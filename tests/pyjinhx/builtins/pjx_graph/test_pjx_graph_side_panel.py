@@ -264,12 +264,12 @@ class TestStylesheet:
         css = CSS.read_text(encoding="utf-8")
         tokens = _rule_block(css, ":where(:root)")
         for token in (
-            "--pjx-graph-panel-bg: var(--surface);",
-            "--pjx-graph-panel-border: var(--border);",
-            "--pjx-graph-panel-radius: var(--radius-md);",
-            "--pjx-graph-panel-color: var(--text);",
-            "--pjx-graph-panel-muted: var(--text-muted);",
-            "--pjx-graph-panel-accent: var(--text-muted);",
+            "--pjx-graph-panel-bg: var(--pjx-color-surface, #ffffff);",
+            "--pjx-graph-panel-border: var(--pjx-color-border, #e4e4e7);",
+            "--pjx-graph-panel-radius: var(--pjx-radius-md, 8px);",
+            "--pjx-graph-panel-color: var(--pjx-color-text, #18181b);",
+            "--pjx-graph-panel-muted: var(--pjx-color-text-muted, #52525b);",
+            "--pjx-graph-panel-accent: var(--pjx-color-text-muted, #52525b);",
             "--pjx-graph-panel-inset:",
             "--pjx-graph-panel-width:",
             "--pjx-graph-panel-gap:",
@@ -281,6 +281,7 @@ class TestStylesheet:
         assert "top: var(--pjx-graph-panel-inset)" in panel
         assert "right: var(--pjx-graph-panel-inset)" in panel
         assert "z-index:" in panel
+        assert "z-index: calc(var(--pjx-z-raised, 10) + 1);" in panel
         assert "width: var(--pjx-graph-panel-width)" in panel
         assert "max-height:" in panel
         closed = _rule_block(css, '.pjx-graph__panel[data-open="false"]')
