@@ -175,3 +175,66 @@ def test_page_loader_spinner_uses_theme_border_and_brand():
         declared(css, selector, "border-top-color")
         == f"var(--pjx-color-brand, {brand})"
     )
+
+
+REGION_LOADER = "pjx_region_loader/pjx_region_loader.css"
+
+
+def test_region_loader_sits_on_the_sticky_layer():
+    assert (
+        declared(read_builtin(REGION_LOADER), ":where(:root)", "--pjx-region-loader-z")
+        == f"var(--pjx-z-sticky, {light('--pjx-z-sticky')})"
+    )
+
+
+def test_region_loader_z_index_reads_its_overridable_token():
+    css = read_builtin(REGION_LOADER)
+    assert (
+        declared(css, ".pjx-region-loader", "z-index") == "var(--pjx-region-loader-z)"
+    )
+
+
+@pytest.mark.parametrize(
+    ("token", "pct"),
+    [("--pjx-region-loader-bg", "55%"), ("--pjx-region-loader-spinner-track", "12%")],
+)
+def test_region_loader_tints_mix_the_theme_text(token, pct):
+    text = light("--pjx-color-text")
+    assert declared(read_builtin(REGION_LOADER), ":where(:root)", token) == (
+        f"color-mix(in srgb, var(--pjx-color-text, {text}) {pct}, transparent)"
+    )
+
+
+def test_region_loader_spinner_follows_the_brand():
+    assert (
+        declared(
+            read_builtin(REGION_LOADER),
+            ":where(:root)",
+            "--pjx-region-loader-spinner-color",
+        )
+        == f"var(--pjx-color-brand, {light('--pjx-color-brand')})"
+    )
+
+
+def test_region_loader_spinner_is_round():
+    assert (
+        declared(
+            read_builtin(REGION_LOADER), ".pjx-region-loader__spinner", "border-radius"
+        )
+        == f"var(--pjx-radius-full, {light('--pjx-radius-full')})"
+    )
+
+
+def test_region_loader_keeps_reduced_motion_and_fade_timing():
+    css = read_builtin(REGION_LOADER)
+    for selector in (".pjx-region-loader--visible", ".pjx-region-loader.htmx-request"):
+        assert (
+            declared(css, selector, "animation")
+            == "region-loader-in 150ms ease forwards"
+        )
+    assert (
+        declared(css, ".pjx-region-loader--hiding", "animation")
+        == "region-loader-out 150ms ease forwards"
+    )
+    assert "@media (prefers-reduced-motion: reduce)" in css
+    assert "animation-duration: 0.01ms !important;" in css

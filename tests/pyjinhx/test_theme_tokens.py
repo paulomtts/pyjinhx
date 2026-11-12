@@ -39,7 +39,6 @@ VAR_OPEN = re.compile(r"(?<![\w-])var\(")
 # migrated; the suite fails until you do.
 LEGACY_PENDING: tuple[str, ...] = (
     "pyjinhx/builtins/pjx_paginator/pjx_paginator.css",
-    "pyjinhx/builtins/pjx_region_loader/pjx_region_loader.css",
     "pyjinhx/builtins/pjx_table/pjx_table.css",
     "pyjinhx/builtins/ui/pjx_avatar/pjx_avatar.css",
     "pyjinhx/builtins/ui/pjx_avatar_stack/pjx_avatar_stack.css",
