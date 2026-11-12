@@ -2,12 +2,12 @@
   --pjx-avatar-sm: 2rem;
   --pjx-avatar-md: 2.5rem;
   --pjx-avatar-lg: 3.25rem;
-  --pjx-avatar-bg: var(--surface-alt);
-  --pjx-avatar-fg: var(--text-muted);
-  --pjx-avatar-border: var(--border);
-  --pjx-avatar-font-size-sm: var(--font-size-xs);
-  --pjx-avatar-font-size-md: var(--font-size-sm);
-  --pjx-avatar-font-size-lg: var(--font-size-md);
+  --pjx-avatar-bg: var(--pjx-color-surface-alt, #fafafa);
+  --pjx-avatar-fg: var(--pjx-color-text-muted, #52525b);
+  --pjx-avatar-border: var(--pjx-color-border, #e4e4e7);
+  --pjx-avatar-font-size-sm: var(--pjx-font-size-xs, 0.75rem);
+  --pjx-avatar-font-size-md: var(--pjx-font-size-sm, 0.875rem);
+  --pjx-avatar-font-size-lg: var(--pjx-font-size-md, 1rem);
 }
 
 .pjx-avatar {
@@ -15,7 +15,7 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  border-radius: var(--radius-full, 9999px);
+  border-radius: var(--pjx-radius-full, 9999px);
   overflow: hidden;
   background: var(--pjx-avatar-bg);
   border: 1px solid var(--pjx-avatar-border);
@@ -42,7 +42,7 @@
 }
 
 .pjx-avatar--square {
-  border-radius: var(--radius-md, 6px);
+  border-radius: var(--pjx-radius-md, 8px);
 }
 
 .pjx-avatar--hexagon {

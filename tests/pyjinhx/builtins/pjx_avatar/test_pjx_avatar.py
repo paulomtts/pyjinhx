@@ -155,3 +155,8 @@ def test_stylesheet_is_auto_discovered_by_snake_case_filename():
     assert len(css_paths) == 1
     assert css_paths[0].name == "pjx_avatar.css"
     assert ".pjx-avatar__initials" in css_paths[0].read_text(encoding="utf-8")
+
+
+def test_square_corner_follows_the_radius_scale():
+    css = " ".join(PJXAvatar.__pjx_descriptor__.css_paths[0].read_text().split())
+    assert ".pjx-avatar--square { border-radius: var(--pjx-radius-md, 8px); }" in css
