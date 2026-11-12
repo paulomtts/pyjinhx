@@ -91,6 +91,7 @@ nav:
           - Loading States: guide/loading.md
           - Reactivity: reactivity.md
           - Configuration: guide/configuration.md
+          - Theming: guide/theming.md
           - Builtin Conventions: guide/builtin-conventions.md
           - Graph: guide/graph.md
           - Roster Picker: guide/roster-picker.md
