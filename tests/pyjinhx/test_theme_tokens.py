@@ -50,7 +50,6 @@ LEGACY_PENDING: tuple[str, ...] = (
     "pyjinhx/builtins/ui/pjx_card/pjx_card.css",
     "pyjinhx/builtins/ui/pjx_card_header/pjx_card_header.css",
     "pyjinhx/builtins/ui/pjx_carousel/pjx_carousel.css",
-    "pyjinhx/builtins/ui/pjx_chart/pjx_chart.css",
     "pyjinhx/builtins/ui/pjx_chip_input/pjx_chip_input.css",
     "pyjinhx/builtins/ui/pjx_confirm_dialog/pjx_confirm_dialog.css",
     "pyjinhx/builtins/ui/pjx_divider/pjx_divider.css",
