@@ -64,3 +64,10 @@ def test_the_props_tables_list_every_field():
     documented = set(re.findall(r"^\| `(\w+)` \|", guide, flags=re.MULTILINE))
     assert chart_fields | series_fields <= documented
     assert documented <= chart_fields | series_fields
+
+
+def test_the_theming_notes_use_only_theme_names():
+    guide = _guide()
+    assert "data-theme" not in guide
+    legacy = re.findall(r"(?<![\w-])--(?:surface|text|border|brand)\b[\w-]*", guide)
+    assert legacy == []
