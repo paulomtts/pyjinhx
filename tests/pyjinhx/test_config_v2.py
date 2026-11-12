@@ -30,6 +30,7 @@ def test_defaults():
     assert settings.static_root is None
     assert settings.jinja_globals is None
     assert settings.jinja_filters is None
+    assert settings.theme is None
 
 
 def test_jinja_globals_and_filters_are_stored_as_given():
@@ -52,11 +53,13 @@ def test_from_env_reads_every_var(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setenv("PJX_INJECT_HTMX", "0")
     monkeypatch.setenv("PJX_COMPONENTS_ROOT", "/srv/components")
     monkeypatch.setenv("PJX_STATIC_ROOT", "/srv/static")
+    monkeypatch.setenv("PJX_THEME", "default")
     settings = PjxSettings.from_env()
     assert settings.reactive_dev is True
     assert settings.inject_htmx is False
     assert settings.components_root == Path("/srv/components")
     assert settings.static_root == Path("/srv/static")
+    assert settings.theme == "default"
 
 
 def test_from_env_falls_back_to_defaults(monkeypatch: pytest.MonkeyPatch):
@@ -65,15 +68,53 @@ def test_from_env_falls_back_to_defaults(monkeypatch: pytest.MonkeyPatch):
         "PJX_INJECT_HTMX",
         "PJX_COMPONENTS_ROOT",
         "PJX_STATIC_ROOT",
+        "PJX_THEME",
     ):
         monkeypatch.delenv(name, raising=False)
-    assert PjxSettings.from_env() == PjxSettings()
+    settings = PjxSettings.from_env()
+    assert settings == PjxSettings()
+    assert settings.theme is None
 
 
 def test_from_env_rejects_a_non_bool_string(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setenv("PJX_REACTIVE_DEV", "maybe")
     with pytest.raises(ValueError, match="PJX_REACTIVE_DEV"):
         PjxSettings.from_env()
+
+
+def test_theme_is_stored_as_given():
+    assert PjxSettings(theme="default").theme == "default"
+
+
+def test_from_env_treats_an_empty_theme_as_unset(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setenv("PJX_THEME", "")
+    assert PjxSettings.from_env().theme is None
+
+
+def test_from_env_rejects_an_unknown_theme(monkeypatch: pytest.MonkeyPatch):
+    """A bad theme raises even when every other PJX_ variable is valid."""
+    monkeypatch.setenv("PJX_REACTIVE_DEV", "true")
+    monkeypatch.setenv("PJX_INJECT_HTMX", "0")
+    monkeypatch.setenv("PJX_COMPONENTS_ROOT", "/srv/components")
+    monkeypatch.setenv("PJX_STATIC_ROOT", "/srv/static")
+    monkeypatch.setenv("PJX_THEME", "dark")
+    with pytest.raises(ValueError) as excinfo:
+        PjxSettings.from_env()
+    message = str(excinfo.value)
+    assert "PJX_THEME" in message
+    assert "'dark'" in message
+    assert "'default'" in message
+
+
+@pytest.mark.parametrize("value", ["Default", " default", "default ", "   "])
+def test_from_env_theme_is_case_and_whitespace_exact(
+    monkeypatch: pytest.MonkeyPatch, value: str
+):
+    monkeypatch.setenv("PJX_THEME", value)
+    with pytest.raises(ValueError, match="PJX_THEME") as excinfo:
+        PjxSettings.from_env()
+    # repr, so a stray space is visible in the error
+    assert repr(value) in str(excinfo.value)
 
 
 def test_merge_with_no_arguments_changes_nothing():
@@ -99,6 +140,22 @@ def test_merge_drops_unset_sentinel_values():
 def test_merge_accepts_none_as_a_real_value():
     settings = PjxSettings(components_root=Path("/a"))
     assert settings.merge(components_root=None).components_root is None
+
+
+def test_merge_applies_a_theme():
+    merged = PjxSettings().merge(theme="default")
+    assert merged.theme == "default"
+    assert dataclasses.replace(merged, theme=None) == PjxSettings()
+
+
+def test_merge_without_the_keyword_keeps_the_theme():
+    settings = PjxSettings(theme="default")
+    assert settings.merge(reactive_dev=True).theme == "default"
+
+
+def test_merge_accepts_none_to_clear_the_theme():
+    settings = PjxSettings(theme="default")
+    assert settings.merge(theme=None).theme is None
 
 
 def test_configure_then_shutdown_round_trip():
@@ -174,6 +231,53 @@ def test_explicit_keywords_win_over_an_explicit_settings_object():
     assert resolved.reactive_dev is True
 
 
+def test_setup_passes_a_theme_through_to_the_settings(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    from pyjinhx.config import current_settings, setup, shutdown_pyjinhx
+
+    monkeypatch.delenv("PJX_THEME", raising=False)
+    resolved = setup(theme="default")
+    assert resolved.theme == "default"
+    assert current_settings().theme == "default"
+    shutdown_pyjinhx()
+    assert current_settings().theme is None
+
+
+def test_setup_keeps_the_theme_on_a_settings_object():
+    from pyjinhx.config import setup
+
+    assert setup(settings=PjxSettings(theme="default")).theme == "default"
+
+
+def test_setup_keyword_overrides_the_theme_on_a_settings_object():
+    from pyjinhx.config import setup
+
+    resolved = setup(settings=PjxSettings(theme="default"), theme=None)
+    assert resolved.theme is None
+
+
+def test_setup_with_a_bad_theme_env_raises_before_publishing(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    from pyjinhx.config import current_settings, setup
+
+    monkeypatch.setenv("PJX_THEME", "bogus")
+    before = current_settings()
+    with pytest.raises(ValueError, match="PJX_THEME"):
+        setup()
+    assert current_settings() is before
+
+
+def test_explicit_settings_ignores_a_bad_theme_env(monkeypatch: pytest.MonkeyPatch):
+    """An explicit settings object replaces the environment, so a bad
+    PJX_THEME is never read and cannot fail the call."""
+    from pyjinhx.config import setup
+
+    monkeypatch.setenv("PJX_THEME", "bogus")
+    assert setup(settings=PjxSettings()).theme is None
+
+
 def test_components_root_builds_the_registry(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ):
@@ -246,6 +350,7 @@ def test_deferred_cache_machinery_is_not_ported():
 
     Milestone 10 (#800) reopens that deferral for a cross-request cache: the
     only field it adds here is cache_backend, an opt-in handed in by the app.
+    theme is the opt-in default theme from ADR 0007, unrelated to caching.
     """
     names = {field.name for field in dataclasses.fields(PjxSettings)}
     assert names == {
@@ -256,6 +361,7 @@ def test_deferred_cache_machinery_is_not_ported():
         "jinja_globals",
         "jinja_filters",
         "cache_backend",
+        "theme",
     }
 
 

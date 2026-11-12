@@ -436,7 +436,12 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
     # runtime payload onto RenderSession and gates on js_mode, mirroring the
     # "dotted edge" architecture-overview.md calls out between L2's
     # RenderSession and L3 (cold render's assets flow through the session).
-    "client.inject": frozenset({"pyjinhx.assets", "pyjinhx.client", "pyjinhx.session"}),
+    # config is lazy: inject_runtime() reads current_settings().theme inside
+    # its own body; test_inject_only_imports_config_inside_a_function_body
+    # pins it out of module scope.
+    "client.inject": frozenset(
+        {"pyjinhx.assets", "pyjinhx.client", "pyjinhx.config", "pyjinhx.session"}
+    ),
     # descriptor/props_header are ordinary upward reads. render and session are
     # the reverse edges behind BaseComponent.render(): both are imported inside
     # the method body, never at module scope, because rendering.py imports
@@ -855,6 +860,11 @@ def test_nothing_below_config_imports_config():
     the process's render-cache backend. config sits above the render spine, so
     a module-scope edge would be a genuine cycle.
     test_render_cache_only_imports_config_inside_a_function_body pins it there.
+
+    client/inject.py is the sixth, lazy for the same reason: inject_runtime()
+    calls current_settings() inside its own body to decide whether to record
+    the theme sheet. test_inject_only_imports_config_inside_a_function_body
+    pins it there.
     """
     importers = {
         module_name(path)
@@ -862,6 +872,7 @@ def test_nothing_below_config_imports_config():
         if "pyjinhx.config" in internal_imports(path)
     }
     assert importers == {
+        "client.inject",
         "integrations.fastapi",
         "reactive.cache",
         "reactive.component",
@@ -921,6 +932,16 @@ def test_session_only_imports_config_inside_a_function_body():
     import time, would be a genuine cycle. The whole-file edge table can't see
     where in the file an import lives, so pin it here."""
     module_level = module_level_internal_imports(PACKAGE_ROOT / "session.py")
+    assert "pyjinhx.config" not in module_level
+
+
+def test_inject_only_imports_config_inside_a_function_body():
+    """inject_runtime() reads current_settings() to decide whether to record
+    the theme sheet, but config sits above the client tier: a module-scope edge
+    would invert the layering and, because config imports the spine at import
+    time, would be a genuine cycle. The whole-file edge table can't see where
+    in the file an import lives, so pin it here."""
+    module_level = module_level_internal_imports(PACKAGE_ROOT / "client" / "inject.py")
     assert "pyjinhx.config" not in module_level
 
 

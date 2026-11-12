@@ -236,6 +236,12 @@ class RenderSession:
         # The always-on runtime CSS block, emitted with the other <style> tags
         # so runtime_script stays a single pure <script>.
         self.runtime_style: str | None = None
+        # The opt-in theme sheet, set beside runtime_style under the same
+        # guards. Its own field rather than a prefix of runtime_style because
+        # it exists only when PjxSettings.theme asks for it, and it has to emit
+        # ahead of pjx-style and every builtin so any later rule can override
+        # a token.
+        self.theme_style: str | None = None
         self.runtime_injected: bool = False
         # Re-entrancy depth for render(): a nested .render() (a parent
         # stringifying a child mid-build) sees depth > 0 and skips emission, so

@@ -126,6 +126,7 @@ nav:
       - "0004: Graph reconcile model": decisions/0004-graph-reconcile-model.md
       - "0005: Roster picker": decisions/0005-roster-picker.md
       - "0006: Server-rendered SVG charts": decisions/0006-server-rendered-svg-charts.md
+      - "0007: Opt-in default theme": decisions/0007-default-theme.md
 
 extra_css:
   - stylesheets/toc-collapse.css
