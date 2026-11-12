@@ -137,7 +137,5 @@ def test_spacing_follows_the_spacing_scale():
     )
     assert "--pjx-empty-state-gap: var(--pjx-space-2, 0.5rem);" in defaults
     assert "--pjx-empty-state-actions-gap: var(--pjx-space-2, 0.5rem);" in defaults
-    assert (
-        "padding: var(--pjx-space-1, 0.25rem) var(--pjx-space-3, 0.75rem);" in chip
-    )
+    assert "padding: var(--pjx-space-1, 0.25rem) var(--pjx-space-3, 0.75rem);" in chip
     assert "background: var(--pjx-color-surface-hover, #f4f4f5);" in hover
