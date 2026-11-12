@@ -25,6 +25,7 @@ BARE_HEX = re.compile(r"#[0-9a-fA-F]{3,8}\b")
 # Paths relative to pyjinhx/builtins; one line per migrated stylesheet.
 NAVIGATION_SHEETS = [
     "ui/pjx_tab_group/pjx_tab_group.css",
+    "ui/pjx_tab/pjx_tab.css",
 ]
 
 
@@ -116,4 +117,72 @@ def test_tab_group_rule_reads_its_component_tokens():
     )
     assert (
         declared(css, ".pjx-tab-group", "background") == "var(--pjx-tab-group-panel-bg)"
+    )
+
+
+TAB = "pjx_tab/pjx_tab.css"
+
+
+def test_tab_font_size_is_the_small_step():
+    assert (
+        declared(read(TAB), ".pjx-tab", "font-size")
+        == f"var(--pjx-font-size-sm, {light('--pjx-font-size-sm')})"
+    )
+
+
+def test_tab_transition_uses_theme_motion():
+    m = motion()
+    assert (
+        declared(read(TAB), ".pjx-tab", "transition")
+        == f"color {m}, border-color {m}, background {m}"
+    )
+
+
+@pytest.mark.parametrize(
+    "selector", [".pjx-tab:hover", '.pjx-tab[aria-current="true"]']
+)
+def test_tab_pressed_backgrounds_mix_the_theme_surface(selector):
+    surface = light("--pjx-color-surface")
+    assert declared(read(TAB), selector, "background") == (
+        f"color-mix(in srgb, var(--pjx-color-surface, {surface}) 35%, "
+        "var(--pjx-tab-group-bg))"
+    )
+
+
+@pytest.mark.parametrize(
+    "selector", ['.pjx-tab[aria-current="true"]', ".pjx-tab__close"]
+)
+def test_tab_corners_use_the_small_radius(selector):
+    assert (
+        declared(read(TAB), selector, "border-radius")
+        == f"var(--pjx-radius-sm, {light('--pjx-radius-sm')})"
+    )
+
+
+def test_tab_close_hover_tints_the_theme_text():
+    text = light("--pjx-color-text")
+    assert declared(read(TAB), ".pjx-tab__close:hover", "background") == (
+        f"color-mix(in srgb, var(--pjx-color-text, {text}) 12%, transparent)"
+    )
+
+
+def test_tab_keeps_its_off_scale_spacing():
+    css = read(TAB)
+    assert declared(css, ".pjx-tab", "gap") == "0.4rem"
+    assert declared(css, ".pjx-tab", "padding") == "0.55rem 1.1rem"
+    assert declared(css, ".pjx-tab__close", "margin-left") == "0.15rem"
+    assert declared(css, ".pjx-tab__close", "padding") == "0 0.2rem"
+    # Relative glyph sizing, not a theme value.
+    assert declared(css, ".pjx-tab__close", "font-size") == "1.15em"
+
+
+def test_tab_focus_and_underline_read_the_component_token():
+    css = read(TAB)
+    assert (
+        declared(css, ".pjx-tab:focus-visible", "outline")
+        == "2px solid var(--pjx-tab-group-tab-active-border)"
+    )
+    assert (
+        declared(css, ".pjx-tab-group__list .pjx-tab--selected", "border-bottom-color")
+        == "var(--pjx-tab-group-tab-active-border)"
     )
