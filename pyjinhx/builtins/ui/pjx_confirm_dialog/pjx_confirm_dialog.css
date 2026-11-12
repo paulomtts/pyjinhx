@@ -1,8 +1,9 @@
+/* ── PJXConfirmDialog tokens (defaults wire to theme tokens) ── */
 :where(:root) {
-  --pjx-confirm-dialog-bg:       var(--surface);
-  --pjx-confirm-dialog-border:   var(--border);
-  --pjx-confirm-dialog-radius:   var(--radius-md);
-  --pjx-confirm-dialog-shadow:   var(--shadow-md);
+  --pjx-confirm-dialog-bg:       var(--pjx-color-surface, #ffffff);
+  --pjx-confirm-dialog-border:   var(--pjx-color-border, #e4e4e7);
+  --pjx-confirm-dialog-radius:   var(--pjx-radius-md, 8px);
+  --pjx-confirm-dialog-shadow:   var(--pjx-shadow-md, 0 4px 12px rgb(0 0 0 / 0.08));
   --pjx-confirm-dialog-backdrop: rgb(0 0 0 / 0.5);
   --pjx-confirm-dialog-danger:   #b3261e;
 }
@@ -18,31 +19,32 @@
   border-radius: var(--pjx-confirm-dialog-radius);
   background: var(--pjx-confirm-dialog-bg);
   box-shadow: var(--pjx-confirm-dialog-shadow);
-  max-width: min(28rem, calc(100vw - 2rem));
+  max-width: min(28rem, calc(100vw - var(--pjx-space-8, 2rem)));
 }
 
 .pjx-confirm-dialog__card {
-  padding: 1.25rem 1.5rem;
+  padding: var(--pjx-space-5, 1.25rem) var(--pjx-space-6, 1.5rem);
 }
 
 .pjx-confirm-dialog__message {
-  margin: 0 0 1rem;
-  color: var(--text);
+  margin: 0 0 var(--pjx-space-4, 1rem);
+  color: var(--pjx-color-text, #18181b);
 }
 
 .pjx-confirm-dialog__actions {
   display: flex;
   justify-content: flex-end;
-  gap: 0.5rem;
+  gap: var(--pjx-space-2, 0.5rem);
 }
 
 .pjx-confirm-dialog__ok,
 .pjx-confirm-dialog__cancel {
+  /* 0.4rem/0.9rem sit between spacing steps, so they stay literal. */
   padding: 0.4rem 0.9rem;
-  border-radius: var(--radius-sm);
+  border-radius: var(--pjx-radius-sm, 4px);
   border: 1px solid var(--pjx-confirm-dialog-border);
-  background: var(--surface-alt);
-  color: var(--text);
+  background: var(--pjx-color-surface-alt, #fafafa);
+  color: var(--pjx-color-text, #18181b);
   cursor: pointer;
   font: inherit;
 }
