@@ -144,6 +144,8 @@ The theme tokens come in these groups:
 - `--pjx-z-*` — the stacking scale, from raised content up to the page loader
 - `--pjx-chart-series-N` — the eight chart series colours
 
+The [token reference](../reference/theme-tokens.md) lists every token with its light and dark value.
+
 ## Mapping your design system
 
 If your app already has its own CSS variables, point the `--pjx-*` tokens at them:

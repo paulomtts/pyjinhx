@@ -177,3 +177,23 @@ def test_demo_and_token_markers_both_replaced():
     assert "<!--" not in out
     assert '<iframe src="../../demos/pjx-badge.html"' in out
     assert _HEADER in out
+
+
+_PAGE = _DOCS / "reference" / "theme-tokens.md"
+
+
+def test_reference_page_has_one_marker():
+    text = _PAGE.read_text(encoding="utf-8")
+    assert len(re.findall(r"<!--\s*theme-tokens\s*-->", text)) == 1
+    # A hand-written row would be a stale copy of the generated table.
+    assert not any(line.startswith("| `--pjx-") for line in text.splitlines())
+
+
+def test_reference_page_is_in_nav():
+    nav = (_ROOT / "mkdocs.yml").read_text(encoding="utf-8")
+    assert "Theme Tokens: reference/theme-tokens.md" in nav
+
+
+def test_theming_guide_links_reference():
+    guide = (_DOCS / "guide" / "theming.md").read_text(encoding="utf-8")
+    assert "../reference/theme-tokens.md" in guide
