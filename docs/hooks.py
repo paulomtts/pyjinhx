@@ -24,15 +24,66 @@ def pascal_case_to_kebab_case(name: str) -> str:
 
 _MARKER = re.compile(r"<!--\s*demo:\s*([A-Za-z]+)\s*-->")
 
+# The gallery theme control. The head script applies the stored choice before
+# anything paints; braces are doubled because _PAGE goes through str.format.
 _PAGE = """<!doctype html>
 <html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<script data-pjx-demo-theme-init>
+(function () {{
+  var key = "pjx-gallery-theme";
+  var root = document.documentElement;
+  function stored() {{
+    try {{
+      return localStorage.getItem(key);
+    }} catch (error) {{
+      return null;
+    }}
+  }}
+  function apply(value) {{
+    if (value === "light" || value === "dark") {{
+      root.setAttribute("data-pjx-theme", value);
+    }} else {{
+      root.removeAttribute("data-pjx-theme");
+    }}
+    var select = document.querySelector("select[data-pjx-demo-theme]");
+    if (select) {{
+      select.value = root.getAttribute("data-pjx-theme") || "system";
+    }}
+  }}
+  apply(stored());
+  document.addEventListener("DOMContentLoaded", function () {{
+    var select = document.querySelector("select[data-pjx-demo-theme]");
+    apply(stored());
+    select.addEventListener("change", function () {{
+      apply(select.value);
+      try {{
+        if (select.value === "system") {{
+          localStorage.removeItem(key);
+        }} else {{
+          localStorage.setItem(key, select.value);
+        }}
+      }} catch (error) {{}}
+    }});
+  }});
+  window.addEventListener("storage", function (event) {{
+    if (event.key === key || event.key === null) {{
+      apply(event.newValue);
+    }}
+  }});
+}})();
+</script>
 <link rel="stylesheet" href="demo-base.css">
 {assets}
 </head>
 <body>
+<select data-pjx-demo-theme aria-label="Theme" autocomplete="off">
+<option value="system">System</option>
+<option value="light">Light</option>
+<option value="dark">Dark</option>
+</select>
 {markup}
 </body>
 </html>

@@ -426,3 +426,40 @@ def test_demo_base_css_reads_only_defined_theme_tokens(tmp_path):
     used = set(VAR_NAME.findall(css))
     assert {"--pjx-color-surface", "--pjx-color-text"} <= used
     assert used - defined == set()
+
+
+THEME_SELECT = "<select data-pjx-demo-theme "
+THEME_INIT = "<script data-pjx-demo-theme-init>"
+
+
+def test_every_demo_page_has_one_theme_toggle(tmp_path):
+    hooks.on_post_build({"site_dir": str(tmp_path)})
+    pages = sorted((tmp_path / "demos").glob("*.html"))
+    assert len(pages) == len(DEMOS)  # an empty glob must not pass vacuously
+    for path in pages:
+        page = path.read_text()
+        # Count the tag, not the bare attribute: the init script's marker and
+        # its querySelector string both contain "data-pjx-demo-theme" too.
+        assert page.count(THEME_SELECT) == 1, path.name
+        assert page.count('aria-label="Theme"') == 1, path.name
+        # The control is the first thing in <body>, ahead of the demo.
+        assert f"<body>\n{THEME_SELECT}" in page, path.name
+        select = page[page.index(THEME_SELECT) : page.index("</select>")]
+        options = re.findall(r'<option value="(\w+)">(\w+)</option>', select)
+        assert options == [
+            ("system", "System"),
+            ("light", "Light"),
+            ("dark", "Dark"),
+        ], path.name
+
+
+def test_theme_toggle_script_runs_in_head_on_every_page(tmp_path):
+    hooks.on_post_build({"site_dir": str(tmp_path)})
+    for name in ("pjx-button.html", "pjx-graph.html"):
+        page = (tmp_path / "demos" / name).read_text()
+        assert page.count(THEME_INIT) == 1, name
+        init = page.index(THEME_INIT)
+        # Ahead of every stylesheet, so a stored dark choice never paints light.
+        assert init < page.index("</head>"), name
+        assert init < page.index('<link rel="stylesheet" href="demo-base.css">'), name
+        assert init < page.index('<style id="pjx-theme">'), name
