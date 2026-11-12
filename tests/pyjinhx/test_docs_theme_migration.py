@@ -13,7 +13,7 @@ _ROOT = Path(__file__).resolve().parents[2]
 _CHANGELOG = _ROOT / "CHANGELOG.md"
 _THEME = _ROOT / "pyjinhx" / "client" / "pjx_theme.css"
 _COMPONENTS = _ROOT / "docs" / "components.md"
-_HEADING = "## Unreleased — Default theme"
+_HEADING = "## 1.15.0 — Default theme (2026-11-12)"
 
 # Old name (without the leading `--`) -> what replaces it.
 _MAPPING = {
@@ -77,10 +77,10 @@ def _mapping_rows() -> dict[str, str]:
     return dict(rows)
 
 
-def test_changelog_opens_with_the_unreleased_theme_entry():
+def test_changelog_has_the_theme_entry_above_1_14_0():
     text = _CHANGELOG.read_text(encoding="utf-8")
     headings = re.findall(r"^## .*$", text, flags=re.MULTILINE)
-    assert headings[0] == _HEADING
+    assert _HEADING in headings
     assert text.index(_HEADING) < text.index("## 1.14.0")
     assert "### Added" in _entry()
     assert "### Changed (breaking): theme token names" in _entry()
