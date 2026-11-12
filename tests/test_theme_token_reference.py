@@ -134,3 +134,46 @@ def test_dark_only_token_raises():
     css = ':root {\n  --pjx-a: 1;\n}\n\n[data-pjx-theme="dark"] {\n  --pjx-b: 2;\n}\n'
     with pytest.raises(ValueError, match="--pjx-b"):
         hooks.theme_token_table(css)
+
+
+class FakeFile:
+    src_path = "reference/theme-tokens.md"
+
+
+class FakePage:
+    file = FakeFile()
+    url = "reference/theme-tokens/"
+
+
+def _hook(markdown: str) -> str:
+    return hooks.on_page_markdown(markdown, page=FakePage(), config={}, files=None)
+
+
+def test_marker_becomes_table():
+    out = _hook("intro\n\n<!-- theme-tokens -->\n\nafter")
+    assert "theme-tokens -->" not in out
+    assert _HEADER in out
+    assert "`--pjx-space-1`" in out
+    assert out.startswith("intro\n\n") and out.endswith("\n\nafter")
+
+
+def test_hook_inserts_table_verbatim():
+    out = _hook("before\n<!-- theme-tokens -->\nafter")
+    assert out == f"before\n{hooks.theme_token_table(_sheet())}\nafter"
+
+
+def test_marker_spacing_is_tolerated():
+    for marker in ("<!--theme-tokens-->", "<!--   theme-tokens   -->"):
+        assert _HEADER in _hook(marker), marker
+
+
+def test_page_without_marker_is_unchanged():
+    markdown = "# Title\n\nplain text, no markers here.\n"
+    assert _hook(markdown) == markdown
+
+
+def test_demo_and_token_markers_both_replaced():
+    out = _hook("<!-- demo: PJXBadge -->\n\n<!-- theme-tokens -->\n")
+    assert "<!--" not in out
+    assert '<iframe src="../../demos/pjx-badge.html"' in out
+    assert _HEADER in out

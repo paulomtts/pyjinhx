@@ -12,6 +12,7 @@ from demos import DEMOS, RUNTIME_DEMOS
 
 from pyjinhx._component import BaseComponent, _pascal_to_snake
 from pyjinhx.assets import AssetMode, emit_assets
+from pyjinhx.client import read_pjx_theme_css
 from pyjinhx.client.inject import inject_runtime
 from pyjinhx.session import RenderSession, accumulate_assets, request_scope
 
@@ -22,6 +23,7 @@ def pascal_case_to_kebab_case(name: str) -> str:
 
 
 _MARKER = re.compile(r"<!--\s*demo:\s*([A-Za-z]+)\s*-->")
+_THEME_MARKER = re.compile(r"<!--\s*theme-tokens\s*-->")
 
 _PAGE = """<!doctype html>
 <html>
@@ -65,7 +67,13 @@ def on_page_markdown(markdown, *, page, config, files):
             f'style="{_IFRAME_STYLE}" loading="lazy" title="{name} demo"></iframe>'
         )
 
-    return _MARKER.sub(replace, markdown)
+    markdown = _MARKER.sub(replace, markdown)
+    if _THEME_MARKER.search(markdown):
+        table = theme_token_table(read_pjx_theme_css())
+        # A function replacement, so backslashes in the table (escaped "\|")
+        # are inserted as-is instead of read as regex escapes.
+        markdown = _THEME_MARKER.sub(lambda _match: table, markdown)
+    return markdown
 
 
 _DECLARATION = re.compile(r"(--pjx-[a-z0-9-]+)\s*:\s*([^;]+);")
