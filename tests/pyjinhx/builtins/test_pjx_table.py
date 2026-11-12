@@ -95,6 +95,15 @@ class TestAssets:
     def test_subcomponents_ship_no_stylesheet_of_their_own(self):
         assert PJXTableBody.__pjx_descriptor__.css_paths == ()
 
+    def test_cell_padding_follows_the_spacing_scale(self):
+        css = " ".join(PJXTable.__pjx_descriptor__.css_paths[0].read_text().split())
+        defaults = css.split(":where(:root) {", 1)[1].split("}", 1)[0]
+        compact = css.split(".pjx-table--density-compact {", 1)[1].split("}", 1)[0]
+        assert "--pjx-table-cell-pad-y: var(--pjx-space-3, 0.75rem);" in defaults
+        assert "--pjx-table-cell-pad-x: var(--pjx-space-4, 1rem);" in defaults
+        assert "--pjx-table-cell-pad-y: var(--pjx-space-2, 0.5rem);" in compact
+        assert "--pjx-table-cell-pad-x: var(--pjx-space-3, 0.75rem);" in compact
+
 
 class TestSlotOpacity:
     def test_string_filter_on_a_component_slot_raises(self, session, tmp_path):

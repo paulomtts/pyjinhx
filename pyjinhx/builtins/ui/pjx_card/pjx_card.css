@@ -1,13 +1,13 @@
 :where(:root) {
-  --pjx-card-bg: var(--surface-alt);
-  --pjx-card-border: var(--border);
-  --pjx-card-radius: var(--radius-md);
+  --pjx-card-bg: var(--pjx-color-surface-alt, #fafafa);
+  --pjx-card-border: var(--pjx-color-border, #e4e4e7);
+  --pjx-card-radius: var(--pjx-radius-md, 8px);
   --pjx-card-shadow: none;
-  --pjx-card-title-color: var(--text);
-  --pjx-card-padding: var(--space-4, 1rem);
-  --pjx-card-header-sep: var(--border);
-  --pjx-card-footer-sep: var(--border);
-  --pjx-card-footer-bg: color-mix(in srgb, var(--surface) 60%, var(--surface-alt));
+  --pjx-card-title-color: var(--pjx-color-text, #18181b);
+  --pjx-card-padding: var(--pjx-space-4, 1rem);
+  --pjx-card-header-sep: var(--pjx-color-border, #e4e4e7);
+  --pjx-card-footer-sep: var(--pjx-color-border, #e4e4e7);
+  --pjx-card-footer-bg: color-mix(in srgb, var(--pjx-color-surface, #ffffff) 60%, var(--pjx-color-surface-alt, #fafafa));
 }
 
 .pjx-card {
