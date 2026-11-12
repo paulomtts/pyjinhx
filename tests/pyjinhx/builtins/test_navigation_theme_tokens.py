@@ -26,6 +26,7 @@ BARE_HEX = re.compile(r"#[0-9a-fA-F]{3,8}\b")
 NAVIGATION_SHEETS = [
     "ui/pjx_tab_group/pjx_tab_group.css",
     "ui/pjx_tab/pjx_tab.css",
+    "ui/pjx_breadcrumb/pjx_breadcrumb.css",
 ]
 
 
@@ -186,3 +187,38 @@ def test_tab_focus_and_underline_read_the_component_token():
         declared(css, ".pjx-tab-group__list .pjx-tab--selected", "border-bottom-color")
         == "var(--pjx-tab-group-tab-active-border)"
     )
+
+
+BREADCRUMB = "pjx_breadcrumb/pjx_breadcrumb.css"
+
+
+@pytest.mark.parametrize(
+    ("token", "theme"),
+    [
+        ("--pjx-breadcrumb-sep-color", "--pjx-color-text-muted"),
+        ("--pjx-breadcrumb-link-color", "--pjx-color-brand"),
+        ("--pjx-breadcrumb-current-color", "--pjx-color-text"),
+    ],
+)
+def test_breadcrumb_colours_follow_the_theme(token, theme):
+    assert (
+        declared(read(BREADCRUMB), ":where(:root)", token)
+        == f"var({theme}, {light(theme)})"
+    )
+
+
+def test_breadcrumb_font_size_gains_its_fallback():
+    assert (
+        declared(read(BREADCRUMB), ":where(:root)", "--pjx-breadcrumb-font-size")
+        == f"var(--pjx-font-size-sm, {light('--pjx-font-size-sm')})"
+    )
+
+
+def test_breadcrumb_gap_keeps_its_off_scale_value():
+    assert (
+        declared(read(BREADCRUMB), ":where(:root)", "--pjx-breadcrumb-gap") == "0.35rem"
+    )
+
+
+def test_breadcrumb_separator_stays_a_slash():
+    assert declared(read(BREADCRUMB), ":where(:root)", "--pjx-breadcrumb-sep") == '"/"'
