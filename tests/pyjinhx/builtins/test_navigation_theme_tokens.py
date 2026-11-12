@@ -1,4 +1,4 @@
-"""Navigation builtins (tabs, breadcrumb, paginator) default to theme tokens."""
+"""Navigation builtins (tabs, breadcrumb, paginator, accordion, resizable) default to theme tokens."""
 
 from __future__ import annotations
 
@@ -28,6 +28,7 @@ NAVIGATION_SHEETS = [
     "ui/pjx_tab/pjx_tab.css",
     "ui/pjx_breadcrumb/pjx_breadcrumb.css",
     "pjx_paginator/pjx_paginator.css",
+    "ui/pjx_resizable_handle/pjx_resizable_handle.css",
 ]
 
 
@@ -292,3 +293,67 @@ def test_paginator_current_page_reads_its_component_tokens():
     assert declared(css, selector, "color") == "var(--pjx-paginator-current-fg)"
     assert declared(css, selector, "background") == "var(--pjx-paginator-current-bg)"
     assert declared(css, selector, "border-color") == "var(--pjx-paginator-current-bg)"
+
+
+HANDLE = "pjx_resizable_handle/pjx_resizable_handle.css"
+HANDLE_ACTIVE = (
+    ".pjx-resizable-group__handle:hover::before,\n"
+    ".pjx-resizable-group--dragging .pjx-resizable-group__handle::before"
+)
+
+
+def test_resizable_handle_size_is_on_the_spacing_scale():
+    assert declared(read(HANDLE), ".pjx-resizable-group__handle", "flex") == (
+        "0 0 var(--pjx-resizable-handle-size, "
+        f"var(--pjx-space-2, {light('--pjx-space-2')}))"
+    )
+
+
+def test_resizable_grip_defaults_to_theme_tokens():
+    css = read(HANDLE)
+    grip = ".pjx-resizable-group__handle::before"
+    assert declared(css, grip, "background") == (
+        "var(--pjx-resizable-grip-color, "
+        f"var(--pjx-color-border, {light('--pjx-color-border')}))"
+    )
+    assert (
+        declared(css, grip, "border-radius")
+        == f"var(--pjx-radius-full, {light('--pjx-radius-full')})"
+    )
+
+
+def test_resizable_grip_transition_uses_theme_motion():
+    assert (
+        declared(read(HANDLE), ".pjx-resizable-group__handle::before", "transition")
+        == f"background {motion()}"
+    )
+
+
+def test_resizable_active_grip_defaults_to_brand_muted():
+    # One rule for both selectors: the pointer leaves the handle mid-drag.
+    assert declared(read(HANDLE), HANDLE_ACTIVE, "background") == (
+        "var(--pjx-resizable-handle-color-active, "
+        f"var(--pjx-color-brand-muted, {light('--pjx-color-brand-muted')}))"
+    )
+
+
+def test_resizable_focus_ring_uses_brand_muted():
+    css = read(HANDLE)
+    focus = ".pjx-resizable-group__handle:focus-visible"
+    assert (
+        declared(css, focus, "outline")
+        == f"2px solid var(--pjx-color-brand-muted, {light('--pjx-color-brand-muted')})"
+    )
+    assert declared(css, focus, "outline-offset") == "-2px"
+
+
+def test_resizable_grip_keeps_its_literal_sizes():
+    css = read(HANDLE)
+    row = ".pjx-resizable-group--row > .pjx-resizable-group__handle::before"
+    column = ".pjx-resizable-group--column > .pjx-resizable-group__handle::before"
+    assert declared(css, row, "width") == "3px"
+    assert declared(css, row, "height") == "2.5rem"
+    assert declared(css, column, "width") == "2.5rem"
+    assert declared(css, column, "height") == "3px"
+    # Off-scale values stay literal with a comment saying why (DT:66).
+    assert any("grip" in comment for comment in COMMENT.findall(css))
