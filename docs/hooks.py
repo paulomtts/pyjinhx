@@ -12,6 +12,7 @@ from demos import DEMOS, RUNTIME_DEMOS
 
 from pyjinhx._component import BaseComponent, _pascal_to_snake
 from pyjinhx.assets import AssetMode, emit_assets
+from pyjinhx.client import read_pjx_theme_css
 from pyjinhx.client.inject import inject_runtime
 from pyjinhx.session import RenderSession, accumulate_assets, request_scope
 
@@ -99,6 +100,12 @@ def on_post_build(config):
         # LINK mode is never used, so emit_assets needs no resolver.
         session.css_mode = AssetMode.INLINE
         session.js_mode = AssetMode.INLINE
+        # The gallery is the showcase of the shipped theme, so every page gets
+        # the sheet whatever PjxSettings.theme says: inject_runtime applies
+        # that setting only on runtime pages, and the build must not depend on
+        # global config. emit_assets puts theme_style first; on a themed
+        # process inject_runtime overwrites it with the identical tag.
+        session.theme_style = f'<style id="pjx-theme">{read_pjx_theme_css()}</style>'
         if name in RUNTIME_DEMOS:
             # The other pages are static snapshots that need no htmx/pjx.js to
             # paint; a runtime demo does real htmx swaps (the graph's wire

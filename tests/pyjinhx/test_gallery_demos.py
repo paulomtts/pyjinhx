@@ -3,6 +3,7 @@
 import dataclasses
 import re
 import sys
+from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
@@ -16,6 +17,29 @@ import hooks
 from demos import DEMOS
 
 from pyjinhx._component import BaseComponent
+from pyjinhx.client import read_pjx_theme_css
+from pyjinhx.config import (
+    PjxSettings,
+    configure_pyjinhx,
+    current_settings,
+    shutdown_pyjinhx,
+)
+
+
+def theme_tag() -> str:
+    """Return the exact theme block every demo page must carry."""
+    return f'<style id="pjx-theme">{read_pjx_theme_css()}</style>'
+
+
+# Copied from tests/pyjinhx/client/test_pjx_theme_inject.py: the tests tree
+# has no __init__.py files, so test modules cannot import each other reliably.
+@pytest.fixture
+def themed() -> Iterator[None]:
+    configure_pyjinhx(PjxSettings(theme="default"))
+    # Teardown after yield runs even when the test fails, so the theme never
+    # leaks into a later test that expects the default settings.
+    yield
+    shutdown_pyjinhx()
 
 
 class FakeFile:
@@ -98,7 +122,11 @@ def test_multi_component_demo_emits_each_asset_once(tmp_path):
     (css_path,) = PJXSpinner.__pjx_descriptor__.css_paths
     text = Path(css_path).read_text()
     assert page.count(text) == 1  # three spinners, one stylesheet
-    assert page.count("<style ") == len(set(PJXSpinner.__pjx_descriptor__.css_paths))
+    # Count component blocks only: the page also carries the theme's
+    # <style id="pjx-theme">, which is not a component asset.
+    assert page.count("<style data-pjx-asset=") == len(
+        set(PJXSpinner.__pjx_descriptor__.css_paths)
+    )
 
 
 def test_base_css_link_survives_and_output_is_stable(tmp_path):
@@ -328,3 +356,40 @@ def test_runtime_page_output_is_stable(tmp_path, name):
     page_a = (first / "demos" / name).read_text()
     page_b = (second / "demos" / name).read_text()
     assert page_a == page_b
+
+
+def test_every_demo_page_carries_the_theme_once(tmp_path):
+    settings = current_settings()
+    hooks.on_post_build({"site_dir": str(tmp_path)})
+    # The gallery is themed by the build itself, never by global config.
+    assert current_settings() is settings
+    pages = sorted((tmp_path / "demos").glob("*.html"))
+    assert len(pages) == len(DEMOS)  # an empty glob must not pass vacuously
+    tag = theme_tag()
+    for path in pages:
+        assert path.read_text().count(tag) == 1, path.name
+
+
+def test_theme_precedes_component_and_runtime_styles(tmp_path):
+    hooks.on_post_build({"site_dir": str(tmp_path)})
+    tag = theme_tag()
+
+    static = (tmp_path / "demos" / "pjx-button.html").read_text()
+    theme = static.index(tag)
+    assert theme < static.index("<style data-pjx-asset=")
+    assert theme < static.index("</head>")  # static assets stay in <head>
+
+    runtime = (tmp_path / "demos" / "pjx-graph.html").read_text()
+    theme = runtime.index(tag)
+    # Runtime assets, theme included, sit at the end of <body> for pjx.js.
+    assert runtime.index("<body>") < theme
+    assert theme < runtime.index('<style id="pjx-style">')
+    assert theme < runtime.index("<style data-pjx-asset=")
+
+
+def test_runtime_page_has_one_theme_under_theme_default(tmp_path, themed):
+    hooks.on_post_build({"site_dir": str(tmp_path)})
+    tag = theme_tag()
+    for name in ("pjx-graph.html", "pjx-button.html"):
+        page = (tmp_path / "demos" / name).read_text()
+        assert page.count(tag) == 1, name
