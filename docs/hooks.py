@@ -12,6 +12,7 @@ from demos import DEMOS, RUNTIME_DEMOS
 
 from pyjinhx._component import BaseComponent, _pascal_to_snake
 from pyjinhx.assets import AssetMode, emit_assets
+from pyjinhx.client import read_pjx_theme_css
 from pyjinhx.client.inject import inject_runtime
 from pyjinhx.session import RenderSession, accumulate_assets, request_scope
 
@@ -22,16 +23,68 @@ def pascal_case_to_kebab_case(name: str) -> str:
 
 
 _MARKER = re.compile(r"<!--\s*demo:\s*([A-Za-z]+)\s*-->")
+_THEME_MARKER = re.compile(r"<!--\s*theme-tokens\s*-->")
 
+# The gallery theme control. The head script applies the stored choice before
+# anything paints; braces are doubled because _PAGE goes through str.format.
 _PAGE = """<!doctype html>
 <html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<script data-pjx-demo-theme-init>
+(function () {{
+  var key = "pjx-gallery-theme";
+  var root = document.documentElement;
+  function stored() {{
+    try {{
+      return localStorage.getItem(key);
+    }} catch (error) {{
+      return null;
+    }}
+  }}
+  function apply(value) {{
+    if (value === "light" || value === "dark") {{
+      root.setAttribute("data-pjx-theme", value);
+    }} else {{
+      root.removeAttribute("data-pjx-theme");
+    }}
+    var select = document.querySelector("select[data-pjx-demo-theme]");
+    if (select) {{
+      select.value = root.getAttribute("data-pjx-theme") || "system";
+    }}
+  }}
+  apply(stored());
+  document.addEventListener("DOMContentLoaded", function () {{
+    var select = document.querySelector("select[data-pjx-demo-theme]");
+    apply(stored());
+    select.addEventListener("change", function () {{
+      apply(select.value);
+      try {{
+        if (select.value === "system") {{
+          localStorage.removeItem(key);
+        }} else {{
+          localStorage.setItem(key, select.value);
+        }}
+      }} catch (error) {{}}
+    }});
+  }});
+  window.addEventListener("storage", function (event) {{
+    if (event.key === key || event.key === null) {{
+      apply(event.newValue);
+    }}
+  }});
+}})();
+</script>
 <link rel="stylesheet" href="demo-base.css">
 {assets}
 </head>
 <body>
+<select data-pjx-demo-theme aria-label="Theme" autocomplete="off">
+<option value="system">System</option>
+<option value="light">Light</option>
+<option value="dark">Dark</option>
+</select>
 {markup}
 </body>
 </html>
@@ -65,7 +118,48 @@ def on_page_markdown(markdown, *, page, config, files):
             f'style="{_IFRAME_STYLE}" loading="lazy" title="{name} demo"></iframe>'
         )
 
-    return _MARKER.sub(replace, markdown)
+    markdown = _MARKER.sub(replace, markdown)
+    if _THEME_MARKER.search(markdown):
+        table = theme_token_table(read_pjx_theme_css())
+        # A function replacement, so backslashes in the table (escaped "\|")
+        # are inserted as-is instead of read as regex escapes.
+        markdown = _THEME_MARKER.sub(lambda _match: table, markdown)
+    return markdown
+
+
+_DECLARATION = re.compile(r"(--pjx-[a-z0-9-]+)\s*:\s*([^;]+);")
+
+
+def _css_block(css: str, selector: str) -> dict[str, str]:
+    """Return the ``--pjx-*`` declarations of the column-0 ``selector { ... }`` block."""
+    # Column 0 only: the @media block's indented ":root:not(...)" must not
+    # be taken for the top-level :root.
+    match = re.search(
+        rf"^{re.escape(selector)} \{{\n(.*?)^\}}", css, re.DOTALL | re.MULTILINE
+    )
+    if not match:
+        raise ValueError(f"theme sheet has no {selector} block")
+    return {name: value.strip() for name, value in _DECLARATION.findall(match[1])}
+
+
+def _code_cell(text: str) -> str:
+    """Render text as inline code that cannot split a table cell."""
+    escaped = text.replace("|", "\\|")
+    return f"`{escaped}`"
+
+
+def theme_token_table(css: str) -> str:
+    """Return a markdown table of every ``:root`` token with its light and forced-dark value."""
+    light = _css_block(css, ":root")
+    dark = _css_block(css, '[data-pjx-theme="dark"]')
+    dark_only = [name for name in dark if name not in light]
+    if dark_only:
+        raise ValueError(f"dark block declares tokens missing from :root: {dark_only}")
+    lines = ["| Token | Light | Dark |", "|---|---|---|"]
+    for name, value in light.items():
+        dark_cell = _code_cell(dark[name]) if name in dark else "—"
+        lines.append(f"| {_code_cell(name)} | {_code_cell(value)} | {dark_cell} |")
+    return "\n".join(lines)
 
 
 def on_post_build(config):
@@ -99,6 +193,12 @@ def on_post_build(config):
         # LINK mode is never used, so emit_assets needs no resolver.
         session.css_mode = AssetMode.INLINE
         session.js_mode = AssetMode.INLINE
+        # The gallery is the showcase of the shipped theme, so every page gets
+        # the sheet whatever PjxSettings.theme says: inject_runtime applies
+        # that setting only on runtime pages, and the build must not depend on
+        # global config. emit_assets puts theme_style first; on a themed
+        # process inject_runtime overwrites it with the identical tag.
+        session.theme_style = f'<style id="pjx-theme">{read_pjx_theme_css()}</style>'
         if name in RUNTIME_DEMOS:
             # The other pages are static snapshots that need no htmx/pjx.js to
             # paint; a runtime demo does real htmx swaps (the graph's wire

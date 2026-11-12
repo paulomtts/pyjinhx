@@ -2,7 +2,7 @@
   flex: 1;
   overflow-y: auto;
   padding: var(--pjx-drawer-padding);
-  color: var(--text);
-  font-size: var(--font-size-sm);
+  color: var(--pjx-color-text, #18181b);
+  font-size: var(--pjx-font-size-sm, 0.875rem);
   line-height: 1.5;
 }

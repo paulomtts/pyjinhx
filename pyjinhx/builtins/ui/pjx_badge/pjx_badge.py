@@ -7,7 +7,9 @@ from pyjinhx._component import AttrValue, BaseComponent, ExtraAttrs
 
 class PJXBadge(BaseComponent):
     label: str = ""
-    color: Literal["brand", "error", "neutral", "muted"] = "neutral"
+    color: Literal[
+        "brand", "error", "neutral", "muted", "info", "success", "warning"
+    ] = "neutral"
     shape: Literal["square", "sm", "md", "full"] = "md"
     removable: bool = False
     remove_label: str = "Remove"

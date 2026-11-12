@@ -1,18 +1,19 @@
 /* ── PJXSelect tokens ────────────────────────────────────────────────────────── */
 :where(:root) {
-  --pjx-select-bg:            var(--surface, #fff);
-  --pjx-select-fg:            var(--text);
-  --pjx-select-border:        var(--border);
-  --pjx-select-focus:         var(--border-focus, var(--border));
-  --pjx-select-radius:        var(--radius-md);
-  --pjx-select-padding:       0.375rem 0.5rem;
-  --pjx-select-panel-bg:      var(--surface-alt);
-  --pjx-select-panel-shadow:  var(--shadow-md);
+  --pjx-select-bg:            var(--pjx-color-surface, #ffffff);
+  --pjx-select-fg:            var(--pjx-color-text, #18181b);
+  --pjx-select-border:        var(--pjx-color-border, #e4e4e7);
+  --pjx-select-focus:         var(--pjx-color-border-focus, #3f3f46);
+  --pjx-select-radius:        var(--pjx-radius-md, 8px);
+  /* The vertical 0.375rem is off-scale so the trigger matches the chip input's height. */
+  --pjx-select-padding:       0.375rem var(--pjx-space-2, 0.5rem);
+  --pjx-select-panel-bg:      var(--pjx-color-surface-alt, #fafafa);
+  --pjx-select-panel-shadow:  var(--pjx-shadow-md, 0 4px 12px rgb(0 0 0 / 0.08));
   --pjx-select-panel-min-w:   12rem;
   --pjx-select-panel-max-h:   16rem;
-  --pjx-select-panel-z:       300;
-  --pjx-select-option-hover:  var(--surface-hover, var(--surface-alt));
-  --pjx-select-option-active: var(--accent-soft, var(--surface-alt));
+  --pjx-select-panel-z:       var(--pjx-z-popover, 300);
+  --pjx-select-option-hover:  var(--pjx-color-surface-hover, #f4f4f5);
+  --pjx-select-option-active: var(--pjx-color-brand-muted, #d4d4d8);
 }
 
 .pjx-select {
@@ -24,7 +25,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.5rem;
+  gap: var(--pjx-space-2, 0.5rem);
   width: 100%;
   font: inherit;
   color: var(--pjx-select-fg);
@@ -47,6 +48,7 @@
 
 .pjx-select__panel {
   position: absolute;
+  /* Must match the 4px gap pjx_select.js assumes when it flips the panel above the trigger. */
   top: calc(100% + 4px);
   left: 0;
   z-index: var(--pjx-select-panel-z);
@@ -112,15 +114,16 @@
 .pjx-select__chips .pjx-chip-input__chip {
   display: inline-flex;
   align-items: center;
-  gap: 0.25rem;
+  gap: var(--pjx-space-1, 0.25rem);
   max-width: 100%;
-  padding: 0.125rem 0.5rem;
-  background: var(--pjx-chip-input-chip-bg, var(--surface-alt));
-  color: var(--pjx-chip-input-chip-fg, var(--text));
-  border-radius: var(--pjx-chip-input-chip-radius, var(--radius-full));
-  border: 1px solid var(--pjx-chip-input-border, var(--border));
+  /* Half a step vertically keeps the chip inside one line of text. */
+  padding: 0.125rem var(--pjx-space-2, 0.5rem);
+  background: var(--pjx-chip-input-chip-bg, var(--pjx-color-surface-alt, #fafafa));
+  color: var(--pjx-chip-input-chip-fg, var(--pjx-color-text, #18181b));
+  border-radius: var(--pjx-chip-input-chip-radius, var(--pjx-radius-full, 9999px));
+  border: 1px solid var(--pjx-chip-input-border, var(--pjx-color-border, #e4e4e7));
   font-size: 0.875em;
-  line-height: 1.5;
+  line-height: var(--pjx-line-height-normal, 1.5);
 }
 
 .pjx-select__chips .pjx-chip-input__label {
@@ -132,8 +135,9 @@
 
 .pjx-select__checkbox {
   flex: none;
-  margin-right: 0.5rem;
-  accent-color: var(--pjx-select-option-active);
+  margin-right: var(--pjx-space-2, 0.5rem);
+  /* Brand, not the active-row tint: a checked box in that tint would vanish on the panel. */
+  accent-color: var(--pjx-color-brand, #27272a);
   pointer-events: none;
 }
 
@@ -142,7 +146,7 @@
 .pjx-select__filter {
   width: 100%;
   box-sizing: border-box;
-  margin-bottom: 0.25rem;
+  margin-bottom: var(--pjx-space-1, 0.25rem);
   padding: var(--pjx-select-padding);
   border: 1px solid var(--pjx-select-border);
   border-radius: var(--pjx-select-radius);

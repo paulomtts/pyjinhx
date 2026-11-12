@@ -3,6 +3,7 @@
 import dataclasses
 import re
 import sys
+from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
@@ -16,6 +17,29 @@ import hooks
 from demos import DEMOS
 
 from pyjinhx._component import BaseComponent
+from pyjinhx.client import read_pjx_theme_css
+from pyjinhx.config import (
+    PjxSettings,
+    configure_pyjinhx,
+    current_settings,
+    shutdown_pyjinhx,
+)
+
+
+def theme_tag() -> str:
+    """Return the exact theme block every demo page must carry."""
+    return f'<style id="pjx-theme">{read_pjx_theme_css()}</style>'
+
+
+# Copied from tests/pyjinhx/client/test_pjx_theme_inject.py: the tests tree
+# has no __init__.py files, so test modules cannot import each other reliably.
+@pytest.fixture
+def themed() -> Iterator[None]:
+    configure_pyjinhx(PjxSettings(theme="default"))
+    # Teardown after yield runs even when the test fails, so the theme never
+    # leaks into a later test that expects the default settings.
+    yield
+    shutdown_pyjinhx()
 
 
 class FakeFile:
@@ -98,7 +122,11 @@ def test_multi_component_demo_emits_each_asset_once(tmp_path):
     (css_path,) = PJXSpinner.__pjx_descriptor__.css_paths
     text = Path(css_path).read_text()
     assert page.count(text) == 1  # three spinners, one stylesheet
-    assert page.count("<style ") == len(set(PJXSpinner.__pjx_descriptor__.css_paths))
+    # Count component blocks only: the page also carries the theme's
+    # <style id="pjx-theme">, which is not a component asset.
+    assert page.count("<style data-pjx-asset=") == len(
+        set(PJXSpinner.__pjx_descriptor__.css_paths)
+    )
 
 
 def test_base_css_link_survives_and_output_is_stable(tmp_path):
@@ -327,4 +355,150 @@ def test_runtime_page_output_is_stable(tmp_path, name):
     hooks.on_post_build({"site_dir": str(second)})
     page_a = (first / "demos" / name).read_text()
     page_b = (second / "demos" / name).read_text()
+    assert page_a == page_b
+
+
+# Copied from tests/pyjinhx/test_theme_tokens.py: the tests tree has no
+# __init__.py files, so test modules cannot import each other reliably.
+ROOT = re.compile(r"^:root \{(.*?)^\}", re.MULTILINE | re.DOTALL)
+DECLARATION = re.compile(r"([\w-]+):\s*([^;]+);")
+LEGACY_NAME = re.compile(
+    r"(?<![\w-])--(?:"
+    r"surface(?:-alt|-hover)?|text(?:-muted)?|border(?:-focus)?"
+    r"|brand(?:-subtle|-muted)?|error(?:-bg|-border)?|success|warning"
+    r"|font-size-[\w-]+|radius-[\w-]+|shadow-md|space-\d+|transition"
+    r")(?![\w-])"
+)
+CUSTOM_PROPERTY = re.compile(r"^\s*--[\w-]+\s*:", re.MULTILINE)
+VAR_NAME = re.compile(r"(?<![\w-])var\(\s*(--[\w-]+)")
+
+
+def test_every_demo_page_carries_the_theme_once(tmp_path):
+    settings = current_settings()
+    hooks.on_post_build({"site_dir": str(tmp_path)})
+    # The gallery is themed by the build itself, never by global config.
+    assert current_settings() is settings
+    pages = sorted((tmp_path / "demos").glob("*.html"))
+    assert len(pages) == len(DEMOS)  # an empty glob must not pass vacuously
+    tag = theme_tag()
+    for path in pages:
+        assert path.read_text().count(tag) == 1, path.name
+
+
+def test_theme_precedes_component_and_runtime_styles(tmp_path):
+    hooks.on_post_build({"site_dir": str(tmp_path)})
+    tag = theme_tag()
+
+    static = (tmp_path / "demos" / "pjx-button.html").read_text()
+    theme = static.index(tag)
+    assert theme < static.index("<style data-pjx-asset=")
+    assert theme < static.index("</head>")  # static assets stay in <head>
+
+    runtime = (tmp_path / "demos" / "pjx-graph.html").read_text()
+    theme = runtime.index(tag)
+    # Runtime assets, theme included, sit at the end of <body> for pjx.js.
+    assert runtime.index("<body>") < theme
+    assert theme < runtime.index('<style id="pjx-style">')
+    assert theme < runtime.index("<style data-pjx-asset=")
+
+
+def test_runtime_page_has_one_theme_under_theme_default(tmp_path, themed):
+    hooks.on_post_build({"site_dir": str(tmp_path)})
+    tag = theme_tag()
+    for name in ("pjx-graph.html", "pjx-button.html"):
+        page = (tmp_path / "demos" / name).read_text()
+        assert page.count(tag) == 1, name
+
+
+def test_demo_base_css_defines_no_custom_properties(tmp_path):
+    hooks.on_post_build({"site_dir": str(tmp_path)})
+    css = (tmp_path / "demos" / "demo-base.css").read_text()
+    assert CUSTOM_PROPERTY.findall(css) == []
+    assert LEGACY_NAME.findall(css) == []  # comments included
+
+
+def test_demo_base_css_reads_only_defined_theme_tokens(tmp_path):
+    hooks.on_post_build({"site_dir": str(tmp_path)})
+    css = (tmp_path / "demos" / "demo-base.css").read_text()
+    root = ROOT.search(read_pjx_theme_css())
+    assert root is not None, f"token block not found: {ROOT.pattern}"
+    defined = {name for name, _value in DECLARATION.findall(root.group(1))}
+    used = set(VAR_NAME.findall(css))
+    assert {"--pjx-color-surface", "--pjx-color-text"} <= used
+    assert used - defined == set()
+
+
+THEME_SELECT = "<select data-pjx-demo-theme "
+THEME_INIT = "<script data-pjx-demo-theme-init>"
+
+
+def test_every_demo_page_has_one_theme_toggle(tmp_path):
+    hooks.on_post_build({"site_dir": str(tmp_path)})
+    pages = sorted((tmp_path / "demos").glob("*.html"))
+    assert len(pages) == len(DEMOS)  # an empty glob must not pass vacuously
+    for path in pages:
+        page = path.read_text()
+        # Count the tag, not the bare attribute: the init script's marker and
+        # its querySelector string both contain "data-pjx-demo-theme" too.
+        assert page.count(THEME_SELECT) == 1, path.name
+        assert page.count('aria-label="Theme"') == 1, path.name
+        # The control is the first thing in <body>, ahead of the demo.
+        assert f"<body>\n{THEME_SELECT}" in page, path.name
+        select = page[page.index(THEME_SELECT) : page.index("</select>")]
+        options = re.findall(r'<option value="(\w+)">(\w+)</option>', select)
+        assert options == [
+            ("system", "System"),
+            ("light", "Light"),
+            ("dark", "Dark"),
+        ], path.name
+
+
+def test_theme_toggle_script_runs_in_head_on_every_page(tmp_path):
+    hooks.on_post_build({"site_dir": str(tmp_path)})
+    for name in ("pjx-button.html", "pjx-graph.html"):
+        page = (tmp_path / "demos" / name).read_text()
+        assert page.count(THEME_INIT) == 1, name
+        init = page.index(THEME_INIT)
+        # Ahead of every stylesheet, so a stored dark choice never paints light.
+        assert init < page.index("</head>"), name
+        assert init < page.index('<link rel="stylesheet" href="demo-base.css">'), name
+        assert init < page.index('<style id="pjx-theme">'), name
+
+
+def test_typography_demo_shows_every_class():
+    from pyjinhx.client import read_pjx_theme_css
+    from pyjinhx.session import request_scope
+
+    css = read_pjx_theme_css()
+    block = css[css.index("/* Typography") :]
+    classes = re.findall(r"^\.(pjx-[a-z0-9-]+) \{", block, re.MULTILINE)
+    assert len(classes) == 10, classes
+
+    factory, _height = DEMOS["Typography"]
+    with request_scope():
+        html = str(factory())
+    attributes = [set(a.split()) for a in re.findall(r'class="([^"]*)"', html)]
+    for name in classes:
+        assert any(name in a for a in attributes), name
+    # The modifiers are drawn the way the guide says to use them: next to a size class.
+    assert {"pjx-text", "pjx-text-muted"} in attributes
+    assert {"pjx-text", "pjx-text-mono"} in attributes
+
+
+def test_post_build_gives_the_typography_page_the_sheet_once_in_the_head(tmp_path):
+    from pyjinhx.client import read_pjx_theme_css
+
+    hooks.on_post_build({"site_dir": str(tmp_path)})
+    sheet = f'<style id="pjx-theme">{read_pjx_theme_css()}</style>'
+    page = (tmp_path / "demos" / "typography.html").read_text()
+    assert page.count(sheet) == 1
+    assert page.index("<head>") < page.index(sheet) < page.index("</head>")
+    assert '<link rel="stylesheet" href="demo-base.css">' in page
+
+
+def test_typography_page_output_is_stable(tmp_path):
+    hooks.on_post_build({"site_dir": str(tmp_path / "a")})
+    hooks.on_post_build({"site_dir": str(tmp_path / "b")})
+    page_a = (tmp_path / "a" / "demos" / "typography.html").read_text()
+    page_b = (tmp_path / "b" / "demos" / "typography.html").read_text()
     assert page_a == page_b

@@ -1,5 +1,55 @@
 # Changelog
 
+## 1.15.0 — Default theme (2026-11-12)
+
+### Added
+- An opt-in default theme: one stylesheet of grouped `--pjx-*` tokens (colour, type, spacing,
+  radius, shadow, motion, z-index) that every builtin reads, with a dark mode.
+
+### Changed (breaking): theme token names
+- Builtin CSS no longer reads the unprefixed theme variables (`--surface`, `--text`,
+  `--radius-md`, `--transition`, …). They were dropped with no fallback: an app that only
+  defines the old names gets the builtins' built-in light values, not its own.
+- To migrate, either turn the shipped theme on, or rename your definitions using the table
+  below.
+- Turn the theme on with `setup(app, theme="default")` (or `PjxSettings(theme="default")`), or
+  `PJX_THEME=default` with `PjxSettings.from_env()`. An app that writes its own `<head>` reads
+  the sheet with `read_pjx_theme_css()` or serves the file at `PJX_THEME_PATH`.
+- Dark mode follows `prefers-color-scheme`; `data-pjx-theme="light"` or `"dark"` forces one.
+- Component tokens (`--pjx-<widget>-*`, such as `--pjx-button-bg`) keep their names.
+
+| Old | New |
+| --- | --- |
+| `--surface` | `--pjx-color-surface` |
+| `--surface-alt` | `--pjx-color-surface-alt` |
+| `--surface-hover` | `--pjx-color-surface-hover` |
+| `--text` | `--pjx-color-text` |
+| `--text-muted` | `--pjx-color-text-muted` |
+| `--border` | `--pjx-color-border` |
+| `--border-focus` | `--pjx-color-border-focus` |
+| `--brand` | `--pjx-color-brand` |
+| `--brand-subtle` | `--pjx-color-brand-subtle` |
+| `--brand-muted` | `--pjx-color-brand-muted` |
+| `--error` | `--pjx-color-error` |
+| `--error-bg` | `--pjx-color-error-subtle` (the suffix changes) |
+| `--error-border` | `--pjx-color-error-border` |
+| `--success` | `--pjx-color-success` |
+| `--warning` | `--pjx-color-warning` |
+| `--font-size-xs` | `--pjx-font-size-xs` |
+| `--font-size-sm` | `--pjx-font-size-sm` |
+| `--font-size-md` | `--pjx-font-size-md` |
+| `--radius-sm` | `--pjx-radius-sm` |
+| `--radius-md` | `--pjx-radius-md` |
+| `--radius-lg` | `--pjx-radius-lg` |
+| `--radius-full` | `--pjx-radius-full` |
+| `--shadow-md` | `--pjx-shadow-md` |
+| `--space-N` | `--pjx-space-N` |
+| `--transition` | `var(--pjx-duration-normal) var(--pjx-easing-standard)` (a shorthand of two tokens, not one token) |
+
+See the [Theming guide](docs/guide/theming.md), the
+[token reference](docs/reference/theme-tokens.md) and
+[ADR 0007](docs/decisions/0007-default-theme.md).
+
 ## 1.14.0 — Chart builtin (2026-11-11)
 
 ### Added

@@ -105,7 +105,7 @@ Templates then read `{{ site_name }}` and `{{ total | money }}` with no per-comp
 
 Both default to `None`, which means "nothing extra to add" — not "start from an empty environment". Jinja seeds its own globals and filters (`range`, `dict`, `|upper`, `|length`, and the rest of the standard library) into every environment first, and these settings are merged on top. Passing `jinja_globals={...}` adds to that seed; it does not replace it. A name that collides with a builtin wins.
 
-There is no environment variable for either field: `PjxSettings.from_env()` reads only the four `PJX_*` variables listed below.
+There is no environment variable for either field: `PjxSettings.from_env()` reads only the five `PJX_*` variables listed below.
 
 ### Environment variables
 
@@ -115,6 +115,7 @@ There is no environment variable for either field: `PjxSettings.from_env()` read
 - `PJX_INJECT_HTMX` — sets the `inject_htmx` field when set to `1`, `true`, or `yes` (default `true`)
 - `PJX_COMPONENTS_ROOT` — path that triggers component discovery
 - `PJX_STATIC_ROOT` — path to serve static assets from
+- `PJX_THEME` — `default` turns on the built-in theme; unset or empty means no theme; any other value raises `ValueError`. See [Theming](theming.md).
 
 ```python
 from pyjinhx import PjxSettings, setup

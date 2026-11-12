@@ -1,5 +1,5 @@
 .pjx-resizable-group__handle {
-  flex: 0 0 var(--pjx-resizable-handle-size, 0.5rem);
+  flex: 0 0 var(--pjx-resizable-handle-size, var(--pjx-space-2, 0.5rem));
   position: relative;
   touch-action: none;
   background: var(--pjx-resizable-handle-color, transparent);
@@ -10,18 +10,19 @@
   left: 50%;
   top: 50%;
   transform: translate(-50%, -50%);
-  border-radius: var(--radius-full, 999px);
-  background: var(--pjx-resizable-grip-color, var(--border));
-  transition: background var(--transition, 0.15s ease);
+  border-radius: var(--pjx-radius-full, 9999px);
+  background: var(--pjx-resizable-grip-color, var(--pjx-color-border, #e4e4e7));
+  transition: background var(--pjx-duration-normal, 150ms) var(--pjx-easing-standard, cubic-bezier(0.2, 0, 0, 1));
 }
 .pjx-resizable-group__handle:hover::before,
 .pjx-resizable-group--dragging .pjx-resizable-group__handle::before {
-  background: var(--pjx-resizable-handle-color-active, var(--brand-muted));
+  background: var(--pjx-resizable-handle-color-active, var(--pjx-color-brand-muted, #d4d4d8));
 }
 .pjx-resizable-group__handle:focus-visible {
-  outline: 2px solid var(--brand-muted);
+  outline: 2px solid var(--pjx-color-brand-muted, #d4d4d8);
   outline-offset: -2px;
 }
+/* The grip's 3px x 2.5rem bar is an element size, not spacing, so it stays literal. */
 .pjx-resizable-group--row > .pjx-resizable-group__handle { cursor: ew-resize; }
 .pjx-resizable-group--row > .pjx-resizable-group__handle::before { width: 3px; height: 2.5rem; }
 .pjx-resizable-group--column > .pjx-resizable-group__handle { cursor: ns-resize; }

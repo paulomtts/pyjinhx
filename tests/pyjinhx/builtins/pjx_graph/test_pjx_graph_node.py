@@ -287,13 +287,13 @@ class TestStylesheet:
         css = CSS.read_text(encoding="utf-8")
         tokens = _rule_block(css, ":where(:root)")
         for token in (
-            "--pjx-graph-node-bg: var(--surface);",
-            "--pjx-graph-node-border: var(--border);",
-            "--pjx-graph-node-radius: var(--radius-md);",
+            "--pjx-graph-node-bg: var(--pjx-color-surface, #ffffff);",
+            "--pjx-graph-node-border: var(--pjx-color-border, #e4e4e7);",
+            "--pjx-graph-node-radius: var(--pjx-radius-md, 8px);",
             "--pjx-graph-node-width:",
-            "--pjx-graph-node-muted: var(--text-muted);",
+            "--pjx-graph-node-muted: var(--pjx-color-text-muted, #52525b);",
             "--pjx-graph-port-size:",
-            "--pjx-graph-port-bg: var(--surface);",
+            "--pjx-graph-port-bg: var(--pjx-color-surface, #ffffff);",
         ):
             assert token in tokens
         node = _rule_block(css, ".pjx-graph__node")
@@ -301,6 +301,7 @@ class TestStylesheet:
         assert "var(--pjx-graph-node-x" in node
         assert "var(--pjx-graph-node-y" in node
         assert "var(--pjx-graph-node-color, var(--pjx-graph-node-border))" in node
+        assert "color: var(--pjx-color-text, #18181b);" in node
         for selector in (
             ".pjx-graph__node-icon",
             ".pjx-graph__node-body",
@@ -316,6 +317,19 @@ class TestStylesheet:
         assert "!important" not in css
         assert "pjx-icon" not in css
         assert "--muted-foreground" not in css
+
+    def test_off_scale_spacing_stays_literal_with_a_reason(self):
+        css = CSS.read_text(encoding="utf-8")
+        for selector, literal in (
+            (".pjx-graph__node", "0.625rem"),
+            (".pjx-graph__node-body", "0.125rem"),
+        ):
+            lines = _rule_block(css, selector).splitlines()
+            (index,) = [i for i, line in enumerate(lines) if literal in line]
+            before = lines[max(0, index - 3) : index]
+            assert any("/*" in line for line in before), (
+                f"{selector}: {literal} is off the spacing scale and needs a comment"
+            )
 
     def test_rendering_registers_stylesheet(self, session):
         from pyjinhx.session import accumulate_assets

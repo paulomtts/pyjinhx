@@ -107,6 +107,9 @@ behavior change rather than a side effect.
 
 ## Related
 
+- [ADR 0007](0007-default-theme.md) — the opt-in theme sheet extends the
+  same general-layer-first ordering: `<style id="pjx-theme">` emits before
+  `pjx-style`, builtin CSS, and app CSS.
 - [Asset Collection](../guide/assets.md#css-ordering-guarantee) — the
   app-facing statement of the guarantee.
 - Issue #1058 — the worked example, the 25-pair audit, and the original

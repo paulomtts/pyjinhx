@@ -1,11 +1,12 @@
 .pjx-tab {
   display: inline-flex;
   align-items: center;
+  /* gap and padding sit between spacing steps: they set the tab strip's established height and rhythm. */
   gap: 0.4rem;
   margin: 0;
   padding: 0.55rem 1.1rem;
   font: inherit;
-  font-size: var(--font-size-sm, 0.875rem);
+  font-size: var(--pjx-font-size-sm, 0.875rem);
   line-height: 1.4;
   color: var(--pjx-tab-group-tab-fg);
   background: transparent;
@@ -13,14 +14,14 @@
   cursor: pointer;
   user-select: none;
   transition:
-    color var(--transition, 0.15s ease),
-    border-color var(--transition, 0.15s ease),
-    background var(--transition, 0.15s ease);
+    color var(--pjx-duration-normal, 150ms) var(--pjx-easing-standard, cubic-bezier(0.2, 0, 0, 1)),
+    border-color var(--pjx-duration-normal, 150ms) var(--pjx-easing-standard, cubic-bezier(0.2, 0, 0, 1)),
+    background var(--pjx-duration-normal, 150ms) var(--pjx-easing-standard, cubic-bezier(0.2, 0, 0, 1));
 }
 
 .pjx-tab:hover {
   color: var(--pjx-tab-group-tab-active-fg);
-  background: color-mix(in srgb, var(--surface) 35%, var(--pjx-tab-group-bg));
+  background: color-mix(in srgb, var(--pjx-color-surface, #ffffff) 35%, var(--pjx-tab-group-bg));
 }
 
 .pjx-tab--selected {
@@ -47,8 +48,8 @@
 
 /* Standalone trigger (panel mode): active = subtle pressed background, no underline. */
 .pjx-tab[aria-current="true"] {
-  background: color-mix(in srgb, var(--surface) 35%, var(--pjx-tab-group-bg));
-  border-radius: var(--radius-sm, 4px);
+  background: color-mix(in srgb, var(--pjx-color-surface, #ffffff) 35%, var(--pjx-tab-group-bg));
+  border-radius: var(--pjx-radius-sm, 4px);
 }
 
 .pjx-tab__icon {
@@ -59,6 +60,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  /* Sub-step nudges that centre the close glyph; smaller than any spacing step. */
   margin-left: 0.15rem;
   padding: 0 0.2rem;
   border: none;
@@ -67,11 +69,11 @@
   font-size: 1.15em;
   line-height: 1;
   cursor: pointer;
-  border-radius: var(--radius-sm, 4px);
+  border-radius: var(--pjx-radius-sm, 4px);
   opacity: 0.65;
 }
 
 .pjx-tab__close:hover {
   opacity: 1;
-  background: color-mix(in srgb, var(--text) 12%, transparent);
+  background: color-mix(in srgb, var(--pjx-color-text, #18181b) 12%, transparent);
 }

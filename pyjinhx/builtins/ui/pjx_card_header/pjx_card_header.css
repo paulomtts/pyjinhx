@@ -5,7 +5,7 @@
 
 .pjx-card__title {
   margin: 0;
-  font-size: var(--font-size-md);
+  font-size: var(--pjx-font-size-md, 1rem);
   font-weight: 600;
   color: var(--pjx-card-title-color);
 }

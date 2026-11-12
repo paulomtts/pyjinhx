@@ -51,3 +51,11 @@ def read_pjx_style_css() -> str:
     return LOADING_INDICATOR_CSS_PATH.read_text(
         encoding="utf-8"
     ) + PAGE_LOADER_CSS_PATH.read_text(encoding="utf-8")
+
+
+PJX_THEME_PATH = Path(__file__).parent / "pjx_theme.css"
+
+
+def read_pjx_theme_css() -> str:
+    """Return the default theme stylesheet: the --pjx-* tokens and typography classes."""
+    return PJX_THEME_PATH.read_text(encoding="utf-8")

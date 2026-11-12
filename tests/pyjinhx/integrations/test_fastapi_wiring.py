@@ -903,3 +903,52 @@ def test_mounted_request_direct_render_gets_no_runtime():
 
     assert "ada" in response.text
     assert "<script>" not in response.text
+
+
+def test_fastapi_object_return_emits_the_theme_once_and_first():
+    app = FastAPI()
+    apply_setup(app, _settings(theme="default"))
+
+    @app.get("/page")
+    def page():
+        return Greeting(name="ada")
+
+    with TestClient(app) as client:
+        response = client.get("/page")
+
+    text = response.text
+    assert text.count('<style id="pjx-theme">') == 1
+    theme_at = text.index('<style id="pjx-theme">')
+    assert theme_at == text.index("<style")
+    assert theme_at < text.index('id="pjx-style"')
+
+
+def test_fastapi_double_direct_render_emits_the_theme_once():
+    app = FastAPI()
+    apply_setup(app, _settings(theme="default"))
+
+    @app.get("/page")
+    def page():
+        component = Greeting(name="ada")
+        component.render()
+        return component.render()
+
+    with TestClient(app) as client:
+        response = client.get("/page")
+
+    assert response.text.count('<style id="pjx-theme">') == 1
+
+
+def test_fastapi_mounted_request_gets_no_theme():
+    app = FastAPI()
+    apply_setup(app, _settings(theme="default"))
+
+    @app.get("/page")
+    def page():
+        return Greeting(name="ada")
+
+    with TestClient(app) as client:
+        response = client.get("/page", headers={"X-PJX-Mounted": "[]"})
+
+    assert "ada" in response.text
+    assert "pjx-theme" not in response.text

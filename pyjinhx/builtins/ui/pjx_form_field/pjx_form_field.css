@@ -1,10 +1,11 @@
 /* ── PJXFormField tokens ─────────────────────────────────────────────────────── */
 :where(:root) {
+  /* Off the spacing scale on purpose: a tighter label-to-control gap than space-2. */
   --pjx-form-field-gap:        0.375rem;
   --pjx-form-field-label-size: 0.875em;
-  --pjx-form-field-label-color: var(--text, inherit);
-  --pjx-form-field-help-color: var(--text-muted, #666);
-  --pjx-form-field-error:      #b3261e;
+  --pjx-form-field-label-color: var(--pjx-color-text, #18181b);
+  --pjx-form-field-help-color: var(--pjx-color-text-muted, #52525b);
+  --pjx-form-field-error:      var(--pjx-color-error, #dc2626);
 }
 
 .pjx-form-field {
@@ -15,7 +16,7 @@
 
 .pjx-form-field__label {
   font-size: var(--pjx-form-field-label-size);
-  font-weight: 500;
+  font-weight: var(--pjx-font-weight-medium, 500);
   color: var(--pjx-form-field-label-color);
 }
 

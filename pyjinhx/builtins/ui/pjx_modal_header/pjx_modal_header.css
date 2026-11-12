@@ -3,15 +3,15 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 1rem;
-  padding: 1rem var(--pjx-modal-padding);
+  gap: var(--pjx-space-4, 1rem);
+  padding: var(--pjx-space-4, 1rem) var(--pjx-modal-padding);
   background: var(--pjx-modal-header-bg);
   border-bottom: 1px solid var(--pjx-modal-header-sep);
   flex-shrink: 0;
 }
 
 .pjx-modal__title {
-  font-size: var(--font-size-md);
+  font-size: var(--pjx-font-size-md, 1rem);
   font-weight: 600;
   color: var(--pjx-modal-title-color);
   letter-spacing: -0.01em;
@@ -29,12 +29,14 @@
   background: transparent;
   color: var(--pjx-modal-close-color);
   border: none;
-  border-radius: var(--radius-sm);
+  border-radius: var(--pjx-radius-sm, 4px);
   cursor: pointer;
-  transition: background var(--transition), color var(--transition);
+  transition:
+    background var(--pjx-duration-normal, 150ms) var(--pjx-easing-standard, cubic-bezier(0.2, 0, 0, 1)),
+    color var(--pjx-duration-normal, 150ms) var(--pjx-easing-standard, cubic-bezier(0.2, 0, 0, 1));
   flex-shrink: 0;
 }
 .pjx-modal__close:hover {
-  background: var(--surface);
-  color: var(--text);
+  background: var(--pjx-color-surface, #ffffff);
+  color: var(--pjx-color-text, #18181b);
 }

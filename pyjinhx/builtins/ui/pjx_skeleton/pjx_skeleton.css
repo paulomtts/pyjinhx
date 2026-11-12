@@ -1,11 +1,11 @@
 :where(:root) {
-  --pjx-skeleton-bg:         var(--surface-alt);
-  --pjx-skeleton-shine:      color-mix(in srgb, var(--text) 8%, var(--surface-alt));
+  --pjx-skeleton-bg:         var(--pjx-color-surface-alt, #fafafa);
+  --pjx-skeleton-shine:      color-mix(in srgb, var(--pjx-color-text, #18181b) 8%, var(--pjx-color-surface-alt, #fafafa));
   --pjx-skeleton-line-height: 0.65rem;
-  --pjx-skeleton-line-gap:   0.5rem;
+  --pjx-skeleton-line-gap:   var(--pjx-space-2, 0.5rem);
   --pjx-skeleton-circle-size: 2.5rem;
   --pjx-skeleton-rect-height: 6rem;
-  --pjx-skeleton-rect-radius: var(--radius-md);
+  --pjx-skeleton-rect-radius: var(--pjx-radius-md, 8px);
   --pjx-skeleton-duration:   1.2s;
 }
 
@@ -34,7 +34,7 @@
 
 .pjx-skeleton__line {
   height: var(--pjx-skeleton-line-height);
-  border-radius: var(--radius-sm);
+  border-radius: var(--pjx-radius-sm, 4px);
   width: 100%;
 }
 
@@ -45,7 +45,7 @@
 .pjx-skeleton--circle .pjx-skeleton__circle {
   width: var(--pjx-skeleton-circle-size);
   height: var(--pjx-skeleton-circle-size);
-  border-radius: var(--radius-full);
+  border-radius: var(--pjx-radius-full, 9999px);
 }
 
 .pjx-skeleton--rect .pjx-skeleton__rect {

@@ -1,15 +1,16 @@
 /* ── PJXSegmentedControl tokens ──────────────────────────────────────────────── */
 :where(:root) {
-  --pjx-segmented-control-bg:        var(--surface-alt, #f0f0f0);
-  --pjx-segmented-control-border:    var(--border, #ddd);
-  --pjx-segmented-control-radius:    var(--radius-full, 9999px);
-  --pjx-segmented-control-gap:       0.25rem;
-  --pjx-segmented-control-padding:   0.25rem;
-  --pjx-segmented-control-active-bg: var(--surface, #fff);
-  --pjx-segmented-control-active-fg: var(--text, inherit);
+  --pjx-segmented-control-bg:        var(--pjx-color-surface-alt, #fafafa);
+  --pjx-segmented-control-border:    var(--pjx-color-border, #e4e4e7);
+  --pjx-segmented-control-radius:    var(--pjx-radius-full, 9999px);
+  --pjx-segmented-control-gap:       var(--pjx-space-1, 0.25rem);
+  --pjx-segmented-control-padding:   var(--pjx-space-1, 0.25rem);
+  --pjx-segmented-control-active-bg: var(--pjx-color-surface, #ffffff);
+  --pjx-segmented-control-active-fg: var(--pjx-color-text, #18181b);
+  /* Literal: on the alt track the active pill is told apart mostly by this shadow. */
   --pjx-segmented-control-active-shadow: 0 1px 3px rgb(0 0 0 / 0.12);
-  --pjx-segmented-control-fg:        var(--text-muted, #666);
-  --pjx-segmented-control-focus:     var(--border-focus, var(--brand, #0d6efd));
+  --pjx-segmented-control-fg:        var(--pjx-color-text-muted, #52525b);
+  --pjx-segmented-control-focus:     var(--pjx-color-border-focus, #3f3f46);
 }
 
 .pjx-segmented-control {
@@ -44,12 +45,12 @@
 .pjx-segmented-control__text {
   display: inline-flex;
   align-items: center;
-  padding: 0.25rem 0.75rem;
+  padding: var(--pjx-space-1, 0.25rem) var(--pjx-space-3, 0.75rem);
   border-radius: calc(var(--pjx-segmented-control-radius) - var(--pjx-segmented-control-padding));
   font-size: 0.875em;
-  font-weight: 500;
+  font-weight: var(--pjx-font-weight-medium, 500);
   color: var(--pjx-segmented-control-fg);
-  transition: background var(--transition, 0.15s ease), color var(--transition, 0.15s ease);
+  transition: background var(--pjx-duration-normal, 150ms) var(--pjx-easing-standard, cubic-bezier(0.2, 0, 0, 1)), color var(--pjx-duration-normal, 150ms) var(--pjx-easing-standard, cubic-bezier(0.2, 0, 0, 1));
   white-space: nowrap;
   user-select: none;
 }

@@ -142,3 +142,23 @@ def test_base_component_avatar_renders_raw(stack_session):
     assert 'class="pjx-avatar pjx-avatar--md"' in html
     assert "pjx-avatar-stack__pill" not in html
     assert "&lt;div" not in html
+
+
+def _stack_css() -> str:
+    css = PJXAvatarStack.__pjx_descriptor__.css_paths[0].read_text()
+    return " ".join(css.split())
+
+
+def test_pill_falls_back_to_theme_tokens_without_the_avatar_sheet():
+    pill = _stack_css().split(".pjx-avatar-stack__pill {", 1)[1].split("}", 1)[0]
+    assert (
+        "background: var(--pjx-avatar-bg, var(--pjx-color-surface-alt, #fafafa));"
+        in pill
+    )
+    assert "color: var(--pjx-avatar-fg, var(--pjx-color-text-muted, #52525b));" in pill
+
+
+def test_more_chip_padding_stays_off_scale():
+    # rsplit: the box-shadow selector list also ends in "__more {", and comes first.
+    more = _stack_css().rsplit(".pjx-avatar-stack__more {", 1)[1].split("}", 1)[0]
+    assert "padding: 0 0.3rem;" in more

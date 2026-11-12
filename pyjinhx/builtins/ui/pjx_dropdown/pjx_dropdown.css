@@ -1,15 +1,17 @@
+/* The 0.85rem horizontal padding (items and trigger) and the 0.35rem menu
+   padding sit between spacing steps, so they stay literal. */
 :where(:root) {
-  --pjx-dropdown-menu-bg:       var(--surface-alt);
-  --pjx-dropdown-menu-border:   var(--border);
-  --pjx-dropdown-menu-radius:   var(--radius-md);
-  --pjx-dropdown-menu-shadow:   var(--shadow-md);
+  --pjx-dropdown-menu-bg:       var(--pjx-color-surface-alt, #fafafa);
+  --pjx-dropdown-menu-border:   var(--pjx-color-border, #e4e4e7);
+  --pjx-dropdown-menu-radius:   var(--pjx-radius-md, 8px);
+  --pjx-dropdown-menu-shadow:   var(--pjx-shadow-md, 0 4px 12px rgb(0 0 0 / 0.08));
   --pjx-dropdown-menu-padding:  0.35rem 0;
   --pjx-dropdown-menu-min-w:    10rem;
   --pjx-dropdown-menu-max-h:    min(70dvh, 24rem);
-  --pjx-dropdown-z:             350;
-  --pjx-dropdown-item-padding:  0.5rem 0.85rem;
-  --pjx-dropdown-item-radius:   var(--radius-sm);
-  --pjx-dropdown-item-bg-hover: color-mix(in srgb, var(--text) 8%, transparent);
+  --pjx-dropdown-z:             var(--pjx-z-popover, 300);
+  --pjx-dropdown-item-padding:  var(--pjx-space-2, 0.5rem) 0.85rem;
+  --pjx-dropdown-item-radius:   var(--pjx-radius-sm, 4px);
+  --pjx-dropdown-item-bg-hover: color-mix(in srgb, var(--pjx-color-text, #18181b) 8%, transparent);
 }
 
 .pjx-dropdown {
@@ -20,23 +22,25 @@
 .pjx-dropdown__trigger {
   display: inline-flex;
   align-items: center;
+  /* 0.4rem sits between spacing steps; it is the icon-to-label gap. */
   gap: 0.4rem;
-  padding: var(--pjx-dropdown-trigger-padding, 0.5rem 0.85rem);
+  padding: var(--pjx-dropdown-trigger-padding, var(--pjx-space-2, 0.5rem) 0.85rem);
   font: inherit;
-  color: var(--text);
-  background: var(--pjx-dropdown-trigger-bg, var(--surface-alt));
-  border: 1px solid var(--pjx-dropdown-trigger-border, var(--border));
-  border-radius: var(--pjx-dropdown-trigger-radius, var(--radius-md));
+  color: var(--pjx-color-text, #18181b);
+  background: var(--pjx-dropdown-trigger-bg, var(--pjx-color-surface-alt, #fafafa));
+  border: 1px solid var(--pjx-dropdown-trigger-border, var(--pjx-color-border, #e4e4e7));
+  border-radius: var(--pjx-dropdown-trigger-radius, var(--pjx-radius-md, 8px));
   cursor: pointer;
 }
 
 .pjx-dropdown__trigger:hover {
-  background: var(--pjx-dropdown-trigger-bg-hover, color-mix(in srgb, var(--text) 6%, var(--surface-alt)));
+  background: var(--pjx-dropdown-trigger-bg-hover, color-mix(in srgb, var(--pjx-color-text, #18181b) 6%, var(--pjx-color-surface-alt, #fafafa)));
 }
 
 .pjx-dropdown__menu {
   position: absolute;
   z-index: var(--pjx-dropdown-z);
+  /* Same 4px trigger gap as the popover; it is off the rem spacing scale. */
   top: calc(100% + 4px);
   left: 0;
   min-width: var(--pjx-dropdown-menu-min-w);

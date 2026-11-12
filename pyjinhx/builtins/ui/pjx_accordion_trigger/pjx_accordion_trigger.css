@@ -1,14 +1,14 @@
 .pjx-accordion__trigger {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: var(--pjx-space-2, 0.5rem);
   list-style: none;
   cursor: pointer;
-  padding: var(--pjx-accordion-trigger-padding, 0.5rem 0.75rem);
+  padding: var(--pjx-accordion-trigger-padding, var(--pjx-space-2, 0.5rem) var(--pjx-space-3, 0.75rem));
   background: var(--pjx-accordion-trigger-bg, transparent);
   color: var(--pjx-accordion-trigger-color, inherit);
   font-size: var(--pjx-accordion-trigger-font-size, inherit);
-  font-weight: var(--pjx-accordion-trigger-font-weight, 500);
+  font-weight: var(--pjx-accordion-trigger-font-weight, var(--pjx-font-weight-medium, 500));
 }
 
 .pjx-accordion__trigger::-webkit-details-marker {
@@ -22,7 +22,7 @@
 .pjx-accordion__chevron {
   width: var(--pjx-accordion-chevron-size, 1em);
   height: var(--pjx-accordion-chevron-size, 1em);
-  transition: transform 0.15s ease;
+  transition: transform var(--pjx-duration-normal, 150ms) var(--pjx-easing-standard, cubic-bezier(0.2, 0, 0, 1));
 }
 
 .pjx-accordion[open] > .pjx-accordion__trigger .pjx-accordion__chevron {
@@ -37,7 +37,7 @@
 .pjx-accordion__actions {
   display: flex;
   align-items: center;
-  gap: var(--pjx-accordion-actions-gap, 0.25rem);
+  gap: var(--pjx-accordion-actions-gap, var(--pjx-space-1, 0.25rem));
   margin-left: auto;
   /* Clicks are stopped by the trigger JS so the summary does not toggle. */
 }

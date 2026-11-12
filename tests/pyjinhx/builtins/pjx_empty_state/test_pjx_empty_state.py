@@ -124,3 +124,18 @@ def test_undeclared_attr_is_rejected():
 def test_extra_attrs_surface_on_the_root(empty_state_session):
     html = _html(empty_state_session, extra_attrs={"data-x": "y"})
     assert 'data-x="y"' in html
+
+
+def test_spacing_follows_the_spacing_scale():
+    css = " ".join(PJXEmptyState.__pjx_descriptor__.css_paths[0].read_text().split())
+    defaults = css.split(":where(:root) {", 1)[1].split("}", 1)[0]
+    chip = css.split(".pjx-empty-state__chip {", 1)[1].split("}", 1)[0]
+    hover = css.split(".pjx-empty-state__chip:hover {", 1)[1].split("}", 1)[0]
+    assert (
+        "--pjx-empty-state-padding: var(--pjx-space-8, 2rem) var(--pjx-space-6, 1.5rem);"
+        in defaults
+    )
+    assert "--pjx-empty-state-gap: var(--pjx-space-2, 0.5rem);" in defaults
+    assert "--pjx-empty-state-actions-gap: var(--pjx-space-2, 0.5rem);" in defaults
+    assert "padding: var(--pjx-space-1, 0.25rem) var(--pjx-space-3, 0.75rem);" in chip
+    assert "background: var(--pjx-color-surface-hover, #f4f4f5);" in hover

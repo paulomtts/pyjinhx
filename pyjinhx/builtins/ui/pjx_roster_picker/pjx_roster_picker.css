@@ -1,23 +1,25 @@
 /* ── PJXRosterPicker tokens ──────────────────────────────────────────────────── */
 :where(:root) {
-  --pjx-roster-picker-bg:          var(--surface, #fff);
-  --pjx-roster-picker-fg:          var(--text);
-  --pjx-roster-picker-muted:       var(--text-muted, var(--text));
-  --pjx-roster-picker-border:      var(--border);
-  --pjx-roster-picker-focus:       var(--border-focus, var(--border));
-  --pjx-roster-picker-invalid:     var(--error, var(--border-focus, var(--border)));
-  --pjx-roster-picker-radius:      var(--radius-md);
-  --pjx-roster-picker-padding:     0.375rem 0.5rem;
+  --pjx-roster-picker-bg:          var(--pjx-color-surface, #ffffff);
+  --pjx-roster-picker-fg:          var(--pjx-color-text, #18181b);
+  --pjx-roster-picker-muted:       var(--pjx-color-text-muted, #52525b);
+  --pjx-roster-picker-border:      var(--pjx-color-border, #e4e4e7);
+  --pjx-roster-picker-focus:       var(--pjx-color-border-focus, #3f3f46);
+  --pjx-roster-picker-invalid:     var(--pjx-color-error, #dc2626);
+  --pjx-roster-picker-radius:      var(--pjx-radius-md, 8px);
+  /* The vertical 0.375rem is off-scale so the control matches the chip input's height. */
+  --pjx-roster-picker-padding:     0.375rem var(--pjx-space-2, 0.5rem);
+  /* Off the spacing scale on purpose: sits between space-1 and space-2. */
   --pjx-roster-picker-gap:         0.375rem;
-  --pjx-roster-picker-chip-bg:     var(--surface-alt);
-  --pjx-roster-picker-results-bg:  var(--surface-alt);
-  --pjx-roster-picker-shadow:      var(--shadow-md);
-  --pjx-roster-picker-z:           300;
+  --pjx-roster-picker-chip-bg:     var(--pjx-color-surface-alt, #fafafa);
+  --pjx-roster-picker-results-bg:  var(--pjx-color-surface-alt, #fafafa);
+  --pjx-roster-picker-shadow:      var(--pjx-shadow-md, 0 4px 12px rgb(0 0 0 / 0.08));
+  --pjx-roster-picker-z:           var(--pjx-z-popover, 300);
   --pjx-roster-picker-max-h:       16rem;
   --pjx-roster-picker-min-h:       3rem;
   --pjx-roster-picker-room:        var(--pjx-roster-picker-max-h);
-  --pjx-roster-picker-row-hover:   var(--surface-hover, var(--surface-alt));
-  --pjx-roster-picker-row-active:  var(--accent-soft, var(--surface-alt));
+  --pjx-roster-picker-row-hover:   var(--pjx-color-surface-hover, #f4f4f5);
+  --pjx-roster-picker-row-active:  var(--pjx-color-brand-muted, #d4d4d8);
 }
 
 .pjx-roster-picker {
@@ -41,7 +43,7 @@
   border: 1px solid var(--pjx-roster-picker-border);
   border-radius: var(--pjx-roster-picker-radius);
   padding: var(--pjx-roster-picker-padding);
-  transition: border-color 0.15s ease;
+  transition: border-color var(--pjx-duration-normal, 150ms) var(--pjx-easing-standard, cubic-bezier(0.2, 0, 0, 1));
 }
 
 .pjx-roster-picker__input:focus-visible {
@@ -65,6 +67,7 @@
    collapsing. border-box so the room bounds the border too. */
 .pjx-roster-picker__results {
   position: absolute;
+  /* 4px is the gap pjx_roster_picker.js assumes by default when it places the list (here and in the above variant). */
   top: calc(100% + 4px);
   left: 0;
   right: 0;
@@ -97,7 +100,7 @@
 .pjx-roster-picker__pick {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: var(--pjx-space-2, 0.5rem);
   width: 100%;
   font: inherit;
   color: inherit;
@@ -106,7 +109,7 @@
   border: none;
   padding: var(--pjx-roster-picker-padding);
   cursor: pointer;
-  transition: background-color 0.15s ease;
+  transition: background-color var(--pjx-duration-normal, 150ms) var(--pjx-easing-standard, cubic-bezier(0.2, 0, 0, 1));
 }
 
 .pjx-roster-picker__pick:hover {
@@ -180,8 +183,8 @@
 .pjx-roster-picker__chip {
   display: inline-flex;
   flex-direction: column;
-  gap: 0.25rem;
-  padding: 0.25rem 0.5rem;
+  gap: var(--pjx-space-1, 0.25rem);
+  padding: var(--pjx-space-1, 0.25rem) var(--pjx-space-2, 0.5rem);
   background: var(--pjx-roster-picker-chip-bg);
   border: 1px solid var(--pjx-roster-picker-border);
   border-radius: var(--pjx-roster-picker-radius);
@@ -190,6 +193,7 @@
 .pjx-roster-picker__chip-row {
   display: flex;
   align-items: center;
+  /* Off the spacing scale on purpose, to match the picker gap. */
   gap: 0.375rem;
 }
 
@@ -214,6 +218,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  /* Half a step keeps the small remove button compact. */
   padding: 0.125rem;
   font: inherit;
   color: var(--pjx-roster-picker-muted);
@@ -221,7 +226,7 @@
   border: none;
   border-radius: var(--pjx-roster-picker-radius);
   cursor: pointer;
-  transition: background-color 0.15s ease;
+  transition: background-color var(--pjx-duration-normal, 150ms) var(--pjx-easing-standard, cubic-bezier(0.2, 0, 0, 1));
 }
 
 .pjx-roster-picker__chip-remove:hover {

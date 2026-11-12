@@ -1,12 +1,14 @@
 :where(:root) {
-  --pjx-carousel-border: var(--border);
-  --pjx-carousel-bg: var(--surface);
-  --pjx-carousel-radius: var(--radius-md);
-  --pjx-carousel-arrow-bg: color-mix(in srgb, var(--surface) 70%, transparent);
-  --pjx-carousel-arrow-fg: var(--text);
-  --pjx-carousel-dot-bg: var(--border);
-  --pjx-carousel-dot-active-bg: var(--brand);
-  --pjx-carousel-transition: var(--transition, 0.15s ease);
+  --pjx-carousel-border: var(--pjx-color-border, #e4e4e7);
+  --pjx-carousel-bg: var(--pjx-color-surface, #ffffff);
+  --pjx-carousel-radius: var(--pjx-radius-md, 8px);
+  --pjx-carousel-arrow-bg: color-mix(in srgb, var(--pjx-color-surface, #ffffff) 70%, transparent);
+  --pjx-carousel-arrow-fg: var(--pjx-color-text, #18181b);
+  --pjx-carousel-dot-bg: var(--pjx-color-border, #e4e4e7);
+  --pjx-carousel-dot-active-bg: var(--pjx-color-brand, #27272a);
+  /* Duration then easing, the whole timing. Slow, not normal: a full-width
+     slide needs more time than a hover fade. */
+  --pjx-carousel-transition: var(--pjx-duration-slow, 250ms) var(--pjx-easing-standard, cubic-bezier(0.2, 0, 0, 1));
 }
 
 .pjx-carousel {
@@ -20,7 +22,7 @@
   display: flex;
   width: 100%;
   transform: translateX(calc(var(--pjx-carousel-offset, 0) * -100%));
-  transition: transform 0.3s var(--pjx-carousel-transition);
+  transition: transform var(--pjx-carousel-transition);
   touch-action: pan-y;
 }
 
@@ -39,18 +41,18 @@
   width: 2.25rem;
   height: 2.25rem;
   border: none;
-  border-radius: 999px;
+  border-radius: var(--pjx-radius-full, 9999px);
   background: var(--pjx-carousel-arrow-bg);
   color: var(--pjx-carousel-arrow-fg);
   cursor: pointer;
 }
 
 .pjx-carousel__arrow--prev {
-  left: 0.5rem;
+  left: var(--pjx-space-2, 0.5rem);
 }
 
 .pjx-carousel__arrow--next {
-  right: 0.5rem;
+  right: var(--pjx-space-2, 0.5rem);
 }
 
 .pjx-carousel__arrow[aria-disabled="true"] {
@@ -60,10 +62,11 @@
 
 .pjx-carousel__dots {
   position: absolute;
-  bottom: 0.5rem;
+  bottom: var(--pjx-space-2, 0.5rem);
   left: 50%;
   transform: translateX(-50%);
   display: flex;
+  /* Off the spacing scale: a step of 0.25rem crowds the 0.5rem dots and 0.5rem spreads them. */
   gap: 0.4rem;
 }
 
@@ -71,7 +74,7 @@
   width: 0.5rem;
   height: 0.5rem;
   border: none;
-  border-radius: 999px;
+  border-radius: var(--pjx-radius-full, 9999px);
   background: var(--pjx-carousel-dot-bg);
   cursor: pointer;
   padding: 0;
@@ -83,15 +86,15 @@
 
 .pjx-carousel__autoplay-toggle {
   position: absolute;
-  top: 0.5rem;
-  right: 0.5rem;
+  top: var(--pjx-space-2, 0.5rem);
+  right: var(--pjx-space-2, 0.5rem);
   display: inline-flex;
   align-items: center;
   justify-content: center;
   width: 2rem;
   height: 2rem;
   border: none;
-  border-radius: 999px;
+  border-radius: var(--pjx-radius-full, 9999px);
   background: var(--pjx-carousel-arrow-bg);
   color: var(--pjx-carousel-arrow-fg);
   cursor: pointer;

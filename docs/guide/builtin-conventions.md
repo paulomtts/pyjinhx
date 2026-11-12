@@ -145,14 +145,14 @@ Comments and whitespace surrounding the root element are ignored. Fragments (Rea
 
 ## Theming
 
-Builtins read `--pjx-*` tokens that default to your app-level semantic tokens. Re-skin globally in
-one block:
+Builtins read `--pjx-*` component tokens that default to the shared `--pjx-*` theme tokens.
+Re-skin globally in one block:
 
 ```css
 :root {
-  --pjx-modal-bg: var(--surface);
-  --pjx-card-radius: var(--radius-lg);
+  --pjx-modal-bg: var(--pjx-color-surface);
+  --pjx-card-radius: var(--pjx-radius-lg);
 }
 ```
 
-or per-context: `.settings-pane { --pjx-card-bg: var(--surface-alt); }`.
+or per-context: `.settings-pane { --pjx-card-bg: var(--pjx-color-surface-alt); }`.

@@ -1,18 +1,19 @@
 :where(:root) {
-  --pjx-paginator-gap: 0.25rem;
-  --pjx-paginator-link-fg: var(--text);
+  --pjx-paginator-gap: var(--pjx-space-1, 0.25rem);
+  --pjx-paginator-link-fg: var(--pjx-color-text, #18181b);
   --pjx-paginator-link-bg: transparent;
-  --pjx-paginator-link-hover-bg: color-mix(in srgb, var(--surface) 40%, var(--surface-alt));
-  --pjx-paginator-current-fg: var(--surface, #fff);
-  --pjx-paginator-current-bg: var(--brand);
-  --pjx-paginator-border: var(--border);
-  --pjx-paginator-radius: var(--radius-sm, 4px);
+  --pjx-paginator-link-hover-bg: color-mix(in srgb, var(--pjx-color-surface, #ffffff) 40%, var(--pjx-color-surface-alt, #fafafa));
+  /* on-brand, not surface: the text colour paired with the brand fill, so dark mode keeps its contrast. */
+  --pjx-paginator-current-fg: var(--pjx-color-on-brand, #ffffff);
+  --pjx-paginator-current-bg: var(--pjx-color-brand, #27272a);
+  --pjx-paginator-border: var(--pjx-color-border, #e4e4e7);
+  --pjx-paginator-radius: var(--pjx-radius-sm, 4px);
   --pjx-paginator-disabled-opacity: 0.45;
 }
 
 .pjx-paginator {
   display: block;
-  font-size: var(--font-size-sm, 0.875rem);
+  font-size: var(--pjx-font-size-sm, 0.875rem);
 }
 
 .pjx-paginator__list {
@@ -31,6 +32,7 @@
   align-items: center;
   justify-content: center;
   min-width: 2rem;
+  /* Off-scale padding: keeps the page buttons compact, between spacing steps. */
   padding: 0.35rem 0.6rem;
   color: var(--pjx-paginator-link-fg);
   background: var(--pjx-paginator-link-bg);
@@ -38,7 +40,7 @@
   border-radius: var(--pjx-paginator-radius);
   text-decoration: none;
   cursor: pointer;
-  transition: background var(--transition, 0.15s ease);
+  transition: background var(--pjx-duration-normal, 150ms) var(--pjx-easing-standard, cubic-bezier(0.2, 0, 0, 1));
 }
 
 .pjx-paginator__link:hover,
@@ -63,6 +65,7 @@
   align-items: center;
   justify-content: center;
   min-width: 2rem;
+  /* Off-scale padding: matches the link height with a narrower side gap. */
   padding: 0.35rem 0.3rem;
-  color: var(--text-muted, var(--text));
+  color: var(--pjx-color-text-muted, #52525b);
 }

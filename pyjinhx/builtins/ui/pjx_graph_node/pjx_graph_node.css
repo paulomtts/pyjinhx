@@ -1,11 +1,11 @@
 :where(:root) {
-  --pjx-graph-node-bg: var(--surface);
-  --pjx-graph-node-border: var(--border);
-  --pjx-graph-node-radius: var(--radius-md);
+  --pjx-graph-node-bg: var(--pjx-color-surface, #ffffff);
+  --pjx-graph-node-border: var(--pjx-color-border, #e4e4e7);
+  --pjx-graph-node-radius: var(--pjx-radius-md, 8px);
   --pjx-graph-node-width: 14rem;
-  --pjx-graph-node-muted: var(--text-muted);
+  --pjx-graph-node-muted: var(--pjx-color-text-muted, #52525b);
   --pjx-graph-port-size: 10px;
-  --pjx-graph-port-bg: var(--surface);
+  --pjx-graph-port-bg: var(--pjx-color-surface, #ffffff);
 }
 
 /* Position lives in two custom properties so the engine moves a node by
@@ -17,14 +17,15 @@
   box-sizing: border-box;
   display: flex;
   align-items: flex-start;
-  gap: 0.5rem;
+  gap: var(--pjx-space-2, 0.5rem);
   width: var(--pjx-graph-node-width);
-  padding: 0.625rem 0.75rem;
+  /* The vertical padding sits off the spacing scale, between steps 2 and 3. */
+  padding: 0.625rem var(--pjx-space-3, 0.75rem);
   border: 1px solid var(--pjx-graph-node-border);
   border-left: 3px solid var(--pjx-graph-node-color, var(--pjx-graph-node-border));
   border-radius: var(--pjx-graph-node-radius);
   background: var(--pjx-graph-node-bg);
-  color: var(--text);
+  color: var(--pjx-color-text, #18181b);
 }
 
 /* display: flex above beats the UA [hidden] rule. */
@@ -47,26 +48,27 @@
 .pjx-graph__node-body {
   display: flex;
   flex-direction: column;
+  /* Below the spacing scale's smallest step. */
   gap: 0.125rem;
   min-width: 0;
 }
 
 .pjx-graph__node-eyebrow {
-  font-size: var(--font-size-xs);
+  font-size: var(--pjx-font-size-xs, 0.75rem);
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--pjx-graph-node-muted);
 }
 
 .pjx-graph__node-title {
-  font-size: var(--font-size-sm);
-  font-weight: 600;
+  font-size: var(--pjx-font-size-sm, 0.875rem);
+  font-weight: var(--pjx-font-weight-semibold, 600);
   overflow-wrap: anywhere;
 }
 
 .pjx-graph__node-summary {
   margin: 0;
-  font-size: var(--font-size-xs);
+  font-size: var(--pjx-font-size-xs, 0.75rem);
   color: var(--pjx-graph-node-muted);
   overflow-wrap: anywhere;
 }
