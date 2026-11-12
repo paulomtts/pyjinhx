@@ -1,14 +1,14 @@
 /* ── PJXNotification tokens ────────────────────────────────────── */
 :where(:root) {
   --pjx-notification-width:       22rem;
-  --pjx-notification-gap:         1.25rem;
-  --pjx-notification-bg:          var(--surface-alt);
-  --pjx-notification-border:      var(--border);
-  --pjx-notification-radius:      var(--radius-md);
-  --pjx-notification-shadow:      var(--shadow-md);
-  --pjx-notification-padding:     1rem 1rem 1rem 1.25rem;
-  --pjx-notification-close-color: var(--text-muted);
-  --pjx-notification-z:           500;
+  --pjx-notification-gap:         var(--pjx-space-5, 1.25rem);
+  --pjx-notification-bg:          var(--pjx-color-surface-alt, #fafafa);
+  --pjx-notification-border:      var(--pjx-color-border, #e4e4e7);
+  --pjx-notification-radius:      var(--pjx-radius-md, 8px);
+  --pjx-notification-shadow:      var(--pjx-shadow-md, 0 4px 12px rgb(0 0 0 / 0.08));
+  --pjx-notification-padding:     var(--pjx-space-4, 1rem) var(--pjx-space-4, 1rem) var(--pjx-space-4, 1rem) var(--pjx-space-5, 1.25rem);
+  --pjx-notification-close-color: var(--pjx-color-text-muted, #52525b);
+  --pjx-notification-z:           var(--pjx-z-notification, 500);
 }
 
 /* ── Base ───────────────────────────────────────────────────── */
@@ -23,7 +23,7 @@
   box-shadow: var(--pjx-notification-shadow);
   padding: var(--pjx-notification-padding);
   align-items: flex-start;
-  gap: 0.75rem;
+  gap: var(--pjx-space-3, 0.75rem);
 }
 
 /* ── Corner placement ───────────────────────────────────────── */
@@ -62,8 +62,8 @@
 /* ── Content ────────────────────────────────────────────────── */
 .pjx-notification__content {
   flex: 1;
-  font-size: var(--font-size-sm);
-  color: var(--text);
+  font-size: var(--pjx-font-size-sm, 0.875rem);
+  color: var(--pjx-color-text, #18181b);
   line-height: 1.5;
 }
 
@@ -76,18 +76,20 @@
   width: 1.5rem;
   height: 1.5rem;
   padding: 0;
-  font-size: 0.75rem;
+  font-size: var(--pjx-font-size-xs, 0.75rem);
   line-height: 1;
   background: transparent;
   color: var(--pjx-notification-close-color);
   border: none;
-  border-radius: var(--radius-sm);
+  border-radius: var(--pjx-radius-sm, 4px);
   cursor: pointer;
-  transition: background var(--transition), color var(--transition);
+  transition:
+    background var(--pjx-duration-normal, 150ms) var(--pjx-easing-standard, cubic-bezier(0.2, 0, 0, 1)),
+    color var(--pjx-duration-normal, 150ms) var(--pjx-easing-standard, cubic-bezier(0.2, 0, 0, 1));
 }
 .pjx-notification__close:hover {
-  background: var(--surface);
-  color: var(--text);
+  background: var(--pjx-color-surface, #ffffff);
+  color: var(--pjx-color-text, #18181b);
 }
 
 /* ── Animations ─────────────────────────────────────────────── */

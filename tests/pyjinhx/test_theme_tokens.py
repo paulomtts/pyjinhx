@@ -38,22 +38,11 @@ VAR_OPEN = re.compile(r"(?<![\w-])var\(")
 # Stylesheets that still use legacy names. Remove a path once its file is
 # migrated; the suite fails until you do.
 LEGACY_PENDING: tuple[str, ...] = (
-    "pyjinhx/builtins/pjx_page_loader/pjx_page_loader.css",
-    "pyjinhx/builtins/pjx_paginator/pjx_paginator.css",
-    "pyjinhx/builtins/pjx_region_loader/pjx_region_loader.css",
-    "pyjinhx/builtins/ui/pjx_alert/pjx_alert.css",
-    "pyjinhx/builtins/ui/pjx_breadcrumb/pjx_breadcrumb.css",
     "pyjinhx/builtins/ui/pjx_chart/pjx_chart.css",
     "pyjinhx/builtins/ui/pjx_graph/pjx_graph.css",
     "pyjinhx/builtins/ui/pjx_graph_controls/pjx_graph_controls.css",
     "pyjinhx/builtins/ui/pjx_graph_node/pjx_graph_node.css",
     "pyjinhx/builtins/ui/pjx_graph_side_panel/pjx_graph_side_panel.css",
-    "pyjinhx/builtins/ui/pjx_notification/pjx_notification.css",
-    "pyjinhx/builtins/ui/pjx_resizable_handle/pjx_resizable_handle.css",
-    "pyjinhx/builtins/ui/pjx_spinner/pjx_spinner.css",
-    "pyjinhx/builtins/ui/pjx_tab/pjx_tab.css",
-    "pyjinhx/builtins/ui/pjx_tab_group/pjx_tab_group.css",
-    "pyjinhx/builtins/ui/pjx_toast_host/pjx_toast_host.css",
 )
 
 

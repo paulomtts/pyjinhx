@@ -1,10 +1,11 @@
 :where(:root) {
+  /* 0.35rem sits between the first two spacing steps; kept so the trail keeps its rhythm. */
   --pjx-breadcrumb-gap: 0.35rem;
   --pjx-breadcrumb-sep: "/";
-  --pjx-breadcrumb-sep-color: var(--text-muted);
-  --pjx-breadcrumb-link-color: var(--brand);
-  --pjx-breadcrumb-current-color: var(--text);
-  --pjx-breadcrumb-font-size: var(--font-size-sm);
+  --pjx-breadcrumb-sep-color: var(--pjx-color-text-muted, #52525b);
+  --pjx-breadcrumb-link-color: var(--pjx-color-brand, #27272a);
+  --pjx-breadcrumb-current-color: var(--pjx-color-text, #18181b);
+  --pjx-breadcrumb-font-size: var(--pjx-font-size-sm, 0.875rem);
 }
 
 .pjx-breadcrumb__list {

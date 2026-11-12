@@ -1,6 +1,6 @@
 :where(:root) {
   --pjx-page-loader-backdrop: rgb(0 0 0 / 0.15);
-  --pjx-page-loader-z:        9999;
+  --pjx-page-loader-z:        var(--pjx-z-page-loader, 1000);
   --pjx-page-loader-size:     2rem;
 }
 
@@ -22,8 +22,8 @@
 .pjx-page-loader__spinner {
   width: var(--pjx-page-loader-size);
   height: var(--pjx-page-loader-size);
-  border: 2px solid var(--border);
-  border-top-color: var(--brand, currentColor);
+  border: 2px solid var(--pjx-color-border, #e4e4e7);
+  border-top-color: var(--pjx-color-brand, #27272a);
   border-radius: 50%;
   animation: pjx-page-loader-spin 0.7s linear infinite;
 }

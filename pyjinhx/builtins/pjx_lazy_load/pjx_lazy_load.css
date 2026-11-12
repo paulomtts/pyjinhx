@@ -2,12 +2,12 @@
 /* Shown by pjx_lazy_load.js when a lazy region's own request fails
    terminally and htmx leaves the placeholder un-swapped. */
 :where(:root) {
-  --pjx-lazy-load-error-color: var(--danger, #b91c1c);
-  --pjx-lazy-load-error-pad:   0.75rem 1rem;
+  --pjx-lazy-load-error-color: var(--pjx-color-error, #dc2626);
+  --pjx-lazy-load-error-pad:   var(--pjx-space-3, 0.75rem) var(--pjx-space-4, 1rem);
 }
 
 .pjx-lazy-load__error {
   padding: var(--pjx-lazy-load-error-pad);
   color: var(--pjx-lazy-load-error-color);
-  font-size: 0.875rem;
+  font-size: var(--pjx-font-size-sm, 0.875rem);
 }
