@@ -27,6 +27,7 @@ NAVIGATION_SHEETS = [
     "ui/pjx_tab_group/pjx_tab_group.css",
     "ui/pjx_tab/pjx_tab.css",
     "ui/pjx_breadcrumb/pjx_breadcrumb.css",
+    "pjx_paginator/pjx_paginator.css",
 ]
 
 
@@ -222,3 +223,72 @@ def test_breadcrumb_gap_keeps_its_off_scale_value():
 
 def test_breadcrumb_separator_stays_a_slash():
     assert declared(read(BREADCRUMB), ":where(:root)", "--pjx-breadcrumb-sep") == '"/"'
+
+
+PAGINATOR = "pjx_paginator/pjx_paginator.css"
+PAGINATOR_LINK = ".pjx-paginator__link,\n.pjx-paginator__control"
+
+
+@pytest.mark.parametrize(
+    ("token", "theme"),
+    [
+        ("--pjx-paginator-link-fg", "--pjx-color-text"),
+        ("--pjx-paginator-current-bg", "--pjx-color-brand"),
+        ("--pjx-paginator-border", "--pjx-color-border"),
+        ("--pjx-paginator-radius", "--pjx-radius-sm"),
+        ("--pjx-paginator-gap", "--pjx-space-1"),
+    ],
+)
+def test_paginator_tokens_default_to_theme_tokens(token, theme):
+    assert (
+        declared(read_builtin(PAGINATOR), ":where(:root)", token)
+        == f"var({theme}, {light(theme)})"
+    )
+
+
+def test_paginator_current_page_text_is_on_brand():
+    # on-brand, not surface: it is the text colour paired with the brand fill.
+    assert (
+        declared(read_builtin(PAGINATOR), ":where(:root)", "--pjx-paginator-current-fg")
+        == f"var(--pjx-color-on-brand, {light('--pjx-color-on-brand')})"
+    )
+
+
+def test_paginator_hover_mixes_the_theme_surfaces():
+    surface = light("--pjx-color-surface")
+    surface_alt = light("--pjx-color-surface-alt")
+    assert declared(
+        read_builtin(PAGINATOR), ":where(:root)", "--pjx-paginator-link-hover-bg"
+    ) == (
+        f"color-mix(in srgb, var(--pjx-color-surface, {surface}) 40%, "
+        f"var(--pjx-color-surface-alt, {surface_alt}))"
+    )
+
+
+def test_paginator_font_size_transition_and_ellipsis():
+    css = read_builtin(PAGINATOR)
+    assert (
+        declared(css, ".pjx-paginator", "font-size")
+        == f"var(--pjx-font-size-sm, {light('--pjx-font-size-sm')})"
+    )
+    assert declared(css, PAGINATOR_LINK, "transition") == f"background {motion()}"
+    assert (
+        declared(css, ".pjx-paginator__ellipsis", "color")
+        == f"var(--pjx-color-text-muted, {light('--pjx-color-text-muted')})"
+    )
+
+
+def test_paginator_keeps_its_off_scale_padding():
+    css = read_builtin(PAGINATOR)
+    assert declared(css, PAGINATOR_LINK, "padding") == "0.35rem 0.6rem"
+    assert declared(css, ".pjx-paginator__ellipsis", "padding") == "0.35rem 0.3rem"
+    assert declared(css, PAGINATOR_LINK, "min-width") == "2rem"
+    assert declared(css, ".pjx-paginator__ellipsis", "min-width") == "2rem"
+
+
+def test_paginator_current_page_reads_its_component_tokens():
+    css = read_builtin(PAGINATOR)
+    selector = ".pjx-paginator__link--current"
+    assert declared(css, selector, "color") == "var(--pjx-paginator-current-fg)"
+    assert declared(css, selector, "background") == "var(--pjx-paginator-current-bg)"
+    assert declared(css, selector, "border-color") == "var(--pjx-paginator-current-bg)"

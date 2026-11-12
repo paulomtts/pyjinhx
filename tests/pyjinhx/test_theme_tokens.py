@@ -38,7 +38,6 @@ VAR_OPEN = re.compile(r"(?<![\w-])var\(")
 # Stylesheets that still use legacy names. Remove a path once its file is
 # migrated; the suite fails until you do.
 LEGACY_PENDING: tuple[str, ...] = (
-    "pyjinhx/builtins/pjx_paginator/pjx_paginator.css",
     "pyjinhx/builtins/pjx_table/pjx_table.css",
     "pyjinhx/builtins/ui/pjx_avatar/pjx_avatar.css",
     "pyjinhx/builtins/ui/pjx_avatar_stack/pjx_avatar_stack.css",
