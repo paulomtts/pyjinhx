@@ -81,9 +81,10 @@ duration, easing and z-index scales are the same in both.
 
 The attribute also works on any element, and forces the theme tokens for that subtree: a light
 panel inside a dark page, or the reverse. That reaches anything that reads a theme token directly,
-such as the typography classes and your own CSS. Builtins are different. Each builtin declares its
-component tokens once, in a `:where(:root)` block, and a CSS variable that reads another variable
-is resolved where it is declared. So a badge inside a `data-pjx-theme="dark"` panel keeps the
+such as the typography classes, your own CSS, and the builtin rules that read a theme token
+directly. Builtins with component tokens are different. They declare those
+tokens once, in a `:where(:root)` block, and a CSS variable that reads another variable is
+resolved where it is declared. So a badge inside a `data-pjx-theme="dark"` panel keeps the
 colours its tokens got at the root. To flip a builtin inside a wrapper, set its component tokens
 on the wrapper too (see [Component tokens and theme tokens](#component-tokens-and-theme-tokens)).
 For a whole page, put the attribute on `<html>`, where everything follows it.
@@ -127,8 +128,8 @@ them directly:
 .marketing { --pjx-radius-md: 0; }
 ```
 
-As with dark mode, builtins under that wrapper keep the values their component tokens got at the
-root; set the component tokens on the wrapper to change them.
+As with dark mode, builtins with component tokens under that wrapper keep the values those tokens
+got at the root; set the component tokens on the wrapper to change them.
 
 The theme tokens come in these groups:
 
@@ -197,7 +198,7 @@ use them in your own media queries so your layout changes at the same widths:
 
 ## Component tokens and theme tokens
 
-Each builtin also has its own component tokens, such as `--pjx-badge-bg`,
+Many builtins also have their own component tokens, such as `--pjx-badge-bg`,
 `--pjx-paginator-border` and `--pjx-page-loader-z`. They are declared in the builtin's CSS in a
 `:where(:root)` block, which has no specificity, and each default reads a theme token with a
 literal fallback:
