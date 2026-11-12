@@ -145,8 +145,8 @@ Comments and whitespace surrounding the root element are ignored. Fragments (Rea
 
 ## Theming
 
-Builtins read `--pjx-*` component tokens that default to the shared `--pjx-*` theme tokens. Re-skin globally in
-one block:
+Builtins read `--pjx-*` component tokens that default to the shared `--pjx-*` theme tokens.
+Re-skin globally in one block:
 
 ```css
 :root {
