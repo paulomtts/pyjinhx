@@ -16,6 +16,15 @@
   --pjx-badge-error-bg:      var(--pjx-color-error-subtle, #fef2f2);
   --pjx-badge-error-text:    var(--pjx-color-error-text, #991b1b);
   --pjx-badge-error-border:  var(--pjx-color-error-border, #fecaca);
+  --pjx-badge-info-bg:       var(--pjx-color-info-subtle, #f0f9ff);
+  --pjx-badge-info-text:     var(--pjx-color-info-text, #075985);
+  --pjx-badge-info-border:   var(--pjx-color-info-border, #bae6fd);
+  --pjx-badge-success-bg:    var(--pjx-color-success-subtle, #f0fdf4);
+  --pjx-badge-success-text:  var(--pjx-color-success-text, #166534);
+  --pjx-badge-success-border: var(--pjx-color-success-border, #bbf7d0);
+  --pjx-badge-warning-bg:    var(--pjx-color-warning-subtle, #fffbeb);
+  --pjx-badge-warning-text:  var(--pjx-color-warning-text, #92400e);
+  --pjx-badge-warning-border: var(--pjx-color-warning-border, #fde68a);
   --pjx-badge-muted-bg:      color-mix(in srgb, var(--pjx-color-text-muted, #52525b) 12%, transparent);
   --pjx-badge-muted-text:    var(--pjx-color-text-muted, #52525b);
   --pjx-badge-muted-border:  color-mix(in srgb, var(--pjx-color-text-muted, #52525b) 30%, transparent);
@@ -49,6 +58,24 @@
   background: var(--pjx-badge-error-bg);
   color: var(--pjx-badge-error-text);
   border-color: var(--pjx-badge-error-border);
+}
+
+.pjx-badge--info {
+  background: var(--pjx-badge-info-bg);
+  color: var(--pjx-badge-info-text);
+  border-color: var(--pjx-badge-info-border);
+}
+
+.pjx-badge--success {
+  background: var(--pjx-badge-success-bg);
+  color: var(--pjx-badge-success-text);
+  border-color: var(--pjx-badge-success-border);
+}
+
+.pjx-badge--warning {
+  background: var(--pjx-badge-warning-bg);
+  color: var(--pjx-badge-warning-text);
+  border-color: var(--pjx-badge-warning-border);
 }
 
 .pjx-badge--neutral {
