@@ -1,4 +1,4 @@
-"""Alert, notification, toast host and spinner default to theme tokens."""
+"""Feedback builtins (alerts, toasts, spinners, loaders) default to theme tokens."""
 
 from __future__ import annotations
 
@@ -10,6 +10,7 @@ import pytest
 from pyjinhx.client import read_pjx_theme_css
 
 UI = Path(__file__).parents[3] / "pyjinhx" / "builtins" / "ui"
+BUILTINS = UI.parent
 STATUSES = ("info", "success", "warning", "error")
 
 # Copied from tests/pyjinhx/test_theme_tokens.py: the tests tree has no
@@ -30,6 +31,10 @@ def light(token: str) -> str:
 
 def read(path: str) -> str:
     return (UI / path).read_text(encoding="utf-8")
+
+
+def read_builtin(path: str) -> str:
+    return (BUILTINS / path).read_text(encoding="utf-8")
 
 
 def rule_block(css: str, selector: str) -> str:
@@ -139,4 +144,34 @@ def test_spinner_track_mixes_the_muted_text_with_its_fallback():
     muted = light("--pjx-color-text-muted")
     assert declared(read(SPINNER), ":where(:root)", "--pjx-spinner-track") == (
         f"color-mix(in srgb, var(--pjx-color-text-muted, {muted}) 35%, transparent)"
+    )
+
+
+PAGE_LOADER = "pjx_page_loader/pjx_page_loader.css"
+
+
+def test_page_loader_sits_on_the_page_loader_layer():
+    assert (
+        declared(read_builtin(PAGE_LOADER), ":where(:root)", "--pjx-page-loader-z")
+        == f"var(--pjx-z-page-loader, {light('--pjx-z-page-loader')})"
+    )
+
+
+def test_page_loader_z_index_reads_its_overridable_token():
+    css = read_builtin(PAGE_LOADER)
+    assert declared(css, ".pjx-page-loader", "z-index") == "var(--pjx-page-loader-z)"
+
+
+def test_page_loader_spinner_uses_theme_border_and_brand():
+    css = read_builtin(PAGE_LOADER)
+    selector = ".pjx-page-loader__spinner"
+    border = light("--pjx-color-border")
+    brand = light("--pjx-color-brand")
+    assert (
+        declared(css, selector, "border")
+        == f"2px solid var(--pjx-color-border, {border})"
+    )
+    assert (
+        declared(css, selector, "border-top-color")
+        == f"var(--pjx-color-brand, {brand})"
     )
