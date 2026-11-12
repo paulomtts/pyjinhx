@@ -1,16 +1,19 @@
 :where(:root) {
+  /* pjx_tooltip.js reads the gap with parseInt as a pixel count, so it must
+     stay a bare px value, not a token reference or rem. */
   --pjx-tooltip-gap:         6px;
-  --pjx-tooltip-bg:          var(--surface-alt);
-  --pjx-tooltip-border:      var(--border);
-  --pjx-tooltip-radius:      var(--radius-sm);
-  --pjx-tooltip-shadow:      var(--shadow-md);
-  --pjx-tooltip-padding:     0.35rem 0.5rem;
+  --pjx-tooltip-bg:          var(--pjx-color-surface-alt, #fafafa);
+  --pjx-tooltip-border:      var(--pjx-color-border, #e4e4e7);
+  --pjx-tooltip-radius:      var(--pjx-radius-sm, 4px);
+  --pjx-tooltip-shadow:      var(--pjx-shadow-md, 0 4px 12px rgb(0 0 0 / 0.08));
+  /* 0.35rem sits between spacing steps; it keeps the tip compact. */
+  --pjx-tooltip-padding:     0.35rem var(--pjx-space-2, 0.5rem);
   --pjx-tooltip-max-width:   20ch;
-  --pjx-tooltip-fg:          var(--text);
-  --pjx-tooltip-font-size:   var(--font-size-xs);
-  --pjx-tooltip-z:           400;
+  --pjx-tooltip-fg:          var(--pjx-color-text, #18181b);
+  --pjx-tooltip-font-size:   var(--pjx-font-size-xs, 0.75rem);
+  --pjx-tooltip-z:           var(--pjx-z-tooltip, 400);
   --pjx-tooltip-backdrop:    rgb(0 0 0 / 0.45);
-  --pjx-tooltip-backdrop-z:  390;
+  --pjx-tooltip-backdrop-z:  calc(var(--pjx-z-tooltip, 400) - 10);
 }
 
 .pjx-tooltip {
