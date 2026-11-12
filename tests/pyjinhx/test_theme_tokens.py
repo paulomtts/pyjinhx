@@ -1,4 +1,4 @@
-"""Migrated stylesheets use only defined theme tokens, with light-value fallbacks."""
+"""Builtin stylesheets use only defined theme tokens, with light-value fallbacks."""
 
 from __future__ import annotations
 
@@ -34,10 +34,6 @@ LEGACY_NAME = re.compile(
     r")(?![\w-])"
 )
 VAR_OPEN = re.compile(r"(?<![\w-])var\(")
-
-# Stylesheets that still use legacy names. Remove a path once its file is
-# migrated; the suite fails until you do.
-LEGACY_PENDING: tuple[str, ...] = ()
 
 
 def light_values() -> dict[str, str]:
@@ -121,7 +117,6 @@ def stylesheets() -> list[str]:
 
 
 STYLESHEETS = stylesheets()
-MIGRATED = [path for path in STYLESHEETS if path not in LEGACY_PENDING]
 
 
 def read(path: str) -> str:
@@ -135,35 +130,22 @@ def test_sheet_light_values_parse():
     assert light["--pjx-color-brand"] == "#27272a"
 
 
-@pytest.mark.parametrize("path", MIGRATED)
-def test_migrated_stylesheet_tokens_are_defined(path):
+@pytest.mark.parametrize("path", STYLESHEETS)
+def test_stylesheet_tokens_are_defined(path):
     undefined = undefined_tokens(read(path), light_values())
     assert not undefined, f"{path} uses undefined theme tokens: {sorted(undefined)}"
 
 
-@pytest.mark.parametrize("path", MIGRATED)
-def test_migrated_stylesheet_fallbacks_match_light_values(path):
+@pytest.mark.parametrize("path", STYLESHEETS)
+def test_stylesheet_fallbacks_match_light_values(path):
     problems = fallback_mismatches(read(path), light_values())
     assert not problems, f"{path}: " + "; ".join(problems)
 
 
-@pytest.mark.parametrize("path", MIGRATED)
-def test_migrated_stylesheet_has_no_legacy_names(path):
+@pytest.mark.parametrize("path", STYLESHEETS)
+def test_stylesheet_has_no_legacy_names(path):
     found = legacy_names(read(path))
     assert not found, f"{path} still uses legacy names: {sorted(found)}"
-
-
-def test_pending_list_is_sorted_and_unique():
-    assert LEGACY_PENDING == tuple(sorted(set(LEGACY_PENDING)))
-
-
-@pytest.mark.parametrize("path", LEGACY_PENDING)
-def test_pending_path_still_needs_migration(path):
-    assert (REPO_ROOT / path).is_file(), f"pending path does not exist: {path}"
-    assert path in STYLESHEETS, f"{path} is not a stylesheet under test"
-    assert legacy_names(read(path)), (
-        f"{path} has no legacy names left; remove it from LEGACY_PENDING"
-    )
 
 
 def test_theme_token_finder_matches_only_theme_families():
