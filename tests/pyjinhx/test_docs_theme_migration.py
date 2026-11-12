@@ -12,6 +12,7 @@ from pathlib import Path
 _ROOT = Path(__file__).resolve().parents[2]
 _CHANGELOG = _ROOT / "CHANGELOG.md"
 _THEME = _ROOT / "pyjinhx" / "client" / "pjx_theme.css"
+_COMPONENTS = _ROOT / "docs" / "components.md"
 _HEADING = "## Unreleased — Default theme"
 
 # Old name (without the leading `--`) -> what replaces it.
@@ -42,6 +43,26 @@ _MAPPING = {
     "space-N": "--pjx-space-N",
     "transition": "var(--pjx-duration-normal) var(--pjx-easing-standard)",
 }
+
+# Every old name as a regex; longest first so `surface-alt` wins over `surface`.
+_LEGACY = sorted(
+    [re.escape(n) for n in _MAPPING if n != "space-N"] + [r"space-\d+", "accent-soft"],
+    key=len,
+    reverse=True,
+)
+# `--success`, `--warning` and `--error` are also BEM modifier shorthands
+# (`pjx-alert--success`), so they only count inside `var(...)`.
+_UNAMBIGUOUS = [n for n in _LEGACY if n not in ("success", "warning", "error")]
+_LEGACY_VAR = re.compile(r"var\(\s*--(?:" + "|".join(_LEGACY) + r")(?![\w-])")
+# Also the brace shorthand `--radius-{sm,md}` that one page used.
+_LEGACY_QUOTED = re.compile(
+    r"`--(?:" + "|".join(_UNAMBIGUOUS) + r")(?![\w-])|--(?:font-size|radius)-\{"
+)
+
+# Shared theme tokens, as opposed to `--pjx-<widget>-*` component tokens.
+_THEME_TOKEN = re.compile(
+    r"--pjx-(?:color|font|line-height|space|radius|shadow|duration|easing|z|chart-series)-[\w-]+"
+)
 
 
 def _entry() -> str:
@@ -98,3 +119,63 @@ def test_changelog_links_resolve():
     assert links
     local = [link for link in links if not link.startswith("http")]
     assert [link for link in local if not (_ROOT / link).is_file()] == []
+
+
+def test_docs_do_not_present_legacy_theme_names():
+    found = []
+    for path in sorted((_ROOT / "docs").rglob("*.md")):
+        rel = path.relative_to(_ROOT).as_posix()
+        if (
+            rel.startswith("docs/superpowers/")
+            or rel == "docs/decisions/0007-default-theme.md"
+        ):
+            continue
+        for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+            for match in [*_LEGACY_VAR.finditer(line), *_LEGACY_QUOTED.finditer(line)]:
+                found.append(f"{rel}:{number}: {match.group(0)}")
+    assert found == []
+
+
+def test_legacy_patterns_skip_bem_modifiers_and_longer_tokens():
+    def flagged(line: str) -> bool:
+        return bool(_LEGACY_VAR.search(line) or _LEGACY_QUOTED.search(line))
+
+    for line in (
+        "var(--text)",
+        "var( --space-12)",
+        "`--radius-{sm,md}`",
+        "`--error-bg`",
+    ):
+        assert flagged(line), line
+    for line in (
+        "`pjx-alert--success`, `--warning`",
+        "var(--pjx-color-border)",
+        "var(--text-subtle)",
+        "`--pjx-radius-md`",
+        "`--pjx-font-size-{xs,sm}`",
+    ):
+        assert not flagged(line), line
+
+
+def test_component_token_defaults_name_the_css_tokens():
+    declared = {}
+    for css in sorted((_ROOT / "pyjinhx" / "builtins").rglob("*.css")):
+        for name, value in re.findall(
+            r"(--pjx-[\w-]+)\s*:\s*([^;]+);", css.read_text(encoding="utf-8")
+        ):
+            declared.setdefault(name, value)
+    rows = re.findall(
+        r"^\s*\| `(--pjx-[\w-]+)` \| (.*?) \|$",
+        _COMPONENTS.read_text(encoding="utf-8"),
+        re.MULTILINE,
+    )
+    checked, wrong = 0, []
+    for token, default in rows:
+        if "var(--" not in default or token not in declared:
+            continue
+        checked += 1
+        named = set(_THEME_TOKEN.findall(default))
+        if not named or not named <= set(_THEME_TOKEN.findall(declared[token])):
+            wrong.append(f"{token}: docs {default} vs CSS {declared[token].strip()}")
+    assert checked
+    assert wrong == []

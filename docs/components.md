@@ -2,7 +2,7 @@
 
 The built-in `pyjinhx.builtins` components, rendered here at docs build time. Each shows a live render and its PascalCase HTML; expand the accordions for props, style tokens, the DOM contract, and the Python form. Import them from `pyjinhx.builtins` (see the [API index](reference/public-api.md)). `PJXLazyLoad` needs a backend, so it has no live render.
 
-**Conventions:** Markup classes use the **`pjx-`** prefix; overrides use **`--pjx-`** custom properties. Builtin CSS also references **theme variables** (`--surface`, `--border`, `--text`, `--radius-md`, `--shadow-md`, `--transition`, `--brand`, …)—define those in your global CSS or map them to your design system. See [builtin-conventions.md](guide/builtin-conventions.md) for the full per-component contract (auto-id, `class_name`, `extra_attrs`, `js`/`css`, headless IIFE JS under `window.pjx`, cancelable `pjx:*:before-*` events). Every component inherits `id` and `render()` from [BaseComponent](api/base-component.md); most builtins additionally declare their own `js`/`css`, `class_name`, and `extra_attrs` fields. `id` is omitted from the props tables below.
+**Conventions:** Markup classes use the **`pjx-`** prefix; overrides use **`--pjx-`** custom properties. Builtin CSS also reads the shared **`--pjx-*` theme tokens** (`--pjx-color-surface`, `--pjx-color-border`, `--pjx-color-text`, `--pjx-radius-md`, `--pjx-shadow-md`, `--pjx-color-brand`, …), each with a literal light fallback, so builtins render without any app CSS; see [Theming](guide/theming.md) to turn the default theme on or map your design system onto them. See [builtin-conventions.md](guide/builtin-conventions.md) for the full per-component contract (auto-id, `class_name`, `extra_attrs`, `js`/`css`, headless IIFE JS under `window.pjx`, cancelable `pjx:*:before-*` events). Every component inherits `id` and `render()` from [BaseComponent](api/base-component.md); most builtins additionally declare their own `js`/`css`, `class_name`, and `extra_attrs` fields. `id` is omitted from the props tables below.
 
 **Children-vs-`content` tag gotcha (children-mapping components):** Several components map children to a single attribute (e.g. PJXNotification `content`, PJXTooltip `content`). If you write these as [PascalCase tags](guide/tags.md) in a template, do **not** supply both child text and the corresponding attribute on the same tag—use body text as the child *or* the attribute, not both.
 
@@ -34,13 +34,13 @@ Inline status banner. **Assets:** `pjx_alert.css`, `pjx_alert.js`.
 
     | Token | Default |
     | --- | --- |
-    | `--pjx-alert-radius` | `var(--radius-md)` |
+    | `--pjx-alert-radius` | `var(--pjx-radius-md)` |
     | `--pjx-alert-padding` | `0.875rem 1rem` |
-    | `--pjx-alert-border` | `var(--border)` |
-    | `--pjx-alert-shadow` | `var(--shadow-md)` |
-    | `--pjx-alert-title-size` | `var(--font-size-sm)` |
-    | `--pjx-alert-body-size` | `var(--font-size-sm)` |
-    | `--pjx-alert-dismiss-color` | `var(--text-muted)` |
+    | `--pjx-alert-border` | `var(--pjx-color-border)` |
+    | `--pjx-alert-shadow` | `var(--pjx-shadow-md)` |
+    | `--pjx-alert-title-size` | `var(--pjx-font-size-sm)` |
+    | `--pjx-alert-body-size` | `var(--pjx-font-size-sm)` |
+    | `--pjx-alert-dismiss-color` | `var(--pjx-color-text-muted)` |
 
 ??? note "DOM & classes"
 
@@ -48,7 +48,7 @@ Inline status banner. **Assets:** `pjx_alert.css`, `pjx_alert.js`.
     `data-pjx-close` inside triggers dismissal.
     Events: `pjx:alert:before-dismiss`* (cancelable), `pjx:alert:dismiss` — `detail = {reason: 'trigger', trigger}`.
 
-    **Classes:** `pjx-alert`; variant modifiers `pjx-alert--info`, `--success`, `--warning`, `--error`; dismissed state `pjx-alert--dismissed`; `pjx-alert__inner`, `__text`, `__title`, `__body`, `__dismiss`. Variants use `color-mix` with `--brand`, `--success`, `--warning`, or `--error` / `--error-bg` / `--error-border` where applicable.
+    **Classes:** `pjx-alert`; variant modifiers `pjx-alert--info`, `--success`, `--warning`, `--error`; dismissed state `pjx-alert--dismissed`; `pjx-alert__inner`, `__text`, `__title`, `__body`, `__dismiss`. Each variant takes its background, border and text colour from the matching status tokens: `--pjx-color-info-subtle`, `--pjx-color-info-border` and `--pjx-color-info-text` for `--info`, and the same `-subtle` / `-border` / `-text` triple of `--pjx-color-success`, `--pjx-color-warning` and `--pjx-color-error` for the others.
 
 ??? note "Python"
 
@@ -94,9 +94,9 @@ Image or initials in a circle. **Assets:** `pjx_avatar.css` only.
     | `--pjx-avatar-sm` | `2rem` |
     | `--pjx-avatar-md` | `2.5rem` |
     | `--pjx-avatar-lg` | `3.25rem` |
-    | `--pjx-avatar-bg` | `var(--surface-alt)` |
-    | `--pjx-avatar-fg` | `var(--text-muted)` |
-    | `--pjx-avatar-border` | `var(--border)` |
+    | `--pjx-avatar-bg` | `var(--pjx-color-surface-alt)` |
+    | `--pjx-avatar-fg` | `var(--pjx-color-text-muted)` |
+    | `--pjx-avatar-border` | `var(--pjx-color-border)` |
 
 ??? note "DOM & classes"
 
@@ -151,7 +151,7 @@ Overlapping row of avatars with optional overflow count. **Assets:** `pjx_avatar
     | Token | Default |
     | --- | --- |
     | `--pjx-avatar-stack-overlap` | `-0.5rem` |
-    | `--pjx-avatar-stack-ring` | `var(--surface)` |
+    | `--pjx-avatar-stack-ring` | `var(--pjx-color-surface)` |
 
 ??? note "DOM & classes"
 
@@ -197,22 +197,22 @@ Small status label. **Assets:** `pjx_badge.css` only.
 
     | Token | Default (maps to) |
     | --- | --- |
-    | `--pjx-badge-font-size` | `var(--font-size-xs)` |
-    | `--pjx-badge-radius-sm` | `var(--radius-sm)` |
-    | `--pjx-badge-radius-md` | `var(--radius-md)` |
-    | `--pjx-badge-radius-full` | `var(--radius-full)` |
-    | `--pjx-badge-brand-bg` | `var(--brand-subtle)` |
-    | `--pjx-badge-brand-fg` | `var(--brand-muted)` |
-    | `--pjx-badge-brand-accent` | `var(--brand)` |
-    | `--pjx-badge-error-bg` | `var(--error-bg)` |
-    | `--pjx-badge-error-fg` | `var(--error)` |
-    | `--pjx-badge-error-border` | `var(--error-border)` |
-    | `--pjx-badge-neutral-bg` | `var(--surface-alt)` |
-    | `--pjx-badge-neutral-fg` | `var(--text)` |
-    | `--pjx-badge-neutral-border` | `var(--border)` |
-    | `--pjx-badge-muted-bg` | `var(--surface)` |
-    | `--pjx-badge-muted-fg` | `var(--text-muted)` |
-    | `--pjx-badge-muted-border` | `var(--border)` |
+    | `--pjx-badge-font-size` | `var(--pjx-font-size-xs)` |
+    | `--pjx-badge-radius-sm` | `var(--pjx-radius-sm)` |
+    | `--pjx-badge-radius-md` | `var(--pjx-radius-md)` |
+    | `--pjx-badge-radius-full` | `var(--pjx-radius-full)` |
+    | `--pjx-badge-brand-bg` | `var(--pjx-color-brand-subtle)` |
+    | `--pjx-badge-brand-fg` | `var(--pjx-color-brand-muted)` |
+    | `--pjx-badge-brand-accent` | `var(--pjx-color-brand)` |
+    | `--pjx-badge-error-bg` | `var(--pjx-color-error-subtle)` |
+    | `--pjx-badge-error-fg` | `var(--pjx-color-error)` |
+    | `--pjx-badge-error-border` | `var(--pjx-color-error-border)` |
+    | `--pjx-badge-neutral-bg` | `var(--pjx-color-surface-alt)` |
+    | `--pjx-badge-neutral-fg` | `var(--pjx-color-text)` |
+    | `--pjx-badge-neutral-border` | `var(--pjx-color-border)` |
+    | `--pjx-badge-muted-bg` | `color-mix(in srgb, var(--pjx-color-text-muted) 12%, transparent)` |
+    | `--pjx-badge-muted-fg` | `var(--pjx-color-text-muted)` |
+    | `--pjx-badge-muted-border` | `color-mix(in srgb, var(--pjx-color-text-muted) 30%, transparent)` |
 
 ??? note "DOM & classes"
 
@@ -250,8 +250,8 @@ Ordered trail of links. **Assets:** `pjx_breadcrumb.css` only.
     | Token | Default |
     | --- | --- |
     | `--pjx-breadcrumb-sep` | `"/"` |
-    | `--pjx-breadcrumb-link-color` | `var(--brand)` |
-    | `--pjx-breadcrumb-current-color` | `var(--text)` |
+    | `--pjx-breadcrumb-link-color` | `var(--pjx-color-brand)` |
+    | `--pjx-breadcrumb-current-color` | `var(--pjx-color-text)` |
 
 ??? note "DOM & classes"
 
@@ -290,11 +290,11 @@ Ordered trail of links. **Assets:** `pjx_breadcrumb.css` only.
 
     | Token | Default |
     | --- | --- |
-    | `--pjx-card-bg` | `var(--surface-alt)` |
-    | `--pjx-card-border` | `var(--border)` |
-    | `--pjx-card-radius` | `var(--radius-md)` |
-    | `--pjx-card-title-color` | `var(--text)` |
-    | `--pjx-card-padding` | `var(--space-4, 1rem)` |
+    | `--pjx-card-bg` | `var(--pjx-color-surface-alt)` |
+    | `--pjx-card-border` | `var(--pjx-color-border)` |
+    | `--pjx-card-radius` | `var(--pjx-radius-md)` |
+    | `--pjx-card-title-color` | `var(--pjx-color-text)` |
+    | `--pjx-card-padding` | `var(--pjx-space-4)` |
 
 ??? note "DOM & classes"
 
@@ -441,11 +441,11 @@ PJXChart(
     | Token | Default |
     | --- | --- |
     | `--pjx-chart-1` … `--pjx-chart-8` | a validated palette, with darker steps in dark mode |
-    | `--pjx-chart-surface` | `var(--surface)` |
-    | `--pjx-chart-text` | `var(--text-muted)` |
-    | `--pjx-chart-title` | `var(--text)` |
-    | `--pjx-chart-grid` | `var(--border)` at 70% |
-    | `--pjx-chart-axis` | `var(--border)` |
+    | `--pjx-chart-surface` | `var(--pjx-color-surface)` |
+    | `--pjx-chart-text` | `var(--pjx-color-text-muted)` |
+    | `--pjx-chart-title` | `var(--pjx-color-text)` |
+    | `--pjx-chart-grid` | `color-mix(in srgb, var(--pjx-color-border) 70%, transparent)` |
+    | `--pjx-chart-axis` | `var(--pjx-color-border)` |
     | `--pjx-chart-font-size` | `12px` |
     | `--pjx-chart-line-width` | `2px` |
     | `--pjx-chart-area` | `10%` |
@@ -485,11 +485,11 @@ Separator line. **Assets:** `pjx_divider.css` only.
 
     | Token | Default |
     | --- | --- |
-    | `--pjx-divider-color` | `var(--border)` |
+    | `--pjx-divider-color` | `var(--pjx-color-border)` |
     | `--pjx-divider-thickness` | `1px` |
     | `--pjx-divider-gap` | `0.75rem` |
-    | `--pjx-divider-label-color` | `var(--text-muted)` |
-    | `--pjx-divider-label-size` | `var(--font-size-sm)` |
+    | `--pjx-divider-label-color` | `var(--pjx-color-text-muted)` |
+    | `--pjx-divider-label-size` | `var(--pjx-font-size-sm)` |
 
 ??? note "DOM & classes"
 
@@ -549,9 +549,9 @@ Centered, vertically-stacked empty-view container. Compose whatever you like ins
     | `--pjx-empty-state-max-width` | `28rem` |
     | `--pjx-empty-state-gap` | `0.5rem` |
     | `--pjx-empty-state-actions-gap` | `0.5rem` (chip row gap) |
-    | `--pjx-empty-state-chip-bg` | `var(--surface-alt)` |
-    | `--pjx-empty-state-chip-color` | `var(--text-muted)` |
-    | `--pjx-empty-state-chip-border` | `var(--border)` |
+    | `--pjx-empty-state-chip-bg` | `var(--pjx-color-surface-alt)` |
+    | `--pjx-empty-state-chip-color` | `var(--pjx-color-text-muted)` |
+    | `--pjx-empty-state-chip-border` | `var(--pjx-color-border)` |
 
 ??? note "DOM & classes"
 
@@ -696,11 +696,11 @@ Accessible data table shell. Compose with `PJXTableHead`, `PJXTableBody`, `PJXTa
 
     | Token | Default |
     | --- | --- |
-    | `--pjx-table-border` | `var(--border)` |
-    | `--pjx-table-header-bg` | `var(--surface-alt)` |
-    | `--pjx-table-header-fg` | `var(--text)` |
-    | `--pjx-table-stripe-bg` | `var(--surface-alt)` |
-    | `--pjx-table-row-hover-bg` | `var(--surface-alt)` |
+    | `--pjx-table-border` | `var(--pjx-color-border)` |
+    | `--pjx-table-header-bg` | `var(--pjx-color-surface-alt)` |
+    | `--pjx-table-header-fg` | `var(--pjx-color-text)` |
+    | `--pjx-table-stripe-bg` | `color-mix(in srgb, var(--pjx-color-surface) 60%, var(--pjx-color-surface-alt))` |
+    | `--pjx-table-row-hover-bg` | `color-mix(in srgb, var(--pjx-color-surface) 40%, var(--pjx-color-surface-alt))` |
     | `--pjx-table-cell-pad-y` | `0.5rem` |
     | `--pjx-table-cell-pad-x` | `0.75rem` |
 
@@ -948,14 +948,14 @@ A `<tr>` for either the head or body section. When `selectable=True`, a checkbox
     | --- | --- |
     | `--pjx-drawer-width` | `min(24rem, 100vw)` |
     | `--pjx-drawer-height-bottom` | `min(50dvh, 28rem)` |
-    | `--pjx-drawer-bg` | `var(--surface)` |
-    | `--pjx-drawer-border` | `var(--border)` |
-    | `--pjx-drawer-shadow` | `var(--shadow-md)` |
+    | `--pjx-drawer-bg` | `var(--pjx-color-surface)` |
+    | `--pjx-drawer-border` | `var(--pjx-color-border)` |
+    | `--pjx-drawer-shadow` | `var(--pjx-shadow-md)` |
     | `--pjx-drawer-backdrop` | `rgb(0 0 0 / 0.45)` |
-    | `--pjx-drawer-header-bg` | `var(--surface-alt)` |
-    | `--pjx-drawer-header-sep` | `var(--border)` |
-    | `--pjx-drawer-footer-bg` | `var(--surface-alt)` |
-    | `--pjx-drawer-footer-sep` | `var(--border)` |
+    | `--pjx-drawer-header-bg` | `var(--pjx-color-surface-alt)` |
+    | `--pjx-drawer-header-sep` | `var(--pjx-color-border)` |
+    | `--pjx-drawer-footer-bg` | `var(--pjx-color-surface-alt)` |
+    | `--pjx-drawer-footer-sep` | `var(--pjx-color-border)` |
     | `--pjx-drawer-padding` | `1rem` |
     | `--pjx-drawer-z` | `250` |
 
@@ -1102,19 +1102,19 @@ Button + anchored panel backed by the shared popover engine. **Assets:** `pjx_dr
 
     | Token | Default |
     | --- | --- |
-    | `--pjx-dropdown-menu-bg` | `var(--surface-alt)` |
-    | `--pjx-dropdown-menu-border` | `var(--border)` |
-    | `--pjx-dropdown-menu-radius` | `var(--radius-md)` |
-    | `--pjx-dropdown-menu-shadow` | `var(--shadow-md)` |
+    | `--pjx-dropdown-menu-bg` | `var(--pjx-color-surface-alt)` |
+    | `--pjx-dropdown-menu-border` | `var(--pjx-color-border)` |
+    | `--pjx-dropdown-menu-radius` | `var(--pjx-radius-md)` |
+    | `--pjx-dropdown-menu-shadow` | `var(--pjx-shadow-md)` |
     | `--pjx-dropdown-menu-padding` | `0.35rem 0` |
     | `--pjx-dropdown-menu-min-w` | `10rem` |
     | `--pjx-dropdown-menu-max-h` | `min(70dvh, 24rem)` |
     | `--pjx-dropdown-z` | `350` |
-    | `--pjx-dropdown-trigger-bg` | `var(--surface-alt)` |
-    | `--pjx-dropdown-trigger-border` | `var(--border)` |
-    | `--pjx-dropdown-trigger-radius` | `var(--radius-md)` |
+    | `--pjx-dropdown-trigger-bg` | `var(--pjx-color-surface-alt)` |
+    | `--pjx-dropdown-trigger-border` | `var(--pjx-color-border)` |
+    | `--pjx-dropdown-trigger-radius` | `var(--pjx-radius-md)` |
     | `--pjx-dropdown-trigger-padding` | `0.5rem 0.85rem` |
-    | `--pjx-dropdown-trigger-bg-hover` | `color-mix(in srgb, var(--text) 6%, var(--surface-alt))` |
+    | `--pjx-dropdown-trigger-bg-hover` | `color-mix(in srgb, var(--pjx-color-text) 6%, var(--pjx-color-surface-alt))` |
 
 ??? note "DOM & classes"
 
@@ -1164,20 +1164,20 @@ Native `<dialog>` shell. Compose with `PJXModalHeader`, `PJXModalBody`, and `PJX
     | --- | --- |
     | `--pjx-modal-width` | `52rem` |
     | `--pjx-modal-min-height` | `28rem` |
-    | `--pjx-modal-bg` | `var(--surface)` |
-    | `--pjx-modal-border` | `var(--border)` |
-    | `--pjx-modal-radius` | `var(--radius-lg)` |
-    | `--pjx-modal-shadow` | `var(--shadow-md)` |
-    | `--pjx-modal-header-bg` | `var(--surface-alt)` |
-    | `--pjx-modal-header-sep` | `var(--border)` |
-    | `--pjx-modal-footer-bg` | `var(--surface-alt)` |
-    | `--pjx-modal-footer-sep` | `var(--border)` |
-    | `--pjx-modal-title-color` | `var(--text)` |
-    | `--pjx-modal-close-color` | `var(--text-muted)` |
+    | `--pjx-modal-bg` | `var(--pjx-color-surface)` |
+    | `--pjx-modal-border` | `var(--pjx-color-border)` |
+    | `--pjx-modal-radius` | `var(--pjx-radius-lg)` |
+    | `--pjx-modal-shadow` | `var(--pjx-shadow-md)` |
+    | `--pjx-modal-header-bg` | `var(--pjx-color-surface-alt)` |
+    | `--pjx-modal-header-sep` | `var(--pjx-color-border)` |
+    | `--pjx-modal-footer-bg` | `var(--pjx-color-surface-alt)` |
+    | `--pjx-modal-footer-sep` | `var(--pjx-color-border)` |
+    | `--pjx-modal-title-color` | `var(--pjx-color-text)` |
+    | `--pjx-modal-close-color` | `var(--pjx-color-text-muted)` |
     | `--pjx-modal-backdrop` | `rgb(0 0 0 / 0.6)` |
     | `--pjx-modal-padding` | `1.5rem` |
 
-    Close control hover uses `var(--surface)`, `var(--text)`, `var(--radius-sm)`, `var(--transition)` from your theme.
+    The close control (styled by `PJXModalHeader`) uses `var(--pjx-radius-sm)`, turns `var(--pjx-color-surface)` / `var(--pjx-color-text)` on hover, and transitions over `var(--pjx-duration-normal) var(--pjx-easing-standard)`.
 
 ??? note "DOM & classes"
 
@@ -1321,15 +1321,15 @@ Fixed-position toast. **Assets:** `pjx_notification.css`, `pjx_notification.js`.
     | --- | --- |
     | `--pjx-notification-width` | `22rem` |
     | `--pjx-notification-gap` | `1.25rem` (viewport inset; used in slide animations) |
-    | `--pjx-notification-bg` | `var(--surface-alt)` |
-    | `--pjx-notification-border` | `var(--border)` |
-    | `--pjx-notification-radius` | `var(--radius-md)` |
-    | `--pjx-notification-shadow` | `var(--shadow-md)` |
+    | `--pjx-notification-bg` | `var(--pjx-color-surface-alt)` |
+    | `--pjx-notification-border` | `var(--pjx-color-border)` |
+    | `--pjx-notification-radius` | `var(--pjx-radius-md)` |
+    | `--pjx-notification-shadow` | `var(--pjx-shadow-md)` |
     | `--pjx-notification-padding` | `1rem 1rem 1rem 1.25rem` |
-    | `--pjx-notification-close-color` | `var(--text-muted)` |
+    | `--pjx-notification-close-color` | `var(--pjx-color-text-muted)` |
     | `--pjx-notification-z` | `500` |
 
-    Content uses `var(--font-size-sm)`, `var(--text)`; close hover uses `var(--surface)`, `var(--text)`, `var(--radius-sm)`, `var(--transition)`.
+    Content uses `var(--pjx-font-size-sm)`, `var(--pjx-color-text)`; the close control uses `var(--pjx-radius-sm)`, turns `var(--pjx-color-surface)` / `var(--pjx-color-text)` on hover, and transitions over `var(--pjx-duration-normal) var(--pjx-easing-standard)`.
 
 ??? note "DOM & classes"
 
@@ -1378,11 +1378,11 @@ Click-toggle compound. Three separate components; compose them by placing `PJXPo
     | Token | Default |
     | --- | --- |
     | `--pjx-popover-max-width` | `28ch` |
-    | `--pjx-popover-bg` | `var(--surface-alt)` |
-    | `--pjx-popover-border` | `var(--border)` |
-    | `--pjx-popover-radius` | `var(--radius-md)` |
-    | `--pjx-popover-shadow` | `var(--shadow-md)` |
-    | `--pjx-popover-padding` | `var(--space-3, 0.75rem) var(--space-4, 1rem)` |
+    | `--pjx-popover-bg` | `var(--pjx-color-surface-alt)` |
+    | `--pjx-popover-border` | `var(--pjx-color-border)` |
+    | `--pjx-popover-radius` | `var(--pjx-radius-md)` |
+    | `--pjx-popover-shadow` | `var(--pjx-shadow-md)` |
+    | `--pjx-popover-padding` | `var(--pjx-space-3)` |
     | `--pjx-popover-z` | `300` |
 
 ??? note "DOM & classes"
@@ -1515,13 +1515,13 @@ HX-Trigger-driven toast container singleton. Mount once in the layout. **Assets:
 
     | Token | Default |
     | --- | --- |
-    | `--pjx-toast-bg` | `var(--surface)` |
-    | `--pjx-toast-border` | `var(--border)` |
-    | `--pjx-toast-radius` | `var(--radius-md)` |
-    | `--pjx-toast-shadow` | `var(--shadow-md)` |
+    | `--pjx-toast-bg` | `var(--pjx-color-surface)` |
+    | `--pjx-toast-border` | `var(--pjx-color-border)` |
+    | `--pjx-toast-radius` | `var(--pjx-radius-md)` |
+    | `--pjx-toast-shadow` | `var(--pjx-shadow-md)` |
     | `--pjx-toast-gap` | `0.5rem` |
     | `--pjx-toast-z` | `1000` |
-    | `--pjx-toast-info` | `var(--brand, #5c8fa8)` |
+    | `--pjx-toast-info` | `var(--pjx-color-info)` |
     | `--pjx-toast-success` | `#3e7d4f` |
     | `--pjx-toast-warning` | `#b07415` |
     | `--pjx-toast-error` | `#b3261e` |
@@ -1567,14 +1567,14 @@ Composable tooltip shell. Compose with `PJXTooltipTrigger` and `PJXTooltipConten
     | Token | Default |
     | --- | --- |
     | `--pjx-tooltip-gap` | `6px` |
-    | `--pjx-tooltip-bg` | `var(--surface-alt)` |
-    | `--pjx-tooltip-border` | `var(--border)` |
-    | `--pjx-tooltip-radius` | `var(--radius-sm)` |
-    | `--pjx-tooltip-shadow` | `var(--shadow-md)` |
+    | `--pjx-tooltip-bg` | `var(--pjx-color-surface-alt)` |
+    | `--pjx-tooltip-border` | `var(--pjx-color-border)` |
+    | `--pjx-tooltip-radius` | `var(--pjx-radius-sm)` |
+    | `--pjx-tooltip-shadow` | `var(--pjx-shadow-md)` |
     | `--pjx-tooltip-padding` | `0.35rem 0.5rem` |
     | `--pjx-tooltip-max-width` | `20ch` |
-    | `--pjx-tooltip-fg` | `var(--text)` |
-    | `--pjx-tooltip-font-size` | `var(--font-size-xs)` |
+    | `--pjx-tooltip-fg` | `var(--pjx-color-text)` |
+    | `--pjx-tooltip-font-size` | `var(--pjx-font-size-xs)` |
     | `--pjx-tooltip-z` | `400` |
     | `--pjx-tooltip-backdrop` | `rgb(0 0 0 / 0.45)` |
     | `--pjx-tooltip-backdrop-z` | `390` |
@@ -1869,13 +1869,13 @@ Compound image/content carousel with arrows, dots, keyboard nav, swipe, and opt-
 
     | Token | Default |
     | --- | --- |
-    | `--pjx-carousel-border` | `var(--border)` |
-    | `--pjx-carousel-bg` | `var(--surface)` |
-    | `--pjx-carousel-radius` | `var(--radius-md)` |
-    | `--pjx-carousel-arrow-bg` | `color-mix(in srgb, var(--surface) 70%, transparent)` |
-    | `--pjx-carousel-arrow-fg` | `var(--text)` |
-    | `--pjx-carousel-dot-bg` | `var(--border)` |
-    | `--pjx-carousel-dot-active-bg` | `var(--brand)` |
+    | `--pjx-carousel-border` | `var(--pjx-color-border)` |
+    | `--pjx-carousel-bg` | `var(--pjx-color-surface)` |
+    | `--pjx-carousel-radius` | `var(--pjx-radius-md)` |
+    | `--pjx-carousel-arrow-bg` | `color-mix(in srgb, var(--pjx-color-surface) 70%, transparent)` |
+    | `--pjx-carousel-arrow-fg` | `var(--pjx-color-text)` |
+    | `--pjx-carousel-dot-bg` | `var(--pjx-color-border)` |
+    | `--pjx-carousel-dot-active-bg` | `var(--pjx-color-brand)` |
 
 ??? note "DOM & classes"
 
@@ -2097,13 +2097,13 @@ Accessible page-navigation bar. **Assets:** `pjx_paginator.css` only.
     | Token | Default |
     | --- | --- |
     | `--pjx-paginator-gap` | `0.25rem` |
-    | `--pjx-paginator-link-fg` | `var(--text)` |
+    | `--pjx-paginator-link-fg` | `var(--pjx-color-text)` |
     | `--pjx-paginator-link-bg` | `transparent` |
-    | `--pjx-paginator-link-hover-bg` | `var(--surface-alt)` |
-    | `--pjx-paginator-current-fg` | `var(--brand)` |
-    | `--pjx-paginator-current-bg` | `var(--brand-subtle)` |
-    | `--pjx-paginator-border` | `var(--border)` |
-    | `--pjx-paginator-radius` | `var(--radius-sm)` |
+    | `--pjx-paginator-link-hover-bg` | `color-mix(in srgb, var(--pjx-color-surface) 40%, var(--pjx-color-surface-alt))` |
+    | `--pjx-paginator-current-fg` | `var(--pjx-color-on-brand)` |
+    | `--pjx-paginator-current-bg` | `var(--pjx-color-brand)` |
+    | `--pjx-paginator-border` | `var(--pjx-color-border)` |
+    | `--pjx-paginator-radius` | `var(--pjx-radius-sm)` |
     | `--pjx-paginator-disabled-opacity` | `0.4` |
 
 ??? note "DOM & classes"
@@ -2143,9 +2143,9 @@ Determinate or indeterminate meter. **Assets:** `pjx_progress.css` only.
     | Token | Default |
     | --- | --- |
     | `--pjx-progress-height` | `0.5rem` |
-    | `--pjx-progress-radius` | `var(--radius-full)` |
-    | `--pjx-progress-track` | `var(--surface-alt)` |
-    | `--pjx-progress-fill` | `var(--brand)` |
+    | `--pjx-progress-radius` | `var(--pjx-radius-full)` |
+    | `--pjx-progress-track` | `var(--pjx-color-surface-alt)` |
+    | `--pjx-progress-fill` | `var(--pjx-color-brand)` |
     | `--pjx-progress-indeterminate-speed` | `1.2s` |
 
 ??? note "DOM & classes"
@@ -2184,13 +2184,13 @@ In-place loading veil over a positioned ancestor. **Assets:** `pjx_region_loader
 
     | Token | Default |
     | --- | --- |
-    | `--pjx-region-loader-bg` | `color-mix(in srgb, var(--text) 55%, transparent)` |
+    | `--pjx-region-loader-bg` | `color-mix(in srgb, var(--pjx-color-text) 55%, transparent)` |
     | `--pjx-region-loader-backdrop` | `blur(2px)` |
     | `--pjx-region-loader-z` | `100` |
     | `--pjx-region-loader-spinner-size` | `2.5rem` |
     | `--pjx-region-loader-spinner-width` | `3px` |
-    | `--pjx-region-loader-spinner-color` | `var(--brand)` |
-    | `--pjx-region-loader-spinner-track` | `color-mix(in srgb, var(--text) 12%, transparent)` |
+    | `--pjx-region-loader-spinner-color` | `var(--pjx-color-brand)` |
+    | `--pjx-region-loader-spinner-track` | `color-mix(in srgb, var(--pjx-color-text) 12%, transparent)` |
 
 ??? note "DOM & classes"
 
@@ -2244,8 +2244,8 @@ Drag-to-resize split-pane container. Compose `PJXResizablePanel` and `PJXResizab
     | --- | --- |
     | `--pjx-resizable-handle-size` | `0.5rem` |
     | `--pjx-resizable-handle-color` | `transparent` |
-    | `--pjx-resizable-grip-color` | `var(--border)` |
-    | `--pjx-resizable-handle-color-active` | `var(--brand-muted)` |
+    | `--pjx-resizable-grip-color` | `var(--pjx-color-border)` |
+    | `--pjx-resizable-handle-color-active` | `var(--pjx-color-brand-muted)` |
 
 ??? note "DOM & classes"
 
@@ -2365,13 +2365,13 @@ Placeholder shimmer blocks. **Assets:** `pjx_skeleton.css` only.
 
     | Token | Default |
     | --- | --- |
-    | `--pjx-skeleton-bg` | `var(--surface-alt)` |
-    | `--pjx-skeleton-shine` | `color-mix(in srgb, var(--text) 8%, var(--surface-alt))` |
+    | `--pjx-skeleton-bg` | `var(--pjx-color-surface-alt)` |
+    | `--pjx-skeleton-shine` | `color-mix(in srgb, var(--pjx-color-text) 8%, var(--pjx-color-surface-alt))` |
     | `--pjx-skeleton-line-height` | `0.65rem` |
     | `--pjx-skeleton-line-gap` | `0.5rem` |
     | `--pjx-skeleton-circle-size` | `2.5rem` |
     | `--pjx-skeleton-rect-height` | `6rem` |
-    | `--pjx-skeleton-rect-radius` | `var(--radius-md)` |
+    | `--pjx-skeleton-rect-radius` | `var(--pjx-radius-md)` |
     | `--pjx-skeleton-duration` | `1.2s` |
 
 ??? note "DOM & classes"
@@ -2410,8 +2410,8 @@ Inline loading indicator. **Assets:** `pjx_spinner.css` only.
     | `--pjx-spinner-sm` | `1.25rem` |
     | `--pjx-spinner-md` | `2rem` |
     | `--pjx-spinner-lg` | `2.75rem` |
-    | `--pjx-spinner-track` | `color-mix(in srgb, var(--text-muted) 35%, transparent)` |
-    | `--pjx-spinner-accent` | `var(--brand)` |
+    | `--pjx-spinner-track` | `color-mix(in srgb, var(--pjx-color-text-muted) 35%, transparent)` |
+    | `--pjx-spinner-accent` | `var(--pjx-color-brand)` |
 
 ??? note "DOM & classes"
 
@@ -2467,12 +2467,12 @@ Thin shell that wraps a composed tab layout. Compose with [`PJXTabList`](#pjxtab
 
     | Token | Default |
     | --- | --- |
-    | `--pjx-tab-group-border` | `var(--border)` |
-    | `--pjx-tab-group-bg` | `var(--surface-alt)` |
-    | `--pjx-tab-group-tab-active-fg` | `var(--text)` |
-    | `--pjx-tab-group-tab-active-bg` | `color-mix(in srgb, var(--surface) 55%, var(--surface-alt))` |
-    | `--pjx-tab-group-tab-active-border` | `var(--brand)` |
-    | `--pjx-tab-group-panel-bg` | `var(--surface)` |
+    | `--pjx-tab-group-border` | `var(--pjx-color-border)` |
+    | `--pjx-tab-group-bg` | `var(--pjx-color-surface-alt)` |
+    | `--pjx-tab-group-tab-active-fg` | `var(--pjx-color-text)` |
+    | `--pjx-tab-group-tab-active-bg` | `color-mix(in srgb, var(--pjx-color-surface) 55%, var(--pjx-color-surface-alt))` |
+    | `--pjx-tab-group-tab-active-border` | `var(--pjx-color-brand)` |
+    | `--pjx-tab-group-panel-bg` | `var(--pjx-color-surface)` |
 
 ??? note "DOM & classes"
 
@@ -2688,12 +2688,12 @@ Tag-style multi-value input. Each chip carries its own `<input type="hidden">` s
     | Token | Default |
     | --- | --- |
     | `--pjx-chip-input-gap` | `0.375rem` |
-    | `--pjx-chip-input-chip-bg` | `var(--surface-alt)` |
-    | `--pjx-chip-input-chip-fg` | `var(--text)` |
-    | `--pjx-chip-input-chip-radius` | `var(--radius-full)` |
-    | `--pjx-chip-input-border` | `var(--border)` |
-    | `--pjx-chip-input-focus` | `var(--border-focus, var(--border))` |
-    | `--pjx-chip-input-radius` | `var(--radius-md)` |
+    | `--pjx-chip-input-chip-bg` | `var(--pjx-color-surface-alt)` |
+    | `--pjx-chip-input-chip-fg` | `var(--pjx-color-text)` |
+    | `--pjx-chip-input-chip-radius` | `var(--pjx-radius-full)` |
+    | `--pjx-chip-input-border` | `var(--pjx-color-border)` |
+    | `--pjx-chip-input-focus` | `var(--pjx-color-border-focus)` |
+    | `--pjx-chip-input-radius` | `var(--pjx-radius-md)` |
     | `--pjx-chip-input-padding` | `0.375rem 0.5rem` |
 
 ??? note "DOM & classes"
@@ -2744,8 +2744,8 @@ Labelled control wrapper with help text and error state. **Assets:** `pjx_form_f
     | --- | --- |
     | `--pjx-form-field-gap` | `0.375rem` |
     | `--pjx-form-field-label-size` | `0.875em` |
-    | `--pjx-form-field-label-color` | `var(--text)` |
-    | `--pjx-form-field-help-color` | `var(--text-muted)` |
+    | `--pjx-form-field-label-color` | `var(--pjx-color-text)` |
+    | `--pjx-form-field-help-color` | `var(--pjx-color-text-muted)` |
     | `--pjx-form-field-error` | `#b3261e` |
 
 ??? note "DOM & classes"
@@ -2790,10 +2790,10 @@ Password field with a show/hide toggle button. **Assets:** `pjx_password_input.c
 
     | Token | Default |
     | --- | --- |
-    | `--pjx-password-input-border` | `var(--border)` |
-    | `--pjx-password-input-radius` | `var(--radius-md)` |
-    | `--pjx-password-input-focus` | `var(--border-focus, var(--brand))` |
-    | `--pjx-password-input-toggle-color` | `var(--text-muted)` |
+    | `--pjx-password-input-border` | `var(--pjx-color-border)` |
+    | `--pjx-password-input-radius` | `var(--pjx-radius-md)` |
+    | `--pjx-password-input-focus` | `var(--pjx-color-border-focus)` |
+    | `--pjx-password-input-toggle-color` | `var(--pjx-color-text-muted)` |
     | `--pjx-password-input-eye-size` | `1.25rem` |
 
 ??? note "DOM & classes"
@@ -2859,16 +2859,16 @@ Pill-style radio group for mutually exclusive options. **Assets:** `pjx_segmente
 
     | Token | Default |
     | --- | --- |
-    | `--pjx-segmented-control-bg` | `var(--surface-alt)` |
-    | `--pjx-segmented-control-border` | `var(--border)` |
-    | `--pjx-segmented-control-radius` | `var(--radius-full)` |
+    | `--pjx-segmented-control-bg` | `var(--pjx-color-surface-alt)` |
+    | `--pjx-segmented-control-border` | `var(--pjx-color-border)` |
+    | `--pjx-segmented-control-radius` | `var(--pjx-radius-full)` |
     | `--pjx-segmented-control-gap` | `0.25rem` |
     | `--pjx-segmented-control-padding` | `0.25rem` |
-    | `--pjx-segmented-control-active-bg` | `var(--surface)` |
-    | `--pjx-segmented-control-active-fg` | `var(--text)` |
+    | `--pjx-segmented-control-active-bg` | `var(--pjx-color-surface)` |
+    | `--pjx-segmented-control-active-fg` | `var(--pjx-color-text)` |
     | `--pjx-segmented-control-active-shadow` | `0 1px 3px rgb(0 0 0 / 0.12)` |
-    | `--pjx-segmented-control-fg` | `var(--text-muted)` |
-    | `--pjx-segmented-control-focus` | `var(--border-focus, var(--brand))` |
+    | `--pjx-segmented-control-fg` | `var(--pjx-color-text-muted)` |
+    | `--pjx-segmented-control-focus` | `var(--pjx-color-border-focus)` |
 
 ??? note "DOM & classes"
 
@@ -2920,19 +2920,19 @@ A styled replacement for a bare `<select>`, single-choice or multi. A hidden nat
 
     | Token | Default |
     | --- | --- |
-    | `--pjx-select-bg` | `var(--surface, #fff)` |
-    | `--pjx-select-fg` | `var(--text)` |
-    | `--pjx-select-border` | `var(--border)` |
-    | `--pjx-select-focus` | `var(--border-focus, var(--border))` |
-    | `--pjx-select-radius` | `var(--radius-md)` |
+    | `--pjx-select-bg` | `var(--pjx-color-surface)` |
+    | `--pjx-select-fg` | `var(--pjx-color-text)` |
+    | `--pjx-select-border` | `var(--pjx-color-border)` |
+    | `--pjx-select-focus` | `var(--pjx-color-border-focus)` |
+    | `--pjx-select-radius` | `var(--pjx-radius-md)` |
     | `--pjx-select-padding` | `0.375rem 0.5rem` |
-    | `--pjx-select-panel-bg` | `var(--surface-alt)` |
-    | `--pjx-select-panel-shadow` | `var(--shadow-md)` |
+    | `--pjx-select-panel-bg` | `var(--pjx-color-surface-alt)` |
+    | `--pjx-select-panel-shadow` | `var(--pjx-shadow-md)` |
     | `--pjx-select-panel-min-w` | `12rem` |
     | `--pjx-select-panel-max-h` | `16rem` |
     | `--pjx-select-panel-z` | `300` |
-    | `--pjx-select-option-hover` | `var(--surface-hover, var(--surface-alt))` |
-    | `--pjx-select-option-active` | `var(--accent-soft, var(--surface-alt))` |
+    | `--pjx-select-option-hover` | `var(--pjx-color-surface-hover)` |
+    | `--pjx-select-option-active` | `var(--pjx-color-brand-muted)` |
 
 ??? note "DOM & classes"
 
@@ -2984,10 +2984,10 @@ Accessible on/off toggle backed by a visually-hidden checkbox. **Assets:** `pjx_
     | --- | --- |
     | `--pjx-toggle-switch-width` | `2.75rem` |
     | `--pjx-toggle-switch-height` | `1.5rem` |
-    | `--pjx-toggle-switch-track` | `var(--border)` |
-    | `--pjx-toggle-switch-track-on` | `var(--brand)` |
+    | `--pjx-toggle-switch-track` | `var(--pjx-color-border-strong)` |
+    | `--pjx-toggle-switch-track-on` | `var(--pjx-color-brand)` |
     | `--pjx-toggle-switch-thumb` | `#fff` |
-    | `--pjx-toggle-switch-radius` | `var(--radius-full)` |
+    | `--pjx-toggle-switch-radius` | `var(--pjx-radius-full)` |
     | `--pjx-toggle-switch-gap` | `0.5rem` |
 
 ??? note "DOM & classes"
