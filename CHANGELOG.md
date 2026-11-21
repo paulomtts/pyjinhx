@@ -1,5 +1,31 @@
 # Changelog
 
+## Unreleased
+
+### Added
+- Graph edge kinds. A `PJXGraphEdges` edge may name the in-port it enters
+  (`to_port`) and a `kind`; port handles may carry `data-kind` and
+  `data-side` (`top`, `right`, `bottom`, `left`). The curve leaves and enters
+  perpendicular to each port's side, the drawn edge, its label and the ghost
+  wire repeat the kind as `data-kind` for CSS, and a wire lands only on
+  in-ports of its own kind. See [Edge kinds](docs/guide/graph.md#edge-kinds).
+- Wire events: `pjx:graph:wire-start` (cancelable, once the press passes the
+  slop), `pjx:graph:before-wire` (cancelable, on a landing) and
+  `pjx:graph:wire-end` (always, with a `reason` and the release point in
+  world pixels). The stage root carries `data-pjx-graph-wiring` while a wire
+  is held. See [Steering a wire](docs/guide/graph.md#steering-a-wire).
+- `data-pjx-graph-action` marks an app control inside a node: it never drags
+  or selects the node, and a non-empty value fires `pjx:graph:action`
+  `{id, action, port}`.
+- `pjx:graph:view` `{x, y, k}` when a pan or zoom ends, and `view()` on the
+  stage instance. `inAnchor(id, port)` takes an optional in-port key.
+
+### Changed
+- The `pjx:graph:wire` detail also carries `kind` and `to_port` (both `""`
+  on a canvas that sets neither). Edges and wires without kinds, keyed
+  in-ports or sides draw and land exactly as before, and an edge layer
+  without the new keys renders the same markup.
+
 ## 1.15.0 — Default theme (2026-11-12)
 
 ### Added
