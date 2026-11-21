@@ -142,13 +142,12 @@ draws the visible edges in the SVG edge plane. Nothing in this layer is visible 
 | `to` | yes | Non-empty. The target `node_id`. |
 | `port` | no | The source's out-port key. With no matching port, the edge leaves from the middle of the source's right edge. |
 | `to_port` | no | The target's in-port key. With none, or no matching port, the edge enters at the middle of the target's left edge. Written as `data-to-port` only when set. |
-| `kind` | no | The app's name for a family of edges, such as flow edges and attachments. The drawn edge and its label repeat it as `data-kind`. Written only when set. See [Edge kinds](#edge-kinds). |
 | `state` | no | A single class token. The drawn edge gets `pjx-graph__edge--<state>`. A state with whitespace in it gets no class. |
 | `label` | no | Text drawn along the edge. Always shown as text, never markup. |
 
 An edge dict raises a validation error when `id`, `from` or `to` is missing or empty, when it has a
-key outside the eight above, when its `id` repeats another edge's, or when `id`, `from`, `to`, `port`,
-`to_port`, `kind` or `state` contains a double quote (`"`). An edge whose `from` or `to` node is missing, or hidden with
+key outside the seven above, when its `id` repeats another edge's, or when `id`, `from`, `to`, `port`,
+`to_port` or `state` contains a double quote (`"`). An edge whose `from` or `to` node is missing, or hidden with
 `display: none`, is not an error. It is skipped silently and drawn at the next reconcile after both ends show. If you reveal a node
 by changing its class or style rather than by a swap, call `drawEdges()`. Edges between
 the same two nodes fan apart, in either direction.
@@ -195,8 +194,6 @@ Opening the panel is the app's job; see [Events and JavaScript API](#events-and-
 - **Dragging from an out-port** draws a dashed wire. Releasing it over another node of the same
   stage fires `pjx:graph:wire`. Releasing it on the source node or on empty canvas cancels. The app
   can veto a wire when it starts and when it lands; see [Steering a wire](#steering-a-wire).
-- **Clicking an app control** inside a node (`data-pjx-graph-action`) neither selects nor drags;
-  see [Controls inside a node](#controls-inside-a-node).
 - **Clicking a node** selects it. **Clicking an edge** selects the edge. **Clicking empty canvas**
   clears the selection. One node or one edge is selected at a time. The click that ends a drag
   does not select.
@@ -229,8 +226,6 @@ are data fields.
 | `pjx:graph:before-wire` | `{from, port, to, kind, to_port}` | yes | A started wire was released over node `to`. Canceling it means no `wire`. |
 | `pjx:graph:wire` | `{from, port, to, kind, to_port}` | no | A wire from `from`'s out-port `port` was released over node `to` (its in-port `to_port`, or `""`). |
 | `pjx:graph:wire-end` | `{from, port, kind, to, to_port, reason, x, y}` | no | A started wire ended, after any `wire`. `reason` and the rest are in [Steering a wire](#steering-a-wire). |
-| `pjx:graph:action` | `{id, action, port}` | no | An app control `data-pjx-graph-action="<action>"` inside node `id` was clicked. `port` is the control's `data-port`, or `""`. |
-| `pjx:graph:view` | `{x, y, k}` | no | A pan or zoom ended (a gesture, a control, `fit()` or `zoomBy()`). Not fired for the view a stage mounts with. |
 | `pjx:graph:rendered` | `null` | no | Edges were drawn: on mount, after each reconcile, and on `drawEdges()`. |
 | `pjx:graph:panel:open` | `{id}` | no | `panel.open(root, id)` showed `id`, or `panel.back(root)` went back to `id`. |
 | `pjx:graph:panel:before-close` | `{id}` | yes | The panel is about to close. `id` is the shown id, or `null` when the server rendered the panel open and nothing was opened since. |
@@ -268,7 +263,6 @@ The instance from `mount()`/`get()` has:
 | `inAnchor(id)` | `{x, y}` where edges enter node `id`, or `null`. |
 | `outAnchor(id, port)` | `{x, y}` where edges leave node `id` from `port`, or `null`. |
 | `inAnchor(id, port)` | With a port key, `{x, y}` where edges enter node `id` at that in-port; the left middle when it has none. |
-| `view()` | The current view as `{x, y, k}`: the translation in screen pixels and the scale. |
 
 ### Wiring the app
 
@@ -296,14 +290,13 @@ document.addEventListener("pjx:graph:wire", (event) => {
 stores the edge, and the server swaps the edge layer back with any shape from
 [Updating the graph](#updating-the-graph). The new edge is drawn without further script.
 
-## Edge kinds
+## Port kinds and sides
 
 A canvas can draw more than one family of edges, for example flow edges between steps and dashed
 links from a data source up to the step that reads it. The engine has no list of kinds: a kind is
-any word the app writes on its edges and ports, and the engine uses it in three places.
+any word the app writes on its port handles, and it decides where a wire may land. Edges carry no
+kind; an app styles a family of edges through its `state` and the edge tokens.
 
-- **Style.** An edge with `kind` repeats it as `data-kind` on its visible path and its label, so the
-  app styles each kind in CSS. The wire being dragged repeats the kind of its out-port the same way.
 - **Ports.** A port handle may carry `data-kind`. A wire has the kind of the out-port it starts from
   and lands only on in-ports of the same kind: the one under the pointer, else the target node's
   nearest one. A node with no in-port of that kind is still a target, with `to_port` `""`. Unkinded
@@ -332,7 +325,8 @@ or with keyed in-ports, writes its own handles; the engine reads any element in 
 </div>
 ```
 
-Place the extra handles with your own CSS. The edge between them names both ends and the kind:
+Place the extra handles with your own CSS. The edge between them names both ends, and its `state`
+names the family:
 
 ```python
 PJXGraphEdges(
@@ -345,20 +339,28 @@ PJXGraphEdges(
             "port": "socket",
             "to": "step",
             "to_port": "data",
-            "kind": "link",
+            "state": "link",
         },
     ],
 )
 ```
 
+The state becomes the class `pjx-graph__edge--link`, the app's hook. Set the edge tokens on it
+rather than restyling the path:
+
 ```css
-.pjx-graph__edge[data-kind="link"],
-.pjx-graph__wire[data-kind="link"] {
-  stroke-dasharray: 4 4;
+.pjx-graph__edge--link {
+  --pjx-graph-edge-dash: 2 3;
+  --pjx-graph-edge-stroke: var(--pjx-color-text-muted);
 }
 ```
 
-Fan-out, selection, labels and states work the same for every kind. What a kind means, for example
+A state is one word, so an edge that is both a link and, say, failing needs a state that says so
+(`link-failed`). The wire being held has no state; style it through the stage root while
+`data-pjx-graph-wiring` names its kind, for example
+`[data-pjx-graph-wiring="link"] .pjx-graph__wire { --pjx-graph-wire-stroke: … }`.
+
+Fan-out, selection and labels work the same for every family. What a kind means, for example
 whether a link counts as a step in a run, is the app's business.
 
 ## Steering a wire
@@ -410,30 +412,6 @@ stage.addEventListener("pjx:graph:wire-end", (event) => {
 `isLegal` and `openChooserAt` are the app's. The server must still refuse an illegal edge: the
 events steer the pointer, they do not guard the data.
 
-## Controls inside a node
-
-A button or badge an app puts inside a node card, such as a "+" beside an out-port, would otherwise
-select the node when clicked and drag it when pressed. Mark it `data-pjx-graph-action`:
-
-- Pressing inside it never drags the node, and clicking inside it never selects or deselects.
-- A non-empty value also fires `pjx:graph:action` with `{id, action, port}`: the node's id, the
-  attribute's value, and the element's own `data-port` (or `""`).
-- An empty value makes the element inert to the engine and fires nothing.
-
-```html
-<button type="button" data-pjx-graph-action="add" data-port="out" aria-label="Add a step">+</button>
-```
-
-```js
-stage.addEventListener("pjx:graph:action", (event) => {
-  if (event.detail.action === "add") openChooserFor(event.detail.id, event.detail.port);
-});
-```
-
-A popover anchored inside a node card moves and scales with the canvas, since it is part of the
-transformed viewport, and the canvas clips it at its edges. Mark the popover's root
-`data-pjx-graph-action=""` too, so clicks in its panel neither select nor drag the node.
-
 ## Positions and persistence
 
 A node shows at its server `data-x`/`data-y` unless the user dropped it somewhere else. With a
@@ -457,7 +435,7 @@ stops persisting.
 
 Every update shape is a plain htmx swap of server-rendered markup. The engine watches its viewport
 and reconciles after any swap in a layer, or a change to a node's `data-x`/`data-y` or an edge's
-`data-from`, `data-to`, `data-port`, `data-to-port`, `data-kind`, `data-state` or `data-label`: it places the nodes whose server
+`data-from`, `data-to`, `data-port`, `data-to-port`, `data-state` or `data-label`: it places the nodes whose server
 position changed and redraws every edge. No JavaScript call is needed. A swap that lands while the
 user is dragging a node or a wire is applied when the drag ends, so nothing moves under the
 pointer. The selection survives a swap as long as the selected id is still there. If that id disappears,
@@ -659,7 +637,7 @@ on one stage, as described in [Builtin conventions](builtin-conventions.md#themi
 | Area | Tokens |
 |---|---|
 | Stage | `--pjx-graph-bg`, `--pjx-graph-border`, `--pjx-graph-radius`, `--pjx-graph-grid-color`, `--pjx-graph-grid-size`, `--pjx-graph-min-height` |
-| Edges | `--pjx-graph-edge-stroke`, `--pjx-graph-edge-width`, `--pjx-graph-edge-hit-width`, `--pjx-graph-edge-label-color`, `--pjx-graph-edge-label-size`, `--pjx-graph-wire-stroke`, `--pjx-graph-wire-dash` |
+| Edges | `--pjx-graph-edge-stroke`, `--pjx-graph-edge-width`, `--pjx-graph-edge-dash`, `--pjx-graph-edge-hit-width`, `--pjx-graph-edge-label-color`, `--pjx-graph-edge-label-size`, `--pjx-graph-wire-stroke`, `--pjx-graph-wire-dash` |
 | Selection | `--pjx-graph-selected` |
 | Nodes | `--pjx-graph-node-bg`, `--pjx-graph-node-border`, `--pjx-graph-node-radius`, `--pjx-graph-node-width`, `--pjx-graph-node-muted`, `--pjx-graph-port-size`, `--pjx-graph-port-bg` |
 | Controls | `--pjx-graph-controls-bg`, `--pjx-graph-controls-border`, `--pjx-graph-controls-radius`, `--pjx-graph-controls-color`, `--pjx-graph-controls-inset`, `--pjx-graph-controls-gap` |
@@ -709,9 +687,8 @@ These classes, attributes, events and states are versioned API.
 | `data-port` | Port handle | The port key. An in-port's key is what `to_port` names. |
 | `data-side` | Port handle | `top`, `right`, `bottom` or `left`: the side its edges leave or enter by. Defaults to `right` for out-ports and `left` for in-ports. |
 | `data-kind` | Port handle | The kind of wire the port starts or accepts. Defaults to `""`. |
-| `data-pjx-graph-action` | Any element in a node | An app control. See [Controls inside a node](#controls-inside-a-node). |
 | `data-pjx-graph-edge` | Edge span | Marks one edge. |
-| `data-edge-id`, `data-from`, `data-to`, `data-port`, `data-to-port`, `data-kind`, `data-state`, `data-label` | Edge span | The edge's fields. Drawn paths repeat `data-edge-id`, and the visible path also `data-from`, `data-to`, `data-state` and, when set, `data-kind`. |
+| `data-edge-id`, `data-from`, `data-to`, `data-port`, `data-to-port`, `data-state`, `data-label` | Edge span | The edge's fields. Drawn paths repeat `data-edge-id`, and the visible path also `data-from`, `data-to`, `data-state`. |
 | `data-pjx-graph-wiring` | Stage root | Present while a wire is held, set to its kind. |
 | `data-pjx-graph-controls` | Controls root | Marks the controls group. |
 | `data-pjx-graph-zoom="in"` / `"out"`, `data-pjx-graph-fit` | Control button | What the button does. Any element in the canvas with these attributes works as a control. |
