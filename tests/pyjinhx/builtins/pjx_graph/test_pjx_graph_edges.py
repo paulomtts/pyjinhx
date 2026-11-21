@@ -293,7 +293,8 @@ class TestToPort:
         assert _html(session, {**EDGE, "to_port": ""}) == _html(session, EDGE)
 
     def test_value_is_escaped(self, session, parse_html):
-        (span,) = _root(parse_html, _html(session, {**EDGE, "to_port": "<b>&"})).children
+        html = _html(session, {**EDGE, "to_port": "<b>&"})
+        (span,) = _root(parse_html, html).children
         assert span.attrs["data-to-port"] == "<b>&"
 
     def test_an_edge_has_no_kind(self):
