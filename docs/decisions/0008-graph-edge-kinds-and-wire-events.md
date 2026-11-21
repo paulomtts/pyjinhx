@@ -48,7 +48,7 @@ port.
 
 ## Alternatives considered
 
-- **Kinds declared on the stage**, such as `PJXGraph(edge_kinds={...})` with
+- **Kinds declared on the stage**, such as an `edge_kinds` prop on the stage with
   a style and port set per kind. Rejected: it duplicates what the markup
   already says, and the engine would need a schema for styles it should leave
   to CSS.
