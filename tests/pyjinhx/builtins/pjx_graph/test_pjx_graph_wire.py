@@ -193,10 +193,23 @@ def _below(page: Page, stage: str = "g") -> tuple[int, int]:
     return round(box["x"] + 100), round(box["y"] + box["height"] + 40)
 
 
-def _wired(source: str, port: str, target: str, stage: str = "g") -> dict:
+def _wired(
+    source: str,
+    port: str,
+    target: str,
+    stage: str = "g",
+    kind: str = "",
+    to_port: str = "",
+) -> dict:
     return {
         "type": "wire",
-        "detail": {"from": source, "port": port, "to": target},
+        "detail": {
+            "from": source,
+            "port": port,
+            "to": target,
+            "kind": kind,
+            "to_port": to_port,
+        },
         "target": stage,
         "cancelable": False,
     }

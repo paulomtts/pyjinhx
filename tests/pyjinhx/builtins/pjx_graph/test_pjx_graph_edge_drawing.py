@@ -526,6 +526,25 @@ def test_label_styles_come_from_tokens_and_an_app_state_rule_wins(
     assert page_errors == []
 
 
+def test_an_edge_dashes_through_the_dash_token_on_its_state_class(
+    page, page_errors, session
+):
+    _seed(page, IDENTITY)
+    edges = [
+        _edge("plain", "a", "b"),
+        _edge("link", "a", "c", state="attachment"),
+    ]
+    css = THEME + ".pjx-graph__edge--attachment { --pjx-graph-edge-dash: 4 4; }"
+    _serve(page, _stage(session, _trio(), edges=edges, storage_key="flow"), css)
+    dashes = page.evaluate(
+        """() => Object.fromEntries(Array.from(document.querySelectorAll(
+            '#g path.pjx-graph__edge')).map(el => [el.getAttribute('data-edge-id'),
+            getComputedStyle(el).strokeDasharray]))"""
+    )
+    assert dashes == {"plain": "none", "link": "4px, 4px"}
+    assert page_errors == []
+
+
 # pjx:graph:rendered and redraws
 
 # Recorded at dispatch, so each entry says what was true when the event fired.

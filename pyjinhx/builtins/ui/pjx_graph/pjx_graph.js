@@ -84,6 +84,11 @@ var __pjxD3=(()=>{var tn=Object.defineProperty;var Qe=Object.getOwnPropertyDescr
   const DRAG_SLOP = 4;
   // Pressing these inside a node uses them; it never drags the node.
   const INTERACTIVE = 'input, textarea, select, button, a[href], [contenteditable]';
+  // The direction a port's edges leave or enter it, by its data-side.
+  const SIDES = {
+    top: { x: 0, y: -1 }, right: { x: 1, y: 0 }, bottom: { x: 0, y: 1 }, left: { x: -1, y: 0 },
+  };
+  const OPPOSITE = { top: 'bottom', right: 'left', bottom: 'top', left: 'right' };
 
   // One control step; two steps double or halve the scale.
   const ZOOM_STEP = Math.SQRT2;
@@ -332,18 +337,34 @@ var __pjxD3=(()=>{var tn=Object.defineProperty;var Qe=Object.getOwnPropertyDescr
     return el;
   }
 
-  // A horizontal bezier between the anchors. The offset moves only the two
-  // control points along the normal, so parallel edges bow apart while their
-  // ends stay on the ports.
-  function edgePath(p1, p2, offset) {
-    const dx = Math.max(48, Math.abs(p2.x - p1.x) * 0.5);
+  // How far a control point reaches out of its side: half the gap along that
+  // side's axis, and never less than 48.
+  function reach(side, p1, p2) {
+    const gap = side.x !== 0 ? Math.abs(p2.x - p1.x) : Math.abs(p2.y - p1.y);
+    return Math.max(48, gap * 0.5);
+  }
+
+  // A bezier that leaves p1 through side1 and enters p2 through side2; a
+  // right-to-left pair is the classic horizontal curve. The offset moves
+  // only the two control points along the normal, so parallel edges bow
+  // apart while their ends stay on the ports.
+  function edgePath(p1, side1, p2, side2, offset) {
+    const reach1 = reach(side1, p1, p2);
+    const reach2 = reach(side2, p1, p2);
     const len = Math.hypot(p2.x - p1.x, p2.y - p1.y) || 1;
     const nx = -(p2.y - p1.y) / len * offset;
     const ny = (p2.x - p1.x) / len * offset;
     return 'M ' + p1.x + ' ' + p1.y
-      + ' C ' + (p1.x + dx + nx) + ' ' + (p1.y + ny)
-      + ', ' + (p2.x - dx + nx) + ' ' + (p2.y + ny)
+      + ' C ' + (p1.x + side1.x * reach1 + nx) + ' ' + (p1.y + side1.y * reach1 + ny)
+      + ', ' + (p2.x + side2.x * reach2 + nx) + ' ' + (p2.y + side2.y * reach2 + ny)
       + ', ' + p2.x + ' ' + p2.y;
+  }
+
+  // A handle's data-side, or the side its direction leaves or enters by
+  // when it has none or an unknown one.
+  function sideOf(handle, fallback) {
+    const name = handle ? attr(handle, 'data-side') : '';
+    return own(SIDES, name) ? name : fallback;
   }
 
   // Parallel edges between two nodes spread this far apart.
@@ -496,24 +517,43 @@ var __pjxD3=(()=>{var tn=Object.defineProperty;var Qe=Object.getOwnPropertyDescr
       return node && boxOf(node);
     }
 
-    function inAnchor(id) {
-      const b = box(id);
-      return b && { x: b.x, y: b.y + b.height / 2 };
+    // A graph nested in the node may have a port with the same key.
+    function handlesOf(node, direction) {
+      return Array.from(node.querySelectorAll('[data-pjx-graph-port="' + direction + '"]'))
+        .filter((el) => el.closest('[data-node-id]') === node);
+    }
+
+    function centreOf(handle) {
+      // The ports straddle the edge with a transform, which offsetLeft ignores.
+      const rect = handle.getBoundingClientRect();
+      return toWorld(rect.left + rect.width / 2, rect.top + rect.height / 2);
+    }
+
+    // Where an edge meets node id, and the side it crosses there. A port key
+    // with no handle falls back to the middle of the direction's own side, so
+    // an unkeyed in-end is the left middle, as it always was.
+    function edgeEnd(id, direction, port) {
+      const node = findNode(id);
+      if (!node) return null;
+      const handle = port === '' && direction === 'in' ? null
+        : handlesOf(node, direction).find((el) => el.getAttribute('data-port') === port);
+      const fallback = direction === 'in' ? 'left' : 'right';
+      if (!handle) {
+        const b = boxOf(node);
+        const x = direction === 'in' ? b.x : b.x + b.width;
+        return { point: { x: x, y: b.y + b.height / 2 }, side: fallback };
+      }
+      return { point: centreOf(handle), side: sideOf(handle, fallback) };
+    }
+
+    function inAnchor(id, port) {
+      const found = edgeEnd(id, 'in', typeof port === 'string' ? port : '');
+      return found && found.point;
     }
 
     function outAnchor(id, port) {
-      const node = findNode(id);
-      if (!node) return null;
-      const dot = Array.from(node.querySelectorAll('[data-pjx-graph-port="out"]'))
-        // A graph nested in the node may have a port with the same key.
-        .find((el) => el.getAttribute('data-port') === port && el.closest('[data-node-id]') === node);
-      if (!dot) {
-        const b = boxOf(node);
-        return { x: b.x + b.width, y: b.y + b.height / 2 };
-      }
-      // The ports straddle the edge with a transform, which offsetLeft ignores.
-      const rect = dot.getBoundingClientRect();
-      return toWorld(rect.left + rect.width / 2, rect.top + rect.height / 2);
+      const found = edgeEnd(id, 'out', port);
+      return found && found.point;
     }
 
     function fit() {
@@ -620,7 +660,9 @@ var __pjxD3=(()=>{var tn=Object.defineProperty;var Qe=Object.getOwnPropertyDescr
         const from = edge.getAttribute('data-from');
         const to = edge.getAttribute('data-to');
         const id = attr(edge, 'data-edge-id');
-        const d = edgePath(outAnchor(from, attr(edge, 'data-port')), inAnchor(to),
+        const start = edgeEnd(from, 'out', attr(edge, 'data-port'));
+        const finish = edgeEnd(to, 'in', attr(edge, 'data-to-port'));
+        const d = edgePath(start.point, SIDES[start.side], finish.point, SIDES[finish.side],
           fanOffset(nth, totals.get(pair)));
         const state = attr(edge, 'data-state');
         // A state is the app's word; only a single token can become a class.
@@ -818,13 +860,29 @@ var __pjxD3=(()=>{var tn=Object.defineProperty;var Qe=Object.getOwnPropertyDescr
     }
 
     // Starts on an out-port and ends on another node; the app creates the
-    // edge, so the engine only reports the request.
+    // edge, so the engine only reports the request. A wire has the kind of
+    // the port it starts from, and lands only on in-ports of that kind.
     function listenForWire() {
       let wire = null;
 
       function clearGhost() {
         if (wire.ghost) wire.ghost.remove();
         wire.ghost = null;
+      }
+
+      function report(name, detail, cancelable) {
+        return root.dispatchEvent(new CustomEvent('pjx:graph:' + name,
+          { bubbles: true, cancelable: cancelable, detail: detail }));
+      }
+
+      // Once the press passes the slop. A canceled start draws nothing and
+      // reports nothing more, though the press is still held to its release.
+      function begin() {
+        const allowed = report('wire-start',
+          { from: wire.from, port: wire.port, kind: wire.kind }, true);
+        if (!allowed) return;
+        wire.started = true;
+        root.setAttribute('data-pjx-graph-wiring', wire.kind);
       }
 
       function follow(event) {
@@ -836,8 +894,13 @@ var __pjxD3=(()=>{var tn=Object.defineProperty;var Qe=Object.getOwnPropertyDescr
         const dx = event.clientX - wire.clientX;
         const dy = event.clientY - wire.clientY;
         if (!wire.dragging && Math.hypot(dx, dy) <= DRAG_SLOP) return;
-        wire.dragging = true;
-        const start = outAnchor(wire.from, wire.port);
+        if (!wire.dragging) {
+          wire.dragging = true;
+          begin();
+        }
+        // A wire-start listener that ends the press leaves no wire.
+        if (wire === null || !wire.started) return;
+        const start = edgeEnd(wire.from, 'out', wire.port);
         // A source swapped out mid-gesture has nowhere to start from.
         if (!start) {
           clearGhost();
@@ -848,7 +911,8 @@ var __pjxD3=(()=>{var tn=Object.defineProperty;var Qe=Object.getOwnPropertyDescr
           wire.ghost = svg('path', { class: 'pjx-graph__wire' });
           plane.append(wire.ghost);
         }
-        wire.ghost.setAttribute('d', edgePath(start, toWorld(event.clientX, event.clientY), 0));
+        wire.ghost.setAttribute('d', edgePath(start.point, SIDES[start.side],
+          toWorld(event.clientX, event.clientY), SIDES[OPPOSITE[start.side]], 0));
       }
 
       function end(event) {
@@ -860,24 +924,79 @@ var __pjxD3=(()=>{var tn=Object.defineProperty;var Qe=Object.getOwnPropertyDescr
         window.removeEventListener('pointerup', end, true);
         window.removeEventListener('pointercancel', end, true);
         document.removeEventListener('selectstart', block);
-        if (done.dragging) connect(done, event);
+        if (done.dragging) {
+          swallowClick();
+          if (done.started) connect(done, event);
+        }
         endGesture();
       }
 
-      // Before the flush, so the drop is hit-tested against the nodes the
-      // user saw while wiring.
-      function connect(done, event) {
-        swallowClick();
-        if (event.type !== 'pointerup' || !findNode(done.from)) return;
+      // The in-port a wire of this kind lands on: the one under the pointer,
+      // else the node's nearest one. "" when the node has none of the kind.
+      function landingPort(target, hit, kind, event) {
+        const handles = handlesOf(target, 'in')
+          .filter((el) => attr(el, 'data-kind') === kind && el.getClientRects().length > 0);
+        const under = hit.closest('[data-pjx-graph-port="in"]');
+        if (under && handles.includes(under)) return attr(under, 'data-port');
+        let nearest = null;
+        let nearestDistance = Infinity;
+        handles.forEach((handle) => {
+          const rect = handle.getBoundingClientRect();
+          const distance = Math.hypot(rect.left + rect.width / 2 - event.clientX,
+            rect.top + rect.height / 2 - event.clientY);
+          if (distance < nearestDistance) {
+            nearest = handle;
+            nearestDistance = distance;
+          }
+        });
+        return nearest ? attr(nearest, 'data-port') : '';
+      }
+
+      // Where the release landed, hit-tested before the flush so it is judged
+      // against the nodes the user saw while wiring.
+      function landing(done, event) {
+        if (event.type !== 'pointerup' || !findNode(done.from)) {
+          return { reason: 'cancel', point: null };
+        }
+        const point = toWorld(event.clientX, event.clientY);
         // The ghost takes no pointer events, so it never hides the node below.
         const hit = document.elementFromPoint(event.clientX, event.clientY);
         const target = hit && ownNode(hit);
-        if (!target) return;
+        if (!target) {
+          const background = hit !== null && isBackground(hit, canvas, viewport);
+          return { reason: background ? 'background' : 'outside', point: point };
+        }
         const to = target.getAttribute('data-node-id');
         // Never a self-loop: a drop back on the source cancels.
-        if (to === done.from) return;
-        root.dispatchEvent(new CustomEvent('pjx:graph:wire',
-          { bubbles: true, detail: { from: done.from, port: done.port, to: to } }));
+        if (to === done.from) return { reason: 'source', point: point };
+        return { reason: 'target', to: to, toPort: landingPort(target, hit, done.kind, event),
+          point: point };
+      }
+
+      // before-wire can refuse the wire; wire-end always closes the gesture.
+      function connect(done, event) {
+        const landed = landing(done, event);
+        let reason = landed.reason;
+        let to = null;
+        let toPort = null;
+        if (reason === 'target') {
+          to = landed.to;
+          toPort = landed.toPort;
+          const request = { from: done.from, port: done.port, to: to, kind: done.kind,
+            to_port: toPort };
+          if (report('before-wire', Object.assign({}, request), true)) {
+            report('wire', request, false);
+            reason = 'wired';
+          } else {
+            reason = 'refused';
+          }
+        }
+        root.removeAttribute('data-pjx-graph-wiring');
+        report('wire-end', {
+          from: done.from, port: done.port, kind: done.kind, to: to, to_port: toPort,
+          reason: reason,
+          x: landed.point ? landed.point.x : null, y: landed.point ? landed.point.y : null,
+        }, false);
       }
 
       function block(event) {
@@ -891,7 +1010,8 @@ var __pjxD3=(()=>{var tn=Object.defineProperty;var Qe=Object.getOwnPropertyDescr
         if (!node) return;
         wire = {
           from: node.getAttribute('data-node-id'), port: attr(port, 'data-port'),
-          pointerId: event.pointerId, dragging: false, ghost: null,
+          kind: attr(port, 'data-kind'),
+          pointerId: event.pointerId, dragging: false, started: false, ghost: null,
           clientX: event.clientX, clientY: event.clientY,
         };
         // On window, so a release outside the canvas still ends the wire, and
@@ -934,7 +1054,7 @@ var __pjxD3=(()=>{var tn=Object.defineProperty;var Qe=Object.getOwnPropertyDescr
   // An edge or a node is drawn from these. style stays unwatched, since
   // placing a node writes it.
   const WATCHED = ['data-x', 'data-y', 'data-from', 'data-to', 'data-port', 'data-state',
-    'data-label'];
+    'data-label', 'data-to-port'];
 
   // The edge planes hold drawing only, the engine's own and a nested stage's,
   // so their changes are skipped; otherwise every redraw would schedule the

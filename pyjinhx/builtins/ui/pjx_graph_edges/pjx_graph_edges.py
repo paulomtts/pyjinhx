@@ -2,15 +2,17 @@ from pydantic import Field, field_validator
 
 from pyjinhx._component import AttrValue, BaseComponent, ExtraAttrs, validate_attr_value
 
-_EDGE_KEYS = frozenset({"id", "from", "to", "port", "state", "label"})
+_EDGE_KEYS = frozenset({"id", "from", "to", "port", "to_port", "state", "label"})
 
 
 class PJXGraphEdges(BaseComponent):
     """The edge layer of a :class:`PJXGraph`: one hidden ``span`` per edge.
 
     Each edge is a dict with ``id``, ``from`` and ``to`` (required) and
-    optional ``port``, ``state`` and ``label``. The graph engine reads the
-    spans' ``data-*`` attributes and draws the edges; nothing here is visible.
+    optional ``port``, ``to_port``, ``state`` and ``label``. The graph engine
+    reads the spans' ``data-*`` attributes and draws the edges; nothing here
+    is visible. ``to_port`` is written only when set, so an edge without it
+    renders as it always did.
     Apps subclass it to make the layer reactive.
     """
 
@@ -30,7 +32,7 @@ class PJXGraphEdges(BaseComponent):
             for key in ("id", "from", "to"):
                 if not edge.get(key):
                     raise ValueError(f"edge {key!r} is required and must not be empty")
-            for key in ("id", "from", "to", "port", "state"):
+            for key in ("id", "from", "to", "port", "to_port", "state"):
                 validate_attr_value(edge.get(key, ""))
             if edge["id"] in seen:
                 raise ValueError(f"duplicate edge id {edge['id']!r}")

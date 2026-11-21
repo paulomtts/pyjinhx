@@ -765,7 +765,7 @@ def test_dragging_a_wire_fires_no_rendered(page, page_errors, session):
     before = _rendered(page)
     _drag(page, _center(page, _port("g-a")), _center(page, _title("g-c")))
     assert [e["detail"] for e in _events(page, "wire")] == [
-        {"from": "a", "port": "ok", "to": "c"}
+        {"from": "a", "port": "ok", "to": "c", "kind": "", "to_port": ""}
     ]
     _frames(page)
     assert _rendered(page) == before
@@ -850,7 +850,7 @@ def test_a_wire_from_a_replaced_node_fires_one_wire_event(page, page_errors, ses
     _forget(page)
     _drag(page, _center(page, _port("g-a")), _center(page, _title("g-c")))
     assert [e["detail"] for e in _events(page, "wire")] == [
-        {"from": "a", "port": "ok", "to": "c"}
+        {"from": "a", "port": "ok", "to": "c", "kind": "", "to_port": ""}
     ]
     assert page_errors == []
 
@@ -1437,7 +1437,7 @@ def test_a_wire_drag_survives_a_node_layer_swap(page, page_errors, session):
     page.mouse.move(*_center(page, _title("g-c")), steps=2)
     page.mouse.up()
     assert [e["detail"] for e in _events(page, "wire")] == [
-        {"from": "a", "port": "ok", "to": "c"}
+        {"from": "a", "port": "ok", "to": "c", "kind": "", "to_port": ""}
     ]
     _flushed_once(page, before)
     assert page_errors == []

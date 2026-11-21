@@ -80,7 +80,7 @@ class TestFields:
         with pytest.raises(ValidationError):
             _edges({**EDGE, **override})
 
-    @pytest.mark.parametrize("key", ["id", "from", "to", "port", "state"])
+    @pytest.mark.parametrize("key", ["id", "from", "to", "port", "to_port", "state"])
     def test_identifier_values_reject_double_quote(self, key):
         with pytest.raises(ValidationError, match="must not contain"):
             _edges({**EDGE, key: 'x"y'})
@@ -278,6 +278,28 @@ class TestMarkup:
         assert nodes.classes == ["pjx-graph__nodes"]
         assert edges.classes == ["pjx-graph__edges"]
         assert [span.attrs["data-edge-id"] for span in edges.children] == ["e1"]
+
+
+class TestToPort:
+    def test_rendered_after_the_port_when_set(self, session):
+        edge = {**EDGE, "port": "p", "to_port": "data"}
+        assert (
+            '<span hidden data-pjx-graph-edge data-edge-id="e1" data-from="a"'
+            ' data-to="b" data-port="p" data-to-port="data"'
+            ' data-state="" data-label=""></span>'
+        ) in _html(session, edge)
+
+    def test_an_empty_to_port_renders_like_a_missing_one(self, session):
+        assert _html(session, {**EDGE, "to_port": ""}) == _html(session, EDGE)
+
+    def test_value_is_escaped(self, session, parse_html):
+        html = _html(session, {**EDGE, "to_port": "<b>&"})
+        (span,) = _root(parse_html, html).children
+        assert span.attrs["data-to-port"] == "<b>&"
+
+    def test_an_edge_has_no_kind(self):
+        with pytest.raises(ValidationError, match="unknown edge keys: kind"):
+            _edges({**EDGE, "kind": "attach"})
 
 
 def test_exported_from_the_builtins_namespace():
