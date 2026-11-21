@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.16.0 — Graph ports and wire events (2026-11-21)
 
 ### Added
 - Keyed in-ports and port sides. A `PJXGraphEdges` edge may name the in-port
