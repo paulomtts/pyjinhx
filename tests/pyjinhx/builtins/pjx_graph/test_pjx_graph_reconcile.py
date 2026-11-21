@@ -433,7 +433,6 @@ def test_mount_still_returns_the_same_instance(page, page_errors, session):
             "select",
             "deselect",
             "reconcile",
-            "view",
         ]
     )
     assert page_errors == []

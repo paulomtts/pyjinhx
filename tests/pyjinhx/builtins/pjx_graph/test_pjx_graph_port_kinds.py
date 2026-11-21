@@ -1,7 +1,7 @@
-"""Edge kinds in real chromium: keyed in-ports, port sides, kinded wires.
+"""Ports in real chromium: keyed in-ports, port sides, kinded wires.
 
-An edge may name the in-port it enters (``to_port``) and a ``kind``; a port
-handle may name its ``data-side`` and ``data-kind``. These tests draw and wire
+An edge may name the in-port it enters (``to_port``); a port handle may name
+its ``data-side`` and ``data-kind``. These tests draw and wire
 a stage whose host node has two bottom in-ports of kind ``attach`` beside its
 plain left in-port, and whose satellite node starts ``attach`` wires from a
 top out-port. Stages start from a persisted identity view, so a client pixel
@@ -54,7 +54,7 @@ WORLD = """([x, y]) => {
 VISIBLE = """() => Array.from(document.querySelectorAll(
     '#g svg.pjx-graph__edge-plane > *')).map(el => ({
         cls: el.getAttribute('class'), edge: el.getAttribute('data-edge-id'),
-        kind: el.getAttribute('data-kind'), d: el.getAttribute('d')}))"""
+        d: el.getAttribute('d')}))"""
 
 
 def _host(node_id: str = "host", x: float = 360, y: float = 60) -> str:
@@ -166,7 +166,6 @@ ATTACHMENT = {
     "port": "socket",
     "to": "host",
     "to_port": "data",
-    "kind": "attach",
 }
 
 
@@ -191,25 +190,6 @@ def test_top_and_bottom_sides_bend_the_curve_vertically(page, page_errors, sessi
     reach = max(48, abs(y2 - y1) * 0.5)
     assert (c1x, c1y) == pytest.approx((x1, y1 - reach))
     assert (c2x, c2y) == pytest.approx((x2, y2 + reach))
-    assert page_errors == []
-
-
-def test_a_kind_is_repeated_on_the_visible_path_and_label_only(
-    page, page_errors, session
-):
-    _standard(page, session, [dict(ATTACHMENT, label="uses")])
-    drawn = {el["cls"].split()[0]: el["kind"] for el in page.evaluate(VISIBLE)}
-    assert drawn == {
-        "pjx-graph__edge-hit": None,
-        "pjx-graph__edge": "attach",
-        "pjx-graph__edge-label": "attach",
-    }
-    assert page_errors == []
-
-
-def test_an_unkinded_edge_carries_no_kind_attribute(page, page_errors, session):
-    _standard(page, session, [{"id": "f1", "from": "src", "port": "ok", "to": "host"}])
-    assert [el["kind"] for el in page.evaluate(VISIBLE)] == [None, None]
     assert page_errors == []
 
 
@@ -323,20 +303,16 @@ def test_a_kinded_wire_on_a_node_without_its_kind_has_no_to_port(
     assert page_errors == []
 
 
-def test_a_kinded_ghost_carries_its_kind_and_leaves_through_its_side(
-    page, page_errors, session
-):
+def test_a_ghost_leaves_through_its_port_side(page, page_errors, session):
     _standard(page, session)
     x, y = _center(page, _handle("res", "socket", "out"))
     page.mouse.move(x, y)
     page.mouse.down()
     page.mouse.move(x + 40, y - 120, steps=5)
     ghost = page.evaluate(
-        """() => { const g = document.querySelector('#g path.pjx-graph__wire');
-            return [g.getAttribute('data-kind'), g.getAttribute('d')]; }"""
+        "() => document.querySelector('#g path.pjx-graph__wire').getAttribute('d')"
     )
-    assert ghost[0] == "attach"
-    x1, y1, c1x, c1y = _numbers(ghost[1])[:4]
+    x1, y1, c1x, c1y = _numbers(ghost)[:4]
     assert c1x == pytest.approx(x1)
     assert c1y < y1
     page.mouse.up()

@@ -7,6 +7,7 @@
   --pjx-graph-min-height: 24rem;
   --pjx-graph-edge-stroke: var(--pjx-color-border, #e4e4e7);
   --pjx-graph-edge-width: 1.5px;
+  --pjx-graph-edge-dash: none;
   --pjx-graph-edge-hit-width: 14px;
   --pjx-graph-edge-label-color: var(--pjx-color-text-muted, #52525b);
   --pjx-graph-edge-label-size: var(--pjx-font-size-xs, 0.75rem);
@@ -52,6 +53,7 @@
   fill: none;
   stroke: var(--pjx-graph-edge-stroke);
   stroke-width: var(--pjx-graph-edge-width);
+  stroke-dasharray: var(--pjx-graph-edge-dash);
   pointer-events: none;
 }
 

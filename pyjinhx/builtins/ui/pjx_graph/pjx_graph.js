@@ -84,8 +84,6 @@ var __pjxD3=(()=>{var tn=Object.defineProperty;var Qe=Object.getOwnPropertyDescr
   const DRAG_SLOP = 4;
   // Pressing these inside a node uses them; it never drags the node.
   const INTERACTIVE = 'input, textarea, select, button, a[href], [contenteditable]';
-  // An app control inside a node: its presses and clicks are the app's own.
-  const ACTION = '[data-pjx-graph-action]';
   // The direction a port's edges leave or enter it, by its data-side.
   const SIDES = {
     top: { x: 0, y: -1 }, right: { x: 1, y: 0 }, bottom: { x: 0, y: 1 }, left: { x: -1, y: 0 },
@@ -133,15 +131,6 @@ var __pjxD3=(()=>{var tn=Object.defineProperty;var Qe=Object.getOwnPropertyDescr
     return !plane || plane === target;
   }
 
-  // The app control a press or click landed in, when it sits in one of this
-  // stage's own nodes and not in a stage nested there.
-  function actionOf(root, viewport, target) {
-    const action = target.closest(ACTION);
-    if (!action || action.closest('[data-pjx-graph]') !== root) return null;
-    const node = action.closest('[data-node-id]');
-    return node && viewport.contains(node) ? action : null;
-  }
-
   // Delegated, so controls swapped in later work without rebinding. A
   // control in a nested stage belongs to that stage's own listener, and the
   // values are matched one by one so a name like "constructor" is no step.
@@ -166,21 +155,6 @@ var __pjxD3=(()=>{var tn=Object.defineProperty;var Qe=Object.getOwnPropertyDescr
   function listenForSelection(root, canvas, viewport, plane, choose, deselect, signal) {
     canvas.addEventListener('click', (event) => {
       const target = event.target;
-      const action = actionOf(root, viewport, target);
-      if (action) {
-        const name = attr(action, 'data-pjx-graph-action');
-        if (name) {
-          root.dispatchEvent(new CustomEvent('pjx:graph:action', {
-            bubbles: true,
-            detail: {
-              id: action.closest('[data-node-id]').getAttribute('data-node-id'),
-              action: name,
-              port: attr(action, 'data-port'),
-            },
-          }));
-        }
-        return;
-      }
       const node = target.closest('[data-node-id]');
       if (node && viewport.contains(node)) {
         if (node.closest('[data-pjx-graph]') === root) {
@@ -290,17 +264,9 @@ var __pjxD3=(()=>{var tn=Object.defineProperty;var Qe=Object.getOwnPropertyDescr
     return { zoom: zoom, extent: extent, key: key, restored: restored !== null };
   }
 
-  function viewOf(canvas) {
-    const t = d3.zoomTransform(canvas);
-    return { x: t.x, y: t.y, k: t.k };
-  }
-
-  // Listening only now, so the initial view is never written back or
-  // reported; view() reads it.
+  // Listening only now, so the initial view is never written back.
   function settle(root, canvas, view) {
     if (view.key) view.zoom.on('end', () => saveView(view.key, d3.zoomTransform(canvas)));
-    view.zoom.on('end.pjx-view', () => root.dispatchEvent(new CustomEvent('pjx:graph:view',
-      { bubbles: true, detail: viewOf(canvas) })));
     root.setAttribute('data-pjx-graph-ready', '');
   }
 
@@ -701,12 +667,9 @@ var __pjxD3=(()=>{var tn=Object.defineProperty;var Qe=Object.getOwnPropertyDescr
         const state = attr(edge, 'data-state');
         // A state is the app's word; only a single token can become a class.
         const modifier = /^\S+$/.test(state) ? ' pjx-graph__edge--' + state : '';
-        // Repeated only when set, so an unkinded edge draws as it always did.
-        const kind = attr(edge, 'data-kind');
-        const kinded = kind ? { 'data-kind': kind } : {};
         // The wide transparent twin goes first, underneath, as the press target.
         drawn.push(svg('path', { class: 'pjx-graph__edge-hit', d: d, 'data-edge-id': id }));
-        drawn.push(svg('path', Object.assign({
+        drawn.push(svg('path', {
           class: 'pjx-graph__edge' + modifier,
           id: prefix + index,
           d: d,
@@ -714,11 +677,10 @@ var __pjxD3=(()=>{var tn=Object.defineProperty;var Qe=Object.getOwnPropertyDescr
           'data-from': from,
           'data-to': to,
           'data-state': state,
-        }, kinded)));
+        }));
         const label = attr(edge, 'data-label');
         if (label) {
-          const text = svg('text',
-            Object.assign({ class: 'pjx-graph__edge-label', 'data-edge-id': id }, kinded));
+          const text = svg('text', { class: 'pjx-graph__edge-label', 'data-edge-id': id });
           const along = svg('textPath', {
             href: '#' + prefix + index, startOffset: '50%', 'text-anchor': 'middle',
           });
@@ -782,13 +744,12 @@ var __pjxD3=(()=>{var tn=Object.defineProperty;var Qe=Object.getOwnPropertyDescr
     }
 
     // Only this stage's nodes with a server position drag: a drop needs a
-    // base to anchor it, and a port, an app control or a form control keeps
-    // its own press.
+    // base to anchor it, and a port or form control keeps its own press.
     function draggable(target) {
       if (target.closest('[data-pjx-graph]') !== root) return null;
       const node = target.closest('[data-node-id]');
       if (!node || !viewport.contains(node)) return null;
-      const used = target.closest('[data-pjx-graph-port], ' + ACTION + ', ' + INTERACTIVE);
+      const used = target.closest('[data-pjx-graph-port], ' + INTERACTIVE);
       if (used && node.contains(used)) return null;
       if (coordinate(node, 'x') === null || coordinate(node, 'y') === null) return null;
       return node;
@@ -947,8 +908,7 @@ var __pjxD3=(()=>{var tn=Object.defineProperty;var Qe=Object.getOwnPropertyDescr
         }
         if (!wire.ghost) {
           // Outside drawn, so a redraw during the gesture keeps it.
-          wire.ghost = svg('path',
-            Object.assign({ class: 'pjx-graph__wire' }, wire.kind ? { 'data-kind': wire.kind } : {}));
+          wire.ghost = svg('path', { class: 'pjx-graph__wire' });
           plane.append(wire.ghost);
         }
         wire.ghost.setAttribute('d', edgePath(start.point, SIDES[start.side],
@@ -1088,14 +1048,13 @@ var __pjxD3=(()=>{var tn=Object.defineProperty;var Qe=Object.getOwnPropertyDescr
     return {
       root: root, box: box, inAnchor: inAnchor, outAnchor: outAnchor, fit: fit, zoomBy: zoomBy,
       drawEdges: drawEdges, select: select, deselect: deselect, reconcile: reconcile,
-      view: () => viewOf(canvas),
     };
   }
 
   // An edge or a node is drawn from these. style stays unwatched, since
   // placing a node writes it.
   const WATCHED = ['data-x', 'data-y', 'data-from', 'data-to', 'data-port', 'data-state',
-    'data-label', 'data-kind', 'data-to-port'];
+    'data-label', 'data-to-port'];
 
   // The edge planes hold drawing only, the engine's own and a nested stage's,
   // so their changes are skipped; otherwise every redraw would schedule the
