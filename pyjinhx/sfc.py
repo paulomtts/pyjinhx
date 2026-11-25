@@ -10,6 +10,9 @@ file::
         <span class="badge">{{ label }}</span>
         \"\"\"
 
+A ``.pjx`` document may also carry its class in a ``{#python ... #}`` block;
+`python_block` finds it and `python_source` yields its code.
+
 Import-pure — stdlib only. The module source is parsed, never executed, and
 the imported class is never consulted, so a template edited on disk is seen
 without re-importing anything.
@@ -17,10 +20,23 @@ without re-importing anything.
 
 import ast
 import io
+import re
 import textwrap
 import threading
 import tokenize
 from pathlib import Path
+from typing import NamedTuple
+
+# Jinja's own comment rule: a comment runs from ``{#`` to the first ``#}``.
+COMMENT_RE = re.compile(r"\{#(.*?)#\}", re.DOTALL)
+
+# Stable names for the ways a block is malformed, shared with the block
+# grammar's conformance corpus and the editor tooling that reads it.
+PYTHON_BLOCK_EARLY_CLOSE = "python-block-early-close"
+SECOND_BLOCK = "second-block"
+OPENER_NOT_AT_LINE_START = "opener-not-at-line-start"
+TEXT_AFTER_CLOSER = "text-after-closer"
+STRAY_COMMENT_CLOSE = "stray-comment-close"
 
 
 def _template_value(node: ast.ClassDef) -> ast.expr | None:
@@ -135,3 +151,125 @@ def read_document(template_path: Path, inline_class: str | None) -> str:
     if inline_class is None:
         return source
     return extract_template(source, inline_class, str(template_path))
+
+
+class PythonBlock(NamedTuple):
+    """A ``{#python`` block: the lines of its opener, body and closer (1-based)
+    and the body's text. An empty body has ``last_line < first_line``."""
+
+    open_line: int
+    first_line: int
+    last_line: int
+    close_line: int
+    body: str
+
+
+class BlockSyntaxError(SyntaxError):
+    """A malformed block, with the stable ``code`` naming how."""
+
+    def __init__(self, code: str, message: str, location: tuple) -> None:
+        super().__init__(message, location)
+        self.code = code
+
+
+def python_block(source: str, filename: str) -> PythonBlock | None:
+    """The ``{#python ... #}`` block of the document ``source``, or None.
+
+    The opener is a line of exactly ``{#python`` in column 0 (trailing spaces
+    and tabs allowed). The closer is the first ``#}``, which must be alone on
+    its line in column 0, as Jinja ends the comment there whatever Python
+    thinks of it.
+
+    Raises:
+        BlockSyntaxError: The opener is not at the start of its line, a second
+            block follows, the first ``#}`` is not alone on its line, or text
+            follows the closer. ``lineno`` is the offending line.
+    """
+    found: PythonBlock | None = None
+    for match in COMMENT_RE.finditer(source):
+        text = match.group(1)
+        rest = text.removeprefix("python")
+        if rest == text or not rest.lstrip(" \t\r").startswith("\n"):
+            continue
+        open_line = source.count("\n", 0, match.start()) + 1
+        open_start = source.rfind("\n", 0, match.start()) + 1
+        if found is not None:
+            raise _block_error(
+                SECOND_BLOCK,
+                f"a second {{#python block; the first is on line {found.open_line}, "
+                f"and a document holds at most one",
+                source,
+                filename,
+                match.start(),
+            )
+        if open_start != match.start():
+            raise _block_error(
+                OPENER_NOT_AT_LINE_START,
+                "{#python must start its line, in column 0",
+                source,
+                filename,
+                match.start(),
+            )
+        found = _closed_block(source, filename, match, open_line)
+    return found
+
+
+def _closed_block(
+    source: str, filename: str, match: re.Match[str], open_line: int
+) -> PythonBlock:
+    """The block ``match`` spans, once its closer is checked to stand alone."""
+    close = match.end() - 2
+    close_start = source.rfind("\n", 0, close) + 1
+    if close != close_start:
+        raise _block_error(
+            PYTHON_BLOCK_EARLY_CLOSE,
+            'a "#}" ends the {#python block here, before its closer, which must '
+            'be alone on its line; write the pair as "#" "}" (in a string, an '
+            "f-string or a comment) or move the code out",
+            source,
+            filename,
+            close,
+        )
+    line_end = source.find("\n", close)
+    line_end = len(source) if line_end == -1 else line_end
+    if source[match.end() : line_end].strip(" \t\r"):
+        raise _block_error(
+            TEXT_AFTER_CLOSER,
+            "nothing may follow the #} that closes a {#python block on its line",
+            source,
+            filename,
+            match.end(),
+        )
+    body_start = source.find("\n", match.start()) + 1
+    return PythonBlock(
+        open_line,
+        open_line + 1,
+        source.count("\n", 0, close),
+        source.count("\n", 0, close) + 1,
+        source[body_start:close_start],
+    )
+
+
+def _block_error(
+    code: str, message: str, source: str, filename: str, position: int
+) -> BlockSyntaxError:
+    """A `BlockSyntaxError` located at ``position`` in ``source``."""
+    line_start = source.rfind("\n", 0, position) + 1
+    line_end = source.find("\n", position)
+    text = source[line_start : len(source) if line_end == -1 else line_end]
+    lineno = source.count("\n", 0, position) + 1
+    return BlockSyntaxError(
+        code, message, (filename, lineno, position - line_start + 1, text)
+    )
+
+
+def python_source(source: str, filename: str) -> str | None:
+    """The Python of the document's ``{#python`` block, or None.
+
+    One newline stands in for each line above the body, so a line or column
+    in the compiled code is the same line and column in the file.
+    """
+    block = python_block(source, filename)
+    if block is None:
+        return None
+    return "\n" * block.open_line + block.body

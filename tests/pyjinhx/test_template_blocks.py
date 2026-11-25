@@ -19,7 +19,12 @@ from pyjinhx.classless import component
 from pyjinhx.reactive.assets import missing_asset_oob
 from pyjinhx.rendering import render
 from pyjinhx.session import AbsolutePathLoader, RenderSession, accumulate_assets
-from pyjinhx.template_blocks import InlineAsset, find_block, inline_assets
+from pyjinhx.template_blocks import (
+    InlineAsset,
+    find_block,
+    hide_block_lines,
+    inline_assets,
+)
 
 
 def test_a_template_without_the_block_has_none():
@@ -430,3 +435,37 @@ def test_a_class_inline_asset_is_named_after_its_module(tmp_path):
     assert asset.suffix == ".js"
     assert asset.stem == "widgets"
     assert asset.name == "widgets.js"
+
+
+def test_a_python_block_alone_on_its_lines_renders_as_nothing():
+    source = "{#python\nx = 1\n#}\n<p>hi</p>"
+
+    assert Environment().from_string(hide_block_lines(source)).render() == "<p>hi</p>"
+
+
+def test_markup_after_a_python_block_keeps_its_line_numbers():
+    source = "{#python\nx = 1\n#}\n<p>{% if %}</p>"
+
+    with pytest.raises(TemplateSyntaxError) as raised:
+        Environment().from_string(hide_block_lines(source))
+
+    assert raised.value.lineno == 4
+
+
+def test_a_python_block_cut_short_by_a_closer_line_leaves_a_stray_closer():
+    source = "{#python\nx = 1\n#}\ny = 2\n#}\n<p></p>"
+
+    with pytest.raises(TemplateSyntaxError, match="stray") as raised:
+        inline_assets(Path("card.pjx"), source)
+
+    assert raised.value.lineno == 5
+
+
+def test_css_text_inside_a_python_body_is_not_a_css_block():
+    source = '{#python\nx = "{#css"\n#}\n<p></p>\n{#css\n.a { color: red; }\n#}\n'
+
+    block = find_block(source, "css", "card.pjx")
+
+    assert block is not None
+    assert block.line == 5
+    assert block.body == ".a { color: red; }"

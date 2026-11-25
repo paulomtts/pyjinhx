@@ -23,10 +23,7 @@ from typing import NamedTuple
 
 from jinja2 import TemplateSyntaxError
 
-from pyjinhx.sfc import read_document
-
-# Jinja's own comment rule: a comment runs from ``{#`` to the first ``#}``.
-_COMMENT_RE = re.compile(r"\{#(.*?)#\}", re.DOTALL)
+from pyjinhx.sfc import COMMENT_RE, python_block, read_document
 
 
 class Block(NamedTuple):
@@ -61,7 +58,7 @@ def find_block(source: str, keyword: str, filename: str) -> Block | None:
     the second block when ``source`` holds two of the same keyword.
     """
     found: Block | None = None
-    for match in _COMMENT_RE.finditer(source):
+    for match in COMMENT_RE.finditer(source):
         text = match.group(1)
         if not _is_block(text, keyword):
             continue
@@ -98,8 +95,10 @@ def hide_block_lines(source: str) -> str:
     """
     parts: list[str] = []
     position = 0
-    for match in _COMMENT_RE.finditer(source):
-        if not any(_is_block(match.group(1), k) for k in ("def", "css", "js")):
+    for match in COMMENT_RE.finditer(source):
+        if not any(
+            _is_block(match.group(1), k) for k in ("def", "css", "js", "python")
+        ):
             continue
         start, end = match.span()
         line_start = source.rfind("\n", 0, start) + 1
@@ -212,7 +211,8 @@ def inline_assets(
     filename = str(template_path)
     css = find_block(source, "css", filename)
     js = find_block(source, "js", filename)
-    if css is not None or js is not None:
+    has_python = "{#python" in source and python_block(source, filename) is not None
+    if css is not None or js is not None or has_python:
         _reject_stray_comment_close(source, filename)
     return (
         None
@@ -231,7 +231,7 @@ def _reject_stray_comment_close(source: str, filename: str) -> None:
     is cut short and its tail is rendered into the page as text.
     """
     # Keep each comment's newlines so the leftover reports its real line.
-    rest = _COMMENT_RE.sub(lambda m: "\n" * m.group().count("\n"), source)
+    rest = COMMENT_RE.sub(lambda m: "\n" * m.group().count("\n"), source)
     index = rest.find("#}")
     if index == -1:
         return
