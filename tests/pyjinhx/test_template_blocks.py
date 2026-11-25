@@ -20,6 +20,7 @@ from pyjinhx.reactive.assets import missing_asset_oob
 from pyjinhx.rendering import render
 from pyjinhx.session import AbsolutePathLoader, RenderSession, accumulate_assets
 from pyjinhx.template_blocks import (
+    BlockTemplateSyntaxError,
     InlineAsset,
     find_block,
     hide_block_lines,
@@ -500,9 +501,9 @@ def test_a_comment_opener_inside_a_tag_string_does_not_start_a_block():
 
 
 def test_every_block_error_carries_a_code():
-    with pytest.raises(TemplateSyntaxError) as second:
+    with pytest.raises(BlockTemplateSyntaxError) as second:
         find_block("{#css\na\n#}\n{#css\nb\n#}", "css", "card.pjx")
-    with pytest.raises(TemplateSyntaxError) as stray:
+    with pytest.raises(BlockTemplateSyntaxError) as stray:
         inline_assets(Path("card.pjx"), "{#css\na\n#}\n#}")
 
     assert second.value.code == "second-block"
