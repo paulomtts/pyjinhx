@@ -320,7 +320,7 @@ gets uncomfortable.
 a repo script, not public API. Every subcommand is a dry run that prints a diff and a
 summary; add `--write` to apply it. Only files under the paths you pass are touched.
 
-    uv run python scripts/fold_components.py assets app/components
+    uv run python scripts/fold_components.py assets app/components --root app
     uv run python scripts/fold_components.py template app/components --write
     uv run python scripts/fold_components.py declass app/components --root app
 
@@ -330,8 +330,10 @@ summary; add `--write` to apply it. Only files under the paths you pass are touc
 | `template` | a class's adjacent `.pjx` into `template = r"""..."""` (S to C) | the class already assigns `template`; the text holds both triple-quote styles or ends in a backslash; indentation would change when read back |
 | `declass` | a fields-only class into a `{#def#}` header, deleting the `.py` (S to T) | the class has methods, decorators, other bases or other statements; a type or default is not expressible in a header; a default is a call, which a class runs once and a header would run per instance; the module holds more than the class and imports; another class under the paths or `--root` subclasses it (a header-only component has no class to import) |
 
-`declass` prints every remaining reference to a folded class name, because it reports
-rather than rewrites imports (`--root` says where to look). The folded component also
+`declass` prints every remaining reference to a folded class name, and `assets` every
+line that still names a folded file (`card.css`), in any file type, because both report
+rather than rewrite (`--root` says where to look, and the summary counts the
+references). Code that builds an asset path by hand breaks once the file is gone. The folded component also
 becomes permissive: undeclared attributes that the class rejected now pass through
 (see the shapes above). The script exits 1 if it
 refused anything, after processing the rest, and running it again finds nothing left to

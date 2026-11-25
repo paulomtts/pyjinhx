@@ -227,6 +227,23 @@ def test_assets_refuses_when_an_inheriting_subclass_has_its_own_sibling_file(
     assert "FancyCard" in out and "fancy_card.css" in out
 
 
+def test_assets_reports_every_line_under_the_root_that_names_the_file(tmp_path, capsys):
+    components = tmp_path / "components"
+    make_card(components)
+    write(components / "card.css", CARD_CSS)
+    write(tmp_path / "views.py", "BORROWED = HERE / 'card.css'\n")
+    write(tmp_path / "tests" / "test_card.py", "x = 1\nread('card.css')\n")
+    write(tmp_path / "other.py", "print('card.js')\n")
+
+    code, out = run("assets", components, "--root", tmp_path, "--write", capsys=capsys)
+
+    assert code == 0
+    assert "views.py:1:" in out and "test_card.py:2:" in out
+    assert "other.py" not in out
+    assert "2 references" in out
+    assert not (components / "card.css").exists()
+
+
 def test_assets_still_processes_the_rest_after_a_refusal(tmp_path, capsys):
     make_card(tmp_path)
     write(tmp_path / "card.css", "a { content: '#}'; }\n")

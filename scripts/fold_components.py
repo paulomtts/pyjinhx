@@ -119,6 +119,27 @@ def block_text(kind: str, body: str, indent: str = "") -> str:
 # --- assets -----------------------------------------------------------------
 
 
+def references(
+    name: str, roots: list[Path], skip: Path, pattern: str = "*.py"
+) -> list[str]:
+    """``path:line: text`` for every line in ``pattern`` files under ``roots`` that mentions ``name``."""
+    found = []
+    mention = re.compile(rf"\b{re.escape(name)}\b")
+    for path in walk(roots, pattern):
+        if path == skip or not path.is_file():
+            continue
+        try:
+            lines = path.read_text(encoding="utf-8").splitlines()
+        except UnicodeDecodeError:
+            continue
+        found += [
+            f"{path}:{number}: {line.strip()}"
+            for number, line in enumerate(lines, 1)
+            if mention.search(line)
+        ]
+    return found
+
+
 def subclass_refusal(asset_stem: str, kind: str, modules: list[Module]) -> str | None:
     """Why a subclass of the class owning ``asset_stem`` blocks the fold, or None.
 
@@ -206,7 +227,7 @@ def locate_template(
     return pjx, None
 
 
-def fold_assets(paths: list[Path]) -> Plan:
+def fold_assets(paths: list[Path], roots: list[Path] | None = None) -> Plan:
     plan = Plan()
     modules = load_modules(paths)
     for asset in walk(paths, "*.css") + walk(paths, "*.js"):
@@ -245,6 +266,11 @@ def fold_assets(paths: list[Path]) -> Plan:
                 continue
         plan.files[asset] = None
         plan.folded += 1
+        # Code that names the file by path breaks once it is gone.
+        plan.notes += [
+            f"{asset.name} is still named: {line}"
+            for line in references(asset.name, roots or paths, asset, "*")
+        ]
     return plan
 
 
@@ -505,19 +531,6 @@ def header_text(props: list[str]) -> str:
     return "{#def " + ",\n      ".join(props) + " #}"
 
 
-def references(name: str, roots: list[Path], skip: Path) -> list[str]:
-    """``path:line: text`` for every line under ``roots`` that mentions ``name``."""
-    pattern = re.compile(rf"\b{re.escape(name)}\b")
-    found = []
-    for path in walk(roots, "*.py"):
-        if path == skip:
-            continue
-        for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
-            if pattern.search(line):
-                found.append(f"{path}:{number}: {line.strip()}")
-    return found
-
-
 def subclasses(name: str, modules: list[Module]) -> list[str]:
     """``path:line: Class`` for each class in ``modules`` that has ``name`` as a base."""
     return [
@@ -599,7 +612,10 @@ def finish(name: str, plan: Plan, write: bool) -> int:
     for refusal in plan.refusals:
         print(f"refused {refusal}")
     mode = "written" if write else "dry run, nothing written; pass --write"
-    print(f"{name}: {plan.folded} folded, {len(plan.refusals)} refused ({mode})")
+    print(
+        f"{name}: {plan.folded} folded, {len(plan.refusals)} refused, "
+        f"{len(plan.notes)} references ({mode})"
+    )
     return 1 if plan.refusals else 0
 
 
@@ -610,19 +626,20 @@ def main(argv: list[str] | None = None) -> int:
         command = commands.add_parser(name)
         command.add_argument("paths", nargs="+", type=Path)
         command.add_argument("--write", action="store_true", help="apply the changes")
-    commands.choices["declass"].add_argument(
-        "--root",
-        action="append",
-        type=Path,
-        help="where to look for references to a folded class (default: the paths)",
-    )
+    for name in ("assets", "declass"):
+        commands.choices[name].add_argument(
+            "--root",
+            action="append",
+            type=Path,
+            help="where to look for references to what is folded (default: the paths)",
+        )
     args = parser.parse_args(argv)
     if args.command == "declass":
         plan = fold_declass(args.paths, args.root)
+    elif args.command == "assets":
+        plan = fold_assets(args.paths, args.root)
     else:
-        plan = {"assets": fold_assets, "template": fold_template}[args.command](
-            args.paths
-        )
+        plan = fold_template(args.paths)
     return finish(args.command, plan, args.write)
 
 
