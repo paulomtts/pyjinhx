@@ -5,10 +5,10 @@ Spec: `docs/superpowers/specs/2026-11-25-fewer-files-design.md`.
 
 ## Setup
 
-- **The real app was not touched.** `git -C /home/mtts/Code/nomica status
-  --short` was recorded before the trial and compared after it (see the end).
+- **The real app was not touched.** `git status --short` in
+  the real app was recorded before the trial and compared after it (see the end).
   Nothing was installed there, and every command ran in the copy.
-- **Copy.** Made by allow-list from nomica `a77f18fd`: `app/`, `tests/`,
+- **Copy.** Made by allow-list from the app's commit `a77f18fd`: `app/`, `tests/`,
   `scripts/`, `main.py`, `pyproject.toml`, `uv.lock`, `.python-version` and
   `.gitignore`, with no `__pycache__`. The copy is 43 MB, against a 64 GB
   tree. It has its own git repo, so each step below is one commit.
@@ -301,7 +301,7 @@ The gate on `d86a6d01`:
 
 ## Reproduce
 
-In the copy (`…/scratchpad/nomica-trial`; its git log has one commit per
+In the copy (`<scratch>/trial-copy`; its git log has one commit per
 step):
 
 ```
@@ -315,7 +315,7 @@ trial/run_suites.sh after-assets
 
 ## The real repository, untouched
 
-`git -C /home/mtts/Code/nomica status --short`, before the trial and after
+`git status --short` in the real app, before the trial and after
 it (identical; HEAD `a77f18fd` at both points):
 
 ```

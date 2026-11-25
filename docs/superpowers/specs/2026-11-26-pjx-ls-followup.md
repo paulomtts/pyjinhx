@@ -1,7 +1,6 @@
 # pjx-ls follow-up for the `{#python#}` block
 
-Status: a work list for a later change in the separate repository
-`/home/mtts/Code/pjx-ls`. Nothing here is part of the pyjinhx PR.
+Status: a work list for a later change in the separate pjx-ls repository. Nothing here is part of the pyjinhx PR.
 Design it depends on: `2026-11-26-pjx-python-block-design.md`, section "Facts
 for editors".
 

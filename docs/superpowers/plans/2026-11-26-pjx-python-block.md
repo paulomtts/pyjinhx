@@ -37,7 +37,7 @@ worktree `.claude/worktrees/ff-pyblock`.
   files there need `git add -f`.
 - Commit messages end with a blank line and
   `Co-Authored-By: <the implementing model> <noreply@anthropic.com>`.
-- `/home/mtts/Code/nomica` and `/home/mtts/Code/pjx-ls` are read-only.
+- The real consumer app and the pjx-ls repository are read-only.
 
 ## Order and dependencies
 
@@ -651,12 +651,12 @@ session, as the other shapes' are).
 
 ## Task 11 — consumer trial re-run (Opus)
 
-**The real repository at `/home/mtts/Code/nomica` is read-only. Nothing is
+**The real consumer app's repository is read-only. Nothing is
 written, staged, committed or installed there.** Record
-`git -C /home/mtts/Code/nomica status --short` before and after.
+`git status --short` in the real app before and after.
 
 The scratch copy is
-`/tmp/claude-1000/-home-mtts-Code-libs-pyjinhx/b14127df-9a46-450b-97af-644306aa55c4/scratchpad/nomica-trial`
+`<scratch>/trial-copy`
 (its own git repo; one commit per step; scripts under `trial/`). If a reboot
 cleared it, rebuild it as the first trial report's "Setup" and "Reproduce"
 sections describe, and say so in the new report.
