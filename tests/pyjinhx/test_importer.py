@@ -64,6 +64,7 @@ def test_a_block_document_imports_as_a_module(write: Write):
     card = importlib.import_module("pkg.card")
     assert card.Card.__module__ == "pkg.card"
     assert card.__file__ == str(path)
+    assert card.__spec__ is not None
     assert card.__spec__.origin == str(path)
     assert card.__package__ == "pkg"
 
@@ -161,9 +162,11 @@ def test_the_loader_serves_the_padded_python(write: Write):
 
     text = "<p></p>\n{#python\nVALUE = 1\n" + CLASS + "#}\n"
     path = write("pkg/card.pjx", text)
-    card = importlib.import_module("pkg.card")
-    assert card.__loader__.get_source("pkg.card") == sfc.python_source(text, str(path))
-    assert card.__loader__.is_package("pkg.card") is False
+    spec = importlib.import_module("pkg.card").__spec__
+    loader = spec.loader if spec else None
+    assert isinstance(loader, importer.PjxLoader)
+    assert loader.get_source("pkg.card") == sfc.python_source(text, str(path))
+    assert loader.is_package("pkg.card") is False
 
 
 def test_no_bytecode_is_written(write: Write):

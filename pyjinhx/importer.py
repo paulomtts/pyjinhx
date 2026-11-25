@@ -63,7 +63,9 @@ class PjxLoader(importlib.abc.SourceLoader):
     def get_source(self, fullname: str) -> str:
         return self._python(self.get_data(self.path))
 
-    def source_to_code(self, data, path="<string>", *, _optimize=-1) -> CodeType:
+    def source_to_code(  # type: ignore[override]
+        self, data: bytes | str, path: str = "<string>", *, _optimize: int = -1
+    ) -> CodeType:
         return compile(
             self._python(data), self.path, "exec", dont_inherit=True, optimize=_optimize
         )
@@ -104,8 +106,9 @@ class PjxLoader(importlib.abc.SourceLoader):
         )
         if not named:
             text = self.get_data(self.path).decode("utf-8-sig")
+            block = python_block(text, self.path)
             self._refuse(
-                python_block(text, self.path).open_line,
+                block.open_line if block else 1,
                 f"no component class is named for {stem!r}; the block must "
                 f"define the class whose snake_case name is the file's stem",
             )
