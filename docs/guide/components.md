@@ -615,8 +615,8 @@ After `pyblock`, the script reminds you to put `import pyjinhx` in the root pack
 `__init__.py` and to regenerate the [stubs](#stubs-and-type-checking). It reports, without
 refusing, other component classes in the module that keep their own `.pjx` and every line
 under `--root` that names the deleted `card.py`; a module that mentions `__file__` or
-`__main__` is flagged because `__file__` becomes the `.pjx`. After writing, it re-reads the
-result and checks that the block is the module's source and the markup is unchanged.
+`__main__` is flagged because `__file__` becomes the `.pjx`. Before writing, it checks in
+memory that the planned text holds the module's source as the block and the markup unchanged.
 
 `declass` prints every remaining reference to a folded class name, and `assets` every
 line that still names a folded file (`card.css`), in any file type, because both report
