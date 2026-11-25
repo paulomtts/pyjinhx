@@ -354,3 +354,17 @@ def test_a_stub_already_there_for_a_shadowed_block_is_left_alone(tmp_path):
     _tree(tmp_path, {"card.pjx": CARD, "card.py": "", "card.pyi": old})
     stubgen.main([str(tmp_path)])
     assert (tmp_path / "card.pyi").read_text() == old
+
+
+def test_an_init_body_is_kept_so_its_attributes_stay_declared():
+    source = _document(
+        "class C:\n    def __init__(self):\n        self.x = 1\n"
+        "        self.y: int = 2\n\n    def run(self):\n        return self.x\n"
+    )
+    stub = _stub(source)
+    assert "        self.x = 1" in stub
+    assert "        self.y: int = 2" in stub
+    assert "return" not in stub
+    assert _declarations(stub) == _declarations(
+        sfc.python_source(source, "card.pjx") or ""
+    )

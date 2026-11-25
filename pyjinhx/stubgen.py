@@ -29,11 +29,13 @@ def marker(pjx_name: str) -> str:
 def _functions(
     body: list[ast.stmt],
 ) -> Iterator[ast.FunctionDef | ast.AsyncFunctionDef]:
-    """The outermost functions under ``body``, found through classes and
+    """The outermost functions under ``body``, bar ``__init__``, found through classes and
     compound statements such as ``if`` and ``try`` but not into a function."""
     for node in body:
         if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
-            yield node
+            # An `__init__` body is what declares the instance attributes.
+            if node.name != "__init__":
+                yield node
             continue
         for field in ("body", "orelse", "finalbody"):
             yield from _functions(getattr(node, field, []))
