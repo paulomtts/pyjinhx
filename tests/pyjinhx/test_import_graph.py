@@ -458,10 +458,12 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
     # the method body, never at module scope, because rendering.py imports
     # BaseComponent at import time and a module-level edge back would be a real
     # cycle — the same local-import escape hatch assets.py already uses.
+    # discovery is read inside _is_live only: discovery imports this module.
     "_component": frozenset(
         {
             "pyjinhx.client.inject",
             "pyjinhx.descriptor",
+            "pyjinhx.discovery",
             "pyjinhx.importer",
             "pyjinhx.props_header",
             "pyjinhx.rendering",
