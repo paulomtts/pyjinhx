@@ -1,0 +1,3 @@
+<ul id="{{ id }}" class="todo-list">
+  {% for todo_id in todo_ids %}<TodoRow todo_id="{{ todo_id }}"/>{% else %}<EmptyState message="All clear"/>{% endfor %}
+</ul>

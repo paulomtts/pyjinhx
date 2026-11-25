@@ -1,0 +1,2 @@
+.dot { display: inline-block; width: 0.5rem; height: 0.5rem; }
+.dot--late { background: var(--danger); }

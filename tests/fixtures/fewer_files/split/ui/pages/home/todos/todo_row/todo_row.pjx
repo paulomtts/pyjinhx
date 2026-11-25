@@ -1,0 +1,5 @@
+<li class="todo-row todo-row--{{ state }}">
+  <StatusDot tone="{{ 'calm' if done else 'busy' }}"/>
+  <span class="todo-row__title">{{ title }}</span>
+  <Money cents="{{ cents }}"/>
+</li>
