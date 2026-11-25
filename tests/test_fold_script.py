@@ -588,6 +588,25 @@ def test_declass_writes_a_default_factory_as_the_header_default(tmp_path, capsys
     )
 
 
+def test_declass_writes_an_object_annotation_as_any(tmp_path, capsys):
+    write(
+        tmp_path / "card.py",
+        """
+        from pyjinhx import BaseComponent
+
+
+        class Card(BaseComponent):
+            value: object = None
+        """,
+    )
+    write(tmp_path / "card.pjx", "<i>{{ value }}</i>\n")
+
+    code, _ = run("declass", tmp_path, "--write", capsys=capsys)
+
+    assert code == 0
+    assert (tmp_path / "card.pjx").read_text().startswith("{#def value: Any = None #}")
+
+
 def test_declass_reports_every_reference_under_the_root(tmp_path, capsys):
     components = tmp_path / "components"
     write(components / "card.py", FIELDS_PY)

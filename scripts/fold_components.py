@@ -394,6 +394,8 @@ def header_type(node: ast.expr, imports: dict[str, str]) -> str:
             return "None"
         case ast.Constant(value=str()):
             raise ValueError("a string annotation is not expressible in a header")
+        case ast.Name(id="object") if "object" not in imports:
+            return "Any"  # both accept any value; a header spells it Any
         case ast.Name(id=name) if name in _HEADER_TYPES and (
             name not in imports or imports[name].split(".")[0] in _BARE_ORIGINS
         ):
