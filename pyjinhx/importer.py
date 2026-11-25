@@ -62,22 +62,32 @@ def no_block_reason(text: str) -> str:
     return f"has no {{#python block{hint}"
 
 
+def _body_hash(body: str) -> int:
+    """A hash of a block body that does not depend on the file's line ends, which
+    reading as text and decoding bytes spell differently."""
+    return hash(body.replace("\r\n", "\n"))
+
+
 def block_changed(path: str | Path, source: str) -> bool:
     """Whether ``source``, the text now in the ``.pjx`` at ``path``, holds a
     block other than the one the hook imported, and this is the first time that
     edit is seen. A file the hook never loaded, or a block that no longer
-    parses, is not a change.
+    parses, is not a change. Any difference in the body counts, a comment or
+    whitespace included: the module the process holds is the old text.
     """
     resolved = Path(path).resolve()
+    with _documents_lock:
+        imported = _bodies.get(resolved)
+    if imported is None:
+        return False
     try:
         block = python_block(source, str(path))
     except SyntaxError:
         return False
+    if block is None:
+        return False
+    body = _body_hash(block.body)
     with _documents_lock:
-        imported = _bodies.get(resolved)
-        if imported is None or block is None:
-            return False
-        body = hash(block.body)
         if body == imported:
             _reported.pop(resolved, None)
             return False
@@ -217,7 +227,7 @@ class PjxLoader(importlib.abc.SourceLoader):
         with _documents_lock:
             _documents[resolved] = (self.name, document)
             if block is not None:
-                _bodies[resolved] = hash(block.body)
+                _bodies[resolved] = _body_hash(block.body)
                 _reported.pop(resolved, None)
 
     def _document_class(self, module: ModuleType) -> type:

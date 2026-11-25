@@ -487,3 +487,16 @@ def test_a_block_never_imported_through_the_hook_does_not_warn(
         edit(path, "title", "name")
         AbsolutePathLoader().get_source(jinja2.Environment(), str(path))
     assert block_warnings(caplog) == []
+
+
+def test_an_unedited_document_with_crlf_line_ends_does_not_warn(
+    write: Write, caplog: pytest.LogCaptureFixture
+):
+    path = write("pkg/card.pjx", CARD)
+    path.write_bytes(CARD.replace("\n", "\r\n").encode())
+    card = load("pkg.card").Card
+    with caplog.at_level(logging.WARNING, logger="pyjinhx"):
+        assert card(title="a").render() == "<div>a</div>"
+        edit(path, "<div>", "<p>")
+        card(title="a").render()
+    assert block_warnings(caplog) == []
