@@ -142,6 +142,11 @@ class InlineAsset(Path):
 
     Only ``read_text()`` and ``read_bytes()`` work. No file has this path, so
     ``open()``, ``stat()``, ``exists()`` and file copies fail or answer False.
+
+    ``str()`` keeps the ``#<kind>`` form, but ``suffix``, ``stem`` and ``name``
+    answer as the sibling file would (``.css``, ``card``, ``card.css``), so
+    code that classifies assets by extension keeps working. Wrapping one in
+    ``Path(asset)`` goes through ``str()`` and loses the inline reading.
     """
 
     def __init__(
@@ -159,6 +164,22 @@ class InlineAsset(Path):
         # Derived paths (parent, resolve(), ...) name real filesystem
         # locations, not a block, so they come back as plain paths.
         return Path(*pathsegments)
+
+    @property
+    def suffix(self) -> str:
+        return f".{self.kind}"
+
+    @property
+    def suffixes(self) -> list[str]:
+        return [self.suffix]
+
+    @property
+    def stem(self) -> str:
+        return self.template.stem
+
+    @property
+    def name(self) -> str:
+        return self.stem + self.suffix
 
     def __reduce__(self):
         return InlineAsset, (self.template, self.kind, self.inline_class)

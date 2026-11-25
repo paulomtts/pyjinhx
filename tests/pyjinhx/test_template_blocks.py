@@ -412,3 +412,21 @@ def test_hidden_block_lines_keep_every_line_number(tmp_path):
         _render_file(path)
 
     assert raised.value.lineno == 6
+
+
+def test_an_inline_asset_reports_its_kind_as_the_suffix(tmp_path):
+    asset = InlineAsset(tmp_path / "card.pjx", "css")
+
+    assert asset.suffix == ".css"
+    assert asset.suffixes == [".css"]
+    assert asset.stem == "card"
+    assert asset.name == "card.css"
+    assert str(asset) == f"{tmp_path}/card.pjx#css"
+
+
+def test_a_class_inline_asset_is_named_after_its_module(tmp_path):
+    asset = InlineAsset(tmp_path / "widgets.py", "js", inline_class="Card")
+
+    assert asset.suffix == ".js"
+    assert asset.stem == "widgets"
+    assert asset.name == "widgets.js"

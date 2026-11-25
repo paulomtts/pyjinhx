@@ -348,7 +348,10 @@ A component's `{#css#}`/`{#js#}` block appears in `all_assets()` as a path such 
 `ui/card.pjx#css` (an `InlineAsset`). It supports `read_text()` and `read_bytes()`
 only, which is all the recipe above uses. It is not a file on disk, so `open()`,
 `stat()`, `shutil.copy()` or a static-file server cannot read it: copy its
-`read_bytes()` instead.
+`read_bytes()` instead. Its `.suffix` is `.css` or `.js` and its `.name` is
+`card.css`, so you can classify assets by extension; `str()` keeps the
+`card.pjx#css` form. Keep the object itself: `Path(asset)` re-wraps the string
+and loses the inline reading.
 
 Reference the bundles from your layout `<head>` and set both modes to `AssetMode.NONE` on the
 request's session (see [Choosing a mode in a wired app](#choosing-a-mode-in-a-wired-app)), so
