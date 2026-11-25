@@ -483,6 +483,11 @@ def _resolve_class_descriptor(cls: type[BaseModel]) -> ClassDescriptor:
     would probe the same ancestors twice.
     """
     template_path, template_owner = _walk_template(cls)
+    inline_class = (
+        template_owner.__name__
+        if template_owner is not None and _has_inline_template(template_owner)
+        else None
+    )
 
     # Imported here, not at module scope: props_header imports _OpenComponent
     # from this module, so a top-level import would close the cycle.
@@ -492,14 +497,14 @@ def _resolve_class_descriptor(cls: type[BaseModel]) -> ClassDescriptor:
     # stale — only hand-written classes can be carrying a leftover one.
     has_stale_def_header = not getattr(
         cls, "_pjx_classless", False
-    ) and template_has_props_header(template_path)
+    ) and template_has_props_header(template_path, inline_class)
 
     css_path, css_owner = _walk_asset(cls, "css")
     js_path, js_owner = _walk_asset(cls, "js")
     # Blocks come from the template this class renders, not from an MRO walk:
-    # a block lives inside that one file. Each follows its sibling file, so
-    # a component carrying both ships the file's rules first.
-    inline_css, inline_js = inline_assets(template_path)
+    # a block lives inside that one document. Each follows its sibling file,
+    # so a component carrying both ships the file's rules first.
+    inline_css, inline_js = inline_assets(template_path, inline_class)
     css_paths = tuple(path for path in (css_path, inline_css) if path is not None)
     js_paths = tuple(path for path in (js_path, inline_js) if path is not None)
     provenance = {
@@ -529,11 +534,6 @@ def _resolve_class_descriptor(cls: type[BaseModel]) -> ClassDescriptor:
         or children_field in slot_fields
         or children_field == "content"
     ), f"{cls.__name__}: children_field {children_field!r} is not a slot field"
-    inline_class = (
-        template_owner.__name__
-        if template_owner is not None and _has_inline_template(template_owner)
-        else None
-    )
     return ClassDescriptor(
         template_path=template_path,
         inline_class=inline_class,

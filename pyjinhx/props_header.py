@@ -18,10 +18,16 @@ from typing import TYPE_CHECKING, Any
 
 from pydantic import create_model
 
+from pyjinhx.sfc import read_document
+
 if TYPE_CHECKING:
     from pyjinhx._component import _OpenComponent
 
-_HEADER_RE = re.compile(r"\A\s*\{#\s*def\s+(?P<sig>.*?)\s*#\}", re.DOTALL)
+# An inline template opens with an empty comment that pads its line numbers
+# to the module's (see sfc), so one may stand before the header.
+_HEADER_RE = re.compile(
+    r"\A\s*(?:\{#\s*#\}\s*)?\{#\s*def\s+(?P<sig>.*?)\s*#\}", re.DOTALL
+)
 
 _TYPES: dict[str, Any] = {
     "str": str,
@@ -163,18 +169,23 @@ def build_component_class(
 logger = logging.getLogger("pyjinhx")
 
 
-def template_has_props_header(template_path: Path) -> bool:
+def template_has_props_header(
+    template_path: Path, inline_class: str | None = None
+) -> bool:
     """Whether the template at ``template_path`` opens with a ``{#def#}`` header.
 
-    Answers False for anything it cannot read or parse. This runs at class
+    ``inline_class`` names the class whose inline template that ``.py`` file
+    holds. Answers False for anything it cannot read or parse. This runs at class
     registration, where the template path is a candidate that nothing has
     proven exists yet, and a diagnostic must never be the thing that breaks an
     import — the caller that actually loads the template still raises its own
     error if the file is missing.
     """
     try:
-        source = template_path.read_text(encoding="utf-8")
-    except OSError:
+        source = read_document(template_path, inline_class)
+    except (OSError, ValueError):
+        # A ValueError is an inline template that cannot be extracted; the
+        # inline block scan right after this reports it.
         return False
     try:
         return parse_props_header(source) is not None

@@ -1,7 +1,9 @@
 """Tests for components that carry their template inline, in this very file."""
 
 import importlib.util
+import logging
 import os
+import pickle
 import sys
 import traceback
 import warnings
@@ -12,8 +14,16 @@ import pytest
 from pydantic import field_validator
 
 from pyjinhx import BaseComponent, discovery
+from pyjinhx.assets import asset_token
 from pyjinhx.render_cache import render_cache_key
-from pyjinhx.session import AbsolutePathLoader, request_scope
+from pyjinhx.rendering import render
+from pyjinhx.session import (
+    AbsolutePathLoader,
+    RenderSession,
+    accumulate_assets,
+    request_scope,
+)
+from pyjinhx.template_blocks import InlineAsset
 
 THIS_FILE = Path(__file__)
 
@@ -345,3 +355,147 @@ def test_the_render_cache_key_follows_the_modules_mtime(shop):
     before = render_cache_key(card)
     _touch_later(Path(shop.__file__))
     assert render_cache_key(card) != before
+
+
+STYLED = '''\
+from pyjinhx import BaseComponent
+
+
+class Tag(BaseComponent):
+    template = r"""
+    <span class="tag">tag</span>
+    {#css
+    .tag { color: red; }
+    #}
+    """
+
+
+class Pill(BaseComponent):
+    template = r"""
+    <span class="pill">pill</span>
+    {#css
+    .pill { color: blue; }
+    #}
+    {#js
+    console.log("pill");
+    #}
+    """
+
+
+class Shelf(BaseComponent):
+    template = "<div><Tag/><Tag/><Pill/></div>"
+'''
+
+
+@pytest.fixture
+def styled(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    """A module of components carrying their own css and js blocks."""
+    path = tmp_path / "styled.py"
+    path.write_text(STYLED)
+    return _import_file(path, monkeypatch)
+
+
+def _collecting_session() -> RenderSession:
+    session = RenderSession()
+    session.on_rendered.append(accumulate_assets)
+    return session
+
+
+def test_an_inline_css_block_becomes_the_classs_asset(styled):
+    path = Path(styled.__file__)
+    (css,) = styled.Tag.__pjx_descriptor__.css_paths
+    assert isinstance(css, InlineAsset)
+    assert str(css) == f"{path}::Tag#css"
+    assert css.read_text() == ".tag { color: red; }"
+    assert styled.Tag.__pjx_descriptor__.js_paths == ()
+
+
+def test_two_components_in_one_module_keep_their_own_blocks(styled):
+    (tag_css,) = styled.Tag.__pjx_descriptor__.css_paths
+    (pill_css,) = styled.Pill.__pjx_descriptor__.css_paths
+    (pill_js,) = styled.Pill.__pjx_descriptor__.js_paths
+    assert tag_css != pill_css
+    assert pill_css.read_text() == ".pill { color: blue; }"
+    assert pill_js.read_text() == 'console.log("pill");'
+
+
+def test_rendering_inlines_each_block_once(styled):
+    discovery.build_registry(None, [styled.Tag, styled.Pill, styled.Shelf])
+    out = render(styled.Shelf(), _collecting_session())
+    (tag_css,) = styled.Tag.__pjx_descriptor__.css_paths
+    token = asset_token(tag_css)
+    assert f'<style data-pjx-asset="{token}">.tag {{ color: red; }}</style>' in out
+    assert out.count(".tag { color: red; }") == 1
+    assert out.count('console.log("pill")') == 1
+    assert "{#" not in out
+
+
+def test_a_duplicate_block_is_reported_at_its_line_in_the_python_file(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    path = tmp_path / "twice.py"
+    path.write_text(
+        "from pyjinhx import BaseComponent\n"
+        "\n"
+        "\n"
+        "class Twice(BaseComponent):\n"
+        '    template = """\n'
+        "    <div></div>\n"
+        "    {#js a(); #}\n"
+        "    {#js b(); #}\n"
+        '    """\n'
+    )
+    with pytest.raises(jinja2.TemplateSyntaxError) as caught:
+        _import_file(path, monkeypatch)
+    assert caught.value.filename == str(path)
+    assert caught.value.lineno == 8
+
+
+def test_a_sibling_file_and_an_inline_block_ship_sibling_first(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    (tmp_path / "tag.css").write_text(".sibling {}")
+    path = tmp_path / "styled.py"
+    path.write_text(STYLED)
+    tag = _import_file(path, monkeypatch).Tag
+    sibling, block = tag.__pjx_descriptor__.css_paths
+    assert sibling == tmp_path / "tag.css"
+    assert str(block) == f"{path}::Tag#css"
+
+
+def test_editing_a_block_on_disk_changes_what_the_asset_reads(styled):
+    path = Path(styled.__file__)
+    (css,) = styled.Tag.__pjx_descriptor__.css_paths
+    path.write_text(STYLED.replace("color: red", "color: green"))
+    assert css.read_text() == ".tag { color: green; }"
+
+
+def test_an_inline_asset_survives_pickling(styled):
+    (css,) = styled.Pill.__pjx_descriptor__.css_paths
+    restored = pickle.loads(pickle.dumps(css))
+    assert isinstance(restored, InlineAsset)
+    assert restored == css
+    assert restored.read_text() == ".pill { color: blue; }"
+
+
+def test_an_inline_template_with_a_def_header_is_reported_as_stale(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+):
+    path = tmp_path / "headed.py"
+    path.write_text(
+        "from pyjinhx import BaseComponent\n\n\n"
+        "class Headed(BaseComponent):\n"
+        "    title: str\n\n"
+        '    template = """\n'
+        "    {#def title: str #}\n"
+        "    <h1>{{ title }}</h1>\n"
+        '    """\n'
+    )
+    headed = _import_file(path, monkeypatch).Headed
+    with caplog.at_level(logging.WARNING, logger="pyjinhx"):
+        headed(title="a").render()
+        headed(title="b").render()
+    assert [r.getMessage() for r in caplog.records].count(
+        "<Headed>: a {#def#} header is present but a Python class is registered "
+        "— the header is ignored. Remove the header (or the class)."
+    ) == 1

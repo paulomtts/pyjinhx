@@ -533,10 +533,12 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
     # Generating a class from a {#def #} header needs the open-model base to
     # subclass; parsing also reaches in now, to resolve the Slot/Children
     # marker aliases.
-    "props_header": frozenset({"pyjinhx._component"}),
+    # Both read a document through sfc, the one reader that knows a class's
+    # inline template lives inside a .py module.
+    "props_header": frozenset({"pyjinhx._component", "pyjinhx.sfc"}),
     # Inline {#css#}/{#js#} block scanning reads template text only, so it
-    # stays below the spine with no internal edges.
-    "template_blocks": frozenset(),
+    # stays below the spine; sfc is stdlib-only, so the edge stays low too.
+    "template_blocks": frozenset({"pyjinhx.sfc"}),
     # rendering resolves each ChildRef tag against the published class registry;
     # an unregistered tag is emitted verbatim, so this is a read-only edge.
     "rendering": frozenset(
