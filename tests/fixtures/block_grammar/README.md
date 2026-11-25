@@ -24,6 +24,19 @@ Each `<case>.pjx` is a document; `<case>.json` is what a scanner must report:
   `SyntaxError.offset` counts characters. Both are the file's own columns,
   because the body is never dedented.
 
+## Known gaps
+
+A case with a `known_gap` key records what Jinja itself would report, and
+says where pyjinhx's scanner differs. Other implementations may follow either
+side; pyjinhx's test expects to fail on it, so a fix is noticed.
+
+- Braces are not balanced inside `{{ }}`. Jinja keeps reading while a `{`,
+  `(` or `[` is open, so `{{ {1: {2: 3}} ~ "{#" }}` is one tag; the scanner
+  ends it at the first `}}`.
+- Only the default delimiters are read. Custom `*_start_string` /
+  `*_end_string` values and line statement or line comment prefixes are
+  unsupported.
+
 ## Rules the cases pin down
 
 - Comments follow Jinja's lexer: `{#`/`#}` inside a `{% raw %}` region or a
@@ -41,7 +54,7 @@ Each `<case>.pjx` is a document; `<case>.json` is what a scanner must report:
 
 | code | line |
 |---|---|
-| `second-block` | the second opener (any keyword; `python` at most one per document) |
+| `second-block` | the second opener of a keyword. `find_block` detects it for def, css and js; `python_block` for python |
 | `opener-not-at-line-start` | the `{#python` opener |
 | `unclosed-block` | the `{#python` opener with no `#}` after it |
 | `python-block-early-close` | the line of a `#}` that follows code |
