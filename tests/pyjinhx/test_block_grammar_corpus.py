@@ -5,51 +5,59 @@ import json
 from pathlib import Path
 
 import pytest
-from jinja2 import TemplateSyntaxError
 
 from pyjinhx import sfc
-from pyjinhx.template_blocks import find_block, inline_assets
+from pyjinhx.template_blocks import (
+    BlockTemplateSyntaxError,
+    find_block,
+    inline_assets,
+)
 
 CORPUS = Path(__file__).resolve().parents[1] / "fixtures" / "block_grammar"
 
 
 def _scan(source: str, filename: str) -> tuple[list[dict], dict | None]:
-    """The blocks and first error the scanners report for ``source``."""
-    blocks = []
-    try:
-        for keyword in ("def", "css", "js"):
-            try:
-                block = find_block(source, keyword, filename)
-            except TemplateSyntaxError as error:
-                return [], {"code": sfc.SECOND_BLOCK, "line": error.lineno}
+    """The blocks and the lowest-line error the scanners report for ``source``."""
+    blocks: list[tuple[str, int, int]] = []
+    errors: list[BlockTemplateSyntaxError | sfc.BlockSyntaxError] = []
+    for keyword in ("def", "css", "js"):
+        try:
+            block = find_block(source, keyword, filename)
+        except BlockTemplateSyntaxError as error:
+            errors.append(error)
+        else:
             if block is not None:
                 blocks.append((keyword, block.line, block.close_line))
+    try:
         python = sfc.python_block(source, filename)
     except sfc.BlockSyntaxError as error:
-        return [], {"code": error.code, "line": error.lineno}
-    if python is not None:
-        blocks.append(("python", python.open_line, python.close_line))
+        errors.append(error)
+    else:
+        if python is not None:
+            blocks.append(("python", python.open_line, python.close_line))
     try:
         inline_assets(Path(filename), source)
-    except TemplateSyntaxError as error:
-        return [], {"code": sfc.STRAY_COMMENT_CLOSE, "line": error.lineno}
-    except sfc.BlockSyntaxError as error:
-        return [], {"code": error.code, "line": error.lineno}
-    return [
-        {
-            "keyword": keyword,
-            "open_line": opened,
-            "body_lines": [opened + 1, closed - 1] if closed - opened > 1 else None,
-            "close_line": closed,
-        }
-        for keyword, opened, closed in sorted(blocks, key=lambda b: b[1])
-    ], None
+    except (BlockTemplateSyntaxError, sfc.BlockSyntaxError) as error:
+        errors.append(error)
+    if errors:
+        first = min(errors, key=lambda error: error.lineno or 0)
+        return [], {"code": first.code, "line": first.lineno}
+    return [_recorded(*block) for block in sorted(blocks, key=lambda b: b[1])], None
+
+
+def _recorded(keyword: str, opened: int, closed: int) -> dict:
+    """A block as the corpus writes it down."""
+    block: dict = {"keyword": keyword, "open_line": opened}
+    if keyword != "def":
+        block["body_lines"] = [opened + 1, closed - 1] if closed - opened > 1 else None
+    block["close_line"] = closed
+    return block
 
 
 @pytest.mark.parametrize("case", sorted(CORPUS.glob("*.pjx")), ids=lambda p: p.stem)
 def test_the_scanners_agree_with_the_recorded_case(case):
     expected = json.loads(case.with_suffix(".json").read_text(encoding="utf-8"))
-    source = case.read_bytes().decode("utf-8")
+    source = case.read_bytes().decode("utf-8-sig")
 
     blocks, error = _scan(source, case.name)
 
@@ -57,16 +65,16 @@ def test_the_scanners_agree_with_the_recorded_case(case):
 
 
 def test_the_corpus_has_a_case_for_every_error_code():
-    codes = {
-        json.loads(path.read_text())["error"]["code"]
-        for path in CORPUS.glob("*.json")
-        if json.loads(path.read_text())["error"]
-    }
+    recorded = (
+        json.loads(path.read_text(encoding="utf-8")) for path in CORPUS.glob("*.json")
+    )
 
-    assert codes == {
+    assert {case["error"]["code"] for case in recorded if case["error"]} == {
         sfc.PYTHON_BLOCK_EARLY_CLOSE,
         sfc.SECOND_BLOCK,
         sfc.OPENER_NOT_AT_LINE_START,
+        sfc.CLOSER_NOT_AT_LINE_START,
+        sfc.UNCLOSED_BLOCK,
         sfc.TEXT_AFTER_CLOSER,
         sfc.STRAY_COMMENT_CLOSE,
     }

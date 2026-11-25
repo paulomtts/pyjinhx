@@ -1,7 +1,7 @@
 {
   "blocks": [],
   "error": {
-    "code": "python-block-early-close",
+    "code": "closer-not-at-line-start",
     "line": 3
   }
 }
