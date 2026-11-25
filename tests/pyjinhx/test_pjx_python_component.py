@@ -1,5 +1,6 @@
 """A ``.pjx`` document that holds its class: binding, refusals and rendering."""
 
+import gc
 import importlib
 import logging
 import os
@@ -61,6 +62,7 @@ def write(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     yield write_file
     for name in set(sys.modules) - before:
         del sys.modules[name]
+    gc.collect()
 
 
 @pytest.fixture(autouse=True)
@@ -412,11 +414,11 @@ def test_assets_skip_a_refused_imports_classes(write: Write):
 
 def test_a_malformed_block_beside_a_py_class_names_the_class(write: Write):
     path = write("pkg/card.py", SPLIT_CARD_PY)
-    write("pkg/card.pjx", "<div>\n  {#python\n  x = 1\n  #}\n</div>\n")
+    write("pkg/card.pjx", "<div>\n{#python\nx = 1\n</div>\n")
     with pytest.raises(BlockSyntaxError) as caught:
         load("pkg.card")
     error = caught.value
-    assert error.code == "opener-not-at-line-start"
+    assert error.code == "unclosed-block"
     assert error.lineno == 2
     assert error.filename == str(path.with_suffix(".pjx"))
     assert "Card" in str(error)

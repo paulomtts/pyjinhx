@@ -143,7 +143,6 @@ BLOCK_KEYWORDS = ("def", "css", "js", "python")
 # grammar's conformance corpus and the editor tooling that reads it.
 PYTHON_BLOCK_EARLY_CLOSE = "python-block-early-close"
 SECOND_BLOCK = "second-block"
-OPENER_NOT_AT_LINE_START = "opener-not-at-line-start"
 TEXT_AFTER_CLOSER = "text-after-closer"
 CLOSER_NOT_AT_LINE_START = "closer-not-at-line-start"
 UNCLOSED_BLOCK = "unclosed-block"
@@ -309,19 +308,21 @@ def python_block(source: str, filename: str) -> PythonBlock | None:
     """The ``{#python ... #}`` block of the document ``source``, or None.
 
     The opener is a line of exactly ``{#python`` in column 0 (trailing spaces
-    and tabs allowed). The closer is the first ``#}``, which must be alone on
+    and tabs allowed); an indented ``{#python`` is a plain comment. The closer is the first ``#}``, which must be alone on
     its line in column 0, as Jinja ends the comment there whatever Python
     thinks of it. A ``-#}`` closer is refused: Jinja would eat the line break
     after it.
 
     Raises:
-        BlockSyntaxError: The opener is not at the start of its line or is
-            never closed, a second block follows, the first ``#}`` is not
-            alone in column 0, or text follows the closer. ``lineno`` is the
-            offending line.
+        BlockSyntaxError: The opener is never closed, a second block follows,
+            the first ``#}`` is not alone in column 0, or text follows the
+            closer. ``lineno`` is the offending line.
     """
     found: PythonBlock | None = None
     for match in _LEXEME_RE.finditer(source):
+        # An opener that is not in column 0 is a plain comment.
+        if source.rfind("\n", 0, match.start()) + 1 != match.start():
+            continue
         if match.group("unclosed"):
             raise _block_error(
                 UNCLOSED_BLOCK,
@@ -341,14 +342,6 @@ def python_block(source: str, filename: str) -> PythonBlock | None:
                 SECOND_BLOCK,
                 f"a second {{#python block; the first is on line {found.open_line}, "
                 f"and a document holds at most one",
-                source,
-                filename,
-                match.start(),
-            )
-        if source.rfind("\n", 0, match.start()) + 1 != match.start():
-            raise _block_error(
-                OPENER_NOT_AT_LINE_START,
-                "{#python must start its line, in column 0",
                 source,
                 filename,
                 match.start(),

@@ -149,7 +149,7 @@ importing. Each has `path`, `range`, `severity` (`error` or `warning`), `code` a
 
 | Code | Meaning |
 |---|---|
-| `python-block-early-close`, `second-block`, `opener-not-at-line-start`, `text-after-closer`, `closer-not-at-line-start`, `unclosed-block`, `stray-comment-close` | a malformed block; see [the grammar](#the-block-grammar) |
+| `python-block-early-close`, `second-block`, `text-after-closer`, `closer-not-at-line-start`, `unclosed-block`, `stray-comment-close` | a malformed block; see [the grammar](#the-block-grammar) |
 | `python-syntax-error` | the block's Python does not parse |
 | `def-with-python` | a `{#def#}` header and a `{#python` block in one document |
 | `def-header-invalid` | a `{#def#}` header that is not a list of simple named props |

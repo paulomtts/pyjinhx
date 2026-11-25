@@ -66,6 +66,9 @@ def test_a_block_after_markup_and_a_css_block_keeps_its_lines():
         "{#python x = 1 #}",
         "{#-python\nx = 1\n#}",
         "{#pythonic\nx = 1\n#}",
+        "<p></p>\n <p>{#python\nx = 1\n#}",
+        "<pre>\n  {#python\n  x = 1\n  #}\n</pre>",
+        "<p>{#python\nx = 1\n",
     ],
 )
 def test_text_that_is_not_an_opener_is_not_a_block(source):
@@ -75,7 +78,6 @@ def test_text_that_is_not_an_opener_is_not_a_block(source):
 @pytest.mark.parametrize(
     ("source", "lineno", "code"),
     [
-        ("<p></p>\n <p>{#python\nx = 1\n#}", 2, sfc.OPENER_NOT_AT_LINE_START),
         ("{#python\nx = 1\n#}\n{#python\ny = 2\n#}", 4, sfc.SECOND_BLOCK),
         ('{#python\nx = "#}"\n#}', 2, sfc.PYTHON_BLOCK_EARLY_CLOSE),
         ('{#python\nx = f"{n:#}"\n#}', 2, sfc.PYTHON_BLOCK_EARLY_CLOSE),

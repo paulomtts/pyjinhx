@@ -77,7 +77,6 @@ def test_the_corpus_has_a_case_for_every_error_code():
     assert {case["error"]["code"] for case in recorded if case["error"]} == {
         sfc.PYTHON_BLOCK_EARLY_CLOSE,
         sfc.SECOND_BLOCK,
-        sfc.OPENER_NOT_AT_LINE_START,
         sfc.CLOSER_NOT_AT_LINE_START,
         sfc.UNCLOSED_BLOCK,
         sfc.TEXT_AFTER_CLOSER,

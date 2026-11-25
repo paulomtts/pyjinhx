@@ -43,7 +43,7 @@ side; pyjinhx's test expects to fail on it, so a fix is noticed.
   `{{ }}` / `{% %}` tag (string literals included) are not comments.
 - `css` and `js` must end their line; their `{#` may be indented. An empty
   css/js block is omitted from `blocks`; an empty python block is listed.
-- A `python` opener must be in column 0 and its closer alone in column 0
+- A `python` opener is only one in column 0 (indented, it is a plain comment) and its closer alone in column 0
   (trailing spaces and tabs allowed). `-#}` is not accepted as a closer, as
   Jinja would eat the line break after it.
 - A stray `#}` (one left over once comments, tags and raw regions are
@@ -55,7 +55,6 @@ side; pyjinhx's test expects to fail on it, so a fix is noticed.
 | code | line |
 |---|---|
 | `second-block` | the second opener of a keyword. `find_block` detects it for def, css and js; `python_block` for python |
-| `opener-not-at-line-start` | the `{#python` opener |
 | `unclosed-block` | the `{#python` opener with no `#}` after it |
 | `python-block-early-close` | the line of a `#}` that follows code |
 | `closer-not-at-line-start` | the line of a closer that is indented or written `-#}` |

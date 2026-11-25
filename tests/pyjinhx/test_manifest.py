@@ -35,7 +35,6 @@ def test_the_grammar_lists_exactly_the_error_codes_the_scanners_raise():
     assert set(_grammar()["error_codes"]) == {
         sfc.PYTHON_BLOCK_EARLY_CLOSE,
         sfc.SECOND_BLOCK,
-        sfc.OPENER_NOT_AT_LINE_START,
         sfc.CLOSER_NOT_AT_LINE_START,
         sfc.UNCLOSED_BLOCK,
         sfc.TEXT_AFTER_CLOSER,

@@ -293,3 +293,13 @@ def test_an_example_inside_raw_is_not_a_document(write: Write, root: Path):
     write("pkg/guide.pjx", "{% raw %}\n{#python\nx = 1\n#}\n{% endraw %}\n")
     setup(components_root=root)
     assert "pkg.guide" not in sys.modules
+
+
+def test_an_indented_opener_is_a_comment_in_a_plain_template(write: Write, root: Path):
+    write(
+        "pkg/doc_sample.pjx",
+        "{#def label: str = 'x' #}\n<div>\n<pre>\n  {#python\n  x = 1\n  #}\n</pre>\n"
+        "<p>{{ label }}</p>\n</div>\n",
+    )
+    setup(components_root=root)
+    assert "<p>hi</p>" in component("DocSample")(label="hi").render()

@@ -32,7 +32,6 @@
   "error_codes": [
     "python-block-early-close",
     "second-block",
-    "opener-not-at-line-start",
     "text-after-closer",
     "closer-not-at-line-start",
     "unclosed-block",
