@@ -5,9 +5,20 @@ non-whitespace in the file::
 
     {#def title: str, count: int = 0, variant: str = "primary" #}
 
-The header is a valid (inert) Jinja comment; pyjinhx reads it out-of-band. This
-module only parses — turning the result into a component class is done by the
-caller.
+The header is a valid (inert) Jinja comment; pyjinhx reads it out-of-band.
+
+A dotted name is an absolute import path, resolved with ``pkgutil.resolve_name``
+— a normal import, nothing compiled or executed::
+
+    {#def when: datetime.datetime, size: int = app.ui.PAGE_SIZE,
+          at: datetime.datetime = datetime.datetime.now() #}
+
+as a type, as a constant default, and with empty parentheses as a default
+factory called per instance. A bare name is never imported (a typo must not
+become an import), and a leading dot is not Python syntax, so there are no
+relative paths. Parsing imports nothing; the names resolve when the class is
+built, once per class, and the modules they import stay in ``sys.modules`` like
+any other import, so a template reload never re-imports them.
 """
 
 import ast
@@ -164,8 +175,10 @@ def _parse_default(node: ast.expr, field_name: str) -> Any:
 def parse_props_header(source: str) -> list[tuple[str, Any, Any]] | None:
     """Parse a ``{#def ... #}`` header; return ``[(name, type, default), ...]`` or None.
 
-    ``default`` is ``Ellipsis`` (``...``) for a required prop. Raises ``ValueError``
-    for a malformed signature, a non-literal default, or a duplicate prop.
+    ``default`` is ``Ellipsis`` (``...``) for a required prop. A type or default
+    that names an import path comes back unresolved, for ``build_component_class``
+    to import. Raises ``ValueError`` for a malformed signature, a default that is
+    neither a literal nor a dotted name, or a duplicate prop.
     """
     # Imported here, not at module scope: Slot and Children are defined at the
     # bottom of _component.py, after _OpenComponent, whose class body reenters
@@ -229,8 +242,10 @@ def build_component_class(
 
     ``fields`` is ``parse_props_header``'s output verbatim: ``(name, annotation,
     default)``, with ``Ellipsis`` as the default for a required prop — which is
-    already pydantic's own required sentinel, so each tuple maps straight onto a
-    ``create_model`` field definition with no translation.
+    already pydantic's own required sentinel, so each tuple maps onto a
+    ``create_model`` field definition once its dotted names are imported. An
+    import that fails raises ``ValueError`` naming the tag, ``template_path``
+    when given, the prop and the path.
 
     The base is ``_OpenComponent`` rather than ``BaseComponent``: a header
     declares the props a template reads, not the full set of attributes a caller
