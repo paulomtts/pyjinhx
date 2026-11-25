@@ -11,11 +11,11 @@
 
 Nothing here is required: `.py` + `.pjx` (+ `.css` / `.js`) keeps working, and moving
 a component to another shape is per component and reversible. See
-[One model, three shapes](guide/components.md#one-model-three-shapes) for the shapes
+[One model, four shapes](guide/components.md#one-model-four-shapes) for the shapes
 and [Folding existing components](guide/components.md#folding-existing-components)
 for `scripts/fold_components.py`, which does the mechanical moves.
 
-Five behaviours change for templates you already have:
+Six behaviours change for templates you already have:
 
 - **A headed orphan template now renders as a component.** A `.pjx` with a `{#def#}`
   header and no class used to pass `<Tag/>` through as literal markup unless you
@@ -33,6 +33,14 @@ Five behaviours change for templates you already have:
   to render a leading `\n` before its markup now starts at the markup. Line numbers
   in errors are unchanged. Compare output byte for byte (snapshot tests, `strip()`-less
   assertions) and update any that expected the blank line.
+- **A `{#python` at the start of a line makes the file a document.** Any `.pjx` with a
+  line that starts with `{#python` (or the v0.x `{# python`) in column 0 is now taken for
+  a [shape P](guide/components.md#shape-p-the-class-in-the-pjx) document: `setup()`
+  imports it and runs its block, and a `.py` component whose `.pjx` has one fails at
+  class creation, because the class is expected to live in the `.pjx`. A comment that
+  starts a line this way without being a block, such as prose or an example in a `<pre>`,
+  fails `setup()` with "has no {#python block". Indent it or reword it; `{% raw %}` does
+  not protect it. An indented `{#python`, or one in the middle of a line, stays a comment.
 - **`template` is a reserved class attribute.** A class body that assigns `template`
   is now read as an inline template. A pydantic field named `template` keeps its
   meaning and is not read as one.
@@ -44,6 +52,25 @@ Moving a component between shapes:
 | sibling `.css` / `.js` | `{#css#}` / `{#js#}` block | `fold_components.py assets` |
 | class + `.pjx` | class with `template = r"""..."""` | `fold_components.py template` |
 | fields-only class + `.pjx` | `.pjx` with a `{#def#}` header | `fold_components.py declass`, then fix the imports it reports |
+| class + `.pjx` | `.pjx` with a `{#python` block holding the class (S to P) | `fold_components.py pyblock`, then add `import pyjinhx` to the root `__init__.py` and run `python -m pyjinhx.stubgen` |
+
+### v0.x `{# python #}` files
+
+v0.x single-file components wrote the class in a `{# python` block (with a space).
+The block is back in v2 as `{#python`, so most of these files migrate by removing the
+space, provided the class is named for the file (`card.pjx` holds `Card`) and the
+document has no `{#def#}` header. The block must now end with a `#}` alone on its line
+in column 0; a `#}` earlier in the Python ends it, so write the pair as `"#" "}"`.
+Importing a file that still opens with `{# python` raises an `ImportError` that says so.
+Add `import pyjinhx` to the root package's `__init__.py` first, since the import hook is
+installed when pyjinhx is imported.
+
+### Registries that walk modules
+
+`pkgutil.walk_packages`, `pkgutil.iter_modules` and `rglob("*.py")` do not see `.pjx`
+modules. A test or registry that discovers components that way misses shape P
+components; `setup(components_root=...)` imports them, and `component("Name")` finds
+them by tag.
 
 The reverse (a block back to a file, a string back to a `.pjx`) is a cut and paste;
 nothing else about the component changes.

@@ -105,6 +105,7 @@ nav:
       - Public API:
           - Index: reference/public-api.md
           - Theme Tokens: reference/theme-tokens.md
+          - Command Line Tools: reference/commands.md
           - BaseComponent: api/base-component.md
           - Reactive API: api/reactive-api.md
           - Render: api/renderer.md

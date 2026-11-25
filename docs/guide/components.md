@@ -208,18 +208,18 @@ prop is **escaped** unless you mark it safe in the template (`{{ prop|safe }}`) 
 the prop is the component's children field or is typed `Slot` (see
 [Header reference](#header-reference)).
 
-## One model, three shapes
+## One model, four shapes
 
 A component is a pjx document, optionally owned by a Python class. A document is
-markup plus up to three Jinja-comment blocks: `{#def ... #}` (props), `{#css ... #}`
-and `{#js ... #}`. It lives either in a `.pjx` file or in the `template` string of
-the class that owns it, and means the same thing in both places: the tag, the props
-and the rendered output do not depend on where the document lives. One project can
-mix all three shapes.
+markup plus up to four Jinja-comment blocks: `{#def ... #}` (props), `{#css ... #}`,
+`{#js ... #}` and `{#python ... #}` (the class). It lives in a `.pjx` file, in the
+`template` string of the class that owns it, and means the same thing in both places:
+the tag, the props and the rendered output do not depend on where the document lives.
+One project can mix all four shapes.
 
 The shapes differ in one way. A component built from a `{#def#}` header (T) accepts
 undeclared attributes and passes them through to its root element, like any
-[classless component](#extra-fields); a hand-written class (C, S) is strict and
+[classless component](#extra-fields); a hand-written class (P, C, S) is strict and
 rejects them with a `ValidationError` unless it opts in with `extra="allow"`.
 
 **T: template only.** One `.pjx` file, no Python.
@@ -230,7 +230,29 @@ rejects them with a `ValidationError` unless it opts in with `extra="allow"`.
     .badge { border-radius: 999px; }
     #}
 
-**C: class in one file.** One `.py` file; the class holds its document in `template`.
+**P: class in the `.pjx`.** One `.pjx` file; a `{#python` block holds the class.
+
+```jinja
+{#python
+from pyjinhx import ReactiveComponent
+
+from app.todos import Keys, store
+
+
+class Counter(ReactiveComponent, react={Keys.TODOS}):
+    remaining: int
+
+    @classmethod
+    def load(cls) -> "Counter":
+        return cls(remaining=store.remaining())
+#}
+<div class="counter">{{ remaining }} left</div>
+{#css
+.counter { font-weight: 600; }
+#}
+```
+
+**C: class in one `.py`.** One `.py` file; the class holds its document in `template`.
 
 ```python
 from pyjinhx import ReactiveComponent
@@ -259,12 +281,32 @@ class Counter(ReactiveComponent, react={Keys.TODOS}):
 | If the component... | Shape |
 |---|---|
 | is props and markup, nothing computed in Python | T |
-| needs Python: `load()`, a factory, a validator, a property, reactive keys, a subclass | C |
+| needs Python, and your team edits `.pjx` files with pjx-ls | P |
+| needs Python, and you want every Python tool to work with no setup | C |
 | needs Python and has a template long enough that you want full template tooling on it | S |
 | has big assets, assets shared by subclasses with their own templates, or served in `LINK` mode | any shape, with those assets as sibling files |
 
-Start in T, move to C the day you need a method, and fall back to S when the string
-gets uncomfortable.
+Start in T, move to P or C the day you need a method, and fall back to S when the
+string or the block gets uncomfortable.
+
+### Which one: P or C?
+
+P and C are the same component written two ways; they differ in which half gets
+second-class tooling. Rendered output, tag, props and assets are identical.
+
+| | P (the `.pjx` holds the class) | C (the `.py` holds the template) |
+|---|---|---|
+| Markup, CSS and JS in the editor | native, once an editor extension (pjx-ls) owns the `.pjx` | a Python string; plain unless you install an injection grammar |
+| Python in the editor | through that extension, forwarded to Pyright | native |
+| Type-checking in CI | needs generated `.pyi` stubs | nothing to do |
+| ruff, coverage | partial: see [Known limits](#known-limits-of-shape-p) | native |
+| Import | through pyjinhx's import hook, installed by `import pyjinhx` | Python's own |
+| Several components in one file | one document per file; extra classes allowed | yes |
+| Edit to the template under a `*.py` reloader | no restart | restart |
+| Edit to the Python | restart, with a warning | restart |
+
+Rule of thumb: use P if your team edits with pjx-ls, and C if you want every Python
+tool to work with no setup.
 
 ### The `template` attribute
 
@@ -314,6 +356,239 @@ gets uncomfortable.
 - The header may sit anywhere in the document, once. A second one raises
   `TemplateSyntaxError`.
 
+### Shape P: the class in the `.pjx`
+
+`app/ui/card.pjx` holds `Card` in a `{#python` block, and `from app.ui.card import Card`
+works from ordinary Python. The block is an ordinary Jinja comment, so plain Jinja
+renders the document and drops it.
+
+The rules for the block, in the order the scanner checks them:
+
+1. **Opener.** A line that is exactly `{#python`, with nothing but spaces or tabs after
+   it. The `{#` is in column 0 and the keyword touches it. An indented `{#python` is a
+   plain comment. The v0.x spelling `{# python` at the start of a line is not a block
+   either, and importing such a file fails with a message that says to remove the space.
+2. **Body.** Every line after the opener, compiled as written: no dedent, no stripping.
+   Module-level code starts in column 0, as in a `.py` file.
+3. **Closer.** The first `#}` after the opener. It must be alone on its line, in column
+   0 (trailing spaces and tabs are allowed); `-#}` is refused. Jinja ends a comment at
+   the first `#}`, so a `#}` inside the Python (in a string, a comment or `f"{n:#}"`)
+   ends the block early. pyjinhx reports it as a `SyntaxError` on that line; write the
+   pair as `"#" "}"` or move the code out.
+4. **At most one** block per document, anywhere in it. By convention it comes first.
+5. **No `{#def#}` header** in the same document: the class declares the props.
+6. **Some markup.** A document with a block and nothing else but blocks, comments and
+   whitespace is refused.
+
+Nothing is implicitly in scope: the block is a plain module and imports what it uses,
+`BaseComponent` included.
+
+**The markup belongs to the class whose snake_case name is the file's stem**, as for
+every other shape: `todo_count.pjx` belongs to `TodoCount`. The block may hold anything
+a module may hold: imports, constants, helpers, and more component classes. A subclass
+with no template of its own, such as `class TaskNameField(NameField)` inside
+`name_field.pjx`, inherits the document. A class that wants its own markup needs its own
+file. A `.py` subclass of a `.pjx` class works too, and inherits the document as usual.
+
+Line numbers are the file's own. The markup's line N is file line N, and the Python is
+compiled with the `.pjx` path as its filename and padded so that code line N is file
+line N and column N is column N. A `SyntaxError`, a traceback, a `breakpoint()` and a
+Jinja error all name the real file and line.
+
+Refused, each message naming the file and line:
+
+| Situation | Raised | When |
+|---|---|---|
+| No component class is named for the stem | `ImportError` | import |
+| Two classes snake to the stem (`HTTPCard` and `HttpCard`) | `ImportError` | import |
+| The same file is imported under a second module name | `ImportError` | import |
+| The block opens with the v0.x `{# python` | `ImportError` (says to remove the space) | import |
+| A malformed block: unclosed, second, closer not alone, text after the closer | `SyntaxError` | import or class creation |
+| A class in the block assigns `template` | `TypeError` | class creation |
+| A `{#def#}` header in the same document | `TypeError` | class creation |
+| No markup | `TypeError` | class creation |
+| A sibling `card.py` defines the class that owns the document | `TypeError` | class creation |
+| A `card.py` or `card/` directory shadows `card.pjx` | `ImportError` | `setup()`, and `stubgen --check` |
+
+The last two rows are the same mistake in two places. Python finds `card.py` first, so
+the import hook is never asked for `card.pjx`; neither file wins, and pyjinhx refuses the
+pair. `card.py` plus a `card.pjx` with no block is shape S and needs no care.
+
+### Importing and the hook
+
+`import pyjinhx` appends one finder to `sys.meta_path`. Python asks it only for a name
+every other finder failed to find, so ordinary imports pay nothing. For such a name it
+looks for `<package>/<name>.pjx` and answers if the file has a block; the block runs as
+the module body, and `module.__file__` is the `.pjx`. Relative imports, `sys.modules`,
+`pickle` and `copy.deepcopy` behave as they do for a `.py` file. No bytecode is cached.
+
+There is one line you must write: **pyjinhx has to be imported before the first `.pjx`
+module is.** A block begins with `from pyjinhx import ...`, but the hook is needed to
+find the block. Put `import pyjinhx` in the `__init__.py` of your application's root
+package:
+
+```python
+# app/__init__.py
+import pyjinhx  # noqa: F401  installs the .pjx import hook
+```
+
+That covers the app, pytest, `python -m`, a reload subprocess and unpickling in a worker,
+since each imports the root package first. pyjinhx ships no `.pth` file; the hook is the
+one explicit line.
+
+`setup(components_root=...)` imports every `.pjx` under the root that has a block, so a
+block's class is known at startup like a class in a `.py` file: reactive fan-out,
+`all_assets()` and `dev.dependency_graph()` all see it, and a block's import error fails
+`setup()` instead of a request. Two consequences:
+
+- Call `setup()` after the names your blocks import exist.
+- A block and a module that import each other from different threads, one of them through
+  `component_for_tag`, can raise `_DeadlockError`. Keep that cycle out of the blocks'
+  imports.
+
+A document created while the server runs is imported the first time its tag is used.
+
+### Hot reload
+
+| Edit | Without a restart |
+|---|---|
+| Markup, `{#css#}`, `{#js#}` | picked up on the next render, as for every shape |
+| The `{#python` block | **not** picked up: the process keeps the class it imported |
+
+pyjinhx does not reload modules; re-running a block would make a second class with the
+same name while every importer still held the first. So that a markup edit shows and a
+Python edit does not do so silently, pyjinhx logs one warning on the `pyjinhx` logger when
+it re-reads a document whose block differs from the one imported:
+
+    app/ui/card.pjx: the {#python block changed; restart the process to load it
+
+It is logged once per edit, and any difference in the block's text counts, a comment
+included. Two ways to run a dev server:
+
+- Watch `*.py` only (uvicorn's default). Template edits are instant; a block edit needs a
+  manual restart, and the warning says so.
+- `uvicorn --reload --reload-include '*.pjx'`. Every `.pjx` save restarts the server, as
+  an edit to a shape C template does.
+
+### Stubs and type checking
+
+Type-checkers do not read `.pjx`. `python -m pyjinhx.stubgen app` writes `card.pyi` next
+to every `card.pjx` that has a block, so `from app.ui.card import Card` type-checks. The
+stub is the block's Python with each function body replaced by `...`, and every class,
+`def` and field keeps its line number. The generator parses the block and never runs it.
+It overwrites or deletes only files that carry its marker comment, refuses to overwrite a
+hand-written `.pyi`, and removes a marked stub whose `.pjx` is gone. See
+[the command reference](../reference/commands.md#python-m-pyjinhxstubgen).
+
+Recommended setup:
+
+```gitignore
+# generated by `python -m pyjinhx.stubgen`; this ignores every .pyi under app/ui
+app/ui/**/*.pyi
+```
+
+```toml
+[tool.pyright]
+# a stub with no .py beside it is expected
+reportMissingModuleSource = "none"
+```
+
+stubgen does not edit `.gitignore`. Ignoring the stubs keeps ruff from linting them and
+leaves one file per component. Committing them is allowed, and `--check` keeps them
+honest. In CI, regenerate and then check types, or check committed stubs:
+
+```sh
+python -m pyjinhx.stubgen app && pyright   # stubs ignored by git
+python -m pyjinhx.stubgen app --check      # stubs committed
+```
+
+`reportMissingModuleSource = "none"` is global, so it also hides the warning for
+third-party stub-only packages. The alternative is to live with one warning per import of
+a `.pjx` module.
+
+What a stub keeps and drops:
+
+- **Annotate return types in blocks.** A stub keeps no function bodies, so an unannotated
+  `def` is `Unknown` for the type-checker.
+- `__init__` bodies are kept verbatim, since their `self.x = ...` lines declare
+  attributes. Every other body becomes `...`.
+- **Imports in a block are not re-exported** by its stub. Import a name from the module
+  that defines it, never through the component's module.
+- Stricter Pyright modes (`strict`, `reportUnusedImport`) flag the stub's `...` statements
+  and unused imports. Keep the stubs resolvable but unchecked with Pyright's `ignore`
+  setting, scoped to your components: `ignore = ["app/components/**/*.pyi"]` under
+  `[tool.pyright]`. `ignore` suppresses diagnostics for those files and still uses them to
+  resolve imports. (`exclude` behaved the same in a test with basedpyright, but `ignore`
+  says what you mean.)
+- The generator skips hidden directories, virtualenvs (any directory with a `pyvenv.cfg`),
+  `site-packages`, `dist-packages`, `build`, `dist`, `__pycache__` and `node_modules`, and
+  writes no stub for a block that a `.py` module or package shadows.
+
+A library that ships `.pjx`-hosted classes must ship the generated stubs in its wheel.
+
+### Editor tooling
+
+pyjinhx is the single source of pjx facts for editors. All three forms parse and never
+import or run application code, so they are safe on an untrusted workspace:
+
+- `python -m pyjinhx.manifest` prints every component under the paths as JSON, or one
+  unsaved buffer with `--stdin --filename`.
+- `python -m pyjinhx.manifest --grammar` prints the versioned block grammar,
+  `pyjinhx/block_grammar.json`.
+- `tests/fixtures/block_grammar/` in the repository is a corpus of documents with the
+  result a scanner must give, for editors that implement their own scanner.
+
+See [the command reference](../reference/commands.md#python-m-pyjinhxmanifest).
+
+### Known limits of shape P
+
+- **A line that starts with `{#python` (or `{# python`) in column 0 makes the file a
+  document**, wherever it sits, including an example inside a `<pre>` or a prose comment
+  such as `{# python is the language #}`. `setup()` imports it and fails with "has no
+  {#python block". Indent the example or reword the comment. Writing it inside
+  `{% raw %}` does not help. An indented `{#python`, or one mid-line, is a plain comment.
+- **Importing a `.pjx` runs its Python**, and `setup()` imports every block document under
+  `components_root`. A template was already trusted code (a header's dotted name imports a
+  module); this makes it plain. Never point `components_root`, or an import path, at files
+  a user can write. The manifest, stubgen and `pyjinhx.sfc` only parse.
+- **coverage.py** cannot parse a `.pjx` for its report. Omit `*.pjx`, or accept the
+  warning.
+- **ruff** reads `.py` files, so it does not see a block, and it has no `.pjx` formatter.
+  To lint the blocks, extract the Python with `pyjinhx.sfc.python_source` (an internal
+  helper, not public API) and pipe it in; line numbers stay right and the reported name
+  ends in `.py`:
+
+  ```python
+  # lint_blocks.py: python lint_blocks.py app
+  import subprocess
+  import sys
+  from pathlib import Path
+
+  from pyjinhx.sfc import python_source
+
+  status = 0
+  for path in sorted(Path(sys.argv[1]).rglob("*.pjx")):
+      code = python_source(path.read_text(encoding="utf-8-sig"), str(path))
+      if code is not None:
+          cmd = ["ruff", "check", "--stdin-filename", str(path.with_suffix(".py")), "-"]
+          status |= subprocess.run(cmd, input=code, text=True).returncode
+  sys.exit(status)
+  ```
+
+- **Type-checking a block's own body** happens in the editor. In CI only the block's
+  signatures are checked, through the stub.
+- **`pkgutil.iter_modules` and `walk_packages` do not list `.pjx` modules**, because they
+  never ask a meta-path finder. A registry that discovers modules by walking a package, or
+  by `rglob("*.py")`, misses them; `setup()` does not.
+- **Zip and frozen `sys.path` entries** never match: the finder reads files from disk.
+- **`python -m app.ui.card`** runs the block with `__file__` set to the `.pjx`, but through
+  `runpy` as `__main__`: the stem-class check does not run and the class is not
+  registered.
+- **`importlib.reload(module)`** runs the block again and makes new classes that nothing
+  else references. It is not a reload mechanism.
+- A `card/` directory next to `card.pjx` shadows it, and so does a `card.py`; `setup()`
+  refuses both.
+
 ### Folding existing components
 
 `scripts/fold_components.py` in the pyjinhx repository does the mechanical moves. It is
@@ -323,12 +598,21 @@ summary; add `--write` to apply it. Only files under the paths you pass are touc
     uv run python scripts/fold_components.py assets app/components --root app
     uv run python scripts/fold_components.py template app/components --write
     uv run python scripts/fold_components.py declass app/components --root app
+    uv run python scripts/fold_components.py pyblock app/components --root app
 
 | Command | Move | Refuses when |
 |---|---|---|
 | `assets` | sibling `.css`/`.js` into a `{#css#}`/`{#js#}` block of the template beside it | the text contains `#}`; a subclass with its own template inherits the asset; a subclass that renders the template has its own sibling file of that kind; the template already has that block; the class's `template` is not a triple-quoted literal that can hold it |
 | `template` | a class's adjacent `.pjx` into `template = r"""..."""` (S to C) | the class already assigns `template`; the text holds both triple-quote styles or ends in a backslash; indentation would change when read back |
 | `declass` | a fields-only class into a `{#def#}` header, deleting the `.py` (S to T) | the class has methods, decorators, other bases or other statements; a type or default is not expressible in a header; a default is a call, which a class runs once and a header would run per instance; a `Field(...)` with constraints such as `min_length`, which a header cannot express; the module holds more than the class and imports; another class under the paths or `--root` subclasses it (a header-only component has no class to import) |
+| `pyblock` | a class's module into a `{#python` block at the top of its `.pjx`, deleting the `.py` (S to P) | the module's source contains `#}`; no class snakes to the module's stem, or more than one does, or it is an `__init__.py`; the class assigns its own `template`; there is no `.pjx` beside it; the `.pjx` already has a block or a `{#def#}` header; a `card/` directory would shadow the `.pjx` |
+
+After `pyblock`, the script reminds you to put `import pyjinhx` in the root package's
+`__init__.py` and to regenerate the [stubs](#stubs-and-type-checking). It reports, without
+refusing, other component classes in the module that keep their own `.pjx` and every line
+under `--root` that names the deleted `card.py`; a module that mentions `__file__` or
+`__main__` is flagged because `__file__` becomes the `.pjx`. After writing, it re-reads the
+result and checks that the block is the module's source and the markup is unchanged.
 
 `declass` prints every remaining reference to a folded class name, and `assets` every
 line that still names a folded file (`card.css`), in any file type, because both report
