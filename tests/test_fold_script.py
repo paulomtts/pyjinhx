@@ -7,6 +7,7 @@ the files before, fold, render again from the files after, and compare.
 import ast
 import importlib.util
 import re
+import subprocess
 import sys
 import textwrap
 from pathlib import Path
@@ -695,3 +696,36 @@ def test_declass_refuses_a_required_field_after_a_defaulted_one(tmp_path, capsys
 
     assert code == 1
     assert "without a default" in out
+
+
+# --- the command line ---------------------------------------------------------
+
+
+def test_the_script_runs_as_a_command_and_exits_non_zero_on_a_refusal(tmp_path):
+    make_card(tmp_path)
+    write(tmp_path / "card.css", "a { content: '#}'; }\n")
+
+    result = subprocess.run(
+        [sys.executable, str(SCRIPT), "assets", str(tmp_path)],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 1
+    assert "refused" in result.stdout
+    assert (tmp_path / "card.css").exists()
+
+
+def test_only_the_given_paths_are_touched(tmp_path, capsys):
+    for name in ("mine", "theirs"):
+        write(tmp_path / name / "card.py", CARD_PY)
+        write(tmp_path / name / "card.pjx", CARD_PJX)
+        write(tmp_path / name / "card.css", CARD_CSS)
+
+    run("assets", tmp_path / "mine", "--write", capsys=capsys)
+    run("template", tmp_path / "mine", "--write", capsys=capsys)
+
+    assert (tmp_path / "theirs" / "card.css").exists()
+    assert (tmp_path / "theirs" / "card.pjx").read_text() == CARD_PJX
+    assert not (tmp_path / "mine" / "card.pjx").exists()
