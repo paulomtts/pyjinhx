@@ -20,12 +20,15 @@ from typing import Any, NamedTuple
 
 from pyjinhx.sfc import (
     BLOCK_KEYWORDS,
+    LEGACY_HEADER_RE,
     BlockSyntaxError,
-    _is_one_literal,
-    _template_value,
     comments,
     extract_template,
+    is_component_stem,
+    is_one_literal,
+    pascal_to_snake,
     python_block,
+    template_value,
 )
 from pyjinhx.stubgen import HANDWRITTEN, MISSING, ORPHANED, STALE, stub_path, sync, walk
 
@@ -104,23 +107,8 @@ def scan_blocks(
     return blocks, sorted(errors.values(), key=lambda e: (e["line"], e["column"]))
 
 
-# `_component._pascal_to_snake`, copied: importing it would pull in pydantic.
-# A test keeps the two the same.
-_PASCAL_BOUNDARY_RE = re.compile(r"(?<=[a-z0-9])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])")
-
-# `discovery._SNAKE_CASE_RE` and `props_header._HEADER_RE`, copied for the same
-# reason: the stems a component can have, and the legacy spaced header, which
-# only counts as the first thing in the document.
-_SNAKE_RE = re.compile(r"[a-z][a-z0-9]*(?:_[a-z0-9]+)*")
-_LEGACY_HEADER_RE = re.compile(
-    r"\A\s*(?:\{#\s*#\}\s*)?\{#\s*def\s+(?P<sig>.*?)\s*#\}", re.DOTALL
-)
 _HEADER_PREFIX = "def __pjx_props__("
 _DEFINITION_RE = re.compile(r"(?:async\s+)?(?:class|def)\s+")
-
-
-def _snake(name: str) -> str:
-    return _PASCAL_BOUNDARY_RE.sub("_", name).lower()
 
 
 def _pascal(stem: str) -> str:
@@ -311,7 +299,7 @@ def _header(source: str) -> tuple[str, int] | None:
     if block is not None:
         line_start = len(source) - len(source.split("\n", block.line - 1)[-1])
         return block.body, source.index(block.body, line_start)
-    legacy = _LEGACY_HEADER_RE.match(source)
+    legacy = LEGACY_HEADER_RE.match(source)
     return (legacy.group("sig"), legacy.start("sig")) if legacy else None
 
 
@@ -429,7 +417,7 @@ def _inline_component(
     literal = (
         isinstance(value, ast.Constant)
         and isinstance(value.value, str)
-        and _is_one_literal(text, value)
+        and is_one_literal(text, value)
     )
     if not literal:
         _report(
@@ -499,11 +487,11 @@ def _py_components(
     for node in tree.body:
         if not isinstance(node, ast.ClassDef):
             continue
-        value = _template_value(node)
+        value = template_value(node)
         if value is not None:
             found.append(_inline_component(node, value, path, text, diagnostics))
             continue
-        sibling = path.with_name(f"{_snake(node.name)}.pjx")
+        sibling = path.with_name(f"{pascal_to_snake(node.name)}.pjx")
         document = documents.get(sibling)
         if document is None or _has_python(document):
             continue
@@ -581,7 +569,7 @@ def _python_component(
     else:
         classes = [n for n in tree.body if isinstance(n, ast.ClassDef)]
         for node in classes:
-            value = _template_value(node)
+            value = template_value(node)
             if value is not None:
                 refuse(
                     "template-in-block",
@@ -589,7 +577,7 @@ def _python_component(
                     value.lineno,
                     _col(lines, value.lineno, value.col_offset),
                 )
-        named = [n for n in classes if _snake(n.name) == path.stem]
+        named = [n for n in classes if pascal_to_snake(n.name) == path.stem]
         if not named:
             refuse(
                 "no-component-class",
@@ -682,7 +670,7 @@ def _build(
             continue
         if _has_python(document):
             components.append(_python_component(document, set(py_paths), diagnostics))
-        elif "{#python" not in document.source and _SNAKE_RE.fullmatch(
+        elif "{#python" not in document.source and is_component_stem(
             document.path.stem
         ):
             components.append(_template_component(document, diagnostics))

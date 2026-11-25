@@ -9,13 +9,13 @@ reads through `get_class`, and a miss there is `None`, never an exception.
 """
 
 import logging
-import re
 import threading
 from collections.abc import Iterable, Iterator, Mapping
 from pathlib import Path
 from typing import NamedTuple
 
 from pyjinhx._component import _pascal_to_snake
+from pyjinhx.sfc import is_component_stem
 
 logger = logging.getLogger("pyjinhx")
 
@@ -27,9 +27,6 @@ class TemplateCandidate(NamedTuple):
     path: Path
 
 
-_SNAKE_CASE_RE = re.compile(r"[a-z][a-z0-9]*(?:_[a-z0-9]+)*")
-
-
 def _is_candidate_name(stem: str) -> bool:
     """Whether ``stem`` is a filename a component class could have produced.
 
@@ -37,7 +34,7 @@ def _is_candidate_name(stem: str) -> bool:
     that resolves a template can be found by this walk, and nothing else is —
     ADR 0007 spends one convention, not six.
     """
-    return _SNAKE_CASE_RE.fullmatch(stem) is not None
+    return is_component_stem(stem)
 
 
 def walk_templates(template_dir: Path | str) -> Iterator[TemplateCandidate]:

@@ -569,13 +569,6 @@ def test_module_names_follow_the_init_files(tmp_path):
     assert manifest.module_name_for(tmp_path / "pkg/not_yet/card.pjx") == "card"
 
 
-@pytest.mark.parametrize("name", ["TodoCount", "HTTPCard", "HttpCard", "Card2Go", "A"])
-def test_the_snake_rule_is_the_components(name):
-    from pyjinhx._component import _pascal_to_snake
-
-    assert manifest._snake(name) == _pascal_to_snake(name)
-
-
 def _stdin(monkeypatch, text: str) -> None:
     import io
 

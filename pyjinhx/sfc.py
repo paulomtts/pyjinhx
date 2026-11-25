@@ -70,6 +70,31 @@ def strip_to_text(source: str) -> str:
     return _LEXEME_RE.sub(lambda m: "\n" * m.group().count("\n"), source)
 
 
+# How a class name becomes the file stem its template is found under, and which
+# stems are component names; discovery, the component base class and the
+# manifest all apply these, so they live in one stdlib-only place.
+_PASCAL_BOUNDARY_RE = re.compile(r"(?<=[a-z0-9])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])")
+_SNAKE_CASE_RE = re.compile(r"[a-z][a-z0-9]*(?:_[a-z0-9]+)*")
+
+# The legacy spaced header, ``{# def ... #}``; only honoured as the first thing
+# in the document, where it cannot be mistaken for a prose comment. An inline
+# template opens with an empty comment that pads its line numbers to the
+# module's, so one may stand before it.
+LEGACY_HEADER_RE = re.compile(
+    r"\A\s*(?:\{#\s*#\}\s*)?\{#\s*def\s+(?P<sig>.*?)\s*#\}", re.DOTALL
+)
+
+
+def pascal_to_snake(name: str) -> str:
+    """Convert a PascalCase/CamelCase identifier to snake_case."""
+    return _PASCAL_BOUNDARY_RE.sub("_", name).lower()
+
+
+def is_component_stem(stem: str) -> bool:
+    """Whether ``stem`` is exactly the shape `pascal_to_snake` emits."""
+    return _SNAKE_CASE_RE.fullmatch(stem) is not None
+
+
 # The words that open an inline block: ``{#def``, ``{#css``, ``{#js``, ``{#python``.
 BLOCK_KEYWORDS = ("def", "css", "js", "python")
 
@@ -84,7 +109,7 @@ UNCLOSED_BLOCK = "unclosed-block"
 STRAY_COMMENT_CLOSE = "stray-comment-close"
 
 
-def _template_value(node: ast.ClassDef) -> ast.expr | None:
+def template_value(node: ast.ClassDef) -> ast.expr | None:
     """The expression a class body assigns to ``template``, or None.
 
     The last assignment wins, as it does when Python runs the body.
@@ -119,7 +144,7 @@ def _templates_in(module_source: str, filename: str) -> dict[str, list[ast.expr]
     found: dict[str, list[ast.expr]] = {}
     for node in ast.walk(ast.parse(module_source, filename=filename)):
         if isinstance(node, ast.ClassDef):
-            value = _template_value(node)
+            value = template_value(node)
             if value is not None:
                 found.setdefault(node.name, []).append(value)
     with _parsed_lock:
@@ -156,7 +181,7 @@ def extract_template(
         )
     value = values[0]
     match value:
-        case ast.Constant(value=str() as text) if _is_one_literal(module_source, value):
+        case ast.Constant(value=str() as text) if is_one_literal(module_source, value):
             body = textwrap.dedent(text)
         case _:
             raise ValueError(
@@ -173,7 +198,7 @@ def extract_template(
     return f"{{#{padding}#}}{content.rstrip()}"
 
 
-def _is_one_literal(module_source: str, node: ast.expr) -> bool:
+def is_one_literal(module_source: str, node: ast.expr) -> bool:
     """Whether ``node`` is written as one string, not ``"a" "b"``.
 
     Python joins adjacent literals into one constant, which would hide the

@@ -502,7 +502,7 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
     # discovery keys the registry by each class's own resolved tag, so it reads
     # _component.py's snake-case helper rather than inventing a second naming
     # scheme that could drift from the one templates are probed with.
-    "discovery": frozenset({"pyjinhx._component"}),
+    "discovery": frozenset({"pyjinhx._component", "pyjinhx.sfc"}),
     # The framework adapter sits at the very top with config: it orchestrates
     # the request cycle by calling published entry points (request_scope,
     # render, inject_runtime, compose) and nothing imports it back
@@ -534,7 +534,9 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
     # Generating a class from a {#def #} header needs the open-model base to
     # subclass; parsing also reaches in now, to resolve the Slot/Children
     # marker aliases, and the header is located with template_blocks.find_block.
-    "props_header": frozenset({"pyjinhx._component", "pyjinhx.template_blocks"}),
+    "props_header": frozenset(
+        {"pyjinhx._component", "pyjinhx.sfc", "pyjinhx.template_blocks"}
+    ),
     # Inline {#css#}/{#js#} block scanning reads template text only, so it
     # stays below the spine; sfc is stdlib-only, so the edge stays low too.
     "template_blocks": frozenset({"pyjinhx.sfc"}),

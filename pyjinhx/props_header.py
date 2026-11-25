@@ -26,7 +26,6 @@ any other import, so a template reload never re-imports them.
 import ast
 import logging
 import pkgutil
-import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal
@@ -34,18 +33,11 @@ from typing import TYPE_CHECKING, Any, Literal
 from jinja2 import TemplateSyntaxError
 from pydantic import Field, create_model
 
+from pyjinhx.sfc import LEGACY_HEADER_RE
 from pyjinhx.template_blocks import find_block
 
 if TYPE_CHECKING:
     from pyjinhx._component import _OpenComponent
-
-# The legacy spaced form, ``{# def ... #}``; only honoured as the first thing in
-# the document, where it cannot be mistaken for a prose comment. An inline
-# template opens with an empty comment that pads its line numbers to the
-# module's (see sfc), so one may stand before it.
-_HEADER_RE = re.compile(
-    r"\A\s*(?:\{#\s*#\}\s*)?\{#\s*def\s+(?P<sig>.*?)\s*#\}", re.DOTALL
-)
 
 _TYPES: dict[str, Any] = {
     "str": str,
@@ -214,7 +206,7 @@ def parse_props_header(
     if block is not None:
         signature = block.body
     else:
-        match = _HEADER_RE.match(source)
+        match = LEGACY_HEADER_RE.match(source)
         if match is None:
             return None
         signature = match.group("sig")
