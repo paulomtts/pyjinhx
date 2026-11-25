@@ -2,11 +2,11 @@
 
 import ast
 import textwrap
-import time
 
 import jinja2
 import pytest
 
+from pyjinhx import sfc
 from pyjinhx.sfc import extract_template, read_document, source_segment
 
 BADGE = textwrap.dedent('''\
@@ -197,19 +197,14 @@ def shelf_of(count: int) -> str:
     return "".join(classes)
 
 
-def read_all(source: str, count: int, filename: str) -> float:
-    began = time.perf_counter()
-    for n in range(count):
-        extract_template(source, f"Tag{n}", filename)
-    return time.perf_counter() - began
+def test_reading_every_template_of_a_module_splits_its_source_once():
+    source = shelf_of(100)
+    sfc._source_lines.cache_clear()
 
+    for n in range(100):
+        extract_template(source, f"Tag{n}", "/app/split_once.py")
 
-def test_reading_every_template_of_a_module_is_linear_in_its_classes():
-    small, large = shelf_of(100), shelf_of(800)
-    cost = min(read_all(small, 100, f"/app/small{i}.py") for i in range(3))
-    grown = min(read_all(large, 800, f"/app/large{i}.py") for i in range(3))
-    # Eight times the classes: quadratic work would cost sixty-four times.
-    assert grown < cost * 24
+    assert sfc._source_lines.cache_info().misses == 1
 
 
 @pytest.mark.parametrize("newline", ["\n", "\r\n"])
