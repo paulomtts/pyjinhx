@@ -127,3 +127,49 @@ def test_an_inline_document_error_names_its_file(tmp_path):
     path.write_text(BADGE)
     with pytest.raises(ValueError, match=f"^{path}: class Nope"):
         read_document(path, "Nope")
+
+
+SHELF = textwrap.dedent("""\
+    from pyjinhx import BaseComponent
+
+
+    class Tag(BaseComponent):
+        template = "<i>tag</i>"
+
+
+    class Pill(BaseComponent):
+        template = "<b>pill</b>"
+    """)
+
+
+def test_a_module_is_parsed_once_for_all_the_templates_it_holds(monkeypatch):
+    """Each class's template is read several times while it registers and
+    renders, so a module of many components would otherwise be parsed that
+    many times over."""
+    import ast
+
+    parses: list[str] = []
+    real_parse = ast.parse
+
+    def counting_parse(source, *args, **kwargs):
+        parses.append(source)
+        return real_parse(source, *args, **kwargs)
+
+    monkeypatch.setattr(ast, "parse", counting_parse)
+    filename = "shelf_parsed_once.py"
+
+    for _ in range(3):
+        assert extract_template(SHELF, "Tag", filename).endswith("<i>tag</i>")
+        assert extract_template(SHELF, "Pill", filename).endswith("<b>pill</b>")
+
+    assert len(parses) == 1
+
+
+def test_an_edited_module_is_parsed_again():
+    filename = "shelf_edited.py"
+    extract_template(SHELF, "Tag", filename)
+
+    edited = SHELF.replace("<i>tag</i>", "<i>edited</i>")
+
+    assert extract_template(edited, "Tag", filename).endswith("<i>edited</i>")
+    assert extract_template(SHELF, "Tag", filename).endswith("<i>tag</i>")
