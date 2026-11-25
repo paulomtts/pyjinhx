@@ -15,7 +15,7 @@ a component to another shape is per component and reversible. See
 and [Folding existing components](guide/components.md#folding-existing-components)
 for `scripts/fold_components.py`, which does the mechanical moves.
 
-Four behaviours change for templates you already have:
+Five behaviours change for templates you already have:
 
 - **A headed orphan template now renders as a component.** A `.pjx` with a `{#def#}`
   header and no class used to pass `<Tag/>` through as literal markup unless you
@@ -27,6 +27,11 @@ Four behaviours change for templates you already have:
   used to accept anything. `Slot` is also now a valid header type.
 - **The header may sit anywhere in the document**, not only first. A second
   `{#def#}` raises `TemplateSyntaxError`.
+- **A `{#def#}`, `{#css#}` or `{#js#}` block alone on its line no longer leaves a
+  blank line.** The line's break goes with the block, so a headed template that used
+  to render a leading `\n` before its markup now starts at the markup. Line numbers
+  in errors are unchanged. Compare output byte for byte (snapshot tests, `strip()`-less
+  assertions) and update any that expected the blank line.
 - **`template` is a reserved class attribute.** A class body that assigns `template`
   is now read as an inline template. A pydantic field named `template` keeps its
   meaning and is not read as one.

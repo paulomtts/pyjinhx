@@ -420,7 +420,9 @@ A component can keep its CSS and JS inside its `.pjx` template instead of in sib
   `{# def... #}` only counts as a header when it is the very first thing in the
   document.
 - A block can sit anywhere in the document, in any order relative to the `{#def#}`
-  header. It is read statically: putting it inside `{% if %}` does not make it conditional.
+  header. It is read statically: putting it inside `{% if %}` does not make it
+  conditional, and putting it inside `{% raw %}` does not hide it, so a block written
+  there as sample text is still a block.
 - The body is taken verbatim, Jinja syntax included — `{{ }}` and `{% %}` are not
   evaluated. Like any Jinja comment, it ends at the first `#}`, so the body cannot
   contain that sequence.

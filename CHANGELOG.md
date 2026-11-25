@@ -35,6 +35,9 @@
   fall back to `Any` (unions, generics, `Literal`) now validate as written.
   `template` is reserved as a class attribute. See the
   [migration notes](docs/migration.md).
+- A `{#def#}`, `{#css#}` or `{#js#}` block alone on its line no longer leaves a
+  blank line in the output, so a headed template no longer renders a leading
+  newline. Line numbers in errors are unchanged.
 
 ## 1.16.0 — Graph ports and wire events (2026-11-21)
 
