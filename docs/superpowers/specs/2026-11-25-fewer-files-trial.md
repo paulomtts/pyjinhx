@@ -238,6 +238,8 @@ The gate on `d86a6d01`:
    migrated. Suggestion: `assets --root` reports, or refuses, an asset whose
    file name appears in a string under the root, the way `declass` reports
    references.
+   **Fixed** (`35bc27cb`): `assets --root` reports every line under the root that names the
+   folded file, and the summary counts them. It does not refuse.
 2. **`InlineAsset` is a `Path` that fails on ordinary `Path` handling.**
    - Its `.suffix` is `.pjx#css`, not `.css`.
    - `Path(inline_asset)` drops how it reads.
@@ -247,6 +249,9 @@ The gate on `d86a6d01`:
    either tier caught it. The trial found it by inspecting the descriptor.
    Options: give `InlineAsset` a `.suffix` of `.css` / `.js`, or document
    that consumers must not re-wrap or classify descriptor paths.
+   **Fixed** (`cb888c94`): `InlineAsset.suffix` is `.css`/`.js`,
+   `.stem` the template's stem and `.name` `card.css`; `str()` is unchanged.
+   `Path(asset)` still loses the inline reading, and the guide says so.
 3. **A header-only component has no importable class.** Python that imported
    a declassed class now needs `X = component("X")`, and that only works
    once discovery knows the template directory. `NameField` has 6 subclasses
@@ -256,6 +261,9 @@ The gate on `d86a6d01`:
    warning. Suggestions:
    - `declass` refuses a class that another class under `--root` subclasses;
    - or pyjinhx gives a lazy, importable handle for a header-only component.
+
+   **Fixed** (`32dd4f1c`, first option): `declass` refuses a class that any class under the paths or
+   `--root` subclasses, and lists the locations.
 4. **Tooling that scans by file extension loses coverage without saying so.**
    - CSS lints and token ratios no longer see folded stylesheets.
    - The overlay ratchet re-classifies JS that now sits in `.pjx` files.
@@ -271,11 +279,11 @@ The gate on `d86a6d01`:
    signature parser already ignores, except after the last prop. The design
    needs to decide.
 6. **Header vocabulary gaps** found in the app:
-   - `tuple[...]` (11 classes);
+   - `tuple[...]` (11 classes; **fixed** in `b23efc8e`, with `tuple[int, ...]`, and `declass` writes it);
    - an `id` with a fixed default (5, rejected on purpose by task 2);
    - required after optional (3; the header uses Python signature order and
      rejects keyword-only `*`);
-   - `Field` constraints;
+   - `Field` constraints (still not expressible; the refusal now says so, `b1447449`);
    - subscript defaults.
 7. **Line length.** Inline templates put long markup lines into `.py` files:
    52 × E501 against the consumer's `line-length = 100`. Consumers need a
@@ -283,6 +291,7 @@ The gate on `d86a6d01`:
 8. **A misleading refusal message.** The merged "call defaults" refusal
    explains `Field(min_length=1)` as "called once, when the class is
    defined". It is really a constraint the header cannot express.
+   **Fixed** (`b1447449`).
 9. **`assets`' subclass check only sees modules under the given paths.**
    The whole-app dry run had no such case, but folding a subset of paths
    could miss a subclass elsewhere.
