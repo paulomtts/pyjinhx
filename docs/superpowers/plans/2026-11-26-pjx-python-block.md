@@ -477,6 +477,12 @@ Content:
 - Migration: v0.x files (remove the space; the class must be named for the
   file); `fold_components.py pyblock`; `pkgutil.walk_packages` and
   `rglob("*.py")` registries do not see `.pjx` modules, `setup()` does.
+- Import-hook limits to state (from the Task 2 review): `.pjx` modules are
+  not listed by `pkgutil.iter_modules` (discovery globs for them); zip and
+  frozen `sys.path` entries never match; coverage.py does not measure `.pjx`
+  blocks; `python -m pkg.card` runs through runpy without the stem-class
+  check; a `pkg/card/` directory shadows `pkg/card.pjx` (setup refuses it);
+  one `.pjx` imported under a second module name is refused.
 
 Proposed revision of the public ADR (it is unreleased, so it is edited in
 place; see open question 1):

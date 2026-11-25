@@ -378,3 +378,68 @@ def test_a_byte_order_mark_does_not_hide_the_block(write: Write):
     path = write("pkg/card.pjx", CARD)
     path.write_bytes(b"\xef\xbb\xbf" + path.read_bytes())
     assert importlib.import_module("pkg.card").Card.__module__ == "pkg.card"
+
+
+def test_find_spec_stays_quiet_about_a_malformed_block(write: Write):
+    write("pkg/card.pjx", "{#python\nX = 1\n")
+    assert importlib.util.find_spec("pkg.card") is not None
+    with pytest.raises(SyntaxError, match="never closed"):
+        importlib.import_module("pkg.card")
+
+
+def test_find_spec_stays_quiet_about_a_file_that_is_not_utf8(write: Write):
+    path = write("pkg/card.pjx", "")
+    path.write_bytes(b"\xff\xfe{#python\n")
+    assert importlib.util.find_spec("pkg.card") is None
+    with pytest.raises(ModuleNotFoundError):
+        importlib.import_module("pkg.card")
+
+
+@pytest.mark.skipif(os.geteuid() == 0, reason="root reads any file")
+def test_find_spec_stays_quiet_about_an_unreadable_file(write: Write):
+    path = write("pkg/card.pjx", CARD)
+    path.chmod(0)
+    try:
+        assert importlib.util.find_spec("pkg.card") is None
+    finally:
+        path.chmod(0o644)
+
+
+def test_find_spec_stays_quiet_about_the_v0_opener(write: Write):
+    write("pkg/card.pjx", "{# python\nX = 1\n#}\n<p></p>\n")
+    assert importlib.util.find_spec("pkg.card") is not None
+
+
+def test_a_sibling_package_directory_wins_too(write: Write):
+    """Known: the ordinary path search finds `card/` first; a later task
+    refuses the pair at setup."""
+    write("pkg/card/other.py", "")
+    write("pkg/card.pjx", CARD)
+    assert not hasattr(importlib.import_module("pkg.card"), "Card")
+
+
+def test_the_same_file_under_a_second_name_is_refused(
+    write: Write, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    path = write("pkg/card.pjx", CARD)
+    monkeypatch.syspath_prepend(str(tmp_path / "pkg"))
+    importlib.import_module("pkg.card")
+    with pytest.raises(ImportError, match="pkg.card") as raised:
+        importlib.import_module("card")
+    assert str(path) in str(raised.value)
+    assert "card" not in sys.modules
+
+
+def test_loaded_document_checks_the_module_is_still_that_file(write: Write):
+    path = write("pkg/card.pjx", CARD)
+    importlib.import_module("pkg.card")
+    sys.modules["pkg.card"] = sys.modules["pkg"]
+    assert importer.loaded_document(path) is None
+
+
+def test_install_survives_a_reloaded_importer(hook_state):
+    importer.uninstall()
+    importer.install()
+    importlib.reload(importer)
+    importer.install()
+    assert [type(f).__name__ for f in sys.meta_path].count("PjxFinder") == 1
