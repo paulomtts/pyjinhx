@@ -613,3 +613,23 @@ def test_find_spec_does_not_open_files_that_are_not_there(
 
     monkeypatch.setattr(Path, "read_text", unexpected)
     assert importer.PjxFinder().find_spec("pkg.no_such_module", None) is None
+
+
+@pytest.mark.parametrize("text", [CARD, "{#python\nX = 1\n#}\n<p></p>\n"])
+def test_the_loader_reads_the_file_once_per_import(
+    write: Write, monkeypatch: pytest.MonkeyPatch, text: str
+):
+    write("pkg/card.pjx", text)
+    reads = []
+    original = importer.PjxLoader.get_data
+
+    def counting(self, path):
+        reads.append(path)
+        return original(self, path)
+
+    monkeypatch.setattr(importer.PjxLoader, "get_data", counting)
+    try:
+        importlib.import_module("pkg.card")
+    except ImportError:
+        pass
+    assert len(reads) == 1

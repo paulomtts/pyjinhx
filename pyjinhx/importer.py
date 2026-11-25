@@ -21,11 +21,11 @@ from types import CodeType, ModuleType
 from typing import NoReturn
 
 from pyjinhx.sfc import (
+    PythonBlock,
     module_name_for,
     opener_line,
     pascal_to_snake,
     python_block,
-    python_source,
 )
 
 # Each loaded document's module name and class, by resolved file path.
@@ -183,20 +183,24 @@ class PjxLoader:
     def is_package(self, fullname: str) -> bool:
         return False
 
-    def get_source(self, fullname: str) -> str:
-        """The padded Python of the block, as `sfc.python_source` gives it.
+    def _block(self) -> PythonBlock:
+        """The block of the file, read once.
 
         Raises:
             ImportError: The file has no block.
             SyntaxError: The block is malformed.
         """
         text = self.get_data(self.path).decode("utf-8-sig")
-        source = python_source(text, self.path)
-        if source is None:
+        block = python_block(text, self.path)
+        if block is None:
             raise ImportError(
                 f"{self.path} has no {{#python block", name=self.name, path=self.path
             )
-        return source
+        return block
+
+    def get_source(self, fullname: str) -> str:
+        """The padded Python of the block, as `PythonBlock.source` gives it."""
+        return self._block().source
 
     def get_code(self, fullname: str) -> CodeType:
         return compile(self.get_source(fullname), self.path, "exec", dont_inherit=True)
@@ -213,20 +217,19 @@ class PjxLoader:
             first = _documents.get(resolved)
         if first and first[0] != self.name and _module_file(first[0]) == resolved:
             self._refuse(1, f"already imported as {first[0]!r}; one file is one module")
-        text = self.get_data(self.path).decode("utf-8-sig")
+        block = self._block()
+        code = compile(block.source, self.path, "exec", dont_inherit=True)
         try:
-            exec(self.get_code(self.name), module.__dict__)  # noqa: S102
+            exec(code, module.__dict__)  # noqa: S102
         finally:
             _mark_classes(module)
-        document = self._document_class(module)
-        block = python_block(text, self.path)
+        document = self._document_class(module, block)
         with _documents_lock:
             _documents[resolved] = (self.name, document)
-            if block is not None:
-                _bodies[resolved] = _body_hash(block.body)
-                _reported.pop(resolved, None)
+            _bodies[resolved] = _body_hash(block.body)
+            _reported.pop(resolved, None)
 
-    def _document_class(self, module: ModuleType) -> type:
+    def _document_class(self, module: ModuleType, block: PythonBlock) -> type:
         """The component class the document's markup belongs to: the one defined
         in the block whose snake_case name is the file's stem.
 
@@ -248,11 +251,8 @@ class PjxLoader:
             key=first_line,
         )
         if not named:
-            block = python_block(
-                self.get_data(self.path).decode("utf-8-sig"), self.path
-            )
             self._refuse(
-                block.open_line if block else 1,
+                block.open_line,
                 f"no component class is named for {stem!r}; the block must "
                 f"define the class whose snake_case name is the file's stem",
             )
