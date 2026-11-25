@@ -1,5 +1,6 @@
 import pytest
 
+from pyjinhx import discovery
 from pyjinhx.reactive.load_cost import reset_load_cost_decisions
 from pyjinhx.render_cache import reset_render_cost_decisions
 from pyjinhx.session import RenderSession
@@ -35,6 +36,19 @@ def load_cost_decisions():
     reset_load_cost_decisions()
     yield
     reset_load_cost_decisions()
+
+
+@pytest.fixture(autouse=True)
+def no_orphan_templates():
+    """Start every test with no orphan templates published.
+
+    Most registry fixtures reset only the mapping and template_dir, so an
+    orphan recorded by an earlier test's build would otherwise outlive the tree
+    it was walked from and answer a tag in an unrelated test.
+    """
+    discovery._registry.orphans = {}
+    yield
+    discovery._registry.orphans = {}
 
 
 @pytest.fixture(autouse=True)

@@ -236,3 +236,71 @@ def test_build_registry_with_no_template_dir_still_claims_own_template_classes(
 
     assert discovery.get_class("lonely_widget") is LonelyWidget
     assert discovery.get_template_dir() is None
+
+
+def test_a_template_no_class_claims_is_recorded_as_an_orphan(tmp_path):
+    (tmp_path / "note.pjx").write_text("{#def title: str #}<p>{{ title }}</p>")
+
+    discovery.build_registry(tmp_path, [])
+
+    assert discovery.get_orphan_templates("note") == (tmp_path / "note.pjx",)
+
+
+def test_a_stem_a_class_claimed_is_not_an_orphan(tmp_path):
+    (tmp_path / "lonely_widget.pjx").write_text("<div>lonely</div>")
+    (tmp_path / "lonely_widget.py").write_text(
+        "from pyjinhx._component import BaseComponent\n\n\n"
+        "class LonelyWidget(BaseComponent):\n"
+        "    pass\n"
+    )
+    LonelyWidget = _load_class_from_module(
+        tmp_path / "lonely_widget.py", "test_lonely_orphan_mod", "LonelyWidget"
+    )
+
+    discovery.build_registry(tmp_path, [LonelyWidget])
+
+    assert discovery.get_orphan_templates("lonely_widget") == ()
+
+
+def test_no_template_dir_records_no_orphans():
+    discovery.build_registry(None, [])
+
+    assert discovery._registry.orphans == {}
+
+
+def test_recording_orphans_opens_no_file(tmp_path, monkeypatch):
+    """The build only walks names; reading a template is left to first use."""
+    (tmp_path / "note.pjx").write_text("{#def title: str #}<p></p>")
+
+    def refuse(*args, **kwargs):
+        raise AssertionError("build_registry opened a template")
+
+    monkeypatch.setattr(Path, "read_text", refuse)
+    monkeypatch.setattr(Path, "open", refuse)
+
+    discovery.build_registry(tmp_path, [])
+
+    assert discovery.get_orphan_templates("note") == (tmp_path / "note.pjx",)
+
+
+def test_every_orphan_sharing_a_stem_is_recorded_in_sorted_order(tmp_path):
+    """The walk reports both files; deciding between them is left to first use."""
+    for directory in ("b", "a"):
+        (tmp_path / directory).mkdir()
+        (tmp_path / directory / "note.pjx").write_text("<p></p>")
+
+    discovery.build_registry(tmp_path, [])
+
+    assert discovery.get_orphan_templates("note") == (
+        tmp_path / "a" / "note.pjx",
+        tmp_path / "b" / "note.pjx",
+    )
+
+
+def test_a_rebuild_replaces_the_orphans(tmp_path):
+    (tmp_path / "note.pjx").write_text("<p></p>")
+    discovery.build_registry(tmp_path, [])
+
+    discovery.build_registry(None, [])
+
+    assert discovery.get_orphan_templates("note") == ()

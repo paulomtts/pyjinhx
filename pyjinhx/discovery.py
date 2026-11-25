@@ -60,18 +60,23 @@ def walk_templates(template_dir: Path | str) -> Iterator[TemplateCandidate]:
 
 
 class _Registry:
-    """Holder for the published tag -> class mapping.
+    """Holder for the published tag -> class mapping, and the orphan templates.
 
     A holder rather than a bare module-level dict: the mapping is replaced
     wholesale on every build, so what module state actually means here is "one
     rebindable reference", and keeping it off the module namespace makes it
     obvious the walk above never touches it.
+
+    ``orphans`` maps each walked tag no class claimed to every file found for
+    it, in the walk's order, so the classless factory can find a header-only
+    template on first use without walking the tree again.
     """
 
-    __slots__ = ("mapping", "template_dir")
+    __slots__ = ("mapping", "orphans", "template_dir")
 
     def __init__(self) -> None:
         self.mapping: dict[str, type] = {}
+        self.orphans: dict[str, tuple[Path, ...]] = {}
         self.template_dir: Path | None = None
 
 
@@ -171,6 +176,9 @@ def _has_own_template(cls: type) -> bool:
 def build_registry(template_dir: Path | str | None, classes: Iterable[type]) -> None:
     """Walk ``template_dir`` and publish a fresh tag -> class registry.
 
+    Every walked tag left without an owner is published as an orphan, by path
+    only — no template is opened here.
+
     Two sources feed the published mapping: every `.pjx` found by walking
     ``template_dir``, and every offered class that already resolved a template
     of its own on disk (e.g. a builtin shipped inside the installed package,
@@ -195,18 +203,21 @@ def build_registry(template_dir: Path | str | None, classes: Iterable[type]) -> 
         by_tag.setdefault(_tag_for(cls), []).append(cls)
     fresh: dict[str, type] = {}
     warned: set[str] = set()
-    tags: list[str] = (
-        []
-        if root is None
-        else [candidate.tag_name for candidate in walk_templates(root)]
-    )
+    walked = [] if root is None else list(walk_templates(root))
+    tags = [candidate.tag_name for candidate in walked]
     tags.extend(_tag_for(cls) for cls in offered if _has_own_template(cls))
     for tag_name in dict.fromkeys(tags):
         owner = _resolve_tag_owner(tag_name, by_tag, warned)
         if owner is not None:
             fresh[tag_name] = owner
+    orphans: dict[str, tuple[Path, ...]] = {}
+    for candidate in walked:
+        if candidate.tag_name not in fresh:
+            found = orphans.get(candidate.tag_name, ())
+            orphans[candidate.tag_name] = (*found, candidate.path)
     with _registry_lock:
         _registry.mapping = fresh
+        _registry.orphans = orphans
         _registry.template_dir = root
 
 
@@ -218,6 +229,15 @@ def get_class(tag_name: str) -> type | None:
     Unlocked — the published mapping is read-only once swapped in.
     """
     return _registry.mapping.get(tag_name)
+
+
+def get_orphan_templates(tag_name: str) -> tuple[Path, ...]:
+    """Every walked template for ``tag_name`` that no class claimed, or ``()``.
+
+    Unlocked, like `get_class`: the published orphans are rebound, never
+    mutated.
+    """
+    return _registry.orphans.get(tag_name, ())
 
 
 def get_template_dir() -> Path | None:
