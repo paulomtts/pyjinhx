@@ -1,10 +1,11 @@
 """Fold pyjinhx components into fewer files.
 
-Three one-way migrations, each a dry run unless ``--write`` is given:
+Four one-way migrations, each a dry run unless ``--write`` is given:
 
     assets    fold a sibling .css / .js into a {#css#} / {#js#} block
     template  fold a class's adjacent .pjx into ``template = r\"\"\"...\"\"\"``
     declass   turn a fields-only class into a {#def#} header, deleting the .py
+    pyblock   move a class's module into a {#python block at the top of its .pjx
 
     uv run python scripts/fold_components.py assets app/components
     uv run python scripts/fold_components.py template app/components --write
@@ -26,8 +27,14 @@ from pathlib import Path
 from jinja2 import TemplateSyntaxError
 
 from pyjinhx._component import _pascal_to_snake
+from pyjinhx.importer import opener_line
 from pyjinhx.props_header import parse_props_header
-from pyjinhx.sfc import _template_value, extract_template
+from pyjinhx.sfc import (
+    BlockSyntaxError,
+    _template_value,
+    extract_template,
+    python_block,
+)
 from pyjinhx.template_blocks import find_block
 
 _SKIPPED_DIRS = {"__pycache__", "node_modules"}
@@ -598,6 +605,90 @@ def fold_declass(paths: list[Path], roots: list[Path] | None = None) -> Plan:
     return plan
 
 
+# --- pyblock ----------------------------------------------------------------
+
+
+def block_document(source: str, pjx: Path, text: str) -> str:
+    """``text`` with ``source`` as a ``{#python`` block above it; ValueError says
+    why the result would not read back as that module and that markup."""
+    if "#}" in source:
+        line = next(n for n, row in enumerate(source.splitlines(), 1) if "#}" in row)
+        raise ValueError(
+            f"its source has `#}}` on line {line}, which would end the block"
+        )
+    body = source if source.endswith("\n") else source + "\n"
+    document = "{#python\n" + body + "#}\n" + text
+    try:
+        block = python_block(document, str(pjx))
+    except BlockSyntaxError as exc:
+        raise ValueError(f"the block would not parse: {exc.msg}") from exc
+    if block is None or block.body != body:
+        raise ValueError("the block would not read back as the module's source")
+    return document
+
+
+def stem_classes(module: Module) -> list[ast.ClassDef]:
+    """The classes in ``module`` named for its file, as a document's class is."""
+    return [
+        n
+        for n in module.classes()
+        if n.bases and _pascal_to_snake(n.name) == module.path.stem
+    ]
+
+
+def pyblock_document(module: Module, pjx: Path) -> str:
+    """The new text of ``pjx`` holding ``module``; ValueError says why not."""
+    stem = module.path.stem
+    if stem == "__init__":
+        raise ValueError("a package `__init__.py` cannot hold a document")
+    named = stem_classes(module)
+    if not named:
+        raise ValueError(f"no class named for {stem}")
+    if len(named) > 1:
+        raise ValueError(f"{stem} names more than one class")
+    if assigns_template(named[0]):
+        raise ValueError(
+            f"{named[0].name} assigns its own `template`; fold it to a file first"
+        )
+    if not pjx.is_file():
+        raise ValueError(f"there is no {pjx.name} beside it (inherited or missing)")
+    if (pjx.parent / stem).is_dir():
+        raise ValueError(f"a {stem}/ directory would shadow {pjx.name}")
+    text = pjx.read_text(encoding="utf-8")
+    if opener_line(text) is not None:
+        raise ValueError(f"{pjx.name} already has a {{#python block")
+    if has_block(text, "def", pjx) or re.match(r"\s*\{#\s*def\s", text):
+        raise ValueError(f"{pjx.name} already has a {{#def#}} header")
+    return block_document(module.source, pjx, text)
+
+
+def fold_pyblock(paths: list[Path], roots: list[Path] | None = None) -> Plan:
+    plan = Plan()
+    given = set(paths)
+    for module in load_modules(paths):
+        # A walk leaves alone the modules that are no component's; one named
+        # on the command line is asked about.
+        if module.path not in given and not stem_classes(module):
+            continue
+        pjx = module.path.with_suffix(".pjx")
+        try:
+            plan.files[pjx] = pyblock_document(module, pjx)
+        except ValueError as exc:
+            plan.refuse(module.path, str(exc))
+            continue
+        plan.files[module.path] = None
+        plan.folded += 1
+        plan.notes += [
+            f"{module.path.name} is still named: {line}"
+            for line in references(module.path.name, roots or paths, module.path, "*")
+        ]
+        for node in module.classes():
+            other = pjx.with_name(_pascal_to_snake(node.name) + ".pjx")
+            if other != pjx and other.is_file():
+                plan.notes.append(f"{node.name} keeps its {other.name}")
+    return plan
+
+
 # --- output -----------------------------------------------------------------
 
 
@@ -626,6 +717,11 @@ def finish(name: str, plan: Plan, write: bool) -> int:
         print(f"reference {note}")
     for refusal in plan.refusals:
         print(f"refused {refusal}")
+    if name == "pyblock" and plan.folded:
+        print(
+            "remember: the root package's __init__.py needs `import pyjinhx`, and "
+            "`python -m pyjinhx.stubgen` regenerates the stubs for the new documents"
+        )
     mode = "written" if write else "dry run, nothing written; pass --write"
     print(
         f"{name}: {plan.folded} folded, {len(plan.refusals)} refused, "
@@ -637,11 +733,11 @@ def finish(name: str, plan: Plan, write: bool) -> int:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=(__doc__ or "").split("\n\n")[0])
     commands = parser.add_subparsers(dest="command", required=True)
-    for name in ("assets", "template", "declass"):
+    for name in ("assets", "template", "declass", "pyblock"):
         command = commands.add_parser(name)
         command.add_argument("paths", nargs="+", type=Path)
         command.add_argument("--write", action="store_true", help="apply the changes")
-    for name in ("assets", "declass"):
+    for name in ("assets", "declass", "pyblock"):
         commands.choices[name].add_argument(
             "--root",
             action="append",
@@ -651,6 +747,8 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     if args.command == "declass":
         plan = fold_declass(args.paths, args.root)
+    elif args.command == "pyblock":
+        plan = fold_pyblock(args.paths, args.root)
     elif args.command == "assets":
         plan = fold_assets(args.paths, args.root)
     else:
