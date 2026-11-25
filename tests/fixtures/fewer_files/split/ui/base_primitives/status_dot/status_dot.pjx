@@ -1,0 +1,1 @@
+<i class="dot dot--{{ tone.value }}" aria-label="{{ tone.value }}"></i>

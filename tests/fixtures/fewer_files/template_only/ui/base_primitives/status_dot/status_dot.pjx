@@ -1,0 +1,6 @@
+{#def tone: tests.fixtures.fewer_files.domain.Tone = tests.fixtures.fewer_files.domain.Tone.CALM #}
+<i class="dot dot--{{ tone.value }}" aria-label="{{ tone.value }}"></i>
+{#css
+.dot { display: inline-block; width: 0.5rem; height: 0.5rem; }
+.dot--late { background: var(--danger); }
+#}

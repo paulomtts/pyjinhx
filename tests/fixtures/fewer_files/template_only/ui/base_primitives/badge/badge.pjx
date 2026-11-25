@@ -1,0 +1,2 @@
+{#def id: str, label: str, variant: Literal["neutral", "accent", "danger"] = "neutral" #}
+<span id="{{ id }}" class="badge badge--{{ variant }}">{{ label }}</span>

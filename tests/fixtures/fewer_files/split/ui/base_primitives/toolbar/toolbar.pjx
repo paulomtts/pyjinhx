@@ -1,0 +1,5 @@
+<Card title="{{ title }}">
+  {% for action in actions %}<Badge id="action-{{ action }}" label="{{ action }}" variant="accent"/>{% endfor %}
+  <Button label="Add" hx_post="/todos" attrs='{"hx-target": "#todo-list", "hx-swap": "beforeend"}'/>
+  <Button label="Clear" kind="ghost"/>
+</Card>

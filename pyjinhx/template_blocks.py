@@ -36,6 +36,12 @@ class Block(NamedTuple):
     line: int
 
 
+def _is_block(comment: str, keyword: str) -> bool:
+    """Whether a comment's text opens with ``keyword`` and then whitespace or nothing."""
+    rest = comment.removeprefix(keyword)
+    return rest != comment and (not rest or rest[0].isspace())
+
+
 def find_block(source: str, keyword: str, filename: str) -> Block | None:
     """The ``{#<keyword> ... #}`` block in ``source``, or None.
 
@@ -47,9 +53,9 @@ def find_block(source: str, keyword: str, filename: str) -> Block | None:
     found: Block | None = None
     for match in _COMMENT_RE.finditer(source):
         text = match.group(1)
-        rest = text.removeprefix(keyword)
-        if rest == text or (rest and not rest[0].isspace()):
+        if not _is_block(text, keyword):
             continue
+        rest = text.removeprefix(keyword)
         line = source.count("\n", 0, match.start()) + 1
         if found is not None:
             raise TemplateSyntaxError(
@@ -62,6 +68,56 @@ def find_block(source: str, keyword: str, filename: str) -> Block | None:
     if found is None or not found.body:
         return None
     return found
+
+
+# The empty comment an inline template opens with to pad its line numbers
+# (see sfc); a block right after it is still the first thing in the document.
+_LINE_PADDING_RE = re.compile(r"\{#\s*#\}")
+
+
+def hide_block_lines(source: str) -> str:
+    """``source`` as Jinja should compile it: a block alone on its line takes
+    that line's break with it, so it renders as nothing rather than as a blank
+    line.
+
+    A header, or an asset folded in from a sibling file, then leaves the
+    rendered markup exactly as it was. The break moves inside the comment
+    rather than being deleted, so every line keeps its number. A block that
+    shares its line with anything else, and every prose comment, is left as
+    written.
+    """
+    parts: list[str] = []
+    position = 0
+    for match in _COMMENT_RE.finditer(source):
+        if not any(_is_block(match.group(1), k) for k in ("def", "css", "js")):
+            continue
+        start, end = match.span()
+        line_start = source.rfind("\n", 0, start) + 1
+        line_end = source.find("\n", end)
+        if line_end == -1:
+            line_end = len(source)
+        if source[end:line_end].strip(" \t"):
+            continue
+        alone = not source[line_start:start].strip(" \t")
+        if alone and line_start > position:
+            # The break that ends the previous line goes; this line's stays
+            # to end that one instead.
+            cut = (line_start - 1, line_end)
+        elif (alone and line_start == position) or (
+            position == 0 and _LINE_PADDING_RE.fullmatch(source, 0, start)
+        ):
+            # First in the document, or right after a block that already took
+            # the break before this line: this line's own break goes.
+            cut = (line_start if alone else start, min(line_end + 1, len(source)))
+        else:
+            continue
+        parts.append(source[position : cut[0]])
+        parts.append(
+            "{#" + source[cut[0] : start] + match.group(1) + source[end : cut[1]] + "#}"
+        )
+        position = cut[1]
+    parts.append(source[position:])
+    return "".join(parts)
 
 
 class InlineAsset(Path):

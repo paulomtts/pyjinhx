@@ -12,6 +12,7 @@ from jinja2 import BaseLoader, Environment, TemplateNotFound
 from pyjinhx.assets import AssetMode
 from pyjinhx.markers import finalize_slot_node
 from pyjinhx.sfc import read_document
+from pyjinhx.template_blocks import hide_block_lines
 
 if TYPE_CHECKING:
     # Type-only: the hook's signature names the spine's own types, but importing
@@ -93,7 +94,7 @@ class AbsolutePathLoader(BaseLoader):
         path = Path(path_text)
         if not path.is_absolute() or not path.is_file():
             raise TemplateNotFound(template)
-        source = read_document(path, inline_class or None)
+        source = hide_block_lines(read_document(path, inline_class or None))
         mtime = path.stat().st_mtime
         name = str(path)
 
