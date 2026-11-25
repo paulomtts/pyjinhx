@@ -499,3 +499,55 @@ def test_an_inline_template_with_a_def_header_is_reported_as_stale(
         "<Headed>: a {#def#} header is present but a Python class is registered "
         "— the header is ignored. Remove the header (or the class)."
     ) == 1
+
+
+def _headed_module(tmp_path: Path, template_lines: list[str]) -> Path:
+    path = tmp_path / "headed.py"
+    path.write_text(
+        "from pyjinhx import BaseComponent\n\n\n"
+        "class Headed(BaseComponent):\n"
+        "    title: str = 'x'\n\n"
+        '    template = """\n'
+        + "".join(f"    {line}\n" for line in template_lines)
+        + '    """\n'
+    )
+    return path
+
+
+@pytest.mark.parametrize(
+    "template_lines",
+    [
+        ["{# def title: str #}", "<h1>{{ title }}</h1>"],
+        ["<h1>{{ title }}</h1>", "{#def title: str #}"],
+    ],
+    ids=["legacy-spaced-first", "header-after-markup"],
+)
+def test_an_inline_header_is_seen_wherever_a_pjx_header_would_be(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, template_lines: list[str]
+):
+    path = _headed_module(tmp_path, template_lines)
+    headed = _import_file(path, monkeypatch).Headed
+    assert headed.__pjx_descriptor__.has_stale_def_header is True
+
+
+def test_a_stray_comment_close_in_an_inline_block_is_reported_in_the_python_file(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    path = _headed_module(tmp_path, ["<div></div>", "{#css a { b: '#}' } #}"])
+    with pytest.raises(jinja2.TemplateSyntaxError) as caught:
+        _import_file(path, monkeypatch)
+    assert caught.value.filename == str(path)
+    assert caught.value.lineno == 9
+
+
+def test_an_inline_class_claims_its_tag_over_a_namesake_orphan(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    from pyjinhx.classless import component_for_tag
+
+    (tmp_path / "headed.pjx").write_text("{#def title: str #}<p>file</p>")
+    headed = _import_file(_headed_module(tmp_path, ["<h1>inline</h1>"]), monkeypatch)
+    discovery.build_registry(tmp_path, [headed.Headed])
+
+    assert discovery.get_orphan_templates("headed") == ()
+    assert component_for_tag("Headed") is headed.Headed
