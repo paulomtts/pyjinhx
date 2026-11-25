@@ -33,7 +33,8 @@ literal of its class, and means the same in both.
    `ExtraAttrs` and `AttrValue`; a required `id: str` turns `auto_id` off; a
    dotted name is an import path for a type, a constant default, or with `()` a
    default factory. Paths resolve with `pkgutil.resolve_name` when the class is
-   built, so nothing from the template is compiled or executed.
+   built. The header is never `eval`'d, but a template is trusted code: a
+   dotted name imports its module and `pkg.f()` calls `f` per instance.
 3. **A header-only template answers its tag.** Discovery records `.pjx` files no
    class claimed; on a tag miss, one that carries a header is built into a class.
    Lazy, header-gated, no `component()` call needed.

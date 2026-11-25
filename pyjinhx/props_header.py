@@ -7,8 +7,10 @@ non-whitespace in the file::
 
 The header is a valid (inert) Jinja comment; pyjinhx reads it out-of-band.
 
-A dotted name is an absolute import path, resolved with ``pkgutil.resolve_name``
-— a normal import, nothing compiled or executed::
+A dotted name is an absolute import path, resolved with ``pkgutil.resolve_name``.
+The header itself is never compiled or ``eval``'d, but a template is trusted
+code: resolving a name imports its module, running that module's top level,
+and a ``pkg.f()`` default calls ``f`` for every instance::
 
     {#def when: datetime.datetime, size: int = app.ui.PAGE_SIZE,
           at: datetime.datetime = datetime.datetime.now() #}

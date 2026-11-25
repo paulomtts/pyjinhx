@@ -303,8 +303,10 @@ gets uncomfortable.
   dotted name called with no arguments (`at: datetime.datetime = datetime.datetime.now()`),
   which is a factory run per instance. Mutable literals such as `[]` are safe.
 - A dotted name is an import path, resolved with `pkgutil.resolve_name` when the
-  component class is built, not at startup. Nothing from the template is compiled or
-  executed. A bad path raises `ValueError` naming the template, the prop and the path.
+  component class is built, not at startup. The header is never `eval`'d, but treat a
+  template as trusted code like any module: a dotted name imports its module (running
+  that module's top level), and a `pkg.f()` default calls `f` for every instance. A
+  bad path raises `ValueError` naming the template, the prop and the path.
 - A bare name that is not in the table is never imported, so a typo cannot become an
   import. There are no relative paths.
 - `id: str`, required and with no default, turns `auto_id` off for that component.
