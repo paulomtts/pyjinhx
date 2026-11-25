@@ -16,6 +16,11 @@ components/ui/
 
 Assets are automatically injected when the component renders. The default mode inlines them as `<style>` and `<script>` tags.
 
+A component can also carry its CSS and JS inside its template as `{#css ... #}` /
+`{#js ... #}` blocks — see [Inline styles and scripts](components.md#inline-styles-and-scripts).
+Everything on this page applies to them too, except `LINK` mode, which refuses a block
+because it has no file to link.
+
 ### Naming Convention
 
 | Class Name | JS File | CSS File |

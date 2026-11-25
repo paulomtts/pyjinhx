@@ -264,6 +264,52 @@ to be resolvable at call time — pass `template_dir`, or run
 `.pjx` unregistered, so materialize it with `component()` once before using
 `<Tag/>` for it in another template.
 
+## Inline styles and scripts
+
+A component can keep its CSS and JS inside its `.pjx` template instead of in sibling
+`.css`/`.js` files, so one template (plus its class, if it has one) is the whole component:
+
+    {#def title: str #}
+    <article class="card">
+      <h3>{{ title }}</h3>
+    </article>
+
+    {#css
+    .card { padding: 1rem; border-radius: 8px; }
+    #}
+
+    {#js
+    document.querySelectorAll(".card").forEach((el) => el.dataset.ready = "1");
+    #}
+
+- Each block is a single Jinja comment, `{#css ... #}` or `{#js ... #}`. The keyword
+  must touch `{#` (`{#css`, not `{# css`), so a prose comment such as
+  `{# css tweaks #}` stays a plain comment. Like the `{#def#}` header, a block never
+  appears in the rendered output, and the template still renders in plain Jinja.
+- A block can sit anywhere after the `{#def#}` header (the header must stay first).
+  It is read statically: putting it inside `{% if %}` does not make it conditional.
+- The body is taken verbatim, Jinja syntax included — `{{ }}` and `{% %}` are not
+  evaluated. Like any Jinja comment, it ends at the first `#}`, so the body cannot
+  contain that sequence.
+- A template holds at most one block of each kind. A second one raises
+  `jinja2.TemplateSyntaxError` naming the file and the second block's line when the
+  component class is built. An empty block counts as no block.
+- Block contents go through the same pipeline as sibling files (see
+  [Asset Collection](assets.md)): shipped once per render session however many
+  instances render, in the same path order, with the same `data-pjx-asset` token on
+  inline styles, and in the swap-in delta for a region appearing for the first time.
+- A sibling file and a block of the same kind are **both** shipped, sibling first, so
+  block rules win a specificity tie against the file's.
+- Blocks come from the template the class renders. A subclass with no template of its
+  own renders its parent's, so it ships the parent's blocks; a subclass with its own
+  template ships only that template's blocks (sibling files are still inherited up the
+  class chain as before).
+- `AssetMode.LINK` has no file to point a URL at, so a component with a block raises
+  `ValueError` in LINK mode. Use `INLINE`, or `NONE` with a bundle: `all_assets()`
+  lists each block as a path such as `ui/card.pjx#css`, and `read_text()`/`read_bytes()`
+  on it return the block body, so the [one-bundle](assets.md#one-bundle-deployment)
+  recipe works unchanged.
+
 ## Extra Fields
 
 `BaseComponent` is **strict**: like a plain Pydantic `BaseModel`, it rejects unknown keyword

@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+### Added
+- Inline styles and scripts. A `.pjx` template may carry `{#css ... #}` and
+  `{#js ... #}` blocks, so a component needs no sibling `.css`/`.js` file. The
+  blocks are Jinja comments, so they never render, and their bodies ship through
+  the same asset pipeline as sibling files. A sibling file and a block of the same
+  kind both ship, sibling first; two blocks of one kind in a template raise
+  `TemplateSyntaxError` at the second block's line; `AssetMode.LINK` refuses a
+  block. See [Inline styles and scripts](docs/guide/components.md#inline-styles-and-scripts).
+
 ## 1.16.0 — Graph ports and wire events (2026-11-21)
 
 ### Added
