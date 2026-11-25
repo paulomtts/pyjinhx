@@ -129,9 +129,10 @@
     );
   }
 
-  // htmx fires htmx:afterRequest on the requesting element, so a requester
-  // swapped out before its response arrives never reaches a body listener.
-  // The xhr's own load event does not depend on the DOM.
+  // htmx fires htmx:afterRequest on the requester, falling back to its first
+  // still-attached ancestor. When the whole ancestor chain was swapped out
+  // before the response arrived, no body listener sees it. The xhr's own load
+  // event does not depend on the DOM.
   function pjxSkipHeadSwap(evt) {
     if (evt.detail && evt.detail.target === document.head) {
       evt.detail.shouldSwap = false;
