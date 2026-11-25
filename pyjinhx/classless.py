@@ -219,7 +219,7 @@ def _check_block(text: str, path: Path, line: int) -> None:
             error.code,
             f"{error.msg}; this file is imported as a document because line "
             f"{line} opens a {{#python block",
-            (error.filename, error.lineno, error.offset, error.text),
+            (str(path), error.lineno or 1, error.offset or 1, error.text or ""),
         ) from error
 
 

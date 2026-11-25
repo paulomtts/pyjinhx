@@ -153,7 +153,7 @@ def test_two_blocks_at_the_line_start_still_fail_setup(write: Write, root: Path)
     with pytest.raises(SyntaxError) as raised:
         setup(components_root=root)
     assert raised.value.filename == str(path)
-    assert f"line 1 opens a {{#python block" in str(raised.value.msg)
+    assert "line 1 opens a {#python block" in str(raised.value.msg)
 
 
 def test_a_column_zero_example_in_prose_is_a_document_and_says_why(
