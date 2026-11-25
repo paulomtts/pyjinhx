@@ -295,6 +295,28 @@ def test_editing_two_templates_in_one_module_refreshes_both(
         assert module.SecondNote().render().startswith("<p>second after</p>")
 
 
+def test_defining_a_class_reads_its_template_once(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    path = tmp_path / "read_once.py"
+    path.write_text(
+        "from pyjinhx import BaseComponent\n\n\n"
+        "class ReadOnce(BaseComponent):\n"
+        '    template = "<p></p>"\n'
+    )
+    reads: list[Path] = []
+    real = Path.read_text
+
+    def read_text(self, *args, **kwargs):
+        reads.append(self)
+        return real(self, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "read_text", read_text)
+    _import_file(path, monkeypatch)
+
+    assert reads.count(path) == 1
+
+
 SHOP = '''\
 from pydantic import computed_field
 

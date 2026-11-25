@@ -180,19 +180,14 @@ class InlineAsset(Path):
 
 
 def inline_assets(
-    template_path: Path, inline_class: str | None = None
+    template_path: Path, source: str, inline_class: str | None = None
 ) -> tuple[InlineAsset | None, InlineAsset | None]:
-    """The ``(css, js)`` inline assets the template at ``template_path`` carries.
+    """The ``(css, js)`` inline assets in ``source``, the template document at
+    ``template_path``.
 
     ``inline_class`` names the class whose inline template that ``.py`` file
-    holds, as on the class's descriptor. A missing or unreadable template
-    carries none: the template probe may hand over a path nobody has proven
-    exists, and the render reports that itself.
+    holds, as on the class's descriptor.
     """
-    try:
-        source = read_document(template_path, inline_class)
-    except OSError:
-        return None, None
     filename = str(template_path)
     css = find_block(source, "css", filename)
     js = find_block(source, "js", filename)

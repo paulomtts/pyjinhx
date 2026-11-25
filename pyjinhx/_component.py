@@ -32,6 +32,7 @@ from pydantic import (
 from pydantic.fields import FieldInfo
 
 from pyjinhx.descriptor import ClassDescriptor
+from pyjinhx.sfc import read_document
 from pyjinhx.template_blocks import inline_assets
 
 if TYPE_CHECKING:
@@ -493,18 +494,31 @@ def _resolve_class_descriptor(cls: type[BaseModel]) -> ClassDescriptor:
     # from this module, so a top-level import would close the cycle.
     from pyjinhx.props_header import template_has_props_header
 
+    try:
+        source = read_document(template_path, inline_class)
+    except OSError:
+        # The probe may hand over a path nobody has proven exists; loading
+        # the template reports that itself.
+        source = None
+
     # A classless class was *built from* its header, so its header is not
     # stale — only hand-written classes can be carrying a leftover one.
-    has_stale_def_header = not getattr(
-        cls, "_pjx_classless", False
-    ) and template_has_props_header(template_path, inline_class)
+    has_stale_def_header = (
+        source is not None
+        and not getattr(cls, "_pjx_classless", False)
+        and template_has_props_header(source)
+    )
 
     css_path, css_owner = _walk_asset(cls, "css")
     js_path, js_owner = _walk_asset(cls, "js")
     # Blocks come from the template this class renders, not from an MRO walk:
     # a block lives inside that one document. Each follows its sibling file,
     # so a component carrying both ships the file's rules first.
-    inline_css, inline_js = inline_assets(template_path, inline_class)
+    inline_css, inline_js = (
+        (None, None)
+        if source is None
+        else inline_assets(template_path, source, inline_class)
+    )
     css_paths = tuple(path for path in (css_path, inline_css) if path is not None)
     js_paths = tuple(path for path in (js_path, inline_js) if path is not None)
     provenance = {

@@ -334,7 +334,7 @@ def test_a_stray_comment_close_in_a_js_body_raises_at_its_line(tmp_path):
     path = _write(tmp_path / "card.pjx", '<div></div>\n{#js\nlet s = "#}";\n#}\n')
 
     with pytest.raises(TemplateSyntaxError) as raised:
-        inline_assets(path)
+        inline_assets(path, path.read_text())
 
     assert raised.value.lineno == 4
     assert raised.value.filename == str(path)
@@ -346,7 +346,7 @@ def test_a_stray_comment_close_in_a_js_body_raises_at_its_line(tmp_path):
 def test_a_literal_comment_close_in_a_document_without_blocks_is_left_alone(tmp_path):
     path = _write(tmp_path / "card.pjx", "<div>#} not a comment</div>\n")
 
-    assert inline_assets(path) == (None, None)
+    assert inline_assets(path, path.read_text()) == (None, None)
 
 
 # --- a block on its own line leaves no blank line ---------------------------
