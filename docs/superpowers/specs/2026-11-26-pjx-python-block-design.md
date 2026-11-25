@@ -156,7 +156,7 @@ Refusals, each with the file and line:
 |---|---|---|
 | No component class named for the stem | `ImportError` | import |
 | Two classes that snake to the stem (`HTTPCard`, `HttpCard`) | `ImportError` | import |
-| A class in the block assigns `template = "…"` | `ImportError` | import |
+| A class in the block assigns `template = "…"` | `TypeError` | class creation |
 | `{#def#}` header in the same document | `TypeError` | class creation |
 | No markup | `TypeError` | class creation |
 | The document has a `python` block but its class comes from another file | `TypeError` | class creation |
@@ -197,7 +197,7 @@ module body through Python's normal loader protocol:
 - no bytecode is cached. Blocks are small and compiled once per process. The
   trial measures the cost; caching is added only if that number is bad.
 
-After the body runs, the loader checks the three import-time refusals above
+After the body runs, the loader checks the two import-time refusals above
 and records the document as loaded (path, module name, document class).
 
 **Alternatives considered.**

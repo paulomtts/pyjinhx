@@ -31,6 +31,9 @@
   default, `--write` to apply.
 
 ### Changed
+- A `.py` component whose `.pjx` markup has a `{#python` comment starting a
+  line now fails at class creation: that comment is a block, and the class is
+  expected to live in the `.pjx`.
 - A `.pjx` with a `{#def#}` header and no class now renders as a component for its
   `<Tag/>` instead of passing through as markup. Header annotations that used to
   fall back to `Any` (unions, generics, `Literal`) now validate as written.

@@ -326,21 +326,6 @@ def resolver_with_hash(base_url: str, root: str) -> Callable[[Path], str]:
     return resolve
 
 
-def _all_component_classes(root: type) -> set[type]:
-    """Every class below root in the subclass tree, root excluded.
-
-    Recursive rather than one level deep: a component that subclasses another
-    component is a distinct class with its own descriptor, and only leaves of
-    a deep hierarchy would be seen otherwise. Returned as a set because
-    multiple inheritance makes a class reachable by more than one path.
-    """
-    found: set[type] = set()
-    for subclass in root.__subclasses__():
-        found.add(subclass)
-        found |= _all_component_classes(subclass)
-    return found
-
-
 def all_assets() -> tuple[tuple[Path, ...], tuple[Path, ...]]:
     """Return every CSS and JS path declared by any component class.
 
@@ -358,11 +343,11 @@ def all_assets() -> tuple[tuple[Path, ...], tuple[Path, ...]]:
     """
     # Imported here rather than at module scope: session imports this module
     # and component imports session, so a top-level import would cycle.
-    from pyjinhx._component import BaseComponent
+    from pyjinhx._component import all_component_classes
 
     css: set[Path] = set()
     js: set[Path] = set()
-    for cls in _all_component_classes(BaseComponent):
+    for cls in all_component_classes():
         # A class that never went through descriptor resolution — an abstract
         # mixin, say — has no descriptor attribute at all, and contributes
         # nothing rather than failing the whole enumeration.

@@ -42,7 +42,7 @@ def _module_file(name: str) -> Path | None:
     return Path(file).resolve() if file else None
 
 
-def _first_line(cls: type) -> int:
+def first_line(cls: type) -> int:
     """The line of ``cls``'s ``class`` statement, which is the file's own line."""
     return getattr(cls, "__firstlineno__", 0)
 
@@ -137,7 +137,7 @@ class PjxLoader(importlib.abc.SourceLoader):
                 and value.__module__ == self.name
                 and _pascal_to_snake(value.__name__) == stem
             },
-            key=_first_line,
+            key=first_line,
         )
         if not named:
             block = python_block(
@@ -151,7 +151,7 @@ class PjxLoader(importlib.abc.SourceLoader):
         if len(named) > 1:
             names = " and ".join(cls.__name__ for cls in named)
             self._refuse(
-                _first_line(named[1]),
+                first_line(named[1]),
                 f"{names} are both named for {stem!r}; keep one",
             )
         return named[0]

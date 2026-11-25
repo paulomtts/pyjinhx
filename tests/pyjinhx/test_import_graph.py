@@ -460,6 +460,7 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
         {
             "pyjinhx.client.inject",
             "pyjinhx.descriptor",
+            "pyjinhx.importer",
             "pyjinhx.props_header",
             "pyjinhx.rendering",
             "pyjinhx.session",
@@ -483,7 +484,6 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
             "pyjinhx.builtins",
             "pyjinhx.discovery",
             "pyjinhx.dev",
-            "pyjinhx.importer",
             "pyjinhx.integrations.base",
             "pyjinhx.integrations.fastapi",
             "pyjinhx.reactive.backend",

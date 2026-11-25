@@ -32,8 +32,9 @@ from pydantic import (
 from pydantic.fields import FieldInfo
 
 from pyjinhx.descriptor import ClassDescriptor
-from pyjinhx.sfc import has_markup, python_block, read_document
-from pyjinhx.template_blocks import find_block, inline_assets
+from pyjinhx.importer import first_line, loaded_document
+from pyjinhx.sfc import BlockSyntaxError, has_markup, python_block, read_document
+from pyjinhx.template_blocks import inline_assets
 
 if TYPE_CHECKING:
     # Type-only: the runtime import lives inside render() to avoid the cycle
@@ -476,11 +477,6 @@ def _resolve_provenance(cls: type) -> Mapping[str, type]:
     return owners
 
 
-def _class_line(cls: type) -> int:
-    """The line of ``cls``'s ``class`` statement in its file."""
-    return getattr(cls, "__firstlineno__", 1)
-
-
 def _bind_block_document(
     cls: type, template_path: Path, owner: type | None, source: str
 ) -> type | None:
@@ -494,23 +490,34 @@ def _bind_block_document(
         TypeError: The document is not the file its class lives in, or it
             also has a ``{#def#}`` header, or it has no markup.
     """
-    from pyjinhx.props_header import template_has_props_header
+    # Imported here for the cycle props_header has with this module.
+    from pyjinhx.props_header import props_header_line
 
-    block = python_block(source, str(template_path))
+    named = owner or _resolution_ancestors(cls)[-1]
+    try:
+        block = python_block(source, str(template_path))
+    except BlockSyntaxError as error:
+        raise BlockSyntaxError(
+            error.code,
+            f"{named.__name__}'s document: {error.msg}",
+            (
+                str(template_path),
+                error.lineno or 1,
+                error.offset or 1,
+                error.text or "",
+            ),
+        ) from error
     if block is None:
         return owner
-    owner = owner or _resolution_ancestors(cls)[-1]
-    owner_file = _defining_module_file(owner)
+    owner_file = _defining_module_file(named)
     if owner_file.resolve() != template_path.resolve():
         raise TypeError(
             f"{template_path}:{block.open_line}: this document holds a "
-            f"{{#python block, and {owner.__name__} is defined in {owner_file}. "
+            f"{{#python block, and {named.__name__} is defined in {owner_file}. "
             f"A component's class is in one of them; remove one."
         )
-    header = find_block(source, "def", str(template_path))
-    legacy = template_has_props_header(source)
-    if header or legacy:
-        line = header.line if header else source.count("\n", 0, source.index("{#")) + 1
+    line = props_header_line(source)
+    if line is not None:
         raise TypeError(
             f"{template_path}:{line}: a document with a {{#python block cannot "
             f"also have a {{#def#}} header. The class declares the props; "
@@ -521,7 +528,7 @@ def _bind_block_document(
             f"{template_path}:{block.open_line}: this document has a {{#python "
             f"block and no markup. Write the template after the block."
         )
-    return owner
+    return named
 
 
 def _resolve_class_descriptor(cls: type[BaseModel]) -> ClassDescriptor:
@@ -540,9 +547,10 @@ def _resolve_class_descriptor(cls: type[BaseModel]) -> ClassDescriptor:
     if inline_class is not None and template_path.suffix == ".pjx":
         assert template_owner is not None
         raise TypeError(
-            f"{template_path}:{_class_line(template_owner)}: "
-            f"{template_owner.__name__} assigns `template`, but a class in a "
-            f".pjx document renders that document. Remove the assignment."
+            f"{template_path}:{first_line(template_owner)}: "
+            f"{template_owner.__name__} assigns `template`, but a component "
+            f"class in a .pjx document cannot carry an inline template; give "
+            f"it its own file."
         )
 
     # Imported here, not at module scope: props_header imports _OpenComponent
@@ -869,3 +877,46 @@ Slot = Annotated[_SlotValue, PjxSlot()]
 # Tag-body routing: names the field that receives a PascalCase tag's nested
 # markup. Orthogonal to slot-ness.
 Children = Annotated[_SlotValue, PjxSlot(children=True)]
+
+
+def all_component_classes() -> list[type]:
+    """Every live BaseComponent subclass, nested ones included.
+
+    Pydantic keeps a reference to every class it built, so one from a refused
+    import or a reloaded module is still listed; `_is_live` leaves it out.
+    """
+    found: list[type] = []
+    stack = list(BaseComponent.__subclasses__())
+    while stack:
+        cls = stack.pop()
+        if _is_live(cls):
+            found.append(cls)
+        stack.extend(cls.__subclasses__())
+    return found
+
+
+def _is_live(cls: type) -> bool:
+    """Whether ``cls`` is still what its loaded module binds its name to.
+
+    A class that no name path reaches (built in a function, or a parametrized
+    generic) is live while its module is. A class from a ``.pjx`` document
+    also needs the import hook's record: a block run by ``python -m`` is not
+    vouched for.
+    """
+    # Built from a header, so no module statement ever bound it to a name.
+    if getattr(cls, "_pjx_classless", False):
+        return True
+    module = sys.modules.get(cls.__module__)
+    if module is None:
+        return False
+    file = getattr(module, "__file__", None)
+    if file and file.endswith(".pjx"):
+        loaded = loaded_document(file)
+        if loaded is None or loaded[0] != cls.__module__:
+            return False
+    if "<locals>" in cls.__qualname__ or "[" in cls.__qualname__:
+        return True
+    bound: object = module
+    for part in cls.__qualname__.split("."):
+        bound = getattr(bound, part, None)
+    return bound is cls

@@ -341,6 +341,21 @@ def template_has_props_header(source: str) -> bool:
         return False
 
 
+def props_header_line(source: str) -> int | None:
+    """The 1-based line of the ``{#def#}`` header in ``source``, or None.
+
+    Finds the same header `parse_props_header` does, without parsing it, so a
+    malformed one still has a line.
+    """
+    block = find_block(source, "def", "<template>")
+    if block is not None:
+        return block.line
+    match = _HEADER_RE.match(source)
+    if match is None:
+        return None
+    return source.count("\n", 0, match.start("sig")) + 1
+
+
 _STALE_DEF_HEADER_WARNING = (
     "<%s>: a {#def#} header is present but a Python class is registered — "
     "the header is ignored. Remove the header (or the class)."

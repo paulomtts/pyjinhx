@@ -11,11 +11,13 @@ from pathlib import Path
 import jinja2
 import pytest
 
-from pyjinhx import config, discovery
+from pyjinhx import assets, discovery
+from pyjinhx._component import all_component_classes
 from pyjinhx.assets import asset_token
 from pyjinhx.render_cache import render_cache_key
 from pyjinhx.rendering import render
 from pyjinhx.session import RenderSession, accumulate_assets, request_scope
+from pyjinhx.sfc import BlockSyntaxError
 from pyjinhx.template_blocks import InlineAsset
 
 Write = Callable[[str, str], Path]
@@ -293,9 +295,7 @@ def test_an_inline_template_in_a_block_class_is_refused(write: Write):
 
 
 def registered(module_name: str) -> list[type]:
-    return [
-        cls for cls in config._all_component_classes() if cls.__module__ == module_name
-    ]
+    return [cls for cls in all_component_classes() if cls.__module__ == module_name]
 
 
 def test_a_class_from_a_refused_import_is_not_registered(write: Write):
@@ -321,7 +321,7 @@ def test_a_reloaded_document_registers_only_its_new_class(write: Write):
 def test_a_live_block_class_is_registered(write: Write):
     write("pkg/card.pjx", CARD)
     module = load("pkg.card")
-    assert module.Card in config._all_component_classes()
+    assert module.Card in all_component_classes()
 
 
 def test_a_class_whose_module_is_gone_is_not_registered(write: Write):
@@ -329,7 +329,7 @@ def test_a_class_whose_module_is_gone_is_not_registered(write: Write):
     write("pkg/card.pjx", "<div>{{ title }}</div>\n")
     card = load("pkg.card").Card
     del sys.modules["pkg.card"]
-    assert card not in config._all_component_classes()
+    assert card not in all_component_classes()
 
 
 def test_python_dash_m_binds_the_class_and_leaves_it_unregistered(
@@ -341,10 +341,10 @@ def test_python_dash_m_binds_the_class_and_leaves_it_unregistered(
         CARD.replace(
             "#}",
             "\nif __name__ == '__main__':\n"
-            "    from pyjinhx import config\n"
+            "    from pyjinhx._component import all_component_classes\n"
             "    print(Card.__pjx_descriptor__.template_path)\n"
             "    print(Card(title='a').render())\n"
-            "    print(Card in config._all_component_classes())\n#}",
+            "    print(Card in all_component_classes())\n#}",
             1,
         ),
     )
@@ -358,3 +358,62 @@ def test_python_dash_m_binds_the_class_and_leaves_it_unregistered(
     )
     assert result.returncode == 0, result.stderr
     assert result.stdout.split("\n")[:3] == [str(path), "<div>a</div>", "False"]
+
+
+def test_a_reloaded_py_module_registers_only_its_new_class(write: Write):
+    write("pkg/card.py", SPLIT_CARD_PY)
+    write("pkg/card.pjx", "<div>{{ title }}</div>\n")
+    module = load("pkg.card")
+    old = module.Card
+    importlib.reload(module)
+    assert registered("pkg.card") == [module.Card]
+    assert old not in all_component_classes()
+
+
+def test_a_factory_built_and_a_nested_block_class_are_registered(write: Write):
+    write(
+        "pkg/card.pjx",
+        CARD.replace(
+            "#}",
+            "\n\ndef _make():\n    class Small(Card):\n        pass\n"
+            "    return Small\n\n\nSmall = _make()\n\n\n"
+            "class Outer(BaseComponent):\n    class Inner(Card):\n        pass\n#}",
+            1,
+        ),
+    )
+    module = load("pkg.card")
+    live = all_component_classes()
+    assert module.Small in live
+    assert module.Outer.Inner in live
+
+
+def test_dev_skips_a_reloaded_documents_old_class(write: Write):
+    write("pkg/card.pjx", CARD)
+    module = load("pkg.card")
+    old = module.Card
+    importlib.reload(module)
+    assert old not in all_component_classes()
+
+
+def test_assets_skip_a_refused_imports_classes(write: Write):
+    write("pkg/other.css", ".other { }")
+    write(
+        "pkg/card.pjx",
+        "{#python\nfrom pyjinhx import BaseComponent\n\n\n"
+        "class Other(BaseComponent):\n    pass\n#}\n<div></div>\n",
+    )
+    with pytest.raises(ImportError):
+        load("pkg.card")
+    assert not any(path.name == "other.css" for path in assets.all_assets()[0])
+
+
+def test_a_malformed_block_beside_a_py_class_names_the_class(write: Write):
+    path = write("pkg/card.py", SPLIT_CARD_PY)
+    write("pkg/card.pjx", "<div>\n  {#python\n  x = 1\n  #}\n</div>\n")
+    with pytest.raises(BlockSyntaxError) as caught:
+        load("pkg.card")
+    error = caught.value
+    assert error.code == "opener-not-at-line-start"
+    assert error.lineno == 2
+    assert error.filename == str(path.with_suffix(".pjx"))
+    assert "Card" in str(error)
