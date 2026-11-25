@@ -31,21 +31,34 @@ from typing import NamedTuple
 # Jinja's lexer reads left to right, so a ``{#`` is a comment only where it is
 # not inside a ``{% raw %}`` region or a ``{{ }}`` / ``{% %}`` tag, whose
 # string literals may hold ``{#``, ``#}``, ``}}`` or ``%}``. One alternation
-# skips those and leaves comments, which run to the first ``#}``. An
-# unterminated ``{#python`` opener is matched on its own so it can be reported.
+# skips those and leaves comments, which run to the first ``#}``. A tag's
+# strings and other characters are disjoint alternatives, so a failed match
+# cannot be retried a second way. An opener that is never closed is an error
+# in Jinja, so it swallows the rest of the document instead of being rescanned
+# from every later position; an unclosed ``{#python`` is matched first so it
+# can be reported.
 _STRING = r"""'(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*\""""
 _LEXEME_RE = re.compile(
     r"\{%[-+]?\s*raw\s*[-+]?%\}.*?\{%[-+]?\s*endraw\s*[-+]?%\}"
-    r"|\{\{(?:" + _STRING + r"|.)*?\}\}"
-    r"|\{%(?:" + _STRING + r"|.)*?%\}"
+    r"|\{%[-+]?\s*raw\s*[-+]?%\}.*"
+    r"|\{\{(?:" + _STRING + r"|[^'\"])*?\}\}"
+    r"|\{%(?:" + _STRING + r"|[^'\"])*?%\}"
     r"|\{#(?P<comment>.*?)#\}"
-    r"|(?P<unclosed>\{#python[ \t\r]*(?:\n|\Z))",
+    r"|(?P<unclosed>\{#python[ \t\r]*(?:\n|\Z))"
+    r"|\{[{%#].*",
     re.DOTALL,
 )
 
 
 def comments(source: str) -> Iterator[re.Match[str]]:
-    """Every Jinja comment in ``source``; group 1 is its text."""
+    """Every Jinja comment in ``source``; group 1 is its text.
+
+    Reads the default Jinja delimiters only: custom ``*_start_string`` values
+    and line statement or line comment prefixes are not recognised. Braces are
+    not balanced inside ``{{ }}``, so an expression such as ``{{ {1: {2: 3}} }}``
+    ends at its first ``}}`` where Jinja would read on; a comment opener after
+    such an expression in the same tag can be missed.
+    """
     for match in _LEXEME_RE.finditer(source):
         if match.group("comment") is not None:
             yield match
