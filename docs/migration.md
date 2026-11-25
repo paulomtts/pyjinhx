@@ -7,6 +7,41 @@
     those two versions, never as a description of how pyjinhx behaves today. The topmost
     section is the only one that describes current behaviour.
 
+## 1.16.x → next (fewer files)
+
+Nothing here is required: `.py` + `.pjx` (+ `.css` / `.js`) keeps working, and moving
+a component to another shape is per component and reversible. See
+[One model, three shapes](guide/components.md#one-model-three-shapes) for the shapes
+and [Folding existing components](guide/components.md#folding-existing-components)
+for `scripts/fold_components.py`, which does the mechanical moves.
+
+Four behaviours change for templates you already have:
+
+- **A headed orphan template now renders as a component.** A `.pjx` with a `{#def#}`
+  header and no class used to pass `<Tag/>` through as literal markup unless you
+  called `component("Tag")` first. It now builds on first use. Templates without a
+  header are unchanged. If two same-named headed templates exist in different
+  directories the tag raises `LookupError` naming both paths; rename one.
+- **Header types are no longer all `Any`.** `str | int`, `Literal[...]`, `list[str]`
+  and `dict[str, int]` now validate and coerce as written. A prop declared `str | int`
+  used to accept anything. `Slot` is also now a valid header type.
+- **The header may sit anywhere in the document**, not only first. A second
+  `{#def#}` raises `TemplateSyntaxError`.
+- **`template` is a reserved class attribute.** A class body that assigns `template`
+  is now read as an inline template. A pydantic field named `template` keeps its
+  meaning and is not read as one.
+
+Moving a component between shapes:
+
+| From | To | How |
+|---|---|---|
+| sibling `.css` / `.js` | `{#css#}` / `{#js#}` block | `fold_components.py assets` |
+| class + `.pjx` | class with `template = r"""..."""` | `fold_components.py template` |
+| fields-only class + `.pjx` | `.pjx` with a `{#def#}` header | `fold_components.py declass`, then fix the imports it reports |
+
+The reverse (a block back to a file, a string back to a `.pjx`) is a cut and paste;
+nothing else about the component changes.
+
 ## 1.1.x → 1.2.0
 
 1.2.0 moves response composition out of the render path and into one framework-free
