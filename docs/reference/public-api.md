@@ -49,6 +49,16 @@ The deeper machinery behind these symbols — the parser, finder, asset resolver
 | `PjxSettings` | Invalidation backend and reactive dev flags | [Configuration](../api/config.md#pjxsettings) |
 | `AssetMode` | Enum: `INLINE`, `LINK` or `NONE` | [Renderer](../api/renderer.md#assetmode) |
 
+## Command line
+
+Two modules run with `python -m` and are supported as commands, not imports. They read
+`.pjx` files without importing your application.
+
+| Command | Description | Documentation |
+|---------|-------------|---------------|
+| `python -m pyjinhx.stubgen` | Write or check the `.pyi` stub beside each `.pjx` document that holds a `{#python` block | [Command line tools](commands.md#python-m-pyjinhxstubgen) |
+| `python -m pyjinhx.manifest` | Print the components, props, blocks and diagnostics under the paths as JSON, or the block grammar | [Command line tools](commands.md#python-m-pyjinhxmanifest) |
+
 ## Builtin graph components
 
 Imported from `pyjinhx.builtins`. They are listed here because they carry a JavaScript API,

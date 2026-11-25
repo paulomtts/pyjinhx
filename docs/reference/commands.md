@@ -1,8 +1,8 @@
 # Command line tools
 
-Three modules run with `python -m` and read `.pjx` files without importing your
-application: `pyjinhx.stubgen`, `pyjinhx.manifest` and, as a library, `pyjinhx.sfc`.
-They parse; none of them runs a block, so they are safe on an untrusted or broken
+Two modules run with `python -m` and read `.pjx` files without importing your
+application: `pyjinhx.stubgen` and `pyjinhx.manifest`.
+They parse; neither runs a block, so they are safe on an untrusted or broken
 workspace. They are for [shape P](../guide/components.md#shape-p-the-class-in-the-pjx)
 and for editors. There is no console script: run them with your project's interpreter.
 
@@ -201,18 +201,12 @@ directory at a pyjinhx tag and run its own scanner over it. Its README lists the
 gaps (braces inside `{{ }}` are not balanced, and only the default Jinja delimiters are
 read).
 
-## `pyjinhx.sfc`
+## How a `.py`-hosted template is read
 
-`pyjinhx.sfc` is the stdlib-only module the others share. It is not part of the public
-API, but two of its jobs are worth knowing:
-
-- `python_source(text, filename)` returns a block's Python padded so that line N of the
-  code is line N of the file (see the ruff loop under
-  [Known limits](../guide/components.md#known-limits-of-shape-p)).
-- It reads the `.py`-hosted form, shape C, from the module's source without running it.
-  A template is recognised only inside a class body, as `template = <literal>` or
-  `template: <annotation> = <literal>`, where the literal is one string token: `"..."`,
-  `'...'`, `"""..."""` or `'''...'''`, with an optional `r` or `R` prefix. Not an
-  f-string, not adjacent literals, not a name or a call. The last assignment in the body
-  wins. An editor grammar that matches the same set degrades to no highlighting, never to
-  a wrong diagnostic.
+Both commands read the `.py`-hosted form, shape C, from the module's source without
+running it. A template is recognised only inside a class body, as `template = <literal>` or
+`template: <annotation> = <literal>`, where the literal is one string token: `"..."`,
+`'...'`, `"""..."""` or `'''...'''`, with an optional `r` or `R` prefix. Not an
+f-string, not adjacent literals, not a name or a call. The last assignment in the body
+wins. An editor grammar that matches the same set degrades to no highlighting, never to
+a wrong diagnostic.

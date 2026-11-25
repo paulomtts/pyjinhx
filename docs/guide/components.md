@@ -554,31 +554,11 @@ See [the command reference](../reference/commands.md#python-m-pyjinhxmanifest).
 - **Importing a `.pjx` runs its Python**, and `setup()` imports every block document under
   `components_root`. A template was already trusted code (a header's dotted name imports a
   module); this makes it plain. Never point `components_root`, or an import path, at files
-  a user can write. The manifest, stubgen and `pyjinhx.sfc` only parse.
+  a user can write. The manifest and stubgen only parse.
 - **coverage.py** cannot parse a `.pjx` for its report. Omit `*.pjx`, or accept the
   warning.
 - **ruff** reads `.py` files, so it does not see a block, and it has no `.pjx` formatter.
-  To lint the blocks, extract the Python with `pyjinhx.sfc.python_source` (an internal
-  helper, not public API) and pipe it in; line numbers stay right and the reported name
-  ends in `.py`:
-
-  ```python
-  # lint_blocks.py: python lint_blocks.py app
-  import subprocess
-  import sys
-  from pathlib import Path
-
-  from pyjinhx.sfc import python_source
-
-  status = 0
-  for path in sorted(Path(sys.argv[1]).rglob("*.pjx")):
-      code = python_source(path.read_text(encoding="utf-8-sig"), str(path))
-      if code is not None:
-          cmd = ["ruff", "check", "--stdin-filename", str(path.with_suffix(".py")), "-"]
-          status |= subprocess.run(cmd, input=code, text=True).returncode
-  sys.exit(status)
-  ```
-
+  It cannot lint blocks yet.
 - **Type-checking a block's own body** happens in the editor. In CI only the block's
   signatures are checked, through the stub.
 - **`pkgutil.iter_modules` and `walk_packages` do not list `.pjx` modules**, because they
