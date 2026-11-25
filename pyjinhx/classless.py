@@ -124,7 +124,7 @@ def component(name: str, template_dir: Path | str | None = None) -> type[BaseCom
         if fields is None:
             cls = _placeholder_class(name, tag)
         else:
-            cls = build_component_class(fields, name)
+            cls = build_component_class(fields, name, template_path)
         cls.__module__ = _module_for_directory(template_path.parent)
         # The class was built with a provisional descriptor pointing at
         # whichever module generated it; only now does it sit beside its own

@@ -6,6 +6,7 @@ descriptor the returned class carries. The cross-cutting matrix for the whole
 classless surface is a separate file.
 """
 
+import re
 import sys
 import threading
 from pathlib import Path
@@ -141,6 +142,15 @@ def test_a_malformed_header_registers_nothing(tmp_path):
     write_template(tmp_path, "card", "{#def title: str, *args #}<div></div>")
 
     with pytest.raises(ValueError):
+        component("Card", template_dir=tmp_path)
+
+    assert discovery.get_class("card") is None
+
+
+def test_a_dotted_name_that_does_not_import_names_the_template_file(tmp_path):
+    path = write_template(tmp_path, "card", "{#def tone: no_such_pkg.Tone #}<b></b>")
+
+    with pytest.raises(ValueError, match=re.escape(str(path))):
         component("Card", template_dir=tmp_path)
 
     assert discovery.get_class("card") is None

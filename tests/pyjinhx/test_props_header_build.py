@@ -5,9 +5,11 @@ Generation only: warning on stale headers (#377), the component() factory
 """
 
 import datetime
+import re
 import sys
 import time
 import uuid
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -321,3 +323,33 @@ def test_dotted_factory_result_is_not_shared_between_instances():
     first, second = cls(), cls()
     assert first.tags == ["new"]  # pyright: ignore[reportAttributeAccessIssue]
     assert first.tags is not second.tags  # pyright: ignore[reportAttributeAccessIssue]
+
+
+@pytest.mark.parametrize(
+    "header, path, cause",
+    [
+        ("{#def tone: no_such_pkg.Tone #}", "no_such_pkg.Tone", ImportError),
+        (
+            "{#def size: int = tests.pyjinhx.header_names.NOPE #}",
+            "tests.pyjinhx.header_names.NOPE",
+            AttributeError,
+        ),
+        (
+            "{#def tags: list = no_such_pkg.make() #}",
+            "no_such_pkg.make",
+            ImportError,
+        ),
+    ],
+    ids=["type", "constant", "factory"],
+)
+def test_a_dotted_name_that_does_not_import_names_the_prop_and_the_path(
+    header: str, path: str, cause: type[Exception]
+):
+    fields = parse_props_header(header)
+    assert fields is not None
+    with pytest.raises(ValueError, match=re.escape(repr(path))) as excinfo:
+        build_component_class(fields, "Card", Path("ui/card.pjx"))
+    message = str(excinfo.value)
+    assert message.startswith("<Card> (ui/card.pjx):")
+    assert repr(fields[0][0]) in message
+    assert isinstance(excinfo.value.__cause__, cause)
