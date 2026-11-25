@@ -12,9 +12,9 @@ a `{#def#}` header could not express their fields, and 183 had to stay classes
 (reactive keys, factories, properties, validators). It also carried 211 sibling
 `.css` and 56 sibling `.js` files, many a few lines long.
 
-v0.x had single-file components, a `{# python #}` block inside a `.pjx`. They were
-dropped because they needed pyjinhx to extract and exec Python from a template
-file, which broke type-checking, import semantics and tracebacks. A template
+An earlier, unmerged prototype had single-file components, a `{# python #}` block
+inside a `.pjx`. It was dropped because it needed pyjinhx to extract and exec Python
+from a template file, which broke type-checking, import semantics and tracebacks. A template
 inside a Python file avoids all of that, and is offered. It also leaves the
 markup as a string that no template tooling can read. An editor extension that
 owns the whole `.pjx` file (pjx-ls, in the way Vue and Svelte tooling own theirs)
@@ -106,5 +106,3 @@ The guide has the comparison table.
   such as `{# python helpers #}` stays a comment.
 - ADR 0007's on-disk convention (`.pjx`, snake_case) is extended, not broken:
   an inline template is consulted before the file probe.
-- v0.x `{# python #}` files migrate by removing the space in the opener,
-  provided the class is named for the file.

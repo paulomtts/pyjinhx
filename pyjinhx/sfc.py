@@ -39,6 +39,8 @@ from typing import NamedTuple
 # in Jinja, so it swallows the rest of the document instead of being rescanned
 # from every later position; an unclosed ``{#python`` is matched first so it
 # can be reported.
+_OPENER = r"python[ \t\r]*(?:\n|\Z)"
+_OPENER_RE = re.compile(_OPENER)
 _STRING = r"""'(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*\""""
 _LEXEME_RE = re.compile(
     r"\{%[-+]?\s*raw\s*[-+]?%\}.*?\{%[-+]?\s*endraw\s*[-+]?%\}"
@@ -46,7 +48,7 @@ _LEXEME_RE = re.compile(
     r"|\{\{(?:" + _STRING + r"|[^'\"])*?\}\}"
     r"|\{%(?:" + _STRING + r"|[^'\"])*?%\}"
     r"|\{#(?P<comment>.*?)#\}"
-    r"|(?P<unclosed>\{#python[ \t\r]*(?:\n|\Z))"
+    r"|(?P<unclosed>\{#" + _OPENER + r")"
     r"|\{[{%#].*",
     re.DOTALL,
 )
@@ -66,28 +68,30 @@ def comments(source: str) -> Iterator[re.Match[str]]:
             yield match
 
 
-# What a comment's text starts with when it opens a block: `python`, or the
-# v0.x `[space]python`, then nothing but blanks up to the end of the line.
-_OPENER_TEXT_RE = re.compile(r"[ \t]?python[ \t\r]*\n")
+def _openers(source: str) -> Iterator[re.Match[str]]:
+    """The lexemes of ``source`` that open a ``{#python`` block: the keyword
+    touching ``{#``, then only blanks to the line end, and the ``{#`` in column
+    0. One that is never closed counts, so that `python_block` can report it."""
+    for match in _LEXEME_RE.finditer(source):
+        if (
+            (match.group("comment") is not None or match.group("unclosed"))
+            and _OPENER_RE.match(source, match.start() + 2)
+            and source.rfind("\n", 0, match.start()) + 1 == match.start()
+        ):
+            yield match
 
 
 def opener_line(source: str) -> int | None:
     """The line of the first block opener in ``source``, or ``None``.
 
-    An opener is ``{#python`` (or the v0.x ``{# python``) in column 0 with
-    nothing after it but spaces, tabs and the line end, outside a ``{% raw %}``
-    region and a tag. A comment such as ``{# python helpers #}`` is prose. An
-    opener that is never closed counts, so that the block scanner can report
-    it. Whether the block is well formed is for `python_block` to say.
+    An opener is ``{#python`` in column 0 with nothing after it but spaces,
+    tabs and the line end, outside a ``{% raw %}`` region and a tag. A comment
+    such as ``{# python helpers #}`` is prose. An opener that is never closed
+    counts, so that the block scanner can report it. Whether the block is well
+    formed is for `python_block` to say.
     """
-    for match in _LEXEME_RE.finditer(source):
-        if match.group("unclosed") is not None:
-            found = True
-        else:
-            text = match.group("comment")
-            found = text is not None and _OPENER_TEXT_RE.match(text) is not None
-        if found and source.rfind("\n", 0, match.start()) + 1 == match.start():
-            return source.count("\n", 0, match.start()) + 1
+    for match in _openers(source):
+        return source.count("\n", 0, match.start()) + 1
     return None
 
 
@@ -308,10 +312,10 @@ def python_block(source: str, filename: str) -> PythonBlock | None:
     """The ``{#python ... #}`` block of the document ``source``, or None.
 
     The opener is a line of exactly ``{#python`` in column 0 (trailing spaces
-    and tabs allowed); an indented ``{#python`` is a plain comment. The closer is the first ``#}``, which must be alone on
-    its line in column 0, as Jinja ends the comment there whatever Python
-    thinks of it. A ``-#}`` closer is refused: Jinja would eat the line break
-    after it.
+    and tabs allowed); an indented ``{#python`` is a plain comment. The closer
+    is the first ``#}``, which must be alone on its line in column 0, as Jinja
+    ends the comment there whatever Python thinks of it. A ``-#}`` closer is
+    refused: Jinja would eat the line break after it.
 
     Raises:
         BlockSyntaxError: The opener is never closed, a second block follows,
@@ -319,10 +323,7 @@ def python_block(source: str, filename: str) -> PythonBlock | None:
             closer. ``lineno`` is the offending line.
     """
     found: PythonBlock | None = None
-    for match in _LEXEME_RE.finditer(source):
-        # An opener that is not in column 0 is a plain comment.
-        if source.rfind("\n", 0, match.start()) + 1 != match.start():
-            continue
+    for match in _openers(source):
         if match.group("unclosed"):
             raise _block_error(
                 UNCLOSED_BLOCK,
@@ -331,12 +332,6 @@ def python_block(source: str, filename: str) -> PythonBlock | None:
                 filename,
                 match.start(),
             )
-        text = match.group("comment")
-        if text is None:
-            continue
-        rest = text.removeprefix("python")
-        if rest == text or not rest.lstrip(" \t\r").startswith("\n"):
-            continue
         if found is not None:
             raise _block_error(
                 SECOND_BLOCK,

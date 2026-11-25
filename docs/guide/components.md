@@ -368,9 +368,7 @@ The rules for the block, in the order the scanner checks them:
    `\r` after it. The `{#` is in column 0 and the keyword touches it. An indented
    `{#python` is a plain comment, and so is a prose comment such as
    `{#python is nice #}`. Inside `{% raw %}...{% endraw %}` or a tag it is not an opener
-   either. The v0.x spelling `{# python` alone on its line is not a block, and importing
-   such a file fails with a message that says to remove the space; `{# python helpers #}`
-   is a plain comment.
+   either. A spaced `{# python` is a plain comment too, as is `{# python helpers #}`.
 2. **Body.** Every line after the opener, compiled as written: no dedent, no stripping.
    Module-level code starts in column 0, as in a `.py` file.
 3. **Closer.** The first `#}` after the opener. It must be alone on its line, in column
@@ -405,7 +403,6 @@ Refused, each message naming the file and line:
 | No component class is named for the stem | `ImportError` | import |
 | Two classes snake to the stem (`HTTPCard` and `HttpCard`) | `ImportError` | import |
 | The same file is imported under a second module name | `ImportError` | import |
-| The block opens with the v0.x `{# python` | `ImportError` (says to remove the space) | import |
 | A malformed block: unclosed, second, closer not alone, text after the closer | `SyntaxError` | import or class creation |
 | A class in the block assigns `template` | `TypeError` | class creation |
 | A `{#def#}` header in the same document | `TypeError` | class creation |
@@ -545,12 +542,12 @@ See [the command reference](../reference/commands.md#python-m-pyjinhxmanifest).
 
 ### Known limits of shape P
 
-- **A line that is only `{#python` (or the v0.x `{# python`) in column 0 makes the file a
+- **A line that is only `{#python` in column 0 makes the file a
   document**, wherever it sits, including an example inside a `<pre>`. `setup()` imports
-  it and fails with "has no {#python block". Indent the example, or wrap it in
+  it and fails with "no component class is named for ...". Indent the example, or wrap it in
   `{% raw %}...{% endraw %}`, which is not a document. A prose comment that continues the
-  line, such as `{# python helpers below #}` or `{#python is nice #}`, an indented
-  `{#python`, or one mid-line, is a plain comment.
+  line, such as `{# python helpers below #}` or `{#python is nice #}`, a spaced
+  `{# python`, an indented `{#python`, or one mid-line, is a plain comment.
 - **`setup()` does not import a plain `.py` subclass of a document's class.** Something
   in your application must import it, or the subclass is never registered.
 - **Importing a `.pjx` runs its Python**, and `setup()` imports every block document under

@@ -24,8 +24,7 @@
       "max_per_document": 1,
       "opener_column": 0,
       "closer": "alone_on_its_line_in_column_0",
-      "excludes": ["def"],
-      "legacy_spaced_form": null
+      "excludes": ["def"]
     }
   },
   "regions_not_scanned": ["{% raw %}...{% endraw %}", "{{ ... }}", "{% ... %}"],

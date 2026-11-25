@@ -45,13 +45,13 @@
   default, `--write` to apply.
 
 ### Changed
-- A line that is only `{#python` (or the v0.x `{# python`) in column 0 now makes any
-  `.pjx` a document: `setup()` imports it and runs its block, so an example written that
-  way fails with "has no {#python block". Indent it or wrap it in `{% raw %}`; prose such
+- A line that is only `{#python` in column 0 now makes any `.pjx` a document:
+  `setup()` imports it and runs its block, so an example written that way fails with
+  "no component class is named for ...". Indent it or wrap it in `{% raw %}`; prose such
   as `{# python helpers #}` stays a comment. `setup()` does not import plain `.py`
-  subclasses of a document's class; something must import them. A `.py` component whose `.pjx` has a block fails at class creation, since
-  the class is expected to live in the `.pjx`. A `{#def#}` header beside a block is
-  refused. A v0.x `{# python` file imports after removing the space.
+  subclasses of a document's class; something must import them. A `.py` component whose
+  `.pjx` has a block fails at class creation, since the class is expected to live in the
+  `.pjx`. A `{#def#}` header beside a block is refused.
 - `setup()` imports application code when a `.pjx` under `components_root` holds a block.
   Call it after the names those blocks import exist.
 - A `.pjx` with a `{#def#}` header and no class now renders as a component for its

@@ -34,12 +34,12 @@ Six behaviours change for templates you already have:
   in errors are unchanged. Compare output byte for byte (snapshot tests, `strip()`-less
   assertions) and update any that expected the blank line.
 - **A `{#python` alone on a line makes the file a document.** Any `.pjx` with a
-  line that is only `{#python` (or the v0.x `{# python`) in column 0 is now taken for
+  line that is only `{#python` in column 0 is now taken for
   a [shape P](guide/components.md#shape-p-the-class-in-the-pjx) document: `setup()`
   imports it and runs its block, and a `.py` component whose `.pjx` has one fails at
   class creation, because the class is expected to live in the `.pjx`. An example
-  in a `<pre>` written this way fails `setup()` with "has no {#python block"; indent it
-  or wrap it in `{% raw %}`. A prose comment such as `{# python helpers #}`, an indented
+  in a `<pre>` written this way fails `setup()` with "no component class is named for ..."; indent it
+  or wrap it in `{% raw %}`. A prose comment such as `{# python helpers #}`, a spaced `{# python`, an indented
   `{#python`, or one in the middle of a line, stays a comment.
 - **`setup()` does not import plain `.py` subclasses of a document's class.** Something
   must import them.
@@ -55,17 +55,6 @@ Moving a component between shapes:
 | class + `.pjx` | class with `template = r"""..."""` | `fold_components.py template` |
 | fields-only class + `.pjx` | `.pjx` with a `{#def#}` header | `fold_components.py declass`, then fix the imports it reports |
 | class + `.pjx` | `.pjx` with a `{#python` block holding the class (S to P) | `fold_components.py pyblock`, then add `import pyjinhx` to the root `__init__.py` and run `python -m pyjinhx.stubgen` |
-
-### v0.x `{# python #}` files
-
-v0.x single-file components wrote the class in a `{# python` block (with a space).
-The block is back in v2 as `{#python`, so most of these files migrate by removing the
-space, provided the class is named for the file (`card.pjx` holds `Card`) and the
-document has no `{#def#}` header. The block must now end with a `#}` alone on its line
-in column 0; a `#}` earlier in the Python ends it, so write the pair as `"#" "}"`.
-Importing a file that still opens with `{# python` raises an `ImportError` that says so.
-Add `import pyjinhx` to the root package's `__init__.py` first, since the import hook is
-installed when pyjinhx is imported.
 
 ### Registries that walk modules
 

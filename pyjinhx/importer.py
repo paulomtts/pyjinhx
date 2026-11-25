@@ -12,7 +12,6 @@ not pull in pydantic or jinja2.
 import importlib.abc
 import importlib.util
 import os
-import re
 import sys
 import threading
 from collections.abc import Sequence
@@ -22,10 +21,6 @@ from typing import NoReturn
 
 from pyjinhx.sfc import module_name_for, opener_line, python_block, python_source
 
-# What v0.x wrote; in v2 it is prose, so without a message the import would
-# fail with a bare ModuleNotFoundError.
-_V0_OPENER_RE = re.compile(r"^\{#[ \t]+python[ \t\r]*(\n|\Z)", re.MULTILINE)
-
 # Each loaded document's module name and class, by resolved file path.
 _documents: dict[Path, tuple[str, type]] = {}
 _documents_lock = threading.Lock()
@@ -34,17 +29,6 @@ _documents_lock = threading.Lock()
 _bodies: dict[Path, int] = {}
 # The hash of the changed block body `block_changed` last reported, by path.
 _reported: dict[Path, int] = {}
-
-
-def no_block_reason(text: str) -> str:
-    """Why a document that passes the opener sniff still has no block, as the
-    end of a sentence: a ``{# python`` opener gets the fix named."""
-    hint = (
-        "; it opens with `{# python`, remove the space to write `{#python`"
-        if _V0_OPENER_RE.search(text)
-        else ""
-    )
-    return f"has no {{#python block{hint}"
 
 
 def _body_hash(body: str) -> int:
@@ -192,15 +176,14 @@ class PjxLoader(importlib.abc.SourceLoader):
         """The padded Python of the block, as `sfc.python_source` gives it.
 
         Raises:
-            ImportError: The file opens with the v0.x ``{# python``, or has no
-                block.
+            ImportError: The file has no block.
             SyntaxError: The block is malformed.
         """
         text = self.get_data(self.path).decode("utf-8-sig")
         source = python_source(text, self.path)
         if source is None:
             raise ImportError(
-                f"{self.path} {no_block_reason(text)}", name=self.name, path=self.path
+                f"{self.path} has no {{#python block", name=self.name, path=self.path
             )
         return source
 

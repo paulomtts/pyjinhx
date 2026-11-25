@@ -52,7 +52,6 @@ from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 from typing import Any, NamedTuple
 
-from pyjinhx.importer import no_block_reason
 from pyjinhx.sfc import (
     BLOCK_KEYWORDS,
     HEADER_PREFIX,
@@ -844,28 +843,11 @@ def _python_components(project: _Project, document: _Document) -> list[dict[str,
     ]
 
 
-def _unreadable_python_component(
-    project: _Project, document: _Document
-) -> dict[str, Any]:
+def _unreadable_python_component(document: _Document) -> dict[str, Any]:
     """The component of a document that opens a ``{#python`` block but has none
     that scans: named for the file, with no class, so it does not vanish from
-    the editor while its grammar error is fixed.
-
-    A document whose opener is only misspelled, with no scan error to say so,
-    is refused here the way the import hook refuses it."""
+    the editor while its grammar error is fixed."""
     path, source, blocks = document
-    try:
-        scans = python_block(source, str(path)) is None
-    except BlockSyntaxError:
-        scans = False  # its grammar error is already reported
-    if scans:
-        line = opener_line(source) or 1
-        project.report(
-            path,
-            _line_range(source.split("\n"), line),
-            "no-python-block",
-            f"{path.name} {no_block_reason(source)}",
-        )
     return _component(
         _pascal(path.stem),
         "pjx-python",
@@ -940,7 +922,7 @@ def _build(
         # The same line-start gate as the runtime's: a file with no opener
         # at the start of a line is a template, whatever its comments say.
         if opener_line(document.source) is not None:
-            return [_unreadable_python_component(project, document)]
+            return [_unreadable_python_component(document)]
         if is_component_stem(document.path.stem):
             return [_template_component(project, document)]
         return []

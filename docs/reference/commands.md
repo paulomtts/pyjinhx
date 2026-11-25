@@ -24,7 +24,7 @@ marker `# pyjinhx.stubgen: generated from card.pjx; do not edit`.
 - No stub is written for a block that a `card.py` or a `card/` directory shadows.
 - Hidden directories, virtualenvs (any directory with a `pyvenv.cfg`), `site-packages`,
   `dist-packages`, `build`, `dist`, `__pycache__` and `node_modules` are skipped.
-- A file only counts as a document if a line is only `{#python` (or `{# python`) in
+- A file only counts as a document if a line is only `{#python` in
   column 0, outside `{% raw %}`, as for the import hook.
 
 With `--check` nothing is written. The command lists the stubs that are stale, missing or
@@ -158,7 +158,6 @@ importing. Each has `path`, `range`, `severity` (`error` or `warning`), `code` a
 | `template-in-block` | a class in a block assigns `template` |
 | `class-outside-document` | a `.py` class is named for a `.pjx` that holds a block, so the class would own a document that already belongs to the block's class |
 | `shadowed-by-module` | a `card.py` or `card/` hides `card.pjx` |
-| `no-python-block` | a file the import hook would take for a document but that holds no block, such as one that opens with the v0.x `{# python` |
 | `no-module-name` | no import name can be derived for the file |
 | `template-not-literal` | `template` is not one plain string literal |
 | `stub-missing`, `stub-stale`, `stub-orphaned`, `stub-handwritten` | the state of the generated stub (warnings) |
@@ -192,7 +191,7 @@ without Python. Its `version` is `grammar_version` in the manifest. It lists:
 - the error codes above.
 
 `{#-def`, `{#- css` and any other whitespace-control form is not a block, and neither is
-the v0.x `{# python`. The Python scanner is not driven by this file; a test runs both
+`{# python`. The Python scanner is not driven by this file; a test runs both
 over the corpus to prove they agree.
 
 The conformance corpus is `tests/fixtures/block_grammar/` in the repository: small `.pjx`

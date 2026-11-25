@@ -914,9 +914,7 @@ def test_a_document_with_a_python_block_that_does_not_scan_still_has_an_entry(
     assert [d["code"] for d in result["diagnostics"]] == ["unclosed-block"]
 
 
-def test_a_v0_opener_is_refused_as_at_runtime_and_prose_is_a_template(
-    tmp_path, monkeypatch
-):
+def test_a_spaced_opener_and_prose_are_templates(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     (tmp_path / "card.pjx").write_text("{#python is nice #}\n<p></p>\n")
     (tmp_path / "chip.pjx").write_text("{# python\nclass Chip: pass\n#}\n<p></p>\n")
@@ -925,15 +923,13 @@ def test_a_v0_opener_is_refused_as_at_runtime_and_prose_is_a_template(
 
     mine = {c["tag"]: c for c in result["components"] if not c["builtin"]}
     assert mine["Card"]["kind"] == "template"
-    assert mine["Chip"]["kind"] == "pjx-python"
+    assert mine["Chip"]["kind"] == "template"
     diagnostics = {
         Path(d["path"]).name: d
         for d in result["diagnostics"]
         if d["path"].endswith(".pjx")
     }
-    assert "card.pjx" not in diagnostics
-    assert diagnostics["chip.pjx"]["code"] == "no-python-block"
-    assert "remove the space" in diagnostics["chip.pjx"]["message"]
+    assert diagnostics == {}
 
 
 def test_an_indented_python_comment_is_not_a_document(tmp_path, monkeypatch):

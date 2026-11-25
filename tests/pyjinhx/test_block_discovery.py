@@ -166,11 +166,10 @@ def test_a_column_zero_example_in_prose_is_a_document_and_says_why(
     assert str(path) in str(raised.value)
 
 
-def test_a_spaced_v0_opener_is_refused_with_the_fix(write: Write, root: Path):
-    path = write("pkg/plaque.pjx", CARD.replace("{#python", "{# python", 1))
-    with pytest.raises(ImportError, match="remove the space") as raised:
-        setup(components_root=root)
-    assert str(path) in str(raised.value)
+def test_a_spaced_opener_is_a_comment_not_a_document(write: Write, root: Path):
+    write("pkg/plaque.pjx", CARD.replace("{#python", "{# python", 1))
+    setup(components_root=root)
+    assert "pkg.plaque" not in sys.modules
 
 
 def test_a_header_only_template_and_a_plain_one_are_untouched(write: Write, root: Path):

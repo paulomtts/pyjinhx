@@ -245,13 +245,6 @@ def test_reload_runs_the_block_again(write: Write, monkeypatch: pytest.MonkeyPat
     assert os.environ["PJX_RUNS"] == "0xx"
 
 
-def test_the_v0_opener_is_refused_with_the_fix(write: Write):
-    path = write("pkg/card.pjx", "{# python\nX = 1\n#}\n<p></p>\n")
-    with pytest.raises(ImportError, match="remove the space") as raised:
-        importlib.import_module("pkg.card")
-    assert str(path) in str(raised.value)
-
-
 def refused(write: Write, text: str) -> ImportError:
     path = write("pkg/card.pjx", text)
     with pytest.raises(ImportError) as raised:
@@ -383,9 +376,9 @@ def test_find_spec_stays_quiet_about_an_unreadable_file(write: Write):
         path.chmod(0o644)
 
 
-def test_find_spec_stays_quiet_about_the_v0_opener(write: Write):
+def test_find_spec_declines_a_spaced_opener(write: Write):
     write("pkg/card.pjx", "{# python\nX = 1\n#}\n<p></p>\n")
-    assert importlib.util.find_spec("pkg.card") is not None
+    assert importlib.util.find_spec("pkg.card") is None
 
 
 def test_a_sibling_package_directory_wins_too(write: Write):
@@ -597,9 +590,3 @@ def test_find_spec_declines_a_prose_comment_that_starts_with_python(write: Write
 def test_find_spec_declines_an_example_inside_raw(write: Write):
     write("pkg/guide.pjx", "{% raw %}\n{#python\nx = 1\n#}\n{% endraw %}\n")
     assert importlib.util.find_spec("pkg.guide") is None
-
-
-def test_the_v0_opener_still_gets_its_hint_after_prose(write: Write):
-    write("pkg/card.pjx", "<p></p>\n{# python\nX = 1\n#}\n")
-    with pytest.raises(ImportError, match="remove the space"):
-        importlib.import_module("pkg.card")

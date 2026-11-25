@@ -202,7 +202,7 @@ def test_many_unclosed_openers_are_scanned_once(unit):
     [
         ("{#python\nx = 1\n#}\n<p></p>\n", 1),
         ("<p></p>\n{#python \t\r\nx = 1\n#}\n", 2),
-        ("{# python\nx = 1\n#}\n", 1),
+        ("{# python\nx = 1\n#}\n", None),
         ("{#python\nnever closed\n", 1),
         ("{# python helpers below #}\n<p></p>\n", None),
         ("{#python is nice #}\n<p></p>\n", None),
