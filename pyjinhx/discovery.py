@@ -275,3 +275,16 @@ def register_class(tag_name: str, cls: type) -> None:
             )
             return
         _registry.mapping = {**_registry.mapping, tag_name: cls}
+
+
+def forget_orphan(tag_name: str) -> None:
+    """Stop offering ``tag_name``'s orphan templates to the classless factory.
+
+    How the factory remembers that a template without a header is plain
+    markup, so its tag never costs another file read. The next
+    `build_registry` records it again.
+    """
+    with _registry_lock:
+        orphans = dict(_registry.orphans)
+        orphans.pop(tag_name, None)
+        _registry.orphans = orphans

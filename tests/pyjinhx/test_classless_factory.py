@@ -14,7 +14,7 @@ import pytest
 
 from pyjinhx import discovery
 from pyjinhx._component import BaseComponent, _OpenComponent
-from pyjinhx.classless import component
+from pyjinhx.classless import component, component_for_tag
 
 
 @pytest.fixture(autouse=True)
@@ -262,3 +262,180 @@ def test_a_classless_class_is_not_reported_as_carrying_a_stale_header(tmp_path):
     cls = component("Card", template_dir=tmp_path)
 
     assert cls.__pjx_descriptor__.has_stale_def_header is False
+
+
+def count_reads(monkeypatch) -> list[Path]:
+    """Record every ``Path.read_text`` call, still letting it read."""
+    reads: list[Path] = []
+    real = Path.read_text
+
+    def read_text(self, *args, **kwargs):
+        reads.append(self)
+        return real(self, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "read_text", read_text)
+    return reads
+
+
+def test_a_headed_orphan_answers_its_tag(tmp_path):
+    write_template(tmp_path, "note", "{#def title: str #}<p>{{ title }}</p>")
+    discovery.build_registry(tmp_path, [])
+
+    cls = component_for_tag("Note")
+
+    assert cls is not None
+    assert cls.__name__ == "Note"
+    assert set(cls.model_fields) >= {"title"}
+    assert discovery.get_class("note") is cls
+
+
+def test_an_empty_header_still_opts_in(tmp_path):
+    write_template(tmp_path, "note", "{#def #}<p>static</p>")
+    discovery.build_registry(tmp_path, [])
+
+    assert component_for_tag("Note") is discovery.get_class("note") is not None
+
+
+def test_a_headerless_orphan_is_not_a_component_and_is_read_once(tmp_path, monkeypatch):
+    write_template(tmp_path, "note", "<p>just a template</p>")
+    discovery.build_registry(tmp_path, [])
+    reads = count_reads(monkeypatch)
+
+    assert component_for_tag("Note") is None
+    assert component_for_tag("Note") is None
+    assert reads == [tmp_path / "note.pjx"]
+    assert discovery.get_class("note") is None
+
+
+def test_a_tag_with_no_template_touches_no_file(tmp_path, monkeypatch):
+    write_template(tmp_path, "note", "{#def title: str #}<p></p>")
+    discovery.build_registry(tmp_path, [])
+
+    def refuse(*args, **kwargs):
+        raise AssertionError("a tag with no template reached the filesystem")
+
+    for name in ("read_text", "open", "stat", "is_file", "exists", "rglob"):
+        monkeypatch.setattr(Path, name, refuse)
+
+    assert component_for_tag("WebThing") is None
+
+
+def test_a_malformed_orphan_header_names_its_file(tmp_path):
+    path = write_template(tmp_path, "note", "{#def title: = #}<p></p>")
+    discovery.build_registry(tmp_path, [])
+
+    with pytest.raises(ValueError, match=str(path)):
+        component_for_tag("Note")
+    assert discovery.get_class("note") is None
+
+
+def test_a_registered_class_wins_over_the_orphan(tmp_path, monkeypatch):
+    write_template(tmp_path, "note", "{#def title: str #}<p></p>")
+    discovery.build_registry(tmp_path, [])
+
+    class Note(BaseComponent):
+        pass
+
+    discovery.register_class("note", Note)
+    reads = count_reads(monkeypatch)
+
+    assert component_for_tag("Note") is Note
+    assert reads == []
+
+
+def test_component_returns_the_class_the_tag_built(tmp_path):
+    write_template(tmp_path, "note", "{#def title: str #}<p></p>")
+    discovery.build_registry(tmp_path, [])
+
+    built = component_for_tag("Note")
+
+    assert component("Note") is built
+
+
+def test_the_tag_returns_the_class_component_built(tmp_path):
+    write_template(tmp_path, "note", "{#def title: str #}<p></p>")
+    discovery.build_registry(tmp_path, [])
+
+    built = component("Note")
+
+    assert component_for_tag("Note") is built
+
+
+def test_component_still_builds_a_headerless_orphan_the_tag_declined(tmp_path):
+    write_template(tmp_path, "note", "<p></p>")
+    discovery.build_registry(tmp_path, [])
+    assert component_for_tag("Note") is None
+
+    cls = component("Note")
+
+    assert issubclass(cls, _OpenComponent)
+    assert component_for_tag("Note") is cls
+
+
+def test_two_headed_orphans_with_one_stem_are_refused_naming_both(tmp_path):
+    for directory in ("a", "b"):
+        (tmp_path / directory).mkdir()
+        write_template(tmp_path / directory, "note", "{#def title: str #}<p></p>")
+    discovery.build_registry(tmp_path, [])
+
+    with pytest.raises(LookupError) as raised:
+        component_for_tag("Note")
+
+    assert str(tmp_path / "a" / "note.pjx") in str(raised.value)
+    assert str(tmp_path / "b" / "note.pjx") in str(raised.value)
+    assert discovery.get_class("note") is None
+
+
+def test_one_headed_orphan_beside_a_headerless_namesake_is_still_ambiguous(
+    tmp_path,
+):
+    """Picking the headed one would make the answer depend on file contents."""
+    for directory, source in (("a", "<p></p>"), ("b", "{#def #}<p></p>")):
+        (tmp_path / directory).mkdir()
+        write_template(tmp_path / directory, "note", source)
+    discovery.build_registry(tmp_path, [])
+
+    with pytest.raises(LookupError, match="note.pjx"):
+        component_for_tag("Note")
+
+
+def test_headerless_orphans_sharing_a_stem_stay_plain_templates(tmp_path):
+    for directory in ("a", "b"):
+        (tmp_path / directory).mkdir()
+        write_template(tmp_path / directory, "note", "<p></p>")
+    discovery.build_registry(tmp_path, [])
+
+    assert component_for_tag("Note") is None
+
+
+def test_an_explicit_component_call_settles_an_ambiguous_stem(tmp_path):
+    for directory in ("a", "b"):
+        (tmp_path / directory).mkdir()
+        write_template(tmp_path / directory, "note", "{#def title: str #}<p></p>")
+    discovery.build_registry(tmp_path, [])
+
+    chosen = component("Note")
+
+    assert component_for_tag("Note") is chosen
+
+
+def test_concurrent_tag_misses_for_one_orphan_build_one_class(tmp_path):
+    write_template(tmp_path, "note", "{#def title: str #}<p></p>")
+    discovery.build_registry(tmp_path, [])
+
+    results: list[type | None] = []
+    barrier = threading.Barrier(2)
+
+    def call():
+        barrier.wait()
+        results.append(component_for_tag("Note"))
+
+    threads = [threading.Thread(target=call) for _ in range(2)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+
+    assert results[0] is not None
+    assert results[0] is results[1]
+    assert discovery.get_class("note") is results[0]

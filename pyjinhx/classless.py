@@ -15,6 +15,7 @@ import sys
 import threading
 import types
 from pathlib import Path
+from typing import Any
 
 from pyjinhx import discovery
 from pyjinhx._component import (
@@ -120,17 +121,74 @@ def component(name: str, template_dir: Path | str | None = None) -> type[BaseCom
         if registered is not None:
             return registered  # pyright: ignore[reportReturnType]
         template_path = _find_template(tag, template_dir)
-        fields = parse_props_header(
-            template_path.read_text(encoding="utf-8"), str(template_path)
-        )
-        if fields is None:
-            cls = _placeholder_class(name, tag)
-        else:
-            cls = build_component_class(fields, name)
-        cls.__module__ = _module_for_directory(template_path.parent)
-        # The class was built with a provisional descriptor pointing at
-        # whichever module generated it; only now does it sit beside its own
-        # template.
-        rebuild_class_descriptor(cls)
-        discovery.register_class(tag, cls)
-        return cls
+        fields = _read_header(template_path)
+        return _build_and_register(name, tag, template_path, fields)
+
+
+def component_for_tag(name: str) -> type[BaseComponent] | None:
+    """The class a ``<name>`` tag renders as when no class claims it, or ``None``.
+
+    The renderer's fallback on a tag miss. Only an orphan template discovery
+    recorded for the tag is considered, so a tag with no file — a web
+    component, a typo — costs one dict lookup and no filesystem access. That
+    template is read once: a ``{#def#}`` header (an empty one counts) makes it
+    a component, built and registered as `component()` would; no header means
+    it is plain markup, and that answer is remembered.
+
+    Raises ``LookupError`` when several orphan templates share the tag and any
+    of them has a header, since nothing says which one the tag means.
+    """
+    tag = _pascal_to_snake(name)
+    registered = discovery.get_class(tag)
+    if registered is not None:
+        return registered  # pyright: ignore[reportReturnType]
+    if not discovery.get_orphan_templates(tag):
+        return None
+    with _build_lock:
+        registered = discovery.get_class(tag)
+        if registered is not None:
+            return registered  # pyright: ignore[reportReturnType]
+        # Re-read under the lock: a racing thread may have just found the
+        # template headerless and forgotten it, leaving nothing to read.
+        paths = discovery.get_orphan_templates(tag)
+        headers = [_read_header(path) for path in paths]
+        if all(fields is None for fields in headers):
+            discovery.forget_orphan(tag)
+            return None
+        if len(headers) > 1:
+            raise LookupError(
+                f"<{name}> could be any of {len(paths)} templates: "
+                f"{', '.join(str(path) for path in paths)}. Rename all but one, "
+                f"or call component({name!r}) to pick the first."
+            )
+        return _build_and_register(name, tag, paths[0], headers[0])
+
+
+def _read_header(template_path: Path) -> list[tuple[str, Any, Any]] | None:
+    """The parsed ``{#def#}`` header of ``template_path``, or ``None`` without one."""
+    source = template_path.read_text(encoding="utf-8")
+    try:
+        return parse_props_header(source, str(template_path))
+    except ValueError as exc:
+        raise ValueError(f"{template_path}: {exc}") from exc
+
+
+def _build_and_register(
+    name: str, tag: str, template_path: Path, fields: list[tuple[str, Any, Any]] | None
+) -> type[BaseComponent]:
+    """Build the class for ``template_path`` and publish it under ``tag``.
+
+    Callers hold ``_build_lock``, so the check before and the write here are
+    one step.
+    """
+    if fields is None:
+        cls = _placeholder_class(name, tag)
+    else:
+        cls = build_component_class(fields, name)
+    cls.__module__ = _module_for_directory(template_path.parent)
+    # The class was built with a provisional descriptor pointing at
+    # whichever module generated it; only now does it sit beside its own
+    # template.
+    rebuild_class_descriptor(cls)
+    discovery.register_class(tag, cls)
+    return cls
