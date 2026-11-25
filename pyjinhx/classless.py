@@ -29,7 +29,13 @@ from pyjinhx._component import (
 from pyjinhx.importer import import_document, loaded_document
 from pyjinhx.props_header import build_component_class, parse_props_header
 from pyjinhx.segments import RE_PASCAL_CASE_TAG_NAME
-from pyjinhx.sfc import BlockSyntaxError, opener_line, python_block
+from pyjinhx.sfc import (
+    BlockSyntaxError,
+    opener_line,
+    pascal_to_snake,
+    python_block,
+    reworded,
+)
 
 _synthetic_modules: dict[Path, str] = {}
 _synthetic_modules_lock = threading.Lock()
@@ -221,7 +227,7 @@ def register_document(
                 f"loader made its module, or its block is still running.",
                 path=str(path),
             )
-    tag = _pascal_to_snake(loaded[1].__name__)
+    tag = pascal_to_snake(loaded[1].__name__)
     registered = _register_first(tag, loaded[1])  # pyright: ignore[reportArgumentType]
     discovery.forget_orphan(tag)
     return registered
@@ -233,11 +239,11 @@ def _check_block(text: str, path: Path, line: int) -> None:
     try:
         python_block(text, str(path))
     except BlockSyntaxError as error:
-        raise BlockSyntaxError(
-            error.code,
+        raise reworded(
+            error,
+            str(path),
             f"{error.msg}; this file is imported as a document because line "
             f"{line} opens a {{#python block",
-            (str(path), error.lineno or 1, error.offset or 1, error.text or ""),
         ) from error
 
 

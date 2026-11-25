@@ -728,17 +728,15 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
     # stdlib-only so the loader in session.py can call it from the bottom of
     # the graph.
     "sfc": frozenset(),
-    # stubgen parses `.pjx` blocks with sfc and the importer's opener gate
-    # (stdlib at module scope); it must never import the application whose
-    # components it describes.
-    "stubgen": frozenset({"pyjinhx.importer", "pyjinhx.sfc"}),
+    # stubgen parses `.pjx` blocks with sfc; it must never import the
+    # application whose components it describes.
+    "stubgen": frozenset({"pyjinhx.sfc"}),
     # manifest reads documents and modules statically. template_blocks is
     # imported inside scan_blocks, so a bare `import pyjinhx.manifest` stays
     # stdlib-only; nothing here may import props_header or _component, which
     # would pull in pydantic and the application's own classes.
     "manifest": frozenset(
         {
-            "pyjinhx.importer",
             "pyjinhx.sfc",
             "pyjinhx.stubgen",
             "pyjinhx.template_blocks",

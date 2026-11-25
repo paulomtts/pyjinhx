@@ -27,12 +27,13 @@ from pathlib import Path
 
 from jinja2 import TemplateSyntaxError
 
-from pyjinhx.importer import opener_line
 from pyjinhx.props_header import parse_props_header
 from pyjinhx.sfc import (
     BlockSyntaxError,
     extract_template,
     has_markup,
+    opener_line,
+    package_root,
     pascal_to_snake,
     python_block,
     template_value,
@@ -703,14 +704,12 @@ def needs_pyjinhx_import(path: Path) -> str | None:
     """A reminder when nothing is known to import pyjinhx before the module at
     ``path``: the top package's ``__init__.py`` should, found as
     `sfc.module_name_for` finds it."""
-    top = path.parent
-    if not (top / "__init__.py").is_file():
+    top = package_root(path.parent)
+    if top is None:
         return (
             "something must import pyjinhx before this module is imported "
             f"({path.name} is not in a package)"
         )
-    while (top.parent / "__init__.py").is_file():
-        top = top.parent
     init = (top / "__init__.py").read_text(encoding="utf-8", errors="replace")
     if re.search(r"^\s*(import pyjinhx|from pyjinhx)\b", init, re.MULTILINE):
         return None

@@ -20,7 +20,13 @@ from pathlib import Path
 from types import CodeType, ModuleType
 from typing import NoReturn
 
-from pyjinhx.sfc import module_name_for, opener_line, python_block, python_source
+from pyjinhx.sfc import (
+    module_name_for,
+    opener_line,
+    pascal_to_snake,
+    python_block,
+    python_source,
+)
 
 # Each loaded document's module name and class, by resolved file path.
 _documents: dict[Path, tuple[str, type]] = {}
@@ -227,7 +233,7 @@ class PjxLoader:
         Raises:
             ImportError: There is none, or there are two.
         """
-        from pyjinhx._component import BaseComponent, _pascal_to_snake
+        from pyjinhx._component import BaseComponent
 
         stem = self.name.rpartition(".")[2]
         named = sorted(
@@ -237,7 +243,7 @@ class PjxLoader:
                 if isinstance(value, type)
                 and issubclass(value, BaseComponent)
                 and value.__module__ == self.name
-                and _pascal_to_snake(value.__name__) == stem
+                and pascal_to_snake(value.__name__) == stem
             },
             key=first_line,
         )
@@ -304,8 +310,3 @@ def install() -> None:
     """Append the finder to ``sys.meta_path`` unless it is already there."""
     if not any(_is_finder(finder) for finder in sys.meta_path):
         sys.meta_path.append(PjxFinder())
-
-
-def uninstall() -> None:
-    """Remove the finder from ``sys.meta_path``."""
-    sys.meta_path[:] = [f for f in sys.meta_path if not _is_finder(f)]

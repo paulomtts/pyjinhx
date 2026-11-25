@@ -225,3 +225,40 @@ def test_a_document_without_the_keyword_is_not_lexed(monkeypatch):
 
     assert sfc.opener_line("<p>{{ x }}</p>") is None
     assert sfc.python_block("<p>{# python #}</p>", "card.pjx") is None
+
+
+def test_a_block_pads_its_body_to_the_files_own_lines():
+    block = sfc.python_block("<p></p>\n{#python\nx = 1\n#}\n", "card.pjx")
+    assert block is not None
+    assert block.source == "\n\nx = 1\n"
+    assert (
+        sfc.python_source("<p></p>\n{#python\nx = 1\n#}\n", "card.pjx") == block.source
+    )
+
+
+def test_reworded_keeps_the_code_and_place_of_an_error():
+    with pytest.raises(sfc.BlockSyntaxError) as raised:
+        sfc.python_block("<p></p>\n{#python\nx = 1\n", "card.pjx")
+    error = sfc.reworded(raised.value, "other.pjx", "said again")
+    assert (error.code, error.msg, error.filename) == (
+        sfc.UNCLOSED_BLOCK,
+        "said again",
+        "other.pjx",
+    )
+    assert (error.lineno, error.offset) == (raised.value.lineno, raised.value.offset)
+
+
+def test_normalize_text_drops_the_mark_and_counts_every_line_break_once():
+    assert sfc.normalize_text("\ufeffa\r\nb\rc\n") == "a\nb\nc\n"
+
+
+def test_blank_comments_keeps_the_lines():
+    assert sfc.blank_comments("a{#x\ny#}b\n{{ 1 }}") == "a\nb\n{{ 1 }}"
+
+
+def test_package_root_is_the_highest_directory_of_the_chain(tmp_path):
+    (tmp_path / "a" / "b" / "c").mkdir(parents=True)
+    for name in ("a", "a/b", "a/b/c"):
+        (tmp_path / name / "__init__.py").write_text("")
+    assert sfc.package_root(tmp_path / "a" / "b" / "c") == tmp_path / "a"
+    assert sfc.package_root(tmp_path) is None

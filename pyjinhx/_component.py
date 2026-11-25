@@ -39,6 +39,7 @@ from pyjinhx.sfc import (
     pascal_to_snake,
     python_block,
     read_document,
+    reworded,
 )
 from pyjinhx.template_blocks import inline_assets
 
@@ -498,15 +499,8 @@ def _bind_block_document(
     try:
         block = python_block(source, str(template_path))
     except BlockSyntaxError as error:
-        raise BlockSyntaxError(
-            error.code,
-            f"{named.__name__}'s document: {error.msg}",
-            (
-                str(template_path),
-                error.lineno or 1,
-                error.offset or 1,
-                error.text or "",
-            ),
+        raise reworded(
+            error, str(template_path), f"{named.__name__}'s document: {error.msg}"
         ) from error
     if block is None:
         return owner

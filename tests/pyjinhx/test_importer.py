@@ -157,25 +157,24 @@ def finders() -> list[importer.PjxFinder]:
     return [f for f in sys.meta_path if isinstance(f, importer.PjxFinder)]
 
 
+def remove_finder() -> None:
+    sys.meta_path[:] = [f for f in sys.meta_path if not importer._is_finder(f)]
+
+
 @pytest.fixture
 def hook_state():
     """Leave the finder installed whatever a test did to it."""
     yield
-    importer.uninstall()
+    remove_finder()
     importer.install()
 
 
 def test_install_appends_one_finder_at_the_end(hook_state):
-    importer.uninstall()
+    remove_finder()
     importer.install()
     importer.install()
     assert len(finders()) == 1
     assert sys.meta_path[-1] is finders()[0]
-
-
-def test_uninstall_removes_the_finder(hook_state):
-    importer.uninstall()
-    assert finders() == []
 
 
 def test_reloading_pyjinhx_keeps_one_finder(hook_state):
@@ -409,7 +408,7 @@ def test_loaded_document_checks_the_module_is_still_that_file(write: Write):
 
 
 def test_install_survives_a_reloaded_importer(hook_state):
-    importer.uninstall()
+    remove_finder()
     importer.install()
     importlib.reload(importer)
     importer.install()

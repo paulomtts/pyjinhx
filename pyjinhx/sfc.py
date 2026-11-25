@@ -103,18 +103,28 @@ def strip_to_text(source: str) -> str:
     return _LEXEME_RE.sub(lambda m: "\n" * m.group().count("\n"), source)
 
 
+def blank_comments(source: str) -> str:
+    """``source`` with every comment replaced by its newlines, so each line
+    keeps its number."""
+    parts: list[str] = []
+    position = 0
+    for match in comments(source):
+        parts += [source[position : match.start()], "\n" * match.group().count("\n")]
+        position = match.end()
+    parts.append(source[position:])
+    return "".join(parts)
+
+
 def has_markup(source: str) -> bool:
     """Whether ``source`` has anything but comments and whitespace, so that a
     document made only of blocks is told apart from one that renders."""
-    return bool("".join(_outside_comments(source)).strip())
+    return bool(blank_comments(source).strip())
 
 
-def _outside_comments(source: str) -> Iterator[str]:
-    position = 0
-    for match in comments(source):
-        yield source[position : match.start()]
-        position = match.end()
-    yield source[position:]
+def normalize_text(text: str) -> str:
+    """``text`` without a byte order mark, with every line break a ``\\n``, as
+    a document's lines are counted."""
+    return text.removeprefix("\ufeff").replace("\r\n", "\n").replace("\r", "\n")
 
 
 # How a class name becomes the file stem its template is found under, and which
@@ -299,6 +309,12 @@ class PythonBlock(NamedTuple):
     close_line: int
     body: str
 
+    @property
+    def source(self) -> str:
+        """The body as Python, one newline standing in for each line above it,
+        so a line or column in the compiled code is the file's own."""
+        return "\n" * self.open_line + self.body
+
 
 class BlockSyntaxError(SyntaxError):
     """A malformed block, with the stable ``code`` naming how."""
@@ -401,16 +417,22 @@ def _block_error(
     )
 
 
+def reworded(error: BlockSyntaxError, filename: str, message: str) -> BlockSyntaxError:
+    """``error`` with ``message``, located in ``filename`` at the same place."""
+    return BlockSyntaxError(
+        error.code,
+        message,
+        (filename, error.lineno or 1, error.offset or 1, error.text or ""),
+    )
+
+
 def python_source(source: str, filename: str) -> str | None:
     """The Python of the document's ``{#python`` block, or None.
 
-    One newline stands in for each line above the body, so a line or column
-    in the compiled code is the same line and column in the file.
+    See `PythonBlock.source`.
     """
     block = python_block(source, filename)
-    if block is None:
-        return None
-    return "\n" * block.open_line + block.body
+    return None if block is None else block.source
 
 
 def module_name_for(path: str | Path, sys_path: Iterable[str] = ()) -> str | None:
@@ -434,15 +456,24 @@ def module_name_for(path: str | Path, sys_path: Iterable[str] = ()) -> str | Non
     return name
 
 
+def package_root(directory: Path) -> Path | None:
+    """The highest directory of the package chain ``directory`` is in, each
+    holding an ``__init__.py``, or ``None`` if it is in none."""
+    root = None
+    while (directory / "__init__.py").is_file():
+        root = directory
+        directory = directory.parent
+    return root
+
+
 def _module_name(file: Path, sys_path: Iterable[str]) -> str | None:
     entries = [
         Path(os.path.abspath(entry or os.getcwd()))
         for entry in sys_path
         if isinstance(entry, str)
     ]
-    top = file.parent
-    while (top / "__init__.py").is_file():
-        top = top.parent
+    root = package_root(file.parent)
+    top = file.parent if root is None else root.parent
     if not entries or top in entries:
         base = top
     else:

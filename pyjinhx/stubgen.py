@@ -28,7 +28,7 @@ from collections.abc import Iterable, Iterator
 from pathlib import Path
 from typing import NamedTuple
 
-from pyjinhx.sfc import opener_line, python_block
+from pyjinhx.sfc import normalize_text, python_block
 
 _MARKER_PREFIX = "# pyjinhx.stubgen: generated from "
 
@@ -66,16 +66,11 @@ def generate_stub(source: str, filename: str) -> str | None:
         SyntaxError: The block's Python does not parse; ``lineno`` is the
             line in the document.
     """
-    source = source.replace("\r\n", "\n").replace("\r", "\n")
-    # The import hook's gate: without an opener at the start of a line the file
-    # is no document, so a comment that merely mentions {#python is not one.
-    if opener_line(source) is None:
-        return None
+    source = normalize_text(source)
     block = python_block(source, filename)
     if block is None:
         return None
-    # One newline per line above the body, so ast positions are file positions.
-    python = "\n" * block.open_line + block.body
+    python = block.source
     tree = ast.parse(python, filename=filename)
     # ast columns are UTF-8 byte offsets, so edit bytes, not text.
     data = python.encode()
@@ -192,7 +187,7 @@ def sync(paths: Iterable[Path], *, write: bool) -> list[Finding]:
     live: set[Path] = set()
     for document in documents:
         try:
-            source = document.read_text(encoding="utf-8-sig")
+            source = document.read_text(encoding="utf-8")
             stub = generate_stub(source, str(document))
         except SyntaxError as error:
             findings.append(

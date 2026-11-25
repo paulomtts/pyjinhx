@@ -58,12 +58,13 @@ from pyjinhx.sfc import (
     LITERAL_ERRORS,
     BlockSyntaxError,
     HeaderSignatureError,
-    comments,
+    blank_comments,
     extract_template,
     header_arguments,
     is_component_stem,
     is_one_literal,
     module_name_for,
+    normalize_text,
     opener_line,
     pascal_to_snake,
     python_block,
@@ -360,11 +361,11 @@ def _class_info(
 
 def _markup_lines(source: str) -> list[int] | None:
     """The first and last line holding anything but comments and whitespace."""
-    text = source
-    for comment in reversed(list(comments(source))):
-        blank = "\n" * comment.group().count("\n")
-        text = text[: comment.start()] + blank + text[comment.end() :]
-    numbered = [n for n, line in enumerate(text.split("\n"), 1) if line.strip()]
+    numbered = [
+        n
+        for n, line in enumerate(blank_comments(source).split("\n"), 1)
+        if line.strip()
+    ]
     return [numbered[0], numbered[-1]] if numbered else None
 
 
@@ -714,7 +715,7 @@ def _python_components(project: _Project, document: _Document) -> list[dict[str,
             f"{path.name} cannot be imported: no sys.path entry holds it under "
             "directories that are valid module names",
         )
-    text = "\n" * block.open_line + block.body
+    text = block.source
     lines = text.split("\n")
     source_lines = source.split("\n")
     opener = _line_range(source_lines, block.open_line)
@@ -935,8 +936,7 @@ def _build(
 
 def _read(path: Path) -> str:
     """The text of ``path`` with a byte order mark and ``\\r`` line breaks gone."""
-    text = path.read_text(encoding="utf-8-sig")
-    return text.replace("\r\n", "\n").replace("\r", "\n")
+    return normalize_text(path.read_text(encoding="utf-8"))
 
 
 def _stub_diagnostics(
@@ -1069,7 +1069,7 @@ def describe_buffer(
     buffer's stub is a file on disk, and it is the editor's to regenerate.
     """
     file = _absolute(filename)
-    text = text.removeprefix("﻿").replace("\r\n", "\n").replace("\r", "\n")
+    text = normalize_text(text)
     found = walk([_builtins_dir()], {".pjx", ".py"})
     names = {file, *file.parent.glob("*.pjx"), *file.parent.glob("*.py")}
     names |= set(found[".pjx"]) | set(found[".py"])
