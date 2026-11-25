@@ -307,6 +307,28 @@ def test_a_subclass_without_a_template_of_its_own_is_not_listed(tree):
     assert "WideCard" not in _components(tree)
 
 
+def test_a_subclass_in_the_same_block_is_listed_with_the_documents_markup(tree):
+    (tree / "app/ui/card.pjx").unlink()
+    (tree / "app/ui/card.py").unlink()
+    (tree / "app/ui/card.pjx").write_text(
+        "{#python\nclass Card:\n    title: str\n\n\n"
+        "class WideCard(Card):\n    width: int = 2\n\n\n"
+        "class Wider(WideCard):\n    pass\n\n\nclass Helper:\n    pass\n#}\n"
+        "<p>{{ title }}</p>\n"
+    )
+
+    found = _components(tree)
+
+    assert {"Card", "WideCard", "Wider"} <= set(found)
+    assert "Helper" not in found
+    wide = found["WideCard"]
+    assert wide["kind"] == "pjx-python"
+    assert wide["document"] == found["Card"]["document"]
+    assert wide["class"]["bases"] == ["Card"]
+    assert [p["name"] for p in wide["props"]] == ["width"]
+    assert _at(wide["class"]) == (6, 6)
+
+
 def test_columns_are_utf16_code_units(tree):
     (tree / "app/ui/emoji.pjx").write_text(
         "{#python\nclass Emoji:\n    a: int = 1; b: str = '😀'; c: int\n#}\n<p></p>\n",

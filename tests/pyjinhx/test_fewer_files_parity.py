@@ -1,4 +1,4 @@
-"""One app written in three shapes renders the same bytes in each.
+"""One app written in four shapes renders the same bytes in each.
 
 The app lives under ``tests/fixtures/fewer_files``, once per shape:
 
@@ -7,14 +7,21 @@ The app lives under ``tests/fixtures/fewer_files``, once per shape:
   for the components a header can express.
 - ``single_file`` (C): classes carrying their templates, blocks included,
   several to a module where they belong together.
+- ``pjx_python`` (P): each class in a ``{#python`` block of its own ``.pjx``.
 
 Each test publishes one shape's registry at a time, so the class names the
 shapes share never meet. Only auto-generated ids and asset tokens are
 normalised before comparing; everything else must match byte for byte.
 """
 
+import ast
 import importlib
+import json
+import os
 import re
+import shutil
+import subprocess
+import sys
 import traceback
 from collections.abc import Callable
 from pathlib import Path
@@ -25,7 +32,7 @@ import pytest
 from pydantic import ValidationError
 
 import tests.fixtures.fewer_files
-from pyjinhx import BaseComponent, Slot, classless, discovery
+from pyjinhx import BaseComponent, Slot, classless, discovery, manifest, sfc, stubgen
 from pyjinhx.assets import AssetMode
 from pyjinhx.reactive.root_attrs import stamp_reactive_root_attrs
 from pyjinhx.rendering import render
@@ -38,7 +45,9 @@ SHAPES = {
     "S": FIXTURES / "split",
     "T": FIXTURES / "template_only",
     "C": FIXTURES / "single_file",
+    "P": FIXTURES / "pjx_python",
 }
+CRASH = FIXTURES / "pjx_python_crash"
 
 
 class Stage(BaseComponent):
@@ -73,6 +82,17 @@ def module_name(path: Path) -> str:
     return ".".join([tests.fixtures.fewer_files.__name__, *parts])
 
 
+def module_paths(root: Path) -> list[Path]:
+    """The ``.py`` modules under ``root`` and the ``.pjx`` documents with a block."""
+    documents = [
+        p
+        for p in root.rglob("*.pjx")
+        if sfc.python_block(p.read_text(encoding="utf-8"), str(p))
+    ]
+    modules = [p for p in root.rglob("*.py") if p.name != "__init__.py"]
+    return sorted([*modules, *documents])
+
+
 def shape_classes(shape: str) -> dict[str, Any]:
     """Every component class the shape's modules define, by class name.
 
@@ -80,7 +100,7 @@ def shape_classes(shape: str) -> dict[str, Any]:
     base does not declare.
     """
     classes: dict[str, Any] = {}
-    for path in sorted(SHAPES[shape].rglob("*.py")):
+    for path in module_paths(SHAPES[shape]):
         module = importlib.import_module(module_name(path))
         for value in vars(module).values():
             if (
@@ -151,7 +171,7 @@ def render_split(shape: str, build: Build) -> tuple[str, list[tuple[str, str]]]:
     return normalise(markup), assets
 
 
-# Markup for every component a header can express, rendered in all three shapes.
+# Markup for every component a header can express, rendered in all four shapes.
 EVERY_SHAPE = {
     "badge": '<Badge id="b1" label="New" variant="accent"/>',
     "badge-default": '<Badge id="b2" label="Old"/>',
@@ -173,10 +193,14 @@ EVERY_SHAPE = {
     ),
 }
 
-# Markup for components that need Python, rendered in S and C.
+# Markup for components that need Python, rendered in S, C and P.
 CLASS_SHAPES = {
     "money": '<Money cents="123456" currency=" usd "/>',
     "project-name-field": '<ProjectNameField id="p" value="Launch"/>',
+    **{
+        f"{name}-name-field": f'<{name.title()}NameField id="{name[:2]}" value="v"/>'
+        for name in ["team", "owner", "list", "tag", "label"]
+    },
     "task-name-field": '<TaskNameField id="t" error="Required"/>',
     "todo-count": "<TodoCount/>",
     "todo-row": '<TodoRow todo_id="3"/>',
@@ -190,20 +214,24 @@ def test_a_component_renders_the_same_in_every_shape(markup, no_component_calls)
     split = render_split("S", staged(markup))
     assert render_split("T", staged(markup)) == split
     assert render_split("C", staged(markup)) == split
+    assert render_split("P", staged(markup)) == split
 
 
 @pytest.mark.parametrize("markup", CLASS_SHAPES.values(), ids=CLASS_SHAPES.keys())
-def test_a_component_with_python_renders_the_same_split_or_single_file(markup):
-    assert render_split("C", staged(markup)) == render_split("S", staged(markup))
+def test_a_component_with_python_renders_the_same_in_every_class_shape(markup):
+    split = render_split("S", staged(markup))
+    assert render_split("C", staged(markup)) == split
+    assert render_split("P", staged(markup)) == split
 
 
 def build_page(classes: dict[str, Any]) -> BaseComponent:
     return classes["TodoPage"].build(project="Launch <2026>")
 
 
-def test_the_full_page_renders_the_same_split_or_single_file():
+def test_the_full_page_renders_the_same_in_every_class_shape():
     split = render_split("S", build_page)
     assert render_split("C", build_page) == split
+    assert render_split("P", build_page) == split
 
 
 def test_the_full_page_uses_every_component_and_resolves_every_tag():
@@ -228,7 +256,9 @@ def test_the_full_page_uses_every_component_and_resolves_every_tag():
 def test_the_full_page_ships_the_same_assets_in_the_same_order():
     _, split = render_split("S", build_page)
     _, single_file = render_split("C", build_page)
+    _, pjx_python = render_split("P", build_page)
     assert single_file == split
+    assert pjx_python == split
     assert [kind for kind, _ in split] == ["style"] * 5 + ["script"]
 
 
@@ -254,8 +284,10 @@ def build_name_error(classes: dict[str, Any]) -> BaseComponent:
 
 
 @pytest.mark.parametrize("build", [build_row, build_name_error], ids=["row", "oob"])
-def test_a_partial_renders_the_same_split_or_single_file(build):
-    assert render_split("C", build) == render_split("S", build)
+def test_a_partial_renders_the_same_in_every_class_shape(build):
+    split = render_split("S", build)
+    assert render_split("C", build) == split
+    assert render_split("P", build) == split
 
 
 _MOUNTED_ROOT = re.compile(
@@ -285,11 +317,12 @@ def delta_after_toggle(shape: str) -> str:
     return response.body
 
 
-def test_dirtying_the_key_swaps_the_same_regions_split_or_single_file():
+@pytest.mark.parametrize("shape", ["C", "P"])
+def test_dirtying_the_key_swaps_the_same_regions_as_split(shape):
     split, split_assets_ = split_assets(delta_after_toggle("S"))
-    single_file, single_file_assets = split_assets(delta_after_toggle("C"))
-    assert normalise(single_file) == normalise(split)
-    assert single_file_assets == split_assets_
+    other, other_assets = split_assets(delta_after_toggle(shape))
+    assert normalise(other) == normalise(split)
+    assert other_assets == split_assets_
     assert split.count("hx-swap-oob") == 2
     assert 'id="todo-count"' in split
     assert "2 tasks left" in split
@@ -314,6 +347,10 @@ BROKEN = {
         SHAPES["T"] / "broken/stray_lookup.pjx",
     ),
     "C": (SHAPES["C"] / "broken/broken.py",) * 2,
+    "P": (
+        SHAPES["P"] / "broken/broken_note.pjx",
+        SHAPES["P"] / "broken/stray_lookup.pjx",
+    ),
 }
 
 
@@ -339,6 +376,19 @@ def test_a_render_error_traceback_names_the_file_and_line_it_is_on(shape):
     )
 
 
+def test_a_python_error_in_a_block_names_the_pjx_file_and_line():
+    path = CRASH / "crash_note.pjx"
+    with pytest.raises(RuntimeError, match="no limit set") as caught:
+        importlib.import_module(module_name(path))
+    frames = [f for f in traceback.extract_tb(caught.tb) if f.filename == str(path)]
+    assert [f.lineno for f in frames] == [
+        line_of(path, "class CrashNote"),
+        line_of(path, "size: int = limit()"),
+        line_of(path, "raise RuntimeError"),
+    ]
+    assert frames[-1].line == 'raise RuntimeError("no limit set")'
+
+
 def prop_errors(shape: str, markup: str) -> list[tuple[object, ...]]:
     with pytest.raises(ValidationError) as caught:
         render_shape(shape, staged(markup))
@@ -355,6 +405,7 @@ def test_a_bad_prop_is_refused_the_same_way_in_every_shape(markup):
     split = prop_errors("S", markup)
     assert prop_errors("T", markup) == split
     assert prop_errors("C", markup) == split
+    assert prop_errors("P", markup) == split
 
 
 def test_a_bad_header_names_its_template(tmp_path):
@@ -384,10 +435,215 @@ def test_the_single_file_shape_keeps_each_component_in_its_module():
 
 def test_the_single_file_shape_puts_several_components_in_a_module():
     modules = [cls.__module__ for cls in shape_classes("C").values()]
-    assert max(modules.count(name) for name in modules) == 3
+    assert max(modules.count(name) for name in modules) == 7
 
 
 def test_a_subclass_family_renders_its_parents_inline_template():
     classes = shape_classes("C")
     for name in ["ProjectNameField", "TaskNameField"]:
         assert classes[name].__pjx_descriptor__.inline_class == "NameField"
+
+
+# Shape P is its own package, with nothing but the documents and a few shims.
+
+
+def test_the_pjx_python_shape_has_no_python_beyond_its_shims_and_no_stubs():
+    root = SHAPES["P"]
+    modules = sorted(p.name for p in root.rglob("*.py") if p.name != "__init__.py")
+    assert modules == ["todo_name_fields.py"]
+    assert list(root.rglob("*.pyi")) == []
+    assert "import pyjinhx" in (root / "__init__.py").read_text(encoding="utf-8")
+
+
+def test_a_pjx_class_has_the_document_it_lives_in():
+    classes = shape_classes("P")
+    for name, cls in classes.items():
+        descriptor = cls.__pjx_descriptor__
+        assert descriptor.inline_class is None, name
+        assert descriptor.template_path.suffix == ".pjx", name
+    assert classes["TaskNameField"].__module__.endswith("todo_name_fields")
+    assert classes["TaskNameField"].__pjx_descriptor__.template_path == (
+        SHAPES["P"] / "ui/base_primitives/name_field/name_field.pjx"
+    )
+
+
+MODULE_PREFIX = "tests.fixtures.fewer_files.pjx_python"
+
+REGISTER = """
+import sys
+import pyjinhx
+from pyjinhx import discovery
+
+assert not [m for m in sys.modules if m.startswith("tests.fixtures")]
+pyjinhx.setup(components_root=sys.argv[1])
+print(sorted(discovery._registry.mapping))
+"""
+
+SHAPE_TAGS = {
+    "badge",
+    "button",
+    "card",
+    "empty_state",
+    "money",
+    "name_field",
+    "project_name_field",
+    "status_dot",
+    "task_name_field",
+    "todo_count",
+    "todo_list",
+    "todo_page",
+    "todo_row",
+    "toolbar",
+    "team_name_field",
+    "owner_name_field",
+    "list_name_field",
+    "tag_name_field",
+    "label_name_field",
+}
+
+
+def test_setup_registers_every_pjx_python_component_from_clean_modules():
+    result = subprocess.run(
+        [sys.executable, "-c", REGISTER, str(SHAPES["P"])],
+        capture_output=True,
+        text=True,
+        cwd=FIXTURES.parents[2],
+        check=True,
+    )
+    assert SHAPE_TAGS <= set(ast.literal_eval(result.stdout))
+
+
+def test_setup_misses_a_py_subclass_that_nothing_imports(tmp_path):
+    copy = tmp_path / "pjx_python"
+    shutil.copytree(SHAPES["P"], copy, ignore=shutil.ignore_patterns("__pycache__"))
+    for path in [*copy.rglob("*.pjx"), *copy.rglob("*.py")]:
+        text = path.read_text(encoding="utf-8")
+        path.write_text(text.replace(MODULE_PREFIX, "pjx_python"), encoding="utf-8")
+    (copy / "ui/pages/home/todos/__init__.py").write_text("")
+    script = REGISTER.replace("tests.fixtures", "pjx_python")
+    result = subprocess.run(
+        [sys.executable, "-c", script, str(copy)],
+        capture_output=True,
+        text=True,
+        cwd=tmp_path,
+        env={**os.environ, "PYTHONPATH": str(FIXTURES.parents[2])},
+        check=True,
+    )
+    registered = set(ast.literal_eval(result.stdout))
+    assert "project_name_field" in registered
+    assert "task_name_field" not in registered
+
+
+def copy_of_pjx_python(tmp_path: Path) -> Path:
+    copy = tmp_path / "pjx_python"
+    shutil.copytree(SHAPES["P"], copy, ignore=shutil.ignore_patterns("__pycache__"))
+    return copy
+
+
+def test_stubs_are_generated_checked_and_parse(tmp_path):
+    copy = copy_of_pjx_python(tmp_path)
+    assert stubgen.main([str(copy), "--check"]) == 1
+    assert stubgen.main([str(copy)]) == 0
+    assert stubgen.main([str(copy), "--check"]) == 0
+    stubs = sorted(copy.rglob("*.pyi"))
+    assert len(stubs) == 15
+    for stub in stubs:
+        ast.parse(stub.read_text(encoding="utf-8"))
+
+
+CONSUMER = """\
+from pjx_python.ui.base_primitives.name_field.name_field import NameField
+from pjx_python.ui.pages.home.todos.todo_name_fields import TaskNameField
+from pjx_python.ui.pages.home.todos.todo_page.todo_page import TodoPage
+
+label: str = TaskNameField(id="t").label
+page: TodoPage = TodoPage.build("x")
+wrong: int = NameField(id="n").label
+"""
+
+
+def test_generated_stubs_type_check_across_documents(tmp_path):
+    runner = ["uvx", "basedpyright"] if shutil.which("uvx") else None
+    if runner is None:
+        pytest.skip("uvx is not available")
+    copy = copy_of_pjx_python(tmp_path)
+    for path in [*copy.rglob("*.pjx"), *copy.rglob("*.py")]:
+        text = path.read_text(encoding="utf-8")
+        path.write_text(text.replace(MODULE_PREFIX, "pjx_python"), encoding="utf-8")
+    stubgen.main([str(copy)])
+    (tmp_path / "consumer.py").write_text(CONSUMER)
+    (tmp_path / "pyrightconfig.json").write_text(
+        json.dumps(
+            {
+                "include": ["consumer.py"],
+                "typeCheckingMode": "standard",
+                "extraPaths": [str(FIXTURES.parents[2])],
+                "reportMissingModuleSource": "none",
+            }
+        )
+    )
+    result = subprocess.run(
+        [*runner, "--outputjson", "--pythonpath", sys.executable],
+        capture_output=True,
+        text=True,
+        cwd=tmp_path,
+        check=False,
+    )
+    try:
+        report = json.loads(result.stdout)
+    except json.JSONDecodeError:
+        pytest.skip(f"basedpyright did not run: {result.stderr[-200:]}")
+    errors = [d for d in report["generalDiagnostics"] if d["severity"] == "error"]
+    assert [(e["range"]["start"]["line"], e["rule"]) for e in errors] == [
+        (6, "reportAssignmentType")
+    ]
+
+
+def test_the_manifest_lists_every_pjx_python_document_without_errors(tmp_path):
+    copy = copy_of_pjx_python(tmp_path)
+    stubgen.main([str(copy)])
+    found = manifest.describe([copy], sys_path=[tmp_path])
+    ours = {
+        c["tag"]: c["kind"]
+        for c in found["components"]
+        if str(copy) in c["document"]["path"]
+    }
+    assert set(ours.values()) == {"pjx-python"}
+    # A `.py` subclass of a document's class is a static-mode blind spot, so
+    # TaskNameField is not listed; ProjectNameField, in the block, is.
+    assert set(ours) - {"BrokenNote", "StrayLookup"} == {
+        "Badge",
+        "Button",
+        "Card",
+        "EmptyState",
+        "Money",
+        "ProjectNameField",
+        "TeamNameField",
+        "OwnerNameField",
+        "ListNameField",
+        "TagNameField",
+        "LabelNameField",
+        "AppReactive",
+        "NameField",
+        "StatusDot",
+        "TodoCount",
+        "TodoList",
+        "TodoPage",
+        "TodoRow",
+        "Toolbar",
+    }
+    assert found["diagnostics"] == []
+
+
+def test_the_manifest_command_runs_over_the_package():
+    result = subprocess.run(
+        [sys.executable, "-m", "pyjinhx.manifest", str(SHAPES["P"])],
+        capture_output=True,
+        text=True,
+        cwd=FIXTURES.parents[2],
+        check=True,
+    )
+    errors = [
+        d for d in json.loads(result.stdout)["diagnostics"] if d["severity"] == "error"
+    ]
+    assert errors == []

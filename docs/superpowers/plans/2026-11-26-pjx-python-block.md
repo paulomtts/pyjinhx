@@ -483,6 +483,12 @@ Content:
   blocks; `python -m pkg.card` runs through runpy without the stem-class
   check; a `pkg/card/` directory shadows `pkg/card.pjx` (setup refuses it);
   one `.pjx` imported under a second module name is refused.
+- Subclasses (from the Task 10 review): `setup()` imports only documents that
+  hold a `{#python` block. A plain `.py` subclass of a `.pjx` document's class
+  (`class TaskNameField(NameField)` in `todo_name_fields.py`) is registered
+  only if something imports it: re-export it from the package's
+  `__init__.py`, or import it where the app starts. The parity fixture does
+  the former and a test pins the miss without it.
 - Discovery notes (from the Task 4 review): a column-0 `{#python` line makes a
   file a document wherever it sits, including an example in a `<pre>`; indent
   the example or write it inside `{% raw %}`. An indented `{#python` stays a

@@ -69,6 +69,7 @@ from pyjinhx.sfc import (
     opener_line,
     pascal_to_snake,
     python_block,
+    source_segment,
     template_value,
 )
 from pyjinhx.stubgen import HANDWRITTEN, MISSING, ORPHANED, STALE, sync, walk
@@ -248,11 +249,11 @@ def _prop(
     ):
         required, written = True, None
     else:
-        required, written = False, ast.get_source_segment(text, default)
+        required, written = False, source_segment(text, default)
     names = _names_in(annotation) if annotation is not None else set()
     return {
         "name": name,
-        "annotation": ast.get_source_segment(text, annotation) if annotation else None,
+        "annotation": source_segment(text, annotation) if annotation else None,
         "required": required,
         "default": written,
         "literal_values": _literal_values(annotation),
@@ -354,7 +355,7 @@ def _class_info(
         "qualname": node.name,
         "path": path.as_posix(),
         "range": _name_range(node, lines),
-        "bases": [ast.get_source_segment(text, base) for base in node.bases],
+        "bases": [source_segment(text, base) for base in node.bases],
         "stub": None,
     }
 
@@ -466,7 +467,7 @@ def _template_span(text: str, lines: list[str], node: ast.expr) -> dict[str, Any
     """Where the contents of the string literal ``node`` start and end,
     between its quotes."""
     assert node.end_lineno is not None and node.end_col_offset is not None
-    literal = ast.get_source_segment(text, node) or ""
+    literal = source_segment(text, node)
     prefix = len(literal) - len(literal.lstrip("rRuU"))
     quote = 3 if literal[prefix : prefix + 3] in ('"""', "'''") else 1
     start = _col(lines, node.lineno, node.col_offset) + prefix + quote
@@ -706,9 +707,10 @@ def _py_components(project: _Project, path: Path) -> list[dict[str, Any]]:
     return found
 
 
-def _python_component(project: _Project, document: _Document) -> dict[str, Any]:
-    """The component a ``.pjx`` document with a ``{#python`` block declares,
-    and every reason pyjinhx would refuse it."""
+def _python_components(project: _Project, document: _Document) -> list[dict[str, Any]]:
+    """The components a ``.pjx`` document with a ``{#python`` block declares,
+    and every reason pyjinhx would refuse it: the class named for the file, then
+    any class in the block that subclasses it and so shares its markup."""
     path, source, blocks = document
     block = python_block(source, str(path))
     assert block is not None
@@ -750,6 +752,7 @@ def _python_component(project: _Project, document: _Document) -> dict[str, Any]:
             "imports that and never reaches the block",
         )
     class_info = props = members = chosen = None
+    inheriting: list[ast.ClassDef] = []
     tag = _pascal(path.stem)
     try:
         tree = ast.parse(text, str(path))
@@ -804,17 +807,41 @@ def _python_component(project: _Project, document: _Document) -> dict[str, Any]:
                 class_info["stub"] = stub.as_posix()
             props = _class_props(chosen, text, lines)
             members = _members(chosen, lines)
-    return _component(
-        tag,
-        "pjx-python",
-        {"path": path.as_posix(), "markup_lines": markup},
-        blocks,
-        _assets(path.parent, path.stem),
-        class_info,
-        props,
-        members,
-        chosen,
-    )
+            listed = {chosen.name}
+            for node in classes:
+                if any(_tail(base) in listed for base in node.bases):
+                    listed.add(node.name)
+                    inheriting.append(node)
+    assets = _assets(path.parent, path.stem)
+    document_info = {"path": path.as_posix(), "markup_lines": markup}
+    found = [
+        _component(
+            node.name,
+            "pjx-python",
+            document_info,
+            blocks,
+            assets,
+            _class_info(node, text, lines, path, project.module(path)),
+            _class_props(node, text, lines),
+            _members(node, lines),
+            node,
+        )
+        for node in inheriting
+    ]
+    return [
+        _component(
+            tag,
+            "pjx-python",
+            document_info,
+            blocks,
+            assets,
+            class_info,
+            props,
+            members,
+            chosen,
+        ),
+        *found,
+    ]
 
 
 def _unreadable_python_component(
@@ -909,7 +936,7 @@ def _build(
         if document.path in project.claimed:
             return []
         if _has_python(document):
-            return [_python_component(project, document)]
+            return _python_components(project, document)
         # The same line-start gate as the runtime's: a file with no opener
         # at the start of a line is a template, whatever its comments say.
         if opener_line(document.source) is not None:

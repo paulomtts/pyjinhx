@@ -1,0 +1,26 @@
+{#python
+import re
+from typing import Any
+
+from pydantic import ModelWrapValidatorHandler, model_validator
+
+from pyjinhx import ReactiveComponent
+
+_WORD_START = re.compile(r"(?<!^)(?=[A-Z])")
+
+
+class AppReactive(ReactiveComponent):
+    """A reactive component whose id defaults to its kebab-cased class name.
+
+    The project's own base, defined in a document so that other documents
+    import it across files, as they would import any module.
+    """
+
+    @model_validator(mode="wrap")
+    @classmethod
+    def _id_from_type(cls, data: Any, handler: ModelWrapValidatorHandler[Any]) -> Any:
+        if isinstance(data, dict) and not data.get("id"):
+            data = {**data, "id": _WORD_START.sub("-", cls.__name__).lower()}
+        return handler(data)
+#}
+<div id="{{ id }}"></div>

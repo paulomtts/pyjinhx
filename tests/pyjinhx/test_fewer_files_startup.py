@@ -63,6 +63,17 @@ def write_template_only(root: Path) -> None:
         )
 
 
+def write_pjx_python(root: Path) -> None:
+    for n in range(COUNT):
+        folder = root / f"widget{n}"
+        folder.mkdir(parents=True)
+        (folder / f"widget{n}.pjx").write_text(
+            "{#python\nfrom pyjinhx import BaseComponent\n\n\n"
+            + class_source(n, inline=False)
+            + f"#}}\n{TEMPLATE.format(n=n)}\n{{#css\n{CSS.format(n=n)}\n#}}\n"
+        )
+
+
 def single_file_writer(per_module: int) -> Callable[[Path], None]:
     def write(root: Path) -> None:
         root.mkdir(parents=True)
@@ -81,6 +92,7 @@ def single_file_writer(per_module: int) -> Callable[[Path], None]:
 LAYOUTS: dict[str, Callable[[Path], None]] = {
     "S": write_split,
     "T": write_template_only,
+    "P": write_pjx_python,
     "C, 1 per module": single_file_writer(1),
     "C, 10 per module": single_file_writer(10),
     "C, 300 in one module": single_file_writer(COUNT),
@@ -104,7 +116,8 @@ def start(root: Path, package: str) -> float:
     began = time.perf_counter()
     importlib.invalidate_caches()
     classes: list[type] = []
-    for path in sorted(root.rglob("*.py")):
+    documents = [p for p in root.rglob("*.pjx") if "{#python" in p.read_text()]
+    for path in sorted([*root.rglob("*.py"), *documents]):
         parts = path.relative_to(root).with_suffix("").parts
         module = importlib.import_module(".".join([package, *parts]))
         classes.extend(
