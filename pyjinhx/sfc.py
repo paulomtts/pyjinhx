@@ -72,6 +72,8 @@ def _openers(source: str) -> Iterator[re.Match[str]]:
     """The lexemes of ``source`` that open a ``{#python`` block: the keyword
     touching ``{#``, then only blanks to the line end, and the ``{#`` in column
     0. One that is never closed counts, so that `python_block` can report it."""
+    if "{#python" not in source:
+        return
     for match in _LEXEME_RE.finditer(source):
         if (
             (match.group("comment") is not None or match.group("unclosed"))

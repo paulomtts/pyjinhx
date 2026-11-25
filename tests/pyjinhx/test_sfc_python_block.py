@@ -214,3 +214,14 @@ def test_many_unclosed_openers_are_scanned_once(unit):
 )
 def test_an_opener_is_the_whole_line_outside_raw_and_tags(source, line):
     assert sfc.opener_line(source) == line
+
+
+def test_a_document_without_the_keyword_is_not_lexed(monkeypatch):
+    class Unreadable:
+        def finditer(self, source):
+            raise AssertionError("lexed")
+
+    monkeypatch.setattr(sfc, "_LEXEME_RE", Unreadable())
+
+    assert sfc.opener_line("<p>{{ x }}</p>") is None
+    assert sfc.python_block("<p>{# python #}</p>", "card.pjx") is None
