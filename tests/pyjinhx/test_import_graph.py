@@ -714,6 +714,9 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
     # stdlib-only so the loader in session.py can call it from the bottom of
     # the graph.
     "sfc": frozenset(),
+    # stubgen parses `.pjx` blocks with sfc and nothing else; it must never
+    # import the application whose components it describes.
+    "stubgen": frozenset({"pyjinhx.sfc"}),
     # The on_rendered hook's signature names BaseComponent and RenderedLevel, but
     # both imports are TYPE_CHECKING-only. At runtime session also imports
     # AssetMode from assets, a real edge alongside markers.
