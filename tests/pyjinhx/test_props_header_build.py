@@ -353,3 +353,13 @@ def test_a_dotted_name_that_does_not_import_names_the_prop_and_the_path(
     assert message.startswith("<Card> (ui/card.pjx):")
     assert repr(fields[0][0]) in message
     assert isinstance(excinfo.value.__cause__, cause)
+
+
+def test_a_dotted_factory_that_is_not_callable_is_rejected_at_build():
+    """Caught here rather than as a TypeError on the first render."""
+    fields = parse_props_header(
+        "{#def size: int = tests.pyjinhx.header_names.PAGE_SIZE() #}"
+    )
+    assert fields is not None
+    with pytest.raises(ValueError, match="'size'.*not callable"):
+        build_component_class(fields, "Card")

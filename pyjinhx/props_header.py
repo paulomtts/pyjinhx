@@ -270,7 +270,15 @@ def _resolve_dotted(value: Any, owner: str) -> Any:
         return _resolve_annotation(value.node, value.field_name, owner)
     if isinstance(value, _DottedDefault):
         target = _import(value.path, value.field_name, owner)
-        return Field(default_factory=target) if value.call else target
+        if not value.call:
+            return target
+        if not callable(target):
+            # ValueError like every other header mistake, so callers catch one type.
+            raise ValueError(  # noqa: TRY004
+                f"{owner}: {{#def#}} default for {value.field_name!r} calls "
+                f"{value.path!r}, which is not callable"
+            )
+        return Field(default_factory=target)
     return value
 
 
