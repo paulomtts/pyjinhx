@@ -34,13 +34,12 @@ from jinja2 import TemplateSyntaxError
 from pydantic import Field, create_model
 
 from pyjinhx.sfc import (
-    LEGACY_HEADER_RE,
     LITERAL_ERRORS,
     dotted_default,
     dotted_name,
     header_arguments,
 )
-from pyjinhx.template_blocks import find_block
+from pyjinhx.template_blocks import find_header
 
 if TYPE_CHECKING:
     from pyjinhx._component import _OpenComponent
@@ -190,16 +189,11 @@ def parse_props_header(
     _TYPES["ExtraAttrs"] = ExtraAttrs
     _TYPES["AttrValue"] = AttrValue
 
-    block = find_block(source, "def", filename)
-    if block is not None:
-        signature = block.body
-    else:
-        match = LEGACY_HEADER_RE.match(source)
-        if match is None:
-            return None
-        signature = match.group("sig")
+    header = find_header(source, filename)
+    if header is None:
+        return None
     fields: list[tuple[str, Any, Any]] = []
-    for arg, default in header_arguments(signature):
+    for arg, default in header_arguments(header.signature):
         name = arg.arg
         if arg.annotation is not None and _names_an_import_path(arg.annotation):
             annotation = _DottedType(arg.annotation, name)
@@ -303,13 +297,8 @@ def props_header_line(source: str) -> int | None:
     Finds the same header `parse_props_header` does, without parsing it, so a
     malformed one still has a line.
     """
-    block = find_block(source, "def", "<template>")
-    if block is not None:
-        return block.line
-    match = LEGACY_HEADER_RE.match(source)
-    if match is None:
-        return None
-    return source.count("\n", 0, match.start("sig")) + 1
+    header = find_header(source, "<template>")
+    return None if header is None else header.line
 
 
 _STALE_DEF_HEADER_WARNING = (

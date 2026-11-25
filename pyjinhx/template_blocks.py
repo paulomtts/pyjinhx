@@ -25,6 +25,7 @@ from jinja2 import TemplateSyntaxError
 
 from pyjinhx.sfc import (
     BLOCK_KEYWORDS,
+    LEGACY_HEADER_RE,
     SECOND_BLOCK,
     STRAY_COMMENT_CLOSE,
     BlockSyntaxError,
@@ -100,6 +101,31 @@ def find_block(source: str, keyword: str, filename: str) -> Block | None:
     if found is None or not found.body:
         return None
     return found
+
+
+class Header(NamedTuple):
+    """A ``{#def#}`` header: its signature text, where that text starts in the
+    document, and the 1-based line its ``{#`` opens on."""
+
+    signature: str
+    offset: int
+    line: int
+
+
+def find_header(source: str, filename: str) -> Header | None:
+    """The ``{#def#}`` header of ``source``, in either spelling, or None.
+
+    Raises ``TemplateSyntaxError`` when ``source`` holds two headers.
+    """
+    block = find_block(source, "def", filename)
+    if block is not None:
+        line_start = len(source) - len(source.split("\n", block.line - 1)[-1])
+        return Header(block.body, source.index(block.body, line_start), block.line)
+    legacy = LEGACY_HEADER_RE.match(source)
+    if legacy is None:
+        return None
+    offset = legacy.start("sig")
+    return Header(legacy.group("sig"), offset, source.count("\n", 0, offset) + 1)
 
 
 # The empty comment an inline template opens with to pad its line numbers

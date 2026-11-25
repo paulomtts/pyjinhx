@@ -23,6 +23,7 @@ from pyjinhx.template_blocks import (
     BlockTemplateSyntaxError,
     InlineAsset,
     find_block,
+    find_header,
     hide_block_lines,
     inline_assets,
 )
@@ -517,3 +518,23 @@ def test_the_error_on_the_lowest_line_is_the_one_raised():
         inline_assets(Path("card.pjx"), source)
 
     assert raised.value.lineno == 2
+
+
+def test_find_header_gives_the_signature_where_it_starts_and_the_opener_line():
+    source = "<p></p>\n{#def\n  a: int = 1 #}\n<b></b>"
+    header = find_header(source, "x")
+    assert header is not None
+    assert header.signature == "a: int = 1"
+    assert source[header.offset :].startswith("a: int = 1")
+    assert header.line == 2
+
+
+def test_find_header_reads_the_legacy_spaced_header_first_in_the_document():
+    header = find_header("{# def a: int #}\n<b></b>", "x")
+    assert header is not None
+    assert (header.signature, header.offset, header.line) == ("a: int", 7, 1)
+    assert find_header("<b></b>\n{# def a: int #}", "x") is None
+
+
+def test_find_header_is_none_without_a_header():
+    assert find_header("<b>{# def #}</b>", "x") is None

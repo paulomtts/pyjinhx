@@ -55,7 +55,6 @@ from typing import Any, NamedTuple
 from pyjinhx.sfc import (
     BLOCK_KEYWORDS,
     HEADER_PREFIX,
-    LEGACY_HEADER_RE,
     LITERAL_ERRORS,
     BlockSyntaxError,
     HeaderSignatureError,
@@ -381,21 +380,15 @@ class _Header(NamedTuple):
 
 def _header(source: str) -> _Header | None:
     """The ``{#def#}`` header of ``source``, in either spelling."""
-    from pyjinhx.template_blocks import BlockTemplateSyntaxError, find_block
+    from pyjinhx.template_blocks import BlockTemplateSyntaxError, find_header
 
     try:
-        block = find_block(source, "def", "")
+        found = find_header(source, "")
     except BlockTemplateSyntaxError:
         return None
-    if block is not None:
-        line_start = len(source) - len(source.split("\n", block.line - 1)[-1])
-        offset = source.index(block.body, line_start)
-        signature = block.body
-    else:
-        legacy = LEGACY_HEADER_RE.match(source)
-        if legacy is None:
-            return None
-        offset, signature = legacy.start("sig"), legacy.group("sig")
+    if found is None:
+        return None
+    signature, offset, _ = found
     end = source.find("#}", offset + len(signature)) + 2
     return _Header(signature, offset, source.rfind("{#", 0, offset), end)
 

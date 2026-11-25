@@ -37,7 +37,7 @@ from pyjinhx.sfc import (
     python_block,
     template_value,
 )
-from pyjinhx.template_blocks import find_block
+from pyjinhx.template_blocks import find_block, find_header
 
 _SKIPPED_DIRS = {"__pycache__", "node_modules"}
 
@@ -118,6 +118,13 @@ def has_own_template(module: Module, node: ast.ClassDef) -> bool:
 def has_block(text: str, kind: str, path: Path) -> bool:
     try:
         return find_block(text, kind, str(path)) is not None
+    except TemplateSyntaxError:
+        return True
+
+
+def has_header(text: str, path: Path) -> bool:
+    try:
+        return find_header(text, str(path)) is not None
     except TemplateSyntaxError:
         return True
 
@@ -585,7 +592,7 @@ def fold_declass(paths: list[Path], roots: list[Path] | None = None) -> Plan:
                 if assigns_template(node):
                     raise ValueError(f"{node.name} assigns its own `template`")
                 text = pjx.read_text(encoding="utf-8")
-                if has_block(text, "def", pjx) or re.match(r"\s*\{#\s*def\s", text):
+                if has_header(text, pjx):
                     raise ValueError(f"{pjx.name} already has a {{#def#}} header")
                 props = class_props(node, import_paths(module.tree))
                 if reason := only_the_class(module, node):
@@ -673,7 +680,7 @@ def pyblock_document(module: Module, pjx: Path) -> str:
     text = read_pjx(pjx)
     if opener_line(text) is not None:
         raise ValueError(already_has_block(module, pjx, text))
-    if has_block(text, "def", pjx) or re.match(r"\s*\{#\s*def\s", text):
+    if has_header(text, pjx):
         raise ValueError(f"{pjx.name} already has a {{#def#}} header")
     if not has_markup(text):
         raise ValueError(f"{pjx.name} has no markup, which a document needs")
