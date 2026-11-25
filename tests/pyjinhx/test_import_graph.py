@@ -706,6 +706,10 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
         }
     ),
     "segments": frozenset(),
+    # sfc.py reads an inline template out of module source with ast alone;
+    # stdlib-only so the loader in session.py can call it from the bottom of
+    # the graph.
+    "sfc": frozenset(),
     # The on_rendered hook's signature names BaseComponent and RenderedLevel, but
     # both imports are TYPE_CHECKING-only. At runtime session also imports
     # AssetMode from assets, a real edge alongside markers.
@@ -721,6 +725,7 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
             "pyjinhx.segments",
             "pyjinhx.assets",
             "pyjinhx.config",
+            "pyjinhx.sfc",
         }
     ),
     # pjx_table family (#526): each component module imports only the core
