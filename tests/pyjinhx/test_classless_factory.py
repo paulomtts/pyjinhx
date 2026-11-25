@@ -460,3 +460,23 @@ def test_a_header_declaring_id_builds_a_class_that_requires_it(tmp_path):
     assert cls(id="x").id == "x"  # pyright: ignore[reportCallIssue]
     with pytest.raises(ValueError, match="id is required"):
         cls()
+
+
+def test_a_headed_orphan_resolves_its_dotted_names(tmp_path):
+    write_template(
+        tmp_path, "note", "{#def size: int = tests.pyjinhx.header_names.PAGE_SIZE #}"
+    )
+    discovery.build_registry(tmp_path, [])
+
+    cls = component_for_tag("Note")
+
+    assert cls is not None
+    assert cls.model_fields["size"].default == 25
+
+
+def test_an_orphan_naming_a_missing_import_names_its_file(tmp_path):
+    path = write_template(tmp_path, "note", "{#def tone: no_such_pkg.Tone #}")
+    discovery.build_registry(tmp_path, [])
+
+    with pytest.raises(ValueError, match=re.escape(str(path))):
+        component_for_tag("Note")
