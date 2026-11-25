@@ -70,6 +70,20 @@ def strip_to_text(source: str) -> str:
     return _LEXEME_RE.sub(lambda m: "\n" * m.group().count("\n"), source)
 
 
+def has_markup(source: str) -> bool:
+    """Whether ``source`` has anything but comments and whitespace, so that a
+    document made only of blocks is told apart from one that renders."""
+    return bool("".join(_outside_comments(source)).strip())
+
+
+def _outside_comments(source: str) -> Iterator[str]:
+    position = 0
+    for match in comments(source):
+        yield source[position : match.start()]
+        position = match.end()
+    yield source[position:]
+
+
 # Stable names for the ways a block is malformed, shared with the block
 # grammar's conformance corpus and the editor tooling that reads it.
 PYTHON_BLOCK_EARLY_CLOSE = "python-block-early-close"

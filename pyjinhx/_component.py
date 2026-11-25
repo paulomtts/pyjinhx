@@ -32,8 +32,8 @@ from pydantic import (
 from pydantic.fields import FieldInfo
 
 from pyjinhx.descriptor import ClassDescriptor
-from pyjinhx.sfc import read_document
-from pyjinhx.template_blocks import inline_assets
+from pyjinhx.sfc import has_markup, python_block, read_document
+from pyjinhx.template_blocks import find_block, inline_assets
 
 if TYPE_CHECKING:
     # Type-only: the runtime import lives inside render() to avoid the cycle
@@ -476,6 +476,54 @@ def _resolve_provenance(cls: type) -> Mapping[str, type]:
     return owners
 
 
+def _class_line(cls: type) -> int:
+    """The line of ``cls``'s ``class`` statement in its file."""
+    return getattr(cls, "__firstlineno__", 1)
+
+
+def _bind_block_document(
+    cls: type, template_path: Path, owner: type | None, source: str
+) -> type | None:
+    """The class the ``{#python`` block document at ``template_path`` belongs
+    to, or ``owner`` unchanged when ``source`` holds no block.
+
+    The walk hands over an unprobed candidate without naming an owner, so the
+    last ancestor stands in: it is the class the document is named for.
+
+    Raises:
+        TypeError: The document is not the file its class lives in, or it
+            also has a ``{#def#}`` header, or it has no markup.
+    """
+    from pyjinhx.props_header import template_has_props_header
+
+    block = python_block(source, str(template_path))
+    if block is None:
+        return owner
+    owner = owner or _resolution_ancestors(cls)[-1]
+    owner_file = _defining_module_file(owner)
+    if owner_file.resolve() != template_path.resolve():
+        raise TypeError(
+            f"{template_path}:{block.open_line}: this document holds a "
+            f"{{#python block, and {owner.__name__} is defined in {owner_file}. "
+            f"A component's class is in one of them; remove one."
+        )
+    header = find_block(source, "def", str(template_path))
+    legacy = template_has_props_header(source)
+    if header or legacy:
+        line = header.line if header else source.count("\n", 0, source.index("{#")) + 1
+        raise TypeError(
+            f"{template_path}:{line}: a document with a {{#python block cannot "
+            f"also have a {{#def#}} header. The class declares the props; "
+            f"remove the header."
+        )
+    if not has_markup(source):
+        raise TypeError(
+            f"{template_path}:{block.open_line}: this document has a {{#python "
+            f"block and no markup. Write the template after the block."
+        )
+    return owner
+
+
 def _resolve_class_descriptor(cls: type[BaseModel]) -> ClassDescriptor:
     """Build the ClassDescriptor for ``cls`` by invoking all resolver helpers.
 
@@ -489,6 +537,13 @@ def _resolve_class_descriptor(cls: type[BaseModel]) -> ClassDescriptor:
         if template_owner is not None and _has_inline_template(template_owner)
         else None
     )
+    if inline_class is not None and template_path.suffix == ".pjx":
+        assert template_owner is not None
+        raise TypeError(
+            f"{template_path}:{_class_line(template_owner)}: "
+            f"{template_owner.__name__} assigns `template`, but a class in a "
+            f".pjx document renders that document. Remove the assignment."
+        )
 
     # Imported here, not at module scope: props_header imports _OpenComponent
     # from this module, so a top-level import would close the cycle.
@@ -500,6 +555,11 @@ def _resolve_class_descriptor(cls: type[BaseModel]) -> ClassDescriptor:
         # The probe may hand over a path nobody has proven exists; loading
         # the template reports that itself.
         source = None
+
+    if source is not None and inline_class is None and "{#python" in source:
+        template_owner = _bind_block_document(
+            cls, template_path, template_owner, source
+        )
 
     # A classless class was *built from* its header, so its header is not
     # stale — only hand-written classes can be carrying a leftover one.
