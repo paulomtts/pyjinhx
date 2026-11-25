@@ -6,6 +6,18 @@ function body replaced by ``...``, and every class, def and field keeps the
 line it has in the ``.pjx`` file.
 
 Import-pure — stdlib and `pyjinhx.sfc` only. The block is parsed, never run.
+
+Limits of a stub worth knowing:
+
+- Annotate return types in blocks: an unannotated ``def`` has no body in the
+  stub to infer from, so its return type is ``Unknown``.
+- Stricter Pyright modes flag the stub's statements and unused imports. Keep
+  the stubs resolvable but unchecked with ``ignore`` (not ``exclude``), e.g.
+  ``ignore = ["app/components/**/*.pyi"]`` under ``[tool.pyright]``.
+- A stub does not re-export a block's imports: import a name from the module
+  that defines it, not from the ``.pjx``'s stub.
+- ``__init__`` bodies are kept as written, since their ``self.x = ...``
+  statements declare the instance attributes.
 """
 
 import argparse
