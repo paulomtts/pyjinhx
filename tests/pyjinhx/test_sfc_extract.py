@@ -47,14 +47,14 @@ def test_a_template_starting_on_the_opening_quote_line_is_aligned_too():
 
 
 def test_the_class_is_picked_by_name_when_a_module_holds_several():
-    source = textwrap.dedent('''\
+    source = textwrap.dedent("""\
         class First:
             template = "<i>first</i>"
 
 
         class Second:
             template = "<i>second</i>"
-        ''')
+        """)
     assert render(extract_template(source, "Second")) == "<i>second</i>"
 
 
@@ -72,3 +72,39 @@ def test_a_computed_template_is_an_error_pointing_at_its_line():
     source = 'class Tag:\n    name = "b"\n    template = f"<{name}/>"\n'
     with pytest.raises(ValueError, match="line 3.*plain string literal"):
         extract_template(source, "Tag")
+
+
+def test_errors_name_the_module_file():
+    with pytest.raises(ValueError, match=r"^/app/badge\.py, line 2: "):
+        extract_template('class Tag:\n    template = f"{1}"\n', "Tag", "/app/badge.py")
+
+
+def test_a_module_that_does_not_parse_reports_its_file():
+    with pytest.raises(SyntaxError) as caught:
+        extract_template("class Tag(:\n", "Tag", "/app/badge.py")
+    assert caught.value.filename == "/app/badge.py"
+
+
+def test_two_classes_with_one_name_are_ambiguous():
+    source = textwrap.dedent("""\
+        def first():
+            class Tag:
+                template = "<i>1</i>"
+
+
+        def second():
+            class Tag:
+                template = "<i>2</i>"
+        """)
+    with pytest.raises(ValueError, match="lines 3, 8.*rename one"):
+        extract_template(source, "Tag")
+
+
+def test_an_annotated_class_variable_is_read_too():
+    source = 'class Tag:\n    template: ClassVar[str] = "<b/>"\n'
+    assert render(extract_template(source, "Tag")) == "<b/>"
+
+
+def test_the_last_assignment_wins_as_it_does_in_python():
+    source = 'class Tag:\n    template = "<i/>"\n    template = "<b/>"\n'
+    assert render(extract_template(source, "Tag")) == "<b/>"
