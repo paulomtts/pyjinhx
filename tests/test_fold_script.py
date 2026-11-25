@@ -4,6 +4,7 @@ Every fold is proved the way a user would trust it: render the component from
 the files before, fold, render again from the files after, and compare.
 """
 
+import ast
 import importlib.util
 import re
 import sys
@@ -211,3 +212,147 @@ def test_assets_still_processes_the_rest_after_a_refusal(tmp_path, capsys):
     assert code == 1
     assert not (tmp_path / "chip.js").exists()
     assert "{#js\ngo();\n#}" in (tmp_path / "chip.pjx").read_text()
+
+
+# --- template ---------------------------------------------------------------
+
+
+def test_template_folds_the_pjx_into_the_class_as_its_last_statement(
+    tmp_path, monkeypatch, capsys
+):
+    module = make_card(tmp_path)
+    before = render_class(module, "Card", monkeypatch, title="hi")
+
+    code, out = run("template", tmp_path, "--write", capsys=capsys)
+
+    folded = module.read_text()
+    assert code == 0
+    assert not (tmp_path / "card.pjx").exists()
+    assert folded.endswith(
+        '    title: str\n\n    template = r"""\n'
+        '    <div class="card">{{ title }}</div>\n    """\n'
+    )
+    ast.parse(folded)
+    assert render_class(module, "Card", monkeypatch, title="hi") == before
+    assert "1 folded" in out
+
+
+def test_template_keeps_nested_markup_indentation(tmp_path, monkeypatch, capsys):
+    module = make_card(
+        tmp_path, '<div class="card">\n  <h1>{{ title }}</h1>\n\n  <p>x</p>\n</div>\n'
+    )
+    before = render_class(module, "Card", monkeypatch, title="hi")
+
+    run("template", tmp_path, "--write", capsys=capsys)
+
+    assert render_class(module, "Card", monkeypatch, title="hi") == before
+
+
+def test_template_replaces_a_pass_body(tmp_path, monkeypatch, capsys):
+    module = write(
+        tmp_path / "badge.py",
+        """
+        from pyjinhx import BaseComponent
+
+
+        class Badge(BaseComponent):
+            pass
+        """,
+    )
+    write(tmp_path / "badge.pjx", "<b>badge</b>\n")
+    before = render_class(module, "Badge", monkeypatch)
+
+    run("template", tmp_path, "--write", capsys=capsys)
+
+    assert "pass" not in module.read_text()
+    assert render_class(module, "Badge", monkeypatch) == before
+
+
+def test_template_falls_back_to_single_quotes_when_the_content_has_triple_double(
+    tmp_path, monkeypatch, capsys
+):
+    module = make_card(tmp_path, '<div title=\'"""\'>{{ title }}</div>\n')
+    before = render_class(module, "Card", monkeypatch, title="hi")
+
+    code, _ = run("template", tmp_path, "--write", capsys=capsys)
+
+    assert code == 0
+    assert "r'''" in module.read_text()
+    assert render_class(module, "Card", monkeypatch, title="hi") == before
+
+
+@pytest.mark.parametrize(
+    ("content", "reason"),
+    [
+        ("{# \"\"\" ''' #}<i></i>\n", "both"),
+        ("<i></i>{# a \\\n", "backslash"),
+        ("  <i></i>\n  <b></b>\n", "indentation"),
+    ],
+)
+def test_template_refuses_content_a_raw_string_cannot_hold(
+    tmp_path, capsys, content, reason
+):
+    module = make_card(tmp_path)
+    (tmp_path / "card.pjx").write_text(content)  # unlike write(), keeps indentation
+    original = module.read_text()
+
+    code, out = run("template", tmp_path, "--write", capsys=capsys)
+
+    assert code == 1
+    assert reason in out
+    assert module.read_text() == original
+    assert (tmp_path / "card.pjx").exists()
+
+
+def test_template_refuses_a_second_class_of_the_same_name(tmp_path, capsys):
+    module = make_card(tmp_path)
+    module.write_text(
+        module.read_text()
+        + "\n\nif True:\n    class Card(BaseComponent):\n        title: str\n"
+    )
+
+    code, out = run("template", tmp_path, "--write", capsys=capsys)
+
+    assert code == 1
+    assert "more than one class named Card" in out
+
+
+def test_template_refuses_a_class_that_already_has_a_template(tmp_path, capsys):
+    module = make_card(tmp_path)
+    module.write_text(module.read_text() + '\n    template = "<i></i>"\n')
+
+    code, out = run("template", tmp_path, "--write", capsys=capsys)
+
+    assert code == 1
+    assert "already assigns" in out
+    assert (tmp_path / "card.pjx").exists()
+
+
+def test_template_is_idempotent_and_leaves_subclasses_rendering(
+    tmp_path, monkeypatch, capsys
+):
+    module = make_card(tmp_path)
+    module.write_text(module.read_text() + "\n\nclass LoudCard(Card):\n    pass\n")
+    before = render_class(module, "LoudCard", monkeypatch, title="hi")
+    run("template", tmp_path, "--write", capsys=capsys)
+    folded = module.read_text()
+
+    code, out = run("template", tmp_path, "--write", capsys=capsys)
+
+    assert code == 0
+    assert module.read_text() == folded
+    assert "0 folded" in out
+    assert render_class(module, "LoudCard", monkeypatch, title="hi") == before
+
+
+def test_template_dry_run_prints_a_diff_and_writes_nothing(tmp_path, capsys):
+    module = make_card(tmp_path)
+
+    code, out = run("template", tmp_path, capsys=capsys)
+
+    assert code == 0
+    assert module.read_text() == textwrap.dedent(CARD_PY).lstrip("\n")
+    assert (tmp_path / "card.pjx").exists()
+    assert '+    template = r"""' in out
+    assert "+++ /dev/null" in out
+    assert "dry run" in out

@@ -17,13 +17,16 @@ rest. Running it again finds nothing left to fold.
 import argparse
 import ast
 import difflib
+import re
 import sys
+from collections import Counter
 from dataclasses import dataclass, field
 from pathlib import Path
 
 from jinja2 import TemplateSyntaxError
 
 from pyjinhx._component import _pascal_to_snake
+from pyjinhx.sfc import extract_template
 from pyjinhx.template_blocks import find_block
 
 _SKIPPED_DIRS = {"__pycache__", "node_modules"}
@@ -161,6 +164,88 @@ def fold_assets(paths: list[Path]) -> Plan:
     return plan
 
 
+# --- template ---------------------------------------------------------------
+
+
+def template_refusal(content: str) -> str | None:
+    """Why ``content`` cannot sit in a raw triple-quoted string, or None."""
+    if '"""' in content and "'''" in content:
+        return "it contains both triple-quote styles, so no raw string can hold it"
+    if content.rstrip().endswith("\\"):
+        return "it ends with a backslash, which would escape the closing quotes"
+    return None
+
+
+def template_statement(content: str, indent: str) -> str:
+    quote = "'''" if '"""' in content else '"""'
+    lines = content.strip("\n").splitlines()
+    body = [indent + line if line.strip() else "" for line in lines]
+    return "\n".join([f"{indent}template = r{quote}", *body, f"{indent}{quote}"]) + "\n"
+
+
+def with_template(module: Module, node: ast.ClassDef, content: str) -> str:
+    """``module``'s source with ``content`` added as ``node``'s last statement."""
+    lines = module.source.splitlines(keepends=True)
+    first = node.body[0]
+    indent = " " * first.col_offset
+    statement = template_statement(content, indent)
+    only = node.body[0] if len(node.body) == 1 else None
+    if isinstance(only, ast.Pass) or (
+        isinstance(only, ast.Expr)
+        and isinstance(only.value, ast.Constant)
+        and only.value.value is Ellipsis
+    ):
+        lines[only.lineno - 1 : only.end_lineno] = [statement]
+    else:
+        lines.insert(node.end_lineno or node.lineno, "\n" + statement)
+    return "".join(lines)
+
+
+def round_trips(source: str, class_name: str, content: str) -> str | None:
+    """A reason the inline template would read back differently, or None."""
+    try:
+        read = extract_template(source, class_name)
+    except (SyntaxError, ValueError) as exc:
+        return str(exc)
+    if re.sub(r"\A\{#\n*#\}", "", read) != content.strip():
+        return "the indentation would change when the template is dedented"
+    return None
+
+
+def fold_template(paths: list[Path]) -> Plan:
+    plan = Plan()
+    for module in load_modules(paths):
+        names = Counter(
+            n.name for n in ast.walk(module.tree) if isinstance(n, ast.ClassDef)
+        )
+        for node in reversed(module.classes()):
+            pjx = module.path.parent / f"{_pascal_to_snake(node.name)}.pjx"
+            if not node.bases or not pjx.is_file() or pjx in plan.files:
+                continue
+            source = plan.read(module.path)
+            reason = None
+            if names[node.name] > 1:
+                reason = f"more than one class named {node.name} in this module"
+            elif assigns_template(node):
+                reason = f"{node.name} already assigns `template`"
+            elif node.body[0].lineno == node.lineno:
+                reason = f"{node.name} has its body on the class line"
+            content = pjx.read_text(encoding="utf-8")
+            reason = reason or template_refusal(content)
+            if reason is None:
+                folded = with_template(
+                    Module(module.path, source, ast.parse(source)), node, content
+                )
+                reason = round_trips(folded, node.name, content)
+            if reason:
+                plan.refuse(pjx, reason)
+                continue
+            plan.files[module.path] = folded
+            plan.files[pjx] = None
+            plan.folded += 1
+    return plan
+
+
 # --- output -----------------------------------------------------------------
 
 
@@ -200,7 +285,7 @@ def main(argv: list[str] | None = None) -> int:
         command.add_argument("paths", nargs="+", type=Path)
         command.add_argument("--write", action="store_true", help="apply the changes")
     args = parser.parse_args(argv)
-    plan = {"assets": fold_assets}[args.command](args.paths)
+    plan = {"assets": fold_assets, "template": fold_template}[args.command](args.paths)
     return finish(args.command, plan, args.write)
 
 
