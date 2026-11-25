@@ -55,9 +55,14 @@ def _recorded(keyword: str, opened: int, closed: int) -> dict:
 
 
 @pytest.mark.parametrize("case", sorted(CORPUS.glob("*.pjx")), ids=lambda p: p.stem)
-def test_the_scanners_agree_with_the_recorded_case(case):
+def test_the_scanners_agree_with_the_recorded_case(case, request):
     expected = json.loads(case.with_suffix(".json").read_text(encoding="utf-8"))
     source = case.read_bytes().decode("utf-8-sig")
+
+    if "known_gap" in expected:
+        # Jinja's own answer is recorded; pyjinhx differs, and this fails
+        # loudly once it stops.
+        request.applymarker(pytest.mark.xfail(strict=True, reason="known_gap"))
 
     blocks, error = _scan(source, case.name)
 

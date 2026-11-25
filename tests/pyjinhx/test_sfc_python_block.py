@@ -2,6 +2,7 @@
 source it yields with every line and column left where the file has it."""
 
 import ast
+import time
 
 import pytest
 
@@ -173,3 +174,22 @@ def test_read_document_drops_a_byte_order_mark(tmp_path):
 
     assert block is not None
     assert block.open_line == 1
+
+
+def _seconds(scan, source: str) -> float:
+    started = time.perf_counter()
+    scan(source, "card.pjx")
+    return time.perf_counter() - started
+
+
+@pytest.mark.parametrize("opener", ["{{ ", "{% "])
+def test_an_unclosed_tag_full_of_string_literals_scans_in_linear_time(opener):
+    source = opener + '"a" ' * 40
+
+    assert _seconds(sfc.python_block, source) < 1
+
+
+@pytest.mark.parametrize("unit", ["{{ x\n", "{% raw %}\n", "{# x\n"])
+def test_many_unclosed_openers_are_scanned_once(unit):
+    assert _seconds(sfc.python_block, unit * 16000) < 1
+    assert _seconds(lambda s, f: sfc.strip_to_text(s), unit * 16000) < 1
