@@ -660,6 +660,30 @@ def test_declass_writes_an_object_annotation_as_any(tmp_path, capsys):
     assert (tmp_path / "card.pjx").read_text().startswith("{#def value: Any = None #}")
 
 
+def test_declass_writes_a_tuple_annotation(tmp_path, capsys):
+    write(
+        tmp_path / "card.py",
+        """
+        from pyjinhx import BaseComponent
+
+
+        class Card(BaseComponent):
+            pair: tuple[str, int]
+            sizes: tuple[int, ...] = ()
+            more: tuple[int, ...] | None = None
+        """,
+    )
+    write(tmp_path / "card.pjx", "<i></i>\n")
+
+    code, _ = run("declass", tmp_path, "--write", capsys=capsys)
+
+    assert code == 0
+    header = (tmp_path / "card.pjx").read_text()
+    assert "pair: tuple[str, int]" in header
+    assert "sizes: tuple[int, ...] = ()" in header
+    assert "more: tuple[int, ...] | None = None" in header
+
+
 def test_declass_reports_every_reference_under_the_root(tmp_path, capsys):
     components = tmp_path / "components"
     write(components / "card.py", FIELDS_PY)

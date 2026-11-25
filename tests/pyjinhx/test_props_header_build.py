@@ -270,6 +270,7 @@ def test_id_may_only_be_a_required_str(header: str):
         ("datetime.datetime", datetime.datetime),
         ("tests.pyjinhx.header_names.Tone", header_names.Tone),
         ("list[uuid.UUID]", list[uuid.UUID]),
+        ("tuple[uuid.UUID, ...]", tuple[uuid.UUID, ...]),
         ("uuid.UUID | None", uuid.UUID | None),
     ],
 )

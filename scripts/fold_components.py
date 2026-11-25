@@ -370,7 +370,7 @@ def fold_template(paths: list[Path]) -> Plan:
 
 # Names a header reads bare, without an import path.
 _HEADER_TYPES = {
-    "str", "int", "float", "bool", "list", "dict", "Any", "Slot", "Children",
+    "str", "int", "float", "bool", "list", "dict", "tuple", "Any", "Slot", "Children",
     "ExtraAttrs", "AttrValue", "Optional", "Literal",
 }  # fmt: skip
 _BARE_ORIGINS = ("pyjinhx", "typing")
@@ -432,11 +432,21 @@ def header_type(node: ast.expr, imports: dict[str, str]) -> str:
                 node.slice.elts if isinstance(node.slice, ast.Tuple) else [node.slice]
             )
             return f"Literal[{', '.join(map(ast.unparse, members))}]"
-        case ast.Subscript(value=ast.Name(id="list" | "dict" | "Optional" as head)):
+        case ast.Subscript(
+            value=ast.Name(id="list" | "dict" | "tuple" | "Optional" as head)
+        ):
             members = (
                 node.slice.elts if isinstance(node.slice, ast.Tuple) else [node.slice]
             )
-            return f"{head}[{', '.join(header_type(m, imports) for m in members)}]"
+            written = [
+                "..."
+                if head == "tuple"
+                and isinstance(m, ast.Constant)
+                and m.value is Ellipsis
+                else header_type(m, imports)
+                for m in members
+            ]
+            return f"{head}[{', '.join(written)}]"
     raise ValueError(f"annotation `{ast.unparse(node)}` is not expressible in a header")
 
 

@@ -311,6 +311,9 @@ def test_literal_members_must_be_literals():
         ("list[str]", list[str]),
         ("dict[str, int]", dict[str, int]),
         ("list[list[int]]", list[list[int]]),
+        ("tuple[str, int]", tuple[str, int]),
+        ("tuple[int, ...]", tuple[int, ...]),
+        ("tuple[str, ...] | None", tuple[str, ...] | None),
     ],
 )
 def test_generic_annotations_resolve_their_arguments(annotation: str, expected: Any):

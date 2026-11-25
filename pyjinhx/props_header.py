@@ -54,6 +54,7 @@ _TYPES: dict[str, Any] = {
     "bool": bool,
     "list": list,
     "dict": dict,
+    "tuple": tuple,
     "Any": Any,
 }
 
@@ -143,12 +144,16 @@ def _resolve_annotation(
     if isinstance(node, ast.Subscript) and isinstance(node.value, ast.Name):
         if node.value.id == "Literal":
             return _resolve_literal(node.slice, field_name)
-        if node.value.id in ("list", "dict"):
+        if node.value.id in ("list", "dict", "tuple"):
             elements = (
                 node.slice.elts if isinstance(node.slice, ast.Tuple) else [node.slice]
             )
             arguments = tuple(
-                _resolve_annotation(e, field_name, owner) for e in elements
+                # The `...` of `tuple[int, ...]` is itself the argument.
+                ...
+                if isinstance(e, ast.Constant) and e.value is Ellipsis
+                else _resolve_annotation(e, field_name, owner)
+                for e in elements
             )
             return _TYPES[node.value.id][arguments]
     return Any

@@ -289,9 +289,9 @@ gets uncomfortable.
 
 | Written | Becomes |
 |---|---|
-| `str`, `int`, `float`, `bool`, `list`, `dict`, `Any` | the builtin (`Any`: no coercion) |
+| `str`, `int`, `float`, `bool`, `list`, `dict`, `tuple`, `Any` | the builtin (`Any`: no coercion) |
 | `Literal["a", "b"]` | `typing.Literal` (members must be literals) |
-| `list[str]`, `dict[str, int]` | the real generic, arguments resolved recursively |
+| `list[str]`, `dict[str, int]`, `tuple[str, int]`, `tuple[int, ...]` | the real generic, arguments resolved recursively |
 | `str \| int`, `T \| None`, `Optional[T]` | the real union |
 | `Slot`, `Children` | pyjinhx's slot and children types |
 | `ExtraAttrs`, `AttrValue` | pyjinhx's validated attribute types |
