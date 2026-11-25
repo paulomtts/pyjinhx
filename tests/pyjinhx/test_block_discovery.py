@@ -140,11 +140,36 @@ def test_a_document_outside_sys_path_fails_setup_with_the_fix(tmp_path: Path):
     assert str(path) in str(raised.value)
 
 
-def test_an_opener_that_is_not_at_the_line_start_fails_setup(write: Write, root: Path):
-    path = write("pkg/ledgerline.pjx", "{#def #}<p></p>\n  {#python\nX = 1\n#}\n")
+def test_an_indented_opener_is_a_plain_comment(write: Write, root: Path):
+    write("pkg/ledgerline.pjx", "{#def #}<p></p>\n  {#python\nX = 1\n#}\n")
+    write("pkg/example.pjx", "{#def #}<pre>\n    {#python\n    x = 1\n    #}\n</pre>\n")
+    setup(components_root=root)
+    assert "pkg.ledgerline" not in sys.modules
+    assert "pkg.example" not in sys.modules
+
+
+def test_two_blocks_at_the_line_start_still_fail_setup(write: Write, root: Path):
+    path = write("pkg/plaque.pjx", CARD + "{#python\nX = 1\n#}\n")
     with pytest.raises(SyntaxError) as raised:
         setup(components_root=root)
-    assert (raised.value.filename, raised.value.lineno) == (str(path), 2)
+    assert raised.value.filename == str(path)
+    assert f"line 1 opens a {{#python block" in str(raised.value.msg)
+
+
+def test_a_column_zero_example_in_prose_is_a_document_and_says_why(
+    write: Write, root: Path
+):
+    path = write("pkg/guide.pjx", "<pre>\n{#python\nx = 1\n#}\n</pre>\n")
+    with pytest.raises(ImportError, match="named for 'guide'") as raised:
+        setup(components_root=root)
+    assert str(path) in str(raised.value)
+
+
+def test_a_spaced_v0_opener_is_refused_with_the_fix(write: Write, root: Path):
+    path = write("pkg/plaque.pjx", CARD.replace("{#python", "{# python", 1))
+    with pytest.raises(ImportError, match="remove the space") as raised:
+        setup(components_root=root)
+    assert str(path) in str(raised.value)
 
 
 def test_a_header_only_template_and_a_plain_one_are_untouched(write: Write, root: Path):

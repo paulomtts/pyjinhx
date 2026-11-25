@@ -36,6 +36,16 @@ _documents: dict[Path, tuple[str, type]] = {}
 _documents_lock = threading.Lock()
 
 
+def opener_line(text: str) -> int | None:
+    """The line of the first block opener at the start of a line, or ``None``.
+
+    Only a sniff, as in the finder: whether the block is well formed is for
+    `sfc.python_block` and the loader to say.
+    """
+    found = _OPENER_RE.search(text)
+    return None if found is None else text.count("\n", 0, found.start()) + 1
+
+
 def _module_file(name: str) -> Path | None:
     """The resolved file of the loaded module ``name``, if it has one."""
     file = getattr(sys.modules.get(name), "__file__", None)

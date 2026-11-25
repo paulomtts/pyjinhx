@@ -26,10 +26,10 @@ from pyjinhx._component import (
     _pascal_to_snake,
     rebuild_class_descriptor,
 )
-from pyjinhx.importer import import_document, loaded_document
+from pyjinhx.importer import import_document, loaded_document, opener_line
 from pyjinhx.props_header import build_component_class, parse_props_header
 from pyjinhx.segments import RE_PASCAL_CASE_TAG_NAME
-from pyjinhx.sfc import python_block
+from pyjinhx.sfc import BlockSyntaxError, python_block
 
 _synthetic_modules: dict[Path, str] = {}
 _synthetic_modules_lock = threading.Lock()
@@ -195,8 +195,10 @@ def register_document(
     loaded = loaded_document(path)
     if loaded is None:
         text = path.read_text(encoding="utf-8-sig") if source is None else source
-        if "{#python" not in text or python_block(text, str(path)) is None:
+        line = opener_line(text)
+        if line is None:
             return None
+        _check_block(text, path, line)
         import_document(path)
         loaded = loaded_document(path)
         if loaded is None:
@@ -205,6 +207,20 @@ def register_document(
     registered = _register_first(tag, loaded[1])  # pyright: ignore[reportArgumentType]
     discovery.forget_orphan(tag)
     return registered
+
+
+def _check_block(text: str, path: Path, line: int) -> None:
+    """Refuse a malformed block in a file that opens one at ``line``, saying why
+    the file counts as a document at all."""
+    try:
+        python_block(text, str(path))
+    except BlockSyntaxError as error:
+        raise BlockSyntaxError(
+            error.code,
+            f"{error.msg}; this file is imported as a document because line "
+            f"{line} opens a {{#python block",
+            (error.filename, error.lineno, error.offset, error.text),
+        ) from error
 
 
 def _orphan_source(template_path: Path) -> str | None:
