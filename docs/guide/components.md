@@ -447,7 +447,7 @@ block's class is known at startup like a class in a `.py` file: reactive fan-out
   `component_for_tag`, can raise `_DeadlockError`. Keep that cycle out of the blocks'
   imports.
 
-A document created while the server runs is imported the first time its tag is used.
+A document created while the server runs is imported on restart, or by `component("Name")`.
 
 ### Hot reload
 
