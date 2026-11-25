@@ -1,11 +1,13 @@
 """Tests for reading a component's inline template out of its module source."""
 
+import ast
 import textwrap
+import time
 
 import jinja2
 import pytest
 
-from pyjinhx.sfc import extract_template, read_document
+from pyjinhx.sfc import extract_template, read_document, source_segment
 
 BADGE = textwrap.dedent('''\
     from pyjinhx import BaseComponent
@@ -185,3 +187,34 @@ def test_an_edited_module_is_parsed_again():
 
     assert extract_template(edited, "Tag", filename).endswith("<i>edited</i>")
     assert extract_template(SHELF, "Tag", filename).endswith("<i>tag</i>")
+
+
+def shelf_of(count: int) -> str:
+    classes = (
+        f'class Tag{n}:\n    template = """\n    <i>{n}</i>\n    """\n'
+        for n in range(count)
+    )
+    return "".join(classes)
+
+
+def read_all(source: str, count: int, filename: str) -> float:
+    began = time.perf_counter()
+    for n in range(count):
+        extract_template(source, f"Tag{n}", filename)
+    return time.perf_counter() - began
+
+
+def test_reading_every_template_of_a_module_is_linear_in_its_classes():
+    small, large = shelf_of(100), shelf_of(800)
+    cost = min(read_all(small, 100, f"/app/small{i}.py") for i in range(3))
+    grown = min(read_all(large, 800, f"/app/large{i}.py") for i in range(3))
+    # Eight times the classes: quadratic work would cost sixty-four times.
+    assert grown < cost * 24
+
+
+@pytest.mark.parametrize("newline", ["\n", "\r\n"])
+def test_a_source_segment_matches_ast_for_non_ascii_multiline_nodes(newline):
+    source = newline.join(['x = "é"; y = ("ü",', '     "ß")', "\x0czz = 1"])
+    for node in ast.walk(ast.parse(source)):
+        if isinstance(node, ast.expr):
+            assert source_segment(source, node) == ast.get_source_segment(source, node)

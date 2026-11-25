@@ -19,6 +19,7 @@ without re-importing anything.
 """
 
 import ast
+import functools
 import io
 import os
 import re
@@ -213,13 +214,33 @@ def extract_template(
     return f"{{#{padding}#}}{content.rstrip()}"
 
 
+@functools.lru_cache(maxsize=8)
+def _source_lines(source: str) -> list[bytes]:
+    """``source`` split as ``ast`` counts lines, each as UTF-8 bytes, because
+    a node's column offsets are byte offsets."""
+    return [
+        line.encode() for line in re.findall(r"[^\r\n]*(?:\r\n?|\n)|[^\r\n]+", source)
+    ]
+
+
+def source_segment(source: str, node: ast.expr) -> str:
+    """The text ``node`` was parsed from, like ``ast.get_source_segment`` but
+    splitting ``source`` once however many nodes are asked for."""
+    if node.end_lineno is None or node.end_col_offset is None:
+        return ""
+    lines = _source_lines(source)[node.lineno - 1 : node.end_lineno]
+    lines[-1] = lines[-1][: node.end_col_offset]
+    lines[0] = lines[0][node.col_offset :]
+    return b"".join(lines).decode()
+
+
 def is_one_literal(module_source: str, node: ast.expr) -> bool:
     """Whether ``node`` is written as one string, not ``"a" "b"``.
 
     Python joins adjacent literals into one constant, which would hide the
     line breaks between the pieces from the line-number padding.
     """
-    segment = ast.get_source_segment(module_source, node) or ""
+    segment = source_segment(module_source, node)
     tokens = tokenize.generate_tokens(io.StringIO(segment).readline)
     return sum(token.type == tokenize.STRING for token in tokens) == 1
 

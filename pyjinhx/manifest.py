@@ -68,6 +68,7 @@ from pyjinhx.sfc import (
     module_name_for,
     pascal_to_snake,
     python_block,
+    source_segment,
     template_value,
 )
 from pyjinhx.stubgen import HANDWRITTEN, MISSING, ORPHANED, STALE, sync, walk
@@ -247,11 +248,11 @@ def _prop(
     ):
         required, written = True, None
     else:
-        required, written = False, ast.get_source_segment(text, default)
+        required, written = False, source_segment(text, default)
     names = _names_in(annotation) if annotation is not None else set()
     return {
         "name": name,
-        "annotation": ast.get_source_segment(text, annotation) if annotation else None,
+        "annotation": source_segment(text, annotation) if annotation else None,
         "required": required,
         "default": written,
         "literal_values": _literal_values(annotation),
@@ -353,7 +354,7 @@ def _class_info(
         "qualname": node.name,
         "path": path.as_posix(),
         "range": _name_range(node, lines),
-        "bases": [ast.get_source_segment(text, base) for base in node.bases],
+        "bases": [source_segment(text, base) for base in node.bases],
         "stub": None,
     }
 
@@ -465,7 +466,7 @@ def _template_span(text: str, lines: list[str], node: ast.expr) -> dict[str, Any
     """Where the contents of the string literal ``node`` start and end,
     between its quotes."""
     assert node.end_lineno is not None and node.end_col_offset is not None
-    literal = ast.get_source_segment(text, node) or ""
+    literal = source_segment(text, node)
     prefix = len(literal) - len(literal.lstrip("rRuU"))
     quote = 3 if literal[prefix : prefix + 3] in ('"""', "'''") else 1
     start = _col(lines, node.lineno, node.col_offset) + prefix + quote
