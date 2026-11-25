@@ -427,6 +427,16 @@ def header_default(node: ast.expr, imports: dict[str, str]) -> str:
             return dotted(node, imports, "default")
         case ast.Call(func=func, args=[], keywords=[]):
             return dotted(func, imports, "default") + "()"
+        case ast.Call(
+            func=ast.Name(id="Field"),
+            args=[],
+            keywords=[ast.keyword(arg="default_factory", value=factory)],
+        ):
+            # A header copies a literal default per instance, so the two
+            # builtin factories are just their empty literals.
+            if isinstance(factory, ast.Name) and factory.id in ("dict", "list"):
+                return "{}" if factory.id == "dict" else "[]"
+            return dotted(factory, imports, "default") + "()"
     raise ValueError(
         f"default `{ast.unparse(node)}` is not a literal or an importable name"
     )

@@ -559,6 +559,35 @@ def test_declass_names_imports_the_header_cannot_see(tmp_path, capsys):
     )
 
 
+def test_declass_writes_a_default_factory_as_the_header_default(tmp_path, capsys):
+    write(
+        tmp_path / "card.py",
+        """
+        from pydantic import Field
+
+        from app.models import make_tags
+        from pyjinhx import BaseComponent
+
+
+        class Card(BaseComponent):
+            attrs: dict[str, str] = Field(default_factory=dict)
+            rows: list[str] = Field(default_factory=list)
+            tags: list[str] = Field(default_factory=make_tags)
+        """,
+    )
+    write(tmp_path / "card.pjx", "<i></i>\n")
+
+    code, _ = run("declass", tmp_path, "--write", capsys=capsys)
+
+    assert code == 0
+    header = (tmp_path / "card.pjx").read_text().split(" #}")[0]
+    assert header == (
+        "{#def attrs: dict[str, str] = {},\n"
+        "      rows: list[str] = [],\n"
+        "      tags: list[str] = app.models.make_tags()"
+    )
+
+
 def test_declass_reports_every_reference_under_the_root(tmp_path, capsys):
     components = tmp_path / "components"
     write(components / "card.py", FIELDS_PY)
