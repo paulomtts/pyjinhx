@@ -146,15 +146,15 @@ def is_generated(stub: Path) -> bool:
     return any(line.startswith(_MARKER_PREFIX) for line in text.splitlines())
 
 
-def _walk(paths: Iterable[Path]) -> tuple[list[Path], list[Path]]:
-    """The ``.pjx`` documents and the ``.pyi`` stubs under ``paths``, sorted.
+def walk(paths: Iterable[Path], suffixes: set[str]) -> dict[str, list[Path]]:
+    """The files under ``paths`` with each of ``suffixes``, sorted, by suffix.
     Hidden directories, virtualenvs (any with a ``pyvenv.cfg``), installed
     packages, build output, ``__pycache__`` and ``node_modules`` are skipped."""
-    documents, stubs = set(), set()
+    found: dict[str, set[Path]] = {suffix: set() for suffix in suffixes}
     for path in paths:
         if path.is_file():
-            if path.suffix == ".pjx":
-                documents.add(path)
+            if path.suffix in suffixes:
+                found[path.suffix].add(path)
             continue
         for directory, names, files in os.walk(path):
             names[:] = [
@@ -165,12 +165,10 @@ def _walk(paths: Iterable[Path]) -> tuple[list[Path], list[Path]]:
                 and not Path(directory, n, "pyvenv.cfg").exists()
             ]
             for name in files:
-                found = Path(directory, name)
-                if found.suffix == ".pjx":
-                    documents.add(found)
-                elif found.suffix == ".pyi":
-                    stubs.add(found)
-    return sorted(documents), sorted(stubs)
+                file = Path(directory, name)
+                if file.suffix in suffixes:
+                    found[file.suffix].add(file)
+    return {suffix: sorted(files) for suffix, files in found.items()}
 
 
 def sync(paths: Iterable[Path], *, write: bool) -> list[Finding]:
@@ -183,7 +181,8 @@ def sync(paths: Iterable[Path], *, write: bool) -> list[Finding]:
     block, a block that does not parse. Files without the generator's marker
     are never overwritten or removed.
     """
-    documents, stubs = _walk(Path(p) for p in paths)
+    found = walk((Path(p) for p in paths), {".pjx", ".pyi"})
+    documents, stubs = found[".pjx"], found[".pyi"]
     findings: list[Finding] = []
     live: set[Path] = set()
     for document in documents:

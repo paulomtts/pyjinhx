@@ -427,3 +427,19 @@ def test_crlf_input_gives_a_stub_with_only_lf(tmp_path):
     (tmp_path / "card.pjx").write_bytes(crlf.encode())
     stubgen.main([str(tmp_path)])
     assert b"\r" not in (tmp_path / "card.pyi").read_bytes()
+
+
+def test_walk_finds_files_by_suffix_and_skips_what_sync_skips(tmp_path):
+    for name in ("a/card.pjx", "a/card.py", "a/card.pyi", ".hidden/x.py"):
+        (tmp_path / name).parent.mkdir(parents=True, exist_ok=True)
+        (tmp_path / name).write_text("")
+    (tmp_path / "venv").mkdir()
+    (tmp_path / "venv" / "pyvenv.cfg").write_text("")
+    (tmp_path / "venv" / "lib.py").write_text("")
+
+    found = stubgen.walk([tmp_path], {".pjx", ".py"})
+
+    assert found == {
+        ".pjx": [tmp_path / "a" / "card.pjx"],
+        ".py": [tmp_path / "a" / "card.py"],
+    }
