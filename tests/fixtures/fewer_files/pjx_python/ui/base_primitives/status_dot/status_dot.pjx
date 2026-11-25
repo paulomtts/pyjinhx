@@ -1,0 +1,13 @@
+{#python
+from pyjinhx import BaseComponent
+from tests.fixtures.fewer_files.domain import Tone
+
+
+class StatusDot(BaseComponent):
+    tone: Tone = Tone.CALM
+#}
+<i class="dot dot--{{ tone.value }}" aria-label="{{ tone.value }}"></i>
+{#css
+.dot { display: inline-block; width: 0.5rem; height: 0.5rem; }
+.dot--late { background: var(--danger); }
+#}
