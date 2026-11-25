@@ -368,3 +368,8 @@ def test_an_init_body_is_kept_so_its_attributes_stay_declared():
     assert _declarations(stub) == _declarations(
         sfc.python_source(source, "card.pjx") or ""
     )
+
+
+def test_a_path_that_does_not_exist_is_reported_and_exits_2(tmp_path, capsys):
+    assert stubgen.main([str(tmp_path / "nope")]) == 2
+    assert "nope: no such file or directory" in capsys.readouterr().err

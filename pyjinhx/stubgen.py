@@ -227,7 +227,7 @@ def main(argv: list[str] | None = None) -> int:
 
     Exits 0 when every stub is as it should be, 1 when a stub was stale,
     missing or orphaned under ``--check`` or something needs a person, and 2
-    when a hand-written ``.pyi`` is in a stub's way.
+    when a hand-written ``.pyi`` is in a stub's way or a path does not exist.
     """
     parser = argparse.ArgumentParser(
         prog="python -m pyjinhx.stubgen",
@@ -242,6 +242,11 @@ def main(argv: list[str] | None = None) -> int:
         help="write nothing; exit 1 listing stale, missing and orphaned stubs",
     )
     args = parser.parse_args(argv)
+    missing = [p for p in args.paths if not p.exists()]
+    for path in missing:
+        print(f"{path}: no such file or directory", file=sys.stderr)
+    if missing:
+        return 2
     findings = sync(args.paths, write=not args.check)
     for finding in findings:
         fixed = not args.check and finding.kind in _DONE
