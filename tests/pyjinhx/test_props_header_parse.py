@@ -47,7 +47,8 @@ def test_each_supported_annotation_resolves_to_its_type(
 
 
 def test_unrecognized_annotation_falls_back_to_any(caplog):
-    """The vocabulary is deliberately closed: a header cannot import names."""
+    """A bare name is never imported, so a typo cannot become an import; the
+    warning points at the dotted form that would import it."""
     with caplog.at_level(logging.WARNING, logger="pyjinhx"):
         fields = parse_props_header("{#def value: SomeModel #}")
 
@@ -60,6 +61,7 @@ def test_unrecognized_annotation_falls_back_to_any(caplog):
     message = warnings[0].getMessage()
     assert "value" in message
     assert "SomeModel" in message
+    assert "dotted import path" in message
 
 
 @pytest.mark.parametrize(
@@ -102,8 +104,8 @@ def test_unrecognized_inside_optional_warns_exactly_once(annotation: str, caplog
 def test_slot_names_resolve_to_the_marker_carrying_aliases(
     annotation: str, expected_children: bool
 ):
-    """A header cannot import names, so the two slot aliases have to be part of
-    the parser's own closed vocabulary."""
+    """The slot aliases are part of the parser's own vocabulary, so a header
+    needs no import path to name them."""
     from typing import get_args
 
     from pyjinhx._component import PjxSlot

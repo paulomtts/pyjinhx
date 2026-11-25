@@ -315,8 +315,8 @@ _STALE_DEF_HEADER_WARNING = (
 
 _UNRECOGNIZED_ANNOTATION_WARNING = (
     "<%s>: {#def#} annotation %r is not a recognized type — the prop falls back "
-    "to Any. A header cannot import names; use a builtin type or drop the "
-    "annotation."
+    "to Any. Use a builtin type, a dotted import path (pkg.mod.Type) or drop "
+    "the annotation."
 )
 
 
