@@ -960,45 +960,49 @@ class TestWalkTemplate:
 
 class TestWalkInlineTemplate:
     """A class whose own body assigns ``template`` owns its template: the walk
-    answers with its module file before probing for a ``.pjx``."""
+    answers with its module file before probing for a ``.pjx``.
+
+    Each test names its classes differently: an inline template is found in
+    the module source by class name, so two same-named classes with a
+    template in one file are refused."""
 
     def test_an_inline_template_wins_over_an_adjacent_file(self, mro_dir):
-        class Card(BaseComponent):
+        class Tile(BaseComponent):
             template = "<div>inline</div>"
 
-        Card.__module__ = _MRO_MODULE
-        (mro_dir / "card.pjx").write_text("<div>file</div>")
+        Tile.__module__ = _MRO_MODULE
+        (mro_dir / "tile.pjx").write_text("<div>file</div>")
 
-        assert _walk_template(Card) == (mro_dir / f"{_MRO_MODULE}.py", Card)
+        assert _walk_template(Tile) == (mro_dir / f"{_MRO_MODULE}.py", Tile)
 
     def test_a_subclass_file_overrides_a_parents_inline_template(self, mro_dir):
-        class Card(BaseComponent):
+        class Panel(BaseComponent):
             template = "<div>inline</div>"
 
-        class FancyCard(Card):
+        class FancyPanel(Panel):
             pass
 
-        Card.__module__ = _MRO_MODULE
-        FancyCard.__module__ = _MRO_MODULE
-        (mro_dir / "fancy_card.pjx").write_text("<div>fancy</div>")
+        Panel.__module__ = _MRO_MODULE
+        FancyPanel.__module__ = _MRO_MODULE
+        (mro_dir / "fancy_panel.pjx").write_text("<div>fancy</div>")
 
-        assert _walk_template(FancyCard) == (mro_dir / "fancy_card.pjx", FancyCard)
+        assert _walk_template(FancyPanel) == (mro_dir / "fancy_panel.pjx", FancyPanel)
 
     def test_an_inline_owner_costs_no_probe(self, mro_dir, monkeypatch):
-        class Card(BaseComponent):
+        class Sheet(BaseComponent):
             template = "<div>inline</div>"
 
-        class FancyCard(Card):
+        class FancySheet(Sheet):
             pass
 
-        Card.__module__ = _MRO_MODULE
-        FancyCard.__module__ = _MRO_MODULE
+        Sheet.__module__ = _MRO_MODULE
+        FancySheet.__module__ = _MRO_MODULE
         probed = TestTemplateWalkProbeBudget._count_is_file(monkeypatch)
 
-        _walk_template(Card)
-        _walk_template(FancyCard)
+        _walk_template(Sheet)
+        _walk_template(FancySheet)
 
-        assert probed == [mro_dir / "fancy_card.pjx"]
+        assert probed == [mro_dir / "fancy_sheet.pjx"]
 
 
 class TestTemplateWalkProbeBudget:
