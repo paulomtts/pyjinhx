@@ -1,5 +1,6 @@
 """RenderSession, the per-request ContextVars, and the request_scope that owns them."""
 
+import logging
 import threading
 from collections.abc import Callable, Iterable, Iterator, Mapping
 from contextlib import contextmanager
@@ -10,6 +11,7 @@ from typing import TYPE_CHECKING, Any
 from jinja2 import BaseLoader, Environment, TemplateNotFound
 
 from pyjinhx.assets import AssetMode
+from pyjinhx.importer import block_changed
 from pyjinhx.markers import finalize_slot_node
 from pyjinhx.sfc import read_document
 from pyjinhx.template_blocks import hide_block_lines
@@ -73,6 +75,18 @@ _dev_strict = False
 _dev_strict_lock = threading.Lock()
 
 
+logger = logging.getLogger("pyjinhx")
+
+
+def _warn_if_block_changed(path: Path, text: str) -> None:
+    """Log that a document's ``{#python`` block no longer matches the module the
+    process imported, once per edit."""
+    if "{#python" in text and block_changed(path, text):
+        logger.warning(
+            "%s: the {#python block changed; restart the process to load it", path
+        )
+
+
 class NoActiveRequestScope(RuntimeError):
     """Raised when per-request state is touched outside an active request_scope()."""
 
@@ -94,7 +108,9 @@ class AbsolutePathLoader(BaseLoader):
         path = Path(path_text)
         if not path.is_absolute() or not path.is_file():
             raise TemplateNotFound(template)
-        source = hide_block_lines(read_document(path, inline_class or None))
+        text = read_document(path, inline_class or None)
+        _warn_if_block_changed(path, text)
+        source = hide_block_lines(text)
         mtime = path.stat().st_mtime
         name = str(path)
 

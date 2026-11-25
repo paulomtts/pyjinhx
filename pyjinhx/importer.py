@@ -35,6 +35,11 @@ _V0_OPENER_RE = re.compile(r"\{#[ \t]+python[ \t\r]*(\n|\Z)")
 _documents: dict[Path, tuple[str, type]] = {}
 _documents_lock = threading.Lock()
 
+# The hash of each loaded document's block body, by resolved file path.
+_bodies: dict[Path, int] = {}
+# The hash of the changed block body `block_changed` last reported, by path.
+_reported: dict[Path, int] = {}
+
 
 def opener_line(text: str) -> int | None:
     """The line of the first block opener at the start of a line, or ``None``.
@@ -44,6 +49,31 @@ def opener_line(text: str) -> int | None:
     """
     found = _OPENER_RE.search(text)
     return None if found is None else text.count("\n", 0, found.start()) + 1
+
+
+def block_changed(path: str | Path, source: str) -> bool:
+    """Whether ``source``, the text now in the ``.pjx`` at ``path``, holds a
+    block other than the one the hook imported, and this is the first time that
+    edit is seen. A file the hook never loaded, or a block that no longer
+    parses, is not a change.
+    """
+    resolved = Path(path).resolve()
+    try:
+        block = python_block(source, str(path))
+    except SyntaxError:
+        return False
+    with _documents_lock:
+        imported = _bodies.get(resolved)
+        if imported is None or block is None:
+            return False
+        body = hash(block.body)
+        if body == imported:
+            _reported.pop(resolved, None)
+            return False
+        if _reported.get(resolved) == body:
+            return False
+        _reported[resolved] = body
+        return True
 
 
 def _module_file(name: str) -> Path | None:
@@ -176,10 +206,15 @@ class PjxLoader(importlib.abc.SourceLoader):
             first = _documents.get(resolved)
         if first and first[0] != self.name and _module_file(first[0]) == resolved:
             self._refuse(1, f"already imported as {first[0]!r}; one file is one module")
+        text = self.get_data(self.path).decode("utf-8-sig")
         super().exec_module(module)
         document = self._document_class(module)
+        block = python_block(text, self.path)
         with _documents_lock:
             _documents[resolved] = (self.name, document)
+            if block is not None:
+                _bodies[resolved] = hash(block.body)
+                _reported.pop(resolved, None)
 
     def _document_class(self, module: ModuleType) -> type:
         """The component class the document's markup belongs to: the one defined

@@ -1,6 +1,7 @@
 """A ``.pjx`` document that holds its class: binding, refusals and rendering."""
 
 import importlib
+import logging
 import os
 import subprocess
 import sys
@@ -429,3 +430,60 @@ def test_a_class_with_two_component_bases_is_listed_once(write: Write):
     )
     module = load("pkg.shapes")
     assert all_component_classes().count(module.Both) == 1
+
+
+def edit(path: Path, old: str, new: str) -> None:
+    """Rewrite ``path`` with ``old`` replaced and its mtime moved on."""
+    stat = path.stat()
+    path.write_text(path.read_text().replace(old, new), encoding="utf-8")
+    os.utime(path, (stat.st_atime + 10, stat.st_mtime + 10))
+
+
+def block_warnings(caplog: pytest.LogCaptureFixture) -> list[str]:
+    return [r.getMessage() for r in caplog.records if "{#python" in r.getMessage()]
+
+
+def test_a_markup_edit_applies_live_and_does_not_warn(
+    write: Write, caplog: pytest.LogCaptureFixture
+):
+    path = write("pkg/card.pjx", CARD)
+    card = load("pkg.card").Card
+    assert card(title="a").render() == "<div>a</div>"
+    with caplog.at_level(logging.WARNING, logger="pyjinhx"):
+        edit(path, "<div>", "<p>")
+        edit(path, "</div>", "</p>")
+        assert card(title="a").render() == "<p>a</p>"
+    assert block_warnings(caplog) == []
+
+
+def test_a_block_edit_warns_once_per_change_and_keeps_the_imported_class(
+    write: Write, caplog: pytest.LogCaptureFixture
+):
+    path = write("pkg/card.pjx", CARD)
+    card = load("pkg.card").Card
+    card(title="a").render()
+    with caplog.at_level(logging.WARNING, logger="pyjinhx"):
+        edit(path, 'title: str = ""', 'title: str = "x"')
+        assert card(title="a").render() == "<div>a</div>"
+        assert block_warnings(caplog) == [
+            f"{path}: the {{#python block changed; restart the process to load it"
+        ]
+        edit(path, "<div>", "<p>")
+        card(title="a").render()
+        assert len(block_warnings(caplog)) == 1
+        edit(path, 'title: str = "x"', 'title: str = "y"')
+        card(title="a").render()
+        assert len(block_warnings(caplog)) == 2
+
+
+def test_a_block_never_imported_through_the_hook_does_not_warn(
+    write: Write, caplog: pytest.LogCaptureFixture
+):
+    path = write("pkg/card.pjx", CARD)
+    from pyjinhx.session import AbsolutePathLoader
+
+    with caplog.at_level(logging.WARNING, logger="pyjinhx"):
+        AbsolutePathLoader().get_source(jinja2.Environment(), str(path))
+        edit(path, "title", "name")
+        AbsolutePathLoader().get_source(jinja2.Environment(), str(path))
+    assert block_warnings(caplog) == []

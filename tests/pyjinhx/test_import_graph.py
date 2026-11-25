@@ -741,6 +741,7 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
             "pyjinhx.segments",
             "pyjinhx.assets",
             "pyjinhx.config",
+            "pyjinhx.importer",
             "pyjinhx.sfc",
             "pyjinhx.template_blocks",
         }
@@ -865,6 +866,7 @@ def test_session_never_reaches_into_reactive():
         "pyjinhx.segments",
         "pyjinhx.assets",
         "pyjinhx.config",
+        "pyjinhx.importer",
         "pyjinhx.sfc",
         "pyjinhx.template_blocks",
     }
