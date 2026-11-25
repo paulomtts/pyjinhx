@@ -300,7 +300,10 @@ def render_level(
     if descriptor.has_stale_def_header:
         warn_stale_def_header(component.__class__)
 
-    prefix = f"{component.__class__.__name__} (template: {descriptor.template_path}): "
+    template_name = str(descriptor.template_path)
+    if descriptor.inline_class is not None:
+        template_name += f"::{descriptor.inline_class}"
+    prefix = f"{component.__class__.__name__} (template: {template_name}): "
 
     # Checked before anything else this level does, including a cache lookup: a
     # hit skips the template render entirely, so a guard left down in Phase 3
@@ -371,7 +374,7 @@ def render_level(
         # AbsolutePathLoader's uptodate() closure memoizes that answer in the
         # request-scoped freshness cache, so the repeat lookups a reactive pass
         # makes for one template cost a dict hit rather than a filesystem stat.
-        template = jinja_env.get_template(str(descriptor.template_path))
+        template = jinja_env.get_template(template_name)
     except jinja2.TemplateNotFound as err:
         raise jinja2.TemplateNotFound(
             err.name, message=f"{prefix}template file not found"

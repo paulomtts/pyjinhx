@@ -1,15 +1,24 @@
 """Tests for components that carry their template inline, in this very file."""
 
+import importlib.util
+import os
+import sys
+import traceback
 import warnings
 from pathlib import Path
 
 import jinja2
 import pytest
+from pydantic import field_validator
 
 from pyjinhx import BaseComponent, discovery
 from pyjinhx.session import AbsolutePathLoader
 
 THIS_FILE = Path(__file__)
+
+
+def _shout(text: str) -> str:
+    return text.upper()
 
 
 def line_of(text: str) -> int:
@@ -32,6 +41,52 @@ class LoudChip(Chip):
 
 class QuietChip(Chip):
     template = "<small>{{ label }}</small>"
+
+
+class ChipRow(BaseComponent):
+    template = """
+    <div class="row"><Chip label="one"/><Chip label="two"/></div>
+    """
+
+
+class Price(BaseComponent):
+    """A full class: validator, computed property, factory, module helper."""
+
+    cents: int
+    currency: str = "eur"
+
+    @field_validator("currency")
+    @classmethod
+    def _upper(cls, value: str) -> str:
+        return _shout(value)
+
+    @property
+    def amount(self) -> str:
+        return f"{self.cents / 100:.2f}"
+
+    @classmethod
+    def free(cls) -> "Price":
+        return cls(cents=0, currency="eur")
+
+    template = """
+    <data value="{{ cents }}">{{ currency }}</data>
+    """
+
+
+class BrokenSyntax(BaseComponent):
+    template = """
+    <div>
+      {% if %}
+    </div>
+    """
+
+
+class BrokenAtRender(BaseComponent):
+    template = """
+    <div>
+      {{ nothing.here }}
+    </div>
+    """
 
 
 class Email(BaseComponent):
@@ -123,3 +178,81 @@ def test_the_loader_does_not_find_a_missing_module():
         AbsolutePathLoader().get_source(
             jinja2.Environment(), f"{THIS_FILE.parent / 'nope.py'}::Chip"
         )
+
+
+def test_an_inline_template_renders():
+    assert Chip(label="new").render() == '<span class="chip">new</span>'
+
+
+def test_a_subclass_renders_its_parents_inline_template():
+    assert LoudChip(label="hey").render() == '<span class="chip">hey</span>'
+
+
+def test_a_subclass_renders_its_own_replacement():
+    assert QuietChip(label="hey").render() == "<small>hey</small>"
+
+
+def test_a_class_with_methods_and_validators_renders_from_its_inline_template():
+    price = Price.free()
+    assert price.amount == "0.00"
+    assert price.render() == '<data value="0">EUR</data>'
+
+
+def test_inline_components_are_registered_and_expand_as_tags():
+    discovery.build_registry(None, [Chip, ChipRow])
+    assert discovery.get_class("chip") is Chip
+    assert ChipRow().render() == (
+        '<div class="row"><span class="chip">one</span>'
+        '<span class="chip">two</span></div>'
+    )
+
+
+def test_a_syntax_error_points_at_the_line_in_the_python_file():
+    with pytest.raises(jinja2.TemplateSyntaxError) as caught:
+        BrokenSyntax().render()
+    assert caught.value.filename == str(THIS_FILE)
+    assert caught.value.lineno == line_of("{% if %}")
+
+
+def test_a_render_error_traceback_points_at_the_line_in_the_python_file():
+    with pytest.raises(jinja2.UndefinedError) as caught:
+        BrokenAtRender().render()
+    frames = traceback.extract_tb(caught.tb)
+    template_frame = next(f for f in frames if "template code" in f.name)
+    assert template_frame.filename == str(THIS_FILE)
+    assert template_frame.lineno == line_of("{{ nothing.here }}")
+    assert template_frame.line == "{{ nothing.here }}"
+
+
+def _import_file(path: Path, monkeypatch: pytest.MonkeyPatch):
+    spec = importlib.util.spec_from_file_location(path.stem, path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    # Template resolution finds a class's file through sys.modules.
+    monkeypatch.setitem(sys.modules, path.stem, module)
+    spec.loader.exec_module(module)
+    return module
+
+
+def _touch_later(path: Path) -> None:
+    stat = path.stat()
+    os.utime(path, (stat.st_atime, stat.st_mtime + 10))
+
+
+def test_editing_the_template_on_disk_is_picked_up_without_reimporting(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    source = (
+        "from pyjinhx import BaseComponent\n\n\n"
+        "class ReloadedNote(BaseComponent):\n"
+        '    template = "<p>before</p>"\n'
+    )
+    path = tmp_path / "reloaded_note.py"
+    path.write_text(source)
+    note = _import_file(path, monkeypatch).ReloadedNote()
+    assert note.render() == "<p>before</p>"
+
+    path.write_text(source.replace("before", "after"))
+    _touch_later(path)
+
+    assert note.render() == "<p>after</p>"
