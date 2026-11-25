@@ -154,8 +154,9 @@ def _parse_default(node: ast.expr, field_name: str) -> Any:
         path = _dotted_name(node)
     if path is None:
         raise ValueError(
-            f"{{#def#}} header default for {field_name!r} must be a literal: "
-            f"{ast.unparse(node)!r}"
+            f"{{#def#}} header default for {field_name!r} must be a literal, a "
+            "dotted name (pkg.mod.NAME) or a dotted name called with no arguments "
+            f"(pkg.mod.make()): {ast.unparse(node)!r}"
         )
     return _DottedDefault(path, field_name, call=isinstance(node, ast.Call))
 

@@ -5,6 +5,7 @@ so nothing here exercises class generation.
 """
 
 import logging
+import sys
 from typing import Any
 
 import pytest
@@ -305,3 +306,28 @@ def test_attribute_types_resolve_to_pyjinhx_types():
         ("attrs", ExtraAttrs, ...),
         ("title", AttrValue, ...),
     ]
+
+
+@pytest.mark.parametrize(
+    "default",
+    ["DEFAULT_X", "make()", "app.make(1)", "app.make(n=1)", "app.B * 2", "lambda: 1"],
+    ids=["bare-name", "bare-call", "call-args", "call-kwargs", "expression", "lambda"],
+)
+def test_a_default_outside_the_three_forms_says_what_is_allowed(default: str):
+    """A bare name is refused, not guessed at: a typo must never become an import."""
+    with pytest.raises(ValueError) as excinfo:
+        parse_props_header(f"{{#def x: int = {default} #}}")
+    message = str(excinfo.value)
+    assert "default for 'x'" in message
+    assert "a literal" in message
+    assert "a dotted name (pkg.mod.NAME)" in message
+    assert "a dotted name called with no arguments (pkg.mod.make())" in message
+
+
+def test_parsing_a_dotted_default_imports_nothing():
+    module = "tests.pyjinhx.header_import_probe"
+    sys.modules.pop(module, None)
+    parse_props_header(
+        f"{{#def tone: str = {module}.Probe.ON, at: str = {module}.f() #}}"
+    )
+    assert module not in sys.modules
