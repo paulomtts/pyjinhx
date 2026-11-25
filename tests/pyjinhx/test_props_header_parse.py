@@ -259,7 +259,7 @@ def test_parsing_uses_only_the_stdlib():
 
 
 def test_a_css_block_above_the_header_does_not_hide_it():
-    source = "{#css .card { padding: 1rem; } #}\n{#def title: str #}\n<div></div>"
+    source = "{#css\n.card { padding: 1rem; }\n#}\n{#def title: str #}\n<div></div>"
 
     assert parse_props_header(source) == [("title", str, ...)]
 
@@ -289,7 +289,7 @@ def test_the_spaced_legacy_header_still_parses_in_first_position():
 
 def test_the_spaced_form_anywhere_else_is_prose():
     assert parse_props_header("<div></div>\n{# def title: str #}") is None
-    assert parse_props_header("{#css .a {} #}\n{# def title: str #}") is None
+    assert parse_props_header("{#css\n.a {}\n#}\n{# def title: str #}") is None
 
 
 def test_literal_annotation_becomes_a_typing_literal():

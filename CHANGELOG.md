@@ -10,7 +10,8 @@
   [ADR 0009](docs/decisions/0009-a-component-is-a-pjx-document.md).
 - Inline styles and scripts. A template may carry `{#css ... #}` and
   `{#js ... #}` blocks, so a component needs no sibling `.css`/`.js` file. The
-  blocks are Jinja comments, so they never render, and their bodies ship through
+  keyword ends its line and the body starts on the next, so a one-line comment
+  such as `{#js hack #}` stays prose. The blocks are Jinja comments, so they never render, and their bodies ship through
   the same asset pipeline as sibling files, sibling first. Two blocks of one
   kind raise `TemplateSyntaxError`; `AssetMode.LINK` refuses a block. See
   [Inline styles and scripts](docs/guide/components.md#inline-styles-and-scripts).

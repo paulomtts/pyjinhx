@@ -410,9 +410,15 @@ A component can keep its CSS and JS inside its `.pjx` template instead of in sib
     #}
 
 - Each block is a single Jinja comment, `{#css ... #}` or `{#js ... #}`. The keyword
-  must touch `{#` (`{#css`, not `{# css`), so a prose comment such as
-  `{# css tweaks #}` stays a plain comment. Like the `{#def#}` header, a block never
-  appears in the rendered output, and the template still renders in plain Jinja.
+  must touch `{#` (`{#css`, not `{# css`) and end its line, with the body starting on
+  the next one. A prose comment such as `{# css tweaks #}` or a one-line
+  `{#js hack: remove later #}` therefore stays a plain comment. Like the `{#def#}`
+  header, a block never appears in the rendered output, and the template still
+  renders in plain Jinja.
+- `{#def ... #}` may sit on one line, so any comment that starts with `{#def ` (no
+  space after `{#`) is read as a header. Keep a prose comment about defaults spaced:
+  `{# def... #}` only counts as a header when it is the very first thing in the
+  document.
 - A block can sit anywhere in the document, in any order relative to the `{#def#}`
   header. It is read statically: putting it inside `{% if %}` does not make it conditional.
 - The body is taken verbatim, Jinja syntax included — `{{ }}` and `{% %}` are not

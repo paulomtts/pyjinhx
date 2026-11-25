@@ -37,16 +37,26 @@ class Block(NamedTuple):
 
 
 def _is_block(comment: str, keyword: str) -> bool:
-    """Whether a comment's text opens with ``keyword`` and then whitespace or nothing."""
+    """Whether a comment's text opens a ``keyword`` block.
+
+    ``def`` takes whitespace or nothing after it. ``css`` and ``js`` must end
+    their line, so a one-line prose comment such as ``{#js hack #}``, common
+    in templates written before blocks existed, stays a comment.
+    """
     rest = comment.removeprefix(keyword)
-    return rest != comment and (not rest or rest[0].isspace())
+    if rest == comment:
+        return False
+    if keyword == "def":
+        return not rest or rest[0].isspace()
+    return rest.lstrip(" \t\r").startswith("\n")
 
 
 def find_block(source: str, keyword: str, filename: str) -> Block | None:
     """The ``{#<keyword> ... #}`` block in ``source``, or None.
 
-    The keyword must touch ``{#`` and be followed by whitespace, so a prose
-    comment such as ``{# css tweaks #}`` is never mistaken for a block. An
+    The keyword must touch ``{#``, so a prose comment such as
+    ``{# css tweaks #}`` is never mistaken for a block, and ``css``/``js``
+    must end their line (see `_is_block`). An
     empty block counts as no block. Raises ``TemplateSyntaxError`` pointing at
     the second block when ``source`` holds two of the same keyword.
     """

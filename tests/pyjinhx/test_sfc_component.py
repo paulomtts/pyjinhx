@@ -481,14 +481,18 @@ def test_a_duplicate_block_is_reported_at_its_line_in_the_python_file(
         "class Twice(BaseComponent):\n"
         '    template = """\n'
         "    <div></div>\n"
-        "    {#js a(); #}\n"
-        "    {#js b(); #}\n"
+        "    {#js\n"
+        "    a();\n"
+        "    #}\n"
+        "    {#js\n"
+        "    b();\n"
+        "    #}\n"
         '    """\n'
     )
     with pytest.raises(jinja2.TemplateSyntaxError) as caught:
         _import_file(path, monkeypatch)
     assert caught.value.filename == str(path)
-    assert caught.value.lineno == 8
+    assert caught.value.lineno == 10
 
 
 def test_a_sibling_file_and_an_inline_block_ship_sibling_first(
@@ -573,11 +577,11 @@ def test_an_inline_header_is_seen_wherever_a_pjx_header_would_be(
 def test_a_stray_comment_close_in_an_inline_block_is_reported_in_the_python_file(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ):
-    path = _headed_module(tmp_path, ["<div></div>", "{#css a { b: '#}' } #}"])
+    path = _headed_module(tmp_path, ["<div></div>", "{#css", "a { b: '#}' }", "#}"])
     with pytest.raises(jinja2.TemplateSyntaxError) as caught:
         _import_file(path, monkeypatch)
     assert caught.value.filename == str(path)
-    assert caught.value.lineno == 9
+    assert caught.value.lineno == 11
 
 
 def test_an_inline_class_claims_its_tag_over_a_namesake_orphan(
