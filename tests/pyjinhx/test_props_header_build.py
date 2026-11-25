@@ -225,3 +225,12 @@ def test_extra_attrs_prop_validates_attribute_names():
     assert cls(attrs={"data-x": "y"}).attrs == {"data-x": "y"}  # pyright: ignore[reportCallIssue, reportAttributeAccessIssue]
     with pytest.raises(ValidationError):
         cls(attrs={'a"b': "x"})  # pyright: ignore[reportCallIssue]
+
+
+def test_mutable_defaults_are_not_shared_between_instances():
+    cls = _build("{#def items: list = [], opts: dict = {} #}")
+    first, second = cls(), cls()  # pyright: ignore[reportCallIssue]
+    first.items.append(1)  # pyright: ignore[reportAttributeAccessIssue]
+    first.opts["a"] = 1  # pyright: ignore[reportAttributeAccessIssue]
+    assert second.items == []  # pyright: ignore[reportAttributeAccessIssue]
+    assert second.opts == {}  # pyright: ignore[reportAttributeAccessIssue]
