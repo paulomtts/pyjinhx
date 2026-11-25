@@ -262,3 +262,14 @@ def test_a_classless_class_is_not_reported_as_carrying_a_stale_header(tmp_path):
     cls = component("Card", template_dir=tmp_path)
 
     assert cls.__pjx_descriptor__.has_stale_def_header is False
+
+
+def test_a_header_declaring_id_builds_a_class_that_requires_it(tmp_path):
+    write_template(tmp_path, "card", "{#def id: str #}<div id={{ id }}></div>")
+
+    cls = component("Card", template_dir=tmp_path)
+
+    assert cls.auto_id is False
+    assert cls(id="x").id == "x"  # pyright: ignore[reportCallIssue]
+    with pytest.raises(ValueError, match="id is required"):
+        cls()

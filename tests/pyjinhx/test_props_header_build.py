@@ -234,3 +234,24 @@ def test_mutable_defaults_are_not_shared_between_instances():
     first.opts["a"] = 1  # pyright: ignore[reportAttributeAccessIssue]
     assert second.items == []  # pyright: ignore[reportAttributeAccessIssue]
     assert second.opts == {}  # pyright: ignore[reportAttributeAccessIssue]
+
+
+def test_required_id_turns_off_auto_id():
+    cls = _build("{#def id: str, title: str #}")
+    assert cls.auto_id is False
+    assert cls(id="x", title="t").id == "x"  # pyright: ignore[reportCallIssue]
+    with pytest.raises(ValueError, match="id is required"):
+        cls(title="t")  # pyright: ignore[reportCallIssue]
+    assert list(cls.model_fields).count("id") == 1
+
+
+def test_header_without_id_still_auto_generates_ids():
+    cls = _build("{#def title: str #}")
+    assert cls.auto_id is True
+    assert cls(title="t").id.startswith("pjx-")  # pyright: ignore[reportCallIssue]
+
+
+@pytest.mark.parametrize("header", ["{#def id: int #}", '{#def id: str = "fixed" #}'])
+def test_id_may_only_be_a_required_str(header: str):
+    with pytest.raises(ValueError, match="id.*required.*str"):
+        _build(header)

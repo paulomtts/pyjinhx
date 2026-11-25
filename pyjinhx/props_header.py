@@ -174,7 +174,17 @@ def build_component_class(
     # make a generated class's template and asset probing depend on which module
     # happened to call in. Pin it here; discovery repoints it at the template's
     # own package and calls rebuild_class_descriptor once the class is placed.
+    # The base class already owns the id field; declaring it required only
+    # switches off auto-generation.
+    id_definition = definitions.pop("id", None)
+    if id_definition is not None and id_definition != (str, ...):
+        raise ValueError(
+            f"<{tag}>: in a {{#def#}} header id may only be declared as a "
+            "required str (`id: str`)"
+        )
     cls = create_model(tag, __base__=_OpenComponent, __module__=__name__, **definitions)
+    if id_definition is not None:
+        cls.auto_id = False
     # Set after creation, not as a create_model field: a leading underscore is a
     # pydantic private attribute, and this is a plain class-level marker that
     # downstream code reads off the type, never off an instance.
