@@ -70,6 +70,9 @@ def strip_to_text(source: str) -> str:
     return _LEXEME_RE.sub(lambda m: "\n" * m.group().count("\n"), source)
 
 
+# The words that open an inline block: ``{#def``, ``{#css``, ``{#js``, ``{#python``.
+BLOCK_KEYWORDS = ("def", "css", "js", "python")
+
 # Stable names for the ways a block is malformed, shared with the block
 # grammar's conformance corpus and the editor tooling that reads it.
 PYTHON_BLOCK_EARLY_CLOSE = "python-block-early-close"

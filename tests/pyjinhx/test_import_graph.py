@@ -717,6 +717,13 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
     # stubgen parses `.pjx` blocks with sfc and nothing else; it must never
     # import the application whose components it describes.
     "stubgen": frozenset({"pyjinhx.sfc"}),
+    # manifest reads documents and modules statically. template_blocks is
+    # imported inside scan_blocks, so a bare `import pyjinhx.manifest` stays
+    # stdlib-only; nothing here may import props_header or _component, which
+    # would pull in pydantic and the application's own classes.
+    "manifest": frozenset(
+        {"pyjinhx.sfc", "pyjinhx.stubgen", "pyjinhx.template_blocks"}
+    ),
     # The on_rendered hook's signature names BaseComponent and RenderedLevel, but
     # both imports are TYPE_CHECKING-only. At runtime session also imports
     # AssetMode from assets, a real edge alongside markers.

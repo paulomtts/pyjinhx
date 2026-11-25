@@ -24,6 +24,7 @@ from typing import NamedTuple
 from jinja2 import TemplateSyntaxError
 
 from pyjinhx.sfc import (
+    BLOCK_KEYWORDS,
     SECOND_BLOCK,
     STRAY_COMMENT_CLOSE,
     BlockSyntaxError,
@@ -120,9 +121,7 @@ def hide_block_lines(source: str) -> str:
     parts: list[str] = []
     position = 0
     for match in comments(source):
-        if not any(
-            _is_block(match.group(1), k) for k in ("def", "css", "js", "python")
-        ):
+        if not any(_is_block(match.group(1), k) for k in BLOCK_KEYWORDS):
             continue
         start, end = match.span()
         line_start = source.rfind("\n", 0, start) + 1
