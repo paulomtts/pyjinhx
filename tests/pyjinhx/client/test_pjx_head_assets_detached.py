@@ -72,3 +72,54 @@ def test_oob_head_swap_leaves_no_loose_text_in_head(page):
     page.wait_for_function("document.querySelectorAll('#card').length === 2")
     assert page.evaluate(HEAD_TEXT) == []
     assert page.evaluate(HEAD_TOKENS) == ["card.css"]
+
+
+def _open_with(page, response, status=200):
+    """Like `_open`, with a custom /post response."""
+    _open(page)
+    page.unroute(URL + "post")
+    page.route(
+        URL + "post",
+        lambda route: route.fulfill(
+            status=status, content_type="text/html", body=response
+        ),
+    )
+
+
+def test_error_response_still_applies_head_assets(page):
+    _open_with(page, RESPONSE, status=500)
+    page.evaluate("document.getElementById('btn').click()")
+    page.wait_for_function("document.head.querySelector('[data-pjx-asset]')")
+    assert page.evaluate(HEAD_TOKENS) == ["card.css"]
+
+
+def test_head_script_runs_after_the_body_swap(page):
+    response = (
+        '<script data-pjx-asset="seen.js" hx-swap-oob="beforeend:head">'
+        'window.seen = !!document.getElementById("card")</script>'
+        '<div hx-swap-oob="beforeend:body"><i id="card"></i></div>'
+    )
+    _open_with(page, response)
+    page.evaluate("document.getElementById('btn').click()")
+    page.wait_for_function("window.seen !== undefined")
+    assert page.evaluate("window.seen") is True
+
+
+def test_request_cancelled_by_a_later_listener_applies_nothing(page):
+    _open(page)
+    page.evaluate(
+        """() => document.body.addEventListener('htmx:beforeRequest',
+             (e) => e.preventDefault())"""
+    )
+    page.evaluate("document.getElementById('btn').click()")
+    page.wait_for_timeout(300)
+    assert page.evaluate(HEAD_TOKENS) == []
+
+
+def test_aborted_request_applies_nothing(page):
+    _open(page)
+    page.unroute(URL + "post")
+    page.route(URL + "post", lambda route: route.abort())
+    page.evaluate("document.getElementById('btn').click()")
+    page.wait_for_timeout(300)
+    assert page.evaluate(HEAD_TOKENS) == []
