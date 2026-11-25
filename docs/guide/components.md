@@ -328,7 +328,7 @@ summary; add `--write` to apply it. Only files under the paths you pass are touc
 |---|---|---|
 | `assets` | sibling `.css`/`.js` into a `{#css#}`/`{#js#}` block of the template beside it | the text contains `#}`; a subclass with its own template inherits the asset; a subclass that renders the template has its own sibling file of that kind; the template already has that block; the class's `template` is not a triple-quoted literal that can hold it |
 | `template` | a class's adjacent `.pjx` into `template = r"""..."""` (S to C) | the class already assigns `template`; the text holds both triple-quote styles or ends in a backslash; indentation would change when read back |
-| `declass` | a fields-only class into a `{#def#}` header, deleting the `.py` (S to T) | the class has methods, decorators, other bases or other statements; a type or default is not expressible in a header; a default is a call, which a class runs once and a header would run per instance; the module holds more than the class and imports |
+| `declass` | a fields-only class into a `{#def#}` header, deleting the `.py` (S to T) | the class has methods, decorators, other bases or other statements; a type or default is not expressible in a header; a default is a call, which a class runs once and a header would run per instance; the module holds more than the class and imports; another class under the paths or `--root` subclasses it (a header-only component has no class to import) |
 
 `declass` prints every remaining reference to a folded class name, because it reports
 rather than rewrites imports (`--root` says where to look). The folded component also

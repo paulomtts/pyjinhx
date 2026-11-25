@@ -660,6 +660,37 @@ def test_declass_reports_every_reference_under_the_root(tmp_path, capsys):
     assert (tmp_path / "views.py").read_text().startswith("from components.card")
 
 
+def test_declass_refuses_a_class_that_is_subclassed_under_the_root(tmp_path, capsys):
+    components = tmp_path / "components"
+    module = write(components / "card.py", FIELDS_PY)
+    write(components / "card.pjx", FIELDS_PJX)
+    write(
+        tmp_path / "views.py",
+        "from components.card import Card\n\n\nclass Big(Card):\n    pass\n",
+    )
+
+    code, out = run("declass", components, "--root", tmp_path, "--write", capsys=capsys)
+
+    assert code == 1
+    assert "views.py:4" in out and "Big" in out
+    assert module.exists()
+
+
+def test_declass_refuses_a_class_subclassed_under_the_given_paths(tmp_path, capsys):
+    module = write(tmp_path / "card.py", FIELDS_PY)
+    write(tmp_path / "card.pjx", FIELDS_PJX)
+    write(
+        tmp_path / "big.py",
+        "from card import Card\n\n\nclass Big(Card):\n    pass\n",
+    )
+
+    code, out = run("declass", tmp_path, capsys=capsys)
+
+    assert code == 1
+    assert "big.py:4" in out
+    assert module.exists()
+
+
 @pytest.mark.parametrize(
     ("body", "reason"),
     [

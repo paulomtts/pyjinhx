@@ -518,8 +518,19 @@ def references(name: str, roots: list[Path], skip: Path) -> list[str]:
     return found
 
 
+def subclasses(name: str, modules: list[Module]) -> list[str]:
+    """``path:line: Class`` for each class in ``modules`` that has ``name`` as a base."""
+    return [
+        f"{module.path}:{node.lineno}: {node.name}"
+        for module in modules
+        for node in ast.walk(module.tree)
+        if isinstance(node, ast.ClassDef) and name in base_names(node)
+    ]
+
+
 def fold_declass(paths: list[Path], roots: list[Path] | None = None) -> Plan:
     plan = Plan()
+    searched = load_modules([*paths, *(roots or [])])
     for module in load_modules(paths):
         for node in module.classes():
             if module.path.name == "__init__.py" or not node.bases:
@@ -536,6 +547,12 @@ def fold_declass(paths: list[Path], roots: list[Path] | None = None) -> Plan:
                 props = class_props(node, import_paths(module.tree))
                 if reason := only_the_class(module, node):
                     raise ValueError(reason)
+                if found := subclasses(node.name, searched):
+                    # Without a class there is nothing for them to import.
+                    raise ValueError(
+                        f"{node.name} is subclassed, and a header-only component "
+                        f"has no importable class: {'; '.join(found)}"
+                    )
                 if props:
                     header = header_text(props)
                     parse_props_header(header)
