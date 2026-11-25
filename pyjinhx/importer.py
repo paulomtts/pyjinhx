@@ -277,9 +277,11 @@ class PjxFinder:
         for entry in sys.path if path is None else path:
             if not isinstance(entry, str):
                 continue
-            candidate = Path(entry or os.getcwd()) / filename
+            candidate = os.path.join(entry or os.getcwd(), filename)
+            if not os.path.isfile(candidate):
+                continue
             try:
-                text = candidate.read_text(encoding="utf-8-sig")
+                text = Path(candidate).read_text(encoding="utf-8-sig")
             except (OSError, UnicodeDecodeError):
                 continue
             if opener_line(text) is not None:

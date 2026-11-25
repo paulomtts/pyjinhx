@@ -604,3 +604,13 @@ def test_importing_pyjinhx_does_not_load_importlib_abc():
         check=True,
     )
     assert result.stdout.strip() == "False"
+
+
+def test_find_spec_does_not_open_files_that_are_not_there(
+    write: Write, monkeypatch: pytest.MonkeyPatch
+):
+    def unexpected(*args, **kwargs):
+        raise AssertionError("opened a file")
+
+    monkeypatch.setattr(Path, "read_text", unexpected)
+    assert importer.PjxFinder().find_spec("pkg.no_such_module", None) is None

@@ -417,8 +417,9 @@ pair. `card.py` plus a `card.pjx` with no block is shape S and needs no care.
 ### Importing and the hook
 
 `import pyjinhx` appends one finder to `sys.meta_path`. Python asks it only for a name
-every other finder failed to find, so ordinary imports pay nothing. For such a name it
-looks for `<package>/<name>.pjx` and answers if the file has a block; the block runs as
+every other finder failed to find, so an import that resolves never reaches it. A name
+that does not resolve costs one `stat` per search-path entry (about 1.5 µs each), and a
+file read only where a `.pjx` of that name exists. It answers if that file has a block; the block runs as
 the module body, and `module.__file__` is the `.pjx`. Relative imports, `sys.modules`,
 `pickle` and `copy.deepcopy` behave as they do for a `.py` file. No bytecode is cached.
 
