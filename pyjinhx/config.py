@@ -292,8 +292,9 @@ def _register_components(components_root: Path | str | None) -> None:
         return
     # Built first so that a block asking for `component("Note")` while it is
     # imported finds the tags; built again if the imports defined classes.
-    known = len(all_component_classes())
+    known = set(all_component_classes())
     for candidate in walk_templates(components_root):
         register_document(candidate.path)
-    if len(all_component_classes()) != known:
-        build_registry(components_root, all_component_classes())
+    classes = all_component_classes()
+    if set(classes) != known:
+        build_registry(components_root, classes)

@@ -417,3 +417,15 @@ def test_a_malformed_block_beside_a_py_class_names_the_class(write: Write):
     assert error.lineno == 2
     assert error.filename == str(path.with_suffix(".pjx"))
     assert "Card" in str(error)
+
+
+def test_a_class_with_two_component_bases_is_listed_once(write: Write):
+    write(
+        "pkg/shapes.py",
+        "from pyjinhx import BaseComponent\n\n\n"
+        "class Left(BaseComponent):\n    pass\n\n\n"
+        "class Right(BaseComponent):\n    pass\n\n\n"
+        "class Both(Left, Right):\n    pass\n",
+    )
+    module = load("pkg.shapes")
+    assert all_component_classes().count(module.Both) == 1

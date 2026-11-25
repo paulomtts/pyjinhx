@@ -483,6 +483,13 @@ Content:
   blocks; `python -m pkg.card` runs through runpy without the stem-class
   check; a `pkg/card/` directory shadows `pkg/card.pjx` (setup refuses it);
   one `.pjx` imported under a second module name is refused.
+- Discovery notes (from the Task 4 review): a column-0 `{#python` line makes a
+  file a document wherever it sits, including an example in a `<pre>`; indent
+  the example or write it inside `{% raw %}`. An indented `{#python` stays a
+  plain comment. Eager discovery imports every block at `setup()`, so call
+  `setup()` after the names your blocks import exist. A block and a module
+  that import each other across threads, one through `component_for_tag`,
+  can raise `_DeadlockError`; keep that cycle out of the blocks' imports.
 
 Proposed revision of the public ADR (it is unreleased, so it is edited in
 place; see open question 1):

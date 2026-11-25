@@ -155,11 +155,9 @@ def component_for_tag(name: str) -> type[BaseComponent] | None:
         raise LookupError(remembered[1])
     headers = []
     for path in paths:
-        source = _orphan_source(path)
-        documented = register_document(path, source) if source is not None else None
+        documented, fields = _inspect_orphan(path)
         if documented is not None:
             return documented
-        fields = None if source is None else _parse_header(path, source)
         headers.append((path, fields))
     headed = [(path, fields) for path, fields in headers if fields is not None]
     if not headed:
@@ -176,6 +174,22 @@ def component_for_tag(name: str) -> type[BaseComponent] | None:
         raise LookupError(message)
     path, fields = headed[0]
     return _register_first(tag, _build(name, tag, path, fields))
+
+
+def _inspect_orphan(
+    path: Path,
+) -> tuple[type | None, list[tuple[str, Any, Any]] | None]:
+    """The document class of an orphan template, or else its header fields.
+
+    A file deleted since discovery has neither. The file is read once.
+    """
+    source = _orphan_source(path)
+    if source is None:
+        return None, None
+    documented = register_document(path, source)
+    if documented is not None:
+        return documented, None
+    return None, _parse_header(path, source)
 
 
 def register_document(
@@ -202,7 +216,11 @@ def register_document(
         import_document(path)
         loaded = loaded_document(path)
         if loaded is None:
-            return None
+            raise ImportError(
+                f"{path} was imported but is not loaded as a document: another "
+                f"loader made its module, or its block is still running.",
+                path=str(path),
+            )
     tag = _pascal_to_snake(loaded[1].__name__)
     registered = _register_first(tag, loaded[1])  # pyright: ignore[reportArgumentType]
     discovery.forget_orphan(tag)

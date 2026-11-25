@@ -886,9 +886,13 @@ def all_component_classes() -> list[type]:
     import or a reloaded module is still listed; `_is_live` leaves it out.
     """
     found: list[type] = []
+    seen: set[type] = set()
     stack = list(BaseComponent.__subclasses__())
     while stack:
         cls = stack.pop()
+        if cls in seen:
+            continue
+        seen.add(cls)
         if _is_live(cls):
             found.append(cls)
         stack.extend(cls.__subclasses__())
@@ -903,9 +907,17 @@ def _is_live(cls: type) -> bool:
     also needs the import hook's record: a block run by ``python -m`` is not
     vouched for.
     """
-    # Built from a header, so no module statement ever bound it to a name.
+    # Built from a header, so no module statement ever bound it to a name: it
+    # lives while its tag does, until its file turns out to be a document.
     if getattr(cls, "_pjx_classless", False):
-        return True
+        from pyjinhx.discovery import get_class
+
+        template = getattr(
+            getattr(cls, "__pjx_descriptor__", None), "template_path", None
+        )
+        if template is not None and loaded_document(template) is not None:
+            return False
+        return get_class(_pascal_to_snake(cls.__name__)) is cls
     module = sys.modules.get(cls.__module__)
     if module is None:
         return False

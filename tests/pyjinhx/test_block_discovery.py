@@ -5,13 +5,14 @@ import importlib
 import sys
 import threading
 import traceback
+import types
 from pathlib import Path
 
 import pytest
 
 from pyjinhx import BaseComponent, discovery, importer
 from pyjinhx._component import all_component_classes
-from pyjinhx.classless import component
+from pyjinhx.classless import component, register_document
 from pyjinhx.config import setup, shutdown_pyjinhx
 from pyjinhx.rendering import render
 from tests.pyjinhx.conftest import Write
@@ -253,3 +254,27 @@ def test_the_hook_is_what_found_the_document(write: Write, root: Path):
     setup(components_root=root)
     loaded = importer.loaded_document(root / "plaque.pjx")
     assert loaded is not None and loaded[0] == "pkg.plaque"
+
+
+def test_a_document_replaces_the_class_built_from_the_same_file_earlier(
+    write: Write, root: Path
+):
+    path = write("pkg/plaque.pjx", "{#def title: str = '' #}<i>{{ title }}</i>\n")
+    setup(components_root=root)
+    built = component("Plaque")
+    assert built.__module__.startswith("pyjinhx._classless")
+    path.write_text(CARD, encoding="utf-8")
+    setup(components_root=root)
+    assert discovery.get_class("plaque") is sys.modules["pkg.plaque"].Plaque
+    assert component("Plaque") is sys.modules["pkg.plaque"].Plaque
+    assert built not in all_component_classes()
+
+
+def test_a_module_another_loader_made_is_refused_not_ignored(write: Write, root: Path):
+    path = write("pkg/plaque.pjx", CARD)
+    stranger = types.ModuleType("pkg.plaque")
+    stranger.__file__ = str(path)
+    sys.modules["pkg.plaque"] = stranger
+    with pytest.raises(ImportError, match="not loaded as a document") as raised:
+        register_document(path)
+    assert str(path) in str(raised.value)
