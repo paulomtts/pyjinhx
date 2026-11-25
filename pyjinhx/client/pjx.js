@@ -127,9 +127,17 @@
     );
   }
 
-  function pjxApplyHeadAssetsFromRequest(evt) {
+  // htmx fires htmx:afterRequest on the requesting element, so a requester
+  // swapped out before its response arrives never reaches a body listener.
+  // The xhr's own load event does not depend on the DOM.
+  function pjxApplyHeadAssetsOnLoad(evt) {
     var xhr = evt.detail && evt.detail.xhr;
-    pjxApplyHeadAssets(xhr && xhr.responseText);
+    if (!xhr || evt.defaultPrevented) {
+      return; // cancelled request: its xhr is never sent
+    }
+    xhr.addEventListener("load", function () {
+      pjxApplyHeadAssets(xhr.responseText);
+    });
   }
 
   // A cold render (or a swapped-in fragment) emits <style data-pjx-asset>
@@ -364,7 +372,7 @@
 
   pjxPromoteInlineAssets();
   document.body.addEventListener("htmx:configRequest", pjxConfigRequest);
-  document.body.addEventListener("htmx:afterRequest", pjxApplyHeadAssetsFromRequest);
+  document.body.addEventListener("htmx:beforeRequest", pjxApplyHeadAssetsOnLoad);
   document.body.addEventListener("htmx:beforeRequest", pjxBeginLoading);
   document.body.addEventListener("htmx:afterOnLoad", pjxEndLoading);
   document.body.addEventListener("htmx:responseError", pjxEndLoading);

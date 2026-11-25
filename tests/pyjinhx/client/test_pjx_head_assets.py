@@ -51,24 +51,27 @@ def test_unparseable_body_is_a_no_op(pjx_page):
     assert page.evaluate(HEAD_TOKENS) == []
 
 
-def test_after_request_applies_assets_from_the_xhr(pjx_page):
+def test_assets_are_applied_when_the_request_loads(pjx_page):
     page = pjx_page("<div></div>")
     page.evaluate(
-        """
-        (html) => document.body.dispatchEvent(new CustomEvent('htmx:afterRequest', {
-          detail: { xhr: { responseText: html } }, bubbles: true
-        }))
-        """,
+        """(html) => {
+          window.__xhr = new EventTarget();
+          window.__xhr.responseText = html;
+          document.body.dispatchEvent(new CustomEvent('htmx:beforeRequest',
+            { detail: { xhr: window.__xhr }, bubbles: true, cancelable: true }));
+        }""",
         SWAP_HTML,
     )
+    assert page.evaluate(HEAD_TOKENS) == []
+    page.evaluate("window.__xhr.dispatchEvent(new Event('load'))")
     assert sorted(page.evaluate(HEAD_TOKENS)) == ["card.css", "card.js"]
 
 
-def test_after_request_without_an_xhr_is_a_no_op(pjx_page):
+def test_before_request_without_an_xhr_is_a_no_op(pjx_page):
     page = pjx_page("<div></div>")
     page.evaluate(
         """() => document.body.dispatchEvent(
-             new CustomEvent('htmx:afterRequest', { detail: {}, bubbles: true })
+             new CustomEvent('htmx:beforeRequest', { detail: {}, bubbles: true })
            )"""
     )
     assert page.evaluate(HEAD_TOKENS) == []

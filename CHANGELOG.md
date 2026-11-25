@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+- Head assets (CSS and JS) carried by a response are no longer dropped when
+  another swap detached the requesting element before the response arrived.
+  `pjx.js` now applies them from the request's own `load` event instead of
+  `htmx:afterRequest`, which htmx fires on the requester.
+
 ## 1.16.0 — Graph ports and wire events (2026-11-21)
 
 ### Added
