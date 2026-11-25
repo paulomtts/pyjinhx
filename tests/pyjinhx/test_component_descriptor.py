@@ -958,6 +958,49 @@ class TestWalkTemplate:
         assert _walk_template(Card) == (Path(__file__).parent / "card.pjx", None)
 
 
+class TestWalkInlineTemplate:
+    """A class whose own body assigns ``template`` owns its template: the walk
+    answers with its module file before probing for a ``.pjx``."""
+
+    def test_an_inline_template_wins_over_an_adjacent_file(self, mro_dir):
+        class Card(BaseComponent):
+            template = "<div>inline</div>"
+
+        Card.__module__ = _MRO_MODULE
+        (mro_dir / "card.pjx").write_text("<div>file</div>")
+
+        assert _walk_template(Card) == (mro_dir / f"{_MRO_MODULE}.py", Card)
+
+    def test_a_subclass_file_overrides_a_parents_inline_template(self, mro_dir):
+        class Card(BaseComponent):
+            template = "<div>inline</div>"
+
+        class FancyCard(Card):
+            pass
+
+        Card.__module__ = _MRO_MODULE
+        FancyCard.__module__ = _MRO_MODULE
+        (mro_dir / "fancy_card.pjx").write_text("<div>fancy</div>")
+
+        assert _walk_template(FancyCard) == (mro_dir / "fancy_card.pjx", FancyCard)
+
+    def test_an_inline_owner_costs_no_probe(self, mro_dir, monkeypatch):
+        class Card(BaseComponent):
+            template = "<div>inline</div>"
+
+        class FancyCard(Card):
+            pass
+
+        Card.__module__ = _MRO_MODULE
+        FancyCard.__module__ = _MRO_MODULE
+        probed = TestTemplateWalkProbeBudget._count_is_file(monkeypatch)
+
+        _walk_template(Card)
+        _walk_template(FancyCard)
+
+        assert probed == [mro_dir / "fancy_card.pjx"]
+
+
 class TestTemplateWalkProbeBudget:
     """ADR 0007's probe budget survives the walk: at most one `is_file` per
     ancestor, and none at all for the final fallback."""
