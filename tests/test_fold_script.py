@@ -354,6 +354,17 @@ def test_template_refuses_a_class_that_already_has_a_template(tmp_path, capsys):
     assert (tmp_path / "card.pjx").exists()
 
 
+def test_template_sees_a_template_assigned_alongside_another_name(tmp_path, capsys):
+    """Found the way pyjinhx finds it, so the fold never adds a second one."""
+    module = make_card(tmp_path)
+    module.write_text(module.read_text() + '\n    template = alias = "<i></i>"\n')
+
+    code, out = run("template", tmp_path, "--write", capsys=capsys)
+
+    assert code == 1
+    assert "already assigns" in out
+
+
 def test_template_is_idempotent_and_leaves_subclasses_rendering(
     tmp_path, monkeypatch, capsys
 ):

@@ -27,7 +27,7 @@ from jinja2 import TemplateSyntaxError
 
 from pyjinhx._component import _pascal_to_snake
 from pyjinhx.props_header import parse_props_header
-from pyjinhx.sfc import extract_template
+from pyjinhx.sfc import _template_value, extract_template
 from pyjinhx.template_blocks import find_block
 
 _SKIPPED_DIRS = {"__pycache__", "node_modules"}
@@ -87,20 +87,8 @@ def load_modules(paths: list[Path]) -> list[Module]:
     return modules
 
 
-def template_value(node: ast.ClassDef) -> ast.stmt | None:
-    """The class body's last ``template = ...`` statement, or None."""
-    found = None
-    for statement in node.body:
-        match statement:
-            case ast.Assign(targets=[ast.Name(id="template")]):
-                found = statement
-            case ast.AnnAssign(target=ast.Name(id="template"), value=ast.expr()):
-                found = statement
-    return found
-
-
 def assigns_template(node: ast.ClassDef) -> bool:
-    return template_value(node) is not None
+    return _template_value(node) is not None
 
 
 def base_names(node: ast.ClassDef) -> list[str]:
@@ -173,10 +161,7 @@ def add_inline_block(source: str, class_name: str, kind: str, body: str) -> str:
     node = next(
         n for n in tree.body if isinstance(n, ast.ClassDef) and n.name == class_name
     )
-    statement = template_value(node)
-    literal = (
-        statement.value if isinstance(statement, ast.Assign | ast.AnnAssign) else None
-    )
+    literal = _template_value(node)
     if not (isinstance(literal, ast.Constant) and isinstance(literal.value, str)):
         raise ValueError("the template is not a plain string literal")  # noqa: TRY004
     lines = source.splitlines(keepends=True)
