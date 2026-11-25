@@ -203,7 +203,7 @@ def test_literal_prop_rejects_a_value_outside_its_members():
     from pydantic import ValidationError
 
     cls = _build('{#def tone: Literal["info", "warn"] = "info" #}')
-    assert cls(tone="warn").tone == "warn"  # pyright: ignore[reportCallIssue]  # pyright: ignore[reportAttributeAccessIssue]
+    assert cls(tone="warn").tone == "warn"  # pyright: ignore[reportCallIssue, reportAttributeAccessIssue]
     with pytest.raises(ValidationError):
         cls(tone="bad")  # pyright: ignore[reportCallIssue]
 
