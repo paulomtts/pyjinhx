@@ -17,6 +17,7 @@ normalised before comparing; everything else must match byte for byte.
 import ast
 import importlib
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -462,6 +463,8 @@ def test_a_pjx_class_has_the_document_it_lives_in():
     )
 
 
+MODULE_PREFIX = "tests.fixtures.fewer_files.pjx_python"
+
 REGISTER = """
 import sys
 import pyjinhx
@@ -499,6 +502,27 @@ def test_setup_registers_every_pjx_python_component_from_clean_modules():
         check=True,
     )
     assert SHAPE_TAGS <= set(ast.literal_eval(result.stdout))
+
+
+def test_setup_misses_a_py_subclass_that_nothing_imports(tmp_path):
+    copy = tmp_path / "pjx_python"
+    shutil.copytree(SHAPES["P"], copy, ignore=shutil.ignore_patterns("__pycache__"))
+    for path in [*copy.rglob("*.pjx"), *copy.rglob("*.py")]:
+        text = path.read_text(encoding="utf-8")
+        path.write_text(text.replace(MODULE_PREFIX, "pjx_python"), encoding="utf-8")
+    (copy / "ui/pages/home/todos/__init__.py").write_text("")
+    script = REGISTER.replace("tests.fixtures", "pjx_python")
+    result = subprocess.run(
+        [sys.executable, "-c", script, str(copy)],
+        capture_output=True,
+        text=True,
+        cwd=tmp_path,
+        env={**os.environ, "PYTHONPATH": str(FIXTURES.parents[2])},
+        check=True,
+    )
+    registered = set(ast.literal_eval(result.stdout))
+    assert "project_name_field" in registered
+    assert "task_name_field" not in registered
 
 
 def copy_of_pjx_python(tmp_path: Path) -> Path:
