@@ -269,6 +269,32 @@ def test_editing_the_template_on_disk_is_picked_up_without_reimporting(
     assert note.render() == "<p>after</p>"
 
 
+def test_editing_two_templates_in_one_module_refreshes_both(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    source = (
+        "from pyjinhx import BaseComponent\n\n\n"
+        "class FirstNote(BaseComponent):\n"
+        '    template = "<p>first before</p>"\n\n\n'
+        "class SecondNote(BaseComponent):\n"
+        '    template = "<p>second before</p>"\n'
+    )
+    path = tmp_path / "two_notes.py"
+    path.write_text(source)
+    module = _import_file(path, monkeypatch)
+    with request_scope():
+        assert module.FirstNote().render().startswith("<p>first before</p>")
+        assert module.SecondNote().render().startswith("<p>second before</p>")
+
+    path.write_text(source.replace("before", "after"))
+    _touch_later(path)
+
+    with request_scope():
+        assert module.FirstNote().render().startswith("<p>first after</p>")
+        assert module.FirstNote().render().startswith("<p>first after</p>")
+        assert module.SecondNote().render().startswith("<p>second after</p>")
+
+
 SHOP = '''\
 from pydantic import computed_field
 

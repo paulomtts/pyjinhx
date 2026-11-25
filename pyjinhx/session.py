@@ -105,8 +105,10 @@ class AbsolutePathLoader(BaseLoader):
             # candidate - hundreds of identical stats for one file. The request
             # cache is a plain dict bound once by request_scope(), so the fan-out
             # threadpool's per-item Context copies all mutate the same object.
+            # Keyed by the full template name, not the file: the classes of
+            # one module share a file but each has its own cached template.
             freshness = get_freshness_cache()
-            if freshness.get(name):
+            if freshness.get(template):
                 return True
             # Matches FileSystemLoader's cache-invalidation contract: a deleted
             # or touched file must invalidate, so the missing case is stale
@@ -118,7 +120,7 @@ class AbsolutePathLoader(BaseLoader):
             except OSError:
                 return False
             if fresh:
-                freshness[name] = True
+                freshness[template] = True
             return fresh
 
         return source, name, uptodate
@@ -439,8 +441,8 @@ def get_cache_forward() -> dict[tuple[type, object], set[str]]:
 def get_freshness_cache() -> dict[str, bool]:
     """Return this request's confirmed-fresh template paths, empty outside a scope.
 
-    Keyed by the absolute template path string the loader reports as a Template's
-    filename. A path recorded here has had its mtime confirmed once this request
+    Keyed by the template name the loader was asked for: an absolute path, or
+    ``<module path>::<Class>`` for an inline template. A name recorded here has had its mtime confirmed once this request
     and is not re-stat'ed again until the next one, so a template edited mid-request
     is picked up on the following request rather than the current one.
     """
