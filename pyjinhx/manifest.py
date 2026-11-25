@@ -346,7 +346,7 @@ def _class_info(
     text: str,
     lines: list[str],
     path: Path,
-    module: str,
+    module: str | None,
 ) -> dict[str, Any]:
     return {
         "module": module,

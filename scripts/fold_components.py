@@ -26,12 +26,12 @@ from pathlib import Path
 
 from jinja2 import TemplateSyntaxError
 
-from pyjinhx._component import _pascal_to_snake
 from pyjinhx.importer import opener_line
 from pyjinhx.props_header import parse_props_header
 from pyjinhx.sfc import (
     BlockSyntaxError,
     extract_template,
+    pascal_to_snake,
     python_block,
     template_value,
 )
@@ -107,7 +107,7 @@ def base_names(node: ast.ClassDef) -> list[str]:
 
 
 def has_own_template(module: Module, node: ast.ClassDef) -> bool:
-    pjx = module.path.parent / f"{_pascal_to_snake(node.name)}.pjx"
+    pjx = module.path.parent / f"{pascal_to_snake(node.name)}.pjx"
     return assigns_template(node) or pjx.is_file()
 
 
@@ -158,7 +158,7 @@ def subclass_refusal(asset_stem: str, kind: str, modules: list[Module]) -> str |
         n.name
         for m in modules
         for n in m.classes()
-        if _pascal_to_snake(n.name) == asset_stem
+        if pascal_to_snake(n.name) == asset_stem
     }
     for module in modules:
         for node in module.classes():
@@ -166,7 +166,7 @@ def subclass_refusal(asset_stem: str, kind: str, modules: list[Module]) -> str |
                 continue
             if has_own_template(module, node):
                 return f"{node.name} inherits it and has a template of its own"
-            sibling = module.path.parent / f"{_pascal_to_snake(node.name)}.{kind}"
+            sibling = module.path.parent / f"{pascal_to_snake(node.name)}.{kind}"
             if sibling.is_file():
                 return (
                     f"{node.name} inherits the template and has its own {sibling.name}"
@@ -229,7 +229,7 @@ def locate_template(
         if module.path.parent != directory:
             continue
         for node in module.classes():
-            if _pascal_to_snake(node.name) == stem and assigns_template(node):
+            if pascal_to_snake(node.name) == stem and assigns_template(node):
                 return module.path, node.name
     return pjx, None
 
@@ -357,7 +357,7 @@ def fold_template(paths: list[Path]) -> Plan:
         )
         # Last class first, so the line numbers of the ones above stay true.
         for node in reversed(module.classes()):
-            pjx = module.path.parent / f"{_pascal_to_snake(node.name)}.pjx"
+            pjx = module.path.parent / f"{pascal_to_snake(node.name)}.pjx"
             if not node.bases or not pjx.is_file() or pjx in plan.files:
                 continue
             content = pjx.read_text(encoding="utf-8")
@@ -570,7 +570,7 @@ def fold_declass(paths: list[Path], roots: list[Path] | None = None) -> Plan:
         for node in module.classes():
             if module.path.name == "__init__.py" or not node.bases:
                 continue
-            pjx = module.path.parent / f"{_pascal_to_snake(node.name)}.pjx"
+            pjx = module.path.parent / f"{pascal_to_snake(node.name)}.pjx"
             try:
                 if not pjx.is_file():
                     raise ValueError(f"there is no {pjx.name} beside it")
@@ -632,7 +632,7 @@ def stem_classes(module: Module) -> list[ast.ClassDef]:
     return [
         n
         for n in module.classes()
-        if n.bases and _pascal_to_snake(n.name) == module.path.stem
+        if n.bases and pascal_to_snake(n.name) == module.path.stem
     ]
 
 
@@ -683,7 +683,7 @@ def fold_pyblock(paths: list[Path], roots: list[Path] | None = None) -> Plan:
             for line in references(module.path.name, roots or paths, module.path, "*")
         ]
         for node in module.classes():
-            other = pjx.with_name(_pascal_to_snake(node.name) + ".pjx")
+            other = pjx.with_name(pascal_to_snake(node.name) + ".pjx")
             if other != pjx and other.is_file():
                 plan.notes.append(f"{node.name} keeps its {other.name}")
     return plan
