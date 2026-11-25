@@ -329,6 +329,34 @@ def test_a_subclass_in_the_same_block_is_listed_with_the_documents_markup(tree):
     assert _at(wide["class"]) == (6, 6)
 
 
+def test_a_class_in_a_block_owns_the_sibling_document_named_for_it(tree):
+    _write(
+        tree,
+        {
+            # "widget_part" sorts after "widget", and "a_part" before it
+            "app/ui/widget.pjx": "{#python\nfrom pyjinhx import BaseComponent\n\n\n"
+            "class Widget(BaseComponent):\n    pass\n\n\n"
+            "class WidgetPart(BaseComponent):\n    label: str\n\n\n"
+            "class APart(BaseComponent):\n    size: int = 1\n#}\n<p></p>\n",
+            "app/ui/widget_part.pjx": "<b>{{ label }}</b>\n",
+            "app/ui/a_part.pjx": "<i>{{ size }}</i>\n",
+        },
+    )
+
+    result = manifest.describe([Path("app")])
+    parts = [c for c in result["components"] if c["tag"] in ("WidgetPart", "APart")]
+
+    assert sorted((c["tag"], c["kind"]) for c in parts) == [
+        ("APart", "pjx-python"),
+        ("WidgetPart", "pjx-python"),
+    ]
+    part = next(c for c in parts if c["tag"] == "WidgetPart")
+    assert part["document"]["path"] == _abs("app/ui/widget_part.pjx")
+    assert part["class"]["path"] == _abs("app/ui/widget.pjx")
+    assert [p["name"] for p in part["props"]] == ["label"]
+    assert part["document"]["markup_lines"] == [1, 1]
+
+
 def test_columns_are_utf16_code_units(tree):
     (tree / "app/ui/emoji.pjx").write_text(
         "{#python\nclass Emoji:\n    a: int = 1; b: str = '😀'; c: int\n#}\n<p></p>\n",
