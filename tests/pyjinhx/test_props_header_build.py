@@ -6,6 +6,7 @@ Generation only: warning on stale headers (#377), the component() factory
 
 import datetime
 import sys
+import time
 import uuid
 from typing import Any
 
@@ -305,3 +306,18 @@ def test_dotted_default_may_be_an_enum_member():
         " = tests.pyjinhx.header_names.Tone.INFO #}"
     )
     assert cls().tone is header_names.Tone.INFO  # pyright: ignore[reportAttributeAccessIssue]
+
+
+def test_dotted_call_default_is_a_per_instance_factory():
+    cls = _build("{#def at: datetime.datetime = datetime.datetime.now() #}")
+    assert cls.model_fields["at"].default_factory == datetime.datetime.now
+    first = cls().at  # pyright: ignore[reportAttributeAccessIssue]
+    time.sleep(0.001)
+    assert cls().at > first  # pyright: ignore[reportAttributeAccessIssue]
+
+
+def test_dotted_factory_result_is_not_shared_between_instances():
+    cls = _build("{#def tags: list = tests.pyjinhx.header_names.make_tags() #}")
+    first, second = cls(), cls()
+    assert first.tags == ["new"]  # pyright: ignore[reportAttributeAccessIssue]
+    assert first.tags is not second.tags  # pyright: ignore[reportAttributeAccessIssue]

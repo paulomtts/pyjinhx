@@ -18,7 +18,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal
 
-from pydantic import create_model
+from pydantic import Field, create_model
 
 if TYPE_CHECKING:
     from pyjinhx._component import _OpenComponent
@@ -61,10 +61,14 @@ def _dotted_name(node: ast.expr) -> str | None:
 
 @dataclass(frozen=True)
 class _DottedDefault:
-    """A default that names an import path, read once when the class is built."""
+    """A default that names an import path, read once when the class is built.
+
+    ``call`` marks the ``path()`` form: the name is a factory, called per instance.
+    """
 
     path: str
     field_name: str
+    call: bool
 
 
 def _names_an_import_path(node: ast.expr) -> bool:
@@ -142,14 +146,18 @@ def _resolve_literal(node: ast.expr, field_name: str) -> Any:
 def _parse_default(node: ast.expr, field_name: str) -> Any:
     try:
         return ast.literal_eval(node)
-    except (ValueError, SyntaxError) as exc:
+    except (ValueError, SyntaxError):
+        pass
+    if isinstance(node, ast.Call):
+        path = None if node.args or node.keywords else _dotted_name(node.func)
+    else:
         path = _dotted_name(node)
-        if path is None:
-            raise ValueError(
-                f"{{#def#}} header default for {field_name!r} must be a literal: "
-                f"{ast.unparse(node)!r}"
-            ) from exc
-    return _DottedDefault(path, field_name)
+    if path is None:
+        raise ValueError(
+            f"{{#def#}} header default for {field_name!r} must be a literal: "
+            f"{ast.unparse(node)!r}"
+        )
+    return _DottedDefault(path, field_name, call=isinstance(node, ast.Call))
 
 
 def parse_props_header(source: str) -> list[tuple[str, Any, Any]] | None:
@@ -261,7 +269,8 @@ def _resolve_dotted(value: Any, owner: str) -> Any:
     if isinstance(value, _DottedType):
         return _resolve_annotation(value.node, value.field_name, owner)
     if isinstance(value, _DottedDefault):
-        return _import(value.path, value.field_name, owner)
+        target = _import(value.path, value.field_name, owner)
+        return Field(default_factory=target) if value.call else target
     return value
 
 
