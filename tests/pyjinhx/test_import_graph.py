@@ -848,6 +848,7 @@ def test_session_never_reaches_into_reactive():
         "pyjinhx.segments",
         "pyjinhx.assets",
         "pyjinhx.config",
+        "pyjinhx.sfc",
     }
 
 

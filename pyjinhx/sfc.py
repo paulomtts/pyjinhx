@@ -17,6 +17,7 @@ without re-importing anything.
 
 import ast
 import textwrap
+from pathlib import Path
 
 
 def _template_value(node: ast.ClassDef) -> ast.expr | None:
@@ -87,3 +88,17 @@ def extract_template(
     # and tracebacks then point into the .py file with no source map.
     padding = "\n" * (value.lineno - 1 + skipped_lines)
     return f"{{#{padding}#}}{content.rstrip()}"
+
+
+def read_document(template_path: Path, inline_class: str | None) -> str:
+    """The pjx document a component renders: a ``.pjx`` file's text, or the
+    inline template of ``inline_class`` read out of the ``.py`` module at
+    ``template_path``.
+
+    The one way template source is read, so a ``.py`` module is never
+    mistaken for a document.
+    """
+    source = template_path.read_text(encoding="utf-8")
+    if inline_class is None:
+        return source
+    return extract_template(source, inline_class, str(template_path))
