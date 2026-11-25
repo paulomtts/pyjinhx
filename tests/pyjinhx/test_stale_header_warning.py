@@ -59,6 +59,14 @@ def test_unreadable_template_leaves_flag_false():
     assert NoTemplateAtAll.__pjx_descriptor__.has_stale_def_header is False
 
 
+def test_a_template_with_two_headers_leaves_the_probe_silent(tmp_path):
+    """The probe is a diagnostic; a broken template must not fail the import."""
+    path = tmp_path / "twice.pjx"
+    path.write_text("{#def a #}\n<div></div>\n{#def b #}\n")
+
+    assert props_header.template_has_props_header(path) is False
+
+
 def _wire(cls: type[BaseComponent], *, stale: bool) -> None:
     """Point ``cls`` at a loadable template and pin its stale-header flag.
 

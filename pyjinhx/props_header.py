@@ -29,6 +29,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal
 
+from jinja2 import TemplateSyntaxError
 from pydantic import Field, create_model
 
 from pyjinhx.sfc import read_document
@@ -338,7 +339,7 @@ def template_has_props_header(
         return False
     try:
         return parse_props_header(source) is not None
-    except ValueError:
+    except (ValueError, TemplateSyntaxError):
         # A malformed header is still a header, but header-parse correctness
         # belongs to the classless path; staying silent here keeps a broken
         # header from producing two unrelated complaints.
