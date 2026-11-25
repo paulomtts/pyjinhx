@@ -3,13 +3,37 @@
 ## Unreleased
 
 ### Added
-- Inline styles and scripts. A `.pjx` template may carry `{#css ... #}` and
+- A component is a pjx document, optionally owned by a class. The document
+  (markup plus `{#def#}`, `{#css#}` and `{#js#}` blocks) lives in a `.pjx` file
+  or in a class's `template = r"""..."""`, and means the same in both. See
+  [One model, three shapes](docs/guide/components.md#one-model-three-shapes) and
+  [ADR 0009](docs/decisions/0009-a-component-is-a-pjx-document.md).
+- Inline styles and scripts. A template may carry `{#css ... #}` and
   `{#js ... #}` blocks, so a component needs no sibling `.css`/`.js` file. The
   blocks are Jinja comments, so they never render, and their bodies ship through
-  the same asset pipeline as sibling files. A sibling file and a block of the same
-  kind both ship, sibling first; two blocks of one kind in a template raise
-  `TemplateSyntaxError` at the second block's line; `AssetMode.LINK` refuses a
-  block. See [Inline styles and scripts](docs/guide/components.md#inline-styles-and-scripts).
+  the same asset pipeline as sibling files, sibling first. Two blocks of one
+  kind raise `TemplateSyntaxError`; `AssetMode.LINK` refuses a block. See
+  [Inline styles and scripts](docs/guide/components.md#inline-styles-and-scripts).
+- Inline class templates. A class may hold its template as one plain string
+  literal in `template`; it beats an adjacent `.pjx`, is inherited, keeps `.py`
+  line numbers in errors, and reloads without re-importing. `*.py`-watching dev
+  servers restart on an edit to it.
+- A wider `{#def#}` vocabulary: `Literal`, `list`/`dict` generics, real unions,
+  `Slot`, `ExtraAttrs`, `AttrValue`; `id: str` (required) turns `auto_id` off;
+  dotted names are import paths for types, constant defaults and `pkg.mod.make()`
+  default factories, imported when the class is built. The header may sit
+  anywhere in the document.
+- Header-only templates answer their tags without `component()`. Ambiguous
+  same-named headed templates raise `LookupError` naming the paths.
+- `scripts/fold_components.py` (`assets`, `template`, `declass`): dry-run by
+  default, `--write` to apply.
+
+### Changed
+- A `.pjx` with a `{#def#}` header and no class now renders as a component for its
+  `<Tag/>` instead of passing through as markup. Header annotations that used to
+  fall back to `Any` (unions, generics, `Literal`) now validate as written.
+  `template` is reserved as a class attribute. See the
+  [migration notes](docs/migration.md).
 
 ## 1.16.0 — Graph ports and wire events (2026-11-21)
 
