@@ -131,8 +131,13 @@ def block_text(kind: str, body: str, indent: str = "") -> str:
 # --- assets -----------------------------------------------------------------
 
 
-def inherited_by(asset_stem: str, modules: list[Module]) -> str | None:
-    """A subclass with its own template of the class that owns ``asset_stem``."""
+def subclass_refusal(asset_stem: str, kind: str, modules: list[Module]) -> str | None:
+    """Why a subclass of the class owning ``asset_stem`` blocks the fold, or None.
+
+    A subclass with its own template stops seeing a block in the parent's. One
+    that inherits the template but has its own sibling file of this kind would
+    start shipping the block beside that file, which used to shadow the parent's.
+    """
     owners = {
         n.name
         for m in modules
@@ -141,8 +146,15 @@ def inherited_by(asset_stem: str, modules: list[Module]) -> str | None:
     }
     for module in modules:
         for node in module.classes():
-            if owners & set(base_names(node)) and has_own_template(module, node):
-                return node.name
+            if not owners & set(base_names(node)):
+                continue
+            if has_own_template(module, node):
+                return f"{node.name} inherits it and has a template of its own"
+            sibling = module.path.parent / f"{_pascal_to_snake(node.name)}.{kind}"
+            if sibling.is_file():
+                return (
+                    f"{node.name} inherits the template and has its own {sibling.name}"
+                )
     return None
 
 
@@ -224,8 +236,8 @@ def fold_assets(paths: list[Path]) -> Plan:
                 asset, "its text contains `#}`, which would end the block early"
             )
             continue
-        if subclass := inherited_by(asset.stem, modules):
-            plan.refuse(asset, f"{subclass} inherits it and has a template of its own")
+        if reason := subclass_refusal(asset.stem, kind, modules):
+            plan.refuse(asset, reason)
             continue
         if class_name is None:
             existing = text

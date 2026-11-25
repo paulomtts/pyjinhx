@@ -319,7 +319,7 @@ summary; add `--write` to apply it. Only files under the paths you pass are touc
 
 | Command | Move | Refuses when |
 |---|---|---|
-| `assets` | sibling `.css`/`.js` into a `{#css#}`/`{#js#}` block of the template beside it | the text contains `#}`; a subclass with its own template inherits the asset; the template already has that block; the class's `template` is not a triple-quoted literal that can hold it |
+| `assets` | sibling `.css`/`.js` into a `{#css#}`/`{#js#}` block of the template beside it | the text contains `#}`; a subclass with its own template inherits the asset; a subclass that renders the template has its own sibling file of that kind; the template already has that block; the class's `template` is not a triple-quoted literal that can hold it |
 | `template` | a class's adjacent `.pjx` into `template = r"""..."""` (S to C) | the class already assigns `template`; the text holds both triple-quote styles or ends in a backslash; indentation would change when read back |
 | `declass` | a fields-only class into a `{#def#}` header, deleting the `.py` (S to T) | the class has methods, decorators, other bases or other statements; a type or default is not expressible in a header; the module holds more than the class and imports |
 
@@ -446,6 +446,9 @@ A component can keep its CSS and JS inside its `.pjx` template instead of in sib
   own renders its parent's, so it ships the parent's blocks; a subclass with its own
   template ships only that template's blocks (sibling files are still inherited up the
   class chain as before).
+- The two inherit differently. A subclass's own sibling `.css` replaces its parent's
+  `.css` file, but not a `{#css#}` block in the parent's template it renders: that
+  subclass ships its own file **and** the parent's block.
 - `AssetMode.LINK` has no file to point a URL at, so a component with a block raises
   `ValueError` in LINK mode. Use `INLINE`, or `NONE` with a bundle: `all_assets()`
   lists each block as a path such as `ui/card.pjx#css`, and `read_text()`/`read_bytes()`

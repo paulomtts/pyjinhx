@@ -202,6 +202,31 @@ def test_assets_refuses_an_asset_a_subclass_with_its_own_template_inherits(
     assert "FancyCard" in out
 
 
+def test_assets_refuses_when_an_inheriting_subclass_has_its_own_sibling_file(
+    tmp_path, capsys
+):
+    """Its own .css shadows the parent's file but would not shadow a block."""
+    make_card(tmp_path)
+    write(
+        tmp_path / "fancy_card.py",
+        """
+        from card import Card
+
+
+        class FancyCard(Card):
+            pass
+        """,
+    )
+    write(tmp_path / "fancy_card.css", ".fancy {}\n")
+    css = write(tmp_path / "card.css", CARD_CSS)
+
+    code, out = run("assets", tmp_path, "--write", capsys=capsys)
+
+    assert code == 1
+    assert css.exists()
+    assert "FancyCard" in out and "fancy_card.css" in out
+
+
 def test_assets_still_processes_the_rest_after_a_refusal(tmp_path, capsys):
     make_card(tmp_path)
     write(tmp_path / "card.css", "a { content: '#}'; }\n")
