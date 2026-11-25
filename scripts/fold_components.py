@@ -32,6 +32,7 @@ from pyjinhx.props_header import parse_props_header
 from pyjinhx.sfc import (
     BlockSyntaxError,
     extract_template,
+    has_markup,
     pascal_to_snake,
     python_block,
     template_value,
@@ -674,6 +675,8 @@ def pyblock_document(module: Module, pjx: Path) -> str:
         raise ValueError(already_has_block(module, pjx, text))
     if has_block(text, "def", pjx) or re.match(r"\s*\{#\s*def\s", text):
         raise ValueError(f"{pjx.name} already has a {{#def#}} header")
+    if not has_markup(text):
+        raise ValueError(f"{pjx.name} has no markup, which a document needs")
     return block_document(module.source, pjx, text)
 
 

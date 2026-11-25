@@ -1059,6 +1059,11 @@ def test_pyblock_refuses_a_pjx_with_a_def_header(tmp_path, capsys):
     refused(tmp_path, "already has a {#def#} header", capsys)
 
 
+def test_pyblock_refuses_a_pjx_with_no_markup(tmp_path, capsys):
+    make_card(tmp_path, "{# only a comment #}\n")
+    refused(tmp_path, "has no markup", capsys)
+
+
 def test_pyblock_refuses_when_a_directory_would_shadow_the_module(tmp_path, capsys):
     make_card(tmp_path)
     (tmp_path / "card").mkdir()
