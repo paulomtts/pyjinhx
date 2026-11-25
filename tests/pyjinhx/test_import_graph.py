@@ -483,6 +483,7 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
             "pyjinhx.builtins",
             "pyjinhx.discovery",
             "pyjinhx.dev",
+            "pyjinhx.importer",
             "pyjinhx.integrations.base",
             "pyjinhx.integrations.fastapi",
             "pyjinhx.reactive.backend",

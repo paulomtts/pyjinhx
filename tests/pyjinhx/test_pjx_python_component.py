@@ -2,6 +2,7 @@
 
 import importlib
 import os
+import subprocess
 import sys
 import traceback
 from collections.abc import Callable
@@ -10,7 +11,7 @@ from pathlib import Path
 import jinja2
 import pytest
 
-from pyjinhx import discovery
+from pyjinhx import config, discovery
 from pyjinhx.assets import asset_token
 from pyjinhx.render_cache import render_cache_key
 from pyjinhx.rendering import render
@@ -289,3 +290,71 @@ def test_an_inline_template_in_a_block_class_is_refused(write: Write):
     )
     message = str(refusal("pkg.card").value)
     assert message.startswith(f"{path}:5: Card assigns `template`")
+
+
+def registered(module_name: str) -> list[type]:
+    return [
+        cls for cls in config._all_component_classes() if cls.__module__ == module_name
+    ]
+
+
+def test_a_class_from_a_refused_import_is_not_registered(write: Write):
+    write(
+        "pkg/card.pjx",
+        "{#python\nfrom pyjinhx import BaseComponent\n\n\n"
+        "class Other(BaseComponent):\n    pass\n#}\n<div></div>\n",
+    )
+    with pytest.raises(ImportError):
+        load("pkg.card")
+    assert registered("pkg.card") == []
+
+
+def test_a_reloaded_document_registers_only_its_new_class(write: Write):
+    write("pkg/card.pjx", CARD)
+    module = load("pkg.card")
+    old = module.Card
+    importlib.reload(module)
+    assert module.Card is not old
+    assert registered("pkg.card") == [module.Card]
+
+
+def test_a_live_block_class_is_registered(write: Write):
+    write("pkg/card.pjx", CARD)
+    module = load("pkg.card")
+    assert module.Card in config._all_component_classes()
+
+
+def test_a_class_whose_module_is_gone_is_not_registered(write: Write):
+    write("pkg/card.py", SPLIT_CARD_PY)
+    write("pkg/card.pjx", "<div>{{ title }}</div>\n")
+    card = load("pkg.card").Card
+    del sys.modules["pkg.card"]
+    assert card not in config._all_component_classes()
+
+
+def test_python_dash_m_binds_the_class_and_leaves_it_unregistered(
+    write: Write, tmp_path: Path
+):
+    write("pkg/__init__.py", "import pyjinhx\n")
+    path = write(
+        "pkg/card.pjx",
+        CARD.replace(
+            "#}",
+            "\nif __name__ == '__main__':\n"
+            "    from pyjinhx import config\n"
+            "    print(Card.__pjx_descriptor__.template_path)\n"
+            "    print(Card(title='a').render())\n"
+            "    print(Card in config._all_component_classes())\n#}",
+            1,
+        ),
+    )
+    result = subprocess.run(
+        [sys.executable, "-m", "pkg.card"],
+        capture_output=True,
+        text=True,
+        cwd=tmp_path,
+        env={**os.environ, "PYTHONPATH": str(tmp_path)},
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.split("\n")[:3] == [str(path), "<div>a</div>", "False"]

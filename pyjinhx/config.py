@@ -19,6 +19,7 @@ always imports it to force every lazy builtin module to load.
 from __future__ import annotations
 
 import os
+import sys
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, fields, replace
 from importlib.util import find_spec as _find_spec
@@ -27,6 +28,7 @@ from typing import TYPE_CHECKING, Any, Literal
 
 from pyjinhx._component import BaseComponent
 from pyjinhx.discovery import build_registry
+from pyjinhx.importer import loaded_document
 from pyjinhx.integrations.base import IntegrationBackend, get_backend
 
 if TYPE_CHECKING:
@@ -288,11 +290,37 @@ def _register_components(components_root: Path | str | None) -> None:
 
 
 def _all_component_classes() -> list[type]:
-    """Every declared BaseComponent subclass, nested ones included."""
+    """Every live BaseComponent subclass, nested ones included.
+
+    Pydantic keeps a reference to every class it built, so one from a refused
+    import or a reloaded module is still listed; `_is_live` leaves it out.
+    """
     found: list[type] = []
     stack = list(BaseComponent.__subclasses__())
     while stack:
         cls = stack.pop()
-        found.append(cls)
+        if _is_live(cls):
+            found.append(cls)
         stack.extend(cls.__subclasses__())
     return found
+
+
+def _is_live(cls: type) -> bool:
+    """Whether ``cls`` still belongs to a loaded module.
+
+    A class from a ``.pjx`` document counts only while the module still binds
+    that name to it and the document was loaded through the import hook, which
+    is what vouches for it (a block run by ``python -m`` is not).
+    """
+    module = sys.modules.get(cls.__module__)
+    if module is None:
+        return False
+    file = getattr(module, "__file__", None)
+    if not file or not file.endswith(".pjx"):
+        return True
+    loaded = loaded_document(file)
+    return (
+        loaded is not None
+        and loaded[0] == cls.__module__
+        and getattr(module, cls.__name__, None) is cls
+    )
