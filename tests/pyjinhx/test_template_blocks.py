@@ -220,7 +220,7 @@ def test_rendering_inlines_the_blocks_and_strips_them_from_markup(
     template = _write(tmp_path / "card.pjx", CARD)
     cls = component("Card", template_dir=tmp_path)
 
-    out = render(cls(title="hi"), _collecting_session())
+    out = render(cls(title="hi"), _collecting_session())  # pyright: ignore[reportCallIssue]
 
     token = asset_token(InlineAsset(template, "css"))
     assert f'<style data-pjx-asset="{token}">.card {{ color: red; }}</style>' in out
@@ -246,7 +246,7 @@ def test_sibling_and_block_render_sibling_first(tmp_path, reset_registry):
     _write(tmp_path / "card.css", ".sibling {}")
     cls = component("Card", template_dir=tmp_path)
 
-    out = render(cls(title="hi"), _collecting_session())
+    out = render(cls(title="hi"), _collecting_session())  # pyright: ignore[reportCallIssue]
 
     assert out.index(".sibling {}") < out.index(".card { color: red; }")
 
@@ -258,7 +258,7 @@ def test_none_mode_ships_no_block(tmp_path, reset_registry):
     session.css_mode = AssetMode.NONE
     session.js_mode = AssetMode.NONE
 
-    out = render(cls(title="hi"), session)
+    out = render(cls(title="hi"), session)  # pyright: ignore[reportCallIssue]
 
     assert "color: red" not in out
     assert "console.log" not in out
@@ -301,3 +301,15 @@ def test_the_swap_in_delta_ships_a_block_the_client_lacks(tmp_path):
         'hx-swap-oob="beforeend:head">.card { color: red; }</style>'
     ) in fragment
     assert "console.log" not in fragment
+
+
+def test_a_subclass_without_a_template_ships_its_parents_blocks(
+    tmp_path, reset_registry
+):
+    template = _write(tmp_path / "card.pjx", CARD)
+    card = component("Card", template_dir=tmp_path)
+
+    class FancyCard(card):
+        pass
+
+    assert FancyCard.__pjx_descriptor__.css_paths == (InlineAsset(template, "css"),)

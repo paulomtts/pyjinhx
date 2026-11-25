@@ -16,6 +16,7 @@ unchanged and drops the block from the output. pyjinhx reads the bodies
 out-of-band and hands them to the asset pipeline as ``InlineAsset`` paths.
 """
 
+import os
 import re
 from pathlib import Path
 from typing import NamedTuple
@@ -75,7 +76,7 @@ class InlineAsset(Path):
         self.template = Path(template)
         self.kind = kind
 
-    def with_segments(self, *pathsegments: str | Path) -> Path:
+    def with_segments(self, *pathsegments: str | os.PathLike[str]) -> Path:
         # Derived paths (parent, resolve(), ...) name real filesystem
         # locations, not a block, so they come back as plain paths.
         return Path(*pathsegments)
