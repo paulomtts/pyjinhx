@@ -1,0 +1,20 @@
+{
+  "blocks": [
+    {
+      "keyword": "def",
+      "open_line": 1,
+      "body_lines": null,
+      "close_line": 1
+    },
+    {
+      "keyword": "python",
+      "open_line": 2,
+      "body_lines": [
+        3,
+        3
+      ],
+      "close_line": 4
+    }
+  ],
+  "error": null
+}

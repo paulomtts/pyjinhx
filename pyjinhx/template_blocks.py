@@ -27,10 +27,12 @@ from pyjinhx.sfc import COMMENT_RE, python_block, read_document
 
 
 class Block(NamedTuple):
-    """One inline block: its body and the 1-based line its ``{#`` opens on."""
+    """One inline block: its body, the 1-based line its ``{#`` opens on and the
+    line its ``#}`` closes on."""
 
     body: str
     line: int
+    close_line: int
 
 
 def _is_block(comment: str, keyword: str) -> bool:
@@ -71,7 +73,7 @@ def find_block(source: str, keyword: str, filename: str) -> Block | None:
                 line,
                 filename=filename,
             )
-        found = Block(rest.strip(), line)
+        found = Block(rest.strip(), line, line + text.count("\n"))
     if found is None or not found.body:
         return None
     return found

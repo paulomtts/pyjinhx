@@ -1,0 +1,7 @@
+{#css
+.a { color: red; }
+#}
+<p></p>
+{#css
+.b { color: blue; }
+#}
