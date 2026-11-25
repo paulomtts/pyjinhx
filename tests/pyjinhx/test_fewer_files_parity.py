@@ -542,6 +542,54 @@ def test_stubs_are_generated_checked_and_parse(tmp_path):
         ast.parse(stub.read_text(encoding="utf-8"))
 
 
+CONSUMER = """\
+from pjx_python.ui.base_primitives.name_field.name_field import NameField
+from pjx_python.ui.pages.home.todos.todo_name_fields import TaskNameField
+from pjx_python.ui.pages.home.todos.todo_page.todo_page import TodoPage
+
+label: str = TaskNameField(id="t").label
+page: TodoPage = TodoPage.build("x")
+wrong: int = NameField(id="n").label
+"""
+
+
+def test_generated_stubs_type_check_across_documents(tmp_path):
+    runner = ["uvx", "basedpyright"] if shutil.which("uvx") else None
+    if runner is None:
+        pytest.skip("uvx is not available")
+    copy = copy_of_pjx_python(tmp_path)
+    for path in [*copy.rglob("*.pjx"), *copy.rglob("*.py")]:
+        text = path.read_text(encoding="utf-8")
+        path.write_text(text.replace(MODULE_PREFIX, "pjx_python"), encoding="utf-8")
+    stubgen.main([str(copy)])
+    (tmp_path / "consumer.py").write_text(CONSUMER)
+    (tmp_path / "pyrightconfig.json").write_text(
+        json.dumps(
+            {
+                "include": ["consumer.py"],
+                "typeCheckingMode": "standard",
+                "extraPaths": [str(FIXTURES.parents[2])],
+                "reportMissingModuleSource": "none",
+            }
+        )
+    )
+    result = subprocess.run(
+        [*runner, "--outputjson", "--pythonpath", sys.executable],
+        capture_output=True,
+        text=True,
+        cwd=tmp_path,
+        check=False,
+    )
+    try:
+        report = json.loads(result.stdout)
+    except json.JSONDecodeError:
+        pytest.skip(f"basedpyright did not run: {result.stderr[-200:]}")
+    errors = [d for d in report["generalDiagnostics"] if d["severity"] == "error"]
+    assert [(e["range"]["start"]["line"], e["rule"]) for e in errors] == [
+        (6, "reportAssignmentType")
+    ]
+
+
 def test_the_manifest_lists_every_pjx_python_document_without_errors(tmp_path):
     copy = copy_of_pjx_python(tmp_path)
     stubgen.main([str(copy)])
