@@ -30,7 +30,11 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
     # component is a real runtime edge: all_assets() reads
     # BaseComponent.__subclasses__() and each class's descriptor, imported
     # locally to avoid a module-level cycle (session imports assets).
-    "assets": frozenset({"pyjinhx.session", "pyjinhx._component"}),
+    # template_blocks is read to refuse linking an inline block, which has no
+    # file for a URL to point at.
+    "assets": frozenset(
+        {"pyjinhx.session", "pyjinhx._component", "pyjinhx.template_blocks"}
+    ),
     # app_context is import-pure - stdlib only - so the reactive load() wrap can
     # import it at module scope without threading an edge back into the spine.
     "app_context": frozenset(),
@@ -446,7 +450,7 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
     "client.inject": frozenset(
         {"pyjinhx.assets", "pyjinhx.client", "pyjinhx.config", "pyjinhx.session"}
     ),
-    # descriptor/props_header are ordinary upward reads. render and session are
+    # descriptor/props_header/template_blocks are ordinary upward reads. render and session are
     # the reverse edges behind BaseComponent.render(): both are imported inside
     # the method body, never at module scope, because rendering.py imports
     # BaseComponent at import time and a module-level edge back would be a real
@@ -458,6 +462,7 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
             "pyjinhx.props_header",
             "pyjinhx.rendering",
             "pyjinhx.session",
+            "pyjinhx.template_blocks",
         }
     ),
     # config sits above everything: it may read the spine to register
@@ -529,6 +534,9 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
     # subclass; parsing also reaches in now, to resolve the Slot/Children
     # marker aliases.
     "props_header": frozenset({"pyjinhx._component"}),
+    # Inline {#css#}/{#js#} block scanning reads template text only, so it
+    # stays below the spine with no internal edges.
+    "template_blocks": frozenset(),
     # rendering resolves each ChildRef tag against the published class registry;
     # an unregistered tag is emitted verbatim, so this is a read-only edge.
     "rendering": frozenset(

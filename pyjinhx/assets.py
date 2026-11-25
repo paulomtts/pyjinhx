@@ -21,6 +21,8 @@ from enum import Enum
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from pyjinhx.template_blocks import InlineAsset
+
 if TYPE_CHECKING:
     from pyjinhx.session import RenderSession
 
@@ -109,7 +111,21 @@ def _sorted_resolved(
     which has no stable iteration order, and two renders of the same tree must
     produce byte-identical output. A resolver that raises is left to raise — an
     asset silently dropped from the page fails invisibly in the browser.
+
+    Raises:
+        ValueError: If a path is an inline ``{#css#}``/``{#js#}`` block, which
+            has no file of its own for a URL to point at.
     """
+    for path in paths:
+        if isinstance(path, InlineAsset):
+            # ValueError, like the missing-resolver case: the value is the
+            # wrong kind of asset for this mode, not the wrong Python type.
+            raise ValueError(  # noqa: TRY004
+                f"{path.template}: an inline {{#{path.kind}#}} block has no file "
+                f"to link. Deliver it in INLINE mode, or in NONE mode with a "
+                f"bundle built from all_assets(), or move it to a sibling "
+                f".{path.kind} file."
+            )
     return tuple(resolver(path) for path in sorted(paths, key=str))
 
 

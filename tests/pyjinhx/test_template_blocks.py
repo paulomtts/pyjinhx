@@ -7,6 +7,18 @@ from pathlib import Path
 import pytest
 from jinja2 import Environment, TemplateSyntaxError
 
+from pyjinhx import discovery
+from pyjinhx.assets import (
+    AssetMode,
+    all_assets,
+    asset_manifest,
+    asset_token,
+    emit_assets,
+)
+from pyjinhx.classless import component
+from pyjinhx.reactive.assets import missing_asset_oob
+from pyjinhx.rendering import render
+from pyjinhx.session import RenderSession, accumulate_assets
 from pyjinhx.template_blocks import InlineAsset, find_block
 
 
@@ -140,3 +152,152 @@ def test_an_inline_asset_survives_pickling(tmp_path):
 
     assert isinstance(restored, InlineAsset)
     assert restored.read_text() == ".card {}"
+
+
+# --- the descriptor and the asset pipeline ---------------------------------
+
+
+@pytest.fixture
+def reset_registry():
+    discovery._registry.mapping = {}
+    discovery._registry.template_dir = None
+    yield
+    discovery._registry.mapping = {}
+    discovery._registry.template_dir = None
+
+
+def _collecting_session() -> RenderSession:
+    """A session that collects assets the way a wired app's does."""
+    session = RenderSession()
+    session.on_rendered.append(accumulate_assets)
+    return session
+
+
+CARD = """{#def title: str #}
+<div class="card">{{ title }}</div>
+{#css
+.card { color: red; }
+#}
+{#js
+console.log("card");
+#}
+"""
+
+
+def test_the_descriptor_lists_the_inline_blocks(tmp_path, reset_registry):
+    template = _write(tmp_path / "card.pjx", CARD)
+
+    descriptor = component("Card", template_dir=tmp_path).__pjx_descriptor__
+
+    assert descriptor.css_paths == (InlineAsset(template, "css"),)
+    assert descriptor.js_paths == (InlineAsset(template, "js"),)
+
+
+def test_a_sibling_file_and_a_block_are_both_listed_sibling_first(
+    tmp_path, reset_registry
+):
+    template = _write(tmp_path / "card.pjx", CARD)
+    _write(tmp_path / "card.css", ".sibling {}")
+
+    descriptor = component("Card", template_dir=tmp_path).__pjx_descriptor__
+
+    assert descriptor.css_paths == (tmp_path / "card.css", InlineAsset(template, "css"))
+
+
+def test_a_duplicate_block_fails_registration_at_its_line(tmp_path, reset_registry):
+    _write(tmp_path / "card.pjx", "<div></div>\n{#js a(); #}\n{#js b(); #}\n")
+
+    with pytest.raises(TemplateSyntaxError) as raised:
+        component("Card", template_dir=tmp_path)
+
+    assert raised.value.lineno == 3
+    assert raised.value.filename == str(tmp_path / "card.pjx")
+
+
+def test_rendering_inlines_the_blocks_and_strips_them_from_markup(
+    tmp_path, reset_registry
+):
+    template = _write(tmp_path / "card.pjx", CARD)
+    cls = component("Card", template_dir=tmp_path)
+
+    out = render(cls(title="hi"), _collecting_session())
+
+    token = asset_token(InlineAsset(template, "css"))
+    assert f'<style data-pjx-asset="{token}">.card {{ color: red; }}</style>' in out
+    assert '<script>console.log("card");</script>' in out
+    assert out.count(".card { color: red; }") == 1
+    assert "{#" not in out
+
+
+def test_two_instances_ship_the_block_once(tmp_path, reset_registry):
+    _write(tmp_path / "card.pjx", CARD)
+    _write(tmp_path / "page.pjx", "<main><Card title='a'/><Card title='b'/></main>")
+    component("Card", template_dir=tmp_path)
+    page = component("Page", template_dir=tmp_path)
+
+    out = render(page(), _collecting_session())
+
+    assert out.count(".card { color: red; }") == 1
+    assert out.count('console.log("card")') == 1
+
+
+def test_sibling_and_block_render_sibling_first(tmp_path, reset_registry):
+    _write(tmp_path / "card.pjx", CARD)
+    _write(tmp_path / "card.css", ".sibling {}")
+    cls = component("Card", template_dir=tmp_path)
+
+    out = render(cls(title="hi"), _collecting_session())
+
+    assert out.index(".sibling {}") < out.index(".card { color: red; }")
+
+
+def test_none_mode_ships_no_block(tmp_path, reset_registry):
+    _write(tmp_path / "card.pjx", CARD)
+    cls = component("Card", template_dir=tmp_path)
+    session = _collecting_session()
+    session.css_mode = AssetMode.NONE
+    session.js_mode = AssetMode.NONE
+
+    out = render(cls(title="hi"), session)
+
+    assert "color: red" not in out
+    assert "console.log" not in out
+
+
+def test_link_mode_refuses_a_block_and_names_its_template(tmp_path, reset_registry):
+    template = _write(tmp_path / "card.pjx", CARD)
+    session = RenderSession()
+    session.css_mode = AssetMode.LINK
+    session.css_assets.add(InlineAsset(template, "css"))
+
+    with pytest.raises(ValueError, match="card.pjx"):
+        emit_assets(session, resolver=lambda path: f"/static/{path.name}")
+    with pytest.raises(ValueError, match="card.pjx"):
+        asset_manifest(session, resolver=lambda path: f"/static/{path.name}")
+
+
+def test_all_assets_lists_the_blocks_for_a_bundle(tmp_path, reset_registry):
+    template = _write(tmp_path / "card.pjx", CARD)
+    component("Card", template_dir=tmp_path)
+
+    css, js = all_assets()
+
+    assert InlineAsset(template, "css") in css
+    assert InlineAsset(template, "js") in js
+
+
+def test_the_swap_in_delta_ships_a_block_the_client_lacks(tmp_path):
+    template = _write(tmp_path / "card.pjx", CARD)
+    css = InlineAsset(template, "css")
+    js = InlineAsset(template, "js")
+    session = RenderSession()
+    session.css_assets.add(css)
+    session.js_assets.add(js)
+
+    fragment = missing_asset_oob([], frozenset({asset_token(js)}), session)
+
+    assert (
+        f'<style data-pjx-asset="{asset_token(css)}" '
+        'hx-swap-oob="beforeend:head">.card { color: red; }</style>'
+    ) in fragment
+    assert "console.log" not in fragment

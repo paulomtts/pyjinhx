@@ -32,6 +32,7 @@ from pydantic import (
 from pydantic.fields import FieldInfo
 
 from pyjinhx.descriptor import ClassDescriptor
+from pyjinhx.template_blocks import inline_assets
 
 if TYPE_CHECKING:
     # Type-only: the runtime import lives inside render() to avoid the cycle
@@ -472,6 +473,12 @@ def _resolve_class_descriptor(cls: type[BaseModel]) -> ClassDescriptor:
 
     css_path, css_owner = _walk_asset(cls, "css")
     js_path, js_owner = _walk_asset(cls, "js")
+    # Blocks come from the template this class renders, not from an MRO walk:
+    # a block lives inside that one file. Each follows its sibling file, so
+    # a component carrying both ships the file's rules first.
+    inline_css, inline_js = inline_assets(template_path)
+    css_paths = tuple(path for path in (css_path, inline_css) if path is not None)
+    js_paths = tuple(path for path in (js_path, inline_js) if path is not None)
     provenance = {
         kind: owner
         for kind, owner in (
@@ -504,8 +511,8 @@ def _resolve_class_descriptor(cls: type[BaseModel]) -> ClassDescriptor:
         slot_fields=slot_fields,
         json_coercible_fields=json_coercible_fields,
         children_field=children_field,
-        css_paths=() if css_path is None else (css_path,),
-        js_paths=() if js_path is None else (js_path,),
+        css_paths=css_paths,
+        js_paths=js_paths,
         strict=_resolve_strict(cls),
         provenance=provenance,
         has_stale_def_header=has_stale_def_header,
