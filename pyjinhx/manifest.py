@@ -211,15 +211,18 @@ def _prop(
     position: tuple[int, int],
 ) -> dict[str, Any]:
     """One prop: annotation and default as written, plus what they mean."""
-    required = default is None or (
+    if default is None or (
         isinstance(default, ast.Constant) and default.value is Ellipsis
-    )
+    ):
+        required, written = True, None
+    else:
+        required, written = False, ast.get_source_segment(text, default)
     names = _names_in(annotation) if annotation is not None else set()
     return {
         "name": name,
         "annotation": ast.get_source_segment(text, annotation) if annotation else None,
         "required": required,
-        "default": None if required else ast.get_source_segment(text, default),
+        "default": written,
         "literal_values": _literal_values(annotation),
         "slot": "Slot" in names,
         "children": "Children" in names,
