@@ -265,6 +265,32 @@ def test_concurrent_calls_for_the_same_undeclared_tag_register_one_class(tmp_pat
     assert len(synthetic) == 1
 
 
+def test_a_header_import_that_calls_component_does_not_deadlock(tmp_path, monkeypatch):
+    """Resolving a dotted name imports a module, which may build components too."""
+    (tmp_path / "parts").mkdir()
+    write_template(tmp_path / "parts", "badge", "<b></b>")
+    (tmp_path / "reentrant_probe.py").write_text(
+        "from pyjinhx.classless import component\n"
+        f"Badge = component('Badge', template_dir={str(tmp_path / 'parts')!r})\n"
+        "SIZE = 3\n"
+    )
+    monkeypatch.syspath_prepend(str(tmp_path))
+    monkeypatch.delitem(sys.modules, "reentrant_probe", raising=False)
+    write_template(tmp_path, "card", "{#def size: int = reentrant_probe.SIZE #}")
+
+    results: list[type] = []
+    thread = threading.Thread(
+        target=lambda: results.append(component("Card", template_dir=tmp_path)),
+        daemon=True,
+    )
+    thread.start()
+    thread.join(timeout=5)
+
+    assert not thread.is_alive(), "component() deadlocked on its own lock"
+    assert results[0].model_fields["size"].default == 3
+    assert discovery.get_class("badge") is not None
+
+
 def test_a_classless_class_is_not_reported_as_carrying_a_stale_header(tmp_path):
     """It was built from that header, so the header is not leftover."""
     write_template(tmp_path, "card", "{#def title: str #}<div></div>")
