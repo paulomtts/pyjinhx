@@ -85,6 +85,34 @@ def _outside_comments(source: str) -> Iterator[str]:
     yield source[position:]
 
 
+# How a class name becomes the file stem its template is found under, and which
+# stems are component names; discovery, the component base class and the
+# manifest all apply these, so they live in one stdlib-only place.
+_PASCAL_BOUNDARY_RE = re.compile(r"(?<=[a-z0-9])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])")
+_SNAKE_CASE_RE = re.compile(r"[a-z][a-z0-9]*(?:_[a-z0-9]+)*")
+
+# The legacy spaced header, ``{# def ... #}``; only honoured as the first thing
+# in the document, where it cannot be mistaken for a prose comment. An inline
+# template opens with an empty comment that pads its line numbers to the
+# module's, so one may stand before it.
+LEGACY_HEADER_RE = re.compile(
+    r"\A\s*(?:\{#\s*#\}\s*)?\{#\s*def\s+(?P<sig>.*?)\s*#\}", re.DOTALL
+)
+
+
+def pascal_to_snake(name: str) -> str:
+    """Convert a PascalCase/CamelCase identifier to snake_case."""
+    return _PASCAL_BOUNDARY_RE.sub("_", name).lower()
+
+
+def is_component_stem(stem: str) -> bool:
+    """Whether ``stem`` is exactly the shape `pascal_to_snake` emits."""
+    return _SNAKE_CASE_RE.fullmatch(stem) is not None
+
+
+# The words that open an inline block: ``{#def``, ``{#css``, ``{#js``, ``{#python``.
+BLOCK_KEYWORDS = ("def", "css", "js", "python")
+
 # Stable names for the ways a block is malformed, shared with the block
 # grammar's conformance corpus and the editor tooling that reads it.
 PYTHON_BLOCK_EARLY_CLOSE = "python-block-early-close"
@@ -96,7 +124,7 @@ UNCLOSED_BLOCK = "unclosed-block"
 STRAY_COMMENT_CLOSE = "stray-comment-close"
 
 
-def _template_value(node: ast.ClassDef) -> ast.expr | None:
+def template_value(node: ast.ClassDef) -> ast.expr | None:
     """The expression a class body assigns to ``template``, or None.
 
     The last assignment wins, as it does when Python runs the body.
@@ -131,7 +159,7 @@ def _templates_in(module_source: str, filename: str) -> dict[str, list[ast.expr]
     found: dict[str, list[ast.expr]] = {}
     for node in ast.walk(ast.parse(module_source, filename=filename)):
         if isinstance(node, ast.ClassDef):
-            value = _template_value(node)
+            value = template_value(node)
             if value is not None:
                 found.setdefault(node.name, []).append(value)
     with _parsed_lock:
@@ -168,7 +196,7 @@ def extract_template(
         )
     value = values[0]
     match value:
-        case ast.Constant(value=str() as text) if _is_one_literal(module_source, value):
+        case ast.Constant(value=str() as text) if is_one_literal(module_source, value):
             body = textwrap.dedent(text)
         case _:
             raise ValueError(
@@ -185,7 +213,7 @@ def extract_template(
     return f"{{#{padding}#}}{content.rstrip()}"
 
 
-def _is_one_literal(module_source: str, node: ast.expr) -> bool:
+def is_one_literal(module_source: str, node: ast.expr) -> bool:
     """Whether ``node`` is written as one string, not ``"a" "b"``.
 
     Python joins adjacent literals into one constant, which would hide the
@@ -388,3 +416,116 @@ def _module_name(file: Path, sys_path: Iterable[str]) -> str | None:
         base = max(holders, key=lambda entry: len(entry.parts))
     names = file.relative_to(base).with_suffix("").parts
     return ".".join(names) if all(name.isidentifier() for name in names) else None
+
+
+# What ``ast.literal_eval`` may raise on source text: an unhashable dict key is
+# a TypeError, and a deeply nested literal exhausts the parser.
+LITERAL_ERRORS = (ValueError, TypeError, SyntaxError, MemoryError, RecursionError)
+
+
+def dotted_name(node: ast.expr) -> str | None:
+    """``node`` as ``a.b.c`` text if it is a pure chain of two or more names."""
+    parts: list[str] = []
+    while isinstance(node, ast.Attribute):
+        parts.append(node.attr)
+        node = node.value
+    if not parts or not isinstance(node, ast.Name):
+        return None
+    return ".".join([node.id, *reversed(parts)])
+
+
+def dotted_default(node: ast.expr) -> tuple[str, bool] | None:
+    """The import path a header default names and whether it is called, or None.
+
+    ``pkg.mod.NAME`` is ``("pkg.mod.NAME", False)`` and ``pkg.mod.make()`` is
+    ``("pkg.mod.make", True)``. A call with arguments names nothing.
+    """
+    if isinstance(node, ast.Call):
+        path = None if node.args or node.keywords else dotted_name(node.func)
+    else:
+        path = dotted_name(node)
+    return None if path is None else (path, isinstance(node, ast.Call))
+
+
+class HeaderSignatureError(ValueError):
+    """A ``{#def#}`` signature that is not a list of simple named props.
+
+    ``syntax`` is the ``SyntaxError`` when it does not parse, and ``node`` the
+    offending argument or default when one is to blame, for editors that point
+    at it. ``offset`` is where the signature starts in the ``def`` line that
+    was parsed.
+    """
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        syntax: SyntaxError | None = None,
+        node: ast.AST | None = None,
+    ) -> None:
+        super().__init__(message)
+        self.syntax = syntax
+        self.node = node
+
+
+HEADER_PREFIX = "def __pjx_props__("
+
+
+def header_arguments(signature: str) -> list[tuple[ast.arg, ast.expr | None]]:
+    """The ``(argument, default)`` pairs of a ``{#def#}`` signature.
+
+    Reads the signature as the arguments of a function, which is all it is,
+    and refuses what a header may not hold: ``*args``, ``**kwargs``,
+    keyword-only and positional-only arguments, a duplicate name, and a
+    default that is not a literal, a dotted name (``pkg.mod.NAME``) or a dotted
+    name called with no arguments (``pkg.mod.make()``). Nothing is imported or
+    evaluated beyond ``ast.literal_eval``; the positions in the result are
+    those of ``HEADER_PREFIX + signature``.
+
+    Raises:
+        HeaderSignatureError: The signature is refused.
+    """
+    try:
+        function = ast.parse(f"{HEADER_PREFIX}{signature}): pass").body[0]
+    except SyntaxError as exc:
+        raise HeaderSignatureError(
+            f"invalid {{#def#}} header signature {signature!r}: {exc.msg}", syntax=exc
+        ) from exc
+    assert isinstance(function, ast.FunctionDef)
+    arguments = function.args
+    if (
+        arguments.vararg
+        or arguments.kwarg
+        or arguments.kwonlyargs
+        or arguments.posonlyargs
+    ):
+        raise HeaderSignatureError(
+            f"{{#def#}} header may only use simple named props: {signature!r}",
+            node=arguments.vararg
+            or arguments.kwarg
+            or (arguments.kwonlyargs or arguments.posonlyargs)[0],
+        )
+    args = arguments.args
+    # Defaults bind to the *last* N params.
+    defaults: list[ast.expr | None] = [None] * (len(args) - len(arguments.defaults))
+    defaults += arguments.defaults
+    seen: set[str] = set()
+    for arg, default in zip(args, defaults, strict=True):
+        if arg.arg in seen:
+            raise HeaderSignatureError(
+                f"{{#def#}} header has duplicate prop {arg.arg!r}", node=arg
+            )
+        seen.add(arg.arg)
+        if default is None:
+            continue
+        try:
+            ast.literal_eval(default)
+        except LITERAL_ERRORS:
+            if dotted_default(default) is None:
+                raise HeaderSignatureError(
+                    f"{{#def#}} header default for {arg.arg!r} must be a literal, "
+                    "a dotted name (pkg.mod.NAME) or a dotted name called with no "
+                    f"arguments (pkg.mod.make()): {ast.unparse(default)!r}",
+                    node=default,
+                ) from None
+    return list(zip(args, defaults, strict=True))

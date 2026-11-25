@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from pyjinhx import sfc
+from pyjinhx import manifest, sfc
 from pyjinhx.template_blocks import (
     BlockTemplateSyntaxError,
     find_block,
@@ -83,3 +83,23 @@ def test_the_corpus_has_a_case_for_every_error_code():
         sfc.TEXT_AFTER_CLOSER,
         sfc.STRAY_COMMENT_CLOSE,
     }
+
+
+@pytest.mark.parametrize("case", sorted(CORPUS.glob("*.pjx")), ids=lambda p: p.stem)
+def test_the_manifest_scan_agrees_with_the_recorded_case(case, request):
+    expected = json.loads(case.with_suffix(".json").read_text(encoding="utf-8"))
+    source = case.read_bytes().decode("utf-8-sig")
+
+    if "known_gap" in expected:
+        request.applymarker(pytest.mark.xfail(strict=True, reason="known_gap"))
+
+    blocks, errors = manifest.scan_blocks(source, case.name)
+
+    if expected["error"]:
+        assert (errors[0]["code"], errors[0]["range"]["start"]["line"]) == (
+            expected["error"]["code"],
+            expected["error"]["line"],
+        )
+    else:
+        assert errors == []
+        assert blocks == expected["blocks"]

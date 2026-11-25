@@ -31,9 +31,9 @@ from pyjinhx.importer import opener_line
 from pyjinhx.props_header import parse_props_header
 from pyjinhx.sfc import (
     BlockSyntaxError,
-    _template_value,
     extract_template,
     python_block,
+    template_value,
 )
 from pyjinhx.template_blocks import find_block
 
@@ -95,7 +95,7 @@ def load_modules(paths: list[Path]) -> list[Module]:
 
 
 def assigns_template(node: ast.ClassDef) -> bool:
-    return _template_value(node) is not None
+    return template_value(node) is not None
 
 
 def base_names(node: ast.ClassDef) -> list[str]:
@@ -189,7 +189,7 @@ def add_inline_block(source: str, class_name: str, kind: str, body: str) -> str:
     node = next(
         n for n in tree.body if isinstance(n, ast.ClassDef) and n.name == class_name
     )
-    literal = _template_value(node)
+    literal = template_value(node)
     if not (isinstance(literal, ast.Constant) and isinstance(literal.value, str)):
         raise ValueError("the template is not a plain string literal")  # noqa: TRY004
     lines = source.splitlines(keepends=True)

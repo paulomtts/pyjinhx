@@ -576,6 +576,27 @@ place; see open question 1):
 
 Any docs test that executes snippets must pass.
 
+### Notes for Task 9 docs (stubgen review)
+
+Mention these in the Stubs section of the guide:
+
+- Annotate return types in blocks. A stub keeps no function bodies, so an
+  unannotated `def` is `Unknown` for the type-checker.
+- Stricter Pyright modes (`strict`, `reportUnusedImport`, ...) flag the
+  stub's `...` statements and unused imports. Recommend keeping the stubs
+  resolvable but unchecked with Pyright's `ignore` setting (it suppresses
+  diagnostics yet still uses the files for resolution; `exclude` would drop
+  them from analysis), scoped to the components root:
+  `[tool.pyright] ignore = ["app/components/**/*.pyi"]`.
+- Imports in a block are not re-exported by its stub: import a name from the
+  module that defines it, never through the component's module.
+- `__init__` bodies are kept verbatim in the stub (their `self.x = ...`
+  lines declare attributes); every other body becomes `...`.
+- The generator skips hidden directories, virtualenvs (`pyvenv.cfg`),
+  `site-packages`, `dist-packages`, `build`, `dist`, `__pycache__` and
+  `node_modules`, and writes no stub for a block that a `.py` module or
+  package shadows.
+
 ## Task 10 — fourth shape in the parity fixture (Opus)
 
 Purpose: prove shape P is interchangeable with the other three on the same

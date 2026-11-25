@@ -33,7 +33,13 @@ from pydantic.fields import FieldInfo
 
 from pyjinhx.descriptor import ClassDescriptor
 from pyjinhx.importer import first_line, loaded_document
-from pyjinhx.sfc import BlockSyntaxError, has_markup, python_block, read_document
+from pyjinhx.sfc import (
+    BlockSyntaxError,
+    has_markup,
+    pascal_to_snake,
+    python_block,
+    read_document,
+)
 from pyjinhx.template_blocks import inline_assets
 
 if TYPE_CHECKING:
@@ -214,12 +220,7 @@ def _is_component_typed_annotation(annotation: Any) -> bool:
     return isinstance(annotation, type) and issubclass(annotation, BaseComponent)
 
 
-_PASCAL_BOUNDARY_RE = re.compile(r"(?<=[a-z0-9])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])")
-
-
-def _pascal_to_snake(name: str) -> str:
-    """Convert a PascalCase/CamelCase identifier to snake_case."""
-    return _PASCAL_BOUNDARY_RE.sub("_", name).lower()
+_pascal_to_snake = pascal_to_snake
 
 
 def _defining_module_file(cls: type) -> Path:

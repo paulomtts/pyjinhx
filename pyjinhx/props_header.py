@@ -26,7 +26,6 @@ any other import, so a template reload never re-imports them.
 import ast
 import logging
 import pkgutil
-import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal
@@ -34,18 +33,17 @@ from typing import TYPE_CHECKING, Any, Literal
 from jinja2 import TemplateSyntaxError
 from pydantic import Field, create_model
 
+from pyjinhx.sfc import (
+    LEGACY_HEADER_RE,
+    LITERAL_ERRORS,
+    dotted_default,
+    dotted_name,
+    header_arguments,
+)
 from pyjinhx.template_blocks import find_block
 
 if TYPE_CHECKING:
     from pyjinhx._component import _OpenComponent
-
-# The legacy spaced form, ``{# def ... #}``; only honoured as the first thing in
-# the document, where it cannot be mistaken for a prose comment. An inline
-# template opens with an empty comment that pads its line numbers to the
-# module's (see sfc), so one may stand before it.
-_HEADER_RE = re.compile(
-    r"\A\s*(?:\{#\s*#\}\s*)?\{#\s*def\s+(?P<sig>.*?)\s*#\}", re.DOTALL
-)
 
 _TYPES: dict[str, Any] = {
     "str": str,
@@ -69,17 +67,6 @@ class _DottedType:
 
     node: ast.expr
     field_name: str
-
-
-def _dotted_name(node: ast.expr) -> str | None:
-    """``node`` as ``a.b.c`` text if it is a pure chain of two or more names."""
-    parts: list[str] = []
-    while isinstance(node, ast.Attribute):
-        parts.append(node.attr)
-        node = node.value
-    if not parts or not isinstance(node, ast.Name):
-        return None
-    return ".".join([node.id, *reversed(parts)])
 
 
 @dataclass(frozen=True)
@@ -114,7 +101,7 @@ def _resolve_annotation(
     if node is None:
         return Any
     if isinstance(node, ast.Attribute):
-        path = _dotted_name(node)
+        path = dotted_name(node)
         return Any if path is None else _import(path, field_name, owner)
     if isinstance(node, ast.Name):
         if node.id not in _TYPES:
@@ -163,7 +150,7 @@ def _resolve_literal(node: ast.expr, field_name: str) -> Any:
     members = node.elts if isinstance(node, ast.Tuple) else [node]
     try:
         values = tuple(ast.literal_eval(member) for member in members)
-    except ValueError as exc:
+    except LITERAL_ERRORS as exc:
         raise ValueError(
             f"{{#def#}} Literal members for {field_name!r} must be literals"
         ) from exc
@@ -175,17 +162,10 @@ def _parse_default(node: ast.expr, field_name: str) -> Any:
         return ast.literal_eval(node)
     except (ValueError, SyntaxError):
         pass
-    if isinstance(node, ast.Call):
-        path = None if node.args or node.keywords else _dotted_name(node.func)
-    else:
-        path = _dotted_name(node)
-    if path is None:
-        raise ValueError(
-            f"{{#def#}} header default for {field_name!r} must be a literal, a "
-            "dotted name (pkg.mod.NAME) or a dotted name called with no arguments "
-            f"(pkg.mod.make()): {ast.unparse(node)!r}"
-        )
-    return _DottedDefault(path, field_name, call=isinstance(node, ast.Call))
+    found = dotted_default(node)
+    # `header_arguments` has already refused any other kind of default.
+    assert found is not None
+    return _DottedDefault(found[0], field_name, call=found[1])
 
 
 def parse_props_header(
@@ -214,48 +194,24 @@ def parse_props_header(
     if block is not None:
         signature = block.body
     else:
-        match = _HEADER_RE.match(source)
+        match = LEGACY_HEADER_RE.match(source)
         if match is None:
             return None
         signature = match.group("sig")
-    try:
-        tree = ast.parse(f"def __pjx_props__({signature}): pass")
-    except SyntaxError as exc:
-        raise ValueError(
-            f"invalid {{#def#}} header signature {signature!r}: {exc.msg}"
-        ) from exc
-    func = tree.body[0]
-    assert isinstance(func, ast.FunctionDef)
-    arguments = func.args
-    if (
-        arguments.vararg
-        or arguments.kwarg
-        or arguments.kwonlyargs
-        or arguments.posonlyargs
-    ):
-        raise ValueError(
-            f"{{#def#}} header may only use simple named props: {signature!r}"
-        )
-    args = arguments.args
-    defaults = arguments.defaults
-    # Defaults bind to the *last* N params, so this offset maps index -> default.
-    offset = len(args) - len(defaults)
-    seen: set[str] = set()
     fields: list[tuple[str, Any, Any]] = []
-    for index, arg in enumerate(args):
+    for arg, default in header_arguments(signature):
         name = arg.arg
-        if name in seen:
-            raise ValueError(f"{{#def#}} header has duplicate prop {name!r}")
-        seen.add(name)
         if arg.annotation is not None and _names_an_import_path(arg.annotation):
             annotation = _DottedType(arg.annotation, name)
         else:
             annotation = _resolve_annotation(arg.annotation, name)
-        if index >= offset:
-            default = _parse_default(defaults[index - offset], name)
-        else:
-            default = ...
-        fields.append((name, annotation, default))
+        fields.append(
+            (
+                name,
+                annotation,
+                ... if default is None else _parse_default(default, name),
+            )
+        )
     return fields
 
 
@@ -350,7 +306,7 @@ def props_header_line(source: str) -> int | None:
     block = find_block(source, "def", "<template>")
     if block is not None:
         return block.line
-    match = _HEADER_RE.match(source)
+    match = LEGACY_HEADER_RE.match(source)
     if match is None:
         return None
     return source.count("\n", 0, match.start("sig")) + 1

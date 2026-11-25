@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "opener": "{#",
+  "terminator": "#}",
+  "terminator_rule": "the first #} after the opener ends the block, as Jinja ends any comment",
+  "keyword_touches_opener": true,
+  "whitespace_control_is_a_block": false,
+  "keywords": {
+    "def": {
+      "after_keyword": "whitespace_or_end",
+      "max_per_document": 1,
+      "legacy_spaced_form": {"opener": "{# def", "first_position_only": true}
+    },
+    "css": {
+      "after_keyword": "end_of_line",
+      "max_per_document": 1
+    },
+    "js": {
+      "after_keyword": "end_of_line",
+      "max_per_document": 1
+    },
+    "python": {
+      "after_keyword": "end_of_line",
+      "max_per_document": 1,
+      "opener_column": 0,
+      "closer": "alone_on_its_line_in_column_0",
+      "excludes": ["def"],
+      "legacy_spaced_form": null
+    }
+  },
+  "regions_not_scanned": ["{% raw %}...{% endraw %}", "{{ ... }}", "{% ... %}"],
+  "error_codes": [
+    "python-block-early-close",
+    "second-block",
+    "opener-not-at-line-start",
+    "text-after-closer",
+    "closer-not-at-line-start",
+    "unclosed-block",
+    "stray-comment-close"
+  ]
+}
