@@ -15,7 +15,7 @@ import os
 import sys
 import threading
 from collections.abc import Sequence
-from importlib.machinery import ModuleSpec
+from importlib.machinery import ModuleSpec, SourceFileLoader
 from pathlib import Path
 from types import CodeType, ModuleType
 from typing import NoReturn
@@ -160,28 +160,13 @@ def _mark_classes(module: ModuleType) -> None:
             value._pjx_document = True  # pyright: ignore[reportAttributeAccessIssue]
 
 
-class PjxLoader:
+class PjxLoader(SourceFileLoader):
     """Run the ``{#python`` block of one ``.pjx`` file as a module body.
 
-    No bytecode is cached: `get_code` compiles the block every time. A plain
-    class, as ``importlib.abc`` costs more to import than the rest of pyjinhx.
+    No bytecode is cached: `get_code` compiles the block every time. The base
+    is ``importlib.machinery``'s, as ``importlib.abc`` costs more to import
+    than the rest of pyjinhx.
     """
-
-    def __init__(self, fullname: str, path: str) -> None:
-        self.name = fullname
-        self.path = path
-
-    def get_filename(self, fullname: str) -> str:
-        return self.path
-
-    def get_data(self, path: str) -> bytes:
-        return Path(path).read_bytes()
-
-    def create_module(self, spec: ModuleSpec) -> None:
-        """Take the default module."""
-
-    def is_package(self, fullname: str) -> bool:
-        return False
 
     def _block(self) -> PythonBlock:
         """The block of the file, read once.
