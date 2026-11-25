@@ -532,8 +532,8 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
     "markers": frozenset({"pyjinhx._component"}),
     # Generating a class from a {#def #} header needs the open-model base to
     # subclass; parsing also reaches in now, to resolve the Slot/Children
-    # marker aliases.
-    "props_header": frozenset({"pyjinhx._component"}),
+    # marker aliases, and the header is located with template_blocks.find_block.
+    "props_header": frozenset({"pyjinhx._component", "pyjinhx.template_blocks"}),
     # Inline {#css#}/{#js#} block scanning reads template text only, so it
     # stays below the spine with no internal edges.
     "template_blocks": frozenset(),

@@ -120,7 +120,9 @@ def component(name: str, template_dir: Path | str | None = None) -> type[BaseCom
         if registered is not None:
             return registered  # pyright: ignore[reportReturnType]
         template_path = _find_template(tag, template_dir)
-        fields = parse_props_header(template_path.read_text(encoding="utf-8"))
+        fields = parse_props_header(
+            template_path.read_text(encoding="utf-8"), str(template_path)
+        )
         if fields is None:
             cls = _placeholder_class(name, tag)
         else:

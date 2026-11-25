@@ -8,6 +8,7 @@ import logging
 from typing import Any
 
 import pytest
+from jinja2 import TemplateSyntaxError
 
 from pyjinhx.props_header import parse_props_header
 
@@ -227,11 +228,6 @@ def test_header_may_span_multiple_lines_and_carry_extra_whitespace():
     assert parse_props_header(source) == [("title", str, ...), ("count", int, 0)]
 
 
-def test_header_after_leading_content_is_not_a_header():
-    """Only a leading header is out-of-band config; later ones are plain comments."""
-    assert parse_props_header("<div></div>{#def title: str #}") is None
-
-
 def test_a_plain_jinja_comment_is_not_a_header():
     assert parse_props_header("{# just a comment #}<div></div>") is None
 
@@ -257,3 +253,37 @@ def test_parsing_uses_only_the_stdlib():
     }
     assert "create_model" not in names
     assert "_OpenComponent" not in names
+
+
+def test_a_css_block_above_the_header_does_not_hide_it():
+    source = "{#css .card { padding: 1rem; } #}\n{#def title: str #}\n<div></div>"
+
+    assert parse_props_header(source) == [("title", str, ...)]
+
+
+def test_the_header_is_found_in_the_middle_and_at_the_end():
+    middle = "<p></p>\n{#def title: str #}\n<div></div>"
+    end = "<div></div>\n{#def title: str #}"
+
+    assert parse_props_header(middle) == [("title", str, ...)]
+    assert parse_props_header(end) == [("title", str, ...)]
+
+
+def test_a_second_header_raises_at_its_line():
+    source = "{#def a #}\n<div></div>\n{#def b #}"
+
+    with pytest.raises(TemplateSyntaxError) as raised:
+        parse_props_header(source)
+
+    assert raised.value.lineno == 3
+
+
+def test_the_spaced_legacy_header_still_parses_in_first_position():
+    assert parse_props_header("{# def title: str #}<div></div>") == [
+        ("title", str, ...)
+    ]
+
+
+def test_the_spaced_form_anywhere_else_is_prose():
+    assert parse_props_header("<div></div>\n{# def title: str #}") is None
+    assert parse_props_header("{#css .a {} #}\n{# def title: str #}") is None

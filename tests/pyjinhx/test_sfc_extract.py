@@ -47,14 +47,14 @@ def test_a_template_starting_on_the_opening_quote_line_is_aligned_too():
 
 
 def test_the_class_is_picked_by_name_when_a_module_holds_several():
-    source = textwrap.dedent('''\
+    source = textwrap.dedent("""\
         class First:
             template = "<i>first</i>"
 
 
         class Second:
             template = "<i>second</i>"
-        ''')
+        """)
     assert render(extract_template(source, "Second")) == "<i>second</i>"
 
 

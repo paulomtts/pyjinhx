@@ -18,9 +18,13 @@ from typing import TYPE_CHECKING, Any
 
 from pydantic import create_model
 
+from pyjinhx.template_blocks import find_block
+
 if TYPE_CHECKING:
     from pyjinhx._component import _OpenComponent
 
+# The legacy spaced form, ``{# def ... #}``; only honoured as the first thing in
+# the file, where it cannot be mistaken for a prose comment.
 _HEADER_RE = re.compile(r"\A\s*\{#\s*def\s+(?P<sig>.*?)\s*#\}", re.DOTALL)
 
 _TYPES: dict[str, Any] = {
@@ -65,11 +69,15 @@ def _resolve_annotation(node: ast.expr | None, field_name: str) -> Any:
     return Any
 
 
-def parse_props_header(source: str) -> list[tuple[str, Any, Any]] | None:
+def parse_props_header(
+    source: str, filename: str = "<template>"
+) -> list[tuple[str, Any, Any]] | None:
     """Parse a ``{#def ... #}`` header; return ``[(name, type, default), ...]`` or None.
 
-    ``default`` is ``Ellipsis`` (``...``) for a required prop. Raises ``ValueError``
-    for a malformed signature, a non-literal default, or a duplicate prop.
+    The header is found anywhere in ``source``. ``default`` is ``Ellipsis``
+    (``...``) for a required prop. Raises ``ValueError`` for a malformed
+    signature, a non-literal default, or a duplicate prop, and
+    ``TemplateSyntaxError`` when ``source`` holds two headers.
     """
     # Imported here, not at module scope: Slot and Children are defined at the
     # bottom of _component.py, after _OpenComponent, whose class body reenters
@@ -79,10 +87,14 @@ def parse_props_header(source: str) -> list[tuple[str, Any, Any]] | None:
     _TYPES["Slot"] = Slot
     _TYPES["Children"] = Children
 
-    match = _HEADER_RE.match(source)
-    if match is None:
-        return None
-    signature = match.group("sig")
+    block = find_block(source, "def", filename)
+    if block is not None:
+        signature = block.body
+    else:
+        match = _HEADER_RE.match(source)
+        if match is None:
+            return None
+        signature = match.group("sig")
     try:
         tree = ast.parse(f"def __pjx_props__({signature}): pass")
     except SyntaxError as exc:
