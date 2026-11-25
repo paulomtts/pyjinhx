@@ -1,6 +1,6 @@
 # ADR 0015: A pjx document may carry its class in a `{#python#}` block
 
-**Status:** Proposed (draft), 2026-11-26. Amends [ADR 0014](./0014-a-component-is-a-pjx-document.md); reverses the remaining part of [ADR 0008](./0008-drop-sfc-python-blocks.md).
+**Status:** Accepted, 2026-11-26. Implemented; published, condensed, in `docs/decisions/0009`. Amends [ADR 0014](./0014-a-component-is-a-pjx-document.md); reverses the remaining part of [ADR 0008](./0008-drop-sfc-python-blocks.md).
 
 ## Context
 
@@ -59,3 +59,15 @@ ADR 0014 answered them by not doing the thing. This ADR does the thing, so each 
 - The public ADR `docs/decisions/0009` is revised to match before release.
 - v0.x `{# python #}` files migrate by removing the space in the opener, provided they define a class named for the file.
 - pjx-ls's `{# python #}` support (its PR #1) is updated to the v2 grammar in its own repository; see `docs/superpowers/specs/2026-11-26-pjx-ls-followup.md`.
+
+## As built
+
+Where the build differs from the design in `docs/superpowers/specs/2026-11-26-pjx-python-block-design.md`:
+
+- A closer written `-#}` is refused, as Jinja would eat the line break after it. Text after the closer on its line is refused too.
+- The finder sniffs `{#python` or `{# python` at the start of a line, so a prose comment that starts a line that way is taken for a document and fails `setup()`. `{% raw %}` does not protect it; indenting does.
+- `python -m app.ui.card` runs the block with the right `__file__`, but as `__main__`: the stem-class check does not run and the class is not registered.
+- There is no `python -m pyjinhx.sfc` command. The docs show a short script over `sfc.python_source` for linting blocks with ruff.
+- The manifest reports ranges (`start` and `end` positions) rather than bare `line` and `column`, absolute POSIX paths, and a few more fields; the reference page lists them.
+- `python -m pyjinhx.stubgen --check` exits 1 for a stale, missing or orphaned stub or a document that needs a person, and 2 for a hand-written `.pyi` in a stub's way or a missing path.
+- Pyright's `ignore` and `exclude` both silence a generated stub's diagnostics and still resolve imports through it (checked with basedpyright); the docs recommend `ignore`.
