@@ -3,7 +3,9 @@ from pydantic import computed_field
 
 from tests.fixtures.fewer_files import domain
 from tests.fixtures.fewer_files.domain import Keys, Tone
-from tests.fixtures.fewer_files.reactive import AppReactive
+from tests.fixtures.fewer_files.pjx_python.ui.app_reactive.app_reactive import (
+    AppReactive,
+)
 
 
 class TodoCount(AppReactive, react={Keys.TODOS}):

@@ -197,6 +197,10 @@ EVERY_SHAPE = {
 CLASS_SHAPES = {
     "money": '<Money cents="123456" currency=" usd "/>',
     "project-name-field": '<ProjectNameField id="p" value="Launch"/>',
+    **{
+        f"{name}-name-field": f'<{name.title()}NameField id="{name[:2]}" value="v"/>'
+        for name in ["team", "owner", "list", "tag", "label"]
+    },
     "task-name-field": '<TaskNameField id="t" error="Required"/>',
     "todo-count": "<TodoCount/>",
     "todo-row": '<TodoRow todo_id="3"/>',
@@ -431,7 +435,7 @@ def test_the_single_file_shape_keeps_each_component_in_its_module():
 
 def test_the_single_file_shape_puts_several_components_in_a_module():
     modules = [cls.__module__ for cls in shape_classes("C").values()]
-    assert max(modules.count(name) for name in modules) == 3
+    assert max(modules.count(name) for name in modules) == 7
 
 
 def test_a_subclass_family_renders_its_parents_inline_template():
@@ -490,6 +494,11 @@ SHAPE_TAGS = {
     "todo_page",
     "todo_row",
     "toolbar",
+    "team_name_field",
+    "owner_name_field",
+    "list_name_field",
+    "tag_name_field",
+    "label_name_field",
 }
 
 
@@ -537,7 +546,7 @@ def test_stubs_are_generated_checked_and_parse(tmp_path):
     assert stubgen.main([str(copy)]) == 0
     assert stubgen.main([str(copy), "--check"]) == 0
     stubs = sorted(copy.rglob("*.pyi"))
-    assert len(stubs) == 14
+    assert len(stubs) == 15
     for stub in stubs:
         ast.parse(stub.read_text(encoding="utf-8"))
 
@@ -609,6 +618,12 @@ def test_the_manifest_lists_every_pjx_python_document_without_errors(tmp_path):
         "EmptyState",
         "Money",
         "ProjectNameField",
+        "TeamNameField",
+        "OwnerNameField",
+        "ListNameField",
+        "TagNameField",
+        "LabelNameField",
+        "AppReactive",
         "NameField",
         "StatusDot",
         "TodoCount",

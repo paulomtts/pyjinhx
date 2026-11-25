@@ -22,6 +22,31 @@ class NameField(BaseComponent):
 class ProjectNameField(NameField):
     input_id: str = "project-name"
     label: str = "Project"
+
+
+class TeamNameField(NameField):
+    input_id: str = "team-name"
+    label: str = "Team"
+
+
+class OwnerNameField(NameField):
+    input_id: str = "owner-name"
+    label: str = "Owner"
+
+
+class ListNameField(NameField):
+    input_id: str = "list-name"
+    label: str = "List"
+
+
+class TagNameField(NameField):
+    input_id: str = "tag-name"
+    label: str = "Tag"
+
+
+class LabelNameField(NameField):
+    input_id: str = "label-name"
+    label: str = "Label"
 #}
 <div id="{{ id }}" class="name-field"{% if oob %} hx-swap-oob="outerHTML"{% endif %}>
   <label for="{{ input_id }}">{{ label }}</label>
