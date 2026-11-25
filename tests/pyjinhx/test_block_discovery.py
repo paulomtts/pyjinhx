@@ -278,3 +278,18 @@ def test_a_module_another_loader_made_is_refused_not_ignored(write: Write, root:
     with pytest.raises(ImportError, match="not loaded as a document") as raised:
         register_document(path)
     assert str(path) in str(raised.value)
+
+
+def test_a_line_start_prose_comment_is_not_a_document(write: Write, root: Path):
+    write(
+        "pkg/ledgerline.pjx",
+        "{# python helpers below #}\n{#python is nice #}\n<p></p>\n",
+    )
+    setup(components_root=root)
+    assert "pkg.ledgerline" not in sys.modules
+
+
+def test_an_example_inside_raw_is_not_a_document(write: Write, root: Path):
+    write("pkg/guide.pjx", "{% raw %}\n{#python\nx = 1\n#}\n{% endraw %}\n")
+    setup(components_root=root)
+    assert "pkg.guide" not in sys.modules

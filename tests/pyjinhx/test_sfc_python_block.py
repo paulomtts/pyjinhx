@@ -193,3 +193,22 @@ def test_an_unclosed_tag_full_of_string_literals_scans_in_linear_time(opener):
 def test_many_unclosed_openers_are_scanned_once(unit):
     assert _seconds(sfc.python_block, unit * 16000) < 1
     assert _seconds(lambda s, f: sfc.strip_to_text(s), unit * 16000) < 1
+
+
+@pytest.mark.parametrize(
+    ("source", "line"),
+    [
+        ("{#python\nx = 1\n#}\n<p></p>\n", 1),
+        ("<p></p>\n{#python \t\r\nx = 1\n#}\n", 2),
+        ("{# python\nx = 1\n#}\n", 1),
+        ("{#python\nnever closed\n", 1),
+        ("{# python helpers below #}\n<p></p>\n", None),
+        ("{#python is nice #}\n<p></p>\n", None),
+        ("<p></p>\n  {#python\nx = 1\n#}\n", None),
+        ("{% raw %}\n{#python\nx = 1\n#}\n{% endraw %}\n", None),
+        ("{#def #}\n{{ '{#python\\n' }}\n", None),
+        ("", None),
+    ],
+)
+def test_an_opener_is_the_whole_line_outside_raw_and_tags(source, line):
+    assert sfc.opener_line(source) == line

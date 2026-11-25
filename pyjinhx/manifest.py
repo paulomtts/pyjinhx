@@ -52,7 +52,7 @@ from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 from typing import Any, NamedTuple
 
-from pyjinhx.importer import no_block_reason, opener_line
+from pyjinhx.importer import no_block_reason
 from pyjinhx.sfc import (
     BLOCK_KEYWORDS,
     HEADER_PREFIX,
@@ -66,6 +66,7 @@ from pyjinhx.sfc import (
     is_component_stem,
     is_one_literal,
     module_name_for,
+    opener_line,
     pascal_to_snake,
     python_block,
     template_value,

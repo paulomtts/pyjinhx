@@ -65,6 +65,31 @@ def comments(source: str) -> Iterator[re.Match[str]]:
             yield match
 
 
+# What a comment's text starts with when it opens a block: `python`, or the
+# v0.x `[space]python`, then nothing but blanks up to the end of the line.
+_OPENER_TEXT_RE = re.compile(r"[ \t]?python[ \t\r]*\n")
+
+
+def opener_line(source: str) -> int | None:
+    """The line of the first block opener in ``source``, or ``None``.
+
+    An opener is ``{#python`` (or the v0.x ``{# python``) in column 0 with
+    nothing after it but spaces, tabs and the line end, outside a ``{% raw %}``
+    region and a tag. A comment such as ``{# python helpers #}`` is prose. An
+    opener that is never closed counts, so that the block scanner can report
+    it. Whether the block is well formed is for `python_block` to say.
+    """
+    for match in _LEXEME_RE.finditer(source):
+        if match.group("unclosed") is not None:
+            found = True
+        else:
+            text = match.group("comment")
+            found = text is not None and _OPENER_TEXT_RE.match(text) is not None
+        if found and source.rfind("\n", 0, match.start()) + 1 == match.start():
+            return source.count("\n", 0, match.start()) + 1
+    return None
+
+
 def strip_to_text(source: str) -> str:
     """``source`` with every comment, tag and raw region replaced by its
     newlines, leaving only the text Jinja renders as written."""

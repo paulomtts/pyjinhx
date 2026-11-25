@@ -587,3 +587,19 @@ def test_import_document_lets_a_block_error_through_with_its_line(write: Write):
         importer.import_document(path)
     frames = traceback.extract_tb(raised.value.__traceback__)
     assert (str(path), 2) in {(f.filename, f.lineno) for f in frames}
+
+
+def test_find_spec_declines_a_prose_comment_that_starts_with_python(write: Write):
+    write("pkg/note.pjx", "{# python helpers below #}\n{#python is nice #}\n<p></p>\n")
+    assert importlib.util.find_spec("pkg.note") is None
+
+
+def test_find_spec_declines_an_example_inside_raw(write: Write):
+    write("pkg/guide.pjx", "{% raw %}\n{#python\nx = 1\n#}\n{% endraw %}\n")
+    assert importlib.util.find_spec("pkg.guide") is None
+
+
+def test_the_v0_opener_still_gets_its_hint_after_prose(write: Write):
+    write("pkg/card.pjx", "<p></p>\n{# python\nX = 1\n#}\n")
+    with pytest.raises(ImportError, match="remove the space"):
+        importlib.import_module("pkg.card")

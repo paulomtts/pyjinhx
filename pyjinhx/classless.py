@@ -26,10 +26,10 @@ from pyjinhx._component import (
     _pascal_to_snake,
     rebuild_class_descriptor,
 )
-from pyjinhx.importer import import_document, loaded_document, opener_line
+from pyjinhx.importer import import_document, loaded_document
 from pyjinhx.props_header import build_component_class, parse_props_header
 from pyjinhx.segments import RE_PASCAL_CASE_TAG_NAME
-from pyjinhx.sfc import BlockSyntaxError, python_block
+from pyjinhx.sfc import BlockSyntaxError, opener_line, python_block
 
 _synthetic_modules: dict[Path, str] = {}
 _synthetic_modules_lock = threading.Lock()

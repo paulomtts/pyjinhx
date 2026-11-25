@@ -28,8 +28,7 @@ from collections.abc import Iterable, Iterator
 from pathlib import Path
 from typing import NamedTuple
 
-from pyjinhx.importer import opener_line
-from pyjinhx.sfc import python_block
+from pyjinhx.sfc import opener_line, python_block
 
 _MARKER_PREFIX = "# pyjinhx.stubgen: generated from "
 

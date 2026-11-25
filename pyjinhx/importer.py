@@ -20,16 +20,11 @@ from pathlib import Path
 from types import CodeType, ModuleType
 from typing import NoReturn
 
-from pyjinhx.sfc import module_name_for, python_block, python_source
-
-# A line that opens a block, or that opens one the v0.x way. The finder only
-# sniffs: a malformed block is the loader's error, so a probe such as
-# `importlib.util.find_spec` or a `try: import x` never trips over a bad file.
-_OPENER_RE = re.compile(r"^\{#[ \t]?python", re.MULTILINE)
+from pyjinhx.sfc import module_name_for, opener_line, python_block, python_source
 
 # What v0.x wrote; in v2 it is prose, so without a message the import would
 # fail with a bare ModuleNotFoundError.
-_V0_OPENER_RE = re.compile(r"\{#[ \t]+python[ \t\r]*(\n|\Z)")
+_V0_OPENER_RE = re.compile(r"^\{#[ \t]+python[ \t\r]*(\n|\Z)", re.MULTILINE)
 
 # Each loaded document's module name and class, by resolved file path.
 _documents: dict[Path, tuple[str, type]] = {}
@@ -41,22 +36,12 @@ _bodies: dict[Path, int] = {}
 _reported: dict[Path, int] = {}
 
 
-def opener_line(text: str) -> int | None:
-    """The line of the first block opener at the start of a line, or ``None``.
-
-    Only a sniff, as in the finder: whether the block is well formed is for
-    `sfc.python_block` and the loader to say.
-    """
-    found = _OPENER_RE.search(text)
-    return None if found is None else text.count("\n", 0, found.start()) + 1
-
-
 def no_block_reason(text: str) -> str:
     """Why a document that passes the opener sniff still has no block, as the
     end of a sentence: a ``{# python`` opener gets the fix named."""
     hint = (
         "; it opens with `{# python`, remove the space to write `{#python`"
-        if _V0_OPENER_RE.match(text)
+        if _V0_OPENER_RE.search(text)
         else ""
     )
     return f"has no {{#python block{hint}"
@@ -292,7 +277,7 @@ class PjxFinder(importlib.abc.MetaPathFinder):
                 text = candidate.read_text(encoding="utf-8-sig")
             except (OSError, UnicodeDecodeError):
                 continue
-            if _OPENER_RE.search(text):
+            if opener_line(text) is not None:
                 return importlib.util.spec_from_file_location(
                     fullname, candidate, loader=PjxLoader(fullname, str(candidate))
                 )

@@ -893,7 +893,7 @@ def test_a_document_with_a_python_block_that_does_not_scan_still_has_an_entry(
     assert [d["code"] for d in result["diagnostics"]] == ["unclosed-block"]
 
 
-def test_a_line_that_opens_python_but_is_no_block_is_refused_as_at_runtime(
+def test_a_v0_opener_is_refused_as_at_runtime_and_prose_is_a_template(
     tmp_path, monkeypatch
 ):
     monkeypatch.chdir(tmp_path)
@@ -903,13 +903,14 @@ def test_a_line_that_opens_python_but_is_no_block_is_refused_as_at_runtime(
     result = manifest.describe([Path(".")])
 
     mine = {c["tag"]: c for c in result["components"] if not c["builtin"]}
-    assert mine["Card"]["kind"] == mine["Chip"]["kind"] == "pjx-python"
+    assert mine["Card"]["kind"] == "template"
+    assert mine["Chip"]["kind"] == "pjx-python"
     diagnostics = {
         Path(d["path"]).name: d
         for d in result["diagnostics"]
         if d["path"].endswith(".pjx")
     }
-    assert diagnostics["card.pjx"]["code"] == "no-python-block"
+    assert "card.pjx" not in diagnostics
     assert diagnostics["chip.pjx"]["code"] == "no-python-block"
     assert "remove the space" in diagnostics["chip.pjx"]["message"]
 
@@ -1058,3 +1059,16 @@ def test_a_template_is_named_by_its_stem(tmp_path, monkeypatch):
     result = manifest.describe([Path(".")])
 
     assert next(c for c in result["components"] if c["tag"] == "X2")["name"] == "x_2"
+
+
+def test_a_raw_protected_example_is_a_template_not_a_document(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "guide.pjx").write_text(
+        "{% raw %}\n{#python\nx = 1\n#}\n{% endraw %}\n<p></p>\n"
+    )
+
+    result = manifest.describe([Path(".")])
+
+    mine = {c["tag"]: c for c in result["components"] if not c["builtin"]}
+    assert mine["Guide"]["kind"] == "template"
+    assert not [d for d in result["diagnostics"] if d["path"].endswith(".pjx")]
