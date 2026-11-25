@@ -15,8 +15,8 @@ import os
 import sys
 import threading
 from collections.abc import Sequence
-from pathlib import Path
 from importlib.machinery import ModuleSpec
+from pathlib import Path
 from types import CodeType, ModuleType
 from typing import NoReturn
 
@@ -209,7 +209,7 @@ class PjxLoader:
             self._refuse(1, f"already imported as {first[0]!r}; one file is one module")
         text = self.get_data(self.path).decode("utf-8-sig")
         try:
-            exec(self.get_code(self.name), module.__dict__)
+            exec(self.get_code(self.name), module.__dict__)  # noqa: S102
         finally:
             _mark_classes(module)
         document = self._document_class(module)
