@@ -120,7 +120,8 @@ def find_header(source: str, filename: str) -> Header | None:
     block = find_block(source, "def", filename)
     if block is not None:
         line_start = len(source) - len(source.split("\n", block.line - 1)[-1])
-        return Header(block.body, source.index(block.body, line_start), block.line)
+        after_keyword = source.index("def", line_start) + 3
+        return Header(block.body, source.index(block.body, after_keyword), block.line)
     legacy = LEGACY_HEADER_RE.match(source)
     if legacy is None:
         return None

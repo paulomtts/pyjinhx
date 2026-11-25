@@ -538,3 +538,10 @@ def test_find_header_reads_the_legacy_spaced_header_first_in_the_document():
 
 def test_find_header_is_none_without_a_header():
     assert find_header("<b>{# def #}</b>", "x") is None
+
+
+def test_find_header_offset_skips_the_keyword_even_when_the_signature_is_in_it():
+    source = "{#def e#}<b></b>"
+    header = find_header(source, "x")
+    assert header is not None
+    assert source[header.offset :].startswith("e#}")
