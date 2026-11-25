@@ -539,9 +539,12 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
     "template_blocks": frozenset(),
     # rendering resolves each ChildRef tag against the published class registry;
     # an unregistered tag is emitted verbatim, so this is a read-only edge.
+    # classless is the fallback for a tag miss: a header-only template gets its
+    # class on first use. classless never imports rendering, so no cycle.
     "rendering": frozenset(
         {
             "pyjinhx.assets",
+            "pyjinhx.classless",
             "pyjinhx._component",
             "pyjinhx.discovery",
             "pyjinhx.markers",

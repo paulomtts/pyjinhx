@@ -14,6 +14,7 @@ from pydantic import TypeAdapter
 
 from pyjinhx._component import BaseComponent, _pascal_to_snake
 from pyjinhx.assets import emit_assets
+from pyjinhx.classless import component_for_tag
 from pyjinhx.discovery import get_class
 from pyjinhx.markers import SLOT_TOKEN_RE, collect_slot_tokens
 from pyjinhx.props_header import warn_stale_def_header
@@ -148,7 +149,9 @@ def _load_reactive_child(
 def _fill_children(level: RenderedLevel) -> list[tuple[int, BaseComponent]]:
     """Resolve each ChildRef in ``level`` against the class registry, in place.
 
-    Tags no class claims stop being holes here and go back to being markup.
+    A tag no class claims may still name a header-only template, which the
+    classless factory turns into a class on first use. Tags left unclaimed
+    stop being holes here and go back to being markup.
     Tags that do resolve are built once, in document order — a reactive class
     through its cache-routed ``load()`` factory, a plain one through its
     constructor — and returned with their segment index so the recursive step
@@ -158,7 +161,7 @@ def _fill_children(level: RenderedLevel) -> list[tuple[int, BaseComponent]]:
     for index, segment in enumerate(level.segments):
         if not isinstance(segment, ChildRef):
             continue
-        cls = get_class(_pascal_to_snake(segment.tag))
+        cls = get_class(_pascal_to_snake(segment.tag)) or component_for_tag(segment.tag)
         if cls is None:
             level.segments[index] = _passthrough_markup(segment)
             continue
