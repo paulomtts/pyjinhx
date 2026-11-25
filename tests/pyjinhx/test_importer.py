@@ -590,3 +590,17 @@ def test_find_spec_declines_a_prose_comment_that_starts_with_python(write: Write
 def test_find_spec_declines_an_example_inside_raw(write: Write):
     write("pkg/guide.pjx", "{% raw %}\n{#python\nx = 1\n#}\n{% endraw %}\n")
     assert importlib.util.find_spec("pkg.guide") is None
+
+
+def test_importing_pyjinhx_does_not_load_importlib_abc():
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            "import sys, pyjinhx; print('importlib.abc' in sys.modules)",
+        ],
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    assert result.stdout.strip() == "False"

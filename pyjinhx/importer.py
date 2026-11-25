@@ -9,13 +9,14 @@ Stdlib-only at module scope: ``import pyjinhx`` installs the finder and must
 not pull in pydantic or jinja2.
 """
 
-import importlib.abc
+import importlib
 import importlib.util
 import os
 import sys
 import threading
 from collections.abc import Sequence
 from pathlib import Path
+from importlib.machinery import ModuleSpec
 from types import CodeType, ModuleType
 from typing import NoReturn
 
@@ -153,10 +154,11 @@ def _mark_classes(module: ModuleType) -> None:
             value._pjx_document = True  # pyright: ignore[reportAttributeAccessIssue]
 
 
-class PjxLoader(importlib.abc.SourceLoader):
+class PjxLoader:
     """Run the ``{#python`` block of one ``.pjx`` file as a module body.
 
-    No bytecode is cached: `get_code` compiles the block every time.
+    No bytecode is cached: `get_code` compiles the block every time. A plain
+    class, as ``importlib.abc`` costs more to import than the rest of pyjinhx.
     """
 
     def __init__(self, fullname: str, path: str) -> None:
@@ -168,6 +170,9 @@ class PjxLoader(importlib.abc.SourceLoader):
 
     def get_data(self, path: str) -> bytes:
         return Path(path).read_bytes()
+
+    def create_module(self, spec: ModuleSpec) -> None:
+        """Take the default module."""
 
     def is_package(self, fullname: str) -> bool:
         return False
@@ -204,7 +209,7 @@ class PjxLoader(importlib.abc.SourceLoader):
             self._refuse(1, f"already imported as {first[0]!r}; one file is one module")
         text = self.get_data(self.path).decode("utf-8-sig")
         try:
-            super().exec_module(module)
+            exec(self.get_code(self.name), module.__dict__)
         finally:
             _mark_classes(module)
         document = self._document_class(module)
@@ -259,7 +264,7 @@ class PjxLoader(importlib.abc.SourceLoader):
         )
 
 
-class PjxFinder(importlib.abc.MetaPathFinder):
+class PjxFinder:
     """Find ``<last segment>.pjx`` on the search path, if it opens a block."""
 
     def find_spec(
@@ -267,7 +272,7 @@ class PjxFinder(importlib.abc.MetaPathFinder):
         fullname: str,
         path: Sequence[str] | None,
         target: ModuleType | None = None,
-    ):
+    ) -> ModuleSpec | None:
         filename = fullname.rpartition(".")[2] + ".pjx"
         for entry in sys.path if path is None else path:
             if not isinstance(entry, str):
@@ -282,6 +287,9 @@ class PjxFinder(importlib.abc.MetaPathFinder):
                     fullname, candidate, loader=PjxLoader(fullname, str(candidate))
                 )
         return None
+
+    def invalidate_caches(self) -> None:
+        """Nothing is cached."""
 
 
 def _is_finder(finder: object) -> bool:
