@@ -26,6 +26,7 @@ from pathlib import Path
 from jinja2 import TemplateSyntaxError
 
 from pyjinhx._component import _pascal_to_snake
+from pyjinhx.props_header import parse_props_header
 from pyjinhx.sfc import extract_template
 from pyjinhx.template_blocks import find_block
 
@@ -39,6 +40,7 @@ class Plan:
     files: dict[Path, str | None] = field(default_factory=dict)
     refusals: list[str] = field(default_factory=list)
     folded: int = 0
+    notes: list[str] = field(default_factory=list)
 
     def read(self, path: Path) -> str:
         pending = self.files.get(path)
@@ -341,6 +343,204 @@ def fold_template(paths: list[Path]) -> Plan:
     return plan
 
 
+# --- declass ----------------------------------------------------------------
+
+# Names a header reads bare, without an import path.
+_HEADER_TYPES = {
+    "str", "int", "float", "bool", "list", "dict", "Any", "Slot", "Children",
+    "ExtraAttrs", "AttrValue", "Optional", "Literal",
+}  # fmt: skip
+_BARE_ORIGINS = ("pyjinhx", "typing")
+
+
+def import_paths(tree: ast.Module) -> dict[str, str]:
+    """Each imported name mapped to the dotted path it stands for."""
+    paths: dict[str, str] = {}
+    for node in tree.body:
+        match node:
+            case ast.Import():
+                for alias in node.names:
+                    paths[alias.asname or alias.name.split(".")[0]] = (
+                        alias.name if alias.asname else alias.name.split(".")[0]
+                    )
+            case ast.ImportFrom():
+                prefix = "." * node.level + (node.module or "")
+                for alias in node.names:
+                    paths[alias.asname or alias.name] = f"{prefix}.{alias.name}"
+    return paths
+
+
+def dotted(node: ast.expr, imports: dict[str, str], what: str) -> str:
+    """``node`` (a name or ``a.b.c``) with its first name replaced by its import path."""
+    root = node
+    while isinstance(root, ast.Attribute):
+        root = root.value
+    if not isinstance(root, ast.Name) or root.id not in imports:
+        raise ValueError(
+            f"{what} `{ast.unparse(node)}` is not imported, so a header cannot name it"
+        )
+    path = imports[root.id]
+    if path.startswith("."):
+        raise ValueError(
+            f"{what} `{ast.unparse(node)}` is a relative import, which a header cannot name"
+        )
+    return path + ast.unparse(node)[len(root.id) :]
+
+
+def header_type(node: ast.expr, imports: dict[str, str]) -> str:
+    """An annotation as header text, import paths spelled out."""
+    match node:
+        case ast.Constant(value=None):
+            return "None"
+        case ast.Constant(value=str()):
+            raise ValueError("a string annotation is not expressible in a header")
+        case ast.Name(id=name) if name in _HEADER_TYPES and (
+            name not in imports or imports[name].split(".")[0] in _BARE_ORIGINS
+        ):
+            return name
+        case ast.Name() | ast.Attribute():
+            return dotted(node, imports, "annotation")
+        case ast.BinOp(left=left, op=ast.BitOr(), right=right):
+            return f"{header_type(left, imports)} | {header_type(right, imports)}"
+        case ast.Subscript(value=ast.Name(id="Literal")):
+            members = (
+                node.slice.elts if isinstance(node.slice, ast.Tuple) else [node.slice]
+            )
+            return f"Literal[{', '.join(map(ast.unparse, members))}]"
+        case ast.Subscript(value=ast.Name(id="list" | "dict" | "Optional" as head)):
+            members = (
+                node.slice.elts if isinstance(node.slice, ast.Tuple) else [node.slice]
+            )
+            return f"{head}[{', '.join(header_type(m, imports) for m in members)}]"
+    raise ValueError(f"annotation `{ast.unparse(node)}` is not expressible in a header")
+
+
+def header_default(node: ast.expr, imports: dict[str, str]) -> str:
+    try:
+        ast.literal_eval(node)
+    except (ValueError, SyntaxError):
+        pass
+    else:
+        return ast.unparse(node)
+    match node:
+        case ast.Name() | ast.Attribute():
+            return dotted(node, imports, "default")
+        case ast.Call(func=func, args=[], keywords=[]):
+            return dotted(func, imports, "default") + "()"
+    raise ValueError(
+        f"default `{ast.unparse(node)}` is not a literal or an importable name"
+    )
+
+
+def class_props(node: ast.ClassDef, imports: dict[str, str]) -> list[str]:
+    """The ``{#def#}`` entries for a fields-only class; ValueError says why not."""
+    if node.keywords or node.decorator_list:
+        raise ValueError(f"{node.name} has class keywords or decorators")
+    if base_names(node) != ["BaseComponent"] or len(node.bases) != 1:
+        raise ValueError(f"{node.name} has bases other than BaseComponent")
+    props, required_id = [], False
+    for index, statement in enumerate(node.body):
+        match statement:
+            case ast.Expr(value=ast.Constant(value=str())) if index == 0:
+                pass
+            case ast.Pass():
+                pass
+            case ast.Assign(
+                targets=[ast.Name(id="auto_id")], value=ast.Constant(value=value)
+            ):
+                required_id = required_id or value is False
+            case ast.AnnAssign(
+                target=ast.Name(id=name), annotation=annotation, value=value
+            ):
+                entry = f"{name}: {header_type(annotation, imports)}"
+                if name == "id" and (value is not None or entry != "id: str"):
+                    raise ValueError("`id` may only be declared as a required str")
+                props.append(
+                    entry + (f" = {header_default(value, imports)}" if value else "")
+                )
+            case ast.FunctionDef() | ast.AsyncFunctionDef():
+                raise ValueError(
+                    f"{node.name} defines {statement.name}(), which needs a class"
+                )
+            case ast.Assign(targets=[ast.Name(id=name)]):
+                raise ValueError(f"{node.name} assigns {name}, which needs a class")
+            case _:
+                raise ValueError(
+                    f"{node.name} has a {type(statement).__name__} statement, which needs a class"
+                )
+    if required_id and not any(p.startswith("id:") for p in props):
+        props.insert(0, "id: str")
+    return props
+
+
+def only_the_class(module: Module, node: ast.ClassDef) -> str | None:
+    """Why the module holds more than imports and ``node``, or None."""
+    for statement in module.tree.body:
+        if statement is node or isinstance(statement, ast.Import | ast.ImportFrom):
+            continue
+        if isinstance(statement, ast.Expr) and isinstance(
+            statement.value, ast.Constant
+        ):
+            continue
+        return f"the module also has a {type(statement).__name__} (line {statement.lineno})"
+    return None
+
+
+def header_text(props: list[str]) -> str:
+    one_line = f"{{#def {', '.join(props)} #}}"
+    if len(one_line) <= 88:
+        return one_line
+    return "{#def " + ",\n      ".join(props) + " #}"
+
+
+def references(name: str, roots: list[Path], skip: Path) -> list[str]:
+    """``path:line: text`` for every line under ``roots`` that mentions ``name``."""
+    pattern = re.compile(rf"\b{re.escape(name)}\b")
+    found = []
+    for path in walk(roots, "*.py"):
+        if path == skip:
+            continue
+        for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+            if pattern.search(line):
+                found.append(f"{path}:{number}: {line.strip()}")
+    return found
+
+
+def fold_declass(paths: list[Path], roots: list[Path] | None = None) -> Plan:
+    plan = Plan()
+    for module in load_modules(paths):
+        for node in module.classes():
+            if module.path.name == "__init__.py" or not node.bases:
+                continue
+            pjx = module.path.parent / f"{_pascal_to_snake(node.name)}.pjx"
+            try:
+                if not pjx.is_file():
+                    raise ValueError(f"there is no {pjx.name} beside it")
+                if assigns_template(node):
+                    raise ValueError(f"{node.name} assigns its own `template`")
+                text = pjx.read_text(encoding="utf-8")
+                if has_block(text, "def", pjx) or re.match(r"\s*\{#\s*def\s", text):
+                    raise ValueError(f"{pjx.name} already has a {{#def#}} header")
+                props = class_props(node, import_paths(module.tree))
+                if reason := only_the_class(module, node):
+                    raise ValueError(reason)
+                if props:
+                    header = header_text(props)
+                    parse_props_header(header)
+                    text = header + "\n" + text
+            except ValueError as exc:
+                plan.refuse(module.path, str(exc))
+                continue
+            plan.files[pjx] = text
+            plan.files[module.path] = None
+            plan.folded += 1
+            plan.notes += [
+                f"{node.name} is still referenced: {line}"
+                for line in references(node.name, roots or paths, module.path)
+            ]
+    return plan
+
+
 # --- output -----------------------------------------------------------------
 
 
@@ -365,6 +565,8 @@ def finish(name: str, plan: Plan, write: bool) -> int:
                 path.unlink()
             else:
                 path.write_text(new, encoding="utf-8")
+    for note in plan.notes:
+        print(f"reference {note}")
     for refusal in plan.refusals:
         print(f"refused {refusal}")
     mode = "written" if write else "dry run, nothing written; pass --write"
@@ -379,8 +581,19 @@ def main(argv: list[str] | None = None) -> int:
         command = commands.add_parser(name)
         command.add_argument("paths", nargs="+", type=Path)
         command.add_argument("--write", action="store_true", help="apply the changes")
+    commands.choices["declass"].add_argument(
+        "--root",
+        action="append",
+        type=Path,
+        help="where to look for references to a folded class (default: the paths)",
+    )
     args = parser.parse_args(argv)
-    plan = {"assets": fold_assets, "template": fold_template}[args.command](args.paths)
+    if args.command == "declass":
+        plan = fold_declass(args.paths, args.root)
+    else:
+        plan = {"assets": fold_assets, "template": fold_template}[args.command](
+            args.paths
+        )
     return finish(args.command, plan, args.write)
 
 
