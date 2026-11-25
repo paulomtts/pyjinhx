@@ -299,7 +299,7 @@ build the registry; import every `python`-block document under
 `components_root`; if any import defined new classes, build the registry
 again. The first build makes `component("X")` usable by code those imports
 run (the consumer app calls it at module level). `discovery.py` itself still
-opens no file; the sniff (`"{#python" in text`) lives in `config`.
+opens no file; the sniff (`sfc.opener_line`: a line that is only `{#python` or `{# python` in column 0, outside `{% raw %}` and tags) lives in `config`.
 
 Why eager: a class-based component has always been known at startup. Reactive
 fan-out, `all_assets()`, `dev.dependency_graph()` and consumers' meta-tests

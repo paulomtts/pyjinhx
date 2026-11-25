@@ -101,8 +101,9 @@ The guide has the comparison table.
   first built, not at startup.
 - A headed `.pjx` with no class used to pass its tag through as literal markup
   and now renders as a component.
-- A line that starts with `{#python` in any `.pjx` now makes it a document, so a
-  prose comment or an example written that way at column 0 must be indented.
+- A line that is only `{#python` in column 0 in any `.pjx` now makes it a document,
+  so an example written that way must be indented or wrapped in `{% raw %}`. Prose
+  such as `{# python helpers #}` stays a comment.
 - ADR 0007's on-disk convention (`.pjx`, snake_case) is extended, not broken:
   an inline template is consulted before the file probe.
 - v0.x `{# python #}` files migrate by removing the space in the opener,

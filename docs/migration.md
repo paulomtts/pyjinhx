@@ -33,14 +33,16 @@ Six behaviours change for templates you already have:
   to render a leading `\n` before its markup now starts at the markup. Line numbers
   in errors are unchanged. Compare output byte for byte (snapshot tests, `strip()`-less
   assertions) and update any that expected the blank line.
-- **A `{#python` at the start of a line makes the file a document.** Any `.pjx` with a
-  line that starts with `{#python` (or the v0.x `{# python`) in column 0 is now taken for
+- **A `{#python` alone on a line makes the file a document.** Any `.pjx` with a
+  line that is only `{#python` (or the v0.x `{# python`) in column 0 is now taken for
   a [shape P](guide/components.md#shape-p-the-class-in-the-pjx) document: `setup()`
   imports it and runs its block, and a `.py` component whose `.pjx` has one fails at
-  class creation, because the class is expected to live in the `.pjx`. A comment that
-  starts a line this way without being a block, such as prose or an example in a `<pre>`,
-  fails `setup()` with "has no {#python block". Indent it or reword it; `{% raw %}` does
-  not protect it. An indented `{#python`, or one in the middle of a line, stays a comment.
+  class creation, because the class is expected to live in the `.pjx`. An example
+  in a `<pre>` written this way fails `setup()` with "has no {#python block"; indent it
+  or wrap it in `{% raw %}`. A prose comment such as `{# python helpers #}`, an indented
+  `{#python`, or one in the middle of a line, stays a comment.
+- **`setup()` does not import plain `.py` subclasses of a document's class.** Something
+  must import them.
 - **`template` is a reserved class attribute.** A class body that assigns `template`
   is now read as an inline template. A pydantic field named `template` keeps its
   meaning and is not read as one.

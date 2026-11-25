@@ -45,10 +45,11 @@
   default, `--write` to apply.
 
 ### Changed
-- A line starting with `{#python` (or the v0.x `{# python`) in column 0 now makes any
-  `.pjx` a document: `setup()` imports it and runs its block, so a prose comment or an
-  example written that way fails with "has no {#python block". Indent it; `{% raw %}`
-  does not help. A `.py` component whose `.pjx` has a block fails at class creation, since
+- A line that is only `{#python` (or the v0.x `{# python`) in column 0 now makes any
+  `.pjx` a document: `setup()` imports it and runs its block, so an example written that
+  way fails with "has no {#python block". Indent it or wrap it in `{% raw %}`; prose such
+  as `{# python helpers #}` stays a comment. `setup()` does not import plain `.py`
+  subclasses of a document's class; something must import them. A `.py` component whose `.pjx` has a block fails at class creation, since
   the class is expected to live in the `.pjx`. A `{#def#}` header beside a block is
   refused. A v0.x `{# python` file imports after removing the space.
 - `setup()` imports application code when a `.pjx` under `components_root` holds a block.
@@ -61,6 +62,7 @@
 - A `{#def#}`, `{#css#}` or `{#js#}` block alone on its line no longer leaves a
   blank line in the output, so a headed template no longer renders a leading
   newline. Line numbers in errors are unchanged.
+- Startup was quadratic for many `template = r"""..."""` classes in one module.
 
 ## 1.16.0 — Graph ports and wire events (2026-11-21)
 

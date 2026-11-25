@@ -65,7 +65,8 @@ ADR 0014 answered them by not doing the thing. This ADR does the thing, so each 
 Where the build differs from the design in `docs/superpowers/specs/2026-11-26-pjx-python-block-design.md`:
 
 - A closer written `-#}` is refused, as Jinja would eat the line break after it. Text after the closer on its line is refused too.
-- The finder sniffs `{#python` or `{# python` at the start of a line, so a prose comment that starts a line that way is taken for a document and fails `setup()`. `{% raw %}` does not protect it; indenting does.
+- The finder sniffs a line that is only `{#python` or `{# python` in column 0 (`sfc.opener_line`), outside `{% raw %}` and tags. A prose comment such as `{# python helpers #}` is a plain template; an example in `<pre>` fails `setup()` unless indented or wrapped in `{% raw %}`.
+- `setup()` does not import a plain `.py` subclass of a document's class; something must import it.
 - `python -m app.ui.card` runs the block with the right `__file__`, but as `__main__`: the stem-class check does not run and the class is not registered.
 - There is no `python -m pyjinhx.sfc` command. The docs show a short script over `sfc.python_source` for linting blocks with ruff.
 - The manifest reports ranges (`start` and `end` positions) rather than bare `line` and `column`, absolute POSIX paths, and a few more fields; the reference page lists them.

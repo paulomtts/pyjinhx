@@ -24,8 +24,8 @@ marker `# pyjinhx.stubgen: generated from card.pjx; do not edit`.
 - No stub is written for a block that a `card.py` or a `card/` directory shadows.
 - Hidden directories, virtualenvs (any directory with a `pyvenv.cfg`), `site-packages`,
   `dist-packages`, `build`, `dist`, `__pycache__` and `node_modules` are skipped.
-- A file only counts as a document if a line starts with `{#python`, as for the import
-  hook.
+- A file only counts as a document if a line is only `{#python` (or `{# python`) in
+  column 0, outside `{% raw %}`, as for the import hook.
 
 With `--check` nothing is written. The command lists the stubs that are stale, missing or
 orphaned, and the documents that need a person (shadowed, malformed, or a hand-written

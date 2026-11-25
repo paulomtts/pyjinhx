@@ -364,10 +364,13 @@ renders the document and drops it.
 
 The rules for the block, in the order the scanner checks them:
 
-1. **Opener.** A line that is exactly `{#python`, with nothing but spaces or tabs after
-   it. The `{#` is in column 0 and the keyword touches it. An indented `{#python` is a
-   plain comment. The v0.x spelling `{# python` at the start of a line is not a block
-   either, and importing such a file fails with a message that says to remove the space.
+1. **Opener.** A line that is exactly `{#python`, with nothing but spaces, tabs or a
+   `\r` after it. The `{#` is in column 0 and the keyword touches it. An indented
+   `{#python` is a plain comment, and so is a prose comment such as
+   `{#python is nice #}`. Inside `{% raw %}...{% endraw %}` or a tag it is not an opener
+   either. The v0.x spelling `{# python` alone on its line is not a block, and importing
+   such a file fails with a message that says to remove the space; `{# python helpers #}`
+   is a plain comment.
 2. **Body.** Every line after the opener, compiled as written: no dedent, no stripping.
    Module-level code starts in column 0, as in a `.py` file.
 3. **Closer.** The first `#}` after the opener. It must be alone on its line, in column
@@ -542,11 +545,14 @@ See [the command reference](../reference/commands.md#python-m-pyjinhxmanifest).
 
 ### Known limits of shape P
 
-- **A line that starts with `{#python` (or `{# python`) in column 0 makes the file a
-  document**, wherever it sits, including an example inside a `<pre>` or a prose comment
-  such as `{# python is the language #}`. `setup()` imports it and fails with "has no
-  {#python block". Indent the example or reword the comment. Writing it inside
-  `{% raw %}` does not help. An indented `{#python`, or one mid-line, is a plain comment.
+- **A line that is only `{#python` (or the v0.x `{# python`) in column 0 makes the file a
+  document**, wherever it sits, including an example inside a `<pre>`. `setup()` imports
+  it and fails with "has no {#python block". Indent the example, or wrap it in
+  `{% raw %}...{% endraw %}`, which is not a document. A prose comment that continues the
+  line, such as `{# python helpers below #}` or `{#python is nice #}`, an indented
+  `{#python`, or one mid-line, is a plain comment.
+- **`setup()` does not import a plain `.py` subclass of a document's class.** Something
+  in your application must import it, or the subclass is never registered.
 - **Importing a `.pjx` runs its Python**, and `setup()` imports every block document under
   `components_root`. A template was already trusted code (a header's dotted name imports a
   module); this makes it plain. Never point `components_root`, or an import path, at files
@@ -723,8 +729,7 @@ A component can keep its CSS and JS inside its `.pjx` template instead of in sib
   document.
 - A block can sit anywhere in the document, in any order relative to the `{#def#}`
   header. It is read statically: putting it inside `{% if %}` does not make it
-  conditional, and putting it inside `{% raw %}` does not hide it, so a block written
-  there as sample text is still a block.
+  conditional. A `{#python` inside `{% raw %}` is sample text, not a block.
 - The body is taken verbatim, Jinja syntax included — `{{ }}` and `{% %}` are not
   evaluated. Like any Jinja comment, it ends at the first `#}`, so the body cannot
   contain that sequence.
