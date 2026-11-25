@@ -18,7 +18,7 @@ from pyjinhx.assets import (
 from pyjinhx.classless import component
 from pyjinhx.reactive.assets import missing_asset_oob
 from pyjinhx.rendering import render
-from pyjinhx.session import RenderSession, accumulate_assets
+from pyjinhx.session import AbsolutePathLoader, RenderSession, accumulate_assets
 from pyjinhx.template_blocks import InlineAsset, find_block, inline_assets
 
 
@@ -332,3 +332,68 @@ def test_a_literal_comment_close_in_a_document_without_blocks_is_left_alone(tmp_
     path = _write(tmp_path / "card.pjx", "<div>#} not a comment</div>\n")
 
     assert inline_assets(path) == (None, None)
+
+
+# --- a block on its own line leaves no blank line ---------------------------
+
+
+def _render_file(path: Path, **context: object) -> str:
+    return (
+        Environment(loader=AbsolutePathLoader())
+        .get_template(str(path))
+        .render(**context)
+    )
+
+
+@pytest.mark.parametrize(
+    ("source", "rendered"),
+    [
+        ("{#def title: str #}\n<p>{{ title }}</p>\n", "<p>hi</p>"),
+        ("<p>{{ title }}</p>\n{#css\n.p {}\n#}\n", "<p>hi</p>"),
+        ("<p>{{ title }}</p>\n{#css .p {} #}", "<p>hi</p>"),
+        ("<p>a</p>\n  {#js run(); #}  \n<p>{{ title }}</p>", "<p>a</p>\n<p>hi</p>"),
+        (
+            "{#def title: str #}\n{#css .p {} #}\n<p>{{ title }}</p>\n{#js run(); #}\n",
+            "<p>hi</p>",
+        ),
+    ],
+    ids=["header", "trailing-block", "last-line", "between-lines", "all-three"],
+)
+def test_a_block_on_its_own_line_takes_the_line_with_it(tmp_path, source, rendered):
+    """So a header, or an asset folded in from a sibling file, never changes
+    the markup a template renders."""
+    path = _write(tmp_path / "note.pjx", source)
+
+    assert _render_file(path, title="hi") == rendered
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        "<p>{{ title }}</p>{#css .p {} #}\n<i></i>",
+        "<p>{{ title }}</p>\n{#css .p {} #}<i></i>",
+    ],
+    ids=["after-markup", "before-markup"],
+)
+def test_a_block_sharing_a_line_with_markup_keeps_the_line(tmp_path, source):
+    path = _write(tmp_path / "note.pjx", source)
+
+    assert _render_file(path, title="hi") == "<p>hi</p>\n<i></i>"
+
+
+def test_a_prose_comment_on_its_own_line_keeps_its_line(tmp_path):
+    path = _write(tmp_path / "note.pjx", "<p>a</p>\n{# a note #}\n<p>b</p>")
+
+    assert _render_file(path) == "<p>a</p>\n\n<p>b</p>"
+
+
+def test_hidden_block_lines_keep_every_line_number(tmp_path):
+    path = _write(
+        tmp_path / "note.pjx",
+        "{#def title: str #}\n{#css\n.p {}\n#}\n<p>\n{% if %}\n</p>\n{#js run(); #}\n",
+    )
+
+    with pytest.raises(TemplateSyntaxError) as raised:
+        _render_file(path)
+
+    assert raised.value.lineno == 6

@@ -733,6 +733,7 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
             "pyjinhx.assets",
             "pyjinhx.config",
             "pyjinhx.sfc",
+            "pyjinhx.template_blocks",
         }
     ),
     # pjx_table family (#526): each component module imports only the core
@@ -856,6 +857,7 @@ def test_session_never_reaches_into_reactive():
         "pyjinhx.assets",
         "pyjinhx.config",
         "pyjinhx.sfc",
+        "pyjinhx.template_blocks",
     }
 
 

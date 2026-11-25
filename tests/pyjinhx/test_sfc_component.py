@@ -430,6 +430,20 @@ def test_rendering_inlines_each_block_once(styled):
     assert "{#" not in out
 
 
+def test_an_inline_templates_blocks_leave_no_blank_lines(styled):
+    assert render(styled.Tag(), RenderSession()) == '<span class="tag">tag</span>'
+    assert render(styled.Pill(), RenderSession()) == '<span class="pill">pill</span>'
+
+
+def test_an_inline_header_leaves_no_blank_line(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    path = _headed_module(tmp_path, ["{#def title: str #}", "<h1>{{ title }}</h1>"])
+    headed = _import_file(path, monkeypatch).Headed
+
+    assert headed(title="a").render() == "<h1>a</h1>"
+
+
 def test_a_duplicate_block_is_reported_at_its_line_in_the_python_file(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ):
