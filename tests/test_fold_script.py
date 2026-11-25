@@ -638,6 +638,23 @@ def test_declass_refuses_a_class_that_needs_python(tmp_path, capsys, body, reaso
     assert (tmp_path / "card.pjx").read_text() == "<i></i>\n"
 
 
+def test_declass_refuses_a_called_default(tmp_path, capsys):
+    """A class body calls it once; a header would call it per instance."""
+    module = write(
+        tmp_path / "card.py",
+        "import datetime\n\nfrom pyjinhx import BaseComponent\n\n\n"
+        "class Card(BaseComponent):\n"
+        "    at: datetime.datetime = datetime.datetime.now()\n",
+    )
+    write(tmp_path / "card.pjx", "<i></i>\n")
+
+    code, out = run("declass", tmp_path, "--write", capsys=capsys)
+
+    assert code == 1
+    assert "datetime.datetime.now()" in out and "once" in out
+    assert module.exists()
+
+
 def test_declass_refuses_a_class_with_keywords_a_decorator_or_another_base(
     tmp_path, capsys
 ):

@@ -437,8 +437,11 @@ def header_default(node: ast.expr, imports: dict[str, str]) -> str:
     match node:
         case ast.Name() | ast.Attribute():
             return dotted(node, imports, "default")
-        case ast.Call(func=func, args=[], keywords=[]):
-            return dotted(func, imports, "default") + "()"
+        case ast.Call():
+            raise ValueError(
+                f"default `{ast.unparse(node)}` is called once, when the class is "
+                "defined; a header would call it for every instance"
+            )
     raise ValueError(
         f"default `{ast.unparse(node)}` is not a literal or an importable name"
     )

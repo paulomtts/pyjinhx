@@ -213,9 +213,14 @@ the prop is the component's children field or is typed `Slot` (see
 A component is a pjx document, optionally owned by a Python class. A document is
 markup plus up to three Jinja-comment blocks: `{#def ... #}` (props), `{#css ... #}`
 and `{#js ... #}`. It lives either in a `.pjx` file or in the `template` string of
-the class that owns it, and means the same thing in both places. The tag, the props
-and the rendered output never depend on which you pick, and one project can mix all
-three.
+the class that owns it, and means the same thing in both places: the tag, the props
+and the rendered output do not depend on where the document lives. One project can
+mix all three shapes.
+
+The shapes differ in one way. A component built from a `{#def#}` header (T) accepts
+undeclared attributes and passes them through to its root element, like any
+[classless component](#extra-fields); a hand-written class (C, S) is strict and
+rejects them with a `ValidationError` unless it opts in with `extra="allow"`.
 
 **T: template only.** One `.pjx` file, no Python.
 
@@ -321,10 +326,12 @@ summary; add `--write` to apply it. Only files under the paths you pass are touc
 |---|---|---|
 | `assets` | sibling `.css`/`.js` into a `{#css#}`/`{#js#}` block of the template beside it | the text contains `#}`; a subclass with its own template inherits the asset; a subclass that renders the template has its own sibling file of that kind; the template already has that block; the class's `template` is not a triple-quoted literal that can hold it |
 | `template` | a class's adjacent `.pjx` into `template = r"""..."""` (S to C) | the class already assigns `template`; the text holds both triple-quote styles or ends in a backslash; indentation would change when read back |
-| `declass` | a fields-only class into a `{#def#}` header, deleting the `.py` (S to T) | the class has methods, decorators, other bases or other statements; a type or default is not expressible in a header; the module holds more than the class and imports |
+| `declass` | a fields-only class into a `{#def#}` header, deleting the `.py` (S to T) | the class has methods, decorators, other bases or other statements; a type or default is not expressible in a header; a default is a call, which a class runs once and a header would run per instance; the module holds more than the class and imports |
 
 `declass` prints every remaining reference to a folded class name, because it reports
-rather than rewrites imports (`--root` says where to look). The script exits 1 if it
+rather than rewrites imports (`--root` says where to look). The folded component also
+becomes permissive: undeclared attributes that the class rejected now pass through
+(see the shapes above). The script exits 1 if it
 refused anything, after processing the rest, and running it again finds nothing left to
 fold. Run your tests after each subcommand.
 
