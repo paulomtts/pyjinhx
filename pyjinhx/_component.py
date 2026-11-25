@@ -540,6 +540,24 @@ class BaseComponent(BaseModel):
 
     auto_id: ClassVar[bool] = True
 
+    # Declared without a value: a value here would sit on the class, and a
+    # subclass declaring a *field* named ``template`` would then shadow it —
+    # pydantic warns about that and loses the field's default in subclasses.
+    template: ClassVar[str]
+    """The component's template, written in the class instead of a ``.pjx``.
+
+    One plain string literal, assigned in the class body. pyjinhx reads it
+    back from the module's source, so its line numbers in errors and
+    tracebacks are the lines of the ``.py`` file. Use a raw string
+    (``r\"\"\"…\"\"\"``) whenever the template holds a backslash: in a plain
+    string an escape such as ``\\n`` changes the markup *and* shifts every
+    reported line after it.
+
+    An edit to the string is picked up on the next render without a
+    re-import, but it is an edit to a ``.py`` file, so a dev server that
+    restarts on ``*.py`` changes restarts for it too.
+    """
+
     __pjx_descriptor__: ClassVar[ClassDescriptor]
 
     _pjx_replace: ClassVar[bool] = False
