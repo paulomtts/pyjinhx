@@ -257,3 +257,51 @@ def test_parsing_uses_only_the_stdlib():
     }
     assert "create_model" not in names
     assert "_OpenComponent" not in names
+
+
+def test_literal_annotation_becomes_a_typing_literal():
+    from typing import Literal
+
+    assert parse_props_header('{#def tone: Literal["info", "warn"] = "info" #}') == [
+        ("tone", Literal["info", "warn"], "info")
+    ]
+
+
+def test_literal_members_must_be_literals():
+    with pytest.raises(ValueError, match="tone"):
+        parse_props_header("{#def tone: Literal[SOME_NAME] #}")
+
+
+@pytest.mark.parametrize(
+    "annotation, expected",
+    [
+        ("list[str]", list[str]),
+        ("dict[str, int]", dict[str, int]),
+        ("list[list[int]]", list[list[int]]),
+    ],
+)
+def test_generic_annotations_resolve_their_arguments(annotation: str, expected: Any):
+    assert parse_props_header(f"{{#def value: {annotation} #}}") == [
+        ("value", expected, ...)
+    ]
+
+
+def test_list_of_slot_keeps_the_slot_alias_as_its_argument():
+    from pyjinhx._component import Slot
+
+    assert parse_props_header("{#def rows: list[Slot] #}") == [
+        ("rows", list[Slot], ...)
+    ]
+
+
+def test_union_of_two_types_is_a_real_union():
+    assert parse_props_header("{#def size: str | int #}") == [("size", str | int, ...)]
+
+
+def test_attribute_types_resolve_to_pyjinhx_types():
+    from pyjinhx._component import AttrValue, ExtraAttrs
+
+    assert parse_props_header("{#def attrs: ExtraAttrs, title: AttrValue #}") == [
+        ("attrs", ExtraAttrs, ...),
+        ("title", AttrValue, ...),
+    ]

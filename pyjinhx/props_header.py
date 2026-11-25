@@ -14,7 +14,7 @@ import ast
 import logging
 import re
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal
 
 from pydantic import create_model
 
@@ -54,7 +54,7 @@ def _resolve_annotation(node: ast.expr | None, field_name: str) -> Any:
             return left | None
         if left is type(None):
             return right | None
-        return Any
+        return left | right
     # Optional[T]
     if (
         isinstance(node, ast.Subscript)
@@ -62,7 +62,27 @@ def _resolve_annotation(node: ast.expr | None, field_name: str) -> Any:
         and node.value.id == "Optional"
     ):
         return _resolve_annotation(node.slice, field_name) | None
+    if isinstance(node, ast.Subscript) and isinstance(node.value, ast.Name):
+        if node.value.id == "Literal":
+            return _resolve_literal(node.slice, field_name)
+        if node.value.id in ("list", "dict"):
+            elements = (
+                node.slice.elts if isinstance(node.slice, ast.Tuple) else [node.slice]
+            )
+            arguments = tuple(_resolve_annotation(e, field_name) for e in elements)
+            return _TYPES[node.value.id][arguments]
     return Any
+
+
+def _resolve_literal(node: ast.expr, field_name: str) -> Any:
+    members = node.elts if isinstance(node, ast.Tuple) else [node]
+    try:
+        values = tuple(ast.literal_eval(member) for member in members)
+    except ValueError as exc:
+        raise ValueError(
+            f"{{#def#}} Literal members for {field_name!r} must be literals"
+        ) from exc
+    return Literal[values]
 
 
 def parse_props_header(source: str) -> list[tuple[str, Any, Any]] | None:
@@ -74,10 +94,12 @@ def parse_props_header(source: str) -> list[tuple[str, Any, Any]] | None:
     # Imported here, not at module scope: Slot and Children are defined at the
     # bottom of _component.py, after _OpenComponent, whose class body reenters
     # this module — a top-level import would read them before they are bound.
-    from pyjinhx._component import Children, Slot
+    from pyjinhx._component import AttrValue, Children, ExtraAttrs, Slot
 
     _TYPES["Slot"] = Slot
     _TYPES["Children"] = Children
+    _TYPES["ExtraAttrs"] = ExtraAttrs
+    _TYPES["AttrValue"] = AttrValue
 
     match = _HEADER_RE.match(source)
     if match is None:

@@ -191,3 +191,37 @@ def test_header_declared_slot_union_is_detected_as_slot_on_the_built_class(
     assert fields is not None
     cls = build_component_class(fields, "Card")
     assert _is_slot_field(cls, "value") is True
+
+
+def _build(header: str):
+    fields = parse_props_header(header)
+    assert fields is not None
+    return build_component_class(fields, "Card")
+
+
+def test_literal_prop_rejects_a_value_outside_its_members():
+    from pydantic import ValidationError
+
+    cls = _build('{#def tone: Literal["info", "warn"] = "info" #}')
+    assert cls(tone="warn").tone == "warn"  # pyright: ignore[reportCallIssue]
+    with pytest.raises(ValidationError):
+        cls(tone="bad")  # pyright: ignore[reportCallIssue]
+
+
+def test_union_prop_accepts_either_member_and_rejects_others():
+    from pydantic import ValidationError
+
+    cls = _build("{#def size: str | int = 1 #}")
+    assert cls(size="x").size == "x"  # pyright: ignore[reportCallIssue, reportAttributeAccessIssue]
+    assert cls(size=2).size == 2  # pyright: ignore[reportCallIssue, reportAttributeAccessIssue]
+    with pytest.raises(ValidationError):
+        cls(size=[])  # pyright: ignore[reportCallIssue]
+
+
+def test_extra_attrs_prop_validates_attribute_names():
+    from pydantic import ValidationError
+
+    cls = _build("{#def attrs: ExtraAttrs = {} #}")
+    assert cls(attrs={"data-x": "y"}).attrs == {"data-x": "y"}  # pyright: ignore[reportCallIssue, reportAttributeAccessIssue]
+    with pytest.raises(ValidationError):
+        cls(attrs={'a"b': "x"})  # pyright: ignore[reportCallIssue]
