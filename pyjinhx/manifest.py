@@ -703,7 +703,8 @@ def _py_components(project: _Project, path: Path) -> list[dict[str, Any]]:
 def _python_components(project: _Project, document: _Document) -> list[dict[str, Any]]:
     """The components a ``.pjx`` document with a ``{#python`` block declares,
     and every reason pyjinhx would refuse it: the class named for the file, then
-    any class in the block that subclasses it and so shares its markup."""
+    any class in the block that subclasses it and so shares its markup, then
+    any class whose own ``<snake_name>.pjx`` sits beside the document."""
     path, source, blocks = document
     block = python_block(source, str(path))
     assert block is not None
@@ -746,6 +747,7 @@ def _python_components(project: _Project, document: _Document) -> list[dict[str,
         )
     class_info = props = members = chosen = None
     inheriting: list[ast.ClassDef] = []
+    owning: list[tuple[ast.ClassDef, _Document]] = []
     tag = _pascal(path.stem)
     try:
         tree = ast.parse(text, str(path))
@@ -805,6 +807,13 @@ def _python_components(project: _Project, document: _Document) -> list[dict[str,
                 if any(_tail(base) in listed for base in node.bases):
                     listed.add(node.name)
                     inheriting.append(node)
+            for node in classes:
+                sibling = project.documents.get(
+                    path.with_name(f"{pascal_to_snake(node.name)}.pjx")
+                )
+                if node.name not in listed and sibling and not _has_python(sibling):
+                    project.claimed.add(sibling.path)
+                    owning.append((node, sibling))
     assets = _assets(path.parent, path.stem)
     document_info = {"path": path.as_posix(), "markup_lines": markup}
     found = [
@@ -820,6 +829,24 @@ def _python_components(project: _Project, document: _Document) -> list[dict[str,
             node,
         )
         for node in inheriting
+    ]
+    found += [
+        _component(
+            node.name,
+            "pjx-python",
+            {
+                "path": sibling.path.as_posix(),
+                "markup_lines": _markup_lines(sibling.source),
+            },
+            sibling.blocks,
+            _assets(sibling.path.parent, sibling.path.stem),
+            _class_info(node, text, lines, path, project.module(path)),
+            _class_props(node, text, lines),
+            _members(node, lines),
+            node,
+            has_stale_def_header=_header(sibling.source) is not None,
+        )
+        for node, sibling in owning
     ]
     return [
         _component(
@@ -927,7 +954,10 @@ def _build(
     components: list[dict[str, Any]] = []
     for path in py_paths:
         components += guarded(path, lambda path=path: _py_components(project, path))
-    for document in list(project.documents.values()):
+    # A block's classes claim their sibling documents, so blocks go first.
+    for document in sorted(
+        project.documents.values(), key=lambda d: not _has_python(d)
+    ):
         components += guarded(
             document.path, lambda document=document: describe_document(document)
         )
