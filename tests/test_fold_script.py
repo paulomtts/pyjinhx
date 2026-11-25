@@ -356,3 +356,97 @@ def test_template_dry_run_prints_a_diff_and_writes_nothing(tmp_path, capsys):
     assert '+    template = r"""' in out
     assert "+++ /dev/null" in out
     assert "dry run" in out
+
+
+# --- assets inside an inline template ----------------------------------------
+
+
+CHIP_PY = '''
+    from pyjinhx import BaseComponent
+
+
+    class Chip(BaseComponent):
+        label: str
+
+        template = r"""
+        <i class="chip">{{ label }}</i>
+        """
+'''
+
+
+def test_assets_folds_into_an_inline_template_string(tmp_path, monkeypatch, capsys):
+    module = write(tmp_path / "chip.py", CHIP_PY)
+    css = write(tmp_path / "chip.css", ".chip { content: '\\2022'; }\n")
+    before = render_class(module, "Chip", monkeypatch, label="x")
+
+    code, _ = run("assets", tmp_path, "--write", capsys=capsys)
+
+    assert code == 0
+    assert not css.exists()
+    ast.parse(module.read_text())
+    assert module.read_text().endswith(
+        '    template = r"""\n    <i class="chip">{{ label }}</i>\n'
+        '    {#css\n    .chip { content: \'\\2022\'; }\n    #}\n    """\n'
+    )
+    assert render_class(module, "Chip", monkeypatch, label="x") == before
+
+
+def test_assets_refuses_a_backslash_asset_for_a_non_raw_template(tmp_path, capsys):
+    module = write(tmp_path / "chip.py", CHIP_PY.replace('r"""', '"""'))
+    css = write(tmp_path / "chip.css", ".chip { content: '\\2022'; }\n")
+
+    code, out = run("assets", tmp_path, "--write", capsys=capsys)
+
+    assert code == 1
+    assert css.exists()
+    assert "raw" in out
+    assert "css" not in module.read_text().split("template")[1]
+
+
+def test_assets_refuses_a_template_that_is_not_triple_quoted(tmp_path, capsys):
+    write(
+        tmp_path / "chip.py",
+        """
+        from pyjinhx import BaseComponent
+
+
+        class Chip(BaseComponent):
+            template = "<i></i>"
+        """,
+    )
+    css = write(tmp_path / "chip.css", ".chip {}\n")
+
+    code, out = run("assets", tmp_path, "--write", capsys=capsys)
+
+    assert code == 1
+    assert css.exists()
+    assert "triple-quoted" in out
+
+
+def test_assets_refuses_an_inline_template_that_already_has_the_block(tmp_path, capsys):
+    write(
+        tmp_path / "chip.py",
+        CHIP_PY.replace('    """\n', '    {#css\n    .a {}\n    #}\n    """\n'),
+    )
+    css = write(tmp_path / "chip.css", ".chip {}\n")
+
+    code, out = run("assets", tmp_path, "--write", capsys=capsys)
+
+    assert code == 1
+    assert css.exists()
+    assert "already" in out
+
+
+def test_assets_folds_css_and_js_into_one_inline_template(
+    tmp_path, monkeypatch, capsys
+):
+    module = write(tmp_path / "chip.py", CHIP_PY)
+    write(tmp_path / "chip.css", ".chip {}\n")
+    write(tmp_path / "chip.js", "go();\n")
+    before = render_class(module, "Chip", monkeypatch, label="x")
+
+    code, _ = run("assets", tmp_path, "--write", capsys=capsys)
+
+    assert code == 0
+    assert render_class(module, "Chip", monkeypatch, label="x") == before
+    assert "go();" in before and ".chip {}" in before

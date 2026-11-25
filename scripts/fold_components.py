@@ -85,13 +85,20 @@ def load_modules(paths: list[Path]) -> list[Module]:
     return modules
 
 
+def template_value(node: ast.ClassDef) -> ast.stmt | None:
+    """The class body's last ``template = ...`` statement, or None."""
+    found = None
+    for statement in node.body:
+        match statement:
+            case ast.Assign(targets=[ast.Name(id="template")]):
+                found = statement
+            case ast.AnnAssign(target=ast.Name(id="template"), value=ast.expr()):
+                found = statement
+    return found
+
+
 def assigns_template(node: ast.ClassDef) -> bool:
-    return any(
-        isinstance(s, ast.Assign | ast.AnnAssign)
-        and "template"
-        in ast.unparse(s.targets[0] if isinstance(s, ast.Assign) else s.target)
-        for s in node.body
-    )
+    return template_value(node) is not None
 
 
 def base_names(node: ast.ClassDef) -> list[str]:
@@ -137,28 +144,106 @@ def inherited_by(asset_stem: str, modules: list[Module]) -> str | None:
     return None
 
 
+def offset(lines: list[str], lineno: int, column: int) -> int:
+    """Character offset of an ``ast`` position (its column counts UTF-8 bytes)."""
+    line = lines[lineno - 1]
+    return sum(map(len, lines[: lineno - 1])) + len(line.encode()[:column].decode())
+
+
+def add_inline_block(source: str, class_name: str, kind: str, body: str) -> str:
+    """``source`` with a block added inside ``class_name``'s template string.
+
+    Raises ValueError saying why the string cannot take it.
+    """
+    tree = ast.parse(source)
+    node = next(
+        n for n in tree.body if isinstance(n, ast.ClassDef) and n.name == class_name
+    )
+    statement = template_value(node)
+    literal = (
+        statement.value if isinstance(statement, ast.Assign | ast.AnnAssign) else None
+    )
+    if not (isinstance(literal, ast.Constant) and isinstance(literal.value, str)):
+        raise ValueError("the template is not a plain string literal")  # noqa: TRY004
+    lines = source.splitlines(keepends=True)
+    start = offset(lines, literal.lineno, literal.col_offset)
+    end = offset(
+        lines, literal.end_lineno or literal.lineno, literal.end_col_offset or 0
+    )
+    written = source[start:end]
+    quote = written[-3:]
+    if quote not in ('"""', "'''") or not written.lstrip("rRbBuU").startswith(quote):
+        raise ValueError("the template is not a triple-quoted string")
+    if quote in body:
+        raise ValueError(f"its text contains {quote}")
+    if "\\" in body and "r" not in written[:3].lower():
+        raise ValueError(
+            "its text has a backslash and the template is not a raw string"
+        )
+    inside = source[start : end - 3]
+    kept = inside.rstrip(" \t")
+    if kept.endswith("\n"):
+        # The closing quotes sit on their own line: the block goes above them.
+        indent = inside[len(kept) :]
+    else:
+        kept, indent = inside + "\n", " " * node.body[0].col_offset
+    block = block_text(kind, body, indent)
+    return source[:start] + kept + block + indent + quote + source[end:]
+
+
+def locate_template(
+    stem: str, modules: list[Module], directory: Path
+) -> tuple[Path, str | None]:
+    """The template ``<stem>.<kind>`` sits beside: a .pjx, or a class's string."""
+    pjx = directory / f"{stem}.pjx"
+    if pjx.is_file():
+        return pjx, None
+    for module in modules:
+        if module.path.parent != directory:
+            continue
+        for node in module.classes():
+            if _pascal_to_snake(node.name) == stem and assigns_template(node):
+                return module.path, node.name
+    return pjx, None
+
+
 def fold_assets(paths: list[Path]) -> Plan:
     plan = Plan()
     modules = load_modules(paths)
     for asset in walk(paths, "*.css") + walk(paths, "*.js"):
         kind = asset.suffix[1:]
-        template = asset.with_suffix(".pjx")
-        if not template.is_file():
+        target, class_name = locate_template(asset.stem, modules, asset.parent)
+        if not target.is_file():
             continue
         body = asset.read_text(encoding="utf-8")
+        text = plan.read(target)
         if "#}" in body:
             plan.refuse(
                 asset, "its text contains `#}`, which would end the block early"
             )
             continue
-        if has_block(plan.read(template), kind, template):
-            plan.refuse(asset, f"{template.name} already has a {{#{kind}#}} block")
-            continue
         if subclass := inherited_by(asset.stem, modules):
             plan.refuse(asset, f"{subclass} inherits it and has a template of its own")
             continue
-        text = plan.read(template)
-        plan.files[template] = text.rstrip("\n") + "\n" + block_text(kind, body)
+        if class_name is None:
+            existing = text
+        else:
+            try:
+                existing = extract_template(text, class_name)
+            except (SyntaxError, ValueError) as exc:
+                plan.refuse(asset, str(exc))
+                continue
+        if has_block(existing, kind, target):
+            plan.refuse(asset, f"{target.name} already has a {{#{kind}#}} block")
+            continue
+        if class_name is None:
+            plan.files[target] = text.rstrip("\n") + "\n" + block_text(kind, body)
+        else:
+            try:
+                plan.files[target] = add_inline_block(text, class_name, kind, body)
+            except ValueError as exc:
+                plan.refuse(asset, str(exc))
+                continue
         plan.files[asset] = None
         plan.folded += 1
     return plan
@@ -183,9 +268,9 @@ def template_statement(content: str, indent: str) -> str:
     return "\n".join([f"{indent}template = r{quote}", *body, f"{indent}{quote}"]) + "\n"
 
 
-def with_template(module: Module, node: ast.ClassDef, content: str) -> str:
+def with_template(source: str, node: ast.ClassDef, content: str) -> str:
     """``module``'s source with ``content`` added as ``node``'s last statement."""
-    lines = module.source.splitlines(keepends=True)
+    lines = source.splitlines(keepends=True)
     first = node.body[0]
     indent = " " * first.col_offset
     statement = template_statement(content, indent)
@@ -212,33 +297,43 @@ def round_trips(source: str, class_name: str, content: str) -> str | None:
     return None
 
 
+def folded_template(
+    source: str, node: ast.ClassDef, content: str, same_name: int
+) -> tuple[str | None, str | None]:
+    """``(new source, None)`` for a fold that reads back unchanged, else ``(None, why)``."""
+    if same_name > 1:
+        return None, f"more than one class named {node.name} in this module"
+    if assigns_template(node):
+        return None, f"{node.name} already assigns `template`"
+    if node.body[0].lineno == node.lineno:
+        return None, f"{node.name} has its body on the class line"
+    if reason := template_refusal(content):
+        return None, reason
+    folded = with_template(source, node, content)
+    return (
+        (folded, None)
+        if not (why := round_trips(folded, node.name, content))
+        else (None, why)
+    )
+
+
 def fold_template(paths: list[Path]) -> Plan:
     plan = Plan()
     for module in load_modules(paths):
         names = Counter(
             n.name for n in ast.walk(module.tree) if isinstance(n, ast.ClassDef)
         )
+        # Last class first, so the line numbers of the ones above stay true.
         for node in reversed(module.classes()):
             pjx = module.path.parent / f"{_pascal_to_snake(node.name)}.pjx"
             if not node.bases or not pjx.is_file() or pjx in plan.files:
                 continue
-            source = plan.read(module.path)
-            reason = None
-            if names[node.name] > 1:
-                reason = f"more than one class named {node.name} in this module"
-            elif assigns_template(node):
-                reason = f"{node.name} already assigns `template`"
-            elif node.body[0].lineno == node.lineno:
-                reason = f"{node.name} has its body on the class line"
             content = pjx.read_text(encoding="utf-8")
-            reason = reason or template_refusal(content)
-            if reason is None:
-                folded = with_template(
-                    Module(module.path, source, ast.parse(source)), node, content
-                )
-                reason = round_trips(folded, node.name, content)
-            if reason:
-                plan.refuse(pjx, reason)
+            folded, reason = folded_template(
+                plan.read(module.path), node, content, names[node.name]
+            )
+            if folded is None:
+                plan.refuse(pjx, reason or "")
                 continue
             plan.files[module.path] = folded
             plan.files[pjx] = None
@@ -278,7 +373,7 @@ def finish(name: str, plan: Plan, write: bool) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
+    parser = argparse.ArgumentParser(description=(__doc__ or "").split("\n\n")[0])
     commands = parser.add_subparsers(dest="command", required=True)
     for name in ("assets", "template", "declass"):
         command = commands.add_parser(name)
