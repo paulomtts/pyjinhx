@@ -24,11 +24,38 @@ import re
 import textwrap
 import threading
 import tokenize
+from collections.abc import Iterator
 from pathlib import Path
 from typing import NamedTuple
 
-# Jinja's own comment rule: a comment runs from ``{#`` to the first ``#}``.
-COMMENT_RE = re.compile(r"\{#(.*?)#\}", re.DOTALL)
+# Jinja's lexer reads left to right, so a ``{#`` is a comment only where it is
+# not inside a ``{% raw %}`` region or a ``{{ }}`` / ``{% %}`` tag, whose
+# string literals may hold ``{#``, ``#}``, ``}}`` or ``%}``. One alternation
+# skips those and leaves comments, which run to the first ``#}``. An
+# unterminated ``{#python`` opener is matched on its own so it can be reported.
+_STRING = r"""'(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*\""""
+_LEXEME_RE = re.compile(
+    r"\{%[-+]?\s*raw\s*[-+]?%\}.*?\{%[-+]?\s*endraw\s*[-+]?%\}"
+    r"|\{\{(?:" + _STRING + r"|.)*?\}\}"
+    r"|\{%(?:" + _STRING + r"|.)*?%\}"
+    r"|\{#(?P<comment>.*?)#\}"
+    r"|(?P<unclosed>\{#python[ \t\r]*(?:\n|\Z))",
+    re.DOTALL,
+)
+
+
+def comments(source: str) -> Iterator[re.Match[str]]:
+    """Every Jinja comment in ``source``; group 1 is its text."""
+    for match in _LEXEME_RE.finditer(source):
+        if match.group("comment") is not None:
+            yield match
+
+
+def strip_to_text(source: str) -> str:
+    """``source`` with every comment, tag and raw region replaced by its
+    newlines, leaving only the text Jinja renders as written."""
+    return _LEXEME_RE.sub(lambda m: "\n" * m.group().count("\n"), source)
+
 
 # Stable names for the ways a block is malformed, shared with the block
 # grammar's conformance corpus and the editor tooling that reads it.
@@ -36,6 +63,8 @@ PYTHON_BLOCK_EARLY_CLOSE = "python-block-early-close"
 SECOND_BLOCK = "second-block"
 OPENER_NOT_AT_LINE_START = "opener-not-at-line-start"
 TEXT_AFTER_CLOSER = "text-after-closer"
+CLOSER_NOT_AT_LINE_START = "closer-not-at-line-start"
+UNCLOSED_BLOCK = "unclosed-block"
 STRAY_COMMENT_CLOSE = "stray-comment-close"
 
 
@@ -147,19 +176,19 @@ def read_document(template_path: Path, inline_class: str | None) -> str:
     The one way template source is read, so a ``.py`` module is never
     mistaken for a document.
     """
-    source = template_path.read_text(encoding="utf-8")
+    # A byte order mark is not part of the document: editors add one, and a
+    # header or block opener would no longer start its line.
+    source = template_path.read_text(encoding="utf-8-sig")
     if inline_class is None:
         return source
     return extract_template(source, inline_class, str(template_path))
 
 
 class PythonBlock(NamedTuple):
-    """A ``{#python`` block: the lines of its opener, body and closer (1-based)
-    and the body's text. An empty body has ``last_line < first_line``."""
+    """A ``{#python`` block: the 1-based lines of its opener and closer, and
+    the body's text. The body spans the lines between them."""
 
     open_line: int
-    first_line: int
-    last_line: int
     close_line: int
     body: str
 
@@ -167,7 +196,9 @@ class PythonBlock(NamedTuple):
 class BlockSyntaxError(SyntaxError):
     """A malformed block, with the stable ``code`` naming how."""
 
-    def __init__(self, code: str, message: str, location: tuple) -> None:
+    def __init__(
+        self, code: str, message: str, location: tuple[str, int, int, str]
+    ) -> None:
         super().__init__(message, location)
         self.code = code
 
@@ -178,21 +209,31 @@ def python_block(source: str, filename: str) -> PythonBlock | None:
     The opener is a line of exactly ``{#python`` in column 0 (trailing spaces
     and tabs allowed). The closer is the first ``#}``, which must be alone on
     its line in column 0, as Jinja ends the comment there whatever Python
-    thinks of it.
+    thinks of it. A ``-#}`` closer is refused: Jinja would eat the line break
+    after it.
 
     Raises:
-        BlockSyntaxError: The opener is not at the start of its line, a second
-            block follows, the first ``#}`` is not alone on its line, or text
-            follows the closer. ``lineno`` is the offending line.
+        BlockSyntaxError: The opener is not at the start of its line or is
+            never closed, a second block follows, the first ``#}`` is not
+            alone in column 0, or text follows the closer. ``lineno`` is the
+            offending line.
     """
     found: PythonBlock | None = None
-    for match in COMMENT_RE.finditer(source):
-        text = match.group(1)
+    for match in _LEXEME_RE.finditer(source):
+        if match.group("unclosed"):
+            raise _block_error(
+                UNCLOSED_BLOCK,
+                "this {#python block is never closed by a #}",
+                source,
+                filename,
+                match.start(),
+            )
+        text = match.group("comment")
+        if text is None:
+            continue
         rest = text.removeprefix("python")
         if rest == text or not rest.lstrip(" \t\r").startswith("\n"):
             continue
-        open_line = source.count("\n", 0, match.start()) + 1
-        open_start = source.rfind("\n", 0, match.start()) + 1
         if found is not None:
             raise _block_error(
                 SECOND_BLOCK,
@@ -202,7 +243,7 @@ def python_block(source: str, filename: str) -> PythonBlock | None:
                 filename,
                 match.start(),
             )
-        if open_start != match.start():
+        if source.rfind("\n", 0, match.start()) + 1 != match.start():
             raise _block_error(
                 OPENER_NOT_AT_LINE_START,
                 "{#python must start its line, in column 0",
@@ -210,17 +251,24 @@ def python_block(source: str, filename: str) -> PythonBlock | None:
                 filename,
                 match.start(),
             )
-        found = _closed_block(source, filename, match, open_line)
+        found = _closed_block(source, filename, match)
     return found
 
 
-def _closed_block(
-    source: str, filename: str, match: re.Match[str], open_line: int
-) -> PythonBlock:
+def _closed_block(source: str, filename: str, match: re.Match[str]) -> PythonBlock:
     """The block ``match`` spans, once its closer is checked to stand alone."""
     close = match.end() - 2
     close_start = source.rfind("\n", 0, close) + 1
-    if close != close_start:
+    before = source[close_start:close]
+    if before and before.strip(" \t") in ("", "-", "+"):
+        raise _block_error(
+            CLOSER_NOT_AT_LINE_START,
+            "the closing `#}` of a {#python block must be alone in column 0",
+            source,
+            filename,
+            close,
+        )
+    if before:
         raise _block_error(
             PYTHON_BLOCK_EARLY_CLOSE,
             'a "#}" ends the {#python block here, before its closer, which must '
@@ -242,9 +290,7 @@ def _closed_block(
         )
     body_start = source.find("\n", match.start()) + 1
     return PythonBlock(
-        open_line,
-        open_line + 1,
-        source.count("\n", 0, close),
+        source.count("\n", 0, match.start()) + 1,
         source.count("\n", 0, close) + 1,
         source[body_start:close_start],
     )

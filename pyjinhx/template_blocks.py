@@ -23,7 +23,27 @@ from typing import NamedTuple
 
 from jinja2 import TemplateSyntaxError
 
-from pyjinhx.sfc import COMMENT_RE, python_block, read_document
+from pyjinhx.sfc import (
+    SECOND_BLOCK,
+    STRAY_COMMENT_CLOSE,
+    BlockSyntaxError,
+    comments,
+    python_block,
+    read_document,
+    strip_to_text,
+)
+
+
+class BlockTemplateSyntaxError(TemplateSyntaxError):
+    """A malformed css, js or def block, with the stable ``code`` naming how
+    and the 1-based ``offset`` of the column it starts at."""
+
+    def __init__(
+        self, code: str, message: str, lineno: int, filename: str, offset: int
+    ) -> None:
+        super().__init__(message, lineno, filename=filename)
+        self.code = code
+        self.offset = offset
 
 
 class Block(NamedTuple):
@@ -60,18 +80,20 @@ def find_block(source: str, keyword: str, filename: str) -> Block | None:
     the second block when ``source`` holds two of the same keyword.
     """
     found: Block | None = None
-    for match in COMMENT_RE.finditer(source):
+    for match in comments(source):
         text = match.group(1)
         if not _is_block(text, keyword):
             continue
         rest = text.removeprefix(keyword)
         line = source.count("\n", 0, match.start()) + 1
         if found is not None:
-            raise TemplateSyntaxError(
+            raise BlockTemplateSyntaxError(
+                SECOND_BLOCK,
                 f"a second {{#{keyword}#}} block; the first one is on line "
                 f"{found.line}, and a template holds at most one of each kind",
                 line,
-                filename=filename,
+                filename,
+                match.start() - (source.rfind("\n", 0, match.start()) + 1) + 1,
             )
         found = Block(rest.strip(), line, line + text.count("\n"))
     if found is None or not found.body:
@@ -97,7 +119,7 @@ def hide_block_lines(source: str) -> str:
     """
     parts: list[str] = []
     position = 0
-    for match in COMMENT_RE.finditer(source):
+    for match in comments(source):
         if not any(
             _is_block(match.group(1), k) for k in ("def", "css", "js", "python")
         ):
@@ -107,9 +129,9 @@ def hide_block_lines(source: str) -> str:
         line_end = source.find("\n", end)
         if line_end == -1:
             line_end = len(source)
-        if source[end:line_end].strip(" \t"):
+        if source[end:line_end].strip(" \t\r"):
             continue
-        alone = not source[line_start:start].strip(" \t")
+        alone = not source[line_start:start].strip(" \t\r")
         if alone and line_start > position:
             # The break that ends the previous line goes; this line's stays
             # to end that one instead.
@@ -211,11 +233,27 @@ def inline_assets(
     holds, as on the class's descriptor.
     """
     filename = str(template_path)
-    css = find_block(source, "css", filename)
-    js = find_block(source, "js", filename)
-    has_python = "{#python" in source and python_block(source, filename) is not None
-    if css is not None or js is not None or has_python:
-        _reject_stray_comment_close(source, filename)
+    errors: list[BlockTemplateSyntaxError | BlockSyntaxError] = []
+    blocks: dict[str, Block | None] = {}
+    for kind in ("css", "js"):
+        try:
+            blocks[kind] = find_block(source, kind, filename)
+        except BlockTemplateSyntaxError as error:
+            errors.append(error)
+    python = None
+    try:
+        python = python_block(source, filename)
+    except BlockSyntaxError as error:
+        errors.append(error)
+    if python is not None or any(blocks.values()):
+        try:
+            _reject_stray_comment_close(source, filename)
+        except BlockTemplateSyntaxError as error:
+            errors.append(error)
+    if errors:
+        # Report what a reader meets first, whichever scanner found it.
+        raise min(errors, key=lambda error: error.lineno or 0)
+    css, js = blocks["css"], blocks["js"]
     return (
         None
         if css is None
@@ -227,20 +265,22 @@ def inline_assets(
 
 
 def _reject_stray_comment_close(source: str, filename: str) -> None:
-    """Raise when a ``#}`` is left over once every comment is removed.
+    """Raise when a ``#}`` is left over once every comment, tag and raw region
+    is removed.
 
     Jinja ends a comment at the first ``#}``, so a body that contains the pair
     is cut short and its tail is rendered into the page as text.
     """
-    # Keep each comment's newlines so the leftover reports its real line.
-    rest = COMMENT_RE.sub(lambda m: "\n" * m.group().count("\n"), source)
+    rest = strip_to_text(source)
     index = rest.find("#}")
     if index == -1:
         return
-    raise TemplateSyntaxError(
+    raise BlockTemplateSyntaxError(
+        STRAY_COMMENT_CLOSE,
         "a stray '#}' ends an inline block early and the rest of it would be "
         "rendered as page text; split the pair (for example "
         '"#" + "}") or move the asset to a sibling file',
         rest.count("\n", 0, index) + 1,
-        filename=filename,
+        filename,
+        index - (rest.rfind("\n", 0, index) + 1) + 1,
     )

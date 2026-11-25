@@ -176,7 +176,7 @@ def _orphan_header(template_path: Path) -> list[tuple[str, Any, Any]] | None:
 
 def _read_header(template_path: Path) -> list[tuple[str, Any, Any]] | None:
     """The parsed ``{#def#}`` header of ``template_path``, or ``None`` without one."""
-    source = template_path.read_text(encoding="utf-8")
+    source = template_path.read_text(encoding="utf-8-sig")
     try:
         return parse_props_header(source, str(template_path))
     except ValueError as exc:

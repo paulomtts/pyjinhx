@@ -25,12 +25,7 @@ def test_the_block_reports_its_lines_and_body():
     block = sfc.python_block(SOURCE, "card.pjx")
 
     assert block is not None
-    assert (block.open_line, block.first_line, block.last_line, block.close_line) == (
-        1,
-        2,
-        6,
-        7,
-    )
+    assert (block.open_line, block.close_line) == (1, 7)
     assert block.body.startswith("from pyjinhx import ReactiveComponent\n")
     assert block.body.endswith("    remaining: int = 0\n")
 
@@ -84,7 +79,10 @@ def test_text_that_is_not_an_opener_is_not_a_block(source):
         ('{#python\nx = "#}"\n#}', 2, sfc.PYTHON_BLOCK_EARLY_CLOSE),
         ('{#python\nx = f"{n:#}"\n#}', 2, sfc.PYTHON_BLOCK_EARLY_CLOSE),
         ("{#python\nx = 1  # done #}\n#}", 2, sfc.PYTHON_BLOCK_EARLY_CLOSE),
-        ("{#python\nx = 1\n  #}", 3, sfc.PYTHON_BLOCK_EARLY_CLOSE),
+        ("{#python\nx = 1\n  #}", 3, sfc.CLOSER_NOT_AT_LINE_START),
+        ("{#python\nx = 1\n-#}", 3, sfc.CLOSER_NOT_AT_LINE_START),
+        ("{#python\nx = 1\n", 1, sfc.UNCLOSED_BLOCK),
+        ("<p></p>\n{#python\n", 2, sfc.UNCLOSED_BLOCK),
         ("{#python\nx = 1\n#} <p></p>", 3, sfc.TEXT_AFTER_CLOSER),
     ],
 )
@@ -128,9 +126,50 @@ def test_crlf_line_endings_give_the_same_lines():
     assert next(n for n in tree.body if isinstance(n, ast.ClassDef)).lineno == 5
 
 
-def test_an_empty_block_has_an_empty_body_range():
+def test_an_empty_block_has_no_body_lines():
     block = sfc.python_block("{#python\n#}\n<p></p>", "card.pjx")
 
     assert block is not None
     assert block.body == ""
-    assert block.last_line < block.first_line
+    assert block.close_line - block.open_line == 1
+
+
+def test_a_closer_that_is_not_alone_says_so_rather_than_early_close():
+    with pytest.raises(SyntaxError, match="alone in column 0"):
+        sfc.python_block("{#python\nx = 1\n  #}", "card.pjx")
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        "{% raw %}\n{#python\nx = 1\n#}\n{% endraw %}\n<p></p>",
+        '{% set h = "{#" %}\n<p>{{ h }}</p>',
+    ],
+)
+def test_jinja_raw_regions_and_tag_strings_hold_no_blocks(source):
+    assert sfc.python_block(source, "card.pjx") is None
+
+
+def test_a_closer_inside_a_tag_string_does_not_end_a_comment():
+    source = '<p>{{ "#}" }}</p>\n{#python\nx = 1\n#}\n'
+
+    block = sfc.python_block(source, "card.pjx")
+
+    assert block is not None
+    assert block.open_line == 2
+
+
+def test_a_comment_opener_inside_a_tag_string_is_not_a_block():
+    source = "{{ '\n{#python' }}\nx = 1\n#}\n"
+
+    assert sfc.python_block(source, "card.pjx") is None
+
+
+def test_read_document_drops_a_byte_order_mark(tmp_path):
+    path = tmp_path / "card.pjx"
+    path.write_bytes(b"\xef\xbb\xbf{#python\nx = 1\n#}\n<p></p>")
+
+    block = sfc.python_block(sfc.read_document(path, None), "card.pjx")
+
+    assert block is not None
+    assert block.open_line == 1

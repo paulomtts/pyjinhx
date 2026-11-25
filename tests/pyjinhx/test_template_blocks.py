@@ -469,3 +469,50 @@ def test_css_text_inside_a_python_body_is_not_a_css_block():
     assert block is not None
     assert block.line == 5
     assert block.body == ".a { color: red; }"
+
+
+@pytest.mark.parametrize("keyword", ["python", "css"])
+def test_a_block_with_crlf_endings_renders_as_nothing(keyword):
+    source = f"{{#{keyword}\r\nx = 1\r\n#}}\r\n<p>hi</p>"
+
+    assert Environment().from_string(hide_block_lines(source)).render() == "<p>hi</p>"
+
+
+def test_a_block_inside_a_raw_region_is_not_a_block():
+    source = "{% raw %}\n{#css\n.a { color: red; }\n#}\n{% endraw %}\n"
+
+    assert find_block(source, "css", "card.pjx") is None
+
+
+def test_a_comment_closer_inside_a_tag_string_is_not_stray():
+    source = '{#css\n.a { color: red; }\n#}\n<p>{{ "#}" }}</p>\n{% raw %}#}{% endraw %}'
+
+    inline_assets(Path("card.pjx"), source)
+
+
+def test_a_comment_opener_inside_a_tag_string_does_not_start_a_block():
+    source = '{% set h = "{#css" %}\n<p>{{ h }}</p>\n{#css\n.a { color: red; }\n#}\n'
+
+    block = find_block(source, "css", "card.pjx")
+
+    assert block is not None
+    assert block.line == 3
+
+
+def test_every_block_error_carries_a_code():
+    with pytest.raises(TemplateSyntaxError) as second:
+        find_block("{#css\na\n#}\n{#css\nb\n#}", "css", "card.pjx")
+    with pytest.raises(TemplateSyntaxError) as stray:
+        inline_assets(Path("card.pjx"), "{#css\na\n#}\n#}")
+
+    assert second.value.code == "second-block"
+    assert stray.value.code == "stray-comment-close"
+
+
+def test_the_error_on_the_lowest_line_is_the_one_raised():
+    source = "{#python\nx = '#}'\n#}\n{#css\na\n#}\n{#css\nb\n#}\n"
+
+    with pytest.raises(SyntaxError) as raised:
+        inline_assets(Path("card.pjx"), source)
+
+    assert raised.value.lineno == 2
