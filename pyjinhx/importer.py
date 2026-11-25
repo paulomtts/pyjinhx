@@ -15,12 +15,12 @@ import os
 import re
 import sys
 import threading
-from collections.abc import Iterable, Sequence
+from collections.abc import Sequence
 from pathlib import Path
 from types import CodeType, ModuleType
 from typing import NoReturn
 
-from pyjinhx.sfc import python_block, python_source
+from pyjinhx.sfc import module_name_for, python_block, python_source
 
 # A line that opens a block, or that opens one the v0.x way. The finder only
 # sniffs: a malformed block is the loader's error, so a probe such as
@@ -56,30 +56,12 @@ def loaded_document(path: str | Path) -> tuple[str, type] | None:
     return found if found and _module_file(found[0]) == resolved else None
 
 
-def module_name_for(path: str | Path, search_path: Iterable[str]) -> str | None:
-    """The dotted module name ``path`` imports under, or ``None`` if it has none.
-
-    The name is the path below the deepest ``search_path`` entry that holds the
-    file, which is the entry the finder would reach it through. Pure path
-    arithmetic: nothing is imported and ``sys.path`` is not read. ``None``
-    means no entry holds the file, or a directory on the way is not a name.
-    """
-    file = Path(path).resolve()
-    roots = [Path(entry or os.getcwd()).resolve() for entry in search_path]
-    holders = [root for root in roots if file.is_relative_to(root)]
-    if not holders:
-        return None
-    parts = file.relative_to(max(holders, key=lambda root: len(root.parts)))
-    names = parts.with_suffix("").parts
-    return ".".join(names) if all(name.isidentifier() for name in names) else None
-
-
 def import_document(path: str | Path) -> ModuleType:
     """Import the ``.pjx`` document at ``path`` as a module, once.
 
     A document the hook already loaded is returned as loaded, whatever name it
     was imported under. Otherwise it is imported under the name
-    `module_name_for` derives from ``sys.path``.
+    `sfc.module_name_for` derives from ``sys.path``.
 
     Raises:
         ImportError: No ``sys.path`` entry reaches the file, or the name
@@ -95,10 +77,25 @@ def import_document(path: str | Path) -> ModuleType:
             f"{path} cannot be imported: no entry of sys.path holds it under "
             f"directories that are valid names. Add the root of its package to "
             f"sys.path, or put an __init__.py in each directory above it up to "
-            f"a directory that is on sys.path.",
+            f"a directory that is on sys.path. Or import the module before "
+            f"setup().",
             path=str(path),
         )
-    module = importlib.import_module(name)
+    try:
+        module = importlib.import_module(name)
+    except ModuleNotFoundError as error:
+        if error.name is None or not name.startswith(error.name):
+            raise
+        parent = sys.modules.get(name.partition(".")[0])
+        found = getattr(parent, "__file__", None) or list(
+            getattr(parent, "__path__", [])
+        )
+        raise ImportError(
+            f"{path} is shadowed: importing {name!r} could not find it, because "
+            f"{name.partition('.')[0]!r} is {found}. Rename or remove one of the two.",
+            name=name,
+            path=str(path),
+        ) from error
     if _module_file(name) != Path(path).resolve():
         owner = getattr(module, "__file__", None) or list(
             getattr(module, "__path__", [])

@@ -13,7 +13,7 @@ from pathlib import Path
 import pytest
 
 import pyjinhx
-from pyjinhx import importer
+from pyjinhx import importer, sfc
 from tests.pyjinhx.conftest import Write
 
 # The class a block needs for the file to be a document at all.
@@ -425,27 +425,66 @@ def test_install_survives_a_reloaded_importer(hook_state):
 
 def test_module_name_is_the_path_below_the_deepest_search_entry(tmp_path: Path):
     path = tmp_path / "app" / "ui" / "card.pjx"
-    assert importer.module_name_for(path, [str(tmp_path)]) == "app.ui.card"
+    assert sfc.module_name_for(path, [str(tmp_path)]) == "app.ui.card"
     deeper = [str(tmp_path), str(tmp_path / "app")]
-    assert importer.module_name_for(path, deeper) == "ui.card"
+    assert sfc.module_name_for(path, deeper) == "ui.card"
 
 
 def test_module_name_is_none_when_no_entry_holds_the_file(tmp_path: Path):
     path = tmp_path / "app" / "card.pjx"
-    assert importer.module_name_for(path, [str(tmp_path / "other")]) is None
-    assert importer.module_name_for(path, []) is None
+    assert sfc.module_name_for(path, [str(tmp_path / "other")]) is None
 
 
 def test_module_name_is_none_for_a_directory_that_is_not_a_name(tmp_path: Path):
     path = tmp_path / "my-app" / "card.pjx"
-    assert importer.module_name_for(path, [str(tmp_path)]) is None
+    assert sfc.module_name_for(path, [str(tmp_path)]) is None
 
 
 def test_module_name_reads_an_empty_entry_as_the_working_directory(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ):
     monkeypatch.chdir(tmp_path)
-    assert importer.module_name_for(tmp_path / "card.pjx", [""]) == "card"
+    assert sfc.module_name_for(tmp_path / "card.pjx", [""]) == "card"
+
+
+def test_module_name_walks_up_the_packages_when_the_top_is_on_the_path(
+    tmp_path: Path,
+):
+    (tmp_path / "site" / "comp").mkdir(parents=True)
+    (tmp_path / "site" / "__init__.py").write_text("")
+    (tmp_path / "site" / "comp" / "__init__.py").write_text("")
+    path = tmp_path / "site" / "comp" / "badge.pjx"
+    entries = [str(tmp_path / "site" / "comp"), str(tmp_path)]
+    assert sfc.module_name_for(path, entries) == "site.comp.badge"
+
+
+def test_module_name_without_a_search_path_is_the_package_walk(tmp_path: Path):
+    (tmp_path / "site" / "comp").mkdir(parents=True)
+    (tmp_path / "site" / "__init__.py").write_text("")
+    (tmp_path / "site" / "comp" / "__init__.py").write_text("")
+    assert sfc.module_name_for(tmp_path / "site" / "comp" / "badge.pjx") == (
+        "site.comp.badge"
+    )
+    assert sfc.module_name_for(tmp_path / "loose" / "badge.pjx") == "badge"
+
+
+def test_module_name_keeps_a_symlinked_directory_as_the_app_spells_it(
+    tmp_path: Path,
+):
+    real = tmp_path / "real" / "ui"
+    real.mkdir(parents=True)
+    (tmp_path / "proj" / "app").mkdir(parents=True)
+    (tmp_path / "proj" / "app" / "__init__.py").write_text("")
+    (tmp_path / "proj" / "app" / "ui").symlink_to(real)
+    path = tmp_path / "proj" / "app" / "ui" / "card.pjx"
+    assert sfc.module_name_for(path, [str(tmp_path / "proj")]) == "app.ui.card"
+
+
+def test_module_name_falls_back_to_the_resolved_path(tmp_path: Path):
+    real = tmp_path / "real"
+    real.mkdir()
+    (tmp_path / "link").symlink_to(real)
+    assert sfc.module_name_for(tmp_path / "link" / "card.pjx", [str(real)]) == "card"
 
 
 def test_import_document_imports_once_and_returns_the_module(write: Write):
@@ -517,6 +556,29 @@ def test_import_document_outside_the_search_path_says_how_to_fix_it(
         importer.import_document(elsewhere)
     assert str(elsewhere) in str(raised.value)
     assert "__init__.py" in str(raised.value)
+    assert "before setup()" in str(raised.value)
+
+
+def test_import_document_names_a_parent_package_that_something_else_shadows(
+    write: Write, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    other = tmp_path / "elsewhere"
+    (other / "widgets").mkdir(parents=True)
+    (other / "widgets" / "__init__.py").write_text("")
+    monkeypatch.syspath_prepend(str(other))
+    path = write("widgets/chip.pjx", CARD)
+    with pytest.raises(ImportError, match="shadowed") as raised:
+        importer.import_document(path)
+    assert str(path) in str(raised.value)
+    assert str(other / "widgets") in str(raised.value)
+
+
+def test_import_document_does_not_hide_a_missing_module_inside_the_block(
+    write: Write,
+):
+    path = write("pkg/card.pjx", "{#python\nimport nowhere_at_all\n#}\n")
+    with pytest.raises(ModuleNotFoundError, match="nowhere_at_all"):
+        importer.import_document(path)
 
 
 def test_import_document_lets_a_block_error_through_with_its_line(write: Write):

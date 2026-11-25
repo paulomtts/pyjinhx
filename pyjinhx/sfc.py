@@ -20,11 +20,12 @@ without re-importing anything.
 
 import ast
 import io
+import os
 import re
 import textwrap
 import threading
 import tokenize
-from collections.abc import Iterator
+from collections.abc import Iterable, Iterator
 from pathlib import Path
 from typing import NamedTuple
 
@@ -346,3 +347,44 @@ def python_source(source: str, filename: str) -> str | None:
     if block is None:
         return None
     return "\n" * block.open_line + block.body
+
+
+def module_name_for(path: str | Path, sys_path: Iterable[str] = ()) -> str | None:
+    """The dotted module name ``path`` imports under, or ``None`` if it has none.
+
+    Imports nothing and reads no file; it only asks whether ``__init__.py``
+    exists in the directories above the file. The name is the path below the
+    top of the package chain (the highest directory holding an
+    ``__init__.py``). With no ``sys_path``, or when the directory above that
+    top is an entry of it, that is the answer. Otherwise the file belongs to a
+    namespace package, and the name is the path below the deepest ``sys_path``
+    entry that holds it. ``""`` in ``sys_path`` means the working directory.
+    Symlinks are kept as spelled, the way the import system sees them, and
+    only if nothing matches is the resolved path tried.
+    """
+    spelled = Path(os.path.abspath(path))
+    name = _module_name(spelled, sys_path)
+    resolved = spelled.resolve()
+    if name is None and resolved != spelled:
+        name = _module_name(resolved, sys_path)
+    return name
+
+
+def _module_name(file: Path, sys_path: Iterable[str]) -> str | None:
+    entries = [
+        Path(os.path.abspath(entry or os.getcwd()))
+        for entry in sys_path
+        if isinstance(entry, str)
+    ]
+    top = file.parent
+    while (top / "__init__.py").is_file():
+        top = top.parent
+    if not entries or top in entries:
+        base = top
+    else:
+        holders = [entry for entry in entries if file.is_relative_to(entry)]
+        if not holders:
+            return None
+        base = max(holders, key=lambda entry: len(entry.parts))
+    names = file.relative_to(base).with_suffix("").parts
+    return ".".join(names) if all(name.isidentifier() for name in names) else None
