@@ -360,3 +360,111 @@ def python_source(source: str, filename: str) -> str | None:
     if block is None:
         return None
     return "\n" * block.open_line + block.body
+
+
+def dotted_name(node: ast.expr) -> str | None:
+    """``node`` as ``a.b.c`` text if it is a pure chain of two or more names."""
+    parts: list[str] = []
+    while isinstance(node, ast.Attribute):
+        parts.append(node.attr)
+        node = node.value
+    if not parts or not isinstance(node, ast.Name):
+        return None
+    return ".".join([node.id, *reversed(parts)])
+
+
+def dotted_default(node: ast.expr) -> tuple[str, bool] | None:
+    """The import path a header default names and whether it is called, or None.
+
+    ``pkg.mod.NAME`` is ``("pkg.mod.NAME", False)`` and ``pkg.mod.make()`` is
+    ``("pkg.mod.make", True)``. A call with arguments names nothing.
+    """
+    if isinstance(node, ast.Call):
+        path = None if node.args or node.keywords else dotted_name(node.func)
+    else:
+        path = dotted_name(node)
+    return None if path is None else (path, isinstance(node, ast.Call))
+
+
+class HeaderSignatureError(ValueError):
+    """A ``{#def#}`` signature that is not a list of simple named props.
+
+    ``syntax`` is the ``SyntaxError`` when it does not parse, and ``node`` the
+    offending argument or default when one is to blame, for editors that point
+    at it. ``offset`` is where the signature starts in the ``def`` line that
+    was parsed.
+    """
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        syntax: SyntaxError | None = None,
+        node: ast.AST | None = None,
+    ) -> None:
+        super().__init__(message)
+        self.syntax = syntax
+        self.node = node
+
+
+HEADER_PREFIX = "def __pjx_props__("
+
+
+def header_arguments(signature: str) -> list[tuple[ast.arg, ast.expr | None]]:
+    """The ``(argument, default)`` pairs of a ``{#def#}`` signature.
+
+    Reads the signature as the arguments of a function, which is all it is,
+    and refuses what a header may not hold: ``*args``, ``**kwargs``,
+    keyword-only and positional-only arguments, a duplicate name, and a
+    default that is not a literal, a dotted name (``pkg.mod.NAME``) or a dotted
+    name called with no arguments (``pkg.mod.make()``). Nothing is imported or
+    evaluated beyond ``ast.literal_eval``; the positions in the result are
+    those of ``HEADER_PREFIX + signature``.
+
+    Raises:
+        HeaderSignatureError: The signature is refused.
+    """
+    try:
+        function = ast.parse(f"{HEADER_PREFIX}{signature}): pass").body[0]
+    except SyntaxError as exc:
+        raise HeaderSignatureError(
+            f"invalid {{#def#}} header signature {signature!r}: {exc.msg}", syntax=exc
+        ) from exc
+    assert isinstance(function, ast.FunctionDef)
+    arguments = function.args
+    if (
+        arguments.vararg
+        or arguments.kwarg
+        or arguments.kwonlyargs
+        or arguments.posonlyargs
+    ):
+        raise HeaderSignatureError(
+            f"{{#def#}} header may only use simple named props: {signature!r}",
+            node=arguments.vararg
+            or arguments.kwarg
+            or (arguments.kwonlyargs or arguments.posonlyargs)[0],
+        )
+    args = arguments.args
+    # Defaults bind to the *last* N params.
+    defaults: list[ast.expr | None] = [None] * (len(args) - len(arguments.defaults))
+    defaults += arguments.defaults
+    seen: set[str] = set()
+    for arg, default in zip(args, defaults, strict=True):
+        if arg.arg in seen:
+            raise HeaderSignatureError(
+                f"{{#def#}} header has duplicate prop {arg.arg!r}", node=arg
+            )
+        seen.add(arg.arg)
+        if default is None:
+            continue
+        try:
+            ast.literal_eval(default)
+        except (ValueError, SyntaxError):
+            if dotted_default(default) is None:
+                raise HeaderSignatureError(
+                    f"{{#def#}} header default for {arg.arg!r} must be a literal, "
+                    "a dotted name (pkg.mod.NAME) or a dotted name called with no "
+                    f"arguments (pkg.mod.make()): {ast.unparse(default)!r}",
+                    node=default,
+                ) from None
+    return list(zip(args, defaults, strict=True))
