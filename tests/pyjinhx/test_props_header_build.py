@@ -4,6 +4,12 @@ Generation only: warning on stale headers (#377), the component() factory
 (#378), and discovery's filename -> tag derivation are separate surfaces.
 """
 
+import datetime
+import re
+import sys
+import time
+import uuid
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -11,6 +17,7 @@ import pytest
 from pyjinhx._component import BaseComponent, _OpenComponent
 from pyjinhx.descriptor import ClassDescriptor
 from pyjinhx.props_header import build_component_class, parse_props_header
+from tests.pyjinhx import header_names
 
 
 def test_generated_class_subclasses_the_open_model_base():
@@ -191,3 +198,168 @@ def test_header_declared_slot_union_is_detected_as_slot_on_the_built_class(
     assert fields is not None
     cls = build_component_class(fields, "Card")
     assert _is_slot_field(cls, "value") is True
+
+
+def _build(header: str):
+    fields = parse_props_header(header)
+    assert fields is not None
+    return build_component_class(fields, "Card")
+
+
+def test_literal_prop_rejects_a_value_outside_its_members():
+    from pydantic import ValidationError
+
+    cls = _build('{#def tone: Literal["info", "warn"] = "info" #}')
+    assert cls(tone="warn").tone == "warn"  # pyright: ignore[reportCallIssue, reportAttributeAccessIssue]
+    with pytest.raises(ValidationError):
+        cls(tone="bad")  # pyright: ignore[reportCallIssue]
+
+
+def test_union_prop_accepts_either_member_and_rejects_others():
+    from pydantic import ValidationError
+
+    cls = _build("{#def size: str | int = 1 #}")
+    assert cls(size="x").size == "x"  # pyright: ignore[reportCallIssue, reportAttributeAccessIssue]
+    assert cls(size=2).size == 2  # pyright: ignore[reportCallIssue, reportAttributeAccessIssue]
+    with pytest.raises(ValidationError):
+        cls(size=[])  # pyright: ignore[reportCallIssue]
+
+
+def test_extra_attrs_prop_validates_attribute_names():
+    from pydantic import ValidationError
+
+    cls = _build("{#def attrs: ExtraAttrs = {} #}")
+    assert cls(attrs={"data-x": "y"}).attrs == {"data-x": "y"}  # pyright: ignore[reportCallIssue, reportAttributeAccessIssue]
+    with pytest.raises(ValidationError):
+        cls(attrs={'a"b': "x"})  # pyright: ignore[reportCallIssue]
+
+
+def test_mutable_defaults_are_not_shared_between_instances():
+    cls = _build("{#def items: list = [], opts: dict = {} #}")
+    first, second = cls(), cls()  # pyright: ignore[reportCallIssue]
+    first.items.append(1)  # pyright: ignore[reportAttributeAccessIssue]
+    first.opts["a"] = 1  # pyright: ignore[reportAttributeAccessIssue]
+    assert second.items == []  # pyright: ignore[reportAttributeAccessIssue]
+    assert second.opts == {}  # pyright: ignore[reportAttributeAccessIssue]
+
+
+def test_required_id_turns_off_auto_id():
+    cls = _build("{#def id: str, title: str #}")
+    assert cls.auto_id is False
+    assert cls(id="x", title="t").id == "x"  # pyright: ignore[reportCallIssue]
+    with pytest.raises(ValueError, match="id is required"):
+        cls(title="t")  # pyright: ignore[reportCallIssue]
+    assert list(cls.model_fields).count("id") == 1
+
+
+def test_header_without_id_still_auto_generates_ids():
+    cls = _build("{#def title: str #}")
+    assert cls.auto_id is True
+    assert cls(title="t").id.startswith("pjx-")  # pyright: ignore[reportCallIssue]
+
+
+@pytest.mark.parametrize("header", ["{#def id: int #}", '{#def id: str = "fixed" #}'])
+def test_id_may_only_be_a_required_str(header: str):
+    with pytest.raises(ValueError, match="id.*required.*str"):
+        _build(header)
+
+
+@pytest.mark.parametrize(
+    "annotation, expected",
+    [
+        ("datetime.datetime", datetime.datetime),
+        ("tests.pyjinhx.header_names.Tone", header_names.Tone),
+        ("list[uuid.UUID]", list[uuid.UUID]),
+        ("uuid.UUID | None", uuid.UUID | None),
+    ],
+)
+def test_dotted_annotation_resolves_by_import(annotation: str, expected: Any):
+    cls = _build(f"{{#def value: {annotation} #}}")
+    assert cls.model_fields["value"].annotation == expected
+
+
+def test_dotted_enum_annotation_coerces_its_value():
+    cls = _build("{#def tone: tests.pyjinhx.header_names.Tone #}")
+    instance = cls(tone="warn")  # pyright: ignore[reportCallIssue]
+    assert instance.tone is header_names.Tone.WARN  # pyright: ignore[reportAttributeAccessIssue]
+
+
+def test_dotted_names_import_when_the_class_is_built_not_when_parsed():
+    """Parsing runs at registration, for every template, while the app's own
+    modules may still be importing; an import there could find one half-built."""
+    module = "tests.pyjinhx.header_import_probe"
+    sys.modules.pop(module, None)
+    fields = parse_props_header(f"{{#def value: {module}.Probe | None #}}")
+    assert module not in sys.modules
+
+    assert fields is not None
+    build_component_class(fields, "Card")
+    assert module in sys.modules
+
+
+def test_dotted_default_is_the_named_constant():
+    cls = _build("{#def size: int = tests.pyjinhx.header_names.PAGE_SIZE #}")
+    assert cls.model_fields["size"].default == header_names.PAGE_SIZE
+
+
+def test_dotted_default_may_be_an_enum_member():
+    cls = _build(
+        "{#def tone: tests.pyjinhx.header_names.Tone"
+        " = tests.pyjinhx.header_names.Tone.INFO #}"
+    )
+    assert cls().tone is header_names.Tone.INFO  # pyright: ignore[reportAttributeAccessIssue]
+
+
+def test_dotted_call_default_is_a_per_instance_factory():
+    cls = _build("{#def at: datetime.datetime = datetime.datetime.now() #}")
+    assert cls.model_fields["at"].default_factory == datetime.datetime.now
+    first = cls().at  # pyright: ignore[reportAttributeAccessIssue]
+    time.sleep(0.001)
+    assert cls().at > first  # pyright: ignore[reportAttributeAccessIssue]
+
+
+def test_dotted_factory_result_is_not_shared_between_instances():
+    cls = _build("{#def tags: list = tests.pyjinhx.header_names.make_tags() #}")
+    first, second = cls(), cls()
+    assert first.tags == ["new"]  # pyright: ignore[reportAttributeAccessIssue]
+    assert first.tags is not second.tags  # pyright: ignore[reportAttributeAccessIssue]
+
+
+@pytest.mark.parametrize(
+    "header, path, cause",
+    [
+        ("{#def tone: no_such_pkg.Tone #}", "no_such_pkg.Tone", ImportError),
+        (
+            "{#def size: int = tests.pyjinhx.header_names.NOPE #}",
+            "tests.pyjinhx.header_names.NOPE",
+            AttributeError,
+        ),
+        (
+            "{#def tags: list = no_such_pkg.make() #}",
+            "no_such_pkg.make",
+            ImportError,
+        ),
+    ],
+    ids=["type", "constant", "factory"],
+)
+def test_a_dotted_name_that_does_not_import_names_the_prop_and_the_path(
+    header: str, path: str, cause: type[Exception]
+):
+    fields = parse_props_header(header)
+    assert fields is not None
+    with pytest.raises(ValueError, match=re.escape(repr(path))) as excinfo:
+        build_component_class(fields, "Card", Path("ui/card.pjx"))
+    message = str(excinfo.value)
+    assert message.startswith("<Card> (ui/card.pjx):")
+    assert repr(fields[0][0]) in message
+    assert isinstance(excinfo.value.__cause__, cause)
+
+
+def test_a_dotted_factory_that_is_not_callable_is_rejected_at_build():
+    """Caught here rather than as a TypeError on the first render."""
+    fields = parse_props_header(
+        "{#def size: int = tests.pyjinhx.header_names.PAGE_SIZE() #}"
+    )
+    assert fields is not None
+    with pytest.raises(ValueError, match="'size'.*not callable"):
+        build_component_class(fields, "Card")
