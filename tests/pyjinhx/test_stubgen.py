@@ -313,3 +313,14 @@ def test_python_m_stubgen_help_runs():
     )
     assert done.returncode == 0
     assert "--check" in done.stdout
+
+
+def test_a_document_that_is_not_utf8_is_reported_and_the_rest_still_runs(
+    tmp_path, capsys
+):
+    _tree(tmp_path, {"b.pjx": CARD, "gone.pyi": stubgen.marker("gone.pjx") + "\n"})
+    (tmp_path / "a.pjx").write_bytes(b"<p>\xff</p>\n")
+    assert stubgen.main([str(tmp_path)]) == 1
+    assert "a.pjx: invalid" in capsys.readouterr().err
+    assert (tmp_path / "b.pyi").exists()
+    assert not (tmp_path / "gone.pyi").exists()

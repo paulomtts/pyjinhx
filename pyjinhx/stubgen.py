@@ -163,6 +163,10 @@ def sync(paths: Iterable[Path], *, write: bool) -> list[Finding]:
             )
             live.add(stub_path(document))
             continue
+        except (UnicodeDecodeError, OSError) as error:
+            findings.append(Finding(document, INVALID, None, str(error)))
+            live.add(stub_path(document))
+            continue
         if stub is None:
             continue
         target = stub_path(document)
