@@ -12,7 +12,7 @@ from pathlib import Path
 import jinja2
 import pytest
 
-from pyjinhx import assets, discovery
+from pyjinhx import BaseComponent, assets, discovery
 from pyjinhx._component import all_component_classes
 from pyjinhx.assets import asset_token
 from pyjinhx.render_cache import render_cache_key
@@ -325,12 +325,24 @@ def test_a_live_block_class_is_registered(write: Write):
     assert module.Card in all_component_classes()
 
 
-def test_a_class_whose_module_is_gone_is_not_registered(write: Write):
+def test_a_document_class_whose_module_is_gone_is_not_registered(write: Write):
+    write("pkg/card.pjx", CARD)
+    card = load("pkg.card").Card
+    del sys.modules["pkg.card"]
+    assert card not in all_component_classes()
+
+
+def test_a_class_built_by_type_stays_registered():
+    built = type("BuiltByType", (BaseComponent,), {"__module__": __name__})
+    assert built in all_component_classes()
+
+
+def test_a_class_whose_py_module_is_gone_stays_registered(write: Write):
     write("pkg/card.py", SPLIT_CARD_PY)
     write("pkg/card.pjx", "<div>{{ title }}</div>\n")
     card = load("pkg.card").Card
     del sys.modules["pkg.card"]
-    assert card not in all_component_classes()
+    assert card in all_component_classes()
 
 
 def test_python_dash_m_binds_the_class_and_leaves_it_unregistered(
@@ -359,16 +371,6 @@ def test_python_dash_m_binds_the_class_and_leaves_it_unregistered(
     )
     assert result.returncode == 0, result.stderr
     assert result.stdout.split("\n")[:3] == [str(path), "<div>a</div>", "False"]
-
-
-def test_a_reloaded_py_module_registers_only_its_new_class(write: Write):
-    write("pkg/card.py", SPLIT_CARD_PY)
-    write("pkg/card.pjx", "<div>{{ title }}</div>\n")
-    module = load("pkg.card")
-    old = module.Card
-    importlib.reload(module)
-    assert registered("pkg.card") == [module.Card]
-    assert old not in all_component_classes()
 
 
 def test_a_factory_built_and_a_nested_block_class_are_registered(write: Write):

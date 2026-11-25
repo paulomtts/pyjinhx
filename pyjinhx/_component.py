@@ -901,12 +901,11 @@ def all_component_classes() -> list[type]:
 
 
 def _is_live(cls: type) -> bool:
-    """Whether ``cls`` is still what its loaded module binds its name to.
+    """Whether ``cls`` still counts as registered.
 
-    A class that no name path reaches (built in a function, or a parametrized
-    generic) is live while its module is. A class from a ``.pjx`` document
-    also needs the import hook's record: a block run by ``python -m`` is not
-    vouched for.
+    Only a class from a ``.pjx`` document or built from a header can go stale,
+    as its file is imported or turned into a class again; every other class
+    is live.
     """
     # Built from a header, so no module statement ever bound it to a name: it
     # lives while its tag does, until its file turns out to be a document.
@@ -920,13 +919,15 @@ def _is_live(cls: type) -> bool:
             return False
         return get_class(_pascal_to_snake(cls.__name__)) is cls
     module = sys.modules.get(cls.__module__)
-    if module is None:
-        return False
     file = getattr(module, "__file__", None)
-    if file and file.endswith(".pjx"):
-        loaded = loaded_document(file)
-        if loaded is None or loaded[0] != cls.__module__:
-            return False
+    if not cls.__dict__.get("_pjx_document") and not (file and file.endswith(".pjx")):
+        return True
+    if not file:
+        return False
+    # A block run by `python -m` is not vouched for by the import hook.
+    loaded = loaded_document(file)
+    if loaded is None or loaded[0] != cls.__module__:
+        return False
     if "<locals>" in cls.__qualname__ or "[" in cls.__qualname__:
         return True
     bound: object = module

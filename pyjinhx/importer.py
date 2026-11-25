@@ -155,6 +155,20 @@ def import_document(path: str | Path) -> ModuleType:
     return module
 
 
+def _mark_classes(module: ModuleType) -> None:
+    """Tag the components the block defined, so that `all_component_classes`
+    drops them once the import is refused or the module is gone."""
+    from pyjinhx._component import BaseComponent
+
+    for value in vars(module).values():
+        if (
+            isinstance(value, type)
+            and issubclass(value, BaseComponent)
+            and value.__module__ == module.__name__
+        ):
+            value._pjx_document = True  # pyright: ignore[reportAttributeAccessIssue]
+
+
 class PjxLoader(importlib.abc.SourceLoader):
     """Run the ``{#python`` block of one ``.pjx`` file as a module body.
 
@@ -206,7 +220,10 @@ class PjxLoader(importlib.abc.SourceLoader):
         if first and first[0] != self.name and _module_file(first[0]) == resolved:
             self._refuse(1, f"already imported as {first[0]!r}; one file is one module")
         text = self.get_data(self.path).decode("utf-8-sig")
-        super().exec_module(module)
+        try:
+            super().exec_module(module)
+        finally:
+            _mark_classes(module)
         document = self._document_class(module)
         block = python_block(text, self.path)
         with _documents_lock:
