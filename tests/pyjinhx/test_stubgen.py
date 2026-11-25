@@ -410,3 +410,20 @@ def test_an_orphan_that_cannot_be_removed_is_a_finding_not_a_crash(tmp_path, cap
         (tmp_path / "ui").chmod(0o700)
     err = capsys.readouterr().err
     assert "a.pyi: failed" in err and "wrote" not in err and "removed" not in err
+
+
+def test_the_block_is_parsed_once(monkeypatch):
+    calls = []
+    real = stubgen.python_block
+    monkeypatch.setattr(stubgen, "python_block", lambda *a: calls.append(a) or real(*a))
+    _stub(CARD)
+    assert len(calls) == 1
+
+
+def test_crlf_input_gives_a_stub_with_only_lf(tmp_path):
+    crlf = CARD.replace("\n", "\r\n")
+    assert "\r" not in _stub(crlf)
+    assert _stub(crlf) == _stub(CARD)
+    (tmp_path / "card.pjx").write_bytes(crlf.encode())
+    stubgen.main([str(tmp_path)])
+    assert b"\r" not in (tmp_path / "card.pyi").read_bytes()

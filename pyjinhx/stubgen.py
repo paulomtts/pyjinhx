@@ -16,7 +16,7 @@ from collections.abc import Iterable, Iterator
 from pathlib import Path
 from typing import NamedTuple
 
-from pyjinhx.sfc import python_block, python_source
+from pyjinhx.sfc import python_block
 
 _MARKER_PREFIX = "# pyjinhx.stubgen: generated from "
 
@@ -53,10 +53,12 @@ def generate_stub(source: str, filename: str) -> str | None:
         SyntaxError: The block's Python does not parse; ``lineno`` is the
             line in the document.
     """
-    python = python_source(source, filename)
+    source = source.replace("\r\n", "\n").replace("\r", "\n")
     block = python_block(source, filename)
-    if python is None or block is None:
+    if block is None:
         return None
+    # One newline per line above the body, so ast positions are file positions.
+    python = "\n" * block.open_line + block.body
     tree = ast.parse(python, filename=filename)
     # ast columns are UTF-8 byte offsets, so edit bytes, not text.
     data = python.encode()
