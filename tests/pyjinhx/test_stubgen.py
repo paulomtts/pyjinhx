@@ -141,3 +141,175 @@ def test_generating_runs_nothing(tmp_path):
     source = _document(f"open({str(sentinel)!r}, 'w').close()\n")
     stubgen.generate_stub(source, "card.pjx")
     assert not sentinel.exists()
+
+
+def _tree(tmp_path, files: dict[str, str]):
+    for name, text in files.items():
+        path = tmp_path / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(text, encoding="utf-8")
+    return tmp_path
+
+
+def test_main_writes_a_stub_beside_each_block_and_none_without(tmp_path):
+    _tree(tmp_path, {"ui/card.pjx": CARD, "ui/plain.pjx": "<p></p>\n"})
+    assert stubgen.main([str(tmp_path)]) == 0
+    assert (tmp_path / "ui/card.pyi").read_text() == _stub(CARD)
+    assert not (tmp_path / "ui/plain.pyi").exists()
+
+
+def test_a_second_run_rewrites_nothing(tmp_path):
+    _tree(tmp_path, {"card.pjx": CARD})
+    stubgen.main([str(tmp_path)])
+    before = (tmp_path / "card.pyi").stat().st_mtime_ns
+    assert stubgen.main([str(tmp_path)]) == 0
+    assert (tmp_path / "card.pyi").stat().st_mtime_ns == before
+
+
+def test_a_changed_block_regenerates_its_stub(tmp_path):
+    _tree(tmp_path, {"card.pjx": CARD})
+    stubgen.main([str(tmp_path)])
+    (tmp_path / "card.pjx").write_text(CARD.replace("remaining", "left"))
+    stubgen.main([str(tmp_path)])
+    assert "left: int = 0" in (tmp_path / "card.pyi").read_text()
+
+
+def test_a_hand_written_stub_is_not_overwritten(tmp_path, capsys):
+    _tree(tmp_path, {"card.pjx": CARD, "card.pyi": "class Mine: ...\n"})
+    assert stubgen.main([str(tmp_path)]) == 2
+    assert (tmp_path / "card.pyi").read_text() == "class Mine: ...\n"
+    assert "card.pyi" in capsys.readouterr().err
+
+
+def test_a_stub_whose_document_was_deleted_is_removed(tmp_path):
+    _tree(tmp_path, {"card.pjx": CARD})
+    stubgen.main([str(tmp_path)])
+    (tmp_path / "card.pjx").unlink()
+    assert stubgen.main([str(tmp_path)]) == 0
+    assert not (tmp_path / "card.pyi").exists()
+
+
+def test_a_stub_whose_document_lost_its_block_is_removed(tmp_path):
+    _tree(tmp_path, {"card.pjx": CARD})
+    stubgen.main([str(tmp_path)])
+    (tmp_path / "card.pjx").write_text("<p></p>\n")
+    stubgen.main([str(tmp_path)])
+    assert not (tmp_path / "card.pyi").exists()
+
+
+def test_an_unmarked_stub_without_a_document_is_left_alone(tmp_path):
+    _tree(tmp_path, {"other.pyi": "x: int\n"})
+    assert stubgen.main([str(tmp_path)]) == 0
+    assert (tmp_path / "other.pyi").exists()
+
+
+def test_check_is_quiet_and_writes_nothing_when_stubs_are_fresh(tmp_path, capsys):
+    _tree(tmp_path, {"card.pjx": CARD})
+    stubgen.main([str(tmp_path)])
+    capsys.readouterr()
+    assert stubgen.main([str(tmp_path), "--check"]) == 0
+    assert capsys.readouterr().err == ""
+
+
+def test_check_reports_a_missing_stub_and_writes_nothing(tmp_path, capsys):
+    _tree(tmp_path, {"card.pjx": CARD})
+    assert stubgen.main([str(tmp_path), "--check"]) == 1
+    assert "card.pyi: missing" in capsys.readouterr().err
+    assert not (tmp_path / "card.pyi").exists()
+
+
+def test_check_reports_a_stale_stub(tmp_path, capsys):
+    _tree(tmp_path, {"card.pjx": CARD})
+    stubgen.main([str(tmp_path)])
+    (tmp_path / "card.pjx").write_text(CARD.replace("remaining", "left"))
+    stale = (tmp_path / "card.pyi").read_text()
+    assert stubgen.main([str(tmp_path), "--check"]) == 1
+    assert "card.pyi: stale" in capsys.readouterr().err
+    assert (tmp_path / "card.pyi").read_text() == stale
+
+
+def test_check_reports_an_orphaned_stub_and_keeps_it(tmp_path, capsys):
+    _tree(tmp_path, {"card.pjx": CARD})
+    stubgen.main([str(tmp_path)])
+    (tmp_path / "card.pjx").unlink()
+    assert stubgen.main([str(tmp_path), "--check"]) == 1
+    assert "card.pyi: orphaned" in capsys.readouterr().err
+    assert (tmp_path / "card.pyi").exists()
+
+
+@pytest.mark.parametrize("shadow", ["card.py", "card/__init__.py"])
+def test_check_reports_a_module_that_shadows_a_block(tmp_path, capsys, shadow):
+    _tree(tmp_path, {"card.pjx": CARD, shadow: ""})
+    stubgen.main([str(tmp_path)])
+    assert stubgen.main([str(tmp_path), "--check"]) == 1
+    assert "card.pjx: shadowed" in capsys.readouterr().err
+
+
+def test_check_reports_each_problem_on_its_own_line(tmp_path, capsys):
+    _tree(tmp_path, {"a.pjx": CARD, "b.pjx": CARD})
+    assert stubgen.main([str(tmp_path), "--check"]) == 1
+    assert len(capsys.readouterr().err.strip().splitlines()) == 2
+
+
+def test_a_block_that_does_not_parse_is_reported_and_the_rest_still_runs(
+    tmp_path, capsys
+):
+    _tree(tmp_path, {"a.pjx": _document("x = 1\ndef (:\n"), "b.pjx": CARD})
+    assert stubgen.main([str(tmp_path)]) == 1
+    assert "a.pjx:3" in capsys.readouterr().err
+    assert (tmp_path / "b.pyi").exists()
+    assert not (tmp_path / "a.pyi").exists()
+
+
+def test_a_malformed_block_is_reported_with_its_line(tmp_path, capsys):
+    _tree(tmp_path, {"a.pjx": "<p></p>\n  {#python\nx = 1\n#}\n"})
+    assert stubgen.main([str(tmp_path)]) == 1
+    assert "a.pjx:2" in capsys.readouterr().err
+
+
+def test_main_never_runs_a_block(tmp_path):
+    sentinel = tmp_path / "ran"
+    _tree(tmp_path, {"card.pjx": _document(f"open({str(sentinel)!r}, 'w').close()\n")})
+    stubgen.main([str(tmp_path)])
+    assert not sentinel.exists()
+
+
+def test_a_single_file_path_is_accepted(tmp_path):
+    _tree(tmp_path, {"card.pjx": CARD, "other.pjx": CARD})
+    assert stubgen.main([str(tmp_path / "card.pjx")]) == 0
+    assert (tmp_path / "card.pyi").exists()
+    assert not (tmp_path / "other.pyi").exists()
+
+
+def test_hidden_and_vendored_directories_are_skipped(tmp_path):
+    _tree(tmp_path, {".venv/card.pjx": CARD, "node_modules/card.pjx": CARD})
+    stubgen.main([str(tmp_path)])
+    assert not list(tmp_path.rglob("*.pyi"))
+
+
+def test_a_utf8_bom_does_not_hide_the_block(tmp_path):
+    (tmp_path / "card.pjx").write_bytes(b"\xef\xbb\xbf" + CARD.encode())
+    stubgen.main([str(tmp_path)])
+    assert (tmp_path / "card.pyi").read_text() == _stub(CARD)
+
+
+def test_sync_is_the_api_for_tools_that_do_not_want_a_cli(tmp_path):
+    _tree(tmp_path, {"card.pjx": CARD})
+    found = stubgen.sync([tmp_path], write=False)
+    assert [(f.path.name, f.kind) for f in found] == [("card.pyi", "missing")]
+    assert stubgen.sync([tmp_path], write=True) == found
+    assert stubgen.sync([tmp_path], write=False) == []
+
+
+def test_python_m_stubgen_help_runs():
+    import subprocess
+    import sys
+
+    done = subprocess.run(
+        [sys.executable, "-m", "pyjinhx.stubgen", "--help"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert done.returncode == 0
+    assert "--check" in done.stdout
