@@ -113,7 +113,29 @@ def inline_assets(template_path: Path) -> tuple[InlineAsset | None, InlineAsset 
     filename = str(template_path)
     css = find_block(source, "css", filename)
     js = find_block(source, "js", filename)
+    if css is not None or js is not None:
+        _reject_stray_comment_close(source, filename)
     return (
         None if css is None else InlineAsset(template_path, "css"),
         None if js is None else InlineAsset(template_path, "js"),
+    )
+
+
+def _reject_stray_comment_close(source: str, filename: str) -> None:
+    """Raise when a ``#}`` is left over once every comment is removed.
+
+    Jinja ends a comment at the first ``#}``, so a body that contains the pair
+    is cut short and its tail is rendered into the page as text.
+    """
+    # Keep each comment's newlines so the leftover reports its real line.
+    rest = _COMMENT_RE.sub(lambda m: "\n" * m.group().count("\n"), source)
+    index = rest.find("#}")
+    if index == -1:
+        return
+    raise TemplateSyntaxError(
+        "a stray '#}' ends an inline block early and the rest of it would be "
+        "rendered as page text; split the pair (for example "
+        '"#" + "}") or move the asset to a sibling file',
+        rest.count("\n", 0, index) + 1,
+        filename=filename,
     )

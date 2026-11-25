@@ -19,7 +19,7 @@ from pyjinhx.classless import component
 from pyjinhx.reactive.assets import missing_asset_oob
 from pyjinhx.rendering import render
 from pyjinhx.session import RenderSession, accumulate_assets
-from pyjinhx.template_blocks import InlineAsset, find_block
+from pyjinhx.template_blocks import InlineAsset, find_block, inline_assets
 
 
 def test_a_template_without_the_block_has_none():
@@ -313,3 +313,22 @@ def test_a_subclass_without_a_template_ships_its_parents_blocks(
         pass
 
     assert FancyCard.__pjx_descriptor__.css_paths == (InlineAsset(template, "css"),)
+
+
+def test_a_stray_comment_close_in_a_js_body_raises_at_its_line(tmp_path):
+    path = _write(tmp_path / "card.pjx", '<div></div>\n{#js\nlet s = "#}";\n#}\n')
+
+    with pytest.raises(TemplateSyntaxError) as raised:
+        inline_assets(path)
+
+    assert raised.value.lineno == 4
+    assert raised.value.filename == str(path)
+    message = raised.value.message or ""
+    assert '"#" + "}"' in message
+    assert "sibling" in message
+
+
+def test_a_literal_comment_close_in_a_document_without_blocks_is_left_alone(tmp_path):
+    path = _write(tmp_path / "card.pjx", "<div>#} not a comment</div>\n")
+
+    assert inline_assets(path) == (None, None)
