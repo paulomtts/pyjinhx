@@ -579,10 +579,10 @@ def test_module_names_follow_the_init_files(tmp_path):
     (tmp_path / "pkg" / "sub" / "__init__.py").write_text("")
     (tmp_path / "loose").mkdir()
 
-    assert manifest.module_name_for(tmp_path / "pkg/sub/card.pjx") == "pkg.sub.card"
-    assert manifest.module_name_for(tmp_path / "pkg/sub/__init__.py") == "pkg.sub"
-    assert manifest.module_name_for(tmp_path / "loose/card.pjx") == "card"
-    assert manifest.module_name_for(tmp_path / "pkg/not_yet/card.pjx") == "card"
+    assert sfc.module_name_for(tmp_path / "pkg/sub/card.pjx") == "pkg.sub.card"
+    assert sfc.module_name_for(tmp_path / "pkg/sub/__init__.py") == "pkg.sub"
+    assert sfc.module_name_for(tmp_path / "loose/card.pjx") == "card"
+    assert sfc.module_name_for(tmp_path / "pkg/not_yet/card.pjx") == "card"
 
 
 def _stdin(monkeypatch, text: str) -> None:
@@ -816,13 +816,13 @@ def test_a_package_layout_names_modules_by_the_deepest_sys_path_entry(tmp_path):
     (tmp_path / "src" / "ns" / "ui").mkdir(parents=True)
     path = tmp_path / "src" / "ns" / "ui" / "card.pjx"
 
-    assert manifest.module_name_for(path) == "card"
-    assert manifest.module_name_for(path, (tmp_path / "src",)) == "ns.ui.card"
+    assert sfc.module_name_for(path) == "card"
+    assert sfc.module_name_for(path, [str(tmp_path / "src")]) == "ns.ui.card"
     assert (
-        manifest.module_name_for(path, (tmp_path / "src", tmp_path / "src" / "ns"))
+        sfc.module_name_for(path, [str(tmp_path / "src"), str(tmp_path / "src" / "ns")])
         == "ui.card"
     )
-    assert manifest.module_name_for(path, (tmp_path / "other",)) == "card"
+    assert sfc.module_name_for(path, [str(tmp_path / "other")]) is None
 
 
 def test_sys_path_names_the_class_module_in_the_manifest(tmp_path, monkeypatch, capsys):
@@ -893,15 +893,45 @@ def test_a_document_with_a_python_block_that_does_not_scan_still_has_an_entry(
     assert [d["code"] for d in result["diagnostics"]] == ["unclosed-block"]
 
 
-def test_prose_that_mentions_python_is_not_a_block_and_is_still_a_template(
+def test_a_line_that_opens_python_but_is_no_block_is_refused_as_at_runtime(
     tmp_path, monkeypatch
 ):
     monkeypatch.chdir(tmp_path)
     (tmp_path / "card.pjx").write_text("{#python is nice #}\n<p></p>\n")
+    (tmp_path / "chip.pjx").write_text("{# python\nclass Chip: pass\n#}\n<p></p>\n")
 
     result = manifest.describe([Path(".")])
 
-    assert [c["kind"] for c in result["components"] if not c["builtin"]] == ["template"]
+    mine = {c["tag"]: c for c in result["components"] if not c["builtin"]}
+    assert mine["Card"]["kind"] == mine["Chip"]["kind"] == "pjx-python"
+    diagnostics = {
+        Path(d["path"]).name: d
+        for d in result["diagnostics"]
+        if d["path"].endswith(".pjx")
+    }
+    assert diagnostics["card.pjx"]["code"] == "no-python-block"
+    assert diagnostics["chip.pjx"]["code"] == "no-python-block"
+    assert "remove the space" in diagnostics["chip.pjx"]["message"]
+
+
+def test_a_python_block_document_no_sys_path_entry_holds_has_no_module(
+    tmp_path, monkeypatch
+):
+    monkeypatch.chdir(tmp_path)
+    _write(tmp_path, {"src/ns/card.pjx": GOOD})
+
+    result = manifest.describe([Path("src")], [Path("other")])
+
+    card = next(c for c in result["components"] if not c["builtin"])
+    assert card["class"]["module"] is None
+    assert "no-module-name" in [d["code"] for d in result["diagnostics"]]
+
+
+def test_a_package_init_module_is_named_for_its_package(tmp_path):
+    (tmp_path / "pkg").mkdir()
+    (tmp_path / "pkg" / "__init__.py").write_text("")
+
+    assert sfc.module_name_for(tmp_path / "pkg" / "__init__.py") == "pkg"
 
 
 def test_a_diagnostic_in_a_py_template_has_the_modules_column(tmp_path, monkeypatch):

@@ -15,9 +15,11 @@ Conventions of the JSON:
   two positions. The ``range`` of a prop, class, member or diagnostic is that
   of its name or of what is wrong.
 - ``annotation`` and ``default`` are source text as written.
-- ``class.module`` is the module name Python would import the file under: its
-  path below the deepest ``--sys-path`` entry that contains it, or, with none
-  given, below the first directory up the tree without an ``__init__.py``.
+- ``class.module`` is the module name Python would import the file under, as
+  `sfc.module_name_for` derives it, or null when there is none. With no
+  ``--sys-path`` it is the path below the top of the package chain (the
+  highest directory holding an ``__init__.py``); with some, a file outside
+  that chain is named by the path below the deepest entry that contains it.
 
 Versioning: ``manifest_version`` and ``grammar_version`` change when a field is
 removed or renamed, or its meaning changes. A field may be added without a
@@ -50,6 +52,7 @@ from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 from typing import Any, NamedTuple
 
+from pyjinhx.importer import no_block_reason, opener_line
 from pyjinhx.sfc import (
     BLOCK_KEYWORDS,
     HEADER_PREFIX,
@@ -62,6 +65,7 @@ from pyjinhx.sfc import (
     header_arguments,
     is_component_stem,
     is_one_literal,
+    module_name_for,
     pascal_to_snake,
     python_block,
     template_value,
@@ -71,7 +75,6 @@ from pyjinhx.stubgen import HANDWRITTEN, MISSING, ORPHANED, STALE, sync, walk
 MANIFEST_VERSION = 1
 
 _DEFINITION_RE = re.compile(r"(?:async\s+)?(?:class|def)\s+")
-_PYTHON_OPENER_RE = re.compile(r"^\{#python[ \t\r]*$", re.MULTILINE)
 
 
 def _utf16(text: str) -> int:
@@ -177,29 +180,6 @@ def _pascal(stem: str) -> str:
 
 def _absolute(path: Path | str) -> Path:
     return Path(os.path.normpath(Path(path).absolute()))
-
-
-def module_name_for(path: Path, sys_path: tuple[Path, ...] = ()) -> str:
-    """The dotted module name of the file ``path``.
-
-    Below the deepest ``sys_path`` entry that contains it when one does.
-    Otherwise as pytest names it: the stem under every parent directory that
-    holds an ``__init__.py``. An ``__init__.py`` is named for its package.
-
-    Pure over the filesystem, so it works on a file that does not exist yet.
-    """
-    path = _absolute(path)
-    roots = [root for root in map(_absolute, sys_path) if root in path.parents]
-    if roots:
-        parts = list(path.relative_to(max(roots, key=lambda r: len(r.parts))).parts)
-        parts[-1] = Path(parts[-1]).stem
-        return ".".join(parts[:-1] if parts[-1] == "__init__" else parts)
-    parts = [] if path.stem == "__init__" else [path.stem]
-    directory = path.parent
-    while (directory / "__init__.py").exists():
-        parts.append(directory.name)
-        directory = directory.parent
-    return ".".join(reversed(parts))
 
 
 def _name_column(
@@ -595,8 +575,8 @@ class _Project:
     ) -> None:
         self.diagnostics.append(_diagnostic(path, where, code, message, severity))
 
-    def module(self, path: Path) -> str:
-        return module_name_for(path, self.sys_path)
+    def module(self, path: Path) -> str | None:
+        return module_name_for(path, [str(entry) for entry in self.sys_path])
 
 
 def _inline_component(
@@ -731,6 +711,14 @@ def _python_component(project: _Project, document: _Document) -> dict[str, Any]:
     path, source, blocks = document
     block = python_block(source, str(path))
     assert block is not None
+    if project.module(path) is None:
+        project.report(
+            path,
+            _line_range(source.split("\n"), block.open_line),
+            "no-module-name",
+            f"{path.name} cannot be imported: no sys.path entry holds it under "
+            "directories that are valid module names",
+        )
     text = "\n" * block.open_line + block.body
     lines = text.split("\n")
     source_lines = source.split("\n")
@@ -828,11 +816,28 @@ def _python_component(project: _Project, document: _Document) -> dict[str, Any]:
     )
 
 
-def _unreadable_python_component(document: _Document) -> dict[str, Any]:
-    """The component of a document that means to hold a ``{#python`` block but
-    whose block does not scan: named for the file, with no class, so it does
-    not vanish from the editor while its grammar error is fixed."""
+def _unreadable_python_component(
+    project: _Project, document: _Document
+) -> dict[str, Any]:
+    """The component of a document that opens a ``{#python`` block but has none
+    that scans: named for the file, with no class, so it does not vanish from
+    the editor while its grammar error is fixed.
+
+    A document whose opener is only misspelled, with no scan error to say so,
+    is refused here the way the import hook refuses it."""
     path, source, blocks = document
+    try:
+        scans = python_block(source, str(path)) is None
+    except BlockSyntaxError:
+        scans = False  # its grammar error is already reported
+    if scans:
+        line = opener_line(source) or 1
+        project.report(
+            path,
+            _line_range(source.split("\n"), line),
+            "no-python-block",
+            f"{path.name} {no_block_reason(source)}",
+        )
     return _component(
         _pascal(path.stem),
         "pjx-python",
@@ -867,18 +872,6 @@ def _template_component(project: _Project, document: _Document) -> dict[str, Any
         props=props,
         name=path.stem,
     )
-
-
-def _intends_python_block(source: str) -> bool:
-    """Whether ``source`` has a line that is exactly a ``{#python`` opener, or
-    a ``{#python`` block the scanner refuses."""
-    if _PYTHON_OPENER_RE.search(source):
-        return True
-    try:
-        python_block(source, "")
-    except BlockSyntaxError:
-        return True
-    return False
 
 
 def _build(
@@ -916,8 +909,10 @@ def _build(
             return []
         if _has_python(document):
             return [_python_component(project, document)]
-        if _intends_python_block(document.source):
-            return [_unreadable_python_component(document)]
+        # The same line-start gate as the runtime's: a file with no opener
+        # at the start of a line is a template, whatever its comments say.
+        if opener_line(document.source) is not None:
+            return [_unreadable_python_component(project, document)]
         if is_component_stem(document.path.stem):
             return [_template_component(project, document)]
         return []

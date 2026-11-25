@@ -51,6 +51,17 @@ def opener_line(text: str) -> int | None:
     return None if found is None else text.count("\n", 0, found.start()) + 1
 
 
+def no_block_reason(text: str) -> str:
+    """Why a document that passes the opener sniff still has no block, as the
+    end of a sentence: a ``{# python`` opener gets the fix named."""
+    hint = (
+        "; it opens with `{# python`, remove the space to write `{#python`"
+        if _V0_OPENER_RE.match(text)
+        else ""
+    )
+    return f"has no {{#python block{hint}"
+
+
 def block_changed(path: str | Path, source: str) -> bool:
     """Whether ``source``, the text now in the ``.pjx`` at ``path``, holds a
     block other than the one the hook imported, and this is the first time that
@@ -179,15 +190,8 @@ class PjxLoader(importlib.abc.SourceLoader):
         text = self.get_data(self.path).decode("utf-8-sig")
         source = python_source(text, self.path)
         if source is None:
-            hint = (
-                "; it opens with `{# python`, remove the space to write `{#python`"
-                if _V0_OPENER_RE.match(text)
-                else ""
-            )
             raise ImportError(
-                f"{self.path} has no {{#python block{hint}",
-                name=self.name,
-                path=self.path,
+                f"{self.path} {no_block_reason(text)}", name=self.name, path=self.path
             )
         return source
 

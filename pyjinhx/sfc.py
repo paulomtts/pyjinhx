@@ -415,6 +415,11 @@ def _module_name(file: Path, sys_path: Iterable[str]) -> str | None:
             return None
         base = max(holders, key=lambda entry: len(entry.parts))
     names = file.relative_to(base).with_suffix("").parts
+    if names[-1] == "__init__":
+        # A package's own file is imported under the package's name.
+        names = names[:-1]
+    if not names:
+        return None
     return ".".join(names) if all(name.isidentifier() for name in names) else None
 
 
