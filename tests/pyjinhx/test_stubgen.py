@@ -324,3 +324,19 @@ def test_a_document_that_is_not_utf8_is_reported_and_the_rest_still_runs(
     assert "a.pjx: invalid" in capsys.readouterr().err
     assert (tmp_path / "b.pyi").exists()
     assert not (tmp_path / "gone.pyi").exists()
+
+
+@pytest.mark.parametrize(
+    "folder",
+    [
+        "env/lib/python3.13/site-packages/pkg",
+        "env/dist-packages/pkg",
+        "build/lib",
+        "dist",
+        "myenv",
+    ],
+)
+def test_virtualenvs_and_build_output_are_skipped(tmp_path, folder):
+    _tree(tmp_path, {f"{folder}/card.pjx": CARD, "myenv/pyvenv.cfg": ""})
+    stubgen.main([str(tmp_path)])
+    assert not list(tmp_path.rglob("*.pyi"))

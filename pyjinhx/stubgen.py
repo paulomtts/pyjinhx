@@ -87,7 +87,14 @@ INVALID = "invalid"
 # What each fixable finding becomes once `sync` has written it.
 _DONE = {MISSING: "wrote", STALE: "rewrote", ORPHANED: "removed"}
 
-_SKIPPED_DIRS = {"__pycache__", "node_modules"}
+_SKIPPED_DIRS = {
+    "__pycache__",
+    "node_modules",
+    "site-packages",
+    "dist-packages",
+    "build",
+    "dist",
+}
 
 
 class Finding(NamedTuple):
@@ -120,7 +127,8 @@ def is_generated(stub: Path) -> bool:
 
 def _walk(paths: Iterable[Path]) -> tuple[list[Path], list[Path]]:
     """The ``.pjx`` documents and the ``.pyi`` stubs under ``paths``, sorted.
-    Hidden directories, ``__pycache__`` and ``node_modules`` are skipped."""
+    Hidden directories, virtualenvs (any with a ``pyvenv.cfg``), installed
+    packages, build output, ``__pycache__`` and ``node_modules`` are skipped."""
     documents, stubs = set(), set()
     for path in paths:
         if path.is_file():
@@ -129,7 +137,11 @@ def _walk(paths: Iterable[Path]) -> tuple[list[Path], list[Path]]:
             continue
         for directory, names, files in os.walk(path):
             names[:] = [
-                n for n in names if not n.startswith(".") and n not in _SKIPPED_DIRS
+                n
+                for n in names
+                if not n.startswith(".")
+                and n not in _SKIPPED_DIRS
+                and not Path(directory, n, "pyvenv.cfg").exists()
             ]
             for name in files:
                 found = Path(directory, name)
