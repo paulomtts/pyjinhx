@@ -96,7 +96,7 @@ def test_the_manifest_scan_agrees_with_the_recorded_case(case, request):
     blocks, errors = manifest.scan_blocks(source, case.name)
 
     if expected["error"]:
-        assert (errors[0]["code"], errors[0]["line"]) == (
+        assert (errors[0]["code"], errors[0]["range"]["start"]["line"]) == (
             expected["error"]["code"],
             expected["error"]["line"],
         )

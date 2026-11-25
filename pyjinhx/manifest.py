@@ -1,9 +1,39 @@
 """What an editor needs to know about a project's components, without running it.
 
-``python -m pyjinhx.manifest [paths]`` prints one JSON document describing every
-component under the paths; ``--grammar`` prints the block grammar as data.
-Everything is read with ``ast`` and the block scanners. No application module is
-imported and no block is run, so it is safe on an untrusted or broken tree.
+``python -m pyjinhx.manifest [--sys-path DIR ...] [paths]`` prints one JSON
+document describing every component under the paths, and pyjinhx's own
+builtins. ``--stdin --filename F`` describes one unsaved buffer instead, and
+``--grammar`` prints the block grammar as data. Everything is read with ``ast``
+and the block scanners: no application module is imported and no block is run,
+so it is safe on an untrusted or broken tree.
+
+Conventions of the JSON:
+
+- Paths are absolute and POSIX, so the output does not depend on where it ran.
+- A position is ``{"line", "column"}``: lines are 1-based, columns 0-based
+  UTF-16 code units, which is what LSP uses. A range is ``{"start", "end"}`` of
+  two positions. The ``range`` of a prop, class, member or diagnostic is that
+  of its name or of what is wrong.
+- ``annotation`` and ``default`` are source text as written.
+- ``class.module`` is the module name Python would import the file under: its
+  path below the deepest ``--sys-path`` entry that contains it, or, with none
+  given, below the first directory up the tree without an ``__init__.py``.
+
+Versioning: ``manifest_version`` and ``grammar_version`` change when a field is
+removed or renamed, or its meaning changes. A field may be added without a
+bump, so a reader ignores keys it does not know.
+
+What static reading cannot see, and so is not in the output:
+
+- A class is a component only if it assigns ``template`` or a
+  ``<snake_name>.pjx`` sits beside its module. A subclass that inherits its
+  template is not listed, and inherited fields are not in ``props``.
+- Whether a class subclasses ``BaseComponent``: a base is a name, and what it
+  names needs an import.
+- Classes nested in a function or another class.
+- ``--stdin`` reads the buffer's neighbours (the files in its directory) from
+  disk, so an unsaved neighbour is not seen, and tag collisions are only
+  checked among those and the builtins.
 """
 
 import argparse
@@ -12,7 +42,9 @@ import json
 import os
 import re
 import sys
+import textwrap
 from collections.abc import Callable
+from dataclasses import dataclass, field
 from importlib import resources
 from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
@@ -20,28 +52,59 @@ from typing import Any, NamedTuple
 
 from pyjinhx.sfc import (
     BLOCK_KEYWORDS,
+    HEADER_PREFIX,
     LEGACY_HEADER_RE,
     BlockSyntaxError,
+    HeaderSignatureError,
     comments,
     extract_template,
+    header_arguments,
     is_component_stem,
     is_one_literal,
     pascal_to_snake,
     python_block,
     template_value,
 )
-from pyjinhx.stubgen import HANDWRITTEN, MISSING, ORPHANED, STALE, stub_path, sync, walk
+from pyjinhx.stubgen import HANDWRITTEN, MISSING, ORPHANED, STALE, sync, walk
 
 MANIFEST_VERSION = 1
+
+_DEFINITION_RE = re.compile(r"(?:async\s+)?(?:class|def)\s+")
+_PYTHON_OPENER_RE = re.compile(r"^\{#python[ \t\r]*$", re.MULTILINE)
+
+
+def _utf16(text: str) -> int:
+    """The length of ``text`` in UTF-16 code units."""
+    return len(text.encode("utf-16-le")) // 2
 
 
 def _column(line: str, offset: int) -> int:
     """The 0-based UTF-16 column of the 1-based character ``offset`` in ``line``."""
-    return len(line[: max(offset - 1, 0)].encode("utf-16-le")) // 2
+    return _utf16(line[: max(offset - 1, 0)])
+
+
+def _col(lines: list[str], lineno: int, byte_offset: int) -> int:
+    """The 0-based UTF-16 column of ``ast``'s UTF-8 ``byte_offset`` on a line."""
+    before = lines[lineno - 1].encode()[:byte_offset].decode("utf-8", "ignore")
+    return _utf16(before)
+
+
+def _range(line: int, column: int, end_line: int, end_column: int) -> dict[str, Any]:
+    return {
+        "start": {"line": line, "column": column},
+        "end": {"line": end_line, "column": end_column},
+    }
+
+
+def _line_range(lines: list[str], line: int, column: int = 0) -> dict[str, Any]:
+    """The range from ``column`` to the end of ``line``."""
+    text = lines[line - 1] if 0 < line <= len(lines) else ""
+    return _range(line, column, line, max(_utf16(text), column))
 
 
 def _recorded(keyword: str, opened: int, closed: int) -> dict[str, Any]:
-    """One block as the manifest lists it. A ``def`` has no ``body_lines``: a header is one expression."""
+    """One block as the manifest lists it. A ``def`` has no ``body_lines``: a
+    header is one expression."""
     block: dict[str, Any] = {"keyword": keyword, "open_line": opened}
     if keyword != "def":
         block["body_lines"] = [opened + 1, closed - 1] if closed - opened > 1 else None
@@ -54,9 +117,9 @@ def scan_blocks(
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     """The blocks of the document ``source`` and the grammar errors in it.
 
-    Blocks come in file order. Each error is a ``code``, 1-based ``line``,
-    0-based UTF-16 ``column`` and ``message``; a malformed block is an error
-    and not a block, and one error does not hide another.
+    Blocks come in file order. Each error is a ``code``, a ``range`` and a
+    ``message``; a malformed block is an error and not a block, and one error
+    does not hide another.
     """
     # Local: template_blocks imports jinja2, which a bare `import pyjinhx.manifest`
     # does not need.
@@ -76,14 +139,9 @@ def scan_blocks(
         message = getattr(error, "msg", None) or getattr(error, "message", "")
         offset = getattr(error, "offset", None) or 1
         text = lines[line - 1] if line <= len(lines) else ""
+        where = _line_range(lines, line, _column(text, offset))
         errors.setdefault(
-            (code, line),
-            {
-                "code": code,
-                "line": line,
-                "column": _column(text, offset),
-                "message": message,
-            },
+            (code, line), {"code": code, "range": where, "message": message}
         )
 
     for keyword in BLOCK_KEYWORDS:
@@ -104,46 +162,43 @@ def scan_blocks(
     except (BlockSyntaxError, BlockTemplateSyntaxError) as e:
         fail(e)
     blocks.sort(key=lambda block: block["open_line"])
-    return blocks, sorted(errors.values(), key=lambda e: (e["line"], e["column"]))
+    ordered = sorted(errors.values(), key=lambda e: _start(e["range"]))
+    return blocks, ordered
 
 
-_HEADER_PREFIX = "def __pjx_props__("
-_DEFINITION_RE = re.compile(r"(?:async\s+)?(?:class|def)\s+")
+def _start(where: dict[str, Any]) -> tuple[int, int]:
+    return where["start"]["line"], where["start"]["column"]
 
 
 def _pascal(stem: str) -> str:
     return "".join(word.capitalize() for word in stem.split("_"))
 
 
-def module_name_for(path: Path) -> str:
-    """The dotted module name of the file ``path``: its stem under every
-    parent directory that holds an ``__init__.py``, as pytest names it.
+def _absolute(path: Path | str) -> Path:
+    return Path(os.path.normpath(Path(path).absolute()))
+
+
+def module_name_for(path: Path, sys_path: tuple[Path, ...] = ()) -> str:
+    """The dotted module name of the file ``path``.
+
+    Below the deepest ``sys_path`` entry that contains it when one does.
+    Otherwise as pytest names it: the stem under every parent directory that
+    holds an ``__init__.py``. An ``__init__.py`` is named for its package.
 
     Pure over the filesystem, so it works on a file that does not exist yet.
     """
-    path = Path(os.path.normpath(Path(path).absolute()))
+    path = _absolute(path)
+    roots = [root for root in map(_absolute, sys_path) if root in path.parents]
+    if roots:
+        parts = list(path.relative_to(max(roots, key=lambda r: len(r.parts))).parts)
+        parts[-1] = Path(parts[-1]).stem
+        return ".".join(parts[:-1] if parts[-1] == "__init__" else parts)
     parts = [] if path.stem == "__init__" else [path.stem]
     directory = path.parent
     while (directory / "__init__.py").exists():
         parts.append(directory.name)
         directory = directory.parent
     return ".".join(reversed(parts))
-
-
-def _display(path: Path) -> str:
-    """``path`` as a POSIX string, relative to the working directory if under it."""
-    path = Path(os.path.normpath(Path(path).absolute()))
-    try:
-        path = path.relative_to(Path.cwd())
-    except ValueError:
-        pass
-    return path.as_posix()
-
-
-def _col(lines: list[str], lineno: int, byte_offset: int) -> int:
-    """The 0-based UTF-16 column of ``ast``'s UTF-8 ``byte_offset`` on a line."""
-    before = lines[lineno - 1].encode()[:byte_offset].decode("utf-8", "ignore")
-    return len(before.encode("utf-16-le")) // 2
 
 
 def _name_column(
@@ -154,7 +209,14 @@ def _name_column(
     start = len(line.encode()[: node.col_offset].decode("utf-8", "ignore"))
     keyword = _DEFINITION_RE.match(line, start)
     end = start + (len(keyword.group()) if keyword else 0)
-    return len(line[:end].encode("utf-16-le")) // 2
+    return _utf16(line[:end])
+
+
+def _name_range(
+    node: ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef, lines: list[str]
+) -> dict[str, Any]:
+    column = _name_column(node, lines)
+    return _range(node.lineno, column, node.lineno, column + _utf16(node.name))
 
 
 def _tail(node: ast.expr) -> str | None:
@@ -196,7 +258,7 @@ def _prop(
     annotation: ast.expr | None,
     default: ast.expr | None,
     text: str,
-    position: tuple[int, int],
+    where: dict[str, Any],
 ) -> dict[str, Any]:
     """One prop: annotation and default as written, plus what they mean."""
     if default is None or (
@@ -214,8 +276,7 @@ def _prop(
         "literal_values": _literal_values(annotation),
         "slot": "Slot" in names,
         "children": "Children" in names,
-        "line": position[0],
-        "column": position[1],
+        "range": where,
     }
 
 
@@ -223,17 +284,18 @@ def _class_props(node: ast.ClassDef, text: str, lines: list[str]) -> list[dict]:
     """The annotated fields of a class body. Private names and ``ClassVar``
     are not fields."""
     props = []
-    for field in node.body:
+    for field_ in node.body:
         if not (
-            isinstance(field, ast.AnnAssign)
-            and isinstance(field.target, ast.Name)
-            and not field.target.id.startswith("_")
-            and "ClassVar" not in _names_in(field.annotation)
+            isinstance(field_, ast.AnnAssign)
+            and isinstance(field_.target, ast.Name)
+            and not field_.target.id.startswith("_")
+            and "ClassVar" not in _names_in(field_.annotation)
         ):
             continue
-        target = field.target
-        position = (target.lineno, _col(lines, target.lineno, target.col_offset))
-        props.append(_prop(target.id, field.annotation, field.value, text, position))
+        target = field_.target
+        column = _col(lines, target.lineno, target.col_offset)
+        where = _range(target.lineno, column, target.lineno, column + _utf16(target.id))
+        props.append(_prop(target.id, field_.annotation, field_.value, text, where))
     return props
 
 
@@ -257,22 +319,59 @@ def _members(node: ast.ClassDef, lines: list[str]) -> list[dict[str, Any]]:
             {
                 "name": member.name,
                 "kind": kind,
-                "line": member.lineno,
-                "column": _name_column(member, lines),
+                "range": _name_range(member, lines),
             }
         )
     return members
 
 
+def _replaces(node: ast.ClassDef) -> bool:
+    """Whether the class says ``pjx_replace=True``."""
+    return any(
+        keyword.arg == "pjx_replace"
+        and isinstance(keyword.value, ast.Constant)
+        and keyword.value.value is True
+        for keyword in node.keywords
+    )
+
+
+def _strict(node: ast.ClassDef) -> bool | None:
+    """Whether the class body says ``extra="forbid"`` in its ``model_config``:
+    True or False when it names ``extra``, None when it does not (the class
+    inherits its setting, which static reading cannot follow)."""
+    for statement in node.body:
+        match statement:
+            case (
+                ast.Assign(targets=[ast.Name(id="model_config")], value=config)
+                | ast.AnnAssign(target=ast.Name(id="model_config"), value=config)
+            ) if config is not None:
+                pairs = []
+                if isinstance(config, ast.Call):
+                    pairs = [(kw.arg, kw.value) for kw in config.keywords]
+                elif isinstance(config, ast.Dict):
+                    keys = [
+                        k.value if isinstance(k, ast.Constant) else None
+                        for k in config.keys
+                    ]
+                    pairs = list(zip(keys, config.values, strict=True))
+                for key, value in pairs:
+                    if key == "extra" and isinstance(value, ast.Constant):
+                        return value.value == "forbid"
+    return None
+
+
 def _class_info(
-    node: ast.ClassDef, text: str, lines: list[str], path: Path
+    node: ast.ClassDef,
+    text: str,
+    lines: list[str],
+    path: Path,
+    module: str,
 ) -> dict[str, Any]:
     return {
-        "module": module_name_for(path),
+        "module": module,
         "qualname": node.name,
-        "path": _display(path),
-        "line": node.lineno,
-        "column": _name_column(node, lines),
+        "path": path.as_posix(),
+        "range": _name_range(node, lines),
         "bases": [ast.get_source_segment(text, base) for base in node.bases],
         "stub": None,
     }
@@ -288,8 +387,18 @@ def _markup_lines(source: str) -> list[int] | None:
     return [numbered[0], numbered[-1]] if numbered else None
 
 
-def _header(source: str) -> tuple[str, int] | None:
-    """The ``{#def#}`` signature text and where it starts in ``source``."""
+class _Header(NamedTuple):
+    """A ``{#def#}`` header: its signature text, where that starts in the
+    document, and the offsets of the ``{#`` and the end of the ``#}``."""
+
+    signature: str
+    offset: int
+    start: int
+    end: int
+
+
+def _header(source: str) -> _Header | None:
+    """The ``{#def#}`` header of ``source``, in either spelling."""
     from pyjinhx.template_blocks import BlockTemplateSyntaxError, find_block
 
     try:
@@ -298,37 +407,71 @@ def _header(source: str) -> tuple[str, int] | None:
         return None
     if block is not None:
         line_start = len(source) - len(source.split("\n", block.line - 1)[-1])
-        return block.body, source.index(block.body, line_start)
-    legacy = LEGACY_HEADER_RE.match(source)
-    return (legacy.group("sig"), legacy.start("sig")) if legacy else None
+        offset = source.index(block.body, line_start)
+        signature = block.body
+    else:
+        legacy = LEGACY_HEADER_RE.match(source)
+        if legacy is None:
+            return None
+        offset, signature = legacy.start("sig"), legacy.group("sig")
+    end = source.find("#}", offset + len(signature)) + 2
+    return _Header(signature, offset, source.rfind("{#", 0, offset), end)
 
 
-def _header_props(source: str, lines: list[str]) -> list[dict] | SyntaxError:
+def _where(source: str, offset: int) -> tuple[int, int]:
+    """The line and UTF-16 column of ``offset`` in ``source``."""
+    line_start = source.rfind("\n", 0, offset) + 1
+    return source.count("\n", 0, offset) + 1, _utf16(source[line_start:offset])
+
+
+def _source_range(source: str, start: int, end: int) -> dict[str, Any]:
+    return _range(*_where(source, start), *_where(source, end))
+
+
+def _header_props(
+    source: str, header: _Header
+) -> tuple[list[dict], tuple[str, dict[str, Any]] | None]:
     """The props a ``{#def#}`` header declares, read as a signature and never
-    resolved: a dotted name in it is text here, not an import."""
-    found = _header(source)
-    if found is None:
-        return []
-    signature, offset = found
-    code = f"{_HEADER_PREFIX}{signature}): pass"
+    resolved: a dotted name in it is text here, not an import.
+
+    Also the message and range of what is wrong with the signature, if
+    anything is, in which case no props are returned.
+    """
+    code = f"{HEADER_PREFIX}{header.signature}): pass"
+    code_lines = code.split("\n")
+
+    def at(line: int, column: int) -> int:
+        """The offset in ``source`` of a character column of ``code``."""
+        before = sum(len(text) + 1 for text in code_lines[: line - 1])
+        return header.offset + max(before + column - len(HEADER_PREFIX), 0)
+
+    def byte_at(line: int, byte_offset: int) -> int:
+        text = code_lines[line - 1].encode()[:byte_offset].decode("utf-8", "ignore")
+        return at(line, len(text))
+
     try:
-        function = ast.parse(code).body[0]
-    except SyntaxError as error:
-        return error
-    assert isinstance(function, ast.FunctionDef)
-    first = source.count("\n", 0, offset) + 1
-    first_byte = len(source[source.rfind("\n", 0, offset) + 1 : offset].encode())
-    args = function.args.args
-    missing = [None] * (len(args) - len(function.args.defaults))
-    props = []
-    for arg, default in zip(args, missing + function.args.defaults, strict=True):
-        if arg.lineno == 1:
-            line, byte = first, first_byte + arg.col_offset - len(_HEADER_PREFIX)
+        pairs = header_arguments(header.signature)
+    except HeaderSignatureError as error:
+        if error.syntax is not None:
+            syntax = error.syntax
+            start = at(syntax.lineno or 1, max((syntax.offset or 1) - 1, 0))
+            end = at(syntax.end_lineno or syntax.lineno or 1, syntax.end_offset or 0)
         else:
-            line, byte = first + arg.lineno - 1, arg.col_offset
-        position = (line, _col(lines, line, byte))
-        props.append(_prop(arg.arg, arg.annotation, default, code, position))
-    return props
+            node: Any = error.node
+            start = byte_at(node.lineno, node.col_offset)
+            end = byte_at(node.end_lineno or node.lineno, node.end_col_offset or 0)
+        limit = header.offset + len(header.signature)
+        start = min(start, limit)
+        return [], (
+            str(error),
+            _source_range(source, start, min(max(start, end), limit)),
+        )
+    props = []
+    for arg, default in pairs:
+        start = byte_at(arg.lineno, arg.col_offset)
+        where = _source_range(source, start, start + len(arg.arg))
+        props.append(_prop(arg.arg, arg.annotation, default, code, where))
+    return props, None
 
 
 def _template_span(text: str, lines: list[str], node: ast.expr) -> dict[str, Any]:
@@ -340,9 +483,25 @@ def _template_span(text: str, lines: list[str], node: ast.expr) -> dict[str, Any
     quote = 3 if literal[prefix : prefix + 3] in ('"""', "'''") else 1
     start = _col(lines, node.lineno, node.col_offset) + prefix + quote
     end = _col(lines, node.end_lineno, node.end_col_offset) - quote
+    return _range(node.lineno, start, node.end_lineno, end)
+
+
+def _removed_indent(literal: str) -> int:
+    """How many columns of common indentation ``textwrap.dedent`` takes off."""
+    kept = textwrap.dedent(literal).split("\n")
+    for original, line in zip(literal.split("\n"), kept, strict=True):
+        if line.strip():
+            return len(original) - len(line)
+    return 0
+
+
+def _assets(directory: Path, stem: str) -> dict[str, str | None]:
+    """The sibling stylesheet and script a component named ``stem`` has."""
     return {
-        "start": {"line": node.lineno, "column": start},
-        "end": {"line": node.end_lineno, "column": end},
+        kind: (directory / f"{stem}.{kind}").as_posix()
+        if (directory / f"{stem}.{kind}").is_file()
+        else None
+        for kind in ("css", "js")
     }
 
 
@@ -351,40 +510,34 @@ def _component(
     kind: str,
     document: dict[str, Any],
     blocks: list[dict[str, Any]],
+    assets: dict[str, str | None],
     class_info: dict[str, Any] | None = None,
     props: list[dict[str, Any]] | None = None,
     members: list[dict[str, Any]] | None = None,
+    node: ast.ClassDef | None = None,
+    has_stale_def_header: bool = False,
 ) -> dict[str, Any]:
+    if class_info is None:
+        identity = document["path"]
+    else:
+        identity = f"{class_info['path']}#{class_info['qualname']}"
     return {
         "tag": tag,
+        "name": pascal_to_snake(tag),
+        "id": identity,
         "kind": kind,
+        "builtin": False,
         "document": document,
         "blocks": blocks,
         "class": class_info,
         "props": props or [],
         "members": members or [],
+        "assets": assets,
+        "replaces": node is not None and _replaces(node),
+        # A header builds an open model, which accepts extra keys.
+        "strict": _strict(node) if node is not None else False,
+        "has_stale_def_header": has_stale_def_header,
     }
-
-
-def _report(
-    diagnostics: list[dict[str, Any]],
-    path: Path,
-    line: int,
-    column: int,
-    code: str,
-    message: str,
-    severity: str = "error",
-) -> None:
-    diagnostics.append(
-        {
-            "path": _display(path),
-            "line": line,
-            "column": column,
-            "severity": severity,
-            "code": code,
-            "message": message,
-        }
-    )
 
 
 class _Document(NamedTuple):
@@ -399,18 +552,57 @@ def _has_python(document: _Document) -> bool:
     return any(block["keyword"] == "python" for block in document.blocks)
 
 
+def _diagnostic(
+    path: Path, where: dict[str, Any], code: str, message: str, severity: str
+) -> dict[str, Any]:
+    return {
+        "path": path.as_posix(),
+        "range": where,
+        "severity": severity,
+        "code": code,
+        "message": message,
+    }
+
+
+@dataclass
+class _Project:
+    """What one run reads and finds: the way to read a file, the ``sys.path``
+    to name modules by, the documents seen, and the diagnostics so far."""
+
+    read: Callable[[Path], str]
+    sys_path: tuple[Path, ...]
+    documents: dict[Path, _Document] = field(default_factory=dict)
+    py_paths: set[Path] = field(default_factory=set)
+    claimed: set[Path] = field(default_factory=set)
+    pjx_dirs: set[Path] = field(default_factory=set)
+    diagnostics: list[dict[str, Any]] = field(default_factory=list)
+
+    def report(
+        self,
+        path: Path,
+        where: dict[str, Any],
+        code: str,
+        message: str,
+        severity: str = "error",
+    ) -> None:
+        self.diagnostics.append(_diagnostic(path, where, code, message, severity))
+
+    def module(self, path: Path) -> str:
+        return module_name_for(path, self.sys_path)
+
+
 def _inline_component(
+    project: _Project,
     node: ast.ClassDef,
     value: ast.expr,
     path: Path,
     text: str,
-    diagnostics: list[dict[str, Any]],
 ) -> dict[str, Any]:
     """The component for a class that assigns ``template`` in a ``.py`` module."""
     lines = text.split("\n")
     assert value.end_lineno is not None
     document: dict[str, Any] = {
-        "path": _display(path),
+        "path": path.as_posix(),
         "markup_lines": [value.lineno, value.end_lineno],
     }
     blocks: list[dict[str, Any]] = []
@@ -420,63 +612,63 @@ def _inline_component(
         and is_one_literal(text, value)
     )
     if not literal:
-        _report(
-            diagnostics,
+        column = _col(lines, value.lineno, value.col_offset)
+        project.report(
             path,
-            value.lineno,
-            _col(lines, value.lineno, value.col_offset),
+            _range(value.lineno, column, value.end_lineno, _end_column(lines, value)),
             "template-not-literal",
             f"{node.name}.template must be one plain string literal: it is read "
             "from the source text, so an f-string, a concatenation or a name "
             "cannot be used",
         )
     else:
+        assert isinstance(value, ast.Constant)
         document["span"] = _template_span(text, lines, value)
         try:
             template = extract_template(text, node.name, str(path))
         except ValueError:
             pass
         else:
-            # The template's lines are the module's, but its columns are those
-            # of the dedented text, so a column inside it is approximate.
             blocks, errors = scan_blocks(template, str(path))
+            indent = _removed_indent(str(value.value))
+            first = document["span"]["start"]
             for error in errors:
-                _report(
-                    diagnostics,
-                    path,
-                    error["line"],
-                    error["column"],
-                    error["code"],
-                    error["message"],
-                )
+                # The template is dedented, so its columns lack the indent
+                # that the module's lines have; the first line has the quotes.
+                for end in error["range"].values():
+                    end["column"] += (
+                        first["column"] if end["line"] == first["line"] else indent
+                    )
+                project.report(path, error["range"], error["code"], error["message"])
+    stem = pascal_to_snake(node.name)
     return _component(
         node.name,
         "py-template",
         document,
         blocks,
-        _class_info(node, text, lines, path),
+        _assets(path.parent, stem),
+        _class_info(node, text, lines, path, project.module(path)),
         _class_props(node, text, lines),
         _members(node, lines),
+        node,
     )
 
 
-def _py_components(
-    path: Path,
-    read: Callable[[Path], str],
-    documents: dict[Path, _Document],
-    claimed: set[Path],
-    pjx_dirs: set[Path],
-    diagnostics: list[dict[str, Any]],
-) -> list[dict[str, Any]]:
+def _end_column(lines: list[str], node: ast.expr) -> int:
+    assert node.end_lineno is not None and node.end_col_offset is not None
+    return _col(lines, node.end_lineno, node.end_col_offset)
+
+
+def _py_components(project: _Project, path: Path) -> list[dict[str, Any]]:
     """The components a ``.py`` module declares: a class that assigns
     ``template``, or one with a ``<snake_name>.pjx`` beside the module."""
     try:
-        text = read(path)
+        text = project.read(path)
     except (OSError, UnicodeDecodeError):
         return []
     # Most modules are neither: skip the parse unless the text or a neighbour
     # could make a class a component.
-    if "template" not in text and path.parent not in pjx_dirs:
+    if "template" not in text and path.parent not in project.pjx_dirs:
         return []
     try:
         tree = ast.parse(text, str(path))
@@ -489,33 +681,43 @@ def _py_components(
             continue
         value = template_value(node)
         if value is not None:
-            found.append(_inline_component(node, value, path, text, diagnostics))
+            found.append(_inline_component(project, node, value, path, text))
             continue
         sibling = path.with_name(f"{pascal_to_snake(node.name)}.pjx")
-        document = documents.get(sibling)
-        if document is None or _has_python(document):
+        document = project.documents.get(sibling)
+        if document is None:
             continue
-        claimed.add(sibling)
+        if _has_python(document):
+            project.report(
+                path,
+                _name_range(node, lines),
+                "class-outside-document",
+                f"{sibling.name} holds a {{#python block, so it belongs to the "
+                f"class defined there; {node.name} cannot also own it",
+            )
+            continue
+        project.claimed.add(sibling)
         found.append(
             _component(
                 node.name,
                 "split",
                 {
-                    "path": _display(sibling),
+                    "path": sibling.as_posix(),
                     "markup_lines": _markup_lines(document.source),
                 },
                 document.blocks,
-                _class_info(node, text, lines, path),
+                _assets(sibling.parent, sibling.stem),
+                _class_info(node, text, lines, path, project.module(path)),
                 _class_props(node, text, lines),
                 _members(node, lines),
+                node,
+                has_stale_def_header=_header(document.source) is not None,
             )
         )
     return found
 
 
-def _python_component(
-    document: _Document, py_paths: set[Path], diagnostics: list[dict[str, Any]]
-) -> dict[str, Any]:
+def _python_component(project: _Project, document: _Document) -> dict[str, Any]:
     """The component a ``.pjx`` document with a ``{#python`` block declares,
     and every reason pyjinhx would refuse it."""
     path, source, blocks = document
@@ -524,28 +726,24 @@ def _python_component(
     text = "\n" * block.open_line + block.body
     lines = text.split("\n")
     source_lines = source.split("\n")
+    opener = _line_range(source_lines, block.open_line)
 
-    def refuse(code: str, message: str, line: int = block.open_line, column: int = 0):
-        _report(diagnostics, path, line, column, code, message)
+    def refuse(code: str, message: str, where: dict[str, Any] = opener) -> None:
+        project.report(path, where, code, message)
 
-    for found in blocks:
-        if found["keyword"] == "def":
-            line = found["open_line"]
-            column = _column(
-                source_lines[line - 1], source_lines[line - 1].find("{#") + 1
-            )
-            refuse(
-                "def-with-python",
-                "a {#def#} header and a {#python block in one document: the "
-                "class declares the props, so remove the header",
-                line,
-                column,
-            )
+    header = _header(source)
+    if header is not None:
+        refuse(
+            "def-with-python",
+            "a {#def#} header and a {#python block in one document: the "
+            "class declares the props, so remove the header",
+            _source_range(source, header.start, header.end),
+        )
     markup = _markup_lines(source)
     if markup is None:
         refuse("no-markup", "a document with a {#python block needs some markup")
     if (
-        path.with_suffix(".py") in py_paths
+        path.with_suffix(".py") in project.py_paths
         or path.with_suffix(".py").exists()
         or path.with_suffix("").is_dir()
     ):
@@ -554,28 +752,35 @@ def _python_component(
             f"{path.stem}.py or {path.stem}/ sits beside this document, so Python "
             "imports that and never reaches the block",
         )
-    class_info = props = members = None
+    class_info = props = members = chosen = None
     tag = _pascal(path.stem)
     try:
         tree = ast.parse(text, str(path))
     except SyntaxError as error:
         line = error.lineno or block.open_line
+        column = _column(lines[line - 1], error.offset or 1)
+        end_line = error.end_lineno or line
+        end_column = _column(lines[end_line - 1], error.end_offset or 1)
         refuse(
             "python-syntax-error",
             error.msg,
-            line,
-            _column(lines[line - 1], error.offset or 1),
+            _range(line, column, end_line, max(end_column, column)),
         )
     else:
         classes = [n for n in tree.body if isinstance(n, ast.ClassDef)]
         for node in classes:
             value = template_value(node)
             if value is not None:
+                column = _col(lines, value.lineno, value.col_offset)
                 refuse(
                     "template-in-block",
                     f"{node.name} assigns template, but the document is its template",
-                    value.lineno,
-                    _col(lines, value.lineno, value.col_offset),
+                    _range(
+                        value.lineno,
+                        column,
+                        value.end_lineno or value.lineno,
+                        _end_column(lines, value),
+                    ),
                 )
         named = [n for n in classes if pascal_to_snake(n.name) == path.stem]
         if not named:
@@ -589,92 +794,112 @@ def _python_component(
                 refuse(
                     "ambiguous-component-class",
                     f"{named[0].name} and {named[1].name} both snake to {path.stem!r}",
-                    named[1].lineno,
-                    _name_column(named[1], lines),
+                    _name_range(named[1], lines),
                 )
-            tag = named[0].name
-            class_info = _class_info(named[0], text, lines, path)
-            if stub_path(path).exists():
-                class_info["stub"] = _display(stub_path(path))
-            props = _class_props(named[0], text, lines)
-            members = _members(named[0], lines)
+            chosen = named[0]
+            tag = chosen.name
+            class_info = _class_info(chosen, text, lines, path, project.module(path))
+            stub = path.with_suffix(".pyi")
+            if stub.exists():
+                class_info["stub"] = stub.as_posix()
+            props = _class_props(chosen, text, lines)
+            members = _members(chosen, lines)
     return _component(
         tag,
         "pjx-python",
-        {"path": _display(path), "markup_lines": markup},
+        {"path": path.as_posix(), "markup_lines": markup},
         blocks,
+        _assets(path.parent, path.stem),
         class_info,
         props,
         members,
+        chosen,
     )
 
 
-def _template_component(
-    document: _Document, diagnostics: list[dict[str, Any]]
-) -> dict[str, Any]:
+def _unreadable_python_component(document: _Document) -> dict[str, Any]:
+    """The component of a document that means to hold a ``{#python`` block but
+    whose block does not scan: named for the file, with no class, so it does
+    not vanish from the editor while its grammar error is fixed."""
+    path, source, blocks = document
+    return _component(
+        _pascal(path.stem),
+        "pjx-python",
+        {"path": path.as_posix(), "markup_lines": _markup_lines(source)},
+        blocks,
+        _assets(path.parent, path.stem),
+    )
+
+
+def _template_component(project: _Project, document: _Document) -> dict[str, Any]:
     """The component of a ``.pjx`` document no class claims: props from its
     ``{#def#}`` header, if it has one."""
     path, source, blocks = document
-    props = _header_props(source, source.split("\n"))
-    if isinstance(props, SyntaxError):
-        _report(
-            diagnostics,
-            path,
-            1,
-            0,
-            "def-header-invalid",
-            f"the {{#def#}} header is not a valid signature: {props.msg}",
-        )
-        props = []
+    props: list[dict] = []
+    header = _header(source)
+    if header is not None:
+        props, problem = _header_props(source, header)
+        if problem is not None:
+            project.report(
+                path,
+                problem[1],
+                "def-header-invalid",
+                f"the {{#def#}} header is not a valid signature: {problem[0]}",
+            )
     return _component(
         _pascal(path.stem),
         "template",
-        {"path": _display(path), "markup_lines": _markup_lines(source)},
+        {"path": path.as_posix(), "markup_lines": _markup_lines(source)},
         blocks,
+        _assets(path.parent, path.stem),
         props=props,
     )
 
 
+def _intends_python_block(source: str) -> bool:
+    """Whether ``source`` has a line that is exactly a ``{#python`` opener, or
+    a ``{#python`` block the scanner refuses."""
+    if _PYTHON_OPENER_RE.search(source):
+        return True
+    try:
+        python_block(source, "")
+    except BlockSyntaxError:
+        return True
+    return False
+
+
 def _build(
-    pjx_paths: list[Path], py_paths: list[Path], read: Callable[[Path], str]
+    pjx_paths: list[Path],
+    py_paths: list[Path],
+    read: Callable[[Path], str],
+    sys_path: tuple[Path, ...],
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     """Every component and diagnostic in the given ``.pjx`` and ``.py`` files."""
-    diagnostics: list[dict[str, Any]] = []
-    documents: dict[Path, _Document] = {}
+    project = _Project(read, sys_path, py_paths=set(py_paths))
     for path in pjx_paths:
         try:
             source = read(path)
         except (OSError, UnicodeDecodeError) as error:
-            _report(diagnostics, path, 1, 0, "unreadable-file", str(error))
+            project.report(path, _range(1, 0, 1, 0), "unreadable-file", str(error))
             continue
         blocks, errors = scan_blocks(source, str(path))
         for error in errors:
-            _report(
-                diagnostics,
-                path,
-                error["line"],
-                error["column"],
-                error["code"],
-                error["message"],
-            )
-        documents[path] = _Document(path, source, blocks)
+            project.report(path, error["range"], error["code"], error["message"])
+        project.documents[path] = _Document(path, source, blocks)
+    project.pjx_dirs = {path.parent for path in project.documents}
     components: list[dict[str, Any]] = []
-    claimed: set[Path] = set()
-    pjx_dirs = {path.parent for path in documents}
     for path in py_paths:
-        components += _py_components(
-            path, read, documents, claimed, pjx_dirs, diagnostics
-        )
-    for document in documents.values():
-        if document.path in claimed:
+        components += _py_components(project, path)
+    for document in project.documents.values():
+        if document.path in project.claimed:
             continue
         if _has_python(document):
-            components.append(_python_component(document, set(py_paths), diagnostics))
-        elif "{#python" not in document.source and is_component_stem(
-            document.path.stem
-        ):
-            components.append(_template_component(document, diagnostics))
-    return components, diagnostics
+            components.append(_python_component(project, document))
+        elif _intends_python_block(document.source):
+            components.append(_unreadable_python_component(document))
+        elif is_component_stem(document.path.stem):
+            components.append(_template_component(project, document))
+    return components, project.diagnostics
 
 
 def _read(path: Path) -> str:
@@ -702,36 +927,74 @@ def _stub_diagnostics(
         "overwritten",
         ORPHANED: "a generated stub whose document is gone or has no python block",
     }
-    diagnostics: list[dict[str, Any]] = []
+    diagnostics = []
     for finding in sync(paths, write=False):
         if finding.kind not in advice:
             continue
         orphaned = finding.kind == ORPHANED
         path = finding.path if orphaned else finding.path.with_suffix(".pjx")
-        line = 1 if orphaned else opened.get(_display(path), 1)
-        _report(
-            diagnostics,
-            path,
-            line,
-            0,
-            f"stub-{finding.kind}",
-            advice[finding.kind],
-            "warning",
+        line = 1 if orphaned else opened.get(path.as_posix(), 1)
+        # The opener of a document is `{#python`: eight columns.
+        where = _range(line, 0, line, 0 if orphaned else len("{#python"))
+        diagnostics.append(
+            _diagnostic(
+                path, where, f"stub-{finding.kind}", advice[finding.kind], "warning"
+            )
         )
+    return diagnostics
+
+
+def _builtins_dir() -> Path:
+    return _absolute(str(resources.files("pyjinhx").joinpath("builtins")))
+
+
+def _collisions(components: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """A warning on each component whose ``name`` another has too.
+
+    The registry keeps one class per name, and a bare template only answers
+    when no class does, so templates and classes are compared among
+    themselves. One component saying ``pjx_replace=True`` settles it.
+    """
+    groups: dict[tuple[str, bool], list[dict[str, Any]]] = {}
+    for component in components:
+        key = (component["name"], component["kind"] == "template")
+        groups.setdefault(key, []).append(component)
+    diagnostics = []
+    for (name, _), group in groups.items():
+        if len(group) < 2 or sum(c["replaces"] for c in group) == 1:
+            continue
+        for component in group:
+            others = ", ".join(c["id"] for c in group if c is not component)
+            where = (component["class"] or {}).get("range") or _range(1, 0, 1, 0)
+            path = (component["class"] or component["document"])["path"]
+            message = (
+                f"{name!r} is also the name of {others}; the registry keeps one "
+                "of them. Rename all but one, or mark one pjx_replace=True"
+            )
+            diagnostics.append(
+                _diagnostic(Path(path), where, "tag-collision", message, "warning")
+            )
     return diagnostics
 
 
 def _manifest(
     roots: list[Path], components: list[dict[str, Any]], diagnostics: list[dict]
 ) -> dict[str, Any]:
+    builtins = _builtins_dir().as_posix() + "/"
+    for component in components:
+        path = (component["class"] or component["document"])["path"]
+        component["builtin"] = path.startswith(builtins)
+    diagnostics += _collisions(components)
     components.sort(
         key=lambda c: (
             c["document"]["path"],
-            c["class"]["line"] if c["class"] else 0,
+            _start(c["class"]["range"]) if c["class"] else (0, 0),
             c["tag"],
         )
     )
-    diagnostics.sort(key=lambda d: (d["path"], d["line"], d["column"], d["code"]))
+    diagnostics.sort(
+        key=lambda d: (d["path"], _start(d["range"]), d["code"], d["message"])
+    )
     try:
         installed = version("pyjinhx")
     except PackageNotFoundError:
@@ -740,22 +1003,28 @@ def _manifest(
         "manifest_version": MANIFEST_VERSION,
         "grammar_version": json.loads(grammar_text())["version"],
         "pyjinhx_version": installed,
-        "roots": [_display(root) for root in roots],
+        "roots": [root.as_posix() for root in roots],
         "components": components,
         "diagnostics": diagnostics,
     }
 
 
-def describe(paths: list[Path]) -> dict[str, Any]:
-    """The manifest of every component under ``paths``, as a JSON-ready dict."""
-    paths = [Path(p) for p in paths]
-    found = walk(paths, {".pjx", ".py"})
-    components, diagnostics = _build(found[".pjx"], found[".py"], _read)
-    diagnostics += _stub_diagnostics(paths, components)
-    return _manifest(paths, components, diagnostics)
+def describe(paths: list[Path], sys_path: list[Path] | None = None) -> dict[str, Any]:
+    """The manifest of every component under ``paths`` and of the builtins, as
+    a JSON-ready dict. ``sys_path`` lists the directories modules are imported
+    from, which name them (see `module_name_for`)."""
+    roots = [_absolute(p) for p in paths]
+    found = walk([*roots, _builtins_dir()], {".pjx", ".py"})
+    components, diagnostics = _build(
+        found[".pjx"], found[".py"], _read, tuple(map(_absolute, sys_path or []))
+    )
+    diagnostics += _stub_diagnostics(roots, components)
+    return _manifest(roots, components, diagnostics)
 
 
-def describe_buffer(filename: Path, text: str) -> dict[str, Any]:
+def describe_buffer(
+    filename: Path, text: str, sys_path: list[Path] | None = None
+) -> dict[str, Any]:
     """The manifest entries and diagnostics of one file, as the editor holds it.
 
     ``text`` stands in for the file on disk, which may not exist or may be
@@ -763,15 +1032,21 @@ def describe_buffer(filename: Path, text: str) -> dict[str, Any]:
     whether it is a component depends on them. No stub diagnostics: the
     buffer's stub is a file on disk, and it is the editor's to regenerate.
     """
-    file = Path(filename)
+    file = _absolute(filename)
     text = text.removeprefix("﻿").replace("\r\n", "\n").replace("\r", "\n")
+    found = walk([_builtins_dir()], {".pjx", ".py"})
     names = {file, *file.parent.glob("*.pjx"), *file.parent.glob("*.py")}
+    names |= set(found[".pjx"]) | set(found[".py"])
     pjx = sorted(p for p in names if p.suffix == ".pjx")
     py = sorted(p for p in names if p.suffix == ".py")
     components, diagnostics = _build(
-        pjx, py, lambda path: text if path == file else _read(path)
+        pjx,
+        py,
+        lambda path: text if path == file else _read(path),
+        tuple(map(_absolute, sys_path or [])),
     )
-    shown = _display(file)
+    diagnostics += _collisions(components)
+    shown = file.as_posix()
     components = [
         c
         for c in components
@@ -788,7 +1063,8 @@ def grammar_text() -> str:
 
 def main(argv: list[str] | None = None) -> int:
     """The command line:
-    ``python -m pyjinhx.manifest [--grammar] [--stdin --filename F] [paths]``.
+    ``python -m pyjinhx.manifest [--grammar] [--stdin --filename F]
+    [--sys-path DIR ...] [paths]``.
 
     Prints JSON and exits 0, diagnostics included: they are data. Exits 2 for
     a path that does not exist or a bad combination of options.
@@ -810,6 +1086,14 @@ def main(argv: list[str] | None = None) -> int:
         help="describe the text on standard input as the file --filename",
     )
     parser.add_argument("--filename", type=Path, help="where the --stdin text lives")
+    parser.add_argument(
+        "--sys-path",
+        action="append",
+        default=[],
+        type=Path,
+        metavar="DIR",
+        help="a directory modules are imported from; repeatable",
+    )
     args = parser.parse_args(argv)
     if args.grammar:
         sys.stdout.write(grammar_text())
@@ -818,14 +1102,14 @@ def main(argv: list[str] | None = None) -> int:
         if args.filename is None:
             parser.error("--stdin needs --filename")
         text = sys.stdin.buffer.read().decode("utf-8", "replace")
-        result = describe_buffer(args.filename, text)
+        result = describe_buffer(args.filename, text, args.sys_path)
     else:
         missing = [p for p in args.paths if not p.exists()]
         for path in missing:
             print(f"{path}: no such file or directory", file=sys.stderr)
         if missing:
             return 2
-        result = describe(args.paths)
+        result = describe(args.paths, args.sys_path)
     sys.stdout.write(json.dumps(result, indent=2) + "\n")
     return 0
 
