@@ -12,12 +12,17 @@ not pull in pydantic or jinja2.
 import importlib.abc
 import importlib.util
 import os
+import re
 import sys
 from collections.abc import Sequence
 from pathlib import Path
 from types import CodeType, ModuleType
 
 from pyjinhx.sfc import python_block, python_source
+
+# What v0.x wrote; in v2 it is prose, so without a message the import would
+# fail with a bare ModuleNotFoundError.
+_V0_OPENER_RE = re.compile(r"\{#[ \t]+python[ \t\r]*(\n|\Z)")
 
 
 class PjxLoader(importlib.abc.SourceLoader):
@@ -76,10 +81,18 @@ class PjxFinder(importlib.abc.MetaPathFinder):
             if not candidate.is_file():
                 continue
             text = candidate.read_text(encoding="utf-8-sig")
-            if python_block(text, str(candidate)) is not None:
-                return importlib.util.spec_from_file_location(
-                    fullname, candidate, loader=PjxLoader(fullname, str(candidate))
-                )
+            if python_block(text, str(candidate)) is None:
+                if _V0_OPENER_RE.match(text):
+                    raise ImportError(
+                        f"{candidate} opens with `{{# python`; remove the space "
+                        f"to write `{{#python`",
+                        name=fullname,
+                        path=str(candidate),
+                    )
+                continue
+            return importlib.util.spec_from_file_location(
+                fullname, candidate, loader=PjxLoader(fullname, str(candidate))
+            )
         return None
 
 
