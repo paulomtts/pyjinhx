@@ -1,0 +1,1 @@
+<div class="empty-state">{{ icon }}<p>{{ message }}</p></div>

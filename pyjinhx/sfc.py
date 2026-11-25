@@ -17,6 +17,7 @@ without re-importing anything.
 
 import ast
 import textwrap
+import threading
 from pathlib import Path
 
 
@@ -38,6 +39,31 @@ def _template_value(node: ast.ClassDef) -> ast.expr | None:
     return value
 
 
+# The last parse of each module, keyed by filename and checked against the
+# source it was made from. A template is read several times as its class
+# registers and renders, so without this a module of N components is parsed
+# N times over. Each entry is built whole and then swapped in under the lock.
+_parsed: dict[str, tuple[str, dict[str, list[ast.expr]]]] = {}
+_parsed_lock = threading.Lock()
+
+
+def _templates_in(module_source: str, filename: str) -> dict[str, list[ast.expr]]:
+    """Every class in ``module_source`` that assigns ``template``, by class name."""
+    with _parsed_lock:
+        cached = _parsed.get(filename)
+    if cached is not None and cached[0] == module_source:
+        return cached[1]
+    found: dict[str, list[ast.expr]] = {}
+    for node in ast.walk(ast.parse(module_source, filename=filename)):
+        if isinstance(node, ast.ClassDef):
+            value = _template_value(node)
+            if value is not None:
+                found.setdefault(node.name, []).append(value)
+    with _parsed_lock:
+        _parsed[filename] = (module_source, found)
+    return found
+
+
 def extract_template(
     module_source: str, class_name: str, filename: str = "<unknown>"
 ) -> str:
@@ -52,13 +78,7 @@ def extract_template(
         ValueError: No class of that name assigns ``template``, more than one
             does, or the value is anything but one string literal.
     """
-    tree = ast.parse(module_source, filename=filename)
-    values = [
-        value
-        for node in ast.walk(tree)
-        if isinstance(node, ast.ClassDef) and node.name == class_name
-        if (value := _template_value(node)) is not None
-    ]
+    values = _templates_in(module_source, filename).get(class_name, [])
     if not values:
         raise ValueError(
             f"{filename}: class {class_name} has no inline template: its body "

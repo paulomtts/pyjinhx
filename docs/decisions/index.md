@@ -18,3 +18,4 @@ explicitly in their **Status** line.
 | [0006](0006-server-rendered-svg-charts.md) | Charts are SVG drawn on the server, with no JavaScript |
 | [0007](0007-default-theme.md) | Opt-in default theme with grouped `--pjx-*` tokens |
 | [0008](0008-graph-port-kinds-and-wire-events.md) | Graph wire kinds live on ports; wires are steered by cancelable events |
+| [0009](0009-a-component-is-a-pjx-document.md) | A component is a pjx document, optionally owned by a class |

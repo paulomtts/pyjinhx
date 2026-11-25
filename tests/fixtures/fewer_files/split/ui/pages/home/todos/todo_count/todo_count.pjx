@@ -1,0 +1,1 @@
+<p id="{{ id }}" class="todo-count"><StatusDot tone="{{ tone.value }}"/> {{ remaining }} {{ noun }} left</p>

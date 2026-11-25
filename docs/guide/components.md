@@ -205,8 +205,128 @@ field, choose one:
 
 Prop-header props (`{#def ... #}`, below) follow the same rule: a header-declared
 prop is **escaped** unless you mark it safe in the template (`{{ prop|safe }}`) or
-the prop is the component's children field. Header props can't be typed `Slot`
-directly, so use `|safe` for intentional raw HTML there.
+the prop is the component's children field or is typed `Slot` (see
+[Header reference](#header-reference)).
+
+## One model, three shapes
+
+A component is a pjx document, optionally owned by a Python class. A document is
+markup plus up to three Jinja-comment blocks: `{#def ... #}` (props), `{#css ... #}`
+and `{#js ... #}`. It lives either in a `.pjx` file or in the `template` string of
+the class that owns it, and means the same thing in both places. The tag, the props
+and the rendered output never depend on which you pick, and one project can mix all
+three.
+
+**T: template only.** One `.pjx` file, no Python.
+
+    {#def id: str, label: str, count: int = 0 #}
+    <span id="{{ id }}" class="badge">{{ label }} ({{ count }})</span>
+    {#css
+    .badge { border-radius: 999px; }
+    #}
+
+**C: class in one file.** One `.py` file; the class holds its document in `template`.
+
+```python
+from pyjinhx import ReactiveComponent
+
+from app.todos import Keys, store
+
+
+class Counter(ReactiveComponent, react={Keys.TODOS}):
+    remaining: int
+
+    @classmethod
+    def load(cls) -> "Counter":
+        return cls(remaining=store.remaining())
+
+    template = r"""
+    <div class="counter">{{ remaining }} left</div>
+    {#css
+    .counter { font-weight: 600; }
+    #}
+    """
+```
+
+**S: split.** A `.py` class plus its `.pjx`, optionally with sibling `.css` and `.js`
+(everything the earlier sections describe).
+
+| If the component... | Shape |
+|---|---|
+| is props and markup, nothing computed in Python | T |
+| needs Python: `load()`, a factory, a validator, a property, reactive keys, a subclass | C |
+| needs Python and has a template long enough that you want full template tooling on it | S |
+| has big assets, assets shared by subclasses with their own templates, or served in `LINK` mode | any shape, with those assets as sibling files |
+
+Start in T, move to C the day you need a method, and fall back to S when the string
+gets uncomfortable.
+
+### The `template` attribute
+
+- It must be **one plain string literal** assigned in the class body. pyjinhx reads it
+  back from the module's source, so an f-string, a concatenation or a name raises
+  `ValueError`.
+- Use a **raw string** (`r"""..."""`). In a plain string, `\n` becomes a real newline,
+  which changes the markup and shifts every line number after it. A template that
+  contains `"""` can use `'''` instead.
+- Line N of the template is line N of the `.py` file, so Jinja errors and tracebacks
+  point straight into your module.
+- An inline `template` beats an adjacent `.pjx` of the same class. It is inherited like
+  a template file: a subclass with no template of its own renders its parent's.
+- If a class has a pydantic field named `template`, that field keeps its usual meaning
+  and is not treated as the inline template.
+- Edits to the string are picked up on the next render without re-importing the module.
+  But it is an edit to a `.py` file, so a dev server that restarts on `*.py` changes
+  (uvicorn `--reload`, for instance) restarts for it, where a `.pjx` edit would not.
+- Markup in a Python string has no highlighting or template diagnostics in most editors.
+
+### Header reference
+
+| Written | Becomes |
+|---|---|
+| `str`, `int`, `float`, `bool`, `list`, `dict`, `Any` | the builtin (`Any`: no coercion) |
+| `Literal["a", "b"]` | `typing.Literal` (members must be literals) |
+| `list[str]`, `dict[str, int]` | the real generic, arguments resolved recursively |
+| `str \| int`, `T \| None`, `Optional[T]` | the real union |
+| `Slot`, `Children` | pyjinhx's slot and children types |
+| `ExtraAttrs`, `AttrValue` | pyjinhx's validated attribute types |
+| `pkg.mod.Type` | that type, imported |
+
+- An annotation outside this list falls back to `Any` and logs a warning. `list[Slot]`
+  is a list of components, not a slot.
+- A default is a literal, a dotted constant (`size: int = app.ui.PAGE_SIZE`), or a
+  dotted name called with no arguments (`at: datetime.datetime = datetime.datetime.now()`),
+  which is a factory run per instance. Mutable literals such as `[]` are safe.
+- A dotted name is an import path, resolved with `pkgutil.resolve_name` when the
+  component class is built, not at startup. Nothing from the template is compiled or
+  executed. A bad path raises `ValueError` naming the template, the prop and the path.
+- A bare name that is not in the table is never imported, so a typo cannot become an
+  import. There are no relative paths.
+- `id: str`, required and with no default, turns `auto_id` off for that component.
+  Any other declaration of `id` is an error.
+- The header may sit anywhere in the document, once. A second one raises
+  `TemplateSyntaxError`.
+
+### Folding existing components
+
+`scripts/fold_components.py` in the pyjinhx repository does the mechanical moves. It is
+a repo script, not public API. Every subcommand is a dry run that prints a diff and a
+summary; add `--write` to apply it. Only files under the paths you pass are touched.
+
+    uv run python scripts/fold_components.py assets app/components
+    uv run python scripts/fold_components.py template app/components --write
+    uv run python scripts/fold_components.py declass app/components --root app
+
+| Command | Move | Refuses when |
+|---|---|---|
+| `assets` | sibling `.css`/`.js` into a `{#css#}`/`{#js#}` block of the template beside it | the text contains `#}`; a subclass with its own template inherits the asset; the template already has that block; the class's `template` is not a triple-quoted literal that can hold it |
+| `template` | a class's adjacent `.pjx` into `template = r"""..."""` (S to C) | the class already assigns `template`; the text holds both triple-quote styles or ends in a backslash; indentation would change when read back |
+| `declass` | a fields-only class into a `{#def#}` header, deleting the `.py` (S to T) | the class has methods, decorators, other bases or other statements; a type or default is not expressible in a header; the module holds more than the class and imports |
+
+`declass` prints every remaining reference to a folded class name, because it reports
+rather than rewrites imports (`--root` says where to look). The script exits 1 if it
+refused anything, after processing the rest, and running it again finds nothing left to
+fold. Run your tests after each subcommand.
 
 ## HTML-only components
 
@@ -232,10 +352,9 @@ It's idempotent and never shadows a component you've actually declared. See
 
 ## Prop headers for classless components
 
-A template-only component can declare its props in a `{#def ... #}` header — the
-first thing in the file. pyjinhx parses it into a validated pydantic model, so a
-classless component gets defaults, required-checks, and type coercion without a
-Python class:
+A template-only component declares its props in a `{#def ... #}` header. pyjinhx
+parses it into a validated pydantic model, so a classless component gets defaults,
+required-checks, and type coercion without a Python class:
 
     {#def title: str, count: int = 0, variant: str = "primary" #}
     <article class="pjx-card pjx-card--{{ variant }}">
@@ -246,23 +365,31 @@ Python class:
 
 - The signature is Python-style: `name`, `name: type`, `name = default`, or
   `name: type = default`. A prop with no default is **required**.
-- Supported types: `str`, `int`, `float`, `bool`, `list`, `dict`, and `T | None`;
-  anything else (or no annotation) is treated as `Any` (no coercion).
 - Declared props are validated (`<Card/>` with a missing required prop, or a
   value that can't coerce, raises a clear error). **Undeclared** attributes are
   still accepted rather than rejected (`hx-*`, `data-*`, `@click`, `class`) and
   reach the template context — nothing places them in the markup for you.
 - The header is a normal Jinja comment, so it never appears in the output.
-- Header-declared props are **HTML-escaped** like any scalar value (see
-  [Escaping & slots](#escaping-and-slots)). For intentional raw HTML, mark it safe
-  in the template with `{{ prop|safe }}` — header props can't be typed `Slot`.
-- A hand-written Python class always takes precedence over a header.
+- A hand-written Python class always takes precedence over a header; the header
+  is then ignored and pyjinhx logs a warning.
 
-The header is read when the class is built, so `component()` needs the template
-to be resolvable at call time — pass `template_dir`, or run
-`setup(components_root=...)` first. Discovery deliberately leaves an orphan
-`.pjx` unregistered, so materialize it with `component()` once before using
-`<Tag/>` for it in another template.
+The full vocabulary is in the [Header reference](#header-reference).
+
+### Tags need no `component()` call
+
+A template whose header is present answers its own `<Tag/>`. Discovery notes the
+`.pjx` files no class claimed; the first time a tag has no class, pyjinhx reads
+that file, and if it carries a `{#def#}` header (an empty `{#def #}` counts) it
+builds the component and registers it. A file with no header stays plain markup.
+
+If two such files share a tag (same stem in different directories) and one has a
+header, the tag is ambiguous and raises `LookupError` naming the paths. Rename
+all but one, or call `component("Name")` to pick the first. A class you declare
+always wins over a template.
+
+`component()` still works, and still reads the header when the class is built, so it
+needs the template to be resolvable at call time: pass `template_dir`, or run
+`setup(components_root=...)` first.
 
 ## Inline styles and scripts
 
@@ -286,8 +413,8 @@ A component can keep its CSS and JS inside its `.pjx` template instead of in sib
   must touch `{#` (`{#css`, not `{# css`), so a prose comment such as
   `{# css tweaks #}` stays a plain comment. Like the `{#def#}` header, a block never
   appears in the rendered output, and the template still renders in plain Jinja.
-- A block can sit anywhere after the `{#def#}` header (the header must stay first).
-  It is read statically: putting it inside `{% if %}` does not make it conditional.
+- A block can sit anywhere in the document, in any order relative to the `{#def#}`
+  header. It is read statically: putting it inside `{% if %}` does not make it conditional.
 - The body is taken verbatim, Jinja syntax included — `{{ }}` and `{% %}` are not
   evaluated. Like any Jinja comment, it ends at the first `#}`, so the body cannot
   contain that sequence.
