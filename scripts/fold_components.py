@@ -27,7 +27,7 @@ from jinja2 import TemplateSyntaxError
 
 from pyjinhx._component import _pascal_to_snake
 from pyjinhx.props_header import parse_props_header
-from pyjinhx.sfc import extract_template
+from pyjinhx.sfc import _template_value, extract_template
 from pyjinhx.template_blocks import find_block
 
 _SKIPPED_DIRS = {"__pycache__", "node_modules"}
@@ -87,20 +87,8 @@ def load_modules(paths: list[Path]) -> list[Module]:
     return modules
 
 
-def template_value(node: ast.ClassDef) -> ast.stmt | None:
-    """The class body's last ``template = ...`` statement, or None."""
-    found = None
-    for statement in node.body:
-        match statement:
-            case ast.Assign(targets=[ast.Name(id="template")]):
-                found = statement
-            case ast.AnnAssign(target=ast.Name(id="template"), value=ast.expr()):
-                found = statement
-    return found
-
-
 def assigns_template(node: ast.ClassDef) -> bool:
-    return template_value(node) is not None
+    return _template_value(node) is not None
 
 
 def base_names(node: ast.ClassDef) -> list[str]:
@@ -131,8 +119,13 @@ def block_text(kind: str, body: str, indent: str = "") -> str:
 # --- assets -----------------------------------------------------------------
 
 
-def inherited_by(asset_stem: str, modules: list[Module]) -> str | None:
-    """A subclass with its own template of the class that owns ``asset_stem``."""
+def subclass_refusal(asset_stem: str, kind: str, modules: list[Module]) -> str | None:
+    """Why a subclass of the class owning ``asset_stem`` blocks the fold, or None.
+
+    A subclass with its own template stops seeing a block in the parent's. One
+    that inherits the template but has its own sibling file of this kind would
+    start shipping the block beside that file, which used to shadow the parent's.
+    """
     owners = {
         n.name
         for m in modules
@@ -141,8 +134,15 @@ def inherited_by(asset_stem: str, modules: list[Module]) -> str | None:
     }
     for module in modules:
         for node in module.classes():
-            if owners & set(base_names(node)) and has_own_template(module, node):
-                return node.name
+            if not owners & set(base_names(node)):
+                continue
+            if has_own_template(module, node):
+                return f"{node.name} inherits it and has a template of its own"
+            sibling = module.path.parent / f"{_pascal_to_snake(node.name)}.{kind}"
+            if sibling.is_file():
+                return (
+                    f"{node.name} inherits the template and has its own {sibling.name}"
+                )
     return None
 
 
@@ -161,10 +161,7 @@ def add_inline_block(source: str, class_name: str, kind: str, body: str) -> str:
     node = next(
         n for n in tree.body if isinstance(n, ast.ClassDef) and n.name == class_name
     )
-    statement = template_value(node)
-    literal = (
-        statement.value if isinstance(statement, ast.Assign | ast.AnnAssign) else None
-    )
+    literal = _template_value(node)
     if not (isinstance(literal, ast.Constant) and isinstance(literal.value, str)):
         raise ValueError("the template is not a plain string literal")  # noqa: TRY004
     lines = source.splitlines(keepends=True)
@@ -224,8 +221,8 @@ def fold_assets(paths: list[Path]) -> Plan:
                 asset, "its text contains `#}`, which would end the block early"
             )
             continue
-        if subclass := inherited_by(asset.stem, modules):
-            plan.refuse(asset, f"{subclass} inherits it and has a template of its own")
+        if reason := subclass_refusal(asset.stem, kind, modules):
+            plan.refuse(asset, reason)
             continue
         if class_name is None:
             existing = text
@@ -427,8 +424,6 @@ def header_default(node: ast.expr, imports: dict[str, str]) -> str:
     match node:
         case ast.Name() | ast.Attribute():
             return dotted(node, imports, "default")
-        case ast.Call(func=func, args=[], keywords=[]):
-            return dotted(func, imports, "default") + "()"
         case ast.Call(
             func=ast.Name(id="Field"),
             args=[],
@@ -439,6 +434,11 @@ def header_default(node: ast.expr, imports: dict[str, str]) -> str:
             if isinstance(factory, ast.Name) and factory.id in ("dict", "list"):
                 return "{}" if factory.id == "dict" else "[]"
             return dotted(factory, imports, "default") + "()"
+        case ast.Call():
+            raise ValueError(
+                f"default `{ast.unparse(node)}` is called once, when the class is "
+                "defined; a header would call it for every instance"
+            )
     raise ValueError(
         f"default `{ast.unparse(node)}` is not a literal or an importable name"
     )

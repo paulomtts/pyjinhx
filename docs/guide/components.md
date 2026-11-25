@@ -213,9 +213,14 @@ the prop is the component's children field or is typed `Slot` (see
 A component is a pjx document, optionally owned by a Python class. A document is
 markup plus up to three Jinja-comment blocks: `{#def ... #}` (props), `{#css ... #}`
 and `{#js ... #}`. It lives either in a `.pjx` file or in the `template` string of
-the class that owns it, and means the same thing in both places. The tag, the props
-and the rendered output never depend on which you pick, and one project can mix all
-three.
+the class that owns it, and means the same thing in both places: the tag, the props
+and the rendered output do not depend on where the document lives. One project can
+mix all three shapes.
+
+The shapes differ in one way. A component built from a `{#def#}` header (T) accepts
+undeclared attributes and passes them through to its root element, like any
+[classless component](#extra-fields); a hand-written class (C, S) is strict and
+rejects them with a `ValidationError` unless it opts in with `extra="allow"`.
 
 **T: template only.** One `.pjx` file, no Python.
 
@@ -298,8 +303,10 @@ gets uncomfortable.
   dotted name called with no arguments (`at: datetime.datetime = datetime.datetime.now()`),
   which is a factory run per instance. Mutable literals such as `[]` are safe.
 - A dotted name is an import path, resolved with `pkgutil.resolve_name` when the
-  component class is built, not at startup. Nothing from the template is compiled or
-  executed. A bad path raises `ValueError` naming the template, the prop and the path.
+  component class is built, not at startup. The header is never `eval`'d, but treat a
+  template as trusted code like any module: a dotted name imports its module (running
+  that module's top level), and a `pkg.f()` default calls `f` for every instance. A
+  bad path raises `ValueError` naming the template, the prop and the path.
 - A bare name that is not in the table is never imported, so a typo cannot become an
   import. There are no relative paths.
 - `id: str`, required and with no default, turns `auto_id` off for that component.
@@ -319,12 +326,14 @@ summary; add `--write` to apply it. Only files under the paths you pass are touc
 
 | Command | Move | Refuses when |
 |---|---|---|
-| `assets` | sibling `.css`/`.js` into a `{#css#}`/`{#js#}` block of the template beside it | the text contains `#}`; a subclass with its own template inherits the asset; the template already has that block; the class's `template` is not a triple-quoted literal that can hold it |
+| `assets` | sibling `.css`/`.js` into a `{#css#}`/`{#js#}` block of the template beside it | the text contains `#}`; a subclass with its own template inherits the asset; a subclass that renders the template has its own sibling file of that kind; the template already has that block; the class's `template` is not a triple-quoted literal that can hold it |
 | `template` | a class's adjacent `.pjx` into `template = r"""..."""` (S to C) | the class already assigns `template`; the text holds both triple-quote styles or ends in a backslash; indentation would change when read back |
-| `declass` | a fields-only class into a `{#def#}` header, deleting the `.py` (S to T) | the class has methods, decorators, other bases or other statements; a type or default is not expressible in a header; the module holds more than the class and imports |
+| `declass` | a fields-only class into a `{#def#}` header, deleting the `.py` (S to T) | the class has methods, decorators, other bases or other statements; a type or default is not expressible in a header; a default is a call, which a class runs once and a header would run per instance; the module holds more than the class and imports |
 
 `declass` prints every remaining reference to a folded class name, because it reports
-rather than rewrites imports (`--root` says where to look). The script exits 1 if it
+rather than rewrites imports (`--root` says where to look). The folded component also
+becomes permissive: undeclared attributes that the class rejected now pass through
+(see the shapes above). The script exits 1 if it
 refused anything, after processing the rest, and running it again finds nothing left to
 fold. Run your tests after each subcommand.
 
@@ -382,10 +391,17 @@ A template whose header is present answers its own `<Tag/>`. Discovery notes the
 that file, and if it carries a `{#def#}` header (an empty `{#def #}` counts) it
 builds the component and registers it. A file with no header stays plain markup.
 
-If two such files share a tag (same stem in different directories) and one has a
-header, the tag is ambiguous and raises `LookupError` naming the paths. Rename
-all but one, or call `component("Name")` to pick the first. A class you declare
-always wins over a template.
+If several files share a tag (same stem in different directories), only the headed
+ones count: exactly one headed file answers the tag, and two or more make it
+ambiguous, raising `LookupError` naming them. Rename all but one, or call
+`component("Name")` to pick the first. A class you declare always wins over a
+template.
+
+The set of orphan templates is taken when the registry is built, and each is read
+once, on its tag's first miss. Adding a header to a template that has already been
+found headerless, or adding a new `.pjx`, takes effect after a restart or another
+`setup()`. Editing the markup of a template that is already a component is picked
+up as usual.
 
 `component()` still works, and still reads the header when the class is built, so it
 needs the template to be resolvable at call time: pass `template_dir`, or run
@@ -410,11 +426,19 @@ A component can keep its CSS and JS inside its `.pjx` template instead of in sib
     #}
 
 - Each block is a single Jinja comment, `{#css ... #}` or `{#js ... #}`. The keyword
-  must touch `{#` (`{#css`, not `{# css`), so a prose comment such as
-  `{# css tweaks #}` stays a plain comment. Like the `{#def#}` header, a block never
-  appears in the rendered output, and the template still renders in plain Jinja.
+  must touch `{#` (`{#css`, not `{# css`) and end its line, with the body starting on
+  the next one. A prose comment such as `{# css tweaks #}` or a one-line
+  `{#js hack: remove later #}` therefore stays a plain comment. Like the `{#def#}`
+  header, a block never appears in the rendered output, and the template still
+  renders in plain Jinja.
+- `{#def ... #}` may sit on one line, so any comment that starts with `{#def ` (no
+  space after `{#`) is read as a header. Keep a prose comment about defaults spaced:
+  `{# def... #}` only counts as a header when it is the very first thing in the
+  document.
 - A block can sit anywhere in the document, in any order relative to the `{#def#}`
-  header. It is read statically: putting it inside `{% if %}` does not make it conditional.
+  header. It is read statically: putting it inside `{% if %}` does not make it
+  conditional, and putting it inside `{% raw %}` does not hide it, so a block written
+  there as sample text is still a block.
 - The body is taken verbatim, Jinja syntax included — `{{ }}` and `{% %}` are not
   evaluated. Like any Jinja comment, it ends at the first `#}`, so the body cannot
   contain that sequence.
@@ -431,11 +455,15 @@ A component can keep its CSS and JS inside its `.pjx` template instead of in sib
   own renders its parent's, so it ships the parent's blocks; a subclass with its own
   template ships only that template's blocks (sibling files are still inherited up the
   class chain as before).
+- The two inherit differently. A subclass's own sibling `.css` replaces its parent's
+  `.css` file, but not a `{#css#}` block in the parent's template it renders: that
+  subclass ships its own file **and** the parent's block.
 - `AssetMode.LINK` has no file to point a URL at, so a component with a block raises
   `ValueError` in LINK mode. Use `INLINE`, or `NONE` with a bundle: `all_assets()`
   lists each block as a path such as `ui/card.pjx#css`, and `read_text()`/`read_bytes()`
   on it return the block body, so the [one-bundle](assets.md#one-bundle-deployment)
-  recipe works unchanged.
+  recipe works unchanged. Those two are all it supports: it names no real file, so
+  `open()`, `stat()` and file copies fail on it.
 
 ## Extra Fields
 

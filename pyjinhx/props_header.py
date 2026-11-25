@@ -7,8 +7,10 @@ non-whitespace in the file::
 
 The header is a valid (inert) Jinja comment; pyjinhx reads it out-of-band.
 
-A dotted name is an absolute import path, resolved with ``pkgutil.resolve_name``
-— a normal import, nothing compiled or executed::
+A dotted name is an absolute import path, resolved with ``pkgutil.resolve_name``.
+The header itself is never compiled or ``eval``'d, but a template is trusted
+code: resolving a name imports its module, running that module's top level,
+and a ``pkg.f()`` default calls ``f`` for every instance::
 
     {#def when: datetime.datetime, size: int = app.ui.PAGE_SIZE,
           at: datetime.datetime = datetime.datetime.now() #}
@@ -29,9 +31,9 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal
 
+from jinja2 import TemplateSyntaxError
 from pydantic import Field, create_model
 
-from pyjinhx.sfc import read_document
 from pyjinhx.template_blocks import find_block
 
 if TYPE_CHECKING:
@@ -318,27 +320,16 @@ def _resolve_dotted(value: Any, owner: str) -> Any:
 logger = logging.getLogger("pyjinhx")
 
 
-def template_has_props_header(
-    template_path: Path, inline_class: str | None = None
-) -> bool:
-    """Whether the template at ``template_path`` opens with a ``{#def#}`` header.
+def template_has_props_header(source: str) -> bool:
+    """Whether the template ``source`` carries a ``{#def#}`` header.
 
-    ``inline_class`` names the class whose inline template that ``.py`` file
-    holds. Answers False for anything it cannot read or parse. This runs at class
-    registration, where the template path is a candidate that nothing has
-    proven exists yet, and a diagnostic must never be the thing that breaks an
-    import — the caller that actually loads the template still raises its own
-    error if the file is missing.
+    Answers False for anything it cannot parse. This runs at class
+    registration, and a diagnostic must never be the thing that breaks an
+    import.
     """
     try:
-        source = read_document(template_path, inline_class)
-    except (OSError, ValueError):
-        # A ValueError is an inline template that cannot be extracted; the
-        # inline block scan right after this reports it.
-        return False
-    try:
         return parse_props_header(source) is not None
-    except ValueError:
+    except (ValueError, TemplateSyntaxError):
         # A malformed header is still a header, but header-parse correctness
         # belongs to the classless path; staying silent here keeps a broken
         # header from producing two unrelated complaints.

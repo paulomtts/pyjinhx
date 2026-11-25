@@ -202,6 +202,31 @@ def test_assets_refuses_an_asset_a_subclass_with_its_own_template_inherits(
     assert "FancyCard" in out
 
 
+def test_assets_refuses_when_an_inheriting_subclass_has_its_own_sibling_file(
+    tmp_path, capsys
+):
+    """Its own .css shadows the parent's file but would not shadow a block."""
+    make_card(tmp_path)
+    write(
+        tmp_path / "fancy_card.py",
+        """
+        from card import Card
+
+
+        class FancyCard(Card):
+            pass
+        """,
+    )
+    write(tmp_path / "fancy_card.css", ".fancy {}\n")
+    css = write(tmp_path / "card.css", CARD_CSS)
+
+    code, out = run("assets", tmp_path, "--write", capsys=capsys)
+
+    assert code == 1
+    assert css.exists()
+    assert "FancyCard" in out and "fancy_card.css" in out
+
+
 def test_assets_still_processes_the_rest_after_a_refusal(tmp_path, capsys):
     make_card(tmp_path)
     write(tmp_path / "card.css", "a { content: '#}'; }\n")
@@ -327,6 +352,17 @@ def test_template_refuses_a_class_that_already_has_a_template(tmp_path, capsys):
     assert code == 1
     assert "already assigns" in out
     assert (tmp_path / "card.pjx").exists()
+
+
+def test_template_sees_a_template_assigned_alongside_another_name(tmp_path, capsys):
+    """Found the way pyjinhx finds it, so the fold never adds a second one."""
+    module = make_card(tmp_path)
+    module.write_text(module.read_text() + '\n    template = alias = "<i></i>"\n')
+
+    code, out = run("template", tmp_path, "--write", capsys=capsys)
+
+    assert code == 1
+    assert "already assigns" in out
 
 
 def test_template_is_idempotent_and_leaves_subclasses_rendering(
@@ -659,6 +695,23 @@ def test_declass_refuses_a_class_that_needs_python(tmp_path, capsys, body, reaso
     assert reason in out
     assert module.exists()
     assert (tmp_path / "card.pjx").read_text() == "<i></i>\n"
+
+
+def test_declass_refuses_a_called_default(tmp_path, capsys):
+    """A class body calls it once; a header would call it per instance."""
+    module = write(
+        tmp_path / "card.py",
+        "import datetime\n\nfrom pyjinhx import BaseComponent\n\n\n"
+        "class Card(BaseComponent):\n"
+        "    at: datetime.datetime = datetime.datetime.now()\n",
+    )
+    write(tmp_path / "card.pjx", "<i></i>\n")
+
+    code, out = run("declass", tmp_path, "--write", capsys=capsys)
+
+    assert code == 1
+    assert "datetime.datetime.now()" in out and "once" in out
+    assert module.exists()
 
 
 def test_declass_refuses_a_class_with_keywords_a_decorator_or_another_base(

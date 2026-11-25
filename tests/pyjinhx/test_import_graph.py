@@ -450,7 +450,7 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
     "client.inject": frozenset(
         {"pyjinhx.assets", "pyjinhx.client", "pyjinhx.config", "pyjinhx.session"}
     ),
-    # descriptor/props_header/template_blocks are ordinary upward reads. render and session are
+    # descriptor/props_header/sfc/template_blocks are ordinary upward reads. render and session are
     # the reverse edges behind BaseComponent.render(): both are imported inside
     # the method body, never at module scope, because rendering.py imports
     # BaseComponent at import time and a module-level edge back would be a real
@@ -462,6 +462,7 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
             "pyjinhx.props_header",
             "pyjinhx.rendering",
             "pyjinhx.session",
+            "pyjinhx.sfc",
             "pyjinhx.template_blocks",
         }
     ),
@@ -533,11 +534,7 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
     # Generating a class from a {#def #} header needs the open-model base to
     # subclass; parsing also reaches in now, to resolve the Slot/Children
     # marker aliases, and the header is located with template_blocks.find_block.
-    # Both read a document through sfc, the one reader that knows a class's
-    # inline template lives inside a .py module.
-    "props_header": frozenset(
-        {"pyjinhx._component", "pyjinhx.sfc", "pyjinhx.template_blocks"}
-    ),
+    "props_header": frozenset({"pyjinhx._component", "pyjinhx.template_blocks"}),
     # Inline {#css#}/{#js#} block scanning reads template text only, so it
     # stays below the spine; sfc is stdlib-only, so the edge stays low too.
     "template_blocks": frozenset({"pyjinhx.sfc"}),

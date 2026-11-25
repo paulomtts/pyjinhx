@@ -50,6 +50,21 @@ def test_a_prose_comment_that_starts_with_the_word_is_not_a_block():
     assert find_block("{# css tweaks for safari #}<div></div>", "css", "x") is None
 
 
+def test_a_one_line_comment_after_the_keyword_is_prose_not_a_block():
+    """A block's body starts on the line after its keyword."""
+    source = "{#js hack: remove later #}\n<div></div>\n{#js and this too #}\n"
+
+    assert find_block(source, "js", "x") is None
+    assert find_block("{#css .a {} #}<div></div>", "css", "x") is None
+
+
+def test_a_block_may_have_trailing_spaces_after_its_keyword():
+    block = find_block("{#css  \n.a {}\n#}", "css", "x")
+
+    assert block is not None
+    assert block.body == ".a {}"
+
+
 def test_a_longer_keyword_is_not_mistaken_for_a_shorter_one():
     assert find_block("{#cssx a #}<div></div>", "css", "x") is None
     assert find_block("{#json {} #}<div></div>", "js", "x") is None
@@ -70,18 +85,18 @@ def test_jinja_syntax_inside_the_body_is_kept_verbatim():
 
 
 def test_a_second_block_of_the_same_kind_raises_at_its_line():
-    source = "{#css .a {} #}\n<div></div>\n{#css .b {} #}\n"
+    source = "{#css\n.a {}\n#}\n<div></div>\n{#css\n.b {}\n#}\n"
 
     with pytest.raises(TemplateSyntaxError) as raised:
         find_block(source, "css", "/app/card.pjx")
 
-    assert raised.value.lineno == 3
+    assert raised.value.lineno == 5
     assert raised.value.filename == "/app/card.pjx"
     assert "line 1" in raised.value.message  # type: ignore[operator]
 
 
 def test_blocks_are_plain_jinja_comments_and_never_render():
-    source = "{#def title: str #}\n{#css .a { color: red; } #}\n<p>{{ title }}</p>\n{#js run(); #}"
+    source = "{#def title: str #}\n{#css\n.a { color: red; }\n#}\n<p>{{ title }}</p>\n{#js\nrun();\n#}"
 
     rendered = Environment().from_string(source).render(title="hi")
 
@@ -94,7 +109,7 @@ def _write(path: Path, source: str) -> Path:
 
 
 def test_an_inline_asset_reads_as_its_block_body(tmp_path):
-    template = _write(tmp_path / "card.pjx", "{#css .card {} #}<div></div>")
+    template = _write(tmp_path / "card.pjx", "{#css\n.card {}\n#}<div></div>")
 
     asset = InlineAsset(template, "css")
 
@@ -111,15 +126,15 @@ def test_an_inline_asset_is_named_after_its_template_and_kind(tmp_path):
 
 
 def test_an_inline_asset_rereads_its_template_so_edits_show_up(tmp_path):
-    template = _write(tmp_path / "card.pjx", "{#css .old {} #}<div></div>")
+    template = _write(tmp_path / "card.pjx", "{#css\n.old {}\n#}<div></div>")
     asset = InlineAsset(template, "css")
-    _write(template, "{#css .new {} #}<div></div>")
+    _write(template, "{#css\n.new {}\n#}<div></div>")
 
     assert asset.read_text() == ".new {}"
 
 
 def test_an_inline_asset_whose_block_was_removed_reads_empty(tmp_path):
-    template = _write(tmp_path / "card.pjx", "{#css .old {} #}<div></div>")
+    template = _write(tmp_path / "card.pjx", "{#css\n.old {}\n#}<div></div>")
     asset = InlineAsset(template, "css")
     _write(template, "<div></div>")
 
@@ -146,7 +161,7 @@ def test_derived_paths_are_plain_paths(tmp_path):
 
 def test_an_inline_asset_survives_pickling(tmp_path):
     """The tier-2 disk cache pickles rendered levels, descriptor and all."""
-    template = _write(tmp_path / "card.pjx", "{#css .card {} #}<div></div>")
+    template = _write(tmp_path / "card.pjx", "{#css\n.card {}\n#}<div></div>")
 
     restored = pickle.loads(pickle.dumps(InlineAsset(template, "css")))
 
@@ -205,12 +220,12 @@ def test_a_sibling_file_and_a_block_are_both_listed_sibling_first(
 
 
 def test_a_duplicate_block_fails_registration_at_its_line(tmp_path, reset_registry):
-    _write(tmp_path / "card.pjx", "<div></div>\n{#js a(); #}\n{#js b(); #}\n")
+    _write(tmp_path / "card.pjx", "<div></div>\n{#js\na();\n#}\n{#js\nb();\n#}\n")
 
     with pytest.raises(TemplateSyntaxError) as raised:
         component("Card", template_dir=tmp_path)
 
-    assert raised.value.lineno == 3
+    assert raised.value.lineno == 5
     assert raised.value.filename == str(tmp_path / "card.pjx")
 
 
@@ -319,7 +334,7 @@ def test_a_stray_comment_close_in_a_js_body_raises_at_its_line(tmp_path):
     path = _write(tmp_path / "card.pjx", '<div></div>\n{#js\nlet s = "#}";\n#}\n')
 
     with pytest.raises(TemplateSyntaxError) as raised:
-        inline_assets(path)
+        inline_assets(path, path.read_text())
 
     assert raised.value.lineno == 4
     assert raised.value.filename == str(path)
@@ -331,7 +346,7 @@ def test_a_stray_comment_close_in_a_js_body_raises_at_its_line(tmp_path):
 def test_a_literal_comment_close_in_a_document_without_blocks_is_left_alone(tmp_path):
     path = _write(tmp_path / "card.pjx", "<div>#} not a comment</div>\n")
 
-    assert inline_assets(path) == (None, None)
+    assert inline_assets(path, path.read_text()) == (None, None)
 
 
 # --- a block on its own line leaves no blank line ---------------------------
@@ -350,10 +365,10 @@ def _render_file(path: Path, **context: object) -> str:
     [
         ("{#def title: str #}\n<p>{{ title }}</p>\n", "<p>hi</p>"),
         ("<p>{{ title }}</p>\n{#css\n.p {}\n#}\n", "<p>hi</p>"),
-        ("<p>{{ title }}</p>\n{#css .p {} #}", "<p>hi</p>"),
-        ("<p>a</p>\n  {#js run(); #}  \n<p>{{ title }}</p>", "<p>a</p>\n<p>hi</p>"),
+        ("<p>{{ title }}</p>\n{#css\n.p {}\n#}", "<p>hi</p>"),
+        ("<p>a</p>\n  {#js\nrun();\n#}  \n<p>{{ title }}</p>", "<p>a</p>\n<p>hi</p>"),
         (
-            "{#def title: str #}\n{#css .p {} #}\n<p>{{ title }}</p>\n{#js run(); #}\n",
+            "{#def title: str #}\n{#css\n.p {}\n#}\n<p>{{ title }}</p>\n{#js\nrun();\n#}\n",
             "<p>hi</p>",
         ),
     ],
@@ -370,8 +385,8 @@ def test_a_block_on_its_own_line_takes_the_line_with_it(tmp_path, source, render
 @pytest.mark.parametrize(
     "source",
     [
-        "<p>{{ title }}</p>{#css .p {} #}\n<i></i>",
-        "<p>{{ title }}</p>\n{#css .p {} #}<i></i>",
+        "<p>{{ title }}</p>{#css\n.p {}\n#}\n<i></i>",
+        "<p>{{ title }}</p>\n{#css\n.p {}\n#}<i></i>",
     ],
     ids=["after-markup", "before-markup"],
 )
@@ -390,7 +405,7 @@ def test_a_prose_comment_on_its_own_line_keeps_its_line(tmp_path):
 def test_hidden_block_lines_keep_every_line_number(tmp_path):
     path = _write(
         tmp_path / "note.pjx",
-        "{#def title: str #}\n{#css\n.p {}\n#}\n<p>\n{% if %}\n</p>\n{#js run(); #}\n",
+        "{#def title: str #}\n{#css\n.p {}\n#}\n<p>\n{% if %}\n</p>\n{#js\nrun();\n#}\n",
     )
 
     with pytest.raises(TemplateSyntaxError) as raised:

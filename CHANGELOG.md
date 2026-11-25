@@ -10,7 +10,8 @@
   [ADR 0009](docs/decisions/0009-a-component-is-a-pjx-document.md).
 - Inline styles and scripts. A template may carry `{#css ... #}` and
   `{#js ... #}` blocks, so a component needs no sibling `.css`/`.js` file. The
-  blocks are Jinja comments, so they never render, and their bodies ship through
+  keyword ends its line and the body starts on the next, so a one-line comment
+  such as `{#js hack #}` stays prose. The blocks are Jinja comments, so they never render, and their bodies ship through
   the same asset pipeline as sibling files, sibling first. Two blocks of one
   kind raise `TemplateSyntaxError`; `AssetMode.LINK` refuses a block. See
   [Inline styles and scripts](docs/guide/components.md#inline-styles-and-scripts).
@@ -23,8 +24,9 @@
   dotted names are import paths for types, constant defaults and `pkg.mod.make()`
   default factories, imported when the class is built. The header may sit
   anywhere in the document.
-- Header-only templates answer their tags without `component()`. Ambiguous
-  same-named headed templates raise `LookupError` naming the paths.
+- Header-only templates answer their tags without `component()`. Two or more
+  same-named headed templates raise `LookupError` naming the paths; headerless
+  namesakes do not count. Orphans are taken when the registry is built.
 - `scripts/fold_components.py` (`assets`, `template`, `declass`): dry-run by
   default, `--write` to apply.
 
@@ -34,6 +36,9 @@
   fall back to `Any` (unions, generics, `Literal`) now validate as written.
   `template` is reserved as a class attribute. See the
   [migration notes](docs/migration.md).
+- A `{#def#}`, `{#css#}` or `{#js#}` block alone on its line no longer leaves a
+  blank line in the output, so a headed template no longer renders a leading
+  newline. Line numbers in errors are unchanged.
 
 ## 1.16.0 — Graph ports and wire events (2026-11-21)
 

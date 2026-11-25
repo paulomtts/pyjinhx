@@ -16,8 +16,10 @@ without re-importing anything.
 """
 
 import ast
+import io
 import textwrap
 import threading
+import tokenize
 from pathlib import Path
 
 
@@ -93,7 +95,7 @@ def extract_template(
         )
     value = values[0]
     match value:
-        case ast.Constant(value=str() as text):
+        case ast.Constant(value=str() as text) if _is_one_literal(module_source, value):
             body = textwrap.dedent(text)
         case _:
             raise ValueError(
@@ -108,6 +110,17 @@ def extract_template(
     # and tracebacks then point into the .py file with no source map.
     padding = "\n" * (value.lineno - 1 + skipped_lines)
     return f"{{#{padding}#}}{content.rstrip()}"
+
+
+def _is_one_literal(module_source: str, node: ast.expr) -> bool:
+    """Whether ``node`` is written as one string, not ``"a" "b"``.
+
+    Python joins adjacent literals into one constant, which would hide the
+    line breaks between the pieces from the line-number padding.
+    """
+    segment = ast.get_source_segment(module_source, node) or ""
+    tokens = tokenize.generate_tokens(io.StringIO(segment).readline)
+    return sum(token.type == tokenize.STRING for token in tokens) == 1
 
 
 def read_document(template_path: Path, inline_class: str | None) -> str:

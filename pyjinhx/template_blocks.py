@@ -37,16 +37,26 @@ class Block(NamedTuple):
 
 
 def _is_block(comment: str, keyword: str) -> bool:
-    """Whether a comment's text opens with ``keyword`` and then whitespace or nothing."""
+    """Whether a comment's text opens a ``keyword`` block.
+
+    ``def`` takes whitespace or nothing after it. ``css`` and ``js`` must end
+    their line, so a one-line prose comment such as ``{#js hack #}``, common
+    in templates written before blocks existed, stays a comment.
+    """
     rest = comment.removeprefix(keyword)
-    return rest != comment and (not rest or rest[0].isspace())
+    if rest == comment:
+        return False
+    if keyword == "def":
+        return not rest or rest[0].isspace()
+    return rest.lstrip(" \t\r").startswith("\n")
 
 
 def find_block(source: str, keyword: str, filename: str) -> Block | None:
     """The ``{#<keyword> ... #}`` block in ``source``, or None.
 
-    The keyword must touch ``{#`` and be followed by whitespace, so a prose
-    comment such as ``{# css tweaks #}`` is never mistaken for a block. An
+    The keyword must touch ``{#``, so a prose comment such as
+    ``{# css tweaks #}`` is never mistaken for a block, and ``css``/``js``
+    must end their line (see `_is_block`). An
     empty block counts as no block. Raises ``TemplateSyntaxError`` pointing at
     the second block when ``source`` holds two of the same keyword.
     """
@@ -129,6 +139,9 @@ class InlineAsset(Path):
     on it unchanged and two classes in one module stay two assets; only
     reading it differs. The template is re-read on every read, the way a
     sibling ``.css`` file is, so an edit shows up without a restart.
+
+    Only ``read_text()`` and ``read_bytes()`` work. No file has this path, so
+    ``open()``, ``stat()``, ``exists()`` and file copies fail or answer False.
     """
 
     def __init__(
@@ -167,19 +180,14 @@ class InlineAsset(Path):
 
 
 def inline_assets(
-    template_path: Path, inline_class: str | None = None
+    template_path: Path, source: str, inline_class: str | None = None
 ) -> tuple[InlineAsset | None, InlineAsset | None]:
-    """The ``(css, js)`` inline assets the template at ``template_path`` carries.
+    """The ``(css, js)`` inline assets in ``source``, the template document at
+    ``template_path``.
 
     ``inline_class`` names the class whose inline template that ``.py`` file
-    holds, as on the class's descriptor. A missing or unreadable template
-    carries none: the template probe may hand over a path nobody has proven
-    exists, and the render reports that itself.
+    holds, as on the class's descriptor.
     """
-    try:
-        source = read_document(template_path, inline_class)
-    except OSError:
-        return None, None
     filename = str(template_path)
     css = find_block(source, "css", filename)
     js = find_block(source, "js", filename)

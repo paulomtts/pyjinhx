@@ -32,6 +32,10 @@ from pyjinhx.segments import RE_PASCAL_CASE_TAG_NAME
 _synthetic_modules: dict[Path, str] = {}
 _synthetic_modules_lock = threading.Lock()
 _build_lock = threading.Lock()
+# Tags found ambiguous, with the orphan tuple they were found in. Discovery
+# builds new tuples on every walk, so the identity check retires an entry
+# once the registry is rebuilt. Guarded by _build_lock.
+_ambiguous: dict[str, tuple[tuple[Path, ...], str]] = {}
 
 
 def _find_template(tag: str, template_dir: Path | str | None) -> Path:
@@ -113,18 +117,10 @@ def component(name: str, template_dir: Path | str | None = None) -> type[BaseCom
     registered = discovery.get_class(tag)
     if registered is not None:
         return registered  # pyright: ignore[reportReturnType]
-    # Building spans a check (get_class) and a later write (register_class);
-    # without a lock two threads racing on the same undeclared tag would both
-    # build a class and both plant a synthetic module before either registers,
-    # leaking the loser's module into sys.modules permanently. Holding this
-    # lock across the whole build makes the span atomic per process.
-    with _build_lock:
-        registered = discovery.get_class(tag)
-        if registered is not None:
-            return registered  # pyright: ignore[reportReturnType]
-        template_path = _find_template(tag, template_dir)
-        fields = _read_header(template_path)
-        return _build_and_register(name, tag, template_path, fields)
+    template_path = _find_template(tag, template_dir)
+    return _register_first(
+        tag, _build(name, tag, template_path, _read_header(template_path))
+    )
 
 
 def component_for_tag(name: str) -> type[BaseComponent] | None:
@@ -132,38 +128,50 @@ def component_for_tag(name: str) -> type[BaseComponent] | None:
 
     The renderer's fallback on a tag miss. Only an orphan template discovery
     recorded for the tag is considered, so a tag with no file — a web
-    component, a typo — costs one dict lookup and no filesystem access. That
+    component, a typo — costs one dict lookup and no filesystem access. Each
     template is read once: a ``{#def#}`` header (an empty one counts) makes it
     a component, built and registered as `component()` would; no header means
-    it is plain markup, and that answer is remembered.
+    it is plain markup, and that answer is remembered. A file deleted since
+    discovery counts as having no header.
 
-    Raises ``LookupError`` when several orphan templates share the tag and any
-    of them has a header, since nothing says which one the tag means.
+    Raises ``LookupError`` when several orphan templates share the tag and
+    more than one has a header, since nothing says which one the tag means.
     """
     tag = _pascal_to_snake(name)
     registered = discovery.get_class(tag)
     if registered is not None:
         return registered  # pyright: ignore[reportReturnType]
-    if not discovery.get_orphan_templates(tag):
+    paths = discovery.get_orphan_templates(tag)
+    if not paths:
         return None
     with _build_lock:
-        registered = discovery.get_class(tag)
-        if registered is not None:
-            return registered  # pyright: ignore[reportReturnType]
-        # Re-read under the lock: a racing thread may have just found the
-        # template headerless and forgotten it, leaving nothing to read.
-        paths = discovery.get_orphan_templates(tag)
-        headers = [_read_header(path) for path in paths]
-        if all(fields is None for fields in headers):
-            discovery.forget_orphan(tag)
-            return None
-        if len(headers) > 1:
-            raise LookupError(
-                f"<{name}> could be any of {len(paths)} templates: "
-                f"{', '.join(str(path) for path in paths)}. Rename all but one, "
-                f"or call component({name!r}) to pick the first."
-            )
-        return _build_and_register(name, tag, paths[0], headers[0])
+        remembered = _ambiguous.get(tag)
+    if remembered is not None and remembered[0] is paths:
+        raise LookupError(remembered[1])
+    headers = [(path, _orphan_header(path)) for path in paths]
+    headed = [(path, fields) for path, fields in headers if fields is not None]
+    if not headed:
+        discovery.forget_orphan(tag)
+        return None
+    if len(headed) > 1:
+        message = (
+            f"<{name}> could be any of {len(headed)} templates: "
+            f"{', '.join(str(path) for path, _ in headed)}. Rename all but one, "
+            f"or call component({name!r}) to pick the first."
+        )
+        with _build_lock:
+            _ambiguous[tag] = (paths, message)
+        raise LookupError(message)
+    path, fields = headed[0]
+    return _register_first(tag, _build(name, tag, path, fields))
+
+
+def _orphan_header(template_path: Path) -> list[tuple[str, Any, Any]] | None:
+    """`_read_header`, with a file deleted since discovery counting as headerless."""
+    try:
+        return _read_header(template_path)
+    except OSError:
+        return None
 
 
 def _read_header(template_path: Path) -> list[tuple[str, Any, Any]] | None:
@@ -175,14 +183,10 @@ def _read_header(template_path: Path) -> list[tuple[str, Any, Any]] | None:
         raise ValueError(f"{template_path}: {exc}") from exc
 
 
-def _build_and_register(
+def _build(
     name: str, tag: str, template_path: Path, fields: list[tuple[str, Any, Any]] | None
 ) -> type[BaseComponent]:
-    """Build the class for ``template_path`` and publish it under ``tag``.
-
-    Callers hold ``_build_lock``, so the check before and the write here are
-    one step.
-    """
+    """The class for ``template_path``, placed beside it but not yet registered."""
     if fields is None:
         cls = _placeholder_class(name, tag)
     else:
@@ -192,5 +196,19 @@ def _build_and_register(
     # whichever module generated it; only now does it sit beside its own
     # template.
     rebuild_class_descriptor(cls)
-    discovery.register_class(tag, cls)
     return cls
+
+
+def _register_first(tag: str, cls: type[BaseComponent]) -> type[BaseComponent]:
+    """Publish ``cls`` under ``tag`` unless a racing build got there first.
+
+    Building stays outside the lock: resolving a header's dotted names imports
+    modules, and one that calls `component()` while importing would otherwise
+    wait on this same lock forever.
+    """
+    with _build_lock:
+        registered = discovery.get_class(tag)
+        if registered is not None:
+            return registered  # pyright: ignore[reportReturnType]
+        discovery.register_class(tag, cls)
+        return cls

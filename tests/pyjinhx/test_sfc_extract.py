@@ -74,6 +74,18 @@ def test_a_computed_template_is_an_error_pointing_at_its_line():
         extract_template(source, "Tag")
 
 
+@pytest.mark.parametrize(
+    "value",
+    ['"<b>" "</b>"', '(\n        "<b>"\n        "</b>"\n    )', '"""<b>\n""" r"</b>"'],
+    ids=["one-line", "parenthesised", "mixed-quotes"],
+)
+def test_an_implicitly_concatenated_template_is_an_error(value):
+    """Its pieces are joined before the line numbers could be counted."""
+    source = f"class Tag:\n    template = {value}\n"
+    with pytest.raises(ValueError, match=r"line \d.*plain string literal"):
+        extract_template(source, "Tag")
+
+
 def test_errors_name_the_module_file():
     with pytest.raises(ValueError, match=r"^/app/badge\.py, line 2: "):
         extract_template('class Tag:\n    template = f"{1}"\n', "Tag", "/app/badge.py")

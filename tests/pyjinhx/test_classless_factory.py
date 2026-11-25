@@ -265,6 +265,32 @@ def test_concurrent_calls_for_the_same_undeclared_tag_register_one_class(tmp_pat
     assert len(synthetic) == 1
 
 
+def test_a_header_import_that_calls_component_does_not_deadlock(tmp_path, monkeypatch):
+    """Resolving a dotted name imports a module, which may build components too."""
+    (tmp_path / "parts").mkdir()
+    write_template(tmp_path / "parts", "badge", "<b></b>")
+    (tmp_path / "reentrant_probe.py").write_text(
+        "from pyjinhx.classless import component\n"
+        f"Badge = component('Badge', template_dir={str(tmp_path / 'parts')!r})\n"
+        "SIZE = 3\n"
+    )
+    monkeypatch.syspath_prepend(str(tmp_path))
+    monkeypatch.delitem(sys.modules, "reentrant_probe", raising=False)
+    write_template(tmp_path, "card", "{#def size: int = reentrant_probe.SIZE #}")
+
+    results: list[type] = []
+    thread = threading.Thread(
+        target=lambda: results.append(component("Card", template_dir=tmp_path)),
+        daemon=True,
+    )
+    thread.start()
+    thread.join(timeout=5)
+
+    assert not thread.is_alive(), "component() deadlocked on its own lock"
+    assert results[0].model_fields["size"].default == 3
+    assert discovery.get_class("badge") is not None
+
+
 def test_a_classless_class_is_not_reported_as_carrying_a_stale_header(tmp_path):
     """It was built from that header, so the header is not leftover."""
     write_template(tmp_path, "card", "{#def title: str #}<div></div>")
@@ -396,17 +422,53 @@ def test_two_headed_orphans_with_one_stem_are_refused_naming_both(tmp_path):
     assert discovery.get_class("note") is None
 
 
-def test_one_headed_orphan_beside_a_headerless_namesake_is_still_ambiguous(
-    tmp_path,
-):
-    """Picking the headed one would make the answer depend on file contents."""
-    for directory, source in (("a", "<p></p>"), ("b", "{#def #}<p></p>")):
+def test_one_headed_orphan_beside_a_headerless_namesake_answers_the_tag(tmp_path):
+    """Only a headed template can be a component, so one headed file is no choice."""
+    for directory, source in (("a", "<p></p>"), ("b", "{#def #}<p>b</p>")):
         (tmp_path / directory).mkdir()
         write_template(tmp_path / directory, "note", source)
     discovery.build_registry(tmp_path, [])
 
+    cls = component_for_tag("Note")
+
+    assert cls is not None
+    assert cls.__pjx_descriptor__.template_path == tmp_path / "b" / "note.pjx"
+
+
+def test_an_ambiguous_tag_is_not_reread_on_every_render(tmp_path, monkeypatch):
+    for directory in ("a", "b"):
+        (tmp_path / directory).mkdir()
+        write_template(tmp_path / directory, "note", "{#def title: str #}<p></p>")
+    discovery.build_registry(tmp_path, [])
+    with pytest.raises(LookupError):
+        component_for_tag("Note")
+    reads = count_reads(monkeypatch)
+
     with pytest.raises(LookupError, match="note.pjx"):
         component_for_tag("Note")
+
+    assert reads == []
+
+
+def test_an_orphan_deleted_since_discovery_has_no_header(tmp_path):
+    for directory, source in (("a", "{#def #}<p>a</p>"), ("b", "{#def #}<p>b</p>")):
+        (tmp_path / directory).mkdir()
+        write_template(tmp_path / directory, "note", source)
+    discovery.build_registry(tmp_path, [])
+    (tmp_path / "a" / "note.pjx").unlink()
+
+    cls = component_for_tag("Note")
+
+    assert cls is not None
+    assert cls.__pjx_descriptor__.template_path == tmp_path / "b" / "note.pjx"
+
+
+def test_a_lone_orphan_deleted_since_discovery_is_no_component(tmp_path):
+    path = write_template(tmp_path, "note", "{#def #}<p></p>")
+    discovery.build_registry(tmp_path, [])
+    path.unlink()
+
+    assert component_for_tag("Note") is None
 
 
 def test_headerless_orphans_sharing_a_stem_stay_plain_templates(tmp_path):
