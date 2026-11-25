@@ -5,6 +5,8 @@ with no class is a normal thing to find on disk, not an error. `component()` is
 the other half of that decision: the on-demand path that says "give me a class
 for this template anyway", building one from the template's `{#def#}` header
 when it has one and a permissive placeholder when it does not.
+`component_for_tag()` is the renderer's half: on a tag miss it builds a class
+only for an orphan template that carries a header.
 
 Sits above _component.py, discovery.py and props_header.py and only calls into
 them: parsing stays in props_header, the tag -> class mapping stays discovery's
