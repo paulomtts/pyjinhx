@@ -58,7 +58,7 @@ class TestClassDescriptorShape:
         assert descriptor.strict is True
         assert descriptor.provenance == {"template": Child, "css": Base, "js": Base}
 
-    def test_exposes_exactly_the_nine_declared_fields(self):
+    def test_exposes_exactly_the_ten_declared_fields(self):
         names = [field.name for field in dataclasses.fields(ClassDescriptor)]
         assert names == [
             "template_path",
@@ -70,20 +70,24 @@ class TestClassDescriptorShape:
             "provenance",
             "has_stale_def_header",
             "json_coercible_fields",
+            "inline_class",
         ]
 
-    def test_no_field_has_a_default_except_the_stale_header_flag(self):
+    def test_no_field_has_a_default_except_the_trailing_optional_ones(self):
         # Construction is always a resolver's job (#272-#276); a bare
-        # ClassDescriptor() must never be a legal call. has_stale_def_header and
-        # json_coercible_fields are the deliberate exceptions: defaulted,
-        # keyword-friendly fields appended last so every existing call site
-        # keeps constructing without edits.
+        # ClassDescriptor() must never be a legal call. has_stale_def_header,
+        # json_coercible_fields and inline_class are the deliberate exceptions:
+        # defaulted, keyword-friendly fields appended last so every existing
+        # call site keeps constructing without edits.
         for field in dataclasses.fields(ClassDescriptor):
             if field.name == "has_stale_def_header":
                 assert field.default is False
                 continue
             if field.name == "json_coercible_fields":
                 assert field.default == frozenset()
+                continue
+            if field.name == "inline_class":
+                assert field.default is None
                 continue
             assert field.default is dataclasses.MISSING
             assert field.default_factory is dataclasses.MISSING
