@@ -26,8 +26,10 @@ from pyjinhx._component import (
     _pascal_to_snake,
     rebuild_class_descriptor,
 )
+from pyjinhx.importer import import_document, loaded_document
 from pyjinhx.props_header import build_component_class, parse_props_header
 from pyjinhx.segments import RE_PASCAL_CASE_TAG_NAME
+from pyjinhx.sfc import python_block
 
 _synthetic_modules: dict[Path, str] = {}
 _synthetic_modules_lock = threading.Lock()
@@ -118,9 +120,12 @@ def component(name: str, template_dir: Path | str | None = None) -> type[BaseCom
     if registered is not None:
         return registered  # pyright: ignore[reportReturnType]
     template_path = _find_template(tag, template_dir)
-    return _register_first(
-        tag, _build(name, tag, template_path, _read_header(template_path))
-    )
+    source = template_path.read_text(encoding="utf-8-sig")
+    documented = register_document(template_path, source)
+    if documented is not None:
+        return documented
+    fields = _parse_header(template_path, source)
+    return _register_first(tag, _build(name, tag, template_path, fields))
 
 
 def component_for_tag(name: str) -> type[BaseComponent] | None:
@@ -148,7 +153,14 @@ def component_for_tag(name: str) -> type[BaseComponent] | None:
         remembered = _ambiguous.get(tag)
     if remembered is not None and remembered[0] is paths:
         raise LookupError(remembered[1])
-    headers = [(path, _orphan_header(path)) for path in paths]
+    headers = []
+    for path in paths:
+        source = _orphan_source(path)
+        documented = register_document(path, source) if source is not None else None
+        if documented is not None:
+            return documented
+        fields = None if source is None else _parse_header(path, source)
+        headers.append((path, fields))
     headed = [(path, fields) for path, fields in headers if fields is not None]
     if not headed:
         discovery.forget_orphan(tag)
@@ -166,17 +178,47 @@ def component_for_tag(name: str) -> type[BaseComponent] | None:
     return _register_first(tag, _build(name, tag, path, fields))
 
 
-def _orphan_header(template_path: Path) -> list[tuple[str, Any, Any]] | None:
-    """`_read_header`, with a file deleted since discovery counting as headerless."""
+def register_document(
+    path: Path, source: str | None = None
+) -> type[BaseComponent] | None:
+    """The class of the ``.pjx`` document at ``path``, imported and registered.
+
+    ``None`` when the file holds no ``{#python`` block. ``source`` is the file's
+    text when the caller has read it already. A document the app
+    already imported is not imported again, and a tag that already has an owner
+    keeps it. The import runs outside the registry lock, like a header's.
+
+    Raises:
+        BlockSyntaxError: The file opens a block it does not close properly.
+        ImportError: The document cannot be imported, or is shadowed.
+    """
+    loaded = loaded_document(path)
+    if loaded is None:
+        text = path.read_text(encoding="utf-8-sig") if source is None else source
+        if "{#python" not in text or python_block(text, str(path)) is None:
+            return None
+        import_document(path)
+        loaded = loaded_document(path)
+        if loaded is None:
+            return None
+    tag = _pascal_to_snake(loaded[1].__name__)
+    registered = _register_first(tag, loaded[1])  # pyright: ignore[reportArgumentType]
+    discovery.forget_orphan(tag)
+    return registered
+
+
+def _orphan_source(template_path: Path) -> str | None:
+    """The text of ``template_path``, or ``None`` for a file deleted since discovery."""
     try:
-        return _read_header(template_path)
+        return template_path.read_text(encoding="utf-8-sig")
     except OSError:
         return None
 
 
-def _read_header(template_path: Path) -> list[tuple[str, Any, Any]] | None:
-    """The parsed ``{#def#}`` header of ``template_path``, or ``None`` without one."""
-    source = template_path.read_text(encoding="utf-8-sig")
+def _parse_header(
+    template_path: Path, source: str
+) -> list[tuple[str, Any, Any]] | None:
+    """The parsed ``{#def#}`` header of ``source``, or ``None`` without one."""
     try:
         return parse_props_header(source, str(template_path))
     except ValueError as exc:

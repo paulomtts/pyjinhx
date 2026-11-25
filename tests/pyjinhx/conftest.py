@@ -1,5 +1,6 @@
 import importlib
 import sys
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
@@ -8,6 +9,8 @@ from pyjinhx import discovery
 from pyjinhx.reactive.load_cost import reset_load_cost_decisions
 from pyjinhx.render_cache import reset_render_cost_decisions
 from pyjinhx.session import RenderSession
+
+Write = Callable[[str, str], Path]
 
 
 @pytest.fixture

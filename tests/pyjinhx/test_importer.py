@@ -8,15 +8,13 @@ import os
 import subprocess
 import sys
 import traceback
-from collections.abc import Callable
 from pathlib import Path
 
 import pytest
 
 import pyjinhx
 from pyjinhx import importer
-
-Write = Callable[[str, str], Path]
+from tests.pyjinhx.conftest import Write
 
 # The class a block needs for the file to be a document at all.
 CLASS = """

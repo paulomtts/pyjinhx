@@ -433,8 +433,10 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
             "pyjinhx",
             "pyjinhx._component",
             "pyjinhx.discovery",
+            "pyjinhx.importer",
             "pyjinhx.props_header",
             "pyjinhx.segments",
+            "pyjinhx.sfc",
         }
     ),
     # The client tier is the bottom of the stack: it ships pjx.js and reads it
@@ -482,6 +484,7 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
             "pyjinhx",
             "pyjinhx._component",
             "pyjinhx.builtins",
+            "pyjinhx.classless",
             "pyjinhx.discovery",
             "pyjinhx.dev",
             "pyjinhx.integrations.base",
