@@ -372,3 +372,9 @@ def test_concurrent_imports_share_one_module(write: Write):
             pool.map(lambda _: importlib.import_module("pkg.card"), range(8))
         )
     assert {id(module) for module in modules} == {id(modules[0])}
+
+
+def test_a_byte_order_mark_does_not_hide_the_block(write: Write):
+    path = write("pkg/card.pjx", CARD)
+    path.write_bytes(b"\xef\xbb\xbf" + path.read_bytes())
+    assert importlib.import_module("pkg.card").Card.__module__ == "pkg.card"
