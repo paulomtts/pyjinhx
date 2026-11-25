@@ -24,8 +24,9 @@
   dotted names are import paths for types, constant defaults and `pkg.mod.make()`
   default factories, imported when the class is built. The header may sit
   anywhere in the document.
-- Header-only templates answer their tags without `component()`. Ambiguous
-  same-named headed templates raise `LookupError` naming the paths.
+- Header-only templates answer their tags without `component()`. Two or more
+  same-named headed templates raise `LookupError` naming the paths; headerless
+  namesakes do not count. Orphans are taken when the registry is built.
 - `scripts/fold_components.py` (`assets`, `template`, `declass`): dry-run by
   default, `--write` to apply.
 

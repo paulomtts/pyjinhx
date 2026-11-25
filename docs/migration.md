@@ -20,8 +20,9 @@ Five behaviours change for templates you already have:
 - **A headed orphan template now renders as a component.** A `.pjx` with a `{#def#}`
   header and no class used to pass `<Tag/>` through as literal markup unless you
   called `component("Tag")` first. It now builds on first use. Templates without a
-  header are unchanged. If two same-named headed templates exist in different
-  directories the tag raises `LookupError` naming both paths; rename one.
+  header are unchanged. If two or more same-named headed templates exist in
+  different directories the tag raises `LookupError` naming them; rename all but
+  one. A headerless namesake does not count.
 - **Header types are no longer all `Any`.** `str | int`, `Literal[...]`, `list[str]`
   and `dict[str, int]` now validate and coerce as written. A prop declared `str | int`
   used to accept anything. `Slot` is also now a valid header type.

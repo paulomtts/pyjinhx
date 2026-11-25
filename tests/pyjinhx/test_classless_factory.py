@@ -422,17 +422,53 @@ def test_two_headed_orphans_with_one_stem_are_refused_naming_both(tmp_path):
     assert discovery.get_class("note") is None
 
 
-def test_one_headed_orphan_beside_a_headerless_namesake_is_still_ambiguous(
-    tmp_path,
-):
-    """Picking the headed one would make the answer depend on file contents."""
-    for directory, source in (("a", "<p></p>"), ("b", "{#def #}<p></p>")):
+def test_one_headed_orphan_beside_a_headerless_namesake_answers_the_tag(tmp_path):
+    """Only a headed template can be a component, so one headed file is no choice."""
+    for directory, source in (("a", "<p></p>"), ("b", "{#def #}<p>b</p>")):
         (tmp_path / directory).mkdir()
         write_template(tmp_path / directory, "note", source)
     discovery.build_registry(tmp_path, [])
 
+    cls = component_for_tag("Note")
+
+    assert cls is not None
+    assert cls.__pjx_descriptor__.template_path == tmp_path / "b" / "note.pjx"
+
+
+def test_an_ambiguous_tag_is_not_reread_on_every_render(tmp_path, monkeypatch):
+    for directory in ("a", "b"):
+        (tmp_path / directory).mkdir()
+        write_template(tmp_path / directory, "note", "{#def title: str #}<p></p>")
+    discovery.build_registry(tmp_path, [])
+    with pytest.raises(LookupError):
+        component_for_tag("Note")
+    reads = count_reads(monkeypatch)
+
     with pytest.raises(LookupError, match="note.pjx"):
         component_for_tag("Note")
+
+    assert reads == []
+
+
+def test_an_orphan_deleted_since_discovery_has_no_header(tmp_path):
+    for directory, source in (("a", "{#def #}<p>a</p>"), ("b", "{#def #}<p>b</p>")):
+        (tmp_path / directory).mkdir()
+        write_template(tmp_path / directory, "note", source)
+    discovery.build_registry(tmp_path, [])
+    (tmp_path / "a" / "note.pjx").unlink()
+
+    cls = component_for_tag("Note")
+
+    assert cls is not None
+    assert cls.__pjx_descriptor__.template_path == tmp_path / "b" / "note.pjx"
+
+
+def test_a_lone_orphan_deleted_since_discovery_is_no_component(tmp_path):
+    path = write_template(tmp_path, "note", "{#def #}<p></p>")
+    discovery.build_registry(tmp_path, [])
+    path.unlink()
+
+    assert component_for_tag("Note") is None
 
 
 def test_headerless_orphans_sharing_a_stem_stay_plain_templates(tmp_path):

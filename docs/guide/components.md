@@ -382,10 +382,17 @@ A template whose header is present answers its own `<Tag/>`. Discovery notes the
 that file, and if it carries a `{#def#}` header (an empty `{#def #}` counts) it
 builds the component and registers it. A file with no header stays plain markup.
 
-If two such files share a tag (same stem in different directories) and one has a
-header, the tag is ambiguous and raises `LookupError` naming the paths. Rename
-all but one, or call `component("Name")` to pick the first. A class you declare
-always wins over a template.
+If several files share a tag (same stem in different directories), only the headed
+ones count: exactly one headed file answers the tag, and two or more make it
+ambiguous, raising `LookupError` naming them. Rename all but one, or call
+`component("Name")` to pick the first. A class you declare always wins over a
+template.
+
+The set of orphan templates is taken when the registry is built, and each is read
+once, on its tag's first miss. Adding a header to a template that has already been
+found headerless, or adding a new `.pjx`, takes effect after a restart or another
+`setup()`. Editing the markup of a template that is already a component is picked
+up as usual.
 
 `component()` still works, and still reads the header when the class is built, so it
 needs the template to be resolvable at call time: pass `template_dir`, or run

@@ -32,6 +32,10 @@ from pyjinhx.segments import RE_PASCAL_CASE_TAG_NAME
 _synthetic_modules: dict[Path, str] = {}
 _synthetic_modules_lock = threading.Lock()
 _build_lock = threading.Lock()
+# Tags found ambiguous, with the orphan tuple they were found in. Discovery
+# builds new tuples on every walk, so the identity check retires an entry
+# once the registry is rebuilt. Guarded by _build_lock.
+_ambiguous: dict[str, tuple[tuple[Path, ...], str]] = {}
 
 
 def _find_template(tag: str, template_dir: Path | str | None) -> Path:
@@ -124,32 +128,50 @@ def component_for_tag(name: str) -> type[BaseComponent] | None:
 
     The renderer's fallback on a tag miss. Only an orphan template discovery
     recorded for the tag is considered, so a tag with no file — a web
-    component, a typo — costs one dict lookup and no filesystem access. That
+    component, a typo — costs one dict lookup and no filesystem access. Each
     template is read once: a ``{#def#}`` header (an empty one counts) makes it
     a component, built and registered as `component()` would; no header means
-    it is plain markup, and that answer is remembered.
+    it is plain markup, and that answer is remembered. A file deleted since
+    discovery counts as having no header.
 
-    Raises ``LookupError`` when several orphan templates share the tag and any
-    of them has a header, since nothing says which one the tag means.
+    Raises ``LookupError`` when several orphan templates share the tag and
+    more than one has a header, since nothing says which one the tag means.
     """
     tag = _pascal_to_snake(name)
     registered = discovery.get_class(tag)
     if registered is not None:
         return registered  # pyright: ignore[reportReturnType]
-    if not discovery.get_orphan_templates(tag):
-        return None
     paths = discovery.get_orphan_templates(tag)
-    headers = [_read_header(path) for path in paths]
-    if all(fields is None for fields in headers):
+    if not paths:
+        return None
+    with _build_lock:
+        remembered = _ambiguous.get(tag)
+    if remembered is not None and remembered[0] is paths:
+        raise LookupError(remembered[1])
+    headers = [(path, _orphan_header(path)) for path in paths]
+    headed = [(path, fields) for path, fields in headers if fields is not None]
+    if not headed:
         discovery.forget_orphan(tag)
         return None
-    if len(headers) > 1:
-        raise LookupError(
-            f"<{name}> could be any of {len(paths)} templates: "
-            f"{', '.join(str(path) for path in paths)}. Rename all but one, "
+    if len(headed) > 1:
+        message = (
+            f"<{name}> could be any of {len(headed)} templates: "
+            f"{', '.join(str(path) for path, _ in headed)}. Rename all but one, "
             f"or call component({name!r}) to pick the first."
         )
-    return _register_first(tag, _build(name, tag, paths[0], headers[0]))
+        with _build_lock:
+            _ambiguous[tag] = (paths, message)
+        raise LookupError(message)
+    path, fields = headed[0]
+    return _register_first(tag, _build(name, tag, path, fields))
+
+
+def _orphan_header(template_path: Path) -> list[tuple[str, Any, Any]] | None:
+    """`_read_header`, with a file deleted since discovery counting as headerless."""
+    try:
+        return _read_header(template_path)
+    except OSError:
+        return None
 
 
 def _read_header(template_path: Path) -> list[tuple[str, Any, Any]] | None:
