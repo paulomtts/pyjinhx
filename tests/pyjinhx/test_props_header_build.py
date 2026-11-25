@@ -292,3 +292,16 @@ def test_dotted_names_import_when_the_class_is_built_not_when_parsed():
     assert fields is not None
     build_component_class(fields, "Card")
     assert module in sys.modules
+
+
+def test_dotted_default_is_the_named_constant():
+    cls = _build("{#def size: int = tests.pyjinhx.header_names.PAGE_SIZE #}")
+    assert cls.model_fields["size"].default == header_names.PAGE_SIZE
+
+
+def test_dotted_default_may_be_an_enum_member():
+    cls = _build(
+        "{#def tone: tests.pyjinhx.header_names.Tone"
+        " = tests.pyjinhx.header_names.Tone.INFO #}"
+    )
+    assert cls().tone is header_names.Tone.INFO  # pyright: ignore[reportAttributeAccessIssue]

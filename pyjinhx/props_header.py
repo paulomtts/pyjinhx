@@ -59,6 +59,14 @@ def _dotted_name(node: ast.expr) -> str | None:
     return ".".join([node.id, *reversed(parts)])
 
 
+@dataclass(frozen=True)
+class _DottedDefault:
+    """A default that names an import path, read once when the class is built."""
+
+    path: str
+    field_name: str
+
+
 def _names_an_import_path(node: ast.expr) -> bool:
     return any(isinstance(child, ast.Attribute) for child in ast.walk(node))
 
@@ -131,6 +139,19 @@ def _resolve_literal(node: ast.expr, field_name: str) -> Any:
     return Literal[values]
 
 
+def _parse_default(node: ast.expr, field_name: str) -> Any:
+    try:
+        return ast.literal_eval(node)
+    except (ValueError, SyntaxError) as exc:
+        path = _dotted_name(node)
+        if path is None:
+            raise ValueError(
+                f"{{#def#}} header default for {field_name!r} must be a literal: "
+                f"{ast.unparse(node)!r}"
+            ) from exc
+    return _DottedDefault(path, field_name)
+
+
 def parse_props_header(source: str) -> list[tuple[str, Any, Any]] | None:
     """Parse a ``{#def ... #}`` header; return ``[(name, type, default), ...]`` or None.
 
@@ -185,14 +206,7 @@ def parse_props_header(source: str) -> list[tuple[str, Any, Any]] | None:
         else:
             annotation = _resolve_annotation(arg.annotation, name)
         if index >= offset:
-            default_node = defaults[index - offset]
-            try:
-                default = ast.literal_eval(default_node)
-            except (ValueError, SyntaxError) as exc:
-                raise ValueError(
-                    f"{{#def#}} header default for {name!r} must be a literal: "
-                    f"{ast.unparse(default_node)!r}"
-                ) from exc
+            default = _parse_default(defaults[index - offset], name)
         else:
             default = ...
         fields.append((name, annotation, default))
@@ -218,7 +232,7 @@ def build_component_class(
 
     owner = f"<{tag}>" if template_path is None else f"<{tag}> ({template_path})"
     definitions: dict[str, Any] = {
-        name: (_resolve_dotted(annotation, owner), default)
+        name: (_resolve_dotted(annotation, owner), _resolve_dotted(default, owner))
         for name, annotation, default in fields
     }
     # create_model otherwise reads __module__ off the calling frame, which would
@@ -246,6 +260,8 @@ def build_component_class(
 def _resolve_dotted(value: Any, owner: str) -> Any:
     if isinstance(value, _DottedType):
         return _resolve_annotation(value.node, value.field_name, owner)
+    if isinstance(value, _DottedDefault):
+        return _import(value.path, value.field_name, owner)
     return value
 
 
