@@ -12,7 +12,8 @@ import pytest
 from pydantic import field_validator
 
 from pyjinhx import BaseComponent, discovery
-from pyjinhx.session import AbsolutePathLoader
+from pyjinhx.render_cache import render_cache_key
+from pyjinhx.session import AbsolutePathLoader, request_scope
 
 THIS_FILE = Path(__file__)
 
@@ -256,3 +257,91 @@ def test_editing_the_template_on_disk_is_picked_up_without_reimporting(
     _touch_later(path)
 
     assert note.render() == "<p>after</p>"
+
+
+SHOP = '''\
+from pydantic import computed_field
+
+from pyjinhx import BaseComponent, ReactiveComponent
+
+STORE = {"remaining": 3}
+
+
+class Counter(ReactiveComponent, react={"todos"}):
+    remaining: int = 0
+
+    @classmethod
+    def load(cls) -> "Counter":
+        return cls(remaining=STORE["remaining"])
+
+    @computed_field
+    @property
+    def noun(self) -> str:
+        return "item" if self.remaining == 1 else "items"
+
+    template = r"""
+    <div class="counter">{{ remaining }} {{ noun }} left</div>
+    """
+
+
+class Pinned(BaseComponent):
+    auto_id = False
+
+    template = '<p id="{{ id }}">pinned</p>'
+
+
+class Card(BaseComponent):
+    template = "<div>inline</div>"
+
+
+class FancyCard(Card):
+    pass
+
+
+class Email(BaseComponent):
+    template: str = "welcome"
+'''
+
+
+@pytest.fixture
+def shop(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    """A module of several components, with a few sibling .pjx files."""
+    (tmp_path / "card.pjx").write_text("<div>file</div>")
+    (tmp_path / "fancy_card.pjx").write_text("<div>fancy file</div>")
+    (tmp_path / "email.pjx").write_text("<p>{{ template }}</p>")
+    path = tmp_path / "shop.py"
+    path.write_text(SHOP)
+    return _import_file(path, monkeypatch)
+
+
+def test_a_reactive_component_renders_from_its_inline_template(shop):
+    with request_scope():
+        out = shop.Counter.load().render()
+    assert '<div class="counter"' in out
+    assert "3 items left</div>" in out
+
+
+def test_a_class_level_auto_id_still_requires_an_id(shop):
+    assert shop.Pinned(id="p1").render() == '<p id="p1">pinned</p>'
+    with pytest.raises(ValueError, match="id is required"):
+        shop.Pinned()
+
+
+def test_an_inline_template_wins_over_an_adjacent_file(shop):
+    assert shop.Card().render() == "<div>inline</div>"
+
+
+def test_a_subclass_file_overrides_a_parents_inline_template(shop):
+    assert shop.FancyCard.__pjx_descriptor__.inline_class is None
+    assert shop.FancyCard().render() == "<div>fancy file</div>"
+
+
+def test_a_field_named_template_renders_from_its_file(shop):
+    assert shop.Email(template="reset").render() == "<p>reset</p>"
+
+
+def test_the_render_cache_key_follows_the_modules_mtime(shop):
+    card = shop.Card(id="c")
+    before = render_cache_key(card)
+    _touch_later(Path(shop.__file__))
+    assert render_cache_key(card) != before
