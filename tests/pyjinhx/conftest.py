@@ -1,3 +1,7 @@
+import importlib
+import sys
+from pathlib import Path
+
 import pytest
 
 from pyjinhx import discovery
@@ -61,3 +65,23 @@ def cache_everything_by_default(monkeypatch: pytest.MonkeyPatch):
     floor drops to zero unless a test sets its own.
     """
     monkeypatch.setenv("PJX_RENDER_CACHE_MIN_US", "0")
+
+
+@pytest.fixture
+def write(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    """Write files under ``tmp_path``, which is on ``sys.path``; modules the
+    test imported from there are forgotten afterwards."""
+    monkeypatch.syspath_prepend(str(tmp_path))
+    before = set(sys.modules)
+
+    def write_file(name: str, text: str) -> Path:
+        path = tmp_path / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(text, encoding="utf-8")
+        importlib.invalidate_caches()
+        return path
+
+    write_file("pkg/__init__.py", "")
+    yield write_file
+    for name in set(sys.modules) - before:
+        del sys.modules[name]
