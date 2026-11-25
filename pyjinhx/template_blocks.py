@@ -23,6 +23,8 @@ from typing import NamedTuple
 
 from jinja2 import TemplateSyntaxError
 
+from pyjinhx.sfc import read_document
+
 # Jinja's own comment rule: a comment runs from ``{#`` to the first ``#}``.
 _COMMENT_RE = re.compile(r"\{#(.*?)#\}", re.DOTALL)
 
@@ -65,16 +67,24 @@ def find_block(source: str, keyword: str, filename: str) -> Block | None:
 class InlineAsset(Path):
     """The ``{#css#}`` or ``{#js#}`` block of one template, addressed as a path.
 
-    Named ``<template>#<kind>`` (``card.pjx#css``), so the asset pipeline's
-    path-keyed dedupe, sort order and ``data-pjx-asset`` token work on it
-    unchanged; only reading it differs. The template is re-read on every read,
-    the way a sibling ``.css`` file is, so an edit shows up without a restart.
+    Named ``<template>#<kind>`` (``card.pjx#css``), or
+    ``<module>::<Class>#<kind>`` for a class's inline template, so the asset
+    pipeline's path-keyed dedupe, sort order and ``data-pjx-asset`` token work
+    on it unchanged and two classes in one module stay two assets; only
+    reading it differs. The template is re-read on every read, the way a
+    sibling ``.css`` file is, so an edit shows up without a restart.
     """
 
-    def __init__(self, template: Path, kind: str) -> None:
-        super().__init__(f"{template}#{kind}")
+    def __init__(
+        self, template: Path, kind: str, inline_class: str | None = None
+    ) -> None:
+        document = (
+            f"{template}" if inline_class is None else f"{template}::{inline_class}"
+        )
+        super().__init__(f"{document}#{kind}")
         self.template = Path(template)
         self.kind = kind
+        self.inline_class = inline_class
 
     def with_segments(self, *pathsegments: str | os.PathLike[str]) -> Path:
         # Derived paths (parent, resolve(), ...) name real filesystem
@@ -82,7 +92,7 @@ class InlineAsset(Path):
         return Path(*pathsegments)
 
     def __reduce__(self):
-        return InlineAsset, (self.template, self.kind)
+        return InlineAsset, (self.template, self.kind, self.inline_class)
 
     def read_text(
         self,
@@ -91,7 +101,7 @@ class InlineAsset(Path):
         newline: str | None = None,
     ) -> str:
         """The block body, or "" when the template no longer has the block."""
-        source = self.template.read_text(encoding="utf-8")
+        source = read_document(self.template, self.inline_class)
         block = find_block(source, self.kind, str(self.template))
         return "" if block is None else block.body
 
@@ -100,14 +110,18 @@ class InlineAsset(Path):
         return self.read_text().encode("utf-8")
 
 
-def inline_assets(template_path: Path) -> tuple[InlineAsset | None, InlineAsset | None]:
+def inline_assets(
+    template_path: Path, inline_class: str | None = None
+) -> tuple[InlineAsset | None, InlineAsset | None]:
     """The ``(css, js)`` inline assets the template at ``template_path`` carries.
 
-    A missing or unreadable template carries none: the template probe may hand
-    over a path nobody has proven exists, and the render reports that itself.
+    ``inline_class`` names the class whose inline template that ``.py`` file
+    holds, as on the class's descriptor. A missing or unreadable template
+    carries none: the template probe may hand over a path nobody has proven
+    exists, and the render reports that itself.
     """
     try:
-        source = template_path.read_text(encoding="utf-8")
+        source = read_document(template_path, inline_class)
     except OSError:
         return None, None
     filename = str(template_path)
@@ -116,8 +130,12 @@ def inline_assets(template_path: Path) -> tuple[InlineAsset | None, InlineAsset 
     if css is not None or js is not None:
         _reject_stray_comment_close(source, filename)
     return (
-        None if css is None else InlineAsset(template_path, "css"),
-        None if js is None else InlineAsset(template_path, "js"),
+        None
+        if css is None
+        else InlineAsset(template_path, "css", inline_class=inline_class),
+        None
+        if js is None
+        else InlineAsset(template_path, "js", inline_class=inline_class),
     )
 
 

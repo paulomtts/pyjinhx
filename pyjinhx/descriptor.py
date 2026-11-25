@@ -34,3 +34,6 @@ class ClassDescriptor:
     """Declared fields whose annotation makes them JSON-coercion candidates —
     see :func:`pyjinhx._component._is_json_coercible_annotation`. Resolved
     once per class at registration, mirroring ``slot_fields``."""
+    inline_class: str | None = None
+    """The class whose ``template`` string is the template, or ``None`` for a
+    ``.pjx`` file. When set, ``template_path`` is that class's ``.py`` module."""

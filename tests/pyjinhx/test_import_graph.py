@@ -533,10 +533,14 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
     # Generating a class from a {#def #} header needs the open-model base to
     # subclass; parsing also reaches in now, to resolve the Slot/Children
     # marker aliases, and the header is located with template_blocks.find_block.
-    "props_header": frozenset({"pyjinhx._component", "pyjinhx.template_blocks"}),
+    # Both read a document through sfc, the one reader that knows a class's
+    # inline template lives inside a .py module.
+    "props_header": frozenset(
+        {"pyjinhx._component", "pyjinhx.sfc", "pyjinhx.template_blocks"}
+    ),
     # Inline {#css#}/{#js#} block scanning reads template text only, so it
-    # stays below the spine with no internal edges.
-    "template_blocks": frozenset(),
+    # stays below the spine; sfc is stdlib-only, so the edge stays low too.
+    "template_blocks": frozenset({"pyjinhx.sfc"}),
     # rendering resolves each ChildRef tag against the published class registry;
     # an unregistered tag is emitted verbatim, so this is a read-only edge.
     # classless is the fallback for a tag miss: a header-only template gets its
@@ -851,6 +855,7 @@ def test_session_never_reaches_into_reactive():
         "pyjinhx.segments",
         "pyjinhx.assets",
         "pyjinhx.config",
+        "pyjinhx.sfc",
     }
 
 

@@ -220,8 +220,8 @@ def _pascal_to_snake(name: str) -> str:
     return _PASCAL_BOUNDARY_RE.sub("_", name).lower()
 
 
-def _defining_module_dir(cls: type) -> Path:
-    """Directory of the module that defined ``cls``."""
+def _defining_module_file(cls: type) -> Path:
+    """The source file of the module that defined ``cls``."""
     module = sys.modules.get(cls.__module__)
     file = getattr(module, "__file__", None)
     if file is None:
@@ -230,7 +230,22 @@ def _defining_module_dir(cls: type) -> Path:
             f"no file on disk; template and asset resolution have no directory "
             f"to probe from."
         )
-    return Path(file).parent
+    return Path(file)
+
+
+def _defining_module_dir(cls: type) -> Path:
+    """Directory of the module that defined ``cls``."""
+    return _defining_module_file(cls).parent
+
+
+def _has_inline_template(cls: type) -> bool:
+    """Whether ``cls``'s own body assigns its ``template`` string.
+
+    Only the class's own namespace counts, so a subclass is never mistaken
+    for the owner of what it inherits. A pydantic field named ``template`` is
+    not there either: pydantic moves field defaults off the class.
+    """
+    return isinstance(vars(cls).get("template"), str)
 
 
 def _template_candidate(cls: type) -> Path:
@@ -267,16 +282,24 @@ def _walk_template(cls: type) -> tuple[Path, type | None]:
     last ancestor's candidate, which is returned *without* a probe (ADR 0007's
     budget). An unprobed candidate has no proven owner, so it names none.
 
+    An ancestor that carries an inline ``template`` owns it before any file
+    is probed for that ancestor; the path is then its ``.py`` module. That
+    check reads the class namespace only, so it adds no probe.
+
     Single source of truth for the walk: `_resolve_template_path` and
     `_resolve_provenance` both read this one result, so adding provenance costs
     zero extra `is_file` calls.
     """
-    ancestors = _resolution_ancestors(cls)
-    for ancestor in ancestors[:-1]:
+    *probed, last = _resolution_ancestors(cls)
+    for ancestor in probed:
+        if _has_inline_template(ancestor):
+            return _defining_module_file(ancestor), ancestor
         candidate = _template_candidate(ancestor)
         if candidate.is_file():
             return candidate, ancestor
-    return _template_candidate(ancestors[-1]), None
+    if _has_inline_template(last):
+        return _defining_module_file(last), last
+    return _template_candidate(last), None
 
 
 def _missing_template_error(cls: type) -> LookupError:
@@ -460,6 +483,11 @@ def _resolve_class_descriptor(cls: type[BaseModel]) -> ClassDescriptor:
     would probe the same ancestors twice.
     """
     template_path, template_owner = _walk_template(cls)
+    inline_class = (
+        template_owner.__name__
+        if template_owner is not None and _has_inline_template(template_owner)
+        else None
+    )
 
     # Imported here, not at module scope: props_header imports _OpenComponent
     # from this module, so a top-level import would close the cycle.
@@ -469,14 +497,14 @@ def _resolve_class_descriptor(cls: type[BaseModel]) -> ClassDescriptor:
     # stale — only hand-written classes can be carrying a leftover one.
     has_stale_def_header = not getattr(
         cls, "_pjx_classless", False
-    ) and template_has_props_header(template_path)
+    ) and template_has_props_header(template_path, inline_class)
 
     css_path, css_owner = _walk_asset(cls, "css")
     js_path, js_owner = _walk_asset(cls, "js")
     # Blocks come from the template this class renders, not from an MRO walk:
-    # a block lives inside that one file. Each follows its sibling file, so
-    # a component carrying both ships the file's rules first.
-    inline_css, inline_js = inline_assets(template_path)
+    # a block lives inside that one document. Each follows its sibling file,
+    # so a component carrying both ships the file's rules first.
+    inline_css, inline_js = inline_assets(template_path, inline_class)
     css_paths = tuple(path for path in (css_path, inline_css) if path is not None)
     js_paths = tuple(path for path in (js_path, inline_js) if path is not None)
     provenance = {
@@ -508,6 +536,7 @@ def _resolve_class_descriptor(cls: type[BaseModel]) -> ClassDescriptor:
     ), f"{cls.__name__}: children_field {children_field!r} is not a slot field"
     return ClassDescriptor(
         template_path=template_path,
+        inline_class=inline_class,
         slot_fields=slot_fields,
         json_coercible_fields=json_coercible_fields,
         children_field=children_field,
@@ -539,6 +568,24 @@ class BaseComponent(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     auto_id: ClassVar[bool] = True
+
+    # Declared without a value: a value here would sit on the class, and a
+    # subclass declaring a *field* named ``template`` would then shadow it —
+    # pydantic warns about that and loses the field's default in subclasses.
+    template: ClassVar[str]
+    """The component's template, written in the class instead of a ``.pjx``.
+
+    One plain string literal, assigned in the class body. pyjinhx reads it
+    back from the module's source, so its line numbers in errors and
+    tracebacks are the lines of the ``.py`` file. Use a raw string
+    (``r\"\"\"…\"\"\"``) whenever the template holds a backslash: in a plain
+    string an escape such as ``\\n`` changes the markup *and* shifts every
+    reported line after it.
+
+    An edit to the string is picked up on the next render without a
+    re-import, but it is an edit to a ``.py`` file, so a dev server that
+    restarts on ``*.py`` changes restarts for it too.
+    """
 
     __pjx_descriptor__: ClassVar[ClassDescriptor]
 

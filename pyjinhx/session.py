@@ -11,6 +11,7 @@ from jinja2 import BaseLoader, Environment, TemplateNotFound
 
 from pyjinhx.assets import AssetMode
 from pyjinhx.markers import finalize_slot_node
+from pyjinhx.sfc import read_document
 
 if TYPE_CHECKING:
     # Type-only: the hook's signature names the spine's own types, but importing
@@ -87,10 +88,12 @@ class AbsolutePathLoader(BaseLoader):
         # fallback rooted at cwd would silently load whichever file happened to
         # sit beside the process, which is how the old FileSystemLoader("templates")
         # default turned every un-configured request into a TemplateNotFound (#728).
-        path = Path(template)
+        # "<path>::<Class>" names a class's inline template inside its module.
+        path_text, _, inline_class = template.partition("::")
+        path = Path(path_text)
         if not path.is_absolute() or not path.is_file():
             raise TemplateNotFound(template)
-        source = path.read_text(encoding="utf-8")
+        source = read_document(path, inline_class or None)
         mtime = path.stat().st_mtime
         name = str(path)
 

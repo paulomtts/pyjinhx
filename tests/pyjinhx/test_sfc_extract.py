@@ -5,7 +5,7 @@ import textwrap
 import jinja2
 import pytest
 
-from pyjinhx.sfc import extract_template
+from pyjinhx.sfc import extract_template, read_document
 
 BADGE = textwrap.dedent('''\
     from pyjinhx import BaseComponent
@@ -72,3 +72,58 @@ def test_a_computed_template_is_an_error_pointing_at_its_line():
     source = 'class Tag:\n    name = "b"\n    template = f"<{name}/>"\n'
     with pytest.raises(ValueError, match="line 3.*plain string literal"):
         extract_template(source, "Tag")
+
+
+def test_errors_name_the_module_file():
+    with pytest.raises(ValueError, match=r"^/app/badge\.py, line 2: "):
+        extract_template('class Tag:\n    template = f"{1}"\n', "Tag", "/app/badge.py")
+
+
+def test_a_module_that_does_not_parse_reports_its_file():
+    with pytest.raises(SyntaxError) as caught:
+        extract_template("class Tag(:\n", "Tag", "/app/badge.py")
+    assert caught.value.filename == "/app/badge.py"
+
+
+def test_two_classes_with_one_name_are_ambiguous():
+    source = textwrap.dedent("""\
+        def first():
+            class Tag:
+                template = "<i>1</i>"
+
+
+        def second():
+            class Tag:
+                template = "<i>2</i>"
+        """)
+    with pytest.raises(ValueError, match="lines 3, 8.*rename one"):
+        extract_template(source, "Tag")
+
+
+def test_an_annotated_class_variable_is_read_too():
+    source = 'class Tag:\n    template: ClassVar[str] = "<b/>"\n'
+    assert render(extract_template(source, "Tag")) == "<b/>"
+
+
+def test_the_last_assignment_wins_as_it_does_in_python():
+    source = 'class Tag:\n    template = "<i/>"\n    template = "<b/>"\n'
+    assert render(extract_template(source, "Tag")) == "<b/>"
+
+
+def test_a_pjx_document_is_its_files_text(tmp_path):
+    path = tmp_path / "badge.pjx"
+    path.write_text("<b>{{ label }}</b>")
+    assert read_document(path, None) == "<b>{{ label }}</b>"
+
+
+def test_an_inline_document_is_its_classs_extracted_template(tmp_path):
+    path = tmp_path / "badge.py"
+    path.write_text(BADGE)
+    assert read_document(path, "Badge") == extract_template(BADGE, "Badge")
+
+
+def test_an_inline_document_error_names_its_file(tmp_path):
+    path = tmp_path / "badge.py"
+    path.write_text(BADGE)
+    with pytest.raises(ValueError, match=f"^{path}: class Nope"):
+        read_document(path, "Nope")

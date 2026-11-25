@@ -17,26 +17,30 @@ without re-importing anything.
 
 import ast
 import textwrap
+from pathlib import Path
 
 
-def _template_value(tree: ast.Module, class_name: str) -> ast.expr | None:
-    """The expression assigned to ``template`` in the body of ``class_name``."""
-    for node in ast.walk(tree):
-        if not (isinstance(node, ast.ClassDef) and node.name == class_name):
-            continue
-        for statement in node.body:
-            if isinstance(statement, ast.Assign):
-                targets = statement.targets
-            elif isinstance(statement, ast.AnnAssign):
-                targets = [statement.target]
-            else:
-                continue
-            if any(isinstance(t, ast.Name) and t.id == "template" for t in targets):
-                return statement.value
-    return None
+def _template_value(node: ast.ClassDef) -> ast.expr | None:
+    """The expression a class body assigns to ``template``, or None.
+
+    The last assignment wins, as it does when Python runs the body.
+    """
+    value = None
+    for statement in node.body:
+        match statement:
+            case ast.Assign(targets=targets) if any(
+                isinstance(target, ast.Name) and target.id == "template"
+                for target in targets
+            ):
+                value = statement.value
+            case ast.AnnAssign(target=ast.Name(id="template"), value=ast.expr()):
+                value = statement.value
+    return value
 
 
-def extract_template(module_source: str, class_name: str) -> str:
+def extract_template(
+    module_source: str, class_name: str, filename: str = "<unknown>"
+) -> str:
     """The inline template of ``class_name``, as Jinja source.
 
     Common indentation and blank edges are removed, so the template may be
@@ -44,22 +48,39 @@ def extract_template(module_source: str, class_name: str) -> str:
     line number it has in ``module_source``.
 
     Raises:
-        ValueError: The class assigns no ``template``, or assigns something
-            other than one string literal.
+        SyntaxError: ``module_source`` is not valid Python.
+        ValueError: No class of that name assigns ``template``, more than one
+            does, or the value is anything but one string literal.
     """
-    value = _template_value(ast.parse(module_source), class_name)
-    if value is None:
+    tree = ast.parse(module_source, filename=filename)
+    values = [
+        value
+        for node in ast.walk(tree)
+        if isinstance(node, ast.ClassDef) and node.name == class_name
+        if (value := _template_value(node)) is not None
+    ]
+    if not values:
         raise ValueError(
-            f"class {class_name} has no inline template: its body assigns no "
-            f"`template` string."
+            f"{filename}: class {class_name} has no inline template: its body "
+            f"assigns no `template` string."
         )
-    if not (isinstance(value, ast.Constant) and isinstance(value.value, str)):
+    if len(values) > 1:
+        lines = ", ".join(str(line) for line in sorted(v.lineno for v in values))
         raise ValueError(
-            f"line {value.lineno}: {class_name}.template must be a plain string "
-            f"literal. It is read from the source text, so an f-string, a "
-            f"concatenation or a name cannot be used."
+            f"{filename}: classes named {class_name} assign `template` on lines "
+            f"{lines}. An inline template is found by its class's name, so "
+            f"rename one."
         )
-    body = textwrap.dedent(value.value)
+    value = values[0]
+    match value:
+        case ast.Constant(value=str() as text):
+            body = textwrap.dedent(text)
+        case _:
+            raise ValueError(
+                f"{filename}, line {value.lineno}: {class_name}.template must "
+                f"be a plain string literal. It is read from the source text, "
+                f"so an f-string, a concatenation or a name cannot be used."
+            )
     content = body.lstrip()
     skipped_lines = body[: len(body) - len(content)].count("\n")
     # A Jinja comment renders as nothing but its newlines are still counted,
@@ -67,3 +88,17 @@ def extract_template(module_source: str, class_name: str) -> str:
     # and tracebacks then point into the .py file with no source map.
     padding = "\n" * (value.lineno - 1 + skipped_lines)
     return f"{{#{padding}#}}{content.rstrip()}"
+
+
+def read_document(template_path: Path, inline_class: str | None) -> str:
+    """The pjx document a component renders: a ``.pjx`` file's text, or the
+    inline template of ``inline_class`` read out of the ``.py`` module at
+    ``template_path``.
+
+    The one way template source is read, so a ``.py`` module is never
+    mistaken for a document.
+    """
+    source = template_path.read_text(encoding="utf-8")
+    if inline_class is None:
+        return source
+    return extract_template(source, inline_class, str(template_path))
