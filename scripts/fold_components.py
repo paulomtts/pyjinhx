@@ -460,6 +460,11 @@ def header_default(node: ast.expr, imports: dict[str, str]) -> str:
             if isinstance(factory, ast.Name) and factory.id in ("dict", "list"):
                 return "{}" if factory.id == "dict" else "[]"
             return dotted(factory, imports, "default") + "()"
+        case ast.Call(func=ast.Name(id="Field")):
+            raise ValueError(
+                f"`{ast.unparse(node)}` sets constraints or options, which a "
+                "header cannot express"
+            )
         case ast.Call():
             raise ValueError(
                 f"default `{ast.unparse(node)}` is called once, when the class is "

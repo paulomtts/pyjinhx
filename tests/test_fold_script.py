@@ -762,6 +762,22 @@ def test_declass_refuses_a_called_default(tmp_path, capsys):
     assert module.exists()
 
 
+def test_declass_explains_that_field_constraints_are_not_expressible(tmp_path, capsys):
+    module = write(
+        tmp_path / "card.py",
+        "from pydantic import Field\nfrom pyjinhx import BaseComponent\n\n\n"
+        "class Card(BaseComponent):\n    title: str = Field(min_length=1)\n",
+    )
+    write(tmp_path / "card.pjx", "<i></i>\n")
+
+    code, out = run("declass", tmp_path, "--write", capsys=capsys)
+
+    assert code == 1
+    assert "Field(min_length=1)" in out and "constraints" in out
+    assert "once" not in out
+    assert module.exists()
+
+
 def test_declass_refuses_a_class_with_keywords_a_decorator_or_another_base(
     tmp_path, capsys
 ):
