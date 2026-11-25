@@ -4,6 +4,9 @@ Generation only: warning on stale headers (#377), the component() factory
 (#378), and discovery's filename -> tag derivation are separate surfaces.
 """
 
+import datetime
+import sys
+import uuid
 from typing import Any
 
 import pytest
@@ -11,6 +14,7 @@ import pytest
 from pyjinhx._component import BaseComponent, _OpenComponent
 from pyjinhx.descriptor import ClassDescriptor
 from pyjinhx.props_header import build_component_class, parse_props_header
+from tests.pyjinhx import header_names
 
 
 def test_generated_class_subclasses_the_open_model_base():
@@ -255,3 +259,36 @@ def test_header_without_id_still_auto_generates_ids():
 def test_id_may_only_be_a_required_str(header: str):
     with pytest.raises(ValueError, match="id.*required.*str"):
         _build(header)
+
+
+@pytest.mark.parametrize(
+    "annotation, expected",
+    [
+        ("datetime.datetime", datetime.datetime),
+        ("tests.pyjinhx.header_names.Tone", header_names.Tone),
+        ("list[uuid.UUID]", list[uuid.UUID]),
+        ("uuid.UUID | None", uuid.UUID | None),
+    ],
+)
+def test_dotted_annotation_resolves_by_import(annotation: str, expected: Any):
+    cls = _build(f"{{#def value: {annotation} #}}")
+    assert cls.model_fields["value"].annotation == expected
+
+
+def test_dotted_enum_annotation_coerces_its_value():
+    cls = _build("{#def tone: tests.pyjinhx.header_names.Tone #}")
+    instance = cls(tone="warn")  # pyright: ignore[reportCallIssue]
+    assert instance.tone is header_names.Tone.WARN  # pyright: ignore[reportAttributeAccessIssue]
+
+
+def test_dotted_names_import_when_the_class_is_built_not_when_parsed():
+    """Parsing runs at registration, for every template, while the app's own
+    modules may still be importing; an import there could find one half-built."""
+    module = "tests.pyjinhx.header_import_probe"
+    sys.modules.pop(module, None)
+    fields = parse_props_header(f"{{#def value: {module}.Probe | None #}}")
+    assert module not in sys.modules
+
+    assert fields is not None
+    build_component_class(fields, "Card")
+    assert module in sys.modules

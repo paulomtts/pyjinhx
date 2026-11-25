@@ -12,7 +12,9 @@ caller.
 
 import ast
 import logging
+import pkgutil
 import re
+from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal
 
@@ -34,9 +36,51 @@ _TYPES: dict[str, Any] = {
 }
 
 
-def _resolve_annotation(node: ast.expr | None, field_name: str) -> Any:
+@dataclass(frozen=True)
+class _DottedType:
+    """An annotation that names an import path somewhere inside it.
+
+    Kept unresolved until the class is built: parsing also runs at class
+    registration, while the app's own modules may still be importing.
+    """
+
+    node: ast.expr
+    field_name: str
+
+
+def _dotted_name(node: ast.expr) -> str | None:
+    """``node`` as ``a.b.c`` text if it is a pure chain of two or more names."""
+    parts: list[str] = []
+    while isinstance(node, ast.Attribute):
+        parts.append(node.attr)
+        node = node.value
+    if not parts or not isinstance(node, ast.Name):
+        return None
+    return ".".join([node.id, *reversed(parts)])
+
+
+def _names_an_import_path(node: ast.expr) -> bool:
+    return any(isinstance(child, ast.Attribute) for child in ast.walk(node))
+
+
+def _import(path: str, field_name: str, owner: str) -> Any:
+    try:
+        return pkgutil.resolve_name(path)
+    except (ImportError, AttributeError) as exc:
+        raise ValueError(
+            f"{owner}: {{#def#}} prop {field_name!r} names {path!r}, which does "
+            f"not import: {exc}"
+        ) from exc
+
+
+def _resolve_annotation(
+    node: ast.expr | None, field_name: str, owner: str = "{#def#} header"
+) -> Any:
     if node is None:
         return Any
+    if isinstance(node, ast.Attribute):
+        path = _dotted_name(node)
+        return Any if path is None else _import(path, field_name, owner)
     if isinstance(node, ast.Name):
         if node.id not in _TYPES:
             # The only emission point: None and the union wrappers are handled
@@ -48,8 +92,8 @@ def _resolve_annotation(node: ast.expr | None, field_name: str) -> Any:
         return type(None)
     # T | None  ->  Optional[T]
     if isinstance(node, ast.BinOp) and isinstance(node.op, ast.BitOr):
-        left = _resolve_annotation(node.left, field_name)
-        right = _resolve_annotation(node.right, field_name)
+        left = _resolve_annotation(node.left, field_name, owner)
+        right = _resolve_annotation(node.right, field_name, owner)
         if right is type(None):
             return left | None
         if left is type(None):
@@ -61,7 +105,7 @@ def _resolve_annotation(node: ast.expr | None, field_name: str) -> Any:
         and isinstance(node.value, ast.Name)
         and node.value.id == "Optional"
     ):
-        return _resolve_annotation(node.slice, field_name) | None
+        return _resolve_annotation(node.slice, field_name, owner) | None
     if isinstance(node, ast.Subscript) and isinstance(node.value, ast.Name):
         if node.value.id == "Literal":
             return _resolve_literal(node.slice, field_name)
@@ -69,7 +113,9 @@ def _resolve_annotation(node: ast.expr | None, field_name: str) -> Any:
             elements = (
                 node.slice.elts if isinstance(node.slice, ast.Tuple) else [node.slice]
             )
-            arguments = tuple(_resolve_annotation(e, field_name) for e in elements)
+            arguments = tuple(
+                _resolve_annotation(e, field_name, owner) for e in elements
+            )
             return _TYPES[node.value.id][arguments]
     return Any
 
@@ -134,7 +180,10 @@ def parse_props_header(source: str) -> list[tuple[str, Any, Any]] | None:
         if name in seen:
             raise ValueError(f"{{#def#}} header has duplicate prop {name!r}")
         seen.add(name)
-        annotation = _resolve_annotation(arg.annotation, name)
+        if arg.annotation is not None and _names_an_import_path(arg.annotation):
+            annotation = _DottedType(arg.annotation, name)
+        else:
+            annotation = _resolve_annotation(arg.annotation, name)
         if index >= offset:
             default_node = defaults[index - offset]
             try:
@@ -151,7 +200,7 @@ def parse_props_header(source: str) -> list[tuple[str, Any, Any]] | None:
 
 
 def build_component_class(
-    fields: list[tuple[str, Any, Any]], tag: str
+    fields: list[tuple[str, Any, Any]], tag: str, template_path: Path | None = None
 ) -> "type[_OpenComponent]":
     """Build an open-model component class named ``tag`` from parsed header fields.
 
@@ -167,8 +216,10 @@ def build_component_class(
     """
     from pyjinhx._component import _OpenComponent
 
+    owner = f"<{tag}>" if template_path is None else f"<{tag}> ({template_path})"
     definitions: dict[str, Any] = {
-        name: (annotation, default) for name, annotation, default in fields
+        name: (_resolve_dotted(annotation, owner), default)
+        for name, annotation, default in fields
     }
     # create_model otherwise reads __module__ off the calling frame, which would
     # make a generated class's template and asset probing depend on which module
@@ -190,6 +241,12 @@ def build_component_class(
     # downstream code reads off the type, never off an instance.
     cls._pjx_classless = True  # pyright: ignore[reportAttributeAccessIssue]
     return cls
+
+
+def _resolve_dotted(value: Any, owner: str) -> Any:
+    if isinstance(value, _DottedType):
+        return _resolve_annotation(value.node, value.field_name, owner)
+    return value
 
 
 logger = logging.getLogger("pyjinhx")
