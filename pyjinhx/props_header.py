@@ -35,6 +35,7 @@ from pydantic import Field, create_model
 
 from pyjinhx.sfc import (
     LEGACY_HEADER_RE,
+    LITERAL_ERRORS,
     dotted_default,
     dotted_name,
     header_arguments,
@@ -149,7 +150,7 @@ def _resolve_literal(node: ast.expr, field_name: str) -> Any:
     members = node.elts if isinstance(node, ast.Tuple) else [node]
     try:
         values = tuple(ast.literal_eval(member) for member in members)
-    except ValueError as exc:
+    except LITERAL_ERRORS as exc:
         raise ValueError(
             f"{{#def#}} Literal members for {field_name!r} must be literals"
         ) from exc

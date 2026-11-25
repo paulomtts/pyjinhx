@@ -790,15 +790,6 @@ def test_one_component_that_replaces_settles_a_collision(tree):
     assert found == []
 
 
-def test_a_user_component_may_collide_with_a_builtin(tree):
-    found = _collisions(tree, mine="class PjxBadge:\n    template = '<i></i>'\n")
-
-    assert {d["path"] for d in found} == {
-        _abs("app/ui/mine.py"),
-        manifest._builtins_dir().joinpath("ui/pjx_badge/pjx_badge.py").as_posix(),
-    }
-
-
 def test_the_builtins_are_listed_and_marked(tree):
     result = manifest.describe([Path("app")])
 
@@ -931,3 +922,100 @@ def test_a_range_ends_where_it_starts_or_later(tree):
     for diagnostic in manifest.describe([Path("app")])["diagnostics"]:
         start, end = diagnostic["range"]["start"], diagnostic["range"]["end"]
         assert (end["line"], end["column"]) >= (start["line"], start["column"])
+
+
+def test_an_unhashable_literal_in_a_header_or_a_field_does_not_stop_the_run(
+    tmp_path, monkeypatch
+):
+    monkeypatch.chdir(tmp_path)
+    _write(
+        tmp_path,
+        {
+            "bad_header.pjx": "{#def f: int = {[1]: 2} #}\n<p></p>\n",
+            "bad_field.py": "class BadField:\n    f: Literal[{[1]: 2}] = 1\n    template = '<p></p>'\n",
+            "fine.pjx": "<p></p>\n",
+        },
+    )
+
+    result = manifest.describe([Path(".")])
+
+    mine = {c["tag"]: c for c in result["components"] if not c["builtin"]}
+    assert set(mine) == {"BadHeader", "BadField", "Fine"}
+    assert mine["BadField"]["props"][0]["literal_values"] is None
+    assert [d["code"] for d in result["diagnostics"]] == ["def-header-invalid"]
+
+
+def test_an_unexpected_failure_in_one_file_is_a_diagnostic_for_that_file(
+    tmp_path, monkeypatch
+):
+    monkeypatch.chdir(tmp_path)
+    _write(tmp_path, {"bad.pjx": "<p></p>\n", "fine.pjx": "<p></p>\n"})
+    real = manifest._template_component
+
+    def explode(project, document):
+        if document.path.stem == "bad":
+            raise RuntimeError("boom")
+        return real(project, document)
+
+    monkeypatch.setattr(manifest, "_template_component", explode)
+
+    result = manifest.describe([Path(".")])
+
+    assert [c["tag"] for c in result["components"] if not c["builtin"]] == ["Fine"]
+    found = _one(result["diagnostics"], "internal-error")
+    assert (found["path"], found["severity"]) == (_abs("bad.pjx"), "error")
+    assert "boom" in found["message"]
+
+
+def test_a_stdin_buffer_reports_each_collision_once(tree, monkeypatch, capsys):
+    _stdin(
+        monkeypatch,
+        "class Chip:\n    template = '<i></i>'\n\n\nclass Chip:\n    template = '<b></b>'\n",
+    )
+
+    manifest.main(["--stdin", "--filename", "app/ui/other.py"])
+
+    result = json.loads(capsys.readouterr().out)
+    # Two classes in the buffer, each warned about once.
+    assert [d["code"] for d in result["diagnostics"]] == ["tag-collision"] * 2
+
+
+def test_a_collision_with_a_builtin_is_reported_on_the_user_file_only(tree):
+    found = _collisions(tree, mine="class PjxBadge:\n    template = '<i></i>'\n")
+
+    assert {d["path"] for d in found} == {_abs("app/ui/mine.py")}
+
+
+def test_strict_is_null_when_no_class_was_found_and_false_only_for_templates(tree):
+    (tree / "app/ui/nope.pjx").write_text(
+        "{#python\nclass Other:\n    pass\n#}\n<p></p>\n"
+    )
+
+    found = _components(tree)
+
+    assert found["Nope"]["strict"] is None
+    assert found["Badge"]["strict"] is False
+
+
+def test_a_zero_width_range_is_widened_to_the_end_of_its_line(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+
+    unclosed = _one(
+        _document(tmp_path, "{#def a, ( #}\n<p></p>\n"), "def-header-invalid"
+    )
+    syntax = _one(
+        _document(tmp_path, "{#python\nx = (\n#}\n<p></p>\n", "card.pjx"),
+        "python-syntax-error",
+    )
+
+    for found in (unclosed, syntax):
+        assert found["range"]["end"] != found["range"]["start"], found
+
+
+def test_a_template_is_named_by_its_stem(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "x_2.pjx").write_text("<p></p>\n")
+
+    result = manifest.describe([Path(".")])
+
+    assert next(c for c in result["components"] if c["tag"] == "X2")["name"] == "x_2"

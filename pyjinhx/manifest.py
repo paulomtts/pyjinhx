@@ -54,6 +54,7 @@ from pyjinhx.sfc import (
     BLOCK_KEYWORDS,
     HEADER_PREFIX,
     LEGACY_HEADER_RE,
+    LITERAL_ERRORS,
     BlockSyntaxError,
     HeaderSignatureError,
     comments,
@@ -242,7 +243,7 @@ def _literal_values(annotation: ast.expr | None) -> list[Any] | None:
             elements = members.elts if isinstance(members, ast.Tuple) else [members]
             try:
                 values = [ast.literal_eval(element) for element in elements]
-            except ValueError:
+            except LITERAL_ERRORS:
                 return None
             plain = all(v is None or isinstance(v, str | int | float) for v in values)
             return values if plain else None
@@ -425,6 +426,12 @@ def _where(source: str, offset: int) -> tuple[int, int]:
 
 
 def _source_range(source: str, start: int, end: int) -> dict[str, Any]:
+    """The range of ``source[start:end]``; an empty one is widened to the end
+    of its line, or by one character at the end of the line."""
+    if end <= start:
+        line_end = source.find("\n", start)
+        line_end = len(source) if line_end == -1 else line_end
+        end = line_end if line_end > start else start + 1
     return _range(*_where(source, start), *_where(source, end))
 
 
@@ -516,6 +523,7 @@ def _component(
     members: list[dict[str, Any]] | None = None,
     node: ast.ClassDef | None = None,
     has_stale_def_header: bool = False,
+    name: str | None = None,
 ) -> dict[str, Any]:
     if class_info is None:
         identity = document["path"]
@@ -523,7 +531,7 @@ def _component(
         identity = f"{class_info['path']}#{class_info['qualname']}"
     return {
         "tag": tag,
-        "name": pascal_to_snake(tag),
+        "name": name or pascal_to_snake(tag),
         "id": identity,
         "kind": kind,
         "builtin": False,
@@ -535,7 +543,7 @@ def _component(
         "assets": assets,
         "replaces": node is not None and _replaces(node),
         # A header builds an open model, which accepts extra keys.
-        "strict": _strict(node) if node is not None else False,
+        "strict": _strict(node) if node else (False if kind == "template" else None),
         "has_stale_def_header": has_stale_def_header,
     }
 
@@ -761,10 +769,13 @@ def _python_component(project: _Project, document: _Document) -> dict[str, Any]:
         column = _column(lines[line - 1], error.offset or 1)
         end_line = error.end_lineno or line
         end_column = _column(lines[end_line - 1], error.end_offset or 1)
+        if (end_line, end_column) <= (line, column):
+            # Nothing to underline: take the rest of the line, or one character.
+            end_line, end_column = line, max(_utf16(lines[line - 1]), column + 1)
         refuse(
             "python-syntax-error",
             error.msg,
-            _range(line, column, end_line, max(end_column, column)),
+            _range(line, column, end_line, end_column),
         )
     else:
         classes = [n for n in tree.body if isinstance(n, ast.ClassDef)]
@@ -828,6 +839,7 @@ def _unreadable_python_component(document: _Document) -> dict[str, Any]:
         {"path": path.as_posix(), "markup_lines": _markup_lines(source)},
         blocks,
         _assets(path.parent, path.stem),
+        name=path.stem,
     )
 
 
@@ -853,6 +865,7 @@ def _template_component(project: _Project, document: _Document) -> dict[str, Any
         blocks,
         _assets(path.parent, path.stem),
         props=props,
+        name=path.stem,
     )
 
 
@@ -876,29 +889,49 @@ def _build(
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     """Every component and diagnostic in the given ``.pjx`` and ``.py`` files."""
     project = _Project(read, sys_path, py_paths=set(py_paths))
-    for path in pjx_paths:
+
+    def guarded(path: Path, work: Callable[[], list[dict[str, Any]]]):
+        """``work()``, or what a bug in it becomes: one diagnostic on ``path``."""
+        try:
+            return work()
+        except Exception as error:  # noqa: BLE001
+            message = f"{type(error).__name__}: {error}"
+            project.report(path, _range(1, 0, 1, 0), "internal-error", message)
+            return []
+
+    def load(path: Path) -> list[dict[str, Any]]:
         try:
             source = read(path)
         except (OSError, UnicodeDecodeError) as error:
             project.report(path, _range(1, 0, 1, 0), "unreadable-file", str(error))
-            continue
+            return []
         blocks, errors = scan_blocks(source, str(path))
         for error in errors:
             project.report(path, error["range"], error["code"], error["message"])
         project.documents[path] = _Document(path, source, blocks)
+        return []
+
+    def describe_document(document: _Document) -> list[dict[str, Any]]:
+        if document.path in project.claimed:
+            return []
+        if _has_python(document):
+            return [_python_component(project, document)]
+        if _intends_python_block(document.source):
+            return [_unreadable_python_component(document)]
+        if is_component_stem(document.path.stem):
+            return [_template_component(project, document)]
+        return []
+
+    for path in pjx_paths:
+        guarded(path, lambda path=path: load(path))
     project.pjx_dirs = {path.parent for path in project.documents}
     components: list[dict[str, Any]] = []
     for path in py_paths:
-        components += _py_components(project, path)
-    for document in project.documents.values():
-        if document.path in project.claimed:
-            continue
-        if _has_python(document):
-            components.append(_python_component(project, document))
-        elif _intends_python_block(document.source):
-            components.append(_unreadable_python_component(document))
-        elif is_component_stem(document.path.stem):
-            components.append(_template_component(project, document))
+        components += guarded(path, lambda path=path: _py_components(project, path))
+    for document in list(project.documents.values()):
+        components += guarded(
+            document.path, lambda document=document: describe_document(document)
+        )
     return components, project.diagnostics
 
 
@@ -948,6 +981,11 @@ def _builtins_dir() -> Path:
     return _absolute(str(resources.files("pyjinhx").joinpath("builtins")))
 
 
+def _is_builtin(component: dict[str, Any]) -> bool:
+    path = (component["class"] or component["document"])["path"]
+    return path.startswith(_builtins_dir().as_posix() + "/")
+
+
 def _collisions(components: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """A warning on each component whose ``name`` another has too.
 
@@ -964,6 +1002,8 @@ def _collisions(components: list[dict[str, Any]]) -> list[dict[str, Any]]:
         if len(group) < 2 or sum(c["replaces"] for c in group) == 1:
             continue
         for component in group:
+            if _is_builtin(component):
+                continue
             others = ", ".join(c["id"] for c in group if c is not component)
             where = (component["class"] or {}).get("range") or _range(1, 0, 1, 0)
             path = (component["class"] or component["document"])["path"]
@@ -980,11 +1020,8 @@ def _collisions(components: list[dict[str, Any]]) -> list[dict[str, Any]]:
 def _manifest(
     roots: list[Path], components: list[dict[str, Any]], diagnostics: list[dict]
 ) -> dict[str, Any]:
-    builtins = _builtins_dir().as_posix() + "/"
     for component in components:
-        path = (component["class"] or component["document"])["path"]
-        component["builtin"] = path.startswith(builtins)
-    diagnostics += _collisions(components)
+        component["builtin"] = _is_builtin(component)
     components.sort(
         key=lambda c: (
             c["document"]["path"],
@@ -1019,6 +1056,7 @@ def describe(paths: list[Path], sys_path: list[Path] | None = None) -> dict[str,
         found[".pjx"], found[".py"], _read, tuple(map(_absolute, sys_path or []))
     )
     diagnostics += _stub_diagnostics(roots, components)
+    diagnostics += _collisions(components)
     return _manifest(roots, components, diagnostics)
 
 

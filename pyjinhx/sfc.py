@@ -362,6 +362,11 @@ def python_source(source: str, filename: str) -> str | None:
     return "\n" * block.open_line + block.body
 
 
+# What ``ast.literal_eval`` may raise on source text: an unhashable dict key is
+# a TypeError, and a deeply nested literal exhausts the parser.
+LITERAL_ERRORS = (ValueError, TypeError, SyntaxError, MemoryError, RecursionError)
+
+
 def dotted_name(node: ast.expr) -> str | None:
     """``node`` as ``a.b.c`` text if it is a pure chain of two or more names."""
     parts: list[str] = []
@@ -459,7 +464,7 @@ def header_arguments(signature: str) -> list[tuple[ast.arg, ast.expr | None]]:
             continue
         try:
             ast.literal_eval(default)
-        except (ValueError, SyntaxError):
+        except LITERAL_ERRORS:
             if dotted_default(default) is None:
                 raise HeaderSignatureError(
                     f"{{#def#}} header default for {arg.arg!r} must be a literal, "

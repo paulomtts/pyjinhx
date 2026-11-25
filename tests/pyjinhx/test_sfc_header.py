@@ -32,3 +32,20 @@ def test_a_signature_that_does_not_parse_carries_the_syntax_error():
         header_arguments("a = 1, b")
 
     assert refused.value.syntax is not None
+
+
+def test_an_unhashable_literal_default_is_refused_not_a_crash():
+    with pytest.raises(HeaderSignatureError):
+        header_arguments("f: int = {[1]: 2}")
+
+
+@pytest.mark.parametrize(
+    "header",
+    ["f: int = {[1]: 2}", "f: Literal[{[1]: 2}] = 1"],
+    ids=["default", "literal"],
+)
+def test_the_runtime_reports_an_unhashable_literal_as_a_value_error(header):
+    from pyjinhx.props_header import parse_props_header
+
+    with pytest.raises(ValueError):
+        parse_props_header(f"{{#def {header} #}}\n<p></p>\n")
