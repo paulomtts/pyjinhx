@@ -4,10 +4,24 @@
 
 ### Added
 - A component is a pjx document, optionally owned by a class. The document
-  (markup plus `{#def#}`, `{#css#}` and `{#js#}` blocks) lives in a `.pjx` file
-  or in a class's `template = r"""..."""`, and means the same in both. See
-  [One model, three shapes](docs/guide/components.md#one-model-three-shapes) and
+  (markup plus `{#def#}`, `{#css#}`, `{#js#}` and `{#python#}` blocks) lives in a
+  `.pjx` file or in a class's `template = r"""..."""`, and means the same in both.
+  See [One model, four shapes](docs/guide/components.md#one-model-four-shapes) and
   [ADR 0009](docs/decisions/0009-a-component-is-a-pjx-document.md).
+- Shape P: a `.pjx` may hold its class in a `{#python ... #}` block. `import pyjinhx`
+  installs a finder at the end of `sys.meta_path`, so `from app.ui.card import Card`
+  works where `Card` lives in `card.pjx`; the markup belongs to the class named for the
+  file, and line numbers in tracebacks and errors are the file's. `setup()` imports every
+  such document under `components_root`. An edit to a block is not applied without a
+  restart, and a warning says so. See
+  [Shape P](docs/guide/components.md#shape-p-the-class-in-the-pjx).
+- `python -m pyjinhx.stubgen [--check] [paths]` writes a line-preserving `card.pyi`
+  beside each block document so type-checkers see the class.
+- `python -m pyjinhx.manifest` prints the components, props, blocks and diagnostics
+  under the paths as JSON (or for one unsaved buffer with `--stdin`), and `--grammar`
+  prints the versioned block grammar, with a conformance corpus in
+  `tests/fixtures/block_grammar/`. Neither imports application code. See the
+  [command reference](docs/reference/commands.md).
 - Inline styles and scripts. A template may carry `{#css ... #}` and
   `{#js ... #}` blocks, so a component needs no sibling `.css`/`.js` file. The
   keyword ends its line and the body starts on the next, so a one-line comment
@@ -27,13 +41,18 @@
 - Header-only templates answer their tags without `component()`. Two or more
   same-named headed templates raise `LookupError` naming the paths; headerless
   namesakes do not count. Orphans are taken when the registry is built.
-- `scripts/fold_components.py` (`assets`, `template`, `declass`): dry-run by
+- `scripts/fold_components.py` (`assets`, `template`, `declass`, `pyblock`): dry-run by
   default, `--write` to apply.
 
 ### Changed
-- A `.py` component whose `.pjx` markup has a `{#python` comment starting a
-  line now fails at class creation: that comment is a block, and the class is
-  expected to live in the `.pjx`.
+- A line starting with `{#python` (or the v0.x `{# python`) in column 0 now makes any
+  `.pjx` a document: `setup()` imports it and runs its block, so a prose comment or an
+  example written that way fails with "has no {#python block". Indent it; `{% raw %}`
+  does not help. A `.py` component whose `.pjx` has a block fails at class creation, since
+  the class is expected to live in the `.pjx`. A `{#def#}` header beside a block is
+  refused. A v0.x `{# python` file imports after removing the space.
+- `setup()` imports application code when a `.pjx` under `components_root` holds a block.
+  Call it after the names those blocks import exist.
 - A `.pjx` with a `{#def#}` header and no class now renders as a component for its
   `<Tag/>` instead of passing through as markup. Header annotations that used to
   fall back to `Any` (unions, generics, `Literal`) now validate as written.
