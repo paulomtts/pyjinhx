@@ -281,9 +281,6 @@ class PjxFinder:
                 )
         return None
 
-    def invalidate_caches(self) -> None:
-        """Nothing is cached."""
-
 
 def _is_finder(finder: object) -> bool:
     """Whether ``finder`` is ours, matched by name so that a reloaded module's
