@@ -528,14 +528,15 @@ def test_the_manifest_lists_every_pjx_python_document_without_errors(tmp_path):
         if str(copy) in c["document"]["path"]
     }
     assert set(ours.values()) == {"pjx-python"}
-    # A subclass that inherits its parent's document is a static-mode blind
-    # spot, so the two subclasses are not listed.
+    # A `.py` subclass of a document's class is a static-mode blind spot, so
+    # TaskNameField is not listed; ProjectNameField, in the block, is.
     assert set(ours) - {"BrokenNote", "StrayLookup"} == {
         "Badge",
         "Button",
         "Card",
         "EmptyState",
         "Money",
+        "ProjectNameField",
         "NameField",
         "StatusDot",
         "TodoCount",
