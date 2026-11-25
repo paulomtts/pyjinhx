@@ -533,8 +533,9 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
     ),
     # importer is the .pjx import hook, installed by `import pyjinhx` itself, so
     # it is stdlib plus sfc at module scope; the component base class is read
-    # inside the loader once a document's block has run.
-    "importer": frozenset({"pyjinhx.sfc"}),
+    # inside the loader once a document's block has run, so _component is a
+    # function-local edge (test_importer_only_imports_component_inside_a_function).
+    "importer": frozenset({"pyjinhx.sfc", "pyjinhx._component"}),
     "markers": frozenset({"pyjinhx._component"}),
     # Generating a class from a {#def #} header needs the open-model base to
     # subclass; parsing also reaches in now, to resolve the Slot/Children
@@ -952,6 +953,14 @@ def test_component_only_imports_render_and_session_inside_a_method_body():
     module_level = module_level_internal_imports(PACKAGE_ROOT / "_component.py")
     assert "pyjinhx.rendering" not in module_level
     assert "pyjinhx.session" not in module_level
+
+
+def test_importer_only_imports_component_inside_a_function():
+    """`import pyjinhx` installs the import hook and must not start importing
+    pydantic, which _component.py pulls in; the loader reads BaseComponent only
+    after a document's block has run."""
+    module_level = module_level_internal_imports(PACKAGE_ROOT / "importer.py")
+    assert "pyjinhx._component" not in module_level
 
 
 def test_session_only_imports_config_inside_a_function_body():

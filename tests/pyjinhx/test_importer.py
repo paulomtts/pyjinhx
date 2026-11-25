@@ -18,6 +18,15 @@ from pyjinhx import importer
 
 Write = Callable[[str, str], Path]
 
+# The class a block needs for the file to be a document at all.
+CLASS = """
+from pyjinhx import BaseComponent
+
+
+class Card(BaseComponent):
+    pass
+"""
+
 CARD = """\
 {#python
 from pyjinhx import BaseComponent
@@ -71,7 +80,9 @@ def test_a_relative_import_inside_the_block(write: Write):
     write("pkg/helpers.py", "def shout(text):\n    return text.upper()\n")
     write(
         "pkg/card.pjx",
-        "{#python\nfrom .helpers import shout\nLOUD = shout('hi')\n#}\n<p></p>\n",
+        "{#python\nfrom .helpers import shout\nLOUD = shout('hi')\n"
+        + CLASS
+        + "#}\n<p></p>\n",
     )
     assert importlib.import_module("pkg.card").LOUD == "HI"
 
@@ -80,7 +91,9 @@ def test_one_document_imports_a_class_from_another(write: Write):
     write("pkg/card.pjx", CARD)
     write(
         "pkg/panel.pjx",
-        "{#python\nfrom pkg.card import Card\nSAME = Card\n#}\n<p></p>\n",
+        "{#python\nfrom pkg.card import Card\nSAME = Card\n"
+        + CLASS.replace("Card", "Panel")
+        + "#}\n<p></p>\n",
     )
     assert (
         importlib.import_module("pkg.panel").SAME
@@ -120,7 +133,9 @@ def test_a_syntax_error_names_the_pjx_line(write: Write):
 def test_a_traceback_shows_the_pjx_path_line_and_text(write: Write):
     path = write(
         "pkg/card.pjx",
-        "<p></p>\n{#python\ndef boom():\n    raise RuntimeError('no')\n#}\n",
+        "<p></p>\n{#python\ndef boom():\n    raise RuntimeError('no')\n"
+        + CLASS
+        + "#}\n",
     )
     card = importlib.import_module("pkg.card")
     with pytest.raises(RuntimeError) as raised:
@@ -133,7 +148,10 @@ def test_a_traceback_shows_the_pjx_path_line_and_text(write: Write):
 
 
 def test_inspect_gets_the_source_of_a_function(write: Write):
-    write("pkg/card.pjx", "<p></p>\n{#python\ndef shout():\n    return 'hi'\n#}\n")
+    write(
+        "pkg/card.pjx",
+        "<p></p>\n{#python\ndef shout():\n    return 'hi'\n" + CLASS + "#}\n",
+    )
     card = importlib.import_module("pkg.card")
     assert inspect.getsource(card.shout) == "def shout():\n    return 'hi'\n"
 
@@ -141,7 +159,7 @@ def test_inspect_gets_the_source_of_a_function(write: Write):
 def test_the_loader_serves_the_padded_python(write: Write):
     from pyjinhx import sfc
 
-    text = "<p></p>\n{#python\nVALUE = 1\n#}\n"
+    text = "<p></p>\n{#python\nVALUE = 1\n" + CLASS + "#}\n"
     path = write("pkg/card.pjx", text)
     card = importlib.import_module("pkg.card")
     assert card.__loader__.get_source("pkg.card") == sfc.python_source(text, str(path))
@@ -224,7 +242,9 @@ def test_python_dash_m_runs_a_block_document(write: Write, tmp_path: Path):
     write("pkg/__init__.py", "import pyjinhx\n")
     write(
         "pkg/card.pjx",
-        "{#python\nif __name__ == '__main__':\n    print('ran', __file__)\n#}\n<p></p>\n",
+        "{#python\nif __name__ == '__main__':\n    print('ran', __file__)\n"
+        + CLASS
+        + "#}\n<p></p>\n",
     )
     result = run("", "-m", "pkg.card", path=tmp_path, cwd=tmp_path)
     assert result.returncode == 0, result.stderr
@@ -235,7 +255,9 @@ def test_reload_runs_the_block_again(write: Write, monkeypatch: pytest.MonkeyPat
     monkeypatch.setenv("PJX_RUNS", "0")
     write(
         "pkg/card.pjx",
-        "{#python\nimport os\nos.environ['PJX_RUNS'] += 'x'\n#}\n<p></p>\n",
+        "{#python\nimport os\nos.environ['PJX_RUNS'] += 'x'\n"
+        + CLASS
+        + "#}\n<p></p>\n",
     )
     card = importlib.import_module("pkg.card")
     assert importlib.reload(card) is card
@@ -247,3 +269,103 @@ def test_the_v0_opener_is_refused_with_the_fix(write: Write):
     with pytest.raises(ImportError, match="remove the space") as raised:
         importlib.import_module("pkg.card")
     assert str(path) in str(raised.value)
+
+
+def refused(write: Write, text: str) -> ImportError:
+    path = write("pkg/card.pjx", text)
+    with pytest.raises(ImportError) as raised:
+        importlib.import_module("pkg.card")
+    assert str(path) in str(raised.value)
+    assert "pkg.card" not in sys.modules
+    return raised.value
+
+
+def test_a_block_with_no_class_for_the_stem_is_refused(write: Write):
+    text = CARD.replace("class Card", "class Other")
+    assert ":1: no component class" in str(refused(write, text))
+
+
+def test_two_classes_for_the_stem_are_refused(write: Write):
+    path = write(
+        "pkg/http_card.pjx",
+        "{#python\nfrom pyjinhx import BaseComponent\n\n\n"
+        "class HTTPCard(BaseComponent):\n    pass\n\n\n"
+        "class HttpCard(BaseComponent):\n    pass\n#}\n<p></p>\n",
+    )
+    with pytest.raises(ImportError, match="HTTPCard.*HttpCard") as raised:
+        importlib.import_module("pkg.http_card")
+    assert f"{path}:9:" in str(raised.value)
+    assert "pkg.http_card" not in sys.modules
+
+
+def test_extra_classes_and_helpers_are_fine(write: Write):
+    write(
+        "pkg/card.pjx",
+        CARD.replace(
+            "#}\n",
+            "\n\ndef helper():\n    return 1\n\n\nclass Plain:\n    pass\n\n\n"
+            "class WideCard(Card):\n    pass\n#}\n",
+            1,
+        ),
+    )
+    card = importlib.import_module("pkg.card")
+    assert {card.Plain.__name__, card.WideCard.__name__} == {"Plain", "WideCard"}
+
+
+def test_loaded_document_names_the_module_and_class(write: Write):
+    path = write("pkg/card.pjx", CARD)
+    assert importer.loaded_document(path) is None
+    card = importlib.import_module("pkg.card")
+    assert importer.loaded_document(path) == ("pkg.card", card.Card)
+    assert importer.loaded_document(str(path)) == ("pkg.card", card.Card)
+    assert importer.loaded_document(path.with_name("other.pjx")) is None
+
+
+def test_loaded_document_forgets_a_refused_file(write: Write):
+    path = write("pkg/card.pjx", CARD.replace("class Card", "class Other"))
+    with pytest.raises(ImportError):
+        importlib.import_module("pkg.card")
+    assert importer.loaded_document(path) is None
+
+
+def test_pickle_and_deepcopy_round_trip(write: Write):
+    import copy
+    import pickle
+
+    write("pkg/card.pjx", CARD)
+    card = importlib.import_module("pkg.card").Card(title="hi")
+    assert copy.deepcopy(card) == card
+    assert pickle.loads(pickle.dumps(card)) == card
+
+
+def test_unpickling_in_a_fresh_process_finds_the_class(write: Write, tmp_path: Path):
+    import pickle
+
+    write("pkg/__init__.py", "import pyjinhx\n")
+    write("pkg/card.pjx", CARD)
+    blob = pickle.dumps(importlib.import_module("pkg.card").Card(title="hi"))
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            "import pickle, sys; print(pickle.loads(bytes.fromhex(sys.argv[1])).title)",
+            blob.hex(),
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+        cwd=tmp_path,
+        env={**os.environ, "PYTHONPATH": str(tmp_path)},
+    )
+    assert result.stdout.strip() == "hi", result.stderr
+
+
+def test_concurrent_imports_share_one_module(write: Write):
+    from concurrent.futures import ThreadPoolExecutor
+
+    write("pkg/card.pjx", CARD)
+    with ThreadPoolExecutor(8) as pool:
+        modules = list(
+            pool.map(lambda _: importlib.import_module("pkg.card"), range(8))
+        )
+    assert {id(module) for module in modules} == {id(modules[0])}
