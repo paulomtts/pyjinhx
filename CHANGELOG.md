@@ -3,6 +3,9 @@
 ## Unreleased
 
 ### Fixed
+- An OOB `<style>`/`<script>` aimed at `<head>` no longer leaves its CSS/JS
+  behind as loose text nodes in `<head>`; `pjx.js` cancels that swap and adds
+  the real asset itself.
 - Head assets (CSS and JS) carried by a response are no longer dropped when
   another swap detached the requesting element before the response arrived.
   `pjx.js` now applies them from the request's own `load` event instead of

@@ -55,3 +55,20 @@ def test_head_assets_apply_when_the_requester_is_still_attached(page):
     page.evaluate("document.getElementById('btn').click()")
     page.wait_for_selector("#card", state="attached")
     assert page.evaluate(HEAD_TOKENS) == ["card.css"]
+
+
+HEAD_TEXT = (
+    "() => Array.from(document.head.childNodes)"
+    ".filter(n => n.nodeType === 3 && n.textContent.trim() !== '')"
+    ".map(n => n.textContent)"
+)
+
+
+def test_oob_head_swap_leaves_no_loose_text_in_head(page):
+    _open(page)
+    page.evaluate("document.getElementById('btn').click()")
+    page.wait_for_selector("#card", state="attached")
+    page.evaluate("document.getElementById('btn').click()")
+    page.wait_for_function("document.querySelectorAll('#card').length === 2")
+    assert page.evaluate(HEAD_TEXT) == []
+    assert page.evaluate(HEAD_TOKENS) == ["card.css"]
