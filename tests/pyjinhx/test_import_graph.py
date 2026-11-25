@@ -23,7 +23,8 @@ PACKAGE_ROOT = Path(__file__).resolve().parents[2] / "pyjinhx"
 # Add an entry here deliberately when a new edge is designed, never to make a
 # failing test go green.
 ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
-    "__init__": frozenset(),
+    # Installing the .pjx import hook is the one thing the package does on import.
+    "__init__": frozenset({"pyjinhx.importer"}),
     # The TYPE_CHECKING-only RenderSession import mirrors session's own
     # component/segments entries below, for the same reason: the enum/function
     # signature names the type, runtime never touches it.
@@ -530,6 +531,10 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
             "pyjinhx.session",
         }
     ),
+    # importer is the .pjx import hook, installed by `import pyjinhx` itself, so
+    # it is stdlib plus sfc at module scope; the component base class is read
+    # inside the loader once a document's block has run.
+    "importer": frozenset({"pyjinhx.sfc"}),
     "markers": frozenset({"pyjinhx._component"}),
     # Generating a class from a {#def #} header needs the open-model base to
     # subclass; parsing also reaches in now, to resolve the Slot/Children
