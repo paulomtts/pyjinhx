@@ -28,6 +28,7 @@ from collections.abc import Iterable, Iterator
 from pathlib import Path
 from typing import NamedTuple
 
+from pyjinhx.importer import opener_line
 from pyjinhx.sfc import python_block
 
 _MARKER_PREFIX = "# pyjinhx.stubgen: generated from "
@@ -58,7 +59,8 @@ def _functions(
 
 
 def generate_stub(source: str, filename: str) -> str | None:
-    """The stub for the ``.pjx`` document ``source``, or None without a block.
+    """The stub for the ``.pjx`` document ``source``, or None without a block
+    (the file is no document unless a line starts with ``{#python``).
 
     Raises:
         BlockSyntaxError: The block is malformed.
@@ -66,6 +68,10 @@ def generate_stub(source: str, filename: str) -> str | None:
             line in the document.
     """
     source = source.replace("\r\n", "\n").replace("\r", "\n")
+    # The import hook's gate: without an opener at the start of a line the file
+    # is no document, so a comment that merely mentions {#python is not one.
+    if opener_line(source) is None:
+        return None
     block = python_block(source, filename)
     if block is None:
         return None

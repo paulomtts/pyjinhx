@@ -56,6 +56,14 @@ def test_a_document_without_a_block_has_no_stub():
     assert stubgen.generate_stub("<p></p>\n", "card.pjx") is None
 
 
+def test_an_indented_opener_is_not_a_document_so_has_no_stub_and_no_finding(tmp_path):
+    note = "<p></p>\n  {#python\n  x = 1\n  #}\n"
+    assert stubgen.generate_stub(note, "card.pjx") is None
+    (tmp_path / "card.pjx").write_text(note)
+
+    assert stubgen.sync([tmp_path], write=False) == []
+
+
 def test_declarations_keep_their_line_numbers():
     padded = sfc.python_source(CARD, "card.pjx")
     assert padded is not None
@@ -262,7 +270,7 @@ def test_a_block_that_does_not_parse_is_reported_and_the_rest_still_runs(
 
 
 def test_a_malformed_block_is_reported_with_its_line(tmp_path, capsys):
-    _tree(tmp_path, {"a.pjx": "<p></p>\n  {#python\nx = 1\n#}\n"})
+    _tree(tmp_path, {"a.pjx": "<p></p>\n{#python\nx = 1\n"})
     assert stubgen.main([str(tmp_path)]) == 1
     assert "a.pjx:2" in capsys.readouterr().err
 
@@ -376,7 +384,7 @@ def test_a_path_that_does_not_exist_is_reported_and_exits_2(tmp_path, capsys):
 
 
 def test_a_finding_carries_the_blocks_error_code_and_column(tmp_path):
-    _tree(tmp_path, {"a.pjx": "<p></p>\n  {#python\nx = 1\n#}\n"})
+    _tree(tmp_path, {"a.pjx": "<p></p>\n{#python\nx = 1\n"})
     (finding,) = stubgen.sync([tmp_path], write=False)
     assert finding.line == 2
     assert finding.code

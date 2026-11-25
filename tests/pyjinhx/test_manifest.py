@@ -914,6 +914,15 @@ def test_a_line_that_opens_python_but_is_no_block_is_refused_as_at_runtime(
     assert "remove the space" in diagnostics["chip.pjx"]["message"]
 
 
+def test_an_indented_python_comment_is_not_a_document(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "card.pjx").write_text("<p></p>\n  {#python\n  x = 1\n  #}\n")
+
+    result = manifest.describe([Path(".")])
+
+    assert [c["kind"] for c in result["components"] if not c["builtin"]] == ["template"]
+
+
 def test_a_python_block_document_no_sys_path_entry_holds_has_no_module(
     tmp_path, monkeypatch
 ):
