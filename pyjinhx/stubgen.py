@@ -85,6 +85,7 @@ ORPHANED = "orphaned"
 SHADOWED = "shadowed"
 HANDWRITTEN = "handwritten"
 INVALID = "invalid"
+FAILED = "failed"
 
 # What each fixable finding becomes once `sync` has written it.
 _DONE = {MISSING: "wrote", STALE: "rewrote", ORPHANED: "removed"}
@@ -104,13 +105,17 @@ class Finding(NamedTuple):
 
     ``path`` is the stub for ``missing``, ``stale``, ``orphaned`` and
     ``handwritten``, and the ``.pjx`` document for ``shadowed`` and
-    ``invalid``, which also carry the ``line`` and a ``message``.
+    ``invalid``, which also carry the ``line``, the 1-based ``column`` and the
+    ``code`` of a malformed block when known, and a ``message``. ``failed`` is
+    a stub that could not be written or removed, at its ``path``.
     """
 
     path: Path
     kind: str
     line: int | None = None
     message: str = ""
+    code: str | None = None
+    column: int | None = None
 
 
 def stub_path(pjx: Path) -> Path:
@@ -173,7 +178,14 @@ def sync(paths: Iterable[Path], *, write: bool) -> list[Finding]:
             stub = generate_stub(source, str(document))
         except SyntaxError as error:
             findings.append(
-                Finding(document, INVALID, error.lineno, error.msg or str(error))
+                Finding(
+                    document,
+                    INVALID,
+                    error.lineno,
+                    error.msg or str(error),
+                    getattr(error, "code", None),
+                    error.offset,
+                )
             )
             live.add(stub_path(document))
             continue
@@ -193,17 +205,23 @@ def sync(paths: Iterable[Path], *, write: bool) -> list[Finding]:
         elif not is_generated(target):
             findings.append(Finding(target, HANDWRITTEN))
             continue
-        elif target.read_text(encoding="utf-8") == stub:
+        elif target.read_bytes() == stub.encode():
             continue
         else:
             findings.append(Finding(target, STALE))
         if write:
-            target.write_bytes(stub.encode())
+            try:
+                target.write_bytes(stub.encode())
+            except OSError as error:
+                findings[-1] = Finding(target, FAILED, message=str(error))
     for stub in stubs:
         if stub not in live and is_generated(stub):
             findings.append(Finding(stub, ORPHANED))
             if write:
-                stub.unlink()
+                try:
+                    stub.unlink()
+                except OSError as error:
+                    findings[-1] = Finding(stub, FAILED, message=str(error))
     return sorted(findings)
 
 
@@ -211,8 +229,11 @@ def _show(finding: Finding, done: bool) -> str:
     where = str(_relative(finding.path))
     if finding.line:
         where += f":{finding.line}"
+        if finding.column:
+            where += f":{finding.column}"
     what = _DONE[finding.kind] if done and finding.kind in _DONE else finding.kind
-    return f"{where}: {what}" + (f" ({finding.message})" if finding.message else "")
+    detail = " ".join(filter(None, [finding.code, finding.message]))
+    return f"{where}: {what}" + (f" ({detail})" if detail else "")
 
 
 def _relative(path: Path) -> Path:

@@ -373,3 +373,40 @@ def test_an_init_body_is_kept_so_its_attributes_stay_declared():
 def test_a_path_that_does_not_exist_is_reported_and_exits_2(tmp_path, capsys):
     assert stubgen.main([str(tmp_path / "nope")]) == 2
     assert "nope: no such file or directory" in capsys.readouterr().err
+
+
+def test_a_finding_carries_the_blocks_error_code_and_column(tmp_path):
+    _tree(tmp_path, {"a.pjx": "<p></p>\n  {#python\nx = 1\n#}\n"})
+    (finding,) = stubgen.sync([tmp_path], write=False)
+    assert finding.line == 2
+    assert finding.code
+    assert finding.column
+
+
+def test_a_python_syntax_error_finding_has_its_column(tmp_path):
+    _tree(tmp_path, {"a.pjx": _document("x = 1\ndef (:\n")})
+    (finding,) = stubgen.sync([tmp_path], write=False)
+    assert (finding.line, finding.column) == (3, 5)
+
+
+def test_a_stub_that_cannot_be_written_is_a_finding_not_a_crash(tmp_path, capsys):
+    _tree(tmp_path, {"ui/a.pjx": CARD, "b.pjx": CARD})
+    (tmp_path / "ui").chmod(0o500)
+    try:
+        assert stubgen.main([str(tmp_path)]) == 1
+    finally:
+        (tmp_path / "ui").chmod(0o700)
+    err = capsys.readouterr().err
+    assert "a.pyi: failed" in err and "wrote" not in err and "removed" not in err
+    assert (tmp_path / "b.pyi").exists()
+
+
+def test_an_orphan_that_cannot_be_removed_is_a_finding_not_a_crash(tmp_path, capsys):
+    _tree(tmp_path, {"ui/a.pyi": stubgen.marker("a.pjx") + "\n"})
+    (tmp_path / "ui").chmod(0o500)
+    try:
+        assert stubgen.main([str(tmp_path)]) == 1
+    finally:
+        (tmp_path / "ui").chmod(0o700)
+    err = capsys.readouterr().err
+    assert "a.pyi: failed" in err and "wrote" not in err and "removed" not in err
