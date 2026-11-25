@@ -131,7 +131,7 @@ def test_a_traceback_shows_the_pjx_path_line_and_text(write: Write):
 def test_inspect_gets_the_source_of_a_function(write: Write):
     write(
         "pkg/card.pjx",
-        "<p></p>\n{#python\ndef shout():\n    return 'hi'\n" + CLASS + "#}\n",
+        "<p></p>\n{#python\ndef shout():\n    return 'hi'\n" + CLASS + "#}\n<p></p>\n",
     )
     card = importlib.import_module("pkg.card")
     assert inspect.getsource(card.shout) == "def shout():\n    return 'hi'\n"
@@ -423,3 +423,107 @@ def test_install_survives_a_reloaded_importer(hook_state):
     importlib.reload(importer)
     importer.install()
     assert [type(f).__name__ for f in sys.meta_path].count("PjxFinder") == 1
+
+
+def test_module_name_is_the_path_below_the_deepest_search_entry(tmp_path: Path):
+    path = tmp_path / "app" / "ui" / "card.pjx"
+    assert importer.module_name_for(path, [str(tmp_path)]) == "app.ui.card"
+    deeper = [str(tmp_path), str(tmp_path / "app")]
+    assert importer.module_name_for(path, deeper) == "ui.card"
+
+
+def test_module_name_is_none_when_no_entry_holds_the_file(tmp_path: Path):
+    path = tmp_path / "app" / "card.pjx"
+    assert importer.module_name_for(path, [str(tmp_path / "other")]) is None
+    assert importer.module_name_for(path, []) is None
+
+
+def test_module_name_is_none_for_a_directory_that_is_not_a_name(tmp_path: Path):
+    path = tmp_path / "my-app" / "card.pjx"
+    assert importer.module_name_for(path, [str(tmp_path)]) is None
+
+
+def test_module_name_reads_an_empty_entry_as_the_working_directory(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    monkeypatch.chdir(tmp_path)
+    assert importer.module_name_for(tmp_path / "card.pjx", [""]) == "card"
+
+
+def test_import_document_imports_once_and_returns_the_module(write: Write):
+    write("pkg/log.py", "runs = []\n")
+    path = write(
+        "pkg/card.pjx",
+        "{#python\nfrom pkg.log import runs\nruns.append(1)\n"
+        + CLASS
+        + "#}\n<p></p>\n",
+    )
+    first = importer.import_document(path)
+    assert importer.import_document(path) is first
+    assert importlib.import_module("pkg.log").runs == [1]
+
+
+def test_import_document_returns_a_module_the_test_imported(write: Write):
+    path = write("pkg/card.pjx", CARD)
+    module = importlib.import_module("pkg.card")
+    assert importer.import_document(path) is module
+
+
+def test_import_document_returns_a_module_loaded_under_another_name(
+    write: Write, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    path = write("pkg/card.pjx", CARD)
+    monkeypatch.syspath_prepend(str(tmp_path / "pkg"))
+    module = importlib.import_module("pkg.card")
+    assert importer.import_document(path) is module
+    assert "card" not in sys.modules
+
+
+def test_import_document_refuses_a_sibling_py_module(write: Write):
+    path = write("pkg/card.pjx", CARD)
+    shadow = write("pkg/card.py", "")
+    with pytest.raises(ImportError) as raised:
+        importer.import_document(path)
+    assert str(path) in str(raised.value)
+    assert str(shadow) in str(raised.value)
+
+
+def test_import_document_refuses_a_sibling_package_directory(
+    write: Write, tmp_path: Path
+):
+    path = write("pkg/card.pjx", CARD)
+    write("pkg/card/other.py", "")
+    with pytest.raises(ImportError) as raised:
+        importer.import_document(path)
+    assert str(path) in str(raised.value)
+    assert str(tmp_path / "pkg" / "card") in str(raised.value)
+
+
+def test_import_document_refuses_a_namespace_directory(write: Write, tmp_path: Path):
+    path = write("pkg/card.pjx", CARD)
+    (tmp_path / "pkg" / "card").mkdir()
+    importlib.invalidate_caches()
+    with pytest.raises(ImportError) as raised:
+        importer.import_document(path)
+    assert str(path) in str(raised.value)
+    assert str(tmp_path / "pkg" / "card") in str(raised.value)
+
+
+def test_import_document_outside_the_search_path_says_how_to_fix_it(
+    write: Write, tmp_path: Path
+):
+    elsewhere = tmp_path.parent / f"{tmp_path.name}_elsewhere" / "card.pjx"
+    elsewhere.parent.mkdir()
+    elsewhere.write_text(CARD, encoding="utf-8")
+    with pytest.raises(ImportError, match=r"sys\.path") as raised:
+        importer.import_document(elsewhere)
+    assert str(elsewhere) in str(raised.value)
+    assert "__init__.py" in str(raised.value)
+
+
+def test_import_document_lets_a_block_error_through_with_its_line(write: Write):
+    path = write("pkg/card.pjx", "{#python\nraise RuntimeError('boom')\n#}\n")
+    with pytest.raises(RuntimeError) as raised:
+        importer.import_document(path)
+    frames = traceback.extract_tb(raised.value.__traceback__)
+    assert (str(path), 2) in {(f.filename, f.lineno) for f in frames}
