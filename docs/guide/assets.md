@@ -344,6 +344,12 @@ def bundle_js(request: Request) -> Response:
     return _bundle(request, JS_BUNDLE, JS_ETAG, "application/javascript")
 ```
 
+A component's `{#css#}`/`{#js#}` block appears in `all_assets()` as a path such as
+`ui/card.pjx#css` (an `InlineAsset`). It supports `read_text()` and `read_bytes()`
+only, which is all the recipe above uses. It is not a file on disk, so `open()`,
+`stat()`, `shutil.copy()` or a static-file server cannot read it: copy its
+`read_bytes()` instead.
+
 Reference the bundles from your layout `<head>` and set both modes to `AssetMode.NONE` on the
 request's session (see [Choosing a mode in a wired app](#choosing-a-mode-in-a-wired-app)), so
 components stop inlining what the bundle already ships. Concatenation order is alphabetical; if your app's

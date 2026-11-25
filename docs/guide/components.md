@@ -462,7 +462,8 @@ A component can keep its CSS and JS inside its `.pjx` template instead of in sib
   `ValueError` in LINK mode. Use `INLINE`, or `NONE` with a bundle: `all_assets()`
   lists each block as a path such as `ui/card.pjx#css`, and `read_text()`/`read_bytes()`
   on it return the block body, so the [one-bundle](assets.md#one-bundle-deployment)
-  recipe works unchanged.
+  recipe works unchanged. Those two are all it supports: it names no real file, so
+  `open()`, `stat()` and file copies fail on it.
 
 ## Extra Fields
 

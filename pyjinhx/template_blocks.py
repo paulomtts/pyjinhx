@@ -139,6 +139,9 @@ class InlineAsset(Path):
     on it unchanged and two classes in one module stay two assets; only
     reading it differs. The template is re-read on every read, the way a
     sibling ``.css`` file is, so an edit shows up without a restart.
+
+    Only ``read_text()`` and ``read_bytes()`` work. No file has this path, so
+    ``open()``, ``stat()``, ``exists()`` and file copies fail or answer False.
     """
 
     def __init__(
