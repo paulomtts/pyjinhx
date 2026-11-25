@@ -185,6 +185,7 @@ def sync(paths: Iterable[Path], *, write: bool) -> list[Finding]:
         live.add(target)
         if document.with_suffix(".py").exists() or document.with_suffix("").is_dir():
             findings.append(Finding(document, SHADOWED))
+            continue
         if not target.exists():
             findings.append(Finding(target, MISSING))
         elif not is_generated(target):

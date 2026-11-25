@@ -340,3 +340,17 @@ def test_virtualenvs_and_build_output_are_skipped(tmp_path, folder):
     _tree(tmp_path, {f"{folder}/card.pjx": CARD, "myenv/pyvenv.cfg": ""})
     stubgen.main([str(tmp_path)])
     assert not list(tmp_path.rglob("*.pyi"))
+
+
+@pytest.mark.parametrize("shadow", ["card.py", "card/__init__.py"])
+def test_a_shadowed_block_gets_no_stub_to_win_over_the_module(tmp_path, shadow):
+    _tree(tmp_path, {"card.pjx": CARD, shadow: ""})
+    assert stubgen.main([str(tmp_path)]) == 1
+    assert not (tmp_path / "card.pyi").exists()
+
+
+def test_a_stub_already_there_for_a_shadowed_block_is_left_alone(tmp_path):
+    old = stubgen.marker("card.pjx") + "\n"
+    _tree(tmp_path, {"card.pjx": CARD, "card.py": "", "card.pyi": old})
+    stubgen.main([str(tmp_path)])
+    assert (tmp_path / "card.pyi").read_text() == old
