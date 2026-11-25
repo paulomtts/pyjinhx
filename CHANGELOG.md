@@ -792,7 +792,6 @@ been removed from the tree; there is no dual-package release and no compatibilit
 ### Removed
 - The 0.36.x engine (staged at `pyjinhx_v0/` for one release cycle) and its dedicated test
   suites, bench comparison script, and gallery plumbing.
-- SFC `{# python #}` blocks (ADR 0008) — see the migration guide for the split-file form.
 - `examples/reactive_todo/` — its v0.36 `load()` classmethod-factory pattern has no 1:1 v2
   equivalent (v2's `ReactiveComponent.load()` is a zero-arg instance method invoked
   automatically on mount), so the example was deleted rather than force-ported.

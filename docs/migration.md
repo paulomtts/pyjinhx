@@ -337,38 +337,6 @@ slots, reactivity, and every builtin are the same as 0.36 — a v0.x app ports w
 redesign. What changed is a short list of behaviors that the rebuild deliberately did not
 carry over, each one below with what to do instead.
 
-### SFC `{# python #}` blocks removed (breaking)
-
-Single-file components — a `{# python #}` block at the top of a template declaring the
-component class inline — do not exist in v2 and are not deferred (ADR 0008). There is no
-compatibility shim and no flag to re-enable them.
-
-**Migration:** split the block into a normal Python class next to the template. Discovery
-pairs them by name, so nothing else changes.
-
-```html
-<!-- BEFORE (0.36): card.html -->
-{# python
-class Card(BaseComponent):
-    title: str
-#}
-<div class="card"><h2>{{ title }}</h2></div>
-```
-
-```python
-# AFTER (1.0): card.py
-from pyjinhx import BaseComponent
-
-
-class Card(BaseComponent):
-    title: str
-```
-
-```html
-<!-- AFTER (1.0): card.pjx -->
-<div class="card"><h2>{{ title }}</h2></div>
-```
-
 ### Public `Parser` / `Tag` API removed (breaking)
 
 The HTML parse-tree API (`Parser`, `Tag`, and the node-walking helpers around them) is not
