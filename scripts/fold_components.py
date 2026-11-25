@@ -18,6 +18,7 @@ rest. Running it again finds nothing left to fold.
 import argparse
 import ast
 import difflib
+import os
 import re
 import sys
 from collections import Counter
@@ -48,6 +49,7 @@ class Plan:
     refusals: list[str] = field(default_factory=list)
     folded: int = 0
     notes: list[str] = field(default_factory=list)
+    reminders: list[str] = field(default_factory=list)
 
     def read(self, path: Path) -> str:
         pending = self.files.get(path)
@@ -63,7 +65,8 @@ def walk(paths: list[Path], pattern: str) -> list[Path]:
     for path in paths:
         candidates = [path] if path.is_file() else path.rglob(pattern)
         for candidate in candidates:
-            parts = candidate.relative_to(path).parts if path.is_dir() else ()
+            # Directories only: a hidden file such as .coveragerc is still a file.
+            parts = candidate.relative_to(path).parts[:-1] if path.is_dir() else ()
             if any(p.startswith(".") or p in _SKIPPED_DIRS for p in parts):
                 continue
             if candidate.match(pattern):
@@ -129,7 +132,11 @@ def block_text(kind: str, body: str, indent: str = "") -> str:
 def references(
     name: str, roots: list[Path], skip: Path, pattern: str = "*.py"
 ) -> list[str]:
-    """``path:line: text`` for every line in ``pattern`` files under ``roots`` that mentions ``name``."""
+    """``path:line: text`` for every line in ``pattern`` files under ``roots`` that mentions ``name``.
+
+    Matches the file's name only; a dotted module name is not reported, since
+    an import of it keeps working after a fold that leaves the name unchanged.
+    """
     found = []
     mention = re.compile(rf"\b{re.escape(name)}\b")
     for path in walk(roots, pattern):
@@ -624,6 +631,8 @@ def block_document(source: str, pjx: Path, text: str) -> str:
         raise ValueError(f"the block would not parse: {exc.msg}") from exc
     if block is None or block.body != body:
         raise ValueError("the block would not read back as the module's source")
+    if document.split("\n", block.close_line)[-1] != text:
+        raise ValueError("the markup after the block would not read back unchanged")
     return document
 
 
@@ -634,6 +643,12 @@ def stem_classes(module: Module) -> list[ast.ClassDef]:
         for n in module.classes()
         if n.bases and _pascal_to_snake(n.name) == module.path.stem
     ]
+
+
+def read_pjx(pjx: Path) -> str:
+    """The text of ``pjx`` without a byte order mark, which would otherwise end
+    up in the middle of the folded document."""
+    return pjx.read_text(encoding="utf-8-sig")
 
 
 def pyblock_document(module: Module, pjx: Path) -> str:
@@ -654,38 +669,89 @@ def pyblock_document(module: Module, pjx: Path) -> str:
         raise ValueError(f"there is no {pjx.name} beside it (inherited or missing)")
     if (pjx.parent / stem).is_dir():
         raise ValueError(f"a {stem}/ directory would shadow {pjx.name}")
-    text = pjx.read_text(encoding="utf-8")
+    text = read_pjx(pjx)
     if opener_line(text) is not None:
-        raise ValueError(f"{pjx.name} already has a {{#python block")
+        raise ValueError(already_has_block(module, pjx, text))
     if has_block(text, "def", pjx) or re.match(r"\s*\{#\s*def\s", text):
         raise ValueError(f"{pjx.name} already has a {{#def#}} header")
     return block_document(module.source, pjx, text)
 
 
+def already_has_block(module: Module, pjx: Path, text: str) -> str:
+    """The refusal for a ``.pjx`` that holds a block: a finished fold, or a
+    different module."""
+    try:
+        block = python_block(text, str(pjx))
+    except BlockSyntaxError:
+        block = None
+    if block and block.body.rstrip("\n") == module.source.rstrip("\n"):
+        return f"already folded; delete {module.path.name}"
+    return f"{pjx.name} already has a {{#python block"
+
+
+def needs_pyjinhx_import(path: Path) -> str | None:
+    """A reminder when nothing is known to import pyjinhx before the module at
+    ``path``: the top package's ``__init__.py`` should, found as
+    `sfc.module_name_for` finds it."""
+    top = path.parent
+    if not (top / "__init__.py").is_file():
+        return (
+            "something must import pyjinhx before this module is imported "
+            f"({path.name} is not in a package)"
+        )
+    while (top.parent / "__init__.py").is_file():
+        top = top.parent
+    init = (top / "__init__.py").read_text(encoding="utf-8", errors="replace")
+    if re.search(r"^\s*(import pyjinhx|from pyjinhx)\b", init, re.MULTILINE):
+        return None
+    return f"{top / '__init__.py'} needs `import pyjinhx`"
+
+
+def read_module(path: Path) -> Module | None:
+    """``path`` as a `Module`, or None if it is not readable Python."""
+    try:
+        source = path.read_text(encoding="utf-8-sig")
+        return Module(path, source, ast.parse(source))
+    except (SyntaxError, UnicodeDecodeError):
+        return None
+
+
 def fold_pyblock(paths: list[Path], roots: list[Path] | None = None) -> Plan:
     plan = Plan()
     given = set(paths)
-    for module in load_modules(paths):
-        # A walk leaves alone the modules that are no component's; one named
-        # on the command line is asked about.
-        if module.path not in given and not stem_classes(module):
+    for path in walk(paths, "*.py"):
+        pjx = path.with_suffix(".pjx")
+        module = read_module(path)
+        if module is None:
+            if path in given:
+                plan.refuse(path, "it is not valid Python")
             continue
-        pjx = module.path.with_suffix(".pjx")
+        # A walk leaves alone the modules that are no document's; one named
+        # on the command line is asked about.
+        if path not in given and not (stem_classes(module) and pjx.is_file()):
+            continue
         try:
             plan.files[pjx] = pyblock_document(module, pjx)
         except ValueError as exc:
-            plan.refuse(module.path, str(exc))
+            plan.refuse(path, str(exc))
             continue
-        plan.files[module.path] = None
+        plan.files[path] = None
         plan.folded += 1
         plan.notes += [
-            f"{module.path.name} is still named: {line}"
-            for line in references(module.path.name, roots or paths, module.path, "*")
+            f"{path.name} is still named: {line}"
+            for line in references(path.name, roots or paths, path, "*")
         ]
         for node in module.classes():
             other = pjx.with_name(_pascal_to_snake(node.name) + ".pjx")
             if other != pjx and other.is_file():
                 plan.notes.append(f"{node.name} keeps its {other.name}")
+        if re.search(r"\b__(file|main)__\b", module.source):
+            plan.notes.append(
+                f"{path.name} mentions __file__ or __main__: __file__ becomes "
+                f"{pjx.name}, and `python {path.name}` stops working"
+            )
+        if reminder := needs_pyjinhx_import(path):
+            plan.reminders.append(reminder)
     return plan
 
 
@@ -703,6 +769,14 @@ def diff(path: Path, old: str | None, new: str | None) -> str:
     )
 
 
+def write_atomically(path: Path, text: str) -> None:
+    """Write ``text`` to ``path`` through a temporary file, so a crash leaves
+    the old file or the new one, never half of it."""
+    temporary = path.with_name(f".{path.name}.tmp")
+    temporary.write_text(text, encoding="utf-8")
+    os.replace(temporary, path)
+
+
 def finish(name: str, plan: Plan, write: bool) -> int:
     """Print the plan's diffs, apply it if ``write``, and return the exit code."""
     for path, new in sorted(plan.files.items()):
@@ -712,16 +786,15 @@ def finish(name: str, plan: Plan, write: bool) -> int:
             if new is None:
                 path.unlink()
             else:
-                path.write_text(new, encoding="utf-8")
+                write_atomically(path, new)
     for note in plan.notes:
         print(f"reference {note}")
     for refusal in plan.refusals:
         print(f"refused {refusal}")
+    for reminder in dict.fromkeys(plan.reminders):
+        print(f"remember: {reminder}")
     if name == "pyblock" and plan.folded:
-        print(
-            "remember: the root package's __init__.py needs `import pyjinhx`, and "
-            "`python -m pyjinhx.stubgen` regenerates the stubs for the new documents"
-        )
+        print("remember: run `python -m pyjinhx.stubgen` to regenerate the stubs")
     mode = "written" if write else "dry run, nothing written; pass --write"
     print(
         f"{name}: {plan.folded} folded, {len(plan.refusals)} refused, "

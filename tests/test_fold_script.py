@@ -1024,7 +1024,20 @@ def test_pyblock_refuses_a_package_init(tmp_path, capsys):
 
 def test_pyblock_refuses_a_class_without_a_pjx_of_its_own(tmp_path, capsys):
     write(tmp_path / "card.py", CARD_PY)
-    refused(tmp_path, "there is no card.pjx beside it", capsys)
+    refused(
+        tmp_path,
+        "there is no card.pjx beside it",
+        capsys,
+        tmp_path / "card.py",
+    )
+
+
+def test_pyblock_walk_skips_a_component_class_with_no_pjx_beside_it(tmp_path, capsys):
+    write(tmp_path / "user.py", CARD_PY.replace("Card", "User"))
+
+    code, out = run("pyblock", tmp_path, capsys=capsys)
+
+    assert code == 0 and "0 folded, 0 refused" in out
 
 
 def test_pyblock_refuses_a_class_that_assigns_its_template(tmp_path, capsys):
@@ -1085,13 +1098,105 @@ def test_pyblock_dry_run_writes_nothing_and_a_second_write_is_a_no_op(tmp_path, 
     assert (tmp_path / "card.pjx").read_text() == folded
 
 
-def test_pyblock_reminds_about_the_root_init_and_the_stubs(tmp_path, capsys):
+def test_pyblock_reminds_about_the_stubs_and_what_must_import_pyjinhx(tmp_path, capsys):
     make_card(tmp_path)
 
     _, out = run("pyblock", tmp_path, capsys=capsys)
 
-    assert "import pyjinhx" in out
+    assert "something must import pyjinhx before this module" in out
     assert "python -m pyjinhx.stubgen" in out
+
+
+def test_pyblock_asks_for_the_import_only_when_the_package_root_lacks_it(
+    package, capsys
+):
+    write(package / "card.py", CARD_PY)
+    write(package / "card.pjx", CARD_PJX)
+
+    _, out = run("pyblock", package, capsys=capsys)
+    assert f"{package / '__init__.py'} needs `import pyjinhx`" in out
+
+    (package / "__init__.py").write_text("import pyjinhx\n")
+    _, out = run("pyblock", package, capsys=capsys)
+    assert "needs `import pyjinhx`" not in out and "something must import" not in out
+
+
+def test_pyblock_drops_a_byte_order_mark_from_either_file(package, capsys):
+    (package / "card.py").write_bytes(
+        b"\xef\xbb\xbf" + textwrap.dedent(CARD_PY).lstrip("\n").encode()
+    )
+    (package / "card.pjx").write_bytes(b"\xef\xbb\xbf" + CARD_PJX.encode())
+
+    code, _ = run("pyblock", package, "--write", capsys=capsys)
+
+    assert code == 0
+    assert "\ufeff" not in (package / "card.pjx").read_text(encoding="utf-8")
+
+
+def test_pyblock_refuses_a_header_behind_a_byte_order_mark(tmp_path, capsys):
+    make_card(tmp_path)
+    (tmp_path / "card.pjx").write_bytes(b"\xef\xbb\xbf{#def title: str #}\n")
+    refused(tmp_path, "already has a {#def#} header", capsys)
+
+
+def test_pyblock_refuses_a_named_file_that_is_not_python_but_skips_it_in_a_walk(
+    tmp_path, capsys
+):
+    broken = write(tmp_path / "card.py", "class Card(:\n")
+    write(tmp_path / "card.pjx", CARD_PJX)
+
+    code, out = run("pyblock", tmp_path, capsys=capsys)
+    assert code == 0 and "0 refused" in out
+
+    refused(tmp_path, "not valid Python", capsys, broken)
+
+
+def test_pyblock_reports_references_in_hidden_files_but_not_hidden_directories(
+    tmp_path, capsys
+):
+    components = tmp_path / "components"
+    make_card(components)
+    write(tmp_path / ".coveragerc", "omit = components/card.py\n")
+    write(tmp_path / ".github" / "ci.yml", "run: python components/card.py\n")
+
+    _, out = run("pyblock", components, "--root", tmp_path, capsys=capsys)
+
+    assert ".coveragerc:1:" in out
+    assert "ci.yml" not in out
+
+
+def test_pyblock_notes_a_module_that_reads_its_own_file_or_main(tmp_path, capsys):
+    write(
+        tmp_path / "card.py",
+        CARD_PY + "\n    HERE = __file__\n",
+    )
+    write(tmp_path / "card.pjx", CARD_PJX)
+
+    code, out = run("pyblock", tmp_path, capsys=capsys)
+
+    assert code == 0
+    assert "__file__ becomes card.pjx" in out and "python card.py" in out
+
+
+def test_pyblock_says_when_the_pjx_already_holds_this_module(tmp_path, capsys):
+    make_card(tmp_path)
+    folded = "{#python\n" + textwrap.dedent(CARD_PY).lstrip("\n") + "#}\n" + CARD_PJX
+    (tmp_path / "card.pjx").write_text(folded)
+
+    code, out = run("pyblock", tmp_path, capsys=capsys)
+
+    assert code == 1
+    assert "already folded; delete card.py" in out
+
+
+def test_pyblock_writes_through_a_temporary_file_and_leaves_none_behind(
+    tmp_path, capsys
+):
+    make_card(tmp_path)
+
+    run("pyblock", tmp_path, "--write", capsys=capsys)
+
+    assert sorted(p.name for p in tmp_path.iterdir()) == ["card.pjx"]
 
 
 def test_the_script_runs_as_a_command_and_exits_non_zero_on_a_refusal(tmp_path):
