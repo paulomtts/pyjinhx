@@ -927,8 +927,7 @@ fixture and the marker hook.
 | Fixture | Today | After | Same tests? |
 |---|---|---|---|
 | `render_cost_decisions`, `load_cost_decisions`, `no_orphan_templates`, `cache_everything_by_default` (all autouse, function scope) | `tests/pyjinhx/**`: 6059 tests | `tests/**`: 6295 tests | No: 236 more (below) |
-| `session`, `write` (and the `Write` alias) | `tests/pyjinhx/**` | `tests/**` | Yes; only requested by name |
-| `session` (plain `RenderSession()`) | defined twice, in the graph and roster picker conftests | once, here | Yes (below) |
+| `session` (plain `RenderSession()`), `write` (and the `Write` alias) | `session` defined twice, in the graph and roster picker conftests; `write` in `tests/pyjinhx/**` | once each, here, for `tests/**` | Yes; only requested by name (below) |
 
 The four autouse fixtures cannot keep their exact reach. Their old boundary was "under
 `tests/pyjinhx/`", and that folder's tests now land in every new top-level folder next
