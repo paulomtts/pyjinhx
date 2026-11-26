@@ -2,31 +2,32 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from collections.abc import Callable, Iterator
+from typing import TYPE_CHECKING
 
 import pytest
+from playwright.sync_api import Error as PlaywrightError
 
 if TYPE_CHECKING:
-    from playwright.sync_api import Page
+    from playwright.sync_api import Browser, Page
 
 
-@pytest.fixture(autouse=True)
-def _require_chromium(request: pytest.FixtureRequest) -> None:
-    # Function-scoped, not session-scoped: a session-scoped autouse fixture
-    # only runs its body once for the whole run, against whichever test
-    # triggers it first, so a later browser test could hit a raw Playwright
-    # launch failure instead of a clean skip. Only tests that ask for a page
-    # need chromium, so avoid resolving `browser_type` (or importing
-    # playwright) for the rest.
-    if not {"pjx_page", "pjx_full_page", "page", "browser"} & set(request.fixturenames):
-        return
-    pytest.importorskip("playwright")
-    browser_type: Any = request.getfixturevalue("browser_type")
-    if not Path(browser_type.executable_path).exists():
+@pytest.fixture(scope="session")
+def browser(launch_browser: Callable[[], Browser]) -> Iterator[Browser]:
+    # Replaces pytest-playwright's `browser` so a missing chromium skips instead
+    # of erroring. Launching is the only check that matches what it will run
+    # (the headless shell, not the binary `executable_path` points at), and a
+    # session fixture is set up before any function-scoped guard could run.
+    # pytest caches the skip, so the launch is attempted once per session.
+    try:
+        browser = launch_browser()
+    except PlaywrightError as error:
         pytest.skip(
-            "chromium is not installed (run: uv run playwright install chromium)"
+            f"chromium is not installed (run: uv run playwright install chromium): "
+            f"{str(error).splitlines()[0]}"
         )
+    yield browser
+    browser.close()
 
 
 @pytest.fixture
