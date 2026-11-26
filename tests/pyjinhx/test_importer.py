@@ -15,7 +15,7 @@ import pytest
 import pyjinhx
 from pyjinhx.components import importer
 from pyjinhx.document import scanner
-from tests.pyjinhx.conftest import Write
+from tests.conftest import Write
 
 # The class a block needs for the file to be a document at all.
 CLASS = """

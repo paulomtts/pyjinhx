@@ -16,7 +16,7 @@ from pyjinhx.components.base import all_component_classes
 from pyjinhx.components.classless import component, register_document
 from pyjinhx.config import setup, shutdown_pyjinhx
 from pyjinhx.rendering.pipeline import render
-from tests.pyjinhx.conftest import Write
+from tests.conftest import Write
 
 CARD = """\
 {#python
