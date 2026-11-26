@@ -16,12 +16,12 @@ from typing import TYPE_CHECKING, Any
 from pyjinhx.builtins.pjx_roster_picker import PJXRosterItem, PJXRosterPicker
 from pyjinhx.builtins.pjx_roster_results import PJXRosterResults
 from pyjinhx.client import read_vendored_htmx
-from pyjinhx.rendering import render
+from pyjinhx.rendering.pipeline import render
 
 if TYPE_CHECKING:
     from playwright.sync_api import Locator, Page, Route
 
-    from pyjinhx.session import RenderSession
+    from pyjinhx.rendering.session import RenderSession
 
 PICKER_DIR = (
     Path(__file__).resolve().parents[4] / "pyjinhx" / "builtins" / "pjx_roster_picker"

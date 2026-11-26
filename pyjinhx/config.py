@@ -25,9 +25,9 @@ from importlib.util import find_spec as _find_spec
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal
 
-from pyjinhx._component import all_component_classes
-from pyjinhx.classless import register_document
-from pyjinhx.discovery import build_registry, walk_templates
+from pyjinhx.components.base import all_component_classes
+from pyjinhx.components.classless import register_document
+from pyjinhx.components.discovery import build_registry, walk_templates
 from pyjinhx.integrations.base import IntegrationBackend, get_backend
 
 if TYPE_CHECKING:

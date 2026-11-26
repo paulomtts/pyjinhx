@@ -21,7 +21,7 @@ from pyjinhx.reactive.component import (
     _cache_key,
     _string_cache_key,
 )
-from pyjinhx.session import request_scope
+from pyjinhx.rendering.session import request_scope
 
 
 class LedgerBackend(InMemoryCacheBackend):

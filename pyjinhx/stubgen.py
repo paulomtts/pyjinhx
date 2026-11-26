@@ -5,7 +5,7 @@ gets a ``card.pyi`` beside it. The stub is the block's Python with every
 function body replaced by ``...``, and every class, def and field keeps the
 line it has in the ``.pjx`` file.
 
-Import-pure — stdlib and `pyjinhx.sfc` only. The block is parsed, never run.
+Import-pure — stdlib and `pyjinhx.document.scanner` only. The block is parsed, never run.
 
 Limits of a stub worth knowing:
 
@@ -28,7 +28,7 @@ from collections.abc import Iterable, Iterator
 from pathlib import Path
 from typing import NamedTuple
 
-from pyjinhx.sfc import normalize_text, python_block
+from pyjinhx.document.scanner import normalize_text, python_block
 
 _MARKER_PREFIX = "# pyjinhx.stubgen: generated from "
 

@@ -1,11 +1,11 @@
 # Responses
 
-`pyjinhx.responses` is the framework-free response layer: what one handler return becomes. Every backend funnels its handler returns through this module and does nothing with the answer but emit it, so no two backends can disagree about fan-out or the htmx header set.
+`pyjinhx.integrations.responses` is the framework-free response layer: what one handler return becomes. Every backend funnels its handler returns through this module and does nothing with the answer but emit it, so no two backends can disagree about fan-out or the htmx header set.
 
 Nothing in this module needs a web framework installed. `compose()` is callable from a test or a script.
 
 !!! note "You do not call this"
-    `pyjinhx.responses` is not exported from `pyjinhx` and is not part of the public API.
+    `pyjinhx.integrations.responses` is not exported from `pyjinhx` and is not part of the public API.
     In an app wired with `setup(app)`, the adapter runs `compose()` on your handler's
     return — that is the whole contract, and this page describes what it does with each
     shape you might return. Import from here only for tests and custom adapters.
@@ -81,7 +81,7 @@ PASSTHROUGH = object()
 `compose()`'s answer for a return value that is not pyjinhx's to adapt. It is an identity sentinel; test it with `is`, never `==`:
 
 ```python
-from pyjinhx.responses import PASSTHROUGH, PjxResponse, compose
+from pyjinhx.integrations.responses import PASSTHROUGH, PjxResponse, compose
 
 composed = compose(result, session=session)
 if composed is PASSTHROUGH:

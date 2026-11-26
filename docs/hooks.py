@@ -10,11 +10,11 @@ sys.path.insert(0, HERE)
 
 from demos import DEMOS, RUNTIME_DEMOS
 
-from pyjinhx._component import BaseComponent, _pascal_to_snake
-from pyjinhx.assets import AssetMode, emit_assets
 from pyjinhx.client import read_pjx_theme_css
 from pyjinhx.client.inject import inject_runtime
-from pyjinhx.session import RenderSession, accumulate_assets, request_scope
+from pyjinhx.components.base import BaseComponent, _pascal_to_snake
+from pyjinhx.rendering.assets import AssetMode, emit_assets
+from pyjinhx.rendering.session import RenderSession, accumulate_assets, request_scope
 
 
 def pascal_case_to_kebab_case(name: str) -> str:
@@ -177,7 +177,7 @@ def on_post_build(config):
         session = RenderSession()
         session.on_rendered.append(accumulate_assets)
         # BaseComponent.render() (what every factory calls, with no argument)
-        # is the top-level rendering.render() API, which always appends its
+        # is the top-level pipeline.render() API, which always appends its
         # own emit_assets(session) call to whatever it returns. A demo whose
         # factory renders N components against this one shared session would
         # otherwise bake N (growing, duplicate) copies of the same assets

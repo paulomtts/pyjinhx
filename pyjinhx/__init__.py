@@ -2,7 +2,7 @@
 
 This module re-exports the public API; advanced or internal usage lives in the
 submodules (`pyjinhx.reactive.keys`, `pyjinhx.reactive.mutations`,
-`pyjinhx.registry`, `pyjinhx.rendering`).
+`pyjinhx.rendering.registry`, `pyjinhx.rendering.pipeline`).
 """
 
 from __future__ import annotations
@@ -11,7 +11,7 @@ import sys
 import types
 from typing import Any
 
-import pyjinhx.importer as _importer
+import pyjinhx.components.importer as _importer
 
 _importer.install()
 
@@ -40,13 +40,13 @@ __all__ = [  # noqa: RUF022
 ]
 
 _lazy_imports = {
-    "BaseComponent": ("pyjinhx._component", "BaseComponent"),
-    "Children": ("pyjinhx._component", "Children"),
-    "Slot": ("pyjinhx._component", "Slot"),
-    "component": ("pyjinhx.classless", "component"),
+    "BaseComponent": ("pyjinhx.components.base", "BaseComponent"),
+    "Children": ("pyjinhx.components.base", "Children"),
+    "Slot": ("pyjinhx.components.base", "Slot"),
+    "component": ("pyjinhx.components.classless", "component"),
     "ReactiveComponent": ("pyjinhx.reactive.component", "ReactiveComponent"),
-    "render": ("pyjinhx.rendering", "render"),
-    "RenderSession": ("pyjinhx.session", "RenderSession"),
+    "render": ("pyjinhx.rendering.pipeline", "render"),
+    "RenderSession": ("pyjinhx.rendering.session", "RenderSession"),
     "setup": ("pyjinhx.config", "setup"),
     "PjxContext": ("pyjinhx.context", "PjxContext"),
     "AppContext": ("pyjinhx.app_context", "AppContext"),
@@ -56,7 +56,7 @@ _lazy_imports = {
     "dirty": ("pyjinhx.reactive.mutations", "dirty"),
     "mutates": ("pyjinhx.reactive.mutations", "mutates"),
     "PjxSettings": ("pyjinhx.config", "PjxSettings"),
-    "AssetMode": ("pyjinhx.assets", "AssetMode"),
+    "AssetMode": ("pyjinhx.rendering.assets", "AssetMode"),
 }
 
 _cached_imports = {}

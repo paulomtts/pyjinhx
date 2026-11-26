@@ -3,6 +3,18 @@
 ## Unreleased
 
 ### Changed
+- Internal modules moved into role-based packages: `pyjinhx.document` (`scanner`,
+  `template_blocks`), `pyjinhx.components` (`base`, `classless`, `discovery`,
+  `importer`, `props_header`) and `pyjinhx.rendering` (`pipeline`, `session`,
+  `render_cache`, `assets`, `segments`, `root_attrs`, `registry`,
+  `template_context`); `responses` joined `pyjinhx.integrations`. The public API
+  (`pyjinhx.__all__`, `pyjinhx.builtins`) is unchanged, and so are
+  `python -m pyjinhx.manifest` and `python -m pyjinhx.stubgen`. Breaking for deep
+  imports of the old paths, which now raise `ImportError`; the
+  [migration guide](docs/migration.md) has the old-to-new table. A persistent
+  render-cache directory written by an earlier version holds entries pickled under
+  the old module names: they read as misses with one warning until rewritten, so
+  clear the directory when upgrading.
 - Builtins are flat: `pyjinhx/builtins/ui/<name>/` is now `pyjinhx/builtins/<name>/`.
   Breaking: deep imports from `pyjinhx.builtins.ui.<name>` no longer exist; import
   from `pyjinhx.builtins`. See the [migration guide](docs/migration.md).

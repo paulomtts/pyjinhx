@@ -29,12 +29,11 @@ import time
 from pathlib import Path
 from typing import Annotated
 
-from pyjinhx import discovery
-from pyjinhx._component import BaseComponent, _pascal_to_snake
-from pyjinhx.descriptor import ClassDescriptor
+from pyjinhx.components import discovery
+from pyjinhx.components.base import BaseComponent, ClassDescriptor, _pascal_to_snake
 from pyjinhx.reactive.component import PjxKey, ReactiveComponent
-from pyjinhx.rendering import render
-from pyjinhx.session import RenderSession, request_scope
+from pyjinhx.rendering.pipeline import render
+from pyjinhx.rendering.session import RenderSession, request_scope
 
 SHAPES = ((5, 10), (10, 20), (20, 40), (30, 60))  # (mids, leaves per mid)
 

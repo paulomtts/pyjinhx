@@ -7,9 +7,9 @@ by being cached, so the render path measures each class once and remembers.
 
 import pytest
 
-from pyjinhx._component import BaseComponent
+from pyjinhx.components.base import BaseComponent
 from pyjinhx.reactive.backend import CachePolicy
-from pyjinhx.render_cache import (
+from pyjinhx.rendering.render_cache import (
     is_too_cheap,
     note_render_cost,
     reset_render_cost_decisions,

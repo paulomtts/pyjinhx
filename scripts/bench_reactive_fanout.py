@@ -44,7 +44,7 @@ import time
 from pathlib import Path
 from typing import Annotated
 
-from pyjinhx import discovery, registry
+from pyjinhx.components import discovery
 from pyjinhx.reactive.cache import cache_put
 from pyjinhx.reactive.component import PjxKey, ReactiveComponent
 from pyjinhx.reactive.fanout import (
@@ -56,8 +56,9 @@ from pyjinhx.reactive.fanout import (
     oob_swaps,
     walk_manifest,
 )
-from pyjinhx.rendering import render_level
-from pyjinhx.session import RenderSession, request_scope
+from pyjinhx.rendering import registry
+from pyjinhx.rendering.pipeline import render_level
+from pyjinhx.rendering.session import RenderSession, request_scope
 
 MANIFEST_SIZES = (50, 100, 200, 500, 1000, 2000, 5000)
 DIRTY_RATIOS = (0.0, 0.5, 1.0)  # all-clean, half-dirty, all-dirty

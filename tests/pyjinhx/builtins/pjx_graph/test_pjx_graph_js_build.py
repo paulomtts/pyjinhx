@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from pyjinhx.builtins.pjx_graph import PJXGraph
-from pyjinhx.rendering import render
+from pyjinhx.rendering.pipeline import render
 
 if TYPE_CHECKING:
     from playwright.sync_api import Page
@@ -120,7 +120,7 @@ def test_script_is_frozen_on_the_descriptor():
 
 
 def test_render_accumulates_both_assets_into_the_session(session):
-    from pyjinhx.session import accumulate_assets
+    from pyjinhx.rendering.session import accumulate_assets
 
     session.on_rendered.append(accumulate_assets)
     render(PJXGraph(id="g", nodes="<div></div>"), session)

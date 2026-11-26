@@ -25,7 +25,7 @@ from pyjinhx.builtins.pjx_graph_edges import PJXGraphEdges
 from pyjinhx.builtins.pjx_graph_node import PJXGraphNode
 from pyjinhx.builtins.pjx_graph_nodes import PJXGraphNodes
 from pyjinhx.builtins.pjx_graph_side_panel import PJXGraphSidePanel
-from pyjinhx.rendering import render
+from pyjinhx.rendering.pipeline import render
 
 if TYPE_CHECKING:
     from playwright.sync_api import Page

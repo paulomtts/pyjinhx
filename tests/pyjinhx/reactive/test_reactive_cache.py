@@ -5,7 +5,7 @@ from pyjinhx.reactive.cache import (
     invalidate,
     make_key,
 )
-from pyjinhx.session import (
+from pyjinhx.rendering.session import (
     get_cache_forward,
     get_cache_reverse,
     get_cache_store,

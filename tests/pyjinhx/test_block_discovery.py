@@ -10,11 +10,12 @@ from pathlib import Path
 
 import pytest
 
-from pyjinhx import BaseComponent, discovery, importer
-from pyjinhx._component import all_component_classes
-from pyjinhx.classless import component, register_document
+from pyjinhx import BaseComponent
+from pyjinhx.components import discovery, importer
+from pyjinhx.components.base import all_component_classes
+from pyjinhx.components.classless import component, register_document
 from pyjinhx.config import setup, shutdown_pyjinhx
-from pyjinhx.rendering import render
+from pyjinhx.rendering.pipeline import render
 from tests.pyjinhx.conftest import Write
 
 CARD = """\

@@ -40,7 +40,7 @@ The template is auto-discovered based on the component class name: a colocated `
 
 `session` defaults to the session bound by the active `request_scope()`, or — outside any scope — to a fresh `RenderSession` the free `render()` function builds.
 
-`render()` returns one component's markup and nothing else — it never appends out-of-band swaps and takes no reactivity arguments. `ReactiveComponent` does not override it either: reactive state lives on the session, and the dependency walk that turns a handler return into a body with OOB legs attached belongs to `pyjinhx.responses.compose()` — see [Response composition](responses.md) and the [Reactive API](reactive-api.md).
+`render()` returns one component's markup and nothing else — it never appends out-of-band swaps and takes no reactivity arguments. `ReactiveComponent` does not override it either: reactive state lives on the session, and the dependency walk that turns a handler return into a body with OOB legs attached belongs to `pyjinhx.integrations.responses.compose()` — see [Response composition](responses.md) and the [Reactive API](reactive-api.md).
 
 **Returns:** The component's rendered markup as a finished HTML string.
 
@@ -64,7 +64,7 @@ Card = component("Card")  # finds card.pjx under the registered components root
 Card(title="Hi", content="body").render()
 ```
 
-The template is resolved by the same tag -> class registry used for `<Card/>` tags in templates (`pyjinhx.discovery`): if `"Card"` is already registered (a hand-declared class, or a previous `component("Card")` call), that class is returned as-is. Otherwise `component()` walks the template directory for `card.pjx`, parses its `{#def#}` prop header if it has one (building a validated `BaseComponent` subclass), or falls back to a permissive `extra="allow"` placeholder when it doesn't, and registers the result under the tag. `setup(components_root=...)` (or a prior call to `discovery.build_registry(...)`) establishes the template directory that walk searches; pass `template_dir` explicitly to `component()` to search elsewhere instead.
+The template is resolved by the same tag -> class registry used for `<Card/>` tags in templates (`pyjinhx.components.discovery`): if `"Card"` is already registered (a hand-declared class, or a previous `component("Card")` call), that class is returned as-is. Otherwise `component()` walks the template directory for `card.pjx`, parses its `{#def#}` prop header if it has one (building a validated `BaseComponent` subclass), or falls back to a permissive `extra="allow"` placeholder when it doesn't, and registers the result under the tag. `setup(components_root=...)` (or a prior call to `discovery.build_registry(...)`) establishes the template directory that walk searches; pass `template_dir` explicitly to `component()` to search elsewhere instead.
 
 Arbitrary attributes are accepted (`extra="allow"`) and children map to the `content` slot, e.g. `component("Card")(title="Hi", content="body")`.
 

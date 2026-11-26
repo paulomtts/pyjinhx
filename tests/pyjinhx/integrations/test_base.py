@@ -9,15 +9,14 @@ from pathlib import Path
 
 import pytest
 
-from pyjinhx._component import BaseComponent
-from pyjinhx.descriptor import ClassDescriptor
+from pyjinhx.components.base import BaseComponent, ClassDescriptor
 from pyjinhx.integrations.base import (
     SETUP_FLAG,
     ContextFactory,
     IntegrationBackend,
     load_context_for,
 )
-from pyjinhx.session import current_session, get_load_context, request_scope
+from pyjinhx.rendering.session import current_session, get_load_context, request_scope
 
 
 def test_module_has_no_web_framework_imports() -> None:

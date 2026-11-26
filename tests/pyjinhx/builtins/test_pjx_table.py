@@ -7,8 +7,8 @@ from pydantic import ValidationError
 
 from pyjinhx.builtins.pjx_table import PJXTable
 from pyjinhx.builtins.pjx_table_body import PJXTableBody
-from pyjinhx.rendering import render
-from pyjinhx.session import RenderSession
+from pyjinhx.rendering.pipeline import render
+from pyjinhx.rendering.session import RenderSession
 
 
 @pytest.fixture
@@ -109,7 +109,7 @@ class TestSlotOpacity:
     def test_string_filter_on_a_component_slot_raises(self, session, tmp_path):
         """A component-valued slot is opaque: it is not a string to filter.
 
-        Confirmed against pyjinhx/markers.py (ComponentNode.__str__ ->
+        Confirmed against pyjinhx/rendering/template_context.py (ComponentNode.__str__ ->
         _opaque_error("str()") -> TypeError): `|striptags` stringifies its
         argument before doing its work, reaches ComponentNode.__str__, and
         raises TypeError.

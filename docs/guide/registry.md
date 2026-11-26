@@ -4,11 +4,11 @@ The registry is how PyJinHx tracks component instances, enabling cross-referenci
 
 ## How It Works
 
-The registry is a low-level primitive in `pyjinhx.registry`, backed by a per-request `ContextVar`. Instantiating a component registers nothing; entries appear when a component is *rendered*, or when you add one yourself with `register_instance()`:
+The registry is a low-level primitive in `pyjinhx.rendering.registry`, backed by a per-request `ContextVar`. Instantiating a component registers nothing; entries appear when a component is *rendered*, or when you add one yourself with `register_instance()`:
 
 ```python
 from pyjinhx import BaseComponent
-from pyjinhx.registry import register_instance
+from pyjinhx.rendering.registry import register_instance
 
 
 class Button(BaseComponent):
@@ -18,11 +18,11 @@ class Button(BaseComponent):
 
 button = Button(id="submit-btn", text="Submit")
 register_instance("Button", button.id, button)
-# button is now resolvable via pyjinhx.registry.resolve("Button", "submit-btn")
+# button is now resolvable via pyjinhx.rendering.registry.resolve("Button", "submit-btn")
 ```
 
 !!! note "Registration is automatic under `setup(app)`"
-    `pyjinhx.registry` also exports `register_rendered_instance()`, shaped for `RenderSession.on_rendered`. `PjxScopeMiddleware` — the middleware `setup(app)` installs — subscribes it on the session it builds for each request, so under a wired app every rendered component lands in that request's registry under `ComponentName_id`, holding its `RenderedLevel`. Outside that wiring (a bare `RenderSession`, a hand-opened scope), subscribe it yourself or call `register_instance()` explicitly for whatever you want resolvable.
+    `pyjinhx.rendering.registry` also exports `register_rendered_instance()`, shaped for `RenderSession.on_rendered`. `PjxScopeMiddleware` — the middleware `setup(app)` installs — subscribes it on the session it builds for each request, so under a wired app every rendered component lands in that request's registry under `ComponentName_id`, holding its `RenderedLevel`. Outside that wiring (a bare `RenderSession`, a hand-opened scope), subscribe it yourself or call `register_instance()` explicitly for whatever you want resolvable.
 
 ### Composite Keys
 
@@ -31,7 +31,7 @@ The registry stores components using a composite key of `ComponentName_id`. This
 - A `Button` with `id="main"` is stored as `Button_main`
 - A `Card` with `id="main"` is stored as `Card_main`
 
-`pyjinhx.registry.make_key(type_name, instance_id)` builds this key.
+`pyjinhx.rendering.registry.make_key(type_name, instance_id)` builds this key.
 
 !!! tip
     **Different component types can share the same `id`** without collision.
@@ -72,7 +72,7 @@ On entry, the scope binds a fresh `RenderSession`, clears pending mutations, and
 
 !!! note "Not yet public: opening a scope by hand"
     On a framework pyjinhx has no backend for, the scope can be opened directly with
-    `from pyjinhx.session import request_scope`. `pyjinhx.session` is **not** part of
+    `from pyjinhx.rendering.session import request_scope`. `pyjinhx.rendering.session` is **not** part of
     the public API (`pyjinhx.__all__`) and its spelling may change.
 
     `request_scope(session=None, *, load_context=None)` takes an optional pre-built
@@ -88,7 +88,7 @@ On entry, the scope binds a fresh `RenderSession`, clears pending mutations, and
 ### Checking Registration
 
 ```python
-from pyjinhx.registry import make_key, resolve
+from pyjinhx.rendering.registry import make_key, resolve
 
 # Check if a specific component exists (using the composite key)
 key = make_key("Button", "submit-btn")
@@ -134,7 +134,7 @@ PyJinHx separates how component *classes* are found from how component *instance
 Discovery finds classes by scanning `components_root` for `.pjx` templates plus every declared class that already resolved a template of its own — a component only becomes tag-resolvable once it has a matching template file. The instance registry enables cross-referencing in templates; entries arrive as components render under a wired app, or explicitly (see [How It Works](#how-it-works) above).
 
 ```python
-from pyjinhx.registry import make_key, register_instance, resolve
+from pyjinhx.rendering.registry import make_key, register_instance, resolve
 
 btn = MyButton(id="test")
 register_instance("MyButton", btn.id, btn)  # inside a request scope

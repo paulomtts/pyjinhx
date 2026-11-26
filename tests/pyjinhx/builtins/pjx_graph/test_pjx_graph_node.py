@@ -9,7 +9,7 @@ from pydantic import ValidationError
 from pyjinhx.builtins.pjx_badge.pjx_badge import PJXBadge
 from pyjinhx.builtins.pjx_graph_node import PJXGraphNode
 from pyjinhx.builtins.pjx_graph_nodes import PJXGraphNodes
-from pyjinhx.rendering import render
+from pyjinhx.rendering.pipeline import render
 
 REQUIRED = {"node_id": "a", "x": 10, "y": 20.5, "title": "Start"}
 
@@ -331,7 +331,7 @@ class TestStylesheet:
             )
 
     def test_rendering_registers_stylesheet(self, session):
-        from pyjinhx.session import accumulate_assets
+        from pyjinhx.rendering.session import accumulate_assets
 
         assert PJXGraphNode.__pjx_descriptor__.css_paths == (CSS,)
         session.on_rendered.append(accumulate_assets)

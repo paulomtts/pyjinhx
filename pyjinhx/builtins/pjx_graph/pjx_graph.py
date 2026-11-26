@@ -1,6 +1,6 @@
 from pydantic import Field, model_validator
 
-from pyjinhx._component import AttrValue, BaseComponent, ExtraAttrs, Slot
+from pyjinhx.components.base import AttrValue, BaseComponent, ExtraAttrs, Slot
 
 
 class PJXGraph(BaseComponent):

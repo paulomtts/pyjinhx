@@ -29,7 +29,7 @@ cascade problem.
 
 ## Decision: partition by origin, emit builtins first, always
 
-`pyjinhx.assets._is_builtin_asset(path)` answers the origin question with a
+`pyjinhx.rendering.assets._is_builtin_asset(path)` answers the origin question with a
 path check: is the path under `pyjinhx/builtins`? Builtins ship inside the
 installed package; nothing else does. `emit_assets()` (the cold-render path)
 and `missing_asset_oob()` (the reactive/post-paint path) both partition their

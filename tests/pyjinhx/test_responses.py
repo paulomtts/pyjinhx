@@ -6,10 +6,10 @@ import typing
 import pytest
 from markupsafe import Markup
 
-from pyjinhx import discovery
-from pyjinhx._component import BaseComponent
-from pyjinhx.responses import PASSTHROUGH, PjxResponse, compose
-from pyjinhx.session import RenderSession, request_scope
+from pyjinhx.components import discovery
+from pyjinhx.components.base import BaseComponent
+from pyjinhx.integrations.responses import PASSTHROUGH, PjxResponse, compose
+from pyjinhx.rendering.session import RenderSession, request_scope
 
 
 class _Htmlish:

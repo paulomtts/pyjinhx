@@ -81,7 +81,7 @@ class IntegrationBackend(Protocol):
     ) -> object:
         """Adapt a pjx handler return into this framework's response type.
 
-        A backend delegates the decision to ``pyjinhx.responses.compose`` and
+        A backend delegates the decision to ``pyjinhx.integrations.responses.compose`` and
         emits its ``PjxResponse``; a ``PASSTHROUGH`` answer means the result was
         never pyjinhx's and is returned untouched. Nothing about fan-out
         ordering, dedupe or htmx header names is decided here, so two backends

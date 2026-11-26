@@ -5,18 +5,18 @@ import pytest
 from markupsafe import Markup
 from pydantic import BaseModel, ValidationError
 
-from pyjinhx._component import (
+from pyjinhx.components.base import (
     BaseComponent,
     Children,
+    ClassDescriptor,
     PjxSlot,
     Slot,
     _is_component_typed_annotation,
     _is_slot_field,
     _resolve_slot_fields,
 )
-from pyjinhx.descriptor import ClassDescriptor
-from pyjinhx.render_context import build_context
-from pyjinhx.session import RenderSession
+from pyjinhx.rendering.session import RenderSession
+from pyjinhx.rendering.template_context import build_context
 
 _TEMPLATE_DIR = Path(__file__).parent.parent / "templates"
 
@@ -36,7 +36,7 @@ class TestSlotAliases:
     def test_slot_alias_carries_an_unflagged_marker(self):
         from typing import get_args
 
-        from pyjinhx._component import Slot
+        from pyjinhx.components.base import Slot
 
         markers = [m for m in get_args(Slot) if isinstance(m, PjxSlot)]
         assert len(markers) == 1
@@ -45,7 +45,7 @@ class TestSlotAliases:
     def test_children_alias_carries_a_flagged_marker(self):
         from typing import get_args
 
-        from pyjinhx._component import Children
+        from pyjinhx.components.base import Children
 
         markers = [m for m in get_args(Children) if isinstance(m, PjxSlot)]
         assert len(markers) == 1
@@ -54,7 +54,7 @@ class TestSlotAliases:
     def test_slot_alias_underlying_type_is_the_slot_value_union(self):
         from typing import get_args
 
-        from pyjinhx._component import BaseComponent, Slot
+        from pyjinhx.components.base import BaseComponent, Slot
 
         underlying = get_args(Slot)[0]
         assert set(get_args(underlying)) == {
@@ -198,7 +198,7 @@ class TestSlotTruthinessInTemplates:
 
     @staticmethod
     def _describe(component_cls, template, slots, base=_TEMPLATE_DIR):
-        from pyjinhx.descriptor import ClassDescriptor
+        from pyjinhx.components.base import ClassDescriptor
 
         component_cls.__pjx_descriptor__ = ClassDescriptor(
             template_path=Path(base) / template,
@@ -212,8 +212,8 @@ class TestSlotTruthinessInTemplates:
         return component_cls
 
     def test_component_valued_slot_takes_the_truthy_branch(self):
-        from pyjinhx.rendering import render
-        from pyjinhx.session import RenderSession
+        from pyjinhx.rendering.pipeline import render
+        from pyjinhx.rendering.session import RenderSession
 
         class Leaf(BaseComponent):
             title: str = "Leaf"
@@ -228,8 +228,8 @@ class TestSlotTruthinessInTemplates:
         assert "HAS" in render(Box(content=Leaf()), session)
 
     def test_empty_string_slot_takes_the_falsy_branch(self):
-        from pyjinhx.rendering import render
-        from pyjinhx.session import RenderSession
+        from pyjinhx.rendering.pipeline import render
+        from pyjinhx.rendering.session import RenderSession
 
         class Box2(BaseComponent):
             content: Slot = ""
@@ -244,7 +244,7 @@ class TestSlotInterpolation:
 
     @staticmethod
     def _describe(component_cls, template, slots, base=_TEMPLATE_DIR):
-        from pyjinhx.descriptor import ClassDescriptor
+        from pyjinhx.components.base import ClassDescriptor
 
         component_cls.__pjx_descriptor__ = ClassDescriptor(
             template_path=Path(base) / template,
@@ -258,8 +258,8 @@ class TestSlotInterpolation:
         return component_cls
 
     def test_component_slot_renders_the_childs_markup_in_position(self):
-        from pyjinhx.rendering import render
-        from pyjinhx.session import RenderSession
+        from pyjinhx.rendering.pipeline import render
+        from pyjinhx.rendering.session import RenderSession
 
         class InterpLeaf(BaseComponent):
             title: str = "hello"
@@ -280,8 +280,8 @@ class TestSlotInterpolation:
         assert "pjx-slot-" not in html
 
     def test_string_slot_still_interpolates_raw(self):
-        from pyjinhx.rendering import render
-        from pyjinhx.session import RenderSession
+        from pyjinhx.rendering.pipeline import render
+        from pyjinhx.rendering.session import RenderSession
 
         class StringBox(BaseComponent):
             content: Slot = ""
@@ -293,7 +293,7 @@ class TestSlotInterpolation:
         assert html == '<div class="box">before <b>x</b> after</div>'
 
     def test_component_slot_is_rendered_exactly_once(self):
-        from pyjinhx.session import RenderSession
+        from pyjinhx.rendering.session import RenderSession
 
         renders: list[str] = []
 
@@ -310,7 +310,7 @@ class TestSlotInterpolation:
         self._describe(CountingLeaf, "slot_leaf.html", ())
         self._describe(CountingBox, "slot_interp.html", {"content"})
 
-        import pyjinhx.rendering as render_module
+        import pyjinhx.rendering.pipeline as render_module
 
         original = render_module.render_level
 
@@ -331,7 +331,7 @@ class TestSlotInterpolation:
         assert html.segments  # sanity: a level came back
 
     def test_len_on_a_component_node_still_raises(self):
-        from pyjinhx.markers import ComponentNode
+        from pyjinhx.rendering.template_context import ComponentNode
 
         class LenLeaf(BaseComponent):
             pass
@@ -343,7 +343,7 @@ class TestSlotInterpolation:
         """#368 will turn this into a targeted message; here it only must not silently work."""
         from jinja2 import Environment
 
-        from pyjinhx.markers import ComponentNode, finalize_slot_node
+        from pyjinhx.rendering.template_context import ComponentNode, finalize_slot_node
 
         class FilterLeaf(BaseComponent):
             pass
@@ -358,8 +358,8 @@ class TestNullableSlotRendersRaw:
     """A `Slot | None` field keeps the autoescape exemption at render time."""
 
     def test_nullable_slot_string_is_not_escaped(self):
-        from pyjinhx.rendering import render
-        from pyjinhx.session import RenderSession
+        from pyjinhx.rendering.pipeline import render
+        from pyjinhx.rendering.session import RenderSession
 
         class NullableBox(BaseComponent):
             content: Slot | None = None
@@ -386,7 +386,7 @@ class TestNullableSlotRendersRaw:
 class TestSlotSpliceGuards:
     @staticmethod
     def _describe(component_cls, template, slots, base=_TEMPLATE_DIR):
-        from pyjinhx.descriptor import ClassDescriptor
+        from pyjinhx.components.base import ClassDescriptor
 
         component_cls.__pjx_descriptor__ = ClassDescriptor(
             template_path=Path(base) / template,
@@ -400,8 +400,8 @@ class TestSlotSpliceGuards:
         return component_cls
 
     def test_slot_interpolated_into_an_attribute_fails_loudly(self, tmp_path):
-        from pyjinhx.rendering import render
-        from pyjinhx.session import RenderSession
+        from pyjinhx.rendering.pipeline import render
+        from pyjinhx.rendering.session import RenderSession
 
         (tmp_path / "attr_leaf.html").write_text('<span class="leaf">x</span>')
         (tmp_path / "attr_box.html").write_text('<div title="{{ content }}">b</div>')
@@ -420,8 +420,8 @@ class TestSlotSpliceGuards:
             render(AttrBox(content=AttrLeaf()), session)
 
     def test_missing_slot_field_in_context_does_not_crash(self):
-        from pyjinhx.descriptor import ClassDescriptor
-        from pyjinhx.render_context import build_context
+        from pyjinhx.components.base import ClassDescriptor
+        from pyjinhx.rendering.template_context import build_context
 
         class NoSuchField(BaseComponent):
             title: str = "t"

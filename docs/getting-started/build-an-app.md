@@ -8,7 +8,7 @@ When you're done you will have used:
 - Template discovery and nesting via typed child fields
 - Co-located JS/CSS and asset delivery modes
 - Per-request scope, `@mutates`, and `AppContext`
-- Returning components from routes, composed by `pyjinhx.responses.compose()` through the `IntegrationBackend` (`FastAPIBackend`) that `setup()` wires
+- Returning components from routes, composed by `pyjinhx.integrations.responses.compose()` through the `IntegrationBackend` (`FastAPIBackend`) that `setup()` wires
 - Load-cache scopes and invalidation fan-out
 
 ---
@@ -114,7 +114,7 @@ plus the client runtime pyjinhx injects on a cold page load. No `HTMLResponse`, 
 Everything else in this guide is built on that one shape.
 
 ???+ question "Why return the component instead of rendering it yourself?"
-    Because returning it is what hands the request to `pyjinhx.responses.compose()`, and composition is where everything past "one component's markup" happens: the client runtime is injected on a cold page render, out-of-band fan-out is attached, and the htmx headers are set. Rendering a component yourself gives you exactly one component's HTML and nothing else — useful for inspection, never what a route wants.
+    Because returning it is what hands the request to `pyjinhx.integrations.responses.compose()`, and composition is where everything past "one component's markup" happens: the client runtime is injected on a cold page render, out-of-band fan-out is attached, and the htmx headers are set. Rendering a component yourself gives you exactly one component's HTML and nothing else — useful for inspection, never what a route wants.
 
     You never construct a response object. The `FastAPIBackend` that `setup()` installed turns compose's answer into an `HTMLResponse` for you. A return value pyjinhx does not recognise — a `JSONResponse`, a dict, a `FileResponse` — passes through to FastAPI untouched.
 

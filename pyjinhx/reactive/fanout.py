@@ -34,16 +34,17 @@ from typing import Any
 
 from markupsafe import Markup
 
-from pyjinhx import discovery, registry
+from pyjinhx.components import discovery
 from pyjinhx.reactive.cache import cache_get, cache_has
 from pyjinhx.reactive.component import ReactiveComponent, coerce_load_arg
 from pyjinhx.reactive.keys import coerce_load_key_str
 from pyjinhx.reactive.load_cost import is_too_cheap_to_thread, note_load_cost
 from pyjinhx.reactive.root_attrs import record_nested_react_keys
-from pyjinhx.rendering import render_level
-from pyjinhx.root_attrs import stamp_root_attrs
-from pyjinhx.segments import ChildRef, RenderedLevel, serialize
-from pyjinhx.session import RenderSession, current_session
+from pyjinhx.rendering import registry
+from pyjinhx.rendering.pipeline import render_level
+from pyjinhx.rendering.root_attrs import stamp_root_attrs
+from pyjinhx.rendering.segments import ChildRef, RenderedLevel, serialize
+from pyjinhx.rendering.session import RenderSession, current_session
 
 
 @dataclass(frozen=True)
@@ -242,7 +243,7 @@ def _mounted_ids_in(primary_html: object) -> set[str]:
 
     A string scan rather than a segment-tree walk, unlike ``_drop_nested``: by
     the time fan-out runs (T2 step 5) the primary render has already been
-    through rendering.py's single top-level serialize join at step 4, so what
+    through pipeline.py's single top-level serialize join at step 4, so what
     reaches here is a serialized str/Markup with no tree left to walk. Markup
     and str are read identically — the regex sees ``str(primary_html)`` either
     way. Best-effort by design: a truncated or malformed fragment simply yields

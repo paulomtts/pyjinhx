@@ -4,8 +4,8 @@ import pytest
 from pydantic import ValidationError
 
 from pyjinhx.builtins.pjx_region_loader import PJXRegionLoader
-from pyjinhx.rendering import render
-from pyjinhx.session import RenderSession
+from pyjinhx.rendering.pipeline import render
+from pyjinhx.rendering.session import RenderSession
 
 
 class TestFields:
@@ -72,7 +72,7 @@ class TestAssets:
     def test_render_accumulates_both_assets_into_the_session(self, session):
         # RenderSession does not auto-subscribe accumulate_assets — the same
         # explicit wiring test_pjx_lazy_load.py uses.
-        from pyjinhx.session import accumulate_assets
+        from pyjinhx.rendering.session import accumulate_assets
 
         session.on_rendered.append(accumulate_assets)
         _html(session)

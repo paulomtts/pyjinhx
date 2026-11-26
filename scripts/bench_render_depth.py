@@ -26,11 +26,10 @@ import tempfile
 import time
 from pathlib import Path
 
-from pyjinhx import discovery
-from pyjinhx._component import BaseComponent, _pascal_to_snake
-from pyjinhx.descriptor import ClassDescriptor
-from pyjinhx.rendering import render
-from pyjinhx.session import RenderSession
+from pyjinhx.components import discovery
+from pyjinhx.components.base import BaseComponent, ClassDescriptor, _pascal_to_snake
+from pyjinhx.rendering.pipeline import render
+from pyjinhx.rendering.session import RenderSession
 
 DEPTHS = (10, 20, 40, 80, 160)
 
@@ -65,7 +64,7 @@ def build_chain(depth: int, template_dir: Path) -> type[BaseComponent]:
     """
     classes: list[type[BaseComponent]] = []
     for i in range(depth):
-        # No underscores: RE_PASCAL_CASE_TAG_NAME (pyjinhx/segments.py) only
+        # No underscores: RE_PASCAL_CASE_TAG_NAME (pyjinhx/rendering/segments.py) only
         # matches [A-Za-z0-9]* after the leading capital, so an underscore
         # would make the parser treat the tag as literal text, not a ChildRef.
         class_name = f"BenchDepthLevel{depth}Idx{i}"

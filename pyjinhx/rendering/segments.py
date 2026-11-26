@@ -53,7 +53,7 @@ RE_RAW_COMMENT = re.compile(r"<!--.*?-->|<!\[.*?\]\]?>", re.DOTALL)
 
 # HTML void elements have no closing tag, so they never open a nesting level —
 # `<img>` without a trailing slash arrives through handle_starttag but must not
-# push depth. Duplicated from v0.x's pyjinhx/root_attrs.py rather than imported:
+# push depth. Duplicated from v0.x's pyjinhx/rendering/root_attrs.py rather than imported:
 # this module is import-pure and may not reach into pyjinhx (ADR 0002).
 _VOID_ELEMENTS = frozenset(
     {

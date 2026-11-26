@@ -47,7 +47,6 @@ escaping it into inert text.
 
 from collections.abc import Sequence
 
-from pyjinhx._component import BaseComponent, Slot
 from pyjinhx.builtins.pjx_accordion import PJXAccordion
 from pyjinhx.builtins.pjx_accordion_content import PJXAccordionContent
 from pyjinhx.builtins.pjx_accordion_group import PJXAccordionGroup
@@ -106,6 +105,7 @@ from pyjinhx.builtins.pjx_toggle_switch import PJXToggleSwitch
 from pyjinhx.builtins.pjx_tooltip import PJXTooltip
 from pyjinhx.builtins.pjx_tooltip_content import PJXTooltipContent
 from pyjinhx.builtins.pjx_tooltip_trigger import PJXTooltipTrigger
+from pyjinhx.components.base import BaseComponent, Slot
 
 EXCLUDED_FROM_BOTH = (
     "PJXConfirmDialog",

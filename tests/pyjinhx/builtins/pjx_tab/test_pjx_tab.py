@@ -2,11 +2,11 @@
 
 import pytest
 
-from pyjinhx import discovery
 from pyjinhx.builtins.pjx_icon import PJXIcon
 from pyjinhx.builtins.pjx_tab import PJXTab
-from pyjinhx.rendering import render
-from pyjinhx.session import RenderSession
+from pyjinhx.components import discovery
+from pyjinhx.rendering.pipeline import render
+from pyjinhx.rendering.session import RenderSession
 
 
 @pytest.fixture

@@ -13,9 +13,9 @@ from pathlib import Path
 
 import pytest
 
-from pyjinhx import discovery
-from pyjinhx._component import BaseComponent, _OpenComponent
-from pyjinhx.classless import component, component_for_tag
+from pyjinhx.components import discovery
+from pyjinhx.components.base import BaseComponent, _OpenComponent
+from pyjinhx.components.classless import component, component_for_tag
 
 
 @pytest.fixture(autouse=True)
@@ -201,7 +201,7 @@ def test_the_returned_class_is_relocated_off_the_generator_module(tmp_path):
 
     cls = component("Card", template_dir=tmp_path)
 
-    assert cls.__module__ != "pyjinhx.props_header"
+    assert cls.__module__ != "pyjinhx.components.props_header"
     module_file = sys.modules[cls.__module__].__file__
     assert module_file is not None
     assert Path(module_file).parent == tmp_path
@@ -270,7 +270,7 @@ def test_a_header_import_that_calls_component_does_not_deadlock(tmp_path, monkey
     (tmp_path / "parts").mkdir()
     write_template(tmp_path / "parts", "badge", "<b></b>")
     (tmp_path / "reentrant_probe.py").write_text(
-        "from pyjinhx.classless import component\n"
+        "from pyjinhx.components.classless import component\n"
         f"Badge = component('Badge', template_dir={str(tmp_path / 'parts')!r})\n"
         "SIZE = 3\n"
     )

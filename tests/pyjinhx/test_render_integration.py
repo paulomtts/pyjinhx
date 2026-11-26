@@ -17,12 +17,11 @@ wiring gap this file works around rather than fixes).
 
 from pathlib import Path
 
-from pyjinhx._component import BaseComponent, Slot
-from pyjinhx.descriptor import ClassDescriptor
-from pyjinhx.rendering import render_level
-from pyjinhx.root_attrs import stamp_root_attrs
-from pyjinhx.segments import serialize
-from pyjinhx.session import RenderSession
+from pyjinhx.components.base import BaseComponent, ClassDescriptor, Slot
+from pyjinhx.rendering.pipeline import render_level
+from pyjinhx.rendering.root_attrs import stamp_root_attrs
+from pyjinhx.rendering.segments import serialize
+from pyjinhx.rendering.session import RenderSession
 
 _TEMPLATE_DIR = Path(__file__).parent.parent / "templates"
 

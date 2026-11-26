@@ -1,12 +1,12 @@
 import pytest
 
-from pyjinhx.root_attrs import (
+from pyjinhx.rendering.root_attrs import (
     RootStampCollisionError,
     _override_tag,
     serialize_attr,
     stamp_root_attrs,
 )
-from pyjinhx.segments import RenderedLevel
+from pyjinhx.rendering.segments import RenderedLevel
 
 
 def _level(markup: str, root_span: tuple[int, int]) -> RenderedLevel:

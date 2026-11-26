@@ -6,7 +6,7 @@ from pathlib import Path
 import jinja2
 import pytest
 
-from pyjinhx.session import AbsolutePathLoader, RenderSession
+from pyjinhx.rendering.session import AbsolutePathLoader, RenderSession
 
 
 @pytest.fixture
@@ -75,7 +75,7 @@ def test_a_session_environment_loads_a_template_by_absolute_path(template_file: 
 def test_a_bare_request_scope_can_render_a_builtin():
     """The #728 regression: no template_dir configured anywhere, builtins still render."""
     from pyjinhx.builtins import PJXCardHeader
-    from pyjinhx.session import request_scope
+    from pyjinhx.rendering.session import request_scope
 
     with request_scope():
         html = PJXCardHeader(title="x").render()

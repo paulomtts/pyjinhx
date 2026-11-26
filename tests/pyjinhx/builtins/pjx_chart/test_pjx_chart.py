@@ -7,8 +7,8 @@ from pydantic import ValidationError
 
 import pyjinhx.builtins
 from pyjinhx.builtins import PJXChart, PJXChartSeries
-from pyjinhx.rendering import render
-from pyjinhx.session import RenderSession
+from pyjinhx.rendering.pipeline import render
+from pyjinhx.rendering.session import RenderSession
 
 LABELS = ["Jan", "Feb", "Mar", "Apr"]
 SALES = PJXChartSeries(name="Sales", values=[4, 8, 6, 10])

@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from pyjinhx.assets import emit_assets
 from pyjinhx.client.inject import inject_runtime
-from pyjinhx.session import RenderSession
+from pyjinhx.rendering.assets import emit_assets
+from pyjinhx.rendering.session import RenderSession
 
 
 def emitted() -> str:

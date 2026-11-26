@@ -13,11 +13,10 @@ from starlette.responses import (
     Response,
 )
 
-from pyjinhx._component import BaseComponent
+from pyjinhx.components.base import BaseComponent, ClassDescriptor
 from pyjinhx.config import PjxSettings
-from pyjinhx.descriptor import ClassDescriptor
 from pyjinhx.integrations.fastapi import apply_setup
-from pyjinhx.session import request_scope
+from pyjinhx.rendering.session import request_scope
 
 if TYPE_CHECKING:
     from starlette.routing import BaseRoute
@@ -112,7 +111,7 @@ def test_lifespan_wraps_an_app_provided_lifespan():
 
 
 def test_scope_is_entered_per_request_and_reset_after():
-    from pyjinhx.session import current_session
+    from pyjinhx.rendering.session import current_session
 
     app = FastAPI()
     apply_setup(app, _settings())
@@ -134,7 +133,7 @@ def test_scope_is_entered_per_request_and_reset_after():
 
 
 def test_scope_exits_when_the_handler_raises():
-    from pyjinhx.session import current_session
+    from pyjinhx.rendering.session import current_session
 
     app = FastAPI()
     apply_setup(app, _settings())
@@ -155,7 +154,7 @@ def test_manifests_are_parsed_onto_the_session():
 
     @app.get("/state")
     def state(request: Request):
-        from pyjinhx.session import current_session
+        from pyjinhx.rendering.session import current_session
 
         session = current_session()
         assert session is not None
@@ -522,7 +521,7 @@ def test_configured_jinja_globals_and_filters_reach_the_request_session():
     """The middleware builds its own session so it can attach the render hooks,
     which means request_scope()'s settings-seeding branch never runs for a
     FastAPI app — the middleware has to seed that session itself."""
-    from pyjinhx.session import current_session
+    from pyjinhx.rendering.session import current_session
 
     def site_name() -> str:
         return "pyjinhx"
@@ -559,7 +558,7 @@ def test_middleware_sessions_share_the_cached_environment():
     so it is also the place that has to adopt the cached environment — two
     requests must not each compile the app's templates from scratch."""
     from pyjinhx.config import current_settings
-    from pyjinhx.session import _environment_for, current_session
+    from pyjinhx.rendering.session import _environment_for, current_session
 
     seen: list[object] = []
 

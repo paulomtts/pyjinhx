@@ -7,25 +7,29 @@ from pathlib import Path
 import pytest
 from jinja2 import Environment, TemplateSyntaxError
 
-from pyjinhx import discovery
-from pyjinhx.assets import (
-    AssetMode,
-    all_assets,
-    asset_manifest,
-    asset_token,
-    emit_assets,
-)
-from pyjinhx.classless import component
-from pyjinhx.reactive.assets import missing_asset_oob
-from pyjinhx.rendering import render
-from pyjinhx.session import AbsolutePathLoader, RenderSession, accumulate_assets
-from pyjinhx.template_blocks import (
+from pyjinhx.components import discovery
+from pyjinhx.components.classless import component
+from pyjinhx.document.template_blocks import (
     BlockTemplateSyntaxError,
     InlineAsset,
     find_block,
     find_header,
     hide_block_lines,
     inline_assets,
+)
+from pyjinhx.reactive.assets import missing_asset_oob
+from pyjinhx.rendering.assets import (
+    AssetMode,
+    all_assets,
+    asset_manifest,
+    asset_token,
+    emit_assets,
+)
+from pyjinhx.rendering.pipeline import render
+from pyjinhx.rendering.session import (
+    AbsolutePathLoader,
+    RenderSession,
+    accumulate_assets,
 )
 
 

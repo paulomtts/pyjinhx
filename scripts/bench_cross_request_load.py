@@ -29,7 +29,7 @@ from typing import Annotated
 
 from pyjinhx.config import PjxSettings, configure_pyjinhx
 from pyjinhx.reactive.component import PjxKey, ReactiveComponent
-from pyjinhx.session import request_scope
+from pyjinhx.rendering.session import request_scope
 
 # Milliseconds one load() call blocks for. 0.0 is the pure-overhead case: what
 # tier 2 costs when it saves nothing at all.

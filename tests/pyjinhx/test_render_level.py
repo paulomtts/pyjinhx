@@ -2,12 +2,16 @@ from pathlib import Path
 
 import pytest
 
-from pyjinhx import discovery
-from pyjinhx._component import BaseComponent, Children, _pascal_to_snake
-from pyjinhx.descriptor import ClassDescriptor
-from pyjinhx.rendering import render_level
-from pyjinhx.segments import ChildRef, RenderedLevel
-from pyjinhx.session import RenderSession
+from pyjinhx.components import discovery
+from pyjinhx.components.base import (
+    BaseComponent,
+    Children,
+    ClassDescriptor,
+    _pascal_to_snake,
+)
+from pyjinhx.rendering.pipeline import render_level
+from pyjinhx.rendering.segments import ChildRef, RenderedLevel
+from pyjinhx.rendering.session import RenderSession
 
 _TEMPLATE_DIR = Path(__file__).parent.parent / "templates"
 
@@ -412,7 +416,7 @@ def test_mixedcase_passes_through():
 # Test 13: Slot fields wrapped as opaque nodes (not passed as raw strings to template)
 def test_slot_fields_wrapped():
     """Slot fields wrapped as opaque nodes (not passed as raw strings to template)."""
-    from pyjinhx._component import Slot
+    from pyjinhx.components.base import Slot
 
     class ContainerComp(BaseComponent):
         content: Slot = ""
@@ -746,9 +750,9 @@ def test_template_assertion_error_not_wrapped():
 # Test: `{{ content }}` holding a component becomes a nested RenderedLevel segment
 def test_interpolated_component_slot_becomes_a_nested_level():
     """A component-valued slot enters segments as a RenderedLevel, not as text."""
-    from pyjinhx._component import Slot
-    from pyjinhx.rendering import render_level
-    from pyjinhx.segments import serialize
+    from pyjinhx.components.base import Slot
+    from pyjinhx.rendering.pipeline import render_level
+    from pyjinhx.rendering.segments import serialize
 
     class SpliceLeaf(BaseComponent):
         title: str = "inner"

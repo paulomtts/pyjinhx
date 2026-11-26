@@ -21,13 +21,13 @@ from enum import Enum
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from pyjinhx.template_blocks import InlineAsset
+from pyjinhx.document.template_blocks import InlineAsset
 
 if TYPE_CHECKING:
-    from pyjinhx.session import RenderSession
+    from pyjinhx.rendering.session import RenderSession
 
 
-_BUILTIN_ASSET_DIR = Path(__file__).resolve().parent / "builtins"
+_BUILTIN_ASSET_DIR = Path(__file__).resolve().parent.parent / "builtins"
 
 
 def _is_builtin_asset(path: Path) -> bool:
@@ -343,7 +343,7 @@ def all_assets() -> tuple[tuple[Path, ...], tuple[Path, ...]]:
     """
     # Imported here rather than at module scope: session imports this module
     # and component imports session, so a top-level import would cycle.
-    from pyjinhx._component import all_component_classes
+    from pyjinhx.components.base import all_component_classes
 
     css: set[Path] = set()
     js: set[Path] = set()

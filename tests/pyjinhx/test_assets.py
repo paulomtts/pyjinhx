@@ -4,11 +4,10 @@ import threading
 from dataclasses import replace
 from pathlib import Path
 
-from pyjinhx._component import BaseComponent
-from pyjinhx.assets import AssetMode, all_assets
-from pyjinhx.descriptor import ClassDescriptor
-from pyjinhx.rendering import render
-from pyjinhx.session import (
+from pyjinhx.components.base import BaseComponent, ClassDescriptor
+from pyjinhx.rendering.assets import AssetMode, all_assets
+from pyjinhx.rendering.pipeline import render
+from pyjinhx.rendering.session import (
     RenderSession,
     accumulate_assets,
     request_scope,
@@ -264,7 +263,7 @@ def test_all_assets_returns_paths_not_strings():
 
 
 def test_asset_token_is_a_stable_short_digest_of_the_normalized_path():
-    from pyjinhx.assets import asset_token
+    from pyjinhx.rendering.assets import asset_token
 
     token = asset_token(Path("a/../a/style.css"))
     assert token == asset_token(Path("a/style.css"))
@@ -273,7 +272,7 @@ def test_asset_token_is_a_stable_short_digest_of_the_normalized_path():
 
 
 def test_asset_token_differs_per_path():
-    from pyjinhx.assets import asset_token
+    from pyjinhx.rendering.assets import asset_token
 
     assert asset_token(Path("a/style.css")) != asset_token(Path("b/style.css"))
 
@@ -283,7 +282,7 @@ def test_asset_token_differs_per_path():
 
 def test_is_builtin_asset_true_for_a_path_under_pyjinhx_builtins():
     import pyjinhx
-    from pyjinhx.assets import _is_builtin_asset
+    from pyjinhx.rendering.assets import _is_builtin_asset
 
     package_dir = Path(pyjinhx.__file__).parent
     builtin_css = package_dir / "builtins" / "pjx_popover" / "pjx_popover.css"
@@ -291,13 +290,16 @@ def test_is_builtin_asset_true_for_a_path_under_pyjinhx_builtins():
 
 
 def test_is_builtin_asset_false_for_an_app_path():
-    from pyjinhx.assets import _is_builtin_asset
+    from pyjinhx.rendering.assets import _is_builtin_asset
 
     assert _is_builtin_asset(Path("/app/components/box.css")) is False
 
 
 def test_is_builtin_asset_false_for_a_pyjinhx_module_outside_builtins():
     import pyjinhx
-    from pyjinhx.assets import _is_builtin_asset
+    from pyjinhx.rendering.assets import _is_builtin_asset
 
-    assert _is_builtin_asset(Path(pyjinhx.__file__).parent / "assets.py") is False
+    assert (
+        _is_builtin_asset(Path(pyjinhx.__file__).parent / "rendering" / "assets.py")
+        is False
+    )

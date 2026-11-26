@@ -51,7 +51,7 @@ instance.render(session: RenderSession | None = None) -> str
 
 Renders this instance to a finished HTML string, calling `load()` first. This is `BaseComponent.render()` — `ReactiveComponent` adds no separate entry point.
 
-`render()` returns one component's markup and nothing else — it never appends OOB swaps. Fan-out belongs to the response composer: **returning** a component from a handler is what gets dependents swapped, because [`pyjinhx.responses.compose()`](responses.md) walks the client's `X-PJX-Mounted` manifest against this request's dirtied keys (`walk_manifest()`) and hands the resulting candidates to `oob_swaps()` to build the fragments appended after the primary markup. This happens on every composed response; there is nothing to opt into.
+`render()` returns one component's markup and nothing else — it never appends OOB swaps. Fan-out belongs to the response composer: **returning** a component from a handler is what gets dependents swapped, because [`pyjinhx.integrations.responses.compose()`](responses.md) walks the client's `X-PJX-Mounted` manifest against this request's dirtied keys (`walk_manifest()`) and hands the resulting candidates to `oob_swaps()` to build the fragments appended after the primary markup. This happens on every composed response; there is nothing to opt into.
 
 ### state_hash()
 

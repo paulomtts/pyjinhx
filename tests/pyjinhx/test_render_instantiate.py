@@ -3,10 +3,10 @@ from typing import ClassVar, cast
 import pytest
 from pydantic import Field, ValidationError
 
-from pyjinhx import discovery
-from pyjinhx._component import BaseComponent, Children, Slot, _pascal_to_snake
-from pyjinhx.rendering import _fill_children, _instantiate_child
-from pyjinhx.segments import ChildRef, RenderedLevel
+from pyjinhx.components import discovery
+from pyjinhx.components.base import BaseComponent, Children, Slot, _pascal_to_snake
+from pyjinhx.rendering.pipeline import _fill_children, _instantiate_child
+from pyjinhx.rendering.segments import ChildRef, RenderedLevel
 
 
 class Plain(BaseComponent):

@@ -7,7 +7,6 @@ import logging
 
 import pytest
 
-from pyjinhx.assets import AssetMode
 from pyjinhx.client import (
     read_loading_indicator_js,
     read_page_loader_js,
@@ -16,7 +15,8 @@ from pyjinhx.client import (
     read_vendored_htmx,
 )
 from pyjinhx.client.inject import PJX_MOUNTED_HEADER, inject_runtime
-from pyjinhx.session import RenderSession
+from pyjinhx.rendering.assets import AssetMode
+from pyjinhx.rendering.session import RenderSession
 
 
 class FakeRequest:
@@ -62,7 +62,7 @@ def test_cold_render_emits_the_pjx_style_block():
 
 
 def test_runtime_style_survives_a_non_inline_css_mode():
-    from pyjinhx.assets import emit_assets
+    from pyjinhx.rendering.assets import emit_assets
 
     session = RenderSession()
     session.css_mode = AssetMode.LINK

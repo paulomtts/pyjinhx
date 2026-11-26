@@ -6,12 +6,12 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from pyjinhx import discovery
-from pyjinhx._component import _is_slot_field
 from pyjinhx.builtins.pjx_icon import PJXIcon
 from pyjinhx.builtins.pjx_roster_chip import PJXRosterChip
-from pyjinhx.classless import component
-from pyjinhx.rendering import render
+from pyjinhx.components import discovery
+from pyjinhx.components.base import _is_slot_field
+from pyjinhx.components.classless import component
+from pyjinhx.rendering.pipeline import render
 
 PACKAGE_DIR = (
     Path(__file__).resolve().parents[4] / "pyjinhx" / "builtins" / "pjx_roster_chip"

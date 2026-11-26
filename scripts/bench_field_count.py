@@ -30,15 +30,15 @@ import tempfile
 import time
 from pathlib import Path
 
-from pyjinhx import discovery
-from pyjinhx._component import (
+from pyjinhx.components import discovery
+from pyjinhx.components.base import (
     BaseComponent,
+    ClassDescriptor,
     _pascal_to_snake,
     _resolve_json_coercible_fields,
 )
-from pyjinhx.descriptor import ClassDescriptor
-from pyjinhx.rendering import render
-from pyjinhx.session import RenderSession
+from pyjinhx.rendering.pipeline import render
+from pyjinhx.rendering.session import RenderSession
 
 FIELD_COUNTS = (5, 20, 50, 100)
 

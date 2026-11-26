@@ -7,12 +7,12 @@ subscriber is exported, not auto-registered: callers append it to
 ``register_rendered_instance``.
 """
 
-from pyjinhx._component import BaseComponent, _pascal_to_snake
+from pyjinhx.components.base import BaseComponent, _pascal_to_snake
 from pyjinhx.reactive.component import ReactiveComponent
 from pyjinhx.reactive.keys import coerce_load_key_str
-from pyjinhx.root_attrs import stamp_root_attrs
-from pyjinhx.segments import RenderedLevel
-from pyjinhx.session import RenderSession
+from pyjinhx.rendering.root_attrs import stamp_root_attrs
+from pyjinhx.rendering.segments import RenderedLevel
+from pyjinhx.rendering.session import RenderSession
 
 
 def stamp_reactive_root_attrs(

@@ -8,8 +8,8 @@ and the exhaustive cross-cutting suite (#869) are separate subtasks.
 import pytest
 
 from pyjinhx.builtins.pjx_select import PJXSelect, SelectOption
-from pyjinhx.rendering import render
-from pyjinhx.session import RenderSession
+from pyjinhx.rendering.pipeline import render
+from pyjinhx.rendering.session import RenderSession
 
 FRUITS = [
     "Apple",

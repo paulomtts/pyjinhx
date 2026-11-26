@@ -78,7 +78,7 @@ Fields typed as components — `action: Button`, `items: list[Button]`, `widgets
 
 `.js`/`.css` files next to the component sharing the template's **snake_case** stem (`PJXTabGroup` → `pjx_tab_group.pjx` + `pjx_tab_group.js`; a kebab-case `pjx-tab-group.js` is **not** collected) are auto-collected, deduplicated per render session, and injected at the root render — CSS as `<style>` before the HTML, JS as `<script>` after, one tag per component so an error in one doesn't break others. Subclasses with no adjacent assets inherit the nearest ancestor's assets through the MRO (first found per kind).
 
-Add extra files via the `js=[...]` / `css=[...]` fields; missing files warn on the `pyjinhx` logger. For production, use `AssetMode.NONE` (from `pyjinhx`) and serve assets from a pre-built bundle via `pyjinhx.assets.all_assets()` (internal module, not public API), which walks every registered component class and returns its `(css_paths, js_paths)`.
+Add extra files via the `js=[...]` / `css=[...]` fields; missing files warn on the `pyjinhx` logger. For production, use `AssetMode.NONE` (from `pyjinhx`) and serve assets from a pre-built bundle via `pyjinhx.rendering.assets.all_assets()` (internal module, not public API), which walks every registered component class and returns its `(css_paths, js_paths)`.
 
 ## Reactivity (dependency-aware OOB swaps)
 
@@ -135,7 +135,7 @@ def dismiss():
     return None                 # no primary; dependents still fan out OOB
 ```
 
-`pyjinhx.responses.compose(result, *, session=None)` is what turns a handler return into a `PjxResponse(body, headers, status)`, and it attaches fan-out on **every** path that produces a body — the dirtied keys belong to the request, not to whichever spelling the handler reached for. Four return shapes:
+`pyjinhx.integrations.responses.compose(result, *, session=None)` is what turns a handler return into a `PjxResponse(body, headers, status)`, and it attaches fan-out on **every** path that produces a body — the dirtied keys belong to the request, not to whichever spelling the handler reached for. Four return shapes:
 
 | Return | Primary |
 | --- | --- |
@@ -218,7 +218,7 @@ Full reference (props, classes, `--pjx-*` tokens, JS helpers per component): [Co
 
 ## Registry & configuration
 
-Two registries, deliberately separate. Classes register once at definition/discovery time under their snake_case tag name — that is the one PascalCase tags resolve through. Instances register **after they render**, under the composite key `ClassName_id` (so different types can share an id), into a request-scoped store used only by reactivity; `PjxScopeMiddleware` subscribes `register_rendered_instance` for you under `setup(app)`. A miss there is routine, never "the region is gone". Outside a wired app, isolate per request yourself with `from pyjinhx.session import request_scope; with request_scope(): ...` — `pyjinhx.session` is an internal module, not public API, so prefer `setup(app)` wherever it works.
+Two registries, deliberately separate. Classes register once at definition/discovery time under their snake_case tag name — that is the one PascalCase tags resolve through. Instances register **after they render**, under the composite key `ClassName_id` (so different types can share an id), into a request-scoped store used only by reactivity; `PjxScopeMiddleware` subscribes `register_rendered_instance` for you under `setup(app)`. A miss there is routine, never "the region is gone". Outside a wired app, isolate per request yourself with `from pyjinhx.rendering.session import request_scope; with request_scope(): ...` — `pyjinhx.rendering.session` is an internal module, not public API, so prefer `setup(app)` wherever it works.
 
 Set the components/template root via `setup(components_root="./components")` (or `PjxSettings(components_root=...)`); see [Configuration](../guide/configuration.md) for the full settings surface.
 
@@ -251,9 +251,9 @@ from pyjinhx import (
 # Everything above is `pyjinhx.__all__` — the supported surface.
 # Below: internal modules. NOT public API, no stability guarantee; reach for
 # them only when the public surface has no equivalent.
-from pyjinhx.assets import all_assets           # (css_paths, js_paths) for every registered class
-from pyjinhx.session import request_scope       # per-request isolation context manager
-from pyjinhx.responses import compose, PjxResponse, PASSTHROUGH  # handler return -> wire response
+from pyjinhx.rendering.assets import all_assets           # (css_paths, js_paths) for every registered class
+from pyjinhx.rendering.session import request_scope       # per-request isolation context manager
+from pyjinhx.integrations.responses import compose, PjxResponse, PASSTHROUGH  # handler return -> wire response
 from pyjinhx.reactive.fanout import oob_swaps, walk_manifest     # manual OOB walk (tests/advanced)
 from pyjinhx.client.inject import PJX_MOUNTED_HEADER, PJX_TRIGGER_HEADER
 import pyjinhx.builtins                         # optional: registers all builtin classes

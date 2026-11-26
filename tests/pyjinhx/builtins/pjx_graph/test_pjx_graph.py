@@ -9,7 +9,7 @@ from pydantic import ValidationError
 from pyjinhx.builtins.pjx_badge.pjx_badge import PJXBadge
 from pyjinhx.builtins.pjx_graph import PJXGraph
 from pyjinhx.builtins.pjx_graph_nodes import PJXGraphNodes
-from pyjinhx.rendering import render
+from pyjinhx.rendering.pipeline import render
 
 NODES = '<div data-test="nodes"></div>'
 EDGES = '<div data-test="edges"></div>'

@@ -4,8 +4,8 @@ import pytest
 from pydantic import ValidationError
 
 from pyjinhx.builtins.pjx_avatar import PJXAvatar
-from pyjinhx.rendering import render
-from pyjinhx.session import RenderSession
+from pyjinhx.rendering.pipeline import render
+from pyjinhx.rendering.session import RenderSession
 
 
 @pytest.fixture
@@ -149,7 +149,7 @@ def test_stylesheet_is_auto_discovered_by_snake_case_filename():
     so the v0.x kebab-case filename had to be renamed on the way in.
 
     ``ClassDescriptor.css_paths`` is a tuple (0 or 1 entries — one probe per
-    class, per ADR 0007), not a singular ``css_path``; see descriptor.py.
+    class, per ADR 0007), not a singular ``css_path``; see base.py.
     """
     css_paths = PJXAvatar.__pjx_descriptor__.css_paths
     assert len(css_paths) == 1

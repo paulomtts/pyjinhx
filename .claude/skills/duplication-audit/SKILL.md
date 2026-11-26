@@ -20,11 +20,11 @@ Read: [CONVENTIONS.md](../_shared/CONVENTIONS.md).
 ## Hunt targets
 
 1. **Parallel orchestration** — same step sequence in 2+ entrypoints.
-   - Canonical: one render path through `pyjinhx/rendering.py`; the reactive route composes its result into `ReactiveResponse` (`pyjinhx/reactive/response.py:14`).
+   - Canonical: one render path through `pyjinhx/rendering/pipeline.py`; the reactive route composes its result into `ReactiveResponse` (`pyjinhx/reactive/response.py:14`).
 2. **Duplicate parsing/validation** — two ways to answer the same question.
    - Canonical: each wire header is parsed exactly once, by its own type's `parse()` in `pyjinhx/client/inject.py` (`LoadedAssets`, `MountedManifest`, `TriggerManifest`).
 3. **Mutation recording** — must stay one code path.
-   - Canonical: `mutates()` and `dirty()` (`pyjinhx/reactive/mutations.py:31,65`) both funnel into `add_dirtied()` (`pyjinhx/session.py:166`). Any third route that writes dirtied keys is a merge candidate.
+   - Canonical: `mutates()` and `dirty()` (`pyjinhx/reactive/mutations.py:31,65`) both funnel into `add_dirtied()` (`pyjinhx/rendering/session.py:166`). Any third route that writes dirtied keys is a merge candidate.
 4. **Key coercion** — `coerce_reactive_key` / `coerce_reactive_keys` (`pyjinhx/reactive/keys.py:14,33`) are the only normalizers; inline `str()`-ing of keys is duplication.
 
 ## Intentional asymmetry (document, don't merge blindly)

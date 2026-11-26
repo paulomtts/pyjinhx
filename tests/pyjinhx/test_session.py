@@ -16,10 +16,9 @@ from typing import Any, cast
 
 import pytest
 
-from pyjinhx import session as session_module
-from pyjinhx._component import BaseComponent
-from pyjinhx.descriptor import ClassDescriptor
-from pyjinhx.rendering import render
+from pyjinhx.components.base import BaseComponent, ClassDescriptor
+from pyjinhx.rendering import session as session_module
+from pyjinhx.rendering.pipeline import render
 
 _TEMPLATE_DIR = Path(__file__).parent.parent / "templates"
 
@@ -225,7 +224,7 @@ class PlainBox(BaseComponent):
 
 # There is no `__pjx_template__` override attribute anywhere in pyjinhx —
 # template resolution is a pure MRO/filesystem walk (`class_name.pjx` beside
-# the defining module; see _component.py's `_walk_template`). This test needs a
+# the defining module; see base.py's `_walk_template`). This test needs a
 # specific template, so it bypasses that walk entirely, the same way
 # test_render_level.py does: build a ClassDescriptor by hand and assign it.
 PlainBox.__pjx_descriptor__ = ClassDescriptor(
@@ -342,13 +341,13 @@ def test_session_starts_with_no_runtime_injected():
 
 
 def test_cache_reverse_is_empty_outside_a_request_scope():
-    from pyjinhx.session import get_cache_reverse
+    from pyjinhx.rendering.session import get_cache_reverse
 
     assert get_cache_reverse() == {}
 
 
 def test_cache_reverse_is_fresh_per_request_scope():
-    from pyjinhx.session import get_cache_reverse, request_scope
+    from pyjinhx.rendering.session import get_cache_reverse, request_scope
 
     with request_scope():
         get_cache_reverse()["todos"] = {(int, 1)}

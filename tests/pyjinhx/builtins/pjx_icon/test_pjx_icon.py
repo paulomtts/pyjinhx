@@ -6,10 +6,10 @@ import logging
 import pytest
 from pydantic import ValidationError
 
-from pyjinhx._component import BaseComponent
 from pyjinhx.builtins.pjx_icon import PJXIcon
-from pyjinhx.rendering import render
-from pyjinhx.session import RenderSession
+from pyjinhx.components.base import BaseComponent
+from pyjinhx.rendering.pipeline import render
+from pyjinhx.rendering.session import RenderSession
 
 
 @pytest.fixture

@@ -9,7 +9,7 @@ from pyjinhx.config import configure_pyjinhx, current_settings
 from pyjinhx.reactive.backend import InMemoryCacheBackend
 from pyjinhx.reactive.backend_health import is_degraded, reset_backend_health
 from pyjinhx.reactive.component import PjxKey, ReactiveComponent
-from pyjinhx.session import request_scope
+from pyjinhx.rendering.session import request_scope
 
 
 class BrokenBackend(InMemoryCacheBackend):

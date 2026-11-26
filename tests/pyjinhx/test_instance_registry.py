@@ -6,9 +6,10 @@ from pathlib import Path
 import pytest
 
 from pyjinhx import dev
-from pyjinhx.descriptor import ClassDescriptor
+from pyjinhx.components.base import ClassDescriptor
 from pyjinhx.reactive.component import ReactiveComponent
-from pyjinhx.registry import (
+from pyjinhx.rendering.pipeline import render_level
+from pyjinhx.rendering.registry import (
     InstanceKeyCollisionError,
     make_key,
     quiet_collisions,
@@ -17,9 +18,8 @@ from pyjinhx.registry import (
     register_rendered_instance,
     resolve,
 )
-from pyjinhx.rendering import render_level
-from pyjinhx.segments import RenderedLevel, serialize
-from pyjinhx.session import (
+from pyjinhx.rendering.segments import RenderedLevel, serialize
+from pyjinhx.rendering.session import (
     RenderSession,
     _instances,
     get_instances,

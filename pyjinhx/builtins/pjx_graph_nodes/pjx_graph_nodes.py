@@ -3,7 +3,7 @@ from collections.abc import Iterable
 from markupsafe import Markup
 from pydantic import Field
 
-from pyjinhx._component import AttrValue, BaseComponent, ExtraAttrs, Slot
+from pyjinhx.components.base import AttrValue, BaseComponent, ExtraAttrs, Slot
 
 
 class PJXGraphNodes(BaseComponent):

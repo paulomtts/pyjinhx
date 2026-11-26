@@ -16,9 +16,8 @@ import pytest
 from fastapi import FastAPI, Request
 from fastapi.testclient import TestClient
 
-from pyjinhx import discovery, registry
 from pyjinhx.app_context import AppContext
-from pyjinhx.assets import asset_token
+from pyjinhx.components import discovery
 from pyjinhx.config import PjxSettings
 from pyjinhx.context import PjxContext
 from pyjinhx.dev import warn_unconsumed_mutations
@@ -28,7 +27,9 @@ from pyjinhx.reactive.component import PjxKey, ReactiveComponent
 from pyjinhx.reactive.keys import MutationKey
 from pyjinhx.reactive.load_cost import note_load_cost
 from pyjinhx.reactive.mutations import dirty, mutates
-from pyjinhx.session import (
+from pyjinhx.rendering import registry
+from pyjinhx.rendering.assets import asset_token
+from pyjinhx.rendering.session import (
     NoActiveRequestScope,
     current_session,
     get_dirtied,
@@ -512,8 +513,8 @@ def test_lower_layers_do_not_import_the_wiring_layer():
     def imported_module_names(source: str) -> set[str]:
         """Every dotted module name a real ``import``/``from`` statement names.
 
-        AST-based rather than a substring scan: ``from pyjinhx import
-        discovery, registry`` never spells the substring "pyjinhx.registry",
+        AST-based rather than a substring scan: ``from pyjinhx.rendering
+        import registry`` never spells the substring "pyjinhx.rendering.registry",
         so a text search over the source would silently miss exactly the
         import shape this codebase's lower layers use.
         """
@@ -532,7 +533,7 @@ def test_lower_layers_do_not_import_the_wiring_layer():
         "pyjinhx.dev",
         "pyjinhx.integrations",
     }
-    lower = ["pyjinhx.session"] + [
+    lower = ["pyjinhx.rendering.session"] + [
         f"pyjinhx.reactive.{module.name}"
         for module in pkgutil.iter_modules(
             importlib.import_module("pyjinhx.reactive").__path__
@@ -551,7 +552,7 @@ def test_lower_layers_do_not_import_the_wiring_layer():
     # (test_component_only_imports_config_inside_a_function_body and
     # test_cache_only_imports_config_inside_a_function_body pin those).
     allowed_edges = {
-        ("pyjinhx.session", "pyjinhx.config"),
+        ("pyjinhx.rendering.session", "pyjinhx.config"),
         ("pyjinhx.reactive.component", "pyjinhx.config"),
         ("pyjinhx.reactive.cache", "pyjinhx.config"),
     }

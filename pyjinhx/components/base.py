@@ -3,11 +3,11 @@
 All components reject undeclared kwargs at construction time. This keeps the core
 lightweight and lets the renderer avoid walking arbitrary instance attributes.
 
-Imports pydantic and ClassDescriptor from descriptor.py at module scope. The
-render() convenience method also reaches upward into rendering.py and session.py,
-but only from inside the method body — a module-level edge to rendering.py would
-be a circular import, since rendering.py imports BaseComponent at import time. The
-import graph is enforced statically by tests/pyjinhx/test_import_graph.py.
+Imports pydantic at module scope. Also holds ClassDescriptor, the frozen
+per-class fact sheet resolved once per class. The render() convenience method
+also reaches upward into pipeline.py and session.py, but only from inside the
+method body — a module-level edge to pipeline.py would be a circular import,
+since pipeline.py imports BaseComponent at import time. The import graph is enforced statically by tests/pyjinhx/test_import_graph.py.
 """
 
 import itertools
@@ -17,6 +17,7 @@ import re
 import sys
 import types
 from collections.abc import Mapping
+from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, Any, ClassVar, Union, get_args, get_origin
 
@@ -31,9 +32,8 @@ from pydantic import (
 )
 from pydantic.fields import FieldInfo
 
-from pyjinhx.descriptor import ClassDescriptor
-from pyjinhx.importer import first_line, loaded_document
-from pyjinhx.sfc import (
+from pyjinhx.components.importer import first_line, loaded_document
+from pyjinhx.document.scanner import (
     BlockSyntaxError,
     has_markup,
     pascal_to_snake,
@@ -41,14 +41,44 @@ from pyjinhx.sfc import (
     read_document,
     reworded,
 )
-from pyjinhx.template_blocks import inline_assets
+from pyjinhx.document.template_blocks import inline_assets
 
 if TYPE_CHECKING:
     # Type-only: the runtime import lives inside render() to avoid the cycle
-    # with rendering.py.
-    from pyjinhx.session import RenderSession
+    # with pipeline.py.
+    from pyjinhx.rendering.session import RenderSession
 
 logger = logging.getLogger("pyjinhx")
+
+
+@dataclass(frozen=True, slots=True)
+class ClassDescriptor:
+    """Per-class resolution results, immutable after creation.
+
+    Holds the single template probe result, asset paths (resolved per-kind up
+    the MRO), slot fields, the children target, strict mode flag, and
+    provenance mapping (kind → ancestor class).
+    """
+
+    template_path: Path
+    slot_fields: frozenset[str]
+    children_field: str | None
+    css_paths: tuple[Path, ...]
+    js_paths: tuple[Path, ...]
+    strict: bool
+    provenance: Mapping[str, type]
+    has_stale_def_header: bool = False
+    """Whether the resolved template still carries a ``{#def#}`` header this
+    class-based component ignores. Answered once, when ``template_path`` is
+    resolved, so no render pays for the probe."""
+    json_coercible_fields: frozenset[str] = frozenset()
+    """Declared fields whose annotation makes them JSON-coercion candidates —
+    see :func:`pyjinhx.components.base._is_json_coercible_annotation`. Resolved
+    once per class at registration, mirroring ``slot_fields``."""
+    inline_class: str | None = None
+    """The class whose ``template`` string is the template, or ``None`` for a
+    ``.pjx`` file. When set, ``template_path`` is that class's ``.py`` module."""
+
 
 _auto_id_counter = itertools.count(1)
 
@@ -140,7 +170,7 @@ class PjxSlot:
 
     Purely descriptive at this layer: nothing here escapes, wraps or renders.
     The render-time half (Markup-wrapping strings, opaque component nodes) is
-    L1 work and lives above _component.py in the import graph.
+    L1 work and lives above base.py in the import graph.
     """
 
     def __init__(self, children: bool = False) -> None:
@@ -455,7 +485,7 @@ def _resolve_asset_paths(cls: type) -> tuple[tuple[Path, ...], tuple[Path, ...]]
 
 
 def _resolve_strict(cls: type[BaseModel]) -> bool:
-    """The ADR 0006 mode, recorded once per class so rendering.py branches per class instead of per render."""
+    """The ADR 0006 mode, recorded once per class so pipeline.py branches per class instead of per render."""
     return cls.model_config.get("extra") == "forbid"
 
 
@@ -493,7 +523,7 @@ def _bind_block_document(
             also has a ``{#def#}`` header, or it has no markup.
     """
     # Imported here for the cycle props_header has with this module.
-    from pyjinhx.props_header import props_header_line
+    from pyjinhx.components.props_header import props_header_line
 
     named = owner or _resolution_ancestors(cls)[-1]
     try:
@@ -550,7 +580,7 @@ def _resolve_class_descriptor(cls: type[BaseModel]) -> ClassDescriptor:
 
     # Imported here, not at module scope: props_header imports _OpenComponent
     # from this module, so a top-level import would close the cycle.
-    from pyjinhx.props_header import template_has_props_header
+    from pyjinhx.components.props_header import template_has_props_header
 
     try:
         source = read_document(template_path, inline_class)
@@ -733,12 +763,12 @@ class BaseComponent(BaseModel):
         Returns:
             The component's rendered markup.
         """
-        # Imported here, not at module scope: rendering.py imports BaseComponent at
+        # Imported here, not at module scope: pipeline.py imports BaseComponent at
         # import time, so a module-level edge back into it is a real circular
         # import. The others carry no cycle, but stay local for symmetry.
         from pyjinhx.client.inject import inject_runtime
-        from pyjinhx.rendering import render as _render
-        from pyjinhx.session import current_session
+        from pyjinhx.rendering.pipeline import render as _render
+        from pyjinhx.rendering.session import current_session
 
         active = current_session()
         target = session or active
@@ -904,7 +934,7 @@ def _is_live(cls: type) -> bool:
     # Built from a header, so no module statement ever bound it to a name: it
     # lives while its tag does, until its file turns out to be a document.
     if getattr(cls, "_pjx_classless", False):
-        from pyjinhx.discovery import get_class
+        from pyjinhx.components.discovery import get_class
 
         template = getattr(
             getattr(cls, "__pjx_descriptor__", None), "template_path", None

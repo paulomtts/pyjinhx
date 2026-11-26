@@ -11,8 +11,8 @@ from pyjinhx.builtins.pjx_stack import PJXStack
 from pyjinhx.client import read_pjx_theme_css
 from pyjinhx.client.inject import inject_runtime
 from pyjinhx.config import PjxSettings, configure_pyjinhx, shutdown_pyjinhx
-from pyjinhx.rendering import render
-from pyjinhx.session import RenderSession, accumulate_assets
+from pyjinhx.rendering.pipeline import render
+from pyjinhx.rendering.session import RenderSession, accumulate_assets
 
 GAPS = ["1", "2", "3", "4", "5", "6", "8", "10", "12"]
 ALIGNS = ["start", "center", "end", "stretch", "baseline"]

@@ -58,7 +58,7 @@ Every CSS and JS path declared by any component class, registry-wide rather than
 **Returns:** The CSS paths then the JS paths, each deduped and in path-sorted order so repeated calls and repeated builds agree byte for byte.
 
 ```python
-from pyjinhx.assets import all_assets
+from pyjinhx.rendering.assets import all_assets
 
 css_paths, js_paths = all_assets()
 ```

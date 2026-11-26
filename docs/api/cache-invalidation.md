@@ -4,7 +4,7 @@ The reactive `load()` cache and its cross-process fan-out. For the optional cros
 
 !!! warning "Internal module"
     Nothing on this page is part of the public API — `pyjinhx.reactive.cache` and
-    `pyjinhx.session` are absent from `pyjinhx.__all__` and their module paths may change.
+    `pyjinhx.rendering.session` are absent from `pyjinhx.__all__` and their module paths may change.
     In normal use the cache is invisible: `setup(app)` scopes it and `@mutates` evicts
     from it. This page is for when you need to reach in anyway.
 
@@ -12,7 +12,7 @@ See [Reactivity](../reactivity.md) for usage patterns.
 
 ## Cache scope
 
-The load cache is request-scoped: entries live in the dict the request scope (`request_scope()`, in the internal `pyjinhx.session`) hands out per request, and vanish when the scope exits. `pyjinhx.reactive.cache` owns no state of its own — it reads and writes through the session's store.
+The load cache is request-scoped: entries live in the dict the request scope (`request_scope()`, in the internal `pyjinhx.rendering.session`) hands out per request, and vanish when the scope exits. `pyjinhx.reactive.cache` owns no state of its own — it reads and writes through the session's store.
 
 ## make_key / cache_get / cache_has
 
@@ -40,7 +40,7 @@ Cache a load result for this class and key, replacing any existing entry. `react
 def invalidate(dirtied_keys: Iterable[str]) -> None
 ```
 
-Evict every cache entry that depends on any of the given reactive keys. `@mutates` and `dirty()` do not call it — they only record the dirtied keys on the request. Eviction happens once, in `pyjinhx.responses.compose()`, which calls `invalidate(get_dirtied())` immediately before walking the manifest (see [Response composition](responses.md)). Evicting before the walk is what makes the walk honest: `walk_manifest()` reads the load cache to decide clean vs dirty, so an entry left in place would answer "clean" for data this request just changed. Outside a request scope this is a silent no-op, like the rest of the module.
+Evict every cache entry that depends on any of the given reactive keys. `@mutates` and `dirty()` do not call it — they only record the dirtied keys on the request. Eviction happens once, in `pyjinhx.integrations.responses.compose()`, which calls `invalidate(get_dirtied())` immediately before walking the manifest (see [Response composition](responses.md)). Evicting before the walk is what makes the walk honest: `walk_manifest()` reads the load cache to decide clean vs dirty, so an entry left in place would answer "clean" for data this request just changed. Outside a request scope this is a silent no-op, like the rest of the module.
 
 ## Cross-process fan-out
 

@@ -3,8 +3,8 @@
 import pytest
 
 from pyjinhx.builtins.pjx_tab_panel import PJXTabPanel
-from pyjinhx.rendering import render
-from pyjinhx.session import RenderSession
+from pyjinhx.rendering.pipeline import render
+from pyjinhx.rendering.session import RenderSession
 
 
 @pytest.fixture

@@ -15,12 +15,14 @@ from pathlib import Path
 
 import pytest
 
-from pyjinhx._component import BaseComponent, Slot
-from pyjinhx.descriptor import ClassDescriptor
-from pyjinhx.markers import ComponentNode, collect_slot_tokens
-from pyjinhx.render_context import build_context
-from pyjinhx.rendering import render, render_level
-from pyjinhx.session import RenderSession
+from pyjinhx.components.base import BaseComponent, ClassDescriptor, Slot
+from pyjinhx.rendering.pipeline import render, render_level
+from pyjinhx.rendering.session import RenderSession
+from pyjinhx.rendering.template_context import (
+    ComponentNode,
+    build_context,
+    collect_slot_tokens,
+)
 
 _TEMPLATE_DIR = Path(__file__).parent.parent / "templates"
 
@@ -98,7 +100,7 @@ class TestTruthinessWithInterpolation:
     def test_the_guarded_branch_produces_one_nested_level(self):
         # A second render of the same child would show up as a second
         # RenderedLevel; the count is the double-render check.
-        from pyjinhx.segments import RenderedLevel
+        from pyjinhx.rendering.segments import RenderedLevel
 
         Card = self.card("nest_if.html", frozenset({"content"}))
 
@@ -302,7 +304,7 @@ class TestInferenceWithDirectNesting:
         )
 
     def test_each_slot_enters_segments_as_its_own_nested_level(self):
-        from pyjinhx.segments import RenderedLevel
+        from pyjinhx.rendering.segments import RenderedLevel
 
         Card = self.card_class()
 
@@ -450,7 +452,7 @@ class TestPropsBoundaries:
         return Card
 
     def test_reading_props_renders_only_the_owner(self):
-        import pyjinhx.rendering as render_module
+        import pyjinhx.rendering.pipeline as render_module
 
         Card = self.card_class("slot_props.html")
         seen: list[str] = []
@@ -485,7 +487,7 @@ class TestPropsBoundaries:
     @pytest.mark.parametrize(
         ("expr", "match"),
         [
-            # SlotProps (markers.py) only overrides __getattr__/__getitem__/
+            # SlotProps (template_context.py) only overrides __getattr__/__getitem__/
             # __str__ — not __len__ or __iter__ — so these two raise plain
             # TypeErrors instead of being routed through _opaque_error.
             # Constraint 3 ("does NOT expose __len__/iteration") is honored
@@ -593,13 +595,13 @@ class TestCrossRenderIsolation:
         return Card
 
     def test_the_token_table_is_unavailable_outside_a_render(self):
-        from pyjinhx.markers import slot_token_table
+        from pyjinhx.rendering.template_context import slot_token_table
 
         with pytest.raises(RuntimeError, match="outside a collect_slot_tokens"):
             slot_token_table()
 
     def test_a_finished_render_leaves_no_table_behind(self):
-        from pyjinhx.markers import slot_token_table
+        from pyjinhx.rendering.template_context import slot_token_table
 
         Card = self.card_class()
         render_level(Card(content=Leaf(text="a")), session())
@@ -615,7 +617,7 @@ class TestCrossRenderIsolation:
                 assert second is not first
 
     def test_a_token_from_one_render_does_not_resolve_in_the_next(self):
-        from pyjinhx.markers import finalize_slot_node
+        from pyjinhx.rendering.template_context import finalize_slot_node
 
         node = ComponentNode(Leaf(text="a"), field_name="content")
         with collect_slot_tokens() as first:

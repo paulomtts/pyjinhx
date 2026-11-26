@@ -10,10 +10,10 @@ raw-HTML-capable Slot invariant, so this now matches v0's rendering.
 import pkgutil
 
 import pyjinhx.builtins
-from pyjinhx._component import BaseComponent
-from pyjinhx.discovery import build_registry
-from pyjinhx.rendering import render as v2_render
-from pyjinhx.session import RenderSession
+from pyjinhx.components.base import BaseComponent
+from pyjinhx.components.discovery import build_registry
+from pyjinhx.rendering.pipeline import render as v2_render
+from pyjinhx.rendering.session import RenderSession
 from tests.fixtures.bench_builtin_heavy import (
     V0_MANIFEST,
     V2_MANIFEST,

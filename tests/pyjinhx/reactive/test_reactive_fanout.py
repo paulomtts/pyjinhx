@@ -11,8 +11,9 @@ from typing import Annotated, cast
 
 import pytest
 
-from pyjinhx import dev, discovery, registry
-from pyjinhx._component import BaseComponent
+from pyjinhx import dev
+from pyjinhx.components import discovery
+from pyjinhx.components.base import BaseComponent
 from pyjinhx.reactive import fanout
 from pyjinhx.reactive.cache import cache_has, cache_put
 from pyjinhx.reactive.component import PjxKey, ReactiveComponent
@@ -29,9 +30,10 @@ from pyjinhx.reactive.root_attrs import (
     record_nested_react_keys,
     stamp_reactive_root_attrs,
 )
-from pyjinhx.registry import InstanceKeyCollisionError
-from pyjinhx.segments import ChildRef, RenderedLevel
-from pyjinhx.session import (
+from pyjinhx.rendering import registry
+from pyjinhx.rendering.registry import InstanceKeyCollisionError
+from pyjinhx.rendering.segments import ChildRef, RenderedLevel
+from pyjinhx.rendering.session import (
     RenderSession,
     current_session,
     get_cache_store,
@@ -2096,7 +2098,7 @@ def test_root_instance_id_reads_a_root_stamped_behind_a_whitespace_prologue():
     the prologue. `_root_instance_id` must walk the same skip to land on the
     same segment, or extraction silently returns None.
     """
-    from pyjinhx.root_attrs import stamp_root_attrs
+    from pyjinhx.rendering.root_attrs import stamp_root_attrs
 
     prologue = "\n  "
     tag = '<div class="root">hi</div>'

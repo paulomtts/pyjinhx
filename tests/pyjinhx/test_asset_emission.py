@@ -2,8 +2,8 @@
 
 from pathlib import Path
 
-from pyjinhx.assets import BUILTIN_ORIGIN_ATTR, AssetMode, asset_token
-from pyjinhx.session import RenderSession
+from pyjinhx.rendering.assets import BUILTIN_ORIGIN_ATTR, AssetMode, asset_token
+from pyjinhx.rendering.session import RenderSession
 
 _TEMPLATE_DIR = Path(__file__).parent.parent / "templates"
 
@@ -23,7 +23,7 @@ def test_session_defaults_both_kinds_to_inline():
 
 import pytest
 
-from pyjinhx.assets import emit_assets
+from pyjinhx.rendering.assets import emit_assets
 
 
 def _session(tmp_path: Path) -> RenderSession:
@@ -196,11 +196,10 @@ def test_link_css_with_inline_js_emits_both_css_first(tmp_path):
 
 from dataclasses import replace
 
-from pyjinhx._component import BaseComponent
-from pyjinhx.descriptor import ClassDescriptor
-from pyjinhx.rendering import render, render_level
-from pyjinhx.segments import serialize
-from pyjinhx.session import accumulate_assets, request_scope
+from pyjinhx.components.base import BaseComponent, ClassDescriptor
+from pyjinhx.rendering.pipeline import render, render_level
+from pyjinhx.rendering.segments import serialize
+from pyjinhx.rendering.session import accumulate_assets, request_scope
 
 TEMPLATES = str(Path(__file__).parent.parent / "templates")
 
@@ -347,7 +346,7 @@ def test_concurrent_scopes_do_not_leak_emitted_assets(tmp_path):
 
 
 def test_sorted_resolved_sorts_paths_by_str_before_resolving():
-    from pyjinhx.assets import _sorted_resolved
+    from pyjinhx.rendering.assets import _sorted_resolved
 
     seen: list[Path] = []
 
@@ -366,7 +365,7 @@ def test_sorted_resolved_sorts_paths_by_str_before_resolving():
 
 
 def test_sorted_resolved_lets_a_raising_resolver_propagate():
-    from pyjinhx.assets import _sorted_resolved
+    from pyjinhx.rendering.assets import _sorted_resolved
 
     def resolver(path: Path) -> str:
         raise OSError("gone")
@@ -448,7 +447,7 @@ def test_link_mode_repeated_calls_are_byte_identical(tmp_path):
 
 
 def _builtin_dir_under(tmp_path: Path, monkeypatch) -> Path:
-    from pyjinhx import assets as assets_module
+    from pyjinhx.rendering import assets as assets_module
 
     builtin_dir = tmp_path / "zzz-builtins"
     builtin_dir.mkdir()

@@ -11,18 +11,26 @@ from pathlib import Path
 
 import pytest
 
-from pyjinhx import discovery
-from pyjinhx._component import BaseComponent, Slot
-from pyjinhx.descriptor import ClassDescriptor
+from pyjinhx.components import discovery
+from pyjinhx.components.base import BaseComponent, ClassDescriptor, Slot
 from pyjinhx.reactive.component import ReactiveComponent
 from pyjinhx.reactive.root_attrs import (
     record_nested_react_keys,
     stamp_reactive_root_attrs,
 )
-from pyjinhx.rendering import render_level
-from pyjinhx.root_attrs import RootStampCollisionError, serialize_attr, stamp_root_attrs
-from pyjinhx.segments import ChildRef, RenderedLevel, VerbatimParser, serialize
-from pyjinhx.session import RenderSession
+from pyjinhx.rendering.pipeline import render_level
+from pyjinhx.rendering.root_attrs import (
+    RootStampCollisionError,
+    serialize_attr,
+    stamp_root_attrs,
+)
+from pyjinhx.rendering.segments import (
+    ChildRef,
+    RenderedLevel,
+    VerbatimParser,
+    serialize,
+)
+from pyjinhx.rendering.session import RenderSession
 
 _TEMPLATE_DIR = Path(__file__).parent.parent.parent / "templates"
 

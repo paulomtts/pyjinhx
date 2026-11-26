@@ -2,8 +2,8 @@ import logging
 
 from pydantic import Field, model_validator
 
-from pyjinhx._component import AttrValue, BaseComponent, ExtraAttrs, Slot
 from pyjinhx.builtins.pjx_icon._icons import ICONS
+from pyjinhx.components.base import AttrValue, BaseComponent, ExtraAttrs, Slot
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +18,7 @@ class PJXIcon(BaseComponent):
 
     # Derived, not user-supplied. Declared as real fields (not computed_field)
     # because a computed field never lands in model_fields, and the descriptor's
-    # slot-field resolution (and thus render_context.build_context) only walks
+    # slot-field resolution (and thus template_context.build_context) only walks
     # model_fields.
     svg_inner: Slot = ""
     svg_size: str = ""

@@ -3,7 +3,7 @@
 A finder at the end of ``sys.meta_path`` answers for ``<package>/<name>.pjx``
 once every ordinary finder has failed, so a normal import never reaches it.
 The loader runs the block as the module body, compiled from the padded source
-(`sfc.python_source`) so tracebacks and ``inspect`` name the file's own lines.
+(`scanner.python_source`) so tracebacks and ``inspect`` name the file's own lines.
 
 Stdlib-only at module scope: ``import pyjinhx`` installs the finder and must
 not pull in pydantic or jinja2.
@@ -20,7 +20,7 @@ from pathlib import Path
 from types import CodeType, ModuleType
 from typing import NoReturn
 
-from pyjinhx.sfc import (
+from pyjinhx.document.scanner import (
     PythonBlock,
     module_name_for,
     opener_line,
@@ -98,7 +98,7 @@ def import_document(path: str | Path) -> ModuleType:
 
     A document the hook already loaded is returned as loaded, whatever name it
     was imported under. Otherwise it is imported under the name
-    `sfc.module_name_for` derives from ``sys.path``.
+    `scanner.module_name_for` derives from ``sys.path``.
 
     Raises:
         ImportError: No ``sys.path`` entry reaches the file, or the name
@@ -149,7 +149,7 @@ def import_document(path: str | Path) -> ModuleType:
 def _mark_classes(module: ModuleType) -> None:
     """Tag the components the block defined, so that `all_component_classes`
     drops them once the import is refused or the module is gone."""
-    from pyjinhx._component import BaseComponent
+    from pyjinhx.components.base import BaseComponent
 
     for value in vars(module).values():
         if (
@@ -221,7 +221,7 @@ class PjxLoader(SourceFileLoader):
         Raises:
             ImportError: There is none, or there are two.
         """
-        from pyjinhx._component import BaseComponent
+        from pyjinhx.components.base import BaseComponent
 
         stem = self.name.rpartition(".")[2]
         named = sorted(

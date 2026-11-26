@@ -20,7 +20,7 @@ Walk `template_dir` for `.pjx` files, nested directories included, yielding them
 ### Usage
 
 ```python
-from pyjinhx.discovery import walk_templates
+from pyjinhx.components.discovery import walk_templates
 
 for candidate in walk_templates("templates"):
     print(candidate.tag_name, candidate.path)
@@ -53,7 +53,7 @@ Return the component class registered for `tag_name`, or `None` when nothing cla
 
 ```python
 # <PJXCard class_name="note">Hello</PJXCard>
-from pyjinhx.discovery import get_class
+from pyjinhx.components.discovery import get_class
 
 cls = get_class("pjx_card")
 ```

@@ -9,7 +9,7 @@ from pydantic import ValidationError
 from pyjinhx.builtins.pjx_graph import PJXGraph
 from pyjinhx.builtins.pjx_graph_controls import PJXGraphControls
 from pyjinhx.builtins.pjx_graph_nodes import PJXGraphNodes
-from pyjinhx.rendering import render
+from pyjinhx.rendering.pipeline import render
 
 CSS = (
     Path(__file__).resolve().parents[4]
@@ -195,7 +195,7 @@ class TestStylesheet:
         assert "pjx-icon" not in css
 
     def test_rendering_registers_stylesheet(self, session):
-        from pyjinhx.session import accumulate_assets
+        from pyjinhx.rendering.session import accumulate_assets
 
         assert PJXGraphControls.__pjx_descriptor__.css_paths == (CSS,)
         session.on_rendered.append(accumulate_assets)

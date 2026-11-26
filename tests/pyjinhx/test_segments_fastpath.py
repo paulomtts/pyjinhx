@@ -11,7 +11,7 @@ from html.parser import HTMLParser
 
 import pytest
 
-from pyjinhx.segments import ChildRef, VerbatimParser
+from pyjinhx.rendering.segments import ChildRef, VerbatimParser
 
 
 class SlowParser(VerbatimParser):

@@ -9,7 +9,7 @@ from examples.todo.components import (
     ItemRow,
     Total,
 )
-from pyjinhx.rendering import render
+from pyjinhx.rendering.pipeline import render
 
 
 def _app():

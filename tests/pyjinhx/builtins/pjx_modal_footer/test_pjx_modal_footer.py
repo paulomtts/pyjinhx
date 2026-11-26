@@ -4,8 +4,8 @@ import pytest
 
 from pyjinhx.builtins.pjx_divider import PJXDivider
 from pyjinhx.builtins.pjx_modal_footer import PJXModalFooter
-from pyjinhx.rendering import render
-from pyjinhx.session import RenderSession
+from pyjinhx.rendering.pipeline import render
+from pyjinhx.rendering.session import RenderSession
 
 
 @pytest.fixture

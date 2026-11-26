@@ -275,7 +275,7 @@ A **plain, non-reactive** primary has no `load()` to call, so you build it and r
 
 Fan-out is **not** a property of `.render()`. `.render()` returns one component's markup
 and nothing else; it always has. Fan-out belongs to
-[`pyjinhx.responses.compose()`](api/responses.md), which every backend funnels handler
+[`pyjinhx.integrations.responses.compose()`](api/responses.md), which every backend funnels handler
 returns through, and it is attached on **every** return that produces a body — because
 the dirtied keys belong to the request, not to whichever spelling the handler reached
 for.

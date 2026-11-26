@@ -11,9 +11,12 @@ from pathlib import Path
 
 import pytest
 
-from pyjinhx._component import BaseComponent, Children, Slot
-from pyjinhx.descriptor import ClassDescriptor
-from pyjinhx.render_cache import auto_id_in_output, has_auto_id, render_cache_key
+from pyjinhx.components.base import BaseComponent, Children, ClassDescriptor, Slot
+from pyjinhx.rendering.render_cache import (
+    auto_id_in_output,
+    has_auto_id,
+    render_cache_key,
+)
 
 
 class _KeyPlain(BaseComponent):

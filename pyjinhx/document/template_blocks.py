@@ -23,7 +23,7 @@ from typing import NamedTuple
 
 from jinja2 import TemplateSyntaxError
 
-from pyjinhx.sfc import (
+from pyjinhx.document.scanner import (
     BLOCK_KEYWORDS,
     LEGACY_HEADER_RE,
     SECOND_BLOCK,
@@ -130,7 +130,7 @@ def find_header(source: str, filename: str) -> Header | None:
 
 
 # The empty comment an inline template opens with to pad its line numbers
-# (see sfc); a block right after it is still the first thing in the document.
+# (see scanner); a block right after it is still the first thing in the document.
 _LINE_PADDING_RE = re.compile(r"\{#\s*#\}")
 
 

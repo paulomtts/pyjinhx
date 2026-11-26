@@ -5,10 +5,10 @@ from pathlib import Path
 
 import pytest
 
-from pyjinhx import discovery
+from pyjinhx.components import discovery
 from pyjinhx.reactive.load_cost import reset_load_cost_decisions
-from pyjinhx.render_cache import reset_render_cost_decisions
-from pyjinhx.session import RenderSession
+from pyjinhx.rendering.render_cache import reset_render_cost_decisions
+from pyjinhx.rendering.session import RenderSession
 
 Write = Callable[[str, str], Path]
 

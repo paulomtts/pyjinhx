@@ -14,8 +14,8 @@ from collections.abc import Iterable, Iterator, Mapping
 from pathlib import Path
 from typing import NamedTuple
 
-from pyjinhx._component import _pascal_to_snake
-from pyjinhx.sfc import is_component_stem
+from pyjinhx.components.base import _pascal_to_snake
+from pyjinhx.document.scanner import is_component_stem
 
 logger = logging.getLogger("pyjinhx")
 
@@ -30,7 +30,7 @@ class TemplateCandidate(NamedTuple):
 def _is_candidate_name(stem: str) -> bool:
     """Whether ``stem`` is a filename a component class could have produced.
 
-    The exact shape `_component.py`'s `_pascal_to_snake` emits, so every class
+    The exact shape `base.py`'s `_pascal_to_snake` emits, so every class
     that resolves a template can be found by this walk, and nothing else is —
     ADR 0007 spends one convention, not six.
     """

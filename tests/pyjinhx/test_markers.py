@@ -4,8 +4,8 @@ from pathlib import Path
 
 import pytest
 
-from pyjinhx._component import BaseComponent
-from pyjinhx.markers import ComponentNode
+from pyjinhx.components.base import BaseComponent
+from pyjinhx.rendering.template_context import ComponentNode
 
 
 class Inner(BaseComponent):

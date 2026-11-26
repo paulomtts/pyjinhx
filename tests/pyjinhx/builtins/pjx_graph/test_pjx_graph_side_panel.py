@@ -6,12 +6,12 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from pyjinhx._component import _resolve_children_field
 from pyjinhx.builtins.pjx_graph import PJXGraph
 from pyjinhx.builtins.pjx_graph_controls import PJXGraphControls
 from pyjinhx.builtins.pjx_graph_nodes import PJXGraphNodes
 from pyjinhx.builtins.pjx_graph_side_panel import PJXGraphSidePanel
-from pyjinhx.rendering import render
+from pyjinhx.components.base import _resolve_children_field
+from pyjinhx.rendering.pipeline import render
 
 CSS = (
     Path(__file__).resolve().parents[4]
@@ -310,7 +310,7 @@ class TestStylesheet:
         assert "animation: none" not in media
 
     def test_rendering_registers_stylesheet(self, session):
-        from pyjinhx.session import accumulate_assets
+        from pyjinhx.rendering.session import accumulate_assets
 
         assert PJXGraphSidePanel.__pjx_descriptor__.css_paths == (CSS,)
         session.on_rendered.append(accumulate_assets)

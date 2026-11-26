@@ -33,16 +33,16 @@ from typing import TYPE_CHECKING, Any, Literal
 from jinja2 import TemplateSyntaxError
 from pydantic import Field, create_model
 
-from pyjinhx.sfc import (
+from pyjinhx.document.scanner import (
     LITERAL_ERRORS,
     dotted_default,
     dotted_name,
     header_arguments,
 )
-from pyjinhx.template_blocks import find_header
+from pyjinhx.document.template_blocks import find_header
 
 if TYPE_CHECKING:
-    from pyjinhx._component import _OpenComponent
+    from pyjinhx.components.base import _OpenComponent
 
 _TYPES: dict[str, Any] = {
     "str": str,
@@ -180,9 +180,9 @@ def parse_props_header(
     when ``source`` holds two headers.
     """
     # Imported here, not at module scope: Slot and Children are defined at the
-    # bottom of _component.py, after _OpenComponent, whose class body reenters
+    # bottom of base.py, after _OpenComponent, whose class body reenters
     # this module — a top-level import would read them before they are bound.
-    from pyjinhx._component import AttrValue, Children, ExtraAttrs, Slot
+    from pyjinhx.components.base import AttrValue, Children, ExtraAttrs, Slot
 
     _TYPES["Slot"] = Slot
     _TYPES["Children"] = Children
@@ -226,7 +226,7 @@ def build_component_class(
     may pass through, so undeclared keys must land in ``model_extra`` instead of
     raising.
     """
-    from pyjinhx._component import _OpenComponent
+    from pyjinhx.components.base import _OpenComponent
 
     owner = f"<{tag}>" if template_path is None else f"<{tag}> ({template_path})"
     definitions: dict[str, Any] = {

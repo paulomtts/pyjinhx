@@ -1,13 +1,10 @@
-import ast
 import dataclasses
-import inspect
 from collections.abc import Mapping
 from pathlib import Path
 
 import pytest
 
-import pyjinhx.descriptor
-from pyjinhx.descriptor import ClassDescriptor
+from pyjinhx.components.base import ClassDescriptor
 
 
 class Base:
@@ -121,8 +118,7 @@ class TestClassDescriptorEquality:
     def test_equal_field_values_compare_equal(self):
         # rebuild_class_descriptor replaces the whole object; equality is how a
         # test asserts a no-op rebuild produced an equivalent descriptor. The
-        # rebuild itself is exercised in test_component_descriptor.py, which may
-        # import _component.py — this module may not.
+        # rebuild itself is exercised in test_component_descriptor.py.
         assert make_descriptor() == make_descriptor()
 
     def test_differing_field_values_compare_unequal(self):
@@ -167,19 +163,3 @@ class TestClassDescriptorPerKindIndependence:
         )
         assert descriptor.css_paths == (Path("a.css"),)
         assert descriptor.js_paths == (Path("b.js"), Path("c.js"))
-
-
-def test_descriptor_module_is_import_pure():
-    tree = ast.parse(inspect.getsource(pyjinhx.descriptor))
-    for node in ast.walk(tree):
-        if isinstance(node, ast.Import):
-            names = [alias.name for alias in node.names]
-        elif isinstance(node, ast.ImportFrom):
-            assert node.level == 0, "descriptor.py must not use relative imports"
-            names = [node.module or ""]
-        else:
-            continue
-        internal = [n for n in names if n.startswith("pyjinhx")]
-        assert not internal, (
-            f"descriptor.py must not import internal modules: {internal}"
-        )

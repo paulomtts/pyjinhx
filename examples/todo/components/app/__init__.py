@@ -6,7 +6,7 @@ time, before setup() has told discovery where the components root is.
 
 from pathlib import Path
 
-from pyjinhx.classless import component
+from pyjinhx import component
 
 App = component("App", template_dir=Path(__file__).parent)
 

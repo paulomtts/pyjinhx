@@ -7,7 +7,8 @@ from pathlib import Path
 
 import pytest
 
-from pyjinhx import manifest, sfc
+from pyjinhx import manifest
+from pyjinhx.document import scanner
 
 
 def _grammar() -> dict:
@@ -28,21 +29,21 @@ def test_grammar_flag_prints_the_data_file(capsys):
 
 
 def test_the_grammar_names_exactly_the_keywords_the_scanners_accept():
-    assert set(_grammar()["keywords"]) == set(sfc.BLOCK_KEYWORDS)
+    assert set(_grammar()["keywords"]) == set(scanner.BLOCK_KEYWORDS)
 
 
 def test_the_grammar_lists_exactly_the_error_codes_the_scanners_raise():
     assert set(_grammar()["error_codes"]) == {
-        sfc.PYTHON_BLOCK_EARLY_CLOSE,
-        sfc.SECOND_BLOCK,
-        sfc.CLOSER_NOT_AT_LINE_START,
-        sfc.UNCLOSED_BLOCK,
-        sfc.TEXT_AFTER_CLOSER,
-        sfc.STRAY_COMMENT_CLOSE,
+        scanner.PYTHON_BLOCK_EARLY_CLOSE,
+        scanner.SECOND_BLOCK,
+        scanner.CLOSER_NOT_AT_LINE_START,
+        scanner.UNCLOSED_BLOCK,
+        scanner.TEXT_AFTER_CLOSER,
+        scanner.STRAY_COMMENT_CLOSE,
     }
 
 
-@pytest.mark.parametrize("keyword", sfc.BLOCK_KEYWORDS)
+@pytest.mark.parametrize("keyword", scanner.BLOCK_KEYWORDS)
 def test_each_keyword_follows_the_rule_the_grammar_states(keyword):
     rules = _grammar()["keywords"][keyword]
     one_line = f"{{#{keyword} x #}}\n<p></p>\n"
@@ -628,10 +629,10 @@ def test_module_names_follow_the_init_files(tmp_path):
     (tmp_path / "pkg" / "sub" / "__init__.py").write_text("")
     (tmp_path / "loose").mkdir()
 
-    assert sfc.module_name_for(tmp_path / "pkg/sub/card.pjx") == "pkg.sub.card"
-    assert sfc.module_name_for(tmp_path / "pkg/sub/__init__.py") == "pkg.sub"
-    assert sfc.module_name_for(tmp_path / "loose/card.pjx") == "card"
-    assert sfc.module_name_for(tmp_path / "pkg/not_yet/card.pjx") == "card"
+    assert scanner.module_name_for(tmp_path / "pkg/sub/card.pjx") == "pkg.sub.card"
+    assert scanner.module_name_for(tmp_path / "pkg/sub/__init__.py") == "pkg.sub"
+    assert scanner.module_name_for(tmp_path / "loose/card.pjx") == "card"
+    assert scanner.module_name_for(tmp_path / "pkg/not_yet/card.pjx") == "card"
 
 
 def _stdin(monkeypatch, text: str) -> None:
@@ -865,13 +866,15 @@ def test_a_package_layout_names_modules_by_the_deepest_sys_path_entry(tmp_path):
     (tmp_path / "src" / "ns" / "ui").mkdir(parents=True)
     path = tmp_path / "src" / "ns" / "ui" / "card.pjx"
 
-    assert sfc.module_name_for(path) == "card"
-    assert sfc.module_name_for(path, [str(tmp_path / "src")]) == "ns.ui.card"
+    assert scanner.module_name_for(path) == "card"
+    assert scanner.module_name_for(path, [str(tmp_path / "src")]) == "ns.ui.card"
     assert (
-        sfc.module_name_for(path, [str(tmp_path / "src"), str(tmp_path / "src" / "ns")])
+        scanner.module_name_for(
+            path, [str(tmp_path / "src"), str(tmp_path / "src" / "ns")]
+        )
         == "ui.card"
     )
-    assert sfc.module_name_for(path, [str(tmp_path / "other")]) is None
+    assert scanner.module_name_for(path, [str(tmp_path / "other")]) is None
 
 
 def test_sys_path_names_the_class_module_in_the_manifest(tmp_path, monkeypatch, capsys):
@@ -986,7 +989,7 @@ def test_a_package_init_module_is_named_for_its_package(tmp_path):
     (tmp_path / "pkg").mkdir()
     (tmp_path / "pkg" / "__init__.py").write_text("")
 
-    assert sfc.module_name_for(tmp_path / "pkg" / "__init__.py") == "pkg"
+    assert scanner.module_name_for(tmp_path / "pkg" / "__init__.py") == "pkg"
 
 
 def test_a_diagnostic_in_a_py_template_has_the_modules_column(tmp_path, monkeypatch):

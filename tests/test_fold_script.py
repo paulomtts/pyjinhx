@@ -15,9 +15,9 @@ from pathlib import Path
 
 import pytest
 
-from pyjinhx import discovery
-from pyjinhx.rendering import render
-from pyjinhx.session import RenderSession, accumulate_assets
+from pyjinhx.components import discovery
+from pyjinhx.rendering.pipeline import render
+from pyjinhx.rendering.session import RenderSession, accumulate_assets
 
 SCRIPT = Path(__file__).parent.parent / "scripts" / "fold_components.py"
 

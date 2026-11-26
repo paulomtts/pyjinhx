@@ -4,7 +4,8 @@ import ast
 
 import pytest
 
-from pyjinhx import sfc, stubgen
+from pyjinhx import stubgen
+from pyjinhx.document import scanner
 
 CARD = """\
 {#python
@@ -65,7 +66,7 @@ def test_an_indented_opener_is_not_a_document_so_has_no_stub_and_no_finding(tmp_
 
 
 def test_declarations_keep_their_line_numbers():
-    padded = sfc.python_source(CARD, "card.pjx")
+    padded = scanner.python_source(CARD, "card.pjx")
     assert padded is not None
     assert _declarations(_stub(CARD)) == _declarations(padded)
 
@@ -98,7 +99,7 @@ def test_the_marker_sits_on_the_openers_line_when_markup_comes_first():
 
 def test_the_stub_ends_on_the_closers_line():
     source = CARD + "<p>{{ 1 }}</p>\n" * 5
-    block = sfc.python_block(source, "card.pjx")
+    block = scanner.python_block(source, "card.pjx")
     assert block is not None
     assert _stub(source).count("\n") + 1 == block.close_line
 
@@ -124,7 +125,7 @@ def test_the_stub_ends_on_the_closers_line():
 def test_every_way_of_writing_a_body_keeps_the_lines_after_it(python):
     source = _document(python + "\nclass After:\n    n: int = 1\n")
     stub = _stub(source)
-    padded = sfc.python_source(source, "card.pjx")
+    padded = scanner.python_source(source, "card.pjx")
     assert padded is not None
     assert _declarations(stub) == _declarations(padded)
     assert "return" not in stub and "await" not in stub
@@ -374,7 +375,7 @@ def test_an_init_body_is_kept_so_its_attributes_stay_declared():
     assert "        self.y: int = 2" in stub
     assert "return" not in stub
     assert _declarations(stub) == _declarations(
-        sfc.python_source(source, "card.pjx") or ""
+        scanner.python_source(source, "card.pjx") or ""
     )
 
 

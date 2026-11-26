@@ -160,9 +160,9 @@ def test_no_tracked_file_mentions_the_old_v0_import_root():
 
 
 def test_pyjinhx_resolves_to_the_v2_rebuild():
-    session = importlib.import_module("pyjinhx.session")
+    session = importlib.import_module("pyjinhx.rendering.session")
     assert hasattr(session, "RenderSession")
-    segments = importlib.import_module("pyjinhx.segments")
+    segments = importlib.import_module("pyjinhx.rendering.segments")
     assert hasattr(segments, "RE_PASCAL_CASE_TAG_NAME")
 
 

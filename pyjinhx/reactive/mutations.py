@@ -10,7 +10,7 @@ from pyjinhx.reactive.keys import (
     coerce_reactive_keys,
     reactive_key,
 )
-from pyjinhx.session import add_dirtied
+from pyjinhx.rendering.session import add_dirtied
 
 F = TypeVar("F", bound=Callable[..., Any])
 

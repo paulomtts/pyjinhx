@@ -24,11 +24,10 @@ import tempfile
 import time
 from pathlib import Path
 
-from pyjinhx import discovery
-from pyjinhx._component import BaseComponent
-from pyjinhx.descriptor import ClassDescriptor
-from pyjinhx.rendering import render
-from pyjinhx.session import RenderSession
+from pyjinhx.components import discovery
+from pyjinhx.components.base import BaseComponent, ClassDescriptor
+from pyjinhx.rendering.pipeline import render
+from pyjinhx.rendering.session import RenderSession
 
 COMPONENT_COUNTS = (50, 100, 200, 500, 1000, 2000, 5000, 10000)
 

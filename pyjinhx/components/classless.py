@@ -8,7 +8,7 @@ when it has one and a permissive placeholder when it does not.
 `component_for_tag()` is the renderer's half: on a tag miss it builds a class
 only for an orphan template that carries a header.
 
-Sits above _component.py, discovery.py and props_header.py and only calls into
+Sits above base.py, discovery.py and props_header.py and only calls into
 them: parsing stays in props_header, the tag -> class mapping stays discovery's
 to write, and nothing here re-implements either.
 """
@@ -19,23 +19,23 @@ import types
 from pathlib import Path
 from typing import Any
 
-from pyjinhx import discovery
-from pyjinhx._component import (
+from pyjinhx.components import discovery
+from pyjinhx.components.base import (
     BaseComponent,
     _OpenComponent,
     _pascal_to_snake,
     rebuild_class_descriptor,
 )
-from pyjinhx.importer import import_document, loaded_document
-from pyjinhx.props_header import build_component_class, parse_props_header
-from pyjinhx.segments import RE_PASCAL_CASE_TAG_NAME
-from pyjinhx.sfc import (
+from pyjinhx.components.importer import import_document, loaded_document
+from pyjinhx.components.props_header import build_component_class, parse_props_header
+from pyjinhx.document.scanner import (
     BlockSyntaxError,
     opener_line,
     pascal_to_snake,
     python_block,
     reworded,
 )
+from pyjinhx.rendering.segments import RE_PASCAL_CASE_TAG_NAME
 
 _synthetic_modules: dict[Path, str] = {}
 _synthetic_modules_lock = threading.Lock()

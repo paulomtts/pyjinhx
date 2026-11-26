@@ -1,6 +1,6 @@
 from pydantic import Field
 
-from pyjinhx._component import AttrValue, BaseComponent, ExtraAttrs
+from pyjinhx.components.base import AttrValue, BaseComponent, ExtraAttrs
 
 
 class PJXSegmentedControl(BaseComponent):

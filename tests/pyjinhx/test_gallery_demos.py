@@ -16,8 +16,8 @@ sys.path.insert(0, str(DOCS))
 import hooks
 from demos import DEMOS
 
-from pyjinhx._component import BaseComponent
 from pyjinhx.client import read_pjx_theme_css
+from pyjinhx.components.base import BaseComponent
 from pyjinhx.config import (
     PjxSettings,
     configure_pyjinhx,
@@ -78,7 +78,7 @@ def test_post_build_writes_selfcontained_pages(tmp_path):
 
 
 def test_every_factory_renders():
-    from pyjinhx.session import request_scope
+    from pyjinhx.rendering.session import request_scope
 
     for name, (factory, height) in DEMOS.items():
         with request_scope():
@@ -88,8 +88,8 @@ def test_every_factory_renders():
 
 
 def test_post_build_inlines_component_css(tmp_path):
-    from pyjinhx.assets import BUILTIN_ORIGIN_ATTR, asset_token
     from pyjinhx.builtins.pjx_button import PJXButton
+    from pyjinhx.rendering.assets import BUILTIN_ORIGIN_ATTR, asset_token
 
     hooks.on_post_build({"site_dir": str(tmp_path)})
     page = (tmp_path / "demos" / "pjx-button.html").read_text()
@@ -132,7 +132,7 @@ def test_multi_component_demo_emits_each_asset_once(tmp_path):
 def test_base_css_link_survives_and_output_is_stable(tmp_path):
     import itertools
 
-    import pyjinhx._component as component_mod
+    import pyjinhx.components.base as component_mod
 
     first = tmp_path / "a"
     second = tmp_path / "b"
@@ -189,7 +189,7 @@ def test_demo_markup_wraps_in_stage():
 
 
 def test_all_demo_factories_render(tmp_path):
-    from pyjinhx.session import request_scope
+    from pyjinhx.rendering.session import request_scope
 
     for name, (factory, _h) in DEMOS.items():
         with request_scope():
@@ -202,7 +202,7 @@ def test_dropdown_demo_menu_entries_are_not_escaped():
     """The gallery's dropdown showed literal &lt;button&gt; text: it passed markup as str items (#695)."""
     from demos.interaction import dropdown
 
-    from pyjinhx.session import request_scope
+    from pyjinhx.rendering.session import request_scope
 
     with request_scope():
         html = dropdown()
@@ -215,7 +215,7 @@ def test_dropdown_demo_menu_entries_are_not_escaped():
 def test_graph_demo_renders_the_pipeline_stage():
     from demos.graph import graph
 
-    from pyjinhx.session import request_scope
+    from pyjinhx.rendering.session import request_scope
 
     assert "PJXGraph" in DEMOS
     with request_scope():
@@ -239,7 +239,7 @@ def test_graph_demo_renders_the_pipeline_stage():
 def test_roster_picker_demo_renders_three_pickers():
     from demos.roster_picker import PEOPLE, roster_picker
 
-    from pyjinhx.session import request_scope
+    from pyjinhx.rendering.session import request_scope
 
     assert "PJXRosterPicker" in DEMOS
     with request_scope():
@@ -267,7 +267,7 @@ def test_roster_picker_demo_renders_three_pickers():
 
 
 def test_chart_demo_renders_a_line_and_a_bar_chart():
-    from pyjinhx.session import request_scope
+    from pyjinhx.rendering.session import request_scope
 
     factory, _height = DEMOS["PJXChart"]
     with request_scope():
@@ -343,7 +343,7 @@ def test_post_build_leaves_the_runtime_off_every_other_page(tmp_path):
 def test_runtime_page_output_is_stable(tmp_path, name):
     import itertools
 
-    import pyjinhx._component as component_mod
+    import pyjinhx.components.base as component_mod
 
     first = tmp_path / "a"
     second = tmp_path / "b"
@@ -467,7 +467,7 @@ def test_theme_toggle_script_runs_in_head_on_every_page(tmp_path):
 
 def test_typography_demo_shows_every_class():
     from pyjinhx.client import read_pjx_theme_css
-    from pyjinhx.session import request_scope
+    from pyjinhx.rendering.session import request_scope
 
     css = read_pjx_theme_css()
     block = css[css.index("/* Typography") :]

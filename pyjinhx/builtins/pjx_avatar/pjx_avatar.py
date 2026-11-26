@@ -2,7 +2,7 @@ from typing import Literal
 
 from pydantic import Field, computed_field, field_validator
 
-from pyjinhx._component import AttrValue, BaseComponent, ExtraAttrs
+from pyjinhx.components.base import AttrValue, BaseComponent, ExtraAttrs
 
 _NAMED_SIZES = {"sm", "md", "lg"}
 

@@ -6,13 +6,13 @@ from typing import Any, cast
 
 import pytest
 
-from pyjinhx.assets import AssetMode, asset_token
 from pyjinhx.reactive.assets import missing_asset_oob, required_asset_paths
 from pyjinhx.reactive.component import ReactiveComponent
 from pyjinhx.reactive.fanout import FanoutCandidate
 from pyjinhx.reactive.keys import MutationKey
-from pyjinhx.segments import RenderedLevel
-from pyjinhx.session import RenderSession
+from pyjinhx.rendering.assets import AssetMode, asset_token
+from pyjinhx.rendering.segments import RenderedLevel
+from pyjinhx.rendering.session import RenderSession
 
 
 class Keys(MutationKey):
@@ -118,7 +118,7 @@ def test_non_inline_modes_emit_nothing(asset_files):
 def test_reactive_response_appends_the_asset_fragment_after_the_swaps(
     asset_files, monkeypatch
 ):
-    from pyjinhx import responses as responses_module
+    from pyjinhx.integrations import responses as responses_module
 
     css, _ = asset_files
     # status="clean": a "dirty" FanoutCandidate must carry a real RenderedLevel
@@ -141,7 +141,7 @@ def test_reactive_response_appends_the_asset_fragment_after_the_swaps(
 def test_reactive_response_omits_the_asset_fragment_when_the_client_has_it(
     asset_files, monkeypatch
 ):
-    from pyjinhx import responses as responses_module
+    from pyjinhx.integrations import responses as responses_module
 
     css, js = asset_files
     monkeypatch.setattr(
@@ -159,7 +159,7 @@ def test_reactive_response_omits_the_asset_fragment_when_the_client_has_it(
 
 
 def test_an_assets_only_body_still_says_do_not_swap(asset_files, monkeypatch):
-    from pyjinhx import responses as responses_module
+    from pyjinhx.integrations import responses as responses_module
 
     monkeypatch.setattr(
         responses_module,
@@ -189,7 +189,7 @@ def descendant_level(css: Path, js: Path) -> RenderedLevel:
 def test_a_descendant_rendered_during_the_walk_gets_its_assets_delivered(
     tmp_path, monkeypatch
 ):
-    from pyjinhx import responses as responses_module
+    from pyjinhx.integrations import responses as responses_module
 
     child_css = tmp_path / "child.css"
     child_css.write_text(".child{color:blue}")
@@ -226,7 +226,7 @@ def test_missing_asset_oob_emits_builtin_css_before_app_css(
     # emit builtins first regardless of path-sort order. The builtin dir is
     # monkeypatched to sort after the app asset's path ("zzz-builtins" >
     # "widget.css"), so a passing test proves the reorder, not path luck.
-    from pyjinhx import assets as assets_module
+    from pyjinhx.rendering import assets as assets_module
 
     css, _ = asset_files  # app css: tmp_path/widget.css
     builtin_dir = tmp_path / "zzz-builtins"
@@ -285,7 +285,7 @@ def test_link_mode_skips_the_tokens_the_client_already_reports(asset_files):
 def test_compose_threads_the_resolver_into_the_link_mode_fragments(
     asset_files, monkeypatch
 ):
-    from pyjinhx import responses as responses_module
+    from pyjinhx.integrations import responses as responses_module
 
     css, js = asset_files
     monkeypatch.setattr(
@@ -315,7 +315,7 @@ def test_compose_threads_the_resolver_into_the_link_mode_fragments(
 def test_none_mode_emits_nothing_even_when_the_walk_accumulated_assets(
     tmp_path, monkeypatch
 ):
-    from pyjinhx import responses as responses_module
+    from pyjinhx.integrations import responses as responses_module
 
     child_css = tmp_path / "child.css"
     child_css.write_text(".child{color:blue}")

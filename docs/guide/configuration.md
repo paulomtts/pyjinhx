@@ -34,7 +34,7 @@ In those cases, construct a `RenderSession` yourself and bind it for the scope:
 
 ```python
 from pyjinhx import RenderSession
-from pyjinhx.session import request_scope  # not yet public
+from pyjinhx.rendering.session import request_scope  # not yet public
 
 session = RenderSession()
 # session.jinja_env is a standard jinja2.Environment (AbsolutePathLoader,
@@ -48,7 +48,7 @@ with request_scope(session=session):
 
 !!! note "Not yet public"
     `RenderSession` is exported from `pyjinhx`; `request_scope` is not — it lives in
-    `pyjinhx.session`, outside `pyjinhx.__all__`.
+    `pyjinhx.rendering.session`, outside `pyjinhx.__all__`.
 
 ## Logging
 

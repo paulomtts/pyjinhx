@@ -2,7 +2,7 @@
 
 import pytest
 
-from pyjinhx.sfc import HeaderSignatureError, header_arguments
+from pyjinhx.document.scanner import HeaderSignatureError, header_arguments
 
 
 def test_arguments_come_back_with_their_defaults():
@@ -45,7 +45,7 @@ def test_an_unhashable_literal_default_is_refused_not_a_crash():
     ids=["default", "literal"],
 )
 def test_the_runtime_reports_an_unhashable_literal_as_a_value_error(header):
-    from pyjinhx.props_header import parse_props_header
+    from pyjinhx.components.props_header import parse_props_header
 
     with pytest.raises(ValueError):
         parse_props_header(f"{{#def {header} #}}\n<p></p>\n")

@@ -14,7 +14,12 @@ from pyjinhx.reactive.component import (
     _resolve_tier2,
     _string_cache_key,
 )
-from pyjinhx.session import add_dirtied, get_cache_forward, get_dirtied, request_scope
+from pyjinhx.rendering.session import (
+    add_dirtied,
+    get_cache_forward,
+    get_dirtied,
+    request_scope,
+)
 
 
 @pytest.fixture

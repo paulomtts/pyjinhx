@@ -22,12 +22,11 @@ from pathlib import Path
 
 import pytest
 
-from pyjinhx import discovery
-from pyjinhx._component import BaseComponent
-from pyjinhx.descriptor import ClassDescriptor
-from pyjinhx.registry import register_rendered_instance
-from pyjinhx.rendering import render
-from pyjinhx.session import (
+from pyjinhx.components import discovery
+from pyjinhx.components.base import BaseComponent, ClassDescriptor
+from pyjinhx.rendering.pipeline import render
+from pyjinhx.rendering.registry import register_rendered_instance
+from pyjinhx.rendering.session import (
     RenderSession,
     accumulate_assets,
     current_session,
@@ -305,13 +304,13 @@ def test_concurrent_renders_no_filenotfound_races(monkeypatch):
 
     Both file-touching surfaces are widened: the Jinja FileSystemLoader's
     get_source (template loads) and emit_assets' INLINE reads via
-    pyjinhx.assets._inline_tags. Without this the test could pass simply
+    pyjinhx.rendering.assets._inline_tags. Without this the test could pass simply
     because each render finishes before the next thread starts - the same
     reason the v0.x Finder thread-safety test monkeypatches a slow os.walk.
     """
     from jinja2 import FileSystemLoader
 
-    import pyjinhx.assets as assets_module
+    import pyjinhx.rendering.assets as assets_module
 
     monkeypatch.setattr(
         FileSystemLoader, "get_source", _slow(FileSystemLoader.get_source, 0.02)

@@ -159,12 +159,12 @@ setup(app, context_factory=lambda req: AppLoadContext(db=get_db(req)))
 ### Per-Route (manual)
 
 !!! note "Not yet public"
-    `request_scope` lives in `pyjinhx.session`, which is **not** exported from `pyjinhx`
+    `request_scope` lives in `pyjinhx.rendering.session`, which is **not** exported from `pyjinhx`
     and whose spelling may change. Everything below is an escape hatch for apps that
     cannot call `setup(app)`.
 
 ```python
-from pyjinhx.session import request_scope  # not yet public
+from pyjinhx.rendering.session import request_scope  # not yet public
 
 
 @app.get("/", response_class=HTMLResponse)

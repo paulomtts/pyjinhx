@@ -29,7 +29,11 @@ that tier exists.
 from collections.abc import Iterable
 
 from pyjinhx.reactive.backend_health import note_failure
-from pyjinhx.session import get_cache_forward, get_cache_reverse, get_cache_store
+from pyjinhx.rendering.session import (
+    get_cache_forward,
+    get_cache_reverse,
+    get_cache_store,
+)
 
 # Distinguishes "no entry" from an entry whose value happens to be None.
 _MISS = object()

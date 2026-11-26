@@ -4,11 +4,11 @@ from typing import Annotated, Any
 
 import pytest
 
-from pyjinhx._component import BaseComponent
 from pyjinhx.app_context import AppContext
+from pyjinhx.components.base import BaseComponent
 from pyjinhx.reactive.backend import CachePolicy
 from pyjinhx.reactive.component import PjxKey, ReactiveComponent
-from pyjinhx.session import request_scope
+from pyjinhx.rendering.session import request_scope
 
 
 def test_reactive_component_is_a_base_component():
